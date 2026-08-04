@@ -2193,6 +2193,13 @@ describe('cinder/z-index-scale', () => {
     ['calc(clamp(none, 25396.19cm, none) / 1in)', 1],
     ['calc(mod(25396.19cm, 999999cm) / 1in)', 1],
     ['calc(rem(25396.19cm, 999999cm) / 1in)', 1],
+    ['calc(hypot(15237.714cm, 20316.952cm) / 1in)', 1],
+    ['calc(hypot(15237.714cm, 20316.951cm) / 1in)', 0],
+    ['calc(round(719891.996pt, 0.01pt) / 1in)', 1],
+    ['calc(round(nearest, 719891.996pt, 0.01pt) / 1in)', 1],
+    ['calc(round(up, 719891.996pt, 0.01pt) / 1in)', 1],
+    ['calc(round(down, 719891.996pt, 0.01pt) / 1in)', 0],
+    ['calc(round(to-zero, 719891.996pt, 0.01pt) / 1in)', 0],
   ] as const)(
     'classifies exact absolute-unit rounding boundaries: %s',
     async (fallback, warningCount) => {
@@ -2803,6 +2810,92 @@ describe('cinder/z-index-scale', () => {
         `),
       ),
     ).toHaveLength(1);
+  });
+
+  test.each([
+    ['clamp(var(--minimum), 9999, var(--maximum))', 1],
+    ['clamp(var(--minimum), -1, var(--maximum))', 1],
+    ['clamp(10000, 9999, var(--maximum))', 0],
+    ['clamp(0, -1, var(--maximum))', 0],
+  ] as const)(
+    'preserves only reachable static clamp centers with runtime bounds: %s',
+    async (fallback, warningCount) => {
+      expect(
+        warnings(
+          await lint(`
+            .fixture {
+              /* cinder-z-index-local: runtime bounds can select only reachable centers. */
+              z-index: var(--outer, ${fallback});
+            }
+          `),
+        ),
+      ).toHaveLength(warningCount);
+    },
+  );
+
+  test.each([
+    ['hypot(-10000, var(--runtime))', 0],
+    ['hypot(10000, var(--runtime))', 0],
+    ['hypot(9999.5, var(--runtime))', 0],
+    ['hypot(-1, var(--runtime))', 1],
+    ['hypot(0, var(--runtime))', 1],
+  ] as const)(
+    'classifies the reachable nonnegative range of unresolved hypot: %s',
+    async (fallback, warningCount) => {
+      expect(
+        warnings(
+          await lint(`
+            .fixture {
+              /* cinder-z-index-local: hypot output is nonnegative and bounded by fixed operands. */
+              z-index: var(--outer, ${fallback});
+            }
+          `),
+        ),
+      ).toHaveLength(warningCount);
+    },
+  );
+
+  test.each([
+    ['calc(9999 * sign(var(--runtime)))', 1],
+    ['calc(9998 + sign(var(--runtime)))', 1],
+    ['calc(-1 * sign(var(--runtime)))', 1],
+    ['calc(10 + sign(var(--runtime)))', 0],
+    ['calc(sign(var(--runtime)) - sign(var(--runtime)))', 0],
+    ['calc(9998 + sign(var(--left)) + sign(var(--right)))', 1],
+    ['calc(9999 * sign(var(--runtime)) + var(--offset, bogus))', 1],
+    ['calc(9999 * sign(var(--runtime)) + var(--offset, 1px))', 1],
+    ['calc(10 + sign(var(--runtime)) + var(--offset, bogus))', 0],
+    ['calc(sign(var(--runtime)) - sign(var(--runtime)) + var(--offset, bogus))', 0],
+    ['calc(9999 * sign(var(--runtime), 1))', 0],
+    ['calc(9999 * sign(1px, var(--runtime)))', 0],
+  ] as const)(
+    'evaluates the discrete output range of unresolved sign: %s',
+    async (fallback, warningCount) => {
+      expect(
+        warnings(
+          await lint(`
+            .fixture {
+              /* cinder-z-index-local: every valid runtime sign endpoint stays in policy. */
+              z-index: var(--outer, ${fallback});
+            }
+          `),
+        ),
+      ).toHaveLength(warningCount);
+    },
+  );
+
+  test('bounds independent unresolved sign ranges', async () => {
+    const signTerms = Array.from({ length: 16 }, (_, index) => `sign(var(--runtime-${index}))`);
+    const [warning] = warnings(
+      await lint(`
+        .fixture {
+          /* cinder-z-index-local: independent sign combinations must stay bounded. */
+          z-index: var(--outer, calc(${signTerms.join(' + ')}));
+        }
+      `),
+    );
+
+    expect(warning?.text).toContain('too complex to verify');
   });
 
   test.each([

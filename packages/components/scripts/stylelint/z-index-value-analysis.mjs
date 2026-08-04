@@ -267,6 +267,11 @@ function floorRational({ numerator, denominator }) {
   return numerator < 0n && numerator % denominator !== 0n ? quotient - 1n : quotient;
 }
 
+function ceilingRational({ numerator, denominator }) {
+  const quotient = numerator / denominator;
+  return numerator > 0n && numerator % denominator !== 0n ? quotient + 1n : quotient;
+}
+
 function roundRational(value) {
   return floorRational({
     numerator: value.numerator * 2n + value.denominator,
@@ -280,6 +285,42 @@ function absoluteRational(value) {
     numerator: value.numerator < 0n ? -value.numerator : value.numerator,
     denominator: value.denominator,
   };
+}
+
+function integerSquareRoot(value) {
+  if (value < 0n) return undefined;
+  if (value < 2n) return value;
+  const bitLength = value.toString(2).length;
+  let estimate = 1n << BigInt(Math.ceil(bitLength / 2));
+  for (;;) {
+    const nextEstimate = (estimate + value / estimate) / 2n;
+    if (nextEstimate >= estimate) return estimate;
+    estimate = nextEstimate;
+  }
+}
+
+function squareRootRational(value) {
+  if (value === undefined || value.numerator < 0n) return undefined;
+  const numerator = integerSquareRoot(value.numerator);
+  const denominator = integerSquareRoot(value.denominator);
+  if (
+    numerator === undefined ||
+    denominator === undefined ||
+    numerator * numerator !== value.numerator ||
+    denominator * denominator !== value.denominator
+  )
+    return undefined;
+  return normalizedRational(numerator, denominator);
+}
+
+function exactHypotenuse(arguments_) {
+  let squaredSum = { numerator: 0n, denominator: 1n };
+  for (const argument of arguments_) {
+    const squaredArgument = multiplyRationals(argument.exactValue, argument.exactValue);
+    if (squaredArgument === undefined) return undefined;
+    squaredSum = addRationals(squaredSum, squaredArgument);
+  }
+  return squareRootRational(squaredSum);
 }
 
 function normalizedDimension(unit) {
@@ -659,7 +700,7 @@ function evaluateConstantArithmetic(expression) {
         let hypotenuse = 0;
         for (const argument of boundedArguments)
           hypotenuse = Math.hypot(hypotenuse, argument.value);
-        return withValue(boundedArguments[0], hypotenuse);
+        return withValue(boundedArguments[0], hypotenuse, exactHypotenuse(boundedArguments));
       }
       if (
         (functionName === 'min' || functionName === 'max') &&
@@ -784,7 +825,8 @@ function evaluateConstantArithmetic(expression) {
         );
       }
       if (functionName === 'round' && arguments_.length >= 1 && arguments_.length <= 2) {
-        const [value, interval = withValue(arguments_[0], 1)] = arguments_;
+        const [value, interval = withValue(arguments_[0], 1, { numerator: 1n, denominator: 1n })] =
+          arguments_;
         if (interval.value === 0) throw new Error('zero interval');
         if (!Number.isFinite(interval.value)) {
           if (Number.isNaN(interval.value) || !Number.isFinite(value.value))
@@ -799,8 +841,15 @@ function evaluateConstantArithmetic(expression) {
         if (!Number.isFinite(value.value)) return withValue(value, value.value);
         const intervalMagnitude = Math.abs(interval.value);
         const ratio = value.value / intervalMagnitude;
+        const exactIntervalMagnitude = absoluteRational(interval.exactValue);
+        const exactRatio = divideRationals(value.exactValue, exactIntervalMagnitude);
         // CSS returns an exact multiple unchanged, including its signed zero.
-        if (Number.isInteger(ratio)) return withValue(value, value.value);
+        if (Number.isInteger(ratio) && (exactRatio === undefined || exactRatio.denominator === 1n))
+          return withValue(
+            value,
+            value.value,
+            exactRatio === undefined ? undefined : value.exactValue,
+          );
         const rounded =
           roundStrategy === 'up'
             ? Math.ceil(ratio)
@@ -809,7 +858,24 @@ function evaluateConstantArithmetic(expression) {
               : roundStrategy === 'to-zero'
                 ? Math.trunc(ratio)
                 : Math.floor(ratio + 0.5);
-        return withValue(value, rounded * intervalMagnitude);
+        const exactRoundedMultiple =
+          exactRatio === undefined
+            ? undefined
+            : roundStrategy === 'up'
+              ? ceilingRational(exactRatio)
+              : roundStrategy === 'down'
+                ? floorRational(exactRatio)
+                : roundStrategy === 'to-zero'
+                  ? exactRatio.numerator / exactRatio.denominator
+                  : roundRational(exactRatio);
+        const exactValue =
+          exactRoundedMultiple === undefined
+            ? undefined
+            : multiplyRationals(exactIntervalMagnitude, {
+                numerator: exactRoundedMultiple,
+                denominator: 1n,
+              });
+        return withValue(value, rounded * intervalMagnitude, exactValue);
       }
       if (functionName === 'pow' && arguments_.length === 2) {
         if (arguments_.some(({ units }) => units.size !== 0)) throw new Error('expected numbers');
@@ -822,15 +888,7 @@ function evaluateConstantArithmetic(expression) {
       if (functionName === 'hypot' && arguments_.length > 0) {
         let hypotenuse = 0;
         for (const argument of arguments_) hypotenuse = Math.hypot(hypotenuse, argument.value);
-        const exactNonzeroArguments = arguments_.filter(
-          (argument) => argument.exactValue?.numerator !== 0n,
-        );
-        const exactValue =
-          arguments_.every((argument) => argument.exactValue !== undefined) &&
-          exactNonzeroArguments.length <= 1
-            ? absoluteRational((exactNonzeroArguments[0] ?? arguments_[0]).exactValue)
-            : undefined;
-        return withValue(arguments_[0], hypotenuse, exactValue);
+        return withValue(arguments_[0], hypotenuse, exactHypotenuse(arguments_));
       }
       if (functionName === 'log' && arguments_.length >= 1 && arguments_.length <= 2) {
         if (arguments_.some(({ units }) => units.size !== 0)) throw new Error('expected numbers');

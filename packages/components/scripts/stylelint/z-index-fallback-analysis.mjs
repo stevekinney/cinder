@@ -1291,10 +1291,7 @@ function directBannedMathArgumentCandidates(
         return [];
     }
     let candidateArguments;
-    if (functionName === 'clamp')
-      candidateArguments = parsedArguments.staticArguments.filter(
-        (argument) => argument.index === 0 || argument.index === 2,
-      );
+    if (functionName === 'clamp') candidateArguments = parsedArguments.staticArguments;
     else if (functionName === 'round') {
       const firstArgument = value
         .slice(parsedArguments.argumentRanges[0].start, parsedArguments.argumentRanges[0].end)
@@ -1325,6 +1322,24 @@ function directBannedMathArgumentCandidates(
         );
       });
     else candidateArguments = parsedArguments.staticArguments;
+    if (functionName === 'hypot') {
+      const staticValues = candidateArguments.map((argument) =>
+        evaluateStaticLayerNumber(argument.value),
+      );
+      if (staticValues.some((staticValue) => staticValue === undefined)) return [];
+      let minimumResult = 0;
+      for (const staticValue of staticValues)
+        minimumResult = Math.hypot(minimumResult, staticValue);
+      return minimumResult < 9999.5
+        ? [
+            {
+              ...candidate,
+              resolvedClassification: 'magic',
+              hasRuntimeSibling: true,
+            },
+          ]
+        : [];
+    }
     const classificationWork = candidateArguments.reduce(
       (total, argument) => total + argument.value.length,
       0,
@@ -1410,6 +1425,153 @@ function fallbackIndependentMathArgumentResultTypes(frame, value, range, parenth
       : resultTypes;
   }
   return new Set();
+}
+
+function signRangeCandidates(
+  frame,
+  value,
+  range,
+  candidate,
+  budget,
+  parenthesisPairs,
+  zeroQuotientRanges,
+) {
+  const unresolvedChildren = frame.children.filter((child) => child.resolvedFallback === null);
+  const emptyAnalysis = { candidates: [], suppressedChild: undefined };
+  if (unresolvedChildren.length === 0) return emptyAnalysis;
+  const signParents = [];
+  const signParentSet = new Set();
+  for (const child of unresolvedChildren) {
+    const signParent = child.signParent;
+    if (
+      signParent?.end === undefined ||
+      signParent.functionStart < range.start ||
+      signParent.end > range.end
+    )
+      return emptyAnalysis;
+    if (!signParentSet.has(signParent)) {
+      signParentSet.add(signParent);
+      signParents.push(signParent);
+    }
+  }
+  const signRanges = signParents
+    .map((parenthesis) => ({
+      end: parenthesis.end,
+      parenthesis,
+      start: parenthesis.functionStart,
+    }))
+    .sort((left, right) => left.start - right.start);
+  const tooComplexAnalysis = () => ({
+    candidates: [
+      {
+        ...candidate,
+        resolvedFallback: fallbackResolutionTooComplex,
+        resolvedClassification: 'too-complex',
+      },
+    ],
+    suppressedChild: undefined,
+  });
+  if (
+    signRanges.some((signRange) => signRange.start < range.start || signRange.end > range.end) ||
+    signRanges.some((signRange, index) => index > 0 && signRanges[index - 1].end > signRange.start)
+  )
+    return tooComplexAnalysis();
+  const parsedSignArguments = signRanges.map((signRange) =>
+    fallbackIndependentStaticArguments(frame, value, signRange, 'sign', parenthesisPairs),
+  );
+  if (parsedSignArguments.some((parsedArguments) => parsedArguments?.argumentCount !== 1))
+    return emptyAnalysis;
+  const childrenOutsideSignRanges = frame.children.filter(
+    (child) => !signParentSet.has(child.signParent),
+  );
+  if (childrenOutsideSignRanges.some((child) => child.resolvedFallback === null))
+    return emptyAnalysis;
+  const signGroupIndexes = new Map();
+  const signRangeGroupIndexes = parsedSignArguments.map((parsedArguments, signRangeIndex) => {
+    const signRange = signRanges[signRangeIndex];
+    if (
+      zeroQuotientRanges.some(
+        (zeroRange) => zeroRange.start <= signRange.start && zeroRange.end >= signRange.end,
+      )
+    )
+      return undefined;
+    const argumentRange = parsedArguments.argumentRanges[0];
+    const key = canonicalProgressArgument(value, argumentRange);
+    const existingIndex = signGroupIndexes.get(key);
+    if (existingIndex !== undefined) return existingIndex;
+    const groupIndex = signGroupIndexes.size;
+    signGroupIndexes.set(key, groupIndex);
+    return groupIndex;
+  });
+  const resolvedChildren = childrenOutsideSignRanges;
+  if (resolvedChildren.some((child) => typeof child.resolvedFallback !== 'string'))
+    return emptyAnalysis;
+  const replacementRanges = [
+    ...signRanges.map((signRange, index) => ({
+      ...signRange,
+      groupIndex: signRangeGroupIndexes[index],
+      type: signRangeGroupIndexes[index] === undefined ? 'zero-sign' : 'sign',
+    })),
+    ...resolvedChildren.map((child) => ({
+      end: child.end,
+      replacement: ` ${child.resolvedFallback} `,
+      start: child.start,
+      type: 'fallback',
+    })),
+  ].sort((left, right) => left.start - right.start);
+  const combinationCount = 3 ** signGroupIndexes.size;
+  const replacementLength = resolvedChildren.reduce(
+    (total, child) => total + child.resolvedFallback.length + 2,
+    0,
+  );
+  const endpointModeCount = resolvedChildren.length === 0 ? 1 : 2;
+  const generatedLength =
+    combinationCount * endpointModeCount * (range.end - range.start + replacementLength);
+  if (!Number.isSafeInteger(combinationCount) || !consumeResolutionWork(budget, generatedLength))
+    return tooComplexAnalysis();
+  const classifications = new Set();
+  const signEndpoints = [-1, 0, 1];
+  for (let combination = 0; combination < combinationCount; combination += 1) {
+    let resolvedEndpointCount = 0;
+    for (let endpointMode = 0; endpointMode < endpointModeCount; endpointMode += 1) {
+      const useFallbackValues = endpointMode === 0;
+      const chunks = [];
+      let cursor = range.start;
+      for (const replacementRange of replacementRanges) {
+        chunks.push(value.slice(cursor, replacementRange.start));
+        if (replacementRange.type === 'sign') {
+          const endpointIndex =
+            Math.floor(combination / 3 ** replacementRange.groupIndex) % signEndpoints.length;
+          chunks.push(String(signEndpoints[endpointIndex]));
+        } else if (replacementRange.type === 'zero-sign') chunks.push('0');
+        else chunks.push(useFallbackValues ? replacementRange.replacement : ' 0 ');
+        cursor = replacementRange.end;
+      }
+      chunks.push(value.slice(cursor, range.end));
+      const classification = classifyStaticLayer(chunks.join(''));
+      if (classification === 'too-complex') return tooComplexAnalysis();
+      if (classification === 'unresolved') continue;
+      resolvedEndpointCount += 1;
+      if (classification === 'negative' || classification === 'magic')
+        classifications.add(classification);
+    }
+    if (resolvedEndpointCount === 0) return emptyAnalysis;
+  }
+  const candidateBearingResolvedChildren = resolvedChildren.filter(
+    (child) => child.unprovenBannedCandidates.length > 0,
+  );
+  return {
+    candidates: [...classifications].map((resolvedClassification) => ({
+      ...candidate,
+      resolvedClassification,
+    })),
+    suppressedChild:
+      classifications.size === 0 &&
+      resolvedChildren.length === 1 &&
+      candidateBearingResolvedChildren.length === 1
+        ? candidateBearingResolvedChildren[0]
+        : undefined,
+  };
 }
 
 function progressRangeCandidates(frame, value, range, candidate, budget, parenthesisPairs) {
@@ -2067,8 +2229,20 @@ function unprovenCandidatesForFrame(frame, value, range, candidate, budget, pare
     budget,
     parenthesisPairs,
   );
+  const signAnalysis = signRangeCandidates(
+    frame,
+    value,
+    range,
+    candidate,
+    budget,
+    parenthesisPairs,
+    zeroQuotientEndpoint?.ranges ?? [],
+  );
   const childCandidates = uneliminatedChildren
-    .filter((child) => child !== progressAnalysis.suppressedChild)
+    .filter(
+      (child) =>
+        child !== progressAnalysis.suppressedChild && child !== signAnalysis.suppressedChild,
+    )
     .flatMap((child) => child.unprovenBannedCandidates)
     .filter(
       (childCandidate) =>
@@ -2155,20 +2329,25 @@ function unprovenCandidatesForFrame(frame, value, range, candidate, budget, pare
     runtimeZeroFallback,
     budget,
   ).classification;
-  const boundedProgressCandidates = progressAnalysis.candidates;
+  const boundedRuntimeCandidates = [
+    ...progressAnalysis.candidates,
+    ...signAnalysis.candidates.filter(
+      (signCandidate) => !candidateIsSuppressedByZeroQuotient(signCandidate),
+    ),
+  ];
   const uneliminatedCandidates = (
     runtimeZeroClassification === 'negative' || runtimeZeroClassification === 'magic'
       ? [
           ...childCandidates,
           ...directArgumentCandidates,
-          ...boundedProgressCandidates,
+          ...boundedRuntimeCandidates,
           {
             ...candidate,
             resolvedFallback: runtimeZeroFallback,
             resolvedClassification: runtimeZeroClassification,
           },
         ]
-      : [...childCandidates, ...directArgumentCandidates, ...boundedProgressCandidates]
+      : [...childCandidates, ...directArgumentCandidates, ...boundedRuntimeCandidates]
   ).filter((childCandidate) => !candidateConflictsWithStaticMathArgument(childCandidate));
 
   const contextuallyUnprovenCandidates = uneliminatedCandidates.filter((childCandidate) => {
@@ -2264,6 +2443,7 @@ function fallbackCandidates(value) {
         invalidFunctionParent: parentheses.at(-1)?.invalidFunctionParent,
         parenthesisParent: parentheses.at(-1),
         progressParent: parentheses.at(-1)?.progressParent,
+        signParent: parentheses.at(-1)?.signParent,
         unsupportedProgressRangeParent: parentheses.at(-1)?.unsupportedProgressRangeParent,
         signedZeroSensitiveContext: inheritedContext || isPrecededByDivision(value, index),
       };
@@ -2302,6 +2482,7 @@ function fallbackCandidates(value) {
           : parenthesisParent?.invalidFunctionParent;
       group.progressParent =
         group.functionName === 'progress' ? group : parenthesisParent?.progressParent;
+      group.signParent = group.functionName === 'sign' ? group : parenthesisParent?.signParent;
       const progressRangeIsUnsupported =
         group.signedZeroSensitiveContext ||
         (!group.isGroupingParenthesis &&
