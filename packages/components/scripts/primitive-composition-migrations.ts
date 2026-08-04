@@ -7,6 +7,9 @@ export const allowedRawControlCounts = new Map<string, number>([
   ['approval-card/approval-card-actions.svelte', 2],
   ['checkbox/checkbox.svelte', 1],
   ['combobox/combobox.svelte', 1],
+  // CommandPalette intentionally retains one native text input inside a modal
+  // <dialog>; see docs/decisions/command-palette-native-dialog.md. This exception
+  // is bounded to the editable combobox control, not the dialog surface.
   ['command-palette/command-palette.svelte', 1],
   ['date-picker/date-picker.svelte', 2],
   ['faceted-filter-bar/faceted-filter-bar.svelte', 1],
@@ -14,6 +17,8 @@ export const allowedRawControlCounts = new Map<string, number>([
   ['input/input.svelte', 1],
   ['invocation-rule-builder/invocation-rule-builder.svelte', 8],
   ['json-editor/json-editor.svelte', 1],
+  // MultiSelect intentionally retains its filter input and native validation
+  // proxy; option selection itself is composed from the shared primitives.
   ['multi-select/multi-select.svelte', 2],
   ['pin-input/pin-input.svelte', 1],
   ['select/select.svelte', 2],
@@ -21,7 +26,7 @@ export const allowedRawControlCounts = new Map<string, number>([
   ['table-row/table-row.svelte', 3],
   ['tag-input/tag-input.svelte', 1],
   ['textarea/textarea.svelte', 1],
-  ['time-field/time-field.svelte', 2],
+  ['time-field/time-field.svelte', 1],
   ['tree/tree.svelte', 2],
   ['tree-item/tree-item.svelte', 2],
 ]);
@@ -31,10 +36,23 @@ export const allowedRawControlCounts = new Map<string, number>([
 // their primitive migration is completed.
 export const allowedRawControlSignatures = new Map<string, readonly string[]>([
   [
+    'command-palette/command-palette.svelte',
+    [
+      'input|aria-activedescendant|aria-autocomplete=list|aria-controls|aria-expanded=true|autocomplete=off|autocorrect=off|class=cinder-command-palette__input|id|oninput|onkeydown|placeholder|role=combobox|spellcheck=false|this|type=text|value',
+    ],
+  ],
+  [
     'approval-card/approval-card-actions.svelte',
     [
       'textarea|class=cinder-approval-card__textarea cinder-approval-card__textarea--reason|id|rows=2|value',
       'input|checked|type=checkbox',
+    ],
+  ],
+  [
+    'multi-select/multi-select.svelte',
+    [
+      'input|aria-activedescendant|aria-autocomplete=list|aria-controls|aria-expanded|aria-haspopup=listbox|aria-labelledby|aria-readonly|class=cinder-_input-frame cinder-multi-select__filter|id|oninput|onkeydown|placeholder=Filter options|readonly|role=combobox|this|type=text|value',
+      'input|aria-hidden=true|class=cinder-multi-select__validation-proxy|disabled|oninvalid|required|tabindex=-1|this|type=text|value',
     ],
   ],
 ]);
@@ -44,16 +62,13 @@ export const allowedGridCounts = new Map<string, number>(
     'access-gate/access-gate.css',
     'action-row/action-row.css',
     'approval-card/approval-card.css',
-    'bento-grid/bento-grid.css',
     'blog-section/blog-section.css',
     'calendar/calendar.css',
-    'choice-grid/choice-grid.css',
     'data-grid/data-grid.css',
     'date-picker/date-picker.css',
     'event-stream-viewer/event-stream-viewer.css',
     'feed/feed.css',
     'form-section/form-section.css',
-    'grid-list/grid-list.css',
     'grid/grid.css',
     'hero-section/hero-section.css',
     'logo-cloud/logo-cloud.css',
@@ -75,7 +90,6 @@ export const allowedGridCounts = new Map<string, number>(
   ].map((filePath) => [filePath, 1] as const),
 );
 allowedGridCounts.set('action-row/action-row.css', 4);
-allowedGridCounts.set('bento-grid/bento-grid.css', 2);
 allowedGridCounts.set('blog-section/blog-section.css', 4);
 allowedGridCounts.set('calendar/calendar.css', 2);
 allowedGridCounts.set('data-grid/data-grid.css', 2);
@@ -83,6 +97,7 @@ allowedGridCounts.set('description-list/description-list.css', 4);
 allowedGridCounts.set('feature-section/feature-section.css', 8);
 allowedGridCounts.set('footer/footer.css', 2);
 allowedGridCounts.set('form-section/form-section.css', 7);
+allowedGridCounts.set('grid/grid.css', 2);
 allowedGridCounts.set('kanban-board/kanban-board.css', 5);
 allowedGridCounts.set('logo-cloud/logo-cloud.css', 11);
 // The nested submenu's master/detail column split adds one tracked match
@@ -130,6 +145,9 @@ export const allowedFloatingCounts = new Map<string, number>(
     'waveform/waveform.css',
   ].map((filePath) => [filePath, 1] as const),
 );
+// CommandPalette is intentionally absent from this floating-surface migration:
+// its panel remains a native modal <dialog>, not a positioned non-modal surface.
+// See docs/decisions/command-palette-native-dialog.md for the bounded exception.
 allowedFloatingCounts.set('dropdown/dropdown.css', 6);
 allowedFloatingCounts.set('menu-bar/menu-bar.css', 2);
 allowedFloatingCounts.set('styles/components/experimental/popover.css', 4);

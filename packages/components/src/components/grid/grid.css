@@ -7,6 +7,10 @@
     column-gap: var(--cinder-grid-column-gap, var(--cinder-space-4));
   }
 
+  .cinder-grid[data-cinder-collapse][data-cinder-narrow] {
+    grid-template-columns: 1fr;
+  }
+
   .cinder-grid-item {
     grid-column-start: var(--cinder-grid-item-column-start, auto);
     grid-column-end: var(--cinder-grid-item-column-end, auto);
@@ -20,5 +24,12 @@
 
   .cinder-grid-item[data-cinder-row-span='true'] {
     grid-row-end: span var(--cinder-grid-item-row-span);
+  }
+
+  .cinder-grid[data-cinder-collapse][data-cinder-narrow] > .cinder-grid-item {
+    grid-column-start: auto;
+    grid-column-end: auto;
+    grid-row-start: auto;
+    grid-row-end: auto;
   }
 }

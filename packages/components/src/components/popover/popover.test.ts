@@ -387,6 +387,32 @@ describe('Popover — portal and arrow', () => {
     expect(panel.classList.contains('consumer-popover')).toBe(true);
   });
 
+  test('applies portalScopeClass to the portaled scope, not the floating panel', async () => {
+    render(Popover, {
+      props: {
+        open: true,
+        class: 'consumer-popover',
+        portalScopeClass: 'consumer-root compact',
+        trigger: triggerSnippet,
+        children: textSnippet('content'),
+      },
+    });
+
+    await waitFor(() => {
+      expect(
+        document.body.querySelector('.consumer-root.compact .consumer-popover'),
+      ).not.toBeNull();
+    });
+
+    const panel = queryPopoverPanel()!;
+    const portalScope = panel.parentElement!;
+    expect(portalScope.classList.contains('cinder-popover__portal-scope')).toBe(true);
+    expect(portalScope.classList.contains('consumer-root')).toBe(true);
+    expect(portalScope.classList.contains('compact')).toBe(true);
+    expect(panel.classList.contains('consumer-root')).toBe(false);
+    expect(panel.classList.contains('compact')).toBe(false);
+  });
+
   test('copies inherited dir and theme attributes before portaling', async () => {
     const wrapper = document.createElement('div');
     wrapper.setAttribute('dir', 'rtl');

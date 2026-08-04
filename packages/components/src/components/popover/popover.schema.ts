@@ -62,6 +62,10 @@ const schema = {
       enum: ['content', 'match-anchor', 'menu', 'none'],
       description: "Floating panel width strategy. Default `'content'`.",
     },
+    portalScopeClass: {
+      type: 'string',
+      description: 'Extra class merged onto the portaled scope wrapper.',
+    },
     class: {
       type: 'string',
       description: 'Extra class merged onto `.cinder-popover`.',

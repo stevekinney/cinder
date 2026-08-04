@@ -1,3 +1,3 @@
-const variables: readonly string[] = ['--cinder-grid-list-min-width'];
+const variables: readonly string[] = [];
 
 export default variables;

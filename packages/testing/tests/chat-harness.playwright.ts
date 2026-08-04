@@ -410,8 +410,20 @@ test.describe('chat harness — scroll, unread, jump', () => {
 
       const timeline = harness.locator('.chat-timeline');
       await harness.locator('[data-testid="scroll-top"]').click();
-      const anchor = timeline.getByText('Tell me about alpha.').first();
+      const anchor = timeline
+        .locator('.chat-message')
+        .filter({ hasText: 'Tell me about alpha.' })
+        .first();
       await expect(anchor).toBeVisible();
+      await expect
+        .poll(async () => {
+          const [anchorBox, timelineBox] = await Promise.all([
+            anchor.boundingBox(),
+            timeline.boundingBox(),
+          ]);
+          return anchorBox !== null && timelineBox !== null;
+        })
+        .toBe(true);
       const before = await anchor.boundingBox();
       const beforeTimeline = await timeline.boundingBox();
       expect(before).not.toBeNull();
@@ -635,8 +647,20 @@ test.describe('chat harness — scroll, unread, jump', () => {
 
       const timeline = harness.locator('.chat-timeline');
       await harness.locator('[data-testid="scroll-top"]').click();
-      const anchor = timeline.getByText('Tell me about alpha.').first();
+      const anchor = timeline
+        .locator('.chat-message')
+        .filter({ hasText: 'Tell me about alpha.' })
+        .first();
       await expect(anchor).toBeVisible();
+      await expect
+        .poll(async () => {
+          const [anchorBox, timelineBox] = await Promise.all([
+            anchor.boundingBox(),
+            timeline.boundingBox(),
+          ]);
+          return anchorBox !== null && timelineBox !== null;
+        })
+        .toBe(true);
       const before = await anchor.boundingBox();
       const beforeTimeline = await timeline.boundingBox();
       expect(before).not.toBeNull();

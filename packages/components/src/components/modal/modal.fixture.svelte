@@ -1,16 +1,25 @@
 <script lang="ts">
   import { Modal } from './index.ts';
+  import { Popover } from '../popover/index.ts';
   import { untrack } from 'svelte';
 
   type FixtureProps = {
     describedById?: string;
     open?: boolean;
+    anchoredOverlay?: boolean;
     title?: string;
   };
 
-  let { describedById, open = true, title = 'Fixture dialog' }: FixtureProps = $props();
+  let {
+    describedById,
+    open = true,
+    anchoredOverlay = false,
+    title = 'Fixture dialog',
+  }: FixtureProps = $props();
   let modalOpen = $state(untrack(() => open));
+  let overlayOpen = $state(untrack(() => anchoredOverlay));
   let triggerRef: HTMLButtonElement | null = $state(null);
+  let overlayTriggerRef: HTMLButtonElement | null = $state(null);
 </script>
 
 <div class="modal-fixture">
@@ -26,6 +35,25 @@
       </p>
 
       {#snippet footer()}
+        {#if anchoredOverlay}
+          <Popover
+            bind:open={overlayOpen}
+            triggerRef={overlayTriggerRef}
+            placement="bottom"
+            label="Dialog-owned anchored overlay"
+            focusManagement="preserve"
+          >
+            {#snippet trigger()}
+              <button bind:this={overlayTriggerRef} class="modal-fixture__action" type="button">
+                Anchored overlay trigger
+              </button>
+            {/snippet}
+
+            <div class="modal-fixture__overlay-content">
+              Dialog-owned overlay content remains visible beyond the panel boundary.
+            </div>
+          </Popover>
+        {/if}
         <button class="modal-fixture__action" type="button" onclick={() => (modalOpen = false)}>
           Cancel
         </button>
@@ -43,6 +71,25 @@
       <p>This dialog body is supplied by the host fixture.</p>
 
       {#snippet footer()}
+        {#if anchoredOverlay}
+          <Popover
+            bind:open={overlayOpen}
+            triggerRef={overlayTriggerRef}
+            placement="bottom"
+            label="Dialog-owned anchored overlay"
+            focusManagement="preserve"
+          >
+            {#snippet trigger()}
+              <button bind:this={overlayTriggerRef} class="modal-fixture__action" type="button">
+                Anchored overlay trigger
+              </button>
+            {/snippet}
+
+            <div class="modal-fixture__overlay-content">
+              Dialog-owned overlay content remains visible beyond the panel boundary.
+            </div>
+          </Popover>
+        {/if}
         <button class="modal-fixture__action" type="button" onclick={() => (modalOpen = false)}>
           Cancel
         </button>
@@ -86,5 +133,11 @@
   .modal-fixture__action--primary {
     background: var(--cinder-accent);
     color: var(--cinder-accent-contrast);
+  }
+
+  .modal-fixture__overlay-content {
+    min-width: 18rem;
+    max-width: 24rem;
+    padding: 1rem;
   }
 </style>

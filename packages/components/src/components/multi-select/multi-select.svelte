@@ -25,7 +25,8 @@
   import ChevronDown from 'lucide-svelte/icons/chevron-down';
   import { tick, untrack } from 'svelte';
 
-  import { pushEscapeHandler } from '../../_internal/overlay.ts';
+  import CheckboxIndicatorShell from '../_internal/checkbox-indicator-shell.svelte';
+  import { createCommandListState } from '../_internal/create-command-list-state.svelte.ts';
   import { resolveFieldControl } from '../../_internal/field-control.ts';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
@@ -95,7 +96,6 @@
   const selectedCount = $derived(uniqueSelectedIds.length);
   let open = $state(false);
   let query = $state('');
-  let activeIndex = $state(-1);
   let reorderAfterReopen = $state(false);
   let openedAtLeastOnce = $state(false);
   let triggerElement = $state<HTMLButtonElement | null>(null);
@@ -120,6 +120,7 @@
   const triggerSummary = $derived(selectedCount > 0 ? `${selectedCount} selected` : placeholder);
   const emptyListMessage = $derived(filterable ? 'No matching options' : 'No options');
   const initialSelectedIds = untrack(() => [...selectedIds]);
+  const commandList = createCommandListState(() => listboxId);
 
   const defaultFilter = (item: MultiSelectItem<T>, nextQuery: string): boolean => {
     if (!nextQuery) return true;
@@ -151,10 +152,11 @@
     return [...selected, ...unselected];
   });
 
-  const activeOptionId = $derived(
-    activeIndex >= 0 && activeIndex < visibleItems.length
-      ? `${id}-option-${activeIndex}`
-      : undefined,
+  const activeOptionId = $derived(open ? (commandList.activeItemId ?? undefined) : undefined);
+  const activeIndex = $derived(
+    commandList.activeItemId === null
+      ? -1
+      : visibleItems.findIndex((_, index) => `${id}-option-${index}` === commandList.activeItemId),
   );
 
   function firstEnabledIndex(list: readonly MultiSelectItem<T>[]): number {
@@ -174,11 +176,11 @@
     query = '';
     reorderAfterReopen = selectionFeedback === 'top-after-reopen' && openedAtLeastOnce;
     openedAtLeastOnce = true;
-    const nextIndex = preferLast
-      ? getLastEnabledIndex(visibleItems)
-      : firstEnabledIndex(visibleItems);
-    activeIndex = nextIndex;
     void tick().then(() => {
+      const nextIndex = preferLast
+        ? getLastEnabledIndex(visibleItems)
+        : firstEnabledIndex(visibleItems);
+      if (nextIndex >= 0) commandList.setActiveById(`${id}-option-${nextIndex}`);
       if (filterable) filterElement?.focus();
       else listboxElement?.focus();
     });
@@ -186,7 +188,6 @@
 
   function closeMenu(restoreFocus = true): void {
     open = false;
-    activeIndex = -1;
     query = '';
     if (restoreFocus) triggerElement?.focus();
   }
@@ -204,7 +205,7 @@
     if (!open) return;
     queueMicrotask(() => {
       const nextIndex = visibleItems.findIndex((candidate) => candidate.id === item.id);
-      if (nextIndex >= 0) activeIndex = nextIndex;
+      if (nextIndex >= 0) commandList.setActiveById(`${id}-option-${nextIndex}`);
     });
   }
 
@@ -215,52 +216,23 @@
     triggerElement?.focus();
   }
 
-  function moveActive(delta: 1 | -1): void {
-    if (visibleItems.length === 0) {
-      activeIndex = -1;
-      return;
-    }
-    const start = activeIndex < 0 ? (delta === 1 ? -1 : 0) : activeIndex;
-    for (let offset = 1; offset <= visibleItems.length; offset += 1) {
-      const index = (start + delta * offset + visibleItems.length) % visibleItems.length;
-      if (!visibleItems[index]?.disabled) {
-        activeIndex = index;
-        return;
-      }
-    }
-  }
-
   function handleListNavigationKeydown(event: KeyboardEvent): void {
-    if (event.key === 'ArrowDown') {
-      event.preventDefault();
-      moveActive(1);
-      return;
-    }
-    if (event.key === 'ArrowUp') {
-      event.preventDefault();
-      moveActive(-1);
-      return;
-    }
-    if (event.key === 'Home') {
-      event.preventDefault();
-      activeIndex = firstEnabledIndex(visibleItems);
-      return;
-    }
-    if (event.key === 'End') {
-      event.preventDefault();
-      activeIndex = getLastEnabledIndex(visibleItems);
-      return;
-    }
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      closeMenu();
-      return;
-    }
-    if (event.key === ' ' || event.key === 'Enter') {
+    commandList.handleKeydown({
+      event,
+      onEnter: (itemId) => {
+        const index = visibleItems.findIndex(
+          (_, candidateIndex) => `${id}-option-${candidateIndex}` === itemId,
+        );
+        const item = visibleItems[index];
+        if (item) toggleItem(item);
+      },
+      onEscape: closeMenu,
+      preventDefaultOnEmptyEnter: true,
+    });
+    if (event.key === ' ') {
       event.preventDefault();
       const item = visibleItems[activeIndex];
-      if (!item) return;
-      toggleItem(item);
+      if (item) toggleItem(item);
     }
   }
 
@@ -274,13 +246,13 @@
     if (event.key === 'ArrowDown') {
       event.preventDefault();
       if (!open) openMenu();
-      else moveActive(1);
+      else commandList.handleKeydown({ event });
       return;
     }
     if (event.key === 'ArrowUp') {
       event.preventDefault();
       if (!open) openMenu(true);
-      else moveActive(-1);
+      else commandList.handleKeydown({ event });
       return;
     }
     if ((event.key === 'Backspace' || event.key === 'Delete') && selectedIds.length > 0) {
@@ -289,8 +261,8 @@
   }
 
   function handleFilterInput(event: Event): void {
+    commandList.resetActiveItem();
     query = (event.currentTarget as HTMLInputElement).value;
-    activeIndex = firstEnabledIndex(visibleItems);
   }
 
   function handleFilterKeydown(event: KeyboardEvent): void {
@@ -307,7 +279,6 @@
       if (event.defaultPrevented) return;
       setSelectedIds(initialSelectedIds);
       open = false;
-      activeIndex = -1;
       query = '';
     }, 0);
   }
@@ -344,53 +315,38 @@
   });
 
   $effect(() => {
-    if (!open) return;
-    if (
-      activeIndex < 0 ||
-      activeIndex >= visibleItems.length ||
-      visibleItems[activeIndex]?.disabled
-    ) {
-      activeIndex = firstEnabledIndex(visibleItems);
-    }
+    const listbox = listboxElement;
+    if (!listbox) return;
+    commandList.syncItems(
+      visibleItems.flatMap((item, index) => {
+        const node = listbox.querySelectorAll<HTMLElement>('[role="option"]')[index];
+        return node
+          ? [
+              {
+                id: `${id}-option-${index}`,
+                node,
+                getValue: () => item.id,
+                getOnselect: () => () => toggleItem(item),
+                getDisabled: () => !!item.disabled,
+              },
+            ]
+          : [];
+      }),
+    );
   });
 
   $effect(() => {
     if (!open) return;
-
-    const handlePointerDown = (event: MouseEvent): void => {
-      const target = event.target as Node | null;
-      if (target && controlElement?.contains(target)) return;
-      if (target && panelElement?.contains(target)) return;
-      closeMenu(false);
-    };
-
-    const handleFocusIn = (event: FocusEvent): void => {
-      const target = event.target as Node | null;
-      if (target && controlElement?.contains(target)) return;
-      if (target && panelElement?.contains(target)) return;
-      closeMenu(false);
-    };
-
-    const releaseEscape = pushEscapeHandler((event?: KeyboardEvent) => {
-      if (event?.key === 'Escape') {
-        event?.preventDefault();
-        closeMenu();
-      }
+    return commandList.bindDismissal({
+      isOpen: () => open,
+      isInside: (target) => !!controlElement?.contains(target) || !!panelElement?.contains(target),
+      onDismiss: closeMenu,
     });
-
-    document.addEventListener('mousedown', handlePointerDown, true);
-    document.addEventListener('focusin', handleFocusIn, true);
-    return () => {
-      releaseEscape();
-      document.removeEventListener('mousedown', handlePointerDown, true);
-      document.removeEventListener('focusin', handleFocusIn, true);
-    };
   });
 
   $effect(() => {
-    if (!open || activeIndex < 0) return;
-    const activeOption = document.getElementById(`${id}-option-${activeIndex}`);
-    activeOption?.scrollIntoView?.({ block: 'nearest' });
+    if (!open) return;
+    commandList.scrollActiveItemIntoView();
   });
 </script>
 
@@ -503,17 +459,24 @@
               onmousedown={(event) => {
                 event.preventDefault();
                 if (item.disabled) return;
-                activeIndex = index;
+                commandList.setActiveById(`${id}-option-${index}`);
                 toggleItem(item);
               }}
               onmouseenter={() => {
                 if (item.disabled) return;
-                activeIndex = index;
+                commandList.setActiveById(`${id}-option-${index}`);
               }}
             >
-              <span class="cinder-multi-select__checkbox" aria-hidden="true">
-                {#if selectedSet.has(item.id)}✓{/if}
-              </span>
+              <CheckboxIndicatorShell class="cinder-multi-select__checkbox-indicator">
+                {#snippet control()}
+                  <span
+                    class="cinder-checkbox cinder-checkbox--indicator cinder-multi-select__checkbox-box"
+                    data-cinder-checked={selectedSet.has(item.id) || undefined}
+                    data-cinder-disabled={field.disabled || readonly || item.disabled || undefined}
+                    aria-hidden="true"
+                  ></span>
+                {/snippet}
+              </CheckboxIndicatorShell>
               <span class="cinder-multi-select__option-text">
                 <span class="cinder-multi-select__option-label">{item.label}</span>
                 {#if item.description}

@@ -29,6 +29,7 @@
   import { createSingleSelection, createMultiSelection } from '../../_internal/collection.ts';
   import { handleRovingKeydown } from '../../utilities/roving-tabindex.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
+  import Grid from '@lostgradient/cinder/grid';
 
   let {
     value = $bindable(null),
@@ -246,27 +247,29 @@
     }
   });
 
-  // Grid template columns CSS.
-  const gridTemplateColumns = $derived(
-    columns === 'responsive'
-      ? `repeat(auto-fill, minmax(min(${minColumnWidth}, 100%), 1fr))`
-      : `repeat(${columns}, 1fr)`,
-  );
-
   // ARIA role: radiogroup for single-select, group for multi-select.
   const role = $derived(multiple ? 'group' : 'radiogroup');
+
+  // Grid renders a configurable HTMLElement tag, while ChoiceGrid preserves
+  // the div-specific attributes from its public API. The forwarded attributes
+  // are otherwise identical at runtime.
+  const gridRest = rest as Record<string, unknown>;
+  const gridLayout = $derived(
+    columns === 'responsive' ? { minItemWidth: minColumnWidth } : { columns },
+  );
 </script>
 
-<div
-  {...rest}
-  {role}
+<Grid
+  {...gridRest}
+  {...gridLayout}
+  gap="var(--cinder-space-3)"
   class={classNames('cinder-choice-grid', className)}
+  {role}
   aria-label={resolvedAriaLabel}
   aria-labelledby={resolvedAriaLabelledby}
   aria-disabled={disabled || undefined}
   data-cinder-multiple={multiple || undefined}
   data-cinder-disabled={disabled || undefined}
-  style:--cinder-choice-grid-columns={gridTemplateColumns}
 >
   {@render children()}
-</div>
+</Grid>

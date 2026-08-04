@@ -31,6 +31,10 @@ describe('primitive composition guard', () => {
     expect(allowedGridCounts.get('footer/footer.css')).toBe(2);
   });
 
+  test('drops grid-list from the retired grid migration allow-list', () => {
+    expect(allowedGridCounts.has('grid-list/grid-list.css')).toBe(false);
+  });
+
   test('tracks only the remaining date field-wrapper migrations', () => {
     expect(allowedFieldWrapperCounts.get('date-picker/date-picker.svelte')).toBe(2);
     expect(allowedFieldWrapperCounts.has('date-range-field/date-range-field.svelte')).toBe(false);
@@ -308,13 +312,13 @@ describe('primitive composition guard', () => {
     ).toHaveLength(1);
   });
 
-  test('allows a tracked grid migration offender', () => {
+  test('rejects a completed grid migration that remains in the old allow-list path', () => {
     expect(
       findPrimitiveCompositionViolations(
         '.first { display: grid; grid-template-columns: 1fr; } .second { display: grid; grid-template-columns: 1fr; }',
         'bento-grid/bento-grid.css',
       ),
-    ).toEqual([]);
+    ).toHaveLength(1);
   });
 
   test('tracks the existing sortable-list row grid', () => {
