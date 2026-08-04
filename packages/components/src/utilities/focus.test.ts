@@ -209,6 +209,21 @@ describe('getSequentialFocusTargets', () => {
     region.remove();
   });
 
+  test('does not revisit positive tabindex targets after a default-tabindex reference', () => {
+    const region = document.createElement('div');
+    const reference = document.createElement('button');
+    const positive = document.createElement('button');
+    positive.tabIndex = 1;
+    const following = document.createElement('button');
+    region.append(reference, positive, following);
+    document.body.append(region);
+
+    expect(
+      getSequentialFocusTargets(region, { relativeTo: reference, direction: 'after' }),
+    ).toEqual([following]);
+    region.remove();
+  });
+
   test('orders positive tabindex values before default controls', () => {
     const region = document.createElement('div');
     const defaultButton = document.createElement('button');
@@ -337,6 +352,23 @@ describe('getSequentialFocusTargets', () => {
     region.remove();
   });
 
+  test('keeps controls nested inside the active summary of closed details', () => {
+    const region = document.createElement('div');
+    const details = document.createElement('details');
+    const summary = document.createElement('summary');
+    const link = document.createElement('a');
+    link.href = '#summary-link';
+    summary.append(link);
+    details.append(summary, document.createElement('button'));
+    region.append(details);
+    document.body.append(region);
+
+    const targets = getSequentialFocusTargets(region);
+    expect(targets).toContain(summary);
+    expect(targets).toContain(link);
+    region.remove();
+  });
+
   test('exposes one radio per same-name group, preferring checked or first eligible', () => {
     const region = document.createElement('div');
     const first = document.createElement('input');
@@ -360,6 +392,24 @@ describe('getSequentialFocusTargets', () => {
     expect(targets).toContain(checked);
     expect(targets).toContain(other);
     region.remove();
+  });
+
+  test('skips an unchecked radio when its checked group member is outside the requested region', () => {
+    const checked = document.createElement('input');
+    checked.type = 'radio';
+    checked.name = 'external';
+    checked.checked = true;
+    const region = document.createElement('div');
+    const candidate = document.createElement('input');
+    candidate.type = 'radio';
+    candidate.name = 'external';
+    candidate.tabIndex = 0;
+    region.append(candidate);
+    document.body.append(checked, region);
+
+    expect(getSequentialFocusTargets(region)).not.toContain(candidate);
+    region.remove();
+    checked.remove();
   });
 
   test('keeps unnamed radios as independent tab stops', () => {

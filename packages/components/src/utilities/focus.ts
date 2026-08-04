@@ -78,6 +78,10 @@ export function getSequentialFocusTargets(
       (_, index) =>
         !range || (range.direction === 'before' ? index < relativeIndex : index > relativeIndex),
     )
+    .filter(
+      (element) =>
+        !range || isSequentiallyAfterReference(element, range.relativeTo, range.direction),
+    )
     .filter((element): element is HTMLElement => element.matches(sequentialFocusCandidateSelector))
     .filter(isSequentialCandidate);
   const radios: {
@@ -86,7 +90,10 @@ export function getSequentialFocusTargets(
     name: string;
     members: HTMLElement[];
   }[] = [];
-  for (const candidate of candidates) {
+  const radioUniverse = collectComposedElements(candidates[0]?.ownerDocument ?? root).filter(
+    (element): element is HTMLElement => element.matches('input[type="radio"]'),
+  );
+  for (const candidate of radioUniverse) {
     if (!isRadio(candidate)) continue;
     const rootNode = candidate.getRootNode();
     const name = candidate.getAttribute('name') ?? '';
@@ -192,6 +199,18 @@ function sequentialTabIndexValue(element: HTMLElement): number {
   return Math.max(0, getTabIndexValue(element));
 }
 
+function isSequentiallyAfterReference(
+  element: Element,
+  reference: Element,
+  direction: SequentialFocusRange['direction'],
+): boolean {
+  const referenceTabIndex = sequentialTabIndexValue(reference as HTMLElement);
+  const elementTabIndex = sequentialTabIndexValue(element as HTMLElement);
+  if (direction === 'after' && referenceTabIndex === 0 && elementTabIndex > 0) return false;
+  if (direction === 'before' && referenceTabIndex > 0 && elementTabIndex === 0) return false;
+  return true;
+}
+
 export function getTabIndexValue(element: HTMLElement): number {
   return getExplicitTabIndexValue(element) ?? (hasNativeSequentialDefault(element) ? 0 : -1);
 }
@@ -242,7 +261,9 @@ function isInsideClosedDetails(element: HTMLElement): boolean {
     if (
       current.tagName === 'DETAILS' &&
       !current.hasAttribute('open') &&
-      Array.from(current.children).find((child) => child.tagName === 'SUMMARY') !== element
+      !Array.from(current.children)
+        .find((child) => child.tagName === 'SUMMARY')
+        ?.contains(element)
     )
       return true;
     current = composedParentElement(current);
