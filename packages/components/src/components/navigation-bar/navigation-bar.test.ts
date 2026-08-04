@@ -251,6 +251,18 @@ function negativeFinalNavigationSnippet() {
   }));
 }
 
+function inlineControlBeforeNegativeNavigationSnippet() {
+  return createRawSnippet(() => ({
+    render: () => `
+      <div>
+        <button type="button" class="cinder-navigation-item" data-cinder-navigation-item data-key="enabled">Enabled</button>
+        <button type="button" id="inline-control">Inline control</button>
+        <button type="button" class="cinder-navigation-item" data-cinder-navigation-item data-key="skipped" tabindex="-1">Skipped</button>
+      </div>
+    `,
+  }));
+}
+
 function allExcludedNavigationSnippet() {
   return createRawSnippet(() => ({
     render: () => `
@@ -1028,6 +1040,33 @@ describe('NavigationBar', () => {
       expect(document.activeElement).toBe(skippedItem);
       await fireEvent.keyDown(skippedItem, { key: 'Tab' });
       expect(document.activeElement).toBe(accountAction);
+    });
+  });
+
+  test('forward Tab from the final sequential inline control reaches actions', async () => {
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        items: inlineControlBeforeNegativeNavigationSnippet(),
+        menuToggle: toggleSnippet(),
+        actions: actionButtonSnippet(),
+      });
+
+      await openCollapsedMobileMenu(container);
+      const itemsRegion = await waitForMobilePanelPosition(container);
+      const toggle = container.querySelector('#toggle-btn') as HTMLButtonElement;
+      const enabledItem = itemsRegion.querySelector('[data-key="enabled"]') as HTMLButtonElement;
+      const inlineControl = itemsRegion.querySelector('#inline-control') as HTMLButtonElement;
+      const skippedItem = itemsRegion.querySelector('[data-key="skipped"]') as HTMLButtonElement;
+      const accountAction = container.querySelector('#nav-action') as HTMLButtonElement;
+
+      toggle.focus();
+      await fireEvent.keyDown(toggle, { key: 'Tab' });
+      expect(document.activeElement).toBe(enabledItem);
+
+      inlineControl.focus();
+      await fireEvent.keyDown(inlineControl, { key: 'Tab' });
+      expect(document.activeElement).toBe(accountAction);
+      expect(document.activeElement).not.toBe(skippedItem);
     });
   });
 

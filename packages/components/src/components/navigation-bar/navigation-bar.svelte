@@ -361,13 +361,17 @@
   function bridgePortaledPanelTab(event: KeyboardEvent, navigationItem: HTMLElement): boolean {
     if (!anchoredItems.positionReady) return false;
 
+    const sequentialItems = getSequentialFocusTargets(itemsRegionElement);
     const enabledItems = getSequentialNavigationItems();
     const logicalEnabledItems = getNavigationItems().filter(isEnabledNavigationItem);
+    const isSequentialTarget = sequentialItems.includes(navigationItem);
     if (enabledItems.length === 0 && logicalEnabledItems.length === 0) return false;
 
     if (
       event.shiftKey &&
-      (navigationItem === enabledItems[0] || navigationItem === logicalEnabledItems[0])
+      (navigationItem === sequentialItems[0] ||
+        (!isSequentialTarget &&
+          (navigationItem === enabledItems[0] || navigationItem === logicalEnabledItems[0])))
     ) {
       const previousTarget = getFocusTargetBeforeItems();
       if (!previousTarget) return false;
@@ -378,7 +382,10 @@
 
     if (
       !event.shiftKey &&
-      (navigationItem === enabledItems.at(-1) || navigationItem === logicalEnabledItems.at(-1))
+      (navigationItem === sequentialItems.at(-1) ||
+        (!isSequentialTarget &&
+          (navigationItem === enabledItems.at(-1) ||
+            navigationItem === logicalEnabledItems.at(-1))))
     ) {
       const nextTarget = getFocusTargetAfterItems();
       if (!nextTarget) return false;
@@ -445,9 +452,16 @@
     }
 
     const navigationItem = getEventNavigationItem(event);
-    if (!navigationItem || navigationItem !== event.target) return;
+    if (
+      event.key === 'Tab' &&
+      event.target instanceof HTMLElement &&
+      itemsRegionElement?.contains(event.target) &&
+      bridgePortaledPanelTab(event, event.target)
+    ) {
+      return;
+    }
 
-    if (event.key === 'Tab' && bridgePortaledPanelTab(event, navigationItem)) return;
+    if (!navigationItem || navigationItem !== event.target) return;
 
     if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
       event.preventDefault();
