@@ -5074,6 +5074,14 @@ function childIsInsideProvablyInvalidNumberOnlyFunction(
       parent.functionName,
       parenthesisPairs,
     );
+    if (
+      parsedArguments !== undefined &&
+      parent.functionName === 'pow' &&
+      !unresolvedRuntimeFunctionHasValidArity(parent.functionName, parsedArguments.argumentCount)
+    ) {
+      invalidFunctionCache.set(parent, true);
+      return true;
+    }
     const numberArgumentRanges =
       parsedArguments !== undefined &&
       unresolvedRuntimeFunctionHasValidArity(parent.functionName, parsedArguments.argumentCount)

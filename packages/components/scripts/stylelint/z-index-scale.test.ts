@@ -4823,4 +4823,21 @@ describe('cinder/z-index-scale', () => {
       ).toEqual([]);
     },
   );
+
+  test('ignores nested candidates inside fixed invalid math arities', async () => {
+    const invalid = await lint(`
+      .fixture {
+        /* cinder-z-index-local: fixed invalid pow arity cannot compute a z-index. */
+        z-index: var(--outer, pow(var(--runtime, 9999), 1, 2));
+      }
+    `);
+    expect(warnings(invalid)).toEqual([]);
+
+    const valid = await lint(`
+      .fixture {
+        z-index: var(--outer, pow(var(--runtime, 9999), 1));
+      }
+    `);
+    expect(warnings(valid)).toHaveLength(1);
+  });
 });
