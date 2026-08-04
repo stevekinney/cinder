@@ -29,7 +29,7 @@
   import { createSingleSelection, createMultiSelection } from '../../_internal/collection.ts';
   import { handleRovingKeydown } from '../../utilities/roving-tabindex.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
-  import Grid from '../grid/grid.svelte';
+  import Grid from '@lostgradient/cinder/grid';
 
   let {
     value = $bindable(null),

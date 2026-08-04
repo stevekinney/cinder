@@ -9,6 +9,10 @@
    * ======================================== */
 
   /* Disabled grid dims every item. Individual item disabled states also apply. */
+  .cinder-choice-grid {
+    inline-size: 100%;
+  }
+
   .cinder-choice-grid[data-cinder-disabled] {
     opacity: 0.6;
     pointer-events: none;
