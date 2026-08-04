@@ -537,6 +537,45 @@ describe('cinder/z-index-scale', () => {
   );
 
   test.each([
+    ['calc(9999 * mod(var(--runtime), 2))', 1],
+    ['calc(9999 * rem(var(--runtime), 2))', 1],
+    ['calc(9999 * round(var(--runtime)))', 1],
+    ['calc(9999 * round(var(--runtime), 2))', 1],
+    ['calc(9999 * round(nearest, var(--runtime), 2))', 1],
+    ['calc(9999 * round(up, var(--runtime)))', 1],
+    ['calc(9999 * round(var(--runtime), -2))', 1],
+    ['min(1, calc(9999 * rem(var(--runtime), 2)))', 1],
+    ['calc(0 * mod(var(--runtime), 2))', 0],
+    ['calc(0 * rem(var(--runtime), 2))', 0],
+    ['calc(0 * round(var(--runtime)))', 0],
+    ['clamp(0, calc(9999 * mod(var(--runtime), 2)), 1)', 0],
+    ['min(1, calc(9999 * mod(var(--runtime), 2)))', 0],
+    ['calc(9999 * mod(var(--runtime), 0))', 0],
+    ['calc(9999 * rem(var(--runtime), 0))', 0],
+    ['calc(9999 * mod(infinity, var(--runtime)))', 0],
+    ['calc(9999 * rem(-infinity, var(--runtime)))', 0],
+    ['calc(9999 * round(var(--runtime), 0))', 0],
+    ['calc(9999 * mod(var(--runtime)))', 0],
+    ['calc(9999 * rem(var(--runtime), 2, 3))', 0],
+    ['calc(9999 * round(var(--runtime), 2, 3))', 0],
+    ['calc(9999 * round(foo, var(--runtime)))', 0],
+    ['calc(9999 * round(line-width, var(--runtime)))', 0],
+    ['calc(9999 * mod(var(--runtime), 2px))', 0],
+    ['calc(9999 * round(var(--runtime), 2px))', 0],
+  ] as const)('tracks unresolved stepped-value functions: %s', async (fallback, count) => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: stepped-value runtime regression coverage. */
+            z-index: var(--outer, ${fallback});
+          }
+        `),
+      ),
+    ).toHaveLength(count);
+  });
+
+  test.each([
     'var(--outer, calc(var(--inner, -1) * 0))',
     'var(--outer, calc(0 * var(--inner, -1)))',
     'var(--outer, calc(var(--inner, -1) * 0 + 0))',
@@ -867,14 +906,14 @@ describe('cinder/z-index-scale', () => {
   test.each([
     ['down', '-0.4', 1],
     ['nearest', '-0.6', 1],
-    ['up', '-0.4', 0],
-    ['nearest', '-0.4', 0],
+    ['up', '-0.4', 1],
+    ['nearest', '-0.4', 1],
   ] as const)(
-    'preserves fractional fallback evidence through unresolved round(%s): %s',
+    'preserves written fallback and defined-path evidence through unresolved round(%s): %s',
     async (strategy, fallback, warningCount) => {
       const result = await lint(`
         .fixture {
-          /* cinder-z-index-local: runtime zero leaves the fractional fallback unchanged. */
+          /* cinder-z-index-local: runtime zero preserves the written path; a defined value remains live. */
           z-index: var(
             --outer,
             round(${strategy}, var(--inner, ${fallback}) + var(--runtime) * 0, 1)
@@ -4082,6 +4121,14 @@ describe('cinder/z-index-scale', () => {
     ['if(media((width > 10px) and (height > 20px)): 9999; else: 1)', 1],
     ['if(media((width > 10px) or (height > 20px)): 9999; else: 1)', 1],
     ['if(media(not (width > 10px)): 9999; else: 1)', 1],
+    ['if(media(screen and (width > 10px)): 9999; else: 1)', 1],
+    ['if(media(screen and (width > 10px) and (height > 20px)): 9999; else: 1)', 1],
+    ['if(media(only screen and (width > 10px)): 9999; else: 1)', 1],
+    ['if(media(not screen and (width > 10px)): 9999; else: 1)', 1],
+    ['if(media(not screen): 9999; else: 1)', 1],
+    ['if(media(all and (width > 10px)): 9999; else: 1)', 1],
+    ['if(media(print and (width > 10px)): 9999; else: 1)', 1],
+    ['if(media(screen and ((width > 10px) or (height > 20px))): 9999; else: 1)', 1],
     ['if(media(aspect-ratio > 16/9): 9999; else: 1)', 1],
     ['if(media(width > calc(10px + 1vw)): 9999; else: 1)', 1],
     ['if(media(width > min(10px, 20px)): 9999; else: 1)', 1],
@@ -4154,6 +4201,18 @@ describe('cinder/z-index-scale', () => {
       'if(media(width > 10px and): 9999; else: 1)',
       'if(media(and width > 10px): 9999; else: 1)',
       'if(media(width > 10px and height > 20px): 9999; else: 1)',
+      'if(media(only (width > 10px)): 9999; else: 1)',
+      'if(media(screen or (width > 10px)): 9999; else: 1)',
+      'if(media(screen and width > 10px): 9999; else: 1)',
+      'if(media(screen and (width > 10px) or (height > 20px)): 9999; else: 1)',
+      'if(media(screen and): 9999; else: 1)',
+      'if(media(and screen): 9999; else: 1)',
+      'if(media(or and (width > 10px)): 9999; else: 1)',
+      'if(media(only): 9999; else: 1)',
+      'if(media(not): 9999; else: 1)',
+      'if(media(and): 9999; else: 1)',
+      'if(media(or): 9999; else: 1)',
+      'if(media(layer): 9999; else: 1)',
       'if(media(width > calc()): 9999; else: 1)',
       'if(media(width > min(, 10px)): 9999; else: 1)',
       'if(media(width > min(10px,)): 9999; else: 1)',

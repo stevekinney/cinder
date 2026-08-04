@@ -39,7 +39,10 @@ const unresolvedRuntimeFunctionArities = new Map([
   ['cos', 1],
   ['exp', 1],
   ['log', [1, 2]],
+  ['mod', 2],
   ['pow', 2],
+  ['rem', 2],
+  ['round', [1, 2, 3]],
   ['sin', 1],
   ['sqrt', 1],
   ['tan', 1],
@@ -81,6 +84,8 @@ const signedZeroSensitiveFunctionNames = new Set([
 ]);
 const substitutionFunctionNames = new Set(['attr', 'env', 'var']);
 const treeCountingFunctionNames = new Set(['sibling-count', 'sibling-index']);
+const steppedValueFunctionNames = new Set(['mod', 'rem', 'round']);
+const roundingStrategyNames = new Set(['down', 'line-width', 'nearest', 'to-zero', 'up']);
 const signedCalcKeywordPattern = /[+-](?:e|infinity|nan|pi)(?![-_a-z\d])/iy;
 const mathFunctionNames = new Set([
   '-webkit-calc',
@@ -1148,10 +1153,7 @@ function isValidConditionalBooleanExpression(value, range, parenthesisPairs, dep
 
 function conditionalTestContentsAreStructurallyValid(value, range, parenthesisPairs, functionName) {
   if (functionName === 'media')
-    return (
-      mediaFeatureIsStructurallyValid(value, range, parenthesisPairs) ||
-      mediaConditionIsStructurallyValid(value, range, parenthesisPairs)
-    );
+    return mediaQueryIsStructurallyValid(value, range, parenthesisPairs);
   if (range.start === range.end) return false;
   const firstIdentifierEnd = cssIdentifierTokenEnd(value, range.start);
   if (value[range.start] !== '(' && firstIdentifierEnd === range.start) return false;
@@ -1178,7 +1180,57 @@ function conditionalTestContentsAreStructurallyValid(value, range, parenthesisPa
   return true;
 }
 
-function mediaConditionIsStructurallyValid(value, range, parenthesisPairs, depth = 0) {
+function mediaQueryIsStructurallyValid(value, range, parenthesisPairs) {
+  const expressionRange = trimCssTriviaRange(value, range.start, range.end);
+  const standaloneIdentifierEnd = cssIdentifierTokenEnd(value, expressionRange.start);
+  if (
+    standaloneIdentifierEnd === expressionRange.end &&
+    ['and', 'layer', 'not', 'only', 'or'].includes(
+      value.slice(expressionRange.start, standaloneIdentifierEnd).toLowerCase(),
+    )
+  )
+    return false;
+  if (mediaFeatureIsStructurallyValid(value, range, parenthesisPairs)) return true;
+  const conditionResult = mediaConditionIsStructurallyValid(value, range, parenthesisPairs);
+  if (conditionResult !== false) return conditionResult;
+
+  const skipTrivia = (start) => {
+    while (start < expressionRange.end && isCssWhitespaceOrComment(value[start])) start += 1;
+    return start;
+  };
+  let cursor = expressionRange.start;
+  let identifierEnd = cssIdentifierTokenEnd(value, cursor);
+  const firstIdentifier = value.slice(cursor, identifierEnd).toLowerCase();
+  if (firstIdentifier === 'not' || firstIdentifier === 'only') {
+    cursor = skipTrivia(identifierEnd);
+    identifierEnd = cssIdentifierTokenEnd(value, cursor);
+  }
+  if (identifierEnd === cursor) return false;
+  const mediaType = value.slice(cursor, identifierEnd).toLowerCase();
+  if (['and', 'layer', 'not', 'only', 'or'].includes(mediaType)) return false;
+  cursor = skipTrivia(identifierEnd);
+  if (cursor === expressionRange.end) return true;
+
+  const operatorEnd = cssIdentifierTokenEnd(value, cursor);
+  if (value.slice(cursor, operatorEnd).toLowerCase() !== 'and') return false;
+  const conditionStart = skipTrivia(operatorEnd);
+  if (conditionStart === expressionRange.end) return false;
+  return mediaConditionIsStructurallyValid(
+    value,
+    { start: conditionStart, end: expressionRange.end },
+    parenthesisPairs,
+    0,
+    false,
+  );
+}
+
+function mediaConditionIsStructurallyValid(
+  value,
+  range,
+  parenthesisPairs,
+  depth = 0,
+  allowOr = true,
+) {
   if (depth > conditionalNestingLimit) return fallbackResolutionTooComplex;
   const expressionRange = trimCssTriviaRange(value, range.start, range.end);
   if (expressionRange.start === expressionRange.end) return false;
@@ -1222,6 +1274,7 @@ function mediaConditionIsStructurallyValid(value, range, parenthesisPairs, depth
     const operatorEnd = cssIdentifierTokenEnd(value, cursor);
     const nextOperator = value.slice(cursor, operatorEnd).toLowerCase();
     if (nextOperator !== 'and' && nextOperator !== 'or') return false;
+    if (nextOperator === 'or' && !allowOr) return false;
     if (operator !== undefined && operator !== nextOperator) return false;
     operator = nextOperator;
     cursor = consumeGroup(skipTrivia(operatorEnd));
@@ -1847,7 +1900,8 @@ function directBannedMathArgumentCandidates(
         .replaceAll(cssCommentMaskCharacter, ' ')
         .trim()
         .toLowerCase();
-      const hasStrategy = ['nearest', 'up', 'down', 'to-zero'].includes(firstArgument);
+      if (firstArgument === 'line-width') return [];
+      const hasStrategy = roundingStrategyNames.has(firstArgument);
       const validArgumentCount = hasStrategy
         ? parsedArguments.argumentCount === 2 || parsedArguments.argumentCount === 3
         : parsedArguments.argumentCount === 1 || parsedArguments.argumentCount === 2;
@@ -1955,7 +2009,8 @@ function fallbackIndependentMathArgumentResultTypes(frame, value, range, parenth
         .replaceAll(cssCommentMaskCharacter, ' ')
         .trim()
         .toLowerCase();
-      const hasStrategy = ['nearest', 'up', 'down', 'to-zero'].includes(firstArgument);
+      if (firstArgument === 'line-width') return new Set();
+      const hasStrategy = roundingStrategyNames.has(firstArgument);
       const validArgumentCount = hasStrategy
         ? parsedArguments.argumentCount === 2 || parsedArguments.argumentCount === 3
         : parsedArguments.argumentCount === 1 || parsedArguments.argumentCount === 2;
@@ -3380,6 +3435,7 @@ function unresolvedRuntimeRangeCandidates(
       continue;
     const functionParent = childFunctionParent(child, 'runtimeRangeParent', range);
     if (functionParent === undefined) continue;
+    if (childIsMultipliedByStaticZero(value, zeroProductRange, child, budget) === true) continue;
     if (
       suppressedRuntimeFunctionRanges.some(
         (suppressedRange) =>
@@ -3400,21 +3456,24 @@ function unresolvedRuntimeRangeCandidates(
       !unresolvedRuntimeFunctionHasValidArity(
         functionParent.functionName,
         parsedArguments?.argumentCount,
-      ) ||
-      (functionParent.functionName === 'log' &&
-        !logStaticArgumentsCanReachValidResult(parsedArguments.staticArguments)) ||
-      parsedArguments.staticArguments.some(
-        (argument) =>
-          isStaticallyInvalidArithmetic(argument.value) ||
-          ((functionParent.functionName === 'log' || functionParent.functionName === 'pow') &&
-            analyzeStaticLayerValue(argument.value).resultType === 'non-number'),
       )
     )
       continue;
     const numberOnlyArgumentRanges = numberOnlyRuntimeArgumentRanges(
       functionParent.functionName,
       parsedArguments,
+      value,
     );
+    if (numberOnlyArgumentRanges === undefined) continue;
+    if (functionParent.functionName === 'round' && numberOnlyArgumentRanges.length === 0) continue;
+    if (
+      !runtimeFunctionStaticArgumentsAreValid(
+        functionParent.functionName,
+        parsedArguments,
+        numberOnlyArgumentRanges,
+      )
+    )
+      continue;
     if (
       numberOnlyArgumentRanges.some((argumentRange) =>
         unresolvedFunctionArgumentIsUnavoidablyNonNumber(
@@ -3451,8 +3510,17 @@ function unresolvedRuntimeRangeCandidates(
       )
         continue;
     }
+    const staticModulusDivisor =
+      functionParent.functionName === 'mod'
+        ? parsedArguments.staticArguments.find((argument) => argument.index === 1)
+        : undefined;
+    const functionIsKnownNonnegative =
+      functionParent.functionName === 'exp' ||
+      functionParent.functionName === 'sqrt' ||
+      (staticModulusDivisor !== undefined &&
+        evaluateStaticLayerNumber(staticModulusDivisor.value) > 0);
     if (
-      (functionParent.functionName === 'exp' || functionParent.functionName === 'sqrt') &&
+      functionIsKnownNonnegative &&
       unresolvedNonnegativeFunctionIsSafelyCapped(
         frame,
         value,
@@ -3636,11 +3704,76 @@ function logHasFixedZeroResult(staticArguments) {
   return valueArgument !== undefined && evaluateStaticLayerNumber(valueArgument.value) === 1;
 }
 
-function numberOnlyRuntimeArgumentRanges(functionName, parsedArguments) {
+function numberOnlyRuntimeArgumentRanges(functionName, parsedArguments, value) {
   if (functionName === 'exp' || functionName === 'sqrt')
     return parsedArguments.argumentRanges.slice(0, 1);
-  if (functionName === 'log' || functionName === 'pow') return parsedArguments.argumentRanges;
+  if (['log', 'mod', 'pow', 'rem'].includes(functionName)) return parsedArguments.argumentRanges;
+  if (functionName === 'round') {
+    const firstArgument = value
+      .slice(parsedArguments.argumentRanges[0].start, parsedArguments.argumentRanges[0].end)
+      .replaceAll(cssCommentMaskCharacter, ' ')
+      .trim()
+      .toLowerCase();
+    if (firstArgument === 'line-width') return [];
+    const hasStrategy = roundingStrategyNames.has(firstArgument);
+    const validArgumentCount = hasStrategy
+      ? parsedArguments.argumentCount === 2 || parsedArguments.argumentCount === 3
+      : parsedArguments.argumentCount === 1 || parsedArguments.argumentCount === 2;
+    if (!validArgumentCount) return undefined;
+    return hasStrategy ? parsedArguments.argumentRanges.slice(1) : parsedArguments.argumentRanges;
+  }
   return [];
+}
+
+function steppedValueStaticIntervalIsValid(functionName, parsedArguments, numberArgumentRanges) {
+  let intervalRange;
+  if (functionName === 'mod' || functionName === 'rem')
+    intervalRange = parsedArguments.argumentRanges[1];
+  else if (functionName === 'round' && numberArgumentRanges.length === 2)
+    intervalRange = numberArgumentRanges[1];
+  if (intervalRange === undefined) return true;
+  const staticInterval = parsedArguments.staticArguments.find(
+    (argument) => argument.range.start === intervalRange.start,
+  );
+  return staticInterval === undefined || evaluateStaticLayerNumber(staticInterval.value) !== 0;
+}
+
+function modOrRemStaticDividendIsValid(functionName, parsedArguments) {
+  if (functionName !== 'mod' && functionName !== 'rem') return true;
+  const staticDividend = parsedArguments.staticArguments.find((argument) => argument.index === 0);
+  return (
+    staticDividend === undefined || Number.isFinite(evaluateStaticLayerNumber(staticDividend.value))
+  );
+}
+
+function runtimeFunctionStaticArgumentsAreValid(
+  functionName,
+  parsedArguments,
+  numberArgumentRanges,
+) {
+  const numberArgumentStarts = new Set(
+    numberArgumentRanges.map((argumentRange) => argumentRange.start),
+  );
+  const staticArgumentsToValidate =
+    functionName === 'round'
+      ? parsedArguments.staticArguments.filter((argument) =>
+          numberArgumentStarts.has(argument.range.start),
+        )
+      : parsedArguments.staticArguments;
+  return (
+    (functionName !== 'log' ||
+      logStaticArgumentsCanReachValidResult(parsedArguments.staticArguments)) &&
+    modOrRemStaticDividendIsValid(functionName, parsedArguments) &&
+    staticArgumentsToValidate.every(
+      (argument) =>
+        !isStaticallyInvalidArithmetic(argument.value) &&
+        (!['log', 'pow'].includes(functionName) ||
+          analyzeStaticLayerValue(argument.value).resultType !== 'non-number') &&
+        (!steppedValueFunctionNames.has(functionName) ||
+          analyzeStaticLayerValue(argument.value).resultType === 'number'),
+    ) &&
+    steppedValueStaticIntervalIsValid(functionName, parsedArguments, numberArgumentRanges)
+  );
 }
 
 function childIsInsideProvablyInvalidNumberOnlyFunction(
@@ -3658,7 +3791,10 @@ function childIsInsideProvablyInvalidNumberOnlyFunction(
     parent.functionStart >= range.start &&
     parent.end <= range.end
   ) {
-    if (!['exp', 'log', 'pow', 'sqrt'].includes(parent.functionName)) {
+    if (
+      !['exp', 'log', 'pow', 'sqrt'].includes(parent.functionName) &&
+      !steppedValueFunctionNames.has(parent.functionName)
+    ) {
       parent = parent.parenthesisParent;
       continue;
     }
@@ -3675,17 +3811,29 @@ function childIsInsideProvablyInvalidNumberOnlyFunction(
       parent.functionName,
       parenthesisPairs,
     );
+    const numberArgumentRanges =
+      parsedArguments !== undefined &&
+      unresolvedRuntimeFunctionHasValidArity(parent.functionName, parsedArguments.argumentCount)
+        ? numberOnlyRuntimeArgumentRanges(parent.functionName, parsedArguments, value)
+        : undefined;
     const isInvalidNumberOnlyFunction =
       parsedArguments !== undefined &&
       unresolvedRuntimeFunctionHasValidArity(parent.functionName, parsedArguments.argumentCount) &&
-      numberOnlyRuntimeArgumentRanges(parent.functionName, parsedArguments).some((argumentRange) =>
-        unresolvedFunctionArgumentIsUnavoidablyNonNumber(
-          frame,
-          value,
-          argumentRange,
-          parenthesisPairs,
-        ),
-      );
+      numberArgumentRanges !== undefined &&
+      ((parent.functionName === 'round' && numberArgumentRanges.length === 0) ||
+        !runtimeFunctionStaticArgumentsAreValid(
+          parent.functionName,
+          parsedArguments,
+          numberArgumentRanges,
+        ) ||
+        numberArgumentRanges.some((argumentRange) =>
+          unresolvedFunctionArgumentIsUnavoidablyNonNumber(
+            frame,
+            value,
+            argumentRange,
+            parenthesisPairs,
+          ),
+        ));
     invalidFunctionCache.set(parent, isInvalidNumberOnlyFunction);
     if (isInvalidNumberOnlyFunction) return true;
     parent = parent.parenthesisParent;
