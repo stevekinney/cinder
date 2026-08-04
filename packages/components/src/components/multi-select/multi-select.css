@@ -217,7 +217,32 @@
   }
 
   .cinder-multi-select__checkbox-box {
+    width: 1.125rem;
+    height: 1.125rem;
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-sm);
+    background: var(--cinder-surface-raised);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
     cursor: inherit;
+  }
+
+  .cinder-multi-select__checkbox-box[data-cinder-checked] {
+    background: var(--cinder-accent);
+    border-color: var(--cinder-accent);
+  }
+
+  .cinder-multi-select__checkbox-box[data-cinder-disabled] {
+    cursor: not-allowed;
+    background: var(--cinder-surface-inset);
+    border-color: var(--cinder-border-muted);
+  }
+
+  .cinder-multi-select__checkbox-box[data-cinder-disabled][data-cinder-checked] {
+    background-color: var(--cinder-fill-disabled);
+    border-color: var(--cinder-fill-disabled);
   }
 
   .cinder-multi-select__option-text {

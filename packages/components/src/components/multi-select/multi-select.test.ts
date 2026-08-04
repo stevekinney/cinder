@@ -43,6 +43,32 @@ describe('MultiSelect', () => {
     expect(css).not.toContain("@import '../checkbox/checkbox.css';");
   });
 
+  test('owns checkbox box styles so a standalone import stays visible', async () => {
+    const css = await Bun.file(new URL('./multi-select.css', import.meta.url)).text();
+
+    // A consumer importing only `@lostgradient/cinder/multi-select` never loads
+    // checkbox.css, so the box shape and checked/disabled backgrounds must live
+    // on MultiSelect's own `__checkbox-box` class here too -- not just the
+    // floating checkmark indicator, and not by redefining Checkbox's own
+    // `.cinder-checkbox` class (that would reintroduce the coupling this file's
+    // other test guards against).
+    expect(css).not.toMatch(/(?<![\w-])\.cinder-checkbox\s*\{/);
+    expect(css).not.toMatch(/(?<![\w-])\.cinder-checkbox--indicator\[data-cinder-checked\]\s*\{/);
+
+    const boxRuleStart = css.indexOf('.cinder-multi-select__checkbox-box {');
+    const boxRuleEnd = css.indexOf('}', boxRuleStart);
+    expect(boxRuleStart).toBeGreaterThan(-1);
+    const checkboxBoxRule = css.slice(boxRuleStart, boxRuleEnd);
+    expect(checkboxBoxRule).toContain('border: 1px solid var(--cinder-border)');
+    expect(checkboxBoxRule).toContain('background: var(--cinder-surface-raised)');
+
+    expect(css).toContain('.cinder-multi-select__checkbox-box[data-cinder-checked] {');
+    expect(css).toContain('.cinder-multi-select__checkbox-box[data-cinder-disabled] {');
+    expect(css).toContain(
+      '.cinder-multi-select__checkbox-box[data-cinder-disabled][data-cinder-checked] {',
+    );
+  });
+
   test('renders trigger, placeholder, and listbox semantics', async () => {
     const { container } = render(MultiSelect, { id: 'fruits', items });
     expect(container.querySelector('#fruits')?.textContent).toContain('Select options');
@@ -566,6 +592,35 @@ describe('MultiSelect', () => {
       expect(filter.getAttribute('aria-activedescendant')).toBe('fruits-option-0');
     });
     expect(container.querySelector('#fruits-option-0')?.textContent).toContain('Banana');
+  });
+
+  test('filtering does not leave the active index pointing at an unrelated item', async () => {
+    const reorderedItems = [
+      { id: 'apple', label: 'Apple' },
+      { id: 'cherry', label: 'Cherry' },
+      { id: 'banana', label: 'Banana' },
+      { id: 'apricot', label: 'Apricot' },
+    ] as const;
+    const { container } = render(MultiSelect, {
+      id: 'fruits',
+      items: reorderedItems,
+      filterable: true,
+    });
+    await openMenu(container);
+
+    const filter = container.querySelector<HTMLInputElement>('.cinder-multi-select__filter');
+    if (!filter) throw new Error('filter input not found');
+    await fireEvent.keyDown(filter, { key: 'ArrowDown' });
+    expect(filter.getAttribute('aria-activedescendant')).toBe('fruits-option-1');
+    expect(container.querySelector('#fruits-option-1')?.textContent).toContain('Cherry');
+
+    // Filtering to "a" drops Cherry (no "a") and leaves Apple, Banana, Apricot,
+    // so index 1 is now occupied by Banana instead of the previously active Cherry.
+    await fireEvent.input(filter, { target: { value: 'a' } });
+    await waitFor(() => {
+      expect(filter.getAttribute('aria-activedescendant')).toBe('fruits-option-0');
+    });
+    expect(container.querySelector('#fruits-option-0')?.textContent).toContain('Apple');
   });
 
   test('readonly exposes aria-readonly on picker roles', async () => {
