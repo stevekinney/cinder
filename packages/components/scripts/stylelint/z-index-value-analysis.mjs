@@ -71,6 +71,7 @@ const urlFunctionPattern = /url\(/iy;
 const commutativeSymbolicOperations = new Set(['+', 'hypot', 'max', 'min']);
 const maximumStaticSymbolicIdentityWork = 131_072;
 const staticAnalysisTooComplex = Symbol('static-analysis-too-complex');
+const staticAnalysisInvalid = Symbol('static-analysis-invalid');
 const unboundedClampEndpoint = Symbol('unbounded-clamp-endpoint');
 
 // CSS preprocessing replaces literal U+0000 with U+FFFD before tokenization,
@@ -317,6 +318,14 @@ function evaluateConstantArithmetic(expression) {
     let argumentIdentities;
     if (operation === '+') {
       associativeAddends = combinedAdditiveIdentityTerms(arguments_);
+      if (associativeAddends.size === 0)
+        return {
+          value: 0,
+          units: normalizedUnits(units),
+          symbolicFactors: new Map(),
+          isLiteralZero: false,
+          associativeAddends,
+        };
       argumentIdentities = [...associativeAddends].map(
         ([identity, coefficient]) => `${numericIdentity(coefficient)}|${identity}`,
       );
@@ -478,6 +487,21 @@ function evaluateConstantArithmetic(expression) {
       const hasUnknownConversion = boundedArguments.some(
         (argument) => argument.symbolicFactors.size > 0,
       );
+      const [[sharedConversionFactor, sharedConversionExponent] = []] =
+        boundedArguments[0]?.symbolicFactors ?? [];
+      if (
+        (functionName === 'min' || functionName === 'max') &&
+        boundedArguments.length > 0 &&
+        boundedArguments[0].symbolicFactors.size === 1 &&
+        sharedConversionFactor?.startsWith('relative-length:') &&
+        sharedConversionExponent === 1 &&
+        boundedArguments.every((argument) => sameSymbolicFactors(argument, boundedArguments[0]))
+      ) {
+        let reducedValue = boundedArguments[0].value;
+        for (let argumentIndex = 1; argumentIndex < boundedArguments.length; argumentIndex += 1)
+          reducedValue = Math[functionName](reducedValue, boundedArguments[argumentIndex].value);
+        return withValue(boundedArguments[0], reducedValue);
+      }
       if (
         functionName === 'sign' &&
         boundedArguments.length === 1 &&
@@ -685,7 +709,8 @@ function evaluateConstantArithmetic(expression) {
   try {
     const result = parseExpression();
     skipSpace();
-    return index === expression.length && !Number.isNaN(result.value) ? result : null;
+    if (index !== expression.length) return null;
+    return Number.isNaN(result.value) ? staticAnalysisInvalid : result;
   } catch (error) {
     return error === staticAnalysisTooComplex ? staticAnalysisTooComplex : null;
   }
@@ -746,7 +771,12 @@ function resolveStaticArithmeticResult(value) {
 
 function resolveStaticValue(value) {
   const resolved = resolveStaticArithmeticResult(value);
-  if (resolved === null || resolved === staticAnalysisTooComplex) return resolved;
+  if (
+    resolved === null ||
+    resolved === staticAnalysisTooComplex ||
+    resolved === staticAnalysisInvalid
+  )
+    return resolved === staticAnalysisInvalid ? null : resolved;
   return resolved.units.size === 0 && resolved.symbolicFactors.size === 0 ? resolved.value : null;
 }
 
@@ -780,7 +810,12 @@ function closingParenthesisIndex(value, argumentStart) {
   return undefined;
 }
 
-function classifyRelativeLengthSignEndpoints(value) {
+function classifyRelativeLengthSignEndpoints(
+  value,
+  budget = { remaining: maximumStaticSymbolicIdentityWork },
+  depth = 0,
+) {
+  if (depth > 512) return 'too-complex';
   const ranges = [];
   const groupIndexes = new Map();
   for (let index = 0; index < value.length; index += 1) {
@@ -809,16 +844,21 @@ function classifyRelativeLengthSignEndpoints(value) {
     const argument = value.slice(argumentStart, closeIndex);
     const resolvedArgument = resolveStaticArithmeticResult(argument);
     const normalizedArgumentUnits =
-      resolvedArgument && resolvedArgument !== staticAnalysisTooComplex
+      resolvedArgument &&
+      resolvedArgument !== staticAnalysisTooComplex &&
+      resolvedArgument !== staticAnalysisInvalid
         ? normalizedUnits(resolvedArgument.units)
         : new Map();
     const [[symbolicFactor, symbolicExponent] = []] =
-      resolvedArgument && resolvedArgument !== staticAnalysisTooComplex
+      resolvedArgument &&
+      resolvedArgument !== staticAnalysisTooComplex &&
+      resolvedArgument !== staticAnalysisInvalid
         ? [...resolvedArgument.symbolicFactors]
         : [];
     if (
       !resolvedArgument ||
       resolvedArgument === staticAnalysisTooComplex ||
+      resolvedArgument === staticAnalysisInvalid ||
       resolvedArgument.symbolicFactors.size !== 1 ||
       !symbolicFactor?.startsWith('relative-length:') ||
       symbolicExponent !== 1 ||
@@ -827,7 +867,9 @@ function classifyRelativeLengthSignEndpoints(value) {
       resolvedArgument.value === 0
     )
       continue;
-    const identity = valueIdentity(resolvedArgument);
+    const identity = `${mapIdentity(normalizedArgumentUnits)}|${mapIdentity(
+      resolvedArgument.symbolicFactors,
+    )}`;
     let groupIndex = groupIndexes.get(identity);
     if (groupIndex === undefined) {
       groupIndex = groupIndexes.size;
@@ -843,11 +885,14 @@ function classifyRelativeLengthSignEndpoints(value) {
   }
   if (ranges.length === 0) return undefined;
   const combinationCount = 2 ** groupIndexes.size;
+  const requiredWork = combinationCount * value.length;
   if (
     !Number.isSafeInteger(combinationCount) ||
-    combinationCount * value.length > maximumStaticSymbolicIdentityWork
+    !Number.isSafeInteger(requiredWork) ||
+    requiredWork > budget.remaining
   )
     return 'too-complex';
+  budget.remaining -= requiredWork;
   let reachesNegative = false;
   let reachesMagic = false;
   for (let combination = 0; combination < combinationCount; combination += 1) {
@@ -860,10 +905,21 @@ function classifyRelativeLengthSignEndpoints(value) {
       cursor = range.end;
     }
     chunks.push(value.slice(cursor));
-    const endpoint = resolveStaticNumber(chunks.join(''));
-    if (typeof endpoint !== 'number' || Number.isNaN(endpoint)) continue;
-    reachesNegative ||= endpoint < 0;
-    reachesMagic ||= endpoint === 9999;
+    const endpointExpression = chunks.join('');
+    const endpoint = resolveStaticNumber(endpointExpression);
+    if (typeof endpoint === 'number' && !Number.isNaN(endpoint)) {
+      reachesNegative ||= endpoint < 0;
+      reachesMagic ||= endpoint === 9999;
+      continue;
+    }
+    const nestedClassification = classifyRelativeLengthSignEndpoints(
+      endpointExpression,
+      budget,
+      depth + 1,
+    );
+    if (nestedClassification === 'too-complex') return nestedClassification;
+    reachesNegative ||= nestedClassification === 'negative';
+    reachesMagic ||= nestedClassification === 'magic';
   }
   if (reachesNegative) return 'negative';
   if (reachesMagic) return 'magic';
@@ -1102,7 +1158,8 @@ export function analyzeStaticLayerValue(value) {
   const arithmeticResult = resolveStaticArithmeticResult(value);
   if (arithmeticResult === staticAnalysisTooComplex)
     return { classification: 'too-complex', resultType: 'too-complex' };
-  if (arithmeticResult === null) return { classification: 'unresolved', resultType: 'unresolved' };
+  if (arithmeticResult === null || arithmeticResult === staticAnalysisInvalid)
+    return { classification: 'unresolved', resultType: 'unresolved' };
   if (arithmeticResult.units.size > 0 || arithmeticResult.symbolicFactors.size > 0) {
     const relativeLengthSignClassification = classifyRelativeLengthSignEndpoints(value);
     if (relativeLengthSignClassification !== undefined)
@@ -1152,7 +1209,16 @@ export function isStaticallyZero(value) {
 
 export function hasStaticallyZeroCoefficient(value) {
   const resolved = resolveStaticArithmeticResult(value);
-  return resolved !== null && resolved !== staticAnalysisTooComplex && resolved.value === 0;
+  return (
+    resolved !== null &&
+    resolved !== staticAnalysisTooComplex &&
+    resolved !== staticAnalysisInvalid &&
+    resolved.value === 0
+  );
+}
+
+export function isStaticallyInvalidArithmetic(value) {
+  return resolveStaticArithmeticResult(value) === staticAnalysisInvalid;
 }
 
 export function isStaticallyNegativeZero(value) {

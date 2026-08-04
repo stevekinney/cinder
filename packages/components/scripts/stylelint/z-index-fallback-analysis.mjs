@@ -7,6 +7,7 @@ import {
   isCssIdentifierCharacter,
   isCssWhitespace,
   isCssWhitespaceOrComment,
+  isStaticallyInvalidArithmetic,
   isStaticallyNegativeBeforeIntegerRounding,
   isStaticallyNegativeZero,
   isStaticallyNonnegative,
@@ -99,7 +100,14 @@ function maskTokenizingComments(value) {
   return maskedCharacters.join('');
 }
 
-function resolveFrameExpression(frame, value, range, budget, unresolvedReplacement) {
+function resolveFrameExpression(
+  frame,
+  value,
+  range,
+  budget,
+  unresolvedReplacement,
+  replaceEveryChild = false,
+) {
   if (frame.children.some((child) => child.resolvedFallback === fallbackResolutionTooComplex))
     return fallbackResolutionTooComplex;
   if (
@@ -123,7 +131,10 @@ function resolveFrameExpression(frame, value, range, budget, unresolvedReplaceme
     // Custom-property substitution splices a token stream directly into the
     // surrounding value; it neither adds grouping parentheses nor retokenizes
     // adjacent tokens. Separator whitespace preserves those token boundaries.
-    const replacement = ` ${child.resolvedFallback ?? unresolvedReplacement} `;
+    const replacementValue = replaceEveryChild
+      ? unresolvedReplacement
+      : (child.resolvedFallback ?? unresolvedReplacement);
+    const replacement = ` ${replacementValue} `;
     const nextLength =
       resolvedExpression.length - (relativeEnd - relativeStart) + replacement.length;
     if (!consumeResolutionWork(budget, nextLength)) return fallbackResolutionTooComplex;
@@ -135,7 +146,7 @@ function resolveFrameExpression(frame, value, range, budget, unresolvedReplaceme
   return resolvedExpression;
 }
 
-function factorAfter(value, start, end, budget) {
+function factorRangeAfter(value, start, end, budget) {
   if (!consumeResolutionWork(budget, (end - start) * 4)) return fallbackResolutionTooComplex;
   while (start < end && isCssWhitespaceOrComment(value[start])) start += 1;
   const factorStart = start;
@@ -152,7 +163,15 @@ function factorAfter(value, start, end, budget) {
       depth -= 1;
     } else if (depth === 0 && /[*/+\-,]/.test(character)) break;
   }
-  return value.slice(factorStart, start).trim();
+  while (start > factorStart && isCssWhitespaceOrComment(value[start - 1])) start -= 1;
+  return { start: factorStart, end: start };
+}
+
+function factorAfter(value, start, end, budget) {
+  const range = factorRangeAfter(value, start, end, budget);
+  return range === fallbackResolutionTooComplex
+    ? fallbackResolutionTooComplex
+    : value.slice(range.start, range.end);
 }
 
 function factorRangeBefore(value, start, end, budget) {
@@ -176,6 +195,34 @@ function factorBefore(value, start, end, budget) {
   return range === fallbackResolutionTooComplex
     ? fallbackResolutionTooComplex
     : value.slice(range.start, range.end).trim();
+}
+
+function multiplicativeTermBefore(value, start, end, budget) {
+  if (!consumeResolutionWork(budget, (end - start) * 4)) return fallbackResolutionTooComplex;
+  while (end > start && isCssWhitespaceOrComment(value[end - 1])) end -= 1;
+  const termEnd = end;
+  let depth = 0;
+  for (end -= 1; end >= start; end -= 1) {
+    const character = value[end];
+    if (character === ')') depth += 1;
+    else if (character === '(') {
+      if (depth === 0) break;
+      depth -= 1;
+    } else if (depth === 0 && character === ',') break;
+    else if (depth === 0 && (character === '+' || character === '-')) {
+      let previousIndex = end;
+      while (previousIndex > start && isCssWhitespaceOrComment(value[previousIndex - 1]))
+        previousIndex -= 1;
+      const previousCharacter = value[previousIndex - 1];
+      if (
+        previousCharacter !== undefined &&
+        previousCharacter !== '(' &&
+        !/[*/+\-,]/.test(previousCharacter)
+      )
+        break;
+    }
+  }
+  return value.slice(end + 1, termEnd).trim();
 }
 
 function isPrecededByDivision(value, operandStart) {
@@ -235,7 +282,7 @@ function expressionRangeIsMultipliedByStaticZero(
   )
     beforeChild -= 1;
   if (value[beforeChild - 1] !== '*') return false;
-  const factor = factorBefore(value, range.start, beforeChild - 1, budget);
+  const factor = multiplicativeTermBefore(value, range.start, beforeChild - 1, budget);
   if (factor === fallbackResolutionTooComplex) return fallbackResolutionTooComplex;
   return factor !== undefined && isStaticallyZero(factor);
 }
@@ -313,7 +360,7 @@ function childIsEliminatedByZeroProduct(value, range, child, budget) {
   )
     beforeChild -= 1;
   if (value[beforeChild - 1] !== '*') return false;
-  const factor = factorBefore(value, range.start, beforeChild - 1, budget);
+  const factor = multiplicativeTermBefore(value, range.start, beforeChild - 1, budget);
   if (factor === fallbackResolutionTooComplex) return false;
   return (
     factor !== undefined &&
@@ -377,6 +424,79 @@ function validSubstitutionOperandRange(child, value, range, parenthesisPairs) {
   return { start, end };
 }
 
+function expandedSubstitutionDivisorRange(
+  child,
+  frame,
+  value,
+  range,
+  budget,
+  parenthesisPairs,
+  expandedRangeCache,
+) {
+  const directRange = validSubstitutionOperandRange(child, value, range, parenthesisPairs);
+  if (directRange === undefined) return undefined;
+
+  let directDivisionIndex = directRange.start;
+  while (
+    directDivisionIndex > range.start &&
+    isCssWhitespaceOrComment(value[directDivisionIndex - 1])
+  )
+    directDivisionIndex -= 1;
+  if (value[directDivisionIndex - 1] === '/') return directRange;
+
+  const groupingParent = child.parenthesisParent;
+  if (
+    groupingParent?.type !== 'group' ||
+    groupingParent.end === undefined ||
+    (!groupingParent.isGroupingParenthesis && groupingParent.functionName !== 'calc')
+  )
+    return directRange;
+  let containerStart = groupingParent.isGroupingParenthesis
+    ? groupingParent.openIndex
+    : groupingParent.functionStart;
+  let containerEnd = groupingParent.end;
+  for (;;) {
+    let openIndex = containerStart;
+    while (openIndex > range.start && isCssWhitespaceOrComment(value[openIndex - 1]))
+      openIndex -= 1;
+    let closeIndex = containerEnd;
+    while (closeIndex < range.end && isCssWhitespaceOrComment(value[closeIndex])) closeIndex += 1;
+    if (value[openIndex - 1] !== '(' || parenthesisPairs.get(openIndex - 1) !== closeIndex) break;
+    containerStart = openIndex - 1;
+    containerEnd = closeIndex + 1;
+  }
+  let divisionIndex = containerStart;
+  while (divisionIndex > range.start && isCssWhitespaceOrComment(value[divisionIndex - 1]))
+    divisionIndex -= 1;
+  if (value[divisionIndex - 1] !== '/') return directRange;
+  const containerKey = `${containerStart}:${containerEnd}`;
+  if (expandedRangeCache.has(containerKey))
+    return expandedRangeCache.get(containerKey) ?? directRange;
+
+  const factorRange = factorRangeAfter(value, divisionIndex, range.end, budget);
+  if (factorRange === fallbackResolutionTooComplex) return fallbackResolutionTooComplex;
+  if (factorRange.start > child.start || factorRange.end < child.end) return directRange;
+
+  let possibleDivisor = value.slice(factorRange.start, factorRange.end);
+  const containedChildren = frame.children.filter(
+    (candidate) => candidate.start >= factorRange.start && candidate.end <= factorRange.end,
+  );
+  for (let childIndex = containedChildren.length - 1; childIndex >= 0; childIndex -= 1) {
+    const candidate = containedChildren[childIndex];
+    const replacementStart = candidate.start - factorRange.start;
+    const replacementEnd = candidate.end - factorRange.start;
+    possibleDivisor =
+      possibleDivisor.slice(0, replacementStart) + ' 1px ' + possibleDivisor.slice(replacementEnd);
+  }
+  if (!consumeResolutionWork(budget, possibleDivisor.length)) return fallbackResolutionTooComplex;
+  if (analyzeStaticLayerValue(possibleDivisor).resultType === 'non-number') {
+    expandedRangeCache.set(containerKey, factorRange);
+    return factorRange;
+  }
+  expandedRangeCache.set(containerKey, null);
+  return directRange;
+}
+
 function rangesAreSeparatedByOperator(value, leftEnd, rightStart, operator) {
   while (leftEnd < rightStart && isCssWhitespaceOrComment(value[leftEnd])) leftEnd += 1;
   if (value[leftEnd] !== operator) return false;
@@ -388,10 +508,24 @@ function rangesAreSeparatedByOperator(value, leftEnd, rightStart, operator) {
 function zeroNumeratorQuotientEndpointAnalysis(frame, value, range, budget, parenthesisPairs) {
   let zeroQuotientRanges = [];
   const operands = new Map();
+  const analyzedDivisorRanges = new Set();
+  const expandedDivisorRangeCache = new Map();
   for (const divisor of frame.children) {
-    const divisorRange = validSubstitutionOperandRange(divisor, value, range, parenthesisPairs);
+    const divisorRange = expandedSubstitutionDivisorRange(
+      divisor,
+      frame,
+      value,
+      range,
+      budget,
+      parenthesisPairs,
+      expandedDivisorRangeCache,
+    );
+    if (divisorRange === fallbackResolutionTooComplex) return fallbackResolutionTooComplex;
     if (divisorRange === undefined) continue;
     operands.set(divisor, divisorRange);
+    const divisorRangeKey = `${divisorRange.start}:${divisorRange.end}`;
+    if (analyzedDivisorRanges.has(divisorRangeKey)) continue;
+    analyzedDivisorRanges.add(divisorRangeKey);
 
     let divisionIndex = divisorRange.start;
     while (divisionIndex > range.start && isCssWhitespaceOrComment(value[divisionIndex - 1]))
@@ -457,7 +591,12 @@ function zeroNumeratorQuotientEndpointAnalysis(frame, value, range, budget, pare
     const precedingZeroRange = zeroQuotientRanges.find((zeroRange) =>
       rangesAreSeparatedByOperator(value, zeroRange.end, operand.start, '*'),
     );
-    if (precedingZeroRange) precedingZeroRange.end = operand.end;
+    if (
+      precedingZeroRange &&
+      !isPrecededByDivision(value, precedingZeroRange.start) &&
+      !child.signedZeroSensitiveContext
+    )
+      precedingZeroRange.end = operand.end;
   }
   for (let childIndex = frame.children.length - 1; childIndex >= 0; childIndex -= 1) {
     const child = frame.children[childIndex];
@@ -466,7 +605,8 @@ function zeroNumeratorQuotientEndpointAnalysis(frame, value, range, budget, pare
     const followingZeroRange = zeroQuotientRanges.find((zeroRange) =>
       rangesAreSeparatedByOperator(value, operand.end, zeroRange.start, '*'),
     );
-    if (followingZeroRange) followingZeroRange.start = operand.start;
+    if (followingZeroRange && !child.signedZeroSensitiveContext)
+      followingZeroRange.start = operand.start;
   }
 
   const replacements = zeroQuotientRanges.map((zeroQuotientRange) => ({
@@ -1406,7 +1546,19 @@ function unprovenCandidatesForFrame(frame, value, range, candidate, budget, pare
   // candidate for every banned classification unless its contribution is safe
   // independently of that choice.
   const resolvedNegativeZero = frame.type === 'fallback' && frame.resolvedNegativeZero === true;
+  const [onlyChild] = frame.children;
+  const hasSingleChildWithEnclosingContext =
+    frame.children.length === 1 && (onlyChild.start !== range.start || onlyChild.end !== range.end);
   if (frame.resolvedClassification === 'too-complex') return [candidate];
+  if (
+    hasSingleChildWithEnclosingContext &&
+    typeof frame.resolvedFallback === 'string' &&
+    isStaticallyInvalidArithmetic(frame.resolvedFallback)
+  ) {
+    const runtimeExpression = resolveFrameExpression(frame, value, range, budget, '1', true);
+    if (typeof runtimeExpression === 'string' && isStaticallyInvalidArithmetic(runtimeExpression))
+      return [];
+  }
   if (
     frame.type === 'root' &&
     frame.children.length === 1 &&
@@ -1441,6 +1593,7 @@ function unprovenCandidatesForFrame(frame, value, range, candidate, budget, pare
       },
     ];
   const candidateIsSuppressedByZeroQuotient = (childCandidate) =>
+    !resolvedNegativeZero &&
     zeroQuotientEndpoint?.ranges.some(
       (zeroRange) =>
         childCandidate.fallbackIndex >= zeroRange.start &&
@@ -1586,7 +1739,6 @@ function unprovenCandidatesForFrame(frame, value, range, candidate, budget, pare
   const distinctCandidates = uniqueCandidatesByClassification(contextuallyUnprovenCandidates);
   if (distinctCandidates.length === 0) return [];
 
-  const [onlyChild] = frame.children;
   if (
     frame.type === 'root' &&
     frame.resolvedClassification === 'safe' &&
@@ -1596,8 +1748,6 @@ function unprovenCandidatesForFrame(frame, value, range, candidate, budget, pare
   // With exactly one fallback path, a concrete enclosing expression can prove
   // that path safe (for example, max(var(--layer, -1), 0)). An expression that
   // is only the child itself provides no such context.
-  const hasSingleChildWithEnclosingContext =
-    frame.children.length === 1 && (onlyChild.start !== range.start || onlyChild.end !== range.end);
   if (frame.resolvedClassification !== 'safe') return distinctCandidates;
   const resolvedValueCanExposeNegativeSign =
     frame.signedZeroSensitiveContext &&

@@ -1649,6 +1649,14 @@ describe('cinder/z-index-scale', () => {
     `);
     expect(warnings(combinedLikeUnits)).toHaveLength(1);
 
+    const fullyCancelledSum = await lint(`
+      .fixture {
+        /* cinder-z-index-local: an empty normalized sum is an exact typed zero. */
+        z-index: var(--outer, calc(9999 + ((1em + 1rem) + (-1em + -1rem)) / 1px));
+      }
+    `);
+    expect(warnings(fullyCancelledSum)).toHaveLength(1);
+
     const differentSum = await lint(`
       .fixture {
         /* cinder-z-index-local: different mixed-unit sums have an unknown numeric ratio. */
@@ -1663,6 +1671,7 @@ describe('cinder/z-index-scale', () => {
       ['calc(9998 + sign(1em))', 1],
       ['calc(9998 + sign(calc(1em)))', 1],
       ['calc(9998 + sign((1em)))', 1],
+      ['calc(9998 + sign(sign(1em) * 1em))', 1],
       ['calc(9998 + sign(-1em))', 0],
       ['calc(9998 + sign(0em))', 0],
     ] as const) {
@@ -1692,6 +1701,16 @@ describe('cinder/z-index-scale', () => {
     `);
     expect(warnings(correlatedSigns)).toEqual([]);
 
+    for (const fallback of ['calc(sign(1em) - sign(2em))', 'calc(sign(-1em) - sign(-2em))']) {
+      const scaledCorrelatedSigns = await lint(`
+        .fixture {
+          /* cinder-z-index-local: coefficient magnitude does not change a shared sign endpoint. */
+          z-index: var(--outer, ${fallback});
+        }
+      `);
+      expect(warnings(scaledCorrelatedSigns)).toEqual([]);
+    }
+
     const { analyzeStaticLayerValue, evaluateStaticLayerNumber } = await import(valueAnalysisPath);
     expect(analyzeStaticLayerValue('calc(9998 + sign(1%))')).toEqual({
       classification: 'unresolved',
@@ -1707,6 +1726,23 @@ describe('cinder/z-index-scale', () => {
         .fixture {
           /* cinder-z-index-local: commutative functions preserve an exact symbolic identity. */
           z-index: var(--outer, calc(9999 * ${functionName}(1em, 1px) / ${functionName}(1px, 1em)));
+        }
+      `);
+
+      expect(warnings(result)).toHaveLength(1);
+    },
+  );
+
+  test.each([
+    ['max', '2em', '2em'],
+    ['min', '2em', '1em'],
+  ])(
+    'reduces same-conversion %s coefficients without inventing a conversion value',
+    async (functionName, secondArgument, divisor) => {
+      const result = await lint(`
+        .fixture {
+          /* cinder-z-index-local: one positive conversion factor preserves coefficient ordering. */
+          z-index: var(--outer, calc(9999 * ${functionName}(1em, ${secondArgument}) / ${divisor}));
         }
       `);
 
@@ -2637,6 +2673,15 @@ describe('cinder/z-index-scale', () => {
     'calc((0em / var(--divisor)) * var(--inner, 9999))',
     'calc(var(--inner, 9999) * (0em / var(--divisor)))',
     'calc(0em / var(--divisor) * var(--inner, 9999))',
+    'calc((0em / var(--divisor)) * var(--inner, -1))',
+    'calc(-0em / 1em * var(--inner, -1))',
+    'calc(0em / -1em * var(--inner, -1))',
+    'calc(0em / calc(0px - var(--divisor)) * var(--inner, -1))',
+    'calc(0em / calc(-1 * var(--divisor)) * var(--inner, -1))',
+    'calc(0em / calc(var(--divisor) * -1) * var(--inner, -1))',
+    'calc(0em / calc(var(--divisor) + 1px) * var(--inner, -1))',
+    'calc(0em / calc(var(--divisor) / 1) * var(--inner, -1))',
+    'calc(0em / calc(var(--first-divisor) + var(--second-divisor)) * var(--inner, -1))',
   ])('eliminates a banned child from a dimensioned zero numerator: %s', async (fallback) => {
     const result = await lint(`
       .fixture {
@@ -2647,6 +2692,36 @@ describe('cinder/z-index-scale', () => {
 
     expect(warnings(result)).toEqual([]);
   });
+
+  test('suppresses nested candidates when static arithmetic produces NaN', async () => {
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: exact zero divided by exact zero invalidates every nested path. */
+        z-index: var(--outer, calc(((1em + -1em) / 0em) * var(--inner, -1)));
+      }
+    `);
+
+    expect(warnings(result)).toEqual([]);
+  });
+
+  test.each([
+    'calc(1 / (0em / var(--divisor)) * var(--inner, -1))',
+    'calc(1 / ((0em / var(--divisor)) * var(--inner, -1)))',
+    'calc(1 / (0em / calc(0px - var(--divisor)) * var(--inner, -1)))',
+    'calc(1 / (0em / calc(-1 * var(--divisor)) * var(--inner, -1)))',
+  ])(
+    'preserves a negative fallback when a zero quotient can expose its sign: %s',
+    async (fallback) => {
+      const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: multiplying by -1 can expose a negative zero to reciprocal division. */
+        z-index: var(--outer, ${fallback});
+      }
+    `);
+
+      expect(warnings(result)).toHaveLength(1);
+    },
+  );
 
   test('fails closed when a zero-witness factor scan exhausts the shared budget', async () => {
     const fallback = `calc(9999 + var(--runtime) * 0${' '.repeat(1_000_000)})`;
