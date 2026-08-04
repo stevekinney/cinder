@@ -95,11 +95,7 @@
     <label
       id={labelId}
       for={id}
-      class={classNames(
-        'cinder-form-field__label',
-        className?.includes('cinder-checkbox-field') && 'cinder-checkbox-field__label',
-        hideLabel && 'cinder-sr-only',
-      )}
+      class={classNames('cinder-form-field__label', hideLabel && 'cinder-sr-only')}
       data-disabled={disabled || undefined}
     >
       {label}
