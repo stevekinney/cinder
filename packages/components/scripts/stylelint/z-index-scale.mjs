@@ -203,7 +203,8 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => {
     root.walkDecls((declaration) => {
       const decodedProperty = decodeCssEscapes(protectCssSyntaxEscapes(declaration.prop));
       if (decodedProperty.toLowerCase() !== 'z-index') return;
-      const declarationValue = (declaration.raws.value?.raw ?? declaration.value).trim();
+      const rawDeclarationValue = declaration.raws.value?.raw ?? declaration.value;
+      const declarationValue = rawDeclarationValue.trim();
       const decodedDeclarationValue = decodeCssEscapes(protectCssSyntaxEscapes(declarationValue));
       const value = maskComments(decodedDeclarationValue).trim();
       const layerTokenValue = value.replaceAll(cssCommentMaskCharacter, ' ').trim();
@@ -226,7 +227,7 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => {
         return;
       }
 
-      const offendingFallback = bannedFallback(declarationValue);
+      const offendingFallback = bannedFallback(rawDeclarationValue);
       if (offendingFallback) {
         const declarationValueIndex =
           declaration.prop.length + (declaration.raws.between?.length ?? 0);
@@ -238,7 +239,7 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => {
         const originalFallback =
           fallbackValueIndex === -1
             ? offendingFallback.value
-            : declarationValue.slice(fallbackValueIndex, fallbackValueIndex + fallbackLength);
+            : rawDeclarationValue.slice(fallbackValueIndex, fallbackValueIndex + fallbackLength);
         const diagnosticExpression =
           originalFallback.length <= maximumDiagnosticExpressionLength
             ? originalFallback

@@ -3144,11 +3144,16 @@ function validAttrTypeSyntax(syntax) {
   }
 }
 
-function validSubstitutionHeader(frame, value) {
-  const header = value
-    .slice(frame.openIndex + 1, frame.commaIndex)
+function substitutionHeader(frame, value) {
+  const headerEnd = frame.commaIndex === -1 ? frame.end - 1 : frame.commaIndex;
+  return value
+    .slice(frame.openIndex + 1, headerEnd)
     .replaceAll(cssCommentMaskCharacter, ' ')
     .trim();
+}
+
+function validSubstitutionHeader(frame, value) {
+  const header = substitutionHeader(frame, value);
   const identifierEnd = cssIdentifierTokenEnd(header, 0);
   if (identifierEnd === 0) return false;
   if (frame.functionName === 'var')
@@ -3171,10 +3176,7 @@ function validSubstitutionHeader(frame, value) {
 function substitutionDefinedPathWitnesses(frame, value) {
   if (frame.functionName === 'var') return ['0', '1'];
   if (frame.functionName === 'env') {
-    const header = value
-      .slice(frame.openIndex + 1, frame.commaIndex)
-      .replaceAll(cssCommentMaskCharacter, ' ')
-      .trim();
+    const header = substitutionHeader(frame, value);
     const identifierEnd = cssIdentifierTokenEnd(header, 0);
     const environmentVariableName = header.slice(0, identifierEnd);
     const scalarLengthEnvironmentVariable =
@@ -3188,10 +3190,7 @@ function substitutionDefinedPathWitnesses(frame, value) {
       : ['0', '1'];
   }
   if (frame.functionName !== 'attr') return undefined;
-  const header = value
-    .slice(frame.openIndex + 1, frame.commaIndex)
-    .replaceAll(cssCommentMaskCharacter, ' ')
-    .trim();
+  const header = substitutionHeader(frame, value);
   const identifierEnd = cssIdentifierTokenEnd(header, 0);
   const attrType = header.slice(identifierEnd).trim();
   const typeMatch = /^type\(([^()]+)\)$/i.exec(attrType);
@@ -3203,18 +3202,8 @@ function substitutionDefinedPathWitnesses(frame, value) {
 }
 
 function substitutionDefinedPathIdentity(frame, value) {
-  if (frame.functionName !== 'var' && frame.functionName !== 'env' && frame.functionName !== 'attr')
-    return undefined;
-  if (frame.functionName !== 'var')
-    return `${frame.functionName}:${value
-      .slice(frame.start, frame.end)
-      .replaceAll(cssCommentMaskCharacter, ' ')
-      .trim()}`;
-  const header = value
-    .slice(frame.openIndex + 1, frame.commaIndex)
-    .replaceAll(cssCommentMaskCharacter, ' ')
-    .trim();
-  return `var:${header}`;
+  if (!['attr', 'env', 'var'].includes(frame.functionName)) return undefined;
+  return `${frame.functionName}:${substitutionHeader(frame, value)}`;
 }
 
 function hasInvalidEdgeOperator(value, start, end, allowWebkitCalcPrefix = false) {
@@ -3473,6 +3462,18 @@ function unresolvedExtremaRangeCandidates(
       continue;
     if (functionParent !== undefined) liveExtremaParents.add(functionParent);
   }
+  for (const functionParent of liveExtremaParents) {
+    let ancestor = functionParent.parenthesisParent;
+    while (
+      ancestor?.type === 'group' &&
+      ancestor.end !== undefined &&
+      ancestor.functionStart >= range.start &&
+      ancestor.end <= range.end
+    ) {
+      if (extremaFunctionNames.has(ancestor.functionName)) liveExtremaParents.add(ancestor);
+      ancestor = ancestor.parenthesisParent;
+    }
+  }
   if (liveExtremaParents.size === 0) return [];
   const enclosingRange = unwrapStaticContainer(value, range, parenthesisPairs);
   if (
@@ -3483,73 +3484,20 @@ function unresolvedExtremaRangeCandidates(
     )
   )
     return [];
-  if (liveExtremaParents.size > 1) return failClosedCandidate();
-
-  const [functionParent] = liveExtremaParents;
-  const extremaChain = [functionParent];
-  while (extremaChain.length < 16) {
-    const current = extremaChain.at(-1);
-    const enclosing = current.parenthesisParent?.extremaParent;
-    if (
-      enclosing === undefined ||
-      enclosing === current ||
-      enclosing.functionStart < range.start ||
-      enclosing.end > range.end
+  const orderedExtremaParents = [...liveExtremaParents].sort(
+    (left, right) => left.functionStart - right.functionStart || right.end - left.end,
+  );
+  const [functionParent] = orderedExtremaParents;
+  if (
+    functionParent === undefined ||
+    orderedExtremaParents.some(
+      (parent, index) =>
+        index > 0 &&
+        (parent.functionStart < orderedExtremaParents[index - 1].functionStart ||
+          parent.end > orderedExtremaParents[index - 1].end),
     )
-      break;
-    extremaChain.push(enclosing);
-  }
-  if (extremaChain.length > 1) {
-    const runtimeChild = frame.children.find(
-      (child) => childFunctionParent(child, 'extremaParent', range) === functionParent,
-    );
-    if (runtimeChild === undefined) return failClosedCandidate();
-    const sampledInputs = new Set(['-infinity', 'infinity']);
-    for (const extremaParent of extremaChain) {
-      const extremaRange = { start: extremaParent.functionStart, end: extremaParent.end };
-      const extremaArguments = fallbackIndependentStaticArguments(
-        frame,
-        value,
-        extremaRange,
-        extremaParent.functionName,
-        parenthesisPairs,
-      );
-      if (extremaArguments === undefined) return failClosedCandidate();
-      for (const argument of extremaArguments.staticArguments) {
-        const numericValue = evaluateStaticLayerNumber(argument.value);
-        if (numericValue === undefined || !Number.isFinite(numericValue))
-          return failClosedCandidate();
-        sampledInputs.add(argument.value);
-      }
-      if (!consumeResolutionWork(budget, extremaParent.end - extremaParent.functionStart))
-        return failClosedCandidate();
-    }
-    if (sampledInputs.size > 32) return failClosedCandidate();
-    const sampledOutputs = [];
-    for (const sampledInput of sampledInputs) {
-      const expression = resolveFrameExpressionWithRangeReplacements(frame, value, range, budget, [
-        {
-          end: runtimeChild.end,
-          start: runtimeChild.start,
-          value: sampledInput,
-        },
-      ]);
-      if (expression === fallbackResolutionTooComplex) return failClosedCandidate();
-      const output = evaluateStaticLayerNumber(expression);
-      if (output === undefined) return failClosedCandidate();
-      sampledOutputs.push(output);
-    }
-    const outputMinimum = Math.min(...sampledOutputs);
-    const outputMaximum = Math.max(...sampledOutputs);
-    const classifications = [];
-    if (outputMinimum < -0.5) classifications.push('negative');
-    if (outputMaximum >= 9998.5 && outputMinimum < 9999.5) classifications.push('magic');
-    return classifications.map((resolvedClassification) => ({
-      ...candidate,
-      hasRuntimeSibling: true,
-      resolvedClassification,
-    }));
-  }
+  )
+    return failClosedCandidate();
   const functionRange = {
     start: functionParent.functionStart,
     end: functionParent.end,
@@ -4313,21 +4261,22 @@ function randomItemGroupOutputOptions(value, group, parenthesisPairs) {
     !randomKeyIsStructurallyValid(value, argumentRanges[0])
   )
     return undefined;
-  const values = argumentRanges.slice(1).map((argumentRange) => {
+  const valueRanges = argumentRanges.slice(1);
+  const values = valueRanges.map((argumentRange) => {
     if (value[argumentRange.start] === '{' && value[argumentRange.end - 1] === '}')
       return value.slice(argumentRange.start + 1, argumentRange.end - 1);
     return value.slice(argumentRange.start, argumentRange.end);
   });
-  const key = value.slice(argumentRanges[0].start, argumentRanges[0].end).trim();
-  const fixedMatch = /^fixed\s+([+-]?(?:\d+(?:\.\d+)?|\.\d+)(?:e[+-]?\d+)?)$/i.exec(key);
-  if (fixedMatch !== null) {
-    const fixedBase = Number(fixedMatch[1]);
-    if (Number.isFinite(fixedBase) && fixedBase >= 0 && fixedBase <= 1) {
-      const normalizedBase = fixedBase === 1 ? 1 - Number.EPSILON / 2 : fixedBase;
-      return { continuous: false, values: [values[Math.floor(normalizedBase * values.length)]] };
-    }
+  const fixedBaseValue = fixedRandomBaseValueForRange(value, argumentRanges[0]);
+  if (fixedBaseValue !== undefined) {
+    const selectedIndex = Math.min(Math.floor(fixedBaseValue * values.length), values.length - 1);
+    return {
+      continuous: false,
+      ranges: [valueRanges[selectedIndex]],
+      values: [values[selectedIndex]],
+    };
   }
-  return { continuous: false, values };
+  return { continuous: false, ranges: valueRanges, values };
 }
 
 function randomGroupOutputOptions(frame, value, group, budget, parenthesisPairs) {
@@ -4632,8 +4581,24 @@ function randomRangeCandidates(frame, value, range, candidate, budget, parenthes
     if (minimum < 0) classifications.add('negative');
     if (minimum <= 9999 && maximum >= 9999) classifications.add('magic');
   }
+  const [onlySelectionGroup] = selectionGroups;
+  const [onlyAnalyzedGroup] = onlySelectionGroup?.groups ?? [];
+  const sourceRange =
+    selectionGroups.length === 1 &&
+    onlySelectionGroup.optionCount === 1 &&
+    onlySelectionGroup.groups.length === 1
+      ? onlyAnalyzedGroup.options.ranges?.[0]
+      : undefined;
+  const sourceCandidate =
+    sourceRange === undefined
+      ? candidate
+      : {
+          ...candidate,
+          fallbackIndex: sourceRange.start,
+          rawFallback: value.slice(sourceRange.start, sourceRange.end),
+        };
   return [...classifications].map((resolvedClassification) => ({
-    ...candidate,
+    ...sourceCandidate,
     resolvedClassification,
     hasRuntimeSibling: true,
   }));
@@ -4752,6 +4717,7 @@ function definedSubstitutionPathCandidates(
   budget,
   parenthesisPairs,
   selectableChildren,
+  suppressedDefinedPathRanges,
 ) {
   const candidates = [];
   const expressionRange = unwrapStaticContainer(value, range, parenthesisPairs);
@@ -4808,9 +4774,56 @@ function definedSubstitutionPathCandidates(
         resolvedSiblings,
         parenthesisPairs,
       )
-    )
-      continue;
+    ) {
+      if (
+        correlatedChildren.every((child) =>
+          suppressedDefinedPathRanges.some(
+            (suppressedRange) =>
+              child.start >= suppressedRange.start && child.end <= suppressedRange.end,
+          ),
+        )
+      )
+        continue;
+      const expandedRangeCache = new Map();
+      let hasDivisor = false;
+      for (const child of correlatedChildren) {
+        if (!child.mathContext) continue;
+        const divisorRange = expandedSubstitutionDivisorRange(
+          child,
+          frame,
+          value,
+          range,
+          budget,
+          parenthesisPairs,
+          expandedRangeCache,
+        );
+        if (divisorRange === fallbackResolutionTooComplex)
+          return [
+            {
+              ...candidate,
+              hasRuntimeSibling: true,
+              resolvedFallback: fallbackResolutionTooComplex,
+              resolvedClassification: 'too-complex',
+            },
+          ];
+        if (divisorRange === undefined) continue;
+        let divisionIndex = divisorRange.start;
+        while (divisionIndex > range.start && isCssWhitespaceOrComment(value[divisionIndex - 1]))
+          divisionIndex -= 1;
+        if (value[divisionIndex - 1] === '/') hasDivisor = true;
+      }
+      if (!hasDivisor) continue;
+      return [
+        {
+          ...candidate,
+          hasRuntimeSibling: true,
+          resolvedFallback: fallbackResolutionTooComplex,
+          resolvedClassification: 'too-complex',
+        },
+      ];
+    }
     const endpointExpressions = [];
+    const exactClassifications = new Set();
     const witnesses = correlatedChildren[0].definedPathWitnesses;
     if (
       witnesses === undefined ||
@@ -4840,11 +4853,26 @@ function definedSubstitutionPathCandidates(
           },
         ];
       const analysis = analyzeFrameExpression(frame, expression, budget);
+      if (analysis.classification === 'negative' || analysis.classification === 'magic')
+        exactClassifications.add(analysis.classification);
       if (analysis.resultType !== 'number' || isStaticallyInvalidArithmetic(expression)) {
         endpointExpressions.length = 0;
         break;
       }
       endpointExpressions.push(expression);
+    }
+    if (correlatedChildren.some((child) => child.commaIndex === -1)) {
+      const [child] = correlatedChildren;
+      for (const resolvedClassification of exactClassifications) {
+        candidates.push({
+          fallbackIndex: child.start,
+          rawFallback: value.slice(child.start, child.end),
+          resolvedFallback: fallbackResolutionTooComplex,
+          resolvedClassification,
+          hasRuntimeSibling: true,
+        });
+      }
+      continue;
     }
     if (endpointExpressions.length !== 2 || haveEqualStaticArithmeticValues(endpointExpressions))
       continue;
@@ -4863,12 +4891,12 @@ function definedSubstitutionPathCandidates(
   return candidates;
 }
 
-function correlatedVarChildren(frame, value, selectableChildren) {
+function correlatedDefinedChildren(frame, value, selectableChildren) {
   const groups = new Map();
   for (const child of frame.children) {
     if (
-      child.functionName !== 'var' ||
       !child.definedPathCanBeNumber ||
+      substitutionDefinedPathIdentity(child, value) === undefined ||
       !selectableChildren.has(child)
     )
       continue;
@@ -4885,6 +4913,14 @@ function unresolvedRuntimeFunctionHasValidArity(functionName, argumentCount) {
   return Array.isArray(validArities)
     ? validArities.includes(argumentCount)
     : validArities === argumentCount;
+}
+
+function unresolvedRuntimeFunctionHasTooManyArguments(functionName, argumentCount) {
+  const validArities = unresolvedRuntimeFunctionArities.get(functionName);
+  const maximumArity = Array.isArray(validArities)
+    ? validArities.reduce((maximum, arity) => Math.max(maximum, arity))
+    : validArities;
+  return argumentCount > maximumArity;
 }
 
 function logStaticArgumentsCanReachValidResult(staticArguments) {
@@ -4967,10 +5003,9 @@ function randomKeyIsStructurallyValid(value, range) {
   );
 }
 
-function fixedRandomBaseValue(value, parsedArguments) {
-  if (parsedArguments.argumentCount < 3) return undefined;
+function fixedRandomBaseValueForRange(value, keyRange) {
   const key = value
-    .slice(parsedArguments.argumentRanges[0].start, parsedArguments.argumentRanges[0].end)
+    .slice(keyRange.start, keyRange.end)
     .replaceAll(cssCommentMaskCharacter, ' ')
     .trim();
   const fixedMatch = /^fixed\s+([+-]?(?:\d+(?:\.\d+)?|\.\d+)(?:e[+-]?\d+)?)$/i.exec(key);
@@ -4978,6 +5013,11 @@ function fixedRandomBaseValue(value, parsedArguments) {
   const fixedValue = Number(fixedMatch[1]);
   if (!Number.isFinite(fixedValue) || fixedValue < 0 || fixedValue > 1) return undefined;
   return fixedValue === 1 ? 1 - Number.EPSILON / 2 : fixedValue;
+}
+
+function fixedRandomBaseValue(value, parsedArguments) {
+  if (parsedArguments.argumentCount < 3) return undefined;
+  return fixedRandomBaseValueForRange(value, parsedArguments.argumentRanges[0]);
 }
 
 function randomNumericArgumentRanges(value, parsedArguments) {
@@ -5155,8 +5195,10 @@ function childIsInsideProvablyInvalidNumberOnlyFunction(
     );
     if (
       parsedArguments !== undefined &&
-      parent.functionName === 'pow' &&
-      !unresolvedRuntimeFunctionHasValidArity(parent.functionName, parsedArguments.argumentCount)
+      unresolvedRuntimeFunctionHasTooManyArguments(
+        parent.functionName,
+        parsedArguments.argumentCount,
+      )
     ) {
       invalidFunctionCache.set(parent, true);
       return true;
@@ -5975,7 +6017,7 @@ function unprovenCandidatesForFrame(frame, value, range, candidate, budget, pare
         childCandidate.fallbackIndex >= zeroRange.start &&
         childCandidate.fallbackIndex < zeroRange.end,
     ) === true;
-  const correlatedChildren = correlatedVarChildren(frame, value, selectableChildren);
+  const correlatedChildren = correlatedDefinedChildren(frame, value, selectableChildren);
   const uneliminatedChildren = frame.children.filter(
     (child) =>
       child.unprovenBannedCandidates.length > 0 &&
@@ -6168,6 +6210,7 @@ function unprovenCandidatesForFrame(frame, value, range, candidate, budget, pare
       budget,
       parenthesisPairs,
       selectableChildren,
+      zeroQuotientEndpoint?.ranges ?? [],
     ),
     ...(selectedRandomRanges.length === 0
       ? randomRangeCandidates(frame, value, range, candidate, budget, parenthesisPairs)
@@ -6444,13 +6487,21 @@ function fallbackCandidates(value) {
     if (frame?.type !== 'fallback') continue;
     fallbackFrames.pop();
     frame.end = index + 1;
-    if (frame.commaIndex === -1) continue;
     if (!validSubstitutionHeader(frame, value)) {
       frame.resolvedFallback = null;
       frame.resolvedClassification = 'unresolved';
       frame.resolvedNegativeZero = false;
       frame.negativeZeroIsSafeFinalLayer = false;
       frame.unprovenBannedCandidates = [];
+      continue;
+    }
+
+    if (frame.commaIndex === -1) {
+      frame.definedPathWitnesses =
+        frame.fallbackParent === undefined
+          ? undefined
+          : substitutionDefinedPathWitnesses(frame, value);
+      frame.definedPathCanBeNumber = frame.definedPathWitnesses?.includes('0');
       continue;
     }
 

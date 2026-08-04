@@ -699,11 +699,12 @@ describe('cinder/z-index-scale', () => {
     ['random-item(9999, 1)', 0],
     ['random-item(auto, 9999, 1)', 1],
     ['random-item(--shared, 1, 9999)', 1],
+    ['random-item(fixed 0, 1, 9999)', 0],
+    ['random-item(fixed .5, 1, 9999)', 1],
+    ['random-item(fixed 1, 9999, 1)', 0],
     ['random-item(auto, {9999}, 1)', 1],
     ['random-item(auto, , 9999)', 1],
     ['random-item(auto, 1, 2)', 0],
-    ['random-item(fixed 0, 1, 9999)', 0],
-    ['random-item(fixed 0.5, 1, 9999)', 1],
     ['random-item(fixed 2, 9999, 1)', 0],
   ] as const)('tracks CSS random-item() choices: %s', async (fallback, count) => {
     expect(
@@ -716,6 +717,17 @@ describe('cinder/z-index-scale', () => {
         `),
       ),
     ).toHaveLength(count);
+  });
+
+  test('anchors a fixed random-item() diagnostic to the selected item', async () => {
+    const css = '.fixture { z-index: var(--outer, random-item(fixed .5, 1, 9999)); }';
+    const [warning] = warnings(await lint(css));
+    const bannedIndex = css.indexOf('9999');
+    const start = sourceLocation(css, bannedIndex);
+    const end = sourceLocation(css, bannedIndex + 4);
+
+    expect(warning?.column).toBe(start.column);
+    expect(warning?.endColumn).toBe(end.column);
   });
 
   test.each([
@@ -3417,6 +3429,12 @@ describe('cinder/z-index-scale', () => {
     ['calc(max(var(--runtime), 10000) + 2)', 0],
     ['calc(min(var(--runtime), 10000) - 1)', 1],
     ['calc(clamp(0, var(--runtime), 10000) + 0)', 1],
+    ['min(1, max(0, var(--runtime)))', 0],
+    ['clamp(0, max(0, var(--runtime)), 1)', 0],
+    ['calc(9999 * min(1, max(0, var(--runtime))))', 1],
+    ['max(-1, min(0, var(--runtime)))', 1],
+    ['calc(9999 + min(1, max(0, var(--runtime))))', 1],
+    ['calc(max(0, var(--left)) + min(1, var(--right)))', 1],
   ] as const)(
     'propagates reachable extrema endpoints through enclosing arithmetic: %s',
     async (fallback, warningCount) => {
@@ -4179,7 +4197,7 @@ describe('cinder/z-index-scale', () => {
           }
         `),
         ),
-      ).toEqual([]);
+      ).toHaveLength(1);
     },
   );
 
@@ -4517,6 +4535,20 @@ describe('cinder/z-index-scale', () => {
     ['clamp(0, atan2(var(--runtime, 0), 1), 1)', 0],
     ['calc(9999 * attr(data-layer type(<length>), 0px))', 0],
     ['calc(9999 * attr(data-layer type(<length>), 0px) / 1px)', 1],
+    ['calc(9999 * var(--runtime))', 1],
+    ['calc(0 * var(--runtime))', 0],
+    ['calc(var(--runtime) + 9998)', 1],
+    ['calc(9999 * env(foo))', 1],
+    ['calc(9999 * attr(data-layer type(<number>)))', 1],
+    ['calc(9999 * (env(foo, 0) - env(foo, 0)))', 0],
+    ['calc(9999 * (env(foo, 0) - env(bar, 0)))', 1],
+    ['calc(9999 * (attr(data-layer type(<number>), 0) - attr(data-layer type(<number>), 0)))', 0],
+    ['calc(9999 * (attr(data-layer type(<number>), 0) - attr(data-other type(<number>), 0)))', 1],
+    ['calc(9999 * env(safe-area-inset-top, 0px) / 1px)', 1],
+    ['calc(9999 * env(viewport-segment-width 0 0, 0px) / 1px)', 1],
+    ['calc(9999 * env(safe-area-inset-top, 0px))', 0],
+    ['calc(9999 / var(--scale, 0))', 1],
+    ['calc(0 / var(--scale, 0))', 0],
   ] as const)(
     'tracks the defined path of substitutions with safe fallbacks: %s',
     async (fallback, count) => {
@@ -4583,6 +4615,8 @@ describe('cinder/z-index-scale', () => {
     ['min(1, exp(var(--runtime, 1)))', 0],
     ['calc(9999 * exp(attr(data-layer type(<length>), 1px)))', 0],
     ['calc(9999 * exp(var(--runtime, 1), 2))', 0],
+    ['pow(var(--runtime, 9999), 1, 2)', 0],
+    ['pow(var(--runtime, 9999), 1)', 1],
   ] as const)(
     'tracks defined substitutions inside number-only runtime functions: %s',
     async (fallback, count) => {
@@ -4827,6 +4861,20 @@ describe('cinder/z-index-scale', () => {
     expect(warning?.endColumn).toBe(end.column);
   });
 
+  test('anchors a diagnostic after leading declaration-value whitespace', async () => {
+    const source = await Bun.file(pluginPath).text();
+    const css = '.x { z-index:   var(--x,9999); }';
+    const [warning] = warnings(await lint(css));
+    const bannedIndex = css.indexOf('9999');
+    const start = sourceLocation(css, bannedIndex);
+    const end = sourceLocation(css, bannedIndex + 4);
+
+    expect(warning?.column).toBe(start.column);
+    expect(warning?.endColumn).toBe(end.column);
+    expect(source).toContain('bannedFallback(rawDeclarationValue)');
+    expect(source).not.toContain('bannedFallback(declarationValue)');
+  });
+
   test('anchors a sibling conditional diagnostic to the branch that contributes the ban', async () => {
     const css = `
       .fixture {
@@ -4872,21 +4920,4 @@ describe('cinder/z-index-scale', () => {
       ).toEqual([]);
     },
   );
-
-  test('ignores nested candidates inside fixed invalid math arities', async () => {
-    const invalid = await lint(`
-      .fixture {
-        /* cinder-z-index-local: fixed invalid pow arity cannot compute a z-index. */
-        z-index: var(--outer, pow(var(--runtime, 9999), 1, 2));
-      }
-    `);
-    expect(warnings(invalid)).toEqual([]);
-
-    const valid = await lint(`
-      .fixture {
-        z-index: var(--outer, pow(var(--runtime, 9999), 1));
-      }
-    `);
-    expect(warnings(valid)).toHaveLength(1);
-  });
 });
