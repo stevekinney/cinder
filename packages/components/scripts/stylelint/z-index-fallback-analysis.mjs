@@ -22,6 +22,7 @@ import {
 const fallbackFunctionPattern = /(?:var|env|attr)\(/iy;
 const fallbackResolutionTooComplex = Symbol('fallback-resolution-too-complex');
 const fallbackResolutionWorkLimit = 8_000_000;
+const typedHypotParentLimit = 2_048;
 const conditionalNestingLimit = 128;
 const uniformDivisorWitnessValues = ['1', '2', '1px', '1deg', '1s', '1hz', '1dppx'];
 const typedDivisorWitnessValues = ['1px', '1deg', '1s', '1hz', '1dppx'];
@@ -3558,6 +3559,14 @@ function typedHypotRangeCandidates(
     childrenByHypotParent.set(functionParent, children);
   }
   if (childrenByHypotParent.size === 0) return [];
+  if (childrenByHypotParent.size > typedHypotParentLimit)
+    return [
+      {
+        ...candidate,
+        resolvedFallback: fallbackResolutionTooComplex,
+        resolvedClassification: 'too-complex',
+      },
+    ];
   const analyzedHypotParents = [];
   for (const [functionParent, children] of childrenByHypotParent) {
     const functionRange = { start: functionParent.functionStart, end: functionParent.end };
