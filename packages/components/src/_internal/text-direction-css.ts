@@ -122,7 +122,10 @@ function readNestedCssRules(rule: CSSRule): CSSRuleList | Iterable<CSSRule> | un
 
 function isCssRuleCollection(value: unknown): value is CSSRuleList | Iterable<CSSRule> {
   if (typeof CSSRuleList !== 'undefined' && value instanceof CSSRuleList) return true;
-  return Array.isArray(value) && value.every(isCssRule);
+  if (Array.isArray(value)) return value.every(isCssRule);
+  if (typeof value !== 'object' || value === null) return false;
+  const iterator = Reflect.get(value, Symbol.iterator);
+  return typeof iterator === 'function';
 }
 
 function isCssRule(value: unknown): value is CSSRule {
