@@ -55,6 +55,7 @@
 
   let isNarrow = $state(false);
   let hasMeasuredWidth = $state(false);
+  let measuredWidth = $state(0);
   let observedNode = $state<HTMLElement | null>(null);
 
   function getCollapseMaxWidthPx(): number {
@@ -69,12 +70,23 @@
   function updateNarrowState(width: number): void {
     if (!Number.isFinite(width) || width <= 0) return;
 
+    measuredWidth = width;
     hasMeasuredWidth = true;
     isNarrow = width <= getCollapseMaxWidthPx();
   }
 
   function getObservedWidth(entry: ResizeObserverEntry): number {
-    return entry.target.getBoundingClientRect().width;
+    const borderBoxSize = Array.isArray(entry.borderBoxSize)
+      ? entry.borderBoxSize[0]
+      : entry.borderBoxSize;
+
+    if (borderBoxSize) {
+      const writingMode = getComputedStyle(entry.target).writingMode;
+      const usesVerticalInlineAxis = /^(?:vertical|sideways)-/i.test(writingMode);
+      return usesVerticalInlineAxis ? borderBoxSize.blockSize : borderBoxSize.inlineSize;
+    }
+
+    return entry.contentRect.width;
   }
 
   const observeResize = useResizeObserver(
@@ -94,6 +106,25 @@
     if (narrowCollapseEnabled && observedNode) {
       updateNarrowState(observedNode.getBoundingClientRect().width);
     }
+  });
+
+  $effect(() => {
+    if (!narrowCollapseEnabled || typeof window === 'undefined') return;
+
+    const recomputeNarrowState = () => {
+      updateNarrowState(measuredWidth);
+    };
+    const observer = new MutationObserver(recomputeNarrowState);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class', 'style'],
+    });
+    window.addEventListener('resize', recomputeNarrowState);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', recomputeNarrowState);
+    };
   });
 </script>
 

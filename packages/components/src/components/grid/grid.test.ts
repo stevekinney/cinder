@@ -6,7 +6,7 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { render } = await import('@testing-library/svelte');
+const { render, waitFor } = await import('@testing-library/svelte');
 const { createRawSnippet, tick } = await import('svelte');
 const { default: Grid } = await import('./grid.svelte');
 
@@ -89,7 +89,54 @@ describe('Grid', () => {
     const originalResizeObserver = globalThis.ResizeObserver;
     let resizeCallback: ResizeObserverCallback | undefined;
 
-    HTMLElement.prototype.getBoundingClientRect = () => ({ width: 900, height: 320 }) as DOMRect;
+    HTMLElement.prototype.getBoundingClientRect = () => ({ width: 675, height: 240 }) as DOMRect;
+    globalThis.ResizeObserver = class implements ResizeObserver {
+      constructor(callback: ResizeObserverCallback) {
+        resizeCallback = callback;
+      }
+
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    };
+
+    try {
+      const { container, unmount } = render(Grid, {
+        props: { narrowCollapseEnabled: true, children: textSnippet('content') },
+      });
+      await tick();
+      const root = container.querySelector('.cinder-grid') as HTMLElement;
+      root.style.writingMode = 'vertical-rl';
+
+      resizeCallback?.(
+        [
+          {
+            target: root,
+            borderBoxSize: [{ inlineSize: 320, blockSize: 900 }],
+            contentBoxSize: [{ inlineSize: 320, blockSize: 900 }],
+            devicePixelContentBoxSize: [],
+            contentRect: { width: 900, height: 320 } as DOMRectReadOnly,
+          },
+        ],
+        {} as ResizeObserver,
+      );
+      await tick();
+
+      expect(root.hasAttribute('data-cinder-narrow')).toBe(false);
+      expect(root.hasAttribute('data-cinder-wide')).toBe(true);
+      unmount();
+    } finally {
+      HTMLElement.prototype.getBoundingClientRect = originalGetBoundingClientRect;
+      globalThis.ResizeObserver = originalResizeObserver;
+    }
+  });
+
+  test('uses the untransformed border-box width from resize entries', async () => {
+    const originalGetBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+    const originalResizeObserver = globalThis.ResizeObserver;
+    let resizeCallback: ResizeObserverCallback | undefined;
+
+    HTMLElement.prototype.getBoundingClientRect = () => ({ width: 675, height: 240 }) as DOMRect;
     globalThis.ResizeObserver = class implements ResizeObserver {
       constructor(callback: ResizeObserverCallback) {
         resizeCallback = callback;
@@ -111,8 +158,8 @@ describe('Grid', () => {
         [
           {
             target: root,
-            borderBoxSize: [{ inlineSize: 320, blockSize: 900 }],
-            contentBoxSize: [{ inlineSize: 320, blockSize: 900 }],
+            borderBoxSize: [{ inlineSize: 900, blockSize: 320 }],
+            contentBoxSize: [{ inlineSize: 900, blockSize: 320 }],
             devicePixelContentBoxSize: [],
             contentRect: { width: 900, height: 320 } as DOMRectReadOnly,
           },
@@ -125,6 +172,56 @@ describe('Grid', () => {
       expect(root.hasAttribute('data-cinder-wide')).toBe(true);
       unmount();
     } finally {
+      HTMLElement.prototype.getBoundingClientRect = originalGetBoundingClientRect;
+      globalThis.ResizeObserver = originalResizeObserver;
+    }
+  });
+
+  test('recomputes collapse when the root font size changes', async () => {
+    const originalGetBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+    const originalResizeObserver = globalThis.ResizeObserver;
+    const originalRootFontSize = document.documentElement.style.fontSize;
+    let resizeCallback: ResizeObserverCallback | undefined;
+
+    HTMLElement.prototype.getBoundingClientRect = () => ({ width: 800, height: 320 }) as DOMRect;
+    globalThis.ResizeObserver = class implements ResizeObserver {
+      constructor(callback: ResizeObserverCallback) {
+        resizeCallback = callback;
+      }
+
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    };
+    document.documentElement.style.fontSize = '16px';
+
+    try {
+      const { container, unmount } = render(Grid, {
+        props: { narrowCollapseEnabled: true, children: textSnippet('content') },
+      });
+      await tick();
+      const root = container.querySelector('.cinder-grid') as HTMLElement;
+
+      resizeCallback?.(
+        [
+          {
+            target: root,
+            borderBoxSize: [{ inlineSize: 800, blockSize: 320 }],
+            contentBoxSize: [{ inlineSize: 800, blockSize: 320 }],
+            devicePixelContentBoxSize: [],
+            contentRect: { width: 800, height: 320 } as DOMRectReadOnly,
+          },
+        ],
+        {} as ResizeObserver,
+      );
+      await tick();
+      expect(root.hasAttribute('data-cinder-wide')).toBe(true);
+
+      document.documentElement.style.fontSize = '18px';
+      await waitFor(() => expect(root.hasAttribute('data-cinder-narrow')).toBe(true));
+      unmount();
+    } finally {
+      document.documentElement.style.fontSize = originalRootFontSize;
       HTMLElement.prototype.getBoundingClientRect = originalGetBoundingClientRect;
       globalThis.ResizeObserver = originalResizeObserver;
     }
