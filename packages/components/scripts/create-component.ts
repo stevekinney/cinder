@@ -149,8 +149,10 @@ export function renderSvelte(context: CreationContext): string {
    * @status ${status}
    * @purpose TODO: one-sentence description of what ${pascalName} renders and when to reach for it.
    * @tag ${name}
+   * @related button
    * @useWhen TODO: describe a scenario where ${pascalName} is the right choice.
    * @avoidWhen TODO: describe when a different component fits better.
+   * @rationale Nearest alternative: button — TODO: explain the nearest alternative and the interaction boundary.
    */
   export type { ${pascalName}Props } from './${name}.types.ts';
 </script>

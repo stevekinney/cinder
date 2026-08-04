@@ -44,8 +44,14 @@ function findExplicitRationale(source: string): string {
   const metadataBlock = findCinderMetadataBlock(source);
   const rationaleLines: string[] = [];
   let collecting = false;
+  let sawCinderMarker = false;
   for (const line of metadataBlock.split('\n')) {
     const content = line.replace(/^\s*\*\s?/, '').trim();
+    if (/^@cinder\b/i.test(content)) {
+      sawCinderMarker = true;
+      continue;
+    }
+    if (!sawCinderMarker) continue;
     if (/^@rationale\b/i.test(content)) {
       rationaleLines.push(content.replace(/^@rationale\s*/i, '').trim());
       collecting = true;
@@ -60,7 +66,8 @@ function findExplicitRationale(source: string): string {
 
 /** Return violations for one authored component metadata block. */
 export function findNeighbourRationaleViolations(entry: InventoryEntry): InventoryViolation[] {
-  const hasRelatedAndAvoidWhen = entry.related.length > 0 && entry.avoidWhen.length > 0;
+  const hasRelatedAndAvoidWhen =
+    entry.related.some((relatedId) => relatedId !== entry.id) && entry.avoidWhen.length > 0;
   const rationale = findExplicitRationale(entry.source);
   const namedMarker = rationale
     .match(/\b(?:nearest|closest)\s+alternative\s*:\s*(.+)$/i)?.[1]

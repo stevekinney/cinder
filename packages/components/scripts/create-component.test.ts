@@ -128,6 +128,12 @@ describe('buildContext', () => {
 });
 
 describe('renderSvelte @cinder block', () => {
+  it('scaffolds neighbour metadata for the inventory convention', () => {
+    const source = renderSvelte(buildContext('my-widget'));
+    expect(source).toContain('@related button');
+    expect(source).toContain('@rationale Nearest alternative: button');
+  });
+
   it('produces a block that the metadata extractor accepts (stable component)', () => {
     const context = buildContext('my-widget');
     const source = renderSvelte(context);

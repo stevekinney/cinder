@@ -53,6 +53,29 @@ describe('findNeighbourRationaleViolations', () => {
     ).toHaveLength(1);
   });
 
+  it('ignores rationale text before the @cinder marker', () => {
+    expect(
+      findNeighbourRationaleViolations({
+        id: 'new-component',
+        related: [],
+        avoidWhen: [],
+        source:
+          '<script module>/**\n * @rationale Nearest alternative: button\n * @cinder\n * @purpose A component.\n */</script>',
+      }),
+    ).toHaveLength(1);
+  });
+
+  it('rejects a self-reference in @related metadata', () => {
+    expect(
+      findNeighbourRationaleViolations({
+        id: 'new-component',
+        related: ['new-component'],
+        avoidWhen: [{ reason: 'Use something else.' }],
+        source: '',
+      }),
+    ).toHaveLength(1);
+  });
+
   it('preserves punctuation and emphasis in a metadata rationale', () => {
     expect(
       findNeighbourRationaleViolations({
