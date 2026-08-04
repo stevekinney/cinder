@@ -17,12 +17,9 @@
 </script>
 
 <script lang="ts">
+  import Grid from '@lostgradient/cinder/grid';
   import { classNames } from '../../utilities/class-names.ts';
-  import { useResizeObserver } from '../../utilities/use-resize-observer.svelte.ts';
   import type { BentoGridProps } from './bento-grid.types.ts';
-
-  const COLLAPSE_MAX_WIDTH_REM = 48;
-  const FALLBACK_ROOT_FONT_SIZE_PX = 16;
 
   let {
     columns,
@@ -32,73 +29,32 @@
     collapse = true,
     as = 'div',
     class: customClassName,
-    children,
+    children: content,
     ...rest
   }: BentoGridProps = $props();
 
-  let isNarrow = $state(false);
-  let hasMeasuredWidth = $state(false);
-
+  const defaultColumns = 'repeat(4, minmax(0, 1fr))';
   const resolvedColumns = $derived.by(() => {
     if (typeof columns === 'number') {
-      if (!Number.isInteger(columns) || columns < 1) return undefined;
+      if (!Number.isInteger(columns) || columns < 1) return defaultColumns;
       return `repeat(${columns}, minmax(0, 1fr))`;
     }
     if (typeof columns === 'string' && columns.length > 0) return columns;
-    return undefined;
+    return defaultColumns;
   });
-
-  function getCollapseMaxWidthPx(): number {
-    if (typeof window === 'undefined') return COLLAPSE_MAX_WIDTH_REM * FALLBACK_ROOT_FONT_SIZE_PX;
-
-    const rootFontSize = Number.parseFloat(getComputedStyle(document.documentElement).fontSize);
-    const baseFontSize =
-      Number.isFinite(rootFontSize) && rootFontSize > 0 ? rootFontSize : FALLBACK_ROOT_FONT_SIZE_PX;
-    return COLLAPSE_MAX_WIDTH_REM * baseFontSize;
-  }
-
-  function updateNarrowState(width: number): void {
-    if (!Number.isFinite(width) || width <= 0) {
-      return;
-    }
-
-    hasMeasuredWidth = true;
-    isNarrow = width <= getCollapseMaxWidthPx();
-  }
-
-  function getObservedWidth(entry: ResizeObserverEntry): number {
-    const borderBoxSize = Array.isArray(entry.borderBoxSize)
-      ? entry.borderBoxSize[0]
-      : entry.borderBoxSize;
-
-    return borderBoxSize?.inlineSize ?? entry.contentRect.width;
-  }
-
-  const observeResize = useResizeObserver(
-    (entries) => {
-      const entry = entries[0];
-      if (entry) updateNarrowState(getObservedWidth(entry));
-    },
-    { box: 'border-box', enabled: () => collapse },
-  );
-
-  const observeGrid = (node: HTMLElement) => {
-    updateNarrowState(node.getBoundingClientRect().width);
-    return observeResize(node);
-  };
 </script>
 
-<svelte:element
-  this={as}
+<Grid
   {...rest}
-  {@attach observeGrid}
+  {as}
+  columns={resolvedColumns}
+  {gap}
+  {rowGap}
+  {columnGap}
+  narrowCollapseEnabled={collapse}
   class={classNames('cinder-bento-grid', customClassName)}
-  data-cinder-collapse={collapse ? '' : undefined}
-  data-cinder-narrow={collapse && isNarrow ? '' : undefined}
-  data-cinder-wide={collapse && hasMeasuredWidth && !isNarrow ? '' : undefined}
-  style:--cinder-bento-grid-columns={resolvedColumns}
-  style:--cinder-bento-grid-row-gap={rowGap ?? gap}
-  style:--cinder-bento-grid-column-gap={columnGap ?? gap}
 >
-  {@render children?.()}
-</svelte:element>
+  {#snippet children()}
+    {@render content?.()}
+  {/snippet}
+</Grid>
