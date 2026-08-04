@@ -1146,6 +1146,27 @@ describe('NavigationBar', () => {
     });
   });
 
+  test('pending toggle Tab preserves a focusable brand before the portaled items', async () => {
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        brand: brandLinkSnippet(),
+        items: keyboardNavigationSnippet({}),
+        menuToggle: toggleSnippet(),
+        menuTogglePlacement: 'before-brand',
+      });
+
+      await openCollapsedMobileMenu(container);
+      const toggle = container.querySelector('#toggle-btn') as HTMLButtonElement;
+      const brandLink = container.querySelector('#brand-link');
+
+      toggle.focus();
+      await fireEvent.keyDown(toggle, { key: 'Tab' });
+      await waitForMobilePanelPosition(container);
+      await tick();
+      expect(document.activeElement).toBe(brandLink);
+    });
+  });
+
   test('brand Tab enters the portaled items after a before-brand toggle', async () => {
     await withResizeObserver(async () => {
       const { container } = render(NavigationBar, {
