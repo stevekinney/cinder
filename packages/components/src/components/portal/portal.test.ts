@@ -1745,48 +1745,48 @@ describe('Portal', () => {
 
   test('falls back to an authored source direction after removing an explicit direction', async () => {
     const source = document.createElement('section');
-    source.setAttribute('dir', 'ltr');
+    source.setAttribute('dir', 'rtl');
     const mountPoint = document.createElement('div');
     source.append(mountPoint);
     document.body.append(source);
 
     const { container, rerender } = render(Portal, {
       target: mountPoint,
-      props: { dir: 'rtl', children: childSnippet },
+      props: { dir: 'ltr', children: childSnippet },
     });
     source.append(container);
     await tick();
 
     const wrapper = document.body.querySelector('[data-testid="portal-child"]')?.parentElement;
-    expect(wrapper?.getAttribute('dir')).toBe('rtl');
+    expect(wrapper?.getAttribute('dir')).toBe('ltr');
 
     await rerender({ dir: undefined, children: childSnippet });
     await tick();
 
-    expect(wrapper?.getAttribute('dir')).toBe('ltr');
+    expect(wrapper?.getAttribute('dir')).toBe('rtl');
   });
 
   test('falls back to a computed source direction after removing an explicit direction', async () => {
     const source = document.createElement('section');
-    source.style.direction = 'ltr';
+    source.style.direction = 'rtl';
     const mountPoint = document.createElement('div');
     source.append(mountPoint);
     document.body.append(source);
 
     const { container, rerender } = render(Portal, {
       target: mountPoint,
-      props: { dir: 'rtl', children: childSnippet },
+      props: { dir: 'ltr', children: childSnippet },
     });
     source.append(container);
     await tick();
 
     const wrapper = document.body.querySelector('[data-testid="portal-child"]')?.parentElement;
-    expect(wrapper?.getAttribute('dir')).toBe('rtl');
+    expect(wrapper?.getAttribute('dir')).toBe('ltr');
 
     await rerender({ dir: undefined, children: childSnippet });
     await tick();
 
-    expect(wrapper?.getAttribute('dir')).toBe('ltr');
+    expect(wrapper?.getAttribute('dir')).toBe('rtl');
   });
 
   test('reapplies a different explicit direction after removing one', async () => {
