@@ -1318,8 +1318,30 @@ function escapedCssIdentifierEnd(value, start) {
   return index;
 }
 
+function literalSourceRangeView(value) {
+  return {
+    get length() {
+      return value.length;
+    },
+    [Symbol.iterator]: function* () {
+      for (let index = 0; index < value.length; index += 1) {
+        yield { start: index, end: index + 1 };
+      }
+    },
+  };
+}
+
 function literalSourceRanges(value) {
-  return Array.from({ length: value.length }, (_, index) => ({ start: index, end: index + 1 }));
+  return new Proxy(literalSourceRangeView(value), {
+    get(target, property, receiver) {
+      if (typeof property === 'string' && /^\d+$/.test(property)) {
+        const index = Number(property);
+        if (index < 0 || index >= value.length) return undefined;
+        return { start: index, end: index + 1 };
+      }
+      return Reflect.get(target, property, receiver);
+    },
+  });
 }
 
 function decodeCssEscapesForInspection(value, baseRanges = literalSourceRanges(value)) {
