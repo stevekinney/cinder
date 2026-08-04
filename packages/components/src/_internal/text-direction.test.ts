@@ -115,6 +115,10 @@ describe('resolveTextDirection', () => {
       ['foo(width >= 20px)', false],
       ['(min-width: 20px) and (unknown-feature: 1px)', false],
       ['(min-width: 1.2.3px)', false],
+      ['min-width: 20px', false],
+      ['min-width: 20px and max-width: 40px', false],
+      ['(min-width: 20px) and (max-width: 40px) or (width: 100px)', false],
+      ['(20px < width > 40px)', false],
     ];
     for (const [condition, expected] of cases) {
       expect(isFullyParsedContainerCondition(condition), condition).toBe(expected);
@@ -130,6 +134,16 @@ describe('resolveTextDirection', () => {
     expect(evaluateLogicalContainerCondition('not (min-width: 20px)', 30, 16, 30)).toBe(false);
     expect(evaluateLogicalContainerCondition('not min-width: 20px', 10, 16, 10)).toBe(false);
     expect(evaluateLogicalContainerCondition('not(width >= 20px)', 10, 16, 10)).toBe(false);
+    expect(evaluateLogicalContainerCondition('min-width: 20px', 30, 16, 30)).toBe(false);
+    expect(
+      evaluateLogicalContainerCondition(
+        '(min-width: 20px) and (max-width: 40px) or (width: 100px)',
+        30,
+        16,
+        30,
+      ),
+    ).toBe(false);
+    expect(evaluateLogicalContainerCondition('(20px < width > 40px)', 50, 16, 50)).toBe(false);
   });
 
   test('only treats unknown CSS rules with container at-rule text as container rules', () => {

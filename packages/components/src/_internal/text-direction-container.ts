@@ -101,7 +101,7 @@ const containerSizeTermPattern =
 const featureFirstRangePattern =
   /^(?:width|inline-size)\s*(?:>=|>|<=|<)\s*(?:\d+(?:\.\d+)?|\.\d+)(?:px|rem)$/i;
 const valueFirstRangePattern =
-  /^(?:(?:\d+(?:\.\d+)?|\.\d+)(?:px|rem)\s*(?:<=|<|>=|>)\s*(?:width|inline-size))(?:\s*(?:<=|<|>=|>)\s*(?:\d+(?:\.\d+)?|\.\d+)(?:px|rem))?$/i;
+  /^(?:(?:(?:\d+(?:\.\d+)?|\.\d+)(?:px|rem)\s*(?:<=|<)\s*(?:width|inline-size))(?:\s*(?:<=|<)\s*(?:\d+(?:\.\d+)?|\.\d+)(?:px|rem))?|(?:(?:\d+(?:\.\d+)?|\.\d+)(?:px|rem)\s*(?:>=|>)\s*(?:width|inline-size))(?:\s*(?:>=|>)\s*(?:\d+(?:\.\d+)?|\.\d+)(?:px|rem))?)$/i;
 
 /**
  * Returns true only when every token in a size condition belongs to the
@@ -115,21 +115,25 @@ export function isFullyParsedContainerCondition(conditionText: string): boolean 
 }
 
 function parseContainerCondition(conditionText: string): boolean {
-  const trimmed = unwrapRedundantParentheses(conditionText);
+  const original = conditionText.trim();
+  const trimmed = unwrapRedundantParentheses(original);
+  const wasGrouped = trimmed !== original;
   const orParts = splitTopLevel(trimmed, 'or');
-  if (orParts.length > 1) return orParts.every(parseContainerCondition);
   const andParts = splitTopLevel(trimmed, 'and');
+  if (orParts.length > 1 && andParts.length > 1) return false;
+  if (orParts.length > 1) return orParts.every(parseContainerCondition);
   if (andParts.length > 1) return andParts.every(parseContainerCondition);
   const notPrefix = /^not\s+/i.exec(trimmed);
   if (notPrefix) {
     const operand = trimmed.slice(notPrefix[0].length).trim();
     const unwrappedOperand = unwrapRedundantParentheses(operand);
-    return unwrappedOperand !== operand && parseContainerCondition(unwrappedOperand);
+    return unwrappedOperand !== operand && parseContainerCondition(operand);
   }
   return (
-    containerSizeTermPattern.test(trimmed) ||
-    featureFirstRangePattern.test(trimmed) ||
-    valueFirstRangePattern.test(trimmed)
+    wasGrouped &&
+    (containerSizeTermPattern.test(trimmed) ||
+      featureFirstRangePattern.test(trimmed) ||
+      valueFirstRangePattern.test(trimmed))
   );
 }
 
