@@ -399,6 +399,25 @@ describe('SpeedDial', () => {
     expect(document.activeElement).toBe(precedingButton);
   });
 
+  test('reverse Tab returns to a native summary without an explicit tabindex', async () => {
+    const details = document.createElement('details');
+    const summary = document.createElement('summary');
+    summary.textContent = 'Before SpeedDial';
+    details.append(summary);
+    document.body.append(details);
+    render(SpeedDialFixture);
+    const trigger = screen.getByRole('button', { name: 'Quick actions' });
+
+    await fireEvent.click(trigger);
+    await flushQueuedFocus();
+    const create = screen.getByRole('button', { name: 'Create' });
+
+    create.focus();
+    await fireEvent.keyDown(create, { key: 'Tab', shiftKey: true });
+    expect(summary.hasAttribute('tabindex')).toBe(false);
+    expect(document.activeElement).toBe(summary);
+  });
+
   test('reverse Tab finds a preceding sibling inside the same shadow root', async () => {
     // A document-only query cannot see into a shadow root, so a SpeedDial
     // rendered inside one previously fell straight through to the trigger
