@@ -7,6 +7,9 @@ export const allowedRawControlCounts = new Map<string, number>([
   ['approval-card/approval-card-actions.svelte', 2],
   ['checkbox/checkbox.svelte', 1],
   ['combobox/combobox.svelte', 1],
+  // CommandPalette intentionally retains one native text input inside a modal
+  // <dialog>; see docs/decisions/command-palette-native-dialog.md. This exception
+  // is bounded to the editable combobox control, not the dialog surface.
   ['command-palette/command-palette.svelte', 1],
   ['date-picker/date-picker.svelte', 2],
   ['faceted-filter-bar/faceted-filter-bar.svelte', 1],
@@ -32,6 +35,12 @@ export const allowedRawControlCounts = new Map<string, number>([
 // silently pass the migration guard. Other records retain the count guard until
 // their primitive migration is completed.
 export const allowedRawControlSignatures = new Map<string, readonly string[]>([
+  [
+    'command-palette/command-palette.svelte',
+    [
+      'input|aria-activedescendant|aria-autocomplete=list|aria-controls|aria-expanded=true|autocomplete=off|autocorrect=off|class=cinder-command-palette__input|id|oninput|onkeydown|placeholder|role=combobox|spellcheck=false|this|type=text|value',
+    ],
+  ],
   [
     'approval-card/approval-card-actions.svelte',
     [
@@ -138,6 +147,9 @@ export const allowedFloatingCounts = new Map<string, number>(
     'waveform/waveform.css',
   ].map((filePath) => [filePath, 1] as const),
 );
+// CommandPalette is intentionally absent from this floating-surface migration:
+// its panel remains a native modal <dialog>, not a positioned non-modal surface.
+// See docs/decisions/command-palette-native-dialog.md for the bounded exception.
 allowedFloatingCounts.set('dropdown/dropdown.css', 6);
 allowedFloatingCounts.set('menu-bar/menu-bar.css', 2);
 allowedFloatingCounts.set('styles/components/experimental/popover.css', 4);
