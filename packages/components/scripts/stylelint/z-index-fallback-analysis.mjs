@@ -2080,9 +2080,11 @@ function conditionalBranchValueRanges(value, group, parenthesisPairs) {
 }
 
 function toggleBranchValueRanges(value, group, parenthesisPairs) {
+  // CSS Values 5 toggle() accepts one or more whole values (`toggle(<whole-value>#)`);
+  // a single-argument toggle() is valid and always resolves to that argument.
   const branchRanges = randomItemArgumentRanges(value, group, parenthesisPairs);
   return branchRanges !== undefined &&
-    branchRanges.length >= 2 &&
+    branchRanges.length >= 1 &&
     branchRanges.every((branchRange) => branchRange.start < branchRange.end)
     ? branchRanges
     : undefined;
@@ -3132,6 +3134,107 @@ function hasFallbackIndependentClampBound(
   );
 }
 
+// Whether `child` is (after unwrapping transparent grouping/calc() wrappers)
+// exactly one whole argument of the extrema function described by
+// containerRange/functionName, with every other argument a pure static
+// value. This is the shape the "whole extrema" defined-path gap reports: a
+// *written-fallback* substitution (definedSubstitutionPathCandidates' own
+// domain — a bare, still-unresolved runtime substitution belongs to
+// unresolvedExtremaRangeCandidates() instead, which already covers it) with
+// nothing else composed around it and no other runtime sibling, e.g.
+// `max(var(--layer, 1), 1)`. A child that is only part of a larger argument
+// expression (e.g. `max(var(--layer, -1) * 0, -0)`) is left to the existing
+// multilinear/cancellation analyses, and a container with another
+// unresolved sibling (e.g. `max(var(--inner, -1), progress(var(--runtime),
+// 0, 1))`) is left to unresolvedExtremaRangeCandidates() — in both cases the
+// static-sibling bound reasoning below has no way to account for what the
+// rest of the container contributes.
+function definedPathExtremaArguments(
+  frame,
+  value,
+  child,
+  containerRange,
+  functionName,
+  parenthesisPairs,
+) {
+  if (typeof child.resolvedFallback !== 'string') return undefined;
+  const parsedArguments = fallbackIndependentStaticArguments(
+    frame,
+    value,
+    containerRange,
+    functionName,
+    parenthesisPairs,
+  );
+  if (parsedArguments === undefined) return undefined;
+  if (functionName === 'clamp' && parsedArguments.argumentCount !== 3) return undefined;
+  if (parsedArguments.staticArguments.length !== parsedArguments.argumentCount - 1)
+    return undefined;
+  const isWholeArgument = parsedArguments.argumentRanges.some((argumentRange) => {
+    const unwrapped = unwrapStaticContainer(value, argumentRange, parenthesisPairs);
+    return unwrapped.start === child.start && unwrapped.end === child.end;
+  });
+  return isWholeArgument ? parsedArguments : undefined;
+}
+
+// A max()/min()/clamp() call mixing statically incompatible argument types
+// (e.g. a bare number against a length) is invalid CSS and is dropped by the
+// browser entirely, so it can never apply a value at all. Checks the same
+// pure-static siblings unresolvedExtremaRangeCandidates() checks, plus the
+// correlated defined-path children's own written fallbacks (the concrete
+// value they contribute when their enclosing var()/attr()/env() is
+// undefined). Other, unrelated runtime children are left out of the check
+// entirely, same as unresolvedExtremaRangeCandidates(): their live value is
+// unknown, so they cannot be used to prove a type conflict either way.
+function extremaContainerIsStaticallyValid(parsedArguments, containerRange, correlatedChildren) {
+  const argumentValues = parsedArguments.staticArguments.map((argument) => argument.value);
+  for (const child of correlatedChildren) {
+    if (
+      child.start >= containerRange.start &&
+      child.end <= containerRange.end &&
+      typeof child.resolvedFallback === 'string'
+    )
+      argumentValues.push(child.resolvedFallback);
+  }
+  if (argumentValues.length < 2) return true;
+  return (
+    haveCompatibleStaticProgressTypes(argumentValues) &&
+    !argumentValues.some((argumentValue) => isStaticallyInvalidArithmetic(argumentValue))
+  );
+}
+
+// Whether a whole-value math ancestor (max()/min()/clamp()) provably bounds
+// its own computed value away from the magic layer through a static sibling
+// argument, independent of whatever the rest of its argument resolves to.
+function nonCalculationAncestorHasSafeMagicBound(
+  frame,
+  value,
+  containerRange,
+  budget,
+  parenthesisPairs,
+  functionName,
+) {
+  if (functionName === 'clamp')
+    return hasFallbackIndependentClampBound(
+      frame,
+      value,
+      containerRange,
+      2,
+      'magic',
+      budget,
+      parenthesisPairs,
+    );
+  if (functionName === 'max' || functionName === 'min')
+    return hasFallbackIndependentSafeBound(
+      frame,
+      value,
+      containerRange,
+      functionName,
+      'magic',
+      parenthesisPairs,
+    );
+  return false;
+}
+
 function isPotentialBareOperandStart(value, start, end) {
   while (start < end && isCssWhitespaceOrComment(value[start])) start += 1;
   while (start < end && (value[start] === '+' || value[start] === '-')) {
@@ -3223,6 +3326,15 @@ function substitutionHeader(frame, value) {
     .trim();
 }
 
+// CSS Values 5's attr() grammar allows an optional namespace prefix on the attribute
+// name: <attr-name> = [ <ident-token> '|' ]? <ident-token>. Consume it before the type
+// syntax so a header like `svg|data-layer type(<integer>)` doesn't stop after `svg`.
+function attrHeaderTypeStart(header, identifierEnd) {
+  if (header[identifierEnd] !== '|') return identifierEnd;
+  const namespacedNameEnd = cssIdentifierTokenEnd(header, identifierEnd + 1);
+  return namespacedNameEnd > identifierEnd + 1 ? namespacedNameEnd : identifierEnd;
+}
+
 function validSubstitutionHeader(frame, value) {
   const header = substitutionHeader(frame, value);
   const identifierEnd = cssIdentifierTokenEnd(header, 0);
@@ -3235,7 +3347,7 @@ function validSubstitutionHeader(frame, value) {
       /^(?:\s+(?:\+?\d+|-0+))*$/.test(header.slice(identifierEnd))
     );
   if (frame.functionName !== 'attr') return false;
-  const attrType = header.slice(identifierEnd).trim();
+  const attrType = header.slice(attrHeaderTypeStart(header, identifierEnd)).trim();
   if (attrType === '' || attrType === '%') return true;
   if (cssIdentifierTokenEnd(attrType, 0) === attrType.length)
     return !invalidCustomIdentKeywords.has(attrType.toLowerCase());
@@ -3317,7 +3429,7 @@ function substitutionDefinedPathWitnessGroups(frame, value) {
   if (frame.functionName !== 'attr') return undefined;
   const header = substitutionHeader(frame, value);
   const identifierEnd = cssIdentifierTokenEnd(header, 0);
-  const attrType = header.slice(identifierEnd).trim();
+  const attrType = header.slice(attrHeaderTypeStart(header, identifierEnd)).trim();
   return attrDefinedPathWitnessGroups(attrType);
 }
 
@@ -5033,8 +5145,12 @@ function definedSubstitutionPathCandidates(
     )
       continue;
     let usesOnlyCalculationContainers = true;
+    let hasUnprovenExtremaAncestor = false;
     for (const child of correlatedChildren) {
       let parent = child.parenthesisParent;
+      let childHasNonCalculationAncestor = false;
+      let childHasUnprovenExtremaAncestor = false;
+      let childHasSafeMagicBound = false;
       while (
         parent?.type === 'group' &&
         parent.end !== undefined &&
@@ -5047,13 +5163,85 @@ function definedSubstitutionPathCandidates(
           parent.functionName !== '-webkit-calc' &&
           parent.functionName !== 'calc-mix'
         ) {
-          usesOnlyCalculationContainers = false;
-          break;
+          childHasNonCalculationAncestor = true;
+          // The multilinear reasoning below only models calc()-style arithmetic,
+          // so any non-calc ancestor takes this child out of that path. A
+          // whole-extrema wrapper (max()/min()/clamp()) can still safely bound
+          // an arbitrarily-defined child away from the magic layer through a
+          // static sibling argument, regardless of what other non-linear
+          // functions (exp(), atan(), ...) sit between the child and that
+          // wrapper; reuse the same fallback-independent bound proofs the
+          // unproven-candidate analysis uses for genuinely unknown runtime
+          // values, walking outward until one is found or the range ends.
+          // Non-extrema wrappers are left to their own dedicated analyses
+          // (e.g. repeated-call cancellation) rather than failing closed here.
+          if (extremaFunctionNames.has(parent.functionName)) {
+            const containerRange = { start: parent.functionStart, end: parent.end };
+            const parsedArguments = definedPathExtremaArguments(
+              frame,
+              value,
+              child,
+              containerRange,
+              parent.functionName,
+              parenthesisPairs,
+            );
+            if (
+              parsedArguments !== undefined &&
+              extremaContainerIsStaticallyValid(parsedArguments, containerRange, correlatedChildren)
+            ) {
+              if (
+                nonCalculationAncestorHasSafeMagicBound(
+                  frame,
+                  value,
+                  containerRange,
+                  budget,
+                  parenthesisPairs,
+                  parent.functionName,
+                )
+              ) {
+                childHasSafeMagicBound = true;
+                break;
+              }
+              childHasUnprovenExtremaAncestor = true;
+            }
+          }
         }
         parent = parent.parenthesisParent;
       }
-      if (!usesOnlyCalculationContainers) break;
+      if (childHasNonCalculationAncestor) usesOnlyCalculationContainers = false;
+      if (childHasSafeMagicBound) continue;
+      if (childHasUnprovenExtremaAncestor) {
+        hasUnprovenExtremaAncestor = true;
+        break;
+      }
     }
+    if (
+      hasUnprovenExtremaAncestor &&
+      // A bare operator stream (or invalid comma stream) outside math grammar
+      // can never apply as CSS: the declaration is dropped entirely, so a
+      // defined-path witness nested inside it never reaches the page. Mirrors
+      // the identical guard in unresolvedExtremaRangeCandidates(). Checked
+      // here, only on the path that is about to fail closed, rather than on
+      // every call: hasBareOperatorStream() is O(range size), and this
+      // function runs once per substitution frame, so checking it
+      // unconditionally makes deeply nested fallbacks quadratic.
+      !(
+        frame.resolvedClassification === 'unresolved' &&
+        (frame.hasInvalidCommaStream === true ||
+          hasBareOperatorStream(value, range.start, range.end, budget, frame.mathContext, true))
+      )
+    )
+      // No enclosing whole-extrema wrapper proves this defined-path witness is
+      // bounded away from the magic layer; fail closed instead of silently
+      // dropping it (it might resolve to the banned layer).
+      return [
+        {
+          ...candidate,
+          hasRuntimeSibling: true,
+          resolvedFallback: fallbackResolutionTooComplex,
+          resolvedClassification: 'too-complex',
+        },
+      ];
     if (!usesOnlyCalculationContainers) continue;
     const correlatedChildSet = new Set(correlatedChildren);
     const resolvedSiblings = frame.children.filter(
@@ -6033,19 +6221,37 @@ function conditionalGroupReplacements(
         (child) => child.start >= branchRange.start && child.end <= branchRange.end,
       ),
     };
+    // A branch that is nothing but one var()/env()/attr() substitution picks
+    // that branch outright whenever the substitution is defined at all — its
+    // *written* fallback only applies when it is undefined. Resolving straight
+    // to the written fallback here hides a defined-path escape: the branch is
+    // just as reachable if the substitution is defined to something unsafe.
+    // Only substitutions the primary written-fallback check hasn't already
+    // caught need this — an already-unsafe written fallback surfaces through
+    // the normal resolution below regardless.
+    const [branchOnlyChild] = branchFrame.children;
+    const branchIsUnprovenDefinedPathSubstitution =
+      branchFrame.children.length === 1 &&
+      branchOnlyChild.start === branchRange.start &&
+      branchOnlyChild.end === branchRange.end &&
+      branchOnlyChild.definedPathWitnesses !== undefined &&
+      typeof branchOnlyChild.resolvedFallback === 'string' &&
+      classifyStaticLayer(branchOnlyChild.resolvedFallback) === 'safe';
     for (const nestedCombination of nestedCombinations) {
       const preserveKnownRuntimeBranch =
         group.functionName === 'first-valid' &&
         firstValidBranchIsKnownRuntimeFunction(value, frame, branchRange, parenthesisPairs);
       const resolvedBranch = preserveKnownRuntimeBranch
         ? value.slice(branchRange.start, branchRange.end)
-        : resolveFrameExpressionWithRangeReplacements(
-            branchFrame,
-            value,
-            branchRange,
-            budget,
-            nestedCombination,
-          );
+        : branchIsUnprovenDefinedPathSubstitution
+          ? fallbackResolutionTooComplex
+          : resolveFrameExpressionWithRangeReplacements(
+              branchFrame,
+              value,
+              branchRange,
+              budget,
+              nestedCombination,
+            );
       if (resolvedBranch === fallbackResolutionTooComplex) return fallbackResolutionTooComplex;
       const nestedAnchor = nestedCombination.find(
         (replacement) => replacement.anchorRange.start !== replacement.anchorRange.end,

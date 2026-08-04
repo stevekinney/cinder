@@ -2978,6 +2978,9 @@ describe('cinder/z-index-scale', () => {
     'attr(data-layer type(<integer>+), 9999)',
     'attr(data-layer type(<transform-list>), -1)',
     'attr(data-layer type(default), 9999)',
+    // CSS Values 5 <attr-name> allows an optional `<ident-token> '|'` namespace
+    // prefix before the attribute name; the type syntax still starts after it.
+    'attr(svg|data-layer type(<integer>), 9999)',
   ])('continues inspecting a fallback from a valid substitution header: %s', async (fallback) => {
     expect(
       warnings(
@@ -4552,6 +4555,8 @@ describe('cinder/z-index-scale', () => {
     ['calc(9999 * env(foo, 0px))', 1],
     ['calc(9999 * attr(data-layer type(<number>), 0))', 1],
     ['calc(9999 * attr(data-layer type(<integer>), 0))', 1],
+    // The namespace prefix must not block defined-path witness derivation either.
+    ['calc(9999 * attr(svg|data-layer type(<number>), 0))', 1],
     ['calc(9999 * attr(data-scale px, 0px) / 1px)', 1],
     ['calc(9999 * attr(data-scale type(<number> | <length>), 0) / 1px)', 1],
     ['calc(9999 * attr(data-scale type(<number>+), 0) / 1)', 1],
@@ -4597,6 +4602,23 @@ describe('cinder/z-index-scale', () => {
     ['calc-mix(0.4, 1, var(--inner, 9999))', 1],
     ['calc-mix(1.0, var(--inner, 9999), 1)', 1],
     ['calc(calc-mix(0, 9999px, 1em) / 1px)', 1],
+    // Whole-extrema wrappers (max()/min()/clamp()) aren't linear, so the
+    // multilinear witness reasoning above doesn't apply to them directly; a
+    // defined-path child inside one still needs a fallback-independent bound
+    // proof or it fails closed instead of being silently dropped.
+    ['max(var(--layer, 1), 1)', 1],
+    ['first-valid(var(--layer, 1), 1)', 1],
+    // A static sibling that bounds the result away from the magic layer
+    // (min()'s cap, or clamp()'s [min, max] range) still proves safety.
+    ['min(var(--layer, 1), 1)', 0],
+    ['clamp(0, calc(9999 * var(--layer, 0)), 1)', 0],
+    // A statically type-invalid combination (bare number vs. length) never
+    // applies as CSS, so it can't be a live escape either way.
+    ['max(var(--layer, 9999), 1px)', 0],
+    // Arithmetic composed directly inside an extrema argument (no calc()
+    // wrapper) is left to the multilinear/cancellation analyses, not this
+    // bound check, so it does not regress independently of definedness.
+    ['max(var(--layer, -1) * 0, -0)', 0],
   ] as const)(
     'tracks the defined path of substitutions with safe fallbacks: %s',
     async (fallback, count) => {
@@ -4647,7 +4669,11 @@ describe('cinder/z-index-scale', () => {
     ['toggle(0, 1)', 0],
     ['toggle(1, calc(9999))', 1],
     ['toggle(1, toggle(9999, 1))', 1],
-    ['toggle(9999)', 0],
+    // toggle(<whole-value>#) accepts one or more arguments (CSS Values 5); a
+    // single-argument toggle() is valid and always resolves to that argument.
+    ['toggle(9999)', 1],
+    ['toggle(1)', 0],
+    ['toggle()', 0],
     ['toggle(9999, , 1)', 0],
     ['toggle(9999; 1)', 0],
   ] as const)('tracks selectable CSS toggle() values: %s', async (fallback, count) => {
