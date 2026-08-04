@@ -687,6 +687,7 @@ describe('cinder/z-index-scale', () => {
     ],
     ['calc(9999 * (random(property-scoped, 0, 1) - random(property-scoped, 0, 1)))', 0],
     ['calc(9999 * (random(--shared, 0, 1) - random(--shared, 0, 2) / 2))', 0],
+    ['calc(9999 * (random(--shared, 0, 1) - random(--shared, 0, 2)))', 1],
     ['calc(9999 * (random-item(--shared, 0, 1) - random-item(--shared, 0, 1)))', 0],
     ['calc(9999 * (random-item(--left, 0, 1) - random-item(--right, 0, 1)))', 1],
   ] as const)('correlates CSS random functions by cache key: %s', async (fallback, count) => {
