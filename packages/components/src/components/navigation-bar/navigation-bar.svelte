@@ -30,7 +30,7 @@
   import { BROWSER as browser } from 'esm-env';
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
   import { classNames } from '../../utilities/class-names.ts';
-  import { getSequentialFocusTargets } from '../../utilities/focus.ts';
+  import { getSequentialFocusTargets, getTabIndexValue } from '../../utilities/focus.ts';
   import { createPortalAttachment } from '../portal/index.ts';
   import {
     closestAcrossShadow,
@@ -260,7 +260,23 @@
       menuTogglePlacement === 'before-brand'
         ? findFirstBrandFocusTargetAfterToggle(navigationBarElement, toggle)
         : null;
-    return brandTarget ?? getSequentialNavigationItems()[0] ?? null;
+    if (brandTarget) return brandTarget;
+
+    const items = getSequentialNavigationItems();
+    const toggleTabIndex = toggle ? getTabIndexValue(toggle) : 0;
+    if (toggleTabIndex > 0) {
+      // A positive-tabindex toggle has already passed every lower-or-equal
+      // positive-tabindex item in native order, so the fallback must filter
+      // for a same/higher positive item (or the first zero-tier item)
+      // instead of naively taking the globally-first (lowest positive) item.
+      return (
+        items.find((item) => getTabIndexValue(item) >= toggleTabIndex) ??
+        items.find((item) => getTabIndexValue(item) === 0) ??
+        null
+      );
+    }
+
+    return items[0] ?? null;
   }
 
   function bridgeBrandTabToPortaledPanel(event: KeyboardEvent): boolean {
@@ -366,11 +382,14 @@
     focusTarget?.focus();
   }
 
-  function getFocusTargetBeforeItems(): SequentialFocusTarget | null {
+  function getFocusTargetBeforeItems(
+    navigationItem: HTMLElement | null = null,
+  ): SequentialFocusTarget | null {
     return findFocusTargetBeforeNavigationItems(
       navigationBarElement,
       toggleElement,
       menuTogglePlacement === 'before-brand',
+      navigationItem,
     );
   }
 
@@ -406,7 +425,7 @@
           !hasSequentialTargetBefore &&
           (navigationItem === enabledItems[0] || navigationItem === logicalEnabledItems[0])))
     ) {
-      const previousTarget = getFocusTargetBeforeItems();
+      const previousTarget = getFocusTargetBeforeItems(navigationItem);
       if (!previousTarget) return false;
       event.preventDefault();
       previousTarget.focus();

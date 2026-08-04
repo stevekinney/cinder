@@ -44,9 +44,24 @@ export function findFocusTargetBeforeNavigationItems(
   navigationBar: HTMLElement | null,
   toggle: HTMLElement | null,
   brandComesBeforeItems: boolean,
+  navigationItem: HTMLElement | null = null,
 ): SequentialFocusTarget | null {
   if (brandComesBeforeItems) {
-    const brandTarget = getNavigationBarBrandFocusTargets(navigationBar).at(-1);
+    const brandTargets = getNavigationBarBrandFocusTargets(navigationBar);
+    // Brand focus targets are sorted globally (positive tabindex first), so
+    // `.at(-1)` alone only means "the last stop before the items" when the
+    // focused item itself is zero/default-tier. A positive-tabindex item has
+    // already passed every lower-or-equal positive brand target in native
+    // order, so reverse Tab from it must land on the nearest one of those,
+    // not fall straight to a zero/default-tier brand target.
+    const referenceTabIndex = Math.max(0, navigationItem ? getTabIndexValue(navigationItem) : 0);
+    const brandTarget =
+      (navigationItem && referenceTabIndex > 0
+        ? [...brandTargets].reverse().find((candidate) => {
+            const candidateTabIndex = getTabIndexValue(candidate);
+            return candidateTabIndex > 0 && candidateTabIndex <= referenceTabIndex;
+          })
+        : undefined) ?? brandTargets.at(-1);
     if (brandTarget) return brandTarget;
   }
 

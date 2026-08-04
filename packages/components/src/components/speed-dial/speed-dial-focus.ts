@@ -1,4 +1,5 @@
 import {
+  composedContains,
   composedFocusScopes,
   getSequentialFocusTargets,
   getTabIndexValue,
@@ -50,9 +51,19 @@ export function isRenderedCandidate(candidate: HTMLElement): boolean {
 export function getFocusTargetBeforeSpeedDial({
   rootElement,
   actionsElement,
+  focusedAction = null,
 }: {
   rootElement: HTMLDivElement | null;
   actionsElement: HTMLDivElement | null;
+  /**
+   * The action the consumer is reverse-Tabbing from. Anchors tab-tier
+   * filtering: the SpeedDial root is a zero/default-tier DOM anchor, so
+   * without this, a positive-tabindex first action would incorrectly fall
+   * through to a zero/default-tier preceding candidate instead of the
+   * nearest lower-or-equal positive-tabindex one that native Shift+Tab
+   * would actually visit next.
+   */
+  focusedAction?: HTMLElement | null;
 }): SequentialFocusTarget | null {
   if (!rootElement || typeof document === 'undefined') return null;
 
@@ -66,9 +77,17 @@ export function getFocusTargetBeforeSpeedDial({
       getSequentialFocusTargets(root, {
         relativeTo: anchor,
         direction: 'before',
+        tierReference: focusedAction ?? anchor,
       })
+        // `Element.contains()` only walks the light DOM, so a focusable
+        // control inside the *open shadow root* of a light-DOM descendant of
+        // `rootElement`/`actionsElement` would otherwise read as "not
+        // contained" and get offered as a preceding page control even
+        // though it is still part of the SpeedDial's own composed subtree.
         .filter(
-          (candidate) => !rootElement.contains(candidate) && !actionsElement?.contains(candidate),
+          (candidate) =>
+            !composedContains(rootElement, candidate) &&
+            (!actionsElement || !composedContains(actionsElement, candidate)),
         )
         .at(-1) ?? null;
     if (preceding) return preceding;

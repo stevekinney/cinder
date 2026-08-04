@@ -304,7 +304,11 @@
       targetIndex !== -1 &&
       (firstTabOrderIndex === -1 || targetIndex <= firstTabOrderIndex)
     ) {
-      const previousTarget = getFocusTargetBeforeSpeedDial({ rootElement, actionsElement });
+      const previousTarget = getFocusTargetBeforeSpeedDial({
+        rootElement,
+        actionsElement,
+        focusedAction: target,
+      });
       event.preventDefault();
       (previousTarget ?? getTriggerElement())?.focus();
       return;

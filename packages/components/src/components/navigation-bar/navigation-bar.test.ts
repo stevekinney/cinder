@@ -292,6 +292,28 @@ function inlineControlBeforeNegativeNavigationSnippet() {
   }));
 }
 
+function positiveFirstNavigationSnippet() {
+  return createRawSnippet(() => ({
+    render: () => `
+      <div>
+        <button type="button" class="cinder-navigation-item" data-cinder-navigation-item data-key="home" tabindex="2">Home</button>
+        <button type="button" class="cinder-navigation-item" data-cinder-navigation-item data-key="settings">Settings</button>
+      </div>
+    `,
+  }));
+}
+
+function positiveThenNormalNavigationSnippet() {
+  return createRawSnippet(() => ({
+    render: () => `
+      <div>
+        <button type="button" class="cinder-navigation-item" data-cinder-navigation-item data-key="positive" tabindex="1">Positive</button>
+        <button type="button" class="cinder-navigation-item" data-cinder-navigation-item data-key="normal">Normal</button>
+      </div>
+    `,
+  }));
+}
+
 function allExcludedNavigationSnippet() {
   return createRawSnippet(() => ({
     render: () => `
@@ -1303,6 +1325,30 @@ describe('NavigationBar', () => {
     });
   });
 
+  test('toggle Tab skips a positive-tabindex navigation item that native order already visited', async () => {
+    // The items fallback used to take the globally-first (lowest positive)
+    // sequential item unconditionally. When the toggle itself has a higher
+    // positive tabindex, native order has already visited any lower
+    // positive-tabindex item, so Tab from the toggle must continue to a
+    // same/higher positive item or the first zero-tier item instead.
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        items: positiveThenNormalNavigationSnippet(),
+        menuToggle: toggleSnippet(),
+      });
+
+      await openCollapsedMobileMenu(container);
+      const itemsRegion = await waitForMobilePanelPosition(container);
+      const toggle = container.querySelector('#toggle-btn') as HTMLButtonElement;
+      const normalItem = itemsRegion.querySelector('[data-key="normal"]') as HTMLButtonElement;
+
+      toggle.setAttribute('tabindex', '2');
+      toggle.focus();
+      await fireEvent.keyDown(toggle, { key: 'Tab' });
+      expect(document.activeElement).toBe(normalItem);
+    });
+  });
+
   test('reverse Tab from portaled items returns to the final brand control', async () => {
     await withResizeObserver(async () => {
       const { container } = render(NavigationBar, {
@@ -1320,6 +1366,30 @@ describe('NavigationBar', () => {
       home.focus();
       await fireEvent.keyDown(home, { key: 'Tab', shiftKey: true });
       expect(document.activeElement).toBe(finalBrandControl);
+    });
+  });
+
+  test('reverse Tab threads the focused item tab tier into the brand lookup', async () => {
+    // With a positive-tabindex first navigation item, reverse Tab must land
+    // on the nearest lower-or-equal positive-tabindex brand control, not
+    // fall straight to the zero/default-tier brand target the untiered
+    // lookup previously always picked.
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        brand: positiveThenNormalBrandSnippet(),
+        items: positiveFirstNavigationSnippet(),
+        menuToggle: toggleSnippet(),
+        menuTogglePlacement: 'before-brand',
+      });
+
+      await openCollapsedMobileMenu(container);
+      const itemsRegion = await waitForMobilePanelPosition(container);
+      const home = itemsRegion.querySelector('[data-key="home"]') as HTMLButtonElement;
+      const brandPositive = container.querySelector('#brand-positive');
+
+      home.focus();
+      await fireEvent.keyDown(home, { key: 'Tab', shiftKey: true });
+      expect(document.activeElement).toBe(brandPositive);
     });
   });
 
