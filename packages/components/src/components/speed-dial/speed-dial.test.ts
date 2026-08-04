@@ -157,7 +157,7 @@ describe('SpeedDial', () => {
     }
   });
 
-  test('exit helper treats transition cancel as one property boundary', async () => {
+  test('exit helper ignores interrupted entrance transition cancellation', async () => {
     const action = document.createElement('button');
     document.body.append(action);
     const complete = mock(() => {});
@@ -171,6 +171,11 @@ describe('SpeedDial', () => {
       const cancel = waitForSpeedDialExit(action, complete);
 
       dispatchTransitionBoundary(action, 'transitioncancel', 'opacity');
+      dispatchTransitionBoundary(action, 'transitioncancel', 'transform');
+      await flushQueuedFocus();
+      expect(complete).not.toHaveBeenCalled();
+
+      dispatchTransitionBoundary(action, 'transitionend', 'opacity');
       await flushQueuedFocus();
       expect(complete).not.toHaveBeenCalled();
 

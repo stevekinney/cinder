@@ -66,7 +66,6 @@ function waitForSingleSpeedDialExit(element: HTMLElement, onComplete: () => void
     if (completed) return;
     completed = true;
     element.removeEventListener('transitionend', handleTransitionEnd);
-    element.removeEventListener('transitioncancel', handleTransitionEnd);
     if (fallbackTimer) clearTimeout(fallbackTimer);
     onComplete();
   };
@@ -87,13 +86,11 @@ function waitForSingleSpeedDialExit(element: HTMLElement, onComplete: () => void
   }
 
   element.addEventListener('transitionend', handleTransitionEnd);
-  element.addEventListener('transitioncancel', handleTransitionEnd);
   fallbackTimer = setTimeout(finish, totalTransitionTime + 50);
 
   return () => {
     completed = true;
     element.removeEventListener('transitionend', handleTransitionEnd);
-    element.removeEventListener('transitioncancel', handleTransitionEnd);
     if (fallbackTimer) clearTimeout(fallbackTimer);
   };
 }
