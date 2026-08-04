@@ -6291,9 +6291,7 @@ function fallbackCandidates(value) {
       frame.fallbackParent === undefined
         ? undefined
         : substitutionDefinedPathWitnesses(frame, value);
-    frame.definedPathCanBeNumber = frame.definedPathWitnesses?.some(
-      (witness) => analyzeStaticLayerValue(witness).resultType === 'number',
-    );
+    frame.definedPathCanBeNumber = frame.definedPathWitnesses?.includes('0');
     frame.unprovenBannedCandidates = unprovenCandidatesForFrame(
       frame,
       value,

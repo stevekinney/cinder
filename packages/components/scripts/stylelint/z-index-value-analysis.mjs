@@ -695,7 +695,26 @@ function evaluateConstantArithmetic(expression) {
         if (peek() !== ',') throw new Error('expected comma');
         index += 1;
       }
-      const boundedArguments = arguments_.filter((argument) => argument !== unboundedClampEndpoint);
+      const boundedArguments =
+        functionName === 'clamp'
+          ? arguments_.filter((argument) => argument !== unboundedClampEndpoint)
+          : arguments_;
+      const hasOnlyScalarArguments =
+        (functionName === 'hypot' || functionName === 'max' || functionName === 'min') &&
+        boundedArguments.length > 0 &&
+        boundedArguments.every(
+          (argument) => argument.units.size === 0 && argument.symbolicFactors.size === 0,
+        );
+      if (hasOnlyScalarArguments) {
+        if (functionName === 'hypot') {
+          let hypotenuse = 0;
+          for (const argument of boundedArguments)
+            hypotenuse = Math.hypot(hypotenuse, argument.value);
+          return withValue(boundedArguments[0], hypotenuse, exactHypotenuse(boundedArguments));
+        }
+        const selectedArgument = selectArithmeticExtremum(functionName, boundedArguments);
+        return withValue(selectedArgument, selectedArgument.value, selectedArgument.exactValue);
+      }
       if (!boundedArguments.every((argument) => sameUnits(argument, boundedArguments[0])))
         throw new Error('incompatible units');
       const hasUnknownConversion = boundedArguments.some(
