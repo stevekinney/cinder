@@ -307,7 +307,7 @@ describe('SpeedDial', () => {
 
     const group = screen.getByRole('group', { name: 'Quick actions' });
     const trigger = screen.getByRole('button', { name: 'Quick actions' });
-    const toolbar = screen.getByRole('toolbar', { hidden: true });
+    const toolbar = screen.getByRole('toolbar', { name: 'Actions', hidden: true });
 
     expect(group.classList.contains('cinder-speed-dial')).toBe(true);
     expect(trigger.getAttribute('aria-expanded')).toBe('false');
@@ -321,7 +321,7 @@ describe('SpeedDial', () => {
 
   test('closed toolbar keeps its exit surface mounted and inert', () => {
     const { container } = render(SpeedDialFixture);
-    const toolbar = screen.getByRole('toolbar', { hidden: true });
+    const toolbar = screen.getByRole('toolbar', { name: 'Actions', hidden: true });
 
     expect(container.querySelector('.cinder-speed-dial__actions')).toBe(toolbar);
     expect(toolbar.hasAttribute('data-cinder-open')).toBe(false);
