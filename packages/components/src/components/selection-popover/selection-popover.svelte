@@ -327,7 +327,8 @@
         viewportWidth = window.innerWidth;
         viewportHeight = window.innerHeight;
         const composerHasFocus =
-          document.activeElement instanceof Node && composerFormElement?.contains(document.activeElement);
+          document.activeElement instanceof Node &&
+          composerFormElement?.contains(document.activeElement);
         const composerOwnedKeyboardNow = expanded || commentBody.trim().length > 0;
         const virtualKeyboardTransition = readVirtualKeyboardTransition(
           'window',
@@ -370,7 +371,8 @@
     };
     const dismissVisualViewport = (event: Event) => {
       const composerHasFocus =
-        document.activeElement instanceof Node && composerFormElement?.contains(document.activeElement);
+        document.activeElement instanceof Node &&
+        composerFormElement?.contains(document.activeElement);
       const composerOwnedKeyboardNow = expanded || commentBody.trim().length > 0;
       const virtualKeyboardTransition =
         visualViewport?.scale === 1
