@@ -93,6 +93,7 @@ export const overlapFamilies = {
   selection: ['toggle', 'checkbox', 'segmented-control'],
   hover: ['tooltip', 'popover', 'hover-card'],
   tabs: ['tabs', 'segmented-control'],
+  chronological: ['timeline', 'run-step-timeline', 'event-timeline', 'feed', 'event-stream-viewer'],
 } as const satisfies Record<string, readonly string[]>;
 
 /** Branded string alias for kebab-case component ids used in overlap families. */

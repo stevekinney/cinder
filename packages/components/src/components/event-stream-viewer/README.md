@@ -2,7 +2,7 @@
 
 Dense append-only viewer for timestamped operational events. Use it for workflow run logs, job output streams, webhook traces, activity completion feeds, and other real-time or historical event consoles.
 
-See the [chronological display boundary decision](../../../../../docs/decisions/chronological-display-boundaries.md) for when to choose this operational console over Feed, Timeline, RunStepTimeline, or EventTimeline.
+See the [chronological display boundary decision](https://github.com/stevekinney/cinder/blob/main/docs/decisions/chronological-display-boundaries.md) for when to choose this operational console over Feed, Timeline, RunStepTimeline, or EventTimeline.
 
 ## Overview
 

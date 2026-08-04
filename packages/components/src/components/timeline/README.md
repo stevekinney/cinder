@@ -2,7 +2,7 @@
 
 Timestamp-first event rail for workflow events, audit logs, run histories, and grouped temporal sequences. Timeline is not a live region; use `Feed` for streaming activity that should be announced to assistive technology.
 
-See the [chronological display boundary decision](../../../../../docs/decisions/chronological-display-boundaries.md) for the distinction between Timeline, RunStepTimeline, EventTimeline, Feed, and EventStreamViewer.
+See the [chronological display boundary decision](https://github.com/stevekinney/cinder/blob/main/docs/decisions/chronological-display-boundaries.md) for the distinction between Timeline, RunStepTimeline, EventTimeline, Feed, and EventStreamViewer.
 
 ## Usage
 

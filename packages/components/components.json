@@ -61,7 +61,14 @@
     "notice": ["banner", "alert", "callout"],
     "selection": ["toggle", "checkbox", "segmented-control"],
     "hover": ["tooltip", "popover", "hover-card"],
-    "tabs": ["tabs", "segmented-control"]
+    "tabs": ["tabs", "segmented-control"],
+    "chronological": [
+      "timeline",
+      "run-step-timeline",
+      "event-timeline",
+      "feed",
+      "event-stream-viewer"
+    ]
   },
   "components": [
     {
@@ -2132,7 +2139,7 @@
       ],
       "avoidWhen": [
         {
-          "reason": "Showing sequential process history or dense activity feeds.",
+          "reason": "Showing sequential process history.",
           "alternative": "timeline"
         },
         {
@@ -2140,7 +2147,12 @@
           "alternative": "run-step-timeline"
         },
         {
-          "reason": "Showing a user-facing activity feed or dense operational stream — use feed or event-stream-viewer."
+          "reason": "Showing a user-facing activity feed.",
+          "alternative": "feed"
+        },
+        {
+          "reason": "Showing a dense operational stream.",
+          "alternative": "event-stream-viewer"
         }
       ],
       "related": ["timeline", "run-step-timeline", "feed", "event-stream-viewer", "status-dot"],
@@ -5647,7 +5659,8 @@
           "reason": "Surfacing a real-time social or activity stream — feed is the higher-affordance composition."
         },
         {
-          "reason": "Guiding users through a numbered procedural flow — steps conveys progress more clearly."
+          "reason": "Guiding users through a numbered procedural flow.",
+          "alternative": "steps"
         },
         {
           "reason": "Showing async execution state with retries, branches, or progress.",

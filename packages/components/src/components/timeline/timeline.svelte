@@ -9,7 +9,7 @@
    * @tag events
    * @useWhen Showing dated workflow, audit, or run-history events on a temporal rail.
    * @avoidWhen Surfacing a real-time social or activity stream — feed is the higher-affordance composition.
-   * @avoidWhen Guiding users through a numbered procedural flow — steps conveys progress more clearly.
+   * @avoidWhen Guiding users through a numbered procedural flow. | steps
    * @avoidWhen Showing async execution state with retries, branches, or progress. | run-step-timeline
    * @avoidWhen Showing a bounded horizontal schedule or dense operational stream — use event-timeline or event-stream-viewer.
    * @related feed, run-step-timeline, event-timeline, event-stream-viewer
