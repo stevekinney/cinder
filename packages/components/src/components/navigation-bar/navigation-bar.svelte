@@ -365,12 +365,21 @@
     const enabledItems = getSequentialNavigationItems();
     const logicalEnabledItems = getNavigationItems().filter(isEnabledNavigationItem);
     const isSequentialTarget = sequentialItems.includes(navigationItem);
+    const hasSequentialTargetBefore = sequentialItems.some(
+      (target) =>
+        Boolean(target.compareDocumentPosition(navigationItem) & Node.DOCUMENT_POSITION_FOLLOWING),
+    );
+    const hasSequentialTargetAfter = sequentialItems.some(
+      (target) =>
+        Boolean(navigationItem.compareDocumentPosition(target) & Node.DOCUMENT_POSITION_FOLLOWING),
+    );
     if (enabledItems.length === 0 && logicalEnabledItems.length === 0) return false;
 
     if (
       event.shiftKey &&
       (navigationItem === sequentialItems[0] ||
         (!isSequentialTarget &&
+          !hasSequentialTargetBefore &&
           (navigationItem === enabledItems[0] || navigationItem === logicalEnabledItems[0])))
     ) {
       const previousTarget = getFocusTargetBeforeItems();
@@ -384,6 +393,7 @@
       !event.shiftKey &&
       (navigationItem === sequentialItems.at(-1) ||
         (!isSequentialTarget &&
+          !hasSequentialTargetAfter &&
           (navigationItem === enabledItems.at(-1) ||
             navigationItem === logicalEnabledItems.at(-1))))
     ) {
