@@ -5,7 +5,8 @@
  * Styled native <input type="checkbox"> with description and error.
  * ======================================== */
 
-  .cinder-checkbox-field {
+  .cinder-checkbox-field,
+  .cinder-checkbox-field.cinder-form-field {
     display: inline-flex;
     flex-wrap: wrap;
     align-items: center;

@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -22,6 +23,15 @@ afterEach(() => {
 });
 
 describe('Checkbox', () => {
+  test('keeps intrinsic layout when all component styles load FormField later', () => {
+    const checkboxStyles = readFileSync(new URL('./checkbox.css', import.meta.url), 'utf8');
+    const allStyles = readFileSync(new URL('../../styles/components.css', import.meta.url), 'utf8');
+    expect(allStyles.indexOf('../components/checkbox/checkbox.css')).toBeLessThan(
+      allStyles.indexOf('../components/form-field/form-field.css'),
+    );
+    expect(checkboxStyles).toContain('.cinder-checkbox-field.cinder-form-field');
+  });
+
   test('renders a native input[type=checkbox] with the given id', () => {
     const { container } = render(Checkbox, { id: 'agree' });
     const input = container.querySelector('#agree');
