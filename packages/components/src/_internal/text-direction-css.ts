@@ -32,7 +32,16 @@ export function matchesDirectionStyleRule(
     } catch {
       continue;
     }
-    if (matchesDirectionStyleRuleList(element, rules, getParentElement)) return true;
+    if (
+      matchesDirectionStyleRuleList(
+        element,
+        rules,
+        getParentElement,
+        [],
+        getImplicitScopeRoot(sheet),
+      )
+    )
+      return true;
   }
   return false;
 }
@@ -46,6 +55,13 @@ function isActiveStyleSheet(sheet: CSSStyleSheet): boolean {
   if (!mediaText) return true;
   if (typeof matchMedia !== 'function') return true;
   return matchMedia(mediaText).matches;
+}
+
+function getImplicitScopeRoot(sheet: CSSStyleSheet): Element | null {
+  const ownerNode = Reflect.get(sheet, 'ownerNode');
+  return ownerNode instanceof Element && ownerNode.tagName === 'STYLE'
+    ? ownerNode.parentElement
+    : null;
 }
 
 export function matchesDirectionStyleRuleCached(
@@ -67,6 +83,7 @@ function matchesDirectionStyleRuleList(
   rules: CSSRuleList | Iterable<CSSRule>,
   getParentElement: ParentElementResolver,
   scopes: readonly ActiveScope[] = [],
+  implicitScopeRoot: Element | null = null,
 ): boolean {
   for (const rule of Array.from(rules)) {
     if (Reflect.get(rule, 'type') === 3) {
@@ -76,7 +93,13 @@ function matchesDirectionStyleRuleList(
           const importedRules = Reflect.get(imported, 'cssRules');
           if (
             isCssRuleCollection(importedRules) &&
-            matchesDirectionStyleRuleList(element, importedRules, getParentElement, scopes)
+            matchesDirectionStyleRuleList(
+              element,
+              importedRules,
+              getParentElement,
+              scopes,
+              implicitScopeRoot,
+            )
           )
             return true;
         } catch {
@@ -90,7 +113,13 @@ function matchesDirectionStyleRuleList(
         const nestedRules = readNestedCssRules(rule);
         if (
           nestedRules &&
-          matchesDirectionStyleRuleList(element, nestedRules, getParentElement, scopes)
+          matchesDirectionStyleRuleList(
+            element,
+            nestedRules,
+            getParentElement,
+            scopes,
+            implicitScopeRoot,
+          )
         )
           return true;
         continue;
@@ -104,10 +133,16 @@ function matchesDirectionStyleRuleList(
 
     const nestedRules = readNestedCssRules(rule);
     if (isScopeRule(rule)) {
-      const scope = createActiveScope(rule, element, scopes);
+      const scope = createActiveScope(rule, element, scopes, implicitScopeRoot);
       if (scope && nestedRules) {
         if (
-          matchesDirectionStyleRuleList(element, nestedRules, getParentElement, [...scopes, scope])
+          matchesDirectionStyleRuleList(
+            element,
+            nestedRules,
+            getParentElement,
+            [...scopes, scope],
+            implicitScopeRoot,
+          )
         )
           return true;
       }
@@ -116,7 +151,13 @@ function matchesDirectionStyleRuleList(
     if (
       nestedRules &&
       isConditionalRuleActive(rule, element, getParentElement) &&
-      matchesDirectionStyleRuleList(element, nestedRules, getParentElement, scopes)
+      matchesDirectionStyleRuleList(
+        element,
+        nestedRules,
+        getParentElement,
+        scopes,
+        implicitScopeRoot,
+      )
     ) {
       return true;
     }
@@ -196,12 +237,13 @@ function createActiveScope(
   rule: CSSRule,
   element: HTMLElement,
   parentScopes: readonly ActiveScope[],
+  implicitScopeRoot: Element | null,
 ): ActiveScope | null {
   const cssText = Reflect.get(rule, 'cssText');
   if (typeof cssText !== 'string') return null;
   const prelude = parseScopePrelude(cssText);
   if (!prelude) return null;
-  const roots = findActiveScopeRoots(element, prelude, parentScopes);
+  const roots = findActiveScopeRoots(element, prelude, parentScopes, implicitScopeRoot);
   return roots === null ? null : { roots };
 }
 
@@ -209,11 +251,15 @@ function findActiveScopeRoots(
   element: HTMLElement,
   prelude: ScopePrelude,
   parentScopes: readonly ActiveScope[],
+  implicitScopeRoot: Element | null,
 ): Element[] | null {
   if (!selectorsAreValid(element, prelude.rootSelectors)) return null;
   if (prelude.limitSelectors && !selectorsAreValid(element, prelude.limitSelectors)) return null;
   const roots =
-    prelude.rootSelectors.length === 0 ? [null] : findScopeMatches(element, prelude.rootSelectors);
+    prelude.rootSelectors.length === 0
+      ? [implicitScopeRoot ?? element.ownerDocument.documentElement]
+      : findScopeMatches(element, prelude.rootSelectors);
+  if (prelude.rootSelectors.length === 0 && roots[0] && !roots[0].contains(element)) return null;
   const activeRoots: Element[] = [];
   for (const root of roots) {
     if (root && !isWithinParentScopes(root, parentScopes)) continue;
@@ -225,8 +271,6 @@ function findActiveScopeRoots(
       continue;
     }
     if (root) activeRoots.push(root);
-    else if (!prelude.limitSelectors || !findScopeMatches(element, prelude.limitSelectors).length)
-      activeRoots.push(element.ownerDocument.documentElement);
   }
   if (prelude.rootSelectors.length > 0 && activeRoots.length === 0) return null;
   return activeRoots;
@@ -272,28 +316,85 @@ function matchesScopedSelector(
   selector: string,
   scopes: readonly ActiveScope[],
 ): boolean {
-  if (!selector.includes(':scope')) return matchesSelectorSafely(element, selector);
+  if (!hasScopePseudoClass(selector)) return matchesSelectorSafely(element, selector);
   if (scopes.length === 0) return false;
-  for (const scope of scopes) {
-    for (const root of scope.roots) {
-      try {
+  const scope = scopes.at(-1);
+  if (!scope) return false;
+  for (const root of scope.roots) {
+    try {
+      if (root.querySelector(':scope') === root) {
         if (Array.from(root.querySelectorAll(selector)).includes(element)) return true;
-        // Some CSSOM implementations do not implement :scope on querySelectorAll.
-        // Bind it explicitly to a temporary attribute and use the target's matcher.
-        const marker = 'data-cinder-scope-root';
-        const previous = root.getAttribute(marker);
-        try {
-          root.setAttribute(marker, 'true');
-          const boundSelector = selector.replaceAll(':scope', `[${marker}="true"]`);
-          if (element.matches(boundSelector)) return true;
-        } finally {
-          if (previous === null) root.removeAttribute(marker);
-          else root.setAttribute(marker, previous);
-        }
-      } catch {
-        // Unsupported relative selectors are not safe direction hints.
+        continue;
       }
+      const clone = root.cloneNode(true);
+      if (!(clone instanceof Element)) continue;
+      const marker = 'data-cinder-scope-root';
+      clone.setAttribute(marker, 'true');
+      const path: number[] = [];
+      let current: Element | null = element;
+      while (current && current !== root) {
+        const parent: Element | null = current.parentElement;
+        if (!parent) break;
+        path.unshift(Array.prototype.indexOf.call(parent.children, current));
+        current = parent;
+      }
+      if (current !== root) continue;
+      let cloneElement: Element = clone;
+      for (const index of path) {
+        const child = cloneElement.children[index];
+        if (!child) break;
+        cloneElement = child;
+      }
+      if (
+        Array.from(clone.querySelectorAll(selector.replace(/:scope\b/gi, `[${marker}]`))).includes(
+          cloneElement,
+        )
+      )
+        return true;
+    } catch {
+      // Unsupported relative selectors are not safe direction hints.
     }
+  }
+  return false;
+}
+
+function hasScopePseudoClass(selector: string): boolean {
+  let quote: string | null = null;
+  let brackets = 0;
+  let escaped = false;
+  for (let index = 0; index < selector.length; index += 1) {
+    const character = selector[index];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (character === '\\') {
+      escaped = true;
+      continue;
+    }
+    if (quote) {
+      if (character === quote) quote = null;
+      continue;
+    }
+    if (character === '"' || character === "'") {
+      quote = character;
+      continue;
+    }
+    if (character === '[') {
+      brackets += 1;
+      continue;
+    }
+    if (character === ']') {
+      brackets = Math.max(0, brackets - 1);
+      continue;
+    }
+    if (
+      brackets === 0 &&
+      character === ':' &&
+      selector.slice(index + 1, index + 6).toLowerCase() === 'scope' &&
+      !/[\\w-]/.test(selector[index + 6] ?? '')
+    )
+      return true;
   }
   return false;
 }
