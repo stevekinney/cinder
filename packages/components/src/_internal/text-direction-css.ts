@@ -163,6 +163,27 @@ function isConditionalRuleActive(
   return true;
 }
 
+// `CSSContainerRule.conditionText` serializes the container name ahead of
+// the query for a named rule — e.g. `@container sidebar (min-width: 20rem)`
+// reads back as `"sidebar (min-width: 20rem)"`, not just the query. The
+// grammar this module validates only understands the query itself, so the
+// name prefix must be removed before parsing: prefer the standard
+// `containerQuery` accessor (already name-free), falling back to stripping
+// the known container name token when that accessor is unavailable.
+function resolveContainerQueryText(
+  conditionText: string,
+  rule: CSSRule,
+  containerName: unknown,
+): string {
+  const containerQuery = Reflect.get(rule, 'containerQuery');
+  if (typeof containerQuery === 'string' && containerQuery) return containerQuery;
+  if (typeof containerName !== 'string' || !containerName) return conditionText;
+  if (!conditionText.startsWith(containerName)) return conditionText;
+  const rest = conditionText.slice(containerName.length);
+  if (!/^\s/.test(rest)) return conditionText;
+  return rest.trimStart();
+}
+
 function isContainerQueryActive(
   conditionText: string,
   element: HTMLElement,
@@ -170,11 +191,11 @@ function isContainerQueryActive(
   getParentElement: ParentElementResolver,
 ): boolean {
   if (typeof getComputedStyle !== 'function') return false;
-  const styleQuery = parseStyleQuery(conditionText);
+  const containerName = Reflect.get(rule, 'containerName');
+  const queryText = resolveContainerQueryText(conditionText, rule, containerName);
+  const styleQuery = parseStyleQuery(queryText);
   if (styleQuery) {
-    const remainder = (
-      conditionText.slice(0, styleQuery.index) + conditionText.slice(styleQuery.end)
-    )
+    const remainder = (queryText.slice(0, styleQuery.index) + queryText.slice(styleQuery.end))
       .replace(/^\s*(?:and|or|not)\b/i, '')
       .replace(/^\(|\)$/g, '')
       .trim();
@@ -184,7 +205,6 @@ function isContainerQueryActive(
     // style() term, which would wrongly treat an inactive compound rule as
     // an active styling hint.
     if (remainder) return false;
-    const containerName = Reflect.get(rule, 'containerName');
     let ancestor = getParentElement(element);
     while (ancestor) {
       if (typeof containerName === 'string' && containerName) {
@@ -202,16 +222,15 @@ function isContainerQueryActive(
       const value =
         getComputedStyle(ancestor).getPropertyValue(styleQuery.name).trim() ||
         ancestor.style.getPropertyValue(styleQuery.name).trim();
-      return /^\s*not\b/i.test(conditionText)
+      return /^\s*not\b/i.test(queryText)
         ? value !== styleQuery.value.trim()
         : value === styleQuery.value.trim();
     }
     return false;
   }
-  const containerName = Reflect.get(rule, 'containerName');
   const queriesPhysicalWidth =
-    /(?:^|[\s(])(?:width|min-width|max-width)\s*[:<>=]/i.test(conditionText) ||
-    /[\d.]+(?:px|rem)\s*(?:<=|<|>=|>)\s*width\b/i.test(conditionText);
+    /(?:^|[\s(])(?:width|min-width|max-width)\s*[:<>=]/i.test(queryText) ||
+    /[\d.]+(?:px|rem)\s*(?:<=|<|>=|>)\s*width\b/i.test(queryText);
   let container = getParentElement(element);
   while (container) {
     const computedStyle = getComputedStyle(container);
@@ -270,7 +289,7 @@ function isContainerQueryActive(
     computedContainerStyle.getPropertyValue('writing-mode') ||
     container.style.writingMode ||
     container.style.getPropertyValue('writing-mode');
-  const usesInlineSize = /(?:inline-size|min-inline-size|max-inline-size)/i.test(conditionText);
+  const usesInlineSize = /(?:inline-size|min-inline-size|max-inline-size)/i.test(queryText);
   const isVerticalWritingMode = /^(?:vertical|sideways)-/i.test(writingMode);
   const verticalInlineAxis = usesInlineSize && isVerticalWritingMode;
   // `offsetWidth`/`offsetHeight` report the border-box size from layout,
@@ -346,8 +365,8 @@ function isContainerQueryActive(
   // — fail closed instead of silently defaulting to "matches" (an inactive
   // rule at the current size would otherwise be treated as an active
   // styling hint).
-  if (hasUnsupportedContainerSizeQuery(conditionText)) return false;
-  return evaluateLogicalContainerCondition(conditionText, width, remSize, inlineSize);
+  if (hasUnsupportedContainerSizeQuery(queryText)) return false;
+  return evaluateLogicalContainerCondition(queryText, width, remSize, inlineSize);
 }
 
 export function isContainerRule(rule: CSSRule): boolean {

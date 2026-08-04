@@ -119,6 +119,9 @@ describe('resolveTextDirection', () => {
       ['min-width: 20px and max-width: 40px', false],
       ['(min-width: 20px) and (max-width: 40px) or (width: 100px)', false],
       ['(20px < width > 40px)', false],
+      ['not (min-width: 20px) and (max-width: 40rem)', false],
+      ['not (min-width: 20px) or (max-width: 40rem)', false],
+      ['(not (min-width: 20px)) and (max-width: 40rem)', true],
     ];
     for (const [condition, expected] of cases) {
       expect(isFullyParsedContainerCondition(condition), condition).toBe(expected);
@@ -144,6 +147,21 @@ describe('resolveTextDirection', () => {
       ),
     ).toBe(false);
     expect(evaluateLogicalContainerCondition('(20px < width > 40px)', 50, 16, 50)).toBe(false);
+  });
+
+  test('fails closed on an ungrouped NOT combined with AND/OR', () => {
+    // `not (min-width: 20px) and (max-width: 40px)` is not valid CSS grammar
+    // — `<media-and>` requires each operand to be `<media-in-parens>`, and a
+    // bare `<media-not>` doesn't qualify without its own wrapping parens.
+    // Without the fix this evaluated as `NOT(width >= 20px) AND (width <=
+    // 40px)`, wrongly activating below 20px instead of failing closed.
+    const ungrouped = 'not (min-width: 20px) and (max-width: 40px)';
+    expect(evaluateLogicalContainerCondition(ungrouped, 10, 16, 10)).toBe(false);
+    expect(evaluateLogicalContainerCondition(ungrouped, 30, 16, 30)).toBe(false);
+    // The grouped equivalent remains valid and evaluates normally.
+    const grouped = '(not (min-width: 20px)) and (max-width: 40px)';
+    expect(evaluateLogicalContainerCondition(grouped, 10, 16, 10)).toBe(true);
+    expect(evaluateLogicalContainerCondition(grouped, 30, 16, 30)).toBe(false);
   });
 
   test('only treats unknown CSS rules with container at-rule text as container rules', () => {
@@ -1071,6 +1089,78 @@ describe('resolveTextDirection', () => {
       cssText: '@container sidebar style(--theme: dark) { .named-style-ltr { direction: ltr; } }',
       type: 0,
       conditionText: 'style(--theme: dark)',
+      containerName: 'sidebar',
+      cssRules: [nestedRule],
+    } as unknown as CSSRule;
+    try {
+      expect(
+        withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
+          resolveTextDirection(element, 'rtl'),
+        ),
+      ).toBe('ltr');
+    } finally {
+      namedContainer.remove();
+    }
+  });
+
+  test('strips a real CSSContainerRule.conditionText container-name prefix for named size queries', () => {
+    // A real `CSSContainerRule.conditionText` for a named rule serializes the
+    // container name ahead of the query — `@container sidebar (min-width:
+    // 20rem)` reads back as `"sidebar (min-width: 20rem)"`, not just the
+    // query. The size-query grammar only understands the query itself, so
+    // without stripping the name this must not silently fail closed.
+    const container = document.createElement('section');
+    container.style.setProperty('container-type', 'inline-size');
+    container.style.setProperty('container-name', 'sidebar');
+    Object.defineProperty(container, 'offsetWidth', { value: 400, configurable: true });
+    const wrapper = document.createElement('div');
+    wrapper.style.setProperty('container-type', 'inline-size');
+    Object.defineProperty(wrapper, 'offsetWidth', { value: 100, configurable: true });
+    const element = document.createElement('div');
+    element.className = 'real-named-container-ltr';
+    wrapper.appendChild(element);
+    container.appendChild(wrapper);
+    document.body.appendChild(container);
+    const nestedRule = createStyleRule({
+      selectorText: '.real-named-container-ltr',
+      direction: 'ltr',
+    });
+    const outerRule = {
+      cssText:
+        '@container sidebar (min-width: 20rem) { .real-named-container-ltr { direction: ltr; } }',
+      type: 0,
+      conditionText: 'sidebar (min-width: 20rem)',
+      containerName: 'sidebar',
+      cssRules: [nestedRule],
+    } as unknown as CSSRule;
+    try {
+      expect(
+        withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
+          resolveTextDirection(element, 'rtl'),
+        ),
+      ).toBe('ltr');
+    } finally {
+      container.remove();
+    }
+  });
+
+  test('strips a real CSSContainerRule.conditionText container-name prefix for named style queries', () => {
+    const namedContainer = document.createElement('section');
+    namedContainer.style.setProperty('container-name', 'sidebar');
+    namedContainer.style.setProperty('--theme', 'dark');
+    const nearerContainer = document.createElement('div');
+    nearerContainer.style.setProperty('--theme', 'light');
+    const element = document.createElement('div');
+    element.className = 'real-named-style-ltr';
+    nearerContainer.appendChild(element);
+    namedContainer.appendChild(nearerContainer);
+    document.body.appendChild(namedContainer);
+    const nestedRule = createStyleRule({ selectorText: '.real-named-style-ltr', direction: 'ltr' });
+    const outerRule = {
+      cssText:
+        '@container sidebar style(--theme: dark) { .real-named-style-ltr { direction: ltr; } }',
+      type: 0,
+      conditionText: 'sidebar style(--theme: dark)',
       containerName: 'sidebar',
       cssRules: [nestedRule],
     } as unknown as CSSRule;

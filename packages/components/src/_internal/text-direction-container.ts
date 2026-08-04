@@ -114,17 +114,24 @@ export function isFullyParsedContainerCondition(conditionText: string): boolean 
   return parseContainerCondition(trimmed);
 }
 
-function parseContainerCondition(conditionText: string): boolean {
+function parseContainerCondition(conditionText: string, isTopLevelCondition = true): boolean {
   const original = conditionText.trim();
   const trimmed = unwrapRedundantParentheses(original);
   const wasGrouped = trimmed !== original;
   const orParts = splitTopLevel(trimmed, 'or');
   const andParts = splitTopLevel(trimmed, 'and');
   if (orParts.length > 1 && andParts.length > 1) return false;
-  if (orParts.length > 1) return orParts.every(parseContainerCondition);
-  if (andParts.length > 1) return andParts.every(parseContainerCondition);
+  if (orParts.length > 1) return orParts.every((part) => parseContainerCondition(part, false));
+  if (andParts.length > 1) return andParts.every((part) => parseContainerCondition(part, false));
   const notPrefix = /^not\s+/i.exec(trimmed);
   if (notPrefix) {
+    // `not <term>` only qualifies as an `and`/`or` operand when the whole
+    // negation is itself grouped in its own parentheses — e.g.
+    // `(not (...)) and (...)`. CSS's `<media-and>`/`<media-or>` require every
+    // operand to be `<media-in-parens>`, and a bare `<media-not>` doesn't
+    // satisfy that; only a standalone top-level `not` may skip the extra
+    // grouping.
+    if (!isTopLevelCondition && !wasGrouped) return false;
     const operand = trimmed.slice(notPrefix[0].length).trim();
     const unwrappedOperand = unwrapRedundantParentheses(operand);
     return unwrappedOperand !== operand && parseContainerCondition(operand);
