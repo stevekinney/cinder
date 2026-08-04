@@ -68,6 +68,7 @@
   let sourceSubtreeUnavailable = $state(false);
   let actionsScopeActive = $state(false);
   let retainedPositionStyle = $state('');
+  let retainedDirection = $state<SpeedDialDirection | null>(null);
   let wasOpen = open;
   let hasFocusedCurrentOpenSession = false;
   const actionButtons: HTMLButtonElement[] = [];
@@ -110,7 +111,9 @@
   const resolvedDirection = $derived(
     anchoredActions.positionReady
       ? normalizePlacementDirection(anchoredActions.resolvedPlacement)
-      : direction,
+      : actionsScopeActive && retainedDirection
+        ? retainedDirection
+        : direction,
   );
   const actionsPositionReady = $derived(
     anchoredActions.positionReady || (actionsScopeActive && retainedPositionStyle.length > 0),
@@ -123,7 +126,7 @@
   );
   const inheritedPortalStyle = createInheritedPortalStyle(
     () => getTriggerElement(),
-    () => open && !hidden,
+    () => actionsScopeActive && !hidden,
   );
 
   $effect(() => {
@@ -206,6 +209,7 @@
   }
 
   function retainCurrentPosition(): void {
+    retainedDirection = resolvedDirection;
     const currentPositionStyle =
       actionsPositionStyle ||
       anchoredActions.positionStyle ||
@@ -378,6 +382,7 @@
     if (sourceUnavailable) {
       actionsScopeActive = false;
       retainedPositionStyle = '';
+      retainedDirection = null;
       return;
     }
 
@@ -386,20 +391,25 @@
     if (reducedMotion.current) {
       actionsScopeActive = false;
       retainedPositionStyle = '';
+      retainedDirection = null;
       return;
     }
 
-    const exitingAction = panel?.querySelector<HTMLElement>('.cinder-speed-dial-action');
-    if (!exitingAction) {
+    const exitingActions = panel
+      ? Array.from(panel.querySelectorAll<HTMLElement>('.cinder-speed-dial-action'))
+      : [];
+    if (exitingActions.length === 0) {
       actionsScopeActive = false;
       retainedPositionStyle = '';
+      retainedDirection = null;
       return;
     }
 
-    return waitForSpeedDialExit(exitingAction, () => {
+    return waitForSpeedDialExit(exitingActions, () => {
       if (open) return;
       actionsScopeActive = false;
       retainedPositionStyle = '';
+      retainedDirection = null;
     });
   });
 
@@ -461,7 +471,10 @@
     data-cinder-direction={resolvedDirection}
     data-cinder-position-ready={actionsPositionReady || undefined}
     style={actionsPositionStyle}
-    aria-hidden={hidden || (open && (sourceSubtreeUnavailable || !actionsPositionReady))
+    aria-hidden={hidden ||
+    (!open && actionsScopeActive) ||
+    sourceSubtreeUnavailable ||
+    (open && !actionsPositionReady)
       ? 'true'
       : undefined}
     inert={!open || hidden || sourceSubtreeUnavailable || !actionsPositionReady ? true : undefined}

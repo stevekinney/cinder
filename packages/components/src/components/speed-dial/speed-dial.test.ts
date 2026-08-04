@@ -243,12 +243,41 @@ describe('SpeedDial', () => {
     }
   });
 
+  test('exit helper waits for every action before completing', async () => {
+    const first = document.createElement('button');
+    const second = document.createElement('button');
+    document.body.append(first, second);
+    const complete = mock(() => {});
+    const getComputedStyleSpy = mockComputedTransitionStyle(
+      (element) => element === first || element === second,
+      {
+        transitionDelay: '0ms',
+        transitionDuration: '150ms',
+        transitionProperty: 'opacity',
+      },
+    );
+
+    try {
+      const cancel = waitForSpeedDialExit([first, second], complete);
+      dispatchTransitionBoundary(first, 'transitionend', 'opacity');
+      await flushQueuedFocus();
+      expect(complete).not.toHaveBeenCalled();
+
+      dispatchTransitionBoundary(second, 'transitionend', 'opacity');
+      await flushQueuedFocus();
+      expect(complete).toHaveBeenCalledTimes(1);
+      cancel();
+    } finally {
+      getComputedStyleSpy.mockRestore();
+    }
+  });
+
   test('renders group, trigger, and toolbar semantics', () => {
     const { container } = render(SpeedDialFixture);
 
     const group = screen.getByRole('group', { name: 'Quick actions' });
     const trigger = screen.getByRole('button', { name: 'Quick actions' });
-    const toolbar = screen.getByRole('toolbar', { name: 'Actions' });
+    const toolbar = screen.getByRole('toolbar', { hidden: true });
 
     expect(group.classList.contains('cinder-speed-dial')).toBe(true);
     expect(trigger.getAttribute('aria-expanded')).toBe('false');
@@ -262,7 +291,7 @@ describe('SpeedDial', () => {
 
   test('closed toolbar keeps its exit surface mounted and inert', () => {
     const { container } = render(SpeedDialFixture);
-    const toolbar = screen.getByRole('toolbar', { name: 'Actions', hidden: true });
+    const toolbar = screen.getByRole('toolbar', { hidden: true });
 
     expect(container.querySelector('.cinder-speed-dial__actions')).toBe(toolbar);
     expect(toolbar.hasAttribute('data-cinder-open')).toBe(false);
@@ -341,8 +370,9 @@ describe('SpeedDial', () => {
         expect(toolbar.getAttribute('style')).toContain('top:');
       });
       const positionedStyle = toolbar.getAttribute('style');
-      const create = screen.getByRole('button', { name: 'Create' });
-      const exitingAction = create.closest('.cinder-speed-dial-action')!;
+      const exitingActions = Array.from(
+        toolbar.querySelectorAll<HTMLElement>('.cinder-speed-dial-action'),
+      );
       const getComputedStyleSpy = mockComputedTransitionStyle(
         (element) => element.classList.contains('cinder-speed-dial-action'),
         {
@@ -358,13 +388,17 @@ describe('SpeedDial', () => {
         expect(toolbar.getAttribute('style')).toBe(positionedStyle);
         expect(toolbar.hasAttribute('inert')).toBe(true);
         expect(toolbar.hasAttribute('data-cinder-open')).toBe(false);
+        expect(toolbar.getAttribute('aria-hidden')).toBe('true');
 
-        dispatchTransitionBoundary(exitingAction, 'transitionend', 'opacity');
+        dispatchTransitionBoundary(exitingActions[0]!, 'transitionend', 'opacity');
         await flushQueuedFocus();
 
         expect(toolbar.getAttribute('style')).toBe(positionedStyle);
 
-        dispatchTransitionBoundary(exitingAction, 'transitionend', 'transform');
+        exitingActions.forEach((action) => {
+          dispatchTransitionBoundary(action, 'transitionend', 'opacity');
+          dispatchTransitionBoundary(action, 'transitionend', 'transform');
+        });
         await flushQueuedFocus();
         expect(toolbar.getAttribute('style')).toBe('');
       } finally {
@@ -487,7 +521,7 @@ describe('SpeedDial', () => {
 
     await fireEvent.click(trigger);
     await flushQueuedFocus();
-    const toolbar = screen.getByRole('toolbar', { name: 'Actions' });
+    const toolbar = screen.getByRole('toolbar', { name: 'Actions', hidden: true });
     expect(screen.getByTestId('open-state').textContent).toBe('open');
     expect(trigger.getAttribute('aria-expanded')).toBe('true');
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Create' }));
@@ -650,7 +684,7 @@ describe('SpeedDial', () => {
     });
     await flushQueuedFocus();
 
-    const toolbar = screen.getByRole('toolbar', { name: 'Actions', hidden: true });
+    const toolbar = screen.getByRole('toolbar', { hidden: true });
     expect(toolbar.hasAttribute('inert')).toBe(true);
     expect(container.contains(toolbar)).toBe(true);
     expect(document.activeElement).toBe(trigger);
@@ -697,7 +731,7 @@ describe('SpeedDial', () => {
     await waitFor(() => {
       expect(screen.getByTestId('open-state').textContent).toBe('closed');
     });
-    const toolbar = screen.getByRole('toolbar', { name: 'Actions', hidden: true });
+    const toolbar = screen.getByRole('toolbar', { hidden: true });
     expect(toolbar.hasAttribute('inert')).toBe(true);
     expect(container.contains(toolbar)).toBe(true);
   });

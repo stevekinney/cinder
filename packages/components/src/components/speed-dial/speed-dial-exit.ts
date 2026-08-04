@@ -57,7 +57,7 @@ function getTransitionBoundary(element: HTMLElement): {
   };
 }
 
-export function waitForSpeedDialExit(element: HTMLElement, onComplete: () => void): () => void {
+function waitForSingleSpeedDialExit(element: HTMLElement, onComplete: () => void): () => void {
   const { activeProperties, totalTransitionTime } = getTransitionBoundary(element);
   let completed = false;
   let fallbackTimer: ReturnType<typeof setTimeout> | undefined;
@@ -95,5 +95,30 @@ export function waitForSpeedDialExit(element: HTMLElement, onComplete: () => voi
     element.removeEventListener('transitionend', handleTransitionEnd);
     element.removeEventListener('transitioncancel', handleTransitionEnd);
     if (fallbackTimer) clearTimeout(fallbackTimer);
+  };
+}
+
+export function waitForSpeedDialExit(
+  elements: HTMLElement | readonly HTMLElement[],
+  onComplete: () => void,
+): () => void {
+  const pendingElements = Array.isArray(elements) ? elements : [elements];
+  if (pendingElements.length === 0) {
+    onComplete();
+    return () => {};
+  }
+
+  let pending = pendingElements.length;
+  let cancelled = false;
+  const cleanups = pendingElements.map((element) =>
+    waitForSingleSpeedDialExit(element, () => {
+      pending -= 1;
+      if (!cancelled && pending === 0) onComplete();
+    }),
+  );
+
+  return () => {
+    cancelled = true;
+    cleanups.forEach((cleanup) => cleanup());
   };
 }
