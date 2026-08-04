@@ -43,6 +43,7 @@
     findFocusTargetAfterNavigationItems,
     findFocusTargetBeforeNavigationItems,
     getNavigationBarBrandFocusTargets,
+    getSequentialFocusTargets,
   } from './navigation-bar-focus.ts';
 
   const COLLAPSIBLE_MAX_WIDTH_REM = 47.99;
@@ -86,7 +87,8 @@
   // Stores the toggle element for focus return after Escape-close.
   let navigationBarElement: HTMLElement | null = null;
   let toggleElement: HTMLElement | null = null;
-  let pendingTabFocus = false;
+  let pendingTabFocus = $state(false);
+  let pendingTabFocusTarget = $state<HTMLElement | null>(null);
   let itemsRegionElement: HTMLDivElement | null = null;
   let sourceSubtreeUnavailable = $state(false);
   const itemsPortalScope = createPortalAttachment({
@@ -112,11 +114,18 @@
   );
 
   $effect(() => {
-    if (!mobileMenuOpen || !isMobileLayout) pendingTabFocus = false;
+    if (!mobileMenuOpen || !isMobileLayout) {
+      pendingTabFocus = false;
+      pendingTabFocusTarget = null;
+    }
     if (!pendingTabFocus || !anchoredItems.positionReady) return;
     pendingTabFocus = false;
-    const firstItem = getNavigationItems().find(isEnabledNavigationItem);
-    firstItem?.focus();
+    const pendingTarget = pendingTabFocusTarget;
+    pendingTabFocusTarget = null;
+    queueMicrotask(() => {
+      const target = pendingTarget ?? getToggleTabTarget() ?? getFocusTargetAfterItems();
+      target?.focus();
+    });
   });
 
   $effect(() => {
@@ -210,28 +219,37 @@
     if (event.key !== 'Tab' || event.shiftKey || !isMobileLayout || !mobileMenuOpen) return;
     if (!anchoredItems.positionReady) {
       pendingTabFocus = true;
+      pendingTabFocusTarget =
+        menuTogglePlacement === 'before-brand'
+          ? (getNavigationBarBrandFocusTargets(navigationBarElement)[0] ?? null)
+          : null;
       event.preventDefault();
       return;
     }
-    const brandTarget =
-      menuTogglePlacement === 'before-brand'
-        ? getNavigationBarBrandFocusTargets(navigationBarElement)[0]
-        : null;
-    if (brandTarget) {
-      event.preventDefault();
-      brandTarget.focus();
-      return;
-    }
-    const firstItem = getNavigationItems().find(isEnabledNavigationItem);
-    if (!firstItem) return;
+    const target = getToggleTabTarget();
+    if (!target) return;
     event.preventDefault();
-    firstItem.focus();
+    target.focus();
   }
 
   function getNavigationItems(): HTMLElement[] {
     if (!itemsRegionElement) return [];
 
     return Array.from(itemsRegionElement.querySelectorAll<HTMLElement>(navigationItemSelector));
+  }
+
+  function getSequentialNavigationItems(): HTMLElement[] {
+    return getSequentialFocusTargets(itemsRegionElement).filter(
+      (item) => item.matches(navigationItemSelector) && isEnabledNavigationItem(item),
+    );
+  }
+
+  function getToggleTabTarget(): HTMLElement | null {
+    const brandTarget =
+      menuTogglePlacement === 'before-brand'
+        ? getNavigationBarBrandFocusTargets(navigationBarElement)[0]
+        : null;
+    return brandTarget ?? getSequentialNavigationItems()[0] ?? null;
   }
 
   function bridgeBrandTabToPortaledPanel(event: KeyboardEvent): boolean {
@@ -250,7 +268,7 @@
     const brandTargets = getNavigationBarBrandFocusTargets(navigationBarElement);
     if (event.target !== brandTargets.at(-1)) return false;
 
-    const firstItem = getNavigationItems().find(isEnabledNavigationItem);
+    const firstItem = getSequentialNavigationItems()[0];
     if (!firstItem) return false;
 
     event.preventDefault();
@@ -343,10 +361,25 @@
   function bridgePortaledPanelTab(event: KeyboardEvent, navigationItem: HTMLElement): boolean {
     if (!anchoredItems.positionReady) return false;
 
-    const enabledItems = getNavigationItems().filter(isEnabledNavigationItem);
-    if (enabledItems.length === 0) return false;
+    const sequentialItems = getSequentialFocusTargets(itemsRegionElement);
+    const enabledItems = getSequentialNavigationItems();
+    const logicalEnabledItems = getNavigationItems().filter(isEnabledNavigationItem);
+    const isSequentialTarget = sequentialItems.includes(navigationItem);
+    const hasSequentialTargetBefore = sequentialItems.some((target) =>
+      Boolean(target.compareDocumentPosition(navigationItem) & Node.DOCUMENT_POSITION_FOLLOWING),
+    );
+    const hasSequentialTargetAfter = sequentialItems.some((target) =>
+      Boolean(navigationItem.compareDocumentPosition(target) & Node.DOCUMENT_POSITION_FOLLOWING),
+    );
+    if (enabledItems.length === 0 && logicalEnabledItems.length === 0) return false;
 
-    if (event.shiftKey && navigationItem === enabledItems[0]) {
+    if (
+      event.shiftKey &&
+      (navigationItem === sequentialItems[0] ||
+        (!isSequentialTarget &&
+          !hasSequentialTargetBefore &&
+          (navigationItem === enabledItems[0] || navigationItem === logicalEnabledItems[0])))
+    ) {
       const previousTarget = getFocusTargetBeforeItems();
       if (!previousTarget) return false;
       event.preventDefault();
@@ -354,7 +387,14 @@
       return true;
     }
 
-    if (!event.shiftKey && navigationItem === enabledItems.at(-1)) {
+    if (
+      !event.shiftKey &&
+      (navigationItem === sequentialItems.at(-1) ||
+        (!isSequentialTarget &&
+          !hasSequentialTargetAfter &&
+          (navigationItem === enabledItems.at(-1) ||
+            navigationItem === logicalEnabledItems.at(-1))))
+    ) {
       const nextTarget = getFocusTargetAfterItems();
       if (!nextTarget) return false;
       event.preventDefault();
@@ -420,9 +460,16 @@
     }
 
     const navigationItem = getEventNavigationItem(event);
-    if (!navigationItem || navigationItem !== event.target) return;
+    if (
+      event.key === 'Tab' &&
+      event.target instanceof HTMLElement &&
+      itemsRegionElement?.contains(event.target) &&
+      bridgePortaledPanelTab(event, event.target)
+    ) {
+      return;
+    }
 
-    if (event.key === 'Tab' && bridgePortaledPanelTab(event, navigationItem)) return;
+    if (!navigationItem || navigationItem !== event.target) return;
 
     if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
       event.preventDefault();
