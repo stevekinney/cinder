@@ -2,7 +2,11 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../test/happy-dom.ts';
-import { matchesDirectionStyleRule } from './text-direction-css.ts';
+import {
+  hasScopePseudoClass,
+  matchesDirectionStyleRule,
+  replaceScopePseudoClass,
+} from './text-direction-css.ts';
 import {
   elementDirectionStyleOverride,
   isContainerRule,
@@ -94,6 +98,14 @@ function createStyleSheetWithThrowingRules(): CSSStyleSheet {
 }
 
 describe('resolveTextDirection', () => {
+  test('recognizes only the actual :scope pseudo-class token', () => {
+    expect(hasScopePseudoClass(':scope')).toBe(true);
+    expect(hasScopePseudoClass(':SCOPE > .target')).toBe(true);
+    expect(hasScopePseudoClass(':scopeX')).toBe(false);
+    expect(hasScopePseudoClass(':scoped')).toBe(false);
+    expect(replaceScopePseudoClass(':scopeX :scoped', '[data-root]')).toBe(':scopeX :scoped');
+  });
+
   test('only treats unknown CSS rules with container at-rule text as container rules', () => {
     const unknownRule = { cssText: '@unknown (min-width: 1px) {}', type: 0 } as unknown as CSSRule;
     const containerRule = {

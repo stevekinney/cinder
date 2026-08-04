@@ -407,7 +407,7 @@ function matchesScopedSelector(
   return false;
 }
 
-function replaceScopePseudoClass(selector: string, replacement: string): string {
+export function replaceScopePseudoClass(selector: string, replacement: string): string {
   let result = '';
   let quote: string | null = null;
   let escaped = false;
@@ -459,7 +459,7 @@ function replaceScopePseudoClass(selector: string, replacement: string): string 
   return result;
 }
 
-function hasScopePseudoClass(selector: string): boolean {
+export function hasScopePseudoClass(selector: string): boolean {
   let quote: string | null = null;
   let brackets = 0;
   let escaped = false;
@@ -493,7 +493,7 @@ function hasScopePseudoClass(selector: string): boolean {
       brackets === 0 &&
       character === ':' &&
       selector.slice(index + 1, index + 6).toLowerCase() === 'scope' &&
-      !/[\\w-]/.test(selector[index + 6] ?? '')
+      !/[\w-]/.test(selector[index + 6] ?? '')
     )
       return true;
   }
