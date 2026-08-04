@@ -45,6 +45,15 @@ describe('Checkbox', () => {
     expect(label?.textContent?.trim()).toBe('I agree to the terms');
   });
 
+  test('label remains inline inside an unlabeled FormField', () => {
+    const { container } = render(FormFieldCheckboxFixture, {
+      props: { fieldId: 'agreement', checkboxLabel: 'Agree' },
+    });
+    expect(
+      container.querySelector('.cinder-checkbox-row .cinder-checkbox-field__label')?.textContent,
+    ).toContain('Agree');
+  });
+
   test('checked prop is reflected on the input', () => {
     const { container } = render(Checkbox, { id: 'c', checked: true });
     const input = container.querySelector('#c') as HTMLInputElement;

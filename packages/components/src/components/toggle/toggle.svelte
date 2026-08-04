@@ -40,9 +40,11 @@
   // does, however, inherit `disabled` from a wrapping FormField so a disabled
   // field group greys out the switch alongside its peers.
   const context = getFormFieldContext();
+  const generatedId = $props.id();
   const resolvedDisabled = $derived(disabled ?? context?.disabled ?? false);
 
-  const labelId = $derived(context?.labelId ?? `${id}-label`);
+  const ownLabelId = $derived(label ? `${id ?? generatedId}-label` : undefined);
+  const labelId = $derived(context?.labelId ?? ownLabelId);
 
   function toggle(): void {
     if (!resolvedDisabled) {
@@ -90,6 +92,16 @@
 
 {#if context}
   {@render control()}
+  {#if label && !context.labelId}
+    <span
+      id={ownLabelId}
+      class="cinder-toggle-field__label"
+      role="presentation"
+      data-hidden={hideLabel || undefined}
+      data-disabled={resolvedDisabled || undefined}
+      onclick={toggle}>{label}</span
+    >
+  {/if}
 {:else}
   <span class="cinder-toggle-field">
     {@render control()}

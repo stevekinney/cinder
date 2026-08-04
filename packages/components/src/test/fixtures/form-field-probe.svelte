@@ -11,7 +11,7 @@
    */
   export type FormFieldProbeProps = {
     id: string;
-    label: string;
+    label?: string;
     description?: string;
     error?: string;
     required?: boolean;

@@ -37,7 +37,7 @@
     children,
   }: FormFieldProps = $props();
 
-  const labelId = $derived(`${id}-label`);
+  const labelId = $derived(label ? `${id}-label` : undefined);
   const descriptionId = $derived(describeId(id, !!description));
   const errorId = $derived(buildErrorId(id, !!error));
   const describedBy = $derived(composeDescribedBy(descriptionId, errorId));

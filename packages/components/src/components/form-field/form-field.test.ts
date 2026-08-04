@@ -218,6 +218,11 @@ describe('FormField context via probe', () => {
     expect(container.querySelector(`#${labelId}`)).not.toBeNull();
   });
 
+  test('omitted label does not publish a labelId', () => {
+    const { container } = render(FormFieldProbe, { props: { id: 'textless-field' } });
+    expect(container.querySelector('[data-probe]')?.getAttribute('data-label-id')).toBeNull();
+  });
+
   test('reactive update: changing error prop updates describedBy in probe', async () => {
     const { container, rerender } = render(FormFieldProbe, {
       props: { id: 'reactive-field', label: 'Reactive' },

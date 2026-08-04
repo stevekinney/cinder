@@ -170,7 +170,7 @@
   }
 
   /* Inner input: strip its own chrome, inherit the group's */
-  .cinder-input-group > .cinder-input {
+  .cinder-input-group .cinder-input {
     border: none;
     border-radius: 0;
     background: transparent;
@@ -192,11 +192,15 @@
     padding-inline-end: var(--cinder-space-10);
   }
 
-  .cinder-input-group > .cinder-input:focus-visible {
+  .cinder-input-group .cinder-input:focus-visible {
     box-shadow: none;
     /* cinder-focus-ring-owner: parent — the .cinder-input-group wrapper paints
        the ring for the whole grouped control. */
     outline: none;
+  }
+
+  .cinder-input-field__control {
+    display: contents;
   }
 
   /* Hover mirrors the standalone input. Sticky-hover suppression on touch. */

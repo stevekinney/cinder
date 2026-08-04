@@ -23,7 +23,7 @@
   import { classNames } from '../../utilities/class-names.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
   import { commitValue } from '../../utilities/value-change.ts';
-  import FormField from '../form-field/form-field.svelte';
+  import FormField from '@lostgradient/cinder/form-field';
 
   let {
     id,
@@ -209,22 +209,123 @@
 {#if context}
   {@render control()}
   {#if description}
-    <p id={field.ownDescriptionId} class="cinder-input-field__description">{description}</p>
+    <p
+      id={field.ownDescriptionId}
+      class="cinder-input-field__description cinder-form-field__description"
+    >
+      {description}
+    </p>
   {/if}
   {#if error}
-    <p id={field.ownErrorId} class="cinder-input-field__error" aria-live="polite">{error}</p>
+    <p
+      id={field.ownErrorId}
+      class="cinder-input-field__error cinder-form-field__error"
+      aria-live="polite"
+    >
+      {error}
+    </p>
   {/if}
+{:else if hasGroupWrapper}
+  <div class="cinder-input-field">
+    {#if label}
+      <label
+        id={`${id}-label`}
+        for={id}
+        class={classNames('cinder-input-field__label', hideLabel && 'cinder-sr-only')}
+        data-disabled={resolvedDisabled || undefined}
+      >
+        {label}
+        {#if required}
+          <span class="cinder-_required-marker" aria-hidden="true">*</span>
+        {/if}
+      </label>
+    {/if}
+    <div
+      class={classNames('cinder-input-group', groupClassName)}
+      data-leading={leading ? '' : undefined}
+      data-trailing={hasTrailing ? '' : undefined}
+      data-native-date={rendersNativeDateIcon ? '' : undefined}
+      data-disabled={resolvedDisabled ? '' : undefined}
+      data-invalid={isInvalid ? '' : undefined}
+    >
+      {#if leading}
+        <span
+          class={classNames(
+            'cinder-input-group__leading',
+            !leadingInteractive && 'cinder-_truncate',
+          )}
+          aria-hidden={leadingInteractive ? undefined : 'true'}>{@render leading()}</span
+        >
+      {/if}
+      <FormField
+        {id}
+        required={required ?? false}
+        disabled={disabled ?? false}
+        class="cinder-input-field__control"
+      >
+        {@render inputElement()}
+      </FormField>
+      {#if trailing}
+        <span
+          class={classNames(
+            'cinder-input-group__trailing',
+            !trailingInteractive && 'cinder-_truncate',
+          )}
+          aria-hidden={trailingInteractive ? undefined : 'true'}>{@render trailing()}</span
+        >
+      {:else if rendersNativeDateIcon}
+        <span
+          class="cinder-input-group__trailing cinder-input-group__date-icon cinder-_truncate"
+          aria-hidden="true"
+        >
+          {@render calendarIcon()}
+        </span>
+      {/if}
+    </div>
+    {#if description}
+      <p
+        id={field.ownDescriptionId}
+        class="cinder-input-field__description cinder-form-field__description"
+      >
+        {description}
+      </p>
+    {/if}
+    {#if error}
+      <p
+        id={field.ownErrorId}
+        class="cinder-input-field__error cinder-form-field__error"
+        aria-live="polite"
+      >
+        {error}
+      </p>
+    {/if}
+  </div>
 {:else}
   <FormField
     {id}
     {label}
     {hideLabel}
-    {description}
-    {error}
     required={required ?? false}
     disabled={disabled ?? false}
     class="cinder-input-field"
   >
     {@render control()}
   </FormField>
+  {#if description}
+    <p
+      id={field.ownDescriptionId}
+      class="cinder-input-field__description cinder-form-field__description"
+    >
+      {description}
+    </p>
+  {/if}
+  {#if error}
+    <p
+      id={field.ownErrorId}
+      class="cinder-input-field__error cinder-form-field__error"
+      aria-live="polite"
+    >
+      {error}
+    </p>
+  {/if}
 {/if}

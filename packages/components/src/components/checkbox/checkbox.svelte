@@ -22,7 +22,7 @@
   import { classNames } from '../../utilities/class-names.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
   import { commitValue } from '../../utilities/value-change.ts';
-  import FormField from '../form-field/form-field.svelte';
+  import FormField from '@lostgradient/cinder/form-field';
 
   let {
     id,
@@ -66,6 +66,7 @@
       required: required ?? undefined,
     }),
   );
+  const renderInlineLabel = $derived(!!label && (!context || !context.labelId));
 
   // Dev-mode guard (matches Input/Autocomplete): inside a FormField, a consumer `id`
   // that disagrees with the FormField's controlId means the FormField's <label for>
@@ -147,6 +148,18 @@
       />
       <span class="cinder-checkbox-field__indicator" aria-hidden="true"></span>
     </span>
+    {#if renderInlineLabel}
+      <label
+        for={field.id}
+        class="cinder-checkbox-field__label"
+        data-disabled={field.disabled || undefined}
+      >
+        {label}
+        {#if field.required}
+          <span class="cinder-_required-marker" aria-hidden="true">*</span>
+        {/if}
+      </label>
+    {/if}
   </div>
 {/snippet}
 
@@ -163,7 +176,7 @@
 {:else}
   <FormField
     id={field.id}
-    label={label ?? ''}
+    label={renderInlineLabel ? undefined : label}
     {description}
     {error}
     required={required ?? false}

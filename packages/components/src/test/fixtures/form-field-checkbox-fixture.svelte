@@ -16,7 +16,7 @@
     inheritId = false,
   }: {
     fieldId: string;
-    fieldLabel: string;
+    fieldLabel?: string;
     fieldDescription?: string;
     fieldError?: string;
     disabled?: boolean;

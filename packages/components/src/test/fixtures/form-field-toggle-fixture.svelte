@@ -9,7 +9,7 @@
     toggleLabel = 'Toggle',
   }: {
     fieldId: string;
-    fieldLabel: string;
+    fieldLabel?: string;
     /** Disabled on the FormField — Toggle should inherit it from context. */
     disabled?: boolean;
     toggleLabel?: string;

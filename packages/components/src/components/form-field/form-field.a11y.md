@@ -43,6 +43,13 @@ If both `description` and `error` are set, the composed `aria-describedby`
 includes both ids (description first, then error), matching the reading order in
 the DOM.
 
+## Unlabeled fields
+
+`label` may be omitted only when the child control supplies its own accessible
+name, such as an `aria-label` or an `aria-labelledby` reference to an existing
+element. FormField does not create a name for an unlabeled child and publishes
+no `labelId` in that case, so a control must not rely on a generated label id.
+
 ## Context API
 
 FormField publishes a `FormFieldContext` via Svelte context so descendant
@@ -51,7 +58,7 @@ controls can inherit ARIA wiring without re-implementing it:
 | Field           | Purpose                                                         |
 | --------------- | --------------------------------------------------------------- |
 | `controlId`     | Stable id expected on the wrapped control element               |
-| `labelId`       | Id of the `<label>` element                                     |
+| `labelId`       | Id of the `<label>` element, when a label is rendered           |
 | `describedBy`   | Composed `aria-describedby` (description + error), or undefined |
 | `descriptionId` | Id of the description `<p>`, or undefined                       |
 | `errorId`       | Id of the error `<p>`, or undefined                             |

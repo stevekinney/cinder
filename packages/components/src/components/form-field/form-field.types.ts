@@ -2,7 +2,7 @@ import type { Snippet } from 'svelte';
 export type FormFieldProps = {
   /** Required stable id — used for `<label for>`, description, error, and the child control's id via context. */
   id: string;
-  /** Visible label text. Omit for an intentionally textless field. */
+  /** Visible label text. Omit only when the child control supplies its own accessible name. */
   label?: string | undefined;
   /** Visually hide the label while keeping it associated with the control. */
   hideLabel?: boolean | undefined;

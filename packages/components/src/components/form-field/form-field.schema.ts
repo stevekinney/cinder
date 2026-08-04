@@ -11,7 +11,8 @@ const schema = {
     },
     label: {
       type: 'string',
-      description: 'Visible label text. Omit for an intentionally textless field.',
+      description:
+        'Visible label text. Omit only when the child control supplies its own accessible name.',
     },
     hideLabel: {
       type: 'boolean',
