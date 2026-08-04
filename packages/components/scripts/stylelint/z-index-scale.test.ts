@@ -670,6 +670,44 @@ describe('cinder/z-index-scale', () => {
   });
 
   test.each([
+    ['calc(9999 * (random(--shared, 0, 1) - random(--shared, 0, 1)))', 0],
+    ['calc(9999 * (random(--left, 0, 1) - random(--right, 0, 1)))', 1],
+    ['calc(9999 * (random(0, 1) - random(0, 1)))', 1],
+    [
+      'calc(9999 * (random(--shared property-index-scoped, 0, 1) - random(--shared property-index-scoped, 0, 1)))',
+      1,
+    ],
+    ['calc(9999 * (random(property-scoped, 0, 1) - random(property-scoped, 0, 1)))', 0],
+    ['calc(9999 * (random(--shared, 0, 1) - random(--shared, 0, 2) / 2))', 0],
+    ['calc(9999 * (random-item(--shared, 0, 1) - random-item(--shared, 0, 1)))', 0],
+    ['calc(9999 * (random-item(--left, 0, 1) - random-item(--right, 0, 1)))', 1],
+  ] as const)('correlates CSS random functions by cache key: %s', async (fallback, count) => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: shared random caches reuse one base value. */
+            z-index: var(--outer, ${fallback});
+          }
+        `),
+      ),
+    ).toHaveLength(count);
+  });
+
+  test('fails closed for nonlinear reuse of a continuous random cache', async () => {
+    const [warning] = warnings(
+      await lint(`
+        .fixture {
+          /* cinder-z-index-local: nonlinear shared random output needs a complete range proof. */
+          z-index: var(--outer, calc(4 * random(--shared, 0, 1) * (1 - random(--shared, 0, 1)) * 9999));
+        }
+      `),
+    );
+
+    expect(warning?.text).toContain('too complex to verify safely');
+  });
+
+  test.each([
     'var(--outer, calc(var(--inner, -1) * 0))',
     'var(--outer, calc(0 * var(--inner, -1)))',
     'var(--outer, calc(var(--inner, -1) * 0 + 0))',
@@ -2800,7 +2838,11 @@ describe('cinder/z-index-scale', () => {
     ['first-valid(if(media(screen): foo; else: 2), 9999)', 1],
     ['first-valid(if(media(screen): 1), 9999)', 1],
     ['first-valid(if(media(foo): 1), 9999)', 1],
+    ['first-valid(1.5, 9999)', 1],
+    ['first-valid(1e0, 9999)', 1],
     ['first-valid(1, 9999)', 0],
+    ['first-valid(+1, 9999)', 0],
+    ['first-valid(calc(1.5), 9999)', 0],
     ['first-valid(auto, 9999)', 0],
     ['first-valid(inherit, 9999)', 0],
     ['first-valid(foo, 1, 9999)', 0],
@@ -4249,6 +4291,9 @@ describe('cinder/z-index-scale', () => {
     ['calc(9999 * env(viewport-segment-width 0 0, 0px))', 0],
     ['calc(9999 * env(safe-area-inset-top, 0))', 0],
     ['calc(9999 * env(viewport-segment-width, 0))', 0],
+    ['calc(9999 * env(viewport-segment-width 0 0, 1))', 1],
+    ['calc(9999 * env(viewport-segment-width, 1))', 1],
+    ['env(viewport-segment-width 0 0, 9999)', 1],
     ['calc(9999 * env(preferred-text-scale, 0))', 1],
     ['calc(9999 * env(foo, 0px))', 1],
     ['calc(9999 * attr(data-layer type(<number>), 0))', 1],

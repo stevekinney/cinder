@@ -1815,7 +1815,12 @@ function firstValidBranchStaticValidity(value, group, branchRange, parenthesisPa
     return undefined;
 
   const analysis = analyzeStaticLayerValue(branchValue);
-  if (analysis.resultType === 'number' && !isStaticallyInvalidArithmetic(branchValue)) return true;
+  if (analysis.resultType === 'number' && !isStaticallyInvalidArithmetic(branchValue)) {
+    const isIntegerToken = /^[+-]?\d+$/.test(branchValue.trim());
+    const isWholeMathFunction =
+      value[identifierEnd] === '(' && parenthesisPairs.get(identifierEnd) === branchRange.end - 1;
+    return isIntegerToken || isWholeMathFunction;
+  }
   if (analysis.resultType === 'non-number') return false;
   if (analysis.resultType === 'too-complex') return undefined;
 
@@ -4149,6 +4154,50 @@ function randomGroupOutputOptions(frame, value, group, budget, parenthesisPairs)
   return { continuous: false, values };
 }
 
+function randomGroupCorrelationKey(frame, value, group, parenthesisPairs) {
+  let keyRange;
+  if (group.functionName === 'random-item') {
+    keyRange = randomItemArgumentRanges(value, group, parenthesisPairs)?.[0];
+  } else {
+    const parsedArguments = fallbackIndependentStaticArguments(
+      frame,
+      value,
+      { start: group.functionStart, end: group.end },
+      'random',
+      parenthesisPairs,
+    );
+    if (parsedArguments === undefined) return undefined;
+    const numericArgumentRanges = randomNumericArgumentRanges(value, parsedArguments);
+    if (
+      numericArgumentRanges === undefined ||
+      numericArgumentRanges.length === parsedArguments.argumentCount
+    )
+      return undefined;
+    keyRange = parsedArguments.argumentRanges[0];
+  }
+  if (keyRange === undefined) return undefined;
+
+  const tokens = value
+    .slice(keyRange.start, keyRange.end)
+    .replaceAll(cssCommentMaskCharacter, ' ')
+    .trim()
+    .split(/\s+/);
+  const lowerTokens = tokens.map((token) => token.toLowerCase());
+  if (
+    (lowerTokens.length === 1 && lowerTokens[0] === 'auto') ||
+    lowerTokens[0] === 'fixed' ||
+    lowerTokens.includes('property-index-scoped')
+  )
+    return undefined;
+  return tokens
+    .map((token) => {
+      const lowerToken = token.toLowerCase();
+      return ['element-scoped', 'property-scoped'].includes(lowerToken) ? lowerToken : token;
+    })
+    .sort()
+    .join(' ');
+}
+
 function randomRangeCandidates(frame, value, range, candidate, budget, parenthesisPairs) {
   const groups = frame.randomGroups.filter(
     (group) =>
@@ -4160,7 +4209,6 @@ function randomRangeCandidates(frame, value, range, candidate, budget, parenthes
   if (groups.length === 0) return [];
 
   const analyzedGroups = [];
-  let combinationCount = 1;
   let hasContinuousRange = false;
   for (const group of groups) {
     const options = randomGroupOutputOptions(frame, value, group, budget, parenthesisPairs);
@@ -4175,7 +4223,69 @@ function randomRangeCandidates(frame, value, range, candidate, budget, parenthes
         },
       ];
     hasContinuousRange ||= options.continuous;
-    combinationCount *= options.values.length;
+    analyzedGroups.push({
+      correlationKey: randomGroupCorrelationKey(frame, value, group, parenthesisPairs),
+      group,
+      options,
+    });
+  }
+  if (analyzedGroups.length === 0) return [];
+
+  const selectionGroups = [];
+  const correlatedSelectionGroups = new Map();
+  for (const analyzedGroup of analyzedGroups) {
+    const correlationGroupKey =
+      analyzedGroup.correlationKey === undefined
+        ? undefined
+        : `${analyzedGroup.correlationKey}\u0000${analyzedGroup.options.values.length}`;
+    let selectionGroup = correlatedSelectionGroups.get(correlationGroupKey);
+    if (correlationGroupKey === undefined || selectionGroup === undefined) {
+      selectionGroup = { groups: [], optionCount: analyzedGroup.options.values.length };
+      selectionGroups.push(selectionGroup);
+      if (correlationGroupKey !== undefined)
+        correlatedSelectionGroups.set(correlationGroupKey, selectionGroup);
+    }
+    selectionGroup.groups.push(analyzedGroup);
+  }
+
+  if (
+    selectionGroups.some(
+      (selectionGroup) =>
+        selectionGroup.groups.length > 1 &&
+        selectionGroup.groups.some(({ options }) => options.continuous),
+    )
+  ) {
+    const randomRanges = [];
+    const randomRangeGroupIndexes = [];
+    for (let groupIndex = 0; groupIndex < selectionGroups.length; groupIndex += 1) {
+      for (const { group } of selectionGroups[groupIndex].groups) {
+        randomRanges.push({ start: group.functionStart, end: group.end });
+        randomRangeGroupIndexes.push(groupIndex);
+      }
+    }
+    if (
+      !progressExpressionIsMultilinear(
+        value,
+        range,
+        randomRanges,
+        randomRangeGroupIndexes,
+        frame.children,
+        parenthesisPairs,
+      )
+    )
+      return [
+        {
+          ...candidate,
+          resolvedFallback: fallbackResolutionTooComplex,
+          resolvedClassification: 'too-complex',
+          hasRuntimeSibling: true,
+        },
+      ];
+  }
+
+  let combinationCount = 1;
+  for (const selectionGroup of selectionGroups) {
+    combinationCount *= selectionGroup.optionCount;
     if (!Number.isSafeInteger(combinationCount) || combinationCount > 256)
       return [
         {
@@ -4185,9 +4295,7 @@ function randomRangeCandidates(frame, value, range, candidate, budget, parenthes
           hasRuntimeSibling: true,
         },
       ];
-    analyzedGroups.push({ group, options });
   }
-  if (analyzedGroups.length === 0) return [];
 
   const classifications = new Set();
   let minimum = Infinity;
@@ -4195,14 +4303,14 @@ function randomRangeCandidates(frame, value, range, candidate, budget, parenthes
   let numericResultCount = 0;
   for (let combination = 0; combination < combinationCount; combination += 1) {
     let optionStride = 1;
-    const replacements = analyzedGroups.map(({ group, options }) => {
-      const optionIndex = Math.floor(combination / optionStride) % options.values.length;
-      optionStride *= options.values.length;
-      return {
+    const replacements = selectionGroups.flatMap((selectionGroup) => {
+      const optionIndex = Math.floor(combination / optionStride) % selectionGroup.optionCount;
+      optionStride *= selectionGroup.optionCount;
+      return selectionGroup.groups.map(({ group, options }) => ({
         start: group.functionStart,
         end: group.end,
         value: options.values[optionIndex],
-      };
+      }));
     });
     const expression = resolveFrameExpressionWithRangeReplacements(
       frame,
