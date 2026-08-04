@@ -84,13 +84,23 @@ function findNamedAlternative(rationale: string): string | null {
   return null;
 }
 
+/** Matches the `components:create` scaffold's unedited `@avoidWhen TODO: …` placeholder. */
+const AVOID_WHEN_PLACEHOLDER = /^todo\b/i;
+
+/** Whether at least one `@avoidWhen` entry has authored content rather than the scaffold placeholder. */
+function hasAuthoredAvoidWhen(avoidWhen: readonly AvoidWhenEntry[]): boolean {
+  return avoidWhen.some((item) => !AVOID_WHEN_PLACEHOLDER.test(item.reason.trim()));
+}
+
 /** Return violations for one authored component metadata block. */
 export function findNeighbourRationaleViolations(
   entry: InventoryEntry,
-  knownComponentIds: ReadonlySet<string> = new Set(),
+  knownComponentIds: ReadonlySet<string>,
 ): InventoryViolation[] {
-  const hasRelatedAndAvoidWhen =
-    entry.related.some((relatedId) => relatedId !== entry.id) && entry.avoidWhen.length > 0;
+  const hasKnownRelated = entry.related.some(
+    (relatedId) => relatedId !== entry.id && knownComponentIds.has(relatedId),
+  );
+  const hasRelatedAndAvoidWhen = hasKnownRelated && hasAuthoredAvoidWhen(entry.avoidWhen);
   const namedAlternative = findNamedAlternative(findExplicitRationale(entry.source));
   const hasExplicitRationale =
     namedAlternative !== null &&

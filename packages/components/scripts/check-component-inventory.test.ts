@@ -17,12 +17,15 @@ describe('findNeighbourRationaleViolations', () => {
 
   it('rejects a component with no neighbour rationale', () => {
     expect(
-      findNeighbourRationaleViolations({
-        id: 'new-component',
-        related: [],
-        avoidWhen: [],
-        source: '@purpose A new component.',
-      }),
+      findNeighbourRationaleViolations(
+        {
+          id: 'new-component',
+          related: [],
+          avoidWhen: [],
+          source: '@purpose A new component.',
+        },
+        knownComponentIds,
+      ),
     ).toEqual([
       expect.objectContaining({
         id: 'new-component',
@@ -33,13 +36,45 @@ describe('findNeighbourRationaleViolations', () => {
 
   it('accepts related and avoidWhen metadata', () => {
     expect(
-      findNeighbourRationaleViolations({
-        id: 'new-component',
-        related: ['button'],
-        avoidWhen: [{ reason: 'Use a button instead.' }],
-        source: '@related button\n@avoidWhen Use a button instead.',
-      }),
+      findNeighbourRationaleViolations(
+        {
+          id: 'new-component',
+          related: ['button'],
+          avoidWhen: [{ reason: 'Use a button instead.' }],
+          source: '@related button\n@avoidWhen Use a button instead.',
+        },
+        knownComponentIds,
+      ),
     ).toEqual([]);
+  });
+
+  it('rejects an unedited @avoidWhen scaffold placeholder even with a valid @related', () => {
+    expect(
+      findNeighbourRationaleViolations(
+        {
+          id: 'new-component',
+          related: ['button'],
+          avoidWhen: [{ reason: 'TODO: describe when a different component fits better.' }],
+          source:
+            '@related button\n@avoidWhen TODO: describe when a different component fits better.',
+        },
+        knownComponentIds,
+      ),
+    ).toHaveLength(1);
+  });
+
+  it('rejects a @related id that is not a known component, even with a real @avoidWhen', () => {
+    expect(
+      findNeighbourRationaleViolations(
+        {
+          id: 'new-component',
+          related: ['buton'],
+          avoidWhen: [{ reason: 'Use a button instead for simple actions.' }],
+          source: '@related buton\n@avoidWhen Use a button instead for simple actions.',
+        },
+        knownComponentIds,
+      ),
+    ).toHaveLength(1);
   });
 
   it('accepts an explicit rationale naming the nearest alternative', () => {
@@ -59,24 +94,30 @@ describe('findNeighbourRationaleViolations', () => {
 
   it('ignores rationale text outside the canonical metadata block', () => {
     expect(
-      findNeighbourRationaleViolations({
-        id: 'new-component',
-        related: [],
-        avoidWhen: [],
-        source: '<script>const note = "@rationale Nearest alternative: button";</script>',
-      }),
+      findNeighbourRationaleViolations(
+        {
+          id: 'new-component',
+          related: [],
+          avoidWhen: [],
+          source: '<script>const note = "@rationale Nearest alternative: button";</script>',
+        },
+        knownComponentIds,
+      ),
     ).toHaveLength(1);
   });
 
   it('ignores rationale text before the @cinder marker', () => {
     expect(
-      findNeighbourRationaleViolations({
-        id: 'new-component',
-        related: [],
-        avoidWhen: [],
-        source:
-          '<script module>/**\n * @rationale Nearest alternative: button\n * @cinder\n * @purpose A component.\n */</script>',
-      }),
+      findNeighbourRationaleViolations(
+        {
+          id: 'new-component',
+          related: [],
+          avoidWhen: [],
+          source:
+            '<script module>/**\n * @rationale Nearest alternative: button\n * @cinder\n * @purpose A component.\n */</script>',
+        },
+        knownComponentIds,
+      ),
     ).toHaveLength(1);
   });
 
@@ -97,12 +138,15 @@ describe('findNeighbourRationaleViolations', () => {
 
   it('rejects a self-reference in @related metadata', () => {
     expect(
-      findNeighbourRationaleViolations({
-        id: 'new-component',
-        related: ['new-component'],
-        avoidWhen: [{ reason: 'Use something else.' }],
-        source: '',
-      }),
+      findNeighbourRationaleViolations(
+        {
+          id: 'new-component',
+          related: ['new-component'],
+          avoidWhen: [{ reason: 'Use something else.' }],
+          source: '',
+        },
+        knownComponentIds,
+      ),
     ).toHaveLength(1);
   });
 
@@ -123,12 +167,16 @@ describe('findNeighbourRationaleViolations', () => {
 
   it('rejects an empty explicit alternative marker', () => {
     expect(
-      findNeighbourRationaleViolations({
-        id: 'new-component',
-        related: [],
-        avoidWhen: [],
-        source: '<script module>/**\n * @cinder\n * @rationale Nearest alternative:\n */</script>',
-      }),
+      findNeighbourRationaleViolations(
+        {
+          id: 'new-component',
+          related: [],
+          avoidWhen: [],
+          source:
+            '<script module>/**\n * @cinder\n * @rationale Nearest alternative:\n */</script>',
+        },
+        knownComponentIds,
+      ),
     ).toHaveLength(1);
   });
 
