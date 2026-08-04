@@ -150,7 +150,9 @@ function isSequentialCandidate(candidate: HTMLElement): boolean {
 
 function hasNativeSequentialDefault(element: HTMLElement): boolean {
   return (
-    element.matches('button, a[href], area[href], select, textarea, summary, frame, iframe') ||
+    element.matches(
+      'button, input:not([type="hidden"]), a[href], area[href], select, textarea, summary, frame, iframe',
+    ) ||
     element.matches('audio[controls], video[controls], embed[src]') ||
     (element.matches('object') && (element.getAttribute('data')?.trim().length ?? 0) > 0) ||
     isEditingHost(element)

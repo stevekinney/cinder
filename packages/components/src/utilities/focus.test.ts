@@ -71,6 +71,7 @@ describe('restoreFocusTo', () => {
 describe('getSequentialFocusTargets', () => {
   test('includes native sequential controls omitted by the old selector', () => {
     const region = document.createElement('div');
+    const input = document.createElement('input');
     const details = document.createElement('details');
     const summary = document.createElement('summary');
     summary.setAttribute('tabindex', '0');
@@ -92,10 +93,11 @@ describe('getSequentialFocusTargets', () => {
     editable.setAttribute('tabindex', '0');
     const notEditable = document.createElement('div');
     notEditable.setAttribute('contenteditable', 'FALSE');
-    region.append(details, iframe, audio, video, embed, object, editable, notEditable);
+    region.append(input, details, iframe, audio, video, embed, object, editable, notEditable);
     document.body.append(region);
 
     const targets = getSequentialFocusTargets(region);
+    expect(targets).toContain(input);
     expect(targets).toContain(summary);
     expect(targets).toContain(iframe);
     expect(targets).toContain(video);
