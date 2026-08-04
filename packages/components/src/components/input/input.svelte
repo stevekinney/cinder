@@ -84,6 +84,15 @@
   const hasTrailing = $derived(!!trailing || isNativeDateInput);
   const hasGroupWrapper = $derived(!!leading || hasTrailing);
   const isInvalid = $derived(resolvedAriaInvalid === 'true');
+  const groupModifiers = $derived(
+    classNames(
+      leading && 'cinder-input-group--leading',
+      hasTrailing && 'cinder-input-group--trailing',
+      rendersNativeDateIcon && 'cinder-input-group--native-date',
+      resolvedDisabled && 'cinder-input-group--disabled',
+      isInvalid && 'cinder-input-group--invalid',
+    ),
+  );
   let inputNode: HTMLInputElement | undefined = $state();
   let resetSyncTimeout: ReturnType<typeof setTimeout> | undefined;
 
@@ -165,7 +174,7 @@
 {#snippet control()}
   {#if hasGroupWrapper}
     <div
-      class={classNames('cinder-input-group', groupClassName)}
+      class={classNames('cinder-input-group', groupClassName, groupModifiers)}
       data-leading={leading ? '' : undefined}
       data-trailing={hasTrailing ? '' : undefined}
       data-native-date={rendersNativeDateIcon ? '' : undefined}
@@ -239,6 +248,7 @@
       required={resolvedRequired}
       disabled={resolvedDisabled}
       class="cinder-input-field"
+      fullWidth
       descriptionClass="cinder-input-field__description"
       errorClass="cinder-input-field__error"
       descriptionId={field.ownDescriptionId}
@@ -276,6 +286,7 @@
     required={required ?? false}
     disabled={disabled ?? false}
     class="cinder-input-field"
+    fullWidth
     descriptionClass="cinder-input-field__description"
     errorClass="cinder-input-field__error"
     control={inputElement}

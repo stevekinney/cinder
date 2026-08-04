@@ -99,6 +99,15 @@ describe('FormField rendering', () => {
     expect(container.querySelector('.cinder-form-field')).not.toBeNull();
   });
 
+  test('does not claim full-width layout for arbitrary child controls', () => {
+    const { container } = render(FormField, {
+      props: { id: 'intrinsic', label: 'Intrinsic', children: emptySnippet },
+    });
+    expect(
+      container.querySelector('.cinder-form-field')?.hasAttribute('data-cinder-full-width'),
+    ).toBe(false);
+  });
+
   test('label has data-disabled attribute when disabled is true', () => {
     const { container } = render(FormField, {
       props: { id: 'name', label: 'Name', disabled: true, children: emptySnippet },

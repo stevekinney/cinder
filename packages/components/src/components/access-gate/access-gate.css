@@ -17,6 +17,11 @@
     inline-size: 100%;
   }
 
+  .cinder-access-gate__passthrough:has(> .cinder-form-field > [data-cinder-full-width]) {
+    display: flex;
+    inline-size: 100%;
+  }
+
   .cinder-access-gate__passthrough:where(
     :has(> [data-cinder-icon-only]):has(> :nth-child(2)):not(:has(> :not([data-cinder-icon-only])))
   ) {
@@ -48,6 +53,11 @@
   }
 
   .cinder-access-gate__inline-content:has(> [data-cinder-full-width]) {
+    display: flex;
+    inline-size: 100%;
+  }
+
+  .cinder-access-gate__inline-content:has(> .cinder-form-field > [data-cinder-full-width]) {
     display: flex;
     inline-size: 100%;
   }

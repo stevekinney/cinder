@@ -29,6 +29,7 @@
     controlNativeDate = false,
     controlDisabled = false,
     controlInvalid = false,
+    fullWidth = false,
     control,
     before,
     after,
@@ -51,6 +52,7 @@
     controlNativeDate?: boolean | undefined;
     controlDisabled?: boolean | undefined;
     controlInvalid?: boolean | undefined;
+    fullWidth?: boolean | undefined;
     control: Snippet;
     before?: Snippet | undefined;
     after?: Snippet | undefined;
@@ -90,7 +92,10 @@
   };
 </script>
 
-<div class={classNames('cinder-form-field', className)} data-cinder-full-width>
+<div
+  class={classNames('cinder-form-field', className)}
+  data-cinder-full-width={fullWidth ? '' : undefined}
+>
   {#if label}
     <label
       id={labelId}
