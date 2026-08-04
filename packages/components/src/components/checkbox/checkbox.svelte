@@ -23,6 +23,7 @@
   import { devWarn } from '../../utilities/dev-warn.ts';
   import { commitValue } from '../../utilities/value-change.ts';
   import FormField from '@lostgradient/cinder/form-field';
+  import FormFieldFrame from '../../_internal/form-field-frame.svelte';
 
   let {
     id,
@@ -148,39 +149,34 @@
       />
       <span class="cinder-checkbox-field__indicator" aria-hidden="true"></span>
     </span>
-    {#if renderInlineLabel}
-      <label
-        for={field.id}
-        class="cinder-checkbox-field__label"
-        data-disabled={field.disabled || undefined}
-      >
-        {label}
-        {#if field.required}
-          <span class="cinder-_required-marker" aria-hidden="true">*</span>
-        {/if}
-      </label>
-    {/if}
   </div>
 {/snippet}
 
 {#if context}
-  <div class="cinder-checkbox-field">
+  {#if renderInlineLabel || description || error}
+    <FormFieldFrame
+      id={field.id}
+      label={renderInlineLabel ? label : undefined}
+      {description}
+      {error}
+      descriptionId={field.ownDescriptionId}
+      errorId={field.ownErrorId}
+      required={field.required}
+      disabled={field.disabled}
+      class="cinder-checkbox-field"
+      {control}
+    ></FormFieldFrame>
+  {:else}
     {@render control()}
-    {#if description}
-      <p id={field.ownDescriptionId} class="cinder-form-field__description">{description}</p>
-    {/if}
-    {#if error}
-      <p id={field.ownErrorId} class="cinder-form-field__error" aria-live="polite">{error}</p>
-    {/if}
-  </div>
+  {/if}
 {:else}
   <FormField
     id={field.id}
-    label={renderInlineLabel ? undefined : label}
+    {label}
     {description}
     {error}
-    required={required ?? false}
-    disabled={disabled ?? false}
+    required={field.required}
+    disabled={field.disabled}
     class="cinder-checkbox-field"
   >
     {@render control()}

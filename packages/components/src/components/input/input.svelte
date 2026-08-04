@@ -229,16 +229,43 @@
 {/snippet}
 
 {#if context}
-  {#if label && !context.labelId}
-    <label id={`${field.id}-label`} for={field.id} class="cinder-input-field__label">{label}</label>
-  {/if}
-  {@render control()}
-  {#if description}<p id={field.ownDescriptionId} class="cinder-input-field__description">
+  {#if label || description || error}
+    <FormFieldFrame
+      {id}
+      label={context.labelId ? undefined : label}
+      {hideLabel}
       {description}
-    </p>{/if}
-  {#if error}<p id={field.ownErrorId} class="cinder-input-field__error" aria-live="polite">
       {error}
-    </p>{/if}
+      required={resolvedRequired}
+      disabled={resolvedDisabled}
+      class="cinder-input-field"
+      descriptionClass="cinder-input-field__description"
+      errorClass="cinder-input-field__error"
+      descriptionId={field.ownDescriptionId}
+      errorId={field.ownErrorId}
+      control={inputElement}
+      controlClass={hasGroupWrapper
+        ? classNames(
+            'cinder-input-group',
+            groupClassName,
+            leading && 'cinder-input-group--leading',
+            hasTrailing && 'cinder-input-group--trailing',
+            rendersNativeDateIcon && 'cinder-input-group--native-date',
+            resolvedDisabled && 'cinder-input-group--disabled',
+            isInvalid && 'cinder-input-group--invalid',
+          )
+        : undefined}
+      controlLeading={!!leading}
+      controlTrailing={hasTrailing}
+      controlNativeDate={rendersNativeDateIcon}
+      controlDisabled={resolvedDisabled}
+      controlInvalid={isInvalid}
+      before={hasGroupWrapper ? leadingAdornment : undefined}
+      after={hasGroupWrapper ? trailingAdornment : undefined}
+    />
+  {:else}
+    {@render control()}
+  {/if}
 {:else}
   <FormFieldFrame
     {id}

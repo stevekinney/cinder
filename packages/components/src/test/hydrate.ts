@@ -46,6 +46,13 @@ function serverCompilePlugin(): BunPlugin {
   return {
     name: 'hydrate-svelte-server',
     setup(builder) {
+      builder.onResolve({ filter: /^@lostgradient\/cinder(?:\/(.+))?$/ }, ({ path }) => {
+        const subpath = path.replace('@lostgradient/cinder/', '');
+        if (!subpath || subpath.includes('/')) return undefined;
+        const sourceEntry = resolve(import.meta.dir, '..', 'components', subpath, 'index.ts');
+        return existsSync(sourceEntry) ? { path: sourceEntry } : undefined;
+      });
+
       builder.onResolve({ filter: /\.svelte$/ }, ({ path, importer, resolveDir }) => {
         if (!isFileSpecifier(path)) return undefined;
         const baseDirectory = importer ? dirname(importer) : resolveDir;

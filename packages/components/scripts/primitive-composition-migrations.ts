@@ -148,7 +148,6 @@ export const allowedFieldWrapperCounts = new Map<string, number>(
     '_radio/radio.svelte',
     'combobox/combobox.svelte',
     'date-picker/date-picker.svelte',
-    'form-field/form-field.svelte',
     'json-editor/json-editor.svelte',
     'multi-select/multi-select.svelte',
     'select/select.svelte',

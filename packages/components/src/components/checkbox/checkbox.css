@@ -6,10 +6,25 @@
  * ======================================== */
 
   .cinder-checkbox-field {
-    display: flex;
-    flex-direction: column;
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
     gap: var(--cinder-space-1-5);
     inline-size: auto;
+  }
+
+  .cinder-checkbox-field > .cinder-form-field__label {
+    order: 2;
+  }
+
+  .cinder-checkbox-field > .cinder-checkbox-row {
+    order: 1;
+  }
+
+  .cinder-checkbox-field > .cinder-form-field__description,
+  .cinder-checkbox-field > .cinder-form-field__error {
+    flex-basis: 100%;
+    order: 3;
   }
 
   .cinder-checkbox-row {

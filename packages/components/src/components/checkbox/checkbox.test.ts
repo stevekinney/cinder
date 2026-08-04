@@ -54,9 +54,7 @@ describe('Checkbox', () => {
     const { container } = render(FormFieldCheckboxFixture, {
       props: { fieldId: 'agreement', checkboxLabel: 'Agree' },
     });
-    expect(
-      container.querySelector('.cinder-checkbox-row .cinder-checkbox-field__label')?.textContent,
-    ).toContain('Agree');
+    expect(container.querySelector('.cinder-form-field__label')?.textContent).toContain('Agree');
   });
 
   test('checked prop is reflected on the input', () => {
@@ -301,6 +299,27 @@ describe('Checkbox — FormField context wiring', () => {
     expect(wrapper?.querySelector('.cinder-form-field__description')?.id).toBe('agree-description');
     expect(wrapper?.querySelector('.cinder-form-field__error')?.id).toBe('agree-error');
     expect(wrapper?.querySelector('.cinder-checkbox-field__description')).toBeNull();
+  });
+
+  test('keeps distinct support ids when local and FormField messages share a field', () => {
+    const { container } = render(FormFieldCheckboxFixture, {
+      props: {
+        fieldId: 'agree',
+        fieldLabel: 'Agreement',
+        fieldDescription: 'Shared help',
+        fieldError: 'Shared error',
+        checkboxDescription: 'Local help',
+        checkboxError: 'Local error',
+      },
+    });
+    const input = container.querySelector('#agree') as HTMLInputElement;
+    expect(input.getAttribute('aria-describedby')).toBe(
+      'agree-checkbox-description agree-checkbox-error agree-description agree-error',
+    );
+    expect(container.querySelector('#agree-checkbox-description')?.textContent).toContain(
+      'Local help',
+    );
+    expect(container.querySelector('#agree-checkbox-error')?.textContent).toContain('Local error');
   });
 
   test('inherits disabled state from FormField context', () => {

@@ -45,7 +45,7 @@
 
   const ownLabelId = $derived(label ? `${id ?? generatedId}-label` : undefined);
   const labelId = $derived(context?.labelId ?? ownLabelId);
-  const resolvedId = $derived(context?.labelId ? context.controlId : id);
+  const resolvedId = $derived(context?.controlId ?? id);
 
   function toggle(): void {
     if (!resolvedDisabled) {

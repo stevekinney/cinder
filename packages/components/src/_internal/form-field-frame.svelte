@@ -22,6 +22,8 @@
     controlClass,
     descriptionClass,
     errorClass,
+    descriptionId: descriptionIdOverride,
+    errorId: errorIdOverride,
     controlLeading = false,
     controlTrailing = false,
     controlNativeDate = false,
@@ -42,6 +44,8 @@
     controlClass?: string | undefined;
     descriptionClass?: string | undefined;
     errorClass?: string | undefined;
+    descriptionId?: string | undefined;
+    errorId?: string | undefined;
     controlLeading?: boolean | undefined;
     controlTrailing?: boolean | undefined;
     controlNativeDate?: boolean | undefined;
@@ -53,8 +57,8 @@
   } = $props();
 
   const labelId = $derived(label ? `${id}-label` : undefined);
-  const descriptionId = $derived(describeId(id, !!description));
-  const errorId = $derived(buildErrorId(id, !!error));
+  const descriptionId = $derived(descriptionIdOverride ?? describeId(id, !!description));
+  const errorId = $derived(errorIdOverride ?? buildErrorId(id, !!error));
   const describedBy = $derived(composeDescribedBy(descriptionId, errorId));
   const invalid = $derived(ariaInvalid(!!error));
   const needsControlWrapper = $derived(!!controlClass || !!before || !!after);
@@ -91,7 +95,11 @@
     <label
       id={labelId}
       for={id}
-      class={classNames('cinder-form-field__label', hideLabel && 'cinder-sr-only')}
+      class={classNames(
+        'cinder-form-field__label',
+        className?.includes('cinder-checkbox-field') && 'cinder-checkbox-field__label',
+        hideLabel && 'cinder-sr-only',
+      )}
       data-disabled={disabled || undefined}
     >
       {label}
