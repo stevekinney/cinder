@@ -38,6 +38,20 @@ import { compile, compileModule } from 'svelte/compiler';
 
 import { setupHappyDom } from './happy-dom.ts';
 
+const cinderPackageRoot = resolve(import.meta.dir, '..', '..');
+const cinderPackageManifest = await Bun.file(join(cinderPackageRoot, 'package.json')).json();
+const cinderPackageExports = new Set<string>(Object.keys(cinderPackageManifest.exports ?? {}));
+
+export function resolveCinderSourceSubpath(specifier: string): string | undefined {
+  const prefix = '@lostgradient/cinder/';
+  if (!specifier.startsWith(prefix)) return undefined;
+  const subpath = specifier.slice(prefix.length);
+  if (!subpath || subpath.includes('/') || !cinderPackageExports.has(`./${subpath}`))
+    return undefined;
+  const sourceEntry = resolve(import.meta.dir, '..', 'components', subpath, 'index.ts');
+  return existsSync(sourceEntry) ? sourceEntry : undefined;
+}
+
 function serverCompilePlugin(): BunPlugin {
   const namespace = 'hydrate-svelte-server';
   const isFileSpecifier = (specifier: string): boolean =>
@@ -47,10 +61,8 @@ function serverCompilePlugin(): BunPlugin {
     name: 'hydrate-svelte-server',
     setup(builder) {
       builder.onResolve({ filter: /^@lostgradient\/cinder(?:\/(.+))?$/ }, ({ path }) => {
-        const subpath = path.replace('@lostgradient/cinder/', '');
-        if (!subpath || subpath.includes('/')) return undefined;
-        const sourceEntry = resolve(import.meta.dir, '..', 'components', subpath, 'index.ts');
-        return existsSync(sourceEntry) ? { path: sourceEntry } : undefined;
+        const sourceEntry = resolveCinderSourceSubpath(path);
+        return sourceEntry ? { path: sourceEntry } : undefined;
       });
 
       builder.onResolve({ filter: /\.svelte$/ }, ({ path, importer, resolveDir }) => {
