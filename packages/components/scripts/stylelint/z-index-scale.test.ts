@@ -4404,6 +4404,7 @@ describe('cinder/z-index-scale', () => {
     ['calc(9999 * env(viewport-segment-width 0 0, 0px))', 0],
     ['calc(9999 * env(titlebar-area-x, 0px))', 0],
     ['calc(9999 * env(keyboard-inset-height, 0px))', 0],
+    ['calc(9999 * env(safe-area-inset-top 0, 0px))', 0],
     ['calc(9999 * env(safe-area-inset-top, 0))', 0],
     ['calc(9999 * env(viewport-segment-width, 0))', 0],
     ['calc(9999 * env(viewport-segment-width 0 0, 1))', 1],
@@ -4424,6 +4425,7 @@ describe('cinder/z-index-scale', () => {
     ['clamp(0, atan(var(--runtime, 0)), 1)', 0],
     ['clamp(0, atan2(var(--runtime, 0), 1), 1)', 0],
     ['calc(9999 * attr(data-layer type(<length>), 0px))', 0],
+    ['calc(9999 * attr(data-layer type(<length>), 0px) / 1px)', 1],
   ] as const)(
     'tracks the defined path of substitutions with safe fallbacks: %s',
     async (fallback, count) => {
@@ -4439,6 +4441,41 @@ describe('cinder/z-index-scale', () => {
       ).toHaveLength(count);
     },
   );
+
+  test.each([
+    ['toggle(9999, 1)', 1],
+    ['toggle(-1, 1)', 1],
+    ['toggle(0, 1)', 0],
+    ['toggle(1, calc(9999))', 1],
+    ['toggle(1, toggle(9999, 1))', 1],
+    ['toggle(9999)', 0],
+    ['toggle(9999, , 1)', 0],
+    ['toggle(9999; 1)', 0],
+  ] as const)('tracks selectable CSS toggle() values: %s', async (fallback, count) => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: toggle regression coverage. */
+            z-index: var(--outer, ${fallback});
+          }
+        `),
+      ),
+    ).toHaveLength(count);
+  });
+
+  test('preserves typed atan2() defined paths through angle cancellation', async () => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: compatible runtime dimensions can reach the magic layer. */
+            z-index: var(--outer, calc(9999 * atan2(var(--y), 1px) / 45deg));
+          }
+        `),
+      ),
+    ).toHaveLength(1);
+  });
 
   test.each([
     ['calc(9999 * exp(var(--runtime, 1)))', 1],

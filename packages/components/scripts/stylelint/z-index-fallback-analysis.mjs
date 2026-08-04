@@ -28,11 +28,21 @@ const conditionalNestingLimit = 128;
 const uniformDivisorWitnessValues = ['1', '2', '1px', '1deg', '1s', '1hz', '1dppx'];
 const typedDivisorWitnessValues = ['1px', '1deg', '1s', '1hz', '1dppx'];
 const typedZeroWitnessValues = ['0px', '0deg', '0s', '0hz', '0dppx'];
+const attrDefinedPathWitnessesByType = new Map([
+  ['angle', ['0deg', '1deg']],
+  ['frequency', ['0hz', '1hz']],
+  ['integer', ['0', '1']],
+  ['length', ['0px', '1px']],
+  ['number', ['0', '1']],
+  ['percentage', ['0%', '1%']],
+  ['resolution', ['0dppx', '1dppx']],
+  ['time', ['0s', '1s']],
+]);
 const hypotTypedZeroWitnessValues = [...typedZeroWitnessValues, '0fr'];
 const hypotRuntimeWitnessValues = ['1', ...typedDivisorWitnessValues, '1fr'];
 const extremaFunctionNames = new Set(['clamp', 'max', 'min']);
 const hypotFunctionNames = new Set(['hypot']);
-const conditionalFunctionNames = new Set(['first-valid', 'if']);
+const conditionalFunctionNames = new Set(['first-valid', 'if', 'toggle']);
 const unresolvedRuntimeFunctionArities = new Map([
   ['abs', 1],
   ['acos', 1],
@@ -1791,6 +1801,16 @@ function conditionalWholeValueStaticValidity(value, group, parenthesisPairs) {
     return validities.every((validity) => validity === false) ? false : undefined;
   }
 
+  if (group.functionName === 'toggle') {
+    const branchRanges = toggleBranchValueRanges(value, group, parenthesisPairs);
+    if (branchRanges === undefined) return undefined;
+    const validities = branchRanges.map((branchRange) =>
+      firstValidBranchStaticValidity(value, group, branchRange, parenthesisPairs),
+    );
+    if (validities.every((validity) => validity === true)) return true;
+    return validities.every((validity) => validity === false) ? false : undefined;
+  }
+
   const analysis = ifBranchAnalysis(value, group, parenthesisPairs);
   if (analysis === undefined || analysis === fallbackResolutionTooComplex) return undefined;
   if (!analysis.hasGuaranteedSelection || analysis.branchRanges.length === 0) return undefined;
@@ -1972,10 +1992,21 @@ function conditionalBranchValueRanges(value, group, parenthesisPairs) {
   if (group.end === undefined) return undefined;
   if (group.functionName === 'first-valid')
     return firstValidBranchValueRanges(value, group, parenthesisPairs);
+  if (group.functionName === 'toggle')
+    return toggleBranchValueRanges(value, group, parenthesisPairs);
   if (group.functionName !== 'if') return undefined;
   const analysis = ifBranchAnalysis(value, group, parenthesisPairs);
   if (analysis === undefined || analysis === fallbackResolutionTooComplex) return analysis;
   return analysis.branchRanges;
+}
+
+function toggleBranchValueRanges(value, group, parenthesisPairs) {
+  const branchRanges = randomItemArgumentRanges(value, group, parenthesisPairs);
+  return branchRanges !== undefined &&
+    branchRanges.length >= 2 &&
+    branchRanges.every((branchRange) => branchRange.start < branchRange.end)
+    ? branchRanges
+    : undefined;
 }
 
 function rangeIsValidConditionalExpression(frame, value, range, parenthesisPairs) {
@@ -3129,22 +3160,26 @@ function validSubstitutionHeader(frame, value) {
   return validAttrTypeSyntax(typeMatch[1]);
 }
 
-function substitutionDefinedPathCanBeNumber(frame, value) {
-  if (frame.functionName === 'var') return true;
+function substitutionDefinedPathWitnesses(frame, value) {
+  if (frame.functionName === 'var') return ['0', '1'];
   if (frame.functionName === 'env') {
     const header = value
       .slice(frame.openIndex + 1, frame.commaIndex)
       .replaceAll(cssCommentMaskCharacter, ' ')
       .trim();
+    const identifierEnd = cssIdentifierTokenEnd(header, 0);
+    const environmentVariableName = header.slice(0, identifierEnd);
     const scalarLengthEnvironmentVariable =
       /^(?:safe-area-(?:max-)?inset-(?:top|right|bottom|left)|titlebar-area-(?:x|y|width|height)|keyboard-inset-(?:top|right|bottom|left|width|height))$/i.test(
-        header,
+        environmentVariableName,
       );
     const indexedLengthEnvironmentVariable =
       /^viewport-segment-(?:width|height|top|right|bottom|left)(?:\s|$)/i.test(header);
-    return !scalarLengthEnvironmentVariable && !indexedLengthEnvironmentVariable;
+    return scalarLengthEnvironmentVariable || indexedLengthEnvironmentVariable
+      ? undefined
+      : ['0', '1'];
   }
-  if (frame.functionName !== 'attr') return false;
+  if (frame.functionName !== 'attr') return undefined;
   const header = value
     .slice(frame.openIndex + 1, frame.commaIndex)
     .replaceAll(cssCommentMaskCharacter, ' ')
@@ -3152,7 +3187,9 @@ function substitutionDefinedPathCanBeNumber(frame, value) {
   const identifierEnd = cssIdentifierTokenEnd(header, 0);
   const attrType = header.slice(identifierEnd).trim();
   const typeMatch = /^type\(([^()]+)\)$/i.exec(attrType);
-  return typeMatch !== null && /(?:^|[<"'])(?:integer|number)(?:>|["']|$)/i.test(typeMatch[1]);
+  if (typeMatch === null) return undefined;
+  const typeName = /^<([a-z-]+)>$/i.exec(typeMatch[1].trim())?.[1].toLowerCase();
+  return attrDefinedPathWitnessesByType.get(typeName);
 }
 
 function substitutionDefinedPathIdentity(frame, value) {
@@ -4017,19 +4054,27 @@ function unresolvedRuntimeRangeCandidates(
       ),
     );
     if (hasUnavoidablyNonNumberArgument && functionParent.functionName !== 'random') {
-      if (
-        !steppedValueFunctionNames.has(functionParent.functionName) ||
-        !steppedValueFunctionHasValidTypedOuterWitness(
-          frame,
-          value,
-          range,
-          functionRange,
-          parsedArguments,
-          numberOnlyArgumentRanges,
-          budget,
-        )
-      )
-        continue;
+      const hasValidTypedOuterWitness =
+        (steppedValueFunctionNames.has(functionParent.functionName) &&
+          steppedValueFunctionHasValidTypedOuterWitness(
+            frame,
+            value,
+            range,
+            functionRange,
+            parsedArguments,
+            numberOnlyArgumentRanges,
+            budget,
+          )) ||
+        (functionParent.functionName === 'atan2' &&
+          atan2HasValidTypedOuterWitness(
+            frame,
+            value,
+            range,
+            functionRange,
+            parsedArguments,
+            budget,
+          ));
+      if (!hasValidTypedOuterWitness) continue;
     }
     const logValueArgument = parsedArguments.argumentRanges[0];
     const definedPathCanChangeLogValue =
@@ -4573,7 +4618,7 @@ function definedSubstitutionPathCandidates(
   const expressionRange = unwrapStaticContainer(value, range, parenthesisPairs);
   const childGroups = new Map();
   for (const child of frame.children) {
-    if (!child.definedPathCanBeNumber || !selectableChildren.has(child)) continue;
+    if (child.definedPathWitnesses === undefined || !selectableChildren.has(child)) continue;
     const key = substitutionDefinedPathIdentity(child, value) ?? `${child.start}:${child.end}`;
     const group = childGroups.get(key);
     if (group === undefined) childGroups.set(key, [child]);
@@ -4626,7 +4671,15 @@ function definedSubstitutionPathCandidates(
     )
       continue;
     const endpointExpressions = [];
-    for (const witness of ['0', '1']) {
+    const witnesses = correlatedChildren[0].definedPathWitnesses;
+    if (
+      witnesses === undefined ||
+      correlatedChildren.some(
+        (child) => child.definedPathWitnesses?.join('\0') !== witnesses.join('\0'),
+      )
+    )
+      continue;
+    for (const witness of witnesses) {
       const expression = resolveFrameExpressionWithRangeReplacements(
         frame,
         value,
@@ -4773,6 +4826,7 @@ function randomNumericArgumentRanges(value, parsedArguments) {
 }
 
 function numberOnlyRuntimeArgumentRanges(functionName, parsedArguments, value) {
+  if (functionName === 'atan2') return parsedArguments.argumentRanges;
   if (functionName === 'exp' || functionName === 'sqrt')
     return parsedArguments.argumentRanges.slice(0, 1);
   if (['log', 'mod', 'pow', 'rem'].includes(functionName)) return parsedArguments.argumentRanges;
@@ -4850,6 +4904,19 @@ function runtimeFunctionStaticArgumentsAreValid(
         const analysis = analyzeStaticLayerValue(argument.value);
         return (
           !isStaticallyInvalidArithmetic(argument.value) &&
+          (analysis.resultType === 'number' || analysis.resultType === 'non-number')
+        );
+      }) &&
+      (staticValues.length < 2 || haveCompatibleStaticProgressTypes(staticValues))
+    );
+  }
+  if (functionName === 'atan2') {
+    const staticValues = parsedArguments.staticArguments.map((argument) => argument.value);
+    return (
+      staticValues.every((argument) => {
+        const analysis = analyzeStaticLayerValue(argument);
+        return (
+          !isStaticallyInvalidArithmetic(argument) &&
           (analysis.resultType === 'number' || analysis.resultType === 'non-number')
         );
       }) &&
@@ -4978,6 +5045,28 @@ function staticValueHasPositiveScalarOrTypedMagnitude(value) {
   return typedDivisorWitnessValues.some(
     (witness) => evaluateStaticLayerNumber(`calc((${value}) / (${witness}))`) > 0,
   );
+}
+
+function atan2HasValidTypedOuterWitness(
+  frame,
+  value,
+  range,
+  functionRange,
+  parsedArguments,
+  budget,
+) {
+  const staticValues = parsedArguments.staticArguments.map((argument) => argument.value);
+  return typedDivisorWitnessValues.some((witness) => {
+    if (!haveCompatibleStaticProgressTypes([...staticValues, witness])) return false;
+    const expression = resolveFrameExpressionWithRangeReplacements(frame, value, range, budget, [
+      { start: functionRange.start, end: functionRange.end, value: '1deg' },
+    ]);
+    return (
+      expression !== fallbackResolutionTooComplex &&
+      !isStaticallyInvalidArithmetic(expression) &&
+      analyzeStaticLayerValue(expression).resultType === 'number'
+    );
+  });
 }
 
 function steppedValueFunctionHasValidTypedOuterWitness(
@@ -6198,8 +6287,13 @@ function fallbackCandidates(value) {
       resolvedFallback: frame.resolvedFallback,
       resolvedClassification: frame.resolvedClassification,
     };
-    frame.definedPathCanBeNumber =
-      frame.fallbackParent !== undefined && substitutionDefinedPathCanBeNumber(frame, value);
+    frame.definedPathWitnesses =
+      frame.fallbackParent === undefined
+        ? undefined
+        : substitutionDefinedPathWitnesses(frame, value);
+    frame.definedPathCanBeNumber = frame.definedPathWitnesses?.some(
+      (witness) => analyzeStaticLayerValue(witness).resultType === 'number',
+    );
     frame.unprovenBannedCandidates = unprovenCandidatesForFrame(
       frame,
       value,
