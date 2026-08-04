@@ -2,7 +2,7 @@
 
 Pre-wired modal dialog for user-initiated binary decisions: "proceed" or "cancel". Focus defaults to the cancel button — the industry-standard guard against accidental destructive confirms.
 
-See the [dialog preset boundary](../../../../../docs/decisions/dialog-presets.md)
+See the [dialog preset boundary](https://github.com/stevekinney/cinder/blob/main/docs/decisions/dialog-presets.md)
 for the preserved role, acknowledgement, and dismissal contract.
 
 ## Dialog model

@@ -2,7 +2,7 @@
 
 Generic modal shell for rich content, forms, and structured workflows. Use the more specialised components when the content fits their narrower contract.
 
-See the [dialog preset boundary](../../../../../docs/decisions/dialog-presets.md)
+See the [dialog preset boundary](https://github.com/stevekinney/cinder/blob/main/docs/decisions/dialog-presets.md)
 for the durable distinction from ConfirmDialog and AlertDialog.
 
 ## Choosing this component
