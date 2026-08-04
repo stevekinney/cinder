@@ -39,8 +39,7 @@ Renders a responsive cloud of customer or partner logos with optional links.
 
 <!-- generated:variables:start -->
 
-This component does not declare any local CSS variables.
-
+- `--cinder-grid-columns`
 <!-- generated:variables:end -->
 
 ## Subcomponents

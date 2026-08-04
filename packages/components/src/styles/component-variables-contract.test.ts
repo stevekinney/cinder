@@ -147,6 +147,8 @@ describe('component *.variables.json contract', () => {
   const OWNERSHIP_ALLOWLIST: Record<string, string[]> = {
     // The kanban board is the cascade scope for its columns and cards.
     'kanban-board': ['--cinder-kanban-column-', '--cinder-kanban-card-'],
+    // LogoCloud owns the cascade override surface for its composed Grid list.
+    'logo-cloud': ['--cinder-grid-'],
   };
 
   test('every variable in components variables.json is owned by the declaring component', async () => {
