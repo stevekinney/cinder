@@ -708,6 +708,28 @@ function evaluateConstantArithmetic(expression) {
           progress.units.size === 1 &&
           progress.units.get('unit:%') === 1 &&
           progress.symbolicFactors.size === 0;
+        const progressIsFixed =
+          progress.symbolicFactors.size === 0 &&
+          (progress.units.size === 0 || progressIsPercentage);
+        if (progressIsFixed) {
+          const fixedExactProgress = progressIsPercentage
+            ? divideRationals(progress.exactValue, { numerator: 100n, denominator: 1n })
+            : progress.exactValue;
+          const fixedProgressValue = progressIsPercentage ? progress.value / 100 : progress.value;
+          const progressIsZero =
+            fixedExactProgress === undefined
+              ? fixedProgressValue === 0
+              : fixedExactProgress.numerator === 0n;
+          const progressIsOne =
+            fixedExactProgress === undefined
+              ? fixedProgressValue === 1
+              : fixedExactProgress.numerator === fixedExactProgress.denominator;
+          // A fixed progress of exactly 0 or 1 selects one calc-mix endpoint
+          // outright; the discarded endpoint's unit never participates in the
+          // result, so it need not match the selected endpoint's unit.
+          if (progressIsZero) return start;
+          if (progressIsOne) return end;
+        }
         if (
           (!progressIsPercentage && progress.units.size !== 0) ||
           progress.symbolicFactors.size !== 0 ||

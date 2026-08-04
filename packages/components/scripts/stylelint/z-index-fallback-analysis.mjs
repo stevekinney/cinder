@@ -107,6 +107,10 @@ const hypotTypedZeroWitnessValues = [...typedZeroWitnessValues, '0fr'];
 const hypotRuntimeWitnessValues = ['1', ...typedDivisorWitnessValues, '1fr'];
 const extremaFunctionNames = new Set(['clamp', 'max', 'min']);
 const hypotFunctionNames = new Set(['hypot']);
+// Pure, deterministic, single-argument functions: identical argument text
+// always produces an identical result, so repeated calls can be correlated
+// and proven to cancel in unresolvedRuntimeRangeCandidates's linearity proof.
+const correlatablePureFunctionNames = new Set(['abs', 'cos', 'exp', 'sin', 'sqrt', 'tan']);
 const conditionalFunctionNames = new Set(['first-valid', 'if', 'toggle']);
 const unresolvedRuntimeFunctionArities = new Map([
   ['abs', 1],
@@ -3248,7 +3252,16 @@ function attrDefinedPathWitnessGroups(attrType) {
   }
   const typeMatch = /^type\(([^()]+)\)$/i.exec(attrType);
   if (typeMatch === null) return undefined;
-  const declaredType = typeMatch[1].trim();
+  let declaredType = typeMatch[1].trim();
+  if (declaredType[0] === '"' || declaredType[0] === "'") {
+    const closingQuoteIndex = quotedStringEnd(declaredType, 0);
+    if (
+      closingQuoteIndex !== declaredType.length - 1 ||
+      declaredType[closingQuoteIndex] !== declaredType[0]
+    )
+      return undefined;
+    declaredType = declaredType.slice(1, closingQuoteIndex).trim();
+  }
   if (declaredType === '*') return [['0', '9999']];
   const witnessGroups = [];
   for (const alternative of declaredType.split('|')) {
@@ -3273,22 +3286,32 @@ function substitutionDefinedPathWitnessGroups(frame, value) {
   if (frame.functionName === 'var')
     return [
       ['0', '1'],
+      ['0%', '1%'],
       ...typedZeroWitnessValues.map((zero, index) => [zero, typedDivisorWitnessValues[index]]),
     ];
   if (frame.functionName === 'env') {
     const header = substitutionHeader(frame, value);
     const identifierEnd = cssIdentifierTokenEnd(header, 0);
     const environmentVariableName = header.slice(0, identifierEnd);
-    const scalarLengthEnvironmentVariable =
+    const indexTokenCount = header
+      .slice(identifierEnd)
+      .split(/\s+/)
+      .filter((token) => token !== '').length;
+    // safe-area-inset-* and its siblings are scalar: they take no index, so
+    // any index makes the reference unresolvable. viewport-segment-* is the
+    // only indexed family and always takes exactly two indices. Either way,
+    // the wrong arity means only the written fallback is ever reachable, so
+    // there is no separate runtime-defined path to witness.
+    const isScalarLengthEnvironmentName =
       /^(?:safe-area-(?:max-)?inset-(?:top|right|bottom|left)|titlebar-area-(?:x|y|width|height)|keyboard-inset-(?:top|right|bottom|left|width|height))$/i.test(
         environmentVariableName,
       );
-    const indexedLengthEnvironmentVariable =
-      /^viewport-segment-(?:width|height|top|right|bottom|left)(?:\s|$)/i.test(header);
+    const isIndexedLengthEnvironmentName =
+      /^viewport-segment-(?:width|height|top|right|bottom|left)$/i.test(environmentVariableName);
+    if (isScalarLengthEnvironmentName && indexTokenCount !== 0) return undefined;
+    if (isIndexedLengthEnvironmentName && indexTokenCount !== 2) return undefined;
     return [
-      scalarLengthEnvironmentVariable || indexedLengthEnvironmentVariable
-        ? ['0px', '1px']
-        : ['0', '1'],
+      isScalarLengthEnvironmentName || isIndexedLengthEnvironmentName ? ['0px', '1px'] : ['0', '1'],
     ];
   }
   if (frame.functionName !== 'attr') return undefined;
@@ -3536,6 +3559,20 @@ function unresolvedExtremaRangeCandidates(
   suppressedRuntimeFunctionRanges,
   selectableChildren,
 ) {
+  // A bare operator stream (or invalid comma stream) outside math grammar can
+  // never apply as CSS: the declaration is dropped entirely, so a value
+  // nested inside it never reaches the page. Widening the child filter below
+  // to cover safe-but-defined-path children (see the analogous 4128 pattern)
+  // makes that previously unreachable combination reachable here; without
+  // this guard it would surface as a spurious candidate instead of staying
+  // safe, whether or not another selectable child sits outside the extrema
+  // call.
+  if (
+    frame.resolvedClassification === 'unresolved' &&
+    (frame.hasInvalidCommaStream === true ||
+      hasBareOperatorStream(value, range.start, range.end, budget, frame.mathContext, true))
+  )
+    return [];
   const failClosedCandidate = () => [
     {
       ...candidate,
@@ -3546,7 +3583,11 @@ function unresolvedExtremaRangeCandidates(
   ];
   const liveExtremaParents = new Set();
   for (const child of frame.children) {
-    if (child.resolvedFallback !== null || !selectableChildren.has(child)) continue;
+    if (
+      (child.resolvedFallback !== null && !child.definedPathCanBeNumber) ||
+      !selectableChildren.has(child)
+    )
+      continue;
     const functionParent = childFunctionParent(child, 'extremaParent', range);
     if (
       suppressedRuntimeFunctionRanges.some(
@@ -4111,6 +4152,28 @@ function typedHypotRangeCandidates(
   }));
 }
 
+// Written literal zero/one forms only. evaluateStaticLayerNumber rounds to
+// the nearest integer (see resolveStaticNumber), so it would misclassify a
+// fractional progress like 0.6 as a fixed 1 and discard the live endpoint --
+// an exact literal match is required for this elimination to stay sound.
+const calcMixZeroProgressPattern = /^[+-]?0%?$/;
+const calcMixOneProgressPattern = /^\+?1$|^\+?100%$/;
+
+function calcMixDiscardedEndpointArgumentIndex(parsedArguments) {
+  if (parsedArguments.argumentCount !== 3) return undefined;
+  const progressArgument = parsedArguments.staticArguments.find((argument) => argument.index === 0);
+  if (progressArgument === undefined) return undefined;
+  const trimmedProgressText = progressArgument.value.replaceAll(cssCommentMaskCharacter, '').trim();
+  // A fixed progress of exactly 0 selects the start endpoint (argument index
+  // 1) and discards the end endpoint (argument index 2); a fixed progress of
+  // exactly 1 does the reverse. The discarded endpoint is multiplied by a
+  // zero weight in the linear interpolation and never contributes to the
+  // result, so a value trapped inside it can never reach the page.
+  if (calcMixZeroProgressPattern.test(trimmedProgressText)) return 2;
+  if (calcMixOneProgressPattern.test(trimmedProgressText)) return 1;
+  return undefined;
+}
+
 function unresolvedRuntimeRangeCandidates(
   frame,
   value,
@@ -4155,6 +4218,19 @@ function unresolvedRuntimeRangeCandidates(
       )
     )
       continue;
+    if (functionParent.functionName === 'calc-mix' && parsedArguments !== undefined) {
+      const discardedArgumentIndex = calcMixDiscardedEndpointArgumentIndex(parsedArguments);
+      const discardedArgumentRange =
+        discardedArgumentIndex === undefined
+          ? undefined
+          : parsedArguments.argumentRanges[discardedArgumentIndex];
+      if (
+        discardedArgumentRange !== undefined &&
+        child.start >= discardedArgumentRange.start &&
+        child.end <= discardedArgumentRange.end
+      )
+        continue;
+    }
     const numberOnlyArgumentRanges = numberOnlyRuntimeArgumentRanges(
       functionParent.functionName,
       parsedArguments,
@@ -4316,7 +4392,13 @@ function unresolvedRuntimeRangeCandidates(
 
   const correlatedFunctionGroups = new Map();
   for (const functionParent of remainingFunctionParents) {
-    if (functionParent.functionName !== 'abs') return failClosedRuntimeCandidate(candidate);
+    // The 0-vs-1 substitution proof below tests only whether this call's
+    // outer coefficient is provably zero; it never inspects the function's
+    // own math, so it holds for any pure, deterministic, single-argument
+    // function -- not just abs(). random() is excluded because repeated
+    // calls are not guaranteed to produce the same value.
+    if (!correlatablePureFunctionNames.has(functionParent.functionName))
+      return failClosedRuntimeCandidate(candidate);
     const functionRange = { start: functionParent.functionStart, end: functionParent.end };
     const key = canonicalProgressArgument(value, functionRange);
     const group = correlatedFunctionGroups.get(key) ?? [];
@@ -4770,6 +4852,23 @@ function randomRangeCandidates(frame, value, range, candidate, budget, parenthes
   }));
 }
 
+function unwrapGroupingParenthesesAround(value, range, parenthesisPairs, boundingRange) {
+  let unwrappedRange = { start: range.start, end: range.end };
+  for (;;) {
+    let openIndex = unwrappedRange.start - 1;
+    while (openIndex >= boundingRange.start && isCssWhitespaceOrComment(value[openIndex]))
+      openIndex -= 1;
+    if (openIndex < boundingRange.start || value[openIndex] !== '(') return unwrappedRange;
+    if (isCssIdentifierCharacter(value[openIndex - 1])) return unwrappedRange;
+    let closeIndex = unwrappedRange.end;
+    while (closeIndex < boundingRange.end && isCssWhitespaceOrComment(value[closeIndex]))
+      closeIndex += 1;
+    if (closeIndex >= boundingRange.end || parenthesisPairs.get(openIndex) !== closeIndex)
+      return unwrappedRange;
+    unwrappedRange = { start: openIndex, end: closeIndex + 1 };
+  }
+}
+
 function isWholeSiblingIndexToCountRatio(value, range, groups, parenthesisPairs) {
   if (groups.length !== 2) return false;
   const indexGroup = groups.find((group) => group.functionName === 'sibling-index');
@@ -4780,8 +4879,17 @@ function isWholeSiblingIndexToCountRatio(value, range, groups, parenthesisPairs)
   for (const group of [indexGroup, countGroup].sort(
     (left, right) => right.functionStart - left.functionStart,
   )) {
-    const start = group.functionStart - expressionRange.start;
-    const end = group.end - expressionRange.start;
+    // Harmless grouping parens directly around a call, e.g. `(sibling-index())`,
+    // do not change the ratio's value, so fold them into the substitution
+    // range before the exact-string comparison below.
+    const substitutionRange = unwrapGroupingParenthesesAround(
+      value,
+      { start: group.functionStart, end: group.end },
+      parenthesisPairs,
+      expressionRange,
+    );
+    const start = substitutionRange.start - expressionRange.start;
+    const end = substitutionRange.end - expressionRange.start;
     expression =
       expression.slice(0, start) +
       (group.functionName === 'sibling-index' ? 'i' : 'n') +
@@ -5348,6 +5456,33 @@ function runtimeFunctionStaticArgumentsAreValid(
     ) &&
     steppedValueStaticIntervalIsValid(functionName, parsedArguments, numberArgumentRanges)
   );
+}
+
+function childIsInsideProvablyInvalidCalcMix(child, frame, value, range, parenthesisPairs) {
+  let parent = child.parenthesisParent;
+  while (
+    parent?.type === 'group' &&
+    parent.end !== undefined &&
+    parent.functionStart >= range.start &&
+    parent.end <= range.end
+  ) {
+    if (parent.functionName === 'calc-mix') {
+      const parsedArguments = fallbackIndependentStaticArguments(
+        frame,
+        value,
+        { start: parent.functionStart, end: parent.end },
+        'calc-mix',
+        parenthesisPairs,
+      );
+      if (
+        parsedArguments === undefined ||
+        !unresolvedRuntimeFunctionHasValidArity('calc-mix', parsedArguments.argumentCount)
+      )
+        return true;
+    }
+    parent = parent.parenthesisParent;
+  }
+  return false;
 }
 
 function childIsInsideProvablyInvalidNumberOnlyFunction(
@@ -6091,7 +6226,11 @@ function unprovenCandidatesForFrame(frame, value, range, candidate, budget, pare
           invalidNumberOnlyFunctionCache,
           budget,
           invalidTypedSteppedParents,
-        ),
+        ) &&
+        // calc-mix() takes exactly three arguments; a call with the wrong
+        // arity is invalid CSS regardless of what any nested substitution
+        // resolves to, so a value trapped inside it can never reach the page.
+        !childIsInsideProvablyInvalidCalcMix(child, frame, value, range, parenthesisPairs),
     ),
   );
   if (

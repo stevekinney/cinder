@@ -1017,6 +1017,9 @@ describe('cinder/z-index-scale', () => {
     'var(--outer, rgb(var(--inner, -1) + 0))',
     'var(--outer, hsl(var(--inner, 9999) + 0 0% 0%))',
     'var(--outer, blur(max(var(--inner, -1), 0) + 0))',
+    'var(--outer, min(var(--runtime), 0) + 0)',
+    'var(--outer, max(var(--runtime), 0) + 0)',
+    'var(--outer, max(var(--runtime), 0) + var(--magic, 9999))',
   ])(
     'discards nested candidates from a grammar-invalid bare operator stream: %s',
     async (value) => {
@@ -4506,6 +4509,9 @@ describe('cinder/z-index-scale', () => {
     ['calc(0 * sibling-index())', 0],
     ['calc(9999 * sibling-index(1))', 0],
     ['calc(9999 * sibling-count(1))', 0],
+    ['calc((sibling-index()) / sibling-count())', 0],
+    ['calc(sibling-index() / (sibling-count()))', 0],
+    ['calc((sibling-index()) / (sibling-count()))', 0],
   ] as const)('tracks CSS tree-counting functions: %s', async (fallback, count) => {
     expect(
       warnings(
@@ -4577,6 +4583,20 @@ describe('cinder/z-index-scale', () => {
     ['calc(9999 * env(safe-area-inset-top, 0px))', 0],
     ['calc(9999 / var(--scale, 0))', 1],
     ['calc(0 / var(--scale, 0))', 0],
+    ['attr(data-layer type("*"), 1)', 1],
+    ['calc(9999 * var(--scale, 0%) / 1%)', 1],
+    ['calc(9999 * env(safe-area-inset-top 0, 0px) / 1px)', 0],
+    ['calc(9999 * env(viewport-segment-width, 0px) / 1px)', 0],
+    ['calc(9999 * max(var(--scale, 0), 0))', 1],
+    ['calc-mix(0, 1, var(--inner, 9999), 2)', 0],
+    ['calc-mix(0, var(--inner, 9999), 1)', 1],
+    ['calc-mix(1, var(--inner, 9999), 1)', 0],
+    ['calc-mix(1, 1, var(--inner, 9999))', 1],
+    ['calc-mix(0%, 1, var(--inner, 9999))', 0],
+    ['calc-mix(0.6, var(--inner, 9999), 1)', 1],
+    ['calc-mix(0.4, 1, var(--inner, 9999))', 1],
+    ['calc-mix(1.0, var(--inner, 9999), 1)', 1],
+    ['calc(calc-mix(0, 9999px, 1em) / 1px)', 1],
   ] as const)(
     'tracks the defined path of substitutions with safe fallbacks: %s',
     async (fallback, count) => {
@@ -4599,6 +4619,15 @@ describe('cinder/z-index-scale', () => {
     ['calc(abs(var(--left)) - abs(var(--right)))', 1],
     ['calc(abs(var(--runtime)) + abs(var(--runtime)))', 1],
     ['calc(abs(var(--runtime)) * abs(var(--runtime)))', 1],
+    ['calc(cos(var(--runtime)) - cos(var(--runtime)))', 0],
+    ['calc(sin(var(--runtime)) - sin(var(--runtime)))', 0],
+    ['calc(tan(var(--runtime)) - tan(var(--runtime)))', 0],
+    ['calc(exp(var(--runtime)) - exp(var(--runtime)))', 0],
+    ['calc(sqrt(var(--runtime)) - sqrt(var(--runtime)))', 0],
+    ['calc(cos(var(--runtime)) + cos(var(--runtime)))', 1],
+    ['calc(cos(var(--left)) - cos(var(--right)))', 1],
+    ['calc(cos(var(--runtime)) - sin(var(--runtime)))', 1],
+    ['calc(log(var(--runtime)) - log(var(--runtime)))', 1],
   ] as const)('correlates repeated deterministic math calls: %s', async (fallback, count) => {
     expect(
       warnings(
