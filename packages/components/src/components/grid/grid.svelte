@@ -75,6 +75,10 @@
     isNarrow = width <= getCollapseMaxWidthPx();
   }
 
+  function getElementBorderBoxWidth(node: HTMLElement): number {
+    return node.offsetWidth || node.getBoundingClientRect().width;
+  }
+
   function getObservedWidth(entry: ResizeObserverEntry): number {
     const borderBoxSize = Array.isArray(entry.borderBoxSize)
       ? entry.borderBoxSize[0]
@@ -104,15 +108,19 @@
 
   $effect(() => {
     if (narrowCollapseEnabled && observedNode) {
-      updateNarrowState(observedNode.getBoundingClientRect().width);
+      updateNarrowState(getElementBorderBoxWidth(observedNode));
     }
   });
 
   $effect(() => {
-    if (!narrowCollapseEnabled || typeof window === 'undefined') return;
+    if (!narrowCollapseEnabled || !observedNode || typeof window === 'undefined') return;
+    const node = observedNode;
 
     const recomputeNarrowState = () => {
       updateNarrowState(measuredWidth);
+    };
+    const remeasureWidth = () => {
+      updateNarrowState(getElementBorderBoxWidth(node));
     };
     const observer =
       typeof MutationObserver === 'undefined' ? null : new MutationObserver(recomputeNarrowState);
@@ -120,11 +128,11 @@
       attributes: true,
       attributeFilter: ['class', 'style'],
     });
-    window.addEventListener('resize', recomputeNarrowState);
+    window.addEventListener('resize', remeasureWidth);
 
     return () => {
       observer?.disconnect();
-      window.removeEventListener('resize', recomputeNarrowState);
+      window.removeEventListener('resize', remeasureWidth);
     };
   });
 </script>

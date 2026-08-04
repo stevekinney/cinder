@@ -227,20 +227,33 @@ describe('Grid', () => {
     }
   });
 
-  test('does not require MutationObserver for narrow collapse', async () => {
+  test('remeasures on window resize when observers are unavailable', async () => {
+    const originalGetBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
     const originalMutationObserver = globalThis.MutationObserver;
+    const originalResizeObserver = globalThis.ResizeObserver;
+    let width = 900;
+    HTMLElement.prototype.getBoundingClientRect = () => ({ width, height: 0 }) as DOMRect;
     globalThis.MutationObserver = undefined as unknown as typeof MutationObserver;
+    globalThis.ResizeObserver = undefined as unknown as typeof ResizeObserver;
 
     try {
       const { container, unmount } = render(Grid, {
         props: { narrowCollapseEnabled: true, children: textSnippet('content') },
       });
       await tick();
+      const root = container.querySelector('.cinder-grid') as HTMLElement;
+      expect(root.hasAttribute('data-cinder-wide')).toBe(true);
 
-      expect(container.querySelector('.cinder-grid')).not.toBeNull();
+      width = 640;
+      window.dispatchEvent(new Event('resize'));
+      await tick();
+
+      expect(root.hasAttribute('data-cinder-narrow')).toBe(true);
       unmount();
     } finally {
+      HTMLElement.prototype.getBoundingClientRect = originalGetBoundingClientRect;
       globalThis.MutationObserver = originalMutationObserver;
+      globalThis.ResizeObserver = originalResizeObserver;
     }
   });
 
