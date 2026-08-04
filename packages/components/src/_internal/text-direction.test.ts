@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../test/happy-dom.ts';
+import { matchesDirectionStyleRule } from './text-direction-css.ts';
 import {
   elementDirectionStyleOverride,
   isContainerRule,
@@ -635,6 +636,39 @@ describe('resolveTextDirection', () => {
     }
   });
 
+  test('does not match descendants for a cloned :scope selector', () => {
+    const originalWindowGetComputedStyle = window.getComputedStyle;
+    const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
+    const getComputedStyleOverride = ((target: Element) => {
+      const style = originalWindowGetComputedStyle(target);
+      Object.defineProperty(style, 'direction', { value: 'ltr', configurable: true });
+      return style;
+    }) as typeof window.getComputedStyle;
+    window.getComputedStyle = getComputedStyleOverride;
+    globalThis.getComputedStyle = getComputedStyleOverride;
+    const root = document.createElement('section');
+    root.className = 'theme';
+    const descendant = document.createElement('div');
+    root.append(descendant);
+    Object.defineProperty(root, 'querySelector', { value: () => null });
+    document.body.append(root);
+    const scopeRule = {
+      type: 0,
+      cssText: '@scope (.theme) {}',
+      cssRules: [createStyleRule({ selectorText: ':scope', direction: 'ltr' })],
+    } as unknown as CSSRule;
+    try {
+      expect(
+        withDocumentStyleSheets([{ cssRules: [scopeRule] }], () =>
+          matchesDirectionStyleRule(descendant, (parent) => parent.parentElement),
+        ),
+      ).toBe(false);
+    } finally {
+      window.getComputedStyle = originalWindowGetComputedStyle;
+      globalThis.getComputedStyle = originalGlobalGetComputedStyle;
+    }
+  });
+
   test('fails closed for :scope selectors without an active scope context', () => {
     const originalWindowGetComputedStyle = window.getComputedStyle;
     const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
@@ -715,6 +749,41 @@ describe('resolveTextDirection', () => {
       ).toBe('rtl');
       expect(
         withDocumentStyleSheets([{ cssRules: [attributeRule] }], () =>
+          resolveTextDirection(target, 'rtl'),
+        ),
+      ).toBe('ltr');
+    } finally {
+      window.getComputedStyle = originalWindowGetComputedStyle;
+      globalThis.getComputedStyle = originalGlobalGetComputedStyle;
+    }
+  });
+
+  test('preserves quoted :scope text when replacing the pseudo-class', () => {
+    const originalWindowGetComputedStyle = window.getComputedStyle;
+    const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
+    const getComputedStyleOverride = ((target: Element) => {
+      const style = originalWindowGetComputedStyle(target);
+      Object.defineProperty(style, 'direction', { value: 'ltr', configurable: true });
+      return style;
+    }) as typeof window.getComputedStyle;
+    window.getComputedStyle = getComputedStyleOverride;
+    globalThis.getComputedStyle = getComputedStyleOverride;
+    const root = document.createElement('section');
+    root.className = 'theme';
+    const target = document.createElement('div');
+    target.setAttribute('data-value', ':scope');
+    root.append(target);
+    document.body.append(root);
+    const scopeRule = {
+      type: 0,
+      cssText: '@scope (.theme) {}',
+      cssRules: [
+        createStyleRule({ selectorText: ':scope [data-value=":scope"]', direction: 'ltr' }),
+      ],
+    } as unknown as CSSRule;
+    try {
+      expect(
+        withDocumentStyleSheets([{ cssRules: [scopeRule] }], () =>
           resolveTextDirection(target, 'rtl'),
         ),
       ).toBe('ltr');

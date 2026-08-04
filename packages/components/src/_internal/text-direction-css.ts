@@ -393,9 +393,10 @@ function matchesScopedSelector(
         matchedCloneElement = child;
       }
       if (
-        cloneElement.matches(selector.replace(/:scope\b/gi, `[${marker}]`)) ||
+        (matchedCloneElement === cloneElement &&
+          cloneElement.matches(replaceScopePseudoClass(selector, `[${marker}]`))) ||
         Array.from(
-          cloneElement.querySelectorAll(selector.replace(/:scope\b/gi, `[${marker}]`)),
+          cloneElement.querySelectorAll(replaceScopePseudoClass(selector, `[${marker}]`)),
         ).includes(matchedCloneElement)
       )
         return true;
@@ -404,6 +405,58 @@ function matchesScopedSelector(
     }
   }
   return false;
+}
+
+function replaceScopePseudoClass(selector: string, replacement: string): string {
+  let result = '';
+  let quote: string | null = null;
+  let escaped = false;
+  let brackets = 0;
+  for (let index = 0; index < selector.length; index += 1) {
+    const character = selector[index];
+    if (escaped) {
+      result += character;
+      escaped = false;
+      continue;
+    }
+    if (character === '\\') {
+      result += character;
+      escaped = true;
+      continue;
+    }
+    if (quote) {
+      result += character;
+      if (character === quote) quote = null;
+      continue;
+    }
+    if (character === '"' || character === "'") {
+      result += character;
+      quote = character;
+      continue;
+    }
+    if (character === '[') {
+      brackets += 1;
+      result += character;
+      continue;
+    }
+    if (character === ']') {
+      brackets = Math.max(0, brackets - 1);
+      result += character;
+      continue;
+    }
+    if (
+      brackets === 0 &&
+      character === ':' &&
+      selector.slice(index + 1, index + 6).toLowerCase() === 'scope' &&
+      !/[\w-]/.test(selector[index + 6] ?? '')
+    ) {
+      result += replacement;
+      index += 5;
+      continue;
+    }
+    result += character;
+  }
+  return result;
 }
 
 function hasScopePseudoClass(selector: string): boolean {
