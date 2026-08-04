@@ -2217,6 +2217,11 @@ describe('cinder/z-index-scale', () => {
     ['calc(round(up, 719891.996pt, 0.01pt) / 1in)', 1],
     ['calc(round(down, 719891.996pt, 0.01pt) / 1in)', 0],
     ['calc(round(to-zero, 719891.996pt, 0.01pt) / 1in)', 0],
+    ['pow(calc(25396.19cm / 1in), 1)', 1],
+    ['pow(calc(25396.19cm / 1in), 1.0)', 1],
+    ['pow(calc(25396.19cm / 1in), 2)', 0],
+    ['sqrt(calc(calc(25396.19cm / 1in) * calc(25396.19cm / 1in)))', 1],
+    ['sqrt(calc(25396.18cm / 1in))', 0],
     ['progress(no-clamp 25396.18cm, 0cm, 2.54cm)', 0],
     ['progress(no-clamp 25396.19cm, 0cm, 2.54cm)', 1],
     ['progress(25396.19cm, 0cm, 2.54cm)', 0],
@@ -2915,6 +2920,12 @@ describe('cinder/z-index-scale', () => {
     ['calc(sign(var(--runtime)) - sign(var(--runtime)) + var(--offset, bogus))', 0],
     ['calc(9999 * sign(var(--runtime), 1))', 0],
     ['calc(9999 * sign(1px, var(--runtime)))', 0],
+    ['sign(calc(abs(var(--runtime)) + 1))', 0],
+    ['calc(-1 + sign(max(0, var(--runtime))))', 1],
+    ['calc(-1 + sign(clamp(0, var(--runtime), 10)))', 1],
+    ['calc(-1 + sign(max(1, var(--runtime))))', 0],
+    ['calc(-1 + sign(min(0, var(--runtime))))', 1],
+    ['calc(9998 + sign(max(0, var(--runtime))))', 1],
   ] as const)(
     'evaluates the discrete output range of unresolved sign: %s',
     async (fallback, warningCount) => {
@@ -2930,6 +2941,67 @@ describe('cinder/z-index-scale', () => {
       ).toHaveLength(warningCount);
     },
   );
+
+  test.each([
+    ['calc(hypot(9999px, var(--runtime)) / 1px)', 1],
+    ['calc(hypot(var(--runtime), 9999px) / 1px)', 1],
+    ['calc(hypot(9999deg, var(--runtime)) / 1deg)', 1],
+    ['calc(hypot(9999px, var(--runtime)) / 1px + var(--offset, 0))', 1],
+    ['calc(0 * hypot(var(--ignored), 1px) + hypot(9999px, var(--runtime)) / 1px)', 1],
+    ['calc(hypot(9999px, var(--runtime)) / 1px + hypot(0px, var(--other)) / 1px)', 1],
+    ['calc(hypot(9999px, var(--runtime)) / 1px + hypot(var(--other), 0px) / 1px)', 1],
+    ['calc(hypot(9999px, var(--runtime)) / 1px + hypot(0deg, var(--other)) / 1deg)', 1],
+    ['hypot(9999px, var(--runtime))', 0],
+    ['calc(hypot(10000px, var(--runtime)) / 1px)', 0],
+  ] as const)(
+    'evaluates typed-zero witnesses for unresolved hypot(): %s',
+    async (fallback, warningCount) => {
+      expect(
+        warnings(
+          await lint(`
+            .fixture {
+              /* cinder-z-index-local: typed hypot witnesses preserve enclosing cancellation. */
+              z-index: var(--outer, ${fallback});
+            }
+          `),
+        ),
+      ).toHaveLength(warningCount);
+    },
+  );
+
+  test.each([
+    'calc(9999 * sin(var(--runtime)))',
+    'calc(9999 * cos(var(--runtime)))',
+    'calc(9999 * tan(var(--runtime)))',
+  ])('fails closed for an unresolved trigonometric range: %s', async (fallback) => {
+    const [warning] = warnings(
+      await lint(`
+        .fixture {
+          /* cinder-z-index-local: unresolved trigonometry cannot prove this layer safe. */
+          z-index: var(--outer, ${fallback});
+        }
+      `),
+    );
+
+    expect(warning?.text).toContain('too complex to verify safely');
+  });
+
+  test.each([
+    'calc(0 * sin(var(--runtime)))',
+    'calc(cos(var(--runtime)) * 0)',
+    'calc(0 * tan(var(--runtime)))',
+  ])('accepts an exactly eliminated trigonometric range: %s', async (fallback) => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: the runtime trigonometric term is exactly eliminated. */
+            z-index: var(--outer, ${fallback});
+          }
+        `),
+      ),
+    ).toEqual([]);
+  });
 
   test('bounds independent unresolved sign ranges', async () => {
     const signTerms = Array.from({ length: 16 }, (_, index) => `sign(var(--runtime-${index}))`);

@@ -901,11 +901,20 @@ function evaluateConstantArithmetic(expression) {
       }
       if (functionName === 'pow' && arguments_.length === 2) {
         if (arguments_.some(({ units }) => units.size !== 0)) throw new Error('expected numbers');
+        if (
+          arguments_[1].exactValue?.numerator === 1n &&
+          arguments_[1].exactValue.denominator === 1n
+        )
+          return withValue(arguments_[0], arguments_[0].value, arguments_[0].exactValue);
         return scalar(Math.pow(arguments_[0].value, arguments_[1].value));
       }
       if (functionName === 'sqrt' && arguments_.length === 1) {
         if (arguments_[0].units.size !== 0) throw new Error('expected a number');
-        return scalar(Math.sqrt(arguments_[0].value));
+        return scalar(
+          Math.sqrt(arguments_[0].value),
+          false,
+          squareRootRational(arguments_[0].exactValue),
+        );
       }
       if (functionName === 'hypot' && arguments_.length > 0) {
         let hypotenuse = 0;

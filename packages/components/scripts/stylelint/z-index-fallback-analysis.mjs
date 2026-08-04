@@ -24,6 +24,9 @@ const fallbackResolutionTooComplex = Symbol('fallback-resolution-too-complex');
 const fallbackResolutionWorkLimit = 8_000_000;
 const uniformDivisorWitnessValues = ['1', '2', '1px', '1deg', '1s', '1hz', '1dppx'];
 const typedDivisorWitnessValues = ['1px', '1deg', '1s', '1hz', '1dppx'];
+const typedZeroWitnessValues = ['0px', '0deg', '0s', '0hz', '0dppx'];
+const hypotFunctionNames = new Set(['hypot']);
+const unresolvedTrigonometricFunctionNames = new Set(['cos', 'sin', 'tan']);
 const invalidCustomIdentKeywords = new Set([
   'default',
   'inherit',
@@ -178,6 +181,56 @@ function resolveFrameExpression(
     resolvedExpression =
       resolvedExpression.slice(0, relativeStart) +
       replacement +
+      resolvedExpression.slice(relativeEnd);
+  }
+  return resolvedExpression;
+}
+
+function resolveFrameExpressionWithRangeReplacements(
+  frame,
+  value,
+  range,
+  budget,
+  explicitReplacements,
+) {
+  if (!consumeResolutionWork(budget, explicitReplacements.length))
+    return fallbackResolutionTooComplex;
+  const orderedExplicitReplacements = [...explicitReplacements].sort(
+    (left, right) => left.start - right.start,
+  );
+  const replacements = [...orderedExplicitReplacements];
+  let explicitReplacementIndex = 0;
+  for (const child of frame.children) {
+    if (child.start < range.start || child.end > range.end) continue;
+    while (
+      orderedExplicitReplacements[explicitReplacementIndex]?.end !== undefined &&
+      orderedExplicitReplacements[explicitReplacementIndex].end <= child.start
+    )
+      explicitReplacementIndex += 1;
+    const explicitReplacement = orderedExplicitReplacements[explicitReplacementIndex];
+    if (explicitReplacement?.start <= child.start && explicitReplacement.end >= child.end) continue;
+    if (child.resolvedFallback === fallbackResolutionTooComplex)
+      return fallbackResolutionTooComplex;
+    replacements.push({
+      end: child.end,
+      start: child.start,
+      value: child.resolvedFallback ?? '0',
+    });
+  }
+
+  const rawExpressionLength = range.end - range.start;
+  if (!consumeResolutionWork(budget, rawExpressionLength)) return fallbackResolutionTooComplex;
+  let resolvedExpression = value.slice(range.start, range.end);
+  for (const replacement of replacements.sort((left, right) => right.start - left.start)) {
+    const relativeStart = replacement.start - range.start;
+    const relativeEnd = replacement.end - range.start;
+    const replacementValue = `${cssCommentMaskCharacter}${replacement.value}${cssCommentMaskCharacter}`;
+    const nextLength =
+      resolvedExpression.length - (relativeEnd - relativeStart) + replacementValue.length;
+    if (!consumeResolutionWork(budget, nextLength)) return fallbackResolutionTooComplex;
+    resolvedExpression =
+      resolvedExpression.slice(0, relativeStart) +
+      replacementValue +
       resolvedExpression.slice(relativeEnd);
   }
   return resolvedExpression;
@@ -1427,6 +1480,119 @@ function fallbackIndependentMathArgumentResultTypes(frame, value, range, parenth
   return new Set();
 }
 
+function fallbackIndependentLowerBound(frame, value, range, budget, parenthesisPairs) {
+  const expressionRange = unwrapStaticContainer(value, range, parenthesisPairs);
+  if (!consumeResolutionWork(budget, expressionRange.end - expressionRange.start)) return undefined;
+  const terms = [];
+  let direction = 1;
+  let termStart = expressionRange.start;
+  for (let index = expressionRange.start; index < expressionRange.end; index += 1) {
+    if (value[index] === '"' || value[index] === "'") {
+      index = quotedStringEnd(value, index);
+      continue;
+    }
+    const urlTokenEnd = unquotedUrlTokenEnd(value, index);
+    if (urlTokenEnd !== undefined) {
+      index = urlTokenEnd;
+      continue;
+    }
+    if (value[index] === '(') {
+      const closingIndex = parenthesisPairs.get(index);
+      if (closingIndex === undefined || closingIndex >= expressionRange.end) return undefined;
+      index = closingIndex;
+      continue;
+    }
+    if (
+      !/[+-]/.test(value[index]) ||
+      !adjacentTriviaContainsWhitespace(value, index, -1, expressionRange) ||
+      !adjacentTriviaContainsWhitespace(value, index, 1, expressionRange)
+    )
+      continue;
+    terms.push({
+      direction,
+      range: trimCssTriviaRange(value, termStart, index),
+    });
+    direction = value[index] === '+' ? 1 : -1;
+    termStart = index + 1;
+  }
+  terms.push({
+    direction,
+    range: trimCssTriviaRange(value, termStart, expressionRange.end),
+  });
+
+  let lowerBound = 0;
+  let childIndex = firstChildEndingAfter(frame.children, expressionRange.start);
+  for (const term of terms) {
+    while (frame.children[childIndex]?.end <= term.range.start) childIndex += 1;
+    const children = [];
+    while (
+      frame.children[childIndex]?.start < term.range.end &&
+      frame.children[childIndex].end <= term.range.end
+    ) {
+      children.push(frame.children[childIndex]);
+      childIndex += 1;
+    }
+    if (children.length === 0) {
+      const staticValue = evaluateStaticLayerNumber(value.slice(term.range.start, term.range.end));
+      if (staticValue === undefined || !Number.isFinite(staticValue)) return undefined;
+      lowerBound += term.direction * staticValue;
+      continue;
+    }
+    if (term.direction < 0) return undefined;
+
+    const parsedAbsoluteValue = fallbackIndependentStaticArguments(
+      frame,
+      value,
+      term.range,
+      'abs',
+      parenthesisPairs,
+    );
+    if (parsedAbsoluteValue?.argumentCount === 1) continue;
+
+    const parsedMaximum = fallbackIndependentStaticArguments(
+      frame,
+      value,
+      term.range,
+      'max',
+      parenthesisPairs,
+    );
+    if (parsedMaximum !== undefined) {
+      const staticValues = parsedMaximum.staticArguments.map((argument) =>
+        evaluateStaticLayerNumber(argument.value),
+      );
+      if (
+        staticValues.length === 0 ||
+        staticValues.some((staticValue) => staticValue === undefined)
+      )
+        return undefined;
+      let maximumStaticValue = -Infinity;
+      for (const staticValue of staticValues)
+        maximumStaticValue = Math.max(maximumStaticValue, staticValue);
+      lowerBound += maximumStaticValue;
+      continue;
+    }
+
+    const parsedClamp = fallbackIndependentStaticArguments(
+      frame,
+      value,
+      term.range,
+      'clamp',
+      parenthesisPairs,
+    );
+    const clampMinimum = parsedClamp?.staticArguments.find((argument) => argument.index === 0);
+    if (parsedClamp?.argumentCount === 3 && clampMinimum !== undefined) {
+      const staticMinimum = evaluateStaticLayerNumber(clampMinimum.value);
+      if (staticMinimum === undefined || !Number.isFinite(staticMinimum)) return undefined;
+      lowerBound += staticMinimum;
+      continue;
+    }
+
+    if (isValidProgressRange(frame, value, term.range, parenthesisPairs)) continue;
+    return undefined;
+  }
+  return lowerBound;
+}
+
 function signRangeCandidates(
   frame,
   value,
@@ -1487,6 +1653,7 @@ function signRangeCandidates(
   if (childrenOutsideSignRanges.some((child) => child.resolvedFallback === null))
     return emptyAnalysis;
   const signGroupIndexes = new Map();
+  const signGroupEndpoints = [];
   const signRangeGroupIndexes = parsedSignArguments.map((parsedArguments, signRangeIndex) => {
     const signRange = signRanges[signRangeIndex];
     if (
@@ -1501,6 +1668,12 @@ function signRangeCandidates(
     if (existingIndex !== undefined) return existingIndex;
     const groupIndex = signGroupIndexes.size;
     signGroupIndexes.set(key, groupIndex);
+    const lowerBound = frame.signedZeroSensitiveContext
+      ? undefined
+      : fallbackIndependentLowerBound(frame, value, argumentRange, budget, parenthesisPairs);
+    signGroupEndpoints.push(
+      lowerBound === undefined || lowerBound < 0 ? [-1, 0, 1] : lowerBound === 0 ? [0, 1] : [1],
+    );
     return groupIndex;
   });
   const resolvedChildren = childrenOutsideSignRanges;
@@ -1519,7 +1692,12 @@ function signRangeCandidates(
       type: 'fallback',
     })),
   ].sort((left, right) => left.start - right.start);
-  const combinationCount = 3 ** signGroupIndexes.size;
+  const signGroupStrides = [];
+  let combinationCount = 1;
+  for (const endpoints of signGroupEndpoints) {
+    signGroupStrides.push(combinationCount);
+    combinationCount *= endpoints.length;
+  }
   const replacementLength = resolvedChildren.reduce(
     (total, child) => total + child.resolvedFallback.length + 2,
     0,
@@ -1530,7 +1708,6 @@ function signRangeCandidates(
   if (!Number.isSafeInteger(combinationCount) || !consumeResolutionWork(budget, generatedLength))
     return tooComplexAnalysis();
   const classifications = new Set();
-  const signEndpoints = [-1, 0, 1];
   for (let combination = 0; combination < combinationCount; combination += 1) {
     let resolvedEndpointCount = 0;
     for (let endpointMode = 0; endpointMode < endpointModeCount; endpointMode += 1) {
@@ -1540,9 +1717,11 @@ function signRangeCandidates(
       for (const replacementRange of replacementRanges) {
         chunks.push(value.slice(cursor, replacementRange.start));
         if (replacementRange.type === 'sign') {
+          const endpoints = signGroupEndpoints[replacementRange.groupIndex];
           const endpointIndex =
-            Math.floor(combination / 3 ** replacementRange.groupIndex) % signEndpoints.length;
-          chunks.push(String(signEndpoints[endpointIndex]));
+            Math.floor(combination / signGroupStrides[replacementRange.groupIndex]) %
+            endpoints.length;
+          chunks.push(String(endpoints[endpointIndex]));
         } else if (replacementRange.type === 'zero-sign') chunks.push('0');
         else chunks.push(useFallbackValues ? replacementRange.replacement : ' 0 ');
         cursor = replacementRange.end;
@@ -2125,6 +2304,145 @@ function uniqueCandidatesByClassification(candidates) {
   });
 }
 
+function childFunctionParent(child, functionNames, range) {
+  for (
+    let parent = child.parenthesisParent;
+    parent?.type === 'group' && parent.end !== undefined;
+    parent = parent.parenthesisParent
+  ) {
+    if (parent.functionStart < range.start || parent.end > range.end) continue;
+    if (functionNames.has(parent.functionName)) return parent;
+  }
+  return undefined;
+}
+
+function functionParentIsMultipliedByStaticZero(value, range, parent, budget) {
+  if (parent.parentRequiresSignedZero) return false;
+  return expressionRangeIsMultipliedByStaticZero(
+    value,
+    range,
+    parent.functionStart,
+    parent.end,
+    budget,
+  );
+}
+
+function typedHypotRangeCandidates(frame, value, range, candidate, budget) {
+  const childrenByHypotParent = new Map();
+  for (const child of frame.children) {
+    if (child.resolvedFallback !== null) continue;
+    const functionParent = childFunctionParent(child, hypotFunctionNames, range);
+    if (functionParent === undefined) continue;
+    const children = childrenByHypotParent.get(functionParent) ?? [];
+    children.push(child);
+    childrenByHypotParent.set(functionParent, children);
+  }
+  if (childrenByHypotParent.size === 0) return [];
+  const zeroProductRange = { ...range, frame };
+  const eliminatedHypotParents = [];
+  const liveHypotParents = [];
+  for (const [functionParent, children] of childrenByHypotParent) {
+    const elimination = functionParentIsMultipliedByStaticZero(
+      value,
+      zeroProductRange,
+      functionParent,
+      budget,
+    );
+    if (elimination === fallbackResolutionTooComplex)
+      return [
+        {
+          ...candidate,
+          resolvedFallback: fallbackResolutionTooComplex,
+          resolvedClassification: 'too-complex',
+        },
+      ];
+    if (elimination) eliminatedHypotParents.push(functionParent);
+    else liveHypotParents.push({ children, functionParent });
+  }
+  if (liveHypotParents.length === 0) return [];
+  if (liveHypotParents.length > 1)
+    return [
+      {
+        ...candidate,
+        resolvedFallback: fallbackResolutionTooComplex,
+        resolvedClassification: 'too-complex',
+      },
+    ];
+
+  const classifications = new Set();
+  for (const liveHypotParent of liveHypotParents) {
+    for (const witness of typedZeroWitnessValues) {
+      const expression = resolveFrameExpressionWithRangeReplacements(frame, value, range, budget, [
+        ...eliminatedHypotParents.map((functionParent) => ({
+          end: functionParent.end,
+          start: functionParent.functionStart,
+          value: '0',
+        })),
+        ...liveHypotParent.children.map((child) => ({
+          end: child.end,
+          start: child.start,
+          value: witness,
+        })),
+      ]);
+      if (expression === fallbackResolutionTooComplex)
+        return [
+          {
+            ...candidate,
+            resolvedFallback: fallbackResolutionTooComplex,
+            resolvedClassification: 'too-complex',
+          },
+        ];
+      const analysis = analyzeFrameExpression(frame, expression, budget);
+      if (analysis.classification === 'too-complex')
+        return [
+          {
+            ...candidate,
+            resolvedFallback: fallbackResolutionTooComplex,
+            resolvedClassification: 'too-complex',
+          },
+        ];
+      if (analysis.classification === 'negative' || analysis.classification === 'magic')
+        classifications.add(analysis.classification);
+      else {
+        const minimumValue = evaluateStaticLayerNumber(expression);
+        if (minimumValue !== undefined && minimumValue >= 0 && minimumValue < 9999.5)
+          classifications.add('too-complex');
+      }
+    }
+  }
+  return [...classifications].map((resolvedClassification) => ({
+    ...candidate,
+    hasRuntimeSibling: true,
+    ...(resolvedClassification === 'too-complex'
+      ? { resolvedFallback: fallbackResolutionTooComplex }
+      : {}),
+    resolvedClassification,
+  }));
+}
+
+function unresolvedTrigonometricRangeCandidates(frame, value, range, candidate, budget) {
+  const zeroProductRange = { ...range, frame };
+  for (const child of frame.children) {
+    const functionParent = childFunctionParent(child, unresolvedTrigonometricFunctionNames, range);
+    if (child.resolvedFallback !== null || functionParent === undefined) continue;
+    const elimination = functionParentIsMultipliedByStaticZero(
+      value,
+      zeroProductRange,
+      functionParent,
+      budget,
+    );
+    if (elimination === true) continue;
+    return [
+      {
+        ...candidate,
+        resolvedFallback: fallbackResolutionTooComplex,
+        resolvedClassification: 'too-complex',
+      },
+    ];
+  }
+  return [];
+}
+
 function unprovenCandidatesForFrame(frame, value, range, candidate, budget, parenthesisPairs) {
   // Resolving every sibling fallback at once represents only one runtime path:
   // any sibling may instead use its defined custom-property value. Preserve a
@@ -2334,6 +2652,8 @@ function unprovenCandidatesForFrame(frame, value, range, candidate, budget, pare
     ...signAnalysis.candidates.filter(
       (signCandidate) => !candidateIsSuppressedByZeroQuotient(signCandidate),
     ),
+    ...typedHypotRangeCandidates(frame, value, range, candidate, budget),
+    ...unresolvedTrigonometricRangeCandidates(frame, value, range, candidate, budget),
   ];
   const uneliminatedCandidates = (
     runtimeZeroClassification === 'negative' || runtimeZeroClassification === 'magic'
