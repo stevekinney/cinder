@@ -4807,4 +4807,20 @@ describe('cinder/z-index-scale', () => {
     expect(warning?.column).toBe(start.column);
     expect(warning?.endColumn).toBe(end.column);
   });
+
+  test.each(['9999.0', '9999e0'])(
+    'accepts non-integer bare tokens with a local reason: %s',
+    async (fallback) => {
+      expect(
+        warnings(
+          await lint(`
+          .fixture {
+            /* cinder-z-index-local: non-integer bare tokens are invalid z-index values. */
+            z-index: var(--outer, ${fallback});
+          }
+        `),
+        ),
+      ).toEqual([]);
+    },
+  );
 });

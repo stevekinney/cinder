@@ -529,6 +529,12 @@ function analyzeFrameExpression(frame, resolvedFallback, budget) {
   if (typeof resolvedFallback !== 'string') return analyzeResolvedFallback(resolvedFallback);
   if (resolvedFallback.length > budget.remaining)
     return { classification: 'too-complex', resultType: 'too-complex' };
+  if (
+    frame.type === 'fallback' &&
+    frame.fallbackParent === undefined &&
+    /^[+-]?(?:\d+\.\d*|\d*\.\d+|\d+[eE][+-]?\d+)$/.test(resolvedFallback.trim())
+  )
+    return { classification: 'unresolved', resultType: 'unresolved' };
   return hasBareOperatorStream(
     resolvedFallback,
     0,
