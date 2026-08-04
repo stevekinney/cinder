@@ -244,7 +244,7 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => {
                 endIndex: fallbackIndex + fallbackLength,
               }
             : {}),
-          message: `${diagnosticMessage} Offending expression: \`${diagnosticExpression}\`.`,
+          message: `${diagnosticMessage} Offending expression: \`${diagnosticExpression.replaceAll('`', '\\`')}\`.`,
         });
         return;
       }
