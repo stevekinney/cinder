@@ -28,7 +28,8 @@
     controlDisabled = false,
     controlInvalid = false,
     control,
-    adornments,
+    before,
+    after,
   }: {
     id: string;
     label?: string | undefined;
@@ -47,7 +48,8 @@
     controlDisabled?: boolean | undefined;
     controlInvalid?: boolean | undefined;
     control: Snippet;
-    adornments?: Snippet | undefined;
+    before?: Snippet | undefined;
+    after?: Snippet | undefined;
   } = $props();
 
   const labelId = $derived(label ? `${id}-label` : undefined);
@@ -55,6 +57,7 @@
   const errorId = $derived(buildErrorId(id, !!error));
   const describedBy = $derived(composeDescribedBy(descriptionId, errorId));
   const invalid = $derived(ariaInvalid(!!error));
+  const needsControlWrapper = $derived(!!controlClass || !!before || !!after);
   const context: FormFieldContext = {
     get controlId() {
       return id;
@@ -98,21 +101,18 @@
     </label>
   {/if}
 
-  <div
-    class={classNames(adornments && 'cinder-form-field__control', controlClass)}
-    data-leading={controlLeading ? '' : undefined}
-    data-trailing={controlTrailing ? '' : undefined}
-    data-native-date={controlNativeDate ? '' : undefined}
-    data-disabled={controlDisabled ? '' : undefined}
-    data-invalid={controlInvalid ? '' : undefined}
-  >
-    <FormFieldProvider {context}>
-      {@render control()}
-    </FormFieldProvider>
-    {#if adornments}
-      {@render adornments()}
-    {/if}
-  </div>
+  {#if needsControlWrapper}<div
+      class={classNames('cinder-form-field__control', controlClass)}
+      data-leading={controlLeading ? '' : undefined}
+      data-trailing={controlTrailing ? '' : undefined}
+      data-native-date={controlNativeDate ? '' : undefined}
+      data-disabled={controlDisabled ? '' : undefined}
+      data-invalid={controlInvalid ? '' : undefined}
+    >
+      {#if before}{@render before()}{/if}
+      <FormFieldProvider {context}>{@render control()}</FormFieldProvider>
+      {#if after}{@render after()}{/if}
+    </div>{:else}<FormFieldProvider {context}>{@render control()}</FormFieldProvider>{/if}
 
   {#if description}
     <p id={descriptionId} class={classNames('cinder-form-field__description', descriptionClass)}>

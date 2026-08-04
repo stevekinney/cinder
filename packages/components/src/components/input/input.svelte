@@ -206,13 +206,15 @@
   {/if}
 {/snippet}
 
-{#snippet adornments()}
+{#snippet leadingAdornment()}
   {#if leading}
     <span
       class={classNames('cinder-input-group__leading', !leadingInteractive && 'cinder-_truncate')}
       aria-hidden={leadingInteractive ? undefined : 'true'}>{@render leading()}</span
     >
   {/if}
+{/snippet}
+{#snippet trailingAdornment()}
   {#if trailing}
     <span
       class={classNames('cinder-input-group__trailing', !trailingInteractive && 'cinder-_truncate')}
@@ -266,6 +268,7 @@
     controlNativeDate={rendersNativeDateIcon}
     controlDisabled={resolvedDisabled}
     controlInvalid={isInvalid}
-    adornments={hasGroupWrapper ? adornments : undefined}
+    before={hasGroupWrapper ? leadingAdornment : undefined}
+    after={hasGroupWrapper ? trailingAdornment : undefined}
   />
 {/if}
