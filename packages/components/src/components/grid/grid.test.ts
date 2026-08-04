@@ -407,12 +407,101 @@ describe('Grid', () => {
       expect(root.hasAttribute('data-cinder-wide')).toBe(true);
 
       rootFontSize = 18;
-      probeObserver?.callback([], {} as ResizeObserver);
+      probeObserver?.callback(
+        [
+          {
+            target: probe,
+            borderBoxSize: [{ inlineSize: 48 * rootFontSize, blockSize: 0 }],
+            contentBoxSize: [{ inlineSize: 48 * rootFontSize, blockSize: 0 }],
+            devicePixelContentBoxSize: [],
+            contentRect: { width: 48 * rootFontSize, height: 0 } as DOMRectReadOnly,
+          },
+        ],
+        {} as ResizeObserver,
+      );
       await tick();
 
       expect(root.hasAttribute('data-cinder-narrow')).toBe(true);
       unmount();
       expect(probe.isConnected).toBe(false);
+    } finally {
+      HTMLElement.prototype.getBoundingClientRect = originalGetBoundingClientRect;
+      if (originalOffsetWidth) {
+        Object.defineProperty(HTMLElement.prototype, 'offsetWidth', originalOffsetWidth);
+      } else {
+        Reflect.deleteProperty(HTMLElement.prototype, 'offsetWidth');
+      }
+      globalThis.ResizeObserver = originalResizeObserver;
+    }
+  });
+
+  test('preserves fractional rem thresholds from the probe resize entry', async () => {
+    const originalGetBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+    const originalOffsetWidth = Object.getOwnPropertyDescriptor(
+      HTMLElement.prototype,
+      'offsetWidth',
+    );
+    const originalResizeObserver = globalThis.ResizeObserver;
+    const observers: Array<{ callback: ResizeObserverCallback; targets: Element[] }> = [];
+
+    HTMLElement.prototype.getBoundingClientRect = function () {
+      return {
+        width: this.hasAttribute('data-cinder-grid-threshold-probe') ? 768.48 : 768.25,
+        height: 0,
+      } as DOMRect;
+    };
+    Object.defineProperty(HTMLElement.prototype, 'offsetWidth', {
+      configurable: true,
+      get() {
+        return this.hasAttribute('data-cinder-grid-threshold-probe') ? 768 : 0;
+      },
+    });
+    globalThis.ResizeObserver = class implements ResizeObserver {
+      private readonly record: { callback: ResizeObserverCallback; targets: Element[] };
+
+      constructor(callback: ResizeObserverCallback) {
+        this.record = { callback, targets: [] };
+        observers.push(this.record);
+      }
+
+      observe(target: Element) {
+        this.record.targets.push(target);
+      }
+
+      unobserve() {}
+      disconnect() {}
+    };
+
+    try {
+      const { container, unmount } = render(Grid, {
+        props: { narrowCollapseEnabled: true, children: textSnippet('content') },
+      });
+      await tick();
+      const root = container.querySelector('.cinder-grid') as HTMLElement;
+      const probeObserver = observers.find((observer) =>
+        observer.targets.some((target) => target.hasAttribute('data-cinder-grid-threshold-probe')),
+      );
+      const probe = probeObserver?.targets.find((target) =>
+        target.hasAttribute('data-cinder-grid-threshold-probe'),
+      ) as HTMLElement;
+      expect(root.hasAttribute('data-cinder-wide')).toBe(true);
+
+      probeObserver?.callback(
+        [
+          {
+            target: probe,
+            borderBoxSize: [{ inlineSize: 768.48, blockSize: 0 }],
+            contentBoxSize: [{ inlineSize: 768.48, blockSize: 0 }],
+            devicePixelContentBoxSize: [],
+            contentRect: { width: 768.48, height: 0 } as DOMRectReadOnly,
+          },
+        ],
+        {} as ResizeObserver,
+      );
+      await tick();
+
+      expect(root.hasAttribute('data-cinder-narrow')).toBe(true);
+      unmount();
     } finally {
       HTMLElement.prototype.getBoundingClientRect = originalGetBoundingClientRect;
       if (originalOffsetWidth) {

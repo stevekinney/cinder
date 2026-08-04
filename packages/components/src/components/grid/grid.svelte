@@ -244,8 +244,9 @@
     });
     ownerDocument.body.append(probe);
 
-    const observer = new ResizeObserverConstructor(() => {
-      updateNarrowState(measuredWidth, getElementBorderBoxWidth(probe));
+    const observer = new ResizeObserverConstructor((entries) => {
+      const entry = entries[0];
+      if (entry) updateNarrowState(measuredWidth, getObservedWidth(entry));
     });
     observer.observe(probe, { box: 'border-box' });
 
