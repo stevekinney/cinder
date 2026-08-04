@@ -31,36 +31,6 @@ const hypotRuntimeWitnessValues = ['1', ...typedDivisorWitnessValues];
 const extremaFunctionNames = new Set(['clamp', 'max', 'min']);
 const hypotFunctionNames = new Set(['hypot']);
 const conditionalFunctionNames = new Set(['first-valid', 'if']);
-const contextualProgressFunctionNames = new Set(['container-progress', 'media-progress']);
-const progressFunctionNames = new Set(['progress', ...contextualProgressFunctionNames]);
-const mediaProgressFeatureWitnesses = new Map([
-  ['aspect-ratio', '1'],
-  ['color', '1'],
-  ['color-index', '1'],
-  ['device-aspect-ratio', '1'],
-  ['device-height', '1px'],
-  ['device-width', '1px'],
-  ['height', '1px'],
-  ['horizontal-viewport-segments', '1'],
-  ['monochrome', '1'],
-  ['resolution', '1dppx'],
-  ['vertical-viewport-segments', '1'],
-  ['width', '1px'],
-]);
-const integerMediaProgressFeatureNames = new Set([
-  'color',
-  'color-index',
-  'horizontal-viewport-segments',
-  'monochrome',
-  'vertical-viewport-segments',
-]);
-const containerProgressFeatureWitnesses = new Map([
-  ['aspect-ratio', '1'],
-  ['block-size', '1px'],
-  ['height', '1px'],
-  ['inline-size', '1px'],
-  ['width', '1px'],
-]);
 const unresolvedRuntimeFunctionArities = new Map([
   ['abs', 1],
   ['acos', 1],
@@ -406,8 +376,7 @@ function contextForOpeningParenthesis(
   const inheritsParentGrammar =
     isGroupingParenthesis ||
     substitutionFunctionNames.has(functionName) ||
-    functionName === 'random-item' ||
-    contextualProgressFunctionNames.has(functionName);
+    functionName === 'random-item';
   return {
     consumerRequiresSignedZero:
       inheritedConsumerContext || signedZeroSensitiveFunctionNames.has(functionName),
@@ -415,9 +384,7 @@ function contextForOpeningParenthesis(
     functionName,
     isGroupingParenthesis,
     mathContext:
-      mathFunctionNames.has(functionName) ||
-      contextualProgressFunctionNames.has(functionName) ||
-      (inheritsParentGrammar && inheritedMathContext),
+      mathFunctionNames.has(functionName) || (inheritsParentGrammar && inheritedMathContext),
     parentRequiresSignedZero,
     signedZeroSensitiveContext:
       parentRequiresSignedZero || signedZeroSensitiveFunctionNames.has(functionName),
@@ -1721,14 +1688,8 @@ function firstValidRuntimeFunctionStaticValidity(
   const hasFallbackChild = frame.children.some(
     (child) => child.start >= branchRange.start && child.end <= branchRange.end,
   );
-  if (progressFunctionNames.has(functionName)) {
-    const group = frame.progressGroups.find(
-      (candidate) =>
-        candidate.functionStart === branchRange.start && candidate.end === branchRange.end,
-    );
-    const progressRange =
-      group === undefined ? branchRange : { ...branchRange, parenthesis: group };
-    if (progressRangeMode(frame, value, progressRange, parenthesisPairs) !== 'invalid') return true;
+  if (functionName === 'progress') {
+    if (isValidProgressRange(frame, value, branchRange, parenthesisPairs)) return true;
     return hasFallbackChild ? undefined : false;
   }
   if (treeCountingFunctionNames.has(functionName)) {
@@ -1782,7 +1743,7 @@ function firstValidBranchIsKnownRuntimeFunction(value, frame, branchRange, paren
     return false;
   const functionName = value.slice(branchRange.start, identifierEnd).toLowerCase();
   if (
-    !progressFunctionNames.has(functionName) &&
+    functionName !== 'progress' &&
     functionName !== 'random' &&
     functionName !== 'random-item' &&
     !treeCountingFunctionNames.has(functionName)
@@ -2040,80 +2001,15 @@ function childIsInSelectableConditionalBranch(child, value, parenthesisPairs, ow
   return true;
 }
 
-function contextualProgressFeatureWitness(value, range, functionName) {
-  const header = value
-    .slice(range.start, range.end)
-    .replaceAll(cssCommentMaskCharacter, ' ')
-    .trim();
-  const tokens = header.split(/\s+/);
-  const featureName = tokens[0]?.toLowerCase();
-  if (functionName === 'media-progress') {
-    if (tokens.length !== 1) return undefined;
-    return mediaProgressFeatureWitnesses.get(featureName);
-  }
-  if (tokens.length !== 1 && tokens.length !== 3) return undefined;
-  if (tokens.length === 3) {
-    const containerName = tokens[2];
-    if (
-      tokens[1].toLowerCase() !== 'of' ||
-      cssIdentifierTokenEnd(containerName, 0) !== containerName.length ||
-      invalidCustomIdentKeywords.has(containerName.toLowerCase()) ||
-      containerName.toLowerCase() === 'none'
-    )
-      return undefined;
-  }
-  return containerProgressFeatureWitnesses.get(featureName);
-}
-
-function contextualIntegerEndpointIsValid(value, argument, parenthesisPairs) {
-  if (/^[+-]?\d+$/.test(argument.value.trim())) return true;
-  const identifierEnd = cssIdentifierTokenEnd(value, argument.range.start);
-  const functionName = value.slice(argument.range.start, identifierEnd).toLowerCase();
-  return (
-    mathFunctionNames.has(functionName) &&
-    value[identifierEnd] === '(' &&
-    parenthesisPairs.get(identifierEnd) === argument.range.end - 1
-  );
-}
-
 function progressRangeMode(frame, value, range, parenthesisPairs) {
-  const functionName = range.parenthesis?.functionName ?? 'progress';
   const parsedArguments = fallbackIndependentStaticArguments(
     frame,
     value,
     range,
-    functionName,
+    'progress',
     parenthesisPairs,
   );
   if (parsedArguments?.argumentCount !== 3) return 'invalid';
-  if (contextualProgressFunctionNames.has(functionName)) {
-    const featureWitness = contextualProgressFeatureWitness(
-      value,
-      parsedArguments.argumentRanges[0],
-      functionName,
-    );
-    if (featureWitness === undefined) return 'invalid';
-    const staticEndpoints = parsedArguments.staticArguments
-      .filter((argument) => argument.index > 0)
-      .map((argument) => argument.value);
-    if (!haveCompatibleStaticProgressTypes([featureWitness, ...staticEndpoints])) return 'invalid';
-    const featureName = value
-      .slice(
-        parsedArguments.argumentRanges[0].start,
-        cssIdentifierTokenEnd(value, parsedArguments.argumentRanges[0].start),
-      )
-      .toLowerCase();
-    if (
-      integerMediaProgressFeatureNames.has(featureName) &&
-      parsedArguments.staticArguments.some(
-        (argument) =>
-          argument.index > 0 &&
-          !contextualIntegerEndpointIsValid(value, argument, parenthesisPairs),
-      )
-    )
-      return 'invalid';
-    return 'unclamped';
-  }
   const firstArgumentRange = parsedArguments.argumentRanges[0];
   const firstArgumentStart = trimCssTriviaRange(
     value,
@@ -2188,18 +2084,17 @@ function canonicalProgressArgument(value, range) {
 }
 
 function canonicalProgressRangeKey(frame, value, range, parenthesisPairs) {
-  const functionName = range.parenthesis?.functionName ?? 'progress';
   const parsedArguments = fallbackIndependentStaticArguments(
     frame,
     value,
     range,
-    functionName,
+    'progress',
     parenthesisPairs,
   );
   if (parsedArguments?.argumentCount !== 3) return undefined;
-  return `${functionName}\u0000${parsedArguments.argumentRanges
+  return parsedArguments.argumentRanges
     .map((argumentRange) => canonicalProgressArgument(value, argumentRange))
-    .join('\u0001')}`;
+    .join('\u0001');
 }
 
 function additiveProgressDegrees(left, right) {
@@ -2836,32 +2731,9 @@ function progressRangeCandidates(
     (child) => child.resolvedFallback === null && selectableChildren.has(child),
   );
   const emptyAnalysis = { candidates: [], suppressedChild: undefined };
+  if (unresolvedChildren.length === 0) return emptyAnalysis;
   const progressParents = [];
   const progressParentSet = new Set();
-  const trimmedRange = trimCssTriviaRange(value, range.start, range.end);
-  for (const progressGroup of frame.progressGroups) {
-    const isWholeSelectedRange =
-      progressGroup.functionStart === trimmedRange.start && progressGroup.end === trimmedRange.end;
-    if (
-      progressGroup.end === undefined ||
-      progressGroup.functionStart < range.start ||
-      progressGroup.end > range.end ||
-      (!isWholeSelectedRange &&
-        !childIsInSelectableConditionalBranch(
-          {
-            start: progressGroup.functionStart,
-            end: progressGroup.end,
-            conditionalParent: progressGroup.conditionalParent,
-          },
-          value,
-          parenthesisPairs,
-          range,
-        ))
-    )
-      continue;
-    progressParentSet.add(progressGroup);
-    progressParents.push(progressGroup);
-  }
   for (const child of unresolvedChildren) {
     const progressParent = child.progressParent;
     if (
@@ -2875,7 +2747,6 @@ function progressRangeCandidates(
       progressParents.push(progressParent);
     }
   }
-  if (progressParents.length === 0) return emptyAnalysis;
   const progressRanges = progressParents
     .map((parenthesis) => ({
       end: parenthesis.end,
@@ -5621,10 +5492,10 @@ function unprovenCandidatesForFrame(frame, value, range, candidate, budget, pare
     range,
     parenthesisPairs,
   );
-  const selectedProgressRange = selectedRuntimeRanges.find((selectedRange) => {
-    const identifierEnd = cssIdentifierTokenEnd(value, selectedRange.start);
-    return progressFunctionNames.has(value.slice(selectedRange.start, identifierEnd).toLowerCase());
-  });
+  const selectedProgressRange = selectedRuntimeRanges.find(
+    (selectedRange) =>
+      value.slice(selectedRange.start, selectedRange.start + 9).toLowerCase() === 'progress(',
+  );
   const selectedRandomRanges = selectedRuntimeRanges.filter((selectedRange) =>
     /^random(?:-item)?\(/i.test(value.slice(selectedRange.start, selectedRange.start + 12)),
   );
@@ -5874,7 +5745,6 @@ function fallbackCandidates(value) {
     children: [],
     conditionalGroups: [],
     hasInvalidCommaStream: false,
-    progressGroups: [],
     randomGroups: [],
     treeCountingGroups: [],
   };
@@ -5915,7 +5785,6 @@ function fallbackCandidates(value) {
         unprovenBannedCandidates: [],
         resolvedFallback: null,
         resolvedClassification: 'unresolved',
-        progressGroups: [],
         randomGroups: [],
         mathContext: parentheses.at(-1)?.mathContext === true,
         invalidFunctionParent: parentheses.at(-1)?.invalidFunctionParent,
@@ -5955,7 +5824,6 @@ function fallbackCandidates(value) {
         ...context,
       };
       const randomOwner = fallbackFrames.at(-1) ?? rootFrame;
-      const progressOwner = randomOwner;
       const enclosingRandomParent =
         parenthesisParent?.randomOwner === randomOwner ? parenthesisParent.randomParent : undefined;
       group.randomOwner = randomOwner;
@@ -5969,16 +5837,14 @@ function fallbackCandidates(value) {
         !mathFunctionNames.has(group.functionName) &&
         !conditionalFunctionNames.has(group.functionName) &&
         !substitutionFunctionNames.has(group.functionName) &&
-        !contextualProgressFunctionNames.has(group.functionName) &&
         group.functionName !== 'random-item';
       group.invalidFunctionParent = isInvalidFunctionBlock
         ? group
         : mathFunctionNames.has(group.functionName)
           ? undefined
           : parenthesisParent?.invalidFunctionParent;
-      group.progressParent = progressFunctionNames.has(group.functionName)
-        ? group
-        : parenthesisParent?.progressParent;
+      group.progressParent =
+        group.functionName === 'progress' ? group : parenthesisParent?.progressParent;
       group.signParent = group.functionName === 'sign' ? group : parenthesisParent?.signParent;
       group.extremaParent = extremaFunctionNames.has(group.functionName)
         ? group
@@ -6011,15 +5877,12 @@ function fallbackCandidates(value) {
       if (group.functionName === 'random' || group.functionName === 'random-item') {
         randomOwner.randomGroups.push(group);
       }
-      if (contextualProgressFunctionNames.has(group.functionName)) {
-        progressOwner.progressGroups.push(group);
-      }
       const progressRangeIsUnsupported =
         group.signedZeroSensitiveContext ||
         (!group.isGroupingParenthesis &&
           group.functionName !== 'calc' &&
           group.functionName !== '-webkit-calc' &&
-          !progressFunctionNames.has(group.functionName));
+          group.functionName !== 'progress');
       group.unsupportedProgressRangeParent = progressRangeIsUnsupported
         ? group
         : parenthesisParent?.unsupportedProgressRangeParent;
