@@ -110,4 +110,55 @@ describe('CommandListState', () => {
     expect(state.listboxId).toBe('renamed-list');
     expect(registered.id).toBe('renamed-list-item-1');
   });
+
+  test('syncItems preserves consumer-provided DOM ids', () => {
+    let listboxId = 'command-list';
+    const state = createCommandListState(() => listboxId);
+    const button = createButton('Only');
+
+    state.syncItems([
+      {
+        id: 'fruit-option-apple',
+        node: button,
+        getValue: () => 'apple',
+        getDisabled: () => false,
+        getOnselect: () => () => undefined,
+      },
+    ]);
+
+    listboxId = 'renamed-list';
+    state.syncItems([
+      {
+        id: 'fruit-option-apple',
+        node: button,
+        getValue: () => 'apple',
+        getDisabled: () => false,
+        getOnselect: () => () => undefined,
+      },
+    ]);
+
+    expect(state.registrations[0]?.id).toBe('fruit-option-apple');
+    expect(state.registrations[0]?.handle.id).toBe('fruit-option-apple');
+  });
+
+  test('bindDismissal is safe without a document', () => {
+    const state = createCommandListState('command-list');
+    const originalDocument = globalThis.document;
+    Object.defineProperty(globalThis, 'document', { configurable: true, value: undefined });
+
+    try {
+      const release = state.bindDismissal({
+        isOpen: () => true,
+        isInside: () => false,
+        onDismiss: () => undefined,
+      });
+      expect(release).toBeFunction();
+      release();
+    } finally {
+      Object.defineProperty(globalThis, 'document', {
+        configurable: true,
+        value: originalDocument,
+      });
+    }
+  });
 });

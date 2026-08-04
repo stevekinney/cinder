@@ -17,7 +17,7 @@
 
 <script lang="ts">
   import type { CheckboxProps } from './checkbox.types.ts';
-  import CheckboxIndicatorShell from './checkbox-indicator-shell.svelte';
+  import CheckboxIndicatorShell from '../_internal/checkbox-indicator-shell.svelte';
   import { resolveFieldControl } from '../../_internal/field-control.ts';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
   import { classNames } from '../../utilities/class-names.ts';

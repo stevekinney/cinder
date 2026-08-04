@@ -25,7 +25,7 @@
   import ChevronDown from 'lucide-svelte/icons/chevron-down';
   import { tick, untrack } from 'svelte';
 
-  import CheckboxIndicatorShell from '../checkbox/checkbox-indicator-shell.svelte';
+  import CheckboxIndicatorShell from '../_internal/checkbox-indicator-shell.svelte';
   import { createCommandListState } from '../_internal/create-command-list-state.svelte.ts';
   import { resolveFieldControl } from '../../_internal/field-control.ts';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';

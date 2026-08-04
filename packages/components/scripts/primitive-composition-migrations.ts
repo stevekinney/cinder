@@ -14,6 +14,8 @@ export const allowedRawControlCounts = new Map<string, number>([
   ['input/input.svelte', 1],
   ['invocation-rule-builder/invocation-rule-builder.svelte', 8],
   ['json-editor/json-editor.svelte', 1],
+  // MultiSelect intentionally retains its filter input and native validation
+  // proxy; option selection itself is composed from the shared primitives.
   ['multi-select/multi-select.svelte', 2],
   ['pin-input/pin-input.svelte', 1],
   ['select/select.svelte', 2],
@@ -35,6 +37,13 @@ export const allowedRawControlSignatures = new Map<string, readonly string[]>([
     [
       'textarea|class=cinder-approval-card__textarea cinder-approval-card__textarea--reason|id|rows=2|value',
       'input|checked|type=checkbox',
+    ],
+  ],
+  [
+    'multi-select/multi-select.svelte',
+    [
+      'input|aria-activedescendant|aria-autocomplete=list|aria-controls|aria-expanded|aria-haspopup=listbox|aria-labelledby|aria-readonly|class=cinder-_input-frame cinder-multi-select__filter|id|oninput|onkeydown|placeholder=Filter options|readonly|role=combobox|this|type=text|value',
+      'input|aria-hidden=true|class=cinder-multi-select__validation-proxy|disabled|oninvalid|required|tabindex=-1|this|type=text|value',
     ],
   ],
 ]);

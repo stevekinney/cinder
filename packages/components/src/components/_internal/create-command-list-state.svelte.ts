@@ -107,6 +107,7 @@ export class CommandListState {
         options.onDismiss(false);
       }
     };
+    if (typeof document === 'undefined') return releaseEscape;
     document.addEventListener('mousedown', handlePointerDown, true);
     document.addEventListener('focusin', handleFocusIn, true);
     return () => {
@@ -145,7 +146,6 @@ export class CommandListState {
   }
 
   syncItems(items: readonly CommandListItem[]): void {
-    this.syncListboxId();
     const previousActiveId = this.#intendedActiveId;
     this.registrations = items.map((item) => ({
       ...item,
