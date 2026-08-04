@@ -2050,6 +2050,20 @@ describe('cinder/z-index-scale', () => {
     expect(warnings(differentSum)).toEqual([]);
   });
 
+  test.each(['calc(9999vw / 1vh)', 'calc(9999em / 1rem)'])(
+    'fails closed for runtime-dependent relative-unit ratios: %s',
+    async (fallback) => {
+      const result = await lint(`
+        .fixture {
+          /* cinder-z-index-local: runtime-dependent unit conversion can reach a banned layer. */
+          z-index: var(--outer, ${fallback});
+        }
+      `);
+
+      expect(warnings(result)).toHaveLength(1);
+    },
+  );
+
   test('reports relative-unit sign ranges that can reach a banned layer', async () => {
     for (const [fallback, warningCount] of [
       ['calc(9998 + sign(1em))', 1],
@@ -4358,6 +4372,9 @@ describe('cinder/z-index-scale', () => {
     ['calc(9999 * sibling-count() / sibling-count())', 1],
     ['calc(9999 * sibling-index() / sibling-count())', 1],
     ['calc(9999 * sibling-index())', 1],
+    ['calc(sibling-index() - sibling-index())', 0],
+    ['calc(sibling-count() - sibling-count())', 0],
+    ['calc(sibling-index() - sibling-count())', 1],
     ['min(1, sibling-index())', 0],
     ['min(1, sibling-count())', 0],
     ['min(-1, sibling-count())', 1],
@@ -4385,6 +4402,8 @@ describe('cinder/z-index-scale', () => {
     ['calc(9999 * env(safe-area-inset-top, 0px))', 0],
     ['calc(9999 * env(safe-area-max-inset-left, 0px))', 0],
     ['calc(9999 * env(viewport-segment-width 0 0, 0px))', 0],
+    ['calc(9999 * env(titlebar-area-x, 0px))', 0],
+    ['calc(9999 * env(keyboard-inset-height, 0px))', 0],
     ['calc(9999 * env(safe-area-inset-top, 0))', 0],
     ['calc(9999 * env(viewport-segment-width, 0))', 0],
     ['calc(9999 * env(viewport-segment-width 0 0, 1))', 1],
@@ -4400,6 +4419,10 @@ describe('cinder/z-index-scale', () => {
     ['calc(var(--runtime, 0) - var(--RUNTIME, 0))', 1],
     ['calc(0 * var(--runtime, 0))', 0],
     ['clamp(0, calc(9999 * var(--runtime, 0)), 1)', 0],
+    ['clamp(0, acos(var(--runtime, 0)), 1)', 0],
+    ['clamp(0, asin(var(--runtime, 0)), 1)', 0],
+    ['clamp(0, atan(var(--runtime, 0)), 1)', 0],
+    ['clamp(0, atan2(var(--runtime, 0), 1), 1)', 0],
     ['calc(9999 * attr(data-layer type(<length>), 0px))', 0],
   ] as const)(
     'tracks the defined path of substitutions with safe fallbacks: %s',
@@ -4520,6 +4543,8 @@ describe('cinder/z-index-scale', () => {
     ['if(media(width > attr(data-width px, 20px)): calc(9999 * sign(var(--runtime))); else: 1)', 1],
     ['if(supports(selector(:is(.a, .b))): 9999; else: 1)', 1],
     ['if((style(--theme: dark) or supports(display: grid)): 9999; else: 1)', 1],
+    ['if((style(--a:x) and style(--b:x)) and (not style(--a:x)): 9999; else: 1)', 0],
+    ['if((style(--a:x) and style(--b:x)) or (not style(--a:x)): 1; else: 9999)', 1],
     ['if(else: 1; style(--theme: dark): 9999)', 0],
     ['if(else: 1; else: 9999)', 0],
     ['if(style(--theme: dark): 1; else: 2; style(--other: yes): 9999)', 0],

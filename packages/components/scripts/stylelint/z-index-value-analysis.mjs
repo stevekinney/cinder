@@ -1327,7 +1327,7 @@ function classifyRelativeLengthSignEndpoints(
   }
   if (reachesNegative) return 'negative';
   if (reachesMagic) return 'magic';
-  return undefined;
+  return 'safe';
 }
 
 export function decodeCssEscapes(value) {
@@ -1629,6 +1629,18 @@ export function analyzeStaticLayerValue(value) {
   if (resolved === 9999 || resolved === 9999n)
     return { classification: 'magic', resultType: 'number' };
   return { classification: 'safe', resultType: 'number' };
+}
+
+export function hasRuntimeDependentNumericConversion(value) {
+  const arithmeticResult = resolveStaticArithmeticResult(value);
+  return (
+    arithmeticResult !== null &&
+    arithmeticResult !== staticAnalysisTooComplex &&
+    arithmeticResult !== staticAnalysisInvalid &&
+    arithmeticResult.exactValue !== undefined &&
+    (arithmeticResult.units.size > 0 || arithmeticResult.symbolicFactors.size > 0) &&
+    hasNumericResultType(arithmeticResult.units)
+  );
 }
 
 export function haveCompatibleStaticProgressTypes(values, { allowFlex = false } = {}) {

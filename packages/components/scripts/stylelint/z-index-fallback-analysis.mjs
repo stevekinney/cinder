@@ -3,6 +3,7 @@ import {
   classifyStaticLayer,
   cssCommentMaskCharacter,
   evaluateStaticLayerNumber,
+  hasRuntimeDependentNumericConversion,
   hasStaticallyZeroCoefficient,
   haveCompatibleStaticDivisionTypes,
   haveCompatibleStaticProgressTypes,
@@ -1322,10 +1323,15 @@ function conditionalBooleanStaticAnalysis(value, range, parenthesisPairs, depth 
 
   const identitiesByKey = new Map();
   for (const analysis of analyses) {
-    if (analysis.identity === undefined) continue;
-    const polarities = identitiesByKey.get(analysis.identity.key) ?? new Set();
-    polarities.add(analysis.identity.negated);
-    identitiesByKey.set(analysis.identity.key, polarities);
+    const identities = [
+      ...(analysis.identity === undefined ? [] : [analysis.identity]),
+      ...(operator === 'and' ? (analysis.conjunctiveIdentities ?? []) : []),
+    ];
+    for (const identity of identities) {
+      const polarities = identitiesByKey.get(identity.key) ?? new Set();
+      polarities.add(identity.negated);
+      identitiesByKey.set(identity.key, polarities);
+    }
   }
   const hasComplementaryPair = [...identitiesByKey.values()].some(
     (polarities) => polarities.size === 2,
@@ -1333,7 +1339,18 @@ function conditionalBooleanStaticAnalysis(value, range, parenthesisPairs, depth 
   const truths = analyses.map((analysis) => analysis.truth);
   if (operator === 'and') {
     if (truths.includes(false) || hasComplementaryPair) return { truth: false };
-    return { truth: truths.every((truth) => truth === true) ? true : undefined };
+    const truth = truths.every((analysisTruth) => analysisTruth === true) ? true : undefined;
+    return {
+      truth,
+      ...(truth === undefined
+        ? {
+            conjunctiveIdentities: analyses.flatMap((analysis) => [
+              ...(analysis.identity === undefined ? [] : [analysis.identity]),
+              ...(analysis.conjunctiveIdentities ?? []),
+            ]),
+          }
+        : {}),
+    };
   }
   if (truths.includes(true) || hasComplementaryPair) return { truth: true };
   return { truth: truths.every((truth) => truth === false) ? false : undefined };
@@ -3120,7 +3137,9 @@ function substitutionDefinedPathCanBeNumber(frame, value) {
       .replaceAll(cssCommentMaskCharacter, ' ')
       .trim();
     const scalarLengthEnvironmentVariable =
-      /^safe-area-(?:max-)?inset-(?:top|right|bottom|left)$/i.test(header);
+      /^(?:safe-area-(?:max-)?inset-(?:top|right|bottom|left)|titlebar-area-(?:x|y|width|height)|keyboard-inset-(?:top|right|bottom|left|width|height))$/i.test(
+        header,
+      );
     const indexedLengthEnvironmentVariable =
       /^viewport-segment-(?:width|height|top|right|bottom|left)(?:\s|$)/i.test(header);
     return !scalarLengthEnvironmentVariable && !indexedLengthEnvironmentVariable;
@@ -4437,7 +4456,16 @@ function randomRangeCandidates(frame, value, range, candidate, budget, parenthes
 }
 
 function treeCountingRangeCandidates(frame, value, range, candidate, budget, parenthesisPairs) {
+  const failClosed = () => [
+    {
+      ...candidate,
+      resolvedFallback: fallbackResolutionTooComplex,
+      resolvedClassification: 'too-complex',
+      hasRuntimeSibling: true,
+    },
+  ];
   const zeroProductRange = { ...range, frame };
+  const liveGroups = [];
   for (const group of frame.treeCountingGroups) {
     if (
       group.end === undefined ||
@@ -4476,16 +4504,60 @@ function treeCountingRangeCandidates(frame, value, range, candidate, budget, par
       )
     )
       continue;
-    return [
-      {
-        ...candidate,
-        resolvedFallback: fallbackResolutionTooComplex,
-        resolvedClassification: 'too-complex',
-        hasRuntimeSibling: true,
-      },
-    ];
+    liveGroups.push(group);
   }
-  return [];
+  if (liveGroups.length === 0) return [];
+
+  const correlatedGroups = new Map();
+  for (const group of liveGroups) {
+    const groups = correlatedGroups.get(group.functionName) ?? [];
+    groups.push(group);
+    correlatedGroups.set(group.functionName, groups);
+  }
+  if ([...correlatedGroups.values()].some((groups) => groups.length === 1)) return failClosed();
+
+  const groupIndexes = new Map(
+    [...correlatedGroups.keys()].map((functionName, index) => [functionName, index]),
+  );
+  const functionRanges = liveGroups.map((group) => ({
+    start: group.functionStart,
+    end: group.end,
+  }));
+  if (
+    !progressExpressionIsMultilinear(
+      value,
+      range,
+      functionRanges,
+      liveGroups.map((group) => groupIndexes.get(group.functionName)),
+      frame.children,
+      parenthesisPairs,
+    )
+  )
+    return failClosed();
+
+  const expressions = [];
+  const combinationCount = 2 ** correlatedGroups.size;
+  for (let combination = 0; combination < combinationCount; combination += 1) {
+    const expression = resolveFrameExpressionWithRangeReplacements(
+      frame,
+      value,
+      range,
+      budget,
+      liveGroups.map((group) => ({
+        start: group.functionStart,
+        end: group.end,
+        value: String((combination >> groupIndexes.get(group.functionName)) & 1),
+      })),
+    );
+    if (
+      expression === fallbackResolutionTooComplex ||
+      isStaticallyInvalidArithmetic(expression) ||
+      analyzeFrameExpression(frame, expression, budget).classification !== 'safe'
+    )
+      return failClosed();
+    expressions.push(expression);
+  }
+  return haveEqualStaticArithmeticValues(expressions) ? [] : failClosed();
 }
 
 function definedSubstitutionPathCandidates(
@@ -5016,6 +5088,50 @@ function childHasValidTypedSteppedOuterPath(child, frame, value, range, parenthe
   );
 }
 
+function childHasValidRuntimeOuterPath(child, frame, value, range, parenthesisPairs) {
+  const functionParent = childFunctionParent(child, 'runtimeRangeParent', range);
+  if (functionParent === undefined) return false;
+  const functionRange = { start: functionParent.functionStart, end: functionParent.end };
+  const parsedArguments = fallbackIndependentStaticArguments(
+    frame,
+    value,
+    functionRange,
+    functionParent.functionName,
+    parenthesisPairs,
+  );
+  if (
+    parsedArguments === undefined ||
+    !unresolvedRuntimeFunctionHasValidArity(
+      functionParent.functionName,
+      parsedArguments.argumentCount,
+    )
+  )
+    return false;
+  const numberArgumentRanges = numberOnlyRuntimeArgumentRanges(
+    functionParent.functionName,
+    parsedArguments,
+    value,
+  );
+  return (
+    numberArgumentRanges !== undefined &&
+    !(functionParent.functionName === 'round' && numberArgumentRanges.length === 0) &&
+    runtimeFunctionStaticArgumentsAreValid(
+      functionParent.functionName,
+      parsedArguments,
+      numberArgumentRanges,
+    ) &&
+    (functionParent.functionName === 'random' ||
+      !numberArgumentRanges.some((argumentRange) =>
+        unresolvedFunctionArgumentIsUnavoidablyNonNumber(
+          frame,
+          value,
+          argumentRange,
+          parenthesisPairs,
+        ),
+      ))
+  );
+}
+
 function unresolvedFunctionArgumentIsUnavoidablyNonNumber(frame, value, range, parenthesisPairs) {
   const pendingRanges = [range];
   let inspectedRangeCount = 0;
@@ -5481,6 +5597,14 @@ function unprovenCandidatesForFrame(frame, value, range, candidate, budget, pare
     [...selectableChildren].every((child) =>
       childHasValidTypedSteppedOuterPath(child, frame, value, range, parenthesisPairs, budget),
     );
+  const allSelectableChildrenHaveValidRuntimeOuterPaths =
+    selectableChildren.size > 0 &&
+    [...selectableChildren].every((child) =>
+      childHasValidRuntimeOuterPath(child, frame, value, range, parenthesisPairs),
+    );
+  const clampCenterIsKnownValid =
+    allSelectableChildrenHaveValidTypedSteppedOuterPaths ||
+    allSelectableChildrenHaveValidRuntimeOuterPaths;
   const hasNonnegativeFloor =
     hasFallbackIndependentSafeBound(frame, value, range, 'max', 'negative', parenthesisPairs) ||
     hasFallbackIndependentClampBound(
@@ -5491,7 +5615,7 @@ function unprovenCandidatesForFrame(frame, value, range, candidate, budget, pare
       'negative',
       budget,
       parenthesisPairs,
-      allSelectableChildrenHaveValidTypedSteppedOuterPaths,
+      clampCenterIsKnownValid,
     );
   const hasMagicBound =
     hasFallbackIndependentSafeBound(frame, value, range, 'max', 'magic', parenthesisPairs) ||
@@ -5504,7 +5628,7 @@ function unprovenCandidatesForFrame(frame, value, range, candidate, budget, pare
       'magic',
       budget,
       parenthesisPairs,
-      allSelectableChildrenHaveValidTypedSteppedOuterPaths,
+      clampCenterIsKnownValid,
     );
   const allSelectableChildrenHaveKnownNonnegativeTypedModPaths =
     selectableChildren.size > 0 &&
@@ -5803,7 +5927,23 @@ function unprovenCandidatesForFrame(frame, value, range, candidate, budget, pare
     contextuallyUnprovenCandidates.push(matchingCandidate ?? candidate);
   }
   const distinctCandidates = uniqueCandidatesByClassification(contextuallyUnprovenCandidates);
-  if (distinctCandidates.length === 0) return [];
+  if (distinctCandidates.length === 0) {
+    const unresolvedExpression = value.slice(range.start, range.end);
+    if (
+      frame.children.length === 0 &&
+      frame.resolvedClassification === 'unresolved' &&
+      frame.resolvedResultType === 'number' &&
+      hasRuntimeDependentNumericConversion(unresolvedExpression)
+    )
+      return [
+        {
+          ...candidate,
+          resolvedFallback: fallbackResolutionTooComplex,
+          resolvedClassification: 'too-complex',
+        },
+      ];
+    return [];
+  }
 
   if (
     frame.type === 'root' &&
