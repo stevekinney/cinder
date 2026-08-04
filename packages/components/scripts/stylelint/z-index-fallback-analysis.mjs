@@ -38,6 +38,71 @@ const attrDefinedPathWitnessesByType = new Map([
   ['resolution', ['0dppx', '1dppx']],
   ['time', ['0s', '1s']],
 ]);
+const attrLegacyNumericUnits = new Set([
+  '%',
+  'cap',
+  'ch',
+  'cm',
+  'cqb',
+  'cqh',
+  'cqi',
+  'cqmax',
+  'cqmin',
+  'cqw',
+  'deg',
+  'dpcm',
+  'dpi',
+  'dppx',
+  'dvb',
+  'dvh',
+  'dvi',
+  'dvmax',
+  'dvmin',
+  'dvw',
+  'em',
+  'ex',
+  'fr',
+  'grad',
+  'hz',
+  'ic',
+  'in',
+  'khz',
+  'lh',
+  'lvb',
+  'lvh',
+  'lvi',
+  'lvmax',
+  'lvmin',
+  'lvw',
+  'mm',
+  'ms',
+  'pc',
+  'pt',
+  'px',
+  'q',
+  'rad',
+  'rcap',
+  'rch',
+  'rem',
+  'rex',
+  'ric',
+  'rlh',
+  's',
+  'svb',
+  'svh',
+  'svi',
+  'svmax',
+  'svmin',
+  'svw',
+  'turn',
+  'vb',
+  'vh',
+  'vi',
+  'vmax',
+  'vmin',
+  'vw',
+  'x',
+]);
 const hypotTypedZeroWitnessValues = [...typedZeroWitnessValues, '0fr'];
 const hypotRuntimeWitnessValues = ['1', ...typedDivisorWitnessValues, '1fr'];
 const extremaFunctionNames = new Set(['clamp', 'max', 'min']);
@@ -49,6 +114,7 @@ const unresolvedRuntimeFunctionArities = new Map([
   ['asin', 1],
   ['atan', 1],
   ['atan2', 2],
+  ['calc-mix', 3],
   ['cos', 1],
   ['exp', 1],
   ['log', [1, 2]],
@@ -119,6 +185,7 @@ const mathFunctionNames = new Set([
   'atan',
   'atan2',
   'calc',
+  'calc-mix',
   'clamp',
   'cos',
   'exp',
@@ -3173,8 +3240,41 @@ function validSubstitutionHeader(frame, value) {
   return validAttrTypeSyntax(typeMatch[1]);
 }
 
-function substitutionDefinedPathWitnesses(frame, value) {
-  if (frame.functionName === 'var') return ['0', '1'];
+function attrDefinedPathWitnessGroups(attrType) {
+  if (attrType === '%') return [['0%', '1%']];
+  if (cssIdentifierTokenEnd(attrType, 0) === attrType.length) {
+    const unit = attrType.toLowerCase();
+    return attrLegacyNumericUnits.has(unit) ? [[`0${unit}`, `1${unit}`]] : undefined;
+  }
+  const typeMatch = /^type\(([^()]+)\)$/i.exec(attrType);
+  if (typeMatch === null) return undefined;
+  const declaredType = typeMatch[1].trim();
+  if (declaredType === '*') return [['0', '9999']];
+  const witnessGroups = [];
+  for (const alternative of declaredType.split('|')) {
+    const typeName = /^<([a-z-]+)>[+#]?$/i.exec(alternative.trim())?.[1].toLowerCase();
+    if (typeName === 'length-percentage') {
+      witnessGroups.push(
+        attrDefinedPathWitnessesByType.get('length'),
+        attrDefinedPathWitnessesByType.get('percentage'),
+      );
+      continue;
+    }
+    const witnesses = attrDefinedPathWitnessesByType.get(typeName);
+    if (witnesses !== undefined) witnessGroups.push(witnesses);
+  }
+  const uniqueWitnessGroups = [
+    ...new Map(witnessGroups.map((witnesses) => [witnesses.join('\0'), witnesses])).values(),
+  ];
+  return uniqueWitnessGroups.length === 0 ? undefined : uniqueWitnessGroups;
+}
+
+function substitutionDefinedPathWitnessGroups(frame, value) {
+  if (frame.functionName === 'var')
+    return [
+      ['0', '1'],
+      ...typedZeroWitnessValues.map((zero, index) => [zero, typedDivisorWitnessValues[index]]),
+    ];
   if (frame.functionName === 'env') {
     const header = substitutionHeader(frame, value);
     const identifierEnd = cssIdentifierTokenEnd(header, 0);
@@ -3185,20 +3285,17 @@ function substitutionDefinedPathWitnesses(frame, value) {
       );
     const indexedLengthEnvironmentVariable =
       /^viewport-segment-(?:width|height|top|right|bottom|left)(?:\s|$)/i.test(header);
-    return scalarLengthEnvironmentVariable || indexedLengthEnvironmentVariable
-      ? ['0px', '1px']
-      : ['0', '1'];
+    return [
+      scalarLengthEnvironmentVariable || indexedLengthEnvironmentVariable
+        ? ['0px', '1px']
+        : ['0', '1'],
+    ];
   }
   if (frame.functionName !== 'attr') return undefined;
   const header = substitutionHeader(frame, value);
   const identifierEnd = cssIdentifierTokenEnd(header, 0);
   const attrType = header.slice(identifierEnd).trim();
-  const typeMatch = /^type\(([^()]+)\)$/i.exec(attrType);
-  if (typeMatch === null) return undefined;
-  const declaredType = typeMatch[1].trim();
-  if (declaredType === '*') return ['0', '9999'];
-  const typeName = /^<([a-z-]+)>$/i.exec(declaredType)?.[1].toLowerCase();
-  return attrDefinedPathWitnessesByType.get(typeName);
+  return attrDefinedPathWitnessGroups(attrType);
 }
 
 function substitutionDefinedPathIdentity(frame, value) {
@@ -4204,6 +4301,7 @@ function unresolvedRuntimeRangeCandidates(
       continue;
     liveFunctionParents.add(functionParent);
   }
+  const remainingFunctionParents = [];
   for (const functionParent of liveFunctionParents) {
     const elimination = functionParentIsMultipliedByStaticZero(
       value,
@@ -4212,16 +4310,84 @@ function unresolvedRuntimeRangeCandidates(
       budget,
     );
     if (elimination === true) continue;
-    return [
-      {
-        ...candidate,
-        hasRuntimeSibling: true,
-        resolvedFallback: fallbackResolutionTooComplex,
-        resolvedClassification: 'too-complex',
-      },
-    ];
+    remainingFunctionParents.push(functionParent);
   }
-  return [];
+  if (remainingFunctionParents.length === 0) return [];
+
+  const correlatedFunctionGroups = new Map();
+  for (const functionParent of remainingFunctionParents) {
+    if (functionParent.functionName !== 'abs') return failClosedRuntimeCandidate(candidate);
+    const functionRange = { start: functionParent.functionStart, end: functionParent.end };
+    const key = canonicalProgressArgument(value, functionRange);
+    const group = correlatedFunctionGroups.get(key) ?? [];
+    group.push(functionParent);
+    correlatedFunctionGroups.set(key, group);
+  }
+  if ([...correlatedFunctionGroups.values()].some((group) => group.length < 2))
+    return failClosedRuntimeCandidate(candidate);
+  if (correlatedFunctionGroups.size > 8) return failClosedRuntimeCandidate(candidate);
+
+  const groupIndexes = new Map(
+    [...correlatedFunctionGroups.keys()].map((key, index) => [key, index]),
+  );
+  const functionRanges = remainingFunctionParents.map((functionParent) => ({
+    start: functionParent.functionStart,
+    end: functionParent.end,
+  }));
+  const functionGroupIndexes = remainingFunctionParents.map((functionParent) =>
+    groupIndexes.get(
+      canonicalProgressArgument(value, {
+        start: functionParent.functionStart,
+        end: functionParent.end,
+      }),
+    ),
+  );
+  if (
+    !progressExpressionIsMultilinear(
+      value,
+      range,
+      functionRanges,
+      functionGroupIndexes,
+      frame.children,
+      parenthesisPairs,
+    )
+  )
+    return failClosedRuntimeCandidate(candidate);
+
+  const expressions = [];
+  const combinationCount = 2 ** correlatedFunctionGroups.size;
+  for (let combination = 0; combination < combinationCount; combination += 1) {
+    const expression = resolveFrameExpressionWithRangeReplacements(
+      frame,
+      value,
+      range,
+      budget,
+      remainingFunctionParents.map((functionParent, index) => ({
+        start: functionParent.functionStart,
+        end: functionParent.end,
+        value: String((combination >> functionGroupIndexes[index]) & 1),
+      })),
+    );
+    if (
+      expression === fallbackResolutionTooComplex ||
+      isStaticallyInvalidArithmetic(expression) ||
+      analyzeFrameExpression(frame, expression, budget).classification !== 'safe'
+    )
+      return failClosedRuntimeCandidate(candidate);
+    expressions.push(expression);
+  }
+  return haveEqualStaticArithmeticValues(expressions) ? [] : failClosedRuntimeCandidate(candidate);
+}
+
+function failClosedRuntimeCandidate(candidate) {
+  return [
+    {
+      ...candidate,
+      hasRuntimeSibling: true,
+      resolvedFallback: fallbackResolutionTooComplex,
+      resolvedClassification: 'too-complex',
+    },
+  ];
 }
 
 function randomItemArgumentRanges(value, group, parenthesisPairs) {
@@ -4604,6 +4770,26 @@ function randomRangeCandidates(frame, value, range, candidate, budget, parenthes
   }));
 }
 
+function isWholeSiblingIndexToCountRatio(value, range, groups, parenthesisPairs) {
+  if (groups.length !== 2) return false;
+  const indexGroup = groups.find((group) => group.functionName === 'sibling-index');
+  const countGroup = groups.find((group) => group.functionName === 'sibling-count');
+  if (indexGroup === undefined || countGroup === undefined) return false;
+  const expressionRange = unwrapStaticContainer(value, range, parenthesisPairs);
+  let expression = value.slice(expressionRange.start, expressionRange.end);
+  for (const group of [indexGroup, countGroup].sort(
+    (left, right) => right.functionStart - left.functionStart,
+  )) {
+    const start = group.functionStart - expressionRange.start;
+    const end = group.end - expressionRange.start;
+    expression =
+      expression.slice(0, start) +
+      (group.functionName === 'sibling-index' ? 'i' : 'n') +
+      expression.slice(end);
+  }
+  return expression.replaceAll(cssCommentMaskCharacter, '').replaceAll(/\s/g, '') === 'i/n';
+}
+
 function treeCountingRangeCandidates(frame, value, range, candidate, budget, parenthesisPairs) {
   const failClosed = () => [
     {
@@ -4656,6 +4842,7 @@ function treeCountingRangeCandidates(frame, value, range, candidate, budget, par
     liveGroups.push(group);
   }
   if (liveGroups.length === 0) return [];
+  if (isWholeSiblingIndexToCountRatio(value, range, liveGroups, parenthesisPairs)) return [];
 
   const correlatedGroups = new Map();
   for (const group of liveGroups) {
@@ -4749,7 +4936,8 @@ function definedSubstitutionPathCandidates(
         if (
           !parent.isGroupingParenthesis &&
           parent.functionName !== 'calc' &&
-          parent.functionName !== '-webkit-calc'
+          parent.functionName !== '-webkit-calc' &&
+          parent.functionName !== 'calc-mix'
         ) {
           usesOnlyCalculationContainers = false;
           break;
@@ -4822,44 +5010,50 @@ function definedSubstitutionPathCandidates(
         },
       ];
     }
-    const endpointExpressions = [];
     const exactClassifications = new Set();
-    const witnesses = correlatedChildren[0].definedPathWitnesses;
+    const witnessGroups = correlatedChildren[0].definedPathWitnessGroups;
+    const serializedWitnessGroups = JSON.stringify(witnessGroups);
     if (
-      witnesses === undefined ||
+      witnessGroups === undefined ||
       correlatedChildren.some(
-        (child) => child.definedPathWitnesses?.join('\0') !== witnesses.join('\0'),
+        (child) => JSON.stringify(child.definedPathWitnessGroups) !== serializedWitnessGroups,
       )
     )
       continue;
-    for (const witness of witnesses) {
-      const expression = resolveFrameExpressionWithRangeReplacements(
-        frame,
-        value,
-        range,
-        budget,
-        correlatedChildren.map((child) => ({
-          start: child.start,
-          end: child.end,
-          value: witness,
-        })),
-      );
-      if (expression === fallbackResolutionTooComplex)
-        return [
-          {
-            ...candidate,
-            resolvedFallback: fallbackResolutionTooComplex,
-            resolvedClassification: 'too-complex',
-          },
-        ];
-      const analysis = analyzeFrameExpression(frame, expression, budget);
-      if (analysis.classification === 'negative' || analysis.classification === 'magic')
-        exactClassifications.add(analysis.classification);
-      if (analysis.resultType !== 'number' || isStaticallyInvalidArithmetic(expression)) {
-        endpointExpressions.length = 0;
-        break;
+    let hasDistinctValidEndpoints = false;
+    for (const witnesses of witnessGroups) {
+      const endpointExpressions = [];
+      for (const witness of witnesses) {
+        const expression = resolveFrameExpressionWithRangeReplacements(
+          frame,
+          value,
+          range,
+          budget,
+          correlatedChildren.map((child) => ({
+            start: child.start,
+            end: child.end,
+            value: witness,
+          })),
+        );
+        if (expression === fallbackResolutionTooComplex)
+          return [
+            {
+              ...candidate,
+              resolvedFallback: fallbackResolutionTooComplex,
+              resolvedClassification: 'too-complex',
+            },
+          ];
+        const analysis = analyzeFrameExpression(frame, expression, budget);
+        if (analysis.classification === 'negative' || analysis.classification === 'magic')
+          exactClassifications.add(analysis.classification);
+        if (analysis.resultType !== 'number' || isStaticallyInvalidArithmetic(expression)) {
+          endpointExpressions.length = 0;
+          break;
+        }
+        endpointExpressions.push(expression);
       }
-      endpointExpressions.push(expression);
+      if (endpointExpressions.length === 2 && !haveEqualStaticArithmeticValues(endpointExpressions))
+        hasDistinctValidEndpoints = true;
     }
     if (correlatedChildren.some((child) => child.commaIndex === -1)) {
       const [child] = correlatedChildren;
@@ -4874,8 +5068,7 @@ function definedSubstitutionPathCandidates(
       }
       continue;
     }
-    if (endpointExpressions.length !== 2 || haveEqualStaticArithmeticValues(endpointExpressions))
-      continue;
+    if (!hasDistinctValidEndpoints) continue;
     const [child] = correlatedChildren;
     const definedPathCandidate = {
       fallbackIndex: child.start,
@@ -5031,6 +5224,7 @@ function randomNumericArgumentRanges(value, parsedArguments) {
 
 function numberOnlyRuntimeArgumentRanges(functionName, parsedArguments, value) {
   if (functionName === 'atan2') return parsedArguments.argumentRanges;
+  if (functionName === 'calc-mix') return parsedArguments.argumentRanges.slice(0, 1);
   if (functionName === 'exp' || functionName === 'sqrt')
     return parsedArguments.argumentRanges.slice(0, 1);
   if (['log', 'mod', 'pow', 'rem'].includes(functionName)) return parsedArguments.argumentRanges;
@@ -6497,10 +6691,11 @@ function fallbackCandidates(value) {
     }
 
     if (frame.commaIndex === -1) {
-      frame.definedPathWitnesses =
+      frame.definedPathWitnessGroups =
         frame.fallbackParent === undefined
           ? undefined
-          : substitutionDefinedPathWitnesses(frame, value);
+          : substitutionDefinedPathWitnessGroups(frame, value);
+      frame.definedPathWitnesses = frame.definedPathWitnessGroups?.flat();
       frame.definedPathCanBeNumber = frame.definedPathWitnesses?.includes('0');
       continue;
     }
@@ -6539,10 +6734,11 @@ function fallbackCandidates(value) {
       resolvedFallback: frame.resolvedFallback,
       resolvedClassification: frame.resolvedClassification,
     };
-    frame.definedPathWitnesses =
+    frame.definedPathWitnessGroups =
       frame.fallbackParent === undefined
         ? undefined
-        : substitutionDefinedPathWitnesses(frame, value);
+        : substitutionDefinedPathWitnessGroups(frame, value);
+    frame.definedPathWitnesses = frame.definedPathWitnessGroups?.flat();
     frame.definedPathCanBeNumber = frame.definedPathWitnesses?.includes('0');
     frame.unprovenBannedCandidates = unprovenCandidatesForFrame(
       frame,

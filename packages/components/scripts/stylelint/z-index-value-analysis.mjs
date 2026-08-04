@@ -702,6 +702,39 @@ function evaluateConstantArithmetic(expression) {
         functionName === 'clamp'
           ? arguments_.filter((argument) => argument !== unboundedClampEndpoint)
           : arguments_;
+      if (functionName === 'calc-mix' && arguments_.length === 3) {
+        const [progress, start, end] = arguments_;
+        const progressIsPercentage =
+          progress.units.size === 1 &&
+          progress.units.get('unit:%') === 1 &&
+          progress.symbolicFactors.size === 0;
+        if (
+          (!progressIsPercentage && progress.units.size !== 0) ||
+          progress.symbolicFactors.size !== 0 ||
+          !sameUnits(start, end) ||
+          !sameSymbolicFactors(start, end)
+        )
+          throw new Error('incompatible calc-mix values');
+        const normalizedProgressValue = progressIsPercentage
+          ? progress.value / 100
+          : progress.value;
+        const normalizedExactProgress = progressIsPercentage
+          ? divideRationals(progress.exactValue, { numerator: 100n, denominator: 1n })
+          : progress.exactValue;
+        const exactOneMinusProgress = addRationals(
+          { numerator: 1n, denominator: 1n },
+          normalizedExactProgress,
+          -1n,
+        );
+        return withValue(
+          start,
+          start.value * (1 - normalizedProgressValue) + end.value * normalizedProgressValue,
+          addRationals(
+            multiplyRationals(start.exactValue, exactOneMinusProgress),
+            multiplyRationals(end.exactValue, normalizedExactProgress),
+          ),
+        );
+      }
       const hasOnlyScalarArguments =
         (functionName === 'hypot' || functionName === 'max' || functionName === 'min') &&
         boundedArguments.length > 0 &&

@@ -253,6 +253,23 @@ describe('cinder/z-index-scale', () => {
   });
 
   test.each([
+    ['calc-mix(0, 9999, 1)', 1],
+    ['calc-mix(0%, 9999, 1)', 1],
+    ['calc-mix(1, 9999, 1)', 0],
+    ['calc-mix(100%, 9999, 1)', 0],
+    ['calc(calc-mix(0, 9999px, 1px) / 1px)', 1],
+    ['calc-mix(0, 9999px, 1deg)', 0],
+  ] as const)('evaluates calc-mix() fallback results: %s', async (fallback, count) => {
+    const result = await lint(`
+        .fixture {
+          /* cinder-z-index-local: an interpolated layer still stays within the local stack. */
+          z-index: var(--outer, ${fallback});
+        }
+      `);
+    expect(warnings(result)).toHaveLength(count);
+  });
+
+  test.each([
     'var(--item-layer, 9999)',
     'var(--item-layer, calc(9999))',
     'var(--item-layer, calc(+9999))',
@@ -1972,7 +1989,6 @@ describe('cinder/z-index-scale', () => {
       'calc(var(--inner, -1) * 1px)',
       'var(--outer, calc(var(--inner, 9999) * 1deg))',
       'var(--outer, calc(var(--inner, -1px) + 0px))',
-      'var(--outer, calc(var(--inner, -1) / 1px))',
     ]) {
       const result = await lint(`
         .fixture {
@@ -1987,6 +2003,7 @@ describe('cinder/z-index-scale', () => {
     for (const value of [
       'calc(var(--inner, -1) * 1px / 1px)',
       'var(--outer, calc(var(--inner, 9999px) / 1px))',
+      'var(--outer, calc(var(--inner, -1) / 1px))',
       'var(--outer, calc(var(--inner, -1) * 1rem / 1em))',
       'var(--outer, calc(var(--inner, 9999) * 1px / 1rem))',
     ]) {
@@ -4479,6 +4496,8 @@ describe('cinder/z-index-scale', () => {
     ['calc(sibling-index() - sibling-index())', 0],
     ['calc(sibling-count() - sibling-count())', 0],
     ['calc(sibling-index() - sibling-count())', 1],
+    ['calc(sibling-index() / sibling-count())', 0],
+    ['calc(sibling-count() / sibling-index())', 1],
     ['min(1, sibling-index())', 0],
     ['min(1, sibling-count())', 0],
     ['min(-1, sibling-count())', 1],
@@ -4502,6 +4521,9 @@ describe('cinder/z-index-scale', () => {
 
   test.each([
     ['calc(9999 * var(--runtime, 0))', 1],
+    ['calc(9999 * var(--scale, 0px) / 1px)', 1],
+    ['calc(0 * var(--scale, 0px) / 1px)', 0],
+    ['calc(9999 * var(--scale, 0deg) / 1px)', 1],
     ['calc(9999 / var(--scale, 0))', 1],
     ['calc(9999 / var(--scale, 1))', 1],
     ['calc(9999 * env(foo, 0))', 1],
@@ -4524,6 +4546,10 @@ describe('cinder/z-index-scale', () => {
     ['calc(9999 * env(foo, 0px))', 1],
     ['calc(9999 * attr(data-layer type(<number>), 0))', 1],
     ['calc(9999 * attr(data-layer type(<integer>), 0))', 1],
+    ['calc(9999 * attr(data-scale px, 0px) / 1px)', 1],
+    ['calc(9999 * attr(data-scale type(<number> | <length>), 0) / 1px)', 1],
+    ['calc(9999 * attr(data-scale type(<number>+), 0) / 1)', 1],
+    ['calc(9999 * attr(data-scale type(<length>#), 0px) / 1px)', 1],
     ['attr(data-layer type(*), 1)', 1],
     ['calc(var(--runtime, 0) - var(--runtime, 0))', 0],
     ['calc(var(--runtime, 9999) - var(--runtime, 9999))', 0],
@@ -4566,6 +4592,25 @@ describe('cinder/z-index-scale', () => {
       ).toHaveLength(count);
     },
   );
+
+  test.each([
+    ['calc(abs(var(--runtime)) - abs(var(--runtime)))', 0],
+    ['calc(9999 * (abs(var(--runtime)) - abs(var(--runtime))))', 0],
+    ['calc(abs(var(--left)) - abs(var(--right)))', 1],
+    ['calc(abs(var(--runtime)) + abs(var(--runtime)))', 1],
+    ['calc(abs(var(--runtime)) * abs(var(--runtime)))', 1],
+  ] as const)('correlates repeated deterministic math calls: %s', async (fallback, count) => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: repeated deterministic math regression coverage. */
+            z-index: var(--outer, ${fallback});
+          }
+        `),
+      ),
+    ).toHaveLength(count);
+  });
 
   test.each([
     ['toggle(9999, 1)', 1],
