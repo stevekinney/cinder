@@ -64,11 +64,13 @@ export type SequentialFocusRange = {
   direction: 'before' | 'after';
 };
 
+export type SequentialFocusTarget = HTMLElement | SVGElement;
+
 /** Return elements that participate in the document's sequential tab order. */
 export function getSequentialFocusTargets(
   root: ParentNode | null,
   range?: SequentialFocusRange,
-): HTMLElement[] {
+): SequentialFocusTarget[] {
   if (!root) return [];
   const composedElements = collectComposedElements(root);
   const relativeIndex = range ? composedElements.indexOf(range.relativeTo) : -1;
@@ -78,14 +80,14 @@ export function getSequentialFocusTargets(
       (_, index) =>
         !range || (range.direction === 'before' ? index < relativeIndex : index > relativeIndex),
     )
+    .filter(isSequentialFocusTarget)
     .filter(
       (element) =>
         !range ||
-        (isElementNode(element) &&
-          isElementNode(range.relativeTo) &&
+        (isSequentialFocusTarget(range.relativeTo) &&
           isSequentiallyAfterReference(element, range.relativeTo, range.direction)),
     )
-    .filter((element): element is HTMLElement => element.matches(sequentialFocusCandidateSelector))
+    .filter((element) => element.matches(sequentialFocusCandidateSelector))
     .filter(isSequentialCandidate);
   const radios: {
     root: Node;
@@ -93,27 +95,35 @@ export function getSequentialFocusTargets(
     name: string;
     members: HTMLElement[];
   }[] = [];
-  const radioUniverse = collectComposedElements(candidates[0]?.ownerDocument ?? root).filter(
-    (element): element is HTMLElement => element.matches('input[type="radio"]'),
-  );
-  for (const candidate of radioUniverse) {
+  for (const candidate of candidates) {
     if (!isRadio(candidate)) continue;
     const rootNode = candidate.getRootNode();
     const name = candidate.getAttribute('name') ?? '';
     if (name === '') continue;
-    const formValue = 'form' in candidate ? (candidate as { form?: unknown }).form : null;
-    const form = isElementNode(formValue) ? formValue : null;
+    const form = getFormOwner(candidate);
     const group = radios.find(
       (entry) => entry.root === rootNode && entry.form === form && entry.name === name,
     );
-    if (group) group.members.push(candidate);
-    else
+    if (!group) {
+      const members = isParentNode(rootNode)
+        ? collectComposedElements(rootNode)
+            .filter(isSequentialFocusTarget)
+            .filter(isRadio)
+            .filter(
+              (radio) =>
+                radio.getRootNode() === rootNode &&
+                radio.getAttribute('name') === name &&
+                getFormOwner(radio) === form &&
+                isSequentialCandidate(radio),
+            )
+        : [candidate];
       radios.push({
         root: rootNode,
         form,
         name,
-        members: [candidate],
+        members,
       });
+    }
   }
   const radioRepresentatives = new Set(
     radios.flatMap(({ members }) => [
@@ -122,7 +132,10 @@ export function getSequentialFocusTargets(
   );
   const groupedRadios = new Set(radios.flatMap(({ members }) => members));
   return candidates
-    .filter((candidate) => !(groupedRadios.has(candidate) && !radioRepresentatives.has(candidate)))
+    .filter(
+      (candidate) =>
+        !isRadio(candidate) || !groupedRadios.has(candidate) || radioRepresentatives.has(candidate),
+    )
     .sort((left, right) => {
       const leftTabIndex = sequentialTabIndexValue(left);
       const rightTabIndex = sequentialTabIndexValue(right);
@@ -167,7 +180,7 @@ function isSlotElement(element: Element): element is SlotElement {
   );
 }
 
-function isSequentialCandidate(candidate: HTMLElement): boolean {
+function isSequentialCandidate(candidate: SequentialFocusTarget): boolean {
   const explicitTabIndexValue = getExplicitTabIndexValue(candidate);
   if (candidate.matches('input[type="hidden"]')) return false;
   if (
@@ -183,28 +196,37 @@ function isSequentialCandidate(candidate: HTMLElement): boolean {
   return true;
 }
 
-function hasNativeSequentialDefault(element: HTMLElement): boolean {
+function hasNativeSequentialDefault(element: SequentialFocusTarget): boolean {
   return (
     element.matches(
       'button, input:not([type="hidden"]), a[href], area[href], select, textarea, summary, frame, iframe',
     ) ||
     element.matches('audio[controls], video[controls], embed[src]') ||
     (element.matches('object') && (element.getAttribute('data')?.trim().length ?? 0) > 0) ||
-    isEditingHost(element)
+    (isHtmlElementNode(element) && isEditingHost(element))
   );
 }
 
-function isRadio(element: HTMLElement): boolean {
-  return element.localName === 'input' && element.getAttribute('type')?.toLowerCase() === 'radio';
+function isRadio(element: SequentialFocusTarget): element is HTMLElement {
+  return (
+    isHtmlElementNode(element) &&
+    element.localName === 'input' &&
+    element.getAttribute('type')?.toLowerCase() === 'radio'
+  );
 }
 
-function sequentialTabIndexValue(element: HTMLElement): number {
+function getFormOwner(element: HTMLElement): HTMLElement | null {
+  const formValue = 'form' in element ? Reflect.get(element, 'form') : null;
+  return isHtmlElementNode(formValue) ? formValue : null;
+}
+
+function sequentialTabIndexValue(element: SequentialFocusTarget): number {
   return Math.max(0, getTabIndexValue(element));
 }
 
 function isSequentiallyAfterReference(
-  element: HTMLElement,
-  reference: HTMLElement,
+  element: SequentialFocusTarget,
+  reference: SequentialFocusTarget,
   direction: SequentialFocusRange['direction'],
 ): boolean {
   const referenceTabIndex = getTabIndexValue(reference);
@@ -214,11 +236,11 @@ function isSequentiallyAfterReference(
   return true;
 }
 
-export function getTabIndexValue(element: HTMLElement): number {
+export function getTabIndexValue(element: SequentialFocusTarget): number {
   return getExplicitTabIndexValue(element) ?? (hasNativeSequentialDefault(element) ? 0 : -1);
 }
 
-function getExplicitTabIndexValue(element: HTMLElement): number | null {
+function getExplicitTabIndexValue(element: SequentialFocusTarget): number | null {
   const rawValue = element.getAttribute('tabindex');
   if (rawValue !== null) {
     // HTML integer parsing consumes the leading signed digit sequence. Mirror
@@ -250,7 +272,7 @@ function hasContentEditableState(element: HTMLElement | null): boolean {
   return false;
 }
 
-function isFirstDetailsSummary(element: HTMLElement): boolean {
+function isFirstDetailsSummary(element: SequentialFocusTarget): boolean {
   const details = element.parentElement;
   return (
     details?.tagName === 'DETAILS' &&
@@ -258,15 +280,14 @@ function isFirstDetailsSummary(element: HTMLElement): boolean {
   );
 }
 
-function isInsideClosedDetails(element: HTMLElement): boolean {
-  let current: HTMLElement | null = composedParentElement(element);
+function isInsideClosedDetails(element: SequentialFocusTarget): boolean {
+  let current: Element | null = composedParentElement(element);
   while (current) {
+    const summary = Array.from(current.children).find((child) => child.tagName === 'SUMMARY');
     if (
       current.tagName === 'DETAILS' &&
       !current.hasAttribute('open') &&
-      !Array.from(current.children)
-        .find((child) => child.tagName === 'SUMMARY')
-        ?.contains(element)
+      !(summary && composedContains(summary, element))
     )
       return true;
     current = composedParentElement(current);
@@ -274,8 +295,19 @@ function isInsideClosedDetails(element: HTMLElement): boolean {
   return false;
 }
 
-function closestComposed(element: HTMLElement, selector: string): HTMLElement | null {
-  let candidate: HTMLElement | null = element;
+function composedContains(ancestor: Element, descendant: SequentialFocusTarget): boolean {
+  for (
+    let current: Element | null = descendant;
+    current;
+    current = composedParentElement(current)
+  ) {
+    if (current === ancestor) return true;
+  }
+  return false;
+}
+
+function closestComposed(element: Element, selector: string): Element | null {
+  let candidate: Element | null = element;
   while (candidate) {
     if (candidate.matches(selector)) return candidate;
     candidate = composedParentElement(candidate);
@@ -283,9 +315,9 @@ function closestComposed(element: HTMLElement, selector: string): HTMLElement | 
   return null;
 }
 
-function isRendered(element: HTMLElement): boolean {
+function isRendered(element: Element): boolean {
   if (typeof getComputedStyle !== 'function') return true;
-  let candidate: HTMLElement | null = element;
+  let candidate: Element | null = element;
   while (candidate) {
     const style = getComputedStyle(candidate);
     if (
@@ -299,11 +331,11 @@ function isRendered(element: HTMLElement): boolean {
   return true;
 }
 
-function composedParentElement(element: HTMLElement): HTMLElement | null {
+function composedParentElement(element: Element): Element | null {
   return assignedSlotFor(element) ?? element.parentElement ?? shadowHost(element.getRootNode());
 }
 
-function assignedSlotFor(element: HTMLElement): HTMLElement | null {
+function assignedSlotFor(element: Element): Element | null {
   if (isElementNode(element.assignedSlot)) return element.assignedSlot;
   const shadowRoot = element.parentElement?.shadowRoot;
   if (!shadowRoot) return null;
@@ -315,14 +347,36 @@ function assignedSlotFor(element: HTMLElement): HTMLElement | null {
   return null;
 }
 
-function shadowHost(root: Node): HTMLElement | null {
+function shadowHost(root: Node): Element | null {
   if (!('host' in root)) return null;
   const host = (root as { host?: unknown }).host;
   return isElementNode(host) ? host : null;
 }
 
-function isElementNode(value: unknown): value is HTMLElement {
-  return Boolean(value && typeof value === 'object' && 'nodeType' in value && value.nodeType === 1);
+function isElementNode(value: unknown): value is Element {
+  return Boolean(
+    value &&
+    typeof value === 'object' &&
+    'nodeType' in value &&
+    value.nodeType === 1 &&
+    'namespaceURI' in value,
+  );
+}
+
+function isHtmlElementNode(value: unknown): value is HTMLElement {
+  return isElementNode(value) && value.namespaceURI === 'http://www.w3.org/1999/xhtml';
+}
+
+function isSequentialFocusTarget(value: unknown): value is SequentialFocusTarget {
+  return (
+    isElementNode(value) &&
+    (value.namespaceURI === 'http://www.w3.org/1999/xhtml' ||
+      value.namespaceURI === 'http://www.w3.org/2000/svg')
+  );
+}
+
+function isParentNode(node: Node): node is Node & ParentNode {
+  return 'children' in node;
 }
 
 /**

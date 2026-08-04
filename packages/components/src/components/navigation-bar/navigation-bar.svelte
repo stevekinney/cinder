@@ -26,6 +26,7 @@
 <script lang="ts">
   import type { Placement } from '@floating-ui/dom';
   import type { NavigationBarProps, NavigationVariant } from './navigation-bar.types.ts';
+  import type { SequentialFocusTarget } from '../../utilities/focus.ts';
   import { BROWSER as browser } from 'esm-env';
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
   import { classNames } from '../../utilities/class-names.ts';
@@ -328,7 +329,7 @@
     focusTarget?.focus();
   }
 
-  function getFocusTargetBeforeItems(): HTMLElement | null {
+  function getFocusTargetBeforeItems(): SequentialFocusTarget | null {
     return findFocusTargetBeforeNavigationItems(
       navigationBarElement,
       toggleElement,
@@ -336,8 +337,12 @@
     );
   }
 
-  function getFocusTargetAfterItems(): HTMLElement | null {
-    return findFocusTargetAfterNavigationItems(navigationBarElement, itemsRegionElement);
+  function getFocusTargetAfterItems(navigationItem: HTMLElement): SequentialFocusTarget | null {
+    return findFocusTargetAfterNavigationItems(
+      navigationBarElement,
+      itemsRegionElement,
+      navigationItem,
+    );
   }
 
   function bridgePortaledPanelTab(event: KeyboardEvent, navigationItem: HTMLElement): boolean {
@@ -355,7 +360,7 @@
     }
 
     if (!event.shiftKey && navigationItem === enabledItems.at(-1)) {
-      const nextTarget = getFocusTargetAfterItems();
+      const nextTarget = getFocusTargetAfterItems(navigationItem);
       if (!nextTarget) return false;
       event.preventDefault();
       nextTarget.focus();

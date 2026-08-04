@@ -1,8 +1,13 @@
-import { composedFocusScopes, getSequentialFocusTargets } from '../../utilities/focus.ts';
+import {
+  composedFocusScopes,
+  getSequentialFocusTargets,
+  getTabIndexValue,
+  type SequentialFocusTarget,
+} from '../../utilities/focus.ts';
 
 export function getNavigationBarBrandFocusTargets(
   navigationBar: HTMLElement | null,
-): HTMLElement[] {
+): SequentialFocusTarget[] {
   return getSequentialFocusTargets(
     navigationBar?.querySelector('.cinder-navigation-bar__brand') ?? null,
   );
@@ -12,7 +17,7 @@ export function findFocusTargetBeforeNavigationItems(
   navigationBar: HTMLElement | null,
   toggle: HTMLElement | null,
   brandComesBeforeItems: boolean,
-): HTMLElement | null {
+): SequentialFocusTarget | null {
   if (brandComesBeforeItems) {
     const brandTarget = getNavigationBarBrandFocusTargets(navigationBar).at(-1);
     if (brandTarget) return brandTarget;
@@ -30,10 +35,16 @@ export function findFocusTargetBeforeNavigationItems(
 export function findFocusTargetAfterNavigationItems(
   navigationBar: HTMLElement | null,
   itemsRegion: HTMLElement | null,
-): HTMLElement | null {
-  const actionTarget = getSequentialFocusTargets(
+  navigationItem: HTMLElement | null = null,
+): SequentialFocusTarget | null {
+  const actionTargets = getSequentialFocusTargets(
     navigationBar?.querySelector('.cinder-navigation-bar__actions') ?? null,
-  )[0];
+  );
+  const referenceTabIndex = Math.max(0, navigationItem ? getTabIndexValue(navigationItem) : 0);
+  const actionTarget =
+    (navigationItem && referenceTabIndex > 0
+      ? actionTargets.find((candidate) => getTabIndexValue(candidate) >= referenceTabIndex)
+      : undefined) ?? actionTargets.find((candidate) => getTabIndexValue(candidate) === 0);
   if (actionTarget) return actionTarget;
   if (!navigationBar || typeof document === 'undefined') return null;
 

@@ -95,6 +95,17 @@ describe('getSequentialFocusTargets', () => {
     region.remove();
   });
 
+  test('includes SVG elements with an explicit tabindex', () => {
+    const region = document.createElement('div');
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('tabindex', '0');
+    region.append(svg);
+    document.body.append(region);
+
+    expect(getSequentialFocusTargets(region)).toEqual([svg]);
+    region.remove();
+  });
+
   test('includes native sequential controls omitted by the old selector', () => {
     const region = document.createElement('div');
     const input = document.createElement('input');
@@ -369,6 +380,35 @@ describe('getSequentialFocusTargets', () => {
     region.remove();
   });
 
+  test('keeps shadow descendants nested inside the active summary', () => {
+    const region = document.createElement('div');
+    const details = document.createElement('details');
+    const summary = document.createElement('summary');
+    const host = document.createElement('span');
+    const shadow = host.attachShadow({ mode: 'open' });
+    const button = document.createElement('button');
+    shadow.append(button);
+    summary.append(host);
+    details.append(summary, document.createElement('button'));
+    region.append(details);
+    document.body.append(region);
+
+    expect(getSequentialFocusTargets(region)).toContain(button);
+    region.remove();
+  });
+
+  test('skips controls in a closed details element without a summary', () => {
+    const region = document.createElement('div');
+    const details = document.createElement('details');
+    const button = document.createElement('button');
+    details.append(button);
+    region.append(details);
+    document.body.append(region);
+
+    expect(getSequentialFocusTargets(region)).not.toContain(button);
+    region.remove();
+  });
+
   test('exposes one radio per same-name group, preferring checked or first eligible', () => {
     const region = document.createElement('div');
     const first = document.createElement('input');
@@ -410,6 +450,28 @@ describe('getSequentialFocusTargets', () => {
     expect(getSequentialFocusTargets(region)).not.toContain(candidate);
     region.remove();
     checked.remove();
+  });
+
+  test('groups radios by their external form owner', () => {
+    const form = document.createElement('form');
+    form.id = 'external-radio-form';
+    const checked = document.createElement('input');
+    checked.type = 'radio';
+    checked.name = 'external-form-choice';
+    checked.checked = true;
+    form.append(checked);
+    const region = document.createElement('div');
+    const candidate = document.createElement('input');
+    candidate.type = 'radio';
+    candidate.name = checked.name;
+    candidate.setAttribute('form', form.id);
+    candidate.tabIndex = 0;
+    region.append(candidate);
+    document.body.append(form, region);
+
+    expect(getSequentialFocusTargets(region)).not.toContain(candidate);
+    region.remove();
+    form.remove();
   });
 
   test('keeps unnamed radios as independent tab stops', () => {

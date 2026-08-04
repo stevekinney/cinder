@@ -27,6 +27,7 @@
     composedFocusScopes,
     getSequentialFocusTargets,
     getTabIndexValue,
+    type SequentialFocusTarget,
   } from '../../utilities/focus.ts';
   import { handleRovingKeydown } from '../../utilities/roving-tabindex.ts';
   import FloatingAction from '../floating-action/floating-action.svelte';
@@ -171,7 +172,7 @@
       : enabledButtons;
   }
 
-  function getFocusTargetBeforeSpeedDial(): HTMLElement | null {
+  function getFocusTargetBeforeSpeedDial(): SequentialFocusTarget | null {
     const speedDialRoot = rootElement;
     if (!speedDialRoot || typeof document === 'undefined') return null;
 

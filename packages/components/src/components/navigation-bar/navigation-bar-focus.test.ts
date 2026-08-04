@@ -58,6 +58,49 @@ describe('findFocusTargetAfterNavigationItems', () => {
     expect(findFocusTargetAfterNavigationItems(navigationBar, null)).toBe(summary);
   });
 
+  test('skips positive tabindex actions after a normal navigation item', () => {
+    const wrapper = document.createElement('div');
+    const navigationBar = document.createElement('nav');
+    const items = document.createElement('div');
+    const navigationItem = document.createElement('button');
+    navigationItem.setAttribute('data-cinder-navigation-item', '');
+    items.append(navigationItem);
+    const actions = document.createElement('div');
+    actions.className = 'cinder-navigation-bar__actions';
+    const positive = document.createElement('button');
+    positive.tabIndex = 1;
+    const normal = document.createElement('button');
+    actions.append(positive, normal);
+    navigationBar.append(items, actions);
+    wrapper.append(navigationBar);
+    attachScratch(wrapper);
+
+    expect(findFocusTargetAfterNavigationItems(navigationBar, items, navigationItem)).toBe(normal);
+  });
+
+  test('continues through a same-value positive tabindex action in composed order', () => {
+    const wrapper = document.createElement('div');
+    const navigationBar = document.createElement('nav');
+    const items = document.createElement('div');
+    const navigationItem = document.createElement('button');
+    navigationItem.setAttribute('data-cinder-navigation-item', '');
+    navigationItem.tabIndex = 1;
+    items.append(navigationItem);
+    const actions = document.createElement('div');
+    actions.className = 'cinder-navigation-bar__actions';
+    const lower = document.createElement('button');
+    lower.tabIndex = 1;
+    const higher = document.createElement('button');
+    higher.tabIndex = 2;
+    const normal = document.createElement('button');
+    actions.append(lower, higher, normal);
+    navigationBar.append(items, actions);
+    wrapper.append(navigationBar);
+    attachScratch(wrapper);
+
+    expect(findFocusTargetAfterNavigationItems(navigationBar, items, navigationItem)).toBe(lower);
+  });
+
   test('finds a following sibling that lives inside the same shadow root', () => {
     const host = document.createElement('div');
     const shadow = host.attachShadow({ mode: 'open' });
