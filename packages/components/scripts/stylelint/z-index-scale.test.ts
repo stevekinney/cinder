@@ -3895,6 +3895,40 @@ describe('cinder/z-index-scale', () => {
   });
 
   test.each([
+    ['calc(9999 * exp(var(--runtime)))', 1],
+    ['calc(0 * exp(var(--runtime)))', 0],
+    ['calc(9999 * exp(var(--runtime), 0))', 0],
+    ['calc(9998 + exp(var(--runtime)))', 1],
+    ['calc(-1 + exp(var(--runtime)))', 1],
+    ['min(1, exp(var(--runtime)))', 0],
+    ['min(1, calc(exp(var(--runtime)) + 0))', 0],
+    ['min(1, calc(0 + exp(var(--runtime))))', 0],
+    ['min(1, calc(exp(var(--runtime)) * 1))', 0],
+    ['min(1, calc(exp(var(--runtime)) / 2))', 0],
+    ['min(1, calc(exp(var(--runtime)) + 1px))', 1],
+    ['min(1, calc(exp(var(--runtime)) + var(--other)))', 1],
+    ['min(1, pow(exp(var(--runtime)), 2))', 1],
+    ['min(1, calc(exp(var(--runtime)) - 2))', 1],
+    ['min(1, calc(2 - exp(var(--runtime))))', 1],
+    ['min(1, calc(exp(var(--runtime)) * -1))', 1],
+    ['min(-1, exp(var(--runtime)))', 1],
+    ['min(9999, exp(var(--runtime)))', 1],
+    ['clamp(0, exp(var(--runtime)), 1)', 0],
+    ['max(0, exp(var(--runtime)))', 1],
+  ] as const)('tracks unresolved exp arity and zero elimination: %s', async (fallback, count) => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: exp regression coverage. */
+            z-index: var(--outer, ${fallback});
+          }
+        `),
+      ),
+    ).toHaveLength(count);
+  });
+
+  test.each([
     ['if(style(--theme: dark): 9999; else: 1)', 1],
     ['if(style(--theme: dark): -1; else: 1)', 1],
     ['if(style(--theme: dark): 1; else: 9999)', 1],

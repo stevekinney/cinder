@@ -37,6 +37,7 @@ const unresolvedRuntimeFunctionArities = new Map([
   ['atan', 1],
   ['atan2', 2],
   ['cos', 1],
+  ['exp', 1],
   ['pow', 2],
   ['sin', 1],
   ['tan', 1],
@@ -3030,6 +3031,19 @@ function unresolvedRuntimeRangeCandidates(
       )
     )
       continue;
+    if (
+      functionParent.functionName === 'exp' &&
+      unresolvedExpIsSafelyCapped(
+        frame,
+        value,
+        range,
+        functionParent,
+        functionRange,
+        budget,
+        parenthesisPairs,
+      )
+    )
+      continue;
     liveFunctionParents.add(functionParent);
   }
   for (const functionParent of liveFunctionParents) {
@@ -3049,6 +3063,101 @@ function unresolvedRuntimeRangeCandidates(
     ];
   }
   return [];
+}
+
+function unresolvedExpIsSafelyCapped(
+  frame,
+  value,
+  range,
+  functionParent,
+  functionRange,
+  budget,
+  parenthesisPairs,
+) {
+  const minimumArguments = fallbackIndependentStaticArguments(
+    frame,
+    value,
+    range,
+    'min',
+    parenthesisPairs,
+  );
+  if (
+    minimumArguments === undefined ||
+    minimumArguments.staticArguments.length !== minimumArguments.argumentCount - 1
+  )
+    return false;
+  const staticArgumentIndexes = new Set(
+    minimumArguments.staticArguments.map((argument) => argument.index),
+  );
+  const dynamicArgumentIndex = minimumArguments.argumentRanges.findIndex(
+    (_, argumentIndex) => !staticArgumentIndexes.has(argumentIndex),
+  );
+  const dynamicArgumentRange = minimumArguments.argumentRanges[dynamicArgumentIndex];
+  if (dynamicArgumentRange === undefined) return false;
+  let enclosingFunctionParent = functionParent.parenthesisParent;
+  while (
+    enclosingFunctionParent?.type === 'group' &&
+    enclosingFunctionParent.end !== undefined &&
+    enclosingFunctionParent.functionStart >= dynamicArgumentRange.start &&
+    enclosingFunctionParent.end <= dynamicArgumentRange.end
+  ) {
+    if (
+      !enclosingFunctionParent.isGroupingParenthesis &&
+      enclosingFunctionParent.functionName !== 'calc' &&
+      enclosingFunctionParent.functionName !== '-webkit-calc'
+    )
+      return false;
+    enclosingFunctionParent = enclosingFunctionParent.parenthesisParent;
+  }
+  if (
+    functionRange.start < dynamicArgumentRange.start ||
+    functionRange.end > dynamicArgumentRange.end ||
+    frame.children.some(
+      (child) =>
+        child.start >= dynamicArgumentRange.start &&
+        child.end <= dynamicArgumentRange.end &&
+        (child.start < functionRange.start || child.end > functionRange.end),
+    ) ||
+    !progressExpressionIsMultilinear(
+      value,
+      dynamicArgumentRange,
+      [functionRange],
+      [0],
+      [],
+      parenthesisPairs,
+    )
+  )
+    return false;
+  if (
+    minimumArguments.staticArguments.some(
+      (argument) =>
+        isStaticallyInvalidArithmetic(argument.value) ||
+        analyzeStaticLayerValue(argument.value).resultType === 'non-number',
+    )
+  )
+    return true;
+  const expEndpoints = [];
+  for (const endpoint of [0, 1]) {
+    const endpointExpression = resolveFrameExpressionWithRangeReplacements(
+      frame,
+      value,
+      dynamicArgumentRange,
+      budget,
+      [{ start: functionRange.start, end: functionRange.end, value: String(endpoint) }],
+    );
+    if (endpointExpression === fallbackResolutionTooComplex) return false;
+    const endpointValue = evaluateStaticLayerNumber(endpointExpression);
+    if (endpointValue === undefined || !Number.isFinite(endpointValue)) return false;
+    expEndpoints.push(endpointValue);
+  }
+  const [zeroEndpoint, oneEndpoint] = expEndpoints;
+  if (zeroEndpoint < 0 || oneEndpoint < zeroEndpoint) return false;
+  return (
+    minimumArguments.staticArguments.every(
+      (argument) =>
+        classifyStaticLayer(argument.value) === 'safe' && isStaticallyNonnegative(argument.value),
+    ) && hasFallbackIndependentSafeBound(frame, value, range, 'min', 'magic', parenthesisPairs)
+  );
 }
 
 function conditionalReplacementCombinations(replacementGroups, budget, initialCombinations = [[]]) {
