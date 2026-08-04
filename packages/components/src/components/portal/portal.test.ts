@@ -238,6 +238,19 @@ describe('Portal', () => {
     expect(received).toBe(1);
   });
 
+  test('propagates cancellation from the authored root back to the portaled event', () => {
+    const authoredRoot = document.createElement('div');
+    const control = document.createElement('button');
+    document.body.append(authoredRoot, control);
+    authoredRoot.addEventListener('mouseup', (event) => event.preventDefault());
+
+    const mouseup = new MouseEvent('mouseup', { bubbles: true, cancelable: true });
+    Object.defineProperty(mouseup, 'target', { configurable: true, value: control });
+    redispatchPortaledEvent(mouseup, authoredRoot);
+
+    expect(mouseup.defaultPrevented).toBe(true);
+  });
+
   test('serializes scoped Cinder tokens and color scheme for a portaled surface', () => {
     const source = document.createElement('div');
     source.style.setProperty('--cinder-surface', 'hotpink');
