@@ -227,6 +227,9 @@
 {/snippet}
 
 {#if context}
+  {#if label && !context.labelId}
+    <label id={`${field.id}-label`} for={field.id} class="cinder-input-field__label">{label}</label>
+  {/if}
   {@render control()}
   {#if description}<p id={field.ownDescriptionId} class="cinder-input-field__description">
       {description}

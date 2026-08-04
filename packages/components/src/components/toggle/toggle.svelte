@@ -45,6 +45,7 @@
 
   const ownLabelId = $derived(label ? `${id ?? generatedId}-label` : undefined);
   const labelId = $derived(context?.labelId ?? ownLabelId);
+  const resolvedId = $derived(context?.labelId ? context.controlId : id);
 
   function toggle(): void {
     if (!resolvedDisabled) {
@@ -62,7 +63,7 @@
 
 {#snippet control()}
   <button
-    {id}
+    id={resolvedId}
     type="button"
     role="switch"
     aria-checked={checked}

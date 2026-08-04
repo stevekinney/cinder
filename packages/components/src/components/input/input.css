@@ -170,7 +170,7 @@
   }
 
   /* Inner input: strip its own chrome, inherit the group's */
-  .cinder-input-group .cinder-input {
+  .cinder-input-group > .cinder-input {
     border: none;
     border-radius: 0;
     background: transparent;
@@ -181,18 +181,18 @@
 
   /* When an addon is present on a given side, the input trims its padding on
    that side; the addon container owns the visual inset. */
-  .cinder-input-group--leading .cinder-input {
+  .cinder-input-group--leading > .cinder-input {
     padding-inline-start: var(--cinder-space-2);
   }
-  .cinder-input-group--trailing .cinder-input {
+  .cinder-input-group--trailing > .cinder-input {
     padding-inline-end: var(--cinder-space-2);
   }
 
-  .cinder-input-group--native-date .cinder-input {
+  .cinder-input-group--native-date > .cinder-input {
     padding-inline-end: var(--cinder-space-10);
   }
 
-  .cinder-input-group .cinder-input:focus-visible {
+  .cinder-input-group > .cinder-input:focus-visible {
     box-shadow: none;
     /* cinder-focus-ring-owner: parent — the .cinder-input-group wrapper paints
        the ring for the whole grouped control. */
@@ -243,7 +243,7 @@
     border-color: var(--cinder-border-muted);
     cursor: not-allowed;
   }
-  .cinder-input-group--disabled .cinder-input {
+  .cinder-input-group--disabled > .cinder-input {
     background: transparent;
     color: var(--cinder-text-disabled);
   }
