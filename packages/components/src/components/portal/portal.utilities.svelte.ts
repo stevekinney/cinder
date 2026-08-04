@@ -374,13 +374,20 @@ export function redispatchPortaledEvent(
 ): boolean {
   if (!sourceTarget) return false;
 
+  // Pointer and mouse events are distinct native families. Bridge each native
+  // event once; dropping the browser's corresponding mousedown/mouseup would
+  // break consumers that listen to only that family. Replay protection belongs
+  // to the redispatched-event marker, not pointer/mouse pairing heuristics.
+
   const originalTarget = event.target;
+  const originalComposedPath = event.composedPath();
   const eventInit: EventInit & { [property: string]: unknown } = {
     bubbles: event.bubbles,
     cancelable: event.cancelable,
     composed: event.composed,
   };
   for (const property of [
+    'view',
     'key',
     'code',
     'location',
@@ -388,6 +395,9 @@ export function redispatchPortaledEvent(
     'isComposing',
     'button',
     'buttons',
+    'movementX',
+    'movementY',
+    'which',
     'clientX',
     'clientY',
     'screenX',
@@ -409,16 +419,50 @@ export function redispatchPortaledEvent(
     'tiltY',
     'twist',
     'tangentialPressure',
+    'width',
+    'height',
   ]) {
     if (property in event) eventInit[property] = Reflect.get(event, property);
   }
-  const bridgedEvent = Reflect.construct(event.constructor, [event.type, eventInit]);
+  let bridgedEvent: Event;
+  try {
+    bridgedEvent = Reflect.construct(event.constructor, [event.type, eventInit]);
+  } catch {
+    bridgedEvent = new Event(event.type, eventInit);
+  }
+  for (const property of ['movementX', 'movementY', 'which', 'width', 'height']) {
+    if (!(property in event)) continue;
+    const value = Reflect.get(event, property);
+    if (Reflect.get(bridgedEvent, property) === value) continue;
+    try {
+      Object.defineProperty(bridgedEvent, property, { configurable: true, value });
+    } catch {
+      // Some native event implementations expose non-configurable accessors.
+    }
+  }
   redispatchedPortalEvents.add(bridgedEvent);
   Object.defineProperty(bridgedEvent, 'target', { configurable: true, value: originalTarget });
+  // Dispatching at the authored root necessarily changes currentTarget and the
+  // platform-computed path. Preserve the original portaled ancestry for delegated
+  // consumers; isTrusted cannot be copied to a synthetic Event.
+  const nativeComposedPath = bridgedEvent.composedPath.bind(bridgedEvent);
+  let dispatchComplete = false;
+  Object.defineProperty(bridgedEvent, 'composedPath', {
+    configurable: true,
+    value: () => {
+      // During synthetic dispatch expose the authored-root path. Svelte's
+      // delegated listener traverses composedPath(); exposing portaled
+      // descendants here would replay their handlers. Restore the original
+      // path after dispatch for consumer inspection.
+      return dispatchComplete ? [...originalComposedPath] : nativeComposedPath();
+    },
+  });
   if (event.defaultPrevented) bridgedEvent.preventDefault();
 
   event.stopPropagation();
-  if (!sourceTarget.dispatchEvent(bridgedEvent)) {
+  const dispatched = sourceTarget.dispatchEvent(bridgedEvent);
+  dispatchComplete = true;
+  if (!dispatched) {
     event.preventDefault();
   }
   return true;
