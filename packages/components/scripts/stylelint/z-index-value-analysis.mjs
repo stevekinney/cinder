@@ -1369,6 +1369,14 @@ function literalSourceRangeView(value) {
         yield { start: index, end: index + 1 };
       }
     },
+    slice(start = 0, end = value.length) {
+      const normalizedStart = Math.max(0, Math.min(value.length, start));
+      const normalizedEnd = Math.max(normalizedStart, Math.min(value.length, end));
+      return Array.from({ length: normalizedEnd - normalizedStart }, (_, index) => ({
+        start: normalizedStart + index,
+        end: normalizedStart + index + 1,
+      }));
+    },
   };
 }
 
