@@ -17,6 +17,7 @@
 <script lang="ts">
   import type { FormFieldProps } from './form-field.types.ts';
   import FormFieldFrame from '../../_internal/form-field-frame.svelte';
+  import { classNames } from '../../utilities/class-names.ts';
 
   let {
     id,
@@ -39,6 +40,6 @@
   {error}
   {required}
   {disabled}
-  class={className}
+  class={classNames(className)}
   control={children}
 />
