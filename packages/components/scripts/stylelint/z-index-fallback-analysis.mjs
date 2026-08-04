@@ -41,6 +41,7 @@ const unresolvedRuntimeFunctionArities = new Map([
   ['log', [1, 2]],
   ['pow', 2],
   ['sin', 1],
+  ['sqrt', 1],
   ['tan', 1],
 ]);
 const invalidCustomIdentKeywords = new Set([
@@ -1105,11 +1106,15 @@ function isValidConditionalBooleanExpression(value, range, parenthesisPairs, dep
     if (closeIndex === undefined || closeIndex >= expressionRange.end) return undefined;
     const functionName = value.slice(start, identifierEnd).toLowerCase();
     const functionContents = trimCssTriviaRange(value, identifierEnd + 1, closeIndex);
-    if (
-      !['media', 'style', 'supports'].includes(functionName) ||
-      functionContents.start === functionContents.end
-    )
-      return undefined;
+    if (!['media', 'style', 'supports'].includes(functionName)) return undefined;
+    const testResult = conditionalTestContentsAreStructurallyValid(
+      value,
+      functionContents,
+      parenthesisPairs,
+      functionName,
+    );
+    if (testResult === fallbackResolutionTooComplex) return fallbackResolutionTooComplex;
+    if (!testResult) return undefined;
     return closeIndex + 1;
   };
 
@@ -1137,6 +1142,294 @@ function isValidConditionalBooleanExpression(value, range, parenthesisPairs, dep
     cursor = skipTrivia(cursor);
   }
   return true;
+}
+
+function conditionalTestContentsAreStructurallyValid(value, range, parenthesisPairs, functionName) {
+  if (functionName === 'media')
+    return (
+      mediaFeatureIsStructurallyValid(value, range, parenthesisPairs) ||
+      mediaConditionIsStructurallyValid(value, range, parenthesisPairs)
+    );
+  if (range.start === range.end) return false;
+  const firstIdentifierEnd = cssIdentifierTokenEnd(value, range.start);
+  if (value[range.start] !== '(' && firstIdentifierEnd === range.start) return false;
+  const lastCharacter = value[range.end - 1];
+  if (':,;<>='.includes(lastCharacter)) return false;
+
+  for (let index = range.start; index < range.end; index += 1) {
+    if (value[index] === '"' || value[index] === "'") index = quotedStringEnd(value, index);
+    else {
+      const urlTokenEnd = unquotedUrlTokenEnd(value, index);
+      if (urlTokenEnd !== undefined) index = urlTokenEnd;
+      else if (value[index] === '(') {
+        const closeIndex = parenthesisPairs.get(index);
+        if (closeIndex === undefined || closeIndex >= range.end) return false;
+        index = closeIndex;
+      } else if (value[index] === ',') return false;
+      else if (value[index] === ':') {
+        const left = trimCssTriviaRange(value, range.start, index);
+        const right = trimCssTriviaRange(value, index + 1, range.end);
+        if (left.start === left.end || right.start === right.end) return false;
+      }
+    }
+  }
+  return true;
+}
+
+function mediaConditionIsStructurallyValid(value, range, parenthesisPairs, depth = 0) {
+  if (depth > conditionalNestingLimit) return fallbackResolutionTooComplex;
+  const expressionRange = trimCssTriviaRange(value, range.start, range.end);
+  if (expressionRange.start === expressionRange.end) return false;
+
+  const skipTrivia = (start) => {
+    while (start < expressionRange.end && isCssWhitespaceOrComment(value[start])) start += 1;
+    return start;
+  };
+  const consumeGroup = (start) => {
+    start = skipTrivia(start);
+    if (value[start] !== '(') return undefined;
+    const closeIndex = parenthesisPairs.get(start);
+    if (closeIndex === undefined || closeIndex >= expressionRange.end) return undefined;
+    const contents = trimCssTriviaRange(value, start + 1, closeIndex);
+    const nestedCondition = mediaConditionIsStructurallyValid(
+      value,
+      contents,
+      parenthesisPairs,
+      depth + 1,
+    );
+    if (nestedCondition === fallbackResolutionTooComplex) return fallbackResolutionTooComplex;
+    if (!mediaFeatureIsStructurallyValid(value, contents, parenthesisPairs) && !nestedCondition)
+      return undefined;
+    return closeIndex + 1;
+  };
+
+  let cursor = expressionRange.start;
+  const firstIdentifierEnd = cssIdentifierTokenEnd(value, cursor);
+  const hasLeadingNot =
+    value.slice(cursor, firstIdentifierEnd).toLowerCase() === 'not' &&
+    value[firstIdentifierEnd] !== '(';
+  if (hasLeadingNot) cursor = skipTrivia(firstIdentifierEnd);
+  cursor = consumeGroup(cursor);
+  if (cursor === fallbackResolutionTooComplex) return fallbackResolutionTooComplex;
+  if (cursor === undefined) return false;
+  cursor = skipTrivia(cursor);
+  if (hasLeadingNot) return cursor === expressionRange.end;
+
+  let operator;
+  while (cursor < expressionRange.end) {
+    const operatorEnd = cssIdentifierTokenEnd(value, cursor);
+    const nextOperator = value.slice(cursor, operatorEnd).toLowerCase();
+    if (nextOperator !== 'and' && nextOperator !== 'or') return false;
+    if (operator !== undefined && operator !== nextOperator) return false;
+    operator = nextOperator;
+    cursor = consumeGroup(skipTrivia(operatorEnd));
+    if (cursor === fallbackResolutionTooComplex) return fallbackResolutionTooComplex;
+    if (cursor === undefined) return false;
+    cursor = skipTrivia(cursor);
+  }
+  return true;
+}
+
+function mediaFeatureIsStructurallyValid(value, range, parenthesisPairs) {
+  const featureRange = trimCssTriviaRange(value, range.start, range.end);
+  if (featureRange.start === featureRange.end) return false;
+  const comparisons = [];
+  let colonIndex = -1;
+  for (let index = featureRange.start; index < featureRange.end; index += 1) {
+    if (value[index] === '"' || value[index] === "'") return false;
+    const urlTokenEnd = unquotedUrlTokenEnd(value, index);
+    if (urlTokenEnd !== undefined) return false;
+    if (value[index] === '(') {
+      const identifierStart = cssIdentifierStart(value, index);
+      if (identifierStart === index) return false;
+      const closeIndex = parenthesisPairs.get(index);
+      if (closeIndex === undefined || closeIndex >= featureRange.end) return false;
+      index = closeIndex;
+    } else if (value[index] === ',' || value[index] === ';') return false;
+    else if (value[index] === ':') {
+      if (colonIndex !== -1) return false;
+      colonIndex = index;
+    } else if ('<>='.includes(value[index])) {
+      const operatorEnd = value[index + 1] === '=' ? index + 2 : index + 1;
+      comparisons.push({ end: operatorEnd, start: index });
+      index = operatorEnd - 1;
+    }
+  }
+
+  if (colonIndex !== -1) {
+    if (comparisons.length > 0) return false;
+    return (
+      rangeIsSingleCssIdentifier(value, featureRange.start, colonIndex) &&
+      mediaFeatureValueIsStructurallyValid(
+        value,
+        { start: colonIndex + 1, end: featureRange.end },
+        parenthesisPairs,
+      )
+    );
+  }
+  if (comparisons.length === 0)
+    return rangeIsSingleCssIdentifier(value, featureRange.start, featureRange.end);
+  if (comparisons.length === 1) {
+    const [comparison] = comparisons;
+    const leftIsName = rangeIsSingleCssIdentifier(value, featureRange.start, comparison.start);
+    const rightIsName = rangeIsSingleCssIdentifier(value, comparison.end, featureRange.end);
+    return (
+      (leftIsName &&
+        mediaFeatureValueIsStructurallyValid(
+          value,
+          { start: comparison.end, end: featureRange.end },
+          parenthesisPairs,
+        )) ||
+      (rightIsName &&
+        mediaFeatureValueIsStructurallyValid(
+          value,
+          { start: featureRange.start, end: comparison.start },
+          parenthesisPairs,
+        ))
+    );
+  }
+  if (comparisons.length !== 2) return false;
+  const [firstComparison, secondComparison] = comparisons;
+  if (
+    !rangeIsSingleCssIdentifier(value, firstComparison.end, secondComparison.start) ||
+    !mediaFeatureValueIsStructurallyValid(
+      value,
+      { start: featureRange.start, end: firstComparison.start },
+      parenthesisPairs,
+    ) ||
+    !mediaFeatureValueIsStructurallyValid(
+      value,
+      { start: secondComparison.end, end: featureRange.end },
+      parenthesisPairs,
+    )
+  )
+    return false;
+  const firstDirection = value[firstComparison.start];
+  return firstDirection !== '=' && firstDirection === value[secondComparison.start];
+}
+
+function cssIdentifierStart(value, openIndex) {
+  let start = openIndex;
+  while (start > 0 && isCssIdentifierCharacter(value[start - 1])) start -= 1;
+  return start;
+}
+
+function rangeIsSingleCssIdentifier(value, start, end) {
+  const range = trimCssTriviaRange(value, start, end);
+  return range.start < range.end && cssIdentifierTokenEnd(value, range.start) === range.end;
+}
+
+function cssNumericToken(value, start) {
+  let end = start;
+  if (value[end] === '+' || value[end] === '-') end += 1;
+  let sawDigit = false;
+  while (/\d/.test(value[end] ?? '')) {
+    sawDigit = true;
+    end += 1;
+  }
+  if (value[end] === '.' && /\d/.test(value[end + 1] ?? '')) {
+    end += 1;
+    while (/\d/.test(value[end] ?? '')) {
+      sawDigit = true;
+      end += 1;
+    }
+  }
+  if (!sawDigit) return undefined;
+  if (/e/i.test(value[end] ?? '') && /[+\-\d]/.test(value[end + 1] ?? '')) {
+    end += 1;
+    if (value[end] === '+' || value[end] === '-') end += 1;
+    const exponentStart = end;
+    while (/\d/.test(value[end] ?? '')) end += 1;
+    if (end === exponentStart) return undefined;
+  }
+  const numberEnd = end;
+  if (value[end] === '%') end += 1;
+  else end = cssIdentifierTokenEnd(value, end);
+  return { end, hasUnit: end !== numberEnd };
+}
+
+function mediaFeatureValueIsStructurallyValid(value, range, parenthesisPairs) {
+  const valueRange = trimCssTriviaRange(value, range.start, range.end);
+  if (valueRange.start === valueRange.end) return false;
+  const identifierEnd = cssIdentifierTokenEnd(value, valueRange.start);
+  if (identifierEnd > valueRange.start) {
+    if (identifierEnd === valueRange.end) return true;
+    if (value[identifierEnd] !== '(') return false;
+    const closeIndex = parenthesisPairs.get(identifierEnd);
+    if (closeIndex !== valueRange.end - 1) return false;
+    const contents = trimCssTriviaRange(value, identifierEnd + 1, closeIndex);
+    return (
+      contents.start < contents.end &&
+      mediaFeatureFunctionContentsAreStructurallyValid(
+        value,
+        value.slice(valueRange.start, identifierEnd).toLowerCase(),
+        identifierEnd,
+        closeIndex,
+        parenthesisPairs,
+      )
+    );
+  }
+  const firstNumber = cssNumericToken(value, valueRange.start);
+  if (firstNumber === undefined) return false;
+  let cursor = firstNumber.end;
+  while (cursor < valueRange.end && isCssWhitespaceOrComment(value[cursor])) cursor += 1;
+  if (cursor === valueRange.end) return true;
+  if (firstNumber.hasUnit || value[cursor] !== '/') return false;
+  cursor += 1;
+  while (cursor < valueRange.end && isCssWhitespaceOrComment(value[cursor])) cursor += 1;
+  const secondNumber = cssNumericToken(value, cursor);
+  if (secondNumber === undefined || secondNumber.hasUnit) return false;
+  cursor = secondNumber.end;
+  while (cursor < valueRange.end && isCssWhitespaceOrComment(value[cursor])) cursor += 1;
+  return cursor === valueRange.end;
+}
+
+function mediaFeatureFunctionContentsAreStructurallyValid(
+  value,
+  functionName,
+  openIndex,
+  closeIndex,
+  parenthesisPairs,
+  depth = 0,
+) {
+  if (depth > conditionalNestingLimit) return true;
+  let argumentStart = openIndex + 1;
+  let firstCommaIndex = closeIndex;
+  for (let index = argumentStart; index < closeIndex; index += 1) {
+    if (value[index] === '"' || value[index] === "'") index = quotedStringEnd(value, index);
+    else if (value[index] === '(') {
+      const nestedCloseIndex = parenthesisPairs.get(index);
+      if (nestedCloseIndex === undefined || nestedCloseIndex >= closeIndex) return false;
+      const nestedFunctionStart = cssIdentifierStart(value, index);
+      if (nestedFunctionStart < index) {
+        const nestedContents = trimCssTriviaRange(value, index + 1, nestedCloseIndex);
+        if (
+          nestedContents.start === nestedContents.end ||
+          !mediaFeatureFunctionContentsAreStructurallyValid(
+            value,
+            value.slice(nestedFunctionStart, index).toLowerCase(),
+            index,
+            nestedCloseIndex,
+            parenthesisPairs,
+            depth + 1,
+          )
+        )
+          return false;
+      }
+      index = nestedCloseIndex;
+    } else if (value[index] === ',') {
+      if (firstCommaIndex === closeIndex) firstCommaIndex = index;
+      if (!substitutionFunctionNames.has(functionName)) {
+        const argument = trimCssTriviaRange(value, argumentStart, index);
+        if (argument.start === argument.end) return false;
+        argumentStart = index + 1;
+      }
+    }
+  }
+  if (substitutionFunctionNames.has(functionName))
+    return validSubstitutionHeader({ commaIndex: firstCommaIndex, functionName, openIndex }, value);
+  const finalArgument = trimCssTriviaRange(value, argumentStart, closeIndex);
+  return finalArgument.start < finalArgument.end;
 }
 
 function conditionalBranchValueRanges(value, group, parenthesisPairs) {
@@ -1802,8 +2095,12 @@ function signRangeCandidates(
   budget,
   parenthesisPairs,
   zeroQuotientRanges,
+  selectableChildren,
 ) {
-  const unresolvedChildren = frame.children.filter((child) => child.resolvedFallback === null);
+  const unresolvedChildren = frame.children.filter(
+    (child) => child.resolvedFallback === null && selectableChildren.has(child),
+  );
+  const hasUnselectableChild = frame.children.some((child) => !selectableChildren.has(child));
   const emptyAnalysis = { analyzedRanges: [], candidates: [], suppressedChild: undefined };
   if (unresolvedChildren.length === 0) return emptyAnalysis;
   const signParents = [];
@@ -1850,7 +2147,7 @@ function signRangeCandidates(
   if (parsedSignArguments.some((parsedArguments) => parsedArguments?.argumentCount !== 1))
     return emptyAnalysis;
   const childrenOutsideSignRanges = frame.children.filter(
-    (child) => !signParentSet.has(child.signParent),
+    (child) => selectableChildren.has(child) && !signParentSet.has(child.signParent),
   );
   if (childrenOutsideSignRanges.some((child) => child.resolvedFallback === null))
     return emptyAnalysis;
@@ -1936,7 +2233,8 @@ function signRangeCandidates(
       if (classification === 'negative' || classification === 'magic')
         classifications.add(classification);
     }
-    if (resolvedEndpointCount === 0) return emptyAnalysis;
+    if (resolvedEndpointCount === 0)
+      return hasUnselectableChild ? tooComplexAnalysis() : emptyAnalysis;
   }
   const candidateBearingResolvedChildren = resolvedChildren.filter(
     (child) => child.unprovenBannedCandidates.length > 0,
@@ -1956,8 +2254,18 @@ function signRangeCandidates(
   };
 }
 
-function progressRangeCandidates(frame, value, range, candidate, budget, parenthesisPairs) {
-  const unresolvedChildren = frame.children.filter((child) => child.resolvedFallback === null);
+function progressRangeCandidates(
+  frame,
+  value,
+  range,
+  candidate,
+  budget,
+  parenthesisPairs,
+  selectableChildren,
+) {
+  const unresolvedChildren = frame.children.filter(
+    (child) => child.resolvedFallback === null && selectableChildren.has(child),
+  );
   const emptyAnalysis = { candidates: [], suppressedChild: undefined };
   if (unresolvedChildren.length === 0) return emptyAnalysis;
   const progressParents = [];
@@ -2002,7 +2310,7 @@ function progressRangeCandidates(frame, value, range, candidate, budget, parenth
   )
     return tooComplexAnalysis();
   const childrenOutsideProgressRanges = frame.children.filter(
-    (child) => !progressParentSet.has(child.progressParent),
+    (child) => selectableChildren.has(child) && !progressParentSet.has(child.progressParent),
   );
   if (childrenOutsideProgressRanges.some((child) => child.resolvedFallback === null))
     return emptyAnalysis;
@@ -2440,6 +2748,12 @@ function hasBareOperatorStream(
       while (nextIndex < range.end && isCssWhitespaceOrComment(value[nextIndex])) nextIndex += 1;
       if (character === '*' && value[nextIndex] === '*') return true;
       if ((parenthesisContexts.at(-1)?.mathContext ?? initialMathContext) === true) continue;
+      if (
+        character === '/' &&
+        parenthesisContexts.at(-1)?.functionName === 'media' &&
+        isMediaFeatureRatioSlash(value, index, range.start, range.end)
+      )
+        continue;
       let previousIndex = index - 1;
       while (previousIndex >= range.start && isCssWhitespaceOrComment(value[previousIndex]))
         previousIndex -= 1;
@@ -2454,6 +2768,20 @@ function hasBareOperatorStream(
     }
   }
   return false;
+}
+
+function isMediaFeatureRatioSlash(value, slashIndex, rangeStart, rangeEnd) {
+  let leftEnd = slashIndex;
+  while (leftEnd > rangeStart && isCssWhitespaceOrComment(value[leftEnd - 1])) leftEnd -= 1;
+  let leftStart = leftEnd;
+  while (leftStart > rangeStart && /[+\-.\de]/i.test(value[leftStart - 1])) leftStart -= 1;
+  const leftNumber = cssNumericToken(value, leftStart);
+  if (leftNumber?.end !== leftEnd || leftNumber.hasUnit) return false;
+
+  let rightStart = slashIndex + 1;
+  while (rightStart < rangeEnd && isCssWhitespaceOrComment(value[rightStart])) rightStart += 1;
+  const rightNumber = cssNumericToken(value, rightStart);
+  return rightNumber !== undefined && !rightNumber.hasUnit;
 }
 
 function hasAdjacentFallbackToken(frame, value, range, budget) {
@@ -2547,6 +2875,7 @@ function unresolvedExtremaRangeCandidates(
   budget,
   parenthesisPairs,
   suppressedRuntimeFunctionRanges,
+  selectableChildren,
 ) {
   const failClosedCandidate = () => [
     {
@@ -2558,7 +2887,7 @@ function unresolvedExtremaRangeCandidates(
   ];
   const liveExtremaParents = new Set();
   for (const child of frame.children) {
-    if (child.resolvedFallback !== null) continue;
+    if (child.resolvedFallback !== null || !selectableChildren.has(child)) continue;
     const functionParent = childFunctionParent(child, 'extremaParent', range);
     if (
       suppressedRuntimeFunctionRanges.some(
@@ -2644,7 +2973,9 @@ function unresolvedExtremaRangeCandidates(
     if (
       hasNonlinearEnclosingFunction ||
       frame.children.some(
-        (child) => child.start < functionRange.start || child.end > functionRange.end,
+        (child) =>
+          selectableChildren.has(child) &&
+          (child.start < functionRange.start || child.end > functionRange.end),
       ) ||
       !progressExpressionIsMultilinear(value, range, [functionRange], [0], [], parenthesisPairs)
     )
@@ -2709,10 +3040,18 @@ function unresolvedExtremaRangeCandidates(
   }));
 }
 
-function typedHypotRangeCandidates(frame, value, range, candidate, budget, parenthesisPairs) {
+function typedHypotRangeCandidates(
+  frame,
+  value,
+  range,
+  candidate,
+  budget,
+  parenthesisPairs,
+  selectableChildren,
+) {
   const childrenByHypotParent = new Map();
   for (const child of frame.children) {
-    if (child.resolvedFallback !== null) continue;
+    if (child.resolvedFallback !== null || !selectableChildren.has(child)) continue;
     const functionParent = childFunctionParent(child, 'hypotParent', range);
     if (functionParent === undefined) continue;
     const children = childrenByHypotParent.get(functionParent) ?? [];
@@ -3014,11 +3353,12 @@ function unresolvedRuntimeRangeCandidates(
   budget,
   parenthesisPairs,
   suppressedRuntimeFunctionRanges,
+  selectableChildren,
 ) {
   const zeroProductRange = { ...range, frame };
   const liveFunctionParents = new Set();
   for (const child of frame.children) {
-    if (child.resolvedFallback !== null) continue;
+    if (child.resolvedFallback !== null || !selectableChildren.has(child)) continue;
     const functionParent = childFunctionParent(child, 'runtimeRangeParent', range);
     if (functionParent === undefined) continue;
     if (
@@ -3053,7 +3393,7 @@ function unresolvedRuntimeRangeCandidates(
     )
       continue;
     if (
-      functionParent.functionName === 'exp' &&
+      (functionParent.functionName === 'exp' || functionParent.functionName === 'sqrt') &&
       unresolvedFunctionArgumentIsUnavoidablyNonNumber(
         frame,
         value,
@@ -3063,8 +3403,25 @@ function unresolvedRuntimeRangeCandidates(
     )
       continue;
     if (
-      functionParent.functionName === 'exp' &&
-      unresolvedExpIsSafelyCapped(
+      functionParent.functionName === 'log' &&
+      logHasFixedZeroResult(parsedArguments.staticArguments)
+    ) {
+      const fixedZeroExpression = resolveFrameExpressionWithRangeReplacements(
+        frame,
+        value,
+        range,
+        budget,
+        [{ start: functionRange.start, end: functionRange.end, value: '0' }],
+      );
+      if (
+        fixedZeroExpression !== fallbackResolutionTooComplex &&
+        analyzeFrameExpression(frame, fixedZeroExpression, budget).classification === 'safe'
+      )
+        continue;
+    }
+    if (
+      (functionParent.functionName === 'exp' || functionParent.functionName === 'sqrt') &&
+      unresolvedNonnegativeFunctionIsSafelyCapped(
         frame,
         value,
         range,
@@ -3109,12 +3466,17 @@ function logStaticArgumentsCanReachValidResult(staticArguments) {
     if (value === undefined) continue;
     if (
       Number.isNaN(value) ||
-      (argument.index === 0 && (value < 0 || value === 1)) ||
+      (argument.index === 0 && value < 0) ||
       (argument.index === 1 && (value < 0 || value === 1))
     )
       return false;
   }
   return true;
+}
+
+function logHasFixedZeroResult(staticArguments) {
+  const valueArgument = staticArguments.find((argument) => argument.index === 0);
+  return valueArgument !== undefined && evaluateStaticLayerNumber(valueArgument.value) === 1;
 }
 
 function unresolvedFunctionArgumentIsUnavoidablyNonNumber(frame, value, range, parenthesisPairs) {
@@ -3131,7 +3493,7 @@ function unresolvedFunctionArgumentIsUnavoidablyNonNumber(frame, value, range, p
   return false;
 }
 
-function unresolvedExpIsSafelyCapped(
+function unresolvedNonnegativeFunctionIsSafelyCapped(
   frame,
   value,
   range,
@@ -3420,6 +3782,11 @@ function unprovenCandidatesForFrame(frame, value, range, candidate, budget, pare
   const hasSingleChildWithEnclosingContext =
     frame.children.length === 1 && (onlyChild.start !== range.start || onlyChild.end !== range.end);
   if (frame.resolvedClassification === 'too-complex') return [candidate];
+  const selectableChildren = new Set(
+    frame.children.filter((child) =>
+      childIsInSelectableConditionalBranch(child, value, parenthesisPairs),
+    ),
+  );
   if (
     frame.type === 'root' &&
     (frame.hasInvalidCommaStream === true ||
@@ -3499,7 +3866,7 @@ function unprovenCandidatesForFrame(frame, value, range, candidate, budget, pare
     (child) =>
       child.unprovenBannedCandidates.length > 0 &&
       !candidatesAreHiddenByInvalidTokenStream &&
-      childIsInSelectableConditionalBranch(child, value, parenthesisPairs) &&
+      selectableChildren.has(child) &&
       !(
         child.invalidFunctionParent?.end !== undefined &&
         child.invalidFunctionParent.functionStart >= range.start &&
@@ -3522,6 +3889,7 @@ function unprovenCandidatesForFrame(frame, value, range, candidate, budget, pare
     candidate,
     budget,
     parenthesisPairs,
+    selectableChildren,
   );
   const signAnalysis = signRangeCandidates(
     frame,
@@ -3531,6 +3899,7 @@ function unprovenCandidatesForFrame(frame, value, range, candidate, budget, pare
     budget,
     parenthesisPairs,
     zeroQuotientEndpoint?.ranges ?? [],
+    selectableChildren,
   );
   const childCandidates = uneliminatedChildren
     .filter(
@@ -3641,8 +4010,17 @@ function unprovenCandidatesForFrame(frame, value, range, candidate, budget, pare
       budget,
       parenthesisPairs,
       suppressedRuntimeFunctionRanges,
+      selectableChildren,
     ),
-    ...typedHypotRangeCandidates(frame, value, range, candidate, budget, parenthesisPairs),
+    ...typedHypotRangeCandidates(
+      frame,
+      value,
+      range,
+      candidate,
+      budget,
+      parenthesisPairs,
+      selectableChildren,
+    ),
     ...unresolvedRuntimeRangeCandidates(
       frame,
       value,
@@ -3651,6 +4029,7 @@ function unprovenCandidatesForFrame(frame, value, range, candidate, budget, pare
       budget,
       parenthesisPairs,
       suppressedRuntimeFunctionRanges,
+      selectableChildren,
     ),
   ];
   const uneliminatedCandidates = (

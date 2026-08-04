@@ -3939,6 +3939,7 @@ describe('cinder/z-index-scale', () => {
     ['calc(9999 * log(var(--runtime), -1))', 0],
     ['calc(9999 * log(-1, var(--runtime)))', 0],
     ['calc(9999 * log(1, var(--runtime)))', 0],
+    ['calc(9999 + log(1, var(--runtime)))', 1],
     ['calc(9999 * log(var(--runtime), 1, 2))', 0],
   ] as const)('tracks unresolved log arity and zero elimination: %s', async (fallback, count) => {
     expect(
@@ -3946,6 +3947,28 @@ describe('cinder/z-index-scale', () => {
         await lint(`
           .fixture {
             /* cinder-z-index-local: log regression coverage. */
+            z-index: var(--outer, ${fallback});
+          }
+        `),
+      ),
+    ).toHaveLength(count);
+  });
+
+  test.each([
+    ['calc(9999 * sqrt(var(--runtime)))', 1],
+    ['calc(0 * sqrt(var(--runtime)))', 0],
+    ['calc(9999 * sqrt(var(--runtime), 1))', 0],
+    ['calc(9999 * sqrt(calc(var(--runtime) + 1px)))', 0],
+    ['calc(9998 + sqrt(var(--runtime)))', 1],
+    ['min(1, sqrt(var(--runtime)))', 0],
+    ['min(1, calc(1e30 - sqrt(var(--runtime))))', 1],
+    ['max(0, sqrt(var(--runtime)))', 1],
+  ] as const)('tracks unresolved sqrt arity and nonnegative range: %s', async (fallback, count) => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: sqrt regression coverage. */
             z-index: var(--outer, ${fallback});
           }
         `),
@@ -3966,6 +3989,27 @@ describe('cinder/z-index-scale', () => {
     ['if(not (supports(display: grid)): 9999; else: 1)', 1],
     ['if(not ((style(--theme: dark) or supports(display: grid))): 9999; else: 1)', 1],
     ['if(style(--theme: dark) and media(width > 10px): 9999; else: 1)', 1],
+    ['if(media(10px < width < 20px): 9999; else: 1)', 1],
+    ['if(media((width > 10px) and (height > 20px)): 9999; else: 1)', 1],
+    ['if(media((width > 10px) or (height > 20px)): 9999; else: 1)', 1],
+    ['if(media(not (width > 10px)): 9999; else: 1)', 1],
+    ['if(media(aspect-ratio > 16/9): 9999; else: 1)', 1],
+    ['if(media(width > calc(10px + 1vw)): 9999; else: 1)', 1],
+    ['if(media(width > min(10px, 20px)): 9999; else: 1)', 1],
+    ['if(media(width > var(--breakpoint)): 9999; else: 1)', 1],
+    [
+      'if(media(width > var(--breakpoint)): calc(9999 * progress(var(--runtime), 0, 1)); else: 1)',
+      1,
+    ],
+    ['if(media(width > var(--breakpoint)): calc(9999 * sign(var(--runtime))); else: 1)', 1],
+    ['if(media(width > var(--breakpoint, 20px)): calc(9999 * sign(var(--runtime))); else: 1)', 1],
+    [
+      'if(media(width > min(var(--breakpoint, 20px), 30px)): calc(9999 * sign(var(--runtime))); else: 1)',
+      1,
+    ],
+    ['if(media(width > env(foo, 20px)): calc(9999 * sign(var(--runtime))); else: 1)', 1],
+    ['if(media(width > attr(data-width px, 20px)): calc(9999 * sign(var(--runtime))); else: 1)', 1],
+    ['if(supports(selector(:is(.a, .b))): 9999; else: 1)', 1],
     ['if((style(--theme: dark) or supports(display: grid)): 9999; else: 1)', 1],
     ['if(else: 1; style(--theme: dark): 9999)', 0],
     ['if(else: 1; else: 9999)', 0],
@@ -3981,6 +4025,7 @@ describe('cinder/z-index-scale', () => {
     ['if(supports(display: grid): 9999; else: 1)', 1],
     ['if(style(--theme: dark): 9999; unknown(display: grid): 1; else: 1)', 1],
     ['if(unknown(display: grid): 1; else: 9999)', 1],
+    ['if(style(:): 1; else: 9999)', 1],
     ['if(unknown(display: grid): 9999; else: 1)', 0],
     ['if(style(--theme: dark): if(style(--nested: yes): 9999; else: 1); else: 2)', 1],
     ['if(style(--theme: dark): 1; else: if(style(--nested: yes): 9999; else: 2))', 1],
@@ -4009,8 +4054,27 @@ describe('cinder/z-index-scale', () => {
     for (const conditional of [
       'if(not: var(--inner, 9999); else: 1)',
       'if(style(): 9999; else: 1)',
+      'if(style(:): 9999; else: 1)',
+      'if(style(--theme:): 9999; else: 1)',
       'if(media(): 9999; else: 1)',
+      'if(media(:): 9999; else: 1)',
+      'if(media(width >): 9999; else: 1)',
+      'if(media(10px < < 20px): 9999; else: 1)',
+      'if(media(width > 10px > 1px): 9999; else: 1)',
+      'if(media(width > 10px foo): 9999; else: 1)',
+      'if(media(width > 10px and): 9999; else: 1)',
+      'if(media(and width > 10px): 9999; else: 1)',
+      'if(media(width > 10px and height > 20px): 9999; else: 1)',
+      'if(media(width > calc()): 9999; else: 1)',
+      'if(media(width > min(, 10px)): 9999; else: 1)',
+      'if(media(width > min(10px,)): 9999; else: 1)',
+      'if(media(width > var(, fallback)): 9999; else: 1)',
+      'if(media(width > min(var(, fallback), 20px)): 9999; else: 1)',
+      'if(media(width > min(env(, fallback), 20px)): 9999; else: 1)',
+      'if(media(width > min(attr(, fallback), 20px)): 9999; else: 1)',
       'if(supports(): 9999; else: 1)',
+      'if(supports(:): 9999; else: 1)',
+      'if(supports(display: grid, color: red): 9999; else: 1)',
       'if(unknown(display: grid): 9999; else: 1)',
       'if(style(--theme), 9999, 1)',
       'if(foo style(--theme: dark): 9999; else: 1)',
