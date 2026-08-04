@@ -112,6 +112,90 @@ describe('Portal', () => {
     expect(findNearestOpenTopLayer(source, (element) => element === dialog)).toBe(dialog);
   });
 
+  test('resolves a portal owner marker and owner inside the same shadow root', () => {
+    const host = document.createElement('div');
+    const shadow = host.attachShadow({ mode: 'open' });
+    const owner = document.createElement('div');
+    owner.id = 'shadow-owner';
+    const marker = document.createElement('div');
+    marker.setAttribute('data-cinder-portal-owner', owner.id);
+    const source = document.createElement('button');
+    marker.append(source);
+    shadow.append(owner, marker);
+    document.body.append(host);
+
+    expect(findNearestOpenTopLayer(source)).toBe(owner);
+  });
+
+  test('falls back to the document owner when a shadow-root owner is absent', () => {
+    const documentOwner = document.createElement('div');
+    documentOwner.id = 'document-owner';
+    document.body.append(documentOwner);
+    const host = document.createElement('div');
+    const shadow = host.attachShadow({ mode: 'open' });
+    const marker = document.createElement('div');
+    marker.setAttribute('data-cinder-portal-owner', documentOwner.id);
+    const source = document.createElement('button');
+    marker.append(source);
+    shadow.append(marker);
+    document.body.append(host);
+
+    expect(findNearestOpenTopLayer(source)).toBe(documentOwner);
+
+    marker.setAttribute('data-cinder-portal-owner', 'missing-owner');
+    expect(findNearestOpenTopLayer(source)).toBeNull();
+  });
+
+  test('finds an enclosing owner marker across nested shadow hosts', () => {
+    const owner = document.createElement('div');
+    owner.id = 'outer-shadow-owner';
+    const outerHost = document.createElement('div');
+    const outerShadow = outerHost.attachShadow({ mode: 'open' });
+    const outerMarker = document.createElement('div');
+    outerMarker.setAttribute('data-cinder-portal-owner', owner.id);
+    const innerHost = document.createElement('div');
+    const innerShadow = innerHost.attachShadow({ mode: 'open' });
+    const source = document.createElement('button');
+    innerShadow.append(source);
+    outerMarker.append(innerHost);
+    outerShadow.append(owner, outerMarker);
+    document.body.append(outerHost);
+
+    expect(findNearestOpenTopLayer(source)).toBe(owner);
+  });
+
+  test('skips a self-owned trigger marker across shadow boundaries', () => {
+    const trigger = document.createElement('div');
+    trigger.id = 'shadow-self-owner';
+    trigger.className = 'cinder-popover__trigger';
+    trigger.setAttribute('data-cinder-portal-owner', trigger.id);
+    const outerHost = document.createElement('div');
+    const outerShadow = outerHost.attachShadow({ mode: 'open' });
+    const innerHost = document.createElement('div');
+    const innerShadow = innerHost.attachShadow({ mode: 'open' });
+    const source = document.createElement('button');
+    innerShadow.append(source);
+    outerShadow.append(innerHost);
+    trigger.append(outerHost);
+    document.body.append(trigger);
+
+    expect(findNearestOpenTopLayer(source)).toBeNull();
+  });
+
+  test('prefers a nearer native modal over an outer portal owner marker', () => {
+    const outer = document.createElement('div');
+    const owner = document.createElement('div');
+    owner.id = 'outer-owner';
+    outer.setAttribute('data-cinder-portal-owner', owner.id);
+    const dialog = document.createElement('dialog');
+    const source = document.createElement('button');
+    dialog.append(source);
+    outer.append(dialog, owner);
+    document.body.append(outer);
+
+    expect(findNearestOpenTopLayer(source, (element) => element === dialog)).toBe(dialog);
+  });
+
   test('observePortalSourceAvailability crosses a shadow host for hidden/inert/aria-hidden', async () => {
     // `closest('[hidden], [inert], [aria-hidden="true"]')` cannot see past a
     // shadow boundary. The computed-style walk this helper also runs does
@@ -181,6 +265,190 @@ describe('Portal', () => {
     expect(receivedClick?.detail).toBe(2);
     expect(receivedInput?.data).toBe('x');
     expect(receivedInput?.inputType).toBe('insertText');
+  });
+
+  test('preserves the exact original portaled composed path after dispatch', async () => {
+    const authoredRoot = document.createElement('div');
+    const portaledContainer = document.createElement('div');
+    const control = document.createElement('button');
+    portaledContainer.append(control);
+    document.body.append(authoredRoot, portaledContainer);
+
+    let originalPath: EventTarget[] = [];
+    let bridgedEvent: Event | undefined;
+    authoredRoot.addEventListener('mousedown', (event) => {
+      bridgedEvent = event;
+      expect(event.composedPath()[0]).toBe(authoredRoot);
+    });
+
+    control.addEventListener('mousedown', (event) => {
+      originalPath = event.composedPath() as EventTarget[];
+      redispatchPortaledEvent(event, authoredRoot);
+    });
+    control.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, composed: true }));
+    await tick();
+
+    expect(Array.from(bridgedEvent?.composedPath() ?? [])).toEqual(originalPath);
+    expect(originalPath[0]).toBe(control);
+    expect(originalPath).toContain(portaledContainer);
+    expect(originalPath).not.toContain(authoredRoot);
+  });
+
+  test('bridges pointer and mouse families with native-parity delivery', () => {
+    const authoredRoot = document.createElement('div');
+    const control = document.createElement('button');
+    document.body.append(authoredRoot, control);
+    const received: string[] = [];
+    authoredRoot.addEventListener('pointerdown', () => received.push('pointerdown'));
+    authoredRoot.addEventListener('mousedown', () => received.push('mousedown'));
+    const pointer = new Event('pointerdown', { bubbles: true });
+    Object.defineProperty(pointer, 'target', { configurable: true, value: control });
+    const mouse = new MouseEvent('mousedown', { bubbles: true, clientX: 10, clientY: 20 });
+    Object.defineProperty(mouse, 'target', { configurable: true, value: control });
+    redispatchPortaledEvent(pointer, authoredRoot);
+    redispatchPortaledEvent(mouse, authoredRoot);
+
+    expect(received).toEqual(['pointerdown', 'mousedown']);
+  });
+
+  test('bridges an independent synthetic mouse event after a pointer event', () => {
+    const authoredRoot = document.createElement('div');
+    const control = document.createElement('button');
+    document.body.append(authoredRoot, control);
+    let received = 0;
+    authoredRoot.addEventListener('mousedown', () => {
+      received += 1;
+    });
+    const pointer = new Event('pointerdown', { bubbles: true });
+    Object.defineProperty(pointer, 'target', { configurable: true, value: control });
+    const mouse = new MouseEvent('mousedown', { bubbles: true, clientX: 10, clientY: 20 });
+    Object.defineProperty(mouse, 'target', { configurable: true, value: control });
+    redispatchPortaledEvent(pointer, authoredRoot);
+    redispatchPortaledEvent(mouse, authoredRoot);
+
+    expect(received).toBe(1);
+  });
+
+  test('preserves browser mouse follow-ups for one mouse pointer action', () => {
+    const authoredRoot = document.createElement('div');
+    const control = document.createElement('button');
+    document.body.append(authoredRoot, control);
+    const received: string[] = [];
+    authoredRoot.addEventListener('pointerdown', () => received.push('pointerdown'));
+    authoredRoot.addEventListener('mousedown', () => received.push('mousedown'));
+    authoredRoot.addEventListener('pointerup', () => received.push('pointerup'));
+    authoredRoot.addEventListener('mouseup', () => received.push('mouseup'));
+
+    const pointerEvent = (type: string) =>
+      new (globalThis.PointerEvent ?? Event)(type, {
+        bubbles: true,
+        composed: true,
+        pointerType: 'mouse',
+        button: 0,
+        clientX: 24,
+        clientY: 36,
+      });
+    const pointerdown = pointerEvent('pointerdown');
+    Object.defineProperty(pointerdown, 'target', { configurable: true, value: control });
+    const mousedown = new MouseEvent('mousedown', {
+      bubbles: true,
+      composed: true,
+      button: 0,
+      clientX: 24,
+      clientY: 36,
+    });
+    Object.defineProperty(mousedown, 'target', { configurable: true, value: control });
+    const pointerup = pointerEvent('pointerup');
+    Object.defineProperty(pointerup, 'target', { configurable: true, value: control });
+    const mouseup = new MouseEvent('mouseup', {
+      bubbles: true,
+      composed: true,
+      button: 0,
+      clientX: 24,
+      clientY: 36,
+    });
+    Object.defineProperty(mouseup, 'target', { configurable: true, value: control });
+
+    redispatchPortaledEvent(pointerdown, authoredRoot);
+    redispatchPortaledEvent(mousedown, authoredRoot);
+    redispatchPortaledEvent(pointerup, authoredRoot);
+    redispatchPortaledEvent(mouseup, authoredRoot);
+
+    expect(received).toEqual(['pointerdown', 'mousedown', 'pointerup', 'mouseup']);
+  });
+
+  test('preserves pointer and mouse event class details when constructible', () => {
+    const authoredRoot = document.createElement('div');
+    const control = document.createElement('button');
+    document.body.append(authoredRoot, control);
+    let receivedMouse: MouseEvent | undefined;
+    let receivedPointer: Event | undefined;
+    authoredRoot.addEventListener('mousedown', (event) => (receivedMouse = event));
+    authoredRoot.addEventListener('pointerdown', (event) => (receivedPointer = event));
+
+    const mouse = new MouseEvent('mousedown', {
+      bubbles: true,
+      clientX: 10,
+      clientY: 20,
+      button: 1,
+    });
+    Object.defineProperty(mouse, 'movementX', { configurable: true, value: 3 });
+    Object.defineProperty(mouse, 'movementY', { configurable: true, value: -2 });
+    Object.defineProperty(mouse, 'which', { configurable: true, value: 2 });
+    Object.defineProperty(mouse, 'target', { configurable: true, value: control });
+    redispatchPortaledEvent(mouse, authoredRoot);
+
+    const PointerConstructor = globalThis.PointerEvent;
+    if (PointerConstructor) {
+      const pointer = new PointerConstructor('pointerdown', {
+        bubbles: true,
+        pointerType: 'mouse',
+        width: 8,
+        height: 9,
+      });
+      Object.defineProperty(pointer, 'target', { configurable: true, value: control });
+      redispatchPortaledEvent(pointer, authoredRoot);
+    }
+
+    expect(receivedMouse).toBeInstanceOf(MouseEvent);
+    expect(receivedMouse?.movementX).toBe(3);
+    expect(receivedMouse?.movementY).toBe(-2);
+    expect(receivedMouse?.which).toBe(2);
+    if (PointerConstructor) {
+      expect(receivedPointer).toBeInstanceOf(PointerConstructor);
+      expect((receivedPointer as PointerEvent).width).toBe(8);
+      expect((receivedPointer as PointerEvent).height).toBe(9);
+    }
+  });
+
+  test('preserves the original UIEvent view when redispatching', () => {
+    const authoredRoot = document.createElement('div');
+    const control = document.createElement('button');
+    document.body.append(authoredRoot, control);
+    let receivedMouse: MouseEvent | undefined;
+    authoredRoot.addEventListener('mousedown', (event) => (receivedMouse = event));
+
+    const mouse = new MouseEvent('mousedown', {
+      bubbles: true,
+      view: window,
+    });
+    Object.defineProperty(mouse, 'target', { configurable: true, value: control });
+    redispatchPortaledEvent(mouse, authoredRoot);
+
+    expect(receivedMouse?.view).toBe(window);
+  });
+
+  test('propagates cancellation from the authored root back to the portaled event', () => {
+    const authoredRoot = document.createElement('div');
+    const control = document.createElement('button');
+    document.body.append(authoredRoot, control);
+    authoredRoot.addEventListener('mouseup', (event) => event.preventDefault());
+
+    const mouseup = new MouseEvent('mouseup', { bubbles: true, cancelable: true });
+    Object.defineProperty(mouseup, 'target', { configurable: true, value: control });
+    redispatchPortaledEvent(mouseup, authoredRoot);
+
+    expect(mouseup.defaultPrevented).toBe(true);
   });
 
   test('serializes scoped Cinder tokens and color scheme for a portaled surface', () => {

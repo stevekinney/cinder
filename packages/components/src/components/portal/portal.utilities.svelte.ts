@@ -99,14 +99,7 @@ export function findNearestOpenTopLayer(
   // (not-yet-existing) scope, not a genuinely enclosing owner. Continuing the search from its
   // parent finds the next marker up the tree, which — by construction — belongs to a different,
   // truly enclosing popover/top-layer instance (see the nested-popover-in-trigger follow-up).
-  const ownerLookupSource = source.closest('.cinder-popover__trigger')?.parentElement ?? source;
-  const ownerId = ownerLookupSource.closest<HTMLElement>('[data-cinder-portal-owner]')?.dataset[
-    'cinderPortalOwner'
-  ];
-  if (ownerId) {
-    const owner = document.getElementById(ownerId);
-    if (owner instanceof HTMLElement) return owner;
-  }
+  const selfTrigger = closestAcrossShadow(source, '.cinder-popover__trigger');
   let candidate: HTMLElement | null = source;
   while (candidate) {
     try {
@@ -118,6 +111,24 @@ export function findNearestOpenTopLayer(
     } catch {
       // Unsupported pseudo-classes are treated as closed.
     }
+
+    if (candidate !== selfTrigger) {
+      const ownerId = candidate.dataset['cinderPortalOwner'];
+      if (ownerId) {
+        const root = candidate.getRootNode();
+        const localOwner =
+          root instanceof ShadowRoot
+            ? Array.from(root.querySelectorAll<HTMLElement>('[id]')).find(
+                (element) => element.id === ownerId,
+              )
+            : root instanceof Document
+              ? root.getElementById(ownerId)
+              : null;
+        const owner = localOwner ?? document.getElementById(ownerId);
+        if (owner instanceof HTMLElement) return owner;
+      }
+    }
+
     const rootNode = candidate.getRootNode();
     const shadowHost: Element | null = rootNode instanceof ShadowRoot ? rootNode.host : null;
     candidate = candidate.parentElement ?? (shadowHost instanceof HTMLElement ? shadowHost : null);
@@ -363,13 +374,20 @@ export function redispatchPortaledEvent(
 ): boolean {
   if (!sourceTarget) return false;
 
+  // Pointer and mouse events are distinct native families. Bridge each native
+  // event once; dropping the browser's corresponding mousedown/mouseup would
+  // break consumers that listen to only that family. Replay protection belongs
+  // to the redispatched-event marker, not pointer/mouse pairing heuristics.
+
   const originalTarget = event.target;
+  const originalComposedPath = event.composedPath();
   const eventInit: EventInit & { [property: string]: unknown } = {
     bubbles: event.bubbles,
     cancelable: event.cancelable,
     composed: event.composed,
   };
   for (const property of [
+    'view',
     'key',
     'code',
     'location',
@@ -377,6 +395,9 @@ export function redispatchPortaledEvent(
     'isComposing',
     'button',
     'buttons',
+    'movementX',
+    'movementY',
+    'which',
     'clientX',
     'clientY',
     'screenX',
@@ -398,16 +419,50 @@ export function redispatchPortaledEvent(
     'tiltY',
     'twist',
     'tangentialPressure',
+    'width',
+    'height',
   ]) {
     if (property in event) eventInit[property] = Reflect.get(event, property);
   }
-  const bridgedEvent = Reflect.construct(event.constructor, [event.type, eventInit]);
+  let bridgedEvent: Event;
+  try {
+    bridgedEvent = Reflect.construct(event.constructor, [event.type, eventInit]);
+  } catch {
+    bridgedEvent = new Event(event.type, eventInit);
+  }
+  for (const property of ['movementX', 'movementY', 'which', 'width', 'height']) {
+    if (!(property in event)) continue;
+    const value = Reflect.get(event, property);
+    if (Reflect.get(bridgedEvent, property) === value) continue;
+    try {
+      Object.defineProperty(bridgedEvent, property, { configurable: true, value });
+    } catch {
+      // Some native event implementations expose non-configurable accessors.
+    }
+  }
   redispatchedPortalEvents.add(bridgedEvent);
   Object.defineProperty(bridgedEvent, 'target', { configurable: true, value: originalTarget });
+  // Dispatching at the authored root necessarily changes currentTarget and the
+  // platform-computed path. Preserve the original portaled ancestry for delegated
+  // consumers; isTrusted cannot be copied to a synthetic Event.
+  const nativeComposedPath = bridgedEvent.composedPath.bind(bridgedEvent);
+  let dispatchComplete = false;
+  Object.defineProperty(bridgedEvent, 'composedPath', {
+    configurable: true,
+    value: () => {
+      // During synthetic dispatch expose the authored-root path. Svelte's
+      // delegated listener traverses composedPath(); exposing portaled
+      // descendants here would replay their handlers. Restore the original
+      // path after dispatch for consumer inspection.
+      return dispatchComplete ? [...originalComposedPath] : nativeComposedPath();
+    },
+  });
   if (event.defaultPrevented) bridgedEvent.preventDefault();
 
   event.stopPropagation();
-  if (!sourceTarget.dispatchEvent(bridgedEvent)) {
+  const dispatched = sourceTarget.dispatchEvent(bridgedEvent);
+  dispatchComplete = true;
+  if (!dispatched) {
     event.preventDefault();
   }
   return true;
@@ -451,7 +506,7 @@ function isEffectivelyDisabled(source: HTMLElement): boolean {
   return !firstLegend?.contains(source);
 }
 
-function isEffectivelyUnavailable(source: HTMLElement): boolean {
+export function isPortalSourceUnavailable(source: HTMLElement): boolean {
   if (isEffectivelyDisabled(source)) return true;
   // Plain `closest()` cannot see past a shadow boundary, so a source whose
   // enclosing shadow HOST gains `[hidden]`/`[inert]`/`aria-hidden="true"`
@@ -477,7 +532,7 @@ export function observePortalSourceAvailability(
   if (!source) return () => {};
 
   const syncAvailability = () => {
-    onChange(isEffectivelyUnavailable(source));
+    onChange(isPortalSourceUnavailable(source));
   };
   if (typeof MutationObserver === 'undefined') {
     syncAvailability();

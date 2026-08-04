@@ -1,10 +1,13 @@
 /// <reference lib="dom" />
-import { afterEach, describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, mock, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 import type { TimeFieldChange } from './time-field.types.ts';
 
 setupHappyDom();
+
+const inputModule = await import('../input/index.ts');
+mock.module('@lostgradient/cinder/input', () => inputModule);
 
 const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
 const { tick } = await import('svelte');
@@ -32,6 +35,13 @@ function textForLabelledBy(container: Element, labelledBy: string): string {
 }
 
 describe('TimeField', () => {
+  test('imports the composed Input API through its public subpath', async () => {
+    const componentSource = await Bun.file(new URL('./time-field.svelte', import.meta.url)).text();
+
+    expect(componentSource).toContain("from '@lostgradient/cinder/input';");
+    expect(componentSource).not.toContain("from '../input/");
+  });
+
   test('renders a labelled native time input', () => {
     const { container } = render(TimeField, {
       props: { id: 'reminder', label: 'Reminder time', value: '09:30' },
@@ -40,6 +50,45 @@ describe('TimeField', () => {
     expect(container.querySelector('label')?.getAttribute('for')).toBe('reminder');
     expect(getInput(container).value).toBe('09:30');
     expect(getInput(container).step).toBe('60');
+  });
+
+  test('composes Input for the editable time control', () => {
+    const { container } = render(TimeField, {
+      props: { id: 'reminder', label: 'Reminder time', value: '09:30' },
+    });
+
+    const input = getInput(container);
+    expect(input.classList.contains('cinder-input')).toBe(true);
+    expect(input.classList.contains('cinder-time-field__input')).toBe(true);
+    expect(container.querySelector('.cinder-time-field__controls .cinder-input-field')).not.toBe(
+      null,
+    );
+  });
+
+  test('keeps hidden serialization and timezone selection on native controls', () => {
+    const { container } = render(TimeField, {
+      props: {
+        id: 'reminder',
+        label: 'Reminder time',
+        value: '09:30',
+        name: 'reminder_time',
+        timezones: ['America/Denver', 'UTC'],
+        timezone: 'UTC',
+      },
+    });
+
+    const controls = Array.from(container.querySelectorAll('input, select'));
+    expect(controls.map((control) => control.tagName.toLowerCase())).toEqual([
+      'input',
+      'input',
+      'select',
+      'input',
+    ]);
+    expect(getInput(container).classList.contains('cinder-input')).toBe(true);
+    expect(container.querySelectorAll('input[type="hidden"]')).toHaveLength(2);
+    expect(container.querySelector('.cinder-time-field__timezone')).toBeInstanceOf(
+      HTMLSelectElement,
+    );
   });
 
   test('uses the bindable value as the displayed native value', () => {
@@ -346,9 +395,12 @@ describe('TimeField', () => {
     );
 
     expect(new Set(ids).size).toBe(ids.length);
-    expect(getInput(container).getAttribute('aria-describedby')).toBe(
-      'reminder-control-time-field-description reminder-control-time-field-error reminder-control-description reminder-control-error',
-    );
+    expect(getInput(container).getAttribute('aria-describedby')?.split(/\s+/)).toEqual([
+      'reminder-control-description',
+      'reminder-control-error',
+      'reminder-control-time-field-description',
+      'reminder-control-time-field-error',
+    ]);
   });
 
   test('forwards caller-provided accessible name props to the native time input', () => {

@@ -16,21 +16,22 @@
 </script>
 
 <script lang="ts">
+  import Grid, { type GridProps } from '@lostgradient/cinder/grid';
   import type { GridListProps } from './grid-list.types.ts';
   import { classNames } from '../../utilities/class-names.ts';
 
   let { minColumnWidth, class: className, children, ...rest }: GridListProps = $props();
 
-  const minWidth = $derived(
-    minColumnWidth && minColumnWidth.length > 0 ? minColumnWidth : undefined,
-  );
+  const minWidth = $derived(minColumnWidth && minColumnWidth.length > 0 ? minColumnWidth : '16rem');
+  const gridRest = $derived(rest as unknown as Omit<GridProps, 'children'>);
 </script>
 
-<ul
-  {...rest}
+<Grid
+  {...gridRest}
+  as="ul"
+  minItemWidth={minWidth}
   role="list"
   class={classNames('cinder-grid-list', className)}
-  style:--cinder-grid-list-min-width={minWidth}
 >
   {@render children()}
-</ul>
+</Grid>

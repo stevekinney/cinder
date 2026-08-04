@@ -430,6 +430,7 @@
       wireTriggerAria={false}
       closeOnEscape={false}
       widthMode="match-anchor"
+      portalScopeClass={classNames('cinder-combobox', className)}
       class="cinder-combobox__panel"
     >
       <ul bind:this={listboxElement} role="presentation" class="cinder-combobox__listbox">
@@ -482,12 +483,17 @@
       wireTriggerAria={false}
       closeOnEscape={false}
       widthMode="match-anchor"
+      portalScopeClass={classNames('cinder-combobox', className)}
       class="cinder-combobox__empty-panel"
     >
-      <div class={classNames('cinder-combobox', className)}>
-        <div class="cinder-combobox__empty" role="option" aria-disabled="true" data-cinder-active>
-          No results
-        </div>
+      <div
+        class="cinder-combobox__empty"
+        role="option"
+        aria-disabled="true"
+        aria-selected="false"
+        data-cinder-active
+      >
+        No results
       </div>
     </Popover>
   {/if}

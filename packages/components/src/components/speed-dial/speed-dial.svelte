@@ -21,26 +21,29 @@
 
 <script lang="ts">
   import type { Placement } from '@floating-ui/dom';
+  import { untrack } from 'svelte';
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
   import { classNames } from '../../utilities/class-names.ts';
-  import {
-    composedFocusScopes,
-    getSequentialFocusTargets,
-    getTabIndexValue,
-    type SequentialFocusTarget,
-  } from '../../utilities/focus.ts';
   import { handleRovingKeydown } from '../../utilities/roving-tabindex.ts';
+  import { useReducedMotion } from '../../utilities/use-reduced-motion.svelte.ts';
   import FloatingAction from '../floating-action/floating-action.svelte';
   import { createPortalAttachment } from '../portal/index.ts';
   import {
     createInheritedPortalStyle,
     findNearestOpenTopLayer,
-    getShadowHost,
+    isPortalSourceUnavailable,
     isRedispatchedPortaledEvent,
     observePortalSourceAvailability,
     redispatchPortaledEvent,
   } from '../portal/portal.utilities.svelte.ts';
   import { setSpeedDialContext } from './speed-dial.context.ts';
+  import { waitForSpeedDialExit } from './speed-dial-exit.ts';
+  import {
+    createQueuedFocusRestoration,
+    getFocusTargetBeforeSpeedDial,
+    hasNegativeTabIndex,
+    isRenderedCandidate,
+  } from './speed-dial-focus.ts';
   import type { SpeedDialDirection, SpeedDialProps } from './speed-dial.types.ts';
 
   const actionsId = $props.id();
@@ -63,9 +66,15 @@
   let spacingProbeElement = $state<HTMLSpanElement | null>(null);
   let spacingVersion = $state(0);
   let sourceSubtreeUnavailable = $state(false);
+  let actionsScopeActive = $state(false);
+  let retainedPositionStyle = $state('');
+  let retainedDirection = $state<SpeedDialDirection | null>(null);
+  let wasOpen = open;
   let hasFocusedCurrentOpenSession = false;
   const actionButtons: HTMLButtonElement[] = [];
+  const queuedTriggerFocusRestoration = createQueuedFocusRestoration();
 
+  const reducedMotion = useReducedMotion();
   const accessibleLabel = $derived(normalizeAriaLabel(ariaLabel));
   const placement = $derived<Placement>(
     direction === 'up'
@@ -78,12 +87,13 @@
   );
 
   const actionsPortalScope = createPortalAttachment({
-    disabled: () => !open || hidden || sourceSubtreeUnavailable,
+    disabled: () => !actionsScopeActive || hidden || sourceSubtreeUnavailable,
     source: () => getTriggerElement(),
     target: () => getPortalTarget(),
   });
   const actionsPortal = createPortalAttachment({
-    disabled: () => !open || hidden || sourceSubtreeUnavailable || !actionsPortalScopeElement,
+    disabled: () =>
+      !actionsScopeActive || hidden || sourceSubtreeUnavailable || !actionsPortalScopeElement,
     inheritAttributes: false,
     target: () => actionsPortalScopeElement,
   });
@@ -101,14 +111,22 @@
   const resolvedDirection = $derived(
     anchoredActions.positionReady
       ? normalizePlacementDirection(anchoredActions.resolvedPlacement)
-      : direction,
+      : actionsScopeActive && retainedDirection
+        ? retainedDirection
+        : direction,
+  );
+  const actionsPositionReady = $derived(
+    anchoredActions.positionReady || (actionsScopeActive && retainedPositionStyle.length > 0),
+  );
+  const actionsPositionStyle = $derived(
+    anchoredActions.positionReady ? anchoredActions.positionStyle : retainedPositionStyle,
   );
   const orientation = $derived(
     resolvedDirection === 'left' || resolvedDirection === 'right' ? 'horizontal' : 'vertical',
   );
   const inheritedPortalStyle = createInheritedPortalStyle(
     () => getTriggerElement(),
-    () => open && !hidden,
+    () => actionsScopeActive && !hidden,
   );
 
   $effect(() => {
@@ -116,6 +134,21 @@
     const observer = new ResizeObserver(() => spacingVersion++);
     observer.observe(spacingProbeElement);
     return () => observer.disconnect();
+  });
+
+  $effect.pre(() => {
+    if (wasOpen && !open) retainCurrentPosition();
+    if (!wasOpen && open) queuedTriggerFocusRestoration.invalidate();
+    wasOpen = open;
+  });
+
+  $effect(() => {
+    if (anchoredActions.positionReady) {
+      retainedDirection = normalizePlacementDirection(anchoredActions.resolvedPlacement);
+      if (anchoredActions.positionStyle.length > 0) {
+        retainedPositionStyle = anchoredActions.positionStyle;
+      }
+    }
   });
 
   function normalizeAriaLabel(label: string | null | undefined): string {
@@ -143,7 +176,6 @@
 
   function getSpacingOffset(): number {
     const pixels = spacingProbeElement?.getBoundingClientRect().width;
-
     return pixels !== undefined && Number.isFinite(pixels) && pixels >= 0 ? pixels : 12;
   }
 
@@ -172,54 +204,28 @@
       : enabledButtons;
   }
 
-  function getFocusTargetBeforeSpeedDial(): SequentialFocusTarget | null {
-    const speedDialRoot = rootElement;
-    if (!speedDialRoot || typeof document === 'undefined') return null;
-
-    // Search the composed focus scope outward: the SpeedDial's own root
-    // (its ShadowRoot, if it is rendered inside one) first, then each
-    // enclosing shadow host's root in turn. A plain `document.
-    // querySelectorAll` cannot see into shadow roots, so a SpeedDial
-    // rendered inside one would otherwise skip a preceding sibling that
-    // lives in that same shadow root.
-    for (const { root, anchor } of composedFocusScopes(speedDialRoot)) {
-      const preceding =
-        getSequentialFocusTargets(root, {
-          relativeTo: anchor,
-          direction: 'before',
-        })
-          .filter(
-            (candidate) =>
-              !speedDialRoot.contains(candidate) && !actionsElement?.contains(candidate),
-          )
-          .at(-1) ?? null;
-      if (preceding) return preceding;
-    }
-    return null;
-  }
-
-  function isRenderedCandidate(candidate: HTMLElement): boolean {
-    if (typeof window === 'undefined') return true;
-    for (
-      let current: HTMLElement | null = candidate;
-      current;
-      current = current.parentElement ?? getShadowHost(current)
-    ) {
-      const styles = getComputedStyle(current);
-      if (styles.display === 'none' || styles.visibility === 'hidden') return false;
-    }
-    return true;
-  }
-
-  function hasNegativeTabIndex(element: HTMLElement): boolean {
-    return getTabIndexValue(element) < 0;
-  }
-
   function focusTrigger(): void {
-    queueMicrotask(() => getTriggerElement()?.focus());
+    queuedTriggerFocusRestoration.schedule(() => {
+      const triggerElement = getTriggerElement();
+      if (open || hidden || !triggerElement || isPortalSourceUnavailable(triggerElement)) return;
+      triggerElement.focus();
+    });
+  }
+
+  function retainCurrentPosition(): void {
+    retainedDirection = resolvedDirection;
+    const currentPositionStyle =
+      actionsPositionStyle ||
+      anchoredActions.positionStyle ||
+      actionsElement?.getAttribute('style') ||
+      '';
+    if (currentPositionStyle.length > 0) {
+      retainedPositionStyle = currentPositionStyle;
+    }
   }
 
   function close(options: { focusTrigger?: boolean } = {}): void {
+    retainCurrentPosition();
     open = false;
     if (options.focusTrigger) focusTrigger();
   }
@@ -237,7 +243,12 @@
 
   function toggleOpen(): void {
     if (hidden) return;
-    open = !open;
+    if (open) {
+      close();
+      return;
+    }
+    queuedTriggerFocusRestoration.invalidate();
+    open = true;
   }
 
   function handleTriggerKeydown(event: KeyboardEvent): void {
@@ -245,8 +256,7 @@
 
     if (open && event.key === 'Tab' && event.shiftKey) {
       const sequentialButtons = getSequentiallyTabbableActionButtons();
-      if (!actionsElement || !anchoredActions.positionReady || actionsElement.hasAttribute('inert'))
-        return;
+      if (!actionsElement || !actionsPositionReady || actionsElement.hasAttribute('inert')) return;
       const lastButton = sequentialButtons.at(-1);
       if (!lastButton) return;
       event.preventDefault();
@@ -264,6 +274,7 @@
     }
 
     event.preventDefault();
+    queuedTriggerFocusRestoration.invalidate();
     open = true;
     queueMicrotask(() => getEnabledActionButtons()[0]?.focus());
   }
@@ -293,7 +304,7 @@
       targetIndex !== -1 &&
       (firstTabOrderIndex === -1 || targetIndex <= firstTabOrderIndex)
     ) {
-      const previousTarget = getFocusTargetBeforeSpeedDial();
+      const previousTarget = getFocusTargetBeforeSpeedDial({ rootElement, actionsElement });
       event.preventDefault();
       (previousTarget ?? getTriggerElement())?.focus();
       return;
@@ -363,11 +374,60 @@
   });
 
   $effect(() => {
+    const panel = actionsElement;
+    const sourceUnavailable = hidden || sourceSubtreeUnavailable;
+
+    if (open && !sourceUnavailable) {
+      actionsScopeActive = true;
+      return;
+    }
+
+    if (sourceUnavailable) {
+      actionsScopeActive = false;
+      retainedPositionStyle = '';
+      retainedDirection = null;
+      return;
+    }
+
+    if (!untrack(() => actionsScopeActive)) return;
+
+    if (retainedPositionStyle.length === 0) {
+      actionsScopeActive = false;
+      retainedDirection = null;
+      return;
+    }
+
+    if (reducedMotion.current) {
+      actionsScopeActive = false;
+      retainedPositionStyle = '';
+      retainedDirection = null;
+      return;
+    }
+
+    const exitingActions = panel
+      ? Array.from(panel.querySelectorAll<HTMLElement>('.cinder-speed-dial-action'))
+      : [];
+    if (exitingActions.length === 0) {
+      actionsScopeActive = false;
+      retainedPositionStyle = '';
+      retainedDirection = null;
+      return;
+    }
+
+    return waitForSpeedDialExit(exitingActions, () => {
+      if (open) return;
+      actionsScopeActive = false;
+      retainedPositionStyle = '';
+      retainedDirection = null;
+    });
+  });
+
+  $effect(() => {
     const source = getTriggerElement() ?? rootElement;
     return observePortalSourceAvailability(source, (unavailable) => {
       sourceSubtreeUnavailable = unavailable;
       if (unavailable && open) {
-        close();
+        close({ focusTrigger: true });
       }
     });
   });
@@ -418,12 +478,15 @@
     class="cinder-_floating-surface cinder-speed-dial__actions"
     data-cinder-open={open ? '' : undefined}
     data-cinder-direction={resolvedDirection}
-    data-cinder-position-ready={anchoredActions.positionReady || undefined}
-    style={anchoredActions.positionStyle}
-    aria-hidden={hidden || (open && !anchoredActions.positionReady) ? 'true' : undefined}
-    inert={!open || hidden || sourceSubtreeUnavailable || (open && !anchoredActions.positionReady)
-      ? true
+    data-cinder-position-ready={actionsPositionReady || undefined}
+    style={actionsPositionStyle}
+    aria-hidden={hidden ||
+    (!open && actionsScopeActive) ||
+    sourceSubtreeUnavailable ||
+    (open && !actionsPositionReady)
+      ? 'true'
       : undefined}
+    inert={!open || hidden || sourceSubtreeUnavailable || !actionsPositionReady ? true : undefined}
     tabindex="-1"
     onclick={bridgePortaledEvent}
     onkeydown={handlePortaledActionsKeydown}
@@ -431,6 +494,8 @@
     onfocusout={bridgePortaledInteraction}
     onpointerdown={bridgePortaledInteraction}
     onpointerup={bridgePortaledInteraction}
+    onmousedown={bridgePortaledInteraction}
+    onmouseup={bridgePortaledInteraction}
     oninput={bridgePortaledInteraction}
     onchange={bridgePortaledInteraction}
   >

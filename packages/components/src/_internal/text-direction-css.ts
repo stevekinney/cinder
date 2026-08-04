@@ -92,7 +92,8 @@ function matchesDirectionStyleRuleList(
         continue;
       }
       try {
-        if (element.matches(rule.selectorText)) return true;
+        const selectorText = resolveNestedSelector(rule);
+        if (selectorText && element.matches(selectorText)) return true;
       } catch {
         continue;
       }
@@ -122,7 +123,10 @@ function readNestedCssRules(rule: CSSRule): CSSRuleList | Iterable<CSSRule> | un
 
 function isCssRuleCollection(value: unknown): value is CSSRuleList | Iterable<CSSRule> {
   if (typeof CSSRuleList !== 'undefined' && value instanceof CSSRuleList) return true;
-  return Array.isArray(value) && value.every(isCssRule);
+  if (Array.isArray(value)) return value.every(isCssRule);
+  if (typeof value !== 'object' || value === null) return false;
+  const iterator = Reflect.get(value, Symbol.iterator);
+  return typeof iterator === 'function';
 }
 
 function isCssRule(value: unknown): value is CSSRule {
@@ -140,6 +144,101 @@ function isCssStyleRule(rule: CSSRule): rule is CSSStyleRule {
     typeof Reflect.get(rule, 'style') === 'object' &&
     Reflect.get(rule, 'style') !== null
   );
+}
+
+function resolveNestedSelector(rule: CSSStyleRule): string | undefined {
+  let selector = rule.selectorText.trim();
+  let parentRule = Reflect.get(rule, 'parentRule');
+  while (parentRule) {
+    if (isCssStyleRule(parentRule)) {
+      const parentSelector = parentRule.selectorText.trim();
+      if (!parentSelector) return undefined;
+      selector = combineNestedSelectors(parentSelector, selector);
+      if (!selector) return undefined;
+    }
+    parentRule = Reflect.get(parentRule, 'parentRule');
+  }
+  return selector;
+}
+
+function combineNestedSelectors(parentSelector: string, nestedSelector: string): string {
+  const parentContext =
+    splitSelectorList(parentSelector).length > 1 ? `:is(${parentSelector})` : parentSelector;
+  return splitSelectorList(nestedSelector)
+    .map((selector) => {
+      const resolved = replaceNestingReferences(selector, parentContext);
+      return resolved.replaced ? resolved.selector : `${parentContext} ${selector}`;
+    })
+    .join(', ');
+}
+
+function replaceNestingReferences(
+  selector: string,
+  parentContext: string,
+): { selector: string; replaced: boolean } {
+  let quote: '"' | "'" | undefined;
+  let replaced = false;
+  let resolved = '';
+  for (let index = 0; index < selector.length; index += 1) {
+    const character = selector[index]!;
+    if (character === '\\') {
+      resolved += character;
+      if (index + 1 < selector.length) resolved += selector[++index];
+      continue;
+    }
+    if (quote !== undefined) {
+      resolved += character;
+      if (character === quote) quote = undefined;
+      continue;
+    }
+    if (character === '"' || character === "'") {
+      quote = character;
+      resolved += character;
+      continue;
+    }
+    if (character === '&') {
+      resolved += parentContext;
+      replaced = true;
+      continue;
+    }
+    resolved += character;
+  }
+  return { selector: resolved, replaced };
+}
+
+function splitSelectorList(selectorText: string): string[] {
+  const selectors: string[] = [];
+  let parenthesesDepth = 0;
+  let bracketDepth = 0;
+  let quote: '"' | "'" | undefined;
+  let start = 0;
+  for (let index = 0; index < selectorText.length; index += 1) {
+    const character = selectorText[index];
+    if (character === '\\') {
+      index += 1;
+      continue;
+    }
+    if (quote !== undefined) {
+      if (character === quote) quote = undefined;
+      continue;
+    }
+    if (character === '"' || character === "'") {
+      quote = character;
+      continue;
+    }
+    if (character === '(') parenthesesDepth += 1;
+    if (character === ')') parenthesesDepth = Math.max(0, parenthesesDepth - 1);
+    if (character === '[') bracketDepth += 1;
+    if (character === ']') bracketDepth = Math.max(0, bracketDepth - 1);
+    if (character === ',' && parenthesesDepth === 0 && bracketDepth === 0) {
+      const selector = selectorText.slice(start, index).trim();
+      if (selector) selectors.push(selector);
+      start = index + 1;
+    }
+  }
+  const selector = selectorText.slice(start).trim();
+  if (selector) selectors.push(selector);
+  return selectors;
 }
 
 function isConditionalRuleActive(
@@ -383,8 +482,35 @@ export function observeTextDirectionMediaQueries(
     }
   }
   const queries = new Set<string>();
+  const visitedSheets = new Set<CSSStyleSheet>();
   const visit = (rules: CSSRuleList | Iterable<CSSRule>) => {
     for (const rule of Array.from(rules)) {
+      if (Reflect.get(rule, 'type') === 3) {
+        try {
+          const media = Reflect.get(rule, 'media');
+          const condition = media && Reflect.get(media, 'mediaText');
+          if (typeof condition === 'string' && condition) queries.add(condition);
+        } catch {
+          // Ignore inaccessible import media conditions.
+        }
+        let imported: CSSStyleSheet | undefined;
+        try {
+          imported = Reflect.get(rule, 'styleSheet');
+        } catch {
+          // Ignore inaccessible cross-origin imported stylesheets.
+          continue;
+        }
+        if (imported && !visitedSheets.has(imported)) {
+          visitedSheets.add(imported);
+          try {
+            const importedRules = Reflect.get(imported, 'cssRules');
+            if (isCssRuleCollection(importedRules)) visit(importedRules);
+          } catch {
+            // Ignore inaccessible cross-origin imported stylesheets.
+          }
+        }
+        continue;
+      }
       if (isMediaRule(rule)) {
         const condition = Reflect.get(rule, 'conditionText');
         if (typeof condition === 'string' && condition) queries.add(condition);
@@ -394,6 +520,8 @@ export function observeTextDirectionMediaQueries(
     }
   };
   for (const sheet of sheets) {
+    if (visitedSheets.has(sheet)) continue;
+    visitedSheets.add(sheet);
     try {
       visit(sheet.cssRules);
     } catch {
