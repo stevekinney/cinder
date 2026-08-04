@@ -19,7 +19,7 @@
 <script lang="ts">
   import { classNames } from '../../utilities/class-names.ts';
   import FloatingAction from '../floating-action/floating-action.svelte';
-  import { isRedispatchedPortaledEvent } from '../portal/index.ts';
+  import { isRedispatchedPortaledEvent } from '@lostgradient/cinder/portal';
   import { getSpeedDialContext } from '../speed-dial/speed-dial.context.ts';
   import type { SpeedDialActionProps } from './speed-dial-action.types.ts';
 

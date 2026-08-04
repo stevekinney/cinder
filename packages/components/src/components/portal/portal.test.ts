@@ -245,7 +245,7 @@ describe('Portal', () => {
     expect(received).toBe(1);
   });
 
-  test('deduplicates browser mouse follow-ups for one mouse pointer action', () => {
+  test('preserves browser mouse follow-ups for one mouse pointer action', () => {
     const authoredRoot = document.createElement('div');
     const control = document.createElement('button');
     document.body.append(authoredRoot, control);
@@ -290,7 +290,7 @@ describe('Portal', () => {
     redispatchPortaledEvent(pointerup, authoredRoot);
     redispatchPortaledEvent(mouseup, authoredRoot);
 
-    expect(received).toEqual(['pointerdown', 'pointerup']);
+    expect(received).toEqual(['pointerdown', 'mousedown', 'pointerup', 'mouseup']);
   });
 
   test('preserves pointer and mouse event class details when constructible', () => {
@@ -335,6 +335,23 @@ describe('Portal', () => {
       expect((receivedPointer as PointerEvent).width).toBe(8);
       expect((receivedPointer as PointerEvent).height).toBe(9);
     }
+  });
+
+  test('preserves the original UIEvent view when redispatching', () => {
+    const authoredRoot = document.createElement('div');
+    const control = document.createElement('button');
+    document.body.append(authoredRoot, control);
+    let receivedMouse: MouseEvent | undefined;
+    authoredRoot.addEventListener('mousedown', (event) => (receivedMouse = event));
+
+    const mouse = new MouseEvent('mousedown', {
+      bubbles: true,
+      view: window,
+    });
+    Object.defineProperty(mouse, 'target', { configurable: true, value: control });
+    redispatchPortaledEvent(mouse, authoredRoot);
+
+    expect(receivedMouse?.view).toBe(window);
   });
 
   test('propagates cancellation from the authored root back to the portaled event', () => {
