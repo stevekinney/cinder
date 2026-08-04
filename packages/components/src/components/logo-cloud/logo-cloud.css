@@ -1,4 +1,5 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@import '../grid/grid.css';
 @layer cinder.components {
   .cinder-logo-cloud {
     container-type: inline-size;
@@ -29,26 +30,8 @@
     list-style: none;
     margin: 0;
     padding: 0;
-    display: grid;
-    gap: var(--cinder-space-5);
+    --cinder-grid-columns: repeat(2, minmax(0, 1fr));
     align-items: center;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .cinder-logo-cloud[data-cinder-columns='3'] .cinder-logo-cloud__list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .cinder-logo-cloud[data-cinder-columns='4'] .cinder-logo-cloud__list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .cinder-logo-cloud[data-cinder-columns='5'] .cinder-logo-cloud__list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .cinder-logo-cloud[data-cinder-columns='6'] .cinder-logo-cloud__list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .cinder-logo-cloud__item {
@@ -83,23 +66,23 @@
 
   @container cinder-logo-cloud (min-width: 48rem) {
     .cinder-logo-cloud[data-cinder-columns='3'] .cinder-logo-cloud__list {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      --cinder-grid-columns: repeat(3, minmax(0, 1fr));
     }
 
     .cinder-logo-cloud[data-cinder-columns='4'] .cinder-logo-cloud__list,
     .cinder-logo-cloud[data-cinder-columns='5'] .cinder-logo-cloud__list,
     .cinder-logo-cloud[data-cinder-columns='6'] .cinder-logo-cloud__list {
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      --cinder-grid-columns: repeat(4, minmax(0, 1fr));
     }
   }
 
   @container cinder-logo-cloud (min-width: 64rem) {
     .cinder-logo-cloud[data-cinder-columns='5'] .cinder-logo-cloud__list {
-      grid-template-columns: repeat(5, minmax(0, 1fr));
+      --cinder-grid-columns: repeat(5, minmax(0, 1fr));
     }
 
     .cinder-logo-cloud[data-cinder-columns='6'] .cinder-logo-cloud__list {
-      grid-template-columns: repeat(6, minmax(0, 1fr));
+      --cinder-grid-columns: repeat(6, minmax(0, 1fr));
     }
   }
 }

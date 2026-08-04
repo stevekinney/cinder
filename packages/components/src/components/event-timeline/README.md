@@ -2,6 +2,8 @@
 
 Horizontal time-axis strip for scheduled events with proportional dots, a now marker, and collision-nudged labels.
 
+See the [chronological display boundary decision](https://github.com/stevekinney/cinder/blob/main/docs/decisions/chronological-display-boundaries.md) for when to choose this bounded schedule over Timeline, RunStepTimeline, Feed, or EventStreamViewer.
+
 ## Usage
 
 ```svelte

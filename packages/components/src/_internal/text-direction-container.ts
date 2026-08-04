@@ -61,20 +61,128 @@ export function evaluateLogicalContainerCondition(
   remSize: number,
   inlineSize: number,
 ): boolean {
+  if (!isFullyParsedContainerCondition(conditionText)) return false;
+  return evaluateParsedLogicalContainerCondition(conditionText, width, remSize, inlineSize);
+}
+
+function evaluateParsedLogicalContainerCondition(
+  conditionText: string,
+  width: number,
+  remSize: number,
+  inlineSize: number,
+): boolean {
   const orParts = splitTopLevel(conditionText, 'or');
   if (orParts.length > 1)
     return orParts.some((part) =>
-      evaluateLogicalContainerCondition(part, width, remSize, inlineSize),
+      evaluateParsedLogicalContainerCondition(part, width, remSize, inlineSize),
     );
   const andParts = splitTopLevel(conditionText, 'and');
   if (andParts.length > 1)
     return andParts.every((part) =>
-      evaluateLogicalContainerCondition(part, width, remSize, inlineSize),
+      evaluateParsedLogicalContainerCondition(part, width, remSize, inlineSize),
     );
   const trimmed = conditionText.trim();
-  if (trimmed.startsWith('(') && trimmed.endsWith(')'))
-    return evaluateLogicalContainerCondition(trimmed.slice(1, -1), width, remSize, inlineSize);
+  const unwrapped = unwrapRedundantParentheses(trimmed);
+  if (unwrapped !== trimmed)
+    return evaluateParsedLogicalContainerCondition(unwrapped, width, remSize, inlineSize);
+  const notPrefix = /^not\s+/i.exec(trimmed);
+  if (notPrefix)
+    return !evaluateParsedLogicalContainerCondition(
+      trimmed.slice(notPrefix[0].length),
+      width,
+      remSize,
+      inlineSize,
+    );
   return evaluateContainerSizeConstraints(trimmed, width, remSize, inlineSize);
+}
+
+const containerSizeTermPattern =
+  /^(?:(?:min|max)-(?:width|inline-size)|(?:width|inline-size))\s*:\s*(?:\d+(?:\.\d+)?|\.\d+)(?:px|rem)$/i;
+const featureFirstRangePattern =
+  /^(?:width|inline-size)\s*(?:>=|>|<=|<)\s*(?:\d+(?:\.\d+)?|\.\d+)(?:px|rem)$/i;
+const valueFirstRangePattern =
+  /^(?:(?:(?:\d+(?:\.\d+)?|\.\d+)(?:px|rem)\s*(?:<=|<)\s*(?:width|inline-size))(?:\s*(?:<=|<)\s*(?:\d+(?:\.\d+)?|\.\d+)(?:px|rem))?|(?:(?:\d+(?:\.\d+)?|\.\d+)(?:px|rem)\s*(?:>=|>)\s*(?:width|inline-size))(?:\s*(?:>=|>)\s*(?:\d+(?:\.\d+)?|\.\d+)(?:px|rem))?)$/i;
+
+/**
+ * Returns true only when every token in a size condition belongs to the
+ * deliberately small grammar evaluated below. Unknown CSS syntax must not
+ * silently inherit the evaluator's historical "active" default.
+ */
+export function isFullyParsedContainerCondition(conditionText: string): boolean {
+  const trimmed = conditionText.trim();
+  if (!trimmed || !hasBalancedParentheses(trimmed)) return false;
+  return parseContainerCondition(trimmed);
+}
+
+function parseContainerCondition(conditionText: string, isTopLevelCondition = true): boolean {
+  const original = conditionText.trim();
+  const trimmed = unwrapRedundantParentheses(original);
+  const wasGrouped = trimmed !== original;
+  const orParts = splitTopLevel(trimmed, 'or');
+  const andParts = splitTopLevel(trimmed, 'and');
+  if (orParts.length > 1 && andParts.length > 1) return false;
+  if (orParts.length > 1) return orParts.every((part) => parseContainerCondition(part, false));
+  if (andParts.length > 1) return andParts.every((part) => parseContainerCondition(part, false));
+  const notPrefix = /^not\s+/i.exec(trimmed);
+  if (notPrefix) {
+    // `not <term>` only qualifies as an `and`/`or` operand when the whole
+    // negation is itself grouped in its own parentheses — e.g.
+    // `(not (...)) and (...)`. CSS's `<media-and>`/`<media-or>` require every
+    // operand to be `<media-in-parens>`, and a bare `<media-not>` doesn't
+    // satisfy that; only a standalone top-level `not` may skip the extra
+    // grouping.
+    if (!isTopLevelCondition && !wasGrouped) return false;
+    const operand = trimmed.slice(notPrefix[0].length).trim();
+    const unwrappedOperand = unwrapRedundantParentheses(operand);
+    return unwrappedOperand !== operand && parseContainerCondition(operand);
+  }
+  return (
+    wasGrouped &&
+    (containerSizeTermPattern.test(trimmed) ||
+      featureFirstRangePattern.test(trimmed) ||
+      valueFirstRangePattern.test(trimmed))
+  );
+}
+
+function hasBalancedParentheses(conditionText: string): boolean {
+  let depth = 0;
+  for (const character of conditionText) {
+    if (character === '(') depth += 1;
+    if (character === ')') {
+      depth -= 1;
+      if (depth < 0) return false;
+    }
+  }
+  return depth === 0;
+}
+
+function unwrapRedundantParentheses(conditionText: string): string {
+  const trimmed = conditionText.trim();
+  if (!trimmed.startsWith('(') || !trimmed.endsWith(')')) return trimmed;
+  const matchingClose = new Map<number, number>();
+  const openPositions: number[] = [];
+  let depth = 0;
+  for (let index = 0; index < trimmed.length; index += 1) {
+    if (trimmed[index] === '(') {
+      openPositions.push(index);
+      depth += 1;
+    } else if (trimmed[index] === ')') {
+      const open = openPositions.pop();
+      if (open === undefined) return trimmed;
+      matchingClose.set(open, index);
+      depth -= 1;
+    }
+  }
+  if (depth !== 0) return trimmed;
+  let start = 0;
+  let end = trimmed.length - 1;
+  while (start < end && matchingClose.get(start) === end) {
+    start += 1;
+    end -= 1;
+    while (/\s/.test(trimmed[start] ?? '')) start += 1;
+    while (/\s/.test(trimmed[end] ?? '')) end -= 1;
+  }
+  return start === 0 ? trimmed : trimmed.slice(start, end + 1).trim();
 }
 
 // True when the condition references a width/inline-size comparison whose

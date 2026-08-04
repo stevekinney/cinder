@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 import { createRawSnippet } from 'svelte';
 
 import { _resetScrollLock } from '../../_internal/overlay.ts';
@@ -58,6 +59,16 @@ afterEach(() => {
 });
 
 describe('Modal', () => {
+  test('keeps dialog-owned anchored surfaces outside the dialog clipping boundary', () => {
+    const css = readFileSync(new URL('./modal.css', import.meta.url), 'utf8');
+
+    // Anchored overlays are portaled to the open dialog (the native top layer),
+    // so the dialog itself must not clip their resolved bounds. Ordinary modal
+    // content remains clipped by the panel below.
+    expect(css).toMatch(/\.cinder-modal\s*\{[^}]*overflow:\s*visible;/s);
+    expect(css).toMatch(/\.cinder-modal__panel\s*\{[^}]*overflow:\s*hidden;/s);
+  });
+
   test('body uses the panel surface beneath header and footer', async () => {
     const css = await Bun.file(new URL('./modal.css', import.meta.url)).text();
     expect(css).toMatch(/\.cinder-modal__body\s*\{[^}]*background:\s*var\(--cinder-surface\)/s);

@@ -15,9 +15,10 @@
     max-width: min(90vw, 32rem);
     width: 100%;
 
-    /* Prevent the panel from touching viewport edges on small screens */
+    /* Keep dialog-owned anchored surfaces in the native top layer visible.
+     * The panel below remains the clipping boundary for ordinary content. */
     max-height: calc(100dvh - var(--cinder-space-8));
-    overflow: hidden;
+    overflow: visible;
   }
 
   /* Backdrop — native <dialog>::backdrop is controlled by the UA */

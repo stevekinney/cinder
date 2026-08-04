@@ -61,7 +61,14 @@
     "notice": ["banner", "alert", "callout"],
     "selection": ["toggle", "checkbox", "segmented-control"],
     "hover": ["tooltip", "popover", "hover-card"],
-    "tabs": ["tabs", "segmented-control"]
+    "tabs": ["tabs", "segmented-control"],
+    "chronological": [
+      "timeline",
+      "run-step-timeline",
+      "event-timeline",
+      "feed",
+      "event-stream-viewer"
+    ]
   },
   "components": [
     {
@@ -2096,9 +2103,20 @@
         },
         {
           "reason": "Rendering paginated historical records with sorting — use data-table instead."
+        },
+        {
+          "reason": "Showing a simple static event rail, bounded schedule, or structured run-state rail — use timeline, event-timeline, or run-step-timeline."
         }
       ],
-      "related": ["feed", "timeline", "json-viewer", "status-dot", "copy-button"],
+      "related": [
+        "feed",
+        "timeline",
+        "run-step-timeline",
+        "event-timeline",
+        "json-viewer",
+        "status-dot",
+        "copy-button"
+      ],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
@@ -2121,15 +2139,23 @@
       ],
       "avoidWhen": [
         {
-          "reason": "Showing vertical process history or dense activity feeds.",
+          "reason": "Showing sequential process history.",
           "alternative": "timeline"
         },
         {
           "reason": "Showing step-by-step run execution state.",
           "alternative": "run-step-timeline"
+        },
+        {
+          "reason": "Showing a user-facing activity feed.",
+          "alternative": "feed"
+        },
+        {
+          "reason": "Showing a dense operational stream.",
+          "alternative": "event-stream-viewer"
         }
       ],
-      "related": ["timeline", "run-step-timeline", "status-dot"],
+      "related": ["timeline", "run-step-timeline", "feed", "event-stream-viewer", "status-dot"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
@@ -2210,15 +2236,27 @@
       "purpose": "Ordered list container for a chronological stream of feed-event entries, optionally exposed as a live region.",
       "tags": ["timeline", "activity"],
       "useWhen": [
-        "Rendering an activity log, audit trail, or notification timeline.",
+        "Rendering a user-facing activity stream or notification timeline.",
         "Announcing newly appended entries to assistive technology via the live prop."
       ],
       "avoidWhen": [
         {
           "reason": "Displaying a one-off transient notice — use toast-region or banner instead."
+        },
+        {
+          "reason": "Displaying static temporal history or execution state — use timeline or run-step-timeline."
+        },
+        {
+          "reason": "Displaying a bounded schedule or dense diagnostics — use event-timeline or event-stream-viewer."
         }
       ],
-      "related": ["feed-event"],
+      "related": [
+        "timeline",
+        "run-step-timeline",
+        "event-timeline",
+        "event-stream-viewer",
+        "feed-event"
+      ],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
@@ -2778,7 +2816,7 @@
           "reason": "Editing arbitrary free-form JSON with no schema semantics — use a plain code editor instead."
         }
       ],
-      "related": [],
+      "related": ["json-editor", "schema-form", "code-block"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
@@ -3968,12 +4006,11 @@
       "exportName": "RunStepTimeline",
       "category": "data-display",
       "status": "stable",
-      "purpose": "Ordered execution rail for async run state: per-step status, durations, retries, plus parallel branch groups, rewound speculation, and saga compensation.",
+      "purpose": "Execution-state rail for async steps, durations, retries, branches, speculation, and compensation.",
       "tags": ["timeline", "progress", "execution"],
       "useWhen": [
-        "Displaying the live or completed state of a multi-step async operation: CI jobs, workflow runs, import pipelines, or deployments.",
-        "Showing a sequence where one step is currently active and prior steps have streamed in over time.",
-        "Visualizing speculative parallel work (race N lanes, keep the winner) or saga-style compensation of a forward step."
+        "Showing live or completed CI, workflow, import, or deployment steps.",
+        "Showing speculative parallel branches or saga compensation."
       ],
       "avoidWhen": [
         {
@@ -3981,9 +4018,15 @@
         },
         {
           "reason": "Showing a flat timestamp-first event log without structured step state — use timeline instead."
+        },
+        {
+          "reason": "Showing a bounded horizontal schedule or activity stream — use event-timeline or feed instead."
+        },
+        {
+          "reason": "Showing a dense operational log without structured step state, such as raw CI or job output — use event-stream-viewer instead."
         }
       ],
-      "related": ["timeline", "steps", "status-dot", "progress", "badge", "collapsible"],
+      "related": ["timeline", "event-timeline", "feed", "steps", "event-stream-viewer"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
@@ -5611,21 +5654,26 @@
       "exportName": "Timeline",
       "category": "data-display",
       "status": "stable",
-      "purpose": "Timestamp-first event rail that renders workflow, audit, or run-history entries with grouping, tone markers, and connector continuity.",
+      "purpose": "Timestamp-first event rail with grouping, tone markers, and connector continuity.",
       "tags": ["timeline", "history", "events"],
-      "useWhen": [
-        "Visualizing an ordered sequence of dated events with a temporal rail, timestamp labels, grouping headers, and marker tones.",
-        "Displaying workflow steps, audit logs, or run histories where each entry needs connector continuity or gap breaks."
-      ],
+      "useWhen": ["Showing dated workflow, audit, or run-history events on a temporal rail."],
       "avoidWhen": [
         {
           "reason": "Surfacing a real-time social or activity stream — feed is the higher-affordance composition."
         },
         {
-          "reason": "Guiding users through a numbered procedural flow — steps conveys progress more clearly."
+          "reason": "Guiding users through a numbered procedural flow.",
+          "alternative": "steps"
+        },
+        {
+          "reason": "Showing async execution state with retries, branches, or progress.",
+          "alternative": "run-step-timeline"
+        },
+        {
+          "reason": "Showing a bounded horizontal schedule or dense operational stream — use event-timeline or event-stream-viewer."
         }
       ],
-      "related": ["feed", "steps"],
+      "related": ["feed", "run-step-timeline", "event-timeline", "event-stream-viewer"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {

@@ -85,8 +85,9 @@ async function main(): Promise<void> {
     // run through prettier — so the comparison succeeds against the
     // committed-and-formatted file.
     let manifestDrift = false;
+    let manifest: Awaited<ReturnType<typeof buildManifest>> | undefined;
     try {
-      const manifest = await buildManifest();
+      manifest = await buildManifest();
       const MANIFEST_PATH = join(import.meta.dir, '..', 'components.json');
       const generated = await formatGenerated(
         JSON.stringify(manifest, null, 2) + '\n',
@@ -108,6 +109,36 @@ async function main(): Promise<void> {
       manifestDrift = true;
     }
 
+    // Stage 5: AGENTS.md overlap-family drift check.
+    // Compares against the manifest Stage 4 just BUILT from source (not the
+    // committed components.json), so an ordinary component metadata edit
+    // (`@purpose`/`@useWhen`/`overlapFamilies` in manifest.meta.ts) is caught
+    // here even if `components:generate` was never run at all.
+    //
+    // This runs unconditionally as part of `components:check`, which itself
+    // runs unconditionally in CI (see check-pipeline-coverage.ts) — unlike
+    // the drift test in `render-agents-md.test.ts`, which lives under
+    // `scripts/` and is excluded from scoped `test:changed` runs unless a
+    // `scripts/` file itself changed. Metadata-only edits are exactly the
+    // case a scoped run would otherwise miss.
+    let agentsMdIssues: string[] = [];
+    try {
+      if (!manifest) {
+        throw new Error('manifest unavailable — see manifest stage failure above');
+      }
+      const { findOverlapFamilyDrift } = await import('./render-agents-md.ts');
+      const AGENTS_PATH = join(import.meta.dir, '..', 'AGENTS.md');
+      const agentsMd = await Bun.file(AGENTS_PATH).text();
+      agentsMdIssues = findOverlapFamilyDrift(manifest, agentsMd);
+      for (const issue of agentsMdIssues) {
+        process.stderr.write(`components:check — AGENTS.md: ${issue}\n`);
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      process.stderr.write(`components:check — agents-md stage failed: ${message}\n`);
+      agentsMdIssues = ['stage threw — see error above'];
+    }
+
     // Collect and report all failures. Generator stage failures and example
     // extraction errors are non-drift issues — they must still fail the check
     // even when the on-disk artifacts match.
@@ -123,6 +154,7 @@ async function main(): Promise<void> {
         : []),
       ...(examplesStageFailed ? ['examples: stage threw — see error above'] : []),
       ...(manifestDrift ? ['manifest: components.json is missing or stale'] : []),
+      ...agentsMdIssues.map((issue) => `agents-md: ${issue}`),
     ];
 
     if (allIssues.length === 0) {

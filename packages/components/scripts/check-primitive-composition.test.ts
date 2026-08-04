@@ -31,6 +31,10 @@ describe('primitive composition guard', () => {
     expect(allowedGridCounts.get('footer/footer.css')).toBe(2);
   });
 
+  test('drops grid-list from the retired grid migration allow-list', () => {
+    expect(allowedGridCounts.has('grid-list/grid-list.css')).toBe(false);
+  });
+
   test('tracks only the remaining date field-wrapper migrations', () => {
     expect(allowedFieldWrapperCounts.get('date-picker/date-picker.svelte')).toBe(2);
     expect(allowedFieldWrapperCounts.has('date-range-field/date-range-field.svelte')).toBe(false);

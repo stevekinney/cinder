@@ -92,7 +92,8 @@ function matchesDirectionStyleRuleList(
         continue;
       }
       try {
-        if (element.matches(rule.selectorText)) return true;
+        const selectorText = resolveNestedSelector(rule);
+        if (selectorText && element.matches(selectorText)) return true;
       } catch {
         continue;
       }
@@ -122,7 +123,10 @@ function readNestedCssRules(rule: CSSRule): CSSRuleList | Iterable<CSSRule> | un
 
 function isCssRuleCollection(value: unknown): value is CSSRuleList | Iterable<CSSRule> {
   if (typeof CSSRuleList !== 'undefined' && value instanceof CSSRuleList) return true;
-  return Array.isArray(value) && value.every(isCssRule);
+  if (Array.isArray(value)) return value.every(isCssRule);
+  if (typeof value !== 'object' || value === null) return false;
+  const iterator = Reflect.get(value, Symbol.iterator);
+  return typeof iterator === 'function';
 }
 
 function isCssRule(value: unknown): value is CSSRule {
@@ -140,6 +144,101 @@ function isCssStyleRule(rule: CSSRule): rule is CSSStyleRule {
     typeof Reflect.get(rule, 'style') === 'object' &&
     Reflect.get(rule, 'style') !== null
   );
+}
+
+function resolveNestedSelector(rule: CSSStyleRule): string | undefined {
+  let selector = rule.selectorText.trim();
+  let parentRule = Reflect.get(rule, 'parentRule');
+  while (parentRule) {
+    if (isCssStyleRule(parentRule)) {
+      const parentSelector = parentRule.selectorText.trim();
+      if (!parentSelector) return undefined;
+      selector = combineNestedSelectors(parentSelector, selector);
+      if (!selector) return undefined;
+    }
+    parentRule = Reflect.get(parentRule, 'parentRule');
+  }
+  return selector;
+}
+
+function combineNestedSelectors(parentSelector: string, nestedSelector: string): string {
+  const parentContext =
+    splitSelectorList(parentSelector).length > 1 ? `:is(${parentSelector})` : parentSelector;
+  return splitSelectorList(nestedSelector)
+    .map((selector) => {
+      const resolved = replaceNestingReferences(selector, parentContext);
+      return resolved.replaced ? resolved.selector : `${parentContext} ${selector}`;
+    })
+    .join(', ');
+}
+
+function replaceNestingReferences(
+  selector: string,
+  parentContext: string,
+): { selector: string; replaced: boolean } {
+  let quote: '"' | "'" | undefined;
+  let replaced = false;
+  let resolved = '';
+  for (let index = 0; index < selector.length; index += 1) {
+    const character = selector[index]!;
+    if (character === '\\') {
+      resolved += character;
+      if (index + 1 < selector.length) resolved += selector[++index];
+      continue;
+    }
+    if (quote !== undefined) {
+      resolved += character;
+      if (character === quote) quote = undefined;
+      continue;
+    }
+    if (character === '"' || character === "'") {
+      quote = character;
+      resolved += character;
+      continue;
+    }
+    if (character === '&') {
+      resolved += parentContext;
+      replaced = true;
+      continue;
+    }
+    resolved += character;
+  }
+  return { selector: resolved, replaced };
+}
+
+function splitSelectorList(selectorText: string): string[] {
+  const selectors: string[] = [];
+  let parenthesesDepth = 0;
+  let bracketDepth = 0;
+  let quote: '"' | "'" | undefined;
+  let start = 0;
+  for (let index = 0; index < selectorText.length; index += 1) {
+    const character = selectorText[index];
+    if (character === '\\') {
+      index += 1;
+      continue;
+    }
+    if (quote !== undefined) {
+      if (character === quote) quote = undefined;
+      continue;
+    }
+    if (character === '"' || character === "'") {
+      quote = character;
+      continue;
+    }
+    if (character === '(') parenthesesDepth += 1;
+    if (character === ')') parenthesesDepth = Math.max(0, parenthesesDepth - 1);
+    if (character === '[') bracketDepth += 1;
+    if (character === ']') bracketDepth = Math.max(0, bracketDepth - 1);
+    if (character === ',' && parenthesesDepth === 0 && bracketDepth === 0) {
+      const selector = selectorText.slice(start, index).trim();
+      if (selector) selectors.push(selector);
+      start = index + 1;
+    }
+  }
+  const selector = selectorText.slice(start).trim();
+  if (selector) selectors.push(selector);
+  return selectors;
 }
 
 function isConditionalRuleActive(
@@ -163,6 +262,36 @@ function isConditionalRuleActive(
   return true;
 }
 
+// `CSSContainerRule.conditionText` serializes the container name ahead of
+// the query for a named rule — e.g. `@container sidebar (min-width: 20rem)`
+// reads back as `"sidebar (min-width: 20rem)"`, not just the query. The
+// grammar this module validates only understands the query itself, so the
+// name prefix must be removed before parsing: prefer the standard
+// `containerQuery` accessor (already name-free), falling back to stripping
+// the known container name token when that accessor is unavailable.
+//
+// A name-only rule — `@container sidebar {}` — is valid CSS (verified
+// against real browser behavior: Chromium parses it into a CSSContainerRule
+// and matches it whenever a same-named queryable container exists) and its
+// `containerQuery` legitimately reads back as `''`, not "unsupported".
+// Checking `typeof containerQuery === 'string'` (not truthiness) trusts
+// that empty string instead of falling through to the name-stripping
+// fallback, which would otherwise hand the bare container name to the
+// query grammar below as if it were a condition.
+function resolveContainerQueryText(
+  conditionText: string,
+  rule: CSSRule,
+  containerName: unknown,
+): string {
+  const containerQuery = Reflect.get(rule, 'containerQuery');
+  if (typeof containerQuery === 'string') return containerQuery;
+  if (typeof containerName !== 'string' || !containerName) return conditionText;
+  if (!conditionText.startsWith(containerName)) return conditionText;
+  const rest = conditionText.slice(containerName.length);
+  if (!/^\s/.test(rest)) return conditionText;
+  return rest.trimStart();
+}
+
 function isContainerQueryActive(
   conditionText: string,
   element: HTMLElement,
@@ -170,11 +299,21 @@ function isContainerQueryActive(
   getParentElement: ParentElementResolver,
 ): boolean {
   if (typeof getComputedStyle !== 'function') return false;
-  const styleQuery = parseStyleQuery(conditionText);
+  const containerName = Reflect.get(rule, 'containerName');
+  const queryText = resolveContainerQueryText(conditionText, rule, containerName);
+  // A container rule with no condition at all — a name-only rule, or (in
+  // legacy environments lacking `containerQuery`) a conditionText that was
+  // nothing but the name — has nothing here to evaluate. Real browsers
+  // treat a name-only rule as trivially matching once a same-named
+  // queryable container exists, but honoring that would mean treating
+  // container *existence alone*, with no actual condition, as an
+  // activation signal. This module deliberately requires a parsed
+  // condition before treating a rule as active; fail closed instead,
+  // same as every other unparsed or unsupported condition below.
+  if (!queryText.trim()) return false;
+  const styleQuery = parseStyleQuery(queryText);
   if (styleQuery) {
-    const remainder = (
-      conditionText.slice(0, styleQuery.index) + conditionText.slice(styleQuery.end)
-    )
+    const remainder = (queryText.slice(0, styleQuery.index) + queryText.slice(styleQuery.end))
       .replace(/^\s*(?:and|or|not)\b/i, '')
       .replace(/^\(|\)$/g, '')
       .trim();
@@ -184,7 +323,6 @@ function isContainerQueryActive(
     // style() term, which would wrongly treat an inactive compound rule as
     // an active styling hint.
     if (remainder) return false;
-    const containerName = Reflect.get(rule, 'containerName');
     let ancestor = getParentElement(element);
     while (ancestor) {
       if (typeof containerName === 'string' && containerName) {
@@ -202,16 +340,15 @@ function isContainerQueryActive(
       const value =
         getComputedStyle(ancestor).getPropertyValue(styleQuery.name).trim() ||
         ancestor.style.getPropertyValue(styleQuery.name).trim();
-      return /^\s*not\b/i.test(conditionText)
+      return /^\s*not\b/i.test(queryText)
         ? value !== styleQuery.value.trim()
         : value === styleQuery.value.trim();
     }
     return false;
   }
-  const containerName = Reflect.get(rule, 'containerName');
   const queriesPhysicalWidth =
-    /(?:^|[\s(])(?:width|min-width|max-width)\s*[:<>=]/i.test(conditionText) ||
-    /[\d.]+(?:px|rem)\s*(?:<=|<|>=|>)\s*width\b/i.test(conditionText);
+    /(?:^|[\s(])(?:width|min-width|max-width)\s*[:<>=]/i.test(queryText) ||
+    /[\d.]+(?:px|rem)\s*(?:<=|<|>=|>)\s*width\b/i.test(queryText);
   let container = getParentElement(element);
   while (container) {
     const computedStyle = getComputedStyle(container);
@@ -270,7 +407,7 @@ function isContainerQueryActive(
     computedContainerStyle.getPropertyValue('writing-mode') ||
     container.style.writingMode ||
     container.style.getPropertyValue('writing-mode');
-  const usesInlineSize = /(?:inline-size|min-inline-size|max-inline-size)/i.test(conditionText);
+  const usesInlineSize = /(?:inline-size|min-inline-size|max-inline-size)/i.test(queryText);
   const isVerticalWritingMode = /^(?:vertical|sideways)-/i.test(writingMode);
   const verticalInlineAxis = usesInlineSize && isVerticalWritingMode;
   // `offsetWidth`/`offsetHeight` report the border-box size from layout,
@@ -346,8 +483,8 @@ function isContainerQueryActive(
   // — fail closed instead of silently defaulting to "matches" (an inactive
   // rule at the current size would otherwise be treated as an active
   // styling hint).
-  if (hasUnsupportedContainerSizeQuery(conditionText)) return false;
-  return evaluateLogicalContainerCondition(conditionText, width, remSize, inlineSize);
+  if (hasUnsupportedContainerSizeQuery(queryText)) return false;
+  return evaluateLogicalContainerCondition(queryText, width, remSize, inlineSize);
 }
 
 export function isContainerRule(rule: CSSRule): boolean {
@@ -383,8 +520,35 @@ export function observeTextDirectionMediaQueries(
     }
   }
   const queries = new Set<string>();
+  const visitedSheets = new Set<CSSStyleSheet>();
   const visit = (rules: CSSRuleList | Iterable<CSSRule>) => {
     for (const rule of Array.from(rules)) {
+      if (Reflect.get(rule, 'type') === 3) {
+        try {
+          const media = Reflect.get(rule, 'media');
+          const condition = media && Reflect.get(media, 'mediaText');
+          if (typeof condition === 'string' && condition) queries.add(condition);
+        } catch {
+          // Ignore inaccessible import media conditions.
+        }
+        let imported: CSSStyleSheet | undefined;
+        try {
+          imported = Reflect.get(rule, 'styleSheet');
+        } catch {
+          // Ignore inaccessible cross-origin imported stylesheets.
+          continue;
+        }
+        if (imported && !visitedSheets.has(imported)) {
+          visitedSheets.add(imported);
+          try {
+            const importedRules = Reflect.get(imported, 'cssRules');
+            if (isCssRuleCollection(importedRules)) visit(importedRules);
+          } catch {
+            // Ignore inaccessible cross-origin imported stylesheets.
+          }
+        }
+        continue;
+      }
       if (isMediaRule(rule)) {
         const condition = Reflect.get(rule, 'conditionText');
         if (typeof condition === 'string' && condition) queries.add(condition);
@@ -394,6 +558,8 @@ export function observeTextDirectionMediaQueries(
     }
   };
   for (const sheet of sheets) {
+    if (visitedSheets.has(sheet)) continue;
+    visitedSheets.add(sheet);
     try {
       visit(sheet.cssRules);
     } catch {
