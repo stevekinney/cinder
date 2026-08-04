@@ -130,6 +130,13 @@
     const stylesheetLinks = new Set<HTMLLinkElement>();
     const usesStylesheetFallback = typeof ResizeObserver === 'undefined';
     const observeStylesheetLinks = () => {
+      for (const link of stylesheetLinks) {
+        if (!link.isConnected || !link.relList.contains('stylesheet')) {
+          link.removeEventListener('load', recomputeNarrowState);
+          stylesheetLinks.delete(link);
+        }
+      }
+
       for (const link of document.head?.querySelectorAll<HTMLLinkElement>(
         'link[rel~="stylesheet"]',
       ) ?? []) {

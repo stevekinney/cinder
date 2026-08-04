@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, spyOn, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
@@ -300,6 +300,7 @@ describe('Grid', () => {
 
       stylesheet = document.createElement('link');
       stylesheet.rel = 'stylesheet';
+      const removeEventListener = spyOn(stylesheet, 'removeEventListener');
       document.head.append(stylesheet);
       await new Promise((resolve) => setTimeout(resolve, 0));
       expect(root.hasAttribute('data-cinder-wide')).toBe(true);
@@ -307,6 +308,11 @@ describe('Grid', () => {
       rootFontSize = 18;
       stylesheet.dispatchEvent(new Event('load'));
       await waitFor(() => expect(root.hasAttribute('data-cinder-narrow')).toBe(true));
+
+      stylesheet.remove();
+      await waitFor(() =>
+        expect(removeEventListener).toHaveBeenCalledWith('load', expect.any(Function)),
+      );
       unmount();
     } finally {
       stylesheet?.remove();
