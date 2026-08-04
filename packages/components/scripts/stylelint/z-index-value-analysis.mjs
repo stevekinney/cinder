@@ -669,6 +669,17 @@ function evaluateConstantArithmetic(expression) {
       );
       const [[sharedConversionFactor, sharedConversionExponent] = []] =
         boundedArguments[0]?.symbolicFactors ?? [];
+      const sharedRelativeLengthArgument =
+        functionName === 'atan2'
+          ? boundedArguments.find((argument) => {
+              const [[factor, exponent] = []] = argument.symbolicFactors;
+              return (
+                argument.symbolicFactors.size === 1 &&
+                factor?.startsWith('relative-length:') &&
+                exponent === 1
+              );
+            })
+          : undefined;
       const zeroArgument = boundedArguments.find(
         (argument) => argument.isLiteralZero && argument.symbolicFactors.size === 0,
       );
@@ -702,6 +713,17 @@ function evaluateConstantArithmetic(expression) {
           hypotenuse = Math.hypot(hypotenuse, argument.value);
         return withValue(boundedArguments[0], hypotenuse, exactHypotenuse(boundedArguments));
       }
+      if (
+        functionName === 'atan2' &&
+        boundedArguments.length === 2 &&
+        sharedRelativeLengthArgument !== undefined &&
+        boundedArguments.every(
+          (argument) =>
+            (argument.value === 0 && argument.symbolicFactors.size === 0) ||
+            sameSymbolicFactors(argument, sharedRelativeLengthArgument),
+        )
+      )
+        return angleInDegrees(Math.atan2(boundedArguments[0].value, boundedArguments[1].value));
       if (
         (functionName === 'min' || functionName === 'max') &&
         boundedArguments.length > 0 &&
@@ -922,12 +944,24 @@ function evaluateConstantArithmetic(expression) {
         return angleInDegrees(Math.atan2(arguments_[0].value, arguments_[1].value));
       if (functionName === 'progress' && arguments_.length === 3) {
         const [value, start, end] = arguments_;
-        if (start.value === end.value) {
-          if (!progressIsUnclamped || value.value === start.value) return scalar(0);
-          return scalar(value.value < start.value ? -Infinity : Infinity);
+        if (compareArithmeticValues(start, end) === 0) {
+          if (!progressIsUnclamped || compareArithmeticValues(value, start) === 0)
+            return scalar(0, false, { numerator: 0n, denominator: 1n });
+          return scalar(compareArithmeticValues(value, start) < 0 ? -Infinity : Infinity);
         }
         const ratio = (value.value - start.value) / (end.value - start.value);
-        return scalar(progressIsUnclamped ? ratio : Math.min(1, Math.max(0, ratio)));
+        const exactRatio = divideRationals(
+          addRationals(value.exactValue, start.exactValue, -1n),
+          addRationals(end.exactValue, start.exactValue, -1n),
+        );
+        if (progressIsUnclamped) return scalar(ratio, false, exactRatio);
+        const exactZero = { numerator: 0n, denominator: 1n };
+        const exactOne = { numerator: 1n, denominator: 1n };
+        if (exactRatio !== undefined && compareRationals(exactRatio, exactZero) <= 0)
+          return scalar(0, false, exactZero);
+        if (exactRatio !== undefined && compareRationals(exactRatio, exactOne) >= 0)
+          return scalar(1, false, exactOne);
+        return scalar(Math.min(1, Math.max(0, ratio)), false, exactRatio);
       }
       throw new Error('unsupported function');
     }

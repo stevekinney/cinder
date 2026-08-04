@@ -3,6 +3,8 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, test } from 'bun:test';
 import stylelint from 'stylelint';
 
+import { markdownCodeSpan } from './z-index-scale.mjs';
+
 const ruleName = 'cinder/z-index-scale';
 const pluginPath = fileURLToPath(new URL('./z-index-scale.mjs', import.meta.url));
 const fallbackAnalysisPath = fileURLToPath(
@@ -138,6 +140,14 @@ describe('cinder/z-index-scale', () => {
       expect(result[0]?.text).toContain('must be `auto`, `0`, `1`, or a `--cinder-z-*` token');
     },
   );
+
+  test.each([
+    ['`leading', '`` `leading ``'],
+    ['trailing`', '`` trailing` ``'],
+    ['``both``', '``` ``both`` ```'],
+  ] as const)('pads a Markdown code span with boundary backticks: %s', (value, expected) => {
+    expect(markdownCodeSpan(value)).toBe(expected);
+  });
 
   test('accepts a higher local layer only with an adjacent reason', async () => {
     const result = await lint(`
@@ -1086,16 +1096,23 @@ describe('cinder/z-index-scale', () => {
     expect(warning?.text).toContain('Offending expression: `calc(9999/*comment*/)`');
   });
 
-  test('escapes backticks in offending-expression diagnostics', async () => {
-    const deepStaticMath = `${'min('.repeat(513)}1${')'.repeat(513)}`;
-    const fallback = `calc(var(--runtime, "\`") + ${deepStaticMath})`;
-    const css = `.fixture { /* cinder-z-index-local: test. */ z-index: var(--x, ${fallback}); }`;
-    const [warning] = warnings(await lint(css));
+  test.each([
+    ['`', '``'],
+    ['``', '```'],
+  ] as const)(
+    'uses a Markdown code-span delimiter longer than embedded backticks: %s',
+    async (backticks, delimiter) => {
+      const deepStaticMath = `${'min('.repeat(513)}1${')'.repeat(513)}`;
+      const fallback = `calc(var(--runtime, "${backticks}") + ${deepStaticMath})`;
+      const css = `.fixture { /* cinder-z-index-local: test. */ z-index: var(--x, ${fallback}); }`;
+      const [warning] = warnings(await lint(css));
 
-    expect(warning?.text).toContain(
-      'Offending expression: `var(--x, calc(var(--runtime, "\\`") + min(',
-    );
-  });
+      expect(warning?.text).toContain(
+        `Offending expression: ${delimiter}var(--x, calc(var(--runtime, "${backticks}") + min(`,
+      );
+      expect(warning?.text).toContain(`…${delimiter}.`);
+    },
+  );
 
   test('maps a too-complex fallback range through escaped astral code points', async () => {
     const deepStaticMath = `${'min('.repeat(513)}1${')'.repeat(513)}`;
@@ -2200,6 +2217,9 @@ describe('cinder/z-index-scale', () => {
     ['calc(round(up, 719891.996pt, 0.01pt) / 1in)', 1],
     ['calc(round(down, 719891.996pt, 0.01pt) / 1in)', 0],
     ['calc(round(to-zero, 719891.996pt, 0.01pt) / 1in)', 0],
+    ['progress(no-clamp 25396.18cm, 0cm, 2.54cm)', 0],
+    ['progress(no-clamp 25396.19cm, 0cm, 2.54cm)', 1],
+    ['progress(25396.19cm, 0cm, 2.54cm)', 0],
   ] as const)(
     'classifies exact absolute-unit rounding boundaries: %s',
     async (fallback, warningCount) => {
@@ -2208,6 +2228,33 @@ describe('cinder/z-index-scale', () => {
           await lint(`
             .fixture {
               /* cinder-z-index-local: exact unit ratios decide integer rounding. */
+              z-index: var(--outer, ${fallback});
+            }
+          `),
+        ),
+      ).toHaveLength(warningCount);
+    },
+  );
+
+  test.each([
+    ['calc(atan2(1em, 1em) / 45deg * 9999)', 1],
+    ['calc(atan2(1em, -1em) / 45deg * 9999)', 0],
+    ['calc(atan2(-1em, 1em) / 45deg * 9999)', 1],
+    ['calc(atan2(-1em, -1em) / 45deg * 9999)', 1],
+    ['calc(atan2(0em, 1em) / 45deg * 9999)', 0],
+    ['calc(atan2(-1 * 0em, -1em) / 45deg * 9999)', 1],
+    ['calc(atan2(0px, 1em) / 45deg * 9999)', 0],
+    ['calc(atan2(1em, 0px) / 90deg * 9999)', 1],
+    ['calc(atan2(1em, 1rem) / 45deg * 9999)', 0],
+    ['calc(atan2(1em, 1px) / 45deg * 9999)', 0],
+  ] as const)(
+    'cancels only identical relative-length factors in atan2(): %s',
+    async (fallback, warningCount) => {
+      expect(
+        warnings(
+          await lint(`
+            .fixture {
+              /* cinder-z-index-local: shared relative factors cancel before atan2. */
               z-index: var(--outer, ${fallback});
             }
           `),

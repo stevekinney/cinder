@@ -48,6 +48,20 @@ const declaredLayerTokens = new Set([
 const allowedLocalValues = new Set(['auto', '0', '1']);
 const maximumDiagnosticExpressionLength = 240;
 
+export function markdownCodeSpan(value) {
+  let longestBacktickRunLength = 0;
+  let currentBacktickRunLength = 0;
+  for (const character of value) {
+    if (character === '`') {
+      currentBacktickRunLength += 1;
+      longestBacktickRunLength = Math.max(longestBacktickRunLength, currentBacktickRunLength);
+    } else currentBacktickRunLength = 0;
+  }
+  const delimiter = '`'.repeat(longestBacktickRunLength + 1);
+  const padding = value.startsWith('`') || value.endsWith('`') ? ' ' : '';
+  return `${delimiter}${padding}${value}${padding}${delimiter}`;
+}
+
 const messages = stylelint.utils.ruleMessages(ruleName, {
   fallback:
     'A `--cinder-z-*` token must not have a fallback; define the token once in tokens-base.css.',
@@ -244,7 +258,7 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => {
                 endIndex: fallbackIndex + fallbackLength,
               }
             : {}),
-          message: `${diagnosticMessage} Offending expression: \`${diagnosticExpression.replaceAll('`', '\\`')}\`.`,
+          message: `${diagnosticMessage} Offending expression: ${markdownCodeSpan(diagnosticExpression)}.`,
         });
         return;
       }
