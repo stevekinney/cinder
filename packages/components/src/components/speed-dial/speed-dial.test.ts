@@ -135,6 +135,28 @@ describe('SpeedDial', () => {
     }
   });
 
+  test('exit helper settles immediately when transition property is none', async () => {
+    const action = document.createElement('button');
+    document.body.append(action);
+    const complete = mock(() => {});
+    const getComputedStyleSpy = mockComputedTransitionStyle((element) => element === action, {
+      transitionDelay: '100ms',
+      transitionDuration: '150ms',
+      transitionProperty: 'none',
+    });
+
+    try {
+      const cancel = waitForSpeedDialExit(action, complete);
+
+      await flushQueuedFocus();
+      expect(complete).toHaveBeenCalledTimes(1);
+
+      cancel();
+    } finally {
+      getComputedStyleSpy.mockRestore();
+    }
+  });
+
   test('exit helper treats transition cancel as one property boundary', async () => {
     const action = document.createElement('button');
     document.body.append(action);
@@ -706,10 +728,11 @@ describe('SpeedDial', () => {
     });
 
     container.removeAttribute('inert');
+    await fireEvent.click(trigger);
     await waitFor(() => {
-      trigger.click();
       expect(screen.getByTestId('open-state').textContent).toBe('open');
     });
+    await flushQueuedFocus();
 
     const share = screen.getByRole('button', { name: 'Share', hidden: true });
     share.focus();

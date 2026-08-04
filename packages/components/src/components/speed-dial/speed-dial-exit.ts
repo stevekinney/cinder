@@ -41,9 +41,9 @@ function getTransitionBoundary(element: HTMLElement): {
     const duration = getRepeatedValue(durations, index, 0);
     const delay = getRepeatedValue(delays, index, 0);
     const total = duration + delay;
-    longest = Math.max(longest, total);
 
     if (total <= 0 || property === 'none') continue;
+    longest = Math.max(longest, total);
     if (property === 'all') {
       hasUnknownPropertyBoundary = true;
       continue;
