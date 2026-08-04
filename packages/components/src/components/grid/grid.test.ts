@@ -1,12 +1,13 @@
 /// <reference lib="dom" />
 import { describe, expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
 const { render } = await import('@testing-library/svelte');
-const { createRawSnippet } = await import('svelte');
+const { createRawSnippet, tick } = await import('svelte');
 const { default: Grid } = await import('./grid.svelte');
 
 function textSnippet(text: string) {
@@ -45,12 +46,51 @@ describe('Grid', () => {
     expect(root?.getAttribute('data-testid')).toBe('grid');
   });
 
-  test('marks collapse-enabled grids for measured narrow state', () => {
-    const { container } = render(Grid, {
-      props: { collapse: true, children: textSnippet('content') },
-    });
-    const root = container.querySelector('.cinder-grid') as HTMLElement;
-    expect(root.hasAttribute('data-cinder-collapse')).toBe(true);
+  test('measures narrow-collapse-enabled grids on mount', async () => {
+    const originalGetBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+    HTMLElement.prototype.getBoundingClientRect = () => ({ width: 640, height: 0 }) as DOMRect;
+
+    try {
+      const { container } = render(Grid, {
+        props: { narrowCollapseEnabled: true, children: textSnippet('content') },
+      });
+      await tick();
+      const root = container.querySelector('.cinder-grid') as HTMLElement;
+      expect(root.hasAttribute('data-cinder-collapse')).toBe(true);
+      expect(root.hasAttribute('data-cinder-narrow')).toBe(true);
+      expect(root.hasAttribute('data-cinder-wide')).toBe(false);
+    } finally {
+      HTMLElement.prototype.getBoundingClientRect = originalGetBoundingClientRect;
+    }
+  });
+
+  test('measures when narrow collapse is enabled after mount', async () => {
+    const originalGetBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+    HTMLElement.prototype.getBoundingClientRect = () => ({ width: 640, height: 0 }) as DOMRect;
+
+    try {
+      const { container, rerender } = render(Grid, {
+        props: { narrowCollapseEnabled: false, children: textSnippet('content') },
+      });
+      const root = container.querySelector('.cinder-grid') as HTMLElement;
+      expect(root.hasAttribute('data-cinder-narrow')).toBe(false);
+
+      await rerender({ narrowCollapseEnabled: true, children: textSnippet('content') });
+      await tick();
+      expect(root.hasAttribute('data-cinder-narrow')).toBe(true);
+      expect(root.hasAttribute('data-cinder-wide')).toBe(false);
+    } finally {
+      HTMLElement.prototype.getBoundingClientRect = originalGetBoundingClientRect;
+    }
+  });
+
+  test('resets direct Grid.Item placement in the narrow state', () => {
+    const stylesheet = readFileSync(new URL('./grid.css', import.meta.url), 'utf8');
+    expect(stylesheet).toContain(
+      '.cinder-grid[data-cinder-collapse][data-cinder-narrow] > .cinder-grid-item',
+    );
+    expect(stylesheet).toContain('grid-column-start: auto;');
+    expect(stylesheet).toContain('grid-column-end: auto;');
   });
 
   test('does not measure ordinary grids', () => {

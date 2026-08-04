@@ -173,12 +173,12 @@ describe('BentoGrid', () => {
     }
   });
 
-  test('omits inline custom properties when layout props are absent', () => {
+  test('uses default columns and omits optional layout properties', () => {
     const { container } = render(BentoGrid, {
       props: { children: textSnippet('content') },
     });
     const root = container.querySelector('.cinder-bento-grid') as HTMLElement;
-    expect(root.style.getPropertyValue('--cinder-grid-columns')).toBe('');
+    expect(root.style.getPropertyValue('--cinder-grid-columns')).toBe('repeat(4, minmax(0, 1fr))');
     expect(root.style.getPropertyValue('--cinder-grid-row-gap')).toBe('');
     expect(root.style.getPropertyValue('--cinder-grid-column-gap')).toBe('');
     expect(root.hasAttribute('data-cinder-collapse')).toBe(true);

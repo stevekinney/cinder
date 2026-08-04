@@ -28,7 +28,7 @@
     gap,
     rowGap,
     columnGap,
-    collapse = false,
+    narrowCollapseEnabled = false,
     minItemWidth,
     as = 'div',
     class: customClassName,
@@ -55,6 +55,7 @@
 
   let isNarrow = $state(false);
   let hasMeasuredWidth = $state(false);
+  let observedNode = $state<HTMLElement | null>(null);
 
   function getCollapseMaxWidthPx(): number {
     if (typeof window === 'undefined') return COLLAPSE_MAX_WIDTH_REM * FALLBACK_ROOT_FONT_SIZE_PX;
@@ -85,15 +86,19 @@
       const entry = entries[0];
       if (entry) updateNarrowState(getObservedWidth(entry));
     },
-    { box: 'border-box', enabled: () => collapse },
+    { box: 'border-box', enabled: () => narrowCollapseEnabled },
   );
 
   const observeGrid = (node: HTMLElement) => {
-    if (collapse) {
-      updateNarrowState(node.getBoundingClientRect().width);
-    }
+    observedNode = node;
     return observeResize(node);
   };
+
+  $effect(() => {
+    if (narrowCollapseEnabled && observedNode) {
+      updateNarrowState(observedNode.getBoundingClientRect().width);
+    }
+  });
 </script>
 
 <svelte:element
@@ -101,9 +106,9 @@
   {...rest}
   {@attach observeGrid}
   class={classNames('cinder-grid', customClassName)}
-  data-cinder-collapse={collapse ? '' : undefined}
-  data-cinder-narrow={collapse && isNarrow ? '' : undefined}
-  data-cinder-wide={collapse && hasMeasuredWidth && !isNarrow ? '' : undefined}
+  data-cinder-collapse={narrowCollapseEnabled ? '' : undefined}
+  data-cinder-narrow={narrowCollapseEnabled && isNarrow ? '' : undefined}
+  data-cinder-wide={narrowCollapseEnabled && hasMeasuredWidth && !isNarrow ? '' : undefined}
   style:--cinder-grid-columns={resolvedColumns}
   style:--cinder-grid-row-gap={rowGap ?? gap}
   style:--cinder-grid-column-gap={columnGap ?? gap}

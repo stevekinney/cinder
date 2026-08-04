@@ -3,10 +3,6 @@
 @import '../grid/grid.css';
 
 @layer cinder.components {
-  .cinder-bento-grid {
-    --cinder-grid-columns: repeat(4, minmax(0, 1fr));
-  }
-
   .cinder-bento-grid[data-cinder-collapse][data-cinder-narrow] > .cinder-bento-cell {
     grid-column-start: auto;
     grid-column-end: auto;

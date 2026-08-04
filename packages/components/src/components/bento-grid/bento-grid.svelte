@@ -17,7 +17,7 @@
 </script>
 
 <script lang="ts">
-  import Grid from '../grid/grid.svelte';
+  import Grid from '@lostgradient/cinder/grid';
   import { classNames } from '../../utilities/class-names.ts';
   import type { BentoGridProps } from './bento-grid.types.ts';
 
@@ -33,13 +33,14 @@
     ...rest
   }: BentoGridProps = $props();
 
+  const defaultColumns = 'repeat(4, minmax(0, 1fr))';
   const resolvedColumns = $derived.by(() => {
     if (typeof columns === 'number') {
       if (!Number.isInteger(columns) || columns < 1) return undefined;
       return `repeat(${columns}, minmax(0, 1fr))`;
     }
     if (typeof columns === 'string' && columns.length > 0) return columns;
-    return undefined;
+    return defaultColumns;
   });
 </script>
 
@@ -50,7 +51,7 @@
   {gap}
   {rowGap}
   {columnGap}
-  {collapse}
+  narrowCollapseEnabled={collapse}
   class={classNames('cinder-bento-grid', customClassName)}
 >
   {#snippet children()}

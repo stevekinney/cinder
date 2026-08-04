@@ -29,9 +29,10 @@ const schema = {
       type: 'string',
       description: 'Column gap override. Wins over `gap` for columns.',
     },
-    collapse: {
+    narrowCollapseEnabled: {
       type: 'boolean',
       description: 'Enables a narrow-screen fallback where the grid becomes a single column.',
+      default: false,
     },
     minItemWidth: {
       type: 'string',

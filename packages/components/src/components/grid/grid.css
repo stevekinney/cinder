@@ -25,4 +25,11 @@
   .cinder-grid-item[data-cinder-row-span='true'] {
     grid-row-end: span var(--cinder-grid-item-row-span);
   }
+
+  .cinder-grid[data-cinder-collapse][data-cinder-narrow] > .cinder-grid-item {
+    grid-column-start: auto;
+    grid-column-end: auto;
+    grid-row-start: auto;
+    grid-row-end: auto;
+  }
 }
