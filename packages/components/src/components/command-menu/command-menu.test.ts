@@ -46,8 +46,8 @@ function queryListbox() {
   return document.body.querySelector<HTMLUListElement>('[role="listbox"]');
 }
 
-function commandMenuRootDeclarationsFromCss(css: string) {
-  const declarations: string[] = [];
+function commandMenuRootDeclarationPropertiesFromCss(css: string) {
+  const declarationProperties: string[] = [];
 
   parse(css).walkRules((rule) => {
     let targetsCommandMenuRoot = false;
@@ -64,19 +64,19 @@ function commandMenuRootDeclarationsFromCss(css: string) {
 
     if (!targetsCommandMenuRoot) return;
     rule.each((node) => {
-      if (node.type === 'decl') declarations.push(`${node.prop}: ${node.value}`);
+      if (node.type === 'decl') declarationProperties.push(node.prop.toLowerCase());
     });
   });
 
-  expect(declarations.length).toBeGreaterThan(0);
+  expect(declarationProperties.length).toBeGreaterThan(0);
 
-  return declarations.join('\n');
+  return declarationProperties;
 }
 
-async function commandMenuRootDeclarations() {
+async function commandMenuRootDeclarationProperties() {
   const css = await Bun.file(new URL('./command-menu.css', import.meta.url)).text();
 
-  return commandMenuRootDeclarationsFromCss(css);
+  return commandMenuRootDeclarationPropertiesFromCss(css);
 }
 
 async function settleCommandMenu() {
@@ -98,20 +98,20 @@ afterEach(() => {
 
 describe('CommandMenu', () => {
   test('the CSS declaration guard inspects every root selector block', () => {
-    const declarations = commandMenuRootDeclarationsFromCss(`
+    const declarationProperties = commandMenuRootDeclarationPropertiesFromCss(`
       .cinder-command-menu { padding: 0; }
       .cinder-command-menu[data-cinder-position-ready='false'] { position: fixed; }
       .cinder-command-menu.cinder-_floating-surface { box-shadow: none; }
       .cinder-command-menu .cinder-command-menu__empty { color: red; }
     `);
 
-    expect(declarations).toContain('position: fixed');
-    expect(declarations).toContain('box-shadow: none');
-    expect(declarations).not.toContain('color: red');
+    expect(declarationProperties).toContain('position');
+    expect(declarationProperties).toContain('box-shadow');
+    expect(declarationProperties).not.toContain('color');
   });
 
   test('composes shared floating-surface chrome instead of redeclaring it', async () => {
-    const rootDeclarations = await commandMenuRootDeclarations();
+    const rootDeclarationProperties = await commandMenuRootDeclarationProperties();
 
     for (const property of [
       'position',
@@ -124,7 +124,7 @@ describe('CommandMenu', () => {
       'color',
       'box-shadow',
     ]) {
-      expect(rootDeclarations).not.toContain(`${property}:`);
+      expect(rootDeclarationProperties).not.toContain(property);
     }
   });
 
