@@ -2,7 +2,7 @@
 
 Chat-style bubble that renders a role label, optional timestamp, and arbitrary body content for transcript or run-stream views.
 
-See the [editor/chat/Cinder surface boundary](../../../../../docs/decisions/editor-chat-cinder-surfaces.md).
+See the [editor/chat/Cinder surface boundary](https://github.com/stevekinney/cinder/blob/main/docs/decisions/editor-chat-cinder-surfaces.md).
 This is the domain-neutral Cinder message surface; use Chat's `ChatMessage` when
 conversation, streaming, or tool-call state is required.
 

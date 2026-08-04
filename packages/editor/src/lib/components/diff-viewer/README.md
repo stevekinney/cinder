@@ -2,7 +2,7 @@
 
 Side-by-side or unified Markdown diff surface with hunk grouping, word-level inline changes, and size-based debounce gating.
 
-See the [editor/Cinder surface boundary](../../../../../../docs/decisions/editor-chat-cinder-surfaces.md).
+See the [editor/Cinder surface boundary](https://github.com/stevekinney/cinder/blob/main/docs/decisions/editor-chat-cinder-surfaces.md).
 This editor-owned `DiffViewer` is for Markdown review workflows; use Cinder's
 `SourceDiffViewer` for dependency-light operational source patches.
 
