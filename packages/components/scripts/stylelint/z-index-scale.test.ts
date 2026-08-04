@@ -563,6 +563,8 @@ describe('cinder/z-index-scale', () => {
     ['calc(9999 * mod(var(--runtime), 2px))', 0],
     ['calc(9999 * round(var(--runtime), 2px))', 0],
     ['calc(9999 * mod(var(--runtime), 2px) / 1px)', 1],
+    ['calc(9999 * mod(var(--runtime), 0.2px) / 0.1px)', 1],
+    ['calc(9999 * mod(var(--runtime), 0.2) / 0.1)', 1],
     ['calc(9999 * rem(var(--runtime), 2px) / 1px)', 1],
     ['calc(9999 * round(var(--runtime), 2px) / 1px)', 1],
     ['calc(9999 * mod(var(--runtime), 0px) / 1px)', 0],
@@ -2754,10 +2756,26 @@ describe('cinder/z-index-scale', () => {
     ['first-valid(var(--runtime), 9999)', 1],
     ['first-valid(var(--runtime, -1), 1)', 1],
     ['first-valid(first-valid(foo, 9999), 1)', 1],
+    ['first-valid(random(0px, 1px), 9999)', 1],
+    ['first-valid(random(0, 10000), 1)', 1],
+    ['first-valid(progress(var(--runtime), 0, 10000), 1)', 0],
+    ['first-valid(sibling-index(1), 9999)', 1],
+    ['first-valid(if(media(screen): foo; else: 2), 9999)', 1],
+    ['first-valid(if(media(screen): 1), 9999)', 1],
+    ['first-valid(if(media(foo): 1), 9999)', 1],
     ['first-valid(1, 9999)', 0],
     ['first-valid(auto, 9999)', 0],
     ['first-valid(inherit, 9999)', 0],
     ['first-valid(foo, 1, 9999)', 0],
+    ['first-valid(random(0, 1), 9999)', 0],
+    ['first-valid(progress(var(--runtime), 0, 1), 9999)', 0],
+    ['first-valid(sibling-index(), 9999)', 1],
+    ['first-valid(first-valid(var(--runtime), 1), 9999)', 0],
+    ['first-valid(if(media(foo): 1; else: 2), 9999)', 0],
+    ['first-valid(if(media(foo): auto; else: 2), 9999)', 0],
+    ['first-valid(if(media(foo): 1; else: auto), 9999)', 0],
+    ['first-valid(if(media(foo): foo; else: 2), 9999)', 0],
+    ['first-valid(if(media(screen): 1; else: 2), 9999)', 0],
     ['first-valid(var(--inner, -1) foo, 1)', 0],
     ['first-valid()', 0],
     ['first-valid(, 9999)', 0],
@@ -2776,6 +2794,17 @@ describe('cinder/z-index-scale', () => {
         `),
       ),
     ).toHaveLength(count);
+  });
+
+  test.each([
+    ['first-valid(9999, 1)', 'banned'],
+    ['first-valid(1, 9999)', undefined],
+    ['random(9999, 10000)', 'banned'],
+    ['if(style(--mode: x) and (not style(--mode: x)): 9999; else: 1)', undefined],
+  ] as const)('inspects standalone runtime values: %s', async (value, reason) => {
+    const { bannedFallback } = await import(fallbackAnalysisPath);
+
+    expect(bannedFallback(value)?.reason).toBe(reason);
   });
 
   test.each([
@@ -4242,6 +4271,13 @@ describe('cinder/z-index-scale', () => {
     ['if(not (media(width > 10px)): 9999; else: 1)', 1],
     ['if(not (supports(display: grid)): 9999; else: 1)', 1],
     ['if(not ((style(--theme: dark) or supports(display: grid))): 9999; else: 1)', 1],
+    ['if(style(--mode: x) and (not style(--mode: x)): 9999; else: 1)', 0],
+    ['if(style(--mode: x) or (not style(--mode: x)): 1; else: 9999)', 0],
+    ['if(STYLE(--mode: x) and (not style(--mode: x)): 9999; else: 1)', 0],
+    ['if(style(--mode: x) and (not STYLE(--mode: x)): 9999; else: 1)', 0],
+    ['if(style(--mode: x) and (not style( --mode: x )): 9999; else: 1)', 0],
+    ['if(style(--mode: x) and (not style(--mode/**/: x)): 9999; else: 1)', 0],
+    ['if(style(--mode: x) or (not STYLE(--mode: x)): 1; else: 9999)', 0],
     ['if(style(--theme: dark) and media(width > 10px): 9999; else: 1)', 1],
     ['if(media(10px < width < 20px): 9999; else: 1)', 1],
     ['if(media((width > 10px) and (height > 20px)): 9999; else: 1)', 1],

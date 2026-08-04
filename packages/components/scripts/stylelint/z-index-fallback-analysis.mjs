@@ -1192,8 +1192,52 @@ function mediaQueryStaticTruth(value, range) {
   return modifier === 'not';
 }
 
-function conditionalBooleanStaticTruth(value, range, parenthesisPairs, depth = 0) {
-  if (depth > conditionalNestingLimit) return undefined;
+function canonicalConditionalTestIdentity(value, start, end) {
+  const output = [];
+  let hasPendingWhitespace = false;
+  const punctuation = '()[]{}:,;*/<>=';
+  for (let index = start; index < end; index += 1) {
+    const character = value[index];
+    if (character === cssCommentMaskCharacter || isCssWhitespace(character)) {
+      hasPendingWhitespace = true;
+      continue;
+    }
+    if (hasPendingWhitespace) {
+      const previousChunk = output.at(-1);
+      const previousCharacter = previousChunk?.at(-1);
+      if (
+        previousCharacter !== undefined &&
+        !punctuation.includes(previousCharacter) &&
+        !punctuation.includes(character)
+      )
+        output.push(' ');
+    }
+    hasPendingWhitespace = false;
+    if (character === '"' || character === "'") {
+      const stringEnd = quotedStringEnd(value, index);
+      output.push(value.slice(index, stringEnd + 1));
+      index = stringEnd;
+      continue;
+    }
+    const identifierEnd = cssIdentifierTokenEnd(value, index);
+    if (identifierEnd > index) {
+      const identifier = value.slice(index, identifierEnd);
+      const lowerIdentifier = identifier.toLowerCase();
+      output.push(
+        value[identifierEnd] === '(' && ['media', 'style', 'supports'].includes(lowerIdentifier)
+          ? lowerIdentifier
+          : identifier,
+      );
+      index = identifierEnd - 1;
+      continue;
+    }
+    output.push(character);
+  }
+  return output.join('');
+}
+
+function conditionalBooleanStaticAnalysis(value, range, parenthesisPairs, depth = 0) {
+  if (depth > conditionalNestingLimit) return { truth: undefined };
   const expressionRange = trimCssTriviaRange(value, range.start, range.end);
   const skipTrivia = (start) => {
     while (start < expressionRange.end && isCssWhitespaceOrComment(value[start])) start += 1;
@@ -1206,7 +1250,7 @@ function conditionalBooleanStaticTruth(value, range, parenthesisPairs, depth = 0
       if (closeIndex === undefined || closeIndex >= expressionRange.end) return undefined;
       return {
         end: closeIndex + 1,
-        truth: conditionalBooleanStaticTruth(
+        analysis: conditionalBooleanStaticAnalysis(
           value,
           { start: start + 1, end: closeIndex },
           parenthesisPairs,
@@ -1221,10 +1265,16 @@ function conditionalBooleanStaticTruth(value, range, parenthesisPairs, depth = 0
     const functionName = value.slice(start, identifierEnd).toLowerCase();
     return {
       end: closeIndex + 1,
-      truth:
-        functionName === 'media'
-          ? mediaQueryStaticTruth(value, { start: identifierEnd + 1, end: closeIndex })
-          : undefined,
+      analysis: {
+        identity: {
+          key: canonicalConditionalTestIdentity(value, start, closeIndex + 1),
+          negated: false,
+        },
+        truth:
+          functionName === 'media'
+            ? mediaQueryStaticTruth(value, { start: identifierEnd + 1, end: closeIndex })
+            : undefined,
+      },
     };
   };
 
@@ -1234,35 +1284,59 @@ function conditionalBooleanStaticTruth(value, range, parenthesisPairs, depth = 0
   const hasLeadingNot = firstIdentifier === 'not' && value[firstIdentifierEnd] !== '(';
   if (hasLeadingNot) cursor = skipTrivia(firstIdentifierEnd);
   const firstGroup = consumeGroup(cursor);
-  if (firstGroup === undefined) return undefined;
+  if (firstGroup === undefined) return { truth: undefined };
   cursor = skipTrivia(firstGroup.end);
-  if (hasLeadingNot)
-    return cursor === expressionRange.end && firstGroup.truth !== undefined
-      ? !firstGroup.truth
-      : undefined;
+  if (hasLeadingNot) {
+    if (cursor !== expressionRange.end) return { truth: undefined };
+    return {
+      ...(firstGroup.analysis.identity === undefined
+        ? {}
+        : {
+            identity: {
+              key: firstGroup.analysis.identity.key,
+              negated: !firstGroup.analysis.identity.negated,
+            },
+          }),
+      truth: firstGroup.analysis.truth === undefined ? undefined : !firstGroup.analysis.truth,
+    };
+  }
 
-  const truths = [firstGroup.truth];
+  const analyses = [firstGroup.analysis];
   let operator;
   while (cursor < expressionRange.end) {
     const operatorEnd = cssIdentifierTokenEnd(value, cursor);
     const nextOperator = value.slice(cursor, operatorEnd).toLowerCase();
-    if (nextOperator !== 'and' && nextOperator !== 'or') return undefined;
+    if (nextOperator !== 'and' && nextOperator !== 'or') return { truth: undefined };
     operator ??= nextOperator;
-    if (operator !== nextOperator) return undefined;
+    if (operator !== nextOperator) return { truth: undefined };
     const nextGroup = consumeGroup(skipTrivia(operatorEnd));
-    if (nextGroup === undefined) return undefined;
-    truths.push(nextGroup.truth);
+    if (nextGroup === undefined) return { truth: undefined };
+    analyses.push(nextGroup.analysis);
     cursor = skipTrivia(nextGroup.end);
   }
+  if (operator === undefined) return firstGroup.analysis;
+
+  const identitiesByKey = new Map();
+  for (const analysis of analyses) {
+    if (analysis.identity === undefined) continue;
+    const polarities = identitiesByKey.get(analysis.identity.key) ?? new Set();
+    polarities.add(analysis.identity.negated);
+    identitiesByKey.set(analysis.identity.key, polarities);
+  }
+  const hasComplementaryPair = [...identitiesByKey.values()].some(
+    (polarities) => polarities.size === 2,
+  );
+  const truths = analyses.map((analysis) => analysis.truth);
   if (operator === 'and') {
-    if (truths.includes(false)) return false;
-    return truths.every((truth) => truth === true) ? true : undefined;
+    if (truths.includes(false) || hasComplementaryPair) return { truth: false };
+    return { truth: truths.every((truth) => truth === true) ? true : undefined };
   }
-  if (operator === 'or') {
-    if (truths.includes(true)) return true;
-    return truths.every((truth) => truth === false) ? false : undefined;
-  }
-  return truths[0];
+  if (truths.includes(true) || hasComplementaryPair) return { truth: true };
+  return { truth: truths.every((truth) => truth === false) ? false : undefined };
+}
+
+function conditionalBooleanStaticTruth(value, range, parenthesisPairs) {
+  return conditionalBooleanStaticAnalysis(value, range, parenthesisPairs).truth;
 }
 
 function conditionalTestContentsAreStructurallyValid(value, range, parenthesisPairs, functionName) {
@@ -1601,9 +1675,125 @@ function mediaFeatureFunctionContentsAreStructurallyValid(
   return finalArgument.start < finalArgument.end;
 }
 
+function firstValidRuntimeFunctionStaticValidity(
+  value,
+  frame,
+  branchRange,
+  functionName,
+  parenthesisPairs,
+) {
+  const hasFallbackChild = frame.children.some(
+    (child) => child.start >= branchRange.start && child.end <= branchRange.end,
+  );
+  if (functionName === 'progress') {
+    if (isValidProgressRange(frame, value, branchRange, parenthesisPairs)) return true;
+    return hasFallbackChild ? undefined : false;
+  }
+  if (treeCountingFunctionNames.has(functionName)) {
+    const group = frame.treeCountingGroups.find(
+      (candidate) =>
+        candidate.functionStart === branchRange.start && candidate.end === branchRange.end,
+    );
+    if (group === undefined) return false;
+    const contents = trimCssTriviaRange(value, group.openIndex + 1, group.end - 1);
+    return contents.start === contents.end;
+  }
+  if (functionName !== 'random') return undefined;
+
+  const parsedArguments = fallbackIndependentStaticArguments(
+    frame,
+    value,
+    branchRange,
+    functionName,
+    parenthesisPairs,
+  );
+  if (parsedArguments === undefined) return hasFallbackChild ? undefined : false;
+  const numericArgumentRanges = randomNumericArgumentRanges(value, parsedArguments);
+  if (numericArgumentRanges === undefined) return hasFallbackChild ? undefined : false;
+  const numericArgumentStarts = new Set(
+    numericArgumentRanges.map((argumentRange) => argumentRange.start),
+  );
+  const staticNumericArguments = parsedArguments.staticArguments.filter((argument) =>
+    numericArgumentStarts.has(argument.range.start),
+  );
+  if (staticNumericArguments.length !== numericArgumentRanges.length) return undefined;
+  if (!runtimeFunctionStaticArgumentsAreValid(functionName, parsedArguments, numericArgumentRanges))
+    return false;
+  return staticNumericArguments.every(
+    (argument) => analyzeStaticLayerValue(argument.value).resultType === 'number',
+  );
+}
+
+function firstValidBranchIsKnownRuntimeFunction(value, frame, branchRange, parenthesisPairs) {
+  const identifierEnd = cssIdentifierTokenEnd(value, branchRange.start);
+  if (value[identifierEnd] !== '(' || parenthesisPairs.get(identifierEnd) !== branchRange.end - 1)
+    return false;
+  const functionName = value.slice(branchRange.start, identifierEnd).toLowerCase();
+  if (
+    functionName !== 'progress' &&
+    functionName !== 'random' &&
+    !treeCountingFunctionNames.has(functionName)
+  )
+    return false;
+  return (
+    firstValidRuntimeFunctionStaticValidity(
+      value,
+      frame,
+      branchRange,
+      functionName,
+      parenthesisPairs,
+    ) === true
+  );
+}
+
+function conditionalWholeValueStaticValidity(value, group, parenthesisPairs) {
+  if (group.functionName === 'first-valid') {
+    const branchRanges = firstValidBranchValueRanges(value, group, parenthesisPairs);
+    if (branchRanges === undefined || branchRanges === fallbackResolutionTooComplex)
+      return undefined;
+    if (branchRanges.length === 0) return false;
+    const validities = branchRanges.map((branchRange) =>
+      firstValidBranchStaticValidity(value, group, branchRange, parenthesisPairs),
+    );
+    if (validities.includes(true)) return true;
+    return validities.every((validity) => validity === false) ? false : undefined;
+  }
+
+  const analysis = ifBranchAnalysis(value, group, parenthesisPairs);
+  if (analysis === undefined || analysis === fallbackResolutionTooComplex) return undefined;
+  if (!analysis.hasGuaranteedSelection || analysis.branchRanges.length === 0) return undefined;
+  const validities = analysis.branchRanges.map((branchRange) =>
+    firstValidBranchStaticValidity(value, group, branchRange, parenthesisPairs),
+  );
+  if (validities.every((validity) => validity === true)) return true;
+  return validities.every((validity) => validity === false) ? false : undefined;
+}
+
 function firstValidBranchStaticValidity(value, group, branchRange, parenthesisPairs) {
   const branchValue = value.slice(branchRange.start, branchRange.end);
   if (validZIndexWholeValueKeywords.has(branchValue.trim().toLowerCase())) return true;
+
+  const identifierEnd = cssIdentifierTokenEnd(value, branchRange.start);
+  if (identifierEnd === branchRange.end) return false;
+  if (value[identifierEnd] === '(') {
+    const closeIndex = parenthesisPairs.get(identifierEnd);
+    if (closeIndex !== branchRange.end - 1) return false;
+    const functionName = value.slice(branchRange.start, identifierEnd).toLowerCase();
+    const conditionalGroup = group.conditionalChildren.find(
+      (candidate) =>
+        candidate.functionStart === branchRange.start && candidate.end === branchRange.end,
+    );
+    if (conditionalGroup !== undefined)
+      return conditionalWholeValueStaticValidity(value, conditionalGroup, parenthesisPairs);
+    const runtimeValidity = firstValidRuntimeFunctionStaticValidity(
+      value,
+      group.conditionalOwner,
+      branchRange,
+      functionName,
+      parenthesisPairs,
+    );
+    if (runtimeValidity !== undefined) return runtimeValidity;
+  }
   if (
     group.conditionalOwner.children.some(
       (child) => child.start >= branchRange.start && child.end <= branchRange.end,
@@ -1616,8 +1806,6 @@ function firstValidBranchStaticValidity(value, group, branchRange, parenthesisPa
   if (analysis.resultType === 'non-number') return false;
   if (analysis.resultType === 'too-complex') return undefined;
 
-  const identifierEnd = cssIdentifierTokenEnd(value, branchRange.start);
-  if (identifierEnd === branchRange.end) return false;
   if (value[identifierEnd] !== '(') return false;
   const closeIndex = parenthesisPairs.get(identifierEnd);
   if (closeIndex !== branchRange.end - 1) return false;
@@ -1665,12 +1853,7 @@ function firstValidBranchValueRanges(value, group, parenthesisPairs) {
   return selectableBranches;
 }
 
-function conditionalBranchValueRanges(value, group, parenthesisPairs) {
-  if (group.end === undefined) return undefined;
-  if (group.functionName === 'first-valid')
-    return firstValidBranchValueRanges(value, group, parenthesisPairs);
-  if (group.functionName !== 'if') return undefined;
-
+function ifBranchAnalysis(value, group, parenthesisPairs) {
   const branches = [];
   let hasUnconditionalBranch = false;
   let branchStart = group.openIndex + 1;
@@ -1745,7 +1928,17 @@ function conditionalBranchValueRanges(value, group, parenthesisPairs) {
   const finalAppendResult = appendBranch(group.end - 1);
   if (finalAppendResult === fallbackResolutionTooComplex) return fallbackResolutionTooComplex;
   if (!finalAppendResult) return undefined;
-  return branches;
+  return { branchRanges: branches, hasGuaranteedSelection: hasUnconditionalBranch };
+}
+
+function conditionalBranchValueRanges(value, group, parenthesisPairs) {
+  if (group.end === undefined) return undefined;
+  if (group.functionName === 'first-valid')
+    return firstValidBranchValueRanges(value, group, parenthesisPairs);
+  if (group.functionName !== 'if') return undefined;
+  const analysis = ifBranchAnalysis(value, group, parenthesisPairs);
+  if (analysis === undefined || analysis === fallbackResolutionTooComplex) return analysis;
+  return analysis.branchRanges;
 }
 
 function rangeIsValidConditionalExpression(frame, value, range, parenthesisPairs) {
@@ -1758,10 +1951,21 @@ function rangeIsValidConditionalExpression(frame, value, range, parenthesisPairs
   );
 }
 
-function childIsInSelectableConditionalBranch(child, value, parenthesisPairs) {
+function childIsInSelectableConditionalBranch(child, value, parenthesisPairs, ownerRange) {
   let conditionalParent = child.conditionalParent;
   let selectableRange = { start: child.start, end: child.end };
   while (conditionalParent !== undefined) {
+    if (
+      conditionalParent.functionName === 'first-valid' &&
+      conditionalParent.enclosingConditionalParent === undefined
+    ) {
+      const ownerExpressionRange = trimCssTriviaRange(value, ownerRange.start, ownerRange.end);
+      if (
+        conditionalParent.functionStart !== ownerExpressionRange.start ||
+        conditionalParent.end !== ownerExpressionRange.end
+      )
+        return false;
+    }
     const branchRanges = conditionalBranchValueRanges(value, conditionalParent, parenthesisPairs);
     if (branchRanges === fallbackResolutionTooComplex) return true;
     if (
@@ -3952,6 +4156,7 @@ function treeCountingRangeCandidates(frame, value, range, candidate, budget, par
         { start: group.functionStart, end: group.end, conditionalParent: group.conditionalParent },
         value,
         parenthesisPairs,
+        range,
       ) ||
       (group.invalidFunctionParent?.end !== undefined &&
         group.invalidFunctionParent !== group &&
@@ -4181,10 +4386,10 @@ function steppedValueStaticIntervalIsValid(functionName, parsedArguments, number
     (argument) => argument.range.start === intervalRange.start,
   );
   if (staticInterval === undefined) return true;
-  const scalarValue = evaluateStaticLayerNumber(staticInterval.value);
-  if (scalarValue !== undefined) return scalarValue !== 0;
-  return !typedDivisorWitnessValues.some(
-    (witness) => evaluateStaticLayerNumber(`calc((${staticInterval.value}) / (${witness}))`) === 0,
+  if (analyzeStaticLayerValue(staticInterval.value).resultType === 'number')
+    return !isStaticallyZero(staticInterval.value);
+  return !typedDivisorWitnessValues.some((witness) =>
+    isStaticallyZero(`calc((${staticInterval.value}) / (${witness}))`),
   );
 }
 
@@ -4371,7 +4576,12 @@ function steppedValueFunctionHasValidTypedOuterWitness(
   const staticNumericValues = parsedArguments.staticArguments
     .filter((argument) => numberArgumentStarts.has(argument.range.start))
     .map((argument) => argument.value);
-  return typedDivisorWitnessValues.some((witness) => {
+  const firstStaticNumericValue = staticNumericValues[0];
+  const witnessValues = [
+    ...(firstStaticNumericValue === undefined ? [] : [`calc((${firstStaticNumericValue}) / 2)`]),
+    ...typedDivisorWitnessValues,
+  ];
+  return witnessValues.some((witness) => {
     if (!haveCompatibleStaticProgressTypes([...staticNumericValues, witness])) return false;
     const expression = resolveFrameExpressionWithRangeReplacements(frame, value, range, budget, [
       { start: functionRange.start, end: functionRange.end, value: witness },
@@ -4691,13 +4901,18 @@ function conditionalGroupReplacements(
       ),
     };
     for (const nestedCombination of nestedCombinations) {
-      const resolvedBranch = resolveFrameExpressionWithRangeReplacements(
-        branchFrame,
-        value,
-        branchRange,
-        budget,
-        nestedCombination,
-      );
+      const preserveKnownRuntimeBranch =
+        group.functionName === 'first-valid' &&
+        firstValidBranchIsKnownRuntimeFunction(value, frame, branchRange, parenthesisPairs);
+      const resolvedBranch = preserveKnownRuntimeBranch
+        ? value.slice(branchRange.start, branchRange.end)
+        : resolveFrameExpressionWithRangeReplacements(
+            branchFrame,
+            value,
+            branchRange,
+            budget,
+            nestedCombination,
+          );
       if (resolvedBranch === fallbackResolutionTooComplex) return fallbackResolutionTooComplex;
       const nestedAnchor = nestedCombination.find(
         (replacement) => replacement.anchorRange.start !== replacement.anchorRange.end,
@@ -4715,14 +4930,22 @@ function conditionalGroupReplacements(
 
 function conditionalRangeCandidates(frame, value, range, candidate, budget, parenthesisPairs) {
   const trimmedRange = trimCssTriviaRange(value, range.start, range.end);
-  const topLevelGroups = frame.conditionalGroups.filter(
-    (group) =>
-      group.functionStart >= range.start &&
-      group.end <= range.end &&
-      (group.functionName !== 'first-valid' ||
-        (group.functionStart === trimmedRange.start && group.end === trimmedRange.end)) &&
-      group.enclosingConditionalParent === undefined,
-  );
+  const topLevelGroups = frame.conditionalGroups.filter((group) => {
+    if (
+      group.functionStart < range.start ||
+      group.end > range.end ||
+      group.enclosingConditionalParent !== undefined
+    )
+      return false;
+    if (group.functionName !== 'first-valid') return true;
+    if (group.functionStart !== trimmedRange.start || group.end !== trimmedRange.end) return false;
+    const branchRanges = firstValidBranchValueRanges(value, group, parenthesisPairs);
+    return !(
+      Array.isArray(branchRanges) &&
+      branchRanges.length === 1 &&
+      firstValidBranchIsKnownRuntimeFunction(value, frame, branchRanges[0], parenthesisPairs)
+    );
+  });
   if (topLevelGroups.length === 0) return [];
 
   let combinations = [[]];
@@ -4831,6 +5054,26 @@ function conditionalRangeCandidates(frame, value, range, candidate, budget, pare
   return candidates;
 }
 
+function selectedFirstValidRuntimeRanges(frame, value, range, parenthesisPairs) {
+  const trimmedRange = trimCssTriviaRange(value, range.start, range.end);
+  const selectedRanges = [];
+  for (const group of frame.conditionalGroups) {
+    if (
+      group.functionName !== 'first-valid' ||
+      group.functionStart !== trimmedRange.start ||
+      group.end !== trimmedRange.end
+    )
+      continue;
+    const branchRanges = firstValidBranchValueRanges(value, group, parenthesisPairs);
+    if (!Array.isArray(branchRanges)) continue;
+    for (const branchRange of branchRanges) {
+      if (firstValidBranchIsKnownRuntimeFunction(value, frame, branchRange, parenthesisPairs))
+        selectedRanges.push(branchRange);
+    }
+  }
+  return selectedRanges;
+}
+
 function unprovenCandidatesForFrame(frame, value, range, candidate, budget, parenthesisPairs) {
   // Resolving every sibling fallback at once represents only one runtime path:
   // any sibling may instead use its defined custom-property value. Preserve a
@@ -4845,7 +5088,7 @@ function unprovenCandidatesForFrame(frame, value, range, candidate, budget, pare
   const selectableChildren = new Set(
     frame.children.filter(
       (child) =>
-        childIsInSelectableConditionalBranch(child, value, parenthesisPairs) &&
+        childIsInSelectableConditionalBranch(child, value, parenthesisPairs, range) &&
         !childIsInsideProvablyInvalidNumberOnlyFunction(
           child,
           frame,
@@ -4987,10 +5230,24 @@ function unprovenCandidatesForFrame(frame, value, range, candidate, budget, pare
         childCandidate.fallbackIndex >= suppressedRange.start &&
         childCandidate.fallbackIndex < suppressedRange.end,
     ) === true;
-  const progressAnalysis = progressRangeCandidates(
+  const selectedRuntimeRanges = selectedFirstValidRuntimeRanges(
     frame,
     value,
     range,
+    parenthesisPairs,
+  );
+  const selectedProgressRange = selectedRuntimeRanges.find(
+    (selectedRange) =>
+      value.slice(selectedRange.start, selectedRange.start + 9).toLowerCase() === 'progress(',
+  );
+  const selectedRandomRange = selectedRuntimeRanges.find(
+    (selectedRange) =>
+      value.slice(selectedRange.start, selectedRange.start + 7).toLowerCase() === 'random(',
+  );
+  const progressAnalysis = progressRangeCandidates(
+    frame,
+    value,
+    selectedProgressRange ?? range,
     candidate,
     budget,
     parenthesisPairs,
@@ -5100,6 +5357,7 @@ function unprovenCandidatesForFrame(frame, value, range, candidate, budget, pare
   const suppressedRuntimeFunctionRanges = [
     ...(zeroQuotientEndpoint?.ranges ?? []),
     ...signAnalysis.analyzedRanges,
+    ...selectedRuntimeRanges,
   ];
   const boundedRuntimeCandidates = [
     ...conditionalRangeCandidates(frame, value, range, candidate, budget, parenthesisPairs),
@@ -5145,7 +5403,14 @@ function unprovenCandidatesForFrame(frame, value, range, candidate, budget, pare
       parenthesisPairs,
       selectableChildren,
     ),
-    ...randomRangeCandidates(frame, value, range, candidate, budget, parenthesisPairs),
+    ...randomRangeCandidates(
+      frame,
+      value,
+      selectedRandomRange ?? range,
+      candidate,
+      budget,
+      parenthesisPairs,
+    ),
     ...treeCountingRangeCandidates(frame, value, range, candidate, budget, parenthesisPairs),
   ];
   const uneliminatedCandidates = (
