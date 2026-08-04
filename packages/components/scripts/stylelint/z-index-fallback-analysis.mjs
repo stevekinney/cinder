@@ -46,6 +46,7 @@ const validAttrSyntaxTypeNames = new Set([
 ]);
 const signedZeroSensitiveFunctionNames = new Set(['atan2', 'log', 'pow', 'sign']);
 const substitutionFunctionNames = new Set(['attr', 'env', 'var']);
+const signedCalcKeywordPattern = /[+-](?:e|infinity|nan|pi)(?![-_a-z\d])/iy;
 const mathFunctionNames = new Set([
   '-webkit-calc',
   'abs',
@@ -1642,9 +1643,7 @@ function hasInvalidEdgeOperator(value, start, end, allowWebkitCalcPrefix = false
   const range = trimCssTriviaRange(value, start, end);
   const firstCharacter = value[range.start];
   const lastCharacter = value[range.end - 1];
-  const signedCalcKeyword = /^[+-](?:e|infinity|nan|pi)(?![-_a-z\d])/i.test(
-    value.slice(range.start, range.end),
-  );
+  const signedCalcKeyword = /^-infinity(?![-_a-z\d])/i.test(value.slice(range.start, range.end));
   if (firstCharacter === '*' || firstCharacter === '/') return true;
   if (
     (firstCharacter === '+' || firstCharacter === '-') &&
@@ -1693,6 +1692,14 @@ function hasBareOperatorStream(
     if (urlTokenEnd !== undefined) {
       index = urlTokenEnd;
       continue;
+    }
+    if (
+      (character === '+' || character === '-') &&
+      (parenthesisContexts.at(-1)?.mathContext ?? initialMathContext)
+    ) {
+      signedCalcKeywordPattern.lastIndex = index;
+      const signedCalcKeyword = signedCalcKeywordPattern.exec(value)?.[0].toLowerCase();
+      if (signedCalcKeyword !== undefined && signedCalcKeyword !== '-infinity') return true;
     }
     const identifierEnd = cssIdentifierTokenEnd(value, index);
     if (identifierEnd > index) {
@@ -1788,7 +1795,7 @@ function hasAdjacentFallbackToken(frame, value, range, budget) {
 }
 
 function isBareCalcOnlyConstant(value) {
-  return /^[+-]?(?:e|pi|infinity|nan)$/i.test(value.trim());
+  return /^(?:e|pi|infinity|-infinity|nan)$/i.test(value.trim());
 }
 
 function negativeZeroIsSafeFinalLayer(frame, value, range, budget) {

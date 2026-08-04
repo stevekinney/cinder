@@ -117,7 +117,12 @@ describe('cinder/z-index-scale', () => {
   });
 
   test('rejects an undeclared token even with a local reason', async () => {
-    for (const value of ['var(--cinder-z-popvoer)', 'VAR(--cinder-z-popvoer)']) {
+    for (const value of [
+      'var(--cinder-z-popvoer)',
+      'VAR(--cinder-z-popvoer)',
+      'var(--cinder-z-unknown extra)',
+      'var(--cinder-z-popover extra)',
+    ]) {
       const result = warnings(
         await lint(`.fixture { /* cinder-z-index-local: local layer. */ z-index: ${value}; }`),
       );
@@ -764,6 +769,31 @@ describe('cinder/z-index-scale', () => {
       .fixture {
         /* cinder-z-index-local: calc supplies grammar for the nested banned fallback. */
         z-index: ${value};
+      }
+    `);
+
+    expect(warnings(result)).toHaveLength(1);
+  });
+
+  test.each(['-pi', '+pi', '-e', '+e', '-nan', '+nan', '+infinity'])(
+    'discards nested candidates after the invalid signed calc keyword %s',
+    async (keyword) => {
+      const result = await lint(`
+        .fixture {
+          /* cinder-z-index-local: only -infinity is a signed calc keyword. */
+          z-index: var(--outer, calc(${keyword} + var(--inner, -1)));
+        }
+      `);
+
+      expect(warnings(result)).toEqual([]);
+    },
+  );
+
+  test('preserves a nested candidate from a malformed recognized math argument', async () => {
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: malformed math cannot prove a nested fallback safe. */
+        z-index: var(--outer, max(var(--inner, -1), / 1));
       }
     `);
 
@@ -2302,6 +2332,7 @@ describe('cinder/z-index-scale', () => {
     'attr(data-layer unknown-unit, -1)',
     'attr(data-layer raw-string, -1)',
     'attr(data-layer type(<integer>), 9999)',
+    'attr(data-layer type(<length>), 9999)',
     'attr(data-layer type(*), -1)',
     'attr(data-layer type(<integer> | <number>), 9999)',
     'attr(data-layer type(<integer>#), -1)',

@@ -33,8 +33,7 @@ import {
 const ruleName = 'cinder/z-index-scale';
 const localReasonPrefix = 'cinder-z-index-local:';
 const layerTokenPattern = /^var\([\t\n\f\r ]*(--cinder-z-[\w\u0080-\uFFFF-]+)[\t\n\f\r ]*\)$/i;
-const layerTokenFunctionPattern =
-  /var\([\t\n\f\r ]*(--cinder-z-[\w\u0080-\uFFFF-]+)[\t\n\f\r ]*([,)])/iy;
+const layerTokenReferencePattern = /var\([\t\n\f\r ]*(--cinder-z-[\w\u0080-\uFFFF-]+)/iy;
 const declaredLayerTokens = new Set([
   '--cinder-z-backdrop',
   '--cinder-z-dropdown',
@@ -137,8 +136,8 @@ function findLayerTokenReferences(value) {
       index = urlTokenEnd;
       continue;
     }
-    layerTokenFunctionPattern.lastIndex = index;
-    const match = layerTokenFunctionPattern.exec(value);
+    layerTokenReferencePattern.lastIndex = index;
+    const match = layerTokenReferencePattern.exec(value);
     const previousCharacter = value[index - 1];
     if (
       !match ||
@@ -147,7 +146,15 @@ function findLayerTokenReferences(value) {
       previousCharacter === '@'
     )
       continue;
-    references.push({ token: match[1], hasFallback: match[2] === ',' });
+    let terminatorIndex = layerTokenReferencePattern.lastIndex;
+    while (/[\t\n\f\r ]/.test(value[terminatorIndex] ?? '')) terminatorIndex += 1;
+    const terminator = value[terminatorIndex];
+    references.push({
+      token: match[1],
+      hasFallback: terminator === ',',
+      isMalformed: terminator !== ',' && terminator !== ')',
+    });
+    index = layerTokenReferencePattern.lastIndex - 1;
   }
   return references;
 }
@@ -245,8 +252,11 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => {
       // The adjacent reason is the explicit, refactor-safe allow-list for
       // component-local relationships above the universal 0/1 threshold.
       // Never allow the historical magic escape hatch back, even with a note.
-      const referencedTokens = layerTokenReferences.map(({ token }) => token);
-      if (referencedTokens.some((token) => !declaredLayerTokens.has(token))) {
+      if (
+        layerTokenReferences.some(
+          ({ token, isMalformed }) => isMalformed || !declaredLayerTokens.has(token),
+        )
+      ) {
         stylelint.utils.report({ ruleName, result, node: declaration, message: messages.invalid });
         return;
       }
