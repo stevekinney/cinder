@@ -165,6 +165,7 @@
     {value}
     oninput={handleInput}
     class={classNames('cinder-input', className)}
+    data-cinder-full-width
     data-cinder-native-date={rendersNativeDateIcon ? '' : undefined}
     aria-invalid={resolvedAriaInvalid}
     aria-describedby={describedBy}
@@ -180,6 +181,7 @@
       data-native-date={rendersNativeDateIcon ? '' : undefined}
       data-disabled={resolvedDisabled ? '' : undefined}
       data-invalid={isInvalid ? '' : undefined}
+      data-cinder-full-width
     >
       {#if leading}
         <span
