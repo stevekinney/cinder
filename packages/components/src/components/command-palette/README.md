@@ -4,7 +4,7 @@ Modal search overlay for keyboard-first commands, destinations, and record jumpe
 
 CommandPalette intentionally uses a native modal `<dialog>` for top-layer,
 backdrop, focus-trap, and `aria-modal` semantics. See the
-[native dialog contract](../../../../../docs/decisions/command-palette-native-dialog.md).
+[native dialog contract](https://github.com/stevekinney/cinder/blob/main/docs/decisions/command-palette-native-dialog.md).
 For a non-modal single-value picker, use [Combobox](../combobox/README.md).
 
 ## Usage
