@@ -1877,6 +1877,17 @@ function unprovenCandidatesForFrame(frame, value, range, candidate, budget, pare
     )
   )
     return [];
+  const hasNonnegativeFloor =
+    hasFallbackIndependentSafeBound(frame, value, range, 'max', 'negative', parenthesisPairs) ||
+    hasFallbackIndependentClampBound(frame, value, range, 0, 'negative', budget, parenthesisPairs);
+  const hasMagicBound =
+    hasFallbackIndependentSafeBound(frame, value, range, 'max', 'magic', parenthesisPairs) ||
+    hasFallbackIndependentSafeBound(frame, value, range, 'min', 'magic', parenthesisPairs) ||
+    hasFallbackIndependentClampBound(frame, value, range, 2, 'magic', budget, parenthesisPairs);
+  // Every banned classification is eliminated once both independent bounds
+  // are proven. Avoid the remaining whole-expression analyses for wide safe
+  // clamps because they cannot change that result.
+  if (hasNonnegativeFloor && hasMagicBound) return [];
   const additiveNonNumberSuppression =
     frame.resolvedClassification === 'unresolved'
       ? additiveNonNumberCandidateSuppression(frame, value, range, budget, parenthesisPairs)
@@ -2040,13 +2051,6 @@ function unprovenCandidatesForFrame(frame, value, range, candidate, budget, pare
       : [...childCandidates, ...directArgumentCandidates, ...boundedProgressCandidates]
   ).filter((childCandidate) => !candidateConflictsWithStaticMathArgument(childCandidate));
 
-  const hasNonnegativeFloor =
-    hasFallbackIndependentSafeBound(frame, value, range, 'max', 'negative', parenthesisPairs) ||
-    hasFallbackIndependentClampBound(frame, value, range, 0, 'negative', budget, parenthesisPairs);
-  const hasMagicBound =
-    hasFallbackIndependentSafeBound(frame, value, range, 'max', 'magic', parenthesisPairs) ||
-    hasFallbackIndependentSafeBound(frame, value, range, 'min', 'magic', parenthesisPairs) ||
-    hasFallbackIndependentClampBound(frame, value, range, 2, 'magic', budget, parenthesisPairs);
   const contextuallyUnprovenCandidates = uneliminatedCandidates.filter((childCandidate) => {
     const classification = childCandidate.resolvedClassification;
     return !(

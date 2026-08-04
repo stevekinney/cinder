@@ -79,7 +79,13 @@ const unboundedClampEndpoint = Symbol('unbounded-clamp-endpoint');
 export const cssCommentMaskCharacter = '\u0000';
 
 export function isCssWhitespace(character) {
-  return character !== undefined && /[\t\n\f\r ]/.test(character);
+  return (
+    character === ' ' ||
+    character === '\t' ||
+    character === '\n' ||
+    character === '\f' ||
+    character === '\r'
+  );
 }
 
 export function isCssWhitespaceOrComment(character) {
@@ -99,6 +105,8 @@ function quotedStringEnd(value, start) {
 }
 
 export function unquotedUrlTokenEnd(value, start) {
+  const firstCharacter = value.charCodeAt(start) | 0x20;
+  if (firstCharacter !== 0x75) return undefined;
   urlFunctionPattern.lastIndex = start;
   const match = urlFunctionPattern.exec(value);
   const previousCharacter = value[start - 1];
@@ -135,6 +143,8 @@ function hasActualSubstitutionFunction(value) {
       index = urlTokenEnd;
       continue;
     }
+    const firstCharacter = value.charCodeAt(index) | 0x20;
+    if (firstCharacter !== 0x76 && firstCharacter !== 0x65 && firstCharacter !== 0x61) continue;
     substitutionFunctionPattern.lastIndex = index;
     const match = substitutionFunctionPattern.exec(value);
     const previousCharacter = value[index - 1];
@@ -743,6 +753,14 @@ function evaluateConstantArithmetic(expression) {
 function flattenCalcFunctions(value) {
   let output = '';
   for (let index = 0; index < value.length; index += 1) {
+    const firstCharacter = value.charCodeAt(index) | 0x20;
+    if (
+      firstCharacter !== 0x63 &&
+      (firstCharacter !== 0x2d || (value.charCodeAt(index + 1) | 0x20) !== 0x77)
+    ) {
+      output += value[index];
+      continue;
+    }
     calcFunctionPattern.lastIndex = index;
     const calcMatch = calcFunctionPattern.exec(value);
     const previousCharacter = value[index - 1];
@@ -852,6 +870,7 @@ function classifyRelativeLengthSignEndpoints(
       index = urlTokenEnd;
       continue;
     }
+    if ((value.charCodeAt(index) | 0x20) !== 0x73) continue;
     signFunctionPattern.lastIndex = index;
     const signMatch = signFunctionPattern.exec(value);
     const previousCharacter = value[index - 1];
@@ -951,6 +970,7 @@ function classifyRelativeLengthSignEndpoints(
 }
 
 export function decodeCssEscapes(value) {
+  if (!value.includes('\\') && !value.includes('\u0000')) return value;
   return decodeCssEscapesForInspection(value).value;
 }
 
@@ -1045,6 +1065,8 @@ function decodeCssEscapesForInspection(value, baseRanges = literalSourceRanges(v
 }
 
 export function normalizeCssEscapesForInspection(value) {
+  if (!value.includes('\\') && !value.includes('\u0000'))
+    return { value, sourceRanges: literalSourceRanges(value) };
   const output = [];
   const sourceRanges = [];
   const baseRanges = literalSourceRanges(value);
@@ -1122,6 +1144,7 @@ export function normalizeCssEscapesForInspection(value) {
 }
 
 export function protectCssSyntaxEscapes(value) {
+  if (!value.includes('\\')) return value;
   let output = '';
   for (let index = 0; index < value.length; index += 1) {
     if (value[index] !== '\\') {
@@ -1164,7 +1187,16 @@ export function protectCssSyntaxEscapes(value) {
 }
 
 export function isCssIdentifierCharacter(character) {
-  return character !== undefined && /[\w\u0080-\uFFFF-]/.test(character);
+  if (character === undefined) return false;
+  const codePoint = character.charCodeAt(0);
+  return (
+    codePoint === 0x2d ||
+    codePoint === 0x5f ||
+    (codePoint >= 0x30 && codePoint <= 0x39) ||
+    (codePoint >= 0x41 && codePoint <= 0x5a) ||
+    (codePoint >= 0x61 && codePoint <= 0x7a) ||
+    codePoint >= 0x80
+  );
 }
 
 function hasNumericResultType(units) {
