@@ -229,6 +229,51 @@ function disabledFirstNavigationSnippet() {
   }));
 }
 
+function negativeFirstNavigationSnippet() {
+  return createRawSnippet(() => ({
+    render: () => `
+      <div>
+        <button type="button" class="cinder-navigation-item" data-cinder-navigation-item data-key="skipped" tabindex="-1">Skipped</button>
+        <button type="button" class="cinder-navigation-item" data-cinder-navigation-item data-key="enabled">Enabled</button>
+      </div>
+    `,
+  }));
+}
+
+function negativeFinalNavigationSnippet() {
+  return createRawSnippet(() => ({
+    render: () => `
+      <div>
+        <button type="button" class="cinder-navigation-item" data-cinder-navigation-item data-key="enabled">Enabled</button>
+        <button type="button" class="cinder-navigation-item" data-cinder-navigation-item data-key="skipped" tabindex="-1">Skipped</button>
+      </div>
+    `,
+  }));
+}
+
+function inlineControlBeforeNegativeNavigationSnippet() {
+  return createRawSnippet(() => ({
+    render: () => `
+      <div>
+        <button type="button" class="cinder-navigation-item" data-cinder-navigation-item data-key="enabled">Enabled</button>
+        <button type="button" id="inline-control">Inline control</button>
+        <button type="button" class="cinder-navigation-item" data-cinder-navigation-item data-key="skipped" tabindex="-1">Skipped</button>
+      </div>
+    `,
+  }));
+}
+
+function allExcludedNavigationSnippet() {
+  return createRawSnippet(() => ({
+    render: () => `
+      <div>
+        <button type="button" class="cinder-navigation-item" data-cinder-navigation-item aria-disabled="true">Disabled</button>
+        <button type="button" class="cinder-navigation-item" data-cinder-navigation-item tabindex="-1">Excluded</button>
+      </div>
+    `,
+  }));
+}
+
 function keyboardNavigationSnippet(clicks: Record<string, number>) {
   return createRawSnippet(() => ({
     render: () => `
@@ -294,6 +339,7 @@ describe('NavigationBar', () => {
   test('guards responsive portal focus and effective disabled targets', () => {
     expect(navigationBarSource).toContain("item.matches(':disabled')");
     expect(navigationBarSource).toContain('pendingTabFocus');
+    expect(navigationBarSource).toContain('pendingTabFocusTarget');
     expect(navigationBarSource).toContain(
       "isMobileLayout && mobileMenuOpen ? 'cinder-_floating-surface' : undefined",
     );
@@ -917,10 +963,155 @@ describe('NavigationBar', () => {
     });
   });
 
+  test('last sequential navigation item tabs to actions when a final enabled item has tabindex=-1', async () => {
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        items: negativeFinalNavigationSnippet(),
+        menuToggle: toggleSnippet(),
+        actions: actionButtonSnippet(),
+      });
+
+      await openCollapsedMobileMenu(container);
+      const itemsRegion = await waitForMobilePanelPosition(container);
+      const enabledItem = itemsRegion.querySelector('[data-key="enabled"]') as HTMLButtonElement;
+      const accountAction = container.querySelector('#nav-action') as HTMLButtonElement;
+
+      enabledItem.focus();
+      await fireEvent.keyDown(enabledItem, { key: 'Tab' });
+      expect(document.activeElement).toBe(accountAction);
+    });
+  });
+
+  test('reverse Tab uses the first sequential navigation item when an enabled item has tabindex=-1', async () => {
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        items: negativeFirstNavigationSnippet(),
+        menuToggle: toggleSnippet(),
+      });
+
+      await openCollapsedMobileMenu(container);
+      const itemsRegion = await waitForMobilePanelPosition(container);
+      const toggle = container.querySelector('#toggle-btn') as HTMLButtonElement;
+      const enabledItem = itemsRegion.querySelector('[data-key="enabled"]') as HTMLButtonElement;
+
+      enabledItem.focus();
+      await fireEvent.keyDown(enabledItem, { key: 'Tab', shiftKey: true });
+      expect(document.activeElement).toBe(toggle);
+    });
+  });
+
+  test('reverse Tab bridges from an arrow-focused leading item with tabindex=-1', async () => {
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        items: negativeFirstNavigationSnippet(),
+        menuToggle: toggleSnippet(),
+      });
+
+      await openCollapsedMobileMenu(container);
+      const itemsRegion = await waitForMobilePanelPosition(container);
+      const toggle = container.querySelector('#toggle-btn') as HTMLButtonElement;
+      const skippedItem = itemsRegion.querySelector('[data-key="skipped"]') as HTMLButtonElement;
+      const enabledItem = itemsRegion.querySelector('[data-key="enabled"]') as HTMLButtonElement;
+
+      enabledItem.focus();
+      await fireEvent.keyDown(enabledItem, { key: 'ArrowLeft' });
+      expect(document.activeElement).toBe(skippedItem);
+      await fireEvent.keyDown(skippedItem, { key: 'Tab', shiftKey: true });
+      expect(document.activeElement).toBe(toggle);
+    });
+  });
+
+  test('forward Tab bridges from an arrow-focused trailing item with tabindex=-1', async () => {
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        items: negativeFinalNavigationSnippet(),
+        menuToggle: toggleSnippet(),
+        actions: actionButtonSnippet(),
+      });
+
+      await openCollapsedMobileMenu(container);
+      const itemsRegion = await waitForMobilePanelPosition(container);
+      const skippedItem = itemsRegion.querySelector('[data-key="skipped"]') as HTMLButtonElement;
+      const enabledItem = itemsRegion.querySelector('[data-key="enabled"]') as HTMLButtonElement;
+      const accountAction = container.querySelector('#nav-action') as HTMLButtonElement;
+
+      enabledItem.focus();
+      await fireEvent.keyDown(enabledItem, { key: 'ArrowRight' });
+      expect(document.activeElement).toBe(skippedItem);
+      await fireEvent.keyDown(skippedItem, { key: 'Tab' });
+      expect(document.activeElement).toBe(accountAction);
+    });
+  });
+
+  test('forward Tab from the final sequential inline control reaches actions', async () => {
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        items: inlineControlBeforeNegativeNavigationSnippet(),
+        menuToggle: toggleSnippet(),
+        actions: actionButtonSnippet(),
+      });
+
+      await openCollapsedMobileMenu(container);
+      const itemsRegion = await waitForMobilePanelPosition(container);
+      const toggle = container.querySelector('#toggle-btn') as HTMLButtonElement;
+      const enabledItem = itemsRegion.querySelector('[data-key="enabled"]') as HTMLButtonElement;
+      const inlineControl = itemsRegion.querySelector('#inline-control') as HTMLButtonElement;
+      const skippedItem = itemsRegion.querySelector('[data-key="skipped"]') as HTMLButtonElement;
+      const accountAction = container.querySelector('#nav-action') as HTMLButtonElement;
+
+      toggle.focus();
+      await fireEvent.keyDown(toggle, { key: 'Tab' });
+      expect(document.activeElement).toBe(enabledItem);
+
+      inlineControl.focus();
+      await fireEvent.keyDown(inlineControl, { key: 'Tab' });
+      expect(document.activeElement).toBe(accountAction);
+      expect(document.activeElement).not.toBe(skippedItem);
+    });
+  });
+
+  test('pending toggle Tab advances to actions when no navigation item is sequentially focusable', async () => {
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        items: allExcludedNavigationSnippet(),
+        menuToggle: toggleSnippet(),
+        actions: actionButtonSnippet(),
+      });
+
+      await openCollapsedMobileMenu(container);
+      const toggle = container.querySelector('#toggle-btn') as HTMLButtonElement;
+      const accountAction = container.querySelector('#nav-action') as HTMLButtonElement;
+
+      toggle.focus();
+      await fireEvent.keyDown(toggle, { key: 'Tab' });
+      await waitForMobilePanelPosition(container);
+      await tick();
+      expect(document.activeElement).toBe(accountAction);
+    });
+  });
+
   test('toggle Tab skips disabled navigation items', async () => {
     await withResizeObserver(async () => {
       const { container } = render(NavigationBar, {
         items: disabledFirstNavigationSnippet(),
+        menuToggle: toggleSnippet(),
+      });
+
+      await openCollapsedMobileMenu(container);
+      const itemsRegion = await waitForMobilePanelPosition(container);
+      const toggle = container.querySelector('#toggle-btn') as HTMLButtonElement;
+      const enabledItem = itemsRegion.querySelector('[data-key="enabled"]');
+
+      toggle.focus();
+      await fireEvent.keyDown(toggle, { key: 'Tab' });
+      expect(document.activeElement).toBe(enabledItem);
+    });
+  });
+
+  test('toggle Tab skips enabled navigation items removed from sequential tab order', async () => {
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        items: negativeFirstNavigationSnippet(),
         menuToggle: toggleSnippet(),
       });
 
@@ -951,6 +1142,27 @@ describe('NavigationBar', () => {
 
       toggle.focus();
       await fireEvent.keyDown(toggle, { key: 'Tab' });
+      expect(document.activeElement).toBe(brandLink);
+    });
+  });
+
+  test('pending toggle Tab preserves a focusable brand before the portaled items', async () => {
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        brand: brandLinkSnippet(),
+        items: keyboardNavigationSnippet({}),
+        menuToggle: toggleSnippet(),
+        menuTogglePlacement: 'before-brand',
+      });
+
+      await openCollapsedMobileMenu(container);
+      const toggle = container.querySelector('#toggle-btn') as HTMLButtonElement;
+      const brandLink = container.querySelector('#brand-link');
+
+      toggle.focus();
+      await fireEvent.keyDown(toggle, { key: 'Tab' });
+      await waitForMobilePanelPosition(container);
+      await tick();
       expect(document.activeElement).toBe(brandLink);
     });
   });

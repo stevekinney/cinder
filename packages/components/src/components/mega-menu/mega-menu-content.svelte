@@ -12,6 +12,8 @@
     triggerId: (itemId: string) => string;
     submenuTriggerId: (itemId: string, submenuId: string) => string;
     submenuPanelId: (itemId: string, submenuId: string) => string;
+    elementById: <T extends HTMLElement = HTMLElement>(id: string) => T | null;
+    focusElementById: (id: string) => void;
     closeMenu: (restoreFocus?: boolean) => void;
   }
 
@@ -23,6 +25,8 @@
     triggerId,
     submenuTriggerId,
     submenuPanelId,
+    elementById,
+    focusElementById,
     closeMenu,
   }: Props = $props();
 
@@ -42,13 +46,13 @@
     const target = item.submenu[bounded];
     if (!target) return;
     openSubmenuId = target.id;
-    document.getElementById(submenuTriggerId(item.id, target.id))?.focus();
+    focusElementById(submenuTriggerId(item.id, target.id));
   }
 
   async function focusSubmenuPanel(submenuId: string) {
     if (typeof document === 'undefined') return;
     await tick();
-    const panel = document.getElementById(submenuPanelId(item.id, submenuId));
+    const panel = elementById(submenuPanelId(item.id, submenuId));
     if (!(panel instanceof HTMLElement)) return;
     const firstFocusable = panel.querySelector<HTMLElement>('a[href], button:not([disabled])');
     (firstFocusable ?? panel).focus();
@@ -94,7 +98,7 @@
     }
     if (event.key === horizontalKeys.return) {
       event.preventDefault();
-      document.getElementById(triggerId(item.id))?.focus();
+      focusElementById(triggerId(item.id));
       return;
     }
 
@@ -138,7 +142,7 @@
     if (event.key === submenuHorizontalKeys().return && openSubmenu) {
       event.preventDefault();
       event.stopPropagation();
-      document.getElementById(submenuTriggerId(item.id, openSubmenu.id))?.focus();
+      focusElementById(submenuTriggerId(item.id, openSubmenu.id));
       return;
     }
     if (event.key === 'Escape') {

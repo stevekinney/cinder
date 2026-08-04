@@ -2778,7 +2778,7 @@
           "reason": "Editing arbitrary free-form JSON with no schema semantics — use a plain code editor instead."
         }
       ],
-      "related": [],
+      "related": ["json-editor", "schema-form", "code-block"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {

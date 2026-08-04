@@ -433,6 +433,381 @@ describe('resolveTextDirection', () => {
     }
   });
 
+  test('resolves a native CSS nesting parent selector before matching direction rules', () => {
+    const originalWindowGetComputedStyle = window.getComputedStyle;
+    const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
+    const getComputedStyleOverride = ((target: Element) => {
+      const style = originalWindowGetComputedStyle(target);
+      Object.defineProperty(style, 'direction', { value: 'ltr', configurable: true });
+      return style;
+    }) as typeof window.getComputedStyle;
+    window.getComputedStyle = getComputedStyleOverride;
+    globalThis.getComputedStyle = getComputedStyleOverride;
+
+    try {
+      const shell = document.createElement('section');
+      shell.className = 'nested-shell';
+      const element = document.createElement('div');
+      element.className = 'nested-menu';
+      shell.appendChild(element);
+      document.body.appendChild(shell);
+
+      const nestedRule = createStyleRule({ selectorText: '& .nested-menu', direction: 'ltr' });
+      const outerRule = createStyleRule({ selectorText: '.nested-shell', cssRules: [nestedRule] });
+      Object.defineProperty(nestedRule, 'parentRule', { configurable: true, value: outerRule });
+
+      expect(
+        withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
+          elementDirectionStyleOverride(element),
+        ),
+      ).toBe('ltr');
+    } finally {
+      window.getComputedStyle = originalWindowGetComputedStyle;
+      globalThis.getComputedStyle = originalGlobalGetComputedStyle;
+    }
+  });
+
+  test('resolves multiple native CSS nesting parent selectors', () => {
+    const originalWindowGetComputedStyle = window.getComputedStyle;
+    const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
+    const getComputedStyleOverride = ((target: Element) => {
+      const style = originalWindowGetComputedStyle(target);
+      Object.defineProperty(style, 'direction', { value: 'ltr', configurable: true });
+      return style;
+    }) as typeof window.getComputedStyle;
+    window.getComputedStyle = getComputedStyleOverride;
+    globalThis.getComputedStyle = getComputedStyleOverride;
+
+    try {
+      const shell = document.createElement('section');
+      shell.className = 'multi-nested-shell';
+      const region = document.createElement('div');
+      region.className = 'multi-nested-region';
+      const element = document.createElement('div');
+      element.className = 'multi-nested-menu';
+      region.appendChild(element);
+      shell.appendChild(region);
+      document.body.appendChild(shell);
+
+      const innerRule = createStyleRule({ selectorText: '& .multi-nested-menu', direction: 'ltr' });
+      const middleRule = createStyleRule({
+        selectorText: '& .multi-nested-region',
+        cssRules: [innerRule],
+      });
+      const outerRule = createStyleRule({
+        selectorText: '.multi-nested-shell',
+        cssRules: [middleRule],
+      });
+      Object.defineProperty(innerRule, 'parentRule', { configurable: true, value: middleRule });
+      Object.defineProperty(middleRule, 'parentRule', { configurable: true, value: outerRule });
+
+      expect(
+        withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
+          elementDirectionStyleOverride(element),
+        ),
+      ).toBe('ltr');
+    } finally {
+      window.getComputedStyle = originalWindowGetComputedStyle;
+      globalThis.getComputedStyle = originalGlobalGetComputedStyle;
+    }
+  });
+
+  test('walks through conditional rules to the nearest nested style parent', () => {
+    const originalWindowGetComputedStyle = window.getComputedStyle;
+    const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
+    const getComputedStyleOverride = ((target: Element) => {
+      const style = originalWindowGetComputedStyle(target);
+      Object.defineProperty(style, 'direction', { value: 'ltr', configurable: true });
+      return style;
+    }) as typeof window.getComputedStyle;
+    window.getComputedStyle = getComputedStyleOverride;
+    globalThis.getComputedStyle = getComputedStyleOverride;
+
+    try {
+      const shell = document.createElement('section');
+      shell.className = 'conditional-nested-shell';
+      const element = document.createElement('div');
+      element.className = 'conditional-nested-menu';
+      shell.appendChild(element);
+      document.body.appendChild(shell);
+
+      const nestedRule = createStyleRule({
+        selectorText: '& .conditional-nested-menu',
+        direction: 'ltr',
+      });
+      const mediaRule = {
+        cssText: '@media all {}',
+        type: 4,
+        conditionText: 'all',
+        media: {},
+        cssRules: [nestedRule],
+      } as unknown as CSSRule;
+      const outerRule = createStyleRule({
+        selectorText: '.conditional-nested-shell',
+        cssRules: [mediaRule],
+      });
+      Object.defineProperty(nestedRule, 'parentRule', { configurable: true, value: mediaRule });
+      Object.defineProperty(mediaRule, 'parentRule', { configurable: true, value: outerRule });
+
+      expect(
+        withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
+          elementDirectionStyleOverride(element),
+        ),
+      ).toBe('ltr');
+    } finally {
+      window.getComputedStyle = originalWindowGetComputedStyle;
+      globalThis.getComputedStyle = originalGlobalGetComputedStyle;
+    }
+  });
+
+  test('preserves parent selector-list grouping when resolving nesting', () => {
+    const originalWindowGetComputedStyle = window.getComputedStyle;
+    const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
+    const getComputedStyleOverride = ((target: Element) => {
+      const style = originalWindowGetComputedStyle(target);
+      Object.defineProperty(style, 'direction', { value: 'ltr', configurable: true });
+      return style;
+    }) as typeof window.getComputedStyle;
+    window.getComputedStyle = getComputedStyleOverride;
+    globalThis.getComputedStyle = getComputedStyleOverride;
+
+    try {
+      const shell = document.createElement('section');
+      shell.className = 'selector-list-first';
+      const element = document.createElement('div');
+      element.className = 'selector-list-menu';
+      shell.appendChild(element);
+      document.body.appendChild(shell);
+
+      const nestedRule = createStyleRule({
+        selectorText: '& .selector-list-menu',
+        direction: 'ltr',
+      });
+      const outerRule = createStyleRule({
+        selectorText: '.selector-list-first, .selector-list-second',
+        cssRules: [nestedRule],
+      });
+      Object.defineProperty(nestedRule, 'parentRule', { configurable: true, value: outerRule });
+
+      expect(
+        withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
+          elementDirectionStyleOverride(element),
+        ),
+      ).toBe('ltr');
+    } finally {
+      window.getComputedStyle = originalWindowGetComputedStyle;
+      globalThis.getComputedStyle = originalGlobalGetComputedStyle;
+    }
+  });
+
+  test('preserves mixed parent-list combinations for multiple nesting references', () => {
+    const originalWindowGetComputedStyle = window.getComputedStyle;
+    const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
+    const getComputedStyleOverride = ((target: Element) => {
+      const style = originalWindowGetComputedStyle(target);
+      Object.defineProperty(style, 'direction', { value: 'ltr', configurable: true });
+      return style;
+    }) as typeof window.getComputedStyle;
+    window.getComputedStyle = getComputedStyleOverride;
+    globalThis.getComputedStyle = getComputedStyleOverride;
+
+    try {
+      const container = document.createElement('section');
+      const previous = document.createElement('div');
+      previous.className = 'mixed-selector-first';
+      const element = document.createElement('div');
+      element.className = 'mixed-selector-second';
+      container.append(previous, element);
+      document.body.appendChild(container);
+
+      const nestedRule = createStyleRule({ selectorText: '& + &', direction: 'ltr' });
+      const outerRule = createStyleRule({
+        selectorText: '.mixed-selector-first, .mixed-selector-second',
+        cssRules: [nestedRule],
+      });
+      Object.defineProperty(nestedRule, 'parentRule', { configurable: true, value: outerRule });
+
+      expect(
+        withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
+          elementDirectionStyleOverride(element),
+        ),
+      ).toBe('ltr');
+    } finally {
+      window.getComputedStyle = originalWindowGetComputedStyle;
+      globalThis.getComputedStyle = originalGlobalGetComputedStyle;
+    }
+  });
+
+  test('prefixes implicit nesting in mixed nested selector lists', () => {
+    const originalWindowGetComputedStyle = window.getComputedStyle;
+    const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
+    const getComputedStyleOverride = ((target: Element) => {
+      const style = originalWindowGetComputedStyle(target);
+      Object.defineProperty(style, 'direction', { value: 'ltr', configurable: true });
+      return style;
+    }) as typeof window.getComputedStyle;
+    window.getComputedStyle = getComputedStyleOverride;
+    globalThis.getComputedStyle = getComputedStyleOverride;
+
+    try {
+      const element = document.createElement('div');
+      element.className = 'mixed-nested-list-target';
+      document.body.appendChild(element);
+
+      const nestedRule = createStyleRule({
+        selectorText: '& .mixed-nested-list-child, .mixed-nested-list-target',
+        direction: 'ltr',
+      });
+      const outerRule = createStyleRule({
+        selectorText: '.mixed-nested-list-first, .mixed-nested-list-second',
+        cssRules: [nestedRule],
+      });
+      Object.defineProperty(nestedRule, 'parentRule', { configurable: true, value: outerRule });
+
+      expect(
+        withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
+          resolveTextDirection(element, 'rtl'),
+        ),
+      ).toBe('rtl');
+    } finally {
+      window.getComputedStyle = originalWindowGetComputedStyle;
+      globalThis.getComputedStyle = originalGlobalGetComputedStyle;
+    }
+  });
+
+  test('resolves a native nesting parent selector used mid-selector', () => {
+    const originalWindowGetComputedStyle = window.getComputedStyle;
+    const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
+    const getComputedStyleOverride = ((target: Element) => {
+      const style = originalWindowGetComputedStyle(target);
+      Object.defineProperty(style, 'direction', { value: 'ltr', configurable: true });
+      return style;
+    }) as typeof window.getComputedStyle;
+    window.getComputedStyle = getComputedStyleOverride;
+    globalThis.getComputedStyle = getComputedStyleOverride;
+
+    try {
+      const parent = document.createElement('section');
+      parent.className = 'mid-selector-parent';
+      const shell = document.createElement('div');
+      shell.className = 'mid-selector-shell';
+      parent.appendChild(shell);
+      document.body.appendChild(parent);
+
+      const nestedRule = createStyleRule({
+        selectorText: '.mid-selector-parent:has(&)',
+        direction: 'ltr',
+      });
+      const outerRule = createStyleRule({
+        selectorText: '.mid-selector-shell',
+        cssRules: [nestedRule],
+      });
+      Object.defineProperty(nestedRule, 'parentRule', { configurable: true, value: outerRule });
+
+      expect(
+        withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
+          resolveTextDirection(parent, 'rtl'),
+        ),
+      ).toBe('ltr');
+    } finally {
+      window.getComputedStyle = originalWindowGetComputedStyle;
+      globalThis.getComputedStyle = originalGlobalGetComputedStyle;
+    }
+  });
+
+  test('preserves escaped delimiters and literal ampersands in nested selectors', () => {
+    const originalWindowGetComputedStyle = window.getComputedStyle;
+    const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
+    const getComputedStyleOverride = ((target: Element) => {
+      const style = originalWindowGetComputedStyle(target);
+      Object.defineProperty(style, 'direction', { value: 'ltr', configurable: true });
+      return style;
+    }) as typeof window.getComputedStyle;
+    window.getComputedStyle = getComputedStyleOverride;
+    globalThis.getComputedStyle = getComputedStyleOverride;
+
+    try {
+      const shell = document.createElement('section');
+      shell.className = 'escaped-nesting-shell';
+      const escapedComma = document.createElement('div');
+      escapedComma.className = 'escaped,comma';
+      const literalAmpersand = document.createElement('div');
+      literalAmpersand.setAttribute('data-label', '&');
+      const escapedAmpersand = document.createElement('div');
+      escapedAmpersand.className = 'escaped&ampersand';
+      shell.append(escapedComma, literalAmpersand, escapedAmpersand);
+      document.body.appendChild(shell);
+
+      const escapedCommaRule = createStyleRule({
+        selectorText: '.escaped\\,comma',
+        direction: 'ltr',
+      });
+      const literalAmpersandRule = createStyleRule({
+        selectorText: '[data-label="&"]',
+        direction: 'ltr',
+      });
+      const escapedAmpersandRule = createStyleRule({
+        selectorText: '.escaped\\&ampersand',
+        direction: 'ltr',
+      });
+      const outerRule = createStyleRule({
+        selectorText: '.escaped-nesting-shell',
+        cssRules: [escapedCommaRule, literalAmpersandRule, escapedAmpersandRule],
+      });
+      for (const rule of [escapedCommaRule, literalAmpersandRule, escapedAmpersandRule])
+        Object.defineProperty(rule, 'parentRule', { configurable: true, value: outerRule });
+
+      withDocumentStyleSheets([{ cssRules: [outerRule] }], () => {
+        expect(elementDirectionStyleOverride(escapedComma)).toBe('ltr');
+        expect(elementDirectionStyleOverride(literalAmpersand)).toBe('ltr');
+        expect(elementDirectionStyleOverride(escapedAmpersand)).toBe('ltr');
+      });
+    } finally {
+      window.getComputedStyle = originalWindowGetComputedStyle;
+      globalThis.getComputedStyle = originalGlobalGetComputedStyle;
+    }
+  });
+
+  test('preserves delimiters and commas inside quoted nested selector values', () => {
+    const originalWindowGetComputedStyle = window.getComputedStyle;
+    const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
+    const getComputedStyleOverride = ((target: Element) => {
+      const style = originalWindowGetComputedStyle(target);
+      Object.defineProperty(style, 'direction', { value: 'ltr', configurable: true });
+      return style;
+    }) as typeof window.getComputedStyle;
+    window.getComputedStyle = getComputedStyleOverride;
+    globalThis.getComputedStyle = getComputedStyleOverride;
+
+    try {
+      const shell = document.createElement('section');
+      shell.className = 'quoted-nesting-shell';
+      const element = document.createElement('div');
+      element.setAttribute('data-label', '),');
+      shell.appendChild(element);
+      document.body.appendChild(shell);
+
+      const nestedRule = createStyleRule({
+        selectorText: '[data-label="),"]',
+        direction: 'ltr',
+      });
+      const outerRule = createStyleRule({
+        selectorText: '.quoted-nesting-shell',
+        cssRules: [nestedRule],
+      });
+      Object.defineProperty(nestedRule, 'parentRule', { configurable: true, value: outerRule });
+
+      expect(
+        withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
+          elementDirectionStyleOverride(element),
+        ),
+      ).toBe('ltr');
+    } finally {
+      window.getComputedStyle = originalWindowGetComputedStyle;
+      globalThis.getComputedStyle = originalGlobalGetComputedStyle;
+    }
+  });
+
   test('ignores direction rules inside inactive container-query shims', () => {
     const originalWindowGetComputedStyle = window.getComputedStyle;
     const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
@@ -1808,6 +2183,157 @@ describe('resolveTextDirection', () => {
       expect(changes).toBe(1);
       disconnect?.();
       expect(listeners.size).toBe(0);
+    } finally {
+      globalThis.matchMedia = originalMatchMedia;
+    }
+  });
+
+  test('observes media queries in recursively imported stylesheets', () => {
+    const originalMatchMedia = globalThis.matchMedia;
+    const listeners = new Set<EventListener>();
+    let activeListenerCount = 0;
+    const queries: string[] = [];
+    const importedMediaRule = {
+      cssText: '@media (prefers-color-scheme: dark) {}',
+      type: 4,
+      media: {},
+      conditionText: '(prefers-color-scheme: dark)',
+      cssRules: [],
+    } as unknown as CSSRule;
+    const importedRuleList = {
+      [Symbol.iterator]: function* () {
+        yield importedMediaRule;
+      },
+    };
+    const importedSheet = { cssRules: importedRuleList } as unknown as CSSStyleSheet;
+    const importRule = {
+      type: 3,
+      cssText: '@import url("theme.css") screen and (prefers-color-scheme: dark);',
+      media: { mediaText: 'screen and (prefers-color-scheme: dark)' },
+      styleSheet: importedSheet,
+    } as unknown as CSSImportRule;
+    globalThis.matchMedia = ((query: string) =>
+      ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener: () => {},
+        removeListener: () => {},
+        addEventListener: (_type: string, listener: EventListener) => {
+          listeners.add(listener);
+          activeListenerCount += 1;
+        },
+        removeEventListener: (_type: string, listener: EventListener) => {
+          listeners.delete(listener);
+          activeListenerCount -= 1;
+        },
+        dispatchEvent: () => true,
+      }) satisfies MediaQueryList) as typeof globalThis.matchMedia;
+    const originalMatchMediaWithTracking = globalThis.matchMedia;
+    globalThis.matchMedia = ((query: string) => {
+      queries.push(query);
+      return originalMatchMediaWithTracking(query);
+    }) as typeof globalThis.matchMedia;
+    const element = document.createElement('div');
+    document.body.append(element);
+    let changes = 0;
+
+    try {
+      const disconnect = withDocumentStyleSheets([{ cssRules: [importRule] }], () =>
+        observeTextDirectionMediaQueries(element, () => {
+          changes += 1;
+        }),
+      );
+      expect(new Set(queries)).toEqual(
+        new Set(['screen and (prefers-color-scheme: dark)', '(prefers-color-scheme: dark)']),
+      );
+      expect(activeListenerCount).toBe(2);
+      for (const listener of listeners) listener(new Event('change'));
+      expect(changes).toBeGreaterThan(0);
+      disconnect?.();
+      expect(activeListenerCount).toBe(0);
+    } finally {
+      globalThis.matchMedia = originalMatchMedia;
+    }
+  });
+
+  test('deduplicates shared and cyclic imports while observing import media', () => {
+    const originalMatchMedia = globalThis.matchMedia;
+    const listeners = new Set<EventListener>();
+    let activeListenerCount = 0;
+    const queries: string[] = [];
+    const sharedMediaRule = {
+      cssText: '@media (prefers-contrast: more) {}',
+      type: 4,
+      media: {},
+      conditionText: '(prefers-contrast: more)',
+      cssRules: [],
+    } as unknown as CSSRule;
+    const rootSheet = { cssRules: [] } as unknown as CSSStyleSheet;
+    const importedSheet = { cssRules: [] } as unknown as CSSStyleSheet;
+    const sharedSheet = { cssRules: [sharedMediaRule] } as unknown as CSSStyleSheet;
+    const rootImport = {
+      type: 3,
+      cssText: '@import url("nested.css") screen;',
+      media: { mediaText: 'screen' },
+      styleSheet: importedSheet,
+    } as unknown as CSSImportRule;
+    const duplicateSharedImport = {
+      type: 3,
+      cssText: '@import url("shared.css") screen;',
+      media: { mediaText: 'screen' },
+      styleSheet: sharedSheet,
+    } as unknown as CSSImportRule;
+    const cycleImport = {
+      type: 3,
+      cssText: '@import url("root.css");',
+      media: { mediaText: '' },
+      styleSheet: rootSheet,
+    } as unknown as CSSImportRule;
+    const sharedImport = {
+      type: 3,
+      cssText: '@import url("shared.css") screen;',
+      media: { mediaText: 'screen' },
+      styleSheet: sharedSheet,
+    } as unknown as CSSImportRule;
+    Object.defineProperty(rootSheet, 'cssRules', {
+      configurable: true,
+      value: [rootImport, duplicateSharedImport],
+    });
+    Object.defineProperty(importedSheet, 'cssRules', {
+      configurable: true,
+      value: [cycleImport, sharedImport],
+    });
+    globalThis.matchMedia = ((query: string) => {
+      queries.push(query);
+      return {
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener: () => {},
+        removeListener: () => {},
+        addEventListener: (_type: string, listener: EventListener) => {
+          listeners.add(listener);
+          activeListenerCount += 1;
+        },
+        removeEventListener: (_type: string, listener: EventListener) => {
+          listeners.delete(listener);
+          activeListenerCount -= 1;
+        },
+        dispatchEvent: () => true,
+      } satisfies MediaQueryList;
+    }) as typeof globalThis.matchMedia;
+    const element = document.createElement('div');
+    document.body.append(element);
+
+    try {
+      const disconnect = withDocumentStyleSheets([{ cssRules: rootSheet.cssRules }], () =>
+        observeTextDirectionMediaQueries(element, () => {}),
+      );
+      expect(new Set(queries)).toEqual(new Set(['screen', '(prefers-contrast: more)']));
+      expect(activeListenerCount).toBe(2);
+      disconnect?.();
+      expect(activeListenerCount).toBe(0);
     } finally {
       globalThis.matchMedia = originalMatchMedia;
     }

@@ -402,6 +402,29 @@ describe('ChoiceGrid feedback states', () => {
 // ---------------------------------------------------------------------------
 
 describe('ChoiceGrid column layout', () => {
+  test('composes the shared Grid root', async () => {
+    const { container } = render(Wrapper, { ariaLabel: 'Choices', items: [items[0]!] });
+
+    expect(container.querySelector('.cinder-choice-grid.cinder-grid')).not.toBeNull();
+  });
+  test('maps fixed columns to the shared Grid layout variable', () => {
+    const { container } = render(Wrapper, {
+      ariaLabel: 'Choices',
+      columns: 3,
+      items,
+    });
+    const root = container.querySelector<HTMLElement>('.cinder-choice-grid');
+    expect(root?.style.getPropertyValue('--cinder-grid-columns')).toBe('repeat(3, 1fr)');
+  });
+
+  test('maps responsive minimum width to the shared Grid layout variable', () => {
+    const { container } = render(Wrapper, {
+      ariaLabel: 'Choices',
+      items,
+    });
+    const root = container.querySelector<HTMLElement>('.cinder-choice-grid');
+    expect(root?.style.getPropertyValue('--cinder-grid-min-item-width')).toBe('10rem');
+  });
   test('applies .cinder-choice-grid class to the root', () => {
     const { container } = render(Wrapper, {
       ariaLabel: 'Pick one',

@@ -554,6 +554,35 @@ describe('Combobox filtering', () => {
     });
   });
 
+  test('portaled options preserve the root-scoped styling context', async () => {
+    const { container } = render(Combobox, { id: 'fruit', options: fruits });
+    const input = container.querySelector('#fruit') as HTMLInputElement;
+    const originalRoot = input.closest('.cinder-combobox');
+    expect(originalRoot).not.toBeNull();
+    await fireEvent.focus(input);
+    const option = await findOption('Apple');
+    const portaledRoot = option.closest('.cinder-combobox');
+
+    expect(portaledRoot).not.toBeNull();
+    expect(portaledRoot).not.toBe(originalRoot);
+    expect(originalRoot?.contains(portaledRoot)).toBe(false);
+    expect(portaledRoot?.querySelector('.cinder-combobox')).toBeNull();
+  });
+
+  test('a custom instance class survives on the portaled options panel', async () => {
+    const { container } = render(Combobox, { id: 'fruit', options: fruits, class: 'compact' });
+    const input = container.querySelector('#fruit') as HTMLInputElement;
+    await fireEvent.focus(input);
+    const option = await findOption('Apple');
+    const scopedPanel = document.body.querySelector(
+      '.cinder-combobox.compact .cinder-combobox__panel',
+    );
+
+    expect(scopedPanel).not.toBeNull();
+    expect(scopedPanel?.contains(option)).toBe(true);
+    expect(option.closest('.cinder-combobox.compact')).not.toBeNull();
+  });
+
   test('typing with no matches renders the empty state', async () => {
     const { container } = render(Combobox, { id: 'fruit', options: fruits });
     const input = container.querySelector(`#fruit`) as HTMLInputElement;
@@ -566,6 +595,7 @@ describe('Combobox filtering', () => {
       const emptyState = container.querySelector('.cinder-combobox__empty');
       const panel = emptyState?.closest('.cinder-popover') as HTMLElement | null;
       expect(emptyState?.textContent?.trim()).toBe('No results');
+      expect(emptyState?.getAttribute('aria-selected')).toBe('false');
       expect(emptyState?.closest('[role="listbox"]')?.id).toBe('fruit-listbox');
       // The portaled empty panel preserves the `.cinder-combobox` root-scoped
       // styling hook (AGENTS.md § Conventions), so a consumer override such as
@@ -582,15 +612,25 @@ describe('Combobox filtering', () => {
   test('a custom instance class survives on the portaled empty panel', async () => {
     const { container } = render(Combobox, { id: 'fruit', options: fruits, class: 'compact' });
     const input = container.querySelector(`#fruit`) as HTMLInputElement;
+    const originalRoot = input.closest('.cinder-combobox.compact');
+    expect(originalRoot).not.toBeNull();
     await fireEvent.focus(input);
     await fireEvent.input(input, { target: { value: 'zzz' } });
     await waitFor(() => {
       const emptyState = container.querySelector('.cinder-combobox__empty');
+      const scopedPanel = document.body.querySelector(
+        '.cinder-combobox.compact .cinder-combobox__empty-panel',
+      );
       // Documents the AGENTS.md override hook: `.cinder-combobox.compact
       // .cinder-combobox__empty` must keep matching after the empty panel is
       // portaled, so both classes need to land on the same ancestor.
       const scopedAncestor = emptyState?.closest('.cinder-combobox.compact');
+      expect(scopedPanel).not.toBeNull();
+      expect(scopedPanel?.contains(emptyState)).toBe(true);
       expect(scopedAncestor).not.toBeNull();
+      expect(scopedAncestor).not.toBe(originalRoot);
+      expect(originalRoot?.contains(scopedAncestor ?? null)).toBe(false);
+      expect(scopedAncestor?.querySelector('.cinder-combobox')).toBeNull();
     });
   });
 

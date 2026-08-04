@@ -11,7 +11,7 @@
       "description": "Marks the input as required for form validation, matching the native `required` attribute."
     },
     "type": {
-      "enum": ["number", "date", "email", "password", "search", "tel", "text", "url"],
+      "enum": ["number", "date", "email", "password", "search", "tel", "text", "time", "url"],
       "description": "Input type controlling the browser's built-in validation and keyboard. Default `\"text\"`."
     },
     "id": {

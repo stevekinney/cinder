@@ -4,7 +4,7 @@ import { closestAcrossShadow, getShadowHost } from '../portal/portal.utilities.s
 const focusCandidateSelector =
   'button:not([disabled]), a[href], area[href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [contenteditable="true"], [tabindex]';
 
-function getSequentialFocusTargets(root: ParentNode | null): HTMLElement[] {
+export function getSequentialFocusTargets(root: ParentNode | null): HTMLElement[] {
   if (!root) return [];
   return Array.from(root.querySelectorAll<HTMLElement>(focusCandidateSelector)).filter(
     (candidate) =>

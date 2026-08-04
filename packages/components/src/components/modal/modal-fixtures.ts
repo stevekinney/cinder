@@ -30,4 +30,13 @@ export default [
       title: 'Closed dialog',
     },
   },
+  {
+    name: 'anchored-overlay',
+    host: './modal.fixture.svelte',
+    props: {
+      anchoredOverlay: true,
+      open: true,
+      title: 'Dialog with anchored overlay',
+    },
+  },
 ];

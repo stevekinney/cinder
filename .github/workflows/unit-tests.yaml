@@ -28,6 +28,23 @@ on:
   # is the direct fix — a no-op PR pays a full (if fast) run instead of being
   # unmergeable.
   pull_request: {}
+
+  # `merge_group` is what makes the merge queue safe. A required check must run
+  # on the queue's candidate ref too, or the queue can never see it pass.
+  #
+  # This exists because of a real `main` breakage on 2026-07-28: #972 added the
+  # `cinder/interior-border-weight` stylelint rule while #1011 added CSS that
+  # violates it. Both were green — #1011's run finished fourteen minutes BEFORE
+  # #972 merged, so the rule did not yet exist when #1011 was validated. Branch
+  # protection was `strict: false`, so nothing forced a re-run, and `main` went
+  # red on the merge. The lint sweep was never missing (the `unit-tests` job
+  # below has always run it unconditionally); it simply ran against a tree that
+  # no longer existed by merge time.
+  #
+  # The `scope` job below fails safe here: it only scopes on `pull_request`, so
+  # a `merge_group` run executes the FULL unit suite against the exact tree that
+  # is about to become `main`.
+  merge_group: {}
   push:
     branches:
       - main
