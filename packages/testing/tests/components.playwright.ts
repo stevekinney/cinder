@@ -145,6 +145,14 @@ test.describe('table scroll recipe', () => {
 
 const allEntries = loadManifest();
 
+const LOGO_CLOUD_RESPONSIVE_COLUMNS = [3, 4, 5, 6] as const;
+
+function gridTrackCount(element: Element): number {
+  const value = getComputedStyle(element).gridTemplateColumns.trim();
+  if (value === '' || value === 'none') return 0;
+  return value.split(/\s+/u).length;
+}
+
 test.describe('number input resting geometry', () => {
   test('desktop steppers fill the grouped control without dead spacing', async ({
     componentPage,
@@ -181,6 +189,51 @@ test.describe('number input resting geometry', () => {
     expect(
       Math.abs(decrementBox!.x + decrementBox!.width - (groupBox!.x + groupBox!.width)),
     ).toBeLessThanOrEqual(1);
+  });
+});
+
+test.describe('logo cloud responsive columns', () => {
+  test('keeps the accepted rendered column contract at 48rem and 64rem boundaries', async ({
+    componentPage,
+  }) => {
+    const entry = allEntries.find((candidate) => candidate.slug === 'logo-cloud');
+    if (!entry) throw new Error('LogoCloud is missing from the component manifest.');
+
+    const page = await componentPage.open({
+      entry,
+      theme: 'light',
+      viewport: { name: 'desktop', width: 1280, height: 900 },
+    });
+    const logoCloud = page.locator('.cinder-logo-cloud').first();
+    const logoList = logoCloud.locator('.cinder-logo-cloud__list');
+    await expect(logoCloud).toHaveCount(1);
+
+    const cases = [
+      { width: 767, expected: { 3: 2, 4: 2, 5: 2, 6: 2 } },
+      { width: 768, expected: { 3: 3, 4: 4, 5: 4, 6: 4 } },
+      { width: 1023, expected: { 3: 3, 4: 4, 5: 4, 6: 4 } },
+      { width: 1024, expected: { 3: 3, 4: 4, 5: 5, 6: 6 } },
+    ] as const;
+
+    for (const columns of LOGO_CLOUD_RESPONSIVE_COLUMNS) {
+      await logoCloud.evaluate((element, nextColumns) => {
+        element.setAttribute('data-cinder-columns', String(nextColumns));
+        if (element instanceof HTMLElement) {
+          element.style.fontSize = '16px';
+        }
+      }, columns);
+
+      for (const { width, expected } of cases) {
+        await logoCloud.evaluate((element, nextWidth) => {
+          if (element instanceof HTMLElement) {
+            element.style.inlineSize = `${nextWidth}px`;
+          }
+        }, width);
+
+        const actual = await logoList.evaluate(gridTrackCount);
+        expect(actual, `columns=${columns} at ${width}px`).toBe(expected[columns]);
+      }
+    }
   });
 });
 
