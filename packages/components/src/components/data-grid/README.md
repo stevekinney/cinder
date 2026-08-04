@@ -2,7 +2,7 @@
 
 ARIA data grid foundation for spreadsheet-like datasets with stable row identity, explicit column widths, keyboard navigation, row selection, cell/range selection, and pinned-column metadata.
 
-See the [tabular family boundaries](../../../../../docs/decisions/tabular-families.md).
+See the [tabular family boundaries](https://github.com/stevekinney/cinder/blob/main/docs/decisions/tabular-families.md).
 DataGrid is the interactive-grid alternative to the native Table and DataTable
 families; choose Table for bespoke native markup or DataTable for data-shaped
 native tables.

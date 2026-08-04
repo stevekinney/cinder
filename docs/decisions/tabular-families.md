@@ -13,9 +13,10 @@ use cases pay for the most complex behavior.
   does not own data fetching, virtualization, or grid-style cell focus.
 - **DataTable** owns the data-driven convenience contract over native table
   markup. Use it when columns and rows are runtime data and callers want
-  generated captions, scope attributes, sorting, optional row selection, and
-  fixed-height row virtualization for large append-only datasets. Avoid it when
-  cells require bespoke composition or interactive grid behavior.
+  generated captions, scope attributes, sortable headers with consumer-owned
+  row reordering, optional row selection, and fixed-height row virtualization
+  for large append-only datasets. Avoid it when cells require bespoke
+  composition or interactive grid behavior.
 - **DataGrid** owns interactive ARIA `grid` behavior. Use it for row/cell
   focus, keyboard navigation, range selection, stable row identity, column
   sizing/pinning, and optional row/column virtualization. It is not a native
@@ -32,7 +33,7 @@ than reasons to blur these boundaries.
 
 Choose the nearest simpler alternative first: use Table for bespoke semantic
 markup, DataTable for data-shaped native tables, and DataGrid only when grid
-interaction or virtualization requires it. Do not add overlapping features to
-one family to avoid choosing another; a proposal that changes these
+interaction or grid-specific virtualization requires it. Do not add overlapping
+features to one family to avoid choosing another; a proposal that changes these
 responsibilities must update this decision and the affected accessibility and
 interaction tests first.
