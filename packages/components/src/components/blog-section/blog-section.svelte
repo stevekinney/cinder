@@ -41,24 +41,26 @@
 
 <svelte:element
   this={as}
-  class={classNames('cinder-blog-section', className)}
+  class={classNames('cinder-_section-skeleton', 'cinder-blog-section', className)}
   data-cinder-columns={String(columns)}
   {...rest}
 >
   <Container {maxWidth}>
-    <div class="cinder-blog-section__inner">
+    <div class="cinder-_section-skeleton__inner cinder-blog-section__inner">
       {#if title || description}
-        <header class="cinder-blog-section__header">
+        <header class="cinder-_section-skeleton__header cinder-blog-section__header">
           {#if title}
-            <h2 class="cinder-blog-section__title">{title}</h2>
+            <h2 class="cinder-_section-skeleton__title cinder-blog-section__title">{title}</h2>
           {/if}
           {#if description}
-            <p class="cinder-blog-section__description">{description}</p>
+            <p class="cinder-_section-skeleton__description cinder-blog-section__description">
+              {description}
+            </p>
           {/if}
         </header>
       {/if}
 
-      <ul class="cinder-blog-section__list">
+      <ul class="cinder-_section-skeleton__list cinder-blog-section__list">
         {#each posts as post, index (`${post.title}-${index}`)}
           <li class="cinder-blog-section__item">
             <article class="cinder-card" data-cinder-variant="card">

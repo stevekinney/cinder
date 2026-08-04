@@ -22,8 +22,10 @@
  *      layer order is declared up front rather than inferred from insertion
  *      order (which would silently invert the cascade). Re-declaring the same
  *      order after `@lostgradient/cinder/styles` already ran is a spec no-op.
- *   5. The ONLY at-rules permitted outside the wrapper are the leading prelude
- *      and leading sibling-leaf `@import '../<leaf>/<leaf>.css'` statements.
+ *   5. The ONLY at-rules permitted outside the wrapper are the leading prelude,
+ *      leading sibling-leaf `@import '../<leaf>/<leaf>.css'` statements, and
+ *      private `../_internal/<name>.css` imports from one-level component
+ *      sidecars whose source and distribution paths resolve identically.
  *      Compound parents (Tabs, Table, Accordion, SideNavigation) use the
  *      imports so that importing `@lostgradient/cinder/<parent>/styles` pulls the whole
  *      family. The path shape mirrors the verbatim dist layout —
@@ -40,6 +42,9 @@
  * Used as a pre-emit gate in `scripts/build.ts`: any violation aborts the
  * build before sidecars are copied into `dist/`.
  */
+
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
 
 import { parse, type AtRule, type Container, type Document, type Root } from 'postcss';
 import selectorParser from 'postcss-selector-parser';
@@ -115,15 +120,31 @@ function isLayerOrderPreludeNode(node: { type: string }): boolean {
  * `<leaf>/<leaf>.css`.
  */
 const SIBLING_LEAF_IMPORT_PARAMS = /^(['"])\.\.\/([a-z][a-z0-9-]*)\/\2\.css\1$/;
+const PRIVATE_COMPONENT_IMPORT_PARAMS = /^(['"])\.\.\/_internal\/[a-z][a-z0-9-]*\.css\1$/;
 
-/**
- * Whether a `@import` at-rule is a permitted sibling-leaf import (see
- * {@link SIBLING_LEAF_IMPORT_PARAMS}). The capture group `\2` forces the
- * directory name and file basename to match, so `../tab/tab.css` passes while
- * `../tab/other.css`, `'foo'`, or `url(...)` forms do not.
- */
-function isSiblingLeafImport(atRule: AtRule): boolean {
-  return SIBLING_LEAF_IMPORT_PARAMS.test(atRule.params.trim());
+function isOneLevelComponentSidecar(file: string | undefined): boolean {
+  if (!file) return false;
+  const normalizedFile = file.replaceAll('\\', '/');
+  const componentsMarker = '/src/components/';
+  const componentsIndex = normalizedFile.indexOf(componentsMarker);
+  const relativeStart =
+    componentsIndex === -1
+      ? normalizedFile.startsWith('src/components/')
+        ? 'src/components/'.length
+        : -1
+      : componentsIndex + componentsMarker.length;
+  if (relativeStart === -1) return false;
+  const relativeSegments = normalizedFile.slice(relativeStart).split('/').filter(Boolean);
+  return relativeSegments.length === 2;
+}
+
+function isAllowedComponentImport(atRule: AtRule): boolean {
+  const params = atRule.params.trim();
+  if (SIBLING_LEAF_IMPORT_PARAMS.test(params)) return true;
+  return (
+    PRIVATE_COMPONENT_IMPORT_PARAMS.test(params) &&
+    isOneLevelComponentSidecar(atRule.root().source?.input.file)
+  );
 }
 
 /**
@@ -163,7 +184,7 @@ export function isSingleComponentLayer(root: Root): boolean {
     if (isLayerOrderPreludeNode(node)) {
       continue;
     }
-    if (node.type === 'atrule' && node.name === 'import' && isSiblingLeafImport(node)) {
+    if (node.type === 'atrule' && node.name === 'import' && isAllowedComponentImport(node)) {
       continue;
     }
     return false;
@@ -251,7 +272,11 @@ export async function checkComponentCss(file: string): Promise<CssViolation[]> {
   return checkComponentCssSource(source, file);
 }
 
-export function checkComponentCssSource(source: string, file: string): CssViolation[] {
+export function checkComponentCssSource(
+  source: string,
+  file: string,
+  importStack: readonly string[] = [resolve(file)],
+): CssViolation[] {
   const violations: CssViolation[] = [];
 
   let root: Root;
@@ -274,13 +299,52 @@ export function checkComponentCssSource(source: string, file: string): CssViolat
   // family — that path resolves identically in `src/` and `dist/` because the
   // layout mirrors. Reject every other `@import` upfront.
   root.walkAtRules('import', (atRule) => {
-    if (isSiblingLeafImport(atRule)) return;
+    if (isAllowedComponentImport(atRule)) {
+      if (atRule.parent !== root) {
+        violations.push({
+          file,
+          line: atRule.source?.start?.line ?? 1,
+          column: atRule.source?.start?.column ?? 1,
+          message:
+            'Allowed component stylesheet imports must appear at the root level before the component layer block.',
+        });
+        return;
+      }
+      const params = atRule.params.trim();
+      if (PRIVATE_COMPONENT_IMPORT_PARAMS.test(params)) {
+        const importPath = params.slice(1, -1);
+        const target = resolve(dirname(file), importPath);
+        if (!existsSync(target)) {
+          violations.push({
+            file,
+            line: atRule.source?.start?.line ?? 1,
+            column: atRule.source?.start?.column ?? 1,
+            message: `Private component stylesheet import does not resolve: ${params}.`,
+          });
+        } else if (importStack.includes(target)) {
+          violations.push({
+            file,
+            line: atRule.source?.start?.line ?? 1,
+            column: atRule.source?.start?.column ?? 1,
+            message: `Private component stylesheet import cycle detected: ${[...importStack, target].join(' -> ')}.`,
+          });
+        } else {
+          violations.push(
+            ...checkComponentCssSource(readFileSync(target, 'utf8'), target, [
+              ...importStack,
+              target,
+            ]),
+          );
+        }
+      }
+      return;
+    }
     violations.push({
       file,
       line: atRule.source?.start?.line ?? 1,
       column: atRule.source?.start?.column ?? 1,
       message:
-        "`@import` is not allowed inside a component CSS sidecar, except a sibling-leaf family import of the form `@import '../<leaf>/<leaf>.css'`. The sidecar is copied verbatim into `dist/components/<name>/`, where only sibling-leaf paths resolve. Inline other rules instead.",
+        "`@import` is not allowed inside a component CSS sidecar, except a sibling-leaf family import of the form `@import '../<leaf>/<leaf>.css'` or a private `../_internal/<name>.css` import from a one-level component sidecar. The sidecar is copied verbatim into `dist/components/<name>/`, so deeper relative private paths do not resolve. Inline other rules instead.",
     });
   });
 
@@ -345,7 +409,7 @@ export function checkComponentCssSource(source: string, file: string): CssViolat
       (node) =>
         !isComponentLayerNode(node) &&
         !isLayerOrderPreludeNode(node) &&
-        !(node.type === 'atrule' && node.name === 'import' && isSiblingLeafImport(node)),
+        !(node.type === 'atrule' && node.name === 'import' && isAllowedComponentImport(node)),
     );
     const target = offender ?? root;
     violations.push({
