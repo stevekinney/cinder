@@ -1536,6 +1536,17 @@ describe('cinder/z-index-scale', () => {
     expect(performance.now() - startedAt).toBeLessThan(2_000);
   });
 
+  test('indexes nearest math parents for deeply nested unresolved substitutions', async () => {
+    const { bannedFallback } = await import(fallbackAnalysisPath);
+    const depth = 16_000;
+    const nestedRuntime = `${'calc('.repeat(depth)}var(--runtime)${')'.repeat(depth)}`;
+    const startedAt = performance.now();
+    const result = bannedFallback(`var(--outer, calc(hypot(1px, ${nestedRuntime}) / 1px))`);
+
+    expect(result?.reason).toBe('too-complex');
+    expect(performance.now() - startedAt).toBeLessThan(2_000);
+  });
+
   test('bounds nested zero-product factor analysis with unresolved runtime substitutions', async () => {
     let nestedProduct = 'var(--runtime)';
     for (let index = 0; index < 4_000; index += 1)
@@ -3036,13 +3047,18 @@ describe('cinder/z-index-scale', () => {
     ['calc(hypot(9999px, var(--runtime)) / 1px)', 1],
     ['calc(hypot(var(--runtime), 9999px) / 1px)', 1],
     ['calc(hypot(9999deg, var(--runtime)) / 1deg)', 1],
+    ['calc(hypot(9999em, var(--runtime)) / 1em)', 1],
+    ['calc(hypot(9999rem, var(--runtime)) / 1rem)', 1],
     ['calc(hypot(9999px, var(--runtime)) / 1px + var(--offset, 0))', 1],
     ['calc(0 * hypot(var(--ignored), 1px) + hypot(9999px, var(--runtime)) / 1px)', 1],
+    ['calc(0 * hypot(var(--ignored), 1px) / 1px + hypot(9999px, var(--runtime)) / 1px)', 1],
     ['calc(hypot(9999px, var(--runtime)) / 1px + hypot(0px, var(--other)) / 1px)', 1],
     ['calc(hypot(9999px, var(--runtime)) / 1px + hypot(var(--other), 0px) / 1px)', 1],
     ['calc(hypot(9999px, var(--runtime)) / 1px + hypot(0deg, var(--other)) / 1deg)', 1],
+    ['calc(20000 - hypot(10000px, var(--runtime)) / 1px)', 1],
     ['hypot(9999px, var(--runtime))', 0],
     ['calc(hypot(10000px, var(--runtime)) / 1px)', 0],
+    ['calc(hypot(9999px, var(--left)) + hypot(9999deg, var(--right)))', 0],
   ] as const)(
     'evaluates typed-zero witnesses for unresolved hypot(): %s',
     async (fallback, warningCount) => {
@@ -3063,6 +3079,9 @@ describe('cinder/z-index-scale', () => {
     'calc(9999 * sin(var(--runtime)))',
     'calc(9999 * cos(var(--runtime)))',
     'calc(9999 * tan(var(--runtime)))',
+    'calc(9999 * asin(var(--runtime)) / 90deg)',
+    'calc(9999 * acos(var(--runtime)) / 90deg)',
+    'calc(9999 * atan(var(--runtime)) / 90deg)',
   ])('fails closed for an unresolved trigonometric range: %s', async (fallback) => {
     const [warning] = warnings(
       await lint(`
@@ -3075,6 +3094,22 @@ describe('cinder/z-index-scale', () => {
 
     expect(warning?.text).toContain('too complex to verify safely');
   });
+
+  test.each(['sin', 'cos', 'tan', 'asin', 'acos', 'atan'])(
+    'does not report a statically invalid unresolved trigonometric function: %s',
+    async (functionName) => {
+      expect(
+        warnings(
+          await lint(`
+            .fixture {
+              /* cinder-z-index-local: trigonometric functions accept exactly one argument. */
+              z-index: var(--outer, calc(9999 * ${functionName}(var(--runtime), 1)));
+            }
+          `),
+        ),
+      ).toEqual([]);
+    },
+  );
 
   test.each([
     'calc(0 * sin(var(--runtime)))',
