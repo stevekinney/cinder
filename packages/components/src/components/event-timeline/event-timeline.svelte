@@ -8,9 +8,11 @@
    * @tag schedule
    * @tag timeline
    * @useWhen Showing several fired and upcoming events across a bounded time window, such as a next-24-hour schedule strip.
-   * @avoidWhen Showing vertical process history or dense activity feeds. | timeline
+   * @avoidWhen Showing sequential process history. | timeline
    * @avoidWhen Showing step-by-step run execution state. | run-step-timeline
-   * @related timeline, run-step-timeline, status-dot
+   * @avoidWhen Showing a user-facing activity feed. | feed
+   * @avoidWhen Showing a dense operational stream. | event-stream-viewer
+   * @related timeline, run-step-timeline, feed, event-stream-viewer, status-dot
    */
   export type {
     EventTimelineDate,
@@ -19,6 +21,8 @@
     EventTimelineSize,
     EventTimelineState,
   } from './event-timeline.types.ts';
+
+  // See docs/decisions/chronological-display-boundaries.md for this family's boundary.
 </script>
 
 <script lang="ts">

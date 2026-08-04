@@ -6,12 +6,16 @@
    * @purpose Ordered list container for a chronological stream of feed-event entries, optionally exposed as a live region.
    * @tag timeline
    * @tag activity
-   * @useWhen Rendering an activity log, audit trail, or notification timeline.
+   * @useWhen Rendering a user-facing activity stream or notification timeline.
    * @useWhen Announcing newly appended entries to assistive technology via the live prop.
    * @avoidWhen Displaying a one-off transient notice — use toast-region or banner instead.
-   * @related feed-event
+   * @avoidWhen Displaying static temporal history or execution state — use timeline or run-step-timeline.
+   * @avoidWhen Displaying a bounded schedule or dense diagnostics — use event-timeline or event-stream-viewer.
+   * @related timeline, run-step-timeline, event-timeline, event-stream-viewer, feed-event
    */
   export type { FeedProps } from './feed.types.ts';
+
+  // See docs/decisions/chronological-display-boundaries.md for this family's boundary.
 </script>
 
 <script lang="ts">

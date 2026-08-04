@@ -3,16 +3,17 @@
    * @cinder
    * @category data-display
    * @status stable
-   * @purpose Ordered execution rail for async run state: per-step status, durations, retries, plus parallel branch groups, rewound speculation, and saga compensation.
+   * @purpose Execution-state rail for async steps, durations, retries, branches, speculation, and compensation.
    * @tag timeline
    * @tag progress
    * @tag execution
-   * @useWhen Displaying the live or completed state of a multi-step async operation: CI jobs, workflow runs, import pipelines, or deployments.
-   * @useWhen Showing a sequence where one step is currently active and prior steps have streamed in over time.
-   * @useWhen Visualizing speculative parallel work (race N lanes, keep the winner) or saga-style compensation of a forward step.
+   * @useWhen Showing live or completed CI, workflow, import, or deployment steps.
+   * @useWhen Showing speculative parallel branches or saga compensation.
    * @avoidWhen Guiding users through an interactive wizard where they choose what to do next — use steps instead.
    * @avoidWhen Showing a flat timestamp-first event log without structured step state — use timeline instead.
-   * @related timeline, steps, status-dot, progress, badge, collapsible
+   * @avoidWhen Showing a bounded horizontal schedule or activity stream — use event-timeline or feed instead.
+   * @avoidWhen Showing a dense operational log without structured step state, such as raw CI or job output — use event-stream-viewer instead.
+   * @related timeline, event-timeline, feed, steps, event-stream-viewer
    */
   import type { RunStep, RunStepBranchGroup } from './run-step-timeline.types.ts';
 
@@ -27,6 +28,8 @@
     RunStepTimelineEntry,
     RunStepTimelineProps,
   } from './run-step-timeline.types.ts';
+
+  // See docs/decisions/chronological-display-boundaries.md for this family's boundary.
 
   // View-model row types for the render pipeline. Defined in the module script
   // so snippet parameter annotations below can resolve them (svelte-check does
