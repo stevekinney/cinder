@@ -18,7 +18,9 @@ export type GridProps = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
   rowGap?: string | undefined;
   /** Column gap override. Wins over `gap` for columns. */
   columnGap?: string | undefined;
-  /** Enables a single-column fallback when the Grid element's border-box width is 48rem or less.
+  /**
+   * Enables a single-column fallback when the Grid element's border-box width is 48rem or less
+   * and resets direct Grid.Item placement to auto flow.
    * @default false
    */
   narrowCollapseEnabled?: boolean | undefined;

@@ -29,7 +29,7 @@
     collapse = true,
     as = 'div',
     class: customClassName,
-    children,
+    children: content,
     ...rest
   }: BentoGridProps = $props();
 
@@ -55,6 +55,6 @@
   class={classNames('cinder-bento-grid', customClassName)}
 >
   {#snippet children()}
-    {@render children?.()}
+    {@render content?.()}
   {/snippet}
 </Grid>

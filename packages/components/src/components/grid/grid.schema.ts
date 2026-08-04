@@ -32,7 +32,7 @@ const schema = {
     narrowCollapseEnabled: {
       type: 'boolean',
       description:
-        "Enables a single-column fallback when the Grid element's border-box width is 48rem or less.",
+        "Enables a single-column fallback when the Grid element's border-box width is 48rem or less\nand resets direct Grid.Item placement to auto flow.",
       default: false,
     },
     minItemWidth: {
