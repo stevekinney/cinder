@@ -23,6 +23,7 @@
   import { classNames } from '../../utilities/class-names.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
   import { commitValue } from '../../utilities/value-change.ts';
+  import FormFieldFrame from '../../_internal/form-field-frame.svelte';
 
   let {
     id,
@@ -73,8 +74,6 @@
       disabled,
     }),
   );
-  const ownDescriptionId = $derived(field.ownDescriptionId);
-  const ownErrorId = $derived(field.ownErrorId);
   const describedBy = $derived(field.describedBy);
   const resolvedAriaInvalid = $derived(field.ariaInvalid);
   const resolvedRequired = $derived(field.required);
@@ -85,6 +84,15 @@
   const hasTrailing = $derived(!!trailing || isNativeDateInput);
   const hasGroupWrapper = $derived(!!leading || hasTrailing);
   const isInvalid = $derived(resolvedAriaInvalid === 'true');
+  const groupModifiers = $derived(
+    classNames(
+      leading && 'cinder-input-group--leading',
+      hasTrailing && 'cinder-input-group--trailing',
+      rendersNativeDateIcon && 'cinder-input-group--native-date',
+      resolvedDisabled && 'cinder-input-group--disabled',
+      isInvalid && 'cinder-input-group--invalid',
+    ),
+  );
   let inputNode: HTMLInputElement | undefined = $state();
   let resetSyncTimeout: ReturnType<typeof setTimeout> | undefined;
 
@@ -157,34 +165,23 @@
     {value}
     oninput={handleInput}
     class={classNames('cinder-input', className)}
+    data-cinder-full-width
     data-cinder-native-date={rendersNativeDateIcon ? '' : undefined}
     aria-invalid={resolvedAriaInvalid}
     aria-describedby={describedBy}
   />
 {/snippet}
 
-<div class="cinder-input-field" data-cinder-full-width>
-  {#if label}
-    <label
-      for={id}
-      class={classNames('cinder-input-field__label', hideLabel && 'cinder-sr-only')}
-      data-disabled={resolvedDisabled || undefined}
-    >
-      {label}
-      {#if resolvedRequired}
-        <span class="cinder-_required-marker" aria-hidden="true">*</span>
-      {/if}
-    </label>
-  {/if}
-
+{#snippet control()}
   {#if hasGroupWrapper}
     <div
-      class={classNames('cinder-input-group', groupClassName)}
+      class={classNames('cinder-input-group', groupClassName, groupModifiers)}
       data-leading={leading ? '' : undefined}
       data-trailing={hasTrailing ? '' : undefined}
       data-native-date={rendersNativeDateIcon ? '' : undefined}
       data-disabled={resolvedDisabled ? '' : undefined}
       data-invalid={isInvalid ? '' : undefined}
+      data-cinder-full-width
     >
       {#if leading}
         <span
@@ -218,12 +215,84 @@
   {:else}
     {@render inputElement()}
   {/if}
+{/snippet}
 
-  {#if description}
-    <p id={ownDescriptionId} class="cinder-input-field__description">{description}</p>
+{#snippet leadingAdornment()}
+  {#if leading}
+    <span
+      class={classNames('cinder-input-group__leading', !leadingInteractive && 'cinder-_truncate')}
+      aria-hidden={leadingInteractive ? undefined : 'true'}>{@render leading()}</span
+    >
   {/if}
+{/snippet}
+{#snippet trailingAdornment()}
+  {#if trailing}
+    <span
+      class={classNames('cinder-input-group__trailing', !trailingInteractive && 'cinder-_truncate')}
+      aria-hidden={trailingInteractive ? undefined : 'true'}>{@render trailing()}</span
+    >
+  {:else if rendersNativeDateIcon}
+    <span
+      class="cinder-input-group__trailing cinder-input-group__date-icon cinder-_truncate"
+      aria-hidden="true">{@render calendarIcon()}</span
+    >
+  {/if}
+{/snippet}
 
-  {#if error}
-    <p id={ownErrorId} class="cinder-input-field__error" aria-live="polite">{error}</p>
+{#if context}
+  {#if label || description || error}
+    <FormFieldFrame
+      {id}
+      label={context.labelId ? undefined : label}
+      {hideLabel}
+      {description}
+      {error}
+      required={resolvedRequired}
+      disabled={resolvedDisabled}
+      class="cinder-input-field"
+      fullWidth
+      descriptionClass="cinder-input-field__description"
+      errorClass="cinder-input-field__error"
+      descriptionId={field.ownDescriptionId}
+      errorId={field.ownErrorId}
+      control={inputElement}
+      controlClass={hasGroupWrapper
+        ? classNames('cinder-input-group', groupClassName, groupModifiers)
+        : undefined}
+      controlLeading={!!leading}
+      controlTrailing={hasTrailing}
+      controlNativeDate={rendersNativeDateIcon}
+      controlDisabled={resolvedDisabled}
+      controlInvalid={isInvalid}
+      before={hasGroupWrapper ? leadingAdornment : undefined}
+      after={hasGroupWrapper ? trailingAdornment : undefined}
+    />
+  {:else}
+    {@render control()}
   {/if}
-</div>
+{:else}
+  <FormFieldFrame
+    {id}
+    {label}
+    {hideLabel}
+    {description}
+    {error}
+    required={required ?? false}
+    disabled={disabled ?? false}
+    class="cinder-input-field"
+    fullWidth
+    descriptionClass="cinder-input-field__description"
+    errorClass="cinder-input-field__error"
+    control={inputElement}
+    controlClass={hasGroupWrapper
+      ? classNames('cinder-input-group', groupClassName, groupModifiers)
+      : undefined}
+    controlLeading={!!leading}
+    controlTrailing={hasTrailing}
+    controlNativeDate={rendersNativeDateIcon}
+    controlDisabled={resolvedDisabled}
+    controlInvalid={isInvalid}
+    before={hasGroupWrapper ? leadingAdornment : undefined}
+    after={hasGroupWrapper ? trailingAdornment : undefined}
+  />
+{/if}

@@ -22,12 +22,20 @@ const {
   prepareHydrationSource,
   __serverBuildCacheForTests,
   __tempFileRegistryForTests,
+  resolveCinderSourceSubpath,
 } = await import('./hydrate.ts');
 const { default: Input } = await import('../components/input/input.svelte');
 
 const INPUT_SOURCE = join(import.meta.dir, '..', 'components', 'input', 'input.svelte');
 
 describe('renderThenHydrate', () => {
+  test('aliases only exported public Cinder component subpaths', () => {
+    expect(resolveCinderSourceSubpath('@lostgradient/cinder/form-field')).toContain(
+      '/src/components/form-field/index.ts',
+    );
+    expect(resolveCinderSourceSubpath('@lostgradient/cinder/_radio')).toBeUndefined();
+  });
+
   test('renders Input on the server and hydrates without warnings', async () => {
     const result = await renderThenHydrate(Input, INPUT_SOURCE, {
       id: 'hydrate-input',

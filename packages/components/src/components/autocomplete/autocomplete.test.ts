@@ -112,13 +112,13 @@ describe('Autocomplete — rendering and ARIA', () => {
     const input = getInput(container);
     const describedBy = input.getAttribute('aria-describedby')?.split(/\s+/) ?? [];
 
-    expect(container.querySelector('.cinder-input-field__label')?.getAttribute('for')).toBe(
+    expect(container.querySelector('.cinder-form-field__label')?.getAttribute('for')).toBe(
       'owned-field',
     );
-    expect(container.querySelector('.cinder-input-field__description')?.textContent).toBe(
+    expect(container.querySelector('.cinder-form-field__description')?.textContent).toBe(
       'Type at least one character',
     );
-    expect(container.querySelector('.cinder-input-field__error')?.textContent).toBe(
+    expect(container.querySelector('.cinder-form-field__error')?.textContent).toBe(
       'Choose a valid record',
     );
     expect(container.querySelector('.cinder-autocomplete__label')).toBeNull();

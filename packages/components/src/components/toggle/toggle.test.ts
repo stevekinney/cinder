@@ -506,4 +506,16 @@ describe('Toggle — FormField context', () => {
     const button = container.querySelector('button[role="switch"]') as HTMLButtonElement;
     expect(button.disabled).toBe(false);
   });
+
+  test('unlabeled FormField preserves a Toggle own label', async () => {
+    const { default: FormFieldToggleFixture } =
+      await import('../../test/fixtures/form-field-toggle-fixture.svelte');
+    const { container } = render(FormFieldToggleFixture, {
+      props: { fieldId: 'ctx-toggle-label', toggleLabel: 'Notifications' },
+    });
+    const button = container.querySelector('button[role="switch"]') as HTMLButtonElement;
+    const label = container.querySelector('.cinder-toggle-field__label');
+    expect(label?.textContent).toContain('Notifications');
+    expect(button.getAttribute('aria-labelledby')).toBe(label?.id ?? null);
+  });
 });

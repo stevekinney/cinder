@@ -30,6 +30,32 @@ function idsIn(container: Element): string[] {
 }
 
 describe('Input rendering', () => {
+  test('standalone FormField presentation is included by the Input sidecar', async () => {
+    const css = await Bun.file(new URL('./input.css', import.meta.url)).text();
+
+    expect(css).toContain("@import '../form-field/form-field.css';");
+
+    const { container } = render(Input, {
+      props: {
+        id: 'styled-field',
+        label: 'Name',
+        description: 'Shown below',
+        error: 'Required',
+        required: true,
+        disabled: true,
+        value: '',
+      },
+    });
+
+    expect(container.querySelector('.cinder-form-field__label')).not.toBeNull();
+    expect(container.querySelector('.cinder-form-field__description')).not.toBeNull();
+    expect(container.querySelector('.cinder-form-field__error')).not.toBeNull();
+    expect(
+      container.querySelector('.cinder-form-field__label')?.hasAttribute('data-disabled'),
+    ).toBe(true);
+    expect(container.querySelector('.cinder-_required-marker')).not.toBeNull();
+  });
+
   test('attaches the native input and cleans up on unmount', () => {
     let attachedInput: HTMLInputElement | undefined;
     let cleanupCalls = 0;

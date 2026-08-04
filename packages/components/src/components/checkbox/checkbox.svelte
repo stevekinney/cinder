@@ -23,6 +23,8 @@
   import { classNames } from '../../utilities/class-names.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
   import { commitValue } from '../../utilities/value-change.ts';
+  import FormField from '@lostgradient/cinder/form-field';
+  import FormFieldFrame from '../../_internal/form-field-frame.svelte';
 
   let {
     id,
@@ -35,7 +37,6 @@
     error,
     disabled,
     required,
-    fieldClassName,
     class: className,
     'aria-describedby': consumerDescribedBy,
     'aria-invalid': consumerInvalid,
@@ -67,6 +68,7 @@
       required: required ?? undefined,
     }),
   );
+  const renderInlineLabel = $derived(!!label && (!context || !context.labelId));
 
   // Dev-mode guard (matches Input/Autocomplete): inside a FormField, a consumer `id`
   // that disagrees with the FormField's controlId means the FormField's <label for>
@@ -130,7 +132,7 @@
   }
 </script>
 
-<div class={classNames('cinder-checkbox-field', fieldClassName)}>
+{#snippet control()}
   <div class="cinder-checkbox-row">
     <CheckboxIndicatorShell>
       {#snippet control()}
@@ -149,25 +151,36 @@
         />
       {/snippet}
     </CheckboxIndicatorShell>
-    {#if label}
-      <label
-        for={field.id}
-        class="cinder-checkbox-field__label"
-        data-disabled={field.disabled || undefined}
-      >
-        {label}
-        {#if field.required}
-          <span class="cinder-_required-marker" aria-hidden="true">*</span>
-        {/if}
-      </label>
-    {/if}
   </div>
+{/snippet}
 
-  {#if description}
-    <p id={field.ownDescriptionId} class="cinder-checkbox-field__description">{description}</p>
+{#if context}
+  {#if renderInlineLabel || description || error}
+    <FormFieldFrame
+      id={field.id}
+      label={renderInlineLabel ? label : undefined}
+      {description}
+      {error}
+      descriptionId={field.ownDescriptionId}
+      errorId={field.ownErrorId}
+      required={field.required}
+      disabled={field.disabled}
+      class="cinder-checkbox-field"
+      {control}
+    ></FormFieldFrame>
+  {:else}
+    {@render control()}
   {/if}
-
-  {#if error}
-    <p id={field.ownErrorId} class="cinder-checkbox-field__error" aria-live="polite">{error}</p>
-  {/if}
-</div>
+{:else}
+  <FormField
+    id={field.id}
+    {label}
+    {description}
+    {error}
+    required={field.required}
+    disabled={field.disabled}
+    class="cinder-checkbox-field"
+  >
+    {@render control()}
+  </FormField>
+{/if}

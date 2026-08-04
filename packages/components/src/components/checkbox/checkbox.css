@@ -5,10 +5,28 @@
  * Styled native <input type="checkbox"> with description and error.
  * ======================================== */
 
-  .cinder-checkbox-field {
-    display: flex;
-    flex-direction: column;
+  .cinder-checkbox-field,
+  .cinder-checkbox-field.cinder-form-field {
+    display: inline-flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
     gap: var(--cinder-space-1-5);
+    inline-size: auto;
+  }
+
+  .cinder-checkbox-field > .cinder-form-field__label {
+    order: 2;
+  }
+
+  .cinder-checkbox-field > .cinder-checkbox-row {
+    order: 1;
+  }
+
+  .cinder-checkbox-field > .cinder-form-field__description,
+  .cinder-checkbox-field > .cinder-form-field__error {
+    flex-basis: 100%;
+    order: 3;
   }
 
   .cinder-checkbox-row {
@@ -169,7 +187,8 @@
   }
 
   /* Label */
-  .cinder-checkbox-field__label {
+  .cinder-checkbox-field__label,
+  .cinder-checkbox-field .cinder-form-field__label {
     display: inline-flex;
     align-items: center;
     gap: var(--cinder-space-1);
@@ -179,13 +198,15 @@
     cursor: pointer;
   }
 
-  .cinder-checkbox-field__label[data-disabled] {
+  .cinder-checkbox-field__label[data-disabled],
+  .cinder-checkbox-field .cinder-form-field__label[data-disabled] {
     color: var(--cinder-text-disabled);
     cursor: not-allowed;
   }
 
   /* Supporting text */
-  .cinder-checkbox-field__description {
+  .cinder-checkbox-field__description,
+  .cinder-checkbox-field .cinder-form-field__description {
     font-size: var(--cinder-text-xs);
     line-height: var(--cinder-leading-normal);
     color: var(--cinder-text-muted);
@@ -193,7 +214,8 @@
     padding-inline-start: calc(1.125rem + var(--cinder-space-2));
   }
 
-  .cinder-checkbox-field__error {
+  .cinder-checkbox-field__error,
+  .cinder-checkbox-field .cinder-form-field__error {
     font-size: var(--cinder-text-xs);
     line-height: var(--cinder-leading-normal);
     color: var(--cinder-danger);

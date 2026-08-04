@@ -12,7 +12,11 @@ const schema = {
     label: {
       type: 'string',
       description:
-        "Visible label text. Required — the primitive's whole purpose is label association.",
+        'Visible label text. Omit only when the child control supplies its own accessible name, such as via aria-label or aria-labelledby.',
+    },
+    hideLabel: {
+      type: 'boolean',
+      description: 'Visually hide the label while keeping it associated with the control.',
     },
     description: {
       type: 'string',
@@ -36,7 +40,7 @@ const schema = {
     },
   },
   additionalProperties: false,
-  required: ['id', 'label'],
+  required: ['id'],
   metadata: {
     unsupportedProps: [
       {

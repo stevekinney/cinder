@@ -40,9 +40,12 @@
   // does, however, inherit `disabled` from a wrapping FormField so a disabled
   // field group greys out the switch alongside its peers.
   const context = getFormFieldContext();
+  const generatedId = $props.id();
   const resolvedDisabled = $derived(disabled ?? context?.disabled ?? false);
 
-  const labelId = $derived(`${id}-label`);
+  const ownLabelId = $derived(label ? `${id ?? generatedId}-label` : undefined);
+  const labelId = $derived(context?.labelId ?? ownLabelId);
+  const resolvedId = $derived(context?.controlId ?? id);
 
   function toggle(): void {
     if (!resolvedDisabled) {
@@ -58,9 +61,9 @@
   }
 </script>
 
-<span class="cinder-toggle-field">
+{#snippet control()}
   <button
-    {id}
+    id={resolvedId}
     type="button"
     role="switch"
     aria-checked={checked}
@@ -86,22 +89,36 @@
     -->
     <input type="checkbox" hidden {name} {value} {form} disabled={resolvedDisabled} bind:checked />
   {/if}
-  <!--
-    The label is a <span> (not a <label for>) named via aria-labelledby. A native
-    <label for> targeting the <button> would forward a synthetic click to it,
-    which — combined with the button's own onclick — double-toggles in some
-    engines. aria-labelledby supplies the accessible name, and the span's own
-    onclick gives click-to-toggle. toggle() is disabled-guarded, so clicking the
-    label of a disabled toggle is a no-op.
-  -->
-  <span
-    id={labelId}
-    class="cinder-toggle-field__label"
-    role="presentation"
-    data-hidden={hideLabel || undefined}
-    data-disabled={resolvedDisabled || undefined}
-    onclick={toggle}
-  >
-    {label}
+{/snippet}
+
+{#if context}
+  {#if label && !context.labelId}
+    <span class="cinder-toggle-field">
+      {@render control()}
+      <span
+        id={ownLabelId}
+        class="cinder-toggle-field__label"
+        role="presentation"
+        data-hidden={hideLabel || undefined}
+        data-disabled={resolvedDisabled || undefined}
+        onclick={toggle}>{label}</span
+      >
+    </span>
+  {:else}
+    {@render control()}
+  {/if}
+{:else}
+  <span class="cinder-toggle-field">
+    {@render control()}
+    <span
+      id={labelId}
+      class="cinder-toggle-field__label"
+      role="presentation"
+      data-hidden={hideLabel || undefined}
+      data-disabled={resolvedDisabled || undefined}
+      onclick={toggle}
+    >
+      {label}
+    </span>
   </span>
-</span>
+{/if}

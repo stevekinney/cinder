@@ -99,6 +99,15 @@ describe('FormField rendering', () => {
     expect(container.querySelector('.cinder-form-field')).not.toBeNull();
   });
 
+  test('does not claim full-width layout for arbitrary child controls', () => {
+    const { container } = render(FormField, {
+      props: { id: 'intrinsic', label: 'Intrinsic', children: emptySnippet },
+    });
+    expect(
+      container.querySelector('.cinder-form-field')?.hasAttribute('data-cinder-full-width'),
+    ).toBe(false);
+  });
+
   test('label has data-disabled attribute when disabled is true', () => {
     const { container } = render(FormField, {
       props: { id: 'name', label: 'Name', disabled: true, children: emptySnippet },
@@ -216,6 +225,11 @@ describe('FormField context via probe', () => {
     const labelId = probe?.getAttribute('data-label-id');
     expect(labelId).toBe('test-field-label');
     expect(container.querySelector(`#${labelId}`)).not.toBeNull();
+  });
+
+  test('omitted label does not publish a labelId', () => {
+    const { container } = render(FormFieldProbe, { props: { id: 'textless-field' } });
+    expect(container.querySelector('[data-probe]')?.getAttribute('data-label-id')).toBeNull();
   });
 
   test('reactive update: changing error prop updates describedBy in probe', async () => {

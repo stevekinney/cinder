@@ -13,7 +13,7 @@ export type InputType =
   | 'date'
   | 'number';
 
-type InputAddonProps =
+type InputAddonProps = (
   | { leading?: never; leadingInteractive?: never; trailing?: never; trailingInteractive?: never }
   | {
       leading: Snippet;
@@ -36,7 +36,11 @@ type InputAddonProps =
       trailing: Snippet;
       /** When true, the trailing adornment is interactive and included in the accessibility tree. Default `false`. */
       trailingInteractive?: boolean;
-    };
+    }
+) & {
+  /** Additional class names applied to the grouped control frame when leading or trailing content is present. */
+  groupClassName?: string;
+};
 
 export type InputProps = HTMLInputAttributes &
   InputAddonProps & {
@@ -64,7 +68,5 @@ export type InputProps = HTMLInputAttributes &
     type?: InputType;
     /** Attachment for native input access and lifecycle-scoped listeners. */
     inputAttachment?: Attachment<HTMLInputElement>;
-    /** Additional class names applied to the grouped control frame when leading or trailing content is present. */
-    groupClassName?: string;
     class?: string;
   };
