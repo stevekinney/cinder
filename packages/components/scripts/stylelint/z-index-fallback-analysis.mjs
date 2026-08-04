@@ -3184,7 +3184,7 @@ function substitutionDefinedPathWitnesses(frame, value) {
     const indexedLengthEnvironmentVariable =
       /^viewport-segment-(?:width|height|top|right|bottom|left)(?:\s|$)/i.test(header);
     return scalarLengthEnvironmentVariable || indexedLengthEnvironmentVariable
-      ? undefined
+      ? ['0px', '1px']
       : ['0', '1'];
   }
   if (frame.functionName !== 'attr') return undefined;

@@ -735,6 +735,11 @@ describe('cinder/z-index-scale', () => {
     ['calc(env(foo, 0) - env(bar, 0))', 1],
     ['calc(attr(data-x type(<number>), 0) - attr(data-x type(<number>), 0))', 0],
     ['calc(attr(data-x type(<number>), 0) - attr(data-y type(<number>), 0))', 1],
+    ['calc(env(safe-area-inset-top) / 1px - env(safe-area-inset-top) / 1px)', 0],
+    ['calc(env(viewport-segment-width 0 0) / 1px - env(viewport-segment-width 0 0) / 1px)', 0],
+    ['calc(env(titlebar-area-x) / 1px - env(titlebar-area-x) / 1px)', 0],
+    ['calc(env(keyboard-inset-height) / 1px - env(keyboard-inset-height) / 1px)', 0],
+    ['calc(env(foo) - env(foo))', 0],
   ] as const)('correlates CSS random functions by cache key: %s', async (fallback, count) => {
     expect(
       warnings(
@@ -4481,10 +4486,14 @@ describe('cinder/z-index-scale', () => {
     ['calc(9999 * var(--runtime, 0))', 1],
     ['calc(9999 * env(foo, 0))', 1],
     ['calc(9999 * env(safe-area-inset-top, 0px))', 0],
+    ['calc(9999 * env(safe-area-inset-top, 0px) / 1px)', 1],
     ['calc(9999 * env(safe-area-max-inset-left, 0px))', 0],
     ['calc(9999 * env(viewport-segment-width 0 0, 0px))', 0],
+    ['calc(9999 * env(viewport-segment-width 0 0, 0px) / 1px)', 1],
     ['calc(9999 * env(titlebar-area-x, 0px))', 0],
+    ['calc(9999 * env(titlebar-area-x, 0px) / 1px)', 1],
     ['calc(9999 * env(keyboard-inset-height, 0px))', 0],
+    ['calc(9999 * env(keyboard-inset-height, 0px) / 1px)', 1],
     ['calc(9999 * env(safe-area-inset-top 0, 0px))', 0],
     ['calc(9999 * env(safe-area-inset-top, 0))', 0],
     ['calc(9999 * env(viewport-segment-width, 0))', 0],
