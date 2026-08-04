@@ -558,6 +558,7 @@ describe('Combobox filtering', () => {
     const { container } = render(Combobox, { id: 'fruit', options: fruits });
     const input = container.querySelector('#fruit') as HTMLInputElement;
     const originalRoot = input.closest('.cinder-combobox');
+    expect(originalRoot).not.toBeNull();
     await fireEvent.focus(input);
     const option = await findOption('Apple');
     const portaledRoot = option.closest('.cinder-combobox');
@@ -612,14 +613,20 @@ describe('Combobox filtering', () => {
     const { container } = render(Combobox, { id: 'fruit', options: fruits, class: 'compact' });
     const input = container.querySelector(`#fruit`) as HTMLInputElement;
     const originalRoot = input.closest('.cinder-combobox.compact');
+    expect(originalRoot).not.toBeNull();
     await fireEvent.focus(input);
     await fireEvent.input(input, { target: { value: 'zzz' } });
     await waitFor(() => {
       const emptyState = container.querySelector('.cinder-combobox__empty');
+      const scopedPanel = document.body.querySelector(
+        '.cinder-combobox.compact .cinder-combobox__empty-panel',
+      );
       // Documents the AGENTS.md override hook: `.cinder-combobox.compact
       // .cinder-combobox__empty` must keep matching after the empty panel is
       // portaled, so both classes need to land on the same ancestor.
       const scopedAncestor = emptyState?.closest('.cinder-combobox.compact');
+      expect(scopedPanel).not.toBeNull();
+      expect(scopedPanel?.contains(emptyState)).toBe(true);
       expect(scopedAncestor).not.toBeNull();
       expect(scopedAncestor).not.toBe(originalRoot);
       expect(originalRoot?.contains(scopedAncestor ?? null)).toBe(false);
