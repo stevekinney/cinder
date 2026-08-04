@@ -1234,14 +1234,18 @@ describe('cinder/z-index-scale', () => {
   });
 
   test('bounds associative symbolic identity normalization', async () => {
-    const { analyzeStaticLayerValue } = await import(valueAnalysisPath);
+    const { analyzeStaticLayerValue, haveCompatibleStaticDivisionTypes } = await import(
+      valueAnalysisPath
+    );
     const terms = Array.from({ length: 2_000 }, (_, index) => `max(1em, ${index}px) / 1rem`);
+    const expression = `calc(${terms.join(' + ')})`;
     const startedAt = performance.now();
 
-    expect(analyzeStaticLayerValue(`calc(${terms.join(' + ')})`)).toEqual({
+    expect(analyzeStaticLayerValue(expression)).toEqual({
       classification: 'too-complex',
       resultType: 'too-complex',
     });
+    expect(haveCompatibleStaticDivisionTypes('0', expression)).toBe(true);
     expect(performance.now() - startedAt).toBeLessThan(2_000);
   });
 
@@ -2160,6 +2164,9 @@ describe('cinder/z-index-scale', () => {
     ['calc(clamp(0cm, 25396.19cm, 999999in) / 1in)', 1],
     ['calc(hypot(25396.19cm, 0cm) / 1in)', 1],
     ['calc(hypot(0cm, 25396.19cm) / 1in)', 1],
+    ['calc(max(9998.499999999999999999in, 25396.19cm) / 1in)', 1],
+    ['calc(mod(25396.19cm, 999999cm) / 1in)', 1],
+    ['calc(rem(25396.19cm, 999999cm) / 1in)', 1],
   ] as const)(
     'classifies exact absolute-unit rounding boundaries: %s',
     async (fallback, warningCount) => {
@@ -2708,6 +2715,7 @@ describe('cinder/z-index-scale', () => {
     'mod(9999, var(--runtime))',
     'rem(9999, var(--runtime))',
     'pow(9999, var(--runtime))',
+    'hypot(9999, var(--runtime))',
   ])('preserves a direct banned bound sibling in unresolved math: %s', async (fallback) => {
     expect(
       warnings(
@@ -2733,6 +2741,7 @@ describe('cinder/z-index-scale', () => {
     'rem(9999, var(--runtime), 1)',
     'pow(9999, var(--runtime), 1)',
     'pow(9999px, var(--runtime))',
+    'hypot(9999, var(--runtime), 1px)',
   ])(
     'does not report candidates from a statically type-invalid math function: %s',
     async (fallback) => {
@@ -2909,6 +2918,7 @@ describe('cinder/z-index-scale', () => {
       ['calc(9999 + var(--zero, 0) / 0)', 0],
       ['calc(9999 + 0 / max(var(--divisor), 1))', 1],
       ['calc(9999 + 0 / calc(var(--divisor) - 1))', 1],
+      ['calc(9999 + 0 / calc((var(--divisor) - 1) * (var(--divisor) - 2)))', 1],
       ['calc(9999 + 0 / min(var(--divisor), 1))', 1],
       ['calc(9999 + 0 / clamp(1, var(--divisor), 2))', 1],
       ['calc(9999 + 0 / max(var(--divisor), 1px))', 0],
@@ -2958,6 +2968,22 @@ describe('cinder/z-index-scale', () => {
             .fixture {
               /* cinder-z-index-local: the wrapper preserves negative zero for the reciprocal. */
               z-index: var(--outer, calc(1 / ${functionName}((0 * -1) / var(--divisor))));
+            }
+          `),
+        ),
+      ).toHaveLength(1);
+    },
+  );
+
+  test.each(['asin', 'atan'])(
+    'preserves a negative-zero quotient through an inverse trigonometric wrapper: %s',
+    async (functionName) => {
+      expect(
+        warnings(
+          await lint(`
+            .fixture {
+              /* cinder-z-index-local: the inverse trigonometric wrapper preserves negative zero. */
+              z-index: var(--outer, calc(1deg / ${functionName}((0 * -1) / var(--divisor))));
             }
           `),
         ),

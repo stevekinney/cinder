@@ -226,6 +226,17 @@ function addRationals(left, right, direction = 1n) {
   );
 }
 
+function compareRationals(left, right) {
+  const difference = left.numerator * right.denominator - right.numerator * left.denominator;
+  return difference < 0n ? -1 : difference > 0n ? 1 : 0;
+}
+
+function compareArithmeticValues(left, right) {
+  if (left.exactValue !== undefined && right.exactValue !== undefined)
+    return compareRationals(left.exactValue, right.exactValue);
+  return left.value < right.value ? -1 : left.value > right.value ? 1 : 0;
+}
+
 function floorRational({ numerator, denominator }) {
   const quotient = numerator / denominator;
   return numerator < 0n && numerator % denominator !== 0n ? quotient - 1n : quotient;
@@ -682,17 +693,23 @@ function evaluateConstantArithmetic(expression) {
         throw new Error('unknown conversion value');
       }
       if ((functionName === 'min' || functionName === 'max') && arguments_.length > 0) {
-        let reducedValue = arguments_[0].value;
-        for (let argumentIndex = 1; argumentIndex < arguments_.length; argumentIndex += 1)
-          reducedValue = Math[functionName](reducedValue, arguments_[argumentIndex].value);
-        const selectedArgument = arguments_.find((argument) =>
-          Object.is(argument.value, reducedValue),
-        );
-        return withValue(
-          selectedArgument ?? arguments_[0],
-          reducedValue,
-          selectedArgument?.exactValue,
-        );
+        let selectedArgument = arguments_[0];
+        for (let argumentIndex = 1; argumentIndex < arguments_.length; argumentIndex += 1) {
+          const argument = arguments_[argumentIndex];
+          const comparison = compareArithmeticValues(argument, selectedArgument);
+          if (
+            (functionName === 'min' && comparison < 0) ||
+            (functionName === 'max' && comparison > 0) ||
+            (comparison === 0 &&
+              Object.is(
+                Math[functionName](selectedArgument.value, argument.value),
+                argument.value,
+              ) &&
+              !Object.is(selectedArgument.value, argument.value))
+          )
+            selectedArgument = argument;
+        }
+        return withValue(selectedArgument, selectedArgument.value, selectedArgument.exactValue);
       }
       if (functionName === 'clamp' && arguments_.length === 3) {
         const [minimum, value, maximum] = arguments_;
@@ -733,9 +750,28 @@ function evaluateConstantArithmetic(expression) {
           dividend.value -
           divisor.value * (functionName === 'mod' ? Math.floor(quotient) : Math.trunc(quotient));
         const zeroSignSource = functionName === 'mod' ? divisor.value : dividend.value;
+        const exactQuotient = divideRationals(dividend.exactValue, divisor.exactValue);
+        const exactIntegerQuotient =
+          exactQuotient === undefined
+            ? undefined
+            : functionName === 'mod'
+              ? floorRational(exactQuotient)
+              : exactQuotient.numerator / exactQuotient.denominator;
+        const exactValue =
+          exactIntegerQuotient === undefined
+            ? undefined
+            : addRationals(
+                dividend.exactValue,
+                multiplyRationals(divisor.exactValue, {
+                  numerator: exactIntegerQuotient,
+                  denominator: 1n,
+                }),
+                -1n,
+              );
         return withValue(
           dividend,
           result === 0 ? (hasNegativeSign(zeroSignSource) ? -0 : 0) : result,
+          exactValue,
         );
       }
       if (functionName === 'round' && arguments_.length >= 1 && arguments_.length <= 2) {
@@ -1409,6 +1445,21 @@ export function haveCompatibleStaticProgressTypes(values) {
       !resolved.units.has('dimension:flex') &&
       sameUnits(resolved, resolvedValues[0]),
   );
+}
+
+export function haveCompatibleStaticDivisionTypes(numerator, divisor) {
+  const numeratorValue = resolveStaticArithmeticResult(numerator);
+  const divisorValue = resolveStaticArithmeticResult(divisor);
+  if (numeratorValue === staticAnalysisInvalid || divisorValue === staticAnalysisInvalid)
+    return false;
+  if (
+    numeratorValue === null ||
+    numeratorValue === staticAnalysisTooComplex ||
+    divisorValue === null ||
+    divisorValue === staticAnalysisTooComplex
+  )
+    return true;
+  return hasNumericResultType(combineUnits(numeratorValue, divisorValue, -1));
 }
 
 export function classifyStaticLayer(value) {

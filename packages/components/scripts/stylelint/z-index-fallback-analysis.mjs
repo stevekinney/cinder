@@ -4,6 +4,7 @@ import {
   cssCommentMaskCharacter,
   evaluateStaticLayerNumber,
   hasStaticallyZeroCoefficient,
+  haveCompatibleStaticDivisionTypes,
   haveCompatibleStaticProgressTypes,
   isCssIdentifierCharacter,
   isCssWhitespace,
@@ -47,6 +48,8 @@ const validAttrSyntaxTypeNames = new Set([
   'transform-list',
 ]);
 const signedZeroSensitiveFunctionNames = new Set([
+  'asin',
+  'atan',
   'atan2',
   'log',
   'pow',
@@ -485,31 +488,42 @@ function expandedSubstitutionDivisorRange(
     directDivisionIndex -= 1;
   if (value[directDivisionIndex - 1] === '/') return directRange;
 
-  const groupingParent = child.parenthesisParent;
+  let groupingParent = child.parenthesisParent;
+  let containerStart;
+  let containerEnd;
+  let divisionIndex;
+  while (
+    groupingParent?.type === 'group' &&
+    groupingParent.end !== undefined &&
+    (groupingParent.isGroupingParenthesis || mathFunctionNames.has(groupingParent.functionName))
+  ) {
+    containerStart = groupingParent.isGroupingParenthesis
+      ? groupingParent.openIndex
+      : groupingParent.functionStart;
+    containerEnd = groupingParent.end;
+    for (;;) {
+      let openIndex = containerStart;
+      while (openIndex > range.start && isCssWhitespaceOrComment(value[openIndex - 1]))
+        openIndex -= 1;
+      let closeIndex = containerEnd;
+      while (closeIndex < range.end && isCssWhitespaceOrComment(value[closeIndex])) closeIndex += 1;
+      if (value[openIndex - 1] !== '(' || parenthesisPairs.get(openIndex - 1) !== closeIndex) break;
+      containerStart = openIndex - 1;
+      containerEnd = closeIndex + 1;
+    }
+    divisionIndex = containerStart;
+    while (divisionIndex > range.start && isCssWhitespaceOrComment(value[divisionIndex - 1]))
+      divisionIndex -= 1;
+    if (value[divisionIndex - 1] === '/') break;
+    groupingParent = groupingParent.parenthesisParent;
+  }
   if (
-    groupingParent?.type !== 'group' ||
-    groupingParent.end === undefined ||
-    (!groupingParent.isGroupingParenthesis && !mathFunctionNames.has(groupingParent.functionName))
+    containerStart === undefined ||
+    containerEnd === undefined ||
+    divisionIndex === undefined ||
+    value[divisionIndex - 1] !== '/'
   )
     return directRange;
-  let containerStart = groupingParent.isGroupingParenthesis
-    ? groupingParent.openIndex
-    : groupingParent.functionStart;
-  let containerEnd = groupingParent.end;
-  for (;;) {
-    let openIndex = containerStart;
-    while (openIndex > range.start && isCssWhitespaceOrComment(value[openIndex - 1]))
-      openIndex -= 1;
-    let closeIndex = containerEnd;
-    while (closeIndex < range.end && isCssWhitespaceOrComment(value[closeIndex])) closeIndex += 1;
-    if (value[openIndex - 1] !== '(' || parenthesisPairs.get(openIndex - 1) !== closeIndex) break;
-    containerStart = openIndex - 1;
-    containerEnd = closeIndex + 1;
-  }
-  let divisionIndex = containerStart;
-  while (divisionIndex > range.start && isCssWhitespaceOrComment(value[divisionIndex - 1]))
-    divisionIndex -= 1;
-  if (value[divisionIndex - 1] !== '/') return directRange;
   const containerKey = `${containerStart}:${containerEnd}`;
   if (expandedRangeCache.has(containerKey))
     return expandedRangeCache.get(containerKey) ?? directRange;
@@ -643,7 +657,10 @@ function zeroNumeratorQuotientEndpointAnalysis(frame, value, range, budget, pare
         const quotientWitness = `calc(${numerator} / ${witness})`;
         if (!consumeResolutionWork(budget, quotientWitness.length))
           return fallbackResolutionTooComplex;
-        if (analyzeStaticLayerValue(quotientWitness).resultType === 'number') {
+        if (
+          analyzeStaticLayerValue(quotientWitness).resultType === 'number' ||
+          haveCompatibleStaticDivisionTypes(numerator, witness)
+        ) {
           hasCompatibleWitness = true;
           break;
         }
@@ -913,6 +930,17 @@ function additiveNonNumberCandidateSuppression(frame, value, range, budget, pare
     : undefined;
 }
 
+function firstChildEndingAfter(children, rangeStart) {
+  let lowerIndex = 0;
+  let upperIndex = children.length;
+  while (lowerIndex < upperIndex) {
+    const middleIndex = lowerIndex + Math.floor((upperIndex - lowerIndex) / 2);
+    if (children[middleIndex].end <= rangeStart) lowerIndex = middleIndex + 1;
+    else upperIndex = middleIndex;
+  }
+  return lowerIndex;
+}
+
 function fallbackIndependentStaticArguments(frame, value, range, functionName, parenthesisPairs) {
   const trimmedRange = unwrapStaticContainer(value, range, parenthesisPairs);
   if (
@@ -943,7 +971,7 @@ function fallbackIndependentStaticArguments(frame, value, range, functionName, p
   );
   if (arguments_.some((argument) => argument.start === argument.end)) return undefined;
 
-  let childIndex = 0;
+  let childIndex = firstChildEndingAfter(frame.children, argumentRanges[0].start);
   const staticArguments = argumentRanges.flatMap((argumentRange, argumentIndex) => {
     while (
       childIndex < frame.children.length &&
@@ -1205,7 +1233,7 @@ function directBannedMathArgumentCandidates(
   budget,
   parenthesisPairs,
 ) {
-  for (const functionName of ['max', 'min', 'clamp', 'round', 'mod', 'rem', 'pow']) {
+  for (const functionName of ['max', 'min', 'clamp', 'round', 'mod', 'rem', 'pow', 'hypot']) {
     const parsedArguments = fallbackIndependentStaticArguments(
       frame,
       value,
@@ -1290,7 +1318,7 @@ function directBannedMathArgumentCandidates(
 }
 
 function fallbackIndependentMathArgumentResultTypes(frame, value, range, parenthesisPairs) {
-  for (const functionName of ['max', 'min', 'clamp', 'round', 'mod', 'rem', 'pow']) {
+  for (const functionName of ['max', 'min', 'clamp', 'round', 'mod', 'rem', 'pow', 'hypot']) {
     const parsedArguments = fallbackIndependentStaticArguments(
       frame,
       value,
@@ -2199,6 +2227,7 @@ function fallbackCandidates(value) {
       const group = {
         type: 'group',
         openIndex: index,
+        parenthesisParent,
         ...context,
       };
       const isInvalidFunctionBlock =
