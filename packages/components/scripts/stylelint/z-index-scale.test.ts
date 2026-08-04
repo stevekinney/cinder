@@ -1086,6 +1086,17 @@ describe('cinder/z-index-scale', () => {
     expect(warning?.text).toContain('Offending expression: `calc(9999/*comment*/)`');
   });
 
+  test('escapes backticks in offending-expression diagnostics', async () => {
+    const deepStaticMath = `${'min('.repeat(513)}1${')'.repeat(513)}`;
+    const fallback = `calc(var(--runtime, "\`") + ${deepStaticMath})`;
+    const css = `.fixture { /* cinder-z-index-local: test. */ z-index: var(--x, ${fallback}); }`;
+    const [warning] = warnings(await lint(css));
+
+    expect(warning?.text).toContain(
+      'Offending expression: `var(--x, calc(var(--runtime, "\\`") + min(',
+    );
+  });
+
   test('maps a too-complex fallback range through escaped astral code points', async () => {
     const deepStaticMath = `${'min('.repeat(513)}1${')'.repeat(513)}`;
     const expression = `calc(\\1f600 + var(--x, ${deepStaticMath}))`;
