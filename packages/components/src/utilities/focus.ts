@@ -80,7 +80,10 @@ export function getSequentialFocusTargets(
     )
     .filter(
       (element) =>
-        !range || isSequentiallyAfterReference(element, range.relativeTo, range.direction),
+        !range ||
+        (isElementNode(element) &&
+          isElementNode(range.relativeTo) &&
+          isSequentiallyAfterReference(element, range.relativeTo, range.direction)),
     )
     .filter((element): element is HTMLElement => element.matches(sequentialFocusCandidateSelector))
     .filter(isSequentialCandidate);
@@ -200,14 +203,14 @@ function sequentialTabIndexValue(element: HTMLElement): number {
 }
 
 function isSequentiallyAfterReference(
-  element: Element,
-  reference: Element,
+  element: HTMLElement,
+  reference: HTMLElement,
   direction: SequentialFocusRange['direction'],
 ): boolean {
-  const referenceTabIndex = sequentialTabIndexValue(reference as HTMLElement);
-  const elementTabIndex = sequentialTabIndexValue(element as HTMLElement);
-  if (direction === 'after' && referenceTabIndex === 0 && elementTabIndex > 0) return false;
-  if (direction === 'before' && referenceTabIndex > 0 && elementTabIndex === 0) return false;
+  const referenceTabIndex = getTabIndexValue(reference);
+  const elementTabIndex = getTabIndexValue(element);
+  if (direction === 'after' && referenceTabIndex <= 0 && elementTabIndex > 0) return false;
+  if (direction === 'before' && referenceTabIndex > 0 && elementTabIndex <= 0) return false;
   return true;
 }
 
