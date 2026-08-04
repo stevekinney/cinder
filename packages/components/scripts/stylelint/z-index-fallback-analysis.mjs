@@ -1228,6 +1228,11 @@ function directBannedMathArgumentCandidates(
       candidateArguments = parsedArguments.staticArguments.filter(
         (argument) => !hasStrategy || argument.index !== 0,
       );
+      const staticResultTypes = new Set(
+        candidateArguments.map((argument) => analyzeStaticLayerValue(argument.value).resultType),
+      );
+      if (staticResultTypes.has('unresolved')) return [];
+      if (staticResultTypes.has('number') && staticResultTypes.has('non-number')) return [];
     } else candidateArguments = parsedArguments.staticArguments;
     const classificationWork = candidateArguments.reduce(
       (total, argument) => total + argument.value.length,
@@ -1260,7 +1265,7 @@ function directBannedMathArgumentCandidates(
 }
 
 function fallbackIndependentMathArgumentResultTypes(frame, value, range, parenthesisPairs) {
-  for (const functionName of ['max', 'min', 'clamp']) {
+  for (const functionName of ['max', 'min', 'clamp', 'round']) {
     const parsedArguments = fallbackIndependentStaticArguments(
       frame,
       value,
@@ -1270,8 +1275,24 @@ function fallbackIndependentMathArgumentResultTypes(frame, value, range, parenth
     );
     if (!parsedArguments) continue;
     if (functionName === 'clamp' && parsedArguments.argumentCount !== 3) return new Set();
+    let staticArguments = parsedArguments.staticArguments;
+    if (functionName === 'round') {
+      const firstArgument = value
+        .slice(parsedArguments.argumentRanges[0].start, parsedArguments.argumentRanges[0].end)
+        .replaceAll(cssCommentMaskCharacter, ' ')
+        .trim()
+        .toLowerCase();
+      const hasStrategy = ['nearest', 'up', 'down', 'to-zero'].includes(firstArgument);
+      const validArgumentCount = hasStrategy
+        ? parsedArguments.argumentCount === 2 || parsedArguments.argumentCount === 3
+        : parsedArguments.argumentCount === 1 || parsedArguments.argumentCount === 2;
+      if (!validArgumentCount) return new Set();
+      staticArguments = parsedArguments.staticArguments.filter(
+        (argument) => !hasStrategy || argument.index !== 0,
+      );
+    }
     return new Set(
-      parsedArguments.staticArguments
+      staticArguments
         .map((argument) => analyzeStaticLayerValue(argument.value).resultType)
         .filter((resultType) => resultType === 'number' || resultType === 'non-number'),
     );

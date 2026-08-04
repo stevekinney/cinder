@@ -789,16 +789,19 @@ describe('cinder/z-index-scale', () => {
     },
   );
 
-  test('preserves a nested candidate from a malformed recognized math argument', async () => {
-    const result = await lint(`
-      .fixture {
-        /* cinder-z-index-local: malformed math cannot prove a nested fallback safe. */
-        z-index: var(--outer, max(var(--inner, -1), / 1));
-      }
-    `);
+  test.each(['max(var(--inner, -1), / 1)', 'round(var(--inner, 9999), 1px, 2px)'])(
+    'preserves a nested candidate from malformed recognized math: %s',
+    async (fallback) => {
+      const result = await lint(`
+        .fixture {
+          /* cinder-z-index-local: malformed math cannot prove a nested fallback safe. */
+          z-index: var(--outer, ${fallback});
+        }
+      `);
 
-    expect(warnings(result)).toHaveLength(1);
-  });
+      expect(warnings(result)).toHaveLength(1);
+    },
+  );
 
   test.each(['#calc', '@calc'])(
     'does not inherit math grammar from a CSS name token: %s',
@@ -2668,6 +2671,9 @@ describe('cinder/z-index-scale', () => {
     'max(var(--inner, 9999), 1px)',
     'min(var(--inner, -1), 1px)',
     'clamp(0, var(--inner, 9999), 1px)',
+    'round(9999, 1px)',
+    'round(var(--inner, 9999), 1px)',
+    'round(foo, 9999)',
   ])(
     'does not report candidates from a statically type-invalid math function: %s',
     async (fallback) => {
@@ -2685,16 +2691,21 @@ describe('cinder/z-index-scale', () => {
   );
 
   test('keeps a candidate when a runtime sibling can still have a compatible type', async () => {
-    expect(
-      warnings(
-        await lint(`
+    for (const fallback of [
+      'max(var(--inner, 9999), var(--other, 1px))',
+      'round(var(--inner, 9999), var(--step, 1px))',
+    ]) {
+      expect(
+        warnings(
+          await lint(`
           .fixture {
             /* cinder-z-index-local: the runtime sibling can resolve to a number. */
-            z-index: var(--outer, max(var(--inner, 9999), var(--other, 1px)));
+            z-index: var(--outer, ${fallback});
           }
         `),
-      ),
-    ).toHaveLength(1);
+        ),
+      ).toHaveLength(1);
+    }
   });
 
   test.each([
@@ -2823,6 +2834,8 @@ describe('cinder/z-index-scale', () => {
       ['calc(9999 + 0s / min(var(--divisor), 1s))', 1],
       ['calc(9999 + 0Hz / calc(var(--divisor) + 1Hz))', 1],
       ['calc(9999 + 0dppx / clamp(1dppx, var(--divisor), 2dppx))', 1],
+      ['calc(9999 + 0% / max(var(--divisor), 1%))', 0],
+      ['calc(9999 + 0fr / max(var(--divisor), 1fr))', 0],
       ['calc(0 / max(var(--divisor), 1deg) * var(--inner, -1))', 0],
       ['calc(0em / max(var(--divisor), 1deg) * var(--inner, -1))', 0],
       ['calc(9999 + 0 / max(var(--divisor), 1deg) * var(--inner, -1) + var(--other, -1))', 1],
