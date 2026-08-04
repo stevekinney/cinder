@@ -81,6 +81,7 @@ const validAttrSyntaxTypeNames = new Set([
   'angle',
   'color',
   'custom-ident',
+  'frequency',
   'image',
   'integer',
   'length',
@@ -104,6 +105,7 @@ const signedZeroSensitiveFunctionNames = new Set([
   'sqrt',
   'tan',
 ]);
+const inverseTrigonometricFunctionNames = new Set(['acos', 'asin', 'atan', 'atan2']);
 const substitutionFunctionNames = new Set(['attr', 'env', 'var']);
 const treeCountingFunctionNames = new Set(['sibling-count', 'sibling-index']);
 const steppedValueFunctionNames = new Set(['mod', 'rem', 'round']);
@@ -3188,7 +3190,9 @@ function substitutionDefinedPathWitnesses(frame, value) {
   const attrType = header.slice(identifierEnd).trim();
   const typeMatch = /^type\(([^()]+)\)$/i.exec(attrType);
   if (typeMatch === null) return undefined;
-  const typeName = /^<([a-z-]+)>$/i.exec(typeMatch[1].trim())?.[1].toLowerCase();
+  const declaredType = typeMatch[1].trim();
+  if (declaredType === '*') return ['0', '9999'];
+  const typeName = /^<([a-z-]+)>$/i.exec(declaredType)?.[1].toLowerCase();
   return attrDefinedPathWitnessesByType.get(typeName);
 }
 
@@ -4076,6 +4080,17 @@ function unresolvedRuntimeRangeCandidates(
           ));
       if (!hasValidTypedOuterWitness) continue;
     }
+    if (
+      inverseTrigonometricFunctionNames.has(functionParent.functionName) &&
+      !runtimeTypedFunctionHasNumericOuterPath(frame, value, range, functionRange, budget, '1deg')
+    )
+      continue;
+    if (
+      functionParent.functionName === 'round' &&
+      roundUsesLineWidthStrategy(value, parsedArguments) &&
+      !runtimeTypedFunctionHasNumericOuterPath(frame, value, range, functionRange, budget, '1px')
+    )
+      continue;
     const logValueArgument = parsedArguments.argumentRanges[0];
     const definedPathCanChangeLogValue =
       functionParent.functionName === 'log' &&
@@ -4083,10 +4098,12 @@ function unresolvedRuntimeRangeCandidates(
       logValueArgument !== undefined &&
       child.start < logValueArgument.end &&
       child.end > logValueArgument.start;
+    const logHasZeroBase = logHasFixedZeroBase(parsedArguments.staticArguments);
     if (
       functionParent.functionName === 'log' &&
-      !definedPathCanChangeLogValue &&
-      logHasFixedZeroResult(parsedArguments.staticArguments)
+      (logHasZeroBase ||
+        (!definedPathCanChangeLogValue && logHasFixedZeroValue(parsedArguments.staticArguments))) &&
+      !(logHasZeroBase && frame.signedZeroSensitiveContext)
     ) {
       const fixedZeroExpression = resolveFrameExpressionWithRangeReplacements(
         frame,
@@ -4101,10 +4118,47 @@ function unresolvedRuntimeRangeCandidates(
       )
         continue;
     }
+    const powBaseArgument = parsedArguments.argumentRanges[0];
+    const definedPathCanChangePowBase =
+      functionParent.functionName === 'pow' &&
+      child.definedPathCanBeNumber &&
+      powBaseArgument !== undefined &&
+      child.start < powBaseArgument.end &&
+      child.end > powBaseArgument.start;
+    if (
+      functionParent.functionName === 'pow' &&
+      !definedPathCanChangePowBase &&
+      powHasFixedOneResult(parsedArguments.staticArguments)
+    ) {
+      const fixedOneExpression = resolveFrameExpressionWithRangeReplacements(
+        frame,
+        value,
+        range,
+        budget,
+        [{ start: functionRange.start, end: functionRange.end, value: '1' }],
+      );
+      if (
+        fixedOneExpression !== fallbackResolutionTooComplex &&
+        analyzeFrameExpression(frame, fixedOneExpression, budget).classification === 'safe'
+      )
+        continue;
+    }
     const staticModulusDivisor =
       functionParent.functionName === 'mod'
         ? parsedArguments.staticArguments.find((argument) => argument.index === 1)
         : undefined;
+    if (
+      functionParent.functionName === 'mod' &&
+      staticModulusDivisor !== undefined &&
+      modHasSafeWholeValueRange(
+        value,
+        range,
+        functionRange,
+        parenthesisPairs,
+        staticModulusDivisor.value,
+      )
+    )
+      continue;
     const functionIsKnownNonnegative =
       functionParent.functionName === 'abs' ||
       functionParent.functionName === 'exp' ||
@@ -4628,7 +4682,8 @@ function definedSubstitutionPathCandidates(
     if (
       correlatedChildren.length === 1 &&
       correlatedChildren[0].start === expressionRange.start &&
-      correlatedChildren[0].end === expressionRange.end
+      correlatedChildren[0].end === expressionRange.end &&
+      !correlatedChildren[0].definedPathWitnesses?.includes('9999')
     )
       continue;
     let usesOnlyCalculationContainers = true;
@@ -4761,9 +4816,33 @@ function logStaticArgumentsCanReachValidResult(staticArguments) {
   return true;
 }
 
-function logHasFixedZeroResult(staticArguments) {
+function logHasFixedZeroValue(staticArguments) {
   const valueArgument = staticArguments.find((argument) => argument.index === 0);
   return valueArgument !== undefined && evaluateStaticLayerNumber(valueArgument.value) === 1;
+}
+
+function logHasFixedZeroBase(staticArguments) {
+  const baseArgument = staticArguments.find((argument) => argument.index === 1);
+  return baseArgument !== undefined && Object.is(evaluateStaticLayerNumber(baseArgument.value), 0);
+}
+
+function powHasFixedOneResult(staticArguments) {
+  const baseArgument = staticArguments.find((argument) => argument.index === 0);
+  return baseArgument !== undefined && evaluateStaticLayerNumber(baseArgument.value) === 1;
+}
+
+function modHasSafeWholeValueRange(
+  value,
+  range,
+  functionRange,
+  parenthesisPairs,
+  divisorExpression,
+) {
+  const expressionRange = unwrapStaticContainer(value, range, parenthesisPairs);
+  if (expressionRange.start !== functionRange.start || expressionRange.end !== functionRange.end)
+    return false;
+  const divisor = evaluateStaticLayerNumber(divisorExpression);
+  return divisor !== undefined && divisor > 0 && divisor <= 9998.5;
 }
 
 function randomKeyIsStructurallyValid(value, range) {
@@ -4837,7 +4916,6 @@ function numberOnlyRuntimeArgumentRanges(functionName, parsedArguments, value) {
       .replaceAll(cssCommentMaskCharacter, ' ')
       .trim()
       .toLowerCase();
-    if (firstArgument === 'line-width') return [];
     const hasStrategy = roundingStrategyNames.has(firstArgument);
     const validArgumentCount = hasStrategy
       ? parsedArguments.argumentCount === 2 || parsedArguments.argumentCount === 3
@@ -5044,6 +5122,36 @@ function staticValueHasPositiveScalarOrTypedMagnitude(value) {
   if (scalarValue !== undefined) return scalarValue > 0;
   return typedDivisorWitnessValues.some(
     (witness) => evaluateStaticLayerNumber(`calc((${value}) / (${witness}))`) > 0,
+  );
+}
+
+function runtimeTypedFunctionHasNumericOuterPath(
+  frame,
+  value,
+  range,
+  functionRange,
+  budget,
+  witness,
+) {
+  const expression = resolveFrameExpressionWithRangeReplacements(frame, value, range, budget, [
+    { start: functionRange.start, end: functionRange.end, value: witness },
+  ]);
+  return (
+    expression !== fallbackResolutionTooComplex &&
+    !isStaticallyInvalidArithmetic(expression) &&
+    analyzeStaticLayerValue(expression).resultType === 'number'
+  );
+}
+
+function roundUsesLineWidthStrategy(value, parsedArguments) {
+  const firstArgumentRange = parsedArguments.argumentRanges[0];
+  return (
+    firstArgumentRange !== undefined &&
+    value
+      .slice(firstArgumentRange.start, firstArgumentRange.end)
+      .replaceAll(cssCommentMaskCharacter, ' ')
+      .trim()
+      .toLowerCase() === 'line-width'
   );
 }
 

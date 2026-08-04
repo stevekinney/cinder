@@ -67,8 +67,6 @@ const relativeLengthUnitNames = new Set([
 const calcFunctionPattern = /(?:-webkit-)?calc\(/iy;
 const signFunctionPattern = /sign\(/iy;
 const substitutionFunctionPattern = /(?:var|env|attr)\(/iy;
-const nonExactNumericFunctionPattern =
-  /(?:acos|asin|atan2?|cos|exp|hypot|log|pow|sin|sqrt|tan)\s*\(/i;
 const urlFunctionPattern = /url\(/iy;
 const commutativeSymbolicOperations = new Set(['+', 'hypot', 'max', 'min']);
 const maximumStaticSymbolicIdentityWork = 131_072;
@@ -169,13 +167,15 @@ function scalar(value, isLiteralZero = false, exactValue) {
 }
 
 function withValue(source, value, exactValue) {
-  return {
+  const result = {
     value,
     units: new Map(source.units),
     symbolicFactors: new Map(source.symbolicFactors),
     isLiteralZero: false,
     exactValue,
   };
+  if (source.hasZeroDivisor) result.hasZeroDivisor = true;
+  return result;
 }
 
 function greatestCommonDivisor(left, right) {
@@ -538,6 +538,7 @@ function evaluateConstantArithmetic(expression) {
       symbolicFactors: new Map([[symbolicIdentity(operation, arguments_, argumentIdentities), 1]]),
       isLiteralZero: false,
     };
+    if (arguments_.some((argument) => argument.hasZeroDivisor)) value.hasZeroDivisor = true;
     if (associativeAddends !== undefined) value.associativeAddends = associativeAddends;
     return value;
   }
@@ -1065,6 +1066,7 @@ function evaluateConstantArithmetic(expression) {
       if (operator !== '*' && operator !== '/') return value;
       index += 1;
       const right = parseAtom();
+      const leftHasZeroDivisor = value.hasZeroDivisor;
       const numericValue = operator === '*' ? value.value * right.value : value.value / right.value;
       const symbolicFactors =
         numericValue === 0 && (operator === '*' || right.value !== 0)
@@ -1080,6 +1082,8 @@ function evaluateConstantArithmetic(expression) {
             ? multiplyRationals(value.exactValue, right.exactValue)
             : divideRationals(value.exactValue, right.exactValue),
       };
+      if (leftHasZeroDivisor || right.hasZeroDivisor || (operator === '/' && right.value === 0))
+        value.hasZeroDivisor = true;
     }
   }
 
@@ -1107,6 +1111,7 @@ function evaluateConstantArithmetic(expression) {
           right.exactValue,
           operator === '+' ? 1n : -1n,
         );
+        if (value.hasZeroDivisor || right.hasZeroDivisor) combinedValue.hasZeroDivisor = true;
         if (operator === '+')
           combinedValue.associativeAddends = combinedAdditiveIdentityTerms([value, right]);
         value = combinedValue;
@@ -1658,7 +1663,8 @@ export function hasRuntimeDependentNumericConversion(value) {
     arithmeticResult !== null &&
     arithmeticResult !== staticAnalysisTooComplex &&
     arithmeticResult !== staticAnalysisInvalid &&
-    (arithmeticResult.exactValue !== undefined || nonExactNumericFunctionPattern.test(value)) &&
+    Number.isFinite(arithmeticResult.value) &&
+    !arithmeticResult.hasZeroDivisor &&
     (arithmeticResult.units.size > 0 || arithmeticResult.symbolicFactors.size > 0) &&
     hasNumericResultType(arithmeticResult.units)
   );

@@ -546,6 +546,9 @@ describe('cinder/z-index-scale', () => {
 
   test.each([
     ['calc(9999 * mod(var(--runtime), 2))', 1],
+    ['mod(var(--runtime, 0), 1)', 0],
+    ['mod(var(--runtime, 0), 10000)', 1],
+    ['calc(9998 + mod(var(--runtime, 0), 2))', 1],
     ['calc(9999 * rem(var(--runtime), 2))', 1],
     ['calc(9999 * round(var(--runtime)))', 1],
     ['calc(9999 * round(var(--runtime), 2))', 1],
@@ -575,6 +578,8 @@ describe('cinder/z-index-scale', () => {
     ['calc(9999 * mod(var(--runtime), 0.2) / 0.1)', 1],
     ['calc(9999 * rem(var(--runtime), 2px) / 1px)', 1],
     ['calc(9999 * round(var(--runtime), 2px) / 1px)', 1],
+    ['calc(round(line-width, var(--runtime, 9999px)) / 1px)', 1],
+    ['round(line-width, var(--runtime, 9999px))', 0],
     ['calc(9999 * mod(var(--runtime), 0px) / 1px)', 0],
     ['calc(9999 * rem(var(--runtime), 0px) / 1px)', 0],
     ['calc(9999 * round(var(--runtime), 0px) / 1px)', 0],
@@ -2047,10 +2052,10 @@ describe('cinder/z-index-scale', () => {
         z-index: var(--outer, calc(9999 * (1px + 1em) / (1px + 2em)));
       }
     `);
-    expect(warnings(differentSum)).toEqual([]);
+    expect(warnings(differentSum)).toHaveLength(1);
   });
 
-  test.each(['calc(9999vw / 1vh)', 'calc(9999em / 1rem)'])(
+  test.each(['calc(9999vw / 1vh)', 'calc(9999em / 1rem)', 'calc(9999 * abs(-1em) / 1rem)'])(
     'fails closed for runtime-dependent relative-unit ratios: %s',
     async (fallback) => {
       const result = await lint(`
@@ -2472,7 +2477,6 @@ describe('cinder/z-index-scale', () => {
     'var(--item-layer, calc(exp(log(9903.4)) * 19997 / 19807))',
     'var(--item-layer, exp(log(9903.5, 10)))',
     'var(--item-layer, exp(log(-1)))',
-    'var(--item-layer, calc(9999 * abs(-1em) / 1rem))',
     'var(--item-layer, calc(1 * progress(1, 0, 1)))',
     'var(--item-layer, calc(9999 * progress(-1, 0, 1)))',
     'var(--item-layer, calc(9999 * progress(2, 1, 0)))',
@@ -2890,6 +2894,7 @@ describe('cinder/z-index-scale', () => {
     'attr(data-layer raw-string, -1)',
     'attr(data-layer type(<integer>), 9999)',
     'attr(data-layer type(<length>), 9999)',
+    'attr(data-layer type(<frequency>), 9999)',
     'attr(data-layer type(*), -1)',
     'attr(data-layer type(<integer> | <number>), 9999)',
     'attr(data-layer type(<integer>#), -1)',
@@ -3550,6 +3555,24 @@ describe('cinder/z-index-scale', () => {
     );
 
     expect(warning?.text).toContain('too complex to verify safely');
+  });
+
+  test.each([
+    'first-valid(acos(var(--runtime)), 2)',
+    'first-valid(asin(var(--runtime)), 2)',
+    'first-valid(atan(var(--runtime)), 2)',
+    'first-valid(atan2(var(--runtime), 1), 2)',
+  ])('discards bare angle-valued inverse trigonometric branches: %s', async (fallback) => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: angle-valued branches are invalid for z-index. */
+            z-index: var(--outer, ${fallback});
+          }
+        `),
+      ),
+    ).toEqual([]);
   });
 
   test.each([
@@ -4273,6 +4296,8 @@ describe('cinder/z-index-scale', () => {
     ['calc(9999 * pow(var(--runtime)))', 0],
     ['calc(9999 * pow(var(--runtime), 0, 1))', 0],
     ['calc(9999 * pow(1px, var(--runtime)))', 0],
+    ['pow(1, var(--runtime, 2))', 0],
+    ['calc(9998 + pow(1, var(--runtime, 2)))', 1],
   ] as const)('tracks unresolved pow arity and zero elimination: %s', async (fallback, count) => {
     expect(
       warnings(
@@ -4345,6 +4370,8 @@ describe('cinder/z-index-scale', () => {
     ['calc(9999 * log(-1, var(--runtime)))', 0],
     ['calc(9999 * log(1, var(--runtime)))', 0],
     ['calc(9999 + log(1, var(--runtime)))', 1],
+    ['log(var(--runtime, 2), 0)', 0],
+    ['calc(1 / log(var(--runtime, 2), 0))', 1],
     ['calc(9999 * log(var(--runtime), 1, 2))', 0],
   ] as const)('tracks unresolved log arity and zero elimination: %s', async (fallback, count) => {
     expect(
@@ -4428,6 +4455,7 @@ describe('cinder/z-index-scale', () => {
     ['calc(9999 * env(foo, 0px))', 1],
     ['calc(9999 * attr(data-layer type(<number>), 0))', 1],
     ['calc(9999 * attr(data-layer type(<integer>), 0))', 1],
+    ['attr(data-layer type(*), 1)', 1],
     ['calc(var(--runtime, 0) - var(--runtime, 0))', 0],
     ['calc(var(--runtime, 9999) - var(--runtime, 9999))', 0],
     ['calc(var(--runtime, 0) - var(--runtime, 1))', 1],
@@ -4521,6 +4549,19 @@ describe('cinder/z-index-scale', () => {
       ).toHaveLength(count);
     },
   );
+
+  test('accepts non-exact arithmetic when identical relative units cancel', async () => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: identical units cancel without runtime conversion. */
+            z-index: var(--outer, calc(9999 * sqrt(2) * 1em / 1em));
+          }
+        `),
+      ),
+    ).toEqual([]);
+  });
 
   test.each([
     ['if(style(--theme: dark): 9999; else: 1)', 1],
