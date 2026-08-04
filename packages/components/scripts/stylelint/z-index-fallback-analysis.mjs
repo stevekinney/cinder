@@ -80,6 +80,7 @@ const signedZeroSensitiveFunctionNames = new Set([
   'tan',
 ]);
 const substitutionFunctionNames = new Set(['attr', 'env', 'var']);
+const treeCountingFunctionNames = new Set(['sibling-count', 'sibling-index']);
 const signedCalcKeywordPattern = /[+-](?:e|infinity|nan|pi)(?![-_a-z\d])/iy;
 const mathFunctionNames = new Set([
   '-webkit-calc',
@@ -104,6 +105,7 @@ const mathFunctionNames = new Set([
   'sign',
   'sin',
   'sqrt',
+  ...treeCountingFunctionNames,
   'tan',
 ]);
 
@@ -2646,6 +2648,19 @@ function validSubstitutionHeader(frame, value) {
   return validAttrTypeSyntax(typeMatch[1]);
 }
 
+function substitutionDefinedPathCanBeNumber(frame, value) {
+  if (frame.functionName === 'var' || frame.functionName === 'env') return true;
+  if (frame.functionName !== 'attr') return false;
+  const header = value
+    .slice(frame.openIndex + 1, frame.commaIndex)
+    .replaceAll(cssCommentMaskCharacter, ' ')
+    .trim();
+  const identifierEnd = cssIdentifierTokenEnd(header, 0);
+  const attrType = header.slice(identifierEnd).trim();
+  const typeMatch = /^type\(([^()]+)\)$/i.exec(attrType);
+  return typeMatch !== null && /(?:^|[<"'])(?:integer|number)(?:>|["']|$)/i.test(typeMatch[1]);
+}
+
 function hasInvalidEdgeOperator(value, start, end, allowWebkitCalcPrefix = false) {
   const range = trimCssTriviaRange(value, start, end);
   const firstCharacter = value[range.start];
@@ -3358,7 +3373,11 @@ function unresolvedRuntimeRangeCandidates(
   const zeroProductRange = { ...range, frame };
   const liveFunctionParents = new Set();
   for (const child of frame.children) {
-    if (child.resolvedFallback !== null || !selectableChildren.has(child)) continue;
+    if (
+      (child.resolvedFallback !== null && !child.definedPathCanBeNumber) ||
+      !selectableChildren.has(child)
+    )
+      continue;
     const functionParent = childFunctionParent(child, 'runtimeRangeParent', range);
     if (functionParent === undefined) continue;
     if (
@@ -3392,18 +3411,31 @@ function unresolvedRuntimeRangeCandidates(
       )
     )
       continue;
+    const numberOnlyArgumentRanges = numberOnlyRuntimeArgumentRanges(
+      functionParent.functionName,
+      parsedArguments,
+    );
     if (
-      (functionParent.functionName === 'exp' || functionParent.functionName === 'sqrt') &&
-      unresolvedFunctionArgumentIsUnavoidablyNonNumber(
-        frame,
-        value,
-        parsedArguments.argumentRanges[0],
-        parenthesisPairs,
+      numberOnlyArgumentRanges.some((argumentRange) =>
+        unresolvedFunctionArgumentIsUnavoidablyNonNumber(
+          frame,
+          value,
+          argumentRange,
+          parenthesisPairs,
+        ),
       )
     )
       continue;
+    const logValueArgument = parsedArguments.argumentRanges[0];
+    const definedPathCanChangeLogValue =
+      functionParent.functionName === 'log' &&
+      child.definedPathCanBeNumber &&
+      logValueArgument !== undefined &&
+      child.start < logValueArgument.end &&
+      child.end > logValueArgument.start;
     if (
       functionParent.functionName === 'log' &&
+      !definedPathCanChangeLogValue &&
       logHasFixedZeroResult(parsedArguments.staticArguments)
     ) {
       const fixedZeroExpression = resolveFrameExpressionWithRangeReplacements(
@@ -3445,12 +3477,137 @@ function unresolvedRuntimeRangeCandidates(
     return [
       {
         ...candidate,
+        hasRuntimeSibling: true,
         resolvedFallback: fallbackResolutionTooComplex,
         resolvedClassification: 'too-complex',
       },
     ];
   }
   return [];
+}
+
+function treeCountingRangeCandidates(frame, value, range, candidate, budget, parenthesisPairs) {
+  const zeroProductRange = { ...range, frame };
+  for (const group of frame.treeCountingGroups) {
+    if (
+      group.end === undefined ||
+      group.functionStart < range.start ||
+      group.end > range.end ||
+      trimCssTriviaRange(value, group.openIndex + 1, group.end - 1).start !==
+        trimCssTriviaRange(value, group.openIndex + 1, group.end - 1).end ||
+      !childIsInSelectableConditionalBranch(
+        { start: group.functionStart, end: group.end, conditionalParent: group.conditionalParent },
+        value,
+        parenthesisPairs,
+      ) ||
+      (group.invalidFunctionParent?.end !== undefined &&
+        group.invalidFunctionParent !== group &&
+        group.invalidFunctionParent.functionStart >= range.start &&
+        group.invalidFunctionParent.end <= range.end)
+    )
+      continue;
+    const elimination = functionParentIsMultipliedByStaticZero(
+      value,
+      zeroProductRange,
+      group,
+      budget,
+    );
+    if (elimination === true) continue;
+    return [
+      {
+        ...candidate,
+        resolvedFallback: fallbackResolutionTooComplex,
+        resolvedClassification: 'too-complex',
+        hasRuntimeSibling: true,
+      },
+    ];
+  }
+  return [];
+}
+
+function definedSubstitutionPathCandidates(
+  frame,
+  value,
+  range,
+  candidate,
+  budget,
+  parenthesisPairs,
+  selectableChildren,
+) {
+  const candidates = [];
+  const expressionRange = unwrapStaticContainer(value, range, parenthesisPairs);
+  for (const child of frame.children) {
+    if (!child.definedPathCanBeNumber || !selectableChildren.has(child)) continue;
+    if (child.start === expressionRange.start && child.end === expressionRange.end) continue;
+    let parent = child.parenthesisParent;
+    let usesOnlyCalculationContainers = true;
+    while (
+      parent?.type === 'group' &&
+      parent.end !== undefined &&
+      parent.functionStart >= range.start &&
+      parent.end <= range.end
+    ) {
+      if (
+        !parent.isGroupingParenthesis &&
+        parent.functionName !== 'calc' &&
+        parent.functionName !== '-webkit-calc'
+      ) {
+        usesOnlyCalculationContainers = false;
+        break;
+      }
+      parent = parent.parenthesisParent;
+    }
+    if (!usesOnlyCalculationContainers) continue;
+    const resolvedSiblings = frame.children.filter(
+      (sibling) => sibling !== child && typeof sibling.resolvedFallback === 'string',
+    );
+    if (resolvedSiblings.length !== frame.children.length - 1) continue;
+    const childRange = { start: child.start, end: child.end };
+    if (
+      !progressExpressionIsMultilinear(
+        value,
+        range,
+        [childRange],
+        [0],
+        resolvedSiblings,
+        parenthesisPairs,
+      )
+    )
+      continue;
+    const endpointExpressions = [];
+    for (const witness of ['0', '1']) {
+      const expression = resolveFrameExpressionWithRangeReplacements(frame, value, range, budget, [
+        { start: child.start, end: child.end, value: witness },
+      ]);
+      if (expression === fallbackResolutionTooComplex)
+        return [
+          {
+            ...candidate,
+            resolvedFallback: fallbackResolutionTooComplex,
+            resolvedClassification: 'too-complex',
+          },
+        ];
+      const analysis = analyzeFrameExpression(frame, expression, budget);
+      if (analysis.resultType !== 'number' || isStaticallyInvalidArithmetic(expression)) {
+        endpointExpressions.length = 0;
+        break;
+      }
+      endpointExpressions.push(expression);
+    }
+    if (endpointExpressions.length !== 2 || haveEqualStaticArithmeticValues(endpointExpressions))
+      continue;
+    const definedPathCandidate = {
+      fallbackIndex: child.start,
+      rawFallback: value.slice(child.start, child.end),
+      resolvedFallback: fallbackResolutionTooComplex,
+      hasRuntimeSibling: true,
+    };
+    candidates.push(
+      { ...definedPathCandidate, resolvedClassification: 'negative' },
+      { ...definedPathCandidate, resolvedClassification: 'magic' },
+    );
+  }
+  return candidates;
 }
 
 function unresolvedRuntimeFunctionHasValidArity(functionName, argumentCount) {
@@ -3479,16 +3636,112 @@ function logHasFixedZeroResult(staticArguments) {
   return valueArgument !== undefined && evaluateStaticLayerNumber(valueArgument.value) === 1;
 }
 
+function numberOnlyRuntimeArgumentRanges(functionName, parsedArguments) {
+  if (functionName === 'exp' || functionName === 'sqrt')
+    return parsedArguments.argumentRanges.slice(0, 1);
+  if (functionName === 'log' || functionName === 'pow') return parsedArguments.argumentRanges;
+  return [];
+}
+
+function childIsInsideProvablyInvalidNumberOnlyFunction(
+  child,
+  frame,
+  value,
+  range,
+  parenthesisPairs,
+  invalidFunctionCache,
+) {
+  let parent = child.parenthesisParent;
+  while (
+    parent?.type === 'group' &&
+    parent.end !== undefined &&
+    parent.functionStart >= range.start &&
+    parent.end <= range.end
+  ) {
+    if (!['exp', 'log', 'pow', 'sqrt'].includes(parent.functionName)) {
+      parent = parent.parenthesisParent;
+      continue;
+    }
+    const cachedResult = invalidFunctionCache.get(parent);
+    if (cachedResult === true) return true;
+    if (cachedResult === false) {
+      parent = parent.parenthesisParent;
+      continue;
+    }
+    const parsedArguments = fallbackIndependentStaticArguments(
+      frame,
+      value,
+      { start: parent.functionStart, end: parent.end },
+      parent.functionName,
+      parenthesisPairs,
+    );
+    const isInvalidNumberOnlyFunction =
+      parsedArguments !== undefined &&
+      unresolvedRuntimeFunctionHasValidArity(parent.functionName, parsedArguments.argumentCount) &&
+      numberOnlyRuntimeArgumentRanges(parent.functionName, parsedArguments).some((argumentRange) =>
+        unresolvedFunctionArgumentIsUnavoidablyNonNumber(
+          frame,
+          value,
+          argumentRange,
+          parenthesisPairs,
+        ),
+      );
+    invalidFunctionCache.set(parent, isInvalidNumberOnlyFunction);
+    if (isInvalidNumberOnlyFunction) return true;
+    parent = parent.parenthesisParent;
+  }
+  return false;
+}
+
 function unresolvedFunctionArgumentIsUnavoidablyNonNumber(frame, value, range, parenthesisPairs) {
-  const termRanges = topLevelAdditiveTermRanges(value, range, parenthesisPairs);
-  if (termRanges === undefined) return false;
-  let childIndex = firstChildEndingAfter(frame.children, termRanges[0].start);
-  for (const termRange of termRanges) {
-    while (frame.children[childIndex]?.end <= termRange.start) childIndex += 1;
-    const child = frame.children[childIndex];
-    if (child?.start < termRange.end && child.end > termRange.start) continue;
-    const term = value.slice(termRange.start, termRange.end);
-    if (analyzeStaticLayerValue(term).resultType === 'non-number') return true;
+  const pendingRanges = [range];
+  let inspectedRangeCount = 0;
+  while (pendingRanges.length > 0) {
+    if (inspectedRangeCount >= conditionalNestingLimit) return false;
+    inspectedRangeCount += 1;
+    const currentRange = pendingRanges.pop();
+    const termRanges = topLevelAdditiveTermRanges(value, currentRange, parenthesisPairs);
+    if (termRanges !== undefined) {
+      let childIndex = firstChildEndingAfter(frame.children, termRanges[0].start);
+      for (const termRange of termRanges) {
+        while (frame.children[childIndex]?.end <= termRange.start) childIndex += 1;
+        const child = frame.children[childIndex];
+        if (child?.start < termRange.end && child.end > termRange.start) continue;
+        const term = value.slice(termRange.start, termRange.end);
+        if (analyzeStaticLayerValue(term).resultType === 'non-number') return true;
+      }
+    }
+
+    for (const functionName of ['abs', 'clamp', 'hypot', 'max', 'min']) {
+      const parsedArguments = fallbackIndependentStaticArguments(
+        frame,
+        value,
+        currentRange,
+        functionName,
+        parenthesisPairs,
+      );
+      if (parsedArguments === undefined) continue;
+      if (
+        parsedArguments.argumentCount < 1 ||
+        (functionName === 'clamp' && parsedArguments.argumentCount !== 3) ||
+        (functionName === 'abs' && parsedArguments.argumentCount !== 1)
+      )
+        break;
+      if (
+        parsedArguments.staticArguments.some(
+          (argument) => analyzeStaticLayerValue(argument.value).resultType === 'non-number',
+        )
+      )
+        return true;
+      const staticArgumentIndexes = new Set(
+        parsedArguments.staticArguments.map((argument) => argument.index),
+      );
+      for (let index = 0; index < parsedArguments.argumentRanges.length; index += 1) {
+        if (!staticArgumentIndexes.has(index))
+          pendingRanges.push(parsedArguments.argumentRanges[index]);
+      }
+      break;
+    }
   }
   return false;
 }
@@ -3745,17 +3998,42 @@ function conditionalRangeCandidates(frame, value, range, candidate, budget, pare
     const anchoredReplacements = combination.filter(
       (replacement) => replacement.anchorRange.start !== replacement.anchorRange.end,
     );
-    const matchingAnchoredReplacements = anchoredReplacements.filter(
-      (replacement) =>
-        analyzeStaticLayerValue(replacement.value).classification === analysis.classification,
-    );
-    const anchorRange = (
-      anchoredReplacements.length === 1
-        ? anchoredReplacements[0]
-        : matchingAnchoredReplacements.length === 1
-          ? matchingAnchoredReplacements[0]
-          : undefined
-    )?.anchorRange;
+    const replacementsToCheck =
+      anchoredReplacements.length <= 32
+        ? anchoredReplacements
+        : anchoredReplacements.filter(
+            (replacement) =>
+              analyzeStaticLayerValue(replacement.value).classification === analysis.classification,
+          );
+    const contributingReplacements = [];
+    if (replacementsToCheck.length <= 32) {
+      for (const replacementToCheck of replacementsToCheck) {
+        let contributes = false;
+        for (const witness of ['0', '1']) {
+          if (replacementToCheck.value.trim() === witness) continue;
+          const neutralizedExpression = resolveFrameExpressionWithRangeReplacements(
+            frame,
+            value,
+            range,
+            budget,
+            combination.map((replacement) =>
+              replacement === replacementToCheck ? { ...replacement, value: witness } : replacement,
+            ),
+          );
+          if (neutralizedExpression === fallbackResolutionTooComplex) continue;
+          if (
+            analyzeFrameExpression(frame, neutralizedExpression, budget).classification !==
+            analysis.classification
+          ) {
+            contributes = true;
+            break;
+          }
+        }
+        if (contributes) contributingReplacements.push(replacementToCheck);
+      }
+    }
+    const anchorRange =
+      contributingReplacements.length === 1 ? contributingReplacements[0].anchorRange : undefined;
     candidates.push({
       ...candidate,
       ...(anchorRange === undefined
@@ -3782,9 +4060,19 @@ function unprovenCandidatesForFrame(frame, value, range, candidate, budget, pare
   const hasSingleChildWithEnclosingContext =
     frame.children.length === 1 && (onlyChild.start !== range.start || onlyChild.end !== range.end);
   if (frame.resolvedClassification === 'too-complex') return [candidate];
+  const invalidNumberOnlyFunctionCache = new Map();
   const selectableChildren = new Set(
-    frame.children.filter((child) =>
-      childIsInSelectableConditionalBranch(child, value, parenthesisPairs),
+    frame.children.filter(
+      (child) =>
+        childIsInSelectableConditionalBranch(child, value, parenthesisPairs) &&
+        !childIsInsideProvablyInvalidNumberOnlyFunction(
+          child,
+          frame,
+          value,
+          range,
+          parenthesisPairs,
+          invalidNumberOnlyFunctionCache,
+        ),
     ),
   );
   if (
@@ -4031,6 +4319,16 @@ function unprovenCandidatesForFrame(frame, value, range, candidate, budget, pare
       suppressedRuntimeFunctionRanges,
       selectableChildren,
     ),
+    ...definedSubstitutionPathCandidates(
+      frame,
+      value,
+      range,
+      candidate,
+      budget,
+      parenthesisPairs,
+      selectableChildren,
+    ),
+    ...treeCountingRangeCandidates(frame, value, range, candidate, budget, parenthesisPairs),
   ];
   const uneliminatedCandidates = (
     runtimeZeroClassification === 'negative' || runtimeZeroClassification === 'magic'
@@ -4105,6 +4403,7 @@ function fallbackCandidates(value) {
     children: [],
     conditionalGroups: [],
     hasInvalidCommaStream: false,
+    treeCountingGroups: [],
   };
   const resolutionBudget = { remaining: fallbackResolutionWorkLimit };
 
@@ -4138,6 +4437,7 @@ function fallbackCandidates(value) {
         commaIndex: -1,
         children: [],
         conditionalGroups: [],
+        fallbackParent: nearestFunction,
         consumerRequiresSignedZero: inheritedConsumerContext,
         unprovenBannedCandidates: [],
         resolvedFallback: null,
@@ -4153,6 +4453,7 @@ function fallbackCandidates(value) {
         runtimeRangeParent: parentheses.at(-1)?.runtimeRangeParent,
         unsupportedProgressRangeParent: parentheses.at(-1)?.unsupportedProgressRangeParent,
         signedZeroSensitiveContext: inheritedContext || isPrecededByDivision(value, index),
+        treeCountingGroups: [],
       };
       if (nearestFunction && nearestFunction.commaIndex !== -1)
         nearestFunction.children.push(frame);
@@ -4215,6 +4516,10 @@ function fallbackCandidates(value) {
           conditionalOwner.conditionalGroups.push(group);
         else if (conditionalOwner === undefined) rootFrame.conditionalGroups.push(group);
       } else group.conditionalParent = parenthesisParent?.conditionalParent;
+      if (treeCountingFunctionNames.has(group.functionName)) {
+        const treeCountingOwner = fallbackFrames.at(-1) ?? rootFrame;
+        treeCountingOwner.treeCountingGroups.push(group);
+      }
       const progressRangeIsUnsupported =
         group.signedZeroSensitiveContext ||
         (!group.isGroupingParenthesis &&
@@ -4296,6 +4601,8 @@ function fallbackCandidates(value) {
       resolvedFallback: frame.resolvedFallback,
       resolvedClassification: frame.resolvedClassification,
     };
+    frame.definedPathCanBeNumber =
+      frame.fallbackParent !== undefined && substitutionDefinedPathCanBeNumber(frame, value);
     frame.unprovenBannedCandidates = unprovenCandidatesForFrame(
       frame,
       value,

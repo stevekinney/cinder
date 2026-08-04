@@ -358,15 +358,15 @@ describe('cinder/z-index-scale', () => {
     }
   });
 
-  test('evaluates nested fallbacks in their enclosing arithmetic context', async () => {
+  test('evaluates written and defined nested paths in their enclosing arithmetic context', async () => {
     const result = await lint(`
       .fixture {
-        /* cinder-z-index-local: the enclosing fallback resolves to the local layer 1. */
+        /* cinder-z-index-local: the written path is 1, but a defined inner value remains live. */
         z-index: var(--outer, calc(var(--inner, -1) + 2));
       }
     `);
 
-    expect(warnings(result)).toEqual([]);
+    expect(warnings(result)).toHaveLength(1);
   });
 
   test('evaluates a top-level fallback only in its enclosing safe context', async () => {
@@ -3913,6 +3913,19 @@ describe('cinder/z-index-scale', () => {
     ['min(1, calc(exp(var(--runtime)) * -1))', 1],
     ['min(1, calc(1e30 - exp(var(--runtime))))', 1],
     ['calc(9999 * exp(calc(var(--runtime) + 1px)))', 0],
+    ['calc(9999 * exp(max(var(--runtime), 1px)))', 0],
+    ['calc(9999 * exp(min(var(--runtime), 1px)))', 0],
+    ['calc(9999 * exp(clamp(0px, var(--runtime), 10px)))', 0],
+    ['calc(9999 * exp(hypot(var(--runtime), 1px)))', 0],
+    ['calc(9999 * exp(abs(calc(var(--runtime) + 1px))))', 0],
+    ['calc(9999 * exp(max(var(--runtime), 1px, 2)))', 0],
+    ['calc(9999 * exp(max(var(--runtime), 1)))', 1],
+    ['calc(9999 * sqrt(max(var(--runtime), 1px)))', 0],
+    ['calc(9999 * sqrt(max(var(--runtime), 1)))', 1],
+    ['calc(9999 * log(max(var(--runtime), 1px)))', 0],
+    ['calc(9999 * log(max(var(--runtime), 2)))', 1],
+    ['calc(9999 * pow(max(var(--runtime), 1px), var(--exponent)))', 0],
+    ['calc(9999 * pow(max(var(--runtime), 1), var(--exponent)))', 1],
     ['min(-1, exp(var(--runtime)))', 1],
     ['min(9999, exp(var(--runtime)))', 1],
     ['clamp(0, exp(var(--runtime)), 1)', 0],
@@ -3975,6 +3988,82 @@ describe('cinder/z-index-scale', () => {
       ),
     ).toHaveLength(count);
   });
+
+  test.each([
+    ['calc(9999 * sibling-index() / sibling-index())', 1],
+    ['calc(9999 * sibling-count() / sibling-count())', 1],
+    ['calc(9999 * sibling-index() / sibling-count())', 1],
+    ['calc(9999 * sibling-index())', 1],
+    ['calc(0 * sibling-index())', 0],
+    ['calc(9999 * sibling-index(1))', 0],
+    ['calc(9999 * sibling-count(1))', 0],
+  ] as const)('tracks CSS tree-counting functions: %s', async (fallback, count) => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: tree-counting regression coverage. */
+            z-index: var(--outer, ${fallback});
+          }
+        `),
+      ),
+    ).toHaveLength(count);
+  });
+
+  test.each([
+    ['calc(9999 * var(--runtime, 0))', 1],
+    ['calc(9999 * env(foo, 0))', 1],
+    ['calc(9999 * attr(data-layer type(<number>), 0))', 1],
+    ['calc(9999 * attr(data-layer type(<integer>), 0))', 1],
+    ['calc(0 * var(--runtime, 0))', 0],
+    ['clamp(0, calc(9999 * var(--runtime, 0)), 1)', 0],
+    ['calc(9999 * attr(data-layer type(<length>), 0px))', 0],
+  ] as const)(
+    'tracks the defined path of substitutions with safe fallbacks: %s',
+    async (fallback, count) => {
+      expect(
+        warnings(
+          await lint(`
+          .fixture {
+            /* cinder-z-index-local: defined substitution path regression coverage. */
+            z-index: var(--outer, ${fallback});
+          }
+        `),
+        ),
+      ).toHaveLength(count);
+    },
+  );
+
+  test.each([
+    ['calc(9999 * exp(var(--runtime, 1)))', 1],
+    ['calc(9999 * exp(var(--runtime, 1px)))', 1],
+    ['calc(9999 * exp(attr(data-layer type(<number>), 1px)))', 1],
+    ['calc(9999 * exp(max(attr(data-layer type(<number>), 1px), 1)))', 1],
+    ['calc(9999 * exp(clamp(0, attr(data-layer type(<number>), 1px), 10)))', 1],
+    ['calc(9999 * sqrt(var(--runtime, 0)))', 1],
+    ['calc(9999 * sqrt(attr(data-layer type(<number>), 0)))', 1],
+    ['calc(9999 * log(var(--runtime, 1)))', 1],
+    ['calc(9999 * pow(var(--runtime, 0), 2))', 1],
+    ['calc(9999 * log(1, var(--runtime, 0)))', 0],
+    ['calc(0 * exp(var(--runtime, 1)))', 0],
+    ['min(1, exp(var(--runtime, 1)))', 0],
+    ['calc(9999 * exp(attr(data-layer type(<length>), 1px)))', 0],
+    ['calc(9999 * exp(var(--runtime, 1), 2))', 0],
+  ] as const)(
+    'tracks defined substitutions inside number-only runtime functions: %s',
+    async (fallback, count) => {
+      expect(
+        warnings(
+          await lint(`
+          .fixture {
+            /* cinder-z-index-local: number-only defined path regression coverage. */
+            z-index: var(--outer, ${fallback});
+          }
+        `),
+        ),
+      ).toHaveLength(count);
+    },
+  );
 
   test.each([
     ['if(style(--theme: dark): 9999; else: 1)', 1],
@@ -4150,6 +4239,21 @@ describe('cinder/z-index-scale', () => {
     const bannedIndex = css.indexOf('9999');
     const start = sourceLocation(css, bannedIndex);
     const end = sourceLocation(css, bannedIndex + 4);
+
+    expect(warning?.column).toBe(start.column);
+    expect(warning?.endColumn).toBe(end.column);
+  });
+
+  test('does not anchor a sibling conditional diagnostic to an eliminated branch', async () => {
+    const css = `
+      .fixture {
+        z-index: var(--outer, calc(if(style(--a: x): 9999; else: 1) * 0 + if(style(--b: x): 10000; else: 1) - 1));
+      }
+    `;
+    const [warning] = warnings(await lint(css));
+    const contributingIndex = css.indexOf('10000');
+    const start = sourceLocation(css, contributingIndex);
+    const end = sourceLocation(css, contributingIndex + 5);
 
     expect(warning?.column).toBe(start.column);
     expect(warning?.endColumn).toBe(end.column);
