@@ -27,6 +27,22 @@ const invalidCustomIdentKeywords = new Set([
   'revert-layer',
   'unset',
 ]);
+const validAttrSyntaxTypeNames = new Set([
+  'angle',
+  'color',
+  'custom-ident',
+  'image',
+  'integer',
+  'length',
+  'length-percentage',
+  'number',
+  'percentage',
+  'resolution',
+  'string',
+  'time',
+  'transform-function',
+  'transform-list',
+]);
 const signedZeroSensitiveFunctionNames = new Set(['atan2', 'log', 'pow']);
 const substitutionFunctionNames = new Set(['attr', 'env', 'var']);
 const mathFunctionNames = new Set([
@@ -1479,6 +1495,40 @@ function cssIdentifierTokenEnd(value, start) {
   return end;
 }
 
+function validAttrTypeSyntax(syntax) {
+  syntax = syntax.trim();
+  if (syntax === '*') return true;
+  if (syntax[0] === '"' || syntax[0] === "'")
+    return quotedStringEnd(syntax, 0) === syntax.length - 1;
+
+  let index = 0;
+  for (;;) {
+    while (isCssWhitespaceOrComment(syntax[index])) index += 1;
+    let supportsMultiplier = true;
+    if (syntax[index] === '<') {
+      const closeIndex = syntax.indexOf('>', index + 1);
+      if (closeIndex === -1) return false;
+      const typeName = syntax.slice(index + 1, closeIndex).toLowerCase();
+      if (!validAttrSyntaxTypeNames.has(typeName)) return false;
+      supportsMultiplier = typeName !== 'transform-list';
+      index = closeIndex + 1;
+    } else {
+      const identifierEnd = cssIdentifierTokenEnd(syntax, index);
+      if (identifierEnd === index) return false;
+      index = identifierEnd;
+    }
+    if (syntax[index] === '#' || syntax[index] === '+') {
+      if (!supportsMultiplier) return false;
+      index += 1;
+    }
+    while (isCssWhitespaceOrComment(syntax[index])) index += 1;
+    if (index === syntax.length) return true;
+    if (syntax[index] !== '|') return false;
+    index += 1;
+    if (index === syntax.length) return false;
+  }
+}
+
 function validSubstitutionHeader(frame, value) {
   const header = value
     .slice(frame.openIndex + 1, frame.commaIndex)
@@ -1499,17 +1549,34 @@ function validSubstitutionHeader(frame, value) {
   if (cssIdentifierTokenEnd(attrType, 0) === attrType.length) return true;
   const typeMatch = /^type\(([^()]+)\)$/i.exec(attrType);
   if (!typeMatch) return false;
-  let hasOpenAngleBracket = false;
-  for (const character of typeMatch[1]) {
-    if (character === '<') {
-      if (hasOpenAngleBracket) return false;
-      hasOpenAngleBracket = true;
-    } else if (character === '>') {
-      if (!hasOpenAngleBracket) return false;
-      hasOpenAngleBracket = false;
-    }
-  }
-  return !hasOpenAngleBracket;
+  return validAttrTypeSyntax(typeMatch[1]);
+}
+
+function hasInvalidEdgeOperator(value, start, end, allowWebkitCalcPrefix = false) {
+  const range = trimCssTriviaRange(value, start, end);
+  const firstCharacter = value[range.start];
+  const lastCharacter = value[range.end - 1];
+  const signedCalcKeyword = /^[+-](?:e|infinity|nan|pi)(?![-_a-z\d])/i.test(
+    value.slice(range.start, range.end),
+  );
+  if (firstCharacter === '*' || firstCharacter === '/') return true;
+  if (
+    (firstCharacter === '+' || firstCharacter === '-') &&
+    !/\d/.test(value[range.start + 1] ?? '') &&
+    !(value[range.start + 1] === '.' && /\d/.test(value[range.start + 2] ?? '')) &&
+    !signedCalcKeyword &&
+    !(
+      allowWebkitCalcPrefix &&
+      value
+        .slice(range.start, range.start + 14)
+        .toLowerCase()
+        .startsWith('-webkit-calc(')
+    )
+  )
+    return true;
+  return (
+    /[+\-*/]/.test(lastCharacter ?? '') && !(lastCharacter === '/' && value[range.end - 2] === '*')
+  );
 }
 
 function hasBareOperatorStream(
@@ -1518,10 +1585,17 @@ function hasBareOperatorStream(
   end = value.length,
   budget,
   initialMathContext = false,
+  detectEdgeOperators = false,
 ) {
   if (budget && !consumeResolutionWork(budget, end - start)) return false;
   const range = trimCssTriviaRange(value, start, end);
   if (value[range.start] === '(' && !initialMathContext) return true;
+  if (
+    !initialMathContext &&
+    detectEdgeOperators &&
+    hasInvalidEdgeOperator(value, range.start, range.end, true)
+  )
+    return true;
   const parenthesisContexts = [];
   for (let index = range.start; index < range.end; index += 1) {
     const character = value[index];
@@ -1540,16 +1614,25 @@ function hasBareOperatorStream(
       continue;
     }
     if (character === '(') {
-      parenthesisContexts.push(
-        contextForOpeningParenthesis(
+      parenthesisContexts.push({
+        ...contextForOpeningParenthesis(
           value,
           index,
           false,
           parenthesisContexts.at(-1)?.mathContext ?? initialMathContext,
         ),
-      );
-    } else if (character === ')') parenthesisContexts.pop();
-    else if (
+        openIndex: index,
+      });
+    } else if (character === ')') {
+      const context = parenthesisContexts.pop();
+      if (
+        detectEdgeOperators &&
+        context?.mathContext === true &&
+        (context.isGroupingParenthesis || mathFunctionNames.has(context.functionName)) &&
+        hasInvalidEdgeOperator(value, context.openIndex + 1, index)
+      )
+        return true;
+    } else if (
       character === ',' &&
       (parenthesisContexts.length === 0 ||
         parenthesisContexts.at(-1)?.isGroupingParenthesis ||
@@ -1558,9 +1641,13 @@ function hasBareOperatorStream(
     )
       return true;
     else if (
-      (parenthesisContexts.at(-1)?.mathContext ?? initialMathContext) !== true &&
+      !substitutionFunctionNames.has(parenthesisContexts.at(-1)?.functionName) &&
       /[+\-*/]/.test(character)
     ) {
+      let nextIndex = index + 1;
+      while (nextIndex < range.end && isCssWhitespaceOrComment(value[nextIndex])) nextIndex += 1;
+      if (character === '*' && value[nextIndex] === '*') return true;
+      if ((parenthesisContexts.at(-1)?.mathContext ?? initialMathContext) === true) continue;
       let previousIndex = index - 1;
       while (previousIndex >= range.start && isCssWhitespaceOrComment(value[previousIndex]))
         previousIndex -= 1;
@@ -1653,6 +1740,12 @@ function unprovenCandidatesForFrame(frame, value, range, candidate, budget, pare
     frame.children.length === 1 && (onlyChild.start !== range.start || onlyChild.end !== range.end);
   if (frame.resolvedClassification === 'too-complex') return [candidate];
   if (
+    frame.type === 'root' &&
+    (frame.hasInvalidCommaStream === true ||
+      hasBareOperatorStream(value, range.start, range.end, budget, false, true))
+  )
+    return [];
+  if (
     hasSingleChildWithEnclosingContext &&
     typeof frame.resolvedFallback === 'string' &&
     isStaticallyInvalidArithmetic(frame.resolvedFallback)
@@ -1677,10 +1770,10 @@ function unprovenCandidatesForFrame(frame, value, range, candidate, budget, pare
   if (isValidProgressRange(frame, value, range, parenthesisPairs)) return [];
   const nestedCandidatesAreHiddenByBareOperatorStream =
     frame.resolvedClassification === 'unresolved' &&
-    (frame.type === 'root'
-      ? frame.hasInvalidCommaStream === true
-      : hasBareOperatorStream(value, range.start, range.end, budget, frame.mathContext) ||
-        hasAdjacentFallbackToken(frame, value, range, budget));
+    frame.type !== 'root' &&
+    (frame.hasInvalidCommaStream === true ||
+      hasBareOperatorStream(value, range.start, range.end, budget, frame.mathContext, true) ||
+      hasAdjacentFallbackToken(frame, value, range, budget));
   const zeroQuotientEndpoint =
     frame.resolvedClassification === 'unresolved'
       ? zeroNumeratorQuotientEndpointAnalysis(frame, value, range, budget, parenthesisPairs)

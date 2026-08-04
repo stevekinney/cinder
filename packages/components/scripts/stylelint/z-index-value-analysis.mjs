@@ -446,6 +446,7 @@ function evaluateConstantArithmetic(expression) {
       }
       index += 1;
       let roundStrategy = 'nearest';
+      let progressIsUnclamped = false;
       if (functionName === 'round') {
         skipSpace();
         const strategyMatch = /^(?:nearest|up|down|to-zero)/i.exec(expression.slice(index));
@@ -455,6 +456,14 @@ function evaluateConstantArithmetic(expression) {
           skipSpace();
           if (peek() !== ',') throw new Error('expected comma after round strategy');
           index += 1;
+        }
+      } else if (functionName === 'progress') {
+        skipSpace();
+        const noClampMatch = /^no-clamp/i.exec(expression.slice(index));
+        const noClampEnd = index + (noClampMatch?.[0].length ?? 0);
+        if (noClampMatch && isCssWhitespaceOrComment(expression[noClampEnd])) {
+          progressIsUnclamped = true;
+          index = noClampEnd;
         }
       }
       const arguments_ = [];
@@ -503,6 +512,14 @@ function evaluateConstantArithmetic(expression) {
         return withValue(boundedArguments[0], reducedValue);
       }
       if (
+        functionName === 'abs' &&
+        boundedArguments.length === 1 &&
+        boundedArguments[0].symbolicFactors.size === 1 &&
+        sharedConversionFactor?.startsWith('relative-length:') &&
+        sharedConversionExponent === 1
+      )
+        return withValue(boundedArguments[0], Math.abs(boundedArguments[0].value));
+      if (
         functionName === 'sign' &&
         boundedArguments.length === 1 &&
         boundedArguments[0].units.has('unit:%')
@@ -510,7 +527,11 @@ function evaluateConstantArithmetic(expression) {
         return opaqueValue(functionName, boundedArguments, new Map());
       if (hasUnknownConversion) {
         if (functionName === 'sign' || functionName === 'progress')
-          return opaqueValue(functionName, boundedArguments, new Map());
+          return opaqueValue(
+            functionName === 'progress' && progressIsUnclamped ? 'progress:no-clamp' : functionName,
+            boundedArguments,
+            new Map(),
+          );
         if (
           functionName === 'abs' ||
           functionName === 'clamp' ||
@@ -645,9 +666,12 @@ function evaluateConstantArithmetic(expression) {
         return angleInDegrees(Math.atan2(arguments_[0].value, arguments_[1].value));
       if (functionName === 'progress' && arguments_.length === 3) {
         const [value, start, end] = arguments_;
-        if (start.value === end.value) return scalar(value.value <= start.value ? 0 : 1);
+        if (start.value === end.value) {
+          if (!progressIsUnclamped || value.value === start.value) return scalar(0);
+          return scalar(value.value < start.value ? -Infinity : Infinity);
+        }
         const ratio = (value.value - start.value) / (end.value - start.value);
-        return scalar(Math.min(1, Math.max(0, ratio)));
+        return scalar(progressIsUnclamped ? ratio : Math.min(1, Math.max(0, ratio)));
       }
       throw new Error('unsupported function');
     }

@@ -295,10 +295,14 @@ describe('cinder/z-index-scale', () => {
     'var(--item-layer, calc(9999 + cos(90deg) * 1e16))',
     'var(--item-layer, tan(270deg))',
     'var(--item-layer, exp(log(9999)))',
+    'var(--item-layer, calc(9999 * abs(-1em) / 1em))',
     'var(--item-layer, calc(9999 * progress(1, 0, 1)))',
     'var(--item-layer, calc(9999 * progress(2, 0, 1)))',
-    'var(--item-layer, calc(9999 * progress(2, 1, 1)))',
     'var(--item-layer, calc(9999 * progress(-1, 1, 0)))',
+    'var(--item-layer, progress(no-clamp 9999, 0, 1))',
+    'var(--item-layer, progress(no-clamp -1, 0, 1))',
+    'var(--item-layer, progress(/**/no-clamp/**/9999, 0, 1))',
+    'var(--item-layer, progress(no-clamp 0, 1, 1))',
     'var(--item-layer, calc(asin(1) / 90deg * 9999))',
     'var(--item-layer, calc(atan2(1, 0) / 90deg * 9999))',
     'var(--item-layer, calc(-infinity))',
@@ -2035,10 +2039,15 @@ describe('cinder/z-index-scale', () => {
     'var(--item-layer, calc(1 / rem(-0, 1)))',
     'var(--item-layer, calc(1 / round(nearest, -0, 1)))',
     'var(--item-layer, exp(log(1)))',
+    'var(--item-layer, calc(9999 * abs(-1em) / 1rem))',
     'var(--item-layer, calc(1 * progress(1, 0, 1)))',
     'var(--item-layer, calc(9999 * progress(-1, 0, 1)))',
     'var(--item-layer, calc(9999 * progress(2, 1, 0)))',
     'var(--item-layer, calc(9999 * progress(0, 1, 1)))',
+    'var(--item-layer, calc(9999 * progress(2, 1, 1)))',
+    'var(--item-layer, progress(no-clamp 2, 0, 1))',
+    'var(--item-layer, progress(no-clamp 1, 1, 1))',
+    'var(--item-layer, progress(no-clamp 2, 1, 1))',
     'max(var(--item-layer, -1), var(--dynamic, 0), 0)',
     'max(var(--item-layer, -1), var(--dynamic, -2), 0)',
     'max(var(--item-layer, -1), var(--dynamic), 0)',
@@ -2203,6 +2212,12 @@ describe('cinder/z-index-scale', () => {
     'env(default, 9999)',
     'env(foo + 1, -1)',
     'attr(data-layer type(<integer), -1)',
+    'attr(data-layer type(!!!), -1)',
+    'attr(data-layer type(<integer> <number>), -1)',
+    'attr(data-layer type(<integer> +), -1)',
+    'attr(data-layer type(<url>), -1)',
+    'attr(data-layer type(<transform-list>+), -1)',
+    'attr(data-layer type(<transform-list>#), -1)',
   ])('does not propagate a fallback from an invalid substitution header: %s', async (fallback) => {
     expect(
       warnings(
@@ -2217,6 +2232,68 @@ describe('cinder/z-index-scale', () => {
   });
 
   test.each([
+    'var(--outer, -1) /',
+    'var(--outer, -1) +',
+    'var(--outer, -1) -',
+    'var(--outer, -1) *',
+    '+ var(--outer, -1)',
+    '/ var(--outer, -1)',
+    'var(--outer, -1) / 1',
+    'var(--outer, -1) + 0',
+    'var(--outer, -1) **',
+    'var(--outer, -1) ** 1',
+    'calc(var(--outer, -1) **)',
+  ])('does not propagate a fallback through an invalid root token stream: %s', async (value) => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: the complete declaration remains invalid. */
+            z-index: ${value};
+          }
+        `),
+      ),
+    ).toEqual([]);
+  });
+
+  test.each([
+    'var(--outer, var(--inner, -1) /)',
+    'var(--outer, var(--inner, -1) +)',
+    'var(--outer, + var(--inner, -1))',
+    'var(--outer, calc(var(--inner, -1) /))',
+    'var(--outer, calc(var(--inner, -1) ** 1))',
+    'var(--outer, calc(var(--inner, -1) * * 1))',
+  ])('does not propagate a fallback through an invalid nested edge operator: %s', async (value) => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: the selected nested fallback remains invalid. */
+            z-index: ${value};
+          }
+        `),
+      ),
+    ).toEqual([]);
+  });
+
+  test.each([
+    'calc(var(--outer, -1) + 0)',
+    'calc(var(--outer, -1) / 1)',
+    'var(--outer, calc(var(--inner, -1) + 0))',
+  ])('keeps candidates inside a valid root math boundary: %s', async (value) => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: valid math can still produce the banned fallback. */
+            z-index: ${value};
+          }
+        `),
+      ),
+    ).toHaveLength(1);
+  });
+
+  test.each([
     'var(--inner/**/, -1)',
     'env(viewport-segment-width 0 0, 9999)',
     'env(foo +1, -1)',
@@ -2225,6 +2302,11 @@ describe('cinder/z-index-scale', () => {
     'attr(data-layer unknown-unit, -1)',
     'attr(data-layer raw-string, -1)',
     'attr(data-layer type(<integer>), 9999)',
+    'attr(data-layer type(*), -1)',
+    'attr(data-layer type(<integer> | <number>), 9999)',
+    'attr(data-layer type(<integer>#), -1)',
+    'attr(data-layer type(<integer>+), 9999)',
+    'attr(data-layer type(<transform-list>), -1)',
   ])('continues inspecting a fallback from a valid substitution header: %s', async (fallback) => {
     expect(
       warnings(
