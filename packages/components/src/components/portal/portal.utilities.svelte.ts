@@ -370,16 +370,6 @@ export function redispatchPortaledEvent(
 
   const originalTarget = event.target;
   const originalComposedPath = event.composedPath();
-  const authoredPath: EventTarget[] = [];
-  let authoredNode: Node | null = sourceTarget;
-  while (authoredNode) {
-    authoredPath.push(authoredNode);
-    authoredNode = authoredNode.parentNode;
-  }
-  const composedPath = [
-    ...originalComposedPath,
-    ...authoredPath.filter((entry) => !originalComposedPath.includes(entry)),
-  ];
   const eventInit: EventInit & { [property: string]: unknown } = {
     bubbles: event.bubbles,
     cancelable: event.cancelable,
@@ -428,8 +418,11 @@ export function redispatchPortaledEvent(
   Object.defineProperty(bridgedEvent, 'composedPath', {
     configurable: true,
     value: () => {
-      const useNative = !dispatchComplete && bridgedEvent.currentTarget === null;
-      return useNative ? nativeComposedPath() : [...composedPath];
+      // During synthetic dispatch expose the authored-root path. Svelte's
+      // delegated listener traverses composedPath(); exposing portaled
+      // descendants here would replay their handlers. Restore the original
+      // path after dispatch for consumer inspection.
+      return dispatchComplete ? [...originalComposedPath] : nativeComposedPath();
     },
   });
   if (event.defaultPrevented) bridgedEvent.preventDefault();

@@ -183,24 +183,31 @@ describe('Portal', () => {
     expect(receivedInput?.inputType).toBe('insertText');
   });
 
-  test('preserves the original portaled composed path synchronously', () => {
+  test('preserves the exact original portaled composed path after dispatch', async () => {
     const authoredRoot = document.createElement('div');
     const portaledContainer = document.createElement('div');
     const control = document.createElement('button');
     portaledContainer.append(control);
     document.body.append(authoredRoot, portaledContainer);
 
+    let originalPath: EventTarget[] = [];
+    let bridgedEvent: Event | undefined;
     authoredRoot.addEventListener('mousedown', (event) => {
-      const receivedPath = event.composedPath();
-      expect(receivedPath[0]).toBe(control);
-      expect(receivedPath).toContain(portaledContainer);
-      expect(receivedPath[0]).not.toBe(authoredRoot);
+      bridgedEvent = event;
+      expect(event.composedPath()[0]).toBe(authoredRoot);
     });
 
     control.addEventListener('mousedown', (event) => {
+      originalPath = event.composedPath() as EventTarget[];
       redispatchPortaledEvent(event, authoredRoot);
     });
     control.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, composed: true }));
+    await tick();
+
+    expect(Array.from(bridgedEvent?.composedPath() ?? [])).toEqual(originalPath);
+    expect(originalPath[0]).toBe(control);
+    expect(originalPath).toContain(portaledContainer);
+    expect(originalPath).not.toContain(authoredRoot);
   });
 
   test('bridges pointer and mouse families with native-parity delivery', () => {
