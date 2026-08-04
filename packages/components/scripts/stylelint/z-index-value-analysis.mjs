@@ -67,6 +67,8 @@ const relativeLengthUnitNames = new Set([
 const calcFunctionPattern = /(?:-webkit-)?calc\(/iy;
 const signFunctionPattern = /sign\(/iy;
 const substitutionFunctionPattern = /(?:var|env|attr)\(/iy;
+const nonExactNumericFunctionPattern =
+  /(?:acos|asin|atan2?|cos|exp|hypot|log|pow|sin|sqrt|tan)\s*\(/i;
 const urlFunctionPattern = /url\(/iy;
 const commutativeSymbolicOperations = new Set(['+', 'hypot', 'max', 'min']);
 const maximumStaticSymbolicIdentityWork = 131_072;
@@ -1656,7 +1658,7 @@ export function hasRuntimeDependentNumericConversion(value) {
     arithmeticResult !== null &&
     arithmeticResult !== staticAnalysisTooComplex &&
     arithmeticResult !== staticAnalysisInvalid &&
-    arithmeticResult.exactValue !== undefined &&
+    (arithmeticResult.exactValue !== undefined || nonExactNumericFunctionPattern.test(value)) &&
     (arithmeticResult.units.size > 0 || arithmeticResult.symbolicFactors.size > 0) &&
     hasNumericResultType(arithmeticResult.units)
   );

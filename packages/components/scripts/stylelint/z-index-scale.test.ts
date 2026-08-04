@@ -2064,6 +2064,20 @@ describe('cinder/z-index-scale', () => {
     },
   );
 
+  test.each(['calc(9999 * sqrt(2) * 1em / 1rem)', 'calc(9999 * sin(1) * 1em / 1rem)'])(
+    'fails closed when a non-exact numeric result has runtime unit conversion: %s',
+    async (fallback) => {
+      const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: non-exact numeric results can still cross runtime unit conversions. */
+        z-index: var(--outer, ${fallback});
+      }
+    `);
+
+      expect(warnings(result)).toHaveLength(1);
+    },
+  );
+
   test('reports relative-unit sign ranges that can reach a banned layer', async () => {
     for (const [fallback, warningCount] of [
       ['calc(9998 + sign(1em))', 1],
