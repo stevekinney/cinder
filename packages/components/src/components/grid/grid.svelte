@@ -167,14 +167,18 @@
       });
       observeStylesheetLinks();
     }
-    window.addEventListener('resize', remeasureWidth);
+    if (usesStylesheetFallback) {
+      window.addEventListener('resize', remeasureWidth);
+    }
 
     return () => {
       observer?.disconnect();
       for (const link of stylesheetLinks) {
         link.removeEventListener('load', recomputeNarrowState);
       }
-      window.removeEventListener('resize', remeasureWidth);
+      if (usesStylesheetFallback) {
+        window.removeEventListener('resize', remeasureWidth);
+      }
     };
   });
 

@@ -388,6 +388,30 @@ describe('Grid', () => {
     }
   });
 
+  test('does not register the window resize fallback when ResizeObserver is available', async () => {
+    const originalResizeObserver = globalThis.ResizeObserver;
+    const addEventListener = spyOn(window, 'addEventListener');
+
+    globalThis.ResizeObserver = class implements ResizeObserver {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    };
+
+    try {
+      const { unmount } = render(Grid, {
+        props: { narrowCollapseEnabled: true, children: textSnippet('content') },
+      });
+      await tick();
+
+      expect(addEventListener.mock.calls.filter(([type]) => type === 'resize')).toHaveLength(0);
+      unmount();
+    } finally {
+      addEventListener.mockRestore();
+      globalThis.ResizeObserver = originalResizeObserver;
+    }
+  });
+
   test('remeasures on window resize when observers are unavailable', async () => {
     const originalGetBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
     const originalMutationObserver = globalThis.MutationObserver;
