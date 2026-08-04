@@ -29,6 +29,7 @@
   import FloatingAction from '../floating-action/floating-action.svelte';
   import { createPortalAttachment } from '../portal/index.ts';
   import {
+    closestAcrossShadow,
     createInheritedPortalStyle,
     findNearestOpenTopLayer,
     isRedispatchedPortaledEvent,
@@ -143,8 +144,11 @@
   });
 
   $effect(() => {
-    if (anchoredActions.positionReady && anchoredActions.positionStyle.length > 0) {
-      retainedPositionStyle = anchoredActions.positionStyle;
+    if (anchoredActions.positionReady) {
+      retainedDirection = normalizePlacementDirection(anchoredActions.resolvedPlacement);
+      if (anchoredActions.positionStyle.length > 0) {
+        retainedPositionStyle = anchoredActions.positionStyle;
+      }
     }
   });
 
@@ -203,8 +207,15 @@
 
   function focusTrigger(): void {
     queuedTriggerFocusRestoration.schedule(() => {
-      if (open) return;
-      getTriggerElement()?.focus();
+      const triggerElement = getTriggerElement();
+      if (
+        open ||
+        hidden ||
+        !triggerElement ||
+        closestAcrossShadow(triggerElement, '[hidden], [aria-hidden="true"]')
+      )
+        return;
+      triggerElement.focus();
     });
   }
 

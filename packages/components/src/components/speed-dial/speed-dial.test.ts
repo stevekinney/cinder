@@ -719,6 +719,25 @@ describe('SpeedDial', () => {
     expect(document.activeElement).toBe(share);
   });
 
+  test('aria-hidden source close does not steal focus into the unavailable subtree', async () => {
+    const outside = document.createElement('button');
+    document.body.prepend(outside);
+    const { container } = render(SpeedDialFixture);
+    const trigger = screen.getByRole('button', { name: 'Quick actions' });
+
+    await fireEvent.click(trigger);
+    await flushQueuedFocus();
+    outside.focus();
+    container.setAttribute('aria-hidden', 'true');
+
+    await waitFor(() => {
+      expect(screen.getByTestId('open-state').textContent).toBe('closed');
+    });
+    await flushQueuedFocus();
+
+    expect(document.activeElement).toBe(outside);
+  });
+
   test('a disabled owning fieldset closes and disables portaled actions', async () => {
     const fieldset = document.createElement('fieldset');
     document.body.append(fieldset);
@@ -750,6 +769,7 @@ describe('SpeedDial', () => {
     try {
       await view.rerender({ direction: 'left', open: true });
       const toolbar = screen.getByRole('toolbar', { name: 'Actions' });
+      expect(toolbar.getAttribute('data-cinder-direction')).toBe('up');
       expect(toolbar.hasAttribute('inert')).toBe(false);
       expect(toolbar.hasAttribute('aria-hidden')).toBe(false);
       expect(document.activeElement).toBe(share);
