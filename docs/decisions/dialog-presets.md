@@ -1,5 +1,8 @@
 # Dialog preset boundary
 
+**Status:** Accepted 2026-08-04.
+**Date:** 2026-08-04
+
 Decision: preserve `Modal`, `ConfirmDialog`, and `AlertDialog` as separate
 public entries. The latter two are intentionally opinionated presets over the
 Modal primitive, not duplicate shells.
