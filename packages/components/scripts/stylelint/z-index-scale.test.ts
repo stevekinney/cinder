@@ -697,6 +697,10 @@ describe('cinder/z-index-scale', () => {
     ['calc(9999 * (random(--shared, 0, 1) - random(--shared, 0, 2)))', 1],
     ['calc(9999 * (random-item(--shared, 0, 1) - random-item(--shared, 0, 1)))', 0],
     ['calc(9999 * (random-item(--left, 0, 1) - random-item(--right, 0, 1)))', 1],
+    ['calc(env(foo, 0) - env(foo, 0))', 0],
+    ['calc(env(foo, 0) - env(bar, 0))', 1],
+    ['calc(attr(data-x type(<number>), 0) - attr(data-x type(<number>), 0))', 0],
+    ['calc(attr(data-x type(<number>), 0) - attr(data-y type(<number>), 0))', 1],
   ] as const)('correlates CSS random functions by cache key: %s', async (fallback, count) => {
     expect(
       warnings(

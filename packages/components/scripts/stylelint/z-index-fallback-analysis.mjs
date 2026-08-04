@@ -3203,7 +3203,13 @@ function substitutionDefinedPathWitnesses(frame, value) {
 }
 
 function substitutionDefinedPathIdentity(frame, value) {
-  if (frame.functionName !== 'var') return undefined;
+  if (frame.functionName !== 'var' && frame.functionName !== 'env' && frame.functionName !== 'attr')
+    return undefined;
+  if (frame.functionName !== 'var')
+    return `${frame.functionName}:${value
+      .slice(frame.start, frame.end)
+      .replaceAll(cssCommentMaskCharacter, ' ')
+      .trim()}`;
   const header = value
     .slice(frame.openIndex + 1, frame.commaIndex)
     .replaceAll(cssCommentMaskCharacter, ' ')
