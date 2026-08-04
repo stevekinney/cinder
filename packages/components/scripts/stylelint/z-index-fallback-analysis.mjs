@@ -3486,6 +3486,70 @@ function unresolvedExtremaRangeCandidates(
   if (liveExtremaParents.size > 1) return failClosedCandidate();
 
   const [functionParent] = liveExtremaParents;
+  const extremaChain = [functionParent];
+  while (extremaChain.length < 16) {
+    const current = extremaChain.at(-1);
+    const enclosing = current.parenthesisParent?.extremaParent;
+    if (
+      enclosing === undefined ||
+      enclosing === current ||
+      enclosing.functionStart < range.start ||
+      enclosing.end > range.end
+    )
+      break;
+    extremaChain.push(enclosing);
+  }
+  if (extremaChain.length > 1) {
+    const runtimeChild = frame.children.find(
+      (child) => childFunctionParent(child, 'extremaParent', range) === functionParent,
+    );
+    if (runtimeChild === undefined) return failClosedCandidate();
+    const sampledInputs = new Set(['-infinity', 'infinity']);
+    for (const extremaParent of extremaChain) {
+      const extremaRange = { start: extremaParent.functionStart, end: extremaParent.end };
+      const extremaArguments = fallbackIndependentStaticArguments(
+        frame,
+        value,
+        extremaRange,
+        extremaParent.functionName,
+        parenthesisPairs,
+      );
+      if (extremaArguments === undefined) return failClosedCandidate();
+      for (const argument of extremaArguments.staticArguments) {
+        const numericValue = evaluateStaticLayerNumber(argument.value);
+        if (numericValue === undefined || !Number.isFinite(numericValue))
+          return failClosedCandidate();
+        sampledInputs.add(argument.value);
+      }
+      if (!consumeResolutionWork(budget, extremaParent.end - extremaParent.functionStart))
+        return failClosedCandidate();
+    }
+    if (sampledInputs.size > 32) return failClosedCandidate();
+    const sampledOutputs = [];
+    for (const sampledInput of sampledInputs) {
+      const expression = resolveFrameExpressionWithRangeReplacements(frame, value, range, budget, [
+        {
+          end: runtimeChild.end,
+          start: runtimeChild.start,
+          value: sampledInput,
+        },
+      ]);
+      if (expression === fallbackResolutionTooComplex) return failClosedCandidate();
+      const output = evaluateStaticLayerNumber(expression);
+      if (output === undefined) return failClosedCandidate();
+      sampledOutputs.push(output);
+    }
+    const outputMinimum = Math.min(...sampledOutputs);
+    const outputMaximum = Math.max(...sampledOutputs);
+    const classifications = [];
+    if (outputMinimum < -0.5) classifications.push('negative');
+    if (outputMaximum >= 9998.5 && outputMinimum < 9999.5) classifications.push('magic');
+    return classifications.map((resolvedClassification) => ({
+      ...candidate,
+      hasRuntimeSibling: true,
+      resolvedClassification,
+    }));
+  }
   const functionRange = {
     start: functionParent.functionStart,
     end: functionParent.end,

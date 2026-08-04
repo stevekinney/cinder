@@ -395,6 +395,40 @@ describe('cinder/z-index-scale', () => {
     expect(warnings(unsafe)).toHaveLength(1);
   });
 
+  test('composes bounds through nested extrema parents', async () => {
+    const safe = await lint(`
+      .fixture {
+        /* cinder-z-index-local: nested extrema keep the runtime value in range. */
+        z-index: min(1, max(0, var(--runtime, 9999)));
+      }
+    `);
+    expect(warnings(safe)).toEqual([]);
+
+    const noFallback = await lint(`
+      .fixture {
+        /* cinder-z-index-local: nested extrema bound the defined runtime path. */
+        z-index: min(1, max(0, var(--runtime)));
+      }
+    `);
+    expect(warnings(noFallback)).toEqual([]);
+
+    const unsafe = await lint(`
+      .fixture {
+        /* cinder-z-index-local: a negative nested floor can still expose the fallback. */
+        z-index: min(1, max(var(--runtime, -9999), -1));
+      }
+    `);
+    expect(warnings(unsafe)).toHaveLength(1);
+
+    const unbounded = await lint(`
+      .fixture {
+        /* cinder-z-index-local: without a floor the nested extrema are not sufficient. */
+        z-index: min(1, var(--runtime, -9999));
+      }
+    `);
+    expect(warnings(unbounded)).toHaveLength(1);
+  });
+
   test('retains a banned fallback when a sibling may use its defined value', async () => {
     const result = await lint(`
       .fixture {
