@@ -257,15 +257,7 @@
       errorId={field.ownErrorId}
       control={inputElement}
       controlClass={hasGroupWrapper
-        ? classNames(
-            'cinder-input-group',
-            groupClassName,
-            leading && 'cinder-input-group--leading',
-            hasTrailing && 'cinder-input-group--trailing',
-            rendersNativeDateIcon && 'cinder-input-group--native-date',
-            resolvedDisabled && 'cinder-input-group--disabled',
-            isInvalid && 'cinder-input-group--invalid',
-          )
+        ? classNames('cinder-input-group', groupClassName, groupModifiers)
         : undefined}
       controlLeading={!!leading}
       controlTrailing={hasTrailing}
@@ -293,15 +285,7 @@
     errorClass="cinder-input-field__error"
     control={inputElement}
     controlClass={hasGroupWrapper
-      ? classNames(
-          'cinder-input-group',
-          groupClassName,
-          leading && 'cinder-input-group--leading',
-          hasTrailing && 'cinder-input-group--trailing',
-          rendersNativeDateIcon && 'cinder-input-group--native-date',
-          resolvedDisabled && 'cinder-input-group--disabled',
-          isInvalid && 'cinder-input-group--invalid',
-        )
+      ? classNames('cinder-input-group', groupClassName, groupModifiers)
       : undefined}
     controlLeading={!!leading}
     controlTrailing={hasTrailing}

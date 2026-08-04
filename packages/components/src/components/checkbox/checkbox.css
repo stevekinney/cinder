@@ -8,6 +8,7 @@
   .cinder-checkbox-field,
   .cinder-checkbox-field.cinder-form-field {
     display: inline-flex;
+    flex-direction: row;
     flex-wrap: wrap;
     align-items: center;
     gap: var(--cinder-space-1-5);

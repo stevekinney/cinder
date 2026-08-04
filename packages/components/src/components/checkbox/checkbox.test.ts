@@ -30,6 +30,9 @@ describe('Checkbox', () => {
       allStyles.indexOf('../components/form-field/form-field.css'),
     );
     expect(checkboxStyles).toContain('.cinder-checkbox-field.cinder-form-field');
+    expect(checkboxStyles).toMatch(
+      /\.cinder-checkbox-field\.cinder-form-field\s*\{[\s\S]*flex-direction:\s*row;/,
+    );
   });
 
   test('renders a native input[type=checkbox] with the given id', () => {

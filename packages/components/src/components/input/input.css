@@ -199,10 +199,6 @@
     outline: none;
   }
 
-  .cinder-input-field__control {
-    display: contents;
-  }
-
   /* Hover mirrors the standalone input. Sticky-hover suppression on touch. */
   @media (hover: hover) {
     .cinder-input-group:hover:not(.cinder-input-group--disabled) {
