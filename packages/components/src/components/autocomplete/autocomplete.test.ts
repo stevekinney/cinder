@@ -476,7 +476,7 @@ describe('Autocomplete — keyboard completion', () => {
       (option) => option.getAttribute('data-cinder-active') !== null,
     );
     expect(activeOption).toBeDefined();
-    // The shared `_floating-surface.css` rules key off this class, so carrying
+    // The shared `_row-item.css` rules key off this class, so carrying
     // it is what gives the active row its background + keyboard-cursor ring.
     expect(activeOption?.classList.contains('cinder-_option-row')).toBe(true);
 
@@ -496,7 +496,7 @@ describe('Autocomplete — keyboard completion', () => {
     // must inset a `--cinder-ring-color` ring (the system focus-ring token,
     // tuned to clear 3:1 against near-white surfaces).
     const sharedCss = await Bun.file(
-      new URL('../../styles/components/_floating-surface.css', import.meta.url),
+      new URL('../../styles/components/_row-item.css', import.meta.url),
     ).text();
     const sharedCssWithoutComments = sharedCss.replace(/\/\*[\s\S]*?\*\//g, '');
     expect(sharedCssWithoutComments).toMatch(
