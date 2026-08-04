@@ -70,6 +70,14 @@ describe('cinder/z-index-scale', () => {
     expect(source).not.toContain('progressParents.includes(progressParent)');
   });
 
+  test('charges typed hypot parents to one cumulative resolution budget', async () => {
+    const source = await Bun.file(fallbackAnalysisPath).text();
+
+    expect(source).toContain('typedHypotParents: new Set()');
+    expect(source).toContain('budget.typedHypotParents.add(functionParent)');
+    expect(source).toMatch(/consumeResolutionWork\(\s*budget,\s*hypotParentWork\s*\)/);
+  });
+
   test('reduces wide CSS math functions without spreading call arguments', async () => {
     expect(await Bun.file(valueAnalysisPath).text()).not.toMatch(
       /Math\.(?:hypot|max|min)\s*(?:\?\.\s*)?\(\s*\.\.\./,
@@ -1743,10 +1751,10 @@ describe('cinder/z-index-scale', () => {
     expect(performance.now() - startedAt).toBeLessThan(2_000);
   });
 
-  test('keeps oversize typed hypot workloads as too-complex warnings', async () => {
+  test('keeps exact-bound typed hypot workloads as too-complex warnings', async () => {
     const startedAt = performance.now();
     const terms = Array.from(
-      { length: 8_000 },
+      { length: 2_048 },
       (_, index) => `hypot(1px, var(--runtime-${index})) / 1px`,
     );
     const result = await lint(`
@@ -1759,6 +1767,25 @@ describe('cinder/z-index-scale', () => {
 
     expect(warning).toBeDefined();
     expect(warning?.text).toContain('too complex to verify safely');
+    expect(performance.now() - startedAt).toBeLessThan(2_000);
+  });
+
+  test('bounds typed hypot parents cumulatively across fallback frames', async () => {
+    const { bannedFallback } = await import(fallbackAnalysisPath);
+    let fallback = '1';
+    let runtimeIndex = 0;
+    for (let frameIndex = 0; frameIndex < 256; frameIndex += 1) {
+      const terms = Array.from(
+        { length: 8 },
+        () => `hypot(1px, var(--runtime-${runtimeIndex++})) / 1px`,
+      );
+      fallback = `var(--outer-${frameIndex}, calc(${terms.join(' + ')} + ${fallback}))`;
+    }
+    const startedAt = performance.now();
+    const result = bannedFallback(fallback);
+
+    expect(runtimeIndex).toBe(2_048);
+    expect(result?.reason).toBe('too-complex');
     expect(performance.now() - startedAt).toBeLessThan(2_000);
   });
 
@@ -3403,6 +3430,10 @@ describe('cinder/z-index-scale', () => {
     ['calc(hypot(9999deg, var(--runtime)) / 1deg)', 1],
     ['calc(hypot(9999em, var(--runtime)) / 1em)', 1],
     ['calc(hypot(9999rem, var(--runtime)) / 1rem)', 1],
+    ['calc(hypot(9999fr, var(--runtime)) / 1fr)', 1],
+    ['calc(hypot(10000fr, var(--runtime)) / 1fr)', 0],
+    ['calc(hypot(9999fr, var(--runtime)) / 1px)', 0],
+    ['calc(hypot(9999px, var(--runtime)) / 1deg)', 0],
     ['calc(hypot(9999px, var(--runtime)) / 1px + var(--offset, 0))', 1],
     ['calc(0 * hypot(var(--ignored), 1px) + hypot(9999px, var(--runtime)) / 1px)', 1],
     ['calc(0 * hypot(var(--ignored), 1px) / 1px + hypot(9999px, var(--runtime)) / 1px)', 1],

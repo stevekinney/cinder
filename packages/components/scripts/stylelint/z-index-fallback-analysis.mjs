@@ -27,7 +27,8 @@ const conditionalNestingLimit = 128;
 const uniformDivisorWitnessValues = ['1', '2', '1px', '1deg', '1s', '1hz', '1dppx'];
 const typedDivisorWitnessValues = ['1px', '1deg', '1s', '1hz', '1dppx'];
 const typedZeroWitnessValues = ['0px', '0deg', '0s', '0hz', '0dppx'];
-const hypotRuntimeWitnessValues = ['1', ...typedDivisorWitnessValues];
+const hypotTypedZeroWitnessValues = [...typedZeroWitnessValues, '0fr'];
+const hypotRuntimeWitnessValues = ['1', ...typedDivisorWitnessValues, '1fr'];
 const extremaFunctionNames = new Set(['clamp', 'max', 'min']);
 const hypotFunctionNames = new Set(['hypot']);
 const conditionalFunctionNames = new Set(['first-valid', 'if']);
@@ -3554,20 +3555,30 @@ function typedHypotRangeCandidates(
     if (child.resolvedFallback !== null || !selectableChildren.has(child)) continue;
     const functionParent = childFunctionParent(child, 'hypotParent', range);
     if (functionParent === undefined) continue;
-    const children = childrenByHypotParent.get(functionParent) ?? [];
+    let children = childrenByHypotParent.get(functionParent);
+    if (children === undefined) {
+      if (!budget.typedHypotParents.has(functionParent)) {
+        budget.typedHypotParents.add(functionParent);
+        const hypotParentWork = functionParent.end - functionParent.functionStart;
+        if (
+          budget.typedHypotParents.size >= typedHypotParentLimit ||
+          !consumeResolutionWork(budget, hypotParentWork)
+        )
+          return [
+            {
+              ...candidate,
+              resolvedFallback: fallbackResolutionTooComplex,
+              hasRuntimeSibling: true,
+              resolvedClassification: 'too-complex',
+            },
+          ];
+      }
+      children = [];
+    }
     children.push(child);
     childrenByHypotParent.set(functionParent, children);
   }
   if (childrenByHypotParent.size === 0) return [];
-  if (childrenByHypotParent.size > typedHypotParentLimit)
-    return [
-      {
-        ...candidate,
-        resolvedFallback: fallbackResolutionTooComplex,
-        hasRuntimeSibling: true,
-        resolvedClassification: 'too-complex',
-      },
-    ];
   const analyzedHypotParents = [];
   for (const [functionParent, children] of childrenByHypotParent) {
     const functionRange = { start: functionParent.functionStart, end: functionParent.end };
@@ -3585,6 +3596,7 @@ function typedHypotRangeCandidates(
       ) ||
       !haveCompatibleStaticProgressTypes(
         parsedArguments.staticArguments.map((argument) => argument.value),
+        { allowFlex: true },
       )
     )
       return [];
@@ -3602,7 +3614,7 @@ function typedHypotRangeCandidates(
       continue;
     }
     const compatibleWitnesses = [];
-    for (const witness of typedZeroWitnessValues) {
+    for (const witness of hypotTypedZeroWitnessValues) {
       const parentExpression = resolveFrameExpressionWithRangeReplacements(
         frame,
         value,
@@ -3819,8 +3831,9 @@ function typedHypotRangeCandidates(
           },
         ];
       if (isStaticallyInvalidArithmetic(expression)) continue;
-      hasValidOuterWitness = true;
       const analysis = analyzeFrameExpression(frame, expression, budget);
+      if (analysis.resultType === 'non-number') continue;
+      hasValidOuterWitness = true;
       if (analysis.classification === 'too-complex')
         return [
           {
@@ -5748,7 +5761,10 @@ function fallbackCandidates(value) {
     randomGroups: [],
     treeCountingGroups: [],
   };
-  const resolutionBudget = { remaining: fallbackResolutionWorkLimit };
+  const resolutionBudget = {
+    remaining: fallbackResolutionWorkLimit,
+    typedHypotParents: new Set(),
+  };
 
   for (let index = 0; index < value.length; index += 1) {
     if (value[index] === '"' || value[index] === "'") {

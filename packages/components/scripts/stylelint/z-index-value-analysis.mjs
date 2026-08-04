@@ -1631,7 +1631,7 @@ export function analyzeStaticLayerValue(value) {
   return { classification: 'safe', resultType: 'number' };
 }
 
-export function haveCompatibleStaticProgressTypes(values) {
+export function haveCompatibleStaticProgressTypes(values, { allowFlex = false } = {}) {
   const resolvedValues = values.map(resolveStaticArithmeticResult);
   if (resolvedValues.some((resolved) => resolved === staticAnalysisInvalid)) return false;
   if (resolvedValues.some((resolved) => resolved === null || resolved === staticAnalysisTooComplex))
@@ -1639,7 +1639,7 @@ export function haveCompatibleStaticProgressTypes(values) {
   return resolvedValues.every(
     (resolved) =>
       !resolved.units.has('unit:%') &&
-      !resolved.units.has('dimension:flex') &&
+      (allowFlex || !resolved.units.has('dimension:flex')) &&
       sameUnits(resolved, resolvedValues[0]),
   );
 }
