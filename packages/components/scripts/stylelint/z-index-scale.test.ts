@@ -460,6 +460,17 @@ describe('cinder/z-index-scale', () => {
     },
   );
 
+  test('accepts unresolved extrema arithmetic bounded by independent clamp limits', async () => {
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: clamp guarantees a final local layer from zero through one. */
+        z-index: clamp(0, calc(max(var(--runtime), 0) + 2), 1);
+      }
+    `);
+
+    expect(warnings(result)).toEqual([]);
+  });
+
   test('does not suppress a magic fallback with crossed clamp bounds', async () => {
     const result = await lint(`
       .fixture {
@@ -1547,6 +1558,20 @@ describe('cinder/z-index-scale', () => {
     expect(performance.now() - startedAt).toBeLessThan(2_000);
   });
 
+  test('keeps sliced literal source ranges lazy for long escaped dimensions', async () => {
+    const { normalizeCssEscapesForInspection } = await import(valueAnalysisPath);
+    const value = `1\\g${'a'.repeat(500_000)}`;
+    const startedAt = performance.now();
+    const normalized = normalizeCssEscapesForInspection(value);
+
+    expect(normalized.value).toBe('1\uE000');
+    expect(normalized.sourceRanges).toEqual([
+      { start: 0, end: 1 },
+      { start: 1, end: value.length },
+    ]);
+    expect(performance.now() - startedAt).toBeLessThan(2_000);
+  });
+
   test('bounds nested zero-product factor analysis with unresolved runtime substitutions', async () => {
     let nestedProduct = 'var(--runtime)';
     for (let index = 0; index < 4_000; index += 1)
@@ -2452,6 +2477,7 @@ describe('cinder/z-index-scale', () => {
     'attr(data-layer type(<url>), -1)',
     'attr(data-layer type(<transform-list>+), -1)',
     'attr(data-layer type(<transform-list>#), -1)',
+    'attr(data-layer type("foo\n), 9999)',
   ])('does not propagate a fallback from an invalid substitution header: %s', async (fallback) => {
     expect(
       warnings(
@@ -2477,6 +2503,8 @@ describe('cinder/z-index-scale', () => {
     'var(--outer, -1) **',
     'var(--outer, -1) ** 1',
     'calc(var(--outer, -1) **)',
+    'var(--layer, 9999) garbage',
+    'garbage var(--layer, 9999)',
   ])('does not propagate a fallback through an invalid root token stream: %s', async (value) => {
     expect(
       warnings(
@@ -2927,8 +2955,12 @@ describe('cinder/z-index-scale', () => {
     ['calc(9999 * min(var(--runtime), 1))', 1],
     ['calc(9999 * clamp(0, var(--runtime), 1))', 1],
     ['calc(9999 * max(var(--left), 1) + max(var(--right), 0))', 1],
-    ['calc(10 * max(var(--runtime), 1))', 0],
+    ['calc(10 * max(var(--runtime), 1))', 1],
     ['calc(10000 * max(var(--runtime), 1))', 0],
+    ['calc(max(var(--runtime), 0) + 2)', 1],
+    ['calc(max(var(--runtime), 10000) + 2)', 0],
+    ['calc(min(var(--runtime), 10000) - 1)', 1],
+    ['calc(clamp(0, var(--runtime), 10000) + 0)', 1],
   ] as const)(
     'propagates reachable extrema endpoints through enclosing arithmetic: %s',
     async (fallback, warningCount) => {
@@ -3094,6 +3126,29 @@ describe('cinder/z-index-scale', () => {
 
     expect(warning?.text).toContain('too complex to verify safely');
   });
+
+  test.each([
+    ['calc(9999 * abs(var(--runtime)))', 1],
+    ['calc(9998 + abs(var(--runtime)))', 1],
+    ['calc(-1 + abs(var(--runtime)))', 1],
+    ['abs(var(--runtime))', 1],
+    ['calc(0 * abs(var(--runtime)))', 0],
+    ['calc(9999 * abs(var(--runtime), 1))', 0],
+  ] as const)(
+    'fails closed for a valid unresolved abs range: %s',
+    async (fallback, warningCount) => {
+      expect(
+        warnings(
+          await lint(`
+          .fixture {
+            /* cinder-z-index-local: unresolved absolute values require a proven safe range. */
+            z-index: var(--outer, ${fallback});
+          }
+        `),
+        ),
+      ).toHaveLength(warningCount);
+    },
+  );
 
   test.each(['sin', 'cos', 'tan', 'asin', 'acos', 'atan'])(
     'does not report a statically invalid unresolved trigonometric function: %s',

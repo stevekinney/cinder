@@ -1359,38 +1359,40 @@ function escapedCssIdentifierEnd(value, start) {
   return index;
 }
 
-function literalSourceRangeView(value) {
-  return {
+function literalSourceRangeView(value, offset = 0, length = value.length) {
+  const view = {
     get length() {
-      return value.length;
+      return length;
     },
     [Symbol.iterator]: function* () {
-      for (let index = 0; index < value.length; index += 1) {
-        yield { start: index, end: index + 1 };
+      for (let index = 0; index < length; index += 1) {
+        yield { start: offset + index, end: offset + index + 1 };
       }
     },
-    slice(start = 0, end = value.length) {
-      const normalizedStart = Math.max(0, Math.min(value.length, start));
-      const normalizedEnd = Math.max(normalizedStart, Math.min(value.length, end));
-      return Array.from({ length: normalizedEnd - normalizedStart }, (_, index) => ({
-        start: normalizedStart + index,
-        end: normalizedStart + index + 1,
-      }));
+    slice(start = 0, end = length) {
+      const normalizedStart = Math.max(0, Math.min(length, start));
+      const normalizedEnd = Math.max(normalizedStart, Math.min(length, end));
+      return literalSourceRangeView(
+        value,
+        offset + normalizedStart,
+        normalizedEnd - normalizedStart,
+      );
     },
   };
-}
-
-function literalSourceRanges(value) {
-  return new Proxy(literalSourceRangeView(value), {
+  return new Proxy(view, {
     get(target, property, receiver) {
       if (typeof property === 'string' && /^\d+$/.test(property)) {
         const index = Number(property);
-        if (index < 0 || index >= value.length) return undefined;
-        return { start: index, end: index + 1 };
+        if (index < 0 || index >= length) return undefined;
+        return { start: offset + index, end: offset + index + 1 };
       }
       return Reflect.get(target, property, receiver);
     },
   });
+}
+
+function literalSourceRanges(value) {
+  return literalSourceRangeView(value);
 }
 
 function decodeCssEscapesForInspection(value, baseRanges = literalSourceRanges(value)) {
