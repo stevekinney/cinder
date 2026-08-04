@@ -201,7 +201,8 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => {
       return;
 
     root.walkDecls((declaration) => {
-      if (declaration.prop.toLowerCase() !== 'z-index') return;
+      const decodedProperty = decodeCssEscapes(protectCssSyntaxEscapes(declaration.prop));
+      if (decodedProperty.toLowerCase() !== 'z-index') return;
       const declarationValue = (declaration.raws.value?.raw ?? declaration.value).trim();
       const decodedDeclarationValue = decodeCssEscapes(protectCssSyntaxEscapes(declarationValue));
       const value = maskComments(decodedDeclarationValue).trim();

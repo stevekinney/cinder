@@ -25,6 +25,7 @@ const fallbackResolutionWorkLimit = 8_000_000;
 const uniformDivisorWitnessValues = ['1', '2', '1px', '1deg', '1s', '1hz', '1dppx'];
 const typedDivisorWitnessValues = ['1px', '1deg', '1s', '1hz', '1dppx'];
 const typedZeroWitnessValues = ['0px', '0deg', '0s', '0hz', '0dppx'];
+const extremaFunctionNames = new Set(['clamp', 'max', 'min']);
 const hypotFunctionNames = new Set(['hypot']);
 const unresolvedTrigonometricFunctionNames = new Set(['cos', 'sin', 'tan']);
 const invalidCustomIdentKeywords = new Set([
@@ -1326,6 +1327,13 @@ function directBannedMathArgumentCandidates(
     )
       return [];
     if (
+      extremaFunctionNames.has(functionName) &&
+      parsedArguments.staticArguments.some((argument) =>
+        isStaticallyInvalidArithmetic(argument.value),
+      )
+    )
+      return [];
+    if (
       (functionName === 'mod' ||
         functionName === 'rem' ||
         functionName === 'pow' ||
@@ -2327,6 +2335,99 @@ function functionParentIsMultipliedByStaticZero(value, range, parent, budget) {
   );
 }
 
+function unresolvedExtremaRangeCandidates(
+  frame,
+  value,
+  range,
+  candidate,
+  budget,
+  parenthesisPairs,
+) {
+  const liveExtremaParents = new Set();
+  for (const child of frame.children) {
+    if (child.resolvedFallback !== null) continue;
+    const functionParent = childFunctionParent(child, extremaFunctionNames, range);
+    if (functionParent !== undefined) liveExtremaParents.add(functionParent);
+  }
+  if (liveExtremaParents.size === 0) return [];
+  const enclosingRange = unwrapStaticContainer(value, range, parenthesisPairs);
+  if (
+    [...liveExtremaParents].some(
+      (functionParent) =>
+        functionParent.functionStart === enclosingRange.start &&
+        functionParent.end === enclosingRange.end,
+    )
+  )
+    return [];
+  if (liveExtremaParents.size > 1)
+    return [
+      {
+        ...candidate,
+        resolvedFallback: fallbackResolutionTooComplex,
+        resolvedClassification: 'too-complex',
+      },
+    ];
+
+  const [functionParent] = liveExtremaParents;
+  const functionRange = {
+    start: functionParent.functionStart,
+    end: functionParent.end,
+  };
+  const parsedArguments = fallbackIndependentStaticArguments(
+    frame,
+    value,
+    functionRange,
+    functionParent.functionName,
+    parenthesisPairs,
+  );
+  if (
+    parsedArguments === undefined ||
+    (functionParent.functionName === 'clamp' && parsedArguments.argumentCount !== 3) ||
+    !haveCompatibleStaticProgressTypes(
+      parsedArguments.staticArguments.map((argument) => argument.value),
+    ) ||
+    parsedArguments.staticArguments.some((argument) =>
+      isStaticallyInvalidArithmetic(argument.value),
+    )
+  )
+    return [];
+
+  const classifications = new Set();
+  for (const argument of parsedArguments.staticArguments) {
+    const expression = resolveFrameExpressionWithRangeReplacements(frame, value, range, budget, [
+      {
+        end: functionRange.end,
+        start: functionRange.start,
+        value: argument.value,
+      },
+    ]);
+    if (expression === fallbackResolutionTooComplex)
+      return [
+        {
+          ...candidate,
+          resolvedFallback: fallbackResolutionTooComplex,
+          resolvedClassification: 'too-complex',
+        },
+      ];
+    const classification = analyzeFrameExpression(frame, expression, budget).classification;
+    if (classification === 'too-complex')
+      return [
+        {
+          ...candidate,
+          resolvedFallback: fallbackResolutionTooComplex,
+          resolvedClassification: 'too-complex',
+        },
+      ];
+    if (classification === 'negative' || classification === 'magic')
+      classifications.add(classification);
+  }
+  return [...classifications].map((resolvedClassification) => ({
+    ...candidate,
+    hasRuntimeSibling: true,
+    resolvedClassification,
+  }));
+}
+
 function typedHypotRangeCandidates(frame, value, range, candidate, budget) {
   const childrenByHypotParent = new Map();
   for (const child of frame.children) {
@@ -2652,6 +2753,7 @@ function unprovenCandidatesForFrame(frame, value, range, candidate, budget, pare
     ...signAnalysis.candidates.filter(
       (signCandidate) => !candidateIsSuppressedByZeroQuotient(signCandidate),
     ),
+    ...unresolvedExtremaRangeCandidates(frame, value, range, candidate, budget, parenthesisPairs),
     ...typedHypotRangeCandidates(frame, value, range, candidate, budget),
     ...unresolvedTrigonometricRangeCandidates(frame, value, range, candidate, budget),
   ];

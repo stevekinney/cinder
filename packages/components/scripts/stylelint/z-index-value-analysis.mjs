@@ -201,13 +201,14 @@ function normalizedRational(numerator, denominator) {
 }
 
 function decimalRational(token) {
-  if (token.length > 128) return undefined;
   const match = /^([+-]?)(\d*)(?:\.(\d+))?(?:e([+-]?\d+))?$/i.exec(token);
   if (!match) return undefined;
   const exponent = Number(match[4] ?? 0);
-  if (!Number.isSafeInteger(exponent) || Math.abs(exponent) > 128) return undefined;
-  const fractionDigits = match[3] ?? '';
-  const digits = `${match[2]}${fractionDigits}` || '0';
+  if (!Number.isSafeInteger(exponent) || Math.abs(exponent) > 128) throw staticAnalysisTooComplex;
+  const integerDigits = (match[2] || '0').replace(/^0+(?=\d)/, '');
+  const fractionDigits = (match[3] ?? '').replace(/0+$/, '');
+  if (integerDigits.length + fractionDigits.length > 128) throw staticAnalysisTooComplex;
+  const digits = `${integerDigits}${fractionDigits}`;
   let numerator = BigInt(digits);
   if (match[1] === '-') numerator = -numerator;
   const decimalPlaces = fractionDigits.length - exponent;
@@ -382,27 +383,60 @@ function angleInRadians(value) {
   throw new Error('expected a number or angle');
 }
 
-function angleInDegrees(value) {
+function angleInDegrees(value, exactValue) {
   return {
     value: (value * 180) / Math.PI,
     units: new Map([['dimension:angle', 1]]),
     symbolicFactors: new Map(),
     isLiteralZero: false,
+    exactValue,
   };
+}
+
+function exactInverseTrigonometricDegrees(functionName, argument) {
+  if (argument.exactValue === undefined) return undefined;
+  const exactEndpoints = [
+    { numerator: -1n, denominator: 1n },
+    { numerator: 0n, denominator: 1n },
+    { numerator: 1n, denominator: 1n },
+  ];
+  const endpointIndex = exactEndpoints.findIndex(
+    (endpoint) => compareRationals(argument.exactValue, endpoint) === 0,
+  );
+  if (endpointIndex === -1) return undefined;
+  const degrees =
+    functionName === 'asin'
+      ? [-90, 0, 90][endpointIndex]
+      : functionName === 'acos'
+        ? [180, 90, 0][endpointIndex]
+        : [-45, 0, 45][endpointIndex];
+  return { numerator: BigInt(degrees), denominator: 1n };
 }
 
 function exactCardinalTrigonometricValue(functionName, argument) {
   let quarterTurns;
-  if (argument.units.size === 0) quarterTurns = argument.value / (Math.PI / 2);
-  else if (argument.units.size === 1 && argument.units.get('dimension:angle') === 1)
-    quarterTurns = argument.value / 90;
-  else throw new Error('expected a number or angle');
-  if (!Number.isInteger(quarterTurns)) return undefined;
+  if (argument.units.size === 0) {
+    quarterTurns = argument.value / (Math.PI / 2);
+    if (!Number.isInteger(quarterTurns)) return undefined;
+  } else if (argument.units.size === 1 && argument.units.get('dimension:angle') === 1) {
+    if (
+      argument.exactValue !== undefined &&
+      argument.exactValue.numerator % (argument.exactValue.denominator * 90n) === 0n
+    )
+      quarterTurns = argument.exactValue.numerator / (argument.exactValue.denominator * 90n);
+    else {
+      quarterTurns = argument.value / 90;
+      if (!Number.isInteger(quarterTurns)) return undefined;
+    }
+  } else throw new Error('expected a number or angle');
 
   if ((functionName === 'sin' || functionName === 'tan') && Object.is(argument.value, -0))
     return -0;
 
-  const normalizedQuarterTurns = ((quarterTurns % 4) + 4) % 4;
+  const normalizedQuarterTurns =
+    typeof quarterTurns === 'bigint'
+      ? Number(((quarterTurns % 4n) + 4n) % 4n)
+      : ((quarterTurns % 4) + 4) % 4;
   if (functionName === 'sin') return [0, 1, 0, -1][normalizedQuarterTurns];
   if (functionName === 'cos') return [1, 0, -1, 0][normalizedQuarterTurns];
   if (normalizedQuarterTurns % 2 === 0) return 0;
@@ -940,6 +974,10 @@ function evaluateConstantArithmetic(expression) {
         const exactValue = exactCardinalTrigonometricValue(functionName, arguments_[0]);
         return scalar(
           exactValue === undefined ? Math[functionName](angleInRadians(arguments_[0])) : exactValue,
+          false,
+          exactValue !== undefined && Number.isFinite(exactValue)
+            ? { numerator: BigInt(exactValue), denominator: 1n }
+            : undefined,
         );
       }
       if (
@@ -947,7 +985,10 @@ function evaluateConstantArithmetic(expression) {
         arguments_.length === 1
       ) {
         if (arguments_[0].units.size !== 0) throw new Error('expected a number');
-        return angleInDegrees(Math[functionName](arguments_[0].value));
+        return angleInDegrees(
+          Math[functionName](arguments_[0].value),
+          exactInverseTrigonometricDegrees(functionName, arguments_[0]),
+        );
       }
       if (functionName === 'atan2' && arguments_.length === 2)
         return angleInDegrees(Math.atan2(arguments_[0].value, arguments_[1].value));

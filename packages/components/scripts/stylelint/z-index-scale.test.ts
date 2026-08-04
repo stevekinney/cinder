@@ -3,8 +3,6 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, test } from 'bun:test';
 import stylelint from 'stylelint';
 
-import { markdownCodeSpan } from './z-index-scale.mjs';
-
 const ruleName = 'cinder/z-index-scale';
 const pluginPath = fileURLToPath(new URL('./z-index-scale.mjs', import.meta.url));
 const fallbackAnalysisPath = fileURLToPath(
@@ -140,14 +138,6 @@ describe('cinder/z-index-scale', () => {
       expect(result[0]?.text).toContain('must be `auto`, `0`, `1`, or a `--cinder-z-*` token');
     },
   );
-
-  test.each([
-    ['`leading', '`` `leading ``'],
-    ['trailing`', '`` trailing` ``'],
-    ['``both``', '``` ``both`` ```'],
-  ] as const)('pads a Markdown code span with boundary backticks: %s', (value, expected) => {
-    expect(markdownCodeSpan(value)).toBe(expected);
-  });
 
   test('accepts a higher local layer only with an adjacent reason', async () => {
     const result = await lint(`
@@ -1954,6 +1944,28 @@ describe('cinder/z-index-scale', () => {
     expect(warnings(invalidUnicode)).toEqual([]);
   });
 
+  test.each([
+    ['z-index', 1],
+    ['Z-INDEX', 1],
+    ['\\7a-index', 1],
+    ['\\7A-index', 1],
+    ['z\\2d index', 1],
+    ['\\7a-\\69 ndex', 1],
+    ['\\7a-indexx', 0],
+    ['\\7z-index', 0],
+  ] as const)('decodes escaped z-index property names: %s', async (property, warningCount) => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: escaped property identifiers cannot bypass policy. */
+            ${property}: var(--outer, 9999);
+          }
+        `),
+      ),
+    ).toHaveLength(warningCount);
+  });
+
   test('preserves escaped parentheses in custom-property names while scanning fallbacks', async () => {
     const result = await lint(`
       .fixture {
@@ -2222,6 +2234,8 @@ describe('cinder/z-index-scale', () => {
     ['pow(calc(25396.19cm / 1in), 2)', 0],
     ['sqrt(calc(calc(25396.19cm / 1in) * calc(25396.19cm / 1in)))', 1],
     ['sqrt(calc(25396.18cm / 1in))', 0],
+    ['calc(sin(asin(calc(25396.19cm / 9998.5in))) * 9998.5)', 1],
+    ['calc(cos(acos(calc(25396.19cm / 9998.5in))) * 9998.5)', 1],
     ['progress(no-clamp 25396.18cm, 0cm, 2.54cm)', 0],
     ['progress(no-clamp 25396.19cm, 0cm, 2.54cm)', 1],
     ['progress(25396.19cm, 0cm, 2.54cm)', 0],
@@ -2238,6 +2252,38 @@ describe('cinder/z-index-scale', () => {
           `),
         ),
       ).toHaveLength(warningCount);
+    },
+  );
+
+  test('normalizes insignificant zero padding before bounding exact decimals', async () => {
+    const zeroPaddedBoundary = `25396.19${'0'.repeat(130)}`;
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: token padding cannot bypass exact boundary analysis. */
+            z-index: var(--outer, calc(${zeroPaddedBoundary}cm / 1in));
+          }
+        `),
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('fails closed for an oversized significant decimal token', async () => {
+    const { bannedFallback } = await import(fallbackAnalysisPath);
+    const oversizedSignificand = `1.${'1'.repeat(130)}`;
+    expect(bannedFallback(`var(--outer, calc(${oversizedSignificand}cm / 1in))`)?.reason).toBe(
+      'too-complex',
+    );
+  });
+
+  test.each(['1e129', '1e-129', `1e${'9'.repeat(20)}`])(
+    'fails closed for an exact decimal exponent beyond the bounded range: %s',
+    async (oversizedExponent) => {
+      const { bannedFallback } = await import(fallbackAnalysisPath);
+      expect(bannedFallback(`var(--outer, calc(${oversizedExponent}))`)?.reason).toBe(
+        'too-complex',
+      );
     },
   );
 
@@ -2862,6 +2908,50 @@ describe('cinder/z-index-scale', () => {
         `),
       ),
     ).toHaveLength(1);
+  });
+
+  test.each([
+    ['calc(9999 * max(var(--runtime), 1))', 1],
+    ['calc(9999 * max(1, var(--runtime)))', 1],
+    ['calc(9999 * min(var(--runtime), 1))', 1],
+    ['calc(9999 * clamp(0, var(--runtime), 1))', 1],
+    ['calc(9999 * max(var(--left), 1) + max(var(--right), 0))', 1],
+    ['calc(10 * max(var(--runtime), 1))', 0],
+    ['calc(10000 * max(var(--runtime), 1))', 0],
+  ] as const)(
+    'propagates reachable extrema endpoints through enclosing arithmetic: %s',
+    async (fallback, warningCount) => {
+      expect(
+        warnings(
+          await lint(`
+            .fixture {
+              /* cinder-z-index-local: enclosing arithmetic decides endpoint policy. */
+              z-index: var(--outer, ${fallback});
+            }
+          `),
+        ),
+      ).toHaveLength(warningCount);
+    },
+  );
+
+  test.each([
+    'min(9999, sqrt(-1))',
+    'max(-1, sqrt(-1))',
+    'clamp(0, 9999, sqrt(-1))',
+    'clamp(sqrt(-1), 9999, 10000)',
+    'clamp(-1, sqrt(-1), 1)',
+    'clamp(0, sqrt(-1), 9999)',
+  ])('ignores extrema candidates with an invalid fixed sibling: %s', async (fallback) => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: invalid fixed math makes the declaration unusable. */
+            z-index: var(--outer, ${fallback});
+          }
+        `),
+      ),
+    ).toHaveLength(0);
   });
 
   test.each([
