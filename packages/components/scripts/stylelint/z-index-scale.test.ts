@@ -300,6 +300,7 @@ describe('cinder/z-index-scale', () => {
     'var(--item-layer, calc(9999 + cos(90deg) * 1e16))',
     'var(--item-layer, tan(270deg))',
     'var(--item-layer, exp(log(9999)))',
+    'var(--item-layer, calc(exp(log(9903.5)) * 19997 / 19807))',
     'var(--item-layer, calc(9999 * abs(-1em) / 1em))',
     'var(--item-layer, calc(9999 * progress(1, 0, 1)))',
     'var(--item-layer, calc(9999 * progress(2, 0, 1)))',
@@ -1558,6 +1559,19 @@ describe('cinder/z-index-scale', () => {
     expect(performance.now() - startedAt).toBeLessThan(2_000);
   });
 
+  test('indexes typed hypot parents across wide additive expressions', async () => {
+    const { bannedFallback } = await import(fallbackAnalysisPath);
+    const terms = Array.from(
+      { length: 8_000 },
+      (_, index) => `hypot(1px, var(--runtime-${index})) / 1px`,
+    );
+    const startedAt = performance.now();
+    const result = bannedFallback(`var(--outer, calc(${terms.join(' + ')}))`);
+
+    expect(result?.reason).toBe('too-complex');
+    expect(performance.now() - startedAt).toBeLessThan(2_000);
+  });
+
   test('keeps sliced literal source ranges lazy for long escaped dimensions', async () => {
     const { normalizeCssEscapesForInspection } = await import(valueAnalysisPath);
     const value = `1\\g${'a'.repeat(500_000)}`;
@@ -2162,6 +2176,9 @@ describe('cinder/z-index-scale', () => {
     'var(--item-layer, calc(1 / rem(-0, 1)))',
     'var(--item-layer, calc(1 / round(nearest, -0, 1)))',
     'var(--item-layer, exp(log(1)))',
+    'var(--item-layer, calc(exp(log(9903.4)) * 19997 / 19807))',
+    'var(--item-layer, exp(log(9903.5, 10)))',
+    'var(--item-layer, exp(log(-1)))',
     'var(--item-layer, calc(9999 * abs(-1em) / 1rem))',
     'var(--item-layer, calc(1 * progress(1, 0, 1)))',
     'var(--item-layer, calc(9999 * progress(-1, 0, 1)))',
@@ -3088,6 +3105,12 @@ describe('cinder/z-index-scale', () => {
     ['calc(hypot(9999px, var(--runtime)) / 1px + hypot(var(--other), 0px) / 1px)', 1],
     ['calc(hypot(9999px, var(--runtime)) / 1px + hypot(0deg, var(--other)) / 1deg)', 1],
     ['calc(20000 - hypot(10000px, var(--runtime)) / 1px)', 1],
+    ['calc(9999px / hypot(var(--runtime)))', 1],
+    ['calc(hypot(10000, var(--runtime)) - 1)', 1],
+    ['calc(hypot(0, var(--runtime)) + 9998)', 1],
+    ['calc(0 * hypot(var(--runtime)))', 0],
+    ['max(10000, calc(9999px / hypot(var(--runtime))))', 0],
+    ['clamp(0, calc(9999px / hypot(var(--runtime))), 1)', 0],
     ['hypot(9999px, var(--runtime))', 0],
     ['calc(hypot(10000px, var(--runtime)) / 1px)', 0],
     ['calc(hypot(9999px, var(--left)) + hypot(9999deg, var(--right)))', 0],
@@ -3126,6 +3149,28 @@ describe('cinder/z-index-scale', () => {
 
     expect(warning?.text).toContain('too complex to verify safely');
   });
+
+  test.each([
+    ['calc(9999 * atan2(var(--runtime), 1) / 45deg)', 1],
+    ['calc(9999 * atan2(1, var(--runtime)) / 45deg)', 1],
+    ['calc(0 * atan2(var(--runtime), 1))', 0],
+    ['calc(9999 * atan2(var(--runtime)) / 45deg)', 0],
+    ['calc(9999 * atan2(var(--runtime), 1, 2) / 45deg)', 0],
+  ] as const)(
+    'fails closed for a valid unresolved atan2 range: %s',
+    async (fallback, warningCount) => {
+      expect(
+        warnings(
+          await lint(`
+            .fixture {
+              /* cinder-z-index-local: unresolved atan2 output requires a proven safe range. */
+              z-index: var(--outer, ${fallback});
+            }
+          `),
+        ),
+      ).toHaveLength(warningCount);
+    },
+  );
 
   test.each([
     ['calc(9999 * abs(var(--runtime)))', 1],

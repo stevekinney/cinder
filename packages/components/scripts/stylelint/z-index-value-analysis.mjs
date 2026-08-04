@@ -957,14 +957,28 @@ function evaluateConstantArithmetic(expression) {
       }
       if (functionName === 'log' && arguments_.length >= 1 && arguments_.length <= 2) {
         if (arguments_.some(({ units }) => units.size !== 0)) throw new Error('expected numbers');
-        return scalar(
+        const logarithm = scalar(
           arguments_.length === 1
             ? Math.log(arguments_[0].value)
             : Math.log(arguments_[0].value) / Math.log(arguments_[1].value),
         );
+        if (
+          arguments_.length === 1 &&
+          arguments_[0].exactValue !== undefined &&
+          arguments_[0].value > 0 &&
+          Number.isFinite(arguments_[0].value)
+        )
+          logarithm.naturalLogarithmInput = arguments_[0];
+        return logarithm;
       }
       if (functionName === 'exp' && arguments_.length === 1) {
         if (arguments_[0].units.size !== 0) throw new Error('expected a number');
+        if (arguments_[0].naturalLogarithmInput !== undefined)
+          return withValue(
+            arguments_[0].naturalLogarithmInput,
+            Math.exp(arguments_[0].value),
+            arguments_[0].naturalLogarithmInput.exactValue,
+          );
         return scalar(Math.exp(arguments_[0].value));
       }
       if (
