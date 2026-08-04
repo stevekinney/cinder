@@ -451,7 +451,7 @@ function isEffectivelyDisabled(source: HTMLElement): boolean {
   return !firstLegend?.contains(source);
 }
 
-function isEffectivelyUnavailable(source: HTMLElement): boolean {
+export function isPortalSourceUnavailable(source: HTMLElement): boolean {
   if (isEffectivelyDisabled(source)) return true;
   // Plain `closest()` cannot see past a shadow boundary, so a source whose
   // enclosing shadow HOST gains `[hidden]`/`[inert]`/`aria-hidden="true"`
@@ -477,7 +477,7 @@ export function observePortalSourceAvailability(
   if (!source) return () => {};
 
   const syncAvailability = () => {
-    onChange(isEffectivelyUnavailable(source));
+    onChange(isPortalSourceUnavailable(source));
   };
   if (typeof MutationObserver === 'undefined') {
     syncAvailability();

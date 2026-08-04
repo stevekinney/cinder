@@ -29,9 +29,9 @@
   import FloatingAction from '../floating-action/floating-action.svelte';
   import { createPortalAttachment } from '../portal/index.ts';
   import {
-    closestAcrossShadow,
     createInheritedPortalStyle,
     findNearestOpenTopLayer,
+    isPortalSourceUnavailable,
     isRedispatchedPortaledEvent,
     observePortalSourceAvailability,
     redispatchPortaledEvent,
@@ -208,13 +208,7 @@
   function focusTrigger(): void {
     queuedTriggerFocusRestoration.schedule(() => {
       const triggerElement = getTriggerElement();
-      if (
-        open ||
-        hidden ||
-        !triggerElement ||
-        closestAcrossShadow(triggerElement, '[hidden], [aria-hidden="true"]')
-      )
-        return;
+      if (open || hidden || !triggerElement || isPortalSourceUnavailable(triggerElement)) return;
       triggerElement.focus();
     });
   }

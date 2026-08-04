@@ -695,6 +695,8 @@ describe('SpeedDial', () => {
   });
 
   test('an unavailable source ancestor closes and disables portaled actions', async () => {
+    const outside = document.createElement('button');
+    document.body.prepend(outside);
     const { container } = render(SpeedDialFixture);
     const trigger = screen.getByRole('button', { name: 'Quick actions' });
     await fireEvent.click(trigger);
@@ -704,6 +706,7 @@ describe('SpeedDial', () => {
     action.focus();
     expect(document.activeElement).toBe(action);
 
+    outside.focus();
     container.setAttribute('inert', '');
 
     await waitFor(() => {
@@ -714,7 +717,7 @@ describe('SpeedDial', () => {
     const toolbar = screen.getByRole('toolbar', { hidden: true });
     expect(toolbar.hasAttribute('inert')).toBe(true);
     expect(container.contains(toolbar)).toBe(true);
-    expect(document.activeElement).toBe(trigger);
+    expect(document.activeElement).toBe(outside);
   });
 
   test('unavailable source close can reopen without stealing new action focus', async () => {
@@ -767,12 +770,19 @@ describe('SpeedDial', () => {
   });
 
   test('a disabled owning fieldset closes and disables portaled actions', async () => {
+    const outside = document.createElement('button');
+    document.body.prepend(outside);
     const fieldset = document.createElement('fieldset');
     document.body.append(fieldset);
     const { container } = render(SpeedDialFixture, { target: fieldset });
+    const create = screen.getByRole('button', { name: 'Create' });
 
     await fireEvent.click(screen.getByRole('button', { name: 'Quick actions' }));
     await flushQueuedFocus();
+    create.focus();
+    expect(document.activeElement).toBe(create);
+
+    outside.focus();
     fieldset.setAttribute('disabled', '');
 
     await waitFor(() => {
@@ -781,6 +791,7 @@ describe('SpeedDial', () => {
     const toolbar = screen.getByRole('toolbar', { hidden: true });
     expect(toolbar.hasAttribute('inert')).toBe(true);
     expect(container.contains(toolbar)).toBe(true);
+    expect(document.activeElement).toBe(outside);
   });
 
   test('changing direction while open preserves the focused action', async () => {
