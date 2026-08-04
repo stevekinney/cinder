@@ -402,6 +402,11 @@ describe('ChoiceGrid feedback states', () => {
 // ---------------------------------------------------------------------------
 
 describe('ChoiceGrid column layout', () => {
+  test('composes the shared Grid root', async () => {
+    const { container } = render(Wrapper, { ariaLabel: 'Choices', items: [items[0]] });
+
+    expect(container.querySelector('.cinder-choice-grid.cinder-grid')).not.toBeNull();
+  });
   test('applies .cinder-choice-grid class to the root', () => {
     const { container } = render(Wrapper, {
       ariaLabel: 'Pick one',

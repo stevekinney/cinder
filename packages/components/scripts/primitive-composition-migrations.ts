@@ -47,7 +47,6 @@ export const allowedGridCounts = new Map<string, number>(
     'bento-grid/bento-grid.css',
     'blog-section/blog-section.css',
     'calendar/calendar.css',
-    'choice-grid/choice-grid.css',
     'data-grid/data-grid.css',
     'date-picker/date-picker.css',
     'event-stream-viewer/event-stream-viewer.css',
