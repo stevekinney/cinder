@@ -1,4 +1,7 @@
 import { describe, expect, it } from 'bun:test';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 import { parse } from 'postcss';
 
 import {
@@ -179,9 +182,43 @@ describe('checkComponentCssSource', () => {
     expect(
       checkComponentCssSource(
         source,
-        '/virtual/packages/components/src/components/blog-section/blog-section.css',
+        resolve(import.meta.dir, '../src/components/blog-section/blog-section.css'),
       ),
     ).toEqual([]);
+  });
+
+  it('rejects a missing private stylesheet target', () => {
+    const root = mkdtempSync(join(tmpdir(), 'component-css-private-'));
+    try {
+      const componentDirectory = join(root, 'src/components/example');
+      mkdirSync(componentDirectory, { recursive: true });
+      const source = `${LAYER_ORDER_PRELUDE}\n@import '../_internal/missing.css';\n@layer cinder.components { .cinder-example {} }`;
+      const violations = checkComponentCssSource(source, join(componentDirectory, 'example.css'));
+      expect(violations.some((violation) => violation.message.includes('does not resolve'))).toBe(
+        true,
+      );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects a private stylesheet that violates the component CSS contract', () => {
+    const root = mkdtempSync(join(tmpdir(), 'component-css-private-'));
+    try {
+      const componentDirectory = join(root, 'src/components/example');
+      const internalDirectory = join(root, 'src/components/_internal');
+      mkdirSync(componentDirectory, { recursive: true });
+      mkdirSync(internalDirectory, { recursive: true });
+      writeFileSync(
+        join(internalDirectory, 'invalid.css'),
+        `${LAYER_ORDER_PRELUDE}\n@layer cinder.components { body { margin: 0; } }`,
+      );
+      const source = `${LAYER_ORDER_PRELUDE}\n@import '../_internal/invalid.css';\n@layer cinder.components { .cinder-example {} }`;
+      const violations = checkComponentCssSource(source, join(componentDirectory, 'example.css'));
+      expect(violations.some((violation) => violation.selector === 'body')).toBe(true);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 
   it('rejects a private import that cannot resolve from an experimental sidecar', () => {

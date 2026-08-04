@@ -43,6 +43,9 @@
  * build before sidecars are copied into `dist/`.
  */
 
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+
 import { parse, type AtRule, type Container, type Document, type Root } from 'postcss';
 import selectorParser from 'postcss-selector-parser';
 
@@ -292,7 +295,24 @@ export function checkComponentCssSource(source: string, file: string): CssViolat
   // family — that path resolves identically in `src/` and `dist/` because the
   // layout mirrors. Reject every other `@import` upfront.
   root.walkAtRules('import', (atRule) => {
-    if (isAllowedComponentImport(atRule)) return;
+    if (isAllowedComponentImport(atRule)) {
+      const params = atRule.params.trim();
+      if (PRIVATE_COMPONENT_IMPORT_PARAMS.test(params)) {
+        const importPath = params.slice(1, -1);
+        const target = resolve(dirname(file), importPath);
+        if (!existsSync(target)) {
+          violations.push({
+            file,
+            line: atRule.source?.start?.line ?? 1,
+            column: atRule.source?.start?.column ?? 1,
+            message: `Private component stylesheet import does not resolve: ${params}.`,
+          });
+        } else {
+          violations.push(...checkComponentCssSource(readFileSync(target, 'utf8'), target));
+        }
+      }
+      return;
+    }
     violations.push({
       file,
       line: atRule.source?.start?.line ?? 1,
