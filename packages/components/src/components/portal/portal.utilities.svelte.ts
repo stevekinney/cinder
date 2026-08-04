@@ -99,14 +99,7 @@ export function findNearestOpenTopLayer(
   // (not-yet-existing) scope, not a genuinely enclosing owner. Continuing the search from its
   // parent finds the next marker up the tree, which — by construction — belongs to a different,
   // truly enclosing popover/top-layer instance (see the nested-popover-in-trigger follow-up).
-  const ownerLookupSource = source.closest('.cinder-popover__trigger')?.parentElement ?? source;
-  const ownerId = ownerLookupSource.closest<HTMLElement>('[data-cinder-portal-owner]')?.dataset[
-    'cinderPortalOwner'
-  ];
-  if (ownerId) {
-    const owner = document.getElementById(ownerId);
-    if (owner instanceof HTMLElement) return owner;
-  }
+  const selfTrigger = source.closest('.cinder-popover__trigger');
   let candidate: HTMLElement | null = source;
   while (candidate) {
     try {
@@ -118,6 +111,24 @@ export function findNearestOpenTopLayer(
     } catch {
       // Unsupported pseudo-classes are treated as closed.
     }
+
+    if (candidate !== selfTrigger) {
+      const ownerId = candidate.dataset['cinderPortalOwner'];
+      if (ownerId) {
+        const root = candidate.getRootNode();
+        const localOwner =
+          root instanceof ShadowRoot
+            ? Array.from(root.querySelectorAll<HTMLElement>('[id]')).find(
+                (element) => element.id === ownerId,
+              )
+            : root instanceof Document
+              ? root.getElementById(ownerId)
+              : null;
+        const owner = localOwner ?? document.getElementById(ownerId);
+        if (owner instanceof HTMLElement) return owner;
+      }
+    }
+
     const rootNode = candidate.getRootNode();
     const shadowHost: Element | null = rootNode instanceof ShadowRoot ? rootNode.host : null;
     candidate = candidate.parentElement ?? (shadowHost instanceof HTMLElement ? shadowHost : null);
