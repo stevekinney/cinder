@@ -4856,6 +4856,7 @@ function definedSubstitutionPathCandidates(
       if (analysis.classification === 'negative' || analysis.classification === 'magic')
         exactClassifications.add(analysis.classification);
       if (analysis.resultType !== 'number' || isStaticallyInvalidArithmetic(expression)) {
+        if (supportsReachableDivisionWitness) continue;
         endpointExpressions.length = 0;
         break;
       }
@@ -4883,6 +4884,8 @@ function definedSubstitutionPathCandidates(
       resolvedFallback: fallbackResolutionTooComplex,
       hasRuntimeSibling: true,
     };
+    if (endpointExpressions.length !== 2 || haveEqualStaticArithmeticValues(endpointExpressions))
+      continue;
     candidates.push(
       { ...definedPathCandidate, resolvedClassification: 'negative' },
       { ...definedPathCandidate, resolvedClassification: 'magic' },
