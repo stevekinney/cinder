@@ -12,7 +12,7 @@ const schema = {
     label: {
       type: 'string',
       description:
-        'Visible label text. Omit only when the child control supplies its own accessible name.',
+        'Visible label text. Omit only when the child control supplies its own accessible name, such as via aria-label or aria-labelledby.',
     },
     hideLabel: {
       type: 'boolean',
