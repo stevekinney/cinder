@@ -9,6 +9,12 @@
     border-radius: var(--cinder-radius-sm);
   }
 
+  /*
+   * The keyboard cursor gets an inset ring on top of the subtle active fill so
+   * its boundary meets non-text contrast requirements without changing layout.
+   * Keep this separate from aria-selected: selection is the committed value,
+   * while data-cinder-active is the transient cursor.
+   */
   .cinder-_row-item[data-cinder-active],
   .cinder-_row-item[aria-selected='true'],
   .cinder-_option-row[data-cinder-active],
@@ -37,6 +43,8 @@
       outline-offset: -1px;
     }
 
+    /* Match the active selector's specificity so this reset cannot erase the
+     * forced-colors cursor outline through source order alone. */
     .cinder-_row-item[aria-selected='true']:not([data-cinder-active]),
     .cinder-_option-row[aria-selected='true']:not([data-cinder-active]) {
       outline: none;

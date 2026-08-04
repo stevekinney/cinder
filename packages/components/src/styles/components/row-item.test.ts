@@ -7,7 +7,10 @@ const componentsRoot = resolve(import.meta.dir, '../../components');
 describe('shared row-item boundary', () => {
   test('is composed by the option-like families only', () => {
     const shared = readFileSync(resolve(import.meta.dir, '_row-item.css'), 'utf8');
-    const floatingSurface = readFileSync(resolve(import.meta.dir, '_floating-surface.css'), 'utf8');
+    const floatingSurface = readFileSync(
+      resolve(import.meta.dir, '_floating-surface.css'),
+      'utf8',
+    ).replace(/\/\*[\s\S]*?\*\//g, '');
     expect(shared).toContain('.cinder-_row-item');
     expect(shared).toContain('.cinder-_option-row');
     expect(floatingSurface).not.toContain('.cinder-_option-row');
