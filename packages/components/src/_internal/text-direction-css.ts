@@ -170,13 +170,22 @@ function isConditionalRuleActive(
 // name prefix must be removed before parsing: prefer the standard
 // `containerQuery` accessor (already name-free), falling back to stripping
 // the known container name token when that accessor is unavailable.
+//
+// A name-only rule — `@container sidebar {}` — is valid CSS (verified
+// against real browser behavior: Chromium parses it into a CSSContainerRule
+// and matches it whenever a same-named queryable container exists) and its
+// `containerQuery` legitimately reads back as `''`, not "unsupported".
+// Checking `typeof containerQuery === 'string'` (not truthiness) trusts
+// that empty string instead of falling through to the name-stripping
+// fallback, which would otherwise hand the bare container name to the
+// query grammar below as if it were a condition.
 function resolveContainerQueryText(
   conditionText: string,
   rule: CSSRule,
   containerName: unknown,
 ): string {
   const containerQuery = Reflect.get(rule, 'containerQuery');
-  if (typeof containerQuery === 'string' && containerQuery) return containerQuery;
+  if (typeof containerQuery === 'string') return containerQuery;
   if (typeof containerName !== 'string' || !containerName) return conditionText;
   if (!conditionText.startsWith(containerName)) return conditionText;
   const rest = conditionText.slice(containerName.length);
@@ -193,6 +202,16 @@ function isContainerQueryActive(
   if (typeof getComputedStyle !== 'function') return false;
   const containerName = Reflect.get(rule, 'containerName');
   const queryText = resolveContainerQueryText(conditionText, rule, containerName);
+  // A container rule with no condition at all — a name-only rule, or (in
+  // legacy environments lacking `containerQuery`) a conditionText that was
+  // nothing but the name — has nothing here to evaluate. Real browsers
+  // treat a name-only rule as trivially matching once a same-named
+  // queryable container exists, but honoring that would mean treating
+  // container *existence alone*, with no actual condition, as an
+  // activation signal. This module deliberately requires a parsed
+  // condition before treating a rule as active; fail closed instead,
+  // same as every other unparsed or unsupported condition below.
+  if (!queryText.trim()) return false;
   const styleQuery = parseStyleQuery(queryText);
   if (styleQuery) {
     const remainder = (queryText.slice(0, styleQuery.index) + queryText.slice(styleQuery.end))

@@ -1175,6 +1175,45 @@ describe('resolveTextDirection', () => {
     }
   });
 
+  test('fails closed for a name-only container rule with an empty containerQuery', () => {
+    // `@container sidebar {}` — a name with no condition — is valid CSS:
+    // verified against real Chromium, it parses into a CSSContainerRule
+    // whose `containerQuery` reads back as `''` (not undefined) and which
+    // matches whenever a same-named queryable container exists. This
+    // module doesn't reproduce that container-existence check on its own,
+    // so it must fail closed instead of treating the bare container name
+    // as if it were parseable query syntax.
+    const container = document.createElement('section');
+    container.style.setProperty('container-type', 'inline-size');
+    container.style.setProperty('container-name', 'sidebar');
+    Object.defineProperty(container, 'offsetWidth', { value: 400, configurable: true });
+    const element = document.createElement('div');
+    element.className = 'name-only-container-ltr';
+    container.appendChild(element);
+    document.body.appendChild(container);
+    const nestedRule = createStyleRule({
+      selectorText: '.name-only-container-ltr',
+      direction: 'ltr',
+    });
+    const outerRule = {
+      cssText: '@container sidebar { .name-only-container-ltr { direction: ltr; } }',
+      type: 0,
+      conditionText: 'sidebar',
+      containerName: 'sidebar',
+      containerQuery: '',
+      cssRules: [nestedRule],
+    } as unknown as CSSRule;
+    try {
+      expect(
+        withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
+          resolveTextDirection(element, 'rtl'),
+        ),
+      ).toBe('rtl');
+    } finally {
+      container.remove();
+    }
+  });
+
   test('uses composed shadow ancestry for named style containers', () => {
     const host = document.createElement('div');
     host.style.setProperty('container-name', 'sidebar');
