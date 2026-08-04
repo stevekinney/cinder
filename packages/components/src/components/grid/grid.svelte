@@ -127,27 +127,46 @@
     const remeasureWidth = () => {
       updateNarrowState(getElementBorderBoxWidth(node));
     };
+    const stylesheetLinks = new Set<HTMLLinkElement>();
+    const usesStylesheetFallback = typeof ResizeObserver === 'undefined';
+    const observeStylesheetLinks = () => {
+      for (const link of document.head?.querySelectorAll<HTMLLinkElement>(
+        'link[rel~="stylesheet"]',
+      ) ?? []) {
+        if (!stylesheetLinks.has(link)) {
+          stylesheetLinks.add(link);
+          link.addEventListener('load', recomputeNarrowState);
+        }
+      }
+    };
     const observer =
-      typeof MutationObserver === 'undefined' || typeof ResizeObserver !== 'undefined'
+      typeof MutationObserver === 'undefined' || !usesStylesheetFallback
         ? null
-        : new MutationObserver(recomputeNarrowState);
+        : new MutationObserver(() => {
+            recomputeNarrowState();
+            observeStylesheetLinks();
+          });
     observer?.observe(document.documentElement, {
       attributes: true,
       attributeFilter: ['class', 'style'],
     });
-    if (document.head) {
+    if (document.head && usesStylesheetFallback) {
       observer?.observe(document.head, {
         attributes: true,
-        attributeFilter: ['disabled', 'href', 'media'],
+        attributeFilter: ['disabled', 'href', 'media', 'rel'],
         characterData: true,
         childList: true,
         subtree: true,
       });
+      observeStylesheetLinks();
     }
     window.addEventListener('resize', remeasureWidth);
 
     return () => {
       observer?.disconnect();
+      for (const link of stylesheetLinks) {
+        link.removeEventListener('load', recomputeNarrowState);
+      }
       window.removeEventListener('resize', remeasureWidth);
     };
   });
