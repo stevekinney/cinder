@@ -208,3 +208,94 @@ export function findNextVisibleColumn<Card>(
   }
   return null;
 }
+
+export function getColumnCardListElement(columnElement: HTMLElement): HTMLElement | null {
+  return (
+    Array.from(columnElement.children).find(
+      (child): child is HTMLElement =>
+        child instanceof HTMLElement && child.classList.contains('cinder-kanban-board__cards'),
+    ) ?? null
+  );
+}
+
+export function sortableRowMatchesKey(row: HTMLElement, key: string | number): boolean {
+  return (
+    row.getAttribute('data-key') === String(key) && row.getAttribute('data-key-type') === typeof key
+  );
+}
+
+export function getLiftedRowElement(
+  columnsElement: HTMLElement | null,
+  liftedKey: string | number | null,
+): HTMLElement | null {
+  if (!columnsElement || liftedKey === null) return null;
+  return (
+    Array.from(columnsElement.querySelectorAll<HTMLElement>('[data-sortable-row]')).find((row) =>
+      sortableRowMatchesKey(row, liftedKey),
+    ) ?? null
+  );
+}
+
+export function getLiftedRowBlockSize(
+  columnsElement: HTMLElement | null,
+  liftedKey: string | number | null,
+): number {
+  return getLiftedRowElement(columnsElement, liftedKey)?.getBoundingClientRect().height ?? 0;
+}
+
+export function getColumnDropZoneBottom(cardList: HTMLElement, liftedRowBlockSize: number): number {
+  return cardList.getBoundingClientRect().bottom + liftedRowBlockSize;
+}
+
+/**
+ * Pure DOM hit-testing: resolves which column and card-insertion-index a
+ * pointer position maps to. Parameterized rather than closing over component
+ * locals so it can be unit tested and reused without a live component
+ * instance.
+ */
+export function locatePointerTarget<Card>(args: {
+  columnsElement: HTMLElement | null;
+  columns: KanbanBoardColumn<Card>[];
+  liftedKey: string | number | null;
+  pointerX: number;
+  pointerY: number;
+}): CardMoveTarget | null {
+  const { columnsElement, columns, liftedKey, pointerX, pointerY } = args;
+  if (!columnsElement) return null;
+  const liftedRowBlockSize = getLiftedRowBlockSize(columnsElement, liftedKey);
+  const columnElements = Array.from(columnsElement.children).filter(
+    (element): element is HTMLElement =>
+      element instanceof HTMLElement && element.classList.contains('cinder-kanban-board__column'),
+  );
+  const columnIndex = columnElements.findIndex((element) => {
+    const rect = element.getBoundingClientRect();
+    const cardList = getColumnCardListElement(element);
+    if (!cardList) return false;
+    return (
+      pointerX >= rect.left &&
+      pointerX <= rect.right &&
+      pointerY >= rect.top &&
+      pointerY <= getColumnDropZoneBottom(cardList, liftedRowBlockSize)
+    );
+  });
+  if (columnIndex < 0 || columns[columnIndex]?.collapsed) return null;
+  const columnElement = columnElements[columnIndex];
+  if (!columnElement) return null;
+  const cardList = getColumnCardListElement(columnElement);
+  // Exclude the dragged card by its stable data-key attribute so the filter
+  // works regardless of whether the card is in the keyboard-drag state
+  // (cinder-sortable-item--lifted) or the pointer-drag state
+  // (cinder-sortable-item--placeholder). Both states carry the same data-key.
+  const draggedKey = liftedKey;
+  const rows = Array.from(cardList?.children ?? []).filter(
+    (row): row is HTMLElement =>
+      row instanceof HTMLElement &&
+      row.hasAttribute('data-sortable-row') &&
+      (draggedKey === null || !sortableRowMatchesKey(row, draggedKey)),
+  );
+  const insertionIndex = rows.filter((row) => {
+    const rect = row.getBoundingClientRect();
+    return rect.top + rect.height / 2 < pointerY;
+  }).length;
+  return { columnIndex, cardIndex: insertionIndex };
+}
