@@ -27,7 +27,7 @@ mock.module('@floating-ui/dom', () => ({
   shift: (options: unknown) => ({ name: 'shift', options, fn: () => ({}) }),
 }));
 
-const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
+const { cleanup, fireEvent, render, waitFor } = await import('@testing-library/svelte');
 const { prepareServerRenderSource, renderToServerHtml } =
   await import('../../test/server-render.ts');
 const { tick } = await import('svelte');
@@ -266,13 +266,18 @@ describe('MenuBar', () => {
 
     const submenuTrigger = getByRole('menuitem', { name: 'Open Recent' });
     await fireEvent.keyDown(submenuTrigger, { key: 'ArrowLeft' });
-    await tick();
 
-    const submenuCall = computePositionSpy.mock.calls.find((call) => {
-      const options = call.at(2) as { placement?: string } | undefined;
-      return options?.placement === 'left-start';
+    // `computePosition` is awaited inside the anchored-overlay effect, so the call
+    // does not land within a single `tick()`. Poll for it rather than sampling once.
+    // This does not weaken the assertion: a genuinely broken RTL placement never
+    // produces a `left-start` call, so `waitFor` would time out and still fail.
+    await waitFor(() => {
+      const submenuCall = computePositionSpy.mock.calls.find((call) => {
+        const options = call.at(2) as { placement?: string } | undefined;
+        return options?.placement === 'left-start';
+      });
+      expect(submenuCall).toBeDefined();
     });
-    expect(submenuCall).toBeDefined();
     expect(getByRole('menu', { name: 'Open Recent' }).getAttribute('dir')).toBe('rtl');
   });
 
