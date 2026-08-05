@@ -7,9 +7,19 @@ Multi-value dropdown that presents checkbox options inside an anchored floating 
 ```svelte
 <script lang="ts">
   import MultiSelect from '@lostgradient/cinder/multi-select';
+
+  const items = [
+    { id: 'apple', label: 'Apple' },
+    { id: 'banana', label: 'Banana' },
+    { id: 'cherry', label: 'Cherry' },
+    { id: 'mango', label: 'Mango' },
+    { id: 'orange', label: 'Orange' },
+  ] as const;
+
+  let selected = $state<Array<(typeof items)[number]['id']>>(['banana']);
 </script>
 
-<MultiSelect />
+<MultiSelect id="fruit" label="Fruits" {items} bind:selectedIds={selected} />
 ```
 
 ## Props

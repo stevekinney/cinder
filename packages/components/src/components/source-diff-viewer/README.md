@@ -10,8 +10,22 @@ for Markdown review and editor-runtime workflows.
 
 ```svelte
 <script lang="ts">
-  import { SourceDiffViewer } from '@lostgradient/cinder/source-diff-viewer';
+  import SourceDiffViewer from '@lostgradient/cinder/source-diff-viewer';
+
+  const patch = `diff --git a/src/generated.txt b/src/generated.txt
+--- a/src/generated.txt
++++ b/src/generated.txt
+@@ -1,6 +1,6 @@
+ unchanged
+-old one
++new one
+-old two
++new two
+ unchanged
+`;
 </script>
+
+<SourceDiffViewer {patch} maxLines={4} />
 ```
 
 Use SourceDiffViewer for source-code patches, agent workspace patches, Git output, and other operational unified diffs. Use `DiffViewer` from `@lostgradient/editor` for Markdown document review, front-matter handling, Markdown normalization, and prose-oriented word-level changes.

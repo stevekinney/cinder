@@ -48,18 +48,22 @@ const schema = {
     colorScale: {
       enum: ['sequential', 'diverging'],
       description: 'Color interpolation scale. Default `sequential`.',
+      default: 'sequential',
     },
     cellLabelsVisible: {
       type: 'boolean',
       description: 'Show cell value labels. Default `true`.',
+      default: true,
     },
     height: {
       type: 'number',
       description: 'Pixel height of the chart viewport. Default `280`.',
+      default: 280,
     },
     loading: {
       type: 'boolean',
       description: 'Whether the chart is in a loading state. Default `false`.',
+      default: false,
     },
     dataTableCaption: {
       type: 'string',
@@ -68,6 +72,7 @@ const schema = {
     dataTableVisibility: {
       enum: ['screen-reader-only', 'visible', 'hidden'],
       description: 'Controls data table visibility. Default `screen-reader-only`.',
+      default: 'screen-reader-only',
     },
     class: {
       type: 'string',

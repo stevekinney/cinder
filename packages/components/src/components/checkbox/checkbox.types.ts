@@ -11,7 +11,7 @@ import type { HTMLInputAttributes } from 'svelte/elements';
  * sets it imperatively each time the prop changes, then clears it once
  * the user toggles `checked`.
  */
-export type CheckboxProps = HTMLInputAttributes & {
+export type CheckboxProps = Omit<HTMLInputAttributes, 'class'> & {
   /**
    * Unique identifier for label association and ARIA wiring. Optional: when omitted,
    * a stable id is generated via `$props.id()` (or inherited from a FormField context),

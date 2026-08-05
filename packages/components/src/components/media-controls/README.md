@@ -6,8 +6,17 @@ Accessible playback controls for play, pause, and replay actions with optional p
 
 ```svelte
 <script lang="ts">
-  import { MediaControls } from '@lostgradient/cinder/media-controls';
+  import MediaControls from '@lostgradient/cinder/media-controls';
 </script>
+
+<div style="display: flex; flex-wrap: wrap; gap: 1rem; align-items: center;">
+  <MediaControls layout="expanded" />
+  <MediaControls layout="expanded" playing />
+  <MediaControls layout="expanded" replay />
+  <MediaControls layout="expanded" loading />
+  <MediaControls layout="expanded" disabled />
+  <MediaControls layout="expanded" unavailable />
+</div>
 ```
 
 ## Guidance

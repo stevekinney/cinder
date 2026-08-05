@@ -6273,6 +6273,7 @@
     "validate:consumer": "bun run scripts/validate-consumers.ts",
     "validate:consumer:hydration-smoke": "bun run scripts/validate-consumers.ts --hydration-smoke",
     "validate:consumer:manifest-smoke": "bun run scripts/validate-consumers.ts --manifest-smoke",
+    "validate:consumer:readme-usage-examples": "bun run scripts/validate-consumers.ts --readme-usage-examples",
     "validate:release-workflow": "bun run scripts/validate-release-workflow.ts",
     "validate:resolver-matrix": "bun run scripts/validate-resolver-matrix.ts",
     "validate:svelte-peer": "bun run scripts/validate-svelte-peer-contract.ts",

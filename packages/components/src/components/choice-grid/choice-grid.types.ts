@@ -74,7 +74,7 @@ export type ChoiceGridContext = {
  */
 export type ChoiceGridProps = Omit<
   HTMLAttributes<HTMLDivElement>,
-  'role' | 'aria-label' | 'aria-labelledby'
+  'role' | 'aria-label' | 'aria-labelledby' | 'class'
 > & {
   /**
    * The currently selected value (single-select mode). Bindable.

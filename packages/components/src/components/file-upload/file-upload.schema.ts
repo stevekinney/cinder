@@ -28,6 +28,10 @@ const schema = {
       type: 'number',
       description: 'Maximum allowed file size in bytes.',
     },
+    class: {
+      type: 'string',
+      description: 'Additional classes merged with `.cinder-file-upload`.',
+    },
     triggerLabel: {
       type: 'string',
       description: 'Visible text for the picker trigger button. Default `Choose files`.',
@@ -36,11 +40,6 @@ const schema = {
   additionalProperties: false,
   metadata: {
     unsupportedProps: [
-      {
-        name: 'class',
-        reason: 'unknown-shape',
-        description: 'Additional classes merged with `.cinder-file-upload`.',
-      },
       {
         name: 'dragActive',
         reason: 'function-or-snippet',

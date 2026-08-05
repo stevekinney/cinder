@@ -19,14 +19,17 @@ const schema = {
     copyLinkLabel: {
       type: 'string',
       description: 'Label for the copy-link button.',
+      default: 'Copy link',
     },
     copiedLabel: {
       type: 'string',
       description: 'Label shown after a successful copy.',
+      default: 'Copied!',
     },
     shareLabel: {
       type: 'string',
       description: 'Label for the native-share button.',
+      default: 'Share',
     },
     confirmDuration: {
       type: 'number',

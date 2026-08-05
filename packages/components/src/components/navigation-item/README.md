@@ -9,7 +9,7 @@ Individual link or button within a navigation bar, supporting active and disable
   import NavigationItem from '@lostgradient/cinder/navigation-item';
 </script>
 
-<NavigationItem />
+<NavigationItem href="/dashboard">Dashboard</NavigationItem>
 ```
 
 ## Props

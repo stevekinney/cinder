@@ -15,6 +15,7 @@ const schema = {
     describe: {
       type: 'boolean',
       description: 'Whether to wire tooltip text to the trigger via aria-describedby.',
+      default: true,
     },
     class: {
       type: 'string',

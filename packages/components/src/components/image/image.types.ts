@@ -19,7 +19,7 @@ import type { HTMLImgAttributes } from 'svelte/elements';
  */
 export type ImageProps = Omit<
   HTMLImgAttributes,
-  'alt' | 'src' | 'width' | 'height' | 'loading' | 'decoding' | 'onload' | 'onerror'
+  'alt' | 'src' | 'width' | 'height' | 'loading' | 'decoding' | 'onload' | 'onerror' | 'class'
 > & {
   /** Image source URL. */
   src: string;

@@ -219,10 +219,27 @@ function literalElementValue(element: Expression | SpreadElement | null): unknow
 }
 
 /**
- * Parses the right-hand side of an AssignmentPattern (the default value expression)
- * and returns { defaultValue, bindable }.
+ * Resolves the static name of an object-expression property key, restricted
+ * to the shapes `parseDefaultExpression`'s `ObjectExpression` branch accepts:
+ * a non-computed `Identifier` key or a string `Literal` key.
  */
-function parseDefaultExpression(rhs: Expression): { defaultValue?: unknown; bindable: boolean } {
+function staticObjectExpressionKeyName(property: Property): string | undefined {
+  if (property.computed) return undefined;
+  const key = property.key;
+  if (key.type === 'Identifier') return key.name;
+  if (key.type === 'Literal' && typeof key.value === 'string') return key.value;
+  return undefined;
+}
+
+/**
+ * Parses the right-hand side of an AssignmentPattern (the default value expression)
+ * and returns { defaultValue, bindable }. `source` is the original component source
+ * text, used only by the `ObjectExpression` branch's source-text fallback.
+ */
+function parseDefaultExpression(
+  rhs: Expression,
+  source: string,
+): { defaultValue?: unknown; bindable: boolean } {
   if (rhs.type === 'Literal') {
     return { defaultValue: rhs.value, bindable: false };
   }
@@ -235,6 +252,58 @@ function parseDefaultExpression(rhs: Expression): { defaultValue?: unknown; bind
       return { defaultValue: elements.map(literalElementValue), bindable: false };
     }
     return { defaultValue: undefined, bindable: false };
+  }
+
+  // A negative numeric literal (e.g. `count = -1`) parses as a UnaryExpression
+  // wrapping a Literal, not a Literal itself.
+  if (rhs.type === 'UnaryExpression' && rhs.operator === '-') {
+    const argument = rhs.argument;
+    if (argument.type === 'Literal' && typeof argument.value === 'number') {
+      return { defaultValue: -argument.value, bindable: false };
+    }
+    return { defaultValue: undefined, bindable: false };
+  }
+
+  // A static template literal (no interpolated expressions) used purely for
+  // its escaping, e.g. `` label = `Untitled` ``. Templates with interpolated
+  // expressions are not statically resolvable and fall through below.
+  if (rhs.type === 'TemplateLiteral' && rhs.expressions.length === 0) {
+    return { defaultValue: rhs.quasis[0]?.value.cooked ?? undefined, bindable: false };
+  }
+
+  if (rhs.type === 'ObjectExpression') {
+    const entries: [string, string | number | boolean][] = [];
+    let allLiterals = true;
+    for (const property of rhs.properties) {
+      if (property.type !== 'Property') {
+        allLiterals = false;
+        break;
+      }
+      const keyName = staticObjectExpressionKeyName(property);
+      const value = property.value;
+      const isLiteralValue =
+        value.type === 'Literal' &&
+        (typeof value.value === 'string' ||
+          typeof value.value === 'number' ||
+          typeof value.value === 'boolean');
+      if (keyName === undefined || !isLiteralValue) {
+        allLiterals = false;
+        break;
+      }
+      entries.push([keyName, value.value as string | number | boolean]);
+    }
+    if (allLiterals) {
+      return { defaultValue: Object.fromEntries(entries), bindable: false };
+    }
+    // Not every property is a plain literal (a nested object, an array, an
+    // identifier reference, a computed key, a function) — fall back to the
+    // raw source text of the whole ObjectExpression initializer. Svelte's
+    // compiler AST nodes carry numeric start/end character offsets at
+    // runtime that the `Expression` type imported from `estree` doesn't
+    // declare, so read them via a narrow local cast rather than widening
+    // the whole function's types.
+    const { start, end } = rhs as Expression & { start: number; end: number };
+    return { defaultValue: source.slice(start, end), bindable: false };
   }
 
   if (rhs.type === 'CallExpression') {
@@ -325,7 +394,7 @@ function extractPropsFromSvelteAst(source: string): RawPropEntry[] {
         const value = property.value;
 
         if (value.type === 'AssignmentPattern') {
-          const { defaultValue, bindable } = parseDefaultExpression(value.right);
+          const { defaultValue, bindable } = parseDefaultExpression(value.right, source);
           entries.push({ name: rawName, defaultValue, bindable });
         } else {
           // No default value

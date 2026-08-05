@@ -37,18 +37,20 @@ export type StepsProps = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
    * "done" state).
    */
   currentStep: number;
-  /** Layout direction. Defaults to 'horizontal'. */
+  /** Layout direction. Defaults to 'horizontal'. @default "horizontal" */
   orientation?: StepsOrientation;
-  /** Accessible name for the wrapping nav landmark. Defaults to 'Progress'. */
+  /** Accessible name for the wrapping nav landmark. Defaults to 'Progress'. @default "Progress" */
   label?: string;
   /**
    * Visually-hidden text prepended to completed steps so screen readers
    * announce state + label. Defaults to 'Completed'.
+   * @default "Completed"
    */
   completedLabel?: string;
   /**
    * Visually-hidden text prepended to skipped steps so screen readers announce
    * state + label. Defaults to 'Skipped'.
+   * @default "Skipped"
    */
   skippedLabel?: string;
   /** Additional class names merged with `.cinder-steps`. */

@@ -6,10 +6,22 @@ ToastRegion provides live toast notifications and a `useToast()` controller for 
 
 ```svelte
 <script lang="ts">
-  import ToastRegion from '@lostgradient/cinder/toast-region';
+  import Button from '@lostgradient/cinder/button';
+  import ToastRegion, { useToast } from '@lostgradient/cinder/toast-region';
 </script>
 
-<ToastRegion />
+<ToastRegion>
+  {#snippet children()}
+    {@const toast = useToast()}
+    <Button
+      label="Show swipe toast"
+      onclick={() =>
+        toast.show('Drag this notification left or right to dismiss it.', {
+          duration: 0,
+        })}
+    />
+  {/snippet}
+</ToastRegion>
 ```
 
 ## Props

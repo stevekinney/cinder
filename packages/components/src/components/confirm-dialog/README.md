@@ -40,10 +40,41 @@ The key distinction between ConfirmDialog and AlertDialog is _who initiates_ the
 
 ```svelte
 <script lang="ts">
+  import Button from '@lostgradient/cinder/button';
   import ConfirmDialog from '@lostgradient/cinder/confirm-dialog';
+
+  let open = $state(false);
+  let triggerRef: HTMLElement | null = $state(null);
+  let lastAction = $state('');
 </script>
 
-<ConfirmDialog />
+<div style="display: flex; flex-direction: column; gap: 1rem; align-items: flex-start;">
+  <Button
+    label="Delete item"
+    variant="danger"
+    onclick={(event: MouseEvent) => {
+      triggerRef = event.currentTarget as HTMLElement;
+      open = true;
+    }}
+  />
+
+  {#if lastAction}
+    <p style="margin: 0; color: var(--cinder-text-muted); font-size: var(--cinder-text-sm);">
+      Last action: <strong>{lastAction}</strong>
+    </p>
+  {/if}
+</div>
+
+<ConfirmDialog
+  bind:open
+  {triggerRef}
+  title="Delete item?"
+  description="This permanently removes the item. This action cannot be undone."
+  destructive
+  confirmLabel="Delete"
+  onConfirm={() => (lastAction = 'confirmed')}
+  onCancel={() => (lastAction = 'cancelled')}
+/>
 ```
 
 ## Props

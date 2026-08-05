@@ -14,13 +14,13 @@ export type CalendarProps = Omit<
   min?: string | undefined;
   /** Latest selectable day (`YYYY-MM-DD`). */
   max?: string | undefined;
-  /** First weekday index, `0` Sunday to `6` Saturday. Defaults to `0`. */
+  /** First weekday index, `0` Sunday to `6` Saturday. Defaults to `0`. @default 0 */
   firstDayOfWeek?: number;
-  /** Localized month label locale. Defaults to `en-US`. */
+  /** Localized month label locale. Defaults to `en-US`. @default "en-US" */
   locale?: string;
-  /** Accessible label for the grid. Defaults to `Calendar`. */
+  /** Accessible label for the grid. Defaults to `Calendar`. @default "Calendar" */
   label?: string;
-  /** Disable interaction. */
+  /** Disable interaction. @default false */
   disabled?: boolean;
   /** Additional classes for the root node. */
   class?: string;

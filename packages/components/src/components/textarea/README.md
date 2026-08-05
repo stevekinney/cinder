@@ -9,7 +9,7 @@ Multi-line text input for longer freeform content with optional resize control.
   import Textarea from '@lostgradient/cinder/textarea';
 </script>
 
-<Textarea />
+<Textarea id="notes" label="Notes" />
 ```
 
 ## Props
@@ -18,6 +18,7 @@ Multi-line text input for longer freeform content with optional resize control.
 
 | Prop           | Type       | Required | Default | Description                                                                                                                                                                                                                                                                                                                                            |
 | -------------- | ---------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `class`        | `string`   | no       | —       | Extra class names merged with `.cinder-textarea`.                                                                                                                                                                                                                                                                                                      |
 | `countVisible` | `boolean`  | no       | —       | When `true` AND `maxlength` is set, renders a live character counter (`{value.length}/{maxlength}`) below the textarea. The counter element is wired into `aria-describedby` so screen readers announce it as part of the field's description, and it is also placed inside an `aria-live="polite"` region so updates are announced as the user types. |
 | `description`  | `string`   | no       | —       | Helper text displayed below the textarea; wired via `aria-describedby`.                                                                                                                                                                                                                                                                                |
 | `disabled`     | `boolean`  | no       | —       | Disables the textarea.                                                                                                                                                                                                                                                                                                                                 |
@@ -27,7 +28,6 @@ Multi-line text input for longer freeform content with optional resize control.
 | `maxlength`    | `number`   | no       | —       | Maximum character count. Passed through to the native `maxlength` attribute and shown as the limit in the `countVisible` counter.                                                                                                                                                                                                                      |
 | `required`     | `boolean`  | no       | —       | Marks the field as required. Passed through to the native `required` attribute.                                                                                                                                                                                                                                                                        |
 | `rows`         | `number`   | no       | —       | Number of visible text rows. Defaults to 4.                                                                                                                                                                                                                                                                                                            |
-| `class`        | `(opaque)` | no       | —       | Extra class names merged with `.cinder-textarea`. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                                                                                           |
 | `value`        | `(opaque)` | no       | —       | Bound value of the textarea. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                                                                                                                |
 
 <!-- generated:props:end -->

@@ -9,9 +9,14 @@ the same layout metrics.
 ```svelte
 <script lang="ts">
   import CodeBlock from '@lostgradient/cinder/code-block';
+  const code = `function greet(name: string): string {
+  return \`Hello, \${name}!\`;
+}
+
+const message = greet('world');`;
 </script>
 
-<CodeBlock />
+<CodeBlock {code} />
 ```
 
 ## Props

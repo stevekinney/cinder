@@ -6,8 +6,17 @@ Free-form token entry field that turns committed text into removable tags while 
 
 ```svelte
 <script lang="ts">
-  import { TagInput } from '@lostgradient/cinder/tag-input';
+  import FormField from '@lostgradient/cinder/form-field';
+  import TagInput from '@lostgradient/cinder/tag-input';
 </script>
+
+<FormField
+  id="max-tag-input"
+  label="Three highlights"
+  description="Add up to three short highlights for this release note."
+>
+  <TagInput max={3} placeholder="Add a highlight…" />
+</FormField>
 ```
 
 ## Guidance
@@ -40,9 +49,9 @@ the existing inline validation path and block that submit attempt.
 | `aria-labelledby`        | `string` \| `null`                                                                                            | no       | —       | Element ids that label both the text input and the committed-tag listbox.                                                                                  |
 | `autocapitalize`         | `"off"` \| `"on"` \| `"characters"` \| `"none"` \| `"sentences"` \| `"words"` \| `null`                       | no       | —       | Autocapitalization hint forwarded to the visible text input.                                                                                               |
 | `class`                  | `string`                                                                                                      | no       | —       | Additional class merged onto the root element.                                                                                                             |
-| `commitOnSubmit`         | `boolean`                                                                                                     | no       | —       | Commit a non-empty pending draft before the parent form submits.                                                                                           |
+| `commitOnSubmit`         | `boolean`                                                                                                     | no       | `false` | Commit a non-empty pending draft before the parent form submits.                                                                                           |
 | `disabled`               | `boolean`                                                                                                     | no       | —       | Disable the input and chip removal affordances.                                                                                                            |
-| `duplicateValuesAllowed` | `boolean`                                                                                                     | no       | —       | Allow the same trimmed tag value to appear more than once.                                                                                                 |
+| `duplicateValuesAllowed` | `boolean`                                                                                                     | no       | `false` | Allow the same trimmed tag value to appear more than once.                                                                                                 |
 | `enterkeyhint`           | `"enter"` \| `"done"` \| `"go"` \| `"next"` \| `"previous"` \| `"search"` \| `"send"` \| `null`               | no       | —       | Virtual-keyboard Enter hint forwarded to the visible text input.                                                                                           |
 | `id`                     | `string`                                                                                                      | no       | —       | Stable id for the visible text input. Falls back to FormField context or a generated id.                                                                   |
 | `inputmode`              | `"email"` \| `"tel"` \| `"url"` \| `"none"` \| `"search"` \| `"text"` \| `"numeric"` \| `"decimal"` \| `null` | no       | —       | Virtual-keyboard input mode forwarded to the visible text input.                                                                                           |
@@ -50,7 +59,7 @@ the existing inline validation path and block that submit attempt.
 | `maxlength`              | `number` \| `null`                                                                                            | no       | —       | Maximum pending-text length forwarded to the visible text input.                                                                                           |
 | `name`                   | `string`                                                                                                      | no       | —       | Hidden input name used for native form submission; one hidden field is rendered per tag.                                                                   |
 | `placeholder`            | `string` \| `null`                                                                                            | no       | —       | Placeholder text shown while the pending tag input is empty.                                                                                               |
-| `readonly`               | `boolean`                                                                                                     | no       | —       | Render the pending-tag input as read-only and make committed tags non-removable.                                                                           |
+| `readonly`               | `boolean`                                                                                                     | no       | `false` | Render the pending-tag input as read-only and make committed tags non-removable.                                                                           |
 | `spellcheck`             | `false` \| `true` \| `"true"` \| `"false"` \| `null`                                                          | no       | —       | Spellcheck setting forwarded to the visible text input.                                                                                                    |
 | `value`                  | `string`[]                                                                                                    | no       | —       | Bindable tags.                                                                                                                                             |
 | `autocomplete`           | `(opaque)`                                                                                                    | no       | —       | Autocomplete hint forwarded to the visible text input. Not expressible in JSON Schema; see the component types for the signature.                          |

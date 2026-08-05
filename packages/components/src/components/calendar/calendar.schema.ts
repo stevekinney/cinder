@@ -27,18 +27,22 @@ const schema = {
     firstDayOfWeek: {
       type: 'number',
       description: 'First weekday index, `0` Sunday to `6` Saturday. Defaults to `0`.',
+      default: 0,
     },
     locale: {
       type: 'string',
       description: 'Localized month label locale. Defaults to `en-US`.',
+      default: 'en-US',
     },
     label: {
       type: 'string',
       description: 'Accessible label for the grid. Defaults to `Calendar`.',
+      default: 'Calendar',
     },
     disabled: {
       type: 'boolean',
       description: 'Disable interaction.',
+      default: false,
     },
     class: {
       type: 'string',

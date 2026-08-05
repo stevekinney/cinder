@@ -15,6 +15,7 @@ const schema = {
     rows: {
       type: 'number',
       description: 'Number of visible text rows. Defaults to 8.',
+      default: 8,
     },
     id: {
       type: 'string',
@@ -40,11 +41,13 @@ const schema = {
       type: 'boolean',
       description:
         'Whether valid JSON should render an announced success message. Defaults to true.',
+      default: true,
     },
     highlight: {
       type: 'boolean',
       description:
         'Enables a lazy syntax-highlighted view with inline parse-error annotation. Defaults to false.',
+      default: false,
     },
     class: {
       type: 'string',

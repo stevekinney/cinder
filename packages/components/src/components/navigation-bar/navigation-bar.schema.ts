@@ -34,6 +34,7 @@ const schema = {
       type: 'string',
       description:
         "Accessible name for the <nav> landmark. Wins over any aria-label passed via rest. Default 'Main navigation'.",
+      default: 'Main navigation',
     },
   },
   additionalProperties: false,

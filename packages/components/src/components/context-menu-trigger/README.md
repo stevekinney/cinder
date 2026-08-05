@@ -6,8 +6,21 @@ Compose-only trigger region that opens a context-menu on right-click or touch lo
 
 ```svelte
 <script lang="ts">
-  import { ContextMenuTrigger } from '@lostgradient/cinder/context-menu-trigger';
+  import ContextMenu from '@lostgradient/cinder/context-menu';
+  import ContextMenuTrigger from '@lostgradient/cinder/context-menu-trigger';
+  import DropdownItem from '@lostgradient/cinder/dropdown-item';
+  import DropdownMenu from '@lostgradient/cinder/dropdown-menu';
 </script>
+
+<ContextMenu>
+  <ContextMenuTrigger>
+    <p>Right-click this region</p>
+  </ContextMenuTrigger>
+
+  <DropdownMenu>
+    <DropdownItem onclick={() => {}}>Copy</DropdownItem>
+  </DropdownMenu>
+</ContextMenu>
 ```
 
 ## Guidance

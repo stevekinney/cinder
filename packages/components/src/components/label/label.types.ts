@@ -8,7 +8,7 @@ import type { HTMLLabelAttributes } from 'svelte/elements';
  * Standalone Label exists so consumers building hand-rolled forms (e.g. a
  * custom field that wraps two inputs) can match the same visual treatment.
  */
-export type LabelProps = HTMLLabelAttributes & {
+export type LabelProps = Omit<HTMLLabelAttributes, 'class'> & {
   /** The id of the form control this label labels. Sets `for` on the rendered `<label>`. */
   for: string;
   /** When true, append a visual indicator that the field is required. */

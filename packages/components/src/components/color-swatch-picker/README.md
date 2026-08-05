@@ -7,9 +7,26 @@ Presents a fixed palette of color swatches for constrained color selection.
 ```svelte
 <script lang="ts">
   import ColorSwatchPicker from '@lostgradient/cinder/color-swatch-picker';
+
+  const palette = [
+    { color: '#ef4444', name: 'Red' },
+    { color: '#f97316', name: 'Orange' },
+    { color: '#eab308', name: 'Yellow' },
+    { color: '#22c55e', name: 'Green' },
+    { color: '#3b82f6', name: 'Blue' },
+    { color: '#8b5cf6', name: 'Violet' },
+  ];
+
+  let selected = $state('#3b82f6');
 </script>
 
-<ColorSwatchPicker />
+<ColorSwatchPicker
+  colors={palette}
+  value={selected}
+  label="Accent color"
+  onchange={(color) => (selected = color)}
+/>
+<p style="margin-top: 0.5rem; color: var(--cinder-text-muted);">Selected: {selected}</p>
 ```
 
 ## Props

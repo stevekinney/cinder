@@ -25,17 +25,12 @@ const schema = {
       enum: ['circle', 'square'],
       description: 'Shape. Default `circle`.',
     },
+    class: {
+      type: 'string',
+      description: 'Additional class names merged with `.cinder-avatar`.',
+    },
   },
   additionalProperties: false,
-  metadata: {
-    unsupportedProps: [
-      {
-        name: 'class',
-        reason: 'unknown-shape',
-        description: 'Additional class names merged with `.cinder-avatar`.',
-      },
-    ],
-  },
 } satisfies ComponentSchema;
 
 export default schema as ComponentSchema;

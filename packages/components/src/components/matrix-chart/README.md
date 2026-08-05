@@ -6,8 +6,31 @@ Categorical × categorical heatmap for dense analytics, confusion matrices, and 
 
 ```svelte
 <script lang="ts">
-  import { MatrixChart } from '@lostgradient/cinder/matrix-chart';
+  import MatrixChart from '@lostgradient/cinder/matrix-chart';
+
+  const data = [
+    { actual: 'Cat', predicted: 'Cat', count: 50 },
+    { actual: 'Cat', predicted: 'Dog', count: 5 },
+    { actual: 'Cat', predicted: 'Bird', count: 2 },
+    { actual: 'Dog', predicted: 'Cat', count: 3 },
+    { actual: 'Dog', predicted: 'Dog', count: 42 },
+    { actual: 'Dog', predicted: 'Bird', count: 1 },
+    { actual: 'Bird', predicted: 'Cat', count: 4 },
+    { actual: 'Bird', predicted: 'Dog', count: 2 },
+    { actual: 'Bird', predicted: 'Bird', count: 38 },
+  ];
 </script>
+
+<MatrixChart
+  label="Confusion matrix — Animal classifier"
+  description="Rows are actual classes; columns are predicted classes. Diagonal cells are correct predictions."
+  {data}
+  xField="predicted"
+  yField="actual"
+  valueField="count"
+  colorScale="sequential"
+  dataTableVisibility="visible"
+/>
 ```
 
 ## Guidance
@@ -26,23 +49,23 @@ Categorical × categorical heatmap for dense analytics, confusion matrices, and 
 
 <!-- generated:props:start -->
 
-| Prop                  | Type                                                | Required | Default | Description                                                                                                             |
-| --------------------- | --------------------------------------------------- | -------- | ------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `cellLabelsVisible`   | `boolean`                                           | no       | —       | Show cell value labels. Default `true`.                                                                                 |
-| `class`               | `string`                                            | no       | —       | Custom class applied to the root element.                                                                               |
-| `colorScale`          | `"sequential"` \| `"diverging"`                     | no       | —       | Color interpolation scale. Default `sequential`.                                                                        |
-| `data`                | `object`[]                                          | yes      | —       | Rows of data. Each row must include the keys named by the `xField`, `yField`, and `valueField` props.                   |
-| `dataTableCaption`    | `string`                                            | no       | —       | Custom data table caption; falls back to `label`.                                                                       |
-| `dataTableVisibility` | `"screen-reader-only"` \| `"visible"` \| `"hidden"` | no       | —       | Controls data table visibility. Default `screen-reader-only`.                                                           |
-| `description`         | `string`                                            | no       | —       | Optional description rendered below the label.                                                                          |
-| `height`              | `number`                                            | no       | —       | Pixel height of the chart viewport. Default `280`.                                                                      |
-| `label`               | `string`                                            | yes      | —       | Accessible label for the chart. Required for screen readers.                                                            |
-| `loading`             | `boolean`                                           | no       | —       | Whether the chart is in a loading state. Default `false`.                                                               |
-| `valueField`          | `string`                                            | yes      | —       | Key on each datum used for the numeric cell value.                                                                      |
-| `xField`              | `string`                                            | yes      | —       | Key on each datum used for the x-axis (columns).                                                                        |
-| `yField`              | `string`                                            | yes      | —       | Key on each datum used for the y-axis (rows).                                                                           |
-| `empty`               | `(opaque)`                                          | no       | —       | Snippet rendered when the chart has no data. Not expressible in JSON Schema; see the component types for the signature. |
-| `loadingContent`      | `(opaque)`                                          | no       | —       | Snippet rendered while the chart is loading. Not expressible in JSON Schema; see the component types for the signature. |
+| Prop                  | Type                                                | Required | Default                | Description                                                                                                             |
+| --------------------- | --------------------------------------------------- | -------- | ---------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `cellLabelsVisible`   | `boolean`                                           | no       | `true`                 | Show cell value labels. Default `true`.                                                                                 |
+| `class`               | `string`                                            | no       | —                      | Custom class applied to the root element.                                                                               |
+| `colorScale`          | `"sequential"` \| `"diverging"`                     | no       | `"sequential"`         | Color interpolation scale. Default `sequential`.                                                                        |
+| `data`                | `object`[]                                          | yes      | —                      | Rows of data. Each row must include the keys named by the `xField`, `yField`, and `valueField` props.                   |
+| `dataTableCaption`    | `string`                                            | no       | —                      | Custom data table caption; falls back to `label`.                                                                       |
+| `dataTableVisibility` | `"screen-reader-only"` \| `"visible"` \| `"hidden"` | no       | `"screen-reader-only"` | Controls data table visibility. Default `screen-reader-only`.                                                           |
+| `description`         | `string`                                            | no       | —                      | Optional description rendered below the label.                                                                          |
+| `height`              | `number`                                            | no       | `280`                  | Pixel height of the chart viewport. Default `280`.                                                                      |
+| `label`               | `string`                                            | yes      | —                      | Accessible label for the chart. Required for screen readers.                                                            |
+| `loading`             | `boolean`                                           | no       | `false`                | Whether the chart is in a loading state. Default `false`.                                                               |
+| `valueField`          | `string`                                            | yes      | —                      | Key on each datum used for the numeric cell value.                                                                      |
+| `xField`              | `string`                                            | yes      | —                      | Key on each datum used for the x-axis (columns).                                                                        |
+| `yField`              | `string`                                            | yes      | —                      | Key on each datum used for the y-axis (rows).                                                                           |
+| `empty`               | `(opaque)`                                          | no       | —                      | Snippet rendered when the chart has no data. Not expressible in JSON Schema; see the component types for the signature. |
+| `loadingContent`      | `(opaque)`                                          | no       | —                      | Snippet rendered while the chart is loading. Not expressible in JSON Schema; see the component types for the signature. |
 
 <!-- generated:props:end -->
 

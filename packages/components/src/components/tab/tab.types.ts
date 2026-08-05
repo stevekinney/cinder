@@ -22,7 +22,7 @@ export type TabProps = Omit<
    * at the matching TabPanel id (`${baseId}-panel-${value}`).
    */
   controls?: string;
-  /** Disables this single tab and removes it from keyboard activation. */
+  /** Disables this single tab and removes it from keyboard activation. @default false */
   disabled?: boolean;
   /** Additional class names merged with `.cinder-tab`. */
   class?: string;

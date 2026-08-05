@@ -13,7 +13,8 @@ Persistent side panel that houses navigation, filters, or supplementary page con
 <Sidebar label="App sidebar">
   {#snippet navigation()}
     <SideNavigation ariaLabel="Primary navigation">
-      <!-- side-navigation items -->
+      <SideNavigation.Item href="/dashboard">Dashboard</SideNavigation.Item>
+      <SideNavigation.Item href="/projects">Projects</SideNavigation.Item>
     </SideNavigation>
   {/snippet}
 </Sidebar>

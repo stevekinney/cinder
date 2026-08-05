@@ -9,7 +9,11 @@ Surface container for grouping related content and actions into a distinct visua
   import Card from '@lostgradient/cinder/card';
 </script>
 
-<Card />
+<Card>
+  <div
+    style="min-block-size: 8rem; border: 1px dashed var(--cinder-border-muted); border-radius: var(--cinder-radius-sm); background: repeating-linear-gradient(-45deg, transparent, transparent 0.5rem, color-mix(in oklch, var(--cinder-border-muted), transparent 70%) 0.5rem, color-mix(in oklch, var(--cinder-border-muted), transparent 70%) 0.5625rem);"
+  ></div>
+</Card>
 ```
 
 ## Danger Zones
@@ -23,16 +27,16 @@ Use `tone="danger"` when a settings section or action group has destructive, irr
 | Prop                 | Type                            | Required | Default | Description                                                                                                                                 |
 | -------------------- | ------------------------------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | `bodyTone`           | `"default"` \| `"muted"`        | no       | —       | Body surface treatment. `muted` renders a grey/inset body region.                                                                           |
+| `class`              | `string`                        | no       | —       | Custom class merged with `.cinder-card`.                                                                                                    |
 | `description`        | `string`                        | no       | —       | Optional subheading rendered as a paragraph below the title inside the header.                                                              |
 | `edgeToEdgeOnMobile` | `boolean`                       | no       | —       | Remove side borders/radius and bleed to the viewport edge on narrow screens.                                                                |
 | `footerTone`         | `"default"` \| `"muted"`        | no       | —       | Footer surface treatment. `muted` renders a grey/inset footer region.                                                                       |
 | `headingLevel`       | `2` \| `3` \| `4` \| `5` \| `6` | no       | —       | Heading level for the generated title. Defaults to `3`. Set this so the card title nests correctly within the surrounding document outline. |
-| `padding`            | `"none"` \| `"default"`         | no       | —       | Body padding. `none` leaves header and footer padding intact while making body content flush with the card edges.                           |
+| `padding`            | `"default"` \| `"none"`         | no       | —       | Body padding. `none` leaves header and footer padding intact while making body content flush with the card edges.                           |
 | `title`              | `string`                        | no       | —       | Primary heading text rendered inside the card's header region.                                                                              |
 | `tone`               | `"default"` \| `"danger"`       | no       | —       | Container risk treatment. `danger` renders a danger-zone surface for high-risk settings or destructive actions.                             |
 | `variant`            | `"card"` \| `"well"`            | no       | —       | Visual container style. `card` is raised; `well` is flatter and inset.                                                                      |
 | `children`           | `(opaque)`                      | yes      | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                  |
-| `class`              | `(opaque)`                      | no       | —       | A prop whose shape is not captured by the JSON schema; see the component types for the exact signature.                                     |
 | `footer`             | `(opaque)`                      | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                  |
 | `header`             | `(opaque)`                      | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                  |
 

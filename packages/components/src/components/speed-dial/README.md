@@ -8,13 +8,13 @@ related secondary actions.
 
 ```svelte
 <script lang="ts">
-  import { SpeedDial } from '@lostgradient/cinder/speed-dial';
+  import SpeedDial from '@lostgradient/cinder/speed-dial';
 </script>
 
 <SpeedDial aria-label="Quick actions">
   {#snippet trigger()}+{/snippet}
 
-  <SpeedDial.Action label="Create" onclick={() => create()}>
+  <SpeedDial.Action label="Create" onclick={() => {}}>
     {#snippet icon()}C{/snippet}
   </SpeedDial.Action>
 </SpeedDial>

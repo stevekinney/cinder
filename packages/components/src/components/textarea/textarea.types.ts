@@ -1,5 +1,5 @@
 import type { HTMLTextareaAttributes } from 'svelte/elements';
-export type TextareaProps = HTMLTextareaAttributes & {
+export type TextareaProps = Omit<HTMLTextareaAttributes, 'class'> & {
   /** Unique identifier — required for label association and ARIA wiring. */
   id: string;
   /** Bound value of the textarea. */

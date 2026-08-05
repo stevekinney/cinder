@@ -23,10 +23,12 @@ const schema = {
     duplicateValuesAllowed: {
       type: 'boolean',
       description: 'Allow the same trimmed tag value to appear more than once.',
+      default: false,
     },
     commitOnSubmit: {
       type: 'boolean',
       description: 'Commit a non-empty pending draft before the parent form submits.',
+      default: false,
     },
     autocapitalize: {
       enum: ['off', 'on', 'characters', 'none', 'sentences', 'words', null],
@@ -66,6 +68,7 @@ const schema = {
       type: 'boolean',
       description:
         'Render the pending-tag input as read-only and make committed tags non-removable.',
+      default: false,
     },
     spellcheck: {
       enum: [false, true, 'true', 'false', null],

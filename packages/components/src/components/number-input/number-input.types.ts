@@ -13,6 +13,7 @@ export type NumberInputProps = Omit<
   | 'onchange'
   | 'onfocus'
   | 'onkeydown'
+  | 'class'
 > & {
   /** HTML `id` for the underlying input, used to associate the `<label>` and ARIA attributes. Required. */
   id: string;
@@ -52,6 +53,7 @@ export type NumberInputProps = Omit<
   error?: string;
   /** Attachment for native input access and lifecycle-scoped listeners. */
   inputAttachment?: Attachment<HTMLInputElement>;
+  /** Custom class merged with `.cinder-input-field` on the root wrapper. */
   class?: string;
   onchange?: (value: number | null) => void;
 };

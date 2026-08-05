@@ -6,10 +6,19 @@ Wraps multiple checkboxes under a shared label and validation context.
 
 ```svelte
 <script lang="ts">
+  import Checkbox from '@lostgradient/cinder/checkbox';
   import CheckboxGroup from '@lostgradient/cinder/checkbox-group';
+
+  let email = $state(true);
+  let sms = $state(false);
+  let push = $state(false);
 </script>
 
-<CheckboxGroup />
+<CheckboxGroup label="Notification channels">
+  <Checkbox id="email" label="Email" bind:checked={email} />
+  <Checkbox id="sms" label="SMS" bind:checked={sms} />
+  <Checkbox id="push" label="Push notifications" bind:checked={push} />
+</CheckboxGroup>
 ```
 
 ## Props

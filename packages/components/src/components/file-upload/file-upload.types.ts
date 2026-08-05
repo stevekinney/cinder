@@ -29,7 +29,7 @@ export type FileUploadEntry = {
 
 export type FileUploadProps = Omit<
   HTMLInputAttributes,
-  'type' | 'children' | 'onchange' | 'oninput' | 'value' | 'files'
+  'type' | 'children' | 'onchange' | 'oninput' | 'value' | 'files' | 'class'
 > & {
   /** Stable id for the native file input. Required when composing with `FormField`. */
   id?: string;

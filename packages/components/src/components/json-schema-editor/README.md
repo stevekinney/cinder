@@ -6,8 +6,11 @@ Multi-view editor for authoring JSON Schema documents with form, raw JSON, and d
 
 ```svelte
 <script lang="ts">
-  import { JsonSchemaEditor } from '@lostgradient/cinder/json-schema-editor';
+  import JsonSchemaEditor from '@lostgradient/cinder/json-schema-editor';
+  const malformed = '{ "type": "not-a-real-type" }';
 </script>
+
+<JsonSchemaEditor id="invalid-jse" schema={malformed} />
 ```
 
 ## Guidance

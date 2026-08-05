@@ -21,6 +21,8 @@ import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { toIdentifier } from './to-identifier.mjs';
+
 const require = createRequire(import.meta.url);
 const here = dirname(fileURLToPath(import.meta.url));
 const generatedDirectory = join(here, 'src', 'generated');
@@ -34,15 +36,6 @@ if (!Array.isArray(manifest.components) || manifest.components.length === 0) {
 // Fresh output every run — stale probes must never survive.
 if (existsSync(generatedDirectory)) rmSync(generatedDirectory, { recursive: true, force: true });
 mkdirSync(generatedDirectory, { recursive: true });
-
-/** Convert a component id to a TypeScript-safe identifier segment. */
-function toIdentifier(id) {
-  return id
-    .split(/[-/]/)
-    .filter(Boolean)
-    .map((segment) => segment[0].toUpperCase() + segment.slice(1))
-    .join('');
-}
 
 // ---------------------------------------------------------------------------
 // probe.ts — type-only surface, compiled under two condition sets:

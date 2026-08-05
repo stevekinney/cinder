@@ -49,11 +49,11 @@ export interface ShareCardSchemaProps {
   title?: string;
   /** Additional descriptive text. */
   description?: string;
-  /** Label for the copy-link button. */
+  /** Label for the copy-link button. @default "Copy link" */
   copyLinkLabel?: string;
-  /** Label shown after a successful copy. */
+  /** Label shown after a successful copy. @default "Copied!" */
   copiedLabel?: string;
-  /** Label for the native-share button. */
+  /** Label for the native-share button. @default "Share" */
   shareLabel?: string;
   /**
    * Duration in ms to show the copied confirmation state.

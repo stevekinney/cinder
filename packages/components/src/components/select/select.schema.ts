@@ -33,16 +33,15 @@ const schema = {
       description:
         'Validation error message; sets `aria-invalid="true"` and is wired via `aria-describedby`.',
     },
+    class: {
+      type: 'string',
+      description: 'Extra class names merged with `.cinder-select-field`.',
+    },
   },
   additionalProperties: false,
   required: ['id'],
   metadata: {
     unsupportedProps: [
-      {
-        name: 'class',
-        reason: 'unknown-shape',
-        description: 'Extra class names merged with `.cinder-select-field`.',
-      },
       {
         name: 'options',
         reason: 'unknown-shape',

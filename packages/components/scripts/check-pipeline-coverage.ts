@@ -273,6 +273,15 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
       'otherwise executes only in the release path — is caught on Linux CI before the same-SHA ' +
       'release can publish. See docs/validation-topology.md.',
   },
+  'validate:consumer:readme-usage-examples': {
+    layers: ['main-green'],
+    reason:
+      'A lighter, single-fixture subset of `validate:consumer` that runs only the typescript-consumer ' +
+      'fixture (tsc + svelte-check gates 1-3, which now compile-check every component README `## Usage` ' +
+      'fence). It runs in main-green (not release, where the full `validate:consumer` already covers ' +
+      'it) so a required-prop change that silently breaks a copy-pasted README example is caught on ' +
+      'every merge instead of only at publish time.',
+  },
   'package:weight:check': {
     layers: ['release'],
     reason:

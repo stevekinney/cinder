@@ -11,10 +11,62 @@ For a non-modal single-value picker, use [Combobox](../combobox/README.md).
 
 ```svelte
 <script lang="ts">
+  import Button from '@lostgradient/cinder/button';
+  import CommandItem from '@lostgradient/cinder/command-item';
   import CommandPalette from '@lostgradient/cinder/command-palette';
+
+  let open = $state(false);
+  let triggerRef: HTMLElement | null = $state(null);
+  let lastSelected = $state('');
+
+  const commands = [
+    { value: 'new-file', label: 'New file' },
+    { value: 'open-settings', label: 'Open settings' },
+    { value: 'sign-out', label: 'Sign out' },
+  ];
+
+  function select(label: string) {
+    lastSelected = label;
+    open = false;
+  }
 </script>
 
-<CommandPalette />
+<div style="display: flex; flex-direction: column; gap: 1rem; align-items: flex-start;">
+  <Button
+    label="Open palette"
+    onclick={(event: MouseEvent) => {
+      triggerRef = event.currentTarget as HTMLElement;
+      open = true;
+    }}
+  />
+
+  {#if lastSelected}
+    <p style="font-size: 0.875rem; color: var(--cinder-text-muted);">
+      Selected: <strong>{lastSelected}</strong>
+    </p>
+  {/if}
+</div>
+
+<CommandPalette bind:open label="Basic palette" {triggerRef}>
+  {#snippet items({ query })}
+    {@const filteredCommands = commands.filter((command) =>
+      command.label.toLowerCase().includes(query.toLowerCase()),
+    )}
+    {#each filteredCommands as command (command.value)}
+      <CommandItem
+        value={command.value}
+        accessibleLabel={command.label}
+        onSelect={() => select(command.label)}
+      >
+        {command.label}
+      </CommandItem>
+    {/each}
+  {/snippet}
+
+  {#snippet empty()}
+    No commands found.
+  {/snippet}
+</CommandPalette>
 ```
 
 ## Grouped Results

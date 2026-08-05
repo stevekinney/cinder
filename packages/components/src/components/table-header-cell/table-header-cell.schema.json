@@ -8,15 +8,18 @@
     },
     "sortable": {
       "type": "boolean",
-      "description": "When true, render a button inside the `<th>` and dispatch sort intents\nto the parent Table. The cell's `aria-sort` reflects the current sort\ndirection (`ascending`, `descending`, or `none`)."
+      "description": "When true, render a button inside the `<th>` and dispatch sort intents\nto the parent Table. The cell's `aria-sort` reflects the current sort\ndirection (`ascending`, `descending`, or `none`).",
+      "default": false
     },
     "scope": {
       "enum": ["col", "colgroup"],
-      "description": "When set, hint to assistive tech that the column groups multiple rows."
+      "description": "When set, hint to assistive tech that the column groups multiple rows.",
+      "default": "col"
     },
     "align": {
       "enum": ["left", "center", "right"],
-      "description": "Horizontal alignment for the header cell content. Defaults to `'left'`."
+      "description": "Horizontal alignment for the header cell content. Defaults to `'left'`.",
+      "default": "left"
     },
     "class": {
       "type": "string",

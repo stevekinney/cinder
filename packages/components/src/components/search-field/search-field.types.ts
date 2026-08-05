@@ -12,7 +12,7 @@ import type { HTMLInputAttributes } from 'svelte/elements';
  */
 export type SearchFieldProps = Omit<
   HTMLInputAttributes,
-  'type' | 'value' | 'defaultValue' | 'oninput'
+  'type' | 'value' | 'defaultValue' | 'oninput' | 'class'
 > & {
   /** Stable id for the input element. Required when composing with `FormField`. */
   id?: string;

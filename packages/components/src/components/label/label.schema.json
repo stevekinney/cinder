@@ -13,6 +13,10 @@
     "disabled": {
       "type": "boolean",
       "description": "When true, render the label in the disabled color treatment."
+    },
+    "class": {
+      "type": "string",
+      "description": "Additional class names merged with `.cinder-label`."
     }
   },
   "additionalProperties": false,
@@ -24,11 +28,6 @@
         "reason": "function-or-snippet",
         "required": true,
         "description": "The label text or composed content."
-      },
-      {
-        "name": "class",
-        "reason": "unknown-shape",
-        "description": "Additional class names merged with `.cinder-label`."
       }
     ]
   }

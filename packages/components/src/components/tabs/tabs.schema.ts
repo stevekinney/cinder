@@ -11,11 +11,13 @@ const schema = {
     orientation: {
       enum: ['horizontal', 'vertical'],
       description: 'Layout orientation. Affects which arrow keys move between tabs.',
+      default: 'horizontal',
     },
     fill: {
       type: 'boolean',
       description:
         'Fill the available space when Tabs is placed inside a bounded flex parent,\nletting the active TabPanel occupy the remaining height.',
+      default: false,
     },
     activateOnFocus: {
       type: 'boolean',

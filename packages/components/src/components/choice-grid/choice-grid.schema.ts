@@ -51,6 +51,10 @@ const schema = {
       type: 'boolean',
       description: 'Disables all items in the grid.',
     },
+    class: {
+      type: 'string',
+      description: 'Additional class names merged with `.cinder-choice-grid`.',
+    },
   },
   additionalProperties: false,
   metadata: {
@@ -60,11 +64,6 @@ const schema = {
         reason: 'function-or-snippet',
         required: true,
         description: '`ChoiceGridItem` children.',
-      },
-      {
-        name: 'class',
-        reason: 'unknown-shape',
-        description: 'Additional class names merged with `.cinder-choice-grid`.',
       },
     ],
   },

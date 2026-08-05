@@ -34,6 +34,10 @@
       "type": "string",
       "description": "Validation error message; sets `aria-invalid=\"true\"` and `aria-describedby`."
     },
+    "class": {
+      "type": "string",
+      "description": "Extra class names merged with `.cinder-textarea`."
+    },
     "countVisible": {
       "type": "boolean",
       "description": "When `true` AND `maxlength` is set, renders a live character counter\n(`{value.length}/{maxlength}`) below the textarea. The counter element\nis wired into `aria-describedby` so screen readers announce it as part\nof the field's description, and it is also placed inside an\n`aria-live=\"polite\"` region so updates are announced as the user types."
@@ -43,11 +47,6 @@
   "required": ["id"],
   "metadata": {
     "unsupportedProps": [
-      {
-        "name": "class",
-        "reason": "unknown-shape",
-        "description": "Extra class names merged with `.cinder-textarea`."
-      },
       {
         "name": "value",
         "reason": "unknown-shape",

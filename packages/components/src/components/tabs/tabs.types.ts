@@ -58,11 +58,12 @@ export type TabsProps = {
   onValueChangeRequest?: (next: string) => string | void;
   /** Notify after the bindable value has been committed. */
   onValueChange?: (next: string) => void;
-  /** Layout orientation. Affects which arrow keys move between tabs. */
+  /** Layout orientation. Affects which arrow keys move between tabs. @default "horizontal" */
   orientation?: TabsOrientation;
   /**
    * Fill the available space when Tabs is placed inside a bounded flex parent,
    * letting the active TabPanel occupy the remaining height.
+   * @default false
    */
   fill?: boolean;
   /**

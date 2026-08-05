@@ -11,13 +11,16 @@ are required.
 
 ```svelte
 <script lang="ts">
-  import { DataTable } from '@lostgradient/cinder/data-table';
+  import DataTable from '@lostgradient/cinder/data-table';
+  import type { DataTableColumn } from '@lostgradient/cinder/data-table';
 
-  const columns = [
+  type Student = { name: string; score: number };
+
+  const columns: DataTableColumn<Student>[] = [
     { key: 'name', label: 'Name', rowHeader: true },
     { key: 'score', label: 'Score', sortable: true, align: 'end' },
   ];
-  const rows = [
+  const rows: Student[] = [
     { name: 'Ada', score: 98 },
     { name: 'Grace', score: 95 },
   ];

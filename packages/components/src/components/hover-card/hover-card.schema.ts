@@ -12,11 +12,13 @@ const schema = {
       type: 'number',
       description:
         'Delay in milliseconds before the card opens after the pointer enters or focus lands on the trigger. Default `300`.',
+      default: 300,
     },
     closeDelay: {
       type: 'number',
       description:
         'Delay in milliseconds before the card closes after the pointer leaves and focus departs. Default `150`.',
+      default: 150,
     },
     placement: {
       enum: [
@@ -35,10 +37,12 @@ const schema = {
       ],
       description:
         'Preferred placement of the card relative to the trigger. Default `bottom-start`.',
+      default: 'bottom-start',
     },
     offset: {
       type: 'number',
       description: 'Distance in pixels between the trigger and the card. Default `8`.',
+      default: 8,
     },
     arrowVisible: {
       type: 'boolean',

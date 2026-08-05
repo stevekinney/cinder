@@ -7,10 +7,12 @@ const schema = {
     variant: {
       enum: ['info', 'success', 'warning', 'danger'],
       description: "Visual + semantic variant. Default `'info'`.",
+      default: 'info',
     },
     dismissible: {
       type: 'boolean',
       description: 'Whether the banner shows a dismiss (×) button. Default `true`.',
+      default: true,
     },
     class: {
       type: 'string',

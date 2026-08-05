@@ -6,8 +6,22 @@ Right-click and long-press menu positioned at the user's pointer while reusing d
 
 ```svelte
 <script lang="ts">
-  import { ContextMenu } from '@lostgradient/cinder/context-menu';
+  import Button from '@lostgradient/cinder/button';
+  import ContextMenu from '@lostgradient/cinder/context-menu';
 </script>
+
+<ContextMenu>
+  <ContextMenu.Trigger>
+    <Button variant="ghost">Right-click this region</Button>
+  </ContextMenu.Trigger>
+
+  <ContextMenu.Menu>
+    <ContextMenu.Item onclick={() => {}}>Cut</ContextMenu.Item>
+    <ContextMenu.Item onclick={() => {}}>Copy</ContextMenu.Item>
+    <ContextMenu.Separator />
+    <ContextMenu.Item variant="danger" onclick={() => {}}>Delete</ContextMenu.Item>
+  </ContextMenu.Menu>
+</ContextMenu>
 ```
 
 ## Guidance

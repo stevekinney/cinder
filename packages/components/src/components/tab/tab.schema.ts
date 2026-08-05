@@ -21,6 +21,7 @@ const schema = {
     disabled: {
       type: 'boolean',
       description: 'Disables this single tab and removes it from keyboard activation.',
+      default: false,
     },
     class: {
       type: 'string',

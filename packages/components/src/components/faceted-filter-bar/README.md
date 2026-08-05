@@ -110,22 +110,41 @@ Use `type: 'custom'` with a `control` snippet for any facet that cannot be expre
 
 ## Props
 
-| Prop                | Type                                   | Default     | Description                                                                           |
-| ------------------- | -------------------------------------- | ----------- | ------------------------------------------------------------------------------------- |
-| `aria-label`        | `string`                               | `'Filters'` | Accessible label for the filter toolbar region.                                       |
-| `searchQuery`       | `string`                               | —           | Controlled search query. When provided, the search field is controlled by the parent. |
-| `searchPlaceholder` | `string`                               | `'Search…'` | Placeholder text shown in the leading search field.                                   |
-| `searchAriaLabel`   | `string`                               | `'Search'`  | Accessible label for the search input.                                                |
-| `facets`            | `FacetDefinition[]`                    | `[]`        | Facet definitions rendered as filter controls after the search field.                 |
-| `appliedFilters`    | `AppliedFilter[]`                      | `[]`        | Applied filters displayed as removable chips.                                         |
-| `disabled`          | `boolean`                              | `false`     | When true, all filter controls and chips are disabled.                                |
-| `class`             | `string`                               | —           | Additional CSS classes applied to the root element.                                   |
-| `onSearchChange`    | `(query: string) => void`              | —           | Fires when the search query changes.                                                  |
-| `onFacetChange`     | `(key: string, value: string) => void` | —           | Fires when a facet value changes.                                                     |
-| `onFilterRemove`    | `(key: string) => void`                | —           | Fires when a specific applied filter chip is removed.                                 |
-| `onClearAll`        | `() => void`                           | —           | Fires when the clear-all button is clicked.                                           |
+<!-- generated:props:start -->
 
-### FacetDefinition
+| Prop                | Type       | Required | Default | Description                                                                                                                                                                                                                 |
+| ------------------- | ---------- | -------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `aria-label`        | `string`   | no       | —       | Defines a string value that labels the current element.                                                                                                                                                                     |
+| `class`             | `string`   | no       | —       | Additional CSS classes applied to the root element.                                                                                                                                                                         |
+| `disabled`          | `boolean`  | no       | —       | When true, all filter controls and chips are disabled.                                                                                                                                                                      |
+| `searchAriaLabel`   | `string`   | no       | —       | Accessible label for the search input. Defaults to 'Search'.                                                                                                                                                                |
+| `searchPlaceholder` | `string`   | no       | —       | Placeholder text shown in the leading search field.                                                                                                                                                                         |
+| `searchQuery`       | `string`   | no       | —       | Current text search query. When provided, the search field is controlled.                                                                                                                                                   |
+| `searchVisible`     | `boolean`  | no       | —       | Whether to render the leading search field. Defaults to `true`.                                                                                                                                                             |
+| `appliedFilters`    | `(opaque)` | no       | —       | Applied filters displayed as removable chips below the controls row. Controlled by the consumer; each entry is a key/value/label triple. Not expressible in JSON Schema; see the component types for the signature.         |
+| `facets`            | `(opaque)` | no       | —       | Facet definitions rendered as filter controls after the search field. Each entry is either a select-type facet or a custom snippet-driven facet. Not expressible in JSON Schema; see the component types for the signature. |
+| `onClearAll`        | `(opaque)` | no       | —       | Fires when the clear-all button is clicked. Not expressible in JSON Schema; see the component types for the signature.                                                                                                      |
+| `onFacetChange`     | `(opaque)` | no       | —       | Fires when a facet value changes, with the facet key and new value. Not expressible in JSON Schema; see the component types for the signature.                                                                              |
+| `onFilterRemove`    | `(opaque)` | no       | —       | Fires when a specific applied filter chip is removed. Not expressible in JSON Schema; see the component types for the signature.                                                                                            |
+| `onSearchChange`    | `(opaque)` | no       | —       | Fires when the search query changes. Not expressible in JSON Schema; see the component types for the signature.                                                                                                             |
+
+<!-- generated:props:end -->
+
+## CSS Variables
+
+<!-- generated:variables:start -->
+
+This component does not declare any local CSS variables.
+
+<!-- generated:variables:end -->
+
+## Subcomponents
+
+<!-- generated:subcomponents:start -->
+
+<!-- generated:subcomponents:end -->
+
+## FacetDefinition
 
 ```ts
 // Select facet — fixed options list
@@ -147,7 +166,7 @@ type CustomFacet = {
 };
 ```
 
-### AppliedFilter
+## AppliedFilter
 
 ```ts
 type AppliedFilter = {

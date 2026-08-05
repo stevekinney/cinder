@@ -42,7 +42,7 @@ type InputAddonProps = (
   groupClassName?: string;
 };
 
-export type InputProps = HTMLInputAttributes &
+export type InputProps = Omit<HTMLInputAttributes, 'class'> &
   InputAddonProps & {
     /** HTML `id` for the underlying input, used to associate the `<label>` and ARIA attributes. Required. */
     id: string;
@@ -68,5 +68,6 @@ export type InputProps = HTMLInputAttributes &
     type?: InputType;
     /** Attachment for native input access and lifecycle-scoped listeners. */
     inputAttachment?: Attachment<HTMLInputElement>;
+    /** Custom class merged with `.cinder-input`. */
     class?: string;
   };

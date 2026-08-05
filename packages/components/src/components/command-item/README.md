@@ -7,9 +7,16 @@ Individual selectable row within a command palette or dropdown command list.
 ```svelte
 <script lang="ts">
   import CommandItem from '@lostgradient/cinder/command-item';
+  import CommandPalette from '@lostgradient/cinder/command-palette';
+
+  let open = $state(true);
 </script>
 
-<CommandItem />
+<CommandPalette bind:open label="Commands">
+  {#snippet items()}
+    <CommandItem value="new-file" onSelect={() => {}}>New file</CommandItem>
+  {/snippet}
+</CommandPalette>
 ```
 
 ## Props
@@ -31,6 +38,8 @@ Individual selectable row within a command palette or dropdown command list.
 | `trailing`         | `(opaque)`             | no       | —       | Trailing content (kbd hint, badge). Rendered with aria-hidden. Not expressible in JSON Schema; see the component types for the signature.                                                                                                             |
 
 <!-- generated:props:end -->
+
+`CommandItemProps` is a discriminated union that the table above flattens to one row. With the default `selectionMode: 'item'`, `onSelect` is required. With `selectionMode: 'parent'` — the mode `CommandMenu` uses — `onSelect` is optional and activation is owned by the parent list.
 
 ## CSS Variables
 

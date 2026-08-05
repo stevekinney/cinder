@@ -8,6 +8,10 @@ const schema = {
       type: 'string',
       description: "Primary heading text rendered inside the card's header region.",
     },
+    class: {
+      type: 'string',
+      description: 'Custom class merged with `.cinder-card`.',
+    },
     variant: {
       enum: ['card', 'well'],
       description: 'Visual container style. `card` is raised; `well` is flatter and inset.',
@@ -30,7 +34,7 @@ const schema = {
       description: 'Remove side borders/radius and bleed to the viewport edge on narrow screens.',
     },
     padding: {
-      enum: ['none', 'default'],
+      enum: ['default', 'none'],
       description:
         'Body padding. `none` leaves header and footer padding intact while making body content flush with the card edges.',
     },
@@ -51,10 +55,6 @@ const schema = {
         name: 'children',
         reason: 'function-or-snippet',
         required: true,
-      },
-      {
-        name: 'class',
-        reason: 'unknown-shape',
       },
       {
         name: 'footer',

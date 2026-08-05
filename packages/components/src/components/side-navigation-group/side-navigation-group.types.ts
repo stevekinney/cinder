@@ -1,7 +1,7 @@
 import type { Snippet } from 'svelte';
 import type { HTMLLiAttributes } from 'svelte/elements';
 /** Props for the SideNavigationGroup component. */
-export type SideNavigationGroupProps = Omit<HTMLLiAttributes, 'id'> & {
+export type SideNavigationGroupProps = Omit<HTMLLiAttributes, 'id' | 'class'> & {
   /** Visible section header label. */
   label: string;
   /** Optional stable id for the root <li>. Trigger uses `${id}-trigger`, panel uses `${id}-panel`. If omitted, generated via useId. */

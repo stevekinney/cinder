@@ -178,9 +178,9 @@ export type ApprovalCardSchemaProps = {
   expiresAt?: string;
   /** Persisted approval state. */
   state: ApprovalState;
-  /** Whether approving with edited JSON arguments is available. Default `false`. */
+  /** Whether approving with edited JSON arguments is available. Default `false`. @default false */
   editableArgs?: boolean;
-  /** Heading level for the card title; section headings render one level deeper. Default `3`. */
+  /** Heading level for the card title; section headings render one level deeper. Default `3`. @default 3 */
   headingLevel?: ApprovalCardHeadingLevel;
   /** Called for approve, approve-with-edits, deny, and dismiss with the complete resolution payload. */
   onResolve?: (resolution: ApprovalResolution) => void;
