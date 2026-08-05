@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import { buildPlaygroundModel, buildSnippet } from './component-page-playground.ts';
-import type { ComponentManifest, PropManifest } from './types.ts';
+import type { ComponentManifest, ObjectShape, PropManifest } from './types.ts';
 
 function manifest(props: PropManifest[]): ComponentManifest {
   return { name: 'Demo', kebabName: 'demo', file: 'demo.svelte', importPath: 'demo', props };
@@ -372,6 +372,46 @@ describe('structural seeds', () => {
     expect(Array.isArray(first?.['shortcuts'])).toBe(true);
     expect(first?.['shortcuts']).toEqual([{ action: 'Action one' }, { action: 'Action two' }]);
     expect(model.seeds[0]?.source).toContain("shortcuts: [{ action: 'Action one' }");
+  });
+
+  test('never seeds an optional or defaulted structural prop', () => {
+    // `buildSnippet` always emits seeds and `toMountProps` always passes them,
+    // so seeding a prop the component did not require OVERWRITES its own
+    // behavior: `ChoiceGrid.values` (optional, defaults to `[]`) got invented
+    // data, and `PhoneInput.countries` (optional) had its full 245-country list
+    // replaced by three. Same rule as the synthesized `''`/`0` control values.
+    const element: ObjectShape = {
+      fields: [{ name: 'label', shape: { kind: 'string' } }],
+      degenerate: false,
+    };
+    const model = buildPlaygroundModel(
+      manifest([
+        {
+          name: 'optionalItems',
+          control: { kind: 'array', rawType: 'Item[]', element },
+          bindable: false,
+          optional: true,
+        },
+        {
+          name: 'defaultedItems',
+          control: { kind: 'array', rawType: 'Item[]', element },
+          bindable: false,
+          optional: false,
+          defaultValue: [],
+        },
+        {
+          name: 'requiredItems',
+          control: { kind: 'array', rawType: 'Item[]', element },
+          bindable: false,
+          optional: false,
+        },
+      ]),
+    );
+    // Only the prop that would otherwise BLOCK the preview is seeded.
+    expect(model.seeds.map((seed) => seed.name)).toEqual(['requiredItems']);
+    // The other two are surfaced as non-adjustable rather than silently faked.
+    expect(model.skipped).toEqual(['optionalItems', 'defaultedItems']);
+    expect(model.hasUnsatisfiedRequired).toBe(false);
   });
 
   test('never invents a member for an index-signature-only record', () => {

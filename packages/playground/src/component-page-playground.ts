@@ -380,10 +380,22 @@ export function buildPlaygroundModel(manifest: ComponentManifest): PlaygroundMod
         break;
       case 'array':
       case 'object': {
-        // Structural props are satisfied by a synthesized literal rather than a
-        // control — see `PlaygroundSeed`. They are NOT `skipped` and do NOT
-        // block: the whole point is that a required `items: Item[]` should stop
-        // deleting the component's Playground section.
+        // ONLY a required prop with no default is seeded, matching exactly the
+        // condition that would otherwise block the preview (see
+        // `blocksGeneratedPreview`) — which is the entire reason seeds exist.
+        //
+        // Seeding an optional or defaulted structural prop actively breaks the
+        // component: `buildSnippet` always emits seeds and `toMountProps` always
+        // passes them, so `ChoiceGrid.values` (optional, defaults to `[]`) had
+        // its own default overwritten with invented data, and
+        // `PhoneInput.countries` (optional) had its full 245-country list
+        // replaced by three. Same reasoning as the synthesized `''`/`0` values
+        // that `shouldEmit` and `toMountProps` already drop: never supply a
+        // value the component did not ask for.
+        if (prop.optional || prop.defaultValue !== undefined) {
+          skipped.push(prop.name);
+          break;
+        }
         const scoped = COMPONENT_VALUE_SEEDS[manifest.kebabName]?.[prop.name];
         const value =
           scoped !== undefined
