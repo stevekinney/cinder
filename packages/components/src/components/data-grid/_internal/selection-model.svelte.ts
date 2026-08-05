@@ -3,6 +3,7 @@ import {
   computeCellRange,
   getCellCoordinateKey,
   getCellsInRange,
+  isCellInRange,
   type DataGridCellCoordinate,
   type DataGridCellRange,
 } from './geometry.ts';
@@ -25,14 +26,31 @@ export class DataGridSelectionModel {
     this.columnKeys = options.columnKeys;
   }
 
-  readonly range: DataGridCellRange | undefined = $derived.by(() => {
-    if (!this.anchorCell || !this.activeCell) return undefined;
-    return computeCellRange(this.anchorCell, this.activeCell, this.rowIds(), this.columnKeys());
+  readonly rowIndexByRowId: ReadonlyMap<string, number> = $derived.by(
+    () => new Map(this.rowIds().map((id, index) => [id, index])),
+  );
+
+  readonly columnIndexByColumnKey: ReadonlyMap<string, number> = $derived.by(
+    () => new Map(this.columnKeys().map((key, index) => [key, index])),
+  );
+
+  readonly range: DataGridCellRange | null = $derived.by(() => {
+    if (!this.anchorCell || !this.activeCell) return null;
+    return computeCellRange(
+      this.anchorCell,
+      this.activeCell,
+      this.rowIndexByRowId,
+      this.columnIndexByColumnKey,
+    );
   });
+
+  readonly toggledKeys: ReadonlySet<string> = $derived.by(
+    () => new Set(this.toggledCells.map(getCellCoordinateKey)),
+  );
 
   readonly selectedCellCoordinates = $derived.by(() => {
     const cellsByKey = new Map<string, DataGridCellCoordinate>();
-    for (const cell of getCellsInRange(this.range))
+    for (const cell of getCellsInRange(this.range, this.rowIds(), this.columnKeys()))
       cellsByKey.set(getCellCoordinateKey(cell), cell);
     for (const cell of this.toggledCells) {
       if (clampCellCoordinate(cell, this.rowIds(), this.columnKeys())) {
@@ -40,12 +58,6 @@ export class DataGridSelectionModel {
       }
     }
     return [...cellsByKey.values()];
-  });
-
-  readonly selectedCells = $derived.by(() => {
-    const keys = new Set<string>();
-    for (const cell of this.selectedCellCoordinates) keys.add(getCellCoordinateKey(cell));
-    return keys;
   });
 
   setActiveCell(
@@ -97,7 +109,13 @@ export class DataGridSelectionModel {
   }
 
   isCellSelected(cell: DataGridCellCoordinate): boolean {
-    return this.selectedCells.has(getCellCoordinateKey(cell));
+    if (this.toggledKeys.has(getCellCoordinateKey(cell))) return true;
+
+    const rowIndex = this.rowIndexByRowId.get(cell.rowId);
+    const columnIndex = this.columnIndexByColumnKey.get(cell.columnKey);
+    if (rowIndex === undefined || columnIndex === undefined) return false;
+
+    return isCellInRange(rowIndex, columnIndex, this.range);
   }
 
   isAnchorCell(cell: DataGridCellCoordinate): boolean {
@@ -137,7 +155,7 @@ export class DataGridSelectionModel {
   }
 
   private materializeRangeSelection(): void {
-    const rangeCells = getCellsInRange(this.range);
+    const rangeCells = getCellsInRange(this.range, this.rowIds(), this.columnKeys());
     if (rangeCells.length <= 1) return;
 
     const cellsByKey = new Map(
