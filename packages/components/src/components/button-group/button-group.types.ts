@@ -6,7 +6,7 @@ type ButtonGroupBase = Omit<
   HTMLAttributes<HTMLDivElement>,
   'class' | 'role' | 'aria-label' | 'aria-labelledby'
 > & {
-  /** Orientation of the visual collapse. Default: 'horizontal'. */
+  /** Orientation of the visual collapse. Default: 'horizontal'. @default "horizontal" */
   orientation?: ButtonGroupOrientation;
   /** Additional class merged with `.cinder-button-group`. */
   class?: string;

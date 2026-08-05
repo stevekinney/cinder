@@ -14,13 +14,13 @@ export type LoadMoreProps = {
   root?: Element | Document | null;
   /** rootMargin passed to IntersectionObserver. Captured at attachment time. */
   rootMargin?: string;
-  /** Visible label for the load-more button. */
+  /** Visible label for the load-more button. @default "Load more" */
   buttonLabel?: string;
-  /** Visible label for the retry button after a load error. */
+  /** Visible label for the retry button after a load error. @default "Retry loading" */
   retryLabel?: string;
-  /** Politely announced when the end of the list is reached. */
+  /** Politely announced when the end of the list is reached. @default "End of list" */
   endOfListMessage?: string;
-  /** Maximum consecutive sentinel-triggered requests before auto-loading pauses. */
+  /** Maximum consecutive sentinel-triggered requests before auto-loading pauses. @default 5 */
   maxRetries?: number;
   /** Notified when onLoadMore throws or rejects. */
   onError?: (error: unknown) => void;

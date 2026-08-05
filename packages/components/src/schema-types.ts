@@ -10,9 +10,17 @@
  * every emitted schema and validated by the generator.
  */
 
+export type ComponentSchemaUnsupportedReason =
+  | 'function-or-snippet'
+  | 'generic-type-parameter'
+  | 'mapped-type'
+  | 'conditional-type'
+  | 'index-signature'
+  | 'unknown-shape';
+
 export interface ComponentSchemaUnsupportedProp {
   readonly name: string;
-  readonly reason: string;
+  readonly reason: ComponentSchemaUnsupportedReason;
   /**
    * `true` when the prop is required on the component; omitted when it is
    * optional. Present for props that the JSON schema cannot express but that are

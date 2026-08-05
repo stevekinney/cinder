@@ -12,5 +12,9 @@
     "isolatedModules": true,
     "types": ["svelte"]
   },
-  "include": ["src/generated/Probe.svelte", "src/generated/probe.ts"]
+  "include": [
+    "src/generated/Probe.svelte",
+    "src/generated/probe.ts",
+    "src/generated/readme-usage-examples/**/*.svelte"
+  ]
 }

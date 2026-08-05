@@ -11,7 +11,7 @@ import type { HTMLInputAttributes } from 'svelte/elements';
  * arrow keys (`tabindex=-1`). Native radio inputs implement this
  * automatically when they share a `name`, so we let the platform handle it.
  */
-export type RadioProps = HTMLInputAttributes & {
+export type RadioProps = Omit<HTMLInputAttributes, 'class'> & {
   /** Unique identifier — required for label association. */
   id: string;
   /** The value submitted when this radio is selected. */

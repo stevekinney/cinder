@@ -2,7 +2,7 @@ import type { Snippet } from 'svelte';
 import type { HTMLTdAttributes } from 'svelte/elements';
 
 export type TableCellProps = Omit<HTMLTdAttributes, 'class' | 'align' | 'scope'> & {
-  /** Visual alignment for numeric columns. */
+  /** Visual alignment for numeric columns. @default "left" */
   align?: 'left' | 'center' | 'right';
   /**
    * When `'th'`, renders a `<th scope="row">` instead of `<td>`, marking this
@@ -14,6 +14,7 @@ export type TableCellProps = Omit<HTMLTdAttributes, 'class' | 'align' | 'scope'>
    * `<th>` share `HTMLTableCellElement`, so `colspan`, `rowspan`, `headers`, and
    * `abbr` are all forwarded regardless of `as`. Only `scope` is removed from the
    * prop surface, because the component owns it (`scope="row"` when `as='th'`).
+   * @default "td"
    */
   as?: 'td' | 'th';
   /** Additional class names merged with `.cinder-table__cell`. */

@@ -156,6 +156,14 @@ jobs:
       - name: Consumer hydration smoke (cinder)
         run: bun run --filter=@lostgradient/cinder validate:consumer:hydration-smoke
 
+      # A lighter, single-fixture subset of validate:consumer covering only the
+      # typescript-consumer fixture (tsc + svelte-check gates 1-3). Gate 3 now
+      # compile-checks every component README's `## Usage` fence, so a
+      # required-prop change that silently breaks a copy-pasted example is
+      # caught on every merge instead of only at publish time.
+      - name: Consumer README usage examples smoke (cinder)
+        run: bun run --filter=@lostgradient/cinder validate:consumer:readme-usage-examples
+
       # Focused Node-runtime smoke: proves the built cinder-mcp binary speaks
       # the MCP stdio handshake under the ACTUAL `node` on this runner, not
       # just under Bun (which every other build/test step above uses). Full

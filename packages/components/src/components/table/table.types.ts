@@ -68,11 +68,12 @@ export type TableProps = Omit<HTMLTableAttributes, 'class'> & {
   sort?: TableSort | undefined;
   /** Visual caption rendered as a `<caption>` element. */
   caption?: string;
-  /** When true, the header sticks to the top of the scrolling container. */
+  /** When true, the header sticks to the top of the scrolling container. @default false */
   stickyHeader?: boolean;
   /**
    * Vertical padding density for header and body cells.
    * Defaults to `'comfortable'`.
+   * @default "comfortable"
    */
   density?: TableDensity;
   /**
@@ -81,6 +82,7 @@ export type TableProps = Omit<HTMLTableAttributes, 'class'> & {
    *   with a select-all checkbox sourced from the header's props.
    * - Every `TableRow` inside `TableBody` renders a leading selection cell.
    * Selection is strictly controlled — the consumer owns all selection state.
+   * @default false
    */
   selectable?: boolean;
   /**
@@ -91,6 +93,7 @@ export type TableProps = Omit<HTMLTableAttributes, 'class'> & {
    * When combined with `stickyHeader`, the generated wrapper is the sticky
    * header's scroll container. Set a bounded block size on `scrollContainerProps`
    * when the table should scroll vertically inside that wrapper.
+   * @default false
    */
   scrollable?: boolean;
   /**

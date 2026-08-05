@@ -660,6 +660,114 @@ describe('analyzeComponent — bare <script module> block', () => {
 });
 
 // ---------------------------------------------------------------------------
+// parseDefaultExpression — UnaryExpression / TemplateLiteral / ObjectExpression
+// branches (03-defaults-pipeline, part A)
+// ---------------------------------------------------------------------------
+
+describe('analyzeComponent — parseDefaultExpression additional branches', () => {
+  let fixtureDir: string;
+
+  beforeAll(() => {
+    fixtureDir = mkdtempSync(join(tmpdir(), 'cinder-analyze-defaults-'));
+  });
+
+  afterAll(() => {
+    rmSync(fixtureDir, { recursive: true, force: true });
+  });
+
+  /** Writes a `.svelte` fixture to the temp dir and returns its absolute path. */
+  async function writeFixture(kebabName: string, source: string): Promise<string> {
+    const filePath = join(fixtureDir, `${kebabName}.svelte`);
+    await Bun.write(filePath, source);
+    return filePath;
+  }
+
+  it('resolves a negative-number default (UnaryExpression)', async () => {
+    const source = `<script lang="ts">
+  export type CounterProps = {
+    count?: number;
+  };
+
+  let { count = -1 }: CounterProps = $props();
+</script>
+
+<span>{count}</span>`;
+
+    const manifest = await analyzeComponent(await writeFixture('counter', source));
+    expect(manifest.props.find((p) => p.name === 'count')?.defaultValue).toBe(-1);
+  });
+
+  it('resolves a zero-expression template literal default', async () => {
+    const source = `<script lang="ts">
+  export type PanelProps = {
+    label?: string;
+  };
+
+  let { label = \`Untitled\` }: PanelProps = $props();
+</script>
+
+<span>{label}</span>`;
+
+    const manifest = await analyzeComponent(await writeFixture('panel', source));
+    expect(manifest.props.find((p) => p.name === 'label')?.defaultValue).toBe('Untitled');
+  });
+
+  it('resolves an all-literal object default to a plain object', async () => {
+    const source = `<script lang="ts">
+  export type BoxProps = {
+    size?: { mode: string; scale: number };
+  };
+
+  let { size = { mode: 'auto', scale: 1 } }: BoxProps = $props();
+</script>
+
+<span>{size.mode}</span>`;
+
+    const manifest = await analyzeComponent(await writeFixture('box', source));
+    expect(manifest.props.find((p) => p.name === 'size')?.defaultValue).toEqual({
+      mode: 'auto',
+      scale: 1,
+    });
+  });
+
+  it('falls back to source text for an object default with a non-literal property', async () => {
+    const source = `<script lang="ts">
+  const DEFAULT_SIZE = 4;
+
+  export type BoxProps = {
+    size?: { mode: string; scale: number };
+  };
+
+  let { size = { mode: 'auto', size: DEFAULT_SIZE } }: BoxProps = $props();
+</script>
+
+<span>{size.mode}</span>`;
+
+    const manifest = await analyzeComponent(await writeFixture('crate', source));
+    expect(manifest.props.find((p) => p.name === 'size')?.defaultValue).toBe(
+      "{ mode: 'auto', size: DEFAULT_SIZE }",
+    );
+  });
+
+  it('still resolves undefined for a bare identifier-reference default', async () => {
+    const source = `<script lang="ts">
+  const DEFAULT_SIZE = 4;
+
+  export type GaugeProps = {
+    size?: number;
+  };
+
+  let { size = DEFAULT_SIZE }: GaugeProps = $props();
+</script>
+
+<span>{size}</span>`;
+
+    const manifest = await analyzeComponent(await writeFixture('gauge', source));
+    expect(manifest.props.find((p) => p.name === 'size')?.defaultValue).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Compound detection (isCompound)
 // ---------------------------------------------------------------------------
 

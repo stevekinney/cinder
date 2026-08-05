@@ -53,11 +53,11 @@ export interface TagInputSchemaProps {
   id?: string;
   /** Bindable tags. */
   value?: string[];
-  /** Key that commits the current input into a tag. Enter always commits separately. */
+  /** Key that commits the current input into a tag. Enter always commits separately. @default "," */
   delimiter?: string | RegExp;
-  /** Allow the same trimmed tag value to appear more than once. */
+  /** Allow the same trimmed tag value to appear more than once. @default false */
   duplicateValuesAllowed?: boolean;
-  /** Commit a non-empty pending draft before the parent form submits. */
+  /** Commit a non-empty pending draft before the parent form submits. @default false */
   commitOnSubmit?: boolean;
   /** Autocomplete hint forwarded to the visible text input. */
   autocomplete?: HTMLInputAttributes['autocomplete'];
@@ -71,7 +71,7 @@ export interface TagInputSchemaProps {
   maxlength?: HTMLInputAttributes['maxlength'];
   /** Placeholder text shown while the pending tag input is empty. */
   placeholder?: HTMLInputAttributes['placeholder'];
-  /** Render the pending-tag input as read-only and make committed tags non-removable. */
+  /** Render the pending-tag input as read-only and make committed tags non-removable. @default false */
   readonly?: boolean;
   /** Spellcheck setting forwarded to the visible text input. */
   spellcheck?: HTMLInputAttributes['spellcheck'];

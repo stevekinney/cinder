@@ -27,9 +27,9 @@ export type BannerVariant = 'info' | 'success' | 'warning' | 'danger';
  * `max-inline-size` content column.
  */
 export type BannerProps = Omit<HTMLAttributes<HTMLDivElement>, 'children' | 'class' | 'role'> & {
-  /** Visual + semantic variant. Default `'info'`. */
+  /** Visual + semantic variant. Default `'info'`. @default "info" */
   variant?: BannerVariant;
-  /** Whether the banner shows a dismiss (×) button. Default `true`. */
+  /** Whether the banner shows a dismiss (×) button. Default `true`. @default true */
   dismissible?: boolean;
   /** Called after the dismiss button is clicked. Use to persist state. */
   onDismiss?: () => void;

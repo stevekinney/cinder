@@ -52,17 +52,17 @@ export type MatrixChartSchemaProps = {
   yField: string;
   /** Key on each datum used for the numeric cell value. */
   valueField: string;
-  /** Color interpolation scale. Default `sequential`. */
+  /** Color interpolation scale. Default `sequential`. @default "sequential" */
   colorScale?: MatrixColorScale;
-  /** Show cell value labels. Default `true`. */
+  /** Show cell value labels. Default `true`. @default true */
   cellLabelsVisible?: boolean;
-  /** Pixel height of the chart viewport. Default `280`. */
+  /** Pixel height of the chart viewport. Default `280`. @default 280 */
   height?: number;
-  /** Whether the chart is in a loading state. Default `false`. */
+  /** Whether the chart is in a loading state. Default `false`. @default false */
   loading?: boolean;
   /** Custom data table caption; falls back to `label`. */
   dataTableCaption?: string;
-  /** Controls data table visibility. Default `screen-reader-only`. */
+  /** Controls data table visibility. Default `screen-reader-only`. @default "screen-reader-only" */
   dataTableVisibility?: ChartDataTableVisibility;
   /** Custom class applied to the root element. */
   class?: string;

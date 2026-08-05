@@ -42,7 +42,7 @@ type InputAddonProps = (
   groupClassName?: string;
 };
 
-export type InputProps = HTMLInputAttributes &
+export type InputProps = Omit<HTMLInputAttributes, 'class'> &
   InputAddonProps & {
     /** HTML `id` for the underlying input, used to associate the `<label>` and ARIA attributes. Required. */
     id: string;

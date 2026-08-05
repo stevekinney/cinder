@@ -6,7 +6,7 @@ export type SelectOption<T extends string = string> = {
   disabled?: boolean;
 };
 
-export type SelectProps<T extends string = string> = HTMLSelectAttributes & {
+export type SelectProps<T extends string = string> = Omit<HTMLSelectAttributes, 'class'> & {
   /** Unique identifier — required for label association and ARIA wiring. */
   id: string;
   /** Bound selected value. `undefined` when nothing is selected. */

@@ -5,7 +5,7 @@ export type TooltipProps = {
   text: string;
   /** Preferred side of the trigger on which the tooltip appears. Default `top`. */
   placement?: TooltipPlacement;
-  /** Whether to wire tooltip text to the trigger via aria-describedby. */
+  /** Whether to wire tooltip text to the trigger via aria-describedby. @default true */
   describe?: boolean;
   /** Additional class names merged with the component's root class. */
   class?: string;

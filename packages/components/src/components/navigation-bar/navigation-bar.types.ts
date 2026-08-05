@@ -51,6 +51,6 @@ export type NavigationBarProps = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
   menuToggle?: Snippet<[NavigationBarToggleAttributes]>;
   /** Two-way bindable open state of the mobile menu. */
   mobileMenuOpen?: boolean;
-  /** Accessible name for the <nav> landmark. Wins over any aria-label passed via rest. Default 'Main navigation'. */
+  /** Accessible name for the <nav> landmark. Wins over any aria-label passed via rest. Default 'Main navigation'. @default "Main navigation" */
   label?: string;
 };

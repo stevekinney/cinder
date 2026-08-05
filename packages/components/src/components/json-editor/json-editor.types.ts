@@ -14,15 +14,15 @@ export type JsonEditorProps = Omit<
   description?: string;
   /** External validation error. Takes precedence over JSON parse feedback. */
   error?: string;
-  /** Number of visible text rows. Defaults to 8. */
+  /** Number of visible text rows. Defaults to 8. @default 8 */
   rows?: number;
   /** Disables the editor. Passed through to the native textarea. */
   disabled?: boolean;
   /** Marks the editor as required. Passed through to the native textarea. */
   required?: boolean;
-  /** Whether valid JSON should render an announced success message. Defaults to true. */
+  /** Whether valid JSON should render an announced success message. Defaults to true. @default true */
   validFeedbackVisible?: boolean;
-  /** Enables a lazy syntax-highlighted view with inline parse-error annotation. Defaults to false. */
+  /** Enables a lazy syntax-highlighted view with inline parse-error annotation. Defaults to false. @default false */
   highlight?: boolean;
   /** Called with the proposed JSON source whenever the user edits the textarea. */
   onValueChange?: (value: string) => void;

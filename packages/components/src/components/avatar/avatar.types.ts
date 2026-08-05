@@ -14,7 +14,7 @@ export type AvatarShape = 'circle' | 'square';
  * slot), supply an `aria-label` via the forwarded rest props — it lands on
  * the root element and names the avatar.
  */
-export type AvatarProps = HTMLAttributes<HTMLSpanElement> & {
+export type AvatarProps = Omit<HTMLAttributes<HTMLSpanElement>, 'class'> & {
   /** Image source. When omitted, the initials fallback renders. */
   src?: string;
   /** Alternative text for the image. Defaults to `name` when present. */

@@ -35,13 +35,13 @@ export type MegaMenuItem = MegaMenuItemWithSections | MegaMenuItemWithSubmenu;
 export type MegaMenuProps = Omit<HTMLAttributes<HTMLElement>, 'children' | 'class' | 'dir'> & {
   /** Top-level trigger/content entries. */
   items: MegaMenuItem[];
-  /** Hover opens top-level content instead of click-only mode. */
+  /** Hover opens top-level content instead of click-only mode. @default false */
   openOnHover?: boolean;
-  /** Render the shared content viewport wrapper. */
+  /** Render the shared content viewport wrapper. @default true */
   viewportVisible?: boolean;
-  /** Render an active trigger indicator bar. */
+  /** Render an active trigger indicator bar. @default true */
   indicatorVisible?: boolean;
-  /** Accessible name for the navigation landmark. */
+  /** Accessible name for the navigation landmark. @default "Main navigation" */
   label?: string;
   /** Text direction used for layout and keyboard navigation. */
   dir?: 'ltr' | 'rtl' | 'auto';

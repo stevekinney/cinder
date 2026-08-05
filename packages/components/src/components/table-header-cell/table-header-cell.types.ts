@@ -17,11 +17,12 @@ export type TableHeaderCellProps = Omit<
    * When true, render a button inside the `<th>` and dispatch sort intents
    * to the parent Table. The cell's `aria-sort` reflects the current sort
    * direction (`ascending`, `descending`, or `none`).
+   * @default false
    */
   sortable?: boolean;
-  /** When set, hint to assistive tech that the column groups multiple rows. */
+  /** When set, hint to assistive tech that the column groups multiple rows. @default "col" */
   scope?: 'col' | 'colgroup';
-  /** Horizontal alignment for the header cell content. Defaults to `'left'`. */
+  /** Horizontal alignment for the header cell content. Defaults to `'left'`. @default "left" */
   align?: 'left' | 'center' | 'right';
   /** Additional class names merged with `.cinder-table__header-cell`. */
   class?: string;

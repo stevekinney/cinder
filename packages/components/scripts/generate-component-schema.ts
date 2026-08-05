@@ -21,6 +21,8 @@ import {
   type TypeAliasDeclaration,
 } from 'ts-morph';
 
+import type { ComponentSchemaUnsupportedReason } from '../src/schema-types';
+
 const SCHEMA_URI = 'https://json-schema.org/draft/2020-12/schema' as const;
 const MAX_SCHEMA_TYPE_DEPTH = 6;
 const MAX_SCHEMA_STRUCTURAL_OBJECT_DEPTH = 5;
@@ -30,13 +32,7 @@ const MAX_SCHEMA_STRUCTURAL_OBJECT_DEPTH = 5;
 // eslint-disable-next-line unicorn/no-thenable -- `then` is JSON Schema's conditional keyword, not a Promise `.then`; this constant only ever becomes a computed key on schema data, never an awaited value.
 const JSON_SCHEMA_THEN_KEYWORD = 'then' as const;
 
-export type UnsupportedReason =
-  | 'function-or-snippet'
-  | 'generic-type-parameter'
-  | 'mapped-type'
-  | 'conditional-type'
-  | 'index-signature'
-  | 'unknown-shape';
+export type UnsupportedReason = ComponentSchemaUnsupportedReason;
 
 export interface UnsupportedProp {
   name: string;
@@ -1180,16 +1176,23 @@ function hasJsDocTag(symbol: MorphSymbol, tagName: string): boolean {
   return false;
 }
 
-function parseDefaultValue(raw: string): unknown {
+export function parseDefaultValue(raw: string): unknown {
   // Strip optional surrounding backticks like `@default `true``.
   const trimmed = raw.replace(/^`+|`+$/g, '').trim();
   if (trimmed === '') return undefined;
+  // Strip a single matched pair of single quotes like `@default 'auto'`, the
+  // same way the line above already strips backticks — but only when every
+  // internal single quote is backslash-escaped, so a value with an
+  // unescaped internal quote (e.g. `'won't fit'`) is left untouched rather
+  // than mis-stripped.
+  const singleQuoted = /^'([^'\\]*(?:\\.[^'\\]*)*)'$/.exec(trimmed);
+  const unquoted = singleQuoted ? singleQuoted[1]! : trimmed;
   // Try JSON first (covers numbers, booleans, null, quoted strings).
   try {
-    return JSON.parse(trimmed);
+    return JSON.parse(unquoted);
   } catch {
     // Fall back to a string literal value.
-    return trimmed;
+    return unquoted;
   }
 }
 

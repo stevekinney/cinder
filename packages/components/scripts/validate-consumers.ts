@@ -1012,6 +1012,19 @@ function generateTypescriptConsumerProbe(fixtureDirectory: string, label: string
       `typescript-consumer ${label} generate-probe.mjs failed:\n${generateResult.stdout.toString()}\n${generateResult.stderr.toString()}`,
     );
   }
+
+  const readmeUsageExamplesResult = Bun.spawnSync(
+    [nodeBinaryPath, 'generate-readme-usage-examples.mjs'],
+    {
+      cwd: fixtureDirectory,
+      env: { ...Bun.env, TZ: 'UTC', LANG: 'en_US.UTF-8' },
+    },
+  );
+  if (readmeUsageExamplesResult.exitCode !== 0) {
+    fail(
+      `typescript-consumer ${label} generate-readme-usage-examples.mjs failed:\n${readmeUsageExamplesResult.stdout.toString()}\n${readmeUsageExamplesResult.stderr.toString()}`,
+    );
+  }
 }
 
 async function runTypescriptConsumerSvelteGate(
@@ -2793,6 +2806,25 @@ async function hydrationSmoke(): Promise<void> {
   }
 }
 
+/**
+ * A lighter, single-fixture `main-green` entry point covering just the
+ * `typescript-consumer` fixture (tsc + svelte-check gates 1-3, which now
+ * include every README `## Usage` fence). Catches a regression on every
+ * merge instead of only at publish time, without paying for the full `main`
+ * gate's styles/manifest/node/examples/peer-compatibility fixtures or
+ * multi-Svelte-version matrix.
+ */
+async function readmeUsageExamplesSmoke(): Promise<void> {
+  installHookProcessCleanup();
+  ensureSupportedPlatform();
+  await ensureNodeOnPath();
+  await runBuild();
+  await packWorkspaceDependencyTarballs();
+  await packTarball();
+  await runTypescriptConsumerFixture();
+  process.stdout.write('[validate-consumers] readme usage examples smoke passed.\n');
+}
+
 /** Cheap PR gate for packed manifest/export consistency; no browser or registry fixtures. */
 async function manifestSmoke(): Promise<void> {
   installHookProcessCleanup();
@@ -2812,7 +2844,9 @@ if (import.meta.main) {
     ? hydrationSmoke
     : process.argv.includes('--manifest-smoke')
       ? manifestSmoke
-      : main;
+      : process.argv.includes('--readme-usage-examples')
+        ? readmeUsageExamplesSmoke
+        : main;
   try {
     await withLocalValidationGateLock(entry);
   } catch (error) {
