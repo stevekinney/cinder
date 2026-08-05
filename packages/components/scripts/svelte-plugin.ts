@@ -1,7 +1,6 @@
+import { sveltePlugin as createUpstreamSveltePlugin } from '@lostgradient/bun-plugin-svelte';
 import type { BunPlugin } from 'bun';
-import { existsSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { compile, compileModule, parse } from 'svelte/compiler';
+import { compile, parse } from 'svelte/compiler';
 import ts from 'typescript';
 
 type GenerationTarget = 'client' | 'server';
@@ -12,12 +11,43 @@ export type ServerComponentBoundary = {
   line: number;
 };
 
+/**
+ * Components allowed to compile a real `<style>` block instead of routing
+ * styles through `src/styles/`.
+ *
+ * This is NOT dead code, even though none of these four names are directories
+ * under `packages/components/src/components` — `allowsStyleBlock`'s path
+ * match is package-agnostic (it matches the first path segment under any
+ * `.../components/<name>/` directory), and this file is imported
+ * cross-package by `packages/chat/scripts/{build,preload,validate-consumer}.ts`
+ * and `packages/editor/scripts/{build,preload,validate-consumer}.ts`. So these
+ * names protect live components in THOSE packages' own `src/lib/components/`
+ * trees: `packages/chat/src/lib/components/chat/**` (e.g. `chat.svelte`,
+ * `chat-message.svelte`) and `packages/editor/src/lib/components/
+ * {diff-viewer,markdown-editor,review-editor}/**` (e.g. `diff-viewer.svelte`,
+ * `review-editor-impl.svelte`) — dozens of files, confirmed non-empty
+ * `<style>` blocks as of this comment. `source-diff-viewer`, the surviving
+ * `packages/components` name closest to `diff-viewer`, needs no entry here:
+ * it has no `<style>` block.
+ */
 const DOMAIN_SUITE_STYLE_COMPONENTS = new Set([
   'chat',
   'diff-viewer',
   'markdown-editor',
   'review-editor',
 ]);
+
+/**
+ * Whether `name` is one of the domain-suite components allowed to carry a
+ * real `<style>` block (see {@link DOMAIN_SUITE_STYLE_COMPONENTS}). Exported
+ * so `build.ts` can assert the converse invariant for its OWN package: a
+ * `packages/components` component may not both be named here and ship a
+ * generated CSS sidecar (`css-import-plugin.ts`) — that combination would
+ * give it two independent CSS delivery paths with no obvious cascade winner.
+ */
+export function isDomainSuiteStyleComponentName(name: string): boolean {
+  return DOMAIN_SUITE_STYLE_COMPONENTS.has(name);
+}
 
 const PUBLISHED_PACKAGE_SOURCE_MAPPINGS = [
   {
@@ -75,6 +105,13 @@ export function allowsStyleBlock(path: string): boolean {
   // Test fixtures are not published package components or part of the public
   // cascade. Allow them to keep scoped styles local to the fixture.
   if (normalizedPath.includes('/packages/components/src/test/fixtures/')) return true;
+  // Visual-regression fixture hosts colocated with their component
+  // (`src/components/<name>/<name>.fixture.svelte`, e.g. `accordion.fixture.svelte`)
+  // are dev-only mounting scaffolding for Playwright/visual fixtures and are
+  // never shipped in dist — same rationale as the `/test/fixtures/` carve-out
+  // above, extended to this established naming convention (`extract-fixtures.ts`
+  // already requires fixture hosts to end in `.fixture.svelte`).
+  if (normalizedPath.endsWith('.fixture.svelte')) return true;
 
   const componentPathMatch = normalizedPath.match(
     /\/(?:src\/(?:lib\/)?|dist\/)components\/([^/]+)(?:\/|\.svelte$)/,
@@ -206,23 +243,78 @@ export function preserveServerComponentIdentity(source: string, fileName = 'comp
   return transformedSource;
 }
 
+function isPlaygroundPath(path: string): boolean {
+  return path.replaceAll('\\', '/').includes('/packages/playground/');
+}
+
 /**
- * Bun plugin that compiles Svelte 5 components with `svelte/compiler`.
+ * Compile a `.svelte` file directly instead of delegating to
+ * `@lostgradient/bun-plugin-svelte`, for the two cases the published plugin's
+ * public options have no hook for:
  *
- * - `generate`: chooses client-side or server-side rendering output.
- * - `injectCss`: when `true`, every component injects its CSS into the JS
- *   bundle — used by the playground server so domain-suite components
- *   (Chat, diff-viewer, markdown-editor, review-editor) get their scoped styles
- *   applied. When `false` (default), library components emit external CSS
- *   sidecars so consumers can ship one cascade. Playground files always
- *   inject regardless of this flag, since dev-only chrome should not depend
- *   on the design-system cascade.
+ * - Playground dev-only chrome always gets its styles injected into the
+ *   compiled output, independent of `injectCss` — it is not part of the
+ *   design-system cascade `injectCss` otherwise governs, and would render
+ *   unstyled on first paint (client mount or SSR `head`) otherwise.
+ * - Production server compiles (`generate: 'server'`, `NODE_ENV=production`)
+ *   need `$$renderer.component()` calls to carry the compiled component's
+ *   identity as a second argument (`preserveServerComponentIdentity`) — a
+ *   Cinder-specific SSR fix (see its doc comment) with no equivalent in the
+ *   published plugin, which exposes no hook to transform compiled output
+ *   before Bun consumes it. A missing-capability report belongs on
+ *   `stevekinney/bun-plugin-svelte` (a `transform`/post-compile hook, or
+ *   exporting `compileComponent`) — see this migration's PR description for
+ *   filing status.
+ *
+ * Neither case needs the CSS-sidecar virtual-module registry the published
+ * plugin owns (`emitCss` is only ever true for non-server `'external'` mode,
+ * which cinder never uses), so compiling them directly here needs no extra
+ * plumbing.
+ */
+function compileWithCinderPolicy(
+  source: string,
+  path: string,
+  generate: GenerationTarget,
+  injectCss: boolean,
+  dev: boolean,
+): { contents: string; loader: 'js' } {
+  const css = isPlaygroundPath(path) || injectCss ? 'injected' : 'external';
+  const compileResult = compile(source, {
+    filename: publishedSvelteCompileFilename(path),
+    generate,
+    css,
+    dev,
+  });
+  const contents =
+    generate === 'server' && !dev
+      ? preserveServerComponentIdentity(compileResult.js.code, path)
+      : compileResult.js.code;
+  return { contents, loader: 'js' };
+}
+
+/**
+ * Bun plugin that compiles Svelte 5 `.svelte` components and `.svelte.(js|ts)`
+ * rune modules, wrapping `@lostgradient/bun-plugin-svelte` with Cinder-only
+ * policy:
+ *
  * - Rejects any component that carries a `<style>` block, except for files
- *   under `packages/playground/` and the domain-suite components allowlisted
+ *   under `packages/playground/`, test/visual-regression fixtures (see
+ *   {@link allowsStyleBlock}), and the domain-suite components allowlisted
  *   above. Styles belong in `src/styles/` so the design system has a single
- *   CSS cascade surface; the playground is dev-only chrome and not part of it.
- * - Compiles `.svelte.js` / `.svelte.ts` rune modules via `compileModule` so libraries
- *   like `@testing-library/svelte-core` that use runes in plain modules work at runtime.
+ *   CSS cascade surface.
+ * - `generate`: chooses client-side or server-side rendering output, passed
+ *   straight through.
+ * - `injectCss`: when `true`, every component injects its CSS into the JS
+ *   bundle (`css: 'injected'`) — used by the playground server so domain-suite
+ *   components get their scoped styles applied. When `false` (default),
+ *   library components compile with `css: 'none'`: scoped class names, CSS
+ *   discarded — Cinder's own `css-import-plugin.ts` sidecar system owns
+ *   delivering their styles, so the published plugin never emits a stylesheet
+ *   that would duplicate it.
+ * - The two cases above the published plugin cannot express are compiled
+ *   directly by {@link compileWithCinderPolicy}; every other `.svelte` file
+ *   and every `.svelte.(js|ts)` rune module delegates to
+ *   `@lostgradient/bun-plugin-svelte`.
  */
 export function sveltePlugin(
   options: { generate: GenerationTarget; injectCss?: boolean } = {
@@ -230,65 +322,86 @@ export function sveltePlugin(
   },
 ): BunPlugin {
   const injectCss = options.injectCss ?? false;
+  const dev = process.env['NODE_ENV'] !== 'production';
+  const upstreamPlugin = createUpstreamSveltePlugin({
+    generate: options.generate,
+    css: injectCss ? 'injected' : 'none',
+    compileFilename: publishedSvelteCompileFilename,
+    // Cinder never wired up Svelte's HMR runtime (no `[serve.static]` bunfig
+    // registration, no `Bun.serve({ development: { hmr: true } })`) — the
+    // playground's dev server rebuilds and re-serves per request instead.
+    // Force this off rather than let it default to `dev`, so compiled output
+    // stays exactly what it was before this migration in every dev-mode
+    // pipeline (test preloads, `validate:consumer`, the playground server).
+    hmr: false,
+  });
+
   return {
     name: `svelte-${options.generate}`,
     setup(builder) {
-      // Bun.plugin's global runtime builder does not expose `config`; Bun.build does.
-      // Only non-Bun build targets need the explicit relative-Svelte resolver.
-      const buildTarget = (builder as typeof builder & { config?: { target?: string } }).config
-        ?.target;
-      if (buildTarget !== undefined && buildTarget !== 'bun') {
-        builder.onResolve({ filter: /^\.\.\/(?:.*\/)?[^/]+\.svelte$/ }, ({ importer, path }) => {
-          if (importer.length === 0) return undefined;
-          const resolvedPath = resolve(dirname(importer), path);
-          return existsSync(resolvedPath) ? { path: resolvedPath } : undefined;
-        });
+      // `@lostgradient/bun-plugin-svelte`'s own `.svelte` component compiler
+      // must not be registered on `builder` directly: cinder's policy check
+      // has to run first and, for two cases (below), replace the compile
+      // entirely, which would normally mean registering a second `onLoad` for
+      // the same filter and returning `undefined` to fall through to this
+      // one. That works under `Bun.build()`, but NOT under the runtime
+      // `Bun.plugin()` loader every package's `scripts/preload.ts` uses for
+      // `bun test` — there, an `onLoad` callback that returns `undefined`
+      // throws `TypeError: onLoad() expects an object returned` instead of
+      // trying the next registered handler (verified against Bun 1.3.13).
+      // So this captures the upstream component-compile callback instead of
+      // registering it, and cinder's own `onLoad` below calls it directly —
+      // the only `.svelte` `onLoad` ever registered on the real builder.
+      let componentLoader: Bun.OnLoadCallback | undefined;
+      const bridgeBuilder: Bun.PluginBuilder = {
+        // Minimal test stubs (see components.test.ts) only implement `onLoad`
+        // — degrade to a no-op rather than crash on construction. Bun's own
+        // real builder always has `onResolve`, and cinder's `css` values
+        // (`'injected'` / `'none'`) never trigger the upstream plugin's
+        // virtual-CSS resolution this registers, so a no-op is never a
+        // functional loss even when it IS the real builder.
+        onResolve:
+          typeof builder.onResolve === 'function' ? builder.onResolve.bind(builder) : () => builder,
+        onLoad: (matcher, callback) => {
+          // The component filter (`.svelte$`) matches a bare `.svelte` path;
+          // the rune-module filter (`.svelte.(js|ts)$`) does not — register
+          // everything else (rune modules, the virtual CSS resolver/loader)
+          // on the real builder unchanged.
+          if (matcher.filter.test('cinder-bridge-probe.svelte')) {
+            componentLoader = callback;
+            return bridgeBuilder;
+          }
+          return builder.onLoad(matcher, callback);
+        },
+        get config() {
+          return builder.config;
+        },
+      } as Bun.PluginBuilder;
+      upstreamPlugin.setup(bridgeBuilder);
+      if (componentLoader === undefined) {
+        throw new Error(
+          "[svelte-plugin] could not find @lostgradient/bun-plugin-svelte's component onLoad " +
+            'handler — the published package may have changed its internal registration.',
+        );
       }
+      const compileComponent = componentLoader;
 
-      builder.onLoad({ filter: /\.svelte$/ }, async ({ path }) => {
+      builder.onLoad({ filter: /\.svelte$/ }, async (args) => {
+        const { path } = args;
         const source = await Bun.file(path).text();
-        const filename = publishedSvelteCompileFilename(path);
-        const isPlaygroundFile = path.replaceAll('\\', '/').includes('/packages/playground/');
-        const css = isPlaygroundFile || injectCss ? 'injected' : 'external';
-        const dev = process.env['NODE_ENV'] !== 'production';
-        const compileResult = compile(source, {
-          filename,
-          generate: options.generate,
-          css,
-          // Read the same environment source that `scripts/build.ts` writes before `Bun.build()`
-          // runs so production builds and test/dev loads stay in sync.
-          dev,
-        });
-        if (
-          !isPlaygroundFile &&
-          hasAuthoredStyleBlock(source) &&
-          compileResult.css?.code?.trim() &&
-          !allowsStyleBlock(path)
-        ) {
+        const isPlaygroundFile = isPlaygroundPath(path);
+
+        if (!isPlaygroundFile && hasAuthoredStyleBlock(source) && !allowsStyleBlock(path)) {
           throw new Error(
             `[svelte-plugin] <style> block in ${path} — not allowed. Put styles in src/styles/.`,
           );
         }
-        const compiledSource =
-          options.generate === 'server' && !dev
-            ? preserveServerComponentIdentity(compileResult.js.code, path)
-            : compileResult.js.code;
-        return { contents: compiledSource, loader: 'js' };
-      });
 
-      builder.onLoad({ filter: /\.svelte\.(js|ts)$/ }, async ({ path }) => {
-        const source = await Bun.file(path).text();
-        const moduleSource = path.endsWith('.ts')
-          ? new Bun.Transpiler({ loader: 'ts' }).transformSync(source)
-          : source;
-        const compileResult = compileModule(moduleSource, {
-          filename: path,
-          generate: options.generate,
-          // Read the same environment source that `scripts/build.ts` writes before `Bun.build()`
-          // runs so production builds and test/dev loads stay in sync.
-          dev: process.env['NODE_ENV'] !== 'production',
-        });
-        return { contents: compileResult.js.code, loader: 'js' };
+        const needsOwnCompile = isPlaygroundFile || (options.generate === 'server' && !dev);
+        if (needsOwnCompile)
+          return compileWithCinderPolicy(source, path, options.generate, injectCss, dev);
+
+        return compileComponent(args);
       });
     },
   };

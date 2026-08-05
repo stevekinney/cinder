@@ -6296,6 +6296,7 @@
     "@changesets/get-release-plan": "4.0.16",
     "@changesets/parse": "0.4.3",
     "@cinder/testing": "workspace:*",
+    "@lostgradient/bun-plugin-svelte": "^0.0.1",
     "@playwright/test": "1.60.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/svelte": "^5.2.7",
