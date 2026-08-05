@@ -11,6 +11,28 @@
 
   let panel = $state<HTMLDivElement | null>(null);
   let composerForm = $state<HTMLDivElement | null>(null);
+  let pointerIsDown = false;
+
+  // Mirrors selection-popover.svelte's own unconditional (not `enabled`-gated)
+  // pointer tracking, so this fixture exercises the exact wiring pattern
+  // production uses for the isPointerDown option below.
+  $effect(() => {
+    const markPointerDown = () => {
+      pointerIsDown = true;
+    };
+    const markPointerUp = () => {
+      pointerIsDown = false;
+    };
+    const pointerTrackingOptions: AddEventListenerOptions = { capture: true, passive: true };
+    window.addEventListener('pointerdown', markPointerDown, pointerTrackingOptions);
+    window.addEventListener('pointerup', markPointerUp, pointerTrackingOptions);
+    window.addEventListener('pointercancel', markPointerUp, pointerTrackingOptions);
+    return () => {
+      window.removeEventListener('pointerdown', markPointerDown, pointerTrackingOptions);
+      window.removeEventListener('pointerup', markPointerUp, pointerTrackingOptions);
+      window.removeEventListener('pointercancel', markPointerUp, pointerTrackingOptions);
+    };
+  });
 
   createVirtualKeyboardDismissal({
     enabled: () => enabled,
@@ -22,6 +44,7 @@
     // test exercises directly.
     composerOwnsKeyboard: () => false,
     isRestoringFocus: () => false,
+    isPointerDown: () => pointerIsDown,
     onDismiss: (preventScroll) => onDismiss?.(preventScroll),
     onFocusMovedOutside: () => onFocusMovedOutside?.(),
   });

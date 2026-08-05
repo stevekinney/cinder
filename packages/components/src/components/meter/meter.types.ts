@@ -13,6 +13,10 @@ export type MeterState = 'low' | 'optimum' | 'high';
  * ACCESSIBLE NAME (required): provide `ariaLabel` or `ariaLabelledby` so
  * assistive technologies can identify what the measurement represents.
  */
+// `aria-label` and `aria-labelledby` are intentionally NOT omitted from the base
+// `HTMLAttributes` here: the component consumes them (a rest-forwarded native value wins
+// over the bespoke `ariaLabel`/`ariaLabelledby` props below, with the bespoke props as a
+// fallback) rather than discarding them. See meter.svelte for the resolution.
 export type MeterProps = Omit<HTMLAttributes<HTMLDivElement>, 'class'> & {
   /** Current measurement value. Defaults to 0. */
   value?: number;

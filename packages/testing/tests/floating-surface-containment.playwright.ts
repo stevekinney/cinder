@@ -59,6 +59,26 @@ test.describe('floating surfaces escape component containment', () => {
     await expect(emptyState).toHaveText('No results');
   });
 
+  test('MultiSelect listbox panel portals outside a clipping ancestor', async ({ page }) => {
+    // Regression test: the panel used to be `position: absolute` inside
+    // `.cinder-multi-select__control`, so any ancestor with `overflow:
+    // hidden` clipped it regardless of z-index. It now portals directly to
+    // `document.body`, mirroring HoverCard/DropdownMenu's single-element
+    // portal shape (see multi-select.svelte).
+    await page.goto('/page/multi-select?snapshot=1', { waitUntil: 'load' });
+    const clippingBounds = await clipComponent(page, '.cinder-multi-select');
+
+    await page.getByRole('button', { name: 'Fruits' }).first().click();
+    // Class-based, not `#fruit-popover` — the playground's snapshot-mode example
+    // mounting prefixes every id (e.g. `example-mount-basic-fruit-popover`), which
+    // would make a raw id selector fail regardless of whether the portal worked.
+    const panel = page.locator('body > .cinder-multi-select__panel').first();
+    await expect(panel).toBeVisible();
+    const box = await panel.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.y < clippingBounds.top || box!.y + box!.height > clippingBounds.bottom).toBe(true);
+  });
+
   test('NavigationBar mobile panel portals outside the bar surface', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/page/navigation-bar?snapshot=1', { waitUntil: 'load' });

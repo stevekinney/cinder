@@ -299,8 +299,29 @@
 
     if (!listEl) return;
 
-    // :scope > limits to direct children of the list — avoids picking up nested sortable rows
-    const rows = Array.from(listEl.querySelectorAll<HTMLElement>(':scope > [data-sortable-row]'));
+    // Direct children only, filtered by attribute rather than a `:scope > selector`
+    // querySelectorAll call. Both approaches are equivalent in every real browser —
+    // this is a happy-dom testability fix, not a behavior change. happy-dom's
+    // querySelectorAll does not implement the `:scope` combinator (verified:
+    // `ul.querySelectorAll(':scope > [data-sortable-row]')` returns 0 matches where
+    // `ul.querySelectorAll('[data-sortable-row]')` returns the expected count; real
+    // Chromium returns the same count for both). No prior test in this file caught
+    // this — they stubbed pointer capture but never getBoundingClientRect, and
+    // asserted only on the preview portal / class state, never on resulting order,
+    // so they could not have exercised — or caught a failure in — this targeting
+    // path either way. `.children` filtered by attribute produces the same
+    // direct-children result in both real browsers and happy-dom, so it is the
+    // version to keep testable.
+    const rows = Array.from(listEl.children).filter(
+      (el): el is HTMLElement => el instanceof HTMLElement && el.hasAttribute('data-sortable-row'),
+    );
+    // Live measurement is intentional, not a bug: each recompute reads the CURRENT
+    // (possibly already-reordered-by-the-previous-move) layout of every non-lifted
+    // row. That is correct — the placeholder physically occupies the gap at the
+    // current drop target, so measuring live rects against the live pointer
+    // position is what lets a single drag session walk through every position in
+    // the list, one rAF-throttled frame at a time. Snapshotting rects once at lift
+    // time would go stale the moment the first move reflows the list.
     // data-row-id → dataset.rowId via DOM camelCase conversion
     const nonLifted = rows.filter((r) => r.dataset['rowId'] !== String(rowId));
     const midpoints = nonLifted.map((r) => {

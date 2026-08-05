@@ -60,15 +60,20 @@
     visibility: hidden;
   }
 
-  .cinder-sortable-item--shifting {
-    transition: transform var(--cinder-duration-fast) var(--cinder-ease-standard);
-  }
+  /*
+   * `.cinder-sortable-item--shifting` marks every row displaced by an active
+   * drag (all rows except the lifted one, while a drag is in progress) — a
+   * state hook for consumer overrides. It intentionally carries no transition
+   * of its own here: neighboring rows are relocated by Svelte's keyed `#each`
+   * physically moving DOM nodes on every reorder, which is an instant reflow,
+   * not an animatable property change. Animating that motion requires a
+   * FLIP-style effect (capture the pre-reorder rect, invert, then transition
+   * back to identity) — a distinct feature with its own edge-case matrix
+   * (keyboard moves, drop/cancel settling, cross-column KanbanBoard moves),
+   * tracked separately rather than folded into this class.
+   */
 
   @media (prefers-reduced-motion: reduce) {
-    .cinder-sortable-item--shifting {
-      transition: none;
-    }
-
     .cinder-sortable-item--lifted {
       transform: none;
       box-shadow: var(--cinder-shadow-lg);

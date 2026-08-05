@@ -27,15 +27,6 @@ const DEFAULT_OFFSET = 8;
 const DEFAULT_SHIFT_PADDING = 8;
 const DEFAULT_ARROW_PADDING = 6;
 
-type PlacementSide = 'top' | 'right' | 'bottom' | 'left';
-
-function getPlacementSide(placement: Placement): PlacementSide {
-  if (placement.startsWith('top')) return 'top';
-  if (placement.startsWith('right')) return 'right';
-  if (placement.startsWith('left')) return 'left';
-  return 'bottom';
-}
-
 export function getAnchoredOverlayWidthStyle(
   widthMode: AnchoredOverlayWidthMode,
   anchorRect: DOMRect | { width: number } | null | undefined,
@@ -87,22 +78,19 @@ export function isAnchoredOverlayWriteCurrent(
   return !cancelled && positioningGeneration === latestGeneration;
 }
 
-function getArrowStyle(placement: Placement, data: { x?: number; y?: number } | undefined) {
+// Emits only the Floating UI-computed CROSS-axis offset (`left` for a
+// top/bottom placement, `top` for a left/right placement). The STATIC-axis
+// offset — how far the arrow sits from the panel's near edge — is
+// placement- and shape-dependent (Popover's 8px CSS-triangle needs a
+// different inset than HoverCard's 10px rotated-square diamond) and must be
+// owned by each consumer's own per-placement CSS
+// (`[data-cinder-placement^='...']`), not hardcoded here. An inline
+// static-side value would beat that CSS on specificity and silently override
+// it for every consumer, correct or not.
+function getArrowStyle(data: { x?: number; y?: number } | undefined) {
   if (!data) return '';
 
-  const side = getPlacementSide(placement);
-  const staticSide = {
-    top: 'bottom',
-    right: 'left',
-    bottom: 'top',
-    left: 'right',
-  }[side];
-
-  return [
-    data.x != null ? `left: ${data.x}px;` : '',
-    data.y != null ? `top: ${data.y}px;` : '',
-    staticSide ? `${staticSide}: -4px;` : '',
-  ]
+  return [data.x != null ? `left: ${data.x}px;` : '', data.y != null ? `top: ${data.y}px;` : '']
     .filter(Boolean)
     .join(' ');
 }
@@ -118,12 +106,52 @@ function reportAnchoredOverlaySetupError(error: unknown): void {
   }, 0);
 }
 
+// Module-level (singleton) cache for the `@floating-ui/dom` dynamic import. Every anchored
+// overlay on the page (ContextMenu, DropdownMenu, MenuBar, Popover, HoverCard, MultiSelect,
+// Combobox, SelectionPopover, ...) shares this single in-flight/resolved promise, so the
+// module is fetched at most once regardless of how many overlays exist or open.
+//
+// `load` is passed in by the caller (rather than this helper calling the dynamic import
+// itself) so that every literal `import('@floating-ui/dom')` call site stays textually inside an
+// `$effect` body. Svelte's server compilation strips `$effect` callback bodies entirely (they
+// never run during SSR), which is what keeps `@floating-ui/dom` out of the SSR bundle — see the
+// `'server compilation omits Floating UI runtime imports'` test. A module-scope function whose
+// own body called `import('@floating-ui/dom')` would NOT be stripped for SSR.
+let floatingUiModulePromise: Promise<typeof import('@floating-ui/dom')> | undefined;
+
+function cacheFloatingUiModule(
+  load: () => Promise<typeof import('@floating-ui/dom')>,
+): Promise<typeof import('@floating-ui/dom')> {
+  floatingUiModulePromise ??= load().catch((error: unknown) => {
+    // Don't let a transient failure (offline, blocked request) permanently poison every
+    // future open — clear the cache so the next attempt retries the import.
+    floatingUiModulePromise = undefined;
+    throw error;
+  });
+  return floatingUiModulePromise;
+}
+
 export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
   let positionReady = $state(false);
   let positionStyle = $state('');
   let availableHeightStyle = $state('');
   let resolvedPlacement = $state<Placement>(options.placement?.() ?? DEFAULT_PLACEMENT);
   let arrowStyle = $state('');
+
+  // Speculatively prefetch `@floating-ui/dom` as soon as the anchor/panel elements exist,
+  // instead of waiting for `open()` to become true. By the time a user actually opens the
+  // overlay, the module has very likely already finished loading in the background, so the
+  // first `computePosition` call below doesn't pay the import cost synchronously.
+  $effect(() => {
+    const anchor = options.anchor();
+    const panel = options.panel();
+    if (!anchor || !panel) return;
+
+    cacheFloatingUiModule(() => import('@floating-ui/dom')).catch(() => {
+      // Prefetch failures are non-fatal: the open-gated effect below awaits the same cache
+      // and will retry the import when the overlay actually opens.
+    });
+  });
 
   $effect(() => {
     if (!options.open()) {
@@ -171,7 +199,7 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
         offset: offsetMiddleware,
         size: sizeMiddleware,
         shift,
-      } = await import('@floating-ui/dom');
+      } = await cacheFloatingUiModule(() => import('@floating-ui/dom'));
 
       if (cancelled) return;
 
@@ -242,9 +270,7 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
           .filter(Boolean)
           .join(' ');
         resolvedPlacement = result.placement;
-        arrowStyle = arrowVisible
-          ? getArrowStyle(result.placement, result.middlewareData.arrow)
-          : '';
+        arrowStyle = arrowVisible ? getArrowStyle(result.middlewareData.arrow) : '';
         positionReady = true;
       };
 

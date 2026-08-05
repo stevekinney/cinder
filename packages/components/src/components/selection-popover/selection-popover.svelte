@@ -50,6 +50,33 @@
   let wasOpen = false;
   let closeRequested = false;
   let isRestoringFocus = false;
+  let pointerIsDown = false;
+
+  // Tracks pointer button state for the component's FULL mounted lifetime —
+  // not just while open. A drag-select gesture that opens this popover (via
+  // the consumer's selectionchange handler, per selection-popover.examples.json)
+  // starts with a pointerdown that happens BEFORE the popover is open/enabled,
+  // so movement-dismissal's own gate (in createVirtualKeyboardDismissal, keyed
+  // off this getter) needs pointer state that was already being tracked when
+  // that pointerdown fired, not state that only starts listening once the
+  // popover opens. See createVirtualKeyboardDismissal's isPointerDown option.
+  $effect(() => {
+    const markPointerDown = () => {
+      pointerIsDown = true;
+    };
+    const markPointerUp = () => {
+      pointerIsDown = false;
+    };
+    const pointerTrackingOptions: AddEventListenerOptions = { capture: true, passive: true };
+    window.addEventListener('pointerdown', markPointerDown, pointerTrackingOptions);
+    window.addEventListener('pointerup', markPointerUp, pointerTrackingOptions);
+    window.addEventListener('pointercancel', markPointerUp, pointerTrackingOptions);
+    return () => {
+      window.removeEventListener('pointerdown', markPointerDown, pointerTrackingOptions);
+      window.removeEventListener('pointerup', markPointerUp, pointerTrackingOptions);
+      window.removeEventListener('pointercancel', markPointerUp, pointerTrackingOptions);
+    };
+  });
 
   const virtualAnchor = $derived.by<VirtualElement | null>(() => {
     if (!position) return null;
@@ -206,6 +233,7 @@
     composerForm: () => composerFormElement,
     composerOwnsKeyboard: () => expanded || commentBody.trim().length > 0,
     isRestoringFocus: () => isRestoringFocus,
+    isPointerDown: () => pointerIsDown,
     onDismiss: (preventScroll) => requestClose(preventScroll),
     onFocusMovedOutside: () => {
       restoreFocusElement = null;

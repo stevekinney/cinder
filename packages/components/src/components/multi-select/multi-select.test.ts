@@ -7,10 +7,24 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 expect.extend(matchers as Parameters<typeof expect.extend>[0]);
 setupHappyDom();
 
-const { cleanup, fireEvent, render, waitFor } = await import('@testing-library/svelte');
+const {
+  cleanup,
+  fireEvent,
+  render: renderIntoContainer,
+  waitFor,
+} = await import('@testing-library/svelte');
 const { default: MultiSelect } = await import('./multi-select.svelte');
 const { default: FormFieldMultiSelectFixture } =
   await import('../../test/fixtures/form-field-multi-select-fixture.svelte');
+
+// The panel now portals to `document.body` (see multi-select.svelte) so an
+// ancestor with `overflow: hidden` cannot clip it. Render into the shared
+// `document.body` — matching the Combobox/DropdownMenu test convention — so
+// `container.querySelector` still finds portaled listbox/option/filter nodes.
+function render(...args: Parameters<typeof renderIntoContainer>) {
+  const result = renderIntoContainer(...args);
+  return { ...result, container: document.body };
+}
 
 const items = [
   { id: 'apple', label: 'Apple' },
@@ -29,8 +43,12 @@ async function openMenu(container: HTMLElement): Promise<void> {
   const trigger = container.querySelector<HTMLButtonElement>('#fruits');
   if (!trigger) throw new Error('trigger not found');
   await fireEvent.click(trigger);
+  // The listbox panel is portaled to `document.body` (not a descendant of
+  // `container` when a caller passes a narrower scope, e.g. a wrapping <form>),
+  // so it must always be located from `document.body` regardless of where the
+  // trigger itself lives.
   await waitFor(() => {
-    expect(container.querySelector('[role="listbox"]')).not.toBeNull();
+    expect(document.body.querySelector('[role="listbox"]')).not.toBeNull();
   });
 }
 
@@ -535,7 +553,13 @@ describe('MultiSelect', () => {
     expect(listbox?.getAttribute('aria-labelledby')).toBe('fruits-field-label');
   });
 
-  test('open panel is anchored inside control wrapper', async () => {
+  // Regression test for the clipped-listbox defect: the panel used to be
+  // `position: absolute` inside `.cinder-multi-select__control`, so any
+  // ancestor with `overflow: hidden` (or a new containing block) clipped it
+  // regardless of z-index. It now portals directly to `document.body` — the
+  // same single-element portal shape HoverCard and DropdownMenu use — so
+  // `position: fixed` positioning escapes that containment.
+  test('open panel portals to document.body instead of nesting inside the control wrapper', async () => {
     const { container } = render(MultiSelect, {
       id: 'fruits',
       warning: 'Keep at least one selection.',
@@ -543,8 +567,10 @@ describe('MultiSelect', () => {
     });
 
     await openMenu(container);
-    const panel = container.querySelector('#fruits-popover');
-    expect(panel?.closest('.cinder-multi-select__control')).not.toBeNull();
+    const panel = document.body.querySelector('#fruits-popover');
+    expect(panel).not.toBeNull();
+    expect(panel?.parentElement).toBe(document.body);
+    expect(panel?.closest('.cinder-multi-select__control')).toBeNull();
   });
 
   test('menu closes when focus moves away with keyboard navigation', async () => {
@@ -698,7 +724,11 @@ describe('MultiSelect', () => {
   });
 
   test('filterable Enter with no active option does not submit parent form', async () => {
-    const { container } = render(MultiSelect, {
+    // Uses the raw testing-library container (not the `document.body`-scoped
+    // `render` wrapper) because this test moves the container itself into a
+    // fresh <form> — the listbox panel still portals to `document.body`
+    // regardless, so it's located there rather than under `form`.
+    const { container } = renderIntoContainer(MultiSelect, {
       id: 'fruits',
       items,
       filterable: true,
@@ -714,7 +744,7 @@ describe('MultiSelect', () => {
     });
 
     await openMenu(form);
-    const filter = form.querySelector<HTMLInputElement>('.cinder-multi-select__filter');
+    const filter = document.body.querySelector<HTMLInputElement>('.cinder-multi-select__filter');
     if (!filter) throw new Error('filter input not found');
     await fireEvent.input(filter, { target: { value: 'zzz' } });
     await fireEvent.keyDown(filter, { key: 'Enter' });

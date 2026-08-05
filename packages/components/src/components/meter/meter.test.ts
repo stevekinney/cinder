@@ -420,4 +420,63 @@ describe('Meter', () => {
     });
     expect(container.querySelector('[data-cinder-size]')?.getAttribute('role')).toBe('meter');
   });
+
+  test('a rest-forwarded native aria-label survives and is not clobbered by the bespoke prop default', () => {
+    const { container } = render(Meter, {
+      value: 40,
+      // Passed as a native rest attribute, NOT via the bespoke `ariaLabel` prop.
+      'aria-label': 'Storage used',
+    });
+    const el = container.querySelector('[role="meter"]');
+
+    expect(el?.getAttribute('aria-label')).toBe('Storage used');
+  });
+
+  test('a rest-forwarded native aria-labelledby survives and is not clobbered by the bespoke prop default', () => {
+    const { container } = render(Meter, {
+      value: 40,
+      'aria-labelledby': 'meter-heading',
+    });
+    const el = container.querySelector('[role="meter"]');
+
+    expect(el?.getAttribute('aria-labelledby')).toBe('meter-heading');
+  });
+
+  test('a rest-forwarded native aria-label wins over the bespoke ariaLabel prop', () => {
+    const { container } = render(Meter, {
+      value: 40,
+      ariaLabel: 'Bespoke label',
+      'aria-label': 'Native label',
+    });
+    const el = container.querySelector('[role="meter"]');
+
+    expect(el?.getAttribute('aria-label')).toBe('Native label');
+  });
+
+  test('falls back to the bespoke ariaLabel prop when no native aria-label is forwarded', () => {
+    const { container } = render(Meter, {
+      value: 40,
+      ariaLabel: 'Bespoke label',
+    });
+    const el = container.querySelector('[role="meter"]');
+
+    expect(el?.getAttribute('aria-label')).toBe('Bespoke label');
+  });
+
+  test('does not warn about a missing accessible name when it arrives via a forwarded native aria-label', () => {
+    const originalWarn = console.warn;
+    const warnings: string[] = [];
+    console.warn = (...args: unknown[]) => {
+      warnings.push(args.map(String).join(' '));
+    };
+
+    try {
+      render(Meter, { value: 40, 'aria-label': 'Storage used' });
+      expect(
+        warnings.some((warning) => warning.includes('rendered without an accessible name')),
+      ).toBe(false);
+    } finally {
+      console.warn = originalWarn;
+    }
+  });
 });

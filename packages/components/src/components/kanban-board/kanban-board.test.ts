@@ -1307,6 +1307,118 @@ describe('KanbanBoard pointer drag preview', () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// Coverage gap: multi-position pointer drag within a single column
+// ---------------------------------------------------------------------------
+//
+// Companion to the SortableList test of the same name — but NOT a bug-fix
+// test. KanbanBoard supplies its own `getPointerTarget` (locatePointerTarget
+// in kanban-board-helpers.ts), which already resolved rows via
+// `cardList.children` rather than a `:scope > selector` querySelectorAll
+// call, so it was never affected by happy-dom's missing `:scope` combinator
+// support — there is no equivalent fix in kanban-board.svelte or
+// kanban-board-helpers.ts, and none was needed. What was missing was
+// coverage: the existing `installPointerGeometry` above assigns each card's
+// getBoundingClientRect override once, closing over a rowIndex computed at
+// setup time, so it goes stale the moment a card actually moves — no
+// existing test could exercise a multi-step reflow. installOrderedCardGeometry
+// recomputes each card's rect from its current DOM position on every call,
+// closing that gap.
+function installOrderedCardGeometry(container: HTMLElement): void {
+  const columnsElement = container.querySelector<HTMLElement>('.cinder-kanban-board__columns');
+  if (columnsElement) columnsElement.getBoundingClientRect = () => makeRect(0, 0, 220, 400);
+
+  const columns = Array.from(
+    container.querySelectorAll<HTMLElement>('.cinder-kanban-board__column'),
+  );
+  columns.forEach((column) => {
+    column.getBoundingClientRect = () => makeRect(0, 0, 200, 400);
+    const cardList = column.querySelector<HTMLElement>('.cinder-kanban-board__cards');
+    if (cardList) cardList.getBoundingClientRect = () => makeRect(0, 0, 200, 400);
+  });
+
+  const cards = Array.from(container.querySelectorAll<HTMLElement>('[data-sortable-row]'));
+  cards.forEach((card) => {
+    card.getBoundingClientRect = () => {
+      const parent = card.parentElement;
+      const siblingRows = parent
+        ? Array.from(parent.children).filter((child) => child.hasAttribute('data-sortable-row'))
+        : [];
+      const index = siblingRows.indexOf(card);
+      const top = Math.max(0, index) * 40;
+      return makeRect(0, top, 180, 40);
+    };
+  });
+}
+
+describe('KanbanBoard multi-position pointer drag', () => {
+  function makeSingleColumnBoard(): KanbanBoardColumn<Card>[] {
+    return [
+      {
+        id: 'todo',
+        title: 'To do',
+        cards: [
+          { id: 'a', title: 'Alpha' },
+          { id: 'b', title: 'Beta' },
+          { id: 'c', title: 'Gamma' },
+          { id: 'd', title: 'Delta' },
+          { id: 'e', title: 'Epsilon' },
+        ],
+      },
+    ];
+  }
+
+  test('a drag spanning several cards in one column advances past more than one position', async () => {
+    const onchange = mock();
+    const { container } = render(KanbanBoard as any, {
+      props: {
+        columns: makeSingleColumnBoard(),
+        getCardKey,
+        getCardLabel,
+        onchange,
+        label: 'Work board',
+        card: cardSnippet(),
+      },
+    });
+    installOrderedCardGeometry(container);
+    const handle = container.querySelector('[aria-label="Move Alpha"]') as HTMLElement;
+    installPointerCapture(handle);
+
+    await fireEvent.pointerDown(handle, {
+      button: 0,
+      clientX: 10,
+      clientY: 20,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+
+    // Drag down in small increments, letting a rAF frame settle after each
+    // one — the scenario the bug report described as "freezing after one
+    // position". Cards are 40px tall; this crosses all five.
+    for (let y = 30; y <= 190; y += 10) {
+      await fireEvent.pointerMove(handle, {
+        clientX: 10,
+        clientY: y,
+        pointerId: 1,
+        pointerType: 'mouse',
+      });
+      await waitForAnimationFrame();
+    }
+    await fireEvent.pointerUp(handle, { pointerId: 1, pointerType: 'mouse' });
+
+    expect(onchange).toHaveBeenCalledTimes(1);
+    const [nextColumns, change] = onchange.mock.calls[0];
+    expect(nextColumns[0].cards.map(getCardKey)).toEqual(['b', 'c', 'd', 'e', 'a']);
+    expect(change).toMatchObject({
+      type: 'card',
+      fromColumnKey: 'todo',
+      toColumnKey: 'todo',
+      fromIndex: 0,
+      toIndex: 4,
+    });
+  });
+});
+
 describe('KanbanBoard icon sourcing', () => {
   // The existing render-output tests above pass unchanged regardless of which
   // import path ChevronDown comes from, so a bad-faith implementation could

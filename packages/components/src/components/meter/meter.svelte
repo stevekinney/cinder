@@ -79,14 +79,24 @@
   });
   const normalized = $derived((clampedValue - effectiveMin) / range);
   const progressScale = $derived(normalized);
-  const normalizedAriaLabel = $derived(
-    typeof ariaLabel === 'string' && ariaLabel.trim().length > 0 ? ariaLabel : undefined,
-  );
-  const normalizedAriaLabelledby = $derived(
-    typeof ariaLabelledby === 'string' && ariaLabelledby.trim().length > 0
+
+  // `aria-label`/`aria-labelledby` can arrive two ways: forwarded through `rest` (a native
+  // attribute the consumer spread onto the component) or via the bespoke `ariaLabel`/
+  // `ariaLabelledby` props. Both are applied explicitly on the root element (after `{...rest}`)
+  // so the spread can never silently clobber the resolved value. The rest-forwarded value wins
+  // when present; the bespoke prop is the fallback. This mirrors Chip's resolved-value pattern.
+  const normalizedAriaLabel = $derived.by(() => {
+    const forwarded = rest['aria-label'];
+    if (typeof forwarded === 'string' && forwarded.trim().length > 0) return forwarded;
+    return typeof ariaLabel === 'string' && ariaLabel.trim().length > 0 ? ariaLabel : undefined;
+  });
+  const normalizedAriaLabelledby = $derived.by(() => {
+    const forwarded = rest['aria-labelledby'];
+    if (typeof forwarded === 'string' && forwarded.trim().length > 0) return forwarded;
+    return typeof ariaLabelledby === 'string' && ariaLabelledby.trim().length > 0
       ? ariaLabelledby
-      : undefined,
-  );
+      : undefined;
+  });
 
   const meterState = $derived.by<MeterState | undefined>(() => {
     if (!hasThresholds) return undefined;
