@@ -45,12 +45,12 @@
 
 <svelte:element
   this={as}
+  {...rest}
   class={classNames('cinder-feature-section', className)}
   data-cinder-layout={layout}
   data-cinder-columns={String(columns)}
   data-cinder-media-position={mediaPosition}
   data-cinder-has-media={media ? '' : undefined}
-  {...rest}
 >
   <Container {maxWidth}>
     <div class="cinder-feature-section__inner">

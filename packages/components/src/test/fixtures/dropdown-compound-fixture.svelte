@@ -8,15 +8,19 @@
   import DropdownTrigger from '../../components/dropdown-trigger/dropdown-trigger.svelte';
   import type { DropdownPlacement } from '../../components/dropdown/dropdown.types.ts';
 
-  let { placement = 'bottom-start' }: { placement?: DropdownPlacement } = $props();
+  let {
+    placement = 'bottom-start',
+    triggerStyle,
+    menuStyle,
+  }: { placement?: DropdownPlacement; triggerStyle?: string; menuStyle?: string } = $props();
 
   let selected = $state('');
 </script>
 
 <div>
   <Dropdown id="actions-menu" {placement}>
-    <DropdownTrigger class="trigger">Actions</DropdownTrigger>
-    <DropdownMenu>
+    <DropdownTrigger class="trigger" style={triggerStyle}>Actions</DropdownTrigger>
+    <DropdownMenu style={menuStyle}>
       <DropdownGroup labelledBy="actions-menu-document-label">
         <DropdownLabel id="actions-menu-document-label">Document</DropdownLabel>
         <DropdownItem onclick={() => (selected = 'copy')}>Copy link</DropdownItem>

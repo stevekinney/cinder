@@ -10,6 +10,12 @@
       "code": "<script lang=\"ts\">\n  import { BarChart } from '@lostgradient/cinder/bar-chart';\n\n  const data = [\n    { severity: 'Critical escalation', current: 8, previous: 10 },\n    { severity: 'High', current: 18, previous: 22 },\n    { severity: 'Medium', current: 41, previous: 39 },\n  ];\n  const series = [\n    { id: 'current', label: 'Current', valueKey: 'current' },\n    { id: 'previous', label: 'Previous', valueKey: 'previous' },\n  ];\n</script>\n\n<BarChart\n  label=\"Incidents by severity\"\n  {data}\n  categoryKey=\"severity\"\n  {series}\n  orientation=\"horizontal\"\n/>\n"
     },
     {
+      "id": "loading",
+      "title": "Loading state",
+      "description": "A bar chart with reserved layout while data loads.",
+      "code": "<script lang=\"ts\">\n  import { BarChart } from '@lostgradient/cinder/bar-chart';\n</script>\n\n<BarChart label=\"Loading active users\" loading data={[]} categoryKey=\"category\" series={[]} />\n"
+    },
+    {
       "id": "vertical-grouped",
       "title": "Grouped plan usage",
       "description": "A vertical grouped bar chart comparing usage by plan.",

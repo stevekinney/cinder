@@ -16,7 +16,8 @@
 </script>
 
 <script lang="ts">
-  import type { DatePickerGranularity, DatePickerProps } from './date-picker.types.ts';
+  import type { DatePickerProps } from './date-picker.types.ts';
+  import { normalizeDateValue as normalizeValue } from '../../_internal/date-value.ts';
   import FormFieldFrame from '../../_internal/form-field-frame.svelte';
   import { classNames } from '../../utilities/class-names.ts';
   import Calendar from '../calendar/calendar.svelte';
@@ -37,62 +38,13 @@
     'aria-describedby': ariaDescribedBy,
     'aria-invalid': ariaInvalid,
     onchange,
+    triggerLabel = 'Open',
     ...rest
   }: DatePickerProps = $props();
 
   let open = $state(false);
   let inputElement = $state<HTMLInputElement | null>(null);
   let triggerElement = $state<HTMLButtonElement | null>(null);
-
-  function isLeapYear(year: number): boolean {
-    return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
-  }
-
-  function daysInMonth(year: number, month: number): number {
-    if (month === 2) return isLeapYear(year) ? 29 : 28;
-    if ([4, 6, 9, 11].includes(month)) return 30;
-    return 31;
-  }
-
-  function isValidDatePart(datePart: string): boolean {
-    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(datePart);
-    if (!match) return false;
-    const [, rawYear, rawMonth, rawDay] = match;
-    const year = Number(rawYear);
-    const monthValue = Number(rawMonth);
-    const day = Number(rawDay);
-    return monthValue >= 1 && monthValue <= 12 && day >= 1 && day <= daysInMonth(year, monthValue);
-  }
-
-  function isValidTimePart(timePart: string): boolean {
-    const match = /^(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(timePart);
-    if (!match) return false;
-    const [, rawHour, rawMinute, rawSecond = '00'] = match;
-    const hour = Number(rawHour);
-    const minute = Number(rawMinute);
-    const second = Number(rawSecond);
-    return hour <= 23 && minute <= 59 && second <= 59;
-  }
-
-  function normalizeValue(
-    nextValue: string | undefined,
-    nextGranularity: DatePickerGranularity,
-  ): string | undefined {
-    if (!nextValue) return undefined;
-    const datePart = nextValue.slice(0, 10);
-    if (!isValidDatePart(datePart)) return undefined;
-    if (nextGranularity === 'day') return datePart;
-    const timePart =
-      nextValue.length === 10 ? '00:00' : nextValue[10] === 'T' ? nextValue.slice(11) : undefined;
-    if (!timePart || !isValidTimePart(timePart)) return undefined;
-    const [rawHour = '00', rawMinute = '00', rawSecond = '00'] = timePart.split(':');
-    const hour = rawHour.padStart(2, '0').slice(0, 2);
-    const minute = rawMinute.padStart(2, '0').slice(0, 2);
-    const second = rawSecond.padStart(2, '0').slice(0, 2);
-    if (nextGranularity === 'hour') return `${datePart}T${hour}:00`;
-    if (nextGranularity === 'minute') return `${datePart}T${hour}:${minute}`;
-    return `${datePart}T${hour}:${minute}:${second}`;
-  }
 
   const normalizedValue = $derived(normalizeValue(value, granularity));
   const normalizedMin = $derived(normalizeValue(min, granularity));
@@ -171,7 +123,7 @@
 
   $effect(() => {
     if (value === normalizedValue) return;
-    value = normalizedValue;
+    emit(normalizedValue);
   });
 
   function emit(next: string | undefined) {
@@ -282,7 +234,7 @@
         if (!disabled) open = true;
       }}
     >
-      Open
+      {triggerLabel}
     </button>
   </div>
 

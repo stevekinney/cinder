@@ -1209,4 +1209,21 @@ describe('EventStreamViewer', () => {
       expect(css).toContain('background: var(--cinder-surface-raised-hover);');
     });
   });
+
+  describe('scroll viewport markup', () => {
+    // The scroll viewport used to dodge the a11y_no_noninteractive_tabindex
+    // lint warning via `<svelte:element this={'div'}>`, which renders
+    // identical DOM to a plain <div> either way — so no runtime assertion
+    // here would fail against the pre-fix source. This source-level check is
+    // the only assertion that actually distinguishes the two.
+    test('uses a plain <div> with a documented svelte-ignore instead of the svelte:element workaround', () => {
+      const { readFileSync } = require('node:fs');
+      const source = readFileSync(
+        new URL('./event-stream-viewer.svelte', import.meta.url).pathname,
+        'utf8',
+      );
+      expect(source).not.toContain('<svelte:element');
+      expect(source).toContain('<!-- svelte-ignore a11y_no_noninteractive_tabindex -->');
+    });
+  });
 });

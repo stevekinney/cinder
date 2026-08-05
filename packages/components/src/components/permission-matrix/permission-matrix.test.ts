@@ -143,6 +143,48 @@ describe('PermissionMatrix', () => {
     );
   });
 
+  test('td never carries aria-label; the interactive button and read-only span each carry their own', () => {
+    const { container: interactiveContainer } = render(PermissionMatrix, {
+      label: 'Scope matrix',
+      rows,
+      columns,
+      getCellState,
+      onCellClick: mock(),
+    });
+
+    // No <td> ever duplicates the label its interactive descendant already carries.
+    expect(
+      Array.from(interactiveContainer.querySelectorAll('td')).every(
+        (cell) => !cell.hasAttribute('aria-label'),
+      ),
+    ).toBe(true);
+    const button = interactiveContainer.querySelector(
+      '[data-cinder-row="workflows-admin"][data-cinder-column="cancel"].cinder-permission-matrix__cell-control',
+    );
+    expect(button?.tagName.toLowerCase()).toBe('button');
+    expect(button?.getAttribute('aria-label')).toBe('workflows:admin × cancel: granted');
+
+    cleanup();
+
+    const { container: readOnlyContainer } = render(PermissionMatrix, {
+      label: 'Scope matrix',
+      rows,
+      columns,
+      getCellState,
+    });
+
+    expect(
+      Array.from(readOnlyContainer.querySelectorAll('td')).every(
+        (cell) => !cell.hasAttribute('aria-label'),
+      ),
+    ).toBe(true);
+    const span = readOnlyContainer.querySelector(
+      '[data-cinder-row="workflows-admin"][data-cinder-column="cancel"].cinder-permission-matrix__cell-control',
+    );
+    expect(span?.tagName.toLowerCase()).toBe('span');
+    expect(span?.getAttribute('aria-label')).toBe('workflows:admin × cancel: granted');
+  });
+
   test('renders a 22 by 30 matrix inside a horizontal scroll container', () => {
     const largeRows = Array.from({ length: 22 }, (_, index) => ({
       id: `scope-${index + 1}`,

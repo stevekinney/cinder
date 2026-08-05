@@ -30,41 +30,37 @@ import type { ComponentManifest } from './analyze.ts';
 import { isComponentDocumentationPayload } from './component-documentation-reference.ts';
 import { COMPOSE_ONLY_COMPONENTS } from './discover.ts';
 import {
-  PORT,
-  configureRequestIdleTimeout,
-  createHttpServerOnAvailablePort,
-  createSharedDisposer,
-  fallbackToLastGood,
-  formatBuildLogs,
+  classifyPlaygroundSrcChange,
   getRebuildGeneration,
+  scheduleRebuild,
+  waitForPendingRebuild,
+} from './file-watcher.ts';
+import {
+  PORT,
+  createSharedDisposer,
   handleRequest,
-  isPageServerRenderers,
-  isShellServerRendererModule,
   isWarmupStable,
   mergeGeneratedSchemaMetadata,
   readGeneratedComponentSchema,
+  rewriteRepositoryRelativeReadmeLinks,
+  runGenerationCheckedWarmup,
+  warmupInstabilityReasons,
+} from './playground-server.ts';
+import { configureRequestIdleTimeout } from './port-scanner.ts';
+import { jsonForScriptTag } from './render-shell.ts';
+import { triggerReload } from './sse-broadcast.ts';
+import {
+  fallbackToLastGood,
+  formatBuildLogs,
+  isPageServerRenderers,
+  isShellServerRendererModule,
   rendererWarmupAttemptDecision,
   rendererWarmupNeedsCacheInvalidation,
   rendererWarmupNeedsPrebuild,
-  resolvePreferredPort,
   resolveRendererLoad,
-  rewriteRepositoryRelativeReadmeLinks,
-  runGenerationCheckedWarmup,
-  scheduleRebuild,
   setPreparedShellServerRenderer,
   shellBuildSucceeded,
-  triggerReload,
-  waitForPendingRebuild,
-  warmupInstabilityReasons,
-} from './playground-server.ts';
-import { jsonForScriptTag } from './render-shell.ts';
-import {
-  BLOCKED_COLOR_VALUE_PATTERN,
-  COLOR_VALUE_VARIABLE_REFERENCE_PATTERN,
-  FALLBACK_COLOR_VALUE_PATTERN,
-  MAX_COLOR_TOKEN_VALUE_LENGTH,
-  SAFE_COLOR_VALUE_VARIABLE_NAME_PATTERN,
-} from './shell-app/color-token-registry.ts';
+} from './ssr-renderer.ts';
 
 const FIXTURE_COMPONENT = 'button';
 const FIXTURE_SCENARIO = 'primary';
@@ -87,7 +83,6 @@ beforeAll(async () => {
   }
 });
 
-const temporaryServers: ReturnType<typeof Bun.serve>[] = [];
 /*
  * The shell now renders the landing page only, through the same component every
  * documentation page uses. It no longer takes a component, documentation
@@ -129,10 +124,8 @@ describe('last-good rebuild fallback', () => {
   });
 });
 
-afterEach(async () => {
+afterEach(() => {
   setPreparedShellServerRenderer(null);
-  const servers = temporaryServers.splice(0);
-  await Promise.all(servers.map((server) => server.stop(true)));
 });
 
 function req(path: string, options?: RequestInit): Request {
@@ -156,105 +149,11 @@ describe('request idle timeout configuration', () => {
   });
 });
 
-function reservePort(start: number): ReturnType<typeof Bun.serve> {
-  for (let port = start; port < start + 100; port++) {
-    try {
-      return Bun.serve({
-        port,
-        fetch: () => new Response('reserved'),
-      });
-    } catch (error) {
-      const errorWithCode = error as Error & { code?: unknown };
-      if (errorWithCode.code !== 'EADDRINUSE') throw error;
-    }
-  }
-  throw new Error(`Could not reserve a test port starting at ${start}`);
-}
-
-function tryReservePort(port: number): ReturnType<typeof Bun.serve> | null {
-  try {
-    return Bun.serve({
-      port,
-      fetch: () => new Response('reserved'),
-    });
-  } catch (error) {
-    const errorWithCode = error as Error & { code?: unknown };
-    if (errorWithCode.code === 'EADDRINUSE') return null;
-    throw error;
-  }
-}
-
 async function fixtureContentHash(componentName: string): Promise<string> {
   const fixtureFile = await loadFixtureFile(resolveFixtureFilePath(componentName, COMPONENTS_ROOT));
   if (fixtureFile === null) throw new Error(`Fixture file for ${componentName} is missing`);
   return fixtureFile.contentHash;
 }
-
-/** Run `fn` with `Bun.env.PORT` set to `value` (or deleted, for `undefined`), restoring the original value afterward. */
-function withPortEnv<T>(value: string | undefined, fn: () => T): T {
-  const original = Bun.env['PORT'];
-  if (value === undefined) delete Bun.env['PORT'];
-  else Bun.env['PORT'] = value;
-  try {
-    return fn();
-  } finally {
-    if (original === undefined) delete Bun.env['PORT'];
-    else Bun.env['PORT'] = original;
-  }
-}
-
-describe('port selection', () => {
-  it('defaults to port 5555 when PORT is unset', () => {
-    withPortEnv(undefined, () => expect(resolvePreferredPort()).toBe(5555));
-  });
-
-  it('defaults to port 5555 when PORT is blank', () => {
-    withPortEnv('   ', () => expect(resolvePreferredPort()).toBe(5555));
-  });
-
-  it('uses PORT from the environment when set', () => {
-    withPortEnv('4321', () => expect(resolvePreferredPort()).toBe(4321));
-  });
-
-  it('trims surrounding whitespace from PORT', () => {
-    withPortEnv('  4321  ', () => expect(resolvePreferredPort()).toBe(4321));
-  });
-
-  it('falls back to 5555 when PORT is not a valid number', () => {
-    withPortEnv('not-a-port', () => expect(resolvePreferredPort()).toBe(5555));
-  });
-
-  it('falls back to 5555 when PORT has trailing non-numeric characters', () => {
-    withPortEnv('5555abc', () => expect(resolvePreferredPort()).toBe(5555));
-  });
-
-  it('falls back to 5555 when PORT is outside the valid TCP port range', () => {
-    // PORT=0 specifically: Bun.serve({ port: 0 }) binds an ephemeral free
-    // port rather than failing, but createHttpServerOnAvailablePort logs and
-    // returns the REQUESTED port, not the bound one — accepting 0 verbatim
-    // would report the wrong address to preview/CI launchers. Rejecting it
-    // here (rather than special-casing 0 downstream) keeps that contract simple.
-    withPortEnv('0', () => expect(resolvePreferredPort()).toBe(5555));
-    withPortEnv('70000', () => expect(resolvePreferredPort()).toBe(5555));
-  });
-
-  it('uses the next available port when the preferred port is taken', async () => {
-    const reserved = tryReservePort(PORT) ?? reservePort(56_000);
-    temporaryServers.push(reserved);
-    const reservedPort = reserved.port;
-    if (reservedPort === undefined) throw new Error('Reserved test server did not expose a port');
-
-    const { port: serverPort, server } = createHttpServerOnAvailablePort(
-      reservedPort,
-      () => new Response('fallback'),
-    );
-    temporaryServers.push(server);
-
-    expect(serverPort).toBeGreaterThan(reservedPort);
-    const response = await fetch(`http://127.0.0.1:${serverPort}`);
-    expect(await response.text()).toBe('fallback');
-  });
-});
 
 describe('shared disposer', () => {
   it('returns the same shutdown promise to concurrent callers', async () => {
@@ -918,6 +817,29 @@ describe('triggerReload', () => {
   });
 });
 
+describe('classifyPlaygroundSrcChange', () => {
+  it('excludes mock and fixture Svelte files that only support their sibling test', () => {
+    expect(classifyPlaygroundSrcChange('component-page-button-mock.svelte')).toBeNull();
+    expect(classifyPlaygroundSrcChange('component-page-mount-fixture.svelte')).toBeNull();
+  });
+
+  it('still classifies an ordinary production .svelte file as a components-scope change', () => {
+    expect(classifyPlaygroundSrcChange('component-page.svelte')).toEqual({ kind: 'components' });
+  });
+
+  it('classifies shell-app/ paths and render-shell.ts as shell-scope changes', () => {
+    expect(classifyPlaygroundSrcChange('shell-app/shell.svelte')).toEqual({ kind: 'shell' });
+    expect(classifyPlaygroundSrcChange('render-shell.ts')).toEqual({ kind: 'shell' });
+  });
+
+  it('excludes example files, dotfiles, temp files, and test files', () => {
+    expect(classifyPlaygroundSrcChange('examples/button/primary.example.svelte')).toBeNull();
+    expect(classifyPlaygroundSrcChange('.DS_Store')).toBeNull();
+    expect(classifyPlaygroundSrcChange('.tmp-abc123')).toBeNull();
+    expect(classifyPlaygroundSrcChange('discover.test.ts')).toBeNull();
+  });
+});
+
 describe('unknown routes', () => {
   it('returns 404 for arbitrary paths', async () => {
     const response = await handleRequest(req('/not-a-real-path'));
@@ -1068,47 +990,6 @@ describe('/page/:name', () => {
       expect(peerStylesheet.status).toBe(200);
       expect(peerStylesheet.headers.get('Content-Type')).toBe('text/css');
     }
-  });
-
-  it('installs the validated color-token message bridge on preview pages', async () => {
-    const response = await handleRequest(req(`/page/${FIXTURE_COMPONENT}`));
-    const html = await response.text();
-    const blockedPatternSource = jsonForScriptTag(BLOCKED_COLOR_VALUE_PATTERN.source);
-    const blockedPatternFlags = jsonForScriptTag(BLOCKED_COLOR_VALUE_PATTERN.flags);
-    const fallbackPatternSource = jsonForScriptTag(FALLBACK_COLOR_VALUE_PATTERN.source);
-    const fallbackPatternFlags = jsonForScriptTag(FALLBACK_COLOR_VALUE_PATTERN.flags);
-    const variableReferencePatternSource = jsonForScriptTag(
-      COLOR_VALUE_VARIABLE_REFERENCE_PATTERN.source,
-    );
-    const variableReferencePatternFlags = jsonForScriptTag(
-      COLOR_VALUE_VARIABLE_REFERENCE_PATTERN.flags,
-    );
-    const safeVariableNamePatternSource = jsonForScriptTag(
-      SAFE_COLOR_VALUE_VARIABLE_NAME_PATTERN.source,
-    );
-    const safeVariableNamePatternFlags = jsonForScriptTag(
-      SAFE_COLOR_VALUE_VARIABLE_NAME_PATTERN.flags,
-    );
-
-    expect(html).toContain('cinder:set-color-token-overrides');
-    expect(html).toContain('--cinder-accent');
-    expect(html).toContain(`new RegExp(${blockedPatternSource}, ${blockedPatternFlags})`);
-    expect(html).toContain(`new RegExp(${fallbackPatternSource}, ${fallbackPatternFlags})`);
-    expect(html).toContain(
-      `new RegExp(${variableReferencePatternSource}, ${variableReferencePatternFlags})`,
-    );
-    expect(html).toContain(
-      `new RegExp(${safeVariableNamePatternSource}, ${safeVariableNamePatternFlags})`,
-    );
-    expect(html).toContain(`trimmed.length > ${MAX_COLOR_TOKEN_VALUE_LENGTH}`);
-    expect(html).toContain('if (!hasOnlySafeColorVariableReferences(trimmed)) return false;');
-    expect(html).toContain(
-      'if (!fallbackColorValuePattern.test(trimmed.toLowerCase())) return false;',
-    );
-    expect(html).toContain('var activeTheme = document.documentElement.dataset.cinderTheme');
-    expect(html).toContain('if (data.theme !== activeTheme) return;');
-    expect(html).not.toContain('--cinder-button-bg');
-    expect(html).not.toContain('transparent$|currentcolor$|black$|white$');
   });
 
   it('wraps the body background/color transition in a reduced-motion guard', async () => {

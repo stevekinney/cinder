@@ -18,6 +18,7 @@
 <script lang="ts">
   import type { SideNavigationGroupProps } from './side-navigation-group.types.ts';
   import { classNames } from '../../utilities/class-names.ts';
+  import { devWarn } from '../../utilities/dev-warn.ts';
   import {
     setSideNavigationGroupContext,
     tryGetSideNavigationGroupContext,
@@ -41,7 +42,8 @@
 
   const validatedLabel = $derived.by(() => {
     if (label.trim() === '') {
-      throw new Error('SideNavigationGroup requires a non-empty label.');
+      devWarn('[cinder/SideNavigationGroup] label is empty — pass a non-empty label.');
+      return undefined;
     }
     return label;
   });

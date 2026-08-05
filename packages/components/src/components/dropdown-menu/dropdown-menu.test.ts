@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { afterEach, describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
@@ -18,8 +18,8 @@ afterEach(() => {
   document.body.replaceChildren();
 });
 
-function renderFixture() {
-  const result = render(Fixture);
+function renderFixture(props?: { menuStyle?: string; triggerStyle?: string }) {
+  const result = render(Fixture, props ? { props } : undefined);
   return { ...result, container: document.body };
 }
 
@@ -142,5 +142,62 @@ describe('DropdownMenu', () => {
     await waitFor(() => expect(container.querySelector('[role="menu"]')).not.toBeNull());
 
     expect(container.querySelector('[role="menu"]')?.getAttribute('dir')).toBe('rtl');
+  });
+
+  test('renders no style attribute at all on the non-popover fallback path when neither anchor nor consumer style is set', async () => {
+    const { container } = renderFixture();
+
+    await fireEvent.click(container.querySelector('.trigger') as HTMLElement);
+    await waitFor(() => expect(container.querySelector('[role="menu"]')).not.toBeNull());
+
+    const menu = container.querySelector('[role="menu"]') as HTMLElement;
+    expect(menu.hasAttribute('style')).toBe(false);
+  });
+});
+
+// happy-dom does not implement `showPopover`/`hidePopover`, so
+// `dropdown.svelte`'s feature-detection effect never resolves
+// `supportsPopover` to `true` and every test above exercises the
+// non-popover fallback path. The anchor-positioning merge tests below force
+// the popover path (see dropdown.svelte's `supportsPopover` effect) so they
+// can assert against a synchronous `style` value instead of the fallback
+// path's async `computePosition()`-derived style. The patch is scoped to
+// this describe block (applied in beforeEach, reverted in afterEach) because
+// it mutates the shared `HTMLElement.prototype` for the whole test file —
+// leaving it in place would silently flip every other dropdown test in this
+// file onto the popover path too.
+describe('DropdownMenu anchor-positioning style (popover path)', () => {
+  beforeEach(() => {
+    Object.assign(HTMLElement.prototype, {
+      showPopover(this: HTMLElement) {},
+      hidePopover(this: HTMLElement) {},
+    });
+  });
+
+  afterEach(() => {
+    const proto = HTMLElement.prototype as unknown as Record<string, unknown>;
+    delete proto['showPopover'];
+    delete proto['hidePopover'];
+  });
+
+  test('a consumer style prop merges with the anchor-positioning style instead of clobbering it', async () => {
+    const { container } = renderFixture({ menuStyle: 'margin-top: 4px;' });
+
+    await fireEvent.click(container.querySelector('.trigger') as HTMLElement);
+    await waitFor(() => expect(container.querySelector('[role="menu"]')).not.toBeNull());
+
+    const menu = container.querySelector('[role="menu"]') as HTMLElement;
+    expect(menu.style.getPropertyValue('margin-top')).toBe('4px');
+    expect(menu.style.getPropertyValue('position-anchor')).toBe('--actions-menu-menu');
+  });
+
+  test('the internal position-anchor declaration wins when a consumer style redeclares it', async () => {
+    const { container } = renderFixture({ menuStyle: 'position-anchor: --consumer-injected;' });
+
+    await fireEvent.click(container.querySelector('.trigger') as HTMLElement);
+    await waitFor(() => expect(container.querySelector('[role="menu"]')).not.toBeNull());
+
+    const menu = container.querySelector('[role="menu"]') as HTMLElement;
+    expect(menu.style.getPropertyValue('position-anchor')).toBe('--actions-menu-menu');
   });
 });

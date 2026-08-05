@@ -45,6 +45,12 @@ const schema = {
         reason: 'function-or-snippet',
         description: 'Content rendered while in the "copied" state.',
       },
+      {
+        name: 'onError',
+        reason: 'function-or-snippet',
+        description:
+          'Called when the clipboard write fails (permission denied, insecure context, or the legacy execCommand fallback also failing).',
+      },
     ],
   },
 } satisfies ComponentSchema;

@@ -109,6 +109,16 @@ describe('CapabilityGate', () => {
     expect(link?.getAttribute('href')).toBe('/settings');
   });
 
+  test("dismiss button's accessible name includes the feature, matching primary/fallback", () => {
+    const { container } = render(CapabilityGate, {
+      feature: 'Offline storage',
+      state: 'unavailable',
+      dismissAction: 'Dismiss',
+    });
+    const dismiss = container.querySelector('.cinder-capability-gate__dismiss');
+    expect(dismiss?.getAttribute('aria-label')).toBe('Dismiss for Offline storage');
+  });
+
   test('dismiss hides the component and calls onDismiss', () => {
     let dismissed = false;
     const { container, getByRole } = render(CapabilityGate, {

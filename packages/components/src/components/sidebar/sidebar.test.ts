@@ -49,20 +49,18 @@ describe('Sidebar (desktop / inline aside)', () => {
     expect(container.querySelector('aside')?.getAttribute('aria-label')).toBe('Workspace');
   });
 
-  test('empty label throws on initial render', () => {
-    expect(() => {
-      render(Sidebar, {
-        props: { label: '', navigation: listSnippet('items') },
-      });
-    }).toThrow();
+  test('empty label does not throw and renders the aside without an aria-label attribute', () => {
+    const { container } = render(Sidebar, {
+      props: { label: '', navigation: listSnippet('items') },
+    });
+    expect(container.querySelector('aside')?.hasAttribute('aria-label')).toBe(false);
   });
 
-  test('whitespace-only label throws on initial render', () => {
-    expect(() => {
-      render(Sidebar, {
-        props: { label: '   ', navigation: listSnippet('items') },
-      });
-    }).toThrow();
+  test('whitespace-only label does not throw and renders the aside without an aria-label attribute', () => {
+    const { container } = render(Sidebar, {
+      props: { label: '   ', navigation: listSnippet('items') },
+    });
+    expect(container.querySelector('aside')?.hasAttribute('aria-label')).toBe(false);
   });
 
   test('aside carries cinder-sidebar class', () => {

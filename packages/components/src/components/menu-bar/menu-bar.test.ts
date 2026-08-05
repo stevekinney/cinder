@@ -664,4 +664,40 @@ describe('MenuBar', () => {
     expect(source).not.toContain('class="cinder-dropdown-menu');
     expect(source).not.toContain('class="cinder-dropdown-item');
   });
+
+  test('shadow-root keyboard navigation resolves focus targets inside the component root', async () => {
+    // Top-level triggers (unlike the dropdown panels, which MenuBar always
+    // portals to document.body via its own hardcoded `supportsPopover: false`
+    // context — see makeContext) live directly inside MenuBar's own markup,
+    // so they stay inside the shadow tree. `focusTopLevelTrigger` resolves
+    // them by id via `focusElement`; `document.getElementById` (used before
+    // the shadow-DOM-aware fix) cannot see into a shadow tree and would
+    // silently fail to move focus here.
+    const host = document.createElement('div');
+    const shadow = host.attachShadow({ mode: 'open' });
+    document.body.append(host);
+    const view = render(MenuBar, { target: shadow, props: { menus: fileEditViewMenus() } });
+
+    try {
+      const triggers = Array.from(
+        shadow.querySelectorAll<HTMLButtonElement>('.cinder-menu-bar__trigger'),
+      );
+      const file = triggers.find((trigger) => trigger.textContent?.trim() === 'File');
+      const edit = triggers.find((trigger) => trigger.textContent?.trim() === 'Edit');
+      if (!file || !edit) throw new Error('Missing top-level triggers.');
+
+      file.focus();
+      expect(shadow.activeElement).toBe(file);
+
+      await fireEvent.keyDown(file, { key: 'ArrowRight' });
+      expect(shadow.activeElement).toBe(edit);
+
+      // 'view' is disabled, so ArrowRight from 'edit' wraps back to 'file'.
+      await fireEvent.keyDown(edit, { key: 'ArrowRight' });
+      expect(shadow.activeElement).toBe(file);
+    } finally {
+      view.unmount();
+      host.remove();
+    }
+  });
 });

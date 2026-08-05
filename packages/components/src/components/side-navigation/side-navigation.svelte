@@ -20,6 +20,7 @@
 <script lang="ts">
   import type { SideNavigationProps } from './side-navigation.types.ts';
   import { classNames } from '../../utilities/class-names.ts';
+  import { devWarn } from '../../utilities/dev-warn.ts';
 
   type SideNavigationRuntimeProps = SideNavigationProps & {
     'aria-label'?: unknown;
@@ -37,7 +38,8 @@
 
   const validatedLabel = $derived.by(() => {
     if (ariaLabel.trim() === '') {
-      throw new Error('SideNavigation requires a non-empty ariaLabel.');
+      devWarn('[cinder/SideNavigation] ariaLabel is empty — pass a non-empty ariaLabel.');
+      return undefined;
     }
     return ariaLabel;
   });

@@ -211,160 +211,161 @@
     >
       {#if !loading && !model.empty}
         <title id="{rootId}-svg-title">{label}</title>
-      {/if}
-      <g transform={`translate(${model.geometry.marginLeft}, ${model.geometry.marginTop})`}>
-        {#each model.yTicks as tick, index (tick)}
-          {@const tickY =
-            model.geometry.plotHeight -
-            ((tick - model.yDomain[0]) / (model.yDomain[1] - model.yDomain[0])) *
-              model.geometry.plotHeight}
-          <line
-            class="cinder-area-chart__gridline"
-            x1="0"
-            x2={model.geometry.plotWidth}
-            y1={tickY}
-            y2={tickY}
-            aria-hidden="true"
-          />
-          <text
-            class="cinder-area-chart__tick-label"
-            x="-8"
-            y={tickY}
-            text-anchor="end"
-            dominant-baseline="middle">{formatNumericValue(tick, yAxis, undefined, { index })}</text
-          >
-        {/each}
-        {#each model.xTicks as tick (tick.label)}
-          <text
-            class="cinder-area-chart__tick-label"
-            x={tick.x}
-            y={model.geometry.plotHeight + 20}
-            text-anchor="middle">{tick.label}</text
-          >
-        {/each}
-        <!-- Series-specific rendering: filled area paths + stroke line paths. -->
-        {#each model.normalizedSeries as item (item.id)}
-          {#if !item.hidden && item.areaPath}
-            <path
-              class="cinder-area-chart__area"
-              d={item.areaPath}
-              fill={item.color}
+        <g transform={`translate(${model.geometry.marginLeft}, ${model.geometry.marginTop})`}>
+          {#each model.yTicks as tick, index (tick)}
+            {@const tickY =
+              model.geometry.plotHeight -
+              ((tick - model.yDomain[0]) / (model.yDomain[1] - model.yDomain[0])) *
+                model.geometry.plotHeight}
+            <line
+              class="cinder-area-chart__gridline"
+              x1="0"
+              x2={model.geometry.plotWidth}
+              y1={tickY}
+              y2={tickY}
               aria-hidden="true"
-              data-cinder-series={item.id}
             />
-            <path
-              class="cinder-area-chart__line"
-              d={item.path}
-              stroke={item.color}
-              aria-hidden="true"
-              data-cinder-series={item.id}
-            />
-          {/if}
-        {/each}
-        {#if interaction.activeTarget}
-          <!-- Vertical crosshair — area charts always use a vertical indicator. -->
-          <line
-            class="cinder-area-chart__crosshair"
-            x1={interaction.activeTarget.x}
-            x2={interaction.activeTarget.x}
-            y1="0"
-            y2={model.geometry.plotHeight}
-            aria-hidden="true"
-          />
-        {/if}
-        {#if model.targets.length > 0}
-          <rect
-            class="cinder-area-chart__hit-surface"
-            role="presentation"
-            width={model.geometry.plotWidth}
-            height={model.geometry.plotHeight}
-            onpointermove={(event) => interaction.activateByPointer(event, model.targets)}
-            onpointerleave={() => interaction.clearPointerTarget()}
-          />
-          {#if keyboardEnabled}
-            {#each model.targets as target (target.id)}
-              <!-- Area charts use circle focus targets centered on the data point. -->
-              <circle
-                class="cinder-area-chart__focus-target"
-                cx={target.x}
-                cy={target.y}
-                r="8"
-                tabindex="0"
-                role="button"
-                data-cinder-target-id={target.id}
-                data-cinder-series-id={target.seriesId}
-                data-cinder-focus-ring-active={pointFocusRing && focusRingTarget?.id === target.id
-                  ? 'true'
-                  : undefined}
-                aria-label={`${target.seriesLabel}, ${target.xLabel}, ${target.valueLabel}`}
-                aria-describedby={interaction.activeTarget?.id === target.id
-                  ? `${rootId}-tooltip`
-                  : undefined}
-                onfocus={() => handleTargetFocus(target)}
-                onblur={handleTargetBlur}
-                onkeydown={handleTargetKeydown}
+            <text
+              class="cinder-area-chart__tick-label"
+              x="-8"
+              y={tickY}
+              text-anchor="end"
+              dominant-baseline="middle"
+              >{formatNumericValue(tick, yAxis, undefined, { index })}</text
+            >
+          {/each}
+          {#each model.xTicks as tick (tick.label)}
+            <text
+              class="cinder-area-chart__tick-label"
+              x={tick.x}
+              y={model.geometry.plotHeight + 20}
+              text-anchor="middle">{tick.label}</text
+            >
+          {/each}
+          <!-- Series-specific rendering: filled area paths + stroke line paths. -->
+          {#each model.normalizedSeries as item (item.id)}
+            {#if !item.hidden && item.areaPath}
+              <path
+                class="cinder-area-chart__area"
+                d={item.areaPath}
+                fill={item.color}
+                aria-hidden="true"
+                data-cinder-series={item.id}
               />
-            {/each}
-          {/if}
-        {/if}
-        {#if pointFocusRing}
-          <g class="cinder-area-chart__focus-ring-layer" aria-hidden="true">
-            {#if pointFocusRing.kind === 'point'}
-              <circle
-                class="cinder-area-chart__focus-ring-halo"
-                cx={pointFocusRing.cx}
-                cy={pointFocusRing.cy}
-                r={pointFocusRing.radius}
-              />
-              <circle
-                class="cinder-area-chart__focus-ring"
-                cx={pointFocusRing.cx}
-                cy={pointFocusRing.cy}
-                r={pointFocusRing.radius}
-              />
-              {#if pointFocusRing.connector && pointFocusRing.dot}
-                <path
-                  class="cinder-area-chart__focus-ring-connector cinder-area-chart__focus-ring-halo"
-                  d={`M ${pointFocusRing.connector.x1} ${pointFocusRing.connector.y1} L ${pointFocusRing.connector.x2} ${pointFocusRing.connector.y2}`}
-                />
-                <path
-                  class="cinder-area-chart__focus-ring-connector cinder-area-chart__focus-ring"
-                  d={`M ${pointFocusRing.connector.x1} ${pointFocusRing.connector.y1} L ${pointFocusRing.connector.x2} ${pointFocusRing.connector.y2}`}
-                />
-                <circle
-                  class="cinder-area-chart__focus-ring-dot cinder-area-chart__focus-ring-halo"
-                  cx={pointFocusRing.dot.cx}
-                  cy={pointFocusRing.dot.cy}
-                  r={pointFocusRing.dot.radius}
-                />
-                <circle
-                  class="cinder-area-chart__focus-ring-dot cinder-area-chart__focus-ring"
-                  cx={pointFocusRing.dot.cx}
-                  cy={pointFocusRing.dot.cy}
-                  r={pointFocusRing.dot.radius}
-                />
-              {/if}
-            {:else}
-              <rect
-                class="cinder-area-chart__focus-ring-halo"
-                x={pointFocusRing.x}
-                y={pointFocusRing.y}
-                width={pointFocusRing.width}
-                height={pointFocusRing.height}
-                rx={pointFocusRing.radius}
-              />
-              <rect
-                class="cinder-area-chart__focus-ring"
-                x={pointFocusRing.x}
-                y={pointFocusRing.y}
-                width={pointFocusRing.width}
-                height={pointFocusRing.height}
-                rx={pointFocusRing.radius}
+              <path
+                class="cinder-area-chart__line"
+                d={item.path}
+                stroke={item.color}
+                aria-hidden="true"
+                data-cinder-series={item.id}
               />
             {/if}
-          </g>
-        {/if}
-      </g>
+          {/each}
+          {#if interaction.activeTarget}
+            <!-- Vertical crosshair — area charts always use a vertical indicator. -->
+            <line
+              class="cinder-area-chart__crosshair"
+              x1={interaction.activeTarget.x}
+              x2={interaction.activeTarget.x}
+              y1="0"
+              y2={model.geometry.plotHeight}
+              aria-hidden="true"
+            />
+          {/if}
+          {#if model.targets.length > 0}
+            <rect
+              class="cinder-area-chart__hit-surface"
+              role="presentation"
+              width={model.geometry.plotWidth}
+              height={model.geometry.plotHeight}
+              onpointermove={(event) => interaction.activateByPointer(event, model.targets)}
+              onpointerleave={() => interaction.clearPointerTarget()}
+            />
+            {#if keyboardEnabled}
+              {#each model.targets as target (target.id)}
+                <!-- Area charts use circle focus targets centered on the data point. -->
+                <circle
+                  class="cinder-area-chart__focus-target"
+                  cx={target.x}
+                  cy={target.y}
+                  r="8"
+                  tabindex="0"
+                  role="button"
+                  data-cinder-target-id={target.id}
+                  data-cinder-series-id={target.seriesId}
+                  data-cinder-focus-ring-active={pointFocusRing && focusRingTarget?.id === target.id
+                    ? 'true'
+                    : undefined}
+                  aria-label={`${target.seriesLabel}, ${target.xLabel}, ${target.valueLabel}`}
+                  aria-describedby={interaction.activeTarget?.id === target.id
+                    ? `${rootId}-tooltip`
+                    : undefined}
+                  onfocus={() => handleTargetFocus(target)}
+                  onblur={handleTargetBlur}
+                  onkeydown={handleTargetKeydown}
+                />
+              {/each}
+            {/if}
+          {/if}
+          {#if pointFocusRing}
+            <g class="cinder-area-chart__focus-ring-layer" aria-hidden="true">
+              {#if pointFocusRing.kind === 'point'}
+                <circle
+                  class="cinder-area-chart__focus-ring-halo"
+                  cx={pointFocusRing.cx}
+                  cy={pointFocusRing.cy}
+                  r={pointFocusRing.radius}
+                />
+                <circle
+                  class="cinder-area-chart__focus-ring"
+                  cx={pointFocusRing.cx}
+                  cy={pointFocusRing.cy}
+                  r={pointFocusRing.radius}
+                />
+                {#if pointFocusRing.connector && pointFocusRing.dot}
+                  <path
+                    class="cinder-area-chart__focus-ring-connector cinder-area-chart__focus-ring-halo"
+                    d={`M ${pointFocusRing.connector.x1} ${pointFocusRing.connector.y1} L ${pointFocusRing.connector.x2} ${pointFocusRing.connector.y2}`}
+                  />
+                  <path
+                    class="cinder-area-chart__focus-ring-connector cinder-area-chart__focus-ring"
+                    d={`M ${pointFocusRing.connector.x1} ${pointFocusRing.connector.y1} L ${pointFocusRing.connector.x2} ${pointFocusRing.connector.y2}`}
+                  />
+                  <circle
+                    class="cinder-area-chart__focus-ring-dot cinder-area-chart__focus-ring-halo"
+                    cx={pointFocusRing.dot.cx}
+                    cy={pointFocusRing.dot.cy}
+                    r={pointFocusRing.dot.radius}
+                  />
+                  <circle
+                    class="cinder-area-chart__focus-ring-dot cinder-area-chart__focus-ring"
+                    cx={pointFocusRing.dot.cx}
+                    cy={pointFocusRing.dot.cy}
+                    r={pointFocusRing.dot.radius}
+                  />
+                {/if}
+              {:else}
+                <rect
+                  class="cinder-area-chart__focus-ring-halo"
+                  x={pointFocusRing.x}
+                  y={pointFocusRing.y}
+                  width={pointFocusRing.width}
+                  height={pointFocusRing.height}
+                  rx={pointFocusRing.radius}
+                />
+                <rect
+                  class="cinder-area-chart__focus-ring"
+                  x={pointFocusRing.x}
+                  y={pointFocusRing.y}
+                  width={pointFocusRing.width}
+                  height={pointFocusRing.height}
+                  rx={pointFocusRing.radius}
+                />
+              {/if}
+            </g>
+          {/if}
+        </g>
+      {/if}
     </svg>
     {#if interaction.activeTarget}<div
         id="{rootId}-tooltip"

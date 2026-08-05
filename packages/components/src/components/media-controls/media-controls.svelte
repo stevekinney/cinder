@@ -112,7 +112,6 @@
     aria-pressed={primaryPressed}
     aria-disabled={isDisabled ? 'true' : undefined}
     aria-busy={loading ? 'true' : undefined}
-    disabled={isDisabled}
     onclick={handlePrimaryAction}
     data-cinder-state={loading
       ? 'loading'

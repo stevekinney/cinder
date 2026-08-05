@@ -175,7 +175,7 @@
             type="button"
             class="cinder-capability-gate__dismiss"
             onclick={handleDismiss}
-            aria-label={dismissAction}
+            aria-label="{dismissAction} for {feature}"
           >
             {dismissAction}
           </button>

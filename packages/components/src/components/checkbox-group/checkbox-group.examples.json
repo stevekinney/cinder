@@ -8,6 +8,12 @@
       "title": "Basic checkbox group",
       "description": "Grouped checkboxes under a shared legend with independent checked states.",
       "code": "<script lang=\"ts\">\n  import { Checkbox } from '@lostgradient/cinder/checkbox';\n  import { CheckboxGroup } from '@lostgradient/cinder/checkbox-group';\n\n  let email = $state(true);\n  let sms = $state(false);\n  let push = $state(false);\n</script>\n\n<CheckboxGroup label=\"Notification channels\">\n  <Checkbox id=\"email\" label=\"Email\" bind:checked={email} />\n  <Checkbox id=\"sms\" label=\"SMS\" bind:checked={sms} />\n  <Checkbox id=\"push\" label=\"Push notifications\" bind:checked={push} />\n</CheckboxGroup>\n"
+    },
+    {
+      "id": "disabled-fieldset",
+      "title": "Disabled checkbox group",
+      "description": "A disabled CheckboxGroup dims every child checkbox through the native fieldset cascade, with no per-checkbox disabled prop.",
+      "code": "<script lang=\"ts\">\n  import { Checkbox } from '@lostgradient/cinder/checkbox';\n  import { CheckboxGroup } from '@lostgradient/cinder/checkbox-group';\n</script>\n\n<CheckboxGroup label=\"Notification channels\" disabled>\n  <Checkbox id=\"disabled-fieldset-email\" label=\"Email\" checked />\n  <Checkbox id=\"disabled-fieldset-sms\" label=\"SMS\" />\n</CheckboxGroup>\n"
     }
   ]
 }

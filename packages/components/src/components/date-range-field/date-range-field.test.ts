@@ -137,11 +137,15 @@ describe('DateRangeField', () => {
       expect(getStartInput(container).value).toBe('');
       expect(getEndInput(container).value).toBe('');
 
+      // Both endpoints are malformed at mount, so the normalization effect
+      // fires onchange once with the cleared value before any user input.
+      expect(changes[0]).toEqual({ start: undefined, end: undefined });
+
       await fireEvent.change(getStartInput(container), {
         target: { value: '2026-06-01T09:30' },
       });
 
-      expect(changes[0]).toEqual({
+      expect(changes[1]).toEqual({
         start: '2026-06-01T09:30',
         end: undefined,
       });
@@ -562,11 +566,18 @@ describe('DateRangeField', () => {
         onchange: (v: DateRangeValue) => changes.push(v),
       });
 
+      // The initial value carries second-level precision at minute granularity,
+      // so the normalization effect truncates it and fires onchange once at mount.
+      expect(changes[0]).toEqual({
+        start: '2026-06-01T09:30',
+        end: '2026-06-01T17:45',
+      });
+
       await fireEvent.change(getStartInput(container), {
         target: { value: '2026-06-01T10:15:45' },
       });
 
-      expect(changes[0]).toEqual({
+      expect(changes[1]).toEqual({
         start: '2026-06-01T10:15',
         end: '2026-06-01T17:45',
       });
@@ -575,7 +586,7 @@ describe('DateRangeField', () => {
         target: { value: '2026-06-01T18:30:45' },
       });
 
-      expect(changes[1]).toEqual({
+      expect(changes[2]).toEqual({
         start: '2026-06-01T10:15',
         end: '2026-06-01T18:30',
       });
@@ -935,6 +946,41 @@ describe('DateRangeField', () => {
       const css = readFileSync(new URL('./date-range-field.css', import.meta.url), 'utf8');
       expect(css).toContain('cinder-date-range-field');
       expect(css).toContain('@layer cinder.components');
+    });
+  });
+
+  describe('onchange contract', () => {
+    test('an out-of-range value at mount fires onchange once with the normalized value', () => {
+      const changes: DateRangeValue[] = [];
+      render(DateRangeField, {
+        id: 'drf',
+        value: { start: '2026-02-30', end: '2026-06-01' },
+        onchange: (next: DateRangeValue) => changes.push(next),
+      });
+
+      // '2026-02-30' is invalid (Feb has 28 days in 2026) — normalizeDateValue
+      // rejects it to undefined, and the mount-time normalization effect must
+      // notify onchange about that correction instead of silently rewriting `value`.
+      expect(changes).toStrictEqual([{ start: undefined, end: '2026-06-01' }]);
+    });
+
+    test('changing granularity on an already-mounted instance truncates the value and fires onchange', async () => {
+      const changes: DateRangeValue[] = [];
+      const { rerender } = render(DateRangeField, {
+        id: 'drf',
+        granularity: 'minute',
+        value: { start: '2026-06-01T09:30', end: '2026-06-01T17:45' },
+        onchange: (next: DateRangeValue) => changes.push(next),
+      });
+
+      await rerender({
+        id: 'drf',
+        granularity: 'day',
+        value: { start: '2026-06-01T09:30', end: '2026-06-01T17:45' },
+        onchange: (next: DateRangeValue) => changes.push(next),
+      });
+
+      expect(changes).toStrictEqual([{ start: '2026-06-01', end: '2026-06-01' }]);
     });
   });
 });
