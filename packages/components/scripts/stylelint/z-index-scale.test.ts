@@ -863,12 +863,15 @@ describe('cinder/z-index-scale', () => {
     expect(bannedFallback('var(--outer, random(0, 100, 0))')).toBeUndefined();
   });
 
-  test('short-circuits a fixed-zero stepped random() key before the step-count cap', async () => {
-    // A fixed key of exactly 0 always selects step index 0 (the written
-    // minimum), regardless of how many step slots the range divides into.
+  test('resolves a fixed stepped random() key before the enumeration cap, at any key value', async () => {
+    // A fixed key always resolves to exactly one step index regardless of
+    // how many slots the range divides into -- computing that single value
+    // is O(1), so it isn't subject to the enumeration cap (which exists
+    // only to bound building an array of every slot for a non-fixed key).
     const { bannedFallback } = await import(fallbackAnalysisPath);
 
     expect(bannedFallback('var(--outer, random(fixed 0, 0, 10000, 0.4))')).toBeUndefined();
+    expect(bannedFallback('var(--outer, random(fixed .5, 0, 10000, 0.4))')).toBeUndefined();
   });
 
   test('does not fold a positive fractional random() step that rounds down to zero', async () => {

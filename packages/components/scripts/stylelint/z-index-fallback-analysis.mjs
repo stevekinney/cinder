@@ -4880,11 +4880,6 @@ function randomGroupOutputOptions(frame, value, group, budget, parenthesisPairs)
   // complex expression, or a rounded value that might be masking a small
   // positive one), use that same conservative continuous treatment.
   if (preciseStepValue === undefined || preciseStepValue <= 0) return continuousRangeResult();
-  // A fixed key of exactly 0 always selects step index 0 (the written
-  // minimum), regardless of how many step slots the range divides into --
-  // short-circuit before the step-count cap below, which exists to bound
-  // enumerating every slot, not to bound this single, already-known one.
-  if (fixedBaseValue === 0) return { continuous: false, values: [minimumExpression] };
 
   // preciseStaticNumberWithUnit() strips a unit rather than converting it,
   // so the precise magnitudes below are only trustworthy when min, max, and
@@ -4906,8 +4901,7 @@ function randomGroupOutputOptions(frame, value, group, budget, parenthesisPairs)
   const naturalStepCount = Math.floor(
     (preciseMaximumValue - preciseMinimumValue) / effectiveStepValue,
   );
-  if (!Number.isSafeInteger(naturalStepCount) || naturalStepCount > 128)
-    return fallbackResolutionTooComplex;
+  if (!Number.isSafeInteger(naturalStepCount)) return fallbackResolutionTooComplex;
   // CSS Values 5's random-evaluation algorithm: epsilon is step / 1000; N is
   // the largest integer with min + N * step <= max (naturalStepCount above),
   // *unless* N's value isn't within epsilon of max but N + 1's would be, in
@@ -4924,19 +4918,24 @@ function randomGroupOutputOptions(frame, value, group, budget, parenthesisPairs)
     !naturalStepIsWithinEpsilon && nextStepIsWithinEpsilon
       ? naturalStepCount + 1
       : naturalStepCount;
-  if (!Number.isSafeInteger(stepCount) || stepCount > 128) return fallbackResolutionTooComplex;
+  if (!Number.isSafeInteger(stepCount)) return fallbackResolutionTooComplex;
   const lastStepSnapsToMaximum = Math.abs(preciseMaximumValue - valueAtStep(stepCount)) <= epsilon;
   const stepExpressionAt = (stepIndex) => {
     if (stepIndex === 0) return minimumExpression;
     if (stepIndex === stepCount && lastStepSnapsToMaximum) return maximumExpression;
     return `calc((${minimumExpression}) + (${stepExpression}) * ${stepIndex})`;
   };
+  // A fixed key resolves to exactly one step index regardless of how many
+  // slots the range divides into -- computing (and stringifying) that one
+  // value is O(1), so it isn't subject to the enumeration cap below, which
+  // exists only to bound building an array of every slot.
   if (fixedBaseValue !== undefined) {
     const stepIndex = Math.floor(fixedBaseValue * (stepCount + 1));
     const expression = stepExpressionAt(stepIndex);
     if (!consumeResolutionWork(budget, expression.length)) return fallbackResolutionTooComplex;
     return { continuous: false, values: [expression] };
   }
+  if (stepCount > 128) return fallbackResolutionTooComplex;
   const values = [];
   for (let stepIndex = 0; stepIndex <= stepCount; stepIndex += 1) {
     const expression = stepExpressionAt(stepIndex);
