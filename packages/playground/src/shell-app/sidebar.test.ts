@@ -149,12 +149,25 @@ describe('Sidebar', () => {
     expect(container.querySelector('a[href="/page/button"]')).not.toBeNull();
   });
 
-  test('keeps compose-only leaves out of sidebar navigation', () => {
+  test('nests a compose-only leaf under its family group now that compound-families.ts registers it', () => {
+    // Previously `accordion` had no registered children in
+    // `COMPOUND_COMPONENT_FAMILIES` (an incompleteness `compound-families.ts`'s
+    // registry-completeness test now forbids), so this assertion used to read
+    // the other way — `accordion-item` never appeared because nothing was
+    // registered under `accordion` to render. Now that the registry is
+    // complete, `accordion` behaves exactly like the pre-existing `chat`
+    // family case above: its real child renders nested inside the group.
     const { container } = render(Sidebar, {
       props: { components: ['accordion'], currentComponent: 'accordion', onSelect: () => {} },
     });
-    expect(container.querySelector('a[href="/page/accordion"]')).not.toBeNull();
-    expect(container.querySelector('a[href="/page/accordion-item"]')).toBeNull();
+
+    const groupToggle = container.querySelector<HTMLButtonElement>(
+      'nav[aria-label="Components"] button[aria-expanded]',
+    );
+    expect(groupToggle?.textContent).toContain('Accordion');
+    const group = groupToggle?.parentElement?.parentElement;
+    expect(group?.querySelector('a[href="/page/accordion"]')).not.toBeNull();
+    expect(group?.querySelector('a[href="/page/accordion-item"]')).not.toBeNull();
   });
 
   test('renders a family when only a child matches the filter', async () => {

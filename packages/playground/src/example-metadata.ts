@@ -26,7 +26,7 @@ export type ExampleMetadata = {
 // backreference `\k<quote>` enforces a same-quote close.
 const STRING_PATTERN = /(?<quote>['"`])(?<body>(?:[^\\]|\\.)*?)\k<quote>/.source;
 
-const TITLE_PATTERN = new RegExp(`export\\s+const\\s+title\\s*=\\s*${STRING_PATTERN}`);
+export const TITLE_PATTERN = new RegExp(`export\\s+const\\s+title\\s*=\\s*${STRING_PATTERN}`);
 const DESCRIPTION_PATTERN = new RegExp(`export\\s+const\\s+description\\s*=\\s*${STRING_PATTERN}`);
 const FEATURED_PATTERN = /export\s+const\s+featured\s*=\s*true\s*;?/;
 
