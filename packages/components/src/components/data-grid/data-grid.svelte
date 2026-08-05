@@ -892,7 +892,7 @@
   aria-label={resolvedAriaLabel}
   aria-labelledby={resolvedAriaLabelledBy}
   aria-activedescendant={activeCellId}
-  aria-multiselectable={selectionMode === 'multiple' ? true : undefined}
+  aria-multiselectable="true"
   tabindex="0"
   onkeydown={handleKeydown}
   data-cinder-density={density}

@@ -82,43 +82,26 @@ describe('DataGrid ARIA', () => {
     expect(grid?.getAttribute('aria-colcount')).toBe(String(columns.length));
   });
 
-  test("omits aria-multiselectable when selectionMode is 'none'", () => {
-    const { container } = render(IssueDataGrid, {
-      rows,
-      columns,
-      getRowId: getIssueId,
-      'aria-label': 'Issues',
+  // `selectionMode` only governs row selection. Keyboard and pointer range
+  // selection across gridcells stays available regardless of that prop (see
+  // `selectionMode`'s doc comment on `DataGridProps`), so aria-multiselectable
+  // must stay unconditionally "true" instead of tracking `selectionMode`.
+  for (const selectionMode of ['none', 'single', 'multiple'] as const) {
+    test(`sets aria-multiselectable regardless of selectionMode ('${selectionMode}')`, () => {
+      const { container } = render(IssueDataGrid, {
+        rows,
+        columns,
+        getRowId: getIssueId,
+        selectionMode,
+        'aria-label': 'Issues',
+      });
+
+      expect(container.querySelector('[role="grid"]')).toHaveAttribute(
+        'aria-multiselectable',
+        'true',
+      );
     });
-
-    expect(container.querySelector('[role="grid"]')).not.toHaveAttribute('aria-multiselectable');
-  });
-
-  test("omits aria-multiselectable when selectionMode is 'single'", () => {
-    const { container } = render(IssueDataGrid, {
-      rows,
-      columns,
-      getRowId: getIssueId,
-      selectionMode: 'single',
-      'aria-label': 'Issues',
-    });
-
-    expect(container.querySelector('[role="grid"]')).not.toHaveAttribute('aria-multiselectable');
-  });
-
-  test("sets aria-multiselectable when selectionMode is 'multiple'", () => {
-    const { container } = render(IssueDataGrid, {
-      rows,
-      columns,
-      getRowId: getIssueId,
-      selectionMode: 'multiple',
-      'aria-label': 'Issues',
-    });
-
-    expect(container.querySelector('[role="grid"]')).toHaveAttribute(
-      'aria-multiselectable',
-      'true',
-    );
-  });
+  }
 
   test('assigns one-based row and column indexes', () => {
     const { container } = render(IssueDataGrid, {
