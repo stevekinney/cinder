@@ -175,14 +175,17 @@ test('a real drag-select that autoscrolls the viewport does not dismiss the popo
   }
 
   const scrollYBeforeHold = await page.evaluate(() => window.scrollY);
-  // Hold at the viewport edge long enough for native autoscroll to engage
-  // and fire scroll events — this is the window in which the bug manifests.
-  await page.waitForTimeout(700);
+  // Wait deterministically for native autoscroll to actually engage while
+  // the pointer is held, instead of a fixed sleep — a fixed delay is a
+  // common source of flake on slower CI runners (either not long enough for
+  // autoscroll to kick in, or needlessly long once it has). Failing this
+  // wait (rather than a silently-vacuous pass) means the test isn't
+  // exercising the real mechanism at all.
+  await page.waitForFunction((before) => window.scrollY > before, scrollYBeforeHold, {
+    timeout: 5_000,
+  });
   const scrollYAfterHold = await page.evaluate(() => window.scrollY);
 
-  // Sanity-check the repro itself: if the browser didn't actually autoscroll
-  // while the pointer was held, this test isn't exercising the real
-  // mechanism at all (a silently-vacuous pass), so fail loudly instead.
   expect(
     scrollYAfterHold,
     'expected the browser to autoscroll while the drag held at the viewport edge',
