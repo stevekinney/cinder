@@ -765,6 +765,11 @@ describe('resolveTextDirection', () => {
   });
 
   test('does not activate the implicit root for an unsupported scope-pseudo selector', () => {
+    // `:scope > .foo` IS now resolved (see the relative-`:scope`-root tests
+    // below) — this stays 'rtl' because nothing at the top level is a
+    // direct child of the implicit root matching `.foo`, and `.theme`
+    // doesn't match anywhere either. It's a genuine non-match, not an
+    // unsupported-selector short-circuit.
     const target = document.createElement('div');
     target.className = 'shell';
     document.body.append(target);
@@ -778,6 +783,30 @@ describe('resolveTextDirection', () => {
         resolveTextDirection(target, 'rtl'),
       ),
     ).toBe('rtl');
+  });
+
+  test('preserves the exact :scope alternative in an all-:scope root list when the other alternative cannot resolve', () => {
+    // `@scope (:scope, :scope > .theme)` — the relative `:scope > .theme`
+    // alternative doesn't structurally resolve to anything here (nothing
+    // named `.theme` is a direct child of the implicit scope root), but the
+    // supported exact `:scope` alternative must still independently
+    // activate the scope. Previously, ANY non-exact `:scope`-containing
+    // root selector in an all-`:scope` list (no ordinary selector to fall
+    // back on) caused the whole prelude to fail closed, losing the exact
+    // alternative too.
+    const target = document.createElement('div');
+    target.className = 'shell';
+    document.body.append(target);
+    const scopeRule = {
+      type: 0,
+      cssText: '@scope (:scope, :scope > .theme) {}',
+      cssRules: [createStyleRule({ selectorText: '.shell', direction: 'ltr' })],
+    } as unknown as CSSRule;
+    expect(
+      withDocumentStyleSheets([{ cssRules: [scopeRule] }], () =>
+        resolveTextDirection(target, 'rtl'),
+      ),
+    ).toBe('ltr');
   });
 
   test('uses the document root for exact :scope scopes in document stylesheets', () => {
@@ -1201,6 +1230,39 @@ describe('resolveTextDirection', () => {
     }
   });
 
+  test('resolves outside-ancestor context in a :scope limit selector', () => {
+    // Limit selectors are evaluated through the same `matchesScopedSelector`
+    // as rule selectors, so the outside-ancestor-context fix applies here
+    // too: `to (main :scope > .stop)` requires the scope root to actually
+    // have a `main` ancestor before the `.stop` boundary can be recognized.
+    // Losing that outside context (as the clone-only fallback previously
+    // did) would make the limit unrecognizable and leave the scope
+    // active past its real boundary — the unsafe direction for a limit,
+    // since a limit that never triggers over-applies the scope's rules
+    // rather than under-applying them.
+    const main = document.createElement('main');
+    const root = document.createElement('section');
+    root.className = 'theme';
+    const stop = document.createElement('div');
+    stop.className = 'stop';
+    const target = document.createElement('div');
+    target.className = 'shell';
+    stop.append(target);
+    root.append(stop);
+    main.append(root);
+    document.body.append(main);
+    const scopeRule = {
+      type: 0,
+      cssText: '@scope (.theme) to (main :scope > .stop) {}',
+      cssRules: [createStyleRule({ selectorText: '.shell', direction: 'ltr' })],
+    } as unknown as CSSRule;
+    expect(
+      withDocumentStyleSheets([{ cssRules: [scopeRule] }], () =>
+        resolveTextDirection(target, 'rtl'),
+      ),
+    ).toBe('rtl');
+  });
+
   test('requires nested scopes to intersect every enclosing scope', () => {
     const originalWindowGetComputedStyle = window.getComputedStyle;
     const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
@@ -1566,6 +1628,30 @@ describe('resolveTextDirection', () => {
     }
   });
 
+  test('normalizes each item of a rule selector list independently for leading combinators', () => {
+    // `.unused, > .shell` — only the SECOND alternative needs its leading
+    // combinator rewritten to `:scope > .shell`; normalization must operate
+    // per comma-separated item, not gate on whether the whole list starts
+    // with a combinator (the list as a whole starts with `.unused`, so a
+    // whole-string check would leave the second alternative untouched).
+    const root = document.createElement('section');
+    root.className = 'theme';
+    const child = document.createElement('div');
+    child.className = 'shell';
+    root.append(child);
+    document.body.append(root);
+    const scopeRule = {
+      type: 0,
+      cssText: '@scope (.theme) {}',
+      cssRules: [createStyleRule({ selectorText: '.unused, > .shell', direction: 'ltr' })],
+    } as unknown as CSSRule;
+    expect(
+      withDocumentStyleSheets([{ cssRules: [scopeRule] }], () =>
+        resolveTextDirection(child, 'rtl'),
+      ),
+    ).toBe('ltr');
+  });
+
   test('does not create a limit element for a limit that references :scope', () => {
     const originalWindowGetComputedStyle = window.getComputedStyle;
     const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
@@ -1673,6 +1759,275 @@ describe('resolveTextDirection', () => {
       window.getComputedStyle = originalWindowGetComputedStyle;
       globalThis.getComputedStyle = originalGlobalGetComputedStyle;
     }
+  });
+
+  test('binds a nested exact :scope root to an enclosing ShadowRoot scope root', () => {
+    // Same shape as the previous test, but the ENCLOSING scope's root is
+    // itself a `ShadowRoot` (the implicit root of a shadow-owned
+    // stylesheet — see 'uses the enclosing shadow root as the implicit
+    // scope root' above), not an `Element`. `findRelativeScopeRootMatches`
+    // used to walk only `parentElement` ancestors, so a `ShadowRoot`
+    // candidate was silently unreachable and the inner `@scope (:scope)`
+    // never activated.
+    const originalWindowGetComputedStyle = window.getComputedStyle;
+    const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
+    const getComputedStyleOverride = ((target: Element) => {
+      const style = originalWindowGetComputedStyle(target);
+      Object.defineProperty(style, 'direction', { value: 'ltr', configurable: true });
+      return style;
+    }) as typeof window.getComputedStyle;
+    window.getComputedStyle = getComputedStyleOverride;
+    globalThis.getComputedStyle = getComputedStyleOverride;
+    const host = document.createElement('div');
+    const shadowRoot = host.attachShadow({ mode: 'open' });
+    const styleElement = document.createElement('style');
+    const target = document.createElement('div');
+    target.className = 'shell';
+    shadowRoot.append(styleElement, target);
+    document.body.append(host);
+    const innerScope = {
+      type: 0,
+      cssText: '@scope (:scope) {}',
+      cssRules: [createStyleRule({ selectorText: '.shell', direction: 'ltr' })],
+    } as unknown as CSSRule;
+    const outerScope = {
+      type: 0,
+      cssText: '@scope {}',
+      cssRules: [innerScope],
+    } as unknown as CSSRule;
+    try {
+      expect(
+        withDocumentStyleSheets([{ cssRules: [outerScope], ownerNode: styleElement }], () =>
+          resolveTextDirection(target, 'rtl'),
+        ),
+      ).toBe('ltr');
+    } finally {
+      window.getComputedStyle = originalWindowGetComputedStyle;
+      globalThis.getComputedStyle = originalGlobalGetComputedStyle;
+    }
+  });
+
+  test('binds a nested exact :scope root to an enclosing ShadowRoot root for an adopted stylesheet', () => {
+    // Same bug as the previous test, but for an ownerless ADOPTED
+    // stylesheet — `getImplicitScopeRoot` reaches the `ShadowRoot` via the
+    // sheet's shadow-root association (`fallbackRoot`) instead of walking
+    // up from an `ownerNode`, which is likewise a `ShadowRoot` the
+    // enclosing scope's root must resolve to.
+    const originalWindowGetComputedStyle = window.getComputedStyle;
+    const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
+    const getComputedStyleOverride = ((target: Element) => {
+      const style = originalWindowGetComputedStyle(target);
+      Object.defineProperty(style, 'direction', { value: 'ltr', configurable: true });
+      return style;
+    }) as typeof window.getComputedStyle;
+    window.getComputedStyle = getComputedStyleOverride;
+    globalThis.getComputedStyle = getComputedStyleOverride;
+    try {
+      const host = document.createElement('div');
+      const shadowRoot = host.attachShadow({ mode: 'open' });
+      const target = document.createElement('div');
+      target.className = 'shell';
+      shadowRoot.append(target);
+      document.body.append(host);
+      const innerScope = {
+        type: 0,
+        cssText: '@scope (:scope) {}',
+        cssRules: [createStyleRule({ selectorText: '.shell', direction: 'ltr' })],
+      } as unknown as CSSRule;
+      const outerScope = {
+        type: 0,
+        cssText: '@scope {}',
+        cssRules: [innerScope],
+      };
+      Object.defineProperty(shadowRoot, 'adoptedStyleSheets', {
+        configurable: true,
+        value: [{ cssRules: [outerScope] }],
+      });
+      expect(resolveTextDirection(target, 'rtl')).toBe('ltr');
+    } finally {
+      window.getComputedStyle = originalWindowGetComputedStyle;
+      globalThis.getComputedStyle = originalGlobalGetComputedStyle;
+    }
+  });
+
+  test('binds a nested relative :scope root selector to the enclosing scope root', () => {
+    // `@scope (.parent) { @scope (:scope > .child) { .shell { … } } }` — a
+    // relative (non-exact) `:scope` scope-start selector attached to a
+    // combinator must resolve by testing candidate ancestors of the target
+    // against the enclosing scope's root(s), not fail closed just because
+    // it isn't the bare `:scope` token.
+    const parent = document.createElement('section');
+    parent.className = 'parent';
+    const child = document.createElement('div');
+    child.className = 'child';
+    const target = document.createElement('div');
+    target.className = 'shell';
+    child.append(target);
+    parent.append(child);
+    document.body.append(parent);
+    const innerScope = {
+      type: 0,
+      cssText: '@scope (:scope > .child) {}',
+      cssRules: [createStyleRule({ selectorText: '.shell', direction: 'ltr' })],
+    } as unknown as CSSRule;
+    const outerScope = {
+      type: 0,
+      cssText: '@scope (.parent) {}',
+      cssRules: [innerScope],
+    } as unknown as CSSRule;
+    expect(
+      withDocumentStyleSheets([{ cssRules: [outerScope] }], () =>
+        resolveTextDirection(target, 'rtl'),
+      ),
+    ).toBe('ltr');
+  });
+
+  test('does not promote a coincidentally-shaped descendant as a relative :scope root match', () => {
+    // Regression guard for the resolution mechanism itself: the enclosing
+    // scope's root (`.parent`) has no direct child matching `.child` — its
+    // real direct child is a plain wrapper `<div>`. A DIFFERENT, deeper
+    // descendant happens to be shaped identically (same tag, same
+    // first-child position relative to its own real parent) and DOES have a
+    // direct child named `.child`. Root resolution must use the real
+    // ancestor/DOM relationship, not a structural coincidence, or this
+    // would incorrectly promote the deeper element's child as a scope root.
+    const parent = document.createElement('section');
+    parent.className = 'parent';
+    const wrapperDiv = document.createElement('div');
+    const decoy = document.createElement('section');
+    const child = document.createElement('div');
+    child.className = 'child';
+    const target = document.createElement('div');
+    target.className = 'shell';
+    child.append(target);
+    decoy.append(child);
+    wrapperDiv.append(decoy);
+    parent.append(wrapperDiv);
+    document.body.append(parent);
+    const innerScope = {
+      type: 0,
+      cssText: '@scope (:scope > .child) {}',
+      cssRules: [createStyleRule({ selectorText: '.shell', direction: 'ltr' })],
+    } as unknown as CSSRule;
+    const outerScope = {
+      type: 0,
+      cssText: '@scope (.parent) {}',
+      cssRules: [innerScope],
+    } as unknown as CSSRule;
+    expect(
+      withDocumentStyleSheets([{ cssRules: [outerScope] }], () =>
+        resolveTextDirection(target, 'rtl'),
+      ),
+    ).toBe('rtl');
+  });
+
+  test('resolves outside-ancestor context for a scoped rule selector', () => {
+    // `@scope (.theme) { main :scope .shell { … } }` — `main` describes
+    // context OUTSIDE the scope root, which the clone-based matcher (which
+    // only ever clones the root's own subtree) can never see on its own.
+    // The outside portion must be verified against the scope root's real,
+    // unmutated, uncloned ancestor chain instead.
+    const main = document.createElement('main');
+    const theme = document.createElement('section');
+    theme.className = 'theme';
+    const target = document.createElement('div');
+    target.className = 'shell';
+    theme.append(target);
+    main.append(theme);
+    document.body.append(main);
+    const scopeRule = {
+      type: 0,
+      cssText: '@scope (.theme) {}',
+      cssRules: [createStyleRule({ selectorText: 'main :scope .shell', direction: 'ltr' })],
+    } as unknown as CSSRule;
+    expect(
+      withDocumentStyleSheets([{ cssRules: [scopeRule] }], () =>
+        resolveTextDirection(target, 'rtl'),
+      ),
+    ).toBe('ltr');
+  });
+
+  test('does not satisfy outside-ancestor context via a coincidentally-shaped descendant', () => {
+    // Regression guard for the outside-context check itself: the scope root
+    // (`.theme`) has NO `main` ancestor at all. A deeper descendant happens
+    // to share the root's exact tag+position shape AND does have a `main`
+    // ancestor (inserted between the root and that descendant). The
+    // outside-ancestor check must verify the ROOT's own real ancestor
+    // chain specifically, not any coincidentally-shaped descendant's.
+    const outerDiv = document.createElement('div');
+    const theme = document.createElement('section');
+    theme.className = 'theme';
+    const main = document.createElement('main');
+    const decoy = document.createElement('section');
+    const target = document.createElement('div');
+    target.className = 'shell';
+    decoy.append(target);
+    main.append(decoy);
+    theme.append(main);
+    outerDiv.append(theme);
+    document.body.append(outerDiv);
+    const scopeRule = {
+      type: 0,
+      cssText: '@scope (.theme) {}',
+      cssRules: [createStyleRule({ selectorText: 'main :scope .shell', direction: 'ltr' })],
+    } as unknown as CSSRule;
+    expect(
+      withDocumentStyleSheets([{ cssRules: [scopeRule] }], () =>
+        resolveTextDirection(target, 'rtl'),
+      ),
+    ).toBe('rtl');
+  });
+
+  test('evaluates each selector-list alternative independently around outside-ancestor context', () => {
+    // `.shell, main :scope .other` — the SECOND alternative's `main`
+    // outside-ancestor requirement must not gate the FIRST, unrelated
+    // alternative. `.shell` matches the target directly regardless of
+    // whether `main` is an ancestor of the scope root (it isn't, here).
+    const theme = document.createElement('section');
+    theme.className = 'theme';
+    const target = document.createElement('div');
+    target.className = 'shell';
+    theme.append(target);
+    document.body.append(theme);
+    const scopeRule = {
+      type: 0,
+      cssText: '@scope (.theme) {}',
+      cssRules: [createStyleRule({ selectorText: '.shell, main :scope .other', direction: 'ltr' })],
+    } as unknown as CSSRule;
+    expect(
+      withDocumentStyleSheets([{ cssRules: [scopeRule] }], () =>
+        resolveTextDirection(target, 'rtl'),
+      ),
+    ).toBe('ltr');
+  });
+
+  test('does not let a :scope nested inside :is() misread the selector as outside-ancestor context', () => {
+    // `:is(main :scope .shell, .fallback)` — the `:scope` inside `:is()`
+    // must not be treated as a TOP-LEVEL token: doing so slices `:is(main`
+    // off as literal "outside-ancestor" text, which can never resolve
+    // (`:is(main` isn't a real selector), losing the ordinary `.fallback`
+    // alternative along with it.
+    const theme = document.createElement('section');
+    theme.className = 'theme';
+    const target = document.createElement('div');
+    target.className = 'fallback';
+    theme.append(target);
+    document.body.append(theme);
+    const scopeRule = {
+      type: 0,
+      cssText: '@scope (.theme) {}',
+      cssRules: [
+        createStyleRule({
+          selectorText: ':is(main :scope .shell, .fallback)',
+          direction: 'ltr',
+        }),
+      ],
+    } as unknown as CSSRule;
+    expect(
+      withDocumentStyleSheets([{ cssRules: [scopeRule] }], () =>
+        resolveTextDirection(target, 'rtl'),
+      ),
+    ).toBe('ltr');
   });
 
   test('resolves a native CSS nesting parent selector before matching direction rules', () => {
@@ -2746,6 +3101,206 @@ describe('resolveTextDirection', () => {
       type: 0,
       conditionText: 'sidebar',
       containerName: 'sidebar',
+      containerQuery: '',
+      cssRules: [nestedRule],
+    } as unknown as CSSRule;
+    try {
+      expect(
+        withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
+          resolveTextDirection(element, 'rtl'),
+        ),
+      ).toBe('rtl');
+    } finally {
+      container.remove();
+    }
+  });
+
+  test('evaluates a comma-separated @container condition list, matching a later entry when an earlier named entry misses', () => {
+    // `CSSContainerRule.conditions` exposes each comma-separated entry as an
+    // independent `{ name, query }` pair, blanking the legacy singular
+    // `containerName`/`containerQuery` accessors to `''` (verified against
+    // real Chromium). No ancestor is named "sidebar", so the first entry
+    // can never match; the second (unnamed) entry must still be evaluated
+    // independently against the nearest queryable container and match on
+    // its own.
+    const container = document.createElement('section');
+    container.style.setProperty('container-type', 'inline-size');
+    Object.defineProperty(container, 'offsetWidth', { value: 700, configurable: true });
+    const element = document.createElement('div');
+    element.className = 'condition-list-second-match-ltr';
+    container.appendChild(element);
+    document.body.appendChild(container);
+    const nestedRule = createStyleRule({
+      selectorText: '.condition-list-second-match-ltr',
+      direction: 'ltr',
+    });
+    const outerRule = {
+      cssText:
+        '@container sidebar (min-width: 20rem), (min-width: 40rem) { .condition-list-second-match-ltr { direction: ltr; } }',
+      type: 0,
+      conditionText: 'sidebar (min-width: 20rem), (min-width: 40rem)',
+      containerName: '',
+      containerQuery: '',
+      conditions: [
+        { name: 'sidebar', query: '(min-width: 20rem)' },
+        { name: '', query: '(min-width: 40rem)' },
+      ],
+      cssRules: [nestedRule],
+    } as unknown as CSSRule;
+    try {
+      expect(
+        withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
+          resolveTextDirection(element, 'rtl'),
+        ),
+      ).toBe('ltr');
+    } finally {
+      container.remove();
+    }
+  });
+
+  test('evaluates a named first entry independently of an unmatched unnamed second entry in a condition list', () => {
+    // The inverse mix: the FIRST (named) entry matches its own
+    // independently-resolved named ancestor while the SECOND (unnamed)
+    // entry, resolved against the nearest queryable container regardless of
+    // name, does not — proving each entry gets its own ancestor resolution
+    // rather than sharing one across the whole list.
+    const sidebar = document.createElement('section');
+    sidebar.style.setProperty('container-type', 'inline-size');
+    sidebar.style.setProperty('container-name', 'sidebar');
+    Object.defineProperty(sidebar, 'offsetWidth', { value: 700, configurable: true });
+    const wrapper = document.createElement('div');
+    wrapper.style.setProperty('container-type', 'inline-size');
+    Object.defineProperty(wrapper, 'offsetWidth', { value: 100, configurable: true });
+    const element = document.createElement('div');
+    element.className = 'condition-list-first-match-ltr';
+    wrapper.appendChild(element);
+    sidebar.appendChild(wrapper);
+    document.body.appendChild(sidebar);
+    const nestedRule = createStyleRule({
+      selectorText: '.condition-list-first-match-ltr',
+      direction: 'ltr',
+    });
+    const outerRule = {
+      cssText:
+        '@container sidebar (min-width: 20rem), (min-width: 40rem) { .condition-list-first-match-ltr { direction: ltr; } }',
+      type: 0,
+      conditionText: 'sidebar (min-width: 20rem), (min-width: 40rem)',
+      containerName: '',
+      containerQuery: '',
+      conditions: [
+        { name: 'sidebar', query: '(min-width: 20rem)' },
+        { name: '', query: '(min-width: 40rem)' },
+      ],
+      cssRules: [nestedRule],
+    } as unknown as CSSRule;
+    try {
+      expect(
+        withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
+          resolveTextDirection(element, 'rtl'),
+        ),
+      ).toBe('ltr');
+    } finally {
+      sidebar.remove();
+    }
+  });
+
+  test('fails closed when no entry in a comma-separated @container condition list matches', () => {
+    const container = document.createElement('section');
+    container.style.setProperty('container-type', 'inline-size');
+    Object.defineProperty(container, 'offsetWidth', { value: 100, configurable: true });
+    const element = document.createElement('div');
+    element.className = 'condition-list-no-match-ltr';
+    container.appendChild(element);
+    document.body.appendChild(container);
+    const nestedRule = createStyleRule({
+      selectorText: '.condition-list-no-match-ltr',
+      direction: 'ltr',
+    });
+    const outerRule = {
+      cssText:
+        '@container (min-width: 20rem), (min-width: 40rem) { .condition-list-no-match-ltr { direction: ltr; } }',
+      type: 0,
+      conditionText: '(min-width: 20rem), (min-width: 40rem)',
+      containerName: '',
+      containerQuery: '',
+      conditions: [
+        { name: '', query: '(min-width: 20rem)' },
+        { name: '', query: '(min-width: 40rem)' },
+      ],
+      cssRules: [nestedRule],
+    } as unknown as CSSRule;
+    try {
+      expect(
+        withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
+          resolveTextDirection(element, 'rtl'),
+        ),
+      ).toBe('rtl');
+    } finally {
+      container.remove();
+    }
+  });
+
+  test('fails closed when every entry in a comma-separated @container condition list is unparseable', () => {
+    // Distinct from "no entry matches": these entries use size features and
+    // units this module's grammar doesn't implement at all
+    // (`hasUnsupportedContainerSizeQuery`), not ones that are merely
+    // structurally false at the container's current size.
+    const container = document.createElement('section');
+    container.style.setProperty('container-type', 'inline-size');
+    Object.defineProperty(container, 'offsetWidth', { value: 700, configurable: true });
+    const element = document.createElement('div');
+    element.className = 'condition-list-unparseable-ltr';
+    container.appendChild(element);
+    document.body.appendChild(container);
+    const nestedRule = createStyleRule({
+      selectorText: '.condition-list-unparseable-ltr',
+      direction: 'ltr',
+    });
+    const outerRule = {
+      cssText:
+        '@container (min-height: 40rem), (min-width: 30em) { .condition-list-unparseable-ltr { direction: ltr; } }',
+      type: 0,
+      conditionText: '(min-height: 40rem), (min-width: 30em)',
+      containerName: '',
+      containerQuery: '',
+      conditions: [
+        { name: '', query: '(min-height: 40rem)' },
+        { name: '', query: '(min-width: 30em)' },
+      ],
+      cssRules: [nestedRule],
+    } as unknown as CSSRule;
+    try {
+      expect(
+        withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
+          resolveTextDirection(element, 'rtl'),
+        ),
+      ).toBe('rtl');
+    } finally {
+      container.remove();
+    }
+  });
+
+  test('fails closed for a comma-separated @container condition list when .conditions is absent', () => {
+    // Environments lacking `CSSContainerRule.conditions` keep falling
+    // closed exactly as before this module understood the property at
+    // all — this is an enhancement, not a requirement to polyfill it.
+    const container = document.createElement('section');
+    container.style.setProperty('container-type', 'inline-size');
+    Object.defineProperty(container, 'offsetWidth', { value: 700, configurable: true });
+    const element = document.createElement('div');
+    element.className = 'condition-list-no-conditions-property-ltr';
+    container.appendChild(element);
+    document.body.appendChild(container);
+    const nestedRule = createStyleRule({
+      selectorText: '.condition-list-no-conditions-property-ltr',
+      direction: 'ltr',
+    });
+    const outerRule = {
+      cssText:
+        '@container (min-width: 20rem), (min-width: 40rem) { .condition-list-no-conditions-property-ltr { direction: ltr; } }',
+      type: 0,
+      conditionText: '(min-width: 20rem), (min-width: 40rem)',
+      containerName: '',
       containerQuery: '',
       cssRules: [nestedRule],
     } as unknown as CSSRule;
