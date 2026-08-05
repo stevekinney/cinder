@@ -263,6 +263,34 @@
    */
   let activeView = $state<ComponentPageView>('documentation');
 
+  /**
+   * Arrow/Home/End navigation for the view switcher.
+   *
+   * `role="tablist"` is a promise about keyboard behavior, not just a label: a
+   * screen-reader user who lands on the strip expects the arrow keys to move
+   * between tabs. The roving `tabindex` alone only gets them INTO the strip.
+   */
+  function onViewTabKeydown(event: KeyboardEvent): void {
+    const order: ComponentPageView[] = ['documentation', 'playground'];
+    const current = order.indexOf(activeView);
+    let next: ComponentPageView | undefined;
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+      next = order[(current + 1) % order.length];
+    } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+      next = order[(current - 1 + order.length) % order.length];
+    } else if (event.key === 'Home') {
+      next = order[0];
+    } else if (event.key === 'End') {
+      next = order[order.length - 1];
+    }
+    if (next === undefined) return;
+    event.preventDefault();
+    selectView(next);
+    // Selection follows focus, so move focus with it — otherwise the newly
+    // selected tab has `tabindex="0"` while focus sits on a `-1` sibling.
+    document.getElementById(`view-tab-${next}`)?.focus();
+  }
+
   function selectView(view: ComponentPageView): void {
     activeView = view;
     if (typeof window === 'undefined') return;
@@ -997,9 +1025,12 @@
               role="tab"
               id="view-tab-documentation"
               aria-selected={activeView === 'documentation'}
-              aria-controls="view-panel-documentation"
+              {...activeView === 'documentation'
+                ? { 'aria-controls': 'view-panel-documentation' }
+                : {}}
               tabindex={activeView === 'documentation' ? 0 : -1}
               onclick={() => selectView('documentation')}
+              onkeydown={onViewTabKeydown}
             >
               Documentation
             </button>
@@ -1009,9 +1040,10 @@
               role="tab"
               id="view-tab-playground"
               aria-selected={activeView === 'playground'}
-              aria-controls="view-panel-playground"
+              {...activeView === 'playground' ? { 'aria-controls': 'view-panel-playground' } : {}}
               tabindex={activeView === 'playground' ? 0 : -1}
               onclick={() => selectView('playground')}
+              onkeydown={onViewTabKeydown}
             >
               Playground
             </button>

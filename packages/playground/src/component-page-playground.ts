@@ -108,6 +108,10 @@ function synthesizeValue(
       return false;
     case 'enum':
       return shape.options[index % shape.options.length] ?? shape.options[0] ?? '';
+    case 'array':
+      // Two elements for a NESTED array — enough to read as a list without
+      // making the outer literal unwieldy.
+      return [0, 1].map((nested) => synthesizeValue(shape.element, nested, propName));
     default:
       // Opaque — never faked. Callers drop these fields entirely.
       return undefined;
@@ -199,6 +203,11 @@ const EXAMPLE_ONLY_PLAYGROUND_COMPONENTS = new Set([
   'drawer',
   'sheet',
   'popover',
+  // Listed defensively. CommandPalette is currently blocked anyway by its
+  // required `items` snippet, so no `open` control is generated today — but it
+  // is a `showModal()` dialog like the four above, so if that snippet ever
+  // becomes synthesizable the blanket-the-page failure would come back silently.
+  'command-palette',
 ]);
 
 /**

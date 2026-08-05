@@ -266,6 +266,8 @@ function isValueOrObjectShape(value: unknown): boolean {
       const options = readProperty(value, 'options');
       return Array.isArray(options) && options.every((option) => typeof option === 'string');
     }
+    case 'array':
+      return isValueOrObjectShape(readProperty(value, 'element'));
     case 'opaque':
       return typeof readProperty(value, 'rawType') === 'string';
     default:

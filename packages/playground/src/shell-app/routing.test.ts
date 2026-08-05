@@ -17,6 +17,7 @@ import {
   readPreviewWidthFromSearch,
   readViewFromSearch,
   searchForView,
+  TOOLBAR_PARAMS,
 } from './routing.ts';
 
 describe('parseComponentFromPath', () => {
@@ -141,17 +142,17 @@ describe('component page view', () => {
   });
 
   it('preserves other toolbar parameters when switching view', () => {
-    const search = new URLSearchParams('width=768&focus=1');
+    const search = new URLSearchParams(`${TOOLBAR_PARAMS.width}=768&focus=1`);
     const playground = searchForView(search, 'playground');
-    expect(playground).toContain('width=768');
+    expect(playground).toContain('w=768');
     expect(playground).toContain('focus=1');
     expect(playground).toContain('view=playground');
   });
 
   it('expresses the default view by dropping the parameter', () => {
     expect(searchForView(new URLSearchParams('view=playground'), 'documentation')).toBe('');
-    expect(searchForView(new URLSearchParams('view=playground&width=375'), 'documentation')).toBe(
-      '?width=375',
+    expect(searchForView(new URLSearchParams('view=playground&w=375'), 'documentation')).toBe(
+      '?w=375',
     );
   });
 });

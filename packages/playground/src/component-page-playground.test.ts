@@ -333,6 +333,47 @@ describe('structural seeds', () => {
     ]);
   });
 
+  test('synthesizes a NESTED array as an array, not as its own internals', () => {
+    // Arrays are objects to the type checker, so a nested `shortcuts: Entry[]`
+    // used to fall through to the object branch and serialize the ARRAY's own
+    // members as if they were data — `shortcuts: { length: 10, '__@unscopables@38': {} }`
+    // reached the copyable snippet for KeyboardShortcuts.
+    const model = buildPlaygroundModel(
+      manifest([
+        {
+          name: 'groups',
+          control: {
+            kind: 'array',
+            rawType: 'Group[]',
+            element: {
+              fields: [
+                { name: 'label', shape: { kind: 'string' } },
+                {
+                  name: 'shortcuts',
+                  shape: {
+                    kind: 'array',
+                    element: {
+                      fields: [{ name: 'action', shape: { kind: 'string' } }],
+                      degenerate: false,
+                    },
+                  },
+                },
+              ],
+              degenerate: false,
+            },
+          },
+          bindable: false,
+          optional: false,
+        },
+      ]),
+    );
+    const seeded = model.seeds[0]?.value as Array<Record<string, unknown>> | undefined;
+    const first = seeded?.[0];
+    expect(Array.isArray(first?.['shortcuts'])).toBe(true);
+    expect(first?.['shortcuts']).toEqual([{ action: 'Action one' }, { action: 'Action two' }]);
+    expect(model.seeds[0]?.source).toContain("shortcuts: [{ action: 'Action one' }");
+  });
+
   test('never invents a member for an index-signature-only record', () => {
     // `MatrixChartDatum = Record<string, string | number>` has no named field,
     // and the component's sibling props name KEYS of the datum — so any datum

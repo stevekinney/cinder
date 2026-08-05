@@ -19,6 +19,13 @@ export type ValueShape =
   | { kind: 'number' }
   | { kind: 'boolean' }
   | { kind: 'enum'; options: string[] }
+  /**
+   * A NESTED array — `KeyboardShortcutGroup.shortcuts`, `…shortcuts[].keys`.
+   * Arrays are objects to the type checker, so without this variant a nested
+   * array fell through to the object branch and synthesized its ARRAY INTERNALS
+   * as a literal: `shortcuts: { length: 10, '__@unscopables@38': {} }`.
+   */
+  | { kind: 'array'; element: ValueShape | ObjectShape }
   | { kind: 'opaque'; rawType: string };
 
 /**

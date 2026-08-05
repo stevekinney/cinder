@@ -61,10 +61,11 @@ describe('CONTEXT_REQUIRED_PARTS', () => {
       const source = await Bun.file(
         join(CINDER_COMPONENT_SOURCE.componentsRoot, part, `${part}.svelte`),
       ).text();
-      // `\bget[A-Z]` matches `getTabsContext(` but not `tryGetTableContext(` —
-      // the optional accessors are exactly the ones spelled `tryGet*`, and the
-      // lowercase `t` denies the word boundary.
-      expect(/\bget[A-Z][A-Za-z]*\s*\(/.test(source)).toBe(true);
+      // Anchored on `Context(` so an unrelated `getBoundingClientRect(` cannot
+      // satisfy the guard — the point is that the part still reads CONTEXT.
+      // `\bget` excludes the optional `tryGet*Context(` accessors: those spell
+      // it `Get`, and the lowercase `t` before it denies the word boundary.
+      expect(/\bget[A-Za-z]*Context\s*\(/.test(source)).toBe(true);
     }
   });
 });

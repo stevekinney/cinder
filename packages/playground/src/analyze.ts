@@ -49,6 +49,17 @@ export type { ComponentManifest, ControlKind, ObjectShape, PropManifest, ValueSh
 function inferControlKindFromTypeNode(
   typeNode: TypeNode | undefined,
   typeText: string,
+  /**
+   * How deep to expand array/object SHAPES. `0` means "describe the type, don't
+   * walk it": the control still reports `kind: 'array'` and its `rawType` (which
+   * is all the props table renders), but the element shape comes back opaque.
+   *
+   * Threaded rather than fixed because the shape has exactly one consumer —
+   * seeding a REQUIRED prop with no default. Expanding it for every optional
+   * array prop in the library tripled a cold manifest build (7.4s -> 26.7s),
+   * paid on every dev-server start, for a value nothing reads.
+   */
+  shapeDepthBudget: number = MAX_SHAPE_DEPTH,
 ): ControlKind {
   if (typeNode === undefined) return { kind: 'unknown', rawType: typeText };
 
@@ -93,7 +104,7 @@ function inferControlKindFromTypeNode(
     // what it holds.
     for (const member of members) {
       if (isNullishTypeNode(member)) continue;
-      const control = inferControlKindFromTypeNode(member, member.getText());
+      const control = inferControlKindFromTypeNode(member, member.getText(), shapeDepthBudget);
       if (control.kind !== 'unknown' && control.kind !== 'snippet') return control;
     }
     return { kind: 'unknown', rawType: typeText };
@@ -104,7 +115,7 @@ function inferControlKindFromTypeNode(
     const operator = typeNode.asKindOrThrow(SyntaxKind.TypeOperator);
     if (operator.getOperator() === SyntaxKind.ReadonlyKeyword) {
       const inner = operator.getTypeNode();
-      return inferControlKindFromTypeNode(inner, inner.getText());
+      return inferControlKindFromTypeNode(inner, inner.getText(), shapeDepthBudget);
     }
   }
 
@@ -112,7 +123,7 @@ function inferControlKindFromTypeNode(
     const element = typeNode.asKindOrThrow(SyntaxKind.ArrayType).getElementTypeNode();
     return {
       kind: 'array',
-      element: shapeFromType(element.getType(), element, 0),
+      element: shapeFromType(element.getType(), element, MAX_SHAPE_DEPTH - shapeDepthBudget),
       rawType: typeText,
     };
   }
@@ -120,7 +131,7 @@ function inferControlKindFromTypeNode(
   if (kind === SyntaxKind.TypeLiteral) {
     return {
       kind: 'object',
-      shape: objectShapeFromType(typeNode.getType(), typeNode, 0),
+      shape: objectShapeFromType(typeNode.getType(), typeNode, MAX_SHAPE_DEPTH - shapeDepthBudget),
       rawType: typeText,
     };
   }
@@ -138,7 +149,7 @@ function inferControlKindFromTypeNode(
       if (argument !== undefined) {
         return {
           kind: 'array',
-          element: shapeFromType(argument.getType(), argument, 0),
+          element: shapeFromType(argument.getType(), argument, MAX_SHAPE_DEPTH - shapeDepthBudget),
           rawType: typeText,
         };
       }
@@ -149,7 +160,11 @@ function inferControlKindFromTypeNode(
     const alias = sf.getTypeAlias(name);
     if (alias !== undefined) {
       const resolvedNode = alias.getTypeNode();
-      return inferControlKindFromTypeNode(resolvedNode, resolvedNode?.getText() ?? typeText);
+      return inferControlKindFromTypeNode(
+        resolvedNode,
+        resolvedNode?.getText() ?? typeText,
+        shapeDepthBudget,
+      );
     }
 
     const importedControl = inferControlKindFromImportedAlias(sf, name, typeText);
@@ -185,12 +200,13 @@ function isNullishTypeNode(typeNode: TypeNode): boolean {
 /**
  * How deep a synthesized shape may nest before fields become opaque.
  *
- * Two is enough for every real case in the library (the deepest is
- * `KeyboardShortcutGroup.shortcuts[].keys[]`) and is what makes recursive types
- * terminate — `MegaMenuItem.submenu?: MegaMenuItem[]` would otherwise expand
- * forever.
+ * Three, because the deepest real case in the library is
+ * `groups[] -> shortcuts[] -> keys[]` — each array hop costs a level, so a cap
+ * of two truncated `KeyboardShortcuts.groups` to `[{ shortcuts: [{}, {}] }]`.
+ * The cap is what makes recursive types terminate at all:
+ * `MegaMenuItem.submenu?: MegaMenuItem[]` would otherwise expand forever.
  */
-const MAX_SHAPE_DEPTH = 2;
+const MAX_SHAPE_DEPTH = 3;
 
 /** True for a resolved type the generator cannot invent a value for. */
 function isOpaqueType(type: Type): boolean {
@@ -207,9 +223,29 @@ function isOpaqueType(type: Type): boolean {
  * the `string` arm, since `Statistic.value: string | number` reads better as
  * text than as a number.
  */
+/**
+ * Memoizes {@link shapeFromType} by resolved type text and depth.
+ *
+ * The same element types recur constantly — `string`, an enum alias, a shared
+ * `Item` — both within one component and across the ~194 analyzed per build.
+ * Recursing into array element types without this made a cold manifest build
+ * roughly five times slower (5.9s -> 26s), which is paid on every dev-server
+ * start. Cleared by `resetProject()` along with the other analyzer caches,
+ * because a stale entry would outlive the source it was derived from.
+ */
+const shapeCache = new Map<string, ValueShape | ObjectShape>();
+
 function shapeFromType(type: Type, at: Node, depth: number): ValueShape | ObjectShape {
   const bare = type.getNonNullableType();
+  const cacheKey = `${depth}:${bare.getText()}`;
+  const cached = shapeCache.get(cacheKey);
+  if (cached !== undefined) return cached;
+  const shape = computeShapeFromType(bare, at, depth);
+  shapeCache.set(cacheKey, shape);
+  return shape;
+}
 
+function computeShapeFromType(bare: Type, at: Node, depth: number): ValueShape | ObjectShape {
   if (isOpaqueType(bare)) return { kind: 'opaque', rawType: bare.getText() };
   if (bare.isString()) return { kind: 'string' };
   if (bare.isNumber()) return { kind: 'number' };
@@ -237,6 +273,17 @@ function shapeFromType(type: Type, at: Node, depth: number): ValueShape | Object
       return shapeFromType(resolved, at, depth + 1);
     }
     return { kind: 'opaque', rawType: bare.getText() };
+  }
+
+  // Arrays BEFORE the object branch: an array is an object to the checker, so
+  // reaching `objectShapeFromType` with `string[]` synthesizes the array's own
+  // internals (`length`, `__@unscopables@…`) as if they were data fields.
+  if (bare.isArray() || bare.isReadonlyArray()) {
+    const element = bare.getArrayElementType();
+    if (element === undefined || depth >= MAX_SHAPE_DEPTH) {
+      return { kind: 'opaque', rawType: bare.getText() };
+    }
+    return { kind: 'array', element: shapeFromType(element, at, depth + 1) };
   }
 
   if (bare.isObject()) return objectShapeFromType(bare, at, depth);
@@ -830,7 +877,13 @@ function descriptionFromSymbol(symbol: TsSymbol): string | undefined {
  */
 function controlKindFromResolvedSymbol(symbol: TsSymbol, at: Node): ControlKind {
   const typeNode = propertySignatureOf(symbol)?.getTypeNode();
-  if (typeNode !== undefined) return inferControlKindFromTypeNode(typeNode, typeNode.getText());
+  if (typeNode !== undefined) {
+    return inferControlKindFromTypeNode(
+      typeNode,
+      typeNode.getText(),
+      symbol.hasFlags(SymbolFlags.Optional) ? 0 : MAX_SHAPE_DEPTH,
+    );
+  }
   // No declaration node (a mapped or synthesized property) — the checker is the
   // only way to see it. Deliberately NOT used as a fallback when the node walk
   // returns `unknown`: instantiating these types is the expensive path, and
@@ -950,6 +1003,7 @@ export function resetProject(): void {
   sharedProject = undefined;
   analyzeAllCache.clear();
   importedLiteralUnionCache.clear();
+  shapeCache.clear();
 }
 
 /**
@@ -1088,7 +1142,11 @@ function extractTypeInfo(
         const uniqueTexts = [...new Set(typeTexts)];
         let control: ControlKind;
         if (uniqueTexts.length === 1 && firstProp !== undefined) {
-          control = inferControlKindFromTypeNode(firstProp.getTypeNode(), uniqueTexts[0] ?? '?');
+          control = inferControlKindFromTypeNode(
+            firstProp.getTypeNode(),
+            uniqueTexts[0] ?? '?',
+            optional ? 0 : MAX_SHAPE_DEPTH,
+          );
         } else {
           control = { kind: 'unknown', rawType: 'discriminated-union' };
         }
@@ -1106,8 +1164,12 @@ function extractTypeInfo(
     for (const [name, prop] of propMap) {
       const typeNodeForProp = prop.getTypeNode();
       const typeText = typeNodeForProp?.getText() ?? '?';
-      const control = inferControlKindFromTypeNode(typeNodeForProp, typeText);
       const optional = prop.hasQuestionToken();
+      const control = inferControlKindFromTypeNode(
+        typeNodeForProp,
+        typeText,
+        optional ? 0 : MAX_SHAPE_DEPTH,
+      );
       const description =
         prop
           .getJsDocs()
