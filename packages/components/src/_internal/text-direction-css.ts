@@ -421,14 +421,29 @@ function findActiveScopeRoots(
 // supported exact alternative even when a sibling relative alternative
 // can't be resolved for a given candidate — each selector is tried
 // independently and OR'd together, same as `findScopeMatches`.
+//
+// A candidate root can itself be a `ShadowRoot` — the implicit root of a
+// shadow-owned or adopted stylesheet (see `getImplicitScopeRoot`) — which
+// is never in `element`'s `parentElement` chain. Once that chain runs out,
+// the walk checks whether `element`'s own `getRootNode()` is a `ShadowRoot`
+// among the candidates. A `ShadowRoot` has no attributes, classes, or tag
+// name for a relative selector like `:scope > .child` to match against, so
+// it can only ever satisfy the exact `:scope` degenerate case, and is
+// tested by direct candidate membership rather than run through
+// `matchesScopedSelector` (which requires an `Element`). The walk stops at
+// that boundary instead of crossing into `.host`: every root this function
+// returns must DOM-contain `element` — the same invariant the
+// empty-root-selector branch above enforces via `root.contains(element)` —
+// and an ancestor found by crossing into the light DOM would violate it.
 function findRelativeScopeRootMatches(
   element: HTMLElement,
   selectors: readonly string[],
   scopeRootCandidates: readonly ScopeRoot[],
-): Element[] {
+): ScopeRoot[] {
   if (selectors.length === 0 || scopeRootCandidates.length === 0) return [];
   const parentScope: ActiveScope = { roots: [...scopeRootCandidates] };
-  const matches: Element[] = [];
+  const hasExactScopeSelector = selectors.some(isExactScopeSelector);
+  const matches: ScopeRoot[] = [];
   let current: Element | null = element;
   while (current) {
     const currentElement: Element = current;
@@ -436,9 +451,29 @@ function findRelativeScopeRootMatches(
       selectors.some((selector) => matchesScopedSelector(currentElement, selector, [parentScope]))
     )
       matches.push(currentElement);
-    current = currentElement.parentElement;
+    const parent = currentElement.parentElement;
+    if (parent) {
+      current = parent;
+      continue;
+    }
+    const root = currentElement.getRootNode();
+    if (
+      typeof ShadowRoot !== 'undefined' &&
+      root instanceof ShadowRoot &&
+      hasExactScopeSelector &&
+      scopeRootCandidates.includes(root)
+    )
+      matches.push(root);
+    current = null;
   }
   return matches;
+}
+
+// A selector counts as the exact `:scope` degenerate case (see
+// `findRelativeScopeRootMatches`) only when it's nothing but the bare
+// token — no compounding, no combinator.
+function isExactScopeSelector(selector: string): boolean {
+  return selector.trim().toLowerCase() === ':scope';
 }
 
 function finalizeActiveScopeRoots(
@@ -545,8 +580,28 @@ function matchesScopedSelector(
   // plain (and, for the combinator form, invalid) `element.matches()` call.
   const normalizedSelector =
     scopes.length > 0 ? normalizeScopeRelativeSelector(selector) : selector;
-  if (!hasScopePseudoClass(normalizedSelector))
-    return matchesSelectorSafely(element, normalizedSelector);
+  // Selector-list alternatives are independent per the CSS grammar's
+  // comma-list semantics — splitting on top-level commas before matching
+  // (same discipline `combineNestedSelectors` and
+  // `normalizeScopeRelativeSelector` already use) is what keeps an item
+  // with no scope-root context of its own from being gated by a SIBLING
+  // alternative's context. `.shell, main :scope .other` is the case that
+  // breaks without this: `.shell` must match on its own merit — the `main`
+  // outside-ancestor requirement belongs only to the second alternative.
+  return splitSelectorList(normalizedSelector).some((item) =>
+    matchesScopedSelectorItem(element, item, scopes),
+  );
+}
+
+// Matches a single selector-list ITEM (no top-level commas) against
+// `element`, resolving `:scope` (if present) against the active scope's
+// root candidates.
+function matchesScopedSelectorItem(
+  element: Element,
+  selector: string,
+  scopes: readonly ActiveScope[],
+): boolean {
+  if (!hasScopePseudoClass(selector)) return matchesSelectorSafely(element, selector);
   if (scopes.length === 0) return false;
   const scope = scopes.at(-1);
   if (!scope) return false;
@@ -558,8 +613,8 @@ function matchesScopedSelector(
   // ancestor chain — see `matchesOutsideScopeContext`. Only the remainder
   // (`:scope` onward) goes through the clone-based matcher, which already
   // correctly handles everything relative to the root itself.
-  const outsideContext = splitScopeOutsideContext(normalizedSelector);
-  const remainderSelector = outsideContext ? outsideContext.remainder : normalizedSelector;
+  const outsideContext = splitScopeOutsideContext(selector);
+  const remainderSelector = outsideContext ? outsideContext.remainder : selector;
   for (const root of scope.roots) {
     try {
       if (outsideContext) {
@@ -592,8 +647,18 @@ interface ScopeOutsideContext {
 // `:scope` is the first meaningful token (nothing precedes it) or is
 // compounded directly onto the preceding simple selector (`a:scope`, no
 // combinator between them) — neither references anything outside the root.
+//
+// Looks up `:scope` with `topLevelOnly: true`: a `:scope` nested inside a
+// functional pseudo-class's arguments (`:is(main :scope .shell,
+// .fallback)`) has no ancestor context this text-slicing split can extract
+// on its own — the text before it (`:is(main`) isn't a real selector at
+// all. Treating that as "no `:scope` here to split around" leaves the
+// selector whole, so it goes to `matchesRemainderAgainstScopeRoot` intact
+// (resolving `:scope` natively, scoped to the root, via `querySelectorAll`)
+// instead of being misread as literal outside-ancestor text feeding a
+// `closest()` call that would throw on the unbalanced fragment.
 function splitScopeOutsideContext(selector: string): ScopeOutsideContext | null {
-  const scopeIndex = findScopePseudoClassIndex(selector);
+  const scopeIndex = findScopePseudoClassIndex(selector, { topLevelOnly: true });
   if (scopeIndex === null) return null;
   const beforeRaw = selector.slice(0, scopeIndex);
   if (!beforeRaw.trim()) return null;
@@ -765,11 +830,18 @@ export function replaceScopePseudoClass(selector: string, replacement: string): 
 // Locates the start index of the first actual `:scope` pseudo-class token
 // (not `:scopeX`/`:scoped`, and not inside a quoted string or an attribute
 // selector's brackets), or `null` when the selector has none. Shared by
-// `hasScopePseudoClass` and `splitScopeOutsideContext`, which both need to
-// distinguish a real `:scope` token from lookalike text.
-function findScopePseudoClassIndex(selector: string): number | null {
+// `hasScopePseudoClass` (any depth — it only asks "does this text mention
+// `:scope` at all") and `splitScopeOutsideContext` (`topLevelOnly: true` —
+// a `:scope` nested inside a functional pseudo-class's arguments, like
+// `:is(main :scope .shell, .fallback)`, isn't one that split can extract
+// real outside-ancestor context around).
+function findScopePseudoClassIndex(
+  selector: string,
+  options: { topLevelOnly?: boolean } = {},
+): number | null {
   let quote: string | null = null;
   let brackets = 0;
+  let parentheses = 0;
   let escaped = false;
   for (let index = 0; index < selector.length; index += 1) {
     const character = selector[index];
@@ -797,8 +869,17 @@ function findScopePseudoClassIndex(selector: string): number | null {
       brackets = Math.max(0, brackets - 1);
       continue;
     }
+    if (character === '(') {
+      parentheses += 1;
+      continue;
+    }
+    if (character === ')') {
+      parentheses = Math.max(0, parentheses - 1);
+      continue;
+    }
     if (
       brackets === 0 &&
+      (!options.topLevelOnly || parentheses === 0) &&
       character === ':' &&
       selector.slice(index + 1, index + 6).toLowerCase() === 'scope' &&
       !/[\w-]/.test(selector[index + 6] ?? '')

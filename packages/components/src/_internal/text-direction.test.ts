@@ -1761,6 +1761,95 @@ describe('resolveTextDirection', () => {
     }
   });
 
+  test('binds a nested exact :scope root to an enclosing ShadowRoot scope root', () => {
+    // Same shape as the previous test, but the ENCLOSING scope's root is
+    // itself a `ShadowRoot` (the implicit root of a shadow-owned
+    // stylesheet — see 'uses the enclosing shadow root as the implicit
+    // scope root' above), not an `Element`. `findRelativeScopeRootMatches`
+    // used to walk only `parentElement` ancestors, so a `ShadowRoot`
+    // candidate was silently unreachable and the inner `@scope (:scope)`
+    // never activated.
+    const originalWindowGetComputedStyle = window.getComputedStyle;
+    const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
+    const getComputedStyleOverride = ((target: Element) => {
+      const style = originalWindowGetComputedStyle(target);
+      Object.defineProperty(style, 'direction', { value: 'ltr', configurable: true });
+      return style;
+    }) as typeof window.getComputedStyle;
+    window.getComputedStyle = getComputedStyleOverride;
+    globalThis.getComputedStyle = getComputedStyleOverride;
+    const host = document.createElement('div');
+    const shadowRoot = host.attachShadow({ mode: 'open' });
+    const styleElement = document.createElement('style');
+    const target = document.createElement('div');
+    target.className = 'shell';
+    shadowRoot.append(styleElement, target);
+    document.body.append(host);
+    const innerScope = {
+      type: 0,
+      cssText: '@scope (:scope) {}',
+      cssRules: [createStyleRule({ selectorText: '.shell', direction: 'ltr' })],
+    } as unknown as CSSRule;
+    const outerScope = {
+      type: 0,
+      cssText: '@scope {}',
+      cssRules: [innerScope],
+    } as unknown as CSSRule;
+    try {
+      expect(
+        withDocumentStyleSheets([{ cssRules: [outerScope], ownerNode: styleElement }], () =>
+          resolveTextDirection(target, 'rtl'),
+        ),
+      ).toBe('ltr');
+    } finally {
+      window.getComputedStyle = originalWindowGetComputedStyle;
+      globalThis.getComputedStyle = originalGlobalGetComputedStyle;
+    }
+  });
+
+  test('binds a nested exact :scope root to an enclosing ShadowRoot root for an adopted stylesheet', () => {
+    // Same bug as the previous test, but for an ownerless ADOPTED
+    // stylesheet — `getImplicitScopeRoot` reaches the `ShadowRoot` via the
+    // sheet's shadow-root association (`fallbackRoot`) instead of walking
+    // up from an `ownerNode`, which is likewise a `ShadowRoot` the
+    // enclosing scope's root must resolve to.
+    const originalWindowGetComputedStyle = window.getComputedStyle;
+    const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
+    const getComputedStyleOverride = ((target: Element) => {
+      const style = originalWindowGetComputedStyle(target);
+      Object.defineProperty(style, 'direction', { value: 'ltr', configurable: true });
+      return style;
+    }) as typeof window.getComputedStyle;
+    window.getComputedStyle = getComputedStyleOverride;
+    globalThis.getComputedStyle = getComputedStyleOverride;
+    try {
+      const host = document.createElement('div');
+      const shadowRoot = host.attachShadow({ mode: 'open' });
+      const target = document.createElement('div');
+      target.className = 'shell';
+      shadowRoot.append(target);
+      document.body.append(host);
+      const innerScope = {
+        type: 0,
+        cssText: '@scope (:scope) {}',
+        cssRules: [createStyleRule({ selectorText: '.shell', direction: 'ltr' })],
+      } as unknown as CSSRule;
+      const outerScope = {
+        type: 0,
+        cssText: '@scope {}',
+        cssRules: [innerScope],
+      };
+      Object.defineProperty(shadowRoot, 'adoptedStyleSheets', {
+        configurable: true,
+        value: [{ cssRules: [outerScope] }],
+      });
+      expect(resolveTextDirection(target, 'rtl')).toBe('ltr');
+    } finally {
+      window.getComputedStyle = originalWindowGetComputedStyle;
+      globalThis.getComputedStyle = originalGlobalGetComputedStyle;
+    }
+  });
+
   test('binds a nested relative :scope root selector to the enclosing scope root', () => {
     // `@scope (.parent) { @scope (:scope > .child) { .shell { … } } }` — a
     // relative (non-exact) `:scope` scope-start selector attached to a
@@ -1887,6 +1976,58 @@ describe('resolveTextDirection', () => {
         resolveTextDirection(target, 'rtl'),
       ),
     ).toBe('rtl');
+  });
+
+  test('evaluates each selector-list alternative independently around outside-ancestor context', () => {
+    // `.shell, main :scope .other` — the SECOND alternative's `main`
+    // outside-ancestor requirement must not gate the FIRST, unrelated
+    // alternative. `.shell` matches the target directly regardless of
+    // whether `main` is an ancestor of the scope root (it isn't, here).
+    const theme = document.createElement('section');
+    theme.className = 'theme';
+    const target = document.createElement('div');
+    target.className = 'shell';
+    theme.append(target);
+    document.body.append(theme);
+    const scopeRule = {
+      type: 0,
+      cssText: '@scope (.theme) {}',
+      cssRules: [createStyleRule({ selectorText: '.shell, main :scope .other', direction: 'ltr' })],
+    } as unknown as CSSRule;
+    expect(
+      withDocumentStyleSheets([{ cssRules: [scopeRule] }], () =>
+        resolveTextDirection(target, 'rtl'),
+      ),
+    ).toBe('ltr');
+  });
+
+  test('does not let a :scope nested inside :is() misread the selector as outside-ancestor context', () => {
+    // `:is(main :scope .shell, .fallback)` — the `:scope` inside `:is()`
+    // must not be treated as a TOP-LEVEL token: doing so slices `:is(main`
+    // off as literal "outside-ancestor" text, which can never resolve
+    // (`:is(main` isn't a real selector), losing the ordinary `.fallback`
+    // alternative along with it.
+    const theme = document.createElement('section');
+    theme.className = 'theme';
+    const target = document.createElement('div');
+    target.className = 'fallback';
+    theme.append(target);
+    document.body.append(theme);
+    const scopeRule = {
+      type: 0,
+      cssText: '@scope (.theme) {}',
+      cssRules: [
+        createStyleRule({
+          selectorText: ':is(main :scope .shell, .fallback)',
+          direction: 'ltr',
+        }),
+      ],
+    } as unknown as CSSRule;
+    expect(
+      withDocumentStyleSheets([{ cssRules: [scopeRule] }], () =>
+        resolveTextDirection(target, 'rtl'),
+      ),
+    ).toBe('ltr');
   });
 
   test('resolves a native CSS nesting parent selector before matching direction rules', () => {
