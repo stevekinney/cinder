@@ -55,7 +55,7 @@ function walk(directory: string, collected: string[]): string[] {
 // Line-anchored so import-like text inside string literals, diff fixtures,
 // and JSDoc examples does not match; dynamic import() is matched anywhere.
 const importSpecifierPattern =
-  /^[ \t]*(?:import|export)\b[^'"\n]*?from\s*['"](\.[^'"]+)['"]|^[ \t]*import\s*['"](\.[^'"]+)['"]|\bimport\s*\(\s*['"](\.[^'"]+)['"]\s*\)/gm;
+  /^[ \t]*(?:import|export)\b[^'";]*?from\s*['"](\.[^'"]+)['"]|^[ \t]*import\s*['"](\.[^'"]+)['"]|\bimport\s*\(\s*['"](\.[^'"]+)['"]\s*\)/gm;
 
 function resolveRelativeImport(importer: string, specifier: string): string | null {
   const base = resolve(dirname(importer), specifier);
