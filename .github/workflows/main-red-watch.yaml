@@ -183,22 +183,32 @@ jobs:
             const maxAgeHours = Number(process.env.HEARTBEAT_MAX_AGE_HOURS);
             const heartbeatUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
 
+            // Only `push` and `schedule` runs count as evidence the workflow is
+            // running. `main-green` also accepts `workflow_dispatch`, and a
+            // manual run would otherwise satisfy the heartbeat while the push
+            // and cron triggers were broken — which is the exact failure mode
+            // this is here to catch. Filtered client-side because the API's
+            // `event` parameter takes a single value and we need either of two.
+            const AUTOMATIC_EVENTS = new Set(['push', 'schedule']);
+
             const { data } = await github.rest.actions.listWorkflowRuns({
               owner,
               repo,
               workflow_id: 'main-green.yaml',
               branch: 'main',
               status: 'completed',
-              per_page: 1,
+              per_page: 30,
             });
 
-            const latest = data.workflow_runs[0];
+            const latest = data.workflow_runs.find((candidate) => AUTOMATIC_EVENTS.has(candidate.event));
 
             if (!latest) {
               await report(
                 'main-green is not running',
                 [
-                  'The heartbeat found **no completed `main-green` run on `main` at all**.',
+                  'The heartbeat found **no completed push- or schedule-triggered `main-green` run on `main`** in the last 30 completed runs.',
+                  '',
+                  '(Manual `workflow_dispatch` runs are deliberately not counted — one would otherwise mask exactly the broken push/cron trigger this checks for.)',
                   '',
                   `- Heartbeat: ${heartbeatUrl}`,
                 ].join('\n'),
