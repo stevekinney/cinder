@@ -21,20 +21,14 @@
     SourceDiffParseResult,
     SourceDiffViewerProps,
   } from './source-diff-viewer.types.ts';
-  export {
-    getSourceDiffFileLabel,
-    getSourceDiffLineLabel,
-    parseUnifiedPatch,
-  } from './source-diff-viewer.utilities.ts';
+  export { getSourceDiffFileLabel, getSourceDiffLineLabel } from './source-diff-viewer.labels.ts';
+  export { parseUnifiedPatch } from './source-diff-viewer.utilities.ts';
 </script>
 
 <script lang="ts">
   import { classNames } from '../../utilities/class-names.ts';
-  import {
-    getSourceDiffFileLabel,
-    getSourceDiffLineLabel,
-    parseUnifiedPatch,
-  } from './source-diff-viewer.utilities.ts';
+  import { getSourceDiffFileLabel, getSourceDiffLineLabel } from './source-diff-viewer.labels.ts';
+  import { parseUnifiedPatch } from './source-diff-viewer.utilities.ts';
   import type { SourceDiffLine, SourceDiffViewerProps } from './source-diff-viewer.types.ts';
 
   let {
