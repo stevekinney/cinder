@@ -52,7 +52,7 @@ describe('NewsletterSection', () => {
     expect(onSubmit).toHaveBeenCalledWith('dev@example.com');
   });
 
-  test('always preventDefaults on submit, even without an onSubmit prop', async () => {
+  test('always calls preventDefault on submit, even without an onSubmit prop', async () => {
     const { container } = render(NewsletterSection, {
       props: {
         title: 'Subscribe',
@@ -66,7 +66,7 @@ describe('NewsletterSection', () => {
       capturedEvent = event;
     });
 
-    fireEvent.submit(form!);
+    await fireEvent.submit(form!);
 
     expect(capturedEvent?.defaultPrevented).toBe(true);
   });
