@@ -98,7 +98,8 @@ async function resolveToken(): Promise<string> {
   if (fromEnvironment) return fromEnvironment;
 
   const cli = Bun.spawn(['gh', 'auth', 'token'], { stdout: 'pipe', stderr: 'ignore' });
-  const token = (await new Response(cli.stdout).text()).trim();
+  const rawToken = await new Response(cli.stdout).text();
+  const token = rawToken.trim();
   await cli.exited;
 
   if (token) return token;
@@ -106,6 +107,14 @@ async function resolveToken(): Promise<string> {
   throw new Error(
     'No GitHub token available. Set GITHUB_TOKEN, or run `gh auth login` for local use.',
   );
+}
+
+function asLiveProtection(payload: unknown): LiveProtection {
+  if (typeof payload !== 'object' || payload === null) {
+    throw new Error('GitHub branch-protection response was not an object.');
+  }
+
+  return payload as LiveProtection;
 }
 
 async function main(): Promise<void> {
@@ -133,7 +142,8 @@ async function main(): Promise<void> {
     );
   }
 
-  const drift = protectionDrift(expected, (await response.json()) as LiveProtection);
+  const payload: unknown = await response.json();
+  const drift = protectionDrift(expected, asLiveProtection(payload));
 
   if (drift.length === 0) {
     process.stdout.write(
