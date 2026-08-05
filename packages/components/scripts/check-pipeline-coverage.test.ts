@@ -147,6 +147,7 @@ describe('checkPipelineCoverage', () => {
           'main-green': 'bun run --filter=@lostgradient/cinder components:check',
           release: '',
           'changeset-guard': '',
+          'main-red-watch': '',
         },
         hookText: {},
       },
@@ -202,6 +203,7 @@ describe('checkPipelineCoverage', () => {
         'main-green': '',
         release: 'bun run validate',
         'changeset-guard': '',
+        'main-red-watch': '',
       },
       hookText: {},
     });
@@ -233,6 +235,7 @@ describe('checkPipelineCoverage', () => {
         'main-green': '',
         release: 'bun run --filter=@lostgradient/chat validate:consumer',
         'changeset-guard': '',
+        'main-red-watch': '',
       },
       hookText: {},
     });
@@ -264,6 +267,7 @@ describe('checkPipelineCoverage', () => {
         'main-green': 'bun run --filter=@lostgradient/chat test:coverage',
         release: '',
         'changeset-guard': '',
+        'main-red-watch': '',
       },
       hookText: {},
     });
@@ -291,6 +295,7 @@ describe('checkPipelineCoverage', () => {
         'main-green': '',
         release: 'bun run --filter=@lostgradient/cinder validate:consumer',
         'changeset-guard': '',
+        'main-red-watch': '',
       },
       hookText: {},
     });
@@ -320,6 +325,7 @@ describe('checkPipelineCoverage', () => {
         'main-green': '',
         release: 'bun run validate',
         'changeset-guard': '',
+        'main-red-watch': '',
       },
       hookText: {},
     });
@@ -346,6 +352,7 @@ describe('checkPipelineCoverage', () => {
         'main-green': 'bun run lint',
         release: '',
         'changeset-guard': '',
+        'main-red-watch': '',
       },
       hookText: {},
     });
@@ -366,6 +373,7 @@ describe('checkPipelineCoverage', () => {
         'main-green': 'bunx turbo run lint',
         release: '',
         'changeset-guard': '',
+        'main-red-watch': '',
       },
       hookText: {},
     });
@@ -395,6 +403,7 @@ describe('checkPipelineCoverage', () => {
         'main-green': '',
         release: '',
         'changeset-guard': '',
+        'main-red-watch': '',
       },
       hookText: {},
     });
@@ -422,6 +431,7 @@ describe('checkPipelineCoverage', () => {
         'main-green': '',
         release: '',
         'changeset-guard': '',
+        'main-red-watch': '',
       },
       hookText: {},
     });
@@ -448,6 +458,7 @@ describe('checkPipelineCoverage', () => {
         'main-green': '',
         release: 'bun run validate',
         'changeset-guard': '',
+        'main-red-watch': '',
       },
       hookText: {},
     });
@@ -463,6 +474,7 @@ describe('checkPipelineCoverage', () => {
     'main-green': '',
     release: '',
     'changeset-guard': '',
+    'main-red-watch': '',
   };
 
   it('flags a hook-layer mismatch as a warning, not a violation, when the hook script is present', () => {
