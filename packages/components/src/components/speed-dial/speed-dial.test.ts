@@ -9,7 +9,8 @@ setupHappyDom();
 const { cleanup, fireEvent, render, screen, waitFor } = await import('@testing-library/svelte');
 const { default: SpeedDialFixture } = await import('./speed-dial.fixture.svelte');
 const { waitForSpeedDialExit } = await import('./speed-dial-exit.ts');
-const { createQueuedFocusRestoration } = await import('./speed-dial-focus.ts');
+const { createQueuedFocusRestoration, getFocusTargetBeforeSpeedDial } =
+  await import('./speed-dial-focus.ts');
 const speedDialSource = readFileSync(new URL('./speed-dial.svelte', import.meta.url), 'utf8');
 const speedDialStyles = readFileSync(new URL('./speed-dial.css', import.meta.url), 'utf8');
 
@@ -908,6 +909,7 @@ describe('SpeedDial', () => {
 
   test('reverse Tab from the first portaled action returns before the SpeedDial', async () => {
     const precedingButton = document.createElement('button');
+    precedingButton.setAttribute('tabindex', '0');
     precedingButton.textContent = 'Before SpeedDial';
     document.body.append(precedingButton);
     render(SpeedDialFixture);
@@ -922,6 +924,25 @@ describe('SpeedDial', () => {
     expect(document.activeElement).toBe(precedingButton);
   });
 
+  test('reverse Tab returns to a native summary without an explicit tabindex', async () => {
+    const details = document.createElement('details');
+    const summary = document.createElement('summary');
+    summary.textContent = 'Before SpeedDial';
+    details.append(summary);
+    document.body.append(details);
+    render(SpeedDialFixture);
+    const trigger = screen.getByRole('button', { name: 'Quick actions' });
+
+    await fireEvent.click(trigger);
+    await flushQueuedFocus();
+    const create = screen.getByRole('button', { name: 'Create' });
+
+    create.focus();
+    await fireEvent.keyDown(create, { key: 'Tab', shiftKey: true });
+    expect(summary.hasAttribute('tabindex')).toBe(false);
+    expect(document.activeElement).toBe(summary);
+  });
+
   test('reverse Tab finds a preceding sibling inside the same shadow root', async () => {
     // A document-only query cannot see into a shadow root, so a SpeedDial
     // rendered inside one previously fell straight through to the trigger
@@ -931,6 +952,7 @@ describe('SpeedDial', () => {
     document.body.append(host);
     const precedingButton = document.createElement('button');
     precedingButton.textContent = 'Before SpeedDial';
+    precedingButton.setAttribute('tabindex', '0');
     shadow.append(precedingButton);
     const mountPoint = document.createElement('div');
     shadow.append(mountPoint);
@@ -959,6 +981,7 @@ describe('SpeedDial', () => {
     // back before the SpeedDial.
     const precedingButton = document.createElement('button');
     precedingButton.textContent = 'Before SpeedDial';
+    precedingButton.setAttribute('tabindex', '0');
     document.body.append(precedingButton);
     render(SpeedDialFixture);
     const trigger = screen.getByRole('button', { name: 'Quick actions' });
@@ -966,7 +989,7 @@ describe('SpeedDial', () => {
     await fireEvent.click(trigger);
     await flushQueuedFocus();
     const create = screen.getByRole('button', { name: 'Create' });
-    create.setAttribute('tabindex', '-1');
+    create.setAttribute('tabindex', '-1x');
     const share = screen.getByRole('button', { name: 'Share' });
 
     share.focus();
@@ -977,6 +1000,7 @@ describe('SpeedDial', () => {
   test('reverse Tab from an arrow-focused untabbable first action returns before the SpeedDial', async () => {
     const precedingButton = document.createElement('button');
     precedingButton.textContent = 'Before SpeedDial';
+    precedingButton.setAttribute('tabindex', '0');
     document.body.append(precedingButton);
     render(SpeedDialFixture);
     const trigger = screen.getByRole('button', { name: 'Quick actions' });
@@ -1044,6 +1068,7 @@ describe('SpeedDial', () => {
   test('leaves reverse Tab native when every action is untabbable', async () => {
     const precedingButton = document.createElement('button');
     precedingButton.textContent = 'Before SpeedDial';
+    precedingButton.setAttribute('tabindex', '0');
     document.body.append(precedingButton);
     render(SpeedDialFixture);
     const trigger = screen.getByRole('button', { name: 'Quick actions' });
@@ -1217,5 +1242,91 @@ describe('SpeedDial', () => {
     const source = await Bun.file(new URL('./speed-dial.svelte', import.meta.url)).text();
     expect(source).toContain("const defaultAriaLabel = 'Quick actions'");
     expect(source).toContain("'aria-label': ariaLabel = defaultAriaLabel");
+  });
+});
+
+describe('getFocusTargetBeforeSpeedDial', () => {
+  test('threads the focused action tab tier into the preceding-candidate lookup', () => {
+    // The SpeedDial root is a zero/default-tier DOM anchor. Without a
+    // separate tier reference, a positive-tabindex first action would
+    // incorrectly fall through to the last zero/default-tier preceding
+    // candidate instead of the nearest lower-or-equal positive-tabindex one
+    // native Shift+Tab actually visits next.
+    const wrapper = document.createElement('div');
+    const lower = document.createElement('button');
+    lower.setAttribute('tabindex', '1');
+    lower.textContent = 'Lower positive';
+    const higher = document.createElement('button');
+    higher.setAttribute('tabindex', '3');
+    higher.textContent = 'Higher positive';
+    const normal = document.createElement('button');
+    normal.textContent = 'Normal';
+    const rootElement = document.createElement('div');
+    wrapper.append(lower, higher, normal, rootElement);
+    document.body.append(wrapper);
+
+    const focusedAction = document.createElement('button');
+    focusedAction.setAttribute('tabindex', '2');
+
+    const result = getFocusTargetBeforeSpeedDial({
+      rootElement: rootElement as unknown as HTMLDivElement,
+      actionsElement: null,
+      focusedAction,
+    });
+
+    expect(result).toBe(lower);
+  });
+
+  test('falls back to the last preceding candidate when the focused action is not positive', () => {
+    const wrapper = document.createElement('div');
+    const lower = document.createElement('button');
+    lower.setAttribute('tabindex', '1');
+    const normal = document.createElement('button');
+    const rootElement = document.createElement('div');
+    wrapper.append(lower, normal, rootElement);
+    document.body.append(wrapper);
+
+    const result = getFocusTargetBeforeSpeedDial({
+      rootElement: rootElement as unknown as HTMLDivElement,
+      actionsElement: null,
+      focusedAction: null,
+    });
+
+    expect(result).toBe(normal);
+  });
+
+  test('excludes an internal shadow-root descendant of the actions region from preceding candidates', () => {
+    // `Element.contains()` only walks the light DOM, so a focusable control
+    // inside the *open* shadow root of a custom element nested inside the
+    // actions region previously read as "not contained" and got offered as
+    // a preceding page control, even though it is still part of the
+    // SpeedDial's own composed subtree. This exercises the `actionsElement`
+    // half of the fix; the `rootElement` half is defensive -- no descendant
+    // of `rootElement` can ever appear in a `direction: 'before'` search
+    // anchored at `rootElement` itself, since the composed-tree walk always
+    // visits a parent before its children (see the analogous
+    // navigation-bar-focus.test.ts coverage for `findFocusTargetAfterNavigationItems`,
+    // "excludes an internal shadow-root descendant that still belongs to
+    // the navigation bar").
+    const wrapper = document.createElement('div');
+    const precedingButton = document.createElement('button');
+    precedingButton.textContent = 'Before SpeedDial';
+    const actionsElement = document.createElement('div');
+    const internalHost = document.createElement('div');
+    const internalShadow = internalHost.attachShadow({ mode: 'open' });
+    const internalControl = document.createElement('button');
+    internalControl.textContent = 'Internal shadow control';
+    internalShadow.append(internalControl);
+    actionsElement.append(internalHost);
+    const rootElement = document.createElement('div');
+    wrapper.append(precedingButton, actionsElement, rootElement);
+    document.body.append(wrapper);
+
+    const result = getFocusTargetBeforeSpeedDial({
+      rootElement: rootElement as unknown as HTMLDivElement,
+      actionsElement: actionsElement as unknown as HTMLDivElement,
+    });
+
+    expect(result).toBe(precedingButton);
   });
 });
