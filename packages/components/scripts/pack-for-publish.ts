@@ -254,76 +254,85 @@ function buildPublishedManifest(source: SourceManifest): SourceManifest {
   //
   // Test files are excluded via `!**/*.{test,spec}.ts` so the tarball never
   // ships test infra.
-  published.files = [
-    'dist',
-    '!dist/**/*.js.map',
-    '!dist/server/**/*.d.ts',
-    '!dist/server/components/**/*.schema.js',
-    '!dist/server/components/**/*.variables.js',
-    '!dist/**/*.type-test.*',
-    '!dist/**/*.fixture.*',
-    '!dist/**/*-fixture.*',
-    '!dist/**/*-fixtures.*',
-    '!dist/**/*fixtures.*',
-    '!dist/**/*fixture*.svelte.d.ts',
-    '!dist/**/_*-test-harness.*',
-    '!dist/**/test/**',
-    'src/index.ts',
-    'src/schema-types.ts',
-    'src/components/**/*.ts',
-    'src/components/**/*.svelte',
-    '!src/components/**/*.test.ts',
-    '!src/components/**/*.spec.ts',
-    '!src/components/**/*.type-test.ts',
-    '!src/components/**/*.type-test.svelte',
-    '!src/components/**/*.fixture.ts',
-    '!src/components/**/*-fixture.ts',
-    '!src/components/**/*-fixtures.ts',
-    '!src/components/**/*fixtures.ts',
-    '!src/components/**/*fixture*.svelte',
-    '!src/components/**/_*-test-harness.svelte',
-    '!src/components/**/test/**',
-    'src/components/**/*.schema.json',
-    'src/components/**/*.variables.json',
-    'src/components/**/*.examples.json',
-    'src/components/**/*.constraints.json',
-    'src/components/**/*.css',
-    'src/_internal/**/*.ts',
-    '!src/_internal/**/*.test.ts',
-    'src/utilities/**/*.ts',
-    '!src/utilities/**/*.test.ts',
-    // Non-component static sub-paths whose exports map carries a `svelte`
-    // condition pointing at `./src/highlighters/<name>/index.ts` (the
-    // first-party Shiki adapter today; future siblings live here too).
-    // Without this glob, a Svelte-aware consumer resolving the source
-    // condition for `@lostgradient/cinder/highlighters/shiki` would hit a dangling path
-    // because the build only emits `dist/highlighters/**` — the source
-    // remains in `src/`.
-    'src/highlighters/**/*.ts',
-    '!src/highlighters/**/*.test.ts',
-    '!src/highlighters/**/*.spec.ts',
-    'src/styles/**/*.css',
-    // Type stubs for the reserved `./styles*` subpaths. The `types` condition
-    // in each export entry points at `./src/styles/<name>.css.d.ts`; without
-    // this glob those files are absent from the tarball and consumers get
-    // "Cannot find module or type declarations for side-effect import" under
-    // moduleResolution: bundler.
-    'src/styles/**/*.css.d.ts',
-    // The `./styles/guard` export carries a `svelte` condition pointing at
-    // `./src/styles/base-guard.ts` (the build only emits `dist/styles/base-guard.js`),
-    // so a Svelte-aware consumer resolving that source condition would hit a
-    // dangling path without this file. Listed explicitly rather than via a
-    // `src/styles/**/*.ts` glob to keep the publish surface narrow — this is the
-    // only `.ts` under `src/styles/` that needs to ship.
-    'src/styles/base-guard.ts',
-    'components.json',
-    'README.md',
-    'LICENSE',
-    'CHANGELOG.md',
-  ];
+  published.files = [...PUBLISHED_SOURCE_FILES_GLOBS];
   published.exports = transformedExports;
   return published;
 }
+
+/**
+ * The staged tarball's file surface. package.json's generated files globs
+ * govern raw `bun pm pack`; THIS list governs what actually publishes via
+ * pack:publish/validate:consumer. They drift independently — the
+ * packed-import-closure test validates the import closure of BOTH.
+ */
+export const PUBLISHED_SOURCE_FILES_GLOBS: readonly string[] = [
+  'dist',
+  '!dist/**/*.js.map',
+  '!dist/server/**/*.d.ts',
+  '!dist/server/components/**/*.schema.js',
+  '!dist/server/components/**/*.variables.js',
+  '!dist/**/*.type-test.*',
+  '!dist/**/*.fixture.*',
+  '!dist/**/*-fixture.*',
+  '!dist/**/*-fixtures.*',
+  '!dist/**/*fixtures.*',
+  '!dist/**/*fixture*.svelte.d.ts',
+  '!dist/**/_*-test-harness.*',
+  '!dist/**/test/**',
+  'src/index.ts',
+  'src/schema-types.ts',
+  'src/components/**/*.ts',
+  'src/components/**/*.svelte',
+  '!src/components/**/*.test.ts',
+  '!src/components/**/*.spec.ts',
+  '!src/components/**/*.type-test.ts',
+  '!src/components/**/*.type-test.svelte',
+  '!src/components/**/*.fixture.ts',
+  '!src/components/**/*-fixture.ts',
+  '!src/components/**/*-fixtures.ts',
+  '!src/components/**/*fixtures.ts',
+  '!src/components/**/*fixture*.svelte',
+  '!src/components/**/_*-test-harness.svelte',
+  '!src/components/**/test/**',
+  'src/components/**/*.schema.json',
+  'src/components/**/*.variables.json',
+  'src/components/**/*.examples.json',
+  'src/components/**/*.constraints.json',
+  'src/components/**/*.css',
+  'src/_internal/**/*.ts',
+  '!src/_internal/**/*.test.ts',
+  'src/_internal/**/*.svelte',
+  'src/utilities/**/*.ts',
+  '!src/utilities/**/*.test.ts',
+  // Non-component static sub-paths whose exports map carries a `svelte`
+  // condition pointing at `./src/highlighters/<name>/index.ts` (the
+  // first-party Shiki adapter today; future siblings live here too).
+  // Without this glob, a Svelte-aware consumer resolving the source
+  // condition for `@lostgradient/cinder/highlighters/shiki` would hit a dangling path
+  // because the build only emits `dist/highlighters/**` — the source
+  // remains in `src/`.
+  'src/highlighters/**/*.ts',
+  '!src/highlighters/**/*.test.ts',
+  '!src/highlighters/**/*.spec.ts',
+  'src/styles/**/*.css',
+  // Type stubs for the reserved `./styles*` subpaths. The `types` condition
+  // in each export entry points at `./src/styles/<name>.css.d.ts`; without
+  // this glob those files are absent from the tarball and consumers get
+  // "Cannot find module or type declarations for side-effect import" under
+  // moduleResolution: bundler.
+  'src/styles/**/*.css.d.ts',
+  // The `./styles/guard` export carries a `svelte` condition pointing at
+  // `./src/styles/base-guard.ts` (the build only emits `dist/styles/base-guard.js`),
+  // so a Svelte-aware consumer resolving that source condition would hit a
+  // dangling path without this file. Listed explicitly rather than via a
+  // `src/styles/**/*.ts` glob to keep the publish surface narrow — this is the
+  // only `.ts` under `src/styles/` that needs to ship.
+  'src/styles/base-guard.ts',
+  'components.json',
+  'README.md',
+  'LICENSE',
+  'CHANGELOG.md',
+];
 
 function isResolvableRelativeSourceMapReference(reference: string): boolean {
   if (!reference.endsWith('.map')) return false;
