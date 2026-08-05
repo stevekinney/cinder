@@ -100,6 +100,55 @@ export const PRE_PAINT_THEME_SCRIPT = `
       })();
     `;
 
+/**
+ * CSS custom properties consumed by the `depict` Shiki theme.
+ *
+ * `CSS_VARIABLE_THEME` in `@lostgradient/markdown/rendering/highlighter` maps
+ * every TextMate scope to a bare `var(--syntax-*)` reference (plus
+ * `var(--surface-inset)` / `var(--text)` for the editor chrome). Those names
+ * are NOT Cinder tokens — Cinder namespaces everything under `--cinder-*` —
+ * so until they are declared somewhere, every highlighted token resolves to
+ * `unset`, inherits the surrounding prose color, and the fence renders as if
+ * it were never highlighted at all.
+ *
+ * This block is the declaration site. Each name is aliased to a real Cinder
+ * token so the palette follows the active light/dark theme for free (the
+ * tokens are `light-dark()` pairs) and no raw color is authored here.
+ *
+ * Declared in the shell's inline `<style>` rather than a component's scoped
+ * CSS because the fences are injected as raw HTML (`{@html}`) from the
+ * markdown pipeline: Svelte's style scoper never sees those elements, so a
+ * scoped rule would not apply to them.
+ *
+ * Exported so `render-shell.test.ts` can cross-check the declared names
+ * against the ones `CSS_VARIABLE_THEME` actually references.
+ */
+export const DEPICT_THEME_VARIABLES = `      /* Palette for the \`depict\` Shiki theme — see DEPICT_THEME_VARIABLES. */
+      :root {
+        /* Editor chrome (theme \`colors\`). */
+        --surface-inset: var(--cinder-surface-inset);
+        --text: var(--cinder-text);
+
+        /* Token scopes (theme \`tokenColors\`). Hues are borrowed from the
+           status/accent token families so the palette stays inside the
+           design system and re-themes with it. */
+        --syntax-comment: var(--cinder-text-subtle);
+        --syntax-string: var(--cinder-color-success-fg);
+        --syntax-keyword: var(--cinder-accent-text);
+        --syntax-function: var(--cinder-color-info-fg);
+        --syntax-variable: var(--cinder-text);
+        --syntax-type: var(--cinder-color-info-fg);
+        --syntax-number: var(--cinder-color-warning-fg);
+        --syntax-operator: var(--cinder-text-subtle);
+        --syntax-constant: var(--cinder-color-warning-fg);
+        --syntax-property: var(--cinder-text-muted);
+        --syntax-tag: var(--cinder-color-danger-fg);
+        --syntax-attribute: var(--cinder-color-warning-fg);
+        --syntax-regex: var(--cinder-color-danger-fg);
+        --syntax-inserted: var(--cinder-color-success-fg);
+        --syntax-deleted: var(--cinder-color-danger-fg);
+      }`;
+
 /** Escape a string for safe use in HTML text content and attribute values. */
 export function escapeHtml(text: string): string {
   return text
@@ -220,14 +269,19 @@ export function renderShell(
     <style>
       /* Register cinder.reset as the FIRST layer (least priority) so the universal
          box/margin/padding reset below can never beat component styles. This
-         declaration runs before /styles/shell.css so the reset slot is reserved
-         at the bottom of the cascade — shell.css then registers the rest of the
+         declaration runs before /styles/all.css so the reset slot is reserved
+         at the bottom of the cascade — all.css then registers the rest of the
          order (cinder.tokens, foundation, components, utilities) and imports the
-         Cinder component styles used by the shell, all of which come later and
-         therefore win over the reset. */
+         Cinder component styles, all of which come later and therefore win over
+         the reset. */
       @layer cinder.reset, cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
     </style>
-    <link rel="stylesheet" href="/styles/shell.css" />
+    <!-- The full cascade aggregator, not the slim /styles/shell.css. shell.css
+         imports only the handful of components the shell chrome itself uses; it
+         carries neither callout.css nor code-block.css, so the landing page's
+         README prose — which renders both — came out unstyled. /page/:name
+         already loads all.css for exactly this reason. -->
+    <link rel="stylesheet" href="/styles/all.css" />
     <style>
       @layer cinder.reset {
         *, *::before, *::after {
@@ -255,6 +309,8 @@ export function renderShell(
       :root {
         --cinder-top-bar-height: 52px;
       }
+
+${DEPICT_THEME_VARIABLES}
 
       html, body, #shell-root {
         height: 100%;

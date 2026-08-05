@@ -17,10 +17,14 @@
 const ACRONYM_MAP: Readonly<Record<string, string>> = {
   json: 'JSON',
   api: 'API',
+  aria: 'ARIA',
   css: 'CSS',
   url: 'URL',
   html: 'HTML',
+  id: 'ID',
+  qr: 'QR',
   ssr: 'SSR',
+  svg: 'SVG',
   dom: 'DOM',
 };
 
@@ -41,7 +45,8 @@ function humanizeToken(token: string): string {
  * Convert a kebab-case component name into a title-cased display label.
  *
  * Splits on hyphens, title-cases each word, and substitutes known acronyms
- * (JSON, API, CSS, URL, HTML, SSR, DOM) with their canonical uppercase form.
+ * (JSON, API, ARIA, CSS, URL, HTML, ID, QR, SSR, SVG, DOM) with their canonical
+ * uppercase form.
  * Empty segments from leading, trailing, or doubled hyphens are dropped, and
  * surrounding whitespace is trimmed.
  *

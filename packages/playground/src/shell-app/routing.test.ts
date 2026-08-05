@@ -15,6 +15,8 @@ import {
   parseComponentFromPath,
   readFocusModeFromSearch,
   readPreviewWidthFromSearch,
+  readViewFromSearch,
+  searchForView,
 } from './routing.ts';
 
 describe('parseComponentFromPath', () => {
@@ -125,5 +127,31 @@ describe('readPreviewWidthFromSearch', () => {
 
   it('returns null for non-numeric values', () => {
     expect(readPreviewWidthFromSearch(new URLSearchParams('w=banana'))).toBeNull();
+  });
+});
+
+describe('component page view', () => {
+  it('defaults to documentation, including for an unrecognised value', () => {
+    expect(readViewFromSearch(new URLSearchParams(''))).toBe('documentation');
+    expect(readViewFromSearch(new URLSearchParams('view=nonsense'))).toBe('documentation');
+  });
+
+  it('reads the playground view', () => {
+    expect(readViewFromSearch(new URLSearchParams('view=playground'))).toBe('playground');
+  });
+
+  it('preserves other toolbar parameters when switching view', () => {
+    const search = new URLSearchParams('width=768&focus=1');
+    const playground = searchForView(search, 'playground');
+    expect(playground).toContain('width=768');
+    expect(playground).toContain('focus=1');
+    expect(playground).toContain('view=playground');
+  });
+
+  it('expresses the default view by dropping the parameter', () => {
+    expect(searchForView(new URLSearchParams('view=playground'), 'documentation')).toBe('');
+    expect(searchForView(new URLSearchParams('view=playground&width=375'), 'documentation')).toBe(
+      '?width=375',
+    );
   });
 });

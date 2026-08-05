@@ -100,3 +100,40 @@ export function readPreviewWidthFromSearch(search: URLSearchParams): number | nu
   if (parsed < VIEWPORT_WIDTH_MIN || parsed > VIEWPORT_WIDTH_MAX) return null;
   return parsed;
 }
+
+/**
+ * The two views a component page can be in.
+ *
+ * Documentation and Playground are separate views rather than two panes because
+ * the preview rail took a fixed 38rem out of every page width, and the prose
+ * column starved: the accessibility notes rendered in a half-width sub-column,
+ * the keyboard-shortcut table shredded to one word per line, and the props table
+ * stacked into six labelled rows per prop. Each view now gets the width it needs.
+ */
+export type ComponentPageView = 'documentation' | 'playground';
+
+/** The query parameter carrying the active view, so a view is linkable. */
+export const VIEW_PARAM = 'view';
+
+/**
+ * Read the active view from a URLSearchParams instance. Anything unrecognised
+ * falls back to `documentation` — a bad `?view=` should land the reader on the
+ * docs, not on an error.
+ */
+export function readViewFromSearch(search: URLSearchParams): ComponentPageView {
+  return search.get(VIEW_PARAM) === 'playground' ? 'playground' : 'documentation';
+}
+
+/**
+ * The search string for a view, preserving every other parameter already on the
+ * URL (focus mode and stage width both live there too). The default view is
+ * expressed by REMOVING the parameter rather than spelling it out, so the
+ * canonical docs URL stays clean.
+ */
+export function searchForView(search: URLSearchParams, view: ComponentPageView): string {
+  const next = new URLSearchParams(search);
+  if (view === 'documentation') next.delete(VIEW_PARAM);
+  else next.set(VIEW_PARAM, view);
+  const query = next.toString();
+  return query === '' ? '' : `?${query}`;
+}
