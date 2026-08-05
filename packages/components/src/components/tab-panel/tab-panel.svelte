@@ -21,7 +21,7 @@
   import { getTabsContext } from '../tabs/tabs-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
 
-  let { value, ariaLabelledby, class: className, children }: TabPanelProps = $props();
+  let { value, ariaLabelledby, class: className, children, ...rest }: TabPanelProps = $props();
 
   const tabs = getTabsContext();
 
@@ -39,6 +39,7 @@
 
 {#if isActive}
   <div
+    {...rest}
     id={panelId}
     role="tabpanel"
     class={classNames('cinder-tab-panel', className)}

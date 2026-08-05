@@ -1,3 +1,5 @@
+import type { HTMLAttributes } from 'svelte/elements';
+
 export type MeterSize = 'sm' | 'md' | 'lg';
 export type MeterState = 'low' | 'optimum' | 'high';
 
@@ -11,7 +13,7 @@ export type MeterState = 'low' | 'optimum' | 'high';
  * ACCESSIBLE NAME (required): provide `ariaLabel` or `ariaLabelledby` so
  * assistive technologies can identify what the measurement represents.
  */
-export type MeterProps = {
+export type MeterProps = Omit<HTMLAttributes<HTMLDivElement>, 'class'> & {
   /** Current measurement value. Defaults to 0. */
   value?: number;
   /** Lower bound for the range. Defaults to 0. */

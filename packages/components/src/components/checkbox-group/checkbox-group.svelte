@@ -36,10 +36,18 @@
     variant = 'default',
     class: className,
     children,
+    'aria-describedby': consumerDescribedBy,
+    ...rest
   }: CheckboxGroupProps = $props();
   const descriptionId = $derived(describeId(groupId, !!description));
   const errId = $derived(buildErrorId(groupId, !!error));
-  const describedBy = $derived(composeDescribedBy(descriptionId, errId));
+  // Compose the group's own description/error ids with a consumer-supplied
+  // aria-describedby (destructured above, not left in `rest`) so a real
+  // consumer value is never silently clobbered by this component's own
+  // (possibly undefined) computed value — the fieldset renders
+  // `aria-describedby={describedBy}` after `{...rest}`, and Svelte's
+  // spread-merge lets a later `undefined` win.
+  const describedBy = $derived(composeDescribedBy(descriptionId, errId, consumerDescribedBy));
 
   // Warn once when no accessible group name is provided. The `hasWarned` flag
   // stops the effect re-firing on every `legend` change — matching the
@@ -69,6 +77,7 @@
 -->
 <!-- svelte-ignore a11y_role_supports_aria_props_implicit -->
 <fieldset
+  {...rest}
   class={classNames('cinder-checkbox-group', className)}
   {disabled}
   aria-invalid={ariaInvalid(!!error)}

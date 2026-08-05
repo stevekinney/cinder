@@ -407,4 +407,17 @@ describe('Meter', () => {
       console.warn = originalWarn;
     }
   });
+
+  test('forwards native attributes to the root element', () => {
+    const { container } = render(Meter, { ariaLabel: 'Battery level', 'data-testid': 'probe' });
+    expect(container.querySelector('[role="meter"]')?.getAttribute('data-testid')).toBe('probe');
+  });
+
+  test('the component-owned role always wins over a forwarded role', () => {
+    const { container } = render(Meter, {
+      ariaLabel: 'Battery level',
+      role: 'forwarded-role',
+    });
+    expect(container.querySelector('[data-cinder-size]')?.getAttribute('role')).toBe('meter');
+  });
 });

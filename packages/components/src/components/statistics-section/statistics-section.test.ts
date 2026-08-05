@@ -135,4 +135,19 @@ describe('StatisticsSection', () => {
     });
     expect(container.querySelector('.cinder-statistic__change-description')).toBeNull();
   });
+
+  test('title renders as the section heading text with no native title attribute on the root', () => {
+    const { container } = render(StatisticsSection, {
+      props: {
+        title: 'Heading text',
+        stats,
+      },
+    });
+    expect(container.querySelector('.cinder-statistics-section__title')?.textContent).toBe(
+      'Heading text',
+    );
+    expect(container.querySelector('.cinder-statistics-section')?.hasAttribute('title')).toBe(
+      false,
+    );
+  });
 });

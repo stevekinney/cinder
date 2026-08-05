@@ -15,8 +15,16 @@ export type FeatureSectionItem = {
 export type FeatureSectionLayout = 'grid' | 'split';
 export type FeatureSectionMediaPosition = 'start' | 'end';
 
-/** Props for the FeatureSection component. */
-export type FeatureSectionProps = Omit<HTMLAttributes<HTMLElement>, 'children' | 'class'> & {
+/**
+ * Props for the FeatureSection component.
+ *
+ * `title` is repurposed as the section heading text, not the native tooltip
+ * attribute — the native `HTMLAttributes.title` is intentionally unreachable.
+ */
+export type FeatureSectionProps = Omit<
+  HTMLAttributes<HTMLElement>,
+  'children' | 'class' | 'title'
+> & {
   /** Wrapper element tag. @default "section" */
   as?: 'section' | 'div';
   /** Section title rendered above the feature list. */

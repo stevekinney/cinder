@@ -65,4 +65,13 @@ describe('TabPanel', () => {
     expect(tab?.id).toBe(customTabId);
     expect(panel?.getAttribute('aria-labelledby')).toBe(customTabId);
   });
+
+  test('forwards native attributes to the root <div>', () => {
+    const { container } = render(Wrapper, {
+      value: 'a',
+      items,
+      tabPanelRest: { 'data-testid': 'probe' },
+    });
+    expect(container.querySelector('[role="tabpanel"]')?.getAttribute('data-testid')).toBe('probe');
+  });
 });

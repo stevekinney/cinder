@@ -49,4 +49,22 @@ describe('TabList', () => {
       'Test tabs',
     );
   });
+
+  test('forwards native attributes to the root <div>', () => {
+    const { container } = render(Wrapper, {
+      value: 'a',
+      items,
+      tabListRest: { 'data-testid': 'probe' },
+    });
+    expect(container.querySelector('[role="tablist"]')?.getAttribute('data-testid')).toBe('probe');
+  });
+
+  test('the component-owned role always wins over a forwarded role', () => {
+    const { container } = render(Wrapper, {
+      value: 'a',
+      items,
+      tabListRest: { role: 'forwarded-role' },
+    });
+    expect(container.querySelector('.cinder-tab-list')?.getAttribute('role')).toBe('tablist');
+  });
 });

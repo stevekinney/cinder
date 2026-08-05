@@ -57,6 +57,13 @@
     onchange,
     ...rest
   }: TagInputProps & {
+    /**
+     * Accepted for prop-shape compatibility with other form controls'
+     * `required` prop and intentionally ignored — TagInput does not enforce
+     * native constraint validation. Set `required` on the wrapping
+     * `<FormField>` instead; that context flows through to this component's
+     * `aria-required` wiring via `resolveFieldControl`.
+     */
     required?: boolean;
   } = $props();
 
@@ -145,6 +152,14 @@
     if (context && id && context.controlId !== id) {
       devWarn(
         `[cinder/TagInput] id mismatch: TagInput id="${id}" but wrapping FormField expects controlId="${context.controlId}". Set the same id on both.`,
+      );
+    }
+  });
+
+  $effect(() => {
+    if (_ignoredRequired && !context?.required) {
+      devWarn(
+        "[cinder/TagInput] ignores the native 'required' prop; set required on the wrapping FormField instead.",
       );
     }
   });

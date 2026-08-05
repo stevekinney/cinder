@@ -77,6 +77,20 @@ describe('Breadcrumbs', () => {
     expect(container.querySelector('nav')?.getAttribute('aria-label')).toBe('Path');
   });
 
+  test('forwards native attributes to the root <nav>', () => {
+    const { container } = render(Breadcrumbs, { items, 'data-testid': 'probe' });
+    expect(container.querySelector('nav')?.getAttribute('data-testid')).toBe('probe');
+  });
+
+  test('the component-owned aria-label always wins over a forwarded aria-label', () => {
+    const { container } = render(Breadcrumbs, {
+      items,
+      label: 'Path',
+      'aria-label': 'forwarded',
+    });
+    expect(container.querySelector('nav')?.getAttribute('aria-label')).toBe('Path');
+  });
+
   test('renders entries that share an href as distinct keyed items without throwing', () => {
     // A keyed {#each} throws `each_key_duplicate` at mount if two keys collide.
     // Two entries legitimately sharing an href (e.g. repeated section-landing
