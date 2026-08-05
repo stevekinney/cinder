@@ -64,6 +64,7 @@ export const LAYERS = [
   'main-green',
   'release',
   'changeset-guard',
+  'main-red-watch',
 ] as const;
 
 /** Stylelint rule coverage is documented alongside the command-layer map. */
@@ -94,6 +95,17 @@ export type DeclarationRow = {
  * thing this script exists to catch.
  */
 export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
+  'check:branch-protection': {
+    layers: ['main-red-watch'],
+    reason:
+      "Asserts `main`'s live branch protection against .github/branch-protection.json. It " +
+      'validates repository SETTINGS rather than the source tree, so it belongs to no source ' +
+      'layer: unit-tests and main-green would gain nothing from it, and it needs ' +
+      '`administration: read`, which those workflows deliberately do not hold. It runs on ' +
+      "main-red-watch's daily schedule only — the bulk-drain protocol lifts `strict` on purpose, " +
+      'so a per-pull-request cadence would page during every drain while a daily one still ' +
+      'surfaces a lift that was never restored.',
+  },
   lint: {
     layers: ['unit-tests', 'main-green'],
     reason:
@@ -880,6 +892,7 @@ const WORKFLOW_FILE_BY_LAYER: Partial<Record<Layer, string>> = {
   'main-green': 'main-green.yaml',
   release: 'release.yaml',
   'changeset-guard': 'changeset-guard.yaml',
+  'main-red-watch': 'main-red-watch.yaml',
 };
 
 async function loadWorkflowText(): Promise<Partial<Record<Layer, string>>> {

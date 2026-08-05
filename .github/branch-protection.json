@@ -1,0 +1,30 @@
+{
+  "$comment": [
+    "The expected branch-protection state for `main`, asserted against the live GitHub API by",
+    "`packages/components/scripts/check-branch-protection.ts` on main-red-watch's daily schedule.",
+    "",
+    "This file exists because prose drifted from reality twice in one day. On 2026-08-05",
+    "docs/validation-topology.md asserted both `strict: true` and that a merge queue was the",
+    "mitigation for stale-base merges; the live API returned `strict: false`, and merge queues",
+    "are unavailable on user-owned repositories entirely (recorded by #1140). Nothing checked,",
+    "so nothing caught it.",
+    "",
+    "`strict` is the load-bearing entry. GitHub offers merge queues only to organization-owned",
+    "repositories and stevekinney/cinder is user-owned, so requiring branches to be up to date",
+    "is the ONLY mechanism forcing a pull request to be re-validated against current `main`",
+    "before it merges. Without it a green pull request can merge against a tree that no longer",
+    "exists — the failure that turned `main` red on 2026-07-28 (#972 added a stylelint rule,",
+    "#1011 merged CSS violating it fourteen minutes later, both green).",
+    "",
+    "docs/validation-topology.md's bulk-drain protocol lifts `strict` deliberately and restores",
+    "it by hand. That manual restore is exactly what failed. Drift here is therefore EXPECTED",
+    "during a drain and must be restored after it — the check runs daily rather than per-pull-",
+    "request so a short drain window does not page anyone, while a lift that was never restored",
+    "surfaces within a day."
+  ],
+  "branch": "main",
+  "requiredStatusChecks": {
+    "strict": true,
+    "contexts": ["unit-tests", "typecheck", "playwright", "Pre-1.0 changeset bump guard"]
+  }
+}

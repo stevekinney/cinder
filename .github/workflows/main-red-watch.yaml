@@ -49,6 +49,13 @@ permissions:
   contents: read
   issues: write
   actions: read
+  # Reading branch protection needs Administration: Read, which is not a
+  # grantable `permissions` scope for GITHUB_TOKEN at all — GitHub Actions
+  # only recognizes a fixed set of scopes, and `administration` isn't one of
+  # them. The "Check branch protection" step below authenticates with
+  # REPO_ADMIN_TOKEN (a fine-grained PAT) instead, falling back to
+  # `github.token` so the step still runs — and reports the missing secret as
+  # a setup failure — before that secret exists.
 
 concurrency:
   # Serialize so two failures landing together cannot both miss the existing
@@ -76,8 +83,57 @@ jobs:
       contains(fromJSON('["failure", "timed_out", "startup_failure"]'), github.event.workflow_run.conclusion))
     runs-on: ubuntu-latest
     steps:
+      # Branch-protection drift is a scheduled concern, not a per-run one, so
+      # these three steps are skipped on the `workflow_run` path. The check runs
+      # daily rather than per-pull-request deliberately: the bulk-drain protocol
+      # in docs/validation-topology.md lifts `strict` on purpose, and a daily
+      # cadence lets a short drain finish without paging while still surfacing a
+      # lift that was never restored.
+      - name: Checkout
+        if: github.event_name != 'workflow_run'
+        uses: actions/checkout@v7
+
+      - name: Setup Bun
+        if: github.event_name != 'workflow_run'
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.13'
+
+      - name: Check branch protection
+        id: protection
+        if: github.event_name != 'workflow_run'
+        continue-on-error: true
+        run: |
+          # `set +e` around the pipeline: the default runner shell has
+          # `pipefail` on, so a failing `bun run` would otherwise trip `-e`
+          # and exit the step before `PIPESTATUS` is captured or the output is
+          # written — silently dropping the exit code the reporter step below
+          # needs to tell drift apart from a setup failure.
+          set +e
+          bun run --filter=@lostgradient/cinder check:branch-protection 2>&1 | tee protection.log
+          code="${PIPESTATUS[0]}"
+          set -e
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit "$code"
+        env:
+          # `administration: read` cannot be granted to GITHUB_TOKEN (see the
+          # `permissions:` comment above), so this falls back to it only so the
+          # step still runs — and the script reports the missing secret as a
+          # setup failure with provisioning instructions — before
+          # REPO_ADMIN_TOKEN is configured.
+          GITHUB_TOKEN: ${{ secrets.REPO_ADMIN_TOKEN || github.token }}
+
       - name: Report a red main
+        # Runs even if Checkout, Setup Bun, or the protection check above
+        # failed outright (not just exited non-zero) — a broken setup step
+        # must never silence the heartbeat this workflow exists to provide.
+        # This is the only reporting channel; see PROTECTION_EXIT_CODE
+        # handling in the script below for how it tells drift apart from a
+        # setup failure.
+        if: always()
         uses: actions/github-script@v7
+        env:
+          PROTECTION_EXIT_CODE: ${{ steps.protection.outputs.exit_code }}
         with:
           script: |
             const label = process.env.TRACKING_LABEL;
@@ -87,14 +143,14 @@ jobs:
             // One issue for the whole red period, not one per failed run. A
             // sustained streak (the hydration smoke produced 22) should read as
             // a single incident accumulating evidence.
-            async function report(title, body) {
+            async function report(title, body, issueLabel = label) {
               await github.rest.issues
                 .createLabel({
                   owner,
                   repo,
-                  name: label,
+                  name: issueLabel,
                   color: 'b60205',
-                  description: 'main is red — opened automatically by main-red-watch',
+                  description: 'opened automatically by main-red-watch',
                 })
                 .catch((error) => {
                   if (error.status !== 422) throw error;
@@ -104,7 +160,7 @@ jobs:
                 owner,
                 repo,
                 state: 'open',
-                labels: label,
+                labels: issueLabel,
                 per_page: 1,
               });
 
@@ -115,12 +171,18 @@ jobs:
                   issue_number: existing.data[0].number,
                   body,
                 });
-                core.notice(`main is red — updated #${existing.data[0].number}`);
+                core.notice(`${issueLabel} — updated #${existing.data[0].number}`);
                 return;
               }
 
-              const created = await github.rest.issues.create({ owner, repo, title, labels: [label], body });
-              core.notice(`main is red — opened #${created.data.number}`);
+              const created = await github.rest.issues.create({
+                owner,
+                repo,
+                title,
+                labels: [issueLabel],
+                body,
+              });
+              core.notice(`${issueLabel} — opened #${created.data.number}`);
             }
 
             if (context.eventName === 'workflow_run') {
@@ -174,6 +236,57 @@ jobs:
                 ].join('\n'),
               );
               return;
+            }
+
+            // Branch-protection drift. `continue-on-error` on the step above keeps
+            // this job alive so a drift and a stalled heartbeat can both report in
+            // one run rather than the first one hiding the second.
+            //
+            // check-branch-protection.ts exits 1 (EXIT_DRIFT) for real drift and
+            // 2 (EXIT_SETUP_FAILURE) for a setup problem (bad token scope, a
+            // non-2xx that isn't "protection absent", a missing token). Only
+            // exit 1 opens/updates the incident issue — a setup failure is not
+            // evidence main's protection changed, and filing it as drift would
+            // send someone to "fix" settings that are fine. `PROTECTION_EXIT_CODE`
+            // is empty on the `workflow_run` path (this code already returned
+            // above) and when Checkout/Setup Bun failed before the protection
+            // step ran, so neither branch below fires then.
+            const PROTECTION_EXIT_DRIFT = '1';
+            const protectionExitCode = process.env.PROTECTION_EXIT_CODE;
+
+            if (protectionExitCode === PROTECTION_EXIT_DRIFT) {
+              const { readFileSync } = require('node:fs');
+              const detail = readFileSync('protection.log', 'utf8').trim();
+
+              await report(
+                'main branch protection has drifted',
+                [
+                  '`main`\'s live protection no longer matches `.github/branch-protection.json`.',
+                  '',
+                  '```',
+                  detail,
+                  '```',
+                  '',
+                  `- Check: ${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`,
+                ].join('\n'),
+                'branch-protection-drift',
+              );
+            } else if (protectionExitCode && protectionExitCode !== '0') {
+              // Any other non-zero code — EXIT_SETUP_FAILURE (2), or something
+              // this script never anticipated (a crash, a missing `bun`) — is a
+              // setup problem, not drift. Fail this run with a clear annotation
+              // so it's visible; the step above is `continue-on-error`, so
+              // without this the run would stay green and the failure would be
+              // swallowed entirely.
+              const { existsSync, readFileSync } = require('node:fs');
+              const detail =
+                existsSync('protection.log') ? readFileSync('protection.log', 'utf8').trim() : (
+                  '(no protection.log — the check failed before producing output)'
+                );
+
+              core.setFailed(
+                `check-branch-protection setup failure (exit ${protectionExitCode}):\n${detail}`,
+              );
             }
 
             // Heartbeat. Catches the failure mode `workflow_run` structurally

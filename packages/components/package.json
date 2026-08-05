@@ -6224,6 +6224,7 @@
   "scripts": {
     "aggregator:check": "bun run scripts/check-aggregator-completeness.ts",
     "build": "bun run scripts/build.ts",
+    "check:branch-protection": "bun run scripts/check-branch-protection.ts",
     "check:changeset-prerelease-bumps": "bun run scripts/check-changeset-prerelease-bumps.ts",
     "check:component-inventory": "bun run scripts/check-component-inventory.ts",
     "check:consumer-boundaries": "bun run scripts/check-consumer-boundaries.ts",
