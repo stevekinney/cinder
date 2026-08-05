@@ -15,6 +15,13 @@ describe('resolveSafePath', () => {
     expect(resolveSafePath(baseDir, '../secret.css')).toBeNull();
   });
 
+  it('accepts a filename that merely contains ".." as a substring', () => {
+    // 'foo..css' has no '..' path *segment* — the whole thing is one
+    // filename. A naive `requestedPath.includes('..')` check rejects it
+    // anyway, even though it can't escape baseDir.
+    expect(resolveSafePath(baseDir, 'foo..css')).toBe(join(baseDir, 'foo..css'));
+  });
+
   it('rejects an absolute path', () => {
     expect(resolveSafePath(baseDir, '/etc/passwd')).toBeNull();
   });
@@ -23,12 +30,15 @@ describe('resolveSafePath', () => {
     expect(resolveSafePath(baseDir, '')).toBeNull();
   });
 
-  it('rejects a request that round-trips outside baseDir after join() collapses it', () => {
-    // 'foo/../../secret.css' contains a literal '..' so the includes('..')
-    // pre-filter already catches it — this case exists to prove the
-    // relative().startsWith('..') check is doing real work, not just the
-    // pre-filter, by confirming the joined-then-collapsed path still lands
-    // outside baseDir.
+  it('rejects nested ".." segments, not just a single leading one', () => {
+    // Every segment is checked, not just the first, so a '..' buried in the
+    // middle of the path is caught too. This is a regression guard for the
+    // per-segment filter itself — the join()+relative() check below it
+    // exists as defense-in-depth against a future regression in that
+    // filter, but on POSIX join() can't produce a path outside baseDir once
+    // every '..' segment is already rejected here, so this input (like any
+    // input the segment filter correctly rejects) never reaches that second
+    // check.
     expect(resolveSafePath(baseDir, 'foo/../../secret.css')).toBeNull();
   });
 });

@@ -101,4 +101,22 @@ describe('port selection', () => {
     const response = await fetch(`http://127.0.0.1:${serverPort}`);
     expect(await response.text()).toBe('fallback');
   });
+
+  it('never scans past the valid TCP port ceiling of 65535', () => {
+    // Bun.serve() silently clamps out-of-range ports to 65535 rather than
+    // throwing, so scanning past the ceiling wastes attempts re-probing the
+    // same clamped port and reports a bogus upper bound (e.g. 65599, which
+    // isn't a valid TCP port) in the failure message. Reserve every port from
+    // 65500 through the ceiling so the scan is guaranteed to exhaust without
+    // ever succeeding, then assert the reported range stops at 65535.
+    const start = 65_500;
+    for (let port = start; port <= 65_535; port++) {
+      const server = tryReservePort(port);
+      if (server) temporaryServers.push(server);
+    }
+
+    expect(() => createHttpServerOnAvailablePort(start, () => new Response('unreachable'))).toThrow(
+      /through 65535/,
+    );
+  });
 });

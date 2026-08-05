@@ -16,6 +16,7 @@ export function resolvePreferredPort(): number {
 }
 
 const MAX_PORT_SCAN_ATTEMPTS = 100;
+const MAX_VALID_PORT = 65535;
 
 function isAddressInUseError(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
@@ -34,8 +35,12 @@ export function createHttpServerOnAvailablePort(
   preferredPort: number,
   fetchHandler: PlaygroundFetchHandler,
 ): PlaygroundHttpServer {
-  for (let offset = 0; offset < MAX_PORT_SCAN_ATTEMPTS; offset++) {
-    const port = preferredPort + offset;
+  // Bun.serve() silently clamps a port above 65535 to 65535 instead of
+  // throwing, so scanning past the ceiling would waste attempts re-probing
+  // the same clamped port and report a bogus (invalid) upper bound in the
+  // error below. Clamp the scan range itself instead.
+  const maxPort = Math.min(preferredPort + MAX_PORT_SCAN_ATTEMPTS - 1, MAX_VALID_PORT);
+  for (let port = preferredPort; port <= maxPort; port++) {
     try {
       const server = Bun.serve({
         port,
@@ -50,11 +55,7 @@ export function createHttpServerOnAvailablePort(
     }
   }
 
-  throw new Error(
-    `[playground] no available port found from ${preferredPort} through ${
-      preferredPort + MAX_PORT_SCAN_ATTEMPTS - 1
-    }`,
-  );
+  throw new Error(`[playground] no available port found from ${preferredPort} through ${maxPort}`);
 }
 
 type RequestIdleTimeoutController = {
