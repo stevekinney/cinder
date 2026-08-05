@@ -153,6 +153,42 @@ describe('Pagination', () => {
     expect(currentButtons.length).toBe(1);
   });
 
+  // §Ellipsis window (totalPages > 7) — pageItems boundary rule
+  //
+  // pageItems is a sorted Set of {1, totalPages} ∪ [currentPage-1, currentPage+1].
+  // Walking consecutive pairs of that set: a gap of 1 means the pages are already
+  // adjacent (nothing inserted), a gap of exactly 2 fills the single missing page
+  // directly (no ellipsis — hiding just one number would be silly), and a gap
+  // greater than 2 inserts an 'ellipsis-start' (immediately after the leading
+  // boundary) or 'ellipsis-end' (everywhere else) marker instead of the pages
+  // it collapses.
+
+  test('renders ellipsis markers and the correct page window for totalPages > 7', () => {
+    // totalPages: 10, currentPage: 5 → boundary {1, 10}, window {4, 5, 6} →
+    // sorted [1, 4, 5, 6, 10] → gaps 3, 1, 1, 4 → ellipsis-start, -, -, ellipsis-end.
+    const { container } = render(Pagination, {
+      props: { currentPage: 5, totalPages: 10 },
+    });
+    const items = Array.from(container.querySelectorAll('.cinder-pagination__pages > li')).map(
+      (item) => item.textContent?.trim(),
+    );
+    expect(items).toEqual(['1', '…', '4', '5', '6', '…', '10']);
+    expect(container.querySelectorAll('.cinder-pagination__ellipsis-item').length).toBe(2);
+  });
+
+  test('fills a two-page gap directly instead of inserting an ellipsis', () => {
+    // totalPages: 8, currentPage: 4 → boundary {1, 8}, window {3, 4, 5} →
+    // sorted [1, 3, 4, 5, 8] → gaps 2, 1, 1, 3 → fill 2 directly, -, -, ellipsis-end.
+    const { container } = render(Pagination, {
+      props: { currentPage: 4, totalPages: 8 },
+    });
+    const items = Array.from(container.querySelectorAll('.cinder-pagination__pages > li')).map(
+      (item) => item.textContent?.trim(),
+    );
+    expect(items).toEqual(['1', '2', '3', '4', '5', '…', '8']);
+    expect(container.querySelectorAll('.cinder-pagination__ellipsis-item').length).toBe(1);
+  });
+
   // §Native attribute passthrough — rest spread
 
   test('forwards id and data-* attributes to the nav element', () => {
