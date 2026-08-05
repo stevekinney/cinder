@@ -39,3 +39,30 @@ describe('component artifact import boundaries', () => {
     );
   });
 });
+
+describe('checkComponentArtifacts processing order', () => {
+  it('processes components sequentially, never concurrently', async () => {
+    // Regression guard for a false-positive `components:check` drift report.
+    // `generateSchemaForComponent` type-checks each component's props type
+    // against a shared, module-cached `ts-morph` `Project` (see
+    // `generate-component-schema.ts`'s `getProject()`), reused across calls
+    // to avoid reparsing common dependencies like `svelte/elements`. When
+    // `checkComponentArtifacts` dispatched components through
+    // `mapWithConcurrencyLimit` (concurrency 12), the resulting interleaved
+    // `Project` mutations made TypeScript's checker enumerate at least one
+    // component's intersection-type members (`input`, whose `id` is both
+    // inherited from `HTMLInputAttributes` and redeclared as required) in a
+    // non-deterministic order — producing a `stale` verdict in CI for a tree
+    // with zero real drift, reproducible only under CI-like load, never
+    // locally with `components:generate` (always sequential). A plain
+    // sequential loop makes the shared-`Project` processing order fixed and
+    // matches `generate` mode exactly, eliminating the race. See
+    // `checkComponentArtifacts` in `component-artifact-operations.ts`.
+    const source = await readScript('component-artifact-operations.ts');
+
+    expect(source).not.toContain('mapWithConcurrencyLimit');
+    expect(source).toMatch(
+      /export async function checkComponentArtifacts[\s\S]*?for \(const component of components\) \{/,
+    );
+  });
+});
