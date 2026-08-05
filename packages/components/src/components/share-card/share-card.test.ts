@@ -124,6 +124,7 @@ describe('ShareCard', () => {
         throw new Error('denied');
       },
     });
+    jest.useFakeTimers();
 
     try {
       const { container, getByRole } = render(ShareCard, {
@@ -134,15 +135,19 @@ describe('ShareCard', () => {
 
       const button = getByRole('button', { name: /Copy link/i });
       await fireEvent.click(button);
-      // Allow the rejected clipboard write, the legacy fallback, and the live
-      // region's blank-then-set(0) dance to settle.
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      // Let the rejected clipboard write and the sync legacyCopy fallback
+      // resolve, then advance the live region's setTimeout(0) blank-then-set
+      // dance deterministically instead of sleeping on the real clock.
+      await tick();
+      jest.advanceTimersByTime(0);
+      await tick();
 
       const liveRegion = container.querySelector('.cinder-sr-only');
       expect(liveRegion?.textContent).toBe('Copy failed');
       expect(button.getAttribute('data-cinder-copied')).toBeNull();
     } finally {
       restoreNavigatorClipboard(originalClipboard);
+      jest.useRealTimers();
     }
   });
 
