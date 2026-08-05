@@ -2,5 +2,11 @@ import './popover.css';
 import Popover from './popover.svelte';
 
 export default Popover;
-export type { PopoverPlacement, PopoverProps, PopoverRole } from './popover.types.ts';
+export type {
+  PopoverFocusManagement,
+  PopoverPlacement,
+  PopoverProps,
+  PopoverRole,
+  PopoverWidthMode,
+} from './popover.types.ts';
 export { Popover };

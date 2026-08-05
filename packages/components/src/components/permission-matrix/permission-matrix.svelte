@@ -23,7 +23,10 @@
   } from './permission-matrix.types.ts';
 </script>
 
-<script lang="ts">
+<script
+  lang="ts"
+  generics="TRow extends PermissionMatrixAxisItem = PermissionMatrixAxisItem, TColumn extends PermissionMatrixAxisItem = PermissionMatrixAxisItem"
+>
   import Check from 'lucide-svelte/icons/check';
   import LockKeyhole from 'lucide-svelte/icons/lock-keyhole';
   import Minus from 'lucide-svelte/icons/minus';
@@ -51,7 +54,7 @@
     loadingContent,
     id,
     ...rest
-  }: PermissionMatrixProps = $props();
+  }: PermissionMatrixProps<TRow, TColumn> = $props();
 
   const generatedId = $props.id();
   const rootId = $derived(id ?? generatedId);

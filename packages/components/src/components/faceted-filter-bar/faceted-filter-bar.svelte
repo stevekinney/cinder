@@ -30,7 +30,7 @@
   import Button from '../button/button.svelte';
   import { classNames } from '../../utilities/class-names.ts';
 
-  import type { FacetedFilterBarProps, SelectFacet } from './faceted-filter-bar.types.ts';
+  import type { FacetedFilterBarProps } from './faceted-filter-bar.types.ts';
 
   const generatedId = $props.id();
 
@@ -151,27 +151,26 @@
 
     {#each facets as facet (facet.key)}
       {#if facet.type === 'select'}
-        {@const selectFacet = facet as SelectFacet}
         <div class="cinder-faceted-filter-bar__facet">
           <label
             class="cinder-faceted-filter-bar__facet-label"
-            for={`${generatedId}-facet-${selectFacet.key}`}
+            for={`${generatedId}-facet-${facet.key}`}
           >
-            {selectFacet.label}
+            {facet.label}
           </label>
           <select
-            id={`${generatedId}-facet-${selectFacet.key}`}
+            id={`${generatedId}-facet-${facet.key}`}
             class="cinder-faceted-filter-bar__select"
-            value={resolveFacetValue(selectFacet.key)}
-            disabled={disabled || selectFacet.disabled}
-            aria-label={selectFacet.label}
+            value={resolveFacetValue(facet.key)}
+            disabled={disabled || facet.disabled}
+            aria-label={facet.label}
             onchange={(event) => {
               const target = event.currentTarget as HTMLSelectElement;
-              onFacetChange?.(selectFacet.key, target.value);
+              onFacetChange?.(facet.key, target.value);
             }}
           >
-            <option value="">{selectFacet.placeholder ?? selectFacet.label}</option>
-            {#each selectFacet.options as option (option.value)}
+            <option value="">{facet.placeholder ?? facet.label}</option>
+            {#each facet.options as option (option.value)}
               <option value={option.value} disabled={option.disabled}>{option.label}</option>
             {/each}
           </select>

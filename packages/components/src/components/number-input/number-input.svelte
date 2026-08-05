@@ -52,7 +52,6 @@
 
   const context = getFormFieldContext();
   const localeContext = getLocaleContext();
-  const inputRest = $derived(rest as Record<string, unknown>);
 
   let editorBuffer = $state('');
   let isFocused = $state(false);
@@ -494,9 +493,12 @@
   // sets aria-invalid without fabricating an error-element id that points at
   // nothing. The internal message is wired into describedBy via its own id.
   const internalInvalid = $derived(malformedError || requiredEmptyError ? 'true' : undefined);
-  const resolvedAriaInvalid = $derived(
-    internalInvalid ?? (inputRest['aria-invalid'] as 'true' | 'false' | undefined),
-  );
+
+  function toAriaInvalidValue(value: unknown): 'true' | 'false' | undefined {
+    return value === 'true' || value === 'false' ? value : undefined;
+  }
+
+  const resolvedAriaInvalid = $derived(internalInvalid ?? toAriaInvalidValue(rest['aria-invalid']));
 
   const incrementDisabled = $derived(
     resolvedDisabled || (value !== null && value !== undefined && value >= resolvedMax),
@@ -560,7 +562,7 @@
     required={resolvedRequired}
     class="cinder-number-input__input"
     groupClassName="cinder-number-input"
-    {...inputRest}
+    {...rest}
     type="text"
     role="spinbutton"
     inputmode="decimal"
