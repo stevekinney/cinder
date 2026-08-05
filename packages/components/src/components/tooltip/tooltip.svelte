@@ -17,6 +17,7 @@
 
 <script lang="ts">
   import type { TooltipProps } from './tooltip.types.ts';
+  import { onDestroy } from 'svelte';
   import type { Attachment } from 'svelte/attachments';
   import type { Placement } from '@floating-ui/dom';
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
@@ -184,11 +185,7 @@
   });
   const isTooltipExposed = $derived(visible && anchoredOverlay.positionReady);
 
-  $effect(() => {
-    return () => {
-      clearPendingShow();
-    };
-  });
+  onDestroy(clearPendingShow);
 
   $effect(() => {
     if (!visible) return;

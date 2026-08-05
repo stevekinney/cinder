@@ -147,8 +147,35 @@
   const initialTodayIso = localTodayIso();
   const initialAnchorIso = untrack(() => resolveAnchorIso(value, month, initialTodayIso));
   const initialFocusedIso = untrack(() => initialAnchorIso);
-  const todayIso = $derived(localTodayIso());
-  const anchorIso = $derived(resolveAnchorIso(value, month, todayIso));
+  let todayIso = $state(localTodayIso());
+
+  // Keeps `todayIso` live across a midnight rollover in a long-lived session —
+  // both while the tab stays open (interval) and, far more commonly, while it
+  // sits backgrounded overnight (visibilitychange). Never runs during SSR, so
+  // `document`/`setInterval` are safe to reference unguarded here.
+  $effect(() => {
+    const refresh = () => (todayIso = localTodayIso());
+    const timer = setInterval(refresh, 60_000);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  });
+
+  // `todayIso` is read untracked here: it only ever matters to this anchor as a
+  // *fallback* for an uncontrolled calendar (no `value`/`month`). Tracking it
+  // would make the sync effect below re-anchor on every midnight/visibility
+  // refresh, snapping an already-navigated, uncontrolled view back to today's
+  // month. `todayIso` still drives the `aria-current="date"` marker directly
+  // in the template, which is the only thing a live refresh should move.
+  const anchorIso = $derived(
+    resolveAnchorIso(
+      value,
+      month,
+      untrack(() => todayIso),
+    ),
+  );
   const anchorDate = $derived(parseISODate(anchorIso) ?? parseISODate(todayIso)!);
   let visibleMonthDate = $state(
     startOfMonth(parseISODate(initialAnchorIso) ?? parseISODate(initialTodayIso)!),

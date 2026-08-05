@@ -12,8 +12,6 @@
    * @avoidWhen Rendering a single button — use button on its own.
    * @related button, segmented-control
    */
-  let groupIdCounter = 0;
-
   export type { ButtonGroupOrientation, ButtonGroupProps } from './button-group.types.ts';
 </script>
 
@@ -42,7 +40,7 @@
   // carries ownership. When a child moves from one group to another, the new
   // group overwrites the value and the old group's cleanup only removes it if
   // the value still matches this instance's ID.
-  const groupId = String(++groupIdCounter);
+  const groupId = $props.id();
 
   const tagDirectChildren: Attachment = (element) => {
     const ATTR = 'data-cinder-button-group-item';

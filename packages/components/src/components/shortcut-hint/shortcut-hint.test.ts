@@ -107,6 +107,17 @@ describe('ShortcutHint', () => {
     expect(keysIndex).toBeLessThan(labelIndex);
   });
 
+  test('does not collide keys for numeric-suffixed key names (e.g. "F1" at index 0 vs "F" at index 10)', () => {
+    // Naive `key + index` string concatenation collides here: "F1" + 0 and
+    // "F" + 10 both produce "F10". A delimited composite key keeps them
+    // distinct so all 11 <kbd> elements render in the correct order.
+    const keys = ['F1', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'F'];
+    const { container } = render(ShortcutHint, { keys });
+    const kbds = container.querySelectorAll('kbd');
+    expect(kbds.length).toBe(keys.length);
+    expect(Array.from(kbds).map((kbd) => kbd.textContent)).toEqual(keys);
+  });
+
   test('renders keys after children by default', () => {
     const { container } = render(ShortcutHint, {
       keys: ['Ctrl', 'S'],

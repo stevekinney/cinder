@@ -203,6 +203,50 @@ describe('ButtonGroup', () => {
     expect(child.hasAttribute('data-cinder-button-group-item')).toBe(false);
   });
 
+  test('two ButtonGroup instances tag their children with different ownership IDs', () => {
+    // Regression: the ownership ID used to come from a `<script module>`-scoped
+    // counter — mutable state shared across every instance (and, in a real SSR
+    // server process, across every request). `$props.id()` scopes the ID per
+    // component instance instead.
+    const { container: containerA } = render(ButtonGroup, {
+      props: { label: 'Group A', children: singleButtonSnippet('Save') },
+    });
+    const { container: containerB } = render(ButtonGroup, {
+      props: { label: 'Group B', children: singleButtonSnippet('Cancel') },
+    });
+
+    const childA = containerA.querySelector('.cinder-button-group')?.children[0];
+    const childB = containerB.querySelector('.cinder-button-group')?.children[0];
+    const valueA = childA?.getAttribute('data-cinder-button-group-item');
+    const valueB = childB?.getAttribute('data-cinder-button-group-item');
+
+    expect(valueA).not.toBeNull();
+    expect(valueB).not.toBeNull();
+    expect(valueA).not.toBe(valueB);
+  });
+
+  test('a child moved from one group to another is tagged with only the new group ownership value', async () => {
+    const { container: containerA } = render(ButtonGroup, {
+      props: { label: 'Group A', children: singleButtonSnippet('Save') },
+    });
+    const { container: containerB } = render(ButtonGroup, {
+      props: { label: 'Group B', children: singleButtonSnippet('Cancel') },
+    });
+
+    const groupA = containerA.querySelector('.cinder-button-group')!;
+    const groupB = containerB.querySelector('.cinder-button-group')!;
+    const movedChild = groupA.children[0] as Element;
+    const groupBChild = groupB.children[0] as Element;
+    const groupBOwnershipValue = groupBChild.getAttribute('data-cinder-button-group-item');
+
+    groupB.appendChild(movedChild);
+    // MutationObserver callbacks are batched as microtasks. In happy-dom,
+    // a setTimeout(0) reliably flushes the callback queue.
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+    expect(movedChild.getAttribute('data-cinder-button-group-item')).toBe(groupBOwnershipValue);
+  });
+
   test('styling-contract attribute is added to a child appended after mount', async () => {
     const { container } = render(ButtonGroup, {
       props: { label: 'Actions', children: singleButtonSnippet('Save') },
