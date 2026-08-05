@@ -271,6 +271,31 @@ describe('Steps', () => {
   });
 });
 
+describe('Steps — HTMLAttributes passthrough', () => {
+  test('forwards native attributes to the root <nav>', () => {
+    const { container } = render(Steps, {
+      props: {
+        steps: defaultSteps,
+        currentStep: 0,
+        'data-testid': 'probe',
+      },
+    });
+    expect(container.querySelector('nav')?.getAttribute('data-testid')).toBe('probe');
+  });
+
+  test('the component-owned aria-label always wins over a forwarded aria-label', () => {
+    const { container } = render(Steps, {
+      props: {
+        steps: defaultSteps,
+        currentStep: 0,
+        label: 'Setup progress',
+        'aria-label': 'forwarded',
+      },
+    });
+    expect(container.querySelector('nav')?.getAttribute('aria-label')).toBe('Setup progress');
+  });
+});
+
 describe('Steps — interactive step items', () => {
   test('href step renders the body as an <a> whose name contains label + description', () => {
     const steps = [

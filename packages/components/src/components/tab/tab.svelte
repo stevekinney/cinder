@@ -36,6 +36,7 @@
     class: className,
     children,
     trailing,
+    ...rest
   }: TabProps = $props();
 
   const tabs = getTabsContext();
@@ -108,6 +109,7 @@
 </script>
 
 <button
+  {...rest}
   bind:this={buttonElement}
   type="button"
   role="tab"

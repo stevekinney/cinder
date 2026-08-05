@@ -27,9 +27,10 @@ export type DiscoveredComponent = {
  * standalone usage — they are always rendered inside a parent compound
  * (`Tabs`, `Table`, `Dropdown`, `Accordion`, `Tree`, `Feed`, `GridList`,
  * `Grid`, `SpeedDial`, `StatisticGroup`, `SideNavigation`, `CommandMenu`,
- * `SegmentedControl`). They are excluded from the playground sidebar so a
- * single parent entry covers the family, but they remain in
- * `discoverComponents()` so direct `/c/<leaf>` routing still works.
+ * `SegmentedControl`, `BentoGrid`, `ChoiceGrid`, `ContextMenu`). They are
+ * excluded from the playground sidebar so a single parent entry covers the
+ * family, but they remain in `discoverComponents()` so direct `/c/<leaf>`
+ * routing still works.
  */
 export const COMPOSE_ONLY_COMPONENTS: ReadonlySet<string> = new Set([
   'accordion-item',
@@ -62,12 +63,6 @@ export const COMPOSE_ONLY_COMPONENTS: ReadonlySet<string> = new Set([
   'side-navigation-item',
 ]);
 
-/**
- * Explicit compound-family relationships used by the playground shell.
- * Keeping this list keyed by component id makes the relationship reviewable
- * metadata instead of relying on a naming-prefix heuristic. Leaves remain
- * independently routable; the sidebar simply presents them under their root.
- */
 /**
  * Scans a component-source root for the absolute paths of every public
  * component `.svelte` file. Covers both the legacy flat layout

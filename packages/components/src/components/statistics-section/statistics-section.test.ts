@@ -64,4 +64,19 @@ describe('StatisticsSection', () => {
     expect(element?.classList.contains('cinder-statistics-section')).toBe(true);
     expect(element?.classList.contains('my-custom-class')).toBe(true);
   });
+
+  test('title renders as the section heading text with no native title attribute on the root', () => {
+    const { container } = render(StatisticsSection, {
+      props: {
+        title: 'Heading text',
+        stats,
+      },
+    });
+    expect(container.querySelector('.cinder-statistics-section__title')?.textContent).toBe(
+      'Heading text',
+    );
+    expect(container.querySelector('.cinder-statistics-section')?.hasAttribute('title')).toBe(
+      false,
+    );
+  });
 });

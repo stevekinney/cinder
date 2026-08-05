@@ -51,16 +51,6 @@ describe('JsonSchemaEditor — Diff tab source contract', () => {
     expect(hasSemanticIndicator).toBe(true);
   });
 
-  test('json-schema-editor-impl.svelte uses Badge in the trailing snippet for the Diff tab', async () => {
-    const source = await Bun.file(
-      new URL('./json-schema-editor-impl.svelte', import.meta.url),
-    ).text();
-
-    // The Diff tab should use the trailing snippet with a Badge for the visual indicator
-    expect(source).toContain('trailing');
-    expect(source).toContain('Badge');
-  });
-
   test('json-schema-editor-toolbar.svelte has role=toolbar and an accessible label', async () => {
     const source = await Bun.file(new URL('./json-schema-toolbar.svelte', import.meta.url)).text();
 
@@ -89,6 +79,53 @@ describe('JsonSchemaEditor — Diff tab source contract', () => {
     expect(source).toContain('setChildValidationErrorCount(`${keyword}:${removedBranchKey}`, 0)');
     expect(source).not.toContain('.toSpliced(');
     expect(source).toContain('onvalidationErrorcount?.(0)');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Mounted: Diff tab Badge indicator only appears once a change is committed
+// ---------------------------------------------------------------------------
+describe('JsonSchemaEditor — Diff tab Badge indicator', () => {
+  afterEach(() => cleanup());
+
+  /** Wait a macrotask so debounced state work and Svelte effects settle. */
+  function flushEffects(): Promise<void> {
+    return new Promise<void>((resolve) => setTimeout(resolve, 0));
+  }
+
+  test('renders a Badge in the Diff tab only after a change is committed', async () => {
+    render(JsonSchemaEditorImplementation, {
+      props: { id: 'jse-diff-badge', schema: { type: 'string' }, view: 'json' as const },
+    });
+    await flushEffects();
+
+    const diffTab = screen.getByRole('tab', { name: /Diff/ });
+
+    // Before any edit is committed, editorState.hasChanges is false — the
+    // {#if editorState.hasChanges} branch around the Badge must not render it.
+    expect(diffTab.querySelector('.cinder-badge')).toBeNull();
+
+    // Commit a real edit through the JSON view (same sequence as the
+    // 'Apply disables for an invalid draft...' test below).
+    const textarea = screen.getByRole('textbox', { name: 'JSON' });
+    await fireEvent.input(textarea, {
+      target: { value: JSON.stringify({ type: 'string', title: 'Changed' }) },
+    });
+    await flushEffects();
+    const applyButton = screen
+      .getAllByRole('button')
+      .find((button) => button.textContent?.trim() === 'Apply');
+    expect(applyButton).toBeDefined();
+    await fireEvent.click(applyButton as HTMLElement);
+    await flushEffects();
+
+    await fireEvent.click(diffTab);
+    await flushEffects();
+
+    const badge = diffTab.querySelector('.cinder-badge');
+    expect(badge).not.toBeNull();
+    expect(badge?.textContent).toBe('●');
+    expect(badge?.getAttribute('aria-hidden')).toBe('true');
   });
 });
 

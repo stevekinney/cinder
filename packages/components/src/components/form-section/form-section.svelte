@@ -48,7 +48,7 @@
     }
   });
 
-  const headingTag = $derived(headingTags[headingLevel as FormSectionHeadingLevel] ?? 'h2');
+  const headingTag = $derived(headingTags[headingLevel] ?? 'h2');
 </script>
 
 {#if as === 'fieldset'}

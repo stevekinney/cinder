@@ -22,7 +22,7 @@
 </script>
 
 <script lang="ts">
-  import { onDestroy } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
   import type { Attachment } from 'svelte/attachments';
 
   import { setToastContext } from '../../_internal/toast-context.ts';
@@ -75,7 +75,7 @@
   // Hydration gate — toast live regions are client-only, but wrapped app
   // content and the context provider still render during SSR.
   let hydrated = $state(false);
-  $effect(() => {
+  onMount(() => {
     hydrated = true;
   });
 

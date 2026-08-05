@@ -90,17 +90,16 @@
 
   function makeVirtualReference(x: number, y: number): VirtualElement {
     return {
-      getBoundingClientRect: () =>
-        ({
-          x,
-          y,
-          top: y,
-          left: x,
-          right: x,
-          bottom: y,
-          width: 0,
-          height: 0,
-        }) as DOMRect,
+      getBoundingClientRect: () => ({
+        x,
+        y,
+        top: y,
+        left: x,
+        right: x,
+        bottom: y,
+        width: 0,
+        height: 0,
+      }),
     };
   }
 

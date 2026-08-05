@@ -107,4 +107,17 @@ describe('FeatureSection', () => {
     const root = container.querySelector('.cinder-feature-section');
     expect(root?.getAttribute('data-cinder-layout')).toBe('split');
   });
+
+  test('title renders as the section heading text with no native title attribute on the root', () => {
+    const { container } = render(FeatureSection, {
+      props: {
+        title: 'Heading text',
+        items,
+      },
+    });
+    expect(container.querySelector('.cinder-feature-section__title')?.textContent).toBe(
+      'Heading text',
+    );
+    expect(container.querySelector('.cinder-feature-section')?.hasAttribute('title')).toBe(false);
+  });
 });

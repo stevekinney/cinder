@@ -12,18 +12,20 @@ On-page heading navigation for long-form content and docs layouts.
 <TableOfContents target="#article-content" />
 ```
 
+`target` also accepts a live `HTMLElement` reference in addition to the CSS-selector string shown above; the generated schema below documents the selector-only form since a live element reference isn't JSON-Schema-expressible.
+
 ## Props
 
 <!-- generated:props:start -->
 
-| Prop                | Type       | Required | Default           | Description                                                                                                               |
-| ------------------- | ---------- | -------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `ariaLabel`         | `string`   | no       | `"On this page"`  | Accessible name for the nav landmark.                                                                                     |
-| `class`             | `string`   | no       | —                 | Additional class names merged with `.cinder-table-of-contents`.                                                           |
-| `headingSelector`   | `string`   | no       | `"h2, h3, h4"`    | CSS selector used to gather headings inside the target element.                                                           |
-| `observeRootMargin` | `string`   | no       | `"0% 0% -70% 0%"` | Root margin passed to IntersectionObserver for active-section detection.                                                  |
-| `target`            | `string`   | no       | —                 | CSS selector used to find the target heading container in derived mode.                                                   |
-| `items`             | `(opaque)` | no       | —                 | Explicit nested TOC items for controlled mode. Not expressible in JSON Schema; see the component types for the signature. |
+| Prop                | Type       | Required | Default           | Description                                                                                                                                      |
+| ------------------- | ---------- | -------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `ariaLabel`         | `string`   | no       | `"On this page"`  | Accessible name for the nav landmark.                                                                                                            |
+| `class`             | `string`   | no       | —                 | Additional class names merged with `.cinder-table-of-contents`.                                                                                  |
+| `headingSelector`   | `string`   | no       | `"h2, h3, h4"`    | CSS selector used to gather headings inside the target element.                                                                                  |
+| `observeRootMargin` | `string`   | no       | `"0% 0% -70% 0%"` | Root margin passed to IntersectionObserver for active-section detection.                                                                         |
+| `target`            | `string`   | no       | —                 | Schema surface accepts the CSS-selector form only; the component prop additionally accepts a live HTMLElement — see TableOfContentsProps.target. |
+| `items`             | `(opaque)` | no       | —                 | Explicit nested TOC items for controlled mode. Not expressible in JSON Schema; see the component types for the signature.                        |
 
 <!-- generated:props:end -->
 

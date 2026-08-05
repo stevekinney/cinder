@@ -54,15 +54,11 @@
     return () => registerTrigger(null);
   }
 
-  type DropdownTriggerClickHandler = (
-    event: MouseEvent & { currentTarget: EventTarget & HTMLButtonElement },
-  ) => void;
-
   function handleClick(
     event: MouseEvent & { currentTarget: EventTarget & HTMLButtonElement },
   ): void {
     if (typeof onclick === 'function') {
-      (onclick as DropdownTriggerClickHandler)(event);
+      onclick(event);
     }
     if (!event.defaultPrevented && !context.supportsPopover) {
       setOpen(!context.isOpen);

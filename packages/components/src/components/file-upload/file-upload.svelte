@@ -95,7 +95,7 @@
   function hasFilesPayload(dataTransfer: DataTransfer | null | undefined): boolean {
     const fileTypes = dataTransfer?.types;
     if (!fileTypes) return false;
-    return Array.from(fileTypes as ArrayLike<string>).includes('Files');
+    return Array.from(fileTypes).includes('Files');
   }
 
   function matchesAcceptToken(file: File, token: string): boolean {

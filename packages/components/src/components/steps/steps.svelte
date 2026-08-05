@@ -28,6 +28,7 @@
     completedLabel = 'Completed',
     skippedLabel = 'Skipped',
     class: className,
+    ...rest
   }: StepsProps = $props();
 
   const clampedCurrent = $derived(
@@ -46,6 +47,7 @@
 </script>
 
 <nav
+  {...rest}
   class={classNames('cinder-steps', className)}
   aria-label={label}
   data-cinder-orientation={orientation}

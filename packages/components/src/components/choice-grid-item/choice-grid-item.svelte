@@ -11,10 +11,7 @@
    * @avoidWhen Used outside a ChoiceGrid — this leaf requires the parent context.
    * @related choice-grid
    */
-  export type {
-    ChoiceGridItemProps,
-    ChoiceGridItemState,
-  } from '../choice-grid/choice-grid.types.ts';
+  export type { ChoiceGridItemProps, ChoiceGridItemState } from './choice-grid-item.types.ts';
 </script>
 
 <script lang="ts">

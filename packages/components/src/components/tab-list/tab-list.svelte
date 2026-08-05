@@ -21,12 +21,13 @@
   import { getTabsContext } from '../tabs/tabs-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
 
-  let { label, labelledBy, class: className, children }: TabListProps = $props();
+  let { label, labelledBy, class: className, children, ...rest }: TabListProps = $props();
 
   const tabs = getTabsContext();
 </script>
 
 <div
+  {...rest}
   role="tablist"
   class={classNames('cinder-tab-list', className)}
   data-cinder-orientation={tabs.orientation}

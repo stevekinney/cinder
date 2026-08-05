@@ -1,6 +1,8 @@
 /// <reference lib="dom" />
 /**
- * Regression tests for the example-mount `$effect` in `component-page.svelte`.
+ * Regression tests for the example-mount `$effect` in `component-page.svelte`,
+ * plus (see the `.dx-nav` describe block below) coverage of the sidebar's
+ * compound-family grouping.
  *
  * The original effect deferred each mount into a `queueMicrotask` callback that
  * pushed into a per-run `localApps` array. When the effect re-ran, the previous
@@ -10,13 +12,20 @@
  * fix mounts synchronously in the effect body (the container exists post
  * DOM-patch in Svelte 5), so cleanup and mount share the same `localApps` ref.
  *
- * Mounting the full `component-page.svelte` is impractical: it reads
- * `window.location.pathname`, the server-injected `__CINDER_EXAMPLES__` /
- * `__CINDER_SCENARIOS__` globals, and several deep-imported cinder components,
- * none of which the race depends on. These tests instead drive a fixture that
- * reproduces the effect verbatim (see `component-page-mount-fixture.svelte`)
- * and assert the load-bearing invariant: mount/unmount count parity, no
- * orphaned trees, and no duplicate scenario containers across rapid re-runs.
+ * Mounting the full `component-page.svelte` to exercise THAT race is
+ * impractical: it reads `window.location.pathname`, the server-injected
+ * `__CINDER_EXAMPLES__` / `__CINDER_SCENARIOS__` globals, and several
+ * deep-imported cinder components, none of which the race depends on. Those
+ * tests instead drive a fixture that reproduces the effect verbatim (see
+ * `component-page-mount-fixture.svelte`) and assert the load-bearing
+ * invariant: mount/unmount count parity, no orphaned trees, and no duplicate
+ * scenario containers across rapid re-runs.
+ *
+ * The `.dx-nav` describe block below mounts the real component directly
+ * instead — passing `documentation: null` explicitly (skipping the data-island
+ * read) and a fake global `EventSource` (the live-reload attach otherwise
+ * throws, since happy-dom and Bun's test runtime don't implement it) is enough
+ * to reach the nav markup without needing documentation or example data.
  *
  * Harness setup mirrors `shell-app/event-source.test.ts`: happy-dom is
  * installed onto `globalThis` before `@testing-library/svelte` loads.
@@ -34,7 +43,24 @@ import { setupHappyDom } from '../../components/src/test/happy-dom.ts';
 // `server.test.ts`'s `Bun.build` relies on.
 setupHappyDom();
 
+// `component-page.svelte`'s live-reload attach opens `new EventSource(...)`
+// whenever it renders outside snapshot mode (the branch that owns `.dx-nav`).
+// Neither happy-dom nor Bun's test runtime implements `EventSource`; stub a
+// minimal one so mounting the real component doesn't throw. Installed before
+// the dynamic import below, mirroring `shell-app/event-source.test.ts`.
+class FakeEventSource {
+  constructor(public url: string) {}
+  addEventListener(): void {}
+  close(): void {}
+}
+Object.defineProperty(globalThis, 'EventSource', {
+  configurable: true,
+  writable: true,
+  value: FakeEventSource,
+});
+
 const { render } = await import('@testing-library/svelte');
+const { default: ComponentPage } = await import('./component-page.svelte');
 const { default: Driver } = await import('./component-page-mount-driver.svelte');
 const { default: MountErrorFixture } = await import('./component-page-mount-error-fixture.svelte');
 // The probe's `<script module>` exports ledger helpers alongside the default
@@ -282,6 +308,108 @@ describe('component-page mount-error keying (overview vs example)', () => {
     // Both locations rendered their own probe — independent mounts, not a
     // single shared one.
     expect(document.querySelectorAll('.scenario-probe').length).toBe(2);
+
+    unmount();
+  });
+});
+
+describe('component-page .dx-nav compound-family grouping', () => {
+  /**
+   * A `<li>`'s own direct-child link, distinguished from a nested child's link
+   * one level down inside its `.dx-nav__sublist`. Implemented via `element`
+   * traversal rather than the CSS `:scope` combinator — happy-dom's
+   * `Element.querySelector` does not resolve `:scope` relative to the calling
+   * element (confirmed empirically: `li.querySelector(':scope > a')` returns
+   * `null` even when a direct-child `<a>` exists), so `:scope`-based direct-
+   * child queries silently find nothing under this harness.
+   */
+  function ownLink(element: Element): Element | undefined {
+    return [...element.children].find(
+      (child) => child.tagName === 'A' && child.classList.contains('dx-nav__link'),
+    );
+  }
+
+  function ownSublist(element: Element): Element | undefined {
+    return [...element.children].find((child) => child.classList.contains('dx-nav__sublist'));
+  }
+
+  /** The `<li>` under `.dx-nav__list` whose OWN link (not a nested child's) matches `href`. */
+  function findTopLevelListItem(href: string): Element | null {
+    const items = document.querySelectorAll('.dx-nav__list > li');
+    for (const item of items) {
+      if (ownLink(item)?.getAttribute('href') === href) return item;
+    }
+    return null;
+  }
+
+  test('groups chat sub-parts under the chat root; unrelated components stay top-level', async () => {
+    const { unmount } = render(ComponentPage, {
+      componentName: 'button',
+      documentation: null,
+      sidebarComponents: ['button', 'chat', 'chat-composer-popover', 'chat-conversation-header'],
+    });
+    await tick();
+
+    const chatItem = findTopLevelListItem('/page/chat');
+    expect(chatItem).not.toBeNull();
+
+    const sublist = chatItem === null ? undefined : ownSublist(chatItem);
+    expect(sublist).toBeDefined();
+    const childHrefs = [...(sublist?.querySelectorAll('a.dx-nav__link--child') ?? [])].map((link) =>
+      link.getAttribute('href'),
+    );
+    expect(childHrefs).toEqual(['/page/chat-composer-popover', '/page/chat-conversation-header']);
+
+    // chat-composer-popover's link is nested, not a direct .dx-nav__list child.
+    expect(findTopLevelListItem('/page/chat-composer-popover')).toBeNull();
+
+    // button remains a direct top-level entry with no sublist.
+    const buttonItem = findTopLevelListItem('/page/button');
+    expect(buttonItem).not.toBeNull();
+    expect(buttonItem === null ? undefined : ownSublist(buttonItem)).toBeUndefined();
+
+    unmount();
+  });
+
+  test('synthesizes the chat group when the nav filter hides the root but keeps a matching child', async () => {
+    // Simulates the filter box hiding "chat" itself while a search still
+    // matches its children — `sidebarComponents` here stands in for whatever
+    // `visibleComponents` filtered down to.
+    const { unmount } = render(ComponentPage, {
+      componentName: 'button',
+      documentation: null,
+      sidebarComponents: ['chat-composer-popover', 'chat-conversation-header', 'button'],
+    });
+    await tick();
+
+    const chatItem = findTopLevelListItem('/page/chat');
+    expect(chatItem).not.toBeNull();
+    const sublist = chatItem === null ? undefined : ownSublist(chatItem);
+    expect(sublist).toBeDefined();
+    const childHrefs = [...(sublist?.querySelectorAll('a.dx-nav__link--child') ?? [])].map((link) =>
+      link.getAttribute('href'),
+    );
+    expect(childHrefs).toEqual(['/page/chat-composer-popover', '/page/chat-conversation-header']);
+
+    unmount();
+  });
+
+  test('synthesizes a single-child tabs group for a directly-passed compose-only leaf', async () => {
+    const { unmount } = render(ComponentPage, {
+      componentName: 'button',
+      documentation: null,
+      sidebarComponents: ['tab'],
+    });
+    await tick();
+
+    const tabsItem = findTopLevelListItem('/page/tabs');
+    expect(tabsItem).not.toBeNull();
+    const sublist = tabsItem === null ? undefined : ownSublist(tabsItem);
+    expect(sublist).toBeDefined();
+    const childHrefs = [...(sublist?.querySelectorAll('a.dx-nav__link--child') ?? [])].map((link) =>
+      link.getAttribute('href'),
+    );
+    expect(childHrefs).toEqual(['/page/tab']);
 
     unmount();
   });
