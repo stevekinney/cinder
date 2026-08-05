@@ -130,6 +130,24 @@ describe('ButtonGroup', () => {
     }
   });
 
+  test('renders no aria-label attribute at all when label is empty string (not aria-label="")', () => {
+    const { container } = render(ButtonGroup, {
+      props: { label: '', children: singleButtonSnippet('Save') },
+    });
+    const group = container.querySelector('[role="group"]');
+    // An empty aria-label suppresses the accessible-name fallback per ARIA
+    // §4.3 — the attribute must be omitted entirely, not rendered empty.
+    expect(group?.hasAttribute('aria-label')).toBe(false);
+  });
+
+  test('renders no aria-labelledby attribute at all when labelledBy is empty string', () => {
+    const { container } = render(ButtonGroup, {
+      props: { labelledBy: '', children: singleButtonSnippet('Save') },
+    });
+    const group = container.querySelector('[role="group"]');
+    expect(group?.hasAttribute('aria-labelledby')).toBe(false);
+  });
+
   test('class passthrough merges with cinder-button-group', () => {
     const { container } = render(ButtonGroup, {
       props: { label: 'Actions', class: 'extra', children: singleButtonSnippet('Save') },

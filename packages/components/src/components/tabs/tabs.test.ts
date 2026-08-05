@@ -1,8 +1,10 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
+import { tick } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
+import { renderToServerHtml } from '../../test/server-render.ts';
 
 setupHappyDom();
 
@@ -20,6 +22,9 @@ const { default: ExternalPanelWrapper } =
 const { default: TrailingWrapper } =
   await import('../../test/fixtures/tabs-trailing-fixture.svelte');
 const { default: SiblingWrapper } = await import('../../test/fixtures/tabs-sibling-fixture.svelte');
+
+const TABS_FIXTURE_SOURCE = new URL('../../test/fixtures/tabs-fixture.svelte', import.meta.url)
+  .pathname;
 
 const tabsCss = readFileSync(new URL('./tabs.css', import.meta.url), 'utf8');
 
@@ -778,5 +783,97 @@ describe('Tabs sibling id isolation', () => {
       expect(tabsRoot).not.toBeNull();
       expect(tabsRoot!.contains(referencedTabs[0]!)).toBe(true);
     }
+  });
+});
+
+describe('Tabs SSR contract', () => {
+  const withDisabledMiddle = [
+    { value: 'a', title: 'A tab', body: 'A body' },
+    { value: 'b', title: 'B tab', body: 'B body', disabled: true },
+    { value: 'c', title: 'C tab', body: 'C body' },
+  ];
+
+  // Scoped to <button> tags only. The fixture also renders TabPanel, whose
+  // active panel <div> unconditionally carries tabindex="0"
+  // (tab-panel.svelte, independent of roving-tabindex) — an ungated
+  // /tabindex="0"/g match would inflate every count below by exactly one.
+  function extractTabTag(html: string, value: string): string {
+    const match = html.match(new RegExp(`<button[^>]*data-cinder-value="${value}"[^>]*>`));
+    if (!match) throw new Error(`no tab button found for value "${value}"`);
+    return match[0];
+  }
+
+  function countTabStops(html: string): number {
+    return (html.match(/<button[^>]*tabindex="0"[^>]*>/g) ?? []).length;
+  }
+
+  test('server-rendered HTML gives the selected enabled first tab a tabindex="0" tab stop', async () => {
+    const html = await renderToServerHtml(TABS_FIXTURE_SOURCE, { value: 'a', items });
+
+    expect(extractTabTag(html, 'a')).toContain('tabindex="0"');
+    expect(extractTabTag(html, 'b')).toContain('tabindex="-1"');
+    expect(extractTabTag(html, 'c')).toContain('tabindex="-1"');
+    expect(countTabStops(html)).toBe(1);
+  });
+
+  test('server-rendered HTML gives the selected enabled tab a tabindex="0" tab stop when it is NOT the first tab', async () => {
+    // Regression test: before the isFocusable direct/fallback split, this
+    // exact fixture rendered TWO tabindex="0" buttons for a not-first
+    // selection (the stale fallback branch claimed `a`, the direct match
+    // separately claimed `b`). Asserting countTabStops(html) === 1 fails
+    // even if `b` happens to still be individually correct.
+    const html = await renderToServerHtml(TABS_FIXTURE_SOURCE, { value: 'b', items });
+
+    expect(extractTabTag(html, 'b')).toContain('tabindex="0"');
+    expect(extractTabTag(html, 'a')).toContain('tabindex="-1"');
+    expect(extractTabTag(html, 'c')).toContain('tabindex="-1"');
+    expect(countTabStops(html)).toBe(1);
+  });
+
+  test('server-rendered HTML gives the selected enabled tab a tabindex="0" tab stop when it is the LAST tab', async () => {
+    const html = await renderToServerHtml(TABS_FIXTURE_SOURCE, { value: 'c', items });
+
+    expect(extractTabTag(html, 'c')).toContain('tabindex="0"');
+    expect(extractTabTag(html, 'a')).toContain('tabindex="-1"');
+    expect(extractTabTag(html, 'b')).toContain('tabindex="-1"');
+    expect(countTabStops(html)).toBe(1);
+  });
+
+  test('server-rendered HTML has no tab stop when the selected tab is disabled', async () => {
+    // Documented, accepted degradation (see tabs.a11y.md): the "first
+    // enabled tab" fallback needs every sibling registered before it can
+    // resolve correctly, which a single top-down SSR pass cannot guarantee.
+    const html = await renderToServerHtml(TABS_FIXTURE_SOURCE, {
+      value: 'b',
+      items: withDisabledMiddle,
+    });
+
+    expect(extractTabTag(html, 'a')).toContain('tabindex="-1"');
+    expect(extractTabTag(html, 'b')).toContain('tabindex="-1"');
+    expect(extractTabTag(html, 'c')).toContain('tabindex="-1"');
+    expect(countTabStops(html)).toBe(0);
+  });
+
+  test('client-side render resolves the first-enabled-tab fallback after mount when the selected tab is disabled', async () => {
+    const { container } = render(Wrapper, { value: 'b', items: withDisabledMiddle });
+    await tick();
+
+    expect(container.querySelector('[data-cinder-value="a"]')?.getAttribute('tabindex')).toBe('0');
+    expect(container.querySelector('[data-cinder-value="b"]')?.getAttribute('tabindex')).toBe('-1');
+    expect(container.querySelector('[data-cinder-value="c"]')?.getAttribute('tabindex')).toBe('-1');
+    const tabStops = container.querySelectorAll('[role="tab"][tabindex="0"]');
+    expect(tabStops.length).toBe(1);
+  });
+
+  test('server-rendered HTML has no tab stop when no tab matches the selected value', async () => {
+    const html = await renderToServerHtml(TABS_FIXTURE_SOURCE, {
+      value: 'does-not-exist',
+      items,
+    });
+
+    expect(extractTabTag(html, 'a')).toContain('tabindex="-1"');
+    expect(extractTabTag(html, 'b')).toContain('tabindex="-1"');
+    expect(extractTabTag(html, 'c')).toContain('tabindex="-1"');
+    expect(countTabStops(html)).toBe(0);
   });
 });

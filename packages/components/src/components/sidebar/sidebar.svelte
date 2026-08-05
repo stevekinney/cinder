@@ -20,6 +20,7 @@
 
   import { setSidebarContext, type SidebarContextValue } from '../../_internal/sidebar-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
+  import { devWarn } from '../../utilities/dev-warn.ts';
   import Drawer from '../drawer/drawer.svelte';
   import { SIDEBAR_MOBILE_BREAKPOINT } from './sidebar.constants.ts';
 
@@ -43,10 +44,19 @@
 
   const validatedLabel = $derived.by(() => {
     if (label.trim() === '') {
-      throw new Error('Sidebar requires a non-empty label.');
+      devWarn('[cinder/Sidebar] label is empty — pass a non-empty label.');
+      return undefined;
     }
     return label;
   });
+  // Drawer's `title` prop is a required `string` — it renders as visible/
+  // sr-only heading text (`<h2>`), not an `aria-label` attribute, so ARIA
+  // §4.3's "empty string suppresses the fallback" concern that motivates
+  // `validatedLabel` being `undefined` on the desktop `<aside>` below does
+  // not apply here. Fall back to `''` only for this one required-string
+  // consumer; the desktop `aria-label` below still omits the attribute
+  // entirely on an empty label.
+  const drawerTitle = $derived(validatedLabel ?? '');
 
   const validatedMobileBreakpoint = $derived.by(() => {
     if (typeof mobileBreakpoint !== 'string') {
@@ -148,7 +158,7 @@
     }
     side="left"
     size="md"
-    title={validatedLabel}
+    title={drawerTitle}
     id={sidebarId}
   >
     <div

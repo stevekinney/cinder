@@ -33,8 +33,12 @@
   }: ButtonGroupProps = $props();
 
   const mergedClassName = $derived(classNames('cinder-button-group', customClassName));
-  const ariaLabelAttribute = $derived(typeof label === 'string' ? label : undefined);
-  const ariaLabelledByAttribute = $derived(typeof labelledBy === 'string' ? labelledBy : undefined);
+  const ariaLabelAttribute = $derived(
+    typeof label === 'string' && label.trim().length > 0 ? label : undefined,
+  );
+  const ariaLabelledByAttribute = $derived(
+    typeof labelledBy === 'string' && labelledBy.trim().length > 0 ? labelledBy : undefined,
+  );
 
   // Each group instance gets a unique ID so the styling-contract attribute
   // carries ownership. When a child moves from one group to another, the new

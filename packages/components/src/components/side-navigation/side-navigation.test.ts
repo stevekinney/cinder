@@ -32,20 +32,18 @@ describe('SideNavigation', () => {
     expect(container.querySelector('nav')?.getAttribute('aria-label')).toBe('Workspace');
   });
 
-  test('empty ariaLabel throws on initial render', () => {
-    expect(() => {
-      render(SideNavigation, {
-        props: { ariaLabel: '', children: emptySnippet() },
-      });
-    }).toThrow();
+  test('empty ariaLabel does not throw and renders without an aria-label attribute', () => {
+    const { container } = render(SideNavigation, {
+      props: { ariaLabel: '', children: emptySnippet() },
+    });
+    expect(container.querySelector('nav')?.hasAttribute('aria-label')).toBe(false);
   });
 
-  test('whitespace-only ariaLabel throws on initial render', () => {
-    expect(() => {
-      render(SideNavigation, {
-        props: { ariaLabel: '   ', children: emptySnippet() },
-      });
-    }).toThrow();
+  test('whitespace-only ariaLabel does not throw and renders without an aria-label attribute', () => {
+    const { container } = render(SideNavigation, {
+      props: { ariaLabel: '   ', children: emptySnippet() },
+    });
+    expect(container.querySelector('nav')?.hasAttribute('aria-label')).toBe(false);
   });
 
   test('renders a <ul> with class cinder-side-navigation__list', () => {
