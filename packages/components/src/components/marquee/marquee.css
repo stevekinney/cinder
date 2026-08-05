@@ -35,7 +35,7 @@
     padding: 0.375rem 0.625rem;
     clip-path: none;
     border: 1px solid var(--cinder-border-strong, currentColor);
-    border-radius: var(--cinder-radius-sm, 0.25rem);
+    border-radius: var(--cinder-radius-sm);
     background: var(--cinder-surface, Canvas);
     color: var(--cinder-text, CanvasText);
     font: inherit;

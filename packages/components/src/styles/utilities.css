@@ -38,7 +38,7 @@
   background: var(--cinder-surface, #fff);
   color: var(--cinder-text, #000);
   border: 1px solid var(--cinder-border, currentColor);
-  border-radius: var(--cinder-radius-md, 0.5rem);
+  border-radius: var(--cinder-radius-md);
   z-index: var(--cinder-z-focused-affordance);
 }
 
