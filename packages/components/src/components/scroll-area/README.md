@@ -9,7 +9,7 @@ Bounded scrolling container that constrains overflowing content within a max hei
   import ScrollArea from '@lostgradient/cinder/scroll-area';
 
   const command =
-    '$ bun run --filter @cinder/components build && bun run --filter @cinder/components test --coverage --reporter=verbose --bail';
+    '$ bun run --filter=@lostgradient/cinder build && bun run --filter=@lostgradient/cinder test --coverage --reporter=verbose --bail';
 </script>
 
 <ScrollArea as="pre" direction="horizontal" maxWidth="32rem" label="Example command"

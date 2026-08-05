@@ -68,5 +68,6 @@ export type InputProps = Omit<HTMLInputAttributes, 'class'> &
     type?: InputType;
     /** Attachment for native input access and lifecycle-scoped listeners. */
     inputAttachment?: Attachment<HTMLInputElement>;
+    /** Custom class merged with `.cinder-input`. */
     class?: string;
   };

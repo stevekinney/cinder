@@ -10,6 +10,7 @@ const schema = {
     },
     class: {
       type: 'string',
+      description: 'Custom class merged with `.cinder-card`.',
     },
     variant: {
       enum: ['card', 'well'],

@@ -47,7 +47,8 @@
       "description": "Error message rendered below the input; also sets `aria-invalid` on the input."
     },
     "class": {
-      "type": "string"
+      "type": "string",
+      "description": "Custom class merged with `.cinder-input`."
     }
   },
   "additionalProperties": false,

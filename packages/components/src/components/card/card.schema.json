@@ -7,7 +7,8 @@
       "description": "Primary heading text rendered inside the card's header region."
     },
     "class": {
-      "type": "string"
+      "type": "string",
+      "description": "Custom class merged with `.cinder-card`."
     },
     "variant": {
       "enum": ["card", "well"],

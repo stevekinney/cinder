@@ -57,6 +57,7 @@ const schema = {
     },
     class: {
       type: 'string',
+      description: 'Custom class merged with `.cinder-input`.',
     },
   },
   additionalProperties: false,

@@ -53,6 +53,7 @@ export type NumberInputProps = Omit<
   error?: string;
   /** Attachment for native input access and lifecycle-scoped listeners. */
   inputAttachment?: Attachment<HTMLInputElement>;
+  /** Custom class merged with `.cinder-input-field` on the root wrapper. */
   class?: string;
   onchange?: (value: number | null) => void;
 };

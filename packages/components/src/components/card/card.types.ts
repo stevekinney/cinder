@@ -8,6 +8,7 @@ export type CardPadding = 'default' | 'none';
 /** Heading level for the generated card title, so the document outline stays correct. */
 export type CardHeadingLevel = 2 | 3 | 4 | 5 | 6;
 type CardBase = Omit<HTMLAttributes<HTMLDivElement>, 'class'> & {
+  /** Custom class merged with `.cinder-card`. */
   class?: string;
   /** Visual container style. `card` is raised; `well` is flatter and inset. */
   variant?: CardVariant;
