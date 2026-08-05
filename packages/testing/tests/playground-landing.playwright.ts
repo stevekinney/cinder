@@ -32,9 +32,12 @@ test.describe('playground landing page', () => {
     await expect(page.locator('.dx-content--landing .readme-content')).toContainText('Install');
     await expect(page.locator('iframe')).toHaveCount(0);
     await expect(page.locator('#viewport-preset')).toHaveCount(0);
-    // The landing page shares the documentation chrome now; its breadcrumb reads
-    // CINDER / Overview rather than a separate shell's "README" label.
-    await expect(page.locator('.dx-crumbs__current')).toHaveText('Overview');
+    // The landing page shares the documentation chrome now, rather than a
+    // separate shell. The breadcrumb band that used to prove this is gone — it
+    // restated the sidebar brand and the page heading — so assert on the chrome
+    // the landing page actually shares: one sidebar, carrying the page controls.
+    await expect(page.locator('.dx-nav__footer')).toBeVisible();
+    await expect(page.locator('.dx-nav__brand')).toHaveText('CINDER');
 
     await page.evaluate(() => {
       (window as typeof window & { __cinderShellMarker?: string }).__cinderShellMarker = 'mounted';
@@ -59,9 +62,12 @@ test.describe('playground landing page', () => {
     await expect(page.getByRole('heading', { name: 'cinder', exact: true })).toBeVisible();
     await expect(page.locator('iframe')).toHaveCount(0);
     await expect(page.locator('#viewport-preset')).toHaveCount(0);
-    // The landing page shares the documentation chrome now; its breadcrumb reads
-    // CINDER / Overview rather than a separate shell's "README" label.
-    await expect(page.locator('.dx-crumbs__current')).toHaveText('Overview');
+    // The landing page shares the documentation chrome now, rather than a
+    // separate shell. The breadcrumb band that used to prove this is gone — it
+    // restated the sidebar brand and the page heading — so assert on the chrome
+    // the landing page actually shares: one sidebar, carrying the page controls.
+    await expect(page.locator('.dx-nav__footer')).toBeVisible();
+    await expect(page.locator('.dx-nav__brand')).toHaveText('CINDER');
   });
 
   test('presents README content with usable landing-page layout styles', async ({ page }) => {

@@ -1,9 +1,0 @@
----
-'@lostgradient/cinder': patch
----
-
-Fix fourteen performance regressions found across twelve components (#1186).
-
-`command-menu`, `mega-menu`'s direction/indicator recompute, and `marquee`'s mutation+resize sync now coalesce their scroll/resize/mutation-driven recomputation onto a single `requestAnimationFrame`, instead of doing the work synchronously on every event. `toolbar` and `navigation-bar` cache CSS-visibility/`getComputedStyle` lookups per sync pass instead of re-walking the same shared ancestor chain for every item. `mega-menu` also gates its ancestor-chain `ResizeObserver` behind the menu actually being open. `matrix-chart` hoists its `Intl.NumberFormat` instance out of the per-cell formatting loop. `multi-select` hoists its `querySelectorAll` result out of a `flatMap`. `table-of-contents` scopes both of its `MutationObserver`s with `attributeFilter` so unrelated attribute churn no longer triggers a rescan. `menu-bar` short-circuits its document-wide focusin handler when no menu or submenu is open. `spectrogram` samples a bounded number of frames/bins into its SVG plot instead of rendering one element per raw data point. `access-gate` skips its disabled-control resync when a `MutationObserver` batch could not have added or removed an interactive control.
-
-`grid` (and `bento-grid`, which composes it) replace their `ResizeObserver`/`MutationObserver`-driven narrow-layout measurement with a native CSS `@container` query, removing all JS-side width measurement. The container-query collapse rule targets every direct child (`grid-column: 1 / -1`) rather than reassigning `grid-template-columns` on the querying element itself — a query container excludes itself when resolving which container a rule queries, so a self-referential override would silently never apply. Verified with `bun run test:playwright` that the narrow/wide layout actually toggles at the container breakpoint in a real browser.

@@ -953,7 +953,12 @@ describe('Popover — floating-ui wiring', () => {
         children: textSnippet('content'),
       },
     });
-    await tick();
+    // Wait for positioning to actually RUN before asserting the middleware was not
+    // added. Asserting after a bare `tick()` passed for the wrong reason: nothing had
+    // been computed yet, so the negative held vacuously and the test could not fail.
+    await waitFor(() => {
+      expect(computePositionSpy).toHaveBeenCalled();
+    });
     expect(arrowSpy).not.toHaveBeenCalled();
   });
 
@@ -966,8 +971,15 @@ describe('Popover — floating-ui wiring', () => {
         children: textSnippet('content'),
       },
     });
-    await tick();
-    expect(arrowSpy).toHaveBeenCalled();
+    // The arrow element is `bind:this` on a span inside `{#if arrowVisible}`, so it
+    // is still undefined on the first positioning pass — `anchored-overlay` only
+    // pushes the arrow middleware once BOTH `arrowVisible` and the bound element are
+    // truthy, which happens on the re-run triggered by that binding. A single
+    // `tick()` samples one microtask too early and lands before the re-run. Await the
+    // real contract instead, the same way the offset-middleware tests above do.
+    await waitFor(() => {
+      expect(arrowSpy).toHaveBeenCalled();
+    });
   });
 
   test('autoUpdate teardown invoked on close', async () => {

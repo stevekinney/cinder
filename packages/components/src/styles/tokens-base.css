@@ -43,10 +43,24 @@
 
   /* ========================================
    * RADII
+   * ----------------------------------------
+   * The scale steps down one notch (was 6 / 8 / 12px). Rounding compounds: a
+   * radius that reads as restrained on one control reads as soft and bubbly once
+   * three of them nest, and cinder nests them routinely (floating panel → row,
+   * control group → segment). 4 / 6 / 8 keeps corners legible at every size while
+   * staying visibly deliberate rather than decorative.
+   *
+   * NESTING RULE: an inner element inset by N inside a rounded container is
+   * concentric only at `outer − N`. Picking a smaller step off this scale is NOT
+   * the same thing — the two curves then have different centers and the inner
+   * corner reads as off-axis. Express the inner radius as
+   * `calc(var(--cinder-radius-<outer>) - <inset>)` so it tracks the outer token
+   * instead of drifting when either value changes. A container that clips with
+   * `overflow: hidden` (Accordion) needs no inner radius at all.
    * ======================================== */
-  --cinder-radius-sm: 0.375rem;
-  --cinder-radius-md: 0.5rem;
-  --cinder-radius-lg: 0.75rem;
+  --cinder-radius-sm: 0.25rem;
+  --cinder-radius-md: 0.375rem;
+  --cinder-radius-lg: 0.5rem;
   --cinder-radius-full: 9999px;
 
   /* Shadows wrap each color argument in `light-dark()` so dark mode paints
@@ -190,11 +204,39 @@
    * ======================================== */
   color-scheme: light dark;
 
-  /* Backgrounds / surfaces */
-  --cinder-bg: light-dark(oklch(95% 0.01 245), oklch(15% 0.035 245));
-  --cinder-surface: light-dark(oklch(98% 0.008 245), oklch(21% 0.04 245));
-  --cinder-surface-raised: light-dark(oklch(100% 0.006 245), oklch(28% 0.045 245));
-  --cinder-surface-inset: light-dark(oklch(94% 0.01 245), oklch(11% 0.03 245));
+  /* Backgrounds / surfaces
+   *
+   * LIGHTNESS SPAN. The light arm used to span 6 lightness points (inset 0.94 →
+   * raised 1.00) against the dark arm's 17 (0.11 → 0.28), so four elevation tiers
+   * sat inside a band narrower than a single dark-mode step. Fills could not
+   * separate regions, every component fell back on a 1px border to draw a
+   * boundary, and the whole light theme read as one flat white-grey. The light arm
+   * now spans 11.5 points — inset 0.885 → bg 0.921 → surface 0.962 → raised 1.000,
+   * in steps of 0.036 / 0.041 / 0.038.
+   * 11.5 is not a compromise between 6 and 17: it is where light mode's END-TO-END
+   * WCAG CONTRAST matches dark mode's. OKLCH lightness is perceptually uniform but
+   * contrast RATIO is not, and ratio is what makes an unbordered edge visible.
+   * Dark's 0.11 → 0.28 is 1.406:1; the new light 0.885 → 1.000 is 1.410:1, where
+   * the old 0.94 → 1.00 was only 1.184:1. Equal contrast, not equal ΔL.
+   *
+   * CHROMA. Deliberate, and deliberately small. The prior 0.006–0.010 values were a
+   * tuning artifact rather than a decision: they were not monotonic (the LIGHTEST
+   * surface carried 0.006 while the darkest carried 0.010, so the blue cast got
+   * weaker toward white for no reason), and `--cinder-surface-raised` was authored
+   * `oklch(100% 0.006 245)`, which is out of sRGB gamut — the maximum in-gamut
+   * chroma at L=1.0 is 0, so that 0.006 painted as nothing at all. The ramp now
+   * carries a monotonic cool cast that grows as the surface recedes (raised 0 →
+   * surface 0.010 → bg 0.014 → inset 0.018), which is how the dark arm already
+   * behaves (0.030 → 0.045). It stays roughly 2.5x below the dark arm on purpose:
+   * this system is meant to sit behind a consumer's brand, so light mode should
+   * read as a cool neutral, not as a blue theme. `--cinder-surface-raised` is now
+   * authored `oklch(100% 0 245)` — the honest value for what it always painted.
+   *
+   * The dark arm is unchanged. */
+  --cinder-bg: light-dark(oklch(92.1% 0.014 245), oklch(15% 0.035 245));
+  --cinder-surface: light-dark(oklch(96.2% 0.01 245), oklch(21% 0.04 245));
+  --cinder-surface-raised: light-dark(oklch(100% 0 245), oklch(28% 0.045 245));
+  --cinder-surface-inset: light-dark(oklch(88.5% 0.018 245), oklch(11% 0.03 245));
 
   /* Upcoming step marker background — keeps the inset treatment in light mode
      (surface-inset is visibly recessed vs surface), but lifts to surface in dark
@@ -212,28 +254,52 @@
   /* Hover/pressed surface derivatives. The mix DIRECTION is per-theme — the
      `light-dark(black, white)` mix target darkens the surface in light mode and
      lightens it in dark mode — so only the PERCENTAGE is shared across themes.
-     That shared % is intentional: the resolved steps stay comparably perceptible
-     in both arms (hover ΔL ≈ −0.030 light / +0.024 dark; pressed ΔL ≈ −0.079
-     light / +0.064 dark), so no per-theme percentage split is needed. */
+     The percentages are 2.5% / 6%, down from 3% / 8%.
+
+     Why they moved: these are PROPORTIONAL mixes, so the resolved step scales with
+     whatever the ramp is, and the widened light ramp put the old steps on top of
+     adjacent resting tiers. At 3%, light `--cinder-surface-hover` resolved to
+     L 0.9506 against a `--cinder-bg` of 0.95 — ΔL 0.0006, i.e. hovering a card body
+     painted it exactly the page background. The dark arm had the same class of bug
+     at 8%: `--cinder-surface-pressed` resolved to 0.2732 against
+     `--cinder-surface-raised` at 0.28 (ΔL 0.0068), so a pressed card body was
+     indistinguishable from a raised one. Neither was visible to any test, because
+     each token was individually reasonable and only the RELATIONSHIP was wrong.
+     `tokens-light-ladder.test.ts` now resolves the mixes and gates that
+     relationship in both arms.
+
+     At 2.5% / 6% the light arm resolves to an eight-value ladder — inset 0.885,
+     surface-pressed 0.904, bg 0.921, surface-hover 0.938, raised-pressed 0.940,
+     surface 0.962, raised-hover 0.975, raised 1.000 — in which every interaction
+     state clears every RESTING tier by at least ΔL 0.013. The dark arm's smallest
+     state-to-tier gap is ΔL 0.018. The dark arm's own steps do get smaller (hover
+     ΔL 0.024 → 0.020, pressed 0.064 → 0.047); that is deliberate, and it is what
+     resolves the pressed/raised collision above.
+
+     One pair is knowingly close: light `surface-hover` (0.938) and
+     `raised-pressed` (0.940). Both are transient states of different elements
+     rather than resting fills, and separating them would require pushing a resting
+     tier onto one of the others, so the ladder optimises for state-vs-tier
+     separation instead. */
   --cinder-surface-hover: color-mix(
     in oklch,
     var(--cinder-surface),
-    light-dark(oklch(0% 0 0), oklch(100% 0 0)) 3%
+    light-dark(oklch(0% 0 0), oklch(100% 0 0)) 2.5%
   );
   --cinder-surface-pressed: color-mix(
     in oklch,
     var(--cinder-surface),
-    light-dark(oklch(0% 0 0), oklch(100% 0 0)) 8%
+    light-dark(oklch(0% 0 0), oklch(100% 0 0)) 6%
   );
   --cinder-surface-raised-hover: color-mix(
     in oklch,
     var(--cinder-surface-raised),
-    light-dark(oklch(0% 0 0), oklch(100% 0 0)) 3%
+    light-dark(oklch(0% 0 0), oklch(100% 0 0)) 2.5%
   );
   --cinder-surface-raised-pressed: color-mix(
     in oklch,
     var(--cinder-surface-raised),
-    light-dark(oklch(0% 0 0), oklch(100% 0 0)) 8%
+    light-dark(oklch(0% 0 0), oklch(100% 0 0)) 6%
   );
 
   /* Text */
@@ -245,12 +311,24 @@
      misusing --cinder-text-disabled (a text-lightness token) as an assertive fill. Reads plainly
      inert. NOTE the glyph on top must use --cinder-text-disabled, NOT --cinder-accent-contrast:
      accent-contrast is dark ink in both arms and would be ~1.45:1 on the dark-arm fill (0.30) —
-     invisible. --cinder-text-disabled clears the 3:1 UI floor in both themes (light ~3.8:1, dark ~4.1:1). */
-  --cinder-fill-disabled: light-dark(oklch(88% 0.01 245), oklch(30% 0.015 245));
+     invisible. --cinder-text-disabled clears the 3:1 UI floor in both themes (light 3.60:1, dark ~4.1:1).
+     The light arm moved 0.88 → 0.86 with the widened ramp: at 0.88 it sat ΔL 0.005 from the new
+     --cinder-surface-inset (0.885), so a disabled control inside a well vanished entirely. A
+     disabled control is exempt from WCAG contrast, but it still has to be VISIBLE as a control. */
+  --cinder-fill-disabled: light-dark(oklch(86% 0.012 245), oklch(30% 0.015 245));
 
-  /* Borders */
+  /* Borders. Only the light arm's `--cinder-border-muted` moved (0.88 → 0.855):
+     the widened ramp put `--cinder-surface-inset` at 0.885, and a 0.88 hairline on
+     a 0.885 fill is ΔL 0.005 — invisible. At 0.855 it reads against every tier
+     (inset ΔL 0.030, bg 0.066, surface 0.107, raised 0.145). `--cinder-border` and
+     `--cinder-border-strong` are deliberately unchanged: at 0.79 / 0.72 they still
+     separate from the new darkest surface by ΔL 0.095 / 0.165, and the point of
+     widening the ramp is that fills carry region separation so borders do not have
+     to get heavier. Note this decouples `--cinder-border-muted` from
+     `--cinder-fill-disabled`, which shared 0.88 by coincidence rather than intent —
+     a subtle divider and a disabled control fill are different jobs. */
   --cinder-border: light-dark(oklch(79% 0.013 245), oklch(40% 0.05 245));
-  --cinder-border-muted: light-dark(oklch(88% 0.01 245), oklch(30% 0.04 245));
+  --cinder-border-muted: light-dark(oklch(85.5% 0.012 245), oklch(30% 0.04 245));
   --cinder-border-strong: light-dark(oklch(72% 0.014 245), oklch(45% 0.06 245));
 
   /* Toggle track off-state defaults — encode dark-arm contrast improvement here
@@ -280,7 +358,7 @@
   /* Accent used AS TEXT/ICON on light surfaces. The light-mode fill accent (L=0.50) reads as a
      foreground at ~4.7:1, only just clearing AA, so a slightly darker dedicated foreground token
      stays necessary for comfortable link/icon legibility. This deep indigo (L=0.45) clears 4.5:1
-     on every surface (verified: surface 7.73, bg 7.19, inset 7.09). The dark arm matches the
+     on every surface of the widened ramp (verified: surface 7.23, bg 6.40, inset 5.72). The dark arm matches the
      dark-mode accent fill. --cinder-accent is a FILL (it carries the white --cinder-accent-contrast
      label in light mode); all foreground/icon usages adopt this token. */
   --cinder-accent-text: light-dark(oklch(45% 0.22 270), oklch(72% 0.14 270));
@@ -326,22 +404,33 @@
      Use these in components like Alert and Toast where you need a soft tinted surface
      with semantically-paired text and border colors. The solid `--cinder-info|success|
      warning|danger` tokens above remain for accent fills (e.g. solid badges). */
-  /* Info soft-surface triple — moved to hue 230 with the info solid; chroma fitted to
-     sRGB gamut (fg L=0.40 → c 0.079, bg L=0.96 → c 0.023). fg-on-bg clears 8.1:1 light /
-     10.2:1 dark. */
-  --cinder-color-info-bg: light-dark(oklch(96% 0.023 230), oklch(28% 0.057 230));
+  /* The LIGHT arm of all four `-bg` values moved from L 0.96 to L 0.945 with the
+     widened ramp. At 0.96 they sat ΔL 0.002 from the new `--cinder-surface`, so a
+     tinted Alert on a card body was separated by hue alone; 0.945 restores a real
+     ΔL 0.017 against `surface`. Their chroma was re-fitted at the same time, which
+     fixed a pre-existing gamut bug: `warning-bg` and `danger-bg` were BOTH authored
+     out of sRGB at 0.96 c 0.04 and had been silently clamping to a desaturated
+     grey — the maximum in-gamut chroma at L 0.96 is 0.0325 for hue 75 and 0.0199
+     for hue 25. Dropping to L 0.945 raises the chroma ceiling for every hue (info
+     0.024 → 0.033, warning 0.033 → 0.045, danger 0.020 → 0.028), so the soft
+     surfaces now carry MORE tint than before while staying inside the gamut with
+     margin. Dark arms unchanged. Light fg-on-bg: info 7.74:1, success 7.51:1,
+     warning 7.94:1, danger 7.76:1.
+     Info soft-surface triple — hue 230 with the info solid; chroma fitted to sRGB
+     gamut (fg L=0.40 → c 0.079, bg L=0.945 → c 0.03). */
+  --cinder-color-info-bg: light-dark(oklch(94.5% 0.03 230), oklch(28% 0.057 230));
   --cinder-color-info-fg: light-dark(oklch(40% 0.079 230), oklch(88% 0.071 230));
   --cinder-color-info-border: light-dark(oklch(80% 0.05 230), oklch(45% 0.08 230));
 
-  --cinder-color-success-bg: light-dark(oklch(96% 0.04 145), oklch(28% 0.07 145));
+  --cinder-color-success-bg: light-dark(oklch(94.5% 0.045 145), oklch(28% 0.07 145));
   --cinder-color-success-fg: light-dark(oklch(40% 0.13 145), oklch(88% 0.11 145));
   --cinder-color-success-border: light-dark(oklch(80% 0.05 145), oklch(45% 0.09 145));
 
-  --cinder-color-warning-bg: light-dark(oklch(96% 0.04 75), oklch(28% 0.08 75));
+  --cinder-color-warning-bg: light-dark(oklch(94.5% 0.042 75), oklch(28% 0.08 75));
   --cinder-color-warning-fg: light-dark(oklch(40% 0.13 75), oklch(90% 0.12 75));
   --cinder-color-warning-border: light-dark(oklch(80% 0.06 75), oklch(50% 0.1 75));
 
-  --cinder-color-danger-bg: light-dark(oklch(96% 0.04 25), oklch(28% 0.09 25));
+  --cinder-color-danger-bg: light-dark(oklch(94.5% 0.026 25), oklch(28% 0.09 25));
   --cinder-color-danger-fg: light-dark(oklch(42% 0.16 25), oklch(90% 0.12 25));
   --cinder-color-danger-border: light-dark(oklch(80% 0.06 25), oklch(50% 0.11 25));
 
@@ -369,14 +458,41 @@
    * one place raw colors are allowed). */
   --cinder-ring-on-accent: light-dark(oklch(20% 0.02 245), oklch(95% 0.01 245));
 
-  /* Focus ring */
-  --cinder-ring-width: 3px;
-  --cinder-ring-offset: 1px;
-  --cinder-ring-offset-color: var(--cinder-bg);
+  /* Focus ring.
+   *
+   * WIDTH + OFFSET. Was 3px wide at a 1px offset; now 2px wide at a 2px offset. The
+   * total footprint is unchanged at 4px, so nothing reflows or clips differently,
+   * but half of it is now separation rather than stroke: the ring reads as a ring
+   * AROUND a control instead of a heavy outline ON it, and where a control also
+   * carries a permanent 1px border the two stop merging into one 4px shape. 2px is
+   * a floor, not a preference — WCAG 2.4.13 (Focus Appearance) wants an indicator
+   * at least as large as a 2px-thick perimeter of the control, so 1px would fail
+   * it. Thinning does not affect WCAG 1.4.11 non-text contrast; the ring color
+   * below still clears 3:1 against every tier of the widened ramp (light: 3.56:1
+   * on the new darkest inset through 5.03:1 on raised).
+   *
+   * OFFSET COLOR moved from `--cinder-bg` to `--cinder-surface-raised`. The ring is
+   * a two-stop box-shadow and box-shadow cannot paint a transparent gap — the
+   * offset band is a real painted layer, so it has to be SOME color and can only be
+   * correct for one surface. Pinning it to the page background was fine when the
+   * light ramp spanned 6 points and the band was 1px: it was invisible everywhere.
+   * At a 2px offset on the widened ramp it would paint a dark moat around every
+   * focused control on a card (bg 0.921 against a raised surface at 1.000). Pinning
+   * it to the TOP of the ramp inverts that into the benign direction: on raised
+   * surfaces — where controls overwhelmingly live — the band disappears into the
+   * surface and reads as a true gap, and on the recessed tiers it reads as a light
+   * halo, which is a deliberate focus treatment rather than a smudge. The chart
+   * components already treat this token as a halo stroke (bar-chart.css,
+   * area-chart.css, line-chart.css), so the name now matches the behaviour
+   * everywhere. A component on a known different tier can still override it. */
+  --cinder-ring-width: 2px;
+  --cinder-ring-offset: 2px;
+  --cinder-ring-offset-color: var(--cinder-surface-raised);
   /* Relative to --cinder-accent so a consumer override re-derives the ring hue.
      The light arm clamps L to 0.55 (indigo has a lower luminance-per-lightness than the
      old cyan, so the prior 0.58 clamp dropped to a marginal 3.0:1 against near-white;
-     0.55 gives 4.48:1, clearing WCAG 1.4.11 with margin); `h` tracks the accent hue. */
+     0.55 gives 3.56:1 against the widened ramp's darkest surface, clearing WCAG 1.4.11
+     with margin); `h` tracks the accent hue. */
   --cinder-ring-color: light-dark(
     oklch(from var(--cinder-accent) 0.55 0.16 h),
     oklch(from var(--cinder-accent) 0.7 0.14 h)
@@ -500,17 +616,17 @@
   --cinder-surface-inverse: var(--cinder-surface-raised);
   --cinder-text-inverse: var(--cinder-text);
   --cinder-border-inverse: var(--cinder-border-strong);
-  --cinder-surface-hover: color-mix(in oklch, var(--cinder-surface), oklch(100% 0 0) 3%);
-  --cinder-surface-pressed: color-mix(in oklch, var(--cinder-surface), oklch(100% 0 0) 8%);
+  --cinder-surface-hover: color-mix(in oklch, var(--cinder-surface), oklch(100% 0 0) 2.5%);
+  --cinder-surface-pressed: color-mix(in oklch, var(--cinder-surface), oklch(100% 0 0) 6%);
   --cinder-surface-raised-hover: color-mix(
     in oklch,
     var(--cinder-surface-raised),
-    oklch(100% 0 0) 3%
+    oklch(100% 0 0) 2.5%
   );
   --cinder-surface-raised-pressed: color-mix(
     in oklch,
     var(--cinder-surface-raised),
-    oklch(100% 0 0) 8%
+    oklch(100% 0 0) 6%
   );
   --cinder-text: oklch(92% 0.02 245);
   --cinder-text-muted: oklch(82% 0.02 245);
@@ -556,7 +672,7 @@
   --cinder-scrollbar-track: oklch(100% 0 0 / 0.04);
   --cinder-scrollbar-thumb: oklch(100% 0 0 / 0.45);
   --cinder-scrollbar-thumb-hover: oklch(100% 0 0 / 0.65);
-  --cinder-ring-offset-color: var(--cinder-bg);
+  --cinder-ring-offset-color: var(--cinder-surface-raised);
   --cinder-ring-on-accent: oklch(95% 0.01 245);
   --cinder-ring-color: oklch(from var(--cinder-accent) 0.7 0.14 h);
   --cinder-button-bg: var(--cinder-surface-raised);
@@ -580,33 +696,33 @@
   --cinder-shadow-lg: 0 10px 15px -3px oklch(0% 0 0 / 0.14), 0 4px 6px -4px oklch(0% 0 0 / 0.12);
   --cinder-shadow-overlay:
     0 10px 15px -3px oklch(0% 0 0 / 0.14), 0 4px 6px -4px oklch(0% 0 0 / 0.12);
-  --cinder-bg: oklch(95% 0.01 245);
-  --cinder-surface: oklch(98% 0.008 245);
-  --cinder-surface-raised: oklch(100% 0.006 245);
-  --cinder-surface-inset: oklch(94% 0.01 245);
+  --cinder-bg: oklch(92.1% 0.014 245);
+  --cinder-surface: oklch(96.2% 0.01 245);
+  --cinder-surface-raised: oklch(100% 0 245);
+  --cinder-surface-inset: oklch(88.5% 0.018 245);
   --cinder-surface-upcoming-marker: var(--cinder-surface-inset);
   --cinder-surface-inverse: var(--cinder-text);
   --cinder-text-inverse: var(--cinder-surface);
   --cinder-border-inverse: transparent;
-  --cinder-surface-hover: color-mix(in oklch, var(--cinder-surface), oklch(0% 0 0) 3%);
-  --cinder-surface-pressed: color-mix(in oklch, var(--cinder-surface), oklch(0% 0 0) 8%);
+  --cinder-surface-hover: color-mix(in oklch, var(--cinder-surface), oklch(0% 0 0) 2.5%);
+  --cinder-surface-pressed: color-mix(in oklch, var(--cinder-surface), oklch(0% 0 0) 6%);
   --cinder-surface-raised-hover: color-mix(
     in oklch,
     var(--cinder-surface-raised),
-    oklch(0% 0 0) 3%
+    oklch(0% 0 0) 2.5%
   );
   --cinder-surface-raised-pressed: color-mix(
     in oklch,
     var(--cinder-surface-raised),
-    oklch(0% 0 0) 8%
+    oklch(0% 0 0) 6%
   );
   --cinder-text: oklch(20% 0.018 245);
   --cinder-text-muted: oklch(32% 0.014 245);
   --cinder-text-subtle: oklch(42% 0.012 245);
   --cinder-text-disabled: oklch(52% 0.01 245);
-  --cinder-fill-disabled: oklch(88% 0.01 245);
+  --cinder-fill-disabled: oklch(86% 0.012 245);
   --cinder-border: oklch(79% 0.013 245);
-  --cinder-border-muted: oklch(88% 0.01 245);
+  --cinder-border-muted: oklch(85.5% 0.012 245);
   --cinder-border-strong: oklch(72% 0.014 245);
   --cinder-toggle-track-off-resting: var(--cinder-border-muted);
   --cinder-toggle-track-off-hover-resting: var(--cinder-border);
@@ -627,16 +743,16 @@
   --cinder-info-contrast: oklch(100% 0 0);
   --cinder-danger-hover: oklch(42% 0.171 25);
   --cinder-danger-active: oklch(35% 0.142 25);
-  --cinder-color-info-bg: oklch(96% 0.023 230);
+  --cinder-color-info-bg: oklch(94.5% 0.03 230);
   --cinder-color-info-fg: oklch(40% 0.079 230);
   --cinder-color-info-border: oklch(80% 0.05 230);
-  --cinder-color-success-bg: oklch(96% 0.04 145);
+  --cinder-color-success-bg: oklch(94.5% 0.045 145);
   --cinder-color-success-fg: oklch(40% 0.13 145);
   --cinder-color-success-border: oklch(80% 0.05 145);
-  --cinder-color-warning-bg: oklch(96% 0.04 75);
+  --cinder-color-warning-bg: oklch(94.5% 0.042 75);
   --cinder-color-warning-fg: oklch(40% 0.13 75);
   --cinder-color-warning-border: oklch(80% 0.06 75);
-  --cinder-color-danger-bg: oklch(96% 0.04 25);
+  --cinder-color-danger-bg: oklch(94.5% 0.026 25);
   --cinder-color-danger-fg: oklch(42% 0.16 25);
   --cinder-color-danger-border: oklch(80% 0.06 25);
   --cinder-color-checker-base: #fff;
@@ -644,7 +760,7 @@
   --cinder-scrollbar-track: oklch(0% 0 0 / 0.04);
   --cinder-scrollbar-thumb: oklch(0% 0 0 / 0.45);
   --cinder-scrollbar-thumb-hover: oklch(0% 0 0 / 0.65);
-  --cinder-ring-offset-color: var(--cinder-bg);
+  --cinder-ring-offset-color: var(--cinder-surface-raised);
   --cinder-ring-on-accent: oklch(20% 0.02 245);
   --cinder-ring-color: oklch(from var(--cinder-accent) 0.55 0.16 h);
   --cinder-button-bg: var(--cinder-surface-raised);

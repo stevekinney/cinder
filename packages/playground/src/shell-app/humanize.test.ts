@@ -39,10 +39,14 @@ describe('humanizeComponentName', () => {
     const cases: ReadonlyArray<readonly [string, string]> = [
       ['json', 'JSON'],
       ['api', 'API'],
+      ['aria', 'ARIA'],
       ['css', 'CSS'],
       ['url', 'URL'],
       ['html', 'HTML'],
+      ['id', 'ID'],
+      ['qr', 'QR'],
       ['ssr', 'SSR'],
+      ['svg', 'SVG'],
       ['dom', 'DOM'],
     ];
     for (const [input, expected] of cases) {
@@ -50,6 +54,12 @@ describe('humanizeComponentName', () => {
         expect(humanizeComponentName(input)).toBe(expected);
       });
     }
+  });
+
+  // `qr-code` is the only real component id whose label the acronym map changes
+  // ("Qr Code" → "QR Code"); the rest of the allow-list is future-proofing.
+  it('renders the qr-code component id with an uppercase acronym', () => {
+    expect(humanizeComponentName('qr-code')).toBe('QR Code');
   });
 
   it('substitutes multiple acronyms in one name', () => {

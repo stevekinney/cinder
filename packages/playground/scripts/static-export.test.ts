@@ -84,11 +84,11 @@ describe('static export', () => {
       expect(indexHtml).toContain('id="cinder-initial"');
       expect(indexHtml).toContain('readmeHtml');
       expect(indexHtml).toContain('/shell-bundle/shell.js');
-      expect(indexHtml).toContain('/styles/shell.css');
+      expect(indexHtml).toContain('/styles/all.css');
       expect(indexHtml).not.toContain('http-equiv="refresh"');
       expect(rendered.has('/shell-bundle/shell.js')).toBe(true);
       expect(indexHtml).not.toContain('data-canonical-documentation');
-      expect(rendered.has('/styles/shell.css')).toBe(true);
+      expect(rendered.has('/styles/all.css')).toBe(true);
     } finally {
       await rm(outputDirectory, { recursive: true, force: true });
     }
