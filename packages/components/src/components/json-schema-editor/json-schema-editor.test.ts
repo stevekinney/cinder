@@ -114,8 +114,9 @@ describe('JsonSchemaEditor — Diff tab Badge indicator', () => {
     await flushEffects();
     const applyButton = screen
       .getAllByRole('button')
-      .find((button) => button.textContent?.trim() === 'Apply') as HTMLElement;
-    await fireEvent.click(applyButton);
+      .find((button) => button.textContent?.trim() === 'Apply');
+    expect(applyButton).toBeDefined();
+    await fireEvent.click(applyButton as HTMLElement);
     await flushEffects();
 
     await fireEvent.click(diffTab);
