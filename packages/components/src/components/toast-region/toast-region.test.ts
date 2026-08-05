@@ -1117,12 +1117,7 @@ describe('toast variant icons', () => {
     await waitFor(() => {
       const iconWrapper = container.querySelector('.cinder-toast__icon');
       expect(iconWrapper).not.toBeNull();
-      // Success branch: fill-rule="evenodd" path contains the checkmark shape.
-      const svg = iconWrapper?.querySelector('svg');
-      expect(svg).not.toBeNull();
-      const path = svg?.querySelector('path');
-      // The success path includes the clip-rule="evenodd" checkmark.
-      expect(path?.getAttribute('d')).toContain('3.857-9.809');
+      expect(iconWrapper?.querySelectorAll('svg.lucide-circle-check').length).toBe(1);
     });
   });
 
@@ -1143,11 +1138,7 @@ describe('toast variant icons', () => {
       expect(polite).not.toBeNull();
       const iconWrapper = polite!.querySelector('.cinder-toast__icon');
       expect(iconWrapper).not.toBeNull();
-      const svg = iconWrapper?.querySelector('svg');
-      expect(svg).not.toBeNull();
-      const path = svg?.querySelector('path');
-      // The warning path contains the triangle/exclamation shape.
-      expect(path?.getAttribute('d')).toContain('8.485 2.495');
+      expect(iconWrapper?.querySelectorAll('svg.lucide-triangle-alert').length).toBe(1);
     });
   });
 
@@ -1167,12 +1158,40 @@ describe('toast variant icons', () => {
       const assertive = container.querySelector('[role="alert"]');
       const iconWrapper = assertive?.querySelector('.cinder-toast__icon');
       expect(iconWrapper).not.toBeNull();
-      const svg = iconWrapper?.querySelector('svg');
-      expect(svg).not.toBeNull();
-      const path = svg?.querySelector('path');
-      // The danger path contains the X-circle shape with 8.28 7.22 coords.
-      expect(path?.getAttribute('d')).toContain('8.28 7.22');
+      expect(iconWrapper?.querySelectorAll('svg.lucide-circle-x').length).toBe(1);
     });
+  });
+
+  test('info toast renders its distinct info icon when showIcon=true', async () => {
+    let api: ToastApi | null = null;
+    const { container } = render(Wrapper, {
+      props: {
+        onReady: (a: ToastApi) => {
+          api = a;
+        },
+      },
+    });
+    await waitFor(() => expect(api).not.toBeNull());
+
+    api!.show('Information message', { variant: 'info', duration: 0, showIcon: true });
+    await waitFor(() => {
+      const iconWrapper = container.querySelector('.cinder-toast__icon');
+      expect(iconWrapper).not.toBeNull();
+      expect(iconWrapper?.querySelectorAll('svg.lucide-info').length).toBe(1);
+    });
+  });
+
+  test('source contains no hand-rolled variant icon <svg> markup — variant icons are lucide-svelte components', async () => {
+    // The four hand-rolled Heroicons-style variant icons shared this exact opening
+    // tag (no `aria-hidden` on the `<svg>` itself — that lived on the wrapper div).
+    // The unrelated dismiss-button "X" icon is out of scope for this item and keeps
+    // its own literal <svg> (it carries `aria-hidden="true"` directly, so this
+    // targeted string does not match it).
+    const source = await Bun.file(new URL('./toast-region.svelte', import.meta.url)).text();
+    expect(source).not.toContain('<svg viewBox="0 0 20 20" fill="currentColor">');
+    expect(source).toMatch(
+      /import\s+CircleCheck\s+from\s+['"]lucide-svelte\/icons\/circle-check['"]/,
+    );
   });
 
   test('showIcon=false suppresses the variant icon for success', async () => {
