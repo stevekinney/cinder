@@ -65,6 +65,77 @@ describe('StatisticsSection', () => {
     expect(element?.classList.contains('my-custom-class')).toBe(true);
   });
 
+  test('renders the custom element tag supplied via `as`', () => {
+    const { container } = render(StatisticsSection, {
+      props: {
+        as: 'div',
+        title: 'Outcomes that matter',
+        stats,
+      },
+    });
+    const element = container.querySelector('.cinder-statistics-section');
+    expect(element?.tagName).toBe('DIV');
+  });
+
+  test('omits the header block entirely when no title is provided', () => {
+    const { container } = render(StatisticsSection, {
+      props: {
+        stats,
+      },
+    });
+    expect(container.querySelector('.cinder-statistics-section__header')).toBeNull();
+  });
+
+  test('renders the description alongside the title', () => {
+    const { container } = render(StatisticsSection, {
+      props: {
+        title: 'Outcomes that matter',
+        description: 'Tracked over the trailing 30 days.',
+        stats,
+      },
+    });
+    expect(container.querySelector('.cinder-statistics-section__description')?.textContent).toBe(
+      'Tracked over the trailing 30 days.',
+    );
+  });
+
+  test('renders the exact changeDescription text on a stat change indicator', () => {
+    const { container } = render(StatisticsSection, {
+      props: {
+        title: 'Outcomes that matter',
+        stats: [
+          {
+            label: 'Deploys',
+            value: 240,
+            changeValue: '+12%',
+            changeDirection: 'up',
+            changeDescription: 'vs. last quarter',
+          },
+        ],
+      },
+    });
+    expect(container.querySelector('.cinder-statistic__change-description')?.textContent).toBe(
+      'vs. last quarter',
+    );
+  });
+
+  test('omits the change-description element entirely when changeDescription is not provided', () => {
+    const { container } = render(StatisticsSection, {
+      props: {
+        title: 'Outcomes that matter',
+        stats: [
+          {
+            label: 'Deploys',
+            value: 240,
+            changeValue: '+12%',
+            changeDirection: 'up',
+          },
+        ],
+      },
+    });
+    expect(container.querySelector('.cinder-statistic__change-description')).toBeNull();
+  });
+
   test('title renders as the section heading text with no native title attribute on the root', () => {
     const { container } = render(StatisticsSection, {
       props: {

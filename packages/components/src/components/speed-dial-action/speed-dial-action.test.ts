@@ -70,6 +70,25 @@ describe('SpeedDialAction', () => {
     ).toBe(false);
   });
 
+  test('a disabled action ignores a direct click and neither calls onclick nor closes the dial', async () => {
+    const onAction = mock(() => {});
+    render(SpeedDialActionFixture, {
+      props: { labelPlacement: 'start', onAction, disabled: true },
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Quick actions' }));
+    await flushQueuedFocus();
+
+    const actionButton = screen.getByRole('button', { name: 'Create' });
+    await fireEvent.click(actionButton);
+    await flushQueuedFocus();
+
+    expect(onAction).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole('group', { name: 'Quick actions' }).hasAttribute('data-cinder-open'),
+    ).toBe(true);
+  });
+
   test('omits the visible label when labelPlacement is none', () => {
     const { container } = render(SpeedDialActionFixture, {
       props: { labelPlacement: 'none' },

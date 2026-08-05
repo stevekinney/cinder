@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { afterEach, describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, mock, test } from 'bun:test';
 import type { ComponentProps } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
@@ -164,6 +164,19 @@ describe('Toggle — value interception', () => {
     await fireEvent.click(toggle);
 
     expect(toggle.getAttribute('aria-checked')).toBe('false');
+  });
+
+  test('onValueChange is called once with the committed value on click', async () => {
+    const onValueChange = mock((_next: boolean) => {});
+    const { container } = render(Toggle, {
+      props: { id: 'onvaluechange-toggle', checked: false, label: 'Notify', onValueChange },
+    });
+    const button = container.querySelector('button') as HTMLButtonElement;
+
+    await fireEvent.click(button);
+
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+    expect(onValueChange).toHaveBeenCalledWith(true);
   });
 });
 

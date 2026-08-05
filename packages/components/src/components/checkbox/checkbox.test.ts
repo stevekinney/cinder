@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { afterEach, describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, mock, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
@@ -134,6 +134,38 @@ describe('Checkbox', () => {
     await fireEvent.click(input);
 
     expect(input.checked).toBe(false);
+  });
+
+  test('onValueChange is called once with the committed value on user toggle', async () => {
+    const onValueChange = mock((_next: boolean) => {});
+    const { container } = render(Checkbox, {
+      id: 'c',
+      checked: false,
+      onValueChange,
+    });
+    const input = container.querySelector('#c') as HTMLInputElement;
+
+    await fireEvent.click(input);
+
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+    expect(onValueChange).toHaveBeenCalledWith(true);
+  });
+
+  test('onValueChange receives the vetoed value from onValueChangeRequest, not the raw proposal', async () => {
+    const onValueChange = mock((_next: boolean) => {});
+    const { container } = render(Checkbox, {
+      id: 'c',
+      checked: false,
+      onValueChangeRequest: () => false,
+      onValueChange,
+    });
+    const input = container.querySelector('#c') as HTMLInputElement;
+
+    await fireEvent.click(input);
+
+    expect(input.checked).toBe(false);
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+    expect(onValueChange).toHaveBeenCalledWith(false);
   });
 
   test('consumer onchange runs without replacing the bindable update path', async () => {

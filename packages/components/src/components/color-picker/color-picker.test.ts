@@ -421,6 +421,95 @@ describe('ColorPicker alpha slider keyboard', () => {
   });
 });
 
+describe('ColorPicker gradient keyboard', () => {
+  // Baseline for every test below: value=#ff0000 → hue=0, saturation=100, lightness=50.
+  // Hand-computed against the component's own hslToRgb/formatHex and confirmed by
+  // running the assertions; pinned literally so a wrong step size or clamp bound fails.
+
+  test('ArrowUp increases lightness by exactly 1', async () => {
+    let captured = '';
+    const { container } = render(ColorPicker, {
+      value: '#ff0000',
+      onchange: (color: string) => {
+        captured = color;
+      },
+    });
+    const gradient = q(container, '.cinder-color-picker__gradient');
+    const notPrevented = await fireEvent.keyDown(gradient, { key: 'ArrowUp' });
+    expect(captured).toBe('#ff0505');
+    expect(notPrevented).toBe(false);
+  });
+
+  test('ArrowDown decreases lightness by exactly 1', async () => {
+    let captured = '';
+    const { container } = render(ColorPicker, {
+      value: '#ff0000',
+      onchange: (color: string) => {
+        captured = color;
+      },
+    });
+    const gradient = q(container, '.cinder-color-picker__gradient');
+    const notPrevented = await fireEvent.keyDown(gradient, { key: 'ArrowDown' });
+    expect(captured).toBe('#fa0000');
+    expect(notPrevented).toBe(false);
+  });
+
+  test('ArrowLeft decreases saturation by exactly 1, then ArrowRight increases it back', async () => {
+    let captured = '';
+    const { container } = render(ColorPicker, {
+      value: '#ff0000',
+      onchange: (color: string) => {
+        captured = color;
+      },
+    });
+    const gradient = q(container, '.cinder-color-picker__gradient');
+
+    const notPrevented = await fireEvent.keyDown(gradient, { key: 'ArrowLeft' });
+    expect(captured).toBe('#fe0101');
+    expect(notPrevented).toBe(false);
+
+    // Fired again from the 99 step (not the 100 boundary) so a wrong step size or a
+    // wrong clamp bound would still show up as the wrong hex, not a false-positive no-op.
+    await fireEvent.keyDown(gradient, { key: 'ArrowRight' });
+    expect(captured).toBe('#ff0000');
+  });
+
+  test('Shift+Arrow keys move saturation and lightness by exactly 10 instead of 1', async () => {
+    let captured = '';
+    const { container } = render(ColorPicker, {
+      value: '#ff0000',
+      onchange: (color: string) => {
+        captured = color;
+      },
+    });
+    const gradient = q(container, '.cinder-color-picker__gradient');
+
+    await fireEvent.keyDown(gradient, { key: 'ArrowDown', shiftKey: true });
+    expect(captured).toBe('#cc0000');
+    await fireEvent.keyDown(gradient, { key: 'ArrowUp', shiftKey: true });
+    expect(captured).toBe('#ff0000');
+    await fireEvent.keyDown(gradient, { key: 'ArrowLeft', shiftKey: true });
+    expect(captured).toBe('#f20d0d');
+    await fireEvent.keyDown(gradient, { key: 'ArrowRight', shiftKey: true });
+    expect(captured).toBe('#ff0000');
+  });
+
+  test('disabled suppresses gradient keyboard adjustments entirely', async () => {
+    let captured = '';
+    const { container } = render(ColorPicker, {
+      value: '#ff0000',
+      disabled: true,
+      onchange: (color: string) => {
+        captured = color;
+      },
+    });
+    const gradient = q(container, '.cinder-color-picker__gradient');
+    const notPrevented = await fireEvent.keyDown(gradient, { key: 'ArrowRight' });
+    expect(captured).toBe('');
+    expect(notPrevented).toBe(true);
+  });
+});
+
 describe('ColorPicker swatch keyboard nav', () => {
   test('clicking a swatch updates the value', async () => {
     let captured = '';

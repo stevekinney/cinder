@@ -64,6 +64,42 @@ describe('HeroSection', () => {
     expect(root?.getAttribute('data-cinder-media-position')).toBe('start');
   });
 
+  test('renders the eyebrow copy above the title', () => {
+    const { container } = render(HeroSection, {
+      props: {
+        title: 'Hero',
+        eyebrow: 'New release',
+      },
+    });
+    expect(container.querySelector('.cinder-hero-section__eyebrow')?.textContent).toContain(
+      'New release',
+    );
+  });
+
+  test('renders an actions snippet inside the actions row', () => {
+    const actions = createRawSnippet(() => ({
+      render: () => '<button type="button">Get started</button>',
+    }));
+    const { container } = render(HeroSection, {
+      props: { title: 'Hero', actions },
+    });
+    expect(container.querySelector('.cinder-hero-section__actions button')?.textContent).toBe(
+      'Get started',
+    );
+  });
+
+  test('renders a children snippet inside the extra content region', () => {
+    const children = createRawSnippet(() => ({
+      render: () => '<p class="extra-copy">Trusted by teams everywhere.</p>',
+    }));
+    const { container } = render(HeroSection, {
+      props: { title: 'Hero', children },
+    });
+    expect(container.querySelector('.cinder-hero-section__extra .extra-copy')?.textContent).toBe(
+      'Trusted by teams everywhere.',
+    );
+  });
+
   test('merges custom class with cinder-hero-section root class', () => {
     const { container } = render(HeroSection, {
       props: {

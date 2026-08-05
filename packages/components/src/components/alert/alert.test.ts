@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
@@ -9,8 +9,15 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 // so we register happy-dom's globals first and then dynamic-import testing-library below.
 setupHappyDom();
 
-const { render, fireEvent } = await import('@testing-library/svelte');
+const { cleanup, render, fireEvent } = await import('@testing-library/svelte');
 const { default: Alert } = await import('./alert.svelte');
+
+// Unmount renders between tests; shared document.body otherwise leaks alert
+// instances across tests below that assert on document.activeElement.
+afterEach(() => {
+  cleanup();
+  document.body.replaceChildren();
+});
 
 /**
  * Build a minimal Svelte snippet that renders a single text node.
@@ -251,5 +258,66 @@ describe('Alert rendering', () => {
     expect(container.querySelector('.cinder-alert')?.getAttribute('data-cinder-variant')).toBe(
       'danger',
     );
+  });
+});
+
+describe('Alert dismiss focus management', () => {
+  test('dismissing while focused moves focus to the next focusable element', async () => {
+    const { container } = render(Alert, {
+      props: { dismissible: true, children: emptySnippet },
+    });
+    const after = document.createElement('button');
+    after.type = 'button';
+    after.textContent = 'Continue';
+    container.after(after);
+
+    try {
+      const button = container.querySelector('.cinder-alert__dismiss') as HTMLButtonElement;
+      button.focus();
+      expect(document.activeElement).toBe(button);
+      await fireEvent.click(button);
+      expect(container.querySelector('.cinder-alert')).toBeNull();
+      expect(document.activeElement).toBe(after);
+    } finally {
+      after.remove();
+    }
+  });
+
+  test('dismissing while focused falls back to the nearest preceding focusable element', async () => {
+    // Mark every existing focusable as inert-scoped so leakage from prior
+    // tests cannot become the "next" candidate. The component's filter skips
+    // anything inside a `[inert]` ancestor.
+    const inertWrapper = document.createElement('div');
+    inertWrapper.setAttribute('inert', '');
+    while (document.body.firstChild) {
+      inertWrapper.appendChild(document.body.firstChild);
+    }
+    document.body.appendChild(inertWrapper);
+
+    const before = document.createElement('button');
+    before.type = 'button';
+    before.textContent = 'Back';
+    document.body.appendChild(before);
+
+    const { container, unmount } = render(Alert, {
+      props: { dismissible: true, children: emptySnippet },
+    });
+
+    try {
+      const button = container.querySelector('.cinder-alert__dismiss') as HTMLButtonElement;
+      button.focus();
+      expect(document.activeElement).toBe(button);
+      await fireEvent.click(button);
+      expect(container.querySelector('.cinder-alert')).toBeNull();
+      expect(document.activeElement).toBe(before);
+    } finally {
+      unmount();
+      before.remove();
+      // Restore the original body children for subsequent tests.
+      while (inertWrapper.firstChild) {
+        document.body.appendChild(inertWrapper.firstChild);
+      }
+      inertWrapper.remove();
+    }
   });
 });

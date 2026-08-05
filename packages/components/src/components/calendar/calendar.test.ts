@@ -127,6 +127,100 @@ describe('Calendar', () => {
     expect(selected).toBe('2026-06-16');
   });
 
+  test('Home and End move focus to the start and end of the focused week', async () => {
+    // 2026-06-17 is a Wednesday; with the default firstDayOfWeek=0 (Sunday) the week
+    // runs 2026-06-14 (Sun) through 2026-06-20 (Sat).
+    const { container } = render(Calendar, { value: '2026-06-17' });
+    const grid = container.querySelector('[role="grid"]')!;
+
+    await fireEvent.keyDown(grid, { key: 'Home' });
+    let focused = container.querySelector<HTMLButtonElement>('.cinder-calendar__day[data-focused]');
+    expect(focused?.id).toContain('2026-06-14');
+
+    await fireEvent.keyDown(grid, { key: 'End' });
+    focused = container.querySelector<HTMLButtonElement>('.cinder-calendar__day[data-focused]');
+    expect(focused?.id).toContain('2026-06-20');
+  });
+
+  test('PageUp moves focus back one month', async () => {
+    const { container } = render(Calendar, { value: '2026-06-15' });
+    const grid = container.querySelector('[role="grid"]')!;
+
+    await fireEvent.keyDown(grid, { key: 'PageUp' });
+
+    const focused = container.querySelector<HTMLButtonElement>(
+      '.cinder-calendar__day[data-focused]',
+    );
+    expect(focused?.id).toContain('2026-05-15');
+    expect(container.querySelector('.cinder-calendar__title')?.textContent).toContain('May 2026');
+  });
+
+  test('PageDown moves focus forward one month, clamping the day of month at the target month end', async () => {
+    // January 31 has no equivalent in February 2026 (28 days, not a leap year); the
+    // focused day must clamp to the last day of the target month, not overflow into March.
+    const { container } = render(Calendar, { value: '2026-01-31' });
+    const grid = container.querySelector('[role="grid"]')!;
+
+    await fireEvent.keyDown(grid, { key: 'PageDown' });
+
+    const focused = container.querySelector<HTMLButtonElement>(
+      '.cinder-calendar__day[data-focused]',
+    );
+    expect(focused?.id).toContain('2026-02-28');
+    expect(container.querySelector('.cinder-calendar__title')?.textContent).toContain(
+      'February 2026',
+    );
+  });
+
+  test('disabledDate marks matching days disabled and blocks selection via click and Enter', async () => {
+    let selected: string | undefined;
+    const { container } = render(Calendar, {
+      month: '2026-06-01',
+      disabledDate: (iso: string) => iso === '2026-06-15',
+      onchange: (value: string) => {
+        selected = value;
+      },
+    });
+
+    const day = Array.from(
+      container.querySelectorAll<HTMLButtonElement>('.cinder-calendar__day'),
+    ).find((button) => button.textContent?.trim() === '15' && !button.hasAttribute('data-outside'));
+    if (!day) throw new Error('day button missing');
+    expect(day.getAttribute('aria-disabled')).toBe('true');
+
+    await fireEvent.click(day);
+    expect(selected).toBeUndefined();
+
+    // Move DOM focus to the disabled day (as roving-tabindex focus tracking would), then
+    // attempt to commit it via the grid's Enter handler.
+    await fireEvent.focus(day);
+    await fireEvent.keyDown(container.querySelector('[role="grid"]')!, { key: 'Enter' });
+    expect(selected).toBeUndefined();
+  });
+
+  test('the standalone disabled prop disables every cell and makes the grid a keyboard no-op', async () => {
+    let selected: string | undefined;
+    const { container } = render(Calendar, {
+      value: '2026-06-15',
+      disabled: true,
+      onchange: (value: string) => {
+        selected = value;
+      },
+    });
+
+    const days = container.querySelectorAll<HTMLButtonElement>('.cinder-calendar__day');
+    expect(days.length).toBeGreaterThan(0);
+    days.forEach((day) => expect(day.getAttribute('aria-disabled')).toBe('true'));
+
+    const focusedBefore = container.querySelector('.cinder-calendar__day[data-focused]');
+    await fireEvent.keyDown(container.querySelector('[role="grid"]')!, { key: 'ArrowRight' });
+    const focusedAfter = container.querySelector('.cinder-calendar__day[data-focused]');
+    expect(focusedAfter?.id).toBe(focusedBefore?.id);
+
+    await fireEvent.click(days[10]!);
+    expect(selected).toBeUndefined();
+  });
+
   test('respects min/max constraints as disabled dates', () => {
     const { container } = render(Calendar, {
       month: '2026-06-01',

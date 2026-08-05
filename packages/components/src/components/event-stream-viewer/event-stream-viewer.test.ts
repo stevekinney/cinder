@@ -1101,6 +1101,51 @@ describe('EventStreamViewer', () => {
 
       expect(viewport.scrollTop).toBe(400);
     });
+
+    test('scrolling to the bottom while paused clears data-cinder-paused (handleScroll resumes following)', async () => {
+      const { container } = render(EventStreamViewer, {
+        props: { events: [baseEvent], followLatest: false },
+      });
+      const viewport = container.querySelector<HTMLElement>(
+        '.cinder-event-stream-viewer__viewport',
+      );
+      if (!viewport) throw new Error('No event viewport found');
+
+      Object.defineProperty(viewport, 'scrollHeight', { configurable: true, value: 1000 });
+      Object.defineProperty(viewport, 'clientHeight', { configurable: true, value: 500 });
+      viewport.scrollTop = 499;
+
+      const root = container.querySelector('.cinder-event-stream-viewer');
+      expect(root?.hasAttribute('data-cinder-paused')).toBe(true);
+
+      await fireEvent.scroll(viewport);
+
+      expect(root?.hasAttribute('data-cinder-paused')).toBe(false);
+    });
+
+    test('clicking the resume button clears data-cinder-paused and scrolls the viewport to bottom', async () => {
+      const { container } = render(EventStreamViewer, {
+        props: { events: [baseEvent], followLatest: false },
+      });
+      const viewport = container.querySelector<HTMLElement>(
+        '.cinder-event-stream-viewer__viewport',
+      );
+      if (!viewport) throw new Error('No event viewport found');
+
+      Object.defineProperty(viewport, 'scrollHeight', { configurable: true, value: 400 });
+      viewport.scrollTop = 0;
+
+      const resumeButton = container.querySelector<HTMLButtonElement>(
+        '.cinder-event-stream-viewer__resume-button',
+      );
+      expect(resumeButton).not.toBeNull();
+
+      await fireEvent.click(resumeButton!);
+
+      const root = container.querySelector('.cinder-event-stream-viewer');
+      expect(root?.hasAttribute('data-cinder-paused')).toBe(false);
+      expect(viewport.scrollTop).toBe(400);
+    });
   });
 
   describe('accessibility', () => {

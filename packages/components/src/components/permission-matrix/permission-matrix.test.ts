@@ -231,4 +231,52 @@ describe('PermissionMatrix', () => {
     expect(getByRole('button', { name: 'workflows:read × retry: denied' })).toBeTruthy();
     expect(getByRole('button', { name: 'runs:admin × inspect: not applicable' })).toBeTruthy();
   });
+
+  test('shows the literal "Loading matrix…" fallback text when loading with no loadingContent snippet', () => {
+    const { container } = render(PermissionMatrix, {
+      label: 'Scope matrix',
+      rows,
+      columns,
+      getCellState,
+      loading: true,
+    });
+
+    expect(container.querySelector('.cinder-permission-matrix__state')?.textContent).toBe(
+      'Loading matrix…',
+    );
+    expect(container.querySelector('table')).toBeNull();
+  });
+
+  test('shows the literal "No matrix data" fallback text when rows and columns are empty with no empty snippet', () => {
+    const { container } = render(PermissionMatrix, {
+      label: 'Scope matrix',
+      rows: [],
+      columns: [],
+      getCellState,
+    });
+
+    expect(container.querySelector('.cinder-permission-matrix__state')?.textContent).toBe(
+      'No matrix data',
+    );
+    expect(container.querySelector('table')).toBeNull();
+  });
+
+  test('renders the description paragraph and points the figure aria-describedby at its id', () => {
+    const { container } = render(PermissionMatrix, {
+      label: 'Scope matrix',
+      rows,
+      columns,
+      getCellState,
+      description: 'Row × column access grants for this workspace.',
+    });
+
+    const figure = container.querySelector('figure.cinder-permission-matrix');
+    const description = container.querySelector('.cinder-permission-matrix__description');
+
+    expect(description?.textContent).toBe('Row × column access grants for this workspace.');
+    const describedBy = figure?.getAttribute('aria-describedby');
+    expect(describedBy).not.toBeNull();
+    expect(describedBy).not.toBe('');
+    expect(description?.getAttribute('id')).toBe(describedBy);
+  });
 });

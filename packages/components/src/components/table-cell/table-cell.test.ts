@@ -68,6 +68,16 @@ describe('TableCell', () => {
     const cell = container.querySelector('tbody td');
     expect(cell?.getAttribute('data-cinder-align')).toBe('left');
   });
+
+  test('rendering with as="th" scopes the header cell to its row', () => {
+    const { container } = render(Wrapper, {
+      columns,
+      rows,
+      cellProps: { as: 'th' },
+    });
+    const cell = container.querySelector('tbody th');
+    expect(cell?.getAttribute('scope')).toBe('row');
+  });
 });
 
 describe('TableCell — empty children', () => {

@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { afterEach, describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, spyOn, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
@@ -240,11 +240,19 @@ describe('FloatingAction — accessible name', () => {
   });
 
   test('empty aria-label is omitted from DOM', () => {
-    const { container } = render(FloatingAction, {
-      props: { 'aria-label': '   ', children: iconSnippet() },
-    });
-    // Whitespace-only label normalizes to undefined — attribute must not be present
-    expect(container.querySelector('button')?.hasAttribute('aria-label')).toBe(false);
+    // Whitespace-only + default shape="filled" also fires the filled-shape dev
+    // warning (see "FloatingAction — dev-mode accessible-name warnings" below) —
+    // spy on it here too so it doesn't leak into test output.
+    const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const { container } = render(FloatingAction, {
+        props: { 'aria-label': '   ', children: iconSnippet() },
+      });
+      // Whitespace-only label normalizes to undefined — attribute must not be present
+      expect(container.querySelector('button')?.hasAttribute('aria-label')).toBe(false);
+    } finally {
+      warnSpy.mockRestore();
+    }
   });
 
   test('aria-labelledby is applied', () => {
@@ -327,5 +335,46 @@ describe('FloatingAction — children rendering', () => {
       },
     });
     expect(container.querySelector('.test-icon')).not.toBeNull();
+  });
+});
+
+describe('FloatingAction — dev-mode accessible-name warnings', () => {
+  test('shape="filled" without an accessible name warns that filled shape requires one', () => {
+    const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      // shape defaults to "filled"; no aria-label, aria-labelledby, or children —
+      // this also fires the "no accessible name at all" branch below, but this test
+      // only asserts on the filled-shape-specific message.
+      render(FloatingAction, { props: { shape: 'filled' } });
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('filled shape'));
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
+  test('rendered without children and without an accessible name warns, regardless of shape', () => {
+    // Real matrix (hand-verified against floating-action.svelte:92-103): whether
+    // this warning fires depends on `children` being absent, not on `shape`. Using
+    // shape="extended" here isolates this branch to a single console.warn call —
+    // it does not mean the warning is extended-specific.
+    const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      render(FloatingAction, { props: { shape: 'extended' } });
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('rendered without an accessible name'),
+      );
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
+  test('shape="extended" with children does not warn at all', () => {
+    const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      render(FloatingAction, { props: { shape: 'extended', children: iconSnippet() } });
+      expect(warnSpy).not.toHaveBeenCalled();
+    } finally {
+      warnSpy.mockRestore();
+    }
   });
 });

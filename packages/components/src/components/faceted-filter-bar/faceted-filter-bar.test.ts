@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
+import { createRawSnippet } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -334,6 +335,111 @@ describe('FacetedFilterBar accessibility', () => {
     const { container } = render(FacetedFilterBar, {});
     const input = container.querySelector('input[type="search"]');
     expect(input).not.toBeNull();
+  });
+});
+
+// Chip's root template branches on `mode` ({#if mode === 'toggle'} ... {:else if
+// mode === 'removable'} ... {:else} ...), and a keyed `{#each}` of that component
+// does not reliably reflect array-shrink removals under happy-dom (the same class
+// of pre-existing keyed-each/happy-dom limitation already documented elsewhere in
+// this repo for list length changes — see chat's keyed-each length-growth notes).
+// `handleFilterRemove` queries the *live* DOM directly, so these tests reproduce
+// what a real re-render would leave behind by removing the chip node directly,
+// rather than relying on the broken reactive teardown.
+describe('FacetedFilterBar chip-remove focus management', () => {
+  test('removing an applied chip (not the last one) focuses the next remove button at the same index', async () => {
+    let removedButton: HTMLButtonElement | null = null;
+    const { container } = render(FacetedFilterBar, {
+      appliedFilters: [
+        { key: 'status', value: 'failed', label: 'Status' },
+        { key: 'queue', value: 'default', label: 'Queue' },
+        { key: 'priority', value: 'high', label: 'Priority' },
+      ],
+      onFilterRemove: () => {
+        removedButton?.closest('.cinder-chip')?.remove();
+      },
+    });
+
+    const removeButtons = container.querySelectorAll<HTMLButtonElement>('.cinder-chip__remove');
+    expect(removeButtons).toHaveLength(3);
+    removedButton = removeButtons[1]!; // 'queue', not the last chip
+
+    await fireEvent.click(removedButton);
+
+    const remainingButtons = container.querySelectorAll<HTMLButtonElement>('.cinder-chip__remove');
+    expect(remainingButtons).toHaveLength(2);
+    // 'priority' shifts from index 2 to index 1 — focus lands on the button
+    // now occupying the removed chip's index.
+    expect(document.activeElement).toBe(remainingButtons[1]!);
+  });
+
+  test('removing the last remaining chip falls back to the matching facet select', async () => {
+    let removedButton: HTMLButtonElement | null = null;
+    const { container } = render(FacetedFilterBar, {
+      facets: [STATUS_FACET],
+      appliedFilters: [{ key: 'status', value: 'failed', label: 'Status' }],
+      onFilterRemove: () => {
+        removedButton?.closest('.cinder-chip')?.remove();
+      },
+    });
+
+    removedButton = container.querySelector<HTMLButtonElement>('.cinder-chip__remove')!;
+    await fireEvent.click(removedButton);
+
+    expect(container.querySelector('.cinder-chip__remove')).toBeNull();
+    const statusSelect = container.querySelector<HTMLSelectElement>(
+      '[aria-label="Status"].cinder-faceted-filter-bar__select',
+    );
+    expect(document.activeElement).toBe(statusSelect);
+  });
+
+  test('removing the last remaining chip falls back to the search input when no facet select matches', async () => {
+    let removedButton: HTMLButtonElement | null = null;
+    const { container } = render(FacetedFilterBar, {
+      facets: [STATUS_FACET], // no facet with key "owner"
+      appliedFilters: [{ key: 'owner', value: 'me', label: 'Owner' }],
+      onFilterRemove: () => {
+        removedButton?.closest('.cinder-chip')?.remove();
+      },
+    });
+
+    removedButton = container.querySelector<HTMLButtonElement>('.cinder-chip__remove')!;
+    await fireEvent.click(removedButton);
+
+    expect(container.querySelector('.cinder-chip__remove')).toBeNull();
+    const searchInput = container.querySelector<HTMLInputElement>('.cinder-search-field__input');
+    expect(document.activeElement).toBe(searchInput);
+  });
+});
+
+describe('FacetedFilterBar custom facets', () => {
+  test('renders a custom facet via its control snippet and forwards onchange to onFacetChange', async () => {
+    const onFacetChange = mock((_key: string, _value: string) => {});
+    const controlSnippet = createRawSnippet<[{ value: string; onchange: (value: string) => void }]>(
+      (getProps) => ({
+        render: () =>
+          `<button type="button" class="faceted-filter-bar-test-custom-control">Pick</button>`,
+        setup(element: Element) {
+          const handleClick = () => getProps().onchange('me');
+          element.addEventListener('click', handleClick);
+          return () => element.removeEventListener('click', handleClick);
+        },
+      }),
+    );
+
+    const { container } = render(FacetedFilterBar, {
+      facets: [{ type: 'custom', key: 'owner', label: 'Owner', control: controlSnippet }],
+      onFacetChange,
+    });
+
+    const customControl = container.querySelector<HTMLButtonElement>(
+      '.faceted-filter-bar-test-custom-control',
+    );
+    expect(customControl?.textContent).toBe('Pick');
+
+    await fireEvent.click(customControl!);
+
+    expect(onFacetChange).toHaveBeenCalledWith('owner', 'me');
   });
 });
 

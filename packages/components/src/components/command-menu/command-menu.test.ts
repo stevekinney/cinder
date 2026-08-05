@@ -256,6 +256,56 @@ describe('CommandMenu', () => {
     expect(itemSelect).toHaveBeenCalledTimes(1);
   });
 
+  test('pointerenter on a non-active item makes it the active item, matching arrow-key navigation', async () => {
+    // Parity requirement: command-palette.a11y.md documents hover and
+    // ArrowDown/ArrowUp as equivalent ways to move the active item.
+    render(CommandMenuFixture);
+    await waitFor(() => expect(queryMenu()).not.toBeNull());
+
+    const options = Array.from(document.body.querySelectorAll<HTMLElement>('[role="option"]'));
+    expect(options[0]?.textContent).toContain('Alpha');
+    expect(options[0]?.getAttribute('aria-selected')).toBe('true');
+    const betaOption = options[1]!;
+    expect(betaOption.textContent).toContain('Beta');
+    expect(betaOption.getAttribute('aria-selected')).toBe('false');
+
+    await fireEvent.pointerEnter(betaOption);
+    await settleCommandMenu();
+
+    expect(betaOption.getAttribute('aria-selected')).toBe('true');
+    expect(options[0]?.getAttribute('aria-selected')).toBe('false');
+  });
+
+  test('pointerdown on an item prevents its default so the host field does not lose focus', async () => {
+    render(CommandMenuFixture);
+    await waitFor(() => expect(queryMenu()).not.toBeNull());
+
+    const option = document.body.querySelector('[role="option"]') as HTMLElement;
+    const pointerDownResult = await fireEvent.pointerDown(option);
+
+    // fireEvent resolves false when the event's default action was
+    // prevented (see the disabled-feature Tab test below for the inverse).
+    expect(pointerDownResult).toBe(false);
+  });
+
+  test('clicking a disabled item does not activate it', async () => {
+    const itemSelect = mock(() => {});
+    const selected: string[] = [];
+    render(CommandMenuFixture, {
+      items: [{ value: 'alpha', label: 'Alpha', disabled: true, onSelect: itemSelect }],
+      onSelected: (value: string) => selected.push(value),
+    });
+    await waitFor(() => expect(queryMenu()).not.toBeNull());
+
+    const option = document.body.querySelector('[role="option"]') as HTMLElement;
+    expect(option.getAttribute('aria-disabled')).toBe('true');
+
+    await fireEvent.click(option);
+
+    expect(itemSelect).not.toHaveBeenCalled();
+    expect(selected).toEqual([]);
+  });
+
   test('Escape dismisses the menu', async () => {
     let dismissCount = 0;
     const { getByTestId } = render(CommandMenuFixture, {
