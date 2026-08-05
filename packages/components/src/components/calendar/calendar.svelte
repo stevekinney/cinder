@@ -163,7 +163,19 @@
     };
   });
 
-  const anchorIso = $derived(resolveAnchorIso(value, month, todayIso));
+  // `todayIso` is read untracked here: it only ever matters to this anchor as a
+  // *fallback* for an uncontrolled calendar (no `value`/`month`). Tracking it
+  // would make the sync effect below re-anchor on every midnight/visibility
+  // refresh, snapping an already-navigated, uncontrolled view back to today's
+  // month. `todayIso` still drives the `aria-current="date"` marker directly
+  // in the template, which is the only thing a live refresh should move.
+  const anchorIso = $derived(
+    resolveAnchorIso(
+      value,
+      month,
+      untrack(() => todayIso),
+    ),
+  );
   const anchorDate = $derived(parseISODate(anchorIso) ?? parseISODate(todayIso)!);
   let visibleMonthDate = $state(
     startOfMonth(parseISODate(initialAnchorIso) ?? parseISODate(initialTodayIso)!),

@@ -161,6 +161,43 @@ describe('Calendar', () => {
     expect(nextDay?.getAttribute('aria-current')).toBe('date');
   });
 
+  test('todayIso refresh moves only the today marker on an uncontrolled, already-navigated calendar', async () => {
+    setSystemTime(new Date(2026, 5, 15));
+    const { container } = render(Calendar, {});
+
+    expect(container.querySelector('.cinder-calendar__title')?.textContent).toContain('June 2026');
+    expect(container.querySelector('[id$="-day-2026-06-15"]')?.getAttribute('aria-current')).toBe(
+      'date',
+    );
+
+    const nextButton = container.querySelector<HTMLButtonElement>('[aria-label="Next month"]');
+    if (!nextButton) throw new Error('next month button missing');
+    await fireEvent.click(nextButton);
+    await tick();
+
+    expect(container.querySelector('.cinder-calendar__title')?.textContent).toContain('July 2026');
+
+    setSystemTime(new Date(2026, 5, 16));
+    document.dispatchEvent(new Event('visibilitychange'));
+    await tick();
+
+    // The navigated-away view must not snap back to today's month...
+    expect(container.querySelector('.cinder-calendar__title')?.textContent).toContain('July 2026');
+
+    // ...but the today marker itself must have moved to the new day.
+    const prevButton = container.querySelector<HTMLButtonElement>('[aria-label="Previous month"]');
+    if (!prevButton) throw new Error('previous month button missing');
+    await fireEvent.click(prevButton);
+    await tick();
+
+    expect(container.querySelector('[id$="-day-2026-06-15"]')?.hasAttribute('aria-current')).toBe(
+      false,
+    );
+    expect(container.querySelector('[id$="-day-2026-06-16"]')?.getAttribute('aria-current')).toBe(
+      'date',
+    );
+  });
+
   test.each([
     {
       month: '9999-12-01',
