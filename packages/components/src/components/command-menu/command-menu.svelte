@@ -166,8 +166,11 @@
   const ghostStyle = $derived.by(() => {
     if (!anchor) return '';
     const rect = ghostRect;
+    // No `height` here: the rect's height is a line-height estimate from
+    // getCaretRect, not a hard glyph box — clamping to it would clip a
+    // descender in the rendered text.
     const position = rect
-      ? `position: fixed; left: ${rect.left}px; top: ${rect.top}px; height: ${rect.height}px;`
+      ? `position: fixed; left: ${rect.left}px; top: ${rect.top}px;`
       : 'position: fixed;';
     return `${position} ${computeGhostOverlayFontStyle(anchor)}`;
   });
@@ -233,11 +236,27 @@
     const stopInput = on(currentAnchor, 'input', clearDismissalWhenSelectionMoves);
     const stopClick = on(currentAnchor, 'click', clearDismissalWhenSelectionMoves);
     const stopKeyup = on(currentAnchor, 'keyup', clearDismissalWhenSelectionMoves);
-    // The ghost overlay is positioned via a one-shot rect read (no
-    // floating-ui autoUpdate loop), so scroll/resize need their own nudge to
-    // stay live. Anchor-local scroll (a tall textarea's own scrollbar) and
-    // page/ancestor scroll are different events; both can move the caret's
-    // viewport position without firing any of the listeners above.
+
+    return () => {
+      stopSelectionchange();
+      stopSelect();
+      stopInput();
+      stopClick();
+      stopKeyup();
+    };
+  });
+
+  // The ghost overlay is positioned via a one-shot rect read (no
+  // floating-ui autoUpdate loop), so scroll/resize need their own nudge to
+  // stay live. Anchor-local scroll (a tall textarea's own scrollbar) and
+  // page/ancestor scroll are different events; both can move the caret's
+  // viewport position. Gated on `inlineCompletion.visible` — this is the
+  // only time repositioning matters, so a closed menu or a host that never
+  // enables ghost text never pays for these listeners.
+  $effect(() => {
+    if (!anchor || !inlineCompletion.visible) return;
+    const currentAnchor = anchor;
+
     const bumpSelectionGeneration = () => {
       selectionGeneration += 1;
     };
@@ -246,11 +265,6 @@
     const stopWindowResize = on(window, 'resize', bumpSelectionGeneration);
 
     return () => {
-      stopSelectionchange();
-      stopSelect();
-      stopInput();
-      stopClick();
-      stopKeyup();
       stopAnchorScroll();
       stopWindowScroll();
       stopWindowResize();
@@ -334,7 +348,13 @@
     ) {
       const completion = inlineCompletion.acceptCompletion();
       if (completion) {
+        // stopPropagation, not just preventDefault: preventDefault only
+        // suppresses the native action (focus traversal for Tab). Left to
+        // bubble, an ancestor keydown listener (a FocusTrap, another
+        // overlay) could still act on the same Tab press and move focus
+        // anyway, breaking "Tab accepts and keeps focus on the anchor."
         event.preventDefault();
+        event.stopPropagation();
         onComplete?.(completion);
         return;
       }
@@ -374,6 +394,13 @@
       stopCompositionStart();
       stopCompositionEnd();
       stopPointerdown();
+      // A `compositionstart` with no matching `compositionend` (menu closed
+      // by an outside pointerdown, host-controlled dismiss, etc. while an
+      // IME composition is in flight) would otherwise latch `composing` true
+      // forever — the only thing that ever clears it is a `compositionend`
+      // event on listeners this cleanup just removed. Reset here so every
+      // fresh open starts from a clean, non-composing state.
+      composing = false;
     };
   });
 </script>
@@ -382,7 +409,7 @@
   <span
     {@attach ghostPortalAttachment}
     aria-hidden="true"
-    class="cinder-command-menu__ghost"
+    class="cinder-_floating-surface cinder-command-menu__ghost"
     data-cinder-position-ready={ghostRect !== null}
     style={ghostStyle}>{inlineCompletion.remainder}</span
   >

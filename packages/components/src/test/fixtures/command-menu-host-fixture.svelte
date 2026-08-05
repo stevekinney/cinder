@@ -132,7 +132,7 @@
   {anchor}
   {...explicitCaretIndex ? { caretIndex } : {}}
   onSelect={(selection) => selectCommand(selection.value)}
-  onComplete={ghostTextEnabled ? completeGhostText : undefined}
+  {...ghostTextEnabled ? { onComplete: completeGhostText } : {}}
   onDismiss={() => {
     open = false;
     query = '';

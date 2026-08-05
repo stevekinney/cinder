@@ -614,6 +614,28 @@ describe('CommandMenu inline ghost-text completion (#970)', () => {
     expect(queryGhost()?.textContent).toBe('pha');
   });
 
+  test('a composition left in flight when the menu closes does not permanently suppress ghost text', async () => {
+    // Regression: closing the menu (outside pointerdown) while `compositionstart`
+    // has fired but its matching `compositionend` never arrives — the IME was
+    // cancelled, or the composition simply outlives the menu — must not latch
+    // `composing` true forever. The next open has to show ghost text again.
+    const { getByTestId } = render(CommandMenuHostFixture, { ghostTextEnabled: true });
+    const host = getByTestId('host') as HTMLTextAreaElement;
+
+    await typeIntoHost(host, '/al');
+    await waitFor(() => expect(queryGhost()?.textContent).toBe('pha'));
+
+    await fireEvent.compositionStart(host);
+    await settleCommandMenu();
+    expect(queryGhost()).toBeNull();
+
+    await fireEvent.pointerDown(getByTestId('outside'));
+    await waitFor(() => expect(queryMenu()).toBeNull());
+
+    await typeIntoHost(host, '/al');
+    await waitFor(() => expect(queryGhost()?.textContent).toBe('pha'));
+  });
+
   test('ArrowRight at the field end accepts and fires onComplete, not onSelect', async () => {
     const completed: Array<{ value: string; query: string; remainder: string }> = [];
     const selected: Array<{ value: string; query: string }> = [];
@@ -649,6 +671,14 @@ describe('CommandMenu inline ghost-text completion (#970)', () => {
     const host = getByTestId('host') as HTMLTextAreaElement;
     host.focus();
 
+    // Regression guard (Copilot review on #1146): preventDefault alone
+    // suppresses Tab's native focus traversal, but the event still bubbles
+    // — an ancestor keydown listener (a FocusTrap, another overlay) could
+    // otherwise act on the same Tab press and move focus anyway. A
+    // document-level spy proves the accepted keydown never reaches it.
+    const ancestorKeydown = mock(() => {});
+    document.addEventListener('keydown', ancestorKeydown);
+
     await typeIntoHost(host, '/al');
     await waitFor(() => expect(queryGhost()?.textContent).toBe('pha'));
 
@@ -660,6 +690,7 @@ describe('CommandMenu inline ghost-text completion (#970)', () => {
     });
     host.dispatchEvent(shiftTabEvent);
     expect(shiftTabEvent.defaultPrevented).toBe(false);
+    expect(ancestorKeydown).toHaveBeenCalledTimes(1);
     expect(queryGhost()?.textContent).toBe('pha');
 
     const tabEvent = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
@@ -669,6 +700,10 @@ describe('CommandMenu inline ghost-text completion (#970)', () => {
     expect(tabEvent.defaultPrevented).toBe(true);
     expect(host.value).toBe('/alpha');
     expect(document.activeElement).toBe(host);
+    // The accepted Tab never bubbled to the ancestor listener above.
+    expect(ancestorKeydown).toHaveBeenCalledTimes(1);
+
+    document.removeEventListener('keydown', ancestorKeydown);
   });
 
   test('Enter always activates the listbox selection, never ghost text', async () => {

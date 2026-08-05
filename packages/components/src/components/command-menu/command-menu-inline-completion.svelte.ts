@@ -79,11 +79,13 @@ export function computeGhostRemainder(query: string, activeValue: string | null)
 }
 
 /**
- * Font/color properties copied onto the ghost overlay so its text lines up
- * visually with the anchor field's own text, even though the overlay is
+ * Font metrics (not color) copied onto the ghost overlay so its text lines
+ * up visually with the anchor field's own text, even though the overlay is
  * portaled outside the field (so it can't inherit these via normal CSS
- * cascade). Kept intentionally small — only what's needed for the overlaid
- * text to read as a continuation of what the user typed.
+ * cascade). Color is deliberately excluded — the ghost span's semi-transparent
+ * appearance comes from the `--cinder-text-disabled` token in
+ * `command-menu.css`, and an inline `color` declaration would win over that
+ * cascade-layered rule, defeating the whole "reduced opacity" point.
  */
 export function computeGhostOverlayFontStyle(element: Element): string {
   if (typeof getComputedStyle !== 'function') return '';
@@ -95,7 +97,6 @@ export function computeGhostOverlayFontStyle(element: Element): string {
     `font-style: ${computed.fontStyle};`,
     `line-height: ${computed.lineHeight};`,
     `letter-spacing: ${computed.letterSpacing};`,
-    `color: ${computed.color};`,
   ].join(' ');
 }
 

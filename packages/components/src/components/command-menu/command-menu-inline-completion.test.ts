@@ -43,7 +43,10 @@ describe('computeGhostRemainder', () => {
 });
 
 describe('computeGhostOverlayFontStyle', () => {
-  test('copies font and color properties from the computed style', () => {
+  test('copies font metrics from the computed style, but not color', () => {
+    // Color must come from the `--cinder-text-disabled` CSS token, not an
+    // inline style — an inline `color` would win the cascade and defeat the
+    // ghost span's semi-transparent appearance. See command-menu.css.
     const element = document.createElement('textarea');
     element.style.fontFamily = 'Menlo';
     element.style.fontSize = '14px';
@@ -53,7 +56,7 @@ describe('computeGhostOverlayFontStyle', () => {
 
     expect(style).toContain('font-family:');
     expect(style).toContain('font-size:');
-    expect(style).toContain('color:');
+    expect(style).not.toContain('color:');
   });
 
   test('returns an empty string when getComputedStyle is unavailable', () => {
