@@ -40,7 +40,7 @@ Groups related form fields under a heading with optional description and layout 
 | -------------- | ------------------------------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | `as`           | `"section"` \| `"fieldset"`     | no       | —       | Wrapper element. Default.                                                                                                       |
 | `class`        | `string`                        | no       | —       | Additional class merged with `.cinder-form-section`.                                                                            |
-| `columns`      | `2` \| `3` \| `4` \| `1`        | no       | —       | Column ceiling. Container queries pick the actual rendered count. Default 2.                                                    |
+| `columns`      | `1` \| `2` \| `3` \| `4`        | no       | —       | Column ceiling. Container queries pick the actual rendered count. Default 2.                                                    |
 | `description`  | `string`                        | no       | —       | Optional descriptive paragraph rendered under the heading/legend.                                                               |
 | `heading`      | `string`                        | no       | —       | Heading text rendered as `<h{level}>`.                                                                                          |
 | `headingLevel` | `2` \| `3` \| `4` \| `5` \| `6` | no       | —       | Heading level. Default 2.                                                                                                       |

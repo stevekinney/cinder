@@ -9,7 +9,7 @@ const schema = {
       description: 'Optional descriptive paragraph rendered under the heading/legend.',
     },
     columns: {
-      enum: [2, 3, 4, 1],
+      enum: [1, 2, 3, 4],
       description: 'Column ceiling. Container queries pick the actual rendered count. Default 2.',
     },
     class: {

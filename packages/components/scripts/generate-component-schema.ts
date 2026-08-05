@@ -86,16 +86,41 @@ export interface GenerateResult {
   schemaJson: string;
 }
 
-/** Map of project files keyed by absolute path — avoids reparsing across calls. */
-let cachedProject: Project | null = null;
 let activeTypesFilePath: string | null = null;
+
+/**
+ * The `ts-morph` `Project` for the `generateSchemaForComponent` call
+ * currently on the stack — reset to a fresh `Project` at the start of every
+ * call (see `generateSchemaForComponent`), then reused by every `getProject()`
+ * call for the remainder of that same invocation (including the nested
+ * lookups in `getPropType` and `getHtmlAttributeDeclarationSites`).
+ *
+ * Deliberately NOT reused *across* calls. It previously was — one `Project`
+ * accumulated every processed component's types file (and its resolved
+ * dependencies) across an entire `components:check`/`components:generate`
+ * run. TypeScript's checker enumerates an intersection or union type's
+ * members in an order sensitive to that Program's total accumulated state,
+ * so the schema for at least one component (`input`, whose `id` is both
+ * inherited from `HTMLInputAttributes` and redeclared as required) came out
+ * with a different property order depending on how many — and which —
+ * other components had already been parsed into the shared `Project`
+ * beforehand. That made a full run's result diverge, deterministically but
+ * platform-dependently, from generating the same component in isolation:
+ * confirmed to reproduce on Linux (matching CI/Vercel) even with fully
+ * sequential, non-concurrent processing, while an identical macOS run
+ * matched the committed (isolated-equivalent) output. A fresh `Project` per
+ * *call* always matches the isolated result, on any platform, at the cost of
+ * reparsing shared dependencies (`svelte/elements`, etc.) once per component
+ * rather than once per run.
+ */
+let activeProject: Project | null = null;
 function getProject(): Project {
-  if (cachedProject) return cachedProject;
-  cachedProject = new Project({
+  if (activeProject) return activeProject;
+  activeProject = new Project({
     skipAddingFilesFromTsConfig: true,
     skipFileDependencyResolution: false,
   });
-  return cachedProject;
+  return activeProject;
 }
 
 export interface GenerateOptions {
@@ -118,6 +143,12 @@ export interface GenerateOptions {
 export function generateSchemaForComponent(options: GenerateOptions): GenerateResult {
   const { typesFilePath, componentName, depthToSrc } = options;
   activeTypesFilePath = typesFilePath;
+  // Reset (or adopt an explicitly-provided) Project for this call, so every
+  // `getProject()` call for the rest of this invocation — including the
+  // nested lookups in `getPropType` and `getHtmlAttributeDeclarationSites`
+  // — resolves the same instance as `project` below, and the next call to
+  // `generateSchemaForComponent` starts from a clean, uncontaminated Project.
+  activeProject = options.project ?? null;
   const project = options.project ?? getProject();
   const sourceFile = project.addSourceFileAtPath(typesFilePath);
 
@@ -1052,19 +1083,46 @@ function isInheritedFromSvelteElements(symbol: MorphSymbol): boolean {
 }
 
 /**
+ * Ensure ts-morph knows about `svelte/elements.d.ts` in the given `Project` —
+ * some downstream callers walk back from a property's declaration through
+ * ts-morph and need the source file resolvable. Adding it here is a no-op if
+ * it's already loaded (e.g. via normal import resolution of the component's
+ * own types file). Runs once per `generateSchemaForComponent` call — each
+ * call gets its own `Project` (see `getProject()`), so this must not be
+ * skipped just because a previous component's Project already had it.
+ */
+function ensureElementsDeclarationLoaded(project: Project, elementsFilePath: string): void {
+  if (project.getSourceFile(elementsFilePath) !== undefined) return;
+  try {
+    project.addSourceFileAtPath(elementsFilePath);
+  } catch {
+    // Best-effort; the path-set built by getHtmlAttributeDeclarationSites is
+    // the source of truth for filtering, independent of this Project.
+  }
+}
+
+/**
  * Set of absolute source-file paths whose declarations define HTML attributes
  * inherited by Svelte components (i.e. `svelte/elements.d.ts` and its sibling
  * `.d.ts` files in `node_modules/svelte/`).
  *
- * Computed once per process. The Project used to ask ts-morph for these paths
- * is the cached schema project — already pointed at the workspace tsconfig —
- * so resolution sees the same `svelte` package the consumers see.
+ * The path set itself is computed once per process — it depends only on
+ * where `svelte` resolves on disk, not on which component is being
+ * processed. `ensureElementsDeclarationLoaded` still runs on every call,
+ * against the current call's `Project` (see `getProject()`), since that
+ * Project is fresh per component.
  */
 let cachedHtmlAttributeDeclarationSites: Set<string> | null = null;
 function getHtmlAttributeDeclarationSites(): Set<string> {
-  if (cachedHtmlAttributeDeclarationSites) return cachedHtmlAttributeDeclarationSites;
-  const sites = new Set<string>();
   const project = getProject();
+  if (cachedHtmlAttributeDeclarationSites) {
+    const elementsFilePath = [...cachedHtmlAttributeDeclarationSites].find((path) =>
+      path.endsWith('/elements.d.ts'),
+    );
+    if (elementsFilePath) ensureElementsDeclarationLoaded(project, elementsFilePath);
+    return cachedHtmlAttributeDeclarationSites;
+  }
+  const sites = new Set<string>();
   // Resolve `svelte/elements` via Bun (works whether or not ts-morph has the
   // file in its project) then add every sibling `.d.ts` under that directory
   // to the set. Svelte spreads its HTML attribute interfaces across
@@ -1085,16 +1143,7 @@ function getHtmlAttributeDeclarationSites(): Set<string> {
   for (const relativePath of declarationGlob.scanSync({ cwd: svelteDirectory, absolute: true })) {
     sites.add(relativePath);
   }
-  // Ensure ts-morph knows about elements.d.ts itself — some downstream callers
-  // walk back from a property's declaration through ts-morph and need the
-  // source file resolvable. Adding it here is a no-op if it's already loaded.
-  if (project.getSourceFile(elementsFilePath) === undefined) {
-    try {
-      project.addSourceFileAtPath(elementsFilePath);
-    } catch {
-      // Best-effort; the path-set is the source of truth for filtering.
-    }
-  }
+  ensureElementsDeclarationLoaded(project, elementsFilePath);
   cachedHtmlAttributeDeclarationSites = sites;
   return sites;
 }
@@ -1235,7 +1284,7 @@ function renderSchemaModule(schema: ComponentSchemaOutput, depthToSrc: number): 
 }
 
 export function resetSchemaProjectCache(): void {
-  cachedProject = null;
+  activeProject = null;
   cachedHtmlAttributeDeclarationSites = null;
 }
 
