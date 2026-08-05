@@ -15,7 +15,7 @@ class TestResizeObserver {
 const originalResizeObserver = globalThis.ResizeObserver;
 globalThis.ResizeObserver = TestResizeObserver as unknown as typeof ResizeObserver;
 
-const { cleanup, render } = await import('@testing-library/svelte');
+const { cleanup, render, waitFor } = await import('@testing-library/svelte');
 const { default: Waveform } = await import('./waveform.svelte');
 
 afterEach(() => cleanup());
@@ -211,5 +211,46 @@ describe('Waveform', () => {
     const rects = container.querySelectorAll('.cinder-waveform__bar');
     expect(rects.length).toBeLessThanOrEqual(2000);
     expect(rects.length).toBeGreaterThan(0);
+  });
+
+  test('preserves bar element identity across a resize (bars are keyed by index, not by geometry)', async () => {
+    // bar.x is derived from measuredWidth, so every bar's x changes on every
+    // resize. Keying the each-block on bar.x would force Svelte to tear down
+    // and recreate every <rect> on resize instead of just updating attributes.
+    type ObserverCallback = (entries: ResizeObserverEntry[]) => void;
+    let callback: ObserverCallback | undefined;
+    class TriggerableResizeObserver {
+      constructor(next: ObserverCallback) {
+        callback = next;
+      }
+      observe(): void {}
+      disconnect(): void {}
+    }
+    const previousResizeObserver = globalThis.ResizeObserver;
+    globalThis.ResizeObserver = TriggerableResizeObserver as unknown as typeof ResizeObserver;
+
+    try {
+      const { container } = render(Waveform, {
+        label: 'Sine wave',
+        data: sineData,
+        renderMode: 'bars',
+      });
+
+      const barsBefore = Array.from(container.querySelectorAll('.cinder-waveform__bar'));
+      expect(barsBefore.length).toBe(sineData.length);
+
+      callback?.([{ contentRect: { width: 800 } } as ResizeObserverEntry]);
+      await waitFor(() => {
+        expect(container.querySelector('svg')?.getAttribute('viewBox')).toBe('0 0 800 80');
+      });
+
+      const barsAfter = Array.from(container.querySelectorAll('.cinder-waveform__bar'));
+      expect(barsAfter.length).toBe(sineData.length);
+      barsBefore.forEach((bar, index) => {
+        expect(barsAfter[index]).toBe(bar);
+      });
+    } finally {
+      globalThis.ResizeObserver = previousResizeObserver;
+    }
   });
 });
