@@ -61,7 +61,14 @@
     max-height: inherit;
     overflow: hidden;
     opacity: 1;
-    translate: 0 0;
+    /* No resting `translate` here (unlike the `[data-cinder-closing]`/
+     `@starting-style` states below) — ANY non-`none` transform/translate
+     value, including a no-op `0 0`, establishes a CSS containing block,
+     which would silently break `position: fixed` for every descendant
+     (e.g. EventTimeline's cluster surface) for the entire time the modal is
+     open, not just mid-transition. `none` (the default) transitions to/from
+     a real value just fine — matching Drawer/Sheet, which never set a
+     resting translate either. */
     transition:
       opacity var(--cinder-duration-normal) var(--cinder-ease-standard),
       translate var(--cinder-duration-normal) var(--cinder-ease-spring);
