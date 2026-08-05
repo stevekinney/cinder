@@ -34,6 +34,8 @@ export type PropReferenceRow = {
  * - `select` → the options joined as a union, e.g. `'sm' | 'md' | 'lg'`.
  * - `unknown` → the analyzer's raw type string (falling back to `unknown`
  *   when the analyzer could not recover one, e.g. the `?` placeholder).
+ * - `array` / `object` → the type text as authored (`BreadcrumbItem[]`), not the
+ *   synthesis shape carried alongside it.
  * - everything else → the bare kind (`text`, `number`, `boolean`, `snippet`).
  *
  * @param control - The control descriptor from a {@link PropManifest}.
@@ -59,6 +61,12 @@ export function describeControlType(control: ControlKind): string {
       const raw = normalized.trim();
       return raw === '' || raw === '?' ? 'unknown' : raw;
     }
+    // Structural kinds carry both a shape (for value synthesis) and the type
+    // text as authored. The reader wants the latter: `BreadcrumbItem[]` is what
+    // the component's own types say, and it is what they would write.
+    case 'array':
+    case 'object':
+      return control.rawType;
     default:
       return control.kind;
   }
@@ -222,9 +230,65 @@ function isControlKind(value: unknown): value is ControlKind {
     }
     case 'unknown':
       return typeof readProperty(value, 'rawType') === 'string';
+    case 'array':
+      return (
+        typeof readProperty(value, 'rawType') === 'string' &&
+        isValueOrObjectShape(readProperty(value, 'element'))
+      );
+    case 'object':
+      return (
+        typeof readProperty(value, 'rawType') === 'string' &&
+        isObjectShape(readProperty(value, 'shape'))
+      );
     default:
       return false;
   }
+}
+
+/**
+ * Type guard for the structural shape carried by `array` / `object` controls.
+ *
+ * This guard is what stands between a manifest and the page: the documentation
+ * payload is validated as a whole, so a control kind the guard does not
+ * recognise fails the WHOLE island and the reader gets "Could not load
+ * documentation" instead of a page. Adding a `ControlKind` variant without
+ * teaching this function about it takes down every component that uses it.
+ */
+function isValueOrObjectShape(value: unknown): boolean {
+  if (typeof value !== 'object' || value === null) return false;
+  if ('fields' in value) return isObjectShape(value);
+  switch (readProperty(value, 'kind')) {
+    case 'string':
+    case 'number':
+    case 'boolean':
+      return true;
+    case 'enum': {
+      const options = readProperty(value, 'options');
+      return Array.isArray(options) && options.every((option) => typeof option === 'string');
+    }
+    case 'array':
+      return isValueOrObjectShape(readProperty(value, 'element'));
+    case 'opaque':
+      return typeof readProperty(value, 'rawType') === 'string';
+    default:
+      return false;
+  }
+}
+
+function isObjectShape(value: unknown): boolean {
+  if (typeof value !== 'object' || value === null) return false;
+  if (typeof readProperty(value, 'degenerate') !== 'boolean') return false;
+  const fields = readProperty(value, 'fields');
+  return (
+    Array.isArray(fields) &&
+    fields.every(
+      (field) =>
+        typeof field === 'object' &&
+        field !== null &&
+        typeof readProperty(field, 'name') === 'string' &&
+        isValueOrObjectShape(readProperty(field, 'shape')),
+    )
+  );
 }
 
 /**

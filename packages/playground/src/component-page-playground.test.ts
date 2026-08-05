@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import { buildPlaygroundModel, buildSnippet } from './component-page-playground.ts';
-import type { ComponentManifest, PropManifest } from './types.ts';
+import type { ComponentManifest, ObjectShape, PropManifest } from './types.ts';
 
 function manifest(props: PropManifest[]): ComponentManifest {
   return { name: 'Demo', kebabName: 'demo', file: 'demo.svelte', importPath: 'demo', props };
@@ -53,7 +53,43 @@ describe('buildPlaygroundModel', () => {
     ]);
     expect(model.skipped).toEqual([]);
     expect(model.hasUnsatisfiedRequired).toBe(false);
+    expect(model.unsatisfiedRequired).toEqual([]);
     expect(model.requiresExamplePlayground).toBe(false);
+  });
+
+  test('names every required prop it could not synthesize', () => {
+    // The page has to tell the reader WHY a generated snippet is missing, so the
+    // model reports the blocking prop NAMES, not just that there were some. A
+    // bare boolean left the page with nothing honest to say, and it printed
+    // "This component has no adjustable props" — false here, since `label` is
+    // adjustable and present.
+    const model = buildPlaygroundModel(
+      manifest([
+        { name: 'label', control: { kind: 'text' }, bindable: false, optional: true },
+        {
+          name: 'items',
+          control: { kind: 'unknown', rawType: 'Item[]' },
+          bindable: false,
+          optional: false,
+        },
+        {
+          name: 'row',
+          control: { kind: 'snippet' },
+          bindable: false,
+          optional: false,
+        },
+        // Optional and defaulted props never block, however exotic their type.
+        {
+          name: 'formatter',
+          control: { kind: 'unknown', rawType: '(value: number) => string' },
+          bindable: false,
+          optional: true,
+        },
+      ]),
+    );
+    expect(model.unsatisfiedRequired).toEqual(['items', 'row']);
+    expect(model.hasUnsatisfiedRequired).toBe(true);
+    expect(model.controls.map((control) => control.name)).toEqual(['label']);
   });
 
   test('skips snippet/unknown props and lists them', () => {
@@ -257,6 +293,189 @@ describe('buildPlaygroundModel', () => {
       { name: 'id', hasDefault: false, kind: 'text', value: 'demo-example' },
       { name: 'label', hasDefault: false, kind: 'text', value: 'Demo' },
     ]);
+  });
+});
+
+describe('structural seeds', () => {
+  test('satisfies a required array-of-object prop instead of blocking on it', () => {
+    // The motivating case: a required `items: Item[]` used to be `unknown`, which
+    // counted as unsynthesizable and deleted the component's whole Playground
+    // section. It is now satisfied by a synthesized placeholder.
+    const model = buildPlaygroundModel(
+      manifest([
+        {
+          name: 'items',
+          control: {
+            kind: 'array',
+            rawType: 'Item[]',
+            element: {
+              fields: [
+                { name: 'id', shape: { kind: 'string' } },
+                { name: 'label', shape: { kind: 'string' } },
+              ],
+              degenerate: false,
+            },
+          },
+          bindable: false,
+          optional: false,
+        },
+      ]),
+    );
+    expect(model.hasUnsatisfiedRequired).toBe(false);
+    expect(model.unsatisfiedRequired).toEqual([]);
+    expect(model.skipped).toEqual([]);
+    // Three elements, so a list renders as a real multi-item instance.
+    expect(model.seeds).toHaveLength(1);
+    expect(model.seeds[0]?.value).toEqual([
+      { id: 'one', label: 'Label one' },
+      { id: 'two', label: 'Label two' },
+      { id: 'three', label: 'Label three' },
+    ]);
+  });
+
+  test('synthesizes a NESTED array as an array, not as its own internals', () => {
+    // Arrays are objects to the type checker, so a nested `shortcuts: Entry[]`
+    // used to fall through to the object branch and serialize the ARRAY's own
+    // members as if they were data — `shortcuts: { length: 10, '__@unscopables@38': {} }`
+    // reached the copyable snippet for KeyboardShortcuts.
+    const model = buildPlaygroundModel(
+      manifest([
+        {
+          name: 'groups',
+          control: {
+            kind: 'array',
+            rawType: 'Group[]',
+            element: {
+              fields: [
+                { name: 'label', shape: { kind: 'string' } },
+                {
+                  name: 'shortcuts',
+                  shape: {
+                    kind: 'array',
+                    element: {
+                      fields: [{ name: 'action', shape: { kind: 'string' } }],
+                      degenerate: false,
+                    },
+                  },
+                },
+              ],
+              degenerate: false,
+            },
+          },
+          bindable: false,
+          optional: false,
+        },
+      ]),
+    );
+    const seeded = model.seeds[0]?.value as Array<Record<string, unknown>> | undefined;
+    const first = seeded?.[0];
+    expect(Array.isArray(first?.['shortcuts'])).toBe(true);
+    expect(first?.['shortcuts']).toEqual([{ action: 'Action one' }, { action: 'Action two' }]);
+    expect(model.seeds[0]?.source).toContain("shortcuts: [{ action: 'Action one' }");
+  });
+
+  test('never seeds an optional or defaulted structural prop', () => {
+    // `buildSnippet` always emits seeds and `toMountProps` always passes them,
+    // so seeding a prop the component did not require OVERWRITES its own
+    // behavior: `ChoiceGrid.values` (optional, defaults to `[]`) got invented
+    // data, and `PhoneInput.countries` (optional) had its full 245-country list
+    // replaced by three. Same rule as the synthesized `''`/`0` control values.
+    const element: ObjectShape = {
+      fields: [{ name: 'label', shape: { kind: 'string' } }],
+      degenerate: false,
+    };
+    const model = buildPlaygroundModel(
+      manifest([
+        {
+          name: 'optionalItems',
+          control: { kind: 'array', rawType: 'Item[]', element },
+          bindable: false,
+          optional: true,
+        },
+        {
+          name: 'defaultedItems',
+          control: { kind: 'array', rawType: 'Item[]', element },
+          bindable: false,
+          optional: false,
+          defaultValue: [],
+        },
+        {
+          name: 'requiredItems',
+          control: { kind: 'array', rawType: 'Item[]', element },
+          bindable: false,
+          optional: false,
+        },
+      ]),
+    );
+    // Only the prop that would otherwise BLOCK the preview is seeded.
+    expect(model.seeds.map((seed) => seed.name)).toEqual(['requiredItems']);
+    // The other two are surfaced as non-adjustable rather than silently faked.
+    expect(model.skipped).toEqual(['optionalItems', 'defaultedItems']);
+    expect(model.hasUnsatisfiedRequired).toBe(false);
+  });
+
+  test('never invents a member for an index-signature-only record', () => {
+    // `MatrixChartDatum = Record<string, string | number>` has no named field,
+    // and the component's sibling props name KEYS of the datum — so any datum
+    // invented here would contradict them. Seed the empty array instead and let
+    // the component show its real empty state.
+    const model = buildPlaygroundModel(
+      manifest([
+        {
+          name: 'data',
+          control: {
+            kind: 'array',
+            rawType: 'Datum[]',
+            element: { fields: [], degenerate: true },
+          },
+          bindable: false,
+          optional: false,
+        },
+      ]),
+    );
+    expect(model.seeds[0]?.value).toEqual([{}, {}, {}]);
+    expect(model.seeds[0]?.source).toBe('[{}, {}, {}]');
+  });
+
+  test('emits seeds as Svelte source, inline when short and as a preamble when long', () => {
+    const shortSeed = buildPlaygroundModel(
+      manifest([
+        {
+          name: 'keys',
+          control: { kind: 'array', rawType: 'string[]', element: { kind: 'string' } },
+          bindable: false,
+          optional: false,
+        },
+      ]),
+    );
+    // Short enough to read inline as an expression attribute.
+    expect(buildSnippet('Widget', shortSeed.controls, {}, shortSeed.seeds)).toContain('keys={[');
+
+    const longSeed = buildPlaygroundModel(
+      manifest([
+        {
+          name: 'items',
+          control: {
+            kind: 'array',
+            rawType: 'Item[]',
+            element: {
+              fields: [
+                { name: 'identifier', shape: { kind: 'string' } },
+                { name: 'description', shape: { kind: 'string' } },
+              ],
+              degenerate: false,
+            },
+          },
+          bindable: false,
+          optional: false,
+        },
+      ]),
+    );
+    const snippet = buildSnippet('Widget', longSeed.controls, {}, longSeed.seeds, 'pkg/widget');
+    // A nine-field object array inline is not how anyone writes this.
+    expect(snippet).toContain("import { Widget } from 'pkg/widget';");
+    expect(snippet).toContain('const items = [');
+    expect(snippet).toContain('<Widget {items} />');
   });
 });
 
@@ -485,11 +704,16 @@ describe('buildSnippet', () => {
         },
       ]),
     ).controls;
-    // The seeded values (first option / `false` / `0`) are surfaced explicitly,
-    // because we cannot prove they match the component's own defaults.
+    // The seeded values are surfaced explicitly, because we cannot prove they
+    // match the component's own defaults — EXCEPT the empty placeholders `''`
+    // and `0`, which the generator invented for props that declared no default
+    // at all. Emitting those claims the reader asked for them: `Image` seeded
+    // `width={0} height={0}` and collapsed the element to nothing however good
+    // its `src` was. `toMountProps` drops the same two, so the live preview and
+    // the copyable snippet stay in agreement.
     expect(
       buildSnippet('Widget', noDefault, { variant: 'primary', disabled: false, count: 0 }),
-    ).toBe('<Widget\n  variant="primary"\n  disabled={false}\n  count={0}\n/>');
+    ).toBe('<Widget\n  variant="primary"\n  disabled={false}\n/>');
   });
 
   test('renders a children control as element content, not an attribute', () => {

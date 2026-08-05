@@ -89,6 +89,24 @@ export function createSanitizeSchema(options: { allowDataImages?: boolean } = {}
       pre: ['className', 'style', 'dataLanguage', 'tabIndex'],
       // Spans: allow style for Shiki token colors and KaTeX sizing/spacing
       span: ['className', 'style'],
+      // GitHub alerts (`> [!WARNING]`) are rewritten into Cinder Callout
+      // markup by `remark-github-callouts`. The `'*': ['className']` entry
+      // above REPLACES hast-util-sanitize's default `*` allowlist rather than
+      // extending it, so without these three the variant/role/label are all
+      // silently dropped and every callout renders un-themed and unnamed — a
+      // failure indistinguishable from the plugin never having run.
+      //
+      // Scoped to `div` rather than added to `*`: widening `*` to include
+      // `role` would let any element in any document claim any role, which is
+      // a real accessibility-spoofing vector. The value allowlists narrow it
+      // further — `role` may only ever be `note`, and the variant may only be
+      // one of the four Cinder ships — so this grants exactly the callout's
+      // markup and nothing beyond it.
+      div: [
+        ['role', 'note'],
+        ['dataCinderVariant', 'info', 'success', 'warning', 'danger'],
+        'ariaLabel',
+      ],
       // Tables
       table: ['className'],
       th: ['align', 'valign', 'scope'],

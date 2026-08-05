@@ -92,7 +92,17 @@
     justify-content: center;
     gap: var(--cinder-space-1);
     border: 0;
-    border-radius: calc(var(--cinder-radius-sm) - 1px);
+    /* Concentric with the attached container: it is `--cinder-radius-md` and insets
+       its options by exactly its 1px padding, so the option's radius has to be that
+       same token minus that same inset. It used to be derived from
+       `--cinder-radius-sm` — an unrelated step on the scale — which put a 5px curve
+       inside an 8px one at a 1px inset where 7px was required. Two curves with
+       different centers read as off-axis, which is what "all of the different
+       rounded corners look really bad" was describing. Deriving from the
+       container's own token means it cannot drift again when the scale moves.
+       The detached variant overrides this below: it has no padding and no border,
+       so its options are not nested inside anything and take the full radius. */
+    border-radius: calc(var(--cinder-radius-md) - 1px);
     background: transparent;
     color: var(--cinder-text-muted);
     cursor: pointer;
@@ -429,7 +439,7 @@
     inset-block-end: 0;
     block-size: 2px;
     background: var(--cinder-accent);
-    border-radius: var(--cinder-radius-full, 999px);
+    border-radius: var(--cinder-radius-full);
   }
 
   /* Vertical tablist indicator: inline-start edge, spanning the block axis. */

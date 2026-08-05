@@ -118,7 +118,10 @@
   }
 
   .cinder-json-viewer__value[data-cinder-type='string'] {
-    color: var(--cinder-success);
+    /* The -fg token, not the fill. --cinder-success is a FILL tuned to carry a white
+       label; as ink on --cinder-surface-inset it measured 3.98:1, below AA. The
+       number row below already used --cinder-color-warning-fg correctly. */
+    color: var(--cinder-color-success-fg);
   }
 
   .cinder-json-viewer__value[data-cinder-type='number'] {
@@ -126,7 +129,7 @@
   }
 
   .cinder-json-viewer__value[data-cinder-type='boolean'] {
-    color: var(--cinder-danger);
+    color: var(--cinder-color-danger-fg);
   }
 
   .cinder-json-viewer__value[data-cinder-type='null'] {

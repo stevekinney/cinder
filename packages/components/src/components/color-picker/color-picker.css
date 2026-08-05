@@ -41,7 +41,7 @@
     position: relative;
     width: 100%;
     aspect-ratio: 4 / 3;
-    border-radius: var(--cinder-radius-sm, 4px);
+    border-radius: var(--cinder-radius-sm);
     /* domain-rendering: the saturation/value square paints the full color space
      * the user is picking from — its hue fill (fallback) and the black/white
      * value+saturation axes are intrinsic to the control, not themeable. The raw

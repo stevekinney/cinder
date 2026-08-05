@@ -1,5 +1,329 @@
 # @lostgradient/cinder
 
+## 0.20.0
+
+### Minor Changes
+
+- [#1117](https://github.com/stevekinney/cinder/pull/1117) [`92d17da`](https://github.com/stevekinney/cinder/commit/92d17da743f17902a87645cd5c92b8b0ce35e4c4) Thanks [@stevekinney](https://github.com/stevekinney)! - Compose BentoGrid with the shared Grid layout while preserving responsive collapse behavior.
+
+  This removes the `--cinder-bento-grid-columns`, `--cinder-bento-grid-row-gap`, and
+  `--cinder-bento-grid-column-gap` customization points. Pass `columns`, `gap`,
+  `rowGap`, or `columnGap` to BentoGrid instead.
+
+- [#1146](https://github.com/stevekinney/cinder/pull/1146) [`6418308`](https://github.com/stevekinney/cinder/commit/641830824c085af3cb50e24075bbebef75d99f78) Thanks [@stevekinney](https://github.com/stevekinney)! - Add semi-transparent inline ghost-text completion to CommandMenu, gated behind a new opt-in `onComplete` prop, with a fully specified keyboard model (ArrowRight/Tab accept, Enter always wins for listbox selection, Escape dismisses ghost text before closing) recorded in `command-menu.a11y.md`. `caretIndex` is now optional, deriving from the anchor's live selection when omitted.
+
+- [#977](https://github.com/stevekinney/cinder/pull/977) [`7ec4689`](https://github.com/stevekinney/cinder/commit/7ec46892c9d467f932fe32086a6e47312a48b107) Thanks [@stevekinney](https://github.com/stevekinney)! - Make DatePicker use its custom calendar as the sole date-picker surface instead of combining it with native date controls.
+
+- [#1193](https://github.com/stevekinney/cinder/pull/1193) [`898dcda`](https://github.com/stevekinney/cinder/commit/898dcda4009d7d7c21b51ad35c2c7e549f568fdd) Thanks [@stevekinney](https://github.com/stevekinney)! - Fix six independent behavior bugs found in a component audit:
+  - **FeatureSection**: a caller-forwarded `data-cinder-layout`, `data-cinder-columns`, `data-cinder-media-position`, or `data-cinder-has-media` attribute could silently override the component's own computed layout state (rest-spread ordering).
+  - **NewsletterSection**: the form now always calls `preventDefault()` on submit, even when no `onSubmit` prop is provided — previously a consumer that omitted `onSubmit` got a full-page reload on submit.
+  - **DatePicker** / **DateRangeField**: date/date-time validation and normalization logic is now shared via `_internal/date-value.ts` instead of duplicated per component. The normalization effect now routes through the same notify-and-write path as user-driven edits, so `onchange` fires when the component itself corrects a malformed or out-of-range initial `value`, or truncates a value after a `granularity` change — previously these corrections were silent. **Consumer-visible behavior change**: a mounted `DatePicker`/`DateRangeField` with a malformed or out-of-range initial `value` now fires `onchange` once during initial mount. `DatePicker` gains a `triggerLabel` prop (defaults to `"Open"`) for the calendar-trigger button's visible text. **Breaking type change**: `DateRangeField.id` is now required (previously optional with an auto-generated fallback), matching the required-`id` convention already used by `Input`, `Textarea`, `NumberInput`, `TimeField`, and `DatePicker`.
+  - **DropdownMenu** / **DropdownTrigger**: a consumer-supplied `style` prop no longer silently overwrites the CSS Anchor Positioning declarations (`position-anchor`/`anchor-name`) these components depend on for correct positioning — the two are now merged, with the internal declaration winning on a direct conflict.
+  - **SearchField**: deleted a duplicate, buggy form-reset handler that raced against `Input`'s own canonical reset-sync and could restore a frozen mount-time value instead of the live native default. Reset now delegates entirely to `Input`. Also guarded the derived `hasValue` computation against a bound `value` that becomes `undefined` after mount.
+  - Five small independent fixes:
+    - **FileUpload**: investigated a proposed dragleave/dragenter guard-symmetry fix; not applied — it would have reverted a prior, deliberately tested fix ("clear drag state after cancelled upload") for a stuck-open drag overlay. See PR body for detail.
+    - **CopyButton**: gains an `onError` callback prop, called when the clipboard write fails (permission denied, insecure context, or the legacy fallback also failing); also emits a dev-only console warning.
+    - **DiffStatistics**: emits a dev-only, once-per-instance console warning when `density="toolbar"` is used without `variant="compact"` (that combination is otherwise a silent no-op).
+    - **GridItem**: narrows the `as` polymorphic-tag type to exclude document-metadata and non-content tags (`script`, `title`, `html`, `head`, `body`, `style`, `noscript`, `colgroup`, `optgroup`, `option`), which previously type-checked but rendered invisible or broken markup. **Breaking type change**: a consumer passing one of those tag names to `as` now gets a type error where none existed before.
+    - **MenuBar**: id-based element lookups (used for keyboard focus management) are now shadow-DOM aware instead of always querying the global `document`, matching the pattern already used by `MegaMenu`.
+
+- [#920](https://github.com/stevekinney/cinder/pull/920) [`323399a`](https://github.com/stevekinney/cinder/commit/323399ab5e8bbbb7f2118d5163bb607db71340b8) Thanks [@stevekinney](https://github.com/stevekinney)! - Extract the Cinder MCP server into a standalone `@lostgradient/cinder-mcp` package.
+
+  `@lostgradient/cinder` no longer ships the `cinder mcp` command, the MCP SDK, or Zod — installing it never pulls in either. It now exposes a Node-only `@lostgradient/cinder/knowledge` subpath so external packages can load Cinder's component metadata without depending on the CLI.
+
+  If you were running `cinder mcp`, install `@lostgradient/cinder-mcp` instead:
+
+  ```sh
+  npm install --save-dev @lostgradient/cinder-mcp
+  ```
+
+  and point your MCP client at the installed binary:
+
+  ```sh
+  npx --no-install cinder-mcp
+  ```
+
+  Every tool, resource, and prompt keeps its existing name and behavior — see `packages/mcp/README.md` for verified client configuration (Claude Code, Codex, GitHub Copilot, VS Code Copilot). There is no forwarding command or compatibility shim; `cinder mcp` is removed outright.
+
+- [#1020](https://github.com/stevekinney/cinder/pull/1020) [`dbcc986`](https://github.com/stevekinney/cinder/commit/dbcc986919d2bddb3dd4e3bda0c2089699595dfc) Thanks [@stevekinney](https://github.com/stevekinney)! - Give PageHeader named `title`, `description`, `breadcrumbs`, and `actions`
+  regions. Replace `meta` with `description`, move trailing content from
+  `children` to `actions`, and pass rich title or description content as snippets
+  under those names.
+
+- [#1001](https://github.com/stevekinney/cinder/pull/1001) [`7f924e1`](https://github.com/stevekinney/cinder/commit/7f924e1c3f4eca10530606d14bf6c8778f998455) Thanks [@stevekinney](https://github.com/stevekinney)! - Standardize component prop API vocabulary across handlers, bindable values,
+  boolean props, polymorphic `as` props, and component names. This removes
+  `defaultValue` public props in favor of bindable `value`, splits value
+  interceptors to `onValueChangeRequest`, renames lowercase custom callbacks to
+  camelCase notification props, and adds an AST guard that prevents these
+  conventions from drifting.
+
+- [#1195](https://github.com/stevekinney/cinder/pull/1195) [`42262d1`](https://github.com/stevekinney/cinder/commit/42262d1f7378ce6c85dc4ac60123991fee0004a1) Thanks [@stevekinney](https://github.com/stevekinney)! - Fix the README/generated-props documentation pipeline end to end:
+  - Fix every README `## Usage` example that failed to compile, rendered nothing, or documented the API incorrectly (roughly 53 components).
+  - Add a `validate:consumer:readme-usage-examples` gate that compile-checks every component README's `## Usage` fence against the built package on every merge.
+  - Extend the Playground's default-value extractor to resolve negative numbers, static template literals, and object-literal defaults; fix `@default` JSDoc quote-handling so single-quoted tags (e.g. `@default 'auto'`) no longer render as doubled quotes; backfill missing `@default` tags across ~20 components so their generated README Default column is no longer a false `—`.
+  - Migrate `date-range-field`'s hand-authored README, and `faceted-filter-bar`'s and `resizable-panels`' READMEs, onto the standard `components:generate` markers so their prop tables stay in sync automatically.
+  - **Narrows `class` from a broad attribute-style type to `string`** on `Radio`, `Avatar`, `Card`, `Checkbox`, `ChoiceGrid`, `FileUpload`, `Image`, `Input`, `Label`, `NumberInput`, `SearchField`, `Select`, `SideNavigationGroup`, and `Textarea` — these components previously reported `class` as unclassifiable/opaque in their generated schema even though the runtime prop only ever accepted a plain string; array/object `class` values are no longer accepted on these 14 components. (`GridList`'s equivalent fix is blocked on a separate type-soundness issue and is not included here.)
+
+- [#1130](https://github.com/stevekinney/cinder/pull/1130) [`057b1ee`](https://github.com/stevekinney/cinder/commit/057b1ee1d0a1f82eed05e682565fc8d7d6f9745a) Thanks [@stevekinney](https://github.com/stevekinney)! - Compose GridList with the shared Grid sizing contract. This removes the
+  `--cinder-grid-list-min-width` CSS variable; pass `minColumnWidth` to GridList
+  instead.
+
+- [#1192](https://github.com/stevekinney/cinder/pull/1192) [`c5bd054`](https://github.com/stevekinney/cinder/commit/c5bd05414313548118fe9c8aa5eab645ba1ec6dd) Thanks [@stevekinney](https://github.com/stevekinney)! - Type hygiene and barrel export cleanup across four areas:
+  - Removed nine `as` type assertions that TypeScript already proved unnecessary
+    (context-menu, command-menu, dropdown-trigger, faceted-filter-bar, file-upload,
+    form-section, marquee, navigation-item, plus a playground-only cast). No behavior
+    change; `marquee`'s cast additionally erased a real `null` case from its
+    `aria-labelledby` prop type, so the fixed type is stricter and more accurate.
+  - Fixed type-erasing casts and phantom generics across six components:
+    `FloatingAction`'s per-arm `onclick` is now correctly typed instead of pulled out
+    of the union; `NumberInput` forwards its rest props with their real type instead
+    of `Record<string, unknown>`; `GridList` composes with `Grid` through a single
+    cast instead of `as unknown as`; `PermissionMatrix` now genuinely wires its
+    `TRow`/`TColumn` generics (previously declared but never threaded through
+    `$props()`); `SchemaForm`'s `Schema` generic was removed because it only ever
+    narrowed the `schema` field itself; and a duplicated `ChoiceGridItemProps` type
+    was deleted in favor of its single canonical declaration.
+    **API-visible for three components:** `GridListProps`'s base element type
+    widened from `HTMLUListElement` to `HTMLElement`, `PermissionMatrixProps` gained
+    a real `<TRow, TColumn>` generic (previously a no-op default), and
+    `SchemaFormProps` lost its incomplete `<Schema>` generic. None of these change
+    runtime behavior, but a consumer relying on the old type shape (e.g. an
+    `HTMLUListElement`-typed inline handler on `GridList`, or an explicit
+    `SchemaFormProps<...>` type argument) may see a new `typecheck`/`svelte-check`
+    error, hence the minor bump.
+  - Re-exported five public prop types that were reachable on their component's
+    `Props` type but not importable on their own: `PopoverFocusManagement`,
+    `PopoverWidthMode`, `SegmentCurrentToken`, `ResizablePanelSizeUnit`,
+    `TreeReorderTarget`, and `TreeItemSelectionState`, from both their component
+    barrel and the package root.
+  - Re-exported `ChartDataTableVisibility` (aliased per-component, e.g.
+    `WaveformDataTableVisibility`) from all seven chart-family component barrels
+    (`waveform`, `bar-chart`, `area-chart`, `line-chart`, `matrix-chart`,
+    `spectrum-chart`, `spectrogram`) and the package root, closing the same gap
+    for a shared, non-directory-shaped type module.
+
+### Patch Changes
+
+- [#1064](https://github.com/stevekinney/cinder/pull/1064) [`9faa142`](https://github.com/stevekinney/cinder/commit/9faa1422658ceddac3b758e313be3c2d6696bada) Thanks [@stevekinney](https://github.com/stevekinney)! - Constrain EventTimeline cluster surfaces to the available height inside overlay owners.
+
+- [#1200](https://github.com/stevekinney/cinder/pull/1200) [`7ab0910`](https://github.com/stevekinney/cinder/commit/7ab091009749ccaf39b24ce3548b7374c2353e92) Thanks [@stevekinney](https://github.com/stevekinney)! - Internal build-pipeline change: the Svelte build plugin (`packages/components/scripts/svelte-plugin.ts`, shared cross-package by chat, editor, and playground) now wraps the published `@lostgradient/bun-plugin-svelte` instead of invoking `svelte/compiler` directly for the common client/library-server case. No public component API changes. Published `dist/` output was verified byte-identical (file list + shasum) against a clean build of `main`, aside from the expected build-cache fingerprint file.
+
+- [#1191](https://github.com/stevekinney/cinder/pull/1191) [`67f51a7`](https://github.com/stevekinney/cinder/commit/67f51a73a603d04f1858050a60abfed793a0a178) Thanks [@stevekinney](https://github.com/stevekinney)! - Align public component contracts across sibling components ([#1158](https://github.com/stevekinney/cinder/issues/1158), [#1159](https://github.com/stevekinney/cinder/issues/1159)):
+  - Add native `HTMLAttributes` passthrough (`{...rest}`, component-owned attributes always win) to `Steps`, `CheckboxGroup`, `TabList`, `Tab`, `TabPanel`, `TableBody`, `TableHeader`, `Breadcrumbs`, and `Meter`.
+  - Fix `title` attribute collisions on `StatisticsSection` and `FeatureSection` — the native tooltip `title` is now excluded from the type so only the domain heading meaning is reachable (type-only; runtime behavior was already correct).
+  - `Rating` now renders the same visible required-marker asterisk as `PhoneInput`/`PinInput` when `required` is set.
+  - `TagInput` now emits a dev-only warning when its native `required` prop is set without the wrapping `FormField` supplying `required` context, matching its existing id-mismatch warning.
+  - `TableHeader`'s `allSelected`/`someSelected`/`onSelectAll` trio is remodeled as a two-arm discriminated union (`TableHeaderSelectionProps`), matching `TableRow`'s pattern. This is a compile-time-only tightening: passing a partial subset of the trio (e.g. `allSelected` alone) now fails to type-check, whereas previously it type-checked and threw at runtime instead. Every call site that both type-checked AND did not throw at runtime keeps type-checking unchanged. No prop name is added, removed, or renamed.
+  - `CommandItem.selectionMode`'s JSDoc (types + README) now states plainly that it only controls whether `onSelect` is required at compile time and has no runtime effect on activation dispatch — no behavior changed.
+  - `CallToActionSection`'s and `CapabilityGate`'s `SchemaProps` interfaces now both explicitly list their function/snippet props and carry a one-line comment stating the schema-surface rule (every public prop is either JSON-Schema-expressible or surfaced via `unsupportedProps`). Note: the generated schema/README output for `CallToActionSection` was already correct before this change — `scripts/generate-component-schema.ts` already auto-surfaces function/snippet props omitted from a `SchemaProps` allowlist into `unsupportedProps` — this is a source-level consistency fix, not an output fix.
+  - `TableOfContents.target`'s schema-facing JSDoc and README now note that the schema surface accepts the CSS-selector string form only, while the live component prop additionally accepts an `HTMLElement` reference.
+  - `Tab`'s `onclick`/`onkeydown` are additionally excluded from its `HTMLAttributes` intersection (beyond the issue's literal instruction) because the component sets both unconditionally on its root `<button>`; leaving them reachable via `rest` would let a consumer's forwarded handler type-check while silently never firing.
+
+- [#912](https://github.com/stevekinney/cinder/pull/912) [`899801b`](https://github.com/stevekinney/cinder/commit/899801bdb9192e0b62799c184b74681fbfb72136) Thanks [@stevekinney](https://github.com/stevekinney)! - Add phase and browser-state diagnostics when hydration smoke teardown fails.
+
+- [#996](https://github.com/stevekinney/cinder/pull/996) [`dca8fbf`](https://github.com/stevekinney/cinder/commit/dca8fbfd7fb5fad5cb429e346e5f13e9af789518) Thanks [@stevekinney](https://github.com/stevekinney)! - Allow an open Backdrop with an onclick handler to dismiss on Escape.
+
+- [#1081](https://github.com/stevekinney/cinder/pull/1081) [`a1f1880`](https://github.com/stevekinney/cinder/commit/a1f1880703e0e0f941b4a348555f009af9630796) Thanks [@stevekinney](https://github.com/stevekinney)! - Keep anchored surfaces owned by an open Modal visible outside the modal content clipping boundary.
+
+- [#1080](https://github.com/stevekinney/cinder/pull/1080) [`8ea6973`](https://github.com/stevekinney/cinder/commit/8ea69733a09812ee81ace349d4289e3011ad07b2) Thanks [@stevekinney](https://github.com/stevekinney)! - Fix NavigationBar mobile Tab focus bridging to preserve the before-brand destination while positioning is pending and to ignore enabled items removed from the sequential tab order.
+
+- [#1083](https://github.com/stevekinney/cinder/pull/1083) [`91eb73c`](https://github.com/stevekinney/cinder/commit/91eb73c6a336e652b7033f75a1c27d051c18a4de) Thanks [@stevekinney](https://github.com/stevekinney)! - Validate written neighbour rationale metadata for every component.
+
+- [#1068](https://github.com/stevekinney/cinder/pull/1068) [`cf18ed7`](https://github.com/stevekinney/cinder/commit/cf18ed74fd31ebc90b2a06fa36a7c2588b529e92) Thanks [@stevekinney](https://github.com/stevekinney)! - Preserve computed CSS direction when portaling surfaces without an explicit `dir` ancestor.
+
+- [#1134](https://github.com/stevekinney/cinder/pull/1134) [`7f6de70`](https://github.com/stevekinney/cinder/commit/7f6de7056bbfe347aa7b7fe019efaea8bc06c6f0) Thanks [@stevekinney](https://github.com/stevekinney)! - Use a shared sequential-tabbability algorithm for NavigationBar and SpeedDial focus bridging.
+
+- [#1009](https://github.com/stevekinney/cinder/pull/1009) [`76c3da6`](https://github.com/stevekinney/cinder/commit/76c3da6ccc1356dfa0687129fe1b3bfb40f7a4ce) Thanks [@stevekinney](https://github.com/stevekinney)! - Cap Sheet panels by viewport height and keep overflowing content within the internally scrolling body.
+
+- [#1010](https://github.com/stevekinney/cinder/pull/1010) [`4766190`](https://github.com/stevekinney/cinder/commit/47661907620f26eb61f50b3592c73c013b94e6ea) Thanks [@stevekinney](https://github.com/stevekinney)! - Add native touch scrolling and scroll snapping to Carousel.
+
+- [#1066](https://github.com/stevekinney/cinder/pull/1066) [`6983b8e`](https://github.com/stevekinney/cinder/commit/6983b8e8c00a05e948ff0f02abe4d50c6c7e0a30) Thanks [@stevekinney](https://github.com/stevekinney)! - Settle Carousel native-scroll ownership from the debounce after a touch or pen pointer is cancelled.
+
+- [#995](https://github.com/stevekinney/cinder/pull/995) [`c58514f`](https://github.com/stevekinney/cinder/commit/c58514f6c636695e795c93867f508a896ec9aa32) Thanks [@stevekinney](https://github.com/stevekinney)! - Apply the shared table styling to chart data-table fallbacks.
+
+- [#1128](https://github.com/stevekinney/cinder/pull/1128) [`5ff29c6`](https://github.com/stevekinney/cinder/commit/5ff29c6acdd8040e09b613f1cb05cccea2713c24) Thanks [@stevekinney](https://github.com/stevekinney)! - Compose ChoiceGrid with the shared Grid layout primitive while preserving its selection behavior.
+
+- [#1118](https://github.com/stevekinney/cinder/pull/1118) [`c5d2235`](https://github.com/stevekinney/cinder/commit/c5d22353105f1ea52cefc8ad34a1e348342094f7) Thanks [@stevekinney](https://github.com/stevekinney)! - Document the distinct domains and neighbour guidance for chronological display components.
+
+- [#1123](https://github.com/stevekinney/cinder/pull/1123) [`fca6b6a`](https://github.com/stevekinney/cinder/commit/fca6b6a3c9aa212c84f37cf15d63a1962c37eeef) Thanks [@stevekinney](https://github.com/stevekinney)! - Preserve Combobox root-scoped styling on portaled options and empty panels.
+  Popover now exposes `portalScopeClass` for components that need root-scoped
+  consumer selectors to include a portaled floating surface.
+
+- [#980](https://github.com/stevekinney/cinder/pull/980) [`761cd8e`](https://github.com/stevekinney/cinder/commit/761cd8e9ea529866a32e0496699917822c20b1c1) Thanks [@stevekinney](https://github.com/stevekinney)! - Keep slash-command menus dismissed after Escape until the host input state changes.
+
+- [#1111](https://github.com/stevekinney/cinder/pull/1111) [`16671d8`](https://github.com/stevekinney/cinder/commit/16671d86f9b467ddae8f9aee5b36ed1d0d662d84) Thanks [@stevekinney](https://github.com/stevekinney)! - Remove duplicated CommandMenu floating-surface chrome declarations so shared overlay styling owns the panel surface.
+
+- [#1122](https://github.com/stevekinney/cinder/pull/1122) [`115705d`](https://github.com/stevekinney/cinder/commit/115705d23092b7663d3045a07327b04b2e77d1fc) Thanks [@stevekinney](https://github.com/stevekinney)! - Document CommandPalette's intentional native modal dialog boundary.
+
+- [#1002](https://github.com/stevekinney/cinder/pull/1002) [`6bffc7d`](https://github.com/stevekinney/cinder/commit/6bffc7d07e6c7d390a6f111bc85f396201fc36e0) Thanks [@stevekinney](https://github.com/stevekinney)! - Keep sparse footer link groups compact with tighter, wrapping-safe spacing.
+
+- [#998](https://github.com/stevekinney/cinder/pull/998) [`abce2be`](https://github.com/stevekinney/cinder/commit/abce2bedbef200211a2aa1f19b8643949cb0291f) Thanks [@stevekinney](https://github.com/stevekinney)! - Keep PhoneInput's country selector compact instead of sizing it to the longest country name.
+
+- [#1107](https://github.com/stevekinney/cinder/pull/1107) [`b22ee52`](https://github.com/stevekinney/cinder/commit/b22ee527c2cab50b2eec851e0b8991316d8a0d21) Thanks [@stevekinney](https://github.com/stevekinney)! - Compose Autocomplete's editable control from the Input primitive.
+
+- [#994](https://github.com/stevekinney/cinder/pull/994) [`05f9d06`](https://github.com/stevekinney/cinder/commit/05f9d0632018b8ba8c2cdfd5c1ad9bcaa149820c) Thanks [@stevekinney](https://github.com/stevekinney)! - Render TableOfContents with one continuous rail behind its links.
+
+- [#1115](https://github.com/stevekinney/cinder/pull/1115) [`1fb92e0`](https://github.com/stevekinney/cinder/commit/1fb92e05faf5660103124a8520aaa31443286746) Thanks [@stevekinney](https://github.com/stevekinney)! - Document the distinct Modal, ConfirmDialog, and AlertDialog preset boundaries.
+
+- [#1145](https://github.com/stevekinney/cinder/pull/1145) [`1a9b577`](https://github.com/stevekinney/cinder/commit/1a9b5779c07023ca263d8a34f0365307d00129af) Thanks [@stevekinney](https://github.com/stevekinney)! - Resolve additional `@container` and `@scope` text-direction spec-parity gaps:
+  - Evaluate comma-separated `@container` condition lists (`CSSContainerRule.conditions`) as independent name+query entries, OR'd together, instead of failing closed on the blanked legacy `containerName`/`containerQuery` accessors.
+  - Resolve relative (non-exact) `:scope` scope-start selectors (`@scope (:scope > .child)`) against the enclosing scope's root(s) instead of failing closed.
+  - Preserve the supported exact `:scope` alternative in a mixed all-`:scope` root list (`@scope (:scope, :scope > .theme)`) even when a sibling relative alternative can't resolve.
+  - Resolve outside-ancestor context in scoped rule selectors (`main :scope .shell`) against the scope root's real ancestor chain instead of losing it to the detached-clone fallback's isolated subtree.
+  - Normalize each item of a rule selector list independently for leading-combinator shorthand (`.unused, > .shell`), instead of gating on whether the whole list starts with a combinator.
+
+- [#981](https://github.com/stevekinney/cinder/pull/981) [`e1a27b8`](https://github.com/stevekinney/cinder/commit/e1a27b82c650fc8efe71598227e9afad94cb2188) Thanks [@stevekinney](https://github.com/stevekinney)! - Dismiss SelectionPopover when scrolling or resizing so it cannot remain detached from its selection.
+
+- [#1112](https://github.com/stevekinney/cinder/pull/1112) [`cdd0215`](https://github.com/stevekinney/cinder/commit/cdd0215ae3f843c5d0ebf665a3791400ebc904d6) Thanks [@stevekinney](https://github.com/stevekinney)! - Document the distinct ownership boundaries for editor and Cinder diff viewers plus Cinder and Chat message surfaces.
+
+- [#990](https://github.com/stevekinney/cinder/pull/990) [`76759d3`](https://github.com/stevekinney/cinder/commit/76759d3175b26b664d345e803c7ec5431516aa51) Thanks [@stevekinney](https://github.com/stevekinney)! - Remove empty EventStreamViewer toolbars and use the shared Input primitive for filtering.
+
+- [#1047](https://github.com/stevekinney/cinder/pull/1047) [`81f7b91`](https://github.com/stevekinney/cinder/commit/81f7b91c8c8e80be88a058f47bb3547fd716abd2) Thanks [@stevekinney](https://github.com/stevekinney)! - Use the full-strength border token on the EventTimeline cluster trigger, which is a raised surface with a full outer border.
+
+- [#1011](https://github.com/stevekinney/cinder/pull/1011) [`e113c49`](https://github.com/stevekinney/cinder/commit/e113c49dd2206e1893c0ba970d0f182fbdf0b20c) Thanks [@stevekinney](https://github.com/stevekinney)! - Fix EventTimeline label collisions with measured container sizing, leader-line offsets, and accessible clustered events.
+
+- [#1087](https://github.com/stevekinney/cinder/pull/1087) [`6130fbb`](https://github.com/stevekinney/cinder/commit/6130fbbb97181e26df63e080a070567f5d964c8b) Thanks [@stevekinney](https://github.com/stevekinney)! - Fail closed when text-direction container queries contain syntax the evaluator cannot fully parse.
+
+- [#1202](https://github.com/stevekinney/cinder/pull/1202) [`b12595e`](https://github.com/stevekinney/cinder/commit/b12595e2a16db3d497fcbb5a831db95a9ac84187) Thanks [@stevekinney](https://github.com/stevekinney)! - Make DataGrid range selection O(1) per cell instead of enumerating the range on every pointermove, and remove DataGridSelectionModel.selectedCells.
+
+- [#991](https://github.com/stevekinney/cinder/pull/991) [`a1b532b`](https://github.com/stevekinney/cinder/commit/a1b532b827a6304c249eb32e3d1b226d31c2b602) Thanks [@stevekinney](https://github.com/stevekinney)! - Make FeatureSection split layouts continuous across responsive widths and bound media height.
+
+- [#1144](https://github.com/stevekinney/cinder/pull/1144) [`5ff75da`](https://github.com/stevekinney/cinder/commit/5ff75da61a812351849333db0f51abef4ac71896) Thanks [@stevekinney](https://github.com/stevekinney)! - Compose FormField across the remaining field wrappers — Radio, Combobox, DatePicker, JsonEditor, MultiSelect, Select, Textarea, and TimeField now render their label, description, and error text through the shared `FormFieldFrame` primitive instead of hand-rolled markup, matching Input/Checkbox/Toggle. `FormFieldFrame` gained `labelClass`, `errorAlwaysMounted`, and a `message` snippet slot to support the remaining shapes, plus generic HTML attribute passthrough on its root element.
+
+- [#983](https://github.com/stevekinney/cinder/pull/983) [`b26c1b4`](https://github.com/stevekinney/cinder/commit/b26c1b4089030a0b995fe66339df376634af5c7a) Thanks [@stevekinney](https://github.com/stevekinney)! - Remove the duplicate border from empty Avatar placeholders.
+
+- [#978](https://github.com/stevekinney/cinder/pull/978) [`490098c`](https://github.com/stevekinney/cinder/commit/490098c0d8647bae9e51177ac6e1017456ec73a2) Thanks [@stevekinney](https://github.com/stevekinney)! - Keep Card header and footer padding intact when `padding="none"` makes body content full-bleed.
+
+- [#1197](https://github.com/stevekinney/cinder/pull/1197) [`74a58e6`](https://github.com/stevekinney/cinder/commit/74a58e6cc68f7b5db632090f80e0f81a7d62c66b) Thanks [@stevekinney](https://github.com/stevekinney)! - Fix eight accessibility defects: chart focus targets no longer tabbable while loading, media-controls stays focusable with aria-disabled, permission-matrix cell labeling is de-duplicated, capability-gate dismiss buttons are uniquely labeled, button-group/side-navigation/side-navigation-group/sidebar no longer render or throw on empty labels, checkbox-group's fieldset-disabled cascade dims child labels, and event-stream-viewer's scrollable log uses a plain suppressed element instead of svelte:element.
+
+- [#1088](https://github.com/stevekinney/cinder/pull/1088) [`5bf2b09`](https://github.com/stevekinney/cinder/commit/5bf2b09d59b62dc7cd61b01aafd076c5133977ca) Thanks [@stevekinney](https://github.com/stevekinney)! - Resolve MegaMenu keyboard focus targets from the component root so shadow-root navigation and focus restoration work correctly.
+
+- [#984](https://github.com/stevekinney/cinder/pull/984) [`dc90b46`](https://github.com/stevekinney/cinder/commit/dc90b4675e59f263ea6ee402e5375ec01fa9620b) Thanks [@stevekinney](https://github.com/stevekinney)! - Keep SortableList content and its trailing drag handle aligned in one resting row.
+
+- [#1120](https://github.com/stevekinney/cinder/pull/1120) [`4a279a2`](https://github.com/stevekinney/cinder/commit/4a279a28b9423559e6e33fe5123696a275ea2006) Thanks [@stevekinney](https://github.com/stevekinney)! - Consolidate Input, Checkbox, and Toggle field presentation under FormField and remove Checkbox's pre-release fieldClassName prop.
+
+- [#1202](https://github.com/stevekinney/cinder/pull/1202) [`b12595e`](https://github.com/stevekinney/cinder/commit/b12595e2a16db3d497fcbb5a831db95a9ac84187) Thanks [@stevekinney](https://github.com/stevekinney)! - Fix fourteen performance regressions found across twelve components ([#1186](https://github.com/stevekinney/cinder/issues/1186)).
+
+  `command-menu`, `mega-menu`'s direction/indicator recompute, and `marquee`'s mutation+resize sync now coalesce their scroll/resize/mutation-driven recomputation onto a single `requestAnimationFrame`, instead of doing the work synchronously on every event. `toolbar` and `navigation-bar` cache CSS-visibility/`getComputedStyle` lookups per sync pass instead of re-walking the same shared ancestor chain for every item. `mega-menu` also gates its ancestor-chain `ResizeObserver` behind the menu actually being open. `matrix-chart` hoists its `Intl.NumberFormat` instance out of the per-cell formatting loop. `multi-select` hoists its `querySelectorAll` result out of a `flatMap`. `table-of-contents` scopes both of its `MutationObserver`s with `attributeFilter` so unrelated attribute churn no longer triggers a rescan. `menu-bar` short-circuits its document-wide focusin handler when no menu or submenu is open. `spectrogram` samples a bounded number of frames/bins into its SVG plot instead of rendering one element per raw data point. `access-gate` skips its disabled-control resync when a `MutationObserver` batch could not have added or removed an interactive control.
+
+  `grid` (and `bento-grid`, which composes it) replace their `ResizeObserver`/`MutationObserver`-driven narrow-layout measurement with a native CSS `@container` query, removing all JS-side width measurement. The container-query collapse rule targets every direct child (`grid-column: 1 / -1`) rather than reassigning `grid-template-columns` on the querying element itself — a query container excludes itself when resolving which container a rule queries, so a self-referential override would silently never apply. Verified with `bun run test:playwright` that the narrow/wide layout actually toggles at the container breakpoint in a real browser.
+
+- [#1016](https://github.com/stevekinney/cinder/pull/1016) [`44e11a5`](https://github.com/stevekinney/cinder/commit/44e11a52cd1b1169dc2dd075964114aa32f318d4) Thanks [@stevekinney](https://github.com/stevekinney)! - Give HeroSection media a full-width aspect-ratio contract, remove the default card frame, and enable split layouts from 48rem.
+
+- [#1121](https://github.com/stevekinney/cinder/pull/1121) [`2b92897`](https://github.com/stevekinney/cinder/commit/2b92897a03395096d185d6545435fb2554bbd0f7) Thanks [@stevekinney](https://github.com/stevekinney)! - Observe text-direction media queries declared in recursively imported stylesheets.
+
+- [#1085](https://github.com/stevekinney/cinder/pull/1085) [`d4a63dc`](https://github.com/stevekinney/cinder/commit/d4a63dcf0d40d9f6dae52962a8a30e6893c1675d) Thanks [@stevekinney](https://github.com/stevekinney)! - Expose a lifecycle-scoped native element attachment on Input.
+
+- [#989](https://github.com/stevekinney/cinder/pull/989) [`06d7002`](https://github.com/stevekinney/cinder/commit/06d7002e9a0356dd922eb236772e06789a978b6f) Thanks [@stevekinney](https://github.com/stevekinney)! - Use the shared rotating chevron disclosure affordance for Kanban column collapse.
+
+- [#985](https://github.com/stevekinney/cinder/pull/985) [`b33f757`](https://github.com/stevekinney/cinder/commit/b33f7575e87f1226f603f2e122fae3942a3d349f) Thanks [@stevekinney](https://github.com/stevekinney)! - Align Kanban elevation and scroll-edge treatments with themeable tokens.
+
+- [#1126](https://github.com/stevekinney/cinder/pull/1126) [`6166a73`](https://github.com/stevekinney/cinder/commit/6166a73d90e71745d4357a2a0d3a536d327b10a7) Thanks [@stevekinney](https://github.com/stevekinney)! - Compose LogoCloud layout with Grid while preserving its responsive column behavior.
+
+- [#1023](https://github.com/stevekinney/cinder/pull/1023) [`e81880b`](https://github.com/stevekinney/cinder/commit/e81880b47717b07fb83830faee4ee91204d16727) Thanks [@stevekinney](https://github.com/stevekinney)! - Replace remaining add and disclosure text glyphs in InvocationRuleBuilder,
+  MultiSelect, and JsonSchemaEditor with consistently sized Lucide icons.
+
+- [#993](https://github.com/stevekinney/cinder/pull/993) [`876c600`](https://github.com/stevekinney/cinder/commit/876c60083dc674b648f47c99aeff59d62e15b4aa) Thanks [@stevekinney](https://github.com/stevekinney)! - Clarify MegaMenu nested submenu master/detail layout with a divider and active trigger panel.
+
+- [#1022](https://github.com/stevekinney/cinder/pull/1022) [`6bd8d76`](https://github.com/stevekinney/cinder/commit/6bd8d76074bf471898a476bde91041a7cc9ca047) Thanks [@stevekinney](https://github.com/stevekinney)! - Use a directional chevron icon for MenuBar submenu indicators.
+
+- [#1119](https://github.com/stevekinney/cinder/pull/1119) [`41fdd11`](https://github.com/stevekinney/cinder/commit/41fdd11644884db69b7cffe8ee9bf1b1921d8974) Thanks [@stevekinney](https://github.com/stevekinney)! - Use the shared Checkbox indicator and command-list interaction state in MultiSelect while preserving its multi-value selection API.
+
+- [#1018](https://github.com/stevekinney/cinder/pull/1018) [`40bd219`](https://github.com/stevekinney/cinder/commit/40bd219c80a4411f81d82a2105f477c1554a45dd) Thanks [@stevekinney](https://github.com/stevekinney)! - Clarify navigation component alternatives in the generated component manifest.
+
+- [#1131](https://github.com/stevekinney/cinder/pull/1131) [`412f275`](https://github.com/stevekinney/cinder/commit/412f27521e7f339c5e62649c3980eeb355f38cd7) Thanks [@stevekinney](https://github.com/stevekinney)! - Resolve the nearest portal owner across shadow roots and native top-layer boundaries.
+
+- [#1132](https://github.com/stevekinney/cinder/pull/1132) [`f5d2ec6`](https://github.com/stevekinney/cinder/commit/f5d2ec62a878282f9faa10c9c3d67819b77f7213) Thanks [@stevekinney](https://github.com/stevekinney)! - Resolve direction overrides authored with native CSS nesting selectors.
+
+- [#997](https://github.com/stevekinney/cinder/pull/997) [`a96c5c0`](https://github.com/stevekinney/cinder/commit/a96c5c09fd5ef025d79d97006bd6ea0b71a78db3) Thanks [@stevekinney](https://github.com/stevekinney)! - Mark ColorField's decorative swatch as non-interactive to match its text-input contract.
+
+- [#1108](https://github.com/stevekinney/cinder/pull/1108) [`462b85b`](https://github.com/stevekinney/cinder/commit/462b85b8cad5859bbcd97c86428fc10d839aa255) Thanks [@stevekinney](https://github.com/stevekinney)! - Compose NumberInput's editable control through Input while preserving locale-aware parsing, validation, native attachments, stepper behavior, and the visible-frame class hook. Input now exposes `groupClassName` for styling composed grouped controls.
+
+- [#1021](https://github.com/stevekinney/cinder/pull/1021) [`a39d748`](https://github.com/stevekinney/cinder/commit/a39d74892a06cae40f13aa663f0d250598cc094b) Thanks [@stevekinney](https://github.com/stevekinney)! - Replace NumberInput stepper text glyphs with the canonical Lucide plus and minus icons.
+
+- [#1205](https://github.com/stevekinney/cinder/pull/1205) [`2dc6c75`](https://github.com/stevekinney/cinder/commit/2dc6c75fcbb74a87d8fc179ca4f16c24b93055f6) Thanks [@stevekinney](https://github.com/stevekinney)! - Internal restructuring: move KanbanBoard's pointer hit-testing helpers into `kanban-board-helpers.ts` (parameterized, no closures over component locals) and extract column lift/drop/collapse state into `KanbanBoardColumnReorder`. Also deduplicates the two identical drop-placeholder `<li>` blocks into a shared snippet. No behavior or public API change; markup is unchanged.
+
+- [#1205](https://github.com/stevekinney/cinder/pull/1205) [`2dc6c75`](https://github.com/stevekinney/cinder/commit/2dc6c75fcbb74a87d8fc179ca4f16c24b93055f6) Thanks [@stevekinney](https://github.com/stevekinney)! - Internal restructuring: deduplicate ScheduleBuilder's triplicated field-reseed block into `applySeedToFields` (all 12 fields, used by the prop-resync and allowed-modes-change effects) and `applyPresetSeedToFields` (the 8 preset-only fields, used by the presets branch of a mode switch, which must not touch `authoringMode`/cron/interval fields). No behavior or public API change; the 11 flat `$state` declarations and the three authoring-mode panels are unchanged.
+
+- [#1205](https://github.com/stevekinney/cinder/pull/1205) [`2dc6c75`](https://github.com/stevekinney/cinder/commit/2dc6c75fcbb74a87d8fc179ca4f16c24b93055f6) Thanks [@stevekinney](https://github.com/stevekinney)! - Internal restructuring: extract SchemaFormBody's path-keyed editing state (form value, validation errors, and five auxiliary draft maps) into `SchemaFormState`, instantiated fresh on every schema remount. No behavior or public API change; `renderField` and all markup are unchanged.
+
+- [#1205](https://github.com/stevekinney/cinder/pull/1205) [`2dc6c75`](https://github.com/stevekinney/cinder/commit/2dc6c75fcbb74a87d8fc179ca4f16c24b93055f6) Thanks [@stevekinney](https://github.com/stevekinney)! - Internal restructuring: extract SelectionPopover's virtual-keyboard-dismissal heuristic into `createVirtualKeyboardDismissal`, a factory that owns its own `$effect`. No behavior or public API change; adds unit test coverage for logic that was previously only reachable through a full popover mount plus real `visualViewport`/`navigator.virtualKeyboard` events.
+
+- [#1205](https://github.com/stevekinney/cinder/pull/1205) [`2dc6c75`](https://github.com/stevekinney/cinder/commit/2dc6c75fcbb74a87d8fc179ca4f16c24b93055f6) Thanks [@stevekinney](https://github.com/stevekinney)! - Internal restructuring: split `source-diff-viewer.utilities.ts` into path-normalization, git-header-parsing, binary-notice, and label-formatting modules. No behavior or public API change.
+
+- [#1205](https://github.com/stevekinney/cinder/pull/1205) [`2dc6c75`](https://github.com/stevekinney/cinder/commit/2dc6c75fcbb74a87d8fc179ca4f16c24b93055f6) Thanks [@stevekinney](https://github.com/stevekinney)! - Internal restructuring: extract `TableOfContents`'s heading-derivation and active-heading-tracking observer state machines into `table-of-contents-heading-registry.svelte.ts` and `table-of-contents-active-heading.svelte.ts`. No behavior or public API change; adds unit test coverage for logic that was previously only reachable through a full component mount.
+
+- [#1205](https://github.com/stevekinney/cinder/pull/1205) [`2dc6c75`](https://github.com/stevekinney/cinder/commit/2dc6c75fcbb74a87d8fc179ca4f16c24b93055f6) Thanks [@stevekinney](https://github.com/stevekinney)! - Internal restructuring: extract TreeItem's inline-rename state machine into `TreeItemRenameController`, keyboard/pointer drag handling into `TreeItemDragHandlers`, the async `loadChildren` lifecycle into `TreeItemAsyncLoader`, and the filter-highlight splitter into a plain `splitLabelForHighlight` function. Checkbox-selection reconciliation and tree registration stay inline, matching their existing precisely-ordered same-file guarantees. No behavior or public API change; markup is unchanged.
+
+- [#1205](https://github.com/stevekinney/cinder/pull/1205) [`2dc6c75`](https://github.com/stevekinney/cinder/commit/2dc6c75fcbb74a87d8fc179ca4f16c24b93055f6) Thanks [@stevekinney](https://github.com/stevekinney)! - Internal restructuring: extract Tree's search/filter state (controlled-vs-uncontrolled value, debounced results announcement, filter input keyboard shortcuts) into `TreeFilterController`, and pointer-drag autoscroll (edge detection, scroll nudging, drop-target re-resolution while scrolling) into `TreeAutoscrollController`, both under `src/_internal/` alongside Tree's existing companion modules. Typeahead dispatch and both render paths (DOM-registry and virtualized) are unchanged. No behavior or public API change.
+
+- [#1141](https://github.com/stevekinney/cinder/pull/1141) [`7d069b6`](https://github.com/stevekinney/cinder/commit/7d069b6cac6287737fa7623c8e8b3e99249e1ea8) Thanks [@stevekinney](https://github.com/stevekinney)! - Ship `src/_internal/**/*.svelte` in the published tarball. The FormField
+  composition refactor moved control markup into internal Svelte components that
+  all three packing surfaces (the generated `files` globs, the exports
+  generator's static list, and pack-for-publish's staged list) excluded, so
+  consumer installs crashed during hydration. Fixture modules
+  (`*.fixture.ts`/`*.fixtures.ts`) no longer ship. A new packed-import-closure
+  test validates that every relative import reachable from packed sources is
+  itself packed, for both glob surfaces, in per-PR CI.
+
+- [#1133](https://github.com/stevekinney/cinder/pull/1133) [`925a0fc`](https://github.com/stevekinney/cinder/commit/925a0fc905c80ec6663f22d908d31ad7d3fdbe9a) Thanks [@stevekinney](https://github.com/stevekinney)! - Preserve mouse-event parity and the original composed path when bridging portaled NavigationBar and SpeedDial interactions.
+
+- [#1065](https://github.com/stevekinney/cinder/pull/1065) [`3897000`](https://github.com/stevekinney/cinder/commit/389700023af97651b11ff4bf1d21962a935a76ba) Thanks [@stevekinney](https://github.com/stevekinney)! - Keep SpeedDial Tab navigation contiguous across its portaled actions, including arrow-focused untabbable actions.
+
+- [#971](https://github.com/stevekinney/cinder/pull/971) [`034413c`](https://github.com/stevekinney/cinder/commit/034413cf9591d1c31ad439349cab6d0bbed6df5a) Thanks [@stevekinney](https://github.com/stevekinney)! - Add a validation guard that tracks and prevents new hand-rolled primitive implementations in components.
+
+- [#976](https://github.com/stevekinney/cinder/pull/976) [`d99561f`](https://github.com/stevekinney/cinder/commit/d99561fe37c49ef4791109e220d242cde11b67db) Thanks [@stevekinney](https://github.com/stevekinney)! - Route SpeedDial actions, Combobox empty results, and collapsed NavigationBar
+  menus through the shared portal and Floating UI positioning path so clipping
+  and local stacking contexts cannot obscure them. Make the public z-index scale
+  the single source of truth, including a top-level drag-preview token, and add a
+  Stylelint guard against token fallbacks and unexplained layer values.
+
+- [#1078](https://github.com/stevekinney/cinder/pull/1078) [`e7e92ad`](https://github.com/stevekinney/cinder/commit/e7e92ad8d59b11864bb10a5f915afc5ddacfc192) Thanks [@stevekinney](https://github.com/stevekinney)! - Hide the closed SpeedDial floating-surface chrome while preserving action exit motion.
+
+- [#1006](https://github.com/stevekinney/cinder/pull/1006) [`4c6455c`](https://github.com/stevekinney/cinder/commit/4c6455c84e97cce49a2e2defd8f823e2903e8a0f) Thanks [@stevekinney](https://github.com/stevekinney)! - Fix command-menu dismissal, load-more sentinel throttling, and resting layouts for sortable lists, logo clouds, and cards.
+
+- [#1124](https://github.com/stevekinney/cinder/pull/1124) [`f621c7e`](https://github.com/stevekinney/cinder/commit/f621c7e0fd98dd76982575c5e55ae901018bcb55) Thanks [@stevekinney](https://github.com/stevekinney)! - Respect `@scope` boundaries when resolving direction from stylesheet rules.
+
+- [#987](https://github.com/stevekinney/cinder/pull/987) [`277503a`](https://github.com/stevekinney/cinder/commit/277503a78d7b3cdad23a6b3b10ad4b7ea4a1415d) Thanks [@stevekinney](https://github.com/stevekinney)! - Overlap Popover caret fills with the panel border so the arrow reads as one silhouette.
+
+- [#1109](https://github.com/stevekinney/cinder/pull/1109) [`3b3685f`](https://github.com/stevekinney/cinder/commit/3b3685f63ca518a6006a5212c78c837b2e4ba91f) Thanks [@stevekinney](https://github.com/stevekinney)! - Compose SearchField with the shared Input control while preserving its search, clear behavior, and interactive hit targets.
+
+- [#988](https://github.com/stevekinney/cinder/pull/988) [`fad8c3f`](https://github.com/stevekinney/cinder/commit/fad8c3f7a5a618534c71b413a82db7d88f290c0f) Thanks [@stevekinney](https://github.com/stevekinney)! - Keep SelectableRow hover backgrounds continuous and align leading indicators to wrapped titles.
+
+- [#1067](https://github.com/stevekinney/cinder/pull/1067) [`928ce6a`](https://github.com/stevekinney/cinder/commit/928ce6a3e26a0a101f1cb7a8b6a94d6708a88ab9) Thanks [@stevekinney](https://github.com/stevekinney)! - Dismiss SelectionPopover movement caused by an external keyboard after focus lands on the collapsed action.
+
+- [#1114](https://github.com/stevekinney/cinder/pull/1114) [`cfc7fa8`](https://github.com/stevekinney/cinder/commit/cfc7fa80cfa2e21150830c7f66d68b78da37f99e) Thanks [@stevekinney](https://github.com/stevekinney)! - Share row and option-item geometry and state styling across list primitives.
+
+- [#1113](https://github.com/stevekinney/cinder/pull/1113) [`09ab845`](https://github.com/stevekinney/cinder/commit/09ab8459df15bcdbddec2737e0f98bafb1c2f796) Thanks [@stevekinney](https://github.com/stevekinney)! - Share the responsive section skeleton across BlogSection, TestimonialSection, and TeamSection.
+
+- [#982](https://github.com/stevekinney/cinder/pull/982) [`4aa510d`](https://github.com/stevekinney/cinder/commit/4aa510d7a59382a53c1344ba79df43313b91fde9) Thanks [@stevekinney](https://github.com/stevekinney)! - Keep AccessGate's granted and denied states aligned to a shared inline baseline wrapper.
+
+- [#979](https://github.com/stevekinney/cinder/pull/979) [`4fe3131`](https://github.com/stevekinney/cinder/commit/4fe313159e6ee88d13ec6a10a15acb5347c00bbe) Thanks [@stevekinney](https://github.com/stevekinney)! - Prevent LoadMore from repeatedly auto-loading while its sentinel remains within the observer root.
+
+- [#1125](https://github.com/stevekinney/cinder/pull/1125) [`a73801c`](https://github.com/stevekinney/cinder/commit/a73801c4ffc5d651e358b9e36fea9fb51dcf3059) Thanks [@stevekinney](https://github.com/stevekinney)! - Preserve SpeedDial positioning and focus state through visible exit and open-surface repositioning.
+
+- [#1199](https://github.com/stevekinney/cinder/pull/1199) [`f59f9f9`](https://github.com/stevekinney/cinder/commit/f59f9f93ce3f209a20e46ebb1891b5ebeeec757e) Thanks [@stevekinney](https://github.com/stevekinney)! - Replace hand-rolled component icons, remove duplicate copy state, reuse the shared announcer, and normalize an internal portal utility import.
+
+- [#986](https://github.com/stevekinney/cinder/pull/986) [`1f6f63e`](https://github.com/stevekinney/cinder/commit/1f6f63e78b1f23a6000d8ffba790976804f43b49) Thanks [@stevekinney](https://github.com/stevekinney)! - Keep Callout's accent stripe straight by squaring its leading corners.
+
+- [#1029](https://github.com/stevekinney/cinder/pull/1029) [`cb2e132`](https://github.com/stevekinney/cinder/commit/cb2e13237a014058a5adbad8a6ff1768040f25a1) Thanks [@stevekinney](https://github.com/stevekinney)! - Keep ToastRegion's built-in icons compatible with strict `style-src` Content Security Policies.
+
+- [#972](https://github.com/stevekinney/cinder/pull/972) [`7b9be9d`](https://github.com/stevekinney/cinder/commit/7b9be9d9d76024df7af698f96e760c725af2dd9a) Thanks [@stevekinney](https://github.com/stevekinney)! - Strengthen light and dark surface hierarchy, standardize form-control fills, and enforce muted interior dividers with stylelint guardrails.
+
+- [#1188](https://github.com/stevekinney/cinder/pull/1188) [`912c785`](https://github.com/stevekinney/cinder/commit/912c785c93286da98c93f58e38e7e13ae5614292) Thanks [@stevekinney](https://github.com/stevekinney)! - Sweep index-keyed `{#each}` blocks and `$effect` anti-patterns to idiomatic Svelte 5 across twelve sites: `breadcrumbs`, `keyboard-shortcuts` (two blocks), and `shortcut-hint` now key on item identity (falling back to a `${field}-${index}` composite when the field isn't type-guaranteed unique) instead of loop position, so a reorder/insert/delete no longer reuses the wrong DOM node's local state; `waveform` keys its bar list on the mathematically-injective `bar.x`. `backdrop` reads `onclick` directly instead of mirroring it into `$state` via an `$effect` (Svelte 5 destructured props already stay live in closures). `tooltip` and `toast-region` swap a reactive-look `$effect` for the more specific `onDestroy`/`onMount` lifecycle hook. `secret-value-field`'s prop-resync guard (`previousValue`) is now a plain non-reactive `let` instead of `$state`, removing a self-dependency where the effect's own write invalidated a dependency it had just read. `button-group` replaces a `<script module>`-scoped mutable ID counter (shared, unbounded, cross-request state in a long-lived server process) with `$props.id()`.
+
+  `calendar`'s `todayIso` is a genuine behavior fix, not just a refactor: it was `$derived` with zero tracked dependencies, so it silently froze at first render instead of tracking the real date. It is now `$state`, refreshed by a small `$effect` on a 60-second interval and on `visibilitychange`, so a long-lived session correctly moves `aria-current="date"` to the new day after midnight.
+
+- [#1197](https://github.com/stevekinney/cinder/pull/1197) [`74a58e6`](https://github.com/stevekinney/cinder/commit/74a58e6cc68f7b5db632090f80e0f81a7d62c66b) Thanks [@stevekinney](https://github.com/stevekinney)! - Make Tabs emit a correct roving-tabindex tab stop during server rendering.
+
+- [#1110](https://github.com/stevekinney/cinder/pull/1110) [`0a43737`](https://github.com/stevekinney/cinder/commit/0a43737b4cc04a8d13628fbb47879fb5f5ba117b) Thanks [@stevekinney](https://github.com/stevekinney)! - Document the boundaries between the Table, DataTable, and DataGrid component families.
+
+- [#1116](https://github.com/stevekinney/cinder/pull/1116) [`5b640a3`](https://github.com/stevekinney/cinder/commit/5b640a3b043c33667a243c526c79ddd72e6912a2) Thanks [@stevekinney](https://github.com/stevekinney)! - Compose TimeField's editable time control with the shared Input primitive.
+
+- [#992](https://github.com/stevekinney/cinder/pull/992) [`dc3dc20`](https://github.com/stevekinney/cinder/commit/dc3dc20153e59b03cceb5c0d6c505111af44f4e9) Thanks [@stevekinney](https://github.com/stevekinney)! - Render TransferList move controls with directional Lucide icons while preserving their accessible names.
+
+- [#1149](https://github.com/stevekinney/cinder/pull/1149) [`43eb35b`](https://github.com/stevekinney/cinder/commit/43eb35bb96c50cefdeb61c121a540eec5049fc9f) Thanks [@stevekinney](https://github.com/stevekinney)! - Compose Combobox's roving active-option state on the shared `createCommandListState` utility instead of a hand-rolled index, matching the MultiSelect/CommandMenu/CommandPalette precedent. Adds an `autoActivateFirst` option to the utility so an editable combobox can leave no option highlighted until the user types or navigates, and Combobox now scrolls the active option into view during keyboard navigation. Public API and observable behavior are unchanged.
+
 ## 0.19.1
 
 ### Patch Changes

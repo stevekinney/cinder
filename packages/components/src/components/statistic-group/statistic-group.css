@@ -57,7 +57,7 @@
     padding: var(--cinder-statistic-group-card-padding, var(--cinder-space-4, 1rem));
     background: var(--cinder-surface-raised);
     border: 1px solid var(--cinder-border);
-    border-radius: var(--cinder-radius-md, 0.5rem);
+    border-radius: var(--cinder-radius-md);
     box-shadow: var(--cinder-shadow-sm);
   }
 
@@ -69,7 +69,7 @@
   .cinder-statistic-group[data-cinder-variant='shared-borders'] {
     --cinder-statistic-group-gap: 1px;
     border: 1px solid var(--cinder-border);
-    border-radius: var(--cinder-radius-md, 0.5rem);
+    border-radius: var(--cinder-radius-md);
     overflow: hidden;
     background: var(--cinder-border);
   }

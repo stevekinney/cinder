@@ -1,7 +1,0 @@
----
-'@lostgradient/cinder': patch
----
-
-Sweep index-keyed `{#each}` blocks and `$effect` anti-patterns to idiomatic Svelte 5 across twelve sites: `breadcrumbs`, `keyboard-shortcuts` (two blocks), and `shortcut-hint` now key on item identity (falling back to a `${field}-${index}` composite when the field isn't type-guaranteed unique) instead of loop position, so a reorder/insert/delete no longer reuses the wrong DOM node's local state; `waveform` keys its bar list on the mathematically-injective `bar.x`. `backdrop` reads `onclick` directly instead of mirroring it into `$state` via an `$effect` (Svelte 5 destructured props already stay live in closures). `tooltip` and `toast-region` swap a reactive-look `$effect` for the more specific `onDestroy`/`onMount` lifecycle hook. `secret-value-field`'s prop-resync guard (`previousValue`) is now a plain non-reactive `let` instead of `$state`, removing a self-dependency where the effect's own write invalidated a dependency it had just read. `button-group` replaces a `<script module>`-scoped mutable ID counter (shared, unbounded, cross-request state in a long-lived server process) with `$props.id()`.
-
-`calendar`'s `todayIso` is a genuine behavior fix, not just a refactor: it was `$derived` with zero tracked dependencies, so it silently froze at first render instead of tracking the real date. It is now `$state`, refreshed by a small `$effect` on a 60-second interval and on `visibilitychange`, so a long-lived session correctly moves `aria-current="date"` to the new day after midnight.

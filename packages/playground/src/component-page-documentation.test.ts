@@ -174,13 +174,34 @@ afterEach(() => {
   }
 });
 
+/**
+ * Switch the page to the Playground view and settle.
+ *
+ * The Playground is one of two VIEWS now (decision 2) rather than a rail pinned
+ * beside the prose — the rail took a fixed 38rem out of every page width and
+ * starved the documentation column. So a test asserting on playground markup has
+ * to select the view first, exactly as a reader does.
+ */
+async function showPlayground(): Promise<void> {
+  await fireEvent.click(screen.getByRole('tab', { name: 'Playground' }));
+  await tick();
+}
+
 describe('component-page single-scroll layout', () => {
   test('groups standalone page actions and exposes focus-visible tooltips', async () => {
-    const { container, unmount } = render(ComponentPage);
+    // The page controls live in the SIDEBAR footer now, not a top bar — the band
+    // they came from restated the sidebar brand, the hero eyebrow, and the page
+    // `<h1>`. So this renders with sidebar entries, as both real render paths do.
+    const { container, unmount } = render(ComponentPage, {
+      props: { sidebarComponents: ['button', 'badge'] },
+    });
     await tick();
 
     const toolbar = container.querySelector('[role="toolbar"][aria-label="Page controls"]');
     expect(toolbar).not.toBeNull();
+    // Specifically in the sidebar, which renders on the landing page too — so
+    // the theme toggle stays reachable there.
+    expect(container.querySelector('nav.dx-nav .dx-nav__footer')).not.toBeNull();
     expect(toolbar?.querySelector('[data-tooltip="View source on GitHub"]')).not.toBeNull();
     expect(toolbar?.querySelector('[data-tooltip="Preview theme: switch to dark"]')).not.toBeNull();
     expect(toolbar?.querySelectorAll('button[aria-label^="Preview theme: switch to"]').length).toBe(
@@ -235,8 +256,9 @@ describe('component-page single-scroll layout', () => {
     expect(screen.getByText('Triggering a fixture action.')).toBeTruthy();
     expect(screen.getByText('Selecting from a fixed set.')).toBeTruthy();
     // The avoidWhen alternative links to that component's page. The link text is
-    // the humanized id ("Segmented control"); the href keeps the kebab id.
-    const altLink = screen.getByRole('link', { name: /Segmented control/ });
+    // the humanized id, Title Case via the shared acronym-aware humanizer
+    // ("Segmented Control"); the href keeps the kebab id.
+    const altLink = screen.getByRole('link', { name: /Segmented Control/ });
     expect(altLink.getAttribute('href')).toBe('/page/segmented-control');
 
     unmount();
@@ -416,14 +438,61 @@ describe('component-page single-scroll layout', () => {
     await tick();
   });
 
+  test('defaults to the documentation view and switches to the playground on demand', async () => {
+    const { unmount } = render(ComponentPage);
+    await screen.findByRole('heading', { level: 1, name: 'Button' });
+
+    // Documentation is the default: the prose column gets the full width, which
+    // is the whole point of the split.
+    expect(document.querySelector('.dx-layout')).toBeTruthy();
+    expect(document.querySelector('.dx-playground')).toBeNull();
+    expect(screen.getByRole('tab', { name: 'Documentation' }).getAttribute('aria-selected')).toBe(
+      'true',
+    );
+
+    await showPlayground();
+
+    // …and the two views are genuinely exclusive, rather than a rail pinned
+    // beside the prose taking a fixed 38rem out of every page.
+    expect(document.querySelector('.dx-playground')).toBeTruthy();
+    expect(document.querySelector('.dx-layout')).toBeNull();
+    expect(screen.getByRole('tab', { name: 'Playground' }).getAttribute('aria-selected')).toBe(
+      'true',
+    );
+
+    unmount();
+    await tick();
+  });
+
+  test('makes the active view linkable through the URL', async () => {
+    const { unmount } = render(ComponentPage);
+    await screen.findByRole('heading', { level: 1, name: 'Button' });
+
+    await showPlayground();
+    expect(window.location.search).toContain('view=playground');
+
+    // The default view is expressed by DROPPING the parameter, so the canonical
+    // documentation URL stays clean.
+    await fireEvent.click(screen.getByRole('tab', { name: 'Documentation' }));
+    await tick();
+    expect(window.location.search).not.toContain('view=');
+
+    unmount();
+    await tick();
+  });
+
   test('shows the Playground with a control derived from a select prop', async () => {
     const { unmount } = render(ComponentPage);
     await screen.findByRole('heading', { level: 1, name: 'Button' });
 
+    // The documentation view does NOT carry the playground — that is the point
+    // of the split.
+    expect(document.querySelector('.dx-playground')).toBeNull();
+
+    await showPlayground();
+
     // `variant` is a select prop with a default → a control is generated.
-    // The controls live in the persistent preview pane beside the prose, not in
-    // a `#playground` section you scroll to.
-    expect(document.querySelector('.dx-preview')).toBeTruthy();
+    expect(document.querySelector('.dx-playground')).toBeTruthy();
     const select = await screen.findByLabelText('variant');
     expect(select.tagName).toBe('SELECT');
 
@@ -431,10 +500,14 @@ describe('component-page single-scroll layout', () => {
     await tick();
   });
 
-  test('omits the Playground when a required non-snippet prop has no default', async () => {
+  test('withholds only the generated snippet when a required non-snippet prop has no default', async () => {
     const required = baseFixture();
     // A required `unknown` prop with no default can't be synthesized, so the
-    // generated interactive playground is suppressed entirely.
+    // COPYABLE SNIPPET is withheld — it would not compile if pasted. Everything
+    // else the playground block offers survives, and the reader is told which
+    // prop was the problem. Suppressing the whole block here is what made ~20
+    // components report "no adjustable props" when the real cause was a
+    // synthesis failure.
     required.propsManifest.props = [
       {
         name: 'value',
@@ -448,17 +521,44 @@ describe('component-page single-scroll layout', () => {
     const { unmount } = render(ComponentPage);
     await screen.findByRole('heading', { level: 1, name: 'Button' });
 
-    expect(document.getElementById('playground')).toBeNull();
+    await showPlayground();
+    const play = document.querySelector('.dx-playground');
+    expect(play).not.toBeNull();
 
-    const nav = screen.getByRole('navigation', { name: 'On this page' });
-    const labels = Array.from(nav.querySelectorAll('a')).map((a) => a.textContent?.trim() ?? '');
-    expect(labels.some((label) => label.includes('Playground'))).toBe(false);
+    // No generated snippet: a `<CodeBlock>` inside the playground block would be
+    // uncompilable Svelte for a component with an unsatisfiable required prop.
+    expect(play?.querySelector('pre[data-language="svelte"]')).toBeNull();
+
+    // …and the reader is told why, by name.
+    const note = play?.querySelector('.dx-play__note');
+    expect(note).not.toBeNull();
+    const noteText = note?.textContent ?? '';
+    expect(noteText).toContain('value');
+    expect(noteText).toContain('required prop');
+    // The old blanket line was a lie in exactly this case.
+    expect(noteText).not.toContain('no adjustable props');
 
     unmount();
     await tick();
   });
 
-  test('omits the Playground for components that require authored examples', async () => {
+  test('says a component has no adjustable props only when that is true', async () => {
+    const bare = baseFixture();
+    bare.propsManifest.props = [];
+    installDocumentationDataIsland(bare);
+
+    const { unmount } = render(ComponentPage);
+    await screen.findByRole('heading', { level: 1, name: 'Button' });
+
+    await showPlayground();
+    const note = document.querySelector('.dx-play__note');
+    expect(note?.textContent).toContain('no adjustable props');
+
+    unmount();
+    await tick();
+  });
+
+  test('keeps the props panel for components that require authored examples', async () => {
     const exampleOnly = baseFixture();
     exampleOnly.component.id = 'autocomplete';
     exampleOnly.component.name = 'Autocomplete';
@@ -495,17 +595,23 @@ describe('component-page single-scroll layout', () => {
     const { unmount } = render(ComponentPage);
     await screen.findByRole('heading', { level: 1, name: 'Autocomplete' });
 
-    expect(document.getElementById('playground')).toBeNull();
-
-    const nav = screen.getByRole('navigation', { name: 'On this page' });
-    const labels = Array.from(nav.querySelectorAll('a')).map((a) => a.textContent?.trim() ?? '');
-    expect(labels.some((label) => label.includes('Playground'))).toBe(false);
+    await showPlayground();
+    const play = document.querySelector('.dx-playground');
+    expect(play).not.toBeNull();
+    // No generated snippet — the component is documented through its examples…
+    expect(play?.querySelector('pre[data-language="svelte"]')).toBeNull();
+    // …and it says so, rather than claiming there is nothing to adjust.
+    const noteText = play?.querySelector('.dx-play__note')?.textContent ?? '';
+    expect(noteText).toContain('documented through its examples');
+    expect(noteText).not.toContain('no adjustable props');
+    // The adjustable props it DOES have keep their controls.
+    expect(play?.querySelector('.dx-play__controls')).not.toBeNull();
 
     unmount();
     await tick();
   });
 
-  test('omits the Playground when a required non-children snippet has no default', async () => {
+  test('withholds only the generated snippet when a required non-children snippet has no default', async () => {
     const required = baseFixture();
     required.propsManifest.props = [
       {
@@ -520,7 +626,11 @@ describe('component-page single-scroll layout', () => {
     const { unmount } = render(ComponentPage);
     await screen.findByRole('heading', { level: 1, name: 'Button' });
 
-    expect(document.getElementById('playground')).toBeNull();
+    await showPlayground();
+    const play = document.querySelector('.dx-playground');
+    expect(play).not.toBeNull();
+    expect(play?.querySelector('pre[data-language="svelte"]')).toBeNull();
+    expect(play?.querySelector('.dx-play__note')?.textContent).toContain('items');
 
     unmount();
     await tick();

@@ -376,7 +376,18 @@ export function rehypeShikiSync(options: RehypeShikiSyncOptions = {}) {
       // Extract language and code
       const rawLanguage = extractLanguage(codeChild);
       const language = rawLanguage ? normalizeLanguage(rawLanguage) : defaultLanguage;
-      const code = extractText(codeChild);
+      // `mdast-util-to-hast` terminates every fence's text node with a
+      // trailing "\n" (it is what makes the serialized `<pre>` end on its own
+      // line). Shiki treats that newline as starting one more line and emits a
+      // phantom `<span class="line"></span>` at the end of every block, which
+      // renders as a stray blank row.
+      //
+      // Exactly one newline, via an anchored replace — NOT `.trimEnd()`. A
+      // fence is whitespace-significant (think a `diff` fence, or a snippet
+      // that deliberately ends in blank lines), and `trimEnd()` would eat all
+      // of that meaningful trailing whitespace, not just the serializer's
+      // artifact.
+      const code = extractText(codeChild).replace(/\n$/, '');
 
       // Skip empty code blocks
       if (!code.trim()) return;

@@ -18,8 +18,14 @@
  */
 import { createRawSnippet, mount, unmount } from 'svelte';
 
-import type { PlaygroundControl, PlaygroundValue } from './component-page-playground.ts';
+import type {
+  PlaygroundControl,
+  PlaygroundSeed,
+  PlaygroundValue,
+} from './component-page-playground.ts';
+import type { PreviewRecipe } from './component-page-preview-recipes.ts';
 import { toMountErrorDetail, type MountErrorDetail } from './example-error.ts';
+import { CONTEXT_REQUIRED_PARTS } from './shell-app/compound-families.ts';
 
 /**
  * Escape a string for an HTML text-content context: `&` and `<` only. Used for
@@ -51,11 +57,28 @@ function escapeHtmlText(text: string): string {
 export function toMountProps(
   controls: PlaygroundControl[],
   values: Record<string, PlaygroundValue>,
+  seeds: readonly PlaygroundSeed[] = [],
+  recipe?: PreviewRecipe,
 ): Record<string, unknown> {
   const props: Record<string, unknown> = {};
+  // A recipe's children are a repo constant (placeholder boxes for a layout
+  // primitive, a padded block for Surface), so they are inserted as MARKUP —
+  // that is the point, since the whole failure being fixed is that one text run
+  // shows nothing about a component whose job is arranging elements. Reader
+  // input still goes through `escapeHtmlText` below; these two paths never mix.
+  if (recipe?.childrenHtml !== undefined) {
+    const html = recipe.childrenHtml;
+    props['children'] = createRawSnippet(() => ({ render: () => html }));
+  }
+  // Synthesized structural values (a required `items: Item[]`, say). These are
+  // live objects, not strings, so nothing is parsed at mount time.
+  for (const seed of seeds) props[seed.name] = seed.value;
   for (const control of controls) {
     const value = values[control.name] ?? control.value;
     if (control.kind === 'text' && control.isChildren === true) {
+      // A recipe already supplied structured children; the name-as-text seed
+      // must not overwrite them.
+      if (recipe?.childrenHtml !== undefined) continue;
       const text = String(value);
       if (text === '') continue;
       const escaped = escapeHtmlText(text);
@@ -64,6 +87,20 @@ export function toMountProps(
       }));
       continue;
     }
+    // A SYNTHESIZED empty string — a prop with no manifest default, seeded to
+    // `''` — is not passed to the mount, mirroring `shouldEmit`, which already
+    // drops it from the copyable snippet.
+    //
+    // Two reasons. The preview must render the code it tells you to copy: with a
+    // seeded `''` passed here but omitted there, `<DropdownGroup />` was the
+    // published snippet while the live mount was really
+    // `<DropdownGroup label="" labelledBy="" />`. And a component that validates
+    // its own inputs is entitled to reject `''` — DropdownGroup throws
+    // "requires a non-empty label value", so the seed did not just differ from
+    // the snippet, it painted an error callout over a component that works.
+    // A synthesized `0` is dropped for the same reason (and matters for `Image`,
+    // where `width={0} height={0}` collapses the element regardless of `src`).
+    if (!control.hasDefault && (value === '' || value === 0)) continue;
     props[control.name] = value;
   }
   return props;
@@ -116,6 +153,35 @@ export function isMountableComponent(value: unknown): value is MountableComponen
 function readProperty(value: unknown, key: string): unknown {
   if (value === null || typeof value !== 'object') return undefined;
   return Reflect.get(value, key);
+}
+
+/**
+ * Whether the playground may mount this component BARE with synthesized props.
+ *
+ * Two structural exclusions, both about children the playground cannot invent:
+ *
+ *  - A compound ROOT (`isCompound`, from the manifest) expects structured
+ *    sub-components (`<Accordion.Item>`); a bare mount renders an empty shell or
+ *    throws on `{@render children()}`.
+ *  - A context-requiring PART (see {@link CONTEXT_REQUIRED_PARTS}) reads a strict
+ *    context getter during init, so a mount with no provider ancestor throws
+ *    `missing_context` — which the page then paints as a red error callout on a
+ *    component whose only sin is being designed for composition.
+ *
+ * Auto-wrapping the parts in a synthesized `<Root><Part/></Root>` was considered
+ * and rejected: several need a nesting depth greater than two
+ * (`Table > Table.Header > Table.Row > Table.HeaderCell`), the roots have their
+ * own required props, and `tab`/`segment`/`choice-grid-item` need registration
+ * values that match the root's selection state. A generic wrapper renders blank
+ * or misleading for most of them, and the root's own page already shows the real
+ * composition.
+ *
+ * Deliberately NOT gated on compound-family membership as a whole: most family
+ * members read context through the optional `tryGet*` accessors and bare-mount
+ * fine today.
+ */
+export function canBareMount(kebabName: string, isCompound: boolean | undefined): boolean {
+  return isCompound !== true && !CONTEXT_REQUIRED_PARTS.has(kebabName);
 }
 
 /**
