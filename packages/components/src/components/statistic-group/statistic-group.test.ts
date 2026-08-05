@@ -103,6 +103,24 @@ describe('StatisticGroup', () => {
     expect(root?.hasAttribute('aria-label')).toBe(false);
   });
 
+  test('role prop is used as the ARIA role when label is absent', () => {
+    const { container } = render(StatisticGroup, {
+      children: textSnippet('x'),
+      role: 'region',
+    });
+    const root = container.querySelector('.cinder-statistic-group');
+    expect(root?.getAttribute('role')).toBe('region');
+  });
+
+  test('aria-label prop passes through when label is absent', () => {
+    const { container } = render(StatisticGroup, {
+      children: textSnippet('x'),
+      'aria-label': 'Custom',
+    });
+    const root = container.querySelector('.cinder-statistic-group');
+    expect(root?.getAttribute('aria-label')).toBe('Custom');
+  });
+
   test('class prop is merged with cinder-statistic-group on the root', () => {
     const { container } = render(StatisticGroup, {
       children: textSnippet('x'),

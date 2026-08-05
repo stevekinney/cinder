@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, spyOn, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -7,6 +7,8 @@ setupHappyDom();
 
 const { render } = await import('@testing-library/svelte');
 const { default: Wrapper } = await import('../../test/fixtures/table-fixture.svelte');
+const { default: InvalidSelectionFixture } =
+  await import('../../test/fixtures/table-row-invalid-selection-fixture.svelte');
 
 const columns = [{ key: 'name', label: 'Name' }];
 const rows = [{ id: '1', cells: ['Alice'] }];
@@ -42,5 +44,21 @@ describe('TableRow', () => {
     const bodyRow = container.querySelector('tbody tr');
     const checkbox = bodyRow?.querySelector<HTMLInputElement>('input[type="checkbox"]');
     expect(checkbox?.disabled).toBe(true);
+  });
+
+  test('throws when a selectable body row supplies only part of the selection-prop trio', () => {
+    expect(() => render(InvalidSelectionFixture, { partialTrio: true })).toThrow(/must supply/);
+  });
+
+  test('warns when a selectable TableRow renders outside TableHeader or TableBody', () => {
+    const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      render(InvalidSelectionFixture, { noSectionWrapper: true });
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringMatching(/rendered outside TableHeader or TableBody/),
+      );
+    } finally {
+      warnSpy.mockRestore();
+    }
   });
 });

@@ -11,6 +11,7 @@ setupHappyDom();
 const CAROUSEL_SOURCE = join(import.meta.dir, 'carousel.svelte');
 
 const { cleanup, fireEvent, render, waitFor } = await import('@testing-library/svelte');
+const { tick } = await import('svelte');
 const { default: Carousel } = await import('./carousel.svelte');
 
 function installMatchMediaMock(matches: boolean) {
@@ -844,6 +845,34 @@ describe('Carousel', () => {
     await waitFor(() => {
       expectActiveSlide(container, 1);
     });
+  });
+
+  test('pause control toggles aria-pressed and genuinely stops autoplay from advancing', async () => {
+    jest.useFakeTimers();
+    const { container } = render(Carousel, { slides, autoplay: true, autoplayInterval: 50 });
+    const pauseButton = container.querySelector(
+      '.cinder-carousel__control--pause',
+    ) as HTMLButtonElement;
+
+    expect(pauseButton.getAttribute('aria-pressed')).toBe('false');
+
+    await fireEvent.click(pauseButton);
+    expect(pauseButton.getAttribute('aria-pressed')).toBe('true');
+
+    // Two full intervals elapse; a genuinely paused autoplay must not advance.
+    jest.advanceTimersByTime(100);
+    await tick();
+    expectActiveSlide(container, 0);
+  });
+
+  test('control: without pausing, the same elapsed time DOES advance autoplay', async () => {
+    // Proves the harness above can actually detect advancement — without this, a broken
+    // pause toggle and a broken test harness would look identical.
+    jest.useFakeTimers();
+    const { container } = render(Carousel, { slides, autoplay: true, autoplayInterval: 50 });
+
+    jest.advanceTimersByTime(100);
+    await waitFor(() => expectActiveSlide(container, 1));
   });
 
   test('keeps autoplay transitions out of the live region', async () => {

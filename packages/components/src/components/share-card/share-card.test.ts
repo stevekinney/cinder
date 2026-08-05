@@ -114,6 +114,43 @@ describe('ShareCard', () => {
     }
   });
 
+  test('announces "Copy failed" and leaves no copied attribute when the clipboard write rejects', async () => {
+    // happy-dom does not implement document.execCommand, so the legacyCopy
+    // fallback inside copyToClipboard throws, is caught, and returns false —
+    // a rejecting writeText mock reliably reaches handleCopy's failure branch.
+    const originalClipboard = (navigator as { clipboard?: unknown }).clipboard;
+    setNavigatorClipboard({
+      writeText: async () => {
+        throw new Error('denied');
+      },
+    });
+    jest.useFakeTimers();
+
+    try {
+      const { container, getByRole } = render(ShareCard, {
+        value: 'https://example.com',
+        copyLinkLabel: 'Copy link',
+        copiedLabel: 'Copied!',
+      });
+
+      const button = getByRole('button', { name: /Copy link/i });
+      await fireEvent.click(button);
+      // Let the rejected clipboard write and the sync legacyCopy fallback
+      // resolve, then advance the live region's setTimeout(0) blank-then-set
+      // dance deterministically instead of sleeping on the real clock.
+      await tick();
+      jest.advanceTimersByTime(0);
+      await tick();
+
+      const liveRegion = container.querySelector('.cinder-sr-only');
+      expect(liveRegion?.textContent).toBe('Copy failed');
+      expect(button.getAttribute('data-cinder-copied')).toBeNull();
+    } finally {
+      restoreNavigatorClipboard(originalClipboard);
+      jest.useRealTimers();
+    }
+  });
+
   test('an identical success re-announces after the confirmation window resets through blank', async () => {
     // The live region (VisuallyHiddenLiveRegion) only re-announces when its
     // `message` prop TRANSITIONS. share-card uses a single write per announce and

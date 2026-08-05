@@ -5,9 +5,11 @@
   let {
     labelPlacement = 'auto',
     onAction,
+    disabled = false,
   }: {
     labelPlacement?: SpeedDialActionLabelPlacement;
     onAction?: () => void;
+    disabled?: boolean;
   } = $props();
 </script>
 
@@ -16,7 +18,7 @@
     <span aria-hidden="true">+</span>
   {/snippet}
 
-  <SpeedDial.Action label="Create" {labelPlacement} onclick={() => onAction?.()}>
+  <SpeedDial.Action label="Create" {labelPlacement} {disabled} onclick={() => onAction?.()}>
     {#snippet icon()}
       <span aria-hidden="true">C</span>
     {/snippet}

@@ -62,6 +62,19 @@ describe('ButtonGroup', () => {
     expect(group?.hasAttribute('aria-label')).toBe(false);
   });
 
+  test('both label and labelledBy set simultaneously render both attributes', () => {
+    const { container } = render(ButtonGroup, {
+      props: {
+        label: 'Actions',
+        labelledBy: 'heading-id',
+        children: singleButtonSnippet('Save'),
+      } as any,
+    });
+    const group = container.querySelector('[role="group"]');
+    expect(group?.getAttribute('aria-label')).toBe('Actions');
+    expect(group?.getAttribute('aria-labelledby')).toBe('heading-id');
+  });
+
   test('data-cinder-orientation defaults to horizontal', () => {
     const { container } = render(ButtonGroup, {
       props: { label: 'Actions', children: singleButtonSnippet('Save') },

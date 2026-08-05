@@ -84,6 +84,27 @@ describe('Sparkbar', () => {
     expect(el?.getAttribute('aria-label')).toBe('Session cost usage');
   });
 
+  test('falls back to zero when value is not finite', () => {
+    const { container } = render(Sparkbar, {
+      value: NaN,
+      label: 'Usage',
+    });
+
+    const el = container.querySelector('[role="meter"]');
+    expect(el?.getAttribute('aria-valuenow')).toBe('0');
+  });
+
+  test('falls back to a max of 1 when max is zero or negative', () => {
+    const { container } = render(Sparkbar, {
+      value: 0.5,
+      max: -5,
+      label: 'Usage',
+    });
+
+    const el = container.querySelector('[role="meter"]');
+    expect(el?.getAttribute('aria-valuemax')).toBe('1');
+  });
+
   test('keeps computed meter semantics authoritative', () => {
     const { container } = render(Sparkbar, {
       value: 3,

@@ -67,4 +67,29 @@ describe('PricingSection', () => {
     expect(root?.getAttribute('data-cinder-columns')).toBe('4');
     expect(root?.classList.contains('my-custom-class')).toBe(true);
   });
+
+  test('omits the header entirely when title is not provided', () => {
+    const { container } = render(PricingSection, {
+      props: {
+        plans,
+      },
+    });
+
+    expect(container.querySelector('.cinder-pricing-section__title')).toBeNull();
+    expect(container.querySelector('.cinder-pricing-section__header')).toBeNull();
+  });
+
+  test('renders the description text when provided', () => {
+    const { container } = render(PricingSection, {
+      props: {
+        title: 'Simple pricing',
+        description: 'Choose the plan that fits your team',
+        plans,
+      },
+    });
+
+    expect(container.querySelector('.cinder-pricing-section__description')?.textContent).toBe(
+      'Choose the plan that fits your team',
+    );
+  });
 });

@@ -48,6 +48,13 @@ describe('Skeleton', () => {
     expect(element?.getAttribute('style')).toContain('height: 20px');
   });
 
+  test('applies border-radius style when radius prop is provided', () => {
+    const { container } = render(Skeleton, { props: { radius: '8px' } });
+    const element = container.querySelector('.cinder-skeleton');
+    expect(element).not.toBeNull();
+    expect(element?.getAttribute('style')).toContain('border-radius: 8px');
+  });
+
   test('no console errors on render', () => {
     const originalError = console.error;
     const errors: unknown[] = [];

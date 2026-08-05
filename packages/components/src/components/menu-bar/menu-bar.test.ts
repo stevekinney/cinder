@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, jest, mock, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -39,6 +39,36 @@ await Promise.all([
   prepareServerRenderSource(MENU_BAR_SOURCE),
   prepareServerRenderSource(MENU_BAR_DIRECTION_FIXTURE_SOURCE),
 ]);
+
+/**
+ * Runs `run` with Bun's fake timers installed so the submenu's internal
+ * 150 ms close timer can be advanced deterministically instead of waiting on
+ * the real clock. `jest.useFakeTimers()` monkey-patches the process-global
+ * timer functions, and the suite runs `--parallel=1` in one shared process,
+ * so every caller must save and restore all four globals — mirroring
+ * `tooltip.test.ts`'s `triggerDelayedTooltipShow` — or a leftover fake timer
+ * breaks every later test file's real timers.
+ */
+async function withFakeTimers(run: () => void | Promise<void>): Promise<void> {
+  const trackedSetTimeout = globalThis.setTimeout;
+  const trackedClearTimeout = globalThis.clearTimeout;
+  const trackedSetInterval = globalThis.setInterval;
+  const trackedClearInterval = globalThis.clearInterval;
+  jest.useFakeTimers();
+  try {
+    await run();
+  } finally {
+    jest.useRealTimers();
+    globalThis.setTimeout = trackedSetTimeout;
+    globalThis.clearTimeout = trackedClearTimeout;
+    globalThis.setInterval = trackedSetInterval;
+    globalThis.clearInterval = trackedClearInterval;
+    expect(globalThis.setTimeout).toBe(trackedSetTimeout);
+    expect(globalThis.clearTimeout).toBe(trackedClearTimeout);
+    expect(globalThis.setInterval).toBe(trackedSetInterval);
+    expect(globalThis.clearInterval).toBe(trackedClearInterval);
+  }
+}
 
 function fileEditViewMenus(onOpenRecent = () => {}) {
   return [
@@ -508,15 +538,17 @@ describe('MenuBar', () => {
     submenu.getBoundingClientRect = () =>
       ({ left: 100, top: 0, right: 260, bottom: 120, width: 160, height: 120 }) as DOMRect;
 
-    await fireEvent.mouseLeave(submenuWrapper, { clientX: 90, clientY: 20 });
-    await fireEvent(
-      document,
-      new PointerEvent('pointermove', { clientX: 130, clientY: 28, bubbles: true }),
-    );
-    await Bun.sleep(170);
-    await tick();
+    await withFakeTimers(async () => {
+      await fireEvent.mouseLeave(submenuWrapper, { clientX: 90, clientY: 20 });
+      await fireEvent(
+        document,
+        new PointerEvent('pointermove', { clientX: 130, clientY: 28, bubbles: true }),
+      );
+      jest.advanceTimersByTime(150);
+      await tick();
 
-    expect(submenuTrigger.getAttribute('aria-expanded')).toBe('true');
+      expect(submenuTrigger.getAttribute('aria-expanded')).toBe('true');
+    });
   });
 
   test('submenu pointer leave stays open when focus enters the submenu', async () => {
@@ -530,12 +562,14 @@ describe('MenuBar', () => {
     await tick();
     const submenuWrapper = submenuTrigger.closest('.cinder-menu-bar__submenu') as HTMLElement;
 
-    await fireEvent.mouseLeave(submenuWrapper, { clientX: 90, clientY: 20 });
-    await fireEvent.focusIn(getByRole('menuitem', { name: 'Cinder workspace' }));
-    await Bun.sleep(170);
-    await tick();
+    await withFakeTimers(async () => {
+      await fireEvent.mouseLeave(submenuWrapper, { clientX: 90, clientY: 20 });
+      await fireEvent.focusIn(getByRole('menuitem', { name: 'Cinder workspace' }));
+      jest.advanceTimersByTime(150);
+      await tick();
 
-    expect(submenuTrigger.getAttribute('aria-expanded')).toBe('true');
+      expect(submenuTrigger.getAttribute('aria-expanded')).toBe('true');
+    });
   });
 
   test('Alt access key opens the first enabled matching menu', async () => {

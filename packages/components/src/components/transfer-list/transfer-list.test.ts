@@ -279,6 +279,78 @@ describe('TransferList', () => {
     expect(within(selected).getByRole('option', { name: 'Write' })).toBeTruthy();
   });
 
+  test('keyboard navigation on the Selected listbox transfers the active option back to Available', async () => {
+    const onchange = mock(() => {});
+    render(TransferList, {
+      props: {
+        items,
+        value: ['read', 'write'],
+        leftLabel: 'Available',
+        rightLabel: 'Selected',
+        onchange,
+      },
+    });
+    const selected = screen.getByRole('listbox', { name: 'Selected' });
+
+    selected.focus();
+    await fireEvent.focus(selected);
+    await fireEvent.keyDown(selected, { key: 'ArrowDown' });
+    const activeOptionId = selected.getAttribute('aria-activedescendant');
+    const activeOption = activeOptionId ? document.getElementById(activeOptionId) : null;
+    expect(activeOption?.textContent).toBe('Write');
+
+    await fireEvent.keyDown(selected, { key: ' ' });
+    expect(activeOption?.getAttribute('aria-selected')).toBe('true');
+
+    await fireEvent.keyDown(selected, { key: 'Enter' });
+
+    const available = screen.getByRole('listbox', { name: 'Available' });
+    expect(within(available).getByRole('option', { name: 'Write' })).toBeTruthy();
+    expect(
+      within(selected)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toEqual(['Read']);
+    expect(onchange).toHaveBeenCalledWith(['read']);
+  });
+
+  test('Home/End on the left listbox skip disabled items and land on the first/last enabled option', async () => {
+    // The disabled items sit at BOTH edges here (unlike the shared `items` fixture,
+    // where `billing` is interior and Home/End would land on the true first/last
+    // item even if the disabled filter were removed entirely). Only this layout
+    // proves Home/End route through `getEnabledItems`, not raw array indices.
+    const edgeDisabledItems: TransferListItem[] = [
+      { id: 'archived', label: 'Archived', disabled: true },
+      { id: 'read', label: 'Read' },
+      { id: 'write', label: 'Write' },
+      { id: 'billing', label: 'Billing', disabled: true },
+    ];
+    render(TransferList, {
+      props: {
+        items: edgeDisabledItems,
+        value: [],
+        leftLabel: 'Available',
+        rightLabel: 'Selected',
+      },
+    });
+    const available = screen.getByRole('listbox', { name: 'Available' });
+
+    await fireEvent.focus(available);
+    let activeOptionId = available.getAttribute('aria-activedescendant');
+    let activeOption = activeOptionId ? document.getElementById(activeOptionId) : null;
+    expect(activeOption?.textContent).toBe('Read');
+
+    await fireEvent.keyDown(available, { key: 'End' });
+    activeOptionId = available.getAttribute('aria-activedescendant');
+    activeOption = activeOptionId ? document.getElementById(activeOptionId) : null;
+    expect(activeOption?.textContent).toBe('Write');
+
+    await fireEvent.keyDown(available, { key: 'Home' });
+    activeOptionId = available.getAttribute('aria-activedescendant');
+    activeOption = activeOptionId ? document.getElementById(activeOptionId) : null;
+    expect(activeOption?.textContent).toBe('Read');
+  });
+
   test('renders empty states and ignores orphaned value IDs', () => {
     render(TransferList, {
       props: {

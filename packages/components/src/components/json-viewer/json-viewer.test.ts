@@ -167,6 +167,64 @@ describe('JsonViewer', () => {
     expect(rootTreeItem.getAttribute('aria-expanded')).toBe('true');
   });
 
+  test('ArrowDown moves focus to the next treeitem and clamps at the last item', async () => {
+    const { container } = render(JsonViewer, { value: { a: 1, b: 2, c: 3 } });
+    const items = Array.from(container.querySelectorAll<HTMLElement>('[role="treeitem"]'));
+    expect(items).toHaveLength(4);
+
+    items[0]!.focus();
+    await fireEvent.keyDown(items[0]!, { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(items[1]!);
+
+    await fireEvent.keyDown(items[1]!, { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(items[2]!);
+
+    await fireEvent.keyDown(items[2]!, { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(items[3]!);
+
+    await fireEvent.keyDown(items[3]!, { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(items[3]!);
+  });
+
+  test('ArrowUp moves focus to the previous treeitem and clamps at the first item', async () => {
+    const { container } = render(JsonViewer, { value: { a: 1, b: 2, c: 3 } });
+    const items = Array.from(container.querySelectorAll<HTMLElement>('[role="treeitem"]'));
+    expect(items).toHaveLength(4);
+
+    items[3]!.focus();
+    await fireEvent.keyDown(items[3]!, { key: 'ArrowUp' });
+    expect(document.activeElement).toBe(items[2]!);
+
+    await fireEvent.keyDown(items[2]!, { key: 'ArrowUp' });
+    expect(document.activeElement).toBe(items[1]!);
+
+    await fireEvent.keyDown(items[1]!, { key: 'ArrowUp' });
+    expect(document.activeElement).toBe(items[0]!);
+
+    await fireEvent.keyDown(items[0]!, { key: 'ArrowUp' });
+    expect(document.activeElement).toBe(items[0]!);
+  });
+
+  test('Home focuses the first treeitem', async () => {
+    const { container } = render(JsonViewer, { value: { a: 1, b: 2, c: 3 } });
+    const items = Array.from(container.querySelectorAll<HTMLElement>('[role="treeitem"]'));
+
+    items[2]!.focus();
+    await fireEvent.keyDown(items[2]!, { key: 'Home' });
+
+    expect(document.activeElement).toBe(items[0]!);
+  });
+
+  test('End focuses the last treeitem', async () => {
+    const { container } = render(JsonViewer, { value: { a: 1, b: 2, c: 3 } });
+    const items = Array.from(container.querySelectorAll<HTMLElement>('[role="treeitem"]'));
+
+    items[1]!.focus();
+    await fireEvent.keyDown(items[1]!, { key: 'End' });
+
+    expect(document.activeElement).toBe(items[items.length - 1]!);
+  });
+
   test('renders an array with index labels', () => {
     const { container } = render(JsonViewer, { value: [10, 20, 30] });
     const keys = Array.from(container.querySelectorAll('.cinder-json-viewer__key'));

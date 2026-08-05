@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -473,6 +473,63 @@ describe('TableOfContents', () => {
 
     expect(lastBehavior).toBe('smooth');
     expect(window.location.hash).toBe('#usage');
+  });
+
+  test('disambiguates duplicate heading slugs with a numeric suffix', async () => {
+    const article = document.createElement('article');
+    article.id = 'duplicate-heading-target';
+    article.appendChild(createHeading('', 'Overview', 'h2'));
+    article.appendChild(createHeading('', 'Overview', 'h2'));
+    document.body.appendChild(article);
+
+    const { container } = render(TableOfContents, {
+      props: {
+        target: '#duplicate-heading-target',
+      },
+    });
+
+    const links = await waitForTableOfContentsLinks(container, 2);
+    expect(links[0]?.getAttribute('href')).toBe('#overview');
+    expect(links[1]?.getAttribute('href')).toBe('#overview-2');
+  });
+
+  test('reduced motion swaps the click-to-scroll behavior to auto', async () => {
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = mock(
+      (media: string): MediaQueryList =>
+        ({
+          matches: media === '(prefers-reduced-motion: reduce)',
+          media,
+          onchange: null,
+          addEventListener: () => {},
+          removeEventListener: () => {},
+          addListener: () => {},
+          removeListener: () => {},
+          dispatchEvent: () => true,
+        }) as MediaQueryList,
+    );
+
+    try {
+      const section = createHeading('reduced-motion-target', 'Reduced motion target');
+      let lastBehavior: ScrollBehavior | undefined;
+      section.scrollIntoView = (options?: ScrollIntoViewOptions) => {
+        lastBehavior = options?.behavior;
+      };
+      document.body.appendChild(section);
+
+      const { container } = render(TableOfContents, {
+        props: {
+          items: [{ id: 'reduced-motion-target', label: 'Reduced motion target' }],
+        },
+      });
+
+      const link = container.querySelector('a.cinder-table-of-contents__link');
+      await fireEvent.click(link!);
+
+      expect(lastBehavior).toBe('auto');
+    } finally {
+      window.matchMedia = originalMatchMedia;
+    }
   });
 
   test('modified clicks preserve native anchor behavior', async () => {
