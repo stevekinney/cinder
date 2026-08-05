@@ -285,6 +285,10 @@
           subtree: true,
           characterData: true,
           attributes: true,
+          // ensureHeadingId is the only attribute-driven reason to
+          // recompute — an author's own attribute churn elsewhere inside
+          // the target (class/style/data-*) must not re-trigger derivation.
+          attributeFilter: ['id'],
         });
       }
 
@@ -371,6 +375,10 @@
         childList: true,
         subtree: true,
         attributes: true,
+        // scheduleDocumentRefreshCheck only cares about the watched target
+        // appearing, disappearing, or a selector re-matching — which
+        // depends only on id/class attribute changes plus childList.
+        attributeFilter: ['id', 'class'],
       });
     }
 

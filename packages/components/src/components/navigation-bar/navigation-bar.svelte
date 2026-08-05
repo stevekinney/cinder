@@ -444,8 +444,22 @@
     if (!anchoredItems.positionReady) return false;
 
     const sequentialItems = getSequentialFocusTargets(itemsRegionElement);
-    const enabledItems = getSequentialNavigationItems();
-    const logicalEnabledItems = getNavigationItems().filter(isEnabledNavigationItem);
+    // Evaluate `isEnabledNavigationItem` exactly once per navigation item —
+    // each call walks the item's full ancestor chain calling
+    // `getComputedStyle` — and derive both the `getSequentialNavigationItems`-
+    // equivalent list and `logicalEnabledItems` from the same memoized
+    // result instead of invoking it again for each list.
+    const navigationItems = getNavigationItems();
+    const isItemEnabled = new Map<HTMLElement, boolean>(
+      navigationItems.map((item) => [item, isEnabledNavigationItem(item)]),
+    );
+    const enabledItems = sequentialItems.filter(
+      (item): item is HTMLElement =>
+        item instanceof HTMLElement &&
+        item.matches(navigationItemSelector) &&
+        (isItemEnabled.get(item) ?? isEnabledNavigationItem(item)),
+    );
+    const logicalEnabledItems = navigationItems.filter((item) => isItemEnabled.get(item) ?? false);
     const isSequentialTarget = sequentialItems.includes(navigationItem);
     const hasSequentialTargetBefore = sequentialItems.some((target) =>
       Boolean(target.compareDocumentPosition(navigationItem) & Node.DOCUMENT_POSITION_FOLLOWING),

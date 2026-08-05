@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { afterEach, describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, spyOn, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
@@ -10,6 +10,7 @@ const { cleanup, fireEvent, render, waitFor } = await import('@testing-library/s
 const { default: MegaMenuLocaleTestHarness } =
   await import('./_mega-menu-locale-test-harness.svelte');
 const { default: MegaMenu } = await import('./mega-menu.svelte');
+const { tick } = await import('svelte');
 
 afterEach(() => cleanup());
 
@@ -470,6 +471,10 @@ describe('MegaMenu', () => {
 
     nav.style.direction = 'ltr';
     await fireEvent(window, new Event('resize'));
+    // The resize handler now coalesces its directionRevision bump through
+    // requestAnimationFrame (#1186 row 4a), so the re-resolved direction is
+    // only visible after a frame elapses.
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
     products.focus();
     await fireEvent.keyDown(products, { key: 'ArrowRight' });
     expect(document.activeElement).toBe(resources);
@@ -493,11 +498,22 @@ describe('MegaMenu', () => {
     }
     globalThis.ResizeObserver = StubResizeObserver as unknown as typeof ResizeObserver;
     try {
-      render(MegaMenuLocaleTestHarness, { items, direction: 'rtl' });
-      const observer = StubResizeObserver.instances[0];
+      const { container } = render(MegaMenuLocaleTestHarness, { items, direction: 'rtl' });
+      // The ancestor-chain ResizeObserver is only attached while a menu item
+      // is open (#1186 row 4b) — open one before it can exist to observe.
+      // Opening the panel also mutates navElement's childList, which the
+      // unrelated direction-chain MutationObserver picks up and reacts to
+      // asynchronously — let that settle before taking the baseline count,
+      // so this test isolates "does delivering a resize recreate the
+      // observer" from that unrelated direction-tracking churn.
+      await fireEvent.click(getTriggerByLabel(container, 'Products'));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      const instanceCountBeforeDelivery = StubResizeObserver.instances.length;
+      expect(instanceCountBeforeDelivery).toBeGreaterThan(0);
+      const observer = StubResizeObserver.instances.at(-1);
       observer?.deliver();
       await new Promise((resolve) => setTimeout(resolve, 0));
-      expect(StubResizeObserver.instances).toHaveLength(1);
+      expect(StubResizeObserver.instances).toHaveLength(instanceCountBeforeDelivery);
     } finally {
       globalThis.ResizeObserver = originalResizeObserver;
     }
@@ -522,6 +538,9 @@ describe('MegaMenu', () => {
       const shadow = host.attachShadow({ mode: 'open' });
       document.body.append(host);
       const view = render(MegaMenu, { target: shadow, props: { items } });
+      // The ancestor-chain ResizeObserver is only attached while a menu item
+      // is open (#1186 row 4b) — open one before it can exist to observe.
+      await fireEvent.click(getTriggerByLabel(shadow, 'Products'));
       await new Promise((resolve) => setTimeout(resolve, 0));
       expect(ChainResizeObserver.last?.observed).toContain(host);
       view.unmount();
@@ -766,5 +785,122 @@ describe('MegaMenu', () => {
     const resources = getTriggerByLabel(container, 'Resources');
     expect(resources.getAttribute('aria-expanded')).toBe('false');
     expect(container.querySelector('.cinder-mega-menu__content')).toBeNull();
+  });
+
+  test('coalesces resize, focus, and direction-chain triggers into one recompute per frame (#1186 row 4a)', async () => {
+    const originalRequestAnimationFrame = globalThis.requestAnimationFrame;
+    const originalCancelAnimationFrame = globalThis.cancelAnimationFrame;
+    const frameCallbacks = new Map<number, FrameRequestCallback>();
+    let nextFrameId = 1;
+    globalThis.requestAnimationFrame = (callback: FrameRequestCallback) => {
+      const id = nextFrameId;
+      nextFrameId += 1;
+      frameCallbacks.set(id, callback);
+      return id;
+    };
+    globalThis.cancelAnimationFrame = (id: number) => {
+      frameCallbacks.delete(id);
+    };
+    async function flushOneFrame() {
+      const callbacks = Array.from(frameCallbacks.values());
+      frameCallbacks.clear();
+      for (const callback of callbacks) callback(performance.now());
+      await tick();
+    }
+
+    try {
+      const { container } = render(MegaMenu, { items });
+      const trigger = getTriggerByLabel(container, 'Products');
+      const otherTrigger = getTriggerByLabel(container, 'Resources');
+      // Open a menu item so updateIndicator is not short-circuited by its
+      // own `!openItemId` early return.
+      await fireEvent.click(trigger);
+      await flushOneFrame();
+      await flushOneFrame();
+      expect(trigger.getAttribute('aria-expanded')).toBe('true');
+
+      const getComputedStyleSpy = spyOn(globalThis, 'getComputedStyle');
+      const getBoundingClientRectSpy = spyOn(HTMLElement.prototype, 'getBoundingClientRect');
+
+      window.dispatchEvent(new Event('resize'));
+      await fireEvent.focusIn(trigger);
+      // A relatedTarget still inside the nav keeps the menu open — a bare
+      // focusOut with no relatedTarget would trip onRootFocusOut's
+      // close-on-blur handling and close the menu before the frame flushes.
+      await fireEvent.focusOut(trigger, { relatedTarget: otherTrigger });
+
+      // No recompute until a frame is flushed, no matter how many of the
+      // three independent trigger sources fired synchronously.
+      expect(getComputedStyleSpy).toHaveBeenCalledTimes(0);
+      expect(getBoundingClientRectSpy).toHaveBeenCalledTimes(0);
+
+      await flushOneFrame();
+
+      const computedStyleCallsAfterOneFrame = getComputedStyleSpy.mock.calls.length;
+      const boundingRectCallsAfterOneFrame = getBoundingClientRectSpy.mock.calls.length;
+      expect(computedStyleCallsAfterOneFrame).toBeGreaterThan(0);
+      expect(boundingRectCallsAfterOneFrame).toBeGreaterThan(0);
+
+      getComputedStyleSpy.mockClear();
+      getBoundingClientRectSpy.mockClear();
+
+      // A further burst of the same three sources after the frame settles
+      // must again coalesce to the SAME fixed per-frame cost, not grow —
+      // proving liveness (it recomputes again) and coalescing (the second
+      // burst costs the same as the first), independent of the exact
+      // per-frame constant.
+      window.dispatchEvent(new Event('resize'));
+      await fireEvent.focusIn(trigger);
+      await fireEvent.focusOut(trigger, { relatedTarget: otherTrigger });
+      await flushOneFrame();
+
+      expect(getComputedStyleSpy).toHaveBeenCalledTimes(computedStyleCallsAfterOneFrame);
+      expect(getBoundingClientRectSpy).toHaveBeenCalledTimes(boundingRectCallsAfterOneFrame);
+
+      getComputedStyleSpy.mockRestore();
+      getBoundingClientRectSpy.mockRestore();
+    } finally {
+      globalThis.requestAnimationFrame = originalRequestAnimationFrame;
+      globalThis.cancelAnimationFrame = originalCancelAnimationFrame;
+    }
+  });
+
+  test('observes the ancestor chain only while a menu item is open (#1186 row 4b)', async () => {
+    const originalResizeObserver = globalThis.ResizeObserver;
+    class SpyResizeObserver {
+      static observeCalls = 0;
+      static disconnectCalls = 0;
+      observe() {
+        SpyResizeObserver.observeCalls += 1;
+      }
+      unobserve() {}
+      disconnect() {
+        SpyResizeObserver.disconnectCalls += 1;
+      }
+    }
+    globalThis.ResizeObserver = SpyResizeObserver as unknown as typeof ResizeObserver;
+    try {
+      const { container } = render(MegaMenu, { items });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      // No menu item is open at mount — the ancestor chain must not be
+      // observed at all.
+      expect(SpyResizeObserver.observeCalls).toBe(0);
+
+      const trigger = getTriggerByLabel(container, 'Products');
+      await fireEvent.click(trigger);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      // Opening an item attaches the observer across the ancestor chain.
+      expect(SpyResizeObserver.observeCalls).toBeGreaterThan(0);
+
+      await fireEvent.click(trigger);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      // Closing it disconnects the observer.
+      expect(SpyResizeObserver.disconnectCalls).toBeGreaterThan(0);
+    } finally {
+      globalThis.ResizeObserver = originalResizeObserver;
+    }
   });
 });

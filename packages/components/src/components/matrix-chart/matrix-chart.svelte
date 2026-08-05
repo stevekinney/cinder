@@ -176,9 +176,14 @@
     return heatmapCellFill(value, domain, colorScale);
   }
 
+  // Hoisted so a dense grid's ~3x(rows*cols) formatting calls (tooltip
+  // title, visible label, and data-table fallback per cell) reuse one
+  // formatter instead of constructing a new Intl.NumberFormat per call.
+  const numberFormatter = new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 });
+
   function formatValue(value: number | null): string {
     if (value === null) return '';
-    return new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(value);
+    return numberFormatter.format(value);
   }
 
   function cellLabelFill(value: number | null): string {

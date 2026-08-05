@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { afterAll, afterEach, describe, expect, test } from 'bun:test';
+import { afterAll, afterEach, describe, expect, spyOn, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -349,5 +349,46 @@ describe('MatrixChart', () => {
   test('matrix-chart CSS has a rule for data-cinder-active', async () => {
     const cssText = await Bun.file(new URL('./matrix-chart.css', import.meta.url)).text();
     expect(cssText).toContain('.cinder-matrix-chart__cell[data-cinder-active]');
+  });
+
+  test('formats every cell label with one hoisted Intl.NumberFormat instance (#1186 row 6)', () => {
+    const numberFormatSpy = spyOn(Intl, 'NumberFormat');
+
+    const { container } = render(MatrixChart, {
+      label: 'Confusion matrix',
+      data: confusionData,
+      xField: 'predicted',
+      yField: 'actual',
+      valueField: 'count',
+      cellLabelsVisible: true,
+      dataTableVisibility: 'visible',
+    });
+
+    // Correctness: every rendered label — SVG title, visible cell label, and
+    // the accessible data-table fallback — still formats the right value.
+    const cellTitles = [...container.querySelectorAll('.cinder-matrix-chart__cell title')];
+    expect(cellTitles).toHaveLength(4);
+    for (const value of ['50', '5', '3', '42']) {
+      expect(cellTitles.some((title) => title.textContent?.endsWith(`: ${value}`))).toBe(true);
+    }
+
+    const cellLabels = [...container.querySelectorAll('.cinder-matrix-chart__cell-label')];
+    expect(cellLabels.map((label) => label.textContent).sort()).toEqual(
+      ['3', '42', '5', '50'].sort(),
+    );
+
+    const tableCellText = [...container.querySelectorAll('table td')].map(
+      (cell) => cell.textContent,
+    );
+    expect(tableCellText).toContain('50');
+    expect(tableCellText).toContain('5');
+    expect(tableCellText).toContain('3');
+    expect(tableCellText).toContain('42');
+
+    // Roughly 3x(rows*cols) format calls happen across title, visible
+    // label, and data-table text — all through one constructed formatter.
+    expect(numberFormatSpy).toHaveBeenCalledTimes(1);
+
+    numberFormatSpy.mockRestore();
   });
 });

@@ -127,6 +127,26 @@
 
   const hasDataTable = $derived(dataTableVisibility !== 'hidden');
 
+  // The primary SVG plot renders one <rect> per frame-per-bin with no cap,
+  // unlike the accessible data table below (already capped/sampled to
+  // 10x10). A realistic STFT feed (a few hundred frames x 256 bins) can
+  // produce tens of thousands of DOM nodes. Sample the plot the same way,
+  // sized for visual density rather than the table's 10x10 accessibility
+  // limit: 400 x 256 keeps the worst case at 102,400 <rect> elements.
+  const maxPlotFrames = 400;
+  const maxPlotBins = 256;
+  const plotFrameStep = $derived(Math.max(1, Math.ceil(frames.length / maxPlotFrames)));
+  const plotBinStep = $derived(Math.max(1, Math.ceil(binCount / maxPlotBins)));
+  const plotFrames = $derived(
+    frames
+      .map((frame, frameIndex) => ({ frame, frameIndex }))
+      .filter((_, index) => index % plotFrameStep === 0)
+      .slice(0, maxPlotFrames),
+  );
+  const plotBinIndices = $derived(
+    binIndices.filter((index) => index % plotBinStep === 0).slice(0, maxPlotBins),
+  );
+
   // Table rows: each frame is a column; rows are frequency bins.
   // For accessibility, sample every-Nth frame and bin so the full range is represented
   // rather than silently truncating to first-N.
@@ -205,15 +225,15 @@
           <!-- Frequency cells: a full frames × binCount rectangular grid. Ragged or
                non-finite cells render as the "missing" fill. Low frequency (bin 0)
                is at the bottom. -->
-          {#each frames as _frame, frameIndex (frameIndex)}
-            {#each binIndices as binIndex (binIndex)}
+          {#each plotFrames as entry (entry.frameIndex)}
+            {#each plotBinIndices as binIndex (binIndex)}
               <rect
                 class="cinder-spectrogram__cell"
-                x={frameIndex * cellWidth}
+                x={entry.frameIndex * cellWidth}
                 y={binY(binIndex)}
                 width={cellWidth}
                 height={cellHeight}
-                fill={cellFill(binValueAt(frameIndex, binIndex))}
+                fill={cellFill(binValueAt(entry.frameIndex, binIndex))}
                 aria-hidden="true"
               />
             {/each}

@@ -473,4 +473,60 @@ describe('AccessGate', () => {
     const gate = container.querySelector('.cinder-access-gate');
     expect(gate?.classList.contains('custom-access-state')).toBe(true);
   });
+
+  test('re-scans only when a childList mutation could add or remove an interactive control (#1186 row 12)', async () => {
+    const { container } = render(AccessGate, {
+      granted: false,
+      reason: 'Requires scope: workflows:cancel',
+      children: markupSnippet(
+        '<span><button type="button">Cancel workflow</button><div data-testid="live-region"></div></span>',
+      ),
+    });
+    await tick();
+
+    const gateRoot = container.querySelector<HTMLElement>('.cinder-access-gate');
+    const liveRegion = container.querySelector<HTMLElement>('[data-testid="live-region"]');
+    if (!gateRoot || !liveRegion) throw new Error('Missing gate root or live region.');
+
+    // Scope the spy to calls whose receiver is the gate root or one of its
+    // descendants — an unscoped global spy would also pick up unrelated
+    // querySelectorAll calls from other mounted fixtures/harness code.
+    const originalQuerySelectorAll = Element.prototype.querySelectorAll;
+    let scopedCallCount = 0;
+    Element.prototype.querySelectorAll = function (
+      this: Element,
+      ...args: Parameters<typeof originalQuerySelectorAll>
+    ) {
+      if (this === gateRoot || gateRoot.contains(this)) scopedCallCount += 1;
+      return originalQuerySelectorAll.apply(this, args);
+    } as typeof originalQuerySelectorAll;
+
+    try {
+      const baseline = scopedCallCount;
+
+      // Insert then remove a non-interactive child — must not re-scan.
+      const status = document.createElement('span');
+      status.textContent = 'status update';
+      liveRegion.append(status);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      status.remove();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(scopedCallCount).toBe(baseline);
+
+      // Insert an interactive control — must re-scan exactly once.
+      const newButton = document.createElement('button');
+      newButton.type = 'button';
+      newButton.textContent = 'New action';
+      liveRegion.append(newButton);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(scopedCallCount).toBe(baseline + 1);
+      // Correctness: the newly-inserted control was actually disabled by
+      // the re-scan this proves happened.
+      expect(newButton.disabled).toBe(true);
+    } finally {
+      Element.prototype.querySelectorAll = originalQuerySelectorAll;
+    }
+  });
 });

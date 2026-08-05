@@ -1,6 +1,6 @@
 /// <reference lib="dom" />
 import * as matchers from '@testing-library/jest-dom/matchers';
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, spyOn, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -720,5 +720,38 @@ describe('MultiSelect', () => {
     await fireEvent.keyDown(filter, { key: 'Enter' });
 
     expect(submitCount).toBe(0);
+  });
+
+  test('scans the listbox once per sync, not once per option (#1186 row 7)', async () => {
+    const { container } = render(MultiSelect, { id: 'fruits', items, filterable: true });
+
+    await openMenu(container);
+    const listbox = container.querySelector<HTMLElement>('[role="listbox"]');
+    if (!listbox) throw new Error('listbox not found');
+    const filter = container.querySelector<HTMLInputElement>('.cinder-multi-select__filter');
+    if (!filter) throw new Error('filter input not found');
+
+    const querySelectorAllSpy = spyOn(listbox, 'querySelectorAll');
+
+    // Narrows visibleItems from 4 to 2, re-running the sync effect once.
+    await fireEvent.input(filter, { target: { value: 'ap' } });
+    await waitFor(() => {
+      const labels = Array.from(
+        container.querySelectorAll('.cinder-multi-select__option-label'),
+      ).map((node) => node.textContent?.trim());
+      expect(labels).toEqual(['Apple', 'Apricot']);
+    });
+
+    // Correctness: both filtered options are registered with the expected,
+    // predictable ids (proves the sync still wired every option correctly).
+    expect(container.querySelector('#fruits-option-0')?.textContent).toContain('Apple');
+    expect(container.querySelector('#fruits-option-1')?.textContent).toContain('Apricot');
+    expect(container.querySelectorAll('[role="option"]')).toHaveLength(2);
+
+    // The effect run above scanned the listbox exactly once for the whole
+    // sync — not once per visible option.
+    expect(querySelectorAllSpy).toHaveBeenCalledTimes(1);
+
+    querySelectorAllSpy.mockRestore();
   });
 });

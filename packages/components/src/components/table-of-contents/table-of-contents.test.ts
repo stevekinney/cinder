@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, spyOn, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -499,5 +499,72 @@ describe('TableOfContents', () => {
 
     expect(clickEvent.defaultPrevented).toBe(false);
     expect(scrollCalls).toBe(0);
+  });
+
+  test('document-wide MutationObserver filters to id/class attributes (#1186 row 8a)', () => {
+    const article = document.createElement('article');
+    article.id = 'doc-8a';
+    article.appendChild(createHeading('doc-8a-install', 'Install', 'h2'));
+    document.body.appendChild(article);
+
+    const observeSpy = spyOn(MutationObserver.prototype, 'observe');
+    render(TableOfContents, { props: { target: '#doc-8a' } });
+
+    const documentBodyCall = observeSpy.mock.calls.find((call) => call[0] === document.body);
+    expect(documentBodyCall).toBeDefined();
+    expect(documentBodyCall?.[1]).toEqual({
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['id', 'class'],
+    });
+
+    observeSpy.mockRestore();
+  });
+
+  test('target-scoped MutationObserver filters to id-only attribute changes (#1186 row 8b)', async () => {
+    const article = document.createElement('article');
+    article.id = 'doc-8b';
+    const heading = createHeading('doc-8b-install', 'Install', 'h2');
+    article.appendChild(heading);
+    document.body.appendChild(article);
+
+    const observeSpy = spyOn(MutationObserver.prototype, 'observe');
+    const { container } = render(TableOfContents, { props: { target: '#doc-8b' } });
+
+    const targetCall = observeSpy.mock.calls.find((call) => call[0] === article);
+    expect(targetCall).toBeDefined();
+    expect(targetCall?.[1]).toMatchObject({
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributes: true,
+      attributeFilter: ['id'],
+    });
+    observeSpy.mockRestore();
+
+    await waitForTableOfContentsLinks(container, 1);
+
+    const querySelectorAllSpy = spyOn(article, 'querySelectorAll');
+
+    // An unrelated attribute mutation inside the target must not recompute.
+    heading.setAttribute('data-highlight', 'true');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(querySelectorAllSpy).toHaveBeenCalledTimes(0);
+    expect(container.querySelector('a.cinder-table-of-contents__link')?.getAttribute('href')).toBe(
+      '#doc-8b-install',
+    );
+
+    // A heading id mutation must still recompute.
+    heading.id = 'doc-8b-install-renamed';
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(querySelectorAllSpy.mock.calls.length).toBeGreaterThan(0);
+    await waitFor(() => {
+      expect(
+        container.querySelector('a.cinder-table-of-contents__link')?.getAttribute('href'),
+      ).toBe('#doc-8b-install-renamed');
+    });
+
+    querySelectorAllSpy.mockRestore();
   });
 });

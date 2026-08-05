@@ -253,12 +253,24 @@
   // viewport position. Gated on `inlineCompletion.visible` — this is the
   // only time repositioning matters, so a closed menu or a host that never
   // enables ghost text never pays for these listeners.
+  //
+  // The window `scroll` listener is capture-phase and unthrottled, so it
+  // fires for scroll anywhere in the document while ghost text is visible.
+  // Coalesce with `requestAnimationFrame`: collapse any number of scroll
+  // events within one frame into a single `selectionGeneration` bump, which
+  // is the only thing that triggers the expensive `getCaretRect` mirror-div
+  // read/write cycle downstream.
   $effect(() => {
     if (!anchor || !inlineCompletion.visible) return;
     const currentAnchor = anchor;
 
+    let pendingFrame: number | null = null;
     const bumpSelectionGeneration = () => {
-      selectionGeneration += 1;
+      if (pendingFrame !== null) return;
+      pendingFrame = requestAnimationFrame(() => {
+        pendingFrame = null;
+        selectionGeneration += 1;
+      });
     };
     const stopAnchorScroll = on(currentAnchor, 'scroll', bumpSelectionGeneration);
     const stopWindowScroll = on(window, 'scroll', bumpSelectionGeneration, { capture: true });
@@ -268,6 +280,10 @@
       stopAnchorScroll();
       stopWindowScroll();
       stopWindowResize();
+      if (pendingFrame !== null) {
+        cancelAnimationFrame(pendingFrame);
+        pendingFrame = null;
+      }
     };
   });
 

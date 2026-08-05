@@ -116,13 +116,34 @@
     element.setSelectionRange(position, position);
   }
 
-  function isCssHidden(element: HTMLElement): boolean {
+  /**
+   * Whether an ancestor is `display: none`. Deliberately narrower than the
+   * candidate's own check below — `visibility` is inherited and a descendant
+   * can override an ancestor's `visibility: hidden` back to `visible`, so an
+   * ancestor's `visibility` alone must not veto its descendants. `display:
+   * none` has no such override, so it is the only ancestor-level signal.
+   * Memoized in `hiddenCache` so an ancestor shared by multiple candidates
+   * during one `getToolbarItems()` pass only calls `getComputedStyle` once.
+   */
+  function isAncestorDisplayNone(
+    element: HTMLElement,
+    hiddenCache: Map<Element, boolean>,
+  ): boolean {
+    const cached = hiddenCache.get(element);
+    if (cached !== undefined) return cached;
+    const hidden = getComputedStyle(element).display === 'none';
+    hiddenCache.set(element, hidden);
+    return hidden;
+  }
+
+  function isCssHidden(element: HTMLElement, hiddenCache: Map<Element, boolean>): boolean {
     const elementStyle = getComputedStyle(element);
     if (elementStyle.display === 'none' || elementStyle.visibility === 'hidden') return true;
 
-    let current = element.parentElement;
+    let current = element === rootElement ? null : element.parentElement;
     while (current) {
-      if (getComputedStyle(current).display === 'none') return true;
+      if (isAncestorDisplayNone(current, hiddenCache)) return true;
+      if (current === rootElement) break;
       current = current.parentElement;
     }
     return false;
@@ -135,7 +156,10 @@
     return firstLegend ? !firstLegend.contains(element) : true;
   }
 
-  function isEligibleToolbarItem(element: HTMLElement): boolean {
+  function isEligibleToolbarItem(
+    element: HTMLElement,
+    hiddenCache: Map<Element, boolean> = new Map(),
+  ): boolean {
     if (!rootElement || element === rootElement) return false;
     if (!rootElement.contains(element)) return false;
     if (isHiddenInput(element)) return false;
@@ -149,7 +173,7 @@
       return false;
     if (element.closest('[inert]')) return false;
     if (isDisabledByFieldset(element)) return false;
-    if (isCssHidden(element)) return false;
+    if (isCssHidden(element, hiddenCache)) return false;
     const authoredTabIndex = element.getAttribute('tabindex');
     if (
       authoredTabIndex === '-1' &&
@@ -163,8 +187,9 @@
 
   function getToolbarItems(): HTMLElement[] {
     if (!rootElement) return [];
+    const hiddenCache = new Map<Element, boolean>();
     return Array.from(rootElement.querySelectorAll<HTMLElement>(focusableSelector)).filter(
-      (element) => isEligibleToolbarItem(element),
+      (element) => isEligibleToolbarItem(element, hiddenCache),
     );
   }
 

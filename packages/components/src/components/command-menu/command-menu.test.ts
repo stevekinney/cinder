@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from 'bun:test';
 import { parse } from 'postcss';
 import selectorParser from 'postcss-selector-parser';
 
@@ -816,5 +816,83 @@ describe('CommandMenu inline ghost-text completion (#970)', () => {
     expect(ghost.style.position).toBe('fixed');
     expect(ghost.style.left).toBeTruthy();
     expect(ghost.style.top).toBeTruthy();
+  });
+});
+
+describe('CommandMenu ghost overlay scroll coalescing (#1186 row 1)', () => {
+  // happy-dom does not deliver capture-phase listeners registered on `window`
+  // when an event is dispatched directly at `window` (verified: a bare
+  // `window.addEventListener('scroll', fn, { capture: true })` +
+  // `window.dispatchEvent(new Event('scroll'))` never invokes `fn`, even
+  // outside this component, while the identical listener without `capture`
+  // fires normally). `bumpSelectionGeneration` is the exact same closure for
+  // all three of its trigger sources (anchor-local scroll, capture-phase
+  // window scroll, window resize) — coalescing it via the anchor's own
+  // `scroll` listener (non-capture, fires reliably under happy-dom) proves
+  // the same rAF-batching logic the capture-phase window listener shares.
+  test('coalesces synchronous scroll events into one caret re-measure per frame', async () => {
+    // Install a manually-flushed animation frame queue before mounting, so
+    // any frame the component schedules — including incidental ones during
+    // mount/positioning — lands in a queue this test controls rather than
+    // the real (async, ~16ms) scheduler.
+    const originalRequestAnimationFrame = globalThis.requestAnimationFrame;
+    const originalCancelAnimationFrame = globalThis.cancelAnimationFrame;
+    const frameCallbacks = new Map<number, FrameRequestCallback>();
+    let nextFrameId = 1;
+    globalThis.requestAnimationFrame = (callback: FrameRequestCallback) => {
+      const id = nextFrameId;
+      nextFrameId += 1;
+      frameCallbacks.set(id, callback);
+      return id;
+    };
+    globalThis.cancelAnimationFrame = (id: number) => {
+      frameCallbacks.delete(id);
+    };
+    async function flushOneFrame() {
+      const callbacks = Array.from(frameCallbacks.values());
+      frameCallbacks.clear();
+      for (const callback of callbacks) callback(performance.now());
+      await tick();
+    }
+
+    try {
+      const { getByTestId } = render(CommandMenuHostFixture, { ghostTextEnabled: true });
+      const host = getByTestId('host') as HTMLTextAreaElement;
+      Object.defineProperty(host, 'getBoundingClientRect', {
+        value: () => new DOMRect(20, 30, 200, 20),
+        configurable: true,
+      });
+
+      await typeIntoHost(host, '/al');
+      await waitFor(() => expect(queryGhost()).not.toBeNull());
+      await settleCommandMenu();
+
+      // Drain any frame(s) scheduled incidentally during mount/positioning
+      // before starting the measured scroll-coalescing assertions below.
+      await flushOneFrame();
+      await flushOneFrame();
+
+      const appendSpy = spyOn(document.body, 'append');
+
+      await fireEvent.scroll(host);
+      await fireEvent.scroll(host);
+      await fireEvent.scroll(host);
+
+      // No re-measure until a frame is flushed, no matter how many scroll
+      // events fired synchronously.
+      expect(appendSpy).toHaveBeenCalledTimes(0);
+
+      await flushOneFrame();
+      expect(appendSpy).toHaveBeenCalledTimes(1);
+
+      await fireEvent.scroll(host);
+      await flushOneFrame();
+      expect(appendSpy).toHaveBeenCalledTimes(2);
+
+      appendSpy.mockRestore();
+    } finally {
+      globalThis.requestAnimationFrame = originalRequestAnimationFrame;
+      globalThis.cancelAnimationFrame = originalCancelAnimationFrame;
+    }
   });
 });

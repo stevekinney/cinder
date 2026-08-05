@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -664,6 +664,45 @@ describe('MenuBar', () => {
     } finally {
       view.unmount();
       host.remove();
+    }
+  });
+
+  test('document focusin is a no-op when nothing is open, but walks open menus once something is (#1186 row 9)', async () => {
+    const { getByRole } = render(MenuBar, { props: { menus: fileEditViewMenus() } });
+    const outsideButton = document.createElement('button');
+    document.body.append(outsideButton);
+    const file = getByRole('menuitem', { name: 'File' });
+
+    try {
+      expect(file.getAttribute('aria-expanded')).toBe('false');
+
+      const spy = spyOn(Element.prototype, 'contains');
+      spy.mockClear();
+
+      outsideButton.focus();
+      await tick();
+      await tick();
+
+      // The guard exits before scheduling the tick().then() microtask that
+      // walks isInsideOpenMenu, so nothing measurably happened.
+      expect(spy).toHaveBeenCalledTimes(0);
+      expect(file.getAttribute('aria-expanded')).toBe('false');
+
+      await fireEvent.keyDown(file, { key: 'ArrowDown' });
+      await tick();
+      expect(file.getAttribute('aria-expanded')).toBe('true');
+
+      spy.mockClear();
+      outsideButton.focus();
+      await tick();
+      await tick();
+
+      // With a menu open, the same focusin now walks isInsideOpenMenu.
+      expect(spy.mock.calls.length).toBeGreaterThan(0);
+
+      spy.mockRestore();
+    } finally {
+      outsideButton.remove();
     }
   });
 });
