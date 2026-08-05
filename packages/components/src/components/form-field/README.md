@@ -7,9 +7,14 @@ Wraps an input, label, and helper or error text into a cohesive accessible field
 ```svelte
 <script lang="ts">
   import FormField from '@lostgradient/cinder/form-field';
+  import Input from '@lostgradient/cinder/input';
+
+  let name = $state('');
 </script>
 
-<FormField />
+<FormField id="full-name" label="Full name">
+  <Input id="full-name" bind:value={name} placeholder="Jane Smith" />
+</FormField>
 ```
 
 ## Props

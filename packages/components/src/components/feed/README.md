@@ -1,6 +1,6 @@
 # Feed
 
-Scrollable chronological list of activity events with optional load-more pagination.
+Scrollable chronological list of activity events, with an optional ARIA live-region toggle.
 
 See the [chronological display boundary decision](https://github.com/stevekinney/cinder/blob/main/docs/decisions/chronological-display-boundaries.md) for the boundary between user-facing activity, static history, schedules, and operational streams.
 

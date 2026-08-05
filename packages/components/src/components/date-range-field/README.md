@@ -88,24 +88,6 @@ Values are ISO-8601 local strings. `granularity="day"` emits `YYYY-MM-DD`; time 
 <DateRangeField id="validated-filter" label="Date range" bind:value={range} {error} />
 ```
 
-## Props
-
-```
-id           string               no        Unique identifier for label and ARIA wiring. Generated via `$props.id()` when omitted.
-value        DateRangeValue       no        Current range. Bindable. Both fields start undefined.
-label        string               no        Visible legend rendered above the inputs.
-startLabel   string               no        Label for the start input. Default: "Start date".
-endLabel     string               no        Label for the end input. Default: "End date".
-granularity  DateRangeGranularity no        Precision for custom picker fields: day, hour, minute, or second. Default: day.
-presets      DateRangeDatePreset[]  no      Custom preset buttons. Defaults to today, yesterday-today, last-7d.
-hidePresets  boolean              no        When true, hides the preset row. Default: false.
-description  string               no        Helper text below the field, wired via aria-describedby.
-error        string               no        Validation error. Sets aria-invalid="true" on inputs.
-disabled     boolean              no        Disables all inputs and preset buttons. Default: false.
-class        string               no        Additional CSS classes on the root element.
-onchange     (value) => void      no        Called when the range changes via preset or manual input.
-```
-
 ## Types
 
 ```ts
@@ -120,6 +102,42 @@ type DateRangeDatePreset = {
   resolve: () => DateRangeValue;
 };
 ```
+
+## Props
+
+<!-- generated:props:start -->
+
+| Prop          | Type                                            | Required | Default | Description                                                                                                                                                                                                                                                                                 |
+| ------------- | ----------------------------------------------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `class`       | `string`                                        | no       | —       | Additional CSS classes applied to the root element.                                                                                                                                                                                                                                         |
+| `description` | `string`                                        | no       | —       | Helper text displayed below the field; wired via aria-describedby.                                                                                                                                                                                                                          |
+| `disabled`    | `boolean`                                       | no       | —       | Disables the entire field including presets and date inputs.                                                                                                                                                                                                                                |
+| `endLabel`    | `string`                                        | no       | —       | Accessible label for the end input. Defaults to "End date" for day granularity and "End date and time" for datetime granularities.                                                                                                                                                          |
+| `error`       | `string`                                        | no       | —       | Validation error message. When provided, marks both inputs as aria-invalid="true" and renders the message in a live region.                                                                                                                                                                 |
+| `granularity` | `"day"` \| `"hour"` \| `"minute"` \| `"second"` | no       | —       | Date-time precision. Defaults to day precision.                                                                                                                                                                                                                                             |
+| `hidePresets` | `boolean`                                       | no       | —       | When true, hides the preset buttons and shows only the date inputs.                                                                                                                                                                                                                         |
+| `id`          | `string`                                        | no       | —       | Unique identifier used to generate accessible IDs for labels and error regions. Optional — a stable id is generated via `$props.id()` when omitted.                                                                                                                                         |
+| `label`       | `string`                                        | no       | —       | Visible legend rendered above the start/end inputs.                                                                                                                                                                                                                                         |
+| `startLabel`  | `string`                                        | no       | —       | Accessible label for the start input. Defaults to "Start date" for day granularity and "Start date and time" for datetime granularities.                                                                                                                                                    |
+| `onchange`    | `(opaque)`                                      | no       | —       | Called when the user changes the date range (preset or manual input). Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                            |
+| `presets`     | `(opaque)`                                      | no       | —       | Consumer-defined preset options shown above the date inputs. Each preset has a label and a resolve() function that returns a DateRangeValue. Defaults to today, yesterday-today, last-7d built-ins when omitted. Not expressible in JSON Schema; see the component types for the signature. |
+| `value`       | `(opaque)`                                      | no       | —       | Current date range value. Bindable. Both fields start undefined when unset. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                      |
+
+<!-- generated:props:end -->
+
+## CSS Variables
+
+<!-- generated:variables:start -->
+
+This component does not declare any local CSS variables.
+
+<!-- generated:variables:end -->
+
+## Subcomponents
+
+<!-- generated:subcomponents:start -->
+
+<!-- generated:subcomponents:end -->
 
 ## Accessibility
 

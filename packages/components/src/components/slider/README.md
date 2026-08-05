@@ -9,7 +9,9 @@ Drag handle input for selecting a numeric value within a bounded range.
   import Slider from '@lostgradient/cinder/slider';
 </script>
 
-<Slider />
+<div style="display: flex; flex-direction: column; gap: 1rem; max-width: 24rem;">
+  <Slider label="Volume" value={40} disabled />
+</div>
 ```
 
 ## Props

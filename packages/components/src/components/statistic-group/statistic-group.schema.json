@@ -9,12 +9,12 @@
     "columns": {
       "enum": [1, 2, 3, 4, "auto"],
       "description": "Grid column count. `'auto'` uses auto-fit with minmax for responsive layout.",
-      "default": "'auto'"
+      "default": "auto"
     },
     "variant": {
       "enum": ["default", "cards", "shared-borders"],
       "description": "Visual variant; surfaced as `data-cinder-variant` for CSS styling.\n- `'default'` — plain grid, no borders or backgrounds.\n- `'cards'` — each stat gets a card-style border and shadow.\n- `'shared-borders'` — single outer border with 1px gap dividers between stats.",
-      "default": "'default'"
+      "default": "default"
     },
     "class": {
       "type": "string",

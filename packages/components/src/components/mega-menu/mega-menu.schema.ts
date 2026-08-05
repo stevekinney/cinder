@@ -7,18 +7,22 @@ const schema = {
     openOnHover: {
       type: 'boolean',
       description: 'Hover opens top-level content instead of click-only mode.',
+      default: false,
     },
     viewportVisible: {
       type: 'boolean',
       description: 'Render the shared content viewport wrapper.',
+      default: true,
     },
     indicatorVisible: {
       type: 'boolean',
       description: 'Render an active trigger indicator bar.',
+      default: true,
     },
     label: {
       type: 'string',
       description: 'Accessible name for the navigation landmark.',
+      default: 'Main navigation',
     },
     dir: {
       enum: ['ltr', 'rtl', 'auto'],

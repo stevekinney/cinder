@@ -55,15 +55,14 @@ const schema = {
       type: 'string',
       description: 'Error message rendered below the input; also sets `aria-invalid` on the input.',
     },
+    class: {
+      type: 'string',
+    },
   },
   additionalProperties: false,
   required: ['id'],
   metadata: {
     unsupportedProps: [
-      {
-        name: 'class',
-        reason: 'unknown-shape',
-      },
       {
         name: 'inputAttachment',
         reason: 'function-or-snippet',

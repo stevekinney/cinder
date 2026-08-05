@@ -21,6 +21,10 @@ const schema = {
       type: 'boolean',
       description: 'When true, the disclosure button is disabled. Default: false.',
     },
+    class: {
+      type: 'string',
+      description: 'Additional CSS class merged with `.cinder-side-navigation-group`.',
+    },
   },
   additionalProperties: false,
   required: ['label'],
@@ -38,11 +42,6 @@ const schema = {
         required: true,
         description:
           'Must be <li>-wrapped NavigationItems (or SideNavigationItems) rendered inside the disclosed <ul>.',
-      },
-      {
-        name: 'class',
-        reason: 'unknown-shape',
-        description: 'Additional CSS class merged with `.cinder-side-navigation-group`.',
       },
       {
         name: 'icon',

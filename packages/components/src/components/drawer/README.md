@@ -24,10 +24,39 @@ Side-anchored overlay panel for supplementary content without leaving the curren
 
 ```svelte
 <script lang="ts">
+  import Button from '@lostgradient/cinder/button';
+  import Checkbox from '@lostgradient/cinder/checkbox';
   import Drawer from '@lostgradient/cinder/drawer';
+
+  let open = $state(false);
+  let triggerRef: HTMLElement | null = $state(null);
+
+  const filters = Array.from({ length: 30 }, (_, index) => ({
+    id: `drawer-overflowing-filter-${index + 1}`,
+    label: `Filter group ${index + 1}`,
+  }));
 </script>
 
-<Drawer />
+<Button
+  label="Open drawer"
+  onclick={(event: MouseEvent) => {
+    triggerRef = event.currentTarget as HTMLElement;
+    open = true;
+  }}
+/>
+
+<Drawer bind:open title="Filters" {triggerRef}>
+  <div style="display: grid; gap: 0.75rem;">
+    {#each filters as filter (filter.id)}
+      <Checkbox id={filter.id} label={filter.label} />
+    {/each}
+  </div>
+
+  {#snippet footer()}
+    <Button variant="secondary" label="Cancel" onclick={() => (open = false)} />
+    <Button label="Apply" onclick={() => (open = false)} />
+  {/snippet}
+</Drawer>
 ```
 
 ## Props

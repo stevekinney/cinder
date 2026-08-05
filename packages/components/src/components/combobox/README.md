@@ -7,9 +7,21 @@ Filterable dropdown that combines a text input with a selectable option list.
 ```svelte
 <script lang="ts">
   import Combobox from '@lostgradient/cinder/combobox';
+  const options = [
+    { value: 'free', label: 'Free' },
+    { value: 'pro', label: 'Pro' },
+    { value: 'enterprise', label: 'Enterprise', disabled: true },
+  ];
 </script>
 
-<Combobox />
+<Combobox
+  id="combobox-disabled"
+  label="Plan"
+  placeholder="Locked plan selection"
+  {options}
+  value="pro"
+  disabled
+/>
 ```
 
 ## Props

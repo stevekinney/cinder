@@ -9,7 +9,13 @@ Responsive image wrapper with aspect-ratio preservation, lazy loading, and fallb
   import Image from '@lostgradient/cinder/image';
 </script>
 
-<Image />
+<Image
+  src="https://picsum.photos/seed/cinder/600/338"
+  alt="A randomly selected placeholder photograph"
+  ratio="16/9"
+  width={600}
+  height={338}
+/>
 ```
 
 ## Props
@@ -19,6 +25,7 @@ Responsive image wrapper with aspect-ratio preservation, lazy loading, and fallb
 | Prop          | Type                              | Required | Default | Description                                                                                                                                                    |
 | ------------- | --------------------------------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `alt`         | `string`                          | yes      | —       | Alternative text. Required with no default — pass `alt=""` explicitly for decorative images so the choice is intentional, not silent.                          |
+| `class`       | `string`                          | no       | —       | Additional class names merged with `.cinder-image`.                                                                                                            |
 | `decoding`    | `"async"` \| `"sync"` \| `"auto"` | no       | —       | Decoding hint. Default `async`.                                                                                                                                |
 | `height`      | `number`                          | no       | —       | Native pixel height.                                                                                                                                           |
 | `loading`     | `"lazy"` \| `"eager"`             | no       | —       | Loading strategy. Default `lazy`. Override to `eager` for above-the-fold images.                                                                               |
@@ -26,7 +33,6 @@ Responsive image wrapper with aspect-ratio preservation, lazy loading, and fallb
 | `ratio`       | `string`                          | no       | —       | CSS aspect-ratio applied to the wrapper (e.g. `'16 / 9'`) so layout is stable while the image loads.                                                           |
 | `src`         | `string`                          | yes      | —       | Image source URL.                                                                                                                                              |
 | `width`       | `number`                          | no       | —       | Native pixel width.                                                                                                                                            |
-| `class`       | `(opaque)`                        | no       | —       | Additional class names merged with `.cinder-image`. Not expressible in JSON Schema; see the component types for the signature.                                 |
 | `fallback`    | `(opaque)`                        | no       | —       | Rendered in place of the `<img>` when it fails to load. Not expressible in JSON Schema; see the component types for the signature.                             |
 | `onError`     | `(opaque)`                        | no       | —       | Forwarded after internal state updates. Not expressible in JSON Schema; see the component types for the signature.                                             |
 | `onLoad`      | `(opaque)`                        | no       | —       | Forwarded after internal state updates. Not expressible in JSON Schema; see the component types for the signature.                                             |

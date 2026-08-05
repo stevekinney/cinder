@@ -173,11 +173,13 @@ const schema = {
     editableArgs: {
       type: 'boolean',
       description: 'Whether approving with edited JSON arguments is available. Default `false`.',
+      default: false,
     },
     headingLevel: {
       enum: [2, 3, 4, 5, 6],
       description:
         'Heading level for the card title; section headings render one level deeper. Default `3`.',
+      default: 3,
     },
     class: {
       type: 'string',

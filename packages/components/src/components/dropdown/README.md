@@ -29,6 +29,8 @@ The leaves remain importable individually for à-la-carte builds — see
 `@lostgradient/cinder/dropdown-trigger`, `@lostgradient/cinder/dropdown-menu`, `@lostgradient/cinder/dropdown-item`,
 `@lostgradient/cinder/dropdown-label`, `@lostgradient/cinder/dropdown-separator`, and `@lostgradient/cinder/dropdown-group`.
 
+`Dropdown` supports two mutually exclusive APIs: the compound `Dropdown.Trigger`/`Dropdown.Menu` composition shown above, and a legacy `trigger`/`open` snippet-prop API. Do not mix the two on the same instance.
+
 ## Props
 
 <!-- generated:props:start -->
@@ -43,6 +45,8 @@ The leaves remain importable individually for à-la-carte builds — see
 | `trigger`   | `(opaque)`                                                         | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.              |
 
 <!-- generated:props:end -->
+
+`id` is optional (auto-generated) only for the legacy `trigger`/`open` API. The compound `Dropdown.Trigger`/`Dropdown.Menu` API requires `id` explicitly.
 
 ## CSS Variables
 

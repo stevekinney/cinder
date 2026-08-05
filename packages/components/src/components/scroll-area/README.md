@@ -7,9 +7,14 @@ Bounded scrolling container that constrains overflowing content within a max hei
 ```svelte
 <script lang="ts">
   import ScrollArea from '@lostgradient/cinder/scroll-area';
+
+  const command =
+    '$ bun run --filter @cinder/components build && bun run --filter @cinder/components test --coverage --reporter=verbose --bail';
 </script>
 
-<ScrollArea />
+<ScrollArea as="pre" direction="horizontal" maxWidth="32rem" label="Example command"
+  ><code>{command}</code></ScrollArea
+>
 ```
 
 ## Props

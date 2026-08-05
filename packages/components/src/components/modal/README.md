@@ -53,10 +53,31 @@ If the content fits the plain-text `description` constraint, prefer `AlertDialog
 
 ```svelte
 <script lang="ts">
+  import Button from '@lostgradient/cinder/button';
+  import Input from '@lostgradient/cinder/input';
   import Modal from '@lostgradient/cinder/modal';
+  let open = $state(false);
+  let name = $state('');
+  let triggerRef: HTMLElement | null = $state(null);
 </script>
 
-<Modal />
+<Button
+  label="Rename item"
+  onclick={(event: MouseEvent) => {
+    triggerRef = event.currentTarget as HTMLElement;
+    open = true;
+  }}
+/>
+
+<Modal bind:open title="Rename item" {triggerRef}>
+  <Input id="modal-name" bind:value={name} label="New name" placeholder="Enter a name…" autofocus />
+  {#snippet footer()}
+    <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+      <Button variant="secondary" label="Cancel" onclick={() => (open = false)} />
+      <Button variant="primary" label="Save" onclick={() => (open = false)} />
+    </div>
+  {/snippet}
+</Modal>
 ```
 
 ## Props

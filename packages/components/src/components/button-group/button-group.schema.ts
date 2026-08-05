@@ -7,6 +7,7 @@ const schema = {
     orientation: {
       enum: ['horizontal', 'vertical'],
       description: "Orientation of the visual collapse. Default: 'horizontal'.",
+      default: 'horizontal',
     },
     class: {
       type: 'string',

@@ -12,6 +12,7 @@ const schema = {
       type: 'string',
       description:
         'Accessible label for the menubar, applied as aria-label. Ignored when labelledBy is set. Default `Application menu`.',
+      default: 'Application menu',
     },
     labelledBy: {
       type: 'string',

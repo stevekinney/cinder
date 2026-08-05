@@ -17,6 +17,10 @@ const schema = {
       type: 'boolean',
       description: 'When true, render the label in the disabled color treatment.',
     },
+    class: {
+      type: 'string',
+      description: 'Additional class names merged with `.cinder-label`.',
+    },
   },
   additionalProperties: false,
   required: ['for'],
@@ -27,11 +31,6 @@ const schema = {
         reason: 'function-or-snippet',
         required: true,
         description: 'The label text or composed content.',
-      },
-      {
-        name: 'class',
-        reason: 'unknown-shape',
-        description: 'Additional class names merged with `.cinder-label`.',
       },
     ],
   },

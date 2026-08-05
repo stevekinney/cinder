@@ -28,11 +28,13 @@ stay decorative, so only the body region is clickable and the marker never
 joins the accessible name.
 
 ```svelte
-const steps = [
-  { id: 'account', label: 'Account', href: '#account' },
-  { id: 'profile', label: 'Profile', onclick: () => goToProfile() },
-  { id: 'review', label: 'Review' }, // plain, non-interactive
-];
+<script lang="ts">
+  const steps = [
+    { id: 'account', label: 'Account', href: '#account' },
+    { id: 'profile', label: 'Profile', onclick: () => goToProfile() },
+    { id: 'review', label: 'Review' }, // plain, non-interactive
+  ];
+</script>
 ```
 
 When a step has both `href` and `onclick`, it renders as a link and still runs
@@ -50,26 +52,28 @@ completing it. Skipped steps keep their numeric marker, use neutral styling,
 and announce the `skippedLabel` text instead of the completed label.
 
 ```svelte
-const steps = [
-  { id: 'account', label: 'Account' },
-  { id: 'profile', label: 'Profile', state: 'skipped' },
-  { id: 'review', label: 'Review' },
-];
+<script lang="ts">
+  const steps = [
+    { id: 'account', label: 'Account' },
+    { id: 'profile', label: 'Profile', state: 'skipped' },
+    { id: 'review', label: 'Review' },
+  ];
+</script>
 ```
 
 ## Props
 
 <!-- generated:props:start -->
 
-| Prop             | Type                           | Required | Default | Description                                                                                                                                                      |
-| ---------------- | ------------------------------ | -------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `class`          | `string`                       | no       | —       | Additional class names merged with `.cinder-steps`.                                                                                                              |
-| `completedLabel` | `string`                       | no       | —       | Visually-hidden text prepended to completed steps so screen readers announce state + label. Defaults to 'Completed'.                                             |
-| `currentStep`    | `number`                       | yes      | —       | Zero-based index of the active step. Steps with index < currentStep are "completed". Pass `steps.length` to mark every step as complete (terminal "done" state). |
-| `label`          | `string`                       | no       | —       | Accessible name for the wrapping nav landmark. Defaults to 'Progress'.                                                                                           |
-| `orientation`    | `"horizontal"` \| `"vertical"` | no       | —       | Layout direction. Defaults to 'horizontal'.                                                                                                                      |
-| `skippedLabel`   | `string`                       | no       | —       | Visually-hidden text prepended to skipped steps so screen readers announce state + label. Defaults to 'Skipped'.                                                 |
-| `steps`          | `(opaque)`                     | yes      | —       | Ordered list of step entries from first to last. Not expressible in JSON Schema; see the component types for the signature.                                      |
+| Prop             | Type                           | Required | Default        | Description                                                                                                                                                      |
+| ---------------- | ------------------------------ | -------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `class`          | `string`                       | no       | —              | Additional class names merged with `.cinder-steps`.                                                                                                              |
+| `completedLabel` | `string`                       | no       | `"Completed"`  | Visually-hidden text prepended to completed steps so screen readers announce state + label. Defaults to 'Completed'.                                             |
+| `currentStep`    | `number`                       | yes      | —              | Zero-based index of the active step. Steps with index < currentStep are "completed". Pass `steps.length` to mark every step as complete (terminal "done" state). |
+| `label`          | `string`                       | no       | `"Progress"`   | Accessible name for the wrapping nav landmark. Defaults to 'Progress'.                                                                                           |
+| `orientation`    | `"horizontal"` \| `"vertical"` | no       | `"horizontal"` | Layout direction. Defaults to 'horizontal'.                                                                                                                      |
+| `skippedLabel`   | `string`                       | no       | `"Skipped"`    | Visually-hidden text prepended to skipped steps so screen readers announce state + label. Defaults to 'Skipped'.                                                 |
+| `steps`          | `(opaque)`                     | yes      | —              | Ordered list of step entries from first to last. Not expressible in JSON Schema; see the component types for the signature.                                      |
 
 <!-- generated:props:end -->
 

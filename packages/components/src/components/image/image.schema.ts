@@ -40,16 +40,15 @@ const schema = {
       enum: ['async', 'sync', 'auto'],
       description: 'Decoding hint. Default `async`.',
     },
+    class: {
+      type: 'string',
+      description: 'Additional class names merged with `.cinder-image`.',
+    },
   },
   additionalProperties: false,
   required: ['alt', 'src'],
   metadata: {
     unsupportedProps: [
-      {
-        name: 'class',
-        reason: 'unknown-shape',
-        description: 'Additional class names merged with `.cinder-image`.',
-      },
       {
         name: 'fallback',
         reason: 'function-or-snippet',

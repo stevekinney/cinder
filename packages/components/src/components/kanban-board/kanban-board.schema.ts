@@ -12,11 +12,13 @@ const schema = {
       type: 'boolean',
       description:
         'When true, each column renders a collapse/expand button that toggles its card list.',
+      default: false,
     },
     reorderColumns: {
       type: 'boolean',
       description:
         'When true (default), columns can be reordered by dragging or keyboard. Set to false to make column order fixed.',
+      default: true,
     },
     class: {
       type: 'string',

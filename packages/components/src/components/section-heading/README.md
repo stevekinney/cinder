@@ -6,10 +6,18 @@ Styled heading element that visually separates and titles a content section.
 
 ```svelte
 <script lang="ts">
+  import Button from '@lostgradient/cinder/button';
   import SectionHeading from '@lostgradient/cinder/section-heading';
 </script>
 
-<SectionHeading />
+<SectionHeading
+  title="Project overview"
+  description="Track the current milestone, recent activity, and next steps."
+>
+  {#snippet actions()}
+    <Button size="sm" variant="secondary" label="Share" />
+  {/snippet}
+</SectionHeading>
 ```
 
 ## Props

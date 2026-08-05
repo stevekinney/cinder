@@ -6,8 +6,19 @@ Presents a single pricing plan with its name, price, feature list, an optional c
 
 ```svelte
 <script lang="ts">
-  import { PricingCard } from '@lostgradient/cinder/pricing-card';
+  import PricingCard from '@lostgradient/cinder/pricing-card';
 </script>
+
+<div style="max-inline-size: 22rem;">
+  <PricingCard
+    name="Growth"
+    price="$29/mo"
+    features={['Unlimited projects', '50 GB storage', 'Email & chat support', 'Advanced analytics']}
+    caveat="Billed annually. Monthly billing available at $35/mo."
+    cta="Start free trial"
+    onSelect={() => {}}
+  />
+</div>
 ```
 
 ## Guidance
@@ -20,7 +31,7 @@ Presents a single pricing plan with its name, price, feature list, an optional c
 ### Avoid When
 
 - Showing generic grouped content without a distinct price or CTA — use card instead.
-- Displaying a single key metric in isolation — use stat or statistic-group instead.
+- Displaying a single key metric in isolation — use statistic or statistic-group instead.
 
 ## Props
 

@@ -11,15 +11,18 @@ native tables.
 
 ```svelte
 <script lang="ts">
-  import { DataGrid } from '@lostgradient/cinder/data-grid';
+  import DataGrid from '@lostgradient/cinder/data-grid';
+  import type { DataGridColumnDef } from '@lostgradient/cinder/data-grid';
 
-  const columns = [
+  type Order = { id: string; customer: string; status: string };
+
+  const columns: DataGridColumnDef<Order>[] = [
     { key: 'id', header: 'Order', width: 120, pin: 'left' },
     { key: 'customer', header: 'Customer', width: 220 },
     { key: 'status', header: 'Status', width: 140 },
   ];
 
-  const rows = [
+  const rows: Order[] = [
     { id: 'ORD-1001', customer: 'Ada Lovelace', status: 'Packed' },
     { id: 'ORD-1002', customer: 'Grace Hopper', status: 'Shipped' },
   ];

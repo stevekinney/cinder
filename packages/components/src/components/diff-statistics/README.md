@@ -25,7 +25,7 @@ Compact inline display of added, modified, and removed line counts for a file di
   import DiffStatistics from '@lostgradient/cinder/diff-statistics';
 </script>
 
-<DiffStatistics />
+<DiffStatistics added={12} removed={4} modified={2} />
 ```
 
 ## Props

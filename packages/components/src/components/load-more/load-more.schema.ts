@@ -19,18 +19,22 @@ const schema = {
     buttonLabel: {
       type: 'string',
       description: 'Visible label for the load-more button.',
+      default: 'Load more',
     },
     retryLabel: {
       type: 'string',
       description: 'Visible label for the retry button after a load error.',
+      default: 'Retry loading',
     },
     endOfListMessage: {
       type: 'string',
       description: 'Politely announced when the end of the list is reached.',
+      default: 'End of list',
     },
     maxRetries: {
       type: 'number',
       description: 'Maximum consecutive sentinel-triggered requests before auto-loading pauses.',
+      default: 5,
     },
     class: {
       type: 'string',

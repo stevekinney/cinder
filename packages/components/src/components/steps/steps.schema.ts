@@ -12,20 +12,24 @@ const schema = {
     orientation: {
       enum: ['horizontal', 'vertical'],
       description: "Layout direction. Defaults to 'horizontal'.",
+      default: 'horizontal',
     },
     label: {
       type: 'string',
       description: "Accessible name for the wrapping nav landmark. Defaults to 'Progress'.",
+      default: 'Progress',
     },
     completedLabel: {
       type: 'string',
       description:
         "Visually-hidden text prepended to completed steps so screen readers\nannounce state + label. Defaults to 'Completed'.",
+      default: 'Completed',
     },
     skippedLabel: {
       type: 'string',
       description:
         "Visually-hidden text prepended to skipped steps so screen readers announce\nstate + label. Defaults to 'Skipped'.",
+      default: 'Skipped',
     },
     class: {
       type: 'string',

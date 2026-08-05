@@ -9,7 +9,9 @@ Inline highlight block for tips, warnings, or contextual notes within content fl
   import Callout from '@lostgradient/cinder/callout';
 </script>
 
-<Callout />
+<Callout title="Note">
+  This setting applies to all projects in your organization and cannot be overridden per-project.
+</Callout>
 ```
 
 ## Props

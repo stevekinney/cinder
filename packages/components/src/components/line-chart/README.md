@@ -6,8 +6,10 @@ Responsive SVG line chart for comparing one or more numeric series over an order
 
 ```svelte
 <script lang="ts">
-  import { LineChart } from '@lostgradient/cinder/line-chart';
+  import LineChart from '@lostgradient/cinder/line-chart';
 </script>
+
+<LineChart label="Loading revenue" loading series={[]} />
 ```
 
 ## Guidance

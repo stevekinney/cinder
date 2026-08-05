@@ -6,8 +6,16 @@ Individual option inside a SegmentedControl that renders either a selection butt
 
 ```svelte
 <script lang="ts">
-  import { Segment } from '@lostgradient/cinder/segment';
+  import Segment from '@lostgradient/cinder/segment';
+  import SegmentedControl from '@lostgradient/cinder/segmented-control';
+
+  let view = $state('list');
 </script>
+
+<SegmentedControl id="view-toggle" label="View" selectionMode="single" bind:value={view}>
+  <Segment value="list">List</Segment>
+  <Segment value="grid">Grid</Segment>
+</SegmentedControl>
 ```
 
 ## Guidance

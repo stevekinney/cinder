@@ -38,6 +38,10 @@ const schema = {
       type: 'string',
       description: 'Validation error message; sets `aria-invalid="true"` and `aria-describedby`.',
     },
+    class: {
+      type: 'string',
+      description: 'Extra class names merged with `.cinder-textarea`.',
+    },
     countVisible: {
       type: 'boolean',
       description:
@@ -48,11 +52,6 @@ const schema = {
   required: ['id'],
   metadata: {
     unsupportedProps: [
-      {
-        name: 'class',
-        reason: 'unknown-shape',
-        description: 'Extra class names merged with `.cinder-textarea`.',
-      },
       {
         name: 'value',
         reason: 'unknown-shape',

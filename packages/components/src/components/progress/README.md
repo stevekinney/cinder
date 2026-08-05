@@ -9,7 +9,10 @@ Visual indicator of task completion as a filled bar or percentage readout.
   import Progress from '@lostgradient/cinder/progress';
 </script>
 
-<Progress />
+<div style="display: flex; flex-direction: column; gap: 0.75rem;">
+  <Progress ariaLabel="Loading" />
+  <Progress variant="ring" size="lg" ariaLabel="Loading" />
+</div>
 ```
 
 ## Props

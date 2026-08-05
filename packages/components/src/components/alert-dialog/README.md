@@ -37,9 +37,20 @@ The key distinction between AlertDialog and ConfirmDialog is _who initiates_ the
 ```svelte
 <script lang="ts">
   import AlertDialog from '@lostgradient/cinder/alert-dialog';
+  import Button from '@lostgradient/cinder/button';
+
+  let open = $state(false);
 </script>
 
-<AlertDialog />
+<Button onclick={() => (open = true)}>Open alert dialog</Button>
+
+<AlertDialog
+  bind:open
+  title="Session requires attention"
+  description="Review this message before continuing. Escape and backdrop clicks intentionally keep the dialog open."
+  acknowledgeLabel="I understand"
+  onAcknowledge={() => {}}
+/>
 ```
 
 ## Props

@@ -8,9 +8,10 @@ announces results, and can render consumer-driven upload progress rows.
 ```svelte
 <script lang="ts">
   import FileUpload from '@lostgradient/cinder/file-upload';
+  import type { FileUploadEntry } from '@lostgradient/cinder/file-upload';
   import FormField from '@lostgradient/cinder/form-field';
 
-  let files = $state([]);
+  let files = $state<FileUploadEntry[]>([]);
 </script>
 
 <FormField id="resume" label="Resume" description="PDF up to 5 MB">
@@ -22,7 +23,7 @@ announces results, and can render consumer-driven upload progress rows.
       files = accepted.map((file) => ({
         id: crypto.randomUUID(),
         file,
-        status: 'success',
+        status: 'success' as const,
       }));
     }}
     {files}
@@ -45,13 +46,13 @@ real file input, so directory selection can use `webkitdirectory`:
 | Prop           | Type       | Required | Default | Description                                                                                                                                       |
 | -------------- | ---------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `accept`       | `string`   | no       | —       | Native file accept filter.                                                                                                                        |
+| `class`        | `string`   | no       | —       | Additional classes merged with `.cinder-file-upload`.                                                                                             |
 | `disabled`     | `boolean`  | no       | —       | Disables the file picker and drag-and-drop surface.                                                                                               |
 | `id`           | `string`   | no       | —       | Stable id for the native file input. Required when composing with `FormField`.                                                                    |
 | `maxSize`      | `number`   | no       | —       | Maximum allowed file size in bytes.                                                                                                               |
 | `multiple`     | `boolean`  | no       | —       | Allow more than one file. Default `false`.                                                                                                        |
 | `name`         | `string`   | no       | —       | Native input name used for form submission.                                                                                                       |
 | `triggerLabel` | `string`   | no       | —       | Visible text for the picker trigger button. Default `Choose files`.                                                                               |
-| `class`        | `(opaque)` | no       | —       | Additional classes merged with `.cinder-file-upload`. Not expressible in JSON Schema; see the component types for the signature.                  |
 | `dragActive`   | `(opaque)` | no       | —       | Replaces the default drag-active dropzone body. Not expressible in JSON Schema; see the component types for the signature.                        |
 | `fileList`     | `(opaque)` | no       | —       | Replaces the default file-list renderer. Receives the resolved rows. Not expressible in JSON Schema; see the component types for the signature.   |
 | `files`        | `(opaque)` | no       | —       | Consumer-driven file rows, including upload progress and error states. Not expressible in JSON Schema; see the component types for the signature. |

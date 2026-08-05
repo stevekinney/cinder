@@ -11,7 +11,7 @@ Inline async-action status indicator that transitions from loading to success or
   let status = $state<'inactive' | 'active' | 'finished' | 'error'>('inactive');
 </script>
 
-<InlineLoading {status} description="Saving changes" />
+<InlineLoading bind:status description="Saving changes" />
 ```
 
 ## Props

@@ -8,19 +8,23 @@
     },
     "stickyHeader": {
       "type": "boolean",
-      "description": "When true, the header sticks to the top of the scrolling container."
+      "description": "When true, the header sticks to the top of the scrolling container.",
+      "default": false
     },
     "density": {
       "enum": ["comfortable", "condensed", "spacious"],
-      "description": "Vertical padding density for header and body cells.\nDefaults to `'comfortable'`."
+      "description": "Vertical padding density for header and body cells.\nDefaults to `'comfortable'`.",
+      "default": "comfortable"
     },
     "selectable": {
       "type": "boolean",
-      "description": "Enables the leading selection column on the entire table. When true:\n- The single `TableRow` inside `TableHeader` renders a leading `<th>`\n  with a select-all checkbox sourced from the header's props.\n- Every `TableRow` inside `TableBody` renders a leading selection cell.\nSelection is strictly controlled — the consumer owns all selection state."
+      "description": "Enables the leading selection column on the entire table. When true:\n- The single `TableRow` inside `TableHeader` renders a leading `<th>`\n  with a select-all checkbox sourced from the header's props.\n- Every `TableRow` inside `TableBody` renders a leading selection cell.\nSelection is strictly controlled — the consumer owns all selection state.",
+      "default": false
     },
     "scrollable": {
       "type": "boolean",
-      "description": "When true, wraps the table in a `.cinder-table-scroll` container that\nenables horizontal overflow scrolling for dense or unknown-width tables.\nUse this instead of manually wrapping Table in `.cinder-table-scroll`.\n\nWhen combined with `stickyHeader`, the generated wrapper is the sticky\nheader's scroll container. Set a bounded block size on `scrollContainerProps`\nwhen the table should scroll vertically inside that wrapper."
+      "description": "When true, wraps the table in a `.cinder-table-scroll` container that\nenables horizontal overflow scrolling for dense or unknown-width tables.\nUse this instead of manually wrapping Table in `.cinder-table-scroll`.\n\nWhen combined with `stickyHeader`, the generated wrapper is the sticky\nheader's scroll container. Set a bounded block size on `scrollContainerProps`\nwhen the table should scroll vertically inside that wrapper.",
+      "default": false
     },
     "class": {
       "type": "string",

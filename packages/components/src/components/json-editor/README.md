@@ -24,12 +24,12 @@ Controlled free-form JSON text editing with a native textarea, parse feedback, a
 | `description`          | `string`   | no       | —       | Supporting text announced with the editor.                                                                                                            |
 | `disabled`             | `boolean`  | no       | —       | Disables the editor. Passed through to the native textarea.                                                                                           |
 | `error`                | `string`   | no       | —       | External validation error. Takes precedence over JSON parse feedback.                                                                                 |
-| `highlight`            | `boolean`  | no       | —       | Enables a lazy syntax-highlighted view with inline parse-error annotation. Defaults to false.                                                         |
+| `highlight`            | `boolean`  | no       | `false` | Enables a lazy syntax-highlighted view with inline parse-error annotation. Defaults to false.                                                         |
 | `id`                   | `string`   | yes      | —       | Unique identifier used for the label and feedback relationships.                                                                                      |
 | `label`                | `string`   | yes      | —       | Visible label associated with the native textarea.                                                                                                    |
 | `required`             | `boolean`  | no       | —       | Marks the editor as required. Passed through to the native textarea.                                                                                  |
-| `rows`                 | `number`   | no       | —       | Number of visible text rows. Defaults to 8.                                                                                                           |
-| `validFeedbackVisible` | `boolean`  | no       | —       | Whether valid JSON should render an announced success message. Defaults to true.                                                                      |
+| `rows`                 | `number`   | no       | `8`     | Number of visible text rows. Defaults to 8.                                                                                                           |
+| `validFeedbackVisible` | `boolean`  | no       | `true`  | Whether valid JSON should render an announced success message. Defaults to true.                                                                      |
 | `value`                | `string`   | yes      | —       | Controlled JSON source text.                                                                                                                          |
 | `onValueChange`        | `(opaque)` | no       | —       | Called with the proposed JSON source whenever the user edits the textarea. Not expressible in JSON Schema; see the component types for the signature. |
 

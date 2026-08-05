@@ -9,7 +9,11 @@ Coordinates a set of radio buttons under a single name with shared validation st
   import RadioGroup from '@lostgradient/cinder/radio-group';
 </script>
 
-<RadioGroup />
+<RadioGroup name="disabled-region" label="Region (locked for trial accounts)" value="us" disabled>
+  <RadioGroup.Option id="disabled-region-us" value="us" label="United States" />
+  <RadioGroup.Option id="disabled-region-eu" value="eu" label="European Union" />
+  <RadioGroup.Option id="disabled-region-ap" value="ap" label="Asia Pacific" />
+</RadioGroup>
 ```
 
 ## Props

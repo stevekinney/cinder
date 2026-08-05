@@ -33,15 +33,14 @@ const schema = {
       description:
         'Optional keyboard shortcut hint (e.g. `\'⌘K\'`). Rendered as a trailing\n`<kbd aria-hidden="true">` badge. The shortcut itself is not wired by\nthis component.',
     },
+    class: {
+      type: 'string',
+      description: 'Additional class merged with `.cinder-search-field`.',
+    },
   },
   additionalProperties: false,
   metadata: {
     unsupportedProps: [
-      {
-        name: 'class',
-        reason: 'unknown-shape',
-        description: 'Additional class merged with `.cinder-search-field`.',
-      },
       {
         name: 'onClear',
         reason: 'function-or-snippet',

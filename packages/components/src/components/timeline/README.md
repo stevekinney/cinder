@@ -9,8 +9,9 @@ See the [chronological display boundary decision](https://github.com/stevekinney
 ```svelte
 <script lang="ts">
   import Timeline from '@lostgradient/cinder/timeline';
+  import type { TimelineEntry } from '@lostgradient/cinder/timeline';
 
-  const entries = [
+  const entries: TimelineEntry[] = [
     {
       id: 'created',
       datetime: '2026-05-23T10:00:00Z',

@@ -10,6 +10,52 @@ so the resulting HTML never nests interactive elements.
 Choose `ActionRow` when the entire row is one button and its trailing content is non-interactive.
 Choose `StackedListItem` when the row is static and only its title needs to link.
 
+## Usage
+
+```svelte
+<script lang="ts">
+  import Button from '@lostgradient/cinder/button';
+  import SelectableRow from '@lostgradient/cinder/selectable-row';
+
+  let opened = $state(0);
+  let renamed = $state(0);
+</script>
+
+<div style="display: grid; gap: var(--cinder-space-3); max-inline-size: 48rem;">
+  <SelectableRow
+    selected
+    onclick={() => {
+      opened += 1;
+    }}
+  >
+    {#snippet leading()}<span aria-hidden="true">●</span>{/snippet}
+    {#snippet title()}
+      Customer onboarding workflow investigation with a deliberately long session title
+    {/snippet}
+    {#snippet description()}Inspect the active workflow execution and event history.{/snippet}
+    {#snippet meta()}Running · Updated 2 minutes ago{/snippet}
+    {#snippet trailingActions()}
+      <Button
+        size="sm"
+        onclick={() => {
+          renamed += 1;
+        }}>Rename</Button
+      >
+      <Button
+        size="sm"
+        href="https://example.com/temporal/session"
+        target="_blank"
+        rel="noopener noreferrer">Temporal Web</Button
+      >
+    {/snippet}
+  </SelectableRow>
+
+  <output data-testid="selectable-row-activation-counts">
+    Opened {opened} times; renamed {renamed} times.
+  </output>
+</div>
+```
+
 ## Props
 
 <!-- generated:props:start -->
