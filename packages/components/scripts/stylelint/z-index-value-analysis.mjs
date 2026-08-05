@@ -465,6 +465,87 @@ function valueIdentity(value) {
   return `${numericIdentity(value.value)}|${mapIdentity(normalizedUnits(value.units))}|${mapIdentity(value.symbolicFactors)}`;
 }
 
+// CSS Values 5's "Normalizing Mix Percentages" algorithm: an omitted weight
+// splits whatever share the specified weights leave; a specified total over
+// 100% is scaled down (never up); any shortfall ("leftover") is mixed in as
+// a consistently-typed zero, so it contributes nothing to the result. Takes
+// one exact-rational percentage (or undefined for "omitted") per item and
+// returns the normalized exact-rational percentage for each.
+function normalizedCalcMixWeights(weights) {
+  const hundred = { numerator: 100n, denominator: 1n };
+  const zero = { numerator: 0n, denominator: 1n };
+  let specifiedSum = zero;
+  for (const weight of weights)
+    if (weight !== undefined) specifiedSum = addRationals(specifiedSum, weight);
+  const clampedSpecifiedSum =
+    specifiedSum !== undefined && compareRationals(specifiedSum, hundred) > 0
+      ? hundred
+      : specifiedSum;
+  const omittedCount = weights.filter((weight) => weight === undefined).length;
+  const omittedWeight =
+    omittedCount === 0 || clampedSpecifiedSum === undefined
+      ? undefined
+      : divideRationals(addRationals(hundred, clampedSpecifiedSum, -1n), {
+          numerator: BigInt(omittedCount),
+          denominator: 1n,
+        });
+  const resolvedWeights = weights.map((weight) => weight ?? omittedWeight);
+  const total = resolvedWeights.reduce((sum, weight) => addRationals(sum, weight), zero);
+  const scale =
+    total !== undefined && compareRationals(total, hundred) > 0
+      ? divideRationals(hundred, total)
+      : undefined;
+  return resolvedWeights.map((weight) =>
+    scale === undefined || weight === undefined ? weight : multiplyRationals(weight, scale),
+  );
+}
+
+// A relative length (em, vh, ...) that's provably zero contributes nothing
+// regardless of the specific unit it was written in -- parseNumber() already
+// omits its symbolic factor for exactly this reason (see its comment). A
+// nonzero relative length keeps its factor, so this is "zero regardless of
+// which relative unit," not merely "zero-valued."
+function isProvablyZeroRegardlessOfUnit(item) {
+  return item.value === 0 && item.symbolicFactors.size === 0;
+}
+
+// calc-mix()'s current CSS Values 5 grammar --
+// `calc-mix( [ <calc-sum> <percentage [0,100]>? ]# )` -- is a weighted
+// average of two or more items, distinct from the two-endpoint
+// progress-interpolation shape handled separately below. `weights` holds one
+// exact-rational percentage (or undefined for "omitted") per entry in
+// `items`, already parsed by the caller.
+function calcMixWeightedAverage(items, weights) {
+  // Compare every item's symbolic factors against a nonzero representative,
+  // not just against items[0]: a zero item exempts itself from the check
+  // (its erased factor is irrelevant, e.g. `0em` next to `9999em`), but two
+  // *nonzero* items with different relative units (`9999em` and `8888rem`)
+  // must still be rejected even when the zero happens to be first.
+  const representative = items.find((item) => !isProvablyZeroRegardlessOfUnit(item)) ?? items[0];
+  if (
+    !items.every(
+      (item) =>
+        sameUnits(item, representative) &&
+        (isProvablyZeroRegardlessOfUnit(item) || sameSymbolicFactors(item, representative)),
+    )
+  )
+    throw new Error('incompatible calc-mix values');
+  const normalizedWeights = normalizedCalcMixWeights(weights);
+  if (normalizedWeights.some((weight) => weight === undefined)) throw staticAnalysisTooComplex;
+  const hundred = { numerator: 100n, denominator: 1n };
+  let exactValue = { numerator: 0n, denominator: 1n };
+  let value = 0;
+  for (const [index, item] of items.entries()) {
+    const weight = normalizedWeights[index];
+    exactValue = addRationals(
+      exactValue,
+      multiplyRationals(item.exactValue, divideRationals(weight, hundred)),
+    );
+    value += item.value * (Number(weight.numerator) / Number(weight.denominator) / 100);
+  }
+  return withValue(representative, value, exactValue);
+}
+
 // Evaluate static CSS math while retaining enough type information for
 // compatible units to cancel during division. Unknown units remain distinct,
 // but identical units can still cancel without needing layout context.
@@ -675,6 +756,10 @@ function evaluateConstantArithmetic(expression) {
         }
       }
       const arguments_ = [];
+      // calc-mix()'s weighted-item grammar (CSS Values 5) trails each item
+      // with an optional `<percentage [0,100]>` weight, space-separated (not
+      // comma-separated) from the item's value: `calc-mix(9999 100%, 1 0%)`.
+      const calcMixWeights = functionName === 'calc-mix' ? [] : undefined;
       for (;;) {
         skipSpace();
         const clampEndpointCanBeUnbounded =
@@ -690,6 +775,43 @@ function evaluateConstantArithmetic(expression) {
           arguments_.push(unboundedClampEndpoint);
           index += noneMatch[0].length;
         } else arguments_.push(parseExpression());
+        if (calcMixWeights !== undefined) {
+          skipSpace();
+          const weightStart = index;
+          let weight;
+          if (peek() !== ',' && peek() !== ')') {
+            let candidateWeight;
+            try {
+              // A weight can be any <calc-sum> that resolves to a
+              // percentage, not just a bare percentage token -- e.g.
+              // `calc-mix(9999 calc(100%), 1)` -- so parse a full
+              // expression here, not just a number.
+              candidateWeight = parseExpression();
+            } catch (error) {
+              // A too-complex numeric token (e.g. an absurdly long decimal)
+              // must still fail closed, not be silently treated as "no
+              // weight here".
+              if (error === staticAnalysisTooComplex) throw error;
+              index = weightStart;
+            }
+            if (candidateWeight !== undefined) {
+              if (
+                candidateWeight.units.size === 1 &&
+                candidateWeight.units.get('unit:%') === 1 &&
+                candidateWeight.symbolicFactors.size === 0
+              ) {
+                // calc-mix()'s item weight is a <percentage [0,100]>: an
+                // out-of-range value makes the whole function invalid (CSS's
+                // usual range-checking for a range-constrained type), not a
+                // weight to silently clamp or normalize.
+                if (candidateWeight.value < 0 || candidateWeight.value > 100)
+                  throw new Error('calc-mix weight out of range');
+                weight = candidateWeight.exactValue;
+              } else index = weightStart;
+            }
+          }
+          calcMixWeights.push(weight);
+        }
         skipSpace();
         if (peek() === ')') {
           index += 1;
@@ -702,6 +824,18 @@ function evaluateConstantArithmetic(expression) {
         functionName === 'clamp'
           ? arguments_.filter((argument) => argument !== unboundedClampEndpoint)
           : arguments_;
+      // A per-item weight is optional on every item, so a valid weighted
+      // call can have none at all (e.g. `calc-mix(9999, 1)`, equally
+      // weighted 50/50). That's only ambiguous with the older three-argument
+      // progress shape when there are exactly three items and none of them
+      // carry an explicit weight -- preserve that shape's existing behavior
+      // in that one case; every other unweighted arity uses the current
+      // weighted-item grammar instead of going unhandled.
+      if (
+        functionName === 'calc-mix' &&
+        (calcMixWeights.some((weight) => weight !== undefined) || arguments_.length !== 3)
+      )
+        return calcMixWeightedAverage(arguments_, calcMixWeights);
       if (functionName === 'calc-mix' && arguments_.length === 3) {
         const [progress, start, end] = arguments_;
         const progressIsPercentage =
@@ -1148,11 +1282,21 @@ function evaluateConstantArithmetic(expression) {
       skipSpace();
       const operator = peek();
       if (operator !== '+' && operator !== '-') return value;
+      // Without whitespace on both sides, this character never reads as a
+      // binary operator at all: per the CSS tokenizer, a '+'/'-' immediately
+      // followed by a digit (or '.' + digit) starts a new signed-number
+      // token instead, so the calc-sum production simply ends here rather
+      // than continuing through it. Stop without consuming it -- a
+      // standalone calc() still rejects the leftover text as unconsumed
+      // input (the `index !== expression.length` check below), and
+      // calc-mix()'s weighted-item grammar relies on exactly this to let a
+      // signed weight (e.g. `9999 +100%`) start right after an item with no
+      // space, instead of the item's own sum swallowing it and failing.
       if (
         !adjacentTriviaContainsWhitespace(index, -1) ||
         !adjacentTriviaContainsWhitespace(index, 1)
       )
-        throw new Error('expected whitespace around additive operator');
+        return value;
       index += 1;
       const right = parseTerm();
       if (!sameUnits(value, right)) throw new Error('incompatible units');
@@ -1786,6 +1930,39 @@ export function classifyStaticLayer(value) {
 export function evaluateStaticLayerNumber(value) {
   const resolved = resolveStaticNumber(value);
   return typeof resolved === 'number' && !Number.isNaN(resolved) ? resolved : undefined;
+}
+
+// Like evaluateStaticLayerNumber(), but returns the value at full precision
+// (an accumulated float, not rounded to the nearest integer) instead of
+// collapsing every unit to a bare number, alongside a tag identifying its
+// dimension. parseNumber() above already converts every canonical absolute
+// unit (px, cm, deg, s, ...) to its canonical same-dimension magnitude while
+// parsing, so two endpoints written in different absolute units (e.g. `0px`
+// and `264.556875cm`) come back tagged alike and are directly comparable --
+// this exists for callers (random()'s step/1000 endpoint-snapping
+// tolerance) that need that precision and cross-unit comparability, unlike
+// evaluateStaticLayerNumber()'s rounded, unit-blind result. A nonzero
+// relative-length term (em, vh, ...) can't be compared this way without
+// layout context and returns undefined, except when it's provably zero (its
+// symbolic factor is omitted for exactly this reason -- see
+// calcMixWeightedAverage()'s isProvablyZeroRegardlessOfUnit()); a mix of
+// incompatible units, or a unit raised to any power other than 1 (e.g.
+// `1px * 1px`, which shares px's dimension tag but isn't a length),
+// likewise returns undefined rather than a misleadingly comparable tag.
+export function evaluateStaticLayerNumberWithUnit(value) {
+  const resolved = resolveStaticArithmeticResult(value);
+  if (
+    resolved === null ||
+    resolved === staticAnalysisTooComplex ||
+    resolved === staticAnalysisInvalid ||
+    resolved.symbolicFactors.size > 0 ||
+    resolved.units.size > 1 ||
+    !Number.isFinite(resolved.value)
+  )
+    return undefined;
+  const [[unit, exponent] = []] = resolved.units;
+  if (exponent !== undefined && exponent !== 1) return undefined;
+  return { value: resolved.value, unit: unit ?? '' };
 }
 
 export function isStaticallyNegative(value) {

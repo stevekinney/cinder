@@ -3,6 +3,7 @@ import {
   classifyStaticLayer,
   cssCommentMaskCharacter,
   evaluateStaticLayerNumber,
+  evaluateStaticLayerNumberWithUnit,
   hasRuntimeDependentNumericConversion,
   hasStaticallyZeroCoefficient,
   haveCompatibleStaticDivisionTypes,
@@ -21,10 +22,12 @@ import {
 } from './z-index-value-analysis.mjs';
 
 const fallbackFunctionPattern = /(?:var|env|attr)\(/iy;
+const invalidToggleNestedFunctionPattern = /(?:toggle|attr|calc|-webkit-calc)\(/iy;
 const fallbackResolutionTooComplex = Symbol('fallback-resolution-too-complex');
 const fallbackResolutionWorkLimit = 8_000_000;
 const typedHypotParentLimit = 2_048;
 const conditionalNestingLimit = 128;
+const attrHeaderSubstitutionPeelLimit = 128;
 const uniformDivisorWitnessValues = ['1', '2', '1px', '1deg', '1s', '1hz', '1dppx'];
 const typedDivisorWitnessValues = ['1px', '1deg', '1s', '1hz', '1dppx'];
 const typedZeroWitnessValues = ['0px', '0deg', '0s', '0hz', '0dppx'];
@@ -214,6 +217,17 @@ function trimCssTriviaRange(value, start, end) {
   while (start < end && isCssWhitespaceOrComment(value[start])) start += 1;
   while (end > start && isCssWhitespaceOrComment(value[end - 1])) end -= 1;
   return { start, end };
+}
+
+// CSS Values 5's arbitrary substitution functions allow a fallback (or, for
+// first-valid(), an option) to be wrapped in a `{ ... }` guaranteed-invalid
+// wrapper so it can hold otherwise-invalid top-level tokens. When the whole
+// range is exactly that wrapper, unwrap it so the analyzer sees the actual
+// value instead of the literal braces.
+function unwrapBracedFallbackRange(value, range) {
+  return value[range.start] === '{' && value[range.end - 1] === '}'
+    ? trimCssTriviaRange(value, range.start + 1, range.end - 1)
+    : range;
 }
 
 function consumeResolutionWork(budget, amount) {
@@ -1955,7 +1969,10 @@ function firstValidBranchValueRanges(value, group, parenthesisPairs) {
   const branchRanges = [];
   let branchStart = group.openIndex + 1;
   const appendBranch = (branchEnd) => {
-    const branchRange = trimCssTriviaRange(value, branchStart, branchEnd);
+    const branchRange = unwrapBracedFallbackRange(
+      value,
+      trimCssTriviaRange(value, branchStart, branchEnd),
+    );
     if (branchRange.start === branchRange.end) return false;
     branchRanges.push(branchRange);
     return true;
@@ -2079,15 +2096,67 @@ function conditionalBranchValueRanges(value, group, parenthesisPairs) {
   return analysis.branchRanges;
 }
 
+function toggleBranchContainsInvalidNestedFunction(value, range, parenthesisPairs) {
+  for (let index = range.start; index < range.end; index += 1) {
+    if (value[index] === '"' || value[index] === "'") {
+      index = quotedStringEnd(value, index);
+      continue;
+    }
+    const urlTokenEnd = unquotedUrlTokenEnd(value, index);
+    if (urlTokenEnd !== undefined) {
+      index = urlTokenEnd;
+      continue;
+    }
+    const previousCharacter = value[index - 1];
+    const isFunctionBoundary =
+      !isCssIdentifierCharacter(previousCharacter) &&
+      previousCharacter !== '#' &&
+      previousCharacter !== '@';
+
+    invalidToggleNestedFunctionPattern.lastIndex = index;
+    if (isFunctionBoundary && invalidToggleNestedFunctionPattern.exec(value)) return true;
+
+    // A forbidden token that's only reachable through a var()/env()
+    // substitution's own fallback (rather than written directly in the
+    // branch) doesn't make the branch unconditionally invalid -- the
+    // substitution may resolve to something else entirely, e.g.
+    // `toggle(1, var(--x, calc(1)))` is still a valid, selectable branch
+    // whenever --x is set. Skip past the substitution's own parens (an
+    // attr() substitution already returned true above, since attr() is
+    // itself a forbidden token regardless of context) instead of scanning
+    // through them, same as randomItemArgumentRanges treats other
+    // functions' arguments as opaque.
+    fallbackFunctionPattern.lastIndex = index;
+    const substitutionMatch = isFunctionBoundary ? fallbackFunctionPattern.exec(value) : null;
+    if (substitutionMatch) {
+      const closeIndex = parenthesisPairs.get(index + substitutionMatch[0].length - 1);
+      if (closeIndex !== undefined && closeIndex < range.end) index = closeIndex;
+    }
+  }
+  return false;
+}
+
 function toggleBranchValueRanges(value, group, parenthesisPairs) {
   // CSS Values 5 toggle() accepts one or more whole values (`toggle(<whole-value>#)`);
   // a single-argument toggle() is valid and always resolves to that argument.
   const branchRanges = randomItemArgumentRanges(value, group, parenthesisPairs);
-  return branchRanges !== undefined &&
-    branchRanges.length >= 1 &&
-    branchRanges.every((branchRange) => branchRange.start < branchRange.end)
-    ? branchRanges
-    : undefined;
+  if (
+    branchRanges === undefined ||
+    branchRanges.length < 1 ||
+    !branchRanges.every((branchRange) => branchRange.start < branchRange.end)
+  )
+    return undefined;
+  // toggle() may not be nested, nor may it contain attr() or calc() notations
+  // (https://www.w3.org/TR/css-values-5/#toggle-notation): a declaration with
+  // any of those inside a toggle() argument is invalid at parse time and
+  // never applies, so it can never actually select a branch value.
+  if (
+    branchRanges.some((branchRange) =>
+      toggleBranchContainsInvalidNestedFunction(value, branchRange, parenthesisPairs),
+    )
+  )
+    return undefined;
+  return branchRanges;
 }
 
 function rangeIsValidConditionalExpression(frame, value, range, parenthesisPairs) {
@@ -3335,8 +3404,94 @@ function attrHeaderTypeStart(header, identifierEnd) {
   return namespacedNameEnd > identifierEnd + 1 ? namespacedNameEnd : identifierEnd;
 }
 
+// A leading var()/env()/attr() substitution can stand in for the whole
+// <attr-name> (CSS Values 5 allows arbitrary substitution functions anywhere
+// a <declaration-value> is permitted, including here). Returns the index
+// just past its matching close parenthesis, and the range of its own
+// fallback argument (the text after its first top-level comma, if it has
+// one), or undefined if the header doesn't start with a substitution.
+function headerLeadingSubstitution(header) {
+  fallbackFunctionPattern.lastIndex = 0;
+  const match = fallbackFunctionPattern.exec(header);
+  if (!match || match.index !== 0) return undefined;
+  let depth = 1;
+  let commaIndex = -1;
+  for (let index = match[0].length; index < header.length; index += 1) {
+    const character = header[index];
+    if (character === '"' || character === "'") index = quotedStringEnd(header, index);
+    else if (character === '(') depth += 1;
+    else if (character === ')') {
+      depth -= 1;
+      if (depth === 0)
+        return {
+          end: index + 1,
+          fallbackRange: commaIndex === -1 ? undefined : { start: commaIndex + 1, end: index },
+        };
+    } else if (character === ',' && depth === 1 && commaIndex === -1) commaIndex = index;
+  }
+  return undefined;
+}
+
+function attrTypeSyntaxFromHeader(header, nameEnd) {
+  const attrType = header.slice(attrHeaderTypeStart(header, nameEnd)).trim();
+  if (attrType === '' || attrType === '%') return attrType;
+  if (cssIdentifierTokenEnd(attrType, 0) === attrType.length)
+    return invalidCustomIdentKeywords.has(attrType.toLowerCase()) ? undefined : attrType;
+  const typeMatch = /^type\(([^()]+)\)$/i.exec(attrType);
+  return typeMatch && validAttrTypeSyntax(typeMatch[1]) ? attrType : undefined;
+}
+
+// <attr-name> is `[ <ns-prefix> ]? <ident-token>` where `<ns-prefix>` is
+// itself `[ <ident-token> | '*' ]? '|'` -- so a *null* namespace (bare `|`
+// with nothing before it, e.g. `|data-layer`) is valid and must not be
+// mistaken for an invalid header. The name may also be a substitution
+// function rather than a literal identifier at all, and per CSS Values 5's
+// grammar the substitution's own fallback argument can supply the
+// <attr-type> clause too, not just the name -- e.g.
+// `attr(var(--header, data-scale number), 0)` is only reachable through
+// var(--header)'s own fallback, never literally written after it in the
+// outer header. Peel through a chain of such substitutions iteratively
+// (not recursively, so pathologically deep nesting can't overflow the
+// stack, matching this file's other explicit nesting limits) looking for
+// the first one whose own text resolves a usable <attr-type>. Once at
+// least one substitution has consumed the whole header with no usable type
+// found anywhere in the chain, the header is still a syntactically valid
+// substitution-only name -- just with no derivable numeric witnesses --
+// whereas a header that was never a substitution at all and isn't a valid
+// identifier either is genuinely invalid. Returns the validated attrType
+// string (possibly '', meaning "no type"), or undefined if the header is
+// invalid.
+function attrHeaderType(header) {
+  let current = header;
+  let consumedByOnlySubstitution = false;
+  for (let depth = 0; depth < attrHeaderSubstitutionPeelLimit; depth += 1) {
+    const leadingSubstitution = headerLeadingSubstitution(current);
+    if (leadingSubstitution === undefined) {
+      const nameStart = current[0] === '|' ? 1 : 0;
+      const identifierEnd = cssIdentifierTokenEnd(current, nameStart);
+      if (identifierEnd === nameStart) return consumedByOnlySubstitution ? '' : undefined;
+      return attrTypeSyntaxFromHeader(current, identifierEnd);
+    }
+    if (leadingSubstitution.end !== current.length)
+      return attrTypeSyntaxFromHeader(current, leadingSubstitution.end);
+    if (leadingSubstitution.fallbackRange === undefined) return '';
+    consumedByOnlySubstitution = true;
+    // Mirror substitutionHeader()'s normalization: the fallback range is
+    // the raw text after the comma, whitespace and all (e.g. the leading
+    // space in `var(--header, data-scale number)`'s fallback), which
+    // cssIdentifierTokenEnd() and headerLeadingSubstitution() don't skip on
+    // their own.
+    current = current
+      .slice(leadingSubstitution.fallbackRange.start, leadingSubstitution.fallbackRange.end)
+      .replaceAll(cssCommentMaskCharacter, ' ')
+      .trim();
+  }
+  return '';
+}
+
 function validSubstitutionHeader(frame, value) {
   const header = substitutionHeader(frame, value);
+  if (frame.functionName === 'attr') return attrHeaderType(header) !== undefined;
   const identifierEnd = cssIdentifierTokenEnd(header, 0);
   if (identifierEnd === 0) return false;
   if (frame.functionName === 'var')
@@ -3346,20 +3501,20 @@ function validSubstitutionHeader(frame, value) {
       !invalidCustomIdentKeywords.has(header.slice(0, identifierEnd).toLowerCase()) &&
       /^(?:\s+(?:\+?\d+|-0+))*$/.test(header.slice(identifierEnd))
     );
-  if (frame.functionName !== 'attr') return false;
-  const attrType = header.slice(attrHeaderTypeStart(header, identifierEnd)).trim();
-  if (attrType === '' || attrType === '%') return true;
-  if (cssIdentifierTokenEnd(attrType, 0) === attrType.length)
-    return !invalidCustomIdentKeywords.has(attrType.toLowerCase());
-  const typeMatch = /^type\(([^()]+)\)$/i.exec(attrType);
-  if (!typeMatch) return false;
-  return validAttrTypeSyntax(typeMatch[1]);
+  return false;
 }
 
 function attrDefinedPathWitnessGroups(attrType) {
   if (attrType === '%') return [['0%', '1%']];
   if (cssIdentifierTokenEnd(attrType, 0) === attrType.length) {
     const unit = attrType.toLowerCase();
+    // attr()'s legacy grammar is `type(<syntax>) | raw-string | number |
+    // <attr-unit>` (CSS Values 5), where <attr-unit> is any <custom-ident>
+    // treated as a unit name. Only the literal `number` keyword is a
+    // dimensionless numeric read; `integer` isn't a recognized keyword at
+    // all here, so it's just an (unrecognized) unit name like any other,
+    // and derives no witnesses.
+    if (unit === 'number') return [['0', '1']];
     return attrLegacyNumericUnits.has(unit) ? [[`0${unit}`, `1${unit}`]] : undefined;
   }
   const typeMatch = /^type\(([^()]+)\)$/i.exec(attrType);
@@ -3428,8 +3583,8 @@ function substitutionDefinedPathWitnessGroups(frame, value) {
   }
   if (frame.functionName !== 'attr') return undefined;
   const header = substitutionHeader(frame, value);
-  const identifierEnd = cssIdentifierTokenEnd(header, 0);
-  const attrType = header.slice(attrHeaderTypeStart(header, identifierEnd)).trim();
+  const attrType = attrHeaderType(header);
+  if (attrType === undefined) return undefined;
   return attrDefinedPathWitnessGroups(attrType);
 }
 
@@ -4323,6 +4478,18 @@ function unresolvedRuntimeRangeCandidates(
       functionParent.functionName,
       parenthesisPairs,
     );
+    // calc-mix()'s current CSS Values 5 weighted-item grammar accepts any
+    // number of comma-separated items, unlike the older fixed-arity
+    // progress-interpolation shape the rest of this function's calc-mix
+    // handling assumes. Precisely modeling the weighted average's runtime
+    // range is a separate, larger undertaking; fail closed instead of
+    // silently treating an unresolved item as unreachable.
+    if (
+      functionParent.functionName === 'calc-mix' &&
+      parsedArguments !== undefined &&
+      calcMixCallUsesWeightedItemGrammar(value, parsedArguments)
+    )
+      return failClosedRuntimeCandidate(candidate);
     if (
       !unresolvedRuntimeFunctionHasValidArity(
         functionParent.functionName,
@@ -4717,7 +4884,7 @@ function randomGroupOutputOptions(frame, value, group, budget, parenthesisPairs)
   const maximumExpression =
     maximumValue === minimumValue ? minimumExpression : writtenMaximumExpression;
   if (maximumValue === minimumValue) return { continuous: false, values: [minimumExpression] };
-  if (stepValue === undefined || stepValue <= 0) {
+  const continuousRangeResult = () => {
     if (fixedBaseValue === 0) return { continuous: false, values: [minimumExpression] };
     if (fixedBaseValue !== undefined)
       return {
@@ -4727,26 +4894,92 @@ function randomGroupOutputOptions(frame, value, group, budget, parenthesisPairs)
         ],
       };
     return { continuous: true, values: [minimumExpression, maximumExpression] };
-  }
+  };
+  if (stepValue === undefined) return continuousRangeResult();
+  // CSS Values 5 (random-argument-ranges): an infinite step resolves to A
+  // outright (distinct from the nonpositive-step case below).
   if (!Number.isFinite(stepValue)) return { continuous: false, values: [minimumExpression] };
 
-  const stepCount = Math.floor((maximumValue - minimumValue) / stepValue);
-  if (!Number.isSafeInteger(stepCount) || stepCount > 128) return fallbackResolutionTooComplex;
+  // evaluateStaticLayerNumber() rounds to the nearest integer, which is too
+  // coarse to prove the step is actually positive (a small positive step
+  // like 0.4 can round to a stepValue of 0) or to compute the spec's
+  // step / 1000 endpoint-snapping tolerance precisely. Re-evaluate the step
+  // at full precision instead -- evaluateStaticLayerNumberWithUnit() handles
+  // wrapped static math (e.g. `calc(9999)`), not just a bare numeric token,
+  // so a resolvable-but-not-bare-number step is no longer treated as
+  // unprovably positive.
+  const preciseStepValue = evaluateStaticLayerNumberWithUnit(stepExpression)?.value;
+  // A step that's negative, zero, or close enough to zero that the step
+  // count would be unusably large is *ignored* -- the function behaves as
+  // if only A and B were given (the full continuous [A, B] range), not
+  // folded to a single point. Whenever the step isn't provably positive (a
+  // complex expression, or a rounded value that might be masking a small
+  // positive one), use that same conservative continuous treatment.
+  if (preciseStepValue === undefined || preciseStepValue <= 0) return continuousRangeResult();
+
+  // evaluateStaticLayerNumberWithUnit() converts every canonical absolute
+  // unit to its canonical same-dimension magnitude while parsing (the same
+  // conversion evaluateStaticLayerNumber() relies on), so min, max, and step
+  // written in different but convertible units (e.g. `264.556875cm` next to
+  // `9989.02px`) are directly comparable at full precision here -- unlike
+  // evaluateStaticLayerNumber(), this doesn't also round the result, which
+  // the step / 1000 endpoint-snapping tolerance below needs. A nonzero
+  // relative length (em, vh, ...), or a unit mismatch that isn't just a
+  // convertible-unit difference, still isn't safely comparable and falls
+  // back to the already-converted (but integer-rounded) values below.
+  const preciseMinimum = evaluateStaticLayerNumberWithUnit(minimumExpression);
+  const preciseMaximum = evaluateStaticLayerNumberWithUnit(maximumExpression);
+  const preciseStep = evaluateStaticLayerNumberWithUnit(stepExpression);
+  const preciseValuesShareAUnit =
+    preciseMinimum !== undefined &&
+    preciseMaximum !== undefined &&
+    preciseStep !== undefined &&
+    preciseMinimum.unit === preciseMaximum.unit &&
+    preciseMinimum.unit === preciseStep.unit;
+  const effectiveStepValue = preciseValuesShareAUnit ? preciseStep.value : stepValue;
+  const preciseMinimumValue = preciseValuesShareAUnit ? preciseMinimum.value : minimumValue;
+  const preciseMaximumValue = preciseValuesShareAUnit ? preciseMaximum.value : maximumValue;
+  const naturalStepCount = Math.floor(
+    (preciseMaximumValue - preciseMinimumValue) / effectiveStepValue,
+  );
+  if (!Number.isSafeInteger(naturalStepCount)) return fallbackResolutionTooComplex;
+  // CSS Values 5's random-evaluation algorithm: epsilon is step / 1000; N is
+  // the largest integer with min + N * step <= max (naturalStepCount above),
+  // *unless* N's value isn't within epsilon of max but N + 1's would be, in
+  // which case N is extended by one. The step index at N then snaps to the
+  // written maximum (rather than the plain arithmetic) whenever it's within
+  // epsilon of it.
+  const epsilon = Math.abs(effectiveStepValue) / 1000;
+  const valueAtStep = (stepIndex) => preciseMinimumValue + effectiveStepValue * stepIndex;
+  const naturalStepIsWithinEpsilon =
+    Math.abs(preciseMaximumValue - valueAtStep(naturalStepCount)) <= epsilon;
+  const nextStepIsWithinEpsilon =
+    Math.abs(preciseMaximumValue - valueAtStep(naturalStepCount + 1)) <= epsilon;
+  const stepCount =
+    !naturalStepIsWithinEpsilon && nextStepIsWithinEpsilon
+      ? naturalStepCount + 1
+      : naturalStepCount;
+  if (!Number.isSafeInteger(stepCount)) return fallbackResolutionTooComplex;
+  const lastStepSnapsToMaximum = Math.abs(preciseMaximumValue - valueAtStep(stepCount)) <= epsilon;
+  const stepExpressionAt = (stepIndex) => {
+    if (stepIndex === 0) return minimumExpression;
+    if (stepIndex === stepCount && lastStepSnapsToMaximum) return maximumExpression;
+    return `calc((${minimumExpression}) + (${stepExpression}) * ${stepIndex})`;
+  };
+  // A fixed key resolves to exactly one step index regardless of how many
+  // slots the range divides into -- computing (and stringifying) that one
+  // value is O(1), so it isn't subject to the enumeration cap below, which
+  // exists only to bound building an array of every slot.
   if (fixedBaseValue !== undefined) {
     const stepIndex = Math.floor(fixedBaseValue * (stepCount + 1));
-    const expression =
-      stepIndex === 0
-        ? minimumExpression
-        : `calc((${minimumExpression}) + (${stepExpression}) * ${stepIndex})`;
+    const expression = stepExpressionAt(stepIndex);
     if (!consumeResolutionWork(budget, expression.length)) return fallbackResolutionTooComplex;
     return { continuous: false, values: [expression] };
   }
+  if (stepCount > 128) return fallbackResolutionTooComplex;
   const values = [];
   for (let stepIndex = 0; stepIndex <= stepCount; stepIndex += 1) {
-    const expression =
-      stepIndex === 0
-        ? minimumExpression
-        : `calc((${minimumExpression}) + (${stepExpression}) * ${stepIndex})`;
+    const expression = stepExpressionAt(stepIndex);
     if (!consumeResolutionWork(budget, expression.length)) return fallbackResolutionTooComplex;
     values.push(expression);
   }
@@ -5646,6 +5879,30 @@ function runtimeFunctionStaticArgumentsAreValid(
   );
 }
 
+// A best-effort check for whether a calc-mix() argument trails its value
+// with an explicit space-separated percentage weight (CSS Values 5's
+// current `<calc-sum> <percentage>?` weighted-item grammar).
+function calcMixArgumentUsesExplicitWeight(value, argumentRange) {
+  const text = value
+    .slice(argumentRange.start, argumentRange.end)
+    .replaceAll(cssCommentMaskCharacter, ' ');
+  return /\s[+-]?(?:\d+(?:\.\d+)?|\.\d+)(?:e[+-]?\d+)?%$/i.test(text.trimEnd());
+}
+
+// A per-item weight is optional on every item, so a valid weighted call can
+// have none at all -- only exactly three unweighted items is genuinely
+// ambiguous with the older three-argument progress-interpolation shape
+// (mirrors the same rule the static evaluator in z-index-value-analysis.mjs
+// uses to dispatch between the two grammars).
+function calcMixCallUsesWeightedItemGrammar(value, parsedArguments) {
+  return (
+    parsedArguments.argumentCount !== 3 ||
+    parsedArguments.argumentRanges.some((argumentRange) =>
+      calcMixArgumentUsesExplicitWeight(value, argumentRange),
+    )
+  );
+}
+
 function childIsInsideProvablyInvalidCalcMix(child, frame, value, range, parenthesisPairs) {
   let parent = child.parenthesisParent;
   while (
@@ -5662,8 +5919,12 @@ function childIsInsideProvablyInvalidCalcMix(child, frame, value, range, parenth
         'calc-mix',
         parenthesisPairs,
       );
+      if (parsedArguments === undefined) return true;
+      // The weighted-item grammar accepts any number of comma-separated
+      // items, so the fixed three-argument arity check below only applies
+      // to calls that don't use it (the older progress-interpolation shape).
       if (
-        parsedArguments === undefined ||
+        !calcMixCallUsesWeightedItemGrammar(value, parsedArguments) &&
         !unresolvedRuntimeFunctionHasValidArity('calc-mix', parsedArguments.argumentCount)
       )
         return true;
@@ -7045,7 +7306,10 @@ function fallbackCandidates(value) {
       continue;
     }
 
-    const fallbackRange = trimCssTriviaRange(value, frame.commaIndex + 1, index);
+    const fallbackRange = unwrapBracedFallbackRange(
+      value,
+      trimCssTriviaRange(value, frame.commaIndex + 1, index),
+    );
     const rawFallback = value.slice(fallbackRange.start, fallbackRange.end);
     frame.resolvedFallback = resolveFrameExpression(frame, value, fallbackRange, resolutionBudget);
     const [onlyChild] = frame.children;
