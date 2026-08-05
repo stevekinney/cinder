@@ -114,13 +114,17 @@ protocol from the 2026-08-04 drain is:
    drain before `strict` is lifted.
 2. Octopus-merge every candidate branch onto a **scratch branch cut from
    `main` in a scratch worktree** — never the real `main` — and run the
-   full validation suite against that combined tree: build, tests, typecheck,
-   lint (including `lint:invariants`), `components:check`, and
-   `aggregator:check`, plus the `main-green`-only audits that no PR-level
-   check runs (`platform:audit`, `colors:audit`, `tokens:audit`,
-   `validate:consumer` and friends — read
-   `.github/workflows/main-green.yaml` for the current list) when any
-   candidate touches the surfaces they audit, **and the full Playwright suite
+   full validation suite against that combined tree — provision the scratch
+   worktree's dependency tree first (`bun install --frozen-lockfile`; a fresh
+   cinder worktree is known to hang on install, so prefer reusing a worktree
+   that already has `node_modules` and re-install only when `bun.lock`
+   changed): build, tests, typecheck, lint (including `lint:invariants`),
+   and the `main-green`-only source audits exactly as `workspace-gates`
+   runs them — `aggregator:check`, `components:check`,
+   `check:changeset-prerelease-bumps`, `validate:workflow`,
+   `validate:svelte-peer`, and `test:workspace-scripts` (read
+   `.github/workflows/main-green.yaml` for the current list — it is the
+   source of truth and this list WILL drift), **and the full Playwright suite
    run against this same combined tree** (locally via `test:browser`; kill
    any stale server on :5555/:5556 first). Browser coverage must precede the
    drain — `main-green` is NOT a browser gate (it runs only the Chromium
