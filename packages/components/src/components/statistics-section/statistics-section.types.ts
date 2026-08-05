@@ -20,8 +20,16 @@ export type StatisticsSectionItem = {
   changeDescription?: string;
 };
 
-/** Props for the StatisticsSection component. */
-export type StatisticsSectionProps = Omit<HTMLAttributes<HTMLElement>, 'children' | 'class'> & {
+/**
+ * Props for the StatisticsSection component.
+ *
+ * `title` is repurposed as the section heading text, not the native tooltip
+ * attribute — the native `HTMLAttributes.title` is intentionally unreachable.
+ */
+export type StatisticsSectionProps = Omit<
+  HTMLAttributes<HTMLElement>,
+  'children' | 'class' | 'title'
+> & {
   /** Wrapper element tag. @default "section" */
   as?: 'section' | 'div';
   /** Optional section heading text. */

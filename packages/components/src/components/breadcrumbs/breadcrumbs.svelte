@@ -24,10 +24,11 @@
     separator = '/',
     label = 'Breadcrumb',
     class: className,
+    ...rest
   }: BreadcrumbsProps = $props();
 </script>
 
-<nav class={classNames('cinder-breadcrumbs', className)} aria-label={label}>
+<nav {...rest} class={classNames('cinder-breadcrumbs', className)} aria-label={label}>
   <ol class="cinder-breadcrumbs__list">
     <!--
       Key is `href`/`label` (the closest thing to a stable identity a breadcrumb

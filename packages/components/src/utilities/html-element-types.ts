@@ -21,3 +21,28 @@ export type NonVoidHTMLElementTagName = Exclude<
   | 'track'
   | 'wbr'
 >;
+
+/**
+ * Non-void HTML element tags that also exclude document-metadata and
+ * non-content tags (`html`, `head`, `body`, `title`, `style`, `script`,
+ * `noscript`, `colgroup`, `optgroup`, `option`) — tags that render invisible
+ * or structurally broken markup when used as a generic polymorphic wrapper.
+ *
+ * This is deliberately narrower than a strictly spec-accurate "flow content"
+ * type: it does not exclude context-specific tags like `li`, `td`, or `dt`
+ * that are only valid inside a particular parent but still render a visible,
+ * if semantically invalid, box.
+ */
+export type NonMetadataHTMLElementTagName = Exclude<
+  NonVoidHTMLElementTagName,
+  | 'html'
+  | 'head'
+  | 'body'
+  | 'title'
+  | 'style'
+  | 'script'
+  | 'noscript'
+  | 'colgroup'
+  | 'optgroup'
+  | 'option'
+>;

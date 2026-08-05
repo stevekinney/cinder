@@ -27,20 +27,23 @@ function itemSnippet() {
 }
 
 describe('SideNavigationGroup', () => {
-  test('empty label throws on initial render', () => {
-    expect(() => {
-      render(SideNavigationGroup, {
-        props: { label: '', children: itemSnippet() },
-      });
-    }).toThrow();
+  test('empty label does not throw and renders the trigger without an aria-label attribute or literal "undefined" text', () => {
+    const { container } = render(SideNavigationGroup, {
+      props: { label: '', children: itemSnippet() },
+    });
+    const trigger = container.querySelector('button.cinder-side-navigation-group__trigger');
+    expect(trigger).not.toBeNull();
+    expect(trigger?.hasAttribute('aria-label')).toBe(false);
+    expect(container.querySelector('.cinder-side-navigation-group__label')?.textContent).toBe('');
   });
 
-  test('whitespace-only label throws on initial render', () => {
-    expect(() => {
-      render(SideNavigationGroup, {
-        props: { label: '   ', children: itemSnippet() },
-      });
-    }).toThrow();
+  test('whitespace-only label does not throw and renders the trigger without an aria-label attribute', () => {
+    const { container } = render(SideNavigationGroup, {
+      props: { label: '   ', children: itemSnippet() },
+    });
+    const trigger = container.querySelector('button.cinder-side-navigation-group__trigger');
+    expect(trigger).not.toBeNull();
+    expect(trigger?.hasAttribute('aria-label')).toBe(false);
   });
 
   test('header trigger renders as <button type="button"> with label text', () => {

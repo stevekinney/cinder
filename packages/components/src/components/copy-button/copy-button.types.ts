@@ -46,4 +46,6 @@ export type CopyButtonProps = Omit<
   children?: Snippet;
   /** Content rendered while in the "copied" state. */
   confirmation?: Snippet;
+  /** Called when the clipboard write fails (permission denied, insecure context, or the legacy execCommand fallback also failing). */
+  onError?: () => void;
 };

@@ -98,6 +98,9 @@ jobs:
           bun run --filter=@lostgradient/editor colors:audit -- --strict
           bun run --filter=@lostgradient/editor tokens:audit -- --strict
 
+      - name: Source audits (playground)
+        run: bun run validate:playground
+
       # The full `bun run test` suite includes @cinder/playground's bundle/route
       # tests (playground-server.test.ts), which bundle the playground FROM
       # SOURCE and resolve private @cinder/* packages plus the public Cinder,

@@ -6,8 +6,11 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 setupHappyDom();
 
 const { render } = await import('@testing-library/svelte');
+const { createRawSnippet } = await import('svelte');
 const { default: CheckboxGroup } = await import('./checkbox-group.svelte');
 const { default: Wrapper } = await import('../../test/fixtures/checkbox-group-fixture.svelte');
+
+const emptySnippet = createRawSnippet(() => ({ render: () => '<span></span>', setup: () => {} }));
 
 describe('CheckboxGroup', () => {
   // Test 1: fieldset + legend
@@ -222,6 +225,24 @@ describe('CheckboxGroup — required parity', () => {
     const marker = container.querySelector('legend .cinder-_required-marker');
     expect(marker).not.toBeNull();
     expect(marker?.textContent).toBe('*');
+  });
+});
+
+describe('CheckboxGroup — HTMLAttributes passthrough', () => {
+  test('forwards data-testid and aria-describedby onto the fieldset while disabled stays component-owned', () => {
+    const { container } = render(CheckboxGroup, {
+      props: {
+        label: 'Notifications',
+        disabled: true,
+        'data-testid': 'cbg-root',
+        'aria-describedby': 'hint',
+        children: emptySnippet,
+      },
+    });
+    const fieldset = container.querySelector('fieldset');
+    expect(fieldset?.getAttribute('data-testid')).toBe('cbg-root');
+    expect(fieldset?.getAttribute('aria-describedby')).toContain('hint');
+    expect(fieldset?.hasAttribute('disabled')).toBe(true);
   });
 });
 

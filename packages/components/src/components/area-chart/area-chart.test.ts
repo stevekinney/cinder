@@ -136,6 +136,28 @@ describe('AreaChart', () => {
     expect(container.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
   });
 
+  test('loading state renders no tabbable focus targets or plot marks even with non-empty series', () => {
+    const { container } = render(AreaChart, {
+      label: 'Loading',
+      loading: true,
+      series,
+    });
+
+    // The svg itself is aria-hidden while loading; nothing inside it may be
+    // reachable by keyboard, or a Tab press lands on a hidden focus target.
+    expect(container.querySelectorAll('[role="button"][tabindex="0"]').length).toBe(0);
+    expect(container.querySelectorAll('.cinder-area-chart__area').length).toBe(0);
+  });
+
+  test('non-loading, non-empty state renders plot marks', () => {
+    const { container } = render(AreaChart, {
+      label: 'Usage trend',
+      series,
+    });
+
+    expect(container.querySelectorAll('.cinder-area-chart__area').length).toBeGreaterThan(0);
+  });
+
   test('loading state clears an active tooltip', async () => {
     const { getByRole, queryByText, rerender } = render(AreaChart, {
       label: 'Usage trend',

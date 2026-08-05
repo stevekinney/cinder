@@ -1,13 +1,15 @@
 /**
- * Reactive store for the playground shell SPA.
+ * Playground preview state shared by the shell chrome and the color-token panel.
  *
- * Phase 1 held only `currentComponent`. Phase 3 adds the top-bar controls:
- * theme (persisted to localStorage), viewport width, and background swatch
- * (session-only). Focus mode is driven by the `?focus=1` search param so it
- * survives reloads and is shareable via URL.
- *
- * Single instance provided via a Svelte 5 context key so any descendant
- * component can read/write it without prop drilling.
+ * Tracks two independent pieces of state:
+ * - `theme`: the active light/dark override, persisted to `localStorage` only.
+ *   It is not serialized to or read from the URL. `enableBrowserThemeResolution()`
+ *   exists to fall back to the OS `prefers-color-scheme` when no override is set,
+ *   but nothing currently calls it in production — see the tracked follow-up for
+ *   `PreviewStore.theme`'s incomplete wiring.
+ * - `colorTokenOverrides`: per-token color overrides set from the color-token
+ *   panel, restored from `sessionStorage` on construction and applied to the
+ *   document via `applyActiveColorTokenOverridesToDocument()`.
  */
 
 import { getContext, setContext } from 'svelte';
@@ -20,13 +22,7 @@ import {
   type ColorTokenName,
   type ColorTokenOverrides,
 } from './color-token-registry.ts';
-import type { ThemeChoice, ToolbarSearchState } from './routing.ts';
-import {
-  buildToolbarSearch,
-  readFocusModeFromSearch,
-  readPreviewWidthFromSearch,
-  readThemeFromSearch,
-} from './routing.ts';
+import type { ThemeChoice } from './routing.ts';
 import { THEME_STORAGE_KEY } from './theme-storage.ts';
 
 export type { ThemeChoice };
@@ -138,19 +134,6 @@ export function applyColorTokenOverridesToDocument(
 }
 
 export class PreviewStore {
-  currentComponent = $state<string>('');
-
-  /**
-   * Reactive backing cells for every toolbar setting. Public getters expose
-   * them; setters write the new value back to the URL via
-   * `history.replaceState` so the query string is the canonical source of
-   * truth and every toolbar option is shareable / survives reloads.
-   *
-   * The reactive cell is the UI's read path — we don't re-parse the URL on
-   * every render. Setters keep the cell and the URL in lockstep, and
-   * `syncFromUrl()` re-reads when back/forward navigation fires `popstate`.
-   */
-  #isFocusMode = $state<boolean>(false);
   /**
    * The explicit theme override, or `null` when the user has made no choice and
    * the playground should follow the browser. `#browserThemeQuery` tracks the
@@ -162,41 +145,14 @@ export class PreviewStore {
   // client begin from the same deterministic light fallback. Shell enables the
   // live query in `onMount`, after Svelte has reconciled the server tree.
   #browserThemeQuery = $state<MediaQuery | null>(null);
-  #previewWidth = $state<number | null>(null);
 
   colorTokenOverrides = $state<ColorTokenOverrideState>({ light: {}, dark: {} });
 
-  /**
-   * Narrow-viewport sidebar drawer state. Pure shell-local UI: it is never
-   * serialized to the URL (a drawer that reopens on reload is annoying, not
-   * shareable) and never crosses the iframe boundary, so its setter does NOT
-   * write the URL. On wide viewports the CSS ignores it entirely.
-   */
-  isSidebarOpen = $state<boolean>(false);
-
-  /** Right-side color-token editor state. Session-only and never serialized. */
-  isColorTokenPanelOpen = $state<boolean>(false);
-
-  constructor(initialComponent: string, initialState: Partial<ToolbarSearchState> = {}) {
-    this.currentComponent = initialComponent;
-    this.#isFocusMode = initialState.isFocusMode ?? false;
-    this.#override = initialState.theme ?? null;
-    this.#previewWidth = initialState.previewWidth ?? null;
+  constructor(initialTheme: ThemeChoice | null = null) {
+    this.#override = initialTheme;
     if (typeof window !== 'undefined') {
       this.colorTokenOverrides = readSessionColorTokenOverrides();
     }
-  }
-
-  get isFocusMode(): boolean {
-    return this.#isFocusMode;
-  }
-  set isFocusMode(value: boolean) {
-    this.#isFocusMode = value;
-    if (value) {
-      this.isSidebarOpen = false;
-      this.isColorTokenPanelOpen = false;
-    }
-    this.#writeUrl();
   }
 
   /**
@@ -209,14 +165,6 @@ export class PreviewStore {
     return this.#override ?? this.#resolvedBrowserTheme();
   }
 
-  /**
-   * The explicit override, or `null` when following the browser. Distinct from
-   * {@link theme}, which always resolves to a concrete light/dark value.
-   */
-  get themeOverride(): ThemeChoice | null {
-    return this.#override;
-  }
-
   /** Begin resolving the OS color scheme after hydration has completed. */
   enableBrowserThemeResolution(): void {
     if (typeof window === 'undefined' || this.#browserThemeQuery !== null) return;
@@ -226,33 +174,6 @@ export class PreviewStore {
   /** Map the live `prefers-color-scheme` media query to a concrete theme. */
   #resolvedBrowserTheme(): ThemeChoice {
     return this.#browserThemeQuery?.current ? 'dark' : 'light';
-  }
-
-  /** null = full / unconstrained width. Number = pixel width applied to the iframe. */
-  get previewWidth(): number | null {
-    return this.#previewWidth;
-  }
-  set previewWidth(value: number | null) {
-    this.#previewWidth = value;
-    this.#writeUrl();
-  }
-
-  /**
-   * Set an explicit theme override. Writes to the URL (so it's shareable) and
-   * to localStorage (so the next visit without a `theme=` param picks up the
-   * user's choice) and applies the new color-scheme to the shell document. Use
-   * this — never assign `store.theme` directly. Once an override is set it wins
-   * over the browser's `prefers-color-scheme`.
-   */
-  setTheme(value: ThemeChoice): void {
-    if (!THEME_VALUES.has(value)) return;
-    this.#override = value;
-    writePersistedTheme(value);
-    if (typeof document !== 'undefined') {
-      applyThemeToDocument(document, this.#override, this.#resolvedBrowserTheme());
-      this.applyActiveColorTokenOverridesToDocument(document);
-    }
-    this.#writeUrl();
   }
 
   /**
@@ -267,43 +188,6 @@ export class PreviewStore {
   adoptTheme(value: ThemeChoice): void {
     if (!THEME_VALUES.has(value)) return;
     this.#override = value;
-  }
-
-  /**
-   * Re-seed every toolbar cell from the current URL. Called after hydration so
-   * a persisted theme can be restored without changing the server-known
-   * initial tree. The theme override falls back to localStorage when the URL
-   * has no `theme=` param; when neither carries an override the playground
-   * follows the browser preference.
-   */
-  syncFromUrl(): void {
-    if (typeof window === 'undefined') return;
-    const search = new URL(window.location.href).searchParams;
-    this.#isFocusMode = readFocusModeFromSearch(search);
-    this.#previewWidth = readPreviewWidthFromSearch(search);
-    // Dismiss the narrow-viewport drawer on every URL sync (browser back/forward).
-    // If the user had the drawer open and navigated away (or landed on ?focus=1
-    // via history), the scrim + inert state must not persist into the new URL.
-    this.isSidebarOpen = false;
-    if (this.#isFocusMode) {
-      this.isColorTokenPanelOpen = false;
-    }
-    const nextOverride = readThemeFromSearch(search) ?? readPersistedTheme();
-    if (nextOverride !== this.#override) {
-      this.#override = nextOverride;
-      if (typeof document !== 'undefined') {
-        applyThemeToDocument(document, this.#override, this.#resolvedBrowserTheme());
-        this.applyActiveColorTokenOverridesToDocument(document);
-      }
-    }
-  }
-
-  getColorTokenOverride(theme: ThemeChoice, tokenName: ColorTokenName): string | undefined {
-    return this.colorTokenOverrides[theme][tokenName];
-  }
-
-  getActiveColorTokenOverrides(): ColorTokenOverrides {
-    return { ...this.colorTokenOverrides[this.theme] };
   }
 
   setColorTokenOverride(theme: ThemeChoice, tokenName: ColorTokenName, value: string): boolean {
@@ -354,31 +238,6 @@ export class PreviewStore {
 
   applyActiveColorTokenOverridesToDocument(doc: Document): void {
     applyColorTokenOverridesToDocument(doc, this.colorTokenOverrides[this.theme]);
-  }
-
-  /**
-   * Snapshot of the toolbar state that gets serialized to the URL. The theme
-   * is only emitted when an explicit override has been set; with no override a
-   * default URL stays clean and the playground follows the browser.
-   */
-  #snapshot(): ToolbarSearchState {
-    return {
-      isFocusMode: this.#isFocusMode,
-      theme: this.#override,
-      previewWidth: this.#previewWidth,
-    };
-  }
-
-  /**
-   * Push the current state to the URL via `history.replaceState`, preserving
-   * pathname, hash, and any unrelated query params.
-   */
-  #writeUrl(): void {
-    if (typeof window === 'undefined') return;
-    const url = new URL(window.location.href);
-    const nextSearch = buildToolbarSearch(url.searchParams, this.#snapshot());
-    const nextHref = `${url.pathname}${nextSearch}${url.hash}`;
-    history.replaceState(history.state, '', nextHref);
   }
 }
 

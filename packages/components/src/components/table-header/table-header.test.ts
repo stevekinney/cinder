@@ -46,4 +46,13 @@ describe('TableHeader', () => {
       }),
     ).toThrow(/required when Table.selectable is true/);
   });
+
+  test('forwards native attributes to the root <thead>', () => {
+    const { container } = render(Wrapper, {
+      columns,
+      rows,
+      headerProps: { 'data-testid': 'probe' },
+    });
+    expect(container.querySelector('thead')?.getAttribute('data-testid')).toBe('probe');
+  });
 });

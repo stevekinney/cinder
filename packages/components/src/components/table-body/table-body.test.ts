@@ -32,4 +32,13 @@ describe('TableBody', () => {
     expect(container.querySelector('tbody')).not.toBeNull();
     expect(container.querySelectorAll('tbody tr')).toHaveLength(0);
   });
+
+  test('forwards native attributes to the root <tbody>', () => {
+    const { container } = render(Wrapper, {
+      columns,
+      rows,
+      bodyProps: { 'data-testid': 'probe' },
+    });
+    expect(container.querySelector('tbody')?.getAttribute('data-testid')).toBe('probe');
+  });
 });

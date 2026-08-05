@@ -849,6 +849,45 @@ describe('TagInput FormField wiring', () => {
       console.warn = originalWarn;
     }
   });
+
+  test('warns when required is set with no wrapping FormField supplying required context', () => {
+    const originalWarn = console.warn;
+    const warn = mock(() => {});
+    console.warn = warn;
+
+    try {
+      render(TagInput, { props: { id: 'standalone-required', required: true } });
+
+      expect(warn).toHaveBeenCalledWith(
+        "[cinder/TagInput] ignores the native 'required' prop; set required on the wrapping FormField instead.",
+      );
+    } finally {
+      console.warn = originalWarn;
+    }
+  });
+
+  test('does not warn when the wrapping FormField already supplies required context', () => {
+    const originalWarn = console.warn;
+    const warn = mock(() => {});
+    console.warn = warn;
+
+    try {
+      render(FormFieldTagInputFixture, {
+        props: {
+          fieldId: 'required-context-tags',
+          fieldLabel: 'Tags',
+          fieldRequired: true,
+          tagInputRequired: true,
+        },
+      });
+
+      expect(warn).not.toHaveBeenCalledWith(
+        "[cinder/TagInput] ignores the native 'required' prop; set required on the wrapping FormField instead.",
+      );
+    } finally {
+      console.warn = originalWarn;
+    }
+  });
 });
 
 describe('TagInput ARIA live announcements', () => {

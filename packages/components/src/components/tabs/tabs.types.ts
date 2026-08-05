@@ -29,14 +29,10 @@ export type TabsContext = {
   select: (next: string) => void;
   /** True when `candidate` is the active tab. */
   isActive: (candidate: string) => boolean;
-  /**
-   * Announce a tab to the parent registry on mount. Registry order is the
-   * navigation order. Re-registering an existing value updates its button
-   * reference in place; insertion order is preserved. The `disabled` argument
-   * seeds the registry entry's initial state so first paint reflects the
-   * tab's current `disabled` prop without waiting for `setDisabled` to run.
-   */
-  register: (value: string, button: HTMLButtonElement, disabled?: boolean) => void;
+  /** Registers ordered tab metadata during rendering so SSR can calculate tabindex. */
+  registerOrder: (value: string, disabled: boolean) => void;
+  /** Attaches the hydrated button used exclusively for imperative focus. */
+  attachButton: (value: string, button: HTMLButtonElement) => void;
   /** Remove a tab from the registry on unmount. */
   unregister: (value: string) => void;
   /**

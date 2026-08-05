@@ -1,4 +1,5 @@
 import type { Snippet } from 'svelte';
+import type { HTMLFieldsetAttributes } from 'svelte/elements';
 /**
  * Props for the CheckboxGroup component.
  *
@@ -8,7 +9,7 @@ import type { Snippet } from 'svelte';
  * own name and checked state. Native `<fieldset disabled>` propagation
  * handles the disabled cascade without any Svelte context.
  */
-export type CheckboxGroupProps = {
+export type CheckboxGroupProps = Omit<HTMLFieldsetAttributes, 'disabled' | 'class' | 'children'> & {
   /**
    * Visible group caption. Rendered as a `<legend>` inside the `<fieldset>`.
    * Named `label` for consistency with every other form control — the element

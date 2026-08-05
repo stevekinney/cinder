@@ -1,6 +1,6 @@
 <!-- dev-only playground scaffold; immutable page data is injected server-side -->
 <script lang="ts">
-  import { mount, unmount, type Snippet } from 'svelte';
+  import { type Snippet } from 'svelte';
   import { Accordion } from '@lostgradient/cinder/accordion';
   import { AccordionItem } from '@lostgradient/cinder/accordion-item';
   import { Alert } from '@lostgradient/cinder/alert';
@@ -25,21 +25,11 @@
   import Sun from 'lucide-svelte/icons/sun';
   import X from 'lucide-svelte/icons/x';
   import { COMPOUND_COMPONENT_PARENTS } from './shell-app/compound-families.ts';
-  import {
-    buildComponentHref,
-    readFocusModeFromSearch,
-    readPreviewWidthFromSearch,
-  } from './shell-app/routing.ts';
+  import { buildComponentHref, readFocusModeFromSearch } from './shell-app/routing.ts';
   import { persistScrollPosition } from './shell-app/sidebar-scroll.ts';
   import { createEventSource } from './shell-app/event-source.svelte.ts';
-  import { THEME_STORAGE_KEY } from './shell-app/theme-storage.ts';
   import { splitReadmeHtml } from './split-readme-html.ts';
-  import {
-    formatErrorForClipboard,
-    toMountErrorDetail,
-    type MountErrorDetail,
-    type SourceErrorDetail,
-  } from './example-error.ts';
+  import type { MountErrorDetail, SourceErrorDetail } from './example-error.ts';
   import { readComponentDocumentationDataIsland } from './component-documentation-reference.ts';
   import type {
     ComponentDocumentationPayload,
@@ -62,6 +52,21 @@
     resolveBareComponent,
     toMountProps,
   } from './component-page-live-preview.ts';
+  import {
+    applyTheme,
+    NAV_FILTER_STORAGE_KEY,
+    PREVIEW_WIDTHS,
+    readInitialPreviewWidth,
+    readInitialTheme,
+    readStoredNavFilter,
+  } from './component-page-theme.ts';
+  import {
+    copyErrorToClipboard,
+    createExampleMountHelpers,
+    disclosureFor,
+    fetchExampleSource,
+    scrollOverflowSentinel,
+  } from './component-page-example-mounts.ts';
 
   type CinderExampleDescriptor = {
     scenario: string;
@@ -199,13 +204,6 @@
   // is adopted in `onMount`. Seeding from the document during init would make the
   // server and client first render disagree (a hydration mismatch); deferring the
   // read is the same discipline `shell.svelte` uses for its persisted theme.
-  function readInitialTheme(): 'light' | 'dark' {
-    if (typeof document === 'undefined') return 'light';
-    const scheme = document.documentElement.style.colorScheme;
-    if (scheme === 'dark' || scheme === 'light') return scheme;
-    return document.documentElement.dataset['cinderTheme'] === 'dark' ? 'dark' : 'light';
-  }
-
   // Seeded to `light` on BOTH sides — never from the document — so the server's
   // markup and the client's hydration render agree on the toggle's icon and
   // label. The real preference (set by the pre-paint script from the URL or
@@ -240,29 +238,6 @@
     isFocusMode = readFocusModeFromSearch(new URLSearchParams(window.location.search));
   });
 
-  /**
-   * Preview stage widths. `null` means "fill the pane". The numeric values match
-   * the breakpoints the shell's viewport control used, so shared links keep
-   * meaning the same thing.
-   */
-  const PREVIEW_WIDTHS = [
-    { label: 'Mobile', width: 375 },
-    { label: 'Tablet', width: 768 },
-    { label: 'Desktop', width: 1280 },
-    { label: 'Full', width: null },
-  ] as const satisfies readonly { label: string; width: number | null }[];
-
-  /*
-   * Seed from the URL so `?w=768&focus=1` still means what it did on the shell —
-   * `/c/<name>?w=…` preserves its query across the 301, so those links keep
-   * working. Read once, and only in the browser: the server tree must not depend
-   * on values the client would then re-derive.
-   */
-  function readInitialPreviewWidth(): number | null {
-    if (typeof window === 'undefined') return null;
-    return readPreviewWidthFromSearch(new URLSearchParams(window.location.search));
-  }
-
   let previewWidth = $state<number | null>(null);
 
   /** Focus mode expands the stage over the viewport; Escape exits. */
@@ -271,22 +246,9 @@
   /*
    * Component-nav filter. Matches against both the raw kebab id and the
    * humanized label, so typing either "alert-dialog" or "Alert dialog" works.
+   * Persisted across navigation. Selecting a component is a full document
+   * load, so without this a filtered list resets the moment you use it.
    */
-  const NAV_FILTER_STORAGE_KEY = 'cinder-playground-nav-filter';
-
-  /*
-   * Persisted across navigation. Selecting a component is a full document load,
-   * so without this a filtered list resets the moment you use it.
-   */
-  function readStoredNavFilter(): string {
-    if (typeof sessionStorage === 'undefined') return '';
-    try {
-      return sessionStorage.getItem(NAV_FILTER_STORAGE_KEY) ?? '';
-    } catch {
-      return '';
-    }
-  }
-
   let navFilter = $state('');
 
   /*
@@ -371,16 +333,7 @@
   function toggleTheme(): void {
     theme = theme === 'dark' ? 'light' : 'dark';
     onThemeChange?.(theme);
-    document.documentElement.style.colorScheme = theme;
-    document.documentElement.dataset['cinderTheme'] = theme;
-    try {
-      // Same key the pre-paint script in render-shell.ts reads. It previously
-      // wrote `cinder-docs-theme`, which nothing read, so the choice was lost on
-      // every navigation.
-      localStorage.setItem(THEME_STORAGE_KEY, theme);
-    } catch {
-      // Private mode / disabled storage — the in-memory theme still applies.
-    }
+    applyTheme(theme);
   }
 
   // --- Source-fetch + per-scenario accordion (preserved from the tabbed page) -
@@ -396,47 +349,6 @@
     examples.map(({ scenario }) => ({ scenario, expandedIds: [] as string[] })),
   );
 
-  function disclosureFor(
-    scenario: string,
-  ): { scenario: string; expandedIds: string[] } | undefined {
-    return exampleDisclosures.find((entry) => entry.scenario === scenario);
-  }
-
-  async function fetchSource(scenario: string): Promise<void> {
-    const url = `/example-src/${componentName}/${scenario}`;
-    loadingSource[scenario] = true;
-    sourceErrors[scenario] = undefined;
-    try {
-      const response = await fetch(url);
-      if (response.ok) {
-        fetchedSource[scenario] = await response.text();
-      } else {
-        fetchedSource[scenario] = null;
-        sourceErrors[scenario] = {
-          url,
-          detail: `${response.status} ${response.statusText}`.trim(),
-        };
-      }
-    } catch (error) {
-      fetchedSource[scenario] = null;
-      sourceErrors[scenario] = {
-        url,
-        detail: error instanceof Error ? error.message : String(error),
-      };
-    } finally {
-      loadingSource[scenario] = false;
-    }
-  }
-
-  async function copyError(detail: MountErrorDetail): Promise<void> {
-    if (typeof navigator === 'undefined' || navigator.clipboard === undefined) return;
-    try {
-      await navigator.clipboard.writeText(formatErrorForClipboard(detail));
-    } catch {
-      // Clipboard write can reject (permissions, insecure context).
-    }
-  }
-
   // Lazily fetch each example's source the first time its disclosure opens.
   $effect(() => {
     for (const entry of exampleDisclosures) {
@@ -445,7 +357,11 @@
         fetchedSource[entry.scenario] === undefined &&
         !loadingSource[entry.scenario]
       ) {
-        void fetchSource(entry.scenario);
+        void fetchExampleSource(componentName, entry.scenario, {
+          fetchedSource,
+          loadingSource,
+          sourceErrors,
+        });
       }
     }
   });
@@ -456,50 +372,9 @@
   // effect-based approach mounted before the `{#if documentation}` subtree was
   // patched in). The featured scenario can appear twice — once in Overview, once
   // in Examples — and each container gets its own attachment + its own mount, so
-  // the two instances stay independent with correct per-node cleanup.
-  //
-  // The mount-error record is keyed by the container's DOM `id`
-  // (`overview-mount-<scenario>` vs `example-mount-<scenario>`), NOT by the bare
-  // scenario, so a featured scenario rendered in BOTH locations gets one error
-  // slot per render location. Keying by scenario alone would let whichever
-  // attachment runs last clobber the other's entry — hiding a real failure or
-  // painting an error callout over a preview that actually rendered. The key is
-  // read from `element.id`, the same string the template sets and the same
-  // string the template reads back via `mountErrors[<container id>]`, so the two
-  // can never drift.
-  function mountScenario(scenario: string): (element: HTMLElement) => () => void {
-    return (element: HTMLElement) => {
-      const mountKey = element.id;
-      const registry =
-        ((window as unknown as Record<string, unknown>)['__CINDER_SCENARIOS__'] as
-          | Record<string, unknown>
-          | undefined) ?? {};
-      const Component = registry[scenario];
-      if (typeof Component !== 'function') {
-        console.error(`[cinder playground] no registered component for scenario "${scenario}"`);
-        return () => {};
-      }
-      let app: ReturnType<typeof mount> | undefined;
-      try {
-        app = mount(Component as Parameters<typeof mount>[0], {
-          target: element,
-          props: { mountIdPrefix: mountKey },
-        });
-        mountErrors[mountKey] = undefined;
-      } catch (error) {
-        console.error(`[cinder playground] failed to mount example "${scenario}":`, error);
-        mountErrors[mountKey] = toMountErrorDetail(error);
-      }
-      return () => {
-        if (app === undefined) return;
-        try {
-          unmount(app);
-        } catch {
-          // Best-effort cleanup only.
-        }
-      };
-    };
-  }
+  // the two instances stay independent with correct per-node cleanup. See
+  // `component-page-example-mounts.ts` for the mount-error keying discipline.
+  const { mountScenario } = createExampleMountHelpers({ mountErrors });
 
   // Whether the props table currently overflows horizontally. Drives the
   // `is-scrollable` modifier on the scroll container so the `::after` fade
@@ -507,27 +382,6 @@
   // table must not show a misleading fade over its right edge. Held in `$state`
   // (rather than toggled imperatively) so the binding is statically analysable.
   let propsTableOverflows = $state(false);
-
-  /**
-   * Measure a horizontal scroll container and keep {@link propsTableOverflows}
-   * in sync with its overflow state, re-measuring on element + content resize
-   * via `ResizeObserver`.
-   */
-  function scrollOverflowSentinel(element: HTMLElement): () => void {
-    const update = () => {
-      // A 1px tolerance avoids flicker from sub-pixel layout rounding.
-      propsTableOverflows = element.scrollWidth - element.clientWidth > 1;
-    };
-    update();
-    const observer = new ResizeObserver(update);
-    observer.observe(element);
-    // Table content can change width without the container resizing (e.g. async
-    // prop rows arriving), so observe the first child too when present.
-    if (element.firstElementChild instanceof HTMLElement) {
-      observer.observe(element.firstElementChild);
-    }
-    return () => observer.disconnect();
-  }
 
   // --- Documentation payload --------------------------------------------
   // Documentation is immutable for a deployed build, so the server embeds it
@@ -1192,7 +1046,7 @@
                   </div>
                   <div class="dx-examples">
                     {#each examples as { scenario, title, description } (scenario)}
-                      {@const disclosure = disclosureFor(scenario)}
+                      {@const disclosure = disclosureFor(exampleDisclosures, scenario)}
                       {@const source = fetchedSource[scenario]}
                       {@const mountError = mountErrors[`example-mount-${scenario}`]}
                       {@const sourceError = sourceErrors[scenario]}
@@ -1230,7 +1084,7 @@
                                     size="sm"
                                     variant="secondary"
                                     aria-label="Copy error for {title}"
-                                    onclick={() => copyError(mountError)}
+                                    onclick={() => copyErrorToClipboard(mountError)}
                                   >
                                     Copy error
                                   </Button>
@@ -1260,7 +1114,12 @@
                                         size="sm"
                                         variant="secondary"
                                         aria-label="Retry loading source for {title}"
-                                        onclick={() => fetchSource(scenario)}
+                                        onclick={() =>
+                                          fetchExampleSource(componentName, scenario, {
+                                            fetchedSource,
+                                            loadingSource,
+                                            sourceErrors,
+                                          })}
                                       >
                                         Retry
                                       </Button>
@@ -1294,7 +1153,11 @@
                     role="region"
                     aria-label="Props for {componentName}"
                     tabindex="0"
-                    {@attach scrollOverflowSentinel}
+                    {@attach (element) =>
+                      scrollOverflowSentinel(
+                        element,
+                        (overflows) => (propsTableOverflows = overflows),
+                      )}
                   >
                     <Table caption={`Props for ${componentName}`} density="condensed">
                       <Table.Header>
@@ -1949,8 +1812,7 @@
   }
 
   /* Below the sidebar's breakpoint it becomes an off-canvas drawer, so the
-     documentation column takes the full width again. Mirrors the 720px
-     breakpoint in sidebar.svelte. */
+     documentation column takes the full width again. */
   /* Narrow viewports: the nav becomes a normal block above the content rather
      than a fixed column, so the documentation gets the full width. */
   @media (max-width: 720px) {

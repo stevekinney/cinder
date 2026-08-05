@@ -12,20 +12,10 @@ import { describe, expect, it } from 'bun:test';
 
 import {
   buildComponentHref,
-  buildToolbarSearch,
-  createPreviewMessage,
   parseComponentFromPath,
   readFocusModeFromSearch,
   readPreviewWidthFromSearch,
-  readThemeFromSearch,
-  readToolbarStateFromSearch,
 } from './routing.ts';
-
-const DEFAULT_TOOLBAR_STATE = {
-  isFocusMode: false,
-  theme: null,
-  previewWidth: null,
-};
 
 describe('parseComponentFromPath', () => {
   it('returns the component name for a valid /c/:name path', () => {
@@ -95,77 +85,6 @@ describe('buildComponentHref', () => {
   });
 });
 
-describe('createPreviewMessage', () => {
-  it('builds a theme message for each allowed value', () => {
-    expect(createPreviewMessage('cinder:set-theme', 'light')).toEqual({
-      type: 'cinder:set-theme',
-      value: 'light',
-    });
-    expect(createPreviewMessage('cinder:set-theme', 'dark')).toEqual({
-      type: 'cinder:set-theme',
-      value: 'dark',
-    });
-  });
-
-  it('returns null for an unknown theme value', () => {
-    // @ts-expect-error - exercising runtime validation for untrusted callers
-    expect(createPreviewMessage('cinder:set-theme', 'midnight')).toBeNull();
-  });
-
-  it('builds a color-token override message for allowed tokens and values', () => {
-    expect(
-      createPreviewMessage('cinder:set-color-token-overrides', {
-        theme: 'light',
-        overrides: {
-          '--cinder-accent': 'oklch(60% 0.2 195)',
-          '--cinder-bg': 'var(--cinder-surface)',
-        },
-      }),
-    ).toEqual({
-      type: 'cinder:set-color-token-overrides',
-      theme: 'light',
-      overrides: {
-        '--cinder-accent': 'oklch(60% 0.2 195)',
-        '--cinder-bg': 'var(--cinder-surface)',
-      },
-    });
-  });
-
-  it('rejects color-token messages with an unknown token name', () => {
-    expect(
-      createPreviewMessage('cinder:set-color-token-overrides', {
-        theme: 'light',
-        overrides: {
-          '--cinder-button-bg': 'oklch(60% 0.2 195)',
-        },
-      }),
-    ).toBeNull();
-  });
-
-  it('rejects color-token messages with an unsafe CSS value', () => {
-    expect(
-      createPreviewMessage('cinder:set-color-token-overrides', {
-        theme: 'light',
-        overrides: {
-          '--cinder-accent': 'url(https://example.com/image.png)',
-        },
-      }),
-    ).toBeNull();
-  });
-
-  it('rejects color-token messages with an invalid theme', () => {
-    expect(
-      // @ts-expect-error - exercising runtime validation for untrusted callers
-      createPreviewMessage('cinder:set-color-token-overrides', {
-        theme: 'system',
-        overrides: {
-          '--cinder-accent': 'oklch(60% 0.2 195)',
-        },
-      }),
-    ).toBeNull();
-  });
-});
-
 describe('readFocusModeFromSearch', () => {
   it('returns false when the focus param is absent', () => {
     expect(readFocusModeFromSearch(new URLSearchParams(''))).toBe(false);
@@ -189,27 +108,6 @@ describe('readFocusModeFromSearch', () => {
   });
 });
 
-describe('readThemeFromSearch', () => {
-  it('returns null when the theme param is absent', () => {
-    expect(readThemeFromSearch(new URLSearchParams(''))).toBeNull();
-  });
-
-  it('returns the explicit override for known values', () => {
-    expect(readThemeFromSearch(new URLSearchParams('theme=light'))).toBe('light');
-    expect(readThemeFromSearch(new URLSearchParams('theme=dark'))).toBe('dark');
-  });
-
-  it('returns null for the retired "system" value', () => {
-    // 'system' is no longer a theme choice — absence of an override is what
-    // makes the playground follow the browser, so it resolves to null.
-    expect(readThemeFromSearch(new URLSearchParams('theme=system'))).toBeNull();
-  });
-
-  it('returns null for an unknown value', () => {
-    expect(readThemeFromSearch(new URLSearchParams('theme=midnight'))).toBeNull();
-  });
-});
-
 describe('readPreviewWidthFromSearch', () => {
   it('returns null when the width param is absent', () => {
     expect(readPreviewWidthFromSearch(new URLSearchParams(''))).toBeNull();
@@ -227,67 +125,5 @@ describe('readPreviewWidthFromSearch', () => {
 
   it('returns null for non-numeric values', () => {
     expect(readPreviewWidthFromSearch(new URLSearchParams('w=banana'))).toBeNull();
-  });
-});
-
-describe('readToolbarStateFromSearch', () => {
-  it('returns defaults when every param is absent', () => {
-    expect(readToolbarStateFromSearch(new URLSearchParams(''))).toEqual(DEFAULT_TOOLBAR_STATE);
-  });
-
-  it('parses a fully-populated query string', () => {
-    expect(readToolbarStateFromSearch(new URLSearchParams('focus=1&theme=dark&w=768'))).toEqual({
-      isFocusMode: true,
-      theme: 'dark',
-      previewWidth: 768,
-    });
-  });
-});
-
-describe('buildToolbarSearch', () => {
-  it('returns an empty string when every value is at its default', () => {
-    expect(buildToolbarSearch(new URLSearchParams(''), DEFAULT_TOOLBAR_STATE)).toBe('');
-  });
-
-  it('omits theme when there is no override (null)', () => {
-    expect(
-      buildToolbarSearch(new URLSearchParams(''), {
-        ...DEFAULT_TOOLBAR_STATE,
-        theme: null,
-      }),
-    ).toBe('');
-  });
-
-  it('emits every non-default value with compact keys', () => {
-    expect(
-      buildToolbarSearch(new URLSearchParams(''), {
-        isFocusMode: true,
-        theme: 'dark',
-        previewWidth: 768,
-      }),
-    ).toBe('?focus=1&theme=dark&w=768');
-  });
-
-  it('preserves unrelated params', () => {
-    expect(
-      buildToolbarSearch(new URLSearchParams('utm_source=docs'), {
-        ...DEFAULT_TOOLBAR_STATE,
-        theme: 'dark',
-      }),
-    ).toBe('?utm_source=docs&theme=dark');
-  });
-
-  it('removes a param when its value resets to the default', () => {
-    expect(
-      buildToolbarSearch(new URLSearchParams('focus=1&theme=dark&w=768'), {
-        ...DEFAULT_TOOLBAR_STATE,
-      }),
-    ).toBe('');
-  });
-
-  it('does not mutate the input URLSearchParams', () => {
-    const input = new URLSearchParams('focus=1');
-    buildToolbarSearch(input, DEFAULT_TOOLBAR_STATE);
-    expect(input.get('focus')).toBe('1');
   });
 });

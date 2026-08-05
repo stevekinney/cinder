@@ -21,7 +21,11 @@ import {
 import { discoverComponents, type ComponentDiscovery } from './lib/discover-components.ts';
 import { hasSourceCssImport } from './prepend-source-index-css-import.ts';
 import { createServerEntrySource } from './server-entry.ts';
-import { findOneArgumentServerComponentBoundaries, sveltePlugin } from './svelte-plugin.ts';
+import {
+  findOneArgumentServerComponentBoundaries,
+  isDomainSuiteStyleComponentName,
+  sveltePlugin,
+} from './svelte-plugin.ts';
 import { isObjectRecord } from './validation-utilities.ts';
 
 const repositoryRoot = process.cwd();
@@ -358,6 +362,23 @@ const browserEntrypoints = [
 const componentsWithSidecar = components.filter((component) =>
   existsSync(componentCssSource(component)),
 );
+
+// A component cannot both ship a hand-authored CSS sidecar here AND be named
+// in svelte-plugin.ts's DOMAIN_SUITE_STYLE_COMPONENTS allowlist (which lets a
+// component compile a real `<style>` block) — that combination would give it
+// two independent CSS delivery paths with no obvious cascade winner. Fail the
+// build loudly instead of letting the collision ship silently.
+const domainSuiteSidecarCollisions = componentsWithSidecar.filter((component) =>
+  isDomainSuiteStyleComponentName(component.name),
+);
+if (domainSuiteSidecarCollisions.length > 0) {
+  throw new Error(
+    'Build aborted: component(s) ship both a CSS sidecar and a DOMAIN_SUITE_STYLE_COMPONENTS ' +
+      `<style>-block allowance: ${domainSuiteSidecarCollisions.map((component) => component.name).join(', ')}. ` +
+      "Rename the component or remove it from svelte-plugin.ts's allowlist.",
+  );
+}
+
 // SUBPATH injection target: map each component's own `index.ts` to the exact
 // `@lostgradient/cinder/<name>/styles` (or experimental) specifier its sidecar resolves to.
 const perComponentStyleSpecifiers = new Map(

@@ -247,10 +247,11 @@ export function renderShell(
       }
 
       /* Single source of truth for the fixed top bar's height. Declared on
-         :root so it resolves for the top bar, the sidebar, and the main
-         column alike — .top-bar only reaches its own descendants, so siblings
-         (sidebar.svelte, shell.svelte) previously had to duplicate this token.
-         Hoisting it here lets those components reference it without fallbacks. */
+         :root (rather than scoped to the top bar's own element) so any
+         sibling that needs it — e.g. color-token-panel.svelte's fixed
+         positioning — can read it directly, with a 0px fallback for
+         contexts (like the canonical documentation page) that render no
+         shell top bar at all. */
       :root {
         --cinder-top-bar-height: 52px;
       }

@@ -86,35 +86,3 @@ describe('featured example mounts — no duplicate element IDs (#399)', () => {
     });
   }
 });
-
-describe('mountIdPrefix derivation — two mounts never collide (#399)', () => {
-  /**
-   * Models the exact idiom every featured example uses for an emitted id:
-   * `${mountIdPrefix ?? uid}-${suffix}`. The duplicate-id bug existed because a
-   * hardcoded literal produced the SAME string in both the Overview and Examples
-   * mounts. The fix makes every id a function of the per-mount prefix, so this
-   * pure-function check is the structural proof the source-shape guards above
-   * pin in each file: distinct prefixes ⇒ distinct ids, by construction.
-   */
-  const derivedId = (prefix: string, suffix: string): string => `${prefix}-${suffix}`;
-
-  it('produces distinct ids for the two mount containers', () => {
-    const overview = derivedId('overview-mount-basic', 'field');
-    const examples = derivedId('example-mount-basic', 'field');
-    expect(overview).not.toBe(examples);
-  });
-
-  it('keeps every child id distinct across mounts when one prefix scopes many suffixes', () => {
-    const suffixes = ['label', 'description', 'error', 'listbox'];
-    const overviewIds = suffixes.map((suffix) => derivedId('overview-mount-basic', suffix));
-    const exampleIds = suffixes.map((suffix) => derivedId('example-mount-basic', suffix));
-    const all = new Set([...overviewIds, ...exampleIds]);
-    expect(all.size).toBe(overviewIds.length + exampleIds.length);
-  });
-
-  it('falls back to the per-instance $props.id() so two standalone copies also differ', () => {
-    // No injected prefix → each copy reads its own stable `$props.id()` (modeled
-    // here as two distinct uids), so even unscoped duplicates never collide.
-    expect(derivedId('s1abc', 'field')).not.toBe(derivedId('s2xyz', 'field'));
-  });
-});

@@ -61,23 +61,76 @@ describe('MediaControls', () => {
     );
   });
 
-  test('button is disabled when disabled=true', () => {
+  // Native `disabled` removes an element from the accessibility tree, which
+  // would also hide `aria-busy` and the state label from assistive technology
+  // at the exact moment they matter most. The button stays in the tab order
+  // and reports `aria-disabled="true"` instead; the click handlers below
+  // independently no-op via their own `isDisabled` checks.
+  //
+  // A native <button> with neither a `disabled` attribute nor an explicit
+  // `tabindex` is focusable by default per the HTML spec — asserting the
+  // absence of both is the reliable proxy for that here. happy-dom's
+  // `HTMLButtonElement.tabIndex` getter does not implement the spec's
+  // intrinsic-focusability default (it reports -1 for a plain, enabled
+  // button with no explicit `tabindex` attribute, unlike real browsers),
+  // so this suite cannot assert `button.tabIndex !== -1` directly.
+  test('button is not natively disabled but reports aria-disabled and stays focusable when disabled=true', () => {
     const { getByRole } = render(MediaControls, { disabled: true });
-    const button = getByRole('button', { hidden: true });
-    expect(button.hasAttribute('disabled')).toBe(true);
+    const button = getByRole('button') as HTMLButtonElement;
+    expect(button.disabled).toBe(false);
+    expect(button.hasAttribute('disabled')).toBe(false);
+    expect(button.hasAttribute('tabindex')).toBe(false);
+    expect(button.getAttribute('aria-disabled')).toBe('true');
   });
 
-  test('button is disabled and shows loading when loading=true', () => {
+  test('button is not natively disabled but reports aria-disabled and stays focusable when loading=true', () => {
     const { getByRole } = render(MediaControls, { loading: true });
-    const button = getByRole('button', { hidden: true });
-    expect(button.hasAttribute('disabled')).toBe(true);
+    const button = getByRole('button') as HTMLButtonElement;
+    expect(button.disabled).toBe(false);
+    expect(button.hasAttribute('disabled')).toBe(false);
+    expect(button.hasAttribute('tabindex')).toBe(false);
+    expect(button.getAttribute('aria-disabled')).toBe('true');
     expect(button.getAttribute('aria-busy')).toBe('true');
   });
 
-  test('button is disabled when unavailable=true', () => {
+  test('button is not natively disabled but reports aria-disabled and stays focusable when unavailable=true', () => {
     const { getByRole } = render(MediaControls, { unavailable: true });
-    const button = getByRole('button', { hidden: true });
-    expect(button.hasAttribute('disabled')).toBe(true);
+    const button = getByRole('button') as HTMLButtonElement;
+    expect(button.disabled).toBe(false);
+    expect(button.hasAttribute('disabled')).toBe(false);
+    expect(button.hasAttribute('tabindex')).toBe(false);
+    expect(button.getAttribute('aria-disabled')).toBe('true');
+  });
+
+  test('clicking while loading or unavailable does not call onPlay, onPause, or onReplay', () => {
+    let playCalled = false;
+    let pauseCalled = false;
+    let replayCalled = false;
+    const handlers = {
+      onPlay: () => {
+        playCalled = true;
+      },
+      onPause: () => {
+        pauseCalled = true;
+      },
+      onReplay: () => {
+        replayCalled = true;
+      },
+    };
+
+    const { getByRole: getLoadingButton } = render(MediaControls, { loading: true, ...handlers });
+    fireEvent.click(getLoadingButton('button'));
+
+    cleanup();
+    const { getByRole: getUnavailableButton } = render(MediaControls, {
+      unavailable: true,
+      ...handlers,
+    });
+    fireEvent.click(getUnavailableButton('button'));
+
+    expect(playCalled).toBe(false);
+    expect(pauseCalled).toBe(false);
+    expect(replayCalled).toBe(false);
   });
 
   test('calls onPlay when play button is clicked', () => {

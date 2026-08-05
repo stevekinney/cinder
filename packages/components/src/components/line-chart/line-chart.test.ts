@@ -324,6 +324,28 @@ describe('LineChart', () => {
     expect(container.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
   });
 
+  test('loading state renders no tabbable focus targets or plot marks even with non-empty series', () => {
+    const { container } = render(LineChart, {
+      label: 'Loading chart',
+      loading: true,
+      series,
+    });
+
+    // The svg itself is aria-hidden while loading; nothing inside it may be
+    // reachable by keyboard, or a Tab press lands on a hidden focus target.
+    expect(container.querySelectorAll('[role="button"][tabindex="0"]').length).toBe(0);
+    expect(container.querySelectorAll('.cinder-line-chart__line').length).toBe(0);
+  });
+
+  test('non-loading, non-empty state renders plot marks', () => {
+    const { container } = render(LineChart, {
+      label: 'Monthly revenue',
+      series,
+    });
+
+    expect(container.querySelectorAll('.cinder-line-chart__line').length).toBeGreaterThan(0);
+  });
+
   test('loading state clears an active tooltip', async () => {
     const { getByRole, queryByText, rerender } = render(LineChart, {
       label: 'Monthly revenue',

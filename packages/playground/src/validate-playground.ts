@@ -26,7 +26,8 @@ import { discoverComponents } from './discover.ts';
 // build-time gate to the runtime server's startup behavior — the concern a
 // previous version of this file duplicated the regex to avoid.
 import { TITLE_PATTERN } from './example-metadata.ts';
-import { type PlaygroundServer, PORT, startServer, triggerReload } from './playground-server.ts';
+import { type PlaygroundServer, PORT, startServer } from './playground-server.ts';
+import { triggerReload } from './sse-broadcast.ts';
 
 class PlaygroundValidationError extends Error {
   constructor(message: string) {

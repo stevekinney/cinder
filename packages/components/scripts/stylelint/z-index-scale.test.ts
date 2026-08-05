@@ -2038,21 +2038,45 @@ describe('cinder/z-index-scale', () => {
   });
 
   test('bounds static max-floor scans with an unresolved wide sibling set', async () => {
-    const siblings = Array.from(
-      { length: 64_000 },
-      (_, index) => `var(--item-layer-${index}, -1)`,
-    ).join(', ');
-    const startedAt = performance.now();
-    const result = await lint(`
-      .fixture {
-        /* cinder-z-index-local: unresolved generated max arguments must fail closed promptly. */
-        z-index: max(var(--runtime), ${siblings});
+    // This used to assert an absolute 2000ms wall-clock budget, the same
+    // mis-specification its neighbor below had: it flaked twice in CI at
+    // 2048ms under runner load (rerun-green both times) while the property
+    // it needs to prove is that the max-floor scan stays linear in the
+    // sibling count. Same protocol as the neighbor: fastest-of-3 trials at
+    // N and 2N, ratio bound 4x, generous absolute ceiling only as a hang
+    // guard.
+    const buildCss = (siblingCount: number) => {
+      const siblings = Array.from(
+        { length: siblingCount },
+        (_, index) => `var(--item-layer-${index}, -1)`,
+      ).join(', ');
+      return `
+        .fixture {
+          /* cinder-z-index-local: unresolved generated max arguments must fail closed promptly. */
+          z-index: max(var(--runtime), ${siblings});
+        }
+      `;
+    };
+    const fastestLintTime = async (siblingCount: number) => {
+      const css = buildCss(siblingCount);
+      let fastest = Number.POSITIVE_INFINITY;
+      for (let trial = 0; trial < 3; trial += 1) {
+        const startedAt = performance.now();
+        const result = await lint(css);
+        fastest = Math.min(fastest, performance.now() - startedAt);
+        expect(warnings(result)).toHaveLength(1);
       }
-    `);
+      return fastest;
+    };
 
-    expect(warnings(result)).toHaveLength(1);
-    expect(performance.now() - startedAt).toBeLessThan(2_000);
-  });
+    const baselineSiblingCount = 32_000;
+    const timeAtBaseline = await fastestLintTime(baselineSiblingCount);
+    const timeAtDoubled = await fastestLintTime(baselineSiblingCount * 2);
+
+    expect(timeAtBaseline).toBeLessThan(30_000);
+    expect(timeAtDoubled).toBeLessThan(30_000);
+    expect(timeAtDoubled).toBeLessThan(timeAtBaseline * 4);
+  }, 35_000);
 
   test('builds wide clamp placeholders in linear time', async () => {
     // This used to assert an absolute wall-clock budget (2000ms), which

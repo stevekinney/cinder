@@ -42,7 +42,7 @@
   // panel content too).
   const effectiveActivateOnFocus = $derived(activateOnFocus ?? orientation === 'horizontal');
 
-  type RegistryEntry = { button: HTMLButtonElement; disabled: boolean };
+  type RegistryEntry = { button: HTMLButtonElement | undefined; disabled: boolean };
 
   /**
    * Registry of tab buttons keyed by their `value`. Order of registration
@@ -52,9 +52,29 @@
    * reactivity on its own, so every mutation path also bumps `version`. Any
    * `$derived` that reads from the registry must also read `version` to
    * re-run when entries change.
+   *
+   * Order metadata (`registerOrder`) is written synchronously from each
+   * Tab's top-level script, so the registry is fully populated for every
+   * sibling before any `$effect` runs — including on the server, where
+   * effects never run at all. The button reference itself (`attachButton`)
+   * is only available once a Tab has mounted, so `button` starts out
+   * `undefined` and is only used for imperative focus, never for
+   * tabindex calculation.
    */
   const buttons: Map<string, RegistryEntry> = new Map();
   let version = $state(0);
+  /**
+   * Flips to `true` exactly once, from the first effect flush after the
+   * initial render commits (server render and the client's initial render
+   * both leave this `false`). `isFocusable`'s registry-dependent fallback
+   * rule is gated behind this so it never runs mid-registration — see
+   * `isFocusable` below.
+   */
+  let mounted = $state(false);
+
+  $effect(() => {
+    mounted = true;
+  });
 
   const focusableValue = $derived.by(() => {
     void version;
@@ -66,7 +86,7 @@
 
   function focusValue(target: string): void {
     const entry = buttons.get(target);
-    if (entry) entry.button.focus();
+    entry?.button?.focus();
   }
 
   function resolveFocusedIndex(active: Element | null): number {
@@ -202,15 +222,20 @@
     isActive(candidate) {
       return value === candidate;
     },
-    register(target, button, disabled = false) {
-      const existing = buttons.get(target);
-      if (existing) {
-        existing.button = button;
-        existing.disabled = disabled;
-      } else {
-        buttons.set(target, { button, disabled });
-      }
+    registerOrder(target, disabled) {
+      // Idempotent: only inserts an order entry the first time a target is
+      // seen. Called both synchronously (once, from each Tab's top-level
+      // script — see tab.svelte) and defensively from Effect A on every
+      // rerun, so a rerun that finds the entry already present is a no-op
+      // rather than clobbering the seeded `disabled` state.
+      if (buttons.has(target)) return;
+      buttons.set(target, { button: undefined, disabled });
       version += 1;
+    },
+    attachButton(target, button) {
+      const existing = buttons.get(target);
+      if (!existing) return;
+      existing.button = button;
     },
     unregister(target) {
       if (buttons.delete(target)) {
@@ -227,17 +252,40 @@
     isFocusable(candidate) {
       // Force reads of every reactive input up front, regardless of which
       // branch the predicate ultimately takes. The calling $derived in
-      // tab.svelte needs to subscribe to `value` AND `version` for any
-      // possible code path — early-returning before reading one of them
-      // would leave the derived under-subscribed and stale when only the
-      // unread input changes. Must be called inside a $derived/$effect.
+      // tab.svelte needs to subscribe to `value`, `version`, AND `mounted`
+      // for any possible code path — early-returning before reading one of
+      // them would leave the derived under-subscribed and stale when only
+      // the unread input changes. Must be called inside a $derived/$effect.
       void value;
       void version;
-      const selectedEntry = buttons.get(value);
-      const selectedIsEnabled = selectedEntry !== undefined && !selectedEntry.disabled;
+      void mounted;
+
+      // `candidate` is always the calling Tab's own value, and every Tab
+      // registers its own order entry synchronously before its own
+      // isFocusable is ever read (see tab.svelte) — so this lookup never
+      // misses on a real render.
       const entry = buttons.get(candidate);
       if (!entry || entry.disabled) return false;
-      if (selectedIsEnabled) return value === candidate;
+
+      // Direct rule — order-independent. If this candidate IS the selected
+      // value and is enabled (already confirmed above), it is always the
+      // tab stop, regardless of registration order or position among
+      // siblings. Needs no information about any other tab, so it is
+      // correct on the very first render pass, whether that's SSR or the
+      // client's initial render.
+      if (candidate === value) return true;
+
+      // Fallback rule — "first enabled tab" — is only correct once every
+      // sibling has registered. Gated behind `mounted` so it never runs
+      // mid-registration: evaluating it during a single top-down SSR pass
+      // (or the client's still-registering initial render) would answer
+      // "has the selected tab registered yet?" based on registration
+      // order rather than tab identity, wrongly awarding the tab stop to
+      // an earlier, unrelated sibling.
+      if (!mounted) return false;
+      const selectedEntry = buttons.get(value);
+      const selectedIsEnabled = selectedEntry !== undefined && !selectedEntry.disabled;
+      if (selectedIsEnabled) return false; // the real selected tab handles itself via the direct rule
       return focusableValue === candidate;
     },
     handleKeydown,

@@ -1,5 +1,17 @@
 import type { Snippet } from 'svelte';
-export type TabProps = {
+import type { HTMLButtonAttributes } from 'svelte/elements';
+// `onclick` and `onkeydown` are omitted because the component sets both
+// unconditionally on the root `<button>` (activation + the shared roving
+// tabindex keyboard handler) — same reasoning as `id` and `value` below. Since
+// `{...rest}` is spread before those explicit handlers, an un-omitted
+// `onclick`/`onkeydown` prop would type-check but the component's own handler
+// would silently replace it at runtime (a consumer's forwarded handler would
+// simply never fire, with no compile-time or runtime signal). Omitting them
+// makes `<Tab onclick={...} />` a compile error instead.
+export type TabProps = Omit<
+  HTMLButtonAttributes,
+  'id' | 'disabled' | 'value' | 'class' | 'children' | 'onclick' | 'onkeydown'
+> & {
   /** Stable identifier used for tab selection; matches TabPanel in the default pattern. */
   value: string;
   /** Optional explicit id override; auto-generated otherwise for ARIA wiring. */

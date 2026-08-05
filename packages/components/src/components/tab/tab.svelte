@@ -14,9 +14,10 @@
    * @related tabs, tab-list, tab-panel
    */
   // `Tab.value` is treated as immutable after mount. The component reads
-  // `value` via `untrack` inside both registration effects so that changing
-  // `value` at runtime does not re-key the parent registry. Mutating `value`
-  // after mount is unsupported and will leave the registry in a stale state.
+  // `value` via `untrack` at the top-level registration call and inside
+  // every registration-related effect so that changing `value` at runtime
+  // does not re-key the parent registry. Mutating `value` after mount is
+  // unsupported and will leave the registry in a stale state.
   export type { TabProps } from './tab.types.ts';
 </script>
 
@@ -36,6 +37,7 @@
     class: className,
     children,
     trailing,
+    ...rest
   }: TabProps = $props();
 
   const tabs = getTabsContext();
@@ -66,22 +68,41 @@
   // Capture the registry key once. `Tab.value` is treated as immutable after
   // mount (see module-level note above); reading it via `untrack` here makes
   // the immutability mechanical — even if a consumer mutates the prop, the
-  // registry keeps using the original key for register, setDisabled, and
+  // registry keeps using the original key for registration, setDisabled, and
   // unregister, so the registry never drifts into an inconsistent state.
   const registeredValue = untrack(() => value);
 
-  // Effect A — mount/unmount registration. Depends only on `buttonElement`.
-  // The initial `disabled` is seeded into the registry on mount so first
-  // paint computes the right tab stop without waiting for Effect B. The
-  // mutation calls themselves are wrapped in `untrack` because `register`
-  // and `unregister` write to a reactive `version` counter; reading that
-  // inside an effect would self-trigger.
+  // Synchronous, top-level order registration — runs as part of this
+  // component's own script execution, before this (or any sibling's)
+  // `isFocusable` $derived is ever read. This is what makes SSR able to
+  // compute the right tab stop: `registerOrder` mutates `tabs`' reactive
+  // `version` state from inside the currently-running component's own
+  // block-effect reaction, which Svelte's `state_unsafe_mutation` guard
+  // would otherwise reject, so the call itself (not just the `disabled`
+  // read) is wrapped in `untrack`.
+  untrack(() => {
+    tabs.registerOrder(registeredValue, disabled);
+  });
+
+  // Effect A — mount/unmount button attachment. Depends only on
+  // `buttonElement`. `registerOrder` is idempotent, so calling it again here
+  // is a no-op on the common path; it exists to make the effect body
+  // rerun-safe: `$effect` cleanup runs both on unmount and before every
+  // rerun of the same effect, and the cleanup below deletes this Tab's
+  // entire registry entry (including the order info the top-level call
+  // above set). If this effect ever reran instead of only unmounting, a
+  // bare `attachButton` call would attach to a now-missing entry and this
+  // Tab would silently lose its tab stop for good. Calling `registerOrder`
+  // first always restores the order entry before attaching the button. The
+  // mutation calls themselves are wrapped in `untrack` because
+  // `registerOrder` and `unregister` write to a reactive `version` counter;
+  // reading that inside an effect would self-trigger.
   $effect(() => {
     if (!buttonElement) return;
     const button = buttonElement;
-    const initialDisabled = untrack(() => disabled);
     untrack(() => {
-      tabs.register(registeredValue, button, initialDisabled);
+      tabs.registerOrder(registeredValue, disabled);
+      tabs.attachButton(registeredValue, button);
     });
     return () => {
       untrack(() => {
@@ -93,7 +114,7 @@
   // Effect B — sync subsequent `disabled` prop changes to the registry
   // without re-registering. Subscribes only to `disabled`; the mutation
   // call is wrapped in `untrack` for the same reason as Effect A.
-  // `setDisabled` is a safe no-op when called before `register` has run.
+  // `setDisabled` is a safe no-op when called before `registerOrder` has run.
   $effect(() => {
     const next = disabled;
     untrack(() => {
@@ -108,6 +129,7 @@
 </script>
 
 <button
+  {...rest}
   bind:this={buttonElement}
   type="button"
   role="tab"

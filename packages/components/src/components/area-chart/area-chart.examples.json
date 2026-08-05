@@ -10,6 +10,12 @@
       "code": "<script lang=\"ts\">\n  import { AreaChart } from '@lostgradient/cinder/area-chart';\n</script>\n\n<AreaChart label=\"No retention data\" series={[]} dataTableVisibility=\"hidden\" />\n"
     },
     {
+      "id": "loading",
+      "title": "Loading state",
+      "description": "An area chart with reserved layout while data loads.",
+      "code": "<script lang=\"ts\">\n  import { AreaChart } from '@lostgradient/cinder/area-chart';\n</script>\n\n<AreaChart label=\"Loading usage\" loading series={[]} />\n"
+    },
+    {
       "id": "single-series",
       "title": "Usage area",
       "description": "A single-series area chart for product usage.",

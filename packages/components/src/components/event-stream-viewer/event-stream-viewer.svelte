@@ -39,6 +39,7 @@
     StreamReconnectedBoundary,
   } from './event-stream-viewer.types.ts';
   import { classNames } from '../../utilities/class-names.ts';
+  import { useAnnouncer } from '../../utilities/use-announcer.svelte.ts';
   import CopyButton from '../copy-button/copy-button.svelte';
   import JsonViewer from '../json-viewer/json-viewer.svelte';
   import StatusDot from '../status-dot/status-dot.svelte';
@@ -113,8 +114,10 @@
   // ignores the intermediate scroll events they fire (especially under smooth-scroll).
   let programmaticScroll = false;
 
-  // Live region message for copy-visible announcements
-  let liveMessage = $state('');
+  // Screen reader announcements for copy-visible actions — pass clearDelay
+  // explicitly to preserve the previous 2-second visible window (useAnnouncer's
+  // own default is 1000ms).
+  const announcer = useAnnouncer({ clearDelay: 2000 });
 
   const isEmpty = $derived(!loading && events.length === 0);
 
@@ -254,10 +257,7 @@
     const text = renderedEntries.map(formatRenderedEntryAsText).join('\n');
     if (!onCopyVisible) return;
     onCopyVisible(text);
-    liveMessage = formatCopyVisibleAnnouncement(renderedEntries.length);
-    setTimeout(() => {
-      liveMessage = '';
-    }, 2000);
+    announcer.announce(formatCopyVisibleAnnouncement(renderedEntries.length));
   }
 
   function handleScroll(event: Event) {
@@ -359,11 +359,9 @@
     </div>
   {/if}
 
-  <!-- Scroll viewport: role="log" gives this element a legitimate keyboard-focus
-       need (scrollable live region). svelte:element avoids the a11y_no_noninteractive_tabindex
-       lint warning while retaining the exact same rendered HTML as a plain div. -->
-  <svelte:element
-    this={'div'}
+  <!-- Keyboard-scrollable live region: role="log" gives this element a legitimate keyboard-focus need. -->
+  <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+  <div
     class="cinder-event-stream-viewer__viewport"
     role="log"
     aria-label={label}
@@ -487,7 +485,7 @@
         {/each}
       </ol>
     {/if}
-  </svelte:element>
+  </div>
 
   <!-- Visually hidden live region for copy-visible announcements.
        Lives in the DOM always; content toggled via state (never {#if}). -->
@@ -495,6 +493,6 @@
     class="cinder-event-stream-viewer__live-region"
     role="status"
     aria-live="polite"
-    aria-atomic="true">{liveMessage}</span
+    aria-atomic="true">{announcer.message}</span
   >
 </div>

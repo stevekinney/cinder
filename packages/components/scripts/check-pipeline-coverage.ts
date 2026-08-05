@@ -55,6 +55,7 @@ const componentsPackageName = '@lostgradient/cinder';
 const chatPackageName = '@lostgradient/chat';
 const editorPackageName = '@lostgradient/editor';
 const mcpPackageName = '@lostgradient/cinder-mcp';
+const playgroundPackageName = '@cinder/playground';
 
 export const LAYERS = [
   'pre-commit',
@@ -451,6 +452,16 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
     layers: ['release'],
     reason: 'The release artifact gate applies the dedicated cinder-mcp tarball budget.',
   },
+  [`${playgroundPackageName}#validate`]: {
+    layers: ['main-green'],
+    reason:
+      'Playground route crawl, documentation-JSON validation, SSE reload check, and the ' +
+      'raw-native-control strict gate, all run via the root `validate:playground` script ' +
+      "(`bun run --filter='@cinder/playground' validate`) in main-green's " +
+      '"Source audits (playground)" step. Mirrors platform:audit\'s main-green-only placement ' +
+      'for cinder/chat/editor — not run in unit-tests/browser-tests/pre-commit/pre-push, same as ' +
+      'those audits.',
+  },
 };
 
 /** Commands whose layer set is intentionally NOT verified (meta-scripts with no fixed home). */
@@ -516,8 +527,8 @@ function layerInvokesExternalBinary(
 type ParsedSources = {
   /** name -> resolved script body, packages/components/package.json scripts. */
   packageScripts: Record<string, string>;
-  /** Public package name -> package.json scripts. Includes Cinder and Chat. */
-  publicPackageScripts?: Record<string, Record<string, string>>;
+  /** Workspace package name -> package.json scripts. Includes Cinder, Chat, Editor, MCP, and Playground. */
+  workspacePackageScripts?: Record<string, Record<string, string>>;
   /**
    * name -> resolved script body, the workspace ROOT package.json scripts.
    * Workflow `bun run <name>` entry points resolve through this root scope
@@ -936,12 +947,13 @@ async function loadPackageScripts(): Promise<Record<string, string>> {
   return loadManifestScripts(join(packageRoot, 'package.json'));
 }
 
-async function loadPublicPackageScripts(): Promise<Record<string, Record<string, string>>> {
+async function loadWorkspacePackageScripts(): Promise<Record<string, Record<string, string>>> {
   const packageRoots = [
     [componentsPackageName, packageRoot],
     [chatPackageName, join(repoRoot, 'packages', 'chat')],
     [editorPackageName, join(repoRoot, 'packages', 'editor')],
     [mcpPackageName, join(repoRoot, 'packages', 'mcp')],
+    [playgroundPackageName, join(repoRoot, 'packages', 'playground')],
   ] as const;
   const entries = await Promise.all(
     packageRoots.map(
@@ -965,15 +977,15 @@ async function loadRootScripts(): Promise<Record<string, string>> {
 }
 
 export async function loadParsedSources(): Promise<ParsedSources> {
-  const [packageScripts, publicPackageScripts, rootScripts, workflowText, hookText] =
+  const [packageScripts, workspacePackageScripts, rootScripts, workflowText, hookText] =
     await Promise.all([
       loadPackageScripts(),
-      loadPublicPackageScripts(),
+      loadWorkspacePackageScripts(),
       loadRootScripts(),
       loadWorkflowText(),
       loadHookText(),
     ]);
-  return { packageScripts, publicPackageScripts, rootScripts, workflowText, hookText };
+  return { packageScripts, workspacePackageScripts, rootScripts, workflowText, hookText };
 }
 
 /**
@@ -1014,7 +1026,7 @@ export function checkPipelineCoverage(
       separatorIndex === -1 ? componentsPackageName : command.slice(0, separatorIndex);
     const scriptName = separatorIndex === -1 ? command : command.slice(separatorIndex + 1);
     const packageScripts =
-      sources.publicPackageScripts?.[packageName] ??
+      sources.workspacePackageScripts?.[packageName] ??
       (packageName === componentsPackageName ? sources.packageScripts : {});
     const declared = new Set(row.layers);
 

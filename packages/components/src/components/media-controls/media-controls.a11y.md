@@ -22,6 +22,8 @@ Activation should work with the native Enter and Space behavior of the rendered 
 
 Keep focus indicators visible. If you wrap or restyle MediaControls, verify the focused element remains visually apparent in default and forced-colors modes.
 
+The primary button stays in the tab order and reports `aria-disabled="true"` rather than the native `disabled` attribute while `loading` or `unavailable` is true. Native `disabled` removes an element from the accessibility tree, which would also hide `aria-busy` and the "Loading playback controls" / "Playback unavailable" label from assistive technology at the exact moment they matter most. The click handler still no-ops in these states, so the button is inert without being invisible to screen readers.
+
 ## Names, roles, and state
 
 Use the public props and documented examples to provide accessible names, descriptions, current state, disabled state, selection state, or value text. Do not rely on color, icon shape, placeholder text, or layout position as the only way to communicate meaning.

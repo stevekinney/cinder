@@ -45,11 +45,8 @@ export type DateRangeFieldProps = Omit<
   HTMLAttributes<HTMLDivElement>,
   'class' | 'children' | 'onchange'
 > & {
-  /**
-   * Unique identifier used to generate accessible IDs for labels and error
-   * regions. Optional — a stable id is generated via `$props.id()` when omitted.
-   */
-  id?: string;
+  /** Unique identifier used to generate accessible IDs for labels and error regions. */
+  id: string;
   /** Current date range value. Bindable. Both fields start undefined when unset. */
   value?: DateRangeValue;
   /** Visible legend rendered above the start/end inputs. */

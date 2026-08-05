@@ -1,4 +1,5 @@
 import type { Snippet } from 'svelte';
+import type { HTMLAttributes } from 'svelte/elements';
 
 /**
  * One breadcrumb entry. The current page entry omits `href` so it renders
@@ -11,7 +12,7 @@ export type BreadcrumbItem = {
   href?: string;
 };
 
-export type BreadcrumbsProps = {
+export type BreadcrumbsProps = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
   /** Ordered list of breadcrumb entries from root to current page. */
   items: BreadcrumbItem[];
   /** Custom separator between entries. Defaults to "/". */

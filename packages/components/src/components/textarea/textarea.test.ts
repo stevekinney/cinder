@@ -265,18 +265,20 @@ describe('Textarea — character count', () => {
     expect(countElement?.textContent?.trim()).toBe('5/500');
   });
 
-  test('counter does not update without bind:value (initial value is locked)', async () => {
+  test('counter updates locally via $bindable even without a parent bind:value', async () => {
     const { container } = render(Textarea, {
       props: { id: 'unbound', countVisible: true, maxlength: 100, value: 'hi' },
     });
     const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
     const countElement = container.querySelector('#unbound-count');
     expect(countElement?.textContent?.trim()).toBe('2/100');
-    // Simulate typing without a bind — the prop does not flow back
+
+    // Simulate typing without a parent bind: — `value = $bindable('')` still
+    // mutates the local prop under Svelte 5, so both the textarea's own value
+    // and the derived counter update even though no parent is listening.
     await fireEvent.input(textarea, { target: { value: 'hi there' } });
-    // The textarea element value updates via DOM but the prop-bound counter
-    // may or may not update depending on binding. We assert the textarea DOM value changed.
     expect(textarea.value).toBe('hi there');
+    expect(countElement?.textContent?.trim()).toBe('8/100');
   });
 });
 

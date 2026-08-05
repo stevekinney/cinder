@@ -220,7 +220,7 @@ describe('checkPipelineCoverage', () => {
     };
     const result = checkPipelineCoverage(table, {
       packageScripts: { 'validate:consumer': 'bun run scripts/validate-consumers.ts' },
-      publicPackageScripts: {
+      workspacePackageScripts: {
         '@lostgradient/cinder': {
           'validate:consumer': 'bun run scripts/validate-consumers.ts',
         },
@@ -256,7 +256,7 @@ describe('checkPipelineCoverage', () => {
     };
     const result = checkPipelineCoverage(table, {
       packageScripts: {},
-      publicPackageScripts: {
+      workspacePackageScripts: {
         '@lostgradient/cinder': {},
         '@lostgradient/chat': chatScripts,
       },
@@ -284,7 +284,7 @@ describe('checkPipelineCoverage', () => {
     };
     const result = checkPipelineCoverage(table, {
       packageScripts: {},
-      publicPackageScripts: {
+      workspacePackageScripts: {
         '@lostgradient/cinder': { 'validate:consumer': 'bun run cinder-validation.ts' },
         '@lostgradient/chat': { 'validate:consumer': 'bun run chat-validation.ts' },
       },
@@ -391,7 +391,7 @@ describe('checkPipelineCoverage', () => {
     };
     const result = checkPipelineCoverage(table, {
       packageScripts: {},
-      publicPackageScripts: {
+      workspacePackageScripts: {
         '@lostgradient/cinder': { build: 'bun run scripts/build.ts' },
         '@lostgradient/chat': { build: 'bun run scripts/build.ts' },
       },
@@ -420,7 +420,7 @@ describe('checkPipelineCoverage', () => {
     };
     const result = checkPipelineCoverage(table, {
       packageScripts: {},
-      publicPackageScripts: {
+      workspacePackageScripts: {
         '@lostgradient/cinder': { build: 'bun run scripts/build.ts' },
         '@lostgradient/chat': { build: 'bun run scripts/build.ts' },
       },

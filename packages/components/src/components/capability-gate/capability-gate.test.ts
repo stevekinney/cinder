@@ -6,7 +6,12 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 setupHappyDom();
 
 const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
+const { createRawSnippet } = await import('svelte');
 const { default: CapabilityGate } = await import('./capability-gate.svelte');
+
+function snippet(text: string) {
+  return createRawSnippet(() => ({ render: () => `<span>${text}</span>` }));
+}
 
 afterEach(() => {
   cleanup();
@@ -104,6 +109,16 @@ describe('CapabilityGate', () => {
     expect(link?.getAttribute('href')).toBe('/settings');
   });
 
+  test("dismiss button's accessible name includes the feature, matching primary/fallback", () => {
+    const { container } = render(CapabilityGate, {
+      feature: 'Offline storage',
+      state: 'unavailable',
+      dismissAction: 'Dismiss',
+    });
+    const dismiss = container.querySelector('.cinder-capability-gate__dismiss');
+    expect(dismiss?.getAttribute('aria-label')).toBe('Dismiss for Offline storage');
+  });
+
   test('dismiss hides the component and calls onDismiss', () => {
     let dismissed = false;
     const { container, getByRole } = render(CapabilityGate, {
@@ -120,15 +135,22 @@ describe('CapabilityGate', () => {
   });
 
   test('renders children content', () => {
-    const { getByText } = render(CapabilityGate, {
+    const { container } = render(CapabilityGate, {
       feature: 'MIDI',
       state: 'unsupported',
-      // Svelte snippet children passed via testing-library requires a slot approach.
-      // Test the container instead.
+      children: snippet('Custom content'),
     });
-    // Basic existence check — children are tested via the container query.
-    const root = document.querySelector('.cinder-capability-gate');
-    expect(root ?? getByText('MIDI')).not.toBeNull();
+    const content = container.querySelector('.cinder-capability-gate__content');
+    expect(content).not.toBeNull();
+    expect(content?.textContent).toContain('Custom content');
+  });
+
+  test('omits the content wrapper entirely when no children are passed', () => {
+    const { container } = render(CapabilityGate, {
+      feature: 'MIDI',
+      state: 'unsupported',
+    });
+    expect(container.querySelector('.cinder-capability-gate__content')).toBeNull();
   });
 
   test('renders with data-cinder-presentation attribute', () => {
