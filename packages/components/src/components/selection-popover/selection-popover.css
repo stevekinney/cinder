@@ -94,6 +94,9 @@
   .cinder-selection-popover__textarea:focus-visible {
     outline: var(--cinder-ring-width) solid transparent;
     outline-offset: var(--cinder-ring-offset);
+    /* Ring replaces the border while focused rather than stacking on it — the two
+       together read as one heavier shape than either was designed to be. */
+    border-color: transparent;
     box-shadow: var(--_cinder-focus-ring-shadow);
   }
 

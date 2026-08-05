@@ -12,7 +12,7 @@
     display: inline-block;
     width: 18px;
     height: 18px;
-    border-radius: var(--cinder-radius-sm, 4px);
+    border-radius: var(--cinder-radius-sm);
     background-color: var(--cinder-color-field-swatch, transparent);
     border: 1px solid var(--cinder-border);
     vertical-align: middle;

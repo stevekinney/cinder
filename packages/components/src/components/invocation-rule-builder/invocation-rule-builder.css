@@ -66,6 +66,9 @@
 
   .cinder-invocation-rule-builder__rule-label-input:focus-visible {
     outline: var(--cinder-ring-width) solid transparent;
+    /* Ring replaces the border while focused rather than stacking on it — the two
+       together read as one heavier shape than either was designed to be. */
+    border-color: transparent;
     box-shadow: var(--_cinder-focus-ring-shadow);
   }
 
@@ -149,6 +152,9 @@
 
   .cinder-invocation-rule-builder__condition-select:focus-visible {
     outline: var(--cinder-ring-width) solid transparent;
+    /* Ring replaces the border while focused rather than stacking on it — the two
+       together read as one heavier shape than either was designed to be. */
+    border-color: transparent;
     box-shadow: var(--_cinder-focus-ring-shadow);
   }
 
@@ -173,6 +179,9 @@
 
   .cinder-invocation-rule-builder__condition-value:focus-visible {
     outline: var(--cinder-ring-width) solid transparent;
+    /* Ring replaces the border while focused rather than stacking on it — the two
+       together read as one heavier shape than either was designed to be. */
+    border-color: transparent;
     box-shadow: var(--_cinder-focus-ring-shadow);
   }
 
@@ -257,6 +266,9 @@
 
   .cinder-invocation-rule-builder__action-select:focus-visible {
     outline: var(--cinder-ring-width) solid transparent;
+    /* Ring replaces the border while focused rather than stacking on it — the two
+       together read as one heavier shape than either was designed to be. */
+    border-color: transparent;
     box-shadow: var(--_cinder-focus-ring-shadow);
   }
 
@@ -286,6 +298,9 @@
 
   .cinder-invocation-rule-builder__icon-btn:focus-visible {
     outline: var(--cinder-ring-width) solid transparent;
+    /* Ring replaces the border while focused rather than stacking on it — the two
+       together read as one heavier shape than either was designed to be. */
+    border-color: transparent;
     box-shadow: var(--_cinder-focus-ring-shadow);
   }
 
@@ -333,6 +348,9 @@
 
   .cinder-invocation-rule-builder__add-btn:focus-visible {
     outline: var(--cinder-ring-width) solid transparent;
+    /* Ring replaces the border while focused rather than stacking on it — the two
+       together read as one heavier shape than either was designed to be. */
+    border-color: transparent;
     box-shadow: var(--_cinder-focus-ring-shadow);
   }
 

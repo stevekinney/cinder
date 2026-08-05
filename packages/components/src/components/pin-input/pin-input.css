@@ -62,8 +62,16 @@
 
   .cinder-pin-input__segment:focus-visible {
     outline: var(--cinder-ring-width) solid transparent;
+    /* Ring replaces the border while focused rather than stacking on it — the two
+       together read as one heavier shape than either was designed to be. This rule
+       previously ALSO strengthened the border to --cinder-border-strong on focus,
+       which is the exact double-treatment decision 7 is about: a segment got a
+       heavier border AND a ring simultaneously. The strengthened border is dropped
+       rather than kept, so the ring is the only focus affordance; the unfocused
+       segments beside it keep their resting borders, which is what makes the
+       focused one read. Hover still steps up to --cinder-border-strong above. */
+    border-color: transparent;
     box-shadow: var(--_cinder-focus-ring-shadow);
-    border-color: var(--cinder-border-strong);
   }
 
   .cinder-pin-input[aria-invalid='true'] .cinder-pin-input__segment {
