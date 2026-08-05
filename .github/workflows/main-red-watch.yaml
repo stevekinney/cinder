@@ -24,6 +24,12 @@ name: main-red-watch
 #      otherwise. The heartbeat is what turns "no news" from ambiguous into
 #      checked.
 #
+# Both paths run in ONE job so they share a single issue-reporting
+# implementation. An earlier revision split them, and the heartbeat then only
+# failed its own run — which nothing watches, leaving the silent-scheduler case
+# with no notification at all. That is the one failure mode the heartbeat exists
+# for, so it must file through the same channel as everything else.
+#
 # `workflow_run` only dispatches for workflow files on the default branch, so
 # this reports nothing until it is merged to `main`.
 
@@ -52,118 +58,134 @@ concurrency:
 
 env:
   TRACKING_LABEL: main-red
+  # main-green runs on every push to main plus a daily cron, so a gap this long
+  # means the workflow is not running — not that main is quiet.
+  HEARTBEAT_MAX_AGE_HOURS: '36'
 
 jobs:
-  report-failure:
-    name: report-failure
+  watch:
+    name: watch
+    # `cancelled` and `skipped` are deliberately absent: a superseded or skipped
+    # run is not a broken `main`, and paging on those is the fastest way to teach
+    # everyone to ignore this workflow. `startup_failure` IS included — a run
+    # that dies before creating any job is exactly the pre-job breakage a
+    # failure-step inside `main-green` could never report.
     if: >-
-      github.event_name == 'workflow_run' &&
-      github.event.workflow_run.head_branch == 'main' &&
-      contains(fromJSON('["failure", "timed_out"]'), github.event.workflow_run.conclusion)
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.head_branch == 'main' &&
+      contains(fromJSON('["failure", "timed_out", "startup_failure"]'), github.event.workflow_run.conclusion))
     runs-on: ubuntu-latest
     steps:
-      # `cancelled` and `skipped` are deliberately excluded above: a superseded
-      # or skipped run is not a broken `main`, and paging on those is the fastest
-      # way to teach everyone to ignore this workflow.
-      - name: Open or update the tracking issue
+      - name: Report a red main
         uses: actions/github-script@v7
         with:
           script: |
-            const run = context.payload.workflow_run;
             const label = process.env.TRACKING_LABEL;
-
-            // Name the failing step, not just the run. "main-green is red" sends
-            // someone digging through logs; "workspace-gates → Consumer hydration
-            // smoke (cinder)" is directly actionable and makes a recurring
-            // signature obvious across successive comments.
-            const { data: jobs } = await github.rest.actions.listJobsForWorkflowRun({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              run_id: run.id,
-              per_page: 100,
-            });
-
-            const failures = jobs.jobs
-              .filter((job) => job.conclusion === 'failure')
-              .map((job) => {
-                const steps = (job.steps ?? [])
-                  .filter((step) => step.conclusion === 'failure')
-                  .map((step) => step.name);
-
-                return steps.length > 0 ? `${job.name} → ${steps.join(', ')}` : job.name;
-              });
-
-            const detail = failures.length > 0 ? failures.map((f) => `- \`${f}\``).join('\n') : '- _(no failing job reported — the run itself failed to start or was killed)_';
-
-            const body = [
-              `**${run.name}** failed on \`main\`.`,
-              '',
-              `- Commit: ${run.head_sha}`,
-              `- Run: ${run.html_url}`,
-              '',
-              'Failing:',
-              detail,
-            ].join('\n');
-
-            await github.rest.issues.createLabel({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              name: label,
-              color: 'b60205',
-              description: 'main is red — opened automatically by main-red-watch',
-            }).catch((error) => {
-              if (error.status !== 422) throw error;
-            });
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
 
             // One issue for the whole red period, not one per failed run. A
             // sustained streak (the hydration smoke produced 22) should read as
             // a single incident accumulating evidence.
-            const existing = await github.rest.issues.listForRepo({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              state: 'open',
-              labels: label,
-              per_page: 1,
-            });
+            async function report(title, body) {
+              await github.rest.issues
+                .createLabel({
+                  owner,
+                  repo,
+                  name: label,
+                  color: 'b60205',
+                  description: 'main is red — opened automatically by main-red-watch',
+                })
+                .catch((error) => {
+                  if (error.status !== 422) throw error;
+                });
 
-            if (existing.data.length > 0) {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: existing.data[0].number,
-                body,
+              const existing = await github.rest.issues.listForRepo({
+                owner,
+                repo,
+                state: 'open',
+                labels: label,
+                per_page: 1,
               });
-              core.notice(`main is red — updated #${existing.data[0].number}`);
+
+              if (existing.data.length > 0) {
+                await github.rest.issues.createComment({
+                  owner,
+                  repo,
+                  issue_number: existing.data[0].number,
+                  body,
+                });
+                core.notice(`main is red — updated #${existing.data[0].number}`);
+                return;
+              }
+
+              const created = await github.rest.issues.create({ owner, repo, title, labels: [label], body });
+              core.notice(`main is red — opened #${created.data.number}`);
+            }
+
+            if (context.eventName === 'workflow_run') {
+              const run = context.payload.workflow_run;
+
+              // Name the failing step, not just the run. "main-green is red"
+              // sends someone digging through logs; "workspace-gates → Consumer
+              // hydration smoke (cinder)" is directly actionable and makes a
+              // recurring signature obvious across successive comments.
+              //
+              // `timed_out` counts as failing at BOTH levels: this workflow
+              // triggers on a timed-out run, and its jobs and steps carry
+              // `timed_out` rather than `failure`. Matching only `failure` here
+              // would report "no failing job" while the API had the answer.
+              const FAILED = new Set(['failure', 'timed_out']);
+
+              const { data } = await github.rest.actions.listJobsForWorkflowRun({
+                owner,
+                repo,
+                run_id: run.id,
+                per_page: 100,
+              });
+
+              const failures = data.jobs
+                .filter((job) => FAILED.has(job.conclusion))
+                .map((job) => {
+                  const steps = (job.steps ?? [])
+                    .filter((step) => FAILED.has(step.conclusion))
+                    .map((step) => step.name);
+
+                  return steps.length > 0 ? `${job.name} → ${steps.join(', ')}` : job.name;
+                });
+
+              // A `startup_failure` run has no jobs at all, so this fallback is
+              // the real report for that case, not a diagnostic gap.
+              const detail =
+                failures.length > 0 ?
+                  failures.map((failure) => `- \`${failure}\``).join('\n')
+                : `- _no job reported a failure — the run ended \`${run.conclusion}\` before or outside any job_`;
+
+              await report(
+                `main is red: ${run.name}`,
+                [
+                  `**${run.name}** ended \`${run.conclusion}\` on \`main\`.`,
+                  '',
+                  `- Commit: ${run.head_sha}`,
+                  `- Run: ${run.html_url}`,
+                  '',
+                  'Failing:',
+                  detail,
+                ].join('\n'),
+              );
               return;
             }
 
-            const created = await github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: `main is red: ${run.name}`,
-              labels: [label],
-              body,
-            });
-            core.notice(`main is red — opened #${created.data.number}`);
-
-  heartbeat:
-    name: heartbeat
-    if: github.event_name != 'workflow_run'
-    runs-on: ubuntu-latest
-    steps:
-      # Catches the failure mode `workflow_run` structurally cannot: a
-      # `main-green` that never ran. A silent scheduler, a disabled workflow, or
-      # a stuck queue all present as "no recent failures" to every other signal
-      # in this repository.
-      - name: Assert main-green completed recently
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const MAX_AGE_HOURS = 36;
+            // Heartbeat. Catches the failure mode `workflow_run` structurally
+            // cannot: a `main-green` that never ran. A silent scheduler, a
+            // disabled workflow, or a stuck queue all present as "no recent
+            // failures" to every other signal in this repository.
+            const maxAgeHours = Number(process.env.HEARTBEAT_MAX_AGE_HOURS);
+            const heartbeatUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
 
             const { data } = await github.rest.actions.listWorkflowRuns({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
+              owner,
+              repo,
               workflow_id: 'main-green.yaml',
               branch: 'main',
               status: 'completed',
@@ -171,19 +193,35 @@ jobs:
             });
 
             const latest = data.workflow_runs[0];
+
             if (!latest) {
+              await report(
+                'main-green is not running',
+                [
+                  'The heartbeat found **no completed `main-green` run on `main` at all**.',
+                  '',
+                  `- Heartbeat: ${heartbeatUrl}`,
+                ].join('\n'),
+              );
               core.setFailed('No completed main-green run found on main at all.');
               return;
             }
 
             const ageHours = (Date.now() - Date.parse(latest.updated_at)) / 3_600_000;
-            if (ageHours > MAX_AGE_HOURS) {
-              core.setFailed(
-                `Newest completed main-green run is ${ageHours.toFixed(1)}h old ` +
-                  `(limit ${MAX_AGE_HOURS}h): ${latest.html_url}. ` +
-                  'main-green runs on every push to main plus a daily cron, so this ' +
-                  'means the workflow is not running, not that main is quiet.',
+
+            if (ageHours > maxAgeHours) {
+              await report(
+                'main-green is not running',
+                [
+                  `The newest completed \`main-green\` run is **${ageHours.toFixed(1)}h old** (limit ${maxAgeHours}h).`,
+                  '',
+                  '`main-green` runs on every push to `main` plus a daily cron, so this means the workflow is not running — not that `main` is quiet.',
+                  '',
+                  `- Newest run: ${latest.html_url}`,
+                  `- Heartbeat: ${heartbeatUrl}`,
+                ].join('\n'),
               );
+              core.setFailed(`Newest completed main-green run is ${ageHours.toFixed(1)}h old (limit ${maxAgeHours}h).`);
               return;
             }
 
