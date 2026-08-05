@@ -83,6 +83,25 @@ describe('TimeField', () => {
     expect(container.querySelector('.cinder-time-field__controls .cinder-input-field')).toBe(null);
   });
 
+  test('the bare time input stays a direct child of .cinder-time-field__controls for CSS sizing, even with a timezone select', () => {
+    const { container } = render(TimeField, {
+      props: {
+        id: 'reminder',
+        label: 'Reminder time',
+        value: '09:30',
+        timezones: ['America/Denver', 'UTC'],
+      },
+    });
+
+    // Input renders bare (no `.cinder-input-field` wrapper), so the fixed
+    // control-row width (`.cinder-time-field__controls > .cinder-time-field__input`
+    // in time-field.css) must target the input directly or the timezone
+    // select gets pushed onto its own line by the input's own `width: 100%`.
+    const controls = container.querySelector<HTMLElement>('.cinder-time-field__controls');
+    const input = getInput(container);
+    expect(input.parentElement).toBe(controls);
+  });
+
   test('keeps hidden serialization and timezone selection on native controls', () => {
     const { container } = render(TimeField, {
       props: {
