@@ -200,7 +200,12 @@
     border-color: var(--cinder-danger);
   }
 
-  .cinder-radio-row__label {
+  /* Also carries FormFieldFrame's generic `.cinder-form-field__label` class;
+     compound with it so Radio's typography out-specificities the shared base
+     rule regardless of consumer import order (component sidecars carry layer
+     membership, not ordering — see AGENTS.md's component-authoring section). */
+  .cinder-radio-row__label,
+  .cinder-radio-row__label.cinder-form-field__label {
     font-size: var(--cinder-text-sm);
     line-height: var(--cinder-leading-normal);
     color: var(--cinder-text);

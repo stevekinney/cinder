@@ -29,13 +29,21 @@
     order: 4;
   }
 
-  .cinder-json-editor__label {
+  /* `__label` and `__description` also carry FormFieldFrame's generic
+     `.cinder-form-field__label` / `__description` classes (`__feedback` does
+     not — it is fully custom-rendered via the `message` slot, never paired
+     with a generic class) — compound with them so json-editor's typography
+     out-specificities the shared base rule regardless of consumer import
+     order (component sidecars carry layer membership, not ordering). */
+  .cinder-json-editor__label,
+  .cinder-json-editor__label.cinder-form-field__label {
     color: var(--cinder-text);
     font-size: var(--cinder-text-sm);
     font-weight: var(--cinder-font-semibold);
   }
 
   .cinder-json-editor__description,
+  .cinder-json-editor__description.cinder-form-field__description,
   .cinder-json-editor__feedback {
     margin: 0;
     color: var(--cinder-text-muted);
