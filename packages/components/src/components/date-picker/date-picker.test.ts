@@ -20,6 +20,19 @@ describe('DatePicker', () => {
     expect(container.querySelector('.cinder-date-picker__trigger')).not.toBeNull();
   });
 
+  test('forwards arbitrary root attributes to the field wrapper, not the inner control row', () => {
+    const { container } = render(DatePicker, {
+      id: 'dp',
+      value: '2026-06-29',
+      title: 'Pick a date',
+    });
+    const root = container.querySelector('.cinder-date-picker');
+    expect(root?.getAttribute('title')).toBe('Pick a date');
+    expect(container.querySelector('.cinder-date-picker__control')?.hasAttribute('title')).toBe(
+      false,
+    );
+  });
+
   test('rejects trailing characters in manually entered day values', async () => {
     let nextValue = 'sentinel';
     const { container } = render(DatePicker, {

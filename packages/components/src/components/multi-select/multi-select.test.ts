@@ -483,6 +483,19 @@ describe('MultiSelect', () => {
     expect(container.querySelector('#fruits-warning')?.textContent).toContain('seasonal');
   });
 
+  test('warning text is removed once the warning prop is cleared', async () => {
+    const { container, rerender } = render(MultiSelect, {
+      id: 'fruits',
+      items,
+      warning: 'Choose at least one seasonal item.',
+    });
+    expect(container.querySelector('#fruits-warning')).not.toBeNull();
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await rerender({ id: 'fruits', items, warning: undefined } as any);
+    expect(container.querySelector('#fruits-warning')).toBeNull();
+  });
+
   test('listbox and filter are labelled by the component label', async () => {
     const { container } = render(MultiSelect, {
       id: 'fruits',

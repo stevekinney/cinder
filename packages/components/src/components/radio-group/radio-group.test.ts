@@ -213,24 +213,24 @@ describe('RadioGroup', () => {
     expect(parts.indexOf('r-a-description')).toBeLessThan(parts.indexOf('external-help'));
   });
 
-  test('row carries data-has-description when description is set', () => {
+  test('row carries the has-description modifier class when description is set', () => {
     const { container } = render(Wrapper, {
       name: 'choice',
       value: 'a',
       options: [{ id: 'r-a', value: 'a', label: 'A', description: 'Helper' }],
     });
     const row = container.querySelector('#r-a')?.closest('.cinder-radio-row') as HTMLElement;
-    expect(row.hasAttribute('data-has-description')).toBe(true);
+    expect(row.classList.contains('cinder-radio-row--has-description')).toBe(true);
   });
 
-  test('row omits data-has-description when no description', () => {
+  test('row omits the has-description modifier class when no description', () => {
     const { container } = render(Wrapper, {
       name: 'choice',
       value: 'a',
       options: [{ id: 'r-a', value: 'a', label: 'A' }],
     });
     const row = container.querySelector('#r-a')?.closest('.cinder-radio-row') as HTMLElement;
-    expect(row.hasAttribute('data-has-description')).toBe(false);
+    expect(row.classList.contains('cinder-radio-row--has-description')).toBe(false);
   });
 
   // ── Card variant ────────────────────────────────────────────────────────
@@ -275,9 +275,9 @@ describe('RadioGroup', () => {
     expect(rows.length).toBe(2);
   });
 
-  // ── Row data attributes ─────────────────────────────────────────────────
+  // ── Row modifier classes ────────────────────────────────────────────────
 
-  test('data-checked reflects the bound value', async () => {
+  test('the checked modifier class reflects the bound value', async () => {
     const { container } = render(Wrapper, {
       name: 'choice',
       value: 'b',
@@ -288,15 +288,15 @@ describe('RadioGroup', () => {
     });
     const rowA = container.querySelector('#r-a')?.closest('.cinder-radio-row') as HTMLElement;
     const rowB = container.querySelector('#r-b')?.closest('.cinder-radio-row') as HTMLElement;
-    expect(rowA.hasAttribute('data-checked')).toBe(false);
-    expect(rowB.hasAttribute('data-checked')).toBe(true);
+    expect(rowA.classList.contains('cinder-radio-row--checked')).toBe(false);
+    expect(rowB.classList.contains('cinder-radio-row--checked')).toBe(true);
 
     await fireEvent.click(container.querySelector('#r-a') as HTMLElement);
-    expect(rowA.hasAttribute('data-checked')).toBe(true);
-    expect(rowB.hasAttribute('data-checked')).toBe(false);
+    expect(rowA.classList.contains('cinder-radio-row--checked')).toBe(true);
+    expect(rowB.classList.contains('cinder-radio-row--checked')).toBe(false);
   });
 
-  // ── aria-invalid + data-invalid ─────────────────────────────────────────
+  // ── aria-invalid + invalid modifier class ───────────────────────────────
 
   test('aria-invalid is exactly "true" when error is set', () => {
     const { container } = render(Wrapper, {
@@ -313,7 +313,7 @@ describe('RadioGroup', () => {
     expect(radios[1]?.getAttribute('aria-invalid')).toBe('true');
   });
 
-  test('data-invalid is mirrored on each row when error is set', () => {
+  test('the invalid modifier class is mirrored on each row when error is set', () => {
     const { container } = render(Wrapper, {
       name: 'choice',
       value: 'a',
@@ -325,9 +325,11 @@ describe('RadioGroup', () => {
     });
     const rows = Array.from(container.querySelectorAll('.cinder-radio-row'));
     expect(rows.length).toBe(2);
-    rows.forEach((row) => expect((row as HTMLElement).hasAttribute('data-invalid')).toBe(true));
+    rows.forEach((row) =>
+      expect((row as HTMLElement).classList.contains('cinder-radio-row--invalid')).toBe(true),
+    );
 
-    // Without error, no row carries data-invalid
+    // Without error, no row carries the invalid modifier class
     const { container: c2 } = render(Wrapper, {
       name: 'choice2',
       value: 'a',
@@ -335,14 +337,14 @@ describe('RadioGroup', () => {
     });
     const cleanRows = Array.from(c2.querySelectorAll('.cinder-radio-row'));
     cleanRows.forEach((row) =>
-      expect((row as HTMLElement).hasAttribute('data-invalid')).toBe(false),
+      expect((row as HTMLElement).classList.contains('cinder-radio-row--invalid')).toBe(false),
     );
   });
 
-  // ── data-disabled ───────────────────────────────────────────────────────
+  // ── disabled modifier class ─────────────────────────────────────────────
 
-  test('data-disabled is mirrored on disabled rows', async () => {
-    // Group-level disabled: every row has data-disabled
+  test('the disabled modifier class is mirrored on disabled rows', async () => {
+    // Group-level disabled: every row carries the disabled modifier class
     const { container: c1 } = render(Wrapper, {
       name: 'choice',
       value: 'a',
@@ -353,9 +355,11 @@ describe('RadioGroup', () => {
       ],
     });
     const rows1 = Array.from(c1.querySelectorAll('.cinder-radio-row'));
-    rows1.forEach((row) => expect((row as HTMLElement).hasAttribute('data-disabled')).toBe(true));
+    rows1.forEach((row) =>
+      expect((row as HTMLElement).classList.contains('cinder-radio-row--disabled')).toBe(true),
+    );
 
-    // Only one option disabled: only that row has data-disabled
+    // Only one option disabled: only that row carries the disabled modifier class
     const { container: c2 } = render(Wrapper, {
       name: 'choice2',
       value: 'a',
@@ -366,10 +370,10 @@ describe('RadioGroup', () => {
     });
     const rowC = c2.querySelector('#r-c')?.closest('.cinder-radio-row') as HTMLElement;
     const rowD = c2.querySelector('#r-d')?.closest('.cinder-radio-row') as HTMLElement;
-    expect(rowC.hasAttribute('data-disabled')).toBe(true);
-    expect(rowD.hasAttribute('data-disabled')).toBe(false);
+    expect(rowC.classList.contains('cinder-radio-row--disabled')).toBe(true);
+    expect(rowD.classList.contains('cinder-radio-row--disabled')).toBe(false);
 
-    // Fully enabled group: no row has data-disabled
+    // Fully enabled group: no row carries the disabled modifier class
     const { container: c3 } = render(Wrapper, {
       name: 'choice3',
       value: 'a',
@@ -379,7 +383,9 @@ describe('RadioGroup', () => {
       ],
     });
     const rows3 = Array.from(c3.querySelectorAll('.cinder-radio-row'));
-    rows3.forEach((row) => expect((row as HTMLElement).hasAttribute('data-disabled')).toBe(false));
+    rows3.forEach((row) =>
+      expect((row as HTMLElement).classList.contains('cinder-radio-row--disabled')).toBe(false),
+    );
   });
   // ── required propagation ────────────────────────────────────────────────
 

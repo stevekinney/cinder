@@ -2,7 +2,12 @@
 @import '../calendar/calendar.css';
 
 @layer cinder.components {
-  .cinder-date-picker {
+  /* Compound with `.cinder-form-field` so this out-specificities the shared
+     base rule (`display:flex; flex-direction:column;`) regardless of
+     stylesheet load order — date-picker.css imports before form-field.css in
+     the aggregator's alphabetical order. */
+  .cinder-date-picker,
+  .cinder-date-picker.cinder-form-field {
     display: grid;
     gap: var(--cinder-space-1);
   }

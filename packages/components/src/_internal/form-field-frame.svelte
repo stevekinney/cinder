@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
+  import type { HTMLAttributes } from 'svelte/elements';
   import {
     ariaInvalid,
     composeDescribedBy,
@@ -20,6 +21,7 @@
     disabled = false,
     class: className,
     controlClass,
+    labelClass,
     descriptionClass,
     errorClass,
     descriptionId: descriptionIdOverride,
@@ -30,9 +32,12 @@
     controlDisabled = false,
     controlInvalid = false,
     fullWidth = false,
+    errorAlwaysMounted = false,
     control,
     before,
     after,
+    message,
+    ...rest
   }: {
     id: string;
     label?: string | undefined;
@@ -43,6 +48,7 @@
     disabled?: boolean | undefined;
     class?: string | undefined;
     controlClass?: string | undefined;
+    labelClass?: string | undefined;
     descriptionClass?: string | undefined;
     errorClass?: string | undefined;
     descriptionId?: string | undefined;
@@ -53,10 +59,23 @@
     controlDisabled?: boolean | undefined;
     controlInvalid?: boolean | undefined;
     fullWidth?: boolean | undefined;
+    /**
+     * Keep the error node mounted (as an empty live region) even when `error`
+     * is falsy. `data-cinder-error` always reflects whether `error` is set
+     * (regardless of this flag), so CSS can hide the pre-mounted, errorless
+     * node visually without unmounting it — e.g. `.foo__error:not([data-cinder-error])`.
+     * Some fields (Select, Combobox, MultiSelect) must pre-mount their
+     * `aria-live` error region — a freshly-mounted live region is not
+     * reliably announced by NVDA/JAWS, so the node has to exist before an
+     * error string is ever assigned into it.
+     */
+    errorAlwaysMounted?: boolean | undefined;
     control: Snippet;
     before?: Snippet | undefined;
     after?: Snippet | undefined;
-  } = $props();
+    /** Extra content rendered between description and error, such as a live character counter or a non-error status message. */
+    message?: Snippet | undefined;
+  } & Omit<HTMLAttributes<HTMLDivElement>, 'class' | 'children'> = $props();
 
   const labelId = $derived(label ? `${id}-label` : undefined);
   const descriptionId = $derived(descriptionIdOverride ?? describeId(id, !!description));
@@ -93,6 +112,7 @@
 </script>
 
 <div
+  {...rest}
   class={classNames('cinder-form-field', className)}
   data-cinder-full-width={fullWidth ? '' : undefined}
 >
@@ -100,7 +120,7 @@
     <label
       id={labelId}
       for={id}
-      class={classNames('cinder-form-field__label', hideLabel && 'cinder-sr-only')}
+      class={classNames('cinder-form-field__label', labelClass, hideLabel && 'cinder-sr-only')}
       data-disabled={disabled || undefined}
     >
       {label}
@@ -128,9 +148,15 @@
       {description}
     </p>
   {/if}
-  {#if error}
-    <p id={errorId} class={classNames('cinder-form-field__error', errorClass)} aria-live="polite">
-      {error}
+  {#if message}{@render message()}{/if}
+  {#if error || errorAlwaysMounted}
+    <p
+      id={errorId}
+      class={classNames('cinder-form-field__error', errorClass)}
+      aria-live="polite"
+      data-cinder-error={error ? '' : undefined}
+    >
+      {error ?? ''}
     </p>
   {/if}
 </div>

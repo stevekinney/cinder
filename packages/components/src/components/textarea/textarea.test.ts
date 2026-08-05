@@ -227,6 +227,16 @@ describe('Textarea — character count', () => {
     expect(container.querySelector(`#${id}-count`)).toBeNull();
   });
 
+  test('count is removed once countVisible is cleared', async () => {
+    const { container, rerender } = render(Textarea, {
+      props: { id: 'toggle-count', countVisible: true, maxlength: 100, value: 'hi' },
+    });
+    expect(container.querySelector('#toggle-count-count')).not.toBeNull();
+
+    await rerender({ id: 'toggle-count', countVisible: false, maxlength: 100, value: 'hi' });
+    expect(container.querySelector('#toggle-count-count')).toBeNull();
+  });
+
   test('count element renders before error element in DOM order', () => {
     const { container } = render(Textarea, {
       props: {

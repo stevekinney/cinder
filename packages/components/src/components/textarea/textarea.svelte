@@ -20,6 +20,7 @@
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { resolveMaximumLength } from '../textarea-count.ts';
+  import FormFieldFrame from '../../_internal/form-field-frame.svelte';
 
   let {
     id,
@@ -60,15 +61,7 @@
   );
 </script>
 
-<div class="cinder-textarea-field">
-  {#if label}
-    <label for={id} class="cinder-textarea-label" data-disabled={field.disabled || undefined}>
-      {label}
-      {#if field.required}
-        <span class="cinder-_required-marker" aria-hidden="true">*</span>
-      {/if}
-    </label>
-  {/if}
+{#snippet textareaControl()}
   <textarea
     {id}
     {rows}
@@ -81,9 +74,9 @@
     bind:value
     {...rest}
   ></textarea>
-  {#if description}
-    <p id={field.ownDescriptionId} class="cinder-textarea-description">{description}</p>
-  {/if}
+{/snippet}
+
+{#snippet counter()}
   {#if countId}
     <output
       id={countId}
@@ -95,7 +88,47 @@
       {currentCount}/{maximumLength}
     </output>
   {/if}
-  {#if error}
-    <p id={field.ownErrorId} class="cinder-textarea-error" aria-live="polite">{error}</p>
+{/snippet}
+
+<!-- `message` is passed unconditionally (the snippet guards its own content
+     with `{#if countId}`) rather than `countId ? counter : undefined` —
+     Svelte 5 does not reliably re-toggle a child's `{#if messageProp}` when a
+     snippet-typed prop's presence itself (not just content read inside the
+     snippet) changes reactively across renders. -->
+{#if context}
+  {#if label || description || error || countId}
+    <FormFieldFrame
+      id={field.id}
+      label={context.labelId ? undefined : label}
+      {description}
+      {error}
+      required={field.required}
+      disabled={field.disabled}
+      class="cinder-textarea-field"
+      labelClass="cinder-textarea-label"
+      descriptionClass="cinder-textarea-description"
+      errorClass="cinder-textarea-error"
+      descriptionId={field.ownDescriptionId}
+      errorId={field.ownErrorId}
+      control={textareaControl}
+      message={counter}
+    />
+  {:else}
+    {@render textareaControl()}
   {/if}
-</div>
+{:else}
+  <FormFieldFrame
+    id={field.id}
+    {label}
+    {description}
+    {error}
+    required={field.required}
+    disabled={field.disabled}
+    class="cinder-textarea-field"
+    labelClass="cinder-textarea-label"
+    descriptionClass="cinder-textarea-description"
+    errorClass="cinder-textarea-error"
+    control={textareaControl}
+    message={counter}
+  />
+{/if}

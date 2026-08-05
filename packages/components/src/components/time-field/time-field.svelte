@@ -27,6 +27,7 @@
 
   import { resolveFieldControl } from '../../_internal/field-control.ts';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
+  import FormFieldFrame from '../../_internal/form-field-frame.svelte';
   import { parseTimeString, serializeTimeParts } from '../../_internal/time-parts.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import type { TimeFieldProps } from './time-field.types.ts';
@@ -225,11 +226,7 @@
   });
 </script>
 
-<div {...rest} class={classNames('cinder-time-field', className)}>
-  {#if label}
-    <label id={labelId} class="cinder-time-field__label" for={inputId}>{label}</label>
-  {/if}
-
+{#snippet controls()}
   <div class="cinder-time-field__controls">
     <Input
       id={inputId}
@@ -279,12 +276,21 @@
       />
     {/if}
   </div>
+{/snippet}
 
-  {#if description}
-    <p id={descriptionId} class="cinder-time-field__description">{description}</p>
-  {/if}
-
-  {#if error}
-    <p id={errorId} class="cinder-time-field__error" aria-live="polite">{error}</p>
-  {/if}
-</div>
+<FormFieldFrame
+  {...rest}
+  id={inputId}
+  {label}
+  {description}
+  {error}
+  required={resolvedRequired}
+  disabled={resolvedDisabled}
+  class={classNames('cinder-time-field', className)}
+  labelClass="cinder-time-field__label"
+  descriptionClass="cinder-time-field__description"
+  errorClass="cinder-time-field__error"
+  {descriptionId}
+  {errorId}
+  control={controls}
+/>

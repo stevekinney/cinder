@@ -1,18 +1,49 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
 @layer cinder.components {
-  .cinder-json-editor {
+  /* Compound with `.cinder-form-field` so `gap` out-specificities the shared
+     base rule (`var(--cinder-space-1-5)`) regardless of stylesheet load
+     order — json-editor's own gap is intentionally larger. */
+  .cinder-json-editor,
+  .cinder-json-editor.cinder-form-field {
     display: flex;
     flex-direction: column;
     gap: var(--cinder-space-2);
   }
 
-  .cinder-json-editor__label {
+  /* FormFieldFrame's fixed render order is label, control, description,
+     message, error; these `order` overrides restore the original
+     label → description → input → feedback visual order. */
+  .cinder-json-editor > .cinder-form-field__label {
+    order: 1;
+  }
+
+  .cinder-json-editor > .cinder-form-field__description {
+    order: 2;
+  }
+
+  .cinder-json-editor > .cinder-json-editor__input {
+    order: 3;
+  }
+
+  .cinder-json-editor > .cinder-json-editor__feedback {
+    order: 4;
+  }
+
+  /* `__label` and `__description` also carry FormFieldFrame's generic
+     `.cinder-form-field__label` / `__description` classes (`__feedback` does
+     not — it is fully custom-rendered via the `message` slot, never paired
+     with a generic class) — compound with them so json-editor's typography
+     out-specificities the shared base rule regardless of consumer import
+     order (component sidecars carry layer membership, not ordering). */
+  .cinder-json-editor__label,
+  .cinder-json-editor__label.cinder-form-field__label {
     color: var(--cinder-text);
     font-size: var(--cinder-text-sm);
     font-weight: var(--cinder-font-semibold);
   }
 
   .cinder-json-editor__description,
+  .cinder-json-editor__description.cinder-form-field__description,
   .cinder-json-editor__feedback {
     margin: 0;
     color: var(--cinder-text-muted);

@@ -2,13 +2,22 @@
 @import '../input/input.css';
 
 @layer cinder.components {
-  .cinder-time-field {
+  /* TimeField now composes FormFieldFrame itself, so its root also carries
+     `.cinder-form-field`. Cinder component sidecars carry cascade LAYER
+     membership, not import ORDER — a per-subpath consumer may load
+     form-field.css before or after time-field.css in any order (see
+     AGENTS.md's component-authoring section) — so this compound selector
+     out-specificities the shared base rule (`display:flex; gap:1.5;`)
+     regardless of which one a consumer's bundler resolves first. */
+  .cinder-time-field,
+  .cinder-time-field.cinder-form-field {
     display: grid;
     gap: var(--cinder-space-2);
     color: var(--cinder-text);
   }
 
-  .cinder-time-field__label {
+  .cinder-time-field__label,
+  .cinder-time-field__label.cinder-form-field__label {
     font-size: var(--cinder-text-sm);
     font-weight: var(--cinder-font-semibold);
   }
@@ -20,7 +29,14 @@
     align-items: center;
   }
 
-  .cinder-time-field__controls > .cinder-input-field {
+  /* TimeField now composes FormFieldFrame itself, which puts the nested
+     Input inside a FormFieldContext. Since Input never receives its own
+     label from TimeField, it renders bare (no `.cinder-input-field`
+     wrapper) — so this sizing constraint targets `.cinder-time-field__input`
+     (always present on the native control, wrapped or not) directly, rather
+     than the wrapper class that may no longer exist. */
+  .cinder-time-field__controls > .cinder-input-field,
+  .cinder-time-field__controls > .cinder-time-field__input {
     flex: 0 1 12rem;
     inline-size: auto;
   }
@@ -49,7 +65,9 @@
   }
 
   .cinder-time-field__description,
-  .cinder-time-field__error {
+  .cinder-time-field__description.cinder-form-field__description,
+  .cinder-time-field__error,
+  .cinder-time-field__error.cinder-form-field__error {
     margin: 0;
     font-size: var(--cinder-text-sm);
   }

@@ -29,6 +29,7 @@
   import { createCommandListState } from '../_internal/create-command-list-state.svelte.ts';
   import { resolveFieldControl } from '../../_internal/field-control.ts';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
+  import FormFieldFrame from '../../_internal/form-field-frame.svelte';
   import { classNames } from '../../utilities/class-names.ts';
   import type { MultiSelectItem, MultiSelectProps } from './multi-select.types.ts';
 
@@ -107,6 +108,7 @@
   let nativeError = $state('');
   let resetSyncTimeout: ReturnType<typeof setTimeout> | undefined;
   const triggerAriaInvalid = $derived(field.ariaInvalid ?? (nativeError ? true : undefined));
+  const combinedError = $derived(error || nativeError || undefined);
   const triggerDescribedBy = $derived.by(() => {
     const ids = new Set((field.describedBy ?? '').split(/\s+/).filter(Boolean));
     if (nativeError) ids.add(field.ownErrorId ?? stableLocalErrorId);
@@ -350,21 +352,7 @@
   });
 </script>
 
-<div class={classNames('cinder-multi-select', className)}>
-  {#if label}
-    <label
-      id={labelId}
-      for={id}
-      class="cinder-multi-select__label"
-      data-disabled={field.disabled || undefined}
-    >
-      {label}
-      {#if field.required}
-        <span class="cinder-_required-marker" aria-hidden="true">*</span>
-      {/if}
-    </label>
-  {/if}
-
+{#snippet multiSelectControl()}
   <div bind:this={controlElement} class="cinder-multi-select__control">
     <!-- svelte-ignore a11y_role_supports_aria_props_implicit (the focusable picker trigger intentionally mirrors invalid state for assistive tech) -->
     <button
@@ -523,21 +511,36 @@
       <input type="hidden" {name} value={selectedId} disabled={field.disabled} />
     {/each}
   {/if}
+{/snippet}
 
-  {#if description}
-    <p id={field.ownDescriptionId} class="cinder-multi-select__description">{description}</p>
-  {/if}
-
+{#snippet warningMessage()}
   {#if warning}
     <p id={warningId} class="cinder-multi-select__warning">{warning}</p>
   {/if}
+{/snippet}
 
-  <p
-    id={field.ownErrorId ?? stableLocalErrorId}
-    class="cinder-multi-select__error"
-    aria-live="polite"
-    data-cinder-error={!!error || !!nativeError || undefined}
-  >
-    {error ?? nativeError}
-  </p>
-</div>
+<!-- The error node stays mounted (errorAlwaysMounted) so the live region is
+     registered before text is injected; freshly-mounted aria-live nodes are
+     not reliably announced by NVDA/JAWS. `message` is passed unconditionally
+     (the snippet guards its own content with `{#if warning}`) rather than
+     `warning ? warningMessage : undefined` — Svelte 5 does not reliably
+     re-toggle a child's `{#if messageProp}` when a snippet-typed prop's
+     presence itself (not just content read inside the snippet) changes
+     reactively across renders. -->
+<FormFieldFrame
+  id={field.id}
+  {label}
+  {description}
+  error={combinedError}
+  required={field.required}
+  disabled={field.disabled}
+  class={classNames('cinder-multi-select', className)}
+  labelClass="cinder-multi-select__label"
+  descriptionClass="cinder-multi-select__description"
+  errorClass="cinder-multi-select__error"
+  descriptionId={field.ownDescriptionId}
+  errorId={field.ownErrorId ?? stableLocalErrorId}
+  errorAlwaysMounted
+  control={multiSelectControl}
+  message={warningMessage}
+/>
