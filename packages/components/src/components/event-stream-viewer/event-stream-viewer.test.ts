@@ -1012,8 +1012,11 @@ describe('EventStreamViewer', () => {
       // useAnnouncer clears the message before re-setting it, forcing screen
       // readers to re-announce even identical text — a test that only checked
       // the final text would pass even if the second click were a no-op.
-      expect(mutations).toEqual(['', '1 stream entry sent to copy handler']);
-      observer.disconnect();
+      try {
+        expect(mutations).toEqual(['', '1 stream entry sent to copy handler']);
+      } finally {
+        observer.disconnect();
+      }
     });
 
     test('unmounting while the announcer clear timer is pending leaks no timer', async () => {

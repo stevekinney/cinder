@@ -564,7 +564,7 @@ describe('SecretValueField', () => {
   });
 
   describe('icons', () => {
-    test('source contains no literal <svg element — icons are lucide-svelte components', async () => {
+    test('source contains no literal <svg> element — icons are lucide-svelte components', async () => {
       const source = await Bun.file(new URL('./secret-value-field.svelte', import.meta.url)).text();
       expect(source).not.toContain('<svg');
     });
