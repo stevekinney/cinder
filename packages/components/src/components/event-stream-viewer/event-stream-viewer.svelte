@@ -359,11 +359,9 @@
     </div>
   {/if}
 
-  <!-- Scroll viewport: role="log" gives this element a legitimate keyboard-focus
-       need (scrollable live region). svelte:element avoids the a11y_no_noninteractive_tabindex
-       lint warning while retaining the exact same rendered HTML as a plain div. -->
-  <svelte:element
-    this={'div'}
+  <!-- Keyboard-scrollable live region: role="log" gives this element a legitimate keyboard-focus need. -->
+  <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+  <div
     class="cinder-event-stream-viewer__viewport"
     role="log"
     aria-label={label}
@@ -487,7 +485,7 @@
         {/each}
       </ol>
     {/if}
-  </svelte:element>
+  </div>
 
   <!-- Visually hidden live region for copy-visible announcements.
        Lives in the DOM always; content toggled via state (never {#if}). -->
