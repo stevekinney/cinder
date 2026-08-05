@@ -84,6 +84,21 @@ async function settleCommandMenu() {
   await tick();
 }
 
+function queryGhost() {
+  return document.body.querySelector<HTMLElement>('.cinder-command-menu__ghost');
+}
+
+/** Types `value` into `host`, moves the caret to its end, and syncs the trigger — mirrors real typing. */
+async function typeIntoHost(
+  host: HTMLInputElement | HTMLTextAreaElement,
+  value: string,
+  lastKey = value.at(-1),
+) {
+  await fireEvent.input(host, { target: { value } });
+  host.setSelectionRange(value.length, value.length);
+  await fireEvent.keyUp(host, { key: lastKey });
+}
+
 beforeEach(() => {
   computePositionSpy.mockClear();
   autoUpdateSpy.mockClear();
@@ -470,5 +485,301 @@ describe('CommandMenu', () => {
     await fireEvent.click(getByTestId('close'));
     await settleCommandMenu();
     expect(states.at(-1)).toBeNull();
+  });
+});
+
+describe('CommandMenu inline ghost-text completion (#970)', () => {
+  test('renders the active item’s remainder as aria-hidden ghost text', async () => {
+    const { getByTestId } = render(CommandMenuHostFixture, { ghostTextEnabled: true });
+    const host = getByTestId('host') as HTMLTextAreaElement;
+
+    await typeIntoHost(host, '/al');
+    await waitFor(() => expect(queryMenu()).not.toBeNull());
+    await settleCommandMenu();
+
+    const ghost = queryGhost();
+    expect(ghost).not.toBeNull();
+    expect(ghost?.textContent).toBe('pha');
+    expect(ghost?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  test('preserves the active value’s own casing rather than the typed casing', async () => {
+    // See command-menu.a11y.md (b): the remainder must not silently
+    // normalize what the user already typed.
+    const { getByTestId } = render(CommandMenuHostFixture, { ghostTextEnabled: true });
+    const host = getByTestId('host') as HTMLTextAreaElement;
+
+    await typeIntoHost(host, '/AL');
+    await waitFor(() => expect(queryMenu()).not.toBeNull());
+    await settleCommandMenu();
+
+    expect(queryGhost()?.textContent).toBe('pha');
+  });
+
+  test('updates ghost text as ArrowUp/ArrowDown move the active item', async () => {
+    const { getByTestId } = render(CommandMenuHostFixture, { ghostTextEnabled: true });
+    const host = getByTestId('host') as HTMLTextAreaElement;
+
+    await typeIntoHost(host, '/');
+    await waitFor(() => expect(queryMenu()).not.toBeNull());
+    await settleCommandMenu();
+    expect(queryGhost()?.textContent).toBe('alpha');
+
+    await fireEvent.keyDown(host, { key: 'ArrowDown' });
+    await settleCommandMenu();
+    expect(queryGhost()?.textContent).toBe('beta');
+  });
+
+  test('hides ghost text when the caret is not at the field end', async () => {
+    const { getByTestId } = render(CommandMenuHostFixture, { ghostTextEnabled: true });
+    const host = getByTestId('host') as HTMLTextAreaElement;
+
+    await typeIntoHost(host, '/al');
+    await waitFor(() => expect(queryGhost()).not.toBeNull());
+
+    host.setSelectionRange(1, 1);
+    await fireEvent.keyUp(host, { key: 'ArrowLeft' });
+    await settleCommandMenu();
+
+    expect(queryGhost()).toBeNull();
+  });
+
+  test('hides ghost text for an RTL field', async () => {
+    const { getByTestId } = render(CommandMenuHostFixture, { ghostTextEnabled: true });
+    const host = getByTestId('host') as HTMLTextAreaElement;
+    host.setAttribute('dir', 'rtl');
+
+    await typeIntoHost(host, '/al');
+    await waitFor(() => expect(queryMenu()).not.toBeNull());
+    await settleCommandMenu();
+
+    expect(queryGhost()).toBeNull();
+  });
+
+  test('hides ghost text when the filtered list is empty', async () => {
+    const { getByTestId } = render(CommandMenuHostFixture, { ghostTextEnabled: true });
+    const host = getByTestId('host') as HTMLTextAreaElement;
+
+    await typeIntoHost(host, '/zz');
+    await waitFor(() => expect(queryMenu()).not.toBeNull());
+    await settleCommandMenu();
+
+    expect(queryGhost()).toBeNull();
+  });
+
+  test('suppresses ghost text on the keystroke that shrinks the query, then re-arms', async () => {
+    const { getByTestId } = render(CommandMenuHostFixture, { ghostTextEnabled: true });
+    const host = getByTestId('host') as HTMLTextAreaElement;
+
+    await typeIntoHost(host, '/al');
+    await waitFor(() => expect(queryGhost()?.textContent).toBe('pha'));
+
+    await typeIntoHost(host, '/a', 'Backspace');
+    await settleCommandMenu();
+    expect(queryGhost()).toBeNull();
+
+    await typeIntoHost(host, '/al');
+    await settleCommandMenu();
+    expect(queryGhost()?.textContent).toBe('pha');
+  });
+
+  test('a paste that grows the query still shows ghost text', async () => {
+    const { getByTestId } = render(CommandMenuHostFixture, { ghostTextEnabled: true });
+    const host = getByTestId('host') as HTMLTextAreaElement;
+
+    await typeIntoHost(host, '/');
+    await waitFor(() => expect(queryMenu()).not.toBeNull());
+
+    // A paste delivers the whole new value in one input event, unlike a
+    // sequence of individual keystrokes.
+    await typeIntoHost(host, '/al', 'v');
+    await settleCommandMenu();
+
+    expect(queryGhost()?.textContent).toBe('pha');
+  });
+
+  test('hides ghost text while IME composition is active, and re-shows after it ends', async () => {
+    const { getByTestId } = render(CommandMenuHostFixture, { ghostTextEnabled: true });
+    const host = getByTestId('host') as HTMLTextAreaElement;
+
+    await typeIntoHost(host, '/al');
+    await waitFor(() => expect(queryGhost()?.textContent).toBe('pha'));
+
+    await fireEvent.compositionStart(host);
+    await settleCommandMenu();
+    expect(queryGhost()).toBeNull();
+
+    await fireEvent.compositionEnd(host);
+    await settleCommandMenu();
+    expect(queryGhost()?.textContent).toBe('pha');
+  });
+
+  test('ArrowRight at the field end accepts and fires onComplete, not onSelect', async () => {
+    const completed: Array<{ value: string; query: string; remainder: string }> = [];
+    const selected: Array<{ value: string; query: string }> = [];
+    const { getByTestId } = render(CommandMenuHostFixture, {
+      ghostTextEnabled: true,
+      onCompleted: (detail: { value: string; query: string; remainder: string }) =>
+        completed.push(detail),
+      onSelected: (value: string, query: string) => selected.push({ value, query }),
+    });
+    const host = getByTestId('host') as HTMLTextAreaElement;
+
+    await typeIntoHost(host, '/al');
+    await waitFor(() => expect(queryGhost()?.textContent).toBe('pha'));
+
+    const event = new KeyboardEvent('keydown', {
+      key: 'ArrowRight',
+      bubbles: true,
+      cancelable: true,
+    });
+    host.dispatchEvent(event);
+    await settleCommandMenu();
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(completed).toEqual([{ value: 'alpha', query: 'al', remainder: 'pha' }]);
+    expect(selected).toEqual([]);
+    expect(host.value).toBe('/alpha');
+    expect(queryMenu()).not.toBeNull(); // accepting completes text, it does not select/close
+    expect(queryGhost()).toBeNull(); // query now equals the active value — nothing left to complete
+  });
+
+  test('Tab accepts, keeps focus on the anchor, and Shift+Tab is never intercepted', async () => {
+    const { getByTestId } = render(CommandMenuHostFixture, { ghostTextEnabled: true });
+    const host = getByTestId('host') as HTMLTextAreaElement;
+    host.focus();
+
+    await typeIntoHost(host, '/al');
+    await waitFor(() => expect(queryGhost()?.textContent).toBe('pha'));
+
+    const shiftTabEvent = new KeyboardEvent('keydown', {
+      key: 'Tab',
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    host.dispatchEvent(shiftTabEvent);
+    expect(shiftTabEvent.defaultPrevented).toBe(false);
+    expect(queryGhost()?.textContent).toBe('pha');
+
+    const tabEvent = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    host.dispatchEvent(tabEvent);
+    await settleCommandMenu();
+
+    expect(tabEvent.defaultPrevented).toBe(true);
+    expect(host.value).toBe('/alpha');
+    expect(document.activeElement).toBe(host);
+  });
+
+  test('Enter always activates the listbox selection, never ghost text', async () => {
+    const selected: Array<{ value: string; query: string }> = [];
+    const { getByTestId } = render(CommandMenuHostFixture, {
+      ghostTextEnabled: true,
+      onSelected: (value: string, query: string) => selected.push({ value, query }),
+    });
+    const host = getByTestId('host') as HTMLTextAreaElement;
+
+    await typeIntoHost(host, '/al');
+    await waitFor(() => expect(queryGhost()?.textContent).toBe('pha'));
+
+    await fireEvent.keyDown(host, { key: 'Enter' });
+
+    expect(selected).toEqual([{ value: 'alpha', query: 'al' }]);
+    expect(host.value).toBe('[alpha]');
+    await waitFor(() => expect(queryMenu()).toBeNull());
+  });
+
+  test('End moves the active item to the last option instead of accepting ghost text', async () => {
+    // In-repo precedent wins over the issue's own suggestion — see
+    // command-menu.a11y.md (b). Unmodified End is already claimed by the
+    // shared list (command-menu.test.ts's pre-existing 'keyboard navigation'
+    // coverage); ghost text must not steal it back.
+    const completed: unknown[] = [];
+    const { getByTestId } = render(CommandMenuHostFixture, {
+      ghostTextEnabled: true,
+      onCompleted: (detail: unknown) => completed.push(detail),
+    });
+    const host = getByTestId('host') as HTMLTextAreaElement;
+
+    await typeIntoHost(host, '/');
+    await waitFor(() => expect(queryGhost()?.textContent).toBe('alpha'));
+
+    await fireEvent.keyDown(host, { key: 'End' });
+    await settleCommandMenu();
+
+    expect(completed).toEqual([]);
+    expect(host.value).toBe('/');
+    expect(queryMenu()?.querySelector('[aria-selected="true"]')?.textContent).toContain('Beta');
+    expect(queryGhost()?.textContent).toBe('beta');
+  });
+
+  test('Escape dismisses ghost text first, then falls through to close the menu', async () => {
+    const dismissed = mock(() => {});
+    const { getByTestId } = render(CommandMenuHostFixture, {
+      ghostTextEnabled: true,
+      onDismissed: dismissed,
+    });
+    const host = getByTestId('host') as HTMLTextAreaElement;
+
+    await typeIntoHost(host, '/al');
+    await waitFor(() => expect(queryGhost()?.textContent).toBe('pha'));
+
+    await fireEvent.keyDown(host, { key: 'Escape' });
+    await settleCommandMenu();
+    expect(queryGhost()).toBeNull();
+    expect(queryMenu()).not.toBeNull();
+    expect(dismissed).not.toHaveBeenCalled();
+
+    await fireEvent.keyDown(host, { key: 'Escape' });
+    await settleCommandMenu();
+    expect(dismissed).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(queryMenu()).toBeNull());
+  });
+
+  test('disabled feature: without onComplete, no ghost text renders and Tab is untouched', async () => {
+    const { getByTestId } = render(CommandMenuHostFixture, { ghostTextEnabled: false });
+    const host = getByTestId('host') as HTMLTextAreaElement;
+
+    await typeIntoHost(host, '/al');
+    await waitFor(() => expect(queryMenu()).not.toBeNull());
+    await settleCommandMenu();
+
+    expect(queryGhost()).toBeNull();
+
+    const tabResult = await fireEvent.keyDown(host, { key: 'Tab' });
+    expect(tabResult).toBe(true); // fireEvent resolves true when preventDefault was never called
+  });
+
+  test('caretIndex omitted: ghost text still derives caret position from the live selection', async () => {
+    const { getByTestId } = render(CommandMenuHostFixture, {
+      ghostTextEnabled: true,
+      explicitCaretIndex: false,
+    });
+    const host = getByTestId('host') as HTMLTextAreaElement;
+
+    await typeIntoHost(host, '/al');
+    await waitFor(() => expect(queryMenu()).not.toBeNull());
+    await settleCommandMenu();
+
+    expect(queryGhost()?.textContent).toBe('pha');
+  });
+
+  test('positions the ghost overlay from a measured caret rect once one is available', async () => {
+    const { getByTestId } = render(CommandMenuHostFixture, { ghostTextEnabled: true });
+    const host = getByTestId('host') as HTMLTextAreaElement;
+    Object.defineProperty(host, 'getBoundingClientRect', {
+      value: () => new DOMRect(20, 30, 200, 20),
+      configurable: true,
+    });
+
+    await typeIntoHost(host, '/al');
+    await waitFor(() => expect(queryGhost()).not.toBeNull());
+    await settleCommandMenu();
+
+    const ghost = queryGhost()!;
+    expect(ghost.getAttribute('data-cinder-position-ready')).toBe('true');
+    expect(ghost.style.position).toBe('fixed');
+    expect(ghost.style.left).toBeTruthy();
+    expect(ghost.style.top).toBeTruthy();
   });
 });

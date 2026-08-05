@@ -44,4 +44,20 @@
     font-size: var(--cinder-text-sm);
     text-align: center;
   }
+
+  /* Ghost-text inline completion. `aria-hidden`, positioned via a mirrored
+   * text measurement (see caret-rect.svelte.ts) rather than laid out in
+   * normal flow — see command-menu.a11y.md decision (a). */
+  .cinder-command-menu__ghost {
+    position: fixed;
+    z-index: var(--cinder-z-popover);
+    overflow: hidden;
+    color: var(--cinder-text-disabled);
+    white-space: pre;
+    pointer-events: none;
+  }
+
+  .cinder-command-menu__ghost[data-cinder-position-ready='false'] {
+    visibility: hidden;
+  }
 }

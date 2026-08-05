@@ -13,6 +13,7 @@
    * @related command-palette, command-item, popover, combobox
    */
   export type {
+    CommandMenuCompletion,
     CommandMenuProps,
     CommandMenuSelection,
     CommandMenuState,
@@ -24,10 +25,15 @@
 <script lang="ts">
   import type { CommandMenuProps } from './command-menu.types.ts';
   import { getCaretRect } from './caret-rect.svelte.ts';
+  import {
+    computeGhostOverlayFontStyle,
+    createInlineCompletionState,
+  } from './command-menu-inline-completion.svelte.ts';
   import type { Placement, VirtualElement } from '@floating-ui/dom';
   import { on } from 'svelte/events';
 
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
+  import { isRightToLeftElement } from '../../_internal/text-direction.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { setCommandListContext } from '../_internal/command-list-context.ts';
   import { createCommandListState } from '../_internal/create-command-list-state.svelte.ts';
@@ -39,7 +45,7 @@
     listboxId = fallbackListboxId,
     open = $bindable(false),
     anchor,
-    caretIndex,
+    caretIndex: caretIndexProp,
     query = $bindable(''),
     items,
     empty,
@@ -47,6 +53,7 @@
     offset = 6,
     label = 'Commands',
     onSelect,
+    onComplete,
     onDismiss,
     onStateChange,
     class: className,
@@ -60,6 +67,12 @@
 
   let mounted = $state(false);
   let listElement: HTMLElement | undefined = $state();
+  // Bumped by every anchor selection/scroll/resize event the ghost-text
+  // wiring below cares about — DOM properties like `selectionEnd` aren't
+  // reactive on their own, so derived reads that need to stay live on plain
+  // caret movement (not just prop changes) take a dependency on this.
+  let selectionGeneration = $state(0);
+  let composing = $state(false);
   let dismissedTrigger: {
     anchor: HTMLInputElement | HTMLTextAreaElement;
     value: string;
@@ -77,6 +90,14 @@
   // dangling aria-describedby pointing at a nonexistent id is invalid ARIA.
   const showEmptyState = $derived(showEmpty && Boolean(empty));
   const emptyStateId = $derived(`${commandList.listboxId}-empty`);
+  // Optional-with-derivation (see command-menu.a11y.md): a consumer that
+  // doesn't already track trigger-relative caret state can omit this prop
+  // entirely and read the anchor's live selection instead.
+  const caretIndex = $derived.by(() => {
+    if (caretIndexProp !== undefined) return caretIndexProp;
+    void selectionGeneration;
+    return anchor?.selectionEnd ?? 0;
+  });
   const caretAnchor = $derived.by<VirtualElement | null>(() => {
     const anchorElement = anchor;
     const currentCaretIndex = caretIndex;
@@ -97,6 +118,64 @@
     placement: () => placement as Placement,
     offset: () => offset,
     widthMode: () => 'content',
+  });
+
+  // ---------------------------------------------------------------------
+  // Ghost-text inline completion (see command-menu.a11y.md for the recorded
+  // decisions). `createInlineCompletionState` owns whether to show ghost
+  // text and what it says; everything below is this component's DOM-facing
+  // half — live caret-end tracking, the active item's raw value, and the
+  // overlay's own position/font styling.
+  // ---------------------------------------------------------------------
+  const caretAtFieldEnd = $derived.by(() => {
+    void selectionGeneration;
+    void query;
+    const currentAnchor = anchor;
+    if (!currentAnchor) return false;
+    return (
+      currentAnchor.selectionStart === currentAnchor.selectionEnd &&
+      currentAnchor.selectionEnd === currentAnchor.value.length
+    );
+  });
+
+  const activeValue = $derived.by(() => {
+    const id = open ? commandList.activeItemId : null;
+    if (id === null) return null;
+    const record = commandList.registrations.find((registration) => registration.id === id);
+    return record?.getValue() ?? null;
+  });
+
+  const inlineCompletion = createInlineCompletionState({
+    enabled: () => Boolean(onComplete),
+    open: () => open,
+    composing: () => composing,
+    caretAtFieldEnd: () => caretAtFieldEnd,
+    rightToLeft: () => isRightToLeftElement(anchor),
+    query: () => query,
+    caretIndex: () => caretIndex,
+    activeItemId: () => (open ? commandList.activeItemId : null),
+    activeValue: () => activeValue,
+  });
+
+  const ghostRect = $derived.by(() => {
+    void selectionGeneration;
+    if (!anchor || !inlineCompletion.visible) return null;
+    return getCaretRect(anchor, anchor.value.length);
+  });
+
+  const ghostStyle = $derived.by(() => {
+    if (!anchor) return '';
+    const rect = ghostRect;
+    const position = rect
+      ? `position: fixed; left: ${rect.left}px; top: ${rect.top}px; height: ${rect.height}px;`
+      : 'position: fixed;';
+    return `${position} ${computeGhostOverlayFontStyle(anchor)}`;
+  });
+
+  const ghostPortalAttachment = createPortalAttachment({
+    target: () => document.body,
+    inheritAttributes: true,
+    source: () => anchor,
   });
 
   $effect(() => {
@@ -142,6 +221,7 @@
       ) {
         dismissedTrigger = null;
       }
+      selectionGeneration += 1;
     }
 
     const stopSelectionchange = on(
@@ -153,6 +233,17 @@
     const stopInput = on(currentAnchor, 'input', clearDismissalWhenSelectionMoves);
     const stopClick = on(currentAnchor, 'click', clearDismissalWhenSelectionMoves);
     const stopKeyup = on(currentAnchor, 'keyup', clearDismissalWhenSelectionMoves);
+    // The ghost overlay is positioned via a one-shot rect read (no
+    // floating-ui autoUpdate loop), so scroll/resize need their own nudge to
+    // stay live. Anchor-local scroll (a tall textarea's own scrollbar) and
+    // page/ancestor scroll are different events; both can move the caret's
+    // viewport position without firing any of the listeners above.
+    const bumpSelectionGeneration = () => {
+      selectionGeneration += 1;
+    };
+    const stopAnchorScroll = on(currentAnchor, 'scroll', bumpSelectionGeneration);
+    const stopWindowScroll = on(window, 'scroll', bumpSelectionGeneration, { capture: true });
+    const stopWindowResize = on(window, 'resize', bumpSelectionGeneration);
 
     return () => {
       stopSelectionchange();
@@ -160,6 +251,9 @@
       stopInput();
       stopClick();
       stopKeyup();
+      stopAnchorScroll();
+      stopWindowScroll();
+      stopWindowResize();
     };
   });
 
@@ -211,8 +305,41 @@
     onDismiss?.();
   }
 
+  function isModifiedKey(event: KeyboardEvent): boolean {
+    return event.altKey || event.ctrlKey || event.metaKey || event.shiftKey;
+  }
+
   function handleKeydown(event: KeyboardEvent) {
     if (!open) return;
+
+    const isComposingEvent = event.isComposing || event.keyCode === 229;
+
+    // Escape's first stage: dismiss the ghost text without closing the
+    // menu. Only a second Escape (ghost already hidden) falls through to
+    // the existing listbox Escape-dismiss latch below.
+    if (!isComposingEvent && event.key === 'Escape' && inlineCompletion.dismissGhostText()) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+
+    // ArrowRight at the field end and unmodified Tab accept the ghost
+    // text. Enter is deliberately left untouched below — it always
+    // activates the listbox selection regardless of ghost-text state.
+    if (
+      !isComposingEvent &&
+      inlineCompletion.visible &&
+      !isModifiedKey(event) &&
+      (event.key === 'ArrowRight' || event.key === 'Tab')
+    ) {
+      const completion = inlineCompletion.acceptCompletion();
+      if (completion) {
+        event.preventDefault();
+        onComplete?.(completion);
+        return;
+      }
+    }
+
     commandList.handleKeydown({
       event,
       onEnter: activateItemById,
@@ -232,16 +359,34 @@
   $effect(() => {
     if (!open || !anchor) return;
     const stopKeydown = on(anchor, 'keydown', handleKeydown);
+    const stopCompositionStart = on(anchor, 'compositionstart', () => {
+      composing = true;
+    });
+    const stopCompositionEnd = on(anchor, 'compositionend', () => {
+      composing = false;
+    });
     const stopPointerdown = on(document, 'pointerdown', handleDocumentPointerdown, {
       capture: true,
     });
 
     return () => {
       stopKeydown();
+      stopCompositionStart();
+      stopCompositionEnd();
       stopPointerdown();
     };
   });
 </script>
+
+{#if mounted && open && anchor && inlineCompletion.visible}
+  <span
+    {@attach ghostPortalAttachment}
+    aria-hidden="true"
+    class="cinder-command-menu__ghost"
+    data-cinder-position-ready={ghostRect !== null}
+    style={ghostStyle}>{inlineCompletion.remainder}</span
+  >
+{/if}
 
 {#if mounted && open && anchor}
   <div
