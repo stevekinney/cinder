@@ -120,11 +120,17 @@ protocol from the 2026-08-04 drain is:
    that already has `node_modules` and re-install only when `bun.lock`
    changed): build, tests, typecheck, lint (including `lint:invariants`),
    and the `main-green`-only source audits exactly as `workspace-gates`
-   runs them — `aggregator:check`, `components:check`,
+   runs them — for cinder: `aggregator:check`, `components:check`,
    `check:changeset-prerelease-bumps`, `validate:workflow`,
-   `validate:svelte-peer`, and `test:workspace-scripts` (read
+   `validate:svelte-peer`; for chat and editor: `components:check`,
+   `build`, `platform:audit -- --strict`, `colors:audit -- --strict`;
+   plus `test:workspace-scripts` (read
    `.github/workflows/main-green.yaml` for the current list — it is the
-   source of truth and this list WILL drift), **and the full Playwright suite
+   source of truth and this list WILL drift). A REUSED scratch worktree must
+   be verified clean before any of this: `git status --porcelain` empty
+   (stash leftovers with a labeled message, never discard them) — stale
+   tracked edits or generated artifacts in a reused tree silently poison the
+   validation, **and the full Playwright suite
    run against this same combined tree** (locally via `test:browser`; kill
    any stale server on :5555/:5556 first). Browser coverage must precede the
    drain — `main-green` is NOT a browser gate (it runs only the Chromium
@@ -133,9 +139,13 @@ protocol from the 2026-08-04 drain is:
    `main`.
 3. Only then lift `strict`, drain the validated set, and restore
    `strict: true` immediately after.
-4. If any candidate branch moved after the combined-tree run (fix pushes,
-   rebases), re-run the affected slice — or the full suite — against the
-   refreshed combined tree before its PRs merge.
+4. **Pin candidate heads.** Record each candidate branch's SHA at
+   combined-tree-validation time; immediately before merging each PR,
+   re-fetch and verify its head still equals the validated SHA. A moved head
+   (fix push, rebase, another agent) drops that PR out of the validated set
+   until the affected slice — or the full suite — is re-run against a
+   refreshed combined tree. This check is mechanical; do not rely on anyone
+   noticing a push.
 
 That reproduces the queue's merged-result guarantee out-of-band; per-PR CI
 plus pairwise `git merge-tree` checks alone do not cover repo-wide-guard
