@@ -4,6 +4,7 @@ import CommandMenu from './command-menu.svelte';
 export default CommandMenu;
 export { detectTrigger } from './command-menu-trigger.ts';
 export type {
+  CommandMenuCompletion,
   CommandMenuProps,
   CommandMenuSelection,
   CommandMenuState,
