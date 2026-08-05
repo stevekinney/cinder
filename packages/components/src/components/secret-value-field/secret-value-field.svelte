@@ -40,7 +40,10 @@
   const fieldId = $props.id();
 
   let revealed = $state(untrack(() => initiallyRevealed));
-  let previousValue = $state(untrack(() => value));
+  // Plain `let` — not reactive, so the resync effect below depends only on the
+  // `value` prop, not on its own write to this guard (the self-dependency
+  // footgun `phone-input.svelte` and `schedule-builder.svelte` avoid the same way).
+  let previousValue = untrack(() => value);
 
   let copied = $state(false);
   let resetTimer: ReturnType<typeof setTimeout> | undefined;

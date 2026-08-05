@@ -14,12 +14,9 @@ export type SchemaFormSubmitHandler = (
 ) => void | Promise<void>;
 
 /** Props for the SchemaForm component. */
-export type SchemaFormProps<Schema extends SchemaFormSchema = SchemaFormSchema> = Omit<
-  HTMLFormAttributes,
-  'class' | 'onsubmit'
-> & {
+export type SchemaFormProps = Omit<HTMLFormAttributes, 'class' | 'onsubmit'> & {
   /** JSON Schema object used to render and validate the form. */
-  schema: Schema;
+  schema: SchemaFormSchema;
   /**
    * Initial form value. Missing fields are seeded from the schema where possible.
    *

@@ -72,7 +72,7 @@
     // navigation (and let modified/middle clicks fall through to the browser), and
     // the button arm must not crash when `href={someUndefinedValue}` routes a
     // consumer into the button branch without supplying an onclick.
-    (onclick as ((event: MouseEvent) => void) | undefined)?.(event);
+    onclick?.(event);
   }
 </script>
 

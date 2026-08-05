@@ -7,6 +7,7 @@ export type {
   ResizablePanelRenderContext,
   ResizablePanelSize,
   ResizablePanelSizeState,
+  ResizablePanelSizeUnit,
   ResizablePanelsCollapseTarget,
   ResizablePanelsOrientation,
   ResizablePanelsProps,

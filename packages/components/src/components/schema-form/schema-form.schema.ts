@@ -33,7 +33,7 @@ const schema = {
       },
       {
         name: 'schema',
-        reason: 'generic-type-parameter',
+        reason: 'unknown-shape',
         required: true,
         description: 'JSON Schema object used to render and validate the form.',
       },

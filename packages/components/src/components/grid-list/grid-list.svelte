@@ -23,7 +23,7 @@
   let { minColumnWidth, class: className, children, ...rest }: GridListProps = $props();
 
   const minWidth = $derived(minColumnWidth && minColumnWidth.length > 0 ? minColumnWidth : '16rem');
-  const gridRest = $derived(rest as unknown as Omit<GridProps, 'children'>);
+  const gridRest = $derived(rest as Omit<GridProps, 'children'>);
 </script>
 
 <Grid

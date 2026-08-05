@@ -24,6 +24,7 @@
   import Sliders from 'lucide-svelte/icons/sliders-horizontal';
   import Sun from 'lucide-svelte/icons/sun';
   import X from 'lucide-svelte/icons/x';
+  import { COMPOUND_COMPONENT_PARENTS } from './shell-app/compound-families.ts';
   import { buildComponentHref, readFocusModeFromSearch } from './shell-app/routing.ts';
   import { persistScrollPosition } from './shell-app/sidebar-scroll.ts';
   import { createEventSource } from './shell-app/event-source.svelte.ts';
@@ -273,6 +274,35 @@
     return sidebarComponents.filter(
       (name) => name.includes(query) || humanizeId(name).toLowerCase().includes(query),
     );
+  });
+
+  /**
+   * Groups `visibleComponents` by compound-family root, keyed on first
+   * appearance so alphabetical ordering is preserved (`chat` sorts immediately
+   * before `chat-composer-popover`, so its group lands in the same spot the
+   * flat list already put it). A group is created on demand under a child's
+   * root key even when the root itself is absent from `visibleComponents` —
+   * the nav filter can hide the root while keeping a matching child (a search
+   * for "conversation" hides `chat` but keeps `chat-conversation-list`), and a
+   * fixture or filtered caller can pass a compose-only leaf directly without
+   * its root — either way the child stays reachable under a synthesized group
+   * rather than rendering as an orphaned top-level entry.
+   */
+  type NavigationGroup = { name: string; children: string[] };
+
+  const navigationGroups = $derived.by((): NavigationGroup[] => {
+    const groups = new Map<string, NavigationGroup>();
+    for (const name of visibleComponents) {
+      const root = COMPOUND_COMPONENT_PARENTS[name];
+      if (root !== undefined) {
+        const group = groups.get(root) ?? { name: root, children: [] };
+        group.children.push(name);
+        groups.set(root, group);
+        continue;
+      }
+      if (!groups.has(name)) groups.set(name, { name, children: [] });
+    }
+    return [...groups.values()];
   });
 
   /*
@@ -1586,15 +1616,30 @@
           />
         </div>
         <ul class="dx-nav__list">
-          {#each visibleComponents as name (name)}
+          {#each navigationGroups as group (group.name)}
             <li>
               <a
                 class="dx-nav__link"
-                href={buildComponentHref(name)}
-                aria-current={name === componentName ? 'page' : undefined}
+                href={buildComponentHref(group.name)}
+                aria-current={group.name === componentName ? 'page' : undefined}
               >
-                {humanizeId(name)}
+                {humanizeId(group.name)}
               </a>
+              {#if group.children.length > 0}
+                <ul class="dx-nav__sublist">
+                  {#each group.children as child (child)}
+                    <li>
+                      <a
+                        class="dx-nav__link dx-nav__link--child"
+                        href={buildComponentHref(child)}
+                        aria-current={child === componentName ? 'page' : undefined}
+                      >
+                        {humanizeId(child)}
+                      </a>
+                    </li>
+                  {/each}
+                </ul>
+              {/if}
             </li>
           {/each}
           {#if visibleComponents.length === 0}
@@ -1716,6 +1761,17 @@
     color: var(--cinder-text-muted);
     font-size: var(--cinder-text-sm);
     text-decoration: none;
+  }
+
+  .dx-nav__sublist {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .dx-nav__link--child {
+    padding-inline-start: var(--cinder-space-7);
+    font-size: var(--cinder-text-xs);
   }
 
   @media (hover: hover) {

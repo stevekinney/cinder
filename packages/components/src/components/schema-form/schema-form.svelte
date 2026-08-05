@@ -25,8 +25,8 @@
   } from './schema-form.types.ts';
 </script>
 
-<script lang="ts" generics="Schema extends SchemaFormSchema = SchemaFormSchema">
-  import type { SchemaFormProps, SchemaFormSchema } from './schema-form.types.ts';
+<script lang="ts">
+  import type { SchemaFormProps } from './schema-form.types.ts';
   import SchemaFormBody from './schema-form-body.svelte';
 
   /**
@@ -48,7 +48,7 @@
    * `value` into a controlled binding. Draft callbacks run before schema
    * validation, while `onsubmit` runs only after validation passes.
    */
-  let { schema, ...rest }: SchemaFormProps<Schema> = $props();
+  let { schema, ...rest }: SchemaFormProps = $props();
 </script>
 
 <!--

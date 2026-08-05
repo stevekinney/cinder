@@ -8,9 +8,9 @@
 
 import { describe, expect, test } from 'bun:test';
 
+import type { ChoiceGridItemProps } from '../choice-grid-item/choice-grid-item.types.ts';
 import type {
   ChoiceGridColumns,
-  ChoiceGridItemProps,
   ChoiceGridItemState,
   ChoiceGridProps,
 } from './choice-grid.types.ts';

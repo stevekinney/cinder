@@ -38,7 +38,11 @@ export type {
 } from './components/approval-card/index.ts';
 
 export { default as AreaChart } from './components/area-chart/index.ts';
-export type { AreaChartProps, AreaChartSchemaProps } from './components/area-chart/index.ts';
+export type {
+  ChartDataTableVisibility as AreaChartDataTableVisibility,
+  AreaChartProps,
+  AreaChartSchemaProps,
+} from './components/area-chart/index.ts';
 
 export { default as Autocomplete } from './components/autocomplete/index.ts';
 export type {
@@ -81,7 +85,11 @@ export { default as Banner } from './components/banner/index.ts';
 export type { BannerProps, BannerVariant } from './components/banner/index.ts';
 
 export { default as BarChart } from './components/bar-chart/index.ts';
-export type { BarChartProps, BarChartSchemaProps } from './components/bar-chart/index.ts';
+export type {
+  ChartDataTableVisibility as BarChartDataTableVisibility,
+  BarChartProps,
+  BarChartSchemaProps,
+} from './components/bar-chart/index.ts';
 export type {
   AreaChartMode,
   BarChartDatum,
@@ -523,7 +531,11 @@ export { default as Link } from './components/link/index.ts';
 export type { LinkColor, LinkProps, LinkUnderline } from './components/link/index.ts';
 
 export { default as LineChart } from './components/line-chart/index.ts';
-export type { LineChartProps, LineChartSchemaProps } from './components/line-chart/index.ts';
+export type {
+  ChartDataTableVisibility as LineChartDataTableVisibility,
+  LineChartProps,
+  LineChartSchemaProps,
+} from './components/line-chart/index.ts';
 
 export { default as LocaleProvider } from './components/locale-provider/index.ts';
 export type { LocaleProviderProps, TextDirection } from './components/locale-provider/index.ts';
@@ -568,7 +580,11 @@ export { default as Meter } from './components/meter/index.ts';
 export type { MeterProps, MeterSize, MeterState } from './components/meter/index.ts';
 
 export { default as MatrixChart } from './components/matrix-chart/index.ts';
-export type { MatrixChartProps, MatrixChartSchemaProps } from './components/matrix-chart/index.ts';
+export type {
+  ChartDataTableVisibility as MatrixChartDataTableVisibility,
+  MatrixChartProps,
+  MatrixChartSchemaProps,
+} from './components/matrix-chart/index.ts';
 export type { MatrixColorScale } from './components/matrix-chart/matrix-chart.types.ts';
 
 export { default as Masonry } from './components/masonry/index.ts';
@@ -648,7 +664,13 @@ export { default as PinInput } from './components/pin-input/index.ts';
 export type { PinInputMode, PinInputProps } from './components/pin-input/index.ts';
 
 export { default as Popover } from './components/popover/index.ts';
-export type { PopoverPlacement, PopoverProps, PopoverRole } from './components/popover/index.ts';
+export type {
+  PopoverFocusManagement,
+  PopoverPlacement,
+  PopoverProps,
+  PopoverRole,
+  PopoverWidthMode,
+} from './components/popover/index.ts';
 
 export { default as PricingCard } from './components/pricing-card/index.ts';
 export type { PricingCardProps } from './components/pricing-card/index.ts';
@@ -690,6 +712,7 @@ export type {
   ResizablePanelRenderContext,
   ResizablePanelSize,
   ResizablePanelSizeState,
+  ResizablePanelSizeUnit,
   ResizablePanelsCollapseTarget,
   ResizablePanelsOrientation,
   ResizablePanelsProps,
@@ -734,7 +757,7 @@ export type {
 } from './components/section-heading/index.ts';
 
 export { default as Segment } from './components/segment/index.ts';
-export type { SegmentProps } from './components/segment/index.ts';
+export type { SegmentCurrentToken, SegmentProps } from './components/segment/index.ts';
 
 export { default as SegmentedControl } from './components/segmented-control/index.ts';
 export type { SegmentedControlProps } from './components/segmented-control/index.ts';
@@ -822,6 +845,7 @@ export type {
 
 export { default as Spectrogram } from './components/spectrogram/index.ts';
 export type {
+  ChartDataTableVisibility as SpectrogramDataTableVisibility,
   SpectrogramFrame,
   SpectrogramProps,
   SpectrogramSchemaProps,
@@ -830,6 +854,7 @@ export type {
 export { default as SpectrumChart } from './components/spectrum-chart/index.ts';
 export type {
   SpectrumBin,
+  ChartDataTableVisibility as SpectrumChartDataTableVisibility,
   SpectrumChartProps,
   SpectrumChartSchemaProps,
 } from './components/spectrum-chart/index.ts';
@@ -1015,12 +1040,17 @@ export type {
 export { default as Tree } from './components/tree/index.ts';
 export type {
   TreeProps,
+  TreeReorderTarget,
   TreeSelectionBehavior,
   TreeSelectionMode,
 } from './components/tree/index.ts';
 
 export { default as TreeItem } from './components/tree-item/index.ts';
-export type { TreeItemProps, TreeItemRowContext } from './components/tree-item/index.ts';
+export type {
+  TreeItemProps,
+  TreeItemRowContext,
+  TreeItemSelectionState,
+} from './components/tree-item/index.ts';
 
 export { default as Tooltip } from './components/tooltip/index.ts';
 export type { TooltipPlacement, TooltipProps } from './components/tooltip/index.ts';
@@ -1054,6 +1084,7 @@ export type {
 
 export { default as Waveform } from './components/waveform/index.ts';
 export type {
+  ChartDataTableVisibility as WaveformDataTableVisibility,
   WaveformProps,
   WaveformRenderMode,
   WaveformSchemaProps,

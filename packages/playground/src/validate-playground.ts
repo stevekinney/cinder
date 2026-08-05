@@ -21,6 +21,11 @@ import {
   variablesList,
 } from './component-documentation-reference.ts';
 import { discoverComponents } from './discover.ts';
+// Shared with the runtime extractor in example-metadata.ts. That module has no
+// I/O and no import.meta.main guard, so importing it does not couple this
+// build-time gate to the runtime server's startup behavior — the concern a
+// previous version of this file duplicated the regex to avoid.
+import { TITLE_PATTERN } from './example-metadata.ts';
 import { type PlaygroundServer, PORT, startServer } from './playground-server.ts';
 import { triggerReload } from './sse-broadcast.ts';
 
@@ -38,20 +43,8 @@ function fail(message: string): never {
 /** Minimum number of public components expected in src/components/. */
 const MINIMUM_COMPONENT_COUNT = 80;
 
-// Title-presence check for `.example.svelte` files. SELF-CONTAINED on purpose:
-// this duplicates a tiny title regex rather than importing from
-// `example-metadata.ts`/`server.ts` so the build-time gate has no coupling to
-// the runtime server module (importing server.ts would also auto-wire its
-// import.meta.main guard expectations into this validator's dependency graph).
-
 /** The sentinel a missing title falls back to; an explicit one is rejected too. */
 const UNTITLED_SENTINEL = 'Untitled';
-
-// Matches `export const title = '…' | "…" | `…``. Mirrors the runtime extractor:
-// a same-quote backreference close and `\\.` to skip escaped quotes inside the
-// literal. Interpolated template literals are intentionally not parsed — titles
-// must be plain string literals.
-const TITLE_PATTERN = /export\s+const\s+title\s*=\s*(['"`])((?:[^\\]|\\.)*?)\1/;
 
 /**
  * Read the `export const title` string literal from example source, or `null`
@@ -59,7 +52,7 @@ const TITLE_PATTERN = /export\s+const\s+title\s*=\s*(['"`])((?:[^\\]|\\.)*?)\1/;
  */
 export function readExampleTitle(source: string): string | null {
   const match = source.match(TITLE_PATTERN);
-  return match ? (match[2] ?? '') : null;
+  return match ? (match.groups?.['body'] ?? '') : null;
 }
 
 /**

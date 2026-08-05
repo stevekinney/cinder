@@ -22,6 +22,7 @@ const Tree = Object.assign(TreeRoot, {
 
 export default Tree;
 export type { FlattenedTreeDataItem, TreeDataItem } from '../../_internal/tree-data.ts';
+export type { TreeReorderTarget } from '../../_internal/tree-drag-controller.svelte.ts';
 export type {
   TreeFilterPredicate,
   TreeProps,

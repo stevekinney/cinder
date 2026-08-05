@@ -1,11 +1,24 @@
 import { expect, test } from 'bun:test';
 
 import type {
+  AreaChartDataTableVisibility,
+  BarChartDataTableVisibility,
   EventStreamEntry,
   EventStreamSchemaEntry,
   EventStreamViewerSchemaProps,
+  LineChartDataTableVisibility,
+  MatrixChartDataTableVisibility,
+  PopoverFocusManagement,
+  PopoverWidthMode,
+  ResizablePanelSizeUnit,
   RunStepLink,
+  SegmentCurrentToken,
+  SpectrogramDataTableVisibility,
+  SpectrumChartDataTableVisibility,
   StreamReconnectedBoundary,
+  TreeItemSelectionState,
+  TreeReorderTarget,
+  WaveformDataTableVisibility,
 } from './index.ts';
 
 test('root barrel exposes Stardust agent-ops public helper types', () => {
@@ -31,4 +44,43 @@ test('root barrel exposes Stardust agent-ops public helper types', () => {
   expect(entry.kind).toBe('reconnected');
   expect(link.label).toBe('Open run');
   expect(schemaProps.events[0]?.id).toBe('event-1');
+});
+
+test('root barrel exposes the five component barrel-gap public types', () => {
+  const focusManagement: PopoverFocusManagement = 'panel';
+  const widthMode: PopoverWidthMode = 'content';
+  const currentToken: SegmentCurrentToken = 'page';
+  const sizeUnit: ResizablePanelSizeUnit = 'px';
+  const reorderTarget: TreeReorderTarget = {
+    id: '1',
+    position: 'before',
+    fromParentId: null,
+    toParentId: null,
+  };
+  const selectionState: TreeItemSelectionState = { checked: true, indeterminate: false };
+
+  expect(focusManagement).toBe('panel');
+  expect(widthMode).toBe('content');
+  expect(currentToken).toBe('page');
+  expect(sizeUnit).toBe('px');
+  expect(reorderTarget.position).toBe('before');
+  expect(selectionState.checked).toBe(true);
+});
+
+test('root barrel exposes ChartDataTableVisibility from all seven chart component barrels', () => {
+  const areaChart: AreaChartDataTableVisibility = 'visible';
+  const barChart: BarChartDataTableVisibility = 'hidden';
+  const lineChart: LineChartDataTableVisibility = 'screen-reader-only';
+  const matrixChart: MatrixChartDataTableVisibility = 'visible';
+  const spectrogram: SpectrogramDataTableVisibility = 'hidden';
+  const spectrumChart: SpectrumChartDataTableVisibility = 'screen-reader-only';
+  const waveform: WaveformDataTableVisibility = 'visible';
+
+  expect(areaChart).toBe('visible');
+  expect(barChart).toBe('hidden');
+  expect(lineChart).toBe('screen-reader-only');
+  expect(matrixChart).toBe('visible');
+  expect(spectrogram).toBe('hidden');
+  expect(spectrumChart).toBe('screen-reader-only');
+  expect(waveform).toBe('visible');
 });
