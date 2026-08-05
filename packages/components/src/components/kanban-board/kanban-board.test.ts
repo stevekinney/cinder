@@ -1306,3 +1306,15 @@ describe('KanbanBoard pointer drag preview', () => {
     await fireEvent.keyDown(handle, { key: 'Escape' });
   });
 });
+
+describe('KanbanBoard icon sourcing', () => {
+  // The existing render-output tests above pass unchanged regardless of which
+  // import path ChevronDown comes from, so a bad-faith implementation could
+  // leave the non-tree-shaken public barrel import in place and still pass
+  // every rendering assertion. This is a source-level guard against that.
+  test('imports ChevronDown via the lucide-svelte deep-import path, not the public icons barrel', async () => {
+    const source = await Bun.file(new URL('./kanban-board.svelte', import.meta.url)).text();
+    expect(source).toContain("import ChevronDown from 'lucide-svelte/icons/chevron-down';");
+    expect(source).not.toContain('@lostgradient/cinder/icons');
+  });
+});
