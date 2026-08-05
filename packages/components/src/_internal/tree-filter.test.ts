@@ -8,7 +8,7 @@ setupHappyDom();
 const { TreeFilterController } = await import('./tree-filter.svelte.ts');
 
 describe('TreeFilterController', () => {
-  test('update() sets currentValue and is idempotent when called with the same value twice', () => {
+  test('update() tracks currentValue and forwards every call to onFilterChange, including repeats', () => {
     const calls: string[] = [];
     const controller = new TreeFilterController({
       getFilterValue: () => undefined,
