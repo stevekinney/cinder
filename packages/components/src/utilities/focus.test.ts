@@ -5,7 +5,7 @@ import { setupHappyDom } from '../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { restoreFocusTo } = await import('./focus.ts');
+const { getSequentialFocusTargets, restoreFocusTo } = await import('./focus.ts');
 
 afterEach(() => {
   // Blur any lingering focus so each test starts clean.
@@ -65,5 +65,674 @@ describe('restoreFocusTo', () => {
     };
 
     expect(restoreFocusTo(button)).toBe(false);
+  });
+});
+
+describe('getSequentialFocusTargets', () => {
+  test('includes text, checkbox, and radio inputs while excluding hidden and disabled inputs', () => {
+    const region = document.createElement('div');
+    const text = document.createElement('input');
+    text.type = 'text';
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    const radio = document.createElement('input');
+    radio.type = 'radio';
+    radio.name = 'choice';
+    const hidden = document.createElement('input');
+    hidden.type = 'hidden';
+    const disabled = document.createElement('input');
+    disabled.type = 'checkbox';
+    disabled.disabled = true;
+    region.append(text, checkbox, radio, hidden, disabled);
+    document.body.append(region);
+
+    const targets = getSequentialFocusTargets(region);
+    expect(targets).toContain(text);
+    expect(targets).toContain(checkbox);
+    expect(targets).toContain(radio);
+    expect(targets).not.toContain(hidden);
+    expect(targets).not.toContain(disabled);
+    region.remove();
+  });
+
+  test('includes SVG elements with an explicit tabindex', () => {
+    const region = document.createElement('div');
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('tabindex', '0');
+    region.append(svg);
+    document.body.append(region);
+
+    expect(getSequentialFocusTargets(region)).toEqual([svg]);
+    region.remove();
+  });
+
+  test('includes native sequential controls omitted by the old selector', () => {
+    const region = document.createElement('div');
+    const input = document.createElement('input');
+    const details = document.createElement('details');
+    const summary = document.createElement('summary');
+    summary.setAttribute('tabindex', '0');
+    details.append(summary);
+    const iframe = document.createElement('iframe');
+    iframe.setAttribute('tabindex', '0');
+    const audio = document.createElement('audio');
+    audio.setAttribute('controls', '');
+    const video = document.createElement('video');
+    video.setAttribute('controls', '');
+    video.setAttribute('tabindex', '0');
+    const embed = document.createElement('embed');
+    embed.setAttribute('src', 'test.swf');
+    embed.setAttribute('tabindex', '0');
+    const object = document.createElement('object');
+    object.setAttribute('tabindex', '0');
+    const editable = document.createElement('div');
+    editable.setAttribute('contenteditable', 'true');
+    editable.setAttribute('tabindex', '0');
+    const notEditable = document.createElement('div');
+    notEditable.setAttribute('contenteditable', 'FALSE');
+    region.append(input, details, iframe, audio, video, embed, object, editable, notEditable);
+    document.body.append(region);
+
+    const targets = getSequentialFocusTargets(region);
+    expect(targets).toContain(input);
+    expect(targets).toContain(summary);
+    expect(targets).toContain(iframe);
+    expect(targets).toContain(video);
+    expect(targets).toContain(embed);
+    expect(targets).toContain(object);
+    expect(targets).toContain(editable);
+    expect(targets).not.toContain(notEditable);
+    region.remove();
+  });
+
+  test('excludes an embed without a source when its native tabIndex is negative', () => {
+    const region = document.createElement('div');
+    const embed = document.createElement('embed');
+    region.append(embed);
+    document.body.append(region);
+
+    expect(getSequentialFocusTargets(region)).not.toContain(embed);
+    region.remove();
+  });
+
+  test('matches native object tab order only when data is nonempty', () => {
+    const region = document.createElement('div');
+    const missing = document.createElement('object');
+    const empty = document.createElement('object');
+    empty.setAttribute('data', '   ');
+    const nonempty = document.createElement('object');
+    nonempty.setAttribute('data', 'movie.swf');
+    region.append(missing, empty, nonempty);
+    document.body.append(region);
+
+    const targets = getSequentialFocusTargets(region);
+    expect(targets).not.toContain(missing);
+    expect(targets).not.toContain(empty);
+    expect(targets).toContain(nonempty);
+    region.remove();
+  });
+
+  test('traverses slotted controls in composed-tree order without duplicates', () => {
+    const host = document.createElement('div');
+    const shadow = host.attachShadow({ mode: 'open' });
+    shadow.innerHTML = '<slot></slot>';
+    const slotted = document.createElement('button');
+    slotted.slot = '';
+    host.append(slotted);
+    document.body.append(host);
+
+    const targets = getSequentialFocusTargets(shadow);
+    expect(targets.filter((target) => target === slotted)).toHaveLength(1);
+    expect(targets).toContain(slotted);
+    host.remove();
+  });
+
+  test('excludes a slotted control hidden by an ancestor inside the shadow tree', () => {
+    const host = document.createElement('div');
+    const shadow = host.attachShadow({ mode: 'open' });
+    shadow.innerHTML = '<div hidden><slot></slot></div>';
+    const slotted = document.createElement('button');
+    host.append(slotted);
+    document.body.append(host);
+
+    expect(getSequentialFocusTargets(shadow)).not.toContain(slotted);
+    host.remove();
+  });
+
+  test('does not traverse slot fallback content when the host assigns only text nodes', () => {
+    // A host that assigns only text (no elements) to a slot still means the
+    // slot has assigned content: assignedElements() returns [] because a
+    // text node isn't an Element, but assignedNodes() is non-empty and
+    // native fallback content is not rendered in that case. Gating on
+    // assignedElements alone would wrongly fall through to traversing the
+    // slot's own fallback children as reachable focus targets.
+    const host = document.createElement('div');
+    const shadow = host.attachShadow({ mode: 'open' });
+    shadow.innerHTML = '<slot><button id="fallback"></button></slot>';
+    host.append(document.createTextNode('Just text'));
+    document.body.append(host);
+
+    const fallbackButton = shadow.querySelector('#fallback') as HTMLButtonElement;
+    expect(getSequentialFocusTargets(shadow)).not.toContain(fallbackButton);
+    host.remove();
+  });
+
+  test('filters before and after a reference in flattened composed-tree order', () => {
+    const region = document.createElement('div');
+    const beforeHost = document.createElement('div');
+    const before = document.createElement('button');
+    beforeHost.attachShadow({ mode: 'open' }).append(before);
+    const reference = document.createElement('span');
+    const afterHost = document.createElement('div');
+    const after = document.createElement('button');
+    afterHost.attachShadow({ mode: 'open' }).append(after);
+    region.append(beforeHost, reference, afterHost);
+    document.body.append(region);
+
+    expect(
+      getSequentialFocusTargets(region, { relativeTo: reference, direction: 'before' }),
+    ).toEqual([before]);
+    expect(
+      getSequentialFocusTargets(region, { relativeTo: reference, direction: 'after' }),
+    ).toEqual([after]);
+    region.remove();
+  });
+
+  test('does not revisit positive tabindex targets after a default-tabindex reference', () => {
+    const region = document.createElement('div');
+    const reference = document.createElement('button');
+    const positive = document.createElement('button');
+    positive.tabIndex = 1;
+    const following = document.createElement('button');
+    region.append(reference, positive, following);
+    document.body.append(region);
+
+    expect(
+      getSequentialFocusTargets(region, { relativeTo: reference, direction: 'after' }),
+    ).toEqual([following]);
+    region.remove();
+  });
+
+  test('skips a lower positive tabindex target after a higher positive reference', () => {
+    // Native Tab order visits positive tabindex values ascending, so a
+    // tabindex="1" target has already been visited by the time a
+    // tabindex="2" reference has focus, regardless of where it sits in the
+    // DOM relative to the reference.
+    const region = document.createElement('div');
+    const reference = document.createElement('button');
+    reference.tabIndex = 2;
+    const lower = document.createElement('button');
+    lower.tabIndex = 1;
+    const following = document.createElement('button');
+    region.append(reference, lower, following);
+    document.body.append(region);
+
+    expect(
+      getSequentialFocusTargets(region, { relativeTo: reference, direction: 'after' }),
+    ).toEqual([following]);
+    region.remove();
+  });
+
+  test('skips a higher positive tabindex target before a lower positive reference', () => {
+    // The mirror of the case above: a tabindex="5" target has not been
+    // visited yet when a tabindex="2" reference has focus, so it cannot be
+    // "before" that reference in reverse Tab order even when it sits
+    // earlier in the DOM.
+    const region = document.createElement('div');
+    const higher = document.createElement('button');
+    higher.tabIndex = 5;
+    const lower = document.createElement('button');
+    lower.tabIndex = 1;
+    const reference = document.createElement('button');
+    reference.tabIndex = 2;
+    region.append(higher, lower, reference);
+    document.body.append(region);
+
+    expect(
+      getSequentialFocusTargets(region, { relativeTo: reference, direction: 'before' }),
+    ).toEqual([lower]);
+    region.remove();
+  });
+
+  test('reaches a higher positive tabindex target positioned before the reference', () => {
+    // Native Tab order sorts positive-tabindex elements by tier first, so a
+    // tabindex="3" target is "after" a tabindex="2" reference regardless of
+    // which one sits earlier in the DOM. A composed-position filter that
+    // requires the candidate to be DOM-later than the reference would wrong
+    // this case: `higher` sits before `reference` here, but tier order
+    // still owes it to forward Tab next.
+    const region = document.createElement('div');
+    const higher = document.createElement('button');
+    higher.tabIndex = 3;
+    const reference = document.createElement('button');
+    reference.tabIndex = 2;
+    const following = document.createElement('button');
+    region.append(higher, reference, following);
+    document.body.append(region);
+
+    expect(
+      getSequentialFocusTargets(region, { relativeTo: reference, direction: 'after' }),
+    ).toEqual([higher, following]);
+    region.remove();
+  });
+
+  test('reaches a lower positive tabindex target positioned after the reference', () => {
+    // The mirror of the case above: a tabindex="1" target has already been
+    // visited by the time a tabindex="2" reference has focus, so it is
+    // "before" that reference in reverse Tab order even though it sits
+    // later in the DOM.
+    const region = document.createElement('div');
+    const reference = document.createElement('button');
+    reference.tabIndex = 2;
+    const lower = document.createElement('button');
+    lower.tabIndex = 1;
+    region.append(reference, lower);
+    document.body.append(region);
+
+    expect(
+      getSequentialFocusTargets(region, { relativeTo: reference, direction: 'before' }),
+    ).toEqual([lower]);
+    region.remove();
+  });
+
+  test('orders positive tabindex values before default controls', () => {
+    const region = document.createElement('div');
+    const defaultButton = document.createElement('button');
+    defaultButton.setAttribute('tabindex', '0');
+    const positiveTwo = document.createElement('button');
+    positiveTwo.setAttribute('tabindex', '2');
+    const positiveOne = document.createElement('button');
+    positiveOne.setAttribute('tabindex', '1');
+    region.append(defaultButton, positiveTwo, positiveOne);
+    document.body.append(region);
+
+    const targets = getSequentialFocusTargets(region);
+    expect(
+      targets.map((target) =>
+        target === positiveOne ? 'one' : target === positiveTwo ? 'two' : 'default',
+      ),
+    ).toEqual(['one', 'two', 'default']);
+    region.remove();
+  });
+
+  test('treats an invalid tabindex as omitted and parses a leading integer', () => {
+    const region = document.createElement('div');
+    const nativeInvalid = document.createElement('button');
+    nativeInvalid.setAttribute('tabindex', 'bogus');
+    const genericInvalid = document.createElement('div');
+    genericInvalid.setAttribute('tabindex', 'bogus');
+    const leadingInteger = document.createElement('div');
+    leadingInteger.setAttribute('tabindex', '3x');
+    region.append(nativeInvalid, genericInvalid, leadingInteger);
+    document.body.append(region);
+
+    const targets = getSequentialFocusTargets(region);
+    expect(targets[0]).toBe(leadingInteger);
+    expect(targets).toContain(nativeInvalid);
+    expect(targets).not.toContain(genericInvalid);
+    region.remove();
+  });
+
+  test('includes only the first summary in a details element', () => {
+    const region = document.createElement('div');
+    const details = document.createElement('details');
+    const first = document.createElement('summary');
+    first.setAttribute('tabindex', '0');
+    const second = document.createElement('summary');
+    const standalone = document.createElement('summary');
+    details.append(first, second);
+    region.append(details, standalone);
+    document.body.append(region);
+
+    expect(getSequentialFocusTargets(region)).toContain(first);
+    expect(getSequentialFocusTargets(region)).not.toContain(second);
+    expect(getSequentialFocusTargets(region)).not.toContain(standalone);
+    region.remove();
+  });
+
+  test('includes a standalone summary when an explicit tabindex opts it in', () => {
+    const region = document.createElement('div');
+    const summary = document.createElement('summary');
+    summary.tabIndex = 0;
+    region.append(summary);
+    document.body.append(region);
+
+    expect(getSequentialFocusTargets(region)).toContain(summary);
+    region.remove();
+  });
+
+  test('includes only editing hosts unless a nested editable is explicitly opted in', () => {
+    const region = document.createElement('div');
+    const editingHost = document.createElement('div');
+    editingHost.setAttribute('contenteditable', 'true');
+    const nestedEditable = document.createElement('div');
+    nestedEditable.setAttribute('contenteditable', 'true');
+    const optedInNestedEditable = document.createElement('div');
+    optedInNestedEditable.setAttribute('contenteditable', 'true');
+    optedInNestedEditable.tabIndex = 0;
+    const optedInNonEditable = document.createElement('div');
+    optedInNonEditable.setAttribute('contenteditable', 'false');
+    optedInNonEditable.tabIndex = 0;
+    editingHost.append(nestedEditable, optedInNestedEditable, optedInNonEditable);
+    region.append(editingHost);
+    document.body.append(region);
+
+    const targets = getSequentialFocusTargets(region);
+    expect(targets).toContain(editingHost);
+    expect(targets).not.toContain(nestedEditable);
+    expect(targets).toContain(optedInNestedEditable);
+    expect(targets).toContain(optedInNonEditable);
+    region.remove();
+  });
+
+  test('skips controls inside closed details but includes them when open', () => {
+    const region = document.createElement('div');
+    const details = document.createElement('details');
+    const summary = document.createElement('summary');
+    summary.setAttribute('tabindex', '0');
+    const button = document.createElement('button');
+    button.setAttribute('tabindex', '0');
+    details.append(summary, button);
+    region.append(details);
+    document.body.append(region);
+
+    expect(getSequentialFocusTargets(region)).toContain(summary);
+    expect(getSequentialFocusTargets(region)).not.toContain(button);
+    details.open = true;
+    expect(getSequentialFocusTargets(region)).toContain(button);
+    region.remove();
+  });
+
+  test('skips nested controls when an outer details element is closed', () => {
+    const region = document.createElement('div');
+    const outer = document.createElement('details');
+    const outerSummary = document.createElement('summary');
+    outerSummary.setAttribute('tabindex', '0');
+    const inner = document.createElement('details');
+    const innerSummary = document.createElement('summary');
+    innerSummary.setAttribute('tabindex', '0');
+    const button = document.createElement('button');
+    inner.append(innerSummary, button);
+    outer.append(outerSummary, inner);
+    region.append(outer);
+    document.body.append(region);
+
+    expect(getSequentialFocusTargets(region)).toContain(outerSummary);
+    expect(getSequentialFocusTargets(region)).not.toContain(innerSummary);
+    expect(getSequentialFocusTargets(region)).not.toContain(button);
+    region.remove();
+  });
+
+  test('keeps controls nested inside the active summary of closed details', () => {
+    const region = document.createElement('div');
+    const details = document.createElement('details');
+    const summary = document.createElement('summary');
+    const link = document.createElement('a');
+    link.href = '#summary-link';
+    summary.append(link);
+    details.append(summary, document.createElement('button'));
+    region.append(details);
+    document.body.append(region);
+
+    const targets = getSequentialFocusTargets(region);
+    expect(targets).toContain(summary);
+    expect(targets).toContain(link);
+    region.remove();
+  });
+
+  test('keeps shadow descendants nested inside the active summary', () => {
+    const region = document.createElement('div');
+    const details = document.createElement('details');
+    const summary = document.createElement('summary');
+    const host = document.createElement('span');
+    const shadow = host.attachShadow({ mode: 'open' });
+    const button = document.createElement('button');
+    shadow.append(button);
+    summary.append(host);
+    details.append(summary, document.createElement('button'));
+    region.append(details);
+    document.body.append(region);
+
+    expect(getSequentialFocusTargets(region)).toContain(button);
+    region.remove();
+  });
+
+  test('skips controls in a closed details element without a summary', () => {
+    const region = document.createElement('div');
+    const details = document.createElement('details');
+    const button = document.createElement('button');
+    details.append(button);
+    region.append(details);
+    document.body.append(region);
+
+    expect(getSequentialFocusTargets(region)).not.toContain(button);
+    region.remove();
+  });
+
+  test('exposes one radio per same-name group, preferring checked or first eligible', () => {
+    const region = document.createElement('div');
+    const first = document.createElement('input');
+    first.type = 'radio';
+    first.name = 'choice';
+    first.setAttribute('tabindex', '0');
+    const checked = document.createElement('input');
+    checked.type = 'radio';
+    checked.name = 'choice';
+    checked.checked = true;
+    checked.setAttribute('tabindex', '0');
+    const other = document.createElement('input');
+    other.type = 'radio';
+    other.name = 'other';
+    other.setAttribute('tabindex', '0');
+    region.append(first, checked, other);
+    document.body.append(region);
+
+    const targets = getSequentialFocusTargets(region);
+    expect(targets).not.toContain(first);
+    expect(targets).toContain(checked);
+    expect(targets).toContain(other);
+    region.remove();
+  });
+
+  test('uses the last DOM-order radio as the "before" group representative when none is checked', () => {
+    // Native reverse Tab enters an unchecked same-name radio group at its
+    // LAST member in DOM order — the mirror of forward Tab's first-member
+    // entry point. The checked member wins in both directions when present,
+    // but an unchecked group's representative must be direction-aware.
+    //
+    // `first` and `last` are structurally identical apart from id, so this
+    // asserts on object identity (`toBe`) rather than `toEqual`: two
+    // distinct-but-attribute-identical elements compare equal under
+    // `toEqual`, which would let the wrong representative pass silently.
+    const region = document.createElement('div');
+    const first = document.createElement('input');
+    first.type = 'radio';
+    first.name = 'choice';
+    first.id = 'radio-first';
+    first.setAttribute('tabindex', '0');
+    const last = document.createElement('input');
+    last.type = 'radio';
+    last.name = 'choice';
+    last.id = 'radio-last';
+    last.setAttribute('tabindex', '0');
+    const reference = document.createElement('span');
+    region.append(first, last, reference);
+    document.body.append(region);
+
+    const result = getSequentialFocusTargets(region, {
+      relativeTo: reference,
+      direction: 'before',
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]).toBe(last);
+    region.remove();
+  });
+
+  test('picks the in-range member as the fallback when an unchecked group straddles the range boundary', () => {
+    // The group's own root (the document) is scanned for members, so a
+    // group with one radio before `relativeTo` and one after must restrict
+    // its fallback candidates to the in-range side — picking the
+    // out-of-range member would drop the in-range radio from the result
+    // entirely (it belongs to a group whose chosen representative isn't
+    // itself a candidate).
+    const region = document.createElement('div');
+    const before = document.createElement('input');
+    before.type = 'radio';
+    before.name = 'straddle';
+    before.id = 'radio-before';
+    before.setAttribute('tabindex', '0');
+    const reference = document.createElement('span');
+    const after = document.createElement('input');
+    after.type = 'radio';
+    after.name = 'straddle';
+    after.id = 'radio-after';
+    after.setAttribute('tabindex', '0');
+    region.append(before, reference, after);
+    document.body.append(region);
+
+    const result = getSequentialFocusTargets(region, {
+      relativeTo: reference,
+      direction: 'after',
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]).toBe(after);
+    region.remove();
+  });
+
+  test('skips an unchecked radio when its checked group member is outside the requested region', () => {
+    const checked = document.createElement('input');
+    checked.type = 'radio';
+    checked.name = 'external';
+    checked.checked = true;
+    const region = document.createElement('div');
+    const candidate = document.createElement('input');
+    candidate.type = 'radio';
+    candidate.name = 'external';
+    candidate.tabIndex = 0;
+    region.append(candidate);
+    document.body.append(checked, region);
+
+    expect(getSequentialFocusTargets(region)).not.toContain(candidate);
+    region.remove();
+    checked.remove();
+  });
+
+  test('groups radios by their external form owner', () => {
+    const form = document.createElement('form');
+    form.id = 'external-radio-form';
+    const checked = document.createElement('input');
+    checked.type = 'radio';
+    checked.name = 'external-form-choice';
+    checked.checked = true;
+    form.append(checked);
+    const region = document.createElement('div');
+    const candidate = document.createElement('input');
+    candidate.type = 'radio';
+    candidate.name = checked.name;
+    candidate.setAttribute('form', form.id);
+    candidate.tabIndex = 0;
+    region.append(candidate);
+    document.body.append(form, region);
+
+    expect(getSequentialFocusTargets(region)).not.toContain(candidate);
+    region.remove();
+    form.remove();
+  });
+
+  test('keeps unnamed radios as independent tab stops', () => {
+    const region = document.createElement('div');
+    const first = document.createElement('input');
+    first.type = 'radio';
+    first.setAttribute('tabindex', '0');
+    const second = document.createElement('input');
+    second.type = 'radio';
+    second.setAttribute('tabindex', '0');
+    region.append(first, second);
+    document.body.append(region);
+
+    const targets = getSequentialFocusTargets(region);
+    expect(targets).toContain(first);
+    expect(targets).toContain(second);
+    region.remove();
+  });
+
+  test('keeps a tabindex div with a disabled attribute in the sequential order', () => {
+    const region = document.createElement('div');
+    const candidate = document.createElement('div');
+    candidate.setAttribute('tabindex', '0');
+    candidate.setAttribute('disabled', '');
+    region.append(candidate);
+    document.body.append(region);
+
+    expect(getSequentialFocusTargets(region)).toContain(candidate);
+    region.remove();
+  });
+
+  test('recognizes a radio from a foreign document without instanceof checks', () => {
+    const foreignDocument = new DOMParser().parseFromString(
+      '<input type="radio" name="foreign" tabindex="0">',
+      'text/html',
+    );
+    const foreignRadio = foreignDocument.querySelector('input') as HTMLElement;
+    expect(getSequentialFocusTargets(foreignDocument)).toContain(foreignRadio);
+  });
+
+  test('excludes hidden, collapsed, inert, disabled, and negative-tabindex candidates', () => {
+    const region = document.createElement('div');
+    const visible = document.createElement('button');
+    visible.setAttribute('tabindex', '0');
+    const hidden = document.createElement('button');
+    hidden.hidden = true;
+    const collapsed = document.createElement('button');
+    collapsed.style.visibility = 'collapse';
+    const inert = document.createElement('button');
+    inert.setAttribute('inert', '');
+    const disabled = document.createElement('button');
+    disabled.disabled = true;
+    const negative = document.createElement('button');
+    negative.setAttribute('tabindex', '-1');
+    region.append(visible, hidden, collapsed, inert, disabled, negative);
+    document.body.append(region);
+
+    const targets = getSequentialFocusTargets(region);
+    expect(targets).toContain(visible);
+    expect(targets).not.toContain(hidden);
+    expect(targets).not.toContain(collapsed);
+    expect(targets).not.toContain(inert);
+    expect(targets).not.toContain(disabled);
+    expect(targets).not.toContain(negative);
+    region.remove();
+  });
+
+  test('excludes hidden inputs even when an explicit tabindex is supplied', () => {
+    const region = document.createElement('div');
+    const hiddenInput = document.createElement('input');
+    hiddenInput.type = 'hidden';
+    hiddenInput.tabIndex = 0;
+    region.append(hiddenInput);
+
+    expect(getSequentialFocusTargets(region)).not.toContain(hiddenInput);
+  });
+
+  test('keeps focusable aria-hidden elements in the native sequential order', () => {
+    const region = document.createElement('div');
+    const hiddenFromAccessibilityTree = document.createElement('button');
+    hiddenFromAccessibilityTree.type = 'button';
+    hiddenFromAccessibilityTree.setAttribute('aria-hidden', 'true');
+    region.append(hiddenFromAccessibilityTree);
+
+    expect(getSequentialFocusTargets(region)).toContain(hiddenFromAccessibilityTree);
+  });
+
+  test('crosses a shadow host when checking hidden and rendered state', () => {
+    const host = document.createElement('div');
+    const shadow = host.attachShadow({ mode: 'open' });
+    const iframe = document.createElement('iframe');
+    shadow.append(iframe);
+    host.hidden = true;
+    document.body.append(host);
+
+    expect(getSequentialFocusTargets(shadow)).toEqual([]);
+    host.remove();
   });
 });

@@ -218,6 +218,42 @@ function multiControlBrandSnippet() {
   }));
 }
 
+function svgBrandSnippet() {
+  return createRawSnippet(() => ({
+    render: () =>
+      '<svg id="brand-svg" tabindex="0" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2 2 7h2v7h8V7h2z"></path></svg>',
+  }));
+}
+
+/** A brand whose only focus target is a button inside its own open shadow root. */
+function shadowBrandSnippet() {
+  return createRawSnippet(() => ({
+    render: () => '<div id="brand-shadow-host"></div>',
+    setup(element: Element) {
+      const shadow = element.attachShadow({ mode: 'open' });
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.id = 'brand-shadow-button';
+      button.textContent = 'Shadow Brand';
+      shadow.append(button);
+    },
+  }));
+}
+
+function positiveThenNormalBrandSnippet() {
+  return createRawSnippet(() => ({
+    render: () =>
+      '<div><button type="button" id="brand-positive" tabindex="1">Positive</button><a href="/home" id="brand-normal">Acme</a></div>',
+  }));
+}
+
+/** A brand whose only focus target is a positive-tabindex control. */
+function positiveOnlyBrandSnippet() {
+  return createRawSnippet(() => ({
+    render: () => '<button type="button" id="brand-positive" tabindex="1">Positive</button>',
+  }));
+}
+
 function disabledFirstNavigationSnippet() {
   return createRawSnippet(() => ({
     render: () => `
@@ -258,6 +294,39 @@ function inlineControlBeforeNegativeNavigationSnippet() {
         <button type="button" class="cinder-navigation-item" data-cinder-navigation-item data-key="enabled">Enabled</button>
         <button type="button" id="inline-control">Inline control</button>
         <button type="button" class="cinder-navigation-item" data-cinder-navigation-item data-key="skipped" tabindex="-1">Skipped</button>
+      </div>
+    `,
+  }));
+}
+
+function positiveFirstNavigationSnippet() {
+  return createRawSnippet(() => ({
+    render: () => `
+      <div>
+        <button type="button" class="cinder-navigation-item" data-cinder-navigation-item data-key="home" tabindex="2">Home</button>
+        <button type="button" class="cinder-navigation-item" data-cinder-navigation-item data-key="settings">Settings</button>
+      </div>
+    `,
+  }));
+}
+
+function positiveThenNormalNavigationSnippet() {
+  return createRawSnippet(() => ({
+    render: () => `
+      <div>
+        <button type="button" class="cinder-navigation-item" data-cinder-navigation-item data-key="positive" tabindex="1">Positive</button>
+        <button type="button" class="cinder-navigation-item" data-cinder-navigation-item data-key="normal">Normal</button>
+      </div>
+    `,
+  }));
+}
+
+function normalThenPositiveNavigationSnippet() {
+  return createRawSnippet(() => ({
+    render: () => `
+      <div>
+        <button type="button" class="cinder-navigation-item" data-cinder-navigation-item data-key="normal">Normal</button>
+        <button type="button" class="cinder-navigation-item" data-cinder-navigation-item data-key="positive" tabindex="1">Positive</button>
       </div>
     `,
   }));
@@ -1187,6 +1256,168 @@ describe('NavigationBar', () => {
     });
   });
 
+  test('brand Tab enters the portaled items from a focusable SVG brand target', async () => {
+    // `bridgeBrandTabToPortaledPanel` must accept an SVG `event.target`, not
+    // just HTMLElement, now that brand focus targets can be SVG elements
+    // (e.g. an inline logo with an explicit tabindex).
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        brand: svgBrandSnippet(),
+        items: keyboardNavigationSnippet({}),
+        menuToggle: toggleSnippet(),
+        menuTogglePlacement: 'before-brand',
+      });
+
+      await openCollapsedMobileMenu(container);
+      const itemsRegion = await waitForMobilePanelPosition(container);
+      const brandSvg = container.querySelector('#brand-svg') as SVGElement;
+      const home = itemsRegion.querySelector('[data-key="home"]');
+
+      // Dispatch directly on the SVG rather than focusing it first: this
+      // exercises `event.target`, which is what the bridge guard checks,
+      // independent of whether the DOM harness supports focusing SVG.
+      await fireEvent.keyDown(brandSvg, { key: 'Tab' });
+      expect(document.activeElement).toBe(home);
+    });
+  });
+
+  test('bridges brand Tab into the portaled panel when the outer nav observes a shadow-retargeted target', async () => {
+    // A keydown listener on the outer `<nav>` observes `event.target`
+    // retargeted to the shadow host when the real Tab origin lives inside an
+    // open shadow root (e.g. a brand logo that exposes its last tabbable
+    // control from its own shadow DOM). happy-dom does not implement that
+    // spec retargeting natively, so this test overrides `event.target`
+    // directly -- the same pattern portal.test.ts uses -- to reproduce what
+    // a real browser delivers, while `composedPath()` (driven by the actual
+    // dispatch target) still reports the true originating shadow element.
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        brand: shadowBrandSnippet(),
+        items: keyboardNavigationSnippet({}),
+        menuToggle: toggleSnippet(),
+        menuTogglePlacement: 'before-brand',
+      });
+
+      await openCollapsedMobileMenu(container);
+      const itemsRegion = await waitForMobilePanelPosition(container);
+      const home = itemsRegion.querySelector('[data-key="home"]');
+      const brandHost = container.querySelector('#brand-shadow-host') as HTMLElement;
+      const shadowButton = brandHost.shadowRoot?.querySelector(
+        '#brand-shadow-button',
+      ) as HTMLElement;
+
+      const event = new KeyboardEvent('keydown', {
+        key: 'Tab',
+        bubbles: true,
+        composed: true,
+        cancelable: true,
+      });
+      Object.defineProperty(event, 'target', { configurable: true, value: brandHost });
+      shadowButton.dispatchEvent(event);
+
+      expect(document.activeElement).toBe(home);
+    });
+  });
+
+  test('brand Tab does not bridge into the portaled panel while the toggle is still ahead in native order', async () => {
+    // A brand containing only a positive-tabindex control is still before
+    // the default-tier toggle in native Tab order (positive tiers always
+    // precede zero/default ones, regardless of DOM position). The bridge
+    // must decline and leave `preventDefault()` uncalled so native Tab
+    // handling can reach the toggle on its own -- happy-dom does not run
+    // that native algorithm, so the observable result here is that focus
+    // stays put rather than jumping to the portaled panel's first item.
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        brand: positiveOnlyBrandSnippet(),
+        items: keyboardNavigationSnippet({}),
+        menuToggle: toggleSnippet(),
+        menuTogglePlacement: 'before-brand',
+      });
+
+      await openCollapsedMobileMenu(container);
+      await waitForMobilePanelPosition(container);
+      const brandPositive = container.querySelector('#brand-positive') as HTMLButtonElement;
+
+      brandPositive.focus();
+      await fireEvent.keyDown(brandPositive, { key: 'Tab' });
+      expect(document.activeElement).toBe(brandPositive);
+    });
+  });
+
+  test('toggle Tab skips a positive-tabindex brand control that native order already visited', async () => {
+    // Brand focus targets are sorted globally (positive tabindex first), so
+    // naively taking the first one from the toggle no longer means "the
+    // first stop after the toggle" once a positive-tabindex brand control
+    // exists alongside a normal one.
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        brand: positiveThenNormalBrandSnippet(),
+        items: keyboardNavigationSnippet({}),
+        menuToggle: toggleSnippet(),
+        menuTogglePlacement: 'before-brand',
+      });
+
+      await openCollapsedMobileMenu(container);
+      await waitForMobilePanelPosition(container);
+      const toggle = container.querySelector('#toggle-btn') as HTMLButtonElement;
+      const brandNormal = container.querySelector('#brand-normal');
+
+      toggle.focus();
+      await fireEvent.keyDown(toggle, { key: 'Tab' });
+      expect(document.activeElement).toBe(brandNormal);
+    });
+  });
+
+  test('toggle Tab skips a positive-tabindex navigation item that native order already visited', async () => {
+    // The items fallback used to take the globally-first (lowest positive)
+    // sequential item unconditionally. When the toggle itself has a higher
+    // positive tabindex, native order has already visited any lower
+    // positive-tabindex item, so Tab from the toggle must continue to a
+    // same/higher positive item or the first zero-tier item instead.
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        items: positiveThenNormalNavigationSnippet(),
+        menuToggle: toggleSnippet(),
+      });
+
+      await openCollapsedMobileMenu(container);
+      const itemsRegion = await waitForMobilePanelPosition(container);
+      const toggle = container.querySelector('#toggle-btn') as HTMLButtonElement;
+      const normalItem = itemsRegion.querySelector('[data-key="normal"]') as HTMLButtonElement;
+
+      toggle.setAttribute('tabindex', '2');
+      toggle.focus();
+      await fireEvent.keyDown(toggle, { key: 'Tab' });
+      expect(document.activeElement).toBe(normalItem);
+    });
+  });
+
+  test('toggle Tab with a default tabindex lands on the first zero-tier item, not a later positive-tabindex item', async () => {
+    // `getSequentialNavigationItems()` sorts positive-tabindex items first
+    // globally, so the fallback used to take items[0] unconditionally and
+    // land on a positive-tabindex item even when it sits later in DOM
+    // order. Native forward Tab from a zero/default-tabindex toggle visits
+    // zero-tier stops first — the positive item was already visited earlier
+    // in native order — so the fallback must filter by the toggle's own
+    // tab tier instead of taking the globally-first item.
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        items: normalThenPositiveNavigationSnippet(),
+        menuToggle: toggleSnippet(),
+      });
+
+      await openCollapsedMobileMenu(container);
+      const itemsRegion = await waitForMobilePanelPosition(container);
+      const toggle = container.querySelector('#toggle-btn') as HTMLButtonElement;
+      const normalItem = itemsRegion.querySelector('[data-key="normal"]') as HTMLButtonElement;
+
+      toggle.focus();
+      await fireEvent.keyDown(toggle, { key: 'Tab' });
+      expect(document.activeElement).toBe(normalItem);
+    });
+  });
+
   test('reverse Tab from portaled items returns to the final brand control', async () => {
     await withResizeObserver(async () => {
       const { container } = render(NavigationBar, {
@@ -1204,6 +1435,30 @@ describe('NavigationBar', () => {
       home.focus();
       await fireEvent.keyDown(home, { key: 'Tab', shiftKey: true });
       expect(document.activeElement).toBe(finalBrandControl);
+    });
+  });
+
+  test('reverse Tab threads the focused item tab tier into the brand lookup', async () => {
+    // With a positive-tabindex first navigation item, reverse Tab must land
+    // on the nearest lower-or-equal positive-tabindex brand control, not
+    // fall straight to the zero/default-tier brand target the untiered
+    // lookup previously always picked.
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        brand: positiveThenNormalBrandSnippet(),
+        items: positiveFirstNavigationSnippet(),
+        menuToggle: toggleSnippet(),
+        menuTogglePlacement: 'before-brand',
+      });
+
+      await openCollapsedMobileMenu(container);
+      const itemsRegion = await waitForMobilePanelPosition(container);
+      const home = itemsRegion.querySelector('[data-key="home"]') as HTMLButtonElement;
+      const brandPositive = container.querySelector('#brand-positive');
+
+      home.focus();
+      await fireEvent.keyDown(home, { key: 'Tab', shiftKey: true });
+      expect(document.activeElement).toBe(brandPositive);
     });
   });
 

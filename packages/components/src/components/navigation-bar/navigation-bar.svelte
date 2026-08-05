@@ -26,9 +26,11 @@
 <script lang="ts">
   import type { Placement } from '@floating-ui/dom';
   import type { NavigationBarProps, NavigationVariant } from './navigation-bar.types.ts';
+  import type { SequentialFocusTarget } from '../../utilities/focus.ts';
   import { BROWSER as browser } from 'esm-env';
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
   import { classNames } from '../../utilities/class-names.ts';
+  import { getSequentialFocusTargets, getTabIndexValue } from '../../utilities/focus.ts';
   import { createPortalAttachment } from '../portal/index.ts';
   import {
     closestAcrossShadow,
@@ -40,10 +42,10 @@
     redispatchPortaledEvent,
   } from '../portal/portal.utilities.svelte.ts';
   import {
+    findFirstBrandFocusTargetAfterToggle,
     findFocusTargetAfterNavigationItems,
     findFocusTargetBeforeNavigationItems,
     getNavigationBarBrandFocusTargets,
-    getSequentialFocusTargets,
   } from './navigation-bar-focus.ts';
 
   const COLLAPSIBLE_MAX_WIDTH_REM = 47.99;
@@ -88,7 +90,7 @@
   let navigationBarElement: HTMLElement | null = null;
   let toggleElement: HTMLElement | null = null;
   let pendingTabFocus = $state(false);
-  let pendingTabFocusTarget = $state<HTMLElement | null>(null);
+  let pendingTabFocusTarget = $state<SequentialFocusTarget | null>(null);
   let itemsRegionElement: HTMLDivElement | null = null;
   let sourceSubtreeUnavailable = $state(false);
   const itemsPortalScope = createPortalAttachment({
@@ -123,7 +125,8 @@
     const pendingTarget = pendingTabFocusTarget;
     pendingTabFocusTarget = null;
     queueMicrotask(() => {
-      const target = pendingTarget ?? getToggleTabTarget() ?? getFocusTargetAfterItems();
+      const target =
+        pendingTarget ?? getToggleTabTarget(toggleElement) ?? getFocusTargetAfterItems();
       target?.focus();
     });
   });
@@ -217,16 +220,17 @@
 
   function handleToggleKeyDown(event: KeyboardEvent): void {
     if (event.key !== 'Tab' || event.shiftKey || !isMobileLayout || !mobileMenuOpen) return;
+    const toggle = event.currentTarget as HTMLElement | null;
     if (!anchoredItems.positionReady) {
       pendingTabFocus = true;
       pendingTabFocusTarget =
         menuTogglePlacement === 'before-brand'
-          ? (getNavigationBarBrandFocusTargets(navigationBarElement)[0] ?? null)
+          ? findFirstBrandFocusTargetAfterToggle(navigationBarElement, toggle)
           : null;
       event.preventDefault();
       return;
     }
-    const target = getToggleTabTarget();
+    const target = getToggleTabTarget(toggle);
     if (!target) return;
     event.preventDefault();
     target.focus();
@@ -239,17 +243,57 @@
   }
 
   function getSequentialNavigationItems(): HTMLElement[] {
+    // Navigation items are always rendered as HTML elements (never SVG), but
+    // `getSequentialFocusTargets` returns the wider `SequentialFocusTarget`
+    // union since brand targets can be SVG. Narrow with `instanceof` so the
+    // return type matches every downstream consumer of navigation items.
     return getSequentialFocusTargets(itemsRegionElement).filter(
-      (item) => item.matches(navigationItemSelector) && isEnabledNavigationItem(item),
+      (item): item is HTMLElement =>
+        item instanceof HTMLElement &&
+        item.matches(navigationItemSelector) &&
+        isEnabledNavigationItem(item),
     );
   }
 
-  function getToggleTabTarget(): HTMLElement | null {
+  function getToggleTabTarget(toggle: HTMLElement | null): SequentialFocusTarget | null {
     const brandTarget =
       menuTogglePlacement === 'before-brand'
-        ? getNavigationBarBrandFocusTargets(navigationBarElement)[0]
+        ? findFirstBrandFocusTargetAfterToggle(navigationBarElement, toggle)
         : null;
-    return brandTarget ?? getSequentialNavigationItems()[0] ?? null;
+    if (brandTarget) return brandTarget;
+
+    const items = getSequentialNavigationItems();
+    const toggleTabIndex = toggle ? getTabIndexValue(toggle) : 0;
+    if (toggleTabIndex > 0) {
+      // A positive-tabindex toggle has already passed every lower-or-equal
+      // positive-tabindex item in native order, so the fallback must filter
+      // for a same/higher positive item (or the first zero-tier item)
+      // instead of naively taking the globally-first (lowest positive) item.
+      //
+      // This intentionally does NOT match `findSequentialEntryTarget`'s
+      // "return null rather than fall back to zero tier" rule: that rule
+      // exists for callers with a further, reachable fallback to defer to
+      // (a following composed-scope search, a menu toggle in the normal
+      // light DOM). Tab pressed on the toggle itself has nowhere else to
+      // defer to — the items panel is portaled out of normal document flow
+      // while open, so a `null` here would strand focus instead of letting
+      // native Tab find anything, since native Tab cannot reach a portaled
+      // subtree on its own. Landing on the first zero-tier item is the
+      // better outcome even though, in principle, a higher positive tier
+      // could theoretically exist elsewhere on the page.
+      return (
+        items.find((item) => getTabIndexValue(item) >= toggleTabIndex) ??
+        items.find((item) => getTabIndexValue(item) === 0) ??
+        null
+      );
+    }
+
+    // A zero/default-tabindex toggle sits in native order's zero tier, which
+    // forward Tab only reaches after every positive-tabindex stop. `items`
+    // is sorted positives-first, so its globally-first entry can be a
+    // positive-tabindex item the toggle has already passed; filter for the
+    // first zero-tier item instead of naively taking items[0].
+    return items.find((item) => getTabIndexValue(item) === 0) ?? null;
   }
 
   function bridgeBrandTabToPortaledPanel(event: KeyboardEvent): boolean {
@@ -259,14 +303,43 @@
       menuTogglePlacement !== 'before-brand' ||
       !isMobileLayout ||
       !mobileMenuOpen ||
-      !anchoredItems.positionReady ||
-      !(event.target instanceof HTMLElement)
+      !anchoredItems.positionReady
     ) {
       return false;
     }
 
+    // A keydown listener on the outer `<nav>` observes `event.target`
+    // retargeted to the shadow host when the real origin lives inside an
+    // open shadow root (for example, a brand logo that exposes its last
+    // tabbable control from its own shadow DOM). `composedPath()[0]` is the
+    // actual originating node regardless of shadow retargeting.
+    const composedTarget = event.composedPath()[0];
+    if (!(composedTarget instanceof HTMLElement || composedTarget instanceof SVGElement)) {
+      return false;
+    }
+
     const brandTargets = getNavigationBarBrandFocusTargets(navigationBarElement);
-    if (event.target !== brandTargets.at(-1)) return false;
+    if (composedTarget !== brandTargets.at(-1)) return false;
+
+    // A brand containing only positive-tabindex controls has not yet
+    // reached the menu toggle's own zero/default tier — positive tiers
+    // always precede the zero/default tier regardless of DOM position, so
+    // if the toggle is still tier-wise "after" `composedTarget`, native Tab
+    // must land there next (the toggle is a normal, non-portaled control,
+    // so leaving `preventDefault()` uncalled lets the browser find it on
+    // its own). Only bridge straight into the portaled panel once nothing
+    // in the navigation bar's own light DOM — including the toggle — still
+    // lies ahead of `composedTarget`.
+    const menuToggleTarget = getSequentialFocusTargets(
+      navigationBarElement?.querySelector('.cinder-navigation-bar__menu-toggle') ?? null,
+    )[0];
+    const toggleStillAhead =
+      menuToggleTarget !== undefined &&
+      getSequentialFocusTargets(navigationBarElement, {
+        relativeTo: composedTarget,
+        direction: 'after',
+      }).includes(menuToggleTarget);
+    if (toggleStillAhead) return false;
 
     const firstItem = getSequentialNavigationItems()[0];
     if (!firstItem) return false;
@@ -346,16 +419,25 @@
     focusTarget?.focus();
   }
 
-  function getFocusTargetBeforeItems(): HTMLElement | null {
+  function getFocusTargetBeforeItems(
+    navigationItem: HTMLElement | null = null,
+  ): SequentialFocusTarget | null {
     return findFocusTargetBeforeNavigationItems(
       navigationBarElement,
       toggleElement,
       menuTogglePlacement === 'before-brand',
+      navigationItem,
     );
   }
 
-  function getFocusTargetAfterItems(): HTMLElement | null {
-    return findFocusTargetAfterNavigationItems(navigationBarElement, itemsRegionElement);
+  function getFocusTargetAfterItems(
+    navigationItem: HTMLElement | null = null,
+  ): SequentialFocusTarget | null {
+    return findFocusTargetAfterNavigationItems(
+      navigationBarElement,
+      itemsRegionElement,
+      navigationItem,
+    );
   }
 
   function bridgePortaledPanelTab(event: KeyboardEvent, navigationItem: HTMLElement): boolean {
@@ -380,7 +462,7 @@
           !hasSequentialTargetBefore &&
           (navigationItem === enabledItems[0] || navigationItem === logicalEnabledItems[0])))
     ) {
-      const previousTarget = getFocusTargetBeforeItems();
+      const previousTarget = getFocusTargetBeforeItems(navigationItem);
       if (!previousTarget) return false;
       event.preventDefault();
       previousTarget.focus();
@@ -395,7 +477,7 @@
           (navigationItem === enabledItems.at(-1) ||
             navigationItem === logicalEnabledItems.at(-1))))
     ) {
-      const nextTarget = getFocusTargetAfterItems();
+      const nextTarget = getFocusTargetAfterItems(navigationItem);
       if (!nextTarget) return false;
       event.preventDefault();
       nextTarget.focus();
