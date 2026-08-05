@@ -250,6 +250,51 @@
   let presetMonthlyDay = $state(initialSeed.presetMonthlyDay);
   let presetMonthlyTime = $state(initialSeed.presetMonthlyTime);
 
+  /**
+   * Applies every field a `seedFieldsFromValue` result carries — shared by
+   * the prop-resync effect and the allowed-modes-change effect, both of
+   * which reseed the whole authoring surface (mode, cron fields, interval
+   * fields, and every preset field) from a `ScheduleValue`.
+   *
+   * NOT used by `handleAuthoringModeChange`'s `presets` branch: that switch
+   * has already set `authoringMode` itself and must leave the cron/interval
+   * fields untouched (switching modes only re-seeds the destination mode's
+   * own fields) — see `applyPresetSeedToFields` below.
+   */
+  function applySeedToFields(seed: ReturnType<typeof seedFieldsFromValue>): void {
+    authoringMode = seed.authoringMode;
+    cronFields = seed.cronFields;
+    intervalEvery = seed.intervalEvery;
+    intervalUnit = seed.intervalUnit;
+    presetKind = seed.presetKind;
+    presetEveryValue = seed.presetEveryValue;
+    presetEveryUnit = seed.presetEveryUnit;
+    presetDailyTime = seed.presetDailyTime;
+    presetWeeklyDays = seed.presetWeeklyDays;
+    presetWeeklyTime = seed.presetWeeklyTime;
+    presetMonthlyDay = seed.presetMonthlyDay;
+    presetMonthlyTime = seed.presetMonthlyTime;
+  }
+
+  /**
+   * Applies only the 8 preset fields from a `seedFieldsFromValue` result.
+   * Used exclusively by `handleAuthoringModeChange`'s `presets` branch: at
+   * that call site `authoringMode` has already been set to `'presets'` and
+   * `seedFieldsFromValue` would recompute an `authoringMode` of its own from
+   * `lastKnownValue` — applying its full result via `applySeedToFields`
+   * would silently revert the mode switch the user just made.
+   */
+  function applyPresetSeedToFields(seed: ReturnType<typeof seedFieldsFromValue>): void {
+    presetKind = seed.presetKind;
+    presetEveryValue = seed.presetEveryValue;
+    presetEveryUnit = seed.presetEveryUnit;
+    presetDailyTime = seed.presetDailyTime;
+    presetWeeklyDays = seed.presetWeeklyDays;
+    presetWeeklyTime = seed.presetWeeklyTime;
+    presetMonthlyDay = seed.presetMonthlyDay;
+    presetMonthlyTime = seed.presetMonthlyTime;
+  }
+
   function valueForPresets(): ScheduleValue {
     switch (presetKind) {
       case 'every':
@@ -406,37 +451,13 @@
     // the UI in the browsed mode. Content equality still guards the echo case for
     // defined values (parent handing back exactly what we just emitted is a no-op).
     if (incoming !== undefined && scheduleValuesEqual(resolved, lastKnownValue)) return;
-    const seed = seedFieldsFromValue(resolved, resolvedAllowedModes);
-    authoringMode = seed.authoringMode;
-    cronFields = seed.cronFields;
-    intervalEvery = seed.intervalEvery;
-    intervalUnit = seed.intervalUnit;
-    presetKind = seed.presetKind;
-    presetEveryValue = seed.presetEveryValue;
-    presetEveryUnit = seed.presetEveryUnit;
-    presetDailyTime = seed.presetDailyTime;
-    presetWeeklyDays = seed.presetWeeklyDays;
-    presetWeeklyTime = seed.presetWeeklyTime;
-    presetMonthlyDay = seed.presetMonthlyDay;
-    presetMonthlyTime = seed.presetMonthlyTime;
+    applySeedToFields(seedFieldsFromValue(resolved, resolvedAllowedModes));
     lastKnownValue = resolved;
   });
 
   $effect(() => {
     if (resolvedAllowedModes.includes(authoringMode)) return;
-    const seed = seedFieldsFromValue(lastKnownValue, resolvedAllowedModes);
-    authoringMode = seed.authoringMode;
-    cronFields = seed.cronFields;
-    intervalEvery = seed.intervalEvery;
-    intervalUnit = seed.intervalUnit;
-    presetKind = seed.presetKind;
-    presetEveryValue = seed.presetEveryValue;
-    presetEveryUnit = seed.presetEveryUnit;
-    presetDailyTime = seed.presetDailyTime;
-    presetWeeklyDays = seed.presetWeeklyDays;
-    presetWeeklyTime = seed.presetWeeklyTime;
-    presetMonthlyDay = seed.presetMonthlyDay;
-    presetMonthlyTime = seed.presetMonthlyTime;
+    applySeedToFields(seedFieldsFromValue(lastKnownValue, resolvedAllowedModes));
   });
 
   /**
@@ -496,15 +517,7 @@
       // Daily/weekly/monthly and non-divisor/day/week intervals have no
       // general inverse, so they fall back to the same neutral defaults used
       // everywhere else a value gets seeded into the preset fields.
-      const seed = seedFieldsFromValue(lastKnownValue, resolvedAllowedModes);
-      presetKind = seed.presetKind;
-      presetEveryValue = seed.presetEveryValue;
-      presetEveryUnit = seed.presetEveryUnit;
-      presetDailyTime = seed.presetDailyTime;
-      presetWeeklyDays = seed.presetWeeklyDays;
-      presetWeeklyTime = seed.presetWeeklyTime;
-      presetMonthlyDay = seed.presetMonthlyDay;
-      presetMonthlyTime = seed.presetMonthlyTime;
+      applyPresetSeedToFields(seedFieldsFromValue(lastKnownValue, resolvedAllowedModes));
     }
   }
 

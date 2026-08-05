@@ -27,12 +27,10 @@
   } from '../../_internal/tree-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import VisuallyHiddenLiveRegion from '../_visually-hidden-live-region.svelte';
-
-  type LabelSegment = {
-    text: string;
-    highlighted: boolean;
-    start: number;
-  };
+  import { TreeItemAsyncLoader } from './tree-item-async-load.svelte.ts';
+  import { TreeItemDragHandlers } from './tree-item-drag.svelte.ts';
+  import { splitLabelForHighlight } from './tree-item-label-highlight.ts';
+  import { TreeItemRenameController } from './tree-item-rename.svelte.ts';
 
   // ---------------------------------------------------------------------------
   // Props
@@ -79,23 +77,29 @@
 
   const isBranch = $derived(branch || loadChildren != null);
 
-  let busy = $state(false);
-  let loaded = $state(false);
-  let activeController: AbortController | null = null;
-  let editing = $state(false);
-  let editValue = $state('');
-  let renamePending = $state(false);
-  let renameError = $state('');
-  let renameAnnouncement = $state('');
-  let renameAnnouncementSequence = $state(0);
   let probedFilterValue = $state<string | null>(null);
 
   let outerElement: HTMLElement | undefined = $state();
-  let renameInputElement: HTMLInputElement | undefined = $state();
   let dragHandleElement: HTMLButtonElement | undefined = $state();
-  let renameOwningTreeElement: HTMLElement | undefined;
   const treeItemElementId = $props.id();
-  const renameMessageId = $derived(`${treeItemElementId}-rename-message`);
+
+  const asyncLoader = new TreeItemAsyncLoader({
+    getId: () => id,
+    getLoadChildren: () => loadChildren,
+    getOnLoadError: () => onLoadError,
+    setExpanded: (itemId, expanded) => context.setExpanded(itemId, expanded),
+  });
+
+  const renameController = new TreeItemRenameController({
+    getId: () => id,
+    getLabel: () => label,
+    getOnRename: () => onRename,
+    getDisabled: () => disabled,
+    getOuterElement: () => outerElement,
+    getElementId: () => treeItemElementId,
+    canFocusVisibleDelta: (direction) => context.canFocusVisibleDelta(id, direction),
+    focusVisibleDelta: (direction) => context.focusVisibleDelta(id, direction),
+  });
 
   // ---------------------------------------------------------------------------
   // Derived state from context
@@ -125,15 +129,18 @@
   const checkboxSelectionActive = $derived(context.checkboxSelectionActive());
   const selectionState = $derived(context.selectionStateFor(id));
   const labelSegments = $derived.by(() => splitLabelForHighlight(label, context.filterValue));
-  const canRename = $derived(!disabled && onRename != null);
-  const editingLabel = $derived(`Editing: ${label}`);
   const dragController = $derived(context.dragController);
   const canDrag = $derived(draggable && !disabled && dragController != null);
-  const isDraggingItem = $derived(dragController?.isDragging(id) ?? false);
-  const isDropBefore = $derived(dragController?.isDropTarget(id, 'before') ?? false);
-  const isDropAfter = $derived(dragController?.isDropTarget(id, 'after') ?? false);
-  const isDropInto = $derived(dragController?.isDropTarget(id, 'child') ?? false);
-  const dragHandleLabel = $derived(`Reorder ${label}`);
+
+  const dragHandlers = new TreeItemDragHandlers({
+    getDragController: () => dragController,
+    getId: () => id,
+    getLabel: () => label,
+    getCanDrag: () => canDrag,
+    getDragHandleElement: () => dragHandleElement,
+    getOuterElement: () => outerElement,
+  });
+
   const ariaChecked = $derived.by(() => {
     if (!checkboxSelectionActive) return undefined;
     if (selectionState.indeterminate) return 'mixed';
@@ -209,10 +216,7 @@
 
       return () => {
         // Abort any in-flight async load when the item unmounts
-        if (activeController) {
-          activeController.abort();
-          activeController = null;
-        }
+        asyncLoader.abort();
         unregister();
       };
     });
@@ -222,56 +226,17 @@
   // Async loading
   // ---------------------------------------------------------------------------
 
-  async function triggerLoad(): Promise<void> {
-    if (!loadChildren || loaded || busy) return;
-
-    activeController?.abort();
-    const controller = new AbortController();
-    activeController = controller;
-    busy = true;
-
-    try {
-      await loadChildren({ id, signal: controller.signal });
-      if (!controller.signal.aborted) {
-        loaded = true;
-        busy = false;
-      }
-    } catch (error) {
-      if (
-        controller.signal.aborted ||
-        (error instanceof DOMException && error.name === 'AbortError')
-      ) {
-        // Only clear busy if this is still the active load. If a newer load
-        // has already started (expand→collapse→expand race), clearing busy
-        // here would cause the $effect to re-fire and start a load cascade.
-        if (activeController === controller) busy = false;
-        return;
-      }
-      busy = false;
-      loaded = false;
-      // Collapse the branch on error
-      context.setExpanded(id, false);
-      if (onLoadError) {
-        onLoadError(error, id);
-      } else {
-        console.error('[cinder-tree] loadChildren failed for item', id, error);
-      }
-    }
-  }
-
   // When expanded for the first time with a loadChildren, trigger the load
   $effect(() => {
-    if (isExpanded && loadChildren && !loaded && !busy) {
-      triggerLoad();
+    if (isExpanded && loadChildren && !asyncLoader.loaded && !asyncLoader.busy) {
+      asyncLoader.trigger();
     }
   });
 
   // Abort in-flight load when collapsing
   $effect(() => {
-    if (!isExpanded && busy && activeController) {
-      activeController.abort();
-      activeController = null;
-      busy = false;
+    if (!isExpanded && asyncLoader.busy) {
+      asyncLoader.abort();
     }
   });
 
@@ -305,239 +270,6 @@
   // Keyboard handler
   // ---------------------------------------------------------------------------
 
-  const focusRenameInput: Attachment<HTMLInputElement> = (node) => {
-    renameInputElement = node;
-    queueMicrotask(() => {
-      if (!editing || renameInputElement !== node) return;
-      node.focus();
-      node.select();
-    });
-    return () => {
-      if (renameInputElement === node) renameInputElement = undefined;
-    };
-  };
-
-  function announceRename(message: string): void {
-    renameAnnouncement = message;
-    renameAnnouncementSequence += 1;
-  }
-
-  function renameFailureMessage(error: unknown): string {
-    if (error instanceof Error && error.message) return error.message;
-    if (typeof error === 'string' && error) return error;
-    return 'Unknown error';
-  }
-
-  function focusCurrentTreeItem(): void {
-    if (outerElement?.isConnected) {
-      outerElement.focus();
-      renameOwningTreeElement = undefined;
-      return;
-    }
-
-    if (typeof document === 'undefined') return;
-    const root: ParentNode =
-      renameOwningTreeElement?.isConnected === true ? renameOwningTreeElement : document;
-    const current = [...root.querySelectorAll<HTMLElement>('[data-cinder-tree-item-id]')].find(
-      (element) => element.dataset['cinderTreeItemId'] === id,
-    );
-    current?.focus();
-    renameOwningTreeElement = undefined;
-  }
-
-  function beginEdit(): void {
-    if (!canRename || editing) return;
-    editValue = label;
-    renameError = '';
-    renamePending = false;
-    renameOwningTreeElement = outerElement?.closest<HTMLElement>('[role="tree"]') ?? undefined;
-    editing = true;
-    announceRename(`Editing ${label}. Press Enter to confirm, Escape to cancel.`);
-  }
-
-  function finishEdit(afterFocus: (() => void) | undefined = undefined): void {
-    editing = false;
-    renameError = '';
-    renamePending = false;
-    queueMicrotask(() => {
-      focusCurrentTreeItem();
-      afterFocus?.();
-    });
-  }
-
-  function cancelEdit(): void {
-    editValue = label;
-    announceRename('Rename cancelled.');
-    finishEdit();
-  }
-
-  async function commitEdit(afterFocus: (() => void) | undefined = undefined): Promise<boolean> {
-    if (!editing || renamePending) return false;
-
-    if (editValue.trim().length === 0) {
-      renameError = 'Label is required.';
-      announceRename(renameError);
-      queueMicrotask(() => renameInputElement?.focus());
-      return false;
-    }
-
-    if (!onRename) {
-      finishEdit(afterFocus);
-      return true;
-    }
-
-    renamePending = true;
-    renameError = '';
-    try {
-      await onRename(id, editValue);
-      announceRename(`${editValue}, renamed.`);
-      finishEdit(afterFocus);
-      return true;
-    } catch (error) {
-      const message = `Rename failed: ${renameFailureMessage(error)}.`;
-      renamePending = false;
-      renameError = message;
-      announceRename(message);
-      queueMicrotask(() => renameInputElement?.focus());
-      return false;
-    }
-  }
-
-  async function commitEditAndMove(direction: 1 | -1): Promise<void> {
-    await commitEdit(() => context.focusVisibleDelta(id, direction));
-  }
-
-  function handleRenameInputKeydown(event: KeyboardEvent): void {
-    event.stopPropagation();
-
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      void commitEdit();
-      return;
-    }
-
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      void cancelEdit();
-      return;
-    }
-
-    if (event.key === 'Tab') {
-      const direction = event.shiftKey ? -1 : 1;
-      if (context.canFocusVisibleDelta(id, direction)) {
-        event.preventDefault();
-        void commitEditAndMove(direction);
-      } else {
-        void commitEdit();
-      }
-    }
-  }
-
-  function handleRenameInputBlur(): void {
-    void commitEdit();
-  }
-
-  let dragKeyboardReturnTarget: HTMLElement | undefined;
-
-  function restoreDragKeyboardFocus(): void {
-    const target = dragKeyboardReturnTarget ?? dragHandleElement ?? outerElement;
-    queueMicrotask(() => target?.focus());
-  }
-
-  function canLiftWithKeyboard(event: KeyboardEvent): boolean {
-    const fromDragHandle = event.currentTarget === dragHandleElement;
-    const treeItemShortcut =
-      event.key === ' ' && event.ctrlKey && event.shiftKey && !event.altKey && !event.metaKey;
-    return (fromDragHandle && (event.key === ' ' || event.key === 'Enter')) || treeItemShortcut;
-  }
-
-  function handleDragKeyboard(event: KeyboardEvent): boolean {
-    const controller = dragController;
-    if (!canDrag || !controller) return false;
-
-    if (!controller.dragging && canLiftWithKeyboard(event)) {
-      event.preventDefault();
-      event.stopPropagation();
-      dragKeyboardReturnTarget =
-        event.currentTarget instanceof HTMLElement ? event.currentTarget : undefined;
-      controller.lift(id, 'keyboard');
-      restoreDragKeyboardFocus();
-      return true;
-    }
-
-    if (!controller.isDragging(id)) return false;
-
-    switch (event.key) {
-      case 'ArrowDown':
-        event.preventDefault();
-        event.stopPropagation();
-        controller.moveBy(1);
-        return true;
-      case 'ArrowUp':
-        event.preventDefault();
-        event.stopPropagation();
-        controller.moveBy(-1);
-        return true;
-      case 'ArrowRight':
-        event.preventDefault();
-        event.stopPropagation();
-        controller.moveIntoPreviousBranch();
-        return true;
-      case 'ArrowLeft':
-        event.preventDefault();
-        event.stopPropagation();
-        controller.moveOut();
-        return true;
-      case 'Home':
-        event.preventDefault();
-        event.stopPropagation();
-        controller.moveToEdge('first');
-        return true;
-      case 'End':
-        event.preventDefault();
-        event.stopPropagation();
-        controller.moveToEdge('last');
-        return true;
-      case 'F2':
-        event.preventDefault();
-        event.stopPropagation();
-        return true;
-      case 'Tab':
-        event.stopPropagation();
-        controller.cancel();
-        return true;
-      case ' ':
-      case 'Enter':
-        event.preventDefault();
-        event.stopPropagation();
-        controller.drop();
-        restoreDragKeyboardFocus();
-        return true;
-      case 'Escape':
-        event.preventDefault();
-        event.stopPropagation();
-        controller.cancel();
-        restoreDragKeyboardFocus();
-        return true;
-      default:
-        return false;
-    }
-  }
-
-  function handleDragPointerDown(event: PointerEvent): void {
-    const controller = dragController;
-    if (!canDrag || !controller || event.button !== 0) return;
-    event.preventDefault();
-    event.stopPropagation();
-    dragHandleElement?.focus();
-    dragHandleElement?.setPointerCapture(event.pointerId);
-    controller.lift(id, 'pointer');
-  }
-
-  function handleDragClick(event: MouseEvent): void {
-    event.stopPropagation();
-  }
-
   function toggleKeyboardSelection(event: KeyboardEvent): void {
     if (disabled) return;
     if (checkboxSelectionActive) {
@@ -555,11 +287,11 @@
 
     const key = event.key;
 
-    if (handleDragKeyboard(event)) return;
+    if (dragHandlers.handleKeyboard(event)) return;
 
     if (key === 'F2') {
       event.preventDefault();
-      beginEdit();
+      renameController.beginEdit();
       return;
     }
 
@@ -615,8 +347,8 @@
 
       case 'Enter':
         event.preventDefault();
-        if (context.selectionMode === 'none' && canRename) {
-          beginEdit();
+        if (context.selectionMode === 'none' && renameController.canRename) {
+          renameController.beginEdit();
           break;
         }
         if (checkboxSelectionActive) {
@@ -695,7 +427,7 @@
   function handleLabelDoubleClick(event: MouseEvent): void {
     event.preventDefault();
     event.stopPropagation();
-    beginEdit();
+    renameController.beginEdit();
   }
 
   function handleCheckboxActivation(event: Event): void {
@@ -723,28 +455,6 @@
   function toggleSelectionFromRow(): void {
     if (!disabled) context.toggleSelectionScope(id);
   }
-
-  function splitLabelForHighlight(value: string, query: string): LabelSegment[] {
-    if (query.length === 0) return [{ text: value, highlighted: false, start: 0 }];
-
-    const matchIndex = value.toLowerCase().indexOf(query.toLowerCase());
-    if (matchIndex === -1) return [{ text: value, highlighted: false, start: 0 }];
-
-    const matchEnd = matchIndex + query.length;
-    const segments: LabelSegment[] = [];
-    if (matchIndex > 0) {
-      segments.push({ text: value.slice(0, matchIndex), highlighted: false, start: 0 });
-    }
-    segments.push({
-      text: value.slice(matchIndex, matchEnd),
-      highlighted: true,
-      start: matchIndex,
-    });
-    if (matchEnd < value.length) {
-      segments.push({ text: value.slice(matchEnd), highlighted: false, start: matchEnd });
-    }
-    return segments;
-  }
 </script>
 
 {#snippet visibleLabel()}
@@ -763,8 +473,8 @@
   role="treeitem"
   id={treeItemElementId}
   class={classNames('cinder-tree-item', className)}
-  aria-label={editing ? editingLabel : undefined}
-  aria-labelledby={editing ? undefined : `${treeItemElementId}-label`}
+  aria-label={renameController.editing ? renameController.editingLabel : undefined}
+  aria-labelledby={renameController.editing ? undefined : `${treeItemElementId}-label`}
   aria-level={level}
   aria-expanded={isBranch ? renderedExpanded : undefined}
   aria-posinset={positionInSet}
@@ -773,20 +483,24 @@
     ? undefined
     : isSelected}
   aria-checked={ariaChecked}
-  aria-busy={busy || undefined}
+  aria-busy={asyncLoader.busy || undefined}
   aria-disabled={disabled || undefined}
   aria-describedby={canDrag ? context.dragInstructionsId : undefined}
   tabindex={isFocused ? 0 : -1}
   data-cinder-expanded={isBranch && isExpanded ? '' : undefined}
   data-cinder-selected={isSelected ? '' : undefined}
   data-cinder-disabled={disabled ? '' : undefined}
-  data-cinder-busy={busy ? '' : undefined}
+  data-cinder-busy={asyncLoader.busy ? '' : undefined}
   data-cinder-hidden={!isVisible ? '' : undefined}
-  data-cinder-editing={editing ? '' : undefined}
+  data-cinder-editing={renameController.editing ? '' : undefined}
   data-cinder-tree-item-id={id}
-  data-cinder-dragging={isDraggingItem ? '' : undefined}
-  data-cinder-drop-target={isDropBefore ? 'before' : isDropAfter ? 'after' : undefined}
-  data-cinder-drop-into={isDropInto ? '' : undefined}
+  data-cinder-dragging={dragHandlers.isDraggingItem ? '' : undefined}
+  data-cinder-drop-target={dragHandlers.isDropBefore
+    ? 'before'
+    : dragHandlers.isDropAfter
+      ? 'after'
+      : undefined}
+  data-cinder-drop-into={dragHandlers.isDropInto ? '' : undefined}
   onfocus={handleFocus}
   onkeydown={handleKeydown}
   onclick={handleClick}
@@ -813,13 +527,13 @@
         bind:this={dragHandleElement}
         type="button"
         class="cinder-tree-item__drag-handle"
-        aria-label={dragHandleLabel}
-        aria-pressed={isDraggingItem}
+        aria-label={dragHandlers.dragHandleLabel}
+        aria-pressed={dragHandlers.isDraggingItem}
         aria-describedby={context.dragInstructionsId}
         tabindex="-1"
-        onpointerdown={handleDragPointerDown}
-        onclickcapture={handleDragClick}
-        onkeydown={handleDragKeyboard}
+        onpointerdown={dragHandlers.handlePointerDown}
+        onclickcapture={dragHandlers.handleClick}
+        onkeydown={dragHandlers.handleKeyboard}
       >
         <span aria-hidden="true">::</span>
       </button>
@@ -829,26 +543,26 @@
       {@render row({
         expanded: isExpanded,
         selected: isSelected,
-        busy,
+        busy: asyncLoader.busy,
         level,
         checkboxSelection: checkboxSelectionActive,
         selectionState,
-        editing,
-        beginEdit,
+        editing: renameController.editing,
+        beginEdit: () => renameController.beginEdit(),
         toggleSelection: toggleSelectionFromRow,
       })}
-    {:else if editing}
+    {:else if renameController.editing}
       <input
-        {@attach focusRenameInput}
+        {@attach renameController.attachInput}
         type="text"
         class="cinder-tree-item__rename-input"
-        bind:value={editValue}
-        aria-label={editingLabel}
-        aria-invalid={renameError ? 'true' : undefined}
-        aria-describedby={renameError ? renameMessageId : undefined}
-        disabled={renamePending}
-        onkeydown={handleRenameInputKeydown}
-        onblur={handleRenameInputBlur}
+        bind:value={renameController.editValue}
+        aria-label={renameController.editingLabel}
+        aria-invalid={renameController.renameError ? 'true' : undefined}
+        aria-describedby={renameController.renameError ? renameController.messageId : undefined}
+        disabled={renameController.renamePending}
+        onkeydown={renameController.handleInputKeydown}
+        onblur={renameController.handleInputBlur}
       />
     {:else if checkboxSelectionActive}
       <!--
@@ -907,8 +621,10 @@
       >
     {/if}
   </div>
-  {#if renameError}
-    <span id={renameMessageId} class="cinder-sr-only">{renameError}</span>
+  {#if renameController.renameError}
+    <span id={renameController.messageId} class="cinder-sr-only"
+      >{renameController.renameError}</span
+    >
   {/if}
   {#if shouldRenderChildren}
     <div role="group" aria-labelledby={treeItemElementId} class="cinder-tree-item__children">
@@ -917,8 +633,8 @@
   {/if}
   {#if onRename}
     <VisuallyHiddenLiveRegion
-      message={renameAnnouncement}
-      announcementSequence={renameAnnouncementSequence}
+      message={renameController.renameAnnouncement}
+      announcementSequence={renameController.renameAnnouncementSequence}
       priority="assertive"
     />
   {/if}

@@ -37,12 +37,13 @@
     buildCardLocationMap,
     findCard,
     findNextVisibleColumn,
+    getLiftedRowElement,
+    locatePointerTarget,
     moveKanbanCard,
-    moveKanbanColumn,
-    toggleKanbanColumn,
     validateKanbanBoardKeys,
     type CardMoveTarget,
   } from './kanban-board-helpers.ts';
+  import { KanbanBoardColumnReorder } from './kanban-board-column-reorder.svelte.ts';
   import type {
     KanbanBoardCardContext,
     KanbanBoardColumn,
@@ -85,13 +86,19 @@
   let columnsElement = $state<HTMLElement | null>(null);
   let cardTarget = $state<CardMoveTarget | null>(null);
   let pointerColumnIndex = $state<number | null>(null);
-  let columnLiftedKey = $state<string | number | null>(null);
-  let columnTargetIndex = $state<number | null>(null);
   let crossColumnPlaceholderBlockSize = $state<string | null>(null);
   let lastInvalidKeyWarning = '';
 
   const keyValidation = $derived(validateKanbanBoardKeys(columns, getCardKey));
   const invalidKeys = $derived(!keyValidation.valid);
+
+  const columnReorder = new KanbanBoardColumnReorder<Card>({
+    getColumns: () => columns,
+    getReorderColumns: () => reorderColumns,
+    getInvalidKeys: () => invalidKeys,
+    announce: (message) => announcer.announce(message),
+    onchange: (nextColumns, change) => onchange(nextColumns, change),
+  });
 
   // Index cards by key once per render so the card loop can resolve each card's
   // original column/index in O(1) instead of calling findCard per-card (O(N²)).
@@ -148,7 +155,7 @@
   $effect(() => {
     if (!invalidKeys) return;
     if (cardController.phase === 'lifted') cancelCardLift();
-    if (columnLiftedKey !== null) cancelColumnLift();
+    if (columnReorder.liftedKey !== null) columnReorder.cancelColumnLift();
   });
 
   $effect(() => {
@@ -157,7 +164,7 @@
       return;
     }
 
-    const liftedRow = getLiftedRowElement();
+    const liftedRow = getLiftedRowElement(columnsElement, cardController.liftedKey);
     const liftedHeight = liftedRow?.getBoundingClientRect().height ?? 0;
 
     crossColumnPlaceholderBlockSize = liftedHeight > 0 ? `${liftedHeight}px` : null;
@@ -211,85 +218,12 @@
       column,
       columnIndex,
       totalColumns: columns.length,
-      isLifted: columnLiftedKey === column.id,
-      isDropTarget: columnTargetIndex === columnIndex,
+      isLifted: columnReorder.liftedKey === column.id,
+      isDropTarget: columnReorder.targetIndex === columnIndex,
       collapsed: Boolean(column.collapsed),
       canCollapse: collapsible,
       canReorder: reorderColumns && !invalidKeys,
     };
-  }
-
-  function getColumnCardListElement(columnElement: HTMLElement): HTMLElement | null {
-    return (
-      Array.from(columnElement.children).find(
-        (child): child is HTMLElement =>
-          child instanceof HTMLElement && child.classList.contains('cinder-kanban-board__cards'),
-      ) ?? null
-    );
-  }
-
-  function sortableRowMatchesKey(row: HTMLElement, key: string | number): boolean {
-    return (
-      row.getAttribute('data-key') === String(key) &&
-      row.getAttribute('data-key-type') === typeof key
-    );
-  }
-
-  function getLiftedRowElement(): HTMLElement | null {
-    if (!columnsElement || cardController.liftedKey === null) return null;
-    return (
-      Array.from(columnsElement.querySelectorAll<HTMLElement>('[data-sortable-row]')).find((row) =>
-        sortableRowMatchesKey(row, cardController.liftedKey as string | number),
-      ) ?? null
-    );
-  }
-
-  function getLiftedRowBlockSize(): number {
-    return getLiftedRowElement()?.getBoundingClientRect().height ?? 0;
-  }
-
-  function getColumnDropZoneBottom(cardList: HTMLElement, liftedRowBlockSize: number): number {
-    return cardList.getBoundingClientRect().bottom + liftedRowBlockSize;
-  }
-
-  function locatePointerTarget(pointerX: number, pointerY: number): CardMoveTarget | null {
-    if (!columnsElement) return null;
-    const liftedRowBlockSize = getLiftedRowBlockSize();
-    const columnElements = Array.from(columnsElement.children).filter(
-      (element): element is HTMLElement =>
-        element instanceof HTMLElement && element.classList.contains('cinder-kanban-board__column'),
-    );
-    const columnIndex = columnElements.findIndex((element) => {
-      const rect = element.getBoundingClientRect();
-      const cardList = getColumnCardListElement(element);
-      if (!cardList) return false;
-      return (
-        pointerX >= rect.left &&
-        pointerX <= rect.right &&
-        pointerY >= rect.top &&
-        pointerY <= getColumnDropZoneBottom(cardList, liftedRowBlockSize)
-      );
-    });
-    if (columnIndex < 0 || columns[columnIndex]?.collapsed) return null;
-    const columnElement = columnElements[columnIndex];
-    if (!columnElement) return null;
-    const cardList = getColumnCardListElement(columnElement);
-    // Exclude the dragged card by its stable data-key attribute so the filter
-    // works regardless of whether the card is in the keyboard-drag state
-    // (cinder-sortable-item--lifted) or the pointer-drag state
-    // (cinder-sortable-item--placeholder). Both states carry the same data-key.
-    const draggedKey = cardController.liftedKey;
-    const rows = Array.from(cardList?.children ?? []).filter(
-      (row): row is HTMLElement =>
-        row instanceof HTMLElement &&
-        row.hasAttribute('data-sortable-row') &&
-        (draggedKey === null || !sortableRowMatchesKey(row, draggedKey)),
-    );
-    const insertionIndex = rows.filter((row) => {
-      const rect = row.getBoundingClientRect();
-      return rect.top + rect.height / 2 < pointerY;
-    }).length;
-    return { columnIndex, cardIndex: insertionIndex };
   }
 
   function hasCrossColumnPlaceholder(columnIndex: number): boolean {
@@ -363,7 +297,7 @@
       pointerColumnIndex = null;
     },
     lift(key, fromIndex, itemLabel, total) {
-      if (invalidKeys || columnLiftedKey !== null) return;
+      if (invalidKeys || columnReorder.liftedKey !== null) return;
       const located = findCard(columns, getCardKey, key);
       if (!located || located.column.collapsed) return;
       cardTarget = { columnIndex: located.columnIndex, cardIndex: located.cardIndex };
@@ -394,7 +328,13 @@
       pointerColumnIndex = null;
     },
     getPointerTarget({ pointerX, pointerY }) {
-      const target = locatePointerTarget(pointerX, pointerY);
+      const target = locatePointerTarget({
+        columnsElement,
+        columns,
+        liftedKey: cardController.liftedKey,
+        pointerX,
+        pointerY,
+      });
       if (!target) return null;
       pointerColumnIndex = target.columnIndex;
       const column = columns[target.columnIndex];
@@ -430,113 +370,16 @@
     pointerColumnIndex = null;
   }
 
-  function cancelColumnLift(columnTitle: string | undefined = undefined): void {
-    columnLiftedKey = null;
-    columnTargetIndex = null;
-    if (columnTitle) announcer.announce(`${columnTitle} column move cancelled.`);
-  }
-
   function handleWindowKeydown(event: KeyboardEvent): void {
     if (cardController.phase === 'lifted' && event.key === 'Escape') {
       event.preventDefault();
       cancelCardLift();
       return;
     }
-    if (columnLiftedKey !== null && event.key === 'Escape') {
+    if (columnReorder.liftedKey !== null && event.key === 'Escape') {
       event.preventDefault();
-      const column = columns.find((currentColumn) => currentColumn.id === columnLiftedKey);
-      cancelColumnLift(column?.title);
-    }
-  }
-
-  function toggleColumn(column: KanbanBoardColumn<Card>): void {
-    const result = toggleKanbanColumn(columns, column.id);
-    if (!result) return;
-    announcer.announce(
-      `${column.title} ${result.change.type === 'collapse' && result.change.collapsed ? 'collapsed' : 'expanded'}.`,
-    );
-    onchange(result.nextColumns, result.change);
-  }
-
-  function liftColumn(column: KanbanBoardColumn<Card>, columnIndex: number): void {
-    if (cardController.phase === 'lifted') return;
-    columnLiftedKey = column.id;
-    columnTargetIndex = columnIndex;
-    announcer.announce(
-      `${column.title} column lifted, position ${columnIndex + 1} of ${columns.length}.`,
-    );
-  }
-
-  function dropColumn(column: KanbanBoardColumn<Card>, targetIndex: number): void {
-    const result = moveKanbanColumn(columns, column.id, targetIndex);
-    columnLiftedKey = null;
-    columnTargetIndex = null;
-    announcer.announce(
-      `${column.title} column dropped at position ${targetIndex + 1} of ${columns.length}.`,
-    );
-    if (result) onchange(result.nextColumns, result.change);
-  }
-
-  function handleColumnClick(column: KanbanBoardColumn<Card>, columnIndex: number): void {
-    if (!reorderColumns || invalidKeys || cardController.phase === 'lifted') return;
-    if (columnLiftedKey === null) {
-      liftColumn(column, columnIndex);
-      return;
-    }
-    if (columnLiftedKey === column.id) {
-      dropColumn(column, columnTargetIndex ?? columnIndex);
-    }
-  }
-
-  function handleColumnKeydown(
-    event: KeyboardEvent,
-    column: KanbanBoardColumn<Card>,
-    columnIndex: number,
-  ): void {
-    if (!reorderColumns || invalidKeys || cardController.phase === 'lifted') return;
-    if (columnLiftedKey === null) {
-      // Space/Enter in the idle state: do nothing here. The native button will
-      // synthesize a click on Space/Enter keyup, which handleColumnClick will
-      // handle to liftColumn. Handling Space/Enter in both keydown and the
-      // subsequent synthesized click caused an immediate lift-then-drop.
-      return;
-    }
-    if (columnLiftedKey !== column.id) return;
-    const currentTarget = columnTargetIndex ?? columnIndex;
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      cancelColumnLift(column.title);
-      return;
-    }
-    if (event.key === 'Tab') {
-      cancelColumnLift(column.title);
-      return;
-    }
-    if (event.key === ' ' || event.key === 'Enter') {
-      // Prevent the default action so the browser does not synthesize a click
-      // event on keyup — for Space, preventDefault() on keydown suppresses the
-      // synthetic keyup-click, so handleColumnClick never fires after the column
-      // is already dropped and columnLiftedKey is null again.
-      event.preventDefault();
-      dropColumn(column, currentTarget);
-      return;
-    }
-    const nextIndex =
-      event.key === 'ArrowLeft'
-        ? currentTarget - 1
-        : event.key === 'ArrowRight'
-          ? currentTarget + 1
-          : event.key === 'Home'
-            ? 0
-            : event.key === 'End'
-              ? columns.length - 1
-              : currentTarget;
-    if (nextIndex !== currentTarget) {
-      event.preventDefault();
-      columnTargetIndex = Math.max(0, Math.min(nextIndex, columns.length - 1));
-      announcer.announce(
-        `${column.title} column moved to position ${(columnTargetIndex ?? 0) + 1} of ${columns.length}.`,
-      );
+      const column = columns.find((currentColumn) => currentColumn.id === columnReorder.liftedKey);
+      columnReorder.cancelColumnLift(column?.title);
     }
   }
 </script>
@@ -559,6 +402,15 @@
     Space lifts. Arrow keys move. Space drops. Escape cancels.
   </p>
 
+  {#snippet dropPlaceholder()}
+    <li
+      class="cinder-kanban-board__card cinder-kanban-board__drop-placeholder cinder-sortable-item--placeholder"
+      role="presentation"
+      aria-hidden="true"
+      style={crossColumnPlaceholderStyle}
+    ></li>
+  {/snippet}
+
   <div bind:this={columnsElement} class="cinder-kanban-board__columns" role="list">
     {#each visualColumns as column, columnIndex (invalidKeys ? `${column.id}-${columnIndex}` : column.id)}
       {@const columnContext = makeColumnContext(column, columnIndex)}
@@ -574,11 +426,13 @@
               type="button"
               class="cinder-kanban-board__column-handle"
               aria-label={`Reorder ${column.title} column`}
-              aria-pressed={columnLiftedKey === column.id}
+              aria-pressed={columnReorder.liftedKey === column.id}
               aria-describedby={columnInstructionsId}
               disabled={invalidKeys}
-              onclick={() => handleColumnClick(column, columnIndex)}
-              onkeydown={(event) => handleColumnKeydown(event, column, columnIndex)}
+              onclick={() =>
+                columnReorder.handleColumnClick(column, columnIndex, cardController.phase)}
+              onkeydown={(event) =>
+                columnReorder.handleColumnKeydown(event, column, columnIndex, cardController.phase)}
             >
               <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
                 <path d="M2 4h12v1.5H2zM2 7.25h12v1.5H2zM2 10.5h12v1.5H2z" />
@@ -607,7 +461,7 @@
               class="cinder-kanban-board__collapse"
               aria-label={`${column.collapsed ? 'Expand' : 'Collapse'} ${column.title} (${column.cards.length} ${column.cards.length === 1 ? 'card' : 'cards'})`}
               aria-expanded={!column.collapsed}
-              onclick={() => toggleColumn(column)}
+              onclick={() => columnReorder.toggleColumn(column)}
             >
               <ChevronDown class="cinder-kanban-board__collapse-chevron" aria-hidden="true" />
             </button>
@@ -622,12 +476,7 @@
           >
             {#each column.cards as currentCard, cardIndex (invalidKeys ? `${getCardKey(currentCard)}-${cardIndex}` : getCardKey(currentCard))}
               {#if shouldRenderCrossColumnPlaceholder(columnIndex, cardIndex)}
-                <li
-                  class="cinder-kanban-board__card cinder-kanban-board__drop-placeholder cinder-sortable-item--placeholder"
-                  role="presentation"
-                  aria-hidden="true"
-                  style={crossColumnPlaceholderStyle}
-                ></li>
+                {@render dropPlaceholder()}
               {/if}
               {@const cardKey = getCardKey(currentCard)}
               {@const original = cardLocations.get(cardKey) ?? null}
@@ -664,12 +513,7 @@
               </SortableItem>
             {/each}
             {#if shouldRenderCrossColumnAppendPlaceholder(column, columnIndex)}
-              <li
-                class="cinder-kanban-board__card cinder-kanban-board__drop-placeholder cinder-sortable-item--placeholder"
-                role="presentation"
-                aria-hidden="true"
-                style={crossColumnPlaceholderStyle}
-              ></li>
+              {@render dropPlaceholder()}
             {/if}
             {#if column.cards.length === 0 && !hasCrossColumnPlaceholder(columnIndex)}
               <li class="cinder-kanban-board__empty">

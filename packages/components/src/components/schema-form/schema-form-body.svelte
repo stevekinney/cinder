@@ -16,23 +16,17 @@
   import Textarea from '../textarea/textarea.svelte';
 
   import {
-    arrayValueAtPath,
     createSchemaFormModel,
-    decodeEnumValue,
-    defaultValueForField,
     getValueAtPath,
     initialValueForField,
     pathId,
     pathKey,
-    pruneUndefined,
     rebaseFieldPath,
-    setValueAtPath,
     type SchemaFormField,
   } from './schema-form-model.ts';
+  import { createSchemaFormState } from './schema-form-state.svelte.ts';
   import type { SchemaFormOutput, SchemaFormProps } from './schema-form.types.ts';
   import {
-    issuesByPath,
-    parseJsonDraft,
     serializeValidatedValue,
     validateSchemaValue,
     type SchemaFormValidationIssue,
@@ -77,28 +71,28 @@
   const model = $derived(createSchemaFormModel(schema));
   let formElement = $state<HTMLFormElement>();
   let serializedInputElement = $state<HTMLInputElement>();
-  let formValue = $state<unknown>(initialFormValue);
-  let errors = $state<Record<string, string>>({});
-  let rawDrafts = $state<Record<string, string>>(
-    seedRawDrafts(initialModel.field, initialFormValue),
-  );
-  let parsedRawDrafts = $state<
-    Record<string, { ok: true; value: unknown } | { ok: false; message: string }>
-  >({});
-  let numericDrafts = $state<Record<string, string>>({});
-  let touchedValidationSequences = $state<Record<string, number>>({});
-  let serializedValue = $state('');
   let submitting = $state(false);
   let allowNativeSubmit = false;
   let activeSubmitId = 0;
-  let arrayKeyCounter = 0;
-  let arrayKeys = $state<Record<string, string[]>>(
-    seedArrayKeys(initialModel.field, initialFormValue),
-  );
+
+  const formState = createSchemaFormState(initialModel, initialFormValue, {
+    getSubmitting: () => submitting,
+    onDraftChange: (draft) => onDraftChange?.(draft),
+  });
+
+  // The hidden serialized-output input is a plain DOM ref, not a Svelte
+  // binding, so it needs an explicit sync whenever the state class's
+  // serializedValue changes (cleared on every edit, set on a successful
+  // submit).
+  $effect(() => {
+    if (serializedInputElement) serializedInputElement.value = formState.serializedValue;
+  });
 
   const formId = $derived((rest.id as string | undefined) ?? `${generatedId}-form`);
   const rootFields = $derived(model.field.kind === 'object' ? model.field.fields : [model.field]);
-  const rootError = $derived(model.field.kind === 'object' ? errors[pathKey([])] : undefined);
+  const rootError = $derived(
+    model.field.kind === 'object' ? formState.errors[pathKey([])] : undefined,
+  );
   const rootErrorId = $derived(`${formId}-${pathId([])}-error`);
 
   function fieldDomId(field: SchemaFormField): string {
@@ -106,25 +100,25 @@
   }
 
   function fieldError(field: SchemaFormField): string | undefined {
-    return errors[pathKey(field.path)];
+    return formState.errors[pathKey(field.path)];
   }
 
   function stringValue(field: SchemaFormField): string {
-    const current = getValueAtPath(formValue, field.path);
+    const current = getValueAtPath(formState.formValue, field.path);
     return current === undefined || current === null ? '' : String(current);
   }
 
   function numberValue(field: SchemaFormField): number | undefined {
-    const current = getValueAtPath(formValue, field.path);
+    const current = getValueAtPath(formState.formValue, field.path);
     return typeof current === 'number' ? current : undefined;
   }
 
   function booleanValue(field: SchemaFormField): boolean {
-    return getValueAtPath(formValue, field.path) === true;
+    return getValueAtPath(formState.formValue, field.path) === true;
   }
 
   function enumValue(field: SchemaFormField): string {
-    const current = getValueAtPath(formValue, field.path);
+    const current = getValueAtPath(formState.formValue, field.path);
     const option = field.options.find((candidate) => Object.is(candidate.value, current));
     return option?.encodedValue ?? field.options[0]?.encodedValue ?? '';
   }
@@ -143,322 +137,13 @@
 
   function rawJsonValue(field: SchemaFormField): string {
     const key = pathKey(field.path);
-    if (rawDrafts[key] !== undefined) return rawDrafts[key];
-    return JSON.stringify(getValueAtPath(formValue, field.path) ?? null, null, 2);
-  }
-
-  function bumpTouchedValidationSequence(path: readonly string[]) {
-    const key = pathKey(path);
-    touchedValidationSequences = {
-      ...touchedValidationSequences,
-      [key]: (touchedValidationSequences[key] ?? 0) + 1,
-    };
-  }
-
-  function currentDraft(): SchemaFormOutput {
-    let nextValue = formValue;
-    for (const field of currentNumericFields(model.field, formValue)) {
-      const draft = numericDrafts[pathKey(field.path)];
-      if (draft !== undefined) nextValue = setValueAtPath(nextValue, field.path, draft);
-    }
-    for (const field of currentJsonFields(model.field, formValue)) {
-      const key = pathKey(field.path);
-      const parsed = parsedRawDrafts[key];
-      if (parsed === undefined) continue;
-      nextValue = setValueAtPath(nextValue, field.path, parsed.ok ? parsed.value : rawDrafts[key]);
-    }
-    return pruneUndefined(nextValue) as SchemaFormOutput;
-  }
-
-  function reportDraftChange() {
-    onDraftChange?.(currentDraft());
-  }
-
-  function updateValue(path: readonly string[], next: unknown, reportChange = true) {
-    if (submitting) return;
-    formValue = setValueAtPath(formValue, path, next);
-    const key = pathKey(path);
-    if (numericDrafts[key] !== undefined) {
-      const { [key]: _removedDraft, ...remainingDrafts } = numericDrafts;
-      numericDrafts = remainingDrafts;
-    }
-    bumpTouchedValidationSequence(path);
-    if (errors[key]) {
-      const { [key]: _removed, ...remaining } = errors;
-      errors = remaining;
-    }
-    setSerializedValue('');
-    if (reportChange) reportDraftChange();
-  }
-
-  function updateNumberValue(field: SchemaFormField, next: number | null) {
-    const draft = numericDrafts[pathKey(field.path)];
-    if (next === null && draft !== undefined && draft.trim() !== '') return;
-    updateValue(field.path, next ?? undefined);
-  }
-
-  async function validateTouchedField(field: SchemaFormField) {
-    if (submitting) return;
-    const fieldKey = pathKey(field.path);
-    const sequence = (touchedValidationSequences[fieldKey] ?? 0) + 1;
-    touchedValidationSequences = { ...touchedValidationSequences, [fieldKey]: sequence };
-    const raw = rawJsonIssues();
-    const rawIssue = raw.issues.find((candidateIssue) => {
-      const candidateKey = pathKey(candidateIssue.path);
-      return candidateKey === fieldKey || candidateKey.startsWith(`${fieldKey}/`);
-    });
-    if (rawIssue) {
-      errors = { ...errors, [fieldKey]: rawIssue.message };
-      return;
-    }
-    const candidate = pruneUndefined(raw.value);
-    const result = await validateSchemaValue(schema, candidate);
-    if (touchedValidationSequences[fieldKey] !== sequence) return;
-    const issue = (result.valid ? [] : result.issues).find((candidateIssue) => {
-      const candidateKey = pathKey(candidateIssue.path);
-      return candidateKey === fieldKey || candidateKey.startsWith(`${fieldKey}/`);
-    });
-
-    if (issue) {
-      errors = { ...errors, [fieldKey]: issue.message };
-      return;
-    }
-
-    if (errors[fieldKey]) {
-      const { [fieldKey]: _removed, ...remaining } = errors;
-      errors = remaining;
-    }
-  }
-
-  function setSerializedValue(next: string) {
-    serializedValue = next;
-    if (serializedInputElement) serializedInputElement.value = next;
-  }
-
-  /** Enum Select is one-way (value + onchange) rather than a function binding:
-   *  the encode/decode round-trip is unstable inside Svelte's <select> binding
-   *  writeback, which reverts the selection. Decode the chosen option here. */
-  function updateEnum(field: SchemaFormField, event: Event) {
-    if (submitting) return;
-    const select = event.currentTarget as HTMLSelectElement;
-    updateValue(field.path, decodeEnumValue(select.value));
-  }
-
-  /** JSON fields hold a raw text draft (validated/parsed on submit), so the
-   *  textarea's value flows into `rawDrafts` rather than the typed value tree. */
-  function updateRawJsonValue(field: SchemaFormField, next: string) {
-    if (submitting) return;
-    const key = pathKey(field.path);
-    rawDrafts = { ...rawDrafts, [key]: next };
-    const parsed = parseJsonDraft(field.path, next);
-    parsedRawDrafts = {
-      ...parsedRawDrafts,
-      [key]: parsed.ok ? parsed : { ok: false, message: parsed.issue.message },
-    };
-    bumpTouchedValidationSequence(field.path);
-    if (errors[key]) {
-      const { [key]: _removed, ...remaining } = errors;
-      errors = remaining;
-    }
-    setSerializedValue('');
-    reportDraftChange();
-  }
-
-  function handleFieldInput(field: SchemaFormField, event: Event) {
-    if (submitting) return;
-    bumpTouchedValidationSequence(field.path);
-    if (field.kind !== 'number' && field.kind !== 'integer') return;
-    if (!(event.target instanceof HTMLInputElement)) return;
-    numericDrafts = { ...numericDrafts, [pathKey(field.path)]: event.target.value };
-    setSerializedValue('');
-    reportDraftChange();
-  }
-
-  function arrayRows(field: SchemaFormField): Array<{ key: string; index: number }> {
-    const values = arrayValueAtPath(formValue, field.path);
-    const keys = arrayKeys[pathKey(field.path)] ?? [];
-    return values.map((_, index) => ({
-      key: keys[index] ?? `${pathKey(field.path)}-${index}`,
-      index,
-    }));
-  }
-
-  function addArrayItem(field: SchemaFormField) {
-    if (submitting) return;
-    const values = arrayValueAtPath(formValue, field.path);
-    const nextValue = field.item ? defaultValueForField(field.item) : null;
-    updateValue(field.path, [...values, nextValue]);
-    const key = pathKey(field.path);
-    arrayKeys = {
-      ...arrayKeys,
-      [key]: [...(arrayKeys[key] ?? []), `${key}-${arrayKeyCounter++}`],
-    };
-  }
-
-  function removeArrayItem(field: SchemaFormField, index: number) {
-    if (submitting) return;
-    const values = arrayValueAtPath(formValue, field.path);
-    updateValue(
-      field.path,
-      values.filter((_, candidateIndex) => candidateIndex !== index),
-      false,
-    );
-    rawDrafts = reindexArrayPathState(rawDrafts, field.path, index);
-    parsedRawDrafts = reindexArrayPathState(parsedRawDrafts, field.path, index);
-    numericDrafts = reindexArrayPathState(numericDrafts, field.path, index);
-    errors = reindexArrayPathState(errors, field.path, index);
-    touchedValidationSequences = bumpPathValidationSequences(
-      reindexArrayPathState(touchedValidationSequences, field.path, index),
-      field.path,
-    );
-    const key = pathKey(field.path);
-    arrayKeys = {
-      ...arrayKeys,
-      [key]: (arrayKeys[key] ?? []).filter((_, candidateIndex) => candidateIndex !== index),
-    };
-    reportDraftChange();
-  }
-
-  function reindexArrayPathState<T>(
-    state: Record<string, T>,
-    arrayPath: readonly string[],
-    removedIndex: number,
-  ): Record<string, T> {
-    const prefix = pathKey(arrayPath);
-    const pathPrefix = prefix === '' ? '' : `${prefix}/`;
-    const next: Record<string, T> = {};
-
-    for (const [key, stateValue] of Object.entries(state)) {
-      if (!key.startsWith(pathPrefix)) {
-        next[key] = stateValue;
-        continue;
-      }
-
-      const relativeKey = key.slice(pathPrefix.length);
-      if (relativeKey === '') {
-        next[key] = stateValue;
-        continue;
-      }
-
-      const [indexSegment = '', ...remainingSegments] = relativeKey.split('/');
-      const index = Number(indexSegment);
-      if (!Number.isInteger(index) || index < 0) {
-        next[key] = stateValue;
-        continue;
-      }
-
-      if (index < removedIndex) {
-        next[key] = stateValue;
-        continue;
-      }
-
-      if (index === removedIndex) continue;
-
-      const shiftedKey = [String(index - 1), ...remainingSegments].join('/');
-      next[`${pathPrefix}${shiftedKey}`] = stateValue;
-    }
-
-    return next;
-  }
-
-  function bumpPathValidationSequences(
-    state: Record<string, number>,
-    path: readonly string[],
-  ): Record<string, number> {
-    const prefix = pathKey(path);
-    const pathPrefix = prefix === '' ? '' : `${prefix}/`;
-    const next: Record<string, number> = {};
-
-    for (const [key, sequence] of Object.entries(state)) {
-      next[key] = key === prefix || key.startsWith(pathPrefix) ? sequence + 1 : sequence;
-    }
-
-    return next;
-  }
-
-  function seedRawDrafts(field: SchemaFormField, currentValue: unknown): Record<string, string> {
-    const drafts: Record<string, string> = {};
-    for (const jsonField of currentJsonFields(field, currentValue)) {
-      drafts[pathKey(jsonField.path)] = JSON.stringify(
-        getValueAtPath(currentValue, jsonField.path) ?? null,
-        null,
-        2,
-      );
-    }
-    return drafts;
-  }
-
-  function currentJsonFields(field: SchemaFormField, currentValue: unknown): SchemaFormField[] {
-    const fields: SchemaFormField[] = [];
-
-    function visit(candidate: SchemaFormField) {
-      if (candidate.kind === 'json') fields.push(candidate);
-      for (const child of candidate.fields) visit(child);
-      if (candidate.kind === 'array' && candidate.item) {
-        for (const [index] of arrayValueAtPath(currentValue, candidate.path).entries()) {
-          visit(rebaseFieldPath(candidate.item, [...candidate.path, String(index)]));
-        }
-      }
-    }
-
-    visit(field);
-    return fields;
-  }
-
-  function currentNumericFields(field: SchemaFormField, currentValue: unknown): SchemaFormField[] {
-    const fields: SchemaFormField[] = [];
-
-    function visit(candidate: SchemaFormField) {
-      if (candidate.kind === 'number' || candidate.kind === 'integer') fields.push(candidate);
-      for (const child of candidate.fields) visit(child);
-      if (candidate.kind === 'array' && candidate.item) {
-        for (const [index] of arrayValueAtPath(currentValue, candidate.path).entries()) {
-          visit(rebaseFieldPath(candidate.item, [...candidate.path, String(index)]));
-        }
-      }
-    }
-
-    visit(field);
-    return fields;
-  }
-
-  function seedArrayKeys(field: SchemaFormField, currentValue: unknown): Record<string, string[]> {
-    const keys: Record<string, string[]> = {};
-
-    function visit(candidate: SchemaFormField) {
-      if (candidate.kind === 'array') {
-        const key = pathKey(candidate.path);
-        keys[key] = arrayValueAtPath(currentValue, candidate.path).map(
-          () => `${key}-${arrayKeyCounter++}`,
-        );
-      }
-      for (const child of candidate.fields) visit(child);
-      if (candidate.item) visit(candidate.item);
-    }
-
-    visit(field);
-    return keys;
-  }
-
-  function rawJsonIssues(): { value: unknown; issues: SchemaFormValidationIssue[] } {
-    let nextValue = formValue;
-    const issues: SchemaFormValidationIssue[] = [];
-    for (const field of currentJsonFields(model.field, formValue)) {
-      const parsed = parsedRawDrafts[pathKey(field.path)];
-      if (parsed === undefined) continue;
-      if (parsed.ok) {
-        nextValue = setValueAtPath(nextValue, field.path, parsed.value);
-      } else {
-        issues.push({ path: field.path, message: parsed.message });
-      }
-    }
-    return { value: nextValue, issues };
+    if (formState.rawDrafts[key] !== undefined) return formState.rawDrafts[key];
+    return JSON.stringify(getValueAtPath(formState.formValue, field.path) ?? null, null, 2);
   }
 
   async function reportSubmitIssues(issues: SchemaFormValidationIssue[], submitId: number) {
     if (activeSubmitId !== submitId) return;
-    errors = issuesByPath(issues);
-    setSerializedValue('');
+    formState.applyIssues(issues);
     submitting = false;
     await focusFirstError(submitId);
   }
@@ -509,19 +194,13 @@
     activeSubmitId = submitId;
     submitting = true;
     try {
-      const raw = rawJsonIssues();
-      if (raw.issues.length > 0) {
-        await reportSubmitIssues(raw.issues, submitId);
+      const draft = formState.buildSubmitCandidate();
+      if (!draft.ok) {
+        await reportSubmitIssues(draft.issues, submitId);
         return;
       }
 
-      let candidate = raw.value;
-      for (const field of currentNumericFields(model.field, formValue)) {
-        const draft = numericDrafts[pathKey(field.path)];
-        if (draft !== undefined) candidate = setValueAtPath(candidate, field.path, draft);
-      }
-      candidate = pruneUndefined(candidate);
-      const result = await validateSchemaValue(schema, candidate);
+      const result = await validateSchemaValue(schema, draft.value);
       if (!result.valid) {
         await reportSubmitIssues(result.issues, submitId);
         return;
@@ -533,9 +212,7 @@
         return;
       }
 
-      formValue = result.value;
-      errors = {};
-      setSerializedValue(serialized.value);
+      formState.commit(result.value, serialized.value);
       await onsubmit?.(result.value as SchemaFormOutput, event);
 
       if (shouldResumeNativeSubmit()) {
@@ -599,9 +276,9 @@
       {@render groupLegend(field)}
       <div
         class="cinder-schema-form__array"
-        data-cinder-empty={arrayRows(field).length === 0 || undefined}
+        data-cinder-empty={formState.arrayRows(field).length === 0 || undefined}
       >
-        {#each arrayRows(field) as row (row.key)}
+        {#each formState.arrayRows(field) as row (row.key)}
           {@const itemField = field.item
             ? rebaseFieldPath(field.item, [...field.path, String(row.index)])
             : undefined}
@@ -614,7 +291,7 @@
               class="cinder-schema-form__secondary-button"
               aria-label={`Remove ${field.label} item ${row.index + 1}`}
               disabled={submitting}
-              onclick={() => removeArrayItem(field, row.index)}
+              onclick={() => formState.removeArrayItem(field, row.index)}
             >
               Remove
             </button>
@@ -625,21 +302,24 @@
         type="button"
         class="cinder-schema-form__secondary-button"
         disabled={submitting}
-        onclick={() => addArrayItem(field)}
+        onclick={() => formState.addArrayItem(field)}
       >
         Add {field.label}
       </button>
     </fieldset>
   {:else}
-    <div class="cinder-schema-form__field" oninput={(event) => handleFieldInput(field, event)}>
+    <div
+      class="cinder-schema-form__field"
+      oninput={(event) => formState.handleFieldInput(field, event)}
+    >
       {#if field.kind === 'string'}
         <Input
           {id}
           {...labelledProps}
           required={field.required}
           disabled={submitting}
-          onblur={() => validateTouchedField(field)}
-          bind:value={() => stringValue(field), (next) => updateValue(field.path, next)}
+          onblur={() => formState.validateTouchedField(field)}
+          bind:value={() => stringValue(field), (next) => formState.updateValue(field.path, next)}
         />
       {:else if field.kind === 'number' || field.kind === 'integer'}
         <NumberInput
@@ -648,9 +328,9 @@
           required={field.required}
           disabled={submitting}
           step={field.kind === 'integer' ? 1 : undefined}
-          onblur={() => validateTouchedField(field)}
+          onblur={() => formState.validateTouchedField(field)}
           value={numberFieldValue(field)}
-          onchange={(next) => updateNumberValue(field, next)}
+          onchange={(next) => formState.updateNumberValue(field, next)}
         />
       {:else if field.kind === 'enum'}
         <Select
@@ -660,8 +340,8 @@
           disabled={submitting}
           options={selectOptions(field)}
           value={enumValue(field)}
-          onchange={(event) => updateEnum(field, event)}
-          onblur={() => validateTouchedField(field)}
+          onchange={(event) => formState.updateEnum(field, event)}
+          onblur={() => formState.validateTouchedField(field)}
         />
       {:else if field.kind === 'boolean'}
         <!-- A required boolean schema property means "the value must be present",
@@ -672,7 +352,9 @@
           {id}
           {...labelledProps}
           disabled={submitting}
-          bind:checked={() => booleanValue(field), (next) => updateValue(field.path, next)}
+          bind:checked={
+            () => booleanValue(field), (next) => formState.updateValue(field.path, next)
+          }
         />
       {:else}
         <Textarea
@@ -683,8 +365,10 @@
           rows={6}
           spellcheck={false}
           class="cinder-schema-form__json-control"
-          onblur={() => validateTouchedField(field)}
-          bind:value={() => rawJsonValue(field), (next) => updateRawJsonValue(field, next)}
+          onblur={() => formState.validateTouchedField(field)}
+          bind:value={
+            () => rawJsonValue(field), (next) => formState.updateRawJsonValue(field, next)
+          }
         />
       {/if}
     </div>
@@ -717,7 +401,12 @@
     {/each}
   </div>
 
-  <input bind:this={serializedInputElement} type="hidden" {name} value={serializedValue} />
+  <input
+    bind:this={serializedInputElement}
+    type="hidden"
+    {name}
+    value={formState.serializedValue}
+  />
 
   <button type="submit" class="cinder-schema-form__submit" disabled={submitting}>
     {submitting ? 'Validating...' : submitLabel}
