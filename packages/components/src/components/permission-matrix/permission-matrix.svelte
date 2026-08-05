@@ -124,11 +124,7 @@
                   {@const state = getCellState(row, column)}
                   {@const accessibleLabel = cellLabel(row, column, state)}
                   {@const visibleLabel = stateLabel(state)}
-                  <td
-                    class="cinder-permission-matrix__cell"
-                    data-cinder-state={state}
-                    aria-label={accessibleLabel}
-                  >
+                  <td class="cinder-permission-matrix__cell" data-cinder-state={state}>
                     {#if onCellClick}
                       <button
                         type="button"
@@ -153,6 +149,7 @@
                     {:else}
                       <span
                         class="cinder-permission-matrix__cell-control"
+                        aria-label={accessibleLabel}
                         data-cinder-row={row.id}
                         data-cinder-column={column.id}
                         data-cinder-state={state}
