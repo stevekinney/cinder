@@ -169,6 +169,201 @@ describe('discoverAll', () => {
   });
 });
 
+// Snapshot of every family discoverSidebarComponents() currently returns, sorted for a stable
+// diff. When this test fails because you intentionally added or removed a sidebar family,
+// regenerate this array — do not delete entries to make the test pass without confirming the
+// removal (or addition) was intentional.
+const SIDEBAR_BASELINE = [
+  'access-gate',
+  'accordion',
+  'action-row',
+  'alert',
+  'alert-dialog',
+  'approval-card',
+  'area-chart',
+  'aspect-ratio',
+  'autocomplete',
+  'avatar',
+  'avatar-group',
+  'backdrop',
+  'badge',
+  'banner',
+  'bar-chart',
+  'bento-grid',
+  'blog-section',
+  'breadcrumbs',
+  'button',
+  'button-group',
+  'calendar',
+  'call-to-action-section',
+  'callout',
+  'capability-gate',
+  'card',
+  'carousel',
+  'chat',
+  'chat-composer-popover',
+  'chat-conversation-header',
+  'chat-conversation-list',
+  'checkbox',
+  'checkbox-group',
+  'chip',
+  'choice-grid',
+  'click-away-listener',
+  'code-block',
+  'collapsible',
+  'color-field',
+  'color-picker',
+  'color-swatch-picker',
+  'combobox',
+  'command-menu',
+  'command-palette',
+  'confirm-dialog',
+  'connection-indicator',
+  'container',
+  'context-menu',
+  'copy-button',
+  'data-grid',
+  'data-list',
+  'data-table',
+  'date-picker',
+  'date-range-field',
+  'description-list',
+  'diff-statistics',
+  'diff-viewer',
+  'divider',
+  'drawer',
+  'dropdown',
+  'empty-state',
+  'event-stream-viewer',
+  'event-timeline',
+  'faceted-filter-bar',
+  'feature-section',
+  'feed',
+  'file-upload',
+  'floating-action',
+  'focus-trap',
+  'footer',
+  'form-field',
+  'form-section',
+  'grid',
+  'grid-list',
+  'hero-section',
+  'hover-card',
+  'image',
+  'inline-loading',
+  'input',
+  'invocation-rule-builder',
+  'json-editor',
+  'json-schema-editor',
+  'json-viewer',
+  'kanban-board',
+  'kbd',
+  'keyboard-shortcuts',
+  'line-chart',
+  'link',
+  'load-more',
+  'logo-cloud',
+  'markdown-editor',
+  'marquee',
+  'masonry',
+  'matrix-chart',
+  'media-controls',
+  'mega-menu',
+  'menu-bar',
+  'message',
+  'meter',
+  'modal',
+  'multi-select',
+  'navigation-bar',
+  'newsletter-section',
+  'number-input',
+  'page-header',
+  'pagination',
+  'payload-inspector',
+  'permission-matrix',
+  'phone-input',
+  'pin-input',
+  'popover',
+  'portal',
+  'pricing-card',
+  'pricing-section',
+  'progress',
+  'qr-code',
+  'radio-group',
+  'rating',
+  'resizable-panels',
+  'review-editor',
+  'run-step-timeline',
+  'schedule-builder',
+  'schema-form',
+  'scroll-area',
+  'search-field',
+  'secret-value-field',
+  'section-heading',
+  'segmented-control',
+  'select',
+  'selectable-row',
+  'selection-popover',
+  'share-card',
+  'sheet',
+  'shortcut-hint',
+  'side-navigation',
+  'sidebar',
+  'skeleton',
+  'skip-link',
+  'slider',
+  'sortable-list',
+  'source-diff-viewer',
+  'sparkbar',
+  'spectrogram',
+  'spectrum-chart',
+  'speed-dial',
+  'spinner',
+  'stacked-list-item',
+  'statistic-group',
+  'statistics-section',
+  'status-dot',
+  'steps',
+  'surface',
+  'table',
+  'table-of-contents',
+  'tabs',
+  'tag-input',
+  'team-section',
+  'testimonial-section',
+  'textarea',
+  'time-field',
+  'timeline',
+  'toast-region',
+  'toggle',
+  'toolbar',
+  'tooltip',
+  'transfer-list',
+  'tree',
+  'typography',
+  'virtual-list',
+  'visually-hidden',
+  'waveform',
+] as const;
+
+/**
+ * Two-directional membership diff: `missing` names a baseline entry that
+ * disappeared from `actual` (almost always a discovery regression); `unexpected`
+ * names an `actual` entry not yet recorded in `baseline` (usually an
+ * intentional addition that forgot to update the baseline).
+ */
+function diffSidebarBaseline(
+  baseline: readonly string[],
+  actual: readonly string[],
+): { missing: string[]; unexpected: string[] } {
+  const actualSet = new Set(actual);
+  const baselineSet = new Set(baseline);
+  return {
+    missing: baseline.filter((name) => !actualSet.has(name)),
+    unexpected: actual.filter((name) => !baselineSet.has(name)),
+  };
+}
+
 describe('discoverSidebarComponents', () => {
   it('returns only component names with at least one example', async () => {
     const all = await discoverAll();
@@ -225,7 +420,7 @@ describe('discoverSidebarComponents', () => {
     }
   });
 
-  it('keeps the sidebar at or below the documented product gate', async () => {
+  it('keeps the sidebar in sync with the documented baseline', async () => {
     // The plan named a 70-entry cap based on a 99-component baseline. The
     // repository has grown to 134 components since then; adding the four
     // new parent families (feed, grid-list, statistic-group, side-navigation)
@@ -328,51 +523,48 @@ describe('discoverSidebarComponents', () => {
     // standalone row-action family, bringing the measured ceiling to 169.
     // JsonEditor adds one standalone JSON source-editing family with examples,
     // bringing the measured ceiling to 170.
+    // The `170` ceiling above is historical; it is superseded by the exact-membership `SIDEBAR_BASELINE` check below.
     const sidebar = await discoverSidebarComponents();
-    expect(sidebar.length).toBeLessThanOrEqual(170);
-    // Positive anchor for the +1: stacked-list-item is the family the #394
-    // backfill newly surfaces, so it must actually be present. Without this the
-    // upper-bound alone would silently pass if the regression that dropped it
-    // from the sidebar also dropped some other family in its place.
-    expect(sidebar).toContain('stacked-list-item');
-    expect(sidebar).toContain('json-editor');
-    expect(sidebar).toContain('selectable-row');
-    expect(sidebar).toContain('page-header');
-    expect(sidebar).toContain('data-grid');
-    expect(sidebar).toContain('time-field');
-    expect(sidebar).toContain('grid');
-    expect(sidebar).toContain('masonry');
-    expect(sidebar).toContain('speed-dial');
-    expect(sidebar).toContain('action-row');
-    expect(sidebar).toContain('transfer-list');
-    expect(sidebar).toContain('chat-conversation-header');
-    expect(sidebar).toContain('chat-conversation-list');
-    expect(sidebar).toContain('permission-matrix');
-    expect(sidebar).toContain('access-gate');
-    expect(sidebar).toContain('schema-form');
-    expect(sidebar).toContain('virtual-list');
-    expect(sidebar).toContain('meter');
-    // Positive anchors for the nine families surfaced by the #463 example backfill.
-    expect(sidebar).toContain('banner');
-    expect(sidebar).toContain('callout');
-    expect(sidebar).toContain('checkbox-group');
-    expect(sidebar).toContain('color-swatch-picker');
-    expect(sidebar).toContain('file-upload');
-    expect(sidebar).toContain('image');
-    expect(sidebar).toContain('number-input');
-    expect(sidebar).toContain('sortable-list');
-    expect(sidebar).toContain('approval-card');
-    expect(sidebar).toContain('bento-grid');
-    expect(sidebar).toContain('multi-select');
-    expect(sidebar).toContain('qr-code');
-    expect(sidebar).toContain('marquee');
-    expect(sidebar).toContain('date-picker');
-    expect(sidebar).toContain('sparkbar');
-    expect(sidebar).toContain('event-timeline');
-    expect(sidebar).toContain('source-diff-viewer');
-    expect(sidebar).toContain('chat-composer-popover');
-    expect(sidebar).toContain('inline-loading');
-    expect(sidebar).toContain('kanban-board');
+
+    const { missing, unexpected } = diffSidebarBaseline(SIDEBAR_BASELINE, sidebar);
+
+    // A non-empty `missing` array means a family that used to be in the sidebar disappeared —
+    // almost always a discovery regression (bad glob, misconfiguration, slug collision).
+    expect(missing).toEqual([]);
+    // A non-empty `unexpected` array means a new family was added without updating
+    // SIDEBAR_BASELINE above — intentional; add the new name(s) to the array.
+    expect(unexpected).toEqual([]);
+
+    // The two Set-based checks above are diagnostic: they name exactly which family is missing
+    // or unexpected, which is more useful for debugging than a single array-equality failure.
+    // But Set comparison alone cannot detect a duplicate entry (the same name appearing twice
+    // in `sidebar`) or an ordering change. `discoverSidebarComponents()` returns entries sorted
+    // alphabetically by `localeCompare` (via `discoverComponentDefinitions()`'s
+    // `.toSorted((left, right) => left.name.localeCompare(right.name))` in `discover.ts`), and
+    // `SIDEBAR_BASELINE` above is written in that same sorted order — so exact array equality is
+    // a valid, stronger assertion, not an accident of this baseline's construction. Assert it too:
+    expect(sidebar).toEqual([...SIDEBAR_BASELINE]);
+  });
+
+  describe('sidebar baseline diff', () => {
+    it('reports a dropped family as missing', () => {
+      const { missing, unexpected } = diffSidebarBaseline(['a', 'b'], ['a']);
+      expect(missing).toEqual(['b']);
+      expect(unexpected).toEqual([]);
+    });
+
+    it('reports an added family as unexpected', () => {
+      const { missing, unexpected } = diffSidebarBaseline(['a'], ['a', 'b']);
+      expect(missing).toEqual([]);
+      expect(unexpected).toEqual(['b']);
+    });
+
+    it('does not mask a duplicate entry as a clean pass', () => {
+      // Set-based diffing alone treats ['a', 'a', 'b'] as equal to ['a', 'b']; the exact-array
+      // equality assertion in the baseline test above is what actually catches this — this case
+      // documents why both checks are required, not just the Set diff.
+      expect(['a', 'a', 'b']).not.toEqual(['a', 'b']);
+    });
   });
 
   it('keeps the sidebar strictly smaller than the full component list', async () => {
