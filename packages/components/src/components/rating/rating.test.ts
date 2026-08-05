@@ -312,6 +312,22 @@ describe('Rating error / required / disabled', () => {
     expect(group.getAttribute('aria-required')).toBe('true');
   });
 
+  test('required renders a visible required marker next to the label', () => {
+    const { container } = render(Rating, {
+      props: { id: 'r', label: 'Q', required: true },
+    });
+    const marker = container.querySelector('.cinder-_required-marker');
+    expect(marker).not.toBeNull();
+    expect(marker?.textContent).toBe('*');
+  });
+
+  test('optional rating renders no required marker', () => {
+    const { container } = render(Rating, {
+      props: { id: 'r', label: 'Q', required: false },
+    });
+    expect(container.querySelector('.cinder-_required-marker')).toBeNull();
+  });
+
   test('disabled disables every option', () => {
     const { container } = render(Rating, {
       props: { id: 'r', label: 'Q', value: 2, disabled: true },

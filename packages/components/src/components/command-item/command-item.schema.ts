@@ -31,7 +31,8 @@ const schema = {
     },
     selectionMode: {
       enum: ['item', 'parent'],
-      description: 'The item owns activation. This is the default CommandPalette mode.',
+      description:
+        "`selectionMode` is a compile-time discriminant that only controls whether\n`onSelect` is required; it has no runtime effect on activation dispatch.\n`'item'` is the default CommandPalette mode, in which this component's\nown `onSelect` is required.",
     },
   },
   additionalProperties: false,

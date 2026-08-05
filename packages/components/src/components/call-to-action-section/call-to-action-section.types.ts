@@ -33,6 +33,12 @@ export type CallToActionSectionProps = Omit<HTMLAttributes<HTMLElement>, 'childr
   class?: string;
 };
 
+/**
+ * Cinder-specific props for CallToActionSection, used by the schema generator.
+ *
+ * Rule: the schema surface includes every public prop; inexpressible ones
+ * (callbacks, snippets) are surfaced via `unsupportedProps`, never omitted.
+ */
 export interface CallToActionSectionSchemaProps {
   /** Wrapper element tag. @default "section" */
   as?: 'section' | 'div';
@@ -52,4 +58,10 @@ export interface CallToActionSectionSchemaProps {
   maxWidth?: ContainerMaxWidth;
   /** Custom class merged with `.cinder-call-to-action-section`. */
   class?: string;
+  /** Primary action click callback. */
+  onPrimaryClick?: () => void;
+  /** Secondary action click callback. */
+  onSecondaryClick?: () => void;
+  /** Optional supplemental content below action buttons. */
+  children?: Snippet;
 }

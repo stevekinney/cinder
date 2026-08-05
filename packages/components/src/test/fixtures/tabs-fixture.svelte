@@ -11,6 +11,12 @@
       body: string;
       disabled?: boolean;
     }>;
+    /** Optional extra native attributes forwarded to TabList (for passthrough tests). */
+    tabListRest?: Record<string, string>;
+    /** Optional extra native attributes forwarded to every Tab (for passthrough tests). */
+    tabRest?: Record<string, string>;
+    /** Optional extra native attributes forwarded to every TabPanel (for passthrough tests). */
+    tabPanelRest?: Record<string, string>;
   };
 </script>
 
@@ -26,20 +32,23 @@
     fill = false,
     activateOnFocus,
     items,
+    tabListRest,
+    tabRest,
+    tabPanelRest,
   }: TabsFixtureProps = $props();
 </script>
 
 <Tabs bind:value {orientation} {fill} {...activateOnFocus !== undefined ? { activateOnFocus } : {}}>
-  <TabList label="Test tabs">
+  <TabList label="Test tabs" {...tabListRest}>
     {#each items as item (item.value)}
       {#if item.disabled !== undefined}
-        <Tab value={item.value} disabled={item.disabled}>{item.title}</Tab>
+        <Tab value={item.value} disabled={item.disabled} {...tabRest}>{item.title}</Tab>
       {:else}
-        <Tab value={item.value}>{item.title}</Tab>
+        <Tab value={item.value} {...tabRest}>{item.title}</Tab>
       {/if}
     {/each}
   </TabList>
   {#each items as item (item.value)}
-    <TabPanel value={item.value}>{item.body}</TabPanel>
+    <TabPanel value={item.value} {...tabPanelRest}>{item.body}</TabPanel>
   {/each}
 </Tabs>

@@ -31,6 +31,7 @@
     someSelected,
     onSelectAll,
     selectAllLabel = 'Select all rows',
+    ...rest
   }: TableHeaderProps = $props();
 
   const table = tryGetTableContext();
@@ -76,6 +77,6 @@
   });
 </script>
 
-<thead class={classNames('cinder-table__header', className)}>
+<thead {...rest} class={classNames('cinder-table__header', className)}>
   {@render children()}
 </thead>

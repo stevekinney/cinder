@@ -23,6 +23,10 @@
     rows: Array<{ id: string; cells: string[]; selectionDisabled?: boolean }>;
     /** Optional extra native attributes forwarded to every TableCell (for passthrough tests). */
     cellProps?: Omit<TableCellProps, 'children'>;
+    /** Optional extra native attributes forwarded to TableBody (for passthrough tests). */
+    bodyProps?: { 'data-testid'?: string };
+    /** Optional extra native attributes forwarded to TableHeader (for passthrough tests). */
+    headerProps?: { 'data-testid'?: string };
   };
 </script>
 
@@ -50,6 +54,8 @@
     columns,
     rows,
     cellProps,
+    bodyProps,
+    headerProps,
   }: TableFixtureProps = $props();
 
   const selectableRows = $derived(rows.filter((r) => !r.selectionDisabled));
@@ -87,6 +93,7 @@
   {...scrollContainerProps !== undefined ? { scrollContainerProps } : {}}
 >
   <TableHeader
+    {...headerProps}
     {...includeHeaderSelectionState ? { allSelected, someSelected } : {}}
     {...includeHeaderSelectionHandler ? { onSelectAll: onSelectAll } : {}}
   >
@@ -107,7 +114,7 @@
       </TableRow>
     {/if}
   </TableHeader>
-  <TableBody>
+  <TableBody {...bodyProps}>
     {#each rows as row (row.id)}
       {#if row.selectionDisabled}
         <TableRow selectionDisabled={true}>

@@ -101,4 +101,13 @@ describe('Tab', () => {
     expect(ariaControls).toBeTruthy();
     expect(ariaControls).toBe(panel?.getAttribute('id'));
   });
+
+  test('forwards native attributes to the tab <button>', () => {
+    const { container } = render(Wrapper, {
+      value: 'a',
+      items,
+      tabRest: { 'data-testid': 'probe' },
+    });
+    expect(container.querySelector('[role="tab"]')?.getAttribute('data-testid')).toBe('probe');
+  });
 });

@@ -37,6 +37,7 @@
     ariaLabel,
     ariaLabelledby,
     class: className,
+    ...rest
   }: MeterProps = $props();
 
   const hasValidRange = $derived(Number.isFinite(min) && Number.isFinite(max) && max > min);
@@ -155,6 +156,7 @@
 </script>
 
 <div
+  {...rest}
   class={classNames('cinder-meter', className)}
   role="meter"
   aria-label={normalizedAriaLabel}

@@ -9,6 +9,7 @@
     tagInputId?: string;
     ariaLabel?: string;
     ariaLabelledby?: string;
+    tagInputRequired?: boolean;
   };
 </script>
 
@@ -26,6 +27,7 @@
     tagInputId,
     ariaLabel,
     ariaLabelledby,
+    tagInputRequired,
   }: FormFieldTagInputFixtureProps = $props();
 
   const fieldOptional = $derived({
@@ -38,6 +40,7 @@
   const tagInputOptional = $derived({
     ...(ariaLabel !== undefined ? { 'aria-label': ariaLabel } : {}),
     ...(ariaLabelledby !== undefined ? { 'aria-labelledby': ariaLabelledby } : {}),
+    ...(tagInputRequired !== undefined ? { required: tagInputRequired } : {}),
   });
 </script>
 

@@ -19,11 +19,11 @@
   import { setTableSectionContext } from '../table/table.context.ts';
   import { classNames } from '../../utilities/class-names.ts';
 
-  let { class: className, children }: TableBodyProps = $props();
+  let { class: className, children, ...rest }: TableBodyProps = $props();
 
   setTableSectionContext('body');
 </script>
 
-<tbody class={classNames('cinder-table__body', className)}>
+<tbody {...rest} class={classNames('cinder-table__body', className)}>
   {@render children()}
 </tbody>

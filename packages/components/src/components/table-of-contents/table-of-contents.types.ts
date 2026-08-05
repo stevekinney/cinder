@@ -55,7 +55,10 @@ export interface TableOfContentsSchemaProps {
   class?: string;
   /** Explicit nested TOC items for controlled mode. */
   items?: TableOfContentsItem[];
-  /** CSS selector used to find the target heading container in derived mode. */
+  /**
+   * Schema surface accepts the CSS-selector form only; the component prop
+   * additionally accepts a live HTMLElement — see TableOfContentsProps.target.
+   */
   target?: string;
   /**
    * CSS selector used to gather headings inside the target element.
