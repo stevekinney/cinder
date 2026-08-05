@@ -4,6 +4,20 @@ export type VirtualKeyboardDismissalOptions = {
   composerForm: () => HTMLElement | null;
   composerOwnsKeyboard: () => boolean;
   isRestoringFocus: () => boolean;
+  /**
+   * Whether a pointer button is currently held down, tracked independently
+   * of `enabled` (which gates on the popover being open). A drag-select
+   * gesture that reaches the viewport edge triggers the browser's native
+   * autoscroll-while-selecting behavior, firing real `scroll` events on
+   * `window` WHILE the pointer is still down — often before the gesture
+   * that is opening this popover has even finished (the pointer went down
+   * before the popover existed/was enabled). Movement dismissal must ignore
+   * those self-produced events, so the caller tracks pointer state for the
+   * component's full mounted lifetime and reports it here, rather than this
+   * module tracking it itself only while `enabled()` is true (which would
+   * miss a pointerdown that happened before the popover opened).
+   */
+  isPointerDown: () => boolean;
   onDismiss: (preventScroll: boolean) => void;
   onFocusMovedOutside: () => void;
 };
@@ -189,6 +203,16 @@ export function createVirtualKeyboardDismissal(options: VirtualKeyboardDismissal
           return;
         }
       }
+      // A scroll/resize produced by the SAME held-down pointer gesture that
+      // is (or just did) open the popover — e.g. the browser's native
+      // autoscroll-while-selecting kicking in as a drag-select nears the
+      // viewport edge — is not "the user moved on"; it's the gesture that
+      // anchors the popover still in progress. Ignore movement events while
+      // any pointer button is held; the dismiss re-arms the instant it's
+      // released. Checked last (not as an early return) so the viewport/
+      // keyboard-transition bookkeeping above still runs while the pointer
+      // is down — only the final act of dismissing is suppressed.
+      if (options.isPointerDown()) return;
       closeForMovement();
     };
     const dismissVisualViewport = (event: Event) => {
@@ -216,6 +240,10 @@ export function createVirtualKeyboardDismissal(options: VirtualKeyboardDismissal
       ) {
         return;
       }
+      // See the matching guard at the end of `dismiss` above — checked last
+      // so the keyboard-transition bookkeeping above still runs while a
+      // pointer is held; only the final dismissal is suppressed.
+      if (options.isPointerDown()) return;
       closeForMovement();
     };
     // A cancel/submit that only returns focus to the pre-open owner (or drops

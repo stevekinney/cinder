@@ -1562,6 +1562,67 @@ describe('SelectionPopover', () => {
     }
   });
 
+  test('survives the drag-select gesture that opened it, even when the browser autoscrolls mid-drag', async () => {
+    // Regression test for issue E: SelectionPopover dismissed itself
+    // immediately after opening. The real mechanism is that a drag-select
+    // gesture reaching the viewport edge triggers the browser's native
+    // autoscroll-while-selecting behavior — confirmed with a real Chromium
+    // Playwright repro (packages/testing/tests/selection-popover-drag-
+    // dismissal.playwright.ts) — which fires real `scroll` events on
+    // `window` WHILE the pointer button is still held, i.e. as part of the
+    // very selection gesture that is opening this popover. This test
+    // reproduces that exact event sequence — pointerdown, scroll bursts
+    // while held, pointerup — mirroring the consumer wiring in
+    // selection-popover.examples.json (open flips true via selectionchange
+    // mid-drag), and asserts the popover does not self-dismiss.
+    let closed = false;
+
+    const { rerender } = render(SelectionPopover, {
+      props: {
+        id: 'selection-comment',
+        open: false,
+        position: { x: 120, y: 80 },
+        onClose: () => {
+          closed = true;
+        },
+      },
+    });
+
+    // The pointer goes down to begin the drag-select — this happens BEFORE
+    // the popover opens, exactly like a real drag-select: pointer tracking
+    // must already be live at mount, not start only once the popover opens.
+    await fireEvent.pointerDown(window);
+
+    // Partway through the drag, the consumer's selectionchange handler sees
+    // a non-collapsed selection and opens the popover (this is the false ->
+    // true transition selection-popover.examples.json performs).
+    await rerender({
+      open: true,
+      position: { x: 120, y: 80 },
+      onClose: () => {
+        closed = true;
+      },
+    });
+
+    // The drag continues toward the viewport edge; the browser autoscrolls,
+    // firing a burst of real `scroll` events while the pointer is still down.
+    await fireEvent.scroll(window);
+    await fireEvent.scroll(window);
+    await fireEvent.scroll(window);
+
+    expect(closed).toBe(false);
+    expect(screen.getByRole('toolbar', { name: 'Selection actions' })).not.toBeNull();
+
+    // The gesture ends.
+    await fireEvent.pointerUp(window);
+    expect(closed).toBe(false);
+
+    // A later, genuinely external scroll (the user scrolling away after the
+    // selection is done) must still dismiss normally.
+    await fireEvent.scroll(window);
+    expect(closed).toBe(true);
+  });
+
   test('movement dismissal restores focus without scrolling the prior focus owner', async () => {
     const trigger = document.createElement('button');
     trigger.textContent = 'Open selection actions';

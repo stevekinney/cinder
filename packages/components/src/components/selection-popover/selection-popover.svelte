@@ -50,6 +50,38 @@
   let wasOpen = false;
   let closeRequested = false;
   let isRestoringFocus = false;
+  // A count, not a boolean: a multi-pointer gesture (two-finger touch, pen +
+  // touch, etc.) can have more than one pointer down at once. Releasing one
+  // must not re-arm scroll-dismissal while another is still held.
+  let activePointerCount = 0;
+  const pointerIsDown = () => activePointerCount > 0;
+
+  // Tracks pointer button state for the component's FULL mounted lifetime —
+  // not just while open. A drag-select gesture that opens this popover (via
+  // the consumer's selectionchange handler, per selection-popover.examples.json)
+  // starts with a pointerdown that happens BEFORE the popover is open/enabled,
+  // so movement-dismissal's own gate (in createVirtualKeyboardDismissal, keyed
+  // off this getter) needs pointer state that was already being tracked when
+  // that pointerdown fired, not state that only starts listening once the
+  // popover opens. See createVirtualKeyboardDismissal's isPointerDown option.
+  $effect(() => {
+    const markPointerDown = () => {
+      activePointerCount += 1;
+    };
+    const markPointerUp = () => {
+      activePointerCount = Math.max(0, activePointerCount - 1);
+    };
+    const pointerTrackingOptions: AddEventListenerOptions = { capture: true, passive: true };
+    window.addEventListener('pointerdown', markPointerDown, pointerTrackingOptions);
+    window.addEventListener('pointerup', markPointerUp, pointerTrackingOptions);
+    window.addEventListener('pointercancel', markPointerUp, pointerTrackingOptions);
+    return () => {
+      window.removeEventListener('pointerdown', markPointerDown, pointerTrackingOptions);
+      window.removeEventListener('pointerup', markPointerUp, pointerTrackingOptions);
+      window.removeEventListener('pointercancel', markPointerUp, pointerTrackingOptions);
+      activePointerCount = 0;
+    };
+  });
 
   const virtualAnchor = $derived.by<VirtualElement | null>(() => {
     if (!position) return null;
@@ -206,6 +238,7 @@
     composerForm: () => composerFormElement,
     composerOwnsKeyboard: () => expanded || commentBody.trim().length > 0,
     isRestoringFocus: () => isRestoringFocus,
+    isPointerDown: pointerIsDown,
     onDismiss: (preventScroll) => requestClose(preventScroll),
     onFocusMovedOutside: () => {
       restoreFocusElement = null;

@@ -37,7 +37,7 @@ if (typeof HTMLDialogElement !== 'undefined') {
   }
 }
 
-const { cleanup, render, fireEvent } = await import('@testing-library/svelte');
+const { cleanup, render, fireEvent, waitFor } = await import('@testing-library/svelte');
 const { default: Modal } = await import('./modal.svelte');
 
 function textSnippet(text: string) {
@@ -72,6 +72,45 @@ describe('Modal', () => {
   test('body uses the panel surface beneath header and footer', async () => {
     const css = await Bun.file(new URL('./modal.css', import.meta.url)).text();
     expect(css).toMatch(/\.cinder-modal__body\s*\{[^}]*background:\s*var\(--cinder-surface\)/s);
+  });
+
+  // Regression guard: the backdrop previously had no `transition` at all (it
+  // snapped in AND out instantly), and the panel's entrance used a
+  // one-directional `@keyframes` animation with no matching exit — so the
+  // modal appeared but had zero exit animation. Both are now driven by
+  // `transition` + `@starting-style`, the same mechanism Drawer/Sheet use,
+  // so `waitForTransitionCompletion` (shared via `createSlidingDialogState`)
+  // can observe completion and defer the real `dialogElement.close()`.
+  test('modal.css replaces the one-directional keyframe entrance with a symmetric transition + starting-style', async () => {
+    const css = await Bun.file(new URL('./modal.css', import.meta.url)).text();
+
+    expect(css).not.toContain('@keyframes cinder-modal-enter');
+    expect(css).not.toContain('animation: cinder-modal-enter');
+
+    const backdropRuleStart = css.indexOf('.cinder-modal::backdrop {');
+    const backdropRuleEnd = css.indexOf('}', backdropRuleStart);
+    const backdropRule = css.slice(backdropRuleStart, backdropRuleEnd);
+    expect(backdropRule).toContain('backdrop-filter');
+    expect(backdropRule).toContain('transition-behavior: allow-discrete;');
+    expect(css).toContain('.cinder-modal[data-cinder-closing]::backdrop');
+
+    const panelRuleStart = css.indexOf('.cinder-modal__panel {');
+    const panelRuleEnd = css.indexOf('}', panelRuleStart);
+    const panelRule = css.slice(panelRuleStart, panelRuleEnd);
+    expect(panelRule).toContain('transition:');
+    expect(css).toContain('.cinder-modal__panel[data-cinder-closing]');
+
+    // Modal declares two separate `@starting-style` blocks (backdrop, then
+    // panel) — assert each independently rather than assuming they're
+    // adjacent in the source.
+    const startingStyleBlocks = Array.from(
+      css.matchAll(/@starting-style\s*\{[\s\S]*?\n {2}\}/g),
+    ).map((match) => match[0]);
+    expect(startingStyleBlocks.length).toBe(2);
+    expect(startingStyleBlocks.some((block) => block.includes('.cinder-modal::backdrop'))).toBe(
+      true,
+    );
+    expect(startingStyleBlocks.some((block) => block.includes('.cinder-modal__panel'))).toBe(true);
   });
 
   test('dialog is in the DOM but has no open attribute when open=false (client-side)', () => {
@@ -196,6 +235,71 @@ describe('Modal', () => {
     expect(closeButton).not.toBeNull();
     await fireEvent.click(closeButton);
     expect(openValue).toBe(false);
+  });
+
+  test('keeps the panel mounted with data-cinder-closing until its exit transition finishes', async () => {
+    // Stub a real (non-zero) transition duration for `.cinder-modal__panel` so
+    // `waitForTransitionCompletion` (shared with Drawer/Sheet via
+    // `createSlidingDialogState`) takes its transitionend-listening path
+    // instead of resolving on the next microtask — this is the only way to
+    // observe the intermediate "closing but still mounted, dialog still
+    // native-open" state that proves a real exit path now exists.
+    const originalGetComputedStyle = window.getComputedStyle.bind(window);
+    window.getComputedStyle = ((target: Element) => {
+      if (target instanceof HTMLElement && target.classList.contains('cinder-modal__panel')) {
+        return {
+          transitionProperty: 'opacity, translate',
+          transitionDuration: '80ms, 80ms',
+          transitionDelay: '0ms, 0ms',
+        } as CSSStyleDeclaration;
+      }
+      return originalGetComputedStyle(target);
+    }) as typeof window.getComputedStyle;
+
+    try {
+      let openValue = true;
+      const { container } = render(Modal, {
+        props: {
+          get open() {
+            return openValue;
+          },
+          set open(value: boolean) {
+            openValue = value;
+          },
+          title: 'Test Modal',
+          children: emptySnippet,
+        },
+      });
+
+      const dialog = container.querySelector('dialog') as HTMLDialogElement;
+      const closeButton = container.querySelector('.cinder-modal__close') as HTMLButtonElement;
+      await fireEvent.click(closeButton);
+
+      // The bound `open` prop flips synchronously (consumers must see this
+      // immediately), but the native <dialog> itself and the panel's DOM
+      // node must both survive the exit transition instead of vanishing in
+      // the same tick — that was the original bug (no exit animation could
+      // ever play).
+      expect(openValue).toBe(false);
+      expect(dialog.hasAttribute('open')).toBe(true);
+      const panel = container.querySelector('.cinder-modal__panel');
+      expect(panel).not.toBeNull();
+      expect(panel?.hasAttribute('data-cinder-closing')).toBe(true);
+      expect(dialog.hasAttribute('data-cinder-closing')).toBe(true);
+
+      for (const propertyName of ['opacity', 'translate']) {
+        const event = new Event('transitionend');
+        Object.defineProperty(event, 'propertyName', { value: propertyName });
+        panel?.dispatchEvent(event);
+      }
+
+      await waitFor(() => {
+        expect(dialog.hasAttribute('open')).toBe(false);
+        expect(container.querySelector('.cinder-modal__panel')).toBeNull();
+      });
+    } finally {
+      window.getComputedStyle = originalGetComputedStyle;
+    }
   });
 
   test('dialog close event sets open to false', async () => {

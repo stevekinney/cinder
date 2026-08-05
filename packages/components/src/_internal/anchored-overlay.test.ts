@@ -58,7 +58,17 @@ const computePositionSpy = mock(async (anchor: Element, panel: HTMLElement, opti
     availableHeight,
     elements: { floating: panel, reference: anchor },
   });
-  return { x: 12, y: 18, placement: 'bottom-start', middlewareData: {} };
+  // Simulate Floating UI's arrow middleware having resolved a cross-axis
+  // offset — real `arrow()` populates `middlewareData.arrow` internally;
+  // this mock stands in for that resolution when an `arrow` middleware entry
+  // is present in the request.
+  const arrowRequested = middleware.some((entry) => entry.name === 'arrow');
+  return {
+    x: 12,
+    y: 18,
+    placement: 'bottom-start',
+    middlewareData: arrowRequested ? { arrow: { x: 6 } } : {},
+  };
 });
 const autoUpdateTeardown = mock(() => {});
 const autoUpdateSpy = mock(
@@ -244,5 +254,29 @@ describe('anchored overlay width styles', () => {
     });
     expect(panel.getAttribute('style')).not.toContain('max-block-size');
     expect(panel.style.maxBlockSize).toBe('');
+  });
+
+  test('arrow style carries only the cross-axis offset, never a hardcoded static-side inset', async () => {
+    render(AnchoredOverlayBoundaryFixture, { arrowVisible: true });
+    const arrow = screen.getByTestId('arrow');
+
+    await waitFor(() => {
+      // The mock's `computePosition` resolves `middlewareData.arrow = { x: 6 }`
+      // for a `bottom-start` placement — `x` is the Floating UI-computed
+      // cross-axis offset, so only `left` should be written inline.
+      expect(arrow.getAttribute('style')).toContain('left: 6px');
+    });
+    // Regression guard for the misplaced-caret defect: the static-side offset
+    // (the side touching the panel — `top` for a bottom placement, `bottom`
+    // for top, etc.) used to be hardcoded here as `-4px`, which beat every
+    // consumer's own per-placement CSS on specificity and detached the arrow
+    // from the panel edge in Popover and misshaped it in HoverCard. That
+    // value must never reappear in the shared mechanism — each consumer's
+    // own `[data-cinder-placement^='...']` CSS owns it instead.
+    const style = arrow.getAttribute('style') ?? '';
+    expect(style).not.toContain('-4px');
+    expect(style).not.toContain('top:');
+    expect(style).not.toContain('bottom:');
+    expect(style).not.toContain('right:');
   });
 });

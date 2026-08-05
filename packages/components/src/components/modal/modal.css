@@ -23,8 +23,27 @@
 
   /* Backdrop — native <dialog>::backdrop is controlled by the UA */
   .cinder-modal::backdrop {
-    background: var(--cinder-overlay-backdrop);
+    background-color: var(--cinder-overlay-backdrop);
     backdrop-filter: blur(var(--cinder-overlay-blur));
+    transition:
+      background-color var(--cinder-duration-normal) var(--cinder-ease-standard),
+      backdrop-filter var(--cinder-duration-normal) var(--cinder-ease-standard);
+    /* `::backdrop` is added to/removed from the top layer as a discrete step
+     (like `display`), so `@starting-style` below needs `allow-discrete` to
+     actually engage on insertion instead of silently no-op'ing. */
+    transition-behavior: allow-discrete;
+  }
+
+  .cinder-modal[data-cinder-closing]::backdrop {
+    background-color: transparent;
+    backdrop-filter: blur(0);
+  }
+
+  @starting-style {
+    .cinder-modal::backdrop {
+      background-color: transparent;
+      backdrop-filter: blur(0);
+    }
   }
 
   /* ----------------------------------------
@@ -41,6 +60,35 @@
     box-shadow: var(--cinder-shadow-lg);
     max-height: inherit;
     overflow: hidden;
+    opacity: 1;
+    /* No resting `translate` here (unlike the `[data-cinder-closing]`/
+     `@starting-style` states below) — ANY non-`none` transform/translate
+     value, including a no-op `0 0`, establishes a CSS containing block,
+     which would silently break `position: fixed` for every descendant
+     (e.g. EventTimeline's cluster surface) for the entire time the modal is
+     open, not just mid-transition. `none` (the default) transitions to/from
+     a real value just fine — matching Drawer/Sheet, which never set a
+     resting translate either. */
+    transition:
+      opacity var(--cinder-duration-normal) var(--cinder-ease-standard),
+      translate var(--cinder-duration-normal) var(--cinder-ease-spring);
+  }
+
+  /* Exit transition: the component keeps the panel mounted for the duration
+   of this transition (via the shared `SlidingDialogState`/`data-cinder-closing`
+   lifecycle Drawer and Sheet also use) instead of removing it the instant
+   `open` goes false, so this can actually play. */
+  .cinder-modal__panel[data-cinder-closing] {
+    opacity: 0;
+    translate: 0 -0.5rem;
+    pointer-events: none;
+  }
+
+  @starting-style {
+    .cinder-modal__panel {
+      opacity: 0;
+      translate: 0 -0.5rem;
+    }
   }
 
   /* ----------------------------------------
@@ -178,20 +226,13 @@
  * Reduced motion
  * ---------------------------------------- */
 
-  @media (prefers-reduced-motion: no-preference) {
-    .cinder-modal {
-      animation: cinder-modal-enter var(--cinder-duration-normal) var(--cinder-ease-spring) forwards;
+  @media (prefers-reduced-motion: reduce) {
+    .cinder-modal__panel {
+      transition: none;
     }
 
-    @keyframes cinder-modal-enter {
-      from {
-        opacity: 0;
-        translate: 0 -0.5rem;
-      }
-      to {
-        opacity: 1;
-        translate: 0 0;
-      }
+    .cinder-modal::backdrop {
+      transition: none;
     }
   }
 }

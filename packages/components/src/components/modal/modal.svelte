@@ -20,12 +20,12 @@
 <script lang="ts">
   import type { ModalProps } from './modal.types.ts';
   import { onDestroy } from 'svelte';
-  import { captureFocus, lockBodyScroll, pushEscapeHandler } from '../../_internal/overlay.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
   import { overflowFade } from '../../utilities/attachments.ts';
   import { classNames } from '../../utilities/class-names.ts';
-  import { restoreFocusTo } from '../../utilities/focus.ts';
+  import { useReducedMotion } from '../../utilities/use-reduced-motion.svelte.ts';
   import { createFocusTrap } from '../focus-trap/index.ts';
+  import { createSlidingDialogState } from '../_internal/create-sliding-dialog-state.svelte.ts';
 
   const titleId = $props.id();
 
@@ -45,50 +45,51 @@
   }: ModalProps = $props();
 
   let dialogElement: HTMLDialogElement | undefined = $state();
+  let panelElement: HTMLDivElement | undefined = $state();
   let bodyElement: HTMLDivElement | undefined = $state();
   // `mounted` is false during SSR and becomes true after the first client-side effect.
   // The dialog renders only when mounted (client) or when open (SSR with open=true).
   // This keeps the <dialog> absent from SSR HTML when closed, while letting the client
   // keep the element mounted so dialogElement.close() fires correctly.
   let mounted = $state(false);
-  // Element that had focus before the dialog opened. Captured each time the dialog
-  // transitions from closed → open so focus can be restored to wherever the user
-  // came from, even if the consumer didn't supply an explicit `triggerRef`.
-  let capturedFocus: HTMLElement | null = null;
-  // Refcounted body scroll lock. Acquired when `open` transitions to true and
-  // released on close OR on destroy (defensive — both fire on close-then-unmount,
-  // and idempotence is guaranteed by checking `releaseBodyScrollLock !== null`).
-  let releaseBodyScrollLock: (() => void) | null = null;
-  // Escape-stack handle. Modal handles its own Escape via the native <dialog>
-  // `cancel` event, but pushing a no-op handler keeps non-dialog overlays
-  // above us from accidentally swallowing the keystroke (per OVERLAY-POLICY).
-  let releaseEscapeHandler: (() => void) | null = null;
 
-  function acquireLock() {
-    if (releaseBodyScrollLock !== null) return;
-    releaseBodyScrollLock = lockBodyScroll();
-  }
-
-  function releaseLock() {
-    releaseBodyScrollLock?.();
-    releaseBodyScrollLock = null;
-  }
-
-  function acquireEscapeHandler() {
-    if (releaseEscapeHandler !== null) return;
-    releaseEscapeHandler = pushEscapeHandler(() => {
-      // No-op: the native <dialog> cancel event handles ESC dismissal. We
-      // push this handler purely to participate in the escape-stack ordering
-      // so non-dialog overlays above us route their own ESC correctly.
-    });
-  }
-
-  function releaseEscape() {
-    releaseEscapeHandler?.();
-    releaseEscapeHandler = null;
-  }
-
+  const reducedMotion = useReducedMotion();
   const bodyOverflowFade = overflowFade();
+  // Owns focus capture/restore, body scroll lock, escape-stack participation
+  // (a no-op handler — Modal handles Escape via the native <dialog> `cancel`
+  // event, but still needs a stack entry so non-dialog overlays above it
+  // route their own Escape correctly per OVERLAY-POLICY), and — the piece
+  // Modal previously lacked entirely — a real exit-transition grace period.
+  // This is the same shared mechanism Drawer and Sheet already use, so all
+  // three dialog-based overlays animate symmetrically in and out.
+  const dialogState = createSlidingDialogState({
+    getOpen: () => open,
+    setOpen: (nextOpen) => {
+      open = nextOpen;
+    },
+    getDialogElement: () => dialogElement,
+    getPanelElement: () => panelElement,
+    getReducedMotion: () => reducedMotion.current,
+    getTriggerRef: () => triggerRef,
+    onOpen: () => {
+      // Initial focus strategy:
+      //   1. If a child carries `autofocus`, the native dialog already focused it.
+      //   2. Otherwise, focus the body container (tabindex=-1) so initial focus
+      //      lands on meaningful content rather than the close-X button — which
+      //      would otherwise be the first sequentially-focusable element.
+      // Check both the HTML attribute (set by static markup) and the DOM property
+      // (set by Svelte 5's $.autofocus() helper, which sets element.autofocus = true
+      // rather than the attribute). The attribute selector alone misses the Svelte case.
+      const hasExplicitAutofocus =
+        dialogElement?.querySelector('[autofocus]') !== null ||
+        Array.from(dialogElement?.querySelectorAll<HTMLElement>('*') ?? []).some(
+          (el) => el.autofocus === true,
+        );
+      if (!hasExplicitAutofocus && bodyElement) {
+        bodyElement.focus();
+      }
+    },
+  });
 
   $effect(() => {
     mounted = true;
@@ -110,69 +111,20 @@
   });
 
   $effect(() => {
-    if (!dialogElement) return;
-    if (open && !dialogElement.open) {
-      capturedFocus = captureFocus();
-      dialogElement.showModal();
-      acquireLock();
-      acquireEscapeHandler();
-      // Initial focus strategy:
-      //   1. If a child carries `autofocus`, the native dialog already focused it.
-      //   2. Otherwise, focus the body container (tabindex=-1) so initial focus
-      //      lands on meaningful content rather than the close-X button — which
-      //      would otherwise be the first sequentially-focusable element.
-      // Check both the HTML attribute (set by static markup) and the DOM property
-      // (set by Svelte 5's $.autofocus() helper, which sets element.autofocus = true
-      // rather than the attribute). The attribute selector alone misses the Svelte case.
-      const hasExplicitAutofocus =
-        dialogElement.querySelector('[autofocus]') !== null ||
-        Array.from(dialogElement.querySelectorAll<HTMLElement>('*')).some(
-          (el) => el.autofocus === true,
-        );
-      if (!hasExplicitAutofocus && bodyElement) {
-        bodyElement.focus();
-      }
-    } else if (!open && dialogElement.open) {
-      // Only close if the dialog is actually open — close() throws InvalidStateError
-      // if called on a dialog that was never opened.
-      dialogElement.close();
-    }
+    dialogState.syncOpenState();
   });
 
-  function returnFocus() {
-    // Iterate the local candidate list; the first that passes the connection
-    // /ownership check wins. No fallback to document.body — if both candidates
-    // are gone, leave focus where the browser put it.
-    const candidates: Array<HTMLElement | null> = [triggerRef, capturedFocus];
-    for (const candidate of candidates) {
-      if (restoreFocusTo(candidate)) break;
-    }
-    capturedFocus = null;
-  }
-
   // Single source of truth for all user-initiated dismissal paths: Escape, backdrop click,
-  // and the close-X button. State flips FIRST so a thrown callback does not leave the
-  // dialog open. Callbacks are not awaited; sync throws propagate to the caller.
+  // and the close-X button. `open` flips FIRST (inside requestClose) so a thrown callback
+  // does not leave the dialog's reactive state open. Callbacks are not awaited; sync throws
+  // propagate to the caller.
   function dismiss() {
-    open = false;
+    dialogState.requestClose();
     onDismiss?.();
   }
 
-  function handleClose() {
-    // Fired on the native 'close' event — may be triggered by dismiss() (via dialogElement.close())
-    // or by parent-driven open = false. Only restores focus; does NOT call onDismiss here
-    // so parent-driven closes do not fire the callback.
-    open = false;
-    releaseLock();
-    releaseEscape();
-    returnFocus();
-  }
-
   onDestroy(() => {
-    // Defensive — close-then-unmount and unmount-while-open both land here.
-    // The release functions are idempotent so a double-release is impossible.
-    releaseLock();
-    releaseEscape();
+    dialogState.destroy();
   });
 
   function handleBackdropClick(event: MouseEvent) {
@@ -184,8 +136,9 @@
   function handleNativeCancel(event: Event) {
     // Escape key fires the native 'cancel' event on <dialog>. We prevent the default
     // so the browser doesn't close the dialog through its own mechanism — we route
-    // exclusively through dismiss() → open = false → $effect → dialogElement.close()
-    // → 'close' event → handleClose. This ensures exactly one close path for Escape.
+    // exclusively through dismiss() → requestClose() → the exit transition → the real
+    // 'close' event → dialogState.handleClose(). This ensures exactly one close path
+    // for Escape.
     event.preventDefault();
     if (!dismissOnEscape) return;
     dismiss();
@@ -200,25 +153,31 @@
     aria-modal="true"
     aria-labelledby={titleId}
     {...describedById ? { 'aria-describedby': describedById } : {}}
-    onclose={handleClose}
+    data-cinder-closing={dialogState.isClosing ? '' : undefined}
+    onclose={() => dialogState.handleClose()}
     onclick={handleBackdropClick}
     oncancel={handleNativeCancel}
   >
-    {#if open}
+    {#if dialogState.renderPanel}
       <!--
         The native <dialog> opened with showModal() already traps focus in
         supporting browsers. The shared focus-trap is a defence-in-depth fallback
         that keeps Tab / Shift+Tab cycling inside the panel; it carefully filters
         hidden/inert/disabled/`tabindex="-1"` elements. Modal owns its own initial
-        focus (the body container, below) and focus restoration (returnFocus), so
-        the trap runs with `manageInitialFocus: false` and `restoreFocus: false` —
-        without the former the trap would yank focus off the body onto the close
-        button on the next microtask.
+        focus (the body container, below) and focus restoration (via
+        `dialogState`'s `getTriggerRef`), so the trap runs with
+        `manageInitialFocus: false` and `restoreFocus: false` — without the
+        former the trap would yank focus off the body onto the close button on
+        the next microtask. `active` also drops during the closing transition
+        so the trap stops enforcing tab-containment while the panel fades out.
       -->
       <div
+        bind:this={panelElement}
         class="cinder-modal__panel"
+        data-cinder-closing={dialogState.isClosing ? '' : undefined}
+        inert={dialogState.isClosing}
         {@attach createFocusTrap({
-          active: () => open,
+          active: () => open && !dialogState.isClosing,
           restoreFocus: false,
           manageInitialFocus: false,
         })}

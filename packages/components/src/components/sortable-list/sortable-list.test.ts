@@ -1061,3 +1061,166 @@ describe('SortableList pointer drag preview', () => {
     await fireEvent.pointerUp(handle, { pointerId: 1, pointerType: 'mouse' });
   });
 });
+
+// ---------------------------------------------------------------------------
+// Regression: multi-position pointer drag targeting
+// ---------------------------------------------------------------------------
+//
+// Bug report: dragging past a single neighbor worked, but a longer drag that
+// needed to cross more than one row appeared to stall.
+//
+// Root cause was NOT a stall in the targeting algorithm (recomputeTarget()
+// intentionally re-measures live DOM rects on every rAF-throttled frame, and
+// that live re-measurement is correct — verified separately against real
+// Chromium layout: distinct, monotonically increasing row rects for both
+// SortableList and KanbanBoard). The actual defect was in the test harness:
+// happy-dom's querySelectorAll does not implement the `:scope` combinator, so
+// `listEl.querySelectorAll(':scope > [data-sortable-row]')` silently matched
+// zero rows here even though the plain attribute selector matched every row
+// (confirmed against real Chromium, where both selectors match identically).
+// No prior test in this file caught it — the existing pointer-drag tests
+// never stubbed getBoundingClientRect() and asserted only on the preview
+// portal / class state, never on resulting order, so they could not have
+// exercised this targeting path either way. `_sortable-item.svelte` now
+// selects direct children via `.children` + an attribute check instead of
+// `:scope >`, which is equivalent in every real browser but also works in
+// happy-dom — that is what makes the tests below possible at all.
+//
+// installOrderedRowGeometry below stubs getBoundingClientRect() to compute
+// each row's rect from its CURRENT position among its siblings — recomputed
+// on every call, exactly like a real browser recomputes layout after a DOM
+// reorder. A geometry stub that snapshots rects once (rather than deriving
+// them from live DOM order) would not exercise the same code path a real
+// drag does, since the row that used to sit at the drop target has already
+// moved by the time the next frame's measurement runs.
+const ROW_HEIGHT = 40;
+
+function installOrderedRowGeometry(): () => void {
+  const original = HTMLElement.prototype.getBoundingClientRect;
+  HTMLElement.prototype.getBoundingClientRect = function (this: HTMLElement): DOMRect {
+    if (this.hasAttribute('data-sortable-row')) {
+      const parent = this.parentElement;
+      const siblingRows = parent
+        ? Array.from(parent.children).filter((child) => child.hasAttribute('data-sortable-row'))
+        : [];
+      const index = siblingRows.indexOf(this);
+      if (index >= 0) {
+        const top = index * ROW_HEIGHT;
+        return {
+          top,
+          bottom: top + ROW_HEIGHT,
+          left: 0,
+          right: 200,
+          width: 200,
+          height: ROW_HEIGHT,
+          x: 0,
+          y: top,
+          toJSON() {
+            return this;
+          },
+        } as DOMRect;
+      }
+    }
+    return original.call(this);
+  };
+  return () => {
+    HTMLElement.prototype.getBoundingClientRect = original;
+  };
+}
+
+describe('SortableList multi-position pointer drag', () => {
+  test('a single large pointer move crosses more than one position in one frame', async () => {
+    const restoreGeometry = installOrderedRowGeometry();
+    try {
+      const { container } = renderList({
+        items: [
+          { id: 'a', label: 'Alpha' },
+          { id: 'b', label: 'Beta' },
+          { id: 'c', label: 'Gamma' },
+          { id: 'd', label: 'Delta' },
+          { id: 'e', label: 'Epsilon' },
+        ],
+      });
+      const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
+      installPointerCaptureOnHandle(handle);
+
+      await dispatchPointerEvent(handle, 'pointerdown', {
+        button: 0,
+        clientX: 10,
+        clientY: 20,
+        pointerId: 1,
+        pointerType: 'mouse',
+      });
+
+      // Row 0 (Alpha) is ~40px tall; moving to y=150 crosses three neighbors
+      // (Beta, Gamma, Delta) in a single move — this is the "multi-position
+      // drag" the bug report could not get past.
+      await dispatchPointerEvent(handle, 'pointermove', {
+        clientX: 10,
+        clientY: 150,
+        pointerId: 1,
+        pointerType: 'mouse',
+      });
+      await waitForAnimationFrame();
+
+      const order = Array.from(container.querySelectorAll('[data-sortable-row]')).map((row) =>
+        row.getAttribute('data-key'),
+      );
+      // Alpha must have advanced past more than one neighbor, not just one.
+      expect(order.indexOf('a')).toBeGreaterThan(1);
+
+      await dispatchPointerEvent(handle, 'pointerup', { pointerId: 1, pointerType: 'mouse' });
+    } finally {
+      restoreGeometry();
+    }
+  });
+
+  test('an incremental drag (many small moves) keeps advancing past more than one position', async () => {
+    const restoreGeometry = installOrderedRowGeometry();
+    try {
+      const { container } = renderList({
+        items: [
+          { id: 'a', label: 'Alpha' },
+          { id: 'b', label: 'Beta' },
+          { id: 'c', label: 'Gamma' },
+          { id: 'd', label: 'Delta' },
+          { id: 'e', label: 'Epsilon' },
+        ],
+      });
+      const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
+      installPointerCaptureOnHandle(handle);
+
+      await dispatchPointerEvent(handle, 'pointerdown', {
+        button: 0,
+        clientX: 10,
+        clientY: 20,
+        pointerId: 1,
+        pointerType: 'mouse',
+      });
+
+      // Drag down in small steps, letting a rAF frame settle after each one —
+      // the scenario the bug report described as "freezing after one position".
+      for (let y = 30; y <= 190; y += 10) {
+        await dispatchPointerEvent(handle, 'pointermove', {
+          clientX: 10,
+          clientY: y,
+          pointerId: 1,
+          pointerType: 'mouse',
+        });
+        await waitForAnimationFrame();
+      }
+
+      const order = Array.from(container.querySelectorAll('[data-sortable-row]')).map((row) =>
+        row.getAttribute('data-key'),
+      );
+      // A drag spanning the whole list must reach the last position, not stall
+      // after the first successful move.
+      expect(order.indexOf('a')).toBe(4);
+      expect(order).toEqual(['b', 'c', 'd', 'e', 'a']);
+
+      await dispatchPointerEvent(handle, 'pointerup', { pointerId: 1, pointerType: 'mouse' });
+    } finally {
+      restoreGeometry();
+    }
+  });
+});

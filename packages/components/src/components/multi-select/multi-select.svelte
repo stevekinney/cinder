@@ -27,10 +27,13 @@
 
   import CheckboxIndicatorShell from '../_internal/checkbox-indicator-shell.svelte';
   import { createCommandListState } from '../_internal/create-command-list-state.svelte.ts';
+  import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
   import { resolveFieldControl } from '../../_internal/field-control.ts';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
   import FormFieldFrame from '../../_internal/form-field-frame.svelte';
   import { classNames } from '../../utilities/class-names.ts';
+  import { createPortalAttachment } from '../portal/index.ts';
+  import { findNearestOpenTopLayer } from '../portal/portal.utilities.svelte.ts';
   import type { MultiSelectItem, MultiSelectProps } from './multi-select.types.ts';
 
   let {
@@ -107,6 +110,41 @@
   let validityProxyElement = $state<HTMLInputElement | null>(null);
   let nativeError = $state('');
   let resetSyncTimeout: ReturnType<typeof setTimeout> | undefined;
+
+  // The panel is portaled out of the DOM subtree it renders in (see
+  // `panelPortalAttachment` below) so an ancestor with `overflow: hidden` — or any
+  // ancestor establishing a new containing block — cannot clip it. `position: fixed`
+  // (via `_floating-surface`/Floating UI) only escapes that containment when the panel
+  // is no longer a DOM descendant of the trigger's clipped ancestor. `widthMode:
+  // 'match-anchor'` preserves the prior
+  // full-trigger-width CSS behavior (`inset-inline: 0`); `direction` maps directly to a
+  // Floating UI placement, and `flip` (always active in `createAnchoredOverlay`) upgrades
+  // the previous purely author-controlled `direction` into collision-aware placement.
+  const anchoredOverlay = createAnchoredOverlay({
+    open: () => open,
+    anchor: () => triggerElement,
+    panel: () => panelElement,
+    placement: () => (direction === 'up' ? 'top-start' : 'bottom-start'),
+    offset: () => 4,
+    widthMode: () => 'match-anchor',
+  });
+  const panelPortalAttachment = createPortalAttachment({
+    // Escaping to `document.body` unconditionally would render the panel BEHIND a
+    // native <dialog> or open [popover] ancestor's top layer, since regular DOM
+    // content can never out-stack the top layer regardless of z-index. Prefer the
+    // nearest enclosing open top-layer container (matching Popover/SpeedDial/
+    // NavigationBar) and fall back to document.body only when there isn't one.
+    target: () => {
+      if (!triggerElement) return document.body;
+      try {
+        return findNearestOpenTopLayer(triggerElement) ?? document.body;
+      } catch {
+        return document.body;
+      }
+    },
+    source: () => controlElement,
+    inheritAttributes: true,
+  });
   const triggerAriaInvalid = $derived(field.ariaInvalid ?? (nativeError ? true : undefined));
   const combinedError = $derived(error || nativeError || undefined);
   const triggerDescribedBy = $derived.by(() => {
@@ -397,9 +435,13 @@
     {#if open}
       <div
         bind:this={panelElement}
+        {@attach panelPortalAttachment}
         id={`${id}-popover`}
         class="cinder-_floating-surface cinder-multi-select__panel"
         data-cinder-direction={direction}
+        data-cinder-placement={anchoredOverlay.resolvedPlacement}
+        data-cinder-position-ready={anchoredOverlay.positionReady}
+        style={anchoredOverlay.positionStyle}
         data-cinder-open
       >
         {#if filterable}

@@ -420,6 +420,25 @@ describe('Drawer', () => {
     expect(cssText).toContain('transition: none');
   });
 
+  // Regression guard: the backdrop faded OUT on close (via the
+  // `[data-cinder-closing]::backdrop` rule) but had no `@starting-style` to
+  // transition FROM on open, so it used to snap to full opacity instantly
+  // while the panel slid in smoothly — an asymmetric "eases out, pops in".
+  test('drawer.css gives the backdrop a starting-style, backdrop-filter transition, and allow-discrete', async () => {
+    const cssText = await Bun.file(new URL('./drawer.css', import.meta.url)).text();
+    const backdropRuleStart = cssText.indexOf('.cinder-drawer::backdrop {');
+    const backdropRuleEnd = cssText.indexOf('}', backdropRuleStart);
+    const backdropRule = cssText.slice(backdropRuleStart, backdropRuleEnd);
+    expect(backdropRule).toContain('backdrop-filter');
+    expect(backdropRule).toContain('transition-behavior: allow-discrete;');
+
+    const startingStyleStart = cssText.indexOf('@starting-style {');
+    expect(startingStyleStart).toBeGreaterThan(-1);
+    const startingStyleBlock = cssText.slice(startingStyleStart, startingStyleStart + 300);
+    expect(startingStyleBlock).toContain('.cinder-drawer::backdrop');
+    expect(startingStyleBlock).toContain('background-color: transparent;');
+  });
+
   test('close applies inert closing state until the delayed close finishes', async () => {
     let openValue = true;
     const { container } = render(Drawer, {

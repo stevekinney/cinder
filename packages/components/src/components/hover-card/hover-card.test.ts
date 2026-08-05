@@ -160,11 +160,50 @@ describe('HoverCard', () => {
     await waitFor(() => {
       const arrow = queryHoverCard()?.querySelector<HTMLElement>('.cinder-hover-card__arrow');
       expect(arrow).not.toBeNull();
-      expect(arrow?.getAttribute('style')).toContain('left: 12px');
-      expect(arrow?.getAttribute('style')).toContain('bottom: -4px');
+      // Only the Floating UI-computed cross-axis offset is inline. The
+      // static-side offset (here `bottom`, for a `top` placement) must come
+      // from HoverCard's own per-placement CSS, not a hardcoded inline
+      // override — an inline value would beat that CSS on specificity
+      // regardless of what it said. See anchored-overlay.test.ts for the
+      // shared-mechanism assertion and hover-card.css for the per-placement
+      // rules this depends on.
+      const style = arrow?.getAttribute('style') ?? '';
+      expect(style).toContain('left: 12px');
+      expect(style).not.toContain('bottom:');
+      expect(style).not.toContain('top:');
     });
     expect(arrowSpy).toHaveBeenCalled();
     expect(container.querySelector('.cinder-hover-card')).toBeNull();
+  });
+
+  test('per-placement CSS owns the diamond arrow static-side offset and rotation', () => {
+    const cssPath = fileURLToPath(new URL('./hover-card.css', import.meta.url));
+    const root = parse(readFileSync(cssPath, 'utf8'));
+    const rulesByPlacement = new Map<string, Declaration[]>();
+    root.walkRules((rule) => {
+      const match = /\[data-cinder-placement\^='(\w+)'\]\s+\.cinder-hover-card__arrow/.exec(
+        rule.selector,
+      );
+      if (!match) return;
+      const declarations = rule.nodes.filter((node): node is Declaration => node.type === 'decl');
+      rulesByPlacement.set(match[1]!, declarations);
+    });
+
+    const expected: Record<string, { property: string; rotate: string }> = {
+      bottom: { property: 'top', rotate: '45deg' },
+      top: { property: 'bottom', rotate: '225deg' },
+      right: { property: 'left', rotate: '315deg' },
+      left: { property: 'right', rotate: '135deg' },
+    };
+
+    for (const [placement, { property, rotate }] of Object.entries(expected)) {
+      const declarations = rulesByPlacement.get(placement);
+      expect(declarations, `missing rule for placement "${placement}"`).toBeDefined();
+      const propertyDeclaration = declarations!.find((decl) => decl.prop === property);
+      const rotateDeclaration = declarations!.find((decl) => decl.prop === 'rotate');
+      expect(propertyDeclaration?.value).toBe('-0.3125rem');
+      expect(rotateDeclaration?.value).toBe(rotate);
+    }
   });
 
   test('Escape dismisses the open card and exposes tooltip role + aria-describedby wiring', async () => {
@@ -381,6 +420,57 @@ describe('HoverCard', () => {
     await Bun.sleep(35);
 
     expect(queryHoverCard()).not.toBeNull();
+  });
+
+  test('keeps the card mounted with data-cinder-closing until its exit transition finishes', async () => {
+    // Stub a real (non-zero) transition duration for `.cinder-hover-card` so
+    // `waitForTransitionCompletion` takes its transitionend-listening path
+    // instead of resolving on the next microtask — this is the only way to
+    // observe the intermediate "closing but still mounted" DOM state.
+    const originalGetComputedStyle = window.getComputedStyle.bind(window);
+    window.getComputedStyle = ((target: Element) => {
+      if (target instanceof HTMLElement && target.classList.contains('cinder-hover-card')) {
+        return {
+          transitionProperty: 'opacity, transform',
+          transitionDuration: '80ms, 80ms',
+          transitionDelay: '0ms, 0ms',
+        } as CSSStyleDeclaration;
+      }
+      return originalGetComputedStyle(target);
+    }) as typeof window.getComputedStyle;
+
+    try {
+      const { rerender } = render(HoverCard, {
+        props: { open: true, trigger: triggerSnippet, children: textSnippet('Preview') },
+      });
+      await waitFor(() => expect(queryHoverCard()).not.toBeNull());
+
+      await rerender({ open: false, trigger: triggerSnippet, children: textSnippet('Preview') });
+
+      // Regression guard: the card previously unmounted in the exact same
+      // tick `open` flipped false, so no CSS transition could ever play. It
+      // must now survive, carrying `data-cinder-closing`, until the
+      // transition genuinely completes.
+      const closingCard = queryHoverCard();
+      expect(closingCard).not.toBeNull();
+      expect(closingCard?.hasAttribute('data-cinder-closing')).toBe(true);
+      // The card must still be positioned (not jumped to an unpositioned
+      // fallback spot) while it fades out. Positioning re-resolves through an
+      // async Floating UI call, so poll rather than asserting synchronously.
+      await waitFor(() => {
+        expect(queryHoverCard()?.getAttribute('style')).toContain('left: 18px');
+      });
+
+      for (const propertyName of ['opacity', 'transform']) {
+        const event = new Event('transitionend');
+        Object.defineProperty(event, 'propertyName', { value: propertyName });
+        closingCard?.dispatchEvent(event);
+      }
+
+      await waitFor(() => expect(queryHoverCard()).toBeNull());
+    } finally {
+      window.getComputedStyle = originalGetComputedStyle;
+    }
   });
 });
 

@@ -39,14 +39,58 @@
     transform: translateY(0) scale(1);
   }
 
+  /* Exit transition: the component keeps the card mounted for the duration
+   of this transition (see hover-card.svelte's `closing` state) instead of
+   removing it the instant `open` goes false, so this can actually play.
+   Declared after the `[data-cinder-position-ready='true']` rule above so it
+   wins at equal specificity, mirroring the base (closed) opacity/transform —
+   the card fades back out exactly the way it faded in. */
+  .cinder-hover-card[data-cinder-closing] {
+    opacity: 0;
+    transform: translateY(2px) scale(0.98);
+    pointer-events: none;
+  }
+
   .cinder-hover-card__arrow {
     position: absolute;
     width: 0.625rem;
     height: 0.625rem;
-    rotate: 45deg;
     background: inherit;
     border-inline-start: 1px solid var(--cinder-border);
     border-block-start: 1px solid var(--cinder-border);
+  }
+
+  /* The arrow is a square rotated onto its corner (a "diamond") with a
+   border only on its inline-start/block-start edges. At each rotation below,
+   the bordered corner is the one that points OUTWARD past the panel edge —
+   the panel's own fill and border cover the opposite (unbordered) corner, so
+   the two shapes read as one continuous outline instead of a doubled seam.
+   The -0.3125rem inset is half the 0.625rem square (`-size / 2`): it centers
+   the square ON the panel edge, so the rotated corner pokes out by
+   `(size / 2) * sqrt(2)` (~0.44rem) beyond it. */
+
+  /* Panel is BELOW trigger - arrow tip points UP. */
+  .cinder-hover-card[data-cinder-placement^='bottom'] .cinder-hover-card__arrow {
+    top: -0.3125rem;
+    rotate: 45deg;
+  }
+
+  /* Panel is ABOVE trigger - arrow tip points DOWN. */
+  .cinder-hover-card[data-cinder-placement^='top'] .cinder-hover-card__arrow {
+    bottom: -0.3125rem;
+    rotate: 225deg;
+  }
+
+  /* Panel is to the RIGHT of trigger - arrow tip points LEFT. */
+  .cinder-hover-card[data-cinder-placement^='right'] .cinder-hover-card__arrow {
+    left: -0.3125rem;
+    rotate: 315deg;
+  }
+
+  /* Panel is to the LEFT of trigger - arrow tip points RIGHT. */
+  .cinder-hover-card[data-cinder-placement^='left'] .cinder-hover-card__arrow {
+    right: -0.3125rem;
+    rotate: 135deg;
   }
 
   @media (prefers-reduced-motion: reduce) {

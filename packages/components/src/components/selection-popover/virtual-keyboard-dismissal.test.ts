@@ -105,6 +105,85 @@ describe('createVirtualKeyboardDismissal', () => {
     }
   });
 
+  test('ignores a window scroll that arrives while a pointer is still held, then dismisses once released', async () => {
+    // Regression test for issue E: a drag-select gesture that reaches the
+    // viewport edge triggers the browser's native autoscroll-while-selecting
+    // behavior, which fires real `window` `scroll` events WHILE the pointer
+    // button is still down — before the gesture that opened the popover has
+    // finished. Without the pointer-down gate, that self-produced scroll was
+    // indistinguishable from the user scrolling away afterward, so the
+    // popover dismissed itself the instant it opened.
+    const dismissCalls: boolean[] = [];
+    render(VirtualKeyboardDismissalFixture, {
+      props: {
+        onDismiss: (preventScroll: boolean) => dismissCalls.push(preventScroll),
+      },
+    });
+
+    // The pointer goes down (drag-select begins) and the browser's
+    // autoscroll fires a burst of scroll events while it is still held.
+    await fireEvent.pointerDown(window);
+    await fireEvent.scroll(window);
+    await fireEvent.scroll(window);
+    await fireEvent.scroll(window);
+
+    expect(dismissCalls).toEqual([]);
+
+    // The gesture ends — the pointer is released.
+    await fireEvent.pointerUp(window);
+
+    // A later, genuinely external scroll must still dismiss normally.
+    await fireEvent.scroll(window);
+
+    expect(dismissCalls).toEqual([true]);
+  });
+
+  test('ignores a window scroll while a pointer is held even after pointercancel resumes tracking', async () => {
+    const dismissCalls: boolean[] = [];
+    render(VirtualKeyboardDismissalFixture, {
+      props: {
+        onDismiss: (preventScroll: boolean) => dismissCalls.push(preventScroll),
+      },
+    });
+
+    await fireEvent.pointerDown(window);
+    await fireEvent.scroll(window);
+    expect(dismissCalls).toEqual([]);
+
+    // A cancelled gesture (e.g. the browser takes over for a system gesture)
+    // must release the latch just like pointerup does — otherwise every
+    // future scroll would be silently swallowed forever.
+    await fireEvent.pointerCancel(window);
+    await fireEvent.scroll(window);
+
+    expect(dismissCalls).toEqual([true]);
+  });
+
+  test('ignores a window scroll while a second pointer is still held after the first releases', async () => {
+    // Regression test: pointer tracking is a count, not a boolean. A
+    // multi-pointer gesture (two-finger touch, pen + touch, etc.) can have
+    // more than one pointer down at once — releasing one must not re-arm
+    // scroll-dismissal while another is still held.
+    const dismissCalls: boolean[] = [];
+    render(VirtualKeyboardDismissalFixture, {
+      props: {
+        onDismiss: (preventScroll: boolean) => dismissCalls.push(preventScroll),
+      },
+    });
+
+    await fireEvent.pointerDown(window);
+    await fireEvent.pointerDown(window);
+    await fireEvent.pointerUp(window);
+    await fireEvent.scroll(window);
+
+    expect(dismissCalls).toEqual([]);
+
+    await fireEvent.pointerUp(window);
+    await fireEvent.scroll(window);
+
+    expect(dismissCalls).toEqual([true]);
+  });
+
   test('does nothing while disabled', async () => {
     const dismissCalls: boolean[] = [];
     render(VirtualKeyboardDismissalFixture, {

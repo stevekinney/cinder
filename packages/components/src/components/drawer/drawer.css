@@ -24,11 +24,28 @@
   .cinder-drawer::backdrop {
     background-color: var(--cinder-overlay-backdrop);
     backdrop-filter: blur(var(--cinder-overlay-blur));
-    transition: background-color var(--cinder-duration-normal) var(--cinder-ease-standard);
+    transition:
+      background-color var(--cinder-duration-normal) var(--cinder-ease-standard),
+      backdrop-filter var(--cinder-duration-normal) var(--cinder-ease-standard);
+    /* `::backdrop` is added to/removed from the top layer as a discrete step
+     (like `display`), so `@starting-style` below needs `allow-discrete` to
+     actually engage on insertion instead of silently no-op'ing. */
+    transition-behavior: allow-discrete;
   }
 
   .cinder-drawer[data-cinder-closing]::backdrop {
     background-color: transparent;
+    backdrop-filter: blur(0);
+  }
+
+  /* Without this, the backdrop had no FROM state to transition from on open —
+   it fades out on close (via the rule above) but snapped to full opacity
+   instantly on open, which read as an asymmetric "eases out, pops in". */
+  @starting-style {
+    .cinder-drawer::backdrop {
+      background-color: transparent;
+      backdrop-filter: blur(0);
+    }
   }
 
   .cinder-drawer__panel {
