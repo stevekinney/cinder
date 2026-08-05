@@ -36,10 +36,21 @@ describe('primitive composition guard', () => {
   });
 
   test('drops completed field-wrapper migrations', () => {
-    expect(allowedFieldWrapperCounts.get('date-picker/date-picker.svelte')).toBe(2);
-    expect(allowedFieldWrapperCounts.has('date-range-field/date-range-field.svelte')).toBe(false);
-    expect(allowedFieldWrapperCounts.has('checkbox/checkbox.svelte')).toBe(false);
-    expect(allowedFieldWrapperCounts.has('input/input.svelte')).toBe(false);
+    for (const filePath of [
+      '_radio/radio.svelte',
+      'combobox/combobox.svelte',
+      'date-picker/date-picker.svelte',
+      'json-editor/json-editor.svelte',
+      'multi-select/multi-select.svelte',
+      'select/select.svelte',
+      'textarea/textarea.svelte',
+      'time-field/time-field.svelte',
+      'date-range-field/date-range-field.svelte',
+      'checkbox/checkbox.svelte',
+      'input/input.svelte',
+    ]) {
+      expect(allowedFieldWrapperCounts.has(filePath)).toBe(false);
+    }
   });
 
   test('does not retain completed internal-layer floating migrations', () => {
@@ -2508,18 +2519,27 @@ describe('primitive composition guard', () => {
   });
 
   test('tracks field-wrapper occurrences in migration files', () => {
-    expect(
-      findPrimitiveCompositionViolations(
-        '<label>Label<input /></label><p>description</p><p>error</p>',
-        'combobox/combobox.svelte',
-      ),
-    ).toEqual([]);
-    expect(
-      findPrimitiveCompositionViolations(
-        '<label>First<input /></label><label>Second</label><p>description</p><p>error</p>',
-        'combobox/combobox.svelte',
-      ),
-    ).toHaveLength(1);
+    // allowedFieldWrapperCounts is empty now that every tracked field-wrapper
+    // migration has landed (epic #919); exercise the allow-list mechanism
+    // itself against a synthetic entry rather than a real component path.
+    const syntheticPath = '__test-only__/synthetic-field-wrapper.svelte';
+    allowedFieldWrapperCounts.set(syntheticPath, 1);
+    try {
+      expect(
+        findPrimitiveCompositionViolations(
+          '<label>Label</label><p>description</p><p>error</p>',
+          syntheticPath,
+        ),
+      ).toEqual([]);
+      expect(
+        findPrimitiveCompositionViolations(
+          '<label>First</label><label>Second</label><p>description</p><p>error</p>',
+          syntheticPath,
+        ),
+      ).toHaveLength(1);
+    } finally {
+      allowedFieldWrapperCounts.delete(syntheticPath);
+    }
   });
 
   test('ignores field-wrapper language in scripts and comments', () => {

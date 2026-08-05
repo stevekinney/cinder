@@ -21,6 +21,7 @@
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
+  import FormFieldFrame from '../../_internal/form-field-frame.svelte';
 
   let {
     id,
@@ -76,19 +77,7 @@
   });
 </script>
 
-<div class={classNames('cinder-select-field', className)}>
-  {#if label}
-    <label
-      for={id}
-      class={classNames('cinder-select-field__label', hideLabel && 'cinder-sr-only')}
-      data-disabled={field.disabled || undefined}
-    >
-      {label}
-      {#if field.required}
-        <span class="cinder-_required-marker" aria-hidden="true">*</span>
-      {/if}
-    </label>
-  {/if}
+{#snippet selectControl()}
   <span class="cinder-select-field__control">
     {#if options.length === 0}
       <select
@@ -119,17 +108,25 @@
     {/if}
     <span class="cinder-select-field__chevron" aria-hidden="true"></span>
   </span>
-  {#if description}
-    <p id={field.ownDescriptionId} class="cinder-select-field__description">{description}</p>
-  {/if}
-  <!-- Always in DOM so the live region is registered before text is injected;
-       freshly-mounted aria-live nodes are not reliably announced by NVDA/JAWS. -->
-  <p
-    id={field.ownErrorId ?? stableLocalErrorId}
-    class="cinder-select-field__error"
-    aria-live="polite"
-    data-cinder-error={!!error || undefined}
-  >
-    {error ?? ''}
-  </p>
-</div>
+{/snippet}
+
+<!-- The error node stays mounted (errorAlwaysMounted) so the live region is
+     registered before text is injected; freshly-mounted aria-live nodes are
+     not reliably announced by NVDA/JAWS. -->
+<FormFieldFrame
+  id={field.id}
+  {label}
+  {hideLabel}
+  {description}
+  {error}
+  required={field.required}
+  disabled={field.disabled}
+  class={classNames('cinder-select-field', className)}
+  labelClass="cinder-select-field__label"
+  descriptionClass="cinder-select-field__description"
+  errorClass="cinder-select-field__error"
+  descriptionId={field.ownDescriptionId}
+  errorId={field.ownErrorId ?? stableLocalErrorId}
+  errorAlwaysMounted
+  control={selectControl}
+/>

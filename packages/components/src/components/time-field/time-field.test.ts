@@ -52,6 +52,23 @@ describe('TimeField', () => {
     expect(getInput(container).step).toBe('60');
   });
 
+  test('forwards arbitrary root attributes to the field wrapper, not the inner controls row', () => {
+    const { container } = render(TimeField, {
+      props: {
+        id: 'reminder',
+        label: 'Reminder time',
+        value: '09:30',
+        title: 'Reminder',
+      },
+    });
+
+    const root = container.querySelector('.cinder-time-field');
+    expect(root?.getAttribute('title')).toBe('Reminder');
+    expect(container.querySelector('.cinder-time-field__controls')?.hasAttribute('title')).toBe(
+      false,
+    );
+  });
+
   test('composes Input for the editable time control', () => {
     const { container } = render(TimeField, {
       props: { id: 'reminder', label: 'Reminder time', value: '09:30' },
@@ -60,9 +77,10 @@ describe('TimeField', () => {
     const input = getInput(container);
     expect(input.classList.contains('cinder-input')).toBe(true);
     expect(input.classList.contains('cinder-time-field__input')).toBe(true);
-    expect(container.querySelector('.cinder-time-field__controls .cinder-input-field')).not.toBe(
-      null,
-    );
+    // TimeField now composes FormFieldFrame itself, so Input inherits field
+    // context from TimeField's wrapper and renders bare — no redundant nested
+    // `.cinder-input-field` FormFieldFrame of its own.
+    expect(container.querySelector('.cinder-time-field__controls .cinder-input-field')).toBe(null);
   });
 
   test('keeps hidden serialization and timezone selection on native controls', () => {
@@ -395,11 +413,16 @@ describe('TimeField', () => {
     );
 
     expect(new Set(ids).size).toBe(ids.length);
+    // TimeField now composes its own FormFieldFrame, which provides field
+    // context to the nested Input. Input's aria-describedby merges its
+    // (inherited) own field context ids before the explicit consumer
+    // aria-describedby TimeField also passes down — same id set as before,
+    // ordered by TimeField's own ids first, then the outer FormField's.
     expect(getInput(container).getAttribute('aria-describedby')?.split(/\s+/)).toEqual([
-      'reminder-control-description',
-      'reminder-control-error',
       'reminder-control-time-field-description',
       'reminder-control-time-field-error',
+      'reminder-control-description',
+      'reminder-control-error',
     ]);
   });
 

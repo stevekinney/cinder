@@ -21,6 +21,7 @@
 <script lang="ts">
   import { tick } from 'svelte';
   import { composeDescribedBy } from '../../_internal/field-control.ts';
+  import FormFieldFrame from '../../_internal/form-field-frame.svelte';
   import { classNames } from '../../utilities/class-names.ts';
   import type { JsonEditorProps } from './json-editor.types.ts';
 
@@ -144,11 +145,7 @@
   const hasHighlightOverlay = $derived(highlight && highlightedHtml !== null);
 </script>
 
-<div class={classNames('cinder-json-editor', className)}>
-  <label class="cinder-json-editor__label" for={id}>{label}</label>
-  {#if description}
-    <p id={descriptionId} class="cinder-json-editor__description">{description}</p>
-  {/if}
+{#snippet jsonControl()}
   <div
     class={classNames(
       'cinder-json-editor__input',
@@ -191,16 +188,34 @@
       }}
     ></textarea>
   </div>
-  {#if feedbackText}
-    <p
-      id={feedbackId}
-      class={classNames(
-        'cinder-json-editor__feedback',
-        feedbackIsError && 'cinder-json-editor__feedback--error',
-      )}
-      role={feedbackIsError ? 'alert' : 'status'}
-    >
-      {feedbackText}
-    </p>
-  {/if}
-</div>
+{/snippet}
+
+{#snippet feedback()}
+  <p
+    id={feedbackId}
+    class={classNames(
+      'cinder-json-editor__feedback',
+      feedbackIsError && 'cinder-json-editor__feedback--error',
+    )}
+    role={feedbackIsError ? 'alert' : 'status'}
+  >
+    {feedbackText}
+  </p>
+{/snippet}
+
+<!-- The `error` prop and JSON parse feedback are already merged into
+     `feedbackText` above (see `externalError`/`feedbackText`), which can be
+     either an error (role="alert") or a non-error valid-JSON status
+     (role="status") — richer than FormFieldFrame's plain error slot, so it is
+     rendered via `message` instead of `error`. -->
+<FormFieldFrame
+  {id}
+  {label}
+  {description}
+  class={classNames('cinder-json-editor', className)}
+  labelClass="cinder-json-editor__label"
+  descriptionClass="cinder-json-editor__description"
+  {descriptionId}
+  control={jsonControl}
+  message={feedbackText ? feedback : undefined}
+/>

@@ -53,10 +53,31 @@
  * RADIO ROW + INPUT
  * ======================================== */
 
-  .cinder-radio-row {
+  /* Radio's row is now FormFieldFrame's own root element (merged with
+     `.cinder-form-field`), so the layout rule must out-specificity
+     `.cinder-form-field`'s base `display:flex; flex-direction:column;` —
+     the compound `.cinder-radio-row.cinder-form-field` selector guarantees
+     that regardless of stylesheet load order. FormFieldFrame's fixed render
+     order is label, control, description; `order` restores the original
+     control-first visual layout. */
+  .cinder-radio-row,
+  .cinder-radio-row.cinder-form-field {
     display: inline-flex;
     align-items: center;
     gap: var(--cinder-space-2);
+    inline-size: auto;
+  }
+
+  .cinder-radio-row > .cinder-radio-row__control {
+    order: 1;
+  }
+
+  .cinder-radio-row > .cinder-radio-row__label {
+    order: 2;
+  }
+
+  .cinder-radio-row > .cinder-radio-row__description {
+    order: 3;
   }
 
   .cinder-radio {
@@ -195,7 +216,7 @@
  * PER-OPTION DESCRIPTION
  * ======================================== */
 
-  .cinder-radio-row[data-has-description] {
+  .cinder-radio-row.cinder-radio-row--has-description {
     display: grid;
     grid-template-columns: auto 1fr;
     column-gap: var(--cinder-space-2);
@@ -203,13 +224,13 @@
     align-items: start;
   }
 
-  .cinder-radio-row[data-has-description] .cinder-radio-row__control {
+  .cinder-radio-row--has-description .cinder-radio-row__control {
     grid-row: 1;
     grid-column: 1;
     margin-top: var(--cinder-space-0-5); /* align input with label's first cap-height line */
   }
 
-  .cinder-radio-row[data-has-description] .cinder-radio-row__label {
+  .cinder-radio-row--has-description .cinder-radio-row__label {
     grid-row: 1;
     grid-column: 2;
   }
@@ -223,7 +244,7 @@
     color: var(--cinder-text-muted);
   }
 
-  .cinder-radio-row__description[data-disabled] {
+  .cinder-radio-row--disabled .cinder-radio-row__description {
     color: var(--cinder-text-disabled);
   }
 
@@ -246,27 +267,28 @@
   }
 
   /* Sticky-hover suppression on touch: wrap hover-only chrome so it doesn't
- * "stick" after tap on touch devices that emulate :hover. The :not([data-disabled])
+ * "stick" after tap on touch devices that emulate :hover. The :not(.cinder-radio-row--disabled)
  * exclusion replaces a separate reset rule for disabled cards. */
   @media (hover: hover) {
-    .cinder-radio-group[data-variant='card'] .cinder-radio-row:hover:not([data-disabled]) {
+    .cinder-radio-group[data-variant='card']
+      .cinder-radio-row:hover:not(.cinder-radio-row--disabled) {
       border-color: var(--cinder-border-strong);
     }
   }
 
   /* Selection reinforcement — NOT the sole indicator. */
-  .cinder-radio-group[data-variant='card'] .cinder-radio-row[data-checked] {
+  .cinder-radio-group[data-variant='card'] .cinder-radio-row--checked {
     border-color: var(--cinder-accent);
     background: var(--cinder-surface-raised);
   }
 
-  /* Invalid state on the card surface. Driven by `data-invalid` on the row. */
-  .cinder-radio-group[data-variant='card'] .cinder-radio-row[data-invalid] {
+  /* Invalid state on the card surface. Driven by the row's modifier class. */
+  .cinder-radio-group[data-variant='card'] .cinder-radio-row--invalid {
     border-color: var(--cinder-danger);
   }
 
-  /* Disabled card — driven by `data-disabled` on the row. */
-  .cinder-radio-group[data-variant='card'] .cinder-radio-row[data-disabled] {
+  /* Disabled card — driven by the row's modifier class. */
+  .cinder-radio-group[data-variant='card'] .cinder-radio-row--disabled {
     background: var(--cinder-surface-inset);
     border-color: var(--cinder-border-muted);
     cursor: not-allowed;
@@ -277,11 +299,11 @@
       border: 1px solid CanvasText;
     }
 
-    .cinder-radio-group[data-variant='card'] .cinder-radio-row[data-checked] {
+    .cinder-radio-group[data-variant='card'] .cinder-radio-row--checked {
       border: 2px solid Highlight;
     }
 
-    .cinder-radio-group[data-variant='card'] .cinder-radio-row[data-invalid] {
+    .cinder-radio-group[data-variant='card'] .cinder-radio-row--invalid {
       border: 2px solid Mark;
     }
   }

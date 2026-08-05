@@ -21,6 +21,7 @@
 
   import { resolveFieldControl } from '../../_internal/field-control.ts';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
+  import FormFieldFrame from '../../_internal/form-field-frame.svelte';
   import { pushEscapeHandler } from '../../_internal/overlay.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import Popover from '../popover/popover.svelte';
@@ -371,16 +372,7 @@
   }
 </script>
 
-<div class={classNames('cinder-combobox', className)}>
-  {#if label}
-    <label for={id} class="cinder-combobox__label" data-disabled={resolvedDisabled || undefined}>
-      {label}
-      {#if resolvedRequired}
-        <span class="cinder-_required-marker" aria-hidden="true">*</span>
-      {/if}
-    </label>
-  {/if}
-
+{#snippet comboboxControl()}
   <div class="cinder-combobox__control" data-cinder-open={open || undefined}>
     <input
       bind:this={inputElement}
@@ -503,18 +495,24 @@
   <div class="cinder-combobox__empty-status" role="status">
     {emptyVisible ? 'No results' : ''}
   </div>
+{/snippet}
 
-  {#if description}
-    <p id={descriptionId} class="cinder-combobox__description">{description}</p>
-  {/if}
-
-  <!-- Always in DOM for the same reason — live region must pre-exist before text is injected. -->
-  <p
-    id={field.ownErrorId ?? stableLocalErrorId}
-    class="cinder-combobox__error"
-    aria-live="polite"
-    data-cinder-error={!!error || undefined}
-  >
-    {error ?? ''}
-  </p>
-</div>
+<!-- The error node stays mounted (errorAlwaysMounted) so the live region is
+     registered before text is injected; freshly-mounted aria-live nodes are
+     not reliably announced by NVDA/JAWS. -->
+<FormFieldFrame
+  {id}
+  {label}
+  {description}
+  {error}
+  required={resolvedRequired}
+  disabled={resolvedDisabled}
+  class={classNames('cinder-combobox', className)}
+  labelClass="cinder-combobox__label"
+  descriptionClass="cinder-combobox__description"
+  errorClass="cinder-combobox__error"
+  {descriptionId}
+  errorId={field.ownErrorId ?? stableLocalErrorId}
+  errorAlwaysMounted
+  control={comboboxControl}
+/>

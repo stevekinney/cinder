@@ -156,19 +156,13 @@ allowedFloatingCounts.set('styles/components/experimental/popover.css', 4);
 // it is a decorative absolutely-positioned label painted over a transparent
 // native <select>, not a layered floating panel.
 
-export const allowedFieldWrapperCounts = new Map<string, number>(
-  [
-    '_radio/radio.svelte',
-    'combobox/combobox.svelte',
-    'date-picker/date-picker.svelte',
-    'json-editor/json-editor.svelte',
-    'multi-select/multi-select.svelte',
-    'select/select.svelte',
-    'textarea/textarea.svelte',
-    'time-field/time-field.svelte',
-  ].map((filePath) => [filePath, 1] as const),
-);
-allowedFieldWrapperCounts.set('date-picker/date-picker.svelte', 2);
+// All tracked field wrappers have been migrated to FormField composition
+// (epic #919). Every entry that once lived here — _radio, combobox,
+// date-picker, json-editor, multi-select, select, textarea, time-field — now
+// composes FormFieldFrame and reports zero hand-rolled label/description/error
+// wrappers, so the map is empty rather than deleted outright: a future
+// hand-rolled field wrapper still trips the `wrappers > 0` guard below.
+export const allowedFieldWrapperCounts = new Map<string, number>();
 
 const migrationMaps: ReadonlyArray<ReadonlyMap<string, unknown>> = [
   allowedRawControlCounts,

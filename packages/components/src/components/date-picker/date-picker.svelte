@@ -17,6 +17,7 @@
 
 <script lang="ts">
   import type { DatePickerGranularity, DatePickerProps } from './date-picker.types.ts';
+  import FormFieldFrame from '../../_internal/form-field-frame.svelte';
   import { classNames } from '../../utilities/class-names.ts';
   import Calendar from '../calendar/calendar.svelte';
   import Popover from '../popover/popover.svelte';
@@ -253,11 +254,7 @@
   });
 </script>
 
-<div {...rest} class={classNames('cinder-date-picker', className)}>
-  {#if label}
-    <label class="cinder-date-picker__label" for={id}>{label}</label>
-  {/if}
-
+{#snippet dateControl()}
   <div class="cinder-date-picker__control" data-invalid={invalid ? '' : undefined}>
     <input
       bind:this={inputElement}
@@ -324,11 +321,18 @@
       </div>
     {/if}
   </Popover>
+{/snippet}
 
-  {#if description}
-    <p id={`${id}-description`} class="cinder-date-picker__description">{description}</p>
-  {/if}
-  {#if error}
-    <p id={`${id}-error`} class="cinder-date-picker__error" aria-live="polite">{error}</p>
-  {/if}
-</div>
+<FormFieldFrame
+  {...rest}
+  {id}
+  {label}
+  {description}
+  {error}
+  {disabled}
+  class={classNames('cinder-date-picker', className)}
+  labelClass="cinder-date-picker__label"
+  descriptionClass="cinder-date-picker__description"
+  errorClass="cinder-date-picker__error"
+  control={dateControl}
+/>

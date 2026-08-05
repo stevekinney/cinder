@@ -20,6 +20,7 @@
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { resolveMaximumLength } from '../textarea-count.ts';
+  import FormFieldFrame from '../../_internal/form-field-frame.svelte';
 
   let {
     id,
@@ -60,15 +61,7 @@
   );
 </script>
 
-<div class="cinder-textarea-field">
-  {#if label}
-    <label for={id} class="cinder-textarea-label" data-disabled={field.disabled || undefined}>
-      {label}
-      {#if field.required}
-        <span class="cinder-_required-marker" aria-hidden="true">*</span>
-      {/if}
-    </label>
-  {/if}
+{#snippet textareaControl()}
   <textarea
     {id}
     {rows}
@@ -81,21 +74,48 @@
     bind:value
     {...rest}
   ></textarea>
-  {#if description}
-    <p id={field.ownDescriptionId} class="cinder-textarea-description">{description}</p>
+{/snippet}
+
+{#snippet counter()}
+  <output id={countId} for={id} class="cinder-textarea-count" aria-live="polite" aria-atomic="true">
+    {currentCount}/{maximumLength}
+  </output>
+{/snippet}
+
+{#if context}
+  {#if label || description || error || countId}
+    <FormFieldFrame
+      id={field.id}
+      label={context.labelId ? undefined : label}
+      {description}
+      {error}
+      required={field.required}
+      disabled={field.disabled}
+      class="cinder-textarea-field"
+      labelClass="cinder-textarea-label"
+      descriptionClass="cinder-textarea-description"
+      errorClass="cinder-textarea-error"
+      descriptionId={field.ownDescriptionId}
+      errorId={field.ownErrorId}
+      control={textareaControl}
+      message={countId ? counter : undefined}
+    />
+  {:else}
+    {@render textareaControl()}
   {/if}
-  {#if countId}
-    <output
-      id={countId}
-      for={id}
-      class="cinder-textarea-count"
-      aria-live="polite"
-      aria-atomic="true"
-    >
-      {currentCount}/{maximumLength}
-    </output>
-  {/if}
-  {#if error}
-    <p id={field.ownErrorId} class="cinder-textarea-error" aria-live="polite">{error}</p>
-  {/if}
-</div>
+{:else}
+  <FormFieldFrame
+    id={field.id}
+    {label}
+    {description}
+    {error}
+    required={field.required}
+    disabled={field.disabled}
+    class="cinder-textarea-field"
+    labelClass="cinder-textarea-label"
+    descriptionClass="cinder-textarea-description"
+    errorClass="cinder-textarea-error"
+    control={textareaControl}
+    message={countId ? counter : undefined}
+  />
+{/if}

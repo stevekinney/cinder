@@ -1,9 +1,32 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
 @layer cinder.components {
-  .cinder-json-editor {
+  /* Compound with `.cinder-form-field` so `gap` out-specificities the shared
+     base rule (`var(--cinder-space-1-5)`) regardless of stylesheet load
+     order — json-editor's own gap is intentionally larger. */
+  .cinder-json-editor,
+  .cinder-json-editor.cinder-form-field {
     display: flex;
     flex-direction: column;
     gap: var(--cinder-space-2);
+  }
+
+  /* FormFieldFrame's fixed render order is label, control, description,
+     message, error; these `order` overrides restore the original
+     label → description → input → feedback visual order. */
+  .cinder-json-editor > .cinder-form-field__label {
+    order: 1;
+  }
+
+  .cinder-json-editor > .cinder-form-field__description {
+    order: 2;
+  }
+
+  .cinder-json-editor > .cinder-json-editor__input {
+    order: 3;
+  }
+
+  .cinder-json-editor > .cinder-json-editor__feedback {
+    order: 4;
   }
 
   .cinder-json-editor__label {

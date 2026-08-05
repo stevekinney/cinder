@@ -20,6 +20,7 @@
 
   import { ariaInvalid, composeDescribedBy, describeId } from '../../_internal/field-control.ts';
   import { getRadioGroupContext } from '../radio-group/radio-group-context.ts';
+  import FormFieldFrame from '../../_internal/form-field-frame.svelte';
   import { classNames } from '../../utilities/class-names.ts';
 
   let {
@@ -41,19 +42,28 @@
   const descriptionId = $derived(describeId(id, !!description));
   const describedBy = $derived(composeDescribedBy(descriptionId, consumerAriaDescribedBy));
 
+  // The row's checked/disabled/invalid/has-description states used to live as
+  // `data-*` attributes on the row's own root <div>. FormFieldFrame owns that
+  // root now and only exposes a `class` passthrough, so the same states are
+  // expressed as BEM modifier classes instead (radio-group.css selects on
+  // these rather than the old attribute selectors).
+  const rowClass = $derived(
+    classNames(
+      'cinder-radio-row',
+      checked && 'cinder-radio-row--checked',
+      effectiveDisabled && 'cinder-radio-row--disabled',
+      group.invalid && 'cinder-radio-row--invalid',
+      description && 'cinder-radio-row--has-description',
+    ),
+  );
+
   function handleChange(): void {
     if (effectiveDisabled) return;
     group.select(value);
   }
 </script>
 
-<div
-  class="cinder-radio-row"
-  data-checked={checked || undefined}
-  data-disabled={effectiveDisabled || undefined}
-  data-invalid={group.invalid || undefined}
-  data-has-description={description ? '' : undefined}
->
+{#snippet radioControl()}
   <span class="cinder-radio-row__control">
     <!--
       aria-invalid mirrors the group's validity onto the native radio so screen
@@ -78,16 +88,16 @@
     />
     <span class="cinder-radio-row__indicator" aria-hidden="true"></span>
   </span>
-  <label for={id} class="cinder-radio-row__label" data-disabled={effectiveDisabled || undefined}>
-    {label}
-  </label>
-  {#if description}
-    <p
-      id="{id}-description"
-      class="cinder-radio-row__description"
-      data-disabled={effectiveDisabled || undefined}
-    >
-      {description}
-    </p>
-  {/if}
-</div>
+{/snippet}
+
+<FormFieldFrame
+  {id}
+  {label}
+  {description}
+  disabled={effectiveDisabled}
+  class={rowClass}
+  labelClass="cinder-radio-row__label"
+  descriptionClass="cinder-radio-row__description"
+  {descriptionId}
+  control={radioControl}
+/>
