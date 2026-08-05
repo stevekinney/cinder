@@ -114,7 +114,8 @@
   }
 
   .cinder-connection-indicator[data-cinder-status='live'] {
-    color: var(--cinder-success);
+    /* -fg, not the fill — see the connecting/reconnecting rows, which already use it. */
+    color: var(--cinder-color-success-fg);
   }
 
   .cinder-connection-indicator[data-cinder-status='reconnecting'] {
@@ -127,7 +128,7 @@
   }
 
   .cinder-connection-indicator[data-cinder-status='stale'] {
-    color: var(--cinder-info);
+    color: var(--cinder-color-info-fg);
   }
 
   .cinder-connection-indicator[data-cinder-status='closed'] {

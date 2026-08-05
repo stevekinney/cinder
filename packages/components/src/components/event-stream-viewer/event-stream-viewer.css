@@ -281,7 +281,9 @@
   }
 
   .cinder-event-stream-viewer__boundary-marker .cinder-event-stream-viewer__marker-content {
-    color: var(--cinder-info);
+    /* -fg, not the fill: --cinder-info as ink on --cinder-surface-inset measured
+       4.16:1, below AA. The sibling gap-marker already used the -fg token. */
+    color: var(--cinder-color-info-fg);
   }
 
   .cinder-event-stream-viewer__sequence-gap-marker .cinder-event-stream-viewer__marker-content {
