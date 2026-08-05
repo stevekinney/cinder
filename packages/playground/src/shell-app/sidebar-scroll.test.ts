@@ -11,7 +11,7 @@
  *   the scroll/save/restore lifecycle without a real DOM.
  */
 
-import { afterEach, describe, expect, it } from 'bun:test';
+import { afterEach, describe, expect, it, jest } from 'bun:test';
 
 import {
   persistScrollPosition,
@@ -42,6 +42,36 @@ function installSessionStorage(stub: SessionStorageStub | undefined): void {
     value: stub as unknown as Storage,
     writable: true,
   });
+}
+
+/**
+ * Runs `run` with Bun's fake timers installed so a debounced `setTimeout`
+ * can be advanced deterministically instead of waiting on the real clock.
+ * `jest.useFakeTimers()` monkey-patches the process-global timer functions,
+ * and the suite runs `--parallel=1` in one shared process, so every caller
+ * must save and restore all four globals — mirroring
+ * `tooltip.test.ts`'s `triggerDelayedTooltipShow` — or a leftover fake timer
+ * breaks every later test file's real timers.
+ */
+async function withFakeTimers(run: () => void | Promise<void>): Promise<void> {
+  const trackedSetTimeout = globalThis.setTimeout;
+  const trackedClearTimeout = globalThis.clearTimeout;
+  const trackedSetInterval = globalThis.setInterval;
+  const trackedClearInterval = globalThis.clearInterval;
+  jest.useFakeTimers();
+  try {
+    await run();
+  } finally {
+    jest.useRealTimers();
+    globalThis.setTimeout = trackedSetTimeout;
+    globalThis.clearTimeout = trackedClearTimeout;
+    globalThis.setInterval = trackedSetInterval;
+    globalThis.clearInterval = trackedClearInterval;
+    expect(globalThis.setTimeout).toBe(trackedSetTimeout);
+    expect(globalThis.clearTimeout).toBe(trackedClearTimeout);
+    expect(globalThis.setInterval).toBe(trackedSetInterval);
+    expect(globalThis.clearInterval).toBe(trackedClearInterval);
+  }
 }
 
 /** An in-memory sessionStorage stub backed by a Map. */
@@ -197,16 +227,19 @@ describe('persistScrollPosition attachment', () => {
     installSessionStorage(storage);
 
     const { element, fireScroll } = makeFakeScrollElement(0);
-    const cleanup = persistScrollPosition(element);
 
-    element.scrollTop = 250;
-    fireScroll();
-    // Not written synchronously — the write is debounced.
-    expect(storage.store.get(SIDEBAR_SCROLL_STORAGE_KEY)).toBeUndefined();
+    await withFakeTimers(() => {
+      const cleanup = persistScrollPosition(element);
 
-    await Bun.sleep(200);
-    expect(storage.store.get(SIDEBAR_SCROLL_STORAGE_KEY)).toBe('250');
-    cleanup?.();
+      element.scrollTop = 250;
+      fireScroll();
+      // Not written synchronously — the write is debounced.
+      expect(storage.store.get(SIDEBAR_SCROLL_STORAGE_KEY)).toBeUndefined();
+
+      jest.advanceTimersByTime(150);
+      expect(storage.store.get(SIDEBAR_SCROLL_STORAGE_KEY)).toBe('250');
+      cleanup?.();
+    });
   });
 
   it('debounces a burst of scroll events into a single persisted write', async () => {
@@ -219,19 +252,22 @@ describe('persistScrollPosition attachment', () => {
     installSessionStorage(storage);
 
     const { element, fireScroll } = makeFakeScrollElement(0);
-    const cleanup = persistScrollPosition(element);
 
-    element.scrollTop = 10;
-    fireScroll();
-    element.scrollTop = 20;
-    fireScroll();
-    element.scrollTop = 30;
-    fireScroll();
+    await withFakeTimers(() => {
+      const cleanup = persistScrollPosition(element);
 
-    await Bun.sleep(200);
-    // Only the final position is written, not one write per scroll event.
-    expect(setCalls).toEqual(['30']);
-    cleanup?.();
+      element.scrollTop = 10;
+      fireScroll();
+      element.scrollTop = 20;
+      fireScroll();
+      element.scrollTop = 30;
+      fireScroll();
+
+      jest.advanceTimersByTime(150);
+      // Only the final position is written, not one write per scroll event.
+      expect(setCalls).toEqual(['30']);
+      cleanup?.();
+    });
   });
 
   it('clears the pending timer and removes the listener on teardown', async () => {
@@ -239,18 +275,22 @@ describe('persistScrollPosition attachment', () => {
     installSessionStorage(storage);
 
     const { element, fireScroll, listenerCount } = makeFakeScrollElement(0);
-    const cleanup = persistScrollPosition(element);
-    expect(listenerCount()).toBe(1);
 
-    element.scrollTop = 99;
-    fireScroll();
-    cleanup?.();
+    await withFakeTimers(() => {
+      const cleanup = persistScrollPosition(element);
+      expect(listenerCount()).toBe(1);
 
-    // Listener gone…
-    expect(listenerCount()).toBe(0);
+      element.scrollTop = 99;
+      fireScroll();
+      cleanup?.();
 
-    // …and the pending debounced write never lands after teardown.
-    await Bun.sleep(200);
-    expect(storage.store.get(SIDEBAR_SCROLL_STORAGE_KEY)).toBeUndefined();
+      // Listener gone…
+      expect(listenerCount()).toBe(0);
+
+      // …and the pending debounced write never lands after teardown, even
+      // once the full debounce window elapses under the fake clock.
+      jest.advanceTimersByTime(150);
+      expect(storage.store.get(SIDEBAR_SCROLL_STORAGE_KEY)).toBeUndefined();
+    });
   });
 });

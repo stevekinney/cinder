@@ -18,7 +18,7 @@
  * They avoid incidental structure (class names, element ordering) so sibling
  * refactors of `top-bar.svelte` don't break them.
  */
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, jest, test } from 'bun:test';
 import { readFile } from 'node:fs/promises';
 
 import { setupHappyDom } from '../../../components/src/test/happy-dom.ts';
@@ -63,9 +63,40 @@ afterEach(() => {
   delete (happyWindow as unknown as Record<string, unknown>)['open'];
 });
 
-/** Resolve after `ms` real milliseconds — `announce()` uses a 50 ms timer. */
-function wait(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+/** Advance the fake clock `ms` — `announce()` uses a 50 ms timer. */
+async function wait(ms: number): Promise<void> {
+  jest.advanceTimersByTime(ms);
+  await tick();
+}
+
+/**
+ * Runs `run` with Bun's fake timers installed so `announce()`'s 50 ms gap can
+ * be advanced deterministically instead of waiting on the real clock.
+ * `jest.useFakeTimers()` monkey-patches the process-global timer functions,
+ * and the suite runs `--parallel=1` in one shared process, so every caller
+ * must save and restore all four globals — mirroring `tooltip.test.ts`'s
+ * `triggerDelayedTooltipShow` — or a leftover fake timer breaks every later
+ * test file's real timers.
+ */
+async function withFakeTimers(run: () => void | Promise<void>): Promise<void> {
+  const trackedSetTimeout = globalThis.setTimeout;
+  const trackedClearTimeout = globalThis.clearTimeout;
+  const trackedSetInterval = globalThis.setInterval;
+  const trackedClearInterval = globalThis.clearInterval;
+  jest.useFakeTimers();
+  try {
+    await run();
+  } finally {
+    jest.useRealTimers();
+    globalThis.setTimeout = trackedSetTimeout;
+    globalThis.clearTimeout = trackedClearTimeout;
+    globalThis.setInterval = trackedSetInterval;
+    globalThis.clearInterval = trackedClearInterval;
+    expect(globalThis.setTimeout).toBe(trackedSetTimeout);
+    expect(globalThis.clearTimeout).toBe(trackedClearTimeout);
+    expect(globalThis.setInterval).toBe(trackedSetInterval);
+    expect(globalThis.clearInterval).toBe(trackedClearInterval);
+  }
 }
 
 /**
@@ -357,16 +388,17 @@ describe('top-bar announcements', () => {
     const region = liveRegion(container);
     expect(region.textContent?.trim()).toBe('');
 
-    // Toggling the sidebar button triggers announce(). The 50 ms empty-then-set
-    // gap means the message is NOT yet present right after the click.
-    buttonByLabel(container, 'Toggle component list').click();
-    await tick();
-    expect(region.textContent?.trim()).toBe('');
+    await withFakeTimers(async () => {
+      // Toggling the sidebar button triggers announce(). The 50 ms empty-then-set
+      // gap means the message is NOT yet present right after the click.
+      buttonByLabel(container, 'Toggle component list').click();
+      await tick();
+      expect(region.textContent?.trim()).toBe('');
 
-    // After the gap, the announcement text appears.
-    await wait(80);
-    await tick();
-    expect(region.textContent?.trim()).toBe('Component list shown');
+      // After the gap, the announcement text appears.
+      await wait(50);
+      expect(region.textContent?.trim()).toBe('Component list shown');
+    });
   });
 
   test('a second announcement replaces the first after its own 50 ms gap', async () => {
@@ -376,19 +408,19 @@ describe('top-bar announcements', () => {
 
     const region = liveRegion(container);
 
-    buttonByLabel(container, 'Toggle component list').click();
-    await wait(80);
-    await tick();
-    expect(region.textContent?.trim()).toBe('Component list shown');
+    await withFakeTimers(async () => {
+      buttonByLabel(container, 'Toggle component list').click();
+      await wait(50);
+      expect(region.textContent?.trim()).toBe('Component list shown');
 
-    // Toggle again — hidden this time. The region clears immediately, then fills
-    // with the new message after the gap.
-    buttonByLabel(container, 'Toggle component list').click();
-    await tick();
-    expect(region.textContent?.trim()).toBe('');
+      // Toggle again — hidden this time. The region clears immediately, then fills
+      // with the new message after the gap.
+      buttonByLabel(container, 'Toggle component list').click();
+      await tick();
+      expect(region.textContent?.trim()).toBe('');
 
-    await wait(80);
-    await tick();
-    expect(region.textContent?.trim()).toBe('Component list hidden');
+      await wait(50);
+      expect(region.textContent?.trim()).toBe('Component list hidden');
+    });
   });
 });

@@ -9,10 +9,12 @@
  *
  * The behavior under test is the empty-then-set coalescing trick: `announce`
  * clears `message` synchronously, then writes the new text after a 50 ms gap.
- * We drive time with `setSystemTime` + Bun's fake-timer-free `setTimeout` by
- * awaiting real delays kept short enough to stay fast.
+ * We drive time with Bun's fake timers (`jest.useFakeTimers()` /
+ * `jest.advanceTimersByTime()`), installed immediately before the
+ * `announce`/`navigate`/`popState` call that schedules the internal timer, so
+ * the gap advances deterministically instead of racing a real delay.
  */
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, jest, test } from 'bun:test';
 
 // Use the shared, idempotent happy-dom setup (same as every other DOM test in
 // this package, via bunfig's preload) BEFORE dynamic-importing testing-library.
@@ -48,9 +50,39 @@ function makePopStateStore(): {
   };
 }
 
-/** Wait `ms` real milliseconds, then flush Svelte's pending DOM updates. */
+/**
+ * Runs `run` with Bun's fake timers installed so the 50 ms coalescing gap
+ * can be advanced deterministically instead of waiting on the real clock.
+ * `jest.useFakeTimers()` monkey-patches the process-global timer functions,
+ * and the suite runs `--parallel=1` in one shared process, so every caller
+ * must save and restore all four globals — mirroring `tooltip.test.ts`'s
+ * `triggerDelayedTooltipShow` — or a leftover fake timer breaks every later
+ * test file's real timers.
+ */
+async function withFakeTimers(run: () => void | Promise<void>): Promise<void> {
+  const trackedSetTimeout = globalThis.setTimeout;
+  const trackedClearTimeout = globalThis.clearTimeout;
+  const trackedSetInterval = globalThis.setInterval;
+  const trackedClearInterval = globalThis.clearInterval;
+  jest.useFakeTimers();
+  try {
+    await run();
+  } finally {
+    jest.useRealTimers();
+    globalThis.setTimeout = trackedSetTimeout;
+    globalThis.clearTimeout = trackedClearTimeout;
+    globalThis.setInterval = trackedSetInterval;
+    globalThis.clearInterval = trackedClearInterval;
+    expect(globalThis.setTimeout).toBe(trackedSetTimeout);
+    expect(globalThis.clearTimeout).toBe(trackedClearTimeout);
+    expect(globalThis.setInterval).toBe(trackedSetInterval);
+    expect(globalThis.clearInterval).toBe(trackedClearInterval);
+  }
+}
+
+/** Advance the fake clock `ms`, then flush Svelte's pending DOM updates. */
 async function advance(ms: number): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, ms));
+  jest.advanceTimersByTime(ms);
   await tick();
 }
 
@@ -74,18 +106,20 @@ describe('Announcer', () => {
     render(Fixture, { announcer });
     await tick();
 
-    announcer.announce('Viewing button');
-    // Synchronous empty: the DOM mutates to '' first so an identical repeat
-    // still produces a mutation later.
-    expect(announcer.message).toBe('');
+    await withFakeTimers(async () => {
+      announcer.announce('Viewing button');
+      // Synchronous empty: the DOM mutates to '' first so an identical repeat
+      // still produces a mutation later.
+      expect(announcer.message).toBe('');
 
-    // Before the gap elapses, the message is still empty.
-    await advance(20);
-    expect(announcer.message).toBe('');
+      // Before the gap elapses, the message is still empty.
+      await advance(20);
+      expect(announcer.message).toBe('');
 
-    // After the gap, the message lands.
-    await advance(40);
-    expect(announcer.message).toBe('Viewing button');
+      // After the gap, the message lands.
+      await advance(40);
+      expect(announcer.message).toBe('Viewing button');
+    });
   });
 
   test('an identical repeat still empties then re-sets (forces a DOM mutation)', async () => {
@@ -93,17 +127,19 @@ describe('Announcer', () => {
     render(Fixture, { announcer });
     await tick();
 
-    announcer.announce('Viewing card');
-    await advance(60);
-    expect(announcer.message).toBe('Viewing card');
+    await withFakeTimers(async () => {
+      announcer.announce('Viewing card');
+      await advance(60);
+      expect(announcer.message).toBe('Viewing card');
 
-    // Announcing the same string again must clear to '' first...
-    announcer.announce('Viewing card');
-    expect(announcer.message).toBe('');
+      // Announcing the same string again must clear to '' first...
+      announcer.announce('Viewing card');
+      expect(announcer.message).toBe('');
 
-    // ...then restore it, guaranteeing assistive tech reads the repeat.
-    await advance(60);
-    expect(announcer.message).toBe('Viewing card');
+      // ...then restore it, guaranteeing assistive tech reads the repeat.
+      await advance(60);
+      expect(announcer.message).toBe('Viewing card');
+    });
   });
 
   test('a newer announcement cancels a pending one (coalesces to the latest)', async () => {
@@ -111,12 +147,14 @@ describe('Announcer', () => {
     render(Fixture, { announcer });
     await tick();
 
-    announcer.announce('first');
-    await advance(20); // still pending
-    announcer.announce('second');
+    await withFakeTimers(async () => {
+      announcer.announce('first');
+      await advance(20); // still pending
+      announcer.announce('second');
 
-    await advance(60);
-    expect(announcer.message).toBe('second');
+      await advance(60);
+      expect(announcer.message).toBe('second');
+    });
   });
 
   test('cancel() drops a pending announcement', async () => {
@@ -124,11 +162,13 @@ describe('Announcer', () => {
     render(Fixture, { announcer });
     await tick();
 
-    announcer.announce('should not land');
-    announcer.cancel();
+    await withFakeTimers(async () => {
+      announcer.announce('should not land');
+      announcer.cancel();
 
-    await advance(60);
-    expect(announcer.message).toBe('');
+      await advance(60);
+      expect(announcer.message).toBe('');
+    });
   });
 
   test('the live region reflects the message text', async () => {
@@ -140,9 +180,11 @@ describe('Announcer', () => {
     expect(region).not.toBeNull();
     expect(region?.getAttribute('aria-atomic')).toBe('true');
 
-    announcer.announce('Viewing accordion');
-    await advance(60);
-    expect(region?.textContent).toBe('Viewing accordion');
+    await withFakeTimers(async () => {
+      announcer.announce('Viewing accordion');
+      await advance(60);
+      expect(region?.textContent).toBe('Viewing accordion');
+    });
   });
 });
 
@@ -152,9 +194,11 @@ describe('announceNavigation', () => {
     const { component } = render(NavFixture, { announcer });
     await tick();
 
-    await component['navigate']('button');
-    // Humanized + component-first, matching the SSR title from renderShell.
-    expect(document.title).toBe('Button — cinder playground');
+    await withFakeTimers(async () => {
+      await component['navigate']('button');
+      // Humanized + component-first, matching the SSR title from renderShell.
+      expect(document.title).toBe('Button — cinder playground');
+    });
   });
 
   test('queues a "Viewing <Humanized>" announcement in the live region', async () => {
@@ -162,12 +206,14 @@ describe('announceNavigation', () => {
     const { container, component } = render(NavFixture, { announcer });
     await tick();
 
-    await component['navigate']('card');
-    // announceNavigation awaits a tick but not the 50 ms coalescing gap.
-    await advance(70);
+    await withFakeTimers(async () => {
+      await component['navigate']('card');
+      // announceNavigation awaits a tick but not the 50 ms coalescing gap.
+      await advance(70);
 
-    const region = container.querySelector('[aria-live="polite"]');
-    expect(region?.textContent).toBe('Viewing Card');
+      const region = container.querySelector('[aria-live="polite"]');
+      expect(region?.textContent).toBe('Viewing Card');
+    });
   });
 
   test('moves focus to the main region', async () => {
@@ -175,8 +221,10 @@ describe('announceNavigation', () => {
     const { component } = render(NavFixture, { announcer });
     await tick();
 
-    await component['navigate']('avatar');
-    expect(document.activeElement).toBe(component['getMain']());
+    await withFakeTimers(async () => {
+      await component['navigate']('avatar');
+      expect(document.activeElement).toBe(component['getMain']());
+    });
   });
 });
 
@@ -188,15 +236,17 @@ describe('popstate navigation (browser back/forward)', () => {
     const { container, component } = render(PopStateFixture, { announcer, store });
     await tick();
 
-    await component['popState']();
+    await withFakeTimers(async () => {
+      await component['popState']();
 
-    expect(store.currentComponent).toBe('button');
-    expect(document.title).toBe('Button — cinder playground');
-    expect(document.activeElement).toBe(component['getMain']());
+      expect(store.currentComponent).toBe('button');
+      expect(document.title).toBe('Button — cinder playground');
+      expect(document.activeElement).toBe(component['getMain']());
 
-    await advance(70);
-    const region = container.querySelector('[aria-live="polite"]');
-    expect(region?.textContent).toBe('Viewing Button');
+      await advance(70);
+      const region = container.querySelector('[aria-live="polite"]');
+      expect(region?.textContent).toBe('Viewing Button');
+    });
   });
 
   test('syncs the toolbar from the URL before announcing', async () => {
@@ -206,9 +256,11 @@ describe('popstate navigation (browser back/forward)', () => {
     const { component } = render(PopStateFixture, { announcer, store });
     await tick();
 
-    await component['popState']();
-    // The handler re-syncs the toolbar exactly once before focus lands.
-    expect(store.syncFromUrlCalls).toBe(1);
+    await withFakeTimers(async () => {
+      await component['popState']();
+      // The handler re-syncs the toolbar exactly once before focus lands.
+      expect(store.syncFromUrlCalls).toBe(1);
+    });
   });
 
   test('does not announce or change title when the path is not a component route', async () => {
@@ -219,16 +271,18 @@ describe('popstate navigation (browser back/forward)', () => {
     const { container, component } = render(PopStateFixture, { announcer, store });
     await tick();
 
-    await component['popState']();
+    await withFakeTimers(async () => {
+      await component['popState']();
 
-    // Unresolved path: store untouched, but the toolbar still re-syncs.
-    expect(store.currentComponent).toBe('button');
-    expect(store.syncFromUrlCalls).toBe(1);
-    expect(document.title).toBe('');
+      // Unresolved path: store untouched, but the toolbar still re-syncs.
+      expect(store.currentComponent).toBe('button');
+      expect(store.syncFromUrlCalls).toBe(1);
+      expect(document.title).toBe('');
 
-    await advance(70);
-    const region = container.querySelector('[aria-live="polite"]');
-    expect(region?.textContent).toBe('');
+      await advance(70);
+      const region = container.querySelector('[aria-live="polite"]');
+      expect(region?.textContent).toBe('');
+    });
   });
 
   test('applies title + announcement + focus when returning to the root landing page', async () => {
@@ -239,15 +293,17 @@ describe('popstate navigation (browser back/forward)', () => {
     const { container, component } = render(PopStateFixture, { announcer, store });
     await tick();
 
-    await component['popState']();
+    await withFakeTimers(async () => {
+      await component['popState']();
 
-    expect(store.currentComponent).toBe('');
-    expect(store.syncFromUrlCalls).toBe(1);
-    expect(document.title).toBe('cinder playground — Svelte 5 component library');
-    expect(document.activeElement).toBe(component['getMain']());
+      expect(store.currentComponent).toBe('');
+      expect(store.syncFromUrlCalls).toBe(1);
+      expect(document.title).toBe('cinder playground — Svelte 5 component library');
+      expect(document.activeElement).toBe(component['getMain']());
 
-    await advance(70);
-    const region = container.querySelector('[aria-live="polite"]');
-    expect(region?.textContent).toBe('Viewing cinder playground');
+      await advance(70);
+      const region = container.querySelector('[aria-live="polite"]');
+      expect(region?.textContent).toBe('Viewing cinder playground');
+    });
   });
 });
