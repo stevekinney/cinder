@@ -276,7 +276,12 @@
       );
     }
 
-    return items[0] ?? null;
+    // A zero/default-tabindex toggle sits in native order's zero tier, which
+    // forward Tab only reaches after every positive-tabindex stop. `items`
+    // is sorted positives-first, so its globally-first entry can be a
+    // positive-tabindex item the toggle has already passed; filter for the
+    // first zero-tier item instead of naively taking items[0].
+    return items.find((item) => getTabIndexValue(item) === 0) ?? null;
   }
 
   function bridgeBrandTabToPortaledPanel(event: KeyboardEvent): boolean {

@@ -314,6 +314,17 @@ function positiveThenNormalNavigationSnippet() {
   }));
 }
 
+function normalThenPositiveNavigationSnippet() {
+  return createRawSnippet(() => ({
+    render: () => `
+      <div>
+        <button type="button" class="cinder-navigation-item" data-cinder-navigation-item data-key="normal">Normal</button>
+        <button type="button" class="cinder-navigation-item" data-cinder-navigation-item data-key="positive" tabindex="1">Positive</button>
+      </div>
+    `,
+  }));
+}
+
 function allExcludedNavigationSnippet() {
   return createRawSnippet(() => ({
     render: () => `
@@ -1343,6 +1354,31 @@ describe('NavigationBar', () => {
       const normalItem = itemsRegion.querySelector('[data-key="normal"]') as HTMLButtonElement;
 
       toggle.setAttribute('tabindex', '2');
+      toggle.focus();
+      await fireEvent.keyDown(toggle, { key: 'Tab' });
+      expect(document.activeElement).toBe(normalItem);
+    });
+  });
+
+  test('toggle Tab with a default tabindex lands on the first zero-tier item, not a later positive-tabindex item', async () => {
+    // `getSequentialNavigationItems()` sorts positive-tabindex items first
+    // globally, so the fallback used to take items[0] unconditionally and
+    // land on a positive-tabindex item even when it sits later in DOM
+    // order. Native forward Tab from a zero/default-tabindex toggle visits
+    // zero-tier stops first — the positive item was already visited earlier
+    // in native order — so the fallback must filter by the toggle's own
+    // tab tier instead of taking the globally-first item.
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        items: normalThenPositiveNavigationSnippet(),
+        menuToggle: toggleSnippet(),
+      });
+
+      await openCollapsedMobileMenu(container);
+      const itemsRegion = await waitForMobilePanelPosition(container);
+      const toggle = container.querySelector('#toggle-btn') as HTMLButtonElement;
+      const normalItem = itemsRegion.querySelector('[data-key="normal"]') as HTMLButtonElement;
+
       toggle.focus();
       await fireEvent.keyDown(toggle, { key: 'Tab' });
       expect(document.activeElement).toBe(normalItem);

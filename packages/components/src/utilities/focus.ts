@@ -138,9 +138,17 @@ export function getSequentialFocusTargets(
     }
   }
   const radioRepresentatives = new Set(
-    radios.flatMap(({ members }) => [
-      members.find((radio) => 'checked' in radio && radio.checked) ?? members[0],
-    ]),
+    radios.flatMap(({ members }) => {
+      const checked = members.find((radio) => 'checked' in radio && radio.checked);
+      if (checked) return [checked];
+      // Native forward Tab enters an unchecked same-name radio group at its
+      // first DOM-order member; native reverse Tab enters at its last
+      // DOM-order member (the checked member wins in both directions when
+      // present). Without a range — the whole-container enumeration case —
+      // default to the forward-Tab entry point.
+      const fallback = range?.direction === 'before' ? members.at(-1) : members[0];
+      return fallback ? [fallback] : [];
+    }),
   );
   const groupedRadios = new Set(radios.flatMap(({ members }) => members));
   return candidates
@@ -168,9 +176,13 @@ function collectComposedElements(root: ParentNode): Element[] {
     visited.add(element);
     elements.push(element);
     if (isSlotElement(element)) {
-      const assigned = element.assignedElements({ flatten: true });
-      if (assigned.length > 0) {
-        for (const child of assigned) visit(child, true);
+      // A slot assigned only text nodes has no assigned *elements*, but
+      // native fallback content only renders when the slot has no assigned
+      // *nodes* at all. Gate on assignedNodes, not assignedElements, so an
+      // all-text assignment still suppresses the slot's fallback children
+      // from being treated as reachable focus targets.
+      if (element.assignedNodes({ flatten: false }).length > 0) {
+        for (const child of element.assignedElements({ flatten: true })) visit(child, true);
         return;
       }
     }
@@ -184,11 +196,14 @@ function collectComposedElements(root: ParentNode): Element[] {
 
 type SlotElement = Element & {
   assignedElements(options?: { flatten?: boolean }): Element[];
+  assignedNodes(options?: { flatten?: boolean }): Node[];
 };
 
 function isSlotElement(element: Element): element is SlotElement {
   return (
-    element.localName === 'slot' && typeof Reflect.get(element, 'assignedElements') === 'function'
+    element.localName === 'slot' &&
+    typeof Reflect.get(element, 'assignedElements') === 'function' &&
+    typeof Reflect.get(element, 'assignedNodes') === 'function'
   );
 }
 

@@ -199,6 +199,24 @@ describe('getSequentialFocusTargets', () => {
     host.remove();
   });
 
+  test('does not traverse slot fallback content when the host assigns only text nodes', () => {
+    // A host that assigns only text (no elements) to a slot still means the
+    // slot has assigned content: assignedElements() returns [] because a
+    // text node isn't an Element, but assignedNodes() is non-empty and
+    // native fallback content is not rendered in that case. Gating on
+    // assignedElements alone would wrongly fall through to traversing the
+    // slot's own fallback children as reachable focus targets.
+    const host = document.createElement('div');
+    const shadow = host.attachShadow({ mode: 'open' });
+    shadow.innerHTML = '<slot><button id="fallback"></button></slot>';
+    host.append(document.createTextNode('Just text'));
+    document.body.append(host);
+
+    const fallbackButton = shadow.querySelector('#fallback') as HTMLButtonElement;
+    expect(getSequentialFocusTargets(shadow)).not.toContain(fallbackButton);
+    host.remove();
+  });
+
   test('filters before and after a reference in flattened composed-tree order', () => {
     const region = document.createElement('div');
     const beforeHost = document.createElement('div');
@@ -472,6 +490,40 @@ describe('getSequentialFocusTargets', () => {
     expect(targets).not.toContain(first);
     expect(targets).toContain(checked);
     expect(targets).toContain(other);
+    region.remove();
+  });
+
+  test('uses the last DOM-order radio as the "before" group representative when none is checked', () => {
+    // Native reverse Tab enters an unchecked same-name radio group at its
+    // LAST member in DOM order — the mirror of forward Tab's first-member
+    // entry point. The checked member wins in both directions when present,
+    // but an unchecked group's representative must be direction-aware.
+    //
+    // `first` and `last` are structurally identical apart from id, so this
+    // asserts on object identity (`toBe`) rather than `toEqual`: two
+    // distinct-but-attribute-identical elements compare equal under
+    // `toEqual`, which would let the wrong representative pass silently.
+    const region = document.createElement('div');
+    const first = document.createElement('input');
+    first.type = 'radio';
+    first.name = 'choice';
+    first.id = 'radio-first';
+    first.setAttribute('tabindex', '0');
+    const last = document.createElement('input');
+    last.type = 'radio';
+    last.name = 'choice';
+    last.id = 'radio-last';
+    last.setAttribute('tabindex', '0');
+    const reference = document.createElement('span');
+    region.append(first, last, reference);
+    document.body.append(region);
+
+    const result = getSequentialFocusTargets(region, {
+      relativeTo: reference,
+      direction: 'before',
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]).toBe(last);
     region.remove();
   });
 
