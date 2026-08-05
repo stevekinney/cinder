@@ -52,7 +52,7 @@ describe('cinder/z-index-scale', () => {
   // WALL-CLOCK POLICY: these wide/pathological-input tests exist to prove the
   // analyzer completes without a combinatorial blowup, not to bound latency.
   // They originally asserted 2000ms budgets, which produced five real CI
-  // flakes in one night (2015-5843ms under runner load, every rerun green).
+  // flakes in one night (between 2015 ms and 5843 ms under runner load, every rerun green).
   // The linearity PROPERTY is proven by the dedicated N-vs-2N scaling tests
   // in this file; each site below keeps a generous 30s ceiling purely as a
   // hang guard.
