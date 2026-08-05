@@ -353,15 +353,30 @@ export function sveltePlugin(
       // registering it, and cinder's own `onLoad` below calls it directly —
       // the only `.svelte` `onLoad` ever registered on the real builder.
       let componentLoader: Bun.OnLoadCallback | undefined;
-      const bridgeBuilder: Bun.PluginBuilder = {
-        // Minimal test stubs (see components.test.ts) only implement `onLoad`
-        // — degrade to a no-op rather than crash on construction. Bun's own
-        // real builder always has `onResolve`, and cinder's `css` values
-        // (`'injected'` / `'none'`) never trigger the upstream plugin's
-        // virtual-CSS resolution this registers, so a no-op is never a
-        // functional loss even when it IS the real builder.
-        onResolve:
-          typeof builder.onResolve === 'function' ? builder.onResolve.bind(builder) : () => builder,
+      // Minimal test stubs (see components.test.ts) only implement `onLoad`.
+      // Bun's own real builder always has the rest of `PluginBuilder`, and
+      // cinder's `css` values (`'injected'` / `'none'`) never trigger the
+      // upstream plugin's `onStart`/`onEnd`/`onBeforeParse`/`module` hooks or
+      // its virtual-CSS `onResolve`, so a no-op fallback is never a
+      // functional loss even when it IS the real builder.
+      let bridgeBuilder: Bun.PluginBuilder;
+      bridgeBuilder = {
+        onStart: (callback) =>
+          typeof builder.onStart === 'function' ? builder.onStart(callback) : bridgeBuilder,
+        onEnd: (callback) =>
+          typeof builder.onEnd === 'function' ? builder.onEnd(callback) : bridgeBuilder,
+        onBeforeParse: (constraints, callback) =>
+          typeof builder.onBeforeParse === 'function'
+            ? builder.onBeforeParse(constraints, callback)
+            : bridgeBuilder,
+        onResolve: (constraints, callback) =>
+          typeof builder.onResolve === 'function'
+            ? builder.onResolve(constraints, callback)
+            : bridgeBuilder,
+        module: (specifier, callback) =>
+          typeof builder.module === 'function'
+            ? builder.module(specifier, callback)
+            : bridgeBuilder,
         onLoad: (matcher, callback) => {
           // The component filter (`.svelte$`) matches a bare `.svelte` path;
           // the rune-module filter (`.svelte.(js|ts)$`) does not — register
@@ -376,8 +391,8 @@ export function sveltePlugin(
         get config() {
           return builder.config;
         },
-      } as Bun.PluginBuilder;
-      upstreamPlugin.setup(bridgeBuilder);
+      };
+      void upstreamPlugin.setup(bridgeBuilder);
       if (componentLoader === undefined) {
         throw new Error(
           "[svelte-plugin] could not find @lostgradient/bun-plugin-svelte's component onLoad " +
