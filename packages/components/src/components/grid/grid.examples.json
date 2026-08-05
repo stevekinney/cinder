@@ -14,6 +14,12 @@
       "title": "Explicit placement",
       "description": "A 12-column grid using Grid.Item for spans while plain children use auto-placement.",
       "code": "<script lang=\"ts\">\n  import { Grid } from '@lostgradient/cinder/grid';\n</script>\n\n<Grid columns={12} gap=\"var(--cinder-space-4)\" aria-label=\"Profile form layout\">\n  <Grid.Item span={6}>\n    <div style=\"padding: 1rem; border: 1px solid var(--cinder-border-muted);\">First name</div>\n  </Grid.Item>\n  <Grid.Item span={6}>\n    <div style=\"padding: 1rem; border: 1px solid var(--cinder-border-muted);\">Last name</div>\n  </Grid.Item>\n  <Grid.Item span={12}>\n    <div style=\"padding: 1rem; border: 1px solid var(--cinder-border-muted);\">Email address</div>\n  </Grid.Item>\n</Grid>\n"
+    },
+    {
+      "id": "narrow-collapse",
+      "title": "Narrow collapse",
+      "description": "With narrowCollapseEnabled, Grid falls back to a single column and resets item placement once its own width is 48rem or less.",
+      "code": "<script lang=\"ts\">\n  import { Grid } from '@lostgradient/cinder/grid';\n</script>\n\n<Grid\n  columns={3}\n  gap=\"var(--cinder-space-4)\"\n  narrowCollapseEnabled\n  aria-label=\"Narrow collapse demo\"\n>\n  <div style=\"padding: 1rem; border: 1px solid var(--cinder-border-muted);\">One</div>\n  <div style=\"padding: 1rem; border: 1px solid var(--cinder-border-muted);\">Two</div>\n  <div style=\"padding: 1rem; border: 1px solid var(--cinder-border-muted);\">Three</div>\n</Grid>\n"
     }
   ]
 }

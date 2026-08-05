@@ -1,10 +1,16 @@
 /// <reference lib="dom" />
+import * as matchers from '@testing-library/jest-dom/matchers';
 import { describe, expect, mock, test } from 'bun:test';
 import type { Component } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 import { renderThenHydrate } from '../../test/hydrate.ts';
 import type { DataGridColumnDef, DataGridProps } from './data-grid.types.ts';
+
+// Extend Bun's expect with @testing-library/jest-dom matchers (e.g. toHaveAttribute).
+// The cast to `Parameters<typeof expect.extend>[0]` satisfies Bun's extend signature while
+// preserving the full jest-dom matcher set at runtime.
+expect.extend(matchers as Parameters<typeof expect.extend>[0]);
 
 setupHappyDom();
 
@@ -76,18 +82,26 @@ describe('DataGrid ARIA', () => {
     expect(grid?.getAttribute('aria-colcount')).toBe(String(columns.length));
   });
 
-  test('announces multiselectable grid behavior before a range is selected', () => {
-    const { container } = render(IssueDataGrid, {
-      rows,
-      columns,
-      getRowId: getIssueId,
-      'aria-label': 'Issues',
-    });
+  // `selectionMode` only governs row selection. Keyboard and pointer range
+  // selection across gridcells stays available regardless of that prop (see
+  // `selectionMode`'s doc comment on `DataGridProps`), so aria-multiselectable
+  // must stay unconditionally "true" instead of tracking `selectionMode`.
+  for (const selectionMode of ['none', 'single', 'multiple'] as const) {
+    test(`sets aria-multiselectable regardless of selectionMode ('${selectionMode}')`, () => {
+      const { container } = render(IssueDataGrid, {
+        rows,
+        columns,
+        getRowId: getIssueId,
+        selectionMode,
+        'aria-label': 'Issues',
+      });
 
-    expect(container.querySelector('[role="grid"]')?.getAttribute('aria-multiselectable')).toBe(
-      'true',
-    );
-  });
+      expect(container.querySelector('[role="grid"]')).toHaveAttribute(
+        'aria-multiselectable',
+        'true',
+      );
+    });
+  }
 
   test('assigns one-based row and column indexes', () => {
     const { container } = render(IssueDataGrid, {

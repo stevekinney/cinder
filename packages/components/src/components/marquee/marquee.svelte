@@ -200,8 +200,23 @@
     if (!primaryTrackItem || !duplicateTrackItem) return;
     duplicateReady = false;
     syncDuplicateTrack();
+
+    // Any mutation on the primary track item's subtree, or a resize,
+    // synchronously triggers a full clone-and-rewrite pass. Coalesce both
+    // observer callbacks through requestAnimationFrame so N mutations (an
+    // animated SVG changing an attribute on nearly every frame, for
+    // example) within one frame produce exactly one sync pass.
+    let pendingSyncFrame: number | null = null;
+    const scheduleSync = () => {
+      if (pendingSyncFrame !== null) return;
+      pendingSyncFrame = requestAnimationFrame(() => {
+        pendingSyncFrame = null;
+        syncDuplicateTrack();
+      });
+    };
+
     const observer = new MutationObserver(() => {
-      syncDuplicateTrack();
+      scheduleSync();
     });
     observer.observe(primaryTrackItem, {
       childList: true,
@@ -213,12 +228,16 @@
       typeof ResizeObserver === 'undefined'
         ? undefined
         : new ResizeObserver(() => {
-            syncDuplicateTrack();
+            scheduleSync();
           });
     resizeObserver?.observe(primaryTrackItem);
     return () => {
       observer.disconnect();
       resizeObserver?.disconnect();
+      if (pendingSyncFrame !== null) {
+        cancelAnimationFrame(pendingSyncFrame);
+        pendingSyncFrame = null;
+      }
     };
   });
 </script>

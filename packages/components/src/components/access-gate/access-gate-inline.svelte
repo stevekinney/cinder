@@ -332,11 +332,33 @@
       return false;
     }
 
+    function nodeMayContainInteractiveControl(node: Node): boolean {
+      if (!(node instanceof HTMLElement)) return false;
+      return (
+        node.matches(INTERACTIVE_SELECTOR) || node.querySelector(INTERACTIVE_SELECTOR) !== null
+      );
+    }
+
     const observer = new MutationObserver((records) => {
       if (ignoringGateMutations && records.every(isGateMutation)) return;
 
       const stateRefreshes: Array<[HTMLElement, string[]]> = [];
+      // A `childList` mutation only warrants a full interactive-control
+      // re-scan when it plausibly added or removed one — an unrelated
+      // insertion/removal elsewhere in the gated subtree (a live list, a
+      // ticking counter) must not trigger `syncDisabledControls`'s
+      // querySelectorAll pass.
+      let childListMayAffectInteractiveControls = false;
       for (const record of records) {
+        if (record.type === 'childList') {
+          if (!childListMayAffectInteractiveControls) {
+            childListMayAffectInteractiveControls = [
+              ...record.addedNodes,
+              ...record.removedNodes,
+            ].some(nodeMayContainInteractiveControl);
+          }
+          continue;
+        }
         if (record.type !== 'attributes') continue;
         if (!(record.target instanceof HTMLElement)) continue;
         if (!element.contains(record.target)) continue;
@@ -358,6 +380,8 @@
           }
         }
       }
+
+      if (!childListMayAffectInteractiveControls && stateRefreshes.length === 0) return;
 
       syncDisabledControls(stateRefreshes);
     });

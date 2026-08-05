@@ -5,10 +5,8 @@
     grid-template-columns: var(--cinder-grid-columns, repeat(1, 1fr));
     row-gap: var(--cinder-grid-row-gap, var(--cinder-space-4));
     column-gap: var(--cinder-grid-column-gap, var(--cinder-space-4));
-  }
-
-  .cinder-grid[data-cinder-collapse][data-cinder-narrow] {
-    grid-template-columns: 1fr;
+    container-type: inline-size;
+    container-name: cinder-grid;
   }
 
   .cinder-grid-item {
@@ -26,10 +24,22 @@
     grid-row-end: span var(--cinder-grid-item-row-span);
   }
 
-  .cinder-grid[data-cinder-collapse][data-cinder-narrow] > .cinder-grid-item {
-    grid-column-start: auto;
-    grid-column-end: auto;
-    grid-row-start: auto;
-    grid-row-end: auto;
+  /*
+   * A query container cannot be queried by the same rule that styles it: per
+   * the CSS Containment spec, an element's own query-container resolution
+   * excludes itself, so `.cinder-grid[data-cinder-collapse] { grid-template-
+   * columns: 1fr; }` inside this @container block would silently never apply
+   * (verified in a real browser; happy-dom does not model @container at all,
+   * so unit tests cannot catch this). Instead of reassigning
+   * grid-template-columns on the container itself, every direct child is
+   * forced to span the full row, which stacks them into a single visual
+   * column regardless of how many tracks grid-template-columns still
+   * declares.
+   */
+  @container cinder-grid (max-width: 48rem) {
+    .cinder-grid[data-cinder-collapse] > * {
+      grid-column: 1 / -1;
+      grid-row: auto;
+    }
   }
 }

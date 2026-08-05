@@ -6,8 +6,6 @@ export type DataGridCellCoordinate = {
 export type DataGridCellRange = {
   anchor: DataGridCellCoordinate;
   focus: DataGridCellCoordinate;
-  rowIds: readonly string[];
-  columnKeys: readonly string[];
   startRowIndex: number;
   endRowIndex: number;
   startColumnIndex: number;
@@ -21,16 +19,21 @@ export function getCellCoordinateKey(cell: DataGridCellCoordinate): string {
 export function computeCellRange(
   anchor: DataGridCellCoordinate,
   focus: DataGridCellCoordinate,
-  rowIds: readonly string[],
-  columnKeys: readonly string[],
-): DataGridCellRange | undefined {
-  const anchorRowIndex = rowIds.indexOf(anchor.rowId);
-  const focusRowIndex = rowIds.indexOf(focus.rowId);
-  const anchorColumnIndex = columnKeys.indexOf(anchor.columnKey);
-  const focusColumnIndex = columnKeys.indexOf(focus.columnKey);
+  rowIndexByRowId: ReadonlyMap<string, number>,
+  columnIndexByColumnKey: ReadonlyMap<string, number>,
+): DataGridCellRange | null {
+  const anchorRowIndex = rowIndexByRowId.get(anchor.rowId);
+  const focusRowIndex = rowIndexByRowId.get(focus.rowId);
+  const anchorColumnIndex = columnIndexByColumnKey.get(anchor.columnKey);
+  const focusColumnIndex = columnIndexByColumnKey.get(focus.columnKey);
 
-  if (anchorRowIndex < 0 || focusRowIndex < 0 || anchorColumnIndex < 0 || focusColumnIndex < 0) {
-    return undefined;
+  if (
+    anchorRowIndex === undefined ||
+    focusRowIndex === undefined ||
+    anchorColumnIndex === undefined ||
+    focusColumnIndex === undefined
+  ) {
+    return null;
   }
 
   const startRowIndex = Math.min(anchorRowIndex, focusRowIndex);
@@ -41,8 +44,6 @@ export function computeCellRange(
   return {
     anchor,
     focus,
-    rowIds: rowIds.slice(startRowIndex, endRowIndex + 1),
-    columnKeys: columnKeys.slice(startColumnIndex, endColumnIndex + 1),
     startRowIndex,
     endRowIndex,
     startColumnIndex,
@@ -51,17 +52,29 @@ export function computeCellRange(
 }
 
 export function isCellInRange(
-  cell: DataGridCellCoordinate,
-  range: DataGridCellRange | undefined,
+  rowIndex: number,
+  columnIndex: number,
+  range: DataGridCellRange | null,
 ): boolean {
   if (!range) return false;
-  return range.rowIds.includes(cell.rowId) && range.columnKeys.includes(cell.columnKey);
+  return (
+    rowIndex >= range.startRowIndex &&
+    rowIndex <= range.endRowIndex &&
+    columnIndex >= range.startColumnIndex &&
+    columnIndex <= range.endColumnIndex
+  );
 }
 
-export function getCellsInRange(range: DataGridCellRange | undefined): DataGridCellCoordinate[] {
+export function getCellsInRange(
+  range: DataGridCellRange | null,
+  rowIds: readonly string[],
+  columnKeys: readonly string[],
+): DataGridCellCoordinate[] {
   if (!range) return [];
-  return range.rowIds.flatMap((rowId) =>
-    range.columnKeys.map((columnKey) => ({
+  const rangeRowIds = rowIds.slice(range.startRowIndex, range.endRowIndex + 1);
+  const rangeColumnKeys = columnKeys.slice(range.startColumnIndex, range.endColumnIndex + 1);
+  return rangeRowIds.flatMap((rowId) =>
+    rangeColumnKeys.map((columnKey) => ({
       rowId,
       columnKey,
     })),

@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { afterEach, describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, mock, test } from 'bun:test';
 import { join } from 'node:path';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
@@ -345,5 +345,67 @@ describe('Marquee', () => {
 
     expect(duplicateInput?.hasAttribute('name')).toBe(false);
     expect(duplicateInput?.hasAttribute('disabled')).toBe(false);
+  });
+
+  test('coalesces a burst of mutations into one clone-and-rewrite pass per frame (#1186 row 5)', async () => {
+    const originalRequestAnimationFrame = globalThis.requestAnimationFrame;
+    const originalCancelAnimationFrame = globalThis.cancelAnimationFrame;
+    const frameCallbacks = new Map<number, FrameRequestCallback>();
+    let nextFrameId = 1;
+    globalThis.requestAnimationFrame = (callback: FrameRequestCallback) => {
+      const id = nextFrameId;
+      nextFrameId += 1;
+      frameCallbacks.set(id, callback);
+      return id;
+    };
+    globalThis.cancelAnimationFrame = (id: number) => {
+      frameCallbacks.delete(id);
+    };
+    function flushOneFrame() {
+      const callbacks = Array.from(frameCallbacks.values());
+      frameCallbacks.clear();
+      for (const callback of callbacks) callback(performance.now());
+    }
+
+    try {
+      const { container } = render(Marquee, { children: textSnippet('content') });
+      // Let the effect's own eager, unbatched initial sync settle first.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      const primaryItem = container.querySelector<HTMLElement>(
+        '.cinder-marquee__item:not([aria-hidden="true"])',
+      );
+      const primarySpan = primaryItem?.querySelector('span');
+      if (!primaryItem || !primarySpan) throw new Error('Missing primary marquee track item.');
+
+      const cloneNodeSpy = mock(primaryItem.cloneNode.bind(primaryItem));
+      primaryItem.cloneNode = cloneNodeSpy;
+
+      // Five separate, microtask-spaced mutations — each fires its own
+      // MutationObserver callback (unlike synchronous mutations, which the
+      // observer would batch into a single callback on its own regardless
+      // of this fix), so this exercises the rAF-level coalescing rather
+      // than native MutationObserver record batching.
+      for (let index = 0; index < 5; index += 1) {
+        primarySpan.className = `mutation-${index}`;
+        // eslint-disable-next-line no-await-in-loop
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      }
+
+      // No clone-and-rewrite pass until a frame is flushed, no matter how
+      // many mutation-driven observer callbacks fired.
+      expect(cloneNodeSpy).toHaveBeenCalledTimes(0);
+
+      flushOneFrame();
+      expect(cloneNodeSpy).toHaveBeenCalledTimes(1);
+
+      // The duplicate track picked up the final mutation's class, proving
+      // the coalesced sync still ran (liveness), not just fewer clones.
+      const duplicateTrack = container.querySelector('.cinder-marquee__item[aria-hidden="true"]');
+      expect(duplicateTrack?.querySelector('span')?.className).toBe('mutation-4');
+    } finally {
+      globalThis.requestAnimationFrame = originalRequestAnimationFrame;
+      globalThis.cancelAnimationFrame = originalCancelAnimationFrame;
+    }
   });
 });

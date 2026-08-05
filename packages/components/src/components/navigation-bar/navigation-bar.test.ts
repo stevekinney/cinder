@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { afterEach, describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, spyOn, test } from 'bun:test';
 import { existsSync, readFileSync } from 'node:fs';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
@@ -1973,6 +1973,71 @@ describe('NavigationBar', () => {
 
       expect(clicks['billing']).toBe(1);
       expect(getItemsRegion(container).getAttribute('data-open')).toBe('true');
+    });
+  });
+
+  test('evaluates isEnabledNavigationItem once per item when bridging Tab out of the portaled panel (#1186 row 3)', async () => {
+    // isEnabledNavigationItem is not exported, so measure its cost via the
+    // global getComputedStyle calls it makes walking each item's ancestor
+    // chain. Establish a per-item baseline (`perItemCost`) through an
+    // isolated interaction — ArrowRight from the first item to the second —
+    // which invokes isEnabledNavigationItem exactly once (the immediate
+    // next item is enabled, so `focusAdjacentNavigationItem`'s loop exits on
+    // its first iteration). The Tab-bridging path under test additionally
+    // calls `getSequentialFocusTargets` once (a fixed, fix-independent
+    // per-item cost of its own), so the discriminating comparison is the
+    // MULTIPLE of `perItemCost` the bridging call consumes across N items,
+    // not an exact call count.
+    await withResizeObserver(async () => {
+      const itemCount = 8;
+      const items = Array.from(
+        { length: itemCount },
+        (_, index) =>
+          `<button type="button" class="cinder-navigation-item" data-cinder-navigation-item data-key="item-${index}">Item ${index}</button>`,
+      ).join('\n');
+      const manyItemsSnippet = createRawSnippet(() => ({
+        render: () => `<div>${items}</div>`,
+        setup: () => {},
+      }));
+
+      const { container } = render(NavigationBar, {
+        items: manyItemsSnippet,
+        menuToggle: toggleSnippet(),
+        actions: actionButtonSnippet(),
+      });
+
+      await openCollapsedMobileMenu(container);
+      const itemsRegion = await waitForMobilePanelPosition(container);
+      const firstItem = itemsRegion.querySelector('[data-key="item-0"]') as HTMLButtonElement;
+      const secondItem = itemsRegion.querySelector('[data-key="item-1"]') as HTMLButtonElement;
+      const lastItem = itemsRegion.querySelector(
+        `[data-key="item-${itemCount - 1}"]`,
+      ) as HTMLButtonElement;
+
+      firstItem.focus();
+      const getComputedStyleSpy = spyOn(globalThis, 'getComputedStyle');
+      await fireEvent.keyDown(firstItem, { key: 'ArrowRight' });
+      expect(document.activeElement).toBe(secondItem);
+      const perItemCost = getComputedStyleSpy.mock.calls.length;
+      expect(perItemCost).toBeGreaterThan(0);
+      getComputedStyleSpy.mockClear();
+
+      lastItem.focus();
+      await fireEvent.keyDown(lastItem, { key: 'Tab' });
+      const bridgingCallCount = getComputedStyleSpy.mock.calls.length;
+      getComputedStyleSpy.mockRestore();
+
+      // Correctness: the bridge actually fired (focus left the panel).
+      expect(document.activeElement).not.toBe(lastItem);
+
+      // Pre-fix, isEnabledNavigationItem runs twice per item (once inside
+      // getSequentialNavigationItems, once via the direct .filter call) on
+      // top of getSequentialFocusTargets' own fixed per-item cost — measured
+      // at itemCount=8 (perItemCost=6): ~198 calls pre-fix vs ~102 post-fix.
+      // The threshold below sits at roughly the geometric midpoint, well
+      // clear of both measured values, so it discriminates the duplication
+      // without pinning an exact count.
+      expect(bridgingCallCount).toBeLessThan(itemCount * perItemCost * 3);
     });
   });
 });

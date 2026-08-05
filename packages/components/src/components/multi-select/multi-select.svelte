@@ -319,9 +319,10 @@
   $effect(() => {
     const listbox = listboxElement;
     if (!listbox) return;
+    const optionNodes = Array.from(listbox.querySelectorAll<HTMLElement>('[role="option"]'));
     commandList.syncItems(
       visibleItems.flatMap((item, index) => {
-        const node = listbox.querySelectorAll<HTMLElement>('[role="option"]')[index];
+        const node = optionNodes[index];
         return node
           ? [
               {

@@ -655,6 +655,7 @@
 
   function handleDocumentFocusin(event: FocusEvent): void {
     if (!rootElement || !(event.target instanceof Node)) return;
+    if (openMenuIndex === null && openSubmenuKey === null) return;
     void tick().then(() => {
       if (document.activeElement && rootElement?.contains(document.activeElement)) return;
       if (document.activeElement && isInsideOpenMenu(document.activeElement)) return;

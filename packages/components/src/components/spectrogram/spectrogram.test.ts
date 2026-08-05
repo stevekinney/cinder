@@ -244,4 +244,28 @@ describe('Spectrogram', () => {
     expect(rowHeaders).toContain('Mid');
     expect(rowHeaders).toContain('2');
   });
+
+  test('caps and samples the primary plot instead of an unbounded frame*bin grid (#1186 row 11)', () => {
+    const frameCount = 401;
+    const binCount = 257;
+    const denseFrames = Array.from({ length: frameCount }, (_, frameIndex) => ({
+      label: `frame-${frameIndex}`,
+      bins: Array.from({ length: binCount }, (_, binIndex) => ((frameIndex + binIndex) % 10) / 10),
+    }));
+
+    const { container } = render(Spectrogram, {
+      label: 'Dense spectrogram',
+      frames: denseFrames,
+    });
+
+    const maxPlotFrames = 400;
+    const maxPlotBins = 256;
+    const frameStep = Math.max(1, Math.ceil(frameCount / maxPlotFrames));
+    const binStep = Math.max(1, Math.ceil(binCount / maxPlotBins));
+    const expectedCellCount = Math.ceil(frameCount / frameStep) * Math.ceil(binCount / binStep);
+
+    const cells = container.querySelectorAll('.cinder-spectrogram__cell');
+    expect(cells.length).toBe(expectedCellCount);
+    expect(cells.length).toBeLessThanOrEqual(maxPlotFrames * maxPlotBins);
+  });
 });

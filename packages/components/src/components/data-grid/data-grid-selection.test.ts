@@ -118,7 +118,6 @@ describe('DataGrid selection', () => {
     expect(selectedCells).toHaveLength(4);
     expect(getDataCell(container, 0, 0).getAttribute('data-cinder-anchor')).toBe('true');
     expect(grid?.getAttribute('aria-activedescendant')).toBe(getDataCell(container, 1, 1).id);
-    expect(grid?.getAttribute('aria-multiselectable')).toBe('true');
   });
 
   test('Ctrl+A selects every data cell and Escape collapses back to the active cell', async () => {

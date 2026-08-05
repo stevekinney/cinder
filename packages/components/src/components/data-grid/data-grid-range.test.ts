@@ -9,36 +9,69 @@ import {
   type DataGridCellCoordinate,
 } from './_internal/geometry.ts';
 import { dataGridKeyToAction } from './_internal/keyboard-model.ts';
-import { areCellsEqual } from './_internal/selection-model.svelte.ts';
+import { createReactiveIdList } from './_internal/selection-model-test-support.svelte.ts';
+import { areCellsEqual, DataGridSelectionModel } from './_internal/selection-model.svelte.ts';
 
 setupHappyDom();
 
 const rowIds = ['row-1', 'row-2', 'row-3', 'row-4'];
 const columnKeys = ['customer', 'status', 'total', 'owner'];
+const rowIndexByRowId = new Map(rowIds.map((id, index) => [id, index]));
+const columnIndexByColumnKey = new Map(columnKeys.map((key, index) => [key, index]));
+
+function createModel(
+  initialRowIds: readonly string[] = rowIds,
+  initialColumnKeys: readonly string[] = columnKeys,
+) {
+  const rowSource = createReactiveIdList(initialRowIds);
+  const columnSource = createReactiveIdList(initialColumnKeys);
+  const model = new DataGridSelectionModel({
+    rowIds: rowSource.get,
+    columnKeys: columnSource.get,
+  });
+  return { model, rowSource, columnSource };
+}
 
 describe('DataGrid range geometry', () => {
   test('computes a rectangular range regardless of drag direction', () => {
     const anchor: DataGridCellCoordinate = { rowId: 'row-3', columnKey: 'total' };
     const focus: DataGridCellCoordinate = { rowId: 'row-1', columnKey: 'customer' };
 
-    const range = computeCellRange(anchor, focus, rowIds, columnKeys);
+    const range = computeCellRange(anchor, focus, rowIndexByRowId, columnIndexByColumnKey);
 
-    expect(range?.rowIds).toEqual(['row-1', 'row-2', 'row-3']);
-    expect(range?.columnKeys).toEqual(['customer', 'status', 'total']);
-    expect(getCellsInRange(range)).toHaveLength(9);
-    expect(isCellInRange({ rowId: 'row-2', columnKey: 'status' }, range)).toBe(true);
-    expect(isCellInRange({ rowId: 'row-4', columnKey: 'owner' }, range)).toBe(false);
+    expect(range).toEqual({
+      anchor,
+      focus,
+      startRowIndex: 0,
+      endRowIndex: 2,
+      startColumnIndex: 0,
+      endColumnIndex: 2,
+    });
+    expect(getCellsInRange(range, rowIds, columnKeys)).toHaveLength(9);
+    expect(isCellInRange(rowIds.indexOf('row-2'), columnKeys.indexOf('status'), range)).toBe(true);
+    expect(isCellInRange(rowIds.indexOf('row-4'), columnKeys.indexOf('owner'), range)).toBe(false);
   });
 
-  test('omits ranges whose endpoints are outside the current row or column space', () => {
-    expect(
-      computeCellRange(
-        { rowId: 'row-1', columnKey: 'customer' },
-        { rowId: 'missing', columnKey: 'status' },
-        rowIds,
-        columnKeys,
-      ),
-    ).toBeUndefined();
+  test('returns null when an endpoint references an unknown row', () => {
+    const range = computeCellRange(
+      { rowId: 'row-1', columnKey: 'customer' },
+      { rowId: 'missing', columnKey: 'status' },
+      rowIndexByRowId,
+      columnIndexByColumnKey,
+    );
+
+    expect(range).toBeNull();
+  });
+
+  test('returns null when an endpoint references an unknown column', () => {
+    const range = computeCellRange(
+      { rowId: 'row-1', columnKey: 'missing' },
+      { rowId: 'row-2', columnKey: 'status' },
+      rowIndexByRowId,
+      columnIndexByColumnKey,
+    );
+
+    expect(range).toBeNull();
   });
 
   test('does not clamp missing cell coordinates to the first cell', () => {
@@ -66,6 +99,92 @@ describe('DataGrid selection model', () => {
     expect(areCellsEqual(cell, undefined)).toBe(false);
     expect(areCellsEqual(cell, { rowId: 'row-1', columnKey: 'customer' })).toBe(true);
     expect(areCellsEqual(cell, { rowId: 'row-1', columnKey: 'status' })).toBe(false);
+  });
+
+  test('checks cell membership without enumerating the full selected range', () => {
+    const { model } = createModel();
+
+    model.setActiveCell({ rowId: 'row-1', columnKey: 'customer' });
+    model.setActiveCell({ rowId: 'row-3', columnKey: 'total' }, { extend: true });
+
+    Object.defineProperty(model, 'selectedCellCoordinates', {
+      configurable: true,
+      get(): never {
+        throw new Error('isCellSelected must not read selectedCellCoordinates');
+      },
+    });
+
+    // Inside the range.
+    expect(model.isCellSelected({ rowId: 'row-2', columnKey: 'status' })).toBe(true);
+    // On the range's edge.
+    expect(model.isCellSelected({ rowId: 'row-3', columnKey: 'total' })).toBe(true);
+    // Outside the range.
+    expect(model.isCellSelected({ rowId: 'row-4', columnKey: 'owner' })).toBe(false);
+  });
+
+  test('rebuilds the memoized row/column index maps when the underlying collections change', () => {
+    const { model, rowSource, columnSource } = createModel();
+
+    model.setActiveCell({ rowId: 'row-1', columnKey: 'customer' });
+    model.setActiveCell({ rowId: 'row-3', columnKey: 'total' }, { extend: true });
+    expect(model.isCellSelected({ rowId: 'row-3', columnKey: 'total' })).toBe(true);
+
+    rowSource.set(['row-5', 'row-6', 'row-7', 'row-8']);
+    columnSource.set(['alpha', 'beta', 'gamma', 'delta']);
+
+    // A coordinate that resolved under the old arrays no longer exists in the
+    // current ones, so it must stop reporting as selected — proving
+    // `isCellSelected` consults rebuilt index maps, not a stale cache.
+    expect(model.isCellSelected({ rowId: 'row-3', columnKey: 'total' })).toBe(false);
+
+    model.setActiveCell({ rowId: 'row-5', columnKey: 'alpha' });
+    model.setActiveCell({ rowId: 'row-7', columnKey: 'gamma' }, { extend: true });
+
+    // A coordinate that only exists under the new arrays is now selected,
+    // proving the index maps were rebuilt from the current row/column ids.
+    expect(model.isCellSelected({ rowId: 'row-6', columnKey: 'beta' })).toBe(true);
+  });
+
+  test('orders clipboard-copy coordinates range-first, row-major, then deduplicated toggled cells', () => {
+    const { model } = createModel();
+
+    model.setActiveCell({ rowId: 'row-1', columnKey: 'customer' });
+    model.setActiveCell({ rowId: 'row-2', columnKey: 'status' }, { extend: true });
+    // Ctrl+Click a cell outside the range: materializes the current range into
+    // toggled cells, then toggles the new cell on.
+    model.setActiveCell({ rowId: 'row-4', columnKey: 'owner' }, { toggle: true });
+    // Shift-extend a new range from the just-toggled active cell.
+    model.setActiveCell({ rowId: 'row-3', columnKey: 'total' }, { extend: true });
+
+    expect(model.selectedCellCoordinates).toEqual([
+      { rowId: 'row-3', columnKey: 'total' },
+      { rowId: 'row-3', columnKey: 'owner' },
+      { rowId: 'row-4', columnKey: 'total' },
+      { rowId: 'row-4', columnKey: 'owner' },
+      { rowId: 'row-1', columnKey: 'customer' },
+      { rowId: 'row-1', columnKey: 'status' },
+      { rowId: 'row-2', columnKey: 'customer' },
+      { rowId: 'row-2', columnKey: 'status' },
+    ]);
+  });
+
+  test('toggle-after-range preserves every prior range cell except the one toggled off', () => {
+    const { model } = createModel();
+
+    model.setActiveCell({ rowId: 'row-1', columnKey: 'customer' });
+    model.setActiveCell({ rowId: 'row-2', columnKey: 'status' }, { extend: true });
+    // Ctrl+Click one of the four cells already inside the range to toggle it off.
+    model.setActiveCell({ rowId: 'row-2', columnKey: 'status' }, { toggle: true });
+
+    expect(model.toggledCells).toEqual([
+      { rowId: 'row-1', columnKey: 'customer' },
+      { rowId: 'row-1', columnKey: 'status' },
+      { rowId: 'row-2', columnKey: 'customer' },
+    ]);
+    expect(model.isCellSelected({ rowId: 'row-1', columnKey: 'customer' })).toBe(true);
+    expect(model.isCellSelected({ rowId: 'row-1', columnKey: 'status' })).toBe(true);
+    expect(model.isCellSelected({ rowId: 'row-2', columnKey: 'customer' })).toBe(true);
+    expect(model.isCellSelected({ rowId: 'row-2', columnKey: 'status' })).toBe(false);
   });
 });
 

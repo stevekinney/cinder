@@ -105,17 +105,48 @@
       : (localeContext?.direction ?? null);
   });
 
+  // These four sources — direction-chain changes, media-query direction
+  // changes, window resize, focusin/focusout anywhere in the nav, and a
+  // ResizeObserver on the nav's ancestor chain — have no causal relationship
+  // to each other but all end up recomputing the same two things: text
+  // direction (`directionRevision`) and the active-trigger indicator
+  // geometry (`updateIndicator()`). Route every one of them through
+  // `scheduleIndicatorRecompute` so a burst of unrelated events (tabbing
+  // through triggers, an ancestor resize) collapses into one recompute per
+  // animation frame instead of one per event.
+  let pendingIndicatorFrame: number | null = null;
+
+  function scheduleIndicatorRecompute(): void {
+    if (pendingIndicatorFrame !== null) return;
+    pendingIndicatorFrame = requestAnimationFrame(() => {
+      pendingIndicatorFrame = null;
+      directionRevision += 1;
+      if (openItemId !== null) updateIndicator();
+    });
+  }
+
+  $effect(() => {
+    return () => {
+      if (pendingIndicatorFrame === null) return;
+      cancelAnimationFrame(pendingIndicatorFrame);
+      pendingIndicatorFrame = null;
+    };
+  });
+
   $effect(() => {
     return observeTextDirection(navElement, () => {
-      directionRevision += 1;
+      // The direction-chain revision drives which ancestors the
+      // ResizeObserver effect below observes — bump it synchronously so
+      // that effect re-attaches to the correct chain immediately, rather
+      // than deferring a structural DOM-observation change to a frame.
       directionChainRevision += 1;
+      scheduleIndicatorRecompute();
     });
   });
 
   $effect(() =>
     observeTextDirectionMediaQueries(navElement, () => {
-      directionRevision += 1;
-      updateIndicator();
+      scheduleIndicatorRecompute();
     }),
   );
 
@@ -349,8 +380,7 @@
   $effect(() => {
     if (typeof window === 'undefined') return;
     const handler = () => {
-      directionRevision += 1;
-      updateIndicator();
+      scheduleIndicatorRecompute();
     };
     window.addEventListener('resize', handler);
     return () => window.removeEventListener('resize', handler);
@@ -360,8 +390,7 @@
     if (!navElement) return;
     const element = navElement;
     const refresh = () => {
-      directionRevision += 1;
-      updateIndicator();
+      scheduleIndicatorRecompute();
     };
     element.addEventListener('focusin', refresh);
     element.addEventListener('focusout', refresh);
@@ -373,10 +402,13 @@
 
   $effect(() => {
     directionChainRevision;
-    if (!navElement || typeof ResizeObserver === 'undefined') return;
+    // Only observe ancestors while a menu item is actually open —
+    // `updateIndicator` itself early-returns without `openItemId`, so
+    // observing (and thus scheduling recomputes) while nothing is open
+    // produces work with no visible effect.
+    if (!navElement || typeof ResizeObserver === 'undefined' || openItemId === null) return;
     const observer = new ResizeObserver(() => {
-      directionRevision += 1;
-      updateIndicator();
+      scheduleIndicatorRecompute();
     });
     let current: HTMLElement | null = navElement;
     while (current) {

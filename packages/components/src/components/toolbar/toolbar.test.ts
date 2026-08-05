@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { afterEach, describe, expect, mock, test } from 'bun:test';
+import { afterEach, describe, expect, mock, spyOn, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { createRawSnippet } from 'svelte';
 
@@ -465,6 +465,68 @@ describe('Toolbar', () => {
     await flushEffects();
 
     expect(document.activeElement).toBe(screen.getByRole('spinbutton', { name: 'Custom width' }));
+  });
+
+  test('caches shared-ancestor CSS-hidden checks within one sync pass (#1186 row 2)', async () => {
+    // Every candidate shares the same three-level ancestor chain (wrap-inner,
+    // wrap-outer, the raw-snippet root div). Before the fix, `isCssHidden`
+    // re-walked and re-measured every one of those ancestors independently
+    // for each candidate — O(candidates * depth). After the fix, only each
+    // candidate's own (uncached) self-check should scale with candidate
+    // count; the shared ancestors are memoized once per pass.
+    function nestedButtonsMarkup(count: number): string {
+      const buttons = Array.from(
+        { length: count },
+        (_, index) => `<button type="button">Item ${index}</button>`,
+      ).join('\n');
+      return `<div class="wrap-outer"><div class="wrap-inner">${buttons}<button type="button" style="display: none">Hidden</button></div></div>`;
+    }
+
+    async function renderAndCountComputedStyleCalls(
+      count: number,
+    ): Promise<{ callCount: number; visibleButtonCount: number; hiddenButtonExcluded: boolean }> {
+      const getComputedStyleSpy = spyOn(globalThis, 'getComputedStyle');
+      render(Toolbar, {
+        props: {
+          'aria-label': 'Controls',
+          children: rawSnippet(nestedButtonsMarkup(count)),
+        },
+      });
+      await flushEffects();
+
+      const callCount = getComputedStyleSpy.mock.calls.length;
+      getComputedStyleSpy.mockRestore();
+
+      const buttons = screen.getAllByRole('button');
+      const hiddenButtonExcluded = !buttons.some((button) => button.textContent === 'Hidden');
+      cleanup();
+
+      return { callCount, visibleButtonCount: buttons.length, hiddenButtonExcluded };
+    }
+
+    const smallCount = 4;
+    const largeCount = 8;
+    const small = await renderAndCountComputedStyleCalls(smallCount);
+    const large = await renderAndCountComputedStyleCalls(largeCount);
+
+    // DOM-observable correctness: the CSS-hidden button is excluded from the
+    // managed set at both sizes, unaffected by the caching change.
+    expect(small.hiddenButtonExcluded).toBe(true);
+    expect(large.hiddenButtonExcluded).toBe(true);
+    expect(small.visibleButtonCount).toBe(smallCount);
+    expect(large.visibleButtonCount).toBe(largeCount);
+
+    const addedCandidates = largeCount - smallCount;
+    const growth = large.callCount - small.callCount;
+
+    // Growth must track the number of ADDED candidates (each pays for its
+    // own uncached self-check), not added-candidates * ancestor-depth (the
+    // shared wrap-inner/wrap-outer/snippet-root/toolbar-root chain must not
+    // be re-measured per candidate). A generous ceiling above the expected
+    // 1:1 growth guards against off-by-one drift without reintroducing an
+    // absolute wall-clock-style budget.
+    expect(growth).toBeGreaterThanOrEqual(addedCandidates);
+    expect(growth).toBeLessThan(addedCandidates * 2);
   });
 });
 

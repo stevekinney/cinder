@@ -3,10 +3,10 @@
 @import '../grid/grid.css';
 
 @layer cinder.components {
-  .cinder-bento-grid[data-cinder-collapse][data-cinder-narrow] > .cinder-bento-cell {
-    grid-column-start: auto;
-    grid-column-end: auto;
-    grid-row-start: auto;
-    grid-row-end: auto;
-  }
+  /*
+   * No bento-specific collapse rule needed here: the rendered root carries
+   * both `cinder-grid` and `cinder-bento-grid`, so the shared Grid rule (see
+   * grid.css) that spans every direct child at the narrow breakpoint already
+   * covers every `.cinder-bento-cell` child too.
+   */
 }
