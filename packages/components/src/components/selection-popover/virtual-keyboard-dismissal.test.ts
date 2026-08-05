@@ -159,6 +159,31 @@ describe('createVirtualKeyboardDismissal', () => {
     expect(dismissCalls).toEqual([true]);
   });
 
+  test('ignores a window scroll while a second pointer is still held after the first releases', async () => {
+    // Regression test: pointer tracking is a count, not a boolean. A
+    // multi-pointer gesture (two-finger touch, pen + touch, etc.) can have
+    // more than one pointer down at once — releasing one must not re-arm
+    // scroll-dismissal while another is still held.
+    const dismissCalls: boolean[] = [];
+    render(VirtualKeyboardDismissalFixture, {
+      props: {
+        onDismiss: (preventScroll: boolean) => dismissCalls.push(preventScroll),
+      },
+    });
+
+    await fireEvent.pointerDown(window);
+    await fireEvent.pointerDown(window);
+    await fireEvent.pointerUp(window);
+    await fireEvent.scroll(window);
+
+    expect(dismissCalls).toEqual([]);
+
+    await fireEvent.pointerUp(window);
+    await fireEvent.scroll(window);
+
+    expect(dismissCalls).toEqual([true]);
+  });
+
   test('does nothing while disabled', async () => {
     const dismissCalls: boolean[] = [];
     render(VirtualKeyboardDismissalFixture, {

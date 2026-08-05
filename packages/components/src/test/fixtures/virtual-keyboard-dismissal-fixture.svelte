@@ -11,17 +11,21 @@
 
   let panel = $state<HTMLDivElement | null>(null);
   let composerForm = $state<HTMLDivElement | null>(null);
-  let pointerIsDown = false;
+  // A count, not a boolean: mirrors selection-popover.svelte's own tracking,
+  // which must not re-arm scroll-dismissal when one of several simultaneously
+  // held pointers is released.
+  let activePointerCount = 0;
+  const pointerIsDown = () => activePointerCount > 0;
 
   // Mirrors selection-popover.svelte's own unconditional (not `enabled`-gated)
   // pointer tracking, so this fixture exercises the exact wiring pattern
   // production uses for the isPointerDown option below.
   $effect(() => {
     const markPointerDown = () => {
-      pointerIsDown = true;
+      activePointerCount += 1;
     };
     const markPointerUp = () => {
-      pointerIsDown = false;
+      activePointerCount = Math.max(0, activePointerCount - 1);
     };
     const pointerTrackingOptions: AddEventListenerOptions = { capture: true, passive: true };
     window.addEventListener('pointerdown', markPointerDown, pointerTrackingOptions);
@@ -31,6 +35,7 @@
       window.removeEventListener('pointerdown', markPointerDown, pointerTrackingOptions);
       window.removeEventListener('pointerup', markPointerUp, pointerTrackingOptions);
       window.removeEventListener('pointercancel', markPointerUp, pointerTrackingOptions);
+      activePointerCount = 0;
     };
   });
 
@@ -44,7 +49,7 @@
     // test exercises directly.
     composerOwnsKeyboard: () => false,
     isRestoringFocus: () => false,
-    isPointerDown: () => pointerIsDown,
+    isPointerDown: pointerIsDown,
     onDismiss: (preventScroll) => onDismiss?.(preventScroll),
     onFocusMovedOutside: () => onFocusMovedOutside?.(),
   });
