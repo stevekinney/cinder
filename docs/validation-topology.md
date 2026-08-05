@@ -112,8 +112,9 @@ protocol from the 2026-08-04 drain is:
    window must cover every open PR: anything not in the validated candidate
    set must be closed, converted to draft, or explicitly queued behind the
    drain before `strict` is lifted.
-2. Octopus-merge every candidate branch onto a **scratch branch cut from
-   `main` in a scratch worktree** — never the real `main` — and run the
+2. Octopus-merge every candidate branch onto a **scratch branch cut from the freshly fetched
+   `origin/main` tip in a scratch worktree** (`git fetch origin` first — a
+   stale local `main` validates against the wrong base) — never the real `main` — and run the
    full validation suite against that combined tree — provision the scratch
    worktree's dependency tree first (`bun install --frozen-lockfile`; a fresh
    cinder worktree is known to hang on install, so prefer reusing a worktree
@@ -122,7 +123,8 @@ protocol from the 2026-08-04 drain is:
    and the `main-green`-only source audits exactly as `workspace-gates`
    runs them — for cinder: `aggregator:check`, `components:check`,
    `check:changeset-prerelease-bumps`, `validate:workflow`,
-   `validate:svelte-peer`; for chat and editor: `components:check`,
+   `validate:svelte-peer`, plus `platform:audit -- --strict`,
+   `colors:audit -- --strict`, and `tokens:audit -- --strict`; for chat and editor: `components:check`,
    `build`, `platform:audit -- --strict`, `colors:audit -- --strict`;
    plus `test:workspace-scripts` (read
    `.github/workflows/main-green.yaml` for the current list — it is the
