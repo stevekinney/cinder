@@ -1893,8 +1893,7 @@
   }
 
   /* Below the sidebar's breakpoint it becomes an off-canvas drawer, so the
-     documentation column takes the full width again. Mirrors the 720px
-     breakpoint in sidebar.svelte. */
+     documentation column takes the full width again. */
   /* Narrow viewports: the nav becomes a normal block above the content rather
      than a fixed column, so the documentation gets the full width. */
   @media (max-width: 720px) {

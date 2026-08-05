@@ -76,14 +76,6 @@ import {
   renderShell,
 } from './render-shell.ts';
 import { repositorySourceHref, rewriteRelativeRenderedMarkdownLinks } from './repository-links.ts';
-import {
-  BLOCKED_COLOR_VALUE_PATTERN,
-  COLOR_TOKEN_NAMES,
-  COLOR_VALUE_VARIABLE_REFERENCE_PATTERN,
-  FALLBACK_COLOR_VALUE_PATTERN,
-  MAX_COLOR_TOKEN_VALUE_LENGTH,
-  SAFE_COLOR_VALUE_VARIABLE_NAME_PATTERN,
-} from './shell-app/color-token-registry.ts';
 import { humanizeComponentName } from './shell-app/humanize.ts';
 
 import { stripExampleHarness } from '../../components/scripts/lib/strip-example-harness.ts';
@@ -522,14 +514,12 @@ function invalidateCachesForChange(scope: ChangeScope): void {
     return;
   }
 
-  // `components` and `shell` have an IDENTICAL clearing footprint — both
-  // clear every page bundle (see the `ChangeScope` doc comment for why a
-  // narrower page scope isn't safe) AND mark the shell stale. The shell
-  // isn't `components`-scope-exempt: `shell-app/sidebar.svelte`,
-  // `top-bar.svelte`, and `landing-page.svelte` all import the full
-  // component barrel (`../../../components/src/index.ts`), so a
-  // components-package change can affect the shell's own compiled output,
-  // not just page bundles. The only difference between the two scopes is
+  // `shell`-scope and `components`-scope changes share the same clearing
+  // footprint because `shell-app/color-token-panel.svelte` (rendered by
+  // `shell.svelte`) imports Button, ColorPicker, Input, and Popover from the
+  // full components barrel (`../../../components/src/index.ts`). A
+  // components-package change can still affect the shell's compiled output.
+  // The only difference between the two scopes is
   // which files caused the invalidation. Both tiers emit `shell-reload`: the
   // canonical shell now owns README and prop metadata as well as the preview,
   // so reloading only the iframe would leave that outer documentation stale.
@@ -581,6 +571,44 @@ export function triggerReload(eventType: 'reload' | 'shell-reload' = 'reload'): 
   for (const controller of dead) {
     sseClients.delete(controller);
   }
+}
+
+/**
+ * Classify a raw `fs.watch` filename reported for the playground `src` tree
+ * (component-page.svelte, render-shell.ts, the shell-app/ directory,
+ * analyze.ts, etc.) into a {@link ChangeScope}, or `null` when the change
+ * should be ignored entirely.
+ *
+ * Excludes example files (handled by a separate, more precise watcher),
+ * `.tmp-`-prefixed and dotfile paths (editor swap/lock files), `.test.ts`
+ * files, and `*-mock.svelte`/`*-fixture.svelte` files (exist only to support
+ * their sibling `.test.ts`, never reached by a real page render).
+ *
+ * Shell-source changes (paths under `shell-app/` or to `render-shell.ts`)
+ * use the 'shell' scope so the SSE event is `shell-reload` instead of
+ * `reload`. Everything else under playground src (component-page.svelte, and
+ * genuine server-logic files like discover.ts/analyze.ts) uses the
+ * 'components' scope: for component-page.svelte that's the correct
+ * footprint (it's embedded in every page bundle's generated entry, same as a
+ * components-package change); for server-logic files it's redundant with
+ * `bun --watch` restarting the whole process (see the `dev` script) but
+ * harmless, since invalidation is now an O(1) Map-clear rather than a
+ * rebuild.
+ */
+export function classifyPlaygroundSrcChange(filename: string): ChangeScope | null {
+  if (
+    filename.startsWith('examples/') ||
+    filename.startsWith('.tmp-') ||
+    filename.endsWith('.test.ts') ||
+    filename.startsWith('.') ||
+    /(-mock|-fixture)\.svelte$/.test(filename)
+  ) {
+    return null;
+  }
+  const normalizedFilename = filename.replaceAll('\\', '/');
+  const isShellChange =
+    normalizedFilename.startsWith('shell-app/') || normalizedFilename === 'render-shell.ts';
+  return isShellChange ? { kind: 'shell' } : { kind: 'components' };
 }
 
 /**
@@ -665,32 +693,12 @@ function startWatcher(): FSWatcher[] {
       }),
     );
 
-    // Playground src tree: component-page.svelte, render-shell.ts, the
-    // shell-app/ directory, analyze.ts, etc. Shell-source changes (paths
-    // under `shell-app/` or to `render-shell.ts`) use the 'shell' scope so
-    // the SSE event is `shell-reload` instead of `reload`. Everything else
-    // under playground src (component-page.svelte, and genuine server-logic
-    // files like discover.ts/analyze.ts) uses the 'components' scope: for
-    // component-page.svelte that's the correct footprint (it's embedded in
-    // every page bundle's generated entry, same as a components-package
-    // change); for server-logic files it's redundant with `bun --watch`
-    // restarting the whole process (see the `dev` script) but harmless,
-    // since invalidation is now an O(1) Map-clear rather than a rebuild.
     const playgroundSrcPath = join(PLAYGROUND_ROOT, 'src');
     created.push(
       watch(playgroundSrcPath, { recursive: true }, (_event, filename) => {
-        if (
-          filename &&
-          !filename.startsWith('examples/') &&
-          !filename.startsWith('.tmp-') &&
-          !filename.endsWith('.test.ts') &&
-          !filename.startsWith('.')
-        ) {
-          const normalizedFilename = filename.replaceAll('\\', '/');
-          const isShellChange =
-            normalizedFilename.startsWith('shell-app/') || normalizedFilename === 'render-shell.ts';
-          scheduleRebuild(isShellChange ? { kind: 'shell' } : { kind: 'components' });
-        }
+        if (!filename) return;
+        const scope = classifyPlaygroundSrcChange(filename);
+        if (scope) scheduleRebuild(scope);
       }),
     );
   } catch (error) {
@@ -1702,119 +1710,6 @@ async function getStandaloneManifests(): Promise<ComponentManifest[]> {
   return manifests.filter((entry) => !COMPOSE_ONLY_COMPONENTS.has(entry.kebabName));
 }
 
-function renderPreviewMessageBridgeScript(): string {
-  const colorTokenNamesJson = jsonForScriptTag(COLOR_TOKEN_NAMES);
-  const blockedColorValuePatternSource = jsonForScriptTag(BLOCKED_COLOR_VALUE_PATTERN.source);
-  const blockedColorValuePatternFlags = jsonForScriptTag(BLOCKED_COLOR_VALUE_PATTERN.flags);
-  const fallbackColorValuePatternSource = jsonForScriptTag(FALLBACK_COLOR_VALUE_PATTERN.source);
-  const fallbackColorValuePatternFlags = jsonForScriptTag(FALLBACK_COLOR_VALUE_PATTERN.flags);
-  const variableReferencePatternSource = jsonForScriptTag(
-    COLOR_VALUE_VARIABLE_REFERENCE_PATTERN.source,
-  );
-  const variableReferencePatternFlags = jsonForScriptTag(
-    COLOR_VALUE_VARIABLE_REFERENCE_PATTERN.flags,
-  );
-  const safeVariableNamePatternSource = jsonForScriptTag(
-    SAFE_COLOR_VALUE_VARIABLE_NAME_PATTERN.source,
-  );
-  const safeVariableNamePatternFlags = jsonForScriptTag(
-    SAFE_COLOR_VALUE_VARIABLE_NAME_PATTERN.flags,
-  );
-
-  return `<script>
-      // Validated postMessage listener for shell→iframe theme and token commands.
-      // The shell SPA is same-origin, but we still validate origin and shape so
-      // unknown messages can't push the iframe into a bad state.
-      (function () {
-        var colorTokenNames = new Set(${colorTokenNamesJson});
-        var blockedColorValuePattern = new RegExp(${blockedColorValuePatternSource}, ${blockedColorValuePatternFlags});
-        var fallbackColorValuePattern = new RegExp(${fallbackColorValuePatternSource}, ${fallbackColorValuePatternFlags});
-        var variableReferencePattern = new RegExp(${variableReferencePatternSource}, ${variableReferencePatternFlags});
-        var safeVariableNamePattern = new RegExp(${safeVariableNamePatternSource}, ${safeVariableNamePatternFlags});
-        var activeTheme = document.documentElement.dataset.cinderTheme;
-        if (!isTheme(activeTheme)) activeTheme = null;
-
-        function isTheme(value) {
-          return value === 'light' || value === 'dark';
-        }
-
-        function hasOnlySafeColorVariableReferences(value) {
-          if (value.toLowerCase().indexOf('var(') === -1) return true;
-          variableReferencePattern.lastIndex = 0;
-          var references = Array.from(value.matchAll(variableReferencePattern));
-          variableReferencePattern.lastIndex = 0;
-          if (references.length === 0) return false;
-          for (var index = 0; index < references.length; index += 1) {
-            var variableName = references[index][1];
-            if (typeof variableName !== 'string') return false;
-            if (!safeVariableNamePattern.test(variableName.trim())) return false;
-          }
-          var withoutReferences = value.replace(variableReferencePattern, '');
-          variableReferencePattern.lastIndex = 0;
-          return withoutReferences.toLowerCase().indexOf('var(') === -1;
-        }
-
-        function isSafeColorValue(value) {
-          if (typeof value !== 'string') return false;
-          var trimmed = value.trim();
-          if (trimmed.length === 0 || trimmed.length > ${MAX_COLOR_TOKEN_VALUE_LENGTH}) return false;
-          if (blockedColorValuePattern.test(trimmed)) return false;
-          if (trimmed.toLowerCase().indexOf('url(') !== -1) return false;
-          if (!hasOnlySafeColorVariableReferences(trimmed)) return false;
-          if (!fallbackColorValuePattern.test(trimmed.toLowerCase())) return false;
-          if (window.CSS && typeof window.CSS.supports === 'function') {
-            return window.CSS.supports('color', trimmed);
-          }
-          return true;
-        }
-
-        function applyColorTokenOverrides(overrides) {
-          if (!overrides || typeof overrides !== 'object' || Array.isArray(overrides)) return;
-          var next = {};
-          for (var tokenName in overrides) {
-            if (!Object.prototype.hasOwnProperty.call(overrides, tokenName)) continue;
-            if (!colorTokenNames.has(tokenName)) return;
-            var value = overrides[tokenName];
-            if (!isSafeColorValue(value)) return;
-            next[tokenName] = value.trim();
-          }
-
-          colorTokenNames.forEach(function (tokenName) {
-            document.documentElement.style.removeProperty(tokenName);
-          });
-          for (var safeTokenName in next) {
-            if (!Object.prototype.hasOwnProperty.call(next, safeTokenName)) continue;
-            document.documentElement.style.setProperty(safeTokenName, next[safeTokenName]);
-          }
-        }
-
-        window.addEventListener('message', function (event) {
-          if (event.origin !== window.location.origin) return;
-          var data = event.data;
-          if (!data || typeof data !== 'object') return;
-
-          if (data.type === 'cinder:set-theme') {
-            // Only light/dark are valid theme overrides; ignore anything else
-            // (a stale/foreign message must never push the iframe into an
-            // unsupported 'system' state — that value was removed from ThemeChoice).
-            if (isTheme(data.value)) {
-              document.documentElement.style.colorScheme = data.value;
-              document.documentElement.dataset.cinderTheme = data.value;
-              activeTheme = data.value;
-            }
-            return;
-          }
-
-          if (data.type === 'cinder:set-color-token-overrides') {
-            if (!isTheme(data.theme)) return;
-            if (data.theme !== activeTheme) return;
-            applyColorTokenOverrides(data.overrides);
-          }
-        });
-      })();
-    </script>`;
-}
-
 /**
  * Render the standalone component page HTML (the iframe content — no outer shell).
  *
@@ -1979,7 +1874,6 @@ async function renderComponentPage(
       }
       #app { display: contents; }
     </style>${styleTag ? `\n    ${styleTag}` : ''}
-    ${renderPreviewMessageBridgeScript()}
   </head>
   <body>
     <script type="application/json" id="cinder-documentation">${documentationJson}</script>
@@ -2061,7 +1955,6 @@ function renderFixturePageHtml(
       }
       #app { display: contents; }
     </style>${styleTag ? `\n    ${styleTag}` : ''}
-    ${renderPreviewMessageBridgeScript()}
   </head>
   <body>
     <div id="app"></div>

@@ -28,7 +28,7 @@
 
   let { components, readmeHtml }: Props = $props();
 
-  const store = new PreviewStore('');
+  const store = new PreviewStore();
   setPreviewStore(store);
 
   /** Accessible name of the panel trigger; also the focus-restoration hook. */

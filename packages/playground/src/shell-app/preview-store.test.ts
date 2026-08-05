@@ -230,46 +230,11 @@ describe('browser theme hydration', () => {
   it('keeps the server fallback until browser resolution is enabled after hydration', () => {
     installWindow('https://example.com/c/button', true);
 
-    const store = new PreviewStore('button');
+    const store = new PreviewStore();
 
     expect(store.theme).toBe('light');
     store.enableBrowserThemeResolution();
     expect(store.theme).toBe('dark');
-  });
-});
-
-describe('focus mode chrome state', () => {
-  it('closes sidebar and color token panel when focus mode is enabled directly', () => {
-    installWindow('https://example.com/c/button');
-    Object.defineProperty(globalThis, 'history', {
-      configurable: true,
-      value: {
-        state: null,
-        replaceState: () => {},
-      } as unknown as History,
-      writable: true,
-    });
-
-    const store = new PreviewStore('button');
-    store.isSidebarOpen = true;
-    store.isColorTokenPanelOpen = true;
-
-    store.isFocusMode = true;
-
-    expect(store.isSidebarOpen).toBe(false);
-    expect(store.isColorTokenPanelOpen).toBe(false);
-  });
-
-  it('closes color token panel when URL sync enters focus mode', () => {
-    installWindow('https://example.com/c/button?focus=1');
-
-    const store = new PreviewStore('button');
-    store.isColorTokenPanelOpen = true;
-
-    store.syncFromUrl();
-
-    expect(store.isFocusMode).toBe(true);
-    expect(store.isColorTokenPanelOpen).toBe(false);
   });
 });
 
@@ -338,7 +303,7 @@ describe('applyThemeToDocument', () => {
 
 describe('color token overrides', () => {
   it('stores overrides per theme', () => {
-    const store = new PreviewStore('button', { theme: 'light' });
+    const store = new PreviewStore('light');
 
     expect(store.setColorTokenOverride('light', '--cinder-accent', 'oklch(60% 0.2 195)')).toBe(
       true,
@@ -349,26 +314,23 @@ describe('color token overrides', () => {
 
     expect(store.colorTokenOverrides.light['--cinder-accent']).toBe('oklch(60% 0.2 195)');
     expect(store.colorTokenOverrides.dark['--cinder-accent']).toBe('oklch(78% 0.16 195)');
-    expect(store.getActiveColorTokenOverrides()).toEqual({
-      '--cinder-accent': 'oklch(60% 0.2 195)',
-    });
   });
 
   it('restores validated color overrides across full-page shell navigation', () => {
     installWindow('https://playground.example/c/button');
     installSessionStorage();
 
-    const firstPageStore = new PreviewStore('button', { theme: 'light' });
+    const firstPageStore = new PreviewStore('light');
     firstPageStore.setColorTokenOverride('light', '--cinder-accent', 'oklch(60% 0.2 195)');
 
-    const nextPageStore = new PreviewStore('card', { theme: 'light' });
+    const nextPageStore = new PreviewStore('light');
     expect(nextPageStore.colorTokenOverrides.light).toEqual({
       '--cinder-accent': 'oklch(60% 0.2 195)',
     });
   });
 
   it('resets one token or the full active-theme override set', () => {
-    const store = new PreviewStore('button', { theme: 'light' });
+    const store = new PreviewStore('light');
     store.setColorTokenOverride('light', '--cinder-accent', 'oklch(60% 0.2 195)');
     store.setColorTokenOverride('light', '--cinder-bg', 'oklch(97% 0.02 245)');
     store.setColorTokenOverride('dark', '--cinder-accent', 'oklch(78% 0.16 195)');
@@ -386,7 +348,7 @@ describe('color token overrides', () => {
   });
 
   it('rejects unknown tokens and unsafe values', () => {
-    const store = new PreviewStore('button', { theme: 'light' });
+    const store = new PreviewStore('light');
     expect(store.setColorTokenOverride('light', '--cinder-accent', '#336699')).toBe(true);
 
     expect(
@@ -420,7 +382,7 @@ describe('color token overrides', () => {
       writable: true,
     });
 
-    const store = new PreviewStore('button', { theme: 'light' });
+    const store = new PreviewStore('light');
     store.setColorTokenOverride('light', '--cinder-accent', 'oklch(60% 0.2 195)');
     store.resetColorTokenOverride('light', '--cinder-accent');
     store.setColorTokenOverride('dark', '--cinder-accent', 'oklch(78% 0.16 195)');

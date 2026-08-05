@@ -31,6 +31,7 @@ import { isComponentDocumentationPayload } from './component-documentation-refer
 import { COMPOSE_ONLY_COMPONENTS } from './discover.ts';
 import {
   PORT,
+  classifyPlaygroundSrcChange,
   configureRequestIdleTimeout,
   createHttpServerOnAvailablePort,
   createSharedDisposer,
@@ -58,13 +59,6 @@ import {
   warmupInstabilityReasons,
 } from './playground-server.ts';
 import { jsonForScriptTag } from './render-shell.ts';
-import {
-  BLOCKED_COLOR_VALUE_PATTERN,
-  COLOR_VALUE_VARIABLE_REFERENCE_PATTERN,
-  FALLBACK_COLOR_VALUE_PATTERN,
-  MAX_COLOR_TOKEN_VALUE_LENGTH,
-  SAFE_COLOR_VALUE_VARIABLE_NAME_PATTERN,
-} from './shell-app/color-token-registry.ts';
 
 const FIXTURE_COMPONENT = 'button';
 const FIXTURE_SCENARIO = 'primary';
@@ -918,6 +912,29 @@ describe('triggerReload', () => {
   });
 });
 
+describe('classifyPlaygroundSrcChange', () => {
+  it('excludes mock and fixture Svelte files that only support their sibling test', () => {
+    expect(classifyPlaygroundSrcChange('component-page-button-mock.svelte')).toBeNull();
+    expect(classifyPlaygroundSrcChange('component-page-mount-fixture.svelte')).toBeNull();
+  });
+
+  it('still classifies an ordinary production .svelte file as a components-scope change', () => {
+    expect(classifyPlaygroundSrcChange('component-page.svelte')).toEqual({ kind: 'components' });
+  });
+
+  it('classifies shell-app/ paths and render-shell.ts as shell-scope changes', () => {
+    expect(classifyPlaygroundSrcChange('shell-app/shell.svelte')).toEqual({ kind: 'shell' });
+    expect(classifyPlaygroundSrcChange('render-shell.ts')).toEqual({ kind: 'shell' });
+  });
+
+  it('excludes example files, dotfiles, temp files, and test files', () => {
+    expect(classifyPlaygroundSrcChange('examples/button/primary.example.svelte')).toBeNull();
+    expect(classifyPlaygroundSrcChange('.DS_Store')).toBeNull();
+    expect(classifyPlaygroundSrcChange('.tmp-abc123')).toBeNull();
+    expect(classifyPlaygroundSrcChange('discover.test.ts')).toBeNull();
+  });
+});
+
 describe('unknown routes', () => {
   it('returns 404 for arbitrary paths', async () => {
     const response = await handleRequest(req('/not-a-real-path'));
@@ -1068,47 +1085,6 @@ describe('/page/:name', () => {
       expect(peerStylesheet.status).toBe(200);
       expect(peerStylesheet.headers.get('Content-Type')).toBe('text/css');
     }
-  });
-
-  it('installs the validated color-token message bridge on preview pages', async () => {
-    const response = await handleRequest(req(`/page/${FIXTURE_COMPONENT}`));
-    const html = await response.text();
-    const blockedPatternSource = jsonForScriptTag(BLOCKED_COLOR_VALUE_PATTERN.source);
-    const blockedPatternFlags = jsonForScriptTag(BLOCKED_COLOR_VALUE_PATTERN.flags);
-    const fallbackPatternSource = jsonForScriptTag(FALLBACK_COLOR_VALUE_PATTERN.source);
-    const fallbackPatternFlags = jsonForScriptTag(FALLBACK_COLOR_VALUE_PATTERN.flags);
-    const variableReferencePatternSource = jsonForScriptTag(
-      COLOR_VALUE_VARIABLE_REFERENCE_PATTERN.source,
-    );
-    const variableReferencePatternFlags = jsonForScriptTag(
-      COLOR_VALUE_VARIABLE_REFERENCE_PATTERN.flags,
-    );
-    const safeVariableNamePatternSource = jsonForScriptTag(
-      SAFE_COLOR_VALUE_VARIABLE_NAME_PATTERN.source,
-    );
-    const safeVariableNamePatternFlags = jsonForScriptTag(
-      SAFE_COLOR_VALUE_VARIABLE_NAME_PATTERN.flags,
-    );
-
-    expect(html).toContain('cinder:set-color-token-overrides');
-    expect(html).toContain('--cinder-accent');
-    expect(html).toContain(`new RegExp(${blockedPatternSource}, ${blockedPatternFlags})`);
-    expect(html).toContain(`new RegExp(${fallbackPatternSource}, ${fallbackPatternFlags})`);
-    expect(html).toContain(
-      `new RegExp(${variableReferencePatternSource}, ${variableReferencePatternFlags})`,
-    );
-    expect(html).toContain(
-      `new RegExp(${safeVariableNamePatternSource}, ${safeVariableNamePatternFlags})`,
-    );
-    expect(html).toContain(`trimmed.length > ${MAX_COLOR_TOKEN_VALUE_LENGTH}`);
-    expect(html).toContain('if (!hasOnlySafeColorVariableReferences(trimmed)) return false;');
-    expect(html).toContain(
-      'if (!fallbackColorValuePattern.test(trimmed.toLowerCase())) return false;',
-    );
-    expect(html).toContain('var activeTheme = document.documentElement.dataset.cinderTheme');
-    expect(html).toContain('if (data.theme !== activeTheme) return;');
-    expect(html).not.toContain('--cinder-button-bg');
-    expect(html).not.toContain('transparent$|currentcolor$|black$|white$');
   });
 
   it('wraps the body background/color transition in a reduced-motion guard', async () => {
