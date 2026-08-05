@@ -760,17 +760,30 @@ function evaluateConstantArithmetic(expression) {
           const weightStart = index;
           let weight;
           if (peek() !== ',' && peek() !== ')') {
+            let candidateWeight;
             try {
-              const candidateWeight = parseNumber();
+              candidateWeight = parseNumber();
+            } catch (error) {
+              // A too-complex numeric token (e.g. an absurdly long decimal)
+              // must still fail closed, not be silently treated as "no
+              // weight here".
+              if (error === staticAnalysisTooComplex) throw error;
+              index = weightStart;
+            }
+            if (candidateWeight !== undefined) {
               if (
                 candidateWeight.units.size === 1 &&
                 candidateWeight.units.get('unit:%') === 1 &&
                 candidateWeight.symbolicFactors.size === 0
-              )
+              ) {
+                // calc-mix()'s item weight is a <percentage [0,100]>: an
+                // out-of-range value makes the whole function invalid (CSS's
+                // usual range-checking for a range-constrained type), not a
+                // weight to silently clamp or normalize.
+                if (candidateWeight.value < 0 || candidateWeight.value > 100)
+                  throw new Error('calc-mix weight out of range');
                 weight = candidateWeight.exactValue;
-              else index = weightStart;
-            } catch {
-              index = weightStart;
+              } else index = weightStart;
             }
           }
           calcMixWeights.push(weight);

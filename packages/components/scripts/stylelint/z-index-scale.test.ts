@@ -272,6 +272,11 @@ describe('cinder/z-index-scale', () => {
     ['calc-mix(9999 200%, 1 200%)', 0],
     // Mismatched units across items are still invalid, same as the endpoint form.
     ['calc-mix(9999px 100%, 1deg 0%)', 0],
+    // An item weight is a <percentage [0,100]>: out of range per-item makes
+    // the whole function invalid (dropped), even though multiple in-range
+    // weights can still sum past 100% and get scaled down (tested above).
+    ['calc-mix(9999 101%, 1 0%)', 0],
+    ['calc-mix(9999 -1%, 1 100%)', 0],
   ] as const)('evaluates calc-mix() fallback results: %s', async (fallback, count) => {
     const result = await lint(`
         .fixture {
@@ -722,6 +727,17 @@ describe('cinder/z-index-scale', () => {
     // A step count small enough that the last step lands far outside the
     // epsilon band is not snapped, so it resolves to the plain arithmetic.
     ['random(fixed 1, 0, 9999, 1000)', 0],
+    // evaluateStaticLayerNumber() rounds to the nearest integer, so a
+    // genuinely positive step below 0.5 (here 0.4) rounds to a stepValue of
+    // 0. That must not be treated as a step <= 0 (which folds to a single
+    // point): the step count (25000) exceeds the enumeration cap, so this
+    // correctly stays too-complex (1 warning) rather than silently reading
+    // as safe (0 warnings).
+    ['random(0, 10000, 0.4)', 1],
+    // A typed (dimensional) step's endpoint-snapping tolerance is computed
+    // from the step's full precision (9989.02), not the integer-rounded
+    // 9989, so the last step still correctly snaps to the written maximum.
+    ['calc(random(0px, 9999px, 9989.02px) / 1px)', 1],
     ['random()', 0],
     ['random(0)', 0],
     ['random(0, 1, 2, 3)', 0],
@@ -779,34 +795,94 @@ describe('cinder/z-index-scale', () => {
     expect(warning?.endColumn).toBe(end.column);
   });
 
-  test('fails closed when a fixed random-item() key sits next to a comma-injecting var() slot', async () => {
-    // A var() substitution occupying a random-item() value slot is not
-    // guaranteed to occupy exactly one argument: its fallback (or, if the
-    // referenced property is defined, its entirely unknown value) may itself
-    // contain a top-level comma, injecting additional items and shifting the
-    // fixed key's selected index. `--items: 1, 9999` would turn this into a
-    // three-item call that deterministically selects the banned `9999`.
+  test('a plain var() in a fixed random-item() value slot cannot inject extra options', async () => {
+    // CSS Values 5 Appendix A (Argument Grammars and Spread Syntax) is
+    // explicit that this does *not* happen: "parsing according to a
+    // function's argument grammar does not see the results of any nested
+    // arbitrary substitution functions; the contents are divided into
+    // arguments based only on the values literally present inside the
+    // function." Its own worked example is this exact shape --
+    // `random-item(auto, var(--foo), var(--bar))` with `--foo: Courier,
+    // monospace` stays a two-option call, equivalent to wrapping each
+    // option in `{}`. random-item()'s argument boundaries (and thus which
+    // slot a fixed key selects) are fixed before any nested var() is ever
+    // substituted, whether the comma lives in the fallback (this case) or
+    // in the referenced property's actual (unknowable) value.
     const { bannedFallback } = await import(fallbackAnalysisPath);
-    const result = bannedFallback('var(--outer, random-item(fixed .5, var(--items, 1), 1))');
 
-    expect(result?.reason).toBe('too-complex');
+    expect(
+      bannedFallback('var(--outer, random-item(fixed .5, var(--items, 1), 1))'),
+    ).toBeUndefined();
+    expect(
+      bannedFallback('var(--outer, random-item(fixed .5, var(--items, 1, 9999), 1))'),
+    ).toBeUndefined();
   });
 
-  test('still resolves a fixed random-item() selection when no value slot can inject arity', async () => {
+  test('still resolves a fixed random-item() selection when a value slot is a substitution', async () => {
     const { bannedFallback } = await import(fallbackAnalysisPath);
 
     expect(bannedFallback('var(--outer, random-item(fixed .5, 1, 9999))')?.reason).toBe('banned');
     expect(bannedFallback('var(--outer, random-item(fixed .5, 1, 2))')).toBeUndefined();
   });
 
-  test('an extremum function is already conservative under comma-injecting var() operands', async () => {
-    // max()/min()/hypot() already treat an unresolved var() operand as an
-    // unconstrained runtime range, so a comma-injecting defined path adds no
-    // new witness beyond what the existing runtime-range analysis covers.
+  test('an extremum function is already conservative under a comma-injecting var() operand', async () => {
+    // Unlike random-item() (an arbitrary substitution function with its own
+    // early-fixed argument grammar), max() is an ordinary math function, so
+    // a var() operand whose value contains a comma genuinely can inject an
+    // extra operand (`max(1, var(--items, 1, 9999))` becomes `max(1, 1,
+    // 9999)` if --items is undefined). That's already covered without any
+    // arity-specific handling: the analyzer treats any unresolved var()
+    // operand in a math context as an unconstrained runtime range, which
+    // is a strict superset of "could also be an extra 9999 operand."
     const { bannedFallback } = await import(fallbackAnalysisPath);
 
     expect(bannedFallback('var(--outer, max(1, var(--items, 1)))')?.reason).toBe('too-complex');
     expect(bannedFallback('var(--outer, max(1, var(--items, 1, 9999)))')?.reason).toBe(
+      'too-complex',
+    );
+  });
+
+  test('does not fold a positive fractional random() step that rounds down to zero', async () => {
+    // evaluateStaticLayerNumber() rounds to the nearest integer, so a
+    // genuinely positive step like 0.4 rounds to a stepValue of 0 --
+    // treating that as "step <= 0" would fold a genuinely reachable range
+    // down to a single safe point.
+    const { bannedFallback } = await import(fallbackAnalysisPath);
+
+    expect(bannedFallback('var(--x, random(0, 10000, 0.4))')?.reason).toBe('too-complex');
+  });
+
+  test('computes the stepped random() endpoint snap at full precision for typed values', async () => {
+    const { bannedFallback } = await import(fallbackAnalysisPath);
+
+    expect(bannedFallback('var(--outer, calc(random(0px, 9999px, 9989.02px) / 1px))')?.reason).toBe(
+      'banned',
+    );
+  });
+
+  test('keeps a too-complex calc-mix() weight token too-complex instead of treating it as absent', async () => {
+    // A pathologically long weight token makes the exact-rational parser
+    // throw the too-complex sentinel; the weight-parsing catch must
+    // re-throw that (rather than swallow it and rewind), so the whole
+    // calc-mix() stays fail-closed instead of hitting a stray "expected
+    // comma" parse error further down and reading as an ordinary invalid
+    // (and therefore silently safe) declaration.
+    const { bannedFallback } = await import(fallbackAnalysisPath);
+    const oversizedWeight = '1'.repeat(200);
+
+    expect(bannedFallback(`var(--outer, calc-mix(9999 ${oversizedWeight}%, 1 0%))`)?.reason).toBe(
+      'too-complex',
+    );
+  });
+
+  test('fails closed for a weighted calc-mix() item that is an unresolved substitution', async () => {
+    // calc-mix()'s current weighted-item grammar accepts any number of
+    // items, unlike the older fixed-arity progress shape; a var() item
+    // must not be silently excluded just because the argument count no
+    // longer matches that older shape's arity.
+    const { bannedFallback } = await import(fallbackAnalysisPath);
+
+    expect(bannedFallback('var(--outer, calc-mix(var(--layer) 100%, 1 0%))')?.reason).toBe(
       'too-complex',
     );
   });

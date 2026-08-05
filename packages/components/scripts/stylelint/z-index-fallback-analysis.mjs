@@ -22,17 +22,21 @@ import {
 
 const fallbackFunctionPattern = /(?:var|env|attr)\(/iy;
 const invalidToggleNestedFunctionPattern = /(?:toggle|attr|calc|-webkit-calc)\(/iy;
-const bareCssNumberPattern = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?$/i;
+const bareCssNumberPattern = /^([+-]?(?:\d+(?:\.\d+)?|\.\d+)(?:e[+-]?\d+)?)(?:[a-z%]+)?$/i;
 
 // evaluateStaticLayerNumber() rounds its result to the nearest integer, which
 // is the right behavior for classifying a layer as (near) the banned value
 // but destroys the fractional precision some checks (e.g. random()'s
 // step / 1000 endpoint-snapping tolerance) need. This parses a bare CSS
-// <number> token exactly; anything more complex (calc(), units, functions)
-// is left to the caller's fallback.
+// <number> token (optionally followed by a unit or `%`, which is stripped --
+// callers only use this to compare magnitudes that are already known to
+// share a unit) exactly; anything more complex (calc(), functions, a
+// malformed token like `1.` with a dangling decimal point) is left to the
+// caller's fallback.
 function preciseStaticNumber(text) {
   const trimmed = text.replaceAll(cssCommentMaskCharacter, ' ').trim();
-  return bareCssNumberPattern.test(trimmed) ? Number(trimmed) : undefined;
+  const match = bareCssNumberPattern.exec(trimmed);
+  return match ? Number(match[1]) : undefined;
 }
 const fallbackResolutionTooComplex = Symbol('fallback-resolution-too-complex');
 const fallbackResolutionWorkLimit = 8_000_000;
@@ -1839,7 +1843,7 @@ function firstValidRuntimeFunctionStaticValidity(
     );
     return (
       group !== undefined &&
-      randomItemGroupOutputOptions(frame, value, group, parenthesisPairs) !== undefined
+      randomItemGroupOutputOptions(value, group, parenthesisPairs) !== undefined
     );
   }
   if (functionName !== 'random') return undefined;
@@ -4433,6 +4437,20 @@ function unresolvedRuntimeRangeCandidates(
       functionParent.functionName,
       parenthesisPairs,
     );
+    // calc-mix()'s current CSS Values 5 weighted-item grammar accepts any
+    // number of comma-separated items, unlike the older fixed-arity
+    // progress-interpolation shape the rest of this function's calc-mix
+    // handling assumes. Precisely modeling the weighted average's runtime
+    // range is a separate, larger undertaking; fail closed instead of
+    // silently treating an unresolved item as unreachable.
+    if (
+      functionParent.functionName === 'calc-mix' &&
+      parsedArguments !== undefined &&
+      parsedArguments.argumentRanges.some((argumentRange) =>
+        calcMixArgumentUsesExplicitWeight(value, argumentRange),
+      )
+    )
+      return failClosedRuntimeCandidate(candidate);
     if (
       !unresolvedRuntimeFunctionHasValidArity(
         functionParent.functionName,
@@ -4723,26 +4741,7 @@ function randomItemArgumentRanges(value, group, parenthesisPairs) {
   return argumentRanges;
 }
 
-// A var()/env()/attr() substitution occupying a random-item() value slot is a
-// potentially multi-token, comma-containing stream, not a guaranteed single
-// argument: its fallback may itself contain a raw top-level comma, and if the
-// referenced custom property/attribute is defined at all, its value is
-// entirely unknown. Either way, substituting it can inject additional
-// top-level items into random-item()'s argument list, shifting every index
-// after it. A *direct* child here means the substitution sits at the
-// argument's own nesting depth (its immediate enclosing parenthesis is the
-// random-item() call itself) -- anything nested one level deeper is already
-// captured by whatever function owns that inner parenthesis instead.
-function randomItemArgumentHasDirectSubstitutionChild(frame, group, argumentRange) {
-  return frame.children.some(
-    (child) =>
-      child.parenthesisParent === group &&
-      child.start >= argumentRange.start &&
-      child.start < argumentRange.end,
-  );
-}
-
-function randomItemGroupOutputOptions(frame, value, group, parenthesisPairs) {
+function randomItemGroupOutputOptions(value, group, parenthesisPairs) {
   const argumentRanges = randomItemArgumentRanges(value, group, parenthesisPairs);
   if (
     argumentRanges === undefined ||
@@ -4758,18 +4757,6 @@ function randomItemGroupOutputOptions(frame, value, group, parenthesisPairs) {
   });
   const fixedBaseValue = fixedRandomBaseValueForRange(value, argumentRanges[0]);
   if (fixedBaseValue !== undefined) {
-    // The fixed key deterministically selects `values[floor(base * N)]`, but
-    // N (and therefore which written slot ends up at that index) is only
-    // provably stable when no value slot can silently change the item count.
-    // Precisely modeling every injected-arity outcome is intractable here, so
-    // fail closed through the existing too-complex path instead of trusting
-    // an index that a comma-injecting substitution could invalidate.
-    if (
-      valueRanges.some((argumentRange) =>
-        randomItemArgumentHasDirectSubstitutionChild(frame, group, argumentRange),
-      )
-    )
-      return fallbackResolutionTooComplex;
     const selectedIndex = Math.min(Math.floor(fixedBaseValue * values.length), values.length - 1);
     return {
       continuous: false,
@@ -4782,7 +4769,7 @@ function randomItemGroupOutputOptions(frame, value, group, parenthesisPairs) {
 
 function randomGroupOutputOptions(frame, value, group, budget, parenthesisPairs) {
   if (group.functionName === 'random-item')
-    return randomItemGroupOutputOptions(frame, value, group, parenthesisPairs);
+    return randomItemGroupOutputOptions(value, group, parenthesisPairs);
   const functionRange = { start: group.functionStart, end: group.end };
   const parsedArguments = fallbackIndependentStaticArguments(
     frame,
@@ -4858,7 +4845,7 @@ function randomGroupOutputOptions(frame, value, group, budget, parenthesisPairs)
   const maximumExpression =
     maximumValue === minimumValue ? minimumExpression : writtenMaximumExpression;
   if (maximumValue === minimumValue) return { continuous: false, values: [minimumExpression] };
-  if (stepValue === undefined) {
+  const continuousRangeResult = () => {
     if (fixedBaseValue === 0) return { continuous: false, values: [minimumExpression] };
     if (fixedBaseValue !== undefined)
       return {
@@ -4868,27 +4855,42 @@ function randomGroupOutputOptions(frame, value, group, budget, parenthesisPairs)
         ],
       };
     return { continuous: true, values: [minimumExpression, maximumExpression] };
+  };
+  if (stepValue === undefined) return continuousRangeResult();
+
+  // evaluateStaticLayerNumber() rounds to the nearest integer, which is too
+  // coarse both to prove a step is truly <= 0 (CSS Values 5 folds it to the
+  // written A) and to compute the spec's step / 1000 endpoint-snapping
+  // tolerance precisely. Re-parse the plain numeric tokens (when each is
+  // one) at full precision instead.
+  const preciseStepValue = preciseStaticNumber(stepExpression);
+  if (preciseStepValue === undefined && stepValue <= 0) {
+    // We can't prove the step is exactly <= 0 -- it's a complex expression,
+    // or integer rounding may have collapsed a small positive step (e.g.
+    // 0.4) to a rounded stepValue of 0. Folding to a single point is only
+    // sound when it's provably correct, so fall back to treating the full
+    // [A, B] range as reachable instead of risking a false negative.
+    return continuousRangeResult();
   }
-  // A zero or negative step folds the whole range to its start (CSS Values 5,
-  // https://www.w3.org/TR/css-values-5/#random): the written A, not the full
-  // [A, B] interval. This holds regardless of the random key, since the
-  // result is a single deterministic value either way.
-  if (stepValue <= 0) return { continuous: false, values: [minimumExpression] };
+  // A step that's provably <= 0 folds the whole range to its start (CSS
+  // Values 5, https://www.w3.org/TR/css-values-5/#random): the written A,
+  // not the full [A, B] interval. This holds regardless of the random key,
+  // since the result is a single deterministic value either way.
+  if (preciseStepValue !== undefined && preciseStepValue <= 0)
+    return { continuous: false, values: [minimumExpression] };
   if (!Number.isFinite(stepValue)) return { continuous: false, values: [minimumExpression] };
 
-  const stepCount = Math.floor((maximumValue - minimumValue) / stepValue);
+  const effectiveStepValue = preciseStepValue ?? stepValue;
+  const preciseMinimumValue = preciseStaticNumber(minimumExpression) ?? minimumValue;
+  const preciseMaximumValue = preciseStaticNumber(maximumExpression) ?? maximumValue;
+  const stepCount = Math.floor((preciseMaximumValue - preciseMinimumValue) / effectiveStepValue);
   if (!Number.isSafeInteger(stepCount) || stepCount > 128) return fallbackResolutionTooComplex;
   // CSS Values 5's stepped random() snaps the last step to the written
   // maximum, not `minimum + step * stepCount`, whenever that computed value
-  // is within `step / 1000` of the maximum -- evaluateStaticLayerNumber()
-  // rounds to the nearest integer, which is too coarse to prove that, so
-  // re-parse the plain numeric tokens (when each is one) at full precision.
-  const preciseMinimum = preciseStaticNumber(minimumExpression) ?? minimumValue;
-  const preciseStep = preciseStaticNumber(stepExpression) ?? stepValue;
-  const preciseMaximum = preciseStaticNumber(maximumExpression) ?? maximumValue;
+  // is within `step / 1000` of the maximum.
   const lastStepSnapsToMaximum =
-    Math.abs(preciseMaximum - (preciseMinimum + preciseStep * stepCount)) <=
-    Math.abs(preciseStep) / 1000;
+    Math.abs(preciseMaximumValue - (preciseMinimumValue + effectiveStepValue * stepCount)) <=
+    Math.abs(effectiveStepValue) / 1000;
   const stepExpressionAt = (stepIndex) => {
     if (stepIndex === 0) return minimumExpression;
     if (stepIndex === stepCount && lastStepSnapsToMaximum) return maximumExpression;
@@ -5802,6 +5804,17 @@ function runtimeFunctionStaticArgumentsAreValid(
   );
 }
 
+// A best-effort check for whether a calc-mix() argument uses the current
+// CSS Values 5 weighted-item grammar (`<calc-sum> <percentage>?`) -- i.e.
+// trails its value with a space-separated percentage weight -- as opposed
+// to the older three-argument progress-interpolation shape.
+function calcMixArgumentUsesExplicitWeight(value, argumentRange) {
+  const text = value
+    .slice(argumentRange.start, argumentRange.end)
+    .replaceAll(cssCommentMaskCharacter, ' ');
+  return /\s[+-]?(?:\d+(?:\.\d+)?|\.\d+)(?:e[+-]?\d+)?%$/i.test(text.trimEnd());
+}
+
 function childIsInsideProvablyInvalidCalcMix(child, frame, value, range, parenthesisPairs) {
   let parent = child.parenthesisParent;
   while (
@@ -5818,8 +5831,15 @@ function childIsInsideProvablyInvalidCalcMix(child, frame, value, range, parenth
         'calc-mix',
         parenthesisPairs,
       );
+      if (parsedArguments === undefined) return true;
+      // The weighted-item grammar accepts any number of comma-separated
+      // items, so the fixed three-argument arity check below only applies
+      // to calls that don't use it (the older progress-interpolation shape).
+      const usesWeightedItemGrammar = parsedArguments.argumentRanges.some((argumentRange) =>
+        calcMixArgumentUsesExplicitWeight(value, argumentRange),
+      );
       if (
-        parsedArguments === undefined ||
+        !usesWeightedItemGrammar &&
         !unresolvedRuntimeFunctionHasValidArity('calc-mix', parsedArguments.argumentCount)
       )
         return true;
