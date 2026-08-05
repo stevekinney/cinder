@@ -259,4 +259,45 @@ describe('FocusTrap', () => {
     // Without unmounting, deactivation alone restores focus to the trigger.
     expect(document.activeElement).toBe(trigger);
   });
+
+  test('a later-activated nested trap takes priority, then hands control back on deactivation', async () => {
+    // Regression coverage for `isTopTrap`: with the outer trap mounted and a nested inner trap
+    // toggled active/inactive via reactive `active` (no unmount), Tab-wrap ownership over their
+    // shared boundary element (`inner-last`, the last tabbable descendant of the OUTER trap's own
+    // subtree, since the inner trap's content is a literal DOM descendant, not portaled) must hand
+    // off correctly as the trap stack changes.
+    const { default: NestedFixture } = await import('./nested-focus-trap.fixture.svelte');
+    const { getByTestId } = render(NestedFixture);
+    await tick();
+
+    const outerFirst = getByTestId('outer-first') as HTMLButtonElement;
+    const innerFirst = getByTestId('inner-first') as HTMLButtonElement;
+    const innerLast = getByTestId('inner-last') as HTMLButtonElement;
+    const toggle = getByTestId('toggle-inner') as HTMLButtonElement;
+
+    // Before the inner trap ever activates, the outer trap is the only entry on the trap stack: it
+    // owns Tab-wrapping across its entire flattened tabbable set, including the still-mounted (but
+    // inactive) inner trap's own buttons.
+    innerLast.focus();
+    await fireEvent.keyDown(innerLast, { key: 'Tab' });
+    expect(document.activeElement).toBe(outerFirst);
+
+    // Activating the inner trap pushes it on top of the trap stack. It now wraps Tab within its
+    // OWN scoped tabbable set (inner-first/inner-last only), and the outer trap's handler sees
+    // `isTopTrap` return false and stays out of the way.
+    await fireEvent.click(toggle);
+    await tick();
+    innerLast.focus();
+    await fireEvent.keyDown(innerLast, { key: 'Tab' });
+    expect(document.activeElement).toBe(innerFirst);
+
+    // Deactivating the inner trap (the reactive `$effect` in `focus-trap.utilities.svelte.ts`
+    // calls `deactivate()`, popping it off `trapStack` — no unmount involved) hands real
+    // Tab-wrapping back to the outer trap over the same boundary element.
+    await fireEvent.click(toggle);
+    await tick();
+    innerLast.focus();
+    await fireEvent.keyDown(innerLast, { key: 'Tab' });
+    expect(document.activeElement).toBe(outerFirst);
+  });
 });
