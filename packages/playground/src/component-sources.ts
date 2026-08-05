@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
 const PLAYGROUND_ROOT = dirname(import.meta.dirname);
@@ -76,6 +77,28 @@ export const CHAT_COMPONENT_SOURCE: ComponentSource = {
     `/package-components/chat/${componentName}/${componentName}.css`,
 };
 
+type EditorPackageManifest = { exports?: Record<string, unknown> };
+
+const editorPackageManifest: EditorPackageManifest = JSON.parse(
+  readFileSync(join(editorPackageRoot, 'package.json'), 'utf8'),
+);
+const editorExportKeys = new Set(Object.keys(editorPackageManifest.exports ?? {}));
+
+/**
+ * Resolve a component's CSS-sidecar route from Editor's real `exports` map,
+ * rather than a hardcoded per-component allowlist. `exportKeys` is injected
+ * so this generalizes beyond the one styles export the real manifest has
+ * today — see `component-sources.test.ts`.
+ */
+export function resolveEditorStylesheetUrl(
+  exportKeys: ReadonlySet<string>,
+  componentName: string,
+): string | null {
+  return exportKeys.has(`./${componentName}/styles`)
+    ? `/package-components/editor/${componentName}/${componentName}.css`
+    : null;
+}
+
 export const EDITOR_COMPONENT_SOURCE: ComponentSource = {
   id: 'editor',
   packageName: '@lostgradient/editor',
@@ -96,15 +119,11 @@ export const EDITOR_COMPONENT_SOURCE: ComponentSource = {
   // Unlike Chat, Editor's three components don't uniformly ship a standalone
   // CSS sidecar: `markdown-editor` and `diff-viewer` style entirely through
   // scoped `<style>` blocks compiled inline by Svelte (matching their
-  // pre-move shape in cinder), and `packages/editor/package.json` only
-  // declares a `./review-editor/styles` export. Returning a URL for the
-  // other two 404s — `static-export.ts` crawls every referenced `href` and
-  // throws on a non-OK response — so gate on the one component that actually
-  // has a sidecar.
+  // pre-move shape in cinder). Read from the package's real `exports` map
+  // (below) rather than hardcoding which components have a sidecar, so this
+  // stays correct as Editor's own `package.json` grows more styles exports.
   componentStylesheetUrl: (componentName) =>
-    componentName === 'review-editor'
-      ? `/package-components/editor/${componentName}/${componentName}.css`
-      : null,
+    resolveEditorStylesheetUrl(editorExportKeys, componentName),
 };
 
 /** Ordered, canonical list of packages represented in the playground. */
