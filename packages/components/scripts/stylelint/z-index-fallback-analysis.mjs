@@ -3,6 +3,7 @@ import {
   classifyStaticLayer,
   cssCommentMaskCharacter,
   evaluateStaticLayerNumber,
+  evaluateStaticLayerNumberWithUnit,
   hasRuntimeDependentNumericConversion,
   hasStaticallyZeroCoefficient,
   haveCompatibleStaticDivisionTypes,
@@ -22,31 +23,11 @@ import {
 
 const fallbackFunctionPattern = /(?:var|env|attr)\(/iy;
 const invalidToggleNestedFunctionPattern = /(?:toggle|attr|calc|-webkit-calc)\(/iy;
-const bareCssNumberPattern = /^([+-]?(?:\d+(?:\.\d+)?|\.\d+)(?:e[+-]?\d+)?)(?:[a-z%]+)?$/i;
-
-// evaluateStaticLayerNumber() rounds its result to the nearest integer, which
-// is the right behavior for classifying a layer as (near) the banned value
-// but destroys the fractional precision some checks (e.g. random()'s
-// step / 1000 endpoint-snapping tolerance) need. This parses a bare CSS
-// <number> token (optionally followed by a unit or `%`, which is stripped --
-// callers only use this to compare magnitudes that are already known to
-// share a unit) exactly; anything more complex (calc(), functions, a
-// malformed token like `1.` with a dangling decimal point) is left to the
-// caller's fallback.
-function preciseStaticNumberWithUnit(text) {
-  const trimmed = text.replaceAll(cssCommentMaskCharacter, ' ').trim();
-  const match = bareCssNumberPattern.exec(trimmed);
-  if (!match) return undefined;
-  return { value: Number(match[1]), unit: trimmed.slice(match[1].length).toLowerCase() };
-}
-
-function preciseStaticNumber(text) {
-  return preciseStaticNumberWithUnit(text)?.value;
-}
 const fallbackResolutionTooComplex = Symbol('fallback-resolution-too-complex');
 const fallbackResolutionWorkLimit = 8_000_000;
 const typedHypotParentLimit = 2_048;
 const conditionalNestingLimit = 128;
+const attrHeaderSubstitutionPeelLimit = 128;
 const uniformDivisorWitnessValues = ['1', '2', '1px', '1deg', '1s', '1hz', '1dppx'];
 const typedDivisorWitnessValues = ['1px', '1deg', '1s', '1hz', '1dppx'];
 const typedZeroWitnessValues = ['0px', '0deg', '0s', '0hz', '0dppx'];
@@ -2115,7 +2096,7 @@ function conditionalBranchValueRanges(value, group, parenthesisPairs) {
   return analysis.branchRanges;
 }
 
-function toggleBranchContainsInvalidNestedFunction(value, range) {
+function toggleBranchContainsInvalidNestedFunction(value, range, parenthesisPairs) {
   for (let index = range.start; index < range.end; index += 1) {
     if (value[index] === '"' || value[index] === "'") {
       index = quotedStringEnd(value, index);
@@ -2126,16 +2107,31 @@ function toggleBranchContainsInvalidNestedFunction(value, range) {
       index = urlTokenEnd;
       continue;
     }
-    invalidToggleNestedFunctionPattern.lastIndex = index;
-    const match = invalidToggleNestedFunctionPattern.exec(value);
     const previousCharacter = value[index - 1];
-    if (
-      match &&
+    const isFunctionBoundary =
       !isCssIdentifierCharacter(previousCharacter) &&
       previousCharacter !== '#' &&
-      previousCharacter !== '@'
-    )
-      return true;
+      previousCharacter !== '@';
+
+    invalidToggleNestedFunctionPattern.lastIndex = index;
+    if (isFunctionBoundary && invalidToggleNestedFunctionPattern.exec(value)) return true;
+
+    // A forbidden token that's only reachable through a var()/env()
+    // substitution's own fallback (rather than written directly in the
+    // branch) doesn't make the branch unconditionally invalid -- the
+    // substitution may resolve to something else entirely, e.g.
+    // `toggle(1, var(--x, calc(1)))` is still a valid, selectable branch
+    // whenever --x is set. Skip past the substitution's own parens (an
+    // attr() substitution already returned true above, since attr() is
+    // itself a forbidden token regardless of context) instead of scanning
+    // through them, same as randomItemArgumentRanges treats other
+    // functions' arguments as opaque.
+    fallbackFunctionPattern.lastIndex = index;
+    const substitutionMatch = isFunctionBoundary ? fallbackFunctionPattern.exec(value) : null;
+    if (substitutionMatch) {
+      const closeIndex = parenthesisPairs.get(index + substitutionMatch[0].length - 1);
+      if (closeIndex !== undefined && closeIndex < range.end) index = closeIndex;
+    }
   }
   return false;
 }
@@ -2156,7 +2152,7 @@ function toggleBranchValueRanges(value, group, parenthesisPairs) {
   // never applies, so it can never actually select a branch value.
   if (
     branchRanges.some((branchRange) =>
-      toggleBranchContainsInvalidNestedFunction(value, branchRange),
+      toggleBranchContainsInvalidNestedFunction(value, branchRange, parenthesisPairs),
     )
   )
     return undefined;
@@ -3410,37 +3406,30 @@ function attrHeaderTypeStart(header, identifierEnd) {
 
 // A leading var()/env()/attr() substitution can stand in for the whole
 // <attr-name> (CSS Values 5 allows arbitrary substitution functions anywhere
-// a <declaration-value> is permitted, including here). Returns the index just
-// past its matching close parenthesis, or -1 if the header doesn't start
-// with one.
-function headerLeadingSubstitutionEnd(header) {
+// a <declaration-value> is permitted, including here). Returns the index
+// just past its matching close parenthesis, and the range of its own
+// fallback argument (the text after its first top-level comma, if it has
+// one), or undefined if the header doesn't start with a substitution.
+function headerLeadingSubstitution(header) {
   fallbackFunctionPattern.lastIndex = 0;
   const match = fallbackFunctionPattern.exec(header);
-  if (!match || match.index !== 0) return -1;
+  if (!match || match.index !== 0) return undefined;
   let depth = 1;
+  let commaIndex = -1;
   for (let index = match[0].length; index < header.length; index += 1) {
     const character = header[index];
     if (character === '"' || character === "'") index = quotedStringEnd(header, index);
     else if (character === '(') depth += 1;
     else if (character === ')') {
       depth -= 1;
-      if (depth === 0) return index + 1;
-    }
+      if (depth === 0)
+        return {
+          end: index + 1,
+          fallbackRange: commaIndex === -1 ? undefined : { start: commaIndex + 1, end: index },
+        };
+    } else if (character === ',' && depth === 1 && commaIndex === -1) commaIndex = index;
   }
-  return -1;
-}
-
-// <attr-name> is `[ <ns-prefix> ]? <ident-token>` where `<ns-prefix>` is
-// itself `[ <ident-token> | '*' ]? '|'` -- so a *null* namespace (bare `|`
-// with nothing before it, e.g. `|data-layer`) is valid and must not be
-// mistaken for an invalid header. The name may also be a substitution
-// function rather than a literal identifier at all.
-function attrHeaderNameEnd(header) {
-  const leadingSubstitutionEnd = headerLeadingSubstitutionEnd(header);
-  if (leadingSubstitutionEnd !== -1) return leadingSubstitutionEnd;
-  const nameStart = header[0] === '|' ? 1 : 0;
-  const identifierEnd = cssIdentifierTokenEnd(header, nameStart);
-  return identifierEnd > nameStart ? identifierEnd : -1;
+  return undefined;
 }
 
 function attrTypeSyntaxFromHeader(header, nameEnd) {
@@ -3452,12 +3441,57 @@ function attrTypeSyntaxFromHeader(header, nameEnd) {
   return typeMatch && validAttrTypeSyntax(typeMatch[1]) ? attrType : undefined;
 }
 
+// <attr-name> is `[ <ns-prefix> ]? <ident-token>` where `<ns-prefix>` is
+// itself `[ <ident-token> | '*' ]? '|'` -- so a *null* namespace (bare `|`
+// with nothing before it, e.g. `|data-layer`) is valid and must not be
+// mistaken for an invalid header. The name may also be a substitution
+// function rather than a literal identifier at all, and per CSS Values 5's
+// grammar the substitution's own fallback argument can supply the
+// <attr-type> clause too, not just the name -- e.g.
+// `attr(var(--header, data-scale number), 0)` is only reachable through
+// var(--header)'s own fallback, never literally written after it in the
+// outer header. Peel through a chain of such substitutions iteratively
+// (not recursively, so pathologically deep nesting can't overflow the
+// stack, matching this file's other explicit nesting limits) looking for
+// the first one whose own text resolves a usable <attr-type>. Once at
+// least one substitution has consumed the whole header with no usable type
+// found anywhere in the chain, the header is still a syntactically valid
+// substitution-only name -- just with no derivable numeric witnesses --
+// whereas a header that was never a substitution at all and isn't a valid
+// identifier either is genuinely invalid. Returns the validated attrType
+// string (possibly '', meaning "no type"), or undefined if the header is
+// invalid.
+function attrHeaderType(header) {
+  let current = header;
+  let consumedByOnlySubstitution = false;
+  for (let depth = 0; depth < attrHeaderSubstitutionPeelLimit; depth += 1) {
+    const leadingSubstitution = headerLeadingSubstitution(current);
+    if (leadingSubstitution === undefined) {
+      const nameStart = current[0] === '|' ? 1 : 0;
+      const identifierEnd = cssIdentifierTokenEnd(current, nameStart);
+      if (identifierEnd === nameStart) return consumedByOnlySubstitution ? '' : undefined;
+      return attrTypeSyntaxFromHeader(current, identifierEnd);
+    }
+    if (leadingSubstitution.end !== current.length)
+      return attrTypeSyntaxFromHeader(current, leadingSubstitution.end);
+    if (leadingSubstitution.fallbackRange === undefined) return '';
+    consumedByOnlySubstitution = true;
+    // Mirror substitutionHeader()'s normalization: the fallback range is
+    // the raw text after the comma, whitespace and all (e.g. the leading
+    // space in `var(--header, data-scale number)`'s fallback), which
+    // cssIdentifierTokenEnd() and headerLeadingSubstitution() don't skip on
+    // their own.
+    current = current
+      .slice(leadingSubstitution.fallbackRange.start, leadingSubstitution.fallbackRange.end)
+      .replaceAll(cssCommentMaskCharacter, ' ')
+      .trim();
+  }
+  return '';
+}
+
 function validSubstitutionHeader(frame, value) {
   const header = substitutionHeader(frame, value);
-  if (frame.functionName === 'attr') {
-    const nameEnd = attrHeaderNameEnd(header);
-    return nameEnd !== -1 && attrTypeSyntaxFromHeader(header, nameEnd) !== undefined;
-  }
+  if (frame.functionName === 'attr') return attrHeaderType(header) !== undefined;
   const identifierEnd = cssIdentifierTokenEnd(header, 0);
   if (identifierEnd === 0) return false;
   if (frame.functionName === 'var')
@@ -3549,9 +3583,8 @@ function substitutionDefinedPathWitnessGroups(frame, value) {
   }
   if (frame.functionName !== 'attr') return undefined;
   const header = substitutionHeader(frame, value);
-  const nameEnd = attrHeaderNameEnd(header);
-  if (nameEnd === -1) return undefined;
-  const attrType = header.slice(attrHeaderTypeStart(header, nameEnd)).trim();
+  const attrType = attrHeaderType(header);
+  if (attrType === undefined) return undefined;
   return attrDefinedPathWitnessGroups(attrType);
 }
 
@@ -4870,9 +4903,12 @@ function randomGroupOutputOptions(frame, value, group, budget, parenthesisPairs)
   // evaluateStaticLayerNumber() rounds to the nearest integer, which is too
   // coarse to prove the step is actually positive (a small positive step
   // like 0.4 can round to a stepValue of 0) or to compute the spec's
-  // step / 1000 endpoint-snapping tolerance precisely. Re-parse the plain
-  // numeric step token at full precision instead.
-  const preciseStepValue = preciseStaticNumber(stepExpression);
+  // step / 1000 endpoint-snapping tolerance precisely. Re-evaluate the step
+  // at full precision instead -- evaluateStaticLayerNumberWithUnit() handles
+  // wrapped static math (e.g. `calc(9999)`), not just a bare numeric token,
+  // so a resolvable-but-not-bare-number step is no longer treated as
+  // unprovably positive.
+  const preciseStepValue = evaluateStaticLayerNumberWithUnit(stepExpression)?.value;
   // A step that's negative, zero, or close enough to zero that the step
   // count would be unusably large is *ignored* -- the function behaves as
   // if only A and B were given (the full continuous [A, B] range), not
@@ -4881,14 +4917,19 @@ function randomGroupOutputOptions(frame, value, group, budget, parenthesisPairs)
   // positive one), use that same conservative continuous treatment.
   if (preciseStepValue === undefined || preciseStepValue <= 0) return continuousRangeResult();
 
-  // preciseStaticNumberWithUnit() strips a unit rather than converting it,
-  // so the precise magnitudes below are only trustworthy when min, max, and
-  // step all share the literal same unit (or are all bare numbers) --
-  // otherwise fall back to the already-converted (but integer-rounded)
-  // values, e.g. `random(0px, 264.556875cm, 9999px)`.
-  const preciseMinimum = preciseStaticNumberWithUnit(minimumExpression);
-  const preciseMaximum = preciseStaticNumberWithUnit(maximumExpression);
-  const preciseStep = preciseStaticNumberWithUnit(stepExpression);
+  // evaluateStaticLayerNumberWithUnit() converts every canonical absolute
+  // unit to its canonical same-dimension magnitude while parsing (the same
+  // conversion evaluateStaticLayerNumber() relies on), so min, max, and step
+  // written in different but convertible units (e.g. `264.556875cm` next to
+  // `9989.02px`) are directly comparable at full precision here -- unlike
+  // evaluateStaticLayerNumber(), this doesn't also round the result, which
+  // the step / 1000 endpoint-snapping tolerance below needs. A nonzero
+  // relative length (em, vh, ...), or a unit mismatch that isn't just a
+  // convertible-unit difference, still isn't safely comparable and falls
+  // back to the already-converted (but integer-rounded) values below.
+  const preciseMinimum = evaluateStaticLayerNumberWithUnit(minimumExpression);
+  const preciseMaximum = evaluateStaticLayerNumberWithUnit(maximumExpression);
+  const preciseStep = evaluateStaticLayerNumberWithUnit(stepExpression);
   const preciseValuesShareAUnit =
     preciseMinimum !== undefined &&
     preciseMaximum !== undefined &&

@@ -884,6 +884,21 @@ describe('cinder/z-index-scale', () => {
     expect(bannedFallback('var(--x, random(0, 10000, 0.4))')?.reason).toBe('too-complex');
   });
 
+  test('resolves a fixed stepped random() step that is a wrapped static expression', async () => {
+    // Regression test for a false negative: preciseStaticNumber() used to
+    // parse only a bare numeric token, so a resolvable-but-not-bare-number
+    // step like `calc(9999)` fell back to the conservative continuous-range
+    // treatment even though evaluateStaticLayerNumber() already proved it
+    // usable. The fixed key 0.4 selects step index
+    // floor(0.4 * (stepCount + 1)) = floor(0.4 * 3) = 1, which computes to
+    // the banned layer 9999.
+    const { bannedFallback } = await import(fallbackAnalysisPath);
+
+    expect(bannedFallback('var(--outer, random(fixed .4, 0, 19998, calc(9999)))')?.reason).toBe(
+      'banned',
+    );
+  });
+
   test('computes the stepped random() endpoint snap at full precision for typed values', async () => {
     const { bannedFallback } = await import(fallbackAnalysisPath);
 
@@ -892,15 +907,34 @@ describe('cinder/z-index-scale', () => {
     );
   });
 
-  test('does not compare stepped random() magnitudes across different but convertible units', async () => {
-    // preciseStaticNumber() strips a unit rather than converting it, so a
-    // mismatched-unit call must fall back to the already-converted (but
-    // integer-rounded) values instead of comparing raw magnitudes across
-    // units. 264.556875cm is exactly 9999px.
+  test('compares stepped random() magnitudes across different but convertible units', async () => {
+    // evaluateStaticLayerNumberWithUnit() converts every canonical absolute
+    // unit to its canonical same-dimension magnitude while parsing (rather
+    // than stripping the unit), so a mismatched-but-convertible-unit call is
+    // compared at full precision instead of falling back to the
+    // already-converted (but integer-rounded) values. 264.556875cm is
+    // exactly 9999px, so this is unaffected either way; the precision-
+    // sensitive case (a fractional step that would lose its snap-tolerance
+    // margin under rounding) is covered separately below.
     const { bannedFallback } = await import(fallbackAnalysisPath);
 
     expect(
       bannedFallback('var(--outer, calc(random(0px, 264.556875cm, 9999px) / 1px))')?.reason,
+    ).toBe('banned');
+  });
+
+  test('computes the stepped random() endpoint snap at full precision across convertible units', async () => {
+    // Regression test for a false negative: preciseStaticNumberWithUnit()
+    // used to strip a unit rather than convert it, so this mixed-unit call
+    // fell back to evaluateStaticLayerNumber()'s integer-rounded magnitudes
+    // (9989.02px rounds to 9989), losing exactly the fractional precision
+    // the step / 1000 endpoint-snapping tolerance needs. 264.556875cm is
+    // exactly 9999px, and the first step (9989.02) is within step / 1000 of
+    // it, so CSS snaps to the written maximum.
+    const { bannedFallback } = await import(fallbackAnalysisPath);
+
+    expect(
+      bannedFallback('var(--outer, calc(random(0px, 264.556875cm, 9989.02px) / 1px))')?.reason,
     ).toBe('banned');
   });
 
@@ -928,6 +962,34 @@ describe('cinder/z-index-scale', () => {
     const { bannedFallback } = await import(fallbackAnalysisPath);
 
     expect(bannedFallback('var(--outer, calc-mix(9999 calc(100%), 1))')?.reason).toBe('banned');
+  });
+
+  test('accepts an explicitly-signed in-range calc-mix() weight', async () => {
+    // Regression test for a false negative: the item's own calc-sum parser
+    // used to see the '+' before the weight parser got a turn and throw
+    // "expected whitespace around additive operator" (whitespace is
+    // required on both sides of a binary +/-, and there's none after this
+    // one), invalidating the whole calc-mix() -- even though parseNumber()
+    // already handles a leading sign on the weight itself just fine once
+    // the sum parser stops cleanly instead of throwing.
+    const { bannedFallback } = await import(fallbackAnalysisPath);
+
+    expect(bannedFallback('var(--o, calc-mix(9999 +100%, 1 0%))')?.reason).toBe('banned');
+  });
+
+  test('allows a same-unit relative zero next to a nonzero relative length in calc-mix()', async () => {
+    // Regression test for a false negative: parseNumber() intentionally
+    // gives a literal relative-length zero (e.g. `0em`) no symbolic factor,
+    // since zero is zero regardless of which relative unit it's written in.
+    // The all-items compatibility check used to compare every item against
+    // items[0] specifically, so when the zero happened to be first, the
+    // nonzero `9999em` (which does carry a symbolic factor) looked
+    // incompatible and the whole calc-mix() was rejected.
+    const { bannedFallback } = await import(fallbackAnalysisPath);
+
+    expect(bannedFallback('var(--outer, calc(calc-mix(0em 0%, 9999em 100%) / 1em))')?.reason).toBe(
+      'banned',
+    );
   });
 
   test('keeps a too-complex calc-mix() weight token too-complex instead of treating it as absent', async () => {
@@ -1993,21 +2055,54 @@ describe('cinder/z-index-scale', () => {
   });
 
   test('builds wide clamp placeholders in linear time', async () => {
-    const siblings = Array.from(
-      { length: 64_000 },
-      (_, index) => `var(--item-layer-${index}, -1)`,
-    ).join(' + ');
-    const startedAt = performance.now();
-    const result = await lint(`
-      .fixture {
-        /* cinder-z-index-local: static clamp bounds keep every generated fallback safe. */
-        z-index: clamp(0, calc(var(--runtime) + ${siblings}), 1);
+    // This used to assert an absolute wall-clock budget (2000ms), which
+    // flaked in CI under load -- three real failures at 2015ms, 2028ms,
+    // and 2034ms, each passing cleanly on rerun -- and could equally
+    // false-fail locally on a busy machine. The property this test
+    // actually needs to prove is that placeholder generation scales
+    // linearly with the sibling count, not that any one run completes
+    // within some fixed latency, so measure at N and 2N and assert the
+    // doubled input takes less than 4x as long: comfortably above the
+    // ~2x a linear algorithm should show (measured locally at N = 16,000
+    // across ten runs: 1.74x-2.40x), but tight enough to still catch an
+    // O(n^2) regression. Each measurement takes the fastest of 3 trials to
+    // reduce scheduling noise (a slowdown can only inflate a trial, never
+    // deflate it below the true minimum), and N is sized so a single
+    // trial comfortably clears ~150ms even on a loaded machine, keeping
+    // fixed per-lint overhead from dominating the measurement. A generous
+    // absolute ceiling remains only to catch an outright hang.
+    const buildCss = (siblingCount: number) => {
+      const siblings = Array.from(
+        { length: siblingCount },
+        (_, index) => `var(--item-layer-${index}, -1)`,
+      ).join(' + ');
+      return `
+          .fixture {
+            /* cinder-z-index-local: static clamp bounds keep every generated fallback safe. */
+            z-index: clamp(0, calc(var(--runtime) + ${siblings}), 1);
+          }
+        `;
+    };
+    const fastestLintTime = async (siblingCount: number) => {
+      const css = buildCss(siblingCount);
+      let fastest = Number.POSITIVE_INFINITY;
+      for (let trial = 0; trial < 3; trial += 1) {
+        const startedAt = performance.now();
+        const result = await lint(css);
+        fastest = Math.min(fastest, performance.now() - startedAt);
+        expect(warnings(result)).toEqual([]);
       }
-    `);
+      return fastest;
+    };
 
-    expect(warnings(result)).toEqual([]);
-    expect(performance.now() - startedAt).toBeLessThan(2_000);
-  });
+    const baselineSiblingCount = 16_000;
+    const timeAtBaseline = await fastestLintTime(baselineSiblingCount);
+    const timeAtDoubled = await fastestLintTime(baselineSiblingCount * 2);
+
+    expect(timeAtBaseline).toBeLessThan(30_000);
+    expect(timeAtDoubled).toBeLessThan(30_000);
+    expect(timeAtDoubled).toBeLessThan(timeAtBaseline * 4);
+  }, 35_000);
 
   test('reuses parenthesis indexes across nested bound checks', async () => {
     let nestedValue = 'var(--runtime)';
@@ -3208,6 +3303,9 @@ describe('cinder/z-index-scale', () => {
     'attr(|data-layer type(<integer>), 9999)',
     // The <attr-name> itself may be an arbitrary substitution function.
     'attr(var(--name, data-layer) type(<integer>), 9999)',
+    // The substitution's own fallback may supply the <attr-type> clause too,
+    // not just the name.
+    'attr(var(--header, data-scale number), 9999)',
   ])('continues inspecting a fallback from a valid substitution header: %s', async (fallback) => {
     expect(
       warnings(
@@ -4804,6 +4902,12 @@ describe('cinder/z-index-scale', () => {
     // any other unknown unit name, and derives no defined-path witness, so
     // only the safe fallback (0) is reachable.
     ['calc(9999 * attr(data-scale number, 0))', 1],
+    // Regression test for a false negative: when the leading substitution
+    // supplies both the <attr-name> and the <attr-type> through its own
+    // fallback (`var(--header)` is unset, so `data-scale number` applies),
+    // the header used to be treated as name-only, deriving no numeric
+    // defined-path witness at all.
+    ['calc(9999 * attr(var(--header, data-scale number), 0))', 1],
     ['calc(9999 * attr(data-scale integer, 0))', 0],
     ['calc(9999 * attr(data-scale px, 0px) / 1px)', 1],
     ['calc(9999 * attr(data-scale type(<number> | <length>), 0) / 1px)', 1],
@@ -4944,6 +5048,18 @@ describe('cinder/z-index-scale', () => {
         `),
       ),
     ).toHaveLength(count);
+  });
+
+  test('does not invalidate a toggle() branch over a forbidden token reachable only through a substitution fallback', async () => {
+    // Regression test for a false negative: toggleBranchContainsInvalidNestedFunction()
+    // used to scan a branch's full text for calc()/attr()/toggle() without
+    // skipping over a nested var()/env()'s own parens, so `calc(1)` inside
+    // var(--x)'s *fallback* (only used if --x is unset) invalidated the
+    // whole branch -- even though setting --x directly bypasses that
+    // fallback entirely and never puts calc() in the branch's literal text.
+    const { bannedFallback } = await import(fallbackAnalysisPath);
+
+    expect(bannedFallback('var(--o, toggle(1, var(--x, calc(1))))')).not.toBeUndefined();
   });
 
   test('preserves typed atan2() defined paths through angle cancellation', async () => {

@@ -500,6 +500,15 @@ function normalizedCalcMixWeights(weights) {
   );
 }
 
+// A relative length (em, vh, ...) that's provably zero contributes nothing
+// regardless of the specific unit it was written in -- parseNumber() already
+// omits its symbolic factor for exactly this reason (see its comment). A
+// nonzero relative length keeps its factor, so this is "zero regardless of
+// which relative unit," not merely "zero-valued."
+function isProvablyZeroRegardlessOfUnit(item) {
+  return item.value === 0 && item.symbolicFactors.size === 0;
+}
+
 // calc-mix()'s current CSS Values 5 grammar --
 // `calc-mix( [ <calc-sum> <percentage [0,100]>? ]# )` -- is a weighted
 // average of two or more items, distinct from the two-endpoint
@@ -507,8 +516,19 @@ function normalizedCalcMixWeights(weights) {
 // exact-rational percentage (or undefined for "omitted") per entry in
 // `items`, already parsed by the caller.
 function calcMixWeightedAverage(items, weights) {
-  const [first, ...rest] = items;
-  if (!rest.every((item) => sameUnits(item, first) && sameSymbolicFactors(item, first)))
+  // Compare every item's symbolic factors against a nonzero representative,
+  // not just against items[0]: a zero item exempts itself from the check
+  // (its erased factor is irrelevant, e.g. `0em` next to `9999em`), but two
+  // *nonzero* items with different relative units (`9999em` and `8888rem`)
+  // must still be rejected even when the zero happens to be first.
+  const representative = items.find((item) => !isProvablyZeroRegardlessOfUnit(item)) ?? items[0];
+  if (
+    !items.every(
+      (item) =>
+        sameUnits(item, representative) &&
+        (isProvablyZeroRegardlessOfUnit(item) || sameSymbolicFactors(item, representative)),
+    )
+  )
     throw new Error('incompatible calc-mix values');
   const normalizedWeights = normalizedCalcMixWeights(weights);
   if (normalizedWeights.some((weight) => weight === undefined)) throw staticAnalysisTooComplex;
@@ -523,7 +543,7 @@ function calcMixWeightedAverage(items, weights) {
     );
     value += item.value * (Number(weight.numerator) / Number(weight.denominator) / 100);
   }
-  return withValue(first, value, exactValue);
+  return withValue(representative, value, exactValue);
 }
 
 // Evaluate static CSS math while retaining enough type information for
@@ -1262,11 +1282,21 @@ function evaluateConstantArithmetic(expression) {
       skipSpace();
       const operator = peek();
       if (operator !== '+' && operator !== '-') return value;
+      // Without whitespace on both sides, this character never reads as a
+      // binary operator at all: per the CSS tokenizer, a '+'/'-' immediately
+      // followed by a digit (or '.' + digit) starts a new signed-number
+      // token instead, so the calc-sum production simply ends here rather
+      // than continuing through it. Stop without consuming it -- a
+      // standalone calc() still rejects the leftover text as unconsumed
+      // input (the `index !== expression.length` check below), and
+      // calc-mix()'s weighted-item grammar relies on exactly this to let a
+      // signed weight (e.g. `9999 +100%`) start right after an item with no
+      // space, instead of the item's own sum swallowing it and failing.
       if (
         !adjacentTriviaContainsWhitespace(index, -1) ||
         !adjacentTriviaContainsWhitespace(index, 1)
       )
-        throw new Error('expected whitespace around additive operator');
+        return value;
       index += 1;
       const right = parseTerm();
       if (!sameUnits(value, right)) throw new Error('incompatible units');
@@ -1900,6 +1930,39 @@ export function classifyStaticLayer(value) {
 export function evaluateStaticLayerNumber(value) {
   const resolved = resolveStaticNumber(value);
   return typeof resolved === 'number' && !Number.isNaN(resolved) ? resolved : undefined;
+}
+
+// Like evaluateStaticLayerNumber(), but returns the value at full precision
+// (an accumulated float, not rounded to the nearest integer) instead of
+// collapsing every unit to a bare number, alongside a tag identifying its
+// dimension. parseNumber() above already converts every canonical absolute
+// unit (px, cm, deg, s, ...) to its canonical same-dimension magnitude while
+// parsing, so two endpoints written in different absolute units (e.g. `0px`
+// and `264.556875cm`) come back tagged alike and are directly comparable --
+// this exists for callers (random()'s step/1000 endpoint-snapping
+// tolerance) that need that precision and cross-unit comparability, unlike
+// evaluateStaticLayerNumber()'s rounded, unit-blind result. A nonzero
+// relative-length term (em, vh, ...) can't be compared this way without
+// layout context and returns undefined, except when it's provably zero (its
+// symbolic factor is omitted for exactly this reason -- see
+// calcMixWeightedAverage()'s isProvablyZeroRegardlessOfUnit()); a mix of
+// incompatible units, or a unit raised to any power other than 1 (e.g.
+// `1px * 1px`, which shares px's dimension tag but isn't a length),
+// likewise returns undefined rather than a misleadingly comparable tag.
+export function evaluateStaticLayerNumberWithUnit(value) {
+  const resolved = resolveStaticArithmeticResult(value);
+  if (
+    resolved === null ||
+    resolved === staticAnalysisTooComplex ||
+    resolved === staticAnalysisInvalid ||
+    resolved.symbolicFactors.size > 0 ||
+    resolved.units.size > 1 ||
+    !Number.isFinite(resolved.value)
+  )
+    return undefined;
+  const [[unit, exponent] = []] = resolved.units;
+  if (exponent !== undefined && exponent !== 1) return undefined;
+  return { value: resolved.value, unit: unit ?? '' };
 }
 
 export function isStaticallyNegative(value) {
