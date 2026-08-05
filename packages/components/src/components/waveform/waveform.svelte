@@ -236,7 +236,7 @@
           aria-hidden="true"
         />
         {#if renderMode === 'bars'}
-          {#each waveformBars as bar, index (index)}
+          {#each waveformBars as bar (bar.x)}
             <rect
               class="cinder-waveform__bar"
               x={bar.x}

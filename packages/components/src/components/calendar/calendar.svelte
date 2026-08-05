@@ -147,7 +147,22 @@
   const initialTodayIso = localTodayIso();
   const initialAnchorIso = untrack(() => resolveAnchorIso(value, month, initialTodayIso));
   const initialFocusedIso = untrack(() => initialAnchorIso);
-  const todayIso = $derived(localTodayIso());
+  let todayIso = $state(localTodayIso());
+
+  // Keeps `todayIso` live across a midnight rollover in a long-lived session —
+  // both while the tab stays open (interval) and, far more commonly, while it
+  // sits backgrounded overnight (visibilitychange). Never runs during SSR, so
+  // `document`/`setInterval` are safe to reference unguarded here.
+  $effect(() => {
+    const refresh = () => (todayIso = localTodayIso());
+    const timer = setInterval(refresh, 60_000);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  });
+
   const anchorIso = $derived(resolveAnchorIso(value, month, todayIso));
   const anchorDate = $derived(parseISODate(anchorIso) ?? parseISODate(todayIso)!);
   let visibleMonthDate = $state(

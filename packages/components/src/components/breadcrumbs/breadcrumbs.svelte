@@ -29,7 +29,15 @@
 
 <nav class={classNames('cinder-breadcrumbs', className)} aria-label={label}>
   <ol class="cinder-breadcrumbs__list">
-    {#each items as item, index (index)}
+    <!--
+      Key precedence: `href` (the actual link target) when present, since it's the
+      closest thing to a stable identity a breadcrumb has. `href` is omitted only
+      for the current-page entry per BreadcrumbItem's doc comment, so the
+      `${label}-${index}` fallback covers that one case per render; it also
+      guards against a consumer building a list with more than one href-less
+      entry (unsupported, but the fallback still avoids a duplicate key).
+    -->
+    {#each items as item, index (item.href ?? `${item.label}-${index}`)}
       {@const isLast = index === items.length - 1}
       <li class="cinder-breadcrumbs__item">
         {#if isLast}
