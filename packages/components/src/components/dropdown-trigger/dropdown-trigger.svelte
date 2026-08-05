@@ -29,12 +29,25 @@
     caretVisible = true,
     children,
     onclick,
+    style: consumerStyle,
     ...rest
   }: DropdownTriggerProps = $props();
 
   const context = getDropdownContext();
   const registerTrigger = getDropdownRegisterTrigger();
   const setOpen = getDropdownSetOpen();
+
+  function terminated(declaration: string): string {
+    const trimmed = declaration.trim();
+    return trimmed.length === 0 || trimmed.endsWith(';') ? trimmed : `${trimmed};`;
+  }
+
+  const mergedStyle = $derived(
+    [consumerStyle, `anchor-name: --${context.menuId};`]
+      .filter((declaration): declaration is string => Boolean(declaration))
+      .map(terminated)
+      .join(' ') || undefined,
+  );
 
   function attachTrigger(node: HTMLButtonElement) {
     registerTrigger(node);
@@ -57,7 +70,7 @@
   {@attach attachTrigger}
   type="button"
   class={classNames('cinder-dropdown-trigger', customClassName)}
-  style={`anchor-name: --${context.menuId};`}
+  style={mergedStyle}
   aria-haspopup="menu"
   aria-expanded={context.isOpen}
   aria-controls={context.menuId}

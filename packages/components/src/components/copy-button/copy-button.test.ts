@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 import { expectNoLeakedTimers, trackTimers } from '../../test/lifecycle.ts';
@@ -17,6 +17,19 @@ function mockClipboard(writes: string[] = []): ClipboardLike {
   const clipboard: ClipboardLike = {
     writeText: async (text: string) => {
       writes.push(text);
+    },
+  };
+  Object.defineProperty(globalThis.navigator, 'clipboard', {
+    configurable: true,
+    value: clipboard,
+  });
+  return clipboard;
+}
+
+function mockRejectingClipboard(): ClipboardLike {
+  const clipboard: ClipboardLike = {
+    writeText: async () => {
+      throw new DOMException('Write permission denied.', 'NotAllowedError');
     },
   };
   Object.defineProperty(globalThis.navigator, 'clipboard', {
@@ -251,5 +264,28 @@ describe('CopyButton', () => {
     } finally {
       timers.release();
     }
+  });
+
+  test('a failed clipboard write calls onError and never enters the copied state', async () => {
+    mockRejectingClipboard();
+    const onError = mock(() => {});
+    const { container } = render(CopyButton, { value: 'hi', onError });
+    const button = container.querySelector('button') as HTMLButtonElement;
+
+    await fireEvent.click(button);
+
+    await waitFor(() => expect(onError).toHaveBeenCalledTimes(1));
+    expect(button.hasAttribute('data-cinder-copied')).toBe(false);
+    expect(button.textContent?.trim()).toBe('Copy');
+  });
+
+  test('a failed clipboard write does not throw when onError is omitted', async () => {
+    mockRejectingClipboard();
+    const { container } = render(CopyButton, { value: 'hi' });
+    const button = container.querySelector('button') as HTMLButtonElement;
+
+    await fireEvent.click(button);
+
+    await waitFor(() => expect(button.hasAttribute('data-cinder-copied')).toBe(false));
   });
 });

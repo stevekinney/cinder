@@ -91,7 +91,7 @@ Values are ISO-8601 local strings. `granularity="day"` emits `YYYY-MM-DD`; time 
 ## Props
 
 ```
-id           string               no        Unique identifier for label and ARIA wiring. Generated via `$props.id()` when omitted.
+id           string               yes       Unique identifier for label and ARIA wiring.
 value        DateRangeValue       no        Current range. Bindable. Both fields start undefined.
 label        string               no        Visible legend rendered above the inputs.
 startLabel   string               no        Label for the start input. Default: "Start date".

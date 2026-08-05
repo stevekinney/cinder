@@ -44,11 +44,12 @@
   let email = $state('');
 
   function handleSubmit(event: SubmitEvent): void {
+    event.preventDefault();
+
     if (!onSubmit) {
       return;
     }
 
-    event.preventDefault();
     onSubmit(email.trim());
   }
 </script>

@@ -7,7 +7,7 @@ const schema = {
     id: {
       type: 'string',
       description:
-        'Unique identifier used to generate accessible IDs for labels and error\nregions. Optional — a stable id is generated via `$props.id()` when omitted.',
+        'Unique identifier used to generate accessible IDs for labels and error regions.',
     },
     label: {
       type: 'string',
@@ -50,6 +50,7 @@ const schema = {
     },
   },
   additionalProperties: false,
+  required: ['id'],
   metadata: {
     unsupportedProps: [
       {

@@ -23,6 +23,7 @@
 <script lang="ts">
   import type { DiffStatisticsProps } from './diff-statistics.types.ts';
   import { classNames } from '../../utilities/class-names.ts';
+  import { devWarn } from '../../utilities/dev-warn.ts';
 
   let {
     added,
@@ -34,6 +35,16 @@
     class: customClassName,
     ...rest
   }: DiffStatisticsProps = $props();
+
+  let warnedToolbarDensityMisuse = false;
+  $effect(() => {
+    if (density === 'toolbar' && variant !== 'compact' && !warnedToolbarDensityMisuse) {
+      warnedToolbarDensityMisuse = true;
+      devWarn(
+        '[cinder/DiffStatistics] density="toolbar" has no effect unless variant="compact". Set variant="compact" or remove density.',
+      );
+    }
+  });
 
   const total = $derived(added + removed + modified);
   const pluralize = (count: number, singular: string, plural: string) =>

@@ -122,9 +122,9 @@ describe('DatePicker', () => {
     });
     const input = container.querySelector<HTMLInputElement>('#dp')!;
     await fireEvent.input(input, { target: { value: '' } });
-    expect(values).toEqual([undefined]);
+    expect(values).toStrictEqual([undefined]);
     await fireEvent.change(input, { target: { value: '' } });
-    expect(values).toEqual([undefined]);
+    expect(values).toStrictEqual([undefined]);
   });
 
   test('clears custom validity after a native form reset', async () => {
@@ -239,5 +239,56 @@ describe('DatePicker', () => {
     await fireEvent.change(timeInput, { target: { value: '10:15' } });
 
     expect(nextValue).toBe('2026-06-29T10:15');
+  });
+
+  test('an out-of-range value at mount fires onchange once with the clamped/normalized value', () => {
+    const values: Array<string | undefined> = [];
+    render(DatePicker, {
+      id: 'dp',
+      value: '2026-02-30',
+      onchange: (value: string | undefined) => values.push(value),
+    });
+
+    // '2026-02-30' is not a valid date (Feb has 28 days in 2026) — normalizeValue
+    // rejects it to undefined, and the mount-time normalization effect must now
+    // notify onchange about that correction instead of silently rewriting `value`.
+    expect(values).toStrictEqual([undefined]);
+  });
+
+  test('changing granularity on an already-mounted instance truncates the value and fires onchange', async () => {
+    const values: Array<string | undefined> = [];
+    const { rerender } = render(DatePicker, {
+      id: 'dp',
+      granularity: 'minute',
+      value: '2026-06-29T09:30',
+      onchange: (value: string | undefined) => values.push(value),
+    });
+
+    await rerender({
+      id: 'dp',
+      granularity: 'day',
+      value: '2026-06-29T09:30',
+      onchange: (value: string | undefined) => values.push(value),
+    });
+
+    expect(values).toEqual(['2026-06-29']);
+  });
+
+  test('renders the triggerLabel prop text when provided', () => {
+    const { container } = render(DatePicker, {
+      id: 'dp',
+      value: '2026-06-29',
+      triggerLabel: 'Choose date',
+    });
+    expect(container.querySelector('.cinder-date-picker__trigger')?.textContent?.trim()).toBe(
+      'Choose date',
+    );
+  });
+
+  test('falls back to "Open" when triggerLabel is omitted', () => {
+    const { container } = render(DatePicker, { id: 'dp', value: '2026-06-29' });
+    expect(container.querySelector('.cinder-date-picker__trigger')?.textContent?.trim()).toBe(
+      'Open',
+    );
   });
 });

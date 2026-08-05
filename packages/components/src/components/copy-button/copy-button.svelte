@@ -22,6 +22,7 @@
   import Copy from 'lucide-svelte/icons/copy';
   import { copyToClipboard } from '../../utilities/clipboard.ts';
   import { classNames } from '../../utilities/class-names.ts';
+  import { devWarn } from '../../utilities/dev-warn.ts';
   import VisuallyHiddenLiveRegion from '../_visually-hidden-live-region.svelte';
 
   let {
@@ -33,6 +34,7 @@
     class: className,
     children,
     confirmation,
+    onError,
     // `...rest` carries every other native button attribute (id, data-*, form, name,
     // tabindex, etc.) through to the rendered element. The component's controlled attrs
     // (aria-label, aria-live, onclick, data-cinder-copied) are Omit-ted from the prop
@@ -53,7 +55,11 @@
 
   async function handleClick() {
     const ok = await copyToClipboard(value);
-    if (!ok) return;
+    if (!ok) {
+      devWarn('[cinder/CopyButton] Clipboard write failed.');
+      onError?.();
+      return;
+    }
     copied = true;
     if (resetTimer) clearTimeout(resetTimer);
     resetTimer = setTimeout(() => {

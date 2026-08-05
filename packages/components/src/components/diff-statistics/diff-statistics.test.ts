@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { afterEach, describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, spyOn, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -77,5 +77,56 @@ describe('DiffStatistics', () => {
     expect(css).toMatch(
       /data-cinder-variant='compact'[\s\S]*?__stat--modified[\s\S]*?background:\s*var\(--cinder-color-warning-bg\)[\s\S]*?color:\s*var\(--cinder-color-warning-fg\)/,
     );
+  });
+
+  test('warns once in dev when density="toolbar" is used without variant="compact"', async () => {
+    const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const { rerender } = render(DiffStatistics, {
+        props: { added: 1, removed: 0, modified: 0, density: 'toolbar' },
+      });
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      expect(warnSpy.mock.calls[0]?.[0]).toContain('density="toolbar"');
+
+      // Latch: a re-render with the same invalid props does not warn again.
+      await rerender({ added: 2, removed: 0, modified: 0, density: 'toolbar' });
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
+  test('does not warn when density="toolbar" is paired with variant="compact"', () => {
+    const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      render(DiffStatistics, {
+        props: { added: 1, removed: 0, modified: 0, variant: 'compact', density: 'toolbar' },
+      });
+      expect(warnSpy).not.toHaveBeenCalled();
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
+  test('the warning latch is once-per-instance-lifetime, not once-per-distinct-violation', async () => {
+    const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const { rerender } = render(DiffStatistics, {
+        props: { added: 1, removed: 0, modified: 0, density: 'toolbar', variant: 'default' },
+      });
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+
+      // Clear the violation: no new warning.
+      await rerender({ added: 1, removed: 0, modified: 0, density: 'toolbar', variant: 'compact' });
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+
+      // Reintroduce the identical violation: still no second warning, proving the
+      // latch is scoped to the component instance's lifetime rather than resetting
+      // whenever the violation clears and reappears.
+      await rerender({ added: 1, removed: 0, modified: 0, density: 'toolbar', variant: 'default' });
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      warnSpy.mockRestore();
+    }
   });
 });
