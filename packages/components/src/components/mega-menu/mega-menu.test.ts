@@ -631,7 +631,19 @@ describe('MegaMenu', () => {
     if (!nav || !ancestor) throw new Error('Missing menu ancestor.');
     expect(nav.getAttribute('dir')).toBe('rtl');
     ancestor.setAttribute('dir', 'ltr');
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    // observeTextDirection's MutationObserver delivers records through
+    // happy-dom's own `window.setTimeout(fn)` (a macrotask, not a spec
+    // microtask — see MutationObserverListener#report), and the
+    // direction-chain effect now coalesces its directionRevision bump onto
+    // requestAnimationFrame (#1186 row 4a). A bare `setTimeout(resolve, N)`
+    // races the MutationObserver's own timer instead of waiting for it: under
+    // load, both timers can become due in the same timers-phase pass, and a
+    // `requestAnimationFrame` callback registered mid-pass can't run until
+    // that pass finishes — letting this assertion fire before the restamp
+    // lands (#1204). Wait for both real hops of the scheduling contract
+    // instead of guessing a wall-clock delay.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
     expect(nav.getAttribute('dir')).toBe('ltr');
   });
 
