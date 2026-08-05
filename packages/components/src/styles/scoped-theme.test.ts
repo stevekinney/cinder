@@ -92,6 +92,11 @@ describe('scoped theme tokens', () => {
       '--cinder-scrollbar-thumb': 'oklch(100% 0 0 / 0.45)',
       '--cinder-scrollbar-thumb-hover': 'oklch(100% 0 0 / 0.65)',
       '--cinder-ring-color': 'oklch(from var(--cinder-accent) 0.7 0.14 h)',
+      // Pin the offset color too: it is the band painted BETWEEN the control and
+      // the ring, and it moved from --cinder-bg to --cinder-surface-raised so it
+      // stops painting a dark moat on the widened light ramp. A scoped theme that
+      // kept the old value would silently reintroduce that moat.
+      '--cinder-ring-offset-color': 'var(--cinder-surface-raised)',
       '--cinder-chart-series-1': 'oklch(58% 0.089 205)',
       '--cinder-overlay-backdrop': 'oklch(8% 0.02 245 / 0.65)',
     });
@@ -138,6 +143,7 @@ describe('scoped theme tokens', () => {
       '--cinder-scrollbar-thumb': 'oklch(0% 0 0 / 0.45)',
       '--cinder-scrollbar-thumb-hover': 'oklch(0% 0 0 / 0.65)',
       '--cinder-ring-color': 'oklch(from var(--cinder-accent) 0.55 0.16 h)',
+      '--cinder-ring-offset-color': 'var(--cinder-surface-raised)',
       '--cinder-chart-series-1': 'oklch(33% 0.121 8)',
       '--cinder-overlay-backdrop': 'oklch(20% 0.03 245 / 0.5)',
     });
