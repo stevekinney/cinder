@@ -52,7 +52,10 @@ function walk(directory: string, collected: string[]): string[] {
   return collected;
 }
 
-const importSpecifierPattern = /(?:from\s+|import\s*\(\s*|import\s+)['"](\.[^'"]+)['"]/g;
+// Line-anchored so import-like text inside string literals, diff fixtures,
+// and JSDoc examples does not match; dynamic import() is matched anywhere.
+const importSpecifierPattern =
+  /^[ \t]*(?:import|export)\b[^'"\n]*?from\s*['"](\.[^'"]+)['"]|^[ \t]*import\s*['"](\.[^'"]+)['"]|\bimport\s*\(\s*['"](\.[^'"]+)['"]\s*\)/gm;
 
 function resolveRelativeImport(importer: string, specifier: string): string | null {
   const base = resolve(dirname(importer), specifier);
@@ -63,6 +66,7 @@ function resolveRelativeImport(importer: string, specifier: string): string | nu
     `${base}.svelte.ts`,
     join(base, 'index.ts'),
   ];
+  if (base.endsWith('.js')) candidates.push(base.replace(/.js$/, '.ts'));
   for (const candidate of candidates) {
     if (existsSync(candidate) && statSync(candidate).isFile()) return candidate;
   }
@@ -89,11 +93,16 @@ describe('packed import closure', () => {
     for (const file of packedSources) {
       const source = readFileSync(file, 'utf8');
       for (const match of source.matchAll(importSpecifierPattern)) {
-        const specifier = match[1];
+        const specifier = match[1] ?? match[2] ?? match[3];
         if (!specifier || specifier.endsWith('.css')) continue;
 
         const target = resolveRelativeImport(file, specifier);
-        if (target === null) continue;
+        if (target === null) {
+          violations.push(
+            `${relative(packageRoot, file)} imports '${specifier}', which does not resolve to any file`,
+          );
+          continue;
+        }
 
         const targetRelative = relative(packageRoot, target);
         if (!targetRelative.startsWith('src')) continue;
@@ -114,7 +123,7 @@ describe('packed import closure', () => {
     for (const file of packedSources) {
       const source = readFileSync(file, 'utf8');
       for (const match of source.matchAll(importSpecifierPattern)) {
-        const specifier = match[1];
+        const specifier = match[1] ?? match[2] ?? match[3];
         if (!specifier || !specifier.endsWith('.css')) continue;
 
         const target = resolve(dirname(file), specifier);
@@ -151,7 +160,7 @@ describe('published tarball import closure', () => {
       for (const file of sources) {
         const source = readFileSync(file, 'utf8');
         for (const match of source.matchAll(importSpecifierPattern)) {
-          const specifier = match[1];
+          const specifier = match[1] ?? match[2] ?? match[3];
           if (!specifier) continue;
 
           const target = specifier.endsWith('.css')
@@ -159,7 +168,12 @@ describe('published tarball import closure', () => {
               ? resolve(dirname(file), specifier)
               : null
             : resolveRelativeImport(file, specifier);
-          if (target === null) continue;
+          if (target === null) {
+            violations.push(
+              `${relative(packageRoot, file)} imports '${specifier}', which does not resolve to any file`,
+            );
+            continue;
+          }
 
           const targetRelative = relative(packageRoot, target);
           if (!targetRelative.startsWith('src')) continue;
