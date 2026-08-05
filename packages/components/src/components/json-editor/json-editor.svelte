@@ -191,23 +191,30 @@
 {/snippet}
 
 {#snippet feedback()}
-  <p
-    id={feedbackId}
-    class={classNames(
-      'cinder-json-editor__feedback',
-      feedbackIsError && 'cinder-json-editor__feedback--error',
-    )}
-    role={feedbackIsError ? 'alert' : 'status'}
-  >
-    {feedbackText}
-  </p>
+  {#if feedbackText}
+    <p
+      id={feedbackId}
+      class={classNames(
+        'cinder-json-editor__feedback',
+        feedbackIsError && 'cinder-json-editor__feedback--error',
+      )}
+      role={feedbackIsError ? 'alert' : 'status'}
+    >
+      {feedbackText}
+    </p>
+  {/if}
 {/snippet}
 
 <!-- The `error` prop and JSON parse feedback are already merged into
      `feedbackText` above (see `externalError`/`feedbackText`), which can be
      either an error (role="alert") or a non-error valid-JSON status
      (role="status") — richer than FormFieldFrame's plain error slot, so it is
-     rendered via `message` instead of `error`. -->
+     rendered via `message` instead of `error`. `message` is passed
+     unconditionally (the snippet guards its own content with
+     `{#if feedbackText}`) rather than `feedbackText ? feedback : undefined` —
+     Svelte 5 does not reliably re-toggle a child's `{#if messageProp}` when a
+     snippet-typed prop's presence itself (not just content read inside the
+     snippet) changes reactively across renders. -->
 <FormFieldFrame
   {id}
   {label}
@@ -217,5 +224,5 @@
   descriptionClass="cinder-json-editor__description"
   {descriptionId}
   control={jsonControl}
-  message={feedbackText ? feedback : undefined}
+  message={feedback}
 />

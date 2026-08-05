@@ -77,11 +77,24 @@
 {/snippet}
 
 {#snippet counter()}
-  <output id={countId} for={id} class="cinder-textarea-count" aria-live="polite" aria-atomic="true">
-    {currentCount}/{maximumLength}
-  </output>
+  {#if countId}
+    <output
+      id={countId}
+      for={id}
+      class="cinder-textarea-count"
+      aria-live="polite"
+      aria-atomic="true"
+    >
+      {currentCount}/{maximumLength}
+    </output>
+  {/if}
 {/snippet}
 
+<!-- `message` is passed unconditionally (the snippet guards its own content
+     with `{#if countId}`) rather than `countId ? counter : undefined` —
+     Svelte 5 does not reliably re-toggle a child's `{#if messageProp}` when a
+     snippet-typed prop's presence itself (not just content read inside the
+     snippet) changes reactively across renders. -->
 {#if context}
   {#if label || description || error || countId}
     <FormFieldFrame
@@ -98,7 +111,7 @@
       descriptionId={field.ownDescriptionId}
       errorId={field.ownErrorId}
       control={textareaControl}
-      message={countId ? counter : undefined}
+      message={counter}
     />
   {:else}
     {@render textareaControl()}
@@ -116,6 +129,6 @@
     descriptionClass="cinder-textarea-description"
     errorClass="cinder-textarea-error"
     control={textareaControl}
-    message={countId ? counter : undefined}
+    message={counter}
   />
 {/if}

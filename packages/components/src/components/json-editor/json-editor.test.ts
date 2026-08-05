@@ -362,4 +362,20 @@ describe('JsonEditor', () => {
 
     expect(view.getByRole('alert').textContent).toBe('Enter valid JSON.');
   });
+
+  test('typing valid JSON clears the alert when validFeedbackVisible is false', async () => {
+    const view = render(JsonEditor, {
+      id: 'payload',
+      label: 'Payload',
+      value: '{ broken',
+      validFeedbackVisible: false,
+    });
+    const editor = view.getByLabelText('Payload') as HTMLTextAreaElement;
+    expect(view.getByRole('alert').textContent).toBe('Enter valid JSON.');
+
+    await fireEvent.input(editor, { target: { value: '{ "force": true }' } });
+
+    expect(view.queryByRole('alert')).toBeNull();
+    expect(view.queryByRole('status')).toBeNull();
+  });
 });

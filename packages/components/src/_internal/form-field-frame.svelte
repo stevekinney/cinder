@@ -61,11 +61,13 @@
     fullWidth?: boolean | undefined;
     /**
      * Keep the error node mounted (as an empty live region) even when `error`
-     * is falsy, and expose `data-cinder-error` so CSS can hide it visually
-     * without unmounting it. Some fields (Select, Combobox, MultiSelect) must
-     * pre-mount their `aria-live` error region — a freshly-mounted live
-     * region is not reliably announced by NVDA/JAWS, so the node has to exist
-     * before an error string is ever assigned into it.
+     * is falsy. `data-cinder-error` always reflects whether `error` is set
+     * (regardless of this flag), so CSS can hide the pre-mounted, errorless
+     * node visually without unmounting it — e.g. `.foo__error:not([data-cinder-error])`.
+     * Some fields (Select, Combobox, MultiSelect) must pre-mount their
+     * `aria-live` error region — a freshly-mounted live region is not
+     * reliably announced by NVDA/JAWS, so the node has to exist before an
+     * error string is ever assigned into it.
      */
     errorAlwaysMounted?: boolean | undefined;
     control: Snippet;
@@ -152,7 +154,7 @@
       id={errorId}
       class={classNames('cinder-form-field__error', errorClass)}
       aria-live="polite"
-      data-cinder-error={errorAlwaysMounted && error ? '' : undefined}
+      data-cinder-error={error ? '' : undefined}
     >
       {error ?? ''}
     </p>
