@@ -568,6 +568,37 @@ describe('getSequentialFocusTargets', () => {
     region.remove();
   });
 
+  test('picks the in-range member as the fallback when an unchecked group straddles the range boundary', () => {
+    // The group's own root (the document) is scanned for members, so a
+    // group with one radio before `relativeTo` and one after must restrict
+    // its fallback candidates to the in-range side — picking the
+    // out-of-range member would drop the in-range radio from the result
+    // entirely (it belongs to a group whose chosen representative isn't
+    // itself a candidate).
+    const region = document.createElement('div');
+    const before = document.createElement('input');
+    before.type = 'radio';
+    before.name = 'straddle';
+    before.id = 'radio-before';
+    before.setAttribute('tabindex', '0');
+    const reference = document.createElement('span');
+    const after = document.createElement('input');
+    after.type = 'radio';
+    after.name = 'straddle';
+    after.id = 'radio-after';
+    after.setAttribute('tabindex', '0');
+    region.append(before, reference, after);
+    document.body.append(region);
+
+    const result = getSequentialFocusTargets(region, {
+      relativeTo: reference,
+      direction: 'after',
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]).toBe(after);
+    region.remove();
+  });
+
   test('skips an unchecked radio when its checked group member is outside the requested region', () => {
     const checked = document.createElement('input');
     checked.type = 'radio';

@@ -154,6 +154,7 @@ export function getSequentialFocusTargets(
       });
     }
   }
+  const inRangeCandidates = new Set(candidates);
   const radioRepresentatives = new Set(
     radios.flatMap(({ members }) => {
       const checked = members.find((radio) => 'checked' in radio && radio.checked);
@@ -162,8 +163,17 @@ export function getSequentialFocusTargets(
       // first DOM-order member; native reverse Tab enters at its last
       // DOM-order member (the checked member wins in both directions when
       // present). Without a range — the whole-container enumeration case —
-      // default to the forward-Tab entry point.
-      const fallback = range?.direction === 'before' ? members.at(-1) : members[0];
+      // default to the forward-Tab entry point. `members` is gathered from
+      // the whole root node, so a group that straddles the range boundary
+      // (one member before `relativeTo`, one after) can otherwise pick a
+      // fallback that isn't itself reachable in this direction. Narrow to
+      // the members that survived the range filter above before picking,
+      // so a straddling group's fallback always comes from its in-range
+      // members only.
+      const inRangeMembers = range
+        ? members.filter((member) => inRangeCandidates.has(member))
+        : members;
+      const fallback = range?.direction === 'before' ? inRangeMembers.at(-1) : inRangeMembers[0];
       return fallback ? [fallback] : [];
     }),
   );
@@ -364,7 +374,11 @@ export function findSequentialEntryTarget(
   }
   if (referenceTabIndex === 0) return candidates.at(-1) ?? null;
   return (
-    candidates.toReversed().find((candidate) => {
+    // `toReversed()` is ES2023; the repo targets ES2022, so copy first with
+    // spread and reverse the copy in place instead. The spread already
+    // produces a fresh array, so `reverse()` here never mutates `candidates`.
+    // oxlint-disable-next-line unicorn/no-array-reverse
+    [...candidates].reverse().find((candidate) => {
       const candidateTabIndex = getTabIndexValue(candidate);
       return candidateTabIndex > 0 && candidateTabIndex <= referenceTabIndex;
     }) ?? null
