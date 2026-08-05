@@ -934,6 +934,18 @@ describe('cinder/z-index-scale', () => {
     );
   });
 
+  test('fails closed for a weighted calc-mix() with an unresolved item and no explicit weights', async () => {
+    // A per-item weight is optional on every item, so a call is on the
+    // weighted-item grammar (not the older fixed-arity progress shape) as
+    // soon as its argument count isn't exactly three -- with or without any
+    // explicit percentage. An unresolved item must fail closed there too.
+    const { bannedFallback } = await import(fallbackAnalysisPath);
+
+    expect(bannedFallback('var(--outer, calc-mix(var(--layer), 19998))')?.reason).toBe(
+      'too-complex',
+    );
+  });
+
   test.each([
     ['calc(9999 * (random(--shared, 0, 1) - random(--shared, 0, 1)))', 0],
     ['calc(9999 * (random(--left, 0, 1) - random(--right, 0, 1)))', 1],
@@ -4806,7 +4818,11 @@ describe('cinder/z-index-scale', () => {
     ['calc(9999 * env(safe-area-inset-top 0, 0px) / 1px)', 0],
     ['calc(9999 * env(viewport-segment-width, 0px) / 1px)', 0],
     ['calc(9999 * max(var(--scale, 0), 0))', 1],
-    ['calc-mix(0, 1, var(--inner, 9999), 2)', 0],
+    // Four items with no explicit weights is invalid for the older
+    // three-argument progress shape, but valid (equally weighted) under the
+    // current weighted-item grammar, so the unresolved item is no longer
+    // provably unreachable and must fail closed instead.
+    ['calc-mix(0, 1, var(--inner, 9999), 2)', 1],
     ['calc-mix(0, var(--inner, 9999), 1)', 1],
     ['calc-mix(1, var(--inner, 9999), 1)', 0],
     ['calc-mix(1, 1, var(--inner, 9999))', 1],

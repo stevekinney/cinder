@@ -4454,9 +4454,7 @@ function unresolvedRuntimeRangeCandidates(
     if (
       functionParent.functionName === 'calc-mix' &&
       parsedArguments !== undefined &&
-      parsedArguments.argumentRanges.some((argumentRange) =>
-        calcMixArgumentUsesExplicitWeight(value, argumentRange),
-      )
+      calcMixCallUsesWeightedItemGrammar(value, parsedArguments)
     )
       return failClosedRuntimeCandidate(candidate);
     if (
@@ -5841,15 +5839,28 @@ function runtimeFunctionStaticArgumentsAreValid(
   );
 }
 
-// A best-effort check for whether a calc-mix() argument uses the current
-// CSS Values 5 weighted-item grammar (`<calc-sum> <percentage>?`) -- i.e.
-// trails its value with a space-separated percentage weight -- as opposed
-// to the older three-argument progress-interpolation shape.
+// A best-effort check for whether a calc-mix() argument trails its value
+// with an explicit space-separated percentage weight (CSS Values 5's
+// current `<calc-sum> <percentage>?` weighted-item grammar).
 function calcMixArgumentUsesExplicitWeight(value, argumentRange) {
   const text = value
     .slice(argumentRange.start, argumentRange.end)
     .replaceAll(cssCommentMaskCharacter, ' ');
   return /\s[+-]?(?:\d+(?:\.\d+)?|\.\d+)(?:e[+-]?\d+)?%$/i.test(text.trimEnd());
+}
+
+// A per-item weight is optional on every item, so a valid weighted call can
+// have none at all -- only exactly three unweighted items is genuinely
+// ambiguous with the older three-argument progress-interpolation shape
+// (mirrors the same rule the static evaluator in z-index-value-analysis.mjs
+// uses to dispatch between the two grammars).
+function calcMixCallUsesWeightedItemGrammar(value, parsedArguments) {
+  return (
+    parsedArguments.argumentCount !== 3 ||
+    parsedArguments.argumentRanges.some((argumentRange) =>
+      calcMixArgumentUsesExplicitWeight(value, argumentRange),
+    )
+  );
 }
 
 function childIsInsideProvablyInvalidCalcMix(child, frame, value, range, parenthesisPairs) {
@@ -5872,11 +5883,8 @@ function childIsInsideProvablyInvalidCalcMix(child, frame, value, range, parenth
       // The weighted-item grammar accepts any number of comma-separated
       // items, so the fixed three-argument arity check below only applies
       // to calls that don't use it (the older progress-interpolation shape).
-      const usesWeightedItemGrammar = parsedArguments.argumentRanges.some((argumentRange) =>
-        calcMixArgumentUsesExplicitWeight(value, argumentRange),
-      );
       if (
-        !usesWeightedItemGrammar &&
+        !calcMixCallUsesWeightedItemGrammar(value, parsedArguments) &&
         !unresolvedRuntimeFunctionHasValidArity('calc-mix', parsedArguments.argumentCount)
       )
         return true;
