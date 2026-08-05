@@ -762,7 +762,11 @@ function evaluateConstantArithmetic(expression) {
           if (peek() !== ',' && peek() !== ')') {
             let candidateWeight;
             try {
-              candidateWeight = parseNumber();
+              // A weight can be any <calc-sum> that resolves to a
+              // percentage, not just a bare percentage token -- e.g.
+              // `calc-mix(9999 calc(100%), 1)` -- so parse a full
+              // expression here, not just a number.
+              candidateWeight = parseExpression();
             } catch (error) {
               // A too-complex numeric token (e.g. an absurdly long decimal)
               // must still fail closed, not be silently treated as "no
@@ -800,7 +804,17 @@ function evaluateConstantArithmetic(expression) {
         functionName === 'clamp'
           ? arguments_.filter((argument) => argument !== unboundedClampEndpoint)
           : arguments_;
-      if (functionName === 'calc-mix' && calcMixWeights.some((weight) => weight !== undefined))
+      // A per-item weight is optional on every item, so a valid weighted
+      // call can have none at all (e.g. `calc-mix(9999, 1)`, equally
+      // weighted 50/50). That's only ambiguous with the older three-argument
+      // progress shape when there are exactly three items and none of them
+      // carry an explicit weight -- preserve that shape's existing behavior
+      // in that one case; every other unweighted arity uses the current
+      // weighted-item grammar instead of going unhandled.
+      if (
+        functionName === 'calc-mix' &&
+        (calcMixWeights.some((weight) => weight !== undefined) || arguments_.length !== 3)
+      )
         return calcMixWeightedAverage(arguments_, calcMixWeights);
       if (functionName === 'calc-mix' && arguments_.length === 3) {
         const [progress, start, end] = arguments_;

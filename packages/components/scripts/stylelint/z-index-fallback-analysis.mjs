@@ -33,10 +33,15 @@ const bareCssNumberPattern = /^([+-]?(?:\d+(?:\.\d+)?|\.\d+)(?:e[+-]?\d+)?)(?:[a
 // share a unit) exactly; anything more complex (calc(), functions, a
 // malformed token like `1.` with a dangling decimal point) is left to the
 // caller's fallback.
-function preciseStaticNumber(text) {
+function preciseStaticNumberWithUnit(text) {
   const trimmed = text.replaceAll(cssCommentMaskCharacter, ' ').trim();
   const match = bareCssNumberPattern.exec(trimmed);
-  return match ? Number(match[1]) : undefined;
+  if (!match) return undefined;
+  return { value: Number(match[1]), unit: trimmed.slice(match[1].length).toLowerCase() };
+}
+
+function preciseStaticNumber(text) {
+  return preciseStaticNumberWithUnit(text)?.value;
 }
 const fallbackResolutionTooComplex = Symbol('fallback-resolution-too-complex');
 const fallbackResolutionWorkLimit = 8_000_000;
@@ -3469,10 +3474,13 @@ function attrDefinedPathWitnessGroups(attrType) {
   if (attrType === '%') return [['0%', '1%']];
   if (cssIdentifierTokenEnd(attrType, 0) === attrType.length) {
     const unit = attrType.toLowerCase();
-    // attr()'s legacy `<attr-name> <type-or-unit>?` syntax also accepts the
-    // bare keywords `number`/`integer` for a dimensionless numeric read --
-    // unlike the other legacy keywords, they carry no unit suffix.
-    if (unit === 'number' || unit === 'integer') return [['0', '1']];
+    // attr()'s legacy grammar is `type(<syntax>) | raw-string | number |
+    // <attr-unit>` (CSS Values 5), where <attr-unit> is any <custom-ident>
+    // treated as a unit name. Only the literal `number` keyword is a
+    // dimensionless numeric read; `integer` isn't a recognized keyword at
+    // all here, so it's just an (unrecognized) unit name like any other,
+    // and derives no witnesses.
+    if (unit === 'number') return [['0', '1']];
     return attrLegacyNumericUnits.has(unit) ? [[`0${unit}`, `1${unit}`]] : undefined;
   }
   const typeMatch = /^type\(([^()]+)\)$/i.exec(attrType);
@@ -4880,17 +4888,46 @@ function randomGroupOutputOptions(frame, value, group, budget, parenthesisPairs)
     return { continuous: false, values: [minimumExpression] };
   if (!Number.isFinite(stepValue)) return { continuous: false, values: [minimumExpression] };
 
-  const effectiveStepValue = preciseStepValue ?? stepValue;
-  const preciseMinimumValue = preciseStaticNumber(minimumExpression) ?? minimumValue;
-  const preciseMaximumValue = preciseStaticNumber(maximumExpression) ?? maximumValue;
-  const stepCount = Math.floor((preciseMaximumValue - preciseMinimumValue) / effectiveStepValue);
+  // preciseStaticNumberWithUnit() strips a unit rather than converting it,
+  // so the precise magnitudes below are only trustworthy when min, max, and
+  // step all share the literal same unit (or are all bare numbers) --
+  // otherwise fall back to the already-converted (but integer-rounded)
+  // values, e.g. `random(0px, 264.556875cm, 9999px)`.
+  const preciseMinimum = preciseStaticNumberWithUnit(minimumExpression);
+  const preciseMaximum = preciseStaticNumberWithUnit(maximumExpression);
+  const preciseStep = preciseStaticNumberWithUnit(stepExpression);
+  const preciseValuesShareAUnit =
+    preciseMinimum !== undefined &&
+    preciseMaximum !== undefined &&
+    preciseStep !== undefined &&
+    preciseMinimum.unit === preciseMaximum.unit &&
+    preciseMinimum.unit === preciseStep.unit;
+  const effectiveStepValue = preciseValuesShareAUnit ? preciseStep.value : stepValue;
+  const preciseMinimumValue = preciseValuesShareAUnit ? preciseMinimum.value : minimumValue;
+  const preciseMaximumValue = preciseValuesShareAUnit ? preciseMaximum.value : maximumValue;
+  const naturalStepCount = Math.floor(
+    (preciseMaximumValue - preciseMinimumValue) / effectiveStepValue,
+  );
+  if (!Number.isSafeInteger(naturalStepCount) || naturalStepCount > 128)
+    return fallbackResolutionTooComplex;
+  // CSS Values 5's random-evaluation algorithm: epsilon is step / 1000; N is
+  // the largest integer with min + N * step <= max (naturalStepCount above),
+  // *unless* N's value isn't within epsilon of max but N + 1's would be, in
+  // which case N is extended by one. The step index at N then snaps to the
+  // written maximum (rather than the plain arithmetic) whenever it's within
+  // epsilon of it.
+  const epsilon = Math.abs(effectiveStepValue) / 1000;
+  const valueAtStep = (stepIndex) => preciseMinimumValue + effectiveStepValue * stepIndex;
+  const naturalStepIsWithinEpsilon =
+    Math.abs(preciseMaximumValue - valueAtStep(naturalStepCount)) <= epsilon;
+  const nextStepIsWithinEpsilon =
+    Math.abs(preciseMaximumValue - valueAtStep(naturalStepCount + 1)) <= epsilon;
+  const stepCount =
+    !naturalStepIsWithinEpsilon && nextStepIsWithinEpsilon
+      ? naturalStepCount + 1
+      : naturalStepCount;
   if (!Number.isSafeInteger(stepCount) || stepCount > 128) return fallbackResolutionTooComplex;
-  // CSS Values 5's stepped random() snaps the last step to the written
-  // maximum, not `minimum + step * stepCount`, whenever that computed value
-  // is within `step / 1000` of the maximum.
-  const lastStepSnapsToMaximum =
-    Math.abs(preciseMaximumValue - (preciseMinimumValue + effectiveStepValue * stepCount)) <=
-    Math.abs(effectiveStepValue) / 1000;
+  const lastStepSnapsToMaximum = Math.abs(preciseMaximumValue - valueAtStep(stepCount)) <= epsilon;
   const stepExpressionAt = (stepIndex) => {
     if (stepIndex === 0) return minimumExpression;
     if (stepIndex === stepCount && lastStepSnapsToMaximum) return maximumExpression;

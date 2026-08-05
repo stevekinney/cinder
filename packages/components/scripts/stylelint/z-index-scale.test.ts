@@ -724,9 +724,18 @@ describe('cinder/z-index-scale', () => {
     // endpoint snap still correctly flags it: 0 + 1 * 9998.4 = 9998.4 is
     // within 9998.4 / 1000 of 9999, so the last step snaps to 9999.
     ['random(fixed 1, 0, 9999, 9998.4)', 1],
-    // A step count small enough that the last step lands far outside the
-    // epsilon band is not snapped, so it resolves to the plain arithmetic.
-    ['random(fixed 1, 0, 9999, 1000)', 0],
+    // The random-evaluation algorithm also extends the largest step index N
+    // by one when N's value isn't within epsilon of max but N + 1's would
+    // be, even though N + 1 overshoots max: N (9) is 0 + 9 * 1000 = 9000,
+    // 999 away from 9999 (outside the epsilon of 1); N + 1 is 10000, only 1
+    // away (within epsilon) -- so N extends to 10, and the fixed key
+    // selecting that final (extended) index snaps to the written max.
+    ['random(fixed 1, 0, 9999, 1000)', 1],
+    // A step count small enough that neither the last natural step nor its
+    // extension lands within the epsilon band is not snapped, so it
+    // resolves to the plain arithmetic: 103 * 97 = 9991, 8 away from 9999
+    // (epsilon is 97 / 1000).
+    ['random(fixed 1, 0, 9999, 97)', 0],
     // evaluateStaticLayerNumber() rounds to the nearest integer, so a
     // genuinely positive step below 0.5 (here 0.4) rounds to a stepValue of
     // 0. That must not be treated as a step <= 0 (which folds to a single
@@ -858,6 +867,44 @@ describe('cinder/z-index-scale', () => {
     expect(bannedFallback('var(--outer, calc(random(0px, 9999px, 9989.02px) / 1px))')?.reason).toBe(
       'banned',
     );
+  });
+
+  test('does not compare stepped random() magnitudes across different but convertible units', async () => {
+    // preciseStaticNumber() strips a unit rather than converting it, so a
+    // mismatched-unit call must fall back to the already-converted (but
+    // integer-rounded) values instead of comparing raw magnitudes across
+    // units. 264.556875cm is exactly 9999px.
+    const { bannedFallback } = await import(fallbackAnalysisPath);
+
+    expect(
+      bannedFallback('var(--outer, calc(random(0px, 264.556875cm, 9999px) / 1px))')?.reason,
+    ).toBe('banned');
+  });
+
+  test('extends the largest stepped random() index when only N + 1 lands within epsilon', async () => {
+    // The random-evaluation algorithm's N-extension rule is checked against
+    // N + 1's value even when it overshoots the written maximum.
+    const { bannedFallback } = await import(fallbackAnalysisPath);
+
+    expect(bannedFallback('var(--outer, random(fixed 1, 0, 9999, 3333.1))')?.reason).toBe('banned');
+  });
+
+  test('treats an all-omitted-weight calc-mix() as an equally-weighted average', async () => {
+    // Every item's percentage weight is optional; when none are specified,
+    // they're distributed equally. This is only ambiguous with the older
+    // three-argument progress shape at exactly three arguments, which stays
+    // on that path unchanged (covered by the calc-mix() table above).
+    const { bannedFallback } = await import(fallbackAnalysisPath);
+
+    expect(bannedFallback('var(--outer, calc-mix(9999, 9999))')?.reason).toBe('banned');
+    expect(bannedFallback('var(--outer, calc-mix(9999, 1))')).toBeUndefined();
+    expect(bannedFallback('var(--outer, calc-mix(9999))')?.reason).toBe('banned');
+  });
+
+  test('accepts a calculated calc-mix() weight, not just a bare percentage token', async () => {
+    const { bannedFallback } = await import(fallbackAnalysisPath);
+
+    expect(bannedFallback('var(--outer, calc-mix(9999 calc(100%), 1))')?.reason).toBe('banned');
   });
 
   test('keeps a too-complex calc-mix() weight token too-complex instead of treating it as absent', async () => {
@@ -4715,10 +4762,14 @@ describe('cinder/z-index-scale', () => {
     ['calc(9999 * attr(data-layer type(<integer>), 0))', 1],
     // The namespace prefix must not block defined-path witness derivation either.
     ['calc(9999 * attr(svg|data-layer type(<number>), 0))', 1],
-    // The legacy `<attr-name> <type-or-unit>?` bare keywords `number` and
-    // `integer` carry no unit suffix, unlike the other legacy keywords.
+    // attr()'s legacy grammar is `type(<syntax>) | raw-string | number |
+    // <attr-unit>` (CSS Values 5): only the literal `number` keyword is a
+    // dimensionless numeric read. `integer` is not a recognized keyword
+    // here at all -- it's parsed as an (unrecognized) <attr-unit>, same as
+    // any other unknown unit name, and derives no defined-path witness, so
+    // only the safe fallback (0) is reachable.
     ['calc(9999 * attr(data-scale number, 0))', 1],
-    ['calc(9999 * attr(data-scale integer, 0))', 1],
+    ['calc(9999 * attr(data-scale integer, 0))', 0],
     ['calc(9999 * attr(data-scale px, 0px) / 1px)', 1],
     ['calc(9999 * attr(data-scale type(<number> | <length>), 0) / 1px)', 1],
     ['calc(9999 * attr(data-scale type(<number>+), 0) / 1)', 1],
