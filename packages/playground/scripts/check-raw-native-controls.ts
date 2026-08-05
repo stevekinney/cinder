@@ -18,7 +18,7 @@
  *     Intended for human review and CI audit visibility.
  *   - `--strict`: exits non-zero when any NON-allowlisted raw controls are found,
  *     OR when any stale allowlist entries are present.
- *     Wire this into the validate gate after the sweep PR merges.
+ *     `--strict` runs in CI via `main-green.yaml`'s "Source audits (playground)" step, through the root `validate:playground` script.
  *
  * Run via:
  *   bun run --filter=@cinder/playground examples:audit          (report)
