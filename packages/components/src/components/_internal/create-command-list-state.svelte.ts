@@ -28,8 +28,26 @@ export type CommandListDismissalOptions = {
   onDismiss: (restoreFocus: boolean) => void;
 };
 
+export type CommandListStateOptions = {
+  /**
+   * Whether `activeItemId` falls back to the first enabled item when nothing
+   * has been explicitly activated. Defaults to `true` — CommandMenu,
+   * MultiSelect, and CommandPalette all want their listbox to open with the
+   * first item pre-highlighted (a button-triggered listbox). Combobox passes
+   * `false`: an editable `aria-autocomplete="list"` combobox shows no
+   * highlighted option until the user types or explicitly navigates.
+   */
+  autoActivateFirst?: boolean;
+};
+
 export class CommandListState {
   readonly #getListboxId: () => string;
+  // `activeItemId` below reads this in its field initializer, which runs
+  // before the constructor body — give it a value here so TypeScript's
+  // definite-assignment analysis doesn't see a use-before-init. The
+  // constructor always overwrites it before `activeItemId` is ever accessed
+  // (Svelte's `$derived` only evaluates lazily, on read).
+  readonly #autoActivateFirst: boolean = true;
   #registeredListboxId = $state('');
   registrations = $state<RegistrationRecord[]>([]);
   registrationsReady = $state(false);
@@ -46,12 +64,15 @@ export class CommandListState {
   activeItemId = $derived(
     this.#intendedActiveId !== null && this.enabledIds.includes(this.#intendedActiveId)
       ? this.#intendedActiveId
-      : (this.enabledIds[0] ?? null),
+      : this.#autoActivateFirst
+        ? (this.enabledIds[0] ?? null)
+        : null,
   );
 
-  constructor(listboxId: string | (() => string)) {
+  constructor(listboxId: string | (() => string), options: CommandListStateOptions = {}) {
     this.#getListboxId = typeof listboxId === 'function' ? listboxId : () => listboxId;
     this.#registeredListboxId = this.#getListboxId();
+    this.#autoActivateFirst = options.autoActivateFirst ?? true;
   }
 
   get listboxId(): string {
@@ -252,8 +273,11 @@ export class CommandListState {
   }
 }
 
-export function createCommandListState(listboxId: string | (() => string)): CommandListState {
-  return new CommandListState(listboxId);
+export function createCommandListState(
+  listboxId: string | (() => string),
+  options?: CommandListStateOptions,
+): CommandListState {
+  return new CommandListState(listboxId, options);
 }
 
 function updateRegistrationHandleId(registration: RegistrationRecord, id: string): string {

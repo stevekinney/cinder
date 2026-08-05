@@ -141,6 +141,43 @@ describe('CommandListState', () => {
     expect(state.registrations[0]?.handle.id).toBe('fruit-option-apple');
   });
 
+  test('autoActivateFirst: false leaves activeItemId null until explicitly navigated', () => {
+    const state = createCommandListState('command-list', { autoActivateFirst: false });
+    const firstButton = createButton('First');
+    const secondButton = createButton('Second');
+
+    const first = state.register(
+      {
+        getValue: () => 'first',
+        getDisabled: () => false,
+        getOnselect: () => () => undefined,
+      },
+      firstButton,
+    );
+    const second = state.register(
+      {
+        getValue: () => 'second',
+        getDisabled: () => false,
+        getOnselect: () => () => undefined,
+      },
+      secondButton,
+    );
+
+    // Unlike the default (autoActivateFirst: true), registering items does not
+    // pre-highlight the first one.
+    expect(state.activeItemId).toBeNull();
+
+    const arrowDown = keydown('ArrowDown');
+    expect(state.handleKeydown({ event: arrowDown })).toBe(true);
+    expect(state.activeItemId).toBe(first.id);
+
+    const arrowUpFromNull = keydown('ArrowUp');
+    state.resetActiveItem();
+    expect(state.activeItemId).toBeNull();
+    expect(state.handleKeydown({ event: arrowUpFromNull })).toBe(true);
+    expect(state.activeItemId).toBe(second.id);
+  });
+
   test('bindDismissal is safe without a document', () => {
     const state = createCommandListState('command-list');
     const originalDocument = globalThis.document;

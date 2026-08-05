@@ -24,6 +24,7 @@
   import FormFieldFrame from '../../_internal/form-field-frame.svelte';
   import { pushEscapeHandler } from '../../_internal/overlay.ts';
   import { classNames } from '../../utilities/class-names.ts';
+  import { createCommandListState } from '../_internal/create-command-list-state.svelte.ts';
   import Popover from '../popover/popover.svelte';
 
   let {
@@ -66,6 +67,10 @@
   const describedBy = $derived(field.describedBy);
 
   const listboxId = $derived(`${id}-listbox`);
+  // `autoActivateFirst: false` — an editable combobox shows no highlighted
+  // option until the user types or explicitly navigates, unlike a
+  // button-triggered listbox (MultiSelect, CommandMenu).
+  const commandList = createCommandListState(() => listboxId, { autoActivateFirst: false });
   const descriptionId = $derived(field.ownDescriptionId);
   // Stable id for the always-in-DOM error live region when no error is active.
   // Mirrors Select: avoids colliding with a wrapping FormField's error id.
@@ -95,7 +100,6 @@
   });
 
   let open = $state(false);
-  let activeIndex = $state(-1);
   let inputElement = $state<HTMLInputElement | null>(null);
   let hiddenInputElement = $state<HTMLInputElement | null>(null);
   let listboxElement = $state<HTMLElement | null>(null);
@@ -115,15 +119,6 @@
     }
     if (customValueAllowed && !hasUserCommittedValue && value && !initialCustomValue) {
       initialCustomValue = value;
-    }
-  });
-
-  // Reset active index whenever the filtered set changes so we don't point
-  // at a stale option.
-  $effect(() => {
-    void filteredOptions;
-    if (activeIndex >= filteredOptions.length) {
-      activeIndex = filteredOptions.length > 0 ? 0 : -1;
     }
   });
 
@@ -192,10 +187,63 @@
   const listboxVisible = $derived(open && filteredOptions.length > 0);
   const emptyVisible = $derived(open && filteredOptions.length === 0);
   const activeOptionId = $derived(
-    listboxVisible && activeIndex >= 0 && activeIndex < filteredOptions.length
-      ? `${id}-option-${activeIndex}`
-      : undefined,
+    listboxVisible ? (commandList.activeItemId ?? undefined) : undefined,
   );
+  const activeIndex = $derived(
+    commandList.activeItemId === null
+      ? -1
+      : filteredOptions.findIndex(
+          (_, index) => `${id}-option-${index}` === commandList.activeItemId,
+        ),
+  );
+
+  /** First non-disabled index in `filteredOptions`, or -1 if none. */
+  function firstEnabledFilteredIndex(): number {
+    return filteredOptions.findIndex((option) => !option.disabled);
+  }
+
+  /**
+   * Sets the active option by its position in `filteredOptions`, translating
+   * to the shared `commandList`'s id-based `activeItemId`. `commandList`
+   * registers option ids asynchronously (see the `syncItems` effect below) —
+   * this can run before that registration completes, since the roving index
+   * itself is computed directly from `filteredOptions` rather than from
+   * `commandList.enabledIds`. `activeItemId` is `$derived`, so once
+   * registration catches up it re-resolves to the id set here; no explicit
+   * ordering between the two is required.
+   */
+  function setActiveIndex(index: number): void {
+    if (index < 0) commandList.resetActiveItem();
+    else commandList.setActiveById(`${id}-option-${index}`);
+  }
+
+  /** Live option-list registration so `commandList` can resolve `activeItemId` and scroll the active option into view. */
+  $effect(() => {
+    const listbox = listboxElement;
+    if (!listbox || !listboxVisible) return;
+    commandList.syncItems(
+      filteredOptions.flatMap((option, index) => {
+        const node = listbox.querySelectorAll<HTMLElement>('[role="option"]')[index];
+        return node
+          ? [
+              {
+                id: `${id}-option-${index}`,
+                node,
+                getValue: () => option.value,
+                getOnselect: () => () => selectOption(option),
+                getDisabled: () => !!option.disabled,
+              },
+            ]
+          : [];
+      }),
+    );
+  });
+
+  $effect(() => {
+    if (!listboxVisible) return;
+    commandList.scrollActiveItemIntoView();
+  });
+
   function findCommittedOption(rawValue: string): ComboboxOption<T> | undefined {
     const query = rawValue.trim();
     if (!query) return undefined;
@@ -216,7 +264,7 @@
     const target = event.target as HTMLInputElement;
     textInputValue = target.value;
     open = true;
-    activeIndex = filteredOptions.length > 0 ? 0 : -1;
+    setActiveIndex(firstEnabledFilteredIndex());
     hasExplicitNavigation = false;
   }
 
@@ -299,7 +347,7 @@
       textInputValue = nextInputValue;
       committedLabel = matched?.label ?? (customValueAllowed ? resetValue : '');
       open = false;
-      activeIndex = -1;
+      commandList.resetActiveItem();
       if (inputElement) inputElement.value = nextInputValue;
       if (hiddenInputElement) hiddenInputElement.value = resetValue;
     }, 0);
@@ -332,23 +380,23 @@
       event.preventDefault();
       open = true;
       if (filteredOptions.length === 0) return;
-      activeIndex = (activeIndex + 1) % filteredOptions.length;
+      setActiveIndex((activeIndex + 1) % filteredOptions.length);
       hasExplicitNavigation = true;
     } else if (event.key === 'ArrowUp') {
       event.preventDefault();
       open = true;
       if (filteredOptions.length === 0) return;
-      activeIndex = activeIndex <= 0 ? filteredOptions.length - 1 : activeIndex - 1;
+      setActiveIndex(activeIndex <= 0 ? filteredOptions.length - 1 : activeIndex - 1);
       hasExplicitNavigation = true;
     } else if (event.key === 'Home') {
       if (!open) return;
       event.preventDefault();
-      activeIndex = filteredOptions.length > 0 ? 0 : -1;
+      setActiveIndex(filteredOptions.length > 0 ? 0 : -1);
       hasExplicitNavigation = true;
     } else if (event.key === 'End') {
       if (!open) return;
       event.preventDefault();
-      activeIndex = filteredOptions.length - 1;
+      setActiveIndex(filteredOptions.length - 1);
       hasExplicitNavigation = true;
     } else if (event.key === 'Enter' && open) {
       const option = filteredOptions[activeIndex];
@@ -442,7 +490,7 @@
               selectOption(option);
             }}
             onmouseenter={() => {
-              activeIndex = index;
+              setActiveIndex(index);
             }}
           >
             {#if option.avatar?.trim()}
