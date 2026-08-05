@@ -36,13 +36,13 @@
     href,
     'aria-label': ariaLabel,
     'aria-labelledby': ariaLabelledBy,
-    // Pulled out of `rest` so we can control them per disabled-state:
+    // Pulled out of `rest` so we can control it per disabled-state:
     // - tabindex: a disabled item forces -1, an enabled one honors the consumer value.
-    // - onclick: a disabled anchor must not run a consumer handler (pointer-events:none
-    //   blocks the mouse, but a handler in `rest` would still fire on keyboard/programmatic
-    //   activation). The button arm already blocks both via the native `disabled` attribute.
+    // `onclick` stays inside `...rest` — a disabled anchor must not run a consumer handler
+    // (pointer-events:none blocks the mouse, but a handler in `rest` would still fire on
+    // keyboard/programmatic activation), so it's read per-arm off `anchorAttributes` /
+    // `buttonAttributes` below instead of a single shared name.
     tabindex,
-    onclick,
     ...rest
   }: FloatingActionProps = $props();
 
@@ -73,15 +73,24 @@
   const anchorAttributes = $derived(
     rest as Omit<
       HTMLAnchorAttributes,
-      'class' | 'href' | 'aria-label' | 'aria-labelledby' | 'tabindex' | 'onclick'
+      'class' | 'href' | 'aria-label' | 'aria-labelledby' | 'tabindex'
     >,
   );
   const buttonAttributes = $derived(
     rest as Omit<
       HTMLButtonAttributes,
-      'class' | 'type' | 'disabled' | 'aria-label' | 'aria-labelledby' | 'tabindex' | 'onclick'
+      'class' | 'type' | 'disabled' | 'aria-label' | 'aria-labelledby' | 'tabindex'
     >,
   );
+  // Compile-time-only proof that `onclick` survived each per-arm `Omit` above with
+  // its real element-specific handler type. `typeof anchorAttributes`/`typeof
+  // buttonAttributes` are type queries erased at compile time — unlike reading
+  // `anchorAttributes.onclick` directly, this never dereferences the `$derived`
+  // value outside a reactive context, so it can't warn as a stale one-time read.
+  const anchorOnclickTypeProof = undefined as unknown as (typeof anchorAttributes)['onclick'];
+  const buttonOnclickTypeProof = undefined as unknown as (typeof buttonAttributes)['onclick'];
+  anchorOnclickTypeProof satisfies HTMLAnchorAttributes['onclick'];
+  buttonOnclickTypeProof satisfies HTMLButtonAttributes['onclick'];
 
   // Dev-mode guards. devWarn no-ops in production.
   $effect(() => {
@@ -120,7 +129,7 @@
     aria-labelledby={resolvedAriaLabelledBy}
     aria-disabled={disabled || undefined}
     tabindex={resolvedTabindex}
-    onclick={disabled ? undefined : onclick}
+    onclick={disabled ? undefined : anchorAttributes.onclick}
   >
     {#if children}
       {@render children()}
@@ -136,7 +145,6 @@
     aria-label={resolvedAriaLabel}
     aria-labelledby={resolvedAriaLabelledBy}
     tabindex={resolvedTabindex}
-    {onclick}
   >
     {#if children}
       {@render children()}

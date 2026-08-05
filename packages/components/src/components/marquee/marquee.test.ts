@@ -268,6 +268,18 @@ describe('Marquee', () => {
     expect(element?.getAttribute('role')).toBe('region');
   });
 
+  test('treats an explicit null aria-labelledby the same as omitting it', () => {
+    const { container } = render(Marquee, {
+      props: {
+        'aria-labelledby': null,
+        children: textSnippet('content'),
+      } as never,
+    });
+    const element = container.querySelector('.cinder-marquee');
+    expect(element?.hasAttribute('aria-labelledby')).toBe(false);
+    expect(element?.hasAttribute('role')).toBe(false);
+  });
+
   test('reduced-motion CSS disables animation, restores overflow access, and hides duplicate', async () => {
     const css = await Bun.file(marqueeCssPath).text();
     expect(css).toContain('overflow: clip');

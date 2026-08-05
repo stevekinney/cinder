@@ -58,14 +58,14 @@
     </div>
   {/if}
 
-  {#each groups as group, groupIndex (groupIndex)}
+  {#each groups as group, groupIndex (`${group.label}-${groupIndex}`)}
     <section class="cinder-keyboard-shortcuts__group" aria-labelledby={groupHeadingId(groupIndex)}>
       <h3 id={groupHeadingId(groupIndex)} class="cinder-keyboard-shortcuts__group-label">
         {group.label}
       </h3>
 
       <dl class="cinder-keyboard-shortcuts__list">
-        {#each group.shortcuts as shortcut, shortcutIndex (shortcutIndex)}
+        {#each group.shortcuts as shortcut, shortcutIndex (`${shortcut.action}-${shortcutIndex}`)}
           <div class="cinder-keyboard-shortcuts__row">
             <dt class="cinder-keyboard-shortcuts__action">{shortcut.action}</dt>
             <dd class="cinder-keyboard-shortcuts__keys">

@@ -5,7 +5,7 @@
 
   This component is NOT part of the public API. Import SchemaForm instead.
 -->
-<script lang="ts" generics="Schema extends SchemaFormSchema = SchemaFormSchema">
+<script lang="ts">
   import { tick } from 'svelte';
 
   import { classNames } from '../../utilities/class-names.ts';
@@ -29,7 +29,7 @@
     setValueAtPath,
     type SchemaFormField,
   } from './schema-form-model.ts';
-  import type { SchemaFormOutput, SchemaFormProps, SchemaFormSchema } from './schema-form.types.ts';
+  import type { SchemaFormOutput, SchemaFormProps } from './schema-form.types.ts';
   import {
     issuesByPath,
     parseJsonDraft,
@@ -58,7 +58,7 @@
     onDraftChange,
     novalidate,
     ...rest
-  }: SchemaFormProps<Schema> = $props();
+  }: SchemaFormProps = $props();
 
   const generatedId = $props.id();
 

@@ -1,6 +1,6 @@
 /// <reference lib="dom" />
 import * as matchers from '@testing-library/jest-dom/matchers';
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, setSystemTime, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -8,10 +8,14 @@ expect.extend(matchers as Parameters<typeof expect.extend>[0]);
 setupHappyDom();
 
 const { render, fireEvent, cleanup } = await import('@testing-library/svelte');
+const { tick } = await import('svelte');
 const { default: Calendar } = await import('./calendar.svelte');
 
 beforeEach(() => document.body.replaceChildren());
-afterEach(() => cleanup());
+afterEach(() => {
+  cleanup();
+  setSystemTime();
+});
 
 describe('Calendar', () => {
   test('renders a grid with weekday headers', () => {
@@ -138,6 +142,60 @@ describe('Calendar', () => {
 
     expect(disabledDays.includes('1')).toBe(true);
     expect(disabledDays.includes('30')).toBe(true);
+  });
+
+  test('rolls aria-current="date" over to the new day past midnight', async () => {
+    setSystemTime(new Date(2026, 5, 24, 23, 59, 0));
+    const { container } = render(Calendar, { month: '2026-06-01' });
+
+    const before = container.querySelector('[id$="-day-2026-06-24"]');
+    expect(before?.getAttribute('aria-current')).toBe('date');
+
+    setSystemTime(new Date(2026, 5, 25, 0, 1, 0));
+    document.dispatchEvent(new Event('visibilitychange'));
+    await tick();
+
+    const previousDay = container.querySelector('[id$="-day-2026-06-24"]');
+    const nextDay = container.querySelector('[id$="-day-2026-06-25"]');
+    expect(previousDay?.hasAttribute('aria-current')).toBe(false);
+    expect(nextDay?.getAttribute('aria-current')).toBe('date');
+  });
+
+  test('todayIso refresh moves only the today marker on an uncontrolled, already-navigated calendar', async () => {
+    setSystemTime(new Date(2026, 5, 15));
+    const { container } = render(Calendar, {});
+
+    expect(container.querySelector('.cinder-calendar__title')?.textContent).toContain('June 2026');
+    expect(container.querySelector('[id$="-day-2026-06-15"]')?.getAttribute('aria-current')).toBe(
+      'date',
+    );
+
+    const nextButton = container.querySelector<HTMLButtonElement>('[aria-label="Next month"]');
+    if (!nextButton) throw new Error('next month button missing');
+    await fireEvent.click(nextButton);
+    await tick();
+
+    expect(container.querySelector('.cinder-calendar__title')?.textContent).toContain('July 2026');
+
+    setSystemTime(new Date(2026, 5, 16));
+    document.dispatchEvent(new Event('visibilitychange'));
+    await tick();
+
+    // The navigated-away view must not snap back to today's month...
+    expect(container.querySelector('.cinder-calendar__title')?.textContent).toContain('July 2026');
+
+    // ...but the today marker itself must have moved to the new day.
+    const prevButton = container.querySelector<HTMLButtonElement>('[aria-label="Previous month"]');
+    if (!prevButton) throw new Error('previous month button missing');
+    await fireEvent.click(prevButton);
+    await tick();
+
+    expect(container.querySelector('[id$="-day-2026-06-15"]')?.hasAttribute('aria-current')).toBe(
+      false,
+    );
+    expect(container.querySelector('[id$="-day-2026-06-16"]')?.getAttribute('aria-current')).toBe(
+      'date',
+    );
   });
 
   test.each([

@@ -30,7 +30,15 @@
 
 <nav {...rest} class={classNames('cinder-breadcrumbs', className)} aria-label={label}>
   <ol class="cinder-breadcrumbs__list">
-    {#each items as item, index (index)}
+    <!--
+      Key is `href`/`label` (the closest thing to a stable identity a breadcrumb
+      has) with `index` always appended. `index` alone is already unique per
+      render, so prefixing it — followed by a delimiter no numeral can contain —
+      makes the whole key unique regardless of what `href`/`label` contain,
+      including two entries that legitimately share an `href` (e.g. repeated
+      section-landing links) or the href-less current-page entry.
+    -->
+    {#each items as item, index (`${index}:${item.href ?? item.label}`)}
       {@const isLast = index === items.length - 1}
       <li class="cinder-breadcrumbs__item">
         {#if isLast}

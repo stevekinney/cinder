@@ -321,9 +321,7 @@ function findArtifactForFamily(family: ArtifactFamily, path: string): string | u
   // Cross-family fallback is restricted to chunk-style artifacts (no entry
   // prefix). Entries belong to their family and must not be served under
   // another family's route.
-  const isEntryName = (Object.values(ENTRY_PREFIXES) as readonly string[]).some((prefix) =>
-    path.startsWith(prefix),
-  );
+  const isEntryName = Object.values(ENTRY_PREFIXES).some((prefix) => path.startsWith(prefix));
   if (isEntryName) return undefined;
 
   // Search every map *except* the requesting family's own (already checked).

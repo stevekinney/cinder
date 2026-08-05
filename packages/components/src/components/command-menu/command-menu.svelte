@@ -29,7 +29,7 @@
     computeGhostOverlayFontStyle,
     createInlineCompletionState,
   } from './command-menu-inline-completion.svelte.ts';
-  import type { Placement, VirtualElement } from '@floating-ui/dom';
+  import type { VirtualElement } from '@floating-ui/dom';
   import { on } from 'svelte/events';
 
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
@@ -115,7 +115,7 @@
     open: () => open,
     anchor: () => caretAnchor,
     panel: () => listElement,
-    placement: () => placement as Placement,
+    placement: () => placement,
     offset: () => offset,
     widthMode: () => 'content',
   });

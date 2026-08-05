@@ -324,6 +324,39 @@ describe('SecretValueField', () => {
       });
     });
 
+    test('a no-op rerender with the same value does not reset a user reveal', async () => {
+      // Regression: `previousValue` used to be `$state`, so the resync effect's own
+      // write to it created a self-dependency — an unrelated reactive tick could
+      // re-run the effect, re-read a stale-equal `value`, and reset `revealed` even
+      // though the consumer never actually changed `value`.
+      const { container, rerender } = render(SecretValueField, {
+        value: 'first-secret',
+        revealAllowed: true,
+        initiallyRevealed: false,
+      });
+      const toggle = container.querySelector(
+        '.cinder-secret-value-field__toggle',
+      ) as HTMLButtonElement;
+
+      await fireEvent.click(toggle);
+      await waitFor(() => {
+        const valueEl = container.querySelector('.cinder-secret-value-field__value');
+        expect(valueEl?.hasAttribute('data-cinder-masked')).toBe(false);
+      });
+
+      await rerender({ value: 'first-secret', revealAllowed: true, initiallyRevealed: false });
+      await waitFor(() => {
+        const valueEl = container.querySelector('.cinder-secret-value-field__value');
+        expect(valueEl?.hasAttribute('data-cinder-masked')).toBe(false);
+      });
+
+      await rerender({ value: 'second-secret', revealAllowed: true, initiallyRevealed: false });
+      await waitFor(() => {
+        const valueEl = container.querySelector('.cinder-secret-value-field__value');
+        expect(valueEl?.hasAttribute('data-cinder-masked')).toBe(true);
+      });
+    });
+
     test('changing the secret value honors an explicit initiallyRevealed value', async () => {
       const { container, rerender } = render(SecretValueField, {
         value: 'first-secret',

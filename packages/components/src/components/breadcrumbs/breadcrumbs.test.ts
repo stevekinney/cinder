@@ -91,6 +91,25 @@ describe('Breadcrumbs', () => {
     expect(container.querySelector('nav')?.getAttribute('aria-label')).toBe('Path');
   });
 
+  test('renders entries that share an href as distinct keyed items without throwing', () => {
+    // A keyed {#each} throws `each_key_duplicate` at mount if two keys collide.
+    // Two entries legitimately sharing an href (e.g. repeated section-landing
+    // links) must not trigger that — render() itself throwing is the failure.
+    const duplicateHrefItems = [
+      { label: 'Section', href: '/section' },
+      { label: 'Section landing', href: '/section' },
+      { label: 'Detail' },
+    ];
+
+    const { container } = render(Breadcrumbs, { items: duplicateHrefItems });
+    const links = container.querySelectorAll('a');
+    expect(links.length).toBe(2);
+    expect(links[0]?.getAttribute('href')).toBe('/section');
+    expect(links[1]?.getAttribute('href')).toBe('/section');
+    expect(links[0]?.textContent?.trim()).toBe('Section');
+    expect(links[1]?.textContent?.trim()).toBe('Section landing');
+  });
+
   test('narrow container query preserves middle crumb links instead of hiding them', () => {
     const containerQuery = breadcrumbsCss.match(
       /@container cinder-breadcrumbs \(max-width: 24rem\) \{[\s\S]*?\n  \}/,
