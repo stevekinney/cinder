@@ -24,14 +24,22 @@ type CommandItemBaseProps = {
 type CommandItemOwnsSelectionProps = {
   /** Invoked when the item is activated inside CommandPalette. */
   onSelect: () => void;
-  /** The item owns activation. This is the default CommandPalette mode. */
+  /**
+   * `selectionMode` is a compile-time discriminant that only controls whether
+   * `onSelect` is required; it has no runtime effect on activation dispatch.
+   * `'item'` is the default CommandPalette mode, in which this component's
+   * own `onSelect` is required.
+   */
   selectionMode?: 'item';
 };
 
 type CommandItemParentOwnsSelectionProps = {
   /**
-   * Lets a parent list own activation, such as CommandMenu's menu-level
-   * onSelect callback.
+   * `selectionMode` is a compile-time discriminant that only controls whether
+   * `onSelect` is required; it has no runtime effect on activation dispatch.
+   * `'parent'` makes `onSelect` optional at the type level for integrations
+   * such as CommandMenu, where a parent list owns activation — it does not
+   * change which activation handler actually runs.
    */
   selectionMode: 'parent';
   /** Optional fallback for custom parent integrations. */

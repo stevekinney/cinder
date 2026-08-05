@@ -1,5 +1,6 @@
 import type { Snippet } from 'svelte';
-export type TabPanelProps = {
+import type { HTMLAttributes } from 'svelte/elements';
+export type TabPanelProps = Omit<HTMLAttributes<HTMLDivElement>, 'class' | 'children'> & {
   /** Identifier — matches the value of the corresponding Tab. */
   value: string;
   /**

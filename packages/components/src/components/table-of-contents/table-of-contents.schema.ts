@@ -15,7 +15,8 @@ const schema = {
     },
     target: {
       type: 'string',
-      description: 'CSS selector used to find the target heading container in derived mode.',
+      description:
+        'Schema surface accepts the CSS-selector form only; the component prop\nadditionally accepts a live HTMLElement — see TableOfContentsProps.target.',
     },
     headingSelector: {
       type: 'string',

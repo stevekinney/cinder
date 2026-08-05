@@ -51,6 +51,9 @@ export type CapabilityGateProps = Omit<
 
 /**
  * Cinder-specific props for CapabilityGate, used by the schema generator.
+ *
+ * Rule: the schema surface includes every public prop; inexpressible ones
+ * (callbacks, snippets) are surfaced via `unsupportedProps`, never omitted.
  */
 export interface CapabilityGateSchemaProps {
   /** The feature being gated. */

@@ -1,3 +1,5 @@
+import type { HTMLAttributes } from 'svelte/elements';
+
 export type StepsOrientation = 'horizontal' | 'vertical';
 export type StepItemState = 'complete' | 'current' | 'upcoming' | 'skipped';
 export type StepItem = {
@@ -26,7 +28,7 @@ export type StepItem = {
    */
   onclick?: (event: MouseEvent) => void;
 };
-export type StepsProps = {
+export type StepsProps = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
   /** Ordered list of step entries from first to last. */
   steps: StepItem[];
   /**
