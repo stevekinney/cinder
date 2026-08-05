@@ -1,9 +1,11 @@
 /// <reference lib="dom" />
-import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, jest, mock, test } from 'bun:test';
+import { tick } from 'svelte';
 
 import Ajv2020 from 'ajv/dist/2020';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
+import { expectNoLeakedTimers, trackTimers } from '../../test/lifecycle.ts';
 import {
   detailsIdForKey,
   reconnectedBoundaryKey,
@@ -51,7 +53,18 @@ const warningEvent: StreamEvent = {
 };
 
 beforeEach(() => document.body.replaceChildren());
-afterEach(() => cleanup());
+afterEach(() => {
+  jest.useRealTimers();
+  cleanup();
+});
+
+// useAnnouncer sets its message on a delayed setTimeout(..., 0) tick, not
+// synchronously — a real (not fake) zero-delay wait for that tick to flush,
+// followed by Svelte's own tick() so the reactive DOM write is applied.
+async function waitOneTick(): Promise<void> {
+  await new Promise<void>((resolve) => setTimeout(resolve, 0));
+  await tick();
+}
 
 describe('EventStreamViewer', () => {
   describe('schema', () => {
@@ -925,6 +938,7 @@ describe('EventStreamViewer', () => {
         '.cinder-event-stream-viewer__copy-all-button',
       );
       await fireEvent.click(btn!);
+      await waitOneTick();
       const liveRegion = container.querySelector('.cinder-event-stream-viewer__live-region');
       expect(liveRegion?.textContent).toBe('1 stream entry sent to copy handler');
       expect(liveRegion?.textContent).not.toContain('clipboard');
@@ -956,11 +970,74 @@ describe('EventStreamViewer', () => {
         '.cinder-event-stream-viewer__copy-all-button',
       );
       await fireEvent.click(btn!);
+      await waitOneTick();
       expect(received).toContain('Reconnected — 1 event replayed');
       expect(received).toContain('Sequence gap — expected 5, received 6');
       expect(received).toContain('Retry attempt 2 of 3');
       const liveRegion = container.querySelector('.cinder-event-stream-viewer__live-region');
       expect(liveRegion?.textContent).toBe('5 stream entries sent to copy handler');
+    });
+
+    test('a second copy-visible click before the clear delay elapses re-announces (clear-then-set cycle)', async () => {
+      const { container } = render(EventStreamViewer, {
+        props: {
+          events: [baseEvent],
+          onCopyVisible: () => {},
+        },
+      });
+      const btn = container.querySelector<HTMLButtonElement>(
+        '.cinder-event-stream-viewer__copy-all-button',
+      );
+      const liveRegion = container.querySelector(
+        '.cinder-event-stream-viewer__live-region',
+      ) as HTMLElement;
+
+      const mutations: string[] = [];
+      const observer = new MutationObserver(() => {
+        mutations.push(liveRegion.textContent ?? '');
+      });
+      observer.observe(liveRegion, { childList: true, characterData: true, subtree: true });
+
+      await fireEvent.click(btn!);
+      await waitOneTick();
+      expect(liveRegion.textContent).toBe('1 stream entry sent to copy handler');
+
+      mutations.length = 0;
+      await fireEvent.click(btn!);
+      await waitOneTick();
+      // happy-dom delivers MutationObserver callbacks on their own queue, one
+      // cycle behind the DOM write itself — a second tick flushes it.
+      await waitOneTick();
+
+      // useAnnouncer clears the message before re-setting it, forcing screen
+      // readers to re-announce even identical text — a test that only checked
+      // the final text would pass even if the second click were a no-op.
+      expect(mutations).toEqual(['', '1 stream entry sent to copy handler']);
+      observer.disconnect();
+    });
+
+    test('unmounting while the announcer clear timer is pending leaks no timer', async () => {
+      const timers = trackTimers();
+      try {
+        const { container, unmount } = render(EventStreamViewer, {
+          props: {
+            events: [baseEvent],
+            onCopyVisible: () => {},
+          },
+        });
+        const btn = container.querySelector<HTMLButtonElement>(
+          '.cinder-event-stream-viewer__copy-all-button',
+        );
+
+        await fireEvent.click(btn!);
+        await waitOneTick();
+
+        unmount();
+
+        expectNoLeakedTimers(timers.active());
+      } finally {
+        timers.release();
+      }
     });
   });
 
