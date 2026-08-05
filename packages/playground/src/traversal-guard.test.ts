@@ -41,4 +41,16 @@ describe('resolveSafePath', () => {
     // check.
     expect(resolveSafePath(baseDir, 'foo/../../secret.css')).toBeNull();
   });
+
+  it('rejects a backslash-disguised ".." segment', () => {
+    // node:path.join() is platform-specific: on POSIX '\' is just an
+    // ordinary filename character, but on win32 it's a path separator. A
+    // '/'-only segment splitter sees 'foo/..\..\secret.css' as two
+    // harmless-looking segments ('foo' and a filename that merely
+    // *contains* backslashes) and lets it through — but win32's join()
+    // would walk 'foo' -> '..' (back to baseDir) -> '..' (above baseDir),
+    // landing outside baseDir. Reject backslash-containing segments
+    // regardless of host OS, not just when the host happens to be POSIX.
+    expect(resolveSafePath(baseDir, 'foo/..\\..\\secret.css')).toBeNull();
+  });
 });

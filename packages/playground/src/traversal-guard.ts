@@ -6,8 +6,12 @@ import { isAbsolute, join, relative as relativePath } from 'node:path';
  * substring, which would also reject harmless filenames like `foo..css`), a
  * leading or embedded empty segment (e.g. a leading `/` or a doubled `//`),
  * or — as defense-in-depth — a `join()`-then-`relative()` round-trip that
- * lands outside `baseDir`. Returns the absolute path, or `null` when the
- * request is unsafe.
+ * lands outside `baseDir`. Segments are split on both `/` and `\`: `join()`
+ * is platform-specific (win32 treats `\` as a separator; POSIX doesn't), so
+ * splitting on `/` alone would let a backslash-disguised `..` segment (e.g.
+ * `foo/..\..\secret.css`) slip past this check on POSIX while still
+ * escaping `baseDir` if the same code ran on win32. Returns the absolute
+ * path, or `null` when the request is unsafe.
  *
  * This is a LEXICAL containment check only — it operates on path strings and
  * does not call `fs.realpath`/`fs.lstat`. It does not detect a symlink
@@ -26,7 +30,7 @@ import { isAbsolute, join, relative as relativePath } from 'node:path';
  * is not sufficient for that case.
  */
 export function resolveSafePath(baseDir: string, requestedPath: string): string | null {
-  const segments = requestedPath.split('/');
+  const segments = requestedPath.split(/[/\\]/);
   const hasUnsafeSegment = segments.some(
     (segment) => segment === '' || segment === '.' || segment === '..',
   );
