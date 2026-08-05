@@ -707,11 +707,12 @@ describe('cinder/z-index-scale', () => {
     ['random(fixed .5, 0, 10000, 9999)', 0],
     ['random(fixed 1, 0, 10000, 9999)', 0],
     ['random(0, 10000, infinity)', 0],
-    // A zero or negative step folds the range to its written start (A), not
-    // the full [A, B] interval (CSS Values 5). A = 0 here, so this is safe;
-    // when A is itself the banned layer the fold is still correctly flagged.
-    ['random(0, 10000, 0)', 0],
-    ['random(0, 10000, -1)', 0],
+    // A zero or negative step is *ignored* (CSS Values 5,
+    // random-argument-ranges): the function behaves as if only A and B were
+    // given, i.e. the full continuous [A, B] range -- not folded to a
+    // single point. 9999 is within [0, 10000], so this is still banned.
+    ['random(0, 10000, 0)', 1],
+    ['random(0, 10000, -1)', 1],
     ['random(9999, 1, 0)', 1],
     ['random(9999, 1, -1)', 1],
     ['random(infinity, 10000)', 0],
@@ -849,6 +850,25 @@ describe('cinder/z-index-scale', () => {
     expect(bannedFallback('var(--outer, max(1, var(--items, 1, 9999)))')?.reason).toBe(
       'too-complex',
     );
+  });
+
+  test('ignores a nonpositive random() step instead of folding to a single point', async () => {
+    // CSS Values 5 (random-argument-ranges): a negative or zero step is
+    // *ignored*, not folded to the written A -- the function behaves as if
+    // only A and B were given, so the full continuous range is reachable.
+    const { bannedFallback } = await import(fallbackAnalysisPath);
+
+    expect(bannedFallback('var(--outer, random(1, 9999, 0))')?.reason).toBe('banned');
+    expect(bannedFallback('var(--outer, random(1, 9999, -1))')?.reason).toBe('banned');
+    expect(bannedFallback('var(--outer, random(0, 100, 0))')).toBeUndefined();
+  });
+
+  test('short-circuits a fixed-zero stepped random() key before the step-count cap', async () => {
+    // A fixed key of exactly 0 always selects step index 0 (the written
+    // minimum), regardless of how many step slots the range divides into.
+    const { bannedFallback } = await import(fallbackAnalysisPath);
+
+    expect(bannedFallback('var(--outer, random(fixed 0, 0, 10000, 0.4))')).toBeUndefined();
   });
 
   test('does not fold a positive fractional random() step that rounds down to zero', async () => {

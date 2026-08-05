@@ -4863,28 +4863,28 @@ function randomGroupOutputOptions(frame, value, group, budget, parenthesisPairs)
     return { continuous: true, values: [minimumExpression, maximumExpression] };
   };
   if (stepValue === undefined) return continuousRangeResult();
+  // CSS Values 5 (random-argument-ranges): an infinite step resolves to A
+  // outright (distinct from the nonpositive-step case below).
+  if (!Number.isFinite(stepValue)) return { continuous: false, values: [minimumExpression] };
 
   // evaluateStaticLayerNumber() rounds to the nearest integer, which is too
-  // coarse both to prove a step is truly <= 0 (CSS Values 5 folds it to the
-  // written A) and to compute the spec's step / 1000 endpoint-snapping
-  // tolerance precisely. Re-parse the plain numeric tokens (when each is
-  // one) at full precision instead.
+  // coarse to prove the step is actually positive (a small positive step
+  // like 0.4 can round to a stepValue of 0) or to compute the spec's
+  // step / 1000 endpoint-snapping tolerance precisely. Re-parse the plain
+  // numeric step token at full precision instead.
   const preciseStepValue = preciseStaticNumber(stepExpression);
-  if (preciseStepValue === undefined && stepValue <= 0) {
-    // We can't prove the step is exactly <= 0 -- it's a complex expression,
-    // or integer rounding may have collapsed a small positive step (e.g.
-    // 0.4) to a rounded stepValue of 0. Folding to a single point is only
-    // sound when it's provably correct, so fall back to treating the full
-    // [A, B] range as reachable instead of risking a false negative.
-    return continuousRangeResult();
-  }
-  // A step that's provably <= 0 folds the whole range to its start (CSS
-  // Values 5, https://www.w3.org/TR/css-values-5/#random): the written A,
-  // not the full [A, B] interval. This holds regardless of the random key,
-  // since the result is a single deterministic value either way.
-  if (preciseStepValue !== undefined && preciseStepValue <= 0)
-    return { continuous: false, values: [minimumExpression] };
-  if (!Number.isFinite(stepValue)) return { continuous: false, values: [minimumExpression] };
+  // A step that's negative, zero, or close enough to zero that the step
+  // count would be unusably large is *ignored* -- the function behaves as
+  // if only A and B were given (the full continuous [A, B] range), not
+  // folded to a single point. Whenever the step isn't provably positive (a
+  // complex expression, or a rounded value that might be masking a small
+  // positive one), use that same conservative continuous treatment.
+  if (preciseStepValue === undefined || preciseStepValue <= 0) return continuousRangeResult();
+  // A fixed key of exactly 0 always selects step index 0 (the written
+  // minimum), regardless of how many step slots the range divides into --
+  // short-circuit before the step-count cap below, which exists to bound
+  // enumerating every slot, not to bound this single, already-known one.
+  if (fixedBaseValue === 0) return { continuous: false, values: [minimumExpression] };
 
   // preciseStaticNumberWithUnit() strips a unit rather than converting it,
   // so the precise magnitudes below are only trustworthy when min, max, and
