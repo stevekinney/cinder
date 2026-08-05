@@ -33,6 +33,7 @@
   import FormFieldFrame from '../../_internal/form-field-frame.svelte';
   import { classNames } from '../../utilities/class-names.ts';
   import { createPortalAttachment } from '../portal/index.ts';
+  import { findNearestOpenTopLayer } from '../portal/portal.utilities.svelte.ts';
   import type { MultiSelectItem, MultiSelectProps } from './multi-select.types.ts';
 
   let {
@@ -110,11 +111,12 @@
   let nativeError = $state('');
   let resetSyncTimeout: ReturnType<typeof setTimeout> | undefined;
 
-  // The panel is portaled to `document.body` (see `panelPortalAttachment` below) so an
-  // ancestor with `overflow: hidden` — or any ancestor establishing a new containing
-  // block — cannot clip it. `position: fixed` (via `_floating-surface`/Floating UI) only
-  // escapes that containment when the panel is no longer a DOM descendant of the
-  // trigger's clipped ancestor. `widthMode: 'match-anchor'` preserves the prior
+  // The panel is portaled out of the DOM subtree it renders in (see
+  // `panelPortalAttachment` below) so an ancestor with `overflow: hidden` — or any
+  // ancestor establishing a new containing block — cannot clip it. `position: fixed`
+  // (via `_floating-surface`/Floating UI) only escapes that containment when the panel
+  // is no longer a DOM descendant of the trigger's clipped ancestor. `widthMode:
+  // 'match-anchor'` preserves the prior
   // full-trigger-width CSS behavior (`inset-inline: 0`); `direction` maps directly to a
   // Floating UI placement, and `flip` (always active in `createAnchoredOverlay`) upgrades
   // the previous purely author-controlled `direction` into collision-aware placement.
@@ -127,7 +129,19 @@
     widthMode: () => 'match-anchor',
   });
   const panelPortalAttachment = createPortalAttachment({
-    target: () => document.body,
+    // Escaping to `document.body` unconditionally would render the panel BEHIND a
+    // native <dialog> or open [popover] ancestor's top layer, since regular DOM
+    // content can never out-stack the top layer regardless of z-index. Prefer the
+    // nearest enclosing open top-layer container (matching Popover/SpeedDial/
+    // NavigationBar) and fall back to document.body only when there isn't one.
+    target: () => {
+      if (!triggerElement) return document.body;
+      try {
+        return findNearestOpenTopLayer(triggerElement) ?? document.body;
+      } catch {
+        return document.body;
+      }
+    },
     source: () => controlElement,
     inheritAttributes: true,
   });

@@ -573,6 +573,29 @@ describe('MultiSelect', () => {
     expect(panel?.closest('.cinder-multi-select__control')).toBeNull();
   });
 
+  test('open panel portals into an enclosing open top-layer owner instead of past it to document.body', async () => {
+    // Regression test: escaping straight to `document.body` would render the
+    // panel BEHIND a native <dialog>/[popover] ancestor's top layer, since
+    // regular DOM content can never out-stack the top layer regardless of
+    // z-index (e.g. a MultiSelect field inside a Modal). `findNearestOpenTopLayer`
+    // resolves the top-layer owner via the same `data-cinder-portal-owner`
+    // marker mechanism Popover/SpeedDial/NavigationBar already use — `:modal`
+    // itself isn't reliably testable under happy-dom, but this marker path
+    // exercises the real production wiring end to end.
+    const owner = document.createElement('div');
+    owner.id = 'fake-top-layer-owner';
+    document.body.append(owner);
+
+    const { container } = renderIntoContainer(MultiSelect, { id: 'fruits', items });
+    container.dataset['cinderPortalOwner'] = 'fake-top-layer-owner';
+    document.body.append(container);
+
+    await openMenu(container);
+    const panel = document.body.querySelector('#fruits-popover');
+    expect(panel).not.toBeNull();
+    expect(panel?.parentElement).toBe(owner);
+  });
+
   test('menu closes when focus moves away with keyboard navigation', async () => {
     const { container } = render(MultiSelect, {
       id: 'fruits',
