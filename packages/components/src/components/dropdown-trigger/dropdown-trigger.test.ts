@@ -40,4 +40,21 @@ describe('DropdownTrigger', () => {
       ).toBe('true');
     });
   });
+
+  test('a consumer style prop merges with the anchor-name style instead of clobbering it', () => {
+    const { container } = render(Fixture, { props: { triggerStyle: 'margin-top: 4px;' } });
+    const trigger = container.querySelector('.cinder-dropdown-trigger') as HTMLElement;
+
+    expect(trigger.style.getPropertyValue('margin-top')).toBe('4px');
+    expect(trigger.style.getPropertyValue('anchor-name')).toBe('--actions-menu-menu');
+  });
+
+  test('the internal anchor-name declaration wins when a consumer style redeclares it', () => {
+    const { container } = render(Fixture, {
+      props: { triggerStyle: 'anchor-name: --consumer-injected;' },
+    });
+    const trigger = container.querySelector('.cinder-dropdown-trigger') as HTMLElement;
+
+    expect(trigger.style.getPropertyValue('anchor-name')).toBe('--actions-menu-menu');
+  });
 });

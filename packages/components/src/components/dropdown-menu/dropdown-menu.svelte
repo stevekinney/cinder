@@ -35,7 +35,18 @@
   } from '../dropdown/dropdown.context.ts';
   import { createPortalAttachment } from '../portal/index.ts';
 
-  let { class: customClassName, children, dir: direction, ...rest }: DropdownMenuProps = $props();
+  function terminated(declaration: string): string {
+    const trimmed = declaration.trim();
+    return trimmed.length === 0 || trimmed.endsWith(';') ? trimmed : `${trimmed};`;
+  }
+
+  let {
+    class: customClassName,
+    children,
+    dir: direction,
+    style: consumerStyle,
+    ...rest
+  }: DropdownMenuProps = $props();
 
   const context = getDropdownContext();
   const registerMenu = getDropdownRegister();
@@ -70,6 +81,15 @@
   const fallbackPositionStyle = $derived(
     context.fallbackPositionStyle ??
       (fallbackAnchorElement ? anchoredFallback.positionStyle : undefined),
+  );
+  const anchorStyle = $derived(
+    context.supportsPopover ? `position-anchor: --${context.menuId};` : fallbackPositionStyle,
+  );
+  const mergedStyle = $derived(
+    [consumerStyle, anchorStyle]
+      .filter((declaration): declaration is string => Boolean(declaration))
+      .map(terminated)
+      .join(' ') || undefined,
   );
   const fallbackPositionReady = $derived(
     context.fallbackPositionReady ??
@@ -204,9 +224,7 @@
     id={context.menuId}
     popover={context.supportsPopover ? 'auto' : undefined}
     class={classNames('cinder-_floating-surface', 'cinder-dropdown-menu', customClassName)}
-    style={context.supportsPopover
-      ? `position-anchor: --${context.menuId};`
-      : fallbackPositionStyle}
+    style={mergedStyle}
     role="menu"
     aria-orientation="vertical"
     data-cinder-placement={context.supportsPopover

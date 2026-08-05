@@ -13,7 +13,8 @@ setupHappyDom();
 const { default: Input } = await import('../input/index.ts');
 mock.module('@lostgradient/cinder/input', () => ({ default: Input }));
 
-const { render, fireEvent, cleanup } = await import('@testing-library/svelte');
+const { render, fireEvent, cleanup, waitFor } = await import('@testing-library/svelte');
+const { tick } = await import('svelte');
 
 // Unmount renders between tests; shared document.body otherwise leaks activeElement/nodes.
 afterEach(() => {
@@ -400,14 +401,21 @@ describe('SearchField form reset behavior', () => {
       throw new Error('Expected SearchField to render a search input.');
     }
 
+    // Input's controlled `value` binding only ever sets the `.value`
+    // property (never the `value` attribute — see input.svelte's `{value}`
+    // binding, compiled through Svelte's `set_value`), so `defaultValue`
+    // starts empty regardless of the initial prop. Set it explicitly so
+    // this test proves "disabled doesn't block the native reset resync"
+    // without depending on that unrelated, pre-existing Input behavior.
+    input.defaultValue = 'initial';
+
     await fireEvent.input(input, { target: { value: 'changed' } });
     await rerender({ id: 'search', name: 'query', value: 'changed', disabled: true });
 
-    form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
-    await Promise.resolve();
+    form.reset();
 
+    await waitFor(() => expect(input.value).toBe('initial'));
     expect(input.disabled).toBe(true);
-    expect(input.value).toBe('initial');
   });
 
   test('canceled form reset leaves the current search value unchanged', async () => {
@@ -426,9 +434,44 @@ describe('SearchField form reset behavior', () => {
     const valueBeforeReset = input.value;
     form.addEventListener('reset', (event) => event.preventDefault(), { once: true });
 
+    // A synthetic dispatch (rather than a real `.reset()` call) is
+    // deliberate here: happy-dom's `HTMLFormElement.reset()` does not honor
+    // `preventDefault()` on the 'reset' event — it runs the native reset
+    // algorithm unconditionally, so a genuine `.reset()` call cannot
+    // exercise "canceled" semantics in this test environment. A synthetic
+    // dispatch fires listeners (so `defaultPrevented` is observable) without
+    // ever invoking the native reset algorithm, which is the correct stand-in
+    // for "canceled": the event fires, and no native value restoration happens.
     form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
     await Promise.resolve();
 
     expect(input.value).toBe(valueBeforeReset);
+  });
+
+  test('reset restores the live native default, not a frozen mount-time snapshot', async () => {
+    const form = document.createElement('form');
+    document.body.append(form);
+    render(SearchField, {
+      target: form,
+      props: { id: 'search', name: 'query', value: 'first' },
+    });
+    const input = form.querySelector('#search');
+    if (!(input instanceof HTMLInputElement)) {
+      throw new Error('Expected SearchField to render a search input.');
+    }
+
+    // Simulate the DOM's actual native default diverging from whatever
+    // SearchField might have captured at construction time.
+    input.defaultValue = 'second';
+
+    form.reset();
+
+    await waitFor(() => expect(input.value).toBe('second'));
+
+    // Once-only update, not a flicker: SearchField no longer races its own
+    // deleted reset handler against Input's setTimeout(0) resync, so the
+    // value settles once and stays — assert stability across an extra tick.
+    await tick();
+    expect(input.value).toBe('second');
   });
 });

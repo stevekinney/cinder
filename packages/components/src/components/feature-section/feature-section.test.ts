@@ -94,4 +94,17 @@ describe('FeatureSection', () => {
     expect(element?.classList.contains('cinder-feature-section')).toBe(true);
     expect(element?.classList.contains('my-custom-class')).toBe(true);
   });
+
+  test('a forwarded data-cinder-layout attribute cannot clobber the component-owned layout state', () => {
+    const { container } = render(FeatureSection, {
+      props: {
+        title: 'Features',
+        items,
+        layout: 'split',
+        'data-cinder-layout': 'bogus',
+      },
+    });
+    const root = container.querySelector('.cinder-feature-section');
+    expect(root?.getAttribute('data-cinder-layout')).toBe('split');
+  });
 });

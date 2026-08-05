@@ -174,14 +174,32 @@
     return ancestryKey('menu', menuIndex, menu.id, 'submenu', entryIndex, submenu.id, 'menu');
   }
 
+  type MenuRoot = Pick<Document, 'activeElement'> & Pick<ParentNode, 'querySelector'>;
+
+  function menuRoot(): MenuRoot | null {
+    const root = rootElement?.getRootNode();
+    if (!root || !('activeElement' in root) || !('querySelector' in root)) return null;
+    return root as MenuRoot;
+  }
+
+  function escapeIdForSelector(id: string): string {
+    if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') return CSS.escape(id);
+    return id
+      .replaceAll('\\', '\\\\')
+      .replaceAll('"', '\\"')
+      .replaceAll('\n', '\\a ')
+      .replaceAll('\r', '\\d ')
+      .replaceAll('\f', '\\c ');
+  }
+
   function focusElement(id: string): void {
-    document.getElementById(id)?.focus();
+    menuRoot()
+      ?.querySelector<HTMLElement>(`[id="${escapeIdForSelector(id)}"]`)
+      ?.focus();
   }
 
   function findElementById(id: string): HTMLElement | null {
-    if (typeof document === 'undefined') return null;
-    const element = document.getElementById(id);
-    return element instanceof HTMLElement ? element : null;
+    return menuRoot()?.querySelector<HTMLElement>(`[id="${escapeIdForSelector(id)}"]`) ?? null;
   }
 
   function focusSubmenuTriggerAfterClose(id: string): void {

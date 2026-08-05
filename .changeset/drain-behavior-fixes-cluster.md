@@ -1,0 +1,17 @@
+---
+'@lostgradient/cinder': minor
+---
+
+Fix six independent behavior bugs found in a component audit:
+
+- **FeatureSection**: a caller-forwarded `data-cinder-layout`, `data-cinder-columns`, `data-cinder-media-position`, or `data-cinder-has-media` attribute could silently override the component's own computed layout state (rest-spread ordering).
+- **NewsletterSection**: the form now always calls `preventDefault()` on submit, even when no `onSubmit` prop is provided — previously a consumer that omitted `onSubmit` got a full-page reload on submit.
+- **DatePicker** / **DateRangeField**: date/date-time validation and normalization logic is now shared via `_internal/date-value.ts` instead of duplicated per component. The normalization effect now routes through the same notify-and-write path as user-driven edits, so `onchange` fires when the component itself corrects a malformed or out-of-range initial `value`, or truncates a value after a `granularity` change — previously these corrections were silent. **Consumer-visible behavior change**: a mounted `DatePicker`/`DateRangeField` with a malformed or out-of-range initial `value` now fires `onchange` once during initial mount. `DatePicker` gains a `triggerLabel` prop (defaults to `"Open"`) for the calendar-trigger button's visible text. **Breaking type change**: `DateRangeField.id` is now required (previously optional with an auto-generated fallback), matching the required-`id` convention already used by `Input`, `Textarea`, `NumberInput`, `TimeField`, and `DatePicker`.
+- **DropdownMenu** / **DropdownTrigger**: a consumer-supplied `style` prop no longer silently overwrites the CSS Anchor Positioning declarations (`position-anchor`/`anchor-name`) these components depend on for correct positioning — the two are now merged, with the internal declaration winning on a direct conflict.
+- **SearchField**: deleted a duplicate, buggy form-reset handler that raced against `Input`'s own canonical reset-sync and could restore a frozen mount-time value instead of the live native default. Reset now delegates entirely to `Input`. Also guarded the derived `hasValue` computation against a bound `value` that becomes `undefined` after mount.
+- Five small independent fixes:
+  - **FileUpload**: investigated a proposed dragleave/dragenter guard-symmetry fix; not applied — it would have reverted a prior, deliberately tested fix ("clear drag state after cancelled upload") for a stuck-open drag overlay. See PR body for detail.
+  - **CopyButton**: gains an `onError` callback prop, called when the clipboard write fails (permission denied, insecure context, or the legacy fallback also failing); also emits a dev-only console warning.
+  - **DiffStatistics**: emits a dev-only, once-per-instance console warning when `density="toolbar"` is used without `variant="compact"` (that combination is otherwise a silent no-op).
+  - **GridItem**: narrows the `as` polymorphic-tag type to exclude document-metadata and non-content tags (`script`, `title`, `html`, `head`, `body`, `style`, `noscript`, `colgroup`, `optgroup`, `option`), which previously type-checked but rendered invisible or broken markup. **Breaking type change**: a consumer passing one of those tag names to `as` now gets a type error where none existed before.
+  - **MenuBar**: id-based element lookups (used for keyboard focus management) are now shadow-DOM aware instead of always querying the global `document`, matching the pattern already used by `MegaMenu`.

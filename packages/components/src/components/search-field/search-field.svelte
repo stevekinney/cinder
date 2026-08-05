@@ -15,7 +15,6 @@
 </script>
 
 <script lang="ts">
-  import { untrack } from 'svelte';
   import type { Attachment } from 'svelte/attachments';
 
   import Search from 'lucide-svelte/icons/search';
@@ -46,9 +45,8 @@
   const resolvedId = $derived(id ?? context?.controlId ?? generatedId);
 
   let inputElement = $state<HTMLInputElement | null>(null);
-  const resetTarget = untrack(() => value);
 
-  const currentValue = $derived(value);
+  const currentValue = $derived(value ?? '');
   const hasValue = $derived(currentValue.length > 0);
 
   const consumerAriaInvalid = $derived(rest['aria-invalid']);
@@ -78,19 +76,9 @@
   const inputAttachment: Attachment<HTMLInputElement> = (element) => {
     inputElement = element;
     const handler = () => onsearch?.(element.value);
-    const resetHandler = (event: Event) => {
-      queueMicrotask(() => {
-        if (event.defaultPrevented) return;
-        value = resetTarget;
-        element.value = resetTarget;
-      });
-    };
-    const form = element.form;
     element.addEventListener('search', handler);
-    form?.addEventListener('reset', resetHandler);
     return () => {
       element.removeEventListener('search', handler);
-      form?.removeEventListener('reset', resetHandler);
       if (inputElement === element) inputElement = null;
     };
   };

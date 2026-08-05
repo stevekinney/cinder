@@ -52,6 +52,25 @@ describe('NewsletterSection', () => {
     expect(onSubmit).toHaveBeenCalledWith('dev@example.com');
   });
 
+  test('always preventDefaults on submit, even without an onSubmit prop', async () => {
+    const { container } = render(NewsletterSection, {
+      props: {
+        title: 'Subscribe',
+      },
+    });
+    const form = container.querySelector('form');
+    expect(form).not.toBeNull();
+
+    let capturedEvent: Event | undefined;
+    form!.addEventListener('submit', (event) => {
+      capturedEvent = event;
+    });
+
+    fireEvent.submit(form!);
+
+    expect(capturedEvent?.defaultPrevented).toBe(true);
+  });
+
   test('renders consent text when provided', () => {
     const { container } = render(NewsletterSection, {
       props: {

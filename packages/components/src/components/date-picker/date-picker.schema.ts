@@ -48,6 +48,10 @@ const schema = {
       type: 'string',
       description: 'Additional classes for the root.',
     },
+    triggerLabel: {
+      type: 'string',
+      description: 'Visible text for the calendar-trigger button. Defaults to "Open".',
+    },
   },
   additionalProperties: false,
   required: ['id'],

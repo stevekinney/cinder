@@ -215,6 +215,14 @@
   }
 
   function handleDragLeave(event: DragEvent) {
+    // Deliberately asymmetric with handleDragEnter's guard: a `null`
+    // dataTransfer here still decrements. A canceled drag (Escape, or a drop
+    // outside the window) can deliver a 'dragleave' with an inaccessible
+    // dataTransfer, and treating that the same as "not a file drag" (like
+    // dragenter does) leaves dragDepth stuck above zero and the drag-active
+    // overlay stuck open — see the "clear drag state after cancelled upload"
+    // fix and its dedicated regression test. Only a present-but-non-Files
+    // dataTransfer (e.g. a text drag) is ignored here.
     if (event.dataTransfer && !hasFilesPayload(event.dataTransfer)) return;
     dragDepth = Math.max(0, dragDepth - 1);
   }

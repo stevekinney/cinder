@@ -26,6 +26,7 @@ Button that copies a given text value to the clipboard with visual feedback.
 | `value`           | `string`   | yes      | —       | Text to copy to the clipboard.                                                                                                                                                                                                                                                       |
 | `children`        | `(opaque)` | no       | —       | Default content (idle state). Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                                             |
 | `confirmation`    | `(opaque)` | no       | —       | Content rendered while in the "copied" state. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                             |
+| `onError`         | `(opaque)` | no       | —       | Called when the clipboard write fails (permission denied, insecure context, or the legacy execCommand fallback also failing). Not expressible in JSON Schema; see the component types for the signature.                                                                             |
 
 <!-- generated:props:end -->
 
