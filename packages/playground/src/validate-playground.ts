@@ -21,7 +21,8 @@ import {
   variablesList,
 } from './component-documentation-reference.ts';
 import { discoverComponents } from './discover.ts';
-import { type PlaygroundServer, PORT, startServer, triggerReload } from './playground-server.ts';
+import { type PlaygroundServer, PORT, startServer } from './playground-server.ts';
+import { triggerReload } from './sse-broadcast.ts';
 
 class PlaygroundValidationError extends Error {
   constructor(message: string) {

@@ -30,35 +30,37 @@ import type { ComponentManifest } from './analyze.ts';
 import { isComponentDocumentationPayload } from './component-documentation-reference.ts';
 import { COMPOSE_ONLY_COMPONENTS } from './discover.ts';
 import {
-  PORT,
   classifyPlaygroundSrcChange,
-  configureRequestIdleTimeout,
-  createHttpServerOnAvailablePort,
-  createSharedDisposer,
-  fallbackToLastGood,
-  formatBuildLogs,
   getRebuildGeneration,
+  scheduleRebuild,
+  waitForPendingRebuild,
+} from './file-watcher.ts';
+import {
+  PORT,
+  createSharedDisposer,
   handleRequest,
-  isPageServerRenderers,
-  isShellServerRendererModule,
   isWarmupStable,
   mergeGeneratedSchemaMetadata,
   readGeneratedComponentSchema,
+  rewriteRepositoryRelativeReadmeLinks,
+  runGenerationCheckedWarmup,
+  warmupInstabilityReasons,
+} from './playground-server.ts';
+import { configureRequestIdleTimeout } from './port-scanner.ts';
+import { jsonForScriptTag } from './render-shell.ts';
+import { triggerReload } from './sse-broadcast.ts';
+import {
+  fallbackToLastGood,
+  formatBuildLogs,
+  isPageServerRenderers,
+  isShellServerRendererModule,
   rendererWarmupAttemptDecision,
   rendererWarmupNeedsCacheInvalidation,
   rendererWarmupNeedsPrebuild,
-  resolvePreferredPort,
   resolveRendererLoad,
-  rewriteRepositoryRelativeReadmeLinks,
-  runGenerationCheckedWarmup,
-  scheduleRebuild,
   setPreparedShellServerRenderer,
   shellBuildSucceeded,
-  triggerReload,
-  waitForPendingRebuild,
-  warmupInstabilityReasons,
-} from './playground-server.ts';
-import { jsonForScriptTag } from './render-shell.ts';
+} from './ssr-renderer.ts';
 
 const FIXTURE_COMPONENT = 'button';
 const FIXTURE_SCENARIO = 'primary';
@@ -81,7 +83,6 @@ beforeAll(async () => {
   }
 });
 
-const temporaryServers: ReturnType<typeof Bun.serve>[] = [];
 /*
  * The shell now renders the landing page only, through the same component every
  * documentation page uses. It no longer takes a component, documentation
@@ -123,10 +124,8 @@ describe('last-good rebuild fallback', () => {
   });
 });
 
-afterEach(async () => {
+afterEach(() => {
   setPreparedShellServerRenderer(null);
-  const servers = temporaryServers.splice(0);
-  await Promise.all(servers.map((server) => server.stop(true)));
 });
 
 function req(path: string, options?: RequestInit): Request {
@@ -150,105 +149,11 @@ describe('request idle timeout configuration', () => {
   });
 });
 
-function reservePort(start: number): ReturnType<typeof Bun.serve> {
-  for (let port = start; port < start + 100; port++) {
-    try {
-      return Bun.serve({
-        port,
-        fetch: () => new Response('reserved'),
-      });
-    } catch (error) {
-      const errorWithCode = error as Error & { code?: unknown };
-      if (errorWithCode.code !== 'EADDRINUSE') throw error;
-    }
-  }
-  throw new Error(`Could not reserve a test port starting at ${start}`);
-}
-
-function tryReservePort(port: number): ReturnType<typeof Bun.serve> | null {
-  try {
-    return Bun.serve({
-      port,
-      fetch: () => new Response('reserved'),
-    });
-  } catch (error) {
-    const errorWithCode = error as Error & { code?: unknown };
-    if (errorWithCode.code === 'EADDRINUSE') return null;
-    throw error;
-  }
-}
-
 async function fixtureContentHash(componentName: string): Promise<string> {
   const fixtureFile = await loadFixtureFile(resolveFixtureFilePath(componentName, COMPONENTS_ROOT));
   if (fixtureFile === null) throw new Error(`Fixture file for ${componentName} is missing`);
   return fixtureFile.contentHash;
 }
-
-/** Run `fn` with `Bun.env.PORT` set to `value` (or deleted, for `undefined`), restoring the original value afterward. */
-function withPortEnv<T>(value: string | undefined, fn: () => T): T {
-  const original = Bun.env['PORT'];
-  if (value === undefined) delete Bun.env['PORT'];
-  else Bun.env['PORT'] = value;
-  try {
-    return fn();
-  } finally {
-    if (original === undefined) delete Bun.env['PORT'];
-    else Bun.env['PORT'] = original;
-  }
-}
-
-describe('port selection', () => {
-  it('defaults to port 5555 when PORT is unset', () => {
-    withPortEnv(undefined, () => expect(resolvePreferredPort()).toBe(5555));
-  });
-
-  it('defaults to port 5555 when PORT is blank', () => {
-    withPortEnv('   ', () => expect(resolvePreferredPort()).toBe(5555));
-  });
-
-  it('uses PORT from the environment when set', () => {
-    withPortEnv('4321', () => expect(resolvePreferredPort()).toBe(4321));
-  });
-
-  it('trims surrounding whitespace from PORT', () => {
-    withPortEnv('  4321  ', () => expect(resolvePreferredPort()).toBe(4321));
-  });
-
-  it('falls back to 5555 when PORT is not a valid number', () => {
-    withPortEnv('not-a-port', () => expect(resolvePreferredPort()).toBe(5555));
-  });
-
-  it('falls back to 5555 when PORT has trailing non-numeric characters', () => {
-    withPortEnv('5555abc', () => expect(resolvePreferredPort()).toBe(5555));
-  });
-
-  it('falls back to 5555 when PORT is outside the valid TCP port range', () => {
-    // PORT=0 specifically: Bun.serve({ port: 0 }) binds an ephemeral free
-    // port rather than failing, but createHttpServerOnAvailablePort logs and
-    // returns the REQUESTED port, not the bound one — accepting 0 verbatim
-    // would report the wrong address to preview/CI launchers. Rejecting it
-    // here (rather than special-casing 0 downstream) keeps that contract simple.
-    withPortEnv('0', () => expect(resolvePreferredPort()).toBe(5555));
-    withPortEnv('70000', () => expect(resolvePreferredPort()).toBe(5555));
-  });
-
-  it('uses the next available port when the preferred port is taken', async () => {
-    const reserved = tryReservePort(PORT) ?? reservePort(56_000);
-    temporaryServers.push(reserved);
-    const reservedPort = reserved.port;
-    if (reservedPort === undefined) throw new Error('Reserved test server did not expose a port');
-
-    const { port: serverPort, server } = createHttpServerOnAvailablePort(
-      reservedPort,
-      () => new Response('fallback'),
-    );
-    temporaryServers.push(server);
-
-    expect(serverPort).toBeGreaterThan(reservedPort);
-    const response = await fetch(`http://127.0.0.1:${serverPort}`);
-    expect(await response.text()).toBe('fallback');
-  });
-});
 
 describe('shared disposer', () => {
   it('returns the same shutdown promise to concurrent callers', async () => {
