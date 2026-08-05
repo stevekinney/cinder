@@ -222,156 +222,156 @@
     >
       {#if !loading && !model.empty}
         <title id="{rootId}-svg-title">{label}</title>
-      {/if}
-      <g transform={`translate(${model.geometry.marginLeft}, ${model.geometry.marginTop})`}>
-        {#each model.yTicks as tick, index (tick)}
-          <!--
+        <g transform={`translate(${model.geometry.marginLeft}, ${model.geometry.marginTop})`}>
+          {#each model.yTicks as tick, index (tick)}
+            <!--
             Bar chart tick positions depend on orientation:
             - Vertical: y-axis labels appear left of the chart (same as line/area).
             - Horizontal: value labels appear along the bottom x-axis instead.
             This is intentionally different from line/area chart tick rendering.
           -->
-          <text
-            class="cinder-bar-chart__tick-label"
-            x={orientation === 'vertical'
-              ? -8
-              : ((tick - model.valueDomain[0]) / (model.valueDomain[1] - model.valueDomain[0])) *
-                model.geometry.plotWidth}
-            y={orientation === 'vertical'
-              ? model.geometry.plotHeight -
-                ((tick - model.valueDomain[0]) / (model.valueDomain[1] - model.valueDomain[0])) *
-                  model.geometry.plotHeight
-              : model.geometry.plotHeight + 20}
-            text-anchor={orientation === 'vertical' ? 'end' : 'middle'}
-            dominant-baseline={orientation === 'vertical' ? 'middle' : undefined}
-            >{formatNumericValue(tick, orientation === 'vertical' ? yAxis : xAxis, undefined, {
-              index,
-            })}</text
-          >
-        {/each}
-        <!-- Series-specific rendering: rectangular bars. -->
-        {#each model.bars as bar (bar.id)}
-          <rect
-            class="cinder-bar-chart__bar"
-            x={bar.x}
-            y={bar.y}
-            width={bar.width}
-            height={bar.height}
-            fill={bar.color}
-            aria-hidden="true"
-            data-cinder-series={bar.seriesId}
-            data-cinder-category={bar.categoryLabel}
-            data-cinder-active={interaction.activeTarget?.seriesId === bar.seriesId &&
-            interaction.activeTarget?.xLabel === bar.categoryLabel
-              ? ''
-              : undefined}
-          />
-        {/each}
-        {#each model.categoryTicks as tick (tick.categoryKey)}
-          <!--
+            <text
+              class="cinder-bar-chart__tick-label"
+              x={orientation === 'vertical'
+                ? -8
+                : ((tick - model.valueDomain[0]) / (model.valueDomain[1] - model.valueDomain[0])) *
+                  model.geometry.plotWidth}
+              y={orientation === 'vertical'
+                ? model.geometry.plotHeight -
+                  ((tick - model.valueDomain[0]) / (model.valueDomain[1] - model.valueDomain[0])) *
+                    model.geometry.plotHeight
+                : model.geometry.plotHeight + 20}
+              text-anchor={orientation === 'vertical' ? 'end' : 'middle'}
+              dominant-baseline={orientation === 'vertical' ? 'middle' : undefined}
+              >{formatNumericValue(tick, orientation === 'vertical' ? yAxis : xAxis, undefined, {
+                index,
+              })}</text
+            >
+          {/each}
+          <!-- Series-specific rendering: rectangular bars. -->
+          {#each model.bars as bar (bar.id)}
+            <rect
+              class="cinder-bar-chart__bar"
+              x={bar.x}
+              y={bar.y}
+              width={bar.width}
+              height={bar.height}
+              fill={bar.color}
+              aria-hidden="true"
+              data-cinder-series={bar.seriesId}
+              data-cinder-category={bar.categoryLabel}
+              data-cinder-active={interaction.activeTarget?.seriesId === bar.seriesId &&
+              interaction.activeTarget?.xLabel === bar.categoryLabel
+                ? ''
+                : undefined}
+            />
+          {/each}
+          {#each model.categoryTicks as tick (tick.categoryKey)}
+            <!--
             Category axis labels differ by orientation:
             - Vertical: labels appear below bars (middle-anchored x, no baseline).
             - Horizontal: labels appear left of bars (end-anchored x, middle baseline).
           -->
-          <text
-            class="cinder-bar-chart__tick-label"
-            x={tick.x}
-            y={tick.y}
-            text-anchor={orientation === 'vertical' ? 'middle' : 'end'}
-            dominant-baseline={orientation === 'vertical' ? undefined : 'middle'}
-            >{#if tick.label !== tick.fullLabel}<title>{tick.fullLabel}</title
-              >{/if}{tick.label}</text
-          >
-        {/each}
-        {#if interaction.activeTarget}
-          <!--
+            <text
+              class="cinder-bar-chart__tick-label"
+              x={tick.x}
+              y={tick.y}
+              text-anchor={orientation === 'vertical' ? 'middle' : 'end'}
+              dominant-baseline={orientation === 'vertical' ? undefined : 'middle'}
+              >{#if tick.label !== tick.fullLabel}<title>{tick.fullLabel}</title
+                >{/if}{tick.label}</text
+            >
+          {/each}
+          {#if interaction.activeTarget}
+            <!--
             Bar chart crosshair direction depends on orientation:
             - Vertical bars: vertical crosshair through the active bar's x position.
             - Horizontal bars: horizontal crosshair through the active bar's y position.
             This is intentionally different from line/area charts which always draw a
             vertical crosshair.
           -->
-          {#if orientation === 'vertical'}
-            <line
-              class="cinder-bar-chart__crosshair"
-              x1={interaction.activeTarget.x}
-              x2={interaction.activeTarget.x}
-              y1="0"
-              y2={model.geometry.plotHeight}
-              aria-hidden="true"
-            />
-          {:else}
-            <line
-              class="cinder-bar-chart__crosshair"
-              x1="0"
-              x2={model.geometry.plotWidth}
-              y1={interaction.activeTarget.y}
-              y2={interaction.activeTarget.y}
-              aria-hidden="true"
-            />
+            {#if orientation === 'vertical'}
+              <line
+                class="cinder-bar-chart__crosshair"
+                x1={interaction.activeTarget.x}
+                x2={interaction.activeTarget.x}
+                y1="0"
+                y2={model.geometry.plotHeight}
+                aria-hidden="true"
+              />
+            {:else}
+              <line
+                class="cinder-bar-chart__crosshair"
+                x1="0"
+                x2={model.geometry.plotWidth}
+                y1={interaction.activeTarget.y}
+                y2={interaction.activeTarget.y}
+                aria-hidden="true"
+              />
+            {/if}
           {/if}
-        {/if}
-        {#if model.targets.length > 0}
-          <rect
-            class="cinder-bar-chart__hit-surface"
-            role="presentation"
-            width={model.geometry.plotWidth}
-            height={model.geometry.plotHeight}
-            onpointermove={(event) => interaction.activateByPointer(event, model.targets)}
-            onpointerleave={() => interaction.clearPointerTarget()}
-          />
-          {#if keyboardEnabled}
-            {#each model.targets as target (target.id)}
-              <!--
+          {#if model.targets.length > 0}
+            <rect
+              class="cinder-bar-chart__hit-surface"
+              role="presentation"
+              width={model.geometry.plotWidth}
+              height={model.geometry.plotHeight}
+              onpointermove={(event) => interaction.activateByPointer(event, model.targets)}
+              onpointerleave={() => interaction.clearPointerTarget()}
+            />
+            {#if keyboardEnabled}
+              {#each model.targets as target (target.id)}
+                <!--
                 Bar chart uses rect focus targets centered on each bar, not circle targets.
                 Circles are suitable for point-based charts (line/area); rects match the
                 bar geometry and produce better hit areas for bar-shaped data points.
               -->
-              <rect
-                class="cinder-bar-chart__focus-target"
-                x={(target.x ?? 0) - 6}
-                y={(target.y ?? 0) - 6}
-                width="12"
-                height="12"
-                tabindex="0"
-                role="button"
-                data-cinder-target-id={target.id}
-                data-cinder-series-id={target.seriesId}
-                data-cinder-focus-ring-active={barFocusRing && focusRingTarget?.id === target.id
-                  ? 'true'
-                  : undefined}
-                aria-label={`${target.seriesLabel}, ${target.xLabel}, ${target.valueLabel}`}
-                aria-describedby={interaction.activeTarget?.id === target.id
-                  ? `${rootId}-tooltip`
-                  : undefined}
-                onfocus={() => handleTargetFocus(target)}
-                onblur={handleTargetBlur}
-                onkeydown={handleTargetKeydown}
-              />
-            {/each}
+                <rect
+                  class="cinder-bar-chart__focus-target"
+                  x={(target.x ?? 0) - 6}
+                  y={(target.y ?? 0) - 6}
+                  width="12"
+                  height="12"
+                  tabindex="0"
+                  role="button"
+                  data-cinder-target-id={target.id}
+                  data-cinder-series-id={target.seriesId}
+                  data-cinder-focus-ring-active={barFocusRing && focusRingTarget?.id === target.id
+                    ? 'true'
+                    : undefined}
+                  aria-label={`${target.seriesLabel}, ${target.xLabel}, ${target.valueLabel}`}
+                  aria-describedby={interaction.activeTarget?.id === target.id
+                    ? `${rootId}-tooltip`
+                    : undefined}
+                  onfocus={() => handleTargetFocus(target)}
+                  onblur={handleTargetBlur}
+                  onkeydown={handleTargetKeydown}
+                />
+              {/each}
+            {/if}
           {/if}
-        {/if}
-        {#if barFocusRing}
-          <g class="cinder-bar-chart__focus-ring-layer" aria-hidden="true">
-            <rect
-              class="cinder-bar-chart__focus-ring-halo"
-              x={barFocusRing.x}
-              y={barFocusRing.y}
-              width={barFocusRing.width}
-              height={barFocusRing.height}
-              rx={barFocusRing.radius}
-            />
-            <rect
-              class="cinder-bar-chart__focus-ring"
-              x={barFocusRing.x}
-              y={barFocusRing.y}
-              width={barFocusRing.width}
-              height={barFocusRing.height}
-              rx={barFocusRing.radius}
-            />
-          </g>
-        {/if}
-      </g>
+          {#if barFocusRing}
+            <g class="cinder-bar-chart__focus-ring-layer" aria-hidden="true">
+              <rect
+                class="cinder-bar-chart__focus-ring-halo"
+                x={barFocusRing.x}
+                y={barFocusRing.y}
+                width={barFocusRing.width}
+                height={barFocusRing.height}
+                rx={barFocusRing.radius}
+              />
+              <rect
+                class="cinder-bar-chart__focus-ring"
+                x={barFocusRing.x}
+                y={barFocusRing.y}
+                width={barFocusRing.width}
+                height={barFocusRing.height}
+                rx={barFocusRing.radius}
+              />
+            </g>
+          {/if}
+        </g>
+      {/if}
     </svg>
     {#if interaction.activeTarget}<div
         id="{rootId}-tooltip"

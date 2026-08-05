@@ -415,6 +415,38 @@ test.describe('chart SVG focus rings', () => {
         await assertVisibleRing(root, chart, mode === 'forced-colors');
       });
     }
+
+    test(`${chart.slug}: keyboard Tab skips the aria-hidden SVG in a loading chart`, async ({
+      page,
+    }) => {
+      await page.goto(routeFor(chart), { waitUntil: 'load' });
+      await page.waitForSelector('#example-mount-loading', { state: 'visible', timeout: 20_000 });
+      await page.waitForLoadState('networkidle');
+
+      const loadingRoot = page.locator(`#example-mount-loading .${chart.rootClass}`).first();
+      await expect(loadingRoot).toBeVisible();
+      const loadingSvg = loadingRoot.locator('svg').first();
+      await expect(loadingSvg).toHaveAttribute('aria-hidden', 'true');
+      // The whole plot subtree — including the tabindex="0" focus targets — is
+      // gated behind the same guard as <title>, so none exist in the DOM at all
+      // while loading.
+      await expect(loadingRoot.locator(`.${chart.targetClass}`)).toHaveCount(0);
+
+      await insertSentinelBeforeChartViewport(loadingRoot, chart);
+      const sentinel = page.locator('[data-chart-focus-sentinel]').first();
+      await sentinel.focus();
+      await expect(sentinel).toBeFocused();
+
+      await page.keyboard.press('Tab');
+
+      const focusedInsideHiddenSvg = await loadingSvg.evaluate((svg) =>
+        svg.contains(document.activeElement),
+      );
+      expect(
+        focusedInsideHiddenSvg,
+        `${chart.slug}: Tab must not land inside the aria-hidden svg`,
+      ).toBe(false);
+    });
   }
 
   test('programmatic area-chart focus updates tooltip state without rendering the keyboard ring', async ({
