@@ -211,6 +211,7 @@ export type { CommandItemProps } from './components/command-item/index.ts';
 
 export { default as CommandMenu, detectTrigger } from './components/command-menu/index.ts';
 export type {
+  CommandMenuCompletion,
   CommandMenuProps,
   CommandMenuSelection,
   CommandMenuState,

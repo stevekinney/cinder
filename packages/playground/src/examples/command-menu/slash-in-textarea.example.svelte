@@ -5,7 +5,11 @@
 
 <script lang="ts">
   import { CommandItem } from '@lostgradient/cinder/command-item';
-  import { CommandMenu, detectTrigger } from '@lostgradient/cinder/command-menu';
+  import {
+    CommandMenu,
+    detectTrigger,
+    type CommandMenuCompletion,
+  } from '@lostgradient/cinder/command-menu';
   import { Textarea } from '@lostgradient/cinder/textarea';
 
   let { mountIdPrefix }: { mountIdPrefix?: string } = $props();
@@ -77,6 +81,25 @@
       caretIndex = nextCaretIndex;
     });
   }
+
+  // Ghost-text acceptance completes the typed query in place — it does not
+  // select/insert the command. `remainder` is already cased to match the
+  // active item's value, so it's appended as-is rather than replacing the
+  // whole token with `detail.value` (which would normalize the user's own
+  // typed casing).
+  function completeGhostText(detail: CommandMenuCompletion) {
+    if (!anchor || !triggerRange) return;
+
+    value = `${value.slice(0, triggerRange.end)}${detail.remainder}${value.slice(triggerRange.end)}`;
+    const nextCaretIndex = triggerRange.end + detail.remainder.length;
+    query = detail.value;
+    triggerRange = { start: triggerRange.start, end: nextCaretIndex };
+
+    queueMicrotask(() => {
+      anchor?.setSelectionRange(nextCaretIndex, nextCaretIndex);
+      caretIndex = nextCaretIndex;
+    });
+  }
 </script>
 
 <div style="display: grid; gap: var(--cinder-space-3); max-inline-size: 42rem;">
@@ -87,7 +110,7 @@
     bind:value
     aria-controls={open ? listboxId : undefined}
     aria-activedescendant={open ? activeItemId : undefined}
-    aria-autocomplete="list"
+    aria-autocomplete="both"
     onfocus={(event) => syncTrigger(event.currentTarget as HTMLTextAreaElement)}
     oninput={(event) => syncTrigger(event.currentTarget as HTMLTextAreaElement)}
     onclick={(event) => syncTrigger(event.currentTarget as HTMLTextAreaElement)}
@@ -106,6 +129,7 @@
   {caretIndex}
   label="Slash commands"
   onSelect={(selection) => selectCommand(selection.value)}
+  onComplete={completeGhostText}
   onDismiss={() => {
     open = false;
     query = '';

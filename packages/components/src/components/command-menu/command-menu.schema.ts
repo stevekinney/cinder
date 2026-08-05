@@ -14,7 +14,8 @@ const schema = {
     },
     caretIndex: {
       type: 'number',
-      description: 'Caret offset within the anchor value.',
+      description:
+        "Caret offset within the anchor value. Optional — when omitted, it's\nderived from the anchor's live `selectionEnd`. Consumers that already\ntrack trigger-relative caret state (e.g. from `detectTrigger`) may keep\npassing it explicitly; the derivation exists for hosts that don't need\nanything more precise than \"where the caret currently is.\"",
     },
     query: {
       type: 'string',
@@ -47,7 +48,6 @@ const schema = {
     },
   },
   additionalProperties: false,
-  required: ['caretIndex'],
   metadata: {
     unsupportedProps: [
       {
@@ -66,6 +66,12 @@ const schema = {
         reason: 'function-or-snippet',
         required: true,
         description: 'Render command items for the current query.',
+      },
+      {
+        name: 'onComplete',
+        reason: 'function-or-snippet',
+        description:
+          'Invoked when the user accepts inline ghost-text completion. Passing this\nprop is what enables the feature — omit it and no ghost text ever\nrenders. See `command-menu.a11y.md` for the full keyboard model.',
       },
       {
         name: 'onDismiss',

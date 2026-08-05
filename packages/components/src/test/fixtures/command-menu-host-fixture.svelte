@@ -3,19 +3,33 @@
   import CommandItem from '../../components/command-item/command-item.svelte';
   import CommandMenu from '../../components/command-menu/command-menu.svelte';
   import { detectTrigger } from '../../components/command-menu/command-menu-trigger.ts';
+  import type { CommandMenuCompletion } from '../../components/command-menu/command-menu.types.ts';
 
   type FieldKind = 'input' | 'textarea';
 
   type Props = {
     fieldKind?: FieldKind;
+    /**
+     * Pass `onComplete` to the underlying `<CommandMenu>` at all — the
+     * feature's own opt-in switch. Defaults to `false` so every pre-existing
+     * test using this fixture keeps its single-press Escape-closes behavior;
+     * ghost-text tests opt in explicitly.
+     */
+    ghostTextEnabled?: boolean;
+    /** Force a caretIndex prop instead of relying on live-selection derivation. */
+    explicitCaretIndex?: boolean;
     onSelected?: (value: string, query: string) => void;
     onDismissed?: () => void;
+    onCompleted?: (detail: CommandMenuCompletion) => void;
   };
 
   const props: Props = $props();
   const fieldKind = untrack(() => props.fieldKind) ?? 'textarea';
+  const ghostTextEnabled = $derived(props.ghostTextEnabled ?? false);
+  const explicitCaretIndex = $derived(props.explicitCaretIndex ?? true);
   const onSelected = $derived(props.onSelected ?? (() => {}));
   const onDismissed = $derived(props.onDismissed ?? (() => {}));
+  const onCompleted = $derived(props.onCompleted ?? (() => {}));
 
   const commands = [
     { value: 'alpha', label: 'Alpha' },
@@ -65,6 +79,21 @@
     query = '';
     triggerRange = null;
   }
+
+  function completeGhostText(detail: CommandMenuCompletion) {
+    onCompleted(detail);
+    if (!anchor || !triggerRange) return;
+    value = `${value.slice(0, triggerRange.end)}${detail.remainder}${value.slice(triggerRange.end)}`;
+    const nextCaretIndex = triggerRange.end + detail.remainder.length;
+    query = detail.value;
+    triggerRange = { start: triggerRange.start, end: nextCaretIndex };
+    caretIndex = nextCaretIndex;
+
+    const currentAnchor = anchor;
+    queueMicrotask(() => {
+      currentAnchor.setSelectionRange(nextCaretIndex, nextCaretIndex);
+    });
+  }
 </script>
 
 {#if fieldKind === 'textarea'}
@@ -101,8 +130,9 @@
   bind:open
   bind:query
   {anchor}
-  {caretIndex}
+  {...explicitCaretIndex ? { caretIndex } : {}}
   onSelect={(selection) => selectCommand(selection.value)}
+  {...ghostTextEnabled ? { onComplete: completeGhostText } : {}}
   onDismiss={() => {
     open = false;
     query = '';

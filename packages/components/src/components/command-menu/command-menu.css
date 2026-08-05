@@ -44,4 +44,30 @@
     font-size: var(--cinder-text-sm);
     text-align: center;
   }
+
+  /* Ghost-text inline completion. `aria-hidden`, positioned via a mirrored
+   * text measurement (see caret-rect.svelte.ts) rather than laid out in
+   * normal flow — see command-menu.a11y.md decision (a). Consumes
+   * `cinder-_floating-surface` for its shared `position: fixed` +
+   * `z-index` (the check-primitive-composition guard requires that class
+   * for anything with that pairing rather than a hand-rolled one), then
+   * strips the panel chrome that class also brings — a ghost span is bare
+   * text, not a bordered/backgrounded surface. */
+  .cinder-_floating-surface.cinder-command-menu__ghost {
+    box-sizing: content-box;
+    max-block-size: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+    color: var(--cinder-text-disabled);
+    white-space: pre;
+    pointer-events: none;
+  }
+
+  .cinder-command-menu__ghost[data-cinder-position-ready='false'] {
+    visibility: hidden;
+  }
 }
