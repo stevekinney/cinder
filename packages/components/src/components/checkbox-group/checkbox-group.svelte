@@ -41,11 +41,12 @@
   }: CheckboxGroupProps = $props();
   const descriptionId = $derived(describeId(groupId, !!description));
   const errId = $derived(buildErrorId(groupId, !!error));
-  // Compose the group's own description/error ids with any consumer-forwarded
-  // aria-describedby (arriving via `rest`) so a real consumer value is never
-  // silently clobbered by this component's own (possibly undefined) computed
-  // value — the fieldset renders `aria-describedby={describedBy}` after
-  // `{...rest}`, and Svelte's spread-merge lets a later `undefined` win.
+  // Compose the group's own description/error ids with a consumer-supplied
+  // aria-describedby (destructured above, not left in `rest`) so a real
+  // consumer value is never silently clobbered by this component's own
+  // (possibly undefined) computed value — the fieldset renders
+  // `aria-describedby={describedBy}` after `{...rest}`, and Svelte's
+  // spread-merge lets a later `undefined` win.
   const describedBy = $derived(composeDescribedBy(descriptionId, errId, consumerDescribedBy));
 
   // Warn once when no accessible group name is provided. The `hasWarned` flag

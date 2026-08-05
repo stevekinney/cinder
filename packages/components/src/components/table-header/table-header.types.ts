@@ -17,14 +17,23 @@ import type { HTMLAttributes } from 'svelte/elements';
  */
 export type TableHeaderSelectionProps =
   | {
-      /** Checked state for the select-all checkbox. */
+      /**
+       * Checked state for the select-all checkbox. Required together with
+       * `someSelected` and `onSelectAll` when `Table.selectable` is true.
+       */
       allSelected: boolean;
       /**
        * When true and `allSelected` is false, the select-all checkbox renders as indeterminate.
        * The browser exposes that as `aria-checked="mixed"` to assistive tech.
+       * Required together with `allSelected` and `onSelectAll` when
+       * `Table.selectable` is true.
        */
       someSelected: boolean;
-      /** Called when the user activates the select-all checkbox. */
+      /**
+       * Called when the user activates the select-all checkbox. Required
+       * together with `allSelected` and `someSelected` when `Table.selectable`
+       * is true.
+       */
       onSelectAll: (next: boolean) => void;
     }
   | {

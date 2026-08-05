@@ -15,12 +15,13 @@ const schema = {
     },
     allSelected: {
       type: 'boolean',
-      description: 'Checked state for the select-all checkbox.',
+      description:
+        'Checked state for the select-all checkbox. Required together with\n`someSelected` and `onSelectAll` when `Table.selectable` is true.',
     },
     someSelected: {
       type: 'boolean',
       description:
-        'When true and `allSelected` is false, the select-all checkbox renders as indeterminate.\nThe browser exposes that as `aria-checked="mixed"` to assistive tech.',
+        'When true and `allSelected` is false, the select-all checkbox renders as indeterminate.\nThe browser exposes that as `aria-checked="mixed"` to assistive tech.\nRequired together with `allSelected` and `onSelectAll` when\n`Table.selectable` is true.',
     },
   },
   additionalProperties: false,
@@ -35,7 +36,8 @@ const schema = {
       {
         name: 'onSelectAll',
         reason: 'function-or-snippet',
-        description: 'Called when the user activates the select-all checkbox.',
+        description:
+          'Called when the user activates the select-all checkbox. Required\ntogether with `allSelected` and `someSelected` when `Table.selectable`\nis true.',
       },
     ],
   },
