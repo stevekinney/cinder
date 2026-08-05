@@ -68,7 +68,7 @@ describe('scoped theme tokens', () => {
       '--cinder-bg': 'oklch(15% 0.035 245)',
       '--cinder-surface': 'oklch(21% 0.04 245)',
       '--cinder-surface-raised': 'oklch(28% 0.045 245)',
-      '--cinder-surface-hover': 'color-mix(in oklch, var(--cinder-surface), oklch(100% 0 0) 3%)',
+      '--cinder-surface-hover': 'color-mix(in oklch, var(--cinder-surface), oklch(100% 0 0) 2.5%)',
       '--cinder-text': 'oklch(92% 0.02 245)',
       '--cinder-text-muted': 'oklch(82% 0.02 245)',
       '--cinder-border': 'oklch(40% 0.05 245)',
@@ -92,6 +92,11 @@ describe('scoped theme tokens', () => {
       '--cinder-scrollbar-thumb': 'oklch(100% 0 0 / 0.45)',
       '--cinder-scrollbar-thumb-hover': 'oklch(100% 0 0 / 0.65)',
       '--cinder-ring-color': 'oklch(from var(--cinder-accent) 0.7 0.14 h)',
+      // Pin the offset color too: it is the band painted BETWEEN the control and
+      // the ring, and it moved from --cinder-bg to --cinder-surface-raised so it
+      // stops painting a dark moat on the widened light ramp. A scoped theme that
+      // kept the old value would silently reintroduce that moat.
+      '--cinder-ring-offset-color': 'var(--cinder-surface-raised)',
       '--cinder-chart-series-1': 'oklch(58% 0.089 205)',
       '--cinder-overlay-backdrop': 'oklch(8% 0.02 245 / 0.65)',
     });
@@ -111,10 +116,10 @@ describe('scoped theme tokens', () => {
 
     expectDeclarations(lightBlock, {
       'color-scheme': 'light',
-      '--cinder-bg': 'oklch(95% 0.01 245)',
-      '--cinder-surface': 'oklch(98% 0.008 245)',
-      '--cinder-surface-raised': 'oklch(100% 0.006 245)',
-      '--cinder-surface-hover': 'color-mix(in oklch, var(--cinder-surface), oklch(0% 0 0) 3%)',
+      '--cinder-bg': 'oklch(92.1% 0.014 245)',
+      '--cinder-surface': 'oklch(96.2% 0.01 245)',
+      '--cinder-surface-raised': 'oklch(100% 0 245)',
+      '--cinder-surface-hover': 'color-mix(in oklch, var(--cinder-surface), oklch(0% 0 0) 2.5%)',
       '--cinder-text': 'oklch(20% 0.018 245)',
       '--cinder-text-muted': 'oklch(32% 0.014 245)',
       '--cinder-border': 'oklch(79% 0.013 245)',
@@ -129,7 +134,7 @@ describe('scoped theme tokens', () => {
       '--cinder-danger-contrast': 'oklch(100% 0 0)',
       '--cinder-danger-hover': 'oklch(42% 0.171 25)',
       '--cinder-danger-active': 'oklch(35% 0.142 25)',
-      '--cinder-color-danger-bg': 'oklch(96% 0.04 25)',
+      '--cinder-color-danger-bg': 'oklch(94.5% 0.026 25)',
       '--cinder-color-danger-fg': 'oklch(42% 0.16 25)',
       '--cinder-color-danger-border': 'oklch(80% 0.06 25)',
       '--cinder-color-checker-base': '#fff',
@@ -138,6 +143,7 @@ describe('scoped theme tokens', () => {
       '--cinder-scrollbar-thumb': 'oklch(0% 0 0 / 0.45)',
       '--cinder-scrollbar-thumb-hover': 'oklch(0% 0 0 / 0.65)',
       '--cinder-ring-color': 'oklch(from var(--cinder-accent) 0.55 0.16 h)',
+      '--cinder-ring-offset-color': 'var(--cinder-surface-raised)',
       '--cinder-chart-series-1': 'oklch(33% 0.121 8)',
       '--cinder-overlay-backdrop': 'oklch(20% 0.03 245 / 0.5)',
     });

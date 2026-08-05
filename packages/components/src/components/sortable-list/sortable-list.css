@@ -50,7 +50,7 @@
     opacity: 0.4;
     outline: 2px dashed var(--cinder-border-muted);
     outline-offset: -1px;
-    border-radius: var(--cinder-radius-md, 4px);
+    border-radius: var(--cinder-radius-md);
     box-shadow: none;
     background: transparent;
   }
@@ -147,7 +147,7 @@
     z-index: var(--cinder-z-drag-preview);
     pointer-events: none;
     box-shadow: var(--cinder-shadow-md);
-    border-radius: var(--cinder-radius-md, 4px);
+    border-radius: var(--cinder-radius-md);
     /* Subtle rotation and scale to distinguish preview from the placeholder. */
     transform: rotate(2deg) scale(1.02);
     transform-origin: center top;

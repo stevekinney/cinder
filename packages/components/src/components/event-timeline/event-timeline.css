@@ -211,6 +211,9 @@
   .cinder-event-timeline__cluster-trigger:focus-visible {
     outline: var(--cinder-ring-width) solid transparent;
     outline-offset: 2px;
+    /* Ring replaces the border while focused rather than stacking on it — the two
+       together read as one heavier shape than either was designed to be. */
+    border-color: transparent;
     box-shadow: var(--_cinder-focus-ring-shadow);
   }
 
