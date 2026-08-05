@@ -92,7 +92,6 @@ allowedGridCounts.set('description-list/description-list.css', 4);
 allowedGridCounts.set('feature-section/feature-section.css', 8);
 allowedGridCounts.set('footer/footer.css', 2);
 allowedGridCounts.set('form-section/form-section.css', 7);
-allowedGridCounts.set('grid/grid.css', 2);
 allowedGridCounts.set('kanban-board/kanban-board.css', 5);
 // The nested submenu's master/detail column split adds one tracked match
 // alongside the top-level section grid and the existing trigger/panel split.

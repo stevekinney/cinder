@@ -1,6 +1,5 @@
 /// <reference lib="dom" />
-import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
-import { readFileSync } from 'node:fs';
+import { describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -11,70 +10,7 @@ setupHappyDom();
 
 const { render } = await import('@testing-library/svelte');
 const { default: BentoGrid } = await import('./bento-grid.svelte');
-const { createRawSnippet, tick } = await import('svelte');
-
-class CapturingResizeObserver implements ResizeObserver {
-  static instances: CapturingResizeObserver[] = [];
-
-  readonly callback: ResizeObserverCallback;
-  observed: Element | undefined;
-
-  constructor(callback: ResizeObserverCallback) {
-    this.callback = callback;
-    CapturingResizeObserver.instances.push(this);
-  }
-
-  observe(target: Element, _options?: ResizeObserverOptions): void {
-    this.observed = target;
-  }
-
-  unobserve(_target: Element): void {}
-
-  disconnect(): void {}
-
-  trigger(width: number): void {
-    if (!this.observed) return;
-
-    const originalGetBoundingClientRect = this.observed.getBoundingClientRect;
-    this.observed.getBoundingClientRect = () => ({ width }) as DOMRect;
-    try {
-      this.callback(
-        [
-          {
-            borderBoxSize: [{ inlineSize: width }],
-            contentRect: { width },
-            target: this.observed,
-          } as unknown as ResizeObserverEntry,
-        ],
-        this as unknown as ResizeObserver,
-      );
-    } finally {
-      this.observed.getBoundingClientRect = originalGetBoundingClientRect;
-    }
-  }
-}
-
-const originalResizeObserver = globalThis.ResizeObserver;
-
-beforeAll(() => {
-  Object.defineProperty(globalThis, 'ResizeObserver', {
-    configurable: true,
-    value: CapturingResizeObserver,
-    writable: true,
-  });
-});
-
-beforeEach(() => {
-  CapturingResizeObserver.instances = [];
-});
-
-afterAll(() => {
-  Object.defineProperty(globalThis, 'ResizeObserver', {
-    configurable: true,
-    value: originalResizeObserver,
-    writable: true,
-  });
-});
+const { createRawSnippet } = await import('svelte');
 
 function textSnippet(text: string) {
   return createRawSnippet(() => ({
@@ -128,59 +64,6 @@ describe('BentoGrid', () => {
     expect(root).not.toBeNull();
     expect([...root.children].every((child) => child.tagName === 'LI')).toBe(true);
     expect(root.style.alignItems).toBe('start');
-  });
-
-  test('marks narrow grids from the public grid element width', async () => {
-    const { container } = render(BentoGrid, {
-      props: { children: textSnippet('content') },
-    });
-    await tick();
-
-    const root = container.querySelector('.cinder-bento-grid') as HTMLElement;
-    const observer = CapturingResizeObserver.instances.find(
-      (instance) => instance.observed === root,
-    );
-    expect(observer?.observed).toBe(root);
-    expect(root.hasAttribute('data-cinder-wide')).toBe(false);
-
-    observer?.trigger(640);
-    await tick();
-    expect(root.hasAttribute('data-cinder-narrow')).toBe(true);
-    expect(root.hasAttribute('data-cinder-wide')).toBe(false);
-
-    observer?.trigger(1024);
-    await tick();
-    expect(root.hasAttribute('data-cinder-narrow')).toBe(false);
-    expect(root.hasAttribute('data-cinder-wide')).toBe(true);
-  });
-
-  test('measures the public grid element before the first resize observer callback', async () => {
-    const originalGetBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
-    HTMLElement.prototype.getBoundingClientRect = () =>
-      ({
-        width: 640,
-        height: 0,
-        top: 0,
-        right: 640,
-        bottom: 0,
-        left: 0,
-        x: 0,
-        y: 0,
-        toJSON: () => ({}),
-      }) as DOMRect;
-
-    try {
-      const { container } = render(BentoGrid, {
-        props: { children: textSnippet('content') },
-      });
-      await tick();
-
-      const root = container.querySelector('.cinder-bento-grid') as HTMLElement;
-      expect(root.hasAttribute('data-cinder-narrow')).toBe(true);
-      expect(root.hasAttribute('data-cinder-wide')).toBe(false);
-    } finally {
-      HTMLElement.prototype.getBoundingClientRect = originalGetBoundingClientRect;
-    }
   });
 
   test('uses default columns and omits optional layout properties', () => {
@@ -268,12 +151,22 @@ describe('BentoGrid', () => {
     expect(typeof module.default.Cell).toBe('function');
   });
 
-  test('collapse CSS uses measured narrow state without a viewport media query', () => {
-    const css = readFileSync(new URL('./bento-grid.css', import.meta.url), 'utf8');
+  test('relies on the imported cinder-grid container query, not a JS-measured attribute or its own rule', async () => {
+    const css = await Bun.file(new URL('./bento-grid.css', import.meta.url)).text();
     expect(css).toContain("@import '../grid/grid.css';");
-    expect(css).toContain('[data-cinder-collapse][data-cinder-narrow]');
-    expect(css).not.toContain('display: grid');
-    expect(css).toContain('> .cinder-bento-cell');
+    expect(css).not.toContain('data-cinder-narrow');
+    // The rendered root carries both `cinder-grid` and `cinder-bento-grid`,
+    // so grid.css's own `.cinder-grid[data-cinder-collapse] > *` rule already
+    // spans every direct `.cinder-bento-cell` child — bento-grid.css does not
+    // need (and must not duplicate) a collapse rule of its own.
+    expect(css).not.toContain('@container');
+    expect(css).not.toContain('data-cinder-collapse');
     expect(css).not.toMatch(/@media[^{]*(?:min-width|max-width)/);
+  });
+
+  test('a direct bento cell spans the full row at the container breakpoint via the shared Grid rule', async () => {
+    const gridCss = await Bun.file(new URL('../grid/grid.css', import.meta.url)).text();
+    expect(gridCss).toContain('.cinder-grid[data-cinder-collapse] > * {');
+    expect(gridCss).toContain('grid-column: 1 / -1;');
   });
 });
