@@ -720,6 +720,64 @@ describe('Combobox keyboard', () => {
     await fireEvent.keyDown(input, { key: 'Escape' });
     expect(container.querySelector('[role="listbox"]')).toBeNull();
   });
+
+  test('ArrowDown skips a disabled option instead of stopping on it', async () => {
+    const optionsWithDisabled = [
+      { value: 'apple', label: 'Apple' },
+      { value: 'apricot', label: 'Apricot', disabled: true },
+      { value: 'banana', label: 'Banana' },
+    ];
+    const { container } = render(Combobox, { id: 'fruit', options: optionsWithDisabled });
+    const input = container.querySelector(`#fruit`) as HTMLInputElement;
+    input.focus();
+    await fireEvent.keyDown(input, { key: 'ArrowDown' });
+    await waitFor(() => {
+      const active = container.querySelector('[role="option"][data-cinder-active]');
+      expect(active?.textContent?.trim()).toBe('Apple');
+    });
+    // A second ArrowDown must land on Banana, skipping the disabled Apricot
+    // row entirely rather than dead-ending back at the first option.
+    await fireEvent.keyDown(input, { key: 'ArrowDown' });
+    await waitFor(() => {
+      const active = container.querySelector('[role="option"][data-cinder-active]');
+      expect(active?.textContent?.trim()).toBe('Banana');
+    });
+  });
+
+  test('ArrowUp from the top wraps to the last enabled option, skipping a trailing disabled option', async () => {
+    const optionsWithDisabled = [
+      { value: 'apple', label: 'Apple' },
+      { value: 'apricot', label: 'Apricot' },
+      { value: 'banana', label: 'Banana', disabled: true },
+    ];
+    const { container } = render(Combobox, { id: 'fruit', options: optionsWithDisabled });
+    const input = container.querySelector(`#fruit`) as HTMLInputElement;
+    input.focus();
+    await fireEvent.keyDown(input, { key: 'ArrowUp' });
+    await waitFor(() => {
+      const active = container.querySelector('[role="option"][data-cinder-active]');
+      expect(active?.textContent?.trim()).toBe('Apricot');
+    });
+  });
+
+  test('hovering a disabled option does not clear the keyboard-active option', async () => {
+    const optionsWithDisabled = [
+      { value: 'apple', label: 'Apple' },
+      { value: 'apricot', label: 'Apricot', disabled: true },
+    ];
+    const { container } = render(Combobox, { id: 'fruit', options: optionsWithDisabled });
+    const input = container.querySelector(`#fruit`) as HTMLInputElement;
+    input.focus();
+    await fireEvent.keyDown(input, { key: 'ArrowDown' });
+    await waitFor(() => {
+      const active = container.querySelector('[role="option"][data-cinder-active]');
+      expect(active?.textContent?.trim()).toBe('Apple');
+    });
+    const disabledOption = await findOption('Apricot');
+    await fireEvent.mouseEnter(disabledOption);
+    const active = container.querySelector('[role="option"][data-cinder-active]');
+    expect(active?.textContent?.trim()).toBe('Apple');
+  });
 });
 
 describe('Combobox selection', () => {

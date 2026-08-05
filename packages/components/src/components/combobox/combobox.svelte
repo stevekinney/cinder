@@ -202,6 +202,15 @@
     return filteredOptions.findIndex((option) => !option.disabled);
   }
 
+  /** Indexes of every non-disabled option in `filteredOptions`, in order. */
+  function enabledFilteredIndexes(): number[] {
+    const indexes: number[] = [];
+    filteredOptions.forEach((option, index) => {
+      if (!option.disabled) indexes.push(index);
+    });
+    return indexes;
+  }
+
   /**
    * Sets the active option by its position in `filteredOptions`, translating
    * to the shared `commandList`'s id-based `activeItemId`. `commandList`
@@ -211,19 +220,53 @@
    * `commandList.enabledIds`. `activeItemId` is `$derived`, so once
    * registration catches up it re-resolves to the id set here; no explicit
    * ordering between the two is required.
+   *
+   * `commandList.activeItemId` only ever resolves to an *enabled* id (see
+   * `enabledIds` in create-command-list-state.svelte.ts) — passing a disabled
+   * option's index here would silently collapse `activeItemId` back to
+   * `null` instead of "sticking" on it. Callers must only pass indexes from
+   * `enabledFilteredIndexes()`/`firstEnabledFilteredIndex()`, never a raw
+   * disabled index.
    */
   function setActiveIndex(index: number): void {
     if (index < 0) commandList.resetActiveItem();
     else commandList.setActiveById(`${id}-option-${index}`);
   }
 
+  /**
+   * Moves the active option to the next/previous *enabled* option, wrapping
+   * around. Disabled options are skipped entirely rather than becoming
+   * active and dead-ending navigation (see `setActiveIndex`).
+   */
+  function moveActive(direction: 1 | -1): void {
+    const indexes = enabledFilteredIndexes();
+    if (indexes.length === 0) return;
+    if (activeIndex < 0) {
+      setActiveIndex(direction === 1 ? indexes[0]! : indexes.at(-1)!);
+      return;
+    }
+    const currentPosition = indexes.indexOf(activeIndex);
+    const nextPosition =
+      currentPosition < 0 ? 0 : (currentPosition + direction + indexes.length) % indexes.length;
+    setActiveIndex(indexes[nextPosition]!);
+  }
+
+  /** Moves the active option to the first/last *enabled* option. */
+  function moveToBoundary(direction: 'start' | 'end'): void {
+    const indexes = enabledFilteredIndexes();
+    setActiveIndex(
+      indexes.length === 0 ? -1 : direction === 'start' ? indexes[0]! : indexes.at(-1)!,
+    );
+  }
+
   /** Live option-list registration so `commandList` can resolve `activeItemId` and scroll the active option into view. */
   $effect(() => {
     const listbox = listboxElement;
     if (!listbox || !listboxVisible) return;
+    const optionNodes = listbox.querySelectorAll<HTMLElement>('[role="option"]');
     commandList.syncItems(
       filteredOptions.flatMap((option, index) => {
-        const node = listbox.querySelectorAll<HTMLElement>('[role="option"]')[index];
+        const node = optionNodes[index];
         return node
           ? [
               {
@@ -380,23 +423,23 @@
       event.preventDefault();
       open = true;
       if (filteredOptions.length === 0) return;
-      setActiveIndex((activeIndex + 1) % filteredOptions.length);
+      moveActive(1);
       hasExplicitNavigation = true;
     } else if (event.key === 'ArrowUp') {
       event.preventDefault();
       open = true;
       if (filteredOptions.length === 0) return;
-      setActiveIndex(activeIndex <= 0 ? filteredOptions.length - 1 : activeIndex - 1);
+      moveActive(-1);
       hasExplicitNavigation = true;
     } else if (event.key === 'Home') {
       if (!open) return;
       event.preventDefault();
-      setActiveIndex(filteredOptions.length > 0 ? 0 : -1);
+      moveToBoundary('start');
       hasExplicitNavigation = true;
     } else if (event.key === 'End') {
       if (!open) return;
       event.preventDefault();
-      setActiveIndex(filteredOptions.length - 1);
+      moveToBoundary('end');
       hasExplicitNavigation = true;
     } else if (event.key === 'Enter' && open) {
       const option = filteredOptions[activeIndex];
@@ -490,6 +533,10 @@
               selectOption(option);
             }}
             onmouseenter={() => {
+              // Disabled options are never active (see `setActiveIndex`) —
+              // guard here so hovering one doesn't clear whatever option is
+              // currently active via keyboard.
+              if (option.disabled) return;
               setActiveIndex(index);
             }}
           >
