@@ -93,9 +93,12 @@ describe('title regex cross-check', () => {
       expect(runtimeTitle).toBe(expectedRuntimeTitle);
       // Parity claim this test actually enforces: the two functions agree on
       // MATCH/NO-MATCH for every case (both null/'Untitled', or both non-null).
-      expect(buildGateTitle === null).toBe(
-        runtimeTitle === 'Untitled' && expectedBuildGateTitle === null,
-      );
+      // A true biconditional, not a one-directional implication — the previous
+      // `&& expectedBuildGateTitle === null` term made the right-hand side
+      // unconditionally `false` whenever `expectedBuildGateTitle` was non-null,
+      // which vacuously passed regardless of `runtimeTitle` and silently
+      // dropped the non-null-implies-non-'Untitled' direction of the check.
+      expect(buildGateTitle === null).toBe(runtimeTitle === 'Untitled');
     });
   }
 
