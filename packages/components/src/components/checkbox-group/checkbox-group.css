@@ -29,15 +29,12 @@
     color: var(--cinder-text-disabled);
   }
 
-  /* When the group is disabled via native fieldset cascade, dim the label.
- * form-field.css styles .cinder-form-field__label via [data-disabled] which
- * is set from the per-Checkbox prop — not from the inherited fieldset state.
- * This companion rule fixes the gap without editing checkbox.css. */
-  .cinder-checkbox-group[disabled] .cinder-form-field__label,
-  .cinder-checkbox-group[disabled] .cinder-checkbox-field__label {
-    color: var(--cinder-text-disabled);
-    cursor: not-allowed;
-  }
+  /* Per-checkbox label dimming (including the fieldset-cascade case where no
+   * individual Checkbox ever receives an explicit `disabled` prop) lives in
+   * checkbox.css's `.cinder-checkbox-field:has(.cinder-checkbox:disabled)`
+   * rule, which matches on the live :disabled pseudo-class rather than this
+   * group's own [disabled] attribute — so it also covers a bare Checkbox
+   * nested in any other disabled ancestor fieldset, not just this one. */
 
   .cinder-checkbox-group__items {
     display: flex;

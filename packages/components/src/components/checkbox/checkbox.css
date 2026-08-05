@@ -198,8 +198,15 @@
     cursor: pointer;
   }
 
+  /* The `[data-disabled]` selectors cover Checkbox's own JS `disabled` prop.
+     The `:has(.cinder-checkbox:disabled)` selectors cover the native fieldset
+     cascade (CheckboxGroup disables descendants via <fieldset disabled> with
+     no JS/context involvement — see checkbox-group.a11y.md's "platform
+     contract"), which reaches the <input> but not this sibling label. */
   .cinder-checkbox-field__label[data-disabled],
-  .cinder-checkbox-field .cinder-form-field__label[data-disabled] {
+  .cinder-checkbox-field .cinder-form-field__label[data-disabled],
+  .cinder-checkbox-field:has(.cinder-checkbox:disabled) .cinder-checkbox-field__label,
+  .cinder-checkbox-field:has(.cinder-checkbox:disabled) .cinder-form-field__label {
     color: var(--cinder-text-disabled);
     cursor: not-allowed;
   }
