@@ -106,26 +106,34 @@ describe('Badge — monochrome affordance', () => {
 
 describe('Badge — subscription state preset', () => {
   const states = [
-    ['active', 'success', 'Active'],
-    ['trialing', 'info', 'Trialing'],
-    ['past-due', 'warning', 'Past due'],
-    ['canceled', 'neutral', 'Canceled'],
-    ['expired', 'danger', 'Expired'],
-    ['refunded', 'neutral', 'Refunded'],
+    ['active', 'success', 'Active', 'lucide-circle-check'],
+    ['trialing', 'info', 'Trialing', 'lucide-clock'],
+    ['past-due', 'warning', 'Past due', 'lucide-triangle-alert'],
+    ['canceled', 'neutral', 'Canceled', 'lucide-circle-x'],
+    ['expired', 'danger', 'Expired', 'lucide-archive'],
+    ['refunded', 'neutral', 'Refunded', 'lucide-undo-2'],
   ] as const;
+  const allIconClasses = states.map(([, , , iconClass]) => iconClass);
 
   test.each(states)(
     'subscriptionState="%s" renders tone, state, icon, and label',
-    async (subscriptionState, variant, label) => {
+    async (subscriptionState, variant, label, iconClass) => {
       const { container } = render(Badge, { subscriptionState });
       const badge = container.querySelector('.cinder-badge');
 
       expect(badge?.getAttribute('data-cinder-subscription-state')).toBe(subscriptionState);
       expect(badge?.getAttribute('data-cinder-variant')).toBe(variant);
-      await waitFor(() =>
-        expect(badge?.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true'),
-      );
+      await waitFor(() => {
+        const matches = badge?.querySelectorAll(`.${iconClass}.cinder-icon-sm`);
+        expect(matches?.length).toBe(1);
+        expect(matches?.[0]?.getAttribute('aria-hidden')).toBe('true');
+      });
       expect(badge?.innerHTML).toContain(label);
+
+      const otherIconClasses = allIconClasses.filter((className) => className !== iconClass);
+      for (const otherIconClass of otherIconClasses) {
+        expect(badge?.querySelectorAll(`.${otherIconClass}`).length).toBe(0);
+      }
     },
   );
 
@@ -156,10 +164,14 @@ describe('Badge — subscription state preset', () => {
     expect(container.querySelector('.cinder-badge svg')?.getAttribute('aria-hidden')).toBe('true');
   });
 
-  test('base Badge module does not statically import subscription icon modules', async () => {
+  test('subscription state icons are sourced from lucide-svelte, not hand-copied path data', async () => {
     const source = await Bun.file(new URL('./badge.svelte', import.meta.url)).text();
-    expect(source).not.toMatch(/import\s+\w+\s+from\s+['"]lucide-svelte\/icons\//);
-    expect(source).not.toContain('{#await');
+    // The hand-copied path-data lookup must be gone entirely — the identifier
+    // shouldn't exist to import, let alone be reachable.
+    expect(source).not.toContain('subscriptionStateIconPaths');
+    expect(source).toMatch(
+      /import\s+CircleCheck\s+from\s+['"]lucide-svelte\/icons\/circle-check['"]/,
+    );
   });
 });
 

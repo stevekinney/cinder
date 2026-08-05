@@ -563,6 +563,58 @@ describe('SecretValueField', () => {
     });
   });
 
+  describe('icons', () => {
+    test('source contains no literal <svg> element — icons are lucide-svelte components', async () => {
+      const source = await Bun.file(new URL('./secret-value-field.svelte', import.meta.url)).text();
+      expect(source).not.toContain('<svg');
+    });
+
+    test('default state renders the lucide eye and copy icons', () => {
+      const { container } = render(SecretValueField, { value: 'abc123', revealAllowed: true });
+      expect(
+        container.querySelectorAll('svg.lucide-eye.cinder-secret-value-field__icon').length,
+      ).toBe(1);
+      expect(
+        container.querySelectorAll('svg.lucide-copy.cinder-secret-value-field__icon').length,
+      ).toBe(1);
+      expect(container.querySelectorAll('svg.lucide-eye-off').length).toBe(0);
+      expect(container.querySelectorAll('svg.lucide-check').length).toBe(0);
+    });
+
+    test('reveal toggle swaps the lucide eye icon for eye-off', async () => {
+      const { container } = render(SecretValueField, { value: 'abc123', revealAllowed: true });
+      const toggle = container.querySelector(
+        '.cinder-secret-value-field__toggle',
+      ) as HTMLButtonElement;
+      await fireEvent.click(toggle);
+      await waitFor(() => {
+        expect(
+          container.querySelectorAll('svg.lucide-eye-off.cinder-secret-value-field__icon').length,
+        ).toBe(1);
+        expect(
+          container.querySelectorAll('svg.lucide-eye.cinder-secret-value-field__icon').length,
+        ).toBe(0);
+      });
+    });
+
+    test('a successful copy swaps the lucide copy icon for check', async () => {
+      mockClipboard();
+      const { container } = render(SecretValueField, { value: 'abc123' });
+      const copyBtn = container.querySelector(
+        '.cinder-secret-value-field__copy',
+      ) as HTMLButtonElement;
+      await fireEvent.click(copyBtn);
+      await waitFor(() => {
+        expect(
+          container.querySelectorAll('svg.lucide-check.cinder-secret-value-field__icon').length,
+        ).toBe(1);
+        expect(
+          container.querySelectorAll('svg.lucide-copy.cinder-secret-value-field__icon').length,
+        ).toBe(0);
+      });
+    });
+  });
+
   describe('CSS snapshot', () => {
     test('CSS file exists and contains cinder-secret-value-field', async () => {
       const { readFileSync } = await import('node:fs');

@@ -39,6 +39,7 @@
     StreamReconnectedBoundary,
   } from './event-stream-viewer.types.ts';
   import { classNames } from '../../utilities/class-names.ts';
+  import { useAnnouncer } from '../../utilities/use-announcer.svelte.ts';
   import CopyButton from '../copy-button/copy-button.svelte';
   import JsonViewer from '../json-viewer/json-viewer.svelte';
   import StatusDot from '../status-dot/status-dot.svelte';
@@ -113,8 +114,10 @@
   // ignores the intermediate scroll events they fire (especially under smooth-scroll).
   let programmaticScroll = false;
 
-  // Live region message for copy-visible announcements
-  let liveMessage = $state('');
+  // Screen reader announcements for copy-visible actions — pass clearDelay
+  // explicitly to preserve the previous 2-second visible window (useAnnouncer's
+  // own default is 1000ms).
+  const announcer = useAnnouncer({ clearDelay: 2000 });
 
   const isEmpty = $derived(!loading && events.length === 0);
 
@@ -254,10 +257,7 @@
     const text = renderedEntries.map(formatRenderedEntryAsText).join('\n');
     if (!onCopyVisible) return;
     onCopyVisible(text);
-    liveMessage = formatCopyVisibleAnnouncement(renderedEntries.length);
-    setTimeout(() => {
-      liveMessage = '';
-    }, 2000);
+    announcer.announce(formatCopyVisibleAnnouncement(renderedEntries.length));
   }
 
   function handleScroll(event: Event) {
@@ -493,6 +493,6 @@
     class="cinder-event-stream-viewer__live-region"
     role="status"
     aria-live="polite"
-    aria-atomic="true">{liveMessage}</span
+    aria-atomic="true">{announcer.message}</span
   >
 </div>
