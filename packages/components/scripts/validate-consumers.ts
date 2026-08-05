@@ -1234,8 +1234,26 @@ async function assertSvelteKitDevSsrRoute(fixtureDirectory: string, label: strin
       );
     }
 
-    await assertSvelteKitClientRoutesHydrate(httpPort, label, ['/chat-layout', '/dev-ssr']);
-
+    // Deliberately NO client-hydration assertion here. This phase owns dev-mode
+    // SSR only — that transform-on-request HTML renders — which the marker check
+    // above proves deterministically.
+    //
+    // Client hydration MUST NOT be asserted against a `vite dev` server. The
+    // fixture sets `optimizeDeps: { noDiscovery: true, holdUntilCrawlEnd: false }`,
+    // so /dev-ssr's nine cinder subpath imports are served as unbundled ESM
+    // through Vite's transform-on-request pipeline. On a cold CI runner that is
+    // a request waterfall of hundreds of sequential module transforms, and any
+    // on-request dep discovery triggers a full page reload that resets the
+    // route's `hydrated` $effect mid-wait. Either mechanism outruns a bounded
+    // wait; both produced 22 red `main` runs between 2026-07-24 and 2026-08-05
+    // against ~100 passes on unchanged code, including a docs-only commit.
+    //
+    // The client JS is identical under dev and prod, so this costs no coverage:
+    // /dev-ssr's hydration — including the ConfirmDialog interaction and focus
+    // restoration — is asserted against the prebuilt adapter-node server in
+    // `runSveltekitFixture`, where dependencies are bundled at build time and
+    // the race cannot exist. Raising the timeout here would mask the waterfall,
+    // not fix it.
     devSsrAssertionsPassed = true;
   } finally {
     devServer.kill();
@@ -1546,7 +1564,16 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
         );
       }
 
-      await assertSvelteKitClientRoutesHydrate(httpPort, label, ['/subpath', '/chat-layout']);
+      // Every client-hydration assertion belongs here, against the prebuilt
+      // adapter-node server — never against the `vite dev` server in
+      // `assertSvelteKitDevSsrRoute` (see the note there). Dependencies are
+      // bundled at build time, so there is no transform waterfall and no
+      // optimizer-triggered reload to race.
+      await assertSvelteKitClientRoutesHydrate(httpPort, label, [
+        '/subpath',
+        '/chat-layout',
+        '/dev-ssr',
+      ]);
 
       // Subpath page
       const subpathResponse = await fetchWithTimeout(
