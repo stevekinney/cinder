@@ -28,7 +28,7 @@
   }
 
   @media (hover: hover) {
-    .cinder-media-controls__button:hover:not(:disabled) {
+    .cinder-media-controls__button:hover:not([aria-disabled='true']) {
       background-color: var(--cinder-surface-raised);
       border-color: var(--cinder-border-strong);
     }
@@ -52,7 +52,7 @@
     }
   }
 
-  .cinder-media-controls__button:disabled {
+  .cinder-media-controls__button[aria-disabled='true'] {
     cursor: not-allowed;
     opacity: 0.5;
   }
