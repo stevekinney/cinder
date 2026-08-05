@@ -21,6 +21,19 @@ import {
 } from './z-index-value-analysis.mjs';
 
 const fallbackFunctionPattern = /(?:var|env|attr)\(/iy;
+const invalidToggleNestedFunctionPattern = /(?:toggle|attr|calc|-webkit-calc)\(/iy;
+const bareCssNumberPattern = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?$/i;
+
+// evaluateStaticLayerNumber() rounds its result to the nearest integer, which
+// is the right behavior for classifying a layer as (near) the banned value
+// but destroys the fractional precision some checks (e.g. random()'s
+// step / 1000 endpoint-snapping tolerance) need. This parses a bare CSS
+// <number> token exactly; anything more complex (calc(), units, functions)
+// is left to the caller's fallback.
+function preciseStaticNumber(text) {
+  const trimmed = text.replaceAll(cssCommentMaskCharacter, ' ').trim();
+  return bareCssNumberPattern.test(trimmed) ? Number(trimmed) : undefined;
+}
 const fallbackResolutionTooComplex = Symbol('fallback-resolution-too-complex');
 const fallbackResolutionWorkLimit = 8_000_000;
 const typedHypotParentLimit = 2_048;
@@ -214,6 +227,17 @@ function trimCssTriviaRange(value, start, end) {
   while (start < end && isCssWhitespaceOrComment(value[start])) start += 1;
   while (end > start && isCssWhitespaceOrComment(value[end - 1])) end -= 1;
   return { start, end };
+}
+
+// CSS Values 5's arbitrary substitution functions allow a fallback (or, for
+// first-valid(), an option) to be wrapped in a `{ ... }` guaranteed-invalid
+// wrapper so it can hold otherwise-invalid top-level tokens. When the whole
+// range is exactly that wrapper, unwrap it so the analyzer sees the actual
+// value instead of the literal braces.
+function unwrapBracedFallbackRange(value, range) {
+  return value[range.start] === '{' && value[range.end - 1] === '}'
+    ? trimCssTriviaRange(value, range.start + 1, range.end - 1)
+    : range;
 }
 
 function consumeResolutionWork(budget, amount) {
@@ -1815,7 +1839,7 @@ function firstValidRuntimeFunctionStaticValidity(
     );
     return (
       group !== undefined &&
-      randomItemGroupOutputOptions(value, group, parenthesisPairs) !== undefined
+      randomItemGroupOutputOptions(frame, value, group, parenthesisPairs) !== undefined
     );
   }
   if (functionName !== 'random') return undefined;
@@ -1955,7 +1979,10 @@ function firstValidBranchValueRanges(value, group, parenthesisPairs) {
   const branchRanges = [];
   let branchStart = group.openIndex + 1;
   const appendBranch = (branchEnd) => {
-    const branchRange = trimCssTriviaRange(value, branchStart, branchEnd);
+    const branchRange = unwrapBracedFallbackRange(
+      value,
+      trimCssTriviaRange(value, branchStart, branchEnd),
+    );
     if (branchRange.start === branchRange.end) return false;
     branchRanges.push(branchRange);
     return true;
@@ -2079,15 +2106,52 @@ function conditionalBranchValueRanges(value, group, parenthesisPairs) {
   return analysis.branchRanges;
 }
 
+function toggleBranchContainsInvalidNestedFunction(value, range) {
+  for (let index = range.start; index < range.end; index += 1) {
+    if (value[index] === '"' || value[index] === "'") {
+      index = quotedStringEnd(value, index);
+      continue;
+    }
+    const urlTokenEnd = unquotedUrlTokenEnd(value, index);
+    if (urlTokenEnd !== undefined) {
+      index = urlTokenEnd;
+      continue;
+    }
+    invalidToggleNestedFunctionPattern.lastIndex = index;
+    const match = invalidToggleNestedFunctionPattern.exec(value);
+    const previousCharacter = value[index - 1];
+    if (
+      match &&
+      !isCssIdentifierCharacter(previousCharacter) &&
+      previousCharacter !== '#' &&
+      previousCharacter !== '@'
+    )
+      return true;
+  }
+  return false;
+}
+
 function toggleBranchValueRanges(value, group, parenthesisPairs) {
   // CSS Values 5 toggle() accepts one or more whole values (`toggle(<whole-value>#)`);
   // a single-argument toggle() is valid and always resolves to that argument.
   const branchRanges = randomItemArgumentRanges(value, group, parenthesisPairs);
-  return branchRanges !== undefined &&
-    branchRanges.length >= 1 &&
-    branchRanges.every((branchRange) => branchRange.start < branchRange.end)
-    ? branchRanges
-    : undefined;
+  if (
+    branchRanges === undefined ||
+    branchRanges.length < 1 ||
+    !branchRanges.every((branchRange) => branchRange.start < branchRange.end)
+  )
+    return undefined;
+  // toggle() may not be nested, nor may it contain attr() or calc() notations
+  // (https://www.w3.org/TR/css-values-5/#toggle-notation): a declaration with
+  // any of those inside a toggle() argument is invalid at parse time and
+  // never applies, so it can never actually select a branch value.
+  if (
+    branchRanges.some((branchRange) =>
+      toggleBranchContainsInvalidNestedFunction(value, branchRange),
+    )
+  )
+    return undefined;
+  return branchRanges;
 }
 
 function rangeIsValidConditionalExpression(frame, value, range, parenthesisPairs) {
@@ -3335,8 +3399,56 @@ function attrHeaderTypeStart(header, identifierEnd) {
   return namespacedNameEnd > identifierEnd + 1 ? namespacedNameEnd : identifierEnd;
 }
 
+// A leading var()/env()/attr() substitution can stand in for the whole
+// <attr-name> (CSS Values 5 allows arbitrary substitution functions anywhere
+// a <declaration-value> is permitted, including here). Returns the index just
+// past its matching close parenthesis, or -1 if the header doesn't start
+// with one.
+function headerLeadingSubstitutionEnd(header) {
+  fallbackFunctionPattern.lastIndex = 0;
+  const match = fallbackFunctionPattern.exec(header);
+  if (!match || match.index !== 0) return -1;
+  let depth = 1;
+  for (let index = match[0].length; index < header.length; index += 1) {
+    const character = header[index];
+    if (character === '"' || character === "'") index = quotedStringEnd(header, index);
+    else if (character === '(') depth += 1;
+    else if (character === ')') {
+      depth -= 1;
+      if (depth === 0) return index + 1;
+    }
+  }
+  return -1;
+}
+
+// <attr-name> is `[ <ns-prefix> ]? <ident-token>` where `<ns-prefix>` is
+// itself `[ <ident-token> | '*' ]? '|'` -- so a *null* namespace (bare `|`
+// with nothing before it, e.g. `|data-layer`) is valid and must not be
+// mistaken for an invalid header. The name may also be a substitution
+// function rather than a literal identifier at all.
+function attrHeaderNameEnd(header) {
+  const leadingSubstitutionEnd = headerLeadingSubstitutionEnd(header);
+  if (leadingSubstitutionEnd !== -1) return leadingSubstitutionEnd;
+  const nameStart = header[0] === '|' ? 1 : 0;
+  const identifierEnd = cssIdentifierTokenEnd(header, nameStart);
+  return identifierEnd > nameStart ? identifierEnd : -1;
+}
+
+function attrTypeSyntaxFromHeader(header, nameEnd) {
+  const attrType = header.slice(attrHeaderTypeStart(header, nameEnd)).trim();
+  if (attrType === '' || attrType === '%') return attrType;
+  if (cssIdentifierTokenEnd(attrType, 0) === attrType.length)
+    return invalidCustomIdentKeywords.has(attrType.toLowerCase()) ? undefined : attrType;
+  const typeMatch = /^type\(([^()]+)\)$/i.exec(attrType);
+  return typeMatch && validAttrTypeSyntax(typeMatch[1]) ? attrType : undefined;
+}
+
 function validSubstitutionHeader(frame, value) {
   const header = substitutionHeader(frame, value);
+  if (frame.functionName === 'attr') {
+    const nameEnd = attrHeaderNameEnd(header);
+    return nameEnd !== -1 && attrTypeSyntaxFromHeader(header, nameEnd) !== undefined;
+  }
   const identifierEnd = cssIdentifierTokenEnd(header, 0);
   if (identifierEnd === 0) return false;
   if (frame.functionName === 'var')
@@ -3346,20 +3458,17 @@ function validSubstitutionHeader(frame, value) {
       !invalidCustomIdentKeywords.has(header.slice(0, identifierEnd).toLowerCase()) &&
       /^(?:\s+(?:\+?\d+|-0+))*$/.test(header.slice(identifierEnd))
     );
-  if (frame.functionName !== 'attr') return false;
-  const attrType = header.slice(attrHeaderTypeStart(header, identifierEnd)).trim();
-  if (attrType === '' || attrType === '%') return true;
-  if (cssIdentifierTokenEnd(attrType, 0) === attrType.length)
-    return !invalidCustomIdentKeywords.has(attrType.toLowerCase());
-  const typeMatch = /^type\(([^()]+)\)$/i.exec(attrType);
-  if (!typeMatch) return false;
-  return validAttrTypeSyntax(typeMatch[1]);
+  return false;
 }
 
 function attrDefinedPathWitnessGroups(attrType) {
   if (attrType === '%') return [['0%', '1%']];
   if (cssIdentifierTokenEnd(attrType, 0) === attrType.length) {
     const unit = attrType.toLowerCase();
+    // attr()'s legacy `<attr-name> <type-or-unit>?` syntax also accepts the
+    // bare keywords `number`/`integer` for a dimensionless numeric read --
+    // unlike the other legacy keywords, they carry no unit suffix.
+    if (unit === 'number' || unit === 'integer') return [['0', '1']];
     return attrLegacyNumericUnits.has(unit) ? [[`0${unit}`, `1${unit}`]] : undefined;
   }
   const typeMatch = /^type\(([^()]+)\)$/i.exec(attrType);
@@ -3428,8 +3537,9 @@ function substitutionDefinedPathWitnessGroups(frame, value) {
   }
   if (frame.functionName !== 'attr') return undefined;
   const header = substitutionHeader(frame, value);
-  const identifierEnd = cssIdentifierTokenEnd(header, 0);
-  const attrType = header.slice(attrHeaderTypeStart(header, identifierEnd)).trim();
+  const nameEnd = attrHeaderNameEnd(header);
+  if (nameEnd === -1) return undefined;
+  const attrType = header.slice(attrHeaderTypeStart(header, nameEnd)).trim();
   return attrDefinedPathWitnessGroups(attrType);
 }
 
@@ -4613,7 +4723,26 @@ function randomItemArgumentRanges(value, group, parenthesisPairs) {
   return argumentRanges;
 }
 
-function randomItemGroupOutputOptions(value, group, parenthesisPairs) {
+// A var()/env()/attr() substitution occupying a random-item() value slot is a
+// potentially multi-token, comma-containing stream, not a guaranteed single
+// argument: its fallback may itself contain a raw top-level comma, and if the
+// referenced custom property/attribute is defined at all, its value is
+// entirely unknown. Either way, substituting it can inject additional
+// top-level items into random-item()'s argument list, shifting every index
+// after it. A *direct* child here means the substitution sits at the
+// argument's own nesting depth (its immediate enclosing parenthesis is the
+// random-item() call itself) -- anything nested one level deeper is already
+// captured by whatever function owns that inner parenthesis instead.
+function randomItemArgumentHasDirectSubstitutionChild(frame, group, argumentRange) {
+  return frame.children.some(
+    (child) =>
+      child.parenthesisParent === group &&
+      child.start >= argumentRange.start &&
+      child.start < argumentRange.end,
+  );
+}
+
+function randomItemGroupOutputOptions(frame, value, group, parenthesisPairs) {
   const argumentRanges = randomItemArgumentRanges(value, group, parenthesisPairs);
   if (
     argumentRanges === undefined ||
@@ -4629,6 +4758,18 @@ function randomItemGroupOutputOptions(value, group, parenthesisPairs) {
   });
   const fixedBaseValue = fixedRandomBaseValueForRange(value, argumentRanges[0]);
   if (fixedBaseValue !== undefined) {
+    // The fixed key deterministically selects `values[floor(base * N)]`, but
+    // N (and therefore which written slot ends up at that index) is only
+    // provably stable when no value slot can silently change the item count.
+    // Precisely modeling every injected-arity outcome is intractable here, so
+    // fail closed through the existing too-complex path instead of trusting
+    // an index that a comma-injecting substitution could invalidate.
+    if (
+      valueRanges.some((argumentRange) =>
+        randomItemArgumentHasDirectSubstitutionChild(frame, group, argumentRange),
+      )
+    )
+      return fallbackResolutionTooComplex;
     const selectedIndex = Math.min(Math.floor(fixedBaseValue * values.length), values.length - 1);
     return {
       continuous: false,
@@ -4641,7 +4782,7 @@ function randomItemGroupOutputOptions(value, group, parenthesisPairs) {
 
 function randomGroupOutputOptions(frame, value, group, budget, parenthesisPairs) {
   if (group.functionName === 'random-item')
-    return randomItemGroupOutputOptions(value, group, parenthesisPairs);
+    return randomItemGroupOutputOptions(frame, value, group, parenthesisPairs);
   const functionRange = { start: group.functionStart, end: group.end };
   const parsedArguments = fallbackIndependentStaticArguments(
     frame,
@@ -4717,7 +4858,7 @@ function randomGroupOutputOptions(frame, value, group, budget, parenthesisPairs)
   const maximumExpression =
     maximumValue === minimumValue ? minimumExpression : writtenMaximumExpression;
   if (maximumValue === minimumValue) return { continuous: false, values: [minimumExpression] };
-  if (stepValue === undefined || stepValue <= 0) {
+  if (stepValue === undefined) {
     if (fixedBaseValue === 0) return { continuous: false, values: [minimumExpression] };
     if (fixedBaseValue !== undefined)
       return {
@@ -4728,25 +4869,40 @@ function randomGroupOutputOptions(frame, value, group, budget, parenthesisPairs)
       };
     return { continuous: true, values: [minimumExpression, maximumExpression] };
   }
+  // A zero or negative step folds the whole range to its start (CSS Values 5,
+  // https://www.w3.org/TR/css-values-5/#random): the written A, not the full
+  // [A, B] interval. This holds regardless of the random key, since the
+  // result is a single deterministic value either way.
+  if (stepValue <= 0) return { continuous: false, values: [minimumExpression] };
   if (!Number.isFinite(stepValue)) return { continuous: false, values: [minimumExpression] };
 
   const stepCount = Math.floor((maximumValue - minimumValue) / stepValue);
   if (!Number.isSafeInteger(stepCount) || stepCount > 128) return fallbackResolutionTooComplex;
+  // CSS Values 5's stepped random() snaps the last step to the written
+  // maximum, not `minimum + step * stepCount`, whenever that computed value
+  // is within `step / 1000` of the maximum -- evaluateStaticLayerNumber()
+  // rounds to the nearest integer, which is too coarse to prove that, so
+  // re-parse the plain numeric tokens (when each is one) at full precision.
+  const preciseMinimum = preciseStaticNumber(minimumExpression) ?? minimumValue;
+  const preciseStep = preciseStaticNumber(stepExpression) ?? stepValue;
+  const preciseMaximum = preciseStaticNumber(maximumExpression) ?? maximumValue;
+  const lastStepSnapsToMaximum =
+    Math.abs(preciseMaximum - (preciseMinimum + preciseStep * stepCount)) <=
+    Math.abs(preciseStep) / 1000;
+  const stepExpressionAt = (stepIndex) => {
+    if (stepIndex === 0) return minimumExpression;
+    if (stepIndex === stepCount && lastStepSnapsToMaximum) return maximumExpression;
+    return `calc((${minimumExpression}) + (${stepExpression}) * ${stepIndex})`;
+  };
   if (fixedBaseValue !== undefined) {
     const stepIndex = Math.floor(fixedBaseValue * (stepCount + 1));
-    const expression =
-      stepIndex === 0
-        ? minimumExpression
-        : `calc((${minimumExpression}) + (${stepExpression}) * ${stepIndex})`;
+    const expression = stepExpressionAt(stepIndex);
     if (!consumeResolutionWork(budget, expression.length)) return fallbackResolutionTooComplex;
     return { continuous: false, values: [expression] };
   }
   const values = [];
   for (let stepIndex = 0; stepIndex <= stepCount; stepIndex += 1) {
-    const expression =
-      stepIndex === 0
-        ? minimumExpression
-        : `calc((${minimumExpression}) + (${stepExpression}) * ${stepIndex})`;
+    const expression = stepExpressionAt(stepIndex);
     if (!consumeResolutionWork(budget, expression.length)) return fallbackResolutionTooComplex;
     values.push(expression);
   }
@@ -7045,7 +7201,10 @@ function fallbackCandidates(value) {
       continue;
     }
 
-    const fallbackRange = trimCssTriviaRange(value, frame.commaIndex + 1, index);
+    const fallbackRange = unwrapBracedFallbackRange(
+      value,
+      trimCssTriviaRange(value, frame.commaIndex + 1, index),
+    );
     const rawFallback = value.slice(fallbackRange.start, fallbackRange.end);
     frame.resolvedFallback = resolveFrameExpression(frame, value, fallbackRange, resolutionBudget);
     const [onlyChild] = frame.children;

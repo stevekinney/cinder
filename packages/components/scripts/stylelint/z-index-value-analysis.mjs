@@ -465,6 +465,67 @@ function valueIdentity(value) {
   return `${numericIdentity(value.value)}|${mapIdentity(normalizedUnits(value.units))}|${mapIdentity(value.symbolicFactors)}`;
 }
 
+// CSS Values 5's "Normalizing Mix Percentages" algorithm: an omitted weight
+// splits whatever share the specified weights leave; a specified total over
+// 100% is scaled down (never up); any shortfall ("leftover") is mixed in as
+// a consistently-typed zero, so it contributes nothing to the result. Takes
+// one exact-rational percentage (or undefined for "omitted") per item and
+// returns the normalized exact-rational percentage for each.
+function normalizedCalcMixWeights(weights) {
+  const hundred = { numerator: 100n, denominator: 1n };
+  const zero = { numerator: 0n, denominator: 1n };
+  let specifiedSum = zero;
+  for (const weight of weights)
+    if (weight !== undefined) specifiedSum = addRationals(specifiedSum, weight);
+  const clampedSpecifiedSum =
+    specifiedSum !== undefined && compareRationals(specifiedSum, hundred) > 0
+      ? hundred
+      : specifiedSum;
+  const omittedCount = weights.filter((weight) => weight === undefined).length;
+  const omittedWeight =
+    omittedCount === 0 || clampedSpecifiedSum === undefined
+      ? undefined
+      : divideRationals(addRationals(hundred, clampedSpecifiedSum, -1n), {
+          numerator: BigInt(omittedCount),
+          denominator: 1n,
+        });
+  const resolvedWeights = weights.map((weight) => weight ?? omittedWeight);
+  const total = resolvedWeights.reduce((sum, weight) => addRationals(sum, weight), zero);
+  const scale =
+    total !== undefined && compareRationals(total, hundred) > 0
+      ? divideRationals(hundred, total)
+      : undefined;
+  return resolvedWeights.map((weight) =>
+    scale === undefined || weight === undefined ? weight : multiplyRationals(weight, scale),
+  );
+}
+
+// calc-mix()'s current CSS Values 5 grammar --
+// `calc-mix( [ <calc-sum> <percentage [0,100]>? ]# )` -- is a weighted
+// average of two or more items, distinct from the two-endpoint
+// progress-interpolation shape handled separately below. `weights` holds one
+// exact-rational percentage (or undefined for "omitted") per entry in
+// `items`, already parsed by the caller.
+function calcMixWeightedAverage(items, weights) {
+  const [first, ...rest] = items;
+  if (!rest.every((item) => sameUnits(item, first) && sameSymbolicFactors(item, first)))
+    throw new Error('incompatible calc-mix values');
+  const normalizedWeights = normalizedCalcMixWeights(weights);
+  if (normalizedWeights.some((weight) => weight === undefined)) throw staticAnalysisTooComplex;
+  const hundred = { numerator: 100n, denominator: 1n };
+  let exactValue = { numerator: 0n, denominator: 1n };
+  let value = 0;
+  for (const [index, item] of items.entries()) {
+    const weight = normalizedWeights[index];
+    exactValue = addRationals(
+      exactValue,
+      multiplyRationals(item.exactValue, divideRationals(weight, hundred)),
+    );
+    value += item.value * (Number(weight.numerator) / Number(weight.denominator) / 100);
+  }
+  return withValue(first, value, exactValue);
+}
+
 // Evaluate static CSS math while retaining enough type information for
 // compatible units to cancel during division. Unknown units remain distinct,
 // but identical units can still cancel without needing layout context.
@@ -675,6 +736,10 @@ function evaluateConstantArithmetic(expression) {
         }
       }
       const arguments_ = [];
+      // calc-mix()'s weighted-item grammar (CSS Values 5) trails each item
+      // with an optional `<percentage [0,100]>` weight, space-separated (not
+      // comma-separated) from the item's value: `calc-mix(9999 100%, 1 0%)`.
+      const calcMixWeights = functionName === 'calc-mix' ? [] : undefined;
       for (;;) {
         skipSpace();
         const clampEndpointCanBeUnbounded =
@@ -690,6 +755,26 @@ function evaluateConstantArithmetic(expression) {
           arguments_.push(unboundedClampEndpoint);
           index += noneMatch[0].length;
         } else arguments_.push(parseExpression());
+        if (calcMixWeights !== undefined) {
+          skipSpace();
+          const weightStart = index;
+          let weight;
+          if (peek() !== ',' && peek() !== ')') {
+            try {
+              const candidateWeight = parseNumber();
+              if (
+                candidateWeight.units.size === 1 &&
+                candidateWeight.units.get('unit:%') === 1 &&
+                candidateWeight.symbolicFactors.size === 0
+              )
+                weight = candidateWeight.exactValue;
+              else index = weightStart;
+            } catch {
+              index = weightStart;
+            }
+          }
+          calcMixWeights.push(weight);
+        }
         skipSpace();
         if (peek() === ')') {
           index += 1;
@@ -702,6 +787,8 @@ function evaluateConstantArithmetic(expression) {
         functionName === 'clamp'
           ? arguments_.filter((argument) => argument !== unboundedClampEndpoint)
           : arguments_;
+      if (functionName === 'calc-mix' && calcMixWeights.some((weight) => weight !== undefined))
+        return calcMixWeightedAverage(arguments_, calcMixWeights);
       if (functionName === 'calc-mix' && arguments_.length === 3) {
         const [progress, start, end] = arguments_;
         const progressIsPercentage =
