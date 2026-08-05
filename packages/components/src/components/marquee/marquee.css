@@ -35,7 +35,10 @@
     padding: 0.375rem 0.625rem;
     clip-path: none;
     border: 1px solid var(--cinder-border-strong, currentColor);
-    border-radius: var(--cinder-radius-sm);
+    /* Fallback retained: this rule is forced-colors-defensive throughout
+       (--cinder-surface, Canvas / --cinder-text, CanvasText), so the radius keeps
+       one too. Value tracks --cinder-radius-sm. */
+    border-radius: var(--cinder-radius-sm, 0.25rem);
     background: var(--cinder-surface, Canvas);
     color: var(--cinder-text, CanvasText);
     font: inherit;

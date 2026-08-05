@@ -38,7 +38,12 @@
   background: var(--cinder-surface, #fff);
   color: var(--cinder-text, #000);
   border: 1px solid var(--cinder-border, currentColor);
-  border-radius: var(--cinder-radius-md);
+  /* Fallback retained deliberately: every other custom property in this rule
+     carries one (--cinder-space-2, --cinder-surface, --cinder-text,
+     --cinder-border) because a skip link has to stay usable if the base token
+     sheet has not loaded. Without it the radius would compute to 0 in exactly
+     that scenario. Value tracks --cinder-radius-md. */
+  border-radius: var(--cinder-radius-md, 0.375rem);
   z-index: var(--cinder-z-focused-affordance);
 }
 
