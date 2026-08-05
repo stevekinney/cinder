@@ -53,9 +53,8 @@ describe('resolveSafePath', () => {
     // regardless of host OS, not just when the host happens to be POSIX.
     expect(resolveSafePath(baseDir, 'foo/..\\..\\secret.css')).toBeNull();
   });
-});
-
-it('rejects a path containing a NUL byte instead of passing it to the filesystem', () => {
-  const nulPath = 'tokens' + String.fromCharCode(0) + '.css';
-  expect(resolveSafePath('/tmp', nulPath)).toBeNull();
+  it('rejects a path containing a NUL byte instead of passing it to the filesystem', () => {
+    const nulPath = 'tokens' + String.fromCharCode(0) + '.css';
+    expect(resolveSafePath(baseDir, nulPath)).toBeNull();
+  });
 });
