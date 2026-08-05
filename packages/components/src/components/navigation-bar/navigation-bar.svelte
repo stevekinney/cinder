@@ -444,22 +444,32 @@
     if (!anchoredItems.positionReady) return false;
 
     const sequentialItems = getSequentialFocusTargets(itemsRegionElement);
-    // Evaluate `isEnabledNavigationItem` exactly once per navigation item —
+    const navigationItems = getNavigationItems();
+    // Evaluate `isEnabledNavigationItem` at most once per navigation item —
     // each call walks the item's full ancestor chain calling
     // `getComputedStyle` — and derive both the `getSequentialNavigationItems`-
-    // equivalent list and `logicalEnabledItems` from the same memoized
-    // result instead of invoking it again for each list.
-    const navigationItems = getNavigationItems();
-    const isItemEnabled = new Map<HTMLElement, boolean>(
-      navigationItems.map((item) => [item, isEnabledNavigationItem(item)]),
-    );
+    // equivalent list and `logicalEnabledItems` from the same memoizing
+    // accessor instead of invoking it again for each list. `sequentialItems`
+    // (a composed-tree walk) and `navigationItems` (a light-DOM query) are
+    // not guaranteed to be the same set, so this memoizes lazily by item
+    // identity rather than pre-seeding from `navigationItems` and betting on
+    // it containing every item `sequentialItems` can produce.
+    const isItemEnabled = new Map<HTMLElement, boolean>();
+    const resolveItemEnabled = (item: HTMLElement): boolean => {
+      const memoized = isItemEnabled.get(item);
+      if (memoized !== undefined) return memoized;
+
+      const enabled = isEnabledNavigationItem(item);
+      isItemEnabled.set(item, enabled);
+      return enabled;
+    };
     const enabledItems = sequentialItems.filter(
       (item): item is HTMLElement =>
         item instanceof HTMLElement &&
         item.matches(navigationItemSelector) &&
-        (isItemEnabled.get(item) ?? isEnabledNavigationItem(item)),
+        resolveItemEnabled(item),
     );
-    const logicalEnabledItems = navigationItems.filter((item) => isItemEnabled.get(item) ?? false);
+    const logicalEnabledItems = navigationItems.filter((item) => resolveItemEnabled(item));
     const isSequentialTarget = sequentialItems.includes(navigationItem);
     const hasSequentialTargetBefore = sequentialItems.some((target) =>
       Boolean(target.compareDocumentPosition(navigationItem) & Node.DOCUMENT_POSITION_FOLLOWING),
