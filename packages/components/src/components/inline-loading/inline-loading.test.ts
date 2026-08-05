@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
-import { afterEach, describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, jest, test } from 'bun:test';
+import { tick } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 import { expectNoLeakedTimers, trackTimers } from '../../test/lifecycle.ts';
@@ -81,6 +82,44 @@ describe('InlineLoading', () => {
       expect(root?.getAttribute('data-cinder-status')).toBe('inactive');
       expect(container.querySelector('.cinder-inline-loading__label')).toBeNull();
     });
+  });
+
+  test('re-opens the finished indicator after a parent re-sets status past the auto-reset', async () => {
+    // Regression: the reset timer writes the bindable `status` prop back to 'inactive'
+    // (inline-loading.svelte:~110-112) specifically so a later parent `status='finished'`
+    // is a genuine value change that re-runs the effect, rather than a no-op reassignment
+    // Svelte would otherwise skip.
+    const trackedSetTimeout = globalThis.setTimeout;
+    const trackedClearTimeout = globalThis.clearTimeout;
+    const trackedSetInterval = globalThis.setInterval;
+    const trackedClearInterval = globalThis.clearInterval;
+    jest.useFakeTimers();
+    try {
+      const { container, rerender } = render(InlineLoading, {
+        status: 'finished',
+        successDelay: 50,
+      });
+      const root = container.querySelector('.cinder-inline-loading');
+      expect(root?.getAttribute('data-cinder-status')).toBe('finished');
+
+      jest.advanceTimersByTime(50);
+      await tick();
+      expect(root?.getAttribute('data-cinder-status')).toBe('inactive');
+
+      await rerender({ status: 'finished', successDelay: 50 });
+      await tick();
+      expect(root?.getAttribute('data-cinder-status')).toBe('finished');
+    } finally {
+      jest.useRealTimers();
+      globalThis.setTimeout = trackedSetTimeout;
+      globalThis.clearTimeout = trackedClearTimeout;
+      globalThis.setInterval = trackedSetInterval;
+      globalThis.clearInterval = trackedClearInterval;
+      expect(globalThis.setTimeout).toBe(trackedSetTimeout);
+      expect(globalThis.clearTimeout).toBe(trackedClearTimeout);
+      expect(globalThis.setInterval).toBe(trackedSetInterval);
+      expect(globalThis.clearInterval).toBe(trackedClearInterval);
+    }
   });
 
   test('non-positive successDelay immediately collapses finished to inactive', () => {

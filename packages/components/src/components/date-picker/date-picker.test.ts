@@ -221,6 +221,46 @@ describe('DatePicker', () => {
     });
   });
 
+  test('disabled disables the input and trigger and blocks opening the popover', async () => {
+    const { container } = render(DatePicker, {
+      id: 'dp',
+      value: '2026-06-29',
+      disabled: true,
+    });
+    const input = container.querySelector<HTMLInputElement>('#dp');
+    const trigger = container.querySelector<HTMLButtonElement>('.cinder-date-picker__trigger');
+    expect(input?.disabled).toBe(true);
+    expect(trigger?.disabled).toBe(true);
+
+    await fireEvent.click(trigger as HTMLButtonElement);
+
+    expect(document.body.querySelector('[role="dialog"]')).toBeNull();
+  });
+
+  test('description renders a linked paragraph included in the input aria-describedby', () => {
+    const { container } = render(DatePicker, {
+      id: 'dp',
+      value: '2026-06-29',
+      description: 'Use ISO format.',
+    });
+    const description = container.querySelector('#dp-description');
+    const input = container.querySelector<HTMLInputElement>('#dp');
+    expect(description?.textContent).toBe('Use ISO format.');
+    expect(input?.getAttribute('aria-describedby')?.split(' ')).toContain('dp-description');
+  });
+
+  test('error renders a linked paragraph included in the input aria-describedby', () => {
+    const { container } = render(DatePicker, {
+      id: 'dp',
+      value: '2026-06-29',
+      error: 'Date is required.',
+    });
+    const error = container.querySelector('#dp-error');
+    const input = container.querySelector<HTMLInputElement>('#dp');
+    expect(error?.textContent).toBe('Date is required.');
+    expect(input?.getAttribute('aria-describedby')?.split(' ')).toContain('dp-error');
+  });
+
   test('renders time input for minute granularity and emits datetime value', async () => {
     let nextValue = '';
     const rendered = render(DatePicker, {

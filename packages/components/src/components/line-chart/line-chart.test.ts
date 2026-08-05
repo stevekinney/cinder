@@ -135,6 +135,39 @@ describe('LineChart', () => {
     );
   });
 
+  test('legendPosition="bottom" renders the legend after the plot and toggles series visibility', async () => {
+    const { container, getByRole } = render(LineChart, {
+      label: 'Monthly revenue',
+      legendPosition: 'bottom',
+      series,
+    });
+
+    const viewport = container.querySelector('.cinder-line-chart__viewport');
+    const legend = container.querySelector('.cinder-line-chart__legend');
+    expect(viewport).not.toBeNull();
+    expect(legend).not.toBeNull();
+    // "bottom" legend renders after the chart's plot content in DOM order.
+    expect(
+      viewport!.compareDocumentPosition(legend!) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+
+    expect(container.querySelectorAll('[data-cinder-series="revenue"]').length).toBeGreaterThan(0);
+    const button = getByRole('button', { name: 'Revenue' });
+    await fireEvent.click(button);
+    expect(button.getAttribute('aria-pressed')).toBe('false');
+    expect(container.querySelectorAll('[data-cinder-series="revenue"]').length).toBe(0);
+  });
+
+  test('an invalid maximumInteractivePoints throws a stable developer error', () => {
+    expect(() =>
+      render(LineChart, {
+        label: 'Bad chart',
+        maximumInteractivePoints: -1,
+        series,
+      }),
+    ).toThrow('rule=invalid-maximum-interactive-points');
+  });
+
   test('keyboard focus shows tooltip and escape clears it', async () => {
     const { getByRole, queryByText } = render(LineChart, { label: 'Monthly revenue', series });
     const plot = getByRole('button', { name: 'Revenue, Jan, 120' });

@@ -7,6 +7,7 @@ setupHappyDom();
 
 const { cleanup, render } = await import('@testing-library/svelte');
 const { default: KeyboardShortcuts } = await import('./keyboard-shortcuts.svelte');
+const { createRawSnippet } = await import('svelte');
 
 afterEach(() => {
   cleanup();
@@ -162,5 +163,18 @@ describe('KeyboardShortcuts', () => {
       ],
     });
     expect(container.querySelectorAll('.cinder-keyboard-shortcuts__row').length).toBe(2);
+  });
+
+  test('renders the children snippet inside the intro container', () => {
+    const introSnippet = createRawSnippet(() => ({
+      render: () => '<p>Press <strong>?</strong> anytime to view this list.</p>',
+    }));
+    const { container } = render(KeyboardShortcuts, {
+      groups: sampleGroups,
+      children: introSnippet,
+    });
+    const intro = container.querySelector('.cinder-keyboard-shortcuts__intro');
+    expect(intro).not.toBeNull();
+    expect(intro?.textContent).toBe('Press ? anytime to view this list.');
   });
 });

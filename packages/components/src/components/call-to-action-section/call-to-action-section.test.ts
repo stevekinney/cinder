@@ -17,6 +17,14 @@ const runtimePatchSnippet = createRawSnippet(() => ({
 }));
 void runtimePatchSnippet;
 
+/** Build a minimal Svelte snippet that renders a single text node. */
+function textSnippet(text: string) {
+  return createRawSnippet(() => ({
+    render: () => `<span>${text}</span>`,
+    setup: () => {},
+  }));
+}
+
 describe('CallToActionSection', () => {
   test('renders title, description, and action buttons', () => {
     const { container } = render(CallToActionSection, {
@@ -75,6 +83,47 @@ describe('CallToActionSection', () => {
     const root = container.querySelector('.cinder-call-to-action-section');
     expect(root?.getAttribute('data-cinder-tone')).toBe('accent');
     expect(root?.getAttribute('data-cinder-align')).toBe('start');
+  });
+
+  test('renders only the primary button when secondaryActionLabel is omitted', () => {
+    const { container } = render(CallToActionSection, {
+      props: {
+        title: 'Ready to ship faster?',
+        primaryActionLabel: 'Start free trial',
+      },
+    });
+
+    const buttons = container.querySelectorAll(
+      '.cinder-call-to-action-section__actions .cinder-button',
+    );
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0]?.textContent).toContain('Start free trial');
+  });
+
+  test('renders the configured root element tag when `as` is set', () => {
+    const { container } = render(CallToActionSection, {
+      props: {
+        title: 'CTA',
+        primaryActionLabel: 'Primary',
+        as: 'div',
+      },
+    });
+
+    const root = container.querySelector('.cinder-call-to-action-section');
+    expect(root?.tagName).toBe('DIV');
+  });
+
+  test('renders children content inside the extra region', () => {
+    const { container } = render(CallToActionSection, {
+      props: {
+        title: 'CTA',
+        primaryActionLabel: 'Primary',
+        children: textSnippet('extra-content'),
+      },
+    });
+
+    const extra = container.querySelector('.cinder-call-to-action-section__extra');
+    expect(extra?.textContent).toContain('extra-content');
   });
 
   test('merges custom class alongside root class', () => {

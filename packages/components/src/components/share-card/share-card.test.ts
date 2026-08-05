@@ -114,6 +114,38 @@ describe('ShareCard', () => {
     }
   });
 
+  test('announces "Copy failed" and leaves no copied attribute when the clipboard write rejects', async () => {
+    // happy-dom does not implement document.execCommand, so the legacyCopy
+    // fallback inside copyToClipboard throws, is caught, and returns false —
+    // a rejecting writeText mock reliably reaches handleCopy's failure branch.
+    const originalClipboard = (navigator as { clipboard?: unknown }).clipboard;
+    setNavigatorClipboard({
+      writeText: async () => {
+        throw new Error('denied');
+      },
+    });
+
+    try {
+      const { container, getByRole } = render(ShareCard, {
+        value: 'https://example.com',
+        copyLinkLabel: 'Copy link',
+        copiedLabel: 'Copied!',
+      });
+
+      const button = getByRole('button', { name: /Copy link/i });
+      await fireEvent.click(button);
+      // Allow the rejected clipboard write, the legacy fallback, and the live
+      // region's blank-then-set(0) dance to settle.
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      const liveRegion = container.querySelector('.cinder-sr-only');
+      expect(liveRegion?.textContent).toBe('Copy failed');
+      expect(button.getAttribute('data-cinder-copied')).toBeNull();
+    } finally {
+      restoreNavigatorClipboard(originalClipboard);
+    }
+  });
+
   test('an identical success re-announces after the confirmation window resets through blank', async () => {
     // The live region (VisuallyHiddenLiveRegion) only re-announces when its
     // `message` prop TRANSITIONS. share-card uses a single write per announce and

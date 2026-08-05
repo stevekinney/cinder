@@ -84,6 +84,17 @@ describe('LogoCloud', () => {
     expect(root?.hasAttribute('data-cinder-grayscale')).toBe(true);
   });
 
+  test('omits data-cinder-grayscale attribute when grayscale is false', () => {
+    const { container } = render(LogoCloud, {
+      props: {
+        logos,
+        grayscale: false,
+      },
+    });
+    const root = container.querySelector('.cinder-logo-cloud');
+    expect(root?.hasAttribute('data-cinder-grayscale')).toBe(false);
+  });
+
   test('merges custom class alongside base class', () => {
     const { container } = render(LogoCloud, {
       props: {

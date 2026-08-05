@@ -57,4 +57,19 @@ describe('QrCode', () => {
     const svgMarkup = container.querySelector('.cinder-qr-code svg')?.outerHTML ?? '';
     expect(svgMarkup).toContain('currentColor');
   });
+
+  test('renders an error state when the payload is too large for any QR version', () => {
+    const oversizedValue = 'a'.repeat(3000);
+    const { container } = render(QrCode, { props: { value: oversizedValue } });
+    const element = container.querySelector('.cinder-qr-code');
+
+    expect(element?.getAttribute('role')).toBe('status');
+    expect(element?.getAttribute('aria-label')).toBe('Unable to render QR code');
+    expect(element?.getAttribute('data-cinder-invalid')).toBe('true');
+    expect(element?.getAttribute('data-cinder-state')).toBe('error');
+    expect(element?.querySelector('svg')).toBeNull();
+    const errorMark = element?.querySelector('.cinder-qr-code__error-mark');
+    expect(errorMark).not.toBeNull();
+    expect(errorMark?.textContent).toBe('!');
+  });
 });

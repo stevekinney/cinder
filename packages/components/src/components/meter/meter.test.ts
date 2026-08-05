@@ -276,4 +276,135 @@ describe('Meter', () => {
 
     expect(el?.getAttribute('data-cinder-state')).toBe('high');
   });
+
+  test('warns and falls back to 0..100 when min/max is an invalid range', () => {
+    const originalWarn = console.warn;
+    const warnings: string[] = [];
+    console.warn = (...args: unknown[]) => {
+      warnings.push(args.map(String).join(' '));
+    };
+
+    try {
+      render(Meter, { min: 10, max: 5, ariaLabel: 'Battery level' });
+      expect(
+        warnings.some((warning) => warning.includes('received an invalid range (min=10, max=5)')),
+      ).toBe(true);
+    } finally {
+      console.warn = originalWarn;
+    }
+  });
+
+  test('warns and falls back to min when value is non-finite', () => {
+    const originalWarn = console.warn;
+    const warnings: string[] = [];
+    console.warn = (...args: unknown[]) => {
+      warnings.push(args.map(String).join(' '));
+    };
+
+    try {
+      render(Meter, { value: NaN, ariaLabel: 'Battery level' });
+      expect(
+        warnings.some((warning) => warning.includes('received a non-finite value (NaN)')),
+      ).toBe(true);
+    } finally {
+      console.warn = originalWarn;
+    }
+  });
+
+  test('warns when value is clamped outside the [min,max] range', () => {
+    const originalWarn = console.warn;
+    const warnings: string[] = [];
+    console.warn = (...args: unknown[]) => {
+      warnings.push(args.map(String).join(' '));
+    };
+
+    try {
+      render(Meter, { value: 200, min: 0, max: 100, ariaLabel: 'Battery level' });
+      expect(
+        warnings.some((warning) =>
+          warning.includes('value 200 is outside the [min,max] range (0..100)'),
+        ),
+      ).toBe(true);
+    } finally {
+      console.warn = originalWarn;
+    }
+  });
+
+  test('warns when low threshold is non-finite', () => {
+    const originalWarn = console.warn;
+    const warnings: string[] = [];
+    console.warn = (...args: unknown[]) => {
+      warnings.push(args.map(String).join(' '));
+    };
+
+    try {
+      render(Meter, { low: NaN, ariaLabel: 'Battery level' });
+      expect(
+        warnings.some((warning) =>
+          warning.includes('low threshold must be finite when provided. Received NaN'),
+        ),
+      ).toBe(true);
+    } finally {
+      console.warn = originalWarn;
+    }
+  });
+
+  test('warns when high threshold is non-finite', () => {
+    const originalWarn = console.warn;
+    const warnings: string[] = [];
+    console.warn = (...args: unknown[]) => {
+      warnings.push(args.map(String).join(' '));
+    };
+
+    try {
+      render(Meter, { high: NaN, ariaLabel: 'Battery level' });
+      expect(
+        warnings.some((warning) =>
+          warning.includes('high threshold must be finite when provided. Received NaN'),
+        ),
+      ).toBe(true);
+    } finally {
+      console.warn = originalWarn;
+    }
+  });
+
+  test('warns when optimum threshold is non-finite', () => {
+    const originalWarn = console.warn;
+    const warnings: string[] = [];
+    console.warn = (...args: unknown[]) => {
+      warnings.push(args.map(String).join(' '));
+    };
+
+    try {
+      render(Meter, { optimum: NaN, ariaLabel: 'Battery level' });
+      expect(
+        warnings.some((warning) =>
+          warning.includes('optimum threshold must be finite when provided. Received NaN'),
+        ),
+      ).toBe(true);
+    } finally {
+      console.warn = originalWarn;
+    }
+  });
+
+  test('warns when rendered without an accessible name', () => {
+    const originalWarn = console.warn;
+    const warnings: string[] = [];
+    console.warn = (...args: unknown[]) => {
+      warnings.push(args.map(String).join(' '));
+    };
+
+    try {
+      render(Meter, { value: 50 });
+      expect(
+        warnings.some((warning) =>
+          warning.includes(
+            '[cinder/Meter] rendered without an accessible name — pass `ariaLabel` or `ariaLabelledby`.',
+          ),
+        ),
+      ).toBe(true);
+    } finally {
+      console.warn = originalWarn;
+    }
+  });
 });

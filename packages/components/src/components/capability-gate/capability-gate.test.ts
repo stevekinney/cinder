@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { afterEach, describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, mock, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -182,6 +182,35 @@ describe('CapabilityGate', () => {
     expect(container.querySelector('.cinder-capability-gate__state-text')?.textContent).toBe(
       'Not available',
     );
+  });
+
+  test('calls onFallbackAction when the fallback button is clicked', () => {
+    const onFallbackAction = mock(() => {});
+    const { getByRole } = render(CapabilityGate, {
+      feature: 'Notifications',
+      state: 'permission-denied',
+      fallbackAction: 'Use email instead',
+      onFallbackAction,
+    });
+    fireEvent.click(getByRole('button', { name: /Use email instead/i }));
+    expect(onFallbackAction).toHaveBeenCalledTimes(1);
+  });
+
+  test('re-shows the gate on rerender with a different state after being dismissed', async () => {
+    const { container, getByRole, rerender } = render(CapabilityGate, {
+      feature: 'Microphone',
+      state: 'permission-needed',
+      dismissAction: 'Dismiss',
+    });
+    fireEvent.click(getByRole('button', { name: /Dismiss/i }));
+    expect(container.querySelector('.cinder-capability-gate')).toBeNull();
+
+    // Reuse the SAME render instance via rerender() — a fresh render() call would
+    // start with visible=true by default and pass vacuously without exercising
+    // the re-show $effect at all.
+    await rerender({ state: 'permission-denied' });
+
+    expect(container.querySelector('.cinder-capability-gate')).not.toBeNull();
   });
 
   test('dismissing blurs the dismiss button before unmounting', async () => {

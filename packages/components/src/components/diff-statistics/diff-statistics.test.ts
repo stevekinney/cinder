@@ -50,6 +50,30 @@ describe('DiffStatistics', () => {
     expect(status?.textContent).not.toContain('0');
   });
 
+  test('all-zero with hideZero renders the "No changes" fallback, not zero-value stats', () => {
+    // hideZero is REQUIRED to reach the {:else} branch — showAdded/showRemoved/showModified
+    // default to true unconditionally, so a plain all-zero render without hideZero still
+    // renders the (zero-value) stat spans instead of the fallback.
+    const { container } = render(DiffStatistics, {
+      props: { added: 0, removed: 0, modified: 0, hideZero: true },
+    });
+
+    const fallback = container.querySelector('.cinder-diff-statistics__stat--none');
+    expect(fallback?.textContent?.trim()).toBe('No changes');
+    expect(container.querySelector('.cinder-diff-statistics__stat--added')).toBeNull();
+    expect(container.querySelector('.cinder-diff-statistics__stat--removed')).toBeNull();
+    expect(container.querySelector('.cinder-diff-statistics__stat--modified')).toBeNull();
+  });
+
+  test('a single added line uses the singular aria-label, not the plural', () => {
+    const { container } = render(DiffStatistics, {
+      props: { added: 1, removed: 0, modified: 0 },
+    });
+
+    const added = container.querySelector('.cinder-diff-statistics__stat--added');
+    expect(added?.getAttribute('aria-label')).toBe('1 line added');
+  });
+
   test('density="toolbar" sets data-cinder-density="toolbar" on the root', () => {
     const { container } = render(DiffStatistics, {
       props: { added: 1, removed: 0, modified: 0, variant: 'compact', density: 'toolbar' },

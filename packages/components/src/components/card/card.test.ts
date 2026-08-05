@@ -300,6 +300,39 @@ describe('Card', () => {
     expect(container.querySelector('.cinder-card__footer')).not.toBeNull();
   });
 
+  test('headingLevel=0 clamps to the minimum and renders h1', () => {
+    const { container } = render(Card, {
+      props: {
+        title: 'Clamped low',
+        headingLevel: 0,
+        children: emptySnippet,
+      } as any,
+    });
+    expect(container.querySelector('.cinder-card__title')?.tagName).toBe('H1');
+  });
+
+  test('headingLevel=9 clamps to the maximum and renders h6', () => {
+    const { container } = render(Card, {
+      props: {
+        title: 'Clamped high',
+        headingLevel: 9,
+        children: emptySnippet,
+      } as any,
+    });
+    expect(container.querySelector('.cinder-card__title')?.tagName).toBe('H6');
+  });
+
+  test('headingLevel=NaN falls back to the h3 default', () => {
+    const { container } = render(Card, {
+      props: {
+        title: 'Non-numeric fallback',
+        headingLevel: NaN,
+        children: emptySnippet,
+      } as any,
+    });
+    expect(container.querySelector('.cinder-card__title')?.tagName).toBe('H3');
+  });
+
   test('padding defaults to "default" when not provided', () => {
     const { container } = render(Card, {
       props: {
