@@ -30,6 +30,11 @@ import { isAbsolute, join, relative as relativePath } from 'node:path';
  * is not sufficient for that case.
  */
 export function resolveSafePath(baseDir: string, requestedPath: string): string | null {
+  // A NUL byte survives every string-level check here but makes Bun.file()
+  // throw a TypeError at the call site, surfacing as an unhandled rejection
+  // instead of a clean 404 — reject it at the boundary that owns the contract.
+  if (requestedPath.includes('\0')) return null;
+
   const segments = requestedPath.split(/[/\\]/);
   const hasUnsafeSegment = segments.some(
     (segment) => segment === '' || segment === '.' || segment === '..',
