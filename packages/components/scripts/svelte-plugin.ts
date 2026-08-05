@@ -111,7 +111,7 @@ export function allowsStyleBlock(path: string): boolean {
   // never shipped in dist — same rationale as the `/test/fixtures/` carve-out
   // above, extended to this established naming convention (`extract-fixtures.ts`
   // already requires fixture hosts to end in `.fixture.svelte`).
-  if (normalizedPath.endsWith('.fixture.svelte')) return true;
+  if (/\/src\/components\/[^/]+\/[^/]+\.fixture\.svelte$/.test(normalizedPath)) return true;
 
   const componentPathMatch = normalizedPath.match(
     /\/(?:src\/(?:lib\/)?|dist\/)components\/([^/]+)(?:\/|\.svelte$)/,
