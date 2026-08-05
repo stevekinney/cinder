@@ -29,6 +29,7 @@
   import { SvelteSet } from 'svelte/reactivity';
   import type { TreeProps, TreeRef } from './tree.types.ts';
 
+  import { TreeAutoscrollController } from '../../_internal/tree-autoscroll.svelte.ts';
   import type { TreeContext } from '../../_internal/tree-context.ts';
   import { setTreeContext, setTreeItemParentContext } from '../../_internal/tree-context.ts';
   import {
@@ -38,6 +39,7 @@
     type FlattenedTreeDataItem,
   } from '../../_internal/tree-data.ts';
   import { TreeDragController } from '../../_internal/tree-drag-controller.svelte.ts';
+  import { TreeFilterController } from '../../_internal/tree-filter.svelte.ts';
   import type { TreeVisibilityPredicate } from '../../_internal/tree-registry.svelte.ts';
   import { TreeRegistry } from '../../_internal/tree-registry.svelte.ts';
   import { TreeVirtualizer } from '../../_internal/use-virtualizer.svelte.ts';
@@ -110,26 +112,34 @@
   const registry = new TreeRegistry();
   let focusedId = $state<string | null>(null);
   let treeElement = $state<HTMLElement | null>(null);
-  let filterInputElement = $state<HTMLInputElement | null>(null);
-  let uncontrolledFilterValue = $state(untrack(() => filterValue ?? ''));
-  let filterStatusAnnouncement = $state('');
-  let filterStatusAnnouncementSequence = $state(0);
-  let filterStatusBusy = $state(false);
-  let filterStatusTimer: ReturnType<typeof setTimeout> | null = null;
   let expansionAnnouncement = $state('');
   let expansionAnnouncementSequence = $state(0);
   let dragAnnouncement = $state('');
   let dragAnnouncementSequence = $state(0);
   let dragController: TreeDragController | null = $state(null);
-  let latestDragPointerX = 0;
-  let latestDragPointerY = 0;
-  let dragScrollElement: HTMLElement | null = null;
-  let dragScrollAnimationFrame: number | null = null;
 
   // Anchor for shift-select range
   let selectionAnchorId = $state<string | null>(null);
 
   const typeaheadBuffer = new TypeaheadBuffer();
+
+  const filterController = new TreeFilterController({
+    getFilterValue: () => filterValue,
+    isControlled: () => isFilterControlled,
+    onFilterChange: (next) => onFilterChange?.(next),
+    focusFirstVisible: () => {
+      const firstVisibleId = visibleIds[0];
+      if (firstVisibleId) focusNode(firstVisibleId);
+    },
+  });
+
+  const autoscroll = new TreeAutoscrollController({
+    isPointerDragging: () => dragController?.pointerDragging ?? false,
+    setDropTarget: (_clientX, clientY, target) => {
+      if (!(target instanceof HTMLElement)) return;
+      dragController?.setDropTarget(dragController.targetFromPointer(clientY, target));
+    },
+  });
 
   // Warn once when no accessible label is provided
   let hasWarnedNoLabel = false;
@@ -167,11 +177,8 @@
   $effect(() => {
     return () => {
       typeaheadBuffer.reset();
-      if (filterStatusTimer !== null) {
-        clearTimeout(filterStatusTimer);
-        filterStatusTimer = null;
-      }
-      stopDragAutoscroll();
+      filterController.destroy();
+      autoscroll.stop();
     };
   });
 
@@ -180,11 +187,6 @@
   // ---------------------------------------------------------------------------
 
   const isFilterControlled = $derived(filterValue !== undefined);
-  const currentFilterValue = $derived(
-    isFilterControlled ? (filterValue ?? '') : uncontrolledFilterValue,
-  );
-  const normalizedFilterValue = $derived(currentFilterValue.trim());
-  const filtering = $derived(normalizedFilterValue.length > 0);
   const treeId = $derived(idAttribute ?? `${generatedId}-tree`);
   const filterInputId = $derived(`${generatedId}-filter`);
   const dragInstructionsId = $derived(`${generatedId}-drag-instructions`);
@@ -194,22 +196,22 @@
     () => new Map(flattenedDataItems.map((item) => [item.id, item])),
   );
   const hasTreeChrome = $derived(
-    selectionControls != null || searchVisible || filtering || onReorder != null,
+    selectionControls != null || searchVisible || filterController.filtering || onReorder != null,
   );
   const hasRegisteredItems = $derived(
     isVirtualizedTree ? flattenedDataItems.length > 0 : registry.size > 0,
   );
   const activeVisibilityPredicate = $derived.by<TreeVisibilityPredicate | undefined>(() => {
-    if (!filtering) return undefined;
-    const query = normalizedFilterValue;
+    if (!filterController.filtering) return undefined;
+    const query = filterController.normalizedValue;
     const predicate = filterPredicate;
     return ({ id, label }) => predicate(label, id, query);
   });
   const activeDataVisibilityPredicate = $derived.by<
     ((item: FlattenedTreeDataItem) => boolean) | undefined
   >(() => {
-    if (!filtering) return undefined;
-    const query = normalizedFilterValue;
+    if (!filterController.filtering) return undefined;
+    const query = filterController.normalizedValue;
     const predicate = filterPredicate;
     return (item) => predicate(item.label, item.id, query);
   });
@@ -222,7 +224,9 @@
   const visibleIds = $derived.by(() =>
     isVirtualizedTree ? visibleDataItems.map((item) => item.id) : registryVisibleIds,
   );
-  const hasNoFilterResults = $derived(filtering && hasRegisteredItems && visibleIds.length === 0);
+  const hasNoFilterResults = $derived(
+    filterController.filtering && hasRegisteredItems && visibleIds.length === 0,
+  );
   const visibleIdSet = $derived.by(() => new SvelteSet(visibleIds));
   const expandableBranchIds = $derived.by(() =>
     isVirtualizedTree
@@ -233,29 +237,7 @@
   const hasExpandedItems = $derived(expandedIds.length > 0);
 
   $effect(() => {
-    if (filterStatusTimer !== null) {
-      clearTimeout(filterStatusTimer);
-      filterStatusTimer = null;
-    }
-
-    if (!filtering) {
-      filterStatusBusy = false;
-      filterStatusAnnouncement = '';
-      return;
-    }
-
-    const query = normalizedFilterValue;
-    const resultCount = visibleIds.length;
-    filterStatusBusy = true;
-    filterStatusTimer = setTimeout(() => {
-      filterStatusAnnouncement =
-        resultCount === 0
-          ? `No results for ${query}.`
-          : `${resultCount} result${resultCount === 1 ? '' : 's'} found.`;
-      filterStatusAnnouncementSequence += 1;
-      filterStatusBusy = false;
-      filterStatusTimer = null;
-    }, 500);
+    filterController.scheduleStatusAnnouncement(visibleIds.length);
   });
 
   // Initial roving tabindex: first selected visible item, or first visible item
@@ -380,7 +362,7 @@
   function virtualizedItemExpanded(item: FlattenedTreeDataItem): boolean {
     return (
       expandedIds.includes(item.id) ||
-      (filtering &&
+      (filterController.filtering &&
         item.branch &&
         visibleDataItems.some(
           (visibleItem) => visibleItem.id !== item.id && visibleItem.ancestorIds.includes(item.id),
@@ -391,7 +373,7 @@
   function virtualizedFilterForcedOpen(item: FlattenedTreeDataItem): boolean {
     return (
       item.branch &&
-      filtering &&
+      filterController.filtering &&
       !expandedIds.includes(item.id) &&
       visibleDataItems.some(
         (visibleItem) => visibleItem.id !== item.id && visibleItem.ancestorIds.includes(item.id),
@@ -789,10 +771,10 @@
       return effectiveFocusedId;
     },
     get filtering() {
-      return filtering;
+      return filterController.filtering;
     },
     get filterValue() {
-      return normalizedFilterValue;
+      return filterController.normalizedValue;
     },
     get hasRegisteredItems() {
       return hasRegisteredItems;
@@ -834,7 +816,9 @@
       return registry.descendantsOf(id).some((descendantId) => visibleIdSet.has(descendantId));
     },
     matchesFilter(label, id) {
-      return filtering && filterPredicate(label, id, normalizedFilterValue);
+      return (
+        filterController.filtering && filterPredicate(label, id, filterController.normalizedValue)
+      );
     },
     checkboxSelectionActive,
     selectionStateFor: selectionStateForId,
@@ -1053,113 +1037,20 @@
     return true;
   }
 
-  function updateFilterValue(next: string): void {
-    if (!isFilterControlled) uncontrolledFilterValue = next;
-    onFilterChange?.(next);
-  }
-
-  function handleFilterInput(event: Event): void {
-    const target = event.currentTarget as HTMLInputElement;
-    updateFilterValue(target.value);
-  }
-
-  function handleFilterKeydown(event: KeyboardEvent): void {
-    if (event.key === 'ArrowDown') {
-      event.preventDefault();
-      const firstVisibleId = visibleIds[0];
-      if (firstVisibleId) focusNode(firstVisibleId);
-      return;
-    }
-
-    if (event.key === 'Escape' && currentFilterValue.length > 0) {
-      event.preventDefault();
-      event.stopPropagation();
-      updateFilterValue('');
-      filterInputElement?.focus();
-    }
-  }
-
-  function pointerTargetElement(
-    clientX: number,
-    clientY: number,
-    fallbackTarget: EventTarget | null,
-  ): HTMLElement | null {
-    if (typeof document !== 'undefined') {
-      const element = document.elementFromPoint(clientX, clientY);
-      if (element instanceof HTMLElement) return element;
-    }
-    return fallbackTarget instanceof HTMLElement ? fallbackTarget : null;
-  }
-
-  function updateDragTargetFromPointer(
-    clientX: number,
-    clientY: number,
-    fallbackTarget: EventTarget | null,
-  ): void {
-    const element = pointerTargetElement(clientX, clientY, fallbackTarget);
-    if (!element) return;
-    dragController?.setDropTarget(dragController.targetFromPointer(clientY, element));
-  }
-
-  function stopDragAutoscroll(): void {
-    if (dragScrollAnimationFrame !== null && typeof cancelAnimationFrame === 'function') {
-      cancelAnimationFrame(dragScrollAnimationFrame);
-    }
-    dragScrollAnimationFrame = null;
-    dragScrollElement = null;
-  }
-
-  function scheduleDragAutoscroll(): void {
-    if (
-      dragScrollAnimationFrame !== null ||
-      !dragController?.pointerDragging ||
-      !dragScrollElement ||
-      typeof requestAnimationFrame !== 'function'
-    ) {
-      return;
-    }
-
-    dragScrollAnimationFrame = requestAnimationFrame(() => {
-      dragScrollAnimationFrame = null;
-      const tree = dragScrollElement;
-      if (!dragController?.pointerDragging || !tree) return;
-
-      const rect = tree.getBoundingClientRect();
-      const edge = 32;
-      const speed = 8;
-      const previousScrollTop = tree.scrollTop;
-      if (latestDragPointerY - rect.top < edge) {
-        tree.scrollTop -= speed;
-      } else if (rect.bottom - latestDragPointerY < edge) {
-        tree.scrollTop += speed;
-      }
-
-      if (tree.scrollTop === previousScrollTop) return;
-      updateDragTargetFromPointer(latestDragPointerX, latestDragPointerY, tree);
-      scheduleDragAutoscroll();
-    });
-  }
-
   function handlePointerMove(event: PointerEvent): void {
-    if (!dragController?.pointerDragging) return;
-    event.preventDefault();
-    latestDragPointerX = event.clientX;
-    latestDragPointerY = event.clientY;
-    dragScrollElement = event.currentTarget as HTMLElement;
-    updateDragTargetFromPointer(event.clientX, event.clientY, event.target);
-    scheduleDragAutoscroll();
+    autoscroll.handlePointerMove(event, event.currentTarget as HTMLElement);
   }
 
   function handlePointerUp(event: PointerEvent): void {
     if (!dragController?.pointerDragging) return;
     event.preventDefault();
-    stopDragAutoscroll();
+    autoscroll.stop();
     dragController.drop();
   }
 
   function handlePointerCancel(): void {
     if (!dragController?.pointerDragging) return;
-    stopDragAutoscroll();
+    autoscroll.stop();
     dragController.cancel();
   }
 
@@ -1319,7 +1210,7 @@
     aria-labelledby={resolvedAriaLabelledBy}
     aria-activedescendant={virtualizedActiveDescendantId}
     aria-multiselectable={selectionMode === 'multiple' ? true : undefined}
-    aria-busy={filterStatusBusy || undefined}
+    aria-busy={filterController.statusBusy || undefined}
     data-cinder-checkbox-selection={checkboxSelectionActive() ? '' : undefined}
     data-cinder-virtualized={isVirtualizedTree ? '' : undefined}
     onkeydown={handleKeydown}
@@ -1341,19 +1232,19 @@
       <div class="cinder-tree__filter">
         <label class="cinder-sr-only" for={filterInputId}>{resolvedFilterPlaceholder}</label>
         <input
-          bind:this={filterInputElement}
+          bind:this={filterController.filterInputElement}
           id={filterInputId}
           class="cinder-tree__filter-input"
           type="search"
-          value={currentFilterValue}
+          value={filterController.currentValue}
           placeholder={resolvedFilterPlaceholder}
           aria-label={resolvedFilterPlaceholder}
           aria-controls={treeId}
           autocomplete="off"
           autocorrect="off"
           spellcheck={false}
-          oninput={handleFilterInput}
-          onkeydown={handleFilterKeydown}
+          oninput={filterController.handleInput}
+          onkeydown={filterController.handleKeydown}
         />
       </div>
     {/if}
@@ -1378,8 +1269,8 @@
     {/if}
 
     <VisuallyHiddenLiveRegion
-      message={filterStatusAnnouncement}
-      announcementSequence={filterStatusAnnouncementSequence}
+      message={filterController.statusAnnouncement}
+      announcementSequence={filterController.statusAnnouncementSequence}
       priority="polite"
     />
 
