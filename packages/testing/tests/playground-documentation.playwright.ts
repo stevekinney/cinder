@@ -42,9 +42,20 @@ test.describe('playground component documentation', () => {
     await expect(page.locator('iframe')).toHaveCount(0);
     await expect(page.getByRole('link', { name: 'Open interactive documentation' })).toHaveCount(0);
     await expect(page.getByTestId('preview-loading-overlay')).toHaveCount(0);
-    // The preview pane rides alongside the prose rather than being a section.
-    await expect(page.locator('.dx-preview')).toHaveCount(1);
-    await expect(page.getByRole('group', { name: 'Preview viewport' })).toBeVisible();
+    // Documentation and Playground are two VIEWS now, not prose plus a fixed
+    // 38rem rail. The documentation view carries no stage at all — that is what
+    // gives the prose, the props table, and the a11y notes the full width.
+    await expect(page.locator('.dx-playground')).toHaveCount(0);
+    await expect(page.getByRole('tab', { name: 'Documentation' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+
+    await page.getByRole('tab', { name: 'Playground' }).click();
+    await expect(page.locator('.dx-playground')).toHaveCount(1);
+    // Labelled for what it does — these buttons clamp the stage's width, they do
+    // not emulate a device.
+    await expect(page.getByRole('group', { name: 'Stage width' })).toBeVisible();
     expect(errors).toEqual([]);
   });
 
@@ -78,11 +89,10 @@ test.describe('playground component documentation', () => {
     await page.goto('/page/toggle', { waitUntil: 'load' });
     const preview = page;
 
-    // The preview pane mounts the BARE component live with the synthesized prop
-    // values, labelled "Live preview" — not the static "Featured example". The
-    // controls used to live in a `#playground` section you scrolled to; they are
-    // now in the persistent pane beside the prose.
-    const playground = preview.locator('.dx-preview');
+    // The Playground view mounts the BARE component live with the synthesized
+    // prop values, labelled "Live preview" — not the static "Featured example".
+    await preview.getByRole('tab', { name: 'Playground' }).click();
+    const playground = preview.locator('.dx-playground');
     await expect(playground).toBeVisible();
     const liveMount = preview.locator('#playground-live-mount');
     await expect(liveMount).toBeVisible();
@@ -123,6 +133,8 @@ test.describe('canonical page preview controls', () => {
     const page_ = page.locator('[data-component-page]');
     await expect(page_).not.toHaveClass(/is-focus-mode/);
 
+    // Focus mode expands the STAGE, so it is reached from the Playground view.
+    await page.getByRole('tab', { name: 'Playground' }).click();
     await page.getByRole('button', { name: 'Expand' }).click();
     await expect(page_).toHaveClass(/is-focus-mode/);
     // The component nav must leave the tab order while the preview covers it.
@@ -138,6 +150,7 @@ test.describe('canonical page preview controls', () => {
     // keep meaning what they did on the shell.
     await page.goto('/page/badge?w=768', { waitUntil: 'load' });
 
-    await expect(page.getByRole('group', { name: 'Preview viewport' })).toContainText('768px');
+    await page.getByRole('tab', { name: 'Playground' }).click();
+    await expect(page.getByRole('group', { name: 'Stage width' })).toContainText('768px');
   });
 });

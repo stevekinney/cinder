@@ -53,6 +53,7 @@ import { visit } from 'unist-util-visit';
 import { extractCodeBlocks } from './extract-code-blocks.js';
 import { getHighlighterSync } from './highlighter.js';
 import { rehypeShikiSync } from './rehype-shiki-sync.js';
+import { remarkGithubCallouts } from './remark-github-callouts.js';
 import { createSanitizeSchema } from './sanitize-schema.js';
 import { transformUrls } from './transform-urls.js';
 import type { RenderOptions, RenderResult } from './types.js';
@@ -68,7 +69,8 @@ import type { RenderOptions, RenderResult } from './types.js';
  */
 let baseProcessor: unknown = null;
 function getBaseProcessor(): Processor {
-  if (!baseProcessor) baseProcessor = unified().use(remarkParse).use(remarkGfm);
+  if (!baseProcessor)
+    baseProcessor = unified().use(remarkParse).use(remarkGfm).use(remarkGithubCallouts);
   // eslint-disable-next-line no-unsafe-type-assertion -- unified's `.use()` returns a narrowly-parameterised `Processor<...>` that doesn't structurally extend the zero-arg `Processor`; see the `baseProcessor` doc comment above.
   return baseProcessor as Processor;
 }
@@ -124,7 +126,11 @@ async function ensureMathPipeline(): Promise<{
   }
   const { remarkMath, rehypeKatex } = await mathPluginsPromise;
   if (!mathProcessor) {
-    mathProcessor = unified().use(remarkParse).use(remarkGfm).use(remarkMath);
+    mathProcessor = unified()
+      .use(remarkParse)
+      .use(remarkGfm)
+      .use(remarkGithubCallouts)
+      .use(remarkMath);
   }
   // eslint-disable-next-line no-unsafe-type-assertion -- same Processor variance constraint as getBaseProcessor; see the `baseProcessor` doc comment above.
   return { processor: mathProcessor as Processor, rehypeKatex };
@@ -155,6 +161,25 @@ export function __setMathPluginLoaderForTests(loader: MathPluginLoader): () => v
     mathPluginsPromise = null;
     mathProcessor = null;
   };
+}
+
+/**
+ * Parse markdown AND run the processor's mdast transformers.
+ *
+ * `processor.parse()` alone runs only the parser — unified never invokes
+ * transformers during `parse`, they belong to the `run` phase. Both entry
+ * points used to call bare `parse()`, which was harmless while every remark
+ * plugin in these pipelines (`remark-gfm`, `remark-math`) contributed nothing
+ * but micromark extensions. `remarkGithubCallouts` is a real transformer, so
+ * the `run` phase has to happen or the plugin is registered-but-never-called —
+ * a failure mode that looks exactly like the plugin not matching.
+ *
+ * `runSync` is safe here: these processors hold only synchronous transformers,
+ * and none of them is a compiler, so no stringification is triggered.
+ */
+function parseMarkdown(processor: Processor, markdown: string): MdastRoot {
+  // eslint-disable-next-line no-unsafe-type-assertion -- unified's `parse()`/`runSync()` are typed against the broad unist `Node`; a remark-parse processor always yields an mdast `Root`.
+  return processor.runSync(processor.parse(markdown)) as MdastRoot;
 }
 
 /**
@@ -468,8 +493,7 @@ export function renderMarkdown(markdown: string, options: RenderOptions = {}): R
   }
 
   // Parse markdown to mdast (no math).
-  // eslint-disable-next-line no-unsafe-type-assertion -- unified's `parse()` is typed as the broad unist `Node`; a remark-parse processor always yields an mdast `Root`.
-  const mdast = getBaseProcessor().parse(markdown) as MdastRoot;
+  const mdast = parseMarkdown(getBaseProcessor(), markdown);
   const result = renderFromMdast(markdown, options, mdast, null);
 
   // Add to cache (with LRU eviction)
@@ -545,8 +569,7 @@ export async function renderMarkdownWithMath(
     return cloneResult(cached);
   }
 
-  // eslint-disable-next-line no-unsafe-type-assertion -- unified's `parse()` is typed as the broad unist `Node`; a remark-parse processor always yields an mdast `Root`.
-  const mdast = processor.parse(markdown) as MdastRoot;
+  const mdast = parseMarkdown(processor, markdown);
   const result = renderFromMdast(markdown, options, mdast, rehypeKatex);
 
   if (cache.size >= CACHE_SIZE) {

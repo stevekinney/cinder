@@ -429,6 +429,54 @@ describe('rehype-shiki-sync', () => {
       expect(pre.properties?.style).toBeDefined();
     });
 
+    it('emits no phantom empty trailing line span', () => {
+      // `mdast-util-to-hast` appends a trailing "\n" to every fence's text.
+      // Passed to Shiki verbatim, that newline starts one more line and yields
+      // a final `<span class="line"></span>` with no content — a stray blank
+      // row under every code block.
+      const tree = createCodeBlockTree('const x = 1;\nconst y = 2;\n', 'javascript');
+      rehypeShikiSync()(tree);
+
+      const pre = tree.children[0] as Element;
+      const code = pre.children.find(
+        (child): child is Element => child.type === 'element' && child.tagName === 'code',
+      );
+      const lines = (code?.children ?? []).filter(
+        (child): child is Element =>
+          child.type === 'element' &&
+          Array.isArray(child.properties?.className) &&
+          child.properties.className.includes('line'),
+      );
+
+      expect(lines).toHaveLength(2);
+      expect(collectAllText(lines[0]!)).toBe('const x = 1;');
+      expect(collectAllText(lines[1]!)).toBe('const y = 2;');
+      expect(lines.some((line) => collectAllText(line) === '')).toBe(false);
+    });
+
+    it('strips exactly one trailing newline, preserving deliberate blank lines', () => {
+      // Only the serializer's own artifact goes. A fence is whitespace
+      // significant, so `.trimEnd()` here would silently delete content the
+      // author meant to keep.
+      const tree = createCodeBlockTree('const x = 1;\n\n\n', 'javascript');
+      rehypeShikiSync()(tree);
+
+      const pre = tree.children[0] as Element;
+      const code = pre.children.find(
+        (child): child is Element => child.type === 'element' && child.tagName === 'code',
+      );
+      const lines = (code?.children ?? []).filter(
+        (child): child is Element =>
+          child.type === 'element' &&
+          Array.isArray(child.properties?.className) &&
+          child.properties.className.includes('line'),
+      );
+
+      // "const x = 1;" plus the two blank lines the author wrote.
+      expect(lines).toHaveLength(3);
+      expect(collectAllText(lines[0]!)).toBe('const x = 1;');
+    });
+
     it('adds dataLanguage attribute', () => {
       const tree = createCodeBlockTree('const x = 1;', 'typescript');
       rehypeShikiSync()(tree);

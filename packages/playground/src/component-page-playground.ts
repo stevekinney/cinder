@@ -8,7 +8,8 @@
  * component with an exotic prop degrades gracefully instead of emitting a
  * broken control or invalid snippet.
  */
-import type { ComponentManifest, PropManifest } from './types.ts';
+import { allowsPlainTextChildren } from './component-page-children-seed.ts';
+import type { ComponentManifest, ObjectShape, PropManifest, ValueShape } from './types.ts';
 
 /**
  * Fields common to every {@link PlaygroundControl}, regardless of kind.
@@ -34,17 +35,143 @@ export type PlaygroundControl = PlaygroundControlBase &
 export type PlaygroundValue = boolean | string | number;
 
 /**
+ * A required prop the generator cannot make ADJUSTABLE, but CAN satisfy with a
+ * synthesized literal so the preview mounts and the snippet compiles.
+ *
+ * Seeds exist because the alternative was worse: an array-of-object prop like
+ * `Breadcrumbs.items` is not something a text input can edit, so the analyzer
+ * used to report it unsynthesizable and the page deleted the whole Playground
+ * section. A read-only placeholder renders a real, multi-item instance and
+ * copies as valid Svelte.
+ *
+ * Not a `PlaygroundControl`: `PlaygroundValue` is `boolean | string | number`
+ * and is threaded through the snippet builder, the mount, and the page's
+ * `$state`. Widening it to `unknown` to carry an object would touch all of that,
+ * and a JSON textarea would remount the component with a parse failure on most
+ * keystrokes.
+ */
+export type PlaygroundSeed = {
+  name: string;
+  description?: string;
+  /** The literal handed to `mount`. */
+  value: unknown;
+  /** The same literal as copy-pasteable Svelte source. */
+  source: string;
+};
+
+/**
+ * Three elements — enough that a list, chart, or carousel renders as a real
+ * multi-item instance rather than a degenerate single-row case.
+ */
+const SYNTHESIZED_ARRAY_LENGTH = 3;
+
+/** Ordinal words for placeholder text, so items read as content, not as `item0`. */
+const ORDINALS = ['one', 'two', 'three', 'four', 'five'] as const;
+
+function ordinal(index: number): string {
+  return ORDINALS[index] ?? String(index + 1);
+}
+
+/** True when a shape is an {@link ObjectShape} rather than a leaf {@link ValueShape}. */
+function isObjectShape(shape: ValueShape | ObjectShape): shape is ObjectShape {
+  return 'fields' in shape;
+}
+
+/**
+ * Invent the minimal value satisfying a shape. `index` varies the placeholders
+ * across the elements of an array so the preview shows distinguishable items.
+ */
+function synthesizeValue(
+  shape: ValueShape | ObjectShape,
+  index: number,
+  propName: string,
+): unknown {
+  if (isObjectShape(shape)) {
+    if (shape.degenerate) return {};
+    const value: Record<string, unknown> = {};
+    for (const field of shape.fields) {
+      value[field.name] = synthesizeValue(field.shape, index, field.name);
+    }
+    return value;
+  }
+
+  switch (shape.kind) {
+    case 'string':
+      // Identifier-ish fields get a slug, prose fields a readable label — an
+      // `id` of "Item one" would be a strange thing to show a reader.
+      return /^(id|key|value|slug|name)$/i.test(propName)
+        ? ordinal(index)
+        : `${sentenceCase(propName)} ${ordinal(index)}`;
+    case 'number':
+      return (index + 1) * 10;
+    case 'boolean':
+      return false;
+    case 'enum':
+      return shape.options[index % shape.options.length] ?? shape.options[0] ?? '';
+    case 'array':
+      // Two elements for a NESTED array — enough to read as a list without
+      // making the outer literal unwieldy.
+      return [0, 1].map((nested) => synthesizeValue(shape.element, nested, propName));
+    default:
+      // Opaque — never faked. Callers drop these fields entirely.
+      return undefined;
+  }
+}
+
+/** `datetime` -> `Datetime`, `firstName` -> `First name`. */
+function sentenceCase(name: string): string {
+  const spaced = name.replace(/([a-z0-9])([A-Z])/g, '$1 $2').toLowerCase();
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
+/**
+ * Serialize a synthesized value as Svelte SOURCE, not JSON: unquoted
+ * identifier-safe keys and single-quoted strings, because `{"label":"Item one"}`
+ * is valid but reads as JSON rather than as code a reader would have written.
+ */
+export function formatValueLiteral(value: unknown): string {
+  if (typeof value === 'string') return `'${value.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (value === null || value === undefined) return 'null';
+  if (Array.isArray(value)) return `[${value.map(formatValueLiteral).join(', ')}]`;
+  const entries = Object.entries(value as Record<string, unknown>).map(
+    ([key, entry]) =>
+      `${/^[A-Za-z_$][\w$]*$/.test(key) ? key : `'${key}'`}: ${formatValueLiteral(entry)}`,
+  );
+  return entries.length === 0 ? '{}' : `{ ${entries.join(', ')} }`;
+}
+
+/**
  * The result of classifying a component's props for the Playground: the
  * controls we can render, and the names of props we deliberately skipped
  * (shown to the reader so the omission is explicit, not silent).
  */
 export type PlaygroundModel = {
   controls: PlaygroundControl[];
+  /**
+   * Props satisfied by a synthesized literal rather than a control. See
+   * {@link PlaygroundSeed}.
+   */
+  seeds: PlaygroundSeed[];
   skipped: string[];
+  /**
+   * Names of the required props with no default that we cannot supply a
+   * baseline for — the props that make a GENERATED preview invalid by
+   * construction (see {@link blocksGeneratedPreview}).
+   *
+   * Carried as names rather than a bare flag because the page has to tell the
+   * reader WHY the generated snippet is missing. The previous boolean-only
+   * shape left the page with nothing honest to say, so it printed "This
+   * component has no adjustable props" — false whenever the component had
+   * plenty of adjustable props and merely one unsynthesizable required one.
+   */
+  unsatisfiedRequired: string[];
   /**
    * True when the component has a required prop with no default that we cannot
    * supply a baseline for. The page should then omit the generated preview +
-   * snippet rather than emit an invalid one.
+   * snippet rather than emit an invalid one. Equivalent to
+   * `unsatisfiedRequired.length > 0`; kept as a named field because it is the
+   * question every call site actually asks.
    */
   hasUnsatisfiedRequired: boolean;
   /**
@@ -56,7 +183,32 @@ export type PlaygroundModel = {
   requiresExamplePlayground: boolean;
 };
 
-const EXAMPLE_ONLY_PLAYGROUND_COMPONENTS = new Set(['autocomplete', 'spectrogram']);
+/**
+ * Components documented through their authored examples rather than the generic
+ * prop playground.
+ *
+ * The overlays are here for a specific reason: `Modal`, `Drawer`, `Sheet` and
+ * `CommandPalette` all call `showModal()`, so seeding `open: true` would not put
+ * a preview in the stage — it would blanket the entire documentation page in the
+ * top layer and take the body scroll lock with it. `Popover` cannot be opened at
+ * all without a `trigger` snippet to anchor against, which the generator has no
+ * way to synthesize as focusable markup. Each of them ships a trigger-based
+ * example that demonstrates the real interaction, which is what the stage shows
+ * instead of an empty box.
+ */
+const EXAMPLE_ONLY_PLAYGROUND_COMPONENTS = new Set([
+  'autocomplete',
+  'spectrogram',
+  'modal',
+  'drawer',
+  'sheet',
+  'popover',
+  // Listed defensively. CommandPalette is currently blocked anyway by its
+  // required `items` snippet, so no `open` control is generated today — but it
+  // is a `showModal()` dialog like the four above, so if that snippet ever
+  // becomes synthesizable the blanket-the-page failure would come back silently.
+  'command-palette',
+]);
 
 /**
  * True when a prop would make the generated preview invalid by construction: it
@@ -91,7 +243,58 @@ function stringDefault(value: unknown): string {
  * optional text controls, but a required label/id/title seeded to `''` makes the
  * live playground look broken before the reader changes anything.
  */
+/**
+ * Per-component seeds for required text props whose value has to be a REAL
+ * instance of something, not a label.
+ *
+ * `requiredTextSeed` keys only on the prop name and falls back to the name
+ * itself, which is fine for a `label` but produced the two most visibly broken
+ * previews in the library: `Image` rendered a broken-image glyph because `src`
+ * was the literal string "src", and `SourceDiffViewer` rendered a fake one-line
+ * diff because `patch` was the literal string "patch".
+ */
+const COMPONENT_TEXT_SEEDS: Readonly<Record<string, Readonly<Record<string, string>>>> = {
+  image: {
+    // An inline SVG data URI rather than a remote placeholder service: the docs
+    // site ships no image assets, and the examples already use this pattern
+    // (see `examples/carousel/basic.example.svelte`) precisely to avoid a
+    // third-party network dependency that breaks offline dev and snapshots.
+    src:
+      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='338'%3E" +
+      "%3Crect width='600' height='338' fill='%23b8c4d4'/%3E%3C/svg%3E",
+    alt: 'A muted grey placeholder rectangle',
+  },
+  'source-diff-viewer': {
+    // Deliberately a Markdown diff, not a code diff: no braces, quotes,
+    // ampersands, or angle brackets, so it survives every attribute-escaping
+    // path unchanged.
+    patch: [
+      'diff --git a/README.md b/README.md',
+      '--- a/README.md',
+      '+++ b/README.md',
+      '@@ -1,3 +1,3 @@',
+      ' # Cinder',
+      '-A component library.',
+      '+A Svelte component library for building fast UIs.',
+      ' Read the docs to get started.',
+    ].join('\n'),
+  },
+};
+
+/**
+ * Per-component seeds for STRUCTURAL props whose generic placeholder is
+ * technically valid but reads as nonsense. `ShortcutHint.keys` is the clear
+ * case: the generic array-of-string synthesis yields
+ * `['Keys one', 'Keys two', 'Keys three']`, and rendering those as keycaps is
+ * exactly the sort of thing a reader would screenshot as a bug.
+ */
+const COMPONENT_VALUE_SEEDS: Readonly<Record<string, Readonly<Record<string, unknown>>>> = {
+  'shortcut-hint': { keys: ['Meta', 'Shift', 'P'] },
+};
+
 function requiredTextSeed(prop: PropManifest, manifest: ComponentManifest): string {
+  const scoped = COMPONENT_TEXT_SEEDS[manifest.kebabName]?.[prop.name];
+  if (scoped !== undefined) return scoped;
   switch (prop.name) {
     case 'id':
       return `${manifest.kebabName}-example`;
@@ -145,8 +348,9 @@ function childrenSeed(manifest: ComponentManifest): string {
  */
 export function buildPlaygroundModel(manifest: ComponentManifest): PlaygroundModel {
   const controls: PlaygroundControl[] = [];
+  const seeds: PlaygroundSeed[] = [];
   const skipped: string[] = [];
-  let hasUnsatisfiedRequired = false;
+  const unsatisfiedRequired: string[] = [];
 
   for (const prop of manifest.props) {
     // Spread description only when present — the control type uses an optional
@@ -174,6 +378,45 @@ export function buildPlaygroundModel(manifest: ComponentManifest): PlaygroundMod
       case 'number':
         controls.push({ ...base, kind: 'number', value: numberDefault(prop.defaultValue) });
         break;
+      case 'array':
+      case 'object': {
+        // ONLY a required prop with no default is seeded, matching exactly the
+        // condition that would otherwise block the preview (see
+        // `blocksGeneratedPreview`) — which is the entire reason seeds exist.
+        //
+        // Seeding an optional or defaulted structural prop actively breaks the
+        // component: `buildSnippet` always emits seeds and `toMountProps` always
+        // passes them, so `ChoiceGrid.values` (optional, defaults to `[]`) had
+        // its own default overwritten with invented data, and
+        // `PhoneInput.countries` (optional) had its full 245-country list
+        // replaced by three. Same reasoning as the synthesized `''`/`0` values
+        // that `shouldEmit` and `toMountProps` already drop: never supply a
+        // value the component did not ask for.
+        if (prop.optional || prop.defaultValue !== undefined) {
+          skipped.push(prop.name);
+          break;
+        }
+        const scoped = COMPONENT_VALUE_SEEDS[manifest.kebabName]?.[prop.name];
+        const value =
+          scoped !== undefined
+            ? scoped
+            : prop.control.kind === 'array'
+              ? Array.from({ length: SYNTHESIZED_ARRAY_LENGTH }, (_unused, index) =>
+                  synthesizeValue(
+                    prop.control.kind === 'array'
+                      ? prop.control.element
+                      : {
+                          fields: [],
+                          degenerate: true,
+                        },
+                    index,
+                    prop.name,
+                  ),
+                )
+              : synthesizeValue(prop.control.shape, 0, prop.name);
+        seeds.push({ ...base, value, source: formatValueLiteral(value) });
+        break;
+      }
       default:
         // snippet / unknown — not adjustable as an attribute. The one exception
         // is the ubiquitous `children` snippet: many components (Badge, Button,
@@ -189,7 +432,11 @@ export function buildPlaygroundModel(manifest: ComponentManifest): PlaygroundMod
         // a semantically broken preview (loose text in an empty `.cinder-accordion`
         // shell). They skip the control and fall back to the featured-example
         // mount instead — see {@link ComponentManifest.isCompound}.
-        if (prop.name === 'children' && prop.control.kind === 'snippet' && !manifest.isCompound) {
+        if (
+          prop.name === 'children' &&
+          prop.control.kind === 'snippet' &&
+          allowsPlainTextChildren(manifest)
+        ) {
           controls.push({
             ...base,
             kind: 'text',
@@ -202,15 +449,17 @@ export function buildPlaygroundModel(manifest: ComponentManifest): PlaygroundMod
         // non-snippet value the generator can't synthesize means we can't build
         // a valid preview at all.
         skipped.push(prop.name);
-        if (blocksGeneratedPreview(prop)) hasUnsatisfiedRequired = true;
+        if (blocksGeneratedPreview(prop)) unsatisfiedRequired.push(prop.name);
         break;
     }
   }
 
   return {
     controls,
+    seeds,
     skipped,
-    hasUnsatisfiedRequired,
+    unsatisfiedRequired,
+    hasUnsatisfiedRequired: unsatisfiedRequired.length > 0,
     requiresExamplePlayground: EXAMPLE_ONLY_PLAYGROUND_COMPONENTS.has(manifest.kebabName),
   };
 }
@@ -230,7 +479,12 @@ export function buildPlaygroundModel(manifest: ComponentManifest): PlaygroundMod
 function attributeFor(name: string, value: PlaygroundValue): string {
   if (typeof value === 'boolean') return value ? name : `${name}={false}`;
   if (typeof value === 'number') return `${name}={${value}}`;
-  if (/["&<>]/.test(value)) return `${name}={${JSON.stringify(value)}}`;
+  // `{` and `}` are NOT safe in a double-quoted Svelte attribute — `{expr}` is
+  // interpolated there, so a value containing braces pastes as different (or
+  // invalid) Svelte than the preview shows. `\n` is legal but emits literal
+  // newlines inside the quotes, wrecking the snippet's formatting and
+  // highlighting. All of them route to the JSON-escaped expression form.
+  if (/["&<>{}\n]/.test(value)) return `${name}={${JSON.stringify(value)}}`;
   return `${name}="${value}"`;
 }
 
@@ -250,7 +504,11 @@ function attributeFor(name: string, value: PlaygroundValue): string {
  */
 function shouldEmit(control: PlaygroundControl, current: PlaygroundValue): boolean {
   if (control.hasDefault) return current !== control.value;
-  return current !== '';
+  // A synthesized `0` is noise for the same reason a synthesized `''` is: the
+  // component never declared it. It is also actively wrong for `Image`, where
+  // `width={0} height={0}` collapses the element to nothing however good the
+  // `src` is.
+  return current !== '' && current !== 0;
 }
 
 /**
@@ -285,10 +543,19 @@ function escapeSnippetText(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/\{/g, '&lbrace;');
 }
 
+/**
+ * Serialized seed literals longer than this move out of the attribute list and
+ * into a `<script>` preamble. An inline nine-field object array is not how
+ * anyone writes this, and the snippet is meant to be copied.
+ */
+const INLINE_SEED_MAX_CHARS = 60;
+
 export function buildSnippet(
   exportName: string,
   controls: PlaygroundControl[],
   values: Record<string, PlaygroundValue>,
+  seeds: readonly PlaygroundSeed[] = [],
+  importPath?: string,
 ): string {
   // The synthesized `children` control renders as element CONTENT, not an
   // attribute, so it is partitioned out of the attribute list.
@@ -298,10 +565,21 @@ export function buildSnippet(
       ? String(values[childrenControl.name] ?? childrenControl.value)
       : '';
 
-  const attributes = controls
-    .filter((control) => !(control.kind === 'text' && control.isChildren))
-    .filter((control) => shouldEmit(control, values[control.name] ?? control.value))
-    .map((control) => attributeFor(control.name, values[control.name] ?? control.value));
+  // Seeds are ALWAYS emitted — a synthesized value for a required prop can never
+  // be omitted without the snippet failing to compile. Short ones inline as an
+  // expression attribute; long ones become `const` bindings in a preamble and
+  // are referenced by the `{name}` shorthand.
+  const inlineSeeds = seeds.filter((seed) => seed.source.length <= INLINE_SEED_MAX_CHARS);
+  const preambleSeeds = seeds.filter((seed) => seed.source.length > INLINE_SEED_MAX_CHARS);
+
+  const attributes = [
+    ...controls
+      .filter((control) => !(control.kind === 'text' && control.isChildren))
+      .filter((control) => shouldEmit(control, values[control.name] ?? control.value))
+      .map((control) => attributeFor(control.name, values[control.name] ?? control.value)),
+    ...inlineSeeds.map((seed) => `${seed.name}={${seed.source}}`),
+    ...preambleSeeds.map((seed) => `{${seed.name}}`),
+  ];
 
   // One attribute fragment shared by both the self-closing and open/close forms,
   // so children is a single suffix concern rather than a parallel set of paths.
@@ -314,10 +592,19 @@ export function buildSnippet(
 
   // With children content, emit an open/close pair so the snippet copy-pastes as
   // a real labelled instance; otherwise keep the minimal self-closing form.
-  if (childrenText !== '') {
-    return `<${exportName}${attributePart}>${escapeSnippetText(childrenText)}</${exportName}>`;
-  }
-  return attributes.length > 1
-    ? `<${exportName}${attributePart}/>`
-    : `<${exportName}${attributePart} />`;
+  const element =
+    childrenText !== ''
+      ? `<${exportName}${attributePart}>${escapeSnippetText(childrenText)}</${exportName}>`
+      : attributes.length > 1
+        ? `<${exportName}${attributePart}/>`
+        : `<${exportName}${attributePart} />`;
+
+  if (preambleSeeds.length === 0) return element;
+
+  const importLine =
+    importPath === undefined ? '' : `  import { ${exportName} } from '${importPath}';\n\n`;
+  const declarations = preambleSeeds
+    .map((seed) => `  const ${seed.name} = ${seed.source};`)
+    .join('\n');
+  return `<script lang="ts">\n${importLine}${declarations}\n</script>\n\n${element}`;
 }

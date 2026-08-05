@@ -14,7 +14,9 @@
  *   GET /bundle/:name/:scenario.js → compiled example bundle (standalone — useful for tests/debugging)
  *   GET /styles.css    → raw contents of src/styles/index.css (slim base — no per-component CSS)
  *   GET /styles/shell.css → shell chrome styles (base CSS plus shell component CSS)
- *   GET /styles/all.css → full cascade aggregator (all component CSS — used by the preview iframe)
+ *   GET /styles/all.css → full cascade aggregator (all component CSS — used by the
+ *                         preview iframe AND by the outer shell, whose README prose
+ *                         renders callouts and code blocks that shell.css omits)
  *   GET /package-components/:source/*.css → CSS owned by extracted component packages
  *   GET /example-src/:name/:scenario → raw .example.svelte source
  *   GET /events        → Server-Sent Events stream for live reload
@@ -85,6 +87,7 @@ import { buildPageBundle } from './page-bundle.ts';
 import { PLAYGROUND_ROOT } from './playground-paths.ts';
 import { createHttpServerOnAvailablePort, resolvePreferredPort } from './port-scanner.ts';
 import {
+  DEPICT_THEME_VARIABLES,
   FAVICON_HREF,
   PRE_PAINT_THEME_SCRIPT,
   escapeHtml,
@@ -470,6 +473,8 @@ async function renderComponentPage(
         }
       }
       #app { display: contents; }
+
+${DEPICT_THEME_VARIABLES}
     </style>${styleTag ? `\n    ${styleTag}` : ''}
   </head>
   <body>

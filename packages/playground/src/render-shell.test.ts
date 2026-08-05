@@ -11,6 +11,8 @@
 
 import { describe, expect, it } from 'bun:test';
 
+import { CSS_VARIABLE_THEME } from '@lostgradient/markdown/rendering/highlighter';
+
 import { jsonForScriptTag, renderShell } from './render-shell.ts';
 
 describe('jsonForScriptTag', () => {
@@ -76,14 +78,19 @@ describe('renderShell', () => {
     expect(html).toContain('id="cinder-initial"');
   });
 
-  it('loads the shell CSS bundle for Cinder components used by the shell', () => {
+  it('loads the full CSS aggregator so README prose gets callout + code-block CSS', () => {
+    // Regression: the shell used to load /styles/shell.css, which imports only
+    // the components the shell CHROME uses (button, input, popover, …). The
+    // landing page renders README markdown, whose callouts and fences need
+    // callout.css and code-block.css — neither of which shell.css carries, so
+    // both rendered unstyled. all.css is the same aggregator /page/:name uses.
     const html = renderShell('button', ['button']);
-    expect(html).toContain('href="/styles/shell.css"');
-    expect(html).not.toContain('href="/styles/all.css"');
+    expect(html).toContain('href="/styles/all.css"');
+    expect(html).not.toContain('href="/styles/shell.css"');
     expect(html).not.toContain('href="/styles/index.css"');
   });
 
-  it('registers cinder.reset layer before /styles/shell.css so component CSS wins', () => {
+  it('registers cinder.reset layer before /styles/all.css so component CSS wins', () => {
     // Regression: when the universal `* { padding: 0 }` reset was unlayered
     // it beat every cinder.components layered rule, leaving SegmentedControl,
     // NumberInput, Card, Accordion all rendered without padding in the shell.
@@ -93,7 +100,7 @@ describe('renderShell', () => {
     const html = renderShell('button', ['button']);
     const layerDeclaration =
       '@layer cinder.reset, cinder.tokens, cinder.foundation, cinder.components, cinder.utilities';
-    const stylesheetLink = '<link rel="stylesheet" href="/styles/shell.css"';
+    const stylesheetLink = '<link rel="stylesheet" href="/styles/all.css"';
     const layerIndex = html.indexOf(layerDeclaration);
     const linkIndex = html.indexOf(stylesheetLink);
     expect(layerIndex).toBeGreaterThan(-1);
@@ -118,6 +125,40 @@ describe('renderShell', () => {
     const html = renderShell('button', ['button']);
     const rootDeclaration = /:root\s*\{[^}]*--cinder-top-bar-height:\s*52px/.exec(html);
     expect(rootDeclaration).not.toBeNull();
+  });
+
+  it('declares every CSS variable the `depict` Shiki theme references', () => {
+    // Root cause of "landing-page fences look unhighlighted": CSS_VARIABLE_THEME
+    // emits bare `var(--syntax-*)` / `var(--surface-inset)` / `var(--text)`
+    // references, but Cinder namespaces all of its tokens under `--cinder-*`,
+    // so NONE of those names existed anywhere in the repo. Every highlighted
+    // token resolved to `unset` and inherited the surrounding prose color.
+    //
+    // Derive the required names from the theme itself rather than hard-coding
+    // a list, so adding a scope to CSS_VARIABLE_THEME without declaring its
+    // variable fails here instead of silently rendering unhighlighted.
+    const referenced = new Set<string>();
+    const collect = (value: string | undefined): void => {
+      for (const match of (value ?? '').matchAll(/var\(\s*(--[\w-]+)\s*\)/g)) {
+        const name = match[1];
+        if (name !== undefined) referenced.add(name);
+      }
+    };
+    for (const value of Object.values(CSS_VARIABLE_THEME.colors ?? {})) collect(value);
+    for (const tokenColor of CSS_VARIABLE_THEME.tokenColors ?? []) {
+      collect(tokenColor.settings?.foreground);
+      collect(tokenColor.settings?.background);
+    }
+
+    // Sanity check that the extraction found anything at all — an empty set
+    // would make the assertion below vacuously pass.
+    expect(referenced.size).toBeGreaterThan(10);
+    expect(referenced).toContain('--syntax-keyword');
+
+    const html = renderShell('button', ['button']);
+    for (const name of referenced) {
+      expect(html).toContain(`${name}: var(--cinder-`);
+    }
   });
 });
 

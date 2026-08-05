@@ -26,7 +26,12 @@ import type { ComponentManifest, PropManifest } from './types.ts';
 const COMPONENTS_ROOT = join(import.meta.dir, '..', '..', 'components', 'src', 'components');
 
 function buttonManifest(): Promise<ComponentManifest> {
-  return analyzeComponent(join(COMPONENTS_ROOT, 'button', 'button.svelte'));
+  return manifestFor('button');
+}
+
+/** Analyze any component by its kebab id, from the real component source. */
+function manifestFor(kebabName: string): Promise<ComponentManifest> {
+  return analyzeComponent(join(COMPONENTS_ROOT, kebabName, `${kebabName}.svelte`));
 }
 
 // Module-scope fetch fixtures for the unhappy-path fetch tests. They capture
@@ -270,12 +275,38 @@ describe('toPropReferenceRows — Button (real manifest)', () => {
     expect(loading?.required).toBe(false);
   });
 
-  it('marks props that have no default and are not optional as required', async () => {
+  it('does not mark an alternative of a union as required', async () => {
     const rows = toPropReferenceRows(await buttonManifest());
-    // `label` and `children` are not optional and carry no default.
-    const label = rows.find((row) => row.name === 'label');
-    expect(label?.required).toBe(true);
-    expect(rows.some((row) => row.required)).toBe(true);
+    // `ButtonProps` is `SharedBase & (WithLabel | WithChildren | WithIconOnly)`,
+    // so `label` and `children` are ALTERNATIVES — `<Button>Save</Button>` and
+    // `<Button label="Save" />` are both valid, and neither prop is required on
+    // its own. The analyzer used to report both as required, because the
+    // syntactic type walk could not see into a union nested in an intersection
+    // and fell back to "untyped ⇒ required". That default is what suppressed
+    // Button's whole Playground section.
+    expect(rows.find((row) => row.name === 'label')?.required).toBe(false);
+    expect(rows.find((row) => row.name === 'children')?.required).toBe(false);
+    // `href` only exists on the link arm, so it is omittable too.
+    expect(rows.find((row) => row.name === 'href')?.required).toBe(false);
+  });
+
+  it('resolves a prop typed only through a nested union arm', async () => {
+    const rows = toPropReferenceRows(await buttonManifest());
+    // Same root cause, the other half: `label` was not just wrongly required, it
+    // was untyped (`?`). It is a plain string, and the props table says so.
+    expect(rows.find((row) => row.name === 'label')?.type).toBe('text');
+  });
+
+  it('marks a genuinely required prop as required', async () => {
+    // DropdownGroup writes the "exactly one of" idiom as
+    // `{ label: string; labelledBy?: never } | { label?: never; labelledBy: string }`.
+    // Both alternatives are optional across the union as a whole, so seeding
+    // both supplies either all or none — and the component rejects both. The
+    // analyzer commits to the first alternative, which is what makes the
+    // generated preview satisfy the component's own validation.
+    const rows = toPropReferenceRows(await manifestFor('dropdown-group'));
+    expect(rows.find((row) => row.name === 'label')?.required).toBe(true);
+    expect(rows.find((row) => row.name === 'labelledBy')?.required).toBe(false);
   });
 
   it('covers varied control kinds (select, boolean, snippet, unknown)', async () => {
@@ -286,6 +317,28 @@ describe('toPropReferenceRows — Button (real manifest)', () => {
     expect(kinds.has('boolean')).toBe(true);
     // The variant union and at least one unknown/raw type are present.
     expect(rows.some((row) => row.type.includes(' | '))).toBe(true);
+  });
+});
+
+describe('isComponentManifest — every real manifest survives the round trip', () => {
+  it('accepts every analyzed component after JSON serialization', async () => {
+    // The documentation payload is validated as a WHOLE before the page renders
+    // it, so one control kind this guard does not recognise fails the entire
+    // data island and the reader gets "Could not load documentation" instead of
+    // a page. Adding a `ControlKind` variant and forgetting `isControlKind` took
+    // down every component with an array or object prop — MegaMenu, DataTable,
+    // ApprovalCard, Breadcrumbs — while every unit test stayed green, because
+    // nothing exercised a real manifest against the real guard.
+    const { analyzeAll } = await import('./analyze.ts');
+    const manifests = await analyzeAll(COMPONENTS_ROOT);
+    expect(manifests.length).toBeGreaterThan(100);
+
+    // Round-trip through JSON: the payload reaches the page as a data island, so
+    // the guard must accept what actually crosses that boundary.
+    const rejected = manifests
+      .filter((manifest) => !isComponentManifest(JSON.parse(JSON.stringify(manifest))))
+      .map((manifest) => manifest.kebabName);
+    expect(rejected).toEqual([]);
   });
 });
 
