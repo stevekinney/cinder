@@ -88,17 +88,70 @@ stylelint rule, a `check-*.ts` script, `component-conventions.ts` — applies to
 files its own pull request never touches, so no amount of per-PR file-scoping
 can see the conflict.** Only validating the merged result can.
 
-The fix is the **merge queue**, which builds each candidate on top of the real
-`main` and runs the required checks against that. All four required checks
-therefore carry a `merge_group:` trigger, and every scoping job in them fails
-safe on non-`pull_request` events — a queue run is fully unscoped by design.
-This gets the correctness of strict-mode without its serialization: the queue
-batches and tests entries together rather than forcing each PR to be manually
-updated in turn.
+The intended fix was the **merge queue**, which builds each candidate on top
+of the real `main` and runs the required checks against that. All four
+required checks carry a `merge_group:` trigger for it, and every scoping job
+in them fails safe on non-`pull_request` events — a queue run is fully
+unscoped by design.
 
-`strict: true` is set as an interim stopgap while the queue is being validated,
-and should be dropped once the queue is confirmed working — leaving both on
-imposes the serialization cost the queue exists to avoid.
+**The merge queue cannot be enabled on this repository.** GitHub only offers
+merge queues on organization-owned repositories; this repo is owned by a user
+account, and the rulesets API rejects a `merge_queue` rule here (verified
+empirically 2026-08-04 — schema-valid payloads fail semantic validation). The
+`merge_group:` triggers are therefore inert. They are deliberately kept: they
+cost nothing, and they make the queue turn-key if the repo ever moves to an
+organization.
+
+Until then, **`strict: true` is the steady state**, and its serialization
+cost is the accepted price of validating merged results. For bulk merge waves
+where that cost is prohibitive (N PRs × a full CI round each), the recorded
+protocol from the 2026-08-04 drain is:
+
+1. **Freeze merges for the duration.** Lifting `strict` lets ANY green PR
+   self-merge unvalidated (no human review is required here), so the drain
+   window must cover every open PR: anything not in the validated candidate
+   set must be closed, converted to draft, or explicitly queued behind the
+   drain before `strict` is lifted.
+2. Octopus-merge every candidate branch onto a **scratch branch cut from the freshly fetched
+   `origin/main` tip in a scratch worktree** (`git fetch origin` first — a
+   stale local `main` validates against the wrong base) — never the real `main` — and run the
+   full validation suite against that combined tree — provision the scratch
+   worktree's dependency tree first (`bun install --frozen-lockfile`; a fresh
+   cinder worktree is known to hang on install, so prefer reusing a worktree
+   that already has `node_modules` and re-install only when `bun.lock`
+   changed): build, tests, typecheck, lint (including `lint:invariants`),
+   and the `main-green`-only source audits exactly as `workspace-gates`
+   runs them — for cinder: `aggregator:check`, `components:check`,
+   `check:changeset-prerelease-bumps`, `validate:workflow`,
+   `validate:svelte-peer`, plus `platform:audit -- --strict`,
+   `colors:audit -- --strict`, and `tokens:audit -- --strict`; for chat and editor: `components:check`,
+   `build`, `platform:audit -- --strict`, `colors:audit -- --strict`;
+   plus `test:workspace-scripts` (read
+   `.github/workflows/main-green.yaml` for the current list — it is the
+   source of truth and this list WILL drift). A REUSED scratch worktree must
+   be verified clean before any of this: `git status --porcelain` empty
+   (stash leftovers with a labeled message, never discard them) — stale
+   tracked edits or generated artifacts in a reused tree silently poison the
+   validation, **and the full Playwright suite
+   run against this same combined tree** (locally via `test:browser`; kill
+   any stale server on :5555/:5556 first). Browser coverage must precede the
+   drain — `main-green` is NOT a browser gate (it runs only the Chromium
+   hydration smoke `validate:consumer:hydration-smoke`), so a cross-PR
+   browser interaction detected only after draining has already landed on
+   `main`.
+3. Only then lift `strict`, drain the validated set, and restore
+   `strict: true` immediately after.
+4. **Pin candidate heads.** Record each candidate branch's SHA at
+   combined-tree-validation time; immediately before merging each PR,
+   re-fetch and verify its head still equals the validated SHA. A moved head
+   (fix push, rebase, another agent) drops that PR out of the validated set
+   until the affected slice — or the full suite — is re-run against a
+   refreshed combined tree. This check is mechanical; do not rely on anyone
+   noticing a push.
+
+That reproduces the queue's merged-result guarantee out-of-band; per-PR CI
+plus pairwise `git merge-tree` checks alone do not cover repo-wide-guard
+interactions, which is exactly the class that broke `main` on 2026-07-28.
 
 `release.yaml` still waits for a same-SHA `main-green` run before publishing, so
 nothing ships un-caught even if something slips past the queue.
