@@ -247,6 +247,13 @@ function positiveThenNormalBrandSnippet() {
   }));
 }
 
+/** A brand whose only focus target is a positive-tabindex control. */
+function positiveOnlyBrandSnippet() {
+  return createRawSnippet(() => ({
+    render: () => '<button type="button" id="brand-positive" tabindex="1">Positive</button>',
+  }));
+}
+
 function disabledFirstNavigationSnippet() {
   return createRawSnippet(() => ({
     render: () => `
@@ -1309,6 +1316,32 @@ describe('NavigationBar', () => {
       shadowButton.dispatchEvent(event);
 
       expect(document.activeElement).toBe(home);
+    });
+  });
+
+  test('brand Tab does not bridge into the portaled panel while the toggle is still ahead in native order', async () => {
+    // A brand containing only a positive-tabindex control is still before
+    // the default-tier toggle in native Tab order (positive tiers always
+    // precede zero/default ones, regardless of DOM position). The bridge
+    // must decline and leave `preventDefault()` uncalled so native Tab
+    // handling can reach the toggle on its own -- happy-dom does not run
+    // that native algorithm, so the observable result here is that focus
+    // stays put rather than jumping to the portaled panel's first item.
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        brand: positiveOnlyBrandSnippet(),
+        items: keyboardNavigationSnippet({}),
+        menuToggle: toggleSnippet(),
+        menuTogglePlacement: 'before-brand',
+      });
+
+      await openCollapsedMobileMenu(container);
+      await waitForMobilePanelPosition(container);
+      const brandPositive = container.querySelector('#brand-positive') as HTMLButtonElement;
+
+      brandPositive.focus();
+      await fireEvent.keyDown(brandPositive, { key: 'Tab' });
+      expect(document.activeElement).toBe(brandPositive);
     });
   });
 

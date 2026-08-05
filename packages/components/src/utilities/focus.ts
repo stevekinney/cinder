@@ -87,17 +87,34 @@ export function getSequentialFocusTargets(
   const relativeIndex = range ? composedElements.indexOf(range.relativeTo) : -1;
   if (range && relativeIndex === -1) return [];
   const tierReference = range?.tierReference ?? range?.relativeTo;
+  // Composed-tree position, keyed by identity, for the same-tier/zero-tier
+  // DOM-order tie-break inside `isSequentiallyAfterReference`. Built once
+  // per call so every comparison is an O(1) lookup instead of a repeated
+  // `indexOf`. Tie-breaks always measure against `relativeTo`'s position
+  // (`relativeIndex`), never `tierReference`'s own — `tierReference` exists
+  // purely to supply the correct tab-index *value* when `relativeTo` isn't
+  // itself a focusable participant (see the type doc on `tierReference`).
+  // Composed position is a different concern: `relativeTo` is the caller's
+  // stable structural anchor (e.g. a component root that never moves),
+  // while `tierReference` can be a live-focused element that a portal has
+  // relocated elsewhere in the tree while open — using its position for
+  // in-tier DOM ordering would compare against that temporary location
+  // instead of the anchor the caller actually meant.
+  const positionOf = range
+    ? new Map(composedElements.map((element, index) => [element, index] as const))
+    : null;
   const candidates = composedElements
-    .filter(
-      (_, index) =>
-        !range || (range.direction === 'before' ? index < relativeIndex : index > relativeIndex),
-    )
     .filter(isSequentialFocusTarget)
     .filter(
       (element) =>
         !range ||
         (isSequentialFocusTarget(tierReference) &&
-          isSequentiallyAfterReference(element, tierReference, range.direction)),
+          isSequentiallyAfterReference(
+            element,
+            tierReference,
+            range.direction,
+            (positionOf?.get(element) ?? -1) - relativeIndex,
+          )),
     )
     .filter((element) => element.matches(sequentialFocusCandidateSelector))
     .filter(isSequentialCandidate);
@@ -255,6 +272,7 @@ function isSequentiallyAfterReference(
   element: SequentialFocusTarget,
   reference: SequentialFocusTarget,
   direction: SequentialFocusRange['direction'],
+  relativePosition: number,
 ): boolean {
   const referenceTabIndex = getTabIndexValue(reference);
   const elementTabIndex = getTabIndexValue(element);
@@ -263,26 +281,94 @@ function isSequentiallyAfterReference(
 
   // Native sequential focus order visits every positive-tabindex element
   // first (ascending, ties broken by composed-tree position), then every
-  // zero/default-tabindex element (composed-tree position). A candidate's
-  // relationship to a reference must respect that tier, not just whether
-  // the reference itself is positive:
-  //  - a positive reference has already passed any lower-or-equal positive
-  //    value, so those are "before" it and never "after" it again;
-  //  - a positive value is always "before" a zero/default reference and
-  //    never "after" one, regardless of composed-tree position.
+  // zero/default-tabindex element (composed-tree position). Cross-tier
+  // comparisons never depend on composed-tree position: a strictly higher
+  // (for `after`) or lower (for `before`) tier than the reference's own
+  // tier is always on that side of it, wherever it sits in the DOM —
+  // native Tab order sorts by tabindex value first, position only breaks
+  // ties *within* one tier. `relativePosition` (this element's composed
+  // index minus the reference's) is consulted only for those same-tier or
+  // both-zero-tier ties.
   if (direction === 'after') {
-    if (!referenceIsPositive) return !elementIsPositive;
-    if (!elementIsPositive) return true;
-    return elementTabIndex >= referenceTabIndex;
+    if (referenceIsPositive) {
+      if (!elementIsPositive) return true;
+      if (elementTabIndex !== referenceTabIndex) return elementTabIndex > referenceTabIndex;
+      return relativePosition > 0;
+    }
+    if (elementIsPositive) return false;
+    return relativePosition > 0;
   }
 
-  if (!referenceIsPositive) return true;
-  if (!elementIsPositive) return false;
-  return elementTabIndex <= referenceTabIndex;
+  if (referenceIsPositive) {
+    if (!elementIsPositive) return false;
+    if (elementTabIndex !== referenceTabIndex) return elementTabIndex < referenceTabIndex;
+    return relativePosition < 0;
+  }
+  if (elementIsPositive) return true;
+  return relativePosition < 0;
 }
 
 export function getTabIndexValue(element: SequentialFocusTarget): number {
   return getExplicitTabIndexValue(element) ?? (hasNativeSequentialDefault(element) ? 0 : -1);
+}
+
+/**
+ * Native Tab-order semantics restricted to a caller-gathered candidate pool
+ * — typically a single foreign region's own `getSequentialFocusTargets(
+ * region)` list (no range), which is already globally tier-sorted: every
+ * positive-tabindex candidate ascending first, then every zero/default
+ * candidate in composed order. Answers "which member of this pool does
+ * forward/reverse Tab reach first, given the tab tier the caller is
+ * bridging FROM?" — the shape every hand-rolled "enter this other region
+ * relative to my current tier" fallback needs (a portaled panel's neighbor
+ * region, a brand strip bridged into from a navigation item, and so on).
+ *
+ * `referenceTabIndex` is the tab tier being bridged from (0 for
+ * zero/default). `direction: 'after'` returns the pool's first candidate
+ * whose own tier is >= `referenceTabIndex` — except when `referenceTabIndex`
+ * is itself 0, where only the pool's zero-tier candidate qualifies, since a
+ * zero-tier reference has already passed every positive-tabindex one.
+ * `direction: 'before'` returns the pool's last candidate whose tier is <=
+ * `referenceTabIndex`, except when `referenceTabIndex` is 0, where every
+ * positive-tabindex candidate in the pool already qualifies (positive tiers
+ * always precede the zero tier), so it falls back to the pool's own last
+ * candidate outright.
+ *
+ * When `referenceTabIndex` is positive and nothing in the pool clears it,
+ * this returns `null` rather than falling back to the pool's zero-tier
+ * candidate: a zero-tier candidate can never be "after" a positive
+ * reference (zero tier is entirely visited after every positive tier), so
+ * returning one would move focus backward. Callers with a further, wider
+ * fallback (searching outward past this pool) should treat `null` as "keep
+ * looking"; callers with no wider fallback available — because the pool is
+ * the only reachable surface, e.g. a portaled panel — should fall back to
+ * the pool's own zero-tier member explicitly instead of calling this.
+ */
+export function findSequentialEntryTarget(
+  candidates: SequentialFocusTarget[],
+  referenceTabIndex: number,
+  direction: SequentialFocusRange['direction'],
+): SequentialFocusTarget | null {
+  if (direction === 'after') {
+    if (referenceTabIndex > 0) {
+      return (
+        candidates.find((candidate) => getTabIndexValue(candidate) >= referenceTabIndex) ?? null
+      );
+    }
+    // A zero/default-tier reference has already passed every positive-
+    // tabindex candidate (positive tiers entirely precede the zero tier),
+    // so only the pool's own zero-tier member can be "after" it — matching
+    // on `tier >= 0` here would wrongly select a positive-tier candidate
+    // that happens to sort first in the pool's global tier order.
+    return candidates.find((candidate) => getTabIndexValue(candidate) === 0) ?? null;
+  }
+  if (referenceTabIndex === 0) return candidates.at(-1) ?? null;
+  return (
+    candidates.toReversed().find((candidate) => {
+      const candidateTabIndex = getTabIndexValue(candidate);
+      return candidateTabIndex > 0 && candidateTabIndex <= referenceTabIndex;
+    }) ?? null
+  );
 }
 
 function getExplicitTabIndexValue(element: SequentialFocusTarget): number | null {

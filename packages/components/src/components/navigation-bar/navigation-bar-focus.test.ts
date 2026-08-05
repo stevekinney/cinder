@@ -107,6 +107,60 @@ describe('findFocusTargetAfterNavigationItems', () => {
     );
   });
 
+  test('reaches a higher positive-tabindex page control positioned earlier in the page', () => {
+    // The composed-position boundary used to scope the outward search must
+    // never gate a strictly-higher tier: native Tab order sorts positive
+    // tabindex values ascending regardless of DOM position, so a
+    // tabindex="3" control structurally BEFORE the nav bar is still the
+    // correct next stop from a tabindex="2" item, not the zero-tier button
+    // that happens to sit after the bar.
+    const wrapper = document.createElement('div');
+    const navigationBar = document.createElement('nav');
+    const items = document.createElement('div');
+    const navigationItem = document.createElement('button');
+    navigationItem.setAttribute('data-cinder-navigation-item', '');
+    navigationItem.tabIndex = 2;
+    items.append(navigationItem);
+    navigationBar.append(items);
+    const pageControl = document.createElement('button');
+    pageControl.tabIndex = 3;
+    const normal = document.createElement('button');
+    wrapper.append(pageControl, navigationBar, normal);
+    attachScratch(wrapper);
+
+    expect(findFocusTargetAfterNavigationItems(navigationBar, items, navigationItem)).toBe(
+      pageControl,
+    );
+  });
+
+  test('does not settle for a zero-tier action when a higher positive-tabindex page control still lies ahead', () => {
+    // A positive-tabindex item that finds no same/higher-tier action inside
+    // `actions` must not fall back to `actions`' zero-tier button here —
+    // that would move focus backward, since zero tier is entirely visited
+    // after every positive tier. The composed-scope search must still get a
+    // chance to find the tabindex="3" page control outside the bar.
+    const wrapper = document.createElement('div');
+    const navigationBar = document.createElement('nav');
+    const items = document.createElement('div');
+    const navigationItem = document.createElement('button');
+    navigationItem.setAttribute('data-cinder-navigation-item', '');
+    navigationItem.tabIndex = 2;
+    items.append(navigationItem);
+    const actions = document.createElement('div');
+    actions.className = 'cinder-navigation-bar__actions';
+    const normalAction = document.createElement('button');
+    actions.append(normalAction);
+    navigationBar.append(items, actions);
+    const pageControl = document.createElement('button');
+    pageControl.tabIndex = 3;
+    wrapper.append(navigationBar, pageControl);
+    attachScratch(wrapper);
+
+    expect(findFocusTargetAfterNavigationItems(navigationBar, items, navigationItem)).toBe(
+      pageControl,
+    );
+  });
+
   test('continues through a same-value positive tabindex action in composed order', () => {
     const wrapper = document.createElement('div');
     const navigationBar = document.createElement('nav');
@@ -323,6 +377,39 @@ describe('findFocusTargetBeforeNavigationItems', () => {
 
     expect(findFocusTargetBeforeNavigationItems(navigationBar, toggle, true, navigationItem)).toBe(
       positive,
+    );
+  });
+
+  test('falls through to the toggle when a positive-tabindex item finds no qualifying brand control among zero-tier ones', () => {
+    // A positive-tabindex item's reverse Tab bridge into the brand must
+    // never land on a zero-tier brand target — zero tier is entirely
+    // visited after every positive tier, so a brand containing only
+    // zero-tier controls has nothing valid to bridge into. The caller's
+    // toggle fallback is the correct next candidate, not `.at(-1)`.
+    const { navigationBar, toggle } = buildBeforeBrandBar(
+      '<a href="/home" id="brand-normal">Acme</a>',
+    );
+    const navigationItem = document.createElement('button');
+    navigationItem.tabIndex = 2;
+
+    expect(findFocusTargetBeforeNavigationItems(navigationBar, toggle, true, navigationItem)).toBe(
+      toggle,
+    );
+  });
+
+  test('falls through to the toggle when a positive-tabindex item finds no qualifying brand control among higher-positive ones', () => {
+    // The mirror of the zero-tier case: a brand control at tabindex="3" has
+    // not been visited yet when a tabindex="2" item has focus, so it cannot
+    // be "before" that item in reverse Tab order even though it is the
+    // brand's only (and therefore globally last-sorted) target.
+    const { navigationBar, toggle } = buildBeforeBrandBar(
+      '<button type="button" id="brand-higher" tabindex="3">Higher</button>',
+    );
+    const navigationItem = document.createElement('button');
+    navigationItem.tabIndex = 2;
+
+    expect(findFocusTargetBeforeNavigationItems(navigationBar, toggle, true, navigationItem)).toBe(
+      toggle,
     );
   });
 

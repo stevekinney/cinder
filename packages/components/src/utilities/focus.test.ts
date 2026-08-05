@@ -294,6 +294,47 @@ describe('getSequentialFocusTargets', () => {
     region.remove();
   });
 
+  test('reaches a higher positive tabindex target positioned before the reference', () => {
+    // Native Tab order sorts positive-tabindex elements by tier first, so a
+    // tabindex="3" target is "after" a tabindex="2" reference regardless of
+    // which one sits earlier in the DOM. A composed-position filter that
+    // requires the candidate to be DOM-later than the reference would wrong
+    // this case: `higher` sits before `reference` here, but tier order
+    // still owes it to forward Tab next.
+    const region = document.createElement('div');
+    const higher = document.createElement('button');
+    higher.tabIndex = 3;
+    const reference = document.createElement('button');
+    reference.tabIndex = 2;
+    const following = document.createElement('button');
+    region.append(higher, reference, following);
+    document.body.append(region);
+
+    expect(
+      getSequentialFocusTargets(region, { relativeTo: reference, direction: 'after' }),
+    ).toEqual([higher, following]);
+    region.remove();
+  });
+
+  test('reaches a lower positive tabindex target positioned after the reference', () => {
+    // The mirror of the case above: a tabindex="1" target has already been
+    // visited by the time a tabindex="2" reference has focus, so it is
+    // "before" that reference in reverse Tab order even though it sits
+    // later in the DOM.
+    const region = document.createElement('div');
+    const reference = document.createElement('button');
+    reference.tabIndex = 2;
+    const lower = document.createElement('button');
+    lower.tabIndex = 1;
+    region.append(reference, lower);
+    document.body.append(region);
+
+    expect(
+      getSequentialFocusTargets(region, { relativeTo: reference, direction: 'before' }),
+    ).toEqual([lower]);
+    region.remove();
+  });
+
   test('orders positive tabindex values before default controls', () => {
     const region = document.createElement('div');
     const defaultButton = document.createElement('button');

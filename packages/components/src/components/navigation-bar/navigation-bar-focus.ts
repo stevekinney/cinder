@@ -1,6 +1,7 @@
 import {
   composedContains,
   composedFocusScopes,
+  findSequentialEntryTarget,
   getSequentialFocusTargets,
   getTabIndexValue,
   type SequentialFocusTarget,
@@ -48,20 +49,15 @@ export function findFocusTargetBeforeNavigationItems(
 ): SequentialFocusTarget | null {
   if (brandComesBeforeItems) {
     const brandTargets = getNavigationBarBrandFocusTargets(navigationBar);
-    // Brand focus targets are sorted globally (positive tabindex first), so
-    // `.at(-1)` alone only means "the last stop before the items" when the
-    // focused item itself is zero/default-tier. A positive-tabindex item has
-    // already passed every lower-or-equal positive brand target in native
-    // order, so reverse Tab from it must land on the nearest one of those,
-    // not fall straight to a zero/default-tier brand target.
     const referenceTabIndex = Math.max(0, navigationItem ? getTabIndexValue(navigationItem) : 0);
-    const brandTarget =
-      (navigationItem && referenceTabIndex > 0
-        ? [...brandTargets].reverse().find((candidate) => {
-            const candidateTabIndex = getTabIndexValue(candidate);
-            return candidateTabIndex > 0 && candidateTabIndex <= referenceTabIndex;
-          })
-        : undefined) ?? brandTargets.at(-1);
+    // Tab-tier semantics centralized in `findSequentialEntryTarget`: reverse
+    // Tab from a positive-tabindex item lands on the nearest lower-or-equal
+    // positive brand target, never a zero/default one — zero tier is
+    // entirely visited after every positive tier, so a brand containing
+    // only zero-tier controls (or only higher-positive ones the item hasn't
+    // reached yet) has nothing valid to bridge into. `null` here correctly
+    // falls through to the toggle below instead of a zero-tier brand target.
+    const brandTarget = findSequentialEntryTarget(brandTargets, referenceTabIndex, 'before');
     if (brandTarget) return brandTarget;
   }
 
@@ -83,10 +79,12 @@ export function findFocusTargetAfterNavigationItems(
     navigationBar?.querySelector('.cinder-navigation-bar__actions') ?? null,
   );
   const referenceTabIndex = Math.max(0, navigationItem ? getTabIndexValue(navigationItem) : 0);
-  const actionTarget =
-    (navigationItem && referenceTabIndex > 0
-      ? actionTargets.find((candidate) => getTabIndexValue(candidate) >= referenceTabIndex)
-      : undefined) ?? actionTargets.find((candidate) => getTabIndexValue(candidate) === 0);
+  // Tab-tier semantics centralized in `findSequentialEntryTarget`: a
+  // positive-tabindex item that finds no same/higher-tier action must NOT
+  // fall back to a zero-tier action here — the composed-scope search below
+  // still owes it a look at every remaining positive tier elsewhere on the
+  // page (reachable, unlike a portaled panel) before zero tier is next.
+  const actionTarget = findSequentialEntryTarget(actionTargets, referenceTabIndex, 'after');
   if (actionTarget) return actionTarget;
   if (!navigationBar || typeof document === 'undefined') return null;
 

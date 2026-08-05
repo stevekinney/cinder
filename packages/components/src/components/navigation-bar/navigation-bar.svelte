@@ -269,6 +269,18 @@
       // positive-tabindex item in native order, so the fallback must filter
       // for a same/higher positive item (or the first zero-tier item)
       // instead of naively taking the globally-first (lowest positive) item.
+      //
+      // This intentionally does NOT match `findSequentialEntryTarget`'s
+      // "return null rather than fall back to zero tier" rule: that rule
+      // exists for callers with a further, reachable fallback to defer to
+      // (a following composed-scope search, a menu toggle in the normal
+      // light DOM). Tab pressed on the toggle itself has nowhere else to
+      // defer to — the items panel is portaled out of normal document flow
+      // while open, so a `null` here would strand focus instead of letting
+      // native Tab find anything, since native Tab cannot reach a portaled
+      // subtree on its own. Landing on the first zero-tier item is the
+      // better outcome even though, in principle, a higher positive tier
+      // could theoretically exist elsewhere on the page.
       return (
         items.find((item) => getTabIndexValue(item) >= toggleTabIndex) ??
         items.find((item) => getTabIndexValue(item) === 0) ??
@@ -308,6 +320,26 @@
 
     const brandTargets = getNavigationBarBrandFocusTargets(navigationBarElement);
     if (composedTarget !== brandTargets.at(-1)) return false;
+
+    // A brand containing only positive-tabindex controls has not yet
+    // reached the menu toggle's own zero/default tier — positive tiers
+    // always precede the zero/default tier regardless of DOM position, so
+    // if the toggle is still tier-wise "after" `composedTarget`, native Tab
+    // must land there next (the toggle is a normal, non-portaled control,
+    // so leaving `preventDefault()` uncalled lets the browser find it on
+    // its own). Only bridge straight into the portaled panel once nothing
+    // in the navigation bar's own light DOM — including the toggle — still
+    // lies ahead of `composedTarget`.
+    const menuToggleTarget = getSequentialFocusTargets(
+      navigationBarElement?.querySelector('.cinder-navigation-bar__menu-toggle') ?? null,
+    )[0];
+    const toggleStillAhead =
+      menuToggleTarget !== undefined &&
+      getSequentialFocusTargets(navigationBarElement, {
+        relativeTo: composedTarget,
+        direction: 'after',
+      }).includes(menuToggleTarget);
+    if (toggleStillAhead) return false;
 
     const firstItem = getSequentialNavigationItems()[0];
     if (!firstItem) return false;
