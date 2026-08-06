@@ -19,7 +19,11 @@ test('carousel uses a native snapping track and keeps pagination in sync', async
     viewport: desktopViewport,
   });
 
-  const viewport = page.locator('.cinder-carousel__viewport');
+  // The docs page mounts every example for this component on one surface —
+  // scope to the "basic" example so a second carousel example elsewhere on
+  // the page (e.g. "multi-view") can't turn a locator ambiguous.
+  const scope = page.locator('#example-mount-basic');
+  const viewport = scope.locator('.cinder-carousel__viewport');
   await expect(viewport).toHaveCSS('scroll-snap-type', /x mandatory/);
   await expect(viewport).toHaveCSS('touch-action', nativePanTouchAction);
   await expect(viewport.locator('.cinder-carousel__slide')).toHaveCount(3);
@@ -30,7 +34,7 @@ test('carousel uses a native snapping track and keeps pagination in sync', async
     viewportElement.dispatchEvent(new Event('scroll'));
   });
 
-  await expect(page.locator('.cinder-carousel__dot[aria-current="true"]')).toHaveAttribute(
+  await expect(scope.locator('.cinder-carousel__dot[aria-current="true"]')).toHaveAttribute(
     'aria-label',
     'Go to Patterns',
   );
@@ -70,7 +74,7 @@ test('mouse drag disables native snapping only while dragging, then restores it'
     viewport: desktopViewport,
   });
 
-  const viewport = page.locator('.cinder-carousel__viewport');
+  const viewport = page.locator('#example-mount-basic .cinder-carousel__viewport');
   // Baseline: this must stay true for keyboard/wheel/touch users, who are
   // never in a mouse drag — the engine only overrides it transiently.
   await expect(viewport).toHaveCSS('scroll-snap-type', /x mandatory/);
@@ -102,7 +106,8 @@ test('the carousel remains normally interactive after a mouse drag releases', as
     viewport: desktopViewport,
   });
 
-  const viewport = page.locator('.cinder-carousel__viewport');
+  const scope = page.locator('#example-mount-basic');
+  const viewport = scope.locator('.cinder-carousel__viewport');
   const box = await viewport.boundingBox();
   if (!box) throw new Error('Carousel viewport has no layout box.');
   const startX = box.x + box.width * 0.75;
@@ -117,7 +122,7 @@ test('the carousel remains normally interactive after a mouse drag releases', as
   // (`use-drag-scroll.svelte.test.ts` verifies the mechanism deterministically);
   // what a real browser adds is confirming pointer capture and event ordering
   // don't leave the carousel stuck — an ordinary click still works right after.
-  const dots = page.locator('.cinder-carousel__dot');
+  const dots = scope.locator('.cinder-carousel__dot');
   await dots.nth(2).click();
   await expect(dots.nth(2)).toHaveAttribute('aria-current', 'true');
 });
@@ -132,7 +137,7 @@ test('carousel track remains scrollable in a touch-capable context', async ({ br
   try {
     const page = await context.newPage();
     await page.goto('/page/carousel?snapshot=1', { waitUntil: 'load' });
-    const viewport = page.locator('.cinder-carousel__viewport');
+    const viewport = page.locator('#example-mount-basic .cinder-carousel__viewport');
     await expect(viewport).toBeVisible();
     await expect(viewport).toHaveCSS('touch-action', nativePanTouchAction);
     await expect(viewport).toHaveCSS('scroll-snap-type', /x mandatory/);
