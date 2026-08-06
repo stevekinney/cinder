@@ -8,7 +8,6 @@ import {
   shouldSnap,
   snapSelect,
 } from './drag-scroll-physics.ts';
-import type { DragScrollAttachment, UseDragScrollOptions } from './use-drag-scroll.types.ts';
 
 const DRAG_THRESHOLD_PX = 10;
 
@@ -34,12 +33,12 @@ const DRAG_THRESHOLD_PX = 10;
  * it just coasts to a natural stop instead of snapping.
  */
 export function useDragScroll(
-  options: UseDragScrollOptions & {
+  options: import('./use-drag-scroll.types.ts').UseDragScrollOptions & {
     /** Which axis to drag-scroll along. Default `'x'`. */
     axis?: 'x' | 'y';
     getSnapPositions?: () => readonly number[];
   } = {},
-): DragScrollAttachment {
+): import('./use-drag-scroll.types.ts').DragScrollAttachment {
   const {
     enabled = () => true,
     snapMode = 'mandatory',
