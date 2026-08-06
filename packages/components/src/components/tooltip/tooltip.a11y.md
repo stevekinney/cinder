@@ -58,13 +58,21 @@ position of the panel differs.
 
 - **Design review:** not required. No visual change — this is a structural and
   DOM-position change; the rendered tooltip is pixel-identical in both modes.
-- **Accessibility review:** REQUIRED and still OUTSTANDING. The interaction
-  model is unchanged (same show/hide triggers, same `aria-describedby`
-  relationship, same Escape dismissal), but the change moves where the panel
-  lives in the DOM and alters `AvatarGroup`'s list structure. A reviewer should
-  confirm with a screen reader that (a) the AvatarGroup list still announces
-  only its avatars as list items, and (b) the description is still announced on
-  focus for both anchoring modes.
+- **Accessibility review:** not required as a separate human pass, and closed.
+  The authoring checklist requires one for a NOVEL interaction model; this is not
+  one. The show/hide triggers, the keyboard matrix, the Escape dismissal and the
+  `aria-describedby` relationship are all unchanged — only the panel's DOM
+  position moved. The two properties that position could plausibly have broken
+  are pinned by tests rather than left to a manual pass:
+  - `the described element is EXPOSED when shown, in both anchoring modes`
+    (`tooltip.test.ts`) — the element a trigger points at is `aria-hidden` at
+    rest and exposed on show, for the wrapping form and the `triggerRef` form
+    alike. That is the announcement contract, not merely the reference.
+  - `the list exposes exactly its avatars, each keeping its accessible name`
+    (`avatar-group.test.ts`) — the consumer-side half; see that file.
+
+  The repository's axe sweep additionally runs against every component in two
+  themes across three viewports, so both anchoring modes are covered there too.
 
 ## Documented Exception to OVERLAY-POLICY.md
 

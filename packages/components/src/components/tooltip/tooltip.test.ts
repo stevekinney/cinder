@@ -299,6 +299,53 @@ describe('Tooltip', () => {
     expect(trigger?.getAttribute('aria-describedby')).toBe(tooltip?.getAttribute('id'));
   });
 
+  test('the described element is EXPOSED when shown, in both anchoring modes', async () => {
+    // `aria-describedby` pointing at a node is not the same as that description
+    // being announced: while hidden the panel is `aria-hidden="true"`, so AT
+    // ignores it. This pins the announcement contract itself — the referenced
+    // element becomes exposed on show — for the wrapping form and the detached
+    // form alike, which is what the portal gate and `triggerRef` both touch.
+    const { container, unmount } = render(Tooltip, {
+      props: { text: 'Wrapped description', children: triggerSnippet },
+    });
+    const wrapper = container.querySelector('.cinder-tooltip-wrapper') as HTMLElement;
+    const trigger = container.querySelector<HTMLElement>('button');
+    const describedById = trigger?.getAttribute('aria-describedby');
+    expect(describedById).toBeTruthy();
+
+    // Resting: referenced, but hidden from AT.
+    expect(document.getElementById(describedById ?? '')?.getAttribute('aria-hidden')).toBe('true');
+
+    await triggerDelayedTooltipShow(wrapper);
+    await waitFor(() => {
+      expect(document.getElementById(describedById ?? '')?.getAttribute('aria-hidden')).toBe(
+        'false',
+      );
+    });
+    unmount();
+    await tick();
+
+    // Same contract via triggerRef.
+    const external = document.createElement('button');
+    external.type = 'button';
+    document.body.append(external);
+    const detached = render(Tooltip, {
+      props: { text: 'Detached description', triggerRef: external },
+    });
+    const detachedId = external.getAttribute('aria-describedby');
+    expect(detachedId).toBeTruthy();
+    expect(document.getElementById(detachedId ?? '')?.getAttribute('aria-hidden')).toBe('true');
+
+    await triggerDelayedTooltipShow(external);
+    await waitFor(() => {
+      expect(document.getElementById(detachedId ?? '')?.getAttribute('aria-hidden')).toBe('false');
+    });
+
+    detached.unmount();
+    external.remove();
+    await tick();
+  });
+
   test('describe=false keeps tooltip text visual without wiring aria-describedby', () => {
     const { container } = render(Tooltip, {
       props: {

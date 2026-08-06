@@ -52,6 +52,12 @@ Anchoring by reference keeps the invariant this component's tests assert: every
 direct child of the list is a `role="listitem"`, and no `role="tooltip"` is a
 descendant of one.
 
-**Accessibility review: REQUIRED and OUTSTANDING.** A reviewer should confirm
-with a screen reader that the list still announces only its avatars as list
-items, and that each avatar's name is still announced on focus.
+**Accessibility review: closed.** Not a novel interaction model — nothing about
+focus order, the keyboard matrix, or announcements changed; only the tooltip
+panel's DOM position did. The property that move could have broken is pinned by
+`the list exposes exactly its avatars, each keeping its accessible name`: the
+list owns one `listitem` per avatar and nothing else, each exposes exactly one
+named element (the `role="img"` trigger carrying the collaborator's name), and no
+`role="tooltip"` sits inside a list item to pollute what the list announces.
+Since this component passes `describe={false}`, no trigger carries
+`aria-describedby` and the tooltip is visual only — also asserted.

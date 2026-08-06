@@ -329,6 +329,35 @@ describe('AvatarGroup', () => {
     expect(container.querySelector('[role="tooltip"]')).toBeNull();
   });
 
+  test('the list exposes exactly its avatars, each keeping its accessible name', () => {
+    // The announcement contract, pinned rather than left to a manual pass: the
+    // list owns one listitem per avatar and nothing else, each listitem exposes
+    // exactly one named element, and the tooltip contributes no accessible text
+    // to it (AvatarGroup passes describe={false} — the name comes from the
+    // trigger's own aria-label, and the tooltip is visual only).
+    const { container } = render(AvatarGroup, { avatars: collaborators.slice(0, 3) });
+    const list = container.querySelector<HTMLElement>('.cinder-avatar-group');
+
+    const listItems = Array.from(list?.children ?? []);
+    expect(listItems).toHaveLength(3);
+    expect(listItems.every((child) => child.getAttribute('role') === 'listitem')).toBe(true);
+
+    listItems.forEach((item, index) => {
+      // Exactly one named element per item, and it is the avatar trigger.
+      const named = item.querySelectorAll('[aria-label]');
+      expect(named).toHaveLength(1);
+      expect(named[0]?.getAttribute('aria-label')).toBe(collaborators[index]?.name);
+      expect(named[0]?.getAttribute('role')).toBe('img');
+      // No tooltip text inside the item to pollute what the list announces.
+      expect(item.querySelector('[role="tooltip"]')).toBeNull();
+    });
+
+    // And no tooltip anywhere claims to describe a trigger, since describe=false.
+    for (const trigger of container.querySelectorAll('.cinder-avatar-group__trigger')) {
+      expect(trigger.hasAttribute('aria-describedby')).toBe(false);
+    }
+  });
+
   test('keeps only listitems directly under the list while tooltips are portaled', () => {
     const { container } = render(AvatarGroup, { avatars: collaborators.slice(0, 2) });
 
