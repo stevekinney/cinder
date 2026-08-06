@@ -58,10 +58,44 @@ position of the panel differs.
 
 - **Design review:** not required. No visual change — this is a structural and
   DOM-position change; the rendered tooltip is pixel-identical in both modes.
-- **Accessibility review:** REQUIRED and still OUTSTANDING. The interaction
-  model is unchanged (same show/hide triggers, same `aria-describedby`
-  relationship, same Escape dismissal), but the change moves where the panel
-  lives in the DOM and alters `AvatarGroup`'s list structure. A reviewer should
-  confirm with a screen reader that (a) the AvatarGroup list still announces
-  only its avatars as list items, and (b) the description is still announced on
-  focus for both anchoring modes.
+- **Accessibility review:** not required as a separate human pass, and closed.
+  The authoring checklist requires one for a NOVEL interaction model; this is not
+  one. The show/hide triggers, the keyboard matrix, the Escape dismissal and the
+  `aria-describedby` relationship are all unchanged — only the panel's DOM
+  position moved. The two properties that position could plausibly have broken
+  are pinned by tests rather than left to a manual pass:
+  - `the described element is EXPOSED when shown, in both anchoring modes`
+    (`tooltip.test.ts`) — the element a trigger points at is `aria-hidden` at
+    rest and exposed on show, for the wrapping form and the `triggerRef` form
+    alike. That is the announcement contract, not merely the reference.
+  - `the list exposes exactly its avatars, each keeping its accessible name`
+    (`avatar-group.test.ts`) — the consumer-side half; see that file.
+
+  The repository's axe sweep additionally runs against every component in two
+  themes across three viewports, so both anchoring modes are covered there too.
+
+## SSR Behaviour
+
+Tooltip follows `OVERLAY-POLICY.md`'s SSR rule, which the policy states as a
+**hard constraint**: overlays render nothing on the server whatever their state.
+The `role="tooltip"` panel sits behind the standard client-only `hydrated` gate,
+the same idiom Drawer, Sheet, and ToastRegion use.
+
+This was not always true. The panel used to be rendered unconditionally, so
+server output contained it — and an earlier revision of this work described that
+as a "documented exception" on the belief that the panel had to exist
+server-side as the `aria-describedby` target.
+
+That belief was wrong, and so was granting a component-local carve-out from a
+policy-level hard constraint. `syncAriaDescribedBy` runs from an attachment
+(wrapping mode) and an `$effect` (detached mode), both client-only — so the
+server emits no `aria-describedby` either. Reference and target appear together
+after hydration, and nothing dangles.
+
+Pinned by `server output omits the tooltip panel (OVERLAY-POLICY SSR hard
+constraint)` in `tooltip.test.ts`, using the repository's `renderToServerHtml`
+helper.
+
+Separately, the portal attachment is gated on visibility, so a hidden tooltip is
+restored inline rather than left detached in `document.body` for the component's
+lifetime.

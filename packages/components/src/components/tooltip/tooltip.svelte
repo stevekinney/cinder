@@ -40,6 +40,24 @@
    */
   const isDetached = $derived(triggerRef != null);
 
+  /*
+   * OVERLAY-POLICY.md's SSR rule is a HARD CONSTRAINT: overlays render nothing
+   * on the server, whatever their initial state. Tooltip did not satisfy it —
+   * the panel was always in the template — and an earlier revision of this
+   * branch wrote itself a "documented exception" in tooltip.a11y.md instead,
+   * on the belief that the panel had to exist server-side as the
+   * `aria-describedby` target.
+   *
+   * It does not. `syncAriaDescribedBy` runs from an attachment (wrapping mode)
+   * and an `$effect` (detached mode), both client-only, so the server renders
+   * no `aria-describedby` either. Reference and target appear together after
+   * hydration, and gating the panel leaves nothing dangling.
+   */
+  let hydrated = $state(false);
+  $effect(() => {
+    hydrated = true;
+  });
+
   const tooltipId = $props.id();
   const FOCUSABLE_SELECTOR = [
     'button:not([disabled])',
@@ -207,9 +225,8 @@
      *
      * Without this the panel was portaled on mount and stayed there for the
      * lifetime of the component — one detached `[role="tooltip"]` per Tooltip
-     * instance, including during SSR, which contradicts OVERLAY-POLICY.md
-     * ("All overlays render into the portal after hydration. SSR markup is
-     * empty."). Every sibling overlay already gates: Popover and HoverCard via
+     * instance accumulating in `document.body`. Every sibling overlay already
+     * gates: Popover and HoverCard via
      * `{#if mounted && open && anchorElement}`, Portal/SpeedDial/NavigationBar/
      * DropdownMenu via an explicit `disabled` getter.
      *
@@ -218,6 +235,9 @@
      * position inside the wrapper instead of unmounting it — so the
      * `aria-describedby` target keeps resolving while the tooltip is hidden.
      * Conditional rendering would break that association.
+     *
+     * This closes the CLIENT leak; the `hydrated` gate on the panel above is
+     * what satisfies the SSR half of the policy.
      *
      * Gated on `visible`, NOT on `isTooltipExposed`: the latter also requires
      * `positionReady`, and position is computed against the portaled node — so
@@ -262,19 +282,23 @@
   table cell). See `TooltipProps.triggerRef`.
 -->
 {#if isDetached}
-  <span
-    id={tooltipId}
-    bind:this={tooltipElement}
-    role="tooltip"
-    class="cinder-tooltip"
-    aria-hidden={!isTooltipExposed}
-    data-cinder-placement={visible ? anchoredOverlay.resolvedPlacement : placement}
-    data-cinder-position-ready={anchoredOverlay.positionReady}
-    style={anchoredOverlay.positionStyle}
-    {@attach tooltipPortalAttachment}
-  >
-    {text}
-  </span>
+  {#if hydrated}
+    <!-- The panel is the component ROOT here, so it takes `class` — in the
+         wrapping form below that lands on the wrapper instead. -->
+    <span
+      id={tooltipId}
+      bind:this={tooltipElement}
+      role="tooltip"
+      class={classNames('cinder-tooltip', className)}
+      aria-hidden={!isTooltipExposed}
+      data-cinder-placement={visible ? anchoredOverlay.resolvedPlacement : placement}
+      data-cinder-position-ready={anchoredOverlay.positionReady}
+      style={anchoredOverlay.positionStyle}
+      {@attach tooltipPortalAttachment}
+    >
+      {text}
+    </span>
+  {/if}
 {:else}
   <span
     class={classNames('cinder-tooltip-wrapper', className)}
@@ -287,18 +311,20 @@
     {@attach attachWrapper}
   >
     {@render children?.()}
-    <span
-      id={tooltipId}
-      bind:this={tooltipElement}
-      role="tooltip"
-      class="cinder-tooltip"
-      aria-hidden={!isTooltipExposed}
-      data-cinder-placement={visible ? anchoredOverlay.resolvedPlacement : placement}
-      data-cinder-position-ready={anchoredOverlay.positionReady}
-      style={anchoredOverlay.positionStyle}
-      {@attach tooltipPortalAttachment}
-    >
-      {text}
-    </span>
+    {#if hydrated}
+      <span
+        id={tooltipId}
+        bind:this={tooltipElement}
+        role="tooltip"
+        class="cinder-tooltip"
+        aria-hidden={!isTooltipExposed}
+        data-cinder-placement={visible ? anchoredOverlay.resolvedPlacement : placement}
+        data-cinder-position-ready={anchoredOverlay.positionReady}
+        style={anchoredOverlay.positionStyle}
+        {@attach tooltipPortalAttachment}
+      >
+        {text}
+      </span>
+    {/if}
   </span>
 {/if}
