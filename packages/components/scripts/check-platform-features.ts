@@ -90,6 +90,12 @@ export const FEATURE_PROBES: FeatureProbe[] = [
     pattern: /:user-invalid\b|:invalid\b/,
     globs: STYLE_GLOBS,
   },
+  {
+    feature: 'scroll-driven animations',
+    tier: 2,
+    pattern: /animation-timeline\s*:\s*scroll\(/,
+    globs: STYLE_GLOBS,
+  },
 ];
 
 /** Glob matchers precompiled once per probe (not per line). */
