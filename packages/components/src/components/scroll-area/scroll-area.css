@@ -47,6 +47,22 @@
     overflow: auto;
   }
 
+  .cinder-scroll-area[data-cinder-dragging],
+  .cinder-scroll-area[data-cinder-dragging] * {
+    user-select: none;
+    -webkit-user-drag: none;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .cinder-scroll-area[data-cinder-drag-to-scroll] {
+      cursor: grab;
+    }
+
+    .cinder-scroll-area[data-cinder-dragging] {
+      cursor: grabbing;
+    }
+  }
+
   /* Chromium / Safari scrollbar theming. */
   .cinder-scroll-area::-webkit-scrollbar {
     inline-size: var(--cinder-scrollbar-size);
