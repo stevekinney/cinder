@@ -44,11 +44,14 @@
   /* ========================================
    * RADII
    * ----------------------------------------
-   * The scale steps down one notch (was 6 / 8 / 12px). Rounding compounds: a
-   * radius that reads as restrained on one control reads as soft and bubbly once
-   * three of them nest, and cinder nests them routinely (floating panel → row,
-   * control group → segment). 4 / 6 / 8 keeps corners legible at every size while
-   * staying visibly deliberate rather than decorative.
+   * 6 / 8 / 12px. A previous pass stepped the whole scale down one notch to
+   * 4 / 6 / 8 on the theory that rounding compounds when controls nest. It does,
+   * but the fix for a bubbly NESTED corner is the concentric rule below, not
+   * shrinking every radius in the system: at 4/6/8 large panels — code blocks,
+   * cards, dialogs — read as hard-cornered plates, because a radius that is
+   * proportionate on a 28px button is nearly invisible on a 600px panel. Radius is
+   * not a single scalar shared by every size class; the nesting rule is what keeps
+   * compounding under control.
    *
    * NESTING RULE: an inner element inset by N inside a rounded container is
    * concentric only at `outer − N`. Picking a smaller step off this scale is NOT
@@ -58,9 +61,9 @@
    * instead of drifting when either value changes. A container that clips with
    * `overflow: hidden` (Accordion) needs no inner radius at all.
    * ======================================== */
-  --cinder-radius-sm: 0.25rem;
-  --cinder-radius-md: 0.375rem;
-  --cinder-radius-lg: 0.5rem;
+  --cinder-radius-sm: 0.375rem;
+  --cinder-radius-md: 0.5rem;
+  --cinder-radius-lg: 0.75rem;
   --cinder-radius-full: 9999px;
 
   /* Shadows wrap each color argument in `light-dark()` so dark mode paints
@@ -206,37 +209,42 @@
 
   /* Backgrounds / surfaces
    *
-   * LIGHTNESS SPAN. The light arm used to span 6 lightness points (inset 0.94 →
-   * raised 1.00) against the dark arm's 17 (0.11 → 0.28), so four elevation tiers
-   * sat inside a band narrower than a single dark-mode step. Fills could not
-   * separate regions, every component fell back on a 1px border to draw a
-   * boundary, and the whole light theme read as one flat white-grey. The light arm
-   * now spans 11.5 points — inset 0.885 → bg 0.921 → surface 0.962 → raised 1.000,
-   * in steps of 0.036 / 0.041 / 0.038.
-   * 11.5 is not a compromise between 6 and 17: it is where light mode's END-TO-END
-   * WCAG CONTRAST matches dark mode's. OKLCH lightness is perceptually uniform but
-   * contrast RATIO is not, and ratio is what makes an unbordered edge visible.
-   * Dark's 0.11 → 0.28 is 1.406:1; the new light 0.885 → 1.000 is 1.410:1, where
-   * the old 0.94 → 1.00 was only 1.184:1. Equal contrast, not equal ΔL.
+   * LIGHT MODE ANCHORS AT WHITE. The previous tune (2026-08-05) read "light mode
+   * is drab" as "the tiers do not separate enough" and widened the light arm
+   * DOWNWARD — bg 0.95 → 0.921, inset 0.94 → 0.885 — so that four tiers spanned
+   * 11.5 lightness points and fills alone could draw a region boundary. That
+   * inverted how light UI works. The page canvas and every inset region are the
+   * DOMINANT areas of a light screen; pushing them to 0.921 and 0.885 turned them
+   * into blue-grey slabs and left white surviving only inside small raised cards.
+   * A 400px-tall chat transcript, a code-block header, a nav strip and a settings
+   * panel all became grey plates. Matching dark mode's end-to-end CONTRAST RATIO
+   * was a real calculation applied to the wrong goal: dark mode earns its span by
+   * building UP from near-black, and the light-mode mirror of that is not building
+   * DOWN from white.
    *
-   * CHROMA. Deliberate, and deliberately small. The prior 0.006–0.010 values were a
-   * tuning artifact rather than a decision: they were not monotonic (the LIGHTEST
-   * surface carried 0.006 while the darkest carried 0.010, so the blue cast got
-   * weaker toward white for no reason), and `--cinder-surface-raised` was authored
-   * `oklch(100% 0.006 245)`, which is out of sRGB gamut — the maximum in-gamut
-   * chroma at L=1.0 is 0, so that 0.006 painted as nothing at all. The ramp now
-   * carries a monotonic cool cast that grows as the surface recedes (raised 0 →
-   * surface 0.010 → bg 0.014 → inset 0.018), which is how the dark arm already
-   * behaves (0.030 → 0.045). It stays roughly 2.5x below the dark arm on purpose:
-   * this system is meant to sit behind a consumer's brand, so light mode should
-   * read as a cool neutral, not as a blue theme. `--cinder-surface-raised` is now
-   * authored `oklch(100% 0 245)` — the honest value for what it always painted.
+   * In light mode white is the DEFAULT and elevation is carried by a hairline
+   * border plus a shadow — the model GitHub, Stripe, Linear and Vercel all use. So
+   * the ramp is now anchored at the top and compressed: inset 0.960 → bg 0.984 →
+   * surface 0.994 → raised 1.000. The canvas reads as white to the eye; `inset` is
+   * a gentle well rather than a plate; `raised` stays the pure-white anchor. The
+   * span is 0.040, and that is correct rather than timid — the separation budget
+   * moved from FILL to BORDER + SHADOW, which is where light mode carries it.
    *
-   * The dark arm is unchanged. */
-  --cinder-bg: light-dark(oklch(92.1% 0.014 245), oklch(15% 0.035 245));
-  --cinder-surface: light-dark(oklch(96.2% 0.01 245), oklch(21% 0.04 245));
-  --cinder-surface-raised: light-dark(oklch(100% 0 245), oklch(28% 0.045 245));
-  --cinder-surface-inset: light-dark(oklch(88.5% 0.018 245), oklch(11% 0.03 245));
+   * CHROMA drops roughly 3x (was 0.010–0.018, now 0.002–0.006). The old values put
+   * a blue cast on every large light surface, which is most of what "drab" and
+   * "sad" were actually describing: a 0.885/0.014-chroma canvas is not a neutral,
+   * it is a pale slate. The cast is kept monotonic — growing as the surface
+   * recedes, as the dark arm already does — but small enough that the surfaces
+   * read as white and the ACCENT is the only saturated thing on the page. That is
+   * where vibrancy comes from in a light theme: saturated accents against white,
+   * not tinted greys.
+   *
+   * The dark arm is unchanged — it was never the complaint, and it builds up from
+   * near-black where a wide fill-carried ramp is the right model. */
+  --cinder-bg: light-dark(oklch(98.4% 0.003 255), oklch(15% 0.035 245));
+  --cinder-surface: light-dark(oklch(99.4% 0.002 255), oklch(21% 0.04 245));
+  --cinder-surface-raised: light-dark(oklch(100% 0 255), oklch(28% 0.045 245));
+  --cinder-surface-inset: light-dark(oklch(96% 0.005 255), oklch(11% 0.03 245));
 
   /* Upcoming step marker background — keeps the inset treatment in light mode
      (surface-inset is visibly recessed vs surface), but lifts to surface in dark
@@ -251,55 +259,57 @@
   --cinder-surface-inverse: light-dark(var(--cinder-text), var(--cinder-surface-raised));
   --cinder-text-inverse: light-dark(var(--cinder-surface), var(--cinder-text));
   --cinder-border-inverse: light-dark(transparent, var(--cinder-border-strong));
-  /* Hover/pressed surface derivatives. The mix DIRECTION is per-theme — the
-     `light-dark(black, white)` mix target darkens the surface in light mode and
-     lightens it in dark mode — so only the PERCENTAGE is shared across themes.
-     The percentages are 2.5% / 6%, down from 3% / 8%.
+  /* Hover/pressed surface derivatives.
+     LIGHT MIXES TOWARD THE ACCENT; DARK MIXES TOWARD WHITE.
 
-     Why they moved: these are PROPORTIONAL mixes, so the resolved step scales with
-     whatever the ramp is, and the widened light ramp put the old steps on top of
-     adjacent resting tiers. At 3%, light `--cinder-surface-hover` resolved to
-     L 0.9506 against a `--cinder-bg` of 0.95 — ΔL 0.0006, i.e. hovering a card body
-     painted it exactly the page background. The dark arm had the same class of bug
-     at 8%: `--cinder-surface-pressed` resolved to 0.2732 against
-     `--cinder-surface-raised` at 0.28 (ΔL 0.0068), so a pressed card body was
-     indistinguishable from a raised one. Neither was visible to any test, because
-     each token was individually reasonable and only the RELATIONSHIP was wrong.
-     `tokens-light-ladder.test.ts` now resolves the mixes and gates that
-     relationship in both arms.
+     The light arm no longer darkens toward black, and the first reason is
+     arithmetic rather than taste: these are PROPORTIONAL mixes, so once the light
+     ramp is anchored at white its four resting tiers occupy 0.040 lightness points
+     while a 6% black mix moves a surface by 0.060 — one hover step is wider than
+     the whole ramp it has to stay clear of. Every state lands on some resting tier,
+     and chasing that with ever-smaller percentages only makes hover invisible.
 
-     At 2.5% / 6% the light arm resolves to an eight-value ladder — inset 0.885,
-     surface-pressed 0.904, bg 0.921, surface-hover 0.938, raised-pressed 0.940,
-     surface 0.962, raised-hover 0.975, raised 1.000 — in which every interaction
-     state clears every RESTING tier by at least ΔL 0.013. The dark arm's smallest
-     state-to-tier gap is ΔL 0.018. The dark arm's own steps do get smaller (hover
-     ΔL 0.024 → 0.020, pressed 0.064 → 0.047); that is deliberate, and it is what
-     resolves the pressed/raised collision above.
+     So stop separating states by LIGHTNESS alone. A light-mode hover that washes
+     toward the brand accent separates by CHROMA and HUE as well, which keeps it
+     legible at a lightness step small enough to fit the ramp, and reads as
+     intentional brand feedback rather than a smudge of grey. It is also the direct
+     answer to "they should be vibrant": the accent now appears on every
+     interactive surface in the theme instead of only on solid buttons.
 
-     One pair is knowingly close: light `surface-hover` (0.938) and
-     `raised-pressed` (0.940). Both are transient states of different elements
-     rather than resting fills, and separating them would require pushing a resting
-     tier onto one of the others, so the ladder optimises for state-vs-tier
-     separation instead. */
-  --cinder-surface-hover: color-mix(
-    in oklch,
-    var(--cinder-surface),
-    light-dark(oklch(0% 0 0), oklch(100% 0 0)) 2.5%
+     The dark arm keeps mixing toward white at 2.5% / 6%. It builds UP from
+     near-black across 17 lightness points, so a proportional lightness mix has room
+     there and already works. The percentages therefore differ per arm, which is why
+     each token wraps two complete `color-mix()` expressions in `light-dark()`
+     instead of sharing one percentage across a `light-dark()` mix TARGET.
+
+     Resolved light ladder — neutral resting tiers vs accent-tinted states:
+       surface-pressed  L 0.935  C 0.028
+       raised-pressed   L 0.940  C 0.026
+       inset            L 0.960  C 0.005
+       surface-hover    L 0.964  C 0.015
+       raised-hover     L 0.970  C 0.013
+       bg               L 0.984  C 0.003
+       surface          L 0.994  C 0.002
+       raised           L 1.000  C 0
+     Several neighbours are close in L, which is exactly why the companion test
+     measures OKLab ΔE (lightness AND chroma AND hue) instead of ΔL: under an
+     L-only metric an accent wash and a grey plate at the same lightness are
+     identical to the test and obviously different to the eye. */
+  --cinder-surface-hover: light-dark(
+    color-mix(in oklch, var(--cinder-surface), var(--cinder-accent) 6%),
+    color-mix(in oklch, var(--cinder-surface), oklch(100% 0 0) 2.5%)
   );
-  --cinder-surface-pressed: color-mix(
-    in oklch,
-    var(--cinder-surface),
-    light-dark(oklch(0% 0 0), oklch(100% 0 0)) 6%
+  --cinder-surface-pressed: light-dark(
+    color-mix(in oklch, var(--cinder-surface), var(--cinder-accent) 12%),
+    color-mix(in oklch, var(--cinder-surface), oklch(100% 0 0) 6%)
   );
-  --cinder-surface-raised-hover: color-mix(
-    in oklch,
-    var(--cinder-surface-raised),
-    light-dark(oklch(0% 0 0), oklch(100% 0 0)) 2.5%
+  --cinder-surface-raised-hover: light-dark(
+    color-mix(in oklch, var(--cinder-surface-raised), var(--cinder-accent) 6%),
+    color-mix(in oklch, var(--cinder-surface-raised), oklch(100% 0 0) 2.5%)
   );
-  --cinder-surface-raised-pressed: color-mix(
-    in oklch,
-    var(--cinder-surface-raised),
-    light-dark(oklch(0% 0 0), oklch(100% 0 0)) 6%
+  --cinder-surface-raised-pressed: light-dark(
+    color-mix(in oklch, var(--cinder-surface-raised), var(--cinder-accent) 12%),
+    color-mix(in oklch, var(--cinder-surface-raised), oklch(100% 0 0) 6%)
   );
 
   /* Text */
@@ -315,21 +325,29 @@
      The light arm moved 0.88 → 0.86 with the widened ramp: at 0.88 it sat ΔL 0.005 from the new
      --cinder-surface-inset (0.885), so a disabled control inside a well vanished entirely. A
      disabled control is exempt from WCAG contrast, but it still has to be VISIBLE as a control. */
-  --cinder-fill-disabled: light-dark(oklch(86% 0.012 245), oklch(30% 0.015 245));
+  --cinder-fill-disabled: light-dark(oklch(86% 0.006 255), oklch(30% 0.015 245));
 
-  /* Borders. Only the light arm's `--cinder-border-muted` moved (0.88 → 0.855):
-     the widened ramp put `--cinder-surface-inset` at 0.885, and a 0.88 hairline on
-     a 0.885 fill is ΔL 0.005 — invisible. At 0.855 it reads against every tier
-     (inset ΔL 0.030, bg 0.066, surface 0.107, raised 0.145). `--cinder-border` and
-     `--cinder-border-strong` are deliberately unchanged: at 0.79 / 0.72 they still
-     separate from the new darkest surface by ΔL 0.095 / 0.165, and the point of
-     widening the ramp is that fills carry region separation so borders do not have
-     to get heavier. Note this decouples `--cinder-border-muted` from
-     `--cinder-fill-disabled`, which shared 0.88 by coincidence rather than intent —
-     a subtle divider and a disabled control fill are different jobs. */
-  --cinder-border: light-dark(oklch(79% 0.013 245), oklch(40% 0.05 245));
-  --cinder-border-muted: light-dark(oklch(85.5% 0.012 245), oklch(30% 0.04 245));
-  --cinder-border-strong: light-dark(oklch(72% 0.014 245), oklch(45% 0.06 245));
+  /* Borders. Anchoring the surfaces at white moves the separation budget from FILL
+     to BORDER, so these matter more than they did — but they also need less WEIGHT,
+     because a hairline no longer has to out-shout a 0.885 plate behind it. Against
+     the new 0.984 canvas the same line reads with more contrast than it did against
+     0.921, so `--cinder-border` and `--cinder-border-muted` both lighten and still
+     land clearer than before: 0.868 and 0.918.
+
+     `--cinder-border-strong` deliberately does NOT move. It is the token carrying
+     control outlines, which are the ones answerable to WCAG 1.4.11 (3:1 non-text),
+     and at 0.72 against white it resolves to roughly 2.5:1 — already short of the
+     floor. That gap predates this change and lightening the token would widen it.
+     Fixing it properly means taking control outlines to about L 0.68 and re-checking
+     every control that pairs a border with a fill, which is its own change with its
+     own visual review, not a rider on a surface retune. Left at 0.72, flagged, not
+     quietly made worse.
+
+     Chroma drops with the surfaces (0.012–0.014 → 0.004–0.006) so borders read as
+     neutral hairlines rather than faint blue ones. */
+  --cinder-border: light-dark(oklch(86.8% 0.005 255), oklch(40% 0.05 245));
+  --cinder-border-muted: light-dark(oklch(91.8% 0.004 255), oklch(30% 0.04 245));
+  --cinder-border-strong: light-dark(oklch(72% 0.006 255), oklch(45% 0.06 245));
 
   /* Toggle track off-state defaults — encode dark-arm contrast improvement here
      so toggle.css uses only var() references and stays guard-clean.
@@ -696,34 +714,34 @@
   --cinder-shadow-lg: 0 10px 15px -3px oklch(0% 0 0 / 0.14), 0 4px 6px -4px oklch(0% 0 0 / 0.12);
   --cinder-shadow-overlay:
     0 10px 15px -3px oklch(0% 0 0 / 0.14), 0 4px 6px -4px oklch(0% 0 0 / 0.12);
-  --cinder-bg: oklch(92.1% 0.014 245);
-  --cinder-surface: oklch(96.2% 0.01 245);
-  --cinder-surface-raised: oklch(100% 0 245);
-  --cinder-surface-inset: oklch(88.5% 0.018 245);
+  --cinder-bg: oklch(98.4% 0.003 255);
+  --cinder-surface: oklch(99.4% 0.002 255);
+  --cinder-surface-raised: oklch(100% 0 255);
+  --cinder-surface-inset: oklch(96% 0.005 255);
   --cinder-surface-upcoming-marker: var(--cinder-surface-inset);
   --cinder-surface-inverse: var(--cinder-text);
   --cinder-text-inverse: var(--cinder-surface);
   --cinder-border-inverse: transparent;
-  --cinder-surface-hover: color-mix(in oklch, var(--cinder-surface), oklch(0% 0 0) 2.5%);
-  --cinder-surface-pressed: color-mix(in oklch, var(--cinder-surface), oklch(0% 0 0) 6%);
+  --cinder-surface-hover: color-mix(in oklch, var(--cinder-surface), var(--cinder-accent) 6%);
+  --cinder-surface-pressed: color-mix(in oklch, var(--cinder-surface), var(--cinder-accent) 12%);
   --cinder-surface-raised-hover: color-mix(
     in oklch,
     var(--cinder-surface-raised),
-    oklch(0% 0 0) 2.5%
+    var(--cinder-accent) 6%
   );
   --cinder-surface-raised-pressed: color-mix(
     in oklch,
     var(--cinder-surface-raised),
-    oklch(0% 0 0) 6%
+    var(--cinder-accent) 12%
   );
   --cinder-text: oklch(20% 0.018 245);
   --cinder-text-muted: oklch(32% 0.014 245);
   --cinder-text-subtle: oklch(42% 0.012 245);
   --cinder-text-disabled: oklch(52% 0.01 245);
-  --cinder-fill-disabled: oklch(86% 0.012 245);
-  --cinder-border: oklch(79% 0.013 245);
-  --cinder-border-muted: oklch(85.5% 0.012 245);
-  --cinder-border-strong: oklch(72% 0.014 245);
+  --cinder-fill-disabled: oklch(86% 0.006 255);
+  --cinder-border: oklch(86.8% 0.005 255);
+  --cinder-border-muted: oklch(91.8% 0.004 255);
+  --cinder-border-strong: oklch(72% 0.006 255);
   --cinder-toggle-track-off-resting: var(--cinder-border-muted);
   --cinder-toggle-track-off-hover-resting: var(--cinder-border);
   --cinder-accent: oklch(50% 0.22 270);

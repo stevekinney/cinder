@@ -116,14 +116,15 @@ describe('scoped theme tokens', () => {
 
     expectDeclarations(lightBlock, {
       'color-scheme': 'light',
-      '--cinder-bg': 'oklch(92.1% 0.014 245)',
-      '--cinder-surface': 'oklch(96.2% 0.01 245)',
-      '--cinder-surface-raised': 'oklch(100% 0 245)',
-      '--cinder-surface-hover': 'color-mix(in oklch, var(--cinder-surface), oklch(0% 0 0) 2.5%)',
+      '--cinder-bg': 'oklch(98.4% 0.003 255)',
+      '--cinder-surface': 'oklch(99.4% 0.002 255)',
+      '--cinder-surface-raised': 'oklch(100% 0 255)',
+      '--cinder-surface-hover':
+        'color-mix(in oklch, var(--cinder-surface), var(--cinder-accent) 6%)',
       '--cinder-text': 'oklch(20% 0.018 245)',
       '--cinder-text-muted': 'oklch(32% 0.014 245)',
-      '--cinder-border': 'oklch(79% 0.013 245)',
-      '--cinder-border-strong': 'oklch(72% 0.014 245)',
+      '--cinder-border': 'oklch(86.8% 0.005 255)',
+      '--cinder-border-strong': 'oklch(72% 0.006 255)',
       '--cinder-accent': 'oklch(50% 0.22 270)',
       '--cinder-accent-contrast': 'oklch(100% 0 0)',
       '--cinder-accent-hover': 'oklch(from var(--cinder-accent) calc(l - 0.08) c h)',
@@ -225,5 +226,57 @@ describe('scoped theme tokens', () => {
     );
     expect(foundationCss).not.toContain('revert-layer');
     expect(foundationCss).not.toContain('--shiki-light');
+  });
+
+  /**
+   * The scoped blocks must AGREE with the `light-dark()` declarations they mirror.
+   *
+   * The assertions above pin each block's literals independently, which cannot see
+   * divergence: a token retuned in the `:root` `light-dark()` declaration while its
+   * `[data-theme='light']` twin is left behind satisfies both sets of literals, and
+   * every consumer using an explicitly scoped theme silently keeps the old value.
+   * That is exactly what happened during the 2026-08-05 surface retune — the whole
+   * light ramp was updated at `:root` and the scoped block still carried the
+   * previous ramp.
+   *
+   * This derives the expectation instead of restating it: for every token declared
+   * as `light-dark(<light>, <dark>)` at `:root` that the scoped blocks also declare,
+   * the light block must carry the LIGHT arm and the dark block the DARK arm.
+   */
+  test('scoped blocks match the light-dark() arms they mirror', async () => {
+    const css = await readFile(TOKENS_BASE_PATH, 'utf8');
+    const rootBlock = extractRuleBlock(css, ':root');
+    const darkBlock = extractRuleBlock(css, "[data-theme='dark']");
+    const lightBlock = extractRuleBlock(css, "[data-theme='light']");
+
+    /** `--token: light-dark(<light>, <dark>);` → arms, for simple oklch() values. */
+    const armsByToken = new Map<string, { light: string; dark: string }>();
+    const pattern =
+      /(--cinder-[\w-]+):\s*light-dark\(\s*(oklch\([^()]*\))\s*,\s*(oklch\([^()]*\))\s*\)/g;
+    for (const match of rootBlock.matchAll(pattern)) {
+      armsByToken.set(match[1] as string, { light: match[2] as string, dark: match[3] as string });
+    }
+
+    // Sanity: the surface ramp is the family this guard exists for.
+    for (const token of ['--cinder-bg', '--cinder-surface', '--cinder-surface-inset']) {
+      expect(armsByToken.has(token)).toBe(true);
+    }
+
+    const declaredIn = (block: string, token: string): string | null =>
+      block.match(new RegExp(`${token}:\\s*(oklch\\([^()]*\\));`))?.[1] ?? null;
+
+    const mismatches: string[] = [];
+    for (const [token, arms] of armsByToken) {
+      const scopedLight = declaredIn(lightBlock, token);
+      if (scopedLight !== null && scopedLight !== arms.light) {
+        mismatches.push(`light ${token}: scoped ${scopedLight} vs :root ${arms.light}`);
+      }
+      const scopedDark = declaredIn(darkBlock, token);
+      if (scopedDark !== null && scopedDark !== arms.dark) {
+        mismatches.push(`dark ${token}: scoped ${scopedDark} vs :root ${arms.dark}`);
+      }
+    }
+
+    expect(mismatches).toEqual([]);
   });
 });

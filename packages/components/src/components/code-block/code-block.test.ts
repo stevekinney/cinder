@@ -179,17 +179,28 @@ describe('CodeBlock — static structure', () => {
     expect(css).toContain('@media (prefers-color-scheme: dark)');
   });
 
-  test('code surface background uses one component-owned light-dark declaration', async () => {
+  test('code surface background is one component-owned declaration', async () => {
     const css = await Bun.file(new URL('./code-block.css', import.meta.url)).text();
     const lightDarkCount = css.match(/\blight-dark\(/g)?.length ?? 0;
 
-    expect(css).toContain('--_cinder-code-block-code-surface: light-dark(');
+    // The contract this test protects is SINGLE SOURCE: exactly one declaration
+    // decides the code surface, and every painted layer (block, viewport, plain
+    // <pre>, Shiki's <pre>) references it, so they can never drift apart.
+    //
+    // It used to assert that declaration was a `light-dark()` fork, because the
+    // light arm had to opt OUT of the ramp — light `surface-inset` was a heavy
+    // 0.885 plate, so light mode painted `surface-raised` instead. With the light
+    // ramp anchored at white, `surface-inset` is a gentle 0.960 field in light and
+    // a deep field in dark, which is the same semantic in both arms. The fork is
+    // now unnecessary, so the assertion is inverted: there should be NO light-dark
+    // fork here. Same contract, one less special case.
+    expect(css).toContain('--_cinder-code-block-code-surface: var(--cinder-surface-inset);');
     expect(css).toContain(
       '--cinder-code-block-background: var(--_cinder-code-block-code-surface);',
     );
     expect(css).toContain('background: var(--cinder-code-block-background);');
     expect(css).toContain('background: var(--cinder-code-block-background) !important;');
-    expect(lightDarkCount).toBe(1);
+    expect(lightDarkCount).toBe(0);
   });
 
   test('stable viewport carries inset focus ring (regression #398)', async () => {

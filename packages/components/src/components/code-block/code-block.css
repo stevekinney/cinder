@@ -14,14 +14,20 @@
     --cinder-code-block-height: auto;
     --cinder-code-block-line-height: var(--cinder-leading-relaxed);
     --cinder-code-block-padding: var(--cinder-space-4);
-    --_cinder-code-block-code-surface: light-dark(
-      var(--cinder-surface-raised),
-      var(--cinder-surface-inset)
-    );
+    /* One token in BOTH arms: code is a sunken field. The light arm used to be
+     * `--cinder-surface-raised` (pure white) because the old light `surface-inset`
+     * was a heavy 0.885 plate that no one wanted behind code. Now that the light
+     * ramp is anchored at white, `surface-inset` is a gentle 0.960 field — the
+     * near-white code panel light UI actually wants — so both arms can name the
+     * same semantic token instead of the light arm opting out of the ramp. */
+    --_cinder-code-block-code-surface: var(--cinder-surface-inset);
 
     background: var(--cinder-code-block-background);
     border: 1px solid var(--cinder-border);
-    border-radius: var(--cinder-radius-md);
+    /* A code block is a block-level PANEL, not a control: it takes the surface
+     * radius, the same step cards and dialogs use. At the control radius it read
+     * as a hard-cornered plate at panel width. */
+    border-radius: var(--cinder-radius-lg);
     overflow: hidden;
   }
 
@@ -33,7 +39,13 @@
     min-height: 2rem;
     padding: var(--cinder-space-1-5) var(--cinder-space-3);
     border-bottom: 1px solid var(--cinder-border-muted);
-    background: var(--cinder-surface-inset);
+    /* Transparent, not a fill of its own. The header used to paint
+     * `--cinder-surface-inset` while the body painted `surface-raised`, so in light
+     * mode a heavy grey title bar sat on a white code field — two plates stacked
+     * inside one rounded, clipped container, which is what read as broken corners.
+     * The hairline below is enough to separate chrome from content; the header now
+     * shares the block's single surface. */
+    background: transparent;
   }
 
   .cinder-code-block__language {

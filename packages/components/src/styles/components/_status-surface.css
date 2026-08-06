@@ -50,9 +50,29 @@
  * restores the original specificity contract and is import-order-independent.
  */
 @layer cinder.components {
+  /* LIGHT ARM: L 96.5% / C 0.015 → L 94.5% / C 0.026.
+   *
+   * The old tint was nearly invisible, and not by choice — it was capped by the
+   * sRGB gamut without anyone noticing. At L 0.965 the maximum in-gamut chroma for
+   * the DANGER hue (25) is 0.0172, so a chroma shared across all four statuses
+   * could not exceed that no matter what was authored; 0.015 was already 87% of the
+   * ceiling. The tint read as grey because red's headroom near white is tiny and
+   * every status was being held to it.
+   *
+   * Dropping to L 0.945 raises the binding ceiling to 0.0275 (danger; info 0.0329,
+   * warning 0.0447, success 0.0984), so 0.026 is a real tint with margin on every
+   * hue. It also matters more now than it did: against the old 0.962 surface a
+   * 0.965 status panel was separated by hue alone, whereas against the white-anchored
+   * ramp it sits ΔL 0.049 below a card body and reads as a genuinely tinted region.
+   *
+   * Still ONE shared chroma, so success and warning are held well below their own
+   * ceilings (0.098 and 0.045). Per-hue chroma would let each status use its full
+   * headroom, but it means threading a new input through Alert, Banner and Callout
+   * and re-reviewing all twelve surfaces — worth doing, deliberately not smuggled
+   * into a surface retune. Dark arm untouched. */
   .cinder-_status-surface.cinder-_status-surface {
     background-color: light-dark(
-      oklch(from var(--_cinder-status-base) 96.5% 0.015 h),
+      oklch(from var(--_cinder-status-base) 94.5% 0.026 h),
       oklch(from var(--_cinder-status-base) 20% 0.03 h)
     );
     color: light-dark(
