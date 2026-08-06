@@ -317,6 +317,49 @@ describe('evaluateBaselineCoverage — adoption scoping', () => {
     for (const item of report.missing) expect(item.fixture).toBe('closed');
   });
 
+  // Regression: `missing` used to come from findMissingBaselines(), which walks
+  // only the manifest grid, while `expected` unioned in the targeted
+  // combinations. The two halves disagreed about what "expected" means, so a
+  // deleted targeted baseline passed this check silently and then failed late
+  // and opaquely inside blockBaselineGuard in block mode.
+  it('fails an adopted slug missing a baseline captured only by a targeted test', () => {
+    const targeted = [
+      { slug: 'badge', theme: 'light', viewport: 'desktop', fixture: 'nested-open' },
+    ] as const;
+    const entries = [makeEntry('badge')];
+    writeAllDefaults('badge');
+
+    const report = evaluateBaselineCoverage(
+      entries,
+      readBaselineFiles(SNAPSHOTS_DIRECTORY),
+      targeted,
+    );
+
+    expect(report.adoptedSlugs).toEqual(['badge']);
+    expect(report.missing).toHaveLength(1);
+    expect(report.missing[0]?.fixture).toBe('nested-open');
+    expect(report.missing[0]?.theme).toBe('light');
+    expect(report.missing[0]?.viewport).toBe('desktop');
+  });
+
+  it('passes when a targeted-test baseline is present alongside the manifest grid', () => {
+    const targeted = [
+      { slug: 'badge', theme: 'light', viewport: 'desktop', fixture: 'nested-open' },
+    ] as const;
+    const entries = [makeEntry('badge')];
+    writeAllDefaults('badge');
+    writeFakeSnapshot('badge', 'light', 'desktop', 'nested-open');
+
+    const report = evaluateBaselineCoverage(
+      entries,
+      readBaselineFiles(SNAPSHOTS_DIRECTORY),
+      targeted,
+    );
+
+    expect(report.adoptedSlugs).toEqual(['badge']);
+    expect(report.missing).toHaveLength(0);
+  });
+
   it('treats a directory holding only unreachable PNGs as pending, not adopted', () => {
     // Mirrors snapshots/button/*-default.png after button's fixtures became
     // primary/danger/focused/hovered. Counting these as adoption would demand
