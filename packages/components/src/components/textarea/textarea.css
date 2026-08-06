@@ -145,7 +145,7 @@
   }
 
   .cinder-textarea-error {
-    color: var(--cinder-danger);
+    color: var(--cinder-color-danger-fg);
   }
 
   .cinder-textarea-count {

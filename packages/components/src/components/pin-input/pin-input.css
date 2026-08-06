@@ -99,6 +99,6 @@
   .cinder-pin-input-field__error {
     margin: 0;
     font-size: var(--cinder-text-xs);
-    color: var(--cinder-danger);
+    color: var(--cinder-color-danger-fg);
   }
 }

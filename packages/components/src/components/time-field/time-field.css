@@ -80,6 +80,6 @@
   }
 
   .cinder-time-field__error {
-    color: var(--cinder-danger);
+    color: var(--cinder-color-danger-fg);
   }
 }

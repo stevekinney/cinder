@@ -282,7 +282,7 @@
   }
 
   .cinder-multi-select__error {
-    color: var(--cinder-danger);
+    color: var(--cinder-color-danger-fg);
   }
 
   .cinder-multi-select__error:not([data-cinder-error]) {
