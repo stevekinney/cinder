@@ -242,6 +242,15 @@ describe('scoped theme tokens', () => {
    * This derives the expectation instead of restating it: for every token declared
    * as `light-dark(<light>, <dark>)` at `:root` that the scoped blocks also declare,
    * the light block must carry the LIGHT arm and the dark block the DARK arm.
+   *
+   * Arms are read by paren-depth scan, not by a value-shaped regex, so this covers
+   * EVERY arm form actually used — `oklch(...)`, `var(...)` (e.g.
+   * `--cinder-surface-inverse`), `transparent` (`--cinder-border-inverse`), and
+   * nested `color-mix(...)` (the interaction states). An earlier version matched
+   * only `light-dark(oklch(...), oklch(...))` and silently skipped the rest while
+   * this comment claimed general coverage — the same overclaiming-comment failure
+   * that let the scoped ramp drift in the first place. The coverage floor below
+   * exists so the guard cannot quietly decay back into checking almost nothing.
    */
   test('scoped blocks match the light-dark() arms they mirror', async () => {
     const css = await readFile(TOKENS_BASE_PATH, 'utf8');
@@ -249,34 +258,106 @@ describe('scoped theme tokens', () => {
     const darkBlock = extractRuleBlock(css, "[data-theme='dark']");
     const lightBlock = extractRuleBlock(css, "[data-theme='light']");
 
-    /** `--token: light-dark(<light>, <dark>);` → arms, for simple oklch() values. */
-    const armsByToken = new Map<string, { light: string; dark: string }>();
-    const pattern =
-      /(--cinder-[\w-]+):\s*light-dark\(\s*(oklch\([^()]*\))\s*,\s*(oklch\([^()]*\))\s*\)/g;
-    for (const match of rootBlock.matchAll(pattern)) {
-      armsByToken.set(match[1] as string, { light: match[2] as string, dark: match[3] as string });
+    /** Compare values structurally, so line breaks and padding never matter. */
+    const normalize = (value: string): string =>
+      value
+        .replace(/\s+/g, ' ')
+        .replace(/\(\s+/g, '(')
+        .replace(/\s+\)/g, ')')
+        .replace(/\s*,\s*/g, ',')
+        .trim();
+
+    /**
+     * Every `--cinder-*: <value>;` in a block, keyed by token. Scans on paren depth
+     * so a multi-line `color-mix(...)` or nested `light-dark(...)` is captured whole
+     * rather than truncated at the first `)`.
+     */
+    function declarationsIn(block: string): Map<string, string> {
+      const declarations = new Map<string, string>();
+      const tokenPattern = /(--cinder-[\w-]+)\s*:/g;
+      for (const match of block.matchAll(tokenPattern)) {
+        const valueStart = match.index + match[0].length;
+        let depth = 0;
+        let end = valueStart;
+        for (; end < block.length; end += 1) {
+          const character = block[end];
+          if (character === '(') depth += 1;
+          else if (character === ')') depth -= 1;
+          else if (character === ';' && depth === 0) break;
+        }
+        declarations.set(match[1] as string, normalize(block.slice(valueStart, end)));
+      }
+      return declarations;
     }
 
-    // Sanity: the surface ramp is the family this guard exists for.
-    for (const token of ['--cinder-bg', '--cinder-surface', '--cinder-surface-inset']) {
-      expect(armsByToken.has(token)).toBe(true);
+    /** Split a `light-dark(a, b)` value into its two top-level arms. */
+    function lightDarkArms(value: string): { light: string; dark: string } | null {
+      if (!value.startsWith('light-dark(')) return null;
+      const body = value.slice('light-dark('.length, -1);
+      let depth = 0;
+      for (let index = 0; index < body.length; index += 1) {
+        const character = body[index];
+        if (character === '(') depth += 1;
+        else if (character === ')') depth -= 1;
+        else if (character === ',' && depth === 0) {
+          return {
+            light: normalize(body.slice(0, index)),
+            dark: normalize(body.slice(index + 1)),
+          };
+        }
+      }
+      return null;
     }
 
-    const declaredIn = (block: string, token: string): string | null =>
-      block.match(new RegExp(`${token}:\\s*(oklch\\([^()]*\\));`))?.[1] ?? null;
+    const rootDeclarations = declarationsIn(rootBlock);
+    const lightDeclarations = declarationsIn(lightBlock);
+    const darkDeclarations = declarationsIn(darkBlock);
 
     const mismatches: string[] = [];
-    for (const [token, arms] of armsByToken) {
-      const scopedLight = declaredIn(lightBlock, token);
-      if (scopedLight !== null && scopedLight !== arms.light) {
-        mismatches.push(`light ${token}: scoped ${scopedLight} vs :root ${arms.light}`);
+    let compared = 0;
+
+    for (const [token, rootValue] of rootDeclarations) {
+      const arms = lightDarkArms(rootValue);
+      if (!arms) continue;
+
+      const scopedLight = lightDeclarations.get(token);
+      if (scopedLight !== undefined) {
+        compared += 1;
+        if (scopedLight !== arms.light) {
+          mismatches.push(`light ${token}: scoped "${scopedLight}" vs :root "${arms.light}"`);
+        }
       }
-      const scopedDark = declaredIn(darkBlock, token);
-      if (scopedDark !== null && scopedDark !== arms.dark) {
-        mismatches.push(`dark ${token}: scoped ${scopedDark} vs :root ${arms.dark}`);
+
+      const scopedDark = darkDeclarations.get(token);
+      if (scopedDark !== undefined) {
+        compared += 1;
+        if (scopedDark !== arms.dark) {
+          mismatches.push(`dark ${token}: scoped "${scopedDark}" vs :root "${arms.dark}"`);
+        }
       }
     }
 
     expect(mismatches).toEqual([]);
+
+    // The surface ramp is the family this guard exists for — assert it is genuinely
+    // in scope rather than trusting the scan.
+    for (const token of [
+      '--cinder-bg',
+      '--cinder-surface',
+      '--cinder-surface-inset',
+      '--cinder-surface-raised',
+      '--cinder-surface-hover',
+      '--cinder-surface-inverse',
+    ]) {
+      expect(
+        lightDarkArms(rootDeclarations.get(token) ?? ''),
+        `${token} must be in scope`,
+      ).not.toBe(null);
+    }
+
+    // Coverage floor. A parser change that stops matching most tokens would
+    // otherwise leave this test passing vacuously, which is precisely the failure
+    // mode it was written to catch.
+    expect(compared).toBeGreaterThanOrEqual(60);
   });
 });
