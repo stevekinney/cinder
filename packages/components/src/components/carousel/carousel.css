@@ -1,8 +1,13 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
 @layer cinder.components {
   .cinder-carousel {
+    --cinder-carousel-slide-size: 100%;
+    --cinder-carousel-gap: var(--cinder-space-3);
+    --cinder-carousel-aspect-ratio: 16 / 9;
+    --cinder-carousel-dot-size: 2.75rem;
+
     display: grid;
-    gap: var(--cinder-space-3);
+    gap: var(--cinder-carousel-gap, var(--cinder-space-3));
   }
 
   .cinder-carousel__viewport {
@@ -23,13 +28,36 @@
     display: none;
   }
 
+  .cinder-carousel__viewport[data-cinder-dragging],
+  .cinder-carousel__viewport[data-cinder-dragging] * {
+    user-select: none;
+    -webkit-user-drag: none;
+  }
+
+  /* The drag-to-scroll engine disables itself under prefers-reduced-motion
+     (matches useReducedMotion() in the Svelte module) — the grab/grabbing
+     affordance must not promise drag behavior it won't deliver. */
+  @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+    .cinder-carousel__viewport {
+      cursor: grab;
+    }
+
+    .cinder-carousel__viewport[data-cinder-dragging] {
+      cursor: grabbing;
+    }
+  }
+
   .cinder-carousel__slide {
-    flex: 0 0 100%;
-    min-inline-size: 100%;
+    flex: 0 0 var(--cinder-carousel-slide-size, 100%);
+    min-inline-size: var(--cinder-carousel-slide-size, 100%);
     scroll-snap-align: start;
     display: grid;
     gap: var(--cinder-space-3);
     padding: var(--cinder-space-4);
+  }
+
+  .cinder-carousel[data-cinder-align='center'] .cinder-carousel__slide {
+    scroll-snap-align: center;
   }
 
   .cinder-carousel__slide[data-cinder-collapsed] {
@@ -50,7 +78,7 @@
     width: 100%;
     border-radius: var(--cinder-radius-md);
     object-fit: cover;
-    aspect-ratio: 16 / 9;
+    aspect-ratio: var(--cinder-carousel-aspect-ratio, 16 / 9);
     background: var(--cinder-surface-inset);
   }
 
@@ -105,9 +133,15 @@
   }
 
   .cinder-carousel__dot {
-    width: 2.75rem;
-    height: 2.75rem;
+    width: var(--cinder-carousel-dot-size, 2.75rem);
+    height: var(--cinder-carousel-dot-size, 2.75rem);
     padding: 0;
+  }
+
+  .cinder-carousel__counter {
+    color: var(--cinder-text-muted);
+    font: var(--cinder-font-medium) var(--cinder-text-sm) / 1.4 var(--cinder-font-sans);
+    white-space: nowrap;
   }
 
   .cinder-carousel__dot::before {

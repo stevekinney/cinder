@@ -60,6 +60,13 @@ export type ScrollAreaProps = Omit<
    * once). Defaults to `false`.
    */
   scrollFadeVisible?: boolean;
+  /**
+   * Enables fine-pointer (mouse) click-and-drag scrolling, with momentum.
+   * Default `false` — drag-to-scroll on a text-bearing pane is a preference,
+   * not a default; keyboard scrolling (arrow keys, Page Up/Down, Home/End)
+   * is unaffected either way. Not supported when `direction` is `'both'`.
+   */
+  dragToScroll?: boolean;
   /** Additional classes merged onto the scroll viewport. */
   class?: string;
   /** Scrollable content. */

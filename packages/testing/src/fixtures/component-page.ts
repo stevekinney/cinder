@@ -1,4 +1,9 @@
-import { test as base, type BrowserContext, type Page } from '@playwright/test';
+import {
+  test as base,
+  type BrowserContext,
+  type BrowserContextOptions,
+  type Page,
+} from '@playwright/test';
 import type { ComponentEntry, Theme, Viewport } from '../helpers/manifest.ts';
 import { PLAYGROUND_URL } from '../helpers/playground-url.ts';
 import { THEME_STORAGE_KEY, themeContextOptions } from '../helpers/theme.ts';
@@ -16,6 +21,14 @@ export type OpenArgs = {
   fixtureName?: string | undefined;
   /** Fixture file content hash from the cached manifest, used by the playground to detect drift. */
   fixtureContentHash?: string | undefined;
+  /**
+   * Overrides merged on top of `themeContextOptions(theme)` — most tests
+   * don't need this. `themeContextOptions` forces `reducedMotion: 'reduce'`
+   * for screenshot/animation determinism; a test exercising the
+   * not-reduced-motion interaction path (e.g. momentum drag physics) needs
+   * to opt back in with `{ reducedMotion: 'no-preference' }`.
+   */
+  contextOptions?: BrowserContextOptions | undefined;
 };
 export type ComponentPage = {
   open(args: OpenArgs): Promise<Page>;
@@ -62,11 +75,12 @@ export const test = base.extend<Fixtures>({
     const contexts: BrowserContext[] = [];
 
     const componentPage: ComponentPage = {
-      async open({ entry, theme, viewport, fixtureName, fixtureContentHash }) {
+      async open({ entry, theme, viewport, fixtureName, fixtureContentHash, contextOptions }) {
         const context = await browser.newContext({
           ...themeContextOptions(theme),
           viewport: { width: viewport.width, height: viewport.height },
           baseURL: PLAYGROUND_URL,
+          ...contextOptions,
         });
         await context.addInitScript(
           ([key, value]) => {

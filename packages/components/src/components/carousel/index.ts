@@ -7,5 +7,6 @@ export type {
   CarouselProps,
   CarouselSlide,
   CarouselSlideContent,
+  CarouselSlideContext,
 } from './carousel.types.ts';
 export { Carousel };

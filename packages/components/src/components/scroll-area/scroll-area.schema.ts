@@ -35,6 +35,11 @@ const schema = {
       description:
         "Show a scroll-driven edge fade on the trailing edge of `direction`\n(`'vertical'` fades the bottom; `'horizontal'` fades the inline-end\nedge). Opt-in and presentation-only — never the sole signal that content\nscrolls; the native scrollbar this component always renders remains the\nauthoritative affordance. Has no effect when `direction` is `'both'`\n(there is no single trailing edge to fade on two independent axes at\nonce). Defaults to `false`.",
     },
+    dragToScroll: {
+      type: 'boolean',
+      description:
+        "Enables fine-pointer (mouse) click-and-drag scrolling, with momentum.\nDefault `false` — drag-to-scroll on a text-bearing pane is a preference,\nnot a default; keyboard scrolling (arrow keys, Page Up/Down, Home/End)\nis unaffected either way. Not supported when `direction` is `'both'`.",
+    },
     class: {
       type: 'string',
       description: 'Additional classes merged onto the scroll viewport.',

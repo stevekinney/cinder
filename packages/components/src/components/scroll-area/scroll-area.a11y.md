@@ -28,6 +28,31 @@ Use the public props and documented examples to provide accessible names, descri
 
 When ScrollArea accepts snippets or arbitrary children, the caller owns the semantics inside those children. Prefer native elements first, and add ARIA only when it matches the rendered behavior.
 
+## `dragToScroll` (fine-pointer drag-to-scroll)
+
+> **Review status: AI-authored, not yet human-reviewed.** This shares the
+> `useDragScroll` engine and the same self-review documented in Carousel's
+> `carousel.a11y.md` ("Fine-pointer drag-to-scroll review"); read that for
+> the full mechanics. The points specific to ScrollArea:
+
+- **Off by default.** `dragToScroll` defaults to `false` — click-and-drag on
+  a text-bearing pane is a preference, not something every consumer of a
+  generic scroll container should get for free (it visually and
+  behaviorally competes with ordinary text selection). Native keyboard
+  scrolling (arrow keys, Page Up/Down, Home/End) works identically whether
+  or not `dragToScroll` is set.
+- **Not supported when `direction` is `'both'`.** The engine drags one axis;
+  a 2D pan is out of scope for v1. Setting `dragToScroll` with
+  `direction="both"` is a no-op with a dev-only warning, not a silent
+  partial behavior.
+- **Mouse-only, gated the same way as Carousel:** `(hover: hover) and
+(pointer: fine)` plus `!prefersReducedMotion`. Touch and pen keep their
+  native panning untouched.
+- **`user-select: none` is scoped to `[data-cinder-dragging] *`** inside
+  this specific scroll area, active only during a real drag — text
+  selection elsewhere on the page, and in this scroll area when not
+  dragging, is unaffected.
+
 ## Verification
 
 - Render ScrollArea in the playground or a focused test fixture.

@@ -27,8 +27,12 @@
 
 <script lang="ts">
   import type { ScrollAreaProps } from './scroll-area.types.ts';
-  import { classNames } from '../../utilities/class-names.ts';
   import { overflowFadeEdges } from '../../utilities/attachments.ts';
+  import { classNames } from '../../utilities/class-names.ts';
+  import { devWarn } from '../../utilities/dev-warn.ts';
+  import { useDragScroll } from '../../utilities/use-drag-scroll.svelte.ts';
+  import { useFinePointer } from '../../utilities/use-fine-pointer.svelte.ts';
+  import { useReducedMotion } from '../../utilities/use-reduced-motion.svelte.ts';
 
   let {
     direction = 'vertical',
@@ -37,6 +41,7 @@
     label,
     tabindex = 0,
     as = 'div',
+    dragToScroll = false,
     class: className,
     scrollFadeVisible = false,
     children,
@@ -66,6 +71,29 @@
     scrollFadeAxis ? overflowFadeEdges(scrollFadeAxis) : noopScrollFadeAttachment,
   );
 
+  const finePointer = useFinePointer();
+  const reducedMotion = useReducedMotion();
+
+  $effect(() => {
+    if (dragToScroll && direction === 'both') {
+      devWarn(
+        '[cinder/ScrollArea] `dragToScroll` is not supported with `direction="both"` yet; it is being ignored.',
+      );
+    }
+  });
+
+  // `axis` is captured once, like `useResizeObserver`'s `box` option — if a
+  // consumer changes `direction` after mount, a fresh instance (a keyed
+  // `{#key direction}` around the component) picks up the new axis, matching
+  // that existing attachment's documented behavior for the same reason.
+  // Momentum and rubber-band are exactly the inertial motion
+  // `prefers-reduced-motion` is about — see Carousel's identical gating.
+  const dragScroll = useDragScroll({
+    axis: direction === 'horizontal' ? 'x' : 'y',
+    enabled: () =>
+      dragToScroll && direction !== 'both' && finePointer.current && !reducedMotion.current,
+  });
+
   const normalizedAriaLabel = $derived(
     typeof label === 'string' && label.trim().length > 0 ? label.trim() : undefined,
   );
@@ -88,12 +116,14 @@
   {...rest}
   class={classNames('cinder-scroll-area', scrollFadeClass, className)}
   data-cinder-direction={direction}
+  data-cinder-drag-to-scroll={dragToScroll && direction !== 'both' ? '' : undefined}
   {role}
   aria-label={normalizedAriaLabel}
   {tabindex}
   style:max-block-size={maxHeight}
   style:max-inline-size={maxWidth}
   {@attach scrollFadeAttachment}
+  {@attach dragScroll}
 >
   {@render children()}
 </svelte:element>
