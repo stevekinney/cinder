@@ -84,6 +84,17 @@ test('mouse drag disables native snapping only while dragging, then restores it'
   const startX = box.x + box.width * 0.75;
   const y = box.y + box.height / 2;
 
+  // Diagnostic: this Playwright environment's actual matchMedia answers for
+  // the two inputs `enabled()` gates on, surfaced as a hard assertion so a
+  // CI failure names the exact gate rather than requiring another
+  // round-trip. Desktop Chrome (devices['Desktop Chrome']) has no touch/
+  // mobile emulation, so both are expected true here.
+  const mediaState = await page.evaluate(() => ({
+    finePointer: window.matchMedia('(hover: hover) and (pointer: fine)').matches,
+    reducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+  }));
+  expect(mediaState).toEqual({ finePointer: true, reducedMotion: false });
+
   await page.mouse.move(startX, y);
   await page.mouse.down();
 
