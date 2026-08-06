@@ -184,6 +184,8 @@
  * ---------------------------------------- */
 
   .cinder-modal__body {
+    --_cinder-scroll-fade-color: var(--cinder-surface);
+
     flex: 1;
     overflow-y: auto;
     padding: var(--cinder-space-6);
@@ -194,17 +196,6 @@
      no autofocus target. The ring is hidden because focus arrived
      programmatically — pressing Tab forward will move into real content. */
     outline: none;
-  }
-
-  .cinder-modal__body[data-cinder-overflows]::after {
-    content: '';
-    position: sticky;
-    inset-block-end: 0;
-    display: block;
-    height: 1.5rem;
-    margin-block-start: -1.5rem;
-    background: linear-gradient(to bottom, transparent, var(--cinder-surface));
-    pointer-events: none;
   }
 
   /* ----------------------------------------

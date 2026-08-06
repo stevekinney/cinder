@@ -182,7 +182,11 @@
           {@render closeButton()}
         </header>
 
-        <div class="cinder-drawer__body" tabindex="-1" {@attach bodyOverflowFade}>
+        <div
+          class="cinder-drawer__body cinder-_scroll-fade"
+          tabindex="-1"
+          {@attach bodyOverflowFade}
+        >
           {@render children()}
         </div>
 

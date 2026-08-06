@@ -55,6 +55,14 @@ export type CodeBlockProps = {
    * header chip; with `copyable` also unset, no header renders at all.
    */
   languageLabelVisible?: boolean;
+  /**
+   * Show a scroll-driven fade on the horizontal (inline) edges of the code
+   * viewport as a long line overflows — signals "this line continues" rather
+   * than dimming a wrapped block. Opt-in and presentation-only. The gradient
+   * terminates at partial opacity (not fully opaque) so a half-covered glyph
+   * still reads as a glyph, not as a hard cutoff. Defaults to `false`.
+   */
+  scrollFadeVisible?: boolean;
   /** Additional class names merged with `.cinder-code-block`. */
   class?: string;
 };

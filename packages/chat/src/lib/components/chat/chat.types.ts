@@ -122,6 +122,17 @@ export type ChatProps = Omit<HTMLAttributes<HTMLElement>, 'class' | 'onsubmit'> 
   /** Controls the background of the chat surface. Use `'transparent'` to inherit the host element's background when embedding chat inside a card or panel. Default `'default'`. */
   surfaceMode?: 'default' | 'transparent';
   /**
+   * Show a scroll-driven edge fade on the top and bottom of the message
+   * timeline as it overflows. Opt-in and presentation-only — never the sole
+   * signal that more messages exist; the jump-to-latest button and unread
+   * count remain the authoritative affordances. Only visible when
+   * `surfaceMode` is `'default'`: with `surfaceMode="transparent"` the
+   * timeline paints no background of its own, so there is no color the fade
+   * could correctly fade toward, and it stays inert rather than painting an
+   * incorrect opaque band. Default `false`.
+   */
+  scrollFadeVisible?: boolean;
+  /**
    * Controls spacing density of the message timeline.
    * - `'comfortable'` (default): standard padding and gap.
    * - `'compact'`: tighter spacing for data-dense contexts (e.g., embedded panels).

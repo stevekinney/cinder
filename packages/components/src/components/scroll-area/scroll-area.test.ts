@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, mock, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -8,6 +8,22 @@ setupHappyDom();
 const { render } = await import('@testing-library/svelte');
 const { default: ScrollArea } = await import('./scroll-area.svelte');
 const { createRawSnippet } = await import('svelte');
+
+function mousePointerEvent(
+  type: string,
+  init: { clientX?: number; clientY?: number; movementX?: number; movementY?: number } = {},
+): PointerEvent {
+  return new PointerEvent(type, {
+    pointerId: 1,
+    pointerType: 'mouse',
+    clientX: init.clientX ?? 0,
+    clientY: init.clientY ?? 0,
+    movementX: init.movementX ?? 0,
+    movementY: init.movementY ?? 0,
+    bubbles: true,
+    cancelable: true,
+  });
+}
 
 function textSnippet(text: string) {
   return createRawSnippet(() => ({
@@ -195,6 +211,54 @@ describe('ScrollArea', () => {
   });
 });
 
+describe('ScrollArea scrollFadeVisible', () => {
+  test('is off by default — no scroll-fade class', () => {
+    const { container } = render(ScrollArea, { children: textSnippet('body') });
+    const root = container.querySelector('.cinder-scroll-area');
+    expect(root?.classList.contains('cinder-_scroll-fade')).toBe(false);
+    expect(root?.classList.contains('cinder-_scroll-fade-inline-end')).toBe(false);
+  });
+
+  test('vertical direction gets the block-end fade class', () => {
+    const { container } = render(ScrollArea, {
+      scrollFadeVisible: true,
+      direction: 'vertical',
+      children: textSnippet('body'),
+    });
+    const root = container.querySelector('.cinder-scroll-area');
+    expect(root?.classList.contains('cinder-_scroll-fade')).toBe(true);
+    expect(root?.classList.contains('cinder-_scroll-fade-inline-end')).toBe(false);
+  });
+
+  test('horizontal direction gets the inline-end fade class', () => {
+    const { container } = render(ScrollArea, {
+      scrollFadeVisible: true,
+      direction: 'horizontal',
+      children: textSnippet('body'),
+    });
+    const root = container.querySelector('.cinder-scroll-area');
+    expect(root?.classList.contains('cinder-_scroll-fade-inline-end')).toBe(true);
+    expect(root?.classList.contains('cinder-_scroll-fade')).toBe(false);
+  });
+
+  test('direction="both" never gets a fade class — no single trailing edge on two axes at once', () => {
+    const { container } = render(ScrollArea, {
+      scrollFadeVisible: true,
+      direction: 'both',
+      children: textSnippet('body'),
+    });
+    const root = container.querySelector('.cinder-scroll-area');
+    expect(root?.classList.contains('cinder-_scroll-fade')).toBe(false);
+    expect(root?.classList.contains('cinder-_scroll-fade-inline-end')).toBe(false);
+  });
+
+  test('scroll-area.css sets a default --_cinder-scroll-fade-color since ScrollArea paints no background', async () => {
+    const cssPath = new URL('./scroll-area.css', import.meta.url);
+    const source = await Bun.file(cssPath).text();
+    expect(source).toMatch(/--_cinder-scroll-fade-color:\s*var\(--cinder-surface\)/);
+  });
+});
+
 describe('ScrollArea attribute precedence', () => {
   test('consumer-supplied role via rest props does not override the component-derived role', () => {
     // `role` is Omitted from ScrollAreaProps, so we cast to `any` to simulate
@@ -248,5 +312,74 @@ describe('ScrollArea scrollbar tokens', () => {
     expect(source).not.toContain('ScrollbarTrack');
     expect(source).toMatch(/background:\s*Canvas;/);
     expect(source).toMatch(/background:\s*CanvasText;/);
+  });
+
+  describe('dragToScroll', () => {
+    test('defaults to false — no drag-to-scroll affordance or behavior', () => {
+      const { container } = render(ScrollArea, { children: textSnippet('body') });
+      const root = container.querySelector('.cinder-scroll-area') as HTMLElement;
+
+      expect(root.hasAttribute('data-cinder-drag-to-scroll')).toBe(false);
+
+      root.dispatchEvent(mousePointerEvent('pointerdown', { clientY: 0 }));
+      root.dispatchEvent(mousePointerEvent('pointermove', { clientY: 20, movementY: 20 }));
+      expect(root.hasAttribute('data-cinder-dragging')).toBe(false);
+    });
+
+    test('marks the element dragging once a mouse drag crosses the threshold', () => {
+      const { container } = render(ScrollArea, {
+        dragToScroll: true,
+        children: textSnippet('body'),
+      });
+      const root = container.querySelector('.cinder-scroll-area') as HTMLElement;
+
+      expect(root.getAttribute('data-cinder-drag-to-scroll')).toBe('');
+
+      root.dispatchEvent(mousePointerEvent('pointerdown', { clientY: 0 }));
+      root.dispatchEvent(mousePointerEvent('pointermove', { clientY: 20, movementY: 20 }));
+
+      expect(root.hasAttribute('data-cinder-dragging')).toBe(true);
+      root.dispatchEvent(mousePointerEvent('pointerup', { clientY: 20 }));
+    });
+
+    test('drags the horizontal axis when direction is horizontal', () => {
+      const { container } = render(ScrollArea, {
+        dragToScroll: true,
+        direction: 'horizontal',
+        children: textSnippet('body'),
+      });
+      const root = container.querySelector('.cinder-scroll-area') as HTMLElement;
+
+      root.dispatchEvent(mousePointerEvent('pointerdown', { clientX: 0 }));
+      root.dispatchEvent(mousePointerEvent('pointermove', { clientX: 20, movementX: 20 }));
+
+      expect(root.hasAttribute('data-cinder-dragging')).toBe(true);
+      root.dispatchEvent(mousePointerEvent('pointerup', { clientX: 20 }));
+    });
+
+    test('is not supported when direction is both — no affordance, no drag state, and a dev warning', () => {
+      const warn = mock((..._args: unknown[]) => {});
+      const original = console.warn;
+      console.warn = warn;
+      try {
+        const { container } = render(ScrollArea, {
+          dragToScroll: true,
+          direction: 'both',
+          children: textSnippet('body'),
+        });
+        const root = container.querySelector('.cinder-scroll-area') as HTMLElement;
+
+        expect(root.hasAttribute('data-cinder-drag-to-scroll')).toBe(false);
+
+        root.dispatchEvent(mousePointerEvent('pointerdown', { clientY: 0 }));
+        root.dispatchEvent(mousePointerEvent('pointermove', { clientY: 20, movementY: 20 }));
+        expect(root.hasAttribute('data-cinder-dragging')).toBe(false);
+
+        expect(warn).toHaveBeenCalled();
+        expect(String(warn.mock.calls[0]?.[0])).toContain('dragToScroll');
+      } finally {
+        console.warn = original;
+      }
+    });
   });
 });

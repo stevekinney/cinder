@@ -22,6 +22,10 @@
       "type": "boolean",
       "description": "Whether to render the language label in the header. Default `true`.\nPass `false` to keep `language`-driven highlighting without the visible\nheader chip; with `copyable` also unset, no header renders at all."
     },
+    "scrollFadeVisible": {
+      "type": "boolean",
+      "description": "Show a scroll-driven fade on the horizontal (inline) edges of the code\nviewport as a long line overflows — signals \"this line continues\" rather\nthan dimming a wrapped block. Opt-in and presentation-only. The gradient\nterminates at partial opacity (not fully opaque) so a half-covered glyph\nstill reads as a glyph, not as a hard cutoff. Defaults to `false`."
+    },
     "class": {
       "type": "string",
       "description": "Additional class names merged with `.cinder-code-block`."

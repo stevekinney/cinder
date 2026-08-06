@@ -158,7 +158,7 @@
 
         <div
           bind:this={bodyElement}
-          class="cinder-sheet__body"
+          class="cinder-sheet__body cinder-_scroll-fade"
           tabindex="-1"
           {@attach bodyOverflowFade}
         >

@@ -249,7 +249,7 @@
   .cinder-button[data-cinder-variant='ghost-danger'] {
     --_cinder-button-ring: var(--cinder-danger);
     background: transparent;
-    color: var(--cinder-danger);
+    color: var(--cinder-color-danger-fg);
     border-color: transparent;
   }
 
@@ -275,7 +275,7 @@
 
   .cinder-button[data-cinder-variant='ghost-danger'][data-cinder-loading] {
     background: transparent;
-    color: var(--cinder-danger);
+    color: var(--cinder-color-danger-fg);
     border-color: transparent;
   }
 
@@ -290,7 +290,7 @@
       [data-cinder-loading]
     ) {
     background: transparent;
-    color: var(--cinder-danger);
+    color: var(--cinder-color-danger-fg);
     border-color: transparent;
     opacity: 0.6;
   }

@@ -9,6 +9,17 @@
  * ======================================== */
 
   .cinder-scroll-area {
+    /* ScrollArea itself paints no background (the design thesis it shares
+     * with a native scrollbar: it never opts the page out of its own
+     * surface). `--_cinder-scroll-fade-color` therefore has no real value to
+     * inherit from this component and defaults to `--cinder-surface` — the
+     * library's most common ambient surface. Consumers placing ScrollArea
+     * against a different surface (e.g. inside a `--cinder-surface-raised`
+     * card) and using `scrollFadeVisible` should override it inline:
+     * `style="--_cinder-scroll-fade-color: var(--cinder-surface-raised)"`,
+     * the same documented escape hatch as `--_cinder-modal-close-ring`. */
+    --_cinder-scroll-fade-color: var(--cinder-surface);
+
     display: block;
     min-block-size: 0;
     min-inline-size: 0;
@@ -34,6 +45,25 @@
 
   .cinder-scroll-area[data-cinder-direction='both'] {
     overflow: auto;
+  }
+
+  .cinder-scroll-area[data-cinder-dragging],
+  .cinder-scroll-area[data-cinder-dragging] * {
+    user-select: none;
+    -webkit-user-drag: none;
+  }
+
+  /* dragToScroll disables itself under prefers-reduced-motion (matches
+     useReducedMotion() in the Svelte module) — the grab/grabbing affordance
+     must not promise drag behavior it won't deliver. */
+  @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+    .cinder-scroll-area[data-cinder-drag-to-scroll] {
+      cursor: grab;
+    }
+
+    .cinder-scroll-area[data-cinder-dragging] {
+      cursor: grabbing;
+    }
   }
 
   /* Chromium / Safari scrollbar theming. */

@@ -161,6 +161,8 @@
   }
 
   .cinder-sheet__body {
+    --_cinder-scroll-fade-color: var(--cinder-surface);
+
     flex: 1;
     min-block-size: 0;
     overflow-y: auto;
@@ -168,17 +170,6 @@
     background: var(--cinder-surface);
     overscroll-behavior: contain;
     scrollbar-gutter: stable;
-  }
-
-  .cinder-sheet__body[data-cinder-overflows]::after {
-    content: '';
-    position: sticky;
-    inset-block-end: 0;
-    display: block;
-    height: 1.5rem;
-    margin-block-start: -1.5rem;
-    background: linear-gradient(to bottom, transparent, var(--cinder-surface));
-    pointer-events: none;
   }
 
   /* Suppress the focus ring only for programmatic (mouse / open-effect) focus —

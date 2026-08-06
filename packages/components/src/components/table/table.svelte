@@ -29,6 +29,7 @@
 
   import { classNames } from '../../utilities/class-names.ts';
   import { useResizeObserver } from '../../utilities/use-resize-observer.svelte.ts';
+  import { overflowShadow } from '../../utilities/attachments.ts';
 
   let {
     sort = $bindable(),
@@ -149,6 +150,7 @@
     aria-label={wrapperAriaLabel}
     aria-labelledby={wrapperAriaLabelledBy}
     tabindex={wrapperTabindex}
+    {@attach overflowShadow('inline')}
   >
     {@render table()}
   </div>

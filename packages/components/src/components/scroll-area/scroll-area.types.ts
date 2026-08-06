@@ -50,6 +50,23 @@ export type ScrollAreaProps = Omit<
   tabindex?: number;
   /** Element tag to render. Defaults to `'div'`. */
   as?: ScrollAreaElement;
+  /**
+   * Show a scroll-driven edge fade on the trailing edge of `direction`
+   * (`'vertical'` fades the bottom; `'horizontal'` fades the inline-end
+   * edge). Opt-in and presentation-only — never the sole signal that content
+   * scrolls; the native scrollbar this component always renders remains the
+   * authoritative affordance. Has no effect when `direction` is `'both'`
+   * (there is no single trailing edge to fade on two independent axes at
+   * once). Defaults to `false`.
+   */
+  scrollFadeVisible?: boolean;
+  /**
+   * Enables fine-pointer (mouse) click-and-drag scrolling, with momentum.
+   * Default `false` — drag-to-scroll on a text-bearing pane is a preference,
+   * not a default; keyboard scrolling (arrow keys, Page Up/Down, Home/End)
+   * is unaffected either way. Not supported when `direction` is `'both'`.
+   */
+  dragToScroll?: boolean;
   /** Additional classes merged onto the scroll viewport. */
   class?: string;
   /** Scrollable content. */

@@ -3,7 +3,13 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
 import { _resetScrollLock } from '../_internal/overlay.ts';
 import { setupHappyDom } from '../test/happy-dom.ts';
-import { createBodyScrollLock, createClickOutside, overflowFade } from './attachments.ts';
+import {
+  createBodyScrollLock,
+  createClickOutside,
+  overflowFade,
+  overflowFadeEdges,
+  overflowShadow,
+} from './attachments.ts';
 
 setupHappyDom();
 
@@ -76,7 +82,14 @@ class FakeMutationObserver implements MutationObserver {
 
 function setScrollMeasurements(
   node: HTMLElement,
-  measurements: { clientHeight: number; scrollHeight: number; scrollTop?: number },
+  measurements: {
+    clientHeight: number;
+    scrollHeight: number;
+    scrollTop?: number;
+    clientWidth?: number;
+    scrollWidth?: number;
+    scrollLeft?: number;
+  },
 ): void {
   Object.defineProperty(node, 'clientHeight', {
     configurable: true,
@@ -91,6 +104,25 @@ function setScrollMeasurements(
     value: measurements.scrollTop ?? 0,
     writable: true,
   });
+  if (measurements.clientWidth !== undefined) {
+    Object.defineProperty(node, 'clientWidth', {
+      configurable: true,
+      value: measurements.clientWidth,
+    });
+  }
+  if (measurements.scrollWidth !== undefined) {
+    Object.defineProperty(node, 'scrollWidth', {
+      configurable: true,
+      value: measurements.scrollWidth,
+    });
+  }
+  if (measurements.scrollLeft !== undefined) {
+    Object.defineProperty(node, 'scrollLeft', {
+      configurable: true,
+      value: measurements.scrollLeft,
+      writable: true,
+    });
+  }
 }
 
 function flushAnimationFrames(): void {
@@ -240,37 +272,22 @@ describe('overflowFade', () => {
     expect(node.hasAttribute('data-cinder-overflows')).toBe(true);
   });
 
-  test('updates when existing descendant content resizes without a mutation', () => {
+  test('only the container itself is registered with ResizeObserver — never its descendants', () => {
+    // Perf regression guard: the earlier implementation additionally
+    // registered every descendant (node.querySelectorAll('*')), which
+    // registers thousands of observers on a long scroll surface such as a
+    // chat timeline. Only `node` should ever be observed now — content
+    // changes are caught by the MutationObserver above instead (see the
+    // "updates when mutations change scrollHeight" test just above, which
+    // covers that path without any ResizeObserver trigger at all).
     const node = document.createElement('div');
     const child = document.createElement('div');
     node.appendChild(child);
     setScrollMeasurements(node, { clientHeight: 100, scrollHeight: 100 });
 
     overflowFade()(node);
-    expect(FakeResizeObserver.instances[0]?.observedElements).toContain(node);
-    expect(FakeResizeObserver.instances[0]?.observedElements).toContain(child);
-    expect(node.hasAttribute('data-cinder-overflows')).toBe(false);
 
-    setScrollMeasurements(node, { clientHeight: 100, scrollHeight: 150 });
-    FakeResizeObserver.instances[0]?.trigger();
-    flushAnimationFrames();
-
-    expect(node.hasAttribute('data-cinder-overflows')).toBe(true);
-  });
-
-  test('stops observing descendants removed after a mutation', () => {
-    const node = document.createElement('div');
-    const child = document.createElement('div');
-    node.appendChild(child);
-    setScrollMeasurements(node, { clientHeight: 100, scrollHeight: 100 });
-
-    overflowFade()(node);
-    expect(FakeResizeObserver.instances[0]?.observedElements).toContain(child);
-
-    child.remove();
-    FakeMutationObserver.instances[0]?.trigger();
-
-    expect(FakeResizeObserver.instances[0]?.observedElements).not.toContain(child);
+    expect(FakeResizeObserver.instances[0]?.observedElements).toEqual([node]);
   });
 
   test('clears stale state and exits when ResizeObserver is unavailable', () => {
@@ -324,6 +341,200 @@ describe('overflowFade', () => {
     cleanup?.();
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(node.hasAttribute('data-cinder-overflows')).toBe(true);
+  });
+});
+
+describe('overflowShadow', () => {
+  test('inline axis: marks data-cinder-overflows-inline from scrollWidth/clientWidth, ignoring scroll position', () => {
+    const node = document.createElement('div');
+    setScrollMeasurements(node, {
+      clientHeight: 0,
+      scrollHeight: 0,
+      clientWidth: 100,
+      scrollWidth: 100,
+    });
+
+    overflowShadow('inline')(node);
+    expect(node.hasAttribute('data-cinder-overflows-inline')).toBe(false);
+
+    setScrollMeasurements(node, {
+      clientHeight: 0,
+      scrollHeight: 0,
+      clientWidth: 100,
+      scrollWidth: 240,
+      scrollLeft: 0,
+    });
+    FakeResizeObserver.instances[0]?.trigger();
+    flushAnimationFrames();
+    expect(node.hasAttribute('data-cinder-overflows-inline')).toBe(true);
+
+    // Unlike overflowFade, this stays true regardless of scroll position — it
+    // backs a static both-edges shadow, not a position-aware fade.
+    setScrollMeasurements(node, {
+      clientHeight: 0,
+      scrollHeight: 0,
+      clientWidth: 100,
+      scrollWidth: 240,
+      scrollLeft: 140,
+    });
+    node.dispatchEvent(new Event('scroll'));
+    flushAnimationFrames();
+    expect(node.hasAttribute('data-cinder-overflows-inline')).toBe(true);
+  });
+
+  test('block axis: marks data-cinder-overflows-block from scrollHeight/clientHeight', () => {
+    const node = document.createElement('div');
+    setScrollMeasurements(node, { clientHeight: 200, scrollHeight: 200 });
+
+    overflowShadow('block')(node);
+    expect(node.hasAttribute('data-cinder-overflows-block')).toBe(false);
+
+    setScrollMeasurements(node, { clientHeight: 200, scrollHeight: 500 });
+    FakeResizeObserver.instances[0]?.trigger();
+    flushAnimationFrames();
+    expect(node.hasAttribute('data-cinder-overflows-block')).toBe(true);
+  });
+
+  test('does not attach a scroll listener — not scroll-position-aware', () => {
+    const node = document.createElement('div');
+    const addEventListenerCalls: string[] = [];
+    const originalAddEventListener = node.addEventListener.bind(node);
+    node.addEventListener = ((type: string, ...rest: unknown[]) => {
+      addEventListenerCalls.push(type);
+      // @ts-expect-error — forwarding a variadic spy call
+      return originalAddEventListener(type, ...rest);
+    }) as typeof node.addEventListener;
+
+    overflowShadow('inline')(node);
+    expect(addEventListenerCalls).not.toContain('scroll');
+  });
+
+  test('clears the attribute and exits when ResizeObserver is unavailable', () => {
+    const node = document.createElement('div');
+    node.setAttribute('data-cinder-overflows-inline', '');
+    globalThis.ResizeObserver = undefined as unknown as typeof ResizeObserver;
+
+    const cleanup = overflowShadow('inline')(node);
+
+    expect(cleanup).toBeUndefined();
+    expect(node.hasAttribute('data-cinder-overflows-inline')).toBe(false);
+  });
+
+  test('teardown disconnects observers', () => {
+    const node = document.createElement('div');
+    setScrollMeasurements(node, {
+      clientHeight: 0,
+      scrollHeight: 0,
+      clientWidth: 100,
+      scrollWidth: 100,
+    });
+
+    const cleanup = overflowShadow('inline')(node) as () => void;
+    expect(FakeResizeObserver.instances[0]?.disconnected).toBe(false);
+
+    cleanup();
+    expect(FakeResizeObserver.instances[0]?.disconnected).toBe(true);
+    expect(FakeMutationObserver.instances[0]?.disconnected).toBe(true);
+  });
+});
+
+describe('overflowFadeEdges', () => {
+  test('block axis: reports the start edge and end edge independently as scroll position changes', () => {
+    const node = document.createElement('div');
+
+    overflowFadeEdges('block')(node);
+
+    // At the very top: no start fade (nothing above), but an end fade (more
+    // below) since content overflows.
+    setScrollMeasurements(node, { clientHeight: 100, scrollHeight: 300, scrollTop: 0 });
+    FakeResizeObserver.instances[0]?.trigger();
+    flushAnimationFrames();
+    expect(node.hasAttribute('data-cinder-overflows-start')).toBe(false);
+    expect(node.hasAttribute('data-cinder-overflows')).toBe(true);
+
+    // Scrolled to the middle: both edges fade.
+    setScrollMeasurements(node, { clientHeight: 100, scrollHeight: 300, scrollTop: 100 });
+    node.dispatchEvent(new Event('scroll'));
+    flushAnimationFrames();
+    expect(node.hasAttribute('data-cinder-overflows-start')).toBe(true);
+    expect(node.hasAttribute('data-cinder-overflows')).toBe(true);
+
+    // Scrolled to the very bottom: start fade only, no end fade.
+    setScrollMeasurements(node, { clientHeight: 100, scrollHeight: 300, scrollTop: 200 });
+    node.dispatchEvent(new Event('scroll'));
+    flushAnimationFrames();
+    expect(node.hasAttribute('data-cinder-overflows-start')).toBe(true);
+    expect(node.hasAttribute('data-cinder-overflows')).toBe(false);
+  });
+
+  test('inline axis: reports data-cinder-overflows-inline-start / -inline-end from scrollLeft', () => {
+    const node = document.createElement('div');
+
+    overflowFadeEdges('inline')(node);
+
+    setScrollMeasurements(node, {
+      clientHeight: 0,
+      scrollHeight: 0,
+      clientWidth: 100,
+      scrollWidth: 300,
+      scrollLeft: 0,
+    });
+    FakeResizeObserver.instances[0]?.trigger();
+    flushAnimationFrames();
+    expect(node.hasAttribute('data-cinder-overflows-inline-start')).toBe(false);
+    expect(node.hasAttribute('data-cinder-overflows-inline-end')).toBe(true);
+
+    setScrollMeasurements(node, {
+      clientHeight: 0,
+      scrollHeight: 0,
+      clientWidth: 100,
+      scrollWidth: 300,
+      scrollLeft: 200,
+    });
+    node.dispatchEvent(new Event('scroll'));
+    flushAnimationFrames();
+    expect(node.hasAttribute('data-cinder-overflows-inline-start')).toBe(true);
+    expect(node.hasAttribute('data-cinder-overflows-inline-end')).toBe(false);
+  });
+
+  test('a non-overflowing container never sets either attribute', () => {
+    const node = document.createElement('div');
+
+    overflowFadeEdges('block')(node);
+
+    setScrollMeasurements(node, { clientHeight: 200, scrollHeight: 200, scrollTop: 0 });
+    FakeResizeObserver.instances[0]?.trigger();
+    flushAnimationFrames();
+    expect(node.hasAttribute('data-cinder-overflows-start')).toBe(false);
+    expect(node.hasAttribute('data-cinder-overflows')).toBe(false);
+  });
+
+  test('clears both attributes and exits when ResizeObserver is unavailable', () => {
+    const node = document.createElement('div');
+    node.setAttribute('data-cinder-overflows-start', '');
+    node.setAttribute('data-cinder-overflows', '');
+    globalThis.ResizeObserver = undefined as unknown as typeof ResizeObserver;
+
+    const cleanup = overflowFadeEdges('block')(node);
+
+    expect(cleanup).toBeUndefined();
+    expect(node.hasAttribute('data-cinder-overflows-start')).toBe(false);
+    expect(node.hasAttribute('data-cinder-overflows')).toBe(false);
+  });
+
+  test('teardown disconnects observers and removes the scroll listener', () => {
+    const node = document.createElement('div');
+    setScrollMeasurements(node, { clientHeight: 100, scrollHeight: 300, scrollTop: 0 });
+
+    const cleanup = overflowFadeEdges('block')(node) as () => void;
+    expect(FakeResizeObserver.instances[0]?.disconnected).toBe(false);
+
+    cleanup();
+    expect(FakeResizeObserver.instances[0]?.disconnected).toBe(true);
+    expect(FakeMutationObserver.instances[0]?.disconnected).toBe(true);
+
+    node.dispatchEvent(new Event('scroll'));
+    expect(animationFrameCallbacks.size).toBe(0);
   });
 });
 

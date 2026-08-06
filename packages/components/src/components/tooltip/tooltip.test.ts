@@ -1,11 +1,15 @@
 /// <reference lib="dom" />
 import { afterEach, beforeEach, describe, expect, jest, mock, test } from 'bun:test';
+import { join } from 'node:path';
 import { createRawSnippet, tick } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 import { expectNoLeakedTimers, trackTimers } from '../../test/lifecycle.ts';
+import { renderToServerHtml } from '../../test/server-render.ts';
 
 setupHappyDom();
+
+const TOOLTIP_SOURCE = join(import.meta.dir, 'tooltip.svelte');
 
 type Resolver = (value: unknown) => void;
 
@@ -206,6 +210,22 @@ describe('Tooltip', () => {
     });
   });
 
+  test('server output omits the tooltip panel (OVERLAY-POLICY SSR hard constraint)', async () => {
+    // The policy's SSR rule is a HARD CONSTRAINT, not a preference. Tooltip did
+    // not satisfy it — the panel was unconditionally in the template — and an
+    // earlier revision of this branch wrote itself an "exception" in the a11y
+    // record instead of complying.
+    //
+    // Complying is safe: `aria-describedby` is wired from an attachment
+    // (wrapping) and an `$effect` (detached), both client-only, so the server
+    // emits neither the reference nor its target and nothing dangles.
+    const html = await renderToServerHtml(TOOLTIP_SOURCE, { text: 'Server tooltip text' });
+
+    expect(html).not.toContain('role="tooltip"');
+    expect(html).not.toContain('Server tooltip text');
+    expect(html).not.toContain('aria-describedby');
+  });
+
   test('triggerRef renders only the panel, with no wrapper around a trigger', () => {
     // Anchored-by-reference mode exists so a Tooltip can be used where the
     // surrounding markup constrains its children — AvatarGroup wraps each avatar
@@ -222,6 +242,25 @@ describe('Tooltip', () => {
     const tooltip = container.querySelector('[role="tooltip"]');
     expect(tooltip).not.toBeNull();
     expect(tooltip?.textContent).toContain('Tooltip content');
+
+    trigger.remove();
+  });
+
+  test('triggerRef mode applies the class prop to the panel', () => {
+    // In detached mode the panel IS the component root, so `class` belongs on
+    // it — the wrapping form puts it on the wrapper instead. Without this the
+    // prop was silently dropped for every detached Tooltip.
+    const trigger = document.createElement('button');
+    trigger.type = 'button';
+    document.body.append(trigger);
+
+    const { container } = render(Tooltip, {
+      props: { text: 'Tooltip content', triggerRef: trigger, class: 'custom-tooltip' },
+    });
+
+    const tooltip = container.querySelector('[role="tooltip"]');
+    expect(tooltip?.classList.contains('cinder-tooltip')).toBe(true);
+    expect(tooltip?.classList.contains('custom-tooltip')).toBe(true);
 
     trigger.remove();
   });
@@ -278,6 +317,53 @@ describe('Tooltip', () => {
     const trigger = container.querySelector<HTMLElement>('button');
     const tooltip = queryTooltip();
     expect(trigger?.getAttribute('aria-describedby')).toBe(tooltip?.getAttribute('id'));
+  });
+
+  test('the described element is EXPOSED when shown, in both anchoring modes', async () => {
+    // `aria-describedby` pointing at a node is not the same as that description
+    // being announced: while hidden the panel is `aria-hidden="true"`, so AT
+    // ignores it. This pins the announcement contract itself — the referenced
+    // element becomes exposed on show — for the wrapping form and the detached
+    // form alike, which is what the portal gate and `triggerRef` both touch.
+    const { container, unmount } = render(Tooltip, {
+      props: { text: 'Wrapped description', children: triggerSnippet },
+    });
+    const wrapper = container.querySelector('.cinder-tooltip-wrapper') as HTMLElement;
+    const trigger = container.querySelector<HTMLElement>('button');
+    const describedById = trigger?.getAttribute('aria-describedby');
+    expect(describedById).toBeTruthy();
+
+    // Resting: referenced, but hidden from AT.
+    expect(document.getElementById(describedById ?? '')?.getAttribute('aria-hidden')).toBe('true');
+
+    await triggerDelayedTooltipShow(wrapper);
+    await waitFor(() => {
+      expect(document.getElementById(describedById ?? '')?.getAttribute('aria-hidden')).toBe(
+        'false',
+      );
+    });
+    unmount();
+    await tick();
+
+    // Same contract via triggerRef.
+    const external = document.createElement('button');
+    external.type = 'button';
+    document.body.append(external);
+    const detached = render(Tooltip, {
+      props: { text: 'Detached description', triggerRef: external },
+    });
+    const detachedId = external.getAttribute('aria-describedby');
+    expect(detachedId).toBeTruthy();
+    expect(document.getElementById(detachedId ?? '')?.getAttribute('aria-hidden')).toBe('true');
+
+    await triggerDelayedTooltipShow(external);
+    await waitFor(() => {
+      expect(document.getElementById(detachedId ?? '')?.getAttribute('aria-hidden')).toBe('false');
+    });
+
+    detached.unmount();
+    external.remove();
+    await tick();
   });
 
   test('describe=false keeps tooltip text visual without wiring aria-describedby', () => {
