@@ -39,11 +39,11 @@
   }
 
   .cinder-diff-statistics__stat--added {
-    color: var(--cinder-success);
+    color: var(--cinder-color-success-fg);
   }
 
   .cinder-diff-statistics__stat--removed {
-    color: var(--cinder-danger);
+    color: var(--cinder-color-danger-fg);
   }
 
   .cinder-diff-statistics__stat--modified {

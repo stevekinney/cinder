@@ -174,7 +174,7 @@
 
   .cinder-dropdown-item[data-cinder-variant='danger'] {
     --_cinder-dropdown-item-ring: var(--cinder-danger);
-    color: var(--cinder-danger);
+    color: var(--cinder-color-danger-fg);
   }
 
   .cinder-dropdown-item[data-cinder-variant='danger']:focus-visible {
