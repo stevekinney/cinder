@@ -2,10 +2,14 @@ name: release
 
 # Changesets-driven release pipeline for the public `@lostgradient/markdown`,
 # `@lostgradient/cinder`, `@lostgradient/cinder-mcp`, `@lostgradient/editor`,
-# and `@lostgradient/chat` npm packages. Publish order follows the peer/dependency
-# DAG: markdown → cinder → cinder-mcp → editor → chat (markdown has no peers on
-# the others; cinder-mcp depends on cinder's `./knowledge` export; editor peers
-# on cinder and markdown; chat peers on cinder and markdown).
+# and `@lostgradient/chat` npm packages. Publish order is
+# markdown → cinder → editor → chat → cinder-mcp (markdown has no peers on the
+# others; editor peers on cinder and markdown; chat peers on cinder and markdown).
+#
+# That is the peer/dependency DAG with one deliberate exception: cinder-mcp is a
+# leaf — it consumes cinder's `./knowledge` export, so it must follow cinder, but
+# nothing depends on it — and it publishes LAST rather than in DAG position, so a
+# failure on it cannot abort the other four. See #1207.
 #
 # On every push to `main`:
 #   - If unreleased changesets exist, the action opens (or updates) a
