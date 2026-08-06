@@ -718,18 +718,19 @@ describe('Drawer', () => {
     }
   });
 
-  test('overflow fade overlays content without masking the drawer surface', async () => {
+  test('body opts into the shared scroll-fade recipe with a surface-colored overlay, never a mask', async () => {
     const css = await Bun.file(new URL('./drawer.css', import.meta.url)).text();
-    const overflowFadeBlock =
-      css.match(/\.cinder-drawer__body\[data-cinder-overflows\]::after\s*\{[^}]*\}/)?.[0] ?? '';
+    expect(css).toMatch(
+      /\.cinder-drawer__body\s*\{[^}]*--_cinder-scroll-fade-color:\s*var\(--cinder-surface\)/s,
+    );
+    expect(css).not.toContain('mask-image:');
+    expect(css).not.toMatch(/(?:-webkit-)?mask(?:-[a-z]+)?\s*:/);
 
-    expect(overflowFadeBlock).toContain('position: sticky');
-    expect(overflowFadeBlock).toContain(
-      'background: linear-gradient(to bottom, transparent, var(--cinder-surface))',
-    );
-    expect(css).not.toMatch(
-      /\.cinder-drawer__body\[data-cinder-overflows\]\s*\{[^}]*(?:-webkit-)?mask-/,
-    );
+    const { container } = render(Drawer, {
+      props: { open: true, title: 'Test', children: textSnippet('Drawer body content') },
+    });
+    const body = container.querySelector('.cinder-drawer__body');
+    expect(body?.classList.contains('cinder-_scroll-fade')).toBe(true);
   });
 
   // ---- Additional: close button has correct aria-label ----
