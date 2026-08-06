@@ -49,24 +49,89 @@ function shellQuote(value: string): string {
   return `'${value.replaceAll("'", "'\\''")}'`;
 }
 
-export function dockerUpdateCommand(extraArgs: string[]): string {
+/** Environment variable carrying the host user id into the container. */
+export const HOST_UID_ENVIRONMENT_NAME = 'CINDER_HOST_UID';
+/** Environment variable carrying the host group id into the container. */
+export const HOST_GID_ENVIRONMENT_NAME = 'CINDER_HOST_GID';
+
+/**
+ * Repo-relative paths the containerised suite writes through the `/work` bind
+ * mount. The image declares no `USER` and `docker run` passes no `--user`, so
+ * everything written here lands root-owned on the host and later, non-root CI
+ * steps (notably `Merge visual-report fragments`) fail with EACCES.
+ *
+ * `.playwright` is included because the container's prepare-manifest step
+ * writes the manifest cache there.
+ */
+export const CONTAINER_WRITTEN_PATHS = [
+  'packages/testing/test-results',
+  'packages/testing/screenshots',
+  'packages/testing/playwright-report',
+  'packages/testing/.playwright',
+] as const;
+
+/**
+ * Shell tail appended to every container command so container-written paths are
+ * handed back to the host uid/gid before the container exits.
+ *
+ * The ENTRYPOINT is `/bin/bash -lc` with **no** `-e`, so the tail must capture
+ * `$?` immediately after the suite and re-`exit` it verbatim. Fail-open here
+ * (container exiting 0 on a red suite) would be far worse than an unreclaimed
+ * file, hence: capture status first, swallow only the chown's own failure, and
+ * always `exit $status`.
+ */
+export function ownershipReclaimSuffix(): string {
+  const owner = `"$${HOST_UID_ENVIRONMENT_NAME}:$${HOST_GID_ENVIRONMENT_NAME}"`;
   return [
-    'cd /work',
-    '&& git config --global --add safe.directory /work',
-    '&& bun install --frozen-lockfile',
-    '&& bun run --filter=@cinder/testing test:browser:update',
-    ...(extraArgs.length > 0 ? ['--', ...extraArgs.map(shellQuote)] : []),
-  ].join(' ');
+    '; status=$?',
+    `; chown -R ${owner} ${CONTAINER_WRITTEN_PATHS.join(' ')} 2>/dev/null || true`,
+    '; exit $status',
+  ].join('');
+}
+
+/**
+ * Host uid/gid forwarded into the container for {@link ownershipReclaimSuffix}.
+ *
+ * These are computed, not environmental, so they cannot ride along on an
+ * allow-list read from `process.env`. On platforms without `process.getuid`
+ * (Windows) both are omitted; `dockerRunArguments` skips undefined values, the
+ * chown becomes a no-op, and behaviour is unchanged from before this fix.
+ */
+export function hostOwnershipEnvironment(
+  processHandle: Pick<typeof process, 'getuid' | 'getgid'> = process,
+): Record<string, string | undefined> {
+  const { getuid, getgid } = processHandle;
+  if (typeof getuid !== 'function' || typeof getgid !== 'function') {
+    return {};
+  }
+  return {
+    [HOST_UID_ENVIRONMENT_NAME]: String(getuid.call(processHandle)),
+    [HOST_GID_ENVIRONMENT_NAME]: String(getgid.call(processHandle)),
+  };
+}
+
+export function dockerUpdateCommand(extraArgs: string[]): string {
+  return (
+    [
+      'cd /work',
+      '&& git config --global --add safe.directory /work',
+      '&& bun install --frozen-lockfile',
+      '&& bun run --filter=@cinder/testing test:browser:update',
+      ...(extraArgs.length > 0 ? ['--', ...extraArgs.map(shellQuote)] : []),
+    ].join(' ') + ownershipReclaimSuffix()
+  );
 }
 
 export function dockerBrowserCommand(extraArgs: string[]): string {
-  return [
-    'cd /work',
-    '&& git config --global --add safe.directory /work',
-    '&& bun install --frozen-lockfile',
-    '&& bun run test:browser',
-    ...(extraArgs.length > 0 ? ['--', ...extraArgs.map(shellQuote)] : []),
-  ].join(' ');
+  return (
+    [
+      'cd /work',
+      '&& git config --global --add safe.directory /work',
+      '&& bun install --frozen-lockfile',
+      '&& bun run test:browser',
+      ...(extraArgs.length > 0 ? ['--', ...extraArgs.map(shellQuote)] : []),
+    ].join(' ') + ownershipReclaimSuffix()
+  );
 }
 
 export type DockerRunArgumentsOptions = {
@@ -162,6 +227,7 @@ async function main(): Promise<void> {
       containerCommand: updateCommand,
       environment: {
         CINDER_TEST_COMPONENTS: process.env['CINDER_TEST_COMPONENTS'],
+        ...hostOwnershipEnvironment(),
       },
     }),
     { cwd: repoRoot, onSpawn: (child) => (activeChild = child) },

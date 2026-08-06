@@ -7,6 +7,7 @@ import {
   dockerBrowserCommand,
   dockerImageTagForVersion,
   dockerRunArguments,
+  hostOwnershipEnvironment,
   readPinnedPlaywrightVersion,
   run,
 } from './update-snapshots-docker.ts';
@@ -24,14 +25,24 @@ const FORWARDED_ENVIRONMENT_NAMES = [
   'PLAYWRIGHT_TRACE',
 ] as const;
 
+/**
+ * Builds the container environment: the fixed allow-list read from the host
+ * environment, plus the host uid/gid.
+ *
+ * The uid/gid are computed rather than read from `process.env`, so they have to
+ * be merged in explicitly — leaving them out silently no-ops the ownership
+ * reclaim in the container command and root-owned artifacts leak back onto the
+ * host.
+ */
 export function dockerBrowserEnvironment(
   environment: NodeJS.ProcessEnv,
+  ownership: Record<string, string | undefined> = hostOwnershipEnvironment(),
 ): Record<string, string | undefined> {
   const forwarded: Record<string, string | undefined> = {};
   for (const name of FORWARDED_ENVIRONMENT_NAMES) {
     forwarded[name] = environment[name];
   }
-  return forwarded;
+  return { ...forwarded, ...ownership };
 }
 
 /**

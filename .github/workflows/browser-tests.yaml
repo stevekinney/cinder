@@ -397,6 +397,18 @@ jobs:
         run: bunx playwright install chromium
 
       - name: Run Playwright suite
+        # What CINDER_VISUAL_DIFF actually governs: screenshot capture-vs-compare
+        # (off = record a PNG and return; report/block = diff against the
+        # committed baseline) and host-vs-Docker execution. It does NOT gate the
+        # suite. The axe accessibility gate runs in EVERY mode — runAxe() and
+        # evaluateAxeGate() are called unconditionally per component test, and
+        # the assertion fails the test regardless of the mode.
+        #
+        # The real residual limitation is scope, not mode: on filtered PRs
+        # CINDER_TEST_COMPONENTS is applied before the test-generation loop, so a
+        # PR that maps cleanly to component A gets no axe coverage of component
+        # B. Token and global-style changes force full scope, so broad theme
+        # changes are always swept.
         env:
           CI: 'true'
           # Empty when component_scope_mode=full; comma-separated slug list when filtered.
@@ -513,10 +525,16 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   baseline-coverage:
-    # Runs when visual diffing is active (report or block mode) to catch new
-    # components added without baselines. Skipped in off mode — no baselines
-    # are committed yet at off-mode launch, so the check would always fail.
-    if: ${{ (github.event.inputs.mode || 'off') != 'off' }}
+    # Runs on every trigger, including pull requests. The check is scoped per
+    # slug: a component is enforced only once it has adopted baselines, so
+    # incremental adoption no longer makes this unconditionally red. Components
+    # without baselines are listed as "pending" and orphaned PNGs are reported
+    # without failing the job.
+    #
+    # Gated on scope relevance like `typecheck` and `playwright` above, so a
+    # docs-only pull request does not pay to boot the playground. This job is
+    # NOT a required status check, so a failure informs rather than blocks.
+    if: "!cancelled() && (needs.scope.result != 'success' || needs.scope.outputs.relevant == 'true')"
     needs: scope
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -537,8 +555,10 @@ jobs:
         run: bun run --filter=@cinder/testing test:playwright -- --list
 
       - name: Verify baseline coverage
-        # Fails with a named list of missing slugs when any committed
-        # baseline is absent. The exit code drives the job result.
+        # Fails with a named list of missing combinations when a component that
+        # has already adopted baselines is missing any of them — a new fixture
+        # or viewport cannot land half-covered. Pending and orphan lines are
+        # informational. The exit code drives the job result.
         env:
           CINDER_TEST_COMPONENTS: ${{ needs.scope.outputs.component_scope_mode == 'filtered' && needs.scope.outputs.components || '' }}
         run: bun run packages/testing/scripts/baseline-coverage-check.ts

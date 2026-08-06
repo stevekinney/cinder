@@ -12,10 +12,19 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test';
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ManifestFixtureEntry } from '../src/helpers/manifest.ts';
-import { applyBaselineComponentFilter, findMissingBaselines } from './baseline-coverage-check.ts';
+import {
+  applyBaselineComponentFilter,
+  evaluateBaselineCoverage,
+  expectedBaselineFileNames,
+  findMissingBaselines,
+  findOrphanBaselines,
+  isAdoptedSlug,
+  readBaselineFiles,
+  TARGETED_TEST_COMBINATIONS,
+} from './baseline-coverage-check.ts';
 
 // ---------------------------------------------------------------------------
 // Fake snapshot root
@@ -248,5 +257,208 @@ describe('findMissingBaselines — missing entry includes expectedPath', () => {
       expect(item.expectedPath.length).toBeGreaterThan(0);
       expect(item.expectedPath).toContain('button');
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Adoption scoping
+// ---------------------------------------------------------------------------
+
+const SNAPSHOTS_DIRECTORY = join(TMP_ROOT, 'snapshots');
+
+function writeAllDefaults(slug: string): void {
+  for (const theme of ['light', 'dark']) {
+    for (const viewport of ['mobile', 'tablet', 'desktop']) {
+      writeFakeSnapshot(slug, theme, viewport, 'default');
+    }
+  }
+}
+
+describe('readBaselineFiles', () => {
+  it('returns PNG file names per slug and ignores non-PNG siblings', () => {
+    writeFakeSnapshot('button', 'light', 'desktop', 'default');
+    writeFileSync(join(SNAPSHOTS_DIRECTORY, 'provenance.json'), '{}');
+
+    const files = readBaselineFiles(SNAPSHOTS_DIRECTORY);
+    expect([...files.keys()]).toEqual(['button']);
+    expect(files.get('button')).toEqual(['light-desktop-default.png']);
+  });
+
+  it('returns an empty map when the snapshots directory does not exist', () => {
+    expect(readBaselineFiles(join(TMP_ROOT, 'nope')).size).toBe(0);
+  });
+});
+
+describe('evaluateBaselineCoverage — adoption scoping', () => {
+  it('does not fail for slugs that have no baselines yet', () => {
+    const entries = [makeEntry('button'), makeEntry('badge')];
+    writeAllDefaults('button');
+
+    const report = evaluateBaselineCoverage(entries, readBaselineFiles(SNAPSHOTS_DIRECTORY));
+
+    expect(report.adoptedSlugs).toEqual(['button']);
+    expect(report.pendingSlugs).toEqual(['badge']);
+    expect(report.missing).toHaveLength(0);
+    expect(report.totalSlugs).toBe(2);
+  });
+
+  it('fails an adopted slug that is only half-covered', () => {
+    const entries = [makeEntry('badge', ['open', 'closed'])];
+    for (const theme of ['light', 'dark']) {
+      for (const viewport of ['mobile', 'tablet', 'desktop']) {
+        writeFakeSnapshot('badge', theme, viewport, 'open');
+      }
+    }
+
+    const report = evaluateBaselineCoverage(entries, readBaselineFiles(SNAPSHOTS_DIRECTORY));
+
+    expect(report.adoptedSlugs).toEqual(['badge']);
+    expect(report.missing).toHaveLength(6);
+    for (const item of report.missing) expect(item.fixture).toBe('closed');
+  });
+
+  it('treats a directory holding only unreachable PNGs as pending, not adopted', () => {
+    // Mirrors snapshots/button/*-default.png after button's fixtures became
+    // primary/danger/focused/hovered. Counting these as adoption would demand
+    // 24 never-authored baselines and keep the job permanently red.
+    const entries = [makeEntry('button', ['primary', 'danger'])];
+    writeAllDefaults('button');
+
+    const report = evaluateBaselineCoverage(entries, readBaselineFiles(SNAPSHOTS_DIRECTORY));
+
+    expect(report.adoptedSlugs).toEqual([]);
+    expect(report.pendingSlugs).toEqual(['button']);
+    expect(report.missing).toHaveLength(0);
+  });
+
+  it('re-enforces the full grid once a slug has one recognised baseline', () => {
+    const entries = [makeEntry('button', ['primary', 'danger'])];
+    writeAllDefaults('button');
+    writeFakeSnapshot('button', 'light', 'desktop', 'primary');
+
+    const report = evaluateBaselineCoverage(entries, readBaselineFiles(SNAPSHOTS_DIRECTORY));
+
+    expect(report.adoptedSlugs).toEqual(['button']);
+    // 2 themes × 3 viewports × 2 fixtures = 12, minus the one written.
+    expect(report.missing).toHaveLength(11);
+  });
+
+  it('reports adopted and total counts even when everything passes', () => {
+    const entries = [makeEntry('button'), makeEntry('badge'), makeEntry('card')];
+    writeAllDefaults('button');
+
+    const report = evaluateBaselineCoverage(entries, readBaselineFiles(SNAPSHOTS_DIRECTORY));
+    expect(report.adoptedSlugs).toHaveLength(1);
+    expect(report.totalSlugs).toBe(3);
+  });
+});
+
+describe('isAdoptedSlug', () => {
+  it('is false when the slug has no files or no expected combinations', () => {
+    expect(isAdoptedSlug(undefined, new Set(['light-desktop-default.png']))).toBe(false);
+    expect(isAdoptedSlug(['light-desktop-default.png'], undefined)).toBe(false);
+  });
+
+  it('is true on the first recognised file name', () => {
+    expect(
+      isAdoptedSlug(
+        ['stale.png', 'light-desktop-default.png'],
+        new Set(['light-desktop-default.png']),
+      ),
+    ).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Targeted-test union / orphan detection
+// ---------------------------------------------------------------------------
+
+describe('expectedBaselineFileNames — targeted-test union', () => {
+  it('includes fixture keys authored outside the component sweep', () => {
+    const expected = expectedBaselineFileNames([makeEntry('mega-menu')]);
+    const megaMenu = expected.get('mega-menu');
+
+    expect(megaMenu?.has('light-desktop-default.png')).toBe(true);
+    expect(megaMenu?.has('light-desktop-nested-open.png')).toBe(true);
+    expect(megaMenu?.has('light-desktop-accessibility.png')).toBe(true);
+  });
+
+  it('covers targeted slugs that are absent from the supplied entries', () => {
+    const expected = expectedBaselineFileNames([]);
+    expect(expected.get('popover')?.has('light-desktop-transformed-ancestor-shell.png')).toBe(true);
+    expect(expected.get('tooltip')?.has('light-desktop-transformed-ancestor-shell.png')).toBe(true);
+  });
+
+  it('pins the verified targeted call sites', () => {
+    expect(
+      TARGETED_TEST_COMBINATIONS.map(
+        (combination) => `${combination.slug}:${combination.fixture}`,
+      ).sort(),
+    ).toEqual([
+      'mega-menu:accessibility',
+      'mega-menu:nested-open',
+      'popover:transformed-ancestor-shell',
+      'tooltip:transformed-ancestor-shell',
+    ]);
+  });
+});
+
+describe('findOrphanBaselines', () => {
+  it('does not flag targeted-test baselines as orphans', () => {
+    const entries = [makeEntry('mega-menu')];
+    writeAllDefaults('mega-menu');
+    writeFakeSnapshot('mega-menu', 'light', 'desktop', 'nested-open');
+    writeFakeSnapshot('mega-menu', 'light', 'desktop', 'accessibility');
+
+    const orphans = findOrphanBaselines(
+      readBaselineFiles(SNAPSHOTS_DIRECTORY),
+      expectedBaselineFileNames(entries),
+    );
+
+    expect(orphans).toEqual([]);
+  });
+
+  it('would flag targeted baselines if the union were derived from the manifest alone', () => {
+    // Regression guard for the original bug: without the targeted union the
+    // most recently authored baselines in the repo look stale.
+    const entries = [makeEntry('mega-menu')];
+    writeAllDefaults('mega-menu');
+    writeFakeSnapshot('mega-menu', 'light', 'desktop', 'nested-open');
+
+    const orphans = findOrphanBaselines(
+      readBaselineFiles(SNAPSHOTS_DIRECTORY),
+      expectedBaselineFileNames(entries, []),
+    );
+
+    expect(orphans).toEqual([{ slug: 'mega-menu', fileName: 'light-desktop-nested-open.png' }]);
+  });
+
+  it('reports unreachable fixture PNGs without touching the files', () => {
+    const entries = [makeEntry('button', ['primary'])];
+    writeAllDefaults('button');
+
+    const orphans = findOrphanBaselines(
+      readBaselineFiles(SNAPSHOTS_DIRECTORY),
+      expectedBaselineFileNames(entries),
+    );
+
+    expect(orphans).toHaveLength(6);
+    for (const orphan of orphans) {
+      expect(orphan.slug).toBe('button');
+      expect(orphan.fileName).toContain('-default.png');
+      expect(existsSync(join(SNAPSHOTS_DIRECTORY, orphan.slug, orphan.fileName))).toBe(true);
+    }
+  });
+
+  it('reports every PNG of a slug that left the manifest entirely', () => {
+    writeAllDefaults('removed-component');
+
+    const orphans = findOrphanBaselines(
+      readBaselineFiles(SNAPSHOTS_DIRECTORY),
+      expectedBaselineFileNames([]),
+    );
+
+    expect(orphans).toHaveLength(6);
+    expect(new Set(orphans.map((orphan) => orphan.slug))).toEqual(new Set(['removed-component']));
   });
 });
