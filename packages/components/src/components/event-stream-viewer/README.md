@@ -144,6 +144,7 @@ The `onCopyVisible` callback includes reconnect and sequence-gap markers in the 
 <!-- generated:variables:start -->
 
 - `--cinder-event-stream-viewer-severity-color`
+- `--cinder-event-stream-viewer-severity-ink`
 <!-- generated:variables:end -->
 
 ## Accessibility

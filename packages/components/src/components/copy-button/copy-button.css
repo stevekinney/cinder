@@ -51,7 +51,7 @@
   }
 
   .cinder-copy-button[data-cinder-copied] {
-    color: var(--cinder-success);
+    color: var(--cinder-color-success-fg);
     border-color: var(--cinder-success);
   }
 }

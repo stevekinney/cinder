@@ -46,7 +46,7 @@
 
   .cinder-schema-form__error {
     margin: 0;
-    color: var(--cinder-danger);
+    color: var(--cinder-color-danger-fg);
     font-size: var(--cinder-text-sm);
   }
 
