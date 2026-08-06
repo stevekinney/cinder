@@ -84,13 +84,21 @@ function mixSpec(
   tokenName: string,
   arm: 'light' | 'dark',
 ): { base: string; target: string; percent: number } {
-  // Paren-depth scan rather than a regex: both arms are `color-mix(...)` calls
-  // containing their own nested parens, so any non-recursive pattern either stops
-  // at the first `)` or swallows both arms.
-  const start = tokensCss.indexOf(`${tokenName}: light-dark(`);
-  if (start === -1) throw new Error(`Could not read light-dark() for ${tokenName}`);
+  // LOCATE tolerantly, then PARSE structurally. Finding the declaration with an
+  // exact `${tokenName}: light-dark(` substring would make this throw on a
+  // formatting-only change — Prettier wrapping after the colon, or any extra
+  // whitespace — which is a confusing failure for something that is not a token
+  // change at all. Matching the boundary with `\s*` costs nothing and removes that
+  // class of false failure.
+  //
+  // The BODY still needs a paren-depth scan rather than a regex: both arms are
+  // `color-mix(...)` calls carrying their own nested parens, so any non-recursive
+  // pattern either stops at the first `)` or swallows both arms.
+  const declaration = new RegExp(`${tokenName}\\s*:\\s*light-dark\\s*\\(`).exec(tokensCss);
+  if (!declaration) throw new Error(`Could not read light-dark() for ${tokenName}`);
 
-  const open = tokensCss.indexOf('(', start + tokenName.length);
+  // The matched text ends AT the opening paren, so its last index is that paren.
+  const open = declaration.index + declaration[0].length - 1;
   let depth = 0;
   let end = -1;
   for (let index = open; index < tokensCss.length; index += 1) {
