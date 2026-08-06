@@ -116,14 +116,15 @@ describe('scoped theme tokens', () => {
 
     expectDeclarations(lightBlock, {
       'color-scheme': 'light',
-      '--cinder-bg': 'oklch(92.1% 0.014 245)',
-      '--cinder-surface': 'oklch(96.2% 0.01 245)',
-      '--cinder-surface-raised': 'oklch(100% 0 245)',
-      '--cinder-surface-hover': 'color-mix(in oklch, var(--cinder-surface), oklch(0% 0 0) 2.5%)',
+      '--cinder-bg': 'oklch(98.4% 0.003 255)',
+      '--cinder-surface': 'oklch(99.4% 0.002 255)',
+      '--cinder-surface-raised': 'oklch(100% 0 255)',
+      '--cinder-surface-hover':
+        'color-mix(in oklch, var(--cinder-surface), var(--cinder-accent) 6%)',
       '--cinder-text': 'oklch(20% 0.018 245)',
       '--cinder-text-muted': 'oklch(32% 0.014 245)',
-      '--cinder-border': 'oklch(79% 0.013 245)',
-      '--cinder-border-strong': 'oklch(72% 0.014 245)',
+      '--cinder-border': 'oklch(83% 0.005 255)',
+      '--cinder-border-strong': 'oklch(72% 0.006 255)',
       '--cinder-accent': 'oklch(50% 0.22 270)',
       '--cinder-accent-contrast': 'oklch(100% 0 0)',
       '--cinder-accent-hover': 'oklch(from var(--cinder-accent) calc(l - 0.08) c h)',
@@ -225,5 +226,138 @@ describe('scoped theme tokens', () => {
     );
     expect(foundationCss).not.toContain('revert-layer');
     expect(foundationCss).not.toContain('--shiki-light');
+  });
+
+  /**
+   * The scoped blocks must AGREE with the `light-dark()` declarations they mirror.
+   *
+   * The assertions above pin each block's literals independently, which cannot see
+   * divergence: a token retuned in the `:root` `light-dark()` declaration while its
+   * `[data-theme='light']` twin is left behind satisfies both sets of literals, and
+   * every consumer using an explicitly scoped theme silently keeps the old value.
+   * That is exactly what happened during the 2026-08-05 surface retune — the whole
+   * light ramp was updated at `:root` and the scoped block still carried the
+   * previous ramp.
+   *
+   * This derives the expectation instead of restating it: for every token declared
+   * as `light-dark(<light>, <dark>)` at `:root` that the scoped blocks also declare,
+   * the light block must carry the LIGHT arm and the dark block the DARK arm.
+   *
+   * Arms are read by paren-depth scan, not by a value-shaped regex, so this covers
+   * EVERY arm form actually used — `oklch(...)`, `var(...)` (e.g.
+   * `--cinder-surface-inverse`), `transparent` (`--cinder-border-inverse`), and
+   * nested `color-mix(...)` (the interaction states). An earlier version matched
+   * only `light-dark(oklch(...), oklch(...))` and silently skipped the rest while
+   * this comment claimed general coverage — the same overclaiming-comment failure
+   * that let the scoped ramp drift in the first place. The coverage floor below
+   * exists so the guard cannot quietly decay back into checking almost nothing.
+   */
+  test('scoped blocks match the light-dark() arms they mirror', async () => {
+    const css = await readFile(TOKENS_BASE_PATH, 'utf8');
+    const rootBlock = extractRuleBlock(css, ':root');
+    const darkBlock = extractRuleBlock(css, "[data-theme='dark']");
+    const lightBlock = extractRuleBlock(css, "[data-theme='light']");
+
+    /** Compare values structurally, so line breaks and padding never matter. */
+    const normalize = (value: string): string =>
+      value
+        .replace(/\s+/g, ' ')
+        .replace(/\(\s+/g, '(')
+        .replace(/\s+\)/g, ')')
+        .replace(/\s*,\s*/g, ',')
+        .trim();
+
+    /**
+     * Every `--cinder-*: <value>;` in a block, keyed by token. Scans on paren depth
+     * so a multi-line `color-mix(...)` or nested `light-dark(...)` is captured whole
+     * rather than truncated at the first `)`.
+     */
+    function declarationsIn(block: string): Map<string, string> {
+      const declarations = new Map<string, string>();
+      const tokenPattern = /(--cinder-[\w-]+)\s*:/g;
+      for (const match of block.matchAll(tokenPattern)) {
+        const valueStart = match.index + match[0].length;
+        let depth = 0;
+        let end = valueStart;
+        for (; end < block.length; end += 1) {
+          const character = block[end];
+          if (character === '(') depth += 1;
+          else if (character === ')') depth -= 1;
+          else if (character === ';' && depth === 0) break;
+        }
+        declarations.set(match[1] as string, normalize(block.slice(valueStart, end)));
+      }
+      return declarations;
+    }
+
+    /** Split a `light-dark(a, b)` value into its two top-level arms. */
+    function lightDarkArms(value: string): { light: string; dark: string } | null {
+      if (!value.startsWith('light-dark(')) return null;
+      const body = value.slice('light-dark('.length, -1);
+      let depth = 0;
+      for (let index = 0; index < body.length; index += 1) {
+        const character = body[index];
+        if (character === '(') depth += 1;
+        else if (character === ')') depth -= 1;
+        else if (character === ',' && depth === 0) {
+          return {
+            light: normalize(body.slice(0, index)),
+            dark: normalize(body.slice(index + 1)),
+          };
+        }
+      }
+      return null;
+    }
+
+    const rootDeclarations = declarationsIn(rootBlock);
+    const lightDeclarations = declarationsIn(lightBlock);
+    const darkDeclarations = declarationsIn(darkBlock);
+
+    const mismatches: string[] = [];
+    let compared = 0;
+
+    for (const [token, rootValue] of rootDeclarations) {
+      const arms = lightDarkArms(rootValue);
+      if (!arms) continue;
+
+      const scopedLight = lightDeclarations.get(token);
+      if (scopedLight !== undefined) {
+        compared += 1;
+        if (scopedLight !== arms.light) {
+          mismatches.push(`light ${token}: scoped "${scopedLight}" vs :root "${arms.light}"`);
+        }
+      }
+
+      const scopedDark = darkDeclarations.get(token);
+      if (scopedDark !== undefined) {
+        compared += 1;
+        if (scopedDark !== arms.dark) {
+          mismatches.push(`dark ${token}: scoped "${scopedDark}" vs :root "${arms.dark}"`);
+        }
+      }
+    }
+
+    expect(mismatches).toEqual([]);
+
+    // The surface ramp is the family this guard exists for — assert it is genuinely
+    // in scope rather than trusting the scan.
+    for (const token of [
+      '--cinder-bg',
+      '--cinder-surface',
+      '--cinder-surface-inset',
+      '--cinder-surface-raised',
+      '--cinder-surface-hover',
+      '--cinder-surface-inverse',
+    ]) {
+      expect(
+        lightDarkArms(rootDeclarations.get(token) ?? ''),
+        `${token} must be in scope`,
+      ).not.toBe(null);
+    }
+
+    // Coverage floor. A parser change that stops matching most tokens would
+    // otherwise leave this test passing vacuously, which is precisely the failure
+    // mode it was written to catch.
+    expect(compared).toBeGreaterThanOrEqual(60);
   });
 });

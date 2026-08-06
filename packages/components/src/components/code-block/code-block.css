@@ -14,6 +14,20 @@
     --cinder-code-block-height: auto;
     --cinder-code-block-line-height: var(--cinder-leading-relaxed);
     --cinder-code-block-padding: var(--cinder-space-4);
+    /* The light arm MUST stay pure white, and this is an accessibility constraint
+     * rather than a stylistic one — do not "simplify" it to a single token.
+     *
+     * Shiki's `github-light` theme picks its token colors against #ffffff and
+     * leaves almost no margin: `#d73a49` (keyword red) measures 4.58:1 on white
+     * against a 4.5:1 AA floor, and `#22863a` (diff green) is similar. Any darkening
+     * of the surface under them fails. Moving this to `--cinder-surface-inset`
+     * (L 0.960 → #eff2f5) drops the red to 4.07:1 and the green to 4.11:1, which the
+     * axe sweep catches on CodeBlock, ApprovalCard, and every component embedding a
+     * highlighted diff. Buying a tinted code field would mean overriding Shiki's
+     * light palette wholesale.
+     *
+     * The dark arm keeps the deep inset so `github-dark` tokens hold contrast on a
+     * very dark surface. The fork is load-bearing in both directions. */
     --_cinder-code-block-code-surface: light-dark(
       var(--cinder-surface-raised),
       var(--cinder-surface-inset)
@@ -21,7 +35,10 @@
 
     background: var(--cinder-code-block-background);
     border: 1px solid var(--cinder-border);
-    border-radius: var(--cinder-radius-md);
+    /* A code block is a block-level PANEL, not a control: it takes the surface
+     * radius, the same step cards and dialogs use. At the control radius it read
+     * as a hard-cornered plate at panel width. */
+    border-radius: var(--cinder-radius-lg);
     overflow: hidden;
   }
 
@@ -33,7 +50,13 @@
     min-height: 2rem;
     padding: var(--cinder-space-1-5) var(--cinder-space-3);
     border-bottom: 1px solid var(--cinder-border-muted);
-    background: var(--cinder-surface-inset);
+    /* Transparent, not a fill of its own. The header used to paint
+     * `--cinder-surface-inset` while the body painted `surface-raised`, so in light
+     * mode a heavy grey title bar sat on a white code field — two plates stacked
+     * inside one rounded, clipped container, which is what read as broken corners.
+     * The hairline below is enough to separate chrome from content; the header now
+     * shares the block's single surface. */
+    background: transparent;
   }
 
   .cinder-code-block__language {

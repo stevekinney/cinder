@@ -182,11 +182,24 @@ test.describe('theme-parity — light surface ladder + button vividness floor', 
   //      - --cinder-surface       → table body background  (table.css:24)
   //      - --cinder-surface-inset → table header background (table.css:53)
   //
-  //    Floors: raised − bg ≥ 0.03 and surface − inset ≥ 0.025. The light ramp is
-  //    intentionally GENTLE (subtle blue-tinted steps so no surface reads as a heavy
-  //    slab): painted raised 1.0 − bg 0.96 = 0.04, surface 0.985 − inset 0.955 = 0.03.
-  //    These floors guard the steps against collapsing to zero; the strict ordering
-  //    (inset < bg < surface < raised) is the load-bearing invariant.
+  //    Floors: raised > bg (strictly), and surface − inset ≥ 0.025.
+  //
+  //    The raised-vs-bg floor used to be ΔL ≥ 0.03, on the assumption that FILL is
+  //    what separates a card from the page. That is no longer how the light arm
+  //    works. Light mode is now anchored at white — inset 0.960 → bg 0.984 →
+  //    surface 0.994 → raised 1.000 — and a card lifts off the canvas with a
+  //    hairline and a shadow, not by the page being darker. Demanding ΔL 0.03
+  //    between raised and bg forces the canvas back down to 0.97 or below, which is
+  //    the "everything is a grey plate" design this ramp exists to undo.
+  //
+  //    So raised-vs-bg is now only an ORDERING check, and the affordance it used to
+  //    stand in for is asserted directly by the next test: the secondary button's
+  //    border must clear its fill by ΔL ≥ 0.15. That is the real invariant — a card
+  //    on a white page has to be readable, and here it is the border that makes it
+  //    readable, so the border is what gets measured.
+  //
+  //    surface − inset KEEPS its 0.025 floor. A sunken region has no shadow to fall
+  //    back on, so its fill has to do the work unaided (painted 0.994 − 0.960 = 0.034).
   test('light surface ladder separates background, raised, surface, and inset', async ({
     browser,
   }) => {
@@ -221,7 +234,11 @@ test.describe('theme-parity — light surface ladder + button vividness floor', 
       expect(
         raisedL - bgL,
         'surface-raised must sit above the page background in light mode',
-      ).toBeGreaterThanOrEqual(0.03);
+      ).toBeGreaterThan(0);
+      // The canvas must still READ as white. This is the guard that replaces the old
+      // ΔL 0.03 floor: it constrains the ramp from the other direction, so "raised
+      // sits above bg" cannot be satisfied by dragging the page background down.
+      expect(bgL, 'the light-mode page background must read as white').toBeGreaterThanOrEqual(0.97);
 
       // surface vs inset, measured off the Table (body = surface, header = inset).
       await page.goto('/page/table?tab=examples', { waitUntil: 'load' });

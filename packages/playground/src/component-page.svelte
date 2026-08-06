@@ -2394,6 +2394,16 @@
     padding-block-start: clamp(1rem, 2vw, 1.5rem);
     border-block-end: 1px solid var(--cinder-border-muted);
   }
+
+  /* The Documentation panel opens with its own full-width section index, which
+   * carries a rule of its own. Stacked directly under this one that read as two
+   * separate nav bars sitting on top of each other. When the documentation layout
+   * follows, drop this rule so the tab row and the section index form ONE header
+   * group with a single divider beneath the pair. The Playground panel has no
+   * section index, so there the rule stays and the tabs keep their own edge. */
+  .dx-views:has(+ .dx-layout) {
+    border-block-end-color: transparent;
+  }
   .dx-views__tab {
     padding: var(--cinder-space-2) var(--cinder-space-3);
     border: none;
@@ -2672,7 +2682,14 @@
     margin-block-end: var(--cinder-space-5);
     padding-block: var(--cinder-space-2) 0;
     border-block-end: 1px solid var(--cinder-border-muted);
-    background: color-mix(in oklch, var(--cinder-bg), transparent 8%);
+    /* Match the surface this sits ON, not the page behind it. The section index
+     * lives inside the white documentation card, so filling it with `--cinder-bg`
+     * painted a grey band across the card — which, stacked directly under the
+     * Documentation/Playground tab row and its rule, read as a second nav bar.
+     * Sticky positioning still needs an opaque-enough fill to occlude content
+     * scrolling beneath, so this stays a near-solid surface rather than going
+     * fully transparent. */
+    background: color-mix(in oklch, var(--cinder-surface-raised), transparent 8%);
     backdrop-filter: blur(8px);
   }
   .dx-toc__list {
@@ -2837,12 +2854,27 @@
     line-height: var(--cinder-leading-tight);
     margin: var(--cinder-space-5) 0 var(--cinder-space-2);
   }
+  /* Matches the CodeBlock component's light surface, and for the same reason: these
+   * blocks carry Shiki-highlighted markup, and `github-light` is fitted to #ffffff
+   * with almost no margin (its keyword red is 4.58:1 on white against a 4.5:1 AA
+   * floor). A tinted field here fails WCAG exactly as it does in the component, so
+   * the definition comes from the border rather than the fill. */
   .readme-content :global(pre) {
     padding: var(--cinder-space-4);
     overflow-x: auto;
     border: 1px solid var(--cinder-border);
-    border-radius: var(--cinder-radius-md);
+    border-radius: var(--cinder-radius-lg);
     background: var(--cinder-surface-raised);
+  }
+  /* A CodeBlock renders its own <pre> INSIDE its own bordered, rounded, clipped
+   * container, so the prose rule above was painting a second bordered rounded box
+   * within the first — the doubled corners visible on every documentation code
+   * sample. The component owns its frame; the prose rule applies only to bare
+   * <pre> in README markdown. */
+  .readme-content :global(.cinder-code-block pre) {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
   }
   .readme-content :global(pre code) {
     font-family: var(--cinder-font-mono);
@@ -2878,10 +2910,12 @@
   .readme-pre-fallback {
     overflow-x: auto;
   }
+  /* Same reason as the block above: an inline code span filled with white is
+   * invisible against a white page. */
   .readme-content :global(code) {
     font-family: var(--cinder-font-mono);
     font-size: 0.95em;
-    background: var(--cinder-surface-raised);
+    background: var(--cinder-surface-inset);
     padding-inline: 0.2em;
     border-radius: var(--cinder-radius-sm);
   }
