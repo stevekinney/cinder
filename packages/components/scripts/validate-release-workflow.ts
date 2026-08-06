@@ -16,8 +16,9 @@
  *     cannot accidentally deploy a version branch to production.
  *   - Workflow actions use Node 24-compatible majors instead of deprecated
  *     Node 20 action runtimes.
- *   - Every public package (markdown, cinder, cinder-mcp, editor, chat, in DAG
- *     order) has consumer validation, package-weight, and publish commands,
+ *   - Every public package (markdown, cinder, editor, chat, then the cinder-mcp
+ *     leaf, in publish order) has consumer validation, package-weight, and
+ *     publish commands,
  *     and no publish step has
  *     NODE_AUTH_TOKEN or NPM_TOKEN in its `env:` block (precise, well-messaged
  *     check).
@@ -68,19 +69,24 @@ const deployPlaygroundWorkflowPath = join(
 const changesetsConfigurationPath = join(workspaceRoot, '.changeset/config.json');
 const changesetDirectoryPath = join(workspaceRoot, '.changeset');
 /**
- * Every published package, in required publish DAG order: markdown has no
- * internal peer contract with the other four and publishes first; cinder
- * next; cinder-mcp depends on cinder's `./knowledge` export and publishes
- * third; editor peers on both cinder and markdown and publishes fourth; chat
- * peers on cinder's minor and publishes last (see
+ * Every published package, in required publish order: markdown has no internal
+ * peer contract with the other four and publishes first; cinder next; editor and
+ * chat each peer on BOTH cinder and markdown (see
  * docs/decisions/package-boundaries.md).
+ *
+ * cinder-mcp publishes LAST rather than in strict DAG position. It consumes
+ * cinder's `./knowledge` export, so it must follow cinder — but nothing peers on
+ * or depends on cinder-mcp, so it is a leaf and any position after cinder is
+ * valid. Last is the safe one: publishing a leaf third meant a single auth
+ * failure on it aborted the whole step sequence and took editor and chat down
+ * with it (#1207).
  */
 const PUBLIC_PACKAGE_NAMES = [
   '@lostgradient/markdown',
   '@lostgradient/cinder',
-  '@lostgradient/cinder-mcp',
   '@lostgradient/editor',
   '@lostgradient/chat',
+  '@lostgradient/cinder-mcp',
 ] as const;
 const REQUIRED_RELEASE_SCRIPTS = [
   'validate:consumer',
@@ -383,22 +389,45 @@ function findOrderedIndices(
   return indices.every((index) => index !== -1) ? indices : undefined;
 }
 
-/** Every command's indices must appear in strictly increasing order (the DAG order). */
+/** Every command's indices must appear in strictly increasing PUBLIC_PACKAGE_NAMES order. */
 function isStrictlyIncreasing(indices: readonly number[]): boolean {
   return indices.every((index, position) => position === 0 || indices[position - 1]! < index);
 }
 
-/** Markdown, then Cinder, then Chat — Chat peers on Cinder's minor, Cinder vendors Markdown's dist. */
+/**
+ * Markdown, Cinder, Editor, Chat, then the cinder-mcp leaf — see
+ * PUBLIC_PACKAGE_NAMES.
+ *
+ * Checks the real publish path and the `workflow_dispatch` dry-run path
+ * SEPARATELY. A single `indexOf` scan over the whole file only ever finds each
+ * package's FIRST occurrence, which all come from the push path — so the
+ * dry-run steps could drift out of order and still pass. That is not
+ * hypothetical: the #1207 reorder moved the push steps and left the dry-run
+ * steps at the old positions, and this guard said nothing.
+ */
 export function publicPackagePublishOrderIsValid(workflow: unknown): boolean {
-  const executableScripts = workflowRunScripts(workflow).join('\n');
-  const indices = findOrderedIndices(
-    executableScripts,
-    (packageName) => `bun run --filter=${packageName} publish:release`,
+  const scripts = workflowRunScripts(workflow);
+  const dryRunScripts = scripts.filter((script) => script.includes('--dry-run'));
+  const publishScripts = scripts.filter((script) => !script.includes('--dry-run'));
+
+  const groupIsOrdered = (group: readonly string[]): boolean => {
+    const indices = findOrderedIndices(
+      group.join('\n'),
+      (packageName) => `bun run --filter=${packageName} publish:release`,
+    );
+    return indices !== undefined && isStrictlyIncreasing(indices);
+  };
+
+  // The push path must be complete AND ordered — that is the contract this
+  // guard has always enforced. The dry-run path is diagnostic, so its absence
+  // is not a failure; but once any dry-run publish step exists, the full set
+  // must be present and in the same order as the push path.
+  return (
+    groupIsOrdered(publishScripts) && (dryRunScripts.length === 0 || groupIsOrdered(dryRunScripts))
   );
-  return indices !== undefined && isStrictlyIncreasing(indices);
 }
 
-/** The root publish shortcut must use the same staged artifact path as CI, in DAG order. */
+/** The root publish shortcut must use the same staged artifact path as CI, in publish order. */
 export function rootPublishScriptUsesStagedPackers(manifest: unknown): boolean {
   if (!isObjectRecord(manifest) || !isObjectRecord(manifest['scripts'])) return false;
   const publishScript = manifest['scripts']['changeset:publish'];
@@ -615,10 +644,10 @@ function runValidation(): void {
   pass('Every public package has validation, weight, and publish gates');
   if (!publicPackagePublishOrderIsValid(parsedWorkflow)) {
     fail(
-      'release.yaml must publish markdown, then cinder, then chat (the peer/vendoring DAG order).',
+      'release.yaml must publish markdown, then cinder, then editor, then chat, then cinder-mcp (the peer/vendoring order, with the cinder-mcp leaf last).',
     );
   }
-  pass('Markdown, Cinder, and Chat publish in DAG order');
+  pass('Public packages publish in the required order, cinder-mcp last');
 
   let rootManifest: unknown;
   try {
@@ -628,8 +657,8 @@ function runValidation(): void {
   }
   if (!rootPublishScriptUsesStagedPackers(rootManifest)) {
     fail(
-      'package.json#scripts.changeset:publish must publish Markdown, then Cinder, then Chat ' +
-        'through their publish:release staged-artifact commands, in that DAG order; direct ' +
+      'package.json#scripts.changeset:publish must publish Markdown, Cinder, Editor, Chat, then cinder-mcp ' +
+        'through their publish:release staged-artifact commands, in that publish order; direct ' +
         '`changeset publish` is unsafe.',
     );
   }
@@ -637,8 +666,8 @@ function runValidation(): void {
   if (!rootValidationSeparatesSourceAndConsumerGates(rootManifest)) {
     fail(
       'package.json#scripts.validate must contain only `turbo run validate --concurrency=1`; ' +
-        'the explicit validate:consumer release gate must validate Markdown, then Cinder, then Chat, ' +
-        'in DAG order.',
+        'the explicit validate:consumer release gate must validate Markdown, Cinder, Editor, Chat, then cinder-mcp, ' +
+        'in that publish order.',
     );
   }
   pass('Root source validation and packed-consumer release validation remain separate');
