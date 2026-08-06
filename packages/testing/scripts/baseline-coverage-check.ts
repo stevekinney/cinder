@@ -21,8 +21,12 @@
  *
  * Exits 1 only when an adopted slug is missing one of its combinations.
  *
- * Usage:
- *   bun run scripts/baseline-coverage-check.ts
+ * Usage (from the repo root, as CI invokes it):
+ *   bun run packages/testing/scripts/baseline-coverage-check.ts
+ *
+ * Scope it with CINDER_TEST_COMPONENTS to a comma-separated slug list, matching
+ * the `scope` job's filtered output:
+ *   CINDER_TEST_COMPONENTS=mega-menu bun run packages/testing/scripts/baseline-coverage-check.ts
  */
 
 import { existsSync, readdirSync } from 'node:fs';
