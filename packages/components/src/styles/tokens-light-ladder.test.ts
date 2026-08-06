@@ -143,15 +143,37 @@ function resolveTarget(target: string, arm: 'light' | 'dark'): Oklch {
 }
 
 /**
- * `color-mix(in oklch, A, B p%)` interpolates L, C and H linearly (hue along the
- * shorter arc; every pair here is well under 180° apart, so plain linear is exact).
+ * `color-mix(in oklch, A, B p%)`, following CSS Color 4 rather than a naive
+ * component lerp. Two rules matter here and both change the answer:
+ *
+ * 1. POWERLESS HUE. An achromatic endpoint (C = 0) has no meaningful hue, so its
+ *    hue is treated as missing and carried from the other endpoint instead of
+ *    interpolated. This is not academic: the dark arm mixes toward
+ *    `oklch(100% 0 0)`, and lerping 245 → 0 rotates the result ~15° at C ≈ 0.039,
+ *    an OKLab a/b error of ~0.010 — the same size as the separation threshold this
+ *    file gates on. The light arm hits it too, since `--cinder-surface-raised` is
+ *    authored `oklch(100% 0 255)` with C = 0.
+ * 2. SHORTEST ARC. Hue interpolates the short way round, per the default `hue`
+ *    interpolation method. Every pair here is well under 180° apart, so this is
+ *    currently a no-op — it is written out so a future hue change cannot silently
+ *    make the helper wrong in the other direction.
  */
 function mixOklch(base: Oklch, target: Oklch, percent: number): Oklch {
   const t = percent / 100;
+
+  // Carry the hue of whichever endpoint actually has one.
+  const baseHue = base.C === 0 ? target.H : base.H;
+  const targetHue = target.C === 0 ? base.H : target.H;
+
+  let hueDelta = targetHue - baseHue;
+  if (hueDelta > 180) hueDelta -= 360;
+  if (hueDelta < -180) hueDelta += 360;
+
   return {
     L: base.L + (target.L - base.L) * t,
     C: base.C + (target.C - base.C) * t,
-    H: base.H + (target.H - base.H) * t,
+    // Both endpoints achromatic → the result is achromatic and hue is irrelevant.
+    H: baseHue + hueDelta * t,
   };
 }
 

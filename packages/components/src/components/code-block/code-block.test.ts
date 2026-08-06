@@ -181,7 +181,14 @@ describe('CodeBlock — static structure', () => {
 
   test('code surface background is one component-owned declaration', async () => {
     const css = await Bun.file(new URL('./code-block.css', import.meta.url)).text();
-    const lightDarkCount = css.match(/\blight-dark\(/g)?.length ?? 0;
+
+    // Read the code-surface DECLARATION rather than counting `light-dark(` across
+    // the whole file. A file-wide count is a proxy for the real contract and breaks
+    // the moment CodeBlock legitimately uses `light-dark()` for anything else (a
+    // future token, a forced-colors tweak), which would be a confusing false
+    // failure pointing at the wrong line.
+    const surfaceDeclaration = css.match(/--_cinder-code-block-code-surface:\s*([\s\S]*?);/)?.[1];
+    expect(surfaceDeclaration, 'code surface declaration must exist').toBeDefined();
 
     // Two contracts here, and the second is an accessibility one.
     //
@@ -198,14 +205,16 @@ describe('CodeBlock — static structure', () => {
     // the diff green to 4.11:1, which the axe sweep then catches on CodeBlock,
     // ApprovalCard, and everything else embedding highlighted code. It has been
     // tried; this assertion exists so the next attempt fails here instead of in CI.
-    expect(css).toContain('--_cinder-code-block-code-surface: light-dark(');
-    expect(css).toContain('var(--cinder-surface-raised),');
+    expect(surfaceDeclaration).toMatch(/^light-dark\(/);
+    // The LIGHT arm specifically — that is the one carrying the WCAG constraint.
+    expect(surfaceDeclaration).toMatch(
+      /^light-dark\(\s*var\(--cinder-surface-raised\)\s*,\s*var\(--cinder-surface-inset\)\s*\)$/,
+    );
     expect(css).toContain(
       '--cinder-code-block-background: var(--_cinder-code-block-code-surface);',
     );
     expect(css).toContain('background: var(--cinder-code-block-background);');
     expect(css).toContain('background: var(--cinder-code-block-background) !important;');
-    expect(lightDarkCount).toBe(1);
   });
 
   test('stable viewport carries inset focus ring (regression #398)', async () => {
