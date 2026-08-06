@@ -74,22 +74,28 @@ position of the panel differs.
   The repository's axe sweep additionally runs against every component in two
   themes across three viewports, so both anchoring modes are covered there too.
 
-## Documented Exception to OVERLAY-POLICY.md
+## SSR Behaviour
 
-`OVERLAY-POLICY.md` states that overlays render nothing on the server and enter
-the portal after hydration. **Tooltip does not satisfy the SSR half of that rule,
-on purpose.**
+Tooltip follows `OVERLAY-POLICY.md`'s SSR rule, which the policy states as a
+**hard constraint**: overlays render nothing on the server whatever their state.
+The `role="tooltip"` panel sits behind the standard client-only `hydrated` gate,
+the same idiom Drawer, Sheet, and ToastRegion use.
 
-The `role="tooltip"` panel is rendered unconditionally in the template, so server
-output contains it even when the tooltip is closed. That is required: the panel
-is the `aria-describedby` target for the trigger, and the association has to
-resolve from first paint rather than only after hydration. A hydration gate
-would leave `aria-describedby` pointing at a non-existent id in the server-
-rendered document.
+This was not always true. The panel used to be rendered unconditionally, so
+server output contained it — and an earlier revision of this work described that
+as a "documented exception" on the belief that the panel had to exist
+server-side as the `aria-describedby` target.
 
-What the visibility gate on the portal DOES fix is the client-side leak — the
-panel is no longer relocated into `document.body` and left there for the
-component's lifetime. Hidden means inline, in the trigger's own subtree.
+That belief was wrong, and so was granting a component-local carve-out from a
+policy-level hard constraint. `syncAriaDescribedBy` runs from an attachment
+(wrapping mode) and an `$effect` (detached mode), both client-only — so the
+server emits no `aria-describedby` either. Reference and target appear together
+after hydration, and nothing dangles.
 
-If the policy is ever tightened, the trade to weigh is a dangling
-`aria-describedby` before hydration versus non-empty SSR markup.
+Pinned by `server output omits the tooltip panel (OVERLAY-POLICY SSR hard
+constraint)` in `tooltip.test.ts`, using the repository's `renderToServerHtml`
+helper.
+
+Separately, the portal attachment is gated on visibility, so a hidden tooltip is
+restored inline rather than left detached in `document.body` for the component's
+lifetime.

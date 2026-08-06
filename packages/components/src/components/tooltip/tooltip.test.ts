@@ -1,11 +1,15 @@
 /// <reference lib="dom" />
 import { afterEach, beforeEach, describe, expect, jest, mock, test } from 'bun:test';
+import { join } from 'node:path';
 import { createRawSnippet, tick } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 import { expectNoLeakedTimers, trackTimers } from '../../test/lifecycle.ts';
+import { renderToServerHtml } from '../../test/server-render.ts';
 
 setupHappyDom();
+
+const TOOLTIP_SOURCE = join(import.meta.dir, 'tooltip.svelte');
 
 type Resolver = (value: unknown) => void;
 
@@ -204,6 +208,22 @@ describe('Tooltip', () => {
     await waitFor(() => {
       expect(queryTooltip()?.parentElement).toBe(document.body);
     });
+  });
+
+  test('server output omits the tooltip panel (OVERLAY-POLICY SSR hard constraint)', async () => {
+    // The policy's SSR rule is a HARD CONSTRAINT, not a preference. Tooltip did
+    // not satisfy it — the panel was unconditionally in the template — and an
+    // earlier revision of this branch wrote itself an "exception" in the a11y
+    // record instead of complying.
+    //
+    // Complying is safe: `aria-describedby` is wired from an attachment
+    // (wrapping) and an `$effect` (detached), both client-only, so the server
+    // emits neither the reference nor its target and nothing dangles.
+    const html = await renderToServerHtml(TOOLTIP_SOURCE, { text: 'Server tooltip text' });
+
+    expect(html).not.toContain('role="tooltip"');
+    expect(html).not.toContain('Server tooltip text');
+    expect(html).not.toContain('aria-describedby');
   });
 
   test('triggerRef renders only the panel, with no wrapper around a trigger', () => {
