@@ -18,6 +18,9 @@ const editorManifest = JSON.parse(
 const cinderManifest = JSON.parse(
   await Bun.file(join(workspaceRoot, 'packages', 'components', 'package.json')).text(),
 ) as PackageManifest;
+const markdownManifest = JSON.parse(
+  await Bun.file(join(workspaceRoot, 'packages', 'markdown', 'package.json')).text(),
+) as PackageManifest;
 const editorReadme = await Bun.file(join(packageRoot, 'README.md')).text();
 const changesetDirectory = join(workspaceRoot, '.changeset');
 const changesetBumpRank = {
@@ -95,7 +98,7 @@ describe('Editor package ownership boundary', () => {
       ),
     );
     expect(remainingPeerDependencies).toEqual({
-      '@lostgradient/markdown': '^0.1.0',
+      '@lostgradient/markdown': '^0.2.0',
       '@milkdown/ctx': '^7.17.3',
       '@milkdown/kit': '^7.17.3',
       '@milkdown/prose': '^7.17.3',
@@ -151,6 +154,35 @@ describe('Editor package ownership boundary', () => {
     expect(
       peerCoversCurrentCinder || pendingCoordinatedMinorRelease,
       'Editor’s Cinder peer range must either cover the current Cinder version, or point at the next Cinder minor while a coordinated Cinder+Editor minor changeset is pending.',
+    ).toBe(true);
+  });
+
+  // The Cinder peer above had a guard from the start; the Markdown peer did not,
+  // and that asymmetry shipped a real bug: Markdown went 0.1.0 -> 0.2.0 while
+  // Editor still declared `^0.1.0`, which under semver's 0.x rule resolves to
+  // `>=0.1.0 <0.2.0` and excludes the Markdown released beside it. Nothing
+  // caught it. This mirrors the Cinder test exactly so it cannot recur.
+  test('keeps Editor’s Markdown peer range covering the current Markdown version', async () => {
+    const markdownPeerRange = editorManifest.peerDependencies?.['@lostgradient/markdown'];
+    expect(
+      markdownPeerRange,
+      'Editor must declare @lostgradient/markdown as a peer dependency.',
+    ).toBeDefined();
+    if (typeof markdownPeerRange !== 'string') return;
+
+    expect(markdownPeerRange).toMatch(/^\^\d+\.\d+\.\d+$/u);
+    const peerCoversCurrentMarkdown = Bun.semver.satisfies(
+      markdownManifest.version,
+      markdownPeerRange,
+    );
+    const pendingCoordinatedMinorRelease =
+      (await pendingChangesetBump(markdownManifest.name)) === 'minor' &&
+      (await pendingChangesetBump(editorManifest.name)) === 'minor' &&
+      markdownPeerRange === nextMinorPeerRange(markdownManifest.version);
+
+    expect(
+      peerCoversCurrentMarkdown || pendingCoordinatedMinorRelease,
+      'Editor’s Markdown peer range must either cover the current Markdown version, or point at the next Markdown minor while a coordinated Markdown+Editor minor changeset is pending.',
     ).toBe(true);
   });
 
