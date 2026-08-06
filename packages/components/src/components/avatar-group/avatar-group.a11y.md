@@ -36,3 +36,22 @@ When AvatarGroup accepts snippets or arbitrary children, the caller owns the sem
 - Check forced-colors mode when the component adds borders, focus rings, selected state, or status color.
 
 Related components: `avatar`, `badge`, `tooltip`, `status-dot`.
+
+## Tooltip Anchoring and List Semantics
+
+Each named avatar's Tooltip is rendered OUTSIDE the `role="list"` element and
+anchored to its trigger via `TooltipProps.triggerRef`.
+
+A wrapping Tooltip renders its `role="tooltip"` panel as a sibling of the
+trigger, so nesting it inside the `role="listitem"` put a tooltip inside a list
+item. That was invisible while Tooltip unconditionally portaled its panel to
+`document.body`; it surfaced once the portal became visibility-gated, because a
+hidden panel is now restored inline rather than left detached.
+
+Anchoring by reference keeps the invariant this component's tests assert: every
+direct child of the list is a `role="listitem"`, and no `role="tooltip"` is a
+descendant of one.
+
+**Accessibility review: REQUIRED and OUTSTANDING.** A reviewer should confirm
+with a screen reader that the list still announces only its avatars as list
+items, and that each avatar's name is still announced on focus.

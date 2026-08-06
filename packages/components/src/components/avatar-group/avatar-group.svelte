@@ -48,6 +48,19 @@
   // silently clobber it after the spread. An empty or whitespace-only
   // `aria-label` is treated as absent (rendering `aria-label=""` would suppress
   // the accessible-name computation per ARIA §4.3.2 without naming the region),
+  /*
+   * Trigger elements, keyed like the `{#each}`, so each named avatar's Tooltip
+   * can anchor to its own trigger from OUTSIDE the list.
+   *
+   * The Tooltip used to wrap the trigger, which put its `role="tooltip"` panel
+   * inside the `role="listitem"` — the panel is a sibling of the trigger within
+   * the Tooltip's wrapper, so it lands wherever the Tooltip is placed. That was
+   * invisible while the panel was always portaled to `document.body`, and
+   * surfaced the moment the portal became visibility-gated. Anchoring by
+   * reference keeps the list's children to list items only.
+   */
+  const triggerElements = $state<Record<string, HTMLElement | undefined>>({});
+
   // so it falls back to `label` rather than producing a nameless `role="list"`.
   const accessibleName = $derived(
     typeof consumerAriaLabel === 'string' && consumerAriaLabel.trim().length > 0
@@ -148,8 +161,7 @@
       style={`--cinder-avatar-group-index: ${item.stackIndex}`}
     >
       {#if item.trimmedName}
-        <Tooltip text={item.trimmedName} describe={false}>
-          <!-- role="img" is the honest semantic: a NAMED composite image, not an
+        <!-- role="img" is the honest semantic: a NAMED composite image, not an
                action control. The trigger only reveals a name tooltip on focus/
                hover — it has no onclick/Enter/Space activation, so role="button"
                would be a false affordance (announces "button" but does nothing →
@@ -159,21 +171,21 @@
                keyboard users the same name-disclosure pointer users get on hover.
                The inner <Avatar> uses alt="" so its image doesn't double-name the
                composite. -->
-          <span
-            class="cinder-avatar-group__trigger"
-            role="img"
-            tabindex="0"
-            aria-label={item.trimmedName}
-          >
-            <Avatar
-              {...avatarSourceProps(item.avatar.src)}
-              name={item.trimmedName}
-              alt=""
-              {size}
-              {shape}
-            />
-          </span>
-        </Tooltip>
+        <span
+          class="cinder-avatar-group__trigger"
+          role="img"
+          tabindex="0"
+          aria-label={item.trimmedName}
+          bind:this={triggerElements[item.key]}
+        >
+          <Avatar
+            {...avatarSourceProps(item.avatar.src)}
+            name={item.trimmedName}
+            alt=""
+            {size}
+            {shape}
+          />
+        </span>
       {:else}
         <span class="cinder-avatar-group__trigger">
           <Avatar {...avatarSourceProps(item.avatar.src)} name="" alt="" {size} {shape} />
@@ -193,3 +205,17 @@
     </span>
   {/if}
 </div>
+
+<!--
+  Tooltips live OUTSIDE the `role="list"` element, anchored to their triggers by
+  reference. Inside, their panels would be descendants of a `role="listitem"`.
+-->
+{#each visibleAvatars as item (item.key)}
+  {#if item.trimmedName && triggerElements[item.key]}
+    <Tooltip
+      text={item.trimmedName}
+      describe={false}
+      triggerRef={triggerElements[item.key] ?? null}
+    />
+  {/if}
+{/each}

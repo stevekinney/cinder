@@ -29,3 +29,39 @@ When the browser supports `anchor-name` (Chrome 125+, Safari 18.2+), the tooltip
 - Tooltip text should be brief (a single phrase or sentence).
 - Do not use a tooltip as the sole means of conveying critical information — it is not accessible to touch-only users.
 - Avoid repeating text already visible on screen.
+
+## Anchoring Modes
+
+Tooltip has two forms, and the difference is structural rather than visual.
+
+**Wrapping (default).** The Tooltip renders a `role="presentation"` wrapper
+around `children`, resolves the first focusable descendant as the anchor, and
+renders its `role="tooltip"` panel as a sibling of that trigger inside the
+wrapper. The panel therefore lives wherever the Tooltip is placed.
+
+**Anchored by reference (`triggerRef`).** The Tooltip renders ONLY the panel and
+binds its hover/focus handlers and `aria-describedby` wiring to the supplied
+element. The consumer owns where the trigger sits and where the panel renders.
+
+Use `triggerRef` whenever the surrounding markup constrains what may appear
+inside it. `AvatarGroup` is the motivating case: it wraps each avatar in a
+`role="listitem"`, so a wrapping Tooltip put a `role="tooltip"` inside a list
+item. That was masked for as long as the panel was unconditionally portaled to
+`document.body`, and surfaced the moment the portal became visibility-gated —
+the panel is restored inline while hidden so its `aria-describedby` target keeps
+resolving, which means "hidden" now genuinely means "in the trigger's subtree".
+
+Both forms keep the same keyboard and hover contract above; only the DOM
+position of the panel differs.
+
+## Review Record
+
+- **Design review:** not required. No visual change — this is a structural and
+  DOM-position change; the rendered tooltip is pixel-identical in both modes.
+- **Accessibility review:** REQUIRED and still OUTSTANDING. The interaction
+  model is unchanged (same show/hide triggers, same `aria-describedby`
+  relationship, same Escape dismissal), but the change moves where the panel
+  lives in the DOM and alters `AvatarGroup`'s list structure. A reviewer should
+  confirm with a screen reader that (a) the AvatarGroup list still announces
+  only its avatars as list items, and (b) the description is still announced on
+  focus for both anchoring modes.

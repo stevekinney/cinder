@@ -27,8 +27,12 @@
       {
         "name": "children",
         "reason": "function-or-snippet",
-        "required": true,
-        "description": "The trigger element that the tooltip is anchored to."
+        "description": "The trigger element the tooltip wraps and anchors to. Required unless\n`triggerRef` supplies the anchor instead."
+      },
+      {
+        "name": "triggerRef",
+        "reason": "unknown-shape",
+        "description": "Explicit anchor element, for when the tooltip cannot wrap its trigger.\n\nThe default form renders a wrapper around `children` and resolves the\nanchor from it, which puts the `role=\"tooltip\"` panel inside whatever\nstructure the trigger sits in. That is wrong wherever the surrounding\nmarkup constrains its children — `AvatarGroup` wraps each avatar in a\n`role=\"listitem\"`, so an in-tree panel lands inside a list item.\n\nWith `triggerRef`, the Tooltip renders ONLY the panel and anchors it to the\nsupplied element, so the consumer places the panel wherever it belongs.\n`children` is then unnecessary — the trigger is already in the consumer's\nown markup. Mirrors `PopoverProps.triggerRef`."
       }
     ]
   }
