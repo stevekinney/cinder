@@ -297,10 +297,6 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         run: bun run --filter=@lostgradient/cinder publish:release -- --dry-run --skip-validation
 
-      - name: Publish cinder-mcp (dry-run)
-        if: github.event_name == 'workflow_dispatch'
-        run: bun run --filter=@lostgradient/cinder-mcp publish:release -- --dry-run --skip-validation
-
       - name: Publish Editor (dry-run)
         if: github.event_name == 'workflow_dispatch'
         run: bun run --filter=@lostgradient/editor publish:release -- --dry-run --skip-validation
@@ -308,3 +304,9 @@ jobs:
       - name: Publish Chat (dry-run)
         if: github.event_name == 'workflow_dispatch'
         run: bun run --filter=@lostgradient/chat publish:release -- --dry-run --skip-validation
+
+      # Mirrors the push path above: cinder-mcp is a leaf and goes last, so a
+      # dry-run failure on it still exercises every other package's tarball.
+      - name: Publish cinder-mcp (dry-run)
+        if: github.event_name == 'workflow_dispatch'
+        run: bun run --filter=@lostgradient/cinder-mcp publish:release -- --dry-run --skip-validation

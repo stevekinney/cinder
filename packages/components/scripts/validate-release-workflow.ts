@@ -16,8 +16,9 @@
  *     cannot accidentally deploy a version branch to production.
  *   - Workflow actions use Node 24-compatible majors instead of deprecated
  *     Node 20 action runtimes.
- *   - Every public package (markdown, cinder, cinder-mcp, editor, chat, in DAG
- *     order) has consumer validation, package-weight, and publish commands,
+ *   - Every public package (markdown, cinder, editor, chat, then the cinder-mcp
+ *     leaf, in publish order) has consumer validation, package-weight, and
+ *     publish commands,
  *     and no publish step has
  *     NODE_AUTH_TOKEN or NPM_TOKEN in its `env:` block (precise, well-messaged
  *     check).
@@ -388,12 +389,12 @@ function findOrderedIndices(
   return indices.every((index) => index !== -1) ? indices : undefined;
 }
 
-/** Every command's indices must appear in strictly increasing order (the DAG order). */
+/** Every command's indices must appear in strictly increasing PUBLIC_PACKAGE_NAMES order. */
 function isStrictlyIncreasing(indices: readonly number[]): boolean {
   return indices.every((index, position) => position === 0 || indices[position - 1]! < index);
 }
 
-/** Markdown, then Cinder, then Chat — Chat peers on Cinder's minor, Cinder vendors Markdown's dist. */
+/** Markdown, Cinder, Editor, Chat, then the cinder-mcp leaf — see PUBLIC_PACKAGE_NAMES. */
 export function publicPackagePublishOrderIsValid(workflow: unknown): boolean {
   const executableScripts = workflowRunScripts(workflow).join('\n');
   const indices = findOrderedIndices(
@@ -403,7 +404,7 @@ export function publicPackagePublishOrderIsValid(workflow: unknown): boolean {
   return indices !== undefined && isStrictlyIncreasing(indices);
 }
 
-/** The root publish shortcut must use the same staged artifact path as CI, in DAG order. */
+/** The root publish shortcut must use the same staged artifact path as CI, in publish order. */
 export function rootPublishScriptUsesStagedPackers(manifest: unknown): boolean {
   if (!isObjectRecord(manifest) || !isObjectRecord(manifest['scripts'])) return false;
   const publishScript = manifest['scripts']['changeset:publish'];
@@ -633,8 +634,8 @@ function runValidation(): void {
   }
   if (!rootPublishScriptUsesStagedPackers(rootManifest)) {
     fail(
-      'package.json#scripts.changeset:publish must publish Markdown, then Cinder, then Chat ' +
-        'through their publish:release staged-artifact commands, in that DAG order; direct ' +
+      'package.json#scripts.changeset:publish must publish Markdown, Cinder, Editor, Chat, then cinder-mcp ' +
+        'through their publish:release staged-artifact commands, in that publish order; direct ' +
         '`changeset publish` is unsafe.',
     );
   }
@@ -642,8 +643,8 @@ function runValidation(): void {
   if (!rootValidationSeparatesSourceAndConsumerGates(rootManifest)) {
     fail(
       'package.json#scripts.validate must contain only `turbo run validate --concurrency=1`; ' +
-        'the explicit validate:consumer release gate must validate Markdown, then Cinder, then Chat, ' +
-        'in DAG order.',
+        'the explicit validate:consumer release gate must validate Markdown, Cinder, Editor, Chat, then cinder-mcp, ' +
+        'in that publish order.',
     );
   }
   pass('Root source validation and packed-consumer release validation remain separate');
