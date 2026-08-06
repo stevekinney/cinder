@@ -18,6 +18,9 @@ const chatManifest = JSON.parse(
 const cinderManifest = JSON.parse(
   await Bun.file(join(workspaceRoot, 'packages', 'components', 'package.json')).text(),
 ) as PackageManifest;
+const markdownManifest = JSON.parse(
+  await Bun.file(join(workspaceRoot, 'packages', 'markdown', 'package.json')).text(),
+) as PackageManifest;
 const chatReadme = await Bun.file(join(packageRoot, 'README.md')).text();
 
 const dependencyFields = ['dependencies', 'peerDependencies', 'optionalDependencies'] as const;
@@ -100,7 +103,7 @@ describe('Chat package ownership boundary', () => {
       ),
     );
     expect(remainingPeerDependencies).toEqual({
-      '@lostgradient/markdown': '^0.1.0',
+      '@lostgradient/markdown': '^0.2.0',
       svelte: '>=5.56.0 <6',
     });
     expect(runtimeExternalSpecifiers(chatManifest)).toEqual([
@@ -135,6 +138,35 @@ describe('Chat package ownership boundary', () => {
     expect(
       peerCoversCurrentCinder || pendingCoordinatedMinorRelease,
       'Chat’s Cinder peer range must either cover the current Cinder version, or point at the next Cinder minor while a coordinated Cinder+Chat minor changeset is pending.',
+    ).toBe(true);
+  });
+
+  // The Cinder peer above had a guard from the start; the Markdown peer did not,
+  // and that asymmetry shipped a real bug: Markdown went 0.1.0 -> 0.2.0 while
+  // Chat still declared `^0.1.0`, which under semver's 0.x rule resolves to
+  // `>=0.1.0 <0.2.0` and excludes the Markdown released beside it. Nothing
+  // caught it. This mirrors the Cinder test exactly so it cannot recur.
+  test('keeps Chat’s Markdown peer range covering the current Markdown version', async () => {
+    const markdownPeerRange = chatManifest.peerDependencies?.['@lostgradient/markdown'];
+    expect(
+      markdownPeerRange,
+      'Chat must declare @lostgradient/markdown as a peer dependency.',
+    ).toBeDefined();
+    if (typeof markdownPeerRange !== 'string') return;
+
+    expect(markdownPeerRange).toMatch(/^\^\d+\.\d+\.\d+$/u);
+    const peerCoversCurrentMarkdown = Bun.semver.satisfies(
+      markdownManifest.version,
+      markdownPeerRange,
+    );
+    const pendingCoordinatedMinorRelease =
+      (await pendingChangesetBump(markdownManifest.name)) === 'minor' &&
+      (await pendingChangesetBump(chatManifest.name)) === 'minor' &&
+      markdownPeerRange === nextMinorPeerRange(markdownManifest.version);
+
+    expect(
+      peerCoversCurrentMarkdown || pendingCoordinatedMinorRelease,
+      'Chat’s Markdown peer range must either cover the current Markdown version, or point at the next Markdown minor while a coordinated Markdown+Chat minor changeset is pending.',
     ).toBe(true);
   });
 
