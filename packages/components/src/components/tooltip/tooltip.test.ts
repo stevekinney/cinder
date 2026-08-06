@@ -226,6 +226,25 @@ describe('Tooltip', () => {
     trigger.remove();
   });
 
+  test('triggerRef mode applies the class prop to the panel', () => {
+    // In detached mode the panel IS the component root, so `class` belongs on
+    // it — the wrapping form puts it on the wrapper instead. Without this the
+    // prop was silently dropped for every detached Tooltip.
+    const trigger = document.createElement('button');
+    trigger.type = 'button';
+    document.body.append(trigger);
+
+    const { container } = render(Tooltip, {
+      props: { text: 'Tooltip content', triggerRef: trigger, class: 'custom-tooltip' },
+    });
+
+    const tooltip = container.querySelector('[role="tooltip"]');
+    expect(tooltip?.classList.contains('cinder-tooltip')).toBe(true);
+    expect(tooltip?.classList.contains('custom-tooltip')).toBe(true);
+
+    trigger.remove();
+  });
+
   test('triggerRef wires aria-describedby to the external trigger', () => {
     const trigger = document.createElement('button');
     trigger.type = 'button';

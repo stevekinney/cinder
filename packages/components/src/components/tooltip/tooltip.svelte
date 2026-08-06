@@ -207,9 +207,8 @@
      *
      * Without this the panel was portaled on mount and stayed there for the
      * lifetime of the component — one detached `[role="tooltip"]` per Tooltip
-     * instance, including during SSR, which contradicts OVERLAY-POLICY.md
-     * ("All overlays render into the portal after hydration. SSR markup is
-     * empty."). Every sibling overlay already gates: Popover and HoverCard via
+     * instance accumulating in `document.body`. Every sibling overlay already
+     * gates: Popover and HoverCard via
      * `{#if mounted && open && anchorElement}`, Portal/SpeedDial/NavigationBar/
      * DropdownMenu via an explicit `disabled` getter.
      *
@@ -218,6 +217,12 @@
      * position inside the wrapper instead of unmounting it — so the
      * `aria-describedby` target keeps resolving while the tooltip is hidden.
      * Conditional rendering would break that association.
+     *
+     * NOTE this closes the client-side leak, NOT the SSR half of
+     * OVERLAY-POLICY.md ("SSR markup is empty"). The panel span is rendered
+     * unconditionally in the template, so server output still contains it —
+     * deliberately, because it is the `aria-describedby` target and must exist
+     * before hydration. See tooltip.a11y.md for that documented exception.
      *
      * Gated on `visible`, NOT on `isTooltipExposed`: the latter also requires
      * `positionReady`, and position is computed against the portaled node — so
@@ -262,11 +267,13 @@
   table cell). See `TooltipProps.triggerRef`.
 -->
 {#if isDetached}
+  <!-- The panel is the component ROOT here, so it takes `class` — in the
+       wrapping form below that lands on the wrapper instead. -->
   <span
     id={tooltipId}
     bind:this={tooltipElement}
     role="tooltip"
-    class="cinder-tooltip"
+    class={classNames('cinder-tooltip', className)}
     aria-hidden={!isTooltipExposed}
     data-cinder-placement={visible ? anchoredOverlay.resolvedPlacement : placement}
     data-cinder-position-ready={anchoredOverlay.positionReady}

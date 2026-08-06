@@ -65,3 +65,23 @@ position of the panel differs.
   confirm with a screen reader that (a) the AvatarGroup list still announces
   only its avatars as list items, and (b) the description is still announced on
   focus for both anchoring modes.
+
+## Documented Exception to OVERLAY-POLICY.md
+
+`OVERLAY-POLICY.md` states that overlays render nothing on the server and enter
+the portal after hydration. **Tooltip does not satisfy the SSR half of that rule,
+on purpose.**
+
+The `role="tooltip"` panel is rendered unconditionally in the template, so server
+output contains it even when the tooltip is closed. That is required: the panel
+is the `aria-describedby` target for the trigger, and the association has to
+resolve from first paint rather than only after hydration. A hydration gate
+would leave `aria-describedby` pointing at a non-existent id in the server-
+rendered document.
+
+What the visibility gate on the portal DOES fix is the client-side leak — the
+panel is no longer relocated into `document.body` and left there for the
+component's lifetime. Hidden means inline, in the trigger's own subtree.
+
+If the policy is ever tightened, the trade to weigh is a dangling
+`aria-describedby` before hydration versus non-empty SSR markup.
