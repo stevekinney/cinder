@@ -309,13 +309,13 @@ describe('StatusDot CSS contract', () => {
   test('connection presets tint the root text with their semantic state colors', async () => {
     const css = await Bun.file(new URL('./status-dot.css', import.meta.url)).text();
     expect(css).toContain("data-cinder-state='connected']");
-    expect(css).toContain('color: var(--cinder-success)');
+    expect(css).toContain('color: var(--cinder-color-success-fg)');
     expect(css).toContain("data-cinder-state='connecting']");
     expect(css).toContain('color: var(--cinder-color-warning-fg)');
     expect(css).toContain("data-cinder-state='disconnected']");
     expect(css).toContain('color: var(--cinder-text-muted)');
     expect(css).toContain("data-cinder-state='error']");
-    expect(css).toContain('color: var(--cinder-danger)');
+    expect(css).toContain('color: var(--cinder-color-danger-fg)');
   });
 
   test('neutral status uses --cinder-border-strong not --cinder-text-muted', async () => {

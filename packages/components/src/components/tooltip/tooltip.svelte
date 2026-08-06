@@ -30,8 +30,33 @@
     placement = 'top',
     describe = true,
     class: className,
+    triggerRef = null,
     children,
   }: TooltipProps = $props();
+
+  /**
+   * Anchor-by-reference mode: the consumer owns the trigger's placement, so the
+   * Tooltip renders only its panel. See {@link TooltipProps.triggerRef}.
+   */
+  const isDetached = $derived(triggerRef != null);
+
+  /*
+   * OVERLAY-POLICY.md's SSR rule is a HARD CONSTRAINT: overlays render nothing
+   * on the server, whatever their initial state. Tooltip did not satisfy it —
+   * the panel was always in the template — and an earlier revision of this
+   * branch wrote itself a "documented exception" in tooltip.a11y.md instead,
+   * on the belief that the panel had to exist server-side as the
+   * `aria-describedby` target.
+   *
+   * It does not. `syncAriaDescribedBy` runs from an attachment (wrapping mode)
+   * and an `$effect` (detached mode), both client-only, so the server renders
+   * no `aria-describedby` either. Reference and target appear together after
+   * hydration, and gating the panel leaves nothing dangling.
+   */
+  let hydrated = $state(false);
+  $effect(() => {
+    hydrated = true;
+  });
 
   const tooltipId = $props.id();
   const FOCUSABLE_SELECTOR = [
@@ -156,6 +181,30 @@
     };
   }
 
+  /**
+   * Detached mode's equivalent of `attachWrapper`: bind the same show/hide and
+   * `aria-describedby` behavior to an element this component does not render.
+   * Keyed on the element identity so a re-render with a new ref rebinds.
+   */
+  $effect(() => {
+    const trigger = triggerRef;
+    if (trigger == null) return;
+    anchorElement = trigger;
+    const teardownAriaDescribedBy = describe ? syncAriaDescribedBy(trigger) : undefined;
+    trigger.addEventListener('mouseenter', handleMouseEnter);
+    trigger.addEventListener('mouseleave', handleMouseLeave);
+    trigger.addEventListener('focusin', handleFocusIn);
+    trigger.addEventListener('focusout', handleFocusOut);
+    return () => {
+      teardownAriaDescribedBy?.();
+      trigger.removeEventListener('mouseenter', handleMouseEnter);
+      trigger.removeEventListener('mouseleave', handleMouseLeave);
+      trigger.removeEventListener('focusin', handleFocusIn);
+      trigger.removeEventListener('focusout', handleFocusOut);
+      if (anchorElement === trigger) anchorElement = null;
+    };
+  });
+
   const attachWrapper: Attachment<HTMLSpanElement> = (element) => {
     wrapperElement = element;
     const focusable = resolveAnchorElement(element);
@@ -170,6 +219,32 @@
   };
 
   const tooltipPortalAttachment = createPortalAttachment({
+    /*
+     * Gate the portal on visibility, so a Tooltip that is not showing leaves
+     * nothing behind in `document.body`.
+     *
+     * Without this the panel was portaled on mount and stayed there for the
+     * lifetime of the component — one detached `[role="tooltip"]` per Tooltip
+     * instance accumulating in `document.body`. Every sibling overlay already
+     * gates: Popover and HoverCard via
+     * `{#if mounted && open && anchorElement}`, Portal/SpeedDial/NavigationBar/
+     * DropdownMenu via an explicit `disabled` getter.
+     *
+     * `disabled` rather than wrapping the node in `{#if visible}`: the disabled
+     * path calls `restoreInline()`, which returns the panel to its original
+     * position inside the wrapper instead of unmounting it — so the
+     * `aria-describedby` target keeps resolving while the tooltip is hidden.
+     * Conditional rendering would break that association.
+     *
+     * This closes the CLIENT leak; the `hydrated` gate on the panel above is
+     * what satisfies the SSR half of the policy.
+     *
+     * Gated on `visible`, NOT on `isTooltipExposed`: the latter also requires
+     * `positionReady`, and position is computed against the portaled node — so
+     * gating on it would deadlock a tooltip that can never be positioned
+     * because it was never portaled.
+     */
+    disabled: () => !visible,
     target: () => document.body,
     source: () => anchorElement ?? wrapperElement ?? null,
     inheritAttributes: true,
@@ -199,29 +274,57 @@
   span below and the consumer's trigger child. role="presentation" keeps this
   wrapper out of the accessibility tree.
 -->
-<span
-  class={classNames('cinder-tooltip-wrapper', className)}
-  role="presentation"
-  onmouseenter={handleMouseEnter}
-  onmouseleave={handleMouseLeave}
-  onfocusin={handleFocusIn}
-  onfocusout={handleFocusOut}
-  data-cinder-placement={visible ? anchoredOverlay.resolvedPlacement : placement}
-  {@attach attachWrapper}
->
-  {@render children()}
-
+<!--
+  Two forms. By default the Tooltip renders a presentational wrapper around its
+  trigger and anchors to it. With `triggerRef` the consumer owns the trigger, so
+  only the panel renders — which is how a Tooltip can be used somewhere its
+  panel must not appear in the trigger's own subtree (a `role="listitem"`, a
+  table cell). See `TooltipProps.triggerRef`.
+-->
+{#if isDetached}
+  {#if hydrated}
+    <!-- The panel is the component ROOT here, so it takes `class` — in the
+         wrapping form below that lands on the wrapper instead. -->
+    <span
+      id={tooltipId}
+      bind:this={tooltipElement}
+      role="tooltip"
+      class={classNames('cinder-tooltip', className)}
+      aria-hidden={!isTooltipExposed}
+      data-cinder-placement={visible ? anchoredOverlay.resolvedPlacement : placement}
+      data-cinder-position-ready={anchoredOverlay.positionReady}
+      style={anchoredOverlay.positionStyle}
+      {@attach tooltipPortalAttachment}
+    >
+      {text}
+    </span>
+  {/if}
+{:else}
   <span
-    id={tooltipId}
-    bind:this={tooltipElement}
-    role="tooltip"
-    class="cinder-tooltip"
-    aria-hidden={!isTooltipExposed}
+    class={classNames('cinder-tooltip-wrapper', className)}
+    role="presentation"
+    onmouseenter={handleMouseEnter}
+    onmouseleave={handleMouseLeave}
+    onfocusin={handleFocusIn}
+    onfocusout={handleFocusOut}
     data-cinder-placement={visible ? anchoredOverlay.resolvedPlacement : placement}
-    data-cinder-position-ready={anchoredOverlay.positionReady}
-    style={anchoredOverlay.positionStyle}
-    {@attach tooltipPortalAttachment}
+    {@attach attachWrapper}
   >
-    {text}
+    {@render children?.()}
+    {#if hydrated}
+      <span
+        id={tooltipId}
+        bind:this={tooltipElement}
+        role="tooltip"
+        class="cinder-tooltip"
+        aria-hidden={!isTooltipExposed}
+        data-cinder-placement={visible ? anchoredOverlay.resolvedPlacement : placement}
+        data-cinder-position-ready={anchoredOverlay.positionReady}
+        style={anchoredOverlay.positionStyle}
+        {@attach tooltipPortalAttachment}
+      >
+        {text}
+      </span>
+    {/if}
   </span>
-</span>
+{/if}

@@ -33,7 +33,7 @@
   }
 
   .cinder-status-dot[data-cinder-state='connected'] {
-    color: var(--cinder-success);
+    color: var(--cinder-color-success-fg);
   }
 
   .cinder-status-dot[data-cinder-state='connecting'] {
@@ -45,7 +45,7 @@
   }
 
   .cinder-status-dot[data-cinder-state='error'] {
-    color: var(--cinder-danger);
+    color: var(--cinder-color-danger-fg);
   }
 
   .cinder-status-dot__indicator {

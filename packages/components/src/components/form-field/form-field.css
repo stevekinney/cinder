@@ -48,7 +48,7 @@
   .cinder-form-field__error {
     font-size: var(--cinder-text-xs);
     line-height: var(--cinder-leading-normal);
-    color: var(--cinder-danger);
+    color: var(--cinder-color-danger-fg);
     margin: 0;
   }
 }

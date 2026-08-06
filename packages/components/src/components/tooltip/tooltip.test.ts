@@ -1,11 +1,15 @@
 /// <reference lib="dom" />
 import { afterEach, beforeEach, describe, expect, jest, mock, test } from 'bun:test';
+import { join } from 'node:path';
 import { createRawSnippet, tick } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 import { expectNoLeakedTimers, trackTimers } from '../../test/lifecycle.ts';
+import { renderToServerHtml } from '../../test/server-render.ts';
 
 setupHappyDom();
+
+const TOOLTIP_SOURCE = join(import.meta.dir, 'tooltip.svelte');
 
 type Resolver = (value: unknown) => void;
 
@@ -167,18 +171,140 @@ describe('Tooltip', () => {
     expect(container.textContent).toContain('Trigger');
   });
 
-  test('tooltip element is portaled to document.body and hidden initially', () => {
+  test('a hidden tooltip stays inline and leaves nothing in document.body', () => {
+    // The portal is gated on visibility. Before this, every Tooltip portaled on
+    // mount and stayed there for its whole lifetime — one detached
+    // `[role="tooltip"]` per instance sitting in `document.body`, including
+    // during SSR, against OVERLAY-POLICY.md's "SSR markup is empty".
+    //
+    // Hidden means INLINE, not unmounted: the portal's disabled path restores
+    // the node to its original position, so the `aria-describedby` target keeps
+    // resolving while the tooltip is not showing.
     const { container } = render(Tooltip, {
       props: {
         text: 'Tooltip content',
         children: triggerSnippet,
       },
     });
-    const tooltip = queryTooltip();
+    const tooltip = container.querySelector('[role="tooltip"]');
     expect(tooltip).not.toBeNull();
-    expect(container.querySelector('[role="tooltip"]')).toBeNull();
     expect(tooltip?.getAttribute('aria-hidden')).toBe('true');
-    expect(tooltip?.parentElement).toBe(document.body);
+    expect(tooltip?.parentElement).not.toBe(document.body);
+    expect([...document.body.children].some((child) => child.matches('[role="tooltip"]'))).toBe(
+      false,
+    );
+  });
+
+  test('a shown tooltip portals to document.body', async () => {
+    const { container } = render(Tooltip, {
+      props: {
+        text: 'Tooltip content',
+        children: triggerSnippet,
+      },
+    });
+    const wrapper = container.querySelector('.cinder-tooltip-wrapper') as HTMLElement;
+
+    await triggerDelayedTooltipShow(wrapper);
+    await waitFor(() => {
+      expect(queryTooltip()?.parentElement).toBe(document.body);
+    });
+  });
+
+  test('server output omits the tooltip panel (OVERLAY-POLICY SSR hard constraint)', async () => {
+    // The policy's SSR rule is a HARD CONSTRAINT, not a preference. Tooltip did
+    // not satisfy it — the panel was unconditionally in the template — and an
+    // earlier revision of this branch wrote itself an "exception" in the a11y
+    // record instead of complying.
+    //
+    // Complying is safe: `aria-describedby` is wired from an attachment
+    // (wrapping) and an `$effect` (detached), both client-only, so the server
+    // emits neither the reference nor its target and nothing dangles.
+    const html = await renderToServerHtml(TOOLTIP_SOURCE, { text: 'Server tooltip text' });
+
+    expect(html).not.toContain('role="tooltip"');
+    expect(html).not.toContain('Server tooltip text');
+    expect(html).not.toContain('aria-describedby');
+  });
+
+  test('triggerRef renders only the panel, with no wrapper around a trigger', () => {
+    // Anchored-by-reference mode exists so a Tooltip can be used where the
+    // surrounding markup constrains its children — AvatarGroup wraps each avatar
+    // in a `role="listitem"`, and a wrapping Tooltip put its panel inside one.
+    const trigger = document.createElement('button');
+    trigger.type = 'button';
+    document.body.append(trigger);
+
+    const { container } = render(Tooltip, {
+      props: { text: 'Tooltip content', triggerRef: trigger },
+    });
+
+    expect(container.querySelector('.cinder-tooltip-wrapper')).toBeNull();
+    const tooltip = container.querySelector('[role="tooltip"]');
+    expect(tooltip).not.toBeNull();
+    expect(tooltip?.textContent).toContain('Tooltip content');
+
+    trigger.remove();
+  });
+
+  test('triggerRef mode applies the class prop to the panel', () => {
+    // In detached mode the panel IS the component root, so `class` belongs on
+    // it — the wrapping form puts it on the wrapper instead. Without this the
+    // prop was silently dropped for every detached Tooltip.
+    const trigger = document.createElement('button');
+    trigger.type = 'button';
+    document.body.append(trigger);
+
+    const { container } = render(Tooltip, {
+      props: { text: 'Tooltip content', triggerRef: trigger, class: 'custom-tooltip' },
+    });
+
+    const tooltip = container.querySelector('[role="tooltip"]');
+    expect(tooltip?.classList.contains('cinder-tooltip')).toBe(true);
+    expect(tooltip?.classList.contains('custom-tooltip')).toBe(true);
+
+    trigger.remove();
+  });
+
+  test('triggerRef wires aria-describedby to the external trigger', () => {
+    const trigger = document.createElement('button');
+    trigger.type = 'button';
+    document.body.append(trigger);
+
+    const { container } = render(Tooltip, {
+      props: { text: 'Tooltip content', triggerRef: trigger },
+    });
+
+    const tooltip = container.querySelector('[role="tooltip"]');
+    expect(tooltip).not.toBeNull();
+    expect(trigger.getAttribute('aria-describedby')).toBe(tooltip?.getAttribute('id') ?? null);
+
+    trigger.remove();
+  });
+
+  test('triggerRef shows the tooltip from the external trigger and hides again', async () => {
+    const trigger = document.createElement('button');
+    trigger.type = 'button';
+    document.body.append(trigger);
+
+    const { container } = render(Tooltip, {
+      props: { text: 'Tooltip content', triggerRef: trigger },
+    });
+    // Resting appearance, not just the transition: hidden before any interaction,
+    // and living in the consumer's tree rather than `document.body`.
+    expect(container.querySelector('[role="tooltip"]')?.getAttribute('aria-hidden')).toBe('true');
+
+    // The show delay is the same 100ms as the wrapping mode, so drive it the
+    // same way — the listeners are what is new here, not the timing.
+    await triggerDelayedTooltipShow(trigger);
+    await waitFor(() => {
+      expect(queryTooltip()?.parentElement).toBe(document.body);
+    });
+
+    await fireEvent.mouseLeave(trigger);
+    await tick();
+    expect(container.querySelector('[role="tooltip"]')?.getAttribute('aria-hidden')).toBe('true');
+
+    trigger.remove();
   });
 
   test('focusable trigger inside wrapper has aria-describedby that matches the tooltip id', () => {
@@ -191,6 +317,53 @@ describe('Tooltip', () => {
     const trigger = container.querySelector<HTMLElement>('button');
     const tooltip = queryTooltip();
     expect(trigger?.getAttribute('aria-describedby')).toBe(tooltip?.getAttribute('id'));
+  });
+
+  test('the described element is EXPOSED when shown, in both anchoring modes', async () => {
+    // `aria-describedby` pointing at a node is not the same as that description
+    // being announced: while hidden the panel is `aria-hidden="true"`, so AT
+    // ignores it. This pins the announcement contract itself — the referenced
+    // element becomes exposed on show — for the wrapping form and the detached
+    // form alike, which is what the portal gate and `triggerRef` both touch.
+    const { container, unmount } = render(Tooltip, {
+      props: { text: 'Wrapped description', children: triggerSnippet },
+    });
+    const wrapper = container.querySelector('.cinder-tooltip-wrapper') as HTMLElement;
+    const trigger = container.querySelector<HTMLElement>('button');
+    const describedById = trigger?.getAttribute('aria-describedby');
+    expect(describedById).toBeTruthy();
+
+    // Resting: referenced, but hidden from AT.
+    expect(document.getElementById(describedById ?? '')?.getAttribute('aria-hidden')).toBe('true');
+
+    await triggerDelayedTooltipShow(wrapper);
+    await waitFor(() => {
+      expect(document.getElementById(describedById ?? '')?.getAttribute('aria-hidden')).toBe(
+        'false',
+      );
+    });
+    unmount();
+    await tick();
+
+    // Same contract via triggerRef.
+    const external = document.createElement('button');
+    external.type = 'button';
+    document.body.append(external);
+    const detached = render(Tooltip, {
+      props: { text: 'Detached description', triggerRef: external },
+    });
+    const detachedId = external.getAttribute('aria-describedby');
+    expect(detachedId).toBeTruthy();
+    expect(document.getElementById(detachedId ?? '')?.getAttribute('aria-hidden')).toBe('true');
+
+    await triggerDelayedTooltipShow(external);
+    await waitFor(() => {
+      expect(document.getElementById(detachedId ?? '')?.getAttribute('aria-hidden')).toBe('false');
+    });
+
+    detached.unmount();
+    external.remove();
+    await tick();
   });
 
   test('describe=false keeps tooltip text visual without wiring aria-describedby', () => {
@@ -494,8 +667,11 @@ describe('Tooltip', () => {
     expect(queryTooltip()?.getAttribute('aria-hidden')).toBe('true');
   });
 
-  test('copies inherited dir and theme to the portaled tooltip', () => {
-    render(Tooltip, {
+  test('copies inherited dir and theme to the portaled tooltip', async () => {
+    // Attribute inheritance is a property of the PORTALED node, so the tooltip
+    // has to be shown before it can be asserted — the portal is gated on
+    // visibility now.
+    const { container } = render(Tooltip, {
       props: {
         text: 'Tooltip content',
         children: createRawSnippet(() => ({
@@ -505,11 +681,15 @@ describe('Tooltip', () => {
         })),
       },
     });
+    const wrapper = container.querySelector('.cinder-tooltip-wrapper') as HTMLElement;
 
-    const tooltip = queryTooltip();
-    expect(tooltip?.getAttribute('dir')).toBe('rtl');
-    expect(tooltip?.getAttribute('data-theme')).toBe('dark');
-    expect(tooltip?.getAttribute('data-cinder-theme')).toBe('dark');
+    await triggerDelayedTooltipShow(wrapper);
+    await waitFor(() => {
+      const tooltip = queryTooltip();
+      expect(tooltip?.getAttribute('dir')).toBe('rtl');
+      expect(tooltip?.getAttribute('data-theme')).toBe('dark');
+      expect(tooltip?.getAttribute('data-cinder-theme')).toBe('dark');
+    });
   });
 
   test('computePosition failure keeps tooltip hidden until the next successful show', async () => {
