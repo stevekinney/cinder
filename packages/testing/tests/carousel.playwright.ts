@@ -68,10 +68,17 @@ test('slidesPerView makes multiple slides simultaneously interactive', async ({
 test('mouse drag disables native snapping only while dragging, then restores it', async ({
   componentPage,
 }) => {
+  // `componentPage.open()` normally forces `reducedMotion: 'reduce'` for
+  // screenshot/animation determinism (see `themeContextOptions`), but the
+  // drag-momentum engine intentionally disables itself under that
+  // preference (`useReducedMotion`, matching Carousel's autoplay gating) —
+  // so this test, which exercises that engine, needs to opt back in to
+  // `no-preference` to represent a user who hasn't asked for reduced motion.
   const page = await componentPage.open({
     entry: carousel,
     theme: 'light',
     viewport: desktopViewport,
+    contextOptions: { reducedMotion: 'no-preference' },
   });
 
   const viewport = page.locator('#example-mount-basic .cinder-carousel__viewport');
@@ -84,25 +91,11 @@ test('mouse drag disables native snapping only while dragging, then restores it'
   const startX = box.x + box.width * 0.75;
   const y = box.y + box.height / 2;
 
-  // Diagnostic: this Playwright environment's actual matchMedia answers for
-  // the two inputs `enabled()` gates on, surfaced as a hard assertion so a
-  // CI failure names the exact gate rather than requiring another
-  // round-trip. Desktop Chrome (devices['Desktop Chrome']) has no touch/
-  // mobile emulation, so both are expected true here.
-  const mediaState = await page.evaluate(() => ({
-    finePointer: window.matchMedia('(hover: hover) and (pointer: fine)').matches,
-    reducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-  }));
-  expect(mediaState).toEqual({ finePointer: true, reducedMotion: false });
-
   await page.mouse.move(startX, y);
   await page.mouse.down();
 
-  // Diagnostic checkpoint: `suppressSnapType()` runs unconditionally inside
-  // `onPointerDown` (gated only on `enabled()`), before any drag-threshold
-  // logic. If this fails, the engine never attached at all — check
-  // `enabled()`'s inputs (fine-pointer/reduced-motion) — as opposed to the
-  // drag-threshold detection in `onPointerMove` specifically.
+  // `suppressSnapType()` runs unconditionally inside `onPointerDown` (gated
+  // only on `enabled()`), before any drag-threshold logic.
   await expect(viewport).toHaveCSS('scroll-snap-type', 'none');
 
   await page.mouse.move(startX - 80, y, { steps: 5 });
@@ -118,10 +111,13 @@ test('mouse drag disables native snapping only while dragging, then restores it'
 test('the carousel remains normally interactive after a mouse drag releases', async ({
   componentPage,
 }) => {
+  // See the previous test: the drag-momentum engine disables itself under
+  // reduced motion, which `componentPage.open()` forces by default.
   const page = await componentPage.open({
     entry: carousel,
     theme: 'light',
     viewport: desktopViewport,
+    contextOptions: { reducedMotion: 'no-preference' },
   });
 
   const scope = page.locator('#example-mount-basic');
