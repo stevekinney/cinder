@@ -35,4 +35,19 @@ When Chat accepts snippets or arbitrary children, the caller owns the semantics 
 - Inspect the accessible name, role, and state in browser accessibility tools.
 - Check forced-colors mode when the component adds borders, focus rings, selected state, or status color.
 
+## scrollFadeVisible (Tier 3 polish)
+
+`scrollFadeVisible` paints an opaque, scroll-driven fade (never a `mask-`)
+on the top and bottom edges of the message timeline as it overflows, using
+`@lostgradient/cinder`'s shared `_scroll-fade.css` recipe. It is
+presentation-only and never the sole signal that more messages exist — the
+jump-to-latest button and unread-count indicator (`atBottom`, `unreadCount`,
+`newMessageIndicatorVisible`) remain the authoritative affordances,
+unaffected by this prop. The timeline's own `role="log"`/`aria-live` and
+`:focus-visible` ring (documented above) are unchanged. Only visible when
+`surfaceMode` is `'default'`: with `surfaceMode="transparent"` the timeline
+paints no background of its own, so the JS driver is gated off entirely
+rather than fading toward an incorrect color (see `chat.types.ts`).
+`@media (forced-colors: active)` disables the fade outright.
+
 Related components: `markdown-editor`.
