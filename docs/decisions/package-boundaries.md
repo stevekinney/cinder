@@ -406,6 +406,7 @@ Publish order gains `@lostgradient/cinder-mcp` **last**, not in DAG position:
 markdown → cinder → editor → chat → cinder-mcp. It consumes cinder's `./knowledge` export so it
 must follow cinder, but nothing depends on it, which makes any position after cinder valid.
 Publishing a leaf third meant one failure on it aborted the whole step sequence — on 2026-08-05
-an `ENEEDAUTH` on cinder-mcp took editor 0.2.0 and chat 0.5.0 down with it (#1207). The same
-first-publish bootstrap constraint described above (npm Trusted Publishing cannot mint a
-brand-new package name) applies to `@lostgradient/cinder-mcp`'s first release.
+an `ENEEDAUTH` on cinder-mcp took editor 0.2.0 and chat 0.5.0 down with it (#1207). The first-publish bootstrap constraint described above (npm Trusted Publishing cannot mint a
+brand-new package name) applied to `@lostgradient/cinder-mcp` too, and has already been
+satisfied: the name was minted at `0.0.0` on 2026-07-25 and its Trusted Publisher is now
+configured. No further manual bootstrap is required for this package.

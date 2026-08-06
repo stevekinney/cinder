@@ -131,10 +131,6 @@ jobs:
         if: github.event_name != 'push' || steps.pending-changesets.outputs.pending == 'false'
         run: bun run --filter=@lostgradient/cinder validate:consumer
 
-      - name: Validate cinder-mcp package artifact
-        if: github.event_name != 'push' || steps.pending-changesets.outputs.pending == 'false'
-        run: bun run --filter=@lostgradient/cinder-mcp validate:consumer
-
       - name: Validate Editor package artifact
         if: github.event_name != 'push' || steps.pending-changesets.outputs.pending == 'false'
         run: bun run --filter=@lostgradient/editor validate:consumer
@@ -142,6 +138,10 @@ jobs:
       - name: Validate Chat package artifact
         if: github.event_name != 'push' || steps.pending-changesets.outputs.pending == 'false'
         run: bun run --filter=@lostgradient/chat validate:consumer
+
+      - name: Validate cinder-mcp package artifact
+        if: github.event_name != 'push' || steps.pending-changesets.outputs.pending == 'false'
+        run: bun run --filter=@lostgradient/cinder-mcp validate:consumer
 
       - name: Create Release Pull Request or publish to npm
         id: changesets
@@ -213,10 +213,6 @@ jobs:
         if: github.event_name != 'push' || steps.changesets.outputs.hasChangesets == 'false'
         run: bun run --filter=@lostgradient/cinder package:weight:check -- --existing-tarball
 
-      - name: Check validated cinder-mcp package artifact budget
-        if: github.event_name != 'push' || steps.changesets.outputs.hasChangesets == 'false'
-        run: bun run --filter=@lostgradient/cinder-mcp package:weight:check -- --existing-tarball
-
       - name: Check validated Editor package artifact budget
         if: github.event_name != 'push' || steps.changesets.outputs.hasChangesets == 'false'
         run: bun run --filter=@lostgradient/editor package:weight:check -- --existing-tarball
@@ -224,6 +220,10 @@ jobs:
       - name: Check validated Chat package artifact budget
         if: github.event_name != 'push' || steps.changesets.outputs.hasChangesets == 'false'
         run: bun run --filter=@lostgradient/chat package:weight:check -- --existing-tarball
+
+      - name: Check validated cinder-mcp package artifact budget
+        if: github.event_name != 'push' || steps.changesets.outputs.hasChangesets == 'false'
+        run: bun run --filter=@lostgradient/cinder-mcp package:weight:check -- --existing-tarball
 
       # Primary publish path: npm Trusted Publishing (OIDC). No long-lived token.
       # npm >= 11.5.1 (installed above) + id-token: write (on this job) + the npm

@@ -70,8 +70,8 @@ const changesetsConfigurationPath = join(workspaceRoot, '.changeset/config.json'
 const changesetDirectoryPath = join(workspaceRoot, '.changeset');
 /**
  * Every published package, in required publish order: markdown has no internal
- * peer contract with the other four and publishes first; cinder next; editor
- * peers on both cinder and markdown; chat peers on cinder's minor (see
+ * peer contract with the other four and publishes first; cinder next; editor and
+ * chat each peer on BOTH cinder and markdown (see
  * docs/decisions/package-boundaries.md).
  *
  * cinder-mcp publishes LAST rather than in strict DAG position. It consumes
