@@ -30,6 +30,21 @@
     overflow-x: auto;
     overscroll-behavior-inline: contain;
     -webkit-overflow-scrolling: touch;
+    /* Same inset-shadow horizontal-scroll affordance as data-grid's
+     * `--_cinder-data-grid-overflow-shadow` (data-grid.css) — proven,
+     * mask-free, and safe alongside the sticky header below (the shadow is
+     * decoration on the scroll container's own box, so it stays pinned at
+     * the true edges rather than scrolling with content). Driven by
+     * `overflowShadow('inline')` (utilities/attachments.ts), which is NOT
+     * scroll-position-aware: both edges show whenever content overflows at
+     * all, matching data-grid's own behavior exactly. */
+    box-shadow: var(--_cinder-table-scroll-shadow, none);
+  }
+
+  .cinder-table-scroll[data-cinder-overflows-inline] {
+    --_cinder-table-scroll-shadow:
+      inset 1rem 0 1rem -1rem color-mix(in srgb, var(--cinder-text) 28%, transparent),
+      inset -1rem 0 1rem -1rem color-mix(in srgb, var(--cinder-text) 28%, transparent);
   }
 
   .cinder-table-scroll .cinder-table {

@@ -32,6 +32,7 @@
   import Minus from 'lucide-svelte/icons/minus';
 
   import { classNames } from '../../utilities/class-names.ts';
+  import { overflowShadow } from '../../utilities/attachments.ts';
 
   import type {
     PermissionMatrixAxisItem,
@@ -106,7 +107,11 @@
         {#if empty}{@render empty()}{:else}No matrix data{/if}
       </div>
     {:else}
-      <div class="cinder-permission-matrix__scroll" data-cinder-scroll-container>
+      <div
+        class="cinder-permission-matrix__scroll"
+        data-cinder-scroll-container
+        {@attach overflowShadow('inline')}
+      >
         <table class="cinder-permission-matrix__table">
           <caption class="cinder-sr-only">{label}</caption>
           <thead>
