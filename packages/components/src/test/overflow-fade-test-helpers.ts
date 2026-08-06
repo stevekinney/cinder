@@ -74,7 +74,14 @@ export function flushOverflowFadeAnimationFrames(): void {
 
 export function setScrollMeasurements(
   node: HTMLElement,
-  measurements: { clientHeight: number; scrollHeight: number; scrollTop?: number },
+  measurements: {
+    clientHeight: number;
+    scrollHeight: number;
+    scrollTop?: number;
+    clientWidth?: number;
+    scrollWidth?: number;
+    scrollLeft?: number;
+  },
 ): void {
   Object.defineProperty(node, 'clientHeight', {
     configurable: true,
@@ -89,4 +96,23 @@ export function setScrollMeasurements(
     value: measurements.scrollTop ?? 0,
     writable: true,
   });
+  if (measurements.clientWidth !== undefined) {
+    Object.defineProperty(node, 'clientWidth', {
+      configurable: true,
+      value: measurements.clientWidth,
+    });
+  }
+  if (measurements.scrollWidth !== undefined) {
+    Object.defineProperty(node, 'scrollWidth', {
+      configurable: true,
+      value: measurements.scrollWidth,
+    });
+  }
+  if (measurements.scrollLeft !== undefined) {
+    Object.defineProperty(node, 'scrollLeft', {
+      configurable: true,
+      value: measurements.scrollLeft,
+      writable: true,
+    });
+  }
 }

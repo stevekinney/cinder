@@ -9,6 +9,17 @@
  * ======================================== */
 
   .cinder-scroll-area {
+    /* ScrollArea itself paints no background (the design thesis it shares
+     * with a native scrollbar: it never opts the page out of its own
+     * surface). `--_cinder-scroll-fade-color` therefore has no real value to
+     * inherit from this component and defaults to `--cinder-surface` — the
+     * library's most common ambient surface. Consumers placing ScrollArea
+     * against a different surface (e.g. inside a `--cinder-surface-raised`
+     * card) and using `scrollFadeVisible` should override it inline:
+     * `style="--_cinder-scroll-fade-color: var(--cinder-surface-raised)"`,
+     * the same documented escape hatch as `--_cinder-modal-close-ring`. */
+    --_cinder-scroll-fade-color: var(--cinder-surface);
+
     display: block;
     min-block-size: 0;
     min-inline-size: 0;

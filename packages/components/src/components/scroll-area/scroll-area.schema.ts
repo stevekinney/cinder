@@ -30,6 +30,11 @@ const schema = {
       enum: ['article', 'aside', 'div', 'li', 'main', 'nav', 'ol', 'pre', 'section', 'ul'],
       description: "Element tag to render. Defaults to `'div'`.",
     },
+    scrollFadeVisible: {
+      type: 'boolean',
+      description:
+        "Show a scroll-driven edge fade on the trailing edge of `direction`\n(`'vertical'` fades the bottom; `'horizontal'` fades the inline-end\nedge). Opt-in and presentation-only — never the sole signal that content\nscrolls; the native scrollbar this component always renders remains the\nauthoritative affordance. Has no effect when `direction` is `'both'`\n(there is no single trailing edge to fade on two independent axes at\nonce). Defaults to `false`.",
+    },
     class: {
       type: 'string',
       description: 'Additional classes merged onto the scroll viewport.',

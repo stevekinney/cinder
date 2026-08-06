@@ -31,6 +31,21 @@
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-md);
     background: var(--cinder-surface);
+    /* Same inset-shadow affordance as data-grid's
+     * `--_cinder-data-grid-overflow-shadow` (data-grid.css), driven by
+     * `overflowShadow('inline')` (utilities/attachments.ts). The
+     * inline-start edge of this shadow sits directly behind the opaque
+     * sticky corner/row-header below (both paint above a scroll container's
+     * own box-shadow decoration), so in practice only the inline-end edge is
+     * ever visible — which is also the only edge that needs it, since the
+     * row header is always-visible chrome, not scrolling content. */
+    box-shadow: var(--_cinder-permission-matrix-scroll-shadow, none);
+  }
+
+  .cinder-permission-matrix__scroll[data-cinder-overflows-inline] {
+    --_cinder-permission-matrix-scroll-shadow:
+      inset 1rem 0 1rem -1rem color-mix(in srgb, var(--cinder-text) 28%, transparent),
+      inset -1rem 0 1rem -1rem color-mix(in srgb, var(--cinder-text) 28%, transparent);
   }
 
   .cinder-permission-matrix__table {

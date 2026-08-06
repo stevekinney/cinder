@@ -50,6 +50,16 @@ export type ScrollAreaProps = Omit<
   tabindex?: number;
   /** Element tag to render. Defaults to `'div'`. */
   as?: ScrollAreaElement;
+  /**
+   * Show a scroll-driven edge fade on the trailing edge of `direction`
+   * (`'vertical'` fades the bottom; `'horizontal'` fades the inline-end
+   * edge). Opt-in and presentation-only — never the sole signal that content
+   * scrolls; the native scrollbar this component always renders remains the
+   * authoritative affordance. Has no effect when `direction` is `'both'`
+   * (there is no single trailing edge to fade on two independent axes at
+   * once). Defaults to `false`.
+   */
+  scrollFadeVisible?: boolean;
   /** Additional classes merged onto the scroll viewport. */
   class?: string;
   /** Scrollable content. */

@@ -83,6 +83,28 @@ describe('CodeBlock — static structure', () => {
     expect(pre?.hasAttribute('tabindex')).toBe(false);
   });
 
+  test('scrollFadeVisible is off by default — no inline scroll-fade classes', () => {
+    const { container } = render(CodeBlock, { code: 'const x = 1;' });
+    const viewport = container.querySelector('.cinder-code-block__viewport');
+    expect(viewport?.classList.contains('cinder-_scroll-fade-inline-start')).toBe(false);
+    expect(viewport?.classList.contains('cinder-_scroll-fade-inline-end')).toBe(false);
+  });
+
+  test('scrollFadeVisible adds BOTH inline-edge fade classes to the viewport', () => {
+    const { container } = render(CodeBlock, { code: 'const x = 1;', scrollFadeVisible: true });
+    const viewport = container.querySelector('.cinder-code-block__viewport');
+    expect(viewport?.classList.contains('cinder-_scroll-fade-inline-start')).toBe(true);
+    expect(viewport?.classList.contains('cinder-_scroll-fade-inline-end')).toBe(true);
+  });
+
+  test('code-block.css sets a translucent (not fully opaque) --_cinder-scroll-fade-color', async () => {
+    const cssPath = new URL('./code-block.css', import.meta.url);
+    const source = await Bun.file(cssPath).text();
+    expect(source).toMatch(
+      /--_cinder-scroll-fade-color:\s*color-mix\(\s*in srgb,\s*var\(--cinder-code-block-background\)\s*35%,\s*transparent\s*\)/,
+    );
+  });
+
   test('preserves two-space tab sizing on plain and highlighted code', async () => {
     const css = await Bun.file(new URL('./code-block.css', import.meta.url)).text();
     expect(css).toContain('tab-size: 2;');

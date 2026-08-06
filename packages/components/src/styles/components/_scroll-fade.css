@@ -1,0 +1,317 @@
+/* INTERNAL — shared scroll-driven edge-fade recipe.
+ *
+ * Fades the trailing block edge of a scroll container as it overflows, driven
+ * by `animation-timeline: scroll()` where supported. No JavaScript, no
+ * `CSS.supports()` branch, no hydration divergence: this is a pure CSS
+ * progressive enhancement over the pre-existing `data-cinder-overflows`
+ * attribute path (`overflowFade()` in `utilities/attachments.ts`).
+ *
+ * MECHANISM — the animation-origin cascade wins by construction. A CSS
+ * `@keyframes` animation lives in the animation origin, which outranks author
+ * declarations. Where `animation-timeline: scroll()` is supported, the
+ * animation silently wins the `opacity` cascade over the attribute rule below
+ * it. Where it is not supported (Firefox, still behind a flag), the
+ * `@supports` block never applies and the `[data-cinder-overflows]` rule is
+ * the only thing setting `opacity`. No feature detection required anywhere.
+ *
+ * DESIGN RULES — this is why the code looks the way it does:
+ *   1. Never mask an element that paints its own background. Fade with an
+ *      OPAQUE overlay in the container's own surface color instead of an
+ *      `mask-image` that makes content transparent — a mask on a container
+ *      whose parent paints a brighter surface makes the "fade" light up
+ *      instead of fading out. This generalizes the fix landed in PR #972
+ *      (`7b9be9d9d`), which removed `mask-image` from the Modal/Drawer/Sheet
+ *      bodies for exactly this reason; `scroll-fade.test.ts` pins that no
+ *      `mask-` property is ever reintroduced here.
+ *   2. Never fade an axis that has a `position: sticky` descendant on it. An
+ *      opaque block-start overlay would cover a sticky `<thead>`; a mask
+ *      would let rows scroll visibly through it.
+ *   3. Never fade a focused or focusable edge. Roving focus calls
+ *      `scrollIntoView({block:'nearest'})`, which parks the focused item
+ *      flush against the edge — exactly under a fully-on fade. That is a
+ *      WCAG 1.4.11 / 1.4.3 failure, not a 2.4.11 one. This disqualifies every
+ *      listbox, menu, and tab strip.
+ *   4. Never fade a text-entry surface. No fading a box with a caret in it.
+ *   5. The fade is Tier 3 polish (see PLATFORM-POLICY.md). It may never be
+ *      the sole signal that content scrolls — `data-cinder-overflows` (JS,
+ *      authoritative) is what the attribute-path fallback and any assistive
+ *      affordance must rely on, not this recipe.
+ *
+ * NON-OBVIOUS IMPLEMENTATION DETAILS:
+ *   - `scroll(nearest block)`, not `scroll(self block)`. The animation runs
+ *     on the `::after` pseudo-element, which is not itself a scroller —
+ *     `self` would not resolve. `nearest` resolves to the originating scroll
+ *     container (this element).
+ *   - `animation-timeline` MUST come after the `animation` shorthand in the
+ *     same rule. The shorthand resets `animation-timeline` back to `auto` —
+ *     reordering these two declarations silently breaks the whole recipe.
+ *   - `margin-block-start` MUST exactly negate `block-size`, or the sticky
+ *     overlay perturbs measured content height.
+ *   - `--cinder-scroll-fade-size` is a PUBLIC token (a real design knob) —
+ *     see `SHARED_PARTIAL_OWNED_PREFIXES` in `check-component-css-token-usage.ts`.
+ *     `--_cinder-scroll-fade-color` is PRIVATE — hosts set it per the
+ *     `_status-surface.css` `--_cinder-status-base` precedent. Private names
+ *     short-circuit the token audit, so it needs no registry entry.
+ *   - No `@property` registration is needed: `opacity` animates natively.
+ *   - Physical gradient keywords (`to bottom`) are correct: there is no
+ *     logical gradient direction in any engine, and `writing-mode` appears
+ *     nowhere in this package. Positioning (`inset-block-end`) stays logical.
+ *   - Reduced motion: `foundation.css` sets `animation-duration: 0.01ms
+ *     !important` on `*`. Because `!important` inverts layer precedence,
+ *     `cinder.foundation` beats `cinder.components` here and no rule in this
+ *     partial can (or should) override it. This partial deliberately never
+ *     sets `animation-duration`, so that global reduced-motion rule is always
+ *     the one in effect. Net effect is correct: the scroll-driven animation
+ *     is neutered, and wherever a JS `overflowFade()` driver is present the
+ *     attribute rule (outside `@supports`, unaffected by animation timing)
+ *     takes over instead.
+ *   - `forced-colors: active` disables the fade outright by setting BOTH
+ *     `animation: none` and `opacity: 0` — `opacity` alone is not enough. A
+ *     running CSS Animation's keyframe-computed value beats any
+ *     normal-priority author declaration regardless of specificity or
+ *     source order (the same animation-origin mechanic this file relies on
+ *     to win over the `[data-cinder-overflows]` fallback rule), so without
+ *     also stopping the animation, a browser that supports
+ *     `animation-timeline: scroll()` AND has forced-colors active would
+ *     keep the keyframes running and silently override this rule. Custom
+ *     properties are not forced, so `var(--_cinder-scroll-fade-color)`
+ *     would otherwise keep painting a themed band across a high-contrast
+ *     surface.
+ *
+ * FOUR EDGE CLASSES, each owning one pseudo-element and composable only with
+ * classes that own the OTHER pseudo-element slot (an element has exactly one
+ * `::before` box and one `::after` box, so two classes that both target
+ * `::after` cannot be combined — only one would win):
+ *   - `.cinder-_scroll-fade`             block-end   (`::after`)  — the
+ *     original recipe; Modal/Drawer/Sheet bodies use this alone.
+ *   - `.cinder-_scroll-fade-start`       block-start (`::before`) — combine
+ *     WITH `.cinder-_scroll-fade` for a both-edges vertical fade (e.g. a chat
+ *     timeline).
+ *   - `.cinder-_scroll-fade-inline-end`   inline-end   (`::after`)
+ *   - `.cinder-_scroll-fade-inline-start` inline-start (`::before`) —
+ *     combine the inline pair for a both-edges horizontal fade (e.g. a code
+ *     viewport). Never combine a block class with an inline class on the
+ *     same element — both would fight over the same pseudo-element slot.
+ * All four share `--cinder-scroll-fade-size` / `--_cinder-scroll-fade-color`
+ * and the same fallback-attribute / `@supports` / reduced-motion / forced-
+ * colors mechanics described above; only the inset side, margin axis,
+ * gradient direction, and JS attribute name differ per class.
+ */
+@layer cinder.components {
+  .cinder-_scroll-fade,
+  .cinder-_scroll-fade-start,
+  .cinder-_scroll-fade-inline-end,
+  .cinder-_scroll-fade-inline-start {
+    /* 1.5rem — matches the value the pre-existing Modal/Drawer/Sheet
+     * body fades hard-coded before this partial replaced them. */
+    --cinder-scroll-fade-size: var(--cinder-space-6);
+
+    position: relative;
+  }
+
+  /* ---- block-end (::after) — the original recipe ---- */
+
+  .cinder-_scroll-fade::after {
+    content: '';
+    position: sticky;
+    inset-block-end: 0;
+    display: block;
+    block-size: var(--cinder-scroll-fade-size);
+    margin-block-start: calc(var(--cinder-scroll-fade-size) * -1);
+    background: linear-gradient(to bottom, transparent, var(--_cinder-scroll-fade-color));
+    pointer-events: none;
+    opacity: 0;
+  }
+
+  /* Fallback driver: the existing overflowFade() attachment sets/clears this
+   * attribute from real scroll-position measurements. Lives OUTSIDE
+   * `@supports` — this is the ONLY rule that applies in browsers without
+   * scroll-driven animations, and it must keep working there unconditionally. */
+  .cinder-_scroll-fade[data-cinder-overflows]::after {
+    opacity: 1;
+  }
+
+  @supports (animation-timeline: scroll()) {
+    .cinder-_scroll-fade::after {
+      animation: cinder-scroll-fade-block-end linear;
+      /* Must follow the shorthand above — `animation` resets `animation-timeline`. */
+      animation-timeline: scroll(nearest block);
+    }
+  }
+
+  @keyframes cinder-scroll-fade-block-end {
+    0%,
+    90% {
+      opacity: 1;
+    }
+
+    100% {
+      opacity: 0;
+    }
+  }
+
+  /* `animation: none` is required here, not just `opacity: 0` — a running CSS
+   * Animation's keyframe-computed value beats ANY normal-priority author
+   * declaration regardless of specificity or source order (the same
+   * animation-origin mechanic this file relies on to win over the
+   * `[data-cinder-overflows]` fallback rule above). Without stopping the
+   * animation itself, this `opacity: 0` would be silently overridden by the
+   * still-running keyframes in any browser that both supports
+   * `animation-timeline: scroll()` AND has forced-colors active. */
+  @media (forced-colors: active) {
+    .cinder-_scroll-fade::after {
+      animation: none;
+      opacity: 0;
+    }
+  }
+
+  /* ---- block-start (::before) — mirror of block-end, for both-edges fades ---- */
+
+  .cinder-_scroll-fade-start::before {
+    content: '';
+    position: sticky;
+    inset-block-start: 0;
+    display: block;
+    block-size: var(--cinder-scroll-fade-size);
+    margin-block-end: calc(var(--cinder-scroll-fade-size) * -1);
+    background: linear-gradient(to top, transparent, var(--_cinder-scroll-fade-color));
+    pointer-events: none;
+    opacity: 0;
+  }
+
+  /* Fallback driver: overflowFadeEdges() sets/clears this from real
+   * scroll-position measurements (not-at-the-very-start). Outside `@supports`. */
+  .cinder-_scroll-fade-start[data-cinder-overflows-start]::before {
+    opacity: 1;
+  }
+
+  @supports (animation-timeline: scroll()) {
+    .cinder-_scroll-fade-start::before {
+      animation: cinder-scroll-fade-block-start linear;
+      animation-timeline: scroll(nearest block);
+    }
+  }
+
+  @keyframes cinder-scroll-fade-block-start {
+    0% {
+      opacity: 0;
+    }
+
+    10%,
+    100% {
+      opacity: 1;
+    }
+  }
+
+  /* `animation: none` required — see the block-end forced-colors rule above
+   * for why re-declaring `opacity` alone cannot beat a running animation. */
+  @media (forced-colors: active) {
+    .cinder-_scroll-fade-start::before {
+      animation: none;
+      opacity: 0;
+    }
+  }
+
+  /* ---- inline-end (::after) — horizontal counterpart, e.g. a code viewport ---- */
+
+  .cinder-_scroll-fade-inline-end::after {
+    content: '';
+    position: sticky;
+    inset-inline-end: 0;
+    display: block;
+    inline-size: var(--cinder-scroll-fade-size);
+    margin-inline-start: calc(var(--cinder-scroll-fade-size) * -1);
+    background: linear-gradient(to right, transparent, var(--_cinder-scroll-fade-color));
+    pointer-events: none;
+    opacity: 0;
+  }
+
+  /* Physical gradient direction: `:dir(rtl)` flips the PAINT direction only —
+   * `scroll(nearest inline)` is already direction-correct, and the sticky
+   * `inset-inline-end` positioning is already logical. Only the two-color-stop
+   * gradient itself needs a physical flip, since no engine supports a logical
+   * gradient direction (see the file doc comment). */
+  .cinder-_scroll-fade-inline-end:dir(rtl)::after {
+    background: linear-gradient(to left, transparent, var(--_cinder-scroll-fade-color));
+  }
+
+  .cinder-_scroll-fade-inline-end[data-cinder-overflows-inline-end]::after {
+    opacity: 1;
+  }
+
+  @supports (animation-timeline: scroll()) {
+    .cinder-_scroll-fade-inline-end::after {
+      animation: cinder-scroll-fade-inline-end linear;
+      animation-timeline: scroll(nearest inline);
+    }
+  }
+
+  @keyframes cinder-scroll-fade-inline-end {
+    0%,
+    90% {
+      opacity: 1;
+    }
+
+    100% {
+      opacity: 0;
+    }
+  }
+
+  /* `animation: none` required — see the block-end forced-colors rule above
+   * for why re-declaring `opacity` alone cannot beat a running animation. */
+  @media (forced-colors: active) {
+    .cinder-_scroll-fade-inline-end::after {
+      animation: none;
+      opacity: 0;
+    }
+  }
+
+  /* ---- inline-start (::before) — pairs with inline-end for both-edges fades ---- */
+
+  .cinder-_scroll-fade-inline-start::before {
+    content: '';
+    position: sticky;
+    inset-inline-start: 0;
+    display: block;
+    inline-size: var(--cinder-scroll-fade-size);
+    margin-inline-end: calc(var(--cinder-scroll-fade-size) * -1);
+    background: linear-gradient(to left, transparent, var(--_cinder-scroll-fade-color));
+    pointer-events: none;
+    opacity: 0;
+  }
+
+  .cinder-_scroll-fade-inline-start:dir(rtl)::before {
+    background: linear-gradient(to right, transparent, var(--_cinder-scroll-fade-color));
+  }
+
+  .cinder-_scroll-fade-inline-start[data-cinder-overflows-inline-start]::before {
+    opacity: 1;
+  }
+
+  @supports (animation-timeline: scroll()) {
+    .cinder-_scroll-fade-inline-start::before {
+      animation: cinder-scroll-fade-inline-start linear;
+      animation-timeline: scroll(nearest inline);
+    }
+  }
+
+  @keyframes cinder-scroll-fade-inline-start {
+    0% {
+      opacity: 0;
+    }
+
+    10%,
+    100% {
+      opacity: 1;
+    }
+  }
+
+  /* `animation: none` required — see the block-end forced-colors rule above
+   * for why re-declaring `opacity` alone cannot beat a running animation. */
+  @media (forced-colors: active) {
+    .cinder-_scroll-fade-inline-start::before {
+      animation: none;
+      opacity: 0;
+    }
+  }
+}

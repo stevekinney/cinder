@@ -70,6 +70,7 @@ export const SHARED_PARTIAL_OWNED_PREFIXES: Record<string, string[]> = {
   'src/styles/components/_control-item.css': ['--cinder-control-item'],
   'src/styles/components/_dismiss-button.css': ['--cinder-dismiss-button'],
   'src/styles/components/_floating-surface.css': ['--cinder-floating-surface'],
+  'src/styles/components/_scroll-fade.css': ['--cinder-scroll-fade'],
   'src/styles/components/json-highlight.css': ['--cinder-json-highlight'],
   'src/styles/components/experimental/_json-viewer-node.css': ['--cinder-json-viewer'],
   'src/styles/components/experimental/popover.css': ['--cinder-popover'],

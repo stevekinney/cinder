@@ -713,12 +713,19 @@ describe('Sheet', () => {
     }
   });
 
-  test('overflow fade uses a surface-colored overlay instead of masking the body', async () => {
+  test('body opts into the shared scroll-fade recipe with a surface-colored overlay, never a mask', async () => {
     const css = await Bun.file(new URL('./sheet.css', import.meta.url)).text();
     expect(css).toMatch(
-      /\.cinder-sheet__body\[data-cinder-overflows\]::after\s*\{[^}]*background:\s*linear-gradient\(to bottom, transparent, var\(--cinder-surface\)\)/s,
+      /\.cinder-sheet__body\s*\{[^}]*--_cinder-scroll-fade-color:\s*var\(--cinder-surface\)/s,
     );
     expect(css).not.toContain('mask-image:');
+    expect(css).not.toMatch(/(?:-webkit-)?mask(?:-[a-z]+)?\s*:/);
+
+    const { container } = render(Sheet, {
+      props: { open: true, title: 'Test', children: textSnippet('Sheet body content') },
+    });
+    const body = container.querySelector('.cinder-sheet__body');
+    expect(body?.classList.contains('cinder-_scroll-fade')).toBe(true);
   });
 
   test('close button has aria-label="Close sheet"', () => {

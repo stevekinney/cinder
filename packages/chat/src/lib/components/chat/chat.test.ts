@@ -308,6 +308,56 @@ describe('Chat — basic render', () => {
   });
 });
 
+describe('Chat — scrollFadeVisible', () => {
+  test('is off by default — no scroll-fade classes on the timeline', () => {
+    const conversation = createConversation({ id: 'conversation-fade-default' });
+    const { container } = render(Chat, {
+      props: { id: 'chat-fade-default', conversation },
+    });
+    const timeline = container.querySelector('.chat-timeline');
+    expect(timeline?.classList.contains('cinder-_scroll-fade')).toBe(false);
+    expect(timeline?.classList.contains('cinder-_scroll-fade-start')).toBe(false);
+  });
+
+  test('adds BOTH block-edge fade classes to the timeline when enabled in default surface mode', () => {
+    const conversation = createConversation({ id: 'conversation-fade-on' });
+    const { container } = render(Chat, {
+      props: { id: 'chat-fade-on', conversation, scrollFadeVisible: true },
+    });
+    const timeline = container.querySelector('.chat-timeline');
+    expect(timeline?.classList.contains('cinder-_scroll-fade')).toBe(true);
+    expect(timeline?.classList.contains('cinder-_scroll-fade-start')).toBe(true);
+  });
+
+  test('still adds the fade classes in surfaceMode="transparent" (CSS scopes the color, not the JS)', () => {
+    // The classes are unconditional on scrollFadeVisible; it's the
+    // --_cinder-scroll-fade-color declaration (chat.css, scoped to
+    // [data-surface-mode='default']) and the JS attachment gate
+    // (timelineScrollFadeAttachment) that stay inert in transparent mode —
+    // see chat.types.ts for the full rationale.
+    const conversation = createConversation({ id: 'conversation-fade-transparent' });
+    const { container } = render(Chat, {
+      props: {
+        id: 'chat-fade-transparent',
+        conversation,
+        scrollFadeVisible: true,
+        surfaceMode: 'transparent',
+      },
+    });
+    const timeline = container.querySelector('.chat-timeline');
+    expect(timeline?.classList.contains('cinder-_scroll-fade')).toBe(true);
+  });
+
+  test('container/chat.svelte scopes --_cinder-scroll-fade-color to default surface mode', async () => {
+    const chatSveltePath = new URL('./container/chat.svelte', import.meta.url);
+    const source = await Bun.file(chatSveltePath).text();
+    expect(source).toMatch(
+      /\.chat-container\[data-surface-mode='default'\] \.chat-timeline\.cinder-_scroll-fade\s*\{\s*--_cinder-scroll-fade-color:\s*var\(--cinder-surface-inset\)/,
+    );
+    expect(source).not.toMatch(/mask-image/);
+  });
+});
+
 describe('Chat — announcer API', () => {
   test('announce() writes polite messages into the registered Chat live region', async () => {
     const target = document.createElement('div');

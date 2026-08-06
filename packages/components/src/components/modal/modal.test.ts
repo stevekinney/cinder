@@ -432,12 +432,19 @@ describe('Modal', () => {
     }
   });
 
-  test('overflow fade uses a surface-colored overlay instead of masking the body', async () => {
+  test('body opts into the shared scroll-fade recipe with a surface-colored overlay, never a mask', async () => {
     const css = await Bun.file(new URL('./modal.css', import.meta.url)).text();
     expect(css).toMatch(
-      /\.cinder-modal__body\[data-cinder-overflows\]::after\s*\{[^}]*background:\s*linear-gradient\(to bottom, transparent, var\(--cinder-surface\)\)/s,
+      /\.cinder-modal__body\s*\{[^}]*--_cinder-scroll-fade-color:\s*var\(--cinder-surface\)/s,
     );
     expect(css).not.toContain('mask-image:');
+    expect(css).not.toMatch(/(?:-webkit-)?mask(?:-[a-z]+)?\s*:/);
+
+    const { container } = render(Modal, {
+      props: { open: true, title: 'Test Modal', children: textSnippet('Modal body content') },
+    });
+    const body = container.querySelector('.cinder-modal__body');
+    expect(body?.classList.contains('cinder-_scroll-fade')).toBe(true);
   });
 
   test('autofocus DOM property on arbitrary child prevents body fallback focus', () => {

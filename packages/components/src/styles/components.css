@@ -206,3 +206,8 @@
  * NOT include it; the documented contract requires importing `cinder/styles`
  * first (enforced by `cinder/styles/guard`). */
 @import './components/_status-surface.css';
+
+/* Shared internal partial — scroll-driven edge-fade recipe (see the file's
+ * own doc comment for the full design rationale). Grouped with the other
+ * shared partials for the same reason as `_status-surface.css` above. */
+@import './components/_scroll-fade.css';

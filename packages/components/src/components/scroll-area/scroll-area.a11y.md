@@ -35,4 +35,21 @@ When ScrollArea accepts snippets or arbitrary children, the caller owns the sema
 - Inspect the accessible name, role, and state in browser accessibility tools.
 - Check forced-colors mode when the component adds borders, focus rings, selected state, or status color.
 
+## scrollFadeVisible (Tier 3 polish)
+
+`scrollFadeVisible` paints an opaque scroll-driven edge fade (never a `mask-`,
+see `_scroll-fade.css`) on the trailing edge of `direction`. It is
+presentation-only and is never the sole signal that content scrolls — the
+native scrollbar this component always renders (never substituted) remains
+the authoritative affordance regardless of this prop. It does not change
+keyboard behavior, focus order, or the accessible name/role established
+above. `@media (forced-colors: active)` disables the fade outright, since
+custom properties are not forced and a themed band would otherwise persist
+on a high-contrast surface. Reviewed against the design rules in
+`_scroll-fade.css`'s doc comment (never mask, never fade a sticky/focusable/
+text-entry edge); ScrollArea's own content is caller-owned, so those
+per-content risks (a focused item at the edge, a text-entry field) are the
+caller's to avoid, same as any other layout decision about what to place
+inside ScrollArea.
+
 Related components: `surface`.

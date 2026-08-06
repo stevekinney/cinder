@@ -23,6 +23,7 @@
   import { SvelteSet } from 'svelte/reactivity';
 
   import { classNames } from '../../utilities/class-names.ts';
+  import { overflowShadow } from '../../utilities/attachments.ts';
   import { useAnnouncer } from '../../utilities/use-announcer.svelte.ts';
   import type { TransferListItem, TransferListProps } from './transfer-list.types.ts';
 
@@ -333,6 +334,7 @@
         onblur={(event) => handleListBlur(event, 'left')}
         onclick={(event) => handleListClick(event, 'left')}
         onkeydown={(event) => handleListKeydown(event, 'left')}
+        {@attach overflowShadow('block')}
       >
         {#each leftItems as item, index (item.id)}
           <li
@@ -407,6 +409,7 @@
         onblur={(event) => handleListBlur(event, 'right')}
         onclick={(event) => handleListClick(event, 'right')}
         onkeydown={(event) => handleListKeydown(event, 'right')}
+        {@attach overflowShadow('block')}
       >
         {#each rightItems as item, index (item.id)}
           <li

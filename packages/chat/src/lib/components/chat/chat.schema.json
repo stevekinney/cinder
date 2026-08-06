@@ -26,6 +26,10 @@
       "enum": ["default", "transparent"],
       "description": "Controls the background of the chat surface. Use `'transparent'` to inherit the host element's background when embedding chat inside a card or panel. Default `'default'`."
     },
+    "scrollFadeVisible": {
+      "type": "boolean",
+      "description": "Show a scroll-driven edge fade on the top and bottom of the message\ntimeline as it overflows. Opt-in and presentation-only — never the sole\nsignal that more messages exist; the jump-to-latest button and unread\ncount remain the authoritative affordances. Only visible when\n`surfaceMode` is `'default'`: with `surfaceMode=\"transparent\"` the\ntimeline paints no background of its own, so there is no color the fade\ncould correctly fade toward, and it stays inert rather than painting an\nincorrect opaque band. Default `false`."
+    },
     "density": {
       "enum": ["comfortable", "compact"],
       "description": "Controls spacing density of the message timeline.\n- `'comfortable'` (default): standard padding and gap.\n- `'compact'`: tighter spacing for data-dense contexts (e.g., embedded panels).\n  Action buttons keep `min-height: var(--cinder-touch-target-min)` regardless."

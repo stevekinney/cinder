@@ -29,6 +29,7 @@
 <script lang="ts">
   import { tick, untrack } from 'svelte';
   import { classNames } from '../../../utilities/class-names.ts';
+  import { overflowFadeEdges } from '../../../utilities/overflow-fade-edges.ts';
   import {
     getMessages,
     pairToolCallsWithResults,
@@ -91,6 +92,7 @@
     onNewMessageIndicatorVisibleBindingChange,
     class: className,
     surfaceMode = 'default',
+    scrollFadeVisible = false,
     density = 'comfortable',
     variant = 'bubble',
     bottomThreshold = DEFAULT_SCROLL_CONFIGURATION.bottomThreshold,
@@ -1126,6 +1128,16 @@
       node.removeEventListener('scrollend', handleScrollEnd);
     };
   };
+  // Independent of the scroll/history-anchor attachments above — this owns
+  // no chat scroll behavior, it only reads position to drive the shared
+  // cinder scroll-fade recipe's fallback attributes. Only active when
+  // scrollFadeVisible is set AND surfaceMode is 'default' (see chat.types.ts
+  // for why 'transparent' mode stays inert). $derived so its identity is
+  // stable across unrelated re-renders (Svelte tears down and re-runs an
+  // attachment whenever its reference changes).
+  const timelineScrollFadeAttachment = $derived(
+    scrollFadeVisible && surfaceMode === 'default' ? overflowFadeEdges() : noopAttachment,
+  );
   // ==========================================================================
   // Actions
   // ==========================================================================
@@ -2120,7 +2132,10 @@
     <div
       bind:this={viewport}
       id={timelineId}
-      class="chat-timeline"
+      class={classNames(
+        'chat-timeline',
+        scrollFadeVisible && 'cinder-_scroll-fade cinder-_scroll-fade-start',
+      )}
       role="log"
       aria-label="Messages"
       aria-describedby={statusId}
@@ -2135,6 +2150,7 @@
       {@attach scrollAttachment}
       {@attach historyAnchorScrollAttachment}
       {@attach viewportAttach}
+      {@attach timelineScrollFadeAttachment}
     >
       {#if showHistoryTrigger}
         <ChatHistoryTrigger
@@ -2366,6 +2382,16 @@
    * contexts using surfaceMode="transparent" inherit their host's background. */
   .chat-container[data-surface-mode='default'] .chat-timeline {
     background: var(--cinder-surface-inset);
+  }
+
+  /* Scroll-fade color must match the background set immediately above — the
+   * fade is an opaque overlay, never a mask (see @lostgradient/cinder's
+   * _scroll-fade.css). Scoped to the same [data-surface-mode='default']
+   * selector so surfaceMode="transparent" (no owned background above) never
+   * gets a var with no correct value to resolve to; the JS attachment is
+   * also gated off entirely in that mode (see timelineScrollFadeAttachment). */
+  .chat-container[data-surface-mode='default'] .chat-timeline.cinder-_scroll-fade {
+    --_cinder-scroll-fade-color: var(--cinder-surface-inset);
   }
 
   /* The timeline is a scrollable region; an outset ring is clipped by its own

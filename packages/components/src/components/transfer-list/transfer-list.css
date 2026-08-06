@@ -35,6 +35,18 @@
     border: 1px solid var(--cinder-border-muted);
     border-radius: var(--cinder-radius-md);
     background: var(--cinder-surface);
+    /* Vertical analog of data-grid's `--_cinder-data-grid-overflow-shadow`
+     * inset-shadow affordance (data-grid.css) — this list scrolls block-axis,
+     * not inline, so the shadow is on the top/bottom edges instead of
+     * left/right. Driven by `overflowShadow('block')`
+     * (utilities/attachments.ts). */
+    box-shadow: var(--_cinder-transfer-list-scroll-shadow, none);
+  }
+
+  .cinder-transfer-list__list[data-cinder-overflows-block] {
+    --_cinder-transfer-list-scroll-shadow:
+      inset 0 1rem 1rem -1rem color-mix(in srgb, var(--cinder-text) 28%, transparent),
+      inset 0 -1rem 1rem -1rem color-mix(in srgb, var(--cinder-text) 28%, transparent);
   }
 
   .cinder-transfer-list__list:focus-visible {
