@@ -58,8 +58,12 @@
    * invisible while the panel was always portaled to `document.body`, and
    * surfaced the moment the portal became visibility-gated. Anchoring by
    * reference keeps the list's children to list items only.
+   *
+   * Both empty states are real and mean different things: `undefined` is a key
+   * that was never populated, and `null` is what `bind:this` writes back when
+   * its element unmounts (verified against this Svelte version, not assumed).
    */
-  const triggerElements = $state<Record<string, HTMLElement | undefined>>({});
+  const triggerElements = $state<Record<string, HTMLElement | null | undefined>>({});
 
   // so it falls back to `label` rather than producing a nameless `role="list"`.
   const accessibleName = $derived(
