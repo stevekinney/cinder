@@ -92,7 +92,7 @@ export const FEATURE_PROBES: FeatureProbe[] = [
   },
   {
     feature: 'scroll-driven animations',
-    tier: 2,
+    tier: 3,
     pattern: /animation-timeline\s*:\s*scroll\(/,
     globs: STYLE_GLOBS,
   },
