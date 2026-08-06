@@ -30,8 +30,15 @@
     placement = 'top',
     describe = true,
     class: className,
+    triggerRef = null,
     children,
   }: TooltipProps = $props();
+
+  /**
+   * Anchor-by-reference mode: the consumer owns the trigger's placement, so the
+   * Tooltip renders only its panel. See {@link TooltipProps.triggerRef}.
+   */
+  const isDetached = $derived(triggerRef != null);
 
   const tooltipId = $props.id();
   const FOCUSABLE_SELECTOR = [
@@ -156,6 +163,30 @@
     };
   }
 
+  /**
+   * Detached mode's equivalent of `attachWrapper`: bind the same show/hide and
+   * `aria-describedby` behavior to an element this component does not render.
+   * Keyed on the element identity so a re-render with a new ref rebinds.
+   */
+  $effect(() => {
+    const trigger = triggerRef;
+    if (trigger == null) return;
+    anchorElement = trigger;
+    const teardownAriaDescribedBy = describe ? syncAriaDescribedBy(trigger) : undefined;
+    trigger.addEventListener('mouseenter', handleMouseEnter);
+    trigger.addEventListener('mouseleave', handleMouseLeave);
+    trigger.addEventListener('focusin', handleFocusIn);
+    trigger.addEventListener('focusout', handleFocusOut);
+    return () => {
+      teardownAriaDescribedBy?.();
+      trigger.removeEventListener('mouseenter', handleMouseEnter);
+      trigger.removeEventListener('mouseleave', handleMouseLeave);
+      trigger.removeEventListener('focusin', handleFocusIn);
+      trigger.removeEventListener('focusout', handleFocusOut);
+      if (anchorElement === trigger) anchorElement = null;
+    };
+  });
+
   const attachWrapper: Attachment<HTMLSpanElement> = (element) => {
     wrapperElement = element;
     const focusable = resolveAnchorElement(element);
@@ -170,6 +201,30 @@
   };
 
   const tooltipPortalAttachment = createPortalAttachment({
+    /*
+     * Gate the portal on visibility, so a Tooltip that is not showing leaves
+     * nothing behind in `document.body`.
+     *
+     * Without this the panel was portaled on mount and stayed there for the
+     * lifetime of the component — one detached `[role="tooltip"]` per Tooltip
+     * instance, including during SSR, which contradicts OVERLAY-POLICY.md
+     * ("All overlays render into the portal after hydration. SSR markup is
+     * empty."). Every sibling overlay already gates: Popover and HoverCard via
+     * `{#if mounted && open && anchorElement}`, Portal/SpeedDial/NavigationBar/
+     * DropdownMenu via an explicit `disabled` getter.
+     *
+     * `disabled` rather than wrapping the node in `{#if visible}`: the disabled
+     * path calls `restoreInline()`, which returns the panel to its original
+     * position inside the wrapper instead of unmounting it — so the
+     * `aria-describedby` target keeps resolving while the tooltip is hidden.
+     * Conditional rendering would break that association.
+     *
+     * Gated on `visible`, NOT on `isTooltipExposed`: the latter also requires
+     * `positionReady`, and position is computed against the portaled node — so
+     * gating on it would deadlock a tooltip that can never be positioned
+     * because it was never portaled.
+     */
+    disabled: () => !visible,
     target: () => document.body,
     source: () => anchorElement ?? wrapperElement ?? null,
     inheritAttributes: true,
@@ -199,18 +254,14 @@
   span below and the consumer's trigger child. role="presentation" keeps this
   wrapper out of the accessibility tree.
 -->
-<span
-  class={classNames('cinder-tooltip-wrapper', className)}
-  role="presentation"
-  onmouseenter={handleMouseEnter}
-  onmouseleave={handleMouseLeave}
-  onfocusin={handleFocusIn}
-  onfocusout={handleFocusOut}
-  data-cinder-placement={visible ? anchoredOverlay.resolvedPlacement : placement}
-  {@attach attachWrapper}
->
-  {@render children()}
-
+<!--
+  Two forms. By default the Tooltip renders a presentational wrapper around its
+  trigger and anchors to it. With `triggerRef` the consumer owns the trigger, so
+  only the panel renders — which is how a Tooltip can be used somewhere its
+  panel must not appear in the trigger's own subtree (a `role="listitem"`, a
+  table cell). See `TooltipProps.triggerRef`.
+-->
+{#if isDetached}
   <span
     id={tooltipId}
     bind:this={tooltipElement}
@@ -224,4 +275,30 @@
   >
     {text}
   </span>
-</span>
+{:else}
+  <span
+    class={classNames('cinder-tooltip-wrapper', className)}
+    role="presentation"
+    onmouseenter={handleMouseEnter}
+    onmouseleave={handleMouseLeave}
+    onfocusin={handleFocusIn}
+    onfocusout={handleFocusOut}
+    data-cinder-placement={visible ? anchoredOverlay.resolvedPlacement : placement}
+    {@attach attachWrapper}
+  >
+    {@render children?.()}
+    <span
+      id={tooltipId}
+      bind:this={tooltipElement}
+      role="tooltip"
+      class="cinder-tooltip"
+      aria-hidden={!isTooltipExposed}
+      data-cinder-placement={visible ? anchoredOverlay.resolvedPlacement : placement}
+      data-cinder-position-ready={anchoredOverlay.positionReady}
+      style={anchoredOverlay.positionStyle}
+      {@attach tooltipPortalAttachment}
+    >
+      {text}
+    </span>
+  </span>
+{/if}

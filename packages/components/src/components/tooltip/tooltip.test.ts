@@ -167,18 +167,105 @@ describe('Tooltip', () => {
     expect(container.textContent).toContain('Trigger');
   });
 
-  test('tooltip element is portaled to document.body and hidden initially', () => {
+  test('a hidden tooltip stays inline and leaves nothing in document.body', () => {
+    // The portal is gated on visibility. Before this, every Tooltip portaled on
+    // mount and stayed there for its whole lifetime — one detached
+    // `[role="tooltip"]` per instance sitting in `document.body`, including
+    // during SSR, against OVERLAY-POLICY.md's "SSR markup is empty".
+    //
+    // Hidden means INLINE, not unmounted: the portal's disabled path restores
+    // the node to its original position, so the `aria-describedby` target keeps
+    // resolving while the tooltip is not showing.
     const { container } = render(Tooltip, {
       props: {
         text: 'Tooltip content',
         children: triggerSnippet,
       },
     });
-    const tooltip = queryTooltip();
+    const tooltip = container.querySelector('[role="tooltip"]');
     expect(tooltip).not.toBeNull();
-    expect(container.querySelector('[role="tooltip"]')).toBeNull();
     expect(tooltip?.getAttribute('aria-hidden')).toBe('true');
-    expect(tooltip?.parentElement).toBe(document.body);
+    expect(tooltip?.parentElement).not.toBe(document.body);
+    expect([...document.body.children].some((child) => child.matches('[role="tooltip"]'))).toBe(
+      false,
+    );
+  });
+
+  test('a shown tooltip portals to document.body', async () => {
+    const { container } = render(Tooltip, {
+      props: {
+        text: 'Tooltip content',
+        children: triggerSnippet,
+      },
+    });
+    const wrapper = container.querySelector('.cinder-tooltip-wrapper') as HTMLElement;
+
+    await triggerDelayedTooltipShow(wrapper);
+    await waitFor(() => {
+      expect(queryTooltip()?.parentElement).toBe(document.body);
+    });
+  });
+
+  test('triggerRef renders only the panel, with no wrapper around a trigger', () => {
+    // Anchored-by-reference mode exists so a Tooltip can be used where the
+    // surrounding markup constrains its children — AvatarGroup wraps each avatar
+    // in a `role="listitem"`, and a wrapping Tooltip put its panel inside one.
+    const trigger = document.createElement('button');
+    trigger.type = 'button';
+    document.body.append(trigger);
+
+    const { container } = render(Tooltip, {
+      props: { text: 'Tooltip content', triggerRef: trigger },
+    });
+
+    expect(container.querySelector('.cinder-tooltip-wrapper')).toBeNull();
+    const tooltip = container.querySelector('[role="tooltip"]');
+    expect(tooltip).not.toBeNull();
+    expect(tooltip?.textContent).toContain('Tooltip content');
+
+    trigger.remove();
+  });
+
+  test('triggerRef wires aria-describedby to the external trigger', () => {
+    const trigger = document.createElement('button');
+    trigger.type = 'button';
+    document.body.append(trigger);
+
+    const { container } = render(Tooltip, {
+      props: { text: 'Tooltip content', triggerRef: trigger },
+    });
+
+    const tooltip = container.querySelector('[role="tooltip"]');
+    expect(tooltip).not.toBeNull();
+    expect(trigger.getAttribute('aria-describedby')).toBe(tooltip?.getAttribute('id') ?? null);
+
+    trigger.remove();
+  });
+
+  test('triggerRef shows the tooltip from the external trigger and hides again', async () => {
+    const trigger = document.createElement('button');
+    trigger.type = 'button';
+    document.body.append(trigger);
+
+    const { container } = render(Tooltip, {
+      props: { text: 'Tooltip content', triggerRef: trigger },
+    });
+    // Resting appearance, not just the transition: hidden before any interaction,
+    // and living in the consumer's tree rather than `document.body`.
+    expect(container.querySelector('[role="tooltip"]')?.getAttribute('aria-hidden')).toBe('true');
+
+    // The show delay is the same 100ms as the wrapping mode, so drive it the
+    // same way — the listeners are what is new here, not the timing.
+    await triggerDelayedTooltipShow(trigger);
+    await waitFor(() => {
+      expect(queryTooltip()?.parentElement).toBe(document.body);
+    });
+
+    await fireEvent.mouseLeave(trigger);
+    await tick();
+    expect(container.querySelector('[role="tooltip"]')?.getAttribute('aria-hidden')).toBe('true');
+
+    trigger.remove();
   });
 
   test('focusable trigger inside wrapper has aria-describedby that matches the tooltip id', () => {
@@ -494,8 +581,11 @@ describe('Tooltip', () => {
     expect(queryTooltip()?.getAttribute('aria-hidden')).toBe('true');
   });
 
-  test('copies inherited dir and theme to the portaled tooltip', () => {
-    render(Tooltip, {
+  test('copies inherited dir and theme to the portaled tooltip', async () => {
+    // Attribute inheritance is a property of the PORTALED node, so the tooltip
+    // has to be shown before it can be asserted — the portal is gated on
+    // visibility now.
+    const { container } = render(Tooltip, {
       props: {
         text: 'Tooltip content',
         children: createRawSnippet(() => ({
@@ -505,11 +595,15 @@ describe('Tooltip', () => {
         })),
       },
     });
+    const wrapper = container.querySelector('.cinder-tooltip-wrapper') as HTMLElement;
 
-    const tooltip = queryTooltip();
-    expect(tooltip?.getAttribute('dir')).toBe('rtl');
-    expect(tooltip?.getAttribute('data-theme')).toBe('dark');
-    expect(tooltip?.getAttribute('data-cinder-theme')).toBe('dark');
+    await triggerDelayedTooltipShow(wrapper);
+    await waitFor(() => {
+      const tooltip = queryTooltip();
+      expect(tooltip?.getAttribute('dir')).toBe('rtl');
+      expect(tooltip?.getAttribute('data-theme')).toBe('dark');
+      expect(tooltip?.getAttribute('data-cinder-theme')).toBe('dark');
+    });
   });
 
   test('computePosition failure keeps tooltip hidden until the next successful show', async () => {
