@@ -123,7 +123,7 @@ describe('scoped theme tokens', () => {
         'color-mix(in oklch, var(--cinder-surface), var(--cinder-accent) 6%)',
       '--cinder-text': 'oklch(20% 0.018 245)',
       '--cinder-text-muted': 'oklch(32% 0.014 245)',
-      '--cinder-border': 'oklch(86.8% 0.005 255)',
+      '--cinder-border': 'oklch(83% 0.005 255)',
       '--cinder-border-strong': 'oklch(72% 0.006 255)',
       '--cinder-accent': 'oklch(50% 0.22 270)',
       '--cinder-accent-contrast': 'oklch(100% 0 0)',

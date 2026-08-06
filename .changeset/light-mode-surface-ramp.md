@@ -42,13 +42,18 @@ Also in this release:
   which fixes a pre-existing bug where `--cinder-color-warning-bg` and
   `--cinder-color-danger-bg` were authored outside the sRGB gamut and had been
   silently clamping to a desaturated grey.
-- `--cinder-border` 0.79 → 0.868 and `--cinder-border-muted` 0.88 → 0.918. Against
-  a white canvas the same hairline reads with more contrast than it did against a
-  grey one, so borders carry more of the separation while needing less weight.
-- CodeBlock takes the surface radius and paints one surface for the whole block.
-  Its header previously filled `--cinder-surface-inset` while the body filled
+- `--cinder-border` 0.79 → 0.83 and `--cinder-border-muted` 0.88 → 0.90, with chroma
+  dropping alongside the surfaces so a hairline reads as a neutral line rather than
+  a faint blue one. `--cinder-border` deliberately stays dark enough to hold the
+  secondary Button's outline against its white fill; on a white-anchored ramp that
+  border is the only thing making the control read as a control.
+- CodeBlock takes the surface radius and its header no longer paints a fill of its
+  own. The header previously filled `--cinder-surface-inset` while the body filled
   `--cinder-surface-raised`, stacking two plates inside one rounded, clipped
-  container.
+  container. The code surface itself is unchanged: it stays pure white in light
+  mode, because Shiki's `github-light` palette is fitted to `#ffffff` and its
+  keyword red measures only 4.58:1 there against a 4.5:1 AA floor, so any tint
+  behind highlighted code fails WCAG.
 - `--cinder-surface-raised` is authored `oklch(100% 0 255)` rather than
   `oklch(100% 0.006 245)`, which was out of gamut and painted as nothing.
 - `SegmentedControl`'s option radius derives from its container's own token

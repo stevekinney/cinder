@@ -183,24 +183,29 @@ describe('CodeBlock — static structure', () => {
     const css = await Bun.file(new URL('./code-block.css', import.meta.url)).text();
     const lightDarkCount = css.match(/\blight-dark\(/g)?.length ?? 0;
 
-    // The contract this test protects is SINGLE SOURCE: exactly one declaration
-    // decides the code surface, and every painted layer (block, viewport, plain
-    // <pre>, Shiki's <pre>) references it, so they can never drift apart.
+    // Two contracts here, and the second is an accessibility one.
     //
-    // It used to assert that declaration was a `light-dark()` fork, because the
-    // light arm had to opt OUT of the ramp — light `surface-inset` was a heavy
-    // 0.885 plate, so light mode painted `surface-raised` instead. With the light
-    // ramp anchored at white, `surface-inset` is a gentle 0.960 field in light and
-    // a deep field in dark, which is the same semantic in both arms. The fork is
-    // now unnecessary, so the assertion is inverted: there should be NO light-dark
-    // fork here. Same contract, one less special case.
-    expect(css).toContain('--_cinder-code-block-code-surface: var(--cinder-surface-inset);');
+    // SINGLE SOURCE: exactly one declaration decides the code surface, and every
+    // painted layer (block, viewport, plain <pre>, Shiki's <pre>) references it, so
+    // they cannot drift apart.
+    //
+    // THE FORK IS LOAD-BEARING: that declaration must stay a `light-dark()` fork
+    // whose LIGHT arm is `--cinder-surface-raised` (pure white). Shiki's
+    // `github-light` palette is fitted to #ffffff with almost no margin — `#d73a49`
+    // measures 4.58:1 on white against a 4.5:1 AA floor — so any darkening of the
+    // light surface fails WCAG. Collapsing this to a single `--cinder-surface-inset`
+    // token reads as a tidy simplification and silently drops the red to 4.07:1 and
+    // the diff green to 4.11:1, which the axe sweep then catches on CodeBlock,
+    // ApprovalCard, and everything else embedding highlighted code. It has been
+    // tried; this assertion exists so the next attempt fails here instead of in CI.
+    expect(css).toContain('--_cinder-code-block-code-surface: light-dark(');
+    expect(css).toContain('var(--cinder-surface-raised),');
     expect(css).toContain(
       '--cinder-code-block-background: var(--_cinder-code-block-code-surface);',
     );
     expect(css).toContain('background: var(--cinder-code-block-background);');
     expect(css).toContain('background: var(--cinder-code-block-background) !important;');
-    expect(lightDarkCount).toBe(0);
+    expect(lightDarkCount).toBe(1);
   });
 
   test('stable viewport carries inset focus ring (regression #398)', async () => {

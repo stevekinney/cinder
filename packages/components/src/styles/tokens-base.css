@@ -328,25 +328,29 @@
   --cinder-fill-disabled: light-dark(oklch(86% 0.006 255), oklch(30% 0.015 245));
 
   /* Borders. Anchoring the surfaces at white moves the separation budget from FILL
-     to BORDER, so these matter more than they did — but they also need less WEIGHT,
-     because a hairline no longer has to out-shout a 0.885 plate behind it. Against
-     the new 0.984 canvas the same line reads with more contrast than it did against
-     0.921, so `--cinder-border` and `--cinder-border-muted` both lighten and still
-     land clearer than before: 0.868 and 0.918.
+     to BORDER, so these carry MORE of the work than they used to, not less. Only the
+     chroma drops (0.012–0.014 → 0.004–0.006) so a hairline reads as a neutral line
+     rather than a faint blue one.
+
+     `--cinder-border` stays at 0.83 and must not be lightened past ~0.85. It is the
+     border of the secondary Button, whose fill is `--cinder-surface-raised` (pure
+     white), so it is the ONLY thing making that control read as a control. An
+     earlier pass of this retune took it to 0.868 on the reasoning that a white
+     canvas needs less border weight; that is true for a DIVIDER and false for a
+     control outline, and it put the secondary button back under the ΔL 0.15 floor
+     that `theme-parity-light-ladder.playwright.ts` exists to hold (0.868 on a white
+     fill is ΔL 0.132 — a barely-there hairline). Dividers that genuinely want less
+     weight should use `--cinder-border-muted`.
 
      `--cinder-border-strong` deliberately does NOT move. It is the token carrying
-     control outlines, which are the ones answerable to WCAG 1.4.11 (3:1 non-text),
-     and at 0.72 against white it resolves to roughly 2.5:1 — already short of the
-     floor. That gap predates this change and lightening the token would widen it.
-     Fixing it properly means taking control outlines to about L 0.68 and re-checking
-     every control that pairs a border with a fill, which is its own change with its
-     own visual review, not a rider on a surface retune. Left at 0.72, flagged, not
-     quietly made worse.
-
-     Chroma drops with the surfaces (0.012–0.014 → 0.004–0.006) so borders read as
-     neutral hairlines rather than faint blue ones. */
-  --cinder-border: light-dark(oklch(86.8% 0.005 255), oklch(40% 0.05 245));
-  --cinder-border-muted: light-dark(oklch(91.8% 0.004 255), oklch(30% 0.04 245));
+     control outlines answerable to WCAG 1.4.11 (3:1 non-text), and at 0.72 against
+     white it resolves to roughly 2.5:1 — already short of the floor. That gap
+     predates this change and lightening the token would widen it. Fixing it properly
+     means taking control outlines to about L 0.68 and re-checking every control that
+     pairs a border with a fill, which is its own change with its own visual review,
+     not a rider on a surface retune. Left at 0.72, flagged, not quietly made worse. */
+  --cinder-border: light-dark(oklch(83% 0.005 255), oklch(40% 0.05 245));
+  --cinder-border-muted: light-dark(oklch(90% 0.004 255), oklch(30% 0.04 245));
   --cinder-border-strong: light-dark(oklch(72% 0.006 255), oklch(45% 0.06 245));
 
   /* Toggle track off-state defaults — encode dark-arm contrast improvement here
@@ -739,8 +743,8 @@
   --cinder-text-subtle: oklch(42% 0.012 245);
   --cinder-text-disabled: oklch(52% 0.01 245);
   --cinder-fill-disabled: oklch(86% 0.006 255);
-  --cinder-border: oklch(86.8% 0.005 255);
-  --cinder-border-muted: oklch(91.8% 0.004 255);
+  --cinder-border: oklch(83% 0.005 255);
+  --cinder-border-muted: oklch(90% 0.004 255);
   --cinder-border-strong: oklch(72% 0.006 255);
   --cinder-toggle-track-off-resting: var(--cinder-border-muted);
   --cinder-toggle-track-off-hover-resting: var(--cinder-border);

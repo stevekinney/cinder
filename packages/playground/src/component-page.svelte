@@ -2854,18 +2854,17 @@
     line-height: var(--cinder-leading-tight);
     margin: var(--cinder-space-5) 0 var(--cinder-space-2);
   }
-  /* Code samples take the sunken surface, matching the CodeBlock component. These
-   * used to fill with `--cinder-surface-raised` — pure white — which worked only
-   * because the page behind them was a grey 0.921 plate. With the canvas anchored
-   * at white a white-on-white sample has no field at all and leans entirely on its
-   * border. `surface-inset` gives it the near-white code field instead, and makes a
-   * README sample and a rendered CodeBlock look like the same thing. */
+  /* Matches the CodeBlock component's light surface, and for the same reason: these
+   * blocks carry Shiki-highlighted markup, and `github-light` is fitted to #ffffff
+   * with almost no margin (its keyword red is 4.58:1 on white against a 4.5:1 AA
+   * floor). A tinted field here fails WCAG exactly as it does in the component, so
+   * the definition comes from the border rather than the fill. */
   .readme-content :global(pre) {
     padding: var(--cinder-space-4);
     overflow-x: auto;
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-lg);
-    background: var(--cinder-surface-inset);
+    background: var(--cinder-surface-raised);
   }
   /* A CodeBlock renders its own <pre> INSIDE its own bordered, rounded, clipped
    * container, so the prose rule above was painting a second bordered rounded box
