@@ -230,7 +230,7 @@ describe('validate-release-workflow changeset guards', () => {
     ]);
   });
 
-  test('requires Markdown to publish before Cinder before cinder-mcp before Editor before Chat', () => {
+  test('requires Markdown to publish before Cinder before Editor before Chat before cinder-mcp', () => {
     const workflow = (commands: string[]) => ({
       jobs: { release: { steps: commands.map((run) => ({ run })) } },
     });
@@ -240,23 +240,30 @@ describe('validate-release-workflow changeset guards', () => {
     const editor = 'bun run --filter=@lostgradient/editor publish:release -- --skip-validation';
     const chat = 'bun run --filter=@lostgradient/chat publish:release -- --skip-validation';
 
-    expect(publicPackagePublishOrderIsValid(workflow([markdown, cinder, mcp, editor, chat]))).toBe(
+    expect(publicPackagePublishOrderIsValid(workflow([markdown, cinder, editor, chat, mcp]))).toBe(
       true,
     );
-    expect(publicPackagePublishOrderIsValid(workflow([chat, editor, mcp, cinder, markdown]))).toBe(
+    expect(publicPackagePublishOrderIsValid(workflow([mcp, chat, editor, cinder, markdown]))).toBe(
       false,
     );
-    expect(publicPackagePublishOrderIsValid(workflow([markdown, chat, cinder, mcp, editor]))).toBe(
+    expect(publicPackagePublishOrderIsValid(workflow([markdown, chat, cinder, editor, mcp]))).toBe(
       false,
     );
-    expect(publicPackagePublishOrderIsValid(workflow([cinder, markdown, mcp, editor, chat]))).toBe(
+    expect(publicPackagePublishOrderIsValid(workflow([cinder, markdown, editor, chat, mcp]))).toBe(
       false,
     );
-    expect(publicPackagePublishOrderIsValid(workflow([markdown, cinder, mcp, chat, editor]))).toBe(
+    expect(publicPackagePublishOrderIsValid(workflow([markdown, cinder, chat, editor, mcp]))).toBe(
       false,
     );
-    // cinder-mcp published before cinder must fail even when every other pair is in order.
+    // cinder-mcp is a leaf and publishes last, but it still consumes cinder's
+    // `./knowledge` export — publishing it before cinder must fail even when
+    // every other pair is in order.
     expect(publicPackagePublishOrderIsValid(workflow([markdown, mcp, cinder, editor, chat]))).toBe(
+      false,
+    );
+    // The old DAG-position ordering (mcp third) is now explicitly rejected, so a
+    // revert of #1207's reorder cannot land silently.
+    expect(publicPackagePublishOrderIsValid(workflow([markdown, cinder, mcp, editor, chat]))).toBe(
       false,
     );
   });
@@ -314,13 +321,13 @@ describe('validate-release-workflow changeset guards', () => {
 
     expect(
       rootPublishScriptUsesStagedPackers(
-        manifest(`${markdown} && ${cinder} && ${mcp} && ${editor} && ${chat}`),
+        manifest(`${markdown} && ${cinder} && ${editor} && ${chat} && ${mcp}`),
       ),
     ).toBe(true);
     expect(rootPublishScriptUsesStagedPackers(manifest('changeset publish'))).toBe(false);
     expect(
       rootPublishScriptUsesStagedPackers(
-        manifest(`${chat} && ${editor} && ${mcp} && ${cinder} && ${markdown}`),
+        manifest(`${mcp} && ${chat} && ${editor} && ${cinder} && ${markdown}`),
       ),
     ).toBe(false);
     expect(
@@ -342,7 +349,7 @@ describe('validate-release-workflow changeset guards', () => {
       rootValidationSeparatesSourceAndConsumerGates(
         manifest(
           'turbo run validate --concurrency=1',
-          `${markdown} && ${cinder} && ${mcp} && ${editor} && ${chat}`,
+          `${markdown} && ${cinder} && ${editor} && ${chat} && ${mcp}`,
         ),
       ),
     ).toBe(true);
@@ -350,7 +357,7 @@ describe('validate-release-workflow changeset guards', () => {
       rootValidationSeparatesSourceAndConsumerGates(
         manifest(
           `turbo run validate --concurrency=1 && ${chat}`,
-          `${markdown} && ${cinder} && ${mcp} && ${editor} && ${chat}`,
+          `${markdown} && ${cinder} && ${editor} && ${chat} && ${mcp}`,
         ),
       ),
     ).toBe(false);
@@ -363,7 +370,7 @@ describe('validate-release-workflow changeset guards', () => {
       rootValidationSeparatesSourceAndConsumerGates(
         manifest(
           `bun run --filter='*' validate && ${chat}`,
-          `${markdown} && ${cinder} && ${mcp} && ${chat}`,
+          `${markdown} && ${cinder} && ${chat} && ${mcp}`,
         ),
       ),
     ).toBe(false);
@@ -373,7 +380,7 @@ describe('validate-release-workflow changeset guards', () => {
     // (the playground's dev-server-backed validate step in particular).
     expect(
       rootValidationSeparatesSourceAndConsumerGates(
-        manifest('turbo run validate', `${markdown} && ${cinder} && ${mcp} && ${chat}`),
+        manifest('turbo run validate', `${markdown} && ${cinder} && ${chat} && ${mcp}`),
       ),
     ).toBe(false);
   });

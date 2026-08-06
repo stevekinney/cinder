@@ -68,19 +68,24 @@ const deployPlaygroundWorkflowPath = join(
 const changesetsConfigurationPath = join(workspaceRoot, '.changeset/config.json');
 const changesetDirectoryPath = join(workspaceRoot, '.changeset');
 /**
- * Every published package, in required publish DAG order: markdown has no
- * internal peer contract with the other four and publishes first; cinder
- * next; cinder-mcp depends on cinder's `./knowledge` export and publishes
- * third; editor peers on both cinder and markdown and publishes fourth; chat
- * peers on cinder's minor and publishes last (see
+ * Every published package, in required publish order: markdown has no internal
+ * peer contract with the other four and publishes first; cinder next; editor
+ * peers on both cinder and markdown; chat peers on cinder's minor (see
  * docs/decisions/package-boundaries.md).
+ *
+ * cinder-mcp publishes LAST rather than in strict DAG position. It consumes
+ * cinder's `./knowledge` export, so it must follow cinder — but nothing peers on
+ * or depends on cinder-mcp, so it is a leaf and any position after cinder is
+ * valid. Last is the safe one: publishing a leaf third meant a single auth
+ * failure on it aborted the whole step sequence and took editor and chat down
+ * with it (#1207).
  */
 const PUBLIC_PACKAGE_NAMES = [
   '@lostgradient/markdown',
   '@lostgradient/cinder',
-  '@lostgradient/cinder-mcp',
   '@lostgradient/editor',
   '@lostgradient/chat',
+  '@lostgradient/cinder-mcp',
 ] as const;
 const REQUIRED_RELEASE_SCRIPTS = [
   'validate:consumer',
@@ -615,10 +620,10 @@ function runValidation(): void {
   pass('Every public package has validation, weight, and publish gates');
   if (!publicPackagePublishOrderIsValid(parsedWorkflow)) {
     fail(
-      'release.yaml must publish markdown, then cinder, then chat (the peer/vendoring DAG order).',
+      'release.yaml must publish markdown, then cinder, then editor, then chat, then cinder-mcp (the peer/vendoring order, with the cinder-mcp leaf last).',
     );
   }
-  pass('Markdown, Cinder, and Chat publish in DAG order');
+  pass('Public packages publish in the required order, cinder-mcp last');
 
   let rootManifest: unknown;
   try {

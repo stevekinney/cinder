@@ -257,16 +257,6 @@ jobs:
         env:
           NPM_CONFIG_PROVENANCE: 'false'
 
-      # NOTE: the FIRST publish of @lostgradient/cinder-mcp requires the same
-      # one-time manual bootstrap as Markdown above (npm Trusted Publishing
-      # cannot mint a brand-new package name) — see the "First publication"
-      # section of the standalone-MCP-package plan / docs/decisions/package-boundaries.md.
-      - name: Publish validated cinder-mcp package artifact to npm
-        if: github.event_name == 'push' && steps.changesets.outputs.hasChangesets == 'false'
-        run: bun run --filter=@lostgradient/cinder-mcp publish:release -- --skip-validation
-        env:
-          NPM_CONFIG_PROVENANCE: 'false'
-
       - name: Publish validated Editor package artifact to npm
         if: github.event_name == 'push' && steps.changesets.outputs.hasChangesets == 'false'
         run: bun run --filter=@lostgradient/editor publish:release -- --skip-validation
@@ -276,6 +266,24 @@ jobs:
       - name: Publish validated Chat package artifact to npm
         if: github.event_name == 'push' && steps.changesets.outputs.hasChangesets == 'false'
         run: bun run --filter=@lostgradient/chat publish:release -- --skip-validation
+        env:
+          NPM_CONFIG_PROVENANCE: 'false'
+
+      # cinder-mcp publishes LAST, deliberately out of the peer-DAG order used
+      # above. Nothing peers on or depends on it — it is a leaf that consumes
+      # cinder's `./knowledge` export — so its position is free, and putting a
+      # leaf third meant a single auth failure on it took the whole publish path
+      # down with it. On 2026-08-05 that is exactly what happened: cinder-mcp
+      # 0.1.0 failed with ENEEDAUTH (no Trusted Publisher configured yet for the
+      # name, which had only ever been minted at 0.0.0), the step exited 1, and
+      # editor 0.2.0 and chat 0.5.0 never ran at all. See #1207.
+      #
+      # Ordering is not a substitute for the auth fix — a red mcp step still
+      # reds the release job. It only bounds the blast radius to the one package
+      # that is actually broken.
+      - name: Publish validated cinder-mcp package artifact to npm
+        if: github.event_name == 'push' && steps.changesets.outputs.hasChangesets == 'false'
+        run: bun run --filter=@lostgradient/cinder-mcp publish:release -- --skip-validation
         env:
           NPM_CONFIG_PROVENANCE: 'false'
 
