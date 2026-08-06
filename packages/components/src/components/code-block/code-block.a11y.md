@@ -35,4 +35,19 @@ When CodeBlock accepts snippets or arbitrary children, the caller owns the seman
 - Inspect the accessible name, role, and state in browser accessibility tools.
 - Check forced-colors mode when the component adds borders, focus rings, selected state, or status color.
 
+## scrollFadeVisible (Tier 3 polish)
+
+`scrollFadeVisible` paints an opaque, INTENTIONALLY TRANSLUCENT (~35% alpha,
+not fully opaque) scroll-driven fade on both inline edges of the code
+viewport as a long line overflows — a fully opaque cover would hide a
+partial glyph entirely, reading as a hard cutoff rather than "this line
+continues." It is presentation-only and never the sole signal that a line
+overflows — `overflow-x: auto` and the native/themed scrollbar remain the
+authoritative, always-present affordance. `:dir(rtl)` flips the paint
+direction only (`scroll(nearest inline)` is already direction-correct); see
+`_scroll-fade.css`. `@media (forced-colors: active)` disables the fade
+outright. It does not change keyboard scrollability (`tabindex="0"` on the
+viewport, unaffected) or the copy-button/language-label semantics documented
+above.
+
 Related components: `kbd`, `copy-button`.

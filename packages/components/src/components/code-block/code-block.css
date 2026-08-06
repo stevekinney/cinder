@@ -48,6 +48,16 @@
    * client-side highlighted state. It owns keyboard focus and overflow so the
    * inner pre elements can stay metrically identical. */
   .cinder-code-block__viewport {
+    /* Partial, not full, opacity: a half-covered glyph should still read as a
+     * glyph, not as a hard cutoff — the one edge case in `_scroll-fade.css`
+     * where the endpoint color is deliberately translucent rather than the
+     * viewport's own opaque background. */
+    --_cinder-scroll-fade-color: color-mix(
+      in srgb,
+      var(--cinder-code-block-background) 35%,
+      transparent
+    );
+
     display: block;
     block-size: var(--cinder-code-block-height);
     overflow: auto;

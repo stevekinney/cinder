@@ -195,6 +195,54 @@ describe('ScrollArea', () => {
   });
 });
 
+describe('ScrollArea scrollFadeVisible', () => {
+  test('is off by default — no scroll-fade class', () => {
+    const { container } = render(ScrollArea, { children: textSnippet('body') });
+    const root = container.querySelector('.cinder-scroll-area');
+    expect(root?.classList.contains('cinder-_scroll-fade')).toBe(false);
+    expect(root?.classList.contains('cinder-_scroll-fade-inline-end')).toBe(false);
+  });
+
+  test('vertical direction gets the block-end fade class', () => {
+    const { container } = render(ScrollArea, {
+      scrollFadeVisible: true,
+      direction: 'vertical',
+      children: textSnippet('body'),
+    });
+    const root = container.querySelector('.cinder-scroll-area');
+    expect(root?.classList.contains('cinder-_scroll-fade')).toBe(true);
+    expect(root?.classList.contains('cinder-_scroll-fade-inline-end')).toBe(false);
+  });
+
+  test('horizontal direction gets the inline-end fade class', () => {
+    const { container } = render(ScrollArea, {
+      scrollFadeVisible: true,
+      direction: 'horizontal',
+      children: textSnippet('body'),
+    });
+    const root = container.querySelector('.cinder-scroll-area');
+    expect(root?.classList.contains('cinder-_scroll-fade-inline-end')).toBe(true);
+    expect(root?.classList.contains('cinder-_scroll-fade')).toBe(false);
+  });
+
+  test('direction="both" never gets a fade class — no single trailing edge on two axes at once', () => {
+    const { container } = render(ScrollArea, {
+      scrollFadeVisible: true,
+      direction: 'both',
+      children: textSnippet('body'),
+    });
+    const root = container.querySelector('.cinder-scroll-area');
+    expect(root?.classList.contains('cinder-_scroll-fade')).toBe(false);
+    expect(root?.classList.contains('cinder-_scroll-fade-inline-end')).toBe(false);
+  });
+
+  test('scroll-area.css sets a default --_cinder-scroll-fade-color since ScrollArea paints no background', async () => {
+    const cssPath = new URL('./scroll-area.css', import.meta.url);
+    const source = await Bun.file(cssPath).text();
+    expect(source).toMatch(/--_cinder-scroll-fade-color:\s*var\(--cinder-surface\)/);
+  });
+});
+
 describe('ScrollArea attribute precedence', () => {
   test('consumer-supplied role via rest props does not override the component-derived role', () => {
     // `role` is Omitted from ScrollAreaProps, so we cast to `any` to simulate
