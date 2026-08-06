@@ -64,11 +64,11 @@
   }
 
   .cinder-statistic__change[data-cinder-direction='up'] {
-    color: var(--cinder-success);
+    color: var(--cinder-color-success-fg);
   }
 
   .cinder-statistic__change[data-cinder-direction='down'] {
-    color: var(--cinder-danger);
+    color: var(--cinder-color-danger-fg);
   }
 
   .cinder-statistic__change[data-cinder-direction='neutral'] {

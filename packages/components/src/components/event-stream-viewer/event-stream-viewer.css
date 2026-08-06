@@ -302,6 +302,7 @@
 
   .cinder-event-stream-viewer__event {
     --cinder-event-stream-viewer-severity-color: var(--cinder-text-muted);
+    --cinder-event-stream-viewer-severity-ink: var(--cinder-text-muted);
 
     display: grid;
     grid-template-columns: 3px 1fr auto;
@@ -332,25 +333,38 @@
     flex-shrink: 0;
   }
 
-  /* Severity color mapping */
+  /* Severity color mapping.
+   *
+   * Two variables, deliberately. `-color` paints the 3px severity rail — a
+   * non-text shape held to the 3:1 floor, which is exactly what the status FILL
+   * tokens are tuned for. `-ink` paints the severity badge text, which sits on
+   * --cinder-surface-inset and needs the -fg ramp to clear AA's 4.5:1. A single
+   * shared variable cannot satisfy both: pushing the whole map to -fg to fix the
+   * badge collapses all four rails into one 88-90% lightness band in the dark
+   * arm, and the severities stop being distinguishable. */
   .cinder-event-stream-viewer__event[data-cinder-severity='debug'] {
     --cinder-event-stream-viewer-severity-color: var(--cinder-text-subtle);
+    --cinder-event-stream-viewer-severity-ink: var(--cinder-text-subtle);
   }
 
   .cinder-event-stream-viewer__event[data-cinder-severity='info'] {
     --cinder-event-stream-viewer-severity-color: var(--cinder-info);
+    --cinder-event-stream-viewer-severity-ink: var(--cinder-color-info-fg);
   }
 
   .cinder-event-stream-viewer__event[data-cinder-severity='success'] {
     --cinder-event-stream-viewer-severity-color: var(--cinder-success);
+    --cinder-event-stream-viewer-severity-ink: var(--cinder-color-success-fg);
   }
 
   .cinder-event-stream-viewer__event[data-cinder-severity='warning'] {
-    --cinder-event-stream-viewer-severity-color: var(--cinder-color-warning-fg);
+    --cinder-event-stream-viewer-severity-color: var(--cinder-warning);
+    --cinder-event-stream-viewer-severity-ink: var(--cinder-color-warning-fg);
   }
 
   .cinder-event-stream-viewer__event[data-cinder-severity='error'] {
     --cinder-event-stream-viewer-severity-color: var(--cinder-danger);
+    --cinder-event-stream-viewer-severity-ink: var(--cinder-color-danger-fg);
   }
 
   /* Event body */
@@ -380,7 +394,7 @@
   .cinder-event-stream-viewer__event-severity {
     font-size: var(--cinder-text-xs);
     font-weight: var(--cinder-font-medium);
-    color: var(--cinder-event-stream-viewer-severity-color);
+    color: var(--cinder-event-stream-viewer-severity-ink);
     text-transform: uppercase;
     letter-spacing: 0.05em;
     flex-shrink: 0;
