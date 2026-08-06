@@ -452,10 +452,12 @@
   function finishPointerInteraction(event: PointerEvent): void {
     if (event.type === 'pointercancel') {
       // A cancelled gesture still needs a settle grace period before autoplay
-      // resumes, even if no scroll event ever fired.
+      // resumes, even if no scroll event ever fired — which also means no
+      // `scrollend` will ever fire, so this can't defer to the native path
+      // the way a real scroll can.
       if (motion.kind !== 'user') observedActiveIndex = currentIndex;
       setMotion({ kind: 'user', source: 'touch' });
-      scheduleNativeScrollEnd();
+      scheduleFallbackSettle();
     }
     activePointerIds.delete(event.pointerId);
     if (activePointerIds.size > 0) return;
@@ -500,6 +502,13 @@
   // since happy-dom has no `onscrollend`).
   function scheduleNativeScrollEnd(): void {
     if (viewportElement !== null && 'onscrollend' in viewportElement) return;
+    scheduleFallbackSettle();
+  }
+
+  // Unconditional variant of the debounce above, for settle paths that don't
+  // guarantee a resulting scroll (and therefore can't rely on `scrollend`
+  // ever firing) — a cancelled gesture with no scroll delta is the case.
+  function scheduleFallbackSettle(): void {
     if (nativeScrollEndTimer !== null) clearTimeout(nativeScrollEndTimer);
     nativeScrollEndTimer = setTimeout(handleSettle, 100);
   }
@@ -535,7 +544,10 @@
     const wasUserMotion = motion.kind === 'user';
     activePointerIds.clear();
     removePointerEndListeners();
-    if (wasUserMotion) scheduleNativeScrollEnd();
+    // Same reasoning as the pointercancel path: blur can interrupt a drag
+    // before any scroll has actually happened, so `scrollend` isn't
+    // guaranteed to ever fire.
+    if (wasUserMotion) scheduleFallbackSettle();
     // Only relinquish programmatic/autoplay ownership if blur is actually
     // ending a tracked pointer interaction. An unrelated blur (e.g. focusing
     // browser chrome while a dot or autoplay transition is animating) must
@@ -701,7 +713,7 @@
           style:order={initialSlideOrder(index)}
         >
           {#if slideSnippet}
-            {@render slideSnippet(slide, { index, active: index === currentIndex })}
+            {@render slideSnippet(slide, { index, active: isSlideInRange(index) })}
           {:else if slide.href}
             <a class="cinder-carousel__link" href={slide.href}>
               {#if slide.imageSrc}

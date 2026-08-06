@@ -53,7 +53,10 @@
     -webkit-user-drag: none;
   }
 
-  @media (hover: hover) and (pointer: fine) {
+  /* dragToScroll disables itself under prefers-reduced-motion (matches
+     useReducedMotion() in the Svelte module) — the grab/grabbing affordance
+     must not promise drag behavior it won't deliver. */
+  @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
     .cinder-scroll-area[data-cinder-drag-to-scroll] {
       cursor: grab;
     }

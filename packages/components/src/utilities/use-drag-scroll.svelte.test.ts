@@ -50,7 +50,6 @@ afterEach(() => {
 function createNode(): HTMLElement {
   const node = document.createElement('div');
   document.body.appendChild(node);
-  Object.defineProperty(node, 'scrollTo', { configurable: true, value: jest.fn() });
   Object.defineProperty(node, 'scrollLeft', { configurable: true, value: 0, writable: true });
   Object.defineProperty(node, 'clientWidth', { configurable: true, value: 300 });
   return node;
@@ -59,7 +58,6 @@ function createNode(): HTMLElement {
 function createVerticalNode(): HTMLElement {
   const node = document.createElement('div');
   document.body.appendChild(node);
-  Object.defineProperty(node, 'scrollTo', { configurable: true, value: jest.fn() });
   Object.defineProperty(node, 'scrollTop', { configurable: true, value: 0, writable: true });
   Object.defineProperty(node, 'clientHeight', { configurable: true, value: 300 });
   return node;
@@ -194,7 +192,6 @@ describe('useDragScroll', () => {
 
   test('snaps to the nearest supplied snap position on release', () => {
     const node = createNode();
-    const scrollTo = node.scrollTo as ReturnType<typeof jest.fn>;
     const cleanup = useDragScroll({ getSnapPositions: () => [0, 300, 600] })(node);
 
     node.dispatchEvent(pointerEvent('pointerdown', { clientX: 0 }));
@@ -210,14 +207,12 @@ describe('useDragScroll', () => {
 
     flushUntilSettled();
 
-    const finalCallArgs = scrollTo.mock.calls.at(-1)?.[0] as { left: number };
-    expect(finalCallArgs.left).toBeCloseTo(600, 0);
+    expect(node.scrollLeft).toBeCloseTo(600, 0);
     cleanup?.();
   });
 
   test('coasts to a natural stop without snapping when no snap positions are supplied', () => {
     const node = createNode();
-    const scrollTo = node.scrollTo as ReturnType<typeof jest.fn>;
     const cleanup = useDragScroll()(node);
 
     node.dispatchEvent(pointerEvent('pointerdown', { clientX: 0 }));
@@ -227,17 +222,16 @@ describe('useDragScroll', () => {
     flushUntilSettled();
 
     // Coasts to wherever momentum carries it — just confirm it actually moved
-    // and stopped calling scrollTo once settled.
-    expect(scrollTo).toHaveBeenCalled();
-    const callCountAtSettle = scrollTo.mock.calls.length;
+    // and stopped updating scrollLeft once settled.
+    expect(node.scrollLeft).not.toBe(0);
+    const scrollLeftAtSettle = node.scrollLeft;
     flushUntilSettled();
-    expect(scrollTo.mock.calls.length).toBe(callCountAtSettle);
+    expect(node.scrollLeft).toBe(scrollLeftAtSettle);
     cleanup?.();
   });
 
   test('proximity snap mode does not snap when released far from a snap position', () => {
     const node = createNode();
-    const scrollTo = node.scrollTo as ReturnType<typeof jest.fn>;
     // A -50px move projects to a natural coast of ~1000 (friction 0.95).
     // Neither candidate is within a third of the 300px snapport (100px) of
     // that projection, so proximity mode must leave the natural coast alone.
@@ -252,14 +246,12 @@ describe('useDragScroll', () => {
 
     flushUntilSettled();
 
-    const finalCallArgs = scrollTo.mock.calls.at(-1)?.[0] as { left: number };
-    expect(finalCallArgs.left).toBeCloseTo(1000, 0);
+    expect(node.scrollLeft).toBeCloseTo(1000, 0);
     cleanup?.();
   });
 
   test("axis: 'y' drag-scrolls scrollTop instead of scrollLeft — for ScrollArea's vertical direction", () => {
     const node = createVerticalNode();
-    const scrollTo = node.scrollTo as ReturnType<typeof jest.fn>;
     const cleanup = useDragScroll({ axis: 'y' })(node);
 
     node.dispatchEvent(pointerEvent('pointerdown', { clientY: 0 }));
@@ -268,10 +260,8 @@ describe('useDragScroll', () => {
 
     flushUntilSettled();
 
-    const calls = scrollTo.mock.calls as unknown as { 0: { top?: number; left?: number } }[];
-    expect(calls.length).toBeGreaterThan(0);
-    // Every call moves `top`, never `left` — this is a vertical drag.
-    expect(calls.every((call) => 'top' in call[0] && !('left' in call[0]))).toBe(true);
+    // Moves `scrollTop` — this is a vertical drag.
+    expect(node.scrollTop).not.toBe(0);
     cleanup?.();
   });
 
@@ -283,24 +273,5 @@ describe('useDragScroll', () => {
     node.dispatchEvent(pointerEvent('pointerdown', { clientX: 0 }));
     node.dispatchEvent(pointerEvent('pointermove', { clientX: 50, movementX: 50 }));
     expect(node.hasAttribute('data-cinder-dragging')).toBe(false);
-  });
-
-  test('falls back to scrollLeft assignment when scrollTo is unavailable', () => {
-    const node = document.createElement('div');
-    document.body.appendChild(node);
-    Object.defineProperty(node, 'clientWidth', { configurable: true, value: 300 });
-    // No scrollTo defined — happy-dom's default `HTMLElement.scrollTo` (if
-    // present) is removed to force the fallback branch.
-    Object.defineProperty(node, 'scrollTo', { configurable: true, value: undefined });
-    const cleanup = useDragScroll()(node);
-
-    node.dispatchEvent(pointerEvent('pointerdown', { clientX: 0 }));
-    node.dispatchEvent(pointerEvent('pointermove', { clientX: 20, movementX: 20 }));
-    node.dispatchEvent(pointerEvent('pointerup', { clientX: 20 }));
-
-    flushUntilSettled();
-
-    expect(node.scrollLeft).not.toBe(0);
-    cleanup?.();
   });
 });

@@ -73,11 +73,11 @@ export function useDragScroll(
         target += velocity;
       }
       virtualScroll = damp(virtualScroll, target, DRAG_DAMPING, frameDeltaMs);
-      if (typeof node.scrollTo === 'function') {
-        node.scrollTo({ [axis === 'x' ? 'left' : 'top']: virtualScroll, behavior: 'instant' });
-      } else {
-        node[scrollProperty] = virtualScroll;
-      }
+      // Direct property assignment is always an immediate jump, unlike
+      // `scrollTo({ behavior })` — `'smooth'` is the only standardized
+      // non-default value, so there's no portable way to *force* instant via
+      // the options object across browsers.
+      node[scrollProperty] = virtualScroll;
 
       const settled = pointerId === null && Math.abs(velocity) < DRAG_SETTLE_VELOCITY_EPSILON;
       if (settled) {

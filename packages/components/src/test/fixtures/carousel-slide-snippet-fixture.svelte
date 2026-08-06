@@ -4,12 +4,13 @@
 
   type Props = {
     slides: CarouselSlide[];
+    slidesPerView?: number | 'auto';
   };
 
-  let { slides }: Props = $props();
+  let { slides, slidesPerView = 1 }: Props = $props();
 </script>
 
-<Carousel {slides}>
+<Carousel {slides} {slidesPerView}>
   {#snippet slide(item, { index, active })}
     <p class="carousel-slide-snippet-fixture__body" data-testid={`custom-slide-${index}`}>
       {item.label} ({active ? 'active' : 'inactive'})

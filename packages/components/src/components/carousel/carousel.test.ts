@@ -1512,6 +1512,34 @@ describe('Carousel', () => {
         restoreScrollEndSupport();
       }
     });
+
+    test('a cancelled gesture with no resulting scroll still settles when scrollend is supported', async () => {
+      // A `pointercancel` with zero scroll delta never produces a `scroll`
+      // event, so `scrollend` can never fire for it either — deferring
+      // wholesale to the native-scrollend path (as the pointerup/wheel paths
+      // correctly do) would leave the carousel stuck in `motion.kind ===
+      // 'user'` forever. The cancel path must always arm its own fallback
+      // timer regardless of scrollend support.
+      jest.useFakeTimers();
+      const restoreScrollEndSupport = installScrollEndSupport();
+      try {
+        const { container } = render(Carousel, { slides });
+        const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
+        const neighbor = viewport.children[1] as HTMLElement;
+
+        await fireEvent.pointerDown(viewport, { pointerId: 63, pointerType: 'touch' });
+        await fireEvent.pointerCancel(window, { pointerId: 63 });
+
+        expect(neighbor.hasAttribute('data-cinder-collapsed')).toBe(false);
+
+        jest.advanceTimersByTime(100);
+        await tick();
+
+        expect(neighbor.hasAttribute('data-cinder-collapsed')).toBe(true);
+      } finally {
+        restoreScrollEndSupport();
+      }
+    });
   });
 
   describe('nearestVisibleSlideIndex snapport awareness', () => {
@@ -1659,6 +1687,20 @@ describe('Carousel', () => {
       const { container } = render(CarouselSlideSnippetFixture, { slides });
 
       expectActiveSlide(container, 0);
+    });
+
+    test('marks every slide in the visible range active, not just currentIndex, under slidesPerView', () => {
+      const { container } = render(CarouselSlideSnippetFixture, { slides, slidesPerView: 2 });
+
+      expect(container.querySelector('[data-testid="custom-slide-0"]')?.textContent).toContain(
+        'active',
+      );
+      expect(container.querySelector('[data-testid="custom-slide-1"]')?.textContent).toContain(
+        'active',
+      );
+      expect(container.querySelector('[data-testid="custom-slide-2"]')?.textContent).toContain(
+        'inactive',
+      );
     });
 
     test('advances which slide is active via the normal controls', async () => {
