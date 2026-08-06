@@ -86,10 +86,17 @@ test('mouse drag disables native snapping only while dragging, then restores it'
 
   await page.mouse.move(startX, y);
   await page.mouse.down();
+
+  // Diagnostic checkpoint: `suppressSnapType()` runs unconditionally inside
+  // `onPointerDown` (gated only on `enabled()`), before any drag-threshold
+  // logic. If this fails, the engine never attached at all — check
+  // `enabled()`'s inputs (fine-pointer/reduced-motion) — as opposed to the
+  // drag-threshold detection in `onPointerMove` specifically.
+  await expect(viewport).toHaveCSS('scroll-snap-type', 'none');
+
   await page.mouse.move(startX - 80, y, { steps: 5 });
 
   await expect(viewport).toHaveAttribute('data-cinder-dragging', '');
-  await expect(viewport).toHaveCSS('scroll-snap-type', 'none');
 
   await page.mouse.up();
 
