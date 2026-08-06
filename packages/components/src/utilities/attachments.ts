@@ -113,7 +113,33 @@ export function createClickOutside(options: ClickOutsideOptions): Attachment<HTM
 
 /**
  * Marks scroll containers that have more content below the visible area.
- * Intended for overlay bodies that show a bottom mask fade while scrollable.
+ * Intended for overlay bodies that show a bottom fade (opaque overlay, never
+ * a mask — see `_scroll-fade.css`) while scrollable.
+ *
+ * Only `node` itself is observed with `ResizeObserver` — it catches the
+ * container's own box changing (viewport resize, a sidebar collapsing, a
+ * layout pass). Because `node` scrolls (`overflow-y: auto` with a fixed/flex
+ * height), content growing or shrinking INSIDE it does not resize `node`'s
+ * own box, so that case is covered separately by a `MutationObserver` that
+ * schedules a re-measure directly on any child/text/relevant-attribute
+ * change. Re-measuring `scrollHeight`/`clientHeight` is a cheap property
+ * read, so the mutation callback does not need an observer of its own.
+ *
+ * This replaces an earlier version that additionally registered a
+ * `ResizeObserver` on every descendant (`node.querySelectorAll('*')`,
+ * re-synced on every mutation) to catch a size change that occurs without a
+ * DOM mutation. That is fine for a handful of nodes in a Modal body, but
+ * registers thousands of observers on a long scroll surface such as a chat
+ * timeline. Dropping that exhaustive case for a large, real perf win is a
+ * deliberate trade-off — the common version of it, an `<img src>` swap (a
+ * lazy-load library resolving an attachment thumbnail, for example), IS
+ * still covered: `src` is in the `attributeFilter` below, so it schedules a
+ * re-measure like any other tracked mutation. What remains uncovered is
+ * narrower — a genuinely mutation-less size change, such as a `<canvas>`
+ * redraw or a webfont finishing load and reflowing existing text — which is
+ * rare enough that every path this attachment is actually exercised through
+ * (content added/removed, text/attribute changes, scrolling, container
+ * resize) is still covered.
  */
 export function overflowFade(): Attachment<HTMLElement> {
   return (node) => {
@@ -147,41 +173,17 @@ export function overflowFade(): Attachment<HTMLElement> {
     };
 
     const resizeObserver = new ResizeObserver(scheduleUpdate);
-    const observedElements = new Set<Element>();
-    const observeElement = (element: Element) => {
-      if (observedElements.has(element)) return;
-      resizeObserver.observe(element);
-      observedElements.add(element);
-    };
-    const syncObservedElements = () => {
-      const currentElements = new Set<Element>([node, ...node.querySelectorAll('*')]);
-      for (const element of observedElements) {
-        if (!currentElements.has(element)) {
-          resizeObserver.unobserve(element);
-          observedElements.delete(element);
-        }
-      }
-      for (const element of currentElements) {
-        observeElement(element);
-      }
-    };
-
-    syncObservedElements();
+    resizeObserver.observe(node);
 
     const mutationObserver =
-      typeof MutationObserver === 'undefined'
-        ? null
-        : new MutationObserver(() => {
-            syncObservedElements();
-            scheduleUpdate();
-          });
+      typeof MutationObserver === 'undefined' ? null : new MutationObserver(scheduleUpdate);
 
     mutationObserver?.observe(node, {
       childList: true,
       subtree: true,
       characterData: true,
       attributes: true,
-      attributeFilter: ['hidden', 'class', 'style', 'aria-hidden'],
+      attributeFilter: ['hidden', 'class', 'style', 'aria-hidden', 'src'],
     });
 
     node.addEventListener('scroll', scheduleUpdate, { passive: true });
@@ -190,7 +192,181 @@ export function overflowFade(): Attachment<HTMLElement> {
     return () => {
       if (frame) cancelFrame(frame);
       resizeObserver.disconnect();
-      observedElements.clear();
+      mutationObserver?.disconnect();
+      node.removeEventListener('scroll', scheduleUpdate);
+    };
+  };
+}
+
+/** Which scroll axis {@link overflowShadow} measures and reports. */
+export type OverflowShadowAxis = 'inline' | 'block';
+
+const OVERFLOW_SHADOW_ATTRIBUTE: Record<OverflowShadowAxis, string> = {
+  inline: 'data-cinder-overflows-inline',
+  block: 'data-cinder-overflows-block',
+};
+
+/**
+ * Marks scroll containers that have MORE content than fits on the given
+ * axis, in EITHER direction — unlike {@link overflowFade}, this is not
+ * scroll-position-aware (no `scroll` listener, no "am I at the end"
+ * suppression). It backs the data-grid `--_cinder-data-grid-overflow-shadow`
+ * inset-shadow affordance (see `data-grid.css`), which paints BOTH edges
+ * whenever content overflows, regardless of current scroll position — the
+ * inset shadow is decoration on the scroll container's own (non-scrolling)
+ * box, so it stays pinned at the true edges as content scrolls underneath.
+ *
+ * `node`'s own box is observed with `ResizeObserver` (container resize), and
+ * content changes are caught by a `MutationObserver` that schedules a
+ * re-measure directly — the same lean design as `overflowFade`, see its doc
+ * comment for the full rationale.
+ */
+export function overflowShadow(axis: OverflowShadowAxis): Attachment<HTMLElement> {
+  const attributeName = OVERFLOW_SHADOW_ATTRIBUTE[axis];
+
+  return (node) => {
+    if (typeof ResizeObserver === 'undefined') {
+      node.removeAttribute(attributeName);
+      return;
+    }
+
+    const update = () => {
+      const overflows =
+        axis === 'inline'
+          ? node.scrollWidth - node.clientWidth > 1
+          : node.scrollHeight - node.clientHeight > 1;
+      node.toggleAttribute(attributeName, overflows);
+    };
+
+    const requestFrame =
+      typeof requestAnimationFrame === 'function'
+        ? requestAnimationFrame
+        : (callback: FrameRequestCallback) => window.setTimeout(() => callback(performance.now()));
+    const cancelFrame =
+      typeof cancelAnimationFrame === 'function'
+        ? cancelAnimationFrame
+        : (handle: number) => window.clearTimeout(handle);
+
+    let frame = 0;
+    const scheduleUpdate = () => {
+      if (frame) return;
+      frame = requestFrame(() => {
+        frame = 0;
+        update();
+      });
+    };
+
+    const resizeObserver = new ResizeObserver(scheduleUpdate);
+    resizeObserver.observe(node);
+
+    const mutationObserver =
+      typeof MutationObserver === 'undefined' ? null : new MutationObserver(scheduleUpdate);
+
+    mutationObserver?.observe(node, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributes: true,
+      attributeFilter: ['hidden', 'class', 'style', 'aria-hidden', 'src'],
+    });
+
+    update();
+
+    return () => {
+      if (frame) cancelFrame(frame);
+      resizeObserver.disconnect();
+      mutationObserver?.disconnect();
+    };
+  };
+}
+
+/** Which scroll axis {@link overflowFadeEdges} measures and reports. */
+export type OverflowFadeEdgesAxis = 'block' | 'inline';
+
+const OVERFLOW_FADE_START_ATTRIBUTE: Record<OverflowFadeEdgesAxis, string> = {
+  block: 'data-cinder-overflows-start',
+  inline: 'data-cinder-overflows-inline-start',
+};
+const OVERFLOW_FADE_END_ATTRIBUTE: Record<OverflowFadeEdgesAxis, string> = {
+  block: 'data-cinder-overflows',
+  inline: 'data-cinder-overflows-inline-end',
+};
+
+/**
+ * Marks a scroll container that has more content on EITHER side of the given
+ * axis — the fallback driver for a both-edges `_scroll-fade.css` recipe
+ * (`.cinder-_scroll-fade` + `.cinder-_scroll-fade-start` for block, or the
+ * `-inline-start`/`-inline-end` pair for inline). Unlike {@link overflowFade}
+ * (single, block-end-only edge), this reports each edge independently based
+ * on real scroll position: the start edge fades in once scrolled away from
+ * the very start, and the end edge fades out once scrolled to the very end —
+ * so a container that is fully scrolled to one edge never shows a fade
+ * toward content that is not there.
+ *
+ * Shares the same lean container-ResizeObserver + content-MutationObserver +
+ * passive-scroll-listener design as {@link overflowFade}; see its doc
+ * comment for the full perf rationale.
+ */
+export function overflowFadeEdges(axis: OverflowFadeEdgesAxis): Attachment<HTMLElement> {
+  const startAttribute = OVERFLOW_FADE_START_ATTRIBUTE[axis];
+  const endAttribute = OVERFLOW_FADE_END_ATTRIBUTE[axis];
+
+  return (node) => {
+    if (typeof ResizeObserver === 'undefined') {
+      node.removeAttribute(startAttribute);
+      node.removeAttribute(endAttribute);
+      return;
+    }
+
+    const update = () => {
+      const scrollPosition = axis === 'block' ? node.scrollTop : node.scrollLeft;
+      const contentExtent = axis === 'block' ? node.scrollHeight : node.scrollWidth;
+      const viewportExtent = axis === 'block' ? node.clientHeight : node.clientWidth;
+      const overflows = contentExtent - viewportExtent > 1;
+      const atStart = scrollPosition <= 1;
+      const atEnd = scrollPosition + viewportExtent >= contentExtent - 1;
+      node.toggleAttribute(startAttribute, overflows && !atStart);
+      node.toggleAttribute(endAttribute, overflows && !atEnd);
+    };
+
+    const requestFrame =
+      typeof requestAnimationFrame === 'function'
+        ? requestAnimationFrame
+        : (callback: FrameRequestCallback) => window.setTimeout(() => callback(performance.now()));
+    const cancelFrame =
+      typeof cancelAnimationFrame === 'function'
+        ? cancelAnimationFrame
+        : (handle: number) => window.clearTimeout(handle);
+
+    let frame = 0;
+    const scheduleUpdate = () => {
+      if (frame) return;
+      frame = requestFrame(() => {
+        frame = 0;
+        update();
+      });
+    };
+
+    const resizeObserver = new ResizeObserver(scheduleUpdate);
+    resizeObserver.observe(node);
+
+    const mutationObserver =
+      typeof MutationObserver === 'undefined' ? null : new MutationObserver(scheduleUpdate);
+
+    mutationObserver?.observe(node, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributes: true,
+      attributeFilter: ['hidden', 'class', 'style', 'aria-hidden', 'src'],
+    });
+
+    node.addEventListener('scroll', scheduleUpdate, { passive: true });
+    update();
+
+    return () => {
+      if (frame) cancelFrame(frame);
+      resizeObserver.disconnect();
       mutationObserver?.disconnect();
       node.removeEventListener('scroll', scheduleUpdate);
     };
