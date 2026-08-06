@@ -268,6 +268,31 @@ describe('validate-release-workflow changeset guards', () => {
     );
   });
 
+  // Regression: the guard used to scan the whole file with one indexOf pass,
+  // which only ever finds each package's FIRST occurrence — all from the push
+  // path. The dry-run steps could drift out of order and still pass. That is
+  // exactly what happened during #1207: the push steps moved, the dry-run steps
+  // did not, and this guard said nothing.
+  test('rejects dry-run publish steps that drift out of order behind a correct push path', () => {
+    const workflow = (commands: string[]) => ({
+      jobs: { release: { steps: commands.map((run) => ({ run })) } },
+    });
+    const push = (packageName: string) =>
+      `bun run --filter=@lostgradient/${packageName} publish:release -- --skip-validation`;
+    const dry = (packageName: string) =>
+      `bun run --filter=@lostgradient/${packageName} publish:release -- --dry-run --skip-validation`;
+
+    const correctPush = ['markdown', 'cinder', 'editor', 'chat', 'cinder-mcp'].map(push);
+    const correctDry = ['markdown', 'cinder', 'editor', 'chat', 'cinder-mcp'].map(dry);
+    const driftedDry = ['markdown', 'cinder', 'cinder-mcp', 'editor', 'chat'].map(dry);
+
+    expect(publicPackagePublishOrderIsValid(workflow([...correctPush, ...correctDry]))).toBe(true);
+    expect(publicPackagePublishOrderIsValid(workflow([...correctPush, ...driftedDry]))).toBe(false);
+    // …and the mirror case: a correct dry-run path must not excuse a drifted push path.
+    const driftedPush = ['markdown', 'cinder', 'cinder-mcp', 'editor', 'chat'].map(push);
+    expect(publicPackagePublishOrderIsValid(workflow([...driftedPush, ...correctDry]))).toBe(false);
+  });
+
   test('builds Cinder before Chat in fresh-checkout coverage workflows', () => {
     // Both workflows now build Cinder and Chat through a single `turbo run
     // build --filter=... --filter=...` invocation rather than two sequential

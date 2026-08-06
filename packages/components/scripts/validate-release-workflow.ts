@@ -394,14 +394,37 @@ function isStrictlyIncreasing(indices: readonly number[]): boolean {
   return indices.every((index, position) => position === 0 || indices[position - 1]! < index);
 }
 
-/** Markdown, Cinder, Editor, Chat, then the cinder-mcp leaf — see PUBLIC_PACKAGE_NAMES. */
+/**
+ * Markdown, Cinder, Editor, Chat, then the cinder-mcp leaf — see
+ * PUBLIC_PACKAGE_NAMES.
+ *
+ * Checks the real publish path and the `workflow_dispatch` dry-run path
+ * SEPARATELY. A single `indexOf` scan over the whole file only ever finds each
+ * package's FIRST occurrence, which all come from the push path — so the
+ * dry-run steps could drift out of order and still pass. That is not
+ * hypothetical: the #1207 reorder moved the push steps and left the dry-run
+ * steps at the old positions, and this guard said nothing.
+ */
 export function publicPackagePublishOrderIsValid(workflow: unknown): boolean {
-  const executableScripts = workflowRunScripts(workflow).join('\n');
-  const indices = findOrderedIndices(
-    executableScripts,
-    (packageName) => `bun run --filter=${packageName} publish:release`,
+  const scripts = workflowRunScripts(workflow);
+  const dryRunScripts = scripts.filter((script) => script.includes('--dry-run'));
+  const publishScripts = scripts.filter((script) => !script.includes('--dry-run'));
+
+  const groupIsOrdered = (group: readonly string[]): boolean => {
+    const indices = findOrderedIndices(
+      group.join('\n'),
+      (packageName) => `bun run --filter=${packageName} publish:release`,
+    );
+    return indices !== undefined && isStrictlyIncreasing(indices);
+  };
+
+  // The push path must be complete AND ordered — that is the contract this
+  // guard has always enforced. The dry-run path is diagnostic, so its absence
+  // is not a failure; but once any dry-run publish step exists, the full set
+  // must be present and in the same order as the push path.
+  return (
+    groupIsOrdered(publishScripts) && (dryRunScripts.length === 0 || groupIsOrdered(dryRunScripts))
   );
-  return indices !== undefined && isStrictlyIncreasing(indices);
 }
 
 /** The root publish shortcut must use the same staged artifact path as CI, in publish order. */
