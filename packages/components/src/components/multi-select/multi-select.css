@@ -148,15 +148,11 @@
     overflow-y: auto;
   }
 
+  /* Geometry, padding, active fill, keyboard cursor ring, and disabled state
+   come from the shared `cinder-_option-row` primitive on the markup. */
   .cinder-multi-select__option {
     width: 100%;
-    padding: var(--cinder-space-1-5) var(--cinder-space-2);
-    border-radius: var(--cinder-radius-sm);
     cursor: pointer;
-  }
-
-  .cinder-multi-select__option[aria-disabled='true'] {
-    cursor: not-allowed;
   }
 
   .cinder-multi-select__checkbox-indicator {

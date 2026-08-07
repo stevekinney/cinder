@@ -16,6 +16,7 @@ Before creating a component, load the repository-local
 <!-- component-authoring-checklist:start -->
 
 - [ ] Search the component inventory and compose an existing primitive before creating a new one. (#919, #929)
+- [ ] A new component requires behavior, state, or accessibility semantics its parts do not already provide; layout or presentation variations become props, variants, or documented example presets (see docs/decisions/component-admission-bar.md). (#919, #929)
 - [ ] Check docs/component-api-conventions.md before adding or naming a public prop. (#922)
 - [ ] Apply the `cinder-_floating-surface` class to floating panels (defined in `_floating-surface.css`), and compose form controls from `Input` and `FormField`. (#921, #923)
 - [ ] Use a rotating chevron for disclosure controls that render an indicator; use direction-aware lateral chevrons for nested submenus, keep intentionally text-only disclosures icon-free, and use icons from the lucide-svelte set. (#957)
@@ -517,6 +518,18 @@ Convention shown for Button:
 ```
 
 ### Adding a new component
+
+**The admission bar comes first** (decision record:
+`docs/decisions/component-admission-bar.md`): a new component requires
+behavior, state, or accessibility semantics its parts do not already
+provide. Pure layout or presentation variations become props, variants, or
+documented example presets on the primitive they wrap. Two guards back the
+bar mechanically — `check:component-inventory` requires a written neighbour
+rationale (`@related`/`@avoidWhen` or `@rationale`), and
+`check:css-duplication` fails on a sidecar that closely duplicates an
+existing component's CSS unless the pair is baselined with a written reason.
+The behavior/state/accessibility half is decided in the required design
+review recorded in `*.a11y.md`.
 
 1. Create `src/components/<id>/` with `<id>.svelte`, `<id>.types.ts`
    (exporting `<Pascal>Props`), and `index.ts` that re-exports the

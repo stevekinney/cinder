@@ -13,10 +13,17 @@ describe('shared row-item boundary', () => {
     ).replace(/\/\*[\s\S]*?\*\//g, '');
     expect(shared).toContain('.cinder-_row-item');
     expect(shared).toContain('.cinder-_option-row');
+    // The primitive owns the shared option-row padding, tuned once here.
+    expect(shared).toContain('padding: var(--cinder-space-1-5) var(--cinder-space-2);');
     expect(floatingSurface).not.toContain('.cinder-_option-row');
     for (const family of ['dropdown-item', 'command-item', 'navigation-item']) {
       expect(readFileSync(resolve(componentsRoot, family, `${family}.svelte`), 'utf8')).toContain(
         'cinder-_row-item',
+      );
+    }
+    for (const family of ['combobox', 'autocomplete', 'multi-select', 'transfer-list']) {
+      expect(readFileSync(resolve(componentsRoot, family, `${family}.svelte`), 'utf8')).toContain(
+        'cinder-_option-row',
       );
     }
     for (const family of [

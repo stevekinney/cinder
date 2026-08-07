@@ -339,7 +339,7 @@
         {#each leftItems as item, index (item.id)}
           <li
             id={optionId('left', index)}
-            class="cinder-transfer-list__option"
+            class="cinder-_option-row cinder-transfer-list__option"
             role="option"
             aria-selected={leftSelectedSet.has(item.id) ? 'true' : 'false'}
             aria-disabled={item.disabled ? 'true' : undefined}
@@ -414,7 +414,7 @@
         {#each rightItems as item, index (item.id)}
           <li
             id={optionId('right', index)}
-            class="cinder-transfer-list__option"
+            class="cinder-_option-row cinder-transfer-list__option"
             role="option"
             aria-selected={rightSelectedSet.has(item.id) ? 'true' : 'false'}
             data-cinder-active={focusedSide === 'right' && resolvedRightActiveId === item.id

@@ -94,10 +94,14 @@ function render(...args: Parameters<typeof renderIntoContainer>) {
 }
 
 describe('Combobox', () => {
-  test('active options derive their fill from the raised surface', () => {
+  test('active-row treatment comes from the shared _option-row primitive, not a local override', () => {
+    // The shared `.cinder-_option-row[data-cinder-active]` rules in
+    // styles/components/_row-item.css own the raised-hover fill and the inset
+    // keyboard-cursor ring; a local duplicate would silently drift from them.
     const styles = readComboboxStyles();
-    expect(styles).toContain('.cinder-combobox__option[data-cinder-active]');
-    expect(styles).toContain('background: var(--cinder-surface-raised-hover);');
+    expect(styles).not.toMatch(/\.cinder-combobox__option\[data-cinder-active\]\s*\{/);
+    // The markup-side `cinder-_option-row` class is pinned by
+    // src/styles/components/row-item.test.ts.
   });
 
   test('select via mousedown closes the listbox and sets the input value', async () => {

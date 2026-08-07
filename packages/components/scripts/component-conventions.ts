@@ -66,6 +66,11 @@ export const COMPONENT_AUTHORING_CHECKLIST = [
     references: ['#919', '#929'],
   },
   {
+    id: 'behavior-first-admission',
+    text: 'A new component requires behavior, state, or accessibility semantics its parts do not already provide; layout or presentation variations become props, variants, or documented example presets (see docs/decisions/component-admission-bar.md).',
+    references: ['#919', '#929'],
+  },
+  {
     id: 'prop-vocabulary',
     text: 'Check docs/component-api-conventions.md before adding or naming a public prop.',
     references: ['#922'],
