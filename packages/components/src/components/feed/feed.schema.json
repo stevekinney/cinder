@@ -14,7 +14,7 @@
       "type": "boolean",
       "description": "When true, the wrapper becomes an ARIA live region: `aria-live=\"polite\"`\nand `aria-atomic=\"false\"`. Use for feeds that mutate while the user is\non the page (streaming notifications, chat-like activity).\nDefaults to false — a polite live region on a static feed is noise."
     },
-    "followLatest": {
+    "following": {
       "type": "boolean",
       "description": "When true, appended content automatically scrolls the viewport to the\nbottom. Scrolling away from the bottom pauses following; scrolling back\nto the bottom (or the built-in control) resumes it. Bindable so the\nparent can read the paused state the component sets internally."
     },

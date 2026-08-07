@@ -32,7 +32,7 @@ export type FeedListProps = Omit<HTMLAttributes<HTMLOListElement>, 'children' | 
      * Defaults to false — a polite live region on a static feed is noise.
      */
     live?: boolean;
-    followLatest?: never;
+    following?: never;
     loading?: never;
     truncated?: never;
     connectionState?: never;
@@ -58,7 +58,7 @@ export type FeedLogProps = Omit<HTMLAttributes<HTMLDivElement>, 'children' | 'cl
      * to the bottom (or the built-in control) resumes it. Bindable so the
      * parent can read the paused state the component sets internally.
      */
-    followLatest?: boolean;
+    following?: boolean;
     /**
      * Show a loading skeleton instead of the entries. Use while the first
      * batch of entries is in flight.

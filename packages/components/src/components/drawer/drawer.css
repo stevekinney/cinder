@@ -62,7 +62,13 @@
       opacity var(--cinder-duration-normal) var(--cinder-ease-standard);
   }
 
+  /* Each placement block owns its slide vector via --_cinder-drawer-slide;
+   the single closing rule and single @starting-style rule below consume it,
+   so adding a placement means ONE block here — no per-placement motion
+   twins to keep in sync. */
   .cinder-drawer__panel[data-cinder-placement='right'] {
+    --_cinder-drawer-slide: 100% 0;
+
     top: 0;
     bottom: 0;
     right: 0;
@@ -72,6 +78,8 @@
   }
 
   .cinder-drawer__panel[data-cinder-placement='left'] {
+    --_cinder-drawer-slide: -100% 0;
+
     top: 0;
     bottom: 0;
     left: 0;
@@ -97,6 +105,8 @@
   }
 
   .cinder-drawer__panel[data-cinder-placement='bottom'] {
+    --_cinder-drawer-slide: 0 100%;
+
     left: 0;
     right: 0;
     bottom: 0;
@@ -210,8 +220,16 @@
     padding: var(--cinder-space-6);
     overscroll-behavior: contain;
     scrollbar-gutter: stable;
-    outline: none;
     background: var(--cinder-surface);
+  }
+
+  /* Suppress the focus ring only for programmatic (open-effect) focus — the
+ * body container is the drawer's initial focus target, and keyboard-driven
+ * `:focus-visible` focus keeps its indication (the former Sheet's policy;
+ * the pre-merge unconditional reset silenced keyboard indication too). */
+  .cinder-drawer__body:focus:not(:focus-visible) {
+    /* cinder-focus-ring-owner: parent */
+    outline: none;
   }
 
   .cinder-drawer__footer {
@@ -228,43 +246,21 @@
   /* ----------------------------------------
  * Motion — slide from the anchored edge.
  * Animation targets the panel, not the dialog (which is transparent).
- * Every placement MUST have both a closing rule and a matching
- * @starting-style rule below, or that placement pops in with no
- * from-state while the backdrop fades.
+ * The slide vector comes from --_cinder-drawer-slide, declared once per
+ * placement block above; a placement whose block forgets the property
+ * gets `translate: none` here — visible immediately — instead of a
+ * silently missing @starting-style twin.
  * ---------------------------------------- */
 
-  .cinder-drawer__panel[data-cinder-placement='right'][data-cinder-closing] {
-    translate: 100% 0;
-    opacity: 0.85;
-  }
-
-  .cinder-drawer__panel[data-cinder-placement='left'][data-cinder-closing] {
-    translate: -100% 0;
-    opacity: 0.85;
-  }
-
-  .cinder-drawer__panel[data-cinder-placement='bottom'][data-cinder-closing] {
-    translate: 0 100%;
-    opacity: 0.85;
-  }
-
   .cinder-drawer__panel[data-cinder-closing] {
+    translate: var(--_cinder-drawer-slide);
+    opacity: 0.85;
     pointer-events: none;
   }
 
   @starting-style {
-    .cinder-drawer__panel[data-cinder-placement='right'] {
-      translate: 100% 0;
-      opacity: 0.85;
-    }
-
-    .cinder-drawer__panel[data-cinder-placement='left'] {
-      translate: -100% 0;
-      opacity: 0.85;
-    }
-
-    .cinder-drawer__panel[data-cinder-placement='bottom'] {
-      translate: 0 100%;
+    .cinder-drawer__panel {
+      translate: var(--_cinder-drawer-slide);
       opacity: 0.85;
     }
   }

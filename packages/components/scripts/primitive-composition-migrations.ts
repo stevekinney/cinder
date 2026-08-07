@@ -68,10 +68,7 @@ export const allowedGridCounts = new Map<string, number>(
     'feed/feed.css',
     'form-section/form-section.css',
     'grid/grid.css',
-    'hero-section/hero-section.css',
-    'newsletter-section/newsletter-section.css',
     'phone-input/phone-input.css',
-    'pricing-section/pricing-section.css',
     'radio-group/radio-group.css',
     'schedule-builder/schedule-builder.css',
     'selectable-row/selectable-row.css',
@@ -88,7 +85,6 @@ allowedGridCounts.set('action-row/action-row.css', 4);
 allowedGridCounts.set('calendar/calendar.css', 2);
 allowedGridCounts.set('data-grid/data-grid.css', 2);
 allowedGridCounts.set('description-list/description-list.css', 4);
-allowedGridCounts.set('feature-section/feature-section.css', 8);
 allowedGridCounts.set('footer/footer.css', 2);
 allowedGridCounts.set('form-section/form-section.css', 7);
 allowedGridCounts.set('kanban-board/kanban-board.css', 5);
@@ -96,7 +92,6 @@ allowedGridCounts.set('kanban-board/kanban-board.css', 5);
 // alongside the top-level section grid and the existing trigger/panel split.
 allowedGridCounts.set('mega-menu/mega-menu.css', 3);
 allowedGridCounts.set('phone-input/phone-input.css', 2);
-allowedGridCounts.set('pricing-section/pricing-section.css', 5);
 allowedGridCounts.set('run-step-timeline/run-step-timeline.css', 2);
 allowedGridCounts.set('selectable-row/selectable-row.css', 2);
 // The selector-aware analyzer counts the line grid's base and no-number column
@@ -106,9 +101,6 @@ allowedGridCounts.set('stacked-list-item/stacked-list-item.css', 6);
 allowedGridCounts.set('statistic-group/statistic-group.css', 10);
 allowedGridCounts.set('statistic/statistic.css', 2);
 allowedGridCounts.set('steps/steps.css', 4);
-// The shared section skeleton intentionally owns the common list grid
-// declaration and its three responsive overrides.
-allowedGridCounts.set('_internal/section-skeleton.css', 4);
 allowedGridCounts.set('timeline/timeline.css', 3);
 allowedGridCounts.set('transfer-list/transfer-list.css', 3);
 

@@ -673,38 +673,6 @@
       "import": "./src/components/bento-grid/bento-grid.examples.json",
       "default": "./src/components/bento-grid/bento-grid.examples.json"
     },
-    "./blog-section": {
-      "types": "./dist/components/blog-section/index.d.ts",
-      "browser": "./src/components/blog-section/index.ts",
-      "node": "./dist/server/components/blog-section/index.js",
-      "svelte": "./src/components/blog-section/index.ts",
-      "import": "./src/components/blog-section/index.ts",
-      "default": "./dist/components/blog-section/index.js"
-    },
-    "./blog-section/schema": {
-      "types": "./dist/components/blog-section/blog-section.schema.d.ts",
-      "browser": "./src/components/blog-section/blog-section.schema.ts",
-      "node": "./dist/server/components/blog-section/blog-section.schema.js",
-      "svelte": "./src/components/blog-section/blog-section.schema.ts",
-      "import": "./src/components/blog-section/blog-section.schema.ts",
-      "default": "./dist/components/blog-section/blog-section.schema.js"
-    },
-    "./blog-section/variables": {
-      "types": "./dist/components/blog-section/blog-section.variables.d.ts",
-      "browser": "./src/components/blog-section/blog-section.variables.ts",
-      "node": "./dist/server/components/blog-section/blog-section.variables.js",
-      "svelte": "./src/components/blog-section/blog-section.variables.ts",
-      "import": "./src/components/blog-section/blog-section.variables.ts",
-      "default": "./dist/components/blog-section/blog-section.variables.js"
-    },
-    "./blog-section/styles": {
-      "types": "./dist/components/blog-section/blog-section.css.d.ts",
-      "default": "./dist/components/blog-section/blog-section.css"
-    },
-    "./blog-section/examples": {
-      "import": "./src/components/blog-section/blog-section.examples.json",
-      "default": "./src/components/blog-section/blog-section.examples.json"
-    },
     "./breadcrumbs": {
       "types": "./dist/components/breadcrumbs/index.d.ts",
       "browser": "./src/components/breadcrumbs/index.ts",
@@ -836,38 +804,6 @@
     "./calendar/examples": {
       "import": "./src/components/calendar/calendar.examples.json",
       "default": "./src/components/calendar/calendar.examples.json"
-    },
-    "./call-to-action-section": {
-      "types": "./dist/components/call-to-action-section/index.d.ts",
-      "browser": "./src/components/call-to-action-section/index.ts",
-      "node": "./dist/server/components/call-to-action-section/index.js",
-      "svelte": "./src/components/call-to-action-section/index.ts",
-      "import": "./src/components/call-to-action-section/index.ts",
-      "default": "./dist/components/call-to-action-section/index.js"
-    },
-    "./call-to-action-section/schema": {
-      "types": "./dist/components/call-to-action-section/call-to-action-section.schema.d.ts",
-      "browser": "./src/components/call-to-action-section/call-to-action-section.schema.ts",
-      "node": "./dist/server/components/call-to-action-section/call-to-action-section.schema.js",
-      "svelte": "./src/components/call-to-action-section/call-to-action-section.schema.ts",
-      "import": "./src/components/call-to-action-section/call-to-action-section.schema.ts",
-      "default": "./dist/components/call-to-action-section/call-to-action-section.schema.js"
-    },
-    "./call-to-action-section/variables": {
-      "types": "./dist/components/call-to-action-section/call-to-action-section.variables.d.ts",
-      "browser": "./src/components/call-to-action-section/call-to-action-section.variables.ts",
-      "node": "./dist/server/components/call-to-action-section/call-to-action-section.variables.js",
-      "svelte": "./src/components/call-to-action-section/call-to-action-section.variables.ts",
-      "import": "./src/components/call-to-action-section/call-to-action-section.variables.ts",
-      "default": "./dist/components/call-to-action-section/call-to-action-section.variables.js"
-    },
-    "./call-to-action-section/styles": {
-      "types": "./dist/components/call-to-action-section/call-to-action-section.css.d.ts",
-      "default": "./dist/components/call-to-action-section/call-to-action-section.css"
-    },
-    "./call-to-action-section/examples": {
-      "import": "./src/components/call-to-action-section/call-to-action-section.examples.json",
-      "default": "./src/components/call-to-action-section/call-to-action-section.examples.json"
     },
     "./callout": {
       "types": "./dist/components/callout/index.d.ts",
@@ -2177,38 +2113,6 @@
       "import": "./src/components/faceted-filter-bar/faceted-filter-bar.examples.json",
       "default": "./src/components/faceted-filter-bar/faceted-filter-bar.examples.json"
     },
-    "./feature-section": {
-      "types": "./dist/components/feature-section/index.d.ts",
-      "browser": "./src/components/feature-section/index.ts",
-      "node": "./dist/server/components/feature-section/index.js",
-      "svelte": "./src/components/feature-section/index.ts",
-      "import": "./src/components/feature-section/index.ts",
-      "default": "./dist/components/feature-section/index.js"
-    },
-    "./feature-section/schema": {
-      "types": "./dist/components/feature-section/feature-section.schema.d.ts",
-      "browser": "./src/components/feature-section/feature-section.schema.ts",
-      "node": "./dist/server/components/feature-section/feature-section.schema.js",
-      "svelte": "./src/components/feature-section/feature-section.schema.ts",
-      "import": "./src/components/feature-section/feature-section.schema.ts",
-      "default": "./dist/components/feature-section/feature-section.schema.js"
-    },
-    "./feature-section/variables": {
-      "types": "./dist/components/feature-section/feature-section.variables.d.ts",
-      "browser": "./src/components/feature-section/feature-section.variables.ts",
-      "node": "./dist/server/components/feature-section/feature-section.variables.js",
-      "svelte": "./src/components/feature-section/feature-section.variables.ts",
-      "import": "./src/components/feature-section/feature-section.variables.ts",
-      "default": "./dist/components/feature-section/feature-section.variables.js"
-    },
-    "./feature-section/styles": {
-      "types": "./dist/components/feature-section/feature-section.css.d.ts",
-      "default": "./dist/components/feature-section/feature-section.css"
-    },
-    "./feature-section/examples": {
-      "import": "./src/components/feature-section/feature-section.examples.json",
-      "default": "./src/components/feature-section/feature-section.examples.json"
-    },
     "./feed": {
       "types": "./dist/components/feed/index.d.ts",
       "browser": "./src/components/feed/index.ts",
@@ -2588,38 +2492,6 @@
       "svelte": "./src/components/grid-list-item/grid-list-item.variables.ts",
       "import": "./src/components/grid-list-item/grid-list-item.variables.ts",
       "default": "./dist/components/grid-list-item/grid-list-item.variables.js"
-    },
-    "./hero-section": {
-      "types": "./dist/components/hero-section/index.d.ts",
-      "browser": "./src/components/hero-section/index.ts",
-      "node": "./dist/server/components/hero-section/index.js",
-      "svelte": "./src/components/hero-section/index.ts",
-      "import": "./src/components/hero-section/index.ts",
-      "default": "./dist/components/hero-section/index.js"
-    },
-    "./hero-section/schema": {
-      "types": "./dist/components/hero-section/hero-section.schema.d.ts",
-      "browser": "./src/components/hero-section/hero-section.schema.ts",
-      "node": "./dist/server/components/hero-section/hero-section.schema.js",
-      "svelte": "./src/components/hero-section/hero-section.schema.ts",
-      "import": "./src/components/hero-section/hero-section.schema.ts",
-      "default": "./dist/components/hero-section/hero-section.schema.js"
-    },
-    "./hero-section/variables": {
-      "types": "./dist/components/hero-section/hero-section.variables.d.ts",
-      "browser": "./src/components/hero-section/hero-section.variables.ts",
-      "node": "./dist/server/components/hero-section/hero-section.variables.js",
-      "svelte": "./src/components/hero-section/hero-section.variables.ts",
-      "import": "./src/components/hero-section/hero-section.variables.ts",
-      "default": "./dist/components/hero-section/hero-section.variables.js"
-    },
-    "./hero-section/styles": {
-      "types": "./dist/components/hero-section/hero-section.css.d.ts",
-      "default": "./dist/components/hero-section/hero-section.css"
-    },
-    "./hero-section/examples": {
-      "import": "./src/components/hero-section/hero-section.examples.json",
-      "default": "./src/components/hero-section/hero-section.examples.json"
     },
     "./hover-card": {
       "types": "./dist/components/hover-card/index.d.ts",
@@ -3125,38 +2997,6 @@
       "import": "./src/components/locale-provider/locale-provider.variables.ts",
       "default": "./dist/components/locale-provider/locale-provider.variables.js"
     },
-    "./logo-cloud": {
-      "types": "./dist/components/logo-cloud/index.d.ts",
-      "browser": "./src/components/logo-cloud/index.ts",
-      "node": "./dist/server/components/logo-cloud/index.js",
-      "svelte": "./src/components/logo-cloud/index.ts",
-      "import": "./src/components/logo-cloud/index.ts",
-      "default": "./dist/components/logo-cloud/index.js"
-    },
-    "./logo-cloud/schema": {
-      "types": "./dist/components/logo-cloud/logo-cloud.schema.d.ts",
-      "browser": "./src/components/logo-cloud/logo-cloud.schema.ts",
-      "node": "./dist/server/components/logo-cloud/logo-cloud.schema.js",
-      "svelte": "./src/components/logo-cloud/logo-cloud.schema.ts",
-      "import": "./src/components/logo-cloud/logo-cloud.schema.ts",
-      "default": "./dist/components/logo-cloud/logo-cloud.schema.js"
-    },
-    "./logo-cloud/variables": {
-      "types": "./dist/components/logo-cloud/logo-cloud.variables.d.ts",
-      "browser": "./src/components/logo-cloud/logo-cloud.variables.ts",
-      "node": "./dist/server/components/logo-cloud/logo-cloud.variables.js",
-      "svelte": "./src/components/logo-cloud/logo-cloud.variables.ts",
-      "import": "./src/components/logo-cloud/logo-cloud.variables.ts",
-      "default": "./dist/components/logo-cloud/logo-cloud.variables.js"
-    },
-    "./logo-cloud/styles": {
-      "types": "./dist/components/logo-cloud/logo-cloud.css.d.ts",
-      "default": "./dist/components/logo-cloud/logo-cloud.css"
-    },
-    "./logo-cloud/examples": {
-      "import": "./src/components/logo-cloud/logo-cloud.examples.json",
-      "default": "./src/components/logo-cloud/logo-cloud.examples.json"
-    },
     "./marquee": {
       "types": "./dist/components/marquee/index.d.ts",
       "browser": "./src/components/marquee/index.ts",
@@ -3541,38 +3381,6 @@
       "types": "./dist/components/navigation-item/navigation-item.css.d.ts",
       "default": "./dist/components/navigation-item/navigation-item.css"
     },
-    "./newsletter-section": {
-      "types": "./dist/components/newsletter-section/index.d.ts",
-      "browser": "./src/components/newsletter-section/index.ts",
-      "node": "./dist/server/components/newsletter-section/index.js",
-      "svelte": "./src/components/newsletter-section/index.ts",
-      "import": "./src/components/newsletter-section/index.ts",
-      "default": "./dist/components/newsletter-section/index.js"
-    },
-    "./newsletter-section/schema": {
-      "types": "./dist/components/newsletter-section/newsletter-section.schema.d.ts",
-      "browser": "./src/components/newsletter-section/newsletter-section.schema.ts",
-      "node": "./dist/server/components/newsletter-section/newsletter-section.schema.js",
-      "svelte": "./src/components/newsletter-section/newsletter-section.schema.ts",
-      "import": "./src/components/newsletter-section/newsletter-section.schema.ts",
-      "default": "./dist/components/newsletter-section/newsletter-section.schema.js"
-    },
-    "./newsletter-section/variables": {
-      "types": "./dist/components/newsletter-section/newsletter-section.variables.d.ts",
-      "browser": "./src/components/newsletter-section/newsletter-section.variables.ts",
-      "node": "./dist/server/components/newsletter-section/newsletter-section.variables.js",
-      "svelte": "./src/components/newsletter-section/newsletter-section.variables.ts",
-      "import": "./src/components/newsletter-section/newsletter-section.variables.ts",
-      "default": "./dist/components/newsletter-section/newsletter-section.variables.js"
-    },
-    "./newsletter-section/styles": {
-      "types": "./dist/components/newsletter-section/newsletter-section.css.d.ts",
-      "default": "./dist/components/newsletter-section/newsletter-section.css"
-    },
-    "./newsletter-section/examples": {
-      "import": "./src/components/newsletter-section/newsletter-section.examples.json",
-      "default": "./src/components/newsletter-section/newsletter-section.examples.json"
-    },
     "./number-input": {
       "types": "./dist/components/number-input/index.d.ts",
       "browser": "./src/components/number-input/index.ts",
@@ -3888,38 +3696,6 @@
     "./pricing-card/examples": {
       "import": "./src/components/pricing-card/pricing-card.examples.json",
       "default": "./src/components/pricing-card/pricing-card.examples.json"
-    },
-    "./pricing-section": {
-      "types": "./dist/components/pricing-section/index.d.ts",
-      "browser": "./src/components/pricing-section/index.ts",
-      "node": "./dist/server/components/pricing-section/index.js",
-      "svelte": "./src/components/pricing-section/index.ts",
-      "import": "./src/components/pricing-section/index.ts",
-      "default": "./dist/components/pricing-section/index.js"
-    },
-    "./pricing-section/schema": {
-      "types": "./dist/components/pricing-section/pricing-section.schema.d.ts",
-      "browser": "./src/components/pricing-section/pricing-section.schema.ts",
-      "node": "./dist/server/components/pricing-section/pricing-section.schema.js",
-      "svelte": "./src/components/pricing-section/pricing-section.schema.ts",
-      "import": "./src/components/pricing-section/pricing-section.schema.ts",
-      "default": "./dist/components/pricing-section/pricing-section.schema.js"
-    },
-    "./pricing-section/variables": {
-      "types": "./dist/components/pricing-section/pricing-section.variables.d.ts",
-      "browser": "./src/components/pricing-section/pricing-section.variables.ts",
-      "node": "./dist/server/components/pricing-section/pricing-section.variables.js",
-      "svelte": "./src/components/pricing-section/pricing-section.variables.ts",
-      "import": "./src/components/pricing-section/pricing-section.variables.ts",
-      "default": "./dist/components/pricing-section/pricing-section.variables.js"
-    },
-    "./pricing-section/styles": {
-      "types": "./dist/components/pricing-section/pricing-section.css.d.ts",
-      "default": "./dist/components/pricing-section/pricing-section.css"
-    },
-    "./pricing-section/examples": {
-      "import": "./src/components/pricing-section/pricing-section.examples.json",
-      "default": "./src/components/pricing-section/pricing-section.examples.json"
     },
     "./progress": {
       "types": "./dist/components/progress/index.d.ts",
@@ -5069,38 +4845,6 @@
       "import": "./src/components/statistic-group/statistic-group.examples.json",
       "default": "./src/components/statistic-group/statistic-group.examples.json"
     },
-    "./statistics-section": {
-      "types": "./dist/components/statistics-section/index.d.ts",
-      "browser": "./src/components/statistics-section/index.ts",
-      "node": "./dist/server/components/statistics-section/index.js",
-      "svelte": "./src/components/statistics-section/index.ts",
-      "import": "./src/components/statistics-section/index.ts",
-      "default": "./dist/components/statistics-section/index.js"
-    },
-    "./statistics-section/schema": {
-      "types": "./dist/components/statistics-section/statistics-section.schema.d.ts",
-      "browser": "./src/components/statistics-section/statistics-section.schema.ts",
-      "node": "./dist/server/components/statistics-section/statistics-section.schema.js",
-      "svelte": "./src/components/statistics-section/statistics-section.schema.ts",
-      "import": "./src/components/statistics-section/statistics-section.schema.ts",
-      "default": "./dist/components/statistics-section/statistics-section.schema.js"
-    },
-    "./statistics-section/variables": {
-      "types": "./dist/components/statistics-section/statistics-section.variables.d.ts",
-      "browser": "./src/components/statistics-section/statistics-section.variables.ts",
-      "node": "./dist/server/components/statistics-section/statistics-section.variables.js",
-      "svelte": "./src/components/statistics-section/statistics-section.variables.ts",
-      "import": "./src/components/statistics-section/statistics-section.variables.ts",
-      "default": "./dist/components/statistics-section/statistics-section.variables.js"
-    },
-    "./statistics-section/styles": {
-      "types": "./dist/components/statistics-section/statistics-section.css.d.ts",
-      "default": "./dist/components/statistics-section/statistics-section.css"
-    },
-    "./statistics-section/examples": {
-      "import": "./src/components/statistics-section/statistics-section.examples.json",
-      "default": "./src/components/statistics-section/statistics-section.examples.json"
-    },
     "./status-dot": {
       "types": "./dist/components/status-dot/index.d.ts",
       "browser": "./src/components/status-dot/index.ts",
@@ -5548,70 +5292,6 @@
     "./tag-input/examples": {
       "import": "./src/components/tag-input/tag-input.examples.json",
       "default": "./src/components/tag-input/tag-input.examples.json"
-    },
-    "./team-section": {
-      "types": "./dist/components/team-section/index.d.ts",
-      "browser": "./src/components/team-section/index.ts",
-      "node": "./dist/server/components/team-section/index.js",
-      "svelte": "./src/components/team-section/index.ts",
-      "import": "./src/components/team-section/index.ts",
-      "default": "./dist/components/team-section/index.js"
-    },
-    "./team-section/schema": {
-      "types": "./dist/components/team-section/team-section.schema.d.ts",
-      "browser": "./src/components/team-section/team-section.schema.ts",
-      "node": "./dist/server/components/team-section/team-section.schema.js",
-      "svelte": "./src/components/team-section/team-section.schema.ts",
-      "import": "./src/components/team-section/team-section.schema.ts",
-      "default": "./dist/components/team-section/team-section.schema.js"
-    },
-    "./team-section/variables": {
-      "types": "./dist/components/team-section/team-section.variables.d.ts",
-      "browser": "./src/components/team-section/team-section.variables.ts",
-      "node": "./dist/server/components/team-section/team-section.variables.js",
-      "svelte": "./src/components/team-section/team-section.variables.ts",
-      "import": "./src/components/team-section/team-section.variables.ts",
-      "default": "./dist/components/team-section/team-section.variables.js"
-    },
-    "./team-section/styles": {
-      "types": "./dist/components/team-section/team-section.css.d.ts",
-      "default": "./dist/components/team-section/team-section.css"
-    },
-    "./team-section/examples": {
-      "import": "./src/components/team-section/team-section.examples.json",
-      "default": "./src/components/team-section/team-section.examples.json"
-    },
-    "./testimonial-section": {
-      "types": "./dist/components/testimonial-section/index.d.ts",
-      "browser": "./src/components/testimonial-section/index.ts",
-      "node": "./dist/server/components/testimonial-section/index.js",
-      "svelte": "./src/components/testimonial-section/index.ts",
-      "import": "./src/components/testimonial-section/index.ts",
-      "default": "./dist/components/testimonial-section/index.js"
-    },
-    "./testimonial-section/schema": {
-      "types": "./dist/components/testimonial-section/testimonial-section.schema.d.ts",
-      "browser": "./src/components/testimonial-section/testimonial-section.schema.ts",
-      "node": "./dist/server/components/testimonial-section/testimonial-section.schema.js",
-      "svelte": "./src/components/testimonial-section/testimonial-section.schema.ts",
-      "import": "./src/components/testimonial-section/testimonial-section.schema.ts",
-      "default": "./dist/components/testimonial-section/testimonial-section.schema.js"
-    },
-    "./testimonial-section/variables": {
-      "types": "./dist/components/testimonial-section/testimonial-section.variables.d.ts",
-      "browser": "./src/components/testimonial-section/testimonial-section.variables.ts",
-      "node": "./dist/server/components/testimonial-section/testimonial-section.variables.js",
-      "svelte": "./src/components/testimonial-section/testimonial-section.variables.ts",
-      "import": "./src/components/testimonial-section/testimonial-section.variables.ts",
-      "default": "./dist/components/testimonial-section/testimonial-section.variables.js"
-    },
-    "./testimonial-section/styles": {
-      "types": "./dist/components/testimonial-section/testimonial-section.css.d.ts",
-      "default": "./dist/components/testimonial-section/testimonial-section.css"
-    },
-    "./testimonial-section/examples": {
-      "import": "./src/components/testimonial-section/testimonial-section.examples.json",
-      "default": "./src/components/testimonial-section/testimonial-section.examples.json"
     },
     "./textarea": {
       "types": "./dist/components/textarea/index.d.ts",

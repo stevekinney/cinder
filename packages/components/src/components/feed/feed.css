@@ -160,17 +160,33 @@
     gap: var(--cinder-space-2);
   }
 
+  /* Hosts the viewport plus the overlaid resume control. Overlaying (rather
+   * than mounting a toolbar row) means pausing never shifts the content the
+   * user just scrolled to. */
+  .cinder-feed-log__scroll-region {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-block-size: 0;
+  }
+
   .cinder-feed-log__resume-button {
+    position: absolute;
+    inset-block-end: var(--cinder-space-2);
+    inset-inline-start: 50%;
+    translate: -50% 0;
     display: inline-flex;
     align-items: center;
     gap: var(--cinder-space-1);
     padding: var(--cinder-space-0-5) var(--cinder-space-2);
     border: 1px solid var(--cinder-border);
-    border-radius: var(--cinder-radius-md);
+    border-radius: var(--cinder-radius-full);
     background: var(--cinder-surface);
     color: var(--cinder-text);
     font-size: var(--cinder-text-xs);
     font-family: inherit;
+    box-shadow: var(--cinder-shadow-md);
     cursor: pointer;
     transition: background-color var(--cinder-duration-fast) var(--cinder-ease-standard);
   }

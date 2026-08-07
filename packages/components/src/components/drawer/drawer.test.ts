@@ -1235,15 +1235,17 @@ describe('Drawer bottom placement', () => {
 // while the backdrop fades (the asymmetric "eases out, pops in" defect).
 // ---------------------------------------------------------------------------
 describe('Drawer per-placement motion contract', () => {
-  // Expected slide-from-edge translate per placement. Keyed by the SCHEMA's
-  // placement enum (generated from DrawerPlacement; components:check forces
-  // regeneration), so adding a new placement to the type fails the coverage
-  // test below until it gets motion rules and an entry here — a new edge
-  // cannot ship the missing-@starting-style pop-in silently.
-  const PLACEMENT_TRANSLATES: Record<string, string> = {
-    right: 'translate: 100% 0;',
-    left: 'translate: -100% 0;',
-    bottom: 'translate: 0 100%;',
+  // Expected slide-from-edge vector per placement, declared as the
+  // --_cinder-drawer-slide custom property in each placement's block and
+  // consumed by ONE closing rule and ONE @starting-style rule. Keyed by the
+  // SCHEMA's placement enum (generated from DrawerPlacement; components:check
+  // forces regeneration), so adding a new placement to the type fails the
+  // coverage test below until its block declares a vector — a new edge
+  // cannot ship the missing-enter-animation pop-in silently.
+  const PLACEMENT_SLIDE_VECTORS: Record<string, string> = {
+    right: '--_cinder-drawer-slide: 100% 0;',
+    left: '--_cinder-drawer-slide: -100% 0;',
+    bottom: '--_cinder-drawer-slide: 0 100%;',
   };
 
   async function schemaPlacements(): Promise<string[]> {
@@ -1257,40 +1259,36 @@ describe('Drawer per-placement motion contract', () => {
     return enumValues;
   }
 
-  test('the translate map covers every placement in the generated schema', async () => {
+  test('the slide-vector map covers every placement in the generated schema', async () => {
     const placements = await schemaPlacements();
-    expect(Object.keys(PLACEMENT_TRANSLATES).toSorted()).toEqual(placements.toSorted());
+    expect(Object.keys(PLACEMENT_SLIDE_VECTORS).toSorted()).toEqual(placements.toSorted());
   });
 
-  test('every placement has a matching @starting-style panel rule', async () => {
-    const panelStartingStyleIndex = drawerCss.indexOf(
-      '@starting-style',
-      drawerCss.indexOf('.cinder-drawer__panel['),
-    );
-    expect(panelStartingStyleIndex).toBeGreaterThan(-1);
-    const block = drawerCss.slice(panelStartingStyleIndex);
+  test('every placement block declares its slide vector', async () => {
     for (const placement of await schemaPlacements()) {
-      const selectorIndex = block.indexOf(
-        `.cinder-drawer__panel[data-cinder-placement='${placement}']`,
-      );
-      expect(selectorIndex).toBeGreaterThan(-1);
-      const rule = block.slice(selectorIndex, block.indexOf('}', selectorIndex));
-      expect(rule).toContain(
-        PLACEMENT_TRANSLATES[placement] ?? `<no translate mapped for ${placement}>`,
-      );
-    }
-  });
-
-  test('every placement has a matching closing rule', async () => {
-    for (const placement of await schemaPlacements()) {
-      const selector = `.cinder-drawer__panel[data-cinder-placement='${placement}'][data-cinder-closing]`;
-      const selectorIndex = drawerCss.indexOf(selector);
+      const selector = `.cinder-drawer__panel[data-cinder-placement='${placement}']`;
+      const selectorIndex = drawerCss.indexOf(`${selector} {`);
       expect(selectorIndex).toBeGreaterThan(-1);
       const rule = drawerCss.slice(selectorIndex, drawerCss.indexOf('}', selectorIndex));
       expect(rule).toContain(
-        PLACEMENT_TRANSLATES[placement] ?? `<no translate mapped for ${placement}>`,
+        PLACEMENT_SLIDE_VECTORS[placement] ?? `<no slide vector mapped for ${placement}>`,
       );
     }
+  });
+
+  test('one closing rule and one @starting-style rule consume the slide vector', () => {
+    const closingIndex = drawerCss.indexOf('.cinder-drawer__panel[data-cinder-closing]');
+    expect(closingIndex).toBeGreaterThan(-1);
+    const closingRule = drawerCss.slice(closingIndex, drawerCss.indexOf('}', closingIndex));
+    expect(closingRule).toContain('translate: var(--_cinder-drawer-slide);');
+
+    const panelStartingStyleIndex = drawerCss.indexOf('@starting-style', closingIndex);
+    expect(panelStartingStyleIndex).toBeGreaterThan(-1);
+    const startingBlock = drawerCss.slice(panelStartingStyleIndex);
+    const panelIndex = startingBlock.indexOf('.cinder-drawer__panel');
+    expect(panelIndex).toBeGreaterThan(-1);
+    const startingRule = startingBlock.slice(panelIndex, startingBlock.indexOf('}', panelIndex));
+    expect(startingRule).toContain('translate: var(--_cinder-drawer-slide);');
   });
 });
 

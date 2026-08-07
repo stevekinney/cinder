@@ -10,8 +10,8 @@
    * @useWhen Rendering a route-level heading that needs consistent spacing and border treatment across pages.
    * @useWhen Pairing page context and supporting copy with optional right-aligned controls.
    * @avoidWhen Rendering section-scoped headings within page content — use section-heading.
-   * @avoidWhen Building complex hero layouts with rich copy and media — use hero-section.
-   * @related section-heading, hero-section
+   * @avoidWhen Building complex hero layouts with rich copy and media — compose container (see its hero-section example).
+   * @related section-heading, container
    */
   export type { PageHeaderProps } from './page-header.types.ts';
 </script>

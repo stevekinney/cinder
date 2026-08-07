@@ -259,7 +259,7 @@ describe('Feed log arm', () => {
   test('scrolling away from the bottom pauses following and shows the resume control', async () => {
     // Unbound prop: the component's internal bindable state drives the DOM.
     const { container } = render(Feed, {
-      props: { ...logProps, followLatest: true },
+      props: { ...logProps, following: true },
     });
     const viewport = container.querySelector('.cinder-feed-log__viewport') as HTMLElement;
     expect(viewport).not.toBeNull();
@@ -276,16 +276,16 @@ describe('Feed log arm', () => {
     expect(container.querySelector('.cinder-feed-log__resume-button')).not.toBeNull();
   });
 
-  test('binding round-trip: pausing writes followLatest=false back to the parent', async () => {
-    let followLatest = true;
+  test('binding round-trip: pausing writes following=false back to the parent', async () => {
+    let following = true;
     const { container } = render(Feed, {
       props: {
         ...logProps,
-        get followLatest() {
-          return followLatest;
+        get following() {
+          return following;
         },
-        set followLatest(value: boolean) {
-          followLatest = value;
+        set following(value: boolean) {
+          following = value;
         },
       },
     });
@@ -295,19 +295,19 @@ describe('Feed log arm', () => {
     viewport.scrollTop = 0;
     await fireEvent.scroll(viewport);
 
-    expect(followLatest).toBe(false);
+    expect(following).toBe(false);
   });
 
   test('scrolling back to the bottom resumes following', async () => {
-    let followLatest = false;
+    let following = false;
     const { container } = render(Feed, {
       props: {
         ...logProps,
-        get followLatest() {
-          return followLatest;
+        get following() {
+          return following;
         },
-        set followLatest(value: boolean) {
-          followLatest = value;
+        set following(value: boolean) {
+          following = value;
         },
       },
     });
@@ -318,19 +318,19 @@ describe('Feed log arm', () => {
     viewport.scrollTop = 300; // 400 - 300 - 100 = 0 < 2 → at bottom
     await fireEvent.scroll(viewport);
 
-    expect(followLatest).toBe(true);
+    expect(following).toBe(true);
   });
 
   test('the resume control resumes following and scrolls to the bottom', async () => {
-    let followLatest = false;
+    let following = false;
     const { container } = render(Feed, {
       props: {
         ...logProps,
-        get followLatest() {
-          return followLatest;
+        get following() {
+          return following;
         },
-        set followLatest(value: boolean) {
-          followLatest = value;
+        set following(value: boolean) {
+          following = value;
         },
       },
     });
@@ -342,7 +342,7 @@ describe('Feed log arm', () => {
     expect(resume).not.toBeNull();
     await fireEvent.click(resume);
 
-    expect(followLatest).toBe(true);
+    expect(following).toBe(true);
     expect(viewport.scrollTop).toBe(400);
   });
 });

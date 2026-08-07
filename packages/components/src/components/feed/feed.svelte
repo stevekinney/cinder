@@ -35,7 +35,7 @@
   let {
     kind = 'list',
     live = false,
-    followLatest = $bindable(true),
+    following = $bindable(true),
     loading = false,
     truncated = false,
     connectionState,
@@ -70,12 +70,22 @@
   let programmaticScroll = false;
   let programmaticScrollTimeout: ReturnType<typeof setTimeout> | undefined;
 
+  // scrollHeight seen by the previous scroll event. When entries are trimmed
+  // while the user is paused reading, the browser clamps scrollTop and fires
+  // a scroll event that computes "at bottom" — that clamp must not resume
+  // following (the user never scrolled down). Shrinking content marks the
+  // event as clamp-suspect.
+  let lastViewportScrollHeight = 0;
+
   function isAtBottom(element: HTMLElement): boolean {
     return element.scrollHeight - element.scrollTop - element.clientHeight < 2;
   }
 
   function handleScroll(event: Event) {
     const target = event.target as HTMLElement;
+    const contentShrank =
+      lastViewportScrollHeight > 0 && target.scrollHeight < lastViewportScrollHeight;
+    lastViewportScrollHeight = target.scrollHeight;
     const atBottom = isAtBottom(target);
     if (programmaticScroll) {
       if (atBottom) {
@@ -84,14 +94,23 @@
       }
       return;
     }
-    if (atBottom && !followLatest) {
-      followLatest = true;
-    } else if (!atBottom && followLatest) {
-      followLatest = false;
+    if (atBottom && !following) {
+      if (!contentShrank) {
+        following = true;
+      }
+    } else if (!atBottom && following) {
+      following = false;
     }
   }
 
   function scrollToBottom(element: HTMLElement) {
+    if (isAtBottom(element)) {
+      // Already pinned: the write below would be a no-op that fires NO scroll
+      // event, so the guard would stay latched for the full safety timeout
+      // and swallow a genuine user scroll-away inside that window. Skip the
+      // latch entirely.
+      return;
+    }
     programmaticScroll = true;
     element.scrollTop = element.scrollHeight;
     clearTimeout(programmaticScrollTimeout);
@@ -101,11 +120,11 @@
   }
 
   function resumeFollowing() {
-    followLatest = true;
+    following = true;
     if (viewportElement) {
       scrollToBottom(viewportElement);
     }
-    // Activating the control unmounts it ({#if !followLatest}), which would
+    // Activating the control unmounts it ({#if !following}), which would
     // drop keyboard focus to <body>. Move focus to the tabindex="0"
     // role="log" viewport after the re-render.
     void tick().then(() => {
@@ -123,7 +142,7 @@
     const viewport = viewportElement;
     if (!list || !viewport || typeof ResizeObserver === 'undefined') return;
     const observer = new ResizeObserver(() => {
-      if (followLatest) {
+      if (following) {
         scrollToBottom(viewport);
       }
     });
@@ -132,17 +151,17 @@
   });
 
   // Resuming via the BINDABLE (a parent "jump to latest" control setting
-  // followLatest = true) must also scroll — the observer above only fires on
+  // following = true) must also scroll — the observer above only fires on
   // content growth, which may never come on a quiet stream. Explicit
   // previous-value comparison, not a naive effect, so this runs only on the
   // false→true transition and never re-scrolls on unrelated re-renders.
-  let wasFollowing = followLatest;
+  let wasFollowing = following;
   $effect(() => {
-    const following = followLatest;
-    if (kind === 'log' && following && !wasFollowing && viewportElement) {
+    const isFollowing = following;
+    if (kind === 'log' && isFollowing && !wasFollowing && viewportElement) {
       scrollToBottom(viewportElement);
     }
-    wasFollowing = following;
+    wasFollowing = isFollowing;
   });
 </script>
 
@@ -151,18 +170,13 @@
     {...logRest}
     class={classNames('cinder-feed-log', className)}
     data-cinder-loading={loading ? '' : undefined}
-    data-cinder-paused={!followLatest ? '' : undefined}
+    data-cinder-paused={!following ? '' : undefined}
   >
-    {#if connectionState || toolbar || !followLatest}
+    {#if connectionState || toolbar}
       <div class="cinder-feed-log__toolbar" role="group" aria-label="Stream controls">
         <div class="cinder-feed-log__toolbar-start">
           {#if connectionState}
             <StatusDot {connectionState} />
-          {/if}
-          {#if !followLatest}
-            <button type="button" class="cinder-feed-log__resume-button" onclick={resumeFollowing}>
-              Resume following
-            </button>
           {/if}
         </div>
         {#if toolbar}
@@ -179,26 +193,37 @@
       </div>
     {/if}
 
-    <!-- Keyboard-scrollable live region: role="log" gives this element a legitimate keyboard-focus need. -->
-    <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-    <div
-      class="cinder-feed-log__viewport"
-      role="log"
-      aria-label={label}
-      onscroll={handleScroll}
-      bind:this={viewportElement}
-      tabindex={0}
-    >
-      {#if loading}
-        <div class="cinder-feed-log__loading" role="status" aria-label="Loading entries">
-          <div class="cinder-feed-log__skeleton" aria-hidden="true"></div>
-          <div class="cinder-feed-log__skeleton" aria-hidden="true"></div>
-          <div class="cinder-feed-log__skeleton" aria-hidden="true"></div>
-        </div>
-      {:else}
-        <ol class="cinder-feed" bind:this={listElement}>
-          {@render children()}
-        </ol>
+    <div class="cinder-feed-log__scroll-region">
+      <!-- Keyboard-scrollable live region: role="log" gives this element a legitimate keyboard-focus need. -->
+      <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+      <div
+        class="cinder-feed-log__viewport"
+        role="log"
+        aria-label={label}
+        onscroll={handleScroll}
+        bind:this={viewportElement}
+        tabindex={0}
+      >
+        {#if loading}
+          <div class="cinder-feed-log__loading" role="status" aria-label="Loading entries">
+            <div class="cinder-feed-log__skeleton" aria-hidden="true"></div>
+            <div class="cinder-feed-log__skeleton" aria-hidden="true"></div>
+            <div class="cinder-feed-log__skeleton" aria-hidden="true"></div>
+          </div>
+        {:else}
+          <ol class="cinder-feed" bind:this={listElement}>
+            {@render children()}
+          </ol>
+        {/if}
+      </div>
+
+      <!-- Overlaid, not in-flow: pausing must never shift the content the
+           user just scrolled to, so the resume control floats over the
+           viewport instead of mounting a toolbar row. -->
+      {#if !following}
+        <button type="button" class="cinder-feed-log__resume-button" onclick={resumeFollowing}>
+          Resume following
+        </button>
       {/if}
     </div>
   </div>

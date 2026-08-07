@@ -31,7 +31,7 @@ streams). No compatibility aliases are shipped — cinder is pre-release.
     is gone — with authored children the component cannot know the stream is
     empty; render your own `role="status"` message when your source array is
     empty.
-  - `followLatest`/`loading`/`truncated`/`connectionState`/`label` carry over
+  - `following`/`loading`/`truncated`/`connectionState`/`label` carry over
     unchanged; types `EventSeverity`/`EventStreamState` are replaced by
     `FeedEventTone`/`FeedConnectionState`.
 - `Feed.Event` gains `tone?: 'neutral' | 'info' | 'success' | 'warning' |

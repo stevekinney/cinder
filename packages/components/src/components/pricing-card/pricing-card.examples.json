@@ -4,6 +4,12 @@
   "import": "@lostgradient/cinder/pricing-card",
   "examples": [
     {
+      "id": "pricing-section",
+      "title": "Pricing section",
+      "description": "A full pricing-section recipe: Container frames a heading and supporting copy above a responsive grid of PricingCard plans with selection.",
+      "code": "<script lang=\"ts\">\n  import { Container } from '@lostgradient/cinder/container';\n  import { PricingCard } from '@lostgradient/cinder/pricing-card';\n\n  const plans = [\n    {\n      name: 'Starter',\n      price: '$0',\n      features: ['3 projects', 'Community support'],\n      cta: 'Start free',\n    },\n    {\n      name: 'Pro',\n      price: '$49 / month',\n      features: ['Unlimited projects', 'Priority support', 'Team roles'],\n      cta: 'Choose Pro',\n    },\n    {\n      name: 'Enterprise',\n      price: 'Contact us',\n      features: ['SSO + SCIM', 'Audit logs', 'Dedicated support'],\n      cta: 'Talk to sales',\n    },\n  ];\n\n  let selectedPlan = $state('Pro');\n</script>\n\n<section style=\"padding-block: var(--cinder-space-10);\">\n  <Container maxWidth=\"wide\">\n    <div style=\"display: grid; gap: var(--cinder-space-6);\">\n      <header style=\"display: grid; gap: var(--cinder-space-2); max-inline-size: 60ch;\">\n        <h2 style=\"margin: 0;\">Pricing for teams of every size</h2>\n        <p style=\"margin: 0; color: var(--cinder-text-muted);\">\n          Start free, then scale with advanced collaboration and enterprise controls.\n        </p>\n      </header>\n\n      <ul\n        style=\"list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: var(--cinder-space-4); align-items: start;\"\n      >\n        {#each plans as plan (plan.name)}\n          <li>\n            <PricingCard\n              name={plan.name}\n              price={plan.price}\n              features={plan.features}\n              cta={plan.cta}\n              selected={selectedPlan === plan.name}\n              onSelect={() => {\n                selectedPlan = plan.name;\n              }}\n            />\n          </li>\n        {/each}\n      </ul>\n    </div>\n  </Container>\n</section>\n"
+    },
+    {
       "id": "tiers",
       "title": "Pricing tiers",
       "description": "Three plan tiles side by side with one pre-selected.",

@@ -58,7 +58,7 @@ Use `live` only when items stream onto the page while the user is present (notif
 
 ### Prepend vs append
 
-With `aria-live="polite"` and `aria-atomic="false"`, screen readers announce mutations regardless of insertion position. In the **list arm**, do not scroll the viewport on insertion — that would move the view from under keyboard and screen-reader users who are reading earlier content. Scroll only on explicit user gesture. (The **log arm** deliberately auto-scrolls while `followLatest` is active; its pause-on-scroll-away contract — the user's reading position always wins over the stream — is the reviewed mitigation. See "The log arm" below.)
+With `aria-live="polite"` and `aria-atomic="false"`, screen readers announce mutations regardless of insertion position. In the **list arm**, do not scroll the viewport on insertion — that would move the view from under keyboard and screen-reader users who are reading earlier content. Scroll only on explicit user gesture. (The **log arm** deliberately auto-scrolls while `following` is active; its pause-on-scroll-away contract — the user's reading position always wins over the stream — is the reviewed mitigation. See "The log arm" below.)
 
 ### Focus rescue
 
@@ -119,25 +119,26 @@ interrupting the current reading context.
 
 ### Auto-scroll — the reviewed exception to "scroll only on user gesture"
 
-While `followLatest` is active, appended content scrolls the viewport to the
+While `following` is active, appended content scrolls the viewport to the
 bottom (a ResizeObserver on the entry list). The mitigation that makes this
 acceptable: **the user's reading position always wins.** Scrolling away from
 the bottom pauses following immediately (`data-cinder-paused`); nothing
 scrolls again until the user returns to the bottom or activates the visible
-"Resume following" control. The `followLatest` bindable lets a parent build
+"Resume following" control. The `following` bindable lets a parent build
 its own jump-to-latest control; setting it `true` also scrolls.
 
 ### Keyboard and focus
 
-| Key                   | Action                                                         |
-| --------------------- | -------------------------------------------------------------- |
-| Tab                   | Toolbar controls (resume, consumer toolbar), then the viewport |
-| Enter / Space         | Activate the focused button                                    |
-| Arrow Up / Arrow Down | Scroll the viewport when the log region has focus              |
+| Key                   | Action                                                                                                      |
+| --------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Tab                   | Toolbar controls (connection, consumer toolbar), the viewport, then the overlaid resume control when paused |
+| Enter / Space         | Activate the focused button                                                                                 |
+| Arrow Up / Arrow Down | Scroll the viewport when the log region has focus                                                           |
 
 Activating "Resume following" unmounts the control itself; the component
 moves focus to the `tabindex="0"` viewport so keyboard focus is never dropped
-to `<body>`.
+to `<body>`. The control is overlaid on the viewport rather than mounted in a
+toolbar row, so pausing never shifts the content the user just scrolled to.
 
 ### Hard scope caps (unchanged from the review)
 

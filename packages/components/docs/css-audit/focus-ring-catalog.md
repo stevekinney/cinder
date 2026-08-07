@@ -142,11 +142,12 @@ inside the row. Stay as-is.
 These exist solely to _remove_ a focus ring on a child element when its parent
 container owns the ring. Stay as-is.
 
-| File:line                          | Selector                                                 |
-| ---------------------------------- | -------------------------------------------------------- |
-| `search-field/search-field.css:86` | `.cinder-search-field__input:focus-visible`              |
-| `input/input.css:187`              | `.cinder-input-group > .cinder-input:focus-visible`      |
-| `number-input/number-input.css:51` | `.cinder-number-input__input.cinder-input:focus-visible` |
+| File:line                          | Selector                                                                    |
+| ---------------------------------- | --------------------------------------------------------------------------- |
+| `drawer/drawer.css:231`            | `.cinder-drawer__body:focus:not(:focus-visible)` (`:focus` only suppressor) |
+| `search-field/search-field.css:86` | `.cinder-search-field__input:focus-visible`                                 |
+| `input/input.css:187`              | `.cinder-input-group > .cinder-input:focus-visible`                         |
+| `number-input/number-input.css:51` | `.cinder-number-input__input.cinder-input:focus-visible`                    |
 
 ### Bucket E — Forced-colors overrides
 

@@ -19,8 +19,15 @@ item count stays honest for assistive technology).
 - The root is an `<li>` so it participates in the parent `<ol>`'s list
   semantics — screen readers announce a consistent item count.
 - The inner content div carries `role="separator"` with `aria-label` set to
-  the consumer-supplied `label`. Separators are static (not focusable); this
-  matches the retired EventStreamViewer's marker semantics.
+  the consumer-supplied `label`. Separators are static (not focusable).
+- **Deliberate simplification versus the retired EventStreamViewer**: ESV
+  used `role="separator"` for reconnect boundaries but `role="note"` for
+  sequence-gap advisories. FeedBoundary consolidates on one role — every
+  boundary is a structural separator in the stream. If a future consumer
+  needs advisory (non-structural) semantics, pass `role="note"` through the
+  rest attributes onto the `<li>` and omit the inner separator by composing
+  a plain entry instead — do not add a role arm here without a design
+  review.
 - The label is both visible and the accessible name, so sighted and
   screen-reader users get the same wording.
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 import { parse } from 'postcss';
 
 import {
@@ -178,13 +178,23 @@ describe('checkComponentCssSource', () => {
   });
 
   it('allows leading private component imports', () => {
-    const source = `${LAYER_ORDER_PRELUDE}\n@import '../_internal/section-skeleton.css';\n@layer cinder.components { .cinder-blog-section {} }`;
-    expect(
-      checkComponentCssSource(
-        source,
-        resolve(import.meta.dir, '../src/components/blog-section/blog-section.css'),
-      ),
-    ).toEqual([]);
+    // Synthetic tree: no shipped component imports an `_internal/*.css`
+    // partial today, but the allowance is still part of the contract.
+    const root = mkdtempSync(join(tmpdir(), 'component-css-private-ok-'));
+    try {
+      const componentDirectory = join(root, 'src/components/example');
+      const internalDirectory = join(root, 'src/components/_internal');
+      mkdirSync(componentDirectory, { recursive: true });
+      mkdirSync(internalDirectory, { recursive: true });
+      writeFileSync(
+        join(internalDirectory, 'shared-partial.css'),
+        `${LAYER_ORDER_PRELUDE}\n@layer cinder.components { .cinder-_shared-partial {} }\n`,
+      );
+      const source = `${LAYER_ORDER_PRELUDE}\n@import '../_internal/shared-partial.css';\n@layer cinder.components { .cinder-example {} }`;
+      expect(checkComponentCssSource(source, join(componentDirectory, 'example.css'))).toEqual([]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 
   it('rejects a missing private stylesheet target', () => {

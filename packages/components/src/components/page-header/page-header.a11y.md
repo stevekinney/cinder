@@ -14,7 +14,7 @@ Purpose: Page-level heading with named title, description, breadcrumb, and actio
 ## Avoid when
 
 - Rendering section-scoped headings within page content — use section-heading.
-- Building complex hero layouts with rich copy and media — use hero-section.
+- Building complex hero layouts with rich copy and media — compose `container` (see its hero-section example).
 
 ## Keyboard and focus
 
@@ -35,4 +35,4 @@ The caller owns semantics inside PageHeader's named snippets. Keep title and des
 - Inspect the accessible name, role, and state in browser accessibility tools.
 - Check forced-colors mode when the component adds borders, focus rings, selected state, or status color.
 
-Related components: `section-heading`, `hero-section`.
+Related components: `section-heading`, `container`.
