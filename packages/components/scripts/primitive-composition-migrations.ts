@@ -65,7 +65,6 @@ export const allowedGridCounts = new Map<string, number>(
     'calendar/calendar.css',
     'data-grid/data-grid.css',
     'date-picker/date-picker.css',
-    'event-stream-viewer/event-stream-viewer.css',
     'feed/feed.css',
     'form-section/form-section.css',
     'grid/grid.css',
@@ -120,7 +119,6 @@ export const allowedFloatingCounts = new Map<string, number>(
     'bar-chart/bar-chart.css',
     'drawer/drawer.css',
     'dropdown/dropdown.css',
-    'event-timeline/event-timeline.css',
     'kanban-board/kanban-board.css',
     'line-chart/line-chart.css',
     'marquee/marquee.css',
@@ -144,11 +142,6 @@ export const allowedFloatingCounts = new Map<string, number>(
 allowedFloatingCounts.set('dropdown/dropdown.css', 6);
 allowedFloatingCounts.set('menu-bar/menu-bar.css', 2);
 allowedFloatingCounts.set('styles/components/experimental/popover.css', 4);
-// event-timeline's cluster wrapper is a lane marker positioned absolutely along
-// the timeline track; its z-index bump on `[data-cinder-open]` (see the
-// `cinder-z-index-local` comment in event-timeline.css) only resolves stacking
-// order between sibling clusters. The actual popover content already composes
-// `cinder-_floating-surface` directly. Not a hand-rolled floating panel.
 // phone-input's country-summary is excluded at detection time (see the
 // `summary` addition to isInternalLayerTarget() in primitive-composition-css.ts):
 // it is a decorative absolutely-positioned label painted over a transparent

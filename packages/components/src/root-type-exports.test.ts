@@ -3,9 +3,8 @@ import { expect, test } from 'bun:test';
 import type {
   AreaChartDataTableVisibility,
   BarChartDataTableVisibility,
-  EventStreamEntry,
-  EventStreamSchemaEntry,
-  EventStreamViewerSchemaProps,
+  FeedBoundaryProps,
+  FeedConnectionState,
   LineChartDataTableVisibility,
   MatrixChartDataTableVisibility,
   PopoverFocusManagement,
@@ -15,35 +14,25 @@ import type {
   SegmentCurrentToken,
   SpectrogramDataTableVisibility,
   SpectrumChartDataTableVisibility,
-  StreamReconnectedBoundary,
   TreeItemSelectionState,
   TreeReorderTarget,
   WaveformDataTableVisibility,
 } from './index.ts';
 
 test('root barrel exposes Stardust agent-ops public helper types', () => {
-  const reconnectBoundary: StreamReconnectedBoundary = {
-    id: 'reconnect-1',
-    kind: 'reconnected',
-    replayedCount: 2,
+  const boundaryProps: FeedBoundaryProps = {
+    label: 'Reconnected — 2 events replayed',
+    datetime: '2026-06-24T12:00:00.000Z',
   };
-  const entry = reconnectBoundary satisfies EventStreamEntry;
+  const connectionState: FeedConnectionState = 'connected';
   const link: RunStepLink = {
     href: '/runs/run-123',
     label: 'Open run',
   };
-  const schemaEntry: EventStreamSchemaEntry = {
-    id: 'event-1',
-    datetime: '2026-06-24T12:00:00.000Z',
-    summary: 'Started',
-  };
-  const schemaProps: EventStreamViewerSchemaProps = {
-    events: [schemaEntry],
-  };
 
-  expect(entry.kind).toBe('reconnected');
+  expect(boundaryProps.label).toContain('Reconnected');
+  expect(connectionState).toBe('connected');
   expect(link.label).toBe('Open run');
-  expect(schemaProps.events[0]?.id).toBe('event-1');
 });
 
 test('root barrel exposes the five component barrel-gap public types', () => {

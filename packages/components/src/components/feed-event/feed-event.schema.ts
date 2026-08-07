@@ -18,6 +18,11 @@ const schema = {
       description:
         'Visible time label, as plain text — the common case (`"2m ago"`,\n`"May 12, 3:30 PM"`). Rendered inside the `<time>` element. Optional, with a\ndeliberate three-way contract:\n\n- **omitted** (`undefined`) and no `timestampLabel` → falls back to the raw\n  `datetime` string, which is deterministic and SSR-safe (no locale or\n  timezone dependence).\n- **explicit empty string** (`timestamp=""`) → renders no visible label.\n  This is treated as "intentionally blank", NOT as omitted, so it does\n  **not** trigger the `datetime` fallback. Use it to hide the label while\n  keeping the machine-readable `<time datetime>` for assistive tech.\n- **non-empty string** → rendered verbatim.',
     },
+    tone: {
+      enum: ['neutral', 'info', 'success', 'warning', 'error'],
+      description:
+        'Semantic tone for the rail marker (icon badge or dot). Default `neutral`.\nColour is never the only signal — pair a non-neutral tone with a\ndistinct icon shape or state wording in the entry body.',
+    },
     variant: {
       enum: ['icon', 'minimal'],
       description: 'Icon variant: renders a circular badge on the rail with the icon inside.',

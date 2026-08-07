@@ -50,6 +50,7 @@ const COMPOSE_ONLY_LEAF_EXEMPTIONS = new Set([
   'dropdown-menu',
   'dropdown-separator',
   'dropdown-trigger',
+  'feed-boundary',
   'feed-event',
   'grid-list-item',
   'side-navigation-group',

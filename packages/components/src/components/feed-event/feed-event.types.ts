@@ -1,6 +1,12 @@
 import type { Snippet } from 'svelte';
 import type { HTMLAttributes } from 'svelte/elements';
 export type FeedEventVariant = 'icon' | 'minimal';
+/**
+ * Semantic tone for the rail marker. Colours the icon badge / dot; the entry
+ * body must still carry the state in prose or markup — the tone is never the
+ * only signal.
+ */
+export type FeedEventTone = 'neutral' | 'info' | 'success' | 'warning' | 'error';
 type FeedEventBase = Omit<HTMLAttributes<HTMLLIElement>, 'children' | 'class'> & {
   /** Additional class merged onto the `.cinder-feed-event` root element. */
   class?: string;
@@ -43,6 +49,12 @@ type FeedEventBase = Omit<HTMLAttributes<HTMLLIElement>, 'children' | 'class'> &
    * both are supplied. Most consumers should use the `timestamp` string instead.
    */
   timestampLabel?: Snippet;
+  /**
+   * Semantic tone for the rail marker (icon badge or dot). Default `neutral`.
+   * Colour is never the only signal — pair a non-neutral tone with a
+   * distinct icon shape or state wording in the entry body.
+   */
+  tone?: FeedEventTone;
 };
 type FeedEventIcon = FeedEventBase & {
   /** Icon variant: renders a circular badge on the rail with the icon inside. */

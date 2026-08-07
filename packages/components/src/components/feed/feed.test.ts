@@ -1,12 +1,12 @@
 /// <reference lib="dom" />
 import { describe, expect, test } from 'bun:test';
-import { createRawSnippet } from 'svelte';
+import { createRawSnippet, tick } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { render } = await import('@testing-library/svelte');
+const { render, fireEvent } = await import('@testing-library/svelte');
 const { default: Feed } = await import('./feed.svelte');
 
 const emptySnippet = createRawSnippet(() => ({
@@ -176,5 +176,173 @@ describe('Feed', () => {
     expect(connectorBlock).toContain('inset-inline-start: calc(var(--cinder-feed-rail-size) / 2)');
     expect(connectorBlock).not.toContain('inset-block-start: var(--cinder-space-6)');
     expect(connectorBlock).not.toContain('inset-inline-start: calc(var(--cinder-space-6) / 2)');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The log arm (kind="log") — the operator-facing stream that absorbed the
+// former EventStreamViewer. Follow-latest scroll *pausing* is exercised via
+// the scroll handler here; the auto-scroll-on-growth path needs a real
+// ResizeObserver (absent in happy-dom) and is covered by
+// packages/testing/tests/feed-log-follow.playwright.ts.
+// ---------------------------------------------------------------------------
+describe('Feed log arm', () => {
+  const logProps = {
+    kind: 'log' as const,
+    label: 'Deploy events',
+    children: emptySnippet,
+  };
+
+  test('renders a role="log" viewport with the accessible label, wrapping the .cinder-feed list', () => {
+    const { container } = render(Feed, { props: logProps });
+    const root = container.querySelector('.cinder-feed-log');
+    const viewport = container.querySelector('.cinder-feed-log__viewport');
+    expect(root).not.toBeNull();
+    expect(viewport?.getAttribute('role')).toBe('log');
+    expect(viewport?.getAttribute('aria-label')).toBe('Deploy events');
+    expect(viewport?.getAttribute('tabindex')).toBe('0');
+    const list = viewport?.querySelector('ol.cinder-feed');
+    expect(list).not.toBeNull();
+  });
+
+  test('list arm renders no log chrome', () => {
+    const { container } = render(Feed, {
+      props: { 'aria-label': 'Feed', children: emptySnippet },
+    });
+    expect(container.querySelector('.cinder-feed-log')).toBeNull();
+    expect(container.querySelector('[role="log"]')).toBeNull();
+  });
+
+  test('no toolbar renders by default', () => {
+    const { container } = render(Feed, { props: logProps });
+    expect(container.querySelector('.cinder-feed-log__toolbar')).toBeNull();
+  });
+
+  test('connectionState renders the StatusDot toolbar', () => {
+    const { container } = render(Feed, {
+      props: { ...logProps, connectionState: 'connected' as const },
+    });
+    const toolbar = container.querySelector('.cinder-feed-log__toolbar');
+    expect(toolbar).not.toBeNull();
+    expect(toolbar?.getAttribute('role')).toBe('group');
+    expect(toolbar?.querySelector('.cinder-status-dot')).not.toBeNull();
+  });
+
+  test('consumer toolbar snippet renders at the end of the toolbar row', () => {
+    const { container } = render(Feed, {
+      props: { ...logProps, toolbar: textSnippet('toolbar-controls') },
+    });
+    const end = container.querySelector('.cinder-feed-log__toolbar-end');
+    expect(end?.textContent).toContain('toolbar-controls');
+  });
+
+  test('loading renders the skeleton instead of the entries', () => {
+    const { container } = render(Feed, {
+      props: { ...logProps, loading: true, children: itemSnippet(['alpha']) },
+    });
+    expect(container.querySelectorAll('.cinder-feed-log__skeleton').length).toBe(3);
+    expect(container.querySelector('ol.cinder-feed')).toBeNull();
+    const loadingRegion = container.querySelector('.cinder-feed-log__loading');
+    expect(loadingRegion?.getAttribute('role')).toBe('status');
+  });
+
+  test('truncated renders the polite truncation notice', () => {
+    const { container } = render(Feed, {
+      props: { ...logProps, truncated: true },
+    });
+    const notice = container.querySelector('.cinder-feed-log__truncation-notice');
+    expect(notice).not.toBeNull();
+    expect(notice?.getAttribute('role')).toBe('status');
+    expect(notice?.getAttribute('aria-live')).toBe('polite');
+  });
+
+  test('scrolling away from the bottom pauses following and shows the resume control', async () => {
+    // Unbound prop: the component's internal bindable state drives the DOM.
+    const { container } = render(Feed, {
+      props: { ...logProps, followLatest: true },
+    });
+    const viewport = container.querySelector('.cinder-feed-log__viewport') as HTMLElement;
+    expect(viewport).not.toBeNull();
+
+    // Simulate scrolled-away-from-bottom geometry.
+    Object.defineProperty(viewport, 'scrollHeight', { value: 400, configurable: true });
+    Object.defineProperty(viewport, 'clientHeight', { value: 100, configurable: true });
+    viewport.scrollTop = 0;
+    await fireEvent.scroll(viewport);
+    await tick();
+
+    const root = container.querySelector('.cinder-feed-log');
+    expect(root?.hasAttribute('data-cinder-paused')).toBe(true);
+    expect(container.querySelector('.cinder-feed-log__resume-button')).not.toBeNull();
+  });
+
+  test('binding round-trip: pausing writes followLatest=false back to the parent', async () => {
+    let followLatest = true;
+    const { container } = render(Feed, {
+      props: {
+        ...logProps,
+        get followLatest() {
+          return followLatest;
+        },
+        set followLatest(value: boolean) {
+          followLatest = value;
+        },
+      },
+    });
+    const viewport = container.querySelector('.cinder-feed-log__viewport') as HTMLElement;
+    Object.defineProperty(viewport, 'scrollHeight', { value: 400, configurable: true });
+    Object.defineProperty(viewport, 'clientHeight', { value: 100, configurable: true });
+    viewport.scrollTop = 0;
+    await fireEvent.scroll(viewport);
+
+    expect(followLatest).toBe(false);
+  });
+
+  test('scrolling back to the bottom resumes following', async () => {
+    let followLatest = false;
+    const { container } = render(Feed, {
+      props: {
+        ...logProps,
+        get followLatest() {
+          return followLatest;
+        },
+        set followLatest(value: boolean) {
+          followLatest = value;
+        },
+      },
+    });
+    const viewport = container.querySelector('.cinder-feed-log__viewport') as HTMLElement;
+
+    Object.defineProperty(viewport, 'scrollHeight', { value: 400, configurable: true });
+    Object.defineProperty(viewport, 'clientHeight', { value: 100, configurable: true });
+    viewport.scrollTop = 300; // 400 - 300 - 100 = 0 < 2 → at bottom
+    await fireEvent.scroll(viewport);
+
+    expect(followLatest).toBe(true);
+  });
+
+  test('the resume control resumes following and scrolls to the bottom', async () => {
+    let followLatest = false;
+    const { container } = render(Feed, {
+      props: {
+        ...logProps,
+        get followLatest() {
+          return followLatest;
+        },
+        set followLatest(value: boolean) {
+          followLatest = value;
+        },
+      },
+    });
+    const viewport = container.querySelector('.cinder-feed-log__viewport') as HTMLElement;
+    Object.defineProperty(viewport, 'scrollHeight', { value: 400, configurable: true });
+    Object.defineProperty(viewport, 'clientHeight', { value: 100, configurable: true });
+
+    const resume = container.querySelector('.cinder-feed-log__resume-button') as HTMLButtonElement;
+    expect(resume).not.toBeNull();
+    await fireEvent.click(resume);
+
+    expect(followLatest).toBe(true);
+    expect(viewport.scrollTop).toBe(400);
   });
 });

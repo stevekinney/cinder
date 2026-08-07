@@ -14,7 +14,7 @@ Purpose: Small standalone status pill for a live connection that communicates it
 ## Avoid when
 
 - Annotating a static entity's state (a row, a user, a deployment) rather than a live transport — use `status-dot` instead.
-- Rendering a full event log with per-event connection transitions — use `event-stream-viewer` instead.
+- Rendering a full event log with per-event connection transitions — use `feed`'s log arm instead.
 
 ## Keyboard and focus
 
@@ -42,4 +42,4 @@ None. The pill has no pointer interaction of its own.
 - Because the root is `aria-live="polite"`, rapid `status` flapping (e.g. a connection cycling `live` → `reconnecting` → `live` several times a second) will queue multiple announcements. Consumers with a flappy transport should debounce `status` upstream before handing it to this component.
 - The component does not expose a manual "reconnect" action. Compose it next to a `Button` if the host application needs one.
 
-Related components: `status-dot`, `event-stream-viewer`, `badge`.
+Related components: `status-dot`, `feed`, `badge`.

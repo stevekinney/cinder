@@ -1,4 +1,8 @@
-# Feed & FeedEvent — Accessibility Notes
+# Feed, FeedEvent & FeedBoundary — Accessibility Notes
+
+Feed has two arms. The notes below through "Live region" describe the default
+`list` arm; the `kind="log"` arm's contract (which deliberately DOES scroll on
+insertion) is documented in its own section at the end.
 
 ## Semantic element choice
 
@@ -54,7 +58,7 @@ Use `live` only when items stream onto the page while the user is present (notif
 
 ### Prepend vs append
 
-With `aria-live="polite"` and `aria-atomic="false"`, screen readers announce mutations regardless of insertion position. However, do not scroll the viewport on insertion — that would move the view from under keyboard and screen-reader users who are reading earlier content. Scroll only on explicit user gesture.
+With `aria-live="polite"` and `aria-atomic="false"`, screen readers announce mutations regardless of insertion position. In the **list arm**, do not scroll the viewport on insertion — that would move the view from under keyboard and screen-reader users who are reading earlier content. Scroll only on explicit user gesture. (The **log arm** deliberately auto-scrolls while `followLatest` is active; its pause-on-scroll-away contract — the user's reading position always wins over the stream — is the reviewed mitigation. See "The log arm" below.)
 
 ### Focus rescue
 
@@ -87,3 +91,64 @@ The `::after` pseudo-element that draws the connector line uses two tokens that 
 - `inset-inline-start: calc(var(--cinder-space-6) / 2)` — must match half of `.cinder-feed-event-rail`'s `inline-size`
 
 If you change any of these layout tokens, update the others to match.
+
+## The log arm (`kind="log"`)
+
+Ported review record from the retired EventStreamViewer (whose interaction
+model this arm inherits; see
+`docs/decisions/chronological-display-boundaries.md`). Log / live region
+pattern: the scroll viewport uses `role="log"` — an implicit ARIA live region
+with polite politeness — so screen readers announce appended entries without
+interrupting the current reading context.
+
+### Roles, names, states
+
+| Element                   | Role        | Name source                        | States / Properties                         |
+| ------------------------- | ----------- | ---------------------------------- | ------------------------------------------- |
+| Root `<div>`              | (none)      | —                                  | `data-cinder-loading`, `data-cinder-paused` |
+| Toolbar `<div>`           | `group`     | `aria-label="Stream controls"`     | —                                           |
+| Scroll viewport `<div>`   | `log`       | `aria-label` from the `label` prop | Implicit polite live region, `tabindex="0"` |
+| Entry list `<ol>`         | (list)      | —                                  | —                                           |
+| `Feed.Event` `<li>`       | (listitem)  | —                                  | `data-cinder-tone`, `data-cinder-variant`   |
+| `Feed.Boundary` `<li>`    | (listitem)  | —                                  | —                                           |
+| Boundary content `<div>`  | `separator` | `aria-label` from `label`          | —                                           |
+| Resume `<button>`         | button      | Visible text "Resume following"    | —                                           |
+| Truncation notice `<div>` | `status`    | —                                  | `aria-live="polite"`                        |
+| Loading region `<div>`    | `status`    | `aria-label="Loading entries"`     | —                                           |
+| Skeleton divs `<div>`     | —           | —                                  | `aria-hidden="true"`                        |
+
+### Auto-scroll — the reviewed exception to "scroll only on user gesture"
+
+While `followLatest` is active, appended content scrolls the viewport to the
+bottom (a ResizeObserver on the entry list). The mitigation that makes this
+acceptable: **the user's reading position always wins.** Scrolling away from
+the bottom pauses following immediately (`data-cinder-paused`); nothing
+scrolls again until the user returns to the bottom or activates the visible
+"Resume following" control. The `followLatest` bindable lets a parent build
+its own jump-to-latest control; setting it `true` also scrolls.
+
+### Keyboard and focus
+
+| Key                   | Action                                                         |
+| --------------------- | -------------------------------------------------------------- |
+| Tab                   | Toolbar controls (resume, consumer toolbar), then the viewport |
+| Enter / Space         | Activate the focused button                                    |
+| Arrow Up / Arrow Down | Scroll the viewport when the log region has focus              |
+
+Activating "Resume following" unmounts the control itself; the component
+moves focus to the `tabindex="0"` viewport so keyboard focus is never dropped
+to `<body>`.
+
+### Hard scope caps (unchanged from the review)
+
+- **No virtualization** — consumers cap retention themselves and set
+  `truncated` to surface the notice.
+- **No roving focus between entries** — AT users navigate with standard list
+  reading commands.
+- **Live region is opt-out only** — provide a pre-snapshotted set of children
+  rather than suppressing `role="log"`.
+- **No built-in empty state** — with authored children the component cannot
+  know the stream is empty; render your own `role="status"` entry (or plain
+  prose) when your source array is empty.
+- **Boundaries are advisory and consumer-emitted** — the component does not
+  detect sequence gaps; emit `Feed.Boundary` entries yourself.

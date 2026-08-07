@@ -97,7 +97,7 @@ const SYNTHETIC_COMPONENTS: ManifestComponent[] = [
     tags: ['json', 'debugging'],
     useWhen: ['Showing structured event details in an operational dashboard.'],
     avoidWhen: [{ reason: 'Showing tabular records.', alternative: 'data-table' }],
-    related: ['event-stream-viewer'],
+    related: ['feed'],
     hasConstraints: false,
     hasExamples: false,
     artifacts: {

@@ -338,11 +338,6 @@ function applyComponentSchemaRules(componentName: string, schema: ComponentSchem
     return;
   }
 
-  if (componentName === 'event-stream-viewer') {
-    applyEventStreamViewerSchemaRules(schema);
-    return;
-  }
-
   if (componentName === 'approval-card') {
     applyApprovalCardSchemaRules(schema);
     return;
@@ -451,34 +446,6 @@ function applyScheduleBuilderSchemaRules(schema: ComponentSchemaOutput): void {
   if (every?.type === 'number') {
     every.type = 'integer';
     every.minimum = 1;
-  }
-}
-
-function applyEventStreamViewerSchemaRules(schema: ComponentSchemaOutput): void {
-  const entries = schema.properties['events'];
-  const variants = entries?.items?.anyOf;
-  const reconnectBoundary = variants?.find(
-    (variant) => variant.properties?.['kind']?.const === 'reconnected',
-  );
-  const streamEvent = variants?.find(
-    (variant) => variant.required?.includes('summary') && variant.properties?.['sequence'],
-  );
-  const sequence = streamEvent?.properties?.['sequence'];
-  const replayedCount = reconnectBoundary?.properties?.['replayedCount'];
-
-  if (streamEvent?.properties && sequence?.type === 'number') {
-    streamEvent.properties['sequence'] = {
-      ...sequence,
-      type: 'integer',
-    };
-  }
-
-  if (reconnectBoundary?.properties && replayedCount?.type === 'number') {
-    reconnectBoundary.properties['replayedCount'] = {
-      ...replayedCount,
-      type: 'integer',
-      minimum: 0,
-    };
   }
 }
 

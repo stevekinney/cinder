@@ -1,4 +1,9 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+/* Compound composition aggregation: the log arm renders StatusDot internally,
+ * so `cinder/feed/styles` must include its styling when consumers import the
+ * component-specific style sidecar. */
+@import '../status-dot/status-dot.css';
+
 @layer cinder.components {
   /* ========================================
  * FEED
@@ -84,5 +89,202 @@
   .cinder-feed-event-time {
     font-size: var(--cinder-text-sm);
     color: var(--cinder-text-muted);
+  }
+
+  /* Tone colours the rail marker only — non-text (WCAG 1.4.11), so the status
+   * fill tokens are appropriate here; entry text stays on the text ramp and
+   * the tone is never the only signal (see FeedEventTone docs). */
+  .cinder-feed-event[data-cinder-tone='info'] .cinder-feed-event-rail,
+  .cinder-feed-event[data-cinder-tone='info'] .cinder-feed-event-dot {
+    background: var(--cinder-info);
+    color: var(--cinder-info-contrast);
+  }
+
+  .cinder-feed-event[data-cinder-tone='success'] .cinder-feed-event-rail,
+  .cinder-feed-event[data-cinder-tone='success'] .cinder-feed-event-dot {
+    background: var(--cinder-success);
+    color: var(--cinder-success-contrast);
+  }
+
+  .cinder-feed-event[data-cinder-tone='warning'] .cinder-feed-event-rail,
+  .cinder-feed-event[data-cinder-tone='warning'] .cinder-feed-event-dot {
+    background: var(--cinder-warning);
+    color: var(--cinder-warning-contrast);
+  }
+
+  .cinder-feed-event[data-cinder-tone='error'] .cinder-feed-event-rail,
+  .cinder-feed-event[data-cinder-tone='error'] .cinder-feed-event-dot {
+    background: var(--cinder-danger);
+    color: var(--cinder-danger-contrast);
+  }
+
+  /* Minimal-variant rail stays transparent; only the inner dot takes the tone. */
+  .cinder-feed-event[data-cinder-variant='minimal'][data-cinder-tone] .cinder-feed-event-rail {
+    background: transparent;
+  }
+
+  /* ----------------------------------------
+   * Log arm — operator-facing append-only stream chrome around the same
+   * .cinder-feed list. (Ported from the retired EventStreamViewer.)
+   * -------------------------------------- */
+
+  .cinder-feed-log {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-lg);
+    background: var(--cinder-surface-raised);
+    overflow: hidden;
+    font-size: var(--cinder-text-sm);
+  }
+
+  .cinder-feed-log .cinder-feed {
+    padding: var(--cinder-space-3);
+  }
+
+  .cinder-feed-log__toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--cinder-space-2);
+    padding: var(--cinder-space-2) var(--cinder-space-3);
+    border-block-end: 1px solid var(--cinder-border-muted);
+    background: var(--cinder-surface-inset);
+    flex-shrink: 0;
+  }
+
+  .cinder-feed-log__toolbar-start,
+  .cinder-feed-log__toolbar-end {
+    display: flex;
+    align-items: center;
+    gap: var(--cinder-space-2);
+  }
+
+  .cinder-feed-log__resume-button {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cinder-space-1);
+    padding: var(--cinder-space-0-5) var(--cinder-space-2);
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-md);
+    background: var(--cinder-surface);
+    color: var(--cinder-text);
+    font-size: var(--cinder-text-xs);
+    font-family: inherit;
+    cursor: pointer;
+    transition: background-color var(--cinder-duration-fast) var(--cinder-ease-standard);
+  }
+
+  @media (hover: hover) {
+    .cinder-feed-log__resume-button:hover {
+      background: var(--cinder-surface-hover);
+    }
+  }
+
+  /* The root .cinder-feed-log has `overflow: hidden`; an outset ring is
+   * clipped. Use Strategy B-inset so the ring stays within the button's own
+   * border box. Matches the pattern used by .cinder-drawer__close (drawer.css). */
+  .cinder-feed-log__resume-button:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: inset 0 0 0 var(--cinder-ring-width) var(--cinder-ring-color);
+  }
+
+  @media (forced-colors: active) {
+    .cinder-feed-log__resume-button:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: calc(var(--cinder-ring-width) * -1);
+      box-shadow: none;
+    }
+  }
+
+  .cinder-feed-log__truncation-notice {
+    padding: var(--cinder-space-1) var(--cinder-space-3);
+    background: var(--cinder-surface-inset);
+    color: var(--cinder-color-warning-fg);
+    font-size: var(--cinder-text-xs);
+    border-block-end: 1px solid var(--cinder-border-muted);
+    flex-shrink: 0;
+  }
+
+  .cinder-feed-log__viewport {
+    overflow-y: auto;
+    flex: 1 1 auto;
+    min-block-size: 0;
+    /* Default height — consumer overrides with inline style or class. */
+    max-block-size: 32rem;
+    outline: none;
+  }
+
+  .cinder-feed-log__viewport:focus-visible {
+    box-shadow: inset 0 0 0 var(--cinder-ring-width) var(--cinder-ring-color);
+  }
+
+  .cinder-feed-log__loading {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-2);
+    padding: var(--cinder-space-3);
+  }
+
+  .cinder-feed-log__skeleton {
+    block-size: 1.25rem;
+    border-radius: var(--cinder-radius-sm);
+    background: var(--cinder-surface-inset);
+    animation: cinder-feed-log-skeleton-pulse 1.4s ease-in-out infinite;
+  }
+
+  .cinder-feed-log__skeleton:nth-child(2) {
+    inline-size: 80%;
+  }
+
+  .cinder-feed-log__skeleton:nth-child(3) {
+    inline-size: 60%;
+  }
+
+  @keyframes cinder-feed-log-skeleton-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.4;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cinder-feed-log__skeleton {
+      animation: none;
+    }
+  }
+
+  /* ----------------------------------------
+   * Boundary entries — role="separator" markers (reconnects, gaps) authored
+   * by the consumer between events.
+   * -------------------------------------- */
+
+  .cinder-feed-boundary {
+    display: flex;
+    align-items: center;
+    gap: var(--cinder-space-2);
+    color: var(--cinder-text-muted);
+    font-size: var(--cinder-text-xs);
+  }
+
+  .cinder-feed-boundary::before,
+  .cinder-feed-boundary::after {
+    content: '';
+    flex: 1;
+    block-size: 1px;
+    background: var(--cinder-border-muted);
+  }
+
+  .cinder-feed-boundary__content {
+    display: flex;
+    align-items: center;
+    gap: var(--cinder-space-2);
+  }
+
+  .cinder-feed-boundary__time {
+    color: var(--cinder-text-subtle);
   }
 }

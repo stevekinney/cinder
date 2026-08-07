@@ -2145,70 +2145,6 @@
       "import": "./src/components/empty-state/empty-state.examples.json",
       "default": "./src/components/empty-state/empty-state.examples.json"
     },
-    "./event-stream-viewer": {
-      "types": "./dist/components/event-stream-viewer/index.d.ts",
-      "browser": "./src/components/event-stream-viewer/index.ts",
-      "node": "./dist/server/components/event-stream-viewer/index.js",
-      "svelte": "./src/components/event-stream-viewer/index.ts",
-      "import": "./src/components/event-stream-viewer/index.ts",
-      "default": "./dist/components/event-stream-viewer/index.js"
-    },
-    "./event-stream-viewer/schema": {
-      "types": "./dist/components/event-stream-viewer/event-stream-viewer.schema.d.ts",
-      "browser": "./src/components/event-stream-viewer/event-stream-viewer.schema.ts",
-      "node": "./dist/server/components/event-stream-viewer/event-stream-viewer.schema.js",
-      "svelte": "./src/components/event-stream-viewer/event-stream-viewer.schema.ts",
-      "import": "./src/components/event-stream-viewer/event-stream-viewer.schema.ts",
-      "default": "./dist/components/event-stream-viewer/event-stream-viewer.schema.js"
-    },
-    "./event-stream-viewer/variables": {
-      "types": "./dist/components/event-stream-viewer/event-stream-viewer.variables.d.ts",
-      "browser": "./src/components/event-stream-viewer/event-stream-viewer.variables.ts",
-      "node": "./dist/server/components/event-stream-viewer/event-stream-viewer.variables.js",
-      "svelte": "./src/components/event-stream-viewer/event-stream-viewer.variables.ts",
-      "import": "./src/components/event-stream-viewer/event-stream-viewer.variables.ts",
-      "default": "./dist/components/event-stream-viewer/event-stream-viewer.variables.js"
-    },
-    "./event-stream-viewer/styles": {
-      "types": "./dist/components/event-stream-viewer/event-stream-viewer.css.d.ts",
-      "default": "./dist/components/event-stream-viewer/event-stream-viewer.css"
-    },
-    "./event-stream-viewer/examples": {
-      "import": "./src/components/event-stream-viewer/event-stream-viewer.examples.json",
-      "default": "./src/components/event-stream-viewer/event-stream-viewer.examples.json"
-    },
-    "./event-timeline": {
-      "types": "./dist/components/event-timeline/index.d.ts",
-      "browser": "./src/components/event-timeline/index.ts",
-      "node": "./dist/server/components/event-timeline/index.js",
-      "svelte": "./src/components/event-timeline/index.ts",
-      "import": "./src/components/event-timeline/index.ts",
-      "default": "./dist/components/event-timeline/index.js"
-    },
-    "./event-timeline/schema": {
-      "types": "./dist/components/event-timeline/event-timeline.schema.d.ts",
-      "browser": "./src/components/event-timeline/event-timeline.schema.ts",
-      "node": "./dist/server/components/event-timeline/event-timeline.schema.js",
-      "svelte": "./src/components/event-timeline/event-timeline.schema.ts",
-      "import": "./src/components/event-timeline/event-timeline.schema.ts",
-      "default": "./dist/components/event-timeline/event-timeline.schema.js"
-    },
-    "./event-timeline/variables": {
-      "types": "./dist/components/event-timeline/event-timeline.variables.d.ts",
-      "browser": "./src/components/event-timeline/event-timeline.variables.ts",
-      "node": "./dist/server/components/event-timeline/event-timeline.variables.js",
-      "svelte": "./src/components/event-timeline/event-timeline.variables.ts",
-      "import": "./src/components/event-timeline/event-timeline.variables.ts",
-      "default": "./dist/components/event-timeline/event-timeline.variables.js"
-    },
-    "./event-timeline/styles": {
-      "types": "./dist/components/event-timeline/event-timeline.css.d.ts",
-      "default": "./dist/components/event-timeline/event-timeline.css"
-    },
-    "./event-timeline/examples": {
-      "import": "./src/components/event-timeline/event-timeline.examples.json",
-      "default": "./src/components/event-timeline/event-timeline.examples.json"
-    },
     "./faceted-filter-bar": {
       "types": "./dist/components/faceted-filter-bar/index.d.ts",
       "browser": "./src/components/faceted-filter-bar/index.ts",
@@ -2304,6 +2240,30 @@
     "./feed/examples": {
       "import": "./src/components/feed/feed.examples.json",
       "default": "./src/components/feed/feed.examples.json"
+    },
+    "./feed-boundary": {
+      "types": "./dist/components/feed-boundary/index.d.ts",
+      "browser": "./src/components/feed-boundary/index.ts",
+      "node": "./dist/server/components/feed-boundary/index.js",
+      "svelte": "./src/components/feed-boundary/index.ts",
+      "import": "./src/components/feed-boundary/index.ts",
+      "default": "./dist/components/feed-boundary/index.js"
+    },
+    "./feed-boundary/schema": {
+      "types": "./dist/components/feed-boundary/feed-boundary.schema.d.ts",
+      "browser": "./src/components/feed-boundary/feed-boundary.schema.ts",
+      "node": "./dist/server/components/feed-boundary/feed-boundary.schema.js",
+      "svelte": "./src/components/feed-boundary/feed-boundary.schema.ts",
+      "import": "./src/components/feed-boundary/feed-boundary.schema.ts",
+      "default": "./dist/components/feed-boundary/feed-boundary.schema.js"
+    },
+    "./feed-boundary/variables": {
+      "types": "./dist/components/feed-boundary/feed-boundary.variables.d.ts",
+      "browser": "./src/components/feed-boundary/feed-boundary.variables.ts",
+      "node": "./dist/server/components/feed-boundary/feed-boundary.variables.js",
+      "svelte": "./src/components/feed-boundary/feed-boundary.variables.ts",
+      "import": "./src/components/feed-boundary/feed-boundary.variables.ts",
+      "default": "./dist/components/feed-boundary/feed-boundary.variables.js"
     },
     "./feed-event": {
       "types": "./dist/components/feed-event/index.d.ts",

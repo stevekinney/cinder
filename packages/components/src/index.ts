@@ -349,29 +349,6 @@ export type { DropdownTriggerProps } from './components/dropdown-trigger/index.t
 export { default as EmptyState } from './components/empty-state/index.ts';
 export type { EmptyStateProps } from './components/empty-state/index.ts';
 
-export { default as EventTimeline } from './components/event-timeline/index.ts';
-export type {
-  EventTimelineDate,
-  EventTimelineItem,
-  EventTimelineProps,
-  EventTimelineSize,
-  EventTimelineState,
-} from './components/event-timeline/index.ts';
-
-export { default as EventStreamViewer } from './components/event-stream-viewer/index.ts';
-export type {
-  EventSeverity,
-  EventStreamEntry,
-  EventStreamSchemaDetailValue,
-  EventStreamSchemaEntry,
-  EventStreamSchemaEvent,
-  EventStreamState,
-  EventStreamViewerProps,
-  EventStreamViewerSchemaProps,
-  StreamEvent,
-  StreamReconnectedBoundary,
-} from './components/event-stream-viewer/index.ts';
-
 export { default as FacetedFilterBar } from './components/faceted-filter-bar/index.ts';
 export type {
   AppliedFilter,
@@ -390,11 +367,23 @@ export type {
   FeatureSectionProps,
 } from './components/feature-section/index.ts';
 
+export { default as FeedBoundary } from './components/feed-boundary/index.ts';
+export type { FeedBoundaryProps } from './components/feed-boundary/index.ts';
+
 export { default as FeedEvent } from './components/feed-event/index.ts';
-export type { FeedEventProps, FeedEventVariant } from './components/feed-event/index.ts';
+export type {
+  FeedEventProps,
+  FeedEventTone,
+  FeedEventVariant,
+} from './components/feed-event/index.ts';
 
 export { default as Feed } from './components/feed/index.ts';
-export type { FeedProps } from './components/feed/index.ts';
+export type {
+  FeedConnectionState,
+  FeedListProps,
+  FeedLogProps,
+  FeedProps,
+} from './components/feed/index.ts';
 
 export { default as FloatingAction } from './components/floating-action/index.ts';
 export type {

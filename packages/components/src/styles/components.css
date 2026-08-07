@@ -67,8 +67,6 @@
 @import '../components/drawer/drawer.css';
 @import '../components/dropdown/dropdown.css';
 @import '../components/empty-state/empty-state.css';
-@import '../components/event-timeline/event-timeline.css';
-@import '../components/event-stream-viewer/event-stream-viewer.css';
 @import '../components/faceted-filter-bar/faceted-filter-bar.css';
 @import '../components/feature-section/feature-section.css';
 @import '../components/feed/feed.css';

@@ -234,8 +234,6 @@ const SIDEBAR_BASELINE = [
   'drawer',
   'dropdown',
   'empty-state',
-  'event-stream-viewer',
-  'event-timeline',
   'faceted-filter-bar',
   'feature-section',
   'feed',

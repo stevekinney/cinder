@@ -4,7 +4,7 @@ Small standalone status pill for a live connection. Renders one of six states â€
 
 `live` shows a small pulsing dot (a static dot under `prefers-reduced-motion: reduce`). `polling` is deliberately quieter than `live`: no motion, a lighter label weight, and its own icon, so it can't be mistaken for push. `reconnecting` accepts an optional `attempt` snippet for showing a retry count like "attempt 3 of 5".
 
-Use `ConnectionIndicator` for a compact, self-contained pill that reports transport health. Use `StatusDot` for annotating a static entity's state (a row, a user, a deployment) instead of a live transport. Use `EventStreamViewer` for a full event log rather than a single status pill.
+Use `ConnectionIndicator` for a compact, self-contained pill that reports transport health. Use `StatusDot` for annotating a static entity's state (a row, a user, a deployment) instead of a live transport. Use `Feed`'s log arm for a full event log rather than a single status pill.
 
 ## Usage
 

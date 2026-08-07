@@ -62,13 +62,7 @@
     "selection": ["toggle", "checkbox", "segmented-control"],
     "hover": ["tooltip", "popover", "hover-card"],
     "tabs": ["tabs", "segmented-control"],
-    "chronological": [
-      "timeline",
-      "run-step-timeline",
-      "event-timeline",
-      "feed",
-      "event-stream-viewer"
-    ]
+    "chronological": ["timeline", "run-step-timeline", "feed"]
   },
   "components": [
     {
@@ -291,7 +285,7 @@
       ],
       "avoidWhen": [
         {
-          "reason": "The action has already completed and only needs historical display — use event-stream-viewer or run-step-timeline instead."
+          "reason": "The action has already completed and only needs historical display — use feed or run-step-timeline instead."
         },
         {
           "reason": "Collecting arbitrary form input for a workflow — compose form controls directly instead."
@@ -1427,11 +1421,11 @@
           "alternative": "status-dot"
         },
         {
-          "reason": "Rendering a full event log with per-event connection transitions — use event-stream-viewer instead.",
-          "alternative": "event-stream-viewer"
+          "reason": "Rendering a full event log with per-event connection transitions — use feed's log arm instead.",
+          "alternative": "feed"
         }
       ],
-      "related": ["status-dot", "event-stream-viewer", "badge"],
+      "related": ["status-dot", "feed", "badge"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
@@ -2086,86 +2080,6 @@
       }
     },
     {
-      "name": "EventStreamViewer",
-      "id": "event-stream-viewer",
-      "import": "@lostgradient/cinder/event-stream-viewer",
-      "exportName": "EventStreamViewer",
-      "category": "data-display",
-      "status": "stable",
-      "purpose": "Dense append-only log of timestamped events with follow-latest scrolling, severity tones, expandable JSON details, and copy actions.",
-      "tags": ["log", "stream", "events"],
-      "useWhen": [
-        "Displaying real-time or historical operational events such as workflow steps, job logs, or webhook traces.",
-        "Showing an append-only diagnostic stream with filtering, copy, and structured detail expansion."
-      ],
-      "avoidWhen": [
-        {
-          "reason": "Showing a social activity feed or notification timeline — use feed instead."
-        },
-        {
-          "reason": "Rendering paginated historical records with sorting — use data-table instead."
-        },
-        {
-          "reason": "Showing a simple static event rail, bounded schedule, or structured run-state rail — use timeline, event-timeline, or run-step-timeline."
-        }
-      ],
-      "related": [
-        "feed",
-        "timeline",
-        "run-step-timeline",
-        "event-timeline",
-        "json-viewer",
-        "status-dot",
-        "copy-button"
-      ],
-      "hasConstraints": false,
-      "hasExamples": true,
-      "artifacts": {
-        "schema": "@lostgradient/cinder/event-stream-viewer/schema",
-        "variables": "@lostgradient/cinder/event-stream-viewer/variables",
-        "examples": "@lostgradient/cinder/event-stream-viewer/examples"
-      }
-    },
-    {
-      "name": "EventTimeline",
-      "id": "event-timeline",
-      "import": "@lostgradient/cinder/event-timeline",
-      "exportName": "EventTimeline",
-      "category": "data-display",
-      "status": "stable",
-      "purpose": "Horizontal time-axis strip for scheduled events with proportional dots, a now marker, and collision-nudged labels.",
-      "tags": ["event-timeline", "schedule", "timeline"],
-      "useWhen": [
-        "Showing several fired and upcoming events across a bounded time window, such as a next-24-hour schedule strip."
-      ],
-      "avoidWhen": [
-        {
-          "reason": "Showing sequential process history.",
-          "alternative": "timeline"
-        },
-        {
-          "reason": "Showing step-by-step run execution state.",
-          "alternative": "run-step-timeline"
-        },
-        {
-          "reason": "Showing a user-facing activity feed.",
-          "alternative": "feed"
-        },
-        {
-          "reason": "Showing a dense operational stream.",
-          "alternative": "event-stream-viewer"
-        }
-      ],
-      "related": ["timeline", "run-step-timeline", "feed", "event-stream-viewer", "status-dot"],
-      "hasConstraints": false,
-      "hasExamples": true,
-      "artifacts": {
-        "schema": "@lostgradient/cinder/event-timeline/schema",
-        "variables": "@lostgradient/cinder/event-timeline/variables",
-        "examples": "@lostgradient/cinder/event-timeline/examples"
-      }
-    },
-    {
       "name": "FacetedFilterBar",
       "id": "faceted-filter-bar",
       "import": "@lostgradient/cinder/faceted-filter-bar",
@@ -2234,11 +2148,12 @@
       "exportName": "Feed",
       "category": "data-display",
       "status": "stable",
-      "purpose": "Ordered list container for a chronological stream of feed-event entries, optionally exposed as a live region.",
-      "tags": ["timeline", "activity"],
+      "purpose": "Chronological stream of feed-event entries: a plain ordered list for user-facing activity, or an operator-facing append-only log region with follow-latest scrolling.",
+      "tags": ["timeline", "activity", "log"],
       "useWhen": [
         "Rendering a user-facing activity stream or notification timeline.",
-        "Announcing newly appended entries to assistive technology via the live prop."
+        "Announcing newly appended entries to assistive technology via the live prop.",
+        "Displaying an operator-facing append-only stream with follow-latest scrolling — use the log arm (`kind=\"log\"`)."
       ],
       "avoidWhen": [
         {
@@ -2246,24 +2161,43 @@
         },
         {
           "reason": "Displaying static temporal history or execution state — use timeline or run-step-timeline."
-        },
-        {
-          "reason": "Displaying a bounded schedule or dense diagnostics — use event-timeline or event-stream-viewer."
         }
       ],
-      "related": [
-        "timeline",
-        "run-step-timeline",
-        "event-timeline",
-        "event-stream-viewer",
-        "feed-event"
-      ],
+      "related": ["timeline", "run-step-timeline", "feed-event", "feed-boundary"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
         "schema": "@lostgradient/cinder/feed/schema",
         "variables": "@lostgradient/cinder/feed/variables",
         "examples": "@lostgradient/cinder/feed/examples"
+      }
+    },
+    {
+      "name": "FeedBoundary",
+      "id": "feed-boundary",
+      "import": "@lostgradient/cinder/feed-boundary",
+      "exportName": "FeedBoundary",
+      "category": "data-display",
+      "status": "stable",
+      "purpose": "Separator entry inside a feed marking a stream discontinuity such as a reconnect or a sequence gap.",
+      "tags": ["timeline", "event"],
+      "useWhen": ["Marking a reconnect, replay, or gap between entries in a feed's log arm."],
+      "avoidWhen": [
+        {
+          "reason": "Standing alone outside a feed — it expects the feed list semantics around it.",
+          "alternative": "feed"
+        },
+        {
+          "reason": "Separating generic page content — use divider instead.",
+          "alternative": "divider"
+        }
+      ],
+      "related": ["feed", "feed-event", "divider"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/feed-boundary/schema",
+        "variables": "@lostgradient/cinder/feed-boundary/variables"
       }
     },
     {
@@ -4021,13 +3955,13 @@
           "reason": "Showing a flat timestamp-first event log without structured step state — use timeline instead."
         },
         {
-          "reason": "Showing a bounded horizontal schedule or activity stream — use event-timeline or feed instead."
+          "reason": "Showing an activity stream — use feed instead."
         },
         {
-          "reason": "Showing a dense operational log without structured step state, such as raw CI or job output — use event-stream-viewer instead."
+          "reason": "Showing a dense operational log without structured step state, such as raw CI or job output — use feed's log arm instead."
         }
       ],
-      "related": ["timeline", "event-timeline", "feed", "steps", "event-stream-viewer"],
+      "related": ["timeline", "feed", "steps"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
@@ -5641,10 +5575,10 @@
           "alternative": "run-step-timeline"
         },
         {
-          "reason": "Showing a bounded horizontal schedule or dense operational stream — use event-timeline or event-stream-viewer."
+          "reason": "Showing a live activity or dense operational stream — use feed (its log arm covers operational streams)."
         }
       ],
-      "related": ["feed", "run-step-timeline", "event-timeline", "event-stream-viewer"],
+      "related": ["feed", "run-step-timeline"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
