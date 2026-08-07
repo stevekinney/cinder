@@ -46,14 +46,18 @@ const budgetsByPackage: Record<string, PackageWeightBudgets> = {
   // no longer vendoring @lostgradient/markdown's or @lostgradient/editor's
   // dist trees): measured 3.81 MB packed / 18.71 MB unpacked / 4,498 files
   // immediately after the shim deletion, down from a packed/unpacked/
-  // fileCount budget of 8 MB / 32 MB / 5,500 beforehand. Budgets below keep
-  // meaningful headroom over the measured numbers rather than pinning them
-  // exactly, matching this file's existing convention for every other
-  // package.
+  // fileCount budget of 8 MB / 32 MB / 5,500 beforehand. Organic component
+  // growth since then crossed the 22 MB unpacked cap (measured 4.62 MB
+  // packed / 22.51 MB unpacked / 4,607 files on 2026-08-07, 194 components),
+  // breaking the release pipeline's "Version or publish" job with no code
+  // defect involved. Budgets below restore headroom over the measured
+  // numbers at roughly the same ratio as the Phase 5 reset rather than
+  // pinning them exactly, matching this file's existing convention for
+  // every other package.
   '@lostgradient/cinder': {
-    packedBytes: 5_000_000,
-    unpackedBytes: 22_000_000,
-    fileCount: 4_800,
+    packedBytes: 6_000_000,
+    unpackedBytes: 26_000_000,
+    fileCount: 5_200,
     largestEntrypointBytes: 2_500_000,
   },
   '@lostgradient/chat': {
