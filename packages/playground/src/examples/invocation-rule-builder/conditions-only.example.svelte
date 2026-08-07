@@ -48,7 +48,7 @@
 
 <InvocationRuleBuilder
   {rules}
-  onchange={handleChange}
+  onValueChange={handleChange}
   {fieldOptions}
   mode="conditions"
   label="Alert filter conditions"

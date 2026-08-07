@@ -12,7 +12,7 @@
     alpha?: boolean;
     formats?: readonly ('hex' | 'rgb' | 'hsl')[];
     enterBehavior?: 'commit-then-submit' | 'commit-only';
-    onchange?: (value: string) => void;
+    onValueChange?: (value: string) => void;
     onsubmit?: (event: SubmitEvent) => void;
   };
 </script>
@@ -28,7 +28,7 @@
     alpha,
     formats,
     enterBehavior,
-    onchange,
+    onValueChange,
     onsubmit,
   }: ColorFieldFormFixtureProps = $props();
 
@@ -40,7 +40,7 @@
     ...(alpha !== undefined ? { alpha } : {}),
     ...(formats !== undefined ? { formats } : {}),
     ...(enterBehavior !== undefined ? { enterBehavior } : {}),
-    ...(onchange !== undefined ? { onchange } : {}),
+    ...(onValueChange !== undefined ? { onValueChange } : {}),
   });
 </script>
 

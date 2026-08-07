@@ -228,14 +228,14 @@ describe('Slider (single)', () => {
     expect(thumb.getAttribute('aria-valuetext')).toBe('30 percent');
   });
 
-  test('onchange fires with the snapped value on each keyboard adjust', async () => {
+  test('onValueChange fires with the snapped value on each keyboard adjust', async () => {
     const calls: number[] = [];
     const { container } = render(Slider, {
       props: {
         label: 'Volume',
         value: 10,
         step: 5,
-        onchange: (value: number) => calls.push(value),
+        onValueChange: (value: number) => calls.push(value),
       },
     });
     const thumb = getThumbs(container)[0]!;
@@ -258,7 +258,7 @@ describe('Slider (single)', () => {
     expect(getThumbs(container)[0]!.getAttribute('aria-valuenow')).toBe('100');
   });
 
-  test('bindable value: keyboard mutates local value even when no onchange echoes it back', async () => {
+  test('bindable value: keyboard mutates local value even when no onValueChange echoes it back', async () => {
     const { container } = render(Slider, {
       props: { label: 'Volume', value: 30, step: 5 },
     });
@@ -464,7 +464,7 @@ describe('Slider (range)', () => {
     expect(inputs[1]!.value).toBe('40');
   });
 
-  test('onchange fires with a tuple in range mode', async () => {
+  test('onValueChange fires with a tuple in range mode', async () => {
     const calls: Array<number | [number, number]> = [];
     const { container } = render(Slider, {
       props: {
@@ -472,7 +472,7 @@ describe('Slider (range)', () => {
         mode: 'range',
         value: [10, 40],
         step: 5,
-        onchange: (value: [number, number]) => calls.push(value),
+        onValueChange: (value: [number, number]) => calls.push(value),
       },
     });
     const [low] = getThumbs(container);

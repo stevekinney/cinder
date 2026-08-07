@@ -46,7 +46,7 @@
     name,
     autocomplete = 'one-time-code',
     class: className,
-    onchange,
+    onValueChange,
   }: PinInputProps = $props();
 
   const context = getFormFieldContext();
@@ -165,7 +165,7 @@
     if (joined !== value) {
       value = joined;
     }
-    onchange?.(joined);
+    onValueChange?.(joined);
   }
 
   function focusSegment(index: number): void {

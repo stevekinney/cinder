@@ -86,12 +86,12 @@ describe('ColorField — parse round-trips', () => {
 
   for (const { input: text, expected } of cases) {
     test(`commits ${text} as ${expected}`, async () => {
-      const onchange = mock<(value: string) => void>(() => {});
-      const { container } = render(ColorField, { id: 'color', name: 'c', onchange });
+      const onValueChange = mock<(value: string) => void>(() => {});
+      const { container } = render(ColorField, { id: 'color', name: 'c', onValueChange });
       const input = getInput(container);
       await typeAndBlur(input, text);
-      expect(onchange).toHaveBeenCalledTimes(1);
-      expect(onchange.mock.calls[0]?.[0]).toBe(expected);
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      expect(onValueChange.mock.calls[0]?.[0]).toBe(expected);
       expect(input.value).toBe(expected);
       const hidden = q<HTMLInputElement>(container, 'input[type="hidden"][name="c"]');
       expect(hidden.value).toBe(expected);
@@ -100,12 +100,12 @@ describe('ColorField — parse round-trips', () => {
 });
 
 describe('ColorField — invalid input', () => {
-  test('raises parse error, sets aria-invalid, does not fire onchange', async () => {
-    const onchange = mock<(value: string) => void>(() => {});
-    const { container } = render(ColorField, { id: 'color', onchange });
+  test('raises parse error, sets aria-invalid, does not fire onValueChange', async () => {
+    const onValueChange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, { id: 'color', onValueChange });
     const input = getInput(container);
     await typeAndBlur(input, 'not-a-color');
-    expect(onchange).not.toHaveBeenCalled();
+    expect(onValueChange).not.toHaveBeenCalled();
     expect(input.value).toBe('not-a-color');
     expect(input.getAttribute('aria-invalid')).toBe('true');
     expect(container.querySelector('.cinder-input-field__error')?.textContent ?? '').toContain(
@@ -135,11 +135,11 @@ describe('ColorField — alpha behavior', () => {
 
   for (const { alpha, input: text, expected } of cases) {
     test(`alpha=${alpha} + ${text} → ${expected}`, async () => {
-      const onchange = mock<(value: string) => void>(() => {});
-      const { container } = render(ColorField, { id: 'color', alpha, name: 'c', onchange });
+      const onValueChange = mock<(value: string) => void>(() => {});
+      const { container } = render(ColorField, { id: 'color', alpha, name: 'c', onValueChange });
       const input = getInput(container);
       await typeAndBlur(input, text);
-      expect(onchange.mock.calls[0]?.[0]).toBe(expected);
+      expect(onValueChange.mock.calls[0]?.[0]).toBe(expected);
       const hidden = q<HTMLInputElement>(container, 'input[type="hidden"][name="c"]');
       expect(hidden.value).toBe(expected);
     });
@@ -148,78 +148,78 @@ describe('ColorField — alpha behavior', () => {
 
 describe('ColorField — formats gate', () => {
   test('formats=[hex] rejects rgb input', async () => {
-    const onchange = mock<(value: string) => void>(() => {});
+    const onValueChange = mock<(value: string) => void>(() => {});
     const { container } = render(ColorField, {
       id: 'color',
       formats: ['hex'],
-      onchange,
+      onValueChange,
     });
     const input = getInput(container);
     await typeAndBlur(input, 'rgb(0,0,0)');
-    expect(onchange).not.toHaveBeenCalled();
+    expect(onValueChange).not.toHaveBeenCalled();
     expect(input.getAttribute('aria-invalid')).toBe('true');
   });
 
   test('formats=[rgb] accepts rgb, then re-blur on canonical hex is a no-op (bypass)', async () => {
-    const onchange = mock<(value: string) => void>(() => {});
+    const onValueChange = mock<(value: string) => void>(() => {});
     const { container } = render(ColorField, {
       id: 'color',
       formats: ['rgb'],
-      onchange,
+      onValueChange,
     });
     const input = getInput(container);
     await typeAndBlur(input, 'rgb(0,0,0)');
-    expect(onchange.mock.calls[0]?.[0]).toBe('#000000');
+    expect(onValueChange.mock.calls[0]?.[0]).toBe('#000000');
     expect(input.value).toBe('#000000');
     // Re-blur with the canonical hex already in the field. The bypass should
     // keep us in a valid state with no new error.
     await fireEvent.blur(input);
     await tick();
     expect(input.getAttribute('aria-invalid')).not.toBe('true');
-    expect(onchange).toHaveBeenCalledTimes(1);
+    expect(onValueChange).toHaveBeenCalledTimes(1);
   });
 
   test('formats=[hex] + #abc accepted', async () => {
-    const onchange = mock<(value: string) => void>(() => {});
+    const onValueChange = mock<(value: string) => void>(() => {});
     const { container } = render(ColorField, {
       id: 'color',
       formats: ['hex'],
-      onchange,
+      onValueChange,
     });
     const input = getInput(container);
     await typeAndBlur(input, '#abc');
-    expect(onchange.mock.calls[0]?.[0]).toBe('#aabbcc');
+    expect(onValueChange.mock.calls[0]?.[0]).toBe('#aabbcc');
   });
 });
 
 describe('ColorField — no commit during typing', () => {
-  test('typing without blur does not call onchange or set aria-invalid', async () => {
-    const onchange = mock<(value: string) => void>(() => {});
-    const { container } = render(ColorField, { id: 'color', onchange });
+  test('typing without blur does not call onValueChange or set aria-invalid', async () => {
+    const onValueChange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, { id: 'color', onValueChange });
     const input = getInput(container);
     await fireEvent.input(input, { target: { value: '#a' } });
     await tick();
-    expect(onchange).not.toHaveBeenCalled();
+    expect(onValueChange).not.toHaveBeenCalled();
     expect(input.getAttribute('aria-invalid')).not.toBe('true');
   });
 });
 
 describe('ColorField — Enter behavior', () => {
-  test('default commit-then-submit fires onchange and submits via requestSubmit', async () => {
-    const onchange = mock<(value: string) => void>(() => {});
+  test('default commit-then-submit fires onValueChange and submits via requestSubmit', async () => {
+    const onValueChange = mock<(value: string) => void>(() => {});
     const onsubmit = mock<(event: SubmitEvent) => void>((event) => event.preventDefault());
     const { container } = renderColorFieldFormFixture({
       id: 'color',
       name: 'c',
       enterBehavior: 'commit-then-submit',
-      onchange,
+      onValueChange,
       onsubmit,
     });
     const input = getInput(container);
     await fireEvent.input(input, { target: { value: '#ff0000' } });
     const event = await fireEvent.keyDown(input, { key: 'Enter' });
     await tick();
-    expect(onchange.mock.calls[0]?.[0]).toBe('#ff0000');
+    expect(onValueChange.mock.calls[0]?.[0]).toBe('#ff0000');
     expect(onsubmit).toHaveBeenCalledTimes(1);
     expect(event).toBe(false); // preventDefault returns false from fireEvent
     const hidden = q<HTMLInputElement>(container, 'input[type="hidden"][name="c"]');
@@ -227,119 +227,119 @@ describe('ColorField — Enter behavior', () => {
   });
 
   test('commit-only commits but does NOT submit', async () => {
-    const onchange = mock<(value: string) => void>(() => {});
+    const onValueChange = mock<(value: string) => void>(() => {});
     const onsubmit = mock<(event: SubmitEvent) => void>((event) => event.preventDefault());
     const { container } = renderColorFieldFormFixture({
       id: 'color',
       name: 'c',
       enterBehavior: 'commit-only',
-      onchange,
+      onValueChange,
       onsubmit,
     });
     const input = getInput(container);
     await fireEvent.input(input, { target: { value: '#00ff00' } });
     await fireEvent.keyDown(input, { key: 'Enter' });
     await tick();
-    expect(onchange.mock.calls[0]?.[0]).toBe('#00ff00');
+    expect(onValueChange.mock.calls[0]?.[0]).toBe('#00ff00');
     expect(onsubmit).not.toHaveBeenCalled();
   });
 
   test('invalid + Enter raises error, does NOT submit', async () => {
-    const onchange = mock<(value: string) => void>(() => {});
+    const onValueChange = mock<(value: string) => void>(() => {});
     const onsubmit = mock<(event: SubmitEvent) => void>((event) => event.preventDefault());
     const { container } = renderColorFieldFormFixture({
       id: 'color',
       name: 'c',
       enterBehavior: 'commit-then-submit',
-      onchange,
+      onValueChange,
       onsubmit,
     });
     const input = getInput(container);
     await fireEvent.input(input, { target: { value: 'nope' } });
     await fireEvent.keyDown(input, { key: 'Enter' });
     await tick();
-    expect(onchange).not.toHaveBeenCalled();
+    expect(onValueChange).not.toHaveBeenCalled();
     expect(onsubmit).not.toHaveBeenCalled();
     expect(input.getAttribute('aria-invalid')).toBe('true');
   });
 
   test('no-name case: Enter still submits with no color in FormData', async () => {
-    const onchange = mock<(value: string) => void>(() => {});
+    const onValueChange = mock<(value: string) => void>(() => {});
     const onsubmit = mock<(event: SubmitEvent) => void>((event) => event.preventDefault());
     const { container } = renderColorFieldFormFixture({
       id: 'color',
       enterBehavior: 'commit-then-submit',
-      onchange,
+      onValueChange,
       onsubmit,
     });
     const input = getInput(container);
     await fireEvent.input(input, { target: { value: '#abcdef' } });
     await fireEvent.keyDown(input, { key: 'Enter' });
     await tick();
-    expect(onchange.mock.calls[0]?.[0]).toBe('#abcdef');
+    expect(onValueChange.mock.calls[0]?.[0]).toBe('#abcdef');
     expect(onsubmit).toHaveBeenCalledTimes(1);
     expect(container.querySelector('input[type="hidden"][name]')).toBeNull();
   });
 });
 
 describe('ColorField — blur idempotence', () => {
-  test('blur after committing without typing does not refire onchange', async () => {
-    const onchange = mock<(value: string) => void>(() => {});
-    const { container } = render(ColorField, { id: 'color', onchange });
+  test('blur after committing without typing does not refire onValueChange', async () => {
+    const onValueChange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, { id: 'color', onValueChange });
     const input = getInput(container);
     await typeAndBlur(input, '#ff0000');
     await fireEvent.focus(input);
     await fireEvent.blur(input);
     await tick();
-    expect(onchange).toHaveBeenCalledTimes(1);
+    expect(onValueChange).toHaveBeenCalledTimes(1);
   });
 
   test('whitespace blur on empty field is a no-op', async () => {
-    const onchange = mock<(value: string) => void>(() => {});
-    const { container } = render(ColorField, { id: 'color', onchange });
+    const onValueChange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, { id: 'color', onValueChange });
     const input = getInput(container);
     await typeAndBlur(input, '   ');
-    expect(onchange).not.toHaveBeenCalled();
+    expect(onValueChange).not.toHaveBeenCalled();
   });
 
   test('whitespace blur after a committed value emits empty', async () => {
-    const onchange = mock<(value: string) => void>(() => {});
-    const { container } = render(ColorField, { id: 'color', onchange });
+    const onValueChange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, { id: 'color', onValueChange });
     const input = getInput(container);
     await typeAndBlur(input, '#ff0000');
     await typeAndBlur(input, '   ');
-    expect(onchange).toHaveBeenCalledTimes(2);
-    expect(onchange.mock.calls[1]?.[0]).toBe('');
+    expect(onValueChange).toHaveBeenCalledTimes(2);
+    expect(onValueChange.mock.calls[1]?.[0]).toBe('');
   });
 });
 
 describe('ColorField — form reset', () => {
-  test('uncontrolled: reset reverts to value without firing onchange', async () => {
-    const onchange = mock<(value: string) => void>(() => {});
+  test('uncontrolled: reset reverts to value without firing onValueChange', async () => {
+    const onValueChange = mock<(value: string) => void>(() => {});
     const { container } = renderColorFieldFormFixture({
       id: 'color',
       name: 'c',
       value: '#abcdef',
-      onchange,
+      onValueChange,
     });
     const input = getInput(container);
     await typeAndBlur(input, '#ff0000');
     expect(input.value).toBe('#ff0000');
-    expect(onchange).toHaveBeenCalledTimes(1);
+    expect(onValueChange).toHaveBeenCalledTimes(1);
     const form = container;
     form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
     await tick();
     expect(input.value).toBe('#abcdef');
-    expect(onchange).toHaveBeenCalledTimes(1);
+    expect(onValueChange).toHaveBeenCalledTimes(1);
   });
 
   test('canceled reset leaves the committed color unchanged', async () => {
-    const onchange = mock<(value: string) => void>(() => {});
+    const onValueChange = mock<(value: string) => void>(() => {});
     const { container } = renderColorFieldFormFixture({
       id: 'color',
       name: 'c',
       value: '',
-      onchange,
+      onValueChange,
     });
     const input = getInput(container);
     await typeAndBlur(input, '#123456');
@@ -355,7 +355,7 @@ describe('ColorField — form reset', () => {
 
     expect(input.value).toBe('#123456');
     expect(hidden.value).toBe('#123456');
-    expect(onchange).toHaveBeenCalledTimes(1);
+    expect(onValueChange).toHaveBeenCalledTimes(1);
   });
 
   test('uncontrolled with alpha-bearing default: alpha=true reconstructs after reset', async () => {
@@ -379,13 +379,13 @@ describe('ColorField — form reset', () => {
 });
 
 describe('ColorField — controlled invalid value', () => {
-  test('external invalid value preserves visible text, raises error, no onchange', async () => {
-    const onchange = mock<(value: string) => void>(() => {});
+  test('external invalid value preserves visible text, raises error, no onValueChange', async () => {
+    const onValueChange = mock<(value: string) => void>(() => {});
     const { container } = render(ColorField, {
       id: 'color',
       name: 'c',
       value: 'bad',
-      onchange,
+      onValueChange,
     });
     await tick();
     const input = getInput(container);
@@ -393,19 +393,19 @@ describe('ColorField — controlled invalid value', () => {
     expect(input.getAttribute('aria-invalid')).toBe('true');
     const hidden = q<HTMLInputElement>(container, 'input[type="hidden"][name="c"]');
     expect(hidden.value).toBe('');
-    expect(onchange).not.toHaveBeenCalled();
+    expect(onValueChange).not.toHaveBeenCalled();
     const swatch = q(container, '.cinder-color-field__swatch');
     expect(swatch.getAttribute('style') ?? '').not.toContain('bad');
     expect(swatch.getAttribute('data-cinder-empty')).toBe('');
   });
 
   test('clearing an external invalid value commits empty', async () => {
-    const onchange = mock<(value: string) => void>(() => {});
+    const onValueChange = mock<(value: string) => void>(() => {});
     const { container } = render(ColorField, {
       id: 'color',
       name: 'c',
       value: 'bad',
-      onchange,
+      onValueChange,
     });
     await tick();
     const input = getInput(container);
@@ -414,59 +414,59 @@ describe('ColorField — controlled invalid value', () => {
     expect(input.value).toBe('');
     expect(hidden.value).toBe('');
     expect(input.getAttribute('aria-invalid')).not.toBe('true');
-    expect(onchange).toHaveBeenCalledTimes(1);
-    expect(onchange.mock.calls[0]?.[0]).toBe('');
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+    expect(onValueChange.mock.calls[0]?.[0]).toBe('');
   });
 });
 
 describe('ColorField — hidden mirror + alpha re-derivation', () => {
-  test('alpha toggle re-derives hidden mirror without firing onchange', async () => {
-    const onchange = mock<(value: string) => void>(() => {});
+  test('alpha toggle re-derives hidden mirror without firing onValueChange', async () => {
+    const onValueChange = mock<(value: string) => void>(() => {});
     const { container, rerender } = render(ColorField, {
       id: 'color',
       name: 'c',
       alpha: false,
-      onchange,
+      onValueChange,
     });
     const input = getInput(container);
     await typeAndBlur(input, '#ff000080');
     let hidden = q<HTMLInputElement>(container, 'input[type="hidden"][name="c"]');
     expect(hidden.value).toBe('#ff0000');
-    expect(onchange).toHaveBeenCalledTimes(1);
+    expect(onValueChange).toHaveBeenCalledTimes(1);
 
-    await rerender({ id: 'color', name: 'c', alpha: true, onchange });
+    await rerender({ id: 'color', name: 'c', alpha: true, onValueChange });
     await tick();
     hidden = q<HTMLInputElement>(container, 'input[type="hidden"][name="c"]');
     expect(hidden.value).toBe('#ff000080');
-    expect(onchange).toHaveBeenCalledTimes(1);
+    expect(onValueChange).toHaveBeenCalledTimes(1);
   });
 });
 
 describe('ColorField — controlled reconciliation', () => {
   test('parent updates are always observed; same-value re-applies are safe', async () => {
-    const onchange = mock<(value: string) => void>(() => {});
+    const onValueChange = mock<(value: string) => void>(() => {});
     const { container, rerender } = render(ColorField, {
       id: 'color',
       name: 'c',
       value: '#000000',
-      onchange,
+      onValueChange,
     });
     const input = getInput(container);
     await typeAndBlur(input, '#00ff00');
-    expect(onchange.mock.calls[0]?.[0]).toBe('#00ff00');
+    expect(onValueChange.mock.calls[0]?.[0]).toBe('#00ff00');
 
     // Parent rejects our commit and forces a different value.
-    await rerender({ id: 'color', name: 'c', value: '#ff0000', onchange });
+    await rerender({ id: 'color', name: 'c', value: '#ff0000', onValueChange });
     await tick();
     expect(input.value).toBe('#ff0000');
 
     // Parent applies the prior committed value.
-    await rerender({ id: 'color', name: 'c', value: '#00ff00', onchange });
+    await rerender({ id: 'color', name: 'c', value: '#00ff00', onValueChange });
     await tick();
     expect(input.value).toBe('#00ff00');
 
     // Parent re-applies the same value — no change in field, no error.
-    await rerender({ id: 'color', name: 'c', value: '#00ff00', onchange });
+    await rerender({ id: 'color', name: 'c', value: '#00ff00', onValueChange });
     await tick();
     expect(input.value).toBe('#00ff00');
     expect(input.getAttribute('aria-invalid')).not.toBe('true');
@@ -515,14 +515,14 @@ describe('ColorField — composition + DOM contract', () => {
     expect(describedBy.length).toBeGreaterThan(0);
   });
 
-  test('native change event does NOT invoke consumer onchange', async () => {
-    const onchange = mock<(value: string) => void>(() => {});
-    const { container } = render(ColorField, { id: 'color', onchange });
+  test('native change event does NOT invoke consumer onValueChange', async () => {
+    const onValueChange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, { id: 'color', onValueChange });
     const input = getInput(container);
     await fireEvent.input(input, { target: { value: '#ff0000' } });
     input.dispatchEvent(new Event('change', { bubbles: true }));
     await tick();
-    expect(onchange).not.toHaveBeenCalled();
+    expect(onValueChange).not.toHaveBeenCalled();
   });
 
   test('class prop merges onto wrapper', () => {
@@ -540,12 +540,12 @@ describe('ColorField — composition + DOM contract', () => {
   });
 
   test('reset on a mounted form runs once and survives a follow-up dispatch', async () => {
-    const onchange = mock<(value: string) => void>(() => {});
+    const onValueChange = mock<(value: string) => void>(() => {});
     const { container } = renderColorFieldFormFixture({
       id: 'color',
       name: 'c',
       value: '#abcdef',
-      onchange,
+      onValueChange,
     });
     const form = container;
     const input = getInput(container);
@@ -558,8 +558,8 @@ describe('ColorField — composition + DOM contract', () => {
     form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
     await tick();
     expect(input.value).toBe('#abcdef');
-    // Reset must not fire onchange — the test below asserts this didn't sneak through.
-    expect(onchange).toHaveBeenCalledTimes(1);
+    // Reset must not fire onValueChange — the test below asserts this didn't sneak through.
+    expect(onValueChange).toHaveBeenCalledTimes(1);
   });
 
   test('late value update reconciles into the bindable field', async () => {
@@ -596,19 +596,19 @@ describe('ColorField — constraint validation (submit-button click)', () => {
 
 describe('ColorField — 4-char hex (#rgba)', () => {
   test('alpha=false strips alpha from #abcd', async () => {
-    const onchange = mock<(value: string) => void>(() => {});
-    const { container } = render(ColorField, { id: 'color', onchange });
+    const onValueChange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, { id: 'color', onValueChange });
     const input = getInput(container);
     await typeAndBlur(input, '#abcd');
-    expect(onchange.mock.calls[0]?.[0]).toBe('#aabbcc');
+    expect(onValueChange.mock.calls[0]?.[0]).toBe('#aabbcc');
   });
 
   test('alpha=true preserves alpha from #abcd', async () => {
-    const onchange = mock<(value: string) => void>(() => {});
-    const { container } = render(ColorField, { id: 'color', alpha: true, onchange });
+    const onValueChange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, { id: 'color', alpha: true, onValueChange });
     const input = getInput(container);
     await typeAndBlur(input, '#abcd');
-    expect(onchange.mock.calls[0]?.[0]).toBe('#aabbccdd');
+    expect(onValueChange.mock.calls[0]?.[0]).toBe('#aabbccdd');
   });
 });
 

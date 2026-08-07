@@ -44,7 +44,7 @@
     required,
     name,
     class: className,
-    onchange,
+    onValueChange,
   }: RatingProps = $props();
 
   const context = getFormFieldContext();
@@ -167,10 +167,10 @@
     const snapped = snapToOption(next);
     if (snapped !== resolvedValue) {
       value = snapped;
-      onchange?.(snapped);
+      onValueChange?.(snapped);
     } else {
       // Re-emit when the user re-selects the same value? No — keep
-      // onchange aligned with React's <input> semantics: same value = no fire.
+      // onValueChange aligned with React's <input> semantics: same value = no fire.
     }
   }
 

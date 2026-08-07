@@ -26,7 +26,7 @@
     maxHistory?: number;
     /** Force a draft override regardless of $schema. */
     draftOverride?: JsonSchemaKnownDraft;
-    onchange?: (event: JsonSchemaEditorChangeEvent) => void;
+    onSchemaChange?: (event: JsonSchemaEditorChangeEvent) => void;
     onRevert?: (event: JsonSchemaEditorRevertEvent) => void;
     onValidate?: (result: JsonSchemaValidationResult) => void;
     class?: string;
@@ -80,7 +80,7 @@
     readonly = false,
     maxHistory,
     draftOverride,
-    onchange,
+    onSchemaChange,
     onRevert,
     onValidate,
     class: className,
@@ -99,7 +99,7 @@
     const options: Parameters<typeof createEditorState>[0] = {
       schema,
       readonly,
-      onchange: (event) => onchange?.(event),
+      onSchemaChange: (event) => onSchemaChange?.(event),
       onRevert: (event) => onRevert?.(event),
       onValidate: (result) => onValidate?.(result),
     };

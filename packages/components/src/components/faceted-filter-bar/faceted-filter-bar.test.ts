@@ -413,19 +413,19 @@ describe('FacetedFilterBar chip-remove focus management', () => {
 });
 
 describe('FacetedFilterBar custom facets', () => {
-  test('renders a custom facet via its control snippet and forwards onchange to onFacetChange', async () => {
+  test('renders a custom facet via its control snippet and forwards onValueChange to onFacetChange', async () => {
     const onFacetChange = mock((_key: string, _value: string) => {});
-    const controlSnippet = createRawSnippet<[{ value: string; onchange: (value: string) => void }]>(
-      (getProps) => ({
-        render: () =>
-          `<button type="button" class="faceted-filter-bar-test-custom-control">Pick</button>`,
-        setup(element: Element) {
-          const handleClick = () => getProps().onchange('me');
-          element.addEventListener('click', handleClick);
-          return () => element.removeEventListener('click', handleClick);
-        },
-      }),
-    );
+    const controlSnippet = createRawSnippet<
+      [{ value: string; onValueChange: (value: string) => void }]
+    >((getProps) => ({
+      render: () =>
+        `<button type="button" class="faceted-filter-bar-test-custom-control">Pick</button>`,
+      setup(element: Element) {
+        const handleClick = () => getProps().onValueChange('me');
+        element.addEventListener('click', handleClick);
+        return () => element.removeEventListener('click', handleClick);
+      },
+    }));
 
     const { container } = render(FacetedFilterBar, {
       facets: [{ type: 'custom', key: 'owner', label: 'Owner', control: controlSnippet }],

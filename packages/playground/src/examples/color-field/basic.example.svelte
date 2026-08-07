@@ -19,7 +19,7 @@
   <ColorField
     id={fieldId}
     value="#3b82f6"
-    onchange={(value) => {
+    onValueChange={(value) => {
       committed = value;
     }}
   />

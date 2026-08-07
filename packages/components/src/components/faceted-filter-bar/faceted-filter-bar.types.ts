@@ -42,7 +42,7 @@ export type CustomFacet = {
   /** Accessible label for the facet (used in the applied-filter chip). */
   label: string;
   /** Consumer-supplied snippet that renders the full facet control. */
-  control: Snippet<[{ value: string; onchange: (value: string) => void }]>;
+  control: Snippet<[{ value: string; onValueChange: (value: string) => void }]>;
 };
 
 /** Union of all supported facet definition types. */

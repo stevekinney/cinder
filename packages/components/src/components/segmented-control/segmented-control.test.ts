@@ -1004,7 +1004,7 @@ describe('SegmentedControl — tablist variant', () => {
   //
   // `SegmentedControlController.handleKeydown` intentionally moves focus AND
   // updates value together in single mode (the C6 roving contract), so each
-  // arrow press fires `onchange` exactly once. "Exactly once" is asserted as a
+  // arrow press fires `onValueChange` exactly once. "Exactly once" is asserted as a
   // post-setup callback-count delta: snapshot the count after render, press one
   // key, assert the delta is 1, then assert the resulting selected tab.
 
@@ -1070,7 +1070,7 @@ describe('SegmentedControl — tablist variant', () => {
         label: 'Review view',
         variant: 'tablist',
         options: tablistOptions,
-        onchange: () => {
+        onValueChange: () => {
           changeCount += 1;
         },
       },
@@ -1093,7 +1093,7 @@ describe('SegmentedControl — tablist variant', () => {
     expect(selected).toBe('editor');
 
     // Wrap-around: ArrowLeft from the first tab wraps to the last, and
-    // ArrowRight from the last wraps back to the first — each firing onchange
+    // ArrowRight from the last wraps back to the first — each firing onValueChange
     // exactly once.
     const countBeforeWrapStart = changeCount;
     await fireEvent.keyDown(tablist, { key: 'ArrowLeft' });
@@ -1122,7 +1122,7 @@ describe('SegmentedControl — tablist variant', () => {
         variant: 'tablist',
         orientation: 'vertical',
         options: tablistOptions,
-        onchange: () => {
+        onValueChange: () => {
           changeCount += 1;
         },
       },

@@ -8,7 +8,7 @@ type KanbanBoardColumnReorderOptions<Card> = {
   getReorderColumns: () => boolean;
   getInvalidKeys: () => boolean;
   announce: (message: string) => void;
-  onchange: (nextColumns: KanbanBoardColumn<Card>[], change: KanbanBoardChange) => void;
+  onColumnsChange: (nextColumns: KanbanBoardColumn<Card>[], change: KanbanBoardChange) => void;
 };
 
 /**
@@ -41,7 +41,7 @@ export class KanbanBoardColumnReorder<Card> {
     this.#options.announce(
       `${column.title} ${result.change.type === 'collapse' && result.change.collapsed ? 'collapsed' : 'expanded'}.`,
     );
-    this.#options.onchange(result.nextColumns, result.change);
+    this.#options.onColumnsChange(result.nextColumns, result.change);
   }
 
   liftColumn(
@@ -65,7 +65,7 @@ export class KanbanBoardColumnReorder<Card> {
     this.#options.announce(
       `${column.title} column dropped at position ${targetIndex + 1} of ${columns.length}.`,
     );
-    if (result) this.#options.onchange(result.nextColumns, result.change);
+    if (result) this.#options.onColumnsChange(result.nextColumns, result.change);
   }
 
   handleColumnClick(

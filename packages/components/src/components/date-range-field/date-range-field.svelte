@@ -50,7 +50,7 @@
     error,
     disabled = false,
     class: className,
-    onchange,
+    onValueChange,
     'aria-describedby': consumerDescribedBy,
     ...rest
   }: DateRangeFieldProps = $props();
@@ -208,7 +208,7 @@
   $effect(() => {
     if (dateRangeValuesMatch(value, normalizedValue)) return;
     value = normalizedValue;
-    onchange?.(normalizedValue);
+    onValueChange?.(normalizedValue);
   });
 
   const defaultStartLabel = $derived(granularity === 'day' ? 'Start date' : 'Start date and time');
@@ -224,7 +224,7 @@
     const next = normalizeDateRangeValue(preset.resolve(), granularity);
     selectedPresetSnapshot = { id: preset.id, preset, value: next };
     value = next;
-    onchange?.(next);
+    onValueChange?.(next);
   }
 
   function handleStartChange(nextStart: string | undefined) {
@@ -237,7 +237,7 @@
     );
     selectedPresetSnapshot = null;
     value = next;
-    onchange?.(next);
+    onValueChange?.(next);
   }
 
   function handleEndChange(nextEnd: string | undefined) {
@@ -250,7 +250,7 @@
     );
     selectedPresetSnapshot = null;
     value = next;
-    onchange?.(next);
+    onValueChange?.(next);
   }
 
   const hasError = $derived(!!error);
@@ -302,7 +302,7 @@
         {disabled}
         aria-invalid={hasError ? 'true' : undefined}
         aria-describedby={describedBy}
-        onchange={(next) => handleStartChange(next)}
+        onValueChange={(next) => handleStartChange(next)}
       />
     </div>
 
@@ -319,7 +319,7 @@
         {disabled}
         aria-invalid={hasError ? 'true' : undefined}
         aria-describedby={describedBy}
-        onchange={(next) => handleEndChange(next)}
+        onValueChange={(next) => handleEndChange(next)}
       />
     </div>
   </div>

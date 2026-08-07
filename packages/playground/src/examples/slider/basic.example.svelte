@@ -13,7 +13,7 @@
   <Slider
     label="Volume"
     {value}
-    onchange={(next) => {
+    onValueChange={(next) => {
       value = next;
     }}
   />

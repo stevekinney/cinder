@@ -55,5 +55,5 @@ export type RatingProps = {
    * Fires only for user-initiated committed value changes (click, arrow keys,
    * Space/Enter). Never fires for hover preview or external prop synchronization.
    */
-  onchange?: (value: number) => void;
+  onValueChange?: (value: number) => void;
 };

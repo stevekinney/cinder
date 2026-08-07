@@ -9,7 +9,7 @@
     disabled?: boolean;
     readonly?: boolean;
     commitOnSubmit?: boolean;
-    onchange?: (tags: string[]) => void;
+    onValueChange?: (tags: string[]) => void;
     onsubmit?: (event: SubmitEvent) => void;
   };
 </script>
@@ -27,7 +27,7 @@
     disabled,
     readonly,
     commitOnSubmit,
-    onchange,
+    onValueChange,
     onsubmit,
   }: TagInputFormFixtureProps = $props();
 
@@ -41,7 +41,7 @@
     ...(disabled !== undefined ? { disabled } : {}),
     ...(readonly !== undefined ? { readonly } : {}),
     ...(commitOnSubmit !== undefined ? { commitOnSubmit } : {}),
-    ...(onchange !== undefined ? { onchange } : {}),
+    ...(onValueChange !== undefined ? { onValueChange } : {}),
   });
 </script>
 

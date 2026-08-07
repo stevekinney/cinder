@@ -30,7 +30,7 @@
   let {
     id,
     value = $bindable(''),
-    onchange,
+    onValueChange,
     name,
     textInputValue = $bindable(''),
     options,
@@ -342,7 +342,7 @@
     textInputValue = option.label;
     committedLabel = option.label;
     open = false;
-    onchange?.(option.value);
+    onValueChange?.(option.value);
   }
 
   function commitCustomValue(): void {
@@ -368,7 +368,7 @@
     textInputValue = committedText;
     committedLabel = committedText;
     open = false;
-    if (committedValue !== previousValue) onchange?.(committedValue as T);
+    if (committedValue !== previousValue) onValueChange?.(committedValue as T);
   }
 
   function resetToInitialValue(event: Event): void {

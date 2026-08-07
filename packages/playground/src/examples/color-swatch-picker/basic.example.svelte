@@ -22,6 +22,6 @@
   colors={palette}
   value={selected}
   label="Accent color"
-  onchange={(color) => (selected = color)}
+  onValueChange={(color) => (selected = color)}
 />
 <p style="margin-top: 0.5rem; color: var(--cinder-text-muted);">Selected: {selected}</p>

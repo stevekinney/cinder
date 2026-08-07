@@ -282,37 +282,37 @@ describe('PinInput error / disabled / required', () => {
   });
 });
 
-describe('PinInput onchange', () => {
+describe('PinInput onValueChange', () => {
   test('fires for user-initiated input', async () => {
-    const onchange = mock((_value: string) => {});
+    const onValueChange = mock((_value: string) => {});
     const { container } = renderPin({
-      props: { id: 'otp', value: '', length: 4, onchange },
+      props: { id: 'otp', value: '', length: 4, onValueChange },
     });
     const all = segments(container);
     await fireEvent.input(all[0]!, { target: { value: '5' } });
-    expect(onchange).toHaveBeenCalledWith('5');
+    expect(onValueChange).toHaveBeenCalledWith('5');
   });
 
   test('fires for paste', async () => {
-    const onchange = mock((_value: string) => {});
+    const onValueChange = mock((_value: string) => {});
     const { container } = renderPin({
-      props: { id: 'otp', value: '', length: 4, onchange },
+      props: { id: 'otp', value: '', length: 4, onValueChange },
     });
     const all = segments(container);
     all[0]!.focus();
     const data = new DataTransfer();
     data.setData('text', '1234');
     await fireEvent.paste(all[0]!, { clipboardData: data });
-    expect(onchange).toHaveBeenCalledWith('1234');
+    expect(onValueChange).toHaveBeenCalledWith('1234');
   });
 
   test('does not fire on external value prop synchronization', async () => {
-    const onchange = mock((_value: string) => {});
+    const onValueChange = mock((_value: string) => {});
     const { rerender } = renderPin({
-      props: { id: 'otp', value: '', length: 4, onchange },
+      props: { id: 'otp', value: '', length: 4, onValueChange },
     });
-    await rerender({ id: 'otp', value: '12', length: 4, onchange });
-    expect(onchange).not.toHaveBeenCalled();
+    await rerender({ id: 'otp', value: '12', length: 4, onValueChange });
+    expect(onValueChange).not.toHaveBeenCalled();
   });
 });
 
@@ -375,16 +375,16 @@ describe('PinInput normalization without write-back', () => {
     expect(hidden.value).toBe('12');
   });
 
-  test('segments display only filtered characters; onchange is not fired by normalization', () => {
-    const onchange = mock((_value: string) => {});
+  test('segments display only filtered characters; onValueChange is not fired by normalization', () => {
+    const onValueChange = mock((_value: string) => {});
     const { container } = renderPin({
-      props: { id: 'otp', value: 'x9y8', length: 4, mode: 'numeric', onchange },
+      props: { id: 'otp', value: 'x9y8', length: 4, mode: 'numeric', onValueChange },
     });
     const all = segments(container);
     // Segments show only digits; letters are filtered from the display.
     expect(all[0]!.value).toBe('9');
     expect(all[1]!.value).toBe('8');
-    // onchange was NOT called by normalization — only by user interaction.
-    expect(onchange).not.toHaveBeenCalled();
+    // onValueChange was NOT called by normalization — only by user interaction.
+    expect(onValueChange).not.toHaveBeenCalled();
   });
 });

@@ -64,5 +64,5 @@ export type PinInputProps = {
    * Fires only for user-initiated committed value changes (typing, paste,
    * autofill, backspace). Never fires for external prop synchronization.
    */
-  onchange?: (value: string) => void;
+  onValueChange?: (value: string) => void;
 };

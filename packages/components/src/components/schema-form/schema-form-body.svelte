@@ -48,7 +48,7 @@
     name = 'value',
     submitLabel = 'Submit',
     class: customClassName,
-    onsubmit,
+    onSubmit,
     onDraftChange,
     novalidate,
     ...rest
@@ -159,7 +159,7 @@
   }
 
   function shouldResumeNativeSubmit(): boolean {
-    return onsubmit === undefined && (rest.action !== undefined || rest.method !== undefined);
+    return onSubmit === undefined && (rest.action !== undefined || rest.method !== undefined);
   }
 
   function nativeSubmitter(event: SubmitEvent): HTMLButtonElement | HTMLInputElement | undefined {
@@ -213,7 +213,7 @@
       }
 
       formState.commit(result.value, serialized.value);
-      await onsubmit?.(result.value as SchemaFormOutput, event);
+      await onSubmit?.(result.value as SchemaFormOutput, event);
 
       if (shouldResumeNativeSubmit()) {
         allowNativeSubmit = true;
@@ -330,7 +330,7 @@
           step={field.kind === 'integer' ? 1 : undefined}
           onblur={() => formState.validateTouchedField(field)}
           value={numberFieldValue(field)}
-          onchange={(next) => formState.updateNumberValue(field, next)}
+          onValueChange={(next) => formState.updateNumberValue(field, next)}
         />
       {:else if field.kind === 'enum'}
         <Select

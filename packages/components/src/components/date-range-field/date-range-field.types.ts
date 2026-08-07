@@ -77,5 +77,5 @@ export type DateRangeFieldProps = Omit<
   /** Additional CSS classes applied to the root element. */
   class?: string;
   /** Called when the user changes the date range (preset or manual input). */
-  onchange?: (value: DateRangeValue) => void;
+  onValueChange?: (value: DateRangeValue) => void;
 };

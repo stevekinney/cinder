@@ -61,7 +61,7 @@ const schema = {
         description: 'Replaces the default resting-state dropzone body.',
       },
       {
-        name: 'onchange',
+        name: 'onFilesChange',
         reason: 'function-or-snippet',
         description: 'Fires with accepted files after local validation passes.',
       },

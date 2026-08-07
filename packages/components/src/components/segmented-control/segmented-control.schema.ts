@@ -77,7 +77,7 @@ const schema = {
         description: 'Child `<Segment>` elements.',
       },
       {
-        name: 'onchange',
+        name: 'onValueChange',
         reason: 'function-or-snippet',
         description: 'Called when the selected value changes (single mode only).',
       },

@@ -53,5 +53,5 @@ export type ColorFieldProps = {
    * changes. Value callback by repo convention — not forwarded to the inner
    * native `<input>`.
    */
-  onchange?: (value: string) => void;
+  onValueChange?: (value: string) => void;
 };

@@ -567,7 +567,7 @@ const schema = {
   metadata: {
     unsupportedProps: [
       {
-        name: 'onchange',
+        name: 'onValueChange',
         reason: 'function-or-snippet',
         description:
           'Fires only for user-initiated committed value changes (editing the national\nnumber, switching the country). Never fires for external value or country\nsynchronization. The detail object carries the E.164 string on `detail.value`.',

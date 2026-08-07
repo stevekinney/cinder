@@ -61,7 +61,7 @@ const schema = {
         required: true,
       },
       {
-        name: 'onchange',
+        name: 'onColumnsChange',
         reason: 'function-or-snippet',
         required: true,
       },

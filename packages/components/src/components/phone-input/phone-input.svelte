@@ -66,7 +66,7 @@
     required,
     name,
     class: className,
-    onchange,
+    onValueChange,
   }: PhoneInputProps = $props();
 
   const initialCountry = country;
@@ -216,7 +216,7 @@
    * while `value` is `+442079460958` would keep the disallowed E.164 string
    * on the prop, and expanding ['US'] to ['US','GB'] while value points at
    * a GB number would leave the dropdown on the fallback US). Prop
-   * synchronization — never fires `onchange`.
+   * synchronization — never fires `onValueChange`.
    */
   $effect(() => {
     if (allowedCountries === knownAllowList) return;
@@ -272,7 +272,7 @@
       value = detail.value;
       knownValue = detail.value;
     }
-    onchange?.(detail);
+    onValueChange?.(detail);
   }
 
   function handleNationalInput(event: Event): void {

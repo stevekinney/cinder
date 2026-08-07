@@ -29,7 +29,7 @@
 
 <ScheduleBuilder
   {value}
-  onchange={handleChange}
+  onValueChange={handleChange}
   {computeNextFires}
   timezoneLabel="UTC"
   label="Health check schedule"

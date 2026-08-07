@@ -38,7 +38,7 @@
     'aria-labelledby': ariaLabelledby,
     errorMessage,
     enterBehavior = 'commit-then-submit',
-    onchange,
+    onValueChange,
   }: ColorFieldProps = $props();
 
   type RgbaParts = { r: number; g: number; b: number; a: number };
@@ -181,7 +181,7 @@
   // ── alpha runtime changes ───────────────────────────────────────────────
 
   // Re-derive `committedHex` and `visibleText` from `committedRgba` when the
-  // alpha mode toggles after mount. Never emit `onchange` on a config change.
+  // alpha mode toggles after mount. Never emit `onValueChange` on a config change.
   $effect(() => {
     void alpha;
     if (committedRgba === null) return;
@@ -230,7 +230,7 @@
       if (hadCommitted || hadInvalidReconciledValue) {
         lastReconciledValue = '';
         value = '';
-        onchange?.('');
+        onValueChange?.('');
         return { committed: true, emittedHex: '' };
       }
       return { committed: false, emittedHex: null };
@@ -263,7 +263,7 @@
     lastReconciledValue = normalized;
     value = normalized;
     if (normalized !== previousHex) {
-      onchange?.(normalized);
+      onValueChange?.(normalized);
       return { committed: true, emittedHex: normalized };
     }
     return { committed: true, emittedHex: null };

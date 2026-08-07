@@ -200,7 +200,7 @@ describe('ColorPicker invalid input', () => {
       value: '#00ff00',
       swatches: ['not-a-color', '#00ff00'],
       name: 'p',
-      onchange: (color: string) => {
+      onValueCommit: (color: string) => {
         captured = color;
       },
     });
@@ -247,7 +247,7 @@ describe('ColorPicker swatch controlled-state invariant (regression: conditional
       // No value or value: ColorPicker starts with internalValue === ''.
       swatches: ['not-a-color', '#00ff00'],
       name: 'p',
-      onchange: (color: string) => {
+      onValueCommit: (color: string) => {
         captured = color;
       },
     });
@@ -261,7 +261,7 @@ describe('ColorPicker swatch controlled-state invariant (regression: conditional
     // Click the unparseable swatch.
     await fireEvent.click(options[0]!);
 
-    // The unparseable click must not fire onchange and must not leave the
+    // The unparseable click must not fire onValueCommit and must not leave the
     // swatch appearing selected — the child's selected state must remain a
     // pure function of ColorPicker's value (which is still empty).
     expect(captured).toBe('');
@@ -317,7 +317,7 @@ describe('ColorPicker swatch alpha stripping', () => {
       alpha: false,
       swatches: ['#ff000080'],
       name: 'p',
-      onchange: (color: string) => {
+      onValueCommit: (color: string) => {
         captured = color;
       },
     });
@@ -340,7 +340,7 @@ describe('ColorPicker swatch alpha stripping', () => {
       alpha: true,
       swatches: ['#ff000080'],
       name: 'p',
-      onchange: (color: string) => {
+      onValueCommit: (color: string) => {
         captured = color;
       },
     });
@@ -360,7 +360,7 @@ describe('ColorPicker hue slider keyboard', () => {
     let captured = '';
     const { container } = render(ColorPicker, {
       value: '#ff0000',
-      onchange: (color: string) => {
+      onValueCommit: (color: string) => {
         captured = color;
       },
     });
@@ -430,7 +430,7 @@ describe('ColorPicker gradient keyboard', () => {
     let captured = '';
     const { container } = render(ColorPicker, {
       value: '#ff0000',
-      onchange: (color: string) => {
+      onValueCommit: (color: string) => {
         captured = color;
       },
     });
@@ -444,7 +444,7 @@ describe('ColorPicker gradient keyboard', () => {
     let captured = '';
     const { container } = render(ColorPicker, {
       value: '#ff0000',
-      onchange: (color: string) => {
+      onValueCommit: (color: string) => {
         captured = color;
       },
     });
@@ -458,7 +458,7 @@ describe('ColorPicker gradient keyboard', () => {
     let captured = '';
     const { container } = render(ColorPicker, {
       value: '#ff0000',
-      onchange: (color: string) => {
+      onValueCommit: (color: string) => {
         captured = color;
       },
     });
@@ -478,7 +478,7 @@ describe('ColorPicker gradient keyboard', () => {
     let captured = '';
     const { container } = render(ColorPicker, {
       value: '#ff0000',
-      onchange: (color: string) => {
+      onValueCommit: (color: string) => {
         captured = color;
       },
     });
@@ -499,7 +499,7 @@ describe('ColorPicker gradient keyboard', () => {
     const { container } = render(ColorPicker, {
       value: '#ff0000',
       disabled: true,
-      onchange: (color: string) => {
+      onValueCommit: (color: string) => {
         captured = color;
       },
     });
@@ -517,7 +517,7 @@ describe('ColorPicker swatch keyboard nav', () => {
       value: '#ffffff',
       swatches: ['#ff0000', '#00ff00', '#0000ff'],
       name: 'p',
-      onchange: (color: string) => {
+      onValueCommit: (color: string) => {
         captured = color;
       },
     });
@@ -533,7 +533,7 @@ describe('ColorPicker swatch keyboard nav', () => {
     const { container } = render(ColorPicker, {
       value: '#ffffff',
       swatches: ['#ff0000', '#00ff00', '#0000ff'],
-      onchange: (color: string) => {
+      onValueCommit: (color: string) => {
         captured = color;
       },
     });
@@ -600,8 +600,8 @@ describe('ColorPicker form reset', () => {
       props: {
         value: 'not-a-color',
         name: 'p',
-        oninput: (color: string) => inputs.push(color),
-        onchange: (color: string) => changes.push(color),
+        onValueChange: (color: string) => inputs.push(color),
+        onValueCommit: (color: string) => changes.push(color),
       },
     });
     await tick();
@@ -627,13 +627,13 @@ describe('ColorPicker form reset', () => {
 });
 
 describe('ColorPicker callback contract', () => {
-  test('slider keypress fires both oninput and onchange', async () => {
+  test('slider keypress fires both onValueChange and onValueCommit', async () => {
     const inputs: string[] = [];
     const changes: string[] = [];
     const { container } = render(ColorPicker, {
       value: '#ff0000',
-      oninput: (color: string) => inputs.push(color),
-      onchange: (color: string) => changes.push(color),
+      onValueChange: (color: string) => inputs.push(color),
+      onValueCommit: (color: string) => changes.push(color),
     });
     const hue = q(container, '[aria-label="Hue"]');
     await fireEvent.keyDown(hue, { key: 'ArrowRight' });
@@ -642,14 +642,14 @@ describe('ColorPicker callback contract', () => {
     expect(inputs[0]).toBe(changes[0]);
   });
 
-  test('swatch selection fires both oninput and onchange', async () => {
+  test('swatch selection fires both onValueChange and onValueCommit', async () => {
     const inputs: string[] = [];
     const changes: string[] = [];
     const { container } = render(ColorPicker, {
       value: '#ffffff',
       swatches: ['#ff0000', '#00ff00'],
-      oninput: (color: string) => inputs.push(color),
-      onchange: (color: string) => changes.push(color),
+      onValueChange: (color: string) => inputs.push(color),
+      onValueCommit: (color: string) => changes.push(color),
     });
     const option = container.querySelector<HTMLElement>('[role="option"]');
     await fireEvent.click(option!);
@@ -659,13 +659,13 @@ describe('ColorPicker callback contract', () => {
 });
 
 describe('ColorPicker pointer interaction', () => {
-  test('pointer drag on hue slider updates hue and fires oninput then onchange', async () => {
+  test('pointer drag on hue slider updates hue and fires onValueChange then onValueCommit', async () => {
     const inputs: string[] = [];
     const changes: string[] = [];
     const { container } = render(ColorPicker, {
       value: '#ff0000',
-      oninput: (color: string) => inputs.push(color),
-      onchange: (color: string) => changes.push(color),
+      onValueChange: (color: string) => inputs.push(color),
+      onValueCommit: (color: string) => changes.push(color),
     });
     const hue = q(container, '[aria-label="Hue"]');
     // happy-dom doesn't implement these; stub so the production setPointerCapture
@@ -698,13 +698,13 @@ describe('ColorPicker pointer interaction', () => {
     expect(hue.getAttribute('aria-valuenow')).toBe('180');
   });
 
-  test('pointer cancel does not fire onchange', async () => {
+  test('pointer cancel does not fire onValueCommit', async () => {
     const inputs: string[] = [];
     const changes: string[] = [];
     const { container } = render(ColorPicker, {
       value: '#ff0000',
-      oninput: (color: string) => inputs.push(color),
-      onchange: (color: string) => changes.push(color),
+      onValueChange: (color: string) => inputs.push(color),
+      onValueCommit: (color: string) => changes.push(color),
     });
     const hue = q(container, '[aria-label="Hue"]');
     // eslint-disable-next-line @typescript-eslint/no-empty-function
@@ -815,7 +815,7 @@ describe('ColorPicker layout: alpha-enabled state', () => {
       value: '#ffffff',
       alpha: true,
       swatches: ['#ff000080', '#00ff0080'],
-      onchange: (color: string) => {
+      onValueCommit: (color: string) => {
         captured = color;
       },
     });
@@ -863,12 +863,12 @@ describe('ColorPicker composition: ColorSwatchPicker integration', () => {
     expect(hidden.value).toBe('#22c55e');
   });
 
-  test('swatch selection via ColorSwatchPicker fires onchange', async () => {
+  test('swatch selection via ColorSwatchPicker fires onValueCommit', async () => {
     let captured = '';
     const { container } = render(ColorPicker, {
       value: '#ffffff',
       swatches: ['#ef4444', '#22c55e', '#3b82f6'],
-      onchange: (color: string) => {
+      onValueCommit: (color: string) => {
         captured = color;
       },
     });
@@ -893,7 +893,7 @@ describe('ColorPicker composition: ColorSwatchPicker integration', () => {
     const { container } = render(ColorPicker, {
       value: '#ffffff',
       swatches: ['#ef4444', '#22c55e', '#3b82f6'],
-      onchange: (color: string) => {
+      onValueCommit: (color: string) => {
         captured = color;
       },
     });

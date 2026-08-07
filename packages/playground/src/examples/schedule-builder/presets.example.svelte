@@ -28,4 +28,4 @@
   }
 </script>
 
-<ScheduleBuilder {value} onchange={handleChange} {computeNextFires} label="Backup schedule" />
+<ScheduleBuilder {value} onValueChange={handleChange} {computeNextFires} label="Backup schedule" />

@@ -8,7 +8,7 @@ import type { HTMLInputAttributes } from 'svelte/elements';
  * wired by this component — the consumer is responsible for binding it
  * globally.
  *
- * `value` is bindable; use `oninput` to observe edits.
+ * `value` is bindable; use `onValueChange` to observe edits.
  */
 export type SearchFieldProps = Omit<
   HTMLInputAttributes,
@@ -35,9 +35,9 @@ export type SearchFieldProps = Omit<
   /** Additional class merged with `.cinder-search-field`. */
   class?: string;
   /** Fires on every keystroke with the current value. */
-  oninput?: (value: string) => void;
+  onValueChange?: (value: string) => void;
   /** Fires when the native `search` event triggers (Enter or programmatic dispatch). */
-  onsearch?: (value: string) => void;
+  onSearch?: (value: string) => void;
   /** Fires when the clear button is clicked. */
   onClear?: () => void;
 };

@@ -55,7 +55,7 @@
     columns,
     getCardKey,
     getCardLabel,
-    onchange,
+    onColumnsChange,
     card,
     columnHeader,
     columnActions,
@@ -97,7 +97,7 @@
     getReorderColumns: () => reorderColumns,
     getInvalidKeys: () => invalidKeys,
     announce: (message) => announcer.announce(message),
-    onchange: (nextColumns, change) => onchange(nextColumns, change),
+    onColumnsChange: (nextColumns, change) => onColumnsChange(nextColumns, change),
   });
 
   // Index cards by key once per render so the card loop can resolve each card's
@@ -289,7 +289,7 @@
       cardController.completeDrop(itemLabel, dropTotal);
       cardTarget = null;
       pointerColumnIndex = null;
-      if (result) onchange(result.nextColumns, result.change);
+      if (result) onColumnsChange(result.nextColumns, result.change);
     },
     cancel(itemLabel) {
       cardController.cancel(itemLabel);

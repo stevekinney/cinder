@@ -59,7 +59,7 @@ export type KanbanBoardProps<Card> = {
   columns: KanbanBoardColumn<Card>[];
   getCardKey: (card: Card) => string | number;
   getCardLabel: (card: Card, column: KanbanBoardColumn<Card>, index: number) => string;
-  onchange: (nextColumns: KanbanBoardColumn<Card>[], change: KanbanBoardChange) => void;
+  onColumnsChange: (nextColumns: KanbanBoardColumn<Card>[], change: KanbanBoardChange) => void;
   card: Snippet<[Card, KanbanBoardCardContext<Card>]>;
   columnHeader?: Snippet<[KanbanBoardColumn<Card>, KanbanBoardColumnContext<Card>]>;
   columnActions?: Snippet<[KanbanBoardColumn<Card>, KanbanBoardColumnContext<Card>]>;

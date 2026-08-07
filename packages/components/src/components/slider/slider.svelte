@@ -43,7 +43,7 @@
     disabled: disabledProp = false,
     name,
     class: className,
-    onchange,
+    onValueChange,
   }: SliderProps = $props();
 
   const formField = getFormFieldContext();
@@ -178,10 +178,10 @@
   function commit(next: SliderValue) {
     const normalized = normalizeValueForMode(next);
     value = Array.isArray(normalized) ? [normalized[0], normalized[1]] : normalized;
-    // The discriminated SliderProps union ensures the parent's onchange
+    // The discriminated SliderProps union ensures the parent's onValueChange
     // matches the mode it declared; the cast here bridges the runtime
     // (SliderValue) and prop (number | [number, number]) types.
-    (onchange as ((value: SliderValue) => void) | undefined)?.(normalized);
+    (onValueChange as ((value: SliderValue) => void) | undefined)?.(normalized);
   }
 
   $effect(() => {

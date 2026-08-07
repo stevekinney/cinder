@@ -22,7 +22,7 @@
       label="Opacity"
       value={percent}
       valueText={(value) => `${value} percent`}
-      onchange={(next) => {
+      onValueChange={(next) => {
         percent = next;
       }}
     />
@@ -37,7 +37,7 @@
       max={1000}
       step={25}
       valueText={(value) => usd.format(value)}
-      onchange={(next) => {
+      onValueChange={(next) => {
         price = next;
       }}
     />

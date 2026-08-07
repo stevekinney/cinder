@@ -43,7 +43,7 @@
     idle,
     dragActive,
     fileList,
-    onchange,
+    onFilesChange,
     onReject,
     'aria-describedby': consumerDescribedBy,
     'aria-invalid': consumerInvalid,
@@ -199,7 +199,7 @@
   function processFiles(sourceFiles: File[]) {
     const { accepted, rejected } = validateFiles(sourceFiles);
     updateInternalEntries(accepted, rejected);
-    if (accepted.length > 0) onchange?.(accepted);
+    if (accepted.length > 0) onFilesChange?.(accepted);
     if (rejected.length > 0) onReject?.(rejected);
     announceResult(accepted, rejected);
   }

@@ -172,7 +172,7 @@ describe('NumberInput basics', () => {
         id: 'n',
         value: null,
         locale: 'en-US',
-        onchange: (v: number | null) => calls.push(v),
+        onValueChange: (v: number | null) => calls.push(v),
       },
     });
     const input = getInput(container);
@@ -185,7 +185,7 @@ describe('NumberInput basics', () => {
   test('bare `-` survives mid-typing without committing', async () => {
     const calls: Array<number | null> = [];
     const { container } = render(NumberInput, {
-      props: { id: 'n', locale: 'en-US', onchange: (v: number | null) => calls.push(v) },
+      props: { id: 'n', locale: 'en-US', onValueChange: (v: number | null) => calls.push(v) },
     });
     const input = getInput(container);
     await focus(input);
@@ -197,7 +197,7 @@ describe('NumberInput basics', () => {
   test('blur commits valid number and reformats', async () => {
     const calls: Array<number | null> = [];
     const { container } = render(NumberInput, {
-      props: { id: 'n', locale: 'en-US', onchange: (v: number | null) => calls.push(v) },
+      props: { id: 'n', locale: 'en-US', onValueChange: (v: number | null) => calls.push(v) },
     });
     const input = getInput(container);
     await focus(input);
@@ -207,10 +207,15 @@ describe('NumberInput basics', () => {
     expect(input.value).toBe('1,234.5');
   });
 
-  test('blur empty fires onchange(null)', async () => {
+  test('blur empty fires onValueChange(null)', async () => {
     const calls: Array<number | null> = [];
     const { container } = render(NumberInput, {
-      props: { id: 'n', value: 5, locale: 'en-US', onchange: (v: number | null) => calls.push(v) },
+      props: {
+        id: 'n',
+        value: 5,
+        locale: 'en-US',
+        onValueChange: (v: number | null) => calls.push(v),
+      },
     });
     const input = getInput(container);
     await focus(input);
@@ -222,7 +227,7 @@ describe('NumberInput basics', () => {
   test('blur `0.` → 0', async () => {
     const calls: Array<number | null> = [];
     const { container } = render(NumberInput, {
-      props: { id: 'n', locale: 'en-US', onchange: (v: number | null) => calls.push(v) },
+      props: { id: 'n', locale: 'en-US', onValueChange: (v: number | null) => calls.push(v) },
     });
     const input = getInput(container);
     await focus(input);
@@ -234,7 +239,7 @@ describe('NumberInput basics', () => {
   test('blur `.5` → 0.5', async () => {
     const calls: Array<number | null> = [];
     const { container } = render(NumberInput, {
-      props: { id: 'n', locale: 'en-US', onchange: (v: number | null) => calls.push(v) },
+      props: { id: 'n', locale: 'en-US', onValueChange: (v: number | null) => calls.push(v) },
     });
     const input = getInput(container);
     await focus(input);
@@ -246,7 +251,7 @@ describe('NumberInput basics', () => {
   test('blur `+1` → 1', async () => {
     const calls: Array<number | null> = [];
     const { container } = render(NumberInput, {
-      props: { id: 'n', locale: 'en-US', onchange: (v: number | null) => calls.push(v) },
+      props: { id: 'n', locale: 'en-US', onValueChange: (v: number | null) => calls.push(v) },
     });
     const input = getInput(container);
     await focus(input);
@@ -258,7 +263,7 @@ describe('NumberInput basics', () => {
   test('blur bare `-` → null', async () => {
     const calls: Array<number | null> = [];
     const { container } = render(NumberInput, {
-      props: { id: 'n', locale: 'en-US', onchange: (v: number | null) => calls.push(v) },
+      props: { id: 'n', locale: 'en-US', onValueChange: (v: number | null) => calls.push(v) },
     });
     const input = getInput(container);
     await focus(input);
@@ -272,7 +277,12 @@ describe('Clamping and snapping', () => {
   test('blur clamps to max', async () => {
     const calls: Array<number | null> = [];
     const { container } = render(NumberInput, {
-      props: { id: 'n', max: 10, locale: 'en-US', onchange: (v: number | null) => calls.push(v) },
+      props: {
+        id: 'n',
+        max: 10,
+        locale: 'en-US',
+        onValueChange: (v: number | null) => calls.push(v),
+      },
     });
     const input = getInput(container);
     await focus(input);
@@ -284,7 +294,12 @@ describe('Clamping and snapping', () => {
   test('blur clamps to min', async () => {
     const calls: Array<number | null> = [];
     const { container } = render(NumberInput, {
-      props: { id: 'n', min: 0, locale: 'en-US', onchange: (v: number | null) => calls.push(v) },
+      props: {
+        id: 'n',
+        min: 0,
+        locale: 'en-US',
+        onValueChange: (v: number | null) => calls.push(v),
+      },
     });
     const input = getInput(container);
     await focus(input);
@@ -296,7 +311,12 @@ describe('Clamping and snapping', () => {
   test('blur snaps to step only when step provided', async () => {
     const calls: Array<number | null> = [];
     const { container } = render(NumberInput, {
-      props: { id: 'n', step: 0.5, locale: 'en-US', onchange: (v: number | null) => calls.push(v) },
+      props: {
+        id: 'n',
+        step: 0.5,
+        locale: 'en-US',
+        onValueChange: (v: number | null) => calls.push(v),
+      },
     });
     const input = getInput(container);
     await focus(input);
@@ -308,7 +328,7 @@ describe('Clamping and snapping', () => {
   test('default-step does NOT snap', async () => {
     const calls: Array<number | null> = [];
     const { container } = render(NumberInput, {
-      props: { id: 'n', locale: 'en-US', onchange: (v: number | null) => calls.push(v) },
+      props: { id: 'n', locale: 'en-US', onValueChange: (v: number | null) => calls.push(v) },
     });
     const input = getInput(container);
     await focus(input);
@@ -326,7 +346,7 @@ describe('Clamping and snapping', () => {
         max: 1,
         step: 0.6,
         locale: 'en-US',
-        onchange: (v: number | null) => calls.push(v),
+        onValueChange: (v: number | null) => calls.push(v),
       },
     });
     const input = getInput(container);
@@ -344,7 +364,7 @@ describe('Clamping and snapping', () => {
         min: 0.1,
         step: 0.2,
         locale: 'en-US',
-        onchange: (v: number | null) => calls.push(v),
+        onValueChange: (v: number | null) => calls.push(v),
       },
     });
     const input = getInput(container);
@@ -357,7 +377,12 @@ describe('Clamping and snapping', () => {
   test('roundToPrecision removes float artifacts', async () => {
     const calls: Array<number | null> = [];
     const { container } = render(NumberInput, {
-      props: { id: 'n', step: 0.1, locale: 'en-US', onchange: (v: number | null) => calls.push(v) },
+      props: {
+        id: 'n',
+        step: 0.1,
+        locale: 'en-US',
+        onValueChange: (v: number | null) => calls.push(v),
+      },
     });
     const input = getInput(container);
     await focus(input);
@@ -376,7 +401,7 @@ describe('Clamping and snapping', () => {
           value: 1,
           step: bad,
           locale: 'en-US',
-          onchange: (v: number | null) => calls.push(v),
+          onValueChange: (v: number | null) => calls.push(v),
         },
       });
       getIncrement(container).click();
@@ -392,7 +417,7 @@ describe('Clamping and snapping', () => {
         id: 'n',
         step: 1e-7,
         locale: 'en-US',
-        onchange: (v: number | null) => calls.push(v),
+        onValueChange: (v: number | null) => calls.push(v),
       },
     });
     const input = getInput(container);
@@ -404,7 +429,7 @@ describe('Clamping and snapping', () => {
 });
 
 describe('Stepper buttons and keyboard', () => {
-  test('Increment button fires onchange(value+step)', () => {
+  test('Increment button fires onValueChange(value+step)', () => {
     const calls: Array<number | null> = [];
     const { container } = render(NumberInput, {
       props: {
@@ -412,7 +437,7 @@ describe('Stepper buttons and keyboard', () => {
         value: 1,
         step: 2,
         locale: 'en-US',
-        onchange: (v: number | null) => calls.push(v),
+        onValueChange: (v: number | null) => calls.push(v),
       },
     });
     getIncrement(container).click();
@@ -426,10 +451,15 @@ describe('Stepper buttons and keyboard', () => {
     expect(getIncrement(container).disabled).toBe(true);
   });
 
-  test('Decrement fires onchange(value-step), disabled at min', () => {
+  test('Decrement fires onValueChange(value-step), disabled at min', () => {
     const calls: Array<number | null> = [];
     const { container } = render(NumberInput, {
-      props: { id: 'n', value: 5, locale: 'en-US', onchange: (v: number | null) => calls.push(v) },
+      props: {
+        id: 'n',
+        value: 5,
+        locale: 'en-US',
+        onValueChange: (v: number | null) => calls.push(v),
+      },
     });
     getDecrement(container).click();
     expect(calls).toEqual([4]);
@@ -443,7 +473,12 @@ describe('Stepper buttons and keyboard', () => {
   test('ArrowUp / ArrowDown match increment / decrement', async () => {
     const calls: Array<number | null> = [];
     const { container } = render(NumberInput, {
-      props: { id: 'n', value: 5, locale: 'en-US', onchange: (v: number | null) => calls.push(v) },
+      props: {
+        id: 'n',
+        value: 5,
+        locale: 'en-US',
+        onValueChange: (v: number | null) => calls.push(v),
+      },
     });
     const input = getInput(container);
     await fireEvent.keyDown(input, { key: 'ArrowUp' });
@@ -459,7 +494,7 @@ describe('Stepper buttons and keyboard', () => {
         value: 0,
         step: 2,
         locale: 'en-US',
-        onchange: (v: number | null) => calls.push(v),
+        onValueChange: (v: number | null) => calls.push(v),
       },
     });
     const input = getInput(container);
@@ -477,7 +512,7 @@ describe('Stepper buttons and keyboard', () => {
         min: 1,
         max: 9,
         locale: 'en-US',
-        onchange: (v: number | null) => calls.push(v),
+        onValueChange: (v: number | null) => calls.push(v),
       },
     });
     const input = getInput(container);
@@ -489,7 +524,12 @@ describe('Stepper buttons and keyboard', () => {
   test('Home / End no-op when bound is infinite', async () => {
     const calls: Array<number | null> = [];
     const { container } = render(NumberInput, {
-      props: { id: 'n', value: 5, locale: 'en-US', onchange: (v: number | null) => calls.push(v) },
+      props: {
+        id: 'n',
+        value: 5,
+        locale: 'en-US',
+        onValueChange: (v: number | null) => calls.push(v),
+      },
     });
     const input = getInput(container);
     await fireEvent.keyDown(input, { key: 'Home' });
@@ -506,7 +546,7 @@ describe('Stepper buttons and keyboard', () => {
         min: 1,
         max: 9,
         locale: 'en-US',
-        onchange: (v: number | null) => calls.push(v),
+        onValueChange: (v: number | null) => calls.push(v),
       },
     });
     const input = getInput(container);
@@ -531,7 +571,12 @@ describe('Stepper buttons and keyboard', () => {
   test('Step from focused display, not stale value', async () => {
     const calls: Array<number | null> = [];
     const { container } = render(NumberInput, {
-      props: { id: 'n', value: 0, locale: 'en-US', onchange: (v: number | null) => calls.push(v) },
+      props: {
+        id: 'n',
+        value: 0,
+        locale: 'en-US',
+        onValueChange: (v: number | null) => calls.push(v),
+      },
     });
     const input = getInput(container);
     await focus(input);
@@ -568,7 +613,7 @@ describe('Locale formatting', () => {
   test('de-DE round-trip: paste "1.234,5" parses to 1234.5', async () => {
     const calls: Array<number | null> = [];
     const { container } = render(NumberInput, {
-      props: { id: 'n', locale: 'de-DE', onchange: (v: number | null) => calls.push(v) },
+      props: { id: 'n', locale: 'de-DE', onValueChange: (v: number | null) => calls.push(v) },
     });
     const input = getInput(container);
     await focus(input);
@@ -580,7 +625,7 @@ describe('Locale formatting', () => {
   test('Strict grouping rejection (en-US): "1,2,3.4" → null', async () => {
     const calls: Array<number | null> = [];
     const { container } = render(NumberInput, {
-      props: { id: 'n', locale: 'en-US', onchange: (v: number | null) => calls.push(v) },
+      props: { id: 'n', locale: 'en-US', onValueChange: (v: number | null) => calls.push(v) },
     });
     const input = getInput(container);
     await focus(input);
@@ -593,7 +638,7 @@ describe('Locale formatting', () => {
     for (const bad of ['12abc', '1.2.3', '$--5']) {
       const calls: Array<number | null> = [];
       const { container, unmount } = render(NumberInput, {
-        props: { id: 'n', locale: 'en-US', onchange: (v: number | null) => calls.push(v) },
+        props: { id: 'n', locale: 'en-US', onValueChange: (v: number | null) => calls.push(v) },
       });
       const input = getInput(container);
       await focus(input);
@@ -607,7 +652,7 @@ describe('Locale formatting', () => {
   test('Grouped + accepted: "+1,234" (en-US) → 1234', async () => {
     const calls: Array<number | null> = [];
     const { container } = render(NumberInput, {
-      props: { id: 'n', locale: 'en-US', onchange: (v: number | null) => calls.push(v) },
+      props: { id: 'n', locale: 'en-US', onValueChange: (v: number | null) => calls.push(v) },
     });
     const input = getInput(container);
     await focus(input);
@@ -641,7 +686,7 @@ describe('Currency and percent formats', () => {
         value: 0.5,
         locale: 'en-US',
         format: { style: 'percent' },
-        onchange: (v: number | null) => calls.push(v),
+        onValueChange: (v: number | null) => calls.push(v),
       },
     });
     const input = getInput(container);
@@ -672,7 +717,7 @@ describe('Currency and percent formats', () => {
         step: 0.01,
         locale: 'en-US',
         format: { style: 'percent' },
-        onchange: (v: number | null) => calls.push(v),
+        onValueChange: (v: number | null) => calls.push(v),
       },
     });
     const input = getInput(container);
@@ -717,7 +762,7 @@ describe('Form integration', () => {
     expect(hidden?.getAttribute('name')).toBe('q');
   });
 
-  test('form reset (uncontrolled) restores value and fires onchange', async () => {
+  test('form reset (uncontrolled) restores value and fires onValueChange', async () => {
     const calls: Array<number | null> = [];
     const form = document.createElement('form');
     document.body.appendChild(form);
@@ -729,7 +774,7 @@ describe('Form integration', () => {
         id: 'n',
         value: 5,
         locale: 'en-US',
-        onchange: (v: number | null) => calls.push(v),
+        onValueChange: (v: number | null) => calls.push(v),
       },
     });
     const input = mount.querySelector('#n') as HTMLInputElement;
@@ -896,7 +941,7 @@ describe('External updates and edge cases', () => {
     expect(getInput(container).value).toBe('1.234,5');
   });
 
-  test('onchange commit semantics, not change semantics', async () => {
+  test('onValueChange commit semantics, not change semantics', async () => {
     const calls: Array<number | null> = [];
     const { container } = render(NumberInput, {
       props: {
@@ -904,7 +949,7 @@ describe('External updates and edge cases', () => {
         value: 5,
         max: 5,
         locale: 'en-US',
-        onchange: (v: number | null) => calls.push(v),
+        onValueChange: (v: number | null) => calls.push(v),
       },
     });
     const input = getInput(container);
@@ -935,7 +980,7 @@ describe('Locale parser coverage in component', () => {
   test('fr-FR narrow-NBSP grouping round-trip', async () => {
     const calls: Array<number | null> = [];
     const { container } = render(NumberInput, {
-      props: { id: 'n', locale: 'fr-FR', onchange: (v: number | null) => calls.push(v) },
+      props: { id: 'n', locale: 'fr-FR', onValueChange: (v: number | null) => calls.push(v) },
     });
     const input = getInput(container);
     await focus(input);
@@ -949,7 +994,7 @@ describe('Locale parser coverage in component', () => {
   test('ar-EG localized digits round-trip', async () => {
     const calls: Array<number | null> = [];
     const { container } = render(NumberInput, {
-      props: { id: 'n', locale: 'ar-EG', onchange: (v: number | null) => calls.push(v) },
+      props: { id: 'n', locale: 'ar-EG', onValueChange: (v: number | null) => calls.push(v) },
     });
     const input = getInput(container);
     await focus(input);
@@ -962,7 +1007,7 @@ describe('Locale parser coverage in component', () => {
   test('hi-IN secondary grouping accepted', async () => {
     const calls: Array<number | null> = [];
     const { container } = render(NumberInput, {
-      props: { id: 'n', locale: 'hi-IN', onchange: (v: number | null) => calls.push(v) },
+      props: { id: 'n', locale: 'hi-IN', onValueChange: (v: number | null) => calls.push(v) },
     });
     const input = getInput(container);
     await focus(input);
@@ -982,7 +1027,7 @@ describe('Locale parser coverage in component', () => {
         locale: 'en-US',
         value: 1200,
         format: { notation: 'compact' },
-        onchange: (v: number | null) => calls.push(v),
+        onValueChange: (v: number | null) => calls.push(v),
       },
     });
     const input = getInput(container);
@@ -1037,10 +1082,10 @@ describe('Form serialization correctness', () => {
     expect(hidden.value).toBe('999');
   });
 
-  test('Enter key fires onchange exactly once (regression: capture-phase submit double-fire)', async () => {
+  test('Enter key fires onValueChange exactly once (regression: capture-phase submit double-fire)', async () => {
     // Regression: pressing Enter called commitFromText in onKeyDown, then
     // requestSubmit() triggered the capture-phase submit listener which called
-    // commitFromText again, causing a duplicate onchange emission.
+    // commitFromText again, causing a duplicate onValueChange emission.
     const calls: Array<number | null> = [];
     const form = document.createElement('form');
     document.body.appendChild(form);
@@ -1053,7 +1098,7 @@ describe('Form serialization correctness', () => {
         name: 'q',
         value: 0,
         locale: 'en-US',
-        onchange: (v: number | null) => calls.push(v),
+        onValueChange: (v: number | null) => calls.push(v),
       },
     });
     const input = mount.querySelector('#n') as HTMLInputElement;
@@ -1110,7 +1155,7 @@ describe('Required + reset and other validity edge cases', () => {
         value: 5,
         disabled: true,
         locale: 'en-US',
-        onchange: (v: number | null) => calls.push(v),
+        onValueChange: (v: number | null) => calls.push(v),
       },
     });
     form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
@@ -1127,7 +1172,7 @@ describe('Stepper while focused (editorBuffer sync regression)', () => {
         id: 'n',
         value: 5,
         locale: 'en-US',
-        onchange: (v: number | null) => calls.push(v),
+        onValueChange: (v: number | null) => calls.push(v),
       },
     });
     const input = getInput(container);
@@ -1324,7 +1369,7 @@ describe('delta rounding preserves base-value precision', () => {
         value: 0.5,
         step: 1,
         locale: 'en-US',
-        onchange: (v: number | null) => calls.push(v),
+        onValueChange: (v: number | null) => calls.push(v),
       },
     });
     const input = getInput(container);
@@ -1342,7 +1387,7 @@ describe('delta rounding preserves base-value precision', () => {
         value: 0.05,
         step: 0.1,
         locale: 'en-US',
-        onchange: (v: number | null) => calls.push(v),
+        onValueChange: (v: number | null) => calls.push(v),
       },
     });
     const input = getInput(container);
@@ -1359,7 +1404,7 @@ describe('delta rounding preserves base-value precision', () => {
         value: 0,
         step: 0.1,
         locale: 'en-US',
-        onchange: (v: number | null) => calls.push(v),
+        onValueChange: (v: number | null) => calls.push(v),
       },
     });
     const input = getInput(container);

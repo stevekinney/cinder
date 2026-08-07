@@ -56,20 +56,20 @@ function cardSnippet() {
 }
 
 function renderBoard(overrides?: Record<string, unknown>) {
-  const onchange = mock();
+  const onColumnsChange = mock();
   const columns = makeColumns();
   const result = render(KanbanBoard as any, {
     props: {
       columns,
       getCardKey,
       getCardLabel,
-      onchange,
+      onColumnsChange,
       label: 'Work board',
       card: cardSnippet(),
       ...overrides,
     },
   });
-  return { ...result, columns, onchange };
+  return { ...result, columns, onColumnsChange };
 }
 
 function makeRect(left: number, top: number, width: number, height: number): DOMRect {
@@ -235,36 +235,36 @@ describe('KanbanBoard', () => {
   });
 
   test('keyboard moves a card within a column and emits card metadata', async () => {
-    const { container, onchange } = renderBoard();
+    const { container, onColumnsChange } = renderBoard();
     const handle = container.querySelector('[aria-label="Move Alpha"]') as HTMLElement;
 
     await fireEvent.keyDown(handle, { key: ' ' });
     await fireEvent.keyDown(handle, { key: 'ArrowDown' });
     await fireEvent.keyDown(handle, { key: ' ' });
 
-    expect(onchange).toHaveBeenCalledTimes(1);
-    const [nextColumns, change] = onchange.mock.calls[0];
+    expect(onColumnsChange).toHaveBeenCalledTimes(1);
+    const [nextColumns, change] = onColumnsChange.mock.calls[0];
     expect(nextColumns[0].cards.map(getCardKey)).toEqual(['b', 'a']);
     expect(change).toMatchObject({ type: 'card', fromColumnKey: 'todo', toColumnKey: 'todo' });
   });
 
   test('keyboard moves a card across visible columns', async () => {
-    const { container, onchange } = renderBoard();
+    const { container, onColumnsChange } = renderBoard();
     const handle = container.querySelector('[aria-label="Move Alpha"]') as HTMLElement;
 
     await fireEvent.keyDown(handle, { key: ' ' });
     await fireEvent.keyDown(handle, { key: 'ArrowRight' });
     await fireEvent.keyDown(handle, { key: ' ' });
 
-    expect(onchange).toHaveBeenCalledTimes(1);
-    const [nextColumns, change] = onchange.mock.calls[0];
+    expect(onColumnsChange).toHaveBeenCalledTimes(1);
+    const [nextColumns, change] = onColumnsChange.mock.calls[0];
     expect(nextColumns[0].cards.map(getCardKey)).toEqual(['b']);
     expect(nextColumns[1].cards.map(getCardKey)).toEqual(['a', 'c']);
     expect(change).toMatchObject({ type: 'card', fromColumnKey: 'todo', toColumnKey: 'doing' });
   });
 
   test('keyboard append across columns announces the prospective destination total', async () => {
-    const { container, onchange } = renderBoard();
+    const { container, onColumnsChange } = renderBoard();
     const handle = container.querySelector('[aria-label="Move Alpha"]') as HTMLElement;
 
     await fireEvent.keyDown(handle, { key: ' ' });
@@ -276,7 +276,7 @@ describe('KanbanBoard', () => {
     await fireEvent.keyDown(movedHandle, { key: ' ' });
     await waitForAnnouncement();
 
-    const [nextColumns, change] = onchange.mock.calls[0];
+    const [nextColumns, change] = onColumnsChange.mock.calls[0];
     expect(nextColumns[1].cards.map(getCardKey)).toEqual(['c', 'a']);
     expect(change).toMatchObject({ toColumnKey: 'doing', toIndex: 1 });
     expect(container.querySelector('[role="alert"]')?.textContent).toContain(
@@ -285,7 +285,7 @@ describe('KanbanBoard', () => {
   });
 
   test('pointer drag moves a card across columns', async () => {
-    const { container, onchange } = renderBoard();
+    const { container, onColumnsChange } = renderBoard();
     installPointerGeometry(container);
     const handle = container.querySelector('[aria-label="Move Alpha"]') as HTMLElement;
     installPointerCapture(handle);
@@ -306,8 +306,8 @@ describe('KanbanBoard', () => {
     await waitForAnimationFrame();
     await fireEvent.pointerUp(handle, { pointerId: 1, pointerType: 'mouse' });
 
-    expect(onchange).toHaveBeenCalledTimes(1);
-    const [nextColumns, change] = onchange.mock.calls[0];
+    expect(onColumnsChange).toHaveBeenCalledTimes(1);
+    const [nextColumns, change] = onColumnsChange.mock.calls[0];
     expect(nextColumns[0].cards.map(getCardKey)).toEqual(['b']);
     expect(nextColumns[1].cards.map(getCardKey)).toEqual(['a', 'c']);
     expect(change).toMatchObject({
@@ -348,7 +348,7 @@ describe('KanbanBoard', () => {
   });
 
   test('window Escape cancels a lifted card after focus leaves the handle', async () => {
-    const { container, onchange } = renderBoard();
+    const { container, onColumnsChange } = renderBoard();
     const handle = container.querySelector('[aria-label="Move Alpha"]') as HTMLElement;
 
     await fireEvent.keyDown(handle, { key: ' ' });
@@ -359,12 +359,12 @@ describe('KanbanBoard', () => {
     await waitForAnnouncement();
 
     expect(handle.getAttribute('aria-pressed')).toBe('false');
-    expect(onchange).not.toHaveBeenCalled();
+    expect(onColumnsChange).not.toHaveBeenCalled();
     expect(container.querySelector('[role="alert"]')?.textContent).toContain('move cancelled');
   });
 
   test('column handles do not lift while a card is lifted', async () => {
-    const { container, onchange } = renderBoard();
+    const { container, onColumnsChange } = renderBoard();
     const cardHandle = container.querySelector('[aria-label="Move Alpha"]') as HTMLElement;
     const columnHandle = container.querySelector(
       '[aria-label="Reorder To do column"]',
@@ -375,17 +375,17 @@ describe('KanbanBoard', () => {
 
     expect(cardHandle.getAttribute('aria-pressed')).toBe('true');
     expect(columnHandle.getAttribute('aria-pressed')).toBe('false');
-    expect(onchange).not.toHaveBeenCalled();
+    expect(onColumnsChange).not.toHaveBeenCalled();
   });
 
   test('drop cancels when the target column collapses while a card is lifted', async () => {
-    const onchange = mock();
+    const onColumnsChange = mock();
     const columns = makeColumns();
     const props = {
       columns,
       getCardKey,
       getCardLabel,
-      onchange,
+      onColumnsChange,
       label: 'Work board',
       card: cardSnippet(),
     };
@@ -404,18 +404,18 @@ describe('KanbanBoard', () => {
     await fireEvent.keyDown(movedHandle, { key: ' ' });
     await waitForAnnouncement();
 
-    expect(onchange).not.toHaveBeenCalled();
+    expect(onColumnsChange).not.toHaveBeenCalled();
     expect(container.querySelector('[role="alert"]')?.textContent).toContain('move cancelled');
   });
 
   test('drop cancels when the lifted card is removed before commit', async () => {
-    const onchange = mock();
+    const onColumnsChange = mock();
     const columns = makeColumns();
     const props = {
       columns,
       getCardKey,
       getCardLabel,
-      onchange,
+      onColumnsChange,
       label: 'Work board',
       card: cardSnippet(),
     };
@@ -434,7 +434,7 @@ describe('KanbanBoard', () => {
     await fireEvent.keyDown(handle, { key: ' ' });
     await waitForAnnouncement();
 
-    expect(onchange).not.toHaveBeenCalled();
+    expect(onColumnsChange).not.toHaveBeenCalled();
     expect(container.querySelector('[role="alert"]')?.textContent).toContain('move cancelled');
   });
 
@@ -442,27 +442,27 @@ describe('KanbanBoard', () => {
     const columns = makeColumns();
     columns[1] = { ...columns[1], collapsed: true };
     columns[2] = { ...columns[2], collapsed: true };
-    const { container, onchange } = renderBoard({ columns });
+    const { container, onColumnsChange } = renderBoard({ columns });
     const handle = container.querySelector('[aria-label="Move Alpha"]') as HTMLElement;
 
     await fireEvent.keyDown(handle, { key: ' ' });
     await fireEvent.keyDown(handle, { key: 'ArrowRight' });
     await new Promise((resolve) => setTimeout(resolve, 10));
 
-    expect(onchange).not.toHaveBeenCalled();
+    expect(onColumnsChange).not.toHaveBeenCalled();
     expect(container.querySelector('[role="alert"]')?.textContent).toContain('no available column');
   });
 
   test('collapse toggle emits collapse metadata and hides cards', async () => {
-    const { container, onchange } = renderBoard({ collapsible: true });
+    const { container, onColumnsChange } = renderBoard({ collapsible: true });
     const button = container.querySelector(
       '[aria-label="Collapse To do (2 cards)"]',
     ) as HTMLElement;
 
     await fireEvent.click(button);
 
-    expect(onchange).toHaveBeenCalledTimes(1);
-    expect(onchange.mock.calls[0][1]).toEqual({
+    expect(onColumnsChange).toHaveBeenCalledTimes(1);
+    expect(onColumnsChange.mock.calls[0][1]).toEqual({
       type: 'collapse',
       columnKey: 'todo',
       collapsed: true,
@@ -496,7 +496,7 @@ describe('KanbanBoard', () => {
   });
 
   test('column keyboard reorder emits column metadata', async () => {
-    const { container, onchange } = renderBoard();
+    const { container, onColumnsChange } = renderBoard();
     const handle = container.querySelector('[aria-label="Reorder To do column"]') as HTMLElement;
 
     await fireEvent.click(handle);
@@ -504,13 +504,11 @@ describe('KanbanBoard', () => {
     await fireEvent.keyDown(handle, { key: ' ' });
     await waitForAnnouncement();
 
-    expect(onchange).toHaveBeenCalledTimes(1);
-    expect(onchange.mock.calls[0][0].map((column: KanbanBoardColumn<Card>) => column.id)).toEqual([
-      'doing',
-      'todo',
-      'done',
-    ]);
-    expect(onchange.mock.calls[0][1]).toEqual({
+    expect(onColumnsChange).toHaveBeenCalledTimes(1);
+    expect(
+      onColumnsChange.mock.calls[0][0].map((column: KanbanBoardColumn<Card>) => column.id),
+    ).toEqual(['doing', 'todo', 'done']);
+    expect(onColumnsChange.mock.calls[0][1]).toEqual({
       type: 'column',
       columnKey: 'todo',
       fromIndex: 0,
@@ -522,7 +520,7 @@ describe('KanbanBoard', () => {
   });
 
   test('column handle click lifts and drops the active column', async () => {
-    const { container, onchange } = renderBoard();
+    const { container, onColumnsChange } = renderBoard();
     const handle = container.querySelector('[aria-label="Reorder To do column"]') as HTMLElement;
 
     await fireEvent.click(handle);
@@ -530,8 +528,8 @@ describe('KanbanBoard', () => {
     await fireEvent.keyDown(handle, { key: 'ArrowRight' });
     await fireEvent.click(handle);
 
-    expect(onchange).toHaveBeenCalledTimes(1);
-    expect(onchange.mock.calls[0][1]).toEqual({
+    expect(onColumnsChange).toHaveBeenCalledTimes(1);
+    expect(onColumnsChange.mock.calls[0][1]).toEqual({
       type: 'column',
       columnKey: 'todo',
       fromIndex: 0,
@@ -564,7 +562,7 @@ describe('KanbanBoard', () => {
   });
 
   test('window Escape cancels a lifted column after focus leaves the handle', async () => {
-    const { container, onchange } = renderBoard();
+    const { container, onColumnsChange } = renderBoard();
     const handle = container.querySelector('[aria-label="Reorder To do column"]') as HTMLElement;
 
     await fireEvent.click(handle);
@@ -575,14 +573,14 @@ describe('KanbanBoard', () => {
     await waitForAnnouncement();
 
     expect(handle.getAttribute('aria-pressed')).toBe('false');
-    expect(onchange).not.toHaveBeenCalled();
+    expect(onColumnsChange).not.toHaveBeenCalled();
     expect(container.querySelector('[role="alert"]')?.textContent).toContain(
       'To do column move cancelled',
     );
   });
 
   test('column keyboard reorder cancels on Tab without moving focus prevention', async () => {
-    const { container, onchange } = renderBoard();
+    const { container, onColumnsChange } = renderBoard();
     const handle = container.querySelector('[aria-label="Reorder To do column"]') as HTMLElement;
 
     await fireEvent.click(handle);
@@ -593,7 +591,7 @@ describe('KanbanBoard', () => {
 
     expect(tabEvent.defaultPrevented).toBe(false);
     expect(handle.getAttribute('aria-pressed')).toBe('false');
-    expect(onchange).not.toHaveBeenCalled();
+    expect(onColumnsChange).not.toHaveBeenCalled();
     expect(container.querySelector('[role="alert"]')?.textContent).toContain('move cancelled');
   });
 
@@ -611,7 +609,7 @@ describe('KanbanBoard', () => {
         { id: 'todo', title: 'To do', cards: [alpha, alpha] },
         { id: 'todo', title: 'Again', cards: [] },
       ];
-      const { container, onchange } = renderBoard({ columns });
+      const { container, onColumnsChange } = renderBoard({ columns });
       const handle = container.querySelector('[aria-label="Move Alpha"]') as HTMLElement;
 
       await fireEvent.keyDown(handle, { key: ' ' });
@@ -622,7 +620,7 @@ describe('KanbanBoard', () => {
       expect(
         container.querySelector('.cinder-kanban-board')?.hasAttribute('data-cinder-invalid-keys'),
       ).toBe(true);
-      expect(onchange).not.toHaveBeenCalled();
+      expect(onColumnsChange).not.toHaveBeenCalled();
     } finally {
       console.warn = originalWarn;
     }
@@ -638,7 +636,7 @@ describe('KanbanBoard', () => {
         columns,
         getCardKey,
         getCardLabel,
-        onchange: mock(),
+        onColumnsChange: mock(),
         label: 'Work board',
         card: cardSnippet(),
       };
@@ -675,7 +673,7 @@ describe('KanbanBoard', () => {
         columns,
         getCardKey,
         getCardLabel,
-        onchange: mock(),
+        onColumnsChange: mock(),
         label: 'Work board',
         card: cardSnippet(),
       };
@@ -1041,7 +1039,7 @@ describe('KanbanBoard pointer drag preview', () => {
   });
 
   test('cross-column pointer drag can reserve append space below existing target cards', async () => {
-    const { container, onchange } = renderBoard();
+    const { container, onColumnsChange } = renderBoard();
     installPointerGeometry(container);
     const handle = container.querySelector('[aria-label="Move Alpha"]') as HTMLElement;
     installPointerCapture(handle);
@@ -1077,13 +1075,13 @@ describe('KanbanBoard pointer drag preview', () => {
     await fireEvent.pointerUp(handle, { pointerId: 1, pointerType: 'mouse' });
 
     expect(container.querySelector('.cinder-kanban-board__drop-placeholder')).toBeNull();
-    const [nextColumns, change] = onchange.mock.calls[0];
+    const [nextColumns, change] = onColumnsChange.mock.calls[0];
     expect(nextColumns[1].cards.map(getCardKey)).toEqual(['c', 'a']);
     expect(change).toMatchObject({ toColumnKey: 'doing', toIndex: 1 });
   });
 
   test('cross-column pointer drag ignores a horizontal lane below the target drop zone', async () => {
-    const { container, onchange } = renderBoard();
+    const { container, onColumnsChange } = renderBoard();
     installPointerGeometry(container);
     const columns = Array.from(
       container.querySelectorAll<HTMLElement>('.cinder-kanban-board__column'),
@@ -1115,11 +1113,11 @@ describe('KanbanBoard pointer drag preview', () => {
     expect(document.querySelector('[data-cinder-drag-preview]')).toBeNull();
     expect(container.querySelector('.cinder-kanban-board__drop-placeholder')).toBeNull();
     expect(handle.getAttribute('aria-pressed')).toBe('false');
-    expect(onchange).not.toHaveBeenCalled();
+    expect(onColumnsChange).not.toHaveBeenCalled();
   });
 
   test('cross-column pointer drag commits when pointerup lands outside the handle', async () => {
-    const { container, onchange } = renderBoard();
+    const { container, onColumnsChange } = renderBoard();
     installPointerGeometry(container);
     const handle = container.querySelector('[aria-label="Move Alpha"]') as HTMLElement;
     installPointerCapture(handle);
@@ -1147,13 +1145,13 @@ describe('KanbanBoard pointer drag preview', () => {
     expect(document.querySelector('[data-cinder-drag-preview]')).toBeNull();
     expect(container.querySelector('.cinder-kanban-board__drop-placeholder')).toBeNull();
     expect(handle.getAttribute('aria-pressed')).toBe('false');
-    const [nextColumns, change] = onchange.mock.calls[0];
+    const [nextColumns, change] = onColumnsChange.mock.calls[0];
     expect(nextColumns[1].cards.map(getCardKey)).toEqual(['c', 'a']);
     expect(change).toMatchObject({ toColumnKey: 'doing', toIndex: 1 });
   });
 
   test('cross-column pointer drag commits the latest target when released before the move frame', async () => {
-    const { container, onchange } = renderBoard();
+    const { container, onColumnsChange } = renderBoard();
     installPointerGeometry(container);
     const handle = container.querySelector('[aria-label="Move Alpha"]') as HTMLElement;
     installPointerCapture(handle);
@@ -1177,7 +1175,7 @@ describe('KanbanBoard pointer drag preview', () => {
     expect(document.querySelector('[data-cinder-drag-preview]')).toBeNull();
     expect(container.querySelector('.cinder-kanban-board__drop-placeholder')).toBeNull();
     expect(handle.getAttribute('aria-pressed')).toBe('false');
-    const [nextColumns, change] = onchange.mock.calls[0];
+    const [nextColumns, change] = onColumnsChange.mock.calls[0];
     expect(nextColumns[1].cards.map(getCardKey)).toEqual(['c', 'a']);
     expect(change).toMatchObject({ toColumnKey: 'doing', toIndex: 1 });
   });
@@ -1216,7 +1214,7 @@ describe('KanbanBoard pointer drag preview', () => {
   });
 
   test('pointercancel clears cross-column target placeholder without committing', async () => {
-    const { container, onchange } = renderBoard();
+    const { container, onColumnsChange } = renderBoard();
     installPointerGeometry(container);
     const handle = container.querySelector('[aria-label="Move Alpha"]') as HTMLElement;
     installPointerCapture(handle);
@@ -1242,7 +1240,7 @@ describe('KanbanBoard pointer drag preview', () => {
     await fireEvent.pointerCancel(handle, { pointerId: 1, pointerType: 'mouse' });
 
     expect(container.querySelector('.cinder-kanban-board__drop-placeholder')).toBeNull();
-    expect(onchange).not.toHaveBeenCalled();
+    expect(onColumnsChange).not.toHaveBeenCalled();
   });
 
   // ---------------------------------------------------------------------------
@@ -1369,13 +1367,13 @@ describe('KanbanBoard multi-position pointer drag', () => {
   }
 
   test('a drag spanning several cards in one column advances past more than one position', async () => {
-    const onchange = mock();
+    const onColumnsChange = mock();
     const { container } = render(KanbanBoard as any, {
       props: {
         columns: makeSingleColumnBoard(),
         getCardKey,
         getCardLabel,
-        onchange,
+        onColumnsChange,
         label: 'Work board',
         card: cardSnippet(),
       },
@@ -1406,8 +1404,8 @@ describe('KanbanBoard multi-position pointer drag', () => {
     }
     await fireEvent.pointerUp(handle, { pointerId: 1, pointerType: 'mouse' });
 
-    expect(onchange).toHaveBeenCalledTimes(1);
-    const [nextColumns, change] = onchange.mock.calls[0];
+    expect(onColumnsChange).toHaveBeenCalledTimes(1);
+    const [nextColumns, change] = onColumnsChange.mock.calls[0];
     expect(nextColumns[0].cards.map(getCardKey)).toEqual(['b', 'c', 'd', 'e', 'a']);
     expect(change).toMatchObject({
       type: 'card',

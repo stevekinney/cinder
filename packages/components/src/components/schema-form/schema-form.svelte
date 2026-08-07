@@ -46,7 +46,7 @@
    *
    * Use `onDraftChange` to observe the complete live draft without turning
    * `value` into a controlled binding. Draft callbacks run before schema
-   * validation, while `onsubmit` runs only after validation passes.
+   * validation, while `onSubmit` runs only after validation passes.
    */
   let { schema, ...rest }: SchemaFormProps = $props();
 </script>

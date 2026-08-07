@@ -33,8 +33,8 @@
     disabled,
     readonly,
     class: customClassName,
-    oninput,
-    onsearch,
+    onValueChange,
+    onSearch,
     onClear,
     onkeydown: consumerKeyDown,
     ...rest
@@ -66,7 +66,7 @@
 
   function handleInput(event: Event) {
     const target = event.currentTarget as HTMLInputElement;
-    oninput?.(target.value);
+    onValueChange?.(target.value);
   }
 
   function handleKeyDown(event: KeyboardEvent) {
@@ -75,7 +75,7 @@
 
   const inputAttachment: Attachment<HTMLInputElement> = (element) => {
     inputElement = element;
-    const handler = () => onsearch?.(element.value);
+    const handler = () => onSearch?.(element.value);
     element.addEventListener('search', handler);
     return () => {
       element.removeEventListener('search', handler);
@@ -90,7 +90,7 @@
       inputElement.value = '';
     }
     inputElement?.focus();
-    oninput?.('');
+    onValueChange?.('');
     onClear?.();
   }
 </script>

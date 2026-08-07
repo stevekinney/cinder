@@ -301,17 +301,17 @@ describe('TagInput commits tags', () => {
     expect(container.textContent).toContain('Enter a valid email tag.');
   });
 
-  test('bindable value emits onchange and mutates the rendered tags', async () => {
-    const onchange = mock((_tags: string[]) => {});
+  test('bindable value emits onValueChange and mutates the rendered tags', async () => {
+    const onValueChange = mock((_tags: string[]) => {});
     const { container } = render(TagInput, {
-      props: { value: ['Svelte'], onchange },
+      props: { value: ['Svelte'], onValueChange },
     });
     const input = getInput(container);
 
     await fireEvent.input(input, { target: { value: 'Bun' } });
     await fireEvent.keyDown(input, { key: 'Enter' });
 
-    expect(onchange).toHaveBeenCalledWith(['Svelte', 'Bun']);
+    expect(onValueChange).toHaveBeenCalledWith(['Svelte', 'Bun']);
     expect(getOptions(container)).toHaveLength(2);
     expect(getOptions(container)[1]?.textContent).toContain('Bun');
   });
@@ -632,7 +632,7 @@ describe('TagInput form participation', () => {
     }
   });
 
-  test('commitOnSubmit supports controlled values when the parent updates onchange', async () => {
+  test('commitOnSubmit supports controlled values when the parent updates onValueChange', async () => {
     const onsubmit = mock<(event: SubmitEvent) => void>((event) => event.preventDefault());
     const { container } = render(TagInputControlledFormFixture, {
       props: {
@@ -675,13 +675,13 @@ describe('TagInput form participation', () => {
     }
   });
 
-  test('uncontrolled reset restores value, clears draft text, clears inline error, and does not fire onchange', async () => {
-    const onchange = mock((_tags: string[]) => {});
+  test('uncontrolled reset restores value, clears draft text, clears inline error, and does not fire onValueChange', async () => {
+    const onValueChange = mock((_tags: string[]) => {});
     const mount = renderTagInputInForm({
       name: 'tags',
       value: ['Svelte'],
       max: 1,
-      onchange,
+      onValueChange,
     });
 
     try {
@@ -691,7 +691,7 @@ describe('TagInput form participation', () => {
 
       expect(getOptions(mount.container)).toHaveLength(1);
       expect(mount.container.textContent).toContain('You can add up to 1 tag.');
-      expect(onchange).not.toHaveBeenCalled();
+      expect(onValueChange).not.toHaveBeenCalled();
 
       await fireEvent.input(input, { target: { value: 'Draft tag' } });
       mount.form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
@@ -705,18 +705,18 @@ describe('TagInput form participation', () => {
         mount.container.querySelectorAll<HTMLInputElement>('input[type="hidden"][name="tags"]'),
       );
       expect(hiddenInputs.map((hiddenInput) => hiddenInput.value)).toEqual(['Svelte']);
-      expect(onchange).not.toHaveBeenCalled();
+      expect(onValueChange).not.toHaveBeenCalled();
     } finally {
       mount.cleanup();
     }
   });
 
   test('canceled reset leaves committed tags and draft text unchanged', async () => {
-    const onchange = mock((_tags: string[]) => {});
+    const onValueChange = mock((_tags: string[]) => {});
     const mount = renderTagInputInForm({
       name: 'tags',
       value: ['Svelte'],
-      onchange,
+      onValueChange,
     });
 
     try {
@@ -738,18 +738,18 @@ describe('TagInput form participation', () => {
         mount.container.querySelectorAll<HTMLInputElement>('input[type="hidden"][name="tags"]'),
       );
       expect(hiddenInputs.map((hiddenInput) => hiddenInput.value)).toEqual(['Svelte', 'Bun']);
-      expect(onchange).toHaveBeenCalledTimes(1);
+      expect(onValueChange).toHaveBeenCalledTimes(1);
     } finally {
       mount.cleanup();
     }
   });
 
   test('reset restores the mount-time tag value after local mutation', async () => {
-    const onchange = mock((_tags: string[]) => {});
+    const onValueChange = mock((_tags: string[]) => {});
     const mount = renderTagInputInForm({
       name: 'tags',
       value: ['Svelte'],
-      onchange,
+      onValueChange,
     });
 
     try {
@@ -757,7 +757,7 @@ describe('TagInput form participation', () => {
       await fireEvent.input(input, { target: { value: 'Bun' } });
       await fireEvent.keyDown(input, { key: 'Enter' });
 
-      expect(onchange).toHaveBeenCalledWith(['Svelte', 'Bun']);
+      expect(onValueChange).toHaveBeenCalledWith(['Svelte', 'Bun']);
       expect(getOptions(mount.container)).toHaveLength(2);
       expect(getOptions(mount.container)[0]?.textContent).toContain('Svelte');
       expect(getOptions(mount.container)[1]?.textContent).toContain('Bun');

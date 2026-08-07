@@ -28,20 +28,20 @@ Multi-view editor for authoring JSON Schema documents with form, raw JSON, and d
 
 <!-- generated:props:start -->
 
-| Prop            | Type                                       | Required | Default | Description                                                                                                                                          |
-| --------------- | ------------------------------------------ | -------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `class`         | `string`                                   | no       | —       | Additional class merged onto the `.cinder-jse` root element.                                                                                         |
-| `draftOverride` | `"2020-12"` \| `"2019-09"` \| `"draft-07"` | no       | —       | Force a draft override regardless of $schema.                                                                                                        |
-| `id`            | `string`                                   | yes      | —       | Required for ARIA wiring.                                                                                                                            |
-| `maxHistory`    | `number`                                   | no       | —       | Maximum history entries (default 100).                                                                                                               |
-| `readonly`      | `boolean`                                  | no       | —       | Read-only mode disables all mutations.                                                                                                               |
-| `schemaKey`     | `string`                                   | no       | —       | Changing this triggers a full reset (history clears).                                                                                                |
-| `view`          | `"form"` \| `"json"` \| `"diff"`           | no       | —       | Active view: form / json / diff. Bindable.                                                                                                           |
-| `onchange`      | `(opaque)`                                 | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                           |
-| `onRevert`      | `(opaque)`                                 | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                           |
-| `onValidate`    | `(opaque)`                                 | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                           |
-| `original`      | `(opaque)`                                 | no       | —       | Optional explicit baseline; defaults to the initial `schema`. Not expressible in JSON Schema; see the component types for the signature.             |
-| `schema`        | `(opaque)`                                 | yes      | —       | The schema being edited. May be a string (JSON text) or pre-parsed value. Not expressible in JSON Schema; see the component types for the signature. |
+| Prop             | Type                                       | Required | Default | Description                                                                                                                                          |
+| ---------------- | ------------------------------------------ | -------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `class`          | `string`                                   | no       | —       | Additional class merged onto the `.cinder-jse` root element.                                                                                         |
+| `draftOverride`  | `"2020-12"` \| `"2019-09"` \| `"draft-07"` | no       | —       | Force a draft override regardless of $schema.                                                                                                        |
+| `id`             | `string`                                   | yes      | —       | Required for ARIA wiring.                                                                                                                            |
+| `maxHistory`     | `number`                                   | no       | —       | Maximum history entries (default 100).                                                                                                               |
+| `readonly`       | `boolean`                                  | no       | —       | Read-only mode disables all mutations.                                                                                                               |
+| `schemaKey`      | `string`                                   | no       | —       | Changing this triggers a full reset (history clears).                                                                                                |
+| `view`           | `"form"` \| `"json"` \| `"diff"`           | no       | —       | Active view: form / json / diff. Bindable.                                                                                                           |
+| `onRevert`       | `(opaque)`                                 | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                           |
+| `onSchemaChange` | `(opaque)`                                 | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                           |
+| `onValidate`     | `(opaque)`                                 | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                           |
+| `original`       | `(opaque)`                                 | no       | —       | Optional explicit baseline; defaults to the initial `schema`. Not expressible in JSON Schema; see the component types for the signature.             |
+| `schema`         | `(opaque)`                                 | yes      | —       | The schema being edited. May be a string (JSON text) or pre-parsed value. Not expressible in JSON Schema; see the component types for the signature. |
 
 <!-- generated:props:end -->
 

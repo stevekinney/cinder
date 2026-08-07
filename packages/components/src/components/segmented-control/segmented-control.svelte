@@ -45,7 +45,7 @@
     selectionMode = 'single',
     disallowEmptySelection = true,
     class: customClassName,
-    onchange,
+    onValueChange,
     children,
     ...rest
   }: SegmentedControlProps<T> = $props();
@@ -70,7 +70,7 @@
     setValue: (next) => {
       value = next as T | SvelteSet<T> | undefined;
     },
-    onChange: (selected) => onchange?.(selected as T),
+    onChange: (selected) => onValueChange?.(selected as T),
   });
 
   const contextValue: SegmentedControlContextValue = {

@@ -46,7 +46,7 @@ describe('SchemaForm', () => {
         schema,
         name: 'payload',
         value: { name: 'Ada', count: 2 },
-        onsubmit: (value: unknown) => {
+        onSubmit: (value: unknown) => {
           viaCallback = value;
         },
       },
@@ -138,7 +138,7 @@ describe('SchemaForm', () => {
       props: {
         schema,
         value: { items: [{ ok: 1 }, { ok: 2 }] },
-        onsubmit: (value: unknown) => {
+        onSubmit: (value: unknown) => {
           submitted = value;
         },
       },
@@ -173,7 +173,7 @@ describe('SchemaForm', () => {
       props: {
         schema,
         value: { items: [{ ok: 1 }, { ok: 2 }] },
-        onsubmit: (value: unknown) => {
+        onSubmit: (value: unknown) => {
           submitted = value;
         },
       },
@@ -208,7 +208,7 @@ describe('SchemaForm', () => {
           required: ['name'],
         },
         value: { name: '' },
-        onsubmit: (value: unknown) => {
+        onSubmit: (value: unknown) => {
           onsubmitCalls.push(value);
         },
       },
@@ -265,7 +265,7 @@ describe('SchemaForm', () => {
           nested: { owner: 'Ada' },
           raw: { ok: false },
         },
-        onsubmit: (value: unknown) => {
+        onSubmit: (value: unknown) => {
           submitted = value;
         },
       },
@@ -325,7 +325,7 @@ describe('SchemaForm', () => {
           required: ['raw'],
         },
         value: { raw: { ok: true } },
-        onsubmit: (value: unknown) => {
+        onSubmit: (value: unknown) => {
           calls.push(value);
         },
       },
@@ -416,7 +416,7 @@ describe('SchemaForm', () => {
     const { container } = render(SchemaForm, {
       props: {
         schema,
-        onsubmit: (value: unknown) => {
+        onSubmit: (value: unknown) => {
           submitted.push(value);
         },
       },
@@ -450,7 +450,7 @@ describe('SchemaForm', () => {
           required: ['tags'],
         },
         value: { tags: ['one', 'two'] },
-        onsubmit: (value: unknown) => {
+        onSubmit: (value: unknown) => {
           submitted = value;
         },
       },
@@ -483,7 +483,7 @@ describe('SchemaForm — composed-control regressions', () => {
           },
           required: ['name', 'count', 'raw'],
         },
-        onsubmit: (value: unknown) => {
+        onSubmit: (value: unknown) => {
           submitted.push(value);
         },
       },
@@ -519,7 +519,7 @@ describe('SchemaForm — composed-control regressions', () => {
           properties: { count: { type: 'integer', title: 'Count' } },
           required: ['count'],
         },
-        onsubmit: (value: unknown) => {
+        onSubmit: (value: unknown) => {
           submitted.push(value);
         },
       },
@@ -549,7 +549,7 @@ describe('SchemaForm — composed-control regressions', () => {
           required: ['enabled'],
         },
         value: { enabled: false },
-        onsubmit: (value: unknown) => {
+        onSubmit: (value: unknown) => {
           submitted.push(value);
         },
       },
@@ -847,7 +847,7 @@ describe('SchemaForm — schema-change resets form state; value is seed-only', (
           required: ['count'],
         },
         value: { count: 2 },
-        onsubmit: (value: unknown) => {
+        onSubmit: (value: unknown) => {
           submitted.push(value);
         },
       },
@@ -882,7 +882,7 @@ describe('SchemaForm — schema-change resets form state; value is seed-only', (
         onDraftChange: (draft: unknown) => {
           drafts.push(draft);
         },
-        onsubmit: async () => submitPending,
+        onSubmit: async () => submitPending,
       },
     });
     await flush();
@@ -900,7 +900,7 @@ describe('SchemaForm — schema-change resets form state; value is seed-only', (
 describe('SchemaForm — initialization without write-back $effect', () => {
   afterEach(() => cleanup());
 
-  test('initial value populates the form without triggering onsubmit via $effect', async () => {
+  test('initial value populates the form without triggering onSubmit via $effect', async () => {
     // Regression: the old code ran a $effect on schema change that set formValue,
     // errors, rawDrafts, and arrayKeys, which could cause reactive-loop risk.
     // The replacement computes initial state once at script time and uses {#key schema}
@@ -914,7 +914,7 @@ describe('SchemaForm — initialization without write-back $effect', () => {
           required: ['label'],
         },
         value: { label: 'hello' },
-        onsubmit: (value: unknown) => {
+        onSubmit: (value: unknown) => {
           submitted.push(value);
         },
       },
@@ -925,7 +925,7 @@ describe('SchemaForm — initialization without write-back $effect', () => {
     const labelInput = screen.getByRole('textbox', { name: /Label/ });
     expect(labelInput).toBeInstanceOf(HTMLInputElement);
     expect((labelInput as HTMLInputElement).value).toBe('hello');
-    // onsubmit was NOT called during initialization.
+    // onSubmit was NOT called during initialization.
     expect(submitted).toHaveLength(0);
 
     // Submitting yields the initialized value.

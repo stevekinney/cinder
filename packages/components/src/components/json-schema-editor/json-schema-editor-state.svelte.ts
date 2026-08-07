@@ -305,7 +305,7 @@ export function createEditorState(options: CreateEditorStateOptions) {
   function emitChange() {
     const schema = history?.current ?? null;
     if (schema === null) return;
-    options.onchange?.({ schema, jsonString: serialise(schema) });
+    options.onSchemaChange?.({ schema, jsonString: serialise(schema) });
   }
 
   function loadFrom(

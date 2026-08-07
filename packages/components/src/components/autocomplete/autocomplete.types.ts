@@ -51,7 +51,7 @@ export type AutocompleteSchemaProps = {
   loadingMessage?: string;
   /** Additional class names merged onto the root wrapper element. */
   class?: string;
-  oninput?: (value: string) => void;
+  onValueChange?: (value: string) => void;
   onComplete?: (suggestion: AutocompleteSuggestion) => void;
 };
 

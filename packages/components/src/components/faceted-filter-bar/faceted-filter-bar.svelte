@@ -145,7 +145,7 @@
         placeholder={searchPlaceholder}
         aria-label={searchAriaLabel}
         {disabled}
-        oninput={handleSearchInput}
+        onValueChange={handleSearchInput}
       />
     {/if}
 
@@ -180,7 +180,7 @@
         <div class="cinder-faceted-filter-bar__facet">
           {@render facet.control({
             value: getFacetCurrentValue(facet.key),
-            onchange: (value: string) => {
+            onValueChange: (value: string) => {
               onFacetChange?.(facet.key, value);
             },
           })}

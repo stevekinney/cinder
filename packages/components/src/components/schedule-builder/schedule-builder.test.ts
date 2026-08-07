@@ -171,17 +171,17 @@ describe('ScheduleBuilder', () => {
     });
 
     test('cron-only authoring emits only cron values', async () => {
-      const onchange = mock();
+      const onValueChange = mock();
       const { getByLabelText } = render(ScheduleBuilder, {
         allowedModes: ['cron'],
-        onchange,
+        onValueChange,
       });
 
       const minuteField = getByLabelText('Minute') as HTMLInputElement;
       await fireEvent.input(minuteField, { target: { value: '0' } });
 
-      expect(onchange).toHaveBeenCalledTimes(1);
-      for (const call of onchange.mock.calls) {
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      for (const call of onValueChange.mock.calls) {
         const emitted = call[0] as ScheduleValue;
         expect(emitted.mode).toBe('cron');
       }
@@ -225,12 +225,12 @@ describe('ScheduleBuilder', () => {
       );
     });
 
-    test('re-passing the same value (a controlled onchange echo) does not reset a mid-edit cron field', async () => {
-      const onchange = mock();
+    test('re-passing the same value (a controlled onValueChange echo) does not reset a mid-edit cron field', async () => {
+      const onValueChange = mock();
       const initialValue: ScheduleValue = { mode: 'cron', expression: '0 9 * * 1' };
       const { getByLabelText, getByRole, rerender } = render(ScheduleBuilder, {
         value: initialValue,
-        onchange,
+        onValueChange,
       });
 
       // Already in cron mode (a cron `value` opens directly there). Start an
@@ -240,12 +240,12 @@ describe('ScheduleBuilder', () => {
       expect(minuteField.value).toBe('9');
       // A single-digit "9" is a valid cron token on its own, so this commits —
       // simulate the typical controlled pattern: the parent stores whatever
-      // onchange emitted and passes the SAME content back down as `value`,
+      // onValueChange emitted and passes the SAME content back down as `value`,
       // often as a freshly-constructed object (not the same reference).
-      expect(onchange).toHaveBeenCalledTimes(1);
-      const echoed: ScheduleValue = { ...(onchange.mock.calls[0]![0] as ScheduleValue) };
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      const echoed: ScheduleValue = { ...(onValueChange.mock.calls[0]![0] as ScheduleValue) };
 
-      await rerender({ value: echoed, onchange });
+      await rerender({ value: echoed, onValueChange });
 
       // The field must still read the same committed value — an echo of an
       // unchanged value must not re-seed and must not appear as a reset.
@@ -268,24 +268,24 @@ describe('ScheduleBuilder', () => {
     });
 
     test('a controlled parent that rejects an edit by re-passing the prior value reverts the field', async () => {
-      const onchange = mock();
+      const onValueChange = mock();
       const initialValue: ScheduleValue = { mode: 'cron', expression: '0 9 * * 1' };
       const { getByLabelText, rerender } = render(ScheduleBuilder, {
         value: initialValue,
-        onchange,
+        onValueChange,
       });
 
       const minuteField = getByLabelText('Minute') as HTMLInputElement;
       await fireEvent.input(minuteField, { target: { value: '30' } });
       expect(minuteField.value).toBe('30');
-      expect(onchange).toHaveBeenCalledTimes(1);
+      expect(onValueChange).toHaveBeenCalledTimes(1);
 
       // A validating/authorizing parent that rejects the edit does NOT echo
-      // what onchange emitted — it re-passes its own (distinct, unaccepted)
+      // what onValueChange emitted — it re-passes its own (distinct, unaccepted)
       // prior value instead. Because that's content-different from what the
       // child optimistically emitted, the resync effect's `scheduleValuesEqual`
       // guard treats it as a genuine external change and reseeds.
-      await rerender({ value: { ...initialValue }, onchange });
+      await rerender({ value: { ...initialValue }, onValueChange });
 
       expect((getByLabelText('Minute') as HTMLInputElement).value).toBe('0');
     });
@@ -369,15 +369,15 @@ describe('ScheduleBuilder', () => {
       expect(container.querySelector('[data-sb-panel="interval"]')).not.toBeNull();
     });
 
-    test('switching modes does not call onchange', async () => {
-      const onchange = mock();
-      const { getByRole } = render(ScheduleBuilder, { onchange });
+    test('switching modes does not call onValueChange', async () => {
+      const onValueChange = mock();
+      const { getByRole } = render(ScheduleBuilder, { onValueChange });
 
       await fireEvent.click(getByRole('tab', { name: 'Cron' }));
       await fireEvent.click(getByRole('tab', { name: 'Interval' }));
       await fireEvent.click(getByRole('tab', { name: 'Presets' }));
 
-      expect(onchange).not.toHaveBeenCalled();
+      expect(onValueChange).not.toHaveBeenCalled();
     });
 
     test('entering cron mode seeds the five fields from the default interval value', async () => {
@@ -464,72 +464,76 @@ describe('ScheduleBuilder', () => {
   });
 
   describe('presets mode', () => {
-    test('presets "every" kind commits an interval value via onchange', async () => {
-      const onchange = mock();
-      const { getByLabelText } = render(ScheduleBuilder, { onchange });
+    test('presets "every" kind commits an interval value via onValueChange', async () => {
+      const onValueChange = mock();
+      const { getByLabelText } = render(ScheduleBuilder, { onValueChange });
 
       const everyInput = getByLabelText('Every') as HTMLInputElement;
       await fireEvent.input(everyInput, { target: { value: '30' } });
       await fireEvent.blur(everyInput);
 
-      expect(onchange).toHaveBeenCalledTimes(1);
-      const [emitted] = onchange.mock.calls[0]!;
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      const [emitted] = onValueChange.mock.calls[0]!;
       expect(emitted).toEqual({ mode: 'interval', every: 30, unit: 'minutes' });
     });
 
     test('coerces a fractional "every" to a positive integer before emitting', async () => {
-      const onchange = mock();
-      const { getByLabelText } = render(ScheduleBuilder, { onchange });
+      const onValueChange = mock();
+      const { getByLabelText } = render(ScheduleBuilder, { onValueChange });
 
       const everyInput = getByLabelText('Every') as HTMLInputElement;
       await fireEvent.input(everyInput, { target: { value: '2.5' } });
       await fireEvent.blur(everyInput);
 
       // The emitted `every` must always be a positive integer — no fractional leak.
-      const [emitted] = onchange.mock.calls.at(-1)! as [{ mode: string; every: number }];
+      const [emitted] = onValueChange.mock.calls.at(-1)! as [{ mode: string; every: number }];
       expect(emitted.mode).toBe('interval');
       expect(Number.isInteger(emitted.every)).toBe(true);
       expect(emitted.every).toBeGreaterThanOrEqual(1);
     });
 
-    test('presets "every" unit select commits an interval value via onchange', async () => {
-      const onchange = mock();
-      const { getByLabelText } = render(ScheduleBuilder, { onchange });
+    test('presets "every" unit select commits an interval value via onValueChange', async () => {
+      const onValueChange = mock();
+      const { getByLabelText } = render(ScheduleBuilder, { onValueChange });
 
       const unitSelect = getByLabelText('Unit') as HTMLSelectElement;
       await fireEvent.change(unitSelect, { target: { value: 'hours' } });
 
-      expect(onchange).toHaveBeenCalledTimes(1);
-      expect(onchange.mock.calls[0]![0]).toEqual({ mode: 'interval', every: 15, unit: 'hours' });
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      expect(onValueChange.mock.calls[0]![0]).toEqual({
+        mode: 'interval',
+        every: 15,
+        unit: 'hours',
+      });
     });
 
-    test('presets "daily at" commits a cron value via onchange', async () => {
-      const onchange = mock();
-      const { container, getByLabelText, getByRole } = render(ScheduleBuilder, { onchange });
+    test('presets "daily at" commits a cron value via onValueChange', async () => {
+      const onValueChange = mock();
+      const { container, getByLabelText, getByRole } = render(ScheduleBuilder, { onValueChange });
 
       await fireEvent.click(getByRole('radio', { name: 'Daily' }));
       // Switching preset kind commits immediately with that kind's current
       // fields (default time 09:00) — see "preset-kind switch commits an
-      // onchange" below for a dedicated assertion on that behavior.
-      expect(onchange).toHaveBeenCalledTimes(1);
-      expect(onchange.mock.calls[0]![0]).toEqual({ mode: 'cron', expression: '0 9 * * *' });
+      // onValueChange" below for a dedicated assertion on that behavior.
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      expect(onValueChange.mock.calls[0]![0]).toEqual({ mode: 'cron', expression: '0 9 * * *' });
 
       const timeInput = container.querySelector<HTMLInputElement>('#' + getByLabelText('At').id)!;
       await fireEvent.change(timeInput, { target: { value: '09:15' } });
 
-      expect(onchange).toHaveBeenCalledTimes(2);
-      const [emitted] = onchange.mock.calls[1]!;
+      expect(onValueChange).toHaveBeenCalledTimes(2);
+      const [emitted] = onValueChange.mock.calls[1]!;
       expect(emitted).toEqual({ mode: 'cron', expression: '15 9 * * *' });
     });
 
     test('clearing a Daily time keeps the prior time in the emitted value and in the field, instead of silently becoming midnight', async () => {
-      const onchange = mock();
-      const { container, getByLabelText, getByRole } = render(ScheduleBuilder, { onchange });
+      const onValueChange = mock();
+      const { container, getByLabelText, getByRole } = render(ScheduleBuilder, { onValueChange });
 
       await fireEvent.click(getByRole('radio', { name: 'Daily' }));
       const timeInput = container.querySelector<HTMLInputElement>('#' + getByLabelText('At').id)!;
       await fireEvent.change(timeInput, { target: { value: '09:15' } });
-      onchange.mockClear();
+      onValueChange.mockClear();
 
       // Clear the field. A real clear fires `input` before `change` (the
       // browser updates the value live, then commits on blur); firing both,
@@ -540,7 +544,7 @@ describe('ScheduleBuilder', () => {
 
       // Must NOT silently commit midnight, and must NOT emit at all — nothing
       // actually changed from the component's point of view.
-      expect(onchange).not.toHaveBeenCalled();
+      expect(onValueChange).not.toHaveBeenCalled();
       expect(container.querySelector('.cinder-schedule-builder__summary-text')?.textContent).toBe(
         'Daily at 09:15',
       );
@@ -550,23 +554,23 @@ describe('ScheduleBuilder', () => {
     });
 
     test('presets "weekly on" toggling a day and committing a time emits a cron value with the selected day', async () => {
-      const onchange = mock();
-      const { getByLabelText, getByRole } = render(ScheduleBuilder, { onchange });
+      const onValueChange = mock();
+      const { getByLabelText, getByRole } = render(ScheduleBuilder, { onValueChange });
 
       await fireEvent.click(getByRole('radio', { name: 'Weekly' }));
-      expect(onchange).toHaveBeenCalledTimes(1);
-      expect(onchange.mock.calls[0]![0]).toEqual({ mode: 'cron', expression: '0 9 * * *' });
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      expect(onValueChange.mock.calls[0]![0]).toEqual({ mode: 'cron', expression: '0 9 * * *' });
 
       await fireEvent.click(getByRole('button', { name: 'Monday' }));
 
-      expect(onchange).toHaveBeenCalledTimes(2);
-      expect(onchange.mock.calls[1]![0]).toEqual({ mode: 'cron', expression: '0 9 * * 1' });
+      expect(onValueChange).toHaveBeenCalledTimes(2);
+      expect(onValueChange.mock.calls[1]![0]).toEqual({ mode: 'cron', expression: '0 9 * * 1' });
 
       const timeInput = getByLabelText('At') as HTMLInputElement;
       await fireEvent.change(timeInput, { target: { value: '10:00' } });
 
-      expect(onchange).toHaveBeenCalledTimes(3);
-      expect(onchange.mock.calls[2]![0]).toEqual({ mode: 'cron', expression: '0 10 * * 1' });
+      expect(onValueChange).toHaveBeenCalledTimes(3);
+      expect(onValueChange.mock.calls[2]![0]).toEqual({ mode: 'cron', expression: '0 10 * * 1' });
     });
 
     test('weekly day chip toggles pressed state and can be deselected', async () => {
@@ -584,47 +588,47 @@ describe('ScheduleBuilder', () => {
     });
 
     test('presets "monthly on day" commits a cron value with the day and time', async () => {
-      const onchange = mock();
-      const { getByLabelText, getByRole } = render(ScheduleBuilder, { onchange });
+      const onValueChange = mock();
+      const { getByLabelText, getByRole } = render(ScheduleBuilder, { onValueChange });
 
       await fireEvent.click(getByRole('radio', { name: 'Monthly' }));
-      expect(onchange).toHaveBeenCalledTimes(1);
+      expect(onValueChange).toHaveBeenCalledTimes(1);
       // presetMonthlyDay defaults to 1, presetMonthlyTime defaults to '09:00'.
-      expect(onchange.mock.calls[0]![0]).toEqual({ mode: 'cron', expression: '0 9 1 * *' });
+      expect(onValueChange.mock.calls[0]![0]).toEqual({ mode: 'cron', expression: '0 9 1 * *' });
 
       const dayInput = getByLabelText('Day of month') as HTMLInputElement;
       await fireEvent.input(dayInput, { target: { value: '15' } });
       await fireEvent.blur(dayInput);
 
-      expect(onchange).toHaveBeenCalledTimes(2);
-      expect(onchange.mock.calls[1]![0]).toEqual({ mode: 'cron', expression: '0 9 15 * *' });
+      expect(onValueChange).toHaveBeenCalledTimes(2);
+      expect(onValueChange.mock.calls[1]![0]).toEqual({ mode: 'cron', expression: '0 9 15 * *' });
     });
 
-    test("preset-kind switch commits an onchange with that kind's current fields", async () => {
-      const onchange = mock();
-      const { getByRole } = render(ScheduleBuilder, { onchange });
+    test("preset-kind switch commits an onValueChange with that kind's current fields", async () => {
+      const onValueChange = mock();
+      const { getByRole } = render(ScheduleBuilder, { onValueChange });
 
       // Default kind is "every" (interval); switching to another kind changes
       // the derived value immediately, so it must emit — unlike the top-level
       // authoring-mode tabs, there is no "browsing an empty panel" state here.
       await fireEvent.click(getByRole('radio', { name: 'Daily' }));
 
-      expect(onchange).toHaveBeenCalledTimes(1);
-      expect(onchange.mock.calls[0]![0]).toEqual({ mode: 'cron', expression: '0 9 * * *' });
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      expect(onValueChange.mock.calls[0]![0]).toEqual({ mode: 'cron', expression: '0 9 * * *' });
     });
 
-    test('re-selecting the already-active preset kind does not emit a redundant onchange', async () => {
-      const onchange = mock();
-      const { getByRole } = render(ScheduleBuilder, { onchange });
+    test('re-selecting the already-active preset kind does not emit a redundant onValueChange', async () => {
+      const onValueChange = mock();
+      const { getByRole } = render(ScheduleBuilder, { onValueChange });
 
       await fireEvent.click(getByRole('radio', { name: 'Every N' }));
 
-      expect(onchange).not.toHaveBeenCalled();
+      expect(onValueChange).not.toHaveBeenCalled();
     });
 
     test('presets never emit mode: "preset" — only cron or interval', async () => {
-      const onchange = mock();
-      const { getByLabelText, getByRole } = render(ScheduleBuilder, { onchange });
+      const onValueChange = mock();
+      const { getByLabelText, getByRole } = render(ScheduleBuilder, { onValueChange });
 
       // every
       await fireEvent.change(getByLabelText('Unit') as HTMLSelectElement, {
@@ -644,8 +648,8 @@ describe('ScheduleBuilder', () => {
       await fireEvent.input(dayInput, { target: { value: '1' } });
       await fireEvent.blur(dayInput);
 
-      expect(onchange).toHaveBeenCalled();
-      for (const call of onchange.mock.calls) {
+      expect(onValueChange).toHaveBeenCalled();
+      for (const call of onValueChange.mock.calls) {
         const emitted = call[0] as ScheduleValue;
         expect(['cron', 'interval']).toContain(emitted.mode);
       }
@@ -654,50 +658,58 @@ describe('ScheduleBuilder', () => {
 
   describe('interval mode', () => {
     test('emits an interval value when the every field is committed', async () => {
-      const onchange = mock();
-      const { getByLabelText, getByRole } = render(ScheduleBuilder, { onchange });
+      const onValueChange = mock();
+      const { getByLabelText, getByRole } = render(ScheduleBuilder, { onValueChange });
 
       await fireEvent.click(getByRole('tab', { name: 'Interval' }));
       const everyInput = getByLabelText('Every') as HTMLInputElement;
       await fireEvent.input(everyInput, { target: { value: '5' } });
       await fireEvent.blur(everyInput);
 
-      expect(onchange).toHaveBeenCalledTimes(1);
-      expect(onchange.mock.calls[0]![0]).toEqual({ mode: 'interval', every: 5, unit: 'minutes' });
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      expect(onValueChange.mock.calls[0]![0]).toEqual({
+        mode: 'interval',
+        every: 5,
+        unit: 'minutes',
+      });
     });
 
     test('emits an interval value when the unit select changes', async () => {
-      const onchange = mock();
-      const { getByLabelText, getByRole } = render(ScheduleBuilder, { onchange });
+      const onValueChange = mock();
+      const { getByLabelText, getByRole } = render(ScheduleBuilder, { onValueChange });
 
       await fireEvent.click(getByRole('tab', { name: 'Interval' }));
       const unitSelect = getByLabelText('Unit') as HTMLSelectElement;
       await fireEvent.change(unitSelect, { target: { value: 'weeks' } });
 
-      expect(onchange).toHaveBeenCalledTimes(1);
-      expect(onchange.mock.calls[0]![0]).toEqual({ mode: 'interval', every: 15, unit: 'weeks' });
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      expect(onValueChange.mock.calls[0]![0]).toEqual({
+        mode: 'interval',
+        every: 15,
+        unit: 'weeks',
+      });
     });
   });
 
   describe('cron mode', () => {
-    test('a valid cron field edit commits a joined cron expression via onchange', async () => {
-      const onchange = mock();
-      const { getByLabelText, getByRole } = render(ScheduleBuilder, { onchange });
+    test('a valid cron field edit commits a joined cron expression via onValueChange', async () => {
+      const onValueChange = mock();
+      const { getByLabelText, getByRole } = render(ScheduleBuilder, { onValueChange });
 
       await fireEvent.click(getByRole('tab', { name: 'Cron' }));
       const minuteField = getByLabelText('Minute') as HTMLInputElement;
       await fireEvent.input(minuteField, { target: { value: '0' } });
 
-      expect(onchange).toHaveBeenCalledTimes(1);
-      expect(onchange.mock.calls[0]![0]).toEqual({
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      expect(onValueChange.mock.calls[0]![0]).toEqual({
         mode: 'cron',
         expression: '0 * * * *',
       });
     });
 
-    test('an out-of-range cron field surfaces an inline error and does not call onchange', async () => {
-      const onchange = mock();
-      const { getByLabelText, getByRole } = render(ScheduleBuilder, { onchange });
+    test('an out-of-range cron field surfaces an inline error and does not call onValueChange', async () => {
+      const onValueChange = mock();
+      const { getByLabelText, getByRole } = render(ScheduleBuilder, { onValueChange });
 
       await fireEvent.click(getByRole('tab', { name: 'Cron' }));
       const hourField = getByLabelText('Hour') as HTMLInputElement;
@@ -710,21 +722,21 @@ describe('ScheduleBuilder', () => {
         describedBy!.split(' ').find((id) => id.includes('error')) ?? '',
       );
       expect(errorNode?.textContent).toBe('Out of range (0–23).');
-      expect(onchange).not.toHaveBeenCalled();
+      expect(onValueChange).not.toHaveBeenCalled();
     });
 
-    test('correcting an invalid cron field back to valid resumes emitting onchange', async () => {
-      const onchange = mock();
-      const { getByLabelText, getByRole } = render(ScheduleBuilder, { onchange });
+    test('correcting an invalid cron field back to valid resumes emitting onValueChange', async () => {
+      const onValueChange = mock();
+      const { getByLabelText, getByRole } = render(ScheduleBuilder, { onValueChange });
 
       await fireEvent.click(getByRole('tab', { name: 'Cron' }));
       const hourField = getByLabelText('Hour') as HTMLInputElement;
       await fireEvent.input(hourField, { target: { value: '99' } });
-      expect(onchange).not.toHaveBeenCalled();
+      expect(onValueChange).not.toHaveBeenCalled();
 
       await fireEvent.input(hourField, { target: { value: '9' } });
-      expect(onchange).toHaveBeenCalledTimes(1);
-      expect(onchange.mock.calls[0]![0]).toEqual({ mode: 'cron', expression: '*/15 9 * * *' });
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      expect(onValueChange.mock.calls[0]![0]).toEqual({ mode: 'cron', expression: '*/15 9 * * *' });
     });
 
     test('cron field description carries its numeric hint', async () => {

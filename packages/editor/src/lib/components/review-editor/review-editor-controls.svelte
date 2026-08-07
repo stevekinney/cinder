@@ -120,7 +120,7 @@
       size="sm"
       density="toolbar"
       value={activeView}
-      onchange={handleViewChange}
+      onValueChange={handleViewChange}
     >
       <Segment value="editor" controls={viewPanelIds?.editor}>
         {#snippet leading()}<Pencil class="cinder-icon-xs" />{/snippet}

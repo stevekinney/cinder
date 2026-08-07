@@ -90,7 +90,7 @@
 
   let {
     value,
-    onchange,
+    onValueChange,
     allowedModes,
     computeNextFires,
     previewCount = 5,
@@ -129,7 +129,7 @@
   // mid-edit intermediate text (e.g. a half-typed cron range) has somewhere to
   // live without fighting a controlled `value` prop on every keystroke. This
   // seeding runs at construction AND — guarded against re-seeding on a mere
-  // re-render or an echoed `onchange` — again whenever the CONSUMER hands in a
+  // re-render or an echoed `onValueChange` — again whenever the CONSUMER hands in a
   // genuinely different `value` (see the resync `$effect` below `lastKnownValue`).
   // ---------------------------------------------------------------------------
   function initialValue(): ScheduleValue {
@@ -365,7 +365,7 @@
   /**
    * The last value this component knows the consumer has (starting from the
    * initial `value`/default seed, then advancing to whatever the user last
-   * committed via `onchange`, then advancing again whenever the resync
+   * committed via `onValueChange`, then advancing again whenever the resync
    * `$effect` below adopts a genuinely new controlled `value`). This is
    * intentionally NOT `currentValue`: `currentValue` reflects whatever the
    * active mode's fields would produce right now, even before the user has
@@ -403,12 +403,12 @@
    * re-seeding every field exactly like the initial seed (see
    * `seedFieldsFromValue`). This is what makes `value` actually controlled:
    * loading a saved schedule, a form reset, or a parent that normalizes or
-   * rejects an `onchange` all flow back in.
+   * rejects an `onValueChange` all flow back in.
    *
    * The explicit `scheduleValuesEqual` comparison against `lastKnownValue` —
    * not a bare `$effect(() => { ...reseed from value...})` — is load-bearing:
    * without it, the routine controlled-component echo (parent stores
-   * whatever `onchange` just emitted and passes it straight back down,
+   * whatever `onValueChange` just emitted and passes it straight back down,
    * frequently as a freshly-constructed object with the same content) would
    * look like a "new" value on every edit and wipe mid-edit state — e.g. an
    * in-progress, not-yet-valid cron field — on every keystroke.
@@ -462,7 +462,7 @@
 
   /**
    * `lastKnownValue` is updated optimistically, *before* the consumer's
-   * `onchange` handler runs — this is what lets the resync effect above tell
+   * `onValueChange` handler runs — this is what lets the resync effect above tell
    * "the parent echoed back exactly what I just emitted" (no-op, keep
    * mid-edit state) apart from "the parent handed me something genuinely
    * different" (reseed). A validating/authorizing parent that rejects an
@@ -486,7 +486,7 @@
    */
   function emitChange(): void {
     lastKnownValue = currentValue;
-    onchange?.(currentValue);
+    onValueChange?.(currentValue);
   }
 
   /**
@@ -628,7 +628,7 @@
     label="Schedule authoring mode"
     variant="tablist"
     value={authoringMode}
-    onchange={handleAuthoringModeChange}
+    onValueChange={handleAuthoringModeChange}
     class="cinder-schedule-builder__mode-switch"
   >
     {#if modeIsAllowed('presets')}
@@ -672,7 +672,7 @@
         id={`${baseId}-preset-kind`}
         label="Preset kind"
         value={presetKind}
-        onchange={handlePresetKindChange}
+        onValueChange={handlePresetKindChange}
         class="cinder-schedule-builder__preset-kind"
       >
         <Segment id={`${baseId}-preset-kind-every`} value="every">Every N</Segment>

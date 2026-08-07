@@ -58,7 +58,7 @@
 
 <InvocationRuleBuilder
   {rules}
-  onchange={() => {}}
+  onValueChange={() => {}}
   {fieldOptions}
   {operatorOptions}
   {actionOptions}

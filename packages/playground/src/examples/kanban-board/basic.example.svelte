@@ -49,7 +49,7 @@
   getCardKey={(item) => item.id}
   getCardLabel={(item) => item.title}
   collapsible
-  onchange={(nextColumns) => {
+  onColumnsChange={(nextColumns) => {
     columns = nextColumns;
   }}
 >

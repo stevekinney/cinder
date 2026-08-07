@@ -42,7 +42,7 @@ export type TimeFieldProps = Omit<
   /** Additional CSS classes applied to the root. */
   class?: string;
   /** Called when the user commits a time or timezone change. */
-  onchange?: (detail: TimeFieldChange) => void;
+  onValueChange?: (detail: TimeFieldChange) => void;
 };
 
 export interface TimeFieldSchemaProps {

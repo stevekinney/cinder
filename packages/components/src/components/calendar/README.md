@@ -31,7 +31,7 @@ Keyboard-navigable month grid for selecting a single local calendar date.
 | `month`          | `string`   | no       | —            | Visible month anchor (`YYYY-MM-DD`), defaults to selected date or today.                                                 |
 | `value`          | `string`   | no       | —            | Selected ISO date (`YYYY-MM-DD`). Bindable.                                                                              |
 | `disabledDate`   | `(opaque)` | no       | —            | Return true to disable a specific day. Not expressible in JSON Schema; see the component types for the signature.        |
-| `onchange`       | `(opaque)` | no       | —            | Called when the user commits a day selection. Not expressible in JSON Schema; see the component types for the signature. |
+| `onValueChange`  | `(opaque)` | no       | —            | Called when the user commits a day selection. Not expressible in JSON Schema; see the component types for the signature. |
 
 <!-- generated:props:end -->
 

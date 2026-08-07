@@ -1,6 +1,6 @@
 # KanbanBoard accessibility
 
-KanbanBoard is a controlled component. The `columns` prop is the committed source of truth, and every card move, column move, or collapse toggle is reported through `onchange(nextColumns, change)`.
+KanbanBoard is a controlled component. The `columns` prop is the committed source of truth, and every card move, column move, or collapse toggle is reported through `onColumnsChange(nextColumns, change)`.
 
 Card handles use the same keyboard model as SortableList: Space or Enter lifts and drops, ArrowUp and ArrowDown move within a column, ArrowLeft and ArrowRight move across visible non-collapsed columns, Home and End move within the current column, Escape cancels, and Tab cancels while allowing native focus movement.
 

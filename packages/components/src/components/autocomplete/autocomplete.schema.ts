@@ -76,7 +76,7 @@ const schema = {
         reason: 'function-or-snippet',
       },
       {
-        name: 'oninput',
+        name: 'onValueChange',
         reason: 'function-or-snippet',
       },
       {

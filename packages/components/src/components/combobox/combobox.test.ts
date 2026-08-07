@@ -175,12 +175,12 @@ describe('Combobox', () => {
 
   test('commits arbitrary text with customValueAllowed and canonicalizes matching labels', async () => {
     const values: string[] = [];
-    const onchange = (value: string) => values.push(value);
+    const onValueChange = (value: string) => values.push(value);
     const { container } = render(Combobox, {
       id: 'custom-fruit',
       options: fruits,
       customValueAllowed: true,
-      onchange,
+      onValueChange,
     });
     const input = container.querySelector<HTMLInputElement>('#custom-fruit')!;
 
@@ -460,14 +460,14 @@ describe('Combobox structure', () => {
 
   test('customValueAllowed normalizes an exact option label on blur', async () => {
     let value = '';
-    const onchange = (nextValue: string) => {
+    const onValueChange = (nextValue: string) => {
       value = nextValue;
     };
     const { container, rerender } = render(Combobox, {
       id: 'fruit',
       value,
       customValueAllowed: true,
-      onchange,
+      onValueChange,
       options: fruits,
     });
     const input = container.querySelector<HTMLInputElement>('#fruit')!;
@@ -475,7 +475,13 @@ describe('Combobox structure', () => {
     await fireEvent.focus(input);
     await fireEvent.input(input, { target: { value: 'Banana' } });
     await fireEvent.blur(input, { relatedTarget: null });
-    await rerender({ id: 'fruit', value, customValueAllowed: true, onchange, options: fruits });
+    await rerender({
+      id: 'fruit',
+      value,
+      customValueAllowed: true,
+      onValueChange,
+      options: fruits,
+    });
 
     expect(value).toBe('banana');
     expect(input.value).toBe('Banana');
@@ -484,7 +490,7 @@ describe('Combobox structure', () => {
   test('customValueAllowed keeps the canonical option value when Enter is pressed on a focused selection', async () => {
     let value = 'banana';
     const changes: string[] = [];
-    const onchange = (nextValue: string) => {
+    const onValueChange = (nextValue: string) => {
       changes.push(nextValue);
       value = nextValue;
     };
@@ -492,14 +498,20 @@ describe('Combobox structure', () => {
       id: 'fruit',
       value,
       customValueAllowed: true,
-      onchange,
+      onValueChange,
       options: fruits,
     });
     const input = container.querySelector<HTMLInputElement>('#fruit')!;
 
     await fireEvent.focus(input);
     await fireEvent.keyDown(input, { key: 'Enter' });
-    await rerender({ id: 'fruit', value, customValueAllowed: true, onchange, options: fruits });
+    await rerender({
+      id: 'fruit',
+      value,
+      customValueAllowed: true,
+      onValueChange,
+      options: fruits,
+    });
 
     expect(value).toBe('banana');
     expect(changes).toEqual([]);
@@ -512,7 +524,7 @@ describe('Combobox structure', () => {
       id: 'fruit',
       options: [{ value: 'secret', label: 'Secret', disabled: true }, ...fruits],
       customValueAllowed: true,
-      onchange: (nextValue: string) => changes.push(nextValue),
+      onValueChange: (nextValue: string) => changes.push(nextValue),
     });
     const input = container.querySelector<HTMLInputElement>('#fruit')!;
     await fireEvent.focus(input);

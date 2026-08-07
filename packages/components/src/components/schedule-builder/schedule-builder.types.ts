@@ -65,7 +65,7 @@ export type ScheduleBuilderProps = Omit<
 > & {
   /**
    * The current recurrence value (controlled). Pass the value returned from
-   * `onchange` back in to commit an edit. When omitted, the component starts
+   * `onValueChange` back in to commit an edit. When omitted, the component starts
    * from a sensible default (`interval`, every 15 minutes).
    */
   value?: ScheduleValue | undefined;
@@ -73,7 +73,7 @@ export type ScheduleBuilderProps = Omit<
    * Called whenever the user edits the recurrence. Receives the next lossless
    * {@link ScheduleValue}. The consumer owns persistence and validation.
    */
-  onchange?: ((value: ScheduleValue) => void) | undefined;
+  onValueChange?: ((value: ScheduleValue) => void) | undefined;
   /**
    * Authoring modes to expose. Defaults to `['presets', 'cron', 'interval']`.
    * Use `['cron']` for cron-only consumers; the component then renders only
@@ -120,7 +120,7 @@ export type ScheduleValueSchema =
 /**
  * Cinder-specific schema surface for ScheduleBuilder.
  *
- * The `onchange`, `computeNextFires`, and `timezone` props are documented but
+ * The `onValueChange`, `computeNextFires`, and `timezone` props are documented but
  * unsupported by JSON Schema because functions and snippets cannot be modeled.
  */
 export type ScheduleBuilderSchemaProps = {

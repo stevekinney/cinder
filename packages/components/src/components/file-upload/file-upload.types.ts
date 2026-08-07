@@ -56,7 +56,7 @@ export type FileUploadProps = Omit<
   /** Replaces the default file-list renderer. Receives the resolved rows. */
   fileList?: Snippet<[FileUploadEntry[]]>;
   /** Fires with accepted files after local validation passes. */
-  onchange?: (files: File[]) => void;
+  onFilesChange?: (files: File[]) => void;
   /** Fires with rejected files and reasons after local validation runs. */
   onReject?: (files: RejectedFile[]) => void;
 };

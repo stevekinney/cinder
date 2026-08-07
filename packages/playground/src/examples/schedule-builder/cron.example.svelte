@@ -29,4 +29,9 @@
   }
 </script>
 
-<ScheduleBuilder {value} onchange={handleChange} {computeNextFires} label="Weekday report job" />
+<ScheduleBuilder
+  {value}
+  onValueChange={handleChange}
+  {computeNextFires}
+  label="Weekday report job"
+/>

@@ -255,11 +255,11 @@ describe('createEditorState — reload', () => {
 });
 
 describe('createEditorState — change events', () => {
-  test('onchange fires on commit, apply, undo, redo, revert-to-valid', async () => {
+  test('onSchemaChange fires on commit, apply, undo, redo, revert-to-valid', async () => {
     const events: string[] = [];
     const state = createEditorState({
       schema: { type: 'string' },
-      onchange: (event) => events.push(event.jsonString),
+      onSchemaChange: (event) => events.push(event.jsonString),
     });
 
     state.commitFromForm({ type: 'number' });
@@ -273,11 +273,11 @@ describe('createEditorState — change events', () => {
     expect(events.length).toBe(5);
   });
 
-  test('onchange does NOT fire for transient JSON edits without Apply', () => {
+  test('onSchemaChange does NOT fire for transient JSON edits without Apply', () => {
     let calls = 0;
     const state = createEditorState({
       schema: { type: 'string' },
-      onchange: () => (calls += 1),
+      onSchemaChange: () => (calls += 1),
     });
 
     state.setJsonDraftText('{"type":"number"}');

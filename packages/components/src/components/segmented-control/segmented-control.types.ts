@@ -55,7 +55,7 @@ type CommonProps<T extends string> = Omit<HTMLAttributes<HTMLElement>, Component
   /** Additional class names merged with `.cinder-segmented-control`. */
   class?: string | undefined;
   /** Called when the selected value changes (single mode only). */
-  onchange?: ((value: T) => void) | undefined;
+  onValueChange?: ((value: T) => void) | undefined;
   /** Child `<Segment>` elements. */
   children: Snippet;
 };

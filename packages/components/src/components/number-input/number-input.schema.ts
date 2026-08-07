@@ -86,7 +86,7 @@ const schema = {
         description: 'Attachment for native input access and lifecycle-scoped listeners.',
       },
       {
-        name: 'onchange',
+        name: 'onValueChange',
         reason: 'function-or-snippet',
       },
     ],

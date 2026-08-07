@@ -23,7 +23,7 @@ export type PhoneInputCountryOption = {
 };
 
 /**
- * Detail object passed to `onchange`. `value` is the same E.164 string that
+ * Detail object passed to `onValueChange`. `value` is the same E.164 string that
  * lands on the bindable `value` prop.
  */
 export type PhoneInputChange = {
@@ -87,5 +87,5 @@ export type PhoneInputProps = {
    * number, switching the country). Never fires for external value or country
    * synchronization. The detail object carries the E.164 string on `detail.value`.
    */
-  onchange?: (detail: PhoneInputChange) => void;
+  onValueChange?: (detail: PhoneInputChange) => void;
 };

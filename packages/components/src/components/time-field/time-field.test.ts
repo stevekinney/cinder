@@ -143,7 +143,7 @@ describe('TimeField', () => {
         id: 'reminder',
         label: 'Reminder time',
         value: '09:30',
-        onchange: (detail: TimeFieldChange) => changes.push(detail),
+        onValueChange: (detail: TimeFieldChange) => changes.push(detail),
       },
     });
 
@@ -158,7 +158,7 @@ describe('TimeField', () => {
       props: {
         id: 'reminder',
         value: '09:30',
-        onchange: (detail: TimeFieldChange) => changes.push(detail),
+        onValueChange: (detail: TimeFieldChange) => changes.push(detail),
       },
     });
 
@@ -175,7 +175,7 @@ describe('TimeField', () => {
         label: 'Reminder time',
         granularity: 'second',
         value: '09:30:00',
-        onchange: (detail: TimeFieldChange) => changes.push(detail),
+        onValueChange: (detail: TimeFieldChange) => changes.push(detail),
       },
     });
 
@@ -489,7 +489,7 @@ describe('TimeField', () => {
         value: '09:30',
         readonly: true,
         timezones: ['America/Denver', 'UTC'],
-        onchange: (detail: TimeFieldChange) => changes.push(detail),
+        onValueChange: (detail: TimeFieldChange) => changes.push(detail),
       },
     });
 
@@ -510,7 +510,7 @@ describe('TimeField', () => {
         label: 'Reminder time',
         value: '09:30',
         timezones: ['America/Denver', 'UTC'],
-        onchange: (detail: TimeFieldChange) => changes.push(detail),
+        onValueChange: (detail: TimeFieldChange) => changes.push(detail),
       },
     });
 
@@ -529,7 +529,7 @@ describe('TimeField', () => {
         granularity: 'second',
         value: '09:30',
         timezones: ['UTC', 'Europe/Berlin'],
-        onchange: (detail: TimeFieldChange) => changes.push(detail),
+        onValueChange: (detail: TimeFieldChange) => changes.push(detail),
       },
     });
 
@@ -548,7 +548,7 @@ describe('TimeField', () => {
         label: 'Reminder time',
         value: '09:30',
         timezone: 'UTC',
-        onchange: (detail: TimeFieldChange) => changes.push(detail),
+        onValueChange: (detail: TimeFieldChange) => changes.push(detail),
       },
     });
 
@@ -569,7 +569,7 @@ describe('TimeField', () => {
         label: 'Reminder time',
         value: '09:30',
         timezones: ['America/Denver', 'UTC'],
-        onchange: (detail: TimeFieldChange) => changes.push(detail),
+        onValueChange: (detail: TimeFieldChange) => changes.push(detail),
       },
     });
 

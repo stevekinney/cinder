@@ -36,8 +36,8 @@
     disabled = false,
     class: className,
     label = 'Color picker',
-    onchange,
-    oninput,
+    onValueCommit,
+    onValueChange,
   }: ColorPickerProps = $props();
 
   const gradientId = `${pickerId}-gradient`;
@@ -195,9 +195,9 @@
     internalValue = hex;
     lastEmittedHex = hex;
     if (value !== undefined) value = hex;
-    // Every value mutation fires `oninput`; `onchange` additionally fires on commit.
-    oninput?.(hex);
-    if (reason === 'change') onchange?.(hex);
+    // Every value mutation fires `onValueChange`; `onValueCommit` additionally fires on commit.
+    onValueChange?.(hex);
+    if (reason === 'change') onValueCommit?.(hex);
   }
 
   function commitFromHsla(next: Hsla, reason: 'input' | 'change'): void {
@@ -210,7 +210,7 @@
     internalValue = hex;
     lastEmittedHex = hex;
     if (value !== undefined) value = hex;
-    onchange?.(hex);
+    onValueCommit?.(hex);
   }
 
   // ── Gradient handling ──────────────────────────────────────────────────
@@ -478,7 +478,7 @@
   const currentHex = $derived(formatHex(hue, saturation, lightnessValue, alphaValue, alpha));
 
   function handleSwatchChange(
-    selectedColor: Parameters<NonNullable<ColorSwatchPickerProps['onchange']>>[0],
+    selectedColor: Parameters<NonNullable<ColorSwatchPickerProps['onValueChange']>>[0],
   ): void {
     if (disabled) return;
     const parsed = parseToHsla(selectedColor);
@@ -656,7 +656,7 @@
       size="sm"
       {disabled}
       class="cinder-color-picker__swatches"
-      onchange={handleSwatchChange}
+      onValueChange={handleSwatchChange}
     />
   {/if}
 

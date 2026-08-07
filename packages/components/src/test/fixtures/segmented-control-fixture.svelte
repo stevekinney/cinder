@@ -22,7 +22,6 @@
     selectionMode?: 'single' | 'multiple';
     value?: string | SvelteSet<string> | undefined;
     onValueChange?: (next: string | SvelteSet<string> | undefined) => void;
-    onchange?: (value: string) => void;
     variant?: 'radiogroup' | 'tablist' | 'navigation';
     size?: 'sm' | 'md' | 'lg';
     density?: 'toolbar';
@@ -52,7 +51,6 @@
     selectionMode = 'single',
     value = $bindable(),
     onValueChange,
-    onchange,
     variant,
     size,
     density,
@@ -131,7 +129,7 @@
     {fullWidth}
     {hideLabel}
     {disabled}
-    {onchange}
+    {onValueChange}
     class={className}
     {...rest}
   >
@@ -153,7 +151,7 @@
     {hideLabel}
     {disabled}
     {disallowEmptySelection}
-    {onchange}
+    {onValueChange}
     class={className}
     {...rest}
   >

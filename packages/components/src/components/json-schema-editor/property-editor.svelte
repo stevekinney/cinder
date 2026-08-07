@@ -15,7 +15,10 @@
     /** Called when nested form-only validation errors change. */
     onvalidationErrorcount?: ((count: number) => void) | undefined;
     /** Called whenever the value changes. */
-    onchange: (next: JsonSchemaValue, options?: { coalesceKey?: string; label?: string }) => void;
+    onValueChange: (
+      next: JsonSchemaValue,
+      options?: { coalesceKey?: string; label?: string },
+    ) => void;
     class?: string;
   };
 
@@ -106,7 +109,7 @@
     depth = 0,
     readonly = false,
     onvalidationErrorcount,
-    onchange,
+    onValueChange,
     class: className,
   }: PropertyEditorProps = $props();
 
@@ -151,7 +154,7 @@
     for (const key of Object.keys(edits)) {
       if (next[key] === undefined) delete next[key];
     }
-    onchange(next, opts);
+    onValueChange(next, opts);
   }
 
   function setTypeFromCheckboxes(types: JsonSchemaTypeName[]) {
@@ -188,7 +191,7 @@
 
   function convertBooleanToObject() {
     if (readonly) return;
-    onchange({}, { label: 'convert to object schema' });
+    onValueChange({}, { label: 'convert to object schema' });
   }
 
   function parseOptionalFiniteNumber(raw: string): number | undefined {
@@ -434,7 +437,7 @@
           properties={objectValue.properties ?? {}}
           required={objectValue.required ?? []}
           onvalidationErrorcount={(count) => setChildValidationErrorCount('properties', count)}
-          onchange={patchProperties}
+          onValueChange={patchProperties}
         />
       </div>
     {/if}
@@ -450,7 +453,7 @@
           {readonly}
           value={objectValue.items ?? {}}
           onvalidationErrorcount={(count) => setChildValidationErrorCount('items', count)}
-          onchange={(next) => setItems(next)}
+          onValueChange={(next) => setItems(next)}
         />
       </div>
     {/if}
@@ -551,7 +554,7 @@
                 value={branch}
                 onvalidationErrorcount={(count) =>
                   setChildValidationErrorCount(`${keyword}:${branchKey}`, count)}
-                onchange={(next) => {
+                onValueChange={(next) => {
                   const list = [...objectValue[keyword]!];
                   list[branchIndex] = next;
                   patchComposition(keyword, list);
