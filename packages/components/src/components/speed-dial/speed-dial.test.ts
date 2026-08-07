@@ -126,11 +126,9 @@ describe('SpeedDial', () => {
       const cancel = waitForSpeedDialExit(action, complete);
 
       dispatchTransitionBoundary(action, 'transitionend', 'opacity');
-      await flushQueuedFocus();
       expect(complete).not.toHaveBeenCalled();
 
       dispatchTransitionBoundary(action, 'transitionend', 'transform');
-      await flushQueuedFocus();
       expect(complete).toHaveBeenCalledTimes(1);
 
       cancel();
@@ -176,15 +174,12 @@ describe('SpeedDial', () => {
 
       dispatchTransitionBoundary(action, 'transitioncancel', 'opacity');
       dispatchTransitionBoundary(action, 'transitioncancel', 'transform');
-      await flushQueuedFocus();
       expect(complete).not.toHaveBeenCalled();
 
       dispatchTransitionBoundary(action, 'transitionend', 'opacity');
-      await flushQueuedFocus();
       expect(complete).not.toHaveBeenCalled();
 
       dispatchTransitionBoundary(action, 'transitionend', 'transform');
-      await flushQueuedFocus();
       expect(complete).toHaveBeenCalledTimes(1);
 
       cancel();
@@ -207,11 +202,9 @@ describe('SpeedDial', () => {
       const cancel = waitForSpeedDialExit(action, complete);
 
       dispatchTransitionBoundary(action, 'transitionend', 'opacity');
-      await flushQueuedFocus();
       expect(complete).not.toHaveBeenCalled();
 
       dispatchTransitionBoundary(action, 'transitionend', 'width');
-      await flushQueuedFocus();
       expect(complete).toHaveBeenCalledTimes(1);
 
       cancel();
@@ -237,11 +230,9 @@ describe('SpeedDial', () => {
 
       dispatchTransitionBoundaryFrom(text, 'transitionend', 'opacity');
       dispatchTransitionBoundary(action, 'transitionend', 'transform');
-      await flushQueuedFocus();
       expect(complete).not.toHaveBeenCalled();
 
       dispatchTransitionBoundary(action, 'transitionend', 'opacity');
-      await flushQueuedFocus();
       expect(complete).toHaveBeenCalledTimes(1);
 
       cancel();
@@ -266,7 +257,6 @@ describe('SpeedDial', () => {
 
       dispatchTransitionBoundary(action, 'transitionend', 'opacity');
       dispatchTransitionBoundary(action, 'transitionend', 'transform');
-      await flushQueuedFocus();
 
       expect(complete).not.toHaveBeenCalled();
     } finally {
@@ -291,11 +281,9 @@ describe('SpeedDial', () => {
     try {
       const cancel = waitForSpeedDialExit([first, second], complete);
       dispatchTransitionBoundary(first, 'transitionend', 'opacity');
-      await flushQueuedFocus();
       expect(complete).not.toHaveBeenCalled();
 
       dispatchTransitionBoundary(second, 'transitionend', 'opacity');
-      await flushQueuedFocus();
       expect(complete).toHaveBeenCalledTimes(1);
       cancel();
     } finally {
