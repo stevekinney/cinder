@@ -2016,36 +2016,6 @@
       }
     },
     {
-      "name": "FacetedFilterBar",
-      "id": "faceted-filter-bar",
-      "import": "@lostgradient/cinder/faceted-filter-bar",
-      "exportName": "FacetedFilterBar",
-      "category": "form",
-      "status": "beta",
-      "purpose": "Composed filtering toolbar with search, select facets, applied-filter chips, and clear-all for dense operational list views.",
-      "tags": ["form", "filter"],
-      "useWhen": [
-        "Filtering a list or table by multiple dimensions such as status, category, and queue simultaneously.",
-        "Showing applied filters as removable chips so users can see and undo active constraints."
-      ],
-      "avoidWhen": [
-        {
-          "reason": "A single search field or one select is sufficient — compose SearchField or Select directly."
-        },
-        {
-          "reason": "Filtering navigates to a new page — the bar owns no routing or persistence."
-        }
-      ],
-      "related": ["search-field", "chip", "select", "toolbar"],
-      "hasConstraints": false,
-      "hasExamples": true,
-      "artifacts": {
-        "schema": "@lostgradient/cinder/faceted-filter-bar/schema",
-        "variables": "@lostgradient/cinder/faceted-filter-bar/variables",
-        "examples": "@lostgradient/cinder/faceted-filter-bar/examples"
-      }
-    },
-    {
       "name": "Feed",
       "id": "feed",
       "import": "@lostgradient/cinder/feed",
@@ -2155,6 +2125,36 @@
         "schema": "@lostgradient/cinder/file-upload/schema",
         "variables": "@lostgradient/cinder/file-upload/variables",
         "examples": "@lostgradient/cinder/file-upload/examples"
+      }
+    },
+    {
+      "name": "FilterBar",
+      "id": "filter-bar",
+      "import": "@lostgradient/cinder/filter-bar",
+      "exportName": "FilterBar",
+      "category": "form",
+      "status": "beta",
+      "purpose": "Composed filtering toolbar with search, select facets, applied-filter chips, and clear-all for dense operational list views.",
+      "tags": ["form", "filter"],
+      "useWhen": [
+        "Filtering a list or table by multiple dimensions such as status, category, and queue simultaneously.",
+        "Showing applied filters as removable chips so users can see and undo active constraints."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "A single search field or one select is sufficient — compose SearchField or Select directly."
+        },
+        {
+          "reason": "Filtering navigates to a new page — the bar owns no routing or persistence."
+        }
+      ],
+      "related": ["search-field", "chip", "select", "toolbar"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/filter-bar/schema",
+        "variables": "@lostgradient/cinder/filter-bar/variables",
+        "examples": "@lostgradient/cinder/filter-bar/examples"
       }
     },
     {

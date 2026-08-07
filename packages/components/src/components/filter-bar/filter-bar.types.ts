@@ -59,12 +59,12 @@ export type AppliedFilter = {
 };
 
 /**
- * Props for the FacetedFilterBar component.
+ * Props for the FilterBar component.
  *
  * A composed filtering toolbar that combines a leading search field, consumer-defined
  * facet controls, applied-filter chips, and a clear-all action into one accessible unit.
  */
-export type FacetedFilterBarProps = Omit<HTMLAttributes<HTMLDivElement>, 'class' | 'children'> & {
+export type FilterBarProps = Omit<HTMLAttributes<HTMLDivElement>, 'class' | 'children'> & {
   /** Accessible label for the filter toolbar region. Required for screen readers. */
   'aria-label'?: string;
   /** Current text search query. When provided, the search field is controlled. */

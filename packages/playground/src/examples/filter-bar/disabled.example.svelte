@@ -5,8 +5,8 @@
 </script>
 
 <script lang="ts">
-  import { FacetedFilterBar } from '@lostgradient/cinder/faceted-filter-bar';
-  import type { FacetDefinition } from '@lostgradient/cinder/faceted-filter-bar';
+  import { FilterBar } from '@lostgradient/cinder/filter-bar';
+  import type { FacetDefinition } from '@lostgradient/cinder/filter-bar';
 
   const facets: FacetDefinition[] = [
     {
@@ -22,7 +22,7 @@
   ];
 </script>
 
-<FacetedFilterBar
+<FilterBar
   aria-label="Disabled filter bar"
   {facets}
   appliedFilters={[{ key: 'status', value: 'failed', label: 'Status' }]}

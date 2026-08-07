@@ -339,15 +339,15 @@ export type { DropdownTriggerProps } from './components/dropdown-trigger/index.t
 export { default as EmptyState } from './components/empty-state/index.ts';
 export type { EmptyStateProps } from './components/empty-state/index.ts';
 
-export { default as FacetedFilterBar } from './components/faceted-filter-bar/index.ts';
+export { default as FilterBar } from './components/filter-bar/index.ts';
 export type {
   AppliedFilter,
   CustomFacet,
   FacetDefinition,
   FacetOption,
-  FacetedFilterBarProps,
+  FilterBarProps,
   SelectFacet,
-} from './components/faceted-filter-bar/index.ts';
+} from './components/filter-bar/index.ts';
 
 export { default as FeedBoundary } from './components/feed-boundary/index.ts';
 export type { FeedBoundaryProps } from './components/feed-boundary/index.ts';

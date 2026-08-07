@@ -16,10 +16,10 @@
     AppliedFilter,
     CustomFacet,
     FacetDefinition,
-    FacetedFilterBarProps,
+    FilterBarProps,
     FacetOption,
     SelectFacet,
-  } from './faceted-filter-bar.types.ts';
+  } from './filter-bar.types.ts';
 </script>
 
 <script lang="ts">
@@ -30,7 +30,7 @@
   import Button from '../button/button.svelte';
   import { classNames } from '../../utilities/class-names.ts';
 
-  import type { FacetedFilterBarProps } from './faceted-filter-bar.types.ts';
+  import type { FilterBarProps } from './filter-bar.types.ts';
 
   const generatedId = $props.id();
 
@@ -49,7 +49,7 @@
     onFilterRemove,
     onClearAll,
     ...rest
-  }: FacetedFilterBarProps = $props();
+  }: FilterBarProps = $props();
 
   const searchId = $derived(`${generatedId}-search`);
   let rootElement: HTMLDivElement | undefined = $state();
@@ -130,17 +130,17 @@
 <div
   bind:this={rootElement}
   {...rest}
-  class={classNames('cinder-faceted-filter-bar', className)}
+  class={classNames('cinder-filter-bar', className)}
   role="search"
   aria-label={ariaLabel}
   data-disabled={disabled ? '' : undefined}
 >
   <!-- Controls row: search field + facet selects -->
-  <div class="cinder-faceted-filter-bar__controls">
+  <div class="cinder-filter-bar__controls">
     {#if searchVisible}
       <SearchField
         id={searchId}
-        class="cinder-faceted-filter-bar__search"
+        class="cinder-filter-bar__search"
         value={currentSearchQuery}
         placeholder={searchPlaceholder}
         aria-label={searchAriaLabel}
@@ -151,16 +151,13 @@
 
     {#each facets as facet (facet.key)}
       {#if facet.type === 'select'}
-        <div class="cinder-faceted-filter-bar__facet">
-          <label
-            class="cinder-faceted-filter-bar__facet-label"
-            for={`${generatedId}-facet-${facet.key}`}
-          >
+        <div class="cinder-filter-bar__facet">
+          <label class="cinder-filter-bar__facet-label" for={`${generatedId}-facet-${facet.key}`}>
             {facet.label}
           </label>
           <select
             id={`${generatedId}-facet-${facet.key}`}
-            class="cinder-faceted-filter-bar__select"
+            class="cinder-filter-bar__select"
             value={resolveFacetValue(facet.key)}
             disabled={disabled || facet.disabled}
             aria-label={facet.label}
@@ -174,10 +171,10 @@
               <option value={option.value} disabled={option.disabled}>{option.label}</option>
             {/each}
           </select>
-          <span class="cinder-faceted-filter-bar__select-chevron" aria-hidden="true"></span>
+          <span class="cinder-filter-bar__select-chevron" aria-hidden="true"></span>
         </div>
       {:else if facet.type === 'custom'}
-        <div class="cinder-faceted-filter-bar__facet">
+        <div class="cinder-filter-bar__facet">
           {@render facet.control({
             value: getFacetCurrentValue(facet.key),
             onValueChange: (value: string) => {
@@ -191,7 +188,7 @@
 
   <!-- Active controls row: chips + clear all -->
   {#if hasAppliedFilters}
-    <div class="cinder-faceted-filter-bar__chips" aria-label="Active filter controls">
+    <div class="cinder-filter-bar__chips" aria-label="Active filter controls">
       {#each appliedFilters as filter (filter.key)}
         {@const displayValue = resolveFilterDisplayValue(filter.key, filter.value)}
         <Chip
@@ -206,7 +203,7 @@
       <Button
         variant="ghost"
         size="sm"
-        class="cinder-faceted-filter-bar__clear-all"
+        class="cinder-filter-bar__clear-all"
         {disabled}
         aria-label="Clear all filters"
         onclick={handleClearAll}

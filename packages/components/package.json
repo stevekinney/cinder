@@ -2081,38 +2081,6 @@
       "import": "./src/components/empty-state/empty-state.examples.json",
       "default": "./src/components/empty-state/empty-state.examples.json"
     },
-    "./faceted-filter-bar": {
-      "types": "./dist/components/faceted-filter-bar/index.d.ts",
-      "browser": "./src/components/faceted-filter-bar/index.ts",
-      "node": "./dist/server/components/faceted-filter-bar/index.js",
-      "svelte": "./src/components/faceted-filter-bar/index.ts",
-      "import": "./src/components/faceted-filter-bar/index.ts",
-      "default": "./dist/components/faceted-filter-bar/index.js"
-    },
-    "./faceted-filter-bar/schema": {
-      "types": "./dist/components/faceted-filter-bar/faceted-filter-bar.schema.d.ts",
-      "browser": "./src/components/faceted-filter-bar/faceted-filter-bar.schema.ts",
-      "node": "./dist/server/components/faceted-filter-bar/faceted-filter-bar.schema.js",
-      "svelte": "./src/components/faceted-filter-bar/faceted-filter-bar.schema.ts",
-      "import": "./src/components/faceted-filter-bar/faceted-filter-bar.schema.ts",
-      "default": "./dist/components/faceted-filter-bar/faceted-filter-bar.schema.js"
-    },
-    "./faceted-filter-bar/variables": {
-      "types": "./dist/components/faceted-filter-bar/faceted-filter-bar.variables.d.ts",
-      "browser": "./src/components/faceted-filter-bar/faceted-filter-bar.variables.ts",
-      "node": "./dist/server/components/faceted-filter-bar/faceted-filter-bar.variables.js",
-      "svelte": "./src/components/faceted-filter-bar/faceted-filter-bar.variables.ts",
-      "import": "./src/components/faceted-filter-bar/faceted-filter-bar.variables.ts",
-      "default": "./dist/components/faceted-filter-bar/faceted-filter-bar.variables.js"
-    },
-    "./faceted-filter-bar/styles": {
-      "types": "./dist/components/faceted-filter-bar/faceted-filter-bar.css.d.ts",
-      "default": "./dist/components/faceted-filter-bar/faceted-filter-bar.css"
-    },
-    "./faceted-filter-bar/examples": {
-      "import": "./src/components/faceted-filter-bar/faceted-filter-bar.examples.json",
-      "default": "./src/components/faceted-filter-bar/faceted-filter-bar.examples.json"
-    },
     "./feed": {
       "types": "./dist/components/feed/index.d.ts",
       "browser": "./src/components/feed/index.ts",
@@ -2224,6 +2192,38 @@
     "./file-upload/examples": {
       "import": "./src/components/file-upload/file-upload.examples.json",
       "default": "./src/components/file-upload/file-upload.examples.json"
+    },
+    "./filter-bar": {
+      "types": "./dist/components/filter-bar/index.d.ts",
+      "browser": "./src/components/filter-bar/index.ts",
+      "node": "./dist/server/components/filter-bar/index.js",
+      "svelte": "./src/components/filter-bar/index.ts",
+      "import": "./src/components/filter-bar/index.ts",
+      "default": "./dist/components/filter-bar/index.js"
+    },
+    "./filter-bar/schema": {
+      "types": "./dist/components/filter-bar/filter-bar.schema.d.ts",
+      "browser": "./src/components/filter-bar/filter-bar.schema.ts",
+      "node": "./dist/server/components/filter-bar/filter-bar.schema.js",
+      "svelte": "./src/components/filter-bar/filter-bar.schema.ts",
+      "import": "./src/components/filter-bar/filter-bar.schema.ts",
+      "default": "./dist/components/filter-bar/filter-bar.schema.js"
+    },
+    "./filter-bar/variables": {
+      "types": "./dist/components/filter-bar/filter-bar.variables.d.ts",
+      "browser": "./src/components/filter-bar/filter-bar.variables.ts",
+      "node": "./dist/server/components/filter-bar/filter-bar.variables.js",
+      "svelte": "./src/components/filter-bar/filter-bar.variables.ts",
+      "import": "./src/components/filter-bar/filter-bar.variables.ts",
+      "default": "./dist/components/filter-bar/filter-bar.variables.js"
+    },
+    "./filter-bar/styles": {
+      "types": "./dist/components/filter-bar/filter-bar.css.d.ts",
+      "default": "./dist/components/filter-bar/filter-bar.css"
+    },
+    "./filter-bar/examples": {
+      "import": "./src/components/filter-bar/filter-bar.examples.json",
+      "default": "./src/components/filter-bar/filter-bar.examples.json"
     },
     "./floating-action": {
       "types": "./dist/components/floating-action/index.d.ts",

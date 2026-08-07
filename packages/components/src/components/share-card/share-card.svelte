@@ -280,7 +280,7 @@
           <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
         </svg>
       </span>
-      {action.label}
+      {#if action.labelSnippet}{@render action.labelSnippet()}{:else}{action.label}{/if}
     {/if}
   </button>
 {/snippet}
@@ -337,7 +337,7 @@
           <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
         </svg>
       </span>
-      {action.label}
+      {#if action.labelSnippet}{@render action.labelSnippet()}{:else}{action.label}{/if}
     {/if}
   </button>
 {/snippet}

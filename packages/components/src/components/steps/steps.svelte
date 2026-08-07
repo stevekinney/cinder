@@ -16,6 +16,8 @@
 </script>
 
 <script lang="ts">
+  import type { Snippet } from 'svelte';
+
   import type { StepItemState, StepsProps } from './steps.types.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import Check from 'lucide-svelte/icons/check';
@@ -82,7 +84,7 @@
             onclick={step.onclick}
             aria-current={isCurrent ? 'step' : undefined}
           >
-            {@render stepBody(stepLabel, stepDescription, state, completedLabel, skippedLabel)}
+            {@render stepBody(stepLabel, state, completedLabel, skippedLabel, stepDescription)}
           </a>
         {:else if step.onclick}
           <button
@@ -91,11 +93,11 @@
             onclick={step.onclick}
             aria-current={isCurrent ? 'step' : undefined}
           >
-            {@render stepBody(stepLabel, stepDescription, state, completedLabel, skippedLabel)}
+            {@render stepBody(stepLabel, state, completedLabel, skippedLabel, stepDescription)}
           </button>
         {:else}
           <span class="cinder-steps__body">
-            {@render stepBody(stepLabel, stepDescription, state, completedLabel, skippedLabel)}
+            {@render stepBody(stepLabel, state, completedLabel, skippedLabel, stepDescription)}
           </span>
         {/if}
         {#if index < steps.length - 1}
@@ -111,11 +113,11 @@
 </nav>
 
 {#snippet stepBody(
-  bodyLabel: string,
-  bodyDescription: string | undefined,
+  bodyLabel: string | Snippet,
   bodyState: StepItemState,
   bodyCompletedLabel: string,
   bodySkippedLabel: string,
+  bodyDescription?: string | Snippet,
 )}
   <span class="cinder-steps__body-content">
     {#if bodyState === 'complete'}
@@ -125,9 +127,13 @@
       <span class="cinder-steps__sr-only">{bodySkippedLabel}</span>
       <span class="cinder-steps__sr-only-separator"> </span>
     {/if}
-    <span class="cinder-steps__label">{bodyLabel}</span>
+    <span class="cinder-steps__label">
+      {#if typeof bodyLabel === 'string'}{bodyLabel}{:else}{@render bodyLabel()}{/if}
+    </span>
     {#if bodyDescription}
-      <span class="cinder-steps__description">{bodyDescription}</span>
+      <span class="cinder-steps__description">
+        {#if typeof bodyDescription === 'string'}{bodyDescription}{:else}{@render bodyDescription()}{/if}
+      </span>
     {/if}
   </span>
 {/snippet}

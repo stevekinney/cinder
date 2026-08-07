@@ -1,10 +1,10 @@
-# FacetedFilterBar
+# FilterBar
 
 Composed filtering toolbar with a leading search field, select-based or custom facet controls, removable applied-filter chips, and a clear-all action. Designed for dense operational list views such as workflow queues, failure triage dashboards, and schedule browsers.
 
 ## Overview
 
-`FacetedFilterBar` composes `SearchField`, `Chip` (removable mode), and native select controls into one accessible filtering surface. It owns no routing, persistence, or data fetching — it emits change events and the consumer owns the filter state and data loading.
+`FilterBar` composes `SearchField`, `Chip` (removable mode), and native select controls into one accessible filtering surface. It owns no routing, persistence, or data fetching — it emits change events and the consumer owns the filter state and data loading.
 
 The bar supports two facet types:
 
@@ -17,8 +17,8 @@ Applied filters are displayed as removable chips. A visually-hidden live region 
 
 ```svelte
 <script lang="ts">
-  import { FacetedFilterBar } from '@lostgradient/cinder/faceted-filter-bar';
-  import type { AppliedFilter, FacetDefinition } from '@lostgradient/cinder/faceted-filter-bar';
+  import { FilterBar } from '@lostgradient/cinder/filter-bar';
+  import type { AppliedFilter, FacetDefinition } from '@lostgradient/cinder/filter-bar';
 
   const facets: FacetDefinition[] = [
     {
@@ -69,7 +69,7 @@ Applied filters are displayed as removable chips. A visually-hidden live region 
   }
 </script>
 
-<FacetedFilterBar
+<FilterBar
   aria-label="Workflow filters"
   {facets}
   {appliedFilters}
@@ -87,15 +87,15 @@ Use `type: 'custom'` with a `control` snippet for any facet that cannot be expre
 
 ```svelte
 <script lang="ts">
-  import { FacetedFilterBar } from '@lostgradient/cinder/faceted-filter-bar';
-  import type { FacetDefinition } from '@lostgradient/cinder/faceted-filter-bar';
+  import { FilterBar } from '@lostgradient/cinder/filter-bar';
+  import type { FacetDefinition } from '@lostgradient/cinder/filter-bar';
 </script>
 
 {#snippet dateRangeControl({ value, onchange }: { value: string; onchange: (v: string) => void })}
   <!-- render your date-range control here; call onchange(value) on selection -->
 {/snippet}
 
-<FacetedFilterBar
+<FilterBar
   aria-label="Order filters"
   facets={[
     {
@@ -178,7 +178,7 @@ type AppliedFilter = {
 
 ## Accessibility
 
-`FacetedFilterBar` uses `role="search"` on the root element to expose the filtering surface as a landmark. Consumers should provide a meaningful `aria-label` prop (e.g. `"Workflow filters"`) so screen reader users can navigate to it by landmark.
+`FilterBar` uses `role="search"` on the root element to expose the filtering surface as a landmark. Consumers should provide a meaningful `aria-label` prop (e.g. `"Workflow filters"`) so screen reader users can navigate to it by landmark.
 
 Each select facet receives an `aria-label` attribute equal to its `label` prop, and an associated visually-hidden `label` element is rendered via the `cinder-sr-only` class for redundancy.
 
@@ -186,4 +186,4 @@ Applied-filter chip remove buttons are labeled `"Remove filter: {label}: {value}
 
 A `role="status"` live region (polite) always stays in the DOM and announces the active filter count and each applied value whenever the `appliedFilters` prop changes. The region is never conditionally rendered with `{#if}` — this ensures assistive technologies register it before any content is injected.
 
-See `faceted-filter-bar.a11y.md` for the full keyboard and pointer interaction model.
+See `filter-bar.a11y.md` for the full keyboard and pointer interaction model.

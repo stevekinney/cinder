@@ -1,3 +1,4 @@
+import type { Snippet } from 'svelte';
 import type { HTMLAttributes } from 'svelte/elements';
 
 /** Props for the PricingCard component. */
@@ -16,8 +17,9 @@ export type PricingCardProps = Omit<HTMLAttributes<HTMLDivElement>, 'onselect'> 
    * Optional footnote or caveat displayed beneath the features list.
    * Use for legal disclaimers, billing notes, or conditional terms.
    * Rendered in a visually subdued style to distinguish it from the main feature list.
+   * Accepts plain text or a rich Snippet (e.g. a terms link).
    */
-  caveat?: string;
+  caveat?: string | Snippet;
   /**
    * Whether this card represents the currently selected plan.
    * Sets `data-cinder-selected` and `aria-current="true"` on the root element.

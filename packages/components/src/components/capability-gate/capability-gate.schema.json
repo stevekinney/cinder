@@ -48,6 +48,11 @@
   "metadata": {
     "unsupportedProps": [
       {
+        "name": "actions",
+        "reason": "function-or-snippet",
+        "description": "Action row content — compose your own Buttons/links (primary, fallback,\ndismiss, anything else). The snippet receives a `dismiss` function that\nruns the gate's own unmount-and-`onDismiss` path, so a consumer dismiss\nbutton gets the component's focus handling for free:\n\n```svelte\n{#snippet actions({ dismiss })}\n  <Button label=\"Allow access\" onclick={requestAccess} />\n  <Button variant=\"secondary\" label=\"Not now\" onclick={dismiss} />\n{/snippet}\n```"
+      },
+      {
         "name": "children",
         "reason": "function-or-snippet",
         "description": "Custom content rendered below the status text and before the actions."

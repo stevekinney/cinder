@@ -1,3 +1,5 @@
+import type { DialogCancelProps } from '../../utilities/dialog-props.ts';
+
 /**
  * A thin opinionated preset over `<Modal>` for destructive-action confirmations.
  *
@@ -10,7 +12,14 @@
  * For richer body content (markup, lists, multi-paragraph text), compose `<Modal>` +
  * `<Button>` directly. `aria-describedby` works best with short, plain-text descriptions.
  */
-export type ConfirmDialogProps = {
+/**
+ * Cancel semantics (shared vocabulary from {@link DialogCancelProps}): the
+ * cancel button ALWAYS renders, defaulting its label to "Cancel". `onCancel`
+ * fires on every dismissal affordance — cancel button, Escape, backdrop
+ * click, or the close-X — but NOT on parent-driven `open = false`; callbacks
+ * are not awaited and thrown callbacks do not block close.
+ */
+export type ConfirmDialogProps = DialogCancelProps & {
   /** Controls visibility. Bindable. */
   open: boolean;
   /** Modal title; passed through to <Modal>. */
@@ -22,8 +31,6 @@ export type ConfirmDialogProps = {
    * continuous run.
    */
   description?: string;
-  /** Cancel button label. Defaults to "Cancel". */
-  cancelLabel?: string;
   /**
    * Confirm button label. Required — no default. Name the action being confirmed:
    * - Destructive: "Delete", "Discard changes", "Remove from organization".
@@ -45,13 +52,6 @@ export type ConfirmDialogProps = {
   typeToConfirmLabel?: string;
   /** Fired when the user activates the confirm button. Required. Component closes itself after. */
   onConfirm: () => void;
-  /**
-   * Fired when the user cancels via ANY dismissal affordance — cancel button, Escape,
-   * backdrop click, or the close-X button. Optional.
-   * Parent-driven `open = false` does NOT fire this callback.
-   * Callbacks are not awaited; thrown callbacks do not block close.
-   */
-  onCancel?: () => void;
   /** Forwarded to <Modal>; focus is restored here on close. */
   triggerRef?: HTMLElement | null;
   /** Optional extra class on the underlying <Modal>. Destructured as `class: className` per repo convention. */

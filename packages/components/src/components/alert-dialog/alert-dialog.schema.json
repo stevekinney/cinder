@@ -2,6 +2,10 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "properties": {
+    "cancelLabel": {
+      "type": "string",
+      "description": "Label for the cancel button. Rendering and default semantics are\nper-dialog — see the component's own Props documentation."
+    },
     "open": {
       "type": "boolean",
       "description": "Controls whether the alert dialog is open; bindable for controlled usage."
@@ -17,10 +21,6 @@
     "acknowledgeLabel": {
       "type": "string",
       "description": "Label for the primary acknowledgement button. Default `OK`."
-    },
-    "cancelLabel": {
-      "type": "string",
-      "description": "Label for the optional cancel button. When omitted, no cancel button is rendered."
     },
     "destructive": {
       "type": "boolean",
@@ -42,7 +42,8 @@
       },
       {
         "name": "onCancel",
-        "reason": "function-or-snippet"
+        "reason": "function-or-snippet",
+        "description": "Called when the user cancels (cancel button, Escape, or backdrop per the dialog's policy)."
       },
       {
         "name": "triggerRef",

@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 import { describe, expect, test } from 'bun:test';
+import { createRawSnippet } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -180,14 +181,25 @@ diff --git a/src/two.ts b/src/two.ts
     expect(parsed.truncated).toBe(true);
   });
 
-  test('renders the configured empty message when there are no diff rows', () => {
+  test('renders the empty snippet when there are no diff rows', () => {
     const { container } = render(SourceDiffViewer, {
       patch: '',
-      emptyMessage: 'Nothing changed.',
+      empty: createRawSnippet(() => ({
+        render: () => `<span>Nothing changed.</span>`,
+        setup: () => {},
+      })),
     });
 
     expect(container.querySelector('.cinder-source-diff-viewer__empty')?.textContent).toBe(
       'Nothing changed.',
+    );
+  });
+
+  test('renders the default empty message when no empty snippet is supplied', () => {
+    const { container } = render(SourceDiffViewer, { patch: '' });
+
+    expect(container.querySelector('.cinder-source-diff-viewer__empty')?.textContent).toBe(
+      'No patch lines to display.',
     );
   });
 

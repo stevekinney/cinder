@@ -5,27 +5,27 @@
    * FACETED FILTER BAR
    * ======================================== */
 
-  .cinder-faceted-filter-bar {
+  .cinder-filter-bar {
     display: flex;
     flex-direction: column;
     gap: var(--cinder-space-2);
   }
 
   /* Controls row: search + facet selects in a flex row */
-  .cinder-faceted-filter-bar__controls {
+  .cinder-filter-bar__controls {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: var(--cinder-space-2);
   }
 
-  .cinder-faceted-filter-bar__search {
+  .cinder-filter-bar__search {
     flex: 1 1 14rem;
     min-inline-size: min(14rem, 100%);
   }
 
   /* Facet wrapper: positions the select + chevron overlay */
-  .cinder-faceted-filter-bar__facet {
+  .cinder-filter-bar__facet {
     position: relative;
     display: inline-flex;
     align-items: center;
@@ -33,7 +33,7 @@
     flex-shrink: 0;
   }
 
-  .cinder-faceted-filter-bar__facet-label {
+  .cinder-filter-bar__facet-label {
     color: var(--cinder-text-muted);
     font-size: var(--cinder-text-xs);
     font-weight: var(--cinder-font-medium);
@@ -42,7 +42,7 @@
   }
 
   /* Native select styled to match cinder input frame */
-  .cinder-faceted-filter-bar__select {
+  .cinder-filter-bar__select {
     appearance: none;
     padding-block: var(--cinder-space-2);
     padding-inline-start: var(--cinder-space-3);
@@ -62,12 +62,12 @@
   }
 
   @media (hover: hover) {
-    .cinder-faceted-filter-bar__select:hover:not(:disabled) {
+    .cinder-filter-bar__select:hover:not(:disabled) {
       border-color: var(--cinder-border-strong);
     }
   }
 
-  .cinder-faceted-filter-bar__select:focus-visible {
+  .cinder-filter-bar__select:focus-visible {
     outline: var(--cinder-ring-width) solid transparent;
     box-shadow:
       0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
@@ -75,12 +75,12 @@
   }
 
   @media (forced-colors: active) {
-    .cinder-faceted-filter-bar__select:focus-visible {
+    .cinder-filter-bar__select:focus-visible {
       outline: var(--cinder-ring-width) solid ButtonText;
     }
   }
 
-  .cinder-faceted-filter-bar__select:disabled {
+  .cinder-filter-bar__select:disabled {
     background: var(--cinder-surface-inset);
     border-color: var(--cinder-border-muted);
     color: var(--cinder-text-disabled);
@@ -88,7 +88,7 @@
   }
 
   /* Decorative chevron overlaid on the select */
-  .cinder-faceted-filter-bar__select-chevron {
+  .cinder-filter-bar__select-chevron {
     pointer-events: none;
     position: absolute;
     inset-inline-end: var(--cinder-space-3);
@@ -102,7 +102,7 @@
     color: var(--cinder-text-muted);
   }
 
-  .cinder-faceted-filter-bar__select-chevron::after {
+  .cinder-filter-bar__select-chevron::after {
     content: '';
     display: block;
     inline-size: 0.5rem;
@@ -113,7 +113,7 @@
   }
 
   /* Applied-filters chip row */
-  .cinder-faceted-filter-bar__chips {
+  .cinder-filter-bar__chips {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -121,7 +121,7 @@
   }
 
   /* Disabled state on the root affects the controls row visually */
-  .cinder-faceted-filter-bar[data-disabled] .cinder-faceted-filter-bar__select {
+  .cinder-filter-bar[data-disabled] .cinder-filter-bar__select {
     background: var(--cinder-surface-inset);
     border-color: var(--cinder-border-muted);
     color: var(--cinder-text-disabled);

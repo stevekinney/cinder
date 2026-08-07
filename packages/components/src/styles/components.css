@@ -64,7 +64,7 @@
 @import '../components/drawer/drawer.css';
 @import '../components/dropdown/dropdown.css';
 @import '../components/empty-state/empty-state.css';
-@import '../components/faceted-filter-bar/faceted-filter-bar.css';
+@import '../components/filter-bar/filter-bar.css';
 @import '../components/feed/feed.css';
 @import './components/experimental.css';
 @import '../components/file-upload/file-upload.css';

@@ -24,18 +24,20 @@ export type CapabilityGateProps = Omit<
   state: CapabilityGateState;
   /** Presentation variant. @default "inline" */
   variant?: CapabilityGateVariant;
-  /** Label for the primary action button (e.g. "Allow access", "Enable notifications"). */
-  primaryAction?: string;
-  /** Called when the user clicks the primary action button. */
-  onPrimaryAction?: () => void;
-  /** Label for the fallback action (e.g. "Use a different method"). */
-  fallbackAction?: string;
-  /** Href for a fallback link (renders an anchor instead of a button). */
-  fallbackHref?: string;
-  /** Called when the user clicks the fallback action (only when no fallbackHref). */
-  onFallbackAction?: () => void;
-  /** Label for the dismiss action. When provided a dismiss button is rendered. */
-  dismissAction?: string;
+  /**
+   * Action row content — compose your own Buttons/links (primary, fallback,
+   * dismiss, anything else). The snippet receives a `dismiss` function that
+   * runs the gate's own unmount-and-`onDismiss` path, so a consumer dismiss
+   * button gets the component's focus handling for free:
+   *
+   * ```svelte
+   * {#snippet actions({ dismiss })}
+   *   <Button label="Allow access" onclick={requestAccess} />
+   *   <Button variant="secondary" label="Not now" onclick={dismiss} />
+   * {/snippet}
+   * ```
+   */
+  actions?: Snippet<[{ dismiss: () => void }]>;
   /**
    * Called when the user dismisses the gate. The gate unmounts itself on
    * dismiss; move focus to a sensible target here (e.g. the control that

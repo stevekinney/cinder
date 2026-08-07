@@ -600,14 +600,6 @@ function applySourceDiffViewerSchemaRules(schema: ComponentSchemaOutput): void {
       default: true,
     };
   }
-
-  const emptyMessage = schema.properties['emptyMessage'];
-  if (emptyMessage?.type === 'string') {
-    schema.properties['emptyMessage'] = {
-      ...emptyMessage,
-      default: 'No patch lines to display.',
-    };
-  }
 }
 
 function sortedUniqueStrings(values: string[]): string[] {

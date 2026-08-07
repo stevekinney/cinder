@@ -4,6 +4,11 @@ const schema = {
   $schema: 'https://json-schema.org/draft/2020-12/schema',
   type: 'object',
   properties: {
+    cancelLabel: {
+      type: 'string',
+      description:
+        "Label for the cancel button. Rendering and default semantics are\nper-dialog — see the component's own Props documentation.",
+    },
     open: {
       type: 'boolean',
       description: 'Controls visibility. Bindable.',
@@ -16,10 +21,6 @@ const schema = {
       type: 'string',
       description:
         'Optional body description — short, plain text only. Rendered as a single <p> and wired\nto aria-describedby. For rich content (markup, lists, multiple paragraphs), compose\n<Modal> + <Button> directly — screen readers announce aria-describedby targets as one\ncontinuous run.',
-    },
-    cancelLabel: {
-      type: 'string',
-      description: 'Cancel button label. Defaults to "Cancel".',
     },
     confirmLabel: {
       type: 'string',
@@ -55,7 +56,7 @@ const schema = {
         name: 'onCancel',
         reason: 'function-or-snippet',
         description:
-          'Fired when the user cancels via ANY dismissal affordance — cancel button, Escape,\nbackdrop click, or the close-X button. Optional.\nParent-driven `open = false` does NOT fire this callback.\nCallbacks are not awaited; thrown callbacks do not block close.',
+          "Called when the user cancels (cancel button, Escape, or backdrop per the dialog's policy).",
       },
       {
         name: 'onConfirm',

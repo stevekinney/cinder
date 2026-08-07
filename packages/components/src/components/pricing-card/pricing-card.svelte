@@ -85,7 +85,9 @@
     </ul>
 
     {#if caveat}
-      <p class="cinder-pricing-card__caveat" data-cinder-caveat="">{caveat}</p>
+      <p class="cinder-pricing-card__caveat" data-cinder-caveat="">
+        {#if typeof caveat === 'string'}{caveat}{:else}{@render caveat()}{/if}
+      </p>
     {/if}
   </div>
 

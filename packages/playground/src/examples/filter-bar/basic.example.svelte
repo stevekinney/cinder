@@ -1,12 +1,12 @@
 <script lang="ts" module>
-  export const title = 'Workflow list filters';
+  export const title = 'Basic filter bar';
   export const description =
-    'Status, failure category, queue, and workflow type facets for a dense operational workflow list view.';
+    'Search field with status and queue facets, applied-filter chips, and a clear-all action.';
 </script>
 
 <script lang="ts">
-  import { FacetedFilterBar } from '@lostgradient/cinder/faceted-filter-bar';
-  import type { AppliedFilter, FacetDefinition } from '@lostgradient/cinder/faceted-filter-bar';
+  import { FilterBar } from '@lostgradient/cinder/filter-bar';
+  import type { AppliedFilter, FacetDefinition } from '@lostgradient/cinder/filter-bar';
 
   const facets: FacetDefinition[] = [
     {
@@ -18,20 +18,7 @@
         { value: 'running', label: 'Running' },
         { value: 'failed', label: 'Failed' },
         { value: 'paused', label: 'Paused' },
-        { value: 'scheduled', label: 'Scheduled' },
         { value: 'completed', label: 'Completed' },
-      ],
-    },
-    {
-      type: 'select',
-      key: 'failure_category',
-      label: 'Failure category',
-      placeholder: 'All categories',
-      options: [
-        { value: 'timeout', label: 'Timeout' },
-        { value: 'network', label: 'Network error' },
-        { value: 'resource', label: 'Resource exhausted' },
-        { value: 'logic', label: 'Logic error' },
       ],
     },
     {
@@ -43,26 +30,11 @@
         { value: 'default', label: 'Default' },
         { value: 'priority', label: 'Priority' },
         { value: 'background', label: 'Background' },
-        { value: 'scheduled', label: 'Scheduled' },
-      ],
-    },
-    {
-      type: 'select',
-      key: 'workflow_type',
-      label: 'Workflow type',
-      placeholder: 'All types',
-      options: [
-        { value: 'data_pipeline', label: 'Data pipeline' },
-        { value: 'notification', label: 'Notification' },
-        { value: 'sync', label: 'Sync' },
-        { value: 'report', label: 'Report' },
       ],
     },
   ];
 
-  let appliedFilters = $state<AppliedFilter[]>([
-    { key: 'status', value: 'failed', label: 'Status' },
-  ]);
+  let appliedFilters = $state<AppliedFilter[]>([]);
   let searchQuery = $state('');
 
   function handleFacetChange(key: string, value: string) {
@@ -87,12 +59,12 @@
   }
 </script>
 
-<FacetedFilterBar
-  aria-label="Workflow list filters"
+<FilterBar
+  aria-label="Workflow filters"
   {facets}
   {appliedFilters}
   {searchQuery}
-  searchPlaceholder="Search by workflow name or ID…"
+  searchPlaceholder="Search workflows…"
   onSearchChange={(q) => (searchQuery = q)}
   onFacetChange={handleFacetChange}
   onFilterRemove={handleFilterRemove}

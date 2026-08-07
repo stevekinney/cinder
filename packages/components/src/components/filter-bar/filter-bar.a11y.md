@@ -1,8 +1,8 @@
-# FacetedFilterBar accessibility
+# FilterBar accessibility
 
 ## Pattern
 
-`FacetedFilterBar` is a composed filter surface, not a single widget. It uses the `role="search"` landmark to group the filtering controls. Individual controls within (search input, selects, chip remove buttons, clear-all button) follow their own native or ARIA patterns.
+`FilterBar` is a composed filter surface, not a single widget. It uses the `role="search"` landmark to group the filtering controls. Individual controls within (search input, selects, chip remove buttons, clear-all button) follow their own native or ARIA patterns.
 
 Roving-tabindex Toolbar semantics are intentionally NOT applied to the outer container: the search input and select controls own their own arrow-key semantics (text cursor, option navigation), which conflict with the toolbar pattern's arrow-key model. Normal Tab order is used throughout.
 

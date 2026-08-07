@@ -10,7 +10,7 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 setupHappyDom();
 
 const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
-const { default: FacetedFilterBar } = await import('./faceted-filter-bar.svelte');
+const { default: FilterBar } = await import('./filter-bar.svelte');
 
 beforeEach(() => document.body.replaceChildren());
 afterEach(() => cleanup());
@@ -38,77 +38,77 @@ const QUEUE_FACET = {
   ],
 };
 
-describe('FacetedFilterBar structure', () => {
-  test('renders root element with cinder-faceted-filter-bar class', () => {
-    const { container } = render(FacetedFilterBar, {});
-    const root = container.querySelector('.cinder-faceted-filter-bar');
+describe('FilterBar structure', () => {
+  test('renders root element with cinder-filter-bar class', () => {
+    const { container } = render(FilterBar, {});
+    const root = container.querySelector('.cinder-filter-bar');
     expect(root).not.toBeNull();
   });
 
   test('applies role="search" for accessible landmark', () => {
-    const { container } = render(FacetedFilterBar, {});
-    const root = container.querySelector('.cinder-faceted-filter-bar');
+    const { container } = render(FilterBar, {});
+    const root = container.querySelector('.cinder-filter-bar');
     expect(root?.getAttribute('role')).toBe('search');
   });
 
   test('applies aria-label from prop', () => {
-    const { container } = render(FacetedFilterBar, { 'aria-label': 'Workflow filters' } as any);
-    const root = container.querySelector('.cinder-faceted-filter-bar');
+    const { container } = render(FilterBar, { 'aria-label': 'Workflow filters' } as any);
+    const root = container.querySelector('.cinder-filter-bar');
     expect(root?.getAttribute('aria-label')).toBe('Workflow filters');
   });
 
   test('root landmark role cannot be overridden by rest attributes', () => {
-    const { container } = render(FacetedFilterBar, {
+    const { container } = render(FilterBar, {
       role: 'presentation',
       'aria-label': 'Workflow filters',
     } as never);
-    const root = container.querySelector('.cinder-faceted-filter-bar');
+    const root = container.querySelector('.cinder-filter-bar');
     expect(root?.getAttribute('role')).toBe('search');
     expect(root?.getAttribute('aria-label')).toBe('Workflow filters');
   });
 
-  test('merges a custom class alongside cinder-faceted-filter-bar', () => {
-    const { container } = render(FacetedFilterBar, { class: 'custom-class' });
-    const root = container.querySelector('.cinder-faceted-filter-bar');
-    expect(root?.classList.contains('cinder-faceted-filter-bar')).toBe(true);
+  test('merges a custom class alongside cinder-filter-bar', () => {
+    const { container } = render(FilterBar, { class: 'custom-class' });
+    const root = container.querySelector('.cinder-filter-bar');
+    expect(root?.classList.contains('cinder-filter-bar')).toBe(true);
     expect(root?.classList.contains('custom-class')).toBe(true);
   });
 
   test('renders the search field', () => {
-    const { container } = render(FacetedFilterBar, {});
+    const { container } = render(FilterBar, {});
     const searchField = container.querySelector('.cinder-search-field');
     expect(searchField).not.toBeNull();
   });
 
   test('searchVisible=false omits the search field while preserving facet controls', () => {
-    const { container } = render(FacetedFilterBar, {
+    const { container } = render(FilterBar, {
       searchVisible: false,
       searchQuery: 'hidden query',
       facets: [STATUS_FACET],
     });
     expect(container.querySelector('.cinder-search-field')).toBeNull();
     expect(container.querySelector('[aria-label="Status"]')).not.toBeNull();
-    expect(container.querySelector('.cinder-faceted-filter-bar__chips')).toBeNull();
+    expect(container.querySelector('.cinder-filter-bar__chips')).toBeNull();
   });
 
   test('renders select facets from facets prop', () => {
-    const { container } = render(FacetedFilterBar, {
+    const { container } = render(FilterBar, {
       facets: [STATUS_FACET, QUEUE_FACET],
     });
-    const selects = container.querySelectorAll('.cinder-faceted-filter-bar__select');
+    const selects = container.querySelectorAll('.cinder-filter-bar__select');
     expect(selects).toHaveLength(2);
   });
 
   test('renders facet options including placeholder', () => {
-    const { container } = render(FacetedFilterBar, { facets: [STATUS_FACET] });
-    const options = container.querySelectorAll('.cinder-faceted-filter-bar__select option');
+    const { container } = render(FilterBar, { facets: [STATUS_FACET] });
+    const options = container.querySelectorAll('.cinder-filter-bar__select option');
     // placeholder + 3 options
     expect(options).toHaveLength(4);
     expect(options[0]?.textContent).toBe('All statuses');
   });
 
   test('renders applied-filter chips when appliedFilters is provided', () => {
-    const { container } = render(FacetedFilterBar, {
+    const { container } = render(FilterBar, {
       appliedFilters: [
         { key: 'status', value: 'failed', label: 'Status' },
         { key: 'queue', value: 'default', label: 'Queue' },
@@ -122,15 +122,15 @@ describe('FacetedFilterBar structure', () => {
     // Regression: the select used to read only internal state, so a chip from
     // appliedFilters would show while the matching select stayed on the
     // placeholder. The select must mirror the controlled applied value.
-    const { container } = render(FacetedFilterBar, {
+    const { container } = render(FilterBar, {
       facets: [STATUS_FACET, QUEUE_FACET],
       appliedFilters: [{ key: 'status', value: 'failed', label: 'Status' }],
     });
     const statusSelect = container.querySelector<HTMLSelectElement>(
-      '[aria-label="Status"].cinder-faceted-filter-bar__select',
+      '[aria-label="Status"].cinder-filter-bar__select',
     );
     const queueSelect = container.querySelector<HTMLSelectElement>(
-      '[aria-label="Queue"].cinder-faceted-filter-bar__select',
+      '[aria-label="Queue"].cinder-filter-bar__select',
     );
     expect(statusSelect?.value).toBe('failed');
     // A facet with no applied filter falls back to the empty placeholder.
@@ -142,12 +142,12 @@ describe('FacetedFilterBar structure', () => {
     // (which used to write an internal map), then the parent clears
     // appliedFilters externally. The select must follow the controlled state
     // back to the placeholder, not keep showing the value it last held locally.
-    const { container, rerender } = render(FacetedFilterBar, {
+    const { container, rerender } = render(FilterBar, {
       facets: [STATUS_FACET],
       appliedFilters: [],
     });
     let statusSelect = container.querySelector<HTMLSelectElement>(
-      '[aria-label="Status"].cinder-faceted-filter-bar__select',
+      '[aria-label="Status"].cinder-filter-bar__select',
     )!;
     // User picks a value — in a real app this commits to appliedFilters via the
     // onFacetChange callback; here we drive both the local change and the
@@ -159,47 +159,47 @@ describe('FacetedFilterBar structure', () => {
       appliedFilters: [{ key: 'status', value: 'failed', label: 'Status' }],
     });
     statusSelect = container.querySelector<HTMLSelectElement>(
-      '[aria-label="Status"].cinder-faceted-filter-bar__select',
+      '[aria-label="Status"].cinder-filter-bar__select',
     )!;
     expect(statusSelect.value).toBe('failed');
     // Parent clears all filters. The select must reset even though it was the
     // control the user last interacted with.
     await rerender({ facets: [STATUS_FACET], appliedFilters: [] });
     statusSelect = container.querySelector<HTMLSelectElement>(
-      '[aria-label="Status"].cinder-faceted-filter-bar__select',
+      '[aria-label="Status"].cinder-filter-bar__select',
     )!;
     expect(statusSelect.value).toBe('');
   });
 
   test('hides chips row when no applied filters', () => {
-    const { container } = render(FacetedFilterBar, { appliedFilters: [] });
-    const chipsRow = container.querySelector('.cinder-faceted-filter-bar__chips');
+    const { container } = render(FilterBar, { appliedFilters: [] });
+    const chipsRow = container.querySelector('.cinder-filter-bar__chips');
     expect(chipsRow).toBeNull();
   });
 
   test('renders clear-all button when there are applied filters', () => {
-    const { container } = render(FacetedFilterBar, {
+    const { container } = render(FilterBar, {
       appliedFilters: [{ key: 'status', value: 'failed', label: 'Status' }],
     });
-    const clearAll = container.querySelector('.cinder-faceted-filter-bar__clear-all');
+    const clearAll = container.querySelector('.cinder-filter-bar__clear-all');
     expect(clearAll).not.toBeNull();
     expect(clearAll?.textContent?.trim()).toBe('Clear all');
   });
 
   test('renders clear-all button when only searchQuery is non-empty (no chips)', () => {
-    const { container } = render(FacetedFilterBar, {
+    const { container } = render(FilterBar, {
       searchQuery: 'my workflow',
       appliedFilters: [],
     });
-    const clearAll = container.querySelector('.cinder-faceted-filter-bar__clear-all');
+    const clearAll = container.querySelector('.cinder-filter-bar__clear-all');
     expect(clearAll).not.toBeNull();
   });
 });
 
-describe('FacetedFilterBar behavior', () => {
+describe('FilterBar behavior', () => {
   test('calls onSearchChange when search input changes', async () => {
     const onSearchChange = mock((_query: string) => {});
-    const { container } = render(FacetedFilterBar, { onSearchChange });
+    const { container } = render(FilterBar, { onSearchChange });
     const input = container.querySelector<HTMLInputElement>('.cinder-search-field__input');
     expect(input).not.toBeNull();
     await fireEvent.input(input!, { target: { value: 'my workflow' } });
@@ -208,11 +208,11 @@ describe('FacetedFilterBar behavior', () => {
 
   test('calls onFacetChange when a select facet changes', async () => {
     const onFacetChange = mock((_key: string, _value: string) => {});
-    const { container } = render(FacetedFilterBar, {
+    const { container } = render(FilterBar, {
       facets: [STATUS_FACET],
       onFacetChange,
     });
-    const select = container.querySelector<HTMLSelectElement>('.cinder-faceted-filter-bar__select');
+    const select = container.querySelector<HTMLSelectElement>('.cinder-filter-bar__select');
     expect(select).not.toBeNull();
     await fireEvent.change(select!, { target: { value: 'failed' } });
     expect(onFacetChange).toHaveBeenCalledWith('status', 'failed');
@@ -220,7 +220,7 @@ describe('FacetedFilterBar behavior', () => {
 
   test('calls onFilterRemove with the chip key when a chip remove button is clicked', async () => {
     const onFilterRemove = mock((_key: string) => {});
-    const { container } = render(FacetedFilterBar, {
+    const { container } = render(FilterBar, {
       appliedFilters: [{ key: 'status', value: 'failed', label: 'Status' }],
       onFilterRemove,
     });
@@ -232,26 +232,22 @@ describe('FacetedFilterBar behavior', () => {
 
   test('calls onClearAll when clear-all button is clicked', async () => {
     const onClearAll = mock(() => {});
-    const { container } = render(FacetedFilterBar, {
+    const { container } = render(FilterBar, {
       appliedFilters: [{ key: 'status', value: 'failed', label: 'Status' }],
       onClearAll,
     });
-    const clearAll = container.querySelector<HTMLButtonElement>(
-      '.cinder-faceted-filter-bar__clear-all',
-    );
+    const clearAll = container.querySelector<HTMLButtonElement>('.cinder-filter-bar__clear-all');
     expect(clearAll).not.toBeNull();
     await fireEvent.click(clearAll!);
     expect(onClearAll).toHaveBeenCalled();
   });
 
   test('disabled prop disables all select facets', () => {
-    const { container } = render(FacetedFilterBar, {
+    const { container } = render(FilterBar, {
       facets: [STATUS_FACET, QUEUE_FACET],
       disabled: true,
     });
-    const selects = container.querySelectorAll<HTMLSelectElement>(
-      '.cinder-faceted-filter-bar__select',
-    );
+    const selects = container.querySelectorAll<HTMLSelectElement>('.cinder-filter-bar__select');
     expect(selects).toHaveLength(2);
     for (const select of selects) {
       expect(select.disabled).toBe(true);
@@ -259,32 +255,30 @@ describe('FacetedFilterBar behavior', () => {
   });
 
   test('disabled prop disables the clear-all button', () => {
-    const { container } = render(FacetedFilterBar, {
+    const { container } = render(FilterBar, {
       appliedFilters: [{ key: 'status', value: 'failed', label: 'Status' }],
       disabled: true,
     });
-    const clearAll = container.querySelector<HTMLButtonElement>(
-      '.cinder-faceted-filter-bar__clear-all',
-    );
+    const clearAll = container.querySelector<HTMLButtonElement>('.cinder-filter-bar__clear-all');
     expect(clearAll?.disabled).toBe(true);
   });
 
   test('sets data-disabled on root when disabled', () => {
-    const { container } = render(FacetedFilterBar, { disabled: true });
-    const root = container.querySelector('.cinder-faceted-filter-bar');
+    const { container } = render(FilterBar, { disabled: true });
+    const root = container.querySelector('.cinder-filter-bar');
     expect(root?.hasAttribute('data-disabled')).toBe(true);
   });
 
   test('searchPlaceholder prop is forwarded to the search input', () => {
-    const { container } = render(FacetedFilterBar, { searchPlaceholder: 'Filter workflows…' });
+    const { container } = render(FilterBar, { searchPlaceholder: 'Filter workflows…' });
     const input = container.querySelector<HTMLInputElement>('.cinder-search-field__input');
     expect(input?.getAttribute('placeholder')).toBe('Filter workflows…');
   });
 });
 
-describe('FacetedFilterBar accessibility', () => {
+describe('FilterBar accessibility', () => {
   test('applied-filter chip has an accessible remove label including filter key and value', () => {
-    const { container } = render(FacetedFilterBar, {
+    const { container } = render(FilterBar, {
       appliedFilters: [{ key: 'status', value: 'failed', label: 'Status' }],
     });
     const removeButton = container.querySelector<HTMLButtonElement>('.cinder-chip__remove');
@@ -294,8 +288,8 @@ describe('FacetedFilterBar accessibility', () => {
   });
 
   test('each select facet has an associated label (visually hidden or aria-label)', () => {
-    const { container } = render(FacetedFilterBar, { facets: [STATUS_FACET] });
-    const select = container.querySelector<HTMLSelectElement>('.cinder-faceted-filter-bar__select');
+    const { container } = render(FilterBar, { facets: [STATUS_FACET] });
+    const select = container.querySelector<HTMLSelectElement>('.cinder-filter-bar__select');
     // Either aria-label or a for/id pair must exist
     const hasAriaLabel = select?.hasAttribute('aria-label');
     const hasId = select?.hasAttribute('id');
@@ -304,14 +298,14 @@ describe('FacetedFilterBar accessibility', () => {
   });
 
   test('always renders a live region for filter-count announcements', () => {
-    const { container } = render(FacetedFilterBar, {});
+    const { container } = render(FilterBar, {});
     // The visually-hidden live region is always in the DOM
     const liveRegion = container.querySelector('[aria-live]');
     expect(liveRegion).not.toBeNull();
   });
 
   test('live region summarizes applied filters', async () => {
-    const { container } = render(FacetedFilterBar, {
+    const { container } = render(FilterBar, {
       appliedFilters: [
         { key: 'status', value: 'failed', label: 'Status' },
         { key: 'queue', value: 'default', label: 'Queue' },
@@ -324,15 +318,15 @@ describe('FacetedFilterBar accessibility', () => {
   });
 
   test('active controls row has accessible label for screen readers', () => {
-    const { container } = render(FacetedFilterBar, {
+    const { container } = render(FilterBar, {
       appliedFilters: [{ key: 'status', value: 'running', label: 'Status' }],
     });
-    const chipsRow = container.querySelector('.cinder-faceted-filter-bar__chips');
+    const chipsRow = container.querySelector('.cinder-filter-bar__chips');
     expect(chipsRow?.getAttribute('aria-label')).toBe('Active filter controls');
   });
 
   test('search field renders with type="search" for semantic meaning', () => {
-    const { container } = render(FacetedFilterBar, {});
+    const { container } = render(FilterBar, {});
     const input = container.querySelector('input[type="search"]');
     expect(input).not.toBeNull();
   });
@@ -346,10 +340,10 @@ describe('FacetedFilterBar accessibility', () => {
 // `handleFilterRemove` queries the *live* DOM directly, so these tests reproduce
 // what a real re-render would leave behind by removing the chip node directly,
 // rather than relying on the broken reactive teardown.
-describe('FacetedFilterBar chip-remove focus management', () => {
+describe('FilterBar chip-remove focus management', () => {
   test('removing an applied chip (not the last one) focuses the next remove button at the same index', async () => {
     let removedButton: HTMLButtonElement | null = null;
-    const { container } = render(FacetedFilterBar, {
+    const { container } = render(FilterBar, {
       appliedFilters: [
         { key: 'status', value: 'failed', label: 'Status' },
         { key: 'queue', value: 'default', label: 'Queue' },
@@ -375,7 +369,7 @@ describe('FacetedFilterBar chip-remove focus management', () => {
 
   test('removing the last remaining chip falls back to the matching facet select', async () => {
     let removedButton: HTMLButtonElement | null = null;
-    const { container } = render(FacetedFilterBar, {
+    const { container } = render(FilterBar, {
       facets: [STATUS_FACET],
       appliedFilters: [{ key: 'status', value: 'failed', label: 'Status' }],
       onFilterRemove: () => {
@@ -388,14 +382,14 @@ describe('FacetedFilterBar chip-remove focus management', () => {
 
     expect(container.querySelector('.cinder-chip__remove')).toBeNull();
     const statusSelect = container.querySelector<HTMLSelectElement>(
-      '[aria-label="Status"].cinder-faceted-filter-bar__select',
+      '[aria-label="Status"].cinder-filter-bar__select',
     );
     expect(document.activeElement).toBe(statusSelect);
   });
 
   test('removing the last remaining chip falls back to the search input when no facet select matches', async () => {
     let removedButton: HTMLButtonElement | null = null;
-    const { container } = render(FacetedFilterBar, {
+    const { container } = render(FilterBar, {
       facets: [STATUS_FACET], // no facet with key "owner"
       appliedFilters: [{ key: 'owner', value: 'me', label: 'Owner' }],
       onFilterRemove: () => {
@@ -412,14 +406,13 @@ describe('FacetedFilterBar chip-remove focus management', () => {
   });
 });
 
-describe('FacetedFilterBar custom facets', () => {
+describe('FilterBar custom facets', () => {
   test('renders a custom facet via its control snippet and forwards onValueChange to onFacetChange', async () => {
     const onFacetChange = mock((_key: string, _value: string) => {});
     const controlSnippet = createRawSnippet<
       [{ value: string; onValueChange: (value: string) => void }]
     >((getProps) => ({
-      render: () =>
-        `<button type="button" class="faceted-filter-bar-test-custom-control">Pick</button>`,
+      render: () => `<button type="button" class="filter-bar-test-custom-control">Pick</button>`,
       setup(element: Element) {
         const handleClick = () => getProps().onValueChange('me');
         element.addEventListener('click', handleClick);
@@ -427,13 +420,13 @@ describe('FacetedFilterBar custom facets', () => {
       },
     }));
 
-    const { container } = render(FacetedFilterBar, {
+    const { container } = render(FilterBar, {
       facets: [{ type: 'custom', key: 'owner', label: 'Owner', control: controlSnippet }],
       onFacetChange,
     });
 
     const customControl = container.querySelector<HTMLButtonElement>(
-      '.faceted-filter-bar-test-custom-control',
+      '.filter-bar-test-custom-control',
     );
     expect(customControl?.textContent).toBe('Pick');
 
@@ -443,18 +436,18 @@ describe('FacetedFilterBar custom facets', () => {
   });
 });
 
-describe('FacetedFilterBar CSS snapshot', () => {
+describe('FilterBar CSS snapshot', () => {
   test('CSS file exists and contains required layer and selectors', async () => {
-    const css = await Bun.file(new URL('./faceted-filter-bar.css', import.meta.url)).text();
+    const css = await Bun.file(new URL('./filter-bar.css', import.meta.url)).text();
 
     expect(css).toContain('@layer cinder.components');
-    expect(css).toContain('.cinder-faceted-filter-bar');
-    expect(css).toContain('.cinder-faceted-filter-bar__select:focus-visible');
+    expect(css).toContain('.cinder-filter-bar');
+    expect(css).toContain('.cinder-filter-bar__select:focus-visible');
     expect(css).toContain('min-block-size: var(--cinder-control-height-sm, 2rem);');
     expect(css).not.toMatch(/^\s*block-size: var\(--cinder-control-height-sm, 2rem\);/m);
     expect(css).toContain('outline: var(--cinder-ring-width) solid transparent');
     expect(css).toContain('@media (forced-colors: active)');
     expect(css).toContain('outline: var(--cinder-ring-width) solid ButtonText');
-    expect(css).toContain('.cinder-faceted-filter-bar__select:focus-visible');
+    expect(css).toContain('.cinder-filter-bar__select:focus-visible');
   });
 });

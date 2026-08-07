@@ -24,21 +24,28 @@
 
 <div style="display: flex; flex-direction: column; gap: 1rem; max-width: 28rem;">
   {#if needsAction}
-    <CapabilityGate
-      feature="Microphone"
-      state={capabilityState}
-      primaryAction="Allow microphone"
-      onPrimaryAction={() => {
-        capabilityState = 'supported';
-      }}
-      fallbackAction="Use text instead"
-      onFallbackAction={() => {
-        capabilityState = 'unsupported';
-      }}
-    >
+    <CapabilityGate feature="Microphone" state={capabilityState}>
       <p style="font-size: 0.875rem; color: var(--cinder-text-muted); margin: 0;">
         Microphone access is needed for voice input. Your audio is never stored or shared.
       </p>
+
+      {#snippet actions()}
+        <Button
+          size="sm"
+          label="Allow microphone"
+          onclick={() => {
+            capabilityState = 'supported';
+          }}
+        />
+        <Button
+          size="sm"
+          variant="secondary"
+          label="Use text instead"
+          onclick={() => {
+            capabilityState = 'unsupported';
+          }}
+        />
+      {/snippet}
     </CapabilityGate>
   {:else}
     <CapabilityGate feature="Microphone" state={capabilityState} />

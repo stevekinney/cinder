@@ -12,7 +12,7 @@ export const allowedRawControlCounts = new Map<string, number>([
   // is bounded to the editable combobox control, not the dialog surface.
   ['command-palette/command-palette.svelte', 1],
   ['date-picker/date-picker.svelte', 2],
-  ['faceted-filter-bar/faceted-filter-bar.svelte', 1],
+  ['filter-bar/filter-bar.svelte', 1],
   ['file-upload/file-upload.svelte', 1],
   ['input/input.svelte', 1],
   ['invocation-rule-builder/invocation-rule-builder.svelte', 8],

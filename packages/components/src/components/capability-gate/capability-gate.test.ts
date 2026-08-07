@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { afterEach, describe, expect, mock, test } from 'bun:test';
+import { afterEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -11,6 +11,23 @@ const { default: CapabilityGate } = await import('./capability-gate.svelte');
 
 function snippet(text: string) {
   return createRawSnippet(() => ({ render: () => `<span>${text}</span>` }));
+}
+
+/**
+ * Consumer actions snippet: a primary button wired to `onPrimary` and a
+ * dismiss button wired to the gate-provided `dismiss` function.
+ */
+function actionsSnippet(onPrimary?: () => void) {
+  return createRawSnippet<[{ dismiss: () => void }]>((getArgs) => ({
+    render: () =>
+      `<div><button type="button" class="test-primary">Allow access</button><a href="/settings" class="test-fallback">Go to settings</a><button type="button" class="test-dismiss">Dismiss</button></div>`,
+    setup(node) {
+      const primary = (node as HTMLElement).querySelector<HTMLButtonElement>('.test-primary');
+      const dismiss = (node as HTMLElement).querySelector<HTMLButtonElement>('.test-dismiss');
+      primary?.addEventListener('click', () => onPrimary?.());
+      dismiss?.addEventListener('click', () => getArgs().dismiss());
+    },
+  }));
 }
 
 afterEach(() => {
@@ -63,68 +80,45 @@ describe('CapabilityGate', () => {
     expect(status?.getAttribute('aria-busy')).toBeNull();
   });
 
-  test('renders the primary action button when primaryAction is provided', () => {
-    const { getByRole } = render(CapabilityGate, {
+  test('renders consumer content (buttons and links alike) in the actions row', () => {
+    const { container, getByRole } = render(CapabilityGate, {
       feature: 'Microphone',
       state: 'permission-needed',
-      primaryAction: 'Allow access',
+      actions: actionsSnippet(),
     });
-    const button = getByRole('button', { name: /Allow access/i });
-    expect(button).not.toBeNull();
+    expect(container.querySelector('.cinder-capability-gate__actions')).not.toBeNull();
+    expect(getByRole('button', { name: /Allow access/i })).not.toBeNull();
+    const link = container.querySelector('a.test-fallback');
+    expect(link?.getAttribute('href')).toBe('/settings');
   });
 
-  test('calls onPrimaryAction when primary button is clicked', () => {
+  test('renders no actions row when the actions snippet is omitted', () => {
+    const { container } = render(CapabilityGate, {
+      feature: 'Microphone',
+      state: 'permission-needed',
+    });
+    expect(container.querySelector('.cinder-capability-gate__actions')).toBeNull();
+  });
+
+  test('consumer action handlers fire from inside the snippet', () => {
     let called = false;
     const { getByRole } = render(CapabilityGate, {
       feature: 'Microphone',
       state: 'permission-needed',
-      primaryAction: 'Allow access',
-      onPrimaryAction: () => {
+      actions: actionsSnippet(() => {
         called = true;
-      },
+      }),
     });
     fireEvent.click(getByRole('button', { name: /Allow access/i }));
     expect(called).toBe(true);
   });
 
-  test('renders fallback button when fallbackAction is provided', () => {
-    const { container } = render(CapabilityGate, {
-      feature: 'Notifications',
-      state: 'permission-denied',
-      fallbackAction: 'Use email instead',
-    });
-    const fallback = container.querySelector('.cinder-capability-gate__fallback');
-    expect(fallback?.textContent?.trim()).toBe('Use email instead');
-  });
-
-  test('renders fallback as an anchor when fallbackHref is provided', () => {
-    const { container } = render(CapabilityGate, {
-      feature: 'Notifications',
-      state: 'permission-denied',
-      fallbackHref: '/settings',
-      fallbackAction: 'Go to settings',
-    });
-    const link = container.querySelector('a.cinder-capability-gate__fallback');
-    expect(link).not.toBeNull();
-    expect(link?.getAttribute('href')).toBe('/settings');
-  });
-
-  test("dismiss button's accessible name includes the feature, matching primary/fallback", () => {
-    const { container } = render(CapabilityGate, {
-      feature: 'Offline storage',
-      state: 'unavailable',
-      dismissAction: 'Dismiss',
-    });
-    const dismiss = container.querySelector('.cinder-capability-gate__dismiss');
-    expect(dismiss?.getAttribute('aria-label')).toBe('Dismiss for Offline storage');
-  });
-
-  test('dismiss hides the component and calls onDismiss', () => {
+  test('the snippet-provided dismiss hides the component and calls onDismiss', () => {
     let dismissed = false;
     const { container, getByRole } = render(CapabilityGate, {
       feature: 'Offline storage',
       state: 'unavailable',
-      dismissAction: 'Dismiss',
+      actions: actionsSnippet(),
       onDismiss: () => {
         dismissed = true;
       },
@@ -206,23 +200,11 @@ describe('CapabilityGate', () => {
     );
   });
 
-  test('calls onFallbackAction when the fallback button is clicked', () => {
-    const onFallbackAction = mock(() => {});
-    const { getByRole } = render(CapabilityGate, {
-      feature: 'Notifications',
-      state: 'permission-denied',
-      fallbackAction: 'Use email instead',
-      onFallbackAction,
-    });
-    fireEvent.click(getByRole('button', { name: /Use email instead/i }));
-    expect(onFallbackAction).toHaveBeenCalledTimes(1);
-  });
-
   test('re-shows the gate on rerender with a different state after being dismissed', async () => {
     const { container, getByRole, rerender } = render(CapabilityGate, {
       feature: 'Microphone',
       state: 'permission-needed',
-      dismissAction: 'Dismiss',
+      actions: actionsSnippet(),
     });
     fireEvent.click(getByRole('button', { name: /Dismiss/i }));
     expect(container.querySelector('.cinder-capability-gate')).toBeNull();
@@ -235,13 +217,13 @@ describe('CapabilityGate', () => {
     expect(container.querySelector('.cinder-capability-gate')).not.toBeNull();
   });
 
-  test('dismissing blurs the dismiss button before unmounting', async () => {
+  test('the snippet dismiss blurs the focused consumer control before unmounting', async () => {
     const { container } = render(CapabilityGate, {
       feature: 'Camera',
       state: 'permission-needed',
-      dismissAction: 'Dismiss',
+      actions: actionsSnippet(),
     });
-    const dismiss = container.querySelector<HTMLButtonElement>('.cinder-capability-gate__dismiss');
+    const dismiss = container.querySelector<HTMLButtonElement>('.test-dismiss');
     dismiss?.focus();
     expect(document.activeElement).toBe(dismiss);
     await fireEvent.click(dismiss as HTMLButtonElement);

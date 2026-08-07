@@ -1,3 +1,4 @@
+import type { Snippet } from 'svelte';
 import type { HTMLAttributes } from 'svelte/elements';
 
 export type StepsOrientation = 'horizontal' | 'vertical';
@@ -5,10 +6,10 @@ export type StepItemState = 'complete' | 'current' | 'upcoming' | 'skipped';
 export type StepItem = {
   /** Stable identifier used as the keyed-each key. Must be unique. */
   id: string;
-  /** Visible label for the step. */
-  label: string;
-  /** Optional secondary text shown beneath the label. */
-  description?: string;
+  /** Visible label for the step. Accepts plain text or a rich Snippet. */
+  label: string | Snippet;
+  /** Optional secondary text shown beneath the label. Accepts plain text or a rich Snippet. */
+  description?: string | Snippet;
   /**
    * Optional state override for this step. When omitted, state is derived from
    * `currentStep`. Use `skipped` for a past step that was advanced past without

@@ -21,16 +21,20 @@
       "description": "Whether old and new line-number gutters are rendered.",
       "default": true
     },
-    "emptyMessage": {
-      "type": "string",
-      "description": "Message shown when the patch is empty or contains no displayable diff rows.",
-      "default": "No patch lines to display."
-    },
     "class": {
       "type": "string",
       "description": "Additional CSS classes merged with `.cinder-source-diff-viewer`."
     }
   },
   "additionalProperties": false,
-  "required": ["patch"]
+  "required": ["patch"],
+  "metadata": {
+    "unsupportedProps": [
+      {
+        "name": "empty",
+        "reason": "function-or-snippet",
+        "description": "Rendered when the patch is empty or contains no displayable diff rows.\nFalls back to a default \"No patch lines to display.\" message — matching\nthe `empty` snippet the chart/command families expose."
+      }
+    ]
+  }
 }

@@ -232,7 +232,7 @@ const SIDEBAR_BASELINE = [
   'drawer',
   'dropdown',
   'empty-state',
-  'faceted-filter-bar',
+  'filter-bar',
   'feed',
   'file-upload',
   'floating-action',
@@ -438,7 +438,7 @@ describe('discoverSidebarComponents', () => {
     // examples on existing families and do not add sidebar entries.)
     // The operational-components wave (#352, #354-360) lands the sidebar at 117,
     // measured empirically via discoverSidebarComponents(). It adds eight entries:
-    // seven new families — faceted-filter-bar, event-stream-viewer,
+    // seven new families — filter-bar, event-stream-viewer,
     // payload-inspector, date-range-field, run-step-timeline, secret-value-field,
     // and invocation-rule-builder — plus json-viewer, which was absent from the
     // sidebar on main (it had no examples) and newly appears because #358 adds its
