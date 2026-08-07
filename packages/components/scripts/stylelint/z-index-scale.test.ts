@@ -1933,7 +1933,7 @@ describe('cinder/z-index-scale', () => {
     }
     // Hang guard only — see the wall-clock policy note above the first perf test.
     expect(performance.now() - startedAt).toBeLessThan(30_000);
-  }, 30_000);
+  }, 35_000);
 
   test('bounds cumulative work for mixed substitution and calc nesting', async () => {
     let nestedFallback = '1';
