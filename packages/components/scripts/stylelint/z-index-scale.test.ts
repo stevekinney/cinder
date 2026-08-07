@@ -1912,6 +1912,7 @@ describe('cinder/z-index-scale', () => {
 
   test('reduces wide min, max, and hypot fallbacks without argument-limit bypasses', async () => {
     const repeatedArguments = 130_000;
+    const startedAt = performance.now();
     for (const [functionName, repeatedValue] of [
       ['min', '10000'],
       ['max', '0'],
@@ -1930,7 +1931,9 @@ describe('cinder/z-index-scale', () => {
       expect(warning?.text).toContain('Offending expression:');
       expect(warning?.text).toContain('…');
     }
-  });
+    // Hang guard only — see the wall-clock policy note above the first perf test.
+    expect(performance.now() - startedAt).toBeLessThan(30_000);
+  }, 35_000);
 
   test('bounds cumulative work for mixed substitution and calc nesting', async () => {
     let nestedFallback = '1';
