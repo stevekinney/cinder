@@ -1,5 +1,33 @@
 # @lostgradient/chat
 
+## 0.6.0
+
+### Minor Changes
+
+- [#1222](https://github.com/stevekinney/cinder/pull/1222) [`e86d40e`](https://github.com/stevekinney/cinder/commit/e86d40e79d0b313feeabd85f33b1dc6dded942a3) Thanks [@stevekinney](https://github.com/stevekinney)! - Widen Editor's and Chat's peer ranges to the Cinder and Markdown minors releasing
+  alongside them: `@lostgradient/cinder` `^0.20.0` → `^0.21.0`, and
+  `@lostgradient/markdown` `^0.1.0` → `^0.2.0`.
+
+  Without this the release ships Editor and Chat declaring peer ranges that exclude
+  the very Cinder and Markdown versions published in the same batch — `^0.1.0`
+  resolves to `>=0.1.0 <0.2.0` under semver's 0.x rule, so Markdown 0.2.0 falls
+  outside it, and every consumer installing the set together gets an unmet-peer
+  error. This is a coordinated minor across all four packages, which is also what
+  the package-boundary tests' `pendingCoordinatedMinorRelease` escape expects.
+
+- [#1220](https://github.com/stevekinney/cinder/pull/1220) [`68370b1`](https://github.com/stevekinney/cinder/commit/68370b1d5ac2046855a77f95db36f316eaafa35a) Thanks [@stevekinney](https://github.com/stevekinney)! - Add scroll-driven edge fades and a horizontal-scroll shadow affordance, and fix a forced-colors defect in the existing overlay-body fade.
+  - New shared internal partial `_scroll-fade.css`: an opaque, scroll-position-aware edge fade driven by `animation-timeline: scroll()` where supported, falling back to the existing `data-cinder-overflows` attribute path everywhere else — no `CSS.supports()` branch, no hydration divergence. Never a `mask-image` (masking a container that paints its own background reveals whatever is behind it, which is why PR [#972](https://github.com/stevekinney/cinder/issues/972) removed masks from Modal/Drawer/Sheet in the first place).
+  - Modal, Drawer, and Sheet bodies now consume the shared recipe instead of three byte-identical copies, which also fixes a real bug: the previous hard-coded gradient had no `forced-colors` carve-out, so it painted a light-gray band across the bottom of every scrollable overlay in high-contrast mode. `--cinder-scroll-fade-size` (1.5rem) is now a themeable public token instead of being hard-coded three times.
+  - `overflowFade()` (`utilities/attachments.ts`) no longer registers a `ResizeObserver` on every descendant of a scroll container — only the container itself, with a `MutationObserver` triggering direct re-measurement on content changes. The previous approach was fine for a modal body but registered thousands of observers on a long scroll surface.
+  - New opt-in `scrollFadeVisible` prop on `ScrollArea`, `CodeBlock`, and Chat's message timeline — presentation-only, never the sole signal that content scrolls. `CodeBlock`'s fade is horizontal (inline) and intentionally translucent rather than fully opaque, so a partially covered glyph still reads as a glyph. Chat's timeline fades both the top and bottom edges and is only active in `surfaceMode="default"`.
+  - `Table`, `PermissionMatrix`, and `TransferList` scroll containers now show `DataGrid`'s existing inset-shadow horizontal(/vertical, for TransferList)-scroll affordance when their content actually overflows, via a new `overflowShadow()` attachment.
+
+### Patch Changes
+
+- Updated dependencies [[`bf6eeb9`](https://github.com/stevekinney/cinder/commit/bf6eeb9e6c287f360c6ed4fe9a0ded7a909e4b8a), [`bf6eeb9`](https://github.com/stevekinney/cinder/commit/bf6eeb9e6c287f360c6ed4fe9a0ded7a909e4b8a), [`bf6eeb9`](https://github.com/stevekinney/cinder/commit/bf6eeb9e6c287f360c6ed4fe9a0ded7a909e4b8a), [`bf6eeb9`](https://github.com/stevekinney/cinder/commit/bf6eeb9e6c287f360c6ed4fe9a0ded7a909e4b8a), [`06ffb18`](https://github.com/stevekinney/cinder/commit/06ffb181cf73c2984613f93571b037dd721c7734), [`61bcfbc`](https://github.com/stevekinney/cinder/commit/61bcfbce232427b03b7d11ae552c134800d026a4), [`68370b1`](https://github.com/stevekinney/cinder/commit/68370b1d5ac2046855a77f95db36f316eaafa35a), [`38a43a0`](https://github.com/stevekinney/cinder/commit/38a43a0cccf557aafbaee2a39486a050a2979854), [`0fb8912`](https://github.com/stevekinney/cinder/commit/0fb891210be26c2675de870beb931d9f39cdff4c), [`4531af8`](https://github.com/stevekinney/cinder/commit/4531af81295cec74f50a20b33fa45492ee037bc4)]:
+  - @lostgradient/cinder@0.21.0
+  - @lostgradient/markdown@0.2.0
+
 ## 0.5.0
 
 ### Minor Changes
