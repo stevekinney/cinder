@@ -129,7 +129,6 @@ export const allowedFloatingCounts = new Map<string, number>(
     'run-step-timeline/run-step-timeline.css',
     'select/select.css',
     'selection-popover/selection-popover.css',
-    'sheet/sheet.css',
     'sortable-list/sortable-list.css',
     'spectrogram/spectrogram.css',
     'spectrum-chart/spectrum-chart.css',

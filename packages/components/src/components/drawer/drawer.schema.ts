@@ -8,13 +8,14 @@ const schema = {
       type: 'boolean',
       description: 'Whether the drawer is open. Bindable via `bind:open`.',
     },
-    side: {
-      enum: ['left', 'right'],
+    placement: {
+      enum: ['left', 'right', 'bottom'],
       description: 'Edge the drawer slides in from. Default `right`.',
     },
     size: {
       enum: ['sm', 'md', 'lg', 'xl'],
-      description: 'Drawer width token. Default `md`.',
+      description:
+        'Drawer width token for `left`/`right` placements. Default `md`.\nIgnored for `placement="bottom"`, which always spans the full viewport\nwidth and caps its height at 90dvh.',
     },
     title: {
       type: 'string',
@@ -29,6 +30,11 @@ const schema = {
       type: 'string',
       description:
         "Optional id of an element that names the drawer. When supplied, drawer\nwires `aria-labelledby` to this id and renders no internal heading.\nUse this when a custom `header` snippet has its own visible heading —\nsupply `ariaLabelledBy` pointing to that heading's id so the\nvisible and accessible names stay in sync.",
+    },
+    dragHandleVisible: {
+      type: 'boolean',
+      description:
+        'When `true` and `placement="bottom"`, render a decorative drag handle\nabove the header. Swipe-to-close gesture is a stretch goal not\nimplemented in MVP — the handle is purely a visual affordance.\nIgnored for `left`/`right` placements. Default `false`.\n\nNamed `dragHandleVisible` (not `draggable`) to avoid colliding with the\nnative HTML `draggable` attribute on the underlying `<dialog>`.',
     },
   },
   additionalProperties: false,

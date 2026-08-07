@@ -1,13 +1,17 @@
 import type { Snippet } from 'svelte';
 import type { HTMLDialogAttributes } from 'svelte/elements';
-export type DrawerSide = 'left' | 'right';
+export type DrawerPlacement = 'left' | 'right' | 'bottom';
 export type DrawerSize = 'sm' | 'md' | 'lg' | 'xl';
 export type DrawerProps = {
   /** Whether the drawer is open. Bindable via `bind:open`. */
   open?: boolean;
   /** Edge the drawer slides in from. Default `right`. */
-  side?: DrawerSide;
-  /** Drawer width token. Default `md`. */
+  placement?: DrawerPlacement;
+  /**
+   * Drawer width token for `left`/`right` placements. Default `md`.
+   * Ignored for `placement="bottom"`, which always spans the full viewport
+   * width and caps its height at 90dvh.
+   */
   size?: DrawerSize;
   /**
    * Accessible name for the drawer. Required for screen-reader labelling.
@@ -32,6 +36,16 @@ export type DrawerProps = {
    * visible and accessible names stay in sync.
    */
   ariaLabelledBy?: string;
+  /**
+   * When `true` and `placement="bottom"`, render a decorative drag handle
+   * above the header. Swipe-to-close gesture is a stretch goal not
+   * implemented in MVP — the handle is purely a visual affordance.
+   * Ignored for `left`/`right` placements. Default `false`.
+   *
+   * Named `dragHandleVisible` (not `draggable`) to avoid colliding with the
+   * native HTML `draggable` attribute on the underlying `<dialog>`.
+   */
+  dragHandleVisible?: boolean;
   /** Custom header. Falls back to a default header that renders `title`. */
   header?: Snippet;
   /** Drawer body content. Required. */

@@ -1,6 +1,6 @@
 # Cinder Overlay Policy
 
-This document defines the cross-cutting behavior every Cinder overlay component (Modal, Sheet, Dropdown, Popover, Tooltip, Toast) must follow. It exists so each component's own `.a11y.md` doesn't have to re-derive these answers, and so the policy stays consistent as new overlay components are added in later phases.
+This document defines the cross-cutting behavior every Cinder overlay component (Modal, Drawer, Dropdown, Popover, Tooltip, Toast) must follow. It exists so each component's own `.a11y.md` doesn't have to re-derive these answers, and so the policy stays consistent as new overlay components are added in later phases.
 
 The runtime helpers backing this policy live in `src/_internal/overlay.ts` and
 `src/_internal/anchored-overlay.svelte.ts`.
@@ -60,7 +60,7 @@ Consumers needing server-rendered overlay content for first paint must compose t
 | Dropdown           | `--cinder-z-dropdown`           | `Z_LAYERS.dropdown`    | 1100    |
 | Popover            | `--cinder-z-popover`            | `Z_LAYERS.popover`     | 1100    |
 | Modal              | `--cinder-z-modal`              | `Z_LAYERS.modal`       | 1200    |
-| Sheet              | `--cinder-z-sheet`              | `Z_LAYERS.sheet`       | 1200    |
+| Drawer             | `--cinder-z-modal`              | `Z_LAYERS.modal`       | 1200    |
 | Toast              | `--cinder-z-toast`              | `Z_LAYERS.toast`       | 1300    |
 | Focused affordance | `--cinder-z-focused-affordance` | —                      | 1350    |
 | Drag preview       | `--cinder-z-drag-preview`       | `Z_LAYERS.dragPreview` | 1400    |
@@ -72,7 +72,7 @@ Toast sits **above** Modal so confirmation and error toasts reach users even whe
 - **Capture** on open: record the previously-focused element via `captureFocus()` before moving focus into the overlay.
 - **Restore** on close: focus returns to the captured element via `restoreFocusTo()`. Components must call this even when the close was triggered by ESC, outside-click, or a programmatic `open = false`.
 - **Initial focus**: by default, focus moves to the first focusable element inside the overlay. Components may honor a `data-cinder-initial-focus` attribute on a child to override.
-- **Trap**: full-viewport overlays (Modal, Sheet) trap focus within their content. Anchored overlays (Popover when modal, Dropdown menu) optionally trap; Tooltip never traps.
+- **Trap**: full-viewport overlays (Modal, Drawer) trap focus within their content. Anchored overlays (Popover when modal, Dropdown menu) optionally trap; Tooltip never traps.
 
 ## Escape priority
 
@@ -111,8 +111,8 @@ Toast sits **above** Modal so confirmation and error toasts reach users even whe
 
 ## Scroll lock
 
-- Only Modal and Sheet lock body scroll. Anchored overlays (Dropdown, Popover, Tooltip) and the Toast region do not.
-- Implemented via the counted `lockBodyScroll()` helper. Nested full-viewport overlays each acquire and release; the lock is released only when the count reaches zero, so a Modal opened inside a Sheet doesn't restore scroll when either of them closes individually.
+- Only Modal and Drawer lock body scroll. Anchored overlays (Dropdown, Popover, Tooltip) and the Toast region do not.
+- Implemented via the counted `lockBodyScroll()` helper. Nested full-viewport overlays each acquire and release; the lock is released only when the count reaches zero, so a Modal opened inside a Drawer doesn't restore scroll when either of them closes individually.
 
 ## Reduced motion
 

@@ -4,7 +4,7 @@
  * Compiles a Svelte 5 component in `generate: 'server'` mode and returns the
  * HTML the server would emit — without hydrating it on the client. Component
  * tests use this to assert their SSR contract: that markup gated behind a
- * client-only `hydrated` flag (drawer, sheet, toast-region) or behind a
+ * client-only `hydrated` flag (drawer, toast-region) or behind a
  * client-only load/error state (image) does NOT appear in the server output,
  * so there is no hydration mismatch and no client-only markup leaks into SSR.
  *

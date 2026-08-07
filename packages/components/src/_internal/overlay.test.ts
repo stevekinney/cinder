@@ -21,13 +21,12 @@ afterEach(() => {
 });
 
 describe('Z_LAYERS', () => {
-  test('layers are ordered tooltip < dropdown/popover < backdrop < modal/sheet < toast', () => {
+  test('layers are ordered tooltip < dropdown/popover < backdrop < modal < toast', () => {
     expect(Z_LAYERS.tooltip).toBeLessThan(Z_LAYERS.dropdown);
     expect(Z_LAYERS.dropdown).toBe(Z_LAYERS.popover);
     expect(Z_LAYERS.popover).toBeLessThan(Z_LAYERS.backdrop);
     expect(Z_LAYERS.backdrop).toBeLessThan(Z_LAYERS.modal);
-    expect(Z_LAYERS.modal).toBe(Z_LAYERS.sheet);
-    expect(Z_LAYERS.sheet).toBeLessThan(Z_LAYERS.toast);
+    expect(Z_LAYERS.modal).toBeLessThan(Z_LAYERS.toast);
     expect(Z_LAYERS.toast).toBeLessThan(Z_LAYERS.dragPreview);
   });
 });

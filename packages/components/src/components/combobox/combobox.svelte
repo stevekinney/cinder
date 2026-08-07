@@ -159,7 +159,7 @@
   // Escape consumer for the entire open session, including the empty-filter gap
   // (`open && filteredOptions.length === 0`) where the Popover is unmounted.
   //
-  // That matters most when the combobox is nested inside a Modal/Sheet: the
+  // That matters most when the combobox is nested inside a Modal/Drawer: the
   // shared escape stack's window listener is capture-phase and invokes ONLY its
   // top handler, so this combobox consumes Escape and `preventDefault()`s it
   // before the parent overlay ever sees the key — Escape dismisses just the

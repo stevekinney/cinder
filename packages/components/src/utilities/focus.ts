@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 
 /**
- * Shared focus-restore helper used by overlay components (Modal, Sheet,
+ * Shared focus-restore helper used by overlay components (Modal, Drawer,
  * Popover) when returning focus on close. The candidate list is kept local
  * to each component — this helper enforces a uniform per-candidate safety
  * check and refuses to fall back to `document.body`.

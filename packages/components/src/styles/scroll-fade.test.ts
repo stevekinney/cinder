@@ -227,7 +227,6 @@ describe('scroll-fade regression: overlay bodies never reintroduce a mask (PR #9
   const overlayFiles = [
     `${import.meta.dir}/../components/modal/modal.css`,
     `${import.meta.dir}/../components/drawer/drawer.css`,
-    `${import.meta.dir}/../components/sheet/sheet.css`,
   ];
 
   for (const filePath of overlayFiles) {

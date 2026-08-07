@@ -7,7 +7,7 @@ import { lockBodyScroll } from '../_internal/overlay.ts';
  * the page scroll is only restored when the last attachment is torn down.
  *
  * Use this instead of a raw `overflow: hidden` assignment so that a Modal
- * opened inside a Sheet (or any combination of locking overlays) cannot
+ * opened inside a Drawer (or any combination of locking overlays) cannot
  * prematurely restore page scroll when only one of them closes.
  *
  * @example

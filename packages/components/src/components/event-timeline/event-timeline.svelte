@@ -113,11 +113,7 @@
         current;
         current = current.parentElement
       ) {
-        if (
-          current.matches(
-            '.cinder-modal__panel, .cinder-sheet__panel, .cinder-drawer__panel, .cinder-popover',
-          )
-        )
+        if (current.matches('.cinder-modal__panel, .cinder-drawer__panel, .cinder-popover'))
           return current;
         if (current.matches('dialog') && isEventTimelineModal(current)) return current;
         if (

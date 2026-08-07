@@ -57,7 +57,7 @@
     "domain-suite": "A cohesive set of domain-specific components shipped together as a named suite with its own versioning cadence."
   },
   "overlapFamilies": {
-    "overlay": ["modal", "drawer", "sheet", "popover", "alert-dialog"],
+    "overlay": ["modal", "drawer", "popover", "alert-dialog"],
     "notice": ["banner", "alert", "callout"],
     "selection": ["toggle", "checkbox", "segmented-control"],
     "hover": ["tooltip", "popover", "hover-card"],
@@ -466,7 +466,7 @@
       "purpose": "Full-viewport fixed scrim primitive for custom overlay patterns such as loading dimmers and image lightboxes.",
       "tags": ["overlay", "scrim"],
       "useWhen": [
-        "Providing a full-screen dimming layer behind a custom overlay that is not modal, drawer, or sheet.",
+        "Providing a full-screen dimming layer behind a custom overlay that is not modal or drawer.",
         "Building a loading state that dims the full viewport while an async operation runs."
       ],
       "avoidWhen": [
@@ -477,10 +477,10 @@
           "reason": "Showing a side panel — use drawer instead."
         },
         {
-          "reason": "Showing structured content in a dialog — use modal, drawer, or sheet, which render their own native `<dialog>::backdrop` scrim."
+          "reason": "Showing structured content in a dialog — use modal or drawer, which render their own native `<dialog>::backdrop` scrim."
         }
       ],
-      "related": ["modal", "drawer", "sheet"],
+      "related": ["modal", "drawer"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
@@ -1399,7 +1399,7 @@
           "reason": "Announcing a non-blocking result — use toast-region or banner."
         }
       ],
-      "related": ["modal", "alert-dialog", "drawer", "sheet"],
+      "related": ["modal", "alert-dialog", "drawer"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
@@ -1812,21 +1812,22 @@
       "exportName": "Drawer",
       "category": "overlay",
       "status": "stable",
-      "purpose": "Side-anchored modal panel built on the native dialog element for secondary navigation, settings, or long-form supporting content.",
+      "purpose": "Edge-anchored modal panel built on the native dialog element; slides from the left, right, or bottom edge for secondary navigation, settings, or mobile-first sheet patterns.",
       "tags": ["overlay", "dialog"],
       "useWhen": [
         "Showing supplementary navigation, filters, or settings that should slide in from a page edge.",
-        "Presenting long-form content that benefits from a side panel without leaving the current view."
+        "Presenting long-form content that benefits from a side panel without leaving the current view.",
+        "Presenting a focused task or set of actions that slides up from the bottom of the viewport on touch surfaces — use `placement=\"bottom\"`."
       ],
       "avoidWhen": [
         {
           "reason": "Interrupting the user for a focused decision — use modal so the surface is centered and task-scoped."
         },
         {
-          "reason": "Anchoring a small surface to a trigger — use popover or sheet instead."
+          "reason": "Anchoring a small surface to a trigger — use popover instead."
         }
       ],
-      "related": ["modal", "sheet", "popover"],
+      "related": ["modal", "popover"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
@@ -2363,7 +2364,7 @@
           "reason": "The surface already uses native dialog focus trapping."
         }
       ],
-      "related": ["modal", "drawer", "sheet", "popover"],
+      "related": ["modal", "drawer", "popover"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
@@ -2923,14 +2924,14 @@
       "tags": ["shortcut", "keyboard"],
       "useWhen": [
         "Displaying a reference panel of keyboard shortcuts grouped by feature area.",
-        "Embedding a shortcut table inside a modal, sheet, popover, or help page."
+        "Embedding a shortcut table inside a modal, drawer, popover, or help page."
       ],
       "avoidWhen": [
         {
           "reason": "Showing a single inline shortcut hint — use shortcut-hint instead."
         }
       ],
-      "related": ["kbd", "shortcut-hint", "modal", "sheet", "popover"],
+      "related": ["kbd", "shortcut-hint", "modal", "drawer", "popover"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
@@ -3384,10 +3385,10 @@
           "reason": "Showing side-anchored navigation or settings — use a drawer instead."
         },
         {
-          "reason": "Presenting a small contextual surface anchored to a trigger — use a popover or sheet instead."
+          "reason": "Presenting a small contextual surface anchored to a trigger — use a popover or a bottom-placed drawer instead."
         }
       ],
-      "related": ["confirm-dialog", "alert-dialog", "drawer", "sheet", "popover"],
+      "related": ["confirm-dialog", "alert-dialog", "drawer", "popover"],
       "hasConstraints": true,
       "hasExamples": true,
       "artifacts": {
@@ -3746,10 +3747,10 @@
           "reason": "Showing a short descriptive hint on hover or focus — use tooltip instead."
         },
         {
-          "reason": "Interrupting the user for a focused task — use modal, drawer, or sheet so the surface is modal."
+          "reason": "Interrupting the user for a focused task — use modal or drawer so the surface is modal."
         }
       ],
-      "related": ["modal", "drawer", "sheet", "tooltip"],
+      "related": ["modal", "drawer", "tooltip"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
@@ -3776,7 +3777,7 @@
           "reason": "The content should stay in normal document flow or inherit layout from its original parent."
         }
       ],
-      "related": ["popover", "modal", "drawer", "sheet"],
+      "related": ["popover", "modal", "drawer"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
@@ -4429,36 +4430,6 @@
         "schema": "@lostgradient/cinder/share-card/schema",
         "variables": "@lostgradient/cinder/share-card/variables",
         "examples": "@lostgradient/cinder/share-card/examples"
-      }
-    },
-    {
-      "name": "Sheet",
-      "id": "sheet",
-      "import": "@lostgradient/cinder/sheet",
-      "exportName": "Sheet",
-      "category": "overlay",
-      "status": "stable",
-      "purpose": "Bottom-anchored modal panel built on the native dialog element with an optional drag handle for mobile-first sheet patterns.",
-      "tags": ["overlay", "dialog"],
-      "useWhen": [
-        "Presenting a focused task or set of actions that slides up from the bottom of the viewport on touch surfaces.",
-        "Showing a contextual surface that should feel anchored to the screen edge rather than centered like a modal."
-      ],
-      "avoidWhen": [
-        {
-          "reason": "Interrupting the user with a centered task or confirmation — use modal instead."
-        },
-        {
-          "reason": "Showing supplementary side navigation or filters — use drawer or popover."
-        }
-      ],
-      "related": ["modal", "drawer", "popover"],
-      "hasConstraints": false,
-      "hasExamples": true,
-      "artifacts": {
-        "schema": "@lostgradient/cinder/sheet/schema",
-        "variables": "@lostgradient/cinder/sheet/variables",
-        "examples": "@lostgradient/cinder/sheet/examples"
       }
     },
     {

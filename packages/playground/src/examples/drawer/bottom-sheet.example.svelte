@@ -1,11 +1,12 @@
 <script lang="ts" module>
-  export const title = 'Overflowing sheet';
-  export const description = 'A bottom sheet with enough content to scroll.';
+  export const title = 'Bottom sheet';
+  export const description =
+    'A bottom-placed drawer with a drag handle and enough content to scroll.';
 </script>
 
 <script lang="ts">
   import { Button } from '@lostgradient/cinder/button';
-  import { Sheet } from '@lostgradient/cinder/sheet';
+  import { Drawer } from '@lostgradient/cinder/drawer';
 
   let open = $state(false);
   let triggerRef: HTMLElement | null = $state(null);
@@ -18,14 +19,14 @@
 </script>
 
 <Button
-  label="Open sheet"
+  label="Open bottom sheet"
   onclick={(event) => {
     triggerRef = event.currentTarget as HTMLElement;
     open = true;
   }}
 />
 
-<Sheet bind:open title="Workspace actions" {triggerRef} dragHandleVisible>
+<Drawer bind:open placement="bottom" title="Workspace actions" {triggerRef} dragHandleVisible>
   <div style="display: grid; gap: 0.875rem;">
     {#each actions as action (action.id)}
       <section>
@@ -40,4 +41,4 @@
   {#snippet footer()}
     <Button label="Done" onclick={() => (open = false)} />
   {/snippet}
-</Sheet>
+</Drawer>

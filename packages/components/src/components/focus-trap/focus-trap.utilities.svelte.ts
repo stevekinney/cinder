@@ -21,7 +21,7 @@ export type FocusTrapOptions = {
    * the root on open, which is what stand-alone overlays (popovers, menus) want.
    *
    * Set to `false` for hosts that perform their OWN initial focus (native
-   * `<dialog>.showModal()` already focuses, and Modal/Sheet/Drawer then deliberately
+   * `<dialog>.showModal()` already focuses, and Modal/Drawer then deliberately
    * move focus to a `tabindex="-1"` body container so reading starts at the content,
    * not the close button). With `manageInitialFocus: false` the trap still provides
    * Tab-wrapping and trap-stack membership, but never overrides the host's chosen
@@ -213,7 +213,7 @@ export function createFocusTrap(options: FocusTrapOptions = {}): Attachment<HTML
           ? document.activeElement
           : null;
       pushTrap({ id: trapId, node });
-      // Hosts that own their own initial focus (Modal/Sheet/Drawer focus a body
+      // Hosts that own their own initial focus (Modal/Drawer focus a body
       // container after showModal()) opt out so the trap never overrides that choice
       // by yanking focus to the first tabbable (the close button) on the next microtask.
       if (!manageInitialFocus) return;

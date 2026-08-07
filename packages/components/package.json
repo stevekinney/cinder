@@ -4529,38 +4529,6 @@
       "import": "./src/components/share-card/share-card.examples.json",
       "default": "./src/components/share-card/share-card.examples.json"
     },
-    "./sheet": {
-      "types": "./dist/components/sheet/index.d.ts",
-      "browser": "./src/components/sheet/index.ts",
-      "node": "./dist/server/components/sheet/index.js",
-      "svelte": "./src/components/sheet/index.ts",
-      "import": "./src/components/sheet/index.ts",
-      "default": "./dist/components/sheet/index.js"
-    },
-    "./sheet/schema": {
-      "types": "./dist/components/sheet/sheet.schema.d.ts",
-      "browser": "./src/components/sheet/sheet.schema.ts",
-      "node": "./dist/server/components/sheet/sheet.schema.js",
-      "svelte": "./src/components/sheet/sheet.schema.ts",
-      "import": "./src/components/sheet/sheet.schema.ts",
-      "default": "./dist/components/sheet/sheet.schema.js"
-    },
-    "./sheet/variables": {
-      "types": "./dist/components/sheet/sheet.variables.d.ts",
-      "browser": "./src/components/sheet/sheet.variables.ts",
-      "node": "./dist/server/components/sheet/sheet.variables.js",
-      "svelte": "./src/components/sheet/sheet.variables.ts",
-      "import": "./src/components/sheet/sheet.variables.ts",
-      "default": "./dist/components/sheet/sheet.variables.js"
-    },
-    "./sheet/styles": {
-      "types": "./dist/components/sheet/sheet.css.d.ts",
-      "default": "./dist/components/sheet/sheet.css"
-    },
-    "./sheet/examples": {
-      "import": "./src/components/sheet/sheet.examples.json",
-      "default": "./src/components/sheet/sheet.examples.json"
-    },
     "./shortcut-hint": {
       "types": "./dist/components/shortcut-hint/index.d.ts",
       "browser": "./src/components/shortcut-hint/index.ts",

@@ -11,8 +11,8 @@
    * @avoidWhen Only a two-action confirm/cancel prompt is needed — use confirm-dialog instead.
    * @avoidWhen An urgent blocking acknowledgement is needed — use alert-dialog instead.
    * @avoidWhen Showing side-anchored navigation or settings — use a drawer instead.
-   * @avoidWhen Presenting a small contextual surface anchored to a trigger — use a popover or sheet instead.
-   * @related confirm-dialog, alert-dialog, drawer, sheet, popover
+   * @avoidWhen Presenting a small contextual surface anchored to a trigger — use a popover or a bottom-placed drawer instead.
+   * @related confirm-dialog, alert-dialog, drawer, popover
    */
   export type { ModalProps } from './modal.types.ts';
 </script>
@@ -25,7 +25,10 @@
   import { classNames } from '../../utilities/class-names.ts';
   import { useReducedMotion } from '../../utilities/use-reduced-motion.svelte.ts';
   import { createFocusTrap } from '../focus-trap/index.ts';
-  import { createSlidingDialogState } from '../_internal/create-sliding-dialog-state.svelte.ts';
+  import {
+    createSlidingDialogState,
+    focusDialogBodyUnlessAutofocused,
+  } from '../_internal/create-sliding-dialog-state.svelte.ts';
 
   const titleId = $props.id();
 
@@ -60,7 +63,7 @@
   // event, but still needs a stack entry so non-dialog overlays above it
   // route their own Escape correctly per OVERLAY-POLICY), and — the piece
   // Modal previously lacked entirely — a real exit-transition grace period.
-  // This is the same shared mechanism Drawer and Sheet already use, so all
+  // This is the same shared mechanism Drawer already uses, so all
   // three dialog-based overlays animate symmetrically in and out.
   const dialogState = createSlidingDialogState({
     getOpen: () => open,
@@ -71,24 +74,18 @@
     getPanelElement: () => panelElement,
     getReducedMotion: () => reducedMotion.current,
     getTriggerRef: () => triggerRef,
-    onOpen: () => {
-      // Initial focus strategy:
-      //   1. If a child carries `autofocus`, the native dialog already focused it.
-      //   2. Otherwise, focus the body container (tabindex=-1) so initial focus
-      //      lands on meaningful content rather than the close-X button — which
-      //      would otherwise be the first sequentially-focusable element.
-      // Check both the HTML attribute (set by static markup) and the DOM property
-      // (set by Svelte 5's $.autofocus() helper, which sets element.autofocus = true
-      // rather than the attribute). The attribute selector alone misses the Svelte case.
-      const hasExplicitAutofocus =
-        dialogElement?.querySelector('[autofocus]') !== null ||
-        Array.from(dialogElement?.querySelectorAll<HTMLElement>('*') ?? []).some(
-          (el) => el.autofocus === true,
-        );
-      if (!hasExplicitAutofocus && bodyElement) {
-        bodyElement.focus();
-      }
-    },
+    // Initial focus strategy: if a child carries `autofocus`, the native
+    // dialog already focused it; otherwise focus the body container
+    // (tabindex=-1) so initial focus lands on meaningful content rather than
+    // the close-X button. The shared helper defers via tick() — onOpen fires
+    // in the same effect that first sets renderPanel, before the panel
+    // subtree (and the bodyElement binding) has flushed.
+    onOpen: () =>
+      focusDialogBodyUnlessAutofocused({
+        getOpen: () => open,
+        getDialogElement: () => dialogElement,
+        getBodyElement: () => bodyElement,
+      }),
   });
 
   $effect(() => {

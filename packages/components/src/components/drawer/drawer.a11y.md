@@ -44,6 +44,18 @@ Scroll lock is released on every close path, including component unmount while o
 
 The `<dialog>` element fills the viewport (not the panel itself), so any pointer event outside the visible panel reliably lands on the dialog element. Drawer checks `event.target === dialogElement` and closes when true.
 
+## Touch targets
+
+The close button and the drag handle both meet the WCAG 2.5.5 minimum 44×44 CSS pixel target size at every breakpoint. The close button is sized 2.75rem × 2.75rem; the drag handle container has `min-height` at the 44px touch-target token and spans the full panel width, even though the visible pill inside it is smaller for visual restraint.
+
+## Drag handle (bottom placement)
+
+When `dragHandleVisible={true}` and `placement="bottom"`, a decorative drag handle renders above the header. The handle is marked `aria-hidden="true"` because it carries no semantic information beyond its visual affordance — the same close paths (close button, backdrop, ESC) remain the keyboard-accessible ways to dismiss the drawer.
+
+The prop is named `dragHandleVisible` (not `draggable`) to avoid colliding with the native HTML `draggable` attribute on the underlying `<dialog>`.
+
+Swipe-to-close gesture support is a stretch goal not implemented in the MVP. The `dragHandleVisible` prop currently only controls visibility of the handle, and the cursor is intentionally `default` rather than `grab` so pointer users are not given a false affordance. When swipe support lands, both will change in lockstep.
+
 ## Reduced motion
 
 Open and close transitions are gated by `@media (prefers-reduced-motion: no-preference)`. Under `prefers-reduced-motion: reduce`, both the panel and native backdrop disable transitions and close immediately after the deterministic cleanup path runs.

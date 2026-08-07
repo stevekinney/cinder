@@ -67,7 +67,6 @@ const modalCss = loadCss('../components/modal/modal.css');
 const popoverCss = loadCss('../components/popover/popover.css');
 const ratingCss = loadCss('../components/rating/rating.css');
 const searchFieldCss = loadCss('../components/search-field/search-field.css');
-const sheetCss = loadCss('../components/sheet/sheet.css');
 const toastRegionCss = loadCss('../components/toast-region/toast-region.css');
 const treeCss = loadCss('../components/tree/tree.css');
 
@@ -624,7 +623,6 @@ describe('focus-ring sweep — Strategy B-inset CSS selectors', () => {
     },
     { name: 'modal close', css: modalCss, selector: '.cinder-modal__close:focus-visible' },
     { name: 'drawer close', css: drawerCss, selector: '.cinder-drawer__close:focus-visible' },
-    { name: 'sheet close', css: sheetCss, selector: '.cinder-sheet__close:focus-visible' },
     {
       name: 'search-field clear',
       css: searchFieldCss,

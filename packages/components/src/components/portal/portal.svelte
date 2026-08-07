@@ -9,7 +9,7 @@
    * @useWhen Rendering an overlay or floating surface outside the current stacking or overflow context.
    * @useWhen Building a custom anchored or modal primitive that needs to append content into document.body or a named host.
    * @avoidWhen The content should stay in normal document flow or inherit layout from its original parent.
-   * @related popover, modal, drawer, sheet
+   * @related popover, modal, drawer
    */
   export type { PortalProps } from './portal.types.ts';
 </script>

@@ -230,7 +230,7 @@ import manifest from '@lostgradient/cinder/manifest' with { type: 'json' };
   `data-display`, `layout`, `typography`, `domain`.
 - `tags` — free-text keywords (`cta`, `disclosure`, `selection`, etc.).
 - `overlapFamilies` — explicit groupings of components that solve overlapping
-  problems (Modal vs Drawer vs Sheet vs Popover). When two candidates appear
+  problems (Modal vs Drawer vs Popover). When two candidates appear
   in the same family, read each one's `useWhen` / `avoidWhen` to pick.
 
 Each entry carries `purpose`, `useWhen[]`, `avoidWhen[]`, `related[]`,
@@ -381,15 +381,14 @@ the matching entry in `@lostgradient/cinder/manifest`.
 | `alert`   | Inline status message with assertive role for surfacing time-sensitive feedback about a nearby action or…     | Surfacing the result of a just-completed action such as a save failure or success.                        |
 | `callout` | Inline static note or aside that highlights supporting commentary alongside body content without claiming…    | Drawing attention to tangential information nested inside prose, documentation, or article content.       |
 
-### overlay (5 components)
+### overlay (4 components)
 
-| id             | purpose                                                                                                        | use when                                                                                                      |
-| -------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `modal`        | Centered modal dialog shell built on the native dialog element with focus capture, restoration, and dismissal… | Presenting rich or structured content that requires user interaction before returning to the page — forms,…   |
-| `drawer`       | Side-anchored modal panel built on the native dialog element for secondary navigation, settings, or long-form… | Showing supplementary navigation, filters, or settings that should slide in from a page edge.                 |
-| `sheet`        | Bottom-anchored modal panel built on the native dialog element with an optional drag handle for mobile-first…  | Presenting a focused task or set of actions that slides up from the bottom of the viewport on touch surfaces. |
-| `popover`      | Anchored floating panel positioned by Floating UI that hosts non-modal contextual content beside a trigger…    | Showing rich, interactive contextual content anchored to a trigger such as a help panel, color picker, or…    |
-| `alert-dialog` | Sticky alert dialog for urgent acknowledgement that cannot be dismissed by backdrop click or Escape.           | Requiring acknowledgement of a blocking warning before the user can continue.                                 |
+| id             | purpose                                                                                                        | use when                                                                                                    |
+| -------------- | -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `modal`        | Centered modal dialog shell built on the native dialog element with focus capture, restoration, and dismissal… | Presenting rich or structured content that requires user interaction before returning to the page — forms,… |
+| `drawer`       | Edge-anchored modal panel built on the native dialog element; slides from the left, right, or bottom edge for… | Showing supplementary navigation, filters, or settings that should slide in from a page edge.               |
+| `popover`      | Anchored floating panel positioned by Floating UI that hosts non-modal contextual content beside a trigger…    | Showing rich, interactive contextual content anchored to a trigger such as a help panel, color picker, or…  |
+| `alert-dialog` | Sticky alert dialog for urgent acknowledgement that cannot be dismissed by backdrop click or Escape.           | Requiring acknowledgement of a blocking warning before the user can continue.                               |
 
 ### selection (3 components)
 

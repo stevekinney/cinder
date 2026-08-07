@@ -46,7 +46,7 @@ If the content fits the plain-text `description` constraint, prefer `AlertDialog
 - [`ConfirmDialog`](../confirm-dialog/README.md) — pre-wired confirm/cancel variant built on Modal. Use for binary decisions.
 - [`AlertDialog`](../alert-dialog/README.md) — sticky alert dialog that cannot be dismissed by Escape or backdrop click. Use for urgent acknowledgements.
 - [`Drawer`](../drawer/README.md) — side-anchored overlay for supplementary content.
-- [`Sheet`](../sheet/README.md) — bottom-anchored overlay for mobile-style interactions.
+- [`Drawer`](../drawer/README.md) with `placement="bottom"` — bottom-anchored overlay for mobile-style interactions.
 - [`Popover`](../popover/README.md) — non-blocking floating panel for contextual content.
 
 ## Usage

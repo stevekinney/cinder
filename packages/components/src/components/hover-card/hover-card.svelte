@@ -69,7 +69,7 @@
   // reactive flush has already re-rendered the template, so an effect that
   // reacted to `open` going false by flipping a gate synchronously would
   // always be one render too late — the node would already be gone by the
-  // time the effect ran. Mirroring Drawer/Sheet's `SlidingDialogState`,
+  // time the effect ran. Mirroring Drawer's `SlidingDialogState`,
   // `renderCard` is set eagerly on open and only cleared later, from the
   // `waitForTransitionCompletion` completion callback — never in the same
   // flush that flipped `open`.
@@ -223,7 +223,7 @@
   });
 
   // Drives `renderCard`/`closing`: when `open` goes true, mount immediately.
-  // When `open` goes false, mirror Drawer/Sheet's `data-cinder-closing`
+  // When `open` goes false, mirror Drawer's `data-cinder-closing`
   // pattern — mark `closing` and keep `renderCard` true until the CSS
   // opacity/transform transition genuinely finishes, then unmount.
   $effect(() => {

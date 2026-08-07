@@ -1,3 +1,5 @@
+import { tick } from 'svelte';
+
 import { captureFocus, lockBodyScroll, pushEscapeHandler } from '../../_internal/overlay.ts';
 import { waitForTransitionCompletion } from '../../_internal/transition-completion.ts';
 import { restoreFocusTo } from '../../utilities/focus.ts';
@@ -43,6 +45,12 @@ export class SlidingDialogState {
         this.#cancelPendingClose?.();
         this.#cancelPendingClose = null;
         this.isClosing = false;
+        // Quick reopen: the native dialog never closed, so the
+        // `!dialogElement.open` branch below will not run. Re-fire onOpen so
+        // hosts re-apply their initial-focus policy for this new open cycle —
+        // the closing panel was `inert`, which blurred focus to document.body,
+        // and nothing else will bring it back.
+        this.#options.onOpen?.();
       }
 
       if (!this.renderPanel) {
@@ -167,4 +175,38 @@ export class SlidingDialogState {
 
 export function createSlidingDialogState(options: SlidingDialogStateOptions): SlidingDialogState {
   return new SlidingDialogState(options);
+}
+
+/**
+ * The shared "focus the body unless something is autofocused" initial-focus
+ * policy for sliding dialogs (Modal, Drawer). Call from `onOpen`.
+ *
+ * Deferred via `tick()` because `onOpen` fires inside the same effect that
+ * first sets `renderPanel = true` — the `{#if renderPanel}` subtree (and with
+ * it the body element binding) has not flushed yet. After the tick resolves,
+ * the panel is in the DOM.
+ *
+ * Autofocus detection checks both the HTML attribute (static markup) and the
+ * DOM property (Svelte 5's `$.autofocus()` helper sets `element.autofocus`
+ * rather than the attribute) — the attribute selector alone misses the Svelte
+ * case. When a child is autofocused, the native `showModal()` already focused
+ * it; leave it alone.
+ */
+export function focusDialogBodyUnlessAutofocused(options: {
+  getOpen: () => boolean;
+  getDialogElement: () => HTMLDialogElement | undefined;
+  getBodyElement: () => HTMLElement | undefined;
+}): void {
+  void tick().then(() => {
+    const dialogElement = options.getDialogElement();
+    if (!options.getOpen() || !dialogElement?.open) return;
+    const hasExplicitAutofocus =
+      dialogElement.querySelector('[autofocus]') !== null ||
+      Array.from(dialogElement.querySelectorAll<HTMLElement>('*')).some(
+        (element) => element.autofocus === true,
+      );
+    if (!hasExplicitAutofocus) {
+      options.getBodyElement()?.focus();
+    }
+  });
 }

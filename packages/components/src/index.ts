@@ -314,7 +314,7 @@ export { default as Divider } from './components/divider/index.ts';
 export type { DividerOrientation, DividerProps, DividerTone } from './components/divider/index.ts';
 
 export { default as Drawer } from './components/drawer/index.ts';
-export type { DrawerProps, DrawerSide, DrawerSize } from './components/drawer/index.ts';
+export type { DrawerPlacement, DrawerProps, DrawerSize } from './components/drawer/index.ts';
 
 export { default as Dropdown } from './components/dropdown/index.ts';
 export type {
@@ -782,9 +782,6 @@ export type {
 
 export { default as ShareCard } from './components/share-card/index.ts';
 export type { ShareCardAction, ShareCardProps } from './components/share-card/index.ts';
-
-export { default as Sheet } from './components/sheet/index.ts';
-export type { SheetProps } from './components/sheet/index.ts';
 
 export { default as ShortcutHint } from './components/shortcut-hint/index.ts';
 export type { ShortcutHintProps } from './components/shortcut-hint/index.ts';

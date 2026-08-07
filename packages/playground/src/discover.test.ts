@@ -305,7 +305,6 @@ const SIDEBAR_BASELINE = [
   'selectable-row',
   'selection-popover',
   'share-card',
-  'sheet',
   'shortcut-hint',
   'side-navigation',
   'sidebar',

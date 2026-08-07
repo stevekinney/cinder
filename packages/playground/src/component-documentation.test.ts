@@ -75,7 +75,6 @@ describe('buildComponentDocumentation', () => {
     expect(payload.readme.html).toContain('href="/page/alert-dialog" target="_top"');
     expect(payload.readme.html).toContain('href="/page/drawer" target="_top"');
     expect(payload.readme.html).toContain('href="/page/sidebar" target="_top"');
-    expect(payload.readme.html).toContain('href="/page/sheet" target="_top"');
     expect(payload.readme.html).toContain('href="/page/popover" target="_top"');
     expect(payload.readme.html).not.toContain('../confirm-dialog/README.md');
   });

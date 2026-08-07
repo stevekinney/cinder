@@ -9,7 +9,7 @@ Purpose: Grouped keyboard-shortcut reference that renders key combos via Kbd wit
 ## Use when
 
 - Displaying a reference panel of keyboard shortcuts grouped by feature area.
-- Embedding a shortcut table inside a modal, sheet, popover, or help page.
+- Embedding a shortcut table inside a modal, drawer, popover, or help page.
 
 ## Avoid when
 
@@ -34,4 +34,4 @@ When KeyboardShortcuts accepts snippets or arbitrary children, the caller owns t
 - Inspect the accessible name, role, and state in browser accessibility tools.
 - Check forced-colors mode when the component adds borders, focus rings, selected state, or status color.
 
-Related components: `kbd`, `shortcut-hint`, `modal`, `sheet`, `popover`.
+Related components: `kbd`, `shortcut-hint`, `modal`, `drawer`, `popover`.

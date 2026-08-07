@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
-import { createRawSnippet } from 'svelte';
+import { createRawSnippet, tick } from 'svelte';
 
 import { _resetScrollLock } from '../../_internal/overlay.ts';
 import { setupHappyDom } from '../../test/happy-dom.ts';
@@ -1067,6 +1067,10 @@ describe('Modal focus containment', () => {
     const { container } = render(Modal, {
       props: { open: true, title: 'Trap test', children: childrenWithButtons },
     });
+    // Drain the deferred initial-focus microtask (tick().then → body focus)
+    // BEFORE positioning focus, or it races in during the awaited fireEvent
+    // and clobbers the wrap destination.
+    await tick();
 
     const panel = container.querySelector('.cinder-modal__panel') as HTMLElement;
     expect(panel).not.toBeNull();
@@ -1102,6 +1106,8 @@ describe('Modal focus containment', () => {
     const { container } = render(Modal, {
       props: { open: true, title: 'Trap test', children: childrenWithButtons },
     });
+    // Drain the deferred initial-focus microtask before positioning focus.
+    await tick();
 
     const panel = container.querySelector('.cinder-modal__panel') as HTMLElement;
     expect(panel).not.toBeNull();

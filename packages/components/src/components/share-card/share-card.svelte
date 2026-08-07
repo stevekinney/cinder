@@ -170,7 +170,7 @@
   // only flips true after hydration (it is gated on the `hydrated` $effect), and
   // when the native-share action was instead appended to this reactive array
   // post-hydration, the keyed `{#each}` did not render it. The standalone `{#if}`
-  // (matching the drawer/sheet hydration convention) renders reliably on the flip.
+  // (matching the drawer hydration convention) renders reliably on the flip.
   const defaultActions: ShareCardAction[] = $derived([
     {
       key: 'copy-link',

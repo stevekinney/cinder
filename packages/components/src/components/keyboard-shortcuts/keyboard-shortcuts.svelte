@@ -7,9 +7,9 @@
    * @tag shortcut
    * @tag keyboard
    * @useWhen Displaying a reference panel of keyboard shortcuts grouped by feature area.
-   * @useWhen Embedding a shortcut table inside a modal, sheet, popover, or help page.
+   * @useWhen Embedding a shortcut table inside a modal, drawer, popover, or help page.
    * @avoidWhen Showing a single inline shortcut hint — use shortcut-hint instead.
-   * @related kbd, shortcut-hint, modal, sheet, popover
+   * @related kbd, shortcut-hint, modal, drawer, popover
    */
   export type {
     KeyboardShortcutEntry,

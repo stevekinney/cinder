@@ -39,7 +39,7 @@ Grouped keyboard-shortcut reference that renders key combos via Kbd with accessi
 ### Use When
 
 - Displaying a reference panel of keyboard shortcuts grouped by feature area.
-- Embedding a shortcut table inside a modal, sheet, popover, or help page.
+- Embedding a shortcut table inside a modal, drawer, popover, or help page.
 
 ### Avoid When
 

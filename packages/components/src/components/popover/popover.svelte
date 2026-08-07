@@ -9,8 +9,8 @@
    * @useWhen Showing rich, interactive contextual content anchored to a trigger such as a help panel, color picker, or listbox surface.
    * @useWhen Presenting non-blocking supplementary controls that should dismiss on outside click or Escape.
    * @avoidWhen Showing a short descriptive hint on hover or focus — use tooltip instead.
-   * @avoidWhen Interrupting the user for a focused task — use modal, drawer, or sheet so the surface is modal.
-   * @related modal, drawer, sheet, tooltip
+   * @avoidWhen Interrupting the user for a focused task — use modal or drawer so the surface is modal.
+   * @related modal, drawer, tooltip
    */
   export type {
     PopoverFocusManagement,

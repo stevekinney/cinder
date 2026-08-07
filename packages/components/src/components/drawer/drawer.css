@@ -2,7 +2,7 @@
 @layer cinder.components {
   /* ========================================
  * DRAWER
- * Edge-anchored (left/right) slide-in panel.
+ * Edge-anchored (left/right/bottom) slide-in panel.
  * The <dialog> fills the viewport so backdrop-click on dialog is reliable;
  * the visible panel is a child absolutely positioned at the chosen edge.
  * ======================================== */
@@ -50,9 +50,6 @@
 
   .cinder-drawer__panel {
     position: absolute;
-    top: 0;
-    bottom: 0;
-    height: 100%;
     max-width: 100vw;
     background: var(--cinder-surface-raised);
     box-shadow: var(--cinder-shadow-lg);
@@ -65,18 +62,27 @@
       opacity var(--cinder-duration-normal) var(--cinder-ease-standard);
   }
 
-  .cinder-drawer__panel[data-cinder-side='right'] {
+  .cinder-drawer__panel[data-cinder-placement='right'] {
+    top: 0;
+    bottom: 0;
     right: 0;
     left: auto;
+    height: 100%;
     border-inline-start: 1px solid var(--cinder-border);
   }
 
-  .cinder-drawer__panel[data-cinder-side='left'] {
+  .cinder-drawer__panel[data-cinder-placement='left'] {
+    top: 0;
+    bottom: 0;
     left: 0;
     right: auto;
+    height: 100%;
     border-inline-end: 1px solid var(--cinder-border);
   }
 
+  /* Width tokens size the side placements. The bottom-placement block below
+   is declared LATER at equal specificity, so its full-viewport width wins
+   over any size token without per-rule exclusions. */
   .cinder-drawer__panel[data-cinder-size='sm'] {
     width: min(20rem, 100vw);
   }
@@ -90,12 +96,48 @@
     width: min(48rem, 100vw);
   }
 
+  .cinder-drawer__panel[data-cinder-placement='bottom'] {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    /* Declared after the size tokens so this always wins: the bottom
+     placement spans the full viewport width regardless of `size`. */
+    width: 100%;
+    /* Physically bottom-anchored, so preserve the physical viewport cap in
+     vertical writing modes. */
+    max-height: 90dvh;
+    border-block-start: 1px solid var(--cinder-border);
+    border-start-start-radius: var(--cinder-radius-lg);
+    border-start-end-radius: var(--cinder-radius-lg);
+  }
+
+  .cinder-drawer__drag-handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    /* 44px minimum touch target. */
+    min-height: var(--cinder-touch-target-min);
+    flex-shrink: 0;
+    /* The handle is decorative until swipe-to-close ships — no grab cursor. */
+    cursor: default;
+    user-select: none;
+  }
+
+  .cinder-drawer__drag-handle-pill {
+    display: block;
+    width: 2.5rem;
+    height: 0.25rem;
+    border-radius: var(--cinder-radius-full);
+    background: var(--cinder-border);
+  }
+
   .cinder-drawer__header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: var(--cinder-space-4);
-    padding: var(--cinder-space-5) var(--cinder-space-6);
+    padding: var(--cinder-space-4) var(--cinder-space-5);
     border-block-end: 1px solid var(--cinder-border-muted);
     flex-shrink: 0;
     background: var(--cinder-surface);
@@ -116,6 +158,7 @@
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+    /* 44px minimum touch target. */
     width: 2.75rem;
     height: 2.75rem;
     padding: var(--cinder-space-1);
@@ -162,6 +205,7 @@
     --_cinder-scroll-fade-color: var(--cinder-surface);
 
     flex: 1;
+    min-block-size: 0;
     overflow-y: auto;
     padding: var(--cinder-space-6);
     overscroll-behavior: contain;
@@ -175,7 +219,7 @@
     align-items: center;
     justify-content: flex-end;
     gap: var(--cinder-space-3);
-    padding: var(--cinder-space-4) var(--cinder-space-6);
+    padding: var(--cinder-space-3) var(--cinder-space-5);
     border-block-start: 1px solid var(--cinder-border-muted);
     flex-shrink: 0;
     background: var(--cinder-surface);
@@ -184,15 +228,23 @@
   /* ----------------------------------------
  * Motion — slide from the anchored edge.
  * Animation targets the panel, not the dialog (which is transparent).
+ * Every placement MUST have both a closing rule and a matching
+ * @starting-style rule below, or that placement pops in with no
+ * from-state while the backdrop fades.
  * ---------------------------------------- */
 
-  .cinder-drawer__panel[data-cinder-side='right'][data-cinder-closing] {
+  .cinder-drawer__panel[data-cinder-placement='right'][data-cinder-closing] {
     translate: 100% 0;
     opacity: 0.85;
   }
 
-  .cinder-drawer__panel[data-cinder-side='left'][data-cinder-closing] {
+  .cinder-drawer__panel[data-cinder-placement='left'][data-cinder-closing] {
     translate: -100% 0;
+    opacity: 0.85;
+  }
+
+  .cinder-drawer__panel[data-cinder-placement='bottom'][data-cinder-closing] {
+    translate: 0 100%;
     opacity: 0.85;
   }
 
@@ -201,13 +253,18 @@
   }
 
   @starting-style {
-    .cinder-drawer__panel[data-cinder-side='right'] {
+    .cinder-drawer__panel[data-cinder-placement='right'] {
       translate: 100% 0;
       opacity: 0.85;
     }
 
-    .cinder-drawer__panel[data-cinder-side='left'] {
+    .cinder-drawer__panel[data-cinder-placement='left'] {
       translate: -100% 0;
+      opacity: 0.85;
+    }
+
+    .cinder-drawer__panel[data-cinder-placement='bottom'] {
+      translate: 0 100%;
       opacity: 0.85;
     }
   }
