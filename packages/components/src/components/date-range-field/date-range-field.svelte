@@ -45,7 +45,7 @@
     endLabel,
     granularity = 'day',
     presets,
-    hidePresets = false,
+    presetsVisible = true,
     description,
     error,
     disabled = false,
@@ -269,7 +269,7 @@
     </p>
   {/if}
 
-  {#if !hidePresets}
+  {#if presetsVisible}
     <div
       class="cinder-date-range-field__presets"
       role="group"

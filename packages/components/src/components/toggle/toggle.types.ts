@@ -10,7 +10,7 @@
  *
  * The component renders its own label next to the switch, so consumers do not
  * hand-roll an external one. `label` is always the accessible name (wired via
- * `aria-labelledby`); `hideLabel` changes only the visual presentation and
+ * `aria-labelledby`); `labelVisible` changes only the visual presentation and
  * never removes the accessible name.
  */
 export type ToggleProps = {
@@ -22,12 +22,12 @@ export type ToggleProps = {
   onValueChangeRequest?: (next: boolean) => boolean | void;
   /** Notify after the bindable value has been committed. */
   onValueChange?: (next: boolean) => void;
-  /** Visible label text. Always the accessible name, even when `hideLabel` is set. Required. */
+  /** Visible label text. Always the accessible name, even when `labelVisible` is set. Required. */
   label: string;
   /** Prevents interaction when true. Sets `disabled` attribute. */
   disabled?: boolean;
-  /** Visually hide the rendered label while keeping it as the accessible name. Use for icon-only or inline contexts. */
-  hideLabel?: boolean;
+  /** Whether the label is visibly rendered. Default `true`; set `false` for icon-only or inline contexts — it stays the accessible name. */
+  labelVisible?: boolean;
   /**
    * Form field name. When set, a hidden checkbox mirrors `checked` so the toggle
    * participates in native form submission. Omit for purely client-side toggles

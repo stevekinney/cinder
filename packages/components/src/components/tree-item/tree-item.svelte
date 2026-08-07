@@ -40,7 +40,7 @@
     id,
     label,
     disabled = false,
-    draggable = false,
+    reorderHandleVisible = false,
     branch = false,
     loadChildren,
     onLoadError,
@@ -130,7 +130,7 @@
   const selectionState = $derived(context.selectionStateFor(id));
   const labelSegments = $derived.by(() => splitLabelForHighlight(label, context.filterValue));
   const dragController = $derived(context.dragController);
-  const canDrag = $derived(draggable && !disabled && dragController != null);
+  const canDrag = $derived(reorderHandleVisible && !disabled && dragController != null);
 
   const dragHandlers = new TreeItemDragHandlers({
     getDragController: () => dragController,

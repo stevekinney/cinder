@@ -36,9 +36,9 @@
 >
   {#each items as item (item.id)}
     {#if item.branch}
-      <Tree.Item id={item.id} label={item.label} branch draggable />
+      <Tree.Item id={item.id} label={item.label} branch reorderHandleVisible />
     {:else}
-      <Tree.Item id={item.id} label={item.label} draggable />
+      <Tree.Item id={item.id} label={item.label} reorderHandleVisible />
     {/if}
   {/each}
 </Tree>

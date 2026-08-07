@@ -13,7 +13,7 @@
       "id": "compact-hidden-label",
       "title": "Compact field with hidden label",
       "description": "Keep the accessible name from label while visually hiding it for compact auth/token layouts.",
-      "code": "<script lang=\"ts\">\n  import { Input } from '@lostgradient/cinder/input';\n\n  let token = $state('');\n</script>\n\n<Input\n  id=\"demo-token\"\n  bind:value={token}\n  label=\"Demo token\"\n  hideLabel\n  autocomplete=\"off\"\n  placeholder=\"Enter demo token\"\n/>\n"
+      "code": "<script lang=\"ts\">\n  import { Input } from '@lostgradient/cinder/input';\n\n  let token = $state('');\n</script>\n\n<Input\n  id=\"demo-token\"\n  bind:value={token}\n  label=\"Demo token\"\n  labelVisible={false}\n  autocomplete=\"off\"\n  placeholder=\"Enter demo token\"\n/>\n"
     },
     {
       "id": "newsletter-signup",

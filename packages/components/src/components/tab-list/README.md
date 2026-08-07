@@ -14,12 +14,12 @@ snippet. The flat `@lostgradient/cinder/tab-list` subpath remains exported for
 
 <!-- generated:props:start -->
 
-| Prop         | Type       | Required | Default | Description                                                                              |
-| ------------ | ---------- | -------- | ------- | ---------------------------------------------------------------------------------------- |
-| `class`      | `string`   | no       | —       | Additional class names merged with `.cinder-tab-list`.                                   |
-| `label`      | `string`   | no       | —       | Optional accessible name for the tablist. Sets `aria-label`.                             |
-| `labelledBy` | `string`   | no       | —       | Reference to a heading or label element that names the tablist.                          |
-| `children`   | `(opaque)` | yes      | —       | Tab children. Not expressible in JSON Schema; see the component types for the signature. |
+| Prop             | Type       | Required | Default | Description                                                                              |
+| ---------------- | ---------- | -------- | ------- | ---------------------------------------------------------------------------------------- |
+| `ariaLabelledby` | `string`   | no       | —       | Reference to a heading or label element that names the tablist.                          |
+| `class`          | `string`   | no       | —       | Additional class names merged with `.cinder-tab-list`.                                   |
+| `label`          | `string`   | no       | —       | Optional accessible name for the tablist. Sets `aria-label`.                             |
+| `children`       | `(opaque)` | yes      | —       | Tab children. Not expressible in JSON Schema; see the component types for the signature. |
 
 <!-- generated:props:end -->
 

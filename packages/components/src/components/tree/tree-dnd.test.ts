@@ -19,7 +19,7 @@ afterEach(() => cleanup());
 type Item = {
   id: string;
   label: string;
-  draggable?: boolean;
+  reorderHandleVisible?: boolean;
   disabled?: boolean;
   branch?: boolean;
   children?: Item[];
@@ -37,7 +37,8 @@ function treeItemsSnippet(items: Item[]): Snippet {
           id: item.id,
           label: item.label,
         };
-        if (item.draggable !== undefined) props.draggable = item.draggable;
+        if (item.reorderHandleVisible !== undefined)
+          props.reorderHandleVisible = item.reorderHandleVisible;
         if (item.disabled !== undefined) props.disabled = item.disabled;
         if (item.branch !== undefined) props.branch = item.branch;
         if (item.onRename !== undefined) props.onRename = item.onRename;
@@ -90,9 +91,9 @@ function renderTree(
 ) {
   const onReorder = options.onReorder ?? mock();
   const items = options.items ?? [
-    { id: 'a', label: 'Alpha', draggable: true },
-    { id: 'b', label: 'Beta', draggable: true },
-    { id: 'c', label: 'Gamma', draggable: true },
+    { id: 'a', label: 'Alpha', reorderHandleVisible: true },
+    { id: 'b', label: 'Beta', reorderHandleVisible: true },
+    { id: 'c', label: 'Gamma', reorderHandleVisible: true },
   ];
   const result = render(Tree, {
     props: {
@@ -107,11 +108,11 @@ function renderTree(
 }
 
 describe('Tree — drag-and-drop reorder', () => {
-  test('renders non-tab-stop drag handles only for enabled draggable items', () => {
+  test('renders non-tab-stop drag handles only for enabled reorderHandleVisible items', () => {
     const { container } = renderTree({
       items: [
-        { id: 'a', label: 'Alpha', draggable: true },
-        { id: 'b', label: 'Beta', draggable: true, disabled: true },
+        { id: 'a', label: 'Alpha', reorderHandleVisible: true },
+        { id: 'b', label: 'Beta', reorderHandleVisible: true, disabled: true },
         { id: 'c', label: 'Gamma' },
       ],
     });
@@ -142,7 +143,7 @@ describe('Tree — drag-and-drop reorder', () => {
     expect(alpha.getAttribute('aria-selected')).toBe('false');
   });
 
-  test('Space and Enter on a draggable selectable item keep their selection behavior', async () => {
+  test('Space and Enter on a reorderHandleVisible selectable item keep their selection behavior', async () => {
     const onReorder = mock();
     const { container } = renderTree({ selectionMode: 'single', onReorder });
     const alpha = treeItem(container, 'Alpha');
@@ -209,8 +210,8 @@ describe('Tree — drag-and-drop reorder', () => {
     const onRename = mock();
     const { container } = renderTree({
       items: [
-        { id: 'a', label: 'Alpha', draggable: true, onRename },
-        { id: 'b', label: 'Beta', draggable: true },
+        { id: 'a', label: 'Alpha', reorderHandleVisible: true, onRename },
+        { id: 'b', label: 'Beta', reorderHandleVisible: true },
       ],
     });
     const alpha = treeItem(container, 'Alpha');
@@ -342,8 +343,8 @@ describe('Tree — drag-and-drop reorder', () => {
     const { container } = renderTree({
       expandedIds: ['a'],
       items: [
-        { id: 'a', label: 'Alpha', branch: true, draggable: true },
-        { id: 'b', label: 'Beta', draggable: true },
+        { id: 'a', label: 'Alpha', branch: true, reorderHandleVisible: true },
+        { id: 'b', label: 'Beta', reorderHandleVisible: true },
       ],
       onReorder: (draggedId, target) => calls.push([draggedId, target]),
     });
@@ -369,8 +370,8 @@ describe('Tree — drag-and-drop reorder', () => {
           id: 'a',
           label: 'Alpha',
           branch: true,
-          draggable: true,
-          children: [{ id: 'b', label: 'Beta', draggable: true }],
+          reorderHandleVisible: true,
+          children: [{ id: 'b', label: 'Beta', reorderHandleVisible: true }],
         },
       ],
       onReorder: (draggedId, target) => calls.push([draggedId, target]),

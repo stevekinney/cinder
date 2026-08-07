@@ -22,9 +22,9 @@
       "enum": ["day", "hour", "minute", "second"],
       "description": "Date-time precision. Defaults to day precision."
     },
-    "hidePresets": {
+    "presetsVisible": {
       "type": "boolean",
-      "description": "When true, hides the preset buttons and shows only the date inputs."
+      "description": "Whether the preset buttons render. Default `true`; set `false` for date inputs only."
     },
     "description": {
       "type": "string",

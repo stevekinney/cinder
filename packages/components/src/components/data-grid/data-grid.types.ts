@@ -14,8 +14,8 @@ export type DataGridSortModelItem = {
 export type DataGridSortModel = readonly DataGridSortModelItem[];
 
 export type DataGridSortComparator<TRow, TValue = unknown> = {
-  bivarianceHack(leftValue: TValue, rightValue: TValue, leftRow: TRow, rightRow: TRow): number;
-}['bivarianceHack'];
+  compare(leftValue: TValue, rightValue: TValue, leftRow: TRow, rightRow: TRow): number;
+}['compare'];
 
 export type DataGridCellContext<TRow, TValue = unknown> = {
   row: TRow;

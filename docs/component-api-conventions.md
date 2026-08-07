@@ -9,7 +9,10 @@ component-level review.
 ## Handlers
 
 - Native DOM event props use Svelte 5 lowercase names such as `onclick`,
-  `onchange`, `oninput`, and `onkeydown`.
+  `onchange`, `oninput`, and `onkeydown`. A lowercase `on*` name is only legal
+  when the handler's first parameter extends `Event` — `check:prop-conventions`
+  enforces this with the type checker, so a value-carrying callback cannot
+  squat on a native name.
 - Custom component notifications use camelCase `onNounVerb` names, such as
   `onSearchChange`, `onFacetChange`, and `onValueChange`.
 - Value interceptors are not notifications. A callback that can replace or veto

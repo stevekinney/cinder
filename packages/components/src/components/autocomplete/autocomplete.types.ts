@@ -63,7 +63,7 @@ export type AutocompleteProps = Omit<
   | 'onValueChangeRequest'
   | 'onValueChange'
   | 'label'
-  | 'hideLabel'
+  | 'labelVisible'
   | 'description'
   | 'error'
   | 'inputAttachment'

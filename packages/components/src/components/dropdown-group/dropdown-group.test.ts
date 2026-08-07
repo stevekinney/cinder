@@ -52,19 +52,19 @@ describe('DropdownGroup accessible name resolution', () => {
     expect(group?.hasAttribute('aria-labelledby')).toBe(false);
   });
 
-  test('throws when both label and labelledBy are provided', () => {
+  test('throws when both label and ariaLabelledby are provided', () => {
     expect(() =>
       render(DropdownGroup, {
-        props: { label: 'Document actions', labelledBy: 'heading-id' } as any,
+        props: { label: 'Document actions', ariaLabelledby: 'heading-id' } as any,
       }),
     ).toThrow(
-      'DropdownGroup requires exactly one accessible naming strategy: label or labelledBy.',
+      'DropdownGroup requires exactly one accessible naming strategy: label or ariaLabelledby.',
     );
   });
 
-  test('throws when neither label nor labelledBy is provided', () => {
+  test('throws when neither label nor ariaLabelledby is provided', () => {
     expect(() => render(DropdownGroup, { props: {} as any })).toThrow(
-      'DropdownGroup requires exactly one accessible naming strategy: label or labelledBy.',
+      'DropdownGroup requires exactly one accessible naming strategy: label or ariaLabelledby.',
     );
   });
 

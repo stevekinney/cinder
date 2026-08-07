@@ -27,7 +27,7 @@
     onValueChange,
     label,
     disabled,
-    hideLabel = false,
+    labelVisible = true,
     name,
     value = 'on',
     form,
@@ -99,7 +99,7 @@
         id={ownLabelId}
         class="cinder-toggle-field__label"
         role="presentation"
-        data-hidden={hideLabel || undefined}
+        data-hidden={!labelVisible || undefined}
         data-disabled={resolvedDisabled || undefined}
         onclick={toggle}>{label}</span
       >
@@ -114,7 +114,7 @@
       id={labelId}
       class="cinder-toggle-field__label"
       role="presentation"
-      data-hidden={hideLabel || undefined}
+      data-hidden={!labelVisible || undefined}
       data-disabled={resolvedDisabled || undefined}
       onclick={toggle}
     >

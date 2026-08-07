@@ -2743,11 +2743,11 @@ describe('Tree — typeahead', () => {
     }
   });
 
-  test('disableTypeahead prevents typeahead from moving focus', async () => {
+  test('typeaheadDisabled prevents typeahead from moving focus', async () => {
     const { container } = render(Tree, {
       props: {
         'aria-label': 'T',
-        disableTypeahead: true,
+        typeaheadDisabled: true,
         children: treeItemsSnippet([
           { id: 'banana', label: 'Banana' },
           { id: 'apple', label: 'Apple' },

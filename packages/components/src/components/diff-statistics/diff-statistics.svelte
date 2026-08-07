@@ -31,7 +31,7 @@
     modified,
     variant = 'default',
     density,
-    hideZero = false,
+    zeroVisible = true,
     class: customClassName,
     ...rest
   }: DiffStatisticsProps = $props();
@@ -54,9 +54,9 @@
   const removedLabel = $derived(`${removed} ${pluralize(removed, 'line', 'lines')} removed`);
   const modifiedLabel = $derived(`${modified} ${pluralize(modified, 'line', 'lines')} modified`);
 
-  const showAdded = $derived(!hideZero || added > 0);
-  const showRemoved = $derived(!hideZero || removed > 0);
-  const showModified = $derived(!hideZero || modified > 0);
+  const showAdded = $derived(zeroVisible || added > 0);
+  const showRemoved = $derived(zeroVisible || removed > 0);
+  const showModified = $derived(zeroVisible || modified > 0);
   const hasAnyStatistics = $derived(showAdded || showRemoved || showModified);
 </script>
 

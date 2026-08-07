@@ -24,13 +24,13 @@
     class: customClassName,
     children,
     label,
-    labelledBy,
+    ariaLabelledby,
     ...rest
   }: DropdownGroupProps = $props();
 
   function normalizeAccessibleName(
     value: string | undefined,
-    propertyName: 'label' | 'labelledBy',
+    propertyName: 'label' | 'ariaLabelledby',
   ): string | undefined {
     if (value === undefined) return undefined;
     const trimmedValue = value.trim();
@@ -41,23 +41,23 @@
   }
 
   // Resolve and validate the accessible name at render time so all three
-  // invariants — non-empty label, non-empty labelledBy, and exactly one of
+  // invariants — non-empty label, non-empty ariaLabelledby, and exactly one of
   // the two — are enforced in a single place on both server and client, rather
   // than splitting the exclusivity check into a post-paint, SSR-skipped $effect.
   const resolvedAccessibleName = $derived.by(() => {
     const trimmedLabel = normalizeAccessibleName(label, 'label');
-    const trimmedLabelledBy = normalizeAccessibleName(labelledBy, 'labelledBy');
+    const trimmedLabelledBy = normalizeAccessibleName(ariaLabelledby, 'ariaLabelledby');
 
     const namedByLabel = trimmedLabel !== undefined;
     const namedByReference = trimmedLabelledBy !== undefined;
 
     if (namedByLabel === namedByReference) {
       throw new Error(
-        'DropdownGroup requires exactly one accessible naming strategy: label or labelledBy.',
+        'DropdownGroup requires exactly one accessible naming strategy: label or ariaLabelledby.',
       );
     }
 
-    return { label: trimmedLabel, labelledBy: trimmedLabelledBy };
+    return { label: trimmedLabel, ariaLabelledby: trimmedLabelledBy };
   });
 </script>
 
@@ -66,7 +66,7 @@
   class={classNames('cinder-dropdown-group', customClassName)}
   role="group"
   aria-label={resolvedAccessibleName.label}
-  aria-labelledby={resolvedAccessibleName.labelledBy}
+  aria-labelledby={resolvedAccessibleName.ariaLabelledby}
 >
   {#if children}
     {@render children()}

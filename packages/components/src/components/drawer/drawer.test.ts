@@ -197,8 +197,8 @@ describe('Drawer', () => {
     expect(heading?.textContent?.trim()).toBe('My Drawer Title');
   });
 
-  // ---- 6. Custom header without ariaLabelledBy: visually-hidden h2 ----
-  test('custom header without ariaLabelledBy renders sr-only title heading', () => {
+  // ---- 6. Custom header without ariaLabelledby: visually-hidden h2 ----
+  test('custom header without ariaLabelledby renders sr-only title heading', () => {
     const customHeader = createRawSnippet(() => ({
       render: () => `<span>Custom Header Content</span>`,
       setup: () => {},
@@ -221,8 +221,8 @@ describe('Drawer', () => {
     expect(heading?.classList.contains('cinder-sr-only')).toBe(true);
   });
 
-  // ---- 7. Custom header with ariaLabelledBy: no internal heading ----
-  test('custom header with ariaLabelledBy uses consumer id and renders no internal title', () => {
+  // ---- 7. Custom header with ariaLabelledby: no internal heading ----
+  test('custom header with ariaLabelledby uses consumer id and renders no internal title', () => {
     const customHeader = createRawSnippet(() => ({
       render: () => `<h2 id="external-heading">External Heading</h2>`,
       setup: () => {},
@@ -232,7 +232,7 @@ describe('Drawer', () => {
         open: true,
         title: 'Unused Title',
         header: customHeader,
-        ariaLabelledBy: 'external-heading',
+        ariaLabelledby: 'external-heading',
         children: emptySnippet,
       },
     });

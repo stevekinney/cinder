@@ -79,7 +79,7 @@
     virtualizedItem,
     'aria-label': ariaLabel,
     'aria-labelledby': ariaLabelledBy,
-    disableTypeahead = false,
+    typeaheadDisabled = false,
     id: idAttribute,
     class: className,
     style: styleAttribute,
@@ -759,7 +759,7 @@
       return selectionMode === 'multiple';
     },
     get typeaheadEnabled() {
-      return !disableTypeahead;
+      return !typeaheadDisabled;
     },
     get expandedIds() {
       return expandedIds;
@@ -884,7 +884,7 @@
       if (childId) focusNode(childId);
     },
     handleTypeahead(char, currentId) {
-      if (disableTypeahead) return;
+      if (typeaheadDisabled) return;
 
       const match = registry.typeaheadMatch(
         typeaheadBuffer.push(char),
@@ -1018,7 +1018,7 @@
   }
 
   function handleVirtualizedTypeahead(event: KeyboardEvent): boolean {
-    if (disableTypeahead || !isTypeaheadKey(event)) {
+    if (typeaheadDisabled || !isTypeaheadKey(event)) {
       return false;
     }
 

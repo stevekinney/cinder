@@ -21,12 +21,12 @@
   <Dropdown id="actions-menu" {placement}>
     <DropdownTrigger class="trigger" style={triggerStyle}>Actions</DropdownTrigger>
     <DropdownMenu style={menuStyle}>
-      <DropdownGroup labelledBy="actions-menu-document-label">
+      <DropdownGroup ariaLabelledby="actions-menu-document-label">
         <DropdownLabel id="actions-menu-document-label">Document</DropdownLabel>
         <DropdownItem onclick={() => (selected = 'copy')}>Copy link</DropdownItem>
       </DropdownGroup>
       <DropdownSeparator />
-      <DropdownGroup labelledBy="actions-menu-sharing-label">
+      <DropdownGroup ariaLabelledby="actions-menu-sharing-label">
         <DropdownLabel id="actions-menu-sharing-label">Sharing</DropdownLabel>
         <DropdownItem onclick={() => (selected = 'share')}>Invite people</DropdownItem>
         <DropdownItem itemRole="menuitemcheckbox" checked onclick={() => (selected = 'keep')}>

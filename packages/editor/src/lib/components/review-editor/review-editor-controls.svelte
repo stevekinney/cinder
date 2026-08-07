@@ -115,7 +115,7 @@
     <SegmentedControl
       id="{id}-view-mode"
       label="Review editor view"
-      hideLabel
+      labelVisible={false}
       variant="tablist"
       size="sm"
       density="toolbar"
@@ -157,7 +157,7 @@
         size="sm"
         density="toolbar"
         label="Diff view mode"
-        hideLabel
+        labelVisible={false}
         bind:value={diffViewMode}
       >
         <Segment value="unified">Unified</Segment>

@@ -28,7 +28,7 @@
     cursor: not-allowed;
   }
 
-  /* hideLabel: keep the label as the accessible name, remove it from layout.
+  /* labelVisible: keep the label as the accessible name, remove it from layout.
  * Same recipe as the global .cinder-sr-only utility, inlined here so the
  * per-component sidecar (dist/components/toggle/toggle.css) is self-sufficient. */
   .cinder-toggle-field__label[data-hidden] {

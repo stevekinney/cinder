@@ -57,7 +57,7 @@
     countries,
     locale,
     label,
-    hideLabel = false,
+    labelVisible = true,
     'aria-label': ariaLabel,
     'aria-labelledby': ariaLabelledBy,
     description,
@@ -507,7 +507,7 @@
   {#if label}
     <span
       id={groupLabelId}
-      class={classNames('cinder-phone-input-field__label', hideLabel && 'cinder-sr-only')}
+      class={classNames('cinder-phone-input-field__label', !labelVisible && 'cinder-sr-only')}
       data-disabled={resolvedDisabled || undefined}
     >
       {label}

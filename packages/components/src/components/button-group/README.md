@@ -21,13 +21,13 @@ Clusters related action buttons into a unified visual group with shared borders.
 
 <!-- generated:props:start -->
 
-| Prop          | Type                           | Required | Default        | Description                                                                                                                                       |
-| ------------- | ------------------------------ | -------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `class`       | `string`                       | no       | —              | Additional class merged with `.cinder-button-group`.                                                                                              |
-| `label`       | `string`                       | no       | —              | Inline accessible name for the group, applied as `aria-label`. Provide exactly one of `label` or `labelledBy`.                                    |
-| `labelledBy`  | `string`                       | no       | —              | The `id` of a visible heading element that already names the group, applied as `aria-labelledby`. Provide exactly one of `label` or `labelledBy`. |
-| `orientation` | `"horizontal"` \| `"vertical"` | no       | `"horizontal"` | Orientation of the visual collapse. Default: 'horizontal'.                                                                                        |
-| `children`    | `(opaque)`                     | yes      | —              | Buttons (or split-button compositions) to render inside the group. Not expressible in JSON Schema; see the component types for the signature.     |
+| Prop             | Type                           | Required | Default        | Description                                                                                                                                           |
+| ---------------- | ------------------------------ | -------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ariaLabelledby` | `string`                       | no       | —              | The `id` of a visible heading element that already names the group, applied as `aria-labelledby`. Provide exactly one of `label` or `ariaLabelledby`. |
+| `class`          | `string`                       | no       | —              | Additional class merged with `.cinder-button-group`.                                                                                                  |
+| `label`          | `string`                       | no       | —              | Inline accessible name for the group, applied as `aria-label`. Provide exactly one of `label` or `ariaLabelledby`.                                    |
+| `orientation`    | `"horizontal"` \| `"vertical"` | no       | `"horizontal"` | Orientation of the visual collapse. Default: 'horizontal'.                                                                                            |
+| `children`       | `(opaque)`                     | yes      | —              | Buttons (or split-button compositions) to render inside the group. Not expressible in JSON Schema; see the component types for the signature.         |
 
 <!-- generated:props:end -->
 

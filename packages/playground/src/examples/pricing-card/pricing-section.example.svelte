@@ -13,19 +13,19 @@
       name: 'Starter',
       price: '$0',
       features: ['3 projects', 'Community support'],
-      cta: 'Start free',
+      callToActionLabel: 'Start free',
     },
     {
       name: 'Pro',
       price: '$49 / month',
       features: ['Unlimited projects', 'Priority support', 'Team roles'],
-      cta: 'Choose Pro',
+      callToActionLabel: 'Choose Pro',
     },
     {
       name: 'Enterprise',
       price: 'Contact us',
       features: ['SSO + SCIM', 'Audit logs', 'Dedicated support'],
-      cta: 'Talk to sales',
+      callToActionLabel: 'Talk to sales',
     },
   ];
 
@@ -51,9 +51,9 @@
               name={plan.name}
               price={plan.price}
               features={plan.features}
-              cta={plan.cta}
+              callToActionLabel={plan.callToActionLabel}
               selected={selectedPlan === plan.name}
-              onSelect={() => {
+              onPlanSelect={() => {
                 selectedPlan = plan.name;
               }}
             />

@@ -16,19 +16,19 @@ type ButtonGroupBase = Omit<
 /**
  * Layout-only grouping container for related action buttons.
  * Requires an accessible name via either `label` (for inline labelling)
- * or `labelledBy` (when a visible heading already names the group).
+ * or `ariaLabelledby` (when a visible heading already names the group).
  * Exactly one must be provided.
  */
 export type ButtonGroupProps = ButtonGroupBase &
   (
     | {
-        /** Inline accessible name for the group, applied as `aria-label`. Provide exactly one of `label` or `labelledBy`. */
+        /** Inline accessible name for the group, applied as `aria-label`. Provide exactly one of `label` or `ariaLabelledby`. */
         label: string;
-        labelledBy?: never;
+        ariaLabelledby?: never;
       }
     | {
         label?: never;
-        /** The `id` of a visible heading element that already names the group, applied as `aria-labelledby`. Provide exactly one of `label` or `labelledBy`. */
-        labelledBy: string;
+        /** The `id` of a visible heading element that already names the group, applied as `aria-labelledby`. Provide exactly one of `label` or `ariaLabelledby`. */
+        ariaLabelledby: string;
       }
   );

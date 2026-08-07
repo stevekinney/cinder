@@ -34,7 +34,7 @@
     count = 5,
     precision = 'whole',
     label,
-    hideLabel = false,
+    labelVisible = true,
     'aria-label': ariaLabel,
     'aria-labelledby': ariaLabelledBy,
     description,
@@ -289,7 +289,7 @@
   {#if label}
     <span
       id={groupLabelId}
-      class={classNames('cinder-rating-field__label', hideLabel && 'cinder-sr-only')}
+      class={classNames('cinder-rating-field__label', !labelVisible && 'cinder-sr-only')}
       data-disabled={resolvedDisabled || undefined}
     >
       {label}

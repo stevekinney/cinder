@@ -14,13 +14,13 @@ type DropdownGroupBaseProps = Omit<
 export type DropdownGroupProps = DropdownGroupBaseProps &
   (
     | {
-        /** Accessible label for the group, applied as aria-label. Provide exactly one of `label` or `labelledBy`. */
+        /** Accessible label for the group, applied as aria-label. Provide exactly one of `label` or `ariaLabelledby`. */
         label: string;
-        labelledBy?: never;
+        ariaLabelledby?: never;
       }
     | {
         label?: never;
-        /** ID of an existing element whose text labels the group, applied as aria-labelledby. Provide exactly one of `label` or `labelledBy`. */
-        labelledBy: string;
+        /** ID of an existing element whose text labels the group, applied as aria-labelledby. Provide exactly one of `label` or `ariaLabelledby`. */
+        ariaLabelledby: string;
       }
   );

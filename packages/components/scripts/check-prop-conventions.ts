@@ -8,7 +8,7 @@ const packageRoot = resolve(scriptDirectory, '..');
 const repositoryRoot = resolve(packageRoot, '..', '..');
 const documentationPath = 'docs/component-api-conventions.md';
 
-const booleanPrefixPattern = /^(show|allow|use)[A-Z]/;
+const booleanPrefixPattern = /^(show|allow|use|hide|disable|disallow)[A-Z]/;
 const nativeDomHandlers = new Set([
   'onclick',
   'onchange',
@@ -31,6 +31,16 @@ export const bannedNames = new Map<string, string>([
   ['colSpan', 'Use `columnSpan`.'],
   ['lockScroll', 'Use `scrollLocked`.'],
   ['onClick', 'Use Svelte native `onclick`.'],
+  ['cta', 'Use `callToActionLabel`.'],
+  ['hideLabel', 'Use `labelVisible` (default `true`).'],
+  ['labelledBy', 'Use `ariaLabelledby`.'],
+  ['ariaLabelledBy', 'Use `ariaLabelledby` (lowercase b, matching the aria-labelledby attribute).'],
+  [
+    'draggable',
+    'Collides with the native `draggable` attribute — use `reorderHandleVisible` or `dragHandleVisible`.',
+  ],
+  ['disallowEmptySelection', 'Use `selectionRequired`.'],
+  ['disableTypeahead', 'Use `typeaheadDisabled`.'],
   ['onLoadmore', 'Use `onLoadMore`.'],
   ['onSelectall', 'Use `onSelectAll`.'],
   ['onFilterchange', 'Use `onFilterChange`.'],

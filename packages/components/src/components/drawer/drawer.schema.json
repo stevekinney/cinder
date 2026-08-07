@@ -16,15 +16,15 @@
     },
     "title": {
       "type": "string",
-      "description": "Accessible name for the drawer. Required for screen-reader labelling.\nRendered as a visible `<h2>` in the default header. When a custom\n`header` snippet is provided without `ariaLabelledBy`, this text is\nrendered in a visually-hidden `<h2>` as the accessible name fallback."
+      "description": "Accessible name for the drawer. Required for screen-reader labelling.\nRendered as a visible `<h2>` in the default header. When a custom\n`header` snippet is provided without `ariaLabelledby`, this text is\nrendered in a visually-hidden `<h2>` as the accessible name fallback."
     },
     "class": {
       "type": "string",
       "description": "Additional class names merged with `.cinder-drawer`."
     },
-    "ariaLabelledBy": {
+    "ariaLabelledby": {
       "type": "string",
-      "description": "Optional id of an element that names the drawer. When supplied, drawer\nwires `aria-labelledby` to this id and renders no internal heading.\nUse this when a custom `header` snippet has its own visible heading —\nsupply `ariaLabelledBy` pointing to that heading's id so the\nvisible and accessible names stay in sync."
+      "description": "Optional id of an element that names the drawer. When supplied, drawer\nwires `aria-labelledby` to this id and renders no internal heading.\nUse this when a custom `header` snippet has its own visible heading —\nsupply `ariaLabelledby` pointing to that heading's id so the\nvisible and accessible names stay in sync."
     },
     "dragHandleVisible": {
       "type": "boolean",

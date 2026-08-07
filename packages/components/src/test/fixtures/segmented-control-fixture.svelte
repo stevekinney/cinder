@@ -28,9 +28,9 @@
     orientation?: 'horizontal' | 'vertical';
     detached?: boolean;
     fullWidth?: boolean;
-    hideLabel?: boolean;
+    labelVisible?: boolean;
     disabled?: boolean;
-    disallowEmptySelection?: boolean;
+    selectionRequired?: boolean;
     className?: string;
     showLeadingIcon?: boolean;
     allowUnsupportedMultipleVariant?: boolean;
@@ -57,9 +57,9 @@
     orientation,
     detached,
     fullWidth,
-    hideLabel,
+    labelVisible,
     disabled,
-    disallowEmptySelection,
+    selectionRequired,
     className,
     showLeadingIcon = false,
     allowUnsupportedMultipleVariant = false,
@@ -127,7 +127,7 @@
     {orientation}
     {detached}
     {fullWidth}
-    {hideLabel}
+    {labelVisible}
     {disabled}
     {onValueChange}
     class={className}
@@ -148,9 +148,9 @@
     {orientation}
     {detached}
     {fullWidth}
-    {hideLabel}
+    {labelVisible}
     {disabled}
-    {disallowEmptySelection}
+    {selectionRequired}
     {onValueChange}
     class={className}
     {...rest}

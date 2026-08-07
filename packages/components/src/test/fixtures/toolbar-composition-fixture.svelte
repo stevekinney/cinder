@@ -13,7 +13,7 @@
     <SegmentedControl
       id="viewport"
       label="Viewport"
-      hideLabel
+      labelVisible={false}
       density="toolbar"
       value="mobile"
       onValueChange={() => {}}

@@ -15,8 +15,8 @@ Presents a single pricing plan with its name, price, feature list, an optional c
     price="$29/mo"
     features={['Unlimited projects', '50 GB storage', 'Email & chat support', 'Advanced analytics']}
     caveat="Billed annually. Monthly billing available at $35/mo."
-    cta="Start free trial"
-    onSelect={() => {}}
+    callToActionLabel="Start free trial"
+    onPlanSelect={() => {}}
   />
 </div>
 ```
@@ -37,16 +37,16 @@ Presents a single pricing plan with its name, price, feature list, an optional c
 
 <!-- generated:props:start -->
 
-| Prop       | Type       | Required | Default | Description                                                                                                       |
-| ---------- | ---------- | -------- | ------- | ----------------------------------------------------------------------------------------------------------------- |
-| `caveat`   | `string`   | no       | —       | Optional footnote or caveat beneath the features list.                                                            |
-| `class`    | `string`   | no       | —       | Custom class merged with `.cinder-pricing-card`.                                                                  |
-| `cta`      | `string`   | yes      | —       | Label for the call-to-action button.                                                                              |
-| `features` | `string`[] | yes      | —       | Feature strings to display in the bulleted list.                                                                  |
-| `name`     | `string`   | yes      | —       | Plan name displayed as the card heading.                                                                          |
-| `price`    | `string`   | yes      | —       | Price string, e.g. "$9/mo" or "Free".                                                                             |
-| `selected` | `boolean`  | no       | `false` | Whether this card is the currently selected plan.                                                                 |
-| `onSelect` | `(opaque)` | yes      | —       | Called when the CTA button is clicked. Not expressible in JSON Schema; see the component types for the signature. |
+| Prop                | Type       | Required | Default | Description                                                                                                       |
+| ------------------- | ---------- | -------- | ------- | ----------------------------------------------------------------------------------------------------------------- |
+| `callToActionLabel` | `string`   | yes      | —       | Label for the call-to-action button.                                                                              |
+| `caveat`            | `string`   | no       | —       | Optional footnote or caveat beneath the features list.                                                            |
+| `class`             | `string`   | no       | —       | Custom class merged with `.cinder-pricing-card`.                                                                  |
+| `features`          | `string`[] | yes      | —       | Feature strings to display in the bulleted list.                                                                  |
+| `name`              | `string`   | yes      | —       | Plan name displayed as the card heading.                                                                          |
+| `price`             | `string`   | yes      | —       | Price string, e.g. "$9/mo" or "Free".                                                                             |
+| `selected`          | `boolean`  | no       | `false` | Whether this card is the currently selected plan.                                                                 |
+| `onPlanSelect`      | `(opaque)` | yes      | —       | Called when the CTA button is clicked. Not expressible in JSON Schema; see the component types for the signature. |
 
 <!-- generated:props:end -->
 

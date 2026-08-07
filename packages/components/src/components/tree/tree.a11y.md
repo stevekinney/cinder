@@ -41,7 +41,7 @@ The tree implementation follows the [WAI-ARIA Tree pattern](https://www.w3.org/W
 | `Enter`                                 | If `selectionMode !== 'none'`: toggle selection. If branch: also toggle expand. In checkbox-selection mode, branch `Enter` only toggles expand and leaf `Enter` toggles checked state. |
 | `Space`                                 | Toggle selection or checked state. Does **not** toggle expand on branches per APG guidance.                                                                                            |
 | `*` (asterisk)                          | Expand all sibling branches at the current level.                                                                                                                                      |
-| Printable character                     | Typeahead: focus the next visible item whose label starts with the buffered string (case-insensitive). Buffer resets after 500 ms. Disable per-tree via `disableTypeahead`.            |
+| Printable character                     | Typeahead: focus the next visible item whose label starts with the buffered string (case-insensitive). Buffer resets after 500 ms. Disable per-tree via `typeaheadDisabled`.           |
 | `Shift+ArrowUp/Down`                    | Multi-select only: select the current anchor-to-current range, then move focus one item.                                                                                               |
 | `Ctrl/Cmd+A`                            | Multi-select only: select all currently visible, non-disabled items.                                                                                                                   |
 
@@ -100,7 +100,7 @@ Typeahead is part of the APG tree pattern. When a printable character is pressed
 3. If found, that item is focused.
 4. The buffer resets 500 ms after the last keystroke.
 
-Multi-character sequences allow users to jump to "ap" before "apple" rather than landing on "aardvark." Typeahead can be disabled per-tree via the `disableTypeahead` prop.
+Multi-character sequences allow users to jump to "ap" before "apple" rather than landing on "aardvark." Typeahead can be disabled per-tree via the `typeaheadDisabled` prop.
 
 ## Virtualization and Performance
 

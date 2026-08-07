@@ -194,7 +194,7 @@ describe('DateRangeField', () => {
       expect(legend?.textContent?.trim()).toBe('Time window');
     });
 
-    test('renders default preset buttons when hidePresets is false', () => {
+    test('renders default preset buttons when presetsVisible is false', () => {
       const { container } = render(DateRangeField, { id: 'drf' });
       const buttons = getPresetButtons(container);
       expect(buttons.length).toBeGreaterThan(0);
@@ -406,8 +406,8 @@ describe('DateRangeField', () => {
       expect(inclusiveDays).toBe(2);
     });
 
-    test('hides preset buttons when hidePresets is true', () => {
-      const { container } = render(DateRangeField, { id: 'drf', hidePresets: true });
+    test('hides preset buttons when presetsVisible is true', () => {
+      const { container } = render(DateRangeField, { id: 'drf', presetsVisible: false });
       const presets = container.querySelector('.cinder-date-range-field__presets');
       expect(presets).toBeNull();
     });

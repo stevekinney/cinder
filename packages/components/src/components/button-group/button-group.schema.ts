@@ -16,12 +16,12 @@ const schema = {
     label: {
       type: 'string',
       description:
-        'Inline accessible name for the group, applied as `aria-label`. Provide exactly one of `label` or `labelledBy`.',
+        'Inline accessible name for the group, applied as `aria-label`. Provide exactly one of `label` or `ariaLabelledby`.',
     },
-    labelledBy: {
+    ariaLabelledby: {
       type: 'string',
       description:
-        'The `id` of a visible heading element that already names the group, applied as `aria-labelledby`. Provide exactly one of `label` or `labelledBy`.',
+        'The `id` of a visible heading element that already names the group, applied as `aria-labelledby`. Provide exactly one of `label` or `ariaLabelledby`.',
     },
   },
   additionalProperties: false,

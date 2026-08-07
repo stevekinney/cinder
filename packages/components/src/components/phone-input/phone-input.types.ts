@@ -64,8 +64,8 @@ export type PhoneInputProps = {
   locale?: string;
   /** Visible group label rendered above the controls. */
   label?: string;
-  /** Visually hide the rendered `label` while keeping it programmatically associated. */
-  hideLabel?: boolean;
+  /** Whether the `label` is visibly rendered. Default `true`; set `false` to visually hide it while keeping it programmatically associated. */
+  labelVisible?: boolean;
   /** Group accessible name when no visible `label` is supplied. */
   'aria-label'?: string;
   /** Space-separated list of ids that label the group when no `label` is supplied. */

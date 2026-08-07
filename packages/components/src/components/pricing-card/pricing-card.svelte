@@ -25,8 +25,8 @@
     name,
     price,
     features,
-    cta,
-    onSelect,
+    callToActionLabel,
+    onPlanSelect,
     caveat,
     selected = false,
     class: className,
@@ -90,6 +90,11 @@
   </div>
 
   <div class="cinder-pricing-card__footer">
-    <Button label={cta} variant={selected ? 'primary' : 'secondary'} fullWidth onclick={onSelect} />
+    <Button
+      label={callToActionLabel}
+      variant={selected ? 'primary' : 'secondary'}
+      fullWidth
+      onclick={onPlanSelect}
+    />
   </div>
 </div>

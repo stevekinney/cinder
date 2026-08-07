@@ -66,7 +66,7 @@ describe('SegmentedControl — single mode', () => {
     expect(selected).toBe('rendered');
   });
 
-  test('clicking the already-selected option is a no-op (disallowEmptySelection default true)', async () => {
+  test('clicking the already-selected option is a no-op (selectionRequired default true)', async () => {
     let selected: string | undefined = 'source';
     render(Fixture, {
       props: {
@@ -130,7 +130,7 @@ describe('SegmentedControl — single mode', () => {
     expect(selected).toBe('source');
   });
 
-  test('with disallowEmptySelection={false}, clicking the already-selected option clears value', async () => {
+  test('with selectionRequired={false}, clicking the already-selected option clears value', async () => {
     let selected: string | undefined = 'source';
     render(Fixture, {
       props: {
@@ -143,7 +143,7 @@ describe('SegmentedControl — single mode', () => {
         },
         label: 'Document view',
         options,
-        disallowEmptySelection: false,
+        selectionRequired: false,
       },
     });
 
@@ -321,7 +321,7 @@ describe('SegmentedControl — multiple mode', () => {
     expect(screen.queryByRole('radiogroup')).toBeNull();
   });
 
-  test('group has accessible name from label; hideLabel still provides it to AT', () => {
+  test('group has accessible name from label; a hidden label still provides it to AT', () => {
     const set = new SvelteSet<string>();
     render(Fixture, {
       props: {
@@ -330,7 +330,7 @@ describe('SegmentedControl — multiple mode', () => {
         options: multiOptions,
         selectionMode: 'multiple',
         value: set,
-        hideLabel: true,
+        labelVisible: false,
       },
     });
 

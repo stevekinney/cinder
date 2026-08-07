@@ -9,9 +9,9 @@ export type PricingCardProps = Omit<HTMLAttributes<HTMLDivElement>, 'onselect'> 
   /** List of feature strings to display. Rendered as a bulleted list. */
   features: string[];
   /** Label for the call-to-action button. */
-  cta: string;
+  callToActionLabel: string;
   /** Called when the CTA button is clicked. */
-  onSelect: () => void;
+  onPlanSelect: () => void;
   /**
    * Optional footnote or caveat displayed beneath the features list.
    * Use for legal disclaimers, billing notes, or conditional terms.
@@ -36,7 +36,7 @@ export interface PricingCardSchemaProps {
   /** Feature strings to display in the bulleted list. */
   features: string[];
   /** Label for the call-to-action button. */
-  cta: string;
+  callToActionLabel: string;
   /** Optional footnote or caveat beneath the features list. */
   caveat?: string;
   /**

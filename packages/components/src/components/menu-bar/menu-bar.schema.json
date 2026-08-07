@@ -8,10 +8,10 @@
     },
     "label": {
       "type": "string",
-      "description": "Accessible label for the menubar, applied as aria-label. Ignored when labelledBy is set. Default `Application menu`.",
+      "description": "Accessible label for the menubar, applied as aria-label. Ignored when ariaLabelledby is set. Default `Application menu`.",
       "default": "Application menu"
     },
-    "labelledBy": {
+    "ariaLabelledby": {
       "type": "string",
       "description": "ID of an existing element whose text labels the menubar, applied as aria-labelledby. Takes precedence over label."
     },

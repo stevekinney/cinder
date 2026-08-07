@@ -17,9 +17,10 @@ const schema = {
       description:
         'Native form field name. Renders hidden input(s) carrying the selected value(s).',
     },
-    hideLabel: {
+    labelVisible: {
       type: 'boolean',
-      description: 'Visually hide the label while keeping it available to assistive technology.',
+      description:
+        'Whether the label is visibly rendered. Default `true`; set `false` to visually hide it while keeping it available to assistive technology.',
     },
     disabled: {
       type: 'boolean',
@@ -60,7 +61,7 @@ const schema = {
       description:
         'Selection mode. `"single"` allows exactly one segment to be selected at a time; `"multiple"` allows any number of segments to be selected simultaneously. Default `"single"`.',
     },
-    disallowEmptySelection: {
+    selectionRequired: {
       type: 'boolean',
       description:
         'When true (default), clicking the already-selected option is a no-op.\nWhen false, clicking the selected option clears value to undefined.',

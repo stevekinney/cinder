@@ -34,7 +34,7 @@
     value = $bindable<T | SvelteSet<T> | undefined>(),
     label,
     name,
-    hideLabel = false,
+    labelVisible = true,
     disabled = false,
     size = 'md',
     density,
@@ -43,7 +43,7 @@
     fullWidth = false,
     variant = 'radiogroup',
     selectionMode = 'single',
-    disallowEmptySelection = true,
+    selectionRequired = true,
     class: customClassName,
     onValueChange,
     children,
@@ -65,7 +65,7 @@
     variant: () => effectiveVariant,
     orientation: () => orientation,
     controlDisabled: () => disabled,
-    disallowEmptySelection: () => disallowEmptySelection,
+    selectionRequired: () => selectionRequired,
     getValue: () => value as string | SvelteSet<string> | undefined,
     setValue: (next) => {
       value = next as T | SvelteSet<T> | undefined;
@@ -151,7 +151,7 @@
 <div class="cinder-segmented-control-container">
   <span
     id={`${id}-label`}
-    class={classNames('cinder-segmented-control-label', hideLabel && 'cinder-sr-only')}
+    class={classNames('cinder-segmented-control-label', !labelVisible && 'cinder-sr-only')}
   >
     {label}
   </span>

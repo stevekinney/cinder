@@ -36,7 +36,7 @@
     title,
     class: className,
     triggerRef = null,
-    ariaLabelledBy,
+    ariaLabelledby,
     dragHandleVisible = false,
     header,
     children,
@@ -113,7 +113,7 @@
     bind:this={dialogElement}
     class={classNames('cinder-drawer', className)}
     aria-modal="true"
-    aria-labelledby={ariaLabelledBy ?? titleId}
+    aria-labelledby={ariaLabelledby ?? titleId}
     data-cinder-closing={dialogState.isClosing ? '' : undefined}
     onclose={() => dialogState.handleClose()}
     oncancel={(event) => dialogState.handleNativeCancel(event)}
@@ -169,7 +169,7 @@
 
         <header class="cinder-drawer__header">
           {#if header}
-            {#if !ariaLabelledBy}
+            {#if !ariaLabelledby}
               <h2 id={titleId} class="cinder-sr-only">{title}</h2>
             {/if}
             {@render header()}

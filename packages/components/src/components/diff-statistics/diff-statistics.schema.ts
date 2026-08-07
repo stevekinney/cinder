@@ -26,9 +26,10 @@ const schema = {
       description:
         'Toolbar density opt-in (compact variant only). When set, pills snap to\nthe shared `--cinder-control-height-sm` tier.',
     },
-    hideZero: {
+    zeroVisible: {
       type: 'boolean',
-      description: 'Hide statistics with a zero value.',
+      description:
+        'Whether zero-value statistics render. Default `true`; set `false` to hide them.',
     },
     class: {
       type: 'string',

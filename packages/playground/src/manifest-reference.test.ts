@@ -299,14 +299,14 @@ describe('toPropReferenceRows — Button (real manifest)', () => {
 
   it('marks a genuinely required prop as required', async () => {
     // DropdownGroup writes the "exactly one of" idiom as
-    // `{ label: string; labelledBy?: never } | { label?: never; labelledBy: string }`.
+    // `{ label: string; ariaLabelledby?: never } | { label?: never; ariaLabelledby: string }`.
     // Both alternatives are optional across the union as a whole, so seeding
     // both supplies either all or none — and the component rejects both. The
     // analyzer commits to the first alternative, which is what makes the
     // generated preview satisfy the component's own validation.
     const rows = toPropReferenceRows(await manifestFor('dropdown-group'));
     expect(rows.find((row) => row.name === 'label')?.required).toBe(true);
-    expect(rows.find((row) => row.name === 'labelledBy')?.required).toBe(false);
+    expect(rows.find((row) => row.name === 'ariaLabelledby')?.required).toBe(false);
   });
 
   it('covers varied control kinds (select, boolean, snippet, unknown)', async () => {

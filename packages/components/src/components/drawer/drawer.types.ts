@@ -16,7 +16,7 @@ export type DrawerProps = {
   /**
    * Accessible name for the drawer. Required for screen-reader labelling.
    * Rendered as a visible `<h2>` in the default header. When a custom
-   * `header` snippet is provided without `ariaLabelledBy`, this text is
+   * `header` snippet is provided without `ariaLabelledby`, this text is
    * rendered in a visually-hidden `<h2>` as the accessible name fallback.
    */
   title: string;
@@ -32,10 +32,10 @@ export type DrawerProps = {
    * Optional id of an element that names the drawer. When supplied, drawer
    * wires `aria-labelledby` to this id and renders no internal heading.
    * Use this when a custom `header` snippet has its own visible heading —
-   * supply `ariaLabelledBy` pointing to that heading's id so the
+   * supply `ariaLabelledby` pointing to that heading's id so the
    * visible and accessible names stay in sync.
    */
-  ariaLabelledBy?: string;
+  ariaLabelledby?: string;
   /**
    * When `true` and `placement="bottom"`, render a decorative drag handle
    * above the header. Swipe-to-close gesture is a stretch goal not

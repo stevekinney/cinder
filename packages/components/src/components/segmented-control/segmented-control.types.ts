@@ -21,8 +21,8 @@ type CommonProps<T extends string> = Omit<HTMLAttributes<HTMLElement>, Component
   label: string;
   /** Native form field name. Renders hidden input(s) carrying the selected value(s). */
   name?: string | undefined;
-  /** Visually hide the label while keeping it available to assistive technology. */
-  hideLabel?: boolean | undefined;
+  /** Whether the label is visibly rendered. Default `true`; set `false` to visually hide it while keeping it available to assistive technology. */
+  labelVisible?: boolean | undefined;
   /** Disable the whole control. */
   disabled?: boolean | undefined;
   /**
@@ -69,7 +69,7 @@ type SingleProps<T extends string> = CommonProps<T> & {
    * When true (default), clicking the already-selected option is a no-op.
    * When false, clicking the selected option clears value to undefined.
    */
-  disallowEmptySelection?: boolean | undefined;
+  selectionRequired?: boolean | undefined;
 };
 
 type MultipleProps<T extends string> = CommonProps<T> & {
@@ -78,7 +78,7 @@ type MultipleProps<T extends string> = CommonProps<T> & {
   /** Set of selected values. Must be a SvelteSet for reactivity. */
   value?: SvelteSet<T> | undefined;
   /** Not applicable in multiple mode — present for Svelte destructuring compatibility. */
-  disallowEmptySelection?: undefined;
+  selectionRequired?: undefined;
   /** Tablist and navigation semantics are only valid for single selection. */
   variant?: 'radiogroup' | undefined;
 };

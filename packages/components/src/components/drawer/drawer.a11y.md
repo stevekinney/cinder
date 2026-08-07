@@ -6,15 +6,15 @@ See also: [`_internal/OVERLAY-POLICY.md`](../_internal/OVERLAY-POLICY.md)
 
 The `<dialog>` element carries an implicit `role="dialog"`. Drawer sets `aria-modal="true"` explicitly because some screen readers do not infer modality from `showModal()` alone.
 
-`aria-labelledby` is always set on the dialog. Which element it points to depends on the `header` and `ariaLabelledBy` props:
+`aria-labelledby` is always set on the dialog. Which element it points to depends on the `header` and `ariaLabelledby` props:
 
 | Props supplied                        | `aria-labelledby` points to                                            |
 | ------------------------------------- | ---------------------------------------------------------------------- |
-| Neither `header` nor `ariaLabelledBy` | The `<h2>` rendered inside the default header                          |
+| Neither `header` nor `ariaLabelledby` | The `<h2>` rendered inside the default header                          |
 | `header` only                         | A visually-hidden `<h2 class="cinder-sr-only">` rendered by the drawer |
-| `header` + `ariaLabelledBy="some-id"` | The consumer-supplied id                                               |
+| `header` + `ariaLabelledby="some-id"` | The consumer-supplied id                                               |
 
-**Consumer guideline**: If your custom `header` snippet renders its own visible heading, pass `ariaLabelledBy` pointing to that heading's `id`. This ensures the accessible name matches what sighted users see and prevents a hidden duplicate being announced.
+**Consumer guideline**: If your custom `header` snippet renders its own visible heading, pass `ariaLabelledby` pointing to that heading's `id`. This ensures the accessible name matches what sighted users see and prevents a hidden duplicate being announced.
 
 ## Keyboard interactions
 

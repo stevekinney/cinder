@@ -30,10 +30,10 @@ const schema = {
       type: 'string',
       description: 'Visible group label rendered above the segments.',
     },
-    hideLabel: {
+    labelVisible: {
       type: 'boolean',
       description:
-        'Visually hide the rendered `label` while keeping it programmatically associated.',
+        'Whether the `label` is visibly rendered. Default `true`; set `false` to visually hide it while keeping it programmatically associated.',
     },
     'aria-label': {
       type: 'string',

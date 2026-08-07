@@ -63,7 +63,7 @@ export type SegmentedControlControllerOptions = {
   variant: () => 'radiogroup' | 'tablist' | 'navigation';
   orientation: () => 'horizontal' | 'vertical';
   controlDisabled: () => boolean;
-  disallowEmptySelection: () => boolean;
+  selectionRequired: () => boolean;
   getValue: () => string | SvelteSet<string> | undefined;
   setValue: (next: string | SvelteSet<string> | undefined) => void;
   onChange?: (value: string) => void;
@@ -181,7 +181,7 @@ export class SegmentedControlController {
 
     const current = this.#options.getValue();
     if (current === value) {
-      if (!this.#options.disallowEmptySelection()) {
+      if (!this.#options.selectionRequired()) {
         this.#options.setValue(undefined);
       }
       return;

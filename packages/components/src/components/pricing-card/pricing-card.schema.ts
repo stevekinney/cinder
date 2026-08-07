@@ -19,7 +19,7 @@ const schema = {
       },
       description: 'Feature strings to display in the bulleted list.',
     },
-    cta: {
+    callToActionLabel: {
       type: 'string',
       description: 'Label for the call-to-action button.',
     },
@@ -38,11 +38,11 @@ const schema = {
     },
   },
   additionalProperties: false,
-  required: ['cta', 'features', 'name', 'price'],
+  required: ['callToActionLabel', 'features', 'name', 'price'],
   metadata: {
     unsupportedProps: [
       {
-        name: 'onSelect',
+        name: 'onPlanSelect',
         reason: 'function-or-snippet',
         required: true,
         description: 'Called when the CTA button is clicked.',

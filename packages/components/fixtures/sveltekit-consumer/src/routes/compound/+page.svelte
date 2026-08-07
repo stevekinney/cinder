@@ -106,7 +106,7 @@
     <Dropdown id="compound-dropdown">
       <Dropdown.Trigger>Actions</Dropdown.Trigger>
       <Dropdown.Menu>
-        <Dropdown.Group labelledBy="compound-dropdown-doc">
+        <Dropdown.Group ariaLabelledby="compound-dropdown-doc">
           <Dropdown.Label id="compound-dropdown-doc">Document</Dropdown.Label>
           <Dropdown.Item>Edit</Dropdown.Item>
         </Dropdown.Group>

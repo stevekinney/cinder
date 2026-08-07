@@ -6,7 +6,7 @@ Compact inline display of added, modified, and removed line counts for a file di
 
 - Showing the line-change summary for a single file or commit in a code review, pull-request list, or activity feed.
 - Toolbars and compact layouts — use `density="toolbar"` to snap to the shared control-height tier.
-- Suppressing zero-count values cleanly with `hideZero` when a file has only additions or only deletions.
+- Suppressing zero-count values cleanly with `zeroVisible` when a file has only additions or only deletions.
 
 ## Choosing something else
 
@@ -32,15 +32,15 @@ Compact inline display of added, modified, and removed line counts for a file di
 
 <!-- generated:props:start -->
 
-| Prop       | Type                       | Required | Default | Description                                                                                                                                          |
-| ---------- | -------------------------- | -------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `added`    | `number`                   | yes      | —       | Number of added lines.                                                                                                                               |
-| `class`    | `string`                   | no       | —       | Additional class names merged with `.cinder-diff-statistics`.                                                                                        |
-| `density`  | `"toolbar"`                | no       | —       | Toolbar density opt-in (compact variant only). When set, pills snap to the shared `--cinder-control-height-sm` tier.                                 |
-| `hideZero` | `boolean`                  | no       | —       | Hide statistics with a zero value.                                                                                                                   |
-| `modified` | `number`                   | yes      | —       | Number of modified lines.                                                                                                                            |
-| `removed`  | `number`                   | yes      | —       | Number of removed lines.                                                                                                                             |
-| `variant`  | `"default"` \| `"compact"` | no       | —       | Layout variant. `default` shows full statistic markup; `compact` trims it for tight surfaces. Distinct from `density`, which adjusts control height. |
+| Prop          | Type                       | Required | Default | Description                                                                                                                                          |
+| ------------- | -------------------------- | -------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `added`       | `number`                   | yes      | —       | Number of added lines.                                                                                                                               |
+| `class`       | `string`                   | no       | —       | Additional class names merged with `.cinder-diff-statistics`.                                                                                        |
+| `density`     | `"toolbar"`                | no       | —       | Toolbar density opt-in (compact variant only). When set, pills snap to the shared `--cinder-control-height-sm` tier.                                 |
+| `modified`    | `number`                   | yes      | —       | Number of modified lines.                                                                                                                            |
+| `removed`     | `number`                   | yes      | —       | Number of removed lines.                                                                                                                             |
+| `variant`     | `"default"` \| `"compact"` | no       | —       | Layout variant. `default` shows full statistic markup; `compact` trims it for tight surfaces. Distinct from `density`, which adjusts control height. |
+| `zeroVisible` | `boolean`                  | no       | —       | Whether zero-value statistics render. Default `true`; set `false` to hide them.                                                                      |
 
 <!-- generated:props:end -->
 

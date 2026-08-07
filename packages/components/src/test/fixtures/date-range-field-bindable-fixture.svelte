@@ -23,4 +23,4 @@
 </button>
 
 <output data-testid="range-value">{JSON.stringify(value)}</output>
-<DateRangeField id="range" bind:value {granularity} hidePresets />
+<DateRangeField id="range" bind:value {granularity} presetsVisible={false} />

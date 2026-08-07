@@ -56,7 +56,7 @@ export type MenuBarProps = Omit<HTMLAttributes<HTMLDivElement>, OwnedMenuBarRoot
   id?: string;
   menus: readonly MenuBarMenu[];
   label?: string;
-  labelledBy?: string;
+  ariaLabelledby?: string;
   class?: string;
 };
 
@@ -64,10 +64,10 @@ export interface MenuBarSchemaProps {
   /** HTML id applied to the menubar root element. Auto-generated when omitted. */
   id?: string;
   menus: readonly MenuBarMenu[];
-  /** Accessible label for the menubar, applied as aria-label. Ignored when labelledBy is set. Default `Application menu`. @default "Application menu" */
+  /** Accessible label for the menubar, applied as aria-label. Ignored when ariaLabelledby is set. Default `Application menu`. @default "Application menu" */
   label?: string;
   /** ID of an existing element whose text labels the menubar, applied as aria-labelledby. Takes precedence over label. */
-  labelledBy?: string;
+  ariaLabelledby?: string;
   /** Additional class names merged with the component's root class. */
   class?: string;
 }

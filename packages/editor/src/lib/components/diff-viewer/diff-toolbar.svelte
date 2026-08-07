@@ -76,7 +76,7 @@
       selectionMode="single"
       size="sm"
       label="View mode"
-      hideLabel
+      labelVisible={false}
       bind:value={viewMode}
     >
       <Segment value="unified">Unified</Segment>

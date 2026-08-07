@@ -20,8 +20,8 @@ const BASE_PROPS = {
   name: 'Pro',
   price: '$9/mo',
   features: ['Unlimited projects', '10 GB storage', 'Priority support'],
-  cta: 'Get started',
-  onSelect: () => {},
+  callToActionLabel: 'Get started',
+  onPlanSelect: () => {},
 };
 
 describe('PricingCard', () => {
@@ -44,7 +44,7 @@ describe('PricingCard', () => {
     expect(items[2]?.textContent?.trim()).toBe('Priority support');
   });
 
-  test('renders the CTA as a button element displaying the cta label', () => {
+  test('renders the CTA as a button element displaying the callToActionLabel label', () => {
     const { container } = render(PricingCard, { props: { ...BASE_PROPS } });
     // The cinder Button renders a real <button>
     const button = container.querySelector('.cinder-pricing-card__footer button');
@@ -53,13 +53,13 @@ describe('PricingCard', () => {
     expect(button?.textContent).toContain('Get started');
   });
 
-  test('CTA button calls onSelect when clicked', async () => {
-    const onSelect = mock(() => {});
-    const { container } = render(PricingCard, { props: { ...BASE_PROPS, onSelect } });
+  test('CTA button calls onPlanSelect when clicked', async () => {
+    const onPlanSelect = mock(() => {});
+    const { container } = render(PricingCard, { props: { ...BASE_PROPS, onPlanSelect } });
     const button = container.querySelector('.cinder-pricing-card__footer button');
     expect(button).not.toBeNull();
     await fireEvent.click(button!);
-    expect(onSelect).toHaveBeenCalledTimes(1);
+    expect(onPlanSelect).toHaveBeenCalledTimes(1);
   });
 
   test('caveat renders when provided', () => {

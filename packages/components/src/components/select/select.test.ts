@@ -94,14 +94,14 @@ describe('Select', () => {
     expect(labelEl!.textContent?.trim()).toBe('Choose one');
   });
 
-  test('hideLabel keeps the label available to assistive technology while hiding it visually', () => {
+  test('labelVisible={false} keeps the label available to assistive technology while hiding it visually', () => {
     const { container } = render(Select, {
       props: {
         id: 'hidden-label-select',
         value: 'a',
         options: defaultOptions,
         label: 'Choose one',
-        hideLabel: true,
+        labelVisible: false,
       },
     });
     const labelEl = container.querySelector('label[for="hidden-label-select"]');
