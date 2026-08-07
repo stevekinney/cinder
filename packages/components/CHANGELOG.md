@@ -1,5 +1,167 @@
 # @lostgradient/cinder
 
+## 0.21.0
+
+### Minor Changes
+
+- [#1221](https://github.com/stevekinney/cinder/pull/1221) [`bf6eeb9`](https://github.com/stevekinney/cinder/commit/bf6eeb9e6c287f360c6ed4fe9a0ded7a909e4b8a) Thanks [@stevekinney](https://github.com/stevekinney)! - Carousel and ScrollArea: fine-pointer (mouse) click-and-drag scrolling, with momentum and snap.
+  - Carousel now supports click-and-drag scrolling on a mouse automatically — no prop required. Dragging the track moves it with momentum-based physics and snaps to the nearest slide on release, matching the feel of a released touch swipe. Gated on `(hover: hover) and (pointer: fine)` and `!prefers-reduced-motion`; touch and pen are untouched (they already pan the native scroller directly).
+  - ScrollArea gets a new opt-in `dragToScroll?: boolean` prop (default `false`) for the same mouse drag-to-scroll behavior, along the scroll area's own `direction`. Not supported when `direction="both"` (logs a dev warning). Keyboard scrolling is unaffected either way.
+  - New shared utilities: `useDragScroll` (a `(node) => cleanup` attachment, in the house style of `useResizeObserver`) and `useFinePointer` (a `MediaQuery`-backed `(hover: hover) and (pointer: fine)` hook, mirroring `useReducedMotion`). Both live in `packages/components/src/utilities/` alongside the pure physics (`damp`/`project`/`snapSelect`/`dragSnap`/`shouldSnap`) they're built on.
+  - A drag past a 10px threshold suppresses the click it releases into (so a dragged slide link or button doesn't also activate), scoped to the element the engine attached to — never a global click swallow.
+
+  ⚠️ Like the `slidesPerView` behavior shipped earlier, this introduces a new interaction model and has not yet had a human accessibility review — see the "Fine-pointer drag-to-scroll review" sections in `carousel.a11y.md` and `scroll-area.a11y.md` for the self-review that informed this implementation.
+
+- [#1221](https://github.com/stevekinney/cinder/pull/1221) [`bf6eeb9`](https://github.com/stevekinney/cinder/commit/bf6eeb9e6c287f360c6ed4fe9a0ded7a909e4b8a) Thanks [@stevekinney](https://github.com/stevekinney)! - Carousel: fix a `{...rest}` bug that silently dropped consumer `onkeydown`/`onmouseenter`/`onmouseleave`/`onfocusin`/`onfocusout` handlers, add an `onSlideChange` callback, add four `--cinder-carousel-*` theming hooks, and add `indicators`/`indicatorLimit` for large slide counts.
+  - **Behavior change:** `loop` now defaults to `false`. Previously the carousel always wrapped past the first/last slide; `Previous`/`Next` now clamp and disable at the ends instead. Pass `loop` to restore the old always-wrap behavior. Autoplay also stops at the last slide instead of wrapping when `loop` is unset. Wrapping (with `loop`) remains seamless only for the first cycle through the deck — see the Carousel README for why.
+  - `onkeydown`, `onmouseenter`, `onmouseleave`, `onfocusin`, and `onfocusout` passed to `<Carousel>` were previously overwritten by the component's own internal handlers of the same name (a `{...rest}` spread ordering bug) — they're now composed, consumer handler first. A consumer `onkeydown` that calls `event.preventDefault()` now suppresses the carousel's own Arrow/Home/End handling.
+  - New `onSlideChange?: (index, slide) => void`, called whenever the carousel's own navigation (keyboard, controls, dot picker, autoplay, or native scroll settling) moves the active slide. Never fires for a parent-driven `activeIndex` update.
+  - New CSS custom properties on `.cinder-carousel`: `--cinder-carousel-slide-size`, `--cinder-carousel-gap`, `--cinder-carousel-aspect-ratio`, `--cinder-carousel-dot-size`.
+  - New `indicators?: 'dots' | 'counter' | 'none'` and `indicatorLimit?: number` (default `8`): above the limit the picker automatically switches from dots to a compact `"N / total"` counter unless `indicators` is set explicitly.
+
+- [#1221](https://github.com/stevekinney/cinder/pull/1221) [`bf6eeb9`](https://github.com/stevekinney/cinder/commit/bf6eeb9e6c287f360c6ed4fe9a0ded7a909e4b8a) Thanks [@stevekinney](https://github.com/stevekinney)! - Carousel: add `slidesPerView`, `gap`, and `align` for multi-slide-per-view and peek layouts.
+  - `slidesPerView?: number | 'auto'` (default `1`): shows more than one slide at once. A fraction like `1.2` peeks the next slide. `'auto'` lets each slide size itself via its own CSS. Above `1`, more than one slide is simultaneously interactive/non-`inert` (the active range is `[currentIndex, currentIndex + ceil(slidesPerView) - 1]`, clamped to the deck), and the live region announces `"Slides N–M of Total"` instead of a single labelled slide. At the default `1`, behavior is unchanged.
+  - `gap?: string`: a CSS length between slides. Only applied when `slidesPerView` is not `1`.
+  - `align?: 'start' | 'center'` (default `'start'`): snap alignment of the active slide(s) within the viewport.
+  - `slidesPerView` above `1` and `loop` are mutually exclusive: setting both logs a dev warning and `loop` is ignored (wrapping a multi-slide range across the physical-order rotation boundary would leave a partial-width gap).
+
+  ⚠️ This introduces a new interaction model (more than one slide can be active at once) and has not yet had a human accessibility review — see the "Multi-slide-per-view review" section in `carousel.a11y.md` for the self-review that informed this implementation and the open questions flagged for that review.
+
+- [#1221](https://github.com/stevekinney/cinder/pull/1221) [`bf6eeb9`](https://github.com/stevekinney/cinder/commit/bf6eeb9e6c287f360c6ed4fe9a0ded7a909e4b8a) Thanks [@stevekinney](https://github.com/stevekinney)! - Carousel: adopt native `scrollend` for settle detection, add a `slide` snippet for custom slide content, make nearest-slide detection scroll-padding-aware, and move `activeIndex`/announcement writeback to settle-only for touch/wheel gestures.
+  - Settle detection (the moment a touch/wheel gesture is considered "done") now uses the native `scrollend` event where supported, falling back to the existing debounce timer where it isn't (Tier 2, `PLATFORM-POLICY.md`).
+  - **Behavior change:** during a touch/wheel gesture, `activeIndex`, `onSlideChange`, and the live-region announcement now update once, at settle — not on every intermediate scroll frame. A fast swipe through several slides no longer fires a rapid sequence of live-region announcements. Keyboard, button, and dot-picker navigation are unaffected (unchanged, synchronous). A cosmetic `visualIndex` still tracks the nearest slide every frame so the dot picker visually follows the drag.
+  - New `slide?: Snippet<[TSlide, { index, active }]>` prop (with `CarouselProps<TSlide extends CarouselSlide = CarouselSlide>` now generic) renders custom content inside each slide's `<article>`, replacing the built-in image/title/description/link body. `slides` remains the identity and accessible-labeling source of truth; `inert`/`aria-hidden`/`role`/`aria-label` are still owned by the component regardless of which body renders.
+  - `nearestVisibleSlideIndex` now reads `scroll-padding-inline-start` off the viewport (LTR) so a consumer-set snap inset is respected, instead of always comparing against the border-box edge.
+  - Internal: six separately-coordinated flags collapsed into one `CarouselMotion` state; replaced a hand-rolled ancestor `MutationObserver` for `dir` changes with the shared `observeTextDirection` utility.
+
+- [#1208](https://github.com/stevekinney/cinder/pull/1208) [`06ffb18`](https://github.com/stevekinney/cinder/commit/06ffb181cf73c2984613f93571b037dd721c7734) Thanks [@stevekinney](https://github.com/stevekinney)! - Re-anchor the light-mode surface ramp at white, wash interaction states toward the
+  accent, and lighten the focus ring.
+
+  Light mode now anchors at white and stays compressed: `--cinder-surface-inset`
+  0.960 → `--cinder-bg` 0.984 → `--cinder-surface` 0.994 → `--cinder-surface-raised`
+  1.000. Region separation is carried by border and shadow rather than by fill, which
+  is how light interfaces conventionally work — the page canvas reads as white, and a
+  card lifts off it with a hairline and a shadow instead of by everything around it
+  getting darker. Neutral surface chroma drops roughly 3x (0.010–0.018 → 0.002–0.005)
+  so large light surfaces read as white rather than as pale slate; saturation is
+  reserved for the accent and the status colors.
+
+  Interaction states change direction in the light arm only. `--cinder-surface-hover`
+  and `--cinder-surface-pressed` (and their `-raised-` twins) now mix toward
+  `--cinder-accent` at 6% / 12% instead of toward black. Near white a proportional
+  black mix is structurally unusable: the resting tiers span 0.040 lightness points
+  while a 6% black mix moves a surface 0.060, so every state lands on a resting tier
+  regardless of the percentage chosen. Mixing toward the accent separates states by
+  chroma and hue as well as lightness, so they stay legible at a step small enough to
+  fit the ramp. The dark arm is unchanged — it builds up from near-black across 17
+  lightness points, where a proportional lightness mix has room and already works.
+
+  The focus ring goes from 3px at a 1px offset to 2px at a 2px offset — the same 4px
+  total footprint, but half of it is now separation, so the ring reads as a ring
+  around a control rather than an outline on it and stops merging with an adjacent
+  border. `--cinder-ring-offset-color` moves from `--cinder-bg` to
+  `--cinder-surface-raised`.
+
+  Also in this release:
+  - Soft status surfaces (Alert, Banner, Callout) move from L 0.965 / C 0.015 to
+    L 0.945 / C 0.026. The old tint was capped by the sRGB gamut rather than chosen:
+    at L 0.965 the maximum in-gamut chroma for the danger hue is 0.0172, so a chroma
+    shared across all four statuses could not exceed that and every status was held
+    to red's headroom near white. Dropping the lightness raises the binding ceiling
+    to 0.0275.
+  - The four `--cinder-color-*-bg` triples sit at L 0.945 with re-fitted chroma,
+    which fixes a pre-existing bug where `--cinder-color-warning-bg` and
+    `--cinder-color-danger-bg` were authored outside the sRGB gamut and had been
+    silently clamping to a desaturated grey.
+  - `--cinder-border` 0.79 → 0.83 and `--cinder-border-muted` 0.88 → 0.90, with chroma
+    dropping alongside the surfaces so a hairline reads as a neutral line rather than
+    a faint blue one. `--cinder-border` deliberately stays dark enough to hold the
+    secondary Button's outline against its white fill; on a white-anchored ramp that
+    border is the only thing making the control read as a control.
+  - CodeBlock takes the surface radius and its header no longer paints a fill of its
+    own. The header previously filled `--cinder-surface-inset` while the body filled
+    `--cinder-surface-raised`, stacking two plates inside one rounded, clipped
+    container. The code surface itself is unchanged: it stays pure white in light
+    mode, because Shiki's `github-light` palette is fitted to `#ffffff` and its
+    keyword red measures only 4.58:1 there against a 4.5:1 AA floor, so any tint
+    behind highlighted code fails WCAG.
+  - `--cinder-surface-raised` is authored `oklch(100% 0 255)` rather than
+    `oklch(100% 0.006 245)`, which was out of gamut and painted as nothing.
+  - `SegmentedControl`'s option radius derives from its container's own token
+    (`calc(var(--cinder-radius-md) - 1px)`), so the inner and outer corners are
+    concentric.
+
+  The radius scale is unchanged from the previous release at 6 / 8 / 12px.
+
+  Consumers that override `--cinder-bg`, `--cinder-surface`, `--cinder-surface-raised`
+  or `--cinder-surface-inset` should re-check their own ramp: the light arm's spacing
+  and direction have both changed, and a consumer ramp built to sit against a grey
+  canvas will need retuning against a white one.
+
+- [#1220](https://github.com/stevekinney/cinder/pull/1220) [`68370b1`](https://github.com/stevekinney/cinder/commit/68370b1d5ac2046855a77f95db36f316eaafa35a) Thanks [@stevekinney](https://github.com/stevekinney)! - Add scroll-driven edge fades and a horizontal-scroll shadow affordance, and fix a forced-colors defect in the existing overlay-body fade.
+  - New shared internal partial `_scroll-fade.css`: an opaque, scroll-position-aware edge fade driven by `animation-timeline: scroll()` where supported, falling back to the existing `data-cinder-overflows` attribute path everywhere else — no `CSS.supports()` branch, no hydration divergence. Never a `mask-image` (masking a container that paints its own background reveals whatever is behind it, which is why PR [#972](https://github.com/stevekinney/cinder/issues/972) removed masks from Modal/Drawer/Sheet in the first place).
+  - Modal, Drawer, and Sheet bodies now consume the shared recipe instead of three byte-identical copies, which also fixes a real bug: the previous hard-coded gradient had no `forced-colors` carve-out, so it painted a light-gray band across the bottom of every scrollable overlay in high-contrast mode. `--cinder-scroll-fade-size` (1.5rem) is now a themeable public token instead of being hard-coded three times.
+  - `overflowFade()` (`utilities/attachments.ts`) no longer registers a `ResizeObserver` on every descendant of a scroll container — only the container itself, with a `MutationObserver` triggering direct re-measurement on content changes. The previous approach was fine for a modal body but registered thousands of observers on a long scroll surface.
+  - New opt-in `scrollFadeVisible` prop on `ScrollArea`, `CodeBlock`, and Chat's message timeline — presentation-only, never the sole signal that content scrolls. `CodeBlock`'s fade is horizontal (inline) and intentionally translucent rather than fully opaque, so a partially covered glyph still reads as a glyph. Chat's timeline fades both the top and bottom edges and is only active in `surfaceMode="default"`.
+  - `Table`, `PermissionMatrix`, and `TransferList` scroll containers now show `DataGrid`'s existing inset-shadow horizontal(/vertical, for TransferList)-scroll affordance when their content actually overflows, via a new `overflowShadow()` attachment.
+
+### Patch Changes
+
+- [#1214](https://github.com/stevekinney/cinder/pull/1214) [`61bcfbc`](https://github.com/stevekinney/cinder/commit/61bcfbce232427b03b7d11ae552c134800d026a4) Thanks [@stevekinney](https://github.com/stevekinney)! - Fix a set of real interaction and accessibility defects: Meter silently dropping a
+  consumer's forwarded `aria-label`; MultiSelect's listbox being clipped by an
+  overflow-hidden ancestor instead of portaling; Popover/HoverCard arrow placement being
+  overridden by a hardcoded shared inset; asymmetric overlay open/close motion on Modal,
+  Drawer, Sheet, and HoverCard (missing `@starting-style`/`allow-discrete`, no real exit
+  transition); SelectionPopover dismissing itself immediately when opened via a
+  drag-selection gesture that triggers page autoscroll; and menu-open latency from the
+  shared anchored-overlay layer's first `@floating-ui/dom` import no longer being prefetched
+  ahead of the first open. Also fixes a `_sortable-item.svelte` DOM query
+  (`:scope >` → `.children`-based) that silently matched zero rows under happy-dom — a
+  test-environment compatibility fix with no change to real-browser drag behavior, which
+  was already correct; no runtime change to KanbanBoard.
+
+- [#1216](https://github.com/stevekinney/cinder/pull/1216) [`38a43a0`](https://github.com/stevekinney/cinder/commit/38a43a0cccf557aafbaee2a39486a050a2979854) Thanks [@stevekinney](https://github.com/stevekinney)! - Stop using the status **fill** tokens (`--cinder-success` / `--cinder-info` /
+  `--cinder-warning` / `--cinder-danger`) as text color. Those are tuned dark enough
+  (L≈0.50) to carry a white label; the paired `--cinder-color-*-fg` tokens (L≈0.40)
+  are the foregrounds. Measured as ink on `--cinder-surface-inset`, the fills land at
+  3.98 (success), 4.16 (info) and 3.66 (warning) — all below the 4.5:1 AA floor —
+  while the `-fg` equivalents land 6.1–6.7. `--cinder-warning` was already failing
+  before the light-ramp retune in [#1208](https://github.com/stevekinney/cinder/issues/1208); widening the ramp only made it worse.
+
+  Swaps every `color:` declaration that paints text: form-field, checkbox,
+  checkbox-group, radio-group, input, textarea, select, combobox, multi-select,
+  tag-input, pin-input, phone-input, time-field, date-picker, date-range-field,
+  schema-form, button, dropdown, copy-button, rating, qr-code, json-editor,
+  statistic, diff-statistics, status-dot, inline-loading, event-stream-viewer, and
+  the shared `_field-label` required marker.
+
+  Deliberately **not** swapped: `background`, `border`, `outline`, focus-ring
+  custom properties, and every `color:` whose value is consumed as `currentColor` by
+  a painted shape rather than by text — lucide icon strokes (Card's risk icon,
+  ApprovalCard's risk icons, PermissionMatrix's cell tokens, SecretValueField's copy
+  confirmation), Timeline's `border: 2px solid currentColor` markers, Rating's
+  mask-clipped star fill, StatusDot's indicator dot, and JsonEditor's lint squiggle.
+  Those are non-text graphics held to the 3:1 floor, which the fill tokens already
+  clear; swapping them would have been a visual regression, not an accessibility fix.
+
+  EventStreamViewer needed a structural fix rather than a swap: a single
+  `--cinder-event-stream-viewer-severity-color` variable was painting both the 3px
+  severity rail and the severity badge text. It is now split into `-color` (the
+  rail, on the fill ramp) and `-ink` (the badge, on the `-fg` ramp). Pushing the
+  shared variable to `-fg` would have collapsed all four rails into one 88–90%
+  lightness band in the dark arm, making the severities indistinguishable.
+
+- [#1215](https://github.com/stevekinney/cinder/pull/1215) [`4531af8`](https://github.com/stevekinney/cinder/commit/4531af81295cec74f50a20b33fa45492ee037bc4) Thanks [@stevekinney](https://github.com/stevekinney)! - Gate Tooltip's portal on visibility, so a hidden tooltip leaves nothing in `document.body`.
+
+  The portal attachment had no `disabled` option, and the panel is not inside a conditional block, so every Tooltip portaled its `[role="tooltip"]` node on mount and left it there for the component's whole lifetime — one detached node per instance, including during SSR. That contradicts `OVERLAY-POLICY.md` ("All overlays render into the portal after hydration. SSR markup is empty."), and every sibling overlay already gates: Popover and HoverCard through `{#if mounted && open && anchorElement}`, Portal / SpeedDial / NavigationBar / DropdownMenu through an explicit `disabled` getter.
+
+  Uses `disabled` rather than wrapping the node in `{#if visible}`: the disabled path calls `restoreInline()`, which returns the panel to its original position inside the wrapper instead of unmounting it, so the `aria-describedby` target keeps resolving while the tooltip is hidden. Conditional rendering would break that association.
+
+  Gated on `visible` rather than `isTooltipExposed`, because the latter also requires `positionReady` and position is computed against the portaled node — gating on it would deadlock a tooltip that can never be positioned because it was never portaled.
+
+- Updated dependencies [[`0fb8912`](https://github.com/stevekinney/cinder/commit/0fb891210be26c2675de870beb931d9f39cdff4c)]:
+  - @lostgradient/markdown@0.2.0
+
 ## 0.20.0
 
 ### Minor Changes

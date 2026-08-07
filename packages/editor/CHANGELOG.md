@@ -1,5 +1,26 @@
 # @lostgradient/editor
 
+## 0.3.0
+
+### Minor Changes
+
+- [#1222](https://github.com/stevekinney/cinder/pull/1222) [`e86d40e`](https://github.com/stevekinney/cinder/commit/e86d40e79d0b313feeabd85f33b1dc6dded942a3) Thanks [@stevekinney](https://github.com/stevekinney)! - Widen Editor's and Chat's peer ranges to the Cinder and Markdown minors releasing
+  alongside them: `@lostgradient/cinder` `^0.20.0` → `^0.21.0`, and
+  `@lostgradient/markdown` `^0.1.0` → `^0.2.0`.
+
+  Without this the release ships Editor and Chat declaring peer ranges that exclude
+  the very Cinder and Markdown versions published in the same batch — `^0.1.0`
+  resolves to `>=0.1.0 <0.2.0` under semver's 0.x rule, so Markdown 0.2.0 falls
+  outside it, and every consumer installing the set together gets an unmet-peer
+  error. This is a coordinated minor across all four packages, which is also what
+  the package-boundary tests' `pendingCoordinatedMinorRelease` escape expects.
+
+### Patch Changes
+
+- Updated dependencies [[`bf6eeb9`](https://github.com/stevekinney/cinder/commit/bf6eeb9e6c287f360c6ed4fe9a0ded7a909e4b8a), [`bf6eeb9`](https://github.com/stevekinney/cinder/commit/bf6eeb9e6c287f360c6ed4fe9a0ded7a909e4b8a), [`bf6eeb9`](https://github.com/stevekinney/cinder/commit/bf6eeb9e6c287f360c6ed4fe9a0ded7a909e4b8a), [`bf6eeb9`](https://github.com/stevekinney/cinder/commit/bf6eeb9e6c287f360c6ed4fe9a0ded7a909e4b8a), [`06ffb18`](https://github.com/stevekinney/cinder/commit/06ffb181cf73c2984613f93571b037dd721c7734), [`61bcfbc`](https://github.com/stevekinney/cinder/commit/61bcfbce232427b03b7d11ae552c134800d026a4), [`68370b1`](https://github.com/stevekinney/cinder/commit/68370b1d5ac2046855a77f95db36f316eaafa35a), [`38a43a0`](https://github.com/stevekinney/cinder/commit/38a43a0cccf557aafbaee2a39486a050a2979854), [`0fb8912`](https://github.com/stevekinney/cinder/commit/0fb891210be26c2675de870beb931d9f39cdff4c), [`4531af8`](https://github.com/stevekinney/cinder/commit/4531af81295cec74f50a20b33fa45492ee037bc4)]:
+  - @lostgradient/cinder@0.21.0
+  - @lostgradient/markdown@0.2.0
+
 ## 0.2.0
 
 ### Minor Changes
