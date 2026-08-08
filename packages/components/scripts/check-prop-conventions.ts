@@ -241,6 +241,22 @@ function isBooleanLikePropType(type: ts.Type, checker: ts.TypeChecker): boolean 
 
 function canHoldBoolean(type: ts.Type, checker: ts.TypeChecker): boolean {
   if ((type.flags & ts.TypeFlags.BooleanLike) !== 0) return true;
+
+  // `NoInfer<T>` and friends wrap the real type in a substitution — three
+  // Props surfaces here already use it — so unwrap to what the consumer
+  // actually sets.
+  if ((type.flags & ts.TypeFlags.Substitution) !== 0) {
+    return canHoldBoolean((type as ts.SubstitutionType).baseType, checker);
+  }
+
+  // A branded boolean (`boolean & { readonly __brand: unique symbol }`) is set
+  // with a boolean, but the whole `boolean` type is not assignable to the
+  // intersection, so the probe below would clear it. Any boolean-capable
+  // constituent keeps the ban.
+  if (type.isIntersection()) {
+    return type.types.some((constituent) => canHoldBoolean(constituent, checker));
+  }
+
   // A bare type parameter says nothing on its own, but its constraint does:
   // `Item extends { id: string }` can never be a boolean, so a generic
   // `showItem?: Item` is the same false positive as `hideDelay?: number`.
@@ -254,6 +270,11 @@ function canHoldBoolean(type: ts.Type, checker: ts.TypeChecker): boolean {
   // assignable to `T extends true ? boolean : number` yet, so the probe below
   // would clear it even though `Props<true>` exposes a boolean. Keep the ban,
   // as with any other type the checker cannot vouch for.
+  //
+  // This is deliberately fail-closed rather than branch-inspecting: a
+  // deferred type whose every branch is non-boolean gets a false positive,
+  // which an author escapes by renaming one prop, whereas the opposite bias
+  // reopens the silent hole this pass exists to close.
   if ((type.flags & DEFERRED_TYPE_FLAGS) !== 0) return true;
 
   // The real question for everything else is assignability: can this type

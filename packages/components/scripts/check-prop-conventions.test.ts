@@ -153,6 +153,10 @@ describe('check-prop-conventions type-aware surface pass', () => {
     // expose a boolean.
     'deferred-type':
       'export type DeferredTypeProps<Flag extends boolean, Bag extends { flag: boolean }> = { showState?: Flag extends true ? boolean : number; showIndexed?: Bag["flag"] };',
+    // Wrappers a boolean survives but plain assignability does not see:
+    // NoInfer's substitution, and a branded intersection.
+    'wrapped-boolean':
+      'declare const brand: unique symbol;\nexport type WrappedBooleanProps<Flag extends boolean> = { showDeferredFlag?: NoInfer<Flag>; showBranded?: boolean & { readonly [brand]: true } };',
   };
 
   function buildViolationsByFixture(): Map<
@@ -269,6 +273,16 @@ describe('check-prop-conventions type-aware surface pass', () => {
         .map((violation) => violation.propName)
         .toSorted(),
     ).toEqual(['showValued', 'showWrapped']);
+  });
+
+  // `boolean` is not assignable to `NoInfer<Flag>` or to a branded
+  // intersection, so the probe alone would clear both.
+  test('keeps the ban through NoInfer and branded-intersection wrappers', () => {
+    expect(
+      (violationsByFixture.get('wrapped-boolean') ?? [])
+        .map((violation) => violation.propName)
+        .toSorted(),
+    ).toEqual(['showBranded', 'showDeferredFlag']);
   });
 
   // Nothing is assignable to an unresolved conditional or indexed access, so
