@@ -1,0 +1,93 @@
+<script lang="ts">
+  import Input from '../input/input.svelte';
+  import NumberInput from '../number-input/number-input.svelte';
+  import Select from '../select/select.svelte';
+  import { CRON_FIELDS, validateCronField } from './schedule-builder.utilities.ts';
+  import type { CronEditor } from './schedule-builder-cron-editor.ts';
+
+  interface Props {
+    baseId: string;
+    cronFields: string[];
+    cronEditors: CronEditor[];
+    onModeChange: (index: number, event: Event) => void;
+    onEditorChange: (index: number, patch: Partial<CronEditor>) => void;
+    onRawChange: (index: number, value: string) => void;
+  }
+
+  let { baseId, cronFields, cronEditors, onModeChange, onEditorChange, onRawChange }: Props =
+    $props();
+</script>
+
+<div class="cinder-schedule-builder__cron-fields">
+  {#each CRON_FIELDS as field, index (field.name)}
+    {@const editor = cronEditors[index]!}
+    <div class="cinder-schedule-builder__cron-field">
+      <Select
+        id={`${baseId}-cron-field-${index}-mode`}
+        label={`${field.name} pattern`}
+        options={[
+          { value: 'every', label: 'Every value (*)' },
+          { value: 'specific', label: 'Specific value' },
+          { value: 'range', label: 'Range' },
+          { value: 'step', label: 'Step (every N)' },
+          { value: 'advanced', label: 'Advanced raw expression' },
+        ]}
+        value={editor.mode}
+        onchange={(event) => onModeChange(index, event)}
+      />
+      {#if editor.mode === 'specific'}
+        <NumberInput
+          id={`${baseId}-cron-field-${index}-value`}
+          label={`${field.name} value`}
+          min={field.min}
+          max={field.max}
+          step={1}
+          value={editor.value}
+          onValueChange={(next) => onEditorChange(index, { value: next ?? field.min })}
+        />
+      {:else if editor.mode === 'range'}
+        <div class="cinder-schedule-builder__cron-range">
+          <NumberInput
+            id={`${baseId}-cron-field-${index}-start`}
+            label={`${field.name} start`}
+            min={field.min}
+            max={field.max}
+            step={1}
+            value={editor.start}
+            onValueChange={(next) => onEditorChange(index, { start: next ?? field.min })}
+          />
+          <NumberInput
+            id={`${baseId}-cron-field-${index}-end`}
+            label={`${field.name} end`}
+            min={field.min}
+            max={field.max}
+            step={1}
+            value={editor.end}
+            onValueChange={(next) => onEditorChange(index, { end: next ?? field.max })}
+          />
+        </div>
+      {:else if editor.mode === 'step'}
+        <NumberInput
+          id={`${baseId}-cron-field-${index}-step`}
+          label={`${field.name} step`}
+          min={1}
+          max={field.max}
+          step={1}
+          value={editor.step}
+          onValueChange={(next) => onEditorChange(index, { step: next ?? 1 })}
+        />
+      {/if}
+      <details class="cinder-schedule-builder__cron-advanced">
+        <summary>Advanced raw expression</summary>
+        <Input
+          id={`${baseId}-cron-field-${index}-raw`}
+          label={field.name}
+          description={field.hint}
+          value={cronFields[index] ?? '*'}
+          oninput={(event) => onRawChange(index, (event.currentTarget as HTMLInputElement).value)}
+          error={validateCronField(cronFields[index] ?? '*', index) ?? ''}
+        />
+      </details>
+    </div>
+  {/each}
+</div>

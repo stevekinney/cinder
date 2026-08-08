@@ -533,6 +533,28 @@
     redispatchPortaledEvent(event, navigationBarElement);
   }
 
+  function bridgePortaledEvents(element: HTMLElement): () => void {
+    const eventTypes = [
+      'click',
+      'keydown',
+      'focusin',
+      'focusout',
+      'pointerdown',
+      'pointerup',
+      'mousedown',
+      'mouseup',
+      'input',
+      'change',
+    ] as const;
+    const handleEvent = (event: Event): void => {
+      if (isMobileLayout) bridgePortaledEvent(event);
+    };
+    for (const eventType of eventTypes) element.addEventListener(eventType, handleEvent);
+    return () => {
+      for (const eventType of eventTypes) element.removeEventListener(eventType, handleEvent);
+    };
+  }
+
   function focusAdjacentNavigationItem(currentItem: HTMLElement, direction: -1 | 1): void {
     const items = getNavigationItems();
     if (items.length === 0) return;
@@ -655,6 +677,7 @@
   >
     <div
       bind:this={itemsRegionElement}
+      {@attach bridgePortaledEvents}
       id={regionId}
       class={classNames(
         'cinder-navigation-bar__items',
@@ -665,16 +688,6 @@
       data-cinder-position-ready={anchoredItems.positionReady || undefined}
       style={anchoredItems.positionStyle}
       inert={isCollapsible && isMobileLayout && !mobileMenuOpen ? true : undefined}
-      onclick={isMobileLayout ? bridgePortaledEvent : undefined}
-      onkeydown={isMobileLayout ? bridgePortaledEvent : undefined}
-      onfocusin={isMobileLayout ? bridgePortaledEvent : undefined}
-      onfocusout={isMobileLayout ? bridgePortaledEvent : undefined}
-      onpointerdown={isMobileLayout ? bridgePortaledEvent : undefined}
-      onpointerup={isMobileLayout ? bridgePortaledEvent : undefined}
-      onmousedown={isMobileLayout ? bridgePortaledEvent : undefined}
-      onmouseup={isMobileLayout ? bridgePortaledEvent : undefined}
-      oninput={isMobileLayout ? bridgePortaledEvent : undefined}
-      onchange={isMobileLayout ? bridgePortaledEvent : undefined}
     >
       {@render items({ variant, placement, labelsVisible })}
     </div>

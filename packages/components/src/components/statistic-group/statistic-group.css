@@ -52,6 +52,13 @@
     }
   }
 
+  /* variant: default — a quiet shared surface with spacing doing the grouping. */
+  .cinder-statistic-group[data-cinder-variant='default'] {
+    padding: var(--cinder-statistic-group-card-padding, var(--cinder-space-4, 1rem));
+    border-radius: var(--cinder-radius-md);
+    background: var(--cinder-surface-inset);
+  }
+
   /* variant: cards — each stat gets a card-style border, background, and shadow */
   .cinder-statistic-group[data-cinder-variant='cards'] > .cinder-statistic {
     padding: var(--cinder-statistic-group-card-padding, var(--cinder-space-4, 1rem));

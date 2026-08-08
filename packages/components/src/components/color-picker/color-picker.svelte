@@ -23,8 +23,18 @@
   import { untrack } from 'svelte';
 
   import { classNames } from '../../utilities/class-names.ts';
-  import { parseColor } from '../../utilities/color-luminance.ts';
   import ColorSwatchPicker from '../color-swatch-picker/color-swatch-picker.svelte';
+  import ColorPickerControls from './color-picker-controls.svelte';
+  import {
+    alphaFromKeyboard,
+    clamp,
+    formatHex,
+    gradientFromKeyboard,
+    hslToRgb,
+    hueFromKeyboard,
+    parseToHsla,
+    type Hsla,
+  } from './color-picker.utilities.ts';
 
   const pickerId = $props.id();
 
@@ -45,8 +55,6 @@
   const alphaId = `${pickerId}-alpha`;
   const previewId = `${pickerId}-preview`;
 
-  type Hsla = { h: number; s: number; l: number; a: number };
-
   // Internal canonical state is HSLA. We only round-trip to RGB/hex at the edges.
   let hue = $state(0); // 0–360
   let saturation = $state(100); // 0–100 (HSL saturation at the gradient corner)
@@ -58,75 +66,6 @@
   // wrote out to `value`. The controlled-sync effect uses this to skip its own echo.
   let lastEmittedHex = '';
   let isDragging = $state(false);
-
-  function clamp(n: number, min: number, max: number): number {
-    return Math.max(min, Math.min(max, n));
-  }
-
-  function toHex2(n: number): string {
-    return clamp(Math.round(n), 0, 255).toString(16).padStart(2, '0');
-  }
-
-  function normalizeHue(h: number): number {
-    return Math.min(((h % 360) + 360) % 360, 359);
-  }
-
-  function rgbToHsl(r: number, g: number, b: number): { h: number; s: number; l: number } {
-    const rn = r / 255;
-    const gn = g / 255;
-    const bn = b / 255;
-    const max = Math.max(rn, gn, bn);
-    const min = Math.min(rn, gn, bn);
-    const l = (max + min) / 2;
-    if (max === min) return { h: 0, s: 0, l: l * 100 };
-    const d = max - min;
-    const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-    let h = 0;
-    if (max === rn) h = ((gn - bn) / d + (gn < bn ? 6 : 0)) * 60;
-    else if (max === gn) h = ((bn - rn) / d + 2) * 60;
-    else h = ((rn - gn) / d + 4) * 60;
-    return { h, s: s * 100, l: l * 100 };
-  }
-
-  function hslToRgb(h: number, s: number, l: number): { r: number; g: number; b: number } {
-    const sn = clamp(s, 0, 100) / 100;
-    const ln = clamp(l, 0, 100) / 100;
-    const hn = (((h % 360) + 360) % 360) / 360;
-    if (sn === 0) {
-      const v = Math.round(ln * 255);
-      return { r: v, g: v, b: v };
-    }
-    const q = ln < 0.5 ? ln * (1 + sn) : ln + sn - ln * sn;
-    const p = 2 * ln - q;
-    const hueToRgb = (t: number): number => {
-      let tn = t;
-      if (tn < 0) tn += 1;
-      if (tn > 1) tn -= 1;
-      if (tn < 1 / 6) return p + (q - p) * 6 * tn;
-      if (tn < 1 / 2) return q;
-      if (tn < 2 / 3) return p + (q - p) * (2 / 3 - tn) * 6;
-      return p;
-    };
-    return {
-      r: Math.round(hueToRgb(hn + 1 / 3) * 255),
-      g: Math.round(hueToRgb(hn) * 255),
-      b: Math.round(hueToRgb(hn - 1 / 3) * 255),
-    };
-  }
-
-  function formatHex(h: number, s: number, l: number, a: number, withAlpha: boolean): string {
-    const { r, g, b } = hslToRgb(h, s, l);
-    const base = `#${toHex2(r)}${toHex2(g)}${toHex2(b)}`;
-    if (!withAlpha) return base;
-    return base + toHex2(a * 255);
-  }
-
-  function parseToHsla(input: string): Hsla | null {
-    const parsed = parseColor(input);
-    if (!parsed) return null;
-    const { h, s, l } = rgbToHsl(parsed.r, parsed.g, parsed.b);
-    return { h: normalizeHue(h), s, l, a: parsed.a };
-  }
 
   function applyHsla(next: Hsla): void {
     hue = next.h;
@@ -336,80 +275,24 @@
 
   // ── Slider keyboard handling ────────────────────────────────────────────
 
-  function adjustHue(delta: number): void {
-    const next = (((hue + delta) % 360) + 360) % 360;
-    commitFromHsla({ h: next, s: saturation, l: lightnessValue, a: alphaValue }, 'change');
-  }
-
-  function adjustAlpha(delta: number): void {
-    const next = clamp(alphaValue + delta, 0, 1);
-    commitFromHsla({ h: hue, s: saturation, l: lightnessValue, a: next }, 'change');
+  function currentHsla(): Hsla {
+    return { h: hue, s: saturation, l: lightnessValue, a: alphaValue };
   }
 
   function handleHueKeydown(event: KeyboardEvent): void {
     if (disabled) return;
-    const step = event.shiftKey ? 10 : 1;
-    switch (event.key) {
-      case 'ArrowLeft':
-      case 'ArrowDown':
-        event.preventDefault();
-        adjustHue(-step);
-        break;
-      case 'ArrowRight':
-      case 'ArrowUp':
-        event.preventDefault();
-        adjustHue(step);
-        break;
-      case 'Home':
-        event.preventDefault();
-        commitFromHsla({ h: 0, s: saturation, l: lightnessValue, a: alphaValue }, 'change');
-        break;
-      case 'End':
-        event.preventDefault();
-        commitFromHsla({ h: 359, s: saturation, l: lightnessValue, a: alphaValue }, 'change');
-        break;
-      case 'PageUp':
-        event.preventDefault();
-        adjustHue(36);
-        break;
-      case 'PageDown':
-        event.preventDefault();
-        adjustHue(-36);
-        break;
-    }
+    const next = hueFromKeyboard(currentHsla(), event.key, event.shiftKey);
+    if (next === null) return;
+    event.preventDefault();
+    commitFromHsla(next, 'change');
   }
 
   function handleAlphaKeydown(event: KeyboardEvent): void {
     if (disabled) return;
-    const step = event.shiftKey ? 0.1 : 0.01;
-    switch (event.key) {
-      case 'ArrowLeft':
-      case 'ArrowDown':
-        event.preventDefault();
-        adjustAlpha(-step);
-        break;
-      case 'ArrowRight':
-      case 'ArrowUp':
-        event.preventDefault();
-        adjustAlpha(step);
-        break;
-      case 'Home':
-        event.preventDefault();
-        commitFromHsla({ h: hue, s: saturation, l: lightnessValue, a: 0 }, 'change');
-        break;
-      case 'End':
-        event.preventDefault();
-        commitFromHsla({ h: hue, s: saturation, l: lightnessValue, a: 1 }, 'change');
-        break;
-      case 'PageUp':
-        event.preventDefault();
-        adjustAlpha(0.1);
-        break;
-      case 'PageDown':
-        event.preventDefault();
-        adjustAlpha(-0.1);
-        break;
-    }
+    const next = alphaFromKeyboard(currentHsla(), event.key, event.shiftKey);
+    if (next === null) return;
+    event.preventDefault();
+    commitFromHsla(next, 'change');
   }
 
   // Gradient region keyboard arrow keys also nudge saturation/lightness so the
@@ -417,32 +300,10 @@
   // 2D selection is inherently pointer-friendly. Documented in a11y memo.
   function handleGradientKeydown(event: KeyboardEvent): void {
     if (disabled) return;
-    const step = event.shiftKey ? 10 : 1;
-    let nextS = saturation;
-    let nextL = lightnessValue;
-    let handled = false;
-    switch (event.key) {
-      case 'ArrowLeft':
-        nextS = clamp(saturation - step, 0, 100);
-        handled = true;
-        break;
-      case 'ArrowRight':
-        nextS = clamp(saturation + step, 0, 100);
-        handled = true;
-        break;
-      case 'ArrowUp':
-        nextL = clamp(lightnessValue + step, 0, 100);
-        handled = true;
-        break;
-      case 'ArrowDown':
-        nextL = clamp(lightnessValue - step, 0, 100);
-        handled = true;
-        break;
-    }
-    if (handled) {
-      event.preventDefault();
-      commitFromHsla({ h: hue, s: nextS, l: nextL, a: alphaValue }, 'change');
-    }
+    const next = gradientFromKeyboard(currentHsla(), event.key, event.shiftKey);
+    if (next === null) return;
+    event.preventDefault();
+    commitFromHsla(next, 'change');
   }
 
   // ── Swatch composition ──────────────────────────────────────────────────
@@ -477,6 +338,16 @@
 
   const currentHex = $derived(formatHex(hue, saturation, lightnessValue, alphaValue, alpha));
 
+  const formatRgb = $derived.by(() => {
+    const { r, g, b } = hslToRgb(hue, saturation, lightnessValue);
+    const channels = `${r}, ${g}, ${b}`;
+    return alpha ? `rgba(${channels}, ${Math.round(alphaValue * 100) / 100})` : `rgb(${channels})`;
+  });
+  const formatHsl = $derived(
+    alpha
+      ? `hsla(${Math.round(hue)}, ${Math.round(saturation)}%, ${Math.round(lightnessValue)}%, ${Math.round(alphaValue * 100) / 100})`
+      : `hsl(${Math.round(hue)}, ${Math.round(saturation)}%, ${Math.round(lightnessValue)}%)`,
+  );
   function handleSwatchChange(
     selectedColor: Parameters<NonNullable<ColorSwatchPickerProps['onValueChange']>>[0],
   ): void {
@@ -556,97 +427,44 @@
   role="group"
   id={pickerId}
 >
-  <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-  <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-  <div
-    bind:this={gradientElement}
-    id={gradientId}
-    role="application"
-    aria-label="Color saturation and lightness. Use a pointer to select; arrow keys provide coarse keyboard adjustment."
-    aria-describedby={previewId}
-    aria-disabled={disabled ? 'true' : undefined}
-    class="cinder-color-picker__gradient"
-    style="--cinder-color-picker-hue: {hueColor};"
-    tabindex={disabled ? -1 : 0}
-    onpointerdown={handleGradientPointerDown}
-    onpointermove={handleGradientPointerMove}
-    onpointerup={handleGradientPointerUp}
-    onpointercancel={handleGradientPointerCancel}
-    onkeydown={handleGradientKeydown}
-  >
-    <div
-      class="cinder-color-picker__gradient-handle"
-      style="left: {handlePosition.x}%; top: {handlePosition.y}%;"
-      aria-hidden="true"
-    ></div>
-  </div>
-
-  <div
-    bind:this={hueElement}
-    id={hueId}
-    role="slider"
-    aria-label="Hue"
-    aria-valuemin={0}
-    aria-valuemax={359}
-    aria-valuenow={hueAriaValue}
-    aria-disabled={disabled ? 'true' : undefined}
-    tabindex={disabled ? -1 : 0}
-    class="cinder-color-picker__hue"
-    onkeydown={handleHueKeydown}
-    onpointerdown={handleHuePointerDown}
-    onpointermove={handleHuePointerMove}
-    onpointerup={handleHuePointerUp}
-    onpointercancel={handleHuePointerCancel}
-  >
-    <div
-      class="cinder-color-picker__hue-thumb"
-      style="left: {(hue / 359) * 100}%;"
-      aria-hidden="true"
-    ></div>
-  </div>
-
-  {#if alpha}
-    <div
-      bind:this={alphaElement}
-      id={alphaId}
-      role="slider"
-      aria-label="Alpha"
-      aria-valuemin={0}
-      aria-valuemax={100}
-      aria-valuenow={alphaAriaValue}
-      aria-valuetext="{alphaAriaValue}%"
-      aria-disabled={disabled ? 'true' : undefined}
-      tabindex={disabled ? -1 : 0}
-      class="cinder-color-picker__alpha"
-      style="--cinder-color-picker-base: hsl({hue}, {saturation}%, {lightnessValue}%);"
-      onkeydown={handleAlphaKeydown}
-      onpointerdown={handleAlphaPointerDown}
-      onpointermove={handleAlphaPointerMove}
-      onpointerup={handleAlphaPointerUp}
-      onpointercancel={handleAlphaPointerCancel}
-    >
-      <div
-        class="cinder-color-picker__alpha-thumb"
-        style="left: {alphaValue * 100}%;"
-        aria-hidden="true"
-      ></div>
-    </div>
-  {/if}
-
-  <!-- Footer row: preview chip + current hex value -->
-  <div class="cinder-color-picker__footer">
-    <div
-      id={previewId}
-      role="img"
-      class="cinder-color-picker__preview"
-      data-cinder-alpha={alpha ? '' : undefined}
-      aria-label={internalValue ? `Selected color: ${internalValue}` : 'Selected color: none'}
-      style="--cinder-color-picker-preview: {previewColor};"
-    ></div>
-    <span class="cinder-color-picker__hex-value" aria-hidden="true">
-      {internalValue || '—'}
-    </span>
-  </div>
+  <ColorPickerControls
+    {gradientId}
+    {hueId}
+    {alphaId}
+    {previewId}
+    {disabled}
+    {alpha}
+    {hue}
+    {saturation}
+    {lightnessValue}
+    {alphaValue}
+    {hueColor}
+    {previewColor}
+    {internalValue}
+    {formatRgb}
+    {formatHsl}
+    {handlePosition}
+    {hueAriaValue}
+    {alphaAriaValue}
+    bind:gradientElement
+    bind:hueElement
+    bind:alphaElement
+    onGradientPointerDown={handleGradientPointerDown}
+    onGradientPointerMove={handleGradientPointerMove}
+    onGradientPointerUp={handleGradientPointerUp}
+    onGradientPointerCancel={handleGradientPointerCancel}
+    onGradientKeydown={handleGradientKeydown}
+    onHueKeydown={handleHueKeydown}
+    onHuePointerDown={handleHuePointerDown}
+    onHuePointerMove={handleHuePointerMove}
+    onHuePointerUp={handleHuePointerUp}
+    onHuePointerCancel={handleHuePointerCancel}
+    onAlphaKeydown={handleAlphaKeydown}
+    onAlphaPointerDown={handleAlphaPointerDown}
+    onAlphaPointerMove={handleAlphaPointerMove}
+    onAlphaPointerUp={handleAlphaPointerUp}
+    onAlphaPointerCancel={handleAlphaPointerCancel}
+  />
 
   {#if normalizedSwatchColors.length > 0}
     <ColorSwatchPicker

@@ -170,3 +170,10 @@ describe('EmptyState native attribute passthrough', () => {
     expect(root?.classList.contains('extra-class')).toBe(true);
   });
 });
+
+test('uses the container gap as the sole vertical spacing mechanism', async () => {
+  const css = await Bun.file(new URL('./empty-state.css', import.meta.url)).text();
+  expect(css).toContain('gap: var(--cinder-space-2);');
+  expect(css).not.toContain('margin-bottom: var(--cinder-space-2);');
+  expect(css).not.toContain('margin-top: var(--cinder-space-4);');
+});

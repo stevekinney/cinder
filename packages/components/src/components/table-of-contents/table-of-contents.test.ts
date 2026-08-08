@@ -91,16 +91,12 @@ afterEach(() => {
 });
 
 describe('TableOfContents', () => {
-  test('draws one continuous list rail while retaining active link segments', async () => {
+  test('uses spacing and active fill instead of structural border rails', async () => {
     const stylesheet = await Bun.file(new URL('./table-of-contents.css', import.meta.url)).text();
 
-    expect(stylesheet).toContain('.cinder-table-of-contents__list::before');
-    expect(stylesheet).toContain('background: var(--cinder-table-of-contents-link-border-color)');
-    expect(stylesheet).toContain('border-inline-start: 2px solid transparent');
-    expect(stylesheet).toContain(
-      'border-inline-start-color: var(--cinder-table-of-contents-link-active-border-color)',
-    );
-    expect(stylesheet).toContain('z-index: 1');
+    expect(stylesheet).not.toContain('.cinder-table-of-contents__list::before');
+    expect(stylesheet).not.toContain('border-inline-start');
+    expect(stylesheet).toContain('background: var(--cinder-surface-hover)');
   });
 
   test('does not render a nav landmark when there are no TOC entries', () => {

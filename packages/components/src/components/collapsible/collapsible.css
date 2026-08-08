@@ -23,10 +23,6 @@
     inline-size: 100%;
     padding: var(--cinder-space-4) var(--cinder-space-5);
 
-    font-size: var(--cinder-text-base);
-    font-weight: var(--cinder-font-medium);
-    line-height: var(--cinder-leading-snug);
-    color: var(--cinder-text);
     text-align: start;
 
     background: var(--cinder-surface-raised);
@@ -113,7 +109,7 @@
     border-end-start-radius: var(--cinder-radius-md);
     border-end-end-radius: var(--cinder-radius-md);
     line-height: var(--cinder-leading-normal);
-    color: var(--cinder-text-muted);
+    color: var(--cinder-text);
   }
 
   /* ----------------------------------------

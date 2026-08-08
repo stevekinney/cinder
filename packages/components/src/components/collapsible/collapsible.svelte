@@ -81,7 +81,7 @@
     {disabled}
     onclick={handleClick}
   >
-    <span class="cinder-collapsible__label">
+    <span class="cinder-collapsible__label cinder-_label-text">
       {#if typeof trigger === 'string'}
         <span id={labelId}>{trigger}</span>
       {:else}

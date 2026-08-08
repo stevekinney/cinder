@@ -30,6 +30,4 @@ export type DatePickerProps = Omit<
   class?: string;
   /** Called when the value changes. */
   onValueChange?: (value: string | undefined) => void;
-  /** Visible text for the calendar-trigger button. Defaults to "Open". */
-  triggerLabel?: string;
 };

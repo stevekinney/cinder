@@ -135,7 +135,8 @@
     text-decoration: none;
     color: inherit;
     border-radius: var(--cinder-radius-sm);
-    padding: var(--cinder-space-1);
+    padding-block: var(--cinder-space-1);
+    padding-inline: 0;
   }
 
   .cinder-mega-menu__link-description {
@@ -162,12 +163,13 @@
     border: 1px solid transparent;
     background: transparent;
     border-radius: var(--cinder-radius-md);
-    padding: var(--cinder-space-2);
+    padding-block: var(--cinder-space-2);
+    padding-inline: 0;
     cursor: pointer;
   }
 
   .cinder-mega-menu__submenu-trigger[data-active='true'] {
-    border-color: var(--cinder-accent);
+    border-color: transparent;
     background: var(--cinder-surface-hover);
     font-weight: var(--cinder-font-semibold);
   }

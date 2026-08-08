@@ -41,6 +41,7 @@
   import { classNames } from '../../utilities/class-names.ts';
   import Button from '@lostgradient/cinder/button';
   import { RotateCcw } from '@lostgradient/cinder/icons';
+  import { generateUnifiedDiff } from '../../export/unified-diff.ts';
 
   import Surface from '@lostgradient/cinder/surface';
   import { createDiffController } from './diff-controller.svelte';
@@ -301,6 +302,21 @@
     onreverthunk?.(hunk.index, hunk);
   }
 
+  let copyStatus = $state<'idle' | 'copied'>('idle');
+  async function copyUnifiedDiff(): Promise<void> {
+    const diff = generateUnifiedDiff({
+      schemaVersion: 1,
+      content: current,
+      original,
+      threads: [],
+      updatedAt: '',
+    }).diff;
+    if (!diff || typeof navigator === 'undefined' || !navigator.clipboard) return;
+    await navigator.clipboard.writeText(diff);
+    copyStatus = 'copied';
+    window.setTimeout(() => (copyStatus = 'idle'), 1200);
+  }
+
   // ─────────────────────────────────────────────────────────────────────────────
   // Keyboard shortcuts
   // ─────────────────────────────────────────────────────────────────────────────
@@ -348,6 +364,7 @@
       onjumpprevious={jumpToPrevious}
       {onrevertall}
       ontriggercompute={() => diffController.triggerCompute()}
+      oncopydiff={copyUnifiedDiff}
     >
       {#snippet actions()}
         {#if toolbarActions}
@@ -355,6 +372,9 @@
         {/if}
       {/snippet}
     </DiffToolbar>
+  {/if}
+  {#if copyStatus === 'copied'}
+    <div class="cinder-sr-only" role="status">Unified diff copied.</div>
   {/if}
 
   <!-- Size warning banner (DEP-47) -->

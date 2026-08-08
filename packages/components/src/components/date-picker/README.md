@@ -36,7 +36,6 @@ semantics. DatePicker handles parsing and keyboard input.
 | `max`           | `string`                                        | no       | —       | Maximum allowed value (same format as `value`).                                                           |
 | `min`           | `string`                                        | no       | —       | Minimum allowed value (same format as `value`).                                                           |
 | `placeholder`   | `string`                                        | no       | —       | Placeholder shown when empty.                                                                             |
-| `triggerLabel`  | `string`                                        | no       | —       | Visible text for the calendar-trigger button. Defaults to "Open".                                         |
 | `value`         | `string`                                        | no       | —       | Controlled value as local ISO string. Bindable.                                                           |
 | `onValueChange` | `(opaque)`                                      | no       | —       | Called when the value changes. Not expressible in JSON Schema; see the component types for the signature. |
 

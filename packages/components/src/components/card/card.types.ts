@@ -1,17 +1,20 @@
 import type { Snippet } from 'svelte';
-import type { HTMLAttributes } from 'svelte/elements';
+import type { HTMLAnchorAttributes, HTMLAttributes, HTMLButtonAttributes } from 'svelte/elements';
 export type CardVariant = 'card' | 'well';
 export type CardTone = 'default' | 'muted';
 export type CardSurfaceTone = 'default' | 'danger';
+export type CardElevation = 'none' | 'sm' | 'md' | 'lg';
 /** Controls body padding. `none` removes only body padding for flush/full-bleed content. */
 export type CardPadding = 'default' | 'none';
 /** Heading level for the generated card title, so the document outline stays correct. */
 export type CardHeadingLevel = 2 | 3 | 4 | 5 | 6;
-type CardBase = Omit<HTMLAttributes<HTMLDivElement>, 'class'> & {
+type CardCommon = {
   /** Custom class merged with `.cinder-card`. */
   class?: string;
   /** Visual container style. `card` is raised; `well` is flatter and inset. */
   variant?: CardVariant;
+  /** Elevation shadow applied to the card surface. */
+  elevation?: CardElevation;
   /** Container risk treatment. `danger` renders a danger-zone surface for high-risk settings or destructive actions. */
   tone?: CardSurfaceTone;
   /** Body surface treatment. `muted` renders a grey/inset body region. */
@@ -23,6 +26,25 @@ type CardBase = Omit<HTMLAttributes<HTMLDivElement>, 'class'> & {
   /** Body padding. `none` leaves header and footer padding intact while making body content flush with the card edges. */
   padding?: CardPadding;
 };
+type CardStatic = CardCommon &
+  Omit<HTMLAttributes<HTMLDivElement>, 'class' | 'href' | 'onclick' | 'type'> & {
+    href?: never;
+    onclick?: never;
+    type?: never;
+  };
+type CardLink = CardCommon &
+  Omit<HTMLAnchorAttributes, 'class' | 'href' | 'onclick' | 'type'> & {
+    /** Destination URL that makes the entire card an anchor. */
+    href: string;
+    onclick?: (event: MouseEvent) => void;
+  };
+type CardButton = CardCommon &
+  Omit<HTMLButtonAttributes, 'class' | 'onclick' | 'type'> & {
+    /** Click handler that makes the entire card a button. */
+    onclick: (event: MouseEvent) => void;
+    href?: never;
+  };
+type CardBase = CardStatic | CardLink | CardButton;
 /** Basic card with no generated header. */
 type CardPlain = CardBase & {
   children: Snippet;

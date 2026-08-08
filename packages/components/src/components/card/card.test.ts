@@ -162,6 +162,28 @@ describe('Card', () => {
     );
   });
 
+  test('renders the whole card as a link when href is provided', () => {
+    const { container } = render(Card, {
+      props: { href: '/details', elevation: 'md', children: emptySnippet },
+    });
+    const root = container.querySelector('.cinder-card');
+    expect(root?.tagName).toBe('A');
+    expect(root?.getAttribute('href')).toBe('/details');
+    expect(root?.getAttribute('role')).toBeNull();
+    expect(root?.getAttribute('data-cinder-interactive')).toBe('');
+    expect(root?.getAttribute('data-cinder-elevation')).toBe('md');
+  });
+
+  test('renders the whole card as a button when onclick is provided', () => {
+    const { container } = render(Card, {
+      props: { onclick: () => {}, children: emptySnippet },
+    });
+    const root = container.querySelector('.cinder-card');
+    expect(root?.tagName).toBe('BUTTON');
+    expect(root?.getAttribute('type')).toBe('button');
+    expect(root?.getAttribute('data-cinder-interactive')).toBe('');
+  });
+
   test('danger tone is reflected on the container and adds a non-color title cue', () => {
     const { container, getByRole, getByText } = render(Card, {
       props: {

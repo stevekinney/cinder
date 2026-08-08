@@ -692,6 +692,28 @@ describe('ScheduleBuilder', () => {
   });
 
   describe('cron mode', () => {
+    test('offers structured every, specific, range, and step controls with raw cron as an escape hatch', async () => {
+      const onValueChange = mock();
+      const { getByLabelText, getAllByRole } = render(ScheduleBuilder, {
+        allowedModes: ['cron'],
+        onValueChange,
+      });
+
+      expect(getByLabelText('Minute pattern')).not.toBeNull();
+      expect(getAllByRole('option', { name: 'Every value (*)' })).not.toHaveLength(0);
+      expect(getAllByRole('option', { name: 'Specific value' })).not.toHaveLength(0);
+      expect(getAllByRole('option', { name: 'Range' })).not.toHaveLength(0);
+      expect(getAllByRole('option', { name: 'Step (every N)' })).not.toHaveLength(0);
+      expect(getAllByRole('option', { name: 'Advanced raw expression' })).not.toHaveLength(0);
+
+      await fireEvent.change(getByLabelText('Minute pattern'), { target: { value: 'step' } });
+      await fireEvent.input(getByLabelText('Minute step'), { target: { value: '15' } });
+      expect(onValueChange.mock.calls.at(-1)?.[0]).toEqual({
+        mode: 'cron',
+        expression: '*/15 * * * *',
+      });
+    });
+
     test('a valid cron field edit commits a joined cron expression via onValueChange', async () => {
       const onValueChange = mock();
       const { getByLabelText, getByRole } = render(ScheduleBuilder, { onValueChange });
@@ -959,6 +981,9 @@ describe('ScheduleBuilder', () => {
       const css = readFileSync(new URL('./schedule-builder.css', import.meta.url), 'utf8');
       expect(css).toContain('cinder-schedule-builder');
       expect(css).toContain('@layer cinder.components');
+      expect(css).toMatch(
+        /\.cinder-schedule-builder__panel\s*\{[^}]*padding-inline:\s*var\(--cinder-space-1\);/,
+      );
     });
   });
 });

@@ -44,9 +44,7 @@ export function generateUnifiedDiff(
     originalPath = 'a/document.md',
     currentPath = 'b/document.md',
     contextLines = 3,
-    // Default to false for backwards-compatible caller control. Modern ReviewState
-    // content may already include front matter, so this option only prepends raw
-    // front matter for older body-only states.
+    // Opt in because modern ReviewState content generally includes front matter already.
     includeFrontMatter = false,
   } = options;
 

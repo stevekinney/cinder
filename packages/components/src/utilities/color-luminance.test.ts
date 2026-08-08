@@ -149,6 +149,27 @@ describe('parseColor', () => {
     });
   });
 
+  describe('hwb', () => {
+    test('parses hue, whiteness, blackness, and optional alpha', () => {
+      expect(parseColor('hwb(0 0% 0%)')).toEqual({ r: 255, g: 0, b: 0, a: 1 });
+      expect(parseColor('hwb(120 20% 30% / 50%)')).toEqual({
+        r: 51,
+        g: 179,
+        b: 51,
+        a: 0.5,
+      });
+    });
+
+    test('normalizes overcommitted whiteness and blackness to gray', () => {
+      expect(parseColor('hwb(240 60% 60%)')).toEqual({
+        r: 128,
+        g: 128,
+        b: 128,
+        a: 1,
+      });
+    });
+  });
+
   describe('unsupported formats', () => {
     test('returns null for named colors', () => {
       expect(parseColor('red')).toBeNull();

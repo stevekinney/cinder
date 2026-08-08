@@ -1,0 +1,20 @@
+@layer cinder.components {
+  /* Shared label/value hierarchy for compact metadata and status pairs.
+   * Labels identify the subject at base size and semibold weight. Values or
+   * attached annotations step down in size and color so size, weight, color,
+   * and leading all describe the same hierarchy. Primary body content is not
+   * a value/annotation and should keep --cinder-text at its normal body size. */
+  .cinder-_label-text {
+    color: var(--cinder-text);
+    font-size: var(--cinder-text-base);
+    font-weight: var(--cinder-font-semibold);
+    line-height: var(--cinder-leading-snug);
+  }
+
+  .cinder-_value-text {
+    color: var(--cinder-text-muted);
+    font-size: var(--cinder-text-sm);
+    font-weight: var(--cinder-font-normal);
+    line-height: var(--cinder-leading-normal);
+  }
+}

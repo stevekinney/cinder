@@ -143,7 +143,7 @@
     pointer-events: none;
   }
 
-  /* ── Footer row: preview chip + hex value ─────────────────────────────── */
+  /* ── Footer row: preview chip + copyable formats ─────────────────────── */
 
   .cinder-color-picker__footer {
     display: flex;
@@ -183,6 +183,46 @@
       0 4px,
       4px -4px,
       -4px 0;
+  }
+
+  .cinder-color-picker__formats {
+    display: grid;
+    min-width: 0;
+    gap: var(--cinder-space-1);
+  }
+
+  .cinder-color-picker__format {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--cinder-space-2);
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--cinder-text-secondary, currentColor);
+    font-family: var(--cinder-font-mono, monospace);
+    font-size: var(--cinder-text-xs, 0.75rem);
+    line-height: 1;
+    text-align: start;
+    cursor: pointer;
+  }
+
+  .cinder-color-picker__format span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .cinder-color-picker__format:hover:not(:disabled),
+  .cinder-color-picker__format:focus-visible {
+    color: var(--cinder-text);
+    text-decoration: underline;
+  }
+
+  .cinder-color-picker__format:disabled {
+    cursor: default;
+    opacity: 0.6;
   }
 
   .cinder-color-picker__hex-value {

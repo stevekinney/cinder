@@ -24,21 +24,24 @@ Use `tone="danger"` when a settings section or action group has destructive, irr
 
 <!-- generated:props:start -->
 
-| Prop                 | Type                            | Required | Default | Description                                                                                                                                 |
-| -------------------- | ------------------------------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `bodyTone`           | `"default"` \| `"muted"`        | no       | —       | Body surface treatment. `muted` renders a grey/inset body region.                                                                           |
-| `class`              | `string`                        | no       | —       | Custom class merged with `.cinder-card`.                                                                                                    |
-| `description`        | `string`                        | no       | —       | Optional subheading rendered as a paragraph below the title inside the header.                                                              |
-| `edgeToEdgeOnMobile` | `boolean`                       | no       | —       | Remove side borders/radius and bleed to the viewport edge on narrow screens.                                                                |
-| `footerTone`         | `"default"` \| `"muted"`        | no       | —       | Footer surface treatment. `muted` renders a grey/inset footer region.                                                                       |
-| `headingLevel`       | `2` \| `3` \| `4` \| `5` \| `6` | no       | —       | Heading level for the generated title. Defaults to `3`. Set this so the card title nests correctly within the surrounding document outline. |
-| `padding`            | `"default"` \| `"none"`         | no       | —       | Body padding. `none` leaves header and footer padding intact while making body content flush with the card edges.                           |
-| `title`              | `string`                        | no       | —       | Primary heading text rendered inside the card's header region.                                                                              |
-| `tone`               | `"default"` \| `"danger"`       | no       | —       | Container risk treatment. `danger` renders a danger-zone surface for high-risk settings or destructive actions.                             |
-| `variant`            | `"card"` \| `"well"`            | no       | —       | Visual container style. `card` is raised; `well` is flatter and inset.                                                                      |
-| `children`           | `(opaque)`                      | yes      | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                  |
-| `footer`             | `(opaque)`                      | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                  |
-| `header`             | `(opaque)`                      | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                  |
+| Prop                 | Type                                   | Required | Default | Description                                                                                                                                 |
+| -------------------- | -------------------------------------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `bodyTone`           | `"default"` \| `"muted"`               | no       | —       | Body surface treatment. `muted` renders a grey/inset body region.                                                                           |
+| `class`              | `string`                               | no       | —       | Custom class merged with `.cinder-card`.                                                                                                    |
+| `description`        | `string`                               | no       | —       | Optional subheading rendered as a paragraph below the title inside the header.                                                              |
+| `edgeToEdgeOnMobile` | `boolean`                              | no       | —       | Remove side borders/radius and bleed to the viewport edge on narrow screens.                                                                |
+| `elevation`          | `"none"` \| `"sm"` \| `"md"` \| `"lg"` | no       | —       | Elevation shadow applied to the card surface.                                                                                               |
+| `footerTone`         | `"default"` \| `"muted"`               | no       | —       | Footer surface treatment. `muted` renders a grey/inset footer region.                                                                       |
+| `headingLevel`       | `2` \| `3` \| `4` \| `5` \| `6`        | no       | —       | Heading level for the generated title. Defaults to `3`. Set this so the card title nests correctly within the surrounding document outline. |
+| `href`               | `string`                               | no       | —       | Destination URL that makes the entire card an anchor.                                                                                       |
+| `padding`            | `"none"` \| `"default"`                | no       | —       | Body padding. `none` leaves header and footer padding intact while making body content flush with the card edges.                           |
+| `title`              | `string`                               | no       | —       | Primary heading text rendered inside the card's header region.                                                                              |
+| `tone`               | `"default"` \| `"danger"`              | no       | —       | Container risk treatment. `danger` renders a danger-zone surface for high-risk settings or destructive actions.                             |
+| `variant`            | `"card"` \| `"well"`                   | no       | —       | Visual container style. `card` is raised; `well` is flatter and inset.                                                                      |
+| `children`           | `(opaque)`                             | yes      | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                  |
+| `footer`             | `(opaque)`                             | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                  |
+| `header`             | `(opaque)`                             | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                  |
+| `onclick`            | `(opaque)`                             | no       | —       | Click handler that makes the entire card a button. Not expressible in JSON Schema; see the component types for the signature.               |
 
 <!-- generated:props:end -->
 

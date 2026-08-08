@@ -20,6 +20,16 @@ type ExecCommandLike = (commandId: string) => boolean;
 const originalClipboard = globalThis.navigator.clipboard as unknown;
 const originalExecCommand = document.execCommand as unknown;
 
+test('selection uses a background fill instead of an oversized inset shadow', async () => {
+  const css = await Bun.file(new URL('./data-grid.css', import.meta.url)).text();
+
+  expect(css).not.toContain('inset 0 0 0 999px');
+  expect(css).toMatch(
+    /\.cinder-data-grid__cell\[data-cinder-selected\]\s*\{[^}]*background:\s*color-mix\(/,
+  );
+  expect(css).toContain('var(--cinder-text) 14%');
+});
+
 afterEach(() => {
   cleanup();
   resetObservedSelectionModel();

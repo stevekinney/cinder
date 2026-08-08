@@ -5,8 +5,6 @@
     --cinder-table-of-contents-link-color: var(--cinder-text-muted);
     --cinder-table-of-contents-link-active-color: var(--cinder-text);
     --cinder-table-of-contents-link-indent-step: var(--cinder-space-3);
-    --cinder-table-of-contents-link-border-color: var(--cinder-border);
-    --cinder-table-of-contents-link-active-border-color: var(--cinder-border-strong);
 
     display: block;
     font-size: var(--cinder-text-sm);
@@ -24,15 +22,6 @@
     gap: var(--cinder-space-1);
   }
 
-  .cinder-table-of-contents__list::before {
-    position: absolute;
-    inset-block: 0;
-    inset-inline-start: 0;
-    width: 2px;
-    background: var(--cinder-table-of-contents-link-border-color);
-    content: '';
-  }
-
   .cinder-table-of-contents__list--nested {
     margin-top: var(--cinder-space-1);
     margin-inline-start: var(--cinder-table-of-contents-link-indent-step);
@@ -45,11 +34,9 @@
 
   .cinder-table-of-contents__link {
     position: relative;
-    z-index: 1;
     display: block;
     text-decoration: none;
     color: var(--cinder-table-of-contents-link-color);
-    border-inline-start: 2px solid transparent;
     padding: 0.125rem 0.75rem;
     transition:
       color var(--cinder-duration-fast) var(--cinder-ease-standard),
@@ -62,7 +49,7 @@
 
   .cinder-table-of-contents__link--active {
     color: var(--cinder-table-of-contents-link-active-color);
-    border-inline-start-color: var(--cinder-table-of-contents-link-active-border-color);
+    background: var(--cinder-surface-hover);
     font-weight: var(--cinder-font-medium);
   }
 

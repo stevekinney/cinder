@@ -79,8 +79,12 @@
       <Lock size={20} strokeWidth={2} />
     </span>
     <span class="cinder-access-gate__section-copy">
-      <span id={sectionTitleId} class="cinder-access-gate__section-title">Section locked</span>
-      <span id={sectionReasonId} class="cinder-access-gate__section-reason">{reason}</span>
+      <span id={sectionTitleId} class="cinder-access-gate__section-title cinder-_label-text"
+        >Section locked</span
+      >
+      <span id={sectionReasonId} class="cinder-access-gate__section-reason cinder-_value-text"
+        >{reason}</span
+      >
       {#if requirement}
         <span id={sectionRequirementId} class="cinder-access-gate__requirement">
           <span class="cinder-access-gate__requirement-label">Required permission</span>

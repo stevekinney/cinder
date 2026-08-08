@@ -1,8 +1,5 @@
 /// <reference lib="dom" />
-import { readFileSync } from 'node:fs';
-
 import { afterEach, describe, expect, mock, test } from 'bun:test';
-import { parse } from 'postcss';
 import type { ComponentProps } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
@@ -16,7 +13,6 @@ const { default: ColorFieldFormFixture } =
   await import('../../test/fixtures/color-field-form-fixture.svelte');
 const { default: ColorFieldFormFieldFixture } =
   await import('../../test/fixtures/color-field-form-field-fixture.svelte');
-const colorFieldCss = readFileSync(new URL('./color-field.css', import.meta.url), 'utf8');
 
 afterEach(() => {
   cleanup();
@@ -45,34 +41,28 @@ function getInput(container: ParentNode, id = 'color'): HTMLInputElement {
   return q<HTMLInputElement>(container, `#${id}`);
 }
 
-function getCssDeclaration(selector: string, property: string): string | undefined {
-  let value: string | undefined;
-  parse(colorFieldCss).walkRules((rule) => {
-    if (rule.selector !== selector) return;
-    rule.walkDecls(property, (declaration) => {
-      value = declaration.value;
-    });
-  });
-  return value;
-}
-
 async function typeAndBlur(input: HTMLInputElement, text: string): Promise<void> {
   await fireEvent.input(input, { target: { value: text } });
   await fireEvent.blur(input);
   await tick();
 }
 
-describe('ColorField — decorative swatch', () => {
-  test('stays hidden from assistive technology and ignores pointer interaction', () => {
+describe('ColorField — color picker trigger', () => {
+  test('uses an accessible button that opens the composed ColorPicker', async () => {
     const { container } = render(ColorField, { id: 'color', name: 'color' });
+    const trigger = q<HTMLButtonElement>(container, '.cinder-color-field__swatch-button');
     const swatch = q(container, '.cinder-color-field__swatch');
 
+    expect(trigger.tagName).toBe('BUTTON');
+    expect(trigger.getAttribute('aria-label')).toBe('Choose a color');
     expect(swatch.tagName).toBe('SPAN');
     expect(swatch.getAttribute('aria-hidden')).toBe('true');
-    expect(swatch.hasAttribute('role')).toBe(false);
-    expect(swatch.tabIndex).toBe(-1);
-    expect(getCssDeclaration('.cinder-color-field__swatch', 'pointer-events')).toBe('none');
-    expect(getCssDeclaration('.cinder-color-field__swatch', 'cursor')).toBe('default');
+
+    await tick();
+    await fireEvent.click(trigger);
+    await tick();
+
+    expect(document.body.querySelector('.cinder-color-picker')).not.toBeNull();
   });
 });
 
@@ -189,6 +179,15 @@ describe('ColorField — formats gate', () => {
     const input = getInput(container);
     await typeAndBlur(input, '#abc');
     expect(onValueChange.mock.calls[0]?.[0]).toBe('#aabbcc');
+  });
+
+  test('default formats accept hwb input', async () => {
+    const onValueChange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, { id: 'color', onValueChange });
+
+    await typeAndBlur(getInput(container), 'hwb(120 20% 30%)');
+
+    expect(onValueChange.mock.calls[0]?.[0]).toBe('#33b333');
   });
 });
 
@@ -759,7 +758,7 @@ describe('ColorField — default error message reflects formats', () => {
     expect(errorText).not.toContain('hsl');
   });
 
-  test('default formats produces the legacy three-format message', async () => {
+  test('default error message names every accepted format', async () => {
     const { container } = render(ColorField, { id: 'color' });
     const input = getInput(container);
     await typeAndBlur(input, 'nope');
@@ -767,6 +766,7 @@ describe('ColorField — default error message reflects formats', () => {
     expect(errorText).toContain('hex');
     expect(errorText).toContain('rgb()');
     expect(errorText).toContain('hsl()');
+    expect(errorText).toContain('hwb()');
   });
 
   test('error wording refreshes when formats changes at runtime', async () => {

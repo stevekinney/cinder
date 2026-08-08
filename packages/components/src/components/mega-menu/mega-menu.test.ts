@@ -12,7 +12,17 @@ const { default: MegaMenuLocaleTestHarness } =
 const { default: MegaMenu } = await import('./mega-menu.svelte');
 const { tick } = await import('svelte');
 
+const megaMenuCss = await Bun.file(new URL('./mega-menu.css', import.meta.url)).text();
+
 afterEach(() => cleanup());
+
+test('aligns menu text edges and avoids a second active ring', () => {
+  expect(megaMenuCss).toMatch(/\.cinder-mega-menu__link\s*\{[^}]*padding-inline:\s*0;/);
+  expect(megaMenuCss).toMatch(/\.cinder-mega-menu__submenu-trigger\s*\{[^}]*padding-inline:\s*0;/);
+  expect(megaMenuCss).toMatch(
+    /\.cinder-mega-menu__submenu-trigger\[data-active='true'\]\s*\{[^}]*border-color:\s*transparent;/,
+  );
+});
 
 const items = [
   {

@@ -40,7 +40,7 @@
           <h2 class="cinder-footer__brand-title">{brand}</h2>
         {/if}
         {#if description}
-          <p class="cinder-footer__brand-description">{description}</p>
+          <p class="cinder-footer__brand-description cinder-_value-text">{description}</p>
         {/if}
       </section>
     {/if}
@@ -49,10 +49,13 @@
       <div class="cinder-footer__groups">
         {#each groups as group (group.id)}
           <nav aria-label={group.title}>
-            <h3 class="cinder-footer__group-title">{group.title}</h3>
+            <h3 class="cinder-footer__group-title cinder-_label-text">{group.title}</h3>
             <ul class="cinder-footer__list">
               {#each group.links as link (link.id)}
-                <li><a class="cinder-footer__link" href={link.href}>{link.label}</a></li>
+                <li>
+                  <a class="cinder-footer__link cinder-_value-text" href={link.href}>{link.label}</a
+                  >
+                </li>
               {/each}
             </ul>
           </nav>
@@ -70,7 +73,9 @@
       {#if legalLinks.length > 0}
         <ul class="cinder-footer__legal-links">
           {#each legalLinks as link (link.id)}
-            <li><a class="cinder-footer__link" href={link.href}>{link.label}</a></li>
+            <li>
+              <a class="cinder-footer__link cinder-_value-text" href={link.href}>{link.label}</a>
+            </li>
           {/each}
         </ul>
       {/if}

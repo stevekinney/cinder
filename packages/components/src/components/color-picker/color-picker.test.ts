@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { afterEach, describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, mock, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -68,6 +68,33 @@ describe('ColorPicker structure', () => {
     const hidden = q<HTMLInputElement>(container, 'input[name="pick"]');
     expect(hidden.type).toBe('hidden');
     expect(hidden.value).toBe('#ff0000');
+  });
+
+  test('copies rounded HEX, RGB, and HSL values through CopyButton controls', async () => {
+    const writeText = mock(async (_value: string) => {});
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    const { container } = render(ColorPicker, { value: '#ff0000' });
+    const copyButtons = container.querySelectorAll<HTMLButtonElement>(
+      '.cinder-color-picker__format',
+    );
+
+    expect([...copyButtons].map((button) => button.getAttribute('aria-label'))).toEqual([
+      'Copy HEX format',
+      'Copy RGB format',
+      'Copy HSL format',
+    ]);
+
+    for (const button of copyButtons) await fireEvent.click(button);
+    await tick();
+
+    expect(writeText.mock.calls.map(([value]) => value)).toEqual([
+      '#ff0000',
+      'rgb(255, 0, 0)',
+      'hsl(0, 100%, 50%)',
+    ]);
   });
 });
 

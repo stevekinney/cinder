@@ -31,6 +31,15 @@ const sampleGroups = [
 ];
 
 describe('KeyboardShortcuts', () => {
+  test('separates shortcut rows with spacing instead of per-row rules', async () => {
+    const stylesheet = await Bun.file(new URL('./keyboard-shortcuts.css', import.meta.url)).text();
+
+    expect(stylesheet).toContain('gap: var(--cinder-space-1)');
+    expect(stylesheet).not.toContain(
+      '.cinder-keyboard-shortcuts__row + .cinder-keyboard-shortcuts__row',
+    );
+  });
+
   test('renders all group headings', () => {
     const { container } = render(KeyboardShortcuts, { groups: sampleGroups });
     const headings = container.querySelectorAll('.cinder-keyboard-shortcuts__group-label');

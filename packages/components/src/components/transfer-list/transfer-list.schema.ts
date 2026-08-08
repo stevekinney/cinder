@@ -35,16 +35,16 @@ const schema = {
         type: 'string',
       },
       description:
-        'Unique IDs currently assigned to the right-side selected list. Supports `bind:value`. Unknown IDs are ignored and dropped on the next transfer.',
+        'Unique IDs currently selected in the list. Supports `bind:value`. Unknown IDs are ignored and dropped on the next update.',
     },
     leftLabel: {
       type: 'string',
-      description: 'Accessible and visible label for the left list.',
+      description: 'Accessible and visible label for the compact selection list.',
       default: 'Available',
     },
     rightLabel: {
       type: 'string',
-      description: 'Accessible and visible label for the right list.',
+      description: 'Label used in the selection count and transfer announcements.',
       default: 'Selected',
     },
     class: {
@@ -59,7 +59,7 @@ const schema = {
       {
         name: 'onValueChange',
         reason: 'function-or-snippet',
-        description: 'Called with the next right-side value after a transfer.',
+        description: 'Called with the next selected value after an option is toggled.',
       },
     ],
   },

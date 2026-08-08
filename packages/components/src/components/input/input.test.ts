@@ -30,6 +30,16 @@ function idsIn(container: Element): string[] {
 }
 
 describe('Input rendering', () => {
+  test('keeps leading addons close to the input value', async () => {
+    const css = await Bun.file(new URL('./input.css', import.meta.url)).text();
+    expect(css).toMatch(
+      /\.cinder-input-group--leading > \.cinder-input\s*\{[^}]*padding-inline-start:\s*var\(--cinder-space-1\);/,
+    );
+    expect(css).toMatch(
+      /\.cinder-input-group__leading,[\s\S]*?padding-inline-end:\s*var\(--cinder-space-1\);/,
+    );
+  });
+
   test('standalone FormField presentation is included by the Input sidecar', async () => {
     const css = await Bun.file(new URL('./input.css', import.meta.url)).text();
 

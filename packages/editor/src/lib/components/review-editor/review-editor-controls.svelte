@@ -224,21 +224,21 @@
     border-radius: var(--cinder-radius-md) var(--cinder-radius-md) 0 0;
     border-bottom: none;
     min-height: 2.5rem;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
   }
 
   .controls-leading {
     display: flex;
     align-items: center;
     gap: var(--cinder-space-2);
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
   }
 
   .controls-trailing {
     display: flex;
     align-items: center;
     gap: var(--cinder-space-2);
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
   }
 
   .controls-separator {

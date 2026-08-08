@@ -18,6 +18,14 @@ function textSnippet(text: string) {
 }
 
 describe('SelectableRow', () => {
+  test('centers leading content and trailing actions on the row axis', async () => {
+    const css = await Bun.file(new URL('./selectable-row.css', import.meta.url)).text();
+    expect(css).toMatch(/\.cinder-selectable-row\s*\{[^}]*align-items:\s*center;/);
+    expect(css).toMatch(
+      /\.cinder-selectable-row__trailing-actions\s*\{[^}]*align-self:\s*center;[^}]*padding-block:\s*0;/,
+    );
+  });
+
   test('renders a native primary button and sibling trailing actions without nested controls', () => {
     const onPrimary = mock();
     const onRename = mock();

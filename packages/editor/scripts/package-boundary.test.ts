@@ -67,6 +67,15 @@ function nextMinorPeerRange(version: string): string {
 }
 
 describe('Editor package ownership boundary', () => {
+  test('keeps component tests serial without isolating the Svelte preload plugin', () => {
+    for (const scriptName of ['test', 'test:coverage']) {
+      const script = editorManifest.scripts?.[scriptName];
+      expect(script, `${scriptName} must be defined`).toBeDefined();
+      expect(script).toContain('--max-concurrency=1');
+      expect(script).not.toContain('--parallel');
+    }
+  });
+
   test('keeps Editor component exports out of Cinder', () => {
     expect(
       Object.keys(cinderManifest.exports).filter(

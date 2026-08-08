@@ -20,6 +20,12 @@
     cursor: default;
   }
 
+  .cinder-color-field__swatch-button {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cinder-space-1);
+  }
+
   .cinder-color-field__swatch[data-cinder-empty] {
     /* "No color" affordance: a diagonal hatch reads as "nothing selected"
      without being mistaken for an intentionally transparent color. */

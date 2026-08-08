@@ -133,8 +133,8 @@
       aria-live="polite"
       aria-busy={isLoading ? 'true' : undefined}
     >
-      <span class="cinder-capability-gate__feature">{feature}</span>
-      <span class="cinder-capability-gate__state-text">{statusText}</span>
+      <span class="cinder-capability-gate__feature cinder-_label-text">{feature}</span>
+      <span class="cinder-capability-gate__state-text cinder-_value-text">{statusText}</span>
     </div>
 
     {#if children}

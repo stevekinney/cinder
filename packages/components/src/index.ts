@@ -988,13 +988,6 @@ export type {
 export { default as Tooltip } from './components/tooltip/index.ts';
 export type { TooltipPlacement, TooltipProps } from './components/tooltip/index.ts';
 
-export { default as Typography } from './components/typography/index.ts';
-export type {
-  TypographyElement,
-  TypographyProps,
-  TypographyVariant,
-} from './components/typography/index.ts';
-
 export {
   default as VirtualList,
   getFixedVirtualWindow,

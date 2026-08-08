@@ -3,7 +3,7 @@
    * @cinder
    * @category form
    * @status stable
-   * @purpose Text input that validates and normalizes hex, rgb(), and hsl() color strings into a canonical hex value emitted on blur.
+   * @purpose Text input that validates and normalizes hex, rgb(), hsl(), and hwb() color strings into a canonical hex value emitted on blur.
    * @tag form
    * @tag color
    * @useWhen Accepting an exact color value via keyboard entry, including pasted hex, rgb(), or hsl() strings.
@@ -21,14 +21,18 @@
   import { classNames } from '../../utilities/class-names.ts';
   import { parseColor } from '../../utilities/color-luminance.ts';
   import Input from '../input/input.svelte';
-  import type { ColorFieldProps } from './color-field.types.ts';
+  import Button from '../button/button.svelte';
+  import Popover from '../popover/popover.svelte';
+  import ColorPicker from '../color-picker/color-picker.svelte';
+  import Pipette from 'lucide-svelte/icons/pipette';
+  import type { ColorFieldFormat, ColorFieldProps } from './color-field.types.ts';
 
   let {
     id,
     class: className,
     value = $bindable(''),
     alpha = false,
-    formats = ['hex', 'rgb', 'hsl'],
+    formats = ['hex', 'rgb', 'hsl', 'hwb'],
     disabled = false,
     required = false,
     readonly = false,
@@ -48,6 +52,7 @@
   let committedRgba = $state<RgbaParts | null>(null);
   let parseError = $state<string | null>(null);
   let anchorInput: HTMLInputElement | null = $state(null);
+  let pickerOpen = $state(false);
   // Plain (non-reactive) skip guard for the value-sync effect.
   let lastReconciledValue = '';
   let lastReconciledValueWasInvalid = false;
@@ -70,25 +75,42 @@
   }
 
   const HEX_RE = /^#[0-9a-f]{3}([0-9a-f]([0-9a-f]{2})?([0-9a-f]{2})?)?$/i;
-  const RGB_RE = /^rgba?\s*\([^)]*\)\s*$/i;
-  const HSL_RE = /^hsla?\s*\([^)]*\)\s*$/i;
-  const DEFAULT_FORMATS = ['hex', 'rgb', 'hsl'] as const;
+  const RGB_RE = /^(rgb|rgba)\s*\([^)]*\)\s*$/i;
+  const HSL_RE = /^(hsl|hsla)\s*\([^)]*\)\s*$/i;
+  const HWB_RE = /^hwb\s*\([^)]*\)\s*$/i;
+  const DEFAULT_FORMATS = ['hex', 'rgb', 'hsl', 'hwb'] as const;
 
   const acceptedFormats = $derived(formats.length === 0 ? DEFAULT_FORMATS : formats);
 
   function passesFormatGate(text: string): boolean {
     if (HEX_RE.test(text)) return acceptedFormats.includes('hex');
-    if (RGB_RE.test(text)) return acceptedFormats.includes('rgb');
-    if (HSL_RE.test(text)) return acceptedFormats.includes('hsl');
+    const rgbMatch = text.match(RGB_RE);
+    if (rgbMatch) {
+      const format = rgbMatch[1]!.toLowerCase() as 'rgb' | 'rgba';
+      return (
+        acceptedFormats.includes(format) || (format === 'rgba' && acceptedFormats.includes('rgb'))
+      );
+    }
+    const hslMatch = text.match(HSL_RE);
+    if (hslMatch) {
+      const format = hslMatch[1]!.toLowerCase() as 'hsl' | 'hsla';
+      return (
+        acceptedFormats.includes(format) || (format === 'hsla' && acceptedFormats.includes('hsl'))
+      );
+    }
+    if (HWB_RE.test(text)) return acceptedFormats.includes('hwb');
     return false;
   }
 
   function defaultErrorMessage(): string {
     if (errorMessage !== undefined) return errorMessage;
-    const labels: Record<'hex' | 'rgb' | 'hsl', string> = {
+    const labels: Record<ColorFieldFormat, string> = {
       hex: 'hex',
       rgb: 'rgb()',
+      rgba: 'rgba()',
       hsl: 'hsl()',
+      hsla: 'hsla()',
+      hwb: 'hwb()',
     };
     const accepted = acceptedFormats.map((format) => labels[format]);
     if (accepted.length === 1) return `Enter a valid ${accepted[0]} color.`;
@@ -381,16 +403,42 @@
 
   const swatchEmpty = $derived(committedHex === '');
   const swatchColor = $derived(committedHex === '' ? 'transparent' : committedHex);
+
+  function handlePickerCommit(next: string): void {
+    visibleText = next;
+    runCommit();
+    syncCustomValidity();
+    pickerOpen = false;
+  }
 </script>
 
 {#snippet swatch()}
-  <span
-    class="cinder-color-field__swatch"
-    data-cinder-empty={swatchEmpty ? '' : undefined}
-    data-cinder-alpha={alpha ? '' : undefined}
-    aria-hidden="true"
-    style="--cinder-color-field-swatch: {swatchColor};"
-  ></span>
+  <Popover bind:open={pickerOpen} label="Choose a color" focusManagement="panel">
+    {#snippet trigger()}
+      <Button
+        type="button"
+        class="cinder-color-field__swatch-button"
+        aria-label="Choose a color"
+        disabled={disabled || readonly}
+        onclick={() => (pickerOpen = !pickerOpen)}
+      >
+        <span
+          class="cinder-color-field__swatch"
+          data-cinder-empty={swatchEmpty ? '' : undefined}
+          data-cinder-alpha={alpha ? '' : undefined}
+          aria-hidden="true"
+          style="--cinder-color-field-swatch: {swatchColor};"
+        ></span>
+        <Pipette class="cinder-icon-xs" aria-hidden="true" />
+      </Button>
+    {/snippet}
+    <ColorPicker
+      value={committedHex}
+      {alpha}
+      label="Choose a color"
+      onValueCommit={handlePickerCommit}
+    />
+  </Popover>
 {/snippet}
 
 <div
@@ -410,6 +458,7 @@
     onblur={handleBlur}
     onkeydown={handleKeydown}
     trailing={swatch}
+    trailingInteractive
   />
 
   <input

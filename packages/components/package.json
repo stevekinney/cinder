@@ -5617,38 +5617,6 @@
       "import": "./src/components/tree-item/tree-item.variables.ts",
       "default": "./dist/components/tree-item/tree-item.variables.js"
     },
-    "./typography": {
-      "types": "./dist/components/typography/index.d.ts",
-      "browser": "./src/components/typography/index.ts",
-      "node": "./dist/server/components/typography/index.js",
-      "svelte": "./src/components/typography/index.ts",
-      "import": "./src/components/typography/index.ts",
-      "default": "./dist/components/typography/index.js"
-    },
-    "./typography/schema": {
-      "types": "./dist/components/typography/typography.schema.d.ts",
-      "browser": "./src/components/typography/typography.schema.ts",
-      "node": "./dist/server/components/typography/typography.schema.js",
-      "svelte": "./src/components/typography/typography.schema.ts",
-      "import": "./src/components/typography/typography.schema.ts",
-      "default": "./dist/components/typography/typography.schema.js"
-    },
-    "./typography/variables": {
-      "types": "./dist/components/typography/typography.variables.d.ts",
-      "browser": "./src/components/typography/typography.variables.ts",
-      "node": "./dist/server/components/typography/typography.variables.js",
-      "svelte": "./src/components/typography/typography.variables.ts",
-      "import": "./src/components/typography/typography.variables.ts",
-      "default": "./dist/components/typography/typography.variables.js"
-    },
-    "./typography/styles": {
-      "types": "./dist/components/typography/typography.css.d.ts",
-      "default": "./dist/components/typography/typography.css"
-    },
-    "./typography/examples": {
-      "import": "./src/components/typography/typography.examples.json",
-      "default": "./src/components/typography/typography.examples.json"
-    },
     "./virtual-list": {
       "types": "./dist/components/virtual-list/index.d.ts",
       "browser": "./src/components/virtual-list/index.ts",

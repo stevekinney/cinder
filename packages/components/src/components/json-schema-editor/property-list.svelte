@@ -19,6 +19,7 @@
   import Alert from '../alert/alert.svelte';
   import Button from '../button/button.svelte';
   import Chip from '../chip/chip.svelte';
+  import Collapsible from '../collapsible/collapsible.svelte';
   import Input from '../input/input.svelte';
   import PropertyEditor from './property-editor.svelte';
   import { calculatePropertyValidationErrorCount } from './property-list-validation.ts';
@@ -311,10 +312,11 @@
   </Button>
 
   {#if !readonly || requiredOnly.length > 0}
-    <details class="cinder-jse-required-only" open={requiredOnly.length > 0}>
-      <summary class="cinder-jse-required-only__summary">
-        Required without property schema ({requiredOnly.length})
-      </summary>
+    <Collapsible
+      class="cinder-jse-required-only"
+      trigger={`Required fields not yet defined (${requiredOnly.length})`}
+      open={!readonly || requiredOnly.length > 0}
+    >
       <div class="cinder-jse-required-only__panel">
         {#each requiredOnly as name (name)}
           <Chip
@@ -342,6 +344,6 @@
           Add required name
         </Button>
       </div>
-    </details>
+    </Collapsible>
   {/if}
 </div>

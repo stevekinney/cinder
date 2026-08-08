@@ -12,6 +12,10 @@
 </script>
 
 <script lang="ts">
+  import ClipboardCopy from 'lucide-svelte/icons/clipboard-copy';
+  import Redo2 from 'lucide-svelte/icons/redo-2';
+  import RotateCcw from 'lucide-svelte/icons/rotate-ccw';
+  import Undo2 from 'lucide-svelte/icons/undo-2';
   import { untrack } from 'svelte';
   import { classNames } from '../../utilities/class-names.ts';
   import { handleRovingKeydown } from '../../utilities/roving-tabindex.ts';
@@ -175,30 +179,35 @@
     <Button
       variant="ghost"
       size="sm"
+      iconOnly
+      label="Undo"
       disabled={!editorState.canUndo || editorState.readonly}
       onclick={() => onUndo?.()}
     >
-      Undo
+      <Undo2 class="cinder-icon-sm" />
     </Button>
     <Button
       variant="ghost"
       size="sm"
+      iconOnly
+      label="Redo"
       disabled={!editorState.canRedo || editorState.readonly}
       onclick={() => onRedo?.()}
     >
-      Redo
+      <Redo2 class="cinder-icon-sm" />
     </Button>
-    <CopyButton value={editorState.copyValue}>
-      {#snippet children()}Copy JSON{/snippet}
-      {#snippet confirmation()}Copied{/snippet}
+    <CopyButton value={editorState.copyValue} label="Copy JSON" iconOnly>
+      {#snippet children()}<ClipboardCopy class="cinder-icon-sm" aria-hidden="true" />{/snippet}
     </CopyButton>
     <Button
       variant="secondary"
       size="sm"
+      iconOnly
+      label="Revert"
       disabled={!editorState.hasChanges || editorState.readonly}
       onclick={() => onRevert?.()}
     >
-      Revert
+      <RotateCcw class="cinder-icon-sm" />
     </Button>
   </div>
 </div>

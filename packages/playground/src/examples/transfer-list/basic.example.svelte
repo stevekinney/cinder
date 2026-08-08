@@ -1,7 +1,7 @@
 <script lang="ts" module>
   export const title = 'Permission assignment';
   export const description =
-    'Move selected or all permissions between available and granted lists.';
+    'Choose permissions from one compact list with visible selection state.';
 </script>
 
 <script lang="ts">
@@ -21,7 +21,7 @@
   {items}
   bind:value
   leftLabel="Available permissions"
-  rightLabel="Granted permissions"
+  rightLabel="granted permissions"
 />
 
 <p>Granted: {value.join(', ') || 'None'}</p>

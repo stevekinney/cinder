@@ -3,22 +3,18 @@
    * @cinder
    * @category form
    * @status beta
-   * @purpose Dual-list assignment control for moving items between an available pool and a selected set.
+   * @purpose Compact multi-select assignment control for choosing a subset from a fixed item pool.
    * @tag form
    * @tag selection
-   * @useWhen Letting users build a subset from a fixed pool such as permissions, tags, or visible columns.
-   * @avoidWhen The pool needs inline search or filtering - compose search controls around the lists instead.
-   * @avoidWhen The user only needs independent checkbox choices - use checkbox-group instead. | checkbox-group
+   * @useWhen Letting users choose permissions, tags, or visible columns from a fixed pool.
+   * @avoidWhen The pool needs inline search or filtering — compose search controls around the list instead.
+   * @avoidWhen The user only needs independent checkbox choices — use checkbox-group instead. | checkbox-group
    * @related checkbox-group, selection-popover, sortable-list
    */
   export type { TransferListItem, TransferListProps } from './transfer-list.types.ts';
 </script>
 
 <script lang="ts">
-  import ChevronLeft from 'lucide-svelte/icons/chevron-left';
-  import ChevronRight from 'lucide-svelte/icons/chevron-right';
-  import ChevronsLeft from 'lucide-svelte/icons/chevrons-left';
-  import ChevronsRight from 'lucide-svelte/icons/chevrons-right';
   import { tick } from 'svelte';
   import { SvelteSet } from 'svelte/reactivity';
 
@@ -39,14 +35,8 @@
     ...rest
   }: TransferListProps = $props();
 
-  let leftSelectedIds = $state<string[]>([]);
-  let rightSelectedIds = $state<string[]>([]);
-  let leftActiveId = $state<string | null>(null);
-  let rightActiveId = $state<string | null>(null);
-  let focusedSide = $state<'left' | 'right' | null>(null);
-  let leftListElement: HTMLUListElement | undefined = $state();
-  let rightListElement: HTMLUListElement | undefined = $state();
-
+  let activeId = $state<string | null>(null);
+  let listElement: HTMLUListElement | undefined = $state();
   const announcer = useAnnouncer({ clearDelay: 5000 });
 
   const uniqueItems = $derived.by(() => {
@@ -57,7 +47,6 @@
       return true;
     });
   });
-
   const itemById = $derived.by(() => new Map(uniqueItems.map((item) => [item.id, item])));
   const knownValue = $derived.by(() => {
     const seenIds = new SvelteSet<string>();
@@ -67,369 +56,134 @@
       return true;
     });
   });
-  const rightIdSet = $derived(new Set(knownValue));
-  const leftItems = $derived(uniqueItems.filter((item) => !rightIdSet.has(item.id)));
-  const rightItems = $derived(
-    knownValue.flatMap((id) => {
-      const item = itemById.get(id);
-      return item ? [item] : [];
-    }),
-  );
-  const leftItemIdSet = $derived(new Set(leftItems.map((item) => item.id)));
-  const rightItemIdSet = $derived(new Set(rightItems.map((item) => item.id)));
+  const selectedIds = $derived(new Set(knownValue));
+  const selectedCount = $derived(knownValue.length);
+  const activeOptionId = $derived.by(() => {
+    if (!activeId) return undefined;
+    const index = uniqueItems.findIndex((item) => item.id === activeId);
+    return index === -1 ? undefined : `${baseId}-option-${index}`;
+  });
 
-  const leftSelectedSet = $derived(new Set(leftSelectedIds));
-  const rightSelectedSet = $derived(new Set(rightSelectedIds));
-
-  function canMoveItem(side: 'left' | 'right', item: TransferListItem): boolean {
-    return side === 'right' || !item.disabled;
+  function optionId(index: number): string {
+    return `${baseId}-option-${index}`;
   }
 
-  const movableLeftSelectedIds = $derived(
-    leftSelectedIds.filter((id) => {
-      const item = itemById.get(id);
-      return item !== undefined && canMoveItem('left', item) && !rightIdSet.has(id);
-    }),
-  );
-  const movableRightSelectedIds = $derived(
-    rightSelectedIds.filter((id) => {
-      const item = itemById.get(id);
-      return item !== undefined && canMoveItem('right', item) && rightIdSet.has(id);
-    }),
-  );
-  const movableLeftItemIds = $derived(
-    leftItems.filter((item) => canMoveItem('left', item)).map((item) => item.id),
-  );
-  const movableRightItemIds = $derived(rightItems.map((item) => item.id));
-
-  function optionId(side: 'left' | 'right', index: number): string {
-    return `${baseId}-${side}-option-${index}`;
+  function isSelectable(item: TransferListItem): boolean {
+    return selectedIds.has(item.id) || !item.disabled;
   }
 
-  function getEnabledItems(
-    side: 'left' | 'right',
-    sideItems: TransferListItem[],
-  ): TransferListItem[] {
-    return sideItems.filter((item) => canMoveItem(side, item));
+  function enabledItems(): TransferListItem[] {
+    return uniqueItems.filter(isSelectable);
   }
 
-  function resolveActiveId(
-    side: 'left' | 'right',
-    sideItems: TransferListItem[],
-    currentId: string | null,
-  ): string | null {
-    const enabled = getEnabledItems(side, sideItems);
+  function resolveActiveId(currentId: string | null): string | null {
+    const enabled = enabledItems();
     if (enabled.length === 0) return null;
     if (currentId && enabled.some((item) => item.id === currentId)) return currentId;
     return enabled[0]?.id ?? null;
   }
 
-  const resolvedLeftActiveId = $derived(resolveActiveId('left', leftItems, leftActiveId));
-  const resolvedRightActiveId = $derived(resolveActiveId('right', rightItems, rightActiveId));
-
-  $effect(() => {
-    const nextLeftSelectedIds = leftSelectedIds.filter((id) => leftItemIdSet.has(id));
-    const nextRightSelectedIds = rightSelectedIds.filter((id) => rightItemIdSet.has(id));
-
-    if (nextLeftSelectedIds.length !== leftSelectedIds.length) {
-      leftSelectedIds = nextLeftSelectedIds;
-    }
-
-    if (nextRightSelectedIds.length !== rightSelectedIds.length) {
-      rightSelectedIds = nextRightSelectedIds;
-    }
-  });
-
-  const leftActiveOptionId = $derived.by(() => {
-    if (!resolvedLeftActiveId) return undefined;
-    const index = leftItems.findIndex((item) => item.id === resolvedLeftActiveId);
-    return index === -1 ? undefined : optionId('left', index);
-  });
-
-  const rightActiveOptionId = $derived.by(() => {
-    if (!resolvedRightActiveId) return undefined;
-    const index = rightItems.findIndex((item) => item.id === resolvedRightActiveId);
-    return index === -1 ? undefined : optionId('right', index);
-  });
-
-  function commitValue(nextValue: string[], announcement: string): void {
-    const dedupedKnownValue = [...new Set(nextValue)].filter((id) => itemById.has(id));
-    value = dedupedKnownValue;
-    onValueChange?.(dedupedKnownValue);
-    announcer.announce(announcement);
+  function announceSelection(item: TransferListItem, selected: boolean): void {
+    announcer.announce(
+      `${item.label} ${selected ? 'added to' : 'removed from'} ${rightLabel}. ${selectedCount} ${selectedCount === 1 ? 'item' : 'items'} selected.`,
+    );
   }
 
-  function pluralize(count: number): string {
-    return count === 1 ? 'item' : 'items';
+  function commitSelection(id: string): void {
+    const item = itemById.get(id);
+    if (!item || !isSelectable(item)) return;
+    const selected = selectedIds.has(id);
+    const nextValue = selected
+      ? knownValue.filter((valueId) => valueId !== id)
+      : [...knownValue, id];
+    value = nextValue;
+    onValueChange?.(nextValue);
+    announceSelection(item, !selected);
   }
 
-  function focusList(side: 'left' | 'right'): void {
-    const listElement = side === 'left' ? leftListElement : rightListElement;
+  function handleOptionClick(item: TransferListItem): void {
+    if (!isSelectable(item)) return;
+    activeId = item.id;
+    commitSelection(item.id);
     listElement?.focus();
-    focusedSide = side;
   }
 
-  async function moveSelectedRight(): Promise<void> {
-    if (movableLeftSelectedIds.length === 0) return;
-    commitValue(
-      [...knownValue, ...movableLeftSelectedIds],
-      `${movableLeftSelectedIds.length} ${pluralize(movableLeftSelectedIds.length)} moved to ${rightLabel}.`,
-    );
-    leftSelectedIds = [];
-    await tick();
-    focusList(leftItems.some((item) => canMoveItem('left', item)) ? 'left' : 'right');
+  function handleListFocus(): void {
+    activeId = resolveActiveId(activeId);
   }
 
-  async function moveAllRight(): Promise<void> {
-    if (movableLeftItemIds.length === 0) return;
-    commitValue(
-      [...knownValue, ...movableLeftItemIds],
-      `${movableLeftItemIds.length} ${pluralize(movableLeftItemIds.length)} moved to ${rightLabel}.`,
-    );
-    leftSelectedIds = [];
-    await tick();
-    focusList('right');
-  }
-
-  async function moveSelectedLeft(): Promise<void> {
-    if (movableRightSelectedIds.length === 0) return;
-    const removing = new Set(movableRightSelectedIds);
-    commitValue(
-      knownValue.filter((id) => !removing.has(id)),
-      `${movableRightSelectedIds.length} ${pluralize(movableRightSelectedIds.length)} moved to ${leftLabel}.`,
-    );
-    rightSelectedIds = [];
-    await tick();
-    focusList(rightItems.length > 0 ? 'right' : 'left');
-  }
-
-  async function moveAllLeft(): Promise<void> {
-    if (movableRightItemIds.length === 0) return;
-    const removing = new Set(movableRightItemIds);
-    commitValue(
-      knownValue.filter((id) => !removing.has(id)),
-      `${movableRightItemIds.length} ${pluralize(movableRightItemIds.length)} moved to ${leftLabel}.`,
-    );
-    rightSelectedIds = [];
-    await tick();
-    focusList('left');
-  }
-
-  function toggleId(side: 'left' | 'right', id: string): void {
-    const item = itemById.get(id);
-    if (!item || !canMoveItem(side, item)) return;
-
-    if (side === 'left') {
-      leftSelectedIds = leftSelectedSet.has(id)
-        ? leftSelectedIds.filter((selectedId) => selectedId !== id)
-        : [...leftSelectedIds, id];
-      return;
-    }
-
-    rightSelectedIds = rightSelectedSet.has(id)
-      ? rightSelectedIds.filter((selectedId) => selectedId !== id)
-      : [...rightSelectedIds, id];
-  }
-
-  function setActiveId(side: 'left' | 'right', id: string | null): void {
-    if (side === 'left') leftActiveId = id;
-    else rightActiveId = id;
-  }
-
-  function handleOptionclick(side: 'left' | 'right', item: TransferListItem): void {
-    if (!canMoveItem(side, item)) return;
-    setActiveId(side, item.id);
-    toggleId(side, item.id);
-  }
-
-  function handleListClick(event: MouseEvent, side: 'left' | 'right'): void {
-    const target = event.target instanceof Element ? event.target : null;
-    const currentTarget = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
-    if (!target || !currentTarget) return;
-
-    const optionElement = target.closest<HTMLElement>('[data-cinder-transfer-list-item-id]');
-    if (!optionElement || !currentTarget.contains(optionElement)) return;
-
-    const id = optionElement.getAttribute('data-cinder-transfer-list-item-id');
-    if (!id) return;
-
-    const item = itemById.get(id);
-    if (!item) return;
-
-    currentTarget.focus();
-    handleOptionclick(side, item);
-  }
-
-  function handleListFocus(side: 'left' | 'right'): void {
-    focusedSide = side;
-    if (side === 'left') {
-      leftActiveId = resolvedLeftActiveId;
-    } else {
-      rightActiveId = resolvedRightActiveId;
-    }
-  }
-
-  function handleListBlur(event: FocusEvent, side: 'left' | 'right'): void {
-    const nextTarget = event.relatedTarget instanceof Node ? event.relatedTarget : null;
-    const currentTarget = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
-    if (currentTarget && nextTarget && currentTarget.contains(nextTarget)) return;
-    if (focusedSide === side) focusedSide = null;
-  }
-
-  function handleListKeydown(event: KeyboardEvent, side: 'left' | 'right'): void {
-    const sideItems = side === 'left' ? leftItems : rightItems;
-    const activeId = side === 'left' ? resolvedLeftActiveId : resolvedRightActiveId;
-    const enabledItems = getEnabledItems(side, sideItems);
-    if (enabledItems.length === 0 || !activeId) return;
-
-    const activeIndex = enabledItems.findIndex((item) => item.id === activeId);
-    if (activeIndex === -1) return;
+  async function handleListKeydown(event: KeyboardEvent): Promise<void> {
+    const enabled = enabledItems();
+    const currentId = resolveActiveId(activeId);
+    if (enabled.length === 0 || !currentId) return;
+    const currentIndex = enabled.findIndex((item) => item.id === currentId);
 
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault();
       const direction = event.key === 'ArrowDown' ? 1 : -1;
-      const nextIndex = (activeIndex + direction + enabledItems.length) % enabledItems.length;
-      setActiveId(side, enabledItems[nextIndex]?.id ?? null);
+      activeId = enabled[(currentIndex + direction + enabled.length) % enabled.length]?.id ?? null;
       return;
     }
-
     if (event.key === 'Home' || event.key === 'End') {
       event.preventDefault();
-      setActiveId(
-        side,
-        event.key === 'Home'
-          ? (enabledItems[0]?.id ?? null)
-          : (enabledItems[enabledItems.length - 1]?.id ?? null),
-      );
+      activeId = event.key === 'Home' ? (enabled[0]?.id ?? null) : (enabled.at(-1)?.id ?? null);
       return;
     }
-
-    if (event.key === ' ') {
+    if (event.key === ' ' || event.key === 'Enter') {
       event.preventDefault();
-      toggleId(side, activeId);
-      return;
-    }
-
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      if (side === 'left') moveSelectedRight();
-      else moveSelectedLeft();
+      commitSelection(currentId);
+      await tick();
     }
   }
 </script>
 
 <div {...rest} class={classNames('cinder-transfer-list', customClassName)}>
-  <div class="cinder-transfer-list__layout">
-    <section class="cinder-transfer-list__panel" aria-labelledby={`${baseId}-left-label`}>
-      <h3 id={`${baseId}-left-label`} class="cinder-transfer-list__label">{leftLabel}</h3>
-      <ul
-        bind:this={leftListElement}
-        class="cinder-transfer-list__list"
-        role="listbox"
-        aria-multiselectable="true"
-        aria-labelledby={`${baseId}-left-label`}
-        aria-activedescendant={focusedSide === 'left' ? leftActiveOptionId : undefined}
-        tabindex="0"
-        onfocus={() => handleListFocus('left')}
-        onblur={(event) => handleListBlur(event, 'left')}
-        onclick={(event) => handleListClick(event, 'left')}
-        onkeydown={(event) => handleListKeydown(event, 'left')}
-        {@attach overflowShadow('block')}
-      >
-        {#each leftItems as item, index (item.id)}
-          <li
-            id={optionId('left', index)}
-            class="cinder-_option-row cinder-transfer-list__option"
-            role="option"
-            aria-selected={leftSelectedSet.has(item.id) ? 'true' : 'false'}
-            aria-disabled={item.disabled ? 'true' : undefined}
-            data-cinder-active={focusedSide === 'left' && resolvedLeftActiveId === item.id
-              ? 'true'
-              : undefined}
-            data-cinder-transfer-list-item-id={item.id}
-          >
-            {item.label}
-          </li>
-        {:else}
-          <li class="cinder-transfer-list__empty" role="presentation">No available items</li>
-        {/each}
-      </ul>
-    </section>
-
-    <div class="cinder-transfer-list__controls" role="group" aria-label="Transfer controls">
-      <button
-        type="button"
-        class="cinder-transfer-list__control cinder-transfer-list__control--forward"
-        aria-label={`Move selected items to ${rightLabel}`}
-        disabled={movableLeftSelectedIds.length === 0}
-        onclick={moveSelectedRight}
-      >
-        <ChevronRight size={18} strokeWidth={2} aria-hidden="true" />
-      </button>
-      <button
-        type="button"
-        class="cinder-transfer-list__control cinder-transfer-list__control--forward"
-        aria-label={`Move all items to ${rightLabel}`}
-        disabled={movableLeftItemIds.length === 0}
-        onclick={moveAllRight}
-      >
-        <ChevronsRight size={18} strokeWidth={2} aria-hidden="true" />
-      </button>
-      <button
-        type="button"
-        class="cinder-transfer-list__control cinder-transfer-list__control--backward"
-        aria-label={`Move selected items to ${leftLabel}`}
-        disabled={movableRightSelectedIds.length === 0}
-        onclick={moveSelectedLeft}
-      >
-        <ChevronLeft size={18} strokeWidth={2} aria-hidden="true" />
-      </button>
-      <button
-        type="button"
-        class="cinder-transfer-list__control cinder-transfer-list__control--backward"
-        aria-label={`Move all items to ${leftLabel}`}
-        disabled={movableRightItemIds.length === 0}
-        onclick={moveAllLeft}
-      >
-        <ChevronsLeft size={18} strokeWidth={2} aria-hidden="true" />
-      </button>
-    </div>
-
-    <section class="cinder-transfer-list__panel" aria-labelledby={`${baseId}-right-label`}>
-      <h3 id={`${baseId}-right-label`} class="cinder-transfer-list__label">{rightLabel}</h3>
-      <ul
-        bind:this={rightListElement}
-        class="cinder-transfer-list__list"
-        role="listbox"
-        aria-multiselectable="true"
-        aria-labelledby={`${baseId}-right-label`}
-        aria-activedescendant={focusedSide === 'right' ? rightActiveOptionId : undefined}
-        tabindex="0"
-        onfocus={() => handleListFocus('right')}
-        onblur={(event) => handleListBlur(event, 'right')}
-        onclick={(event) => handleListClick(event, 'right')}
-        onkeydown={(event) => handleListKeydown(event, 'right')}
-        {@attach overflowShadow('block')}
-      >
-        {#each rightItems as item, index (item.id)}
-          <li
-            id={optionId('right', index)}
-            class="cinder-_option-row cinder-transfer-list__option"
-            role="option"
-            aria-selected={rightSelectedSet.has(item.id) ? 'true' : 'false'}
-            data-cinder-active={focusedSide === 'right' && resolvedRightActiveId === item.id
-              ? 'true'
-              : undefined}
-            data-cinder-transfer-list-item-id={item.id}
-          >
-            {item.label}
-          </li>
-        {:else}
-          <li class="cinder-transfer-list__empty" role="presentation">No selected items</li>
-        {/each}
-      </ul>
-    </section>
+  <div class="cinder-transfer-list__header">
+    <h3 id={`${baseId}-label`} class="cinder-transfer-list__label">{leftLabel}</h3>
+    <span class="cinder-transfer-list__count" aria-live="polite">
+      {selectedCount}
+      {selectedCount === 1 ? 'item' : 'items'}
+      {rightLabel.toLowerCase()}
+    </span>
   </div>
-
+  <ul
+    bind:this={listElement}
+    class="cinder-transfer-list__list"
+    role="listbox"
+    aria-multiselectable="true"
+    aria-labelledby={`${baseId}-label`}
+    aria-activedescendant={activeOptionId}
+    tabindex="0"
+    onfocus={handleListFocus}
+    onkeydown={handleListKeydown}
+    {@attach overflowShadow('block')}
+  >
+    {#each uniqueItems as item, index (item.id)}
+      <li
+        id={optionId(index)}
+        class="cinder-_option-row cinder-transfer-list__option"
+        role="option"
+        aria-selected={selectedIds.has(item.id) ? 'true' : 'false'}
+        aria-disabled={!isSelectable(item) ? 'true' : undefined}
+        data-cinder-active={activeId === item.id ? 'true' : undefined}
+        data-cinder-transfer-list-item-id={item.id}
+        onclick={() => handleOptionClick(item)}
+        onkeydown={(event) => {
+          event.stopPropagation();
+          if (event.key === ' ' || event.key === 'Enter') {
+            event.preventDefault();
+            handleOptionClick(item);
+          }
+        }}
+      >
+        <span>{item.label}</span>
+        {#if selectedIds.has(item.id)}
+          <span class="cinder-transfer-list__status" aria-hidden="true">Selected</span>
+        {/if}
+      </li>
+    {:else}
+      <li class="cinder-transfer-list__empty" role="presentation">No items</li>
+    {/each}
+  </ul>
   <div role="alert" aria-atomic="true" class="cinder-sr-only">{announcer.message}</div>
 </div>
