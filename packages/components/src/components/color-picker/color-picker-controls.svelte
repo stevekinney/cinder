@@ -167,7 +167,7 @@
     aria-label={internalValue ? `Selected color: ${internalValue}` : 'Selected color: none'}
     style="--cinder-color-picker-preview: {previewColor};"
   ></div>
-  <div class="cinder-color-picker__formats" aria-label="Copy color formats">
+  <div class="cinder-color-picker__formats" role="group" aria-label="Copy color formats">
     <CopyButton
       value={internalValue}
       label="Copy HEX format"

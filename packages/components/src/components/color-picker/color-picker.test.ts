@@ -96,6 +96,12 @@ describe('ColorPicker structure', () => {
       'hsl(0, 100%, 50%)',
     ]);
   });
+
+  test('exposes the copyable formats as a labelled group', () => {
+    const { container } = render(ColorPicker, { value: '#336699' });
+
+    expect(q(container, '[role="group"][aria-label="Copy color formats"]')).toBeTruthy();
+  });
 });
 
 describe('ColorPicker parser round-trips', () => {

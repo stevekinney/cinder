@@ -49,6 +49,14 @@ describe('TransferList', () => {
     );
   });
 
+  test('preserves consumer-provided selection-label casing', () => {
+    render(TransferList, {
+      props: { items, value: ['read'], rightLabel: 'Granted Permissions' },
+    });
+
+    expect(screen.getByText('1 item Granted Permissions')).toBeTruthy();
+  });
+
   test('selecting an option updates value and count', async () => {
     const onValueChange = mock(() => {});
     render(TransferList, { props: { items, value: [], onValueChange } });

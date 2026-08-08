@@ -42,6 +42,7 @@
   import Button from '@lostgradient/cinder/button';
   import { RotateCcw } from '@lostgradient/cinder/icons';
   import { generateUnifiedDiff } from '../../export/unified-diff.ts';
+  import { onDestroy } from 'svelte';
 
   import Surface from '@lostgradient/cinder/surface';
   import { createDiffController } from './diff-controller.svelte';
@@ -303,6 +304,7 @@
   }
 
   let copyStatus = $state<'idle' | 'copied'>('idle');
+  let copyStatusResetTimer: number | undefined;
   async function copyUnifiedDiff(): Promise<void> {
     const diff = generateUnifiedDiff({
       schemaVersion: 1,
@@ -312,10 +314,22 @@
       updatedAt: '',
     }).diff;
     if (!diff || typeof navigator === 'undefined' || !navigator.clipboard) return;
-    await navigator.clipboard.writeText(diff);
+    try {
+      await navigator.clipboard.writeText(diff);
+    } catch {
+      return;
+    }
     copyStatus = 'copied';
-    window.setTimeout(() => (copyStatus = 'idle'), 1200);
+    if (copyStatusResetTimer !== undefined) window.clearTimeout(copyStatusResetTimer);
+    copyStatusResetTimer = window.setTimeout(() => {
+      copyStatus = 'idle';
+      copyStatusResetTimer = undefined;
+    }, 1200);
   }
+
+  onDestroy(() => {
+    if (copyStatusResetTimer !== undefined) window.clearTimeout(copyStatusResetTimer);
+  });
 
   // ─────────────────────────────────────────────────────────────────────────────
   // Keyboard shortcuts

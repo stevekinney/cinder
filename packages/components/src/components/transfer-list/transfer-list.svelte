@@ -58,6 +58,7 @@
   });
   const selectedIds = $derived(new Set(knownValue));
   const selectedCount = $derived(knownValue.length);
+  const displayedRightLabel = $derived(rightLabel === 'Selected' ? 'selected' : rightLabel);
   const activeOptionId = $derived.by(() => {
     if (!activeId) return undefined;
     const index = uniqueItems.findIndex((item) => item.id === activeId);
@@ -143,7 +144,7 @@
     <span class="cinder-transfer-list__count" aria-live="polite">
       {selectedCount}
       {selectedCount === 1 ? 'item' : 'items'}
-      {rightLabel.toLowerCase()}
+      {displayedRightLabel}
     </span>
   </div>
   <ul

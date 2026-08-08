@@ -169,6 +169,25 @@ describe('ColorField — formats gate', () => {
     expect(onValueChange).toHaveBeenCalledTimes(1);
   });
 
+  test('formats=[rgb] accepts a visual picker commit even though the picker emits hex', async () => {
+    const onValueChange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, {
+      id: 'color',
+      value: 'rgb(255, 0, 0)',
+      formats: ['rgb'],
+      onValueChange,
+    });
+
+    await fireEvent.click(q<HTMLButtonElement>(container, 'button[aria-label="Choose a color"]'));
+    await fireEvent.keyDown(q<HTMLElement>(document.body, '[role="slider"][aria-label="Hue"]'), {
+      key: 'ArrowRight',
+    });
+
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+    expect(onValueChange.mock.calls[0]?.[0]).toMatch(/^#[0-9a-f]{6}$/);
+    expect(getInput(container).getAttribute('aria-invalid')).not.toBe('true');
+  });
+
   test('formats=[hex] + #abc accepted', async () => {
     const onValueChange = mock<(value: string) => void>(() => {});
     const { container } = render(ColorField, {

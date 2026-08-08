@@ -405,8 +405,17 @@
   const swatchColor = $derived(committedHex === '' ? 'transparent' : committedHex);
 
   function handlePickerCommit(next: string): void {
-    visibleText = next;
-    runCommit();
+    const parsed = parseColor(next);
+    if (parsed === null) return;
+    const normalized = emitFor(parsed);
+    const previousHex = committedHex;
+    parseError = null;
+    visibleText = normalized;
+    committedRgba = parsed;
+    committedHex = normalized;
+    lastReconciledValue = normalized;
+    value = normalized;
+    if (normalized !== previousHex) onValueChange?.(normalized);
     syncCustomValidity();
     pickerOpen = false;
   }

@@ -81,6 +81,18 @@ describe('DiffViewer: identical input (basic mount)', () => {
   });
 });
 
+describe('DiffViewer: unified diff clipboard handling', () => {
+  test('handles clipboard rejection and clears the prior reset timer', async () => {
+    const source = await Bun.file(new URL('./diff-viewer.svelte', import.meta.url)).text();
+
+    expect(source).toMatch(
+      /try\s*\{[\s\S]*navigator\.clipboard\.writeText\(diff\)[\s\S]*\}\s*catch\s*\{/,
+    );
+    expect(source).toContain('window.clearTimeout(copyStatusResetTimer)');
+    expect(source).toContain('onDestroy(() => {');
+  });
+});
+
 describe('DiffViewer: changed input (renders hunks)', () => {
   test('a modified line yields a modified diff, a hunk, and modified stats', () => {
     const diffs = computeLineDiff('first\nsecond\nthird', 'first\nSECOND CHANGED\nthird');
