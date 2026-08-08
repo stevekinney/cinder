@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import postcss from 'postcss';
+import { parse } from 'postcss';
 
 import {
   compoundFamilies,
@@ -15,7 +15,7 @@ import {
 } from './check-css-duplication.ts';
 
 function multisetFor(css: string, componentName: string) {
-  return declarationMultiset(postcss.parse(css), componentName);
+  return declarationMultiset(parse(css), componentName);
 }
 
 const PANEL_CSS = `

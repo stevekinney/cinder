@@ -291,10 +291,7 @@ export function collectResolvedSurfaceViolations(
           const site = componentDeclarationSite(property);
           if (!site) continue;
           const filePath = relative(repositoryRoot, site.sourceFile.fileName);
-          const line = lineFor(
-            site.sourceFile,
-            site.declaration.getStart(site.sourceFile as ts.SourceFile),
-          );
+          const line = lineFor(site.sourceFile, site.declaration.getStart(site.sourceFile));
 
           const bannedMessage = bannedNames.get(propName);
           if (bannedMessage) {
@@ -349,7 +346,11 @@ export function collectResolvedSurfaceViolations(
 }
 
 export function createPropsProgram(typesFiles: readonly string[]): ts.Program {
-  const configPath = ts.findConfigFile(packageRoot, ts.sys.fileExists, 'tsconfig.json');
+  const configPath = ts.findConfigFile(
+    packageRoot,
+    (fileName) => ts.sys.fileExists(fileName),
+    'tsconfig.json',
+  );
   if (!configPath) {
     throw new Error('check-prop-conventions: could not locate a tsconfig.json for the package.');
   }

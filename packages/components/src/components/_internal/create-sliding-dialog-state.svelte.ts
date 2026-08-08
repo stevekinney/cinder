@@ -200,13 +200,13 @@ export function focusDialogBodyUnlessAutofocused(options: {
   getDialogElement: () => HTMLDialogElement | undefined;
   getBodyElement: () => HTMLElement | undefined;
 }): void {
-  void tick().then(() => {
+  const applyInitialFocusPolicy = (): void => {
     const dialogElement = options.getDialogElement();
     if (!options.getOpen() || !dialogElement?.open) return;
     const autofocusTarget =
       dialogElement.querySelector<HTMLElement>('[autofocus]') ??
       Array.from(dialogElement.querySelectorAll<HTMLElement>('*')).find(
-        (element) => element.autofocus === true,
+        (element) => element.autofocus,
       ) ??
       null;
     if (autofocusTarget) {
@@ -225,5 +225,6 @@ export function focusDialogBodyUnlessAutofocused(options: {
     // No autofocus: the body container is always the initial focus target,
     // regardless of where `showModal()`'s default focusing steps landed.
     options.getBodyElement()?.focus();
-  });
+  };
+  void tick().then(applyInitialFocusPolicy);
 }

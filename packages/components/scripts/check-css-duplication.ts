@@ -2,12 +2,16 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import postcss, { type AtRule, type ChildNode, type Root } from 'postcss';
-
 import {
-  discoverComponentDirectories,
-  type DiscoveredComponent,
-} from './discover-component-directories.ts';
+  type AtRule,
+  type Container,
+  type Declaration,
+  type Document,
+  parse,
+  type Root,
+} from 'postcss';
+
+import { discoverComponentDirectories } from './discover-component-directories.ts';
 
 /**
  * CSS near-duplicate admission guard (decision 8 — the behavior-first
@@ -77,20 +81,21 @@ function normalizeProperty(property: string, componentName: string): string {
   return lower;
 }
 
-function atRuleContext(node: ChildNode): string {
+function isAtRule(node: Container | Document): node is AtRule {
+  return node.type === 'atrule';
+}
+
+function atRuleContext(node: Declaration): string {
   const parts: string[] = [];
   // Climb through every container (rules included) to the root, collecting
   // the at-rules along the way.
-  let current: ChildNode['parent'] = node.parent;
+  let current: Container | Document | undefined = node.parent;
   while (current && current.type !== 'root') {
-    if (current.type === 'atrule') {
-      const atRule = current as AtRule;
-      // The cascade-layer wrapper is universal — not a distinguishing context.
-      if (atRule.name !== 'layer') {
-        parts.unshift(`@${atRule.name} ${atRule.params.replace(/\s+/g, ' ').trim()}`);
-      }
+    // The cascade-layer wrapper is universal — not a distinguishing context.
+    if (isAtRule(current) && current.name !== 'layer') {
+      parts.unshift(`@${current.name} ${current.params.replace(/\s+/g, ' ').trim()}`);
     }
-    current = (current as ChildNode).parent;
+    current = current.parent;
   }
   return parts.join('|');
 }
@@ -103,7 +108,7 @@ function atRuleContext(node: ChildNode): string {
 export function declarationMultiset(root: Root, componentName: string): DeclarationMultiset {
   const multiset: DeclarationMultiset = new Map();
   root.walkDecls((declaration) => {
-    const context = atRuleContext(declaration as unknown as ChildNode);
+    const context = atRuleContext(declaration);
     const key = `${context}|${normalizeProperty(declaration.prop, componentName)}:${normalizeValue(
       declaration.value,
       componentName,
@@ -178,7 +183,7 @@ type ComponentCss = {
 async function collectComponentCss(): Promise<ComponentCss[]> {
   const components = await discoverComponentDirectories();
   const sources = new Map<string, string>();
-  for (const component of components as DiscoveredComponent[]) {
+  for (const component of components) {
     const sidecarPath = join(component.directory, `${component.name}.css`);
     if (!existsSync(sidecarPath)) continue;
     sources.set(component.name, readFileSync(sidecarPath, 'utf8'));
@@ -194,7 +199,7 @@ async function collectComponentCss(): Promise<ComponentCss[]> {
 
   const results: ComponentCss[] = [];
   for (const [name, source] of sources) {
-    const root = postcss.parse(source, { from: name });
+    const root = parse(source, { from: name });
     results.push({
       name,
       multiset: declarationMultiset(root, name),
@@ -244,10 +249,35 @@ function baselinePath(): string {
   return resolve(dirname(fileURLToPath(import.meta.url)), 'css-duplication-baseline.json');
 }
 
+function isCssDuplicationPair(value: unknown): value is CssDuplicationPair {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'a' in value &&
+    typeof value.a === 'string' &&
+    'b' in value &&
+    typeof value.b === 'string' &&
+    'reason' in value &&
+    typeof value.reason === 'string'
+  );
+}
+
 export function readBaseline(): CssDuplicationPair[] {
   const path = baselinePath();
   if (!existsSync(path)) return [];
-  return JSON.parse(readFileSync(path, 'utf8')) as CssDuplicationPair[];
+  const parsed: unknown = JSON.parse(readFileSync(path, 'utf8'));
+  if (!Array.isArray(parsed)) {
+    throw new Error(`Baseline at ${path} must be a JSON array of {a, b, reason} entries.`);
+  }
+  return parsed.map((entry: unknown) => {
+    if (!isCssDuplicationPair(entry)) {
+      throw new Error(
+        `Malformed baseline entry in ${path}: ${JSON.stringify(entry)} — ` +
+          `every entry needs string fields a, b, and reason.`,
+      );
+    }
+    return entry;
+  });
 }
 
 async function main(): Promise<void> {
