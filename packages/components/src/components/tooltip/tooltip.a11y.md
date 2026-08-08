@@ -79,7 +79,7 @@ position of the panel differs.
 Tooltip follows `OVERLAY-POLICY.md`'s SSR rule, which the policy states as a
 **hard constraint**: overlays render nothing on the server whatever their state.
 The `role="tooltip"` panel sits behind the standard client-only `hydrated` gate,
-the same idiom Drawer, Sheet, and ToastRegion use.
+the same idiom Drawer and ToastRegion use.
 
 This was not always true. The panel used to be rendered unconditionally, so
 server output contained it — and an earlier revision of this work described that

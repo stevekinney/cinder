@@ -179,6 +179,11 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
     reason:
       'Member of lint:invariants — requires written neighbour rationale in component metadata.',
   },
+  'check:css-duplication': {
+    layers: ['unit-tests', 'main-green'],
+    reason:
+      'Member of lint:invariants — CSS near-duplicate admission guard for new components (decision 8).',
+  },
   'check:svelte-ts-runtime-types': {
     layers: ['unit-tests', 'main-green'],
     reason: 'Member of lint:invariants — same layer set.',

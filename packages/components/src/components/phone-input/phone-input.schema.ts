@@ -524,10 +524,11 @@ const schema = {
       type: 'string',
       description: 'Visible group label rendered above the controls.',
     },
-    hideLabel: {
+    labelVisible: {
       type: 'boolean',
       description:
-        'Visually hide the rendered `label` while keeping it programmatically associated.',
+        'Whether the `label` is visibly rendered. Set `false` to visually hide it\nwhile keeping it programmatically associated.',
+      default: true,
     },
     'aria-label': {
       type: 'string',
@@ -567,7 +568,7 @@ const schema = {
   metadata: {
     unsupportedProps: [
       {
-        name: 'onchange',
+        name: 'onValueChange',
         reason: 'function-or-snippet',
         description:
           'Fires only for user-initiated committed value changes (editing the national\nnumber, switching the country). Never fires for external value or country\nsynchronization. The detail object carries the E.164 string on `detail.value`.',

@@ -3,7 +3,7 @@
     checked = $bindable(false),
     label = '',
     id = '',
-  }: { checked?: boolean; label?: string; id?: string; hideLabel?: boolean } = $props();
+  }: { checked?: boolean; label?: string; id?: string; labelVisible?: boolean } = $props();
 </script>
 
 <button

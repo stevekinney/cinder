@@ -44,7 +44,7 @@
     error,
     inputAttachment,
     class: className,
-    onchange,
+    onValueChange,
     onblur: consumerBlur,
     'aria-describedby': consumerDescribedBy,
     ...rest
@@ -106,16 +106,16 @@
   // Three commit sources — that's the smallest set that captures the actually-
   // distinct behaviors:
   // - 'delta': user pressed a stepper or arrow/page/home/end — value is already
-  //   step-aligned, so snap-to-grid is skipped. onchange fires.
+  //   step-aligned, so snap-to-grid is skipped. onValueChange fires.
   // - 'typed': user committed via blur/enter/submit — apply snap-to-grid.
-  //   onchange fires unless the source is a serialization-only event.
+  //   onValueChange fires unless the source is a serialization-only event.
   // - 'reset': form reset — like typed in that snap doesn't apply (we're
-  //   restoring value verbatim), but always fires onchange.
+  //   restoring value verbatim), but always fires onValueChange.
   type CommitSource = 'typed' | 'delta' | 'reset';
 
   /**
    * Apply the value to component state and side-effects: native validity,
-   * onchange callback, and the bindable `value` write. Returns the value that
+   * onValueChange callback, and the bindable `value` write. Returns the value that
    * was actually applied so callers can chain.
    */
   function commit(
@@ -146,7 +146,7 @@
     }
 
     if (emitChange) {
-      onchange?.(next);
+      onValueChange?.(next);
     }
 
     return next;
@@ -208,7 +208,7 @@
 
   // Set to true by the Enter key handler immediately before requestSubmit() so
   // the capture-phase submit listener knows the value was already flushed and
-  // can skip the redundant commitFromText call (preventing double onchange).
+  // can skip the redundant commitFromText call (preventing double onValueChange).
   let enterKeyFlushed = false;
 
   // formattedValue and displayValue collapsed into one derived expression.
@@ -454,7 +454,7 @@
       // Validity reporting lives in onKeyDown / native form submission —
       // not here — so the listener has exactly one job: flush.
       if (resolvedDisabled) return;
-      // Skip flush when Enter already committed — avoids double onchange.
+      // Skip flush when Enter already committed — avoids double onValueChange.
       if (enterKeyFlushed) {
         enterKeyFlushed = false;
         return;

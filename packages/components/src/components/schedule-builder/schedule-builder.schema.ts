@@ -76,7 +76,7 @@ const schema = {
           'Injected next-fires computation. The component passes the current value and\nthe requested count and renders whatever fires the consumer returns. When\nomitted, the preview list is hidden (the component ships no date logic).',
       },
       {
-        name: 'onchange',
+        name: 'onValueChange',
         reason: 'function-or-snippet',
         description:
           'Called whenever the user edits the recurrence. Receives the next lossless\n{@link ScheduleValue}. The consumer owns persistence and validation.',

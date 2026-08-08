@@ -52,7 +52,7 @@
     label = 'Calendar',
     disabled = false,
     class: className,
-    onchange,
+    onValueChange,
     disabledDate,
     ...rest
   }: CalendarProps = $props();
@@ -274,7 +274,7 @@
     if (disabled || !parseISODate(iso) || isDateDisabled(iso)) return;
     value = iso;
     focusedIso = iso;
-    onchange?.(iso);
+    onValueChange?.(iso);
   }
 
   async function moveFocusedByDays(delta: number) {

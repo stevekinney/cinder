@@ -213,8 +213,8 @@ describe('Autocomplete — rendering and ARIA', () => {
 });
 
 describe('Autocomplete — suggestions and free-form input', () => {
-  test('typing updates the input value, calls oninput, and opens suggestions', async () => {
-    const oninput = mock((_value: string) => {});
+  test('typing updates the input value, calls onValueChange, and opens suggestions', async () => {
+    const onValueChange = mock((_value: string) => {});
     const suggestionSource = mock((query: string) =>
       fruits.filter((suggestion) => suggestion.value.startsWith(query)),
     );
@@ -223,7 +223,7 @@ describe('Autocomplete — suggestions and free-form input', () => {
       props: {
         id: 'fruit-search',
         suggestionSource,
-        oninput,
+        onValueChange,
       },
     });
 
@@ -231,7 +231,7 @@ describe('Autocomplete — suggestions and free-form input', () => {
     await fireEvent.input(input, { target: { value: 'ap' } });
 
     expect(input.value).toBe('ap');
-    expect(oninput).toHaveBeenCalledWith('ap');
+    expect(onValueChange).toHaveBeenCalledWith('ap');
     expect(suggestionSource).toHaveBeenCalledTimes(1);
     expect(suggestionSource.mock.calls[0]?.[0]).toBe('ap');
 
@@ -327,14 +327,14 @@ describe('Autocomplete — suggestions and free-form input', () => {
 
 describe('Autocomplete — keyboard completion', () => {
   test('Arrow keys skip disabled suggestions and Enter completes the active enabled suggestion once', async () => {
-    const oninput = mock((_value: string) => {});
+    const onValueChange = mock((_value: string) => {});
     const onComplete = mock((_suggestion: Suggestion) => {});
 
     const { container } = render(Autocomplete, {
       props: {
         id: 'fruit-search',
         suggestionSource: () => fruits,
-        oninput,
+        onValueChange,
         onComplete,
       },
     });
@@ -356,9 +356,9 @@ describe('Autocomplete — keyboard completion', () => {
     expect(input.value).toBe('apricot');
     expect(onComplete).toHaveBeenCalledTimes(1);
     expect(onComplete.mock.calls[0]?.[0]).toEqual({ value: 'apricot', label: 'Apricot' });
-    expect(oninput).toHaveBeenCalledTimes(2);
-    expect(oninput).toHaveBeenNthCalledWith(1, 'a');
-    expect(oninput).toHaveBeenNthCalledWith(2, 'apricot');
+    expect(onValueChange).toHaveBeenCalledTimes(2);
+    expect(onValueChange).toHaveBeenNthCalledWith(1, 'a');
+    expect(onValueChange).toHaveBeenNthCalledWith(2, 'apricot');
     expect(nativeInputListener).toHaveBeenCalledTimes(2);
     expect(getListbox()).toBeNull();
     expect(document.activeElement).toBe(input);

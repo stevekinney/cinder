@@ -46,7 +46,7 @@
     emptyMessage = 'No suggestions',
     loadingMessage = 'Loading suggestions',
     class: className,
-    oninput,
+    onValueChange,
     onComplete,
     'aria-describedby': consumerDescribedBy,
     'aria-invalid': consumerInvalid,
@@ -333,7 +333,7 @@
     value = suggestion.value;
     if (inputElement) inputElement.value = suggestion.value;
     closePopup();
-    oninput?.(suggestion.value);
+    onValueChange?.(suggestion.value);
     onComplete?.(suggestion);
     dispatchCompletionInputEvent();
   }
@@ -347,7 +347,7 @@
     inputFocused = true;
     const target = event.currentTarget as HTMLInputElement;
     value = target.value;
-    oninput?.(target.value);
+    onValueChange?.(target.value);
   }
 
   function attachInput(node: HTMLInputElement): () => void {

@@ -16,6 +16,8 @@
 </script>
 
 <script lang="ts">
+  import type { Snippet } from 'svelte';
+
   import type { StepItemState, StepsProps } from './steps.types.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import Check from 'lucide-svelte/icons/check';
@@ -111,8 +113,8 @@
 </nav>
 
 {#snippet stepBody(
-  bodyLabel: string,
-  bodyDescription: string | undefined,
+  bodyLabel: string | Snippet,
+  bodyDescription: undefined | string | Snippet,
   bodyState: StepItemState,
   bodyCompletedLabel: string,
   bodySkippedLabel: string,
@@ -125,9 +127,13 @@
       <span class="cinder-steps__sr-only">{bodySkippedLabel}</span>
       <span class="cinder-steps__sr-only-separator"> </span>
     {/if}
-    <span class="cinder-steps__label">{bodyLabel}</span>
+    <span class="cinder-steps__label">
+      {#if typeof bodyLabel === 'string'}{bodyLabel}{:else}{@render bodyLabel()}{/if}
+    </span>
     {#if bodyDescription}
-      <span class="cinder-steps__description">{bodyDescription}</span>
+      <span class="cinder-steps__description">
+        {#if typeof bodyDescription === 'string'}{bodyDescription}{:else}{@render bodyDescription()}{/if}
+      </span>
     {/if}
   </span>
 {/snippet}

@@ -300,7 +300,7 @@ The ring tokens drive the focus-visible outline used across interactive primitiv
 
 ## Z-index layers
 
-Stacking order is fixed: tooltip < dropdown ≈ popover < backdrop < modal ≈ sheet < toast < focused affordance < drag preview. The standalone `Backdrop` scrim sits just below modal and sheet so it can dim popover-layer chrome while staying beneath dialog surfaces (Modal, Sheet, and Drawer are built on the native `<dialog>` element and render their own scrim via `::backdrop` rather than this layer). Toast sits above modal so confirmations and warnings still reach the user when a modal is open, while the active drag preview remains attached to the pointer above every surface. Override these only if you are integrating cinder into an app with its own established stacking contract.
+Stacking order is fixed: tooltip < dropdown ≈ popover < backdrop < modal ≈ drawer < toast < focused affordance < drag preview. The standalone `Backdrop` scrim sits just below modal and drawer so it can dim popover-layer chrome while staying beneath dialog surfaces (Modal and Drawer are built on the native `<dialog>` element and render their own scrim via `::backdrop` rather than this layer). Toast sits above modal so confirmations and warnings still reach the user when a modal is open, while the active drag preview remains attached to the pointer above every surface. Override these only if you are integrating cinder into an app with its own established stacking contract.
 
 The token table is the single source of truth. A `z-index` reference must use
 `var(--cinder-z-*)` without an inline fallback; otherwise a partial stylesheet
@@ -316,14 +316,13 @@ a new global layer.
 | `--cinder-z-popover`            | `1100`  |
 | `--cinder-z-backdrop`           | `1150`  |
 | `--cinder-z-modal`              | `1200`  |
-| `--cinder-z-sheet`              | `1200`  |
 | `--cinder-z-toast`              | `1300`  |
 | `--cinder-z-focused-affordance` | `1350`  |
 | `--cinder-z-drag-preview`       | `1400`  |
 
 ## Overlay surfaces
 
-Shared backdrop, blur, padding, and radius for Modal, Sheet, and Popover. Adjust these once and every overlay primitive picks up the change.
+Shared backdrop, blur, padding, and radius for Modal, Drawer, and Popover. Adjust these once and every overlay primitive picks up the change.
 
 | Token                       | Default                                                            |
 | --------------------------- | ------------------------------------------------------------------ |

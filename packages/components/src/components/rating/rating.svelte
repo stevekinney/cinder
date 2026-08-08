@@ -34,7 +34,7 @@
     count = 5,
     precision = 'whole',
     label,
-    hideLabel = false,
+    labelVisible = true,
     'aria-label': ariaLabel,
     'aria-labelledby': ariaLabelledBy,
     description,
@@ -44,7 +44,7 @@
     required,
     name,
     class: className,
-    onchange,
+    onValueChange,
   }: RatingProps = $props();
 
   const context = getFormFieldContext();
@@ -167,10 +167,10 @@
     const snapped = snapToOption(next);
     if (snapped !== resolvedValue) {
       value = snapped;
-      onchange?.(snapped);
+      onValueChange?.(snapped);
     } else {
       // Re-emit when the user re-selects the same value? No — keep
-      // onchange aligned with React's <input> semantics: same value = no fire.
+      // onValueChange aligned with React's <input> semantics: same value = no fire.
     }
   }
 
@@ -289,7 +289,7 @@
   {#if label}
     <span
       id={groupLabelId}
-      class={classNames('cinder-rating-field__label', hideLabel && 'cinder-sr-only')}
+      class={classNames('cinder-rating-field__label', !labelVisible && 'cinder-sr-only')}
       data-disabled={resolvedDisabled || undefined}
     >
       {label}

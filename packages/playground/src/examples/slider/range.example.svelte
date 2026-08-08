@@ -14,7 +14,7 @@
     label="Price"
     mode="range"
     {value}
-    onchange={(next) => {
+    onValueChange={(next) => {
       value = next;
     }}
   />

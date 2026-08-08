@@ -1,3 +1,4 @@
+import type { Snippet } from 'svelte';
 import type { HTMLAttributes } from 'svelte/elements';
 
 export type SourceDiffLineKind = 'addition' | 'removal' | 'context' | 'metadata';
@@ -43,8 +44,12 @@ export type SourceDiffViewerProps = Omit<HTMLAttributes<HTMLDivElement>, 'class'
   maxLines?: number;
   /** Whether old and new line-number gutters are rendered. */
   lineNumbers?: boolean;
-  /** Message shown when the patch is empty or contains no displayable diff rows. */
-  emptyMessage?: string;
+  /**
+   * Rendered when the patch is empty or contains no displayable diff rows.
+   * Falls back to a default "No patch lines to display." message — matching
+   * the `empty` snippet the chart/command families expose.
+   */
+  empty?: Snippet;
   /** Additional CSS classes merged with `.cinder-source-diff-viewer`. */
   class?: string;
 };

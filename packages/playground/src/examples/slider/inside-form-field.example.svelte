@@ -19,7 +19,7 @@
       max={100}
       step={10}
       name="quality"
-      onchange={(next) => {
+      onValueChange={(next) => {
         value = next;
       }}
     />

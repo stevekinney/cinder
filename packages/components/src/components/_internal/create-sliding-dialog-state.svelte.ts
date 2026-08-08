@@ -1,3 +1,5 @@
+import { tick } from 'svelte';
+
 import { captureFocus, lockBodyScroll, pushEscapeHandler } from '../../_internal/overlay.ts';
 import { waitForTransitionCompletion } from '../../_internal/transition-completion.ts';
 import { restoreFocusTo } from '../../utilities/focus.ts';
@@ -43,6 +45,12 @@ export class SlidingDialogState {
         this.#cancelPendingClose?.();
         this.#cancelPendingClose = null;
         this.isClosing = false;
+        // Quick reopen: the native dialog never closed, so the
+        // `!dialogElement.open` branch below will not run. Re-fire onOpen so
+        // hosts re-apply their initial-focus policy for this new open cycle —
+        // the closing panel was `inert`, which blurred focus to document.body,
+        // and nothing else will bring it back.
+        this.#options.onOpen?.();
       }
 
       if (!this.renderPanel) {
@@ -167,4 +175,69 @@ export class SlidingDialogState {
 
 export function createSlidingDialogState(options: SlidingDialogStateOptions): SlidingDialogState {
   return new SlidingDialogState(options);
+}
+
+/**
+ * The shared "focus the body unless something is autofocused" initial-focus
+ * policy for sliding dialogs (Modal, Drawer). Call from `onOpen`.
+ *
+ * Deferred via `tick()` because `onOpen` fires inside the same effect that
+ * first sets `renderPanel = true` — the `{#if renderPanel}` subtree (and with
+ * it the body element binding) has not flushed yet. After the tick resolves,
+ * the panel is in the DOM.
+ *
+ * Autofocus detection checks both the HTML attribute (static markup) and the
+ * DOM property (Svelte 5's `$.autofocus()` helper sets `element.autofocus`
+ * rather than the attribute) — the attribute selector alone misses the Svelte
+ * case. When focus already sits INSIDE the dialog (the native `showModal()`
+ * honoured an autofocused child on a fresh open), leave it alone. When it
+ * does not — a quick reopen never re-runs `showModal()`, and the closing
+ * panel's `inert` blurred focus to `document.body` — re-place it: on the
+ * autofocused child when one exists, otherwise on the body container.
+ */
+export function focusDialogBodyUnlessAutofocused(options: {
+  getOpen: () => boolean;
+  getDialogElement: () => HTMLDialogElement | undefined;
+  getBodyElement: () => HTMLElement | undefined;
+}): void {
+  const applyInitialFocusPolicy = (): void => {
+    const dialogElement = options.getDialogElement();
+    if (!options.getOpen() || !dialogElement?.open) return;
+    // Inside a shadow root, `document.activeElement` is the shadow HOST, not
+    // the focused descendant — read from the dialog's own root node so the
+    // inside-the-dialog and did-focus-move checks below stay correct there.
+    const rootNode = dialogElement.getRootNode();
+    const activeElementInRoot = (): Element | null =>
+      rootNode instanceof Document || rootNode instanceof ShadowRoot
+        ? rootNode.activeElement
+        : document.activeElement;
+    const autofocusTarget =
+      dialogElement.querySelector<HTMLElement>('[autofocus]') ??
+      Array.from(dialogElement.querySelectorAll<HTMLElement>('*')).find(
+        (element) => element.autofocus,
+      ) ??
+      null;
+    if (autofocusTarget) {
+      // Fresh open: `showModal()` already honoured the autofocused child, and
+      // anything focused INSIDE the dialog since then is legitimate — never
+      // yank it back. Quick reopen: `showModal()` never re-ran and the
+      // closing panel's `inert` blurred focus OUT to `document.body` —
+      // re-place it on the autofocused child.
+      const active = activeElementInRoot();
+      const focusInsideDialog = active instanceof HTMLElement && dialogElement.contains(active);
+      if (!focusInsideDialog) {
+        autofocusTarget.focus();
+        // An unfocusable autofocus target (disabled, hidden) makes focus()
+        // a no-op — fall through to the body fallback rather than stranding
+        // focus on document.body outside the open dialog.
+        if (activeElementInRoot() === autofocusTarget) return;
+      } else {
+        return;
+      }
+    }
+    // No autofocus: the body container is always the initial focus target,
+    // regardless of where `showModal()`'s default focusing steps landed.
+    options.getBodyElement()?.focus();
+  };
+  void tick().then(applyInitialFocusPolicy);
 }

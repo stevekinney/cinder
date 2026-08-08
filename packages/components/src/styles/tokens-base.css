@@ -522,7 +522,7 @@
 
   /* ========================================
    * LAYERING (Z-INDEX)
-   * Ordered: tooltip < dropdown/popover < backdrop < modal/sheet < toast <
+   * Ordered: tooltip < dropdown/popover < backdrop < modal/drawer < toast <
    * focused affordance < drag preview.
    * Backdrop sits between floating surfaces and dialogs so it dims the page
    * and floating surfaces (tooltips, dropdowns) without obscuring the dialog
@@ -534,14 +534,13 @@
   --cinder-z-popover: 1100;
   --cinder-z-backdrop: 1150;
   --cinder-z-modal: 1200;
-  --cinder-z-sheet: 1200;
   --cinder-z-toast: 1300;
   --cinder-z-focused-affordance: 1350;
   --cinder-z-drag-preview: 1400;
 
   /* ========================================
    * OVERLAY SURFACES
-   * Backdrop, blur, and panel padding shared by Modal, Sheet, Popover.
+   * Backdrop, blur, and panel padding shared by Modal, Drawer, Popover.
    * ======================================== */
   --cinder-overlay-backdrop: light-dark(oklch(20% 0.03 245 / 0.5), oklch(8% 0.02 245 / 0.65));
   --cinder-overlay-blur: 4px;

@@ -65,16 +65,16 @@ function makeRule(overrides?: Partial<InvocationRule>): InvocationRule {
 }
 
 function renderBuilder(rules: InvocationRule[] = [], overrides: Record<string, unknown> = {}) {
-  const onchange = mock();
+  const onValueChange = mock();
   const result = render(InvocationRuleBuilder, {
     rules,
-    onchange,
+    onValueChange,
     fieldOptions,
     operatorOptions,
     actionOptions,
     ...overrides,
   });
-  return { ...result, onchange };
+  return { ...result, onValueChange };
 }
 
 const typedFieldOptions: InvocationRuleOption[] = [
@@ -96,30 +96,30 @@ function renderConditionsOnlyBuilder(
   rules: InvocationRule[] = [],
   overrides: Record<string, unknown> = {},
 ) {
-  const onchange = mock();
+  const onValueChange = mock();
   const result = render(InvocationRuleBuilder, {
     rules,
-    onchange,
+    onValueChange,
     fieldOptions: typedFieldOptions,
     mode: 'conditions',
     ...overrides,
   });
-  return { ...result, onchange };
+  return { ...result, onValueChange };
 }
 
 function renderFlatConditionsBuilder(
   conditions: InvocationRuleCondition[] = [],
   overrides: Record<string, unknown> = {},
 ) {
-  const onchange = mock();
+  const onValueChange = mock();
   const result = render(InvocationRuleBuilder, {
     conditions,
-    onchange,
+    onValueChange,
     fieldOptions: typedFieldOptions,
     mode: 'flat-conditions',
     ...overrides,
   });
-  return { ...result, onchange };
+  return { ...result, onValueChange };
 }
 
 async function commitField(container: HTMLElement, value: string): Promise<void> {
@@ -207,7 +207,7 @@ describe('InvocationRuleBuilder', () => {
       expect(invocationRuleBuilderSchema.properties).toHaveProperty('actionOptions');
       expect(
         invocationRuleBuilderSchema.metadata?.unsupportedProps?.map((prop) => prop.name),
-      ).toEqual(['onchange']);
+      ).toEqual(['onValueChange']);
       expect(invocationRuleBuilderSchema.metadata?.unsupportedProps?.[0]?.required).not.toBe(true);
 
       expect(
@@ -276,7 +276,7 @@ describe('InvocationRuleBuilder', () => {
       expect(validate.errors).not.toBeNull();
     });
 
-    test('rejects editable schema-driven configurations without onchange', () => {
+    test('rejects editable schema-driven configurations without onValueChange', () => {
       const ajv = new Ajv2020({ strict: false });
       const validate = ajv.compile(invocationRuleBuilderSchema);
 
@@ -358,8 +358,8 @@ describe('InvocationRuleBuilder', () => {
       expect(container.querySelector('[data-irb-add-rule]')).toBeNull();
     });
 
-    test('renders readonly summary when onchange is missing', () => {
-      const { container } = renderBuilder([makeRule()], { onchange: undefined });
+    test('renders readonly summary when onValueChange is missing', () => {
+      const { container } = renderBuilder([makeRule()], { onValueChange: undefined });
 
       expect(container.querySelector('[data-irb-add-rule]')).toBeNull();
       expect(
@@ -383,13 +383,13 @@ describe('InvocationRuleBuilder', () => {
     });
 
     test('add-rule button is functional when rules list is empty', async () => {
-      const { container, onchange } = renderBuilder([]);
+      const { container, onValueChange } = renderBuilder([]);
       const addBtn = container.querySelector<HTMLElement>('[data-irb-add-rule]')!;
 
       await fireEvent.click(addBtn);
 
-      expect(onchange).toHaveBeenCalledTimes(1);
-      const [nextRules, change] = onchange.mock.calls[0]!;
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      const [nextRules, change] = onValueChange.mock.calls[0]!;
       expect(Array.isArray(nextRules)).toBe(true);
       expect(nextRules.length).toBe(1);
       expect(change.type).toBe('add-rule');
@@ -472,35 +472,35 @@ describe('InvocationRuleBuilder', () => {
   });
 
   describe('behavior', () => {
-    test('add-rule button calls onchange with add-rule change', async () => {
-      const { container, onchange } = renderBuilder();
+    test('add-rule button calls onValueChange with add-rule change', async () => {
+      const { container, onValueChange } = renderBuilder();
       const addBtn = container.querySelector<HTMLElement>('[data-irb-add-rule]')!;
 
       await fireEvent.click(addBtn);
 
-      expect(onchange).toHaveBeenCalledTimes(1);
-      const [nextRules, change] = onchange.mock.calls[0]!;
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      const [nextRules, change] = onValueChange.mock.calls[0]!;
       expect(Array.isArray(nextRules)).toBe(true);
       expect(nextRules.length).toBe(1);
       expect(change.type).toBe('add-rule');
       expect(typeof change.ruleId).toBe('string');
     });
 
-    test('remove-rule button calls onchange with remove-rule change', async () => {
-      const { container, onchange } = renderBuilder([makeRule()]);
+    test('remove-rule button calls onValueChange with remove-rule change', async () => {
+      const { container, onValueChange } = renderBuilder([makeRule()]);
       const removeBtn = container.querySelector<HTMLElement>('[data-irb-rule-remove]')!;
 
       await fireEvent.click(removeBtn);
 
-      expect(onchange).toHaveBeenCalledTimes(1);
-      const [nextRules, change] = onchange.mock.calls[0]!;
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      const [nextRules, change] = onValueChange.mock.calls[0]!;
       expect(nextRules.length).toBe(0);
       expect(change.type).toBe('remove-rule');
       expect(change.ruleId).toBe('r1');
     });
 
     test('editing a rule name keeps the draft value until blur commits it', async () => {
-      const { container, onchange } = renderBuilder([makeRule()]);
+      const { container, onValueChange } = renderBuilder([makeRule()]);
       const ruleNameInput = container.querySelector<HTMLInputElement>(
         '[aria-label="Rule name for PR Review Rule"]',
       )!;
@@ -508,26 +508,26 @@ describe('InvocationRuleBuilder', () => {
       await fireEvent.input(ruleNameInput, { target: { value: 'Security Rule' } });
 
       expect(ruleNameInput.value).toBe('Security Rule');
-      expect(onchange).not.toHaveBeenCalled();
+      expect(onValueChange).not.toHaveBeenCalled();
 
       await fireEvent.blur(ruleNameInput);
 
-      expect(onchange).toHaveBeenCalledTimes(1);
-      const [nextRules, change] = onchange.mock.calls[0]!;
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      const [nextRules, change] = onValueChange.mock.calls[0]!;
       expect(nextRules[0].label).toBe('Security Rule');
       expect(change.type).toBe('rename-rule');
       expect(change.ruleId).toBe('r1');
     });
 
     test('blurring an unchanged rule name does not emit a rename change', async () => {
-      const { container, onchange } = renderBuilder([makeRule()]);
+      const { container, onValueChange } = renderBuilder([makeRule()]);
       const ruleNameInput = container.querySelector<HTMLInputElement>(
         '[aria-label="Rule name for PR Review Rule"]',
       )!;
 
       await fireEvent.blur(ruleNameInput);
 
-      expect(onchange).not.toHaveBeenCalled();
+      expect(onValueChange).not.toHaveBeenCalled();
     });
 
     test('external rule label updates clear stale in-progress drafts', async () => {
@@ -545,7 +545,7 @@ describe('InvocationRuleBuilder', () => {
         fieldOptions,
         operatorOptions,
         actionOptions,
-        onchange: () => {},
+        onValueChange: () => {},
       });
 
       const updatedInput = container.querySelector<HTMLInputElement>(
@@ -554,128 +554,128 @@ describe('InvocationRuleBuilder', () => {
       expect(updatedInput.value).toBe('Server label');
     });
 
-    test('add-condition button calls onchange with add-condition change', async () => {
-      const { container, onchange } = renderBuilder([makeRule()]);
+    test('add-condition button calls onValueChange with add-condition change', async () => {
+      const { container, onValueChange } = renderBuilder([makeRule()]);
       const addCondBtn = container.querySelector<HTMLElement>('[data-irb-add-condition]')!;
 
       await fireEvent.click(addCondBtn);
 
-      expect(onchange).toHaveBeenCalledTimes(1);
-      const [nextRules, change] = onchange.mock.calls[0]!;
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      const [nextRules, change] = onValueChange.mock.calls[0]!;
       expect(nextRules[0].conditions.length).toBe(2);
       expect(change.type).toBe('add-condition');
       expect(change.ruleId).toBe('r1');
     });
 
-    test('remove-condition button calls onchange with remove-condition change', async () => {
-      const { container, onchange } = renderBuilder([makeRule()]);
+    test('remove-condition button calls onValueChange with remove-condition change', async () => {
+      const { container, onValueChange } = renderBuilder([makeRule()]);
       const removeCondBtn = container.querySelector<HTMLElement>('[data-irb-condition-remove]')!;
 
       await fireEvent.click(removeCondBtn);
 
-      expect(onchange).toHaveBeenCalledTimes(1);
-      const [nextRules, change] = onchange.mock.calls[0]!;
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      const [nextRules, change] = onValueChange.mock.calls[0]!;
       expect(nextRules[0].conditions.length).toBe(0);
       expect(change.type).toBe('remove-condition');
       expect(change.ruleId).toBe('r1');
       expect(change.conditionId).toBe('c1');
     });
 
-    test('add-action button calls onchange with add-action change', async () => {
-      const { container, onchange } = renderBuilder([makeRule()]);
+    test('add-action button calls onValueChange with add-action change', async () => {
+      const { container, onValueChange } = renderBuilder([makeRule()]);
       const addActionBtn = container.querySelector<HTMLElement>('[data-irb-add-action]')!;
 
       await fireEvent.click(addActionBtn);
 
-      expect(onchange).toHaveBeenCalledTimes(1);
-      const [nextRules, change] = onchange.mock.calls[0]!;
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      const [nextRules, change] = onValueChange.mock.calls[0]!;
       expect(nextRules[0].actions.length).toBe(2);
       expect(change.type).toBe('add-action');
       expect(change.ruleId).toBe('r1');
     });
 
-    test('remove-action button calls onchange with remove-action change', async () => {
-      const { container, onchange } = renderBuilder([makeRule()]);
+    test('remove-action button calls onValueChange with remove-action change', async () => {
+      const { container, onValueChange } = renderBuilder([makeRule()]);
       const removeActionBtn = container.querySelector<HTMLElement>('[data-irb-action-remove]')!;
 
       await fireEvent.click(removeActionBtn);
 
-      expect(onchange).toHaveBeenCalledTimes(1);
-      const [nextRules, change] = onchange.mock.calls[0]!;
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      const [nextRules, change] = onValueChange.mock.calls[0]!;
       expect(nextRules[0].actions.length).toBe(0);
       expect(change.type).toBe('remove-action');
       expect(change.ruleId).toBe('r1');
       expect(change.actionId).toBe('a1');
     });
 
-    test('updating condition field calls onchange with update-condition change', async () => {
-      const { container, onchange } = renderBuilder([makeRule()]);
+    test('updating condition field calls onValueChange with update-condition change', async () => {
+      const { container, onValueChange } = renderBuilder([makeRule()]);
       const fieldSelect = container.querySelector<HTMLSelectElement>(
         '[aria-label="Field for condition 1 of PR Review Rule"]',
       )!;
 
       await fireEvent.change(fieldSelect, { target: { value: 'label' } });
 
-      expect(onchange).toHaveBeenCalledTimes(1);
-      const [nextRules, change] = onchange.mock.calls[0]!;
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      const [nextRules, change] = onValueChange.mock.calls[0]!;
       expect(nextRules[0].conditions[0].field).toBe('label');
       expect(change.type).toBe('update-condition');
       expect(change.field).toBe('field');
     });
 
-    test('updating condition operator calls onchange with update-condition change', async () => {
-      const { container, onchange } = renderBuilder([makeRule()]);
+    test('updating condition operator calls onValueChange with update-condition change', async () => {
+      const { container, onValueChange } = renderBuilder([makeRule()]);
       const operatorSelect = container.querySelector<HTMLSelectElement>(
         '[aria-label="Operator for condition 1 of PR Review Rule"]',
       )!;
 
       await fireEvent.change(operatorSelect, { target: { value: 'is-not' } });
 
-      expect(onchange).toHaveBeenCalledTimes(1);
-      const [nextRules, change] = onchange.mock.calls[0]!;
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      const [nextRules, change] = onValueChange.mock.calls[0]!;
       expect(nextRules[0].conditions[0].operator).toBe('is-not');
       expect(change.field).toBe('operator');
     });
 
-    test('updating condition value calls onchange with update-condition change', async () => {
-      const { container, onchange } = renderBuilder([makeRule()]);
+    test('updating condition value calls onValueChange with update-condition change', async () => {
+      const { container, onValueChange } = renderBuilder([makeRule()]);
       const valueInput = container.querySelector<HTMLInputElement>(
         '[aria-label="Value for condition 1 of PR Review Rule"]',
       )!;
 
       await fireEvent.input(valueInput, { target: { value: 'packages/**' } });
 
-      expect(onchange).toHaveBeenCalledTimes(1);
-      const [nextRules, change] = onchange.mock.calls[0]!;
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      const [nextRules, change] = onValueChange.mock.calls[0]!;
       expect(nextRules[0].conditions[0].value).toBe('packages/**');
       expect(change.field).toBe('value');
     });
 
-    test('updating action target calls onchange with update-action change', async () => {
-      const { container, onchange } = renderBuilder([makeRule()]);
+    test('updating action target calls onValueChange with update-action change', async () => {
+      const { container, onValueChange } = renderBuilder([makeRule()]);
       const targetSelect = container.querySelector<HTMLSelectElement>(
         '[aria-label="Action 1 target for PR Review Rule"]',
       )!;
 
       await fireEvent.change(targetSelect, { target: { value: 'code-review' } });
 
-      expect(onchange).toHaveBeenCalledTimes(1);
-      const [nextRules, change] = onchange.mock.calls[0]!;
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      const [nextRules, change] = onValueChange.mock.calls[0]!;
       expect(nextRules[0].actions[0].target).toBe('code-review');
       expect(change.type).toBe('update-action');
     });
 
-    test('move-rule-down button calls onchange with move-rule change', async () => {
+    test('move-rule-down button calls onValueChange with move-rule change', async () => {
       const rules = [makeRule(), { ...makeRule(), id: 'r2', label: 'Second Rule' }];
-      const { container, onchange } = renderBuilder(rules);
+      const { container, onValueChange } = renderBuilder(rules);
       const moveDownBtn = container.querySelector<HTMLElement>(
         '[aria-label="Move PR Review Rule down"]',
       )!;
 
       await fireEvent.click(moveDownBtn);
 
-      expect(onchange).toHaveBeenCalledTimes(1);
-      const [nextRules, change] = onchange.mock.calls[0]!;
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      const [nextRules, change] = onValueChange.mock.calls[0]!;
       expect(nextRules[0].id).toBe('r2');
       expect(nextRules[1].id).toBe('r1');
       expect(change.type).toBe('move-rule');
@@ -702,12 +702,12 @@ describe('InvocationRuleBuilder', () => {
     test('does not mutate the input rules array on add-condition', async () => {
       const originalRules = [makeRule()];
       const originalConditionsRef = originalRules[0]!.conditions;
-      const { container, onchange } = renderBuilder(originalRules);
+      const { container, onValueChange } = renderBuilder(originalRules);
 
       const addCondBtn = container.querySelector<HTMLElement>('[data-irb-add-condition]')!;
       await fireEvent.click(addCondBtn);
 
-      const [nextRules] = onchange.mock.calls[0]!;
+      const [nextRules] = onValueChange.mock.calls[0]!;
       expect(nextRules).not.toBe(originalRules);
       expect(nextRules[0]).not.toBe(originalRules[0]);
       expect(originalRules[0]!.conditions).toBe(originalConditionsRef);
@@ -916,7 +916,7 @@ describe('InvocationRuleBuilder', () => {
       const rule = makeRule({ conditions: [makeCondition({ field: 'label' })] });
       const { container } = renderConditionsOnlyBuilder([rule], {
         readonly: true,
-        onchange: undefined,
+        onValueChange: undefined,
       });
       expect(container.textContent).not.toContain('Actions');
       expect(container.textContent).not.toContain('No actions configured.');
@@ -947,7 +947,7 @@ describe('InvocationRuleBuilder', () => {
 
     test('commits an arbitrary field value through the field combobox', async () => {
       const rule = makeRule({ conditions: [makeCondition({ field: 'label', operator: 'eq' })] });
-      const { container, onchange } = renderConditionsOnlyBuilder([rule]);
+      const { container, onValueChange } = renderConditionsOnlyBuilder([rule]);
       const fieldInput = container.querySelector<HTMLInputElement>(
         '[aria-label="Field for condition 1 of PR Review Rule"]',
       )!;
@@ -955,8 +955,8 @@ describe('InvocationRuleBuilder', () => {
       await fireEvent.input(fieldInput, { target: { value: 'custom.attribute' } });
       await fireEvent.keyDown(fieldInput, { key: 'Enter' });
 
-      expect(onchange).toHaveBeenCalledTimes(1);
-      const [nextRules, change] = onchange.mock.calls[0]!;
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      const [nextRules, change] = onValueChange.mock.calls[0]!;
       expect(nextRules[0].conditions[0].field).toBe('custom.attribute');
       expect(change).toMatchObject({ type: 'update-condition', field: 'field' });
     });
@@ -974,7 +974,7 @@ describe('InvocationRuleBuilder', () => {
 
     test('blur commits an exact suggested field label as its canonical field value', async () => {
       const rule = makeRule({ conditions: [makeCondition({ field: 'label', operator: 'eq' })] });
-      const { container, onchange } = renderConditionsOnlyBuilder([rule]);
+      const { container, onValueChange } = renderConditionsOnlyBuilder([rule]);
       const fieldInput = container.querySelector<HTMLInputElement>(
         '[aria-label="Field for condition 1 of PR Review Rule"]',
       )!;
@@ -982,20 +982,20 @@ describe('InvocationRuleBuilder', () => {
       await fireEvent.input(fieldInput, { target: { value: 'Enabled' } });
       await fireEvent.blur(fieldInput, { relatedTarget: null });
 
-      expect(onchange).toHaveBeenCalledTimes(1);
-      const [nextRules] = onchange.mock.calls[0]!;
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      const [nextRules] = onValueChange.mock.calls[0]!;
       expect(nextRules[0].conditions[0].field).toBe('enabled');
     });
 
     test('add-condition seeds the new condition with the fixed operator set default (eq)', async () => {
       const rule = makeRule({ conditions: [] });
-      const { container, onchange } = renderConditionsOnlyBuilder([rule]);
+      const { container, onValueChange } = renderConditionsOnlyBuilder([rule]);
       const addCondBtn = container.querySelector<HTMLElement>('[data-irb-add-condition]')!;
 
       await fireEvent.click(addCondBtn);
 
-      expect(onchange).toHaveBeenCalledTimes(1);
-      const [nextRules] = onchange.mock.calls[0]!;
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      const [nextRules] = onValueChange.mock.calls[0]!;
       expect(nextRules[0].conditions[0].operator).toBe('eq');
     });
 
@@ -1045,15 +1045,15 @@ describe('InvocationRuleBuilder', () => {
 
     test('editing a numeric condition value emits update-condition with the raw string value', async () => {
       const rule = makeRule({ conditions: [makeCondition({ field: 'retries', value: '3' })] });
-      const { container, onchange } = renderConditionsOnlyBuilder([rule]);
+      const { container, onValueChange } = renderConditionsOnlyBuilder([rule]);
       const valueInput = container.querySelector<HTMLInputElement>(
         '[aria-label="Value for condition 1 of PR Review Rule"]',
       )!;
 
       await fireEvent.input(valueInput, { target: { value: '5' } });
 
-      expect(onchange).toHaveBeenCalledTimes(1);
-      const [nextRules, change] = onchange.mock.calls[0]!;
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      const [nextRules, change] = onValueChange.mock.calls[0]!;
       expect(nextRules[0].conditions[0].value).toBe('5');
       expect(change.type).toBe('update-condition');
       expect(change.field).toBe('value');
@@ -1061,15 +1061,15 @@ describe('InvocationRuleBuilder', () => {
 
     test('toggling a boolean condition value emits update-condition with a stringified boolean', async () => {
       const rule = makeRule({ conditions: [makeCondition({ field: 'enabled', value: 'false' })] });
-      const { container, onchange } = renderConditionsOnlyBuilder([rule]);
+      const { container, onValueChange } = renderConditionsOnlyBuilder([rule]);
       const valueInput = container.querySelector<HTMLInputElement>(
         '[aria-label="Value for condition 1 of PR Review Rule"]',
       )!;
 
       await fireEvent.click(valueInput);
 
-      expect(onchange).toHaveBeenCalledTimes(1);
-      const [nextRules, change] = onchange.mock.calls[0]!;
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      const [nextRules, change] = onValueChange.mock.calls[0]!;
       expect(nextRules[0].conditions[0].value).toBe('true');
       expect(change.type).toBe('update-condition');
       expect(change.field).toBe('value');
@@ -1077,28 +1077,28 @@ describe('InvocationRuleBuilder', () => {
 
     test('selecting an enum condition value emits update-condition with the chosen option value', async () => {
       const rule = makeRule({ conditions: [makeCondition({ field: 'severity', value: 'low' })] });
-      const { container, onchange } = renderConditionsOnlyBuilder([rule]);
+      const { container, onValueChange } = renderConditionsOnlyBuilder([rule]);
       const valueSelect = container.querySelector<HTMLSelectElement>(
         '[aria-label="Value for condition 1 of PR Review Rule"]',
       )!;
 
       await fireEvent.change(valueSelect, { target: { value: 'high' } });
 
-      expect(onchange).toHaveBeenCalledTimes(1);
-      const [nextRules, change] = onchange.mock.calls[0]!;
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      const [nextRules, change] = onValueChange.mock.calls[0]!;
       expect(nextRules[0].conditions[0].value).toBe('high');
       expect(change.type).toBe('update-condition');
       expect(change.field).toBe('value');
     });
 
     test('rules created in conditions-only mode start with an empty actions array and no action descriptors are ever emitted', async () => {
-      const { container, onchange } = renderConditionsOnlyBuilder([]);
+      const { container, onValueChange } = renderConditionsOnlyBuilder([]);
       const addRuleBtn = container.querySelector<HTMLElement>('[data-irb-add-rule]')!;
 
       await fireEvent.click(addRuleBtn);
 
-      expect(onchange).toHaveBeenCalledTimes(1);
-      const [nextRules, change] = onchange.mock.calls[0]!;
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      const [nextRules, change] = onValueChange.mock.calls[0]!;
       expect(nextRules[0].actions).toEqual([]);
       expect(['add-action', 'remove-action', 'update-action']).not.toContain(change.type);
     });
@@ -1109,7 +1109,7 @@ describe('InvocationRuleBuilder', () => {
       });
       const { container } = renderConditionsOnlyBuilder([rule], {
         readonly: true,
-        onchange: undefined,
+        onValueChange: undefined,
       });
       expect(container.textContent).toContain('Label');
       expect(container.textContent).toContain('foo');
@@ -1119,20 +1119,20 @@ describe('InvocationRuleBuilder', () => {
     describe('typed default value on add', () => {
       test('seeds a boolean field with "false" (matches the unchecked checkbox)', async () => {
         const rule = makeRule({ conditions: [] });
-        const { container, onchange } = renderConditionsOnlyBuilder([rule], {
+        const { container, onValueChange } = renderConditionsOnlyBuilder([rule], {
           fieldOptions: [{ value: 'enabled', label: 'Enabled', type: 'boolean' }],
         });
         const addCondBtn = container.querySelector<HTMLElement>('[data-irb-add-condition]')!;
 
         await fireEvent.click(addCondBtn);
 
-        const [nextRules] = onchange.mock.calls[0]!;
+        const [nextRules] = onValueChange.mock.calls[0]!;
         expect(nextRules[0].conditions[0].value).toBe('false');
       });
 
       test('seeds an enum field with its first choice (matches the pre-selected select option)', async () => {
         const rule = makeRule({ conditions: [] });
-        const { container, onchange } = renderConditionsOnlyBuilder([rule], {
+        const { container, onValueChange } = renderConditionsOnlyBuilder([rule], {
           fieldOptions: [
             {
               value: 'severity',
@@ -1149,33 +1149,33 @@ describe('InvocationRuleBuilder', () => {
 
         await fireEvent.click(addCondBtn);
 
-        const [nextRules] = onchange.mock.calls[0]!;
+        const [nextRules] = onValueChange.mock.calls[0]!;
         expect(nextRules[0].conditions[0].value).toBe('low');
       });
 
       test('seeds a number field with an empty value', async () => {
         const rule = makeRule({ conditions: [] });
-        const { container, onchange } = renderConditionsOnlyBuilder([rule], {
+        const { container, onValueChange } = renderConditionsOnlyBuilder([rule], {
           fieldOptions: [{ value: 'retries', label: 'Retries', type: 'number' }],
         });
         const addCondBtn = container.querySelector<HTMLElement>('[data-irb-add-condition]')!;
 
         await fireEvent.click(addCondBtn);
 
-        const [nextRules] = onchange.mock.calls[0]!;
+        const [nextRules] = onValueChange.mock.calls[0]!;
         expect(nextRules[0].conditions[0].value).toBe('');
       });
 
       test('seeds a string (or untyped) field with an empty value', async () => {
         const rule = makeRule({ conditions: [] });
-        const { container, onchange } = renderConditionsOnlyBuilder([rule], {
+        const { container, onValueChange } = renderConditionsOnlyBuilder([rule], {
           fieldOptions: [{ value: 'label', label: 'Label' }],
         });
         const addCondBtn = container.querySelector<HTMLElement>('[data-irb-add-condition]')!;
 
         await fireEvent.click(addCondBtn);
 
-        const [nextRules] = onchange.mock.calls[0]!;
+        const [nextRules] = onValueChange.mock.calls[0]!;
         expect(nextRules[0].conditions[0].value).toBe('');
       });
     });
@@ -1183,11 +1183,11 @@ describe('InvocationRuleBuilder', () => {
     describe('typed value reset on field change', () => {
       test('resets a stale value to "false" when the field changes to boolean', async () => {
         const rule = makeRule({ conditions: [makeCondition({ field: 'label', value: 'foobar' })] });
-        const { container, onchange } = renderConditionsOnlyBuilder([rule]);
+        const { container, onValueChange } = renderConditionsOnlyBuilder([rule]);
         await commitField(container, 'enabled');
 
-        expect(onchange).toHaveBeenCalledTimes(1);
-        const [nextRules, change] = onchange.mock.calls[0]!;
+        expect(onValueChange).toHaveBeenCalledTimes(1);
+        const [nextRules, change] = onValueChange.mock.calls[0]!;
         expect(nextRules[0].conditions[0].field).toBe('enabled');
         expect(nextRules[0].conditions[0].value).toBe('false');
         expect(change.type).toBe('update-condition');
@@ -1196,61 +1196,61 @@ describe('InvocationRuleBuilder', () => {
 
       test('resets a value outside the new choices to the first choice when the field changes to enum', async () => {
         const rule = makeRule({ conditions: [makeCondition({ field: 'label', value: 'foobar' })] });
-        const { container, onchange } = renderConditionsOnlyBuilder([rule]);
+        const { container, onValueChange } = renderConditionsOnlyBuilder([rule]);
         await commitField(container, 'severity');
 
-        const [nextRules] = onchange.mock.calls[0]!;
+        const [nextRules] = onValueChange.mock.calls[0]!;
         expect(nextRules[0].conditions[0].value).toBe('low');
       });
 
       test('keeps the existing value when the field changes to an enum field whose choices already include it', async () => {
         const rule = makeRule({ conditions: [makeCondition({ field: 'label', value: 'high' })] });
-        const { container, onchange } = renderConditionsOnlyBuilder([rule]);
+        const { container, onValueChange } = renderConditionsOnlyBuilder([rule]);
         await commitField(container, 'severity');
 
-        const [nextRules] = onchange.mock.calls[0]!;
+        const [nextRules] = onValueChange.mock.calls[0]!;
         expect(nextRules[0].conditions[0].value).toBe('high');
       });
 
       test('resets a non-numeric value to empty when the field changes to number', async () => {
         const rule = makeRule({ conditions: [makeCondition({ field: 'label', value: 'foobar' })] });
-        const { container, onchange } = renderConditionsOnlyBuilder([rule]);
+        const { container, onValueChange } = renderConditionsOnlyBuilder([rule]);
         await commitField(container, 'retries');
 
-        const [nextRules] = onchange.mock.calls[0]!;
+        const [nextRules] = onValueChange.mock.calls[0]!;
         expect(nextRules[0].conditions[0].value).toBe('');
       });
 
       test('keeps an existing numeric-looking value when the field changes to number', async () => {
         const rule = makeRule({ conditions: [makeCondition({ field: 'label', value: '7' })] });
-        const { container, onchange } = renderConditionsOnlyBuilder([rule]);
+        const { container, onValueChange } = renderConditionsOnlyBuilder([rule]);
         await commitField(container, 'retries');
 
-        const [nextRules] = onchange.mock.calls[0]!;
+        const [nextRules] = onValueChange.mock.calls[0]!;
         expect(nextRules[0].conditions[0].value).toBe('7');
       });
 
       test('keeps the existing value when the field changes between two fields of the same (string) type', async () => {
         const rule = makeRule({ conditions: [makeCondition({ field: 'label', value: 'foobar' })] });
-        const { container, onchange } = renderConditionsOnlyBuilder([rule], {
+        const { container, onValueChange } = renderConditionsOnlyBuilder([rule], {
           fieldOptions: [...typedFieldOptions, { value: 'owner', label: 'Owner' }],
         });
         await commitField(container, 'owner');
 
-        const [nextRules] = onchange.mock.calls[0]!;
+        const [nextRules] = onValueChange.mock.calls[0]!;
         expect(nextRules[0].conditions[0].value).toBe('foobar');
       });
 
       test('full mode never resets the condition value when the field changes (conditions-only-only behavior)', async () => {
         const rule = makeRule({ conditions: [makeCondition({ field: 'path', value: 'src/**' })] });
-        const { container, onchange } = renderBuilder([rule]);
+        const { container, onValueChange } = renderBuilder([rule]);
         const fieldSelect = container.querySelector<HTMLSelectElement>(
           '[aria-label="Field for condition 1 of PR Review Rule"]',
         )!;
 
         await fireEvent.change(fieldSelect, { target: { value: 'label' } });
 
-        const [nextRules] = onchange.mock.calls[0]!;
+        const [nextRules] = onValueChange.mock.calls[0]!;
         expect(nextRules[0].conditions[0].value).toBe('src/**');
       });
     });
@@ -1261,13 +1261,13 @@ describe('InvocationRuleBuilder', () => {
           conditions: [makeCondition({ field: 'label', value: 'foo' })],
           actions: [makeAction()],
         });
-        const { container, onchange } = renderConditionsOnlyBuilder([ruleWithActions]);
+        const { container, onValueChange } = renderConditionsOnlyBuilder([ruleWithActions]);
         const addCondBtn = container.querySelector<HTMLElement>('[data-irb-add-condition]')!;
 
         await fireEvent.click(addCondBtn);
 
-        expect(onchange).toHaveBeenCalledTimes(1);
-        const [nextRules] = onchange.mock.calls[0]!;
+        expect(onValueChange).toHaveBeenCalledTimes(1);
+        const [nextRules] = onValueChange.mock.calls[0]!;
         expect(nextRules[0].actions).toEqual([]);
       });
 
@@ -1283,24 +1283,27 @@ describe('InvocationRuleBuilder', () => {
           conditions: [makeCondition({ id: 'c2', field: 'label', value: 'bar' })],
           actions: [makeAction({ id: 'a2' })],
         });
-        const { container, onchange } = renderConditionsOnlyBuilder([editedRule, untouchedRule]);
+        const { container, onValueChange } = renderConditionsOnlyBuilder([
+          editedRule,
+          untouchedRule,
+        ]);
         const addCondBtn = container.querySelectorAll<HTMLElement>('[data-irb-add-condition]')[0]!;
 
         await fireEvent.click(addCondBtn);
 
-        const [nextRules] = onchange.mock.calls[0]!;
+        const [nextRules] = onValueChange.mock.calls[0]!;
         expect(nextRules[0].actions).toEqual([]);
         expect(nextRules[1].actions).toEqual([]);
       });
 
       test('full mode still preserves actions on edit (does not strip them)', async () => {
         const rule = makeRule({ actions: [makeAction()] });
-        const { container, onchange } = renderBuilder([rule]);
+        const { container, onValueChange } = renderBuilder([rule]);
         const addCondBtn = container.querySelector<HTMLElement>('[data-irb-add-condition]')!;
 
         await fireEvent.click(addCondBtn);
 
-        const [nextRules] = onchange.mock.calls[0]!;
+        const [nextRules] = onValueChange.mock.calls[0]!;
         expect(nextRules[0].actions).toEqual([makeAction()]);
       });
     });
@@ -1311,13 +1314,13 @@ describe('InvocationRuleBuilder', () => {
           conditions: [makeCondition({ field: 'label', operator: 'matches', value: 'foo' })],
           actions: [makeAction()],
         });
-        const { container, onchange } = renderConditionsOnlyBuilder([ruleWithLegacyOperator]);
+        const { container, onValueChange } = renderConditionsOnlyBuilder([ruleWithLegacyOperator]);
         const addCondBtn = container.querySelector<HTMLElement>('[data-irb-add-condition]')!;
 
         await fireEvent.click(addCondBtn);
 
-        expect(onchange).toHaveBeenCalledTimes(1);
-        const [nextRules] = onchange.mock.calls[0]!;
+        expect(onValueChange).toHaveBeenCalledTimes(1);
+        const [nextRules] = onValueChange.mock.calls[0]!;
         expect(nextRules[0].conditions[0].operator).toBe('eq');
         expect(nextRules[0].actions).toEqual([]);
       });
@@ -1326,12 +1329,12 @@ describe('InvocationRuleBuilder', () => {
         const rule = makeRule({
           conditions: [makeCondition({ field: 'label', operator: 'gte', value: 'foo' })],
         });
-        const { container, onchange } = renderConditionsOnlyBuilder([rule]);
+        const { container, onValueChange } = renderConditionsOnlyBuilder([rule]);
         const addCondBtn = container.querySelector<HTMLElement>('[data-irb-add-condition]')!;
 
         await fireEvent.click(addCondBtn);
 
-        const [nextRules] = onchange.mock.calls[0]!;
+        const [nextRules] = onValueChange.mock.calls[0]!;
         expect(nextRules[0].conditions[0].operator).toBe('gte');
       });
 
@@ -1339,12 +1342,12 @@ describe('InvocationRuleBuilder', () => {
         const rule = makeRule({
           conditions: [makeCondition({ field: 'path', operator: 'matches', value: 'src/**' })],
         });
-        const { container, onchange } = renderBuilder([rule]);
+        const { container, onValueChange } = renderBuilder([rule]);
         const addCondBtn = container.querySelector<HTMLElement>('[data-irb-add-condition]')!;
 
         await fireEvent.click(addCondBtn);
 
-        const [nextRules] = onchange.mock.calls[0]!;
+        const [nextRules] = onValueChange.mock.calls[0]!;
         expect(nextRules[0].conditions[0].operator).toBe('matches');
       });
 
@@ -1354,7 +1357,7 @@ describe('InvocationRuleBuilder', () => {
         });
         const { container } = renderConditionsOnlyBuilder([rule], {
           readonly: true,
-          onchange: undefined,
+          onValueChange: undefined,
         });
 
         expect(container.textContent).toContain('equals');
@@ -1378,7 +1381,7 @@ describe('InvocationRuleBuilder', () => {
         const rule = makeRule({
           conditions: [makeCondition({ field: 'path', operator: 'matches', value: 'src/**' })],
         });
-        const { container } = renderBuilder([rule], { readonly: true, onchange: undefined });
+        const { container } = renderBuilder([rule], { readonly: true, onValueChange: undefined });
 
         expect(container.textContent).toContain('matches');
       });
@@ -1392,7 +1395,7 @@ describe('InvocationRuleBuilder', () => {
           ],
           actions: [makeAction()],
         });
-        const { container, onchange } = renderConditionsOnlyBuilder([rule]);
+        const { container, onValueChange } = renderConditionsOnlyBuilder([rule]);
         const ruleNameInput = container.querySelector<HTMLInputElement>(
           '[aria-label="Rule name for PR Review Rule"]',
         )!;
@@ -1400,8 +1403,8 @@ describe('InvocationRuleBuilder', () => {
         await fireEvent.input(ruleNameInput, { target: { value: 'Renamed Rule' } });
         await fireEvent.blur(ruleNameInput);
 
-        expect(onchange).toHaveBeenCalledTimes(1);
-        const [nextRules] = onchange.mock.calls[0]!;
+        expect(onValueChange).toHaveBeenCalledTimes(1);
+        const [nextRules] = onValueChange.mock.calls[0]!;
         expect(nextRules[0].conditions[0].value).toBe('false');
         expect(nextRules[0].conditions[0].operator).toBe('eq');
         expect(nextRules[0].actions).toEqual([]);
@@ -1413,7 +1416,7 @@ describe('InvocationRuleBuilder', () => {
             makeCondition({ id: 'c1', field: 'severity', operator: 'is', value: 'nonexistent' }),
           ],
         });
-        const { container, onchange } = renderConditionsOnlyBuilder([rule]);
+        const { container, onValueChange } = renderConditionsOnlyBuilder([rule]);
         const ruleNameInput = container.querySelector<HTMLInputElement>(
           '[aria-label="Rule name for PR Review Rule"]',
         )!;
@@ -1421,7 +1424,7 @@ describe('InvocationRuleBuilder', () => {
         await fireEvent.input(ruleNameInput, { target: { value: 'Renamed Rule' } });
         await fireEvent.blur(ruleNameInput);
 
-        const [nextRules] = onchange.mock.calls[0]!;
+        const [nextRules] = onValueChange.mock.calls[0]!;
         expect(nextRules[0].conditions[0].value).toBe('low');
       });
 
@@ -1431,7 +1434,7 @@ describe('InvocationRuleBuilder', () => {
             makeCondition({ id: 'c1', field: 'enabled', operator: 'eq', value: 'true' }),
           ],
         });
-        const { container, onchange } = renderConditionsOnlyBuilder([rule]);
+        const { container, onValueChange } = renderConditionsOnlyBuilder([rule]);
         const ruleNameInput = container.querySelector<HTMLInputElement>(
           '[aria-label="Rule name for PR Review Rule"]',
         )!;
@@ -1439,7 +1442,7 @@ describe('InvocationRuleBuilder', () => {
         await fireEvent.input(ruleNameInput, { target: { value: 'Renamed Rule' } });
         await fireEvent.blur(ruleNameInput);
 
-        const [nextRules] = onchange.mock.calls[0]!;
+        const [nextRules] = onValueChange.mock.calls[0]!;
         expect(nextRules[0].conditions[0].value).toBe('true');
       });
 
@@ -1447,7 +1450,7 @@ describe('InvocationRuleBuilder', () => {
         const rule = makeRule({
           conditions: [makeCondition({ field: 'path', operator: 'matches', value: 'not-a-bool' })],
         });
-        const { container, onchange } = renderBuilder([rule]);
+        const { container, onValueChange } = renderBuilder([rule]);
         const ruleNameInput = container.querySelector<HTMLInputElement>(
           '[aria-label="Rule name for PR Review Rule"]',
         )!;
@@ -1455,7 +1458,7 @@ describe('InvocationRuleBuilder', () => {
         await fireEvent.input(ruleNameInput, { target: { value: 'Renamed Rule' } });
         await fireEvent.blur(ruleNameInput);
 
-        const [nextRules] = onchange.mock.calls[0]!;
+        const [nextRules] = onValueChange.mock.calls[0]!;
         expect(nextRules[0].conditions[0].value).toBe('not-a-bool');
       });
 
@@ -1467,7 +1470,7 @@ describe('InvocationRuleBuilder', () => {
               makeCondition({ id: 'c1', field: 'retries', operator: 'is', value: staleValue }),
             ],
           });
-          const { container, onchange } = renderConditionsOnlyBuilder([rule]);
+          const { container, onValueChange } = renderConditionsOnlyBuilder([rule]);
           const ruleNameInput = container.querySelector<HTMLInputElement>(
             '[aria-label="Rule name for PR Review Rule"]',
           )!;
@@ -1475,7 +1478,7 @@ describe('InvocationRuleBuilder', () => {
           await fireEvent.input(ruleNameInput, { target: { value: 'Renamed Rule' } });
           await fireEvent.blur(ruleNameInput);
 
-          const [nextRules] = onchange.mock.calls[0]!;
+          const [nextRules] = onValueChange.mock.calls[0]!;
           expect(nextRules[0].conditions[0].value).toBe('');
         },
       );
@@ -1488,7 +1491,7 @@ describe('InvocationRuleBuilder', () => {
               makeCondition({ id: 'c1', field: 'retries', operator: 'is', value: staleValue }),
             ],
           });
-          const { container, onchange } = renderConditionsOnlyBuilder([rule]);
+          const { container, onValueChange } = renderConditionsOnlyBuilder([rule]);
           const ruleNameInput = container.querySelector<HTMLInputElement>(
             '[aria-label="Rule name for PR Review Rule"]',
           )!;
@@ -1496,7 +1499,7 @@ describe('InvocationRuleBuilder', () => {
           await fireEvent.input(ruleNameInput, { target: { value: 'Renamed Rule' } });
           await fireEvent.blur(ruleNameInput);
 
-          const [nextRules] = onchange.mock.calls[0]!;
+          const [nextRules] = onValueChange.mock.calls[0]!;
           expect(nextRules[0].conditions[0].value).toBe('');
         },
       );
@@ -1514,7 +1517,7 @@ describe('InvocationRuleBuilder', () => {
               }),
             ],
           });
-          const { container, onchange } = renderConditionsOnlyBuilder([rule]);
+          const { container, onValueChange } = renderConditionsOnlyBuilder([rule]);
           const ruleNameInput = container.querySelector<HTMLInputElement>(
             '[aria-label="Rule name for PR Review Rule"]',
           )!;
@@ -1522,7 +1525,7 @@ describe('InvocationRuleBuilder', () => {
           await fireEvent.input(ruleNameInput, { target: { value: 'Renamed Rule' } });
           await fireEvent.blur(ruleNameInput);
 
-          const [nextRules] = onchange.mock.calls[0]!;
+          const [nextRules] = onValueChange.mock.calls[0]!;
           expect(nextRules[0].conditions[0].value).toBe('');
         },
       );
@@ -1531,7 +1534,7 @@ describe('InvocationRuleBuilder', () => {
         const rule = makeRule({
           conditions: [makeCondition({ id: 'c1', field: 'retries', operator: 'is', value: '42' })],
         });
-        const { container, onchange } = renderConditionsOnlyBuilder([rule]);
+        const { container, onValueChange } = renderConditionsOnlyBuilder([rule]);
         const ruleNameInput = container.querySelector<HTMLInputElement>(
           '[aria-label="Rule name for PR Review Rule"]',
         )!;
@@ -1539,7 +1542,7 @@ describe('InvocationRuleBuilder', () => {
         await fireEvent.input(ruleNameInput, { target: { value: 'Renamed Rule' } });
         await fireEvent.blur(ruleNameInput);
 
-        const [nextRules] = onchange.mock.calls[0]!;
+        const [nextRules] = onValueChange.mock.calls[0]!;
         expect(nextRules[0].conditions[0].value).toBe('42');
       });
 
@@ -1551,7 +1554,7 @@ describe('InvocationRuleBuilder', () => {
               makeCondition({ id: 'c1', field: 'retries', operator: 'is', value: typedValue }),
             ],
           });
-          const { container, onchange } = renderConditionsOnlyBuilder([rule]);
+          const { container, onValueChange } = renderConditionsOnlyBuilder([rule]);
           const ruleNameInput = container.querySelector<HTMLInputElement>(
             '[aria-label="Rule name for PR Review Rule"]',
           )!;
@@ -1559,7 +1562,7 @@ describe('InvocationRuleBuilder', () => {
           await fireEvent.input(ruleNameInput, { target: { value: 'Renamed Rule' } });
           await fireEvent.blur(ruleNameInput);
 
-          const [nextRules] = onchange.mock.calls[0]!;
+          const [nextRules] = onValueChange.mock.calls[0]!;
           expect(nextRules[0].conditions[0].value).toBe(typedValue);
         },
       );
@@ -1568,15 +1571,15 @@ describe('InvocationRuleBuilder', () => {
         const rule = makeRule({
           conditions: [makeCondition({ id: 'c1', field: 'retries', operator: 'is', value: '1' })],
         });
-        const { container, onchange } = renderConditionsOnlyBuilder([rule]);
+        const { container, onValueChange } = renderConditionsOnlyBuilder([rule]);
         const valueInput = container.querySelector<HTMLInputElement>(
           '[aria-label="Value for condition 1 of PR Review Rule"]',
         )!;
 
         await fireEvent.input(valueInput, { target: { value: '1.' } });
 
-        expect(onchange).toHaveBeenCalledTimes(1);
-        const [nextRules] = onchange.mock.calls[0]!;
+        expect(onValueChange).toHaveBeenCalledTimes(1);
+        const [nextRules] = onValueChange.mock.calls[0]!;
         expect(nextRules[0].conditions[0].value).toBe('1.');
       });
     });
@@ -1588,7 +1591,7 @@ describe('InvocationRuleBuilder', () => {
         mode: 'flat-conditions',
         conditions: [makeCondition({ operator: 'eq' })],
         fieldOptions: typedFieldOptions,
-        onchange: () => {},
+        onValueChange: () => {},
       } satisfies InvocationRuleBuilderProps;
 
       expect(validProps.conditions).toHaveLength(1);
@@ -1598,7 +1601,7 @@ describe('InvocationRuleBuilder', () => {
         conditions: [],
         rules: [makeRule()],
         fieldOptions: typedFieldOptions,
-        onchange: () => {},
+        onValueChange: () => {},
       } as const;
       // @ts-expect-error flat-conditions mode cannot accept rule groups
       const _invalidContract: InvocationRuleBuilderProps = invalidProps;
@@ -1647,7 +1650,7 @@ describe('InvocationRuleBuilder', () => {
     });
 
     test('emits the direct conditions array and a change without rule metadata', async () => {
-      const { container, onchange } = renderFlatConditionsBuilder([
+      const { container, onValueChange } = renderFlatConditionsBuilder([
         makeCondition({ field: 'label', operator: 'eq', value: 'security' }),
       ]);
       const valueInput = container.querySelector<HTMLInputElement>(
@@ -1656,8 +1659,8 @@ describe('InvocationRuleBuilder', () => {
 
       await fireEvent.input(valueInput, { target: { value: 'backend' } });
 
-      expect(onchange).toHaveBeenCalledTimes(1);
-      const [nextConditions, change] = onchange.mock.calls[0]!;
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      const [nextConditions, change] = onValueChange.mock.calls[0]!;
       expect(nextConditions).toEqual([
         makeCondition({ field: 'label', operator: 'eq', value: 'backend' }),
       ]);
@@ -1677,7 +1680,7 @@ describe('InvocationRuleBuilder', () => {
         added.container.querySelector<HTMLElement>('[data-irb-add-condition]')!,
       );
 
-      const [addedConditions, addChange] = added.onchange.mock.calls[0]!;
+      const [addedConditions, addChange] = added.onValueChange.mock.calls[0]!;
       expect(addedConditions).toHaveLength(1);
       expect(addChange).toEqual({
         type: 'add-condition',
@@ -1690,8 +1693,8 @@ describe('InvocationRuleBuilder', () => {
         removed.container.querySelector<HTMLElement>('[data-irb-condition-remove]')!,
       );
 
-      expect(removed.onchange.mock.calls[0]?.[0]).toEqual([]);
-      expect(removed.onchange.mock.calls[0]?.[1]).toEqual({
+      expect(removed.onValueChange.mock.calls[0]?.[0]).toEqual([]);
+      expect(removed.onValueChange.mock.calls[0]?.[1]).toEqual({
         type: 'remove-condition',
         conditionId: 'c1',
       });

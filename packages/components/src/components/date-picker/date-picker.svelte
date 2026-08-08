@@ -37,7 +37,7 @@
     class: className,
     'aria-describedby': ariaDescribedBy,
     'aria-invalid': ariaInvalid,
-    onchange,
+    onValueChange,
     triggerLabel = 'Open',
     ...rest
   }: DatePickerProps = $props();
@@ -128,7 +128,7 @@
 
   function emit(next: string | undefined) {
     value = next;
-    onchange?.(next);
+    onValueChange?.(next);
   }
 
   function clampToBounds(next: string | undefined): string | undefined {
@@ -253,7 +253,7 @@
       value={selectedDate}
       min={normalizedMin?.slice(0, 10)}
       max={normalizedMax?.slice(0, 10)}
-      onchange={handleCalendarChange}
+      onValueChange={handleCalendarChange}
       {disabled}
     />
     {#if granularity !== 'day'}

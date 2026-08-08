@@ -19,7 +19,7 @@
     value={tags}
     placeholder="guest@example.com"
     validate={validateEmailTag}
-    onchange={(nextTags) => {
+    onValueChange={(nextTags) => {
       tags = nextTags;
     }}
   />

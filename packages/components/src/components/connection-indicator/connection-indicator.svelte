@@ -10,10 +10,10 @@
    * @useWhen Surfacing the transport-level health of a websocket, SSE stream, or polling loop as a compact, self-contained pill.
    * @useWhen Distinguishing push (`live`) from interval polling (`polling`) so operators don't mistake one for the other.
    * @avoidWhen Annotating a static entity's state (a row, a user, a deployment) rather than a live transport — use status-dot instead. | status-dot
-   * @avoidWhen Rendering a full event log with per-event connection transitions — use event-stream-viewer instead. | event-stream-viewer
+   * @avoidWhen Rendering a full event log with per-event connection transitions — use feed's log arm instead. | feed
    * @a11yPattern role="status" live region
    * @a11yNote Status is conveyed by icon and text together, never color alone (WCAG 1.4.1); the live pulsing dot collapses to a static dot under prefers-reduced-motion.
-   * @related status-dot, event-stream-viewer, badge
+   * @related status-dot, feed, badge
    */
   export type {
     ConnectionIndicatorProps,

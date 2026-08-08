@@ -1,0 +1,195 @@
+# FilterBar
+
+Composed filtering toolbar with a leading search field, select-based or custom facet controls, removable applied-filter chips, and a clear-all action. Designed for dense operational list views such as workflow queues, failure triage dashboards, and schedule browsers.
+
+## Overview
+
+`FilterBar` composes `SearchField`, `Chip` (removable mode), and native select controls into one accessible filtering surface. It owns no routing, persistence, or data fetching — it emits change events and the consumer owns the filter state and data loading.
+
+The bar supports two facet types:
+
+- **`select`** — a fixed list of options rendered as a styled native select. Use for status, category, queue, or any enumerable dimension.
+- **`custom`** — a consumer-supplied snippet that renders any control (combobox, date-range picker, etc.) and receives the current value plus a change callback.
+
+Applied filters are displayed as removable chips. A visually-hidden live region announces the active filter count and each applied value to screen readers whenever the filter state changes.
+
+## Usage
+
+```svelte
+<script lang="ts">
+  import { FilterBar } from '@lostgradient/cinder/filter-bar';
+  import type { AppliedFilter, FacetDefinition } from '@lostgradient/cinder/filter-bar';
+
+  const facets: FacetDefinition[] = [
+    {
+      type: 'select',
+      key: 'status',
+      label: 'Status',
+      placeholder: 'All statuses',
+      options: [
+        { value: 'running', label: 'Running' },
+        { value: 'failed', label: 'Failed' },
+        { value: 'paused', label: 'Paused' },
+      ],
+    },
+    {
+      type: 'select',
+      key: 'queue',
+      label: 'Queue',
+      placeholder: 'All queues',
+      options: [
+        { value: 'default', label: 'Default' },
+        { value: 'priority', label: 'Priority' },
+      ],
+    },
+  ];
+
+  let appliedFilters = $state<AppliedFilter[]>([]);
+  let searchQuery = $state('');
+
+  function handleFacetChange(key: string, value: string) {
+    if (!value) {
+      appliedFilters = appliedFilters.filter((f) => f.key !== key);
+      return;
+    }
+    const facet = facets.find((f) => f.key === key);
+    appliedFilters = [
+      ...appliedFilters.filter((f) => f.key !== key),
+      { key, value, label: facet?.label ?? key },
+    ];
+  }
+
+  function handleFilterRemove(key: string) {
+    appliedFilters = appliedFilters.filter((f) => f.key !== key);
+  }
+
+  function handleClearAll() {
+    appliedFilters = [];
+    searchQuery = '';
+  }
+</script>
+
+<FilterBar
+  aria-label="Workflow filters"
+  {facets}
+  {appliedFilters}
+  {searchQuery}
+  onSearchChange={(q) => (searchQuery = q)}
+  onFacetChange={handleFacetChange}
+  onFilterRemove={handleFilterRemove}
+  onClearAll={handleClearAll}
+/>
+```
+
+### Custom facet (snippet escape-hatch)
+
+Use `type: 'custom'` with a `control` snippet for any facet that cannot be expressed as a select list, such as a date-range picker or combobox:
+
+```svelte
+<script lang="ts">
+  import { FilterBar } from '@lostgradient/cinder/filter-bar';
+  import type { FacetDefinition } from '@lostgradient/cinder/filter-bar';
+</script>
+
+{#snippet dateRangeControl({
+  value,
+  onValueChange,
+}: {
+  value: string;
+  onValueChange: (v: string) => void;
+})}
+  <!-- render your date-range control here; call onValueChange(value) on selection -->
+{/snippet}
+
+<FilterBar
+  aria-label="Order filters"
+  facets={[
+    {
+      type: 'custom',
+      key: 'dateRange',
+      label: 'Date range',
+      control: dateRangeControl,
+    },
+  ]}
+/>
+```
+
+## Props
+
+<!-- generated:props:start -->
+
+| Prop                | Type       | Required | Default | Description                                                                                                                                                                                                                 |
+| ------------------- | ---------- | -------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `aria-label`        | `string`   | no       | —       | Defines a string value that labels the current element.                                                                                                                                                                     |
+| `class`             | `string`   | no       | —       | Additional CSS classes applied to the root element.                                                                                                                                                                         |
+| `disabled`          | `boolean`  | no       | —       | When true, all filter controls and chips are disabled.                                                                                                                                                                      |
+| `searchAriaLabel`   | `string`   | no       | —       | Accessible label for the search input. Defaults to 'Search'.                                                                                                                                                                |
+| `searchPlaceholder` | `string`   | no       | —       | Placeholder text shown in the leading search field.                                                                                                                                                                         |
+| `searchQuery`       | `string`   | no       | —       | Current text search query. When provided, the search field is controlled.                                                                                                                                                   |
+| `searchVisible`     | `boolean`  | no       | —       | Whether to render the leading search field. Defaults to `true`.                                                                                                                                                             |
+| `appliedFilters`    | `(opaque)` | no       | —       | Applied filters displayed as removable chips below the controls row. Controlled by the consumer; each entry is a key/value/label triple. Not expressible in JSON Schema; see the component types for the signature.         |
+| `facets`            | `(opaque)` | no       | —       | Facet definitions rendered as filter controls after the search field. Each entry is either a select-type facet or a custom snippet-driven facet. Not expressible in JSON Schema; see the component types for the signature. |
+| `onClearAll`        | `(opaque)` | no       | —       | Fires when the clear-all button is clicked. Not expressible in JSON Schema; see the component types for the signature.                                                                                                      |
+| `onFacetChange`     | `(opaque)` | no       | —       | Fires when a facet value changes, with the facet key and new value. Not expressible in JSON Schema; see the component types for the signature.                                                                              |
+| `onFilterRemove`    | `(opaque)` | no       | —       | Fires when a specific applied filter chip is removed. Not expressible in JSON Schema; see the component types for the signature.                                                                                            |
+| `onSearchChange`    | `(opaque)` | no       | —       | Fires when the search query changes. Not expressible in JSON Schema; see the component types for the signature.                                                                                                             |
+
+<!-- generated:props:end -->
+
+## CSS Variables
+
+<!-- generated:variables:start -->
+
+This component does not declare any local CSS variables.
+
+<!-- generated:variables:end -->
+
+## Subcomponents
+
+<!-- generated:subcomponents:start -->
+
+<!-- generated:subcomponents:end -->
+
+## FacetDefinition
+
+```ts
+// Select facet — fixed options list
+type SelectFacet = {
+  type: 'select';
+  key: string;
+  label: string;
+  placeholder?: string;
+  options: { value: string; label: string; disabled?: boolean }[];
+  disabled?: boolean;
+};
+
+// Custom facet — consumer-supplied snippet
+type CustomFacet = {
+  type: 'custom';
+  key: string;
+  label: string;
+  control: Snippet<[{ value: string; onValueChange: (value: string) => void }]>;
+};
+```
+
+## AppliedFilter
+
+```ts
+type AppliedFilter = {
+  key: string; // matches a FacetDefinition key
+  value: string; // the selected value
+  label: string; // human-readable label shown in the chip
+};
+```
+
+## Accessibility
+
+`FilterBar` uses `role="search"` on the root element to expose the filtering surface as a landmark. Consumers should provide a meaningful `aria-label` prop (e.g. `"Workflow filters"`) so screen reader users can navigate to it by landmark.
+
+Each select facet receives an `aria-label` attribute equal to its `label` prop, and an associated visually-hidden `label` element is rendered via the `cinder-sr-only` class for redundancy.
+
+Applied-filter chip remove buttons are labeled `"Remove filter: {label}: {value}"` so screen reader users know exactly which filter they are removing.
+
+A `role="status"` live region (polite) always stays in the DOM and announces the active filter count and each applied value whenever the `appliedFilters` prop changes. The region is never conditionally rendered with `{#if}` — this ensures assistive technologies register it before any content is injected.
+
+See `filter-bar.a11y.md` for the full keyboard and pointer interaction model.

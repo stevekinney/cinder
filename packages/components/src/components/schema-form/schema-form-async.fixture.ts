@@ -57,7 +57,7 @@ describe('SchemaForm async JSON Schema validation fixture', () => {
           required: ['name'],
         },
         value: { name: 'Ada' },
-        onsubmit: (value: unknown) => {
+        onSubmit: (value: unknown) => {
           submitted.push(value);
         },
       },

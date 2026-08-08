@@ -60,7 +60,7 @@
 
 <InvocationRuleBuilder
   {rules}
-  onchange={handleChange}
+  onValueChange={handleChange}
   {fieldOptions}
   {operatorOptions}
   {actionOptions}

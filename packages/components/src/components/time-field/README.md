@@ -38,7 +38,7 @@ Standalone time-of-day input with optional timezone selection.
 | `timezoneName`     | `string`                                   | no       | —       |                                                                                                                                    |
 | `timezones`        | `string`[]                                 | no       | —       |                                                                                                                                    |
 | `value`            | `string`                                   | no       | —       |                                                                                                                                    |
-| `onchange`         | `(opaque)`                                 | no       | —       | Called when the user commits a time or timezone change. Not expressible in JSON Schema; see the component types for the signature. |
+| `onValueChange`    | `(opaque)`                                 | no       | —       | Called when the user commits a time or timezone change. Not expressible in JSON Schema; see the component types for the signature. |
 
 <!-- generated:props:end -->
 

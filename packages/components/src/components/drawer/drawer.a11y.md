@@ -6,15 +6,15 @@ See also: [`_internal/OVERLAY-POLICY.md`](../_internal/OVERLAY-POLICY.md)
 
 The `<dialog>` element carries an implicit `role="dialog"`. Drawer sets `aria-modal="true"` explicitly because some screen readers do not infer modality from `showModal()` alone.
 
-`aria-labelledby` is always set on the dialog. Which element it points to depends on the `header` and `ariaLabelledBy` props:
+`aria-labelledby` is always set on the dialog. Which element it points to depends on the `header` and `ariaLabelledby` props:
 
 | Props supplied                        | `aria-labelledby` points to                                            |
 | ------------------------------------- | ---------------------------------------------------------------------- |
-| Neither `header` nor `ariaLabelledBy` | The `<h2>` rendered inside the default header                          |
+| Neither `header` nor `ariaLabelledby` | The `<h2>` rendered inside the default header                          |
 | `header` only                         | A visually-hidden `<h2 class="cinder-sr-only">` rendered by the drawer |
-| `header` + `ariaLabelledBy="some-id"` | The consumer-supplied id                                               |
+| `header` + `ariaLabelledby="some-id"` | The consumer-supplied id                                               |
 
-**Consumer guideline**: If your custom `header` snippet renders its own visible heading, pass `ariaLabelledBy` pointing to that heading's `id`. This ensures the accessible name matches what sighted users see and prevents a hidden duplicate being announced.
+**Consumer guideline**: If your custom `header` snippet renders its own visible heading, pass `ariaLabelledby` pointing to that heading's `id`. This ensures the accessible name matches what sighted users see and prevents a hidden duplicate being announced.
 
 ## Keyboard interactions
 
@@ -43,6 +43,18 @@ Scroll lock is released on every close path, including component unmount while o
 ## Backdrop click
 
 The `<dialog>` element fills the viewport (not the panel itself), so any pointer event outside the visible panel reliably lands on the dialog element. Drawer checks `event.target === dialogElement` and closes when true.
+
+## Touch targets
+
+The close button and the drag handle both meet the WCAG 2.5.5 minimum 44×44 CSS pixel target size at every breakpoint. The close button is sized 2.75rem × 2.75rem; the drag handle container has `min-height` at the 44px touch-target token and spans the full panel width, even though the visible pill inside it is smaller for visual restraint.
+
+## Drag handle (bottom placement)
+
+When `dragHandleVisible={true}` and `placement="bottom"`, a decorative drag handle renders above the header. The handle is marked `aria-hidden="true"` because it carries no semantic information beyond its visual affordance — the same close paths (close button, backdrop, ESC) remain the keyboard-accessible ways to dismiss the drawer.
+
+The prop is named `dragHandleVisible` (not `draggable`) to avoid colliding with the native HTML `draggable` attribute on the underlying `<dialog>`.
+
+Swipe-to-close gesture support is a stretch goal not implemented in the MVP. The `dragHandleVisible` prop currently only controls visibility of the handle, and the cursor is intentionally `default` rather than `grab` so pointer users are not given a false affordance. When swipe support lands, both will change in lockstep.
 
 ## Reduced motion
 

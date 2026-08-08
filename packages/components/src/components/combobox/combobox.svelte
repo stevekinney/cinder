@@ -30,7 +30,7 @@
   let {
     id,
     value = $bindable(''),
-    onchange,
+    onValueChange,
     name,
     textInputValue = $bindable(''),
     options,
@@ -159,7 +159,7 @@
   // Escape consumer for the entire open session, including the empty-filter gap
   // (`open && filteredOptions.length === 0`) where the Popover is unmounted.
   //
-  // That matters most when the combobox is nested inside a Modal/Sheet: the
+  // That matters most when the combobox is nested inside a Modal/Drawer: the
   // shared escape stack's window listener is capture-phase and invokes ONLY its
   // top handler, so this combobox consumes Escape and `preventDefault()`s it
   // before the parent overlay ever sees the key — Escape dismisses just the
@@ -342,7 +342,7 @@
     textInputValue = option.label;
     committedLabel = option.label;
     open = false;
-    onchange?.(option.value);
+    onValueChange?.(option.value);
   }
 
   function commitCustomValue(): void {
@@ -368,7 +368,7 @@
     textInputValue = committedText;
     committedLabel = committedText;
     open = false;
-    if (committedValue !== previousValue) onchange?.(committedValue as T);
+    if (committedValue !== previousValue) onValueChange?.(committedValue as T);
   }
 
   function resetToInitialValue(event: Event): void {

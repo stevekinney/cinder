@@ -1,4 +1,13 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+/* Compound composition aggregation: the log arm renders StatusDot internally,
+ * so `cinder/feed/styles` must include its styling when consumers import the
+ * component-specific style sidecar. Likewise the Feed.Boundary leaf — its
+ * rules live in its own sidecar for standalone use, and the family sidecar
+ * pulls them in. */
+@import '../status-dot/status-dot.css';
+@import '../feed-boundary/feed-boundary.css';
+@import '../feed-event/feed-event.css';
+
 @layer cinder.components {
   /* ========================================
  * FEED
@@ -13,76 +22,167 @@
     gap: var(--cinder-space-4);
   }
 
-  .cinder-feed-event {
-    --cinder-feed-rail-size: var(--cinder-space-6);
+  /* ----------------------------------------
+   * Log arm — operator-facing append-only stream chrome around the same
+   * .cinder-feed list. (Ported from the retired EventStreamViewer.)
+   * -------------------------------------- */
 
-    position: relative;
-    display: grid;
-    grid-template-columns: auto 1fr;
-    column-gap: var(--cinder-space-3);
-    align-items: start;
+  .cinder-feed-log {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-lg);
+    background: var(--cinder-surface-raised);
+    overflow: hidden;
+    font-size: var(--cinder-text-sm);
   }
 
-  .cinder-feed-event-rail {
-    position: relative;
+  .cinder-feed-log .cinder-feed {
+    padding: var(--cinder-space-3);
+  }
+
+  .cinder-feed-log__toolbar {
     display: flex;
     align-items: center;
-    justify-content: center;
-    inline-size: var(--cinder-feed-rail-size);
-    block-size: var(--cinder-feed-rail-size);
-    border-radius: var(--cinder-radius-full);
+    justify-content: space-between;
+    gap: var(--cinder-space-2);
+    padding: var(--cinder-space-2) var(--cinder-space-3);
+    border-block-end: 1px solid var(--cinder-border-muted);
     background: var(--cinder-surface-inset);
-    color: var(--cinder-text-muted);
     flex-shrink: 0;
   }
 
-  /* Minimal variant keeps the SAME rail box dimensions as the icon variant so
- * the connector's inline anchor is constant across mixed-variant feeds. Only
- * the inner visual marker shrinks — the dot is centered inside the same rail
- * box via the flex centering already on .cinder-feed-event-rail. */
-  .cinder-feed-event[data-cinder-variant='minimal'] .cinder-feed-event-rail {
-    background: transparent;
+  .cinder-feed-log__toolbar-start,
+  .cinder-feed-log__toolbar-end {
+    display: flex;
+    align-items: center;
+    gap: var(--cinder-space-2);
   }
 
-  .cinder-feed-event-dot {
-    inline-size: var(--cinder-space-2);
-    block-size: var(--cinder-space-2);
-    border-radius: var(--cinder-radius-full);
-    background: var(--cinder-border-strong);
-  }
-
-  /* Connector line — pseudo-element on the <li> itself, anchored at the rail's
- * horizontal center. The line spans from the bottom of the rail all the way
- * through the row body plus the gap, landing at the next rail's top edge.
- *
- * inset-block-start must match .cinder-feed-event-rail's block-size so the
- * line starts exactly at the rail bottom regardless of body height.
- * inset-block-end extends into the row gap to reach the next rail's top. */
-  .cinder-feed-event::after {
-    content: '';
-    position: absolute;
-    inset-block-start: var(--cinder-feed-rail-size);
-    inset-block-end: calc(-1 * var(--cinder-space-4));
-    inset-inline-start: calc(var(--cinder-feed-rail-size) / 2);
-    inline-size: 1px;
-    background: var(--cinder-border-muted);
-    transform: translateX(-50%);
-    pointer-events: none;
-  }
-
-  .cinder-feed-event:last-child::after {
-    content: none;
-  }
-
-  .cinder-feed-event-body {
+  /* Hosts the viewport plus the overlaid resume control. Overlaying (rather
+   * than mounting a toolbar row) means pausing never shifts the content the
+   * user just scrolled to. */
+  .cinder-feed-log__scroll-region {
+    position: relative;
     display: flex;
     flex-direction: column;
-    gap: var(--cinder-space-1);
-    min-inline-size: 0;
+    flex: 1 1 auto;
+    min-block-size: 0;
   }
 
-  .cinder-feed-event-time {
-    font-size: var(--cinder-text-sm);
-    color: var(--cinder-text-muted);
+  .cinder-feed-log__resume-button {
+    position: absolute;
+    inset-block-end: var(--cinder-space-2);
+    inset-inline-start: 50%;
+    translate: -50% 0;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cinder-space-1);
+    padding: var(--cinder-space-0-5) var(--cinder-space-2);
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-full);
+    background: var(--cinder-surface);
+    color: var(--cinder-text);
+    font-size: var(--cinder-text-xs);
+    font-family: inherit;
+    box-shadow: var(--cinder-shadow-md);
+    cursor: pointer;
+    transition: background-color var(--cinder-duration-fast) var(--cinder-ease-standard);
+  }
+
+  @media (hover: hover) {
+    .cinder-feed-log__resume-button:hover {
+      background: var(--cinder-surface-hover);
+    }
+  }
+
+  /* The root .cinder-feed-log has `overflow: hidden`; an outset ring is
+   * clipped. Use Strategy B-inset so the ring stays within the button's own
+   * border box. Matches the pattern used by .cinder-drawer__close (drawer.css). */
+  .cinder-feed-log__resume-button:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: inset 0 0 0 var(--cinder-ring-width) var(--cinder-ring-color);
+  }
+
+  @media (forced-colors: active) {
+    .cinder-feed-log__resume-button:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: calc(var(--cinder-ring-width) * -1);
+      box-shadow: none;
+    }
+  }
+
+  .cinder-feed-log__truncation-notice {
+    padding: var(--cinder-space-1) var(--cinder-space-3);
+    background: var(--cinder-surface-inset);
+    color: var(--cinder-color-warning-fg);
+    font-size: var(--cinder-text-xs);
+    border-block-end: 1px solid var(--cinder-border-muted);
+    flex-shrink: 0;
+  }
+
+  .cinder-feed-log__viewport {
+    overflow-y: auto;
+    flex: 1 1 auto;
+    min-block-size: 0;
+    /* Default height — consumer overrides with inline style or class. */
+    max-block-size: 32rem;
+    outline: none;
+  }
+
+  /* Inset ring (Strategy B-inset — the root clips overflow), with the
+   forced-colors outline twin the retired EventStreamViewer carried:
+   Windows High Contrast suppresses box-shadow, and the layer order means
+   the base rule's `outline: none` would otherwise leave this keyboard-
+   focusable role="log" viewport with no indication at all. */
+  .cinder-feed-log__viewport:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: inset 0 0 0 var(--cinder-ring-width) var(--cinder-ring-color);
+  }
+
+  @media (forced-colors: active) {
+    .cinder-feed-log__viewport:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: calc(var(--cinder-ring-width) * -1);
+      box-shadow: none;
+    }
+  }
+
+  .cinder-feed-log__loading {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-2);
+    padding: var(--cinder-space-3);
+  }
+
+  .cinder-feed-log__skeleton {
+    block-size: 1.25rem;
+    border-radius: var(--cinder-radius-sm);
+    background: var(--cinder-surface-inset);
+    animation: cinder-feed-log-skeleton-pulse 1.4s ease-in-out infinite;
+  }
+
+  .cinder-feed-log__skeleton:nth-child(2) {
+    inline-size: 80%;
+  }
+
+  .cinder-feed-log__skeleton:nth-child(3) {
+    inline-size: 60%;
+  }
+
+  @keyframes cinder-feed-log-skeleton-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.4;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cinder-feed-log__skeleton {
+      animation: none;
+    }
   }
 }

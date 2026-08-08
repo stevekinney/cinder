@@ -41,7 +41,6 @@ const declaredLayerTokens = new Set([
   '--cinder-z-focused-affordance',
   '--cinder-z-modal',
   '--cinder-z-popover',
-  '--cinder-z-sheet',
   '--cinder-z-toast',
   '--cinder-z-tooltip',
 ]);

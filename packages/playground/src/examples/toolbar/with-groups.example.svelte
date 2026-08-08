@@ -13,7 +13,13 @@
 
 <Toolbar aria-label="Preview controls">
   <Toolbar.Group>
-    <SegmentedControl id="scale" label="Scale" hideLabel value="100" onchange={() => {}}>
+    <SegmentedControl
+      id="scale"
+      label="Scale"
+      labelVisible={false}
+      value="100"
+      onValueChange={() => {}}
+    >
       <Segment value="75">75%</Segment>
       <Segment value="100">100%</Segment>
       <Segment value="125">125%</Segment>

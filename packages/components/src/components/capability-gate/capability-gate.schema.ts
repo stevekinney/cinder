@@ -24,22 +24,6 @@ const schema = {
       description: 'Presentation variant.',
       default: 'inline',
     },
-    primaryAction: {
-      type: 'string',
-      description: 'Label for the primary action button.',
-    },
-    fallbackAction: {
-      type: 'string',
-      description: 'Label for the fallback action.',
-    },
-    fallbackHref: {
-      type: 'string',
-      description: 'Href for a fallback link.',
-    },
-    dismissAction: {
-      type: 'string',
-      description: 'Label for the dismiss action.',
-    },
     class: {
       type: 'string',
       description: 'Additional class names merged with `.cinder-capability-gate`.',
@@ -50,6 +34,11 @@ const schema = {
   metadata: {
     unsupportedProps: [
       {
+        name: 'actions',
+        reason: 'function-or-snippet',
+        description: "Action row content; receives the gate's own `dismiss` function.",
+      },
+      {
         name: 'children',
         reason: 'function-or-snippet',
         description: 'Custom content rendered below the status text and before the actions.',
@@ -58,16 +47,6 @@ const schema = {
         name: 'onDismiss',
         reason: 'function-or-snippet',
         description: 'Called when the gate is dismissed.',
-      },
-      {
-        name: 'onFallbackAction',
-        reason: 'function-or-snippet',
-        description: 'Called when the fallback action button is activated.',
-      },
-      {
-        name: 'onPrimaryAction',
-        reason: 'function-or-snippet',
-        description: 'Called when the primary action button is activated.',
       },
     ],
   },

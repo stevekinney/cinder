@@ -94,7 +94,7 @@ export function toMountProps(
     // Two reasons. The preview must render the code it tells you to copy: with a
     // seeded `''` passed here but omitted there, `<DropdownGroup />` was the
     // published snippet while the live mount was really
-    // `<DropdownGroup label="" labelledBy="" />`. And a component that validates
+    // `<DropdownGroup label="" ariaLabelledby="" />`. And a component that validates
     // its own inputs is entitled to reject `''` — DropdownGroup throws
     // "requires a non-empty label value", so the seed did not just differ from
     // the snippet, it painted an error callout over a component that works.

@@ -38,11 +38,11 @@ const schema = {
   metadata: {
     unsupportedProps: [
       {
-        name: 'onchange',
+        name: 'onRevert',
         reason: 'function-or-snippet',
       },
       {
-        name: 'onRevert',
+        name: 'onSchemaChange',
         reason: 'function-or-snippet',
       },
       {

@@ -167,16 +167,16 @@ describe('SearchField clear button', () => {
     expect(clear?.getAttribute('tabindex')).toBe('0');
   });
 
-  test('clear click fires onClear and sets value to empty string via oninput', async () => {
-    const oninput = mock((_value: string) => {});
+  test('clear click fires onClear and sets value to empty string via onValueChange', async () => {
+    const onValueChange = mock((_value: string) => {});
     const onClear = mock(() => {});
     const { container } = render(SearchField, {
-      props: { id: 'search', value: 'hello', oninput, onClear },
+      props: { id: 'search', value: 'hello', onValueChange, onClear },
     });
     const clear = container.querySelector('.cinder-search-field__clear') as HTMLButtonElement;
     await fireEvent.click(clear);
     expect(onClear).toHaveBeenCalledTimes(1);
-    expect(oninput).toHaveBeenCalledWith('');
+    expect(onValueChange).toHaveBeenCalledWith('');
   });
 
   test('clear returns focus to the input', async () => {
@@ -226,28 +226,28 @@ describe('SearchField shortcut hint', () => {
 });
 
 describe('SearchField input callbacks', () => {
-  test('oninput fires on every keystroke with the current value', async () => {
-    const oninput = mock((_value: string) => {});
+  test('onValueChange fires on every keystroke with the current value', async () => {
+    const onValueChange = mock((_value: string) => {});
     const { container } = render(SearchField, {
-      props: { id: 'search', oninput },
+      props: { id: 'search', onValueChange },
     });
     const input = container.querySelector('#search') as HTMLInputElement;
     await fireEvent.input(input, { target: { value: 'a' } });
     await fireEvent.input(input, { target: { value: 'ab' } });
-    expect(oninput).toHaveBeenCalledTimes(2);
-    expect(oninput).toHaveBeenNthCalledWith(1, 'a');
-    expect(oninput).toHaveBeenNthCalledWith(2, 'ab');
+    expect(onValueChange).toHaveBeenCalledTimes(2);
+    expect(onValueChange).toHaveBeenNthCalledWith(1, 'a');
+    expect(onValueChange).toHaveBeenNthCalledWith(2, 'ab');
   });
 
-  test('onsearch fires once on the native search event (Enter dispatches it in real browsers)', async () => {
-    const onsearch = mock((_value: string) => {});
+  test('onSearch fires once on the native search event (Enter dispatches it in real browsers)', async () => {
+    const onSearch = mock((_value: string) => {});
     const { container } = render(SearchField, {
-      props: { id: 'search', value: 'query', onsearch },
+      props: { id: 'search', value: 'query', onSearch },
     });
     const input = container.querySelector('#search') as HTMLInputElement;
     await fireEvent(input, new Event('search', { bubbles: true }));
-    expect(onsearch).toHaveBeenCalledTimes(1);
-    expect(onsearch).toHaveBeenCalledWith('query');
+    expect(onSearch).toHaveBeenCalledTimes(1);
+    expect(onSearch).toHaveBeenCalledWith('query');
   });
 
   test('consumer onkeydown handler is composed, not dropped', async () => {
@@ -262,7 +262,7 @@ describe('SearchField input callbacks', () => {
 
   test('disabled: input has the disabled attribute (browsers suppress events natively)', () => {
     const { container } = render(SearchField, {
-      props: { id: 'search', disabled: true, oninput: () => {} },
+      props: { id: 'search', disabled: true, onValueChange: () => {} },
     });
     const input = container.querySelector('#search') as HTMLInputElement;
     expect(input.disabled).toBe(true);
@@ -280,7 +280,7 @@ describe('SearchField input callbacks', () => {
 
   test('bindable clear mutates the input DOM value', async () => {
     const { container } = render(SearchField, {
-      props: { id: 'search', value: 'hello', oninput: () => {} },
+      props: { id: 'search', value: 'hello', onValueChange: () => {} },
     });
     const input = container.querySelector('#search') as HTMLInputElement;
     const clear = container.querySelector('.cinder-search-field__clear') as HTMLButtonElement;

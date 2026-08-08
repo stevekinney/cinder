@@ -323,7 +323,7 @@ describe('Tree — virtualized data path', () => {
     expect(expandedIds).toEqual([]);
   });
 
-  test('disableTypeahead prevents virtualized typeahead focus movement', async () => {
+  test('typeaheadDisabled prevents virtualized typeahead focus movement', async () => {
     const { container } = render(Tree, {
       props: {
         'aria-label': 'Virtual files',
@@ -332,7 +332,7 @@ describe('Tree — virtualized data path', () => {
           { id: 'alpha', label: 'Alpha' },
           { id: 'beta', label: 'Beta' },
         ],
-        disableTypeahead: true,
+        typeaheadDisabled: true,
         virtualizationEstimatedRowHeight: 20,
         virtualizationHeight: 100,
       },

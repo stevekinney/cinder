@@ -4,8 +4,12 @@ export type FormFieldProps = {
   id: string;
   /** Visible label text. Omit only when the child control supplies its own accessible name, such as via aria-label or aria-labelledby. */
   label?: string | undefined;
-  /** Visually hide the label while keeping it associated with the control. */
-  hideLabel?: boolean | undefined;
+  /**
+   * Whether the label is visibly rendered. Set `false` to visually hide it
+   * while keeping it associated with the control.
+   * @default true
+   */
+  labelVisible?: boolean | undefined;
   /** Helper text rendered below the control; wired into `aria-describedby`. */
   description?: string | undefined;
   /** Validation error; sets `aria-invalid="true"` on opted-in controls via context. */

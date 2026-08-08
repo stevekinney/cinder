@@ -9,7 +9,7 @@
    * @useWhen Building non-native overlays or popovers that need contained keyboard focus.
    * @useWhen Reusing the same focus-management behavior across custom floating surfaces.
    * @avoidWhen The surface already uses native dialog focus trapping.
-   * @related modal, drawer, sheet, popover
+   * @related modal, drawer, popover
    */
   export type { FocusTrapProps } from './focus-trap.types.ts';
 </script>

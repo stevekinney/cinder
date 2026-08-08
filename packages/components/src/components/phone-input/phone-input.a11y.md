@@ -36,7 +36,7 @@ The hidden `<input type="hidden">` only carries a value when the typed phone num
 
 ## Country Allow-List
 
-`countries` accepts an optional allow-list of ISO 3166-1 alpha-2 country codes. When supplied, only those countries appear in the dropdown and external `value`s pointing to a country outside the list are flagged with `reason: 'country-not-allowed'` on the `onchange` detail. The visible national-number text is preserved in that state so the user can correct it rather than silently lose their input.
+`countries` accepts an optional allow-list of ISO 3166-1 alpha-2 country codes. When supplied, only those countries appear in the dropdown and external `value`s pointing to a country outside the list are flagged with `reason: 'country-not-allowed'` on the `onValueChange` detail. The visible national-number text is preserved in that state so the user can correct it rather than silently lose their input.
 
 ## Color Contrast
 

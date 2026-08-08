@@ -5,8 +5,18 @@ import type { HTMLAttributes } from 'svelte/elements';
 export type ShareCardAction = {
   /** Unique key for this action. */
   key: string;
-  /** Visible label for the action button. */
+  /**
+   * Label for the action button. Always the accessible name; also the
+   * visible text unless `labelSnippet` is provided.
+   */
   label: string;
+  /**
+   * Optional rich visible content rendered in place of the `label` text.
+   * The `label` string remains the accessible name. Rendered INSIDE the
+   * action `<button>` — emit phrasing content only (text, inline formatting,
+   * icons), never block or interactive elements.
+   */
+  labelSnippet?: Snippet;
   /** Text to copy when this action is triggered (used for copy-link/copy-text). */
   copyValue?: string;
   /** Called when this action button is clicked. */

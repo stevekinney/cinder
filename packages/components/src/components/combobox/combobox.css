@@ -85,12 +85,10 @@
     overflow-y: auto;
   }
 
+  /* Geometry, padding, active fill, keyboard cursor ring, and disabled state
+   come from the shared `cinder-_option-row` primitive on the markup — only
+   the component-specific typography and pointer affordance live here. */
   .cinder-combobox__option {
-    display: flex;
-    align-items: center;
-    gap: var(--cinder-space-2);
-    padding: var(--cinder-space-1-5) var(--cinder-space-3);
-    border-radius: var(--cinder-radius-sm);
     cursor: pointer;
     font-size: var(--cinder-text-sm);
     color: var(--cinder-text);
@@ -120,18 +118,9 @@
     line-height: var(--cinder-leading-snug);
   }
 
-  .cinder-combobox__option[data-cinder-active] {
-    background: var(--cinder-surface-raised-hover);
-  }
-
   .cinder-combobox__option[aria-selected='true'] {
     font-weight: var(--cinder-font-medium);
     color: var(--cinder-accent-text);
-  }
-
-  .cinder-combobox__option[aria-disabled='true'] {
-    color: var(--cinder-text-disabled);
-    cursor: not-allowed;
   }
 
   .cinder-combobox__empty-panel {

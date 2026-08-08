@@ -22,7 +22,7 @@
   let {
     id,
     label,
-    hideLabel = false,
+    labelVisible = true,
     description,
     error,
     required = false,
@@ -35,7 +35,7 @@
 <FormFieldFrame
   {id}
   {label}
-  {hideLabel}
+  {labelVisible}
   {description}
   {error}
   {required}

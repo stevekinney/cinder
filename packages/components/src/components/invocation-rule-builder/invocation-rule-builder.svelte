@@ -60,7 +60,7 @@
   let {
     rules = [],
     conditions = [],
-    onchange,
+    onValueChange,
     fieldOptions,
     operatorOptions,
     actionOptions,
@@ -80,7 +80,7 @@
   const sectionAriaLabel = $derived(
     ariaLabelledby ? undefined : (ariaLabel ?? label ?? 'Invocation rules'),
   );
-  const effectiveReadonly = $derived(readonly || onchange === undefined);
+  const effectiveReadonly = $derived(readonly || onValueChange === undefined);
   const conditionsOnly = $derived(mode === 'conditions' || mode === 'flat-conditions');
   const flatConditions = $derived(mode === 'flat-conditions');
   const renderedRules = $derived(
@@ -196,7 +196,7 @@
   }
 
   /**
-   * Emits `onchange`. In conditions-only mode, normalizes every emitted rule
+   * Emits `onValueChange`. In conditions-only mode, normalizes every emitted rule
    * first so it's internally consistent regardless of what the incoming
    * `rules` prop originally carried (e.g. a consumer switching existing
    * full-mode rules into conditions-only mode):
@@ -239,7 +239,7 @@
         return;
       }
       const { ruleId: _ruleId, ...conditionChange } = change;
-      const conditionChangeHandler = onchange as
+      const conditionChangeHandler = onValueChange as
         | ((
             nextConditions: InvocationRuleCondition[],
             conditionChange: InvocationRuleConditionChange,
@@ -248,7 +248,7 @@
       conditionChangeHandler?.(rulesToEmit[0]?.conditions ?? [], conditionChange);
       return;
     }
-    const ruleChangeHandler = onchange as
+    const ruleChangeHandler = onValueChange as
       | ((nextRules: InvocationRule[], ruleChange: InvocationRuleChange) => void)
       | undefined;
     ruleChangeHandler?.(rulesToEmit, change);
@@ -641,7 +641,7 @@
                     options={fieldOptions}
                     customValueAllowed
                     aria-label={`Field for condition ${conditionIndex + 1} of ${rule.label}`}
-                    onchange={(value) =>
+                    onValueChange={(value) =>
                       handleUpdateCondition(rule.id, condition.id, 'field', value)}
                     class="cinder-invocation-rule-builder__condition-combobox"
                   />

@@ -31,8 +31,12 @@ export type RatingProps = {
   precision?: RatingPrecision;
   /** Visible group label rendered above the rating. */
   label?: string;
-  /** Visually hide the rendered `label` while keeping it programmatically associated. */
-  hideLabel?: boolean;
+  /**
+   * Whether the `label` is visibly rendered. Set `false` to visually hide it
+   * while keeping it programmatically associated.
+   * @default true
+   */
+  labelVisible?: boolean;
   /** Group accessible name when no visible `label` is supplied. */
   'aria-label'?: string;
   /** Space-separated list of ids that label the group when no `label` is supplied. */
@@ -55,5 +59,5 @@ export type RatingProps = {
    * Fires only for user-initiated committed value changes (click, arrow keys,
    * Space/Enter). Never fires for hover preview or external prop synchronization.
    */
-  onchange?: (value: number) => void;
+  onValueChange?: (value: number) => void;
 };

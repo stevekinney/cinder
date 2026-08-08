@@ -154,17 +154,17 @@ describe('FileUpload rendering', () => {
 });
 
 describe('FileUpload validation and events', () => {
-  test('change fires onchange with accepted files', async () => {
-    const onchange = mock((_files: File[]) => {});
+  test('change fires onFilesChange with accepted files', async () => {
+    const onFilesChange = mock((_files: File[]) => {});
     const file = createFile('resume.pdf', 'application/pdf', 512_000);
     const { container } = render(FileUpload, {
-      props: { id: 'resume-upload', onchange },
+      props: { id: 'resume-upload', onFilesChange },
     });
     const input = container.querySelector('#resume-upload') as HTMLInputElement;
     attachInputFiles(input, [file]);
     await fireEvent.change(input);
-    expect(onchange).toHaveBeenCalledTimes(1);
-    expect(onchange.mock.calls[0]?.[0]).toEqual([file]);
+    expect(onFilesChange).toHaveBeenCalledTimes(1);
+    expect(onFilesChange.mock.calls[0]?.[0]).toEqual([file]);
   });
 
   test('maxSize rejection reports reason and message', async () => {
@@ -193,30 +193,30 @@ describe('FileUpload validation and events', () => {
   });
 
   test('accept wildcard allows related image types', async () => {
-    const onchange = mock((_files: File[]) => {});
+    const onFilesChange = mock((_files: File[]) => {});
     const file = createFile('photo.jpg', 'image/jpeg', 2300);
     const { container } = render(FileUpload, {
-      props: { id: 'upload', accept: 'image/*', onchange },
+      props: { id: 'upload', accept: 'image/*', onFilesChange },
     });
     const dropzone = container.querySelector('.cinder-file-upload__dropzone') as HTMLDivElement;
     await fireEvent(dropzone, createDropEvent('drop', [file]));
-    expect(onchange).toHaveBeenCalledTimes(1);
-    expect(onchange.mock.calls[0]?.[0]).toEqual([file]);
+    expect(onFilesChange).toHaveBeenCalledTimes(1);
+    expect(onFilesChange.mock.calls[0]?.[0]).toEqual([file]);
   });
 
   test('accept extension match works when MIME type is empty', async () => {
-    const onchange = mock((_files: File[]) => {});
+    const onFilesChange = mock((_files: File[]) => {});
     const file = createFile('contract.pdf', '', 2048);
     const { container } = render(FileUpload, {
-      props: { id: 'upload', accept: '.pdf,.docx', onchange },
+      props: { id: 'upload', accept: '.pdf,.docx', onFilesChange },
     });
     const dropzone = container.querySelector('.cinder-file-upload__dropzone') as HTMLDivElement;
     await fireEvent(dropzone, createDropEvent('drop', [file]));
-    expect(onchange).toHaveBeenCalledTimes(1);
+    expect(onFilesChange).toHaveBeenCalledTimes(1);
   });
 
   test('multiple false accepts one file and rejects the extras', async () => {
-    const onchange = mock((_files: File[]) => {});
+    const onFilesChange = mock((_files: File[]) => {});
     const onReject = mock((_files) => {});
     const files = [
       createFile('one.txt', 'text/plain', 100),
@@ -224,11 +224,11 @@ describe('FileUpload validation and events', () => {
       createFile('three.txt', 'text/plain', 100),
     ];
     const { container } = render(FileUpload, {
-      props: { id: 'upload', onchange, onReject },
+      props: { id: 'upload', onFilesChange, onReject },
     });
     const dropzone = container.querySelector('.cinder-file-upload__dropzone') as HTMLDivElement;
     await fireEvent(dropzone, createDropEvent('drop', files));
-    expect(onchange.mock.calls[0]?.[0]).toEqual([files[0]!]);
+    expect(onFilesChange.mock.calls[0]?.[0]).toEqual([files[0]!]);
     expect(onReject.mock.calls[0]?.[0]).toHaveLength(2);
     expect(onReject.mock.calls[0]?.[0]?.[0]?.reason).toBe('too-many');
   });
@@ -272,16 +272,16 @@ describe('FileUpload drag state and accessibility', () => {
   });
 
   test('disabled ignores drops', async () => {
-    const onchange = mock((_files: File[]) => {});
+    const onFilesChange = mock((_files: File[]) => {});
     const onReject = mock((_files) => {});
     const file = createFile('resume.pdf', 'application/pdf', 1200);
     const { container } = render(FileUpload, {
-      props: { id: 'upload', disabled: true, onchange, onReject },
+      props: { id: 'upload', disabled: true, onFilesChange, onReject },
     });
     const dropzone = container.querySelector('.cinder-file-upload__dropzone') as HTMLDivElement;
     const event = createDropEvent('drop', [file]);
     await fireEvent(dropzone, event);
-    expect(onchange).not.toHaveBeenCalled();
+    expect(onFilesChange).not.toHaveBeenCalled();
     expect(onReject).not.toHaveBeenCalled();
     expect(event.defaultPrevented).toBe(true);
   });
@@ -289,7 +289,7 @@ describe('FileUpload drag state and accessibility', () => {
   test('non-file drops do not clear existing rendered entries', async () => {
     const file = createFile('resume.pdf', 'application/pdf', 1200);
     const { container } = render(FileUpload, {
-      props: { id: 'upload', onchange: mock((_files: File[]) => {}) },
+      props: { id: 'upload', onFilesChange: mock((_files: File[]) => {}) },
     });
     const dropzone = container.querySelector('.cinder-file-upload__dropzone') as HTMLDivElement;
     await fireEvent(dropzone, createDropEvent('drop', [file]));

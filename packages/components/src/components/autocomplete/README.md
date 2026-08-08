@@ -51,7 +51,7 @@ Free-form text input with suggestion hints.
 | `required`              | `boolean`  | no       | —       | Marks the input as required for form validation, matching the native `required` attribute.                                 |
 | `value`                 | `string`   | no       | —       | Bindable current text value of the input.                                                                                  |
 | `onComplete`            | `(opaque)` | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
-| `oninput`               | `(opaque)` | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
+| `onValueChange`         | `(opaque)` | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
 | `suggestionSource`      | `(opaque)` | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
 
 <!-- generated:props:end -->

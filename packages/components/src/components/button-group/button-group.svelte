@@ -25,7 +25,7 @@
 
   let {
     label,
-    labelledBy,
+    ariaLabelledby,
     orientation = 'horizontal',
     class: customClassName,
     children,
@@ -37,7 +37,9 @@
     typeof label === 'string' && label.trim().length > 0 ? label : undefined,
   );
   const ariaLabelledByAttribute = $derived(
-    typeof labelledBy === 'string' && labelledBy.trim().length > 0 ? labelledBy : undefined,
+    typeof ariaLabelledby === 'string' && ariaLabelledby.trim().length > 0
+      ? ariaLabelledby
+      : undefined,
   );
 
   // Each group instance gets a unique ID so the styling-contract attribute
@@ -93,24 +95,24 @@
 
   $effect(() => {
     const hasLabel = typeof label === 'string';
-    const hasLabelledBy = typeof labelledBy === 'string';
+    const hasLabelledBy = typeof ariaLabelledby === 'string';
 
     if (!hasLabel && !hasLabelledBy) {
       devWarn(
-        "[cinder/ButtonGroup] rendered without a non-empty accessible name — pass a non-empty 'label' or 'labelledBy'.",
+        "[cinder/ButtonGroup] rendered without a non-empty accessible name — pass a non-empty 'label' or 'ariaLabelledby'.",
       );
       return;
     }
 
     if (hasLabel && label.trim().length === 0) {
       devWarn(
-        "[cinder/ButtonGroup] rendered without a non-empty accessible name — pass a non-empty 'label' or 'labelledBy'.",
+        "[cinder/ButtonGroup] rendered without a non-empty accessible name — pass a non-empty 'label' or 'ariaLabelledby'.",
       );
     }
 
-    if (hasLabelledBy && labelledBy.trim().length === 0) {
+    if (hasLabelledBy && ariaLabelledby.trim().length === 0) {
       devWarn(
-        "[cinder/ButtonGroup] rendered without a non-empty accessible name — pass a non-empty 'label' or 'labelledBy'.",
+        "[cinder/ButtonGroup] rendered without a non-empty accessible name — pass a non-empty 'label' or 'ariaLabelledby'.",
       );
     }
   });

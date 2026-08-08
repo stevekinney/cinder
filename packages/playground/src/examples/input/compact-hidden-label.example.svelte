@@ -14,7 +14,7 @@
   id="demo-token"
   bind:value={token}
   label="Demo token"
-  hideLabel
+  labelVisible={false}
   autocomplete="off"
   placeholder="Enter demo token"
 />

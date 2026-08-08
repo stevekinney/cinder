@@ -16,9 +16,10 @@ const schema = {
       type: 'boolean',
       description: 'When true, the item cannot be selected or actioned. Still keyboard-reachable.',
     },
-    draggable: {
+    reorderHandleVisible: {
       type: 'boolean',
       description: 'Render a reorder handle when the parent Tree provides onReorder.',
+      default: false,
     },
     branch: {
       type: 'boolean',

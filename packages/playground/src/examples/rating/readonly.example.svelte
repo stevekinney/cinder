@@ -15,7 +15,7 @@
     precision="half"
     readonly
     label="Average customer rating"
-    hideLabel
+    labelVisible={false}
   />
   <span style="color: var(--cinder-text-muted);">4.5 (1,238 reviews)</span>
 </div>

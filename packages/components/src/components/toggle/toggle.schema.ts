@@ -16,16 +16,17 @@ const schema = {
     label: {
       type: 'string',
       description:
-        'Visible label text. Always the accessible name, even when `hideLabel` is set. Required.',
+        'Visible label text. Always the accessible name, even when `labelVisible` is set. Required.',
     },
     disabled: {
       type: 'boolean',
       description: 'Prevents interaction when true. Sets `disabled` attribute.',
     },
-    hideLabel: {
+    labelVisible: {
       type: 'boolean',
       description:
-        'Visually hide the rendered label while keeping it as the accessible name. Use for icon-only or inline contexts.',
+        'Whether the label is visibly rendered. Set `false` for icon-only or\ninline contexts — it stays the accessible name.',
+      default: true,
     },
     name: {
       type: 'string',

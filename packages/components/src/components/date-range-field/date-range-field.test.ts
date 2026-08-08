@@ -131,14 +131,14 @@ describe('DateRangeField', () => {
         id: 'drf',
         granularity: 'minute',
         value: { start: '2026-02-30T09:30', end: '2026-06-01T99:99' },
-        onchange: (next: DateRangeValue) => changes.push(next),
+        onValueChange: (next: DateRangeValue) => changes.push(next),
       });
 
       expect(getStartInput(container).value).toBe('');
       expect(getEndInput(container).value).toBe('');
 
       // Both endpoints are malformed at mount, so the normalization effect
-      // fires onchange once with the cleared value before any user input.
+      // fires onValueChange once with the cleared value before any user input.
       expect(changes[0]).toEqual({ start: undefined, end: undefined });
 
       await fireEvent.change(getStartInput(container), {
@@ -194,7 +194,7 @@ describe('DateRangeField', () => {
       expect(legend?.textContent?.trim()).toBe('Time window');
     });
 
-    test('renders default preset buttons when hidePresets is false', () => {
+    test('renders default preset buttons when presetsVisible is false', () => {
       const { container } = render(DateRangeField, { id: 'drf' });
       const buttons = getPresetButtons(container);
       expect(buttons.length).toBeGreaterThan(0);
@@ -204,7 +204,7 @@ describe('DateRangeField', () => {
       const changes: DateRangeValue[] = [];
       const { container } = render(DateRangeField, {
         id: 'drf',
-        onchange: (next: DateRangeValue) => changes.push(next),
+        onValueChange: (next: DateRangeValue) => changes.push(next),
       });
       const lastSevenDays = getPresetButtons(container).find(
         (button) => button.textContent?.trim() === 'Last 7 days',
@@ -227,7 +227,7 @@ describe('DateRangeField', () => {
       const { container } = render(DateRangeField, {
         id: 'drf',
         granularity: 'minute',
-        onchange: (next: DateRangeValue) => changes.push(next),
+        onValueChange: (next: DateRangeValue) => changes.push(next),
       });
       const today = getPresetButtons(container).find(
         (button) => button.textContent?.trim() === 'Today',
@@ -252,7 +252,7 @@ describe('DateRangeField', () => {
         const { container } = render(DateRangeField, {
           id: 'drf',
           granularity: 'hour',
-          onchange: (next: DateRangeValue) => changes.push(next),
+          onValueChange: (next: DateRangeValue) => changes.push(next),
         });
         const today = getPresetButtons(container).find(
           (button) => button.textContent?.trim() === 'Today',
@@ -278,7 +278,7 @@ describe('DateRangeField', () => {
         const { container } = render(DateRangeField, {
           id: 'drf',
           granularity: 'hour',
-          onchange: (next: DateRangeValue) => changes.push(next),
+          onValueChange: (next: DateRangeValue) => changes.push(next),
         });
         const today = getPresetButtons(container).find(
           (button) => button.textContent?.trim() === 'Today',
@@ -312,7 +312,7 @@ describe('DateRangeField', () => {
         id: 'drf',
         granularity: 'minute',
         presets,
-        onchange: (next: DateRangeValue) => changes.push(next),
+        onValueChange: (next: DateRangeValue) => changes.push(next),
       });
       const custom = getPresetButtons(container)[0];
       if (!custom) throw new Error('Custom preset not found');
@@ -342,7 +342,7 @@ describe('DateRangeField', () => {
         id: 'drf',
         granularity: 'minute',
         presets,
-        onchange: (next: DateRangeValue) => changes.push(next),
+        onValueChange: (next: DateRangeValue) => changes.push(next),
       });
       const custom = getPresetButtons(container)[0];
       if (!custom) throw new Error('Custom preset not found');
@@ -388,7 +388,7 @@ describe('DateRangeField', () => {
       const changes: DateRangeValue[] = [];
       const { container } = render(DateRangeField, {
         id: 'drf',
-        onchange: (next: DateRangeValue) => changes.push(next),
+        onValueChange: (next: DateRangeValue) => changes.push(next),
       });
       const yesterdayToday = getPresetButtons(container).find(
         (button) => button.textContent?.trim() === 'Yesterday & today',
@@ -406,8 +406,8 @@ describe('DateRangeField', () => {
       expect(inclusiveDays).toBe(2);
     });
 
-    test('hides preset buttons when hidePresets is true', () => {
-      const { container } = render(DateRangeField, { id: 'drf', hidePresets: true });
+    test('hides preset buttons when presetsVisible is true', () => {
+      const { container } = render(DateRangeField, { id: 'drf', presetsVisible: false });
       const presets = container.querySelector('.cinder-date-range-field__presets');
       expect(presets).toBeNull();
     });
@@ -484,7 +484,7 @@ describe('DateRangeField', () => {
   });
 
   describe('behavior', () => {
-    test('preset click calls onchange with resolved dates', async () => {
+    test('preset click calls onValueChange with resolved dates', async () => {
       const changes: DateRangeValue[] = [];
       const preset = {
         id: 'last-7d',
@@ -494,7 +494,7 @@ describe('DateRangeField', () => {
       const { container } = render(DateRangeField, {
         id: 'drf',
         presets: [preset],
-        onchange: (v: DateRangeValue) => changes.push(v),
+        onValueChange: (v: DateRangeValue) => changes.push(v),
       });
 
       const btn = getPresetButtons(container)[0];
@@ -511,7 +511,7 @@ describe('DateRangeField', () => {
       const { container } = render(DateRangeField, {
         id: 'drf',
         granularity: 'minute',
-        onchange: (v: DateRangeValue) => changes.push(v),
+        onValueChange: (v: DateRangeValue) => changes.push(v),
       });
 
       await fireEvent.change(getStartInput(container), {
@@ -532,7 +532,7 @@ describe('DateRangeField', () => {
       const { container } = render(DateRangeField, {
         id: 'drf',
         granularity: 'hour',
-        onchange: (v: DateRangeValue) => changes.push(v),
+        onValueChange: (v: DateRangeValue) => changes.push(v),
       });
 
       await fireEvent.change(getStartInput(container), {
@@ -547,7 +547,7 @@ describe('DateRangeField', () => {
       const { container } = render(DateRangeField, {
         id: 'drf',
         granularity: 'minute',
-        onchange: (v: DateRangeValue) => changes.push(v),
+        onValueChange: (v: DateRangeValue) => changes.push(v),
       });
 
       await fireEvent.change(getEndInput(container), {
@@ -563,11 +563,11 @@ describe('DateRangeField', () => {
         id: 'drf',
         granularity: 'minute',
         value: { start: '2026-06-01T09:30:15', end: '2026-06-01T17:45:30' },
-        onchange: (v: DateRangeValue) => changes.push(v),
+        onValueChange: (v: DateRangeValue) => changes.push(v),
       });
 
       // The initial value carries second-level precision at minute granularity,
-      // so the normalization effect truncates it and fires onchange once at mount.
+      // so the normalization effect truncates it and fires onValueChange once at mount.
       expect(changes[0]).toEqual({
         start: '2026-06-01T09:30',
         end: '2026-06-01T17:45',
@@ -597,7 +597,7 @@ describe('DateRangeField', () => {
       const { container } = render(DateRangeField, {
         id: 'drf',
         granularity: 'second',
-        onchange: (v: DateRangeValue) => changes.push(v),
+        onValueChange: (v: DateRangeValue) => changes.push(v),
       });
 
       await fireEvent.change(getStartInput(container), {
@@ -616,7 +616,7 @@ describe('DateRangeField', () => {
       const { container } = render(DateRangeField, {
         id: 'drf',
         presets: [preset],
-        onchange: () => {},
+        onValueChange: () => {},
       });
 
       const btn = getPresetButtons(container)[0];
@@ -717,7 +717,7 @@ describe('DateRangeField', () => {
       expect(btn.getAttribute('aria-pressed')).toBe('false');
     });
 
-    test('manually changing start input calls onchange and clears active preset', async () => {
+    test('manually changing start input calls onValueChange and clears active preset', async () => {
       const changes: DateRangeValue[] = [];
       const preset = {
         id: 'last-7d',
@@ -727,7 +727,7 @@ describe('DateRangeField', () => {
       const { container } = render(DateRangeField, {
         id: 'drf',
         presets: [preset],
-        onchange: (v: DateRangeValue) => changes.push(v),
+        onValueChange: (v: DateRangeValue) => changes.push(v),
       });
 
       // First pick a preset
@@ -746,11 +746,11 @@ describe('DateRangeField', () => {
       expect(lastChange?.start).toBe('2026-06-01');
     });
 
-    test('manually changing end input calls onchange', async () => {
+    test('manually changing end input calls onValueChange', async () => {
       const changes: DateRangeValue[] = [];
       const { container } = render(DateRangeField, {
         id: 'drf',
-        onchange: (v: DateRangeValue) => changes.push(v),
+        onValueChange: (v: DateRangeValue) => changes.push(v),
       });
 
       const endInput = getEndInput(container);
@@ -765,7 +765,7 @@ describe('DateRangeField', () => {
       const { container } = render(DateRangeField, {
         id: 'drf',
         value: { start: '2026-06-01', end: '2026-06-30' },
-        onchange: (v: DateRangeValue) => changes.push(v),
+        onValueChange: (v: DateRangeValue) => changes.push(v),
       });
 
       const startInput = getStartInput(container);
@@ -799,7 +799,7 @@ describe('DateRangeField', () => {
         id: 'drf',
         disabled: true,
         presets: [preset],
-        onchange: (v: DateRangeValue) => changes.push(v),
+        onValueChange: (v: DateRangeValue) => changes.push(v),
       });
 
       const btn = getPresetButtons(container)[0];
@@ -949,35 +949,35 @@ describe('DateRangeField', () => {
     });
   });
 
-  describe('onchange contract', () => {
-    test('an out-of-range value at mount fires onchange once with the normalized value', () => {
+  describe('onValueChange contract', () => {
+    test('an out-of-range value at mount fires onValueChange once with the normalized value', () => {
       const changes: DateRangeValue[] = [];
       render(DateRangeField, {
         id: 'drf',
         value: { start: '2026-02-30', end: '2026-06-01' },
-        onchange: (next: DateRangeValue) => changes.push(next),
+        onValueChange: (next: DateRangeValue) => changes.push(next),
       });
 
       // '2026-02-30' is invalid (Feb has 28 days in 2026) — normalizeDateValue
       // rejects it to undefined, and the mount-time normalization effect must
-      // notify onchange about that correction instead of silently rewriting `value`.
+      // notify onValueChange about that correction instead of silently rewriting `value`.
       expect(changes).toStrictEqual([{ start: undefined, end: '2026-06-01' }]);
     });
 
-    test('changing granularity on an already-mounted instance truncates the value and fires onchange', async () => {
+    test('changing granularity on an already-mounted instance truncates the value and fires onValueChange', async () => {
       const changes: DateRangeValue[] = [];
       const { rerender } = render(DateRangeField, {
         id: 'drf',
         granularity: 'minute',
         value: { start: '2026-06-01T09:30', end: '2026-06-01T17:45' },
-        onchange: (next: DateRangeValue) => changes.push(next),
+        onValueChange: (next: DateRangeValue) => changes.push(next),
       });
 
       await rerender({
         id: 'drf',
         granularity: 'day',
         value: { start: '2026-06-01T09:30', end: '2026-06-01T17:45' },
-        onchange: (next: DateRangeValue) => changes.push(next),
+        onValueChange: (next: DateRangeValue) => changes.push(next),
       });
 
       expect(changes).toStrictEqual([{ start: '2026-06-01', end: '2026-06-01' }]);

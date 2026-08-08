@@ -10,7 +10,7 @@
 <Dropdown id="view-menu">
   <DropdownTrigger class="trigger">View</DropdownTrigger>
   <DropdownMenu>
-    <DropdownGroup labelledBy="view-menu-label">
+    <DropdownGroup ariaLabelledby="view-menu-label">
       <DropdownLabel id="view-menu-label">View</DropdownLabel>
       <DropdownItem itemRole="menuitemradio" checked>Compact</DropdownItem>
       <DropdownItem itemRole="menuitemradio">Comfortable</DropdownItem>

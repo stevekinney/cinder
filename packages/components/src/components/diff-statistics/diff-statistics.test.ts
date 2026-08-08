@@ -41,7 +41,7 @@ describe('DiffStatistics', () => {
 
   test('supports compact zero-hiding output', () => {
     const { container } = render(DiffStatistics, {
-      props: { added: 4, removed: 0, modified: 0, variant: 'compact', hideZero: true },
+      props: { added: 4, removed: 0, modified: 0, variant: 'compact', zeroVisible: false },
     });
 
     const status = container.querySelector('[role="group"]');
@@ -50,12 +50,12 @@ describe('DiffStatistics', () => {
     expect(status?.textContent).not.toContain('0');
   });
 
-  test('all-zero with hideZero renders the "No changes" fallback, not zero-value stats', () => {
-    // hideZero is REQUIRED to reach the {:else} branch — showAdded/showRemoved/showModified
-    // default to true unconditionally, so a plain all-zero render without hideZero still
+  test('all-zero with zeroVisible renders the "No changes" fallback, not zero-value stats', () => {
+    // zeroVisible is REQUIRED to reach the {:else} branch — showAdded/showRemoved/showModified
+    // default to true unconditionally, so a plain all-zero render without zeroVisible still
     // renders the (zero-value) stat spans instead of the fallback.
     const { container } = render(DiffStatistics, {
-      props: { added: 0, removed: 0, modified: 0, hideZero: true },
+      props: { added: 0, removed: 0, modified: 0, zeroVisible: false },
     });
 
     const fallback = container.querySelector('.cinder-diff-statistics__stat--none');

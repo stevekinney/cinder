@@ -5,6 +5,9 @@
 
 <script lang="ts">
   import Timeline from '@lostgradient/cinder/timeline';
+  import Check from 'lucide-svelte/icons/check';
+  import TriangleAlert from 'lucide-svelte/icons/triangle-alert';
+  import X from 'lucide-svelte/icons/x';
 
   const entries = [
     {
@@ -39,7 +42,17 @@
 
 <Timeline {entries} label="Incident timeline">
   {#snippet marker(entry)}
-    {entry.tone === 'success' ? '+' : entry.tone === 'warning' ? '!' : 'x'}
+    <!-- The marker box is a centered inline-flex container, so each icon sits
+         optically centered. State is not colour-alone: each tone gets a
+         distinct glyph shape, the tone prop still drives the marker's
+         semantic styling, and the entry titles carry the state in prose. -->
+    {#if entry.tone === 'success'}
+      <Check size={11} aria-hidden="true" />
+    {:else if entry.tone === 'warning'}
+      <TriangleAlert size={11} aria-hidden="true" />
+    {:else}
+      <X size={11} aria-hidden="true" />
+    {/if}
   {/snippet}
 
   {#snippet children(entry)}

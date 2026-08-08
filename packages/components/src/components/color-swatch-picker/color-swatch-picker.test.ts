@@ -116,12 +116,12 @@ describe('ColorSwatchPicker selection', () => {
     expect(options[2].getAttribute('aria-selected')).toBe('true');
   });
 
-  test('Enter selects the focused swatch and fires onchange', async () => {
+  test('Enter selects the focused swatch and fires onValueChange', async () => {
     let changed = '';
     const { container } = render(ColorSwatchPicker, {
       colors: palette,
       label: 'Colors',
-      onchange: (c: string) => {
+      onValueChange: (c: string) => {
         changed = c;
       },
     });
@@ -133,12 +133,12 @@ describe('ColorSwatchPicker selection', () => {
     expect(changed).toBe('#ff0000');
   });
 
-  test('Space selects the focused swatch and fires onchange', async () => {
+  test('Space selects the focused swatch and fires onValueChange', async () => {
     let changed = '';
     const { container } = render(ColorSwatchPicker, {
       colors: palette,
       label: 'Colors',
-      onchange: (c: string) => {
+      onValueChange: (c: string) => {
         changed = c;
       },
     });
@@ -147,12 +147,12 @@ describe('ColorSwatchPicker selection', () => {
     expect(changed).toBe('#ff0000');
   });
 
-  test('click on a swatch selects it and fires onchange', async () => {
+  test('click on a swatch selects it and fires onValueChange', async () => {
     let changed = '';
     const { container } = render(ColorSwatchPicker, {
       colors: palette,
       label: 'Colors',
-      onchange: (c: string) => {
+      onValueChange: (c: string) => {
         changed = c;
       },
     });
@@ -341,7 +341,7 @@ describe('ColorSwatchPicker disabled handling', () => {
     const { container } = render(ColorSwatchPicker, {
       colors: palette,
       label: 'Colors',
-      onchange: (c: string) => {
+      onValueChange: (c: string) => {
         changed = c;
       },
     });
@@ -400,13 +400,13 @@ describe('ColorSwatchPicker disabled handling', () => {
     expect(afterTabbable).toBe(initialTabbable);
   });
 
-  test('group disabled: Enter/Space do not fire onchange', async () => {
+  test('group disabled: Enter/Space do not fire onValueChange', async () => {
     let changed = false;
     const { container } = render(ColorSwatchPicker, {
       colors: palette,
       label: 'Colors',
       disabled: true,
-      onchange: () => {
+      onValueChange: () => {
         changed = true;
       },
     });
@@ -416,13 +416,13 @@ describe('ColorSwatchPicker disabled handling', () => {
     expect(changed).toBe(false);
   });
 
-  test('group disabled: clicks do not fire onchange', async () => {
+  test('group disabled: clicks do not fire onValueChange', async () => {
     let changed = false;
     const { container } = render(ColorSwatchPicker, {
       colors: palette,
       label: 'Colors',
       disabled: true,
-      onchange: () => {
+      onValueChange: () => {
         changed = true;
       },
     });
@@ -525,13 +525,13 @@ describe('ColorSwatchPicker controlled value update', () => {
     expect(options[2].getAttribute('aria-selected')).toBe('true');
   });
 
-  test('onchange does not fire when controlled value prop changes', async () => {
+  test('onValueChange does not fire when controlled value prop changes', async () => {
     let changed = false;
     const { rerender } = render(ColorSwatchPicker, {
       colors: palette,
       label: 'Colors',
       value: '#ff0000',
-      onchange: () => {
+      onValueChange: () => {
         changed = true;
       },
     });
@@ -546,7 +546,7 @@ describe('ColorSwatchPicker navigate-then-select', () => {
     const { container } = render(ColorSwatchPicker, {
       colors: palette,
       label: 'Colors',
-      onchange: (c: string) => {
+      onValueChange: (c: string) => {
         changed = c;
       },
     });
@@ -564,7 +564,7 @@ describe('ColorSwatchPicker navigate-then-select', () => {
       colors: palette,
       label: 'Colors',
       layout: 'stack',
-      onchange: (c: string) => {
+      onValueChange: (c: string) => {
         changed = c;
       },
     });

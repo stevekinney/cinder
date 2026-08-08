@@ -33,7 +33,7 @@
     disabled = false,
     label,
     class: className,
-    onchange,
+    onValueChange,
     indicator,
   }: ColorSwatchPickerProps = $props();
 
@@ -118,7 +118,7 @@
     const swatch = renderableColors[index];
     if (!swatch) return;
     value = swatch.color;
-    onchange?.(swatch.color);
+    onValueChange?.(swatch.color);
   }
 
   async function handleKeydown(event: KeyboardEvent): Promise<void> {

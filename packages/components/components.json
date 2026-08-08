@@ -57,18 +57,12 @@
     "domain-suite": "A cohesive set of domain-specific components shipped together as a named suite with its own versioning cadence."
   },
   "overlapFamilies": {
-    "overlay": ["modal", "drawer", "sheet", "popover", "alert-dialog"],
+    "overlay": ["modal", "drawer", "popover", "alert-dialog"],
     "notice": ["banner", "alert", "callout"],
     "selection": ["toggle", "checkbox", "segmented-control"],
     "hover": ["tooltip", "popover", "hover-card"],
     "tabs": ["tabs", "segmented-control"],
-    "chronological": [
-      "timeline",
-      "run-step-timeline",
-      "event-timeline",
-      "feed",
-      "event-stream-viewer"
-    ]
+    "chronological": ["timeline", "run-step-timeline", "feed"]
   },
   "components": [
     {
@@ -291,7 +285,7 @@
       ],
       "avoidWhen": [
         {
-          "reason": "The action has already completed and only needs historical display — use event-stream-viewer or run-step-timeline instead."
+          "reason": "The action has already completed and only needs historical display — use feed or run-step-timeline instead."
         },
         {
           "reason": "Collecting arbitrary form input for a workflow — compose form controls directly instead."
@@ -466,7 +460,7 @@
       "purpose": "Full-viewport fixed scrim primitive for custom overlay patterns such as loading dimmers and image lightboxes.",
       "tags": ["overlay", "scrim"],
       "useWhen": [
-        "Providing a full-screen dimming layer behind a custom overlay that is not modal, drawer, or sheet.",
+        "Providing a full-screen dimming layer behind a custom overlay that is not modal or drawer.",
         "Building a loading state that dims the full viewport while an async operation runs."
       ],
       "avoidWhen": [
@@ -477,10 +471,10 @@
           "reason": "Showing a side panel — use drawer instead."
         },
         {
-          "reason": "Showing structured content in a dialog — use modal, drawer, or sheet, which render their own native `<dialog>::backdrop` scrim."
+          "reason": "Showing structured content in a dialog — use modal or drawer, which render their own native `<dialog>::backdrop` scrim."
         }
       ],
-      "related": ["modal", "drawer", "sheet"],
+      "related": ["modal", "drawer"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
@@ -640,38 +634,6 @@
       }
     },
     {
-      "name": "BlogSection",
-      "id": "blog-section",
-      "import": "@lostgradient/cinder/blog-section",
-      "exportName": "BlogSection",
-      "category": "domain",
-      "status": "stable",
-      "purpose": "Blog/article listing section that renders post cards with metadata, excerpt text, and author attribution.",
-      "tags": ["marketing", "blog", "content"],
-      "useWhen": [
-        "Showing recent posts or resources on a landing page.",
-        "Building a featured-articles grid with author and publish metadata."
-      ],
-      "avoidWhen": [
-        {
-          "reason": "Rendering partner logos or brand marks only.",
-          "alternative": "logo-cloud"
-        },
-        {
-          "reason": "Presenting customer testimonials in quote format.",
-          "alternative": "testimonial-section"
-        }
-      ],
-      "related": ["logo-cloud", "testimonial-section", "card", "avatar", "container"],
-      "hasConstraints": false,
-      "hasExamples": true,
-      "artifacts": {
-        "schema": "@lostgradient/cinder/blog-section/schema",
-        "variables": "@lostgradient/cinder/blog-section/variables",
-        "examples": "@lostgradient/cinder/blog-section/examples"
-      }
-    },
-    {
       "name": "Breadcrumbs",
       "id": "breadcrumbs",
       "import": "@lostgradient/cinder/breadcrumbs",
@@ -787,38 +749,6 @@
         "schema": "@lostgradient/cinder/calendar/schema",
         "variables": "@lostgradient/cinder/calendar/variables",
         "examples": "@lostgradient/cinder/calendar/examples"
-      }
-    },
-    {
-      "name": "CallToActionSection",
-      "id": "call-to-action-section",
-      "import": "@lostgradient/cinder/call-to-action-section",
-      "exportName": "CallToActionSection",
-      "category": "domain",
-      "status": "stable",
-      "purpose": "Focused conversion band with a short headline, supporting copy, and primary/secondary action buttons.",
-      "tags": ["marketing", "cta", "conversion"],
-      "useWhen": [
-        "Inserting a repeated “ready to get started?” conversion section between page segments.",
-        "Prompting sign-up or demo actions after readers consume feature or testimonial content."
-      ],
-      "avoidWhen": [
-        {
-          "reason": "Building a full top-of-page hero with complex media and long-form messaging.",
-          "alternative": "hero-section"
-        },
-        {
-          "reason": "Capturing an email address inline with form fields.",
-          "alternative": "newsletter-section"
-        }
-      ],
-      "related": ["hero-section", "newsletter-section", "button", "container"],
-      "hasConstraints": false,
-      "hasExamples": true,
-      "artifacts": {
-        "schema": "@lostgradient/cinder/call-to-action-section/schema",
-        "variables": "@lostgradient/cinder/call-to-action-section/variables",
-        "examples": "@lostgradient/cinder/call-to-action-section/examples"
       }
     },
     {
@@ -1399,7 +1329,7 @@
           "reason": "Announcing a non-blocking result — use toast-region or banner."
         }
       ],
-      "related": ["modal", "alert-dialog", "drawer", "sheet"],
+      "related": ["modal", "alert-dialog", "drawer"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
@@ -1427,11 +1357,11 @@
           "alternative": "status-dot"
         },
         {
-          "reason": "Rendering a full event log with per-event connection transitions — use event-stream-viewer instead.",
-          "alternative": "event-stream-viewer"
+          "reason": "Rendering a full event log with per-event connection transitions — use feed's log arm instead.",
+          "alternative": "feed"
         }
       ],
-      "related": ["status-dot", "event-stream-viewer", "badge"],
+      "related": ["status-dot", "feed", "badge"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
@@ -1812,21 +1742,22 @@
       "exportName": "Drawer",
       "category": "overlay",
       "status": "stable",
-      "purpose": "Side-anchored modal panel built on the native dialog element for secondary navigation, settings, or long-form supporting content.",
+      "purpose": "Edge-anchored modal panel built on the native dialog element; slides from the left, right, or bottom edge for secondary navigation, settings, or mobile-first sheet patterns.",
       "tags": ["overlay", "dialog"],
       "useWhen": [
         "Showing supplementary navigation, filters, or settings that should slide in from a page edge.",
-        "Presenting long-form content that benefits from a side panel without leaving the current view."
+        "Presenting long-form content that benefits from a side panel without leaving the current view.",
+        "Presenting a focused task or set of actions that slides up from the bottom of the viewport on touch surfaces — use `placement=\"bottom\"`."
       ],
       "avoidWhen": [
         {
           "reason": "Interrupting the user for a focused decision — use modal so the surface is centered and task-scoped."
         },
         {
-          "reason": "Anchoring a small surface to a trigger — use popover or sheet instead."
+          "reason": "Anchoring a small surface to a trigger — use popover instead."
         }
       ],
-      "related": ["modal", "sheet", "popover"],
+      "related": ["modal", "popover"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
@@ -2085,159 +2016,18 @@
       }
     },
     {
-      "name": "EventStreamViewer",
-      "id": "event-stream-viewer",
-      "import": "@lostgradient/cinder/event-stream-viewer",
-      "exportName": "EventStreamViewer",
-      "category": "data-display",
-      "status": "stable",
-      "purpose": "Dense append-only log of timestamped events with follow-latest scrolling, severity tones, expandable JSON details, and copy actions.",
-      "tags": ["log", "stream", "events"],
-      "useWhen": [
-        "Displaying real-time or historical operational events such as workflow steps, job logs, or webhook traces.",
-        "Showing an append-only diagnostic stream with filtering, copy, and structured detail expansion."
-      ],
-      "avoidWhen": [
-        {
-          "reason": "Showing a social activity feed or notification timeline — use feed instead."
-        },
-        {
-          "reason": "Rendering paginated historical records with sorting — use data-table instead."
-        },
-        {
-          "reason": "Showing a simple static event rail, bounded schedule, or structured run-state rail — use timeline, event-timeline, or run-step-timeline."
-        }
-      ],
-      "related": [
-        "feed",
-        "timeline",
-        "run-step-timeline",
-        "event-timeline",
-        "json-viewer",
-        "status-dot",
-        "copy-button"
-      ],
-      "hasConstraints": false,
-      "hasExamples": true,
-      "artifacts": {
-        "schema": "@lostgradient/cinder/event-stream-viewer/schema",
-        "variables": "@lostgradient/cinder/event-stream-viewer/variables",
-        "examples": "@lostgradient/cinder/event-stream-viewer/examples"
-      }
-    },
-    {
-      "name": "EventTimeline",
-      "id": "event-timeline",
-      "import": "@lostgradient/cinder/event-timeline",
-      "exportName": "EventTimeline",
-      "category": "data-display",
-      "status": "stable",
-      "purpose": "Horizontal time-axis strip for scheduled events with proportional dots, a now marker, and collision-nudged labels.",
-      "tags": ["event-timeline", "schedule", "timeline"],
-      "useWhen": [
-        "Showing several fired and upcoming events across a bounded time window, such as a next-24-hour schedule strip."
-      ],
-      "avoidWhen": [
-        {
-          "reason": "Showing sequential process history.",
-          "alternative": "timeline"
-        },
-        {
-          "reason": "Showing step-by-step run execution state.",
-          "alternative": "run-step-timeline"
-        },
-        {
-          "reason": "Showing a user-facing activity feed.",
-          "alternative": "feed"
-        },
-        {
-          "reason": "Showing a dense operational stream.",
-          "alternative": "event-stream-viewer"
-        }
-      ],
-      "related": ["timeline", "run-step-timeline", "feed", "event-stream-viewer", "status-dot"],
-      "hasConstraints": false,
-      "hasExamples": true,
-      "artifacts": {
-        "schema": "@lostgradient/cinder/event-timeline/schema",
-        "variables": "@lostgradient/cinder/event-timeline/variables",
-        "examples": "@lostgradient/cinder/event-timeline/examples"
-      }
-    },
-    {
-      "name": "FacetedFilterBar",
-      "id": "faceted-filter-bar",
-      "import": "@lostgradient/cinder/faceted-filter-bar",
-      "exportName": "FacetedFilterBar",
-      "category": "form",
-      "status": "beta",
-      "purpose": "Composed filtering toolbar with search, select facets, applied-filter chips, and clear-all for dense operational list views.",
-      "tags": ["form", "filter"],
-      "useWhen": [
-        "Filtering a list or table by multiple dimensions such as status, category, and queue simultaneously.",
-        "Showing applied filters as removable chips so users can see and undo active constraints."
-      ],
-      "avoidWhen": [
-        {
-          "reason": "A single search field or one select is sufficient — compose SearchField or Select directly."
-        },
-        {
-          "reason": "Filtering navigates to a new page — the bar owns no routing or persistence."
-        }
-      ],
-      "related": ["search-field", "chip", "select", "toolbar"],
-      "hasConstraints": false,
-      "hasExamples": true,
-      "artifacts": {
-        "schema": "@lostgradient/cinder/faceted-filter-bar/schema",
-        "variables": "@lostgradient/cinder/faceted-filter-bar/variables",
-        "examples": "@lostgradient/cinder/faceted-filter-bar/examples"
-      }
-    },
-    {
-      "name": "FeatureSection",
-      "id": "feature-section",
-      "import": "@lostgradient/cinder/feature-section",
-      "exportName": "FeatureSection",
-      "category": "domain",
-      "status": "stable",
-      "purpose": "Marketing section for highlighting product capabilities as a structured feature grid with optional side media.",
-      "tags": ["marketing", "features", "layout"],
-      "useWhen": [
-        "Showing a list of core benefits with concise title + description content.",
-        "Pairing a feature list with a screenshot or product demo in a two-column split."
-      ],
-      "avoidWhen": [
-        {
-          "reason": "Rendering customer quotes authored by people with avatars.",
-          "alternative": "testimonial-section"
-        },
-        {
-          "reason": "Presenting team-member profiles and social links.",
-          "alternative": "team-section"
-        }
-      ],
-      "related": ["hero-section", "testimonial-section", "team-section", "card", "container"],
-      "hasConstraints": false,
-      "hasExamples": true,
-      "artifacts": {
-        "schema": "@lostgradient/cinder/feature-section/schema",
-        "variables": "@lostgradient/cinder/feature-section/variables",
-        "examples": "@lostgradient/cinder/feature-section/examples"
-      }
-    },
-    {
       "name": "Feed",
       "id": "feed",
       "import": "@lostgradient/cinder/feed",
       "exportName": "Feed",
       "category": "data-display",
       "status": "stable",
-      "purpose": "Ordered list container for a chronological stream of feed-event entries, optionally exposed as a live region.",
-      "tags": ["timeline", "activity"],
+      "purpose": "Chronological stream of feed-event entries: a plain ordered list for user-facing activity, or an operator-facing append-only log region with follow-latest scrolling.",
+      "tags": ["timeline", "activity", "log"],
       "useWhen": [
         "Rendering a user-facing activity stream or notification timeline.",
-        "Announcing newly appended entries to assistive technology via the live prop."
+        "Announcing newly appended entries to assistive technology via the live prop.",
+        "Displaying an operator-facing append-only stream with follow-latest scrolling — use the log arm (`kind=\"log\"`)."
       ],
       "avoidWhen": [
         {
@@ -2245,24 +2035,44 @@
         },
         {
           "reason": "Displaying static temporal history or execution state — use timeline or run-step-timeline."
-        },
-        {
-          "reason": "Displaying a bounded schedule or dense diagnostics — use event-timeline or event-stream-viewer."
         }
       ],
-      "related": [
-        "timeline",
-        "run-step-timeline",
-        "event-timeline",
-        "event-stream-viewer",
-        "feed-event"
-      ],
+      "related": ["timeline", "run-step-timeline", "feed-event", "feed-boundary"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
         "schema": "@lostgradient/cinder/feed/schema",
         "variables": "@lostgradient/cinder/feed/variables",
         "examples": "@lostgradient/cinder/feed/examples"
+      }
+    },
+    {
+      "name": "FeedBoundary",
+      "id": "feed-boundary",
+      "import": "@lostgradient/cinder/feed-boundary",
+      "exportName": "FeedBoundary",
+      "category": "data-display",
+      "status": "stable",
+      "purpose": "Separator entry inside a feed marking a stream discontinuity such as a reconnect or a sequence gap.",
+      "tags": ["timeline", "event"],
+      "useWhen": ["Marking a reconnect, replay, or gap between entries in a feed's log arm."],
+      "avoidWhen": [
+        {
+          "reason": "Standing alone outside a feed — it expects the feed list semantics around it.",
+          "alternative": "feed"
+        },
+        {
+          "reason": "Separating generic page content — use divider instead.",
+          "alternative": "divider"
+        }
+      ],
+      "related": ["feed", "feed-event", "divider"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/feed-boundary/schema",
+        "variables": "@lostgradient/cinder/feed-boundary/variables",
+        "examples": "@lostgradient/cinder/feed-boundary/examples"
       }
     },
     {
@@ -2319,6 +2129,36 @@
       }
     },
     {
+      "name": "FilterBar",
+      "id": "filter-bar",
+      "import": "@lostgradient/cinder/filter-bar",
+      "exportName": "FilterBar",
+      "category": "form",
+      "status": "beta",
+      "purpose": "Composed filtering toolbar with search, select facets, applied-filter chips, and clear-all for dense operational list views.",
+      "tags": ["form", "filter"],
+      "useWhen": [
+        "Filtering a list or table by multiple dimensions such as status, category, and queue simultaneously.",
+        "Showing applied filters as removable chips so users can see and undo active constraints."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "A single search field or one select is sufficient — compose SearchField or Select directly."
+        },
+        {
+          "reason": "Filtering navigates to a new page — the bar owns no routing or persistence."
+        }
+      ],
+      "related": ["search-field", "chip", "select", "toolbar"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/filter-bar/schema",
+        "variables": "@lostgradient/cinder/filter-bar/variables",
+        "examples": "@lostgradient/cinder/filter-bar/examples"
+      }
+    },
+    {
       "name": "FloatingAction",
       "id": "floating-action",
       "import": "@lostgradient/cinder/floating-action",
@@ -2363,7 +2203,7 @@
           "reason": "The surface already uses native dialog focus trapping."
         }
       ],
-      "related": ["modal", "drawer", "sheet", "popover"],
+      "related": ["modal", "drawer", "popover"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
@@ -2567,44 +2407,6 @@
       "artifacts": {
         "schema": "@lostgradient/cinder/grid-list-item/schema",
         "variables": "@lostgradient/cinder/grid-list-item/variables"
-      }
-    },
-    {
-      "name": "HeroSection",
-      "id": "hero-section",
-      "import": "@lostgradient/cinder/hero-section",
-      "exportName": "HeroSection",
-      "category": "domain",
-      "status": "stable",
-      "purpose": "Landing-page hero scaffold with eyebrow, heading, supporting copy, CTA row, and optional media panel.",
-      "tags": ["marketing", "hero", "layout"],
-      "useWhen": [
-        "Building the first section of a marketing page where a primary message and call-to-action must stand out.",
-        "Pairing conversion copy with a visual demo, screenshot, or illustration in a split layout."
-      ],
-      "avoidWhen": [
-        {
-          "reason": "Presenting only a compact call-to-action strip between content sections.",
-          "alternative": "call-to-action-section"
-        },
-        {
-          "reason": "Listing repeatable product benefits or cards — use a dedicated features grid instead.",
-          "alternative": "feature-section"
-        }
-      ],
-      "related": [
-        "call-to-action-section",
-        "feature-section",
-        "section-heading",
-        "container",
-        "button"
-      ],
-      "hasConstraints": false,
-      "hasExamples": true,
-      "artifacts": {
-        "schema": "@lostgradient/cinder/hero-section/schema",
-        "variables": "@lostgradient/cinder/hero-section/variables",
-        "examples": "@lostgradient/cinder/hero-section/examples"
       }
     },
     {
@@ -2923,14 +2725,14 @@
       "tags": ["shortcut", "keyboard"],
       "useWhen": [
         "Displaying a reference panel of keyboard shortcuts grouped by feature area.",
-        "Embedding a shortcut table inside a modal, sheet, popover, or help page."
+        "Embedding a shortcut table inside a modal, drawer, popover, or help page."
       ],
       "avoidWhen": [
         {
           "reason": "Showing a single inline shortcut hint — use shortcut-hint instead."
         }
       ],
-      "related": ["kbd", "shortcut-hint", "modal", "sheet", "popover"],
+      "related": ["kbd", "shortcut-hint", "modal", "drawer", "popover"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
@@ -3069,38 +2871,6 @@
       "artifacts": {
         "schema": "@lostgradient/cinder/locale-provider/schema",
         "variables": "@lostgradient/cinder/locale-provider/variables"
-      }
-    },
-    {
-      "name": "LogoCloud",
-      "id": "logo-cloud",
-      "import": "@lostgradient/cinder/logo-cloud",
-      "exportName": "LogoCloud",
-      "category": "domain",
-      "status": "stable",
-      "purpose": "Responsive logo grid for “trusted by” sections that display partner/customer brand marks.",
-      "tags": ["marketing", "logos", "social-proof"],
-      "useWhen": [
-        "Displaying customer or partner logos near pricing, hero, or testimonial content.",
-        "Creating a compact proof strip that links out to partner pages or case studies."
-      ],
-      "avoidWhen": [
-        {
-          "reason": "Presenting individual people with names and roles.",
-          "alternative": "team-section"
-        },
-        {
-          "reason": "Listing article content with headlines and excerpts.",
-          "alternative": "blog-section"
-        }
-      ],
-      "related": ["team-section", "testimonial-section", "blog-section", "container", "image"],
-      "hasConstraints": false,
-      "hasExamples": true,
-      "artifacts": {
-        "schema": "@lostgradient/cinder/logo-cloud/schema",
-        "variables": "@lostgradient/cinder/logo-cloud/variables",
-        "examples": "@lostgradient/cinder/logo-cloud/examples"
       }
     },
     {
@@ -3384,10 +3154,10 @@
           "reason": "Showing side-anchored navigation or settings — use a drawer instead."
         },
         {
-          "reason": "Presenting a small contextual surface anchored to a trigger — use a popover or sheet instead."
+          "reason": "Presenting a small contextual surface anchored to a trigger — use a popover or a bottom-placed drawer instead."
         }
       ],
-      "related": ["confirm-dialog", "alert-dialog", "drawer", "sheet", "popover"],
+      "related": ["confirm-dialog", "alert-dialog", "drawer", "popover"],
       "hasConstraints": true,
       "hasExamples": true,
       "artifacts": {
@@ -3487,38 +3257,6 @@
       }
     },
     {
-      "name": "NewsletterSection",
-      "id": "newsletter-section",
-      "import": "@lostgradient/cinder/newsletter-section",
-      "exportName": "NewsletterSection",
-      "category": "domain",
-      "status": "stable",
-      "purpose": "Email capture section with heading copy, inline email field, and submit action for newsletter signups.",
-      "tags": ["marketing", "newsletter", "form"],
-      "useWhen": [
-        "Collecting subscriber email addresses in a dedicated marketing section.",
-        "Adding a lightweight signup form beneath blog or CTA content."
-      ],
-      "avoidWhen": [
-        {
-          "reason": "Showing a generic call-to-action with buttons only and no data entry.",
-          "alternative": "call-to-action-section"
-        },
-        {
-          "reason": "Collecting multi-field account or billing details.",
-          "alternative": "form-section"
-        }
-      ],
-      "related": ["call-to-action-section", "form-section", "input", "button", "container"],
-      "hasConstraints": false,
-      "hasExamples": true,
-      "artifacts": {
-        "schema": "@lostgradient/cinder/newsletter-section/schema",
-        "variables": "@lostgradient/cinder/newsletter-section/variables",
-        "examples": "@lostgradient/cinder/newsletter-section/examples"
-      }
-    },
-    {
       "name": "NumberInput",
       "id": "number-input",
       "import": "@lostgradient/cinder/number-input",
@@ -3566,10 +3304,10 @@
           "reason": "Rendering section-scoped headings within page content — use section-heading."
         },
         {
-          "reason": "Building complex hero layouts with rich copy and media — use hero-section."
+          "reason": "Building complex hero layouts with rich copy and media — compose container (see its hero-section example)."
         }
       ],
-      "related": ["section-heading", "hero-section"],
+      "related": ["section-heading", "container"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
@@ -3746,10 +3484,10 @@
           "reason": "Showing a short descriptive hint on hover or focus — use tooltip instead."
         },
         {
-          "reason": "Interrupting the user for a focused task — use modal, drawer, or sheet so the surface is modal."
+          "reason": "Interrupting the user for a focused task — use modal or drawer so the surface is modal."
         }
       ],
-      "related": ["modal", "drawer", "sheet", "tooltip"],
+      "related": ["modal", "drawer", "tooltip"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
@@ -3776,7 +3514,7 @@
           "reason": "The content should stay in normal document flow or inherit layout from its original parent."
         }
       ],
-      "related": ["popover", "modal", "drawer", "sheet"],
+      "related": ["popover", "modal", "drawer"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
@@ -3813,38 +3551,6 @@
         "schema": "@lostgradient/cinder/pricing-card/schema",
         "variables": "@lostgradient/cinder/pricing-card/variables",
         "examples": "@lostgradient/cinder/pricing-card/examples"
-      }
-    },
-    {
-      "name": "PricingSection",
-      "id": "pricing-section",
-      "import": "@lostgradient/cinder/pricing-section",
-      "exportName": "PricingSection",
-      "category": "domain",
-      "status": "stable",
-      "purpose": "Pricing comparison section that lays out multiple plans using the existing PricingCard primitive.",
-      "tags": ["marketing", "pricing", "plans"],
-      "useWhen": [
-        "Presenting tiered subscription plans with features and action buttons.",
-        "Highlighting a recommended plan while still allowing side-by-side comparison."
-      ],
-      "avoidWhen": [
-        {
-          "reason": "Showing generic metrics without plan selection controls.",
-          "alternative": "statistics-section"
-        },
-        {
-          "reason": "Rendering a single standalone plan card outside of a section context.",
-          "alternative": "pricing-card"
-        }
-      ],
-      "related": ["pricing-card", "statistics-section", "call-to-action-section", "container"],
-      "hasConstraints": false,
-      "hasExamples": true,
-      "artifacts": {
-        "schema": "@lostgradient/cinder/pricing-section/schema",
-        "variables": "@lostgradient/cinder/pricing-section/variables",
-        "examples": "@lostgradient/cinder/pricing-section/examples"
       }
     },
     {
@@ -4020,13 +3726,13 @@
           "reason": "Showing a flat timestamp-first event log without structured step state — use timeline instead."
         },
         {
-          "reason": "Showing a bounded horizontal schedule or activity stream — use event-timeline or feed instead."
+          "reason": "Showing an activity stream — use feed instead."
         },
         {
-          "reason": "Showing a dense operational log without structured step state, such as raw CI or job output — use event-stream-viewer instead."
+          "reason": "Showing a dense operational log without structured step state, such as raw CI or job output — use feed's log arm instead."
         }
       ],
-      "related": ["timeline", "event-timeline", "feed", "steps", "event-stream-viewer"],
+      "related": ["timeline", "feed", "steps"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
@@ -4429,36 +4135,6 @@
         "schema": "@lostgradient/cinder/share-card/schema",
         "variables": "@lostgradient/cinder/share-card/variables",
         "examples": "@lostgradient/cinder/share-card/examples"
-      }
-    },
-    {
-      "name": "Sheet",
-      "id": "sheet",
-      "import": "@lostgradient/cinder/sheet",
-      "exportName": "Sheet",
-      "category": "overlay",
-      "status": "stable",
-      "purpose": "Bottom-anchored modal panel built on the native dialog element with an optional drag handle for mobile-first sheet patterns.",
-      "tags": ["overlay", "dialog"],
-      "useWhen": [
-        "Presenting a focused task or set of actions that slides up from the bottom of the viewport on touch surfaces.",
-        "Showing a contextual surface that should feel anchored to the screen edge rather than centered like a modal."
-      ],
-      "avoidWhen": [
-        {
-          "reason": "Interrupting the user with a centered task or confirmation — use modal instead."
-        },
-        {
-          "reason": "Showing supplementary side navigation or filters — use drawer or popover."
-        }
-      ],
-      "related": ["modal", "drawer", "popover"],
-      "hasConstraints": false,
-      "hasExamples": true,
-      "artifacts": {
-        "schema": "@lostgradient/cinder/sheet/schema",
-        "variables": "@lostgradient/cinder/sheet/variables",
-        "examples": "@lostgradient/cinder/sheet/examples"
       }
     },
     {
@@ -5046,44 +4722,6 @@
       }
     },
     {
-      "name": "StatisticsSection",
-      "id": "statistics-section",
-      "import": "@lostgradient/cinder/statistics-section",
-      "exportName": "StatisticsSection",
-      "category": "domain",
-      "status": "stable",
-      "purpose": "Marketing metrics section that wraps StatisticGroup/Statistic to present headline numbers with optional trend indicators.",
-      "tags": ["marketing", "metrics", "stats"],
-      "useWhen": [
-        "Showing key outcomes such as uptime, customers, revenue, or latency in landing-page copy.",
-        "Presenting a short metrics band between hero/features and pricing sections."
-      ],
-      "avoidWhen": [
-        {
-          "reason": "Comparing plan pricing and feature lists across tiers.",
-          "alternative": "pricing-section"
-        },
-        {
-          "reason": "Rendering freeform cards that are not structured numeric metrics.",
-          "alternative": "feature-section"
-        }
-      ],
-      "related": [
-        "statistic",
-        "statistic-group",
-        "pricing-section",
-        "feature-section",
-        "container"
-      ],
-      "hasConstraints": false,
-      "hasExamples": true,
-      "artifacts": {
-        "schema": "@lostgradient/cinder/statistics-section/schema",
-        "variables": "@lostgradient/cinder/statistics-section/variables",
-        "examples": "@lostgradient/cinder/statistics-section/examples"
-      }
-    },
-    {
       "name": "StatusDot",
       "id": "status-dot",
       "import": "@lostgradient/cinder/status-dot",
@@ -5523,77 +5161,6 @@
       }
     },
     {
-      "name": "TeamSection",
-      "id": "team-section",
-      "import": "@lostgradient/cinder/team-section",
-      "exportName": "TeamSection",
-      "category": "domain",
-      "status": "stable",
-      "purpose": "Marketing team roster section that renders profile cards with avatars, roles, and optional profile links.",
-      "tags": ["marketing", "team", "profile"],
-      "useWhen": [
-        "Introducing company teammates with names, titles, and short bios.",
-        "Showing a small \"meet the team\" grid in landing and about pages."
-      ],
-      "avoidWhen": [
-        {
-          "reason": "Showing customer quotes and outcomes rather than internal team members.",
-          "alternative": "testimonial-section"
-        },
-        {
-          "reason": "Rendering brand/customer logos without person profiles.",
-          "alternative": "logo-cloud"
-        }
-      ],
-      "related": [
-        "testimonial-section",
-        "logo-cloud",
-        "avatar",
-        "avatar-group",
-        "card",
-        "container"
-      ],
-      "hasConstraints": false,
-      "hasExamples": true,
-      "artifacts": {
-        "schema": "@lostgradient/cinder/team-section/schema",
-        "variables": "@lostgradient/cinder/team-section/variables",
-        "examples": "@lostgradient/cinder/team-section/examples"
-      }
-    },
-    {
-      "name": "TestimonialSection",
-      "id": "testimonial-section",
-      "import": "@lostgradient/cinder/testimonial-section",
-      "exportName": "TestimonialSection",
-      "category": "domain",
-      "status": "stable",
-      "purpose": "Customer quote section that renders one or more testimonials with author identity and optional role/company context.",
-      "tags": ["marketing", "testimonial", "social-proof"],
-      "useWhen": [
-        "Building a social-proof block with customer quotes and attributed people.",
-        "Displaying one featured quote or a compact testimonial grid on landing pages."
-      ],
-      "avoidWhen": [
-        {
-          "reason": "Listing product capabilities with icon + title + description rows.",
-          "alternative": "feature-section"
-        },
-        {
-          "reason": "Showing team roster information for your own company.",
-          "alternative": "team-section"
-        }
-      ],
-      "related": ["feature-section", "team-section", "avatar", "card", "container"],
-      "hasConstraints": false,
-      "hasExamples": true,
-      "artifacts": {
-        "schema": "@lostgradient/cinder/testimonial-section/schema",
-        "variables": "@lostgradient/cinder/testimonial-section/variables",
-        "examples": "@lostgradient/cinder/testimonial-section/examples"
-      }
-    },
-    {
       "name": "Textarea",
       "id": "textarea",
       "import": "@lostgradient/cinder/textarea",
@@ -5670,10 +5237,10 @@
           "alternative": "run-step-timeline"
         },
         {
-          "reason": "Showing a bounded horizontal schedule or dense operational stream — use event-timeline or event-stream-viewer."
+          "reason": "Showing a live activity or dense operational stream — use feed (its log arm covers operational streams)."
         }
       ],
-      "related": ["feed", "run-step-timeline", "event-timeline", "event-stream-viewer"],
+      "related": ["feed", "run-step-timeline"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {

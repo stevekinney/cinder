@@ -569,8 +569,8 @@
         value={activePickerValue}
         label="Color picker for {activePickerToken.name}"
         swatches={COLOR_PICKER_SWATCHES}
-        oninput={(value) => handleColorPickerValue(activePickerToken.name, value)}
-        onchange={(value) => handleColorPickerValue(activePickerToken.name, value)}
+        onValueChange={(value) => handleColorPickerValue(activePickerToken.name, value)}
+        onValueCommit={(value) => handleColorPickerValue(activePickerToken.name, value)}
       />
       <div class="picker-css-controls">
         <Button

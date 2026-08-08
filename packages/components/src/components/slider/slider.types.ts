@@ -25,24 +25,24 @@ type SliderBaseProps = {
   class?: string;
 };
 /**
- * Props for the single-thumb slider. `value` is a scalar and `onchange`
+ * Props for the single-thumb slider. `value` is a scalar and `onValueChange`
  * receives a scalar.
  */
 export type SliderSingleProps = SliderBaseProps & {
   /** Slider mode. `"single"` renders one thumb and emits a scalar value; `"range"` renders two thumbs and emits a `[low, high]` tuple. Default `"single"`. */
   mode?: 'single';
   value?: number;
-  onchange?: (value: number) => void;
+  onValueChange?: (value: number) => void;
 };
 /**
  * Props for the two-thumb range slider. `value` is a `[low, high]` tuple and
- * `onchange` receives the same tuple shape.
+ * `onValueChange` receives the same tuple shape.
  */
 export type SliderRangeProps = SliderBaseProps & {
   /** Slider mode. `"single"` renders one thumb and emits a scalar value; `"range"` renders two thumbs and emits a `[low, high]` tuple. Default `"single"`. */
   mode: 'range';
   value?: [number, number];
-  onchange?: (value: [number, number]) => void;
+  onValueChange?: (value: [number, number]) => void;
 };
 /**
  * Props for the Slider component.
@@ -52,7 +52,7 @@ export type SliderRangeProps = SliderBaseProps & {
  * `aria-valuenow`, optional `aria-valuetext`, and an accessible name from
  * either `aria-label` or `aria-labelledby`.
  *
- * `value` is bindable. `onchange` fires after every committed change
+ * `value` is bindable. `onValueChange` fires after every committed change
  * (keyboard step, track click, end of pointer drag).
  *
  * Distinct from `progress.svelte` (passive read-only progress) and from

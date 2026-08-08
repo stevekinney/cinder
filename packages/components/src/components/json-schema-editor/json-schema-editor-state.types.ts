@@ -13,7 +13,7 @@ export interface CreateEditorStateOptions {
   draftOverride?: JsonSchemaKnownDraft;
   readonly?: boolean;
   maxHistory?: number;
-  onchange?: (event: JsonSchemaEditorChangeEvent) => void;
+  onSchemaChange?: (event: JsonSchemaEditorChangeEvent) => void;
   onRevert?: (event: JsonSchemaEditorRevertEvent) => void;
   onValidate?: (result: JsonSchemaValidationResult) => void;
 }

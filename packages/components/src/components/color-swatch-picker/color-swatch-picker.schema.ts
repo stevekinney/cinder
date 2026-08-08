@@ -52,7 +52,7 @@ const schema = {
           'Snippet that replaces the default check-icon indicator on the selected swatch.\nReceives the active swatch and the computed contrast color for the icon.',
       },
       {
-        name: 'onchange',
+        name: 'onValueChange',
         reason: 'function-or-snippet',
         description: 'Fired when the selected swatch changes.',
       },

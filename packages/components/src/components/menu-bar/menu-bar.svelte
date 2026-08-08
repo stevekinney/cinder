@@ -65,7 +65,7 @@
     id: providedId,
     menus,
     label = 'Application menu',
-    labelledBy,
+    ariaLabelledby,
     class: customClassName,
     role: _role,
     dir: providedDirection,
@@ -685,8 +685,8 @@
   id={rootId}
   class={classNames('cinder-menu-bar', customClassName)}
   role="menubar"
-  aria-label={labelledBy ? undefined : label}
-  aria-labelledby={labelledBy}
+  aria-label={ariaLabelledby ? undefined : label}
+  aria-labelledby={ariaLabelledby}
   aria-orientation="horizontal"
   onkeydown={handleRootKeydown}
 >

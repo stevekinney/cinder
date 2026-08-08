@@ -69,7 +69,7 @@
         "description": "Custom synchronous filter. Receives an option and the current input\nvalue; returns true to keep. Defaults to case-insensitive substring\nmatch on label."
       },
       {
-        "name": "onchange",
+        "name": "onValueChange",
         "reason": "function-or-snippet",
         "description": "Called when an option, or an arbitrary value when enabled, is committed."
       },

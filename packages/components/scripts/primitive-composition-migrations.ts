@@ -12,7 +12,7 @@ export const allowedRawControlCounts = new Map<string, number>([
   // is bounded to the editable combobox control, not the dialog surface.
   ['command-palette/command-palette.svelte', 1],
   ['date-picker/date-picker.svelte', 2],
-  ['faceted-filter-bar/faceted-filter-bar.svelte', 1],
+  ['filter-bar/filter-bar.svelte', 1],
   ['file-upload/file-upload.svelte', 1],
   ['input/input.svelte', 1],
   ['invocation-rule-builder/invocation-rule-builder.svelte', 8],
@@ -65,14 +65,10 @@ export const allowedGridCounts = new Map<string, number>(
     'calendar/calendar.css',
     'data-grid/data-grid.css',
     'date-picker/date-picker.css',
-    'event-stream-viewer/event-stream-viewer.css',
-    'feed/feed.css',
+    'feed-event/feed-event.css',
     'form-section/form-section.css',
     'grid/grid.css',
-    'hero-section/hero-section.css',
-    'newsletter-section/newsletter-section.css',
     'phone-input/phone-input.css',
-    'pricing-section/pricing-section.css',
     'radio-group/radio-group.css',
     'schedule-builder/schedule-builder.css',
     'selectable-row/selectable-row.css',
@@ -89,7 +85,6 @@ allowedGridCounts.set('action-row/action-row.css', 4);
 allowedGridCounts.set('calendar/calendar.css', 2);
 allowedGridCounts.set('data-grid/data-grid.css', 2);
 allowedGridCounts.set('description-list/description-list.css', 4);
-allowedGridCounts.set('feature-section/feature-section.css', 8);
 allowedGridCounts.set('footer/footer.css', 2);
 allowedGridCounts.set('form-section/form-section.css', 7);
 allowedGridCounts.set('kanban-board/kanban-board.css', 5);
@@ -97,7 +92,6 @@ allowedGridCounts.set('kanban-board/kanban-board.css', 5);
 // alongside the top-level section grid and the existing trigger/panel split.
 allowedGridCounts.set('mega-menu/mega-menu.css', 3);
 allowedGridCounts.set('phone-input/phone-input.css', 2);
-allowedGridCounts.set('pricing-section/pricing-section.css', 5);
 allowedGridCounts.set('run-step-timeline/run-step-timeline.css', 2);
 allowedGridCounts.set('selectable-row/selectable-row.css', 2);
 // The selector-aware analyzer counts the line grid's base and no-number column
@@ -107,9 +101,6 @@ allowedGridCounts.set('stacked-list-item/stacked-list-item.css', 6);
 allowedGridCounts.set('statistic-group/statistic-group.css', 10);
 allowedGridCounts.set('statistic/statistic.css', 2);
 allowedGridCounts.set('steps/steps.css', 4);
-// The shared section skeleton intentionally owns the common list grid
-// declaration and its three responsive overrides.
-allowedGridCounts.set('_internal/section-skeleton.css', 4);
 allowedGridCounts.set('timeline/timeline.css', 3);
 allowedGridCounts.set('transfer-list/transfer-list.css', 3);
 
@@ -120,7 +111,6 @@ export const allowedFloatingCounts = new Map<string, number>(
     'bar-chart/bar-chart.css',
     'drawer/drawer.css',
     'dropdown/dropdown.css',
-    'event-timeline/event-timeline.css',
     'kanban-board/kanban-board.css',
     'line-chart/line-chart.css',
     'marquee/marquee.css',
@@ -129,7 +119,6 @@ export const allowedFloatingCounts = new Map<string, number>(
     'run-step-timeline/run-step-timeline.css',
     'select/select.css',
     'selection-popover/selection-popover.css',
-    'sheet/sheet.css',
     'sortable-list/sortable-list.css',
     'spectrogram/spectrogram.css',
     'spectrum-chart/spectrum-chart.css',
@@ -145,11 +134,6 @@ export const allowedFloatingCounts = new Map<string, number>(
 allowedFloatingCounts.set('dropdown/dropdown.css', 6);
 allowedFloatingCounts.set('menu-bar/menu-bar.css', 2);
 allowedFloatingCounts.set('styles/components/experimental/popover.css', 4);
-// event-timeline's cluster wrapper is a lane marker positioned absolutely along
-// the timeline track; its z-index bump on `[data-cinder-open]` (see the
-// `cinder-z-index-local` comment in event-timeline.css) only resolves stacking
-// order between sibling clusters. The actual popover content already composes
-// `cinder-_floating-surface` directly. Not a hand-rolled floating panel.
 // phone-input's country-summary is excluded at detection time (see the
 // `summary` addition to isInternalLayerTarget() in primitive-composition-css.ts):
 // it is a decorative absolutely-positioned label painted over a transparent

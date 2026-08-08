@@ -1,18 +1,26 @@
 import type { Snippet } from 'svelte';
 import type { HTMLDialogAttributes } from 'svelte/elements';
-export type DrawerSide = 'left' | 'right';
+export type DrawerPlacement = 'left' | 'right' | 'bottom';
 export type DrawerSize = 'sm' | 'md' | 'lg' | 'xl';
 export type DrawerProps = {
   /** Whether the drawer is open. Bindable via `bind:open`. */
   open?: boolean;
-  /** Edge the drawer slides in from. Default `right`. */
-  side?: DrawerSide;
-  /** Drawer width token. Default `md`. */
+  /**
+   * Edge the drawer slides in from.
+   * @default 'right'
+   */
+  placement?: DrawerPlacement;
+  /**
+   * Drawer width token for `left`/`right` placements.
+   * Ignored for `placement="bottom"`, which always spans the full viewport
+   * width and caps its height at 90dvh.
+   * @default 'md'
+   */
   size?: DrawerSize;
   /**
    * Accessible name for the drawer. Required for screen-reader labelling.
    * Rendered as a visible `<h2>` in the default header. When a custom
-   * `header` snippet is provided without `ariaLabelledBy`, this text is
+   * `header` snippet is provided without `ariaLabelledby`, this text is
    * rendered in a visually-hidden `<h2>` as the accessible name fallback.
    */
   title: string;
@@ -28,10 +36,21 @@ export type DrawerProps = {
    * Optional id of an element that names the drawer. When supplied, drawer
    * wires `aria-labelledby` to this id and renders no internal heading.
    * Use this when a custom `header` snippet has its own visible heading —
-   * supply `ariaLabelledBy` pointing to that heading's id so the
+   * supply `ariaLabelledby` pointing to that heading's id so the
    * visible and accessible names stay in sync.
    */
-  ariaLabelledBy?: string;
+  ariaLabelledby?: string;
+  /**
+   * When `true` and `placement="bottom"`, render a decorative drag handle
+   * above the header. Swipe-to-close gesture is a stretch goal not
+   * implemented in MVP — the handle is purely a visual affordance.
+   * Ignored for `left`/`right` placements.
+   *
+   * Named `dragHandleVisible` (not `draggable`) to avoid colliding with the
+   * native HTML `draggable` attribute on the underlying `<dialog>`.
+   * @default false
+   */
+  dragHandleVisible?: boolean;
   /** Custom header. Falls back to a default header that renders `title`. */
   header?: Snippet;
   /** Drawer body content. Required. */

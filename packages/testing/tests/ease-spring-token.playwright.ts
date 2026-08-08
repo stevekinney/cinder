@@ -2,14 +2,14 @@
 /**
  * Regression test for `--cinder-ease-spring`.
  *
- * The token is referenced by the enter motion on Modal, Drawer, Sheet, and
+ * The token is referenced by the enter motion on Modal, Drawer, and
  * CommandPalette. When it was missing from tokens-base.css, every reference
  * silently fell back to the browser's default `ease`, so the motion that
  * shipped was not the motion that was designed.
  *
  * Modal's entrance moved from a `@keyframes`/`animation` on `.cinder-modal`
  * to a `transition` + `@starting-style` on `.cinder-modal__panel` (matching
- * Drawer/Sheet, so all three dialog-based overlays share one mechanism and
+ * Drawer, so the dialog-based overlays share one mechanism and
  * get a real, symmetric exit transition). The token's resolved value is still
  * checked on the dialog element (it cascades down regardless of which element
  * consumes it); the timing-function check now targets the panel's

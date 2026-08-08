@@ -16,9 +16,9 @@
     name="Starter"
     price="Free"
     features={['3 projects', '1 GB storage', 'Community support']}
-    cta="Get started"
+    callToActionLabel="Get started"
     selected={selectedPlan === 'starter'}
-    onSelect={() => {
+    onPlanSelect={() => {
       selectedPlan = 'starter';
     }}
   />
@@ -27,9 +27,9 @@
     name="Pro"
     price="$9/mo"
     features={['Unlimited projects', '10 GB storage', 'Priority support', 'Custom domains']}
-    cta="Choose Pro"
+    callToActionLabel="Choose Pro"
     selected={selectedPlan === 'pro'}
-    onSelect={() => {
+    onPlanSelect={() => {
       selectedPlan = 'pro';
     }}
   />
@@ -44,9 +44,9 @@
       'Custom domains',
       'SSO & audit logs',
     ]}
-    cta="Contact sales"
+    callToActionLabel="Contact sales"
     selected={selectedPlan === 'enterprise'}
-    onSelect={() => {
+    onPlanSelect={() => {
       selectedPlan = 'enterprise';
     }}
   />

@@ -6,12 +6,12 @@
    * @purpose Full-viewport fixed scrim primitive for custom overlay patterns such as loading dimmers and image lightboxes.
    * @tag overlay
    * @tag scrim
-   * @useWhen Providing a full-screen dimming layer behind a custom overlay that is not modal, drawer, or sheet.
+   * @useWhen Providing a full-screen dimming layer behind a custom overlay that is not modal or drawer.
    * @useWhen Building a loading state that dims the full viewport while an async operation runs.
    * @avoidWhen Interrupting the user for a decision — use modal or alert-dialog which manage focus and Escape automatically.
    * @avoidWhen Showing a side panel — use drawer instead.
-   * @avoidWhen Showing structured content in a dialog — use modal, drawer, or sheet, which render their own native `<dialog>::backdrop` scrim.
-   * @related modal, drawer, sheet
+   * @avoidWhen Showing structured content in a dialog — use modal or drawer, which render their own native `<dialog>::backdrop` scrim.
+   * @related modal, drawer
    */
 
   /*

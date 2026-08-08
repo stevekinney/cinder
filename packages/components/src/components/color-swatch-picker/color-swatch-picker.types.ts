@@ -44,7 +44,7 @@ export type ColorSwatchPickerProps = {
   /** Additional classes merged into the listbox `<ul>`. */
   class?: string;
   /** Fired when the selected swatch changes. */
-  onchange?: (color: string) => void;
+  onValueChange?: (color: string) => void;
   /**
    * Snippet that replaces the default check-icon indicator on the selected swatch.
    * Receives the active swatch and the computed contrast color for the icon.

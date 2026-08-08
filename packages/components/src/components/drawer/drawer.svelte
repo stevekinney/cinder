@@ -3,16 +3,17 @@
    * @cinder
    * @category overlay
    * @status stable
-   * @purpose Side-anchored modal panel built on the native dialog element for secondary navigation, settings, or long-form supporting content.
+   * @purpose Edge-anchored modal panel built on the native dialog element; slides from the left, right, or bottom edge for secondary navigation, settings, or mobile-first sheet patterns.
    * @tag overlay
    * @tag dialog
    * @useWhen Showing supplementary navigation, filters, or settings that should slide in from a page edge.
    * @useWhen Presenting long-form content that benefits from a side panel without leaving the current view.
+   * @useWhen Presenting a focused task or set of actions that slides up from the bottom of the viewport on touch surfaces — use `placement="bottom"`.
    * @avoidWhen Interrupting the user for a focused decision — use modal so the surface is centered and task-scoped.
-   * @avoidWhen Anchoring a small surface to a trigger — use popover or sheet instead.
-   * @related modal, sheet, popover
+   * @avoidWhen Anchoring a small surface to a trigger — use popover instead.
+   * @related modal, popover
    */
-  export type { DrawerProps, DrawerSide, DrawerSize } from './drawer.types.ts';
+  export type { DrawerProps, DrawerPlacement, DrawerSize } from './drawer.types.ts';
 </script>
 
 <script lang="ts">
@@ -23,16 +24,20 @@
   import { classNames } from '../../utilities/class-names.ts';
   import { createFocusTrap } from '../focus-trap/index.ts';
   import { useReducedMotion } from '../../utilities/use-reduced-motion.svelte.ts';
-  import { createSlidingDialogState } from '../_internal/create-sliding-dialog-state.svelte.ts';
+  import {
+    createSlidingDialogState,
+    focusDialogBodyUnlessAutofocused,
+  } from '../_internal/create-sliding-dialog-state.svelte.ts';
 
   let {
     open = $bindable(false),
-    side = 'right',
+    placement = 'right',
     size = 'md',
     title,
     class: className,
     triggerRef = null,
-    ariaLabelledBy,
+    ariaLabelledby,
+    dragHandleVisible = false,
     header,
     children,
     footer,
@@ -42,14 +47,15 @@
   const titleId = $props.id();
 
   let dialogElement: HTMLDialogElement | undefined = $state();
+  let bodyElement: HTMLDivElement | undefined = $state();
   let panelElement: HTMLDivElement | undefined = $state();
   /**
-   * The side that was active when the current open/close cycle began.
-   * Snapshotted at open time so that a side-prop change while the drawer
+   * The placement that was active when the current open/close cycle began.
+   * Snapshotted at open time so that a placement-prop change while the drawer
    * is open or closing does not flip the slide direction mid-animation.
    * Only updated when the drawer actually (re)opens a new cycle.
    */
-  let activeSide = $state(side);
+  let activePlacement = $state(placement);
 
   const reducedMotion = useReducedMotion();
   const bodyOverflowFade = overflowFade();
@@ -62,6 +68,15 @@
     getPanelElement: () => panelElement,
     getReducedMotion: () => reducedMotion.current,
     getTriggerRef: () => triggerRef,
+    // Host-managed initial focus (the Modal policy, via the trap's
+    // `manageInitialFocus: false` opt-out): focus the body container unless a
+    // child is autofocused, so opening never lands focus on the close button.
+    onOpen: () =>
+      focusDialogBodyUnlessAutofocused({
+        getOpen: () => open,
+        getDialogElement: () => dialogElement,
+        getBodyElement: () => bodyElement,
+      }),
   });
 
   $effect(() => {
@@ -72,44 +87,20 @@
     if (open) {
       if (dialogState.isClosing) {
         // Quick-reopen while a close transition is still running.
-        // Snapshot the current side so the reversal / re-entry animation
-        // uses the side the user expects for this new open intent.
-        activeSide = side;
+        // Snapshot the current placement so the reversal / re-entry animation
+        // uses the edge the user expects for this new open intent.
+        activePlacement = placement;
       }
 
       if (!dialogState.renderPanel) {
-        // Fresh mount — snapshot the side for this open cycle so any later
-        // side-prop change while open or closing does not flip the direction.
-        activeSide = side;
+        // Fresh mount — snapshot the placement for this open cycle so any
+        // later placement-prop change while open or closing does not flip
+        // the direction.
+        activePlacement = placement;
       }
     }
     dialogState.syncOpenState();
   });
-
-  /**
-   * Resolve the drawer's initial focus target for the shared focus trap.
-   *
-   * When the consumer marked a child with `autofocus`, the native <dialog>
-   * already focused it — honour that by handing the element back so the trap
-   * does not steal focus to the first tabbable. Otherwise return `null`, which
-   * lets `createFocusTrap` fall through to the first tabbable element inside the
-   * drawer — typically the close button. (The Drawer passes no `fallbackFocus`,
-   * so when there is nothing tabbable the trap focuses the trap root itself;
-   * unlike Modal/Sheet, the Drawer does not opt into host-managed body focus.)
-   * This replaces the prior ad-hoc selector, which accepted any `[tabindex]`
-   * other than `-1` (e.g. `-2`) and CSS-hidden elements that are not
-   * Tab-reachable.
-   */
-  function resolveInitialFocus(): HTMLElement | null {
-    if (!dialogElement) return null;
-    const explicitlyAutofocused =
-      dialogElement.querySelector<HTMLElement>('[autofocus]') ??
-      Array.from(dialogElement.querySelectorAll<HTMLElement>('*')).find(
-        (element) => element.autofocus === true,
-      ) ??
-      null;
-    return explicitlyAutofocused;
-  }
 
   onDestroy(() => {
     dialogState.destroy();
@@ -122,7 +113,7 @@
     bind:this={dialogElement}
     class={classNames('cinder-drawer', className)}
     aria-modal="true"
-    aria-labelledby={ariaLabelledBy ?? titleId}
+    aria-labelledby={ariaLabelledby ?? titleId}
     data-cinder-closing={dialogState.isClosing ? '' : undefined}
     onclose={() => dialogState.handleClose()}
     oncancel={(event) => dialogState.handleNativeCancel(event)}
@@ -152,27 +143,33 @@
     {#if dialogState.renderPanel}
       <!--
         The native <dialog> (showModal) traps focus in supporting browsers; the
-        shared focus-trap is the defence-in-depth fallback and owns initial focus.
-        It carefully filters hidden/inert/disabled/`tabindex="-1"` elements, so it
-        replaces the prior ad-hoc selector. Drawer owns focus restoration
-        (returnFocus), so the trap runs with `restoreFocus: false`.
+        shared focus-trap is the defence-in-depth fallback. The Drawer owns
+        both focus restoration (returnFocus) and initial focus (the body-focus
+        effect above), so the trap runs with `restoreFocus: false` and
+        `manageInitialFocus: false`.
       -->
       <div
         bind:this={panelElement}
         class="cinder-drawer__panel"
-        data-cinder-side={activeSide}
+        data-cinder-placement={activePlacement}
         data-cinder-size={size}
         data-cinder-closing={dialogState.isClosing ? '' : undefined}
         inert={dialogState.isClosing}
         {@attach createFocusTrap({
           active: () => open && !dialogState.isClosing,
           restoreFocus: false,
-          initialFocus: resolveInitialFocus,
+          manageInitialFocus: false,
         })}
       >
+        {#if dragHandleVisible && activePlacement === 'bottom'}
+          <div class="cinder-drawer__drag-handle" aria-hidden="true">
+            <span class="cinder-drawer__drag-handle-pill"></span>
+          </div>
+        {/if}
+
         <header class="cinder-drawer__header">
           {#if header}
-            {#if !ariaLabelledBy}
+            {#if !ariaLabelledby}
               <h2 id={titleId} class="cinder-sr-only">{title}</h2>
             {/if}
             {@render header()}
@@ -183,6 +180,7 @@
         </header>
 
         <div
+          bind:this={bodyElement}
           class="cinder-drawer__body cinder-_scroll-fade"
           tabindex="-1"
           {@attach bodyOverflowFade}

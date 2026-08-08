@@ -22,10 +22,10 @@
       "code": "<script lang=\"ts\">\n  import { FormSection } from '@lostgradient/cinder/form-section';\n  import { Toggle } from '@lostgradient/cinder/toggle';\n\n  let emailNotifications = $state(true);\n  let darkMode = $state(false);\n  let autoSave = $state(true);\n</script>\n\n<FormSection as=\"fieldset\" heading=\"Account preferences\" columns={1}>\n  <Toggle id=\"pref-email\" bind:checked={emailNotifications} label=\"Email notifications\" />\n  <Toggle id=\"pref-dark\" bind:checked={darkMode} label=\"Dark mode\" />\n  <Toggle id=\"pref-autosave\" bind:checked={autoSave} label=\"Auto-save drafts\" />\n</FormSection>\n"
     },
     {
-      "id": "hide-label",
+      "id": "hidden-label",
       "title": "Icon-only / inline row",
-      "description": "In a toolbar or table row where the meaning is already clear from context, hideLabel removes the visible text while keeping it as the accessible name.",
-      "code": "<script lang=\"ts\">\n  import { Toggle } from '@lostgradient/cinder/toggle';\n\n  let wordWrap = $state(true);\n  let minimap = $state(false);\n</script>\n\n<div\n  role=\"toolbar\"\n  aria-label=\"Editor options\"\n  style=\"display: flex; align-items: center; gap: 1rem;\"\n>\n  <Toggle id=\"opt-wrap\" bind:checked={wordWrap} label=\"Word wrap\" hideLabel />\n  <Toggle id=\"opt-minimap\" bind:checked={minimap} label=\"Minimap\" hideLabel />\n</div>\n"
+      "description": "In a toolbar or table row where the meaning is already clear from context, labelVisible={false} removes the visible text while keeping it as the accessible name.",
+      "code": "<script lang=\"ts\">\n  import { Toggle } from '@lostgradient/cinder/toggle';\n\n  let wordWrap = $state(true);\n  let minimap = $state(false);\n</script>\n\n<div\n  role=\"toolbar\"\n  aria-label=\"Editor options\"\n  style=\"display: flex; align-items: center; gap: 1rem;\"\n>\n  <Toggle id=\"opt-wrap\" bind:checked={wordWrap} label=\"Word wrap\" labelVisible={false} />\n  <Toggle id=\"opt-minimap\" bind:checked={minimap} label=\"Minimap\" labelVisible={false} />\n</div>\n"
     }
   ]
 }

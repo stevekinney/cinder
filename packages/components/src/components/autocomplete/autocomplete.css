@@ -10,16 +10,12 @@
     padding: var(--cinder-space-1);
   }
 
+  /* Geometry, padding, active fill, keyboard cursor ring, and disabled state
+   come from the shared `cinder-_option-row` primitive on the markup (the
+   option has exactly one child, so the primitive's flex replaces the old
+   local grid; two-line stacking lives in `__option-text` below). */
   .cinder-autocomplete__option {
-    display: grid;
-    gap: 0.125rem;
-    padding: var(--cinder-space-2) var(--cinder-space-3);
-    border-radius: var(--cinder-radius-sm);
     color: var(--cinder-text);
-  }
-
-  .cinder-autocomplete__option[data-cinder-disabled] {
-    color: var(--cinder-text-muted);
   }
 
   /*
@@ -67,7 +63,7 @@
   }
 
   .cinder-autocomplete__status {
-    padding: var(--cinder-space-2) var(--cinder-space-3);
+    /* Padding comes from the shared `cinder-_option-row` class on the row. */
     color: var(--cinder-text-muted);
     font-size: var(--cinder-text-sm);
   }

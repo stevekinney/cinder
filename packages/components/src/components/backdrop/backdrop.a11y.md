@@ -8,14 +8,14 @@ Purpose: Full-viewport fixed scrim primitive for custom overlay patterns such as
 
 ## Use when
 
-- Providing a full-screen dimming layer behind a custom overlay that is not modal, drawer, or sheet.
+- Providing a full-screen dimming layer behind a custom overlay that is not modal or drawer.
 - Building a loading state that dims the full viewport while an async operation runs.
 
 ## Avoid when
 
 - Interrupting the user for a decision — use modal or alert-dialog which manage focus and Escape automatically.
 - Showing a side panel — use drawer instead.
-- Showing structured content in a dialog — use modal, drawer, or sheet, which render their own native `<dialog>::backdrop` scrim.
+- Showing structured content in a dialog — use modal or drawer, which render their own native `<dialog>::backdrop` scrim.
 
 ## Keyboard and focus
 
@@ -36,4 +36,4 @@ When Backdrop accepts snippets or arbitrary children, the caller owns the semant
 - Inspect the accessible name, role, and state in browser accessibility tools.
 - Check forced-colors mode when the component adds borders, focus rings, selected state, or status color.
 
-Related components: `modal`, `drawer`, `sheet`.
+Related components: `modal`, `drawer`.

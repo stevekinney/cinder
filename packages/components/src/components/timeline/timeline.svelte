@@ -11,8 +11,8 @@
    * @avoidWhen Surfacing a real-time social or activity stream — feed is the higher-affordance composition.
    * @avoidWhen Guiding users through a numbered procedural flow. | steps
    * @avoidWhen Showing async execution state with retries, branches, or progress. | run-step-timeline
-   * @avoidWhen Showing a bounded horizontal schedule or dense operational stream — use event-timeline or event-stream-viewer.
-   * @related feed, run-step-timeline, event-timeline, event-stream-viewer
+   * @avoidWhen Showing a live activity or dense operational stream — use feed (its log arm covers operational streams).
+   * @related feed, run-step-timeline
    */
   export type {
     TimelineEntry,

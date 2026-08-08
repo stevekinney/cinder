@@ -25,7 +25,7 @@ The custom calendar and time dialogs expose the picker interaction and keyboard 
 
 ## Mouse / pointer
 
-Clicking a preset button applies that preset's resolved range, sets `aria-pressed="true"` on the clicked button, and calls `onchange`. Clicking a calendar trigger opens the custom picker. Changing an input value manually clears the active preset selection.
+Clicking a preset button applies that preset's resolved range, sets `aria-pressed="true"` on the clicked button, and calls `onValueChange`. Clicking a calendar trigger opens the custom picker. Changing an input value manually clears the active preset selection.
 
 ## Hard scope caps
 

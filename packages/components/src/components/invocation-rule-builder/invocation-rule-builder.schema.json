@@ -65,7 +65,7 @@
         "additionalProperties": false,
         "required": ["actions", "conditions", "id", "label"]
       },
-      "description": "The current list of automation rules. Controlled — pass the updated\nlist returned from `onchange` back into this prop to commit a change."
+      "description": "The current list of automation rules. Controlled — pass the updated\nlist returned from `onValueChange` back into this prop to commit a change."
     },
     "conditions": {
       "type": "array",
@@ -226,7 +226,7 @@
     },
     "readonly": {
       "const": true,
-      "description": "Must be true for schema-driven usage because editable mode requires\nthe unsupported `onchange` callback. Runtime consumers may omit this\nwhen passing `onchange` directly."
+      "description": "Must be true for schema-driven usage because editable mode requires\nthe unsupported `onValueChange` callback. Runtime consumers may omit this\nwhen passing `onValueChange` directly."
     },
     "addRuleLabel": {
       "type": "string",
@@ -254,7 +254,7 @@
   "metadata": {
     "unsupportedProps": [
       {
-        "name": "onchange",
+        "name": "onValueChange",
         "reason": "function-or-snippet",
         "description": "Called whenever the user makes any edit. Required for editable runtime\nusage because editable controls must commit controlled state changes.\nReceives the next controlled state (pure, not mutated) and a change descriptor.\nConsumer owns persistence, validation, and execution."
       }

@@ -11,12 +11,12 @@ const schema = {
     label: {
       type: 'string',
       description:
-        'Accessible label for the group, applied as aria-label. Provide exactly one of `label` or `labelledBy`.',
+        'Accessible label for the group, applied as aria-label. Provide exactly one of `label` or `ariaLabelledby`.',
     },
-    labelledBy: {
+    ariaLabelledby: {
       type: 'string',
       description:
-        'ID of an existing element whose text labels the group, applied as aria-labelledby. Provide exactly one of `label` or `labelledBy`.',
+        'ID of an existing element whose text labels the group, applied as aria-labelledby. Provide exactly one of `label` or `ariaLabelledby`.',
     },
   },
   additionalProperties: false,

@@ -36,7 +36,7 @@
     mode = 'numeric',
     masked = false,
     label,
-    hideLabel = false,
+    labelVisible = true,
     'aria-label': ariaLabel,
     'aria-labelledby': ariaLabelledBy,
     description,
@@ -46,7 +46,7 @@
     name,
     autocomplete = 'one-time-code',
     class: className,
-    onchange,
+    onValueChange,
   }: PinInputProps = $props();
 
   const context = getFormFieldContext();
@@ -165,7 +165,7 @@
     if (joined !== value) {
       value = joined;
     }
-    onchange?.(joined);
+    onValueChange?.(joined);
   }
 
   function focusSegment(index: number): void {
@@ -267,7 +267,7 @@
   {#if label}
     <span
       id={groupLabelId}
-      class={classNames('cinder-pin-input-field__label', hideLabel && 'cinder-sr-only')}
+      class={classNames('cinder-pin-input-field__label', !labelVisible && 'cinder-sr-only')}
       data-disabled={resolvedDisabled || undefined}
     >
       {label}

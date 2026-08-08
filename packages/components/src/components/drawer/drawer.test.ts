@@ -2,9 +2,9 @@
 import { join } from 'node:path';
 
 import { afterAll, afterEach, describe, expect, test } from 'bun:test';
-import { createRawSnippet } from 'svelte';
+import { createRawSnippet, tick } from 'svelte';
 
-import { _resetEscapeStack, _resetScrollLock } from '../../_internal/overlay.ts';
+import { _resetEscapeStack, _resetScrollLock, pushEscapeHandler } from '../../_internal/overlay.ts';
 import { setupHappyDom } from '../../test/happy-dom.ts';
 import {
   flushOverflowFadeAnimationFrames,
@@ -58,6 +58,9 @@ if (typeof HTMLDialogElement !== 'undefined') {
 
 const { cleanup, render, fireEvent } = await import('@testing-library/svelte');
 const { default: Drawer } = await import('./drawer.svelte');
+// One shared read for every CSS-contract test below — drawer.css is asserted
+// against nine times; re-reading it per test is pure waste.
+const drawerCss = await Bun.file(new URL('./drawer.css', import.meta.url)).text();
 const originalGetComputedStyle = window.getComputedStyle.bind(window);
 
 window.getComputedStyle = ((target: Element) => {
@@ -139,21 +142,21 @@ describe('Drawer', () => {
     expect(dialog?.hasAttribute('open')).toBe(false);
   });
 
-  // ---- 3. data-cinder-side reflects side prop ----
-  test('data-cinder-side on panel reflects side prop (right default)', () => {
+  // ---- 3. data-cinder-placement reflects side prop ----
+  test('data-cinder-placement on panel reflects side prop (right default)', () => {
     const { container } = render(Drawer, {
       props: { open: true, title: 'Test', children: emptySnippet },
     });
     const panel = container.querySelector('.cinder-drawer__panel');
-    expect(panel?.getAttribute('data-cinder-side')).toBe('right');
+    expect(panel?.getAttribute('data-cinder-placement')).toBe('right');
   });
 
-  test('data-cinder-side on panel reflects side="left"', () => {
+  test('data-cinder-placement on panel reflects side="left"', () => {
     const { container } = render(Drawer, {
-      props: { open: true, title: 'Test', side: 'left', children: emptySnippet },
+      props: { open: true, title: 'Test', placement: 'left', children: emptySnippet },
     });
     const panel = container.querySelector('.cinder-drawer__panel');
-    expect(panel?.getAttribute('data-cinder-side')).toBe('left');
+    expect(panel?.getAttribute('data-cinder-placement')).toBe('left');
   });
 
   // ---- 4. data-cinder-size reflects size prop ----
@@ -194,8 +197,8 @@ describe('Drawer', () => {
     expect(heading?.textContent?.trim()).toBe('My Drawer Title');
   });
 
-  // ---- 6. Custom header without ariaLabelledBy: visually-hidden h2 ----
-  test('custom header without ariaLabelledBy renders sr-only title heading', () => {
+  // ---- 6. Custom header without ariaLabelledby: visually-hidden h2 ----
+  test('custom header without ariaLabelledby renders sr-only title heading', () => {
     const customHeader = createRawSnippet(() => ({
       render: () => `<span>Custom Header Content</span>`,
       setup: () => {},
@@ -218,8 +221,8 @@ describe('Drawer', () => {
     expect(heading?.classList.contains('cinder-sr-only')).toBe(true);
   });
 
-  // ---- 7. Custom header with ariaLabelledBy: no internal heading ----
-  test('custom header with ariaLabelledBy uses consumer id and renders no internal title', () => {
+  // ---- 7. Custom header with ariaLabelledby: no internal heading ----
+  test('custom header with ariaLabelledby uses consumer id and renders no internal title', () => {
     const customHeader = createRawSnippet(() => ({
       render: () => `<h2 id="external-heading">External Heading</h2>`,
       setup: () => {},
@@ -229,7 +232,7 @@ describe('Drawer', () => {
         open: true,
         title: 'Unused Title',
         header: customHeader,
-        ariaLabelledBy: 'external-heading',
+        ariaLabelledby: 'external-heading',
         children: emptySnippet,
       },
     });
@@ -413,7 +416,7 @@ describe('Drawer', () => {
 
   // ---- 15. Stylesheet regression: reduced-motion disables panel and backdrop transitions ----
   test('drawer.css disables panel and backdrop transitions under prefers-reduced-motion: reduce', async () => {
-    const cssText = await Bun.file(new URL('./drawer.css', import.meta.url)).text();
+    const cssText = drawerCss;
     expect(cssText).toContain('prefers-reduced-motion: reduce');
     expect(cssText).toContain('.cinder-drawer__panel');
     expect(cssText).toContain('.cinder-drawer::backdrop');
@@ -425,7 +428,7 @@ describe('Drawer', () => {
   // transition FROM on open, so it used to snap to full opacity instantly
   // while the panel slid in smoothly — an asymmetric "eases out, pops in".
   test('drawer.css gives the backdrop a starting-style, backdrop-filter transition, and allow-discrete', async () => {
-    const cssText = await Bun.file(new URL('./drawer.css', import.meta.url)).text();
+    const cssText = drawerCss;
     const backdropRuleStart = cssText.indexOf('.cinder-drawer::backdrop {');
     const backdropRuleEnd = cssText.indexOf('}', backdropRuleStart);
     const backdropRule = cssText.slice(backdropRuleStart, backdropRuleEnd);
@@ -497,6 +500,13 @@ describe('Drawer', () => {
     document.body.appendChild(prevFocus);
     prevFocus.focus();
 
+    // A sibling escape handler below the drawer's marker: if unmount leaks
+    // the drawer's no-op entry, Escape never reaches this handler again.
+    let siblingEscapeCount = 0;
+    const releaseSiblingEscape = pushEscapeHandler(() => {
+      siblingEscapeCount += 1;
+    });
+
     const { unmount } = render(Drawer, {
       props: { open: true, title: 'Test', children: emptySnippet },
     });
@@ -504,6 +514,9 @@ describe('Drawer', () => {
     expect(document.body.style.overflow).toBe('hidden');
     unmount();
     expect(document.body.style.overflow).toBe('');
+    await fireEvent.keyDown(window, { key: 'Escape', code: 'Escape' });
+    expect(siblingEscapeCount).toBe(1);
+    releaseSiblingEscape();
 
     document.body.removeChild(prevFocus);
   });
@@ -587,7 +600,9 @@ describe('Drawer', () => {
   });
 
   // ---- 20. Parent-driven open/close state machine ----
-  test('rapid open/close cycling: scroll lock and escape stack clean up correctly', async () => {
+  // (Escape-stack release across cycles is pinned separately in the
+  // "Drawer escape-stack hygiene" describe below.)
+  test('rapid open/close cycling: scroll lock cleans up correctly', async () => {
     let openValue = false;
     const { container, rerender } = render(Drawer, {
       props: {
@@ -719,7 +734,7 @@ describe('Drawer', () => {
   });
 
   test('body opts into the shared scroll-fade recipe with a surface-colored overlay, never a mask', async () => {
-    const css = await Bun.file(new URL('./drawer.css', import.meta.url)).text();
+    const css = drawerCss;
     expect(css).toMatch(
       /\.cinder-drawer__body\s*\{[^}]*--_cinder-scroll-fade-color:\s*var\(--cinder-surface\)/s,
     );
@@ -742,10 +757,11 @@ describe('Drawer', () => {
     expect(closeButton?.getAttribute('aria-label')).toBe('Close drawer');
   });
 
-  // ---- Initial focus on open: first focusable element inside the panel ----
-  test('opening focuses the first focusable element inside the panel when one exists', async () => {
-    // The close button inside the header is the first focusable element in the panel.
-    // The drawer renders: header (close button) → body → footer.
+  // ---- Initial focus on open: host-managed body focus (the Modal policy) ----
+  // The trap runs with `manageInitialFocus: false`; the drawer's own open
+  // effect focuses the body container, so opening never lands focus on the
+  // close button.
+  test('opening focuses the body container when nothing is autofocused', async () => {
     const { container } = render(Drawer, {
       props: { open: true, title: 'Test', children: emptySnippet },
     });
@@ -753,27 +769,27 @@ describe('Drawer', () => {
     // effects run synchronously but the tick().then() microtask needs to drain.
     // Wait for two microtask cycles to ensure both the effect and the tick resolve.
     await new Promise((resolve) => setTimeout(resolve, 0));
-    const closeButton = container.querySelector('.cinder-drawer__close') as HTMLButtonElement;
-    expect(closeButton).not.toBeNull();
-    expect(document.activeElement).toBe(closeButton);
+    const body = container.querySelector('.cinder-drawer__body') as HTMLElement;
+    expect(body).not.toBeNull();
+    expect(document.activeElement).toBe(body);
   });
 });
 
 // ---------------------------------------------------------------------------
 // Slide direction lifecycle — regression for wrong-edge entry/exit.
 //
-// The panel's `data-cinder-side` must reflect the side that was current when
+// The panel's `data-cinder-placement` must reflect the side that was current when
 // the drawer *opened* (the active-open-cycle side), not the live `side` prop.
 // happy-dom cannot render CSS, so these tests assert the state contract that
-// drives direction: whichever value `data-cinder-side` carries on the panel
+// drives direction: whichever value `data-cinder-placement` carries on the panel
 // is the value the CSS will use for translate/anchor rules.
 // ---------------------------------------------------------------------------
 describe('Drawer slide direction lifecycle', () => {
   // 1. Opening a right drawer and then changing side while open must NOT
-  //    mutate data-cinder-side during the open cycle.
-  test('side change while open does not affect data-cinder-side until the next open cycle', async () => {
+  //    mutate data-cinder-placement during the open cycle.
+  test('side change while open does not affect data-cinder-placement until the next open cycle', async () => {
     let openValue = true;
-    let sideValue: 'left' | 'right' = 'right';
+    let placementValue: 'left' | 'right' | 'bottom' = 'right';
 
     const { container, rerender } = render(Drawer, {
       props: {
@@ -783,8 +799,8 @@ describe('Drawer slide direction lifecycle', () => {
         set open(value: boolean) {
           openValue = value;
         },
-        get side() {
-          return sideValue;
+        get placement() {
+          return placementValue;
         },
         title: 'Test',
         children: emptySnippet,
@@ -792,10 +808,10 @@ describe('Drawer slide direction lifecycle', () => {
     });
 
     const panel = container.querySelector('.cinder-drawer__panel') as HTMLElement;
-    expect(panel.getAttribute('data-cinder-side')).toBe('right');
+    expect(panel.getAttribute('data-cinder-placement')).toBe('right');
 
     // Change the side while the drawer remains open.
-    sideValue = 'left';
+    placementValue = 'left';
     await rerender({
       get open() {
         return openValue;
@@ -803,21 +819,21 @@ describe('Drawer slide direction lifecycle', () => {
       set open(value: boolean) {
         openValue = value;
       },
-      get side() {
-        return sideValue;
+      get placement() {
+        return placementValue;
       },
       title: 'Test',
       children: emptySnippet,
     });
 
     // Panel should still report the open-cycle side ('right'), not 'left'.
-    expect(panel.getAttribute('data-cinder-side')).toBe('right');
+    expect(panel.getAttribute('data-cinder-placement')).toBe('right');
   });
 
   // 2. Side change while closed takes effect on the next open.
   test('side change while closed is reflected on the next open', async () => {
     let openValue = false;
-    let sideValue: 'left' | 'right' = 'right';
+    let placementValue: 'left' | 'right' | 'bottom' = 'right';
 
     const { container, rerender } = render(Drawer, {
       props: {
@@ -827,8 +843,8 @@ describe('Drawer slide direction lifecycle', () => {
         set open(value: boolean) {
           openValue = value;
         },
-        get side() {
-          return sideValue;
+        get placement() {
+          return placementValue;
         },
         title: 'Test',
         children: emptySnippet,
@@ -844,15 +860,15 @@ describe('Drawer slide direction lifecycle', () => {
       set open(value: boolean) {
         openValue = value;
       },
-      get side() {
-        return sideValue;
+      get placement() {
+        return placementValue;
       },
       title: 'Test',
       children: emptySnippet,
     });
 
     const panel = container.querySelector('.cinder-drawer__panel') as HTMLElement;
-    expect(panel.getAttribute('data-cinder-side')).toBe('right');
+    expect(panel.getAttribute('data-cinder-placement')).toBe('right');
 
     // Close the drawer fully.
     openValue = false;
@@ -863,8 +879,8 @@ describe('Drawer slide direction lifecycle', () => {
       set open(value: boolean) {
         openValue = value;
       },
-      get side() {
-        return sideValue;
+      get placement() {
+        return placementValue;
       },
       title: 'Test',
       children: emptySnippet,
@@ -872,7 +888,7 @@ describe('Drawer slide direction lifecycle', () => {
     await finishCloseTransition(container);
 
     // Change side while closed.
-    sideValue = 'left';
+    placementValue = 'left';
 
     // Reopen — the new side should now be snapshotted.
     openValue = true;
@@ -883,22 +899,22 @@ describe('Drawer slide direction lifecycle', () => {
       set open(value: boolean) {
         openValue = value;
       },
-      get side() {
-        return sideValue;
+      get placement() {
+        return placementValue;
       },
       title: 'Test',
       children: emptySnippet,
     });
 
     const newPanel = container.querySelector('.cinder-drawer__panel') as HTMLElement;
-    expect(newPanel.getAttribute('data-cinder-side')).toBe('left');
+    expect(newPanel.getAttribute('data-cinder-placement')).toBe('left');
   });
 
-  // 3. Close transition keeps data-cinder-side stable even if side prop changes
+  // 3. Close transition keeps data-cinder-placement stable even if side prop changes
   //    mid-transition (e.g. the user queues a new side while the exit plays).
-  test('side change during a close transition does not flip data-cinder-side mid-transition', async () => {
+  test('side change during a close transition does not flip data-cinder-placement mid-transition', async () => {
     let openValue = true;
-    let sideValue: 'left' | 'right' = 'right';
+    let placementValue: 'left' | 'right' | 'bottom' = 'right';
 
     const { container, rerender } = render(Drawer, {
       props: {
@@ -908,8 +924,8 @@ describe('Drawer slide direction lifecycle', () => {
         set open(value: boolean) {
           openValue = value;
         },
-        get side() {
-          return sideValue;
+        get placement() {
+          return placementValue;
         },
         title: 'Test',
         children: emptySnippet,
@@ -917,7 +933,7 @@ describe('Drawer slide direction lifecycle', () => {
     });
 
     const panel = container.querySelector('.cinder-drawer__panel') as HTMLElement;
-    expect(panel.getAttribute('data-cinder-side')).toBe('right');
+    expect(panel.getAttribute('data-cinder-placement')).toBe('right');
 
     // Begin closing.
     openValue = false;
@@ -928,8 +944,8 @@ describe('Drawer slide direction lifecycle', () => {
       set open(value: boolean) {
         openValue = value;
       },
-      get side() {
-        return sideValue;
+      get placement() {
+        return placementValue;
       },
       title: 'Test',
       children: emptySnippet,
@@ -938,10 +954,10 @@ describe('Drawer slide direction lifecycle', () => {
     // Panel should be in closing state.
     expect(panel.getAttribute('data-cinder-closing')).toBe('');
     // Side must still be the open-cycle side, not whatever side is now.
-    expect(panel.getAttribute('data-cinder-side')).toBe('right');
+    expect(panel.getAttribute('data-cinder-placement')).toBe('right');
 
     // Change side prop while transition is running.
-    sideValue = 'left';
+    placementValue = 'left';
     await rerender({
       get open() {
         return openValue;
@@ -949,15 +965,15 @@ describe('Drawer slide direction lifecycle', () => {
       set open(value: boolean) {
         openValue = value;
       },
-      get side() {
-        return sideValue;
+      get placement() {
+        return placementValue;
       },
       title: 'Test',
       children: emptySnippet,
     });
 
-    // data-cinder-side must remain 'right' throughout the transition.
-    expect(panel.getAttribute('data-cinder-side')).toBe('right');
+    // data-cinder-placement must remain 'right' throughout the transition.
+    expect(panel.getAttribute('data-cinder-placement')).toBe('right');
 
     // Transition completes — panel unmounts.
     await finishCloseTransition(container);
@@ -968,7 +984,7 @@ describe('Drawer slide direction lifecycle', () => {
   //    side is snapshotted and used for the re-entry animation.
   test('quick-reopen after mid-close-side-change uses the new side', async () => {
     let openValue = true;
-    let sideValue: 'left' | 'right' = 'right';
+    let placementValue: 'left' | 'right' | 'bottom' = 'right';
 
     const { container, rerender } = render(Drawer, {
       props: {
@@ -978,8 +994,8 @@ describe('Drawer slide direction lifecycle', () => {
         set open(value: boolean) {
           openValue = value;
         },
-        get side() {
-          return sideValue;
+        get placement() {
+          return placementValue;
         },
         title: 'Test',
         children: emptySnippet,
@@ -988,7 +1004,7 @@ describe('Drawer slide direction lifecycle', () => {
 
     // Close — transition starts.
     openValue = false;
-    sideValue = 'left'; // side changes while closing
+    placementValue = 'left'; // side changes while closing
     await rerender({
       get open() {
         return openValue;
@@ -996,8 +1012,8 @@ describe('Drawer slide direction lifecycle', () => {
       set open(value: boolean) {
         openValue = value;
       },
-      get side() {
-        return sideValue;
+      get placement() {
+        return placementValue;
       },
       title: 'Test',
       children: emptySnippet,
@@ -1016,8 +1032,8 @@ describe('Drawer slide direction lifecycle', () => {
       set open(value: boolean) {
         openValue = value;
       },
-      get side() {
-        return sideValue;
+      get placement() {
+        return placementValue;
       },
       title: 'Test',
       children: emptySnippet,
@@ -1025,20 +1041,20 @@ describe('Drawer slide direction lifecycle', () => {
 
     // After quick-reopen, isClosing should be cleared and the new side snapshot applies.
     expect(panel.getAttribute('data-cinder-closing')).toBeNull();
-    expect(panel.getAttribute('data-cinder-side')).toBe('left');
+    expect(panel.getAttribute('data-cinder-placement')).toBe('left');
   });
 
   // 5. Opening with side='left' from the start uses left entry.
-  test('left-side drawer opens with data-cinder-side="left"', () => {
+  test('left-side drawer opens with data-cinder-placement="left"', () => {
     const { container } = render(Drawer, {
-      props: { open: true, title: 'Test', side: 'left', children: emptySnippet },
+      props: { open: true, title: 'Test', placement: 'left', children: emptySnippet },
     });
     const panel = container.querySelector('.cinder-drawer__panel') as HTMLElement;
-    expect(panel.getAttribute('data-cinder-side')).toBe('left');
+    expect(panel.getAttribute('data-cinder-placement')).toBe('left');
   });
 
-  // 6. Right-side drawer (default) closes with data-cinder-side='right' throughout.
-  test('right-side drawer exit transition preserves data-cinder-side="right"', async () => {
+  // 6. Right-side drawer (default) closes with data-cinder-placement='right' throughout.
+  test('right-side drawer exit transition preserves data-cinder-placement="right"', async () => {
     let openValue = true;
     const { container, rerender } = render(Drawer, {
       props: {
@@ -1054,7 +1070,7 @@ describe('Drawer slide direction lifecycle', () => {
     });
 
     const panel = container.querySelector('.cinder-drawer__panel') as HTMLElement;
-    expect(panel.getAttribute('data-cinder-side')).toBe('right');
+    expect(panel.getAttribute('data-cinder-placement')).toBe('right');
 
     openValue = false;
     await rerender({
@@ -1069,7 +1085,7 @@ describe('Drawer slide direction lifecycle', () => {
     });
 
     // During the close transition, direction must still be 'right'.
-    expect(panel.getAttribute('data-cinder-side')).toBe('right');
+    expect(panel.getAttribute('data-cinder-placement')).toBe('right');
     expect(panel.getAttribute('data-cinder-closing')).toBe('');
 
     await finishCloseTransition(container);
@@ -1078,11 +1094,11 @@ describe('Drawer slide direction lifecycle', () => {
 
   // Same-tick open + side change: a consumer that does `open = true; side = 'left'`
   // in one event handler batches both writes into a single reactive update. The
-  // open-handling effect must read the NEW side when it snapshots activeSide, so
+  // open-handling effect must read the NEW side when it snapshots activePlacement, so
   // the fresh panel slides from the correct edge.
   test('open=false→true with a simultaneous side change snapshots the new side', async () => {
     let openValue = false;
-    let sideValue: 'left' | 'right' = 'right';
+    let placementValue: 'left' | 'right' | 'bottom' = 'right';
 
     const props = () => ({
       get open() {
@@ -1091,8 +1107,8 @@ describe('Drawer slide direction lifecycle', () => {
       set open(value: boolean) {
         openValue = value;
       },
-      get side() {
-        return sideValue;
+      get placement() {
+        return placementValue;
       },
       title: 'Test',
       children: emptySnippet,
@@ -1103,12 +1119,12 @@ describe('Drawer slide direction lifecycle', () => {
 
     // Flip both atomically before the single rerender (one reactive batch).
     openValue = true;
-    sideValue = 'left';
+    placementValue = 'left';
     await rerender(props());
 
     const panel = container.querySelector('.cinder-drawer__panel') as HTMLElement;
     expect(panel).not.toBeNull();
-    expect(panel.getAttribute('data-cinder-side')).toBe('left');
+    expect(panel.getAttribute('data-cinder-placement')).toBe('left');
   });
 });
 
@@ -1132,5 +1148,421 @@ describe('Drawer SSR contract', () => {
 
     expect(html).not.toContain('<dialog');
     expect(html).not.toContain('Server Drawer');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Bottom placement (the former Sheet). The drag handle, the 90dvh cap, and
+// the touch-target sizes are placement-specific contracts.
+// ---------------------------------------------------------------------------
+describe('Drawer bottom placement', () => {
+  test('drag handle is absent by default (dragHandleVisible=false)', () => {
+    const { container } = render(Drawer, {
+      props: { open: true, placement: 'bottom', title: 'Test', children: emptySnippet },
+    });
+    expect(container.querySelector('.cinder-drawer__drag-handle')).toBeNull();
+  });
+
+  test('drag handle renders when dragHandleVisible=true with aria-hidden="true"', () => {
+    const { container } = render(Drawer, {
+      props: {
+        open: true,
+        placement: 'bottom',
+        title: 'Test',
+        dragHandleVisible: true,
+        children: emptySnippet,
+      },
+    });
+    const handle = container.querySelector('.cinder-drawer__drag-handle');
+    expect(handle).not.toBeNull();
+    expect(handle?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  test('drag handle never renders on side placements even when dragHandleVisible=true', () => {
+    const { container } = render(Drawer, {
+      props: {
+        open: true,
+        placement: 'right',
+        title: 'Test',
+        dragHandleVisible: true,
+        children: emptySnippet,
+      },
+    });
+    expect(container.querySelector('.cinder-drawer__drag-handle')).toBeNull();
+  });
+
+  test('drawer.css close button meets 44px touch target (2.75rem × 2.75rem)', async () => {
+    const cssText = drawerCss;
+    const closeRule = cssText.split('.cinder-drawer__close {')[1]?.split('}')[0];
+    expect(closeRule).toContain('width: 2.75rem');
+    expect(closeRule).toContain('height: 2.75rem');
+  });
+
+  test('drawer.css drag handle meets 44px touch target', async () => {
+    const cssText = drawerCss;
+    const handleRule = cssText.split('.cinder-drawer__drag-handle {')[1]?.split('}')[0];
+    expect(handleRule).toMatch(/min-height:\s*(?:2\.75rem|var\(--cinder-touch-target-min\))/);
+  });
+
+  test('drawer.css caps the bottom panel and keeps overflow inside the body', async () => {
+    const cssText = drawerCss;
+
+    expect(cssText).toMatch(
+      /\.cinder-drawer__panel\s*\{[^}]*display:\s*flex;[^}]*flex-direction:\s*column;[^}]*overflow:\s*hidden;/s,
+    );
+    expect(cssText).toMatch(
+      /\.cinder-drawer__panel\[data-cinder-placement='bottom'\]\s*\{[^}]*max-height:\s*90dvh;/s,
+    );
+    expect(cssText).not.toMatch(/max-block-size:\s*90dvh;/s);
+    expect(cssText).toMatch(
+      /\.cinder-drawer__body\s*\{[^}]*flex:\s*1;[^}]*min-block-size:\s*0;[^}]*overflow-y:\s*auto;/s,
+    );
+    expect(cssText).toMatch(/\.cinder-drawer__header\s*\{[^}]*flex-shrink:\s*0;/s);
+    expect(cssText).toMatch(/\.cinder-drawer__footer\s*\{[^}]*flex-shrink:\s*0;/s);
+  });
+
+  test('body uses the panel surface beneath header and footer', async () => {
+    const cssText = drawerCss;
+    expect(cssText).toMatch(
+      /\.cinder-drawer__body\s*\{[^}]*background:\s*var\(--cinder-surface\)/s,
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Motion contract: every placement must have BOTH a closing rule and a
+// matching @starting-style rule, or that placement pops in with no from-state
+// while the backdrop fades (the asymmetric "eases out, pops in" defect).
+// ---------------------------------------------------------------------------
+describe('Drawer per-placement motion contract', () => {
+  // Expected slide-from-edge vector per placement, declared as the
+  // --_cinder-drawer-slide custom property in each placement's block and
+  // consumed by ONE closing rule and ONE @starting-style rule. Keyed by the
+  // SCHEMA's placement enum (generated from DrawerPlacement; components:check
+  // forces regeneration), so adding a new placement to the type fails the
+  // coverage test below until its block declares a vector — a new edge
+  // cannot ship the missing-enter-animation pop-in silently.
+  const PLACEMENT_SLIDE_VECTORS: Record<string, string> = {
+    right: '--_cinder-drawer-slide: 100% 0;',
+    left: '--_cinder-drawer-slide: -100% 0;',
+    bottom: '--_cinder-drawer-slide: 0 100%;',
+  };
+
+  async function schemaPlacements(): Promise<string[]> {
+    const schema = JSON.parse(
+      await Bun.file(new URL('./drawer.schema.json', import.meta.url)).text(),
+    ) as { properties?: { placement?: { enum?: string[] } } };
+    const enumValues = schema.properties?.placement?.enum;
+    if (!Array.isArray(enumValues) || enumValues.length === 0) {
+      throw new Error('drawer.schema.json no longer exposes a placement enum');
+    }
+    return enumValues;
+  }
+
+  test('the slide-vector map covers every placement in the generated schema', async () => {
+    const placements = await schemaPlacements();
+    expect(Object.keys(PLACEMENT_SLIDE_VECTORS).toSorted()).toEqual(placements.toSorted());
+  });
+
+  test('every placement block declares its slide vector', async () => {
+    for (const placement of await schemaPlacements()) {
+      const selector = `.cinder-drawer__panel[data-cinder-placement='${placement}']`;
+      const selectorIndex = drawerCss.indexOf(`${selector} {`);
+      expect(selectorIndex).toBeGreaterThan(-1);
+      const rule = drawerCss.slice(selectorIndex, drawerCss.indexOf('}', selectorIndex));
+      expect(rule).toContain(
+        PLACEMENT_SLIDE_VECTORS[placement] ?? `<no slide vector mapped for ${placement}>`,
+      );
+    }
+  });
+
+  test('one closing rule and one @starting-style rule consume the slide vector', () => {
+    const closingIndex = drawerCss.indexOf('.cinder-drawer__panel[data-cinder-closing]');
+    expect(closingIndex).toBeGreaterThan(-1);
+    const closingRule = drawerCss.slice(closingIndex, drawerCss.indexOf('}', closingIndex));
+    expect(closingRule).toContain('translate: var(--_cinder-drawer-slide);');
+
+    const panelStartingStyleIndex = drawerCss.indexOf('@starting-style', closingIndex);
+    expect(panelStartingStyleIndex).toBeGreaterThan(-1);
+    const startingBlock = drawerCss.slice(panelStartingStyleIndex);
+    const panelIndex = startingBlock.indexOf('.cinder-drawer__panel');
+    expect(panelIndex).toBeGreaterThan(-1);
+    const startingRule = startingBlock.slice(panelIndex, startingBlock.indexOf('}', panelIndex));
+    expect(startingRule).toContain('translate: var(--_cinder-drawer-slide);');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Focus trap wrap behavior (ported from the former Sheet suite).
+//
+// DOM order inside the panel: the close button lives in the <header> first,
+// then the body <input>. So the close button is the FIRST tabbable and the
+// input is the LAST — asserting exact wrap destinations (not mere panel
+// containment, which is already true before the event) makes these tests fail
+// if the shared trap is removed or its boundary logic breaks.
+//
+// Each test `await tick()`s after render: on open, the drawer defers its own
+// initial focus to the body via `tick().then(() => bodyElement.focus())`. That
+// microtask must drain BEFORE we exercise the trap, otherwise it races in
+// during the `await fireEvent` and clobbers the trap's wrap destination. In
+// real usage the deferred focus has long settled before a user tabs.
+// ---------------------------------------------------------------------------
+describe('Drawer focus trap', () => {
+  function makeSnippetWithInput() {
+    return createRawSnippet(() => ({
+      render: () => `<input type="text" data-testid="drawer-input" />`,
+      setup: () => {},
+    }));
+  }
+
+  test('Tab from the last focusable element wraps to the first and prevents default', async () => {
+    const { container } = render(Drawer, {
+      props: {
+        open: true,
+        title: 'Test Drawer',
+        children: makeSnippetWithInput(),
+      },
+    });
+    await tick();
+
+    const panel = container.querySelector('.cinder-drawer__panel') as HTMLElement;
+    const closeButton = container.querySelector('.cinder-drawer__close') as HTMLElement;
+    const input = container.querySelector('input[data-testid="drawer-input"]') as HTMLElement;
+    expect(panel).not.toBeNull();
+    expect(closeButton).not.toBeNull();
+    expect(input).not.toBeNull();
+
+    // The input is the LAST tabbable (close button is first, in the header).
+    input.focus();
+    expect(document.activeElement).toBe(input);
+
+    const result = await fireEvent.keyDown(panel, { key: 'Tab', shiftKey: false });
+
+    // Trap intercepted the boundary Tab and wrapped focus to the first tabbable.
+    expect(result).toBe(false); // fireEvent returns false when preventDefault was called
+    expect(document.activeElement).toBe(closeButton);
+  });
+
+  test('Shift+Tab from the first focusable element wraps to the last and prevents default', async () => {
+    const { container } = render(Drawer, {
+      props: {
+        open: true,
+        title: 'Test Drawer',
+        children: makeSnippetWithInput(),
+      },
+    });
+    await tick();
+
+    const panel = container.querySelector('.cinder-drawer__panel') as HTMLElement;
+    const closeButton = container.querySelector('.cinder-drawer__close') as HTMLElement;
+    const input = container.querySelector('input[data-testid="drawer-input"]') as HTMLElement;
+
+    // The close button is the FIRST tabbable (header precedes the body input).
+    closeButton.focus();
+    expect(document.activeElement).toBe(closeButton);
+
+    const result = await fireEvent.keyDown(panel, { key: 'Tab', shiftKey: true });
+
+    expect(result).toBe(false);
+    expect(document.activeElement).toBe(input);
+  });
+
+  test('document.body never receives focus while tabbing inside an open drawer', async () => {
+    const { container } = render(Drawer, {
+      props: {
+        open: true,
+        title: 'Test Drawer',
+        children: makeSnippetWithInput(),
+      },
+    });
+    await tick();
+
+    const panel = container.querySelector('.cinder-drawer__panel') as HTMLElement;
+    const input = container.querySelector('input[data-testid="drawer-input"]') as HTMLElement;
+    input.focus();
+
+    // Tab repeatedly from the boundary — focus must never escape to the body.
+    for (let i = 0; i < 5; i++) {
+      await fireEvent.keyDown(panel, { key: 'Tab', shiftKey: false });
+      expect(document.activeElement).not.toBe(document.body);
+      expect(panel.contains(document.activeElement)).toBe(true);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Escape-stack hygiene (ported from the former Sheet suite).
+//
+// Documents that successive open/close cycles do not leak escape-stack
+// entries. If the drawer's no-op marker handler were not released on close,
+// it would stay above this sibling handler and prevent Escape from routing
+// back to the sibling overlay after the drawer closes.
+// ---------------------------------------------------------------------------
+describe('Drawer escape-stack hygiene', () => {
+  test('open/close cycles do not leak scroll lock or escape stack entries', async () => {
+    let siblingEscapeCount = 0;
+    const releaseSiblingEscape = pushEscapeHandler(() => {
+      siblingEscapeCount += 1;
+    });
+    let openValue = true;
+    const { container, rerender } = render(Drawer, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        title: 'Test',
+        children: emptySnippet,
+      },
+    });
+
+    expect(document.body.style.overflow).toBe('hidden');
+    openValue = false;
+    await rerender({
+      get open() {
+        return openValue;
+      },
+      set open(value: boolean) {
+        openValue = value;
+      },
+      title: 'Test',
+      children: emptySnippet,
+    });
+    await finishCloseTransition(container);
+    expect(document.body.style.overflow).toBe('');
+    await fireEvent.keyDown(window, { key: 'Escape', code: 'Escape' });
+    expect(siblingEscapeCount).toBe(1);
+
+    openValue = true;
+    await rerender({
+      get open() {
+        return openValue;
+      },
+      set open(value: boolean) {
+        openValue = value;
+      },
+      title: 'Test',
+      children: emptySnippet,
+    });
+
+    expect(document.body.style.overflow).toBe('hidden');
+    openValue = false;
+    await rerender({
+      get open() {
+        return openValue;
+      },
+      set open(value: boolean) {
+        openValue = value;
+      },
+      title: 'Test',
+      children: emptySnippet,
+    });
+    await finishCloseTransition(container);
+    expect(document.body.style.overflow).toBe('');
+    await fireEvent.keyDown(window, { key: 'Escape', code: 'Escape' });
+    expect(siblingEscapeCount).toBe(2);
+    releaseSiblingEscape();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Focus-restore edge cases (ported from the former Sheet suite).
+// ---------------------------------------------------------------------------
+describe('Drawer focus restore edge cases', () => {
+  // Regression: reopening while the close transition is still running takes
+  // the quick-reopen branch in syncOpenState, where the native dialog never
+  // closed — onOpen must re-fire there or the body-focus policy never runs
+  // and focus stays stranded on document.body behind the modal drawer.
+  test('reopen while closing re-applies body focus instead of stranding focus on document.body', async () => {
+    let openValue = true;
+    const props = {
+      get open() {
+        return openValue;
+      },
+      set open(value: boolean) {
+        openValue = value;
+      },
+      title: 'Test',
+      children: emptySnippet,
+    };
+    const { container, rerender } = render(Drawer, { props });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // Begin closing (panel goes inert, focus falls back to document.body)…
+    openValue = false;
+    await rerender(props);
+    // …then reopen BEFORE the exit transition finishes.
+    openValue = true;
+    await rerender(props);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const body = container.querySelector('.cinder-drawer__body') as HTMLElement;
+    expect(body).not.toBeNull();
+    expect(document.activeElement).toBe(body);
+  });
+
+  test('focus restores to capturedFocus when triggerRef is unmounted before close', async () => {
+    const previouslyFocused = document.createElement('button');
+    previouslyFocused.id = 'drawer-prev-focus';
+    document.body.appendChild(previouslyFocused);
+    previouslyFocused.focus();
+
+    const triggerEl = document.createElement('button');
+    triggerEl.id = 'drawer-transient-trigger';
+    document.body.appendChild(triggerEl);
+
+    let openValue = true;
+    const { container } = render(Drawer, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        title: 'Test',
+        triggerRef: triggerEl,
+        children: emptySnippet,
+      },
+    });
+
+    // Remove the trigger while the drawer is open.
+    document.body.removeChild(triggerEl);
+
+    const closeButton = container.querySelector('.cinder-drawer__close') as HTMLButtonElement;
+    await fireEvent.click(closeButton);
+    await finishCloseTransition(container);
+    expect(document.activeElement).toBe(previouslyFocused);
+
+    document.body.removeChild(previouslyFocused);
+  });
+
+  test('no focus is forced when both triggerRef and capturedFocus are gone', async () => {
+    const triggerEl = document.createElement('button');
+    document.body.appendChild(triggerEl);
+
+    let openValue = true;
+    const { container } = render(Drawer, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        title: 'Test',
+        triggerRef: triggerEl,
+        children: emptySnippet,
+      },
+    });
+
+    document.body.removeChild(triggerEl);
+
+    const closeButton = container.querySelector('.cinder-drawer__close') as HTMLButtonElement;
+    await fireEvent.click(closeButton);
+    await finishCloseTransition(container);
+    expect(document.activeElement).not.toBe(triggerEl);
   });
 });

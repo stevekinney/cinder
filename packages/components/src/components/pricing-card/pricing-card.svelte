@@ -25,8 +25,8 @@
     name,
     price,
     features,
-    cta,
-    onSelect,
+    callToActionLabel,
+    onPlanSelect,
     caveat,
     selected = false,
     class: className,
@@ -85,11 +85,18 @@
     </ul>
 
     {#if caveat}
-      <p class="cinder-pricing-card__caveat" data-cinder-caveat="">{caveat}</p>
+      <p class="cinder-pricing-card__caveat" data-cinder-caveat="">
+        {#if typeof caveat === 'string'}{caveat}{:else}{@render caveat()}{/if}
+      </p>
     {/if}
   </div>
 
   <div class="cinder-pricing-card__footer">
-    <Button label={cta} variant={selected ? 'primary' : 'secondary'} fullWidth onclick={onSelect} />
+    <Button
+      label={callToActionLabel}
+      variant={selected ? 'primary' : 'secondary'}
+      fullWidth
+      onclick={onPlanSelect}
+    />
   </div>
 </div>

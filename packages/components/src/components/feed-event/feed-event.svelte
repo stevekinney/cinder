@@ -11,7 +11,7 @@
    * @avoidWhen Standing alone outside a feed — it expects the feed list semantics around it.
    * @related feed
    */
-  export type { FeedEventProps, FeedEventVariant } from './feed-event.types.ts';
+  export type { FeedEventProps, FeedEventTone, FeedEventVariant } from './feed-event.types.ts';
 </script>
 
 <script lang="ts">
@@ -23,6 +23,7 @@
   let {
     datetime,
     variant = 'icon',
+    tone = 'neutral',
     class: className,
     icon,
     children,
@@ -32,7 +33,12 @@
   }: FeedEventProps = $props();
 </script>
 
-<li {...rest} class={classNames('cinder-feed-event', className)} data-cinder-variant={variant}>
+<li
+  {...rest}
+  class={classNames('cinder-feed-event', className)}
+  data-cinder-variant={variant}
+  data-cinder-tone={tone === 'neutral' ? undefined : tone}
+>
   <span class="cinder-feed-event-rail" aria-hidden="true">
     {#if variant === 'icon'}
       <span class="cinder-feed-event-icon">{@render (icon as Snippet)()}</span>

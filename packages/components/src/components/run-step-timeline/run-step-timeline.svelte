@@ -11,9 +11,9 @@
    * @useWhen Showing speculative parallel branches or saga compensation.
    * @avoidWhen Guiding users through an interactive wizard where they choose what to do next — use steps instead.
    * @avoidWhen Showing a flat timestamp-first event log without structured step state — use timeline instead.
-   * @avoidWhen Showing a bounded horizontal schedule or activity stream — use event-timeline or feed instead.
-   * @avoidWhen Showing a dense operational log without structured step state, such as raw CI or job output — use event-stream-viewer instead.
-   * @related timeline, event-timeline, feed, steps, event-stream-viewer
+   * @avoidWhen Showing an activity stream — use feed instead.
+   * @avoidWhen Showing a dense operational log without structured step state, such as raw CI or job output — use feed's log arm instead.
+   * @related timeline, feed, steps
    */
   import type { RunStep, RunStepBranchGroup } from './run-step-timeline.types.ts';
 

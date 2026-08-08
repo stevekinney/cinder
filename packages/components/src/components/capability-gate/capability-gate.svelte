@@ -50,12 +50,7 @@
     // as the `$state` rune (the public prop name is still `state`).
     state: stateProp,
     variant = 'inline',
-    primaryAction,
-    onPrimaryAction,
-    fallbackAction,
-    fallbackHref,
-    onFallbackAction,
-    dismissAction,
+    actions,
     onDismiss,
     children,
     class: customClassName,
@@ -77,7 +72,7 @@
   });
 
   let visible = $state(true);
-  let dismissButton: HTMLButtonElement | undefined = $state();
+  let rootElement: HTMLDivElement | undefined = $state();
 
   // Re-show the gate when the situation changes (e.g. permission-needed →
   // permission-denied), so a previous dismissal doesn't permanently hide a new,
@@ -101,11 +96,21 @@
   );
 
   function handleDismiss() {
-    // Blur the dismiss button before it unmounts so focus moves to <body>
-    // predictably rather than being stranded on a detached node. The consumer
-    // owns where focus should land next (e.g. a trigger to re-open the gate) and
-    // can set it in `onDismiss` — the component cannot know the right target.
-    dismissButton?.blur();
+    // Blur whatever consumer control triggered the dismissal before the gate
+    // unmounts, so focus moves to <body> predictably rather than being
+    // stranded on a detached node. The consumer owns where focus should land
+    // next (e.g. a trigger to re-open the gate) and can set it in
+    // `onDismiss` — the component cannot know the right target. Read the
+    // active element from the gate's own root node: inside a shadow root,
+    // `document.activeElement` is the shadow HOST, not the focused action.
+    const rootNode = rootElement?.getRootNode();
+    const active =
+      rootNode instanceof Document || rootNode instanceof ShadowRoot
+        ? rootNode.activeElement
+        : document.activeElement;
+    if (active instanceof HTMLElement && rootElement?.contains(active)) {
+      active.blur();
+    }
     visible = false;
     onDismiss?.();
   }
@@ -114,6 +119,7 @@
 {#if visible}
   <div
     {...rest}
+    bind:this={rootElement}
     class={classNames('cinder-capability-gate', customClassName)}
     data-cinder-state={availabilityState}
     data-cinder-variant={resolvedVariant}
@@ -137,49 +143,9 @@
       </div>
     {/if}
 
-    {#if primaryAction || fallbackAction || fallbackHref || dismissAction}
+    {#if actions}
       <div class="cinder-capability-gate__actions">
-        {#if primaryAction}
-          <button
-            type="button"
-            class="cinder-capability-gate__primary"
-            onclick={onPrimaryAction}
-            aria-label="{primaryAction} for {feature}"
-          >
-            {primaryAction}
-          </button>
-        {/if}
-
-        {#if fallbackHref}
-          <a
-            href={fallbackHref}
-            class="cinder-capability-gate__fallback"
-            aria-label="{fallbackAction ?? 'Alternative option'} for {feature}"
-          >
-            {fallbackAction ?? 'Alternative option'}
-          </a>
-        {:else if fallbackAction}
-          <button
-            type="button"
-            class="cinder-capability-gate__fallback"
-            onclick={onFallbackAction}
-            aria-label="{fallbackAction} for {feature}"
-          >
-            {fallbackAction}
-          </button>
-        {/if}
-
-        {#if dismissAction}
-          <button
-            bind:this={dismissButton}
-            type="button"
-            class="cinder-capability-gate__dismiss"
-            onclick={handleDismiss}
-            aria-label="{dismissAction} for {feature}"
-          >
-            {dismissAction}
-          </button>
-        {/if}
+        {@render actions({ dismiss: handleDismiss })}
       </div>
     {/if}
   </div>

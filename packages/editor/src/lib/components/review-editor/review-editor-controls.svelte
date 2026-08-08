@@ -115,12 +115,12 @@
     <SegmentedControl
       id="{id}-view-mode"
       label="Review editor view"
-      hideLabel
+      labelVisible={false}
       variant="tablist"
       size="sm"
       density="toolbar"
       value={activeView}
-      onchange={handleViewChange}
+      onValueChange={handleViewChange}
     >
       <Segment value="editor" controls={viewPanelIds?.editor}>
         {#snippet leading()}<Pencil class="cinder-icon-xs" />{/snippet}
@@ -145,7 +145,7 @@
         added={diffStats.added}
         removed={diffStats.removed}
         modified={diffStats.modified}
-        hideZero
+        zeroVisible={false}
       />
     {/if}
 
@@ -157,7 +157,7 @@
         size="sm"
         density="toolbar"
         label="Diff view mode"
-        hideLabel
+        labelVisible={false}
         bind:value={diffViewMode}
       >
         <Segment value="unified">Unified</Segment>

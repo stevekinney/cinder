@@ -66,7 +66,7 @@ describe('SegmentedControl — single mode', () => {
     expect(selected).toBe('rendered');
   });
 
-  test('clicking the already-selected option is a no-op (disallowEmptySelection default true)', async () => {
+  test('clicking the already-selected option is a no-op (selectionRequired default true)', async () => {
     let selected: string | undefined = 'source';
     render(Fixture, {
       props: {
@@ -130,7 +130,7 @@ describe('SegmentedControl — single mode', () => {
     expect(selected).toBe('source');
   });
 
-  test('with disallowEmptySelection={false}, clicking the already-selected option clears value', async () => {
+  test('with selectionRequired={false}, clicking the already-selected option clears value', async () => {
     let selected: string | undefined = 'source';
     render(Fixture, {
       props: {
@@ -143,7 +143,7 @@ describe('SegmentedControl — single mode', () => {
         },
         label: 'Document view',
         options,
-        disallowEmptySelection: false,
+        selectionRequired: false,
       },
     });
 
@@ -321,7 +321,7 @@ describe('SegmentedControl — multiple mode', () => {
     expect(screen.queryByRole('radiogroup')).toBeNull();
   });
 
-  test('group has accessible name from label; hideLabel still provides it to AT', () => {
+  test('group has accessible name from label; a hidden label still provides it to AT', () => {
     const set = new SvelteSet<string>();
     render(Fixture, {
       props: {
@@ -330,7 +330,7 @@ describe('SegmentedControl — multiple mode', () => {
         options: multiOptions,
         selectionMode: 'multiple',
         value: set,
-        hideLabel: true,
+        labelVisible: false,
       },
     });
 
@@ -1004,7 +1004,7 @@ describe('SegmentedControl — tablist variant', () => {
   //
   // `SegmentedControlController.handleKeydown` intentionally moves focus AND
   // updates value together in single mode (the C6 roving contract), so each
-  // arrow press fires `onchange` exactly once. "Exactly once" is asserted as a
+  // arrow press fires `onValueChange` exactly once. "Exactly once" is asserted as a
   // post-setup callback-count delta: snapshot the count after render, press one
   // key, assert the delta is 1, then assert the resulting selected tab.
 
@@ -1070,7 +1070,7 @@ describe('SegmentedControl — tablist variant', () => {
         label: 'Review view',
         variant: 'tablist',
         options: tablistOptions,
-        onchange: () => {
+        onValueChange: () => {
           changeCount += 1;
         },
       },
@@ -1093,7 +1093,7 @@ describe('SegmentedControl — tablist variant', () => {
     expect(selected).toBe('editor');
 
     // Wrap-around: ArrowLeft from the first tab wraps to the last, and
-    // ArrowRight from the last wraps back to the first — each firing onchange
+    // ArrowRight from the last wraps back to the first — each firing onValueChange
     // exactly once.
     const countBeforeWrapStart = changeCount;
     await fireEvent.keyDown(tablist, { key: 'ArrowLeft' });
@@ -1122,7 +1122,7 @@ describe('SegmentedControl — tablist variant', () => {
         variant: 'tablist',
         orientation: 'vertical',
         options: tablistOptions,
-        onchange: () => {
+        onValueChange: () => {
           changeCount += 1;
         },
       },

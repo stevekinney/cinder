@@ -8,7 +8,7 @@ const schema = {
       type: 'string',
       description: 'Optional accessible name for the tablist. Sets `aria-label`.',
     },
-    labelledBy: {
+    ariaLabelledby: {
       type: 'string',
       description: 'Reference to a heading or label element that names the tablist.',
     },

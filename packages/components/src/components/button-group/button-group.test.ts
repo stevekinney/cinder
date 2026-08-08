@@ -36,9 +36,9 @@ describe('ButtonGroup', () => {
     expect(group?.getAttribute('aria-label')).toBe('Document actions');
   });
 
-  test('role and aria-labelledby with labelledBy prop', () => {
+  test('role and aria-labelledby with ariaLabelledby prop', () => {
     const { container } = render(ButtonGroup, {
-      props: { labelledBy: 'heading-id', children: singleButtonSnippet('Save') },
+      props: { ariaLabelledby: 'heading-id', children: singleButtonSnippet('Save') },
     });
     const group = container.querySelector('[role="group"]');
     expect(group).not.toBeNull();
@@ -54,19 +54,19 @@ describe('ButtonGroup', () => {
     expect(group?.hasAttribute('aria-labelledby')).toBe(false);
   });
 
-  test('labelledBy prop produces no aria-label', () => {
+  test('ariaLabelledby prop produces no aria-label', () => {
     const { container } = render(ButtonGroup, {
-      props: { labelledBy: 'x', children: singleButtonSnippet('Save') },
+      props: { ariaLabelledby: 'x', children: singleButtonSnippet('Save') },
     });
     const group = container.querySelector('[role="group"]');
     expect(group?.hasAttribute('aria-label')).toBe(false);
   });
 
-  test('both label and labelledBy set simultaneously render both attributes', () => {
+  test('both label and ariaLabelledby set simultaneously render both attributes', () => {
     const { container } = render(ButtonGroup, {
       props: {
         label: 'Actions',
-        labelledBy: 'heading-id',
+        ariaLabelledby: 'heading-id',
         children: singleButtonSnippet('Save'),
       } as any,
     });
@@ -127,14 +127,14 @@ describe('ButtonGroup', () => {
     }
   });
 
-  test('warns in dev mode when labelledBy is empty string', () => {
+  test('warns in dev mode when ariaLabelledby is empty string', () => {
     const warnSpy = mock(() => {});
     const original = console.warn;
     console.warn = warnSpy;
 
     try {
       render(ButtonGroup, {
-        props: { labelledBy: '', children: singleButtonSnippet('Save') },
+        props: { ariaLabelledby: '', children: singleButtonSnippet('Save') },
       });
       expect(warnSpy).toHaveBeenCalledTimes(1);
       expect((warnSpy.mock.calls[0] as string[])[0]).toStartWith('[cinder/ButtonGroup]');
@@ -153,9 +153,9 @@ describe('ButtonGroup', () => {
     expect(group?.hasAttribute('aria-label')).toBe(false);
   });
 
-  test('renders no aria-labelledby attribute at all when labelledBy is empty string', () => {
+  test('renders no aria-labelledby attribute at all when ariaLabelledby is empty string', () => {
     const { container } = render(ButtonGroup, {
-      props: { labelledBy: '', children: singleButtonSnippet('Save') },
+      props: { ariaLabelledby: '', children: singleButtonSnippet('Save') },
     });
     const group = container.querySelector('[role="group"]');
     expect(group?.hasAttribute('aria-labelledby')).toBe(false);

@@ -25,7 +25,7 @@ export type CalendarProps = Omit<
   /** Additional classes for the root node. */
   class?: string;
   /** Called when the user commits a day selection. */
-  onchange?: (value: string) => void;
+  onValueChange?: (value: string) => void;
   /** Return true to disable a specific day. */
   disabledDate?: (value: string) => boolean;
 };

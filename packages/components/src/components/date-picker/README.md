@@ -24,21 +24,21 @@ semantics. DatePicker handles parsing and keyboard input.
 
 <!-- generated:props:start -->
 
-| Prop           | Type                                            | Required | Default | Description                                                                                               |
-| -------------- | ----------------------------------------------- | -------- | ------- | --------------------------------------------------------------------------------------------------------- |
-| `class`        | `string`                                        | no       | —       | Additional classes for the root.                                                                          |
-| `description`  | `string`                                        | no       | —       | Optional helper text.                                                                                     |
-| `disabled`     | `boolean`                                       | no       | —       | Disable interaction.                                                                                      |
-| `error`        | `string`                                        | no       | —       | Optional validation error text.                                                                           |
-| `granularity`  | `"day"` \| `"hour"` \| `"minute"` \| `"second"` | no       | —       | Date-time precision. Defaults to day.                                                                     |
-| `id`           | `string`                                        | yes      | —       | Stable id for label/input/error wiring.                                                                   |
-| `label`        | `string`                                        | no       | —       | Field label text.                                                                                         |
-| `max`          | `string`                                        | no       | —       | Maximum allowed value (same format as `value`).                                                           |
-| `min`          | `string`                                        | no       | —       | Minimum allowed value (same format as `value`).                                                           |
-| `placeholder`  | `string`                                        | no       | —       | Placeholder shown when empty.                                                                             |
-| `triggerLabel` | `string`                                        | no       | —       | Visible text for the calendar-trigger button. Defaults to "Open".                                         |
-| `value`        | `string`                                        | no       | —       | Controlled value as local ISO string. Bindable.                                                           |
-| `onchange`     | `(opaque)`                                      | no       | —       | Called when the value changes. Not expressible in JSON Schema; see the component types for the signature. |
+| Prop            | Type                                            | Required | Default | Description                                                                                               |
+| --------------- | ----------------------------------------------- | -------- | ------- | --------------------------------------------------------------------------------------------------------- |
+| `class`         | `string`                                        | no       | —       | Additional classes for the root.                                                                          |
+| `description`   | `string`                                        | no       | —       | Optional helper text.                                                                                     |
+| `disabled`      | `boolean`                                       | no       | —       | Disable interaction.                                                                                      |
+| `error`         | `string`                                        | no       | —       | Optional validation error text.                                                                           |
+| `granularity`   | `"day"` \| `"hour"` \| `"minute"` \| `"second"` | no       | —       | Date-time precision. Defaults to day.                                                                     |
+| `id`            | `string`                                        | yes      | —       | Stable id for label/input/error wiring.                                                                   |
+| `label`         | `string`                                        | no       | —       | Field label text.                                                                                         |
+| `max`           | `string`                                        | no       | —       | Maximum allowed value (same format as `value`).                                                           |
+| `min`           | `string`                                        | no       | —       | Minimum allowed value (same format as `value`).                                                           |
+| `placeholder`   | `string`                                        | no       | —       | Placeholder shown when empty.                                                                             |
+| `triggerLabel`  | `string`                                        | no       | —       | Visible text for the calendar-trigger button. Defaults to "Open".                                         |
+| `value`         | `string`                                        | no       | —       | Controlled value as local ISO string. Bindable.                                                           |
+| `onValueChange` | `(opaque)`                                      | no       | —       | Called when the value changes. Not expressible in JSON Schema; see the component types for the signature. |
 
 <!-- generated:props:end -->
 

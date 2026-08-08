@@ -20,8 +20,12 @@ This directory holds long-form documentation that does not live inside a compone
 
 ## Decisions
 
+- [Component admission bar](./decisions/component-admission-bar.md): behavior-first bar every new component must clear (accepted).
 - [Data grid buy-vs-build](./decisions/data-grid-buy-vs-build.md): evaluation record for data-grid dependency choices.
 - [Segmented control tablist variant](./decisions/segmented-control-tablist-variant.md): decision record for the tablist-style segmented-control follow-up.
+- [Color value format](./decisions/color-value-format.md): **open** — ColorField/ColorPicker hex-only output vs format-tagged values.
+- [`*Group` vs plural naming](./decisions/group-vs-plural-naming.md): **open** — decide once across the Group-suffixed families.
+- [SideNavigation vs Sidebar](./decisions/side-navigation-vs-sidebar.md): **open** — reconcile or keep distinct.
 
 ## Historical Plans
 

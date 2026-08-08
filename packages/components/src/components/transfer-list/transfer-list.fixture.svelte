@@ -10,10 +10,10 @@
 
   let {
     value = $bindable(['read']),
-    onchange,
+    onValueChange,
   }: {
     value?: string[];
-    onchange?: (value: string[]) => void;
+    onValueChange?: (value: string[]) => void;
   } = $props();
 </script>
 
@@ -21,7 +21,7 @@
 <TransferList
   {items}
   bind:value
-  {...onchange ? { onchange } : {}}
+  {...onValueChange ? { onValueChange } : {}}
   leftLabel="Available permissions"
   rightLabel="Granted permissions"
 />

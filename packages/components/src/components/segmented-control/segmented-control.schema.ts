@@ -17,9 +17,11 @@ const schema = {
       description:
         'Native form field name. Renders hidden input(s) carrying the selected value(s).',
     },
-    hideLabel: {
+    labelVisible: {
       type: 'boolean',
-      description: 'Visually hide the label while keeping it available to assistive technology.',
+      description:
+        'Whether the label is visibly rendered. Set `false` to visually hide it\nwhile keeping it available to assistive technology.',
+      default: true,
     },
     disabled: {
       type: 'boolean',
@@ -60,10 +62,11 @@ const schema = {
       description:
         'Selection mode. `"single"` allows exactly one segment to be selected at a time; `"multiple"` allows any number of segments to be selected simultaneously. Default `"single"`.',
     },
-    disallowEmptySelection: {
+    selectionRequired: {
       type: 'boolean',
       description:
-        'When true (default), clicking the already-selected option is a no-op.\nWhen false, clicking the selected option clears value to undefined.',
+        'When true, clicking the already-selected option is a no-op.\nWhen false, clicking the selected option clears value to undefined.',
+      default: true,
     },
   },
   additionalProperties: false,
@@ -77,7 +80,7 @@ const schema = {
         description: 'Child `<Segment>` elements.',
       },
       {
-        name: 'onchange',
+        name: 'onValueChange',
         reason: 'function-or-snippet',
         description: 'Called when the selected value changes (single mode only).',
       },

@@ -43,7 +43,7 @@ export type TagInputProps = SupportedInputAttributes & {
   /** Additional class merged onto the root element. */
   class?: string;
   /** Fires whenever a commit or removal requests a new tag list. */
-  onchange?: (tags: string[]) => void;
+  onValueChange?: (tags: string[]) => void;
 };
 
 export interface TagInputSchemaProps {
@@ -90,7 +90,7 @@ export interface TagInputSchemaProps {
   /** Additional description ids composed into the visible input aria-describedby chain. */
   'aria-describedby'?: HTMLInputAttributes['aria-describedby'];
   onblur?: HTMLInputAttributes['onblur'];
-  onchange?: (tags: string[]) => void;
+  onValueChange?: (tags: string[]) => void;
   onfocus?: HTMLInputAttributes['onfocus'];
   oninput?: HTMLInputAttributes['oninput'];
   onkeydown?: HTMLInputAttributes['onkeydown'];

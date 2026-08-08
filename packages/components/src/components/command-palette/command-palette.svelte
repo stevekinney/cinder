@@ -72,7 +72,7 @@
   // ── Focus restoration ─────────────────────────────────────────────────────
   function returnFocus() {
     // Iterate candidates so a disconnected `triggerRef` falls through to
-    // capturedFocus. Matches the modal/sheet/popover pattern; without this
+    // capturedFocus. Matches the modal/drawer/popover pattern; without this
     // a removed trigger would silently drop focus on the floor.
     const candidates: Array<HTMLElement | null> = [triggerRef, capturedFocus];
     for (const candidate of candidates) {

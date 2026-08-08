@@ -13,10 +13,10 @@
     <SegmentedControl
       id="viewport"
       label="Viewport"
-      hideLabel
+      labelVisible={false}
       density="toolbar"
       value="mobile"
-      onchange={() => {}}
+      onValueChange={() => {}}
     >
       <Segment value="mobile">Mobile</Segment>
       <Segment value="desktop">Desktop</Segment>
@@ -28,7 +28,7 @@
       id="custom-width"
       aria-label="Custom width"
       value={width}
-      onchange={(value) => {
+      onValueChange={(value) => {
         width = value;
       }}
     />

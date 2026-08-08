@@ -53,7 +53,7 @@
       readonly={state.readonly || state.jsonDraftIsDirty}
       value={rootSchema}
       {onvalidationErrorcount}
-      onchange={(next, options) => state.commitFromForm(next, options)}
+      onValueChange={(next, options) => state.commitFromForm(next, options)}
     />
   {/if}
 </div>

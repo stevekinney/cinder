@@ -8,27 +8,36 @@ const schema = {
       type: 'boolean',
       description: 'Whether the drawer is open. Bindable via `bind:open`.',
     },
-    side: {
-      enum: ['left', 'right'],
-      description: 'Edge the drawer slides in from. Default `right`.',
+    placement: {
+      enum: ['left', 'right', 'bottom'],
+      description: 'Edge the drawer slides in from.',
+      default: 'right',
     },
     size: {
       enum: ['sm', 'md', 'lg', 'xl'],
-      description: 'Drawer width token. Default `md`.',
+      description:
+        'Drawer width token for `left`/`right` placements.\nIgnored for `placement="bottom"`, which always spans the full viewport\nwidth and caps its height at 90dvh.',
+      default: 'md',
     },
     title: {
       type: 'string',
       description:
-        'Accessible name for the drawer. Required for screen-reader labelling.\nRendered as a visible `<h2>` in the default header. When a custom\n`header` snippet is provided without `ariaLabelledBy`, this text is\nrendered in a visually-hidden `<h2>` as the accessible name fallback.',
+        'Accessible name for the drawer. Required for screen-reader labelling.\nRendered as a visible `<h2>` in the default header. When a custom\n`header` snippet is provided without `ariaLabelledby`, this text is\nrendered in a visually-hidden `<h2>` as the accessible name fallback.',
     },
     class: {
       type: 'string',
       description: 'Additional class names merged with `.cinder-drawer`.',
     },
-    ariaLabelledBy: {
+    ariaLabelledby: {
       type: 'string',
       description:
-        "Optional id of an element that names the drawer. When supplied, drawer\nwires `aria-labelledby` to this id and renders no internal heading.\nUse this when a custom `header` snippet has its own visible heading —\nsupply `ariaLabelledBy` pointing to that heading's id so the\nvisible and accessible names stay in sync.",
+        "Optional id of an element that names the drawer. When supplied, drawer\nwires `aria-labelledby` to this id and renders no internal heading.\nUse this when a custom `header` snippet has its own visible heading —\nsupply `ariaLabelledby` pointing to that heading's id so the\nvisible and accessible names stay in sync.",
+    },
+    dragHandleVisible: {
+      type: 'boolean',
+      description:
+        'When `true` and `placement="bottom"`, render a decorative drag handle\nabove the header. Swipe-to-close gesture is a stretch goal not\nimplemented in MVP — the handle is purely a visual affordance.\nIgnored for `left`/`right` placements.\n\nNamed `dragHandleVisible` (not `draggable`) to avoid colliding with the\nnative HTML `draggable` attribute on the underlying `<dialog>`.',
+      default: false,
     },
   },
   additionalProperties: false,

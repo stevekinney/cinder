@@ -146,10 +146,6 @@ const schema = {
         reason: 'function-or-snippet',
       },
       {
-        name: 'onchange',
-        reason: 'function-or-snippet',
-      },
-      {
         name: 'onfocus',
         reason: 'function-or-snippet',
       },
@@ -159,6 +155,10 @@ const schema = {
       },
       {
         name: 'onkeydown',
+        reason: 'function-or-snippet',
+      },
+      {
+        name: 'onValueChange',
         reason: 'function-or-snippet',
       },
       {

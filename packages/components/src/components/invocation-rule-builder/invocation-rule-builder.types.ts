@@ -117,7 +117,7 @@ export type InvocationRuleBuilderMode = 'full' | 'conditions' | 'flat-conditions
 export type InvocationRuleConditionsOnlyOperator = 'eq' | 'gt' | 'lt' | 'gte' | 'lte';
 
 /**
- * Describes the change that caused an `onchange` call.
+ * Describes the change that caused an `onValueChange` call.
  * Consumers use the type to determine what to persist.
  */
 export type InvocationRuleChange =
@@ -254,11 +254,11 @@ type InvocationRuleBuilderReadonlyProps<ChangeHandler> =
        * Receives the next controlled state (pure, not mutated) and a change descriptor.
        * Consumer owns persistence, validation, and execution.
        */
-      onchange: ChangeHandler;
+      onValueChange: ChangeHandler;
 
       /**
        * When false or omitted, renders editable controls. Editable mode requires
-       * `onchange` so controls cannot become interactive-but-no-op.
+       * `onValueChange` so controls cannot become interactive-but-no-op.
        */
       readonly?: false;
     }
@@ -267,7 +267,7 @@ type InvocationRuleBuilderReadonlyProps<ChangeHandler> =
        * Optional in readonly usage because no edit controls are rendered.
        * Runtime consumers may still pass it when sharing props between modes.
        */
-      onchange?: ChangeHandler;
+      onValueChange?: ChangeHandler;
 
       /**
        * When true, renders a readonly summary of each rule instead of editable
@@ -279,7 +279,7 @@ type InvocationRuleBuilderReadonlyProps<ChangeHandler> =
 type InvocationRuleBuilderGroupedProps = {
   /**
    * The current list of automation rules. Controlled — pass the updated
-   * list returned from `onchange` back into this prop to commit a change.
+   * list returned from `onValueChange` back into this prop to commit a change.
    */
   rules: InvocationRule[];
 
@@ -323,13 +323,13 @@ export type InvocationRuleBuilderProps = InvocationRuleBuilderBaseProps &
 /**
  * Cinder-specific schema surface for InvocationRuleBuilder.
  *
- * The `onchange` callback is documented but marked unsupported because
+ * The `onValueChange` callback is documented but marked unsupported because
  * functions cannot be represented as JSON Schema controls.
  */
 type InvocationRuleBuilderSchemaBaseProps = {
   /**
    * The current list of automation rules. Controlled — pass the updated
-   * list returned from `onchange` back into this prop to commit a change.
+   * list returned from `onValueChange` back into this prop to commit a change.
    */
   rules?: InvocationRule[];
 
@@ -372,8 +372,8 @@ type InvocationRuleBuilderSchemaBaseProps = {
 
   /**
    * Must be true for schema-driven usage because editable mode requires
-   * the unsupported `onchange` callback. Runtime consumers may omit this
-   * when passing `onchange` directly.
+   * the unsupported `onValueChange` callback. Runtime consumers may omit this
+   * when passing `onValueChange` directly.
    */
   readonly: true;
 
@@ -402,7 +402,7 @@ type InvocationRuleBuilderSchemaBaseProps = {
 type InvocationRuleBuilderGroupedSchemaProps = {
   /**
    * The current list of automation rules. Controlled — pass the updated
-   * list returned from `onchange` back into this prop to commit a change.
+   * list returned from `onValueChange` back into this prop to commit a change.
    */
   rules: InvocationRule[];
 

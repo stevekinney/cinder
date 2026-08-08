@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "class": {
+      "type": "string",
+      "description": "Additional class merged onto the `.cinder-feed-boundary` root element."
+    },
+    "label": {
+      "type": "string",
+      "description": "Accessible and visible label for the boundary, e.g.\n\"Reconnected — 3 events replayed\" or \"Sequence gap — expected 12,\nreceived 15\". The consumer owns the wording; the boundary owns the\n`role=\"separator\"` semantics and the rule treatment."
+    },
+    "datetime": {
+      "type": "string",
+      "description": "Optional machine-readable ISO 8601 datetime for the boundary moment.\nRendered as `<time datetime>` when provided."
+    },
+    "timestamp": {
+      "type": "string",
+      "description": "Optional human-readable timestamp label. Falls back to `datetime` when\nomitted while `datetime` is set."
+    }
+  },
+  "additionalProperties": false,
+  "required": ["label"]
+}

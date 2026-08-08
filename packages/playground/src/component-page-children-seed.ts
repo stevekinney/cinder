@@ -53,7 +53,6 @@ export const NO_TEXT_CHILDREN: ReadonlySet<string> = new Set([
   'backdrop',
   'drawer',
   'modal',
-  'sheet',
   'popover',
   'tooltip',
   'toast-region',

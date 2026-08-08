@@ -13,7 +13,13 @@
       "id": "compact-hidden-label",
       "title": "Compact field with hidden label",
       "description": "Keep the accessible name from label while visually hiding it for compact auth/token layouts.",
-      "code": "<script lang=\"ts\">\n  import { Input } from '@lostgradient/cinder/input';\n\n  let token = $state('');\n</script>\n\n<Input\n  id=\"demo-token\"\n  bind:value={token}\n  label=\"Demo token\"\n  hideLabel\n  autocomplete=\"off\"\n  placeholder=\"Enter demo token\"\n/>\n"
+      "code": "<script lang=\"ts\">\n  import { Input } from '@lostgradient/cinder/input';\n\n  let token = $state('');\n</script>\n\n<Input\n  id=\"demo-token\"\n  bind:value={token}\n  label=\"Demo token\"\n  labelVisible={false}\n  autocomplete=\"off\"\n  placeholder=\"Enter demo token\"\n/>\n"
+    },
+    {
+      "id": "newsletter-signup",
+      "title": "Newsletter signup",
+      "description": "An email-capture section recipe: a form pairs Input with a submit Button inside a raised panel, with heading copy and a consent line.",
+      "code": "<script lang=\"ts\">\n  import { Button } from '@lostgradient/cinder/button';\n  import { Container } from '@lostgradient/cinder/container';\n  import { Input } from '@lostgradient/cinder/input';\n\n  let email = $state('');\n\n  function handleSubmit(event: SubmitEvent): void {\n    event.preventDefault();\n    // eslint-disable-next-line no-console\n    console.log('newsletter signup', email.trim());\n  }\n</script>\n\n<section style=\"padding-block: var(--cinder-space-10);\">\n  <Container maxWidth=\"wide\">\n    <div\n      style=\"border: 1px solid var(--cinder-border); background: var(--cinder-surface-raised); border-radius: var(--cinder-radius-lg); padding: var(--cinder-space-6); display: grid; gap: var(--cinder-space-4);\"\n    >\n      <header style=\"display: grid; gap: var(--cinder-space-2);\">\n        <h2 style=\"margin: 0;\">Stay ahead with monthly product insights</h2>\n        <p style=\"margin: 0; color: var(--cinder-text-muted);\">\n          Get shipping tips, release notes, and real-world examples from the Cinder team.\n        </p>\n      </header>\n\n      <form\n        style=\"display: flex; flex-wrap: wrap; gap: var(--cinder-space-3); align-items: flex-end;\"\n        onsubmit={handleSubmit}\n      >\n        <div style=\"flex: 1 1 16rem; min-inline-size: 0;\">\n          <Input id=\"newsletter-email\" type=\"email\" label=\"Email address\" bind:value={email} required />\n        </div>\n        <Button type=\"submit\" label=\"Subscribe\" variant=\"primary\" />\n      </form>\n\n      <p style=\"margin: 0; color: var(--cinder-text-muted);\">\n        No spam. One email per month. Unsubscribe anytime.\n      </p>\n      <p style=\"margin: 0; font-size: var(--cinder-text-sm); color: var(--cinder-text-subtle);\">\n        We respect your inbox and your privacy.\n      </p>\n    </div>\n  </Container>\n</section>\n"
     },
     {
       "id": "sign-in",

@@ -18,3 +18,15 @@ export const ALLOWED_EXAMPLE_PACKAGES: readonly string[] = [
   // Typical consumer-supplied syntax highlighter for CodeBlock's `highlighter` prop.
   'shiki',
 ];
+
+/**
+ * Specifier PREFIXES allowed inside published `.example.svelte` files, for
+ * packages whose public API is a family of per-module subpaths that cannot be
+ * enumerated exactly.
+ *
+ * `lucide-svelte/icons/<name>` is cinder's own icon vocabulary
+ * (docs/icon-vocabulary.md): components import icons this way, so realistic
+ * consumer apps have the package installed and examples may demonstrate
+ * icon-bearing snippets with real icons rather than text glyphs.
+ */
+export const ALLOWED_EXAMPLE_PACKAGE_PREFIXES: readonly string[] = ['lucide-svelte/icons/'];

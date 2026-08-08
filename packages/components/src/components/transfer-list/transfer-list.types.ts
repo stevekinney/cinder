@@ -32,7 +32,7 @@ export type TransferListProps = Omit<
    */
   rightLabel?: string;
   /** Called with the next right-side value after a transfer. */
-  onchange?: (value: string[]) => void;
+  onValueChange?: (value: string[]) => void;
   /** Custom class merged with `.cinder-transfer-list`. */
   class?: string;
 };

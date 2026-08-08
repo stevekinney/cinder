@@ -1302,7 +1302,7 @@
                           <Toggle
                             id="pg-{control.name}"
                             label={control.name}
-                            hideLabel
+                            labelVisible={false}
                             bind:checked={
                               () => Boolean(playgroundValues[control.name]),
                               (next) => (playgroundValues[control.name] = next)

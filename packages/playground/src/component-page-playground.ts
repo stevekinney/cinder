@@ -187,7 +187,7 @@ export type PlaygroundModel = {
  * Components documented through their authored examples rather than the generic
  * prop playground.
  *
- * The overlays are here for a specific reason: `Modal`, `Drawer`, `Sheet` and
+ * The overlays are here for a specific reason: `Modal`, `Drawer`, and
  * `CommandPalette` all call `showModal()`, so seeding `open: true` would not put
  * a preview in the stage — it would blanket the entire documentation page in the
  * top layer and take the body scroll lock with it. `Popover` cannot be opened at
@@ -201,7 +201,6 @@ const EXAMPLE_ONLY_PLAYGROUND_COMPONENTS = new Set([
   'spectrogram',
   'modal',
   'drawer',
-  'sheet',
   'popover',
   // Listed defensively. CommandPalette is currently blocked anyway by its
   // required `items` snippet, so no `open` control is generated today — but it

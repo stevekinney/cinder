@@ -21,7 +21,7 @@ Numeric text input with increment and decrement stepper controls.
   value={quantity}
   min={1}
   max={99}
-  onchange={handleChange}
+  onValueChange={handleChange}
 />
 <p style="margin-top: 0.5rem; color: var(--cinder-text-muted);">
   Value: {quantity ?? 'empty'}
@@ -49,7 +49,7 @@ Numeric text input with increment and decrement stepper controls.
 | `value`           | `number` \| `null` | no       | —       | Bindable current numeric value, or `null` when the field is empty.                                                                                                                                                                                                                                                                                                                                          |
 | `format`          | `(opaque)`         | no       | —       | Locale-aware formatting options passed to `Intl.NumberFormat`. Supports all `Intl.NumberFormatOptions` properties such as `style` (`'decimal'`, `'currency'`, `'percent'`, `'unit'`), `currency`, `minimumFractionDigits`, `maximumFractionDigits`, and `notation`. Defaults to locale-standard decimal formatting when omitted. Not expressible in JSON Schema; see the component types for the signature. |
 | `inputAttachment` | `(opaque)`         | no       | —       | Attachment for native input access and lifecycle-scoped listeners. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                                                                                                                               |
-| `onchange`        | `(opaque)`         | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                                                                                                                                                                                                                                                                  |
+| `onValueChange`   | `(opaque)`         | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                                                                                                                                                                                                                                                                  |
 
 <!-- generated:props:end -->
 

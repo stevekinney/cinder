@@ -1,0 +1,17 @@
+[
+  {
+    "a": "area-chart",
+    "b": "bar-chart",
+    "reason": "The SVG chart family (area/bar/line) deliberately shares plot-frame chrome — axis lines, tick labels, grid, loading/empty overlays — while each implements a distinct mark type and interaction model. Distinct behaviors, not presentation variants of one chart. Extracting the shared chrome into a _chart partial is a reasonable future refactor but does not bear on admission."
+  },
+  {
+    "a": "area-chart",
+    "b": "line-chart",
+    "reason": "Same SVG chart-family shared plot-frame chrome as the area-chart/bar-chart pair — distinct mark types over common axis/grid/overlay styling."
+  },
+  {
+    "a": "bar-chart",
+    "b": "line-chart",
+    "reason": "Same SVG chart-family shared plot-frame chrome as the area-chart/bar-chart pair — distinct mark types over common axis/grid/overlay styling."
+  }
+]

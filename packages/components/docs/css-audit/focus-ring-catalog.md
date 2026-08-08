@@ -103,16 +103,15 @@ outline-offset: var(--cinder-ring-offset);
 (or small variations: `outline-offset: 2px` / `1px` / negative offset).
 
 Different shape — outline draws a single stroke, no offset-color sandwich.
-Useful in clip-overflow contexts (modal, drawer, sheet — see their inline
+Useful in clip-overflow contexts (modal, drawer — see their inline
 comments) and for inputs/tracks that don't need the inner halo. Stay as-is.
 
 | File:line                                        | Selector                                                             |
 | ------------------------------------------------ | -------------------------------------------------------------------- |
 | `breadcrumbs/breadcrumbs.css:36`                 | `.cinder-breadcrumbs__link`                                          |
 | `slider/slider.css:106`                          | `.cinder-slider__thumb`                                              |
-| `sheet/sheet.css:109`                            | `.cinder-sheet__close`                                               |
 | `modal/modal.css:103`                            | `.cinder-modal__close` (comment justifies outline)                   |
-| `drawer/drawer.css:107`                          | `.cinder-drawer__close`                                              |
+| `drawer/drawer.css:186`                          | `.cinder-drawer__close`                                              |
 | `popover/popover.css:18`                         | `.cinder-popover`                                                    |
 | `color-picker/color-picker.css:46,110,189`       | gradient / hue / alpha / swatch                                      |
 | `search-field/search-field.css:149`              | `.cinder-search-field__clear`                                        |
@@ -143,12 +142,12 @@ inside the row. Stay as-is.
 These exist solely to _remove_ a focus ring on a child element when its parent
 container owns the ring. Stay as-is.
 
-| File:line                          | Selector                                                                   |
-| ---------------------------------- | -------------------------------------------------------------------------- |
-| `search-field/search-field.css:86` | `.cinder-search-field__input:focus-visible`                                |
-| `input/input.css:187`              | `.cinder-input-group > .cinder-input:focus-visible`                        |
-| `number-input/number-input.css:51` | `.cinder-number-input__input.cinder-input:focus-visible`                   |
-| `sheet/sheet.css:135`              | `.cinder-sheet__body:focus:not(:focus-visible)` (`:focus` only suppressor) |
+| File:line                          | Selector                                                                    |
+| ---------------------------------- | --------------------------------------------------------------------------- |
+| `drawer/drawer.css:231`            | `.cinder-drawer__body:focus:not(:focus-visible)` (`:focus` only suppressor) |
+| `search-field/search-field.css:86` | `.cinder-search-field__input:focus-visible`                                 |
+| `input/input.css:187`              | `.cinder-input-group > .cinder-input:focus-visible`                         |
+| `number-input/number-input.css:51` | `.cinder-number-input__input.cinder-input:focus-visible`                    |
 
 ### Bucket E — Forced-colors overrides
 

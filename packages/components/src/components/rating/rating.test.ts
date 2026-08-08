@@ -94,19 +94,19 @@ describe('Rating half-star precision', () => {
 });
 
 describe('Rating normalization without write-back', () => {
-  test('invalid out-of-range value displays clamped star fill without firing onchange', async () => {
+  test('invalid out-of-range value displays clamped star fill without firing onValueChange', async () => {
     // Regression: the removed $effect write-back used to set value = resolvedValue,
     // potentially triggering reactive loops. The display should use resolvedValue
-    // (derived) while the value prop stays as-is; onchange must not fire.
-    const onchange = mock((_value: number) => {});
+    // (derived) while the value prop stays as-is; onValueChange must not fire.
+    const onValueChange = mock((_value: number) => {});
     const { container } = render(Rating, {
-      props: { id: 'r', label: 'Q', value: 99, count: 5, onchange },
+      props: { id: 'r', label: 'Q', value: 99, count: 5, onValueChange },
     });
     // Resolved to the max (5) — the 5th option is checked.
     const all = options(container);
     expect(all[4]?.getAttribute('aria-checked')).toBe('true');
-    // onchange was NOT called during normalization.
-    expect(onchange).not.toHaveBeenCalled();
+    // onValueChange was NOT called during normalization.
+    expect(onValueChange).not.toHaveBeenCalled();
   });
 
   test('hidden input carries the snapped value even when the prop is out-of-range', () => {
@@ -120,137 +120,153 @@ describe('Rating normalization without write-back', () => {
 });
 
 describe('Rating interaction', () => {
-  test('click commits the value and fires onchange', async () => {
-    const onchange = mock((_value: number) => {});
-    const { container } = render(Rating, { props: { id: 'r', label: 'Q', value: 0, onchange } });
+  test('click commits the value and fires onValueChange', async () => {
+    const onValueChange = mock((_value: number) => {});
+    const { container } = render(Rating, {
+      props: { id: 'r', label: 'Q', value: 0, onValueChange },
+    });
     const all = options(container);
     await fireEvent.click(all[3]!);
-    expect(onchange).toHaveBeenCalledWith(4);
+    expect(onValueChange).toHaveBeenCalledWith(4);
   });
 
   test('ArrowRight from a committed value moves checked forward', async () => {
-    const onchange = mock((_value: number) => {});
-    const { container } = render(Rating, { props: { id: 'r', label: 'Q', value: 2, onchange } });
+    const onValueChange = mock((_value: number) => {});
+    const { container } = render(Rating, {
+      props: { id: 'r', label: 'Q', value: 2, onValueChange },
+    });
     const all = options(container);
     all[1]!.focus();
     await fireEvent.keyDown(all[1]!, { key: 'ArrowRight' });
-    expect(onchange).toHaveBeenCalledWith(3);
+    expect(onValueChange).toHaveBeenCalledWith(3);
   });
 
   test('ArrowLeft from a committed value moves checked backward', async () => {
-    const onchange = mock((_value: number) => {});
-    const { container } = render(Rating, { props: { id: 'r', label: 'Q', value: 3, onchange } });
+    const onValueChange = mock((_value: number) => {});
+    const { container } = render(Rating, {
+      props: { id: 'r', label: 'Q', value: 3, onValueChange },
+    });
     const all = options(container);
     all[2]!.focus();
     await fireEvent.keyDown(all[2]!, { key: 'ArrowLeft' });
-    expect(onchange).toHaveBeenCalledWith(2);
+    expect(onValueChange).toHaveBeenCalledWith(2);
   });
 
   test('Home commits the first option', async () => {
-    const onchange = mock((_value: number) => {});
-    const { container } = render(Rating, { props: { id: 'r', label: 'Q', value: 4, onchange } });
+    const onValueChange = mock((_value: number) => {});
+    const { container } = render(Rating, {
+      props: { id: 'r', label: 'Q', value: 4, onValueChange },
+    });
     const all = options(container);
     all[3]!.focus();
     await fireEvent.keyDown(all[3]!, { key: 'Home' });
-    expect(onchange).toHaveBeenCalledWith(1);
+    expect(onValueChange).toHaveBeenCalledWith(1);
   });
 
   test('End commits the count value', async () => {
-    const onchange = mock((_value: number) => {});
+    const onValueChange = mock((_value: number) => {});
     const { container } = render(Rating, {
-      props: { id: 'r', label: 'Q', value: 1, count: 5, onchange },
+      props: { id: 'r', label: 'Q', value: 1, count: 5, onValueChange },
     });
     const all = options(container);
     all[0]!.focus();
     await fireEvent.keyDown(all[0]!, { key: 'End' });
-    expect(onchange).toHaveBeenCalledWith(5);
+    expect(onValueChange).toHaveBeenCalledWith(5);
   });
 
   test('ArrowRight from the last option wraps to the first', async () => {
-    const onchange = mock((_value: number) => {});
+    const onValueChange = mock((_value: number) => {});
     const { container } = render(Rating, {
-      props: { id: 'r', label: 'Q', value: 5, count: 5, onchange },
+      props: { id: 'r', label: 'Q', value: 5, count: 5, onValueChange },
     });
     const all = options(container);
     all[4]!.focus();
     await fireEvent.keyDown(all[4]!, { key: 'ArrowRight' });
-    expect(onchange).toHaveBeenCalledWith(1);
+    expect(onValueChange).toHaveBeenCalledWith(1);
   });
 
   test('ArrowUp from a committed value moves checked forward', async () => {
-    const onchange = mock((_value: number) => {});
-    const { container } = render(Rating, { props: { id: 'r', label: 'Q', value: 2, onchange } });
+    const onValueChange = mock((_value: number) => {});
+    const { container } = render(Rating, {
+      props: { id: 'r', label: 'Q', value: 2, onValueChange },
+    });
     const all = options(container);
     all[1]!.focus();
     await fireEvent.keyDown(all[1]!, { key: 'ArrowUp' });
-    expect(onchange).toHaveBeenCalledWith(3);
+    expect(onValueChange).toHaveBeenCalledWith(3);
   });
 
   test('ArrowDown from a committed value moves checked backward', async () => {
-    const onchange = mock((_value: number) => {});
-    const { container } = render(Rating, { props: { id: 'r', label: 'Q', value: 3, onchange } });
+    const onValueChange = mock((_value: number) => {});
+    const { container } = render(Rating, {
+      props: { id: 'r', label: 'Q', value: 3, onValueChange },
+    });
     const all = options(container);
     all[2]!.focus();
     await fireEvent.keyDown(all[2]!, { key: 'ArrowDown' });
-    expect(onchange).toHaveBeenCalledWith(2);
+    expect(onValueChange).toHaveBeenCalledWith(2);
   });
 
   test('unrated + ArrowLeft wraps to the last option', async () => {
-    const onchange = mock((_value: number) => {});
+    const onValueChange = mock((_value: number) => {});
     const { container } = render(Rating, {
-      props: { id: 'r', label: 'Q', value: 0, count: 5, onchange },
+      props: { id: 'r', label: 'Q', value: 0, count: 5, onValueChange },
     });
     const all = options(container);
     all[0]!.focus();
     await fireEvent.keyDown(all[0]!, { key: 'ArrowLeft' });
-    expect(onchange).toHaveBeenCalledWith(5);
+    expect(onValueChange).toHaveBeenCalledWith(5);
   });
 
   test('Space commits the focused option from unrated', async () => {
-    const onchange = mock((_value: number) => {});
+    const onValueChange = mock((_value: number) => {});
     const { container } = render(Rating, {
-      props: { id: 'r', label: 'Q', value: 0, onchange },
+      props: { id: 'r', label: 'Q', value: 0, onValueChange },
     });
     const all = options(container);
     all[0]!.focus();
     await fireEvent.keyDown(all[0]!, { key: ' ' });
-    expect(onchange).toHaveBeenCalledWith(1);
+    expect(onValueChange).toHaveBeenCalledWith(1);
   });
 
   test('Enter commits the focused option just like Space (from unrated)', async () => {
-    const onchange = mock((_value: number) => {});
+    const onValueChange = mock((_value: number) => {});
     const { container } = render(Rating, {
-      props: { id: 'r', label: 'Q', value: 0, onchange },
+      props: { id: 'r', label: 'Q', value: 0, onValueChange },
     });
     const all = options(container);
     all[0]!.focus();
     await fireEvent.keyDown(all[0]!, { key: 'Enter' });
-    expect(onchange).toHaveBeenCalledWith(1);
+    expect(onValueChange).toHaveBeenCalledWith(1);
   });
 
-  test('clicking the already-selected option does not re-fire onchange', async () => {
-    const onchange = mock((_value: number) => {});
+  test('clicking the already-selected option does not re-fire onValueChange', async () => {
+    const onValueChange = mock((_value: number) => {});
     const { container } = render(Rating, {
-      props: { id: 'r', label: 'Q', value: 3, onchange },
+      props: { id: 'r', label: 'Q', value: 3, onValueChange },
     });
     const all = options(container);
     await fireEvent.click(all[2]!);
-    expect(onchange).not.toHaveBeenCalled();
+    expect(onValueChange).not.toHaveBeenCalled();
   });
 
-  test('onchange does NOT fire on hover preview', async () => {
-    const onchange = mock((_value: number) => {});
-    const { container } = render(Rating, { props: { id: 'r', label: 'Q', value: 1, onchange } });
+  test('onValueChange does NOT fire on hover preview', async () => {
+    const onValueChange = mock((_value: number) => {});
+    const { container } = render(Rating, {
+      props: { id: 'r', label: 'Q', value: 1, onValueChange },
+    });
     const all = options(container);
     await fireEvent.pointerEnter(all[3]!);
-    expect(onchange).not.toHaveBeenCalled();
+    expect(onValueChange).not.toHaveBeenCalled();
   });
 
-  test('onchange does NOT fire on external prop synchronization', async () => {
-    const onchange = mock((_value: number) => {});
-    const { rerender } = render(Rating, { props: { id: 'r', label: 'Q', value: 1, onchange } });
-    await rerender({ id: 'r', label: 'Q', value: 4, onchange });
-    expect(onchange).not.toHaveBeenCalled();
+  test('onValueChange does NOT fire on external prop synchronization', async () => {
+    const onValueChange = mock((_value: number) => {});
+    const { rerender } = render(Rating, {
+      props: { id: 'r', label: 'Q', value: 1, onValueChange },
+    });
+    await rerender({ id: 'r', label: 'Q', value: 4, onValueChange });
+    expect(onValueChange).not.toHaveBeenCalled();
   });
 });
 

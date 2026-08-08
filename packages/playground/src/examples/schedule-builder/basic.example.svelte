@@ -35,7 +35,7 @@
 
 <ScheduleBuilder
   {value}
-  onchange={handleChange}
+  onValueChange={handleChange}
   {computeNextFires}
   timezoneLabel="America/New_York"
   label="Data sync schedule"

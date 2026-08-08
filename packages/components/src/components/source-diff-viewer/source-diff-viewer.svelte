@@ -38,7 +38,7 @@
     'aria-labelledby': nativeAriaLabelledBy,
     maxLines = 1000,
     lineNumbers = true,
-    emptyMessage = 'No patch lines to display.',
+    empty,
     class: className,
     ...rest
   }: SourceDiffViewerProps = $props();
@@ -72,7 +72,11 @@
   aria-labelledby={normalizedAriaLabelledBy}
 >
   {#if !hasPatchContent}
-    <p class="cinder-source-diff-viewer__empty">{emptyMessage}</p>
+    {#if empty}
+      <div class="cinder-source-diff-viewer__empty">{@render empty()}</div>
+    {:else}
+      <p class="cinder-source-diff-viewer__empty">No patch lines to display.</p>
+    {/if}
   {:else}
     {#if parsedPatch.truncated}
       <div class="cinder-source-diff-viewer__notice" role="status">

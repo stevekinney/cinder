@@ -34,11 +34,11 @@ describe('Calendar', () => {
     );
   });
 
-  test('selects a day and calls onchange', async () => {
+  test('selects a day and calls onValueChange', async () => {
     let selected: string | undefined;
     const { container } = render(Calendar, {
       month: '2026-06-01',
-      onchange: (value: string) => {
+      onValueChange: (value: string) => {
         selected = value;
       },
     });
@@ -56,7 +56,7 @@ describe('Calendar', () => {
     let selected: string | undefined;
     const { container } = render(Calendar, {
       month: '0999-06-01',
-      onchange: (value: string) => {
+      onValueChange: (value: string) => {
         selected = value;
       },
     });
@@ -74,7 +74,7 @@ describe('Calendar', () => {
     let selected: string | undefined;
     const { container } = render(Calendar, {
       month: '0099-06-01',
-      onchange: (value: string) => {
+      onValueChange: (value: string) => {
         selected = value;
       },
     });
@@ -111,7 +111,7 @@ describe('Calendar', () => {
     let selected = '';
     const { container } = render(Calendar, {
       value: '2026-06-15',
-      onchange: (value: string) => {
+      onValueChange: (value: string) => {
         selected = value;
       },
     });
@@ -177,7 +177,7 @@ describe('Calendar', () => {
     const { container } = render(Calendar, {
       month: '2026-06-01',
       disabledDate: (iso: string) => iso === '2026-06-15',
-      onchange: (value: string) => {
+      onValueChange: (value: string) => {
         selected = value;
       },
     });
@@ -203,7 +203,7 @@ describe('Calendar', () => {
     const { container } = render(Calendar, {
       value: '2026-06-15',
       disabled: true,
-      onchange: (value: string) => {
+      onValueChange: (value: string) => {
         selected = value;
       },
     });
@@ -309,7 +309,7 @@ describe('Calendar', () => {
       let selected: string | undefined;
       const { container } = render(Calendar, {
         month,
-        onchange: (value: string) => {
+        onValueChange: (value: string) => {
           selected = value;
         },
       });

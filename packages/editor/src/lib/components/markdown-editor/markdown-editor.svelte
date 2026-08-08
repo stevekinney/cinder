@@ -686,7 +686,7 @@
                 size="sm"
                 bind:value={mode}
                 label={modeLabel}
-                hideLabel
+                labelVisible={false}
               >
                 <Segment value="wysiwyg">Rich</Segment>
                 <Segment value="source">Raw</Segment>

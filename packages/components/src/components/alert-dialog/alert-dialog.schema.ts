@@ -4,6 +4,11 @@ const schema = {
   $schema: 'https://json-schema.org/draft/2020-12/schema',
   type: 'object',
   properties: {
+    cancelLabel: {
+      type: 'string',
+      description:
+        "Label for the cancel button. When omitted, NO cancel button is rendered —\nan alert dialog's default shape is a single acknowledgement.",
+    },
     open: {
       type: 'boolean',
       description: 'Controls whether the alert dialog is open; bindable for controlled usage.',
@@ -20,11 +25,6 @@ const schema = {
     acknowledgeLabel: {
       type: 'string',
       description: 'Label for the primary acknowledgement button. Default `OK`.',
-    },
-    cancelLabel: {
-      type: 'string',
-      description:
-        'Label for the optional cancel button. When omitted, no cancel button is rendered.',
     },
     destructive: {
       type: 'boolean',
@@ -48,6 +48,8 @@ const schema = {
       {
         name: 'onCancel',
         reason: 'function-or-snippet',
+        description:
+          "Called when the user cancels (cancel button, Escape, or backdrop per the dialog's policy).",
       },
       {
         name: 'triggerRef',

@@ -54,7 +54,7 @@
     'aria-labelledby': consumerAriaLabelledBy,
     'aria-invalid': consumerInvalid,
     required: _ignoredRequired,
-    onchange,
+    onValueChange,
     ...rest
   }: TagInputProps & {
     /**
@@ -230,7 +230,7 @@
   function setTags(nextTags: string[]): void {
     const normalized = [...nextTags];
     value = normalized;
-    onchange?.(normalized);
+    onValueChange?.(normalized);
   }
 
   function validationError(candidate: string): string | null {

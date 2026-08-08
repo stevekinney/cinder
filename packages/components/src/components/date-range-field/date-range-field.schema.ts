@@ -27,9 +27,10 @@ const schema = {
       enum: ['day', 'hour', 'minute', 'second'],
       description: 'Date-time precision. Defaults to day precision.',
     },
-    hidePresets: {
+    presetsVisible: {
       type: 'boolean',
-      description: 'When true, hides the preset buttons and shows only the date inputs.',
+      description: 'Whether the preset buttons render. Set `false` for date inputs only.',
+      default: true,
     },
     description: {
       type: 'string',
@@ -54,7 +55,7 @@ const schema = {
   metadata: {
     unsupportedProps: [
       {
-        name: 'onchange',
+        name: 'onValueChange',
         reason: 'function-or-snippet',
         description: 'Called when the user changes the date range (preset or manual input).',
       },

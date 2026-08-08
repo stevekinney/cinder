@@ -33,7 +33,7 @@ Use Popover for rich, interactive contextual content anchored to a trigger — h
 | A list of navigable actions triggered from a button | `Dropdown` (sets `role="menu"`, manages arrow-key navigation)      |
 | A combo-box, tag picker, or filterable option list  | `Combobox` (manages `listbox` role, keyboard selection, filtering) |
 | Rich content, settings, or any non-menu panel       | **Popover**                                                        |
-| Focused task that should block the rest of the page | `Modal`, `Drawer`, or `Sheet`                                      |
+| Focused task that should block the rest of the page | `Modal` or `Drawer`                                                |
 
 ### `focusManagement` — `"panel"` vs `"preserve"`
 

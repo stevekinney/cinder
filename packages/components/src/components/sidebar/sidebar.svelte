@@ -156,7 +156,7 @@
         collapsed = !value;
       }
     }
-    side="left"
+    placement="left"
     size="md"
     title={drawerTitle}
     id={sidebarId}

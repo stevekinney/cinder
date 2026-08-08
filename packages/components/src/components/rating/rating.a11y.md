@@ -33,7 +33,7 @@ Each option carries the cinder focus ring on `:focus-visible` so keyboard users 
 
 ## Pointer Hover
 
-Pointer hover previews a value visually but never commits it. Pointer-leave clears the hover preview back to the committed value. `onchange` is **not** called during hover preview — only on click.
+Pointer hover previews a value visually but never commits it. Pointer-leave clears the hover preview back to the committed value. `onValueChange` is **not** called during hover preview — only on click.
 
 ## Disabled State
 

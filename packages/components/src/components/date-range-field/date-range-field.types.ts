@@ -63,8 +63,11 @@ export type DateRangeFieldProps = Omit<
    * Defaults to today, yesterday-today, last-7d built-ins when omitted.
    */
   presets?: DateRangeDatePreset[];
-  /** When true, hides the preset buttons and shows only the date inputs. */
-  hidePresets?: boolean;
+  /**
+   * Whether the preset buttons render. Set `false` for date inputs only.
+   * @default true
+   */
+  presetsVisible?: boolean;
   /** Helper text displayed below the field; wired via aria-describedby. */
   description?: string;
   /**
@@ -77,5 +80,5 @@ export type DateRangeFieldProps = Omit<
   /** Additional CSS classes applied to the root element. */
   class?: string;
   /** Called when the user changes the date range (preset or manual input). */
-  onchange?: (value: DateRangeValue) => void;
+  onValueChange?: (value: DateRangeValue) => void;
 };

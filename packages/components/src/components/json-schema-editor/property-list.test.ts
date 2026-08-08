@@ -22,7 +22,7 @@ describe('PropertyList', () => {
       path: '/properties',
       properties: { name: { type: 'string' } },
       required: [],
-      onchange: () => {},
+      onValueChange: () => {},
     });
 
     const trigger = container.querySelector<HTMLButtonElement>(
@@ -47,7 +47,7 @@ describe('PropertyList', () => {
       path: '/properties',
       properties: {},
       required: [],
-      onchange: (_properties: unknown, required: string[]) => {
+      onValueChange: (_properties: unknown, required: string[]) => {
         latestRequired = required;
       },
     });

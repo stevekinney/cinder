@@ -51,7 +51,7 @@
     'aria-labelledby': ariaLabelledBy,
     'aria-describedby': consumerDescribedBy,
     'aria-invalid': consumerAriaInvalid,
-    onchange,
+    onValueChange,
     ...rest
   }: TimeFieldProps = $props();
 
@@ -152,7 +152,7 @@
   );
 
   function emit(nextValue: string, nextTimezone = timezone): void {
-    onchange?.({ value: nextValue, timezone: nextTimezone });
+    onValueChange?.({ value: nextValue, timezone: nextTimezone });
   }
 
   function normalizeAriaText(text: string | undefined | null): string | undefined {

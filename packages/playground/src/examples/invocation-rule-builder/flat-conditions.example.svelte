@@ -42,7 +42,7 @@
 <InvocationRuleBuilder
   mode="flat-conditions"
   {conditions}
-  onchange={handleChange}
+  onValueChange={handleChange}
   {fieldOptions}
   label="Workflow filters"
 />

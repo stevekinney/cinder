@@ -1,3 +1,4 @@
+import type { Snippet } from 'svelte';
 import type { HTMLAttributes } from 'svelte/elements';
 
 /** Props for the PricingCard component. */
@@ -9,15 +10,18 @@ export type PricingCardProps = Omit<HTMLAttributes<HTMLDivElement>, 'onselect'> 
   /** List of feature strings to display. Rendered as a bulleted list. */
   features: string[];
   /** Label for the call-to-action button. */
-  cta: string;
+  callToActionLabel: string;
   /** Called when the CTA button is clicked. */
-  onSelect: () => void;
+  onPlanSelect: () => void;
   /**
    * Optional footnote or caveat displayed beneath the features list.
    * Use for legal disclaimers, billing notes, or conditional terms.
    * Rendered in a visually subdued style to distinguish it from the main feature list.
+   * Accepts plain text or a snippet (e.g. a terms link). Snippet content is
+   * rendered inside a `<p>` — emit phrasing content only (text, inline
+   * formatting, links), never block elements.
    */
-  caveat?: string;
+  caveat?: string | Snippet;
   /**
    * Whether this card represents the currently selected plan.
    * Sets `data-cinder-selected` and `aria-current="true"` on the root element.
@@ -36,8 +40,8 @@ export interface PricingCardSchemaProps {
   /** Feature strings to display in the bulleted list. */
   features: string[];
   /** Label for the call-to-action button. */
-  cta: string;
-  /** Optional footnote or caveat beneath the features list. */
+  callToActionLabel: string;
+  /** Optional footnote or caveat beneath the features list; the runtime API also accepts a template-only snippet (e.g. a terms link). */
   caveat?: string;
   /**
    * Whether this card is the currently selected plan.

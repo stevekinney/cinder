@@ -76,7 +76,7 @@ const SYNTHETIC_COMPONENTS: ManifestComponent[] = [
     tags: ['dialog', 'overlay'],
     useWhen: ['Requiring user acknowledgment before proceeding.'],
     avoidWhen: [{ reason: 'Showing brief transient feedback.' }],
-    related: ['drawer', 'sheet'],
+    related: ['drawer', 'popover'],
     hasConstraints: true,
     hasExamples: true,
     artifacts: {
@@ -97,7 +97,7 @@ const SYNTHETIC_COMPONENTS: ManifestComponent[] = [
     tags: ['json', 'debugging'],
     useWhen: ['Showing structured event details in an operational dashboard.'],
     avoidWhen: [{ reason: 'Showing tabular records.', alternative: 'data-table' }],
-    related: ['event-stream-viewer'],
+    related: ['feed'],
     hasConstraints: false,
     hasExamples: false,
     artifacts: {
@@ -169,7 +169,7 @@ function buildSyntheticManifest(): Manifest {
         'A cohesive set of domain-specific components shipped together as a named suite with its own versioning cadence.',
     },
     overlapFamilies: {
-      overlay: ['modal', 'drawer', 'sheet', 'popover'],
+      overlay: ['modal', 'drawer', 'popover'],
       notice: ['banner', 'alert', 'callout'],
       selection: ['toggle', 'checkbox', 'segmented-control'],
       hover: ['tooltip', 'popover'],

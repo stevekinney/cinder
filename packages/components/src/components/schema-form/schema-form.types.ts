@@ -35,7 +35,7 @@ export type SchemaFormProps = Omit<HTMLFormAttributes, 'class' | 'onsubmit'> & {
   /** Custom class merged with `.cinder-schema-form`. */
   class?: string;
   /** Called after validation passes with the schema-conformant output value. */
-  onsubmit?: SchemaFormSubmitHandler;
+  onSubmit?: SchemaFormSubmitHandler;
   /**
    * Called after each edit with the complete current draft, before schema validation.
    * The draft can be schema-invalid and does not change the seed-only `value` contract.

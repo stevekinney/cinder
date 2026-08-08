@@ -29,7 +29,7 @@ When Portal moves your content to `document.body`, the content's position in the
 
 Portal cannot fix this gap, because fixing it requires knowing the semantics of what you're portaling — and Portal is intentionally semantics-free. **The consumer owns the bridge.** What that bridge looks like depends on the **pattern** you are portaling — modal and non-modal overlays have different obligations.
 
-**Modal overlays** (dialog, alert dialog, drawer, modal sheet) take over the page while open. They must:
+**Modal overlays** (dialog, alert dialog, drawer) take over the page while open. They must:
 
 1. **Trap focus** inside the overlay, so Tab and Shift+Tab cycle within it rather than escaping into the now-distant page content behind it.
 2. **Move focus into** the overlay when it opens (to the first focusable control, the close button, or the surface itself) and **restore focus** to the trigger when it closes. Without this, a keyboard user is stranded at the trigger while the visually-present overlay receives no focus.

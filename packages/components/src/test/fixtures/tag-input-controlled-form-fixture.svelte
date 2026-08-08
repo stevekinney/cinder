@@ -18,7 +18,7 @@
     {name}
     value={tags}
     commitOnSubmit
-    onchange={(nextTags) => {
+    onValueChange={(nextTags) => {
       tags = nextTags;
     }}
   />

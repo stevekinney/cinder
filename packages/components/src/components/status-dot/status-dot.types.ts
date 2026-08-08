@@ -48,7 +48,10 @@ export type StatusDotProps = Omit<HTMLAttributes<HTMLSpanElement>, 'class'> & {
   label?: string;
   /** Use role="status" with polite live-region attributes. Defaults true when connectionState is provided. */
   live?: boolean;
-  /** Whether to render the visible label. Default `true`. */
+  /**
+   * Whether to render the visible label.
+   * @default true
+   */
   labelVisible?: boolean;
   /** Dot size. Default `'md'`. */
   size?: StatusDotSize;
@@ -63,7 +66,10 @@ export interface StatusDotSchemaProps {
   connectionState?: StatusDotConnectionState;
   /** Optional human label. Rendered visibly when `labelVisible` is true; used as the accessible name either way. */
   label?: string;
-  /** Whether to render the visible label. @default true */
+  /**
+   * Whether to render the visible label.
+   * @default true
+   */
   labelVisible?: boolean;
   /** Use role="status" with polite live-region attributes. Defaults true when connectionState is provided. */
   live?: boolean;

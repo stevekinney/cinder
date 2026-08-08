@@ -2,7 +2,7 @@
 @layer cinder.components {
   /* ========================================
  * DRAWER
- * Edge-anchored (left/right) slide-in panel.
+ * Edge-anchored (left/right/bottom) slide-in panel.
  * The <dialog> fills the viewport so backdrop-click on dialog is reliable;
  * the visible panel is a child absolutely positioned at the chosen edge.
  * ======================================== */
@@ -50,9 +50,6 @@
 
   .cinder-drawer__panel {
     position: absolute;
-    top: 0;
-    bottom: 0;
-    height: 100%;
     max-width: 100vw;
     background: var(--cinder-surface-raised);
     box-shadow: var(--cinder-shadow-lg);
@@ -65,18 +62,35 @@
       opacity var(--cinder-duration-normal) var(--cinder-ease-standard);
   }
 
-  .cinder-drawer__panel[data-cinder-side='right'] {
+  /* Each placement block owns its slide vector via --_cinder-drawer-slide;
+   the single closing rule and single @starting-style rule below consume it,
+   so adding a placement means ONE block here — no per-placement motion
+   twins to keep in sync. */
+  .cinder-drawer__panel[data-cinder-placement='right'] {
+    --_cinder-drawer-slide: 100% 0;
+
+    top: 0;
+    bottom: 0;
     right: 0;
     left: auto;
+    height: 100%;
     border-inline-start: 1px solid var(--cinder-border);
   }
 
-  .cinder-drawer__panel[data-cinder-side='left'] {
+  .cinder-drawer__panel[data-cinder-placement='left'] {
+    --_cinder-drawer-slide: -100% 0;
+
+    top: 0;
+    bottom: 0;
     left: 0;
     right: auto;
+    height: 100%;
     border-inline-end: 1px solid var(--cinder-border);
   }
 
+  /* Width tokens size the side placements. The bottom-placement block below
+   is declared LATER at equal specificity, so its full-viewport width wins
+   over any size token without per-rule exclusions. */
   .cinder-drawer__panel[data-cinder-size='sm'] {
     width: min(20rem, 100vw);
   }
@@ -90,12 +104,52 @@
     width: min(48rem, 100vw);
   }
 
+  .cinder-drawer__panel[data-cinder-placement='bottom'] {
+    --_cinder-drawer-slide: 0 100%;
+
+    left: 0;
+    right: 0;
+    bottom: 0;
+    /* Declared after the size tokens so this always wins: the bottom
+     placement spans the full viewport width regardless of `size`. */
+    width: 100%;
+    /* Physically bottom-anchored, so the viewport cap, the exposed edge's
+     border, and the rounded corners all stay physical too — logical
+     properties would rotate away from the top edge in vertical writing
+     modes while the panel itself stays pinned to the bottom. */
+    max-height: 90dvh;
+    border-top: 1px solid var(--cinder-border);
+    border-top-left-radius: var(--cinder-radius-lg);
+    border-top-right-radius: var(--cinder-radius-lg);
+  }
+
+  .cinder-drawer__drag-handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    /* 44px minimum touch target. */
+    min-height: var(--cinder-touch-target-min);
+    flex-shrink: 0;
+    /* The handle is decorative until swipe-to-close ships — no grab cursor. */
+    cursor: default;
+    user-select: none;
+  }
+
+  .cinder-drawer__drag-handle-pill {
+    display: block;
+    width: 2.5rem;
+    height: 0.25rem;
+    border-radius: var(--cinder-radius-full);
+    background: var(--cinder-border);
+  }
+
   .cinder-drawer__header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: var(--cinder-space-4);
-    padding: var(--cinder-space-5) var(--cinder-space-6);
+    padding: var(--cinder-space-4) var(--cinder-space-5);
     border-block-end: 1px solid var(--cinder-border-muted);
     flex-shrink: 0;
     background: var(--cinder-surface);
@@ -116,6 +170,7 @@
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+    /* 44px minimum touch target. */
     width: 2.75rem;
     height: 2.75rem;
     padding: var(--cinder-space-1);
@@ -162,12 +217,21 @@
     --_cinder-scroll-fade-color: var(--cinder-surface);
 
     flex: 1;
+    min-block-size: 0;
     overflow-y: auto;
     padding: var(--cinder-space-6);
     overscroll-behavior: contain;
     scrollbar-gutter: stable;
-    outline: none;
     background: var(--cinder-surface);
+  }
+
+  /* Suppress the focus ring only for programmatic (open-effect) focus — the
+ * body container is the drawer's initial focus target, and keyboard-driven
+ * `:focus-visible` focus keeps its indication (the former Sheet's policy;
+ * the pre-merge unconditional reset silenced keyboard indication too). */
+  .cinder-drawer__body:focus:not(:focus-visible) {
+    /* cinder-focus-ring-owner: parent */
+    outline: none;
   }
 
   .cinder-drawer__footer {
@@ -175,7 +239,7 @@
     align-items: center;
     justify-content: flex-end;
     gap: var(--cinder-space-3);
-    padding: var(--cinder-space-4) var(--cinder-space-6);
+    padding: var(--cinder-space-3) var(--cinder-space-5);
     border-block-start: 1px solid var(--cinder-border-muted);
     flex-shrink: 0;
     background: var(--cinder-surface);
@@ -184,30 +248,21 @@
   /* ----------------------------------------
  * Motion — slide from the anchored edge.
  * Animation targets the panel, not the dialog (which is transparent).
+ * The slide vector comes from --_cinder-drawer-slide, declared once per
+ * placement block above; a placement whose block forgets the property
+ * gets `translate: none` here — visible immediately — instead of a
+ * silently missing @starting-style twin.
  * ---------------------------------------- */
 
-  .cinder-drawer__panel[data-cinder-side='right'][data-cinder-closing] {
-    translate: 100% 0;
-    opacity: 0.85;
-  }
-
-  .cinder-drawer__panel[data-cinder-side='left'][data-cinder-closing] {
-    translate: -100% 0;
-    opacity: 0.85;
-  }
-
   .cinder-drawer__panel[data-cinder-closing] {
+    translate: var(--_cinder-drawer-slide);
+    opacity: 0.85;
     pointer-events: none;
   }
 
   @starting-style {
-    .cinder-drawer__panel[data-cinder-side='right'] {
-      translate: 100% 0;
-      opacity: 0.85;
-    }
-
-    .cinder-drawer__panel[data-cinder-side='left'] {
-      translate: -100% 0;
+    .cinder-drawer__panel {
+      translate: var(--_cinder-drawer-slide);
       opacity: 0.85;
     }
   }

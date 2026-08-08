@@ -164,14 +164,14 @@ describe('PhoneInput country allow-list behavior', () => {
   });
 
   test('typing a `+`-prefixed E.164 string re-detects the country', async () => {
-    const onchange = mock((_detail: any) => {});
+    const onValueChange = mock((_detail: any) => {});
     const { container } = render(PhoneInput, {
-      props: { id: 'p', label: 'Phone', countries: ['US', 'GB'], onchange },
+      props: { id: 'p', label: 'Phone', countries: ['US', 'GB'], onValueChange },
     });
     const input = nationalInput(container);
     await fireEvent.input(input, { target: { value: '+442079460958' } });
     expect(countrySelect(container).value).toBe('GB');
-    const last = onchange.mock.calls.at(-1)!;
+    const last = onValueChange.mock.calls.at(-1)!;
     const [detail] = last as [any];
     expect(detail.country).toBe('GB');
     expect(detail.reason).toBe('valid');
@@ -187,14 +187,14 @@ describe('PhoneInput country allow-list behavior', () => {
   });
 
   test('shrinking the allow-list also recomputes the bindable value', async () => {
-    const onchange = mock((_detail: any) => {});
+    const onValueChange = mock((_detail: any) => {});
     const { rerender, container } = render(PhoneInput, {
       props: {
         id: 'p',
         label: 'Phone',
         countries: ['US', 'GB'],
         value: '+442079460958',
-        onchange,
+        onValueChange,
       },
     });
     expect(countrySelect(container).value).toBe('GB');
@@ -205,7 +205,7 @@ describe('PhoneInput country allow-list behavior', () => {
       label: 'Phone',
       countries: ['US'],
       value: '+442079460958',
-      onchange,
+      onValueChange,
     });
     expect(countrySelect(container).value).toBe('US');
     // The visible national digits get reformatted for US; the value reflects
@@ -213,8 +213,8 @@ describe('PhoneInput country allow-list behavior', () => {
     // not a valid US phone, so value is '').
     const hidden = container.querySelector<HTMLInputElement>('input[type="hidden"]');
     expect(hidden).toBeNull(); // no name prop -> no hidden input
-    // onchange must NOT fire — this is prop synchronization, not user edit.
-    expect(onchange).not.toHaveBeenCalled();
+    // onValueChange must NOT fire — this is prop synchronization, not user edit.
+    expect(onValueChange).not.toHaveBeenCalled();
   });
 });
 
@@ -245,16 +245,16 @@ describe('PhoneInput as-you-type formatting', () => {
   });
 });
 
-describe('PhoneInput onchange', () => {
+describe('PhoneInput onValueChange', () => {
   test('valid US number emits E.164 with reason "valid"', async () => {
-    const onchange = mock((_detail: any) => {});
+    const onValueChange = mock((_detail: any) => {});
     const { container } = render(PhoneInput, {
-      props: { id: 'p', label: 'Phone', onchange },
+      props: { id: 'p', label: 'Phone', onValueChange },
     });
     const input = nationalInput(container);
     await fireEvent.input(input, { target: { value: '4155550132' } });
-    expect(onchange).toHaveBeenCalled();
-    const lastCall = onchange.mock.calls.at(-1)!;
+    expect(onValueChange).toHaveBeenCalled();
+    const lastCall = onValueChange.mock.calls.at(-1)!;
     const [detail] = lastCall as [any];
     expect(detail.value).toBe('+14155550132');
     expect(detail.reason).toBe('valid');
@@ -262,63 +262,63 @@ describe('PhoneInput onchange', () => {
   });
 
   test('cleared input emits "" with reason "empty"', async () => {
-    const onchange = mock((_detail: any) => {});
+    const onValueChange = mock((_detail: any) => {});
     const { container } = render(PhoneInput, {
-      props: { id: 'p', label: 'Phone', value: '+14155550132', onchange },
+      props: { id: 'p', label: 'Phone', value: '+14155550132', onValueChange },
     });
     const input = nationalInput(container);
     await fireEvent.input(input, { target: { value: '' } });
-    const lastCall = onchange.mock.calls.at(-1)!;
+    const lastCall = onValueChange.mock.calls.at(-1)!;
     const [detail] = lastCall as [any];
     expect(detail.value).toBe('');
     expect(detail.reason).toBe('empty');
   });
 
   test('incomplete number emits "" without clearing visible digits', async () => {
-    const onchange = mock((_detail: any) => {});
+    const onValueChange = mock((_detail: any) => {});
     const { container } = render(PhoneInput, {
-      props: { id: 'p', label: 'Phone', onchange },
+      props: { id: 'p', label: 'Phone', onValueChange },
     });
     const input = nationalInput(container);
     await fireEvent.input(input, { target: { value: '415' } });
-    const lastCall = onchange.mock.calls.at(-1)!;
+    const lastCall = onValueChange.mock.calls.at(-1)!;
     const [detail] = lastCall as [any];
     expect(detail.value).toBe('');
     expect(input.value).not.toBe('');
   });
 
-  test('switching country fires onchange with the new country', async () => {
-    const onchange = mock((_detail: any) => {});
+  test('switching country fires onValueChange with the new country', async () => {
+    const onValueChange = mock((_detail: any) => {});
     const { container } = render(PhoneInput, {
-      props: { id: 'p', label: 'Phone', countries: ['US', 'GB'], onchange },
+      props: { id: 'p', label: 'Phone', countries: ['US', 'GB'], onValueChange },
     });
     const select = countrySelect(container);
     await fireEvent.change(select, { target: { value: 'GB' } });
-    const lastCall = onchange.mock.calls.at(-1)!;
+    const lastCall = onValueChange.mock.calls.at(-1)!;
     const [detail] = lastCall as [any];
     expect(detail.country).toBe('GB');
   });
 
-  test('onchange does NOT fire on external value synchronization', async () => {
-    const onchange = mock((_detail: any) => {});
+  test('onValueChange does NOT fire on external value synchronization', async () => {
+    const onValueChange = mock((_detail: any) => {});
     const { rerender } = render(PhoneInput, {
-      props: { id: 'p', label: 'Phone', value: '+14155550132', onchange },
+      props: { id: 'p', label: 'Phone', value: '+14155550132', onValueChange },
     });
-    await rerender({ id: 'p', label: 'Phone', value: '+442079460958', onchange });
-    expect(onchange).not.toHaveBeenCalled();
+    await rerender({ id: 'p', label: 'Phone', value: '+442079460958', onValueChange });
+    expect(onValueChange).not.toHaveBeenCalled();
   });
 
-  test('onchange does NOT fire on external country synchronization', async () => {
-    const onchange = mock((_detail: any) => {});
+  test('onValueChange does NOT fire on external country synchronization', async () => {
+    const onValueChange = mock((_detail: any) => {});
     const { rerender } = render(PhoneInput, {
-      props: { id: 'p', label: 'Phone', country: 'US', onchange },
+      props: { id: 'p', label: 'Phone', country: 'US', onValueChange },
     });
-    await rerender({ id: 'p', label: 'Phone', country: 'GB', onchange });
-    expect(onchange).not.toHaveBeenCalled();
+    await rerender({ id: 'p', label: 'Phone', country: 'GB', onValueChange });
+    expect(onValueChange).not.toHaveBeenCalled();
   });
 
   test('external country synchronization recomputes the hidden value from the visible digits', async () => {
-    const onchange = mock((_detail: any) => {});
+    const onValueChange = mock((_detail: any) => {});
     const { container, rerender } = render(PhoneInput, {
       props: {
         id: 'p',
@@ -326,7 +326,7 @@ describe('PhoneInput onchange', () => {
         name: 'phone',
         country: 'US',
         value: '+14155550132',
-        onchange,
+        onValueChange,
       },
     });
     const hidden = container.querySelector<HTMLInputElement>('input[type="hidden"]')!;
@@ -338,12 +338,12 @@ describe('PhoneInput onchange', () => {
       name: 'phone',
       country: 'GB',
       value: '+14155550132',
-      onchange,
+      onValueChange,
     });
 
     expect(hidden.value).toBe('');
     expect(countrySelect(container).value).toBe('GB');
-    expect(onchange).not.toHaveBeenCalled();
+    expect(onValueChange).not.toHaveBeenCalled();
   });
 });
 
@@ -574,7 +574,7 @@ describe('PhoneInput form reset', () => {
         label: 'Phone',
         countries: ['US'],
         value: '+442079460958',
-        onchange: (change: PhoneInputChange) => changes.push(change),
+        onValueChange: (change: PhoneInputChange) => changes.push(change),
       },
     });
     const input = nationalInput(rendered.container);

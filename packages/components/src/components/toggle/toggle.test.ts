@@ -474,19 +474,19 @@ describe('Toggle — form participation', () => {
   });
 });
 
-describe('Toggle — hideLabel', () => {
-  test('accessible name is preserved when hideLabel is set', () => {
+describe('Toggle — labelVisible={false}', () => {
+  test('accessible name is preserved when the label is hidden', () => {
     render(Toggle, {
-      props: { id: 't21', checked: false, label: 'Mute', hideLabel: true },
+      props: { id: 't21', checked: false, label: 'Mute', labelVisible: false },
     });
     // A broken hidden recipe, detached reference, or duplicate id would fail this query
     // (getByRole throws on miss). Assert on the element to avoid a vacuous null check.
     expect(screen.getByRole('switch', { name: 'Mute' }).tagName).toBe('BUTTON');
   });
 
-  test('hideLabel sets data-hidden on the label so it is removed from layout flow', () => {
+  test('labelVisible={false} sets data-hidden on the label so it is removed from layout flow', () => {
     const { container } = render(Toggle, {
-      props: { id: 't22', checked: false, label: 'Mute', hideLabel: true },
+      props: { id: 't22', checked: false, label: 'Mute', labelVisible: false },
     });
     const label = container.querySelector('.cinder-toggle-field__label');
     expect(label?.hasAttribute('data-hidden')).toBe(true);

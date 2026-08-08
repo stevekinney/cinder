@@ -36,7 +36,7 @@ No custom `onkeydown` handler is needed. The native `<button>` element fires `cl
 
 ## External Label Association
 
-The component renders its own label as a `<span id="${id}-label">` next to the switch, and the `<button>` references it via `aria-labelledby`. The label is always present (visually hidden via `hideLabel` when needed), so it is the single source of the accessible name — `aria-label` is not used.
+The component renders its own label as a `<span id="${id}-label">` next to the switch, and the `<button>` references it via `aria-labelledby`. The label is always present (visually hidden via `labelVisible={false}` when needed), so it is the single source of the accessible name — `aria-label` is not used.
 
 The label is a `<span>` with its own `onclick`, not a native `<label for>`. A native `<label for>` targeting the switch button would forward a synthetic click to it and, combined with the button's own `onclick`, double-toggle in some engines. The span's click handler calls the same disabled-guarded `toggle()`, so clicking the label toggles the switch once and is a no-op when disabled. Keyboard users operate the switch button directly (it owns the tab order and Enter/Space activation).
 

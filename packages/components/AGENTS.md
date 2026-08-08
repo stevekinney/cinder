@@ -16,6 +16,7 @@ Before creating a component, load the repository-local
 <!-- component-authoring-checklist:start -->
 
 - [ ] Search the component inventory and compose an existing primitive before creating a new one. (#919, #929)
+- [ ] A new component requires behavior, state, or accessibility semantics its parts do not already provide; layout or presentation variations become props, variants, or documented example presets (see docs/decisions/component-admission-bar.md). (#919, #929)
 - [ ] Check docs/component-api-conventions.md before adding or naming a public prop. (#922)
 - [ ] Apply the `cinder-_floating-surface` class to floating panels (defined in `_floating-surface.css`), and compose form controls from `Input` and `FormField`. (#921, #923)
 - [ ] Use a rotating chevron for disclosure controls that render an indicator; use direction-aware lateral chevrons for nested submenus, keep intentionally text-only disclosures icon-free, and use icons from the lucide-svelte set. (#957)
@@ -230,7 +231,7 @@ import manifest from '@lostgradient/cinder/manifest' with { type: 'json' };
   `data-display`, `layout`, `typography`, `domain`.
 - `tags` — free-text keywords (`cta`, `disclosure`, `selection`, etc.).
 - `overlapFamilies` — explicit groupings of components that solve overlapping
-  problems (Modal vs Drawer vs Sheet vs Popover). When two candidates appear
+  problems (Modal vs Drawer vs Popover). When two candidates appear
   in the same family, read each one's `useWhen` / `avoidWhen` to pick.
 
 Each entry carries `purpose`, `useWhen[]`, `avoidWhen[]`, `related[]`,
@@ -355,15 +356,13 @@ the matching entry in `@lostgradient/cinder/manifest`.
 
 <!-- generated:overlap-families:start -->
 
-### chronological (5 components)
+### chronological (3 components)
 
-| id                    | purpose                                                                                                       | use when                                                                                                       |
-| --------------------- | ------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `timeline`            | Timestamp-first event rail with grouping, tone markers, and connector continuity.                             | Showing dated workflow, audit, or run-history events on a temporal rail.                                       |
-| `run-step-timeline`   | Execution-state rail for async steps, durations, retries, branches, speculation, and compensation.            | Showing live or completed CI, workflow, import, or deployment steps.                                           |
-| `event-timeline`      | Horizontal time-axis strip for scheduled events with proportional dots, a now marker, and collision-nudged…   | Showing several fired and upcoming events across a bounded time window, such as a next-24-hour schedule strip. |
-| `feed`                | Ordered list container for a chronological stream of feed-event entries, optionally exposed as a live region. | Rendering a user-facing activity stream or notification timeline.                                              |
-| `event-stream-viewer` | Dense append-only log of timestamped events with follow-latest scrolling, severity tones, expandable JSON…    | Displaying real-time or historical operational events such as workflow steps, job logs, or webhook traces.     |
+| id                  | purpose                                                                                            | use when                                                                 |
+| ------------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `timeline`          | Timestamp-first event rail with grouping, tone markers, and connector continuity.                  | Showing dated workflow, audit, or run-history events on a temporal rail. |
+| `run-step-timeline` | Execution-state rail for async steps, durations, retries, branches, speculation, and compensation. | Showing live or completed CI, workflow, import, or deployment steps.     |
+| `feed`              | Chronological stream of feed-event entries: a plain ordered list for user-facing activity, or an…  | Rendering a user-facing activity stream or notification timeline.        |
 
 ### hover (3 components)
 
@@ -381,15 +380,14 @@ the matching entry in `@lostgradient/cinder/manifest`.
 | `alert`   | Inline status message with assertive role for surfacing time-sensitive feedback about a nearby action or…     | Surfacing the result of a just-completed action such as a save failure or success.                        |
 | `callout` | Inline static note or aside that highlights supporting commentary alongside body content without claiming…    | Drawing attention to tangential information nested inside prose, documentation, or article content.       |
 
-### overlay (5 components)
+### overlay (4 components)
 
-| id             | purpose                                                                                                        | use when                                                                                                      |
-| -------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `modal`        | Centered modal dialog shell built on the native dialog element with focus capture, restoration, and dismissal… | Presenting rich or structured content that requires user interaction before returning to the page — forms,…   |
-| `drawer`       | Side-anchored modal panel built on the native dialog element for secondary navigation, settings, or long-form… | Showing supplementary navigation, filters, or settings that should slide in from a page edge.                 |
-| `sheet`        | Bottom-anchored modal panel built on the native dialog element with an optional drag handle for mobile-first…  | Presenting a focused task or set of actions that slides up from the bottom of the viewport on touch surfaces. |
-| `popover`      | Anchored floating panel positioned by Floating UI that hosts non-modal contextual content beside a trigger…    | Showing rich, interactive contextual content anchored to a trigger such as a help panel, color picker, or…    |
-| `alert-dialog` | Sticky alert dialog for urgent acknowledgement that cannot be dismissed by backdrop click or Escape.           | Requiring acknowledgement of a blocking warning before the user can continue.                                 |
+| id             | purpose                                                                                                        | use when                                                                                                    |
+| -------------- | -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `modal`        | Centered modal dialog shell built on the native dialog element with focus capture, restoration, and dismissal… | Presenting rich or structured content that requires user interaction before returning to the page — forms,… |
+| `drawer`       | Edge-anchored modal panel built on the native dialog element; slides from the left, right, or bottom edge for… | Showing supplementary navigation, filters, or settings that should slide in from a page edge.               |
+| `popover`      | Anchored floating panel positioned by Floating UI that hosts non-modal contextual content beside a trigger…    | Showing rich, interactive contextual content anchored to a trigger such as a help panel, color picker, or…  |
+| `alert-dialog` | Sticky alert dialog for urgent acknowledgement that cannot be dismissed by backdrop click or Escape.           | Requiring acknowledgement of a blocking warning before the user can continue.                               |
 
 ### selection (3 components)
 
@@ -520,6 +518,18 @@ Convention shown for Button:
 ```
 
 ### Adding a new component
+
+**The admission bar comes first** (decision record:
+`docs/decisions/component-admission-bar.md`): a new component requires
+behavior, state, or accessibility semantics its parts do not already
+provide. Pure layout or presentation variations become props, variants, or
+documented example presets on the primitive they wrap. Two guards back the
+bar mechanically — `check:component-inventory` requires a written neighbour
+rationale (`@related`/`@avoidWhen` or `@rationale`), and
+`check:css-duplication` fails on a sidecar that closely duplicates an
+existing component's CSS unless the pair is baselined with a written reason.
+The behavior/state/accessibility half is decided in the required design
+review recorded in `*.a11y.md`.
 
 1. Create `src/components/<id>/` with `<id>.svelte`, `<id>.types.ts`
    (exporting `<Pascal>Props`), and `index.ts` that re-exports the
@@ -817,23 +827,23 @@ valid camelCase but still forbidden, because cinder components expose
 `class?: string` as the public prop and destructure it internally as
 `class: className` — the public API is always `class`, never `className`.
 
-| Forbidden name | Correct form     |
-| -------------- | ---------------- |
-| `classname`    | `class`          |
-| `className`    | `class`          |
-| `component`    | `as`             |
-| `colSpan`      | `columnSpan`     |
-| `defaultValue` | `value`          |
-| `fieldClass`   | `fieldClassName` |
-| `filterItem`   | `filter`         |
-| `icononly`     | `iconOnly`       |
-| `inputValue`   | `textInputValue` |
-| `leadingicon`  | `leadingIcon`    |
-| `lockScroll`   | `scrollLocked`   |
-| `mono`         | `monochrome`     |
-| `trailingicon` | `trailingIcon`   |
-| `onchange`     | `onChange`       |
-| `onclick`      | `onClick`        |
+| Forbidden name | Correct form                                                               |
+| -------------- | -------------------------------------------------------------------------- |
+| `classname`    | `class`                                                                    |
+| `className`    | `class`                                                                    |
+| `component`    | `as`                                                                       |
+| `colSpan`      | `columnSpan`                                                               |
+| `defaultValue` | `value`                                                                    |
+| `fieldClass`   | `fieldClassName`                                                           |
+| `filterItem`   | `filter`                                                                   |
+| `icononly`     | `iconOnly`                                                                 |
+| `inputValue`   | `textInputValue`                                                           |
+| `leadingicon`  | `leadingIcon`                                                              |
+| `lockScroll`   | `scrollLocked`                                                             |
+| `mono`         | `monochrome`                                                               |
+| `trailingicon` | `trailingIcon`                                                             |
+| `onChange`     | `onValueChange` (value callbacks) or native `onchange` (Event passthrough) |
+| `onClick`      | native `onclick` (Event passthrough only)                                  |
 
 To add to this list: update `PROP_NAME_DENYLIST` in
 `scripts/component-conventions.ts` and document the entry here in the same PR.

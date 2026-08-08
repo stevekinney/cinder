@@ -54,8 +54,12 @@ export type InputProps = Omit<HTMLInputAttributes, 'class'> &
     onValueChange?: (next: string) => void;
     /** Visible label text rendered above the input and linked via `for`/`id`. */
     label?: string;
-    /** Visually hide the rendered `label` while keeping it programmatically associated. */
-    hideLabel?: boolean;
+    /**
+     * Whether the `label` is visibly rendered. Set `false` to visually hide
+     * it while keeping it programmatically associated.
+     * @default true
+     */
+    labelVisible?: boolean;
     /** Helper text rendered below the input and associated via `aria-describedby`. */
     description?: string;
     /** Error message rendered below the input; also sets `aria-invalid` on the input. */

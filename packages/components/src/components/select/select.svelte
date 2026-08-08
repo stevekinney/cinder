@@ -28,7 +28,7 @@
     value = $bindable(),
     options,
     label,
-    hideLabel = false,
+    labelVisible = true,
     description,
     error,
     required,
@@ -116,7 +116,7 @@
 <FormFieldFrame
   id={field.id}
   {label}
-  {hideLabel}
+  {labelVisible}
   {description}
   {error}
   required={field.required}

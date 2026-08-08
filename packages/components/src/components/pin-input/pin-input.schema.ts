@@ -30,10 +30,11 @@ const schema = {
       type: 'string',
       description: 'Visible group label rendered above the segments.',
     },
-    hideLabel: {
+    labelVisible: {
       type: 'boolean',
       description:
-        'Visually hide the rendered `label` while keeping it programmatically associated.',
+        'Whether the `label` is visibly rendered. Set `false` to visually hide it\nwhile keeping it programmatically associated.',
+      default: true,
     },
     'aria-label': {
       type: 'string',
@@ -79,7 +80,7 @@ const schema = {
           "`autocomplete` value applied to the first segment. Defaults to\n`'one-time-code'` so iOS and Android can autofill SMS codes.",
       },
       {
-        name: 'onchange',
+        name: 'onValueChange',
         reason: 'function-or-snippet',
         description:
           'Fires only for user-initiated committed value changes (typing, paste,\nautofill, backspace). Never fires for external prop synchronization.',

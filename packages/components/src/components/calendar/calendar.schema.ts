@@ -58,7 +58,7 @@ const schema = {
         description: 'Return true to disable a specific day.',
       },
       {
-        name: 'onchange',
+        name: 'onValueChange',
         reason: 'function-or-snippet',
         description: 'Called when the user commits a day selection.',
       },

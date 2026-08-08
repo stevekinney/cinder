@@ -31,7 +31,7 @@
     onValueChangeRequest,
     onValueChange,
     label,
-    hideLabel = false,
+    labelVisible = true,
     description,
     error,
     disabled,
@@ -244,7 +244,7 @@
     <FormFieldFrame
       {id}
       label={context.labelId ? undefined : label}
-      {hideLabel}
+      {labelVisible}
       {description}
       {error}
       required={resolvedRequired}
@@ -274,7 +274,7 @@
   <FormFieldFrame
     {id}
     {label}
-    {hideLabel}
+    {labelVisible}
     {description}
     {error}
     required={required ?? false}

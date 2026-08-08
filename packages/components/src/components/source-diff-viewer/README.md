@@ -46,14 +46,14 @@ Use SourceDiffViewer for source-code patches, agent workspace patches, Git outpu
 
 <!-- generated:props:start -->
 
-| Prop           | Type      | Required | Default                        | Description                                                                 |
-| -------------- | --------- | -------- | ------------------------------ | --------------------------------------------------------------------------- |
-| `ariaLabel`    | `string`  | no       | —                              | Accessible label for the diff region.                                       |
-| `class`        | `string`  | no       | —                              | Additional CSS classes merged with `.cinder-source-diff-viewer`.            |
-| `emptyMessage` | `string`  | no       | `"No patch lines to display."` | Message shown when the patch is empty or contains no displayable diff rows. |
-| `lineNumbers`  | `boolean` | no       | `true`                         | Whether old and new line-number gutters are rendered.                       |
-| `maxLines`     | `integer` | no       | `1000`                         | Maximum number of diff rows to render before truncating.                    |
-| `patch`        | `string`  | yes      | —                              | Unified patch text to parse and render.                                     |
+| Prop          | Type       | Required | Default | Description                                                                                                                                                                                                                                                                      |
+| ------------- | ---------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ariaLabel`   | `string`   | no       | —       | Accessible label for the diff region.                                                                                                                                                                                                                                            |
+| `class`       | `string`   | no       | —       | Additional CSS classes merged with `.cinder-source-diff-viewer`.                                                                                                                                                                                                                 |
+| `lineNumbers` | `boolean`  | no       | `true`  | Whether old and new line-number gutters are rendered.                                                                                                                                                                                                                            |
+| `maxLines`    | `integer`  | no       | `1000`  | Maximum number of diff rows to render before truncating.                                                                                                                                                                                                                         |
+| `patch`       | `string`   | yes      | —       | Unified patch text to parse and render.                                                                                                                                                                                                                                          |
+| `empty`       | `(opaque)` | no       | —       | Rendered when the patch is empty or contains no displayable diff rows. Falls back to a default "No patch lines to display." message — matching the `empty` snippet the chart/command families expose. Not expressible in JSON Schema; see the component types for the signature. |
 
 <!-- generated:props:end -->
 

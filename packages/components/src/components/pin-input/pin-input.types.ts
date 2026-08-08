@@ -37,8 +37,12 @@ export type PinInputProps = {
   masked?: boolean;
   /** Visible group label rendered above the segments. */
   label?: string;
-  /** Visually hide the rendered `label` while keeping it programmatically associated. */
-  hideLabel?: boolean;
+  /**
+   * Whether the `label` is visibly rendered. Set `false` to visually hide it
+   * while keeping it programmatically associated.
+   * @default true
+   */
+  labelVisible?: boolean;
   /** Group accessible name when no visible `label` is supplied. */
   'aria-label'?: string;
   /** Space-separated list of ids that label the group when no `label` is supplied. */
@@ -64,5 +68,5 @@ export type PinInputProps = {
    * Fires only for user-initiated committed value changes (typing, paste,
    * autofill, backspace). Never fires for external prop synchronization.
    */
-  onchange?: (value: string) => void;
+  onValueChange?: (value: string) => void;
 };

@@ -34,8 +34,8 @@ const REPO_ROOT = join(PLAYGROUND_ROOT, '..', '..');
  *   fallback below also routes through here — see `startWatcher`).
  * - `components`: a file under the components package's `src/` changed.
  *   Clears every page bundle. This is conservative on purpose — components
- *   cross-import each other directly (e.g. `newsletter-section.svelte`
- *   imports `Button`/`Container`/`Input`) and share `utilities/*.ts` helpers
+ *   cross-import each other directly (e.g. `pricing-card.svelte`
+ *   imports `Button`) and share `utilities/*.ts` helpers
  *   used almost everywhere, so a precise per-file reverse-dependency scope
  *   isn't cheaply computable. Clearing is an O(1) Map operation, not a
  *   rebuild — only the page(s) actually requested next pay a compile cost.

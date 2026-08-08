@@ -14,9 +14,11 @@ const schema = {
       description:
         'Visible label text. Omit only when the child control supplies its own accessible name, such as via aria-label or aria-labelledby.',
     },
-    hideLabel: {
+    labelVisible: {
       type: 'boolean',
-      description: 'Visually hide the label while keeping it associated with the control.',
+      description:
+        'Whether the label is visibly rendered. Set `false` to visually hide it\nwhile keeping it associated with the control.',
+      default: true,
     },
     description: {
       type: 'string',

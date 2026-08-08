@@ -21,8 +21,12 @@ type CommonProps<T extends string> = Omit<HTMLAttributes<HTMLElement>, Component
   label: string;
   /** Native form field name. Renders hidden input(s) carrying the selected value(s). */
   name?: string | undefined;
-  /** Visually hide the label while keeping it available to assistive technology. */
-  hideLabel?: boolean | undefined;
+  /**
+   * Whether the label is visibly rendered. Set `false` to visually hide it
+   * while keeping it available to assistive technology.
+   * @default true
+   */
+  labelVisible?: boolean | undefined;
   /** Disable the whole control. */
   disabled?: boolean | undefined;
   /**
@@ -55,7 +59,7 @@ type CommonProps<T extends string> = Omit<HTMLAttributes<HTMLElement>, Component
   /** Additional class names merged with `.cinder-segmented-control`. */
   class?: string | undefined;
   /** Called when the selected value changes (single mode only). */
-  onchange?: ((value: T) => void) | undefined;
+  onValueChange?: ((value: T) => void) | undefined;
   /** Child `<Segment>` elements. */
   children: Snippet;
 };
@@ -66,10 +70,11 @@ type SingleProps<T extends string> = CommonProps<T> & {
   /** Currently selected value. */
   value?: T | undefined;
   /**
-   * When true (default), clicking the already-selected option is a no-op.
+   * When true, clicking the already-selected option is a no-op.
    * When false, clicking the selected option clears value to undefined.
+   * @default true
    */
-  disallowEmptySelection?: boolean | undefined;
+  selectionRequired?: boolean | undefined;
 };
 
 type MultipleProps<T extends string> = CommonProps<T> & {
@@ -78,7 +83,7 @@ type MultipleProps<T extends string> = CommonProps<T> & {
   /** Set of selected values. Must be a SvelteSet for reactivity. */
   value?: SvelteSet<T> | undefined;
   /** Not applicable in multiple mode — present for Svelte destructuring compatibility. */
-  disallowEmptySelection?: undefined;
+  selectionRequired?: undefined;
   /** Tablist and navigation semantics are only valid for single selection. */
   variant?: 'radiogroup' | undefined;
 };

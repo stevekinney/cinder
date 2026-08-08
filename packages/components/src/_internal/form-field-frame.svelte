@@ -14,7 +14,7 @@
   let {
     id,
     label,
-    hideLabel = false,
+    labelVisible = true,
     description,
     error,
     required = false,
@@ -41,7 +41,7 @@
   }: {
     id: string;
     label?: string | undefined;
-    hideLabel?: boolean | undefined;
+    labelVisible?: boolean | undefined;
     description?: string | undefined;
     error?: string | undefined;
     required?: boolean | undefined;
@@ -120,7 +120,7 @@
     <label
       id={labelId}
       for={id}
-      class={classNames('cinder-form-field__label', labelClass, hideLabel && 'cinder-sr-only')}
+      class={classNames('cinder-form-field__label', labelClass, !labelVisible && 'cinder-sr-only')}
       data-disabled={disabled || undefined}
     >
       {label}

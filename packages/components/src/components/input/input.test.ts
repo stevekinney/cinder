@@ -127,9 +127,9 @@ describe('Input rendering', () => {
     expect(label?.textContent?.trim()).toBe('Username');
   });
 
-  test('hideLabel keeps label in the DOM, applies sr-only class, and preserves label association', () => {
+  test('labelVisible={false} keeps label in the DOM, applies sr-only class, and preserves label association', () => {
     const { container } = render(Input, {
-      props: { id: 'demo-token', value: '', label: 'Demo token', hideLabel: true },
+      props: { id: 'demo-token', value: '', label: 'Demo token', labelVisible: false },
     });
     const label = container.querySelector('label[for="demo-token"]');
     const input = container.querySelector('#demo-token') as HTMLInputElement;
@@ -190,13 +190,13 @@ describe('Input rendering', () => {
     expect(describedBy).toContain('email-error');
   });
 
-  test('hideLabel does not change description/error aria-describedby wiring', () => {
+  test('labelVisible={false} does not change description/error aria-describedby wiring', () => {
     const { container } = render(Input, {
       props: {
         id: 'hidden-label-described',
         value: '',
         label: 'Demo token',
-        hideLabel: true,
+        labelVisible: false,
         description: 'Paste your invite token.',
         error: 'Token is invalid.',
       },

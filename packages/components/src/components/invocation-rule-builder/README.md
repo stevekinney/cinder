@@ -4,7 +4,7 @@ A presentation component for building and reviewing conditional automation rules
 
 ## Ownership boundary
 
-Cinder does not execute, validate, or persist rules. The consumer provides the complete rule model through the `rules` prop and handles every change emitted by `onchange`. Cinder is responsible only for rendering the controls with correct accessible names and emitting pure (non-mutating) change descriptors.
+Cinder does not execute, validate, or persist rules. The consumer provides the complete rule model through the `rules` prop and handles every change emitted by `onValueChange`. Cinder is responsible only for rendering the controls with correct accessible names and emitting pure (non-mutating) change descriptors.
 
 ## Usage
 
@@ -44,7 +44,7 @@ Cinder does not execute, validate, or persist rules. The consumer provides the c
 
 <InvocationRuleBuilder
   {rules}
-  onchange={handleChange}
+  onValueChange={handleChange}
   {fieldOptions}
   {operatorOptions}
   {actionOptions}
@@ -79,7 +79,7 @@ A rule fires when ALL of its conditions match (implicit AND). Boolean grouping, 
 
 ## Modes
 
-Pass `readonly={true}` to render a read-only summary instead of editable controls. Schema-driven usage is read-only because callbacks are not representable in JSON Schema. Runtime consumers can render editable controls by passing `onchange` and leaving `readonly` false.
+Pass `readonly={true}` to render a read-only summary instead of editable controls. Schema-driven usage is read-only because callbacks are not representable in JSON Schema. Runtime consumers can render editable controls by passing `onValueChange` and leaving `readonly` false.
 
 ### Conditions-only mode
 
@@ -122,7 +122,7 @@ Pass `mode="conditions"` to render conditions without actions — for example, a
 
 <InvocationRuleBuilder
   {rules}
-  onchange={handleChange}
+  onValueChange={handleChange}
   {fieldOptions}
   mode="conditions"
   label="Alert filter conditions"
@@ -147,9 +147,9 @@ A rule created in this mode still has an `actions` array on its data shape (so `
 | `label`             | `string`                                                                                                                                                                 | no       | —       | Accessible label for the entire rule builder region.                                                                                                                                                                                                                                                                                                            |
 | `mode`              | `"full"` \| `"conditions"` \| `"flat-conditions"`                                                                                                                        | no       | —       | Rendering mode. Omit or pass `'full'` for the original conditions + actions behavior; pass `'conditions'` for grouped conditions only, or `'flat-conditions'` for one direct conditions list. The schema requires `conditions` only in flat mode and `rules` in both grouped modes; runtime component types additionally reject mode-inapplicable option props. |
 | `operatorOptions`   | ({ label: `string`; options?: { label: `string`; value: `string` }[]; type?: `"string"` \| `"number"` \| `"boolean"` \| `"enum"`; value: `string` })[]                   | no       | —       | Options for the condition operator selector. Consumer-provided list of operators, e.g. "matches", "is", "is-not", "contains". Required in full mode; optional (and ignored) in both constrained conditions modes, where cinder supplies a fixed operator set.                                                                                                   |
-| `readonly`          | `true`                                                                                                                                                                   | yes      | —       | Must be true for schema-driven usage because editable mode requires the unsupported `onchange` callback. Runtime consumers may omit this when passing `onchange` directly.                                                                                                                                                                                      |
-| `rules`             | { actions: { id: `string`; target: `string` }[]; conditions: { field: `string`; id: `string`; operator: `string`; value: `string` }[]; id: `string`; label: `string` }[] | no       | —       | The current list of automation rules. Controlled — pass the updated list returned from `onchange` back into this prop to commit a change.                                                                                                                                                                                                                       |
-| `onchange`          | `(opaque)`                                                                                                                                                               | no       | —       | Called whenever the user makes any edit. Required for editable runtime usage because editable controls must commit controlled state changes. Receives the next controlled state (pure, not mutated) and a change descriptor. Consumer owns persistence, validation, and execution. Not expressible in JSON Schema; see the component types for the signature.   |
+| `readonly`          | `true`                                                                                                                                                                   | yes      | —       | Must be true for schema-driven usage because editable mode requires the unsupported `onValueChange` callback. Runtime consumers may omit this when passing `onValueChange` directly.                                                                                                                                                                            |
+| `rules`             | { actions: { id: `string`; target: `string` }[]; conditions: { field: `string`; id: `string`; operator: `string`; value: `string` }[]; id: `string`; label: `string` }[] | no       | —       | The current list of automation rules. Controlled — pass the updated list returned from `onValueChange` back into this prop to commit a change.                                                                                                                                                                                                                  |
+| `onValueChange`     | `(opaque)`                                                                                                                                                               | no       | —       | Called whenever the user makes any edit. Required for editable runtime usage because editable controls must commit controlled state changes. Receives the next controlled state (pure, not mutated) and a change descriptor. Consumer owns persistence, validation, and execution. Not expressible in JSON Schema; see the component types for the signature.   |
 
 <!-- generated:props:end -->
 

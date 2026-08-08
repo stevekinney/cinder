@@ -42,10 +42,11 @@ const schema = {
       type: 'string',
       description: 'Visible label text rendered above the input and linked via `for`/`id`.',
     },
-    hideLabel: {
+    labelVisible: {
       type: 'boolean',
       description:
-        'Visually hide the rendered `label` while keeping it programmatically associated.',
+        'Whether the `label` is visibly rendered. Set `false` to visually hide\nit while keeping it programmatically associated.',
+      default: true,
     },
     description: {
       type: 'string',

@@ -23,7 +23,7 @@ export type PhoneInputCountryOption = {
 };
 
 /**
- * Detail object passed to `onchange`. `value` is the same E.164 string that
+ * Detail object passed to `onValueChange`. `value` is the same E.164 string that
  * lands on the bindable `value` prop.
  */
 export type PhoneInputChange = {
@@ -64,8 +64,12 @@ export type PhoneInputProps = {
   locale?: string;
   /** Visible group label rendered above the controls. */
   label?: string;
-  /** Visually hide the rendered `label` while keeping it programmatically associated. */
-  hideLabel?: boolean;
+  /**
+   * Whether the `label` is visibly rendered. Set `false` to visually hide it
+   * while keeping it programmatically associated.
+   * @default true
+   */
+  labelVisible?: boolean;
   /** Group accessible name when no visible `label` is supplied. */
   'aria-label'?: string;
   /** Space-separated list of ids that label the group when no `label` is supplied. */
@@ -87,5 +91,5 @@ export type PhoneInputProps = {
    * number, switching the country). Never fires for external value or country
    * synchronization. The detail object carries the E.164 string on `detail.value`.
    */
-  onchange?: (detail: PhoneInputChange) => void;
+  onValueChange?: (detail: PhoneInputChange) => void;
 };

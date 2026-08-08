@@ -37,7 +37,10 @@ import { readdir } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 
 import { allowedExampleExclusionReasons } from '../src/manifest.meta.ts';
-import { ALLOWED_EXAMPLE_PACKAGES } from './example-allowed-packages.ts';
+import {
+  ALLOWED_EXAMPLE_PACKAGE_PREFIXES,
+  ALLOWED_EXAMPLE_PACKAGES,
+} from './example-allowed-packages.ts';
 import { discoverDirectoryComponents } from './generate-exports.ts';
 import { stripExampleHarness } from './lib/strip-example-harness.ts';
 
@@ -513,6 +516,9 @@ function classifySpecifier(
   }
   if (allowedImportSpecifiers.has(specifier)) return 'allowed';
   if (ALLOWED_EXAMPLE_PACKAGES.includes(specifier)) return 'allowed';
+  if (ALLOWED_EXAMPLE_PACKAGE_PREFIXES.some((prefix) => specifier.startsWith(prefix))) {
+    return 'allowed';
+  }
   return 'banned';
 }
 

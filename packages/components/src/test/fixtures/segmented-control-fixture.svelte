@@ -22,16 +22,15 @@
     selectionMode?: 'single' | 'multiple';
     value?: string | SvelteSet<string> | undefined;
     onValueChange?: (next: string | SvelteSet<string> | undefined) => void;
-    onchange?: (value: string) => void;
     variant?: 'radiogroup' | 'tablist' | 'navigation';
     size?: 'sm' | 'md' | 'lg';
     density?: 'toolbar';
     orientation?: 'horizontal' | 'vertical';
     detached?: boolean;
     fullWidth?: boolean;
-    hideLabel?: boolean;
+    labelVisible?: boolean;
     disabled?: boolean;
-    disallowEmptySelection?: boolean;
+    selectionRequired?: boolean;
     className?: string;
     showLeadingIcon?: boolean;
     allowUnsupportedMultipleVariant?: boolean;
@@ -52,16 +51,15 @@
     selectionMode = 'single',
     value = $bindable(),
     onValueChange,
-    onchange,
     variant,
     size,
     density,
     orientation,
     detached,
     fullWidth,
-    hideLabel,
+    labelVisible,
     disabled,
-    disallowEmptySelection,
+    selectionRequired,
     className,
     showLeadingIcon = false,
     allowUnsupportedMultipleVariant = false,
@@ -129,9 +127,9 @@
     {orientation}
     {detached}
     {fullWidth}
-    {hideLabel}
+    {labelVisible}
     {disabled}
-    {onchange}
+    {onValueChange}
     class={className}
     {...rest}
   >
@@ -150,10 +148,10 @@
     {orientation}
     {detached}
     {fullWidth}
-    {hideLabel}
+    {labelVisible}
     {disabled}
-    {disallowEmptySelection}
-    {onchange}
+    {selectionRequired}
+    {onValueChange}
     class={className}
     {...rest}
   >

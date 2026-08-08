@@ -9,7 +9,7 @@
     depth?: number;
     readonly?: boolean;
     onvalidationErrorcount?: ((count: number) => void) | undefined;
-    onchange: (properties: Record<string, JsonSchemaValue>, required: string[]) => void;
+    onValueChange: (properties: Record<string, JsonSchemaValue>, required: string[]) => void;
   };
 </script>
 
@@ -31,7 +31,7 @@
     depth = 0,
     readonly = false,
     onvalidationErrorcount,
-    onchange,
+    onValueChange,
   }: PropertyListProps = $props();
 
   const propertyNames = $derived(Object.keys(properties));
@@ -106,7 +106,7 @@
       const { [oldKey]: _removedChildCount, ...remainingChildCounts } = childValidationCounts;
       childValidationCounts = { ...remainingChildCounts, [draft]: childCount };
     }
-    onchange(next, nextRequired);
+    onValueChange(next, nextRequired);
   }
 
   function deleteProperty(key: string) {
@@ -118,7 +118,7 @@
     delete expanded[key];
     const { [key]: _removedChildCount, ...remainingChildCounts } = childValidationCounts;
     childValidationCounts = remainingChildCounts;
-    onchange(next, nextRequired);
+    onValueChange(next, nextRequired);
   }
 
   function setChildValidationErrorCount(key: string, count: number): void {
@@ -146,7 +146,7 @@
     [reordered[index], reordered[target]] = [reordered[target]!, reordered[index]!];
     const next: Record<string, JsonSchemaValue> = {};
     for (const name of reordered) next[name] = properties[name]!;
-    onchange(next, required);
+    onValueChange(next, required);
   }
 
   function toggleRequired(key: string) {
@@ -154,18 +154,18 @@
     const set = new Set(required);
     if (set.has(key)) set.delete(key);
     else set.add(key);
-    onchange(properties, [...set]);
+    onValueChange(properties, [...set]);
   }
 
   function setPropertySchema(key: string, schema: JsonSchemaValue) {
     if (readonly) return;
-    onchange({ ...properties, [key]: schema }, required);
+    onValueChange({ ...properties, [key]: schema }, required);
   }
 
   function addProperty() {
     if (readonly) return;
     const key = uniqueNewKey();
-    onchange({ ...properties, [key]: { type: 'string' } }, required);
+    onValueChange({ ...properties, [key]: { type: 'string' } }, required);
     expanded[key] = true;
   }
 
@@ -191,13 +191,13 @@
       newRequiredOnlyName = '';
       return;
     }
-    onchange(properties, [...required, name]);
+    onValueChange(properties, [...required, name]);
     newRequiredOnlyName = '';
   }
 
   function removeRequiredOnly(name: string) {
     if (readonly) return;
-    onchange(
+    onValueChange(
       properties,
       required.filter((entry) => entry !== name),
     );
@@ -299,7 +299,7 @@
             {readonly}
             value={properties[key] ?? {}}
             onvalidationErrorcount={(count) => setChildValidationErrorCount(key, count)}
-            onchange={(next) => setPropertySchema(key, next)}
+            onValueChange={(next) => setPropertySchema(key, next)}
           />
         </div>
       {/if}

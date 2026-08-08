@@ -14,7 +14,7 @@
     label="Density"
     {value}
     ticks={[0, 25, 50, 75, 100]}
-    onchange={(next) => {
+    onValueChange={(next) => {
       value = next;
     }}
   />
