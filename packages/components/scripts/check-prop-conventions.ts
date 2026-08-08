@@ -8,8 +8,6 @@ const packageRoot = resolve(scriptDirectory, '..');
 const repositoryRoot = resolve(packageRoot, '..', '..');
 const documentationPath = 'docs/component-api-conventions.md';
 
-const booleanPrefixPattern = /^(show|allow|use|hide|disable|disallow)[A-Z]/;
-
 export const bannedNames = new Map<string, string>([
   ['defaultValue', 'Use bindable `value` plus a private reset target.'],
   ['filterItem', 'Use `filter`.'],
@@ -69,14 +67,9 @@ function checkPropName(
     violations.push({ filePath, line, propName, message: bannedMessage });
   }
 
-  if (booleanPrefixPattern.test(propName)) {
-    violations.push({
-      filePath,
-      line,
-      propName,
-      message: 'Boolean props must use adjective/state names, not show*/allow*/use* prefixes.',
-    });
-  }
+  // Polarity prefixes (show*/hide*/disable*, …) are NOT judged here either:
+  // the ban is about boolean polarity, and `hideDelay?: number` is a duration,
+  // not a flag — so it is a type question the type-aware pass answers.
 
   // Lowercase on* names are NOT judged here: any name can be a legitimate
   // native passthrough (onpointerdown, onwheel, …), so the distinction is a
@@ -161,7 +154,9 @@ export function collectPropConventionViolations(
 // One ts.Program over every *.types.ts resolves each exported Props surface's
 // properties through aliases, intersections, unions, and indexed accesses,
 // then gates every lowercase on* handler on its first parameter structurally
-// extending Event. Resolving the SURFACE (not the syntax tree) also closes
+// extending Event. The same resolution gates the show*/hide*/disable*
+// polarity ban on the property's type actually being boolean-like.
+// Resolving the SURFACE (not the syntax tree) also closes
 // the non-exported-helper blind spot: a violation is attributed to its true
 // declaration site even when that declaration lives in an unexported type
 // referenced by the exported Props.
@@ -216,6 +211,148 @@ function isNativePassthroughHandlerType(propType: ts.Type, checker: ts.TypeCheck
     const parameterType = checker.getTypeOfSymbolAtLocation(firstParameter, declaration);
     return isEventLikeParameterType(parameterType);
   });
+}
+
+const booleanPrefixPattern = /^(show|allow|use|hide|disable|disallow)[A-Z]/;
+
+// `any`/`unknown` tell the checker nothing, so the name-based ban stands
+// rather than silently lapsing on exactly the surfaces the checker is least
+// able to vouch for.
+const OPAQUE_TYPE_FLAGS = ts.TypeFlags.Any | ts.TypeFlags.Unknown;
+
+// Types whose resolution waits on a type argument, so no instantiation-time
+// answer exists during the surface scan.
+const DEFERRED_TYPE_FLAGS = ts.TypeFlags.Conditional | ts.TypeFlags.IndexedAccess;
+
+/**
+ * Whether a polarity-prefixed prop can actually hold a boolean, which is the
+ * only case the show/hide/disable prefix ban is about. `boolean` resolves to a
+ * `true | false` union, so the probe runs per constituent after dropping the
+ * nullish and `never` arms; an arm left with nothing substantive is a
+ * discriminated-union fence with no value to set, and an opaque type keeps
+ * the ban.
+ */
+function isBooleanLikePropType(type: ts.Type, checker: ts.TypeChecker): boolean {
+  const constituents = type.isUnion() ? type.types : [type];
+  const substantive = constituents.filter((constituent) => !isNullishType(constituent));
+  if (substantive.length === 0) return false;
+  return substantive.some((constituent) => canHoldBoolean(constituent, checker));
+}
+
+function canHoldBoolean(type: ts.Type, checker: ts.TypeChecker): boolean {
+  if ((type.flags & ts.TypeFlags.BooleanLike) !== 0) return true;
+
+  // `NoInfer<T>` and friends wrap the real type in a substitution — three
+  // Props surfaces here already use it — so unwrap to what the consumer
+  // actually sets.
+  const substituted = substitutionBaseType(type);
+  if (substituted) return canHoldBoolean(substituted, checker);
+
+  // A branded boolean (`boolean & { readonly __brand: unique symbol }`) is set
+  // with a boolean, but the whole `boolean` type is not assignable to the
+  // intersection, so the probe below would clear it. Only a constituent that
+  // is ITSELF boolean counts: probing `canHoldBoolean` per constituent would
+  // ban `number & {}`, since `{}` admits a boolean on its own.
+  if (type.isIntersection()) {
+    return type.types.some((constituent) => contributesBoolean(constituent, checker));
+  }
+
+  // A bare type parameter says nothing on its own, but its constraint does:
+  // `Item extends { id: string }` can never be a boolean, so a generic
+  // `showItem?: Item` is the same false positive as `hideDelay?: number`.
+  // An unconstrained parameter still keeps the ban.
+  if ((type.flags & ts.TypeFlags.TypeParameter) !== 0) {
+    const constraint = checker.getBaseConstraintOfType(type);
+    return constraint ? isBooleanLikePropType(constraint, checker) : true;
+  }
+  // A deferred type — an unresolved conditional or indexed access — has no
+  // single answer while the generic surface is being scanned. Nothing is
+  // assignable to `T extends true ? boolean : number` yet, so the probe below
+  // would clear it even though `Props<true>` exposes a boolean. Keep the ban,
+  // as with any other type the checker cannot vouch for.
+  //
+  // This is deliberately fail-closed rather than branch-inspecting: a
+  // deferred type whose every branch is non-boolean gets a false positive,
+  // which an author escapes by renaming one prop, whereas the opposite bias
+  // reopens the silent hole this pass exists to close.
+  if ((type.flags & DEFERRED_TYPE_FLAGS) !== 0) return true;
+
+  // The real question for everything else is assignability: can this type
+  // hold `true`? Flags cannot answer it — `{}`, `unknown`, `Boolean` and
+  // `{ valueOf(): boolean }` all accept a boolean while carrying no
+  // BooleanLike flag, and `{ id: string }` rejects one.
+  const assignable = booleanAssignableTo(type, checker);
+  if (assignable !== undefined) return assignable;
+
+  // Fallback when the checker's assignability surface is gone. A structural
+  // type only excludes booleans when it demands something a boolean lacks,
+  // which is right for `{}` versus `{ id: string }` but misses the wrapper
+  // shapes above — hence the probe first.
+  if ((type.flags & ts.TypeFlags.Object) !== 0) {
+    const demandsMembers =
+      checker.getPropertiesOfType(type).length > 0 ||
+      checker.getIndexInfosOfType(type).length > 0 ||
+      checker.getSignaturesOfType(type, ts.SignatureKind.Call).length > 0 ||
+      checker.getSignaturesOfType(type, ts.SignatureKind.Construct).length > 0;
+    return !demandsMembers;
+  }
+  return (type.flags & OPAQUE_TYPE_FLAGS) !== 0;
+}
+
+/**
+ * `NoInfer<T>` and other substitutions carry the real type in `baseType`,
+ * which is not on the public `Type` surface — widen with an optional member
+ * rather than narrowing to `ts.SubstitutionType`, which the type-aware lint
+ * rejects as an unsafe assertion.
+ */
+type SubstitutionLike = { baseType?: ts.Type };
+
+function substitutionBaseType(type: ts.Type): ts.Type | undefined {
+  if ((type.flags & ts.TypeFlags.Substitution) === 0) return undefined;
+  return (type as ts.Type & SubstitutionLike).baseType;
+}
+
+/**
+ * Whether a single intersection constituent is itself boolean, after
+ * unwrapping the indirections that hide one. Deliberately narrower than
+ * `canHoldBoolean`: a constituent that merely ADMITS a boolean (`{}`,
+ * `unknown`) constrains nothing, so it must not make `number & {}` read as a
+ * boolean prop.
+ */
+function contributesBoolean(type: ts.Type, checker: ts.TypeChecker): boolean {
+  if ((type.flags & ts.TypeFlags.BooleanLike) !== 0) return true;
+  const substituted = substitutionBaseType(type);
+  if (substituted) return contributesBoolean(substituted, checker);
+  if ((type.flags & ts.TypeFlags.TypeParameter) !== 0) {
+    const constraint = checker.getBaseConstraintOfType(type);
+    return constraint ? contributesBoolean(constraint, checker) : false;
+  }
+  if (type.isUnion()) {
+    return type.types.some((constituent) => contributesBoolean(constituent, checker));
+  }
+  return false;
+}
+
+/**
+ * `getBooleanType`/`isTypeAssignableTo` answer the polarity question exactly,
+ * but neither is on the public TypeChecker surface. Both are feature-detected
+ * so a TypeScript upgrade that drops them degrades to the structural fallback
+ * in `canHoldBoolean` instead of crashing the gate.
+ */
+type AssignabilityProbe = {
+  getBooleanType?: () => ts.Type;
+  isTypeAssignableTo?: (source: ts.Type, target: ts.Type) => boolean;
+};
+
+function booleanAssignableTo(target: ts.Type, checker: ts.TypeChecker): boolean | undefined {
+  const probe = checker as ts.TypeChecker & AssignabilityProbe;
+  if (
+    typeof probe.getBooleanType !== 'function' ||
+    typeof probe.isTypeAssignableTo !== 'function'
+  ) {
+    return undefined;
+  }
+  return probe.isTypeAssignableTo(probe.getBooleanType(), target);
 }
 
 function propsSurfaceNamesIn(sourceFile: ts.SourceFile): ts.Identifier[] {
@@ -284,13 +421,16 @@ export function collectResolvedSurfaceViolations(
           }
 
           if (booleanPrefixPattern.test(propName)) {
-            record({
-              filePath,
-              line,
-              propName,
-              message:
-                'Boolean props must use adjective/state names, not show*/allow*/use* prefixes.',
-            });
+            const propertyType = checker.getTypeOfSymbolAtLocation(property, site.declaration);
+            if (isBooleanLikePropType(propertyType, checker)) {
+              record({
+                filePath,
+                line,
+                propName,
+                message:
+                  'Boolean props must use adjective/state names, not show*/allow*/use* prefixes.',
+              });
+            }
           }
 
           if (/^on[a-z]/.test(propName)) {
