@@ -139,10 +139,17 @@
     });
   }
 
-  // Follow-latest on content growth. The entries are authored children (no
-  // data array to subscribe to), so observe the list's rendered size instead:
-  // any appended entry grows the list, and the observer also fires once on
-  // observe(), which handles the initial scroll-to-latest.
+  // Follow-latest on content growth AND on viewport resize. The entries are
+  // authored children (no data array to subscribe to), so observe the list's
+  // rendered size: any appended entry grows the list, and the observer also
+  // fires once on observe(), which handles the initial scroll-to-latest.
+  // The viewport is observed too — when it shrinks without the content
+  // changing (a parent layout shortens, a consumer tightens max-block-size)
+  // the list never resizes, and a shrinking scroll port raises the maximum
+  // scrollTop rather than clamping it, so no scroll event fires either. Both
+  // signals are absent and the latest entries silently fall below the fold.
+  // One observer for both elements: a resize that moves both (content growth
+  // below the max-block-size cap) arrives as a single batched callback.
   $effect(() => {
     if (kind !== 'log') return;
     const list = listElement;
@@ -154,6 +161,7 @@
       }
     });
     observer.observe(list);
+    observer.observe(viewport);
     return () => observer.disconnect();
   });
 
