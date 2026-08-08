@@ -55,9 +55,7 @@
   }
 
   .cinder-schedule-builder__cron-fields {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
-    gap: var(--cinder-space-3);
+    min-inline-size: 0;
   }
 
   .cinder-schedule-builder__cron-field {
@@ -71,9 +69,7 @@
   }
 
   .cinder-schedule-builder__cron-range {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--cinder-space-2);
+    min-inline-size: 0;
   }
 
   /* ----------------------------------------

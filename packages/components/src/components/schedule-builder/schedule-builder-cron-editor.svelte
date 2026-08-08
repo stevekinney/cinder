@@ -1,5 +1,6 @@
 <script lang="ts">
   import Input from '../input/input.svelte';
+  import Grid from '../grid/grid.svelte';
   import NumberInput from '../number-input/number-input.svelte';
   import Select from '../select/select.svelte';
   import { CRON_FIELDS, validateCronField } from './schedule-builder.utilities.ts';
@@ -18,7 +19,7 @@
     $props();
 </script>
 
-<div class="cinder-schedule-builder__cron-fields">
+<Grid class="cinder-schedule-builder__cron-fields" minItemWidth="12rem" gap="var(--cinder-space-3)">
   {#each CRON_FIELDS as field, index (field.name)}
     {@const editor = cronEditors[index]!}
     <div class="cinder-schedule-builder__cron-field">
@@ -46,7 +47,7 @@
           onValueChange={(next) => onEditorChange(index, { value: next ?? field.min })}
         />
       {:else if editor.mode === 'range'}
-        <div class="cinder-schedule-builder__cron-range">
+        <Grid class="cinder-schedule-builder__cron-range" columns={2} gap="var(--cinder-space-2)">
           <NumberInput
             id={`${baseId}-cron-field-${index}-start`}
             label={`${field.name} start`}
@@ -65,7 +66,7 @@
             value={editor.end}
             onValueChange={(next) => onEditorChange(index, { end: next ?? field.max })}
           />
-        </div>
+        </Grid>
       {:else if editor.mode === 'step'}
         <NumberInput
           id={`${baseId}-cron-field-${index}-step`}
@@ -90,4 +91,4 @@
       </details>
     </div>
   {/each}
-</div>
+</Grid>
