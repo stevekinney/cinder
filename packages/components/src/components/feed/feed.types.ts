@@ -60,8 +60,10 @@ export type FeedLogProps = Omit<HTMLAttributes<HTMLDivElement>, 'children' | 'cl
     kind: 'log';
     /**
      * Log arm only — requires `kind: 'log'`; rejected by the list arm. When
-     * true, appended content automatically scrolls the viewport to the
-     * bottom. Scrolling away from the bottom pauses following; scrolling back
+     * true, the viewport scrolls to the bottom whenever appended content
+     * grows the entry list — or whenever the viewport itself shrinks, so a
+     * collapsing parent layout cannot leave the latest entries below the
+     * fold. Scrolling away from the bottom pauses following; scrolling back
      * to the bottom (or the built-in control) resumes it. Bindable so the
      * parent can read the paused state the component sets internally.
      * @default true

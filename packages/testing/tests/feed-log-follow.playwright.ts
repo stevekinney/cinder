@@ -3,9 +3,10 @@ import { expect, test } from '@playwright/test';
 /**
  * Follow-latest scrolling for Feed's log arm (`kind="log"`).
  *
- * The auto-scroll-on-growth path is driven by a real ResizeObserver on the
- * entry list, which happy-dom cannot provide — the unit suite covers the
- * scroll-pause handler, this suite covers the observer wiring:
+ * The auto-scroll path is driven by a real ResizeObserver watching both the
+ * entry list (content growth) and the viewport (its own box shrinking), which
+ * happy-dom cannot provide — the unit suite covers the scroll-pause handler,
+ * this suite covers the observer wiring:
  *
  *   1. an overflowing log opens scrolled to the latest entry (the observer's
  *      initial fire),
