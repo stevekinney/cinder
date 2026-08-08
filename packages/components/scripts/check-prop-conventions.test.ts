@@ -144,6 +144,10 @@ describe('check-prop-conventions type-aware surface pass', () => {
       'export type WideConstraintProps<Empty extends {}, Any extends unknown, Union extends string | boolean> = { showEmpty?: Empty; showAny?: Any; showUnion?: Union };',
     'narrow-constraint':
       'export type NarrowConstraintProps<Countable extends number, Named extends { id: string }, Callable extends () => void> = { showCountable?: Countable; showNamed?: Named; showCallable?: Callable };',
+    // Object shapes a primitive boolean is still assignable to: the wrapper
+    // interface, and a structural constraint satisfied by Boolean.prototype.
+    'boolean-wrapper':
+      'export type BooleanWrapperProps<Valued extends { valueOf(): boolean }> = { showWrapped?: Boolean; showValued?: Valued };',
   };
 
   function buildViolationsByFixture(): Map<
@@ -250,6 +254,16 @@ describe('check-prop-conventions type-aware surface pass', () => {
 
   test('passes constraints that rule a boolean out', () => {
     expect(violationsByFixture.get('narrow-constraint')).toEqual([]);
+  });
+
+  // These expose members, so a member-count heuristic would clear them even
+  // though `true` is assignable to both.
+  test('keeps the ban on object shapes a primitive boolean satisfies', () => {
+    expect(
+      (violationsByFixture.get('boolean-wrapper') ?? [])
+        .map((violation) => violation.propName)
+        .toSorted(),
+    ).toEqual(['showValued', 'showWrapped']);
   });
 
   test('passes an undefined-only discriminated-union fence arm', () => {

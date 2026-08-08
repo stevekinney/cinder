@@ -245,11 +245,17 @@ function canHoldBoolean(type: ts.Type, checker: ts.TypeChecker): boolean {
     const constraint = checker.getBaseConstraintOfType(type);
     return constraint ? isBooleanLikePropType(constraint, checker) : true;
   }
-  // A structural constraint only excludes booleans when it actually demands
-  // something a boolean lacks. `T extends {}` demands nothing, so `true` is a
-  // legal instantiation and the ban must stand; `T extends { id: string }`
-  // rules booleans out. Members are the public-API stand-in for an
-  // assignability probe, which lives on the checker's internal surface.
+  // The real question for everything else is assignability: can this type
+  // hold `true`? Flags cannot answer it — `{}`, `unknown`, `Boolean` and
+  // `{ valueOf(): boolean }` all accept a boolean while carrying no
+  // BooleanLike flag, and `{ id: string }` rejects one.
+  const assignable = booleanAssignableTo(type, checker);
+  if (assignable !== undefined) return assignable;
+
+  // Fallback when the checker's assignability surface is gone. A structural
+  // type only excludes booleans when it demands something a boolean lacks,
+  // which is right for `{}` versus `{ id: string }` but misses the wrapper
+  // shapes above — hence the probe first.
   if ((type.flags & ts.TypeFlags.Object) !== 0) {
     const demandsMembers =
       checker.getPropertiesOfType(type).length > 0 ||
@@ -259,6 +265,28 @@ function canHoldBoolean(type: ts.Type, checker: ts.TypeChecker): boolean {
     return !demandsMembers;
   }
   return (type.flags & OPAQUE_TYPE_FLAGS) !== 0;
+}
+
+/**
+ * `getBooleanType`/`isTypeAssignableTo` answer the polarity question exactly,
+ * but neither is on the public TypeChecker surface. Both are feature-detected
+ * so a TypeScript upgrade that drops them degrades to the structural fallback
+ * in `canHoldBoolean` instead of crashing the gate.
+ */
+type AssignabilityProbe = {
+  getBooleanType?: () => ts.Type;
+  isTypeAssignableTo?: (source: ts.Type, target: ts.Type) => boolean;
+};
+
+function booleanAssignableTo(target: ts.Type, checker: ts.TypeChecker): boolean | undefined {
+  const probe = checker as ts.TypeChecker & AssignabilityProbe;
+  if (
+    typeof probe.getBooleanType !== 'function' ||
+    typeof probe.isTypeAssignableTo !== 'function'
+  ) {
+    return undefined;
+  }
+  return probe.isTypeAssignableTo(probe.getBooleanType(), target);
 }
 
 function propsSurfaceNamesIn(sourceFile: ts.SourceFile): ts.Identifier[] {
