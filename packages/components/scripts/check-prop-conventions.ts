@@ -245,16 +245,16 @@ function canHoldBoolean(type: ts.Type, checker: ts.TypeChecker): boolean {
   // `NoInfer<T>` and friends wrap the real type in a substitution — three
   // Props surfaces here already use it — so unwrap to what the consumer
   // actually sets.
-  if ((type.flags & ts.TypeFlags.Substitution) !== 0) {
-    return canHoldBoolean((type as ts.SubstitutionType).baseType, checker);
-  }
+  const substituted = substitutionBaseType(type);
+  if (substituted) return canHoldBoolean(substituted, checker);
 
   // A branded boolean (`boolean & { readonly __brand: unique symbol }`) is set
   // with a boolean, but the whole `boolean` type is not assignable to the
-  // intersection, so the probe below would clear it. Any boolean-capable
-  // constituent keeps the ban.
+  // intersection, so the probe below would clear it. Only a constituent that
+  // is ITSELF boolean counts: probing `canHoldBoolean` per constituent would
+  // ban `number & {}`, since `{}` admits a boolean on its own.
   if (type.isIntersection()) {
-    return type.types.some((constituent) => canHoldBoolean(constituent, checker));
+    return type.types.some((constituent) => contributesBoolean(constituent, checker));
   }
 
   // A bare type parameter says nothing on its own, but its constraint does:
@@ -297,6 +297,40 @@ function canHoldBoolean(type: ts.Type, checker: ts.TypeChecker): boolean {
     return !demandsMembers;
   }
   return (type.flags & OPAQUE_TYPE_FLAGS) !== 0;
+}
+
+/**
+ * `NoInfer<T>` and other substitutions carry the real type in `baseType`,
+ * which is not on the public `Type` surface — widen with an optional member
+ * rather than narrowing to `ts.SubstitutionType`, which the type-aware lint
+ * rejects as an unsafe assertion.
+ */
+type SubstitutionLike = { baseType?: ts.Type };
+
+function substitutionBaseType(type: ts.Type): ts.Type | undefined {
+  if ((type.flags & ts.TypeFlags.Substitution) === 0) return undefined;
+  return (type as ts.Type & SubstitutionLike).baseType;
+}
+
+/**
+ * Whether a single intersection constituent is itself boolean, after
+ * unwrapping the indirections that hide one. Deliberately narrower than
+ * `canHoldBoolean`: a constituent that merely ADMITS a boolean (`{}`,
+ * `unknown`) constrains nothing, so it must not make `number & {}` read as a
+ * boolean prop.
+ */
+function contributesBoolean(type: ts.Type, checker: ts.TypeChecker): boolean {
+  if ((type.flags & ts.TypeFlags.BooleanLike) !== 0) return true;
+  const substituted = substitutionBaseType(type);
+  if (substituted) return contributesBoolean(substituted, checker);
+  if ((type.flags & ts.TypeFlags.TypeParameter) !== 0) {
+    const constraint = checker.getBaseConstraintOfType(type);
+    return constraint ? contributesBoolean(constraint, checker) : false;
+  }
+  if (type.isUnion()) {
+    return type.types.some((constituent) => contributesBoolean(constituent, checker));
+  }
+  return false;
 }
 
 /**

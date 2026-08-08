@@ -157,6 +157,10 @@ describe('check-prop-conventions type-aware surface pass', () => {
     // NoInfer's substitution, and a branded intersection.
     'wrapped-boolean':
       'declare const brand: unique symbol;\nexport type WrappedBooleanProps<Flag extends boolean> = { showDeferredFlag?: NoInfer<Flag>; showBranded?: boolean & { readonly [brand]: true } };',
+    // `{}` admits a boolean on its own, but it constrains nothing — the
+    // intersection is still a number.
+    'branded-non-boolean':
+      'export type BrandedNonBooleanProps = { showCount?: number & {}; showTag?: string & { readonly __tag: "id" } };',
   };
 
   function buildViolationsByFixture(): Map<
@@ -283,6 +287,10 @@ describe('check-prop-conventions type-aware surface pass', () => {
         .map((violation) => violation.propName)
         .toSorted(),
     ).toEqual(['showBranded', 'showDeferredFlag']);
+  });
+
+  test('passes intersections whose boolean-admitting arm constrains nothing', () => {
+    expect(violationsByFixture.get('branded-non-boolean')).toEqual([]);
   });
 
   // Nothing is assignable to an unresolved conditional or indexed access, so
