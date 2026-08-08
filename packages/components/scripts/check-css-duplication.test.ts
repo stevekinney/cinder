@@ -9,6 +9,7 @@ import {
   multisetSimilarity,
   multisetSize,
   pairKey,
+  placeholderBaselineEntries,
   readBaseline,
   siblingLeafImports,
   SIMILARITY_THRESHOLD,
@@ -133,6 +134,21 @@ describe('compound-family plumbing', () => {
     expect(
       siblingLeafImports(`import type { BadgeProps } from '../badge/badge.types.ts';`),
     ).toEqual([]);
+  });
+
+  test('blank and TODO placeholder baseline reasons are rejected', () => {
+    expect(
+      placeholderBaselineEntries([
+        { a: 'x', b: 'y', reason: '' },
+        { a: 'x', b: 'z', reason: '   ' },
+        { a: 'y', b: 'z', reason: 'TODO: justify why this similarity is legitimate.' },
+        { a: 'a', b: 'b', reason: 'Shared chart chrome, distinct mark behaviors.' },
+      ]).map((entry) => [entry.a, entry.b]),
+    ).toEqual([
+      ['x', 'y'],
+      ['x', 'z'],
+      ['y', 'z'],
+    ]);
   });
 
   test('pairKey sorts lexicographically', () => {

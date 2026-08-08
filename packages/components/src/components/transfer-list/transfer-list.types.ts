@@ -15,7 +15,7 @@ export type TransferListItem = {
 /** Props for the TransferList component. */
 export type TransferListProps = Omit<
   HTMLAttributes<HTMLDivElement>,
-  'children' | 'class' | 'onValueChange'
+  'children' | 'class' | 'onchange'
 > & {
   /** Full item pool. Item IDs must be unique; duplicate IDs after the first are ignored. The component never mutates this array. */
   items: TransferListItem[];

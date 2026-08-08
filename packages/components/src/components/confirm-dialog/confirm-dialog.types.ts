@@ -19,7 +19,12 @@ import type { DialogCancelProps } from '../../utilities/dialog-props.ts';
  * click, or the close-X — but NOT on parent-driven `open = false`; callbacks
  * are not awaited and thrown callbacks do not block close.
  */
-export type ConfirmDialogProps = DialogCancelProps & {
+export type ConfirmDialogProps = Omit<DialogCancelProps, 'cancelLabel'> & {
+  /**
+   * Label for the cancel button, which ALWAYS renders.
+   * @default 'Cancel'
+   */
+  cancelLabel?: string;
   /** Controls visibility. Bindable. */
   open: boolean;
   /** Modal title; passed through to <Modal>. */

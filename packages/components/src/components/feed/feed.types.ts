@@ -26,8 +26,10 @@ export type FeedListProps = Omit<HTMLAttributes<HTMLOListElement>, 'children' | 
     /** Discriminates the arms. Omit (or pass `'list'`) for the plain list. */
     kind?: 'list';
     /**
-     * When true, the wrapper becomes an ARIA live region: `aria-live="polite"`
-     * and `aria-atomic="false"`. Use for feeds that mutate while the user is
+     * List arm only (`kind` omitted or `'list'`) — rejected by the log arm,
+     * whose `role="log"` viewport is implicitly live. When true, the wrapper
+     * becomes an ARIA live region: `aria-live="polite"` and
+     * `aria-atomic="false"`. Use for feeds that mutate while the user is
      * on the page (streaming notifications, chat-like activity).
      * Defaults to false — a polite live region on a static feed is noise.
      */
@@ -53,18 +55,21 @@ export type FeedLogProps = Omit<HTMLAttributes<HTMLDivElement>, 'children' | 'cl
   FeedBase & {
     kind: 'log';
     /**
-     * When true, appended content automatically scrolls the viewport to the
+     * Log arm only — requires `kind: 'log'`; rejected by the list arm. When
+     * true, appended content automatically scrolls the viewport to the
      * bottom. Scrolling away from the bottom pauses following; scrolling back
      * to the bottom (or the built-in control) resumes it. Bindable so the
      * parent can read the paused state the component sets internally.
      */
     following?: boolean;
     /**
-     * Show a loading skeleton instead of the entries. Use while the first
-     * batch of entries is in flight.
+     * Log arm only — requires `kind: 'log'`; rejected by the list arm. Show
+     * a loading skeleton instead of the entries. Use while the first batch
+     * of entries is in flight.
      */
     loading?: boolean;
     /**
+     * Log arm only — requires `kind: 'log'`; rejected by the list arm.
      * Whether to show the "earlier entries not shown" notice. This is a
      * boolean flag, not a count: the feed never trims its own children. Set
      * it when you have already capped retention and want users to know
@@ -72,13 +77,15 @@ export type FeedLogProps = Omit<HTMLAttributes<HTMLDivElement>, 'children' | 'cl
      */
     truncated?: boolean;
     /**
+     * Log arm only — requires `kind: 'log'`; rejected by the list arm.
      * Current connection state. When provided, renders a StatusDot connection
      * preset in the toolbar. Omit when the stream has no live transport.
      */
     connectionState?: FeedConnectionState;
     /**
+     * Log arm only — requires `kind: 'log'`; rejected by the list arm.
      * Accessible label for the log region. Required for accessibility.
-     * Defaults to "Activity log".
+     * @default 'Activity log'
      */
     label?: string;
     /**

@@ -12,8 +12,11 @@
  */
 export type DialogCancelProps = {
   /**
-   * Label for the cancel button. Rendering and default semantics are
-   * per-dialog — see the component's own Props documentation.
+   * Label for the cancel button. Each dialog `Omit`s this member and
+   * re-declares it with its own rendering and default semantics so the
+   * generated schema and README carry the dialog-specific documentation;
+   * the declaration here exists only to keep the shared vocabulary
+   * (name + type) in one place.
    */
   cancelLabel?: string;
   /** Called when the user cancels (cancel button, Escape, or backdrop per the dialog's policy). */

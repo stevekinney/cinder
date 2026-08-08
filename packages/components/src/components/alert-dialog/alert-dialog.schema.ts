@@ -7,7 +7,7 @@ const schema = {
     cancelLabel: {
       type: 'string',
       description:
-        "Label for the cancel button. Rendering and default semantics are\nper-dialog — see the component's own Props documentation.",
+        "Label for the cancel button. When omitted, NO cancel button is rendered —\nan alert dialog's default shape is a single acknowledgement.",
     },
     open: {
       type: 'boolean',

@@ -12,27 +12,28 @@
     },
     "live": {
       "type": "boolean",
-      "description": "When true, the wrapper becomes an ARIA live region: `aria-live=\"polite\"`\nand `aria-atomic=\"false\"`. Use for feeds that mutate while the user is\non the page (streaming notifications, chat-like activity).\nDefaults to false — a polite live region on a static feed is noise."
+      "description": "List arm only (`kind` omitted or `'list'`) — rejected by the log arm,\nwhose `role=\"log\"` viewport is implicitly live. When true, the wrapper\nbecomes an ARIA live region: `aria-live=\"polite\"` and\n`aria-atomic=\"false\"`. Use for feeds that mutate while the user is\non the page (streaming notifications, chat-like activity).\nDefaults to false — a polite live region on a static feed is noise."
     },
     "following": {
       "type": "boolean",
-      "description": "When true, appended content automatically scrolls the viewport to the\nbottom. Scrolling away from the bottom pauses following; scrolling back\nto the bottom (or the built-in control) resumes it. Bindable so the\nparent can read the paused state the component sets internally."
+      "description": "Log arm only — requires `kind: 'log'`; rejected by the list arm. When\ntrue, appended content automatically scrolls the viewport to the\nbottom. Scrolling away from the bottom pauses following; scrolling back\nto the bottom (or the built-in control) resumes it. Bindable so the\nparent can read the paused state the component sets internally."
     },
     "loading": {
       "type": "boolean",
-      "description": "Show a loading skeleton instead of the entries. Use while the first\nbatch of entries is in flight."
+      "description": "Log arm only — requires `kind: 'log'`; rejected by the list arm. Show\na loading skeleton instead of the entries. Use while the first batch\nof entries is in flight."
     },
     "truncated": {
       "type": "boolean",
-      "description": "Whether to show the \"earlier entries not shown\" notice. This is a\nboolean flag, not a count: the feed never trims its own children. Set\nit when you have already capped retention and want users to know\nearlier entries are not shown."
+      "description": "Log arm only — requires `kind: 'log'`; rejected by the list arm.\nWhether to show the \"earlier entries not shown\" notice. This is a\nboolean flag, not a count: the feed never trims its own children. Set\nit when you have already capped retention and want users to know\nearlier entries are not shown."
     },
     "connectionState": {
       "enum": ["connected", "connecting", "disconnected", "error"],
-      "description": "Current connection state. When provided, renders a StatusDot connection\npreset in the toolbar. Omit when the stream has no live transport."
+      "description": "Log arm only — requires `kind: 'log'`; rejected by the list arm.\nCurrent connection state. When provided, renders a StatusDot connection\npreset in the toolbar. Omit when the stream has no live transport."
     },
     "label": {
       "type": "string",
-      "description": "Accessible label for the log region. Required for accessibility.\nDefaults to \"Activity log\"."
+      "description": "Log arm only — requires `kind: 'log'`; rejected by the list arm.\nAccessible label for the log region. Required for accessibility.",
+      "default": "Activity log"
     }
   },
   "additionalProperties": false,

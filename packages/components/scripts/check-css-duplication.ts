@@ -259,6 +259,15 @@ function baselinePath(): string {
   return resolve(dirname(fileURLToPath(import.meta.url)), 'css-duplication-baseline.json');
 }
 
+/** Baseline entries whose reason is blank or the generated TODO placeholder. */
+export function placeholderBaselineEntries(
+  baseline: readonly CssDuplicationPair[],
+): CssDuplicationPair[] {
+  return baseline.filter(
+    (entry) => entry.reason.trim() === '' || entry.reason.trimStart().startsWith('TODO'),
+  );
+}
+
 function isCssDuplicationPair(value: unknown): value is CssDuplicationPair {
   return (
     typeof value === 'object' &&
@@ -293,6 +302,26 @@ export function readBaseline(): CssDuplicationPair[] {
 async function main(): Promise<void> {
   const updateBaseline = process.argv.includes('--update-baseline');
   const baseline = readBaseline();
+
+  // A baseline entry only exempts a pair when it carries a real reviewed
+  // reason — a blank reason or the generated `--update-baseline` TODO
+  // placeholder committed as-is would bypass the admission guard by pair
+  // IDs alone. (Skipped under --update-baseline so the TODO an earlier run
+  // wrote can be replaced by re-running rather than hand-deleting first.)
+  if (!updateBaseline) {
+    const placeholders = placeholderBaselineEntries(baseline);
+    if (placeholders.length > 0) {
+      process.stderr.write(
+        `check:css-duplication — ${placeholders.length} baseline entr(y/ies) with a blank or ` +
+          `TODO placeholder reason:\n` +
+          placeholders.map((entry) => `  ${entry.a} / ${entry.b}\n`).join('') +
+          `Replace each with the written justification the admission bar requires.\n`,
+      );
+      process.exitCode = 1;
+      return;
+    }
+  }
+
   const components = await collectComponentCss();
   const violations = findDuplicatePairs(components, baseline);
 

@@ -116,6 +116,13 @@
     clearTimeout(programmaticScrollTimeout);
     programmaticScrollTimeout = setTimeout(() => {
       programmaticScroll = false;
+      // The trip never reached the bottom — under smooth scrolling a user
+      // wheel or swipe cancels the programmatic animation, and the guard
+      // above swallowed those scroll events. Treat it as a user scroll-away
+      // rather than letting the next appended entry yank them back down.
+      if (viewportElement && !isAtBottom(viewportElement)) {
+        following = false;
+      }
     }, 1000);
   }
 

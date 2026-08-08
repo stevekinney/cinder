@@ -219,8 +219,13 @@ export function focusDialogBodyUnlessAutofocused(options: {
       const focusInsideDialog = active instanceof HTMLElement && dialogElement.contains(active);
       if (!focusInsideDialog) {
         autofocusTarget.focus();
+        // An unfocusable autofocus target (disabled, hidden) makes focus()
+        // a no-op — fall through to the body fallback rather than stranding
+        // focus on document.body outside the open dialog.
+        if (document.activeElement === autofocusTarget) return;
+      } else {
+        return;
       }
-      return;
     }
     // No autofocus: the body container is always the initial focus target,
     // regardless of where `showModal()`'s default focusing steps landed.

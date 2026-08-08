@@ -5,7 +5,12 @@ import type { DialogCancelProps } from '../../utilities/dialog-props.ts';
  * when `cancelLabel` is omitted, NO cancel button is rendered — an alert
  * dialog's default shape is a single acknowledgement.
  */
-export type AlertDialogProps = DialogCancelProps & {
+export type AlertDialogProps = Omit<DialogCancelProps, 'cancelLabel'> & {
+  /**
+   * Label for the cancel button. When omitted, NO cancel button is rendered —
+   * an alert dialog's default shape is a single acknowledgement.
+   */
+  cancelLabel?: string;
   /** Controls whether the alert dialog is open; bindable for controlled usage. */
   open: boolean;
   /** Text rendered as the dialog's visible heading and accessible label. */

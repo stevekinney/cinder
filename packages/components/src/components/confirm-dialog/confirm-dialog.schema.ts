@@ -6,8 +6,8 @@ const schema = {
   properties: {
     cancelLabel: {
       type: 'string',
-      description:
-        "Label for the cancel button. Rendering and default semantics are\nper-dialog — see the component's own Props documentation.",
+      description: 'Label for the cancel button, which ALWAYS renders.',
+      default: 'Cancel',
     },
     open: {
       type: 'boolean',
