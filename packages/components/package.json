@@ -2141,6 +2141,10 @@
       "types": "./dist/components/feed-boundary/feed-boundary.css.d.ts",
       "default": "./dist/components/feed-boundary/feed-boundary.css"
     },
+    "./feed-boundary/examples": {
+      "import": "./src/components/feed-boundary/feed-boundary.examples.json",
+      "default": "./src/components/feed-boundary/feed-boundary.examples.json"
+    },
     "./feed-event": {
       "types": "./dist/components/feed-event/index.d.ts",
       "browser": "./src/components/feed-event/index.ts",

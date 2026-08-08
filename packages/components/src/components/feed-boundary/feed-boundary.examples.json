@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "feed-boundary",
+  "import": "@lostgradient/cinder/feed-boundary",
+  "examples": [
+    {
+      "id": "standalone-boundary",
+      "title": "Standalone boundary",
+      "description": "FeedBoundary imported from its standalone entry: a role=\"separator\" list item marking a discontinuity in a consumer-owned stream list. Inside a Feed, prefer the Feed.Boundary namespace form.",
+      "code": "<script lang=\"ts\">\n  import { FeedBoundary } from '@lostgradient/cinder/feed-boundary';\n</script>\n\n<ul\n  style=\"list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--cinder-space-3); font-size: var(--cinder-text-sm);\"\n>\n  <li>09:14:02 — Job nightly-sync started</li>\n  <li>09:14:20 — 4,182 records fetched</li>\n  <FeedBoundary\n    label=\"Connection lost — retrying\"\n    datetime=\"2026-05-12T09:15:00Z\"\n    timestamp=\"09:15:00\"\n  />\n  <li>09:15:31 — Resumed from checkpoint 4,182</li>\n  <li>09:16:05 — Job completed</li>\n</ul>\n"
+    }
+  ]
+}

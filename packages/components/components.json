@@ -2068,10 +2068,11 @@
       ],
       "related": ["feed", "feed-event", "divider"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "@lostgradient/cinder/feed-boundary/schema",
-        "variables": "@lostgradient/cinder/feed-boundary/variables"
+        "variables": "@lostgradient/cinder/feed-boundary/variables",
+        "examples": "@lostgradient/cinder/feed-boundary/examples"
       }
     },
     {

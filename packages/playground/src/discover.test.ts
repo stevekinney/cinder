@@ -233,6 +233,7 @@ const SIDEBAR_BASELINE = [
   'dropdown',
   'empty-state',
   'feed',
+  'feed-boundary',
   'file-upload',
   'filter-bar',
   'floating-action',

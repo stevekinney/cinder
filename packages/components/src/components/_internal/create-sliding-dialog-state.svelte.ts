@@ -203,6 +203,14 @@ export function focusDialogBodyUnlessAutofocused(options: {
   const applyInitialFocusPolicy = (): void => {
     const dialogElement = options.getDialogElement();
     if (!options.getOpen() || !dialogElement?.open) return;
+    // Inside a shadow root, `document.activeElement` is the shadow HOST, not
+    // the focused descendant — read from the dialog's own root node so the
+    // inside-the-dialog and did-focus-move checks below stay correct there.
+    const rootNode = dialogElement.getRootNode();
+    const activeElementInRoot = (): Element | null =>
+      rootNode instanceof Document || rootNode instanceof ShadowRoot
+        ? rootNode.activeElement
+        : document.activeElement;
     const autofocusTarget =
       dialogElement.querySelector<HTMLElement>('[autofocus]') ??
       Array.from(dialogElement.querySelectorAll<HTMLElement>('*')).find(
@@ -215,14 +223,14 @@ export function focusDialogBodyUnlessAutofocused(options: {
       // yank it back. Quick reopen: `showModal()` never re-ran and the
       // closing panel's `inert` blurred focus OUT to `document.body` —
       // re-place it on the autofocused child.
-      const active = document.activeElement;
+      const active = activeElementInRoot();
       const focusInsideDialog = active instanceof HTMLElement && dialogElement.contains(active);
       if (!focusInsideDialog) {
         autofocusTarget.focus();
         // An unfocusable autofocus target (disabled, hidden) makes focus()
         // a no-op — fall through to the body fallback rather than stranding
         // focus on document.body outside the open dialog.
-        if (document.activeElement === autofocusTarget) return;
+        if (activeElementInRoot() === autofocusTarget) return;
       } else {
         return;
       }
