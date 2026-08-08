@@ -31,7 +31,7 @@ Native-style dropdown select for choosing a single option from a predefined list
 | `error`        | `string`   | no       | —       | Validation error message; sets `aria-invalid="true"` and is wired via `aria-describedby`.                                                             |
 | `id`           | `string`   | yes      | —       | Unique identifier — required for label association and ARIA wiring.                                                                                   |
 | `label`        | `string`   | no       | —       | Visible label rendered in a `<label>` associated via `for`.                                                                                           |
-| `labelVisible` | `boolean`  | no       | —       | Whether the label is visibly rendered. Default `true`; set `false` to visually hide it while keeping it available to assistive technology.            |
+| `labelVisible` | `boolean`  | no       | `true`  | Whether the label is visibly rendered. Set `false` to visually hide it while keeping it available to assistive technology.                            |
 | `required`     | `boolean`  | no       | —       | Marks the control required and sets the native `required` attribute.                                                                                  |
 | `options`      | `(opaque)` | yes      | —       | Options to render as `<option>` children. The sole inference source for T. Not expressible in JSON Schema; see the component types for the signature. |
 | `value`        | `(opaque)` | no       | —       | Bound selected value. `undefined` when nothing is selected. Not expressible in JSON Schema; see the component types for the signature.                |

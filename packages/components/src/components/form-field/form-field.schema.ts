@@ -17,7 +17,8 @@ const schema = {
     labelVisible: {
       type: 'boolean',
       description:
-        'Whether the label is visibly rendered. Default `true`; set `false` to visually hide it while keeping it associated with the control.',
+        'Whether the label is visibly rendered. Set `false` to visually hide it\nwhile keeping it associated with the control.',
+      default: true,
     },
     description: {
       type: 'string',

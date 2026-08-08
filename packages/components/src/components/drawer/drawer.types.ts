@@ -5,7 +5,10 @@ export type DrawerSize = 'sm' | 'md' | 'lg' | 'xl';
 export type DrawerProps = {
   /** Whether the drawer is open. Bindable via `bind:open`. */
   open?: boolean;
-  /** Edge the drawer slides in from. Default `right`. */
+  /**
+   * Edge the drawer slides in from.
+   * @default 'right'
+   */
   placement?: DrawerPlacement;
   /**
    * Drawer width token for `left`/`right` placements. Default `md`.

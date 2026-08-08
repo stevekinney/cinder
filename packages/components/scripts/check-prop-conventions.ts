@@ -255,12 +255,14 @@ function componentDeclarationSite(
   for (const declaration of symbol.declarations ?? []) {
     const sourceFile = declaration.getSourceFile();
     const normalized = sourceFile.fileName.replace(/\\/g, '/');
-    if (normalized.includes('/src/components/') && !normalized.includes('/node_modules/')) {
+    // Anything declared inside this package's src/ is ours to police —
+    // including shared helper surfaces (src/utilities/dialog-props.ts, …)
+    // that component Props intersect. node_modules declarations (inherited
+    // HTMLAttributes members, svelte helpers) are not.
+    if (normalized.includes('/src/') && !normalized.includes('/node_modules/')) {
       return { sourceFile, declaration };
     }
   }
-  // Every declaration lives outside src/components (inherited HTMLAttributes
-  // members, svelte helpers) — not ours to police.
   return undefined;
 }
 
@@ -371,17 +373,12 @@ export function createPropsProgram(typesFiles: readonly string[]): ts.Program {
   return ts.createProgram([...typesFiles], { ...parsed.options, noEmit: true });
 }
 
-/**
- * Only files that textually declare a lowercase native-named handler need the
- * (expensive) type-aware pass — the Event-parameter gate is its unique rule.
- * The syntactic pass keeps covering banned names, boolean prefixes, and the
- * lowercase-vs-camelCase shape for every file. The prefilter shrinks the
- * program to the ~15 files that qualify (and skips it entirely when none
- * do); the remaining ~10-20s cost is the ts.Program bootstrap (lib.dom +
- * svelte type resolution), the accepted price of a checker-backed gate.
- */
-const NATIVE_HANDLER_TEXT_PATTERN =
-  /\bon(?:click|change|input|keydown|keyup|focus|blur|search|submit)\??\s*[:(]/;
+// (No textual prefilter: a surface can inherit a native-named handler from an
+// imported helper type without the exporting file ever matching a text
+// pattern, so every *.types.ts file goes through the type-aware pass. The
+// dominant cost is the one-time ts.Program bootstrap — lib.dom + svelte type
+// resolution — not the per-file surface walk, so scanning all files costs
+// roughly the same as scanning the prefiltered subset did.)
 
 async function scan(): Promise<PropConventionViolation[]> {
   const glob = new Glob('src/components/**/*.types.ts');
@@ -401,9 +398,7 @@ async function scan(): Promise<PropConventionViolation[]> {
     for (const violation of collectPropConventionViolations(source, filePath)) {
       record(violation);
     }
-    if (NATIVE_HANDLER_TEXT_PATTERN.test(source)) {
-      typeAwareCandidates.push(absolutePath);
-    }
+    typeAwareCandidates.push(absolutePath);
   }
 
   if (typeAwareCandidates.length > 0) {

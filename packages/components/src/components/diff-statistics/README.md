@@ -40,7 +40,7 @@ Compact inline display of added, modified, and removed line counts for a file di
 | `modified`    | `number`                   | yes      | —       | Number of modified lines.                                                                                                                            |
 | `removed`     | `number`                   | yes      | —       | Number of removed lines.                                                                                                                             |
 | `variant`     | `"default"` \| `"compact"` | no       | —       | Layout variant. `default` shows full statistic markup; `compact` trims it for tight surfaces. Distinct from `density`, which adjusts control height. |
-| `zeroVisible` | `boolean`                  | no       | —       | Whether zero-value statistics render. Default `true`; set `false` to hide them.                                                                      |
+| `zeroVisible` | `boolean`                  | no       | `true`  | Whether zero-value statistics render. Set `false` to hide them.                                                                                      |
 
 <!-- generated:props:end -->
 

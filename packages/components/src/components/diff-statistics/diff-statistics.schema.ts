@@ -28,8 +28,8 @@ const schema = {
     },
     zeroVisible: {
       type: 'boolean',
-      description:
-        'Whether zero-value statistics render. Default `true`; set `false` to hide them.',
+      description: 'Whether zero-value statistics render. Set `false` to hide them.',
+      default: true,
     },
     class: {
       type: 'string',

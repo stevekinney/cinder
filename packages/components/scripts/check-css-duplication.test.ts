@@ -114,13 +114,25 @@ describe('findDuplicatePairs', () => {
 describe('compound-family plumbing', () => {
   test('sibling-leaf imports parse and union transitively', () => {
     expect(
-      siblingLeafImports(`@import '../tab/tab.css';\n@import '../tab-list/tab-list.css';`),
+      siblingLeafImports(
+        `import Tab from '../tab/tab.svelte';\nimport TabList from '../tab-list/tab-list.svelte';`,
+      ),
     ).toEqual(['tab', 'tab-list']);
     const families = compoundFamilies([
       ['tabs', 'tab'],
       ['tab', 'tab-list'],
     ]);
     expect(families.get('tabs')).toBe(families.get('tab-list'));
+  });
+
+  test('CSS dependency imports are NOT compound-family edges', () => {
+    // Composed standalone components import many siblings' CSS as
+    // dependencies — those must not merge families and exempt the pair.
+    expect(siblingLeafImports(`@import '../badge/badge.css';`)).toEqual([]);
+    // Nor do ordinary named/type imports from a sibling's non-root modules.
+    expect(
+      siblingLeafImports(`import type { BadgeProps } from '../badge/badge.types.ts';`),
+    ).toEqual([]);
   });
 
   test('pairKey sorts lexicographically', () => {

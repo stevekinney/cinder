@@ -25,7 +25,8 @@ const schema = {
     labelVisible: {
       type: 'boolean',
       description:
-        'Whether the label is visibly rendered. Default `true`; set `false` for icon-only or inline contexts — it stays the accessible name.',
+        'Whether the label is visibly rendered. Set `false` for icon-only or\ninline contexts — it stays the accessible name.',
+      default: true,
     },
     name: {
       type: 'string',

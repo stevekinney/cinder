@@ -25,7 +25,8 @@ const schema = {
     },
     caveat: {
       type: 'string',
-      description: 'Optional footnote or caveat beneath the features list.',
+      description:
+        'Optional footnote or caveat beneath the features list; the runtime API also accepts a template-only snippet (e.g. a terms link).',
     },
     selected: {
       type: 'boolean',

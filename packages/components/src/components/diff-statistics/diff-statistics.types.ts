@@ -25,7 +25,10 @@ export type DiffStatisticsProps = Omit<HTMLAttributes<HTMLDivElement>, 'class'> 
    * the shared `--cinder-control-height-sm` tier.
    */
   density?: DiffStatisticsDensity;
-  /** Whether zero-value statistics render. Default `true`; set `false` to hide them. */
+  /**
+   * Whether zero-value statistics render. Set `false` to hide them.
+   * @default true
+   */
   zeroVisible?: boolean;
   /** Additional class names merged with `.cinder-diff-statistics`. */
   class?: string;

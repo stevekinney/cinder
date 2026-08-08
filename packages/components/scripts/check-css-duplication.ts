@@ -59,7 +59,7 @@ export const SIMILARITY_THRESHOLD = 0.8;
  */
 export const MINIMUM_DECLARATIONS = 12;
 
-const SIBLING_LEAF_IMPORT = /^@?import\s+['"]\.\.\/([a-z0-9-]+)\/\1\.css['"]/;
+const SIBLING_LEAF_IMPORT = /^import\s+\w+\s+from\s+['"]\.\.\/([a-z0-9-]+)\/\1\.svelte['"]/;
 
 /** Multiset of normalized `context|prop:value` declaration keys. */
 export type DeclarationMultiset = Map<string, number>;
@@ -138,10 +138,18 @@ export function multisetSimilarity(a: DeclarationMultiset, b: DeclarationMultise
   return union === 0 ? 0 : intersection / union;
 }
 
-/** Sibling-leaf `@import` targets of one sidecar (compound-family edges). */
-export function siblingLeafImports(source: string): string[] {
+/**
+ * Compound-leaf imports of one component's `index.ts` (compound-family
+ * edges). Only the namespace-attachment pattern — a parent barrel importing
+ * a sibling's `.svelte` root (`import Tab from '../tab/tab.svelte'`) —
+ * counts. CSS `@import` edges are deliberately NOT used: composed standalone
+ * components (ApprovalCard, Feed, …) import many unrelated siblings' CSS as
+ * dependencies, and treating those as family edges would union-find most of
+ * the inventory into one exempt group and blind the guard.
+ */
+export function siblingLeafImports(indexSource: string): string[] {
   const leaves: string[] = [];
-  for (const line of source.split('\n')) {
+  for (const line of indexSource.split('\n')) {
     const match = line.trim().match(SIBLING_LEAF_IMPORT);
     if (match?.[1]) leaves.push(match[1]);
   }
@@ -190,9 +198,11 @@ async function collectComponentCss(): Promise<ComponentCss[]> {
   }
 
   const edges: Array<readonly [string, string]> = [];
-  for (const [name, source] of sources) {
-    for (const leaf of siblingLeafImports(source)) {
-      edges.push([name, leaf]);
+  for (const component of components) {
+    const indexPath = join(component.directory, 'index.ts');
+    if (!existsSync(indexPath)) continue;
+    for (const leaf of siblingLeafImports(readFileSync(indexPath, 'utf8'))) {
+      edges.push([component.name, leaf]);
     }
   }
   const families = compoundFamilies(edges);

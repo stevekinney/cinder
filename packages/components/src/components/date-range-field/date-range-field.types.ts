@@ -63,7 +63,10 @@ export type DateRangeFieldProps = Omit<
    * Defaults to today, yesterday-today, last-7d built-ins when omitted.
    */
   presets?: DateRangeDatePreset[];
-  /** Whether the preset buttons render. Default `true`; set `false` for date inputs only. */
+  /**
+   * Whether the preset buttons render. Set `false` for date inputs only.
+   * @default true
+   */
   presetsVisible?: boolean;
   /** Helper text displayed below the field; wired via aria-describedby. */
   description?: string;

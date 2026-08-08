@@ -20,7 +20,8 @@ const schema = {
     labelVisible: {
       type: 'boolean',
       description:
-        'Whether the label is visibly rendered. Default `true`; set `false` to visually hide it while keeping it available to assistive technology.',
+        'Whether the label is visibly rendered. Set `false` to visually hide it\nwhile keeping it available to assistive technology.',
+      default: true,
     },
     disabled: {
       type: 'boolean',

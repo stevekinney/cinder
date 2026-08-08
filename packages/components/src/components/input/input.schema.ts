@@ -45,7 +45,8 @@ const schema = {
     labelVisible: {
       type: 'boolean',
       description:
-        'Whether the `label` is visibly rendered. Default `true`; set `false` to visually hide it while keeping it programmatically associated.',
+        'Whether the `label` is visibly rendered. Set `false` to visually hide\nit while keeping it programmatically associated.',
+      default: true,
     },
     description: {
       type: 'string',

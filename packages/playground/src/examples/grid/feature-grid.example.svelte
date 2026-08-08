@@ -7,20 +7,23 @@
 <script lang="ts">
   import { Container } from '@lostgradient/cinder/container';
   import { Grid } from '@lostgradient/cinder/grid';
+  import Accessibility from 'lucide-svelte/icons/accessibility';
+  import Palette from 'lucide-svelte/icons/palette';
+  import Zap from 'lucide-svelte/icons/zap';
 
   const items = [
     {
-      icon: '⚡',
+      icon: Zap,
       title: 'Fast setup',
       description: 'Install, import styles, and start composing in minutes.',
     },
     {
-      icon: '♿',
+      icon: Accessibility,
       title: 'Accessible by default',
       description: 'Keyboard interaction and semantic markup are built in.',
     },
     {
-      icon: '🎨',
+      icon: Palette,
       title: 'Theme-ready tokens',
       description: 'Adapt spacing, type, and color with CSS custom properties.',
     },
@@ -48,14 +51,12 @@
         style="list-style: none; margin: 0; padding: 0;"
       >
         {#each items as item (item.title)}
+          {@const Icon = item.icon}
           <li
             style="border: 1px solid var(--cinder-border); border-radius: var(--cinder-radius-lg); padding: var(--cinder-space-4); background: var(--cinder-surface-raised); display: grid; gap: var(--cinder-space-2);"
           >
-            <span
-              aria-hidden="true"
-              style="color: var(--cinder-accent-text); font-size: var(--cinder-text-xl); line-height: 1;"
-            >
-              {item.icon}
+            <span aria-hidden="true" style="color: var(--cinder-accent-text); line-height: 1;">
+              <Icon size={20} />
             </span>
             <h3 style="margin: 0; font-size: var(--cinder-text-base);">{item.title}</h3>
             <p

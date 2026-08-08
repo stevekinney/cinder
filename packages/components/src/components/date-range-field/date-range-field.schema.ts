@@ -29,8 +29,8 @@ const schema = {
     },
     presetsVisible: {
       type: 'boolean',
-      description:
-        'Whether the preset buttons render. Default `true`; set `false` for date inputs only.',
+      description: 'Whether the preset buttons render. Set `false` for date inputs only.',
+      default: true,
     },
     description: {
       type: 'string',

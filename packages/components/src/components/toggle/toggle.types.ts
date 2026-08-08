@@ -26,7 +26,11 @@ export type ToggleProps = {
   label: string;
   /** Prevents interaction when true. Sets `disabled` attribute. */
   disabled?: boolean;
-  /** Whether the label is visibly rendered. Default `true`; set `false` for icon-only or inline contexts — it stays the accessible name. */
+  /**
+   * Whether the label is visibly rendered. Set `false` for icon-only or
+   * inline contexts — it stays the accessible name.
+   * @default true
+   */
   labelVisible?: boolean;
   /**
    * Form field name. When set, a hidden checkbox mirrors `checked` so the toggle

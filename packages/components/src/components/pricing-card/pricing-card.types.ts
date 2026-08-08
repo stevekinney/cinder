@@ -39,7 +39,7 @@ export interface PricingCardSchemaProps {
   features: string[];
   /** Label for the call-to-action button. */
   callToActionLabel: string;
-  /** Optional footnote or caveat beneath the features list. */
+  /** Optional footnote or caveat beneath the features list; the runtime API also accepts a template-only snippet (e.g. a terms link). */
   caveat?: string;
   /**
    * Whether this card is the currently selected plan.

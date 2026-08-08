@@ -21,7 +21,11 @@ type CommonProps<T extends string> = Omit<HTMLAttributes<HTMLElement>, Component
   label: string;
   /** Native form field name. Renders hidden input(s) carrying the selected value(s). */
   name?: string | undefined;
-  /** Whether the label is visibly rendered. Default `true`; set `false` to visually hide it while keeping it available to assistive technology. */
+  /**
+   * Whether the label is visibly rendered. Set `false` to visually hide it
+   * while keeping it available to assistive technology.
+   * @default true
+   */
   labelVisible?: boolean | undefined;
   /** Disable the whole control. */
   disabled?: boolean | undefined;

@@ -10,7 +10,8 @@ const schema = {
     },
     placement: {
       enum: ['left', 'right', 'bottom'],
-      description: 'Edge the drawer slides in from. Default `right`.',
+      description: 'Edge the drawer slides in from.',
+      default: 'right',
     },
     size: {
       enum: ['sm', 'md', 'lg', 'xl'],

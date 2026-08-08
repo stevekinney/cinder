@@ -15,7 +15,11 @@ export type SelectProps<T extends string = string> = Omit<HTMLSelectAttributes, 
   options: readonly SelectOption<T>[];
   /** Visible label rendered in a `<label>` associated via `for`. */
   label?: string;
-  /** Whether the label is visibly rendered. Default `true`; set `false` to visually hide it while keeping it available to assistive technology. */
+  /**
+   * Whether the label is visibly rendered. Set `false` to visually hide it
+   * while keeping it available to assistive technology.
+   * @default true
+   */
   labelVisible?: boolean;
   /** Helper text rendered below the control; wired via `aria-describedby`. */
   description?: string;
