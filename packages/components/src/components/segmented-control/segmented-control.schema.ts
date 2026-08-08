@@ -65,7 +65,8 @@ const schema = {
     selectionRequired: {
       type: 'boolean',
       description:
-        'When true (default), clicking the already-selected option is a no-op.\nWhen false, clicking the selected option clears value to undefined.',
+        'When true, clicking the already-selected option is a no-op.\nWhen false, clicking the selected option clears value to undefined.',
+      default: true,
     },
   },
   additionalProperties: false,

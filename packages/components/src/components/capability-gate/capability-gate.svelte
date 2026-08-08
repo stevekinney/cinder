@@ -100,8 +100,14 @@
     // unmounts, so focus moves to <body> predictably rather than being
     // stranded on a detached node. The consumer owns where focus should land
     // next (e.g. a trigger to re-open the gate) and can set it in
-    // `onDismiss` — the component cannot know the right target.
-    const active = document.activeElement;
+    // `onDismiss` — the component cannot know the right target. Read the
+    // active element from the gate's own root node: inside a shadow root,
+    // `document.activeElement` is the shadow HOST, not the focused action.
+    const rootNode = rootElement?.getRootNode();
+    const active =
+      rootNode instanceof Document || rootNode instanceof ShadowRoot
+        ? rootNode.activeElement
+        : document.activeElement;
     if (active instanceof HTMLElement && rootElement?.contains(active)) {
       active.blur();
     }

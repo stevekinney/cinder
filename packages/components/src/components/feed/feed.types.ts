@@ -1,7 +1,7 @@
 import type { Snippet } from 'svelte';
 import type { HTMLAttributes } from 'svelte/elements';
 
-import type { StatusDotConnectionState } from '../status-dot/status-dot.types.ts';
+import type { StatusDotConnectionState } from '@lostgradient/cinder/status-dot';
 
 /**
  * Connection state for a live feed source. When provided to the `log` arm,

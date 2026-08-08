@@ -25,9 +25,9 @@
 <script lang="ts">
   import { tick } from 'svelte';
   import VisuallyHiddenLiveRegion from '../_visually-hidden-live-region.svelte';
-  import SearchField from '../search-field/search-field.svelte';
-  import Chip from '../chip/chip.svelte';
-  import Button from '../button/button.svelte';
+  import Button from '@lostgradient/cinder/button';
+  import Chip from '@lostgradient/cinder/chip';
+  import SearchField from '@lostgradient/cinder/search-field';
   import { classNames } from '../../utilities/class-names.ts';
 
   import type { FilterBarProps } from './filter-bar.types.ts';

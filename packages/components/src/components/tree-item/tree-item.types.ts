@@ -21,7 +21,10 @@ export type TreeItemProps = {
   label: string;
   /** When true, the item cannot be selected or actioned. Still keyboard-reachable. */
   disabled?: boolean;
-  /** Render a reorder handle when the parent Tree provides onReorder. */
+  /**
+   * Render a reorder handle when the parent Tree provides onReorder.
+   * @default false
+   */
   reorderHandleVisible?: boolean;
   /**
    * Marks the node as an expandable branch. A node is a leaf unless it sets `branch`

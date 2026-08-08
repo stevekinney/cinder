@@ -113,12 +113,14 @@
     /* Declared after the size tokens so this always wins: the bottom
      placement spans the full viewport width regardless of `size`. */
     width: 100%;
-    /* Physically bottom-anchored, so preserve the physical viewport cap in
-     vertical writing modes. */
+    /* Physically bottom-anchored, so the viewport cap, the exposed edge's
+     border, and the rounded corners all stay physical too — logical
+     properties would rotate away from the top edge in vertical writing
+     modes while the panel itself stays pinned to the bottom. */
     max-height: 90dvh;
-    border-block-start: 1px solid var(--cinder-border);
-    border-start-start-radius: var(--cinder-radius-lg);
-    border-start-end-radius: var(--cinder-radius-lg);
+    border-top: 1px solid var(--cinder-border);
+    border-top-left-radius: var(--cinder-radius-lg);
+    border-top-right-radius: var(--cinder-radius-lg);
   }
 
   .cinder-drawer__drag-handle {

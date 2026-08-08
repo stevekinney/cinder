@@ -63,7 +63,8 @@ const schema = {
     },
     typeaheadDisabled: {
       type: 'boolean',
-      description: 'Disable typeahead. Default: false.',
+      description: 'Disable typeahead.',
+      default: false,
     },
     filterValue: {
       type: 'string',

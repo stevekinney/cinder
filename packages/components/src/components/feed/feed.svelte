@@ -30,7 +30,7 @@
 
   import type { FeedProps } from './feed.types.ts';
   import { classNames } from '../../utilities/class-names.ts';
-  import StatusDot from '../status-dot/status-dot.svelte';
+  import StatusDot from '@lostgradient/cinder/status-dot';
 
   let {
     kind = 'list',

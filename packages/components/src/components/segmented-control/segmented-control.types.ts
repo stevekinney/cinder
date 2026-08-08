@@ -70,8 +70,9 @@ type SingleProps<T extends string> = CommonProps<T> & {
   /** Currently selected value. */
   value?: T | undefined;
   /**
-   * When true (default), clicking the already-selected option is a no-op.
+   * When true, clicking the already-selected option is a no-op.
    * When false, clicking the selected option clears value to undefined.
+   * @default true
    */
   selectionRequired?: boolean | undefined;
 };

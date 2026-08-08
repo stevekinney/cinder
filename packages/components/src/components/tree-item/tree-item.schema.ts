@@ -19,6 +19,7 @@ const schema = {
     reorderHandleVisible: {
       type: 'boolean',
       description: 'Render a reorder handle when the parent Tree provides onReorder.',
+      default: false,
     },
     branch: {
       type: 'boolean',

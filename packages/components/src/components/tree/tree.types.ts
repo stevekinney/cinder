@@ -64,7 +64,10 @@ type TreeSharedProps = Omit<
   'aria-label'?: string;
   /** The `id` of a visible element whose text serves as the accessible label for the tree. One of `aria-label` or `aria-labelledby` is required. */
   'aria-labelledby'?: string;
-  /** Disable typeahead. Default: false. */
+  /**
+   * Disable typeahead.
+   * @default false
+   */
   typeaheadDisabled?: boolean;
   /** Controlled filter query. When provided, matching is driven by this value. */
   filterValue?: string;
