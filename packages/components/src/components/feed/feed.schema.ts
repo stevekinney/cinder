@@ -11,26 +11,31 @@ const schema = {
     kind: {
       enum: ['list', 'log'],
       description: "Discriminates the arms. Omit (or pass `'list'`) for the plain list.",
+      default: 'list',
     },
     live: {
       type: 'boolean',
       description:
-        'List arm only (`kind` omitted or `\'list\'`) — rejected by the log arm,\nwhose `role="log"` viewport is implicitly live. When true, the wrapper\nbecomes an ARIA live region: `aria-live="polite"` and\n`aria-atomic="false"`. Use for feeds that mutate while the user is\non the page (streaming notifications, chat-like activity).\nDefaults to false — a polite live region on a static feed is noise.',
+        'List arm only (`kind` omitted or `\'list\'`) — rejected by the log arm,\nwhose `role="log"` viewport is implicitly live. When true, the wrapper\nbecomes an ARIA live region: `aria-live="polite"` and\n`aria-atomic="false"`. Use for feeds that mutate while the user is\non the page (streaming notifications, chat-like activity).\nA polite live region on a static feed is noise, hence the false default.',
+      default: false,
     },
     following: {
       type: 'boolean',
       description:
         "Log arm only — requires `kind: 'log'`; rejected by the list arm. When\ntrue, appended content automatically scrolls the viewport to the\nbottom. Scrolling away from the bottom pauses following; scrolling back\nto the bottom (or the built-in control) resumes it. Bindable so the\nparent can read the paused state the component sets internally.",
+      default: true,
     },
     loading: {
       type: 'boolean',
       description:
         "Log arm only — requires `kind: 'log'`; rejected by the list arm. Show\na loading skeleton instead of the entries. Use while the first batch\nof entries is in flight.",
+      default: false,
     },
     truncated: {
       type: 'boolean',
       description:
         'Log arm only — requires `kind: \'log\'`; rejected by the list arm.\nWhether to show the "earlier entries not shown" notice. This is a\nboolean flag, not a count: the feed never trims its own children. Set\nit when you have already capped retention and want users to know\nearlier entries are not shown.',
+      default: false,
     },
     connectionState: {
       enum: ['connected', 'connecting', 'disconnected', 'error'],

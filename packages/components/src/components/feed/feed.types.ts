@@ -23,7 +23,10 @@ type FeedBase = {
  */
 export type FeedListProps = Omit<HTMLAttributes<HTMLOListElement>, 'children' | 'class'> &
   FeedBase & {
-    /** Discriminates the arms. Omit (or pass `'list'`) for the plain list. */
+    /**
+     * Discriminates the arms. Omit (or pass `'list'`) for the plain list.
+     * @default 'list'
+     */
     kind?: 'list';
     /**
      * List arm only (`kind` omitted or `'list'`) — rejected by the log arm,
@@ -31,7 +34,8 @@ export type FeedListProps = Omit<HTMLAttributes<HTMLOListElement>, 'children' | 
      * becomes an ARIA live region: `aria-live="polite"` and
      * `aria-atomic="false"`. Use for feeds that mutate while the user is
      * on the page (streaming notifications, chat-like activity).
-     * Defaults to false — a polite live region on a static feed is noise.
+     * A polite live region on a static feed is noise, hence the false default.
+     * @default false
      */
     live?: boolean;
     following?: never;
@@ -60,12 +64,14 @@ export type FeedLogProps = Omit<HTMLAttributes<HTMLDivElement>, 'children' | 'cl
      * bottom. Scrolling away from the bottom pauses following; scrolling back
      * to the bottom (or the built-in control) resumes it. Bindable so the
      * parent can read the paused state the component sets internally.
+     * @default true
      */
     following?: boolean;
     /**
      * Log arm only — requires `kind: 'log'`; rejected by the list arm. Show
      * a loading skeleton instead of the entries. Use while the first batch
      * of entries is in flight.
+     * @default false
      */
     loading?: boolean;
     /**
@@ -74,6 +80,7 @@ export type FeedLogProps = Omit<HTMLAttributes<HTMLDivElement>, 'children' | 'cl
      * boolean flag, not a count: the feed never trims its own children. Set
      * it when you have already capped retention and want users to know
      * earlier entries are not shown.
+     * @default false
      */
     truncated?: boolean;
     /**

@@ -1,3 +1,3 @@
-const variables: readonly string[] = ['--cinder-feed-rail-size'];
+const variables: readonly string[] = [];
 
 export default variables;

@@ -2169,6 +2169,10 @@
       "import": "./src/components/feed-event/feed-event.variables.ts",
       "default": "./dist/components/feed-event/feed-event.variables.js"
     },
+    "./feed-event/styles": {
+      "types": "./dist/components/feed-event/feed-event.css.d.ts",
+      "default": "./dist/components/feed-event/feed-event.css"
+    },
     "./file-upload": {
       "types": "./dist/components/file-upload/index.d.ts",
       "browser": "./src/components/file-upload/index.ts",

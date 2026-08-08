@@ -1,3 +1,4 @@
+import './feed-event.css';
 import FeedEvent from './feed-event.svelte';
 
 export default FeedEvent;
