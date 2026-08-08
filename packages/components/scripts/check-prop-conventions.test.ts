@@ -17,20 +17,20 @@ describe('check-prop-conventions', () => {
     expect(violations.map((violation) => violation.propName)).toEqual(['defaultValue']);
   });
 
-  test('flags show, allow, and use boolean prefixes', () => {
+  test('defers show/allow/use prefixes to the type-aware pass', () => {
     const source = `
       export type Props = {
         showSearch?: boolean;
         allowCustomValue?: boolean;
         useNativeShare?: boolean;
+        hideDelay?: number;
       };
     `;
 
-    expect(collectPropConventionViolations(source).map((violation) => violation.propName)).toEqual([
-      'showSearch',
-      'allowCustomValue',
-      'useNativeShare',
-    ]);
+    // Whether a polarity prefix is a violation depends on the prop's resolved
+    // type, so the syntactic pass leaves every prefixed name to the type-aware
+    // surface scan.
+    expect(collectPropConventionViolations(source)).toEqual([]);
   });
 
   test('flags React-style onClick; lowercase handlers are deferred to the type-aware pass', () => {
@@ -131,6 +131,10 @@ describe('check-prop-conventions type-aware surface pass', () => {
       'export type PointerForwardProps = { onpointerdown?: (event: PointerEvent) => void; onwheel?: (event: WheelEvent) => void };',
     'non-callable':
       'export type NonCallableProps = { onchange?: string; onmark?: ((event: Event) => void) | string };',
+    'boolean-prefix':
+      'export type BooleanPrefixProps = { showSearch?: boolean; useNativeShare?: boolean | undefined };',
+    'non-boolean-prefix':
+      'export type NonBooleanPrefixProps = { hideDelay?: number; showCount?: number; disableReason?: string };',
   };
 
   function buildViolationsByFixture(): Map<
@@ -182,6 +186,21 @@ describe('check-prop-conventions type-aware surface pass', () => {
       'onchange',
       'onmark',
     ]);
+  });
+
+  test('flags a polarity prefix on a boolean-valued prop', () => {
+    const violations = violationsByFixture.get('boolean-prefix') ?? [];
+    expect(violations.map((violation) => violation.propName).toSorted()).toEqual([
+      'showSearch',
+      'useNativeShare',
+    ]);
+    expect(
+      violations.every((violation) => violation.message.includes('adjective/state names')),
+    ).toBe(true);
+  });
+
+  test('passes a polarity-prefixed name whose resolved type is not boolean', () => {
+    expect(violationsByFixture.get('non-boolean-prefix')).toEqual([]);
   });
 
   test('passes an undefined-only discriminated-union fence arm', () => {

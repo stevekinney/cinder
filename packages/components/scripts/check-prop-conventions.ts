@@ -8,8 +8,6 @@ const packageRoot = resolve(scriptDirectory, '..');
 const repositoryRoot = resolve(packageRoot, '..', '..');
 const documentationPath = 'docs/component-api-conventions.md';
 
-const booleanPrefixPattern = /^(show|allow|use|hide|disable|disallow)[A-Z]/;
-
 export const bannedNames = new Map<string, string>([
   ['defaultValue', 'Use bindable `value` plus a private reset target.'],
   ['filterItem', 'Use `filter`.'],
@@ -69,14 +67,9 @@ function checkPropName(
     violations.push({ filePath, line, propName, message: bannedMessage });
   }
 
-  if (booleanPrefixPattern.test(propName)) {
-    violations.push({
-      filePath,
-      line,
-      propName,
-      message: 'Boolean props must use adjective/state names, not show*/allow*/use* prefixes.',
-    });
-  }
+  // Polarity prefixes (show*/hide*/disable*, …) are NOT judged here either:
+  // the ban is about boolean polarity, and `hideDelay?: number` is a duration,
+  // not a flag — so it is a type question the type-aware pass answers.
 
   // Lowercase on* names are NOT judged here: any name can be a legitimate
   // native passthrough (onpointerdown, onwheel, …), so the distinction is a
@@ -161,7 +154,9 @@ export function collectPropConventionViolations(
 // One ts.Program over every *.types.ts resolves each exported Props surface's
 // properties through aliases, intersections, unions, and indexed accesses,
 // then gates every lowercase on* handler on its first parameter structurally
-// extending Event. Resolving the SURFACE (not the syntax tree) also closes
+// extending Event. The same resolution gates the show*/hide*/disable*
+// polarity ban on the property's type actually being boolean-like.
+// Resolving the SURFACE (not the syntax tree) also closes
 // the non-exported-helper blind spot: a violation is attributed to its true
 // declaration site even when that declaration lives in an unexported type
 // referenced by the exported Props.
@@ -216,6 +211,28 @@ function isNativePassthroughHandlerType(propType: ts.Type, checker: ts.TypeCheck
     const parameterType = checker.getTypeOfSymbolAtLocation(firstParameter, declaration);
     return isEventLikeParameterType(parameterType);
   });
+}
+
+const booleanPrefixPattern = /^(show|allow|use|hide|disable|disallow)[A-Z]/;
+
+// `any`/`unknown`/an unresolved type parameter tell the checker nothing, so
+// the name-based ban stands rather than silently lapsing.
+const OPAQUE_TYPE_FLAGS = ts.TypeFlags.Any | ts.TypeFlags.Unknown | ts.TypeFlags.TypeParameter;
+
+/**
+ * Whether a polarity-prefixed prop can actually hold a boolean, which is the
+ * only case the show/hide/disable prefix ban is about. `boolean` resolves to a
+ * `true | false` union, so the probe runs per constituent after dropping the
+ * nullish arms; a nullish-only arm is a discriminated-union fence with
+ * nothing to set, and an opaque type keeps the ban.
+ */
+function isBooleanLikePropType(type: ts.Type): boolean {
+  const constituents = type.isUnion() ? type.types : [type];
+  const substantive = constituents.filter((constituent) => !isNullishType(constituent));
+  if (substantive.length === 0) return false;
+  return substantive.some(
+    (constituent) => (constituent.flags & (ts.TypeFlags.BooleanLike | OPAQUE_TYPE_FLAGS)) !== 0,
+  );
 }
 
 function propsSurfaceNamesIn(sourceFile: ts.SourceFile): ts.Identifier[] {
@@ -284,13 +301,16 @@ export function collectResolvedSurfaceViolations(
           }
 
           if (booleanPrefixPattern.test(propName)) {
-            record({
-              filePath,
-              line,
-              propName,
-              message:
-                'Boolean props must use adjective/state names, not show*/allow*/use* prefixes.',
-            });
+            const propertyType = checker.getTypeOfSymbolAtLocation(property, site.declaration);
+            if (isBooleanLikePropType(propertyType)) {
+              record({
+                filePath,
+                line,
+                propName,
+                message:
+                  'Boolean props must use adjective/state names, not show*/allow*/use* prefixes.',
+              });
+            }
           }
 
           if (/^on[a-z]/.test(propName)) {
