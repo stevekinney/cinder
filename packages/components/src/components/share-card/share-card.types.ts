@@ -12,7 +12,9 @@ export type ShareCardAction = {
   label: string;
   /**
    * Optional rich visible content rendered in place of the `label` text.
-   * The `label` string remains the accessible name.
+   * The `label` string remains the accessible name. Rendered INSIDE the
+   * action `<button>` — emit phrasing content only (text, inline formatting,
+   * icons), never block or interactive elements.
    */
   labelSnippet?: Snippet;
   /** Text to copy when this action is triggered (used for copy-link/copy-text). */

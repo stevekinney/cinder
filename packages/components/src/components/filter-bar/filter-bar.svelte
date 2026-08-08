@@ -180,6 +180,7 @@
             onValueChange: (value: string) => {
               onFacetChange?.(facet.key, value);
             },
+            disabled,
           })}
         </div>
       {/if}

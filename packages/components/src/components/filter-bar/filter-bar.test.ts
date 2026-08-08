@@ -434,6 +434,29 @@ describe('FilterBar custom facets', () => {
 
     expect(onFacetChange).toHaveBeenCalledWith('owner', 'me');
   });
+
+  test('passes the bar-level disabled state to the custom-facet snippet', () => {
+    const controlSnippet = createRawSnippet<
+      [{ value: string; onValueChange: (value: string) => void; disabled: boolean }]
+    >((getProps) => ({
+      render: () => `<button type="button" class="filter-bar-test-custom-control">Pick</button>`,
+      setup(element: Element) {
+        if (getProps().disabled) {
+          element.setAttribute('disabled', '');
+        }
+      },
+    }));
+
+    const { container } = render(FilterBar, {
+      facets: [{ type: 'custom', key: 'owner', label: 'Owner', control: controlSnippet }],
+      disabled: true,
+    });
+
+    const customControl = container.querySelector<HTMLButtonElement>(
+      '.filter-bar-test-custom-control',
+    );
+    expect(customControl?.hasAttribute('disabled')).toBe(true);
+  });
 });
 
 describe('FilterBar CSS snapshot', () => {

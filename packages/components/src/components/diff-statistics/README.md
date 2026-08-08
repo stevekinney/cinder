@@ -6,7 +6,7 @@ Compact inline display of added, modified, and removed line counts for a file di
 
 - Showing the line-change summary for a single file or commit in a code review, pull-request list, or activity feed.
 - Toolbars and compact layouts — use `density="toolbar"` to snap to the shared control-height tier.
-- Suppressing zero-count values cleanly with `zeroVisible` when a file has only additions or only deletions.
+- Suppressing zero-count values cleanly with `zeroVisible={false}` when a file has only additions or only deletions.
 
 ## Choosing something else
 

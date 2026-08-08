@@ -41,8 +41,12 @@ export type CustomFacet = {
   key: string;
   /** Accessible label for the facet (used in the applied-filter chip). */
   label: string;
-  /** Consumer-supplied snippet that renders the full facet control. */
-  control: Snippet<[{ value: string; onValueChange: (value: string) => void }]>;
+  /**
+   * Consumer-supplied snippet that renders the full facet control. Receives
+   * the bar-level `disabled` state — the snippet MUST apply it to its own
+   * control(s), since FilterBar cannot reach inside consumer markup.
+   */
+  control: Snippet<[{ value: string; onValueChange: (value: string) => void; disabled: boolean }]>;
 };
 
 /** Union of all supported facet definition types. */

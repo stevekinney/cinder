@@ -6,9 +6,18 @@ export type StepItemState = 'complete' | 'current' | 'upcoming' | 'skipped';
 export type StepItem = {
   /** Stable identifier used as the keyed-each key. Must be unique. */
   id: string;
-  /** Visible label for the step. Accepts plain text or a rich Snippet. */
+  /**
+   * Visible label for the step. Accepts plain text or a snippet. Snippet
+   * content is rendered inside a `<span>` that may itself sit inside the
+   * step's generated `<a>`/`<button>` — emit phrasing content only (text,
+   * inline formatting, icons), never block or interactive elements.
+   */
   label: string | Snippet;
-  /** Optional secondary text shown beneath the label. Accepts plain text or a rich Snippet. */
+  /**
+   * Optional secondary text shown beneath the label. Accepts plain text or a
+   * snippet, with the same phrasing-only, non-interactive constraint as
+   * `label` — the content can end up inside the step's own control.
+   */
   description?: string | Snippet;
   /**
    * Optional state override for this step. When omitted, state is derived from

@@ -91,7 +91,7 @@ native navigation behavior such as copying the URL or opening in a new tab.
 ## Group Labeling
 
 All modes label the group or navigation landmark via `aria-labelledby` pointing
-at a sibling `<span>`. When `labelVisible` is set, the span receives
+at a sibling `<span>`. With `labelVisible={false}`, the span receives
 `.cinder-sr-only` — visually hidden but still referenced by `aria-labelledby`,
 so the name is available to assistive technology.
 

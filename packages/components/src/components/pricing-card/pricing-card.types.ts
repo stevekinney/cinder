@@ -17,7 +17,9 @@ export type PricingCardProps = Omit<HTMLAttributes<HTMLDivElement>, 'onselect'> 
    * Optional footnote or caveat displayed beneath the features list.
    * Use for legal disclaimers, billing notes, or conditional terms.
    * Rendered in a visually subdued style to distinguish it from the main feature list.
-   * Accepts plain text or a rich Snippet (e.g. a terms link).
+   * Accepts plain text or a snippet (e.g. a terms link). Snippet content is
+   * rendered inside a `<p>` — emit phrasing content only (text, inline
+   * formatting, links), never block elements.
    */
   caveat?: string | Snippet;
   /**
