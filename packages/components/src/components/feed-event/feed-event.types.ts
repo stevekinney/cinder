@@ -50,14 +50,18 @@ type FeedEventBase = Omit<HTMLAttributes<HTMLLIElement>, 'children' | 'class'> &
    */
   timestampLabel?: Snippet;
   /**
-   * Semantic tone for the rail marker (icon badge or dot). Default `neutral`.
+   * Semantic tone for the rail marker (icon badge or dot).
    * Colour is never the only signal — pair a non-neutral tone with a
    * distinct icon shape or state wording in the entry body.
+   * @default 'neutral'
    */
   tone?: FeedEventTone;
 };
 type FeedEventIcon = FeedEventBase & {
-  /** Icon variant: renders a circular badge on the rail with the icon inside. */
+  /**
+   * Icon variant: renders a circular badge on the rail with the icon inside.
+   * @default 'icon'
+   */
   variant?: 'icon';
   /** Required for the icon variant. Type-enforced by the discriminated union. */
   icon: Snippet;

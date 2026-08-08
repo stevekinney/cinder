@@ -9,17 +9,6 @@ const repositoryRoot = resolve(packageRoot, '..', '..');
 const documentationPath = 'docs/component-api-conventions.md';
 
 const booleanPrefixPattern = /^(show|allow|use|hide|disable|disallow)[A-Z]/;
-const nativeDomHandlers = new Set([
-  'onclick',
-  'onchange',
-  'oninput',
-  'onkeydown',
-  'onkeyup',
-  'onfocus',
-  'onblur',
-  'onsearch',
-  'onsubmit',
-]);
 
 export const bannedNames = new Map<string, string>([
   ['defaultValue', 'Use bindable `value` plus a private reset target.'],
@@ -89,18 +78,10 @@ function checkPropName(
     });
   }
 
-  if (propName.startsWith('on')) {
-    const isNative = nativeDomHandlers.has(propName);
-    const isCustomCamelCase = /^on[A-Z]/.test(propName);
-    if (!isNative && !isCustomCamelCase) {
-      violations.push({
-        filePath,
-        line,
-        propName,
-        message: 'Custom callbacks must use camelCase onNounVerb names.',
-      });
-    }
-  }
+  // Lowercase on* names are NOT judged here: any name can be a legitimate
+  // native passthrough (onpointerdown, onwheel, …), so the distinction is a
+  // type question — the type-aware pass classifies each lowercase handler by
+  // whether its first parameter extends Event.
 
   return violations;
 }
@@ -311,15 +292,9 @@ export function collectResolvedSurfaceViolations(
           }
 
           if (/^on[a-z]/.test(propName)) {
-            if (!nativeDomHandlers.has(propName)) {
-              record({
-                filePath,
-                line,
-                propName,
-                message: 'Custom callbacks must use camelCase onNounVerb names.',
-              });
-              continue;
-            }
+            // Classified by signature, not by a name allowlist: ANY lowercase
+            // on* prop is legitimate exactly when it is a native passthrough,
+            // i.e. its first parameter extends Event.
             const propType = checker.getTypeOfSymbolAtLocation(property, site.declaration);
             if (!isNativePassthroughHandlerType(propType, checker)) {
               record({

@@ -16,11 +16,13 @@
     },
     "tone": {
       "enum": ["neutral", "info", "success", "warning", "error"],
-      "description": "Semantic tone for the rail marker (icon badge or dot). Default `neutral`.\nColour is never the only signal — pair a non-neutral tone with a\ndistinct icon shape or state wording in the entry body."
+      "description": "Semantic tone for the rail marker (icon badge or dot).\nColour is never the only signal — pair a non-neutral tone with a\ndistinct icon shape or state wording in the entry body.",
+      "default": "neutral"
     },
     "variant": {
       "enum": ["icon", "minimal"],
-      "description": "Icon variant: renders a circular badge on the rail with the icon inside."
+      "description": "Icon variant: renders a circular badge on the rail with the icon inside.",
+      "default": "icon"
     }
   },
   "additionalProperties": false,

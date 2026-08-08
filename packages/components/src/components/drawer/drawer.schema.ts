@@ -16,7 +16,8 @@ const schema = {
     size: {
       enum: ['sm', 'md', 'lg', 'xl'],
       description:
-        'Drawer width token for `left`/`right` placements. Default `md`.\nIgnored for `placement="bottom"`, which always spans the full viewport\nwidth and caps its height at 90dvh.',
+        'Drawer width token for `left`/`right` placements.\nIgnored for `placement="bottom"`, which always spans the full viewport\nwidth and caps its height at 90dvh.',
+      default: 'md',
     },
     title: {
       type: 'string',
@@ -35,7 +36,8 @@ const schema = {
     dragHandleVisible: {
       type: 'boolean',
       description:
-        'When `true` and `placement="bottom"`, render a decorative drag handle\nabove the header. Swipe-to-close gesture is a stretch goal not\nimplemented in MVP — the handle is purely a visual affordance.\nIgnored for `left`/`right` placements. Default `false`.\n\nNamed `dragHandleVisible` (not `draggable`) to avoid colliding with the\nnative HTML `draggable` attribute on the underlying `<dialog>`.',
+        'When `true` and `placement="bottom"`, render a decorative drag handle\nabove the header. Swipe-to-close gesture is a stretch goal not\nimplemented in MVP — the handle is purely a visual affordance.\nIgnored for `left`/`right` placements.\n\nNamed `dragHandleVisible` (not `draggable`) to avoid colliding with the\nnative HTML `draggable` attribute on the underlying `<dialog>`.',
+      default: false,
     },
   },
   additionalProperties: false,

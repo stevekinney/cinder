@@ -33,7 +33,7 @@ describe('check-prop-conventions', () => {
     ]);
   });
 
-  test('flags lowercase custom callback names and React-style onClick', () => {
+  test('flags React-style onClick; lowercase handlers are deferred to the type-aware pass', () => {
     const source = `
       export type Props = {
         onsearchchange?: (value: string) => void;
@@ -41,8 +41,10 @@ describe('check-prop-conventions', () => {
       };
     `;
 
+    // `onsearchchange` is a type question (is it a native passthrough whose
+    // first parameter extends Event?), so the syntactic pass leaves it to the
+    // type-aware surface scan.
     expect(collectPropConventionViolations(source).map((violation) => violation.propName)).toEqual([
-      'onsearchchange',
       'onClick',
     ]);
   });
@@ -125,6 +127,8 @@ describe('check-prop-conventions type-aware surface pass', () => {
       'export type HiddenHelperProps = Helper & { id?: string };',
     ].join('\n'),
     'banned-name': 'export type BannedNameProps = { hideLabel?: boolean };',
+    'pointer-forward':
+      'export type PointerForwardProps = { onpointerdown?: (event: PointerEvent) => void; onwheel?: (event: WheelEvent) => void };',
   };
 
   function buildViolationsByFixture(): Map<
@@ -164,6 +168,10 @@ describe('check-prop-conventions type-aware surface pass', () => {
 
   test('passes a lowercase native-named handler whose first parameter extends Event', () => {
     expect(violationsByFixture.get('event-handler')).toEqual([]);
+  });
+
+  test('passes native handlers outside any name allowlist when the signature is a passthrough', () => {
+    expect(violationsByFixture.get('pointer-forward')).toEqual([]);
   });
 
   test('passes an undefined-only discriminated-union fence arm', () => {
