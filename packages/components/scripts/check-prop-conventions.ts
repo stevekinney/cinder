@@ -224,8 +224,9 @@ const OPAQUE_TYPE_FLAGS = ts.TypeFlags.Any | ts.TypeFlags.Unknown;
  * Whether a polarity-prefixed prop can actually hold a boolean, which is the
  * only case the show/hide/disable prefix ban is about. `boolean` resolves to a
  * `true | false` union, so the probe runs per constituent after dropping the
- * nullish arms; a nullish-only arm is a discriminated-union fence with
- * nothing to set, and an opaque type keeps the ban.
+ * nullish and `never` arms; an arm left with nothing substantive is a
+ * discriminated-union fence with no value to set, and an opaque type keeps
+ * the ban.
  */
 function isBooleanLikePropType(type: ts.Type, checker: ts.TypeChecker): boolean {
   const constituents = type.isUnion() ? type.types : [type];
@@ -243,6 +244,19 @@ function canHoldBoolean(type: ts.Type, checker: ts.TypeChecker): boolean {
   if ((type.flags & ts.TypeFlags.TypeParameter) !== 0) {
     const constraint = checker.getBaseConstraintOfType(type);
     return constraint ? isBooleanLikePropType(constraint, checker) : true;
+  }
+  // A structural constraint only excludes booleans when it actually demands
+  // something a boolean lacks. `T extends {}` demands nothing, so `true` is a
+  // legal instantiation and the ban must stand; `T extends { id: string }`
+  // rules booleans out. Members are the public-API stand-in for an
+  // assignability probe, which lives on the checker's internal surface.
+  if ((type.flags & ts.TypeFlags.Object) !== 0) {
+    const demandsMembers =
+      checker.getPropertiesOfType(type).length > 0 ||
+      checker.getIndexInfosOfType(type).length > 0 ||
+      checker.getSignaturesOfType(type, ts.SignatureKind.Call).length > 0 ||
+      checker.getSignaturesOfType(type, ts.SignatureKind.Construct).length > 0;
+    return !demandsMembers;
   }
   return (type.flags & OPAQUE_TYPE_FLAGS) !== 0;
 }

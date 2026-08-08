@@ -140,6 +140,10 @@ describe('check-prop-conventions type-aware surface pass', () => {
       'export type OpaquePrefixProps = { showSearch?: unknown; useNativeShare?: any };',
     'generic-prefix':
       'export type GenericPrefixProps<Item extends { id: string }, Flag extends boolean, Loose> = { showItem?: Item; showFlag?: Flag; showLoose?: Loose };',
+    'wide-constraint':
+      'export type WideConstraintProps<Empty extends {}, Any extends unknown, Union extends string | boolean> = { showEmpty?: Empty; showAny?: Any; showUnion?: Union };',
+    'narrow-constraint':
+      'export type NarrowConstraintProps<Countable extends number, Named extends { id: string }, Callable extends () => void> = { showCountable?: Countable; showNamed?: Named; showCallable?: Callable };',
   };
 
   function buildViolationsByFixture(): Map<
@@ -231,6 +235,21 @@ describe('check-prop-conventions type-aware surface pass', () => {
         .map((violation) => violation.propName)
         .toSorted(),
     ).toEqual(['showFlag', 'showLoose']);
+  });
+
+  // A constraint that demands nothing (`{}`, `unknown`) still admits `true`,
+  // so the ban must stand — resolving the constraint must not become a way to
+  // launder a prefixed boolean past the gate.
+  test('keeps the ban when a constraint is wide enough to admit a boolean', () => {
+    expect(
+      (violationsByFixture.get('wide-constraint') ?? [])
+        .map((violation) => violation.propName)
+        .toSorted(),
+    ).toEqual(['showAny', 'showEmpty', 'showUnion']);
+  });
+
+  test('passes constraints that rule a boolean out', () => {
+    expect(violationsByFixture.get('narrow-constraint')).toEqual([]);
   });
 
   test('passes an undefined-only discriminated-union fence arm', () => {
