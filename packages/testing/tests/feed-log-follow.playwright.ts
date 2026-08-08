@@ -3,14 +3,17 @@ import { expect, test } from '@playwright/test';
 /**
  * Follow-latest scrolling for Feed's log arm (`kind="log"`).
  *
- * The auto-scroll-on-growth path is driven by a real ResizeObserver on the
- * entry list, which happy-dom cannot provide — the unit suite covers the
- * scroll-pause handler, this suite covers the observer wiring:
+ * The auto-scroll path is driven by a real ResizeObserver watching both the
+ * entry list (content growth) and the viewport (its own box shrinking), which
+ * happy-dom cannot provide — the unit suite covers the scroll-pause handler,
+ * this suite covers the observer wiring:
  *
  *   1. an overflowing log opens scrolled to the latest entry (the observer's
  *      initial fire),
  *   2. appended content re-scrolls the viewport while following,
- *   3. scrolling away pauses following (data-cinder-paused + resume control)
+ *   3. shrinking the viewport re-scrolls it while following, with no content
+ *      change at all (the list observer alone cannot see this),
+ *   4. scrolling away pauses following (data-cinder-paused + resume control)
  *      and appended content then does NOT move the reading position.
  */
 
@@ -53,12 +56,50 @@ test.describe('Feed log arm follow-latest', () => {
       .toBeLessThan(2);
   });
 
+  test('shrinking the viewport re-scrolls to the latest entry while following', async ({
+    page,
+  }) => {
+    const viewport = page.locator(VIEWPORT).first();
+    // Grow the list past the 8rem cap first, so the shrink below starts from
+    // a known-pinned position rather than from a viewport that never
+    // overflowed.
+    await viewport.evaluate((el) => {
+      const list = el.querySelector('ol.cinder-feed');
+      if (!list) throw new Error('log list missing');
+      for (let index = 0; index < 5; index += 1) {
+        const item = document.createElement('li');
+        item.className = 'cinder-feed-event';
+        item.textContent = `seed entry ${index}`;
+        item.style.blockSize = '3rem';
+        list.appendChild(item);
+      }
+    });
+    await expect
+      .poll(async () => viewport.evaluate((el) => el.scrollHeight - el.scrollTop - el.clientHeight))
+      .toBeLessThan(2);
+
+    // Shrink the viewport WITHOUT touching the list. The list keeps its size,
+    // so a list-only observer never fires; scrollTop is still in range, so no
+    // scroll event fires either. Only an observer on the viewport can re-pin.
+    await viewport.evaluate((el) => {
+      (el as HTMLElement).style.maxBlockSize = '4rem';
+    });
+    // Guard against a vacuous assertion: the log must still overflow.
+    await expect
+      .poll(async () => viewport.evaluate((el) => el.scrollHeight - el.clientHeight))
+      .toBeGreaterThan(0);
+    await expect
+      .poll(async () => viewport.evaluate((el) => el.scrollHeight - el.scrollTop - el.clientHeight))
+      .toBeLessThan(2);
+  });
+
   test('scrolling away pauses following and appended content stays put', async ({ page }) => {
     const viewport = page.locator(VIEWPORT).first();
     const root = page.locator('.cinder-feed-log').first();
 
-    // Capping the viewport does not resize the LIST, so nothing has scrolled
-    // yet — grow the list once so follow-latest brings us to the bottom.
+    // Capping the viewport already pinned us to the bottom (the viewport
+    // observer); grow the list once so the pause below starts from a
+    // definitely-overflowing, definitely-pinned viewport.
     await viewport.evaluate((el) => {
       const list = el.querySelector('ol.cinder-feed');
       if (!list) throw new Error('log list missing');

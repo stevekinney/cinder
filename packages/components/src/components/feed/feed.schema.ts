@@ -22,7 +22,7 @@ const schema = {
     following: {
       type: 'boolean',
       description:
-        "Log arm only — requires `kind: 'log'`; rejected by the list arm. When\ntrue, appended content automatically scrolls the viewport to the\nbottom. Scrolling away from the bottom pauses following; scrolling back\nto the bottom (or the built-in control) resumes it. Bindable so the\nparent can read the paused state the component sets internally.",
+        "Log arm only — requires `kind: 'log'`; rejected by the list arm. When\ntrue, the viewport scrolls to the bottom whenever appended content\ngrows the entry list — or whenever the viewport itself shrinks, so a\ncollapsing parent layout cannot leave the latest entries below the\nfold. Scrolling away from the bottom pauses following; scrolling back\nto the bottom (or the built-in control) resumes it. Bindable so the\nparent can read the paused state the component sets internally.",
       default: true,
     },
     loading: {
