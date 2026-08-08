@@ -1,5 +1,280 @@
 # @lostgradient/cinder
 
+## 0.22.0
+
+### Minor Changes
+
+- [#1226](https://github.com/stevekinney/cinder/pull/1226) [`8069fc5`](https://github.com/stevekinney/cinder/commit/8069fc5cf551a7cea8481136703e3dbb10d9db05) Thanks [@stevekinney](https://github.com/stevekinney)! - feat(feed)!: cut the chronological family to three — delete EventTimeline, fold EventStreamViewer into Feed
+
+  BREAKING: the chronological display family is now `Timeline` (display),
+  `RunStepTimeline` (execution state), and `Feed` (activity and operational
+  streams). No compatibility aliases are shipped — cinder is pre-release.
+  - **`EventTimeline` is deleted, not repaired.** Four independent reviews
+    concluded its layout model was wrong rather than mistuned. Its subpaths
+    (`@lostgradient/cinder/event-timeline` + `/schema`, `/variables`, `/styles`,
+    `/examples`) and types (`EventTimelineDate/Item/Props/Size/State`) are gone.
+    Its use case — a bounded horizontal window with proportionally positioned
+    events — is out of scope for the family; compose a chart or an external
+    scheduling library.
+  - **`EventStreamViewer` is folded into `Feed`** as the new `kind="log"` arm:
+    a `role="log"` viewport with follow-latest scrolling (pause on scroll-away,
+    resume at bottom or via the built-in control), `loading` skeleton,
+    `truncated` notice, and `connectionState` StatusDot. Migration:
+    - `events` array → authored `{#each}` of `Feed.Event` children (new `tone`
+      prop carries severity on the rail marker; render source/details in the
+      entry body — `JsonViewer` composition replaces built-in detail panels).
+    - Reconnect boundaries and sequence-gap markers → the new compose-only
+      `Feed.Boundary` leaf (`role="separator"`, consumer-owned wording);
+      `detectSequenceGaps` has no replacement — emit boundaries yourself.
+    - `onFilter`/`filterQuery`/`onCopyVisible` → consumer-composed controls via
+      the log arm's `toolbar` snippet.
+    - The built-in empty state (`data-cinder-empty` + "No events to display.")
+      is gone — with authored children the component cannot know the stream is
+      empty; render your own `role="status"` message when your source array is
+      empty.
+    - `following`/`loading`/`truncated`/`connectionState`/`label` carry over
+      unchanged; types `EventSeverity`/`EventStreamState` are replaced by
+      `FeedEventTone`/`FeedConnectionState`.
+  - `Feed.Event` gains `tone?: 'neutral' | 'info' | 'success' | 'warning' |
+'error'` for the rail marker (non-text colour only — pair with distinct
+    icons or wording).
+  - The Timeline "Custom dot styles" example renders real Lucide icons instead
+    of literal `+` / `!` / `x` characters, and `.example.svelte` files may now
+    import `lucide-svelte/icons/*`.
+  - `docs/decisions/chronological-display-boundaries.md` is rewritten for the
+    three-component reality.
+
+- [#1226](https://github.com/stevekinney/cinder/pull/1226) [`8069fc5`](https://github.com/stevekinney/cinder/commit/8069fc5cf551a7cea8481136703e3dbb10d9db05) Thanks [@stevekinney](https://github.com/stevekinney)! - feat(drawer)!: merge Sheet into Drawer behind a `placement` prop
+
+  BREAKING: `Sheet` is gone. `Drawer` now covers all three edges via
+  `placement: 'left' | 'right' | 'bottom'` (default `'right'`), and the
+  `side` prop is renamed to `placement`. No compatibility alias is shipped —
+  cinder is pre-release.
+
+  Migration, former Drawer consumers:
+  - `side="left" | "right"` → `placement="left" | "right"` (default is still `right`)
+  - `DrawerSide` type → `DrawerPlacement`
+  - `data-cinder-side` attribute (CSS/test hooks) → `data-cinder-placement`
+  - Initial focus on open now lands on the body container (unless a child has
+    `[autofocus]`) instead of the first tabbable — the Modal/Sheet policy the
+    Drawer a11y notes already documented.
+  - Header/footer padding tightened to align with Modal
+    (`space-4/space-5` header, `space-3/space-5` footer).
+
+  Migration, former Sheet consumers:
+  - `import { Sheet } from '@lostgradient/cinder/sheet'` →
+    `import { Drawer } from '@lostgradient/cinder/drawer'`
+  - `<Sheet …>` → `<Drawer placement="bottom" …>`; `SheetProps` → `DrawerProps`
+  - `.cinder-sheet*` classes → the `.cinder-drawer*` equivalents;
+    `aria-label="Close sheet"` → `"Close drawer"`
+  - `@lostgradient/cinder/sheet/{schema,variables,styles,examples}` →
+    `/drawer/{…}`
+  - `--cinder-z-sheet` token and `Z_LAYERS.sheet` are removed (both components
+    already rendered at `--cinder-z-modal`).
+  - Geometry is identical under `placement="bottom"` (100% width, 90dvh cap,
+    rounded top corners, optional `dragHandleVisible` drag handle); `size` is
+    ignored for `bottom`.
+
+  Every placement now has an explicit `@starting-style` + closing rule pair, and
+  a unit test pins one per placement (derived from the generated schema enum) so
+  a future edge can't ship a pop-in.
+
+  Also fixed in the shared sliding-dialog layer, affecting Modal too:
+  - Reopening a dialog while its close transition is still running now re-fires
+    the initial-focus policy — previously focus stayed stranded on
+    `document.body` behind the open dialog.
+  - Modal's "focus the body unless a child is autofocused" open behavior
+    actually works now: it ran synchronously before the panel subtree flushed,
+    so the body element never existed when it looked. Both components share one
+    deferred `focusDialogBodyUnlessAutofocused` helper.
+
+- [#1226](https://github.com/stevekinney/cinder/pull/1226) [`8069fc5`](https://github.com/stevekinney/cinder/commit/8069fc5cf551a7cea8481136703e3dbb10d9db05) Thanks [@stevekinney](https://github.com/stevekinney)! - feat!: demote the marketing-section family to documented compositions
+
+  BREAKING: ten marketing-section components stop being standalone components
+  and become documented examples on the primitives they wrap (decision 3 —
+  reversible by design: the composition logic is relocated, not deleted). No
+  compatibility aliases — cinder is pre-release.
+
+  Removed components (each loses its `./<id>` subpath plus `/schema`,
+  `/variables`, `/styles`, `/examples`, and its exported types):
+
+  | Removed             | Recipe now lives on                             |
+  | ------------------- | ----------------------------------------------- |
+  | BlogSection         | `card` — "Blog post grid" example               |
+  | CallToActionSection | `container` — "Call to action" example          |
+  | FeatureSection      | `grid` — "Feature grid" example                 |
+  | HeroSection         | `container` — "Hero section" example            |
+  | LogoCloud           | `grid` — "Logo cloud" example                   |
+  | NewsletterSection   | `input` — "Newsletter signup" example           |
+  | PricingSection      | `pricing-card` — "Pricing section" example      |
+  | StatisticsSection   | `statistic-group` — "Marketing metrics" example |
+  | TeamSection         | `card` — "Team roster" example                  |
+  | TestimonialSection  | `card` — "Testimonial grid" example             |
+
+  **Retained**: `PricingCard` and `StatisticGroup` — both carry genuine
+  behavior (feature de-duplication + selected-state semantics; group
+  labelling + the compound `StatisticGroup.Statistic` namespace) and stay
+  first-class.
+
+  Migration: replace each removed component with the composition shown in its
+  host primitive's example. Notable upgrades baked into the recipes: the blog
+  grid uses the real `Card` component (the old component hand-wrote
+  `cinder-card` classes), and the statistics recipe passes full
+  `StatisticChange` objects including the `label` accessibility field the old
+  flattened `changeValue`/`changeDirection`/`changeDescription` props could
+  not express. Old container-query breakpoints are re-expressed as intrinsic
+  `auto-fit` grids, so collapse points now derive from item width rather than
+  fixed breakpoints.
+
+  Also removed: the internal `PersonByline` helper and `section-skeleton.css`
+  (only this family used them).
+
+- [#1226](https://github.com/stevekinney/cinder/pull/1226) [`8069fc5`](https://github.com/stevekinney/cinder/commit/8069fc5cf551a7cea8481136703e3dbb10d9db05) Thanks [@stevekinney](https://github.com/stevekinney)! - feat(props)!: naming-standardization sweep — polarity, aria spellings, and collision renames
+
+  BREAKING prop renames beyond the value-callback sweep (documented in its own
+  changeset). Same values, same behavior — only the names and, for the
+  visibility props, the polarity change:
+  - **Positive-polarity visibility props** — `hide*` booleans become `*Visible`
+    with a `true` default, so hiding is now an explicit `{false}`:
+    - `hideLabel` → `labelVisible` on FormField, Input, PhoneInput, PinInput,
+      Rating, SegmentedControl, Select, StatusDot, and Toggle
+      (`hideLabel` → `labelVisible={false}`).
+    - DateRangeField `hidePresets` → `presetsVisible`.
+    - DiffStatistics `hideZero` → `zeroVisible`.
+  - **`aria-labelledby` spelling standardized** to `ariaLabelledby` (lowercase
+    `b`, matching the attribute) everywhere the prop appears: ButtonGroup,
+    ChoiceGrid, DropdownGroup, Drawer, MenuBar, Meter, Popover, Progress,
+    TabList, and TabPanel previously used a mix of `labelledBy` and
+    `ariaLabelledBy`.
+  - **SegmentedControl** `disallowEmptySelection` → `selectionRequired`.
+  - **Tree** `disableTypeahead` → `typeaheadDisabled` (adjective-last state
+    name, matching `labelVisible`-style naming).
+  - **Tree item** `draggable` → `reorderHandleVisible` — the old name collided
+    with the native HTML `draggable` attribute.
+  - **PricingCard** `cta` → `callToActionLabel` (no abbreviations in
+    identifiers) and `onSelect` → `onPlanSelect` (names the noun).
+
+  `check:prop-conventions` bans every removed name with a pointed message, so a
+  stale prop fails the gate instead of silently type-erroring.
+
+- [#1226](https://github.com/stevekinney/cinder/pull/1226) [`8069fc5`](https://github.com/stevekinney/cinder/commit/8069fc5cf551a7cea8481136703e3dbb10d9db05) Thanks [@stevekinney](https://github.com/stevekinney)! - feat(props)!: snippet conversions, shared dialog vocabulary, and the FilterBar rename
+
+  BREAKING:
+  - **`FacetedFilterBar` → `FilterBar`** (settled rename): the subpath is now
+    `@lostgradient/cinder/filter-bar`, `FacetedFilterBarProps` is
+    `FilterBarProps`, and the CSS classes are `.cinder-filter-bar*`. The facet
+    model keeps its name — `FacetDefinition`, `FacetOption`, `SelectFacet`,
+    `CustomFacet`, `AppliedFilter`, and the `facets`/`onFacetChange` props are
+    unchanged ("facet" is precise domain vocabulary, not an abbreviation).
+  - **CapabilityGate**: the three parallel action families
+    (`primaryAction`/`onPrimaryAction`, `fallbackAction`/`fallbackHref`/
+    `onFallbackAction`, `dismissAction`) are replaced by one
+    `actions?: Snippet<[{ dismiss: () => void }]>` — compose your own Buttons
+    and links; the provided `dismiss` runs the gate's unmount-and-`onDismiss`
+    path (which `onDismiss` keeps documenting). Focus handling now blurs
+    whichever consumer control triggered the dismissal.
+  - **SourceDiffViewer**: `emptyMessage?: string` becomes `empty?: Snippet`
+    (matching the nine chart/command-family `empty` snippets); the default
+    "No patch lines to display." text remains the fallback, and the schema
+    generator's string special-case is deleted.
+  - **AlertDialog / ConfirmDialog** now share one `DialogCancelProps`
+    vocabulary type (`utilities/dialog-props.ts`) instead of two independent
+    `cancelLabel`/`onCancel` declarations. Labels deliberately stay strings;
+    each dialog documents its own rendering semantics (AlertDialog: no cancel
+    button unless `cancelLabel` is set; ConfirmDialog: always rendered,
+    defaults to "Cancel").
+
+  Non-breaking widenings: `StepItem.label`/`.description` and
+  `PricingCard.caveat` accept `string | Snippet`; `ShareCardAction` gains
+  `labelSnippet?: Snippet` for rich visible content while `label` remains the
+  accessible name.
+
+- [#1226](https://github.com/stevekinney/cinder/pull/1226) [`8069fc5`](https://github.com/stevekinney/cinder/commit/8069fc5cf551a7cea8481136703e3dbb10d9db05) Thanks [@stevekinney](https://github.com/stevekinney)! - feat(props)!: value-carrying callbacks stop squatting on native handler names
+
+  BREAKING: 28 lowercase `onchange`/`oninput`/`onsearch`/`onsubmit` props whose
+  first parameter was a VALUE (not an Event) are renamed to camelCase
+  `on<Noun>Change`-family names, matching the Checkbox/Input/Toggle/Tabs
+  exemplars. Lowercase `on*` names remain reserved for native DOM passthrough.
+
+  | Component                                                                                                                                                                                               | Old → New                                                 |
+  | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+  | autocomplete                                                                                                                                                                                            | `oninput` → `onValueChange`                               |
+  | calendar, color-field, color-swatch-picker, combobox, date-picker, date-range-field, number-input, pin-input, rating, schedule-builder, segmented-control, slider, tag-input, time-field, transfer-list | `onchange` → `onValueChange`                              |
+  | color-picker                                                                                                                                                                                            | `oninput` → `onValueChange`, `onchange` → `onValueCommit` |
+  | file-upload                                                                                                                                                                                             | `onchange` → `onFilesChange`                              |
+  | invocation-rule-builder                                                                                                                                                                                 | `onchange` → `onValueChange` (both arms)                  |
+  | json-schema-editor                                                                                                                                                                                      | `onchange` → `onSchemaChange`                             |
+  | kanban-board                                                                                                                                                                                            | `onchange` → `onColumnsChange`                            |
+  | phone-input                                                                                                                                                                                             | `onchange` → `onValueChange`                              |
+  | schema-form                                                                                                                                                                                             | `onsubmit` → `onSubmit`                                   |
+  | search-field                                                                                                                                                                                            | `oninput` → `onValueChange`, `onsearch` → `onSearch`      |
+  | FacetedFilterBar `CustomFacet.control` snippet                                                                                                                                                          | param `onchange` → `onValueChange`                        |
+
+  Native passthrough handlers (e.g. TagInput's `HTMLInputAttributes` forwards,
+  Backdrop/NavigationItem `onclick`) are unchanged, and the native names stay
+  omitted from rest-attribute surfaces where they were omitted before.
+
+  **This can't recur**: `check:prop-conventions` is now type-aware. It builds
+  one TypeScript program over every `*.types.ts`, resolves each exported Props
+  surface (through aliases, intersections, unions, and non-exported helper
+  types — closing the blind spot that let 20+ components drift), and fails any
+  lowercase `on*` prop whose call signatures don't take an Event-like first
+  parameter (structural probe: `preventDefault`/`stopPropagation`/`bubbles`).
+
+  Cross-package: `@lostgradient/editor`'s review-editor updated for the
+  SegmentedControl rename.
+
+### Patch Changes
+
+- [#1226](https://github.com/stevekinney/cinder/pull/1226) [`8069fc5`](https://github.com/stevekinney/cinder/commit/8069fc5cf551a7cea8481136703e3dbb10d9db05) Thanks [@stevekinney](https://github.com/stevekinney)! - chore(tooling): behavior-first admission bar for new components (decision 8)
+  - The rule — a new component requires behavior, state, or accessibility
+    semantics its parts don't already provide; layout/presentation variations
+    become props, variants, or documented example presets — is now checklist
+    entry `behavior-first-admission` in `component-conventions.ts`, mirrored to
+    all four authoring-checklist copies, spelled out in `packages/components/
+AGENTS.md` § Adding a new component, and recorded in
+    `docs/decisions/component-admission-bar.md`.
+  - New `check:css-duplication` gate (a `lint:invariants` member, registered in
+    the pipeline-coverage table): compares every component sidecar pairwise on
+    a normalized declaration multiset (selectors dropped, private/component-
+    scoped custom properties collapsed, at-rule context kept, compound
+    families exempt) and fails on any ≥80% pair not recorded with a written
+    reason in `css-duplication-baseline.json`. The baseline ships empty — the
+    pre-merge Drawer/Sheet pair was exactly what it exists to catch.
+  - Still-open questions are recorded as `**Status:** Open` decision stubs so
+    they aren't mistaken for settled: ColorField/ColorPicker output format,
+    the `*Group`-vs-plural convention, and SideNavigation vs Sidebar.
+    (Table/DataTable/DataGrid is NOT open — `docs/decisions/
+tabular-families.md` already decides it.)
+
+- [#1230](https://github.com/stevekinney/cinder/pull/1230) [`28113fc`](https://github.com/stevekinney/cinder/commit/28113fcceb35150ece09325bcf627bf0931e9871) Thanks [@stevekinney](https://github.com/stevekinney)! - fix(feed): re-pin the log arm when the viewport resizes
+
+  `Feed` with `kind="log"` only observed the entry list, so a viewport that
+  shrank without a content change — a parent layout shortening, a consumer
+  tightening `max-block-size` — left the reading position stale: the latest
+  entries fell below the fold while `following` stayed `true` and the resume
+  control stayed hidden. The follow effect now observes the viewport as well
+  as the list and re-scrolls to the latest entry on either resize.
+
+- [#1226](https://github.com/stevekinney/cinder/pull/1226) [`8069fc5`](https://github.com/stevekinney/cinder/commit/8069fc5cf551a7cea8481136703e3dbb10d9db05) Thanks [@stevekinney](https://github.com/stevekinney)! - fix(styles): form dropdown option rows adopt the shared `_row-item` primitive
+
+  `combobox`, `autocomplete`, `multi-select`, and `transfer-list` option rows
+  now take their geometry, padding, active fill, keyboard-cursor ring,
+  disabled state, and forced-colors treatment from the shared
+  `cinder-_option-row` primitive instead of three drifted local copies. The
+  shared padding is tuned once at the primitive (`space-1-5` block /
+  `space-2` inline — the tightest of the previous three pairs), so combobox,
+  autocomplete, and transfer-list rows tighten slightly; multi-select is
+  unchanged. Menu/navigation composers (dropdown-item, command-item,
+  navigation-item) keep their own roomier padding overrides.
+
+  Behavior deltas: autocomplete's disabled rows converge on
+  `--cinder-text-disabled` + `cursor: not-allowed`; transfer-list's keyboard
+  cursor drops from a 2px to the system-wide 1px inset ring, gains the shared
+  active fill and a forced-colors outline it lacked, and keeps its deliberate
+  `--cinder-surface-inset` selected fill (selection must stay distinct from
+  the cursor); its disabled rows no longer dim with `opacity`.
+
 ## 0.21.0
 
 ### Minor Changes

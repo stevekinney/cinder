@@ -22,7 +22,7 @@
     },
     "packages/chat": {
       "name": "@lostgradient/chat",
-      "version": "0.6.0",
+      "version": "0.7.0",
       "dependencies": {
         "conversationalist": "^0.5.0",
         "zod": "4.4.1",
@@ -43,14 +43,14 @@
         "typescript": "^5.9.0",
       },
       "peerDependencies": {
-        "@lostgradient/cinder": "^0.21.0",
+        "@lostgradient/cinder": "^0.22.0",
         "@lostgradient/markdown": "^0.2.0",
         "svelte": ">=5.56.0 <6",
       },
     },
     "packages/components": {
       "name": "@lostgradient/cinder",
-      "version": "0.21.0",
+      "version": "0.22.0",
       "bin": {
         "cinder": "./dist/cli/index.js",
       },
@@ -177,7 +177,7 @@
     },
     "packages/mcp": {
       "name": "@lostgradient/cinder-mcp",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "bin": {
         "cinder-mcp": "./dist/bin.js",
       },
