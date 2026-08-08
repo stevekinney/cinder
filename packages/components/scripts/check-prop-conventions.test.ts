@@ -148,6 +148,11 @@ describe('check-prop-conventions type-aware surface pass', () => {
     // interface, and a structural constraint satisfied by Boolean.prototype.
     'boolean-wrapper':
       'export type BooleanWrapperProps<Valued extends { valueOf(): boolean }> = { showWrapped?: Boolean; showValued?: Valued };',
+    // Deferred types: nothing is assignable to either while the type argument
+    // is unresolved, but `Deferred<true>` / `Indexed<{ flag: boolean }>` both
+    // expose a boolean.
+    'deferred-type':
+      'export type DeferredTypeProps<Flag extends boolean, Bag extends { flag: boolean }> = { showState?: Flag extends true ? boolean : number; showIndexed?: Bag["flag"] };',
   };
 
   function buildViolationsByFixture(): Map<
@@ -264,6 +269,16 @@ describe('check-prop-conventions type-aware surface pass', () => {
         .map((violation) => violation.propName)
         .toSorted(),
     ).toEqual(['showValued', 'showWrapped']);
+  });
+
+  // Nothing is assignable to an unresolved conditional or indexed access, so
+  // the assignability probe alone would clear both.
+  test('keeps the ban on deferred types that some instantiation makes boolean', () => {
+    expect(
+      (violationsByFixture.get('deferred-type') ?? [])
+        .map((violation) => violation.propName)
+        .toSorted(),
+    ).toEqual(['showIndexed', 'showState']);
   });
 
   test('passes an undefined-only discriminated-union fence arm', () => {

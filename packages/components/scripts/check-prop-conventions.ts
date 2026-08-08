@@ -220,6 +220,10 @@ const booleanPrefixPattern = /^(show|allow|use|hide|disable|disallow)[A-Z]/;
 // able to vouch for.
 const OPAQUE_TYPE_FLAGS = ts.TypeFlags.Any | ts.TypeFlags.Unknown;
 
+// Types whose resolution waits on a type argument, so no instantiation-time
+// answer exists during the surface scan.
+const DEFERRED_TYPE_FLAGS = ts.TypeFlags.Conditional | ts.TypeFlags.IndexedAccess;
+
 /**
  * Whether a polarity-prefixed prop can actually hold a boolean, which is the
  * only case the show/hide/disable prefix ban is about. `boolean` resolves to a
@@ -245,6 +249,13 @@ function canHoldBoolean(type: ts.Type, checker: ts.TypeChecker): boolean {
     const constraint = checker.getBaseConstraintOfType(type);
     return constraint ? isBooleanLikePropType(constraint, checker) : true;
   }
+  // A deferred type — an unresolved conditional or indexed access — has no
+  // single answer while the generic surface is being scanned. Nothing is
+  // assignable to `T extends true ? boolean : number` yet, so the probe below
+  // would clear it even though `Props<true>` exposes a boolean. Keep the ban,
+  // as with any other type the checker cannot vouch for.
+  if ((type.flags & DEFERRED_TYPE_FLAGS) !== 0) return true;
+
   // The real question for everything else is assignability: can this type
   // hold `true`? Flags cannot answer it — `{}`, `unknown`, `Boolean` and
   // `{ valueOf(): boolean }` all accept a boolean while carrying no
