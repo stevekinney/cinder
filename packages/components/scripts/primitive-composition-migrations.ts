@@ -65,7 +65,7 @@ export const allowedGridCounts = new Map<string, number>(
     'calendar/calendar.css',
     'data-grid/data-grid.css',
     'date-picker/date-picker.css',
-    'feed/feed.css',
+    'feed-event/feed-event.css',
     'form-section/form-section.css',
     'grid/grid.css',
     'phone-input/phone-input.css',
