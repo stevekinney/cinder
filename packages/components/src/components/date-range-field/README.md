@@ -22,7 +22,7 @@ Values are ISO-8601 local strings. `granularity="day"` emits `YYYY-MM-DD`; time 
   id="event-time-filter"
   label="Time window"
   bind:value={range}
-  onchange={(next) => {
+  onValueChange={(next) => {
     range = next;
   }}
 />

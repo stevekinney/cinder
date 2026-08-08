@@ -596,7 +596,7 @@
             aria-label="{activePickerToken.name} CSS value"
             autocomplete="off"
             spellcheck={false}
-            onValueChange={(event) => handleTokenInput(activePickerToken.name, event)}
+            oninput={(event) => handleTokenInput(activePickerToken.name, event)}
           />
         </div>
       {/if}

@@ -24,22 +24,6 @@ const schema = {
       description: 'Presentation variant.',
       default: 'inline',
     },
-    primaryAction: {
-      type: 'string',
-      description: 'Label for the primary action button.',
-    },
-    fallbackAction: {
-      type: 'string',
-      description: 'Label for the fallback action.',
-    },
-    fallbackHref: {
-      type: 'string',
-      description: 'Href for a fallback link.',
-    },
-    dismissAction: {
-      type: 'string',
-      description: 'Label for the dismiss action.',
-    },
     class: {
       type: 'string',
       description: 'Additional class names merged with `.cinder-capability-gate`.',
@@ -52,8 +36,7 @@ const schema = {
       {
         name: 'actions',
         reason: 'function-or-snippet',
-        description:
-          'Action row content — compose your own Buttons/links (primary, fallback,\ndismiss, anything else). The snippet receives a `dismiss` function that\nruns the gate\'s own unmount-and-`onDismiss` path, so a consumer dismiss\nbutton gets the component\'s focus handling for free:\n\n```svelte\n{#snippet actions({ dismiss })}\n  <Button label="Allow access" onclick={requestAccess} />\n  <Button variant="secondary" label="Not now" onclick={dismiss} />\n{/snippet}\n```',
+        description: "Action row content; receives the gate's own `dismiss` function.",
       },
       {
         name: 'children',
@@ -64,16 +47,6 @@ const schema = {
         name: 'onDismiss',
         reason: 'function-or-snippet',
         description: 'Called when the gate is dismissed.',
-      },
-      {
-        name: 'onFallbackAction',
-        reason: 'function-or-snippet',
-        description: 'Called when the fallback action button is activated.',
-      },
-      {
-        name: 'onPrimaryAction',
-        reason: 'function-or-snippet',
-        description: 'Called when the primary action button is activated.',
       },
     ],
   },

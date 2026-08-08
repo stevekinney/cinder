@@ -64,10 +64,10 @@
 @import '../components/drawer/drawer.css';
 @import '../components/dropdown/dropdown.css';
 @import '../components/empty-state/empty-state.css';
-@import '../components/filter-bar/filter-bar.css';
 @import '../components/feed/feed.css';
 @import './components/experimental.css';
 @import '../components/file-upload/file-upload.css';
+@import '../components/filter-bar/filter-bar.css';
 @import '../components/floating-action/floating-action.css';
 @import '../components/form-field/form-field.css';
 @import '../components/form-section/form-section.css';

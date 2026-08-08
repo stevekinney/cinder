@@ -21,7 +21,7 @@ Numeric text input with increment and decrement stepper controls.
   value={quantity}
   min={1}
   max={99}
-  onchange={handleChange}
+  onValueChange={handleChange}
 />
 <p style="margin-top: 0.5rem; color: var(--cinder-text-muted);">
   Value: {quantity ?? 'empty'}

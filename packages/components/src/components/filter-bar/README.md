@@ -91,8 +91,14 @@ Use `type: 'custom'` with a `control` snippet for any facet that cannot be expre
   import type { FacetDefinition } from '@lostgradient/cinder/filter-bar';
 </script>
 
-{#snippet dateRangeControl({ value, onchange }: { value: string; onchange: (v: string) => void })}
-  <!-- render your date-range control here; call onchange(value) on selection -->
+{#snippet dateRangeControl({
+  value,
+  onValueChange,
+}: {
+  value: string;
+  onValueChange: (v: string) => void;
+})}
+  <!-- render your date-range control here; call onValueChange(value) on selection -->
 {/snippet}
 
 <FilterBar
@@ -162,7 +168,7 @@ type CustomFacet = {
   type: 'custom';
   key: string;
   label: string;
-  control: Snippet<[{ value: string; onchange: (value: string) => void }]>;
+  control: Snippet<[{ value: string; onValueChange: (value: string) => void }]>;
 };
 ```
 

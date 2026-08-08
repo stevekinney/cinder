@@ -19,7 +19,7 @@ announces results, and can render consumer-driven upload progress rows.
     id="resume"
     accept=".pdf"
     maxSize={5 * 1024 * 1024}
-    onchange={(accepted) => {
+    onFilesChange={(accepted) => {
       files = accepted.map((file) => ({
         id: crypto.randomUUID(),
         file,

@@ -370,14 +370,55 @@ export function createPropsProgram(typesFiles: readonly string[]): ts.Program {
   return ts.createProgram([...typesFiles], { ...parsed.options, noEmit: true });
 }
 
+/**
+ * Only files that textually declare a lowercase native-named handler need the
+ * (expensive) type-aware pass — the Event-parameter gate is its unique rule.
+ * The syntactic pass keeps covering banned names, boolean prefixes, and the
+ * lowercase-vs-camelCase shape for every file. The prefilter shrinks the
+ * program to the ~15 files that qualify (and skips it entirely when none
+ * do); the remaining ~10-20s cost is the ts.Program bootstrap (lib.dom +
+ * svelte type resolution), the accepted price of a checker-backed gate.
+ */
+const NATIVE_HANDLER_TEXT_PATTERN =
+  /\bon(?:click|change|input|keydown|keyup|focus|blur|search|submit)\??\s*[:(]/;
+
 async function scan(): Promise<PropConventionViolation[]> {
   const glob = new Glob('src/components/**/*.types.ts');
-  const typesFiles: string[] = [];
+  const violations = new Map<string, PropConventionViolation>();
+  const record = (violation: PropConventionViolation) => {
+    violations.set(
+      `${violation.filePath}:${violation.line}:${violation.propName}:${violation.message}`,
+      violation,
+    );
+  };
+
+  const typeAwareCandidates: string[] = [];
   for await (const relativePath of glob.scan({ cwd: packageRoot })) {
-    typesFiles.push(resolve(packageRoot, relativePath));
+    const absolutePath = resolve(packageRoot, relativePath);
+    const source = await Bun.file(absolutePath).text();
+    const filePath = relative(repositoryRoot, absolutePath);
+    for (const violation of collectPropConventionViolations(source, filePath)) {
+      record(violation);
+    }
+    if (NATIVE_HANDLER_TEXT_PATTERN.test(source)) {
+      typeAwareCandidates.push(absolutePath);
+    }
   }
-  const program = createPropsProgram(typesFiles);
-  return collectResolvedSurfaceViolations(program, typesFiles);
+
+  if (typeAwareCandidates.length > 0) {
+    const program = createPropsProgram(typeAwareCandidates);
+    for (const violation of collectResolvedSurfaceViolations(program, typeAwareCandidates)) {
+      record(violation);
+    }
+  }
+
+  return [...violations.values()].toSorted((left, right) =>
+    left.filePath === right.filePath
+      ? left.line - right.line
+      : left.filePath < right.filePath
+        ? -1
+        : 1,
+  );
 }
 
 async function main() {

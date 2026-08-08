@@ -231,8 +231,22 @@
     outline: none;
   }
 
+  /* Inset ring (Strategy B-inset — the root clips overflow), with the
+   forced-colors outline twin the retired EventStreamViewer carried:
+   Windows High Contrast suppresses box-shadow, and the layer order means
+   the base rule's `outline: none` would otherwise leave this keyboard-
+   focusable role="log" viewport with no indication at all. */
   .cinder-feed-log__viewport:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
     box-shadow: inset 0 0 0 var(--cinder-ring-width) var(--cinder-ring-color);
+  }
+
+  @media (forced-colors: active) {
+    .cinder-feed-log__viewport:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: calc(var(--cinder-ring-width) * -1);
+      box-shadow: none;
+    }
   }
 
   .cinder-feed-log__loading {

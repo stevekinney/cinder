@@ -13,7 +13,7 @@ A text input that validates and normalizes hex, `rgb()`, and `hsl()` color strin
 </script>
 
 <FormField id="accent" label="Accent color">
-  <ColorField id="accent" value={color} onchange={(next) => (color = next)} />
+  <ColorField id="accent" value={color} onValueChange={(next) => (color = next)} />
 </FormField>
 ```
 

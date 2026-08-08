@@ -67,20 +67,10 @@ export interface CapabilityGateSchemaProps {
    * @default "inline"
    */
   variant?: CapabilityGateVariant;
-  /** Label for the primary action button. */
-  primaryAction?: string;
-  /** Label for the fallback action. */
-  fallbackAction?: string;
-  /** Href for a fallback link. */
-  fallbackHref?: string;
-  /** Label for the dismiss action. */
-  dismissAction?: string;
   /** Additional class names merged with `.cinder-capability-gate`. */
   class?: string;
-  /** Called when the primary action button is activated. */
-  onPrimaryAction?: () => void;
-  /** Called when the fallback action button is activated. */
-  onFallbackAction?: () => void;
+  /** Action row content; receives the gate's own `dismiss` function. */
+  actions?: Snippet<[{ dismiss: () => void }]>;
   /** Called when the gate is dismissed. */
   onDismiss?: () => void;
   /** Custom content rendered below the status text and before the actions. */

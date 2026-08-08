@@ -26,12 +26,12 @@ Render an accessible form from a JSON Schema object and submit one validated val
   }
 </script>
 
-<SchemaForm {schema} name="payload" onDraftChange={mirrorDraft} onsubmit={save} />
+<SchemaForm {schema} name="payload" onDraftChange={mirrorDraft} onSubmit={save} />
 ```
 
-`SchemaForm` always renders a real `<form>` and a hidden serialized output field. After valid submission, `readSchemaFormData(new FormData(form), 'payload')` returns the same object delivered to `onsubmit`.
+`SchemaForm` always renders a real `<form>` and a hidden serialized output field. After valid submission, `readSchemaFormData(new FormData(form), 'payload')` returns the same object delivered to `onSubmit`.
 
-The three value channels have distinct ownership. `value` seeds internal state on mount and is not a live binding, so later `value` changes do not discard active edits. `onDraftChange` reports the complete current draft after each edit, before schema validation, so consumers can mirror nested or temporarily invalid values. In-progress numeric editors and temporarily unparseable JSON fields are reported as their current raw text until the value commits or parses successfully. `onsubmit` reports only schema-valid output after submission.
+The three value channels have distinct ownership. `value` seeds internal state on mount and is not a live binding, so later `value` changes do not discard active edits. `onDraftChange` reports the complete current draft after each edit, before schema validation, so consumers can mirror nested or temporarily invalid values. In-progress numeric editors and temporarily unparseable JSON fields are reported as their current raw text until the value commits or parses successfully. `onSubmit` reports only schema-valid output after submission.
 
 ## Props
 

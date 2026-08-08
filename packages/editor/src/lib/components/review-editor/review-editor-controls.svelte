@@ -145,7 +145,7 @@
         added={diffStats.added}
         removed={diffStats.removed}
         modified={diffStats.modified}
-        hideZero
+        zeroVisible={false}
       />
     {/if}
 

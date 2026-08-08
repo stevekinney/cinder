@@ -31,7 +31,7 @@ A recurrence-definition control. Users author a schedule via friendly presets (e
 
 <ScheduleBuilder
   {value}
-  onchange={(next) => (value = next)}
+  onValueChange={(next) => (value = next)}
   {computeNextFires}
   timezoneLabel="America/New_York"
   label="Job schedule"

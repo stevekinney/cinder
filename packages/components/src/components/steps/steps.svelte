@@ -84,7 +84,7 @@
             onclick={step.onclick}
             aria-current={isCurrent ? 'step' : undefined}
           >
-            {@render stepBody(stepLabel, state, completedLabel, skippedLabel, stepDescription)}
+            {@render stepBody(stepLabel, stepDescription, state, completedLabel, skippedLabel)}
           </a>
         {:else if step.onclick}
           <button
@@ -93,11 +93,11 @@
             onclick={step.onclick}
             aria-current={isCurrent ? 'step' : undefined}
           >
-            {@render stepBody(stepLabel, state, completedLabel, skippedLabel, stepDescription)}
+            {@render stepBody(stepLabel, stepDescription, state, completedLabel, skippedLabel)}
           </button>
         {:else}
           <span class="cinder-steps__body">
-            {@render stepBody(stepLabel, state, completedLabel, skippedLabel, stepDescription)}
+            {@render stepBody(stepLabel, stepDescription, state, completedLabel, skippedLabel)}
           </span>
         {/if}
         {#if index < steps.length - 1}
@@ -114,10 +114,10 @@
 
 {#snippet stepBody(
   bodyLabel: string | Snippet,
+  bodyDescription: undefined | string | Snippet,
   bodyState: StepItemState,
   bodyCompletedLabel: string,
   bodySkippedLabel: string,
-  bodyDescription?: string | Snippet,
 )}
   <span class="cinder-steps__body-content">
     {#if bodyState === 'complete'}

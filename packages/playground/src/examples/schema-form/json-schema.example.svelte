@@ -37,7 +37,7 @@
     value={{ name: 'Refresh indexes', retries: 2, enabled: true, cadence: 'daily' }}
     submitLabel="Save schedule"
     onDraftChange={handleDraftChange}
-    onsubmit={handleSubmit}
+    onSubmit={handleSubmit}
   />
 
   <section>

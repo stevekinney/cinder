@@ -44,7 +44,7 @@ Cinder does not execute, validate, or persist rules. The consumer provides the c
 
 <InvocationRuleBuilder
   {rules}
-  onchange={handleChange}
+  onValueChange={handleChange}
   {fieldOptions}
   {operatorOptions}
   {actionOptions}
@@ -122,7 +122,7 @@ Pass `mode="conditions"` to render conditions without actions — for example, a
 
 <InvocationRuleBuilder
   {rules}
-  onchange={handleChange}
+  onValueChange={handleChange}
   {fieldOptions}
   mode="conditions"
   label="Alert filter conditions"
