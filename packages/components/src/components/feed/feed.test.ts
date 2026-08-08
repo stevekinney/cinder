@@ -169,11 +169,13 @@ describe('Feed', () => {
     const railBlock = css.match(/\.cinder-feed-event-rail\s*\{[^}]*\}/)?.[0] ?? '';
     const connectorBlock = css.match(/\.cinder-feed-event::after\s*\{[^}]*\}/)?.[0] ?? '';
 
-    expect(eventBlock).toContain('--cinder-feed-rail-size: var(--cinder-space-6)');
-    expect(railBlock).toContain('inline-size: var(--cinder-feed-rail-size)');
-    expect(railBlock).toContain('block-size: var(--cinder-feed-rail-size)');
-    expect(connectorBlock).toContain('inset-block-start: var(--cinder-feed-rail-size)');
-    expect(connectorBlock).toContain('inset-inline-start: calc(var(--cinder-feed-rail-size) / 2)');
+    expect(eventBlock).toContain('--cinder-feed-event-rail-size: var(--cinder-space-6)');
+    expect(railBlock).toContain('inline-size: var(--cinder-feed-event-rail-size)');
+    expect(railBlock).toContain('block-size: var(--cinder-feed-event-rail-size)');
+    expect(connectorBlock).toContain('inset-block-start: var(--cinder-feed-event-rail-size)');
+    expect(connectorBlock).toContain(
+      'inset-inline-start: calc(var(--cinder-feed-event-rail-size) / 2)',
+    );
     expect(connectorBlock).not.toContain('inset-block-start: var(--cinder-space-6)');
     expect(connectorBlock).not.toContain('inset-inline-start: calc(var(--cinder-space-6) / 2)');
   });

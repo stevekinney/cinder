@@ -31,7 +31,7 @@ snippet. The flat `@lostgradient/cinder/feed-event` subpath remains exported for
 
 <!-- generated:variables:start -->
 
-- `--cinder-feed-rail-size`
+- `--cinder-feed-event-rail-size`
 <!-- generated:variables:end -->
 
 ## Subcomponents

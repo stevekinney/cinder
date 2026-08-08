@@ -2,13 +2,13 @@
 @layer cinder.components {
   /* ========================================
  * FEED EVENT
- * A Feed entry: rail marker + body. The `--cinder-feed-rail-size` box and
+ * A Feed entry: rail marker + body. The `--cinder-feed-event-rail-size` box and
  * the connector geometry couple to the parent `.cinder-feed` list gap
  * (--cinder-space-4) — see the connector comment below.
  * ======================================== */
 
   .cinder-feed-event {
-    --cinder-feed-rail-size: var(--cinder-space-6);
+    --cinder-feed-event-rail-size: var(--cinder-space-6);
 
     position: relative;
     display: grid;
@@ -22,8 +22,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    inline-size: var(--cinder-feed-rail-size);
-    block-size: var(--cinder-feed-rail-size);
+    inline-size: var(--cinder-feed-event-rail-size);
+    block-size: var(--cinder-feed-event-rail-size);
     border-radius: var(--cinder-radius-full);
     background: var(--cinder-surface-inset);
     color: var(--cinder-text-muted);
@@ -55,9 +55,9 @@
   .cinder-feed-event::after {
     content: '';
     position: absolute;
-    inset-block-start: var(--cinder-feed-rail-size);
+    inset-block-start: var(--cinder-feed-event-rail-size);
     inset-block-end: calc(-1 * var(--cinder-space-4));
-    inset-inline-start: calc(var(--cinder-feed-rail-size) / 2);
+    inset-inline-start: calc(var(--cinder-feed-event-rail-size) / 2);
     inline-size: 1px;
     background: var(--cinder-border-muted);
     transform: translateX(-50%);
