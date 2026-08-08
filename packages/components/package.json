@@ -2137,6 +2137,10 @@
       "import": "./src/components/feed-boundary/feed-boundary.variables.ts",
       "default": "./dist/components/feed-boundary/feed-boundary.variables.js"
     },
+    "./feed-boundary/styles": {
+      "types": "./dist/components/feed-boundary/feed-boundary.css.d.ts",
+      "default": "./dist/components/feed-boundary/feed-boundary.css"
+    },
     "./feed-event": {
       "types": "./dist/components/feed-event/index.d.ts",
       "browser": "./src/components/feed-event/index.ts",

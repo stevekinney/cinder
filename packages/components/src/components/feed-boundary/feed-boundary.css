@@ -1,0 +1,34 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@layer cinder.components {
+  /* ========================================
+ * FEED BOUNDARY
+ * role="separator" markers (reconnects, gaps) authored by the consumer
+ * between Feed events.
+ * ======================================== */
+
+  .cinder-feed-boundary {
+    display: flex;
+    align-items: center;
+    gap: var(--cinder-space-2);
+    color: var(--cinder-text-muted);
+    font-size: var(--cinder-text-xs);
+  }
+
+  .cinder-feed-boundary::before,
+  .cinder-feed-boundary::after {
+    content: '';
+    flex: 1;
+    block-size: 1px;
+    background: var(--cinder-border-muted);
+  }
+
+  .cinder-feed-boundary__content {
+    display: flex;
+    align-items: center;
+    gap: var(--cinder-space-2);
+  }
+
+  .cinder-feed-boundary__time {
+    color: var(--cinder-text-subtle);
+  }
+}

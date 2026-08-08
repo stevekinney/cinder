@@ -1,8 +1,11 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
 /* Compound composition aggregation: the log arm renders StatusDot internally,
  * so `cinder/feed/styles` must include its styling when consumers import the
- * component-specific style sidecar. */
+ * component-specific style sidecar. Likewise the Feed.Boundary leaf — its
+ * rules live in its own sidecar for standalone use, and the family sidecar
+ * pulls them in. */
 @import '../status-dot/status-dot.css';
+@import '../feed-boundary/feed-boundary.css';
 
 @layer cinder.components {
   /* ========================================
@@ -285,36 +288,5 @@
     .cinder-feed-log__skeleton {
       animation: none;
     }
-  }
-
-  /* ----------------------------------------
-   * Boundary entries — role="separator" markers (reconnects, gaps) authored
-   * by the consumer between events.
-   * -------------------------------------- */
-
-  .cinder-feed-boundary {
-    display: flex;
-    align-items: center;
-    gap: var(--cinder-space-2);
-    color: var(--cinder-text-muted);
-    font-size: var(--cinder-text-xs);
-  }
-
-  .cinder-feed-boundary::before,
-  .cinder-feed-boundary::after {
-    content: '';
-    flex: 1;
-    block-size: 1px;
-    background: var(--cinder-border-muted);
-  }
-
-  .cinder-feed-boundary__content {
-    display: flex;
-    align-items: center;
-    gap: var(--cinder-space-2);
-  }
-
-  .cinder-feed-boundary__time {
-    color: var(--cinder-text-subtle);
   }
 }

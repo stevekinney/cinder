@@ -1,3 +1,4 @@
+import './feed-boundary.css';
 import FeedBoundary from './feed-boundary.svelte';
 
 export default FeedBoundary;
