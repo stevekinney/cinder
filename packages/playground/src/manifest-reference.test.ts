@@ -321,6 +321,8 @@ describe('toPropReferenceRows — Button (real manifest)', () => {
 });
 
 describe('isComponentManifest — every real manifest survives the round trip', () => {
+  // Analyzes EVERY real component (150+) — genuine integration work that sits
+  // right at the 5s default timeout on CI hardware, so it gets its own budget.
   it('accepts every analyzed component after JSON serialization', async () => {
     // The documentation payload is validated as a WHOLE before the page renders
     // it, so one control kind this guard does not recognise fails the entire
@@ -339,7 +341,7 @@ describe('isComponentManifest — every real manifest survives the round trip', 
       .filter((manifest) => !isComponentManifest(JSON.parse(JSON.stringify(manifest))))
       .map((manifest) => manifest.kebabName);
     expect(rejected).toEqual([]);
-  });
+  }, 30_000);
 });
 
 describe('isComponentManifest', () => {
