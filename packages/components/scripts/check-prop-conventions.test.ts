@@ -135,6 +135,11 @@ describe('check-prop-conventions type-aware surface pass', () => {
       'export type BooleanPrefixProps = { showSearch?: boolean; useNativeShare?: boolean | undefined };',
     'non-boolean-prefix':
       'export type NonBooleanPrefixProps = { hideDelay?: number; showCount?: number; disableReason?: string };',
+    'boolean-fence-arm': 'export type BooleanFenceArmProps = { showSearch?: undefined };',
+    'opaque-prefix':
+      'export type OpaquePrefixProps = { showSearch?: unknown; useNativeShare?: any };',
+    'generic-prefix':
+      'export type GenericPrefixProps<Item extends { id: string }, Flag extends boolean, Loose> = { showItem?: Item; showFlag?: Flag; showLoose?: Loose };',
   };
 
   function buildViolationsByFixture(): Map<
@@ -201,6 +206,31 @@ describe('check-prop-conventions type-aware surface pass', () => {
 
   test('passes a polarity-prefixed name whose resolved type is not boolean', () => {
     expect(violationsByFixture.get('non-boolean-prefix')).toEqual([]);
+  });
+
+  test('passes an undefined-only fence arm on a polarity-prefixed name', () => {
+    expect(violationsByFixture.get('boolean-fence-arm')).toEqual([]);
+  });
+
+  // Fails closed: `any`/`unknown` tell the checker nothing, so dropping
+  // OPAQUE_TYPE_FLAGS from the probe must not let the ban lapse silently.
+  test('keeps the polarity ban when the resolved type is opaque', () => {
+    expect(
+      (violationsByFixture.get('opaque-prefix') ?? [])
+        .map((violation) => violation.propName)
+        .toSorted(),
+    ).toEqual(['showSearch', 'useNativeShare']);
+  });
+
+  // A type parameter is judged by its constraint, so a provably non-boolean
+  // generic is the same false positive as `hideDelay?: number`; an
+  // unconstrained one keeps the ban.
+  test('resolves type parameters through their constraint', () => {
+    expect(
+      (violationsByFixture.get('generic-prefix') ?? [])
+        .map((violation) => violation.propName)
+        .toSorted(),
+    ).toEqual(['showFlag', 'showLoose']);
   });
 
   test('passes an undefined-only discriminated-union fence arm', () => {

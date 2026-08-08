@@ -215,9 +215,10 @@ function isNativePassthroughHandlerType(propType: ts.Type, checker: ts.TypeCheck
 
 const booleanPrefixPattern = /^(show|allow|use|hide|disable|disallow)[A-Z]/;
 
-// `any`/`unknown`/an unresolved type parameter tell the checker nothing, so
-// the name-based ban stands rather than silently lapsing.
-const OPAQUE_TYPE_FLAGS = ts.TypeFlags.Any | ts.TypeFlags.Unknown | ts.TypeFlags.TypeParameter;
+// `any`/`unknown` tell the checker nothing, so the name-based ban stands
+// rather than silently lapsing on exactly the surfaces the checker is least
+// able to vouch for.
+const OPAQUE_TYPE_FLAGS = ts.TypeFlags.Any | ts.TypeFlags.Unknown;
 
 /**
  * Whether a polarity-prefixed prop can actually hold a boolean, which is the
@@ -226,13 +227,24 @@ const OPAQUE_TYPE_FLAGS = ts.TypeFlags.Any | ts.TypeFlags.Unknown | ts.TypeFlags
  * nullish arms; a nullish-only arm is a discriminated-union fence with
  * nothing to set, and an opaque type keeps the ban.
  */
-function isBooleanLikePropType(type: ts.Type): boolean {
+function isBooleanLikePropType(type: ts.Type, checker: ts.TypeChecker): boolean {
   const constituents = type.isUnion() ? type.types : [type];
   const substantive = constituents.filter((constituent) => !isNullishType(constituent));
   if (substantive.length === 0) return false;
-  return substantive.some(
-    (constituent) => (constituent.flags & (ts.TypeFlags.BooleanLike | OPAQUE_TYPE_FLAGS)) !== 0,
-  );
+  return substantive.some((constituent) => canHoldBoolean(constituent, checker));
+}
+
+function canHoldBoolean(type: ts.Type, checker: ts.TypeChecker): boolean {
+  if ((type.flags & ts.TypeFlags.BooleanLike) !== 0) return true;
+  // A bare type parameter says nothing on its own, but its constraint does:
+  // `Item extends { id: string }` can never be a boolean, so a generic
+  // `showItem?: Item` is the same false positive as `hideDelay?: number`.
+  // An unconstrained parameter still keeps the ban.
+  if ((type.flags & ts.TypeFlags.TypeParameter) !== 0) {
+    const constraint = checker.getBaseConstraintOfType(type);
+    return constraint ? isBooleanLikePropType(constraint, checker) : true;
+  }
+  return (type.flags & OPAQUE_TYPE_FLAGS) !== 0;
 }
 
 function propsSurfaceNamesIn(sourceFile: ts.SourceFile): ts.Identifier[] {
@@ -302,7 +314,7 @@ export function collectResolvedSurfaceViolations(
 
           if (booleanPrefixPattern.test(propName)) {
             const propertyType = checker.getTypeOfSymbolAtLocation(property, site.declaration);
-            if (isBooleanLikePropType(propertyType)) {
+            if (isBooleanLikePropType(propertyType, checker)) {
               record({
                 filePath,
                 line,
