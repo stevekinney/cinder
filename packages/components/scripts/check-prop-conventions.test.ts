@@ -129,6 +129,8 @@ describe('check-prop-conventions type-aware surface pass', () => {
     'banned-name': 'export type BannedNameProps = { hideLabel?: boolean };',
     'pointer-forward':
       'export type PointerForwardProps = { onpointerdown?: (event: PointerEvent) => void; onwheel?: (event: WheelEvent) => void };',
+    'non-callable':
+      'export type NonCallableProps = { onchange?: string; onmark?: ((event: Event) => void) | string };',
   };
 
   function buildViolationsByFixture(): Map<
@@ -172,6 +174,14 @@ describe('check-prop-conventions type-aware surface pass', () => {
 
   test('passes native handlers outside any name allowlist when the signature is a passthrough', () => {
     expect(violationsByFixture.get('pointer-forward')).toEqual([]);
+  });
+
+  test('flags non-callable and mixed callable/non-callable lowercase on* props', () => {
+    const violations = violationsByFixture.get('non-callable') ?? [];
+    expect(violations.map((violation) => violation.propName).toSorted()).toEqual([
+      'onchange',
+      'onmark',
+    ]);
   });
 
   test('passes an undefined-only discriminated-union fence arm', () => {

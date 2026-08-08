@@ -63,7 +63,7 @@ text label is what names the element; the icon is decoration.
 
 ## Mobile drawer behavior
 
-Below `md`, Sidebar renders inside `<Drawer side="left" size="md">`. The
+Below `md`, Sidebar renders inside `<Drawer placement="left" size="md">`. The
 `collapsed` prop maps to drawer state:
 
 - `collapsed=false` → drawer open

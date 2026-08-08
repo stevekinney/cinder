@@ -4,7 +4,7 @@ A presentation component for building and reviewing conditional automation rules
 
 ## Ownership boundary
 
-Cinder does not execute, validate, or persist rules. The consumer provides the complete rule model through the `rules` prop and handles every change emitted by `onchange`. Cinder is responsible only for rendering the controls with correct accessible names and emitting pure (non-mutating) change descriptors.
+Cinder does not execute, validate, or persist rules. The consumer provides the complete rule model through the `rules` prop and handles every change emitted by `onValueChange`. Cinder is responsible only for rendering the controls with correct accessible names and emitting pure (non-mutating) change descriptors.
 
 ## Usage
 
@@ -79,7 +79,7 @@ A rule fires when ALL of its conditions match (implicit AND). Boolean grouping, 
 
 ## Modes
 
-Pass `readonly={true}` to render a read-only summary instead of editable controls. Schema-driven usage is read-only because callbacks are not representable in JSON Schema. Runtime consumers can render editable controls by passing `onchange` and leaving `readonly` false.
+Pass `readonly={true}` to render a read-only summary instead of editable controls. Schema-driven usage is read-only because callbacks are not representable in JSON Schema. Runtime consumers can render editable controls by passing `onValueChange` and leaving `readonly` false.
 
 ### Conditions-only mode
 

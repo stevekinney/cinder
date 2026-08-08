@@ -17,7 +17,7 @@ A text input that validates and normalizes hex, `rgb()`, and `hsl()` color strin
 </FormField>
 ```
 
-`value` is bindable. Use `bind:value` when parent state should track the committed canonical hex value, or pass `value` with `onchange` when you want to persist commits explicitly.
+`value` is bindable. Use `bind:value` when parent state should track the committed canonical hex value, or pass `value` with `onValueChange` when you want to persist commits explicitly.
 
 ## Behavior
 
@@ -30,12 +30,12 @@ A text input that validates and normalizes hex, `rgb()`, and `hsl()` color strin
 ## Value ownership
 
 - **Bindable state**: `bind:value` updates only after a successful commit. Intermediate keystrokes stay local so users can type partial values like `#ab` without pushing invalid state to the parent.
-- **Explicit commit handling**: `onchange` fires when a successful commit changes the canonical hex. It is not forwarded to the inner native `<input>`.
+- **Explicit commit handling**: `onValueChange` fires when a successful commit changes the canonical hex. It is not forwarded to the inner native `<input>`.
 - **External updates**: setting `value` from the parent reconciles the visible text. Invalid external strings remain visible and raise the parse error instead of silently clearing.
 
 ## Form participation
 
-The component renders a single sibling `<input type="hidden">` that serves two purposes. When `name` is set, that input carries the `name` attribute and mirrors the current committed hex so the value participates in native form submission. When `name` is not set, the same input still renders (without a `name`) and acts purely as the anchor used to attach a `reset` listener to the surrounding form. Either way, uncontrolled fields revert to `value` on form reset (no `onchange` is fired; reset is observable through native form events). Controlled fields do nothing on reset internally; the parent's reset handler updates `value` and the effect reconciles.
+The component renders a single sibling `<input type="hidden">` that serves two purposes. When `name` is set, that input carries the `name` attribute and mirrors the current committed hex so the value participates in native form submission. When `name` is not set, the same input still renders (without a `name`) and acts purely as the anchor used to attach a `reset` listener to the surrounding form. Either way, uncontrolled fields revert to `value` on form reset (no `onValueChange` is fired; reset is observable through native form events). Controlled fields do nothing on reset internally; the parent's reset handler updates `value` and the effect reconciles.
 
 Parse errors propagate to the visible `<input>` via `setCustomValidity`, so invalid text participates in HTML constraint validation whether the user pressed Enter or clicked a submit button.
 

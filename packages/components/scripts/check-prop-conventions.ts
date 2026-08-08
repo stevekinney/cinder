@@ -199,13 +199,15 @@ function isEventLikeParameterType(type: ts.Type): boolean {
 function isNativePassthroughHandlerType(propType: ts.Type, checker: ts.TypeChecker): boolean {
   const constituents = propType.isUnion() ? propType.types : [propType];
   const callable = constituents.filter((constituent) => !isNullishType(constituent));
+  // Nullish-only types are discriminated-union fence arms (`onclick?: undefined`).
   if (callable.length === 0) return true;
-  const signatures = callable.flatMap((constituent) => constituent.getCallSignatures());
-  if (signatures.length === 0) {
-    // Not callable at all (e.g. an indexed-access forward that resolved to a
-    // non-function) — leave it to the compiler; not this check's concern.
-    return true;
+  // A lowercase on* prop must BE a handler: every non-nullish constituent has
+  // to be callable, or the prop is not a native passthrough at all
+  // (`onchange?: string`, `((event: Event) => void) | string`).
+  if (callable.some((constituent) => constituent.getCallSignatures().length === 0)) {
+    return false;
   }
+  const signatures = callable.flatMap((constituent) => constituent.getCallSignatures());
   return signatures.every((signature) => {
     const firstParameter = signature.getParameters()[0];
     if (!firstParameter) return false;

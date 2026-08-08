@@ -13,7 +13,7 @@
 Every ButtonGroup must have a non-empty accessible name, provided via exactly one of:
 
 - **`label`**: an inline string, used when no visible heading already names the group. Emitted as `aria-label` on the container.
-- **`labelledBy`**: an element ID pointing at a visible heading that already names the group. Emitted as `aria-labelledby`. Prefer this over `label` when a visible heading exists — it avoids the screen reader announcing the name twice.
+- **`ariaLabelledby`**: an element ID pointing at a visible heading that already names the group. Emitted as `aria-labelledby`. Prefer this over `label` when a visible heading exists — it avoids the screen reader announcing the name twice.
 
 The TypeScript discriminated union enforces this at compile time. A dev-mode `$effect` warns at runtime when either value is empty or whitespace-only.
 

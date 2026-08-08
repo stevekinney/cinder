@@ -4,7 +4,7 @@ Controlled start/end date range picker with preset shortcuts and validation feed
 
 ## Overview
 
-`DateRangeField` renders two text inputs backed by custom calendar/time popovers (start and end) along with preset shortcut buttons. It is fully controlled: the consumer owns the `value` and responds to `onchange` callbacks. It does not own routing, query-string synchronization, timezone conversion, or data fetching.
+`DateRangeField` renders two text inputs backed by custom calendar/time popovers (start and end) along with preset shortcut buttons. It is fully controlled: the consumer owns the `value` and responds to `onValueChange` callbacks. It does not own routing, query-string synchronization, timezone conversion, or data fetching.
 
 Values are ISO-8601 local strings. `granularity="day"` emits `YYYY-MM-DD`; time granularities use the custom time popover and emit values truncated to the selected precision.
 
