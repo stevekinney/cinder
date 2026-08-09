@@ -581,3 +581,106 @@ describe('useChatScrollState — isUserScrolling guard (regression for #774)', (
     expect(() => jest.advanceTimersByTime(600)).not.toThrow();
   });
 });
+
+describe('useChatScrollState — finishUserScrollGuard (regression for #1237)', () => {
+  // #1237: a load-earlier click while a smooth scroll-to-top glide was still
+  // animating used to capture a mid-flight scroll snapshot, and the glide's
+  // animation (absolute target 0) then raced the instant history-restore
+  // corrections — whichever landed last won. finishUserScrollGuard lets the
+  // capture path complete the guarded scroll instantly at its declared
+  // destination first, so there is nothing left to race.
+
+  function createTrackingViewport(): {
+    viewport: HTMLElement;
+    scrollCalls: { top: number; behavior: ScrollBehavior | undefined }[];
+  } {
+    const viewport = document.createElement('div');
+    Object.defineProperty(viewport, 'scrollHeight', { value: 2000, configurable: true });
+    Object.defineProperty(viewport, 'scrollTop', { value: 0, writable: true, configurable: true });
+    Object.defineProperty(viewport, 'clientHeight', { value: 400, configurable: true });
+    const scrollCalls: { top: number; behavior: ScrollBehavior | undefined }[] = [];
+    viewport.scrollTo = ((options?: ScrollToOptions | number, y?: number) => {
+      const top =
+        typeof options === 'number' ? (typeof y === 'number' ? y : options) : (options?.top ?? 0);
+      scrollCalls.push({
+        top,
+        behavior: typeof options === 'object' ? options?.behavior : undefined,
+      });
+      (viewport as { scrollTop: number }).scrollTop = top;
+    }) as typeof viewport.scrollTo;
+    document.body.appendChild(viewport);
+    return { viewport, scrollCalls };
+  }
+
+  test('finishing a scrollToTop guard lands the viewport at the top instantly and clears the guard', () => {
+    jest.useFakeTimers();
+    const state = useChatScrollState();
+    const { viewport, scrollCalls } = createTrackingViewport();
+    (viewport as unknown as { scrollTop: number }).scrollTop = 1200;
+
+    state.scrollToTop(viewport);
+    expect(state.isUserScrolling).toBe(true);
+    // Mimic the glide being partway to the top when history is requested.
+    (viewport as unknown as { scrollTop: number }).scrollTop = 700;
+
+    expect(state.finishUserScrollGuard()).toBe(true);
+    expect(state.isUserScrolling).toBe(false);
+    const finishingCall = scrollCalls.at(-1);
+    expect(finishingCall?.top).toBe(0);
+    expect(finishingCall?.behavior).toBe('instant');
+    expect(viewport.scrollTop).toBe(0);
+  });
+
+  test('finishing a jumpToLatest guard lands the viewport at the bottom', () => {
+    jest.useFakeTimers();
+    const state = useChatScrollState();
+    const { viewport, scrollCalls } = createTrackingViewport();
+
+    state.jumpToLatest(viewport);
+    expect(state.isUserScrolling).toBe(true);
+
+    expect(state.finishUserScrollGuard()).toBe(true);
+    expect(state.isUserScrolling).toBe(false);
+    const finishingCall = scrollCalls.at(-1);
+    expect(finishingCall?.top).toBe(2000);
+    expect(finishingCall?.behavior).toBe('instant');
+  });
+
+  test('finishing a guard with no declared destination pins the current position (still aborting the animation)', () => {
+    jest.useFakeTimers();
+    const state = useChatScrollState();
+    const { viewport, scrollCalls } = createTrackingViewport();
+    (viewport as unknown as { scrollTop: number }).scrollTop = 640;
+
+    state.withUserScrollGuard(viewport, () => {});
+    expect(state.isUserScrolling).toBe(true);
+
+    expect(state.finishUserScrollGuard()).toBe(true);
+    expect(state.isUserScrolling).toBe(false);
+    const finishingCall = scrollCalls.at(-1);
+    expect(finishingCall?.top).toBe(640);
+    expect(finishingCall?.behavior).toBe('instant');
+  });
+
+  test('finishing with no active guard is a no-op that reports false', () => {
+    jest.useFakeTimers();
+    const state = useChatScrollState();
+    const { scrollCalls } = createTrackingViewport();
+
+    expect(state.finishUserScrollGuard()).toBe(false);
+    expect(scrollCalls).toHaveLength(0);
+  });
+
+  test('a finished guard leaves no timer behind that could resurrect isUserScrolling', () => {
+    jest.useFakeTimers();
+    const state = useChatScrollState();
+    const { viewport } = createTrackingViewport();
+
+    state.scrollToTop(viewport);
+    state.finishUserScrollGuard();
+    expect(state.isUserScrolling).toBe(false);
+
+    expect(() => jest.advanceTimersByTime(600)).not.toThrow();
+    expect(state.isUserScrolling).toBe(false);
+  });
+});
