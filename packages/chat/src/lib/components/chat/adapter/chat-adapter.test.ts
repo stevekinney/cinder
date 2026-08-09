@@ -65,6 +65,9 @@ type ChatImperative = {
   scrollToBottom: () => void;
   scrollToTop: () => void;
 };
+type ChatRetryImperative = {
+  retryMessage: (messageId: string) => void;
+};
 
 afterEach(() => {
   document.body.replaceChildren();
@@ -290,6 +293,196 @@ describe('ChatAdapter — command equivalence', () => {
 
     release();
     await retryFinished;
+
+    unmount(instance);
+  });
+
+  test('programmatic retryMessage for an in-flight id dispatches the adapter once', async () => {
+    // #1235 — the re-entrancy guard must live at the dispatch layer, not the
+    // UI click handler: a direct `chat.retryMessage(id)` call while a retry
+    // for that same id is still in flight must NOT dispatch the adapter again.
+    let calls = 0;
+    let release!: () => void;
+    const retryFinished = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const adapter: ChatAdapter = {
+      sendMessage: async () => {},
+      retryMessage: async () => {
+        calls += 1;
+        await retryFinished;
+      },
+    };
+    const { instance } = mountChat({
+      id: 'chat-programmatic-retry-single-flight',
+      conversation: failedConversation(),
+      adapter,
+    });
+    const chat = instance as unknown as ChatRetryImperative;
+
+    chat.retryMessage('failed-1');
+    chat.retryMessage('failed-1');
+    await Promise.resolve();
+    expect(calls).toBe(1);
+
+    release();
+    await retryFinished;
+
+    unmount(instance);
+  });
+
+  test('a programmatic retryMessage while a UI-initiated retry for the same id is in flight is ignored', async () => {
+    // #1235 — mixed entry points share ONE guard: Retry button first, then a
+    // programmatic call for the same id mid-flight → still a single dispatch.
+    let calls = 0;
+    let release!: () => void;
+    const retryFinished = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const adapter: ChatAdapter = {
+      sendMessage: async () => {},
+      retryMessage: async () => {
+        calls += 1;
+        await retryFinished;
+      },
+    };
+    const { container, instance } = mountChat({
+      id: 'chat-mixed-retry-single-flight',
+      conversation: failedConversation(),
+      adapter,
+    });
+    const chat = instance as unknown as ChatRetryImperative;
+
+    clickRetry(container);
+    chat.retryMessage('failed-1');
+    await Promise.resolve();
+    expect(calls).toBe(1);
+
+    release();
+    await retryFinished;
+
+    unmount(instance);
+  });
+
+  test('programmatic retryMessage for a DIFFERENT id dispatches while another retry is in flight', async () => {
+    // #1235 regression guard — the single-flight is PER MESSAGE ID: a retry
+    // for another failed message must not be blocked by an unrelated flight.
+    const retried: string[] = [];
+    const releases: Array<() => void> = [];
+    const adapter: ChatAdapter = {
+      sendMessage: async () => {},
+      retryMessage: async (id) => {
+        retried.push(id);
+        await new Promise<void>((resolve) => releases.push(resolve));
+      },
+    };
+    const now = '2026-06-02T00:00:00.000Z';
+    const failed = (id: string, position: number): Message => ({
+      id,
+      role: 'assistant',
+      content: `failed message ${position}`,
+      position,
+      createdAt: now,
+      metadata: { _deliveryStatus: 'failed' },
+      hidden: false,
+    });
+    const conversation: ConversationHistory = {
+      schemaVersion: 4,
+      id: 'adapter-two-failures',
+      status: 'active',
+      metadata: {},
+      ids: ['failed-1', 'failed-2'],
+      messages: { 'failed-1': failed('failed-1', 0), 'failed-2': failed('failed-2', 1) },
+      createdAt: now,
+      updatedAt: now,
+    };
+    const { instance } = mountChat({
+      id: 'chat-retry-different-id',
+      conversation,
+      adapter,
+    });
+    const chat = instance as unknown as ChatRetryImperative;
+
+    chat.retryMessage('failed-1');
+    chat.retryMessage('failed-2');
+    await Promise.resolve();
+    expect(retried).toEqual(['failed-1', 'failed-2']);
+
+    releases.forEach((releaseFlight) => releaseFlight());
+    unmount(instance);
+  });
+
+  test('programmatic retryMessage dispatches again after the first flight settles', async () => {
+    // #1235 regression guard — the guard clears when the flight ends, whether
+    // it resolved or rejected, so a LATER retry for the same id still works.
+    let calls = 0;
+    let release!: () => void;
+    let firstFlight = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const adapter: ChatAdapter = {
+      sendMessage: async () => {},
+      retryMessage: async () => {
+        calls += 1;
+        await firstFlight;
+      },
+    };
+    const { instance } = mountChat({
+      id: 'chat-retry-after-settle',
+      conversation: failedConversation(),
+      adapter,
+      onadaptererror: () => {},
+    });
+    const chat = instance as unknown as ChatRetryImperative;
+
+    chat.retryMessage('failed-1');
+    release();
+    await firstFlight;
+    // Let the dispatcher's finally-clear run before re-dispatching.
+    await Promise.resolve();
+    await Promise.resolve();
+
+    firstFlight = Promise.resolve();
+    chat.retryMessage('failed-1');
+    await Promise.resolve();
+    expect(calls).toBe(2);
+
+    unmount(instance);
+  });
+
+  test('an ASYNC onretry callback (no adapter) is single-flighted for the same in-flight id', async () => {
+    // #1235 review follow-up — an async function is assignable to the
+    // void-returning `onretry` type, and dispatchCommand discards the
+    // callback's return value. The dispatch layer must still hold the
+    // in-flight token until the async handler SETTLES (not just until it is
+    // invoked), so two rapid retries for the same id run the handler once.
+    let calls = 0;
+    let release!: () => void;
+    const retryFinished = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const { instance } = mountChat({
+      id: 'chat-async-callback-retry-single-flight',
+      conversation: failedConversation(),
+      onretry: async () => {
+        calls += 1;
+        await retryFinished;
+      },
+    });
+    const chat = instance as unknown as ChatRetryImperative;
+
+    chat.retryMessage('failed-1');
+    chat.retryMessage('failed-1');
+    await Promise.resolve();
+    expect(calls).toBe(1);
+
+    release();
+    await retryFinished;
+    // Let the finally-clear settle, then a LATER retry for the same id works.
+    await Promise.resolve();
+    await Promise.resolve();
+    chat.retryMessage('failed-1');
+    expect(calls).toBe(2);
 
     unmount(instance);
   });
