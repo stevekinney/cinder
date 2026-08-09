@@ -96,6 +96,7 @@ describe('MarkdownEditor toolbar layout CSS ownership', () => {
     expect(editorToolbarSource).toContain('aria-label="Additional formatting"');
     expect(editorToolbarSource).toContain('aria-label="Text formatting"');
     expect(editorToolbarSource).toContain('{disabled}');
+    expect(editorToolbarSource).toContain('tabindex={disabled ? 0 : undefined}');
 
     const standaloneToolbarBlock = cssBlock(editorToolbarSource, '.editor-toolbar');
     expectDeclaration(
@@ -140,6 +141,10 @@ describe('MarkdownEditor toolbar layout CSS ownership', () => {
     expect(layoutStartIndex).toBeGreaterThanOrEqual(0);
     expect(layoutEndIndex).toBeGreaterThan(layoutStartIndex);
     expect(popoverIndex).toBeGreaterThan(layoutEndIndex);
+    expect(markdownEditorSource).toContain(
+      'const triggerRectangle = triggerElement.getBoundingClientRect()',
+    );
+    expect(markdownEditorSource).toContain('getBoundingClientRect: () => triggerRectangle');
   });
 
   it('gives raw source mode a usable minimum editing height', async () => {

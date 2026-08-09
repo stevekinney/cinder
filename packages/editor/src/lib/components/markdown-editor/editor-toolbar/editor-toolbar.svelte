@@ -205,6 +205,7 @@
   aria-label="Formatting toolbar"
   aria-controls={editorId}
   aria-disabled={disabled || undefined}
+  tabindex={disabled ? 0 : undefined}
   class={classNames('editor-toolbar', className)}
   {...rest as Record<string, unknown>}
 >

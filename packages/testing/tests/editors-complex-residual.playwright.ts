@@ -332,10 +332,13 @@ test.describe('markdown link popover', () => {
     await page.goto('/page/markdown-editor?snapshot=1', { waitUntil: 'load' });
     await page.waitForSelector('#app > *', { state: 'visible', timeout: 20_000 });
 
-    const editor = page.locator('.markdown-editor-wrapper[data-ready="true"]').first();
-    await expect(editor).toBeVisible({ timeout: 10_000 });
-
-    await editor.getByRole('button', { name: 'More formatting' }).click();
+    const moreFormattingButton = page
+      .locator(
+        '.markdown-editor-wrapper[data-ready="true"] button[aria-label="More formatting"]:not(:disabled)',
+      )
+      .first();
+    await expect(moreFormattingButton).toBeVisible({ timeout: 10_000 });
+    await moreFormattingButton.click();
     const formattingPopover = page.getByRole('dialog', { name: 'More formatting' });
     await expect(formattingPopover).toBeVisible();
     const linkButton = formattingPopover.locator('[data-testid="toolbar-link"]').first();

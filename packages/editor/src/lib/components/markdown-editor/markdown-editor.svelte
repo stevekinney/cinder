@@ -378,7 +378,13 @@
   function handleLinkClick(triggerElement: HTMLElement) {
     // Use the last known link range (updated reactively before focus changes)
     capturedLinkRange = lastKnownLinkRange;
-    linkPopoverAnchorElement = triggerElement;
+    // The formatting overflow closes as this callback runs, which detaches its
+    // Link button. Preserve that button's open-time rectangle as a Floating UI
+    // virtual anchor so the link popover remains aligned with its trigger.
+    const triggerRectangle = triggerElement.getBoundingClientRect();
+    linkPopoverAnchorElement = {
+      getBoundingClientRect: () => triggerRectangle,
+    };
     linkPopoverOpen = true;
   }
 
