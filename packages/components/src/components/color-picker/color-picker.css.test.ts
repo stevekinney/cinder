@@ -31,7 +31,9 @@ function ruleDeclarationValue(source: string, selector: string, property: string
     });
     return false;
   });
-  if (!value) throw new Error(`declaration not found: ${selector} { ${property} }`);
+  if (value === undefined) {
+    throw new Error(`declaration not found: ${selector} { ${property} }`);
+  }
   return value;
 }
 
