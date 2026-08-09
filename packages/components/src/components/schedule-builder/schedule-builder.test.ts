@@ -993,5 +993,16 @@ describe('ScheduleBuilder', () => {
         /\.cinder-schedule-builder__panel\s*\{[^}]*padding-inline:\s*var\(--cinder-space-1\);/,
       );
     });
+
+    test('aggregates Grid styles before the component layer', async () => {
+      const { readFileSync } = await import('node:fs');
+      const css = readFileSync(new URL('./schedule-builder.css', import.meta.url), 'utf8');
+      expect(css.indexOf('@layer cinder.tokens')).toBeLessThan(
+        css.indexOf("@import '../grid/grid.css'"),
+      );
+      expect(css.indexOf("@import '../grid/grid.css'")).toBeLessThan(
+        css.indexOf('@layer cinder.components'),
+      );
+    });
   });
 });

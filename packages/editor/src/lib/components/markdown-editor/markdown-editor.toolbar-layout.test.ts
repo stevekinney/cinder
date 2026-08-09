@@ -95,6 +95,7 @@ describe('MarkdownEditor toolbar layout CSS ownership', () => {
     expect(editorToolbarSource).toContain('label="More formatting"');
     expect(editorToolbarSource).toContain('aria-label="Additional formatting"');
     expect(editorToolbarSource).toContain('aria-label="Text formatting"');
+    expect(editorToolbarSource).toContain('{disabled}');
 
     const standaloneToolbarBlock = cssBlock(editorToolbarSource, '.editor-toolbar');
     expectDeclaration(

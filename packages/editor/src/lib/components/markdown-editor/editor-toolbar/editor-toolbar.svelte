@@ -253,6 +253,7 @@
         size="sm"
         aria-label="More formatting"
         iconOnly
+        {disabled}
         onclick={() => (formattingPopoverOpen = !formattingPopoverOpen)}
       >
         <MoreHorizontal class="cinder-icon-sm" />

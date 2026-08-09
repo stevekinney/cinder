@@ -149,6 +149,7 @@
   const frontMatterDiffs = $derived(
     hasFrontMatter ? computeLineDiff(originalFrontMatterText, currentFrontMatterText) : [],
   );
+  const frontMatterHunks = $derived(groupIntoHunks(frontMatterDiffs));
   const hasFrontMatterChanges = $derived(frontMatterDiffs.some((d) => d.type !== 'same'));
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -303,12 +304,19 @@
     onreverthunk?.(hunk.index, hunk);
   }
 
-  function formatComputedUnifiedDiff(hunks: DiffHunk[]): string {
+  function formatComputedUnifiedDiff(
+    frontMatterHunks: DiffHunk[],
+    bodyHunks: DiffHunk[],
+    originalOffset: number,
+    currentOffset: number,
+  ): string {
+    const hunks = [...frontMatterHunks, ...bodyHunks];
     if (hunks.length === 0) return '';
     const lines = ['--- a/document.md', '+++ b/document.md'];
-    for (const hunk of hunks) {
+    for (const [index, hunk] of hunks.entries()) {
+      const isBody = index >= frontMatterHunks.length;
       lines.push(
-        `@@ -${hunk.originalStart},${hunk.originalCount} +${hunk.currentStart},${hunk.currentCount} @@`,
+        `@@ -${hunk.originalStart + (isBody ? originalOffset : 0)},${hunk.originalCount} +${hunk.currentStart + (isBody ? currentOffset : 0)},${hunk.currentCount} @@`,
       );
       for (const line of hunk.lines) {
         if (line.type === 'same') lines.push(` ${line.text}`);
@@ -329,16 +337,21 @@
     }
     const diff =
       diffState.tier === 'manual'
-        ? formatComputedUnifiedDiff(computedHunks)
+        ? formatComputedUnifiedDiff(
+            frontMatterHunks,
+            computedHunks,
+            originalFrontMatterText ? originalFrontMatterText.split('\n').length : 0,
+            currentFrontMatterText ? currentFrontMatterText.split('\n').length : 0,
+          )
         : generateUnifiedDiff(
             {
               schemaVersion: 1,
-              content: normalizedCurrentBody,
-              original: normalizedOriginalBody,
+              content: current,
+              original,
               threads: [],
               updatedAt: '',
             },
-            { normalizeInputs: false },
+            { normalizeInputs },
           ).diff;
     if (!diff || typeof navigator === 'undefined' || !navigator.clipboard) {
       copyStatus = 'failed';

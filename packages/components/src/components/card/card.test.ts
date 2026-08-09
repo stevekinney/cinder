@@ -173,6 +173,7 @@ describe('Card', () => {
     expect(root?.getAttribute('role')).toBeNull();
     const css = readFileSync(new URL('./card.css', import.meta.url), 'utf8');
     expect(css).toMatch(/\.cinder-card\[data-cinder-interactive\]\s*\{[^}]*display:\s*block/s);
+    expect(css).toMatch(/\.cinder-card\[data-cinder-interactive\]\s*\{[^}]*text-align:\s*start/s);
     expect(root?.getAttribute('data-cinder-interactive')).toBe('');
     expect(root?.getAttribute('data-cinder-elevation')).toBe('md');
   });

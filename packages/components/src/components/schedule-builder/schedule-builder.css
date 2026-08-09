@@ -1,5 +1,6 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
 @import '../chip/chip.css';
+@import '../grid/grid.css';
 @import '../input/input.css';
 @import '../number-input/number-input.css';
 @import '../segmented-control/segmented-control.css';

@@ -143,6 +143,7 @@ export type { CalendarProps } from './components/calendar/index.ts';
 
 export { default as Card } from './components/card/index.ts';
 export type {
+  CardElevation,
   CardPadding,
   CardProps,
   CardSurfaceTone,
