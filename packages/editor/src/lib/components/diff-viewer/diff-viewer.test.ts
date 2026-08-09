@@ -59,6 +59,8 @@ describe('DiffViewer: identical input (basic mount)', () => {
     expect(source).toContain("diffState.tier === 'manual'");
     expect(source).toContain('formatComputedUnifiedDiff(');
     expect(source).toContain('unifiedDiffHunks');
+    expect(source).toContain('original: displayedOriginal');
+    expect(source).toContain('current: displayedCurrent');
   });
 
   test('copy includes front matter and preserves normalizeInputs semantics', async () => {

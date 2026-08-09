@@ -706,6 +706,14 @@ describe('ScheduleBuilder', () => {
       expect(getAllByRole('option', { name: 'Step (every N)' })).not.toHaveLength(0);
       expect(getAllByRole('option', { name: 'Advanced raw expression' })).not.toHaveLength(0);
 
+      const minuteRawExpression = getByLabelText('Minute') as HTMLInputElement;
+      expect((minuteRawExpression.closest('details') as HTMLDetailsElement).open).toBe(false);
+
+      await fireEvent.change(getByLabelText('Minute pattern'), {
+        target: { value: 'advanced' },
+      });
+      expect((minuteRawExpression.closest('details') as HTMLDetailsElement).open).toBe(true);
+
       await fireEvent.change(getByLabelText('Minute pattern'), { target: { value: 'step' } });
       await fireEvent.input(getByLabelText('Minute step'), { target: { value: '15' } });
       expect(onValueChange.mock.calls.at(-1)?.[0]).toEqual({

@@ -88,7 +88,7 @@
           onValueChange={(next) => onEditorChange(index, { step: next ?? 1 })}
         />
       {/if}
-      <details class="cinder-schedule-builder__cron-advanced">
+      <details class="cinder-schedule-builder__cron-advanced" open={editor.mode === 'advanced'}>
         <summary>
           <span>Advanced raw expression</span>
           <ChevronDown class="cinder-schedule-builder__cron-advanced-chevron cinder-icon-sm" />

@@ -281,4 +281,22 @@ describe('DiffViewer unified diff formatting', () => {
     expect(result.diff).toContain('-_italic_');
     expect(result.diff).toContain('+*italic*');
   });
+
+  test('does not add a trailing newline to a front-matter-only document', () => {
+    expect(composeDisplayedDocument('---\ntitle: Example\n---', '')).toBe(
+      '---\ntitle: Example\n---',
+    );
+  });
+
+  test('marks changed final lines that lack trailing newlines in computed hunks', () => {
+    const original = 'First line\nOld final line';
+    const current = 'First line\nNew final line';
+    const hunks = groupIntoHunks(computeLineDiff(original, current));
+
+    const diff = formatComputedUnifiedDiff(hunks, { original, current });
+
+    expect(diff).toContain(
+      '-Old final line\n\\ No newline at end of file\n+New final line\n\\ No newline at end of file',
+    );
+  });
 });

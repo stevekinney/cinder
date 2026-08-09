@@ -22,27 +22,67 @@ interface SplitContent {
   hasTrailingNewline: boolean;
 }
 
+interface ComputedUnifiedDiffOptions {
+  original: string;
+  current: string;
+}
+
 /** Join the exact front-matter and body strings rendered by DiffViewer. */
 export function composeDisplayedDocument(frontMatter: string, body: string): string {
-  return frontMatter ? `${frontMatter}\n${body}` : body;
+  return frontMatter ? (body ? `${frontMatter}\n${body}` : frontMatter) : body;
 }
 
 /** Format already-computed viewer hunks without running another line diff. */
-export function formatComputedUnifiedDiff(hunks: MarkdownDiffHunk[]): string {
+export function formatComputedUnifiedDiff(
+  hunks: MarkdownDiffHunk[],
+  content?: ComputedUnifiedDiffOptions,
+): string {
   if (hunks.length === 0) return '';
+  const original = content ? splitIntoLines(content.original, false) : undefined;
+  const current = content ? splitIntoLines(content.current, false) : undefined;
   const lines = ['--- a/document.md', '+++ b/document.md'];
   for (const hunk of hunks) {
+    let originalLineNumber = hunk.originalStart;
+    let currentLineNumber = hunk.currentStart;
     lines.push(
       `@@ -${hunk.originalStart},${hunk.originalCount} +${hunk.currentStart},${hunk.currentCount} @@`,
     );
     for (const line of hunk.lines) {
-      if (line.type === 'same') lines.push(` ${line.text}`);
-      else if (line.type === 'added') lines.push(`+${line.text}`);
-      else if (line.type === 'removed') lines.push(`-${line.text}`);
-      else lines.push(`-${line.oldText}`, `+${line.newText}`);
+      if (line.type === 'same') {
+        lines.push(` ${line.text}`);
+        originalLineNumber += 1;
+        currentLineNumber += 1;
+      } else if (line.type === 'added') {
+        lines.push(`+${line.text}`);
+        if (isFinalLineWithoutNewline(current, currentLineNumber)) {
+          lines.push('\\ No newline at end of file');
+        }
+        currentLineNumber += 1;
+      } else if (line.type === 'removed') {
+        lines.push(`-${line.text}`);
+        if (isFinalLineWithoutNewline(original, originalLineNumber)) {
+          lines.push('\\ No newline at end of file');
+        }
+        originalLineNumber += 1;
+      } else {
+        lines.push(`-${line.oldText}`);
+        if (isFinalLineWithoutNewline(original, originalLineNumber)) {
+          lines.push('\\ No newline at end of file');
+        }
+        lines.push(`+${line.newText}`);
+        if (isFinalLineWithoutNewline(current, currentLineNumber)) {
+          lines.push('\\ No newline at end of file');
+        }
+        originalLineNumber += 1;
+        currentLineNumber += 1;
+      }
     }
   }
   return `${lines.join('\n')}\n`;
+}
+
+function isFinalLineWithoutNewline(content: SplitContent | undefined, lineNumber: number): boolean {
+  return Boolean(content && !content.hasTrailingNewline && lineNumber === content.lines.length);
 }
 
 /**

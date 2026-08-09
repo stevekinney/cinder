@@ -1,6 +1,6 @@
 <script lang="ts">
-  import Collapsible from '../collapsible/collapsible.svelte';
-  import Input from '../input/input.svelte';
+  import Collapsible from '@lostgradient/cinder/collapsible';
+  import Input from '@lostgradient/cinder/input';
   import type { JsonSchemaObject } from './json-schema-editor-types.ts';
 
   type ConstraintPatch = (

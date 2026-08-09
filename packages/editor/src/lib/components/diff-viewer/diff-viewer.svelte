@@ -323,7 +323,10 @@
     }
     const diff =
       diffState.tier === 'manual'
-        ? formatComputedUnifiedDiff(unifiedDiffHunks)
+        ? formatComputedUnifiedDiff(unifiedDiffHunks, {
+            original: displayedOriginal,
+            current: displayedCurrent,
+          })
         : generateUnifiedDiff(
             {
               schemaVersion: 1,
