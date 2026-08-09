@@ -230,8 +230,10 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
     reason: 'Source audit owned by main-green; release validates only the publish artifact.',
   },
   'tokens:audit': {
-    layers: ['main-green'],
-    reason: 'Source audit owned by main-green; release validates only the publish artifact.',
+    layers: ['unit-tests', 'main-green'],
+    reason:
+      'Strict token-reference audit runs before merge in unit-tests and again in main-green; ' +
+      'release validates only the publish artifact.',
   },
   'aggregator:check': {
     layers: ['unit-tests', 'main-green'],
