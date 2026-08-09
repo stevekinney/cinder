@@ -81,6 +81,8 @@ describe('JsonSchemaEditor — Diff tab source contract', () => {
     expect(constraintsSource).toContain("import Input from '@lostgradient/cinder/input'");
     expect(constraintsSource).not.toContain("from '../collapsible/collapsible.svelte'");
     expect(constraintsSource).not.toContain("from '../input/input.svelte'");
+    expect(source).toContain("import Collapsible from '@lostgradient/cinder/collapsible'");
+    expect(source).not.toContain("from '../collapsible/collapsible.svelte'");
     expect(disclosureSource).not.toContain('<details');
     expect(disclosureSource).not.toContain('<summary');
     expect(disclosureSource.match(/<Collapsible/g)?.length).toBe(3);

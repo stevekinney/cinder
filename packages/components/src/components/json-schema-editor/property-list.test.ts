@@ -19,7 +19,8 @@ describe('PropertyList', () => {
   test('composes Collapsible for required names and avoids schema jargon', async () => {
     const source = await Bun.file(new URL('./property-list.svelte', import.meta.url)).text();
 
-    expect(source).toContain("import Collapsible from '../collapsible/collapsible.svelte'");
+    expect(source).toContain("import Collapsible from '@lostgradient/cinder/collapsible'");
+    expect(source).not.toContain("from '../collapsible/collapsible.svelte'");
     expect(source).toContain('Required fields not yet defined');
     expect(source).not.toContain('<details class="cinder-jse-required-only"');
     expect(source).not.toContain('Required without property schema');

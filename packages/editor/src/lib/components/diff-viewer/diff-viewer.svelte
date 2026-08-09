@@ -57,6 +57,7 @@
 
   type LocalFrontMatterBlock = {
     hasFrontMatter: boolean;
+    hasTerminatingNewline: boolean;
     raw: string | null;
     body: string;
     text: string;
@@ -82,6 +83,7 @@
     if (!match) {
       return {
         hasFrontMatter: false,
+        hasTerminatingNewline: false,
         raw: null,
         body: markdown,
         text: '',
@@ -90,6 +92,7 @@
 
     return {
       hasFrontMatter: true,
+      hasTerminatingNewline: match[0].endsWith('\n'),
       raw: match[1] ?? '',
       body: normalized.slice(match[0].length),
       text: `---\n${match[1] ?? ''}\n---`,
@@ -221,10 +224,18 @@
   const computedHunks = $derived(groupIntoHunks(lineDiffs));
   const unifiedDiffHunks = $derived(groupIntoHunks([...frontMatterDiffs, ...lineDiffs]));
   const displayedOriginal = $derived(
-    composeDisplayedDocument(originalFrontMatterText, normalizedOriginalBody),
+    composeDisplayedDocument(
+      originalFrontMatterText,
+      normalizedOriginalBody,
+      originalParsed.hasTerminatingNewline,
+    ),
   );
   const displayedCurrent = $derived(
-    composeDisplayedDocument(currentFrontMatterText, normalizedCurrentBody),
+    composeDisplayedDocument(
+      currentFrontMatterText,
+      normalizedCurrentBody,
+      currentParsed.hasTerminatingNewline,
+    ),
   );
 
   // Sync computed hunks to bindable prop for reactive parent access

@@ -21,9 +21,9 @@
   import { classNames } from '../../utilities/class-names.ts';
   import { parseColor } from '../../utilities/color-luminance.ts';
   import Input from '../input/input.svelte';
-  import Button from '../button/button.svelte';
-  import Popover from '../popover/popover.svelte';
-  import ColorPicker from '../color-picker/color-picker.svelte';
+  import Button from '@lostgradient/cinder/button';
+  import ColorPicker from '@lostgradient/cinder/color-picker';
+  import Popover from '@lostgradient/cinder/popover';
   import Pipette from 'lucide-svelte/icons/pipette';
   import type { ColorFieldFormat, ColorFieldProps } from './color-field.types.ts';
 

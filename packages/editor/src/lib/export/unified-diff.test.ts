@@ -265,8 +265,8 @@ describe('DiffViewer unified diff formatting', () => {
   });
 
   test('composes the exact displayed document without canonicalizing markdown syntax', () => {
-    const original = composeDisplayedDocument('', '_italic_\n');
-    const current = composeDisplayedDocument('', '*italic*\n');
+    const original = composeDisplayedDocument('', '_italic_\n', false);
+    const current = composeDisplayedDocument('', '*italic*\n', false);
     const result = generateUnifiedDiff(
       {
         schemaVersion: 1,
@@ -282,10 +282,11 @@ describe('DiffViewer unified diff formatting', () => {
     expect(result.diff).toContain('+*italic*');
   });
 
-  test('does not add a trailing newline to a front-matter-only document', () => {
-    expect(composeDisplayedDocument('---\ntitle: Example\n---', '')).toBe(
-      '---\ntitle: Example\n---',
-    );
+  test('preserves both EOF states for front-matter-only documents', () => {
+    const frontMatter = '---\ntitle: Example\n---';
+
+    expect(composeDisplayedDocument(frontMatter, '', false)).toBe('---\ntitle: Example\n---');
+    expect(composeDisplayedDocument(frontMatter, '', true)).toBe('---\ntitle: Example\n---\n');
   });
 
   test('marks changed final lines that lack trailing newlines in computed hunks', () => {
@@ -298,5 +299,15 @@ describe('DiffViewer unified diff formatting', () => {
     expect(diff).toContain(
       '-Old final line\n\\ No newline at end of file\n+New final line\n\\ No newline at end of file',
     );
+  });
+
+  test('marks unchanged final context when both documents lack trailing newlines', () => {
+    const original = 'Old first line\nShared final line';
+    const current = 'New first line\nShared final line';
+    const hunks = groupIntoHunks(computeLineDiff(original, current));
+
+    const diff = formatComputedUnifiedDiff(hunks, { original, current });
+
+    expect(diff).toContain(' Shared final line\n\\ No newline at end of file');
   });
 });

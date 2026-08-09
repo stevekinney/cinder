@@ -1,6 +1,6 @@
 <script lang="ts">
   import Input from '../input/input.svelte';
-  import Grid from '../grid/grid.svelte';
+  import Grid from '@lostgradient/cinder/grid';
   import NumberInput from '../number-input/number-input.svelte';
   import Select from '../select/select.svelte';
   import { ChevronDown } from '@lostgradient/cinder/icons';

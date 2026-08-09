@@ -28,8 +28,12 @@ interface ComputedUnifiedDiffOptions {
 }
 
 /** Join the exact front-matter and body strings rendered by DiffViewer. */
-export function composeDisplayedDocument(frontMatter: string, body: string): string {
-  return frontMatter ? (body ? `${frontMatter}\n${body}` : frontMatter) : body;
+export function composeDisplayedDocument(
+  frontMatter: string,
+  body: string,
+  hasTerminatingNewline: boolean,
+): string {
+  return frontMatter ? `${frontMatter}${hasTerminatingNewline ? '\n' : ''}${body}` : body;
 }
 
 /** Format already-computed viewer hunks without running another line diff. */
@@ -49,7 +53,19 @@ export function formatComputedUnifiedDiff(
     );
     for (const line of hunk.lines) {
       if (line.type === 'same') {
-        lines.push(` ${line.text}`);
+        const originalLacksNewline = isFinalLineWithoutNewline(original, originalLineNumber);
+        const currentLacksNewline = isFinalLineWithoutNewline(current, currentLineNumber);
+        if (originalLacksNewline !== currentLacksNewline) {
+          lines.push(`-${line.text}`);
+          if (originalLacksNewline) lines.push('\\ No newline at end of file');
+          lines.push(`+${line.text}`);
+          if (currentLacksNewline) lines.push('\\ No newline at end of file');
+        } else {
+          lines.push(` ${line.text}`);
+          if (originalLacksNewline && currentLacksNewline) {
+            lines.push('\\ No newline at end of file');
+          }
+        }
         originalLineNumber += 1;
         currentLineNumber += 1;
       } else if (line.type === 'added') {

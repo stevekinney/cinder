@@ -48,6 +48,17 @@ async function typeAndBlur(input: HTMLInputElement, text: string): Promise<void>
 }
 
 describe('ColorField — color picker trigger', () => {
+  test('composes picker dependencies through public component entries', async () => {
+    const source = await Bun.file(new URL('./color-field.svelte', import.meta.url)).text();
+
+    expect(source).toContain("from '@lostgradient/cinder/button'");
+    expect(source).toContain("from '@lostgradient/cinder/color-picker'");
+    expect(source).toContain("from '@lostgradient/cinder/popover'");
+    expect(source).not.toContain("from '../button/button.svelte'");
+    expect(source).not.toContain("from '../color-picker/color-picker.svelte'");
+    expect(source).not.toContain("from '../popover/popover.svelte'");
+  });
+
   test('uses an accessible button that opens the composed ColorPicker', async () => {
     const { container } = render(ColorField, { id: 'color', name: 'color' });
     const trigger = q<HTMLButtonElement>(container, '.cinder-color-field__swatch-button');

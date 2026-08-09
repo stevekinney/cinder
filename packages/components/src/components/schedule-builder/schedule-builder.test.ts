@@ -692,6 +692,15 @@ describe('ScheduleBuilder', () => {
   });
 
   describe('cron mode', () => {
+    test('composes Grid through its public component entry', async () => {
+      const source = await Bun.file(
+        new URL('./schedule-builder-cron-editor.svelte', import.meta.url),
+      ).text();
+
+      expect(source).toContain("import Grid from '@lostgradient/cinder/grid'");
+      expect(source).not.toContain("from '../grid/grid.svelte'");
+    });
+
     test('offers structured every, specific, range, and step controls with raw cron as an escape hatch', async () => {
       const onValueChange = mock();
       const { getByLabelText, getAllByRole } = render(ScheduleBuilder, {

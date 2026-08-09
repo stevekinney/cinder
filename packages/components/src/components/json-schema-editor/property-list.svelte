@@ -19,7 +19,7 @@
   import Alert from '../alert/alert.svelte';
   import Button from '../button/button.svelte';
   import Chip from '../chip/chip.svelte';
-  import Collapsible from '../collapsible/collapsible.svelte';
+  import Collapsible from '@lostgradient/cinder/collapsible';
   import Input from '../input/input.svelte';
   import PropertyEditor from './property-editor.svelte';
   import { calculatePropertyValidationErrorCount } from './property-list-validation.ts';

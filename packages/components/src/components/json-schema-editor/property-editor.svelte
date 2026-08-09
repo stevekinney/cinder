@@ -28,7 +28,7 @@
   import Badge from '../badge/badge.svelte';
   import Button from '../button/button.svelte';
   import Checkbox from '../checkbox/checkbox.svelte';
-  import Collapsible from '../collapsible/collapsible.svelte';
+  import Collapsible from '@lostgradient/cinder/collapsible';
   import Input from '../input/input.svelte';
   import Tooltip from '../tooltip/tooltip.svelte';
 
