@@ -1002,6 +1002,11 @@ test.describe('chat harness — imperative scroll + focus controls', () => {
     const context = await browser.newContext({
       baseURL: PLAYGROUND_URL,
       colorScheme: 'dark',
+      // Explicit, not defaulted: this test is only meaningful when
+      // behavior: 'smooth' produces a real, interruptible animation. A
+      // config- or environment-level reduced-motion default would silently
+      // downgrade it to an instant scroll and stop covering the regression.
+      reducedMotion: 'no-preference',
       viewport: { width: 1280, height: 900 },
     });
     try {
