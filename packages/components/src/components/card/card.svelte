@@ -90,6 +90,7 @@
   const isLink = $derived(href !== undefined);
   const anchorAttributes = $derived(rest as HTMLAnchorAttributes);
   const buttonAttributes = $derived(rest as HTMLButtonAttributes);
+  const buttonDisabled = $derived(Boolean(buttonAttributes.disabled));
   const staticAttributes = $derived(rest as HTMLAttributes<HTMLDivElement>);
   function handleClick(event: MouseEvent): void {
     onclick?.(event);
@@ -149,7 +150,8 @@
     data-cinder-tone={tone}
     data-cinder-padding={padding}
     data-cinder-elevation={elevation}
-    data-cinder-interactive=""
+    data-cinder-interactive={buttonDisabled ? undefined : ''}
+    data-cinder-disabled={buttonDisabled ? '' : undefined}
     data-cinder-edge-to-edge-mobile={edgeToEdgeOnMobile ? '' : undefined}
   >
     {#if header}<div id={customHeaderId} class="cinder-card__header">

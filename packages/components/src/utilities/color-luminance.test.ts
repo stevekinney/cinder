@@ -173,6 +173,8 @@ describe('parseColor', () => {
       expect(parseColor('hwb(120junk 20% 30%)')).toBeNull();
       expect(parseColor('hwb(120 20junk% 30%)')).toBeNull();
       expect(parseColor('hwb(120 20% 30junk%)')).toBeNull();
+      expect(parseColor('hwb(120 20% 30% / 0.5junk)')).toBeNull();
+      expect(parseColor('hwb(120 20% 30% / 50junk%)')).toBeNull();
     });
   });
 

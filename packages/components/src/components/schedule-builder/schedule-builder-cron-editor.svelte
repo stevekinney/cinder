@@ -88,9 +88,6 @@
           onValueChange={(next) => onEditorChange(index, { step: next ?? 1 })}
         />
       {/if}
-      {#if structuredError}
-        <p class="cinder-schedule-builder__cron-structured-error" role="alert">{structuredError}</p>
-      {/if}
       <details class="cinder-schedule-builder__cron-advanced">
         <summary>
           <span>Advanced raw expression</span>

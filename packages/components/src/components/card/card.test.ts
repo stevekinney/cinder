@@ -193,6 +193,18 @@ describe('Card', () => {
     expect(root?.getAttribute('data-cinder-interactive')).toBe('');
   });
 
+  test('suppresses interactive styling when a button card is disabled', () => {
+    const { container } = render(Card, {
+      props: { onclick: () => {}, disabled: true, title: 'Unavailable', children: emptySnippet },
+    });
+    const root = container.querySelector('.cinder-card');
+    const action = container.querySelector<HTMLButtonElement>('.cinder-card__action');
+
+    expect(action?.disabled).toBe(true);
+    expect(root?.getAttribute('data-cinder-disabled')).toBe('');
+    expect(root?.getAttribute('data-cinder-interactive')).toBeNull();
+  });
+
   test('danger tone is reflected on the container and adds a non-color title cue', () => {
     const { container, getByRole, getByText } = render(Card, {
       props: {

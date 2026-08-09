@@ -1,6 +1,6 @@
 <script lang="ts">
   import Copy from 'lucide-svelte/icons/copy';
-  import CopyButton from '../copy-button/copy-button.svelte';
+  import CopyButton from '@lostgradient/cinder/copy-button';
 
   type ColorPickerControlsProps = {
     gradientId: string;

@@ -46,6 +46,10 @@
     cursor: pointer;
   }
 
+  .cinder-card__action:disabled {
+    cursor: default;
+  }
+
   .cinder-card__action:focus-visible {
     /* cinder-focus-ring-owner: parent */
     outline: none;

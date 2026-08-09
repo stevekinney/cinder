@@ -341,14 +341,17 @@
   const formatRgb = $derived.by(() => {
     const { r, g, b } = hslToRgb(hue, saturation, lightnessValue);
     const channels = `${r}, ${g}, ${b}`;
-    return alpha ? `rgba(${channels}, ${Math.round(alphaValue * 100) / 100})` : `rgb(${channels})`;
+    return alpha ? `rgba(${channels}, ${roundFormatAlpha(alphaValue)})` : `rgb(${channels})`;
   });
   function roundFormatChannel(value: number): number {
     return Math.round(value * 100) / 100;
   }
+  function roundFormatAlpha(value: number): number {
+    return Math.round(value * 1000) / 1000;
+  }
   const formatHsl = $derived(
     alpha
-      ? `hsla(${roundFormatChannel(hue)}, ${roundFormatChannel(saturation)}%, ${roundFormatChannel(lightnessValue)}%, ${Math.round(alphaValue * 100) / 100})`
+      ? `hsla(${roundFormatChannel(hue)}, ${roundFormatChannel(saturation)}%, ${roundFormatChannel(lightnessValue)}%, ${roundFormatAlpha(alphaValue)})`
       : `hsl(${roundFormatChannel(hue)}, ${roundFormatChannel(saturation)}%, ${roundFormatChannel(lightnessValue)}%)`,
   );
   function handleSwatchChange(

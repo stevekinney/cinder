@@ -196,6 +196,8 @@ function parseHwb(inner: string): RgbaComponents | null {
     !percentagePattern.test(blacknessRaw)
   )
     return null;
+  if (alphaRaw !== undefined && !numberPattern.test(alphaRaw) && !percentagePattern.test(alphaRaw))
+    return null;
 
   let whiteness = Number.parseFloat(whitenessRaw) / 100;
   let blackness = Number.parseFloat(blacknessRaw) / 100;
