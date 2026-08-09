@@ -184,10 +184,18 @@ function parseHwb(inner: string): RgbaComponents | null {
   const parts = channels.split(/\s+/);
   if (parts.length !== 3 || inner.split('/').length > 2) return null;
 
-  const hue = Number.parseFloat(parts[0] ?? '');
+  const hueRaw = parts[0] ?? '';
+  const hue = Number.parseFloat(hueRaw);
   const whitenessRaw = parts[1] ?? '';
   const blacknessRaw = parts[2] ?? '';
-  if (!whitenessRaw.endsWith('%') || !blacknessRaw.endsWith('%')) return null;
+  const numberPattern = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?$/i;
+  const percentagePattern = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?%$/i;
+  if (
+    !numberPattern.test(hueRaw) ||
+    !percentagePattern.test(whitenessRaw) ||
+    !percentagePattern.test(blacknessRaw)
+  )
+    return null;
 
   let whiteness = Number.parseFloat(whitenessRaw) / 100;
   let blackness = Number.parseFloat(blacknessRaw) / 100;

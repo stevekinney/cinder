@@ -54,6 +54,11 @@ function hasButtonLabelled(container: HTMLElement, label: string): boolean {
 }
 
 describe('DiffViewer: identical input (basic mount)', () => {
+  test('manual-tier copy reuses computed hunks instead of invoking a second generator', async () => {
+    const source = await Bun.file(new URL('./diff-viewer.svelte', import.meta.url)).text();
+    expect(source).toContain("diffState.tier === 'manual'");
+    expect(source).toContain('formatComputedUnifiedDiff(computedHunks)');
+  });
   test('two identical strings produce only unchanged lines and zero stats', () => {
     const diffs = computeLineDiff(
       'line one\nline two\nline three',

@@ -44,6 +44,7 @@ export function generateUnifiedDiff(
     originalPath = 'a/document.md',
     currentPath = 'b/document.md',
     contextLines = 3,
+    normalizeInputs = true,
     // Opt in because modern ReviewState content generally includes front matter already.
     includeFrontMatter = false,
   } = options;
@@ -65,8 +66,16 @@ export function generateUnifiedDiff(
   // from formatting differences (e.g., `*` vs `-` list markers, trailing whitespace).
   // This ensures only semantic content changes appear in the diff.
   // Note: normalize() adds a trailing newline; we strip it to avoid phantom empty lines.
-  const original = originalContent.trim() ? normalize(originalContent).replace(/\n+$/, '') : '';
-  const current = currentContent.trim() ? normalize(currentContent).replace(/\n+$/, '') : '';
+  const original = normalizeInputs
+    ? originalContent.trim()
+      ? normalize(originalContent).replace(/\n+$/, '')
+      : ''
+    : originalContent.replace(/\r\n?/g, '\n');
+  const current = normalizeInputs
+    ? currentContent.trim()
+      ? normalize(currentContent).replace(/\n+$/, '')
+      : ''
+    : currentContent.replace(/\r\n?/g, '\n');
 
   // Handle empty or identical content
   if (original === current) {

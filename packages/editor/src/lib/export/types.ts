@@ -39,6 +39,8 @@ export interface MarkdownSummaryResult {
  * Options for generating a Git-compatible unified diff.
  */
 export interface UnifiedDiffOptions {
+  /** Preserve source formatting instead of canonical Markdown normalization. */
+  normalizeInputs?: boolean | undefined;
   /** Path for the original file header. Default: 'a/document.md' */
   originalPath?: string | undefined;
 

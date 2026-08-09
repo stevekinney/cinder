@@ -66,6 +66,8 @@ describe('TransferList', () => {
     expect(onValueChange).toHaveBeenCalledWith(['read']);
     expect(screen.getByText('1 item selected')).toBeTruthy();
     expect(screen.getByRole('option', { name: /Read/ }).getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByRole('alert')).toBeTruthy();
+    expect(screen.getByText('1 item selected').getAttribute('aria-live')).toBeNull();
   });
 
   test('clicking a selected option removes it', async () => {

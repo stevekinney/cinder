@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 import { describe, expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 import { createRawSnippet } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
@@ -170,6 +171,8 @@ describe('Card', () => {
     expect(root?.tagName).toBe('A');
     expect(root?.getAttribute('href')).toBe('/details');
     expect(root?.getAttribute('role')).toBeNull();
+    const css = readFileSync(new URL('./card.css', import.meta.url), 'utf8');
+    expect(css).toMatch(/\.cinder-card\[data-cinder-interactive\]\s*\{[^}]*display:\s*block/s);
     expect(root?.getAttribute('data-cinder-interactive')).toBe('');
     expect(root?.getAttribute('data-cinder-elevation')).toBe('md');
   });

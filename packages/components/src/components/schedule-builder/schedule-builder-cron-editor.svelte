@@ -4,7 +4,7 @@
   import NumberInput from '../number-input/number-input.svelte';
   import Select from '../select/select.svelte';
   import { CRON_FIELDS, validateCronField } from './schedule-builder.utilities.ts';
-  import type { CronEditor } from './schedule-builder-cron-editor.ts';
+  import { cronExpressionForEditor, type CronEditor } from './schedule-builder-cron-editor.ts';
 
   interface Props {
     baseId: string;
@@ -22,6 +22,11 @@
 <Grid class="cinder-schedule-builder__cron-fields" minItemWidth="12rem" gap="var(--cinder-space-3)">
   {#each CRON_FIELDS as field, index (field.name)}
     {@const editor = cronEditors[index]!}
+    {@const structuredError =
+      editor.mode === 'advanced'
+        ? undefined
+        : (validateCronField(cronExpressionForEditor(editor), index) ??
+          validateCronField(cronFields[index] ?? '*', index))}
     <div class="cinder-schedule-builder__cron-field">
       <Select
         id={`${baseId}-cron-field-${index}-mode`}
@@ -44,6 +49,7 @@
           max={field.max}
           step={1}
           value={editor.value}
+          {...structuredError ? { error: structuredError } : {}}
           onValueChange={(next) => onEditorChange(index, { value: next ?? field.min })}
         />
       {:else if editor.mode === 'range'}
@@ -55,6 +61,7 @@
             max={field.max}
             step={1}
             value={editor.start}
+            {...structuredError ? { error: structuredError } : {}}
             onValueChange={(next) => onEditorChange(index, { start: next ?? field.min })}
           />
           <NumberInput
@@ -64,6 +71,7 @@
             max={field.max}
             step={1}
             value={editor.end}
+            {...structuredError ? { error: structuredError } : {}}
             onValueChange={(next) => onEditorChange(index, { end: next ?? field.max })}
           />
         </Grid>
@@ -75,8 +83,12 @@
           max={field.max}
           step={1}
           value={editor.step}
+          {...structuredError ? { error: structuredError } : {}}
           onValueChange={(next) => onEditorChange(index, { step: next ?? 1 })}
         />
+      {/if}
+      {#if structuredError}
+        <p class="cinder-schedule-builder__cron-structured-error" role="alert">{structuredError}</p>
       {/if}
       <details class="cinder-schedule-builder__cron-advanced">
         <summary>Advanced raw expression</summary>

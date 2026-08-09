@@ -146,6 +146,7 @@
   }
 
   function handleLink(event: MouseEvent) {
+    formattingPopoverOpen = false;
     const triggerElement = event.currentTarget;
     if (triggerElement instanceof HTMLElement) {
       onLinkClick?.(triggerElement);

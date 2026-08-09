@@ -141,7 +141,7 @@
 <div {...rest} class={classNames('cinder-transfer-list', customClassName)}>
   <div class="cinder-transfer-list__header">
     <h3 id={`${baseId}-label`} class="cinder-transfer-list__label">{leftLabel}</h3>
-    <span class="cinder-transfer-list__count" aria-live="polite">
+    <span class="cinder-transfer-list__count">
       {selectedCount}
       {selectedCount === 1 ? 'item' : 'items'}
       {displayedRightLabel}

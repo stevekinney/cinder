@@ -136,7 +136,7 @@
     if (value !== undefined) value = hex;
     // Every value mutation fires `onValueChange`; `onValueCommit` additionally fires on commit.
     onValueChange?.(hex);
-    if (reason === 'change') onValueCommit?.(hex);
+    if (reason === 'change') onValueCommit?.(hex, 'keyboard');
   }
 
   function commitFromHsla(next: Hsla, reason: 'input' | 'change'): void {
@@ -144,12 +144,12 @@
     emit(reason);
   }
 
-  function commitCurrentValueChange(): void {
+  function commitCurrentValueChange(reason: 'pointer' | 'swatch' = 'pointer'): void {
     const hex = formatHex(hue, saturation, lightnessValue, alphaValue, alpha);
     internalValue = hex;
     lastEmittedHex = hex;
     if (value !== undefined) value = hex;
-    onValueCommit?.(hex);
+    onValueCommit?.(hex, reason);
   }
 
   // ── Gradient handling ──────────────────────────────────────────────────
@@ -354,7 +354,9 @@
     if (disabled) return;
     const parsed = parseToHsla(selectedColor);
     if (!parsed) return;
-    commitFromHsla(parsed, 'change');
+    commitFromHsla(parsed, 'input');
+    const hex = formatHex(parsed.h, parsed.s, parsed.l, parsed.a, alpha);
+    onValueCommit?.(hex, 'swatch');
   }
 
   // ── Form reset ──────────────────────────────────────────────────────────

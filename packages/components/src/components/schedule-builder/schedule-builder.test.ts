@@ -714,6 +714,14 @@ describe('ScheduleBuilder', () => {
       });
     });
 
+    test('shows range validation on the visible structured controls', () => {
+      const { getAllByText } = render(ScheduleBuilder, {
+        allowedModes: ['cron'],
+        value: { mode: 'cron', expression: '40-10 * * * *' },
+      });
+      expect(getAllByText('Range start is after its end.').length).toBeGreaterThan(0);
+    });
+
     test('a valid cron field edit commits a joined cron expression via onValueChange', async () => {
       const onValueChange = mock();
       const { getByLabelText, getByRole } = render(ScheduleBuilder, { onValueChange });

@@ -404,7 +404,7 @@
   const swatchEmpty = $derived(committedHex === '');
   const swatchColor = $derived(committedHex === '' ? 'transparent' : committedHex);
 
-  function handlePickerCommit(next: string): void {
+  function handlePickerCommit(next: string, reason: 'pointer' | 'swatch' | 'keyboard'): void {
     const parsed = parseColor(next);
     if (parsed === null) return;
     const normalized = emitFor(parsed);
@@ -417,7 +417,7 @@
     value = normalized;
     if (normalized !== previousHex) onValueChange?.(normalized);
     syncCustomValidity();
-    pickerOpen = false;
+    if (reason === 'swatch') pickerOpen = false;
   }
 </script>
 

@@ -225,6 +225,9 @@
     border-bottom: none;
     min-height: 2.5rem;
     flex-wrap: nowrap;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: thin;
   }
 
   .controls-leading {
@@ -232,6 +235,7 @@
     align-items: center;
     gap: var(--cinder-space-2);
     flex-wrap: nowrap;
+    flex: 0 0 auto;
   }
 
   .controls-trailing {
@@ -239,6 +243,7 @@
     align-items: center;
     gap: var(--cinder-space-2);
     flex-wrap: nowrap;
+    flex: 0 0 auto;
   }
 
   .controls-separator {

@@ -168,6 +168,12 @@ describe('parseColor', () => {
         a: 1,
       });
     });
+
+    test('rejects malformed hue and percentage channels', () => {
+      expect(parseColor('hwb(120junk 20% 30%)')).toBeNull();
+      expect(parseColor('hwb(120 20junk% 30%)')).toBeNull();
+      expect(parseColor('hwb(120 20% 30junk%)')).toBeNull();
+    });
   });
 
   describe('unsupported formats', () => {

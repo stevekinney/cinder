@@ -31,6 +31,7 @@
   }
 
   .cinder-card[data-cinder-interactive] {
+    display: block;
     cursor: pointer;
     text-decoration: none;
   }

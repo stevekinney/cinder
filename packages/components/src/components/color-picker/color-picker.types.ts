@@ -19,7 +19,7 @@ export type ColorPickerProps = {
   /** Accessible label for the picker. Default `'Color picker'`. */
   label?: string;
   /** Fired on commit (pointer up, swatch click, slider key). */
-  onValueCommit?: (color: string) => void;
+  onValueCommit?: (color: string, reason: 'pointer' | 'swatch' | 'keyboard') => void;
   /** Fired on every intermediate update (drag, slider key, swatch click). */
   onValueChange?: (color: string) => void;
 };

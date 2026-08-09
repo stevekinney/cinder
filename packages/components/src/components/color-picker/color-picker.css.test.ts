@@ -44,6 +44,18 @@ function lightDarkArms(value: string): [string, string] {
 const tokensCss = loadCss('../../styles/tokens-base.css');
 const colorPickerCss = loadCss('./color-picker.css');
 const colorFieldCss = loadCss('../color-field/color-field.css');
+
+test('format controls keep their intended styling after copy-button styles load', () => {
+  expect(colorPickerCss).toContain('.cinder-color-picker .cinder-color-picker__format');
+});
+
+test('composed color controls aggregate their dependency styles for à-la-carte consumers', () => {
+  expect(colorFieldCss).toContain("@import '../button/button.css'");
+  expect(colorFieldCss).toContain("@import '../color-picker/color-picker.css'");
+  expect(colorFieldCss).toContain("@import '../popover/popover.css'");
+  expect(colorPickerCss).toContain("@import '../color-swatch-picker/color-swatch-picker.css'");
+  expect(colorPickerCss).toContain("@import '../copy-button/copy-button.css'");
+});
 const colorSwatchPickerCss = loadCss('../color-swatch-picker/color-swatch-picker.css');
 
 describe('color checker tokens', () => {

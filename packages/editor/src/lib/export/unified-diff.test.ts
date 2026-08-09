@@ -66,6 +66,15 @@ describe('generateUnifiedDiff', () => {
     });
   });
 
+  test('preserves formatting-only changes when normalization is disabled', () => {
+    const result = generateUnifiedDiff(
+      { schemaVersion: 1, original: '- item\n', content: '* item\n', threads: [], updatedAt: '' },
+      { normalizeInputs: false },
+    );
+    expect(result.diff).toContain('-- item');
+    expect(result.diff).toContain('+* item');
+  });
+
   describe('hunk generation', () => {
     test('includes context lines', () => {
       const original = 'Line 1\nLine 2\nLine 3\nLine 4\nLine 5';

@@ -64,6 +64,17 @@ describe('ColorField — color picker trigger', () => {
 
     expect(document.body.querySelector('.cinder-color-picker')).not.toBeNull();
   });
+
+  test('keeps the composed picker open during keyboard slider commits', async () => {
+    const { container } = render(ColorField, { id: 'color', value: '#ff0000' });
+    await fireEvent.click(q<HTMLButtonElement>(container, '.cinder-color-field__swatch-button'));
+    const hue = q<HTMLElement>(document.body, '[role="slider"][aria-label="Hue"]');
+
+    await fireEvent.keyDown(hue, { key: 'ArrowRight' });
+    await tick();
+
+    expect(document.body.querySelector('.cinder-color-picker')).not.toBeNull();
+  });
 });
 
 describe('ColorField — parse round-trips', () => {

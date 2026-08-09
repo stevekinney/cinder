@@ -303,20 +303,51 @@
     onreverthunk?.(hunk.index, hunk);
   }
 
-  let copyStatus = $state<'idle' | 'copied'>('idle');
+  function formatComputedUnifiedDiff(hunks: DiffHunk[]): string {
+    if (hunks.length === 0) return '';
+    const lines = ['--- a/document.md', '+++ b/document.md'];
+    for (const hunk of hunks) {
+      lines.push(
+        `@@ -${hunk.originalStart},${hunk.originalCount} +${hunk.currentStart},${hunk.currentCount} @@`,
+      );
+      for (const line of hunk.lines) {
+        if (line.type === 'same') lines.push(` ${line.text}`);
+        else if (line.type === 'added') lines.push(`+${line.text}`);
+        else if (line.type === 'removed') lines.push(`-${line.text}`);
+        else lines.push(`-${line.oldText}`, `+${line.newText}`);
+      }
+    }
+    return `${lines.join('\n')}\n`;
+  }
+
+  let copyStatus = $state<'idle' | 'copied' | 'failed'>('idle');
   let copyStatusResetTimer: number | undefined;
   async function copyUnifiedDiff(): Promise<void> {
-    const diff = generateUnifiedDiff({
-      schemaVersion: 1,
-      content: current,
-      original,
-      threads: [],
-      updatedAt: '',
-    }).diff;
-    if (!diff || typeof navigator === 'undefined' || !navigator.clipboard) return;
+    if (diffState.tier === 'manual' && (diffState.isStale || diffState.isComputing)) {
+      copyStatus = 'failed';
+      return;
+    }
+    const diff =
+      diffState.tier === 'manual'
+        ? formatComputedUnifiedDiff(computedHunks)
+        : generateUnifiedDiff(
+            {
+              schemaVersion: 1,
+              content: normalizedCurrentBody,
+              original: normalizedOriginalBody,
+              threads: [],
+              updatedAt: '',
+            },
+            { normalizeInputs: false },
+          ).diff;
+    if (!diff || typeof navigator === 'undefined' || !navigator.clipboard) {
+      copyStatus = 'failed';
+      return;
+    }
     try {
       await navigator.clipboard.writeText(diff);
     } catch {
+      copyStatus = 'failed';
       return;
     }
     copyStatus = 'copied';
@@ -389,6 +420,8 @@
   {/if}
   {#if copyStatus === 'copied'}
     <div class="cinder-sr-only" role="status">Unified diff copied.</div>
+  {:else if copyStatus === 'failed'}
+    <div class="diff-copy-error" role="status">Unable to copy unified diff.</div>
   {/if}
 
   <!-- Size warning banner (DEP-47) -->

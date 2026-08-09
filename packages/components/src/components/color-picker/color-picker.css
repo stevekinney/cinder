@@ -1,3 +1,6 @@
+@import '../color-swatch-picker/color-swatch-picker.css';
+@import '../copy-button/copy-button.css';
+
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
 @layer cinder.components {
   /* ========================================
@@ -191,7 +194,7 @@
     gap: var(--cinder-space-1);
   }
 
-  .cinder-color-picker__format {
+  .cinder-color-picker .cinder-color-picker__format {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -208,19 +211,19 @@
     cursor: pointer;
   }
 
-  .cinder-color-picker__format span {
+  .cinder-color-picker .cinder-color-picker__format span {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  .cinder-color-picker__format:hover:not(:disabled),
-  .cinder-color-picker__format:focus-visible {
+  .cinder-color-picker .cinder-color-picker__format:hover:not(:disabled),
+  .cinder-color-picker .cinder-color-picker__format:focus-visible {
     color: var(--cinder-text);
     text-decoration: underline;
   }
 
-  .cinder-color-picker__format:disabled {
+  .cinder-color-picker .cinder-color-picker__format:disabled {
     cursor: default;
     opacity: 0.6;
   }
