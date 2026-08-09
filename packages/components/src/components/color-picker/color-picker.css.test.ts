@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, test } from 'bun:test';
 
-import { parse, type Declaration } from 'postcss';
+import { parse, type Declaration, type Rule } from 'postcss';
 
 function loadCss(relativePath: string): string {
   const fullPath = fileURLToPath(new URL(relativePath, import.meta.url));
@@ -18,6 +18,22 @@ function declarationValue(source: string, property: string): string {
     return false;
   });
   if (!value) throw new Error(`declaration not found: ${property}`);
+  return value;
+}
+
+function ruleDeclarationValue(source: string, selector: string, property: string): string {
+  const root = parse(source);
+  let value: string | undefined;
+  root.walkRules(selector, (rule: Rule) => {
+    rule.walkDecls(property, (declaration: Declaration) => {
+      value = declaration.value;
+      return false;
+    });
+    return false;
+  });
+  if (value === undefined) {
+    throw new Error(`declaration not found: ${selector} { ${property} }`);
+  }
   return value;
 }
 
@@ -110,5 +126,21 @@ describe('color picker thumb contrast outline', () => {
     expect(shadow).toBe(
       '0 0 0 1px var(--_cinder-color-picker-thumb-shadow-edge), 0 0 0 2px var(--_cinder-color-picker-thumb-shadow-support)',
     );
+  });
+});
+
+describe('color picker text hierarchy', () => {
+  test('copy formats and the fallback hex value use the declared muted text token', () => {
+    expect(
+      ruleDeclarationValue(
+        colorPickerCss,
+        '.cinder-color-picker .cinder-color-picker__format',
+        'color',
+      ),
+    ).toBe('var(--cinder-text-muted)');
+    expect(ruleDeclarationValue(colorPickerCss, '.cinder-color-picker__hex-value', 'color')).toBe(
+      'var(--cinder-text-muted)',
+    );
+    expect(colorPickerCss).not.toContain('--cinder-text-secondary');
   });
 });

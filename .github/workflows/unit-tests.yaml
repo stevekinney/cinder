@@ -256,6 +256,15 @@ jobs:
       - name: Check styles aggregator completeness
         run: bun run --filter=@lostgradient/cinder aggregator:check
 
+      # Unconditional whole-repo invariant: every var(--cinder-*) reference in
+      # component styling must resolve to a declared global token, a component-
+      # owned variable, or an explicitly allowed runtime variable. This used to
+      # run only in main-green, which let #1232 merge a second stale token
+      # reference and made #1233 the first failing signal. Keep the strict audit
+      # in PR CI so the introducing change is rejected before merge.
+      - name: Check component token references
+        run: bun run --filter=@lostgradient/cinder tokens:audit -- --strict
+
       # Unconditional whole-repo invariant: the generated component artifacts —
       # per-component schemas (.schema.json/.schema.ts), constraints (.constraints.json),
       # examples manifests (.examples.json), generated README regions, and the

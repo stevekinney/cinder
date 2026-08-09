@@ -1,10 +1,5 @@
 [
   {
-    "filePath": "src/components/color-picker/color-picker.css",
-    "name": "--cinder-text-secondary",
-    "allowedCount": 1
-  },
-  {
     "filePath": "src/components/kanban-board/kanban-board.css",
     "name": "--cinder-shadow-xs",
     "allowedCount": 1

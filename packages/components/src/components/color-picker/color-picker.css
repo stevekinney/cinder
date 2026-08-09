@@ -203,7 +203,7 @@
     padding: 0;
     border: 0;
     background: transparent;
-    color: var(--cinder-text-secondary, currentColor);
+    color: var(--cinder-text-muted);
     font-family: var(--cinder-font-mono, monospace);
     font-size: var(--cinder-text-xs, 0.75rem);
     line-height: 1;
@@ -231,7 +231,7 @@
   .cinder-color-picker__hex-value {
     font-family: var(--cinder-font-mono, monospace);
     font-size: var(--cinder-text-xs, 0.75rem);
-    color: var(--cinder-text-secondary, currentColor);
+    color: var(--cinder-text-muted);
     line-height: 1;
     user-select: all;
     overflow: hidden;
