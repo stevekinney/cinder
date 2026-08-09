@@ -17,6 +17,11 @@ interface DiffHunk {
   lines: string[];
 }
 
+interface SplitContent {
+  lines: string[];
+  hasTrailingNewline: boolean;
+}
+
 /** Join the exact front-matter and body strings rendered by DiffViewer. */
 export function composeDisplayedDocument(frontMatter: string, body: string): string {
   return frontMatter ? `${frontMatter}\n${body}` : body;
@@ -109,14 +114,15 @@ export function generateUnifiedDiff(
     };
   }
 
-  const originalLines = splitIntoLines(original);
-  const currentLines = splitIntoLines(current);
+  const originalSplit = splitIntoLines(original, normalizeInputs);
+  const currentSplit = splitIntoLines(current, normalizeInputs);
 
   // Compute line-level diff
-  const changes = computeLineChanges(originalLines, currentLines);
+  const changes = computeLineChanges(originalSplit.lines, currentSplit.lines);
+  representTrailingNewlineChange(changes, originalSplit, currentSplit);
 
   // Group changes into hunks with context
-  const hunks = createHunks(changes, contextLines);
+  const hunks = createHunks(changes, contextLines, originalSplit, currentSplit);
 
   // Build the unified diff output
   const diffLines: string[] = [`--- ${originalPath}`, `+++ ${currentPath}`];
@@ -151,9 +157,11 @@ export function generateUnifiedDiff(
 /**
  * Split content into lines, preserving empty lines.
  */
-function splitIntoLines(content: string): string[] {
-  if (content === '') return [];
-  return content.split('\n');
+function splitIntoLines(content: string, normalized: boolean): SplitContent {
+  if (content === '') return { lines: [], hasTrailingNewline: normalized };
+  const hasTrailingNewline = normalized || content.endsWith('\n');
+  const text = content.endsWith('\n') ? content.slice(0, -1) : content;
+  return { lines: text.split('\n'), hasTrailingNewline };
 }
 
 /**
@@ -164,6 +172,33 @@ interface LineChange {
   originalIndex: number | null;
   currentIndex: number | null;
   text: string;
+}
+
+function representTrailingNewlineChange(
+  changes: LineChange[],
+  original: SplitContent,
+  current: SplitContent,
+): void {
+  if (original.hasTrailingNewline === current.hasTrailingNewline) return;
+  const lastChange = changes.at(-1);
+  if (!lastChange || lastChange.type !== 'same') return;
+
+  changes.splice(
+    -1,
+    1,
+    {
+      type: 'removed',
+      originalIndex: lastChange.originalIndex,
+      currentIndex: null,
+      text: lastChange.text,
+    },
+    {
+      type: 'added',
+      originalIndex: null,
+      currentIndex: lastChange.currentIndex,
+      text: lastChange.text,
+    },
+  );
 }
 
 /**
@@ -227,7 +262,12 @@ function computeLineChanges(original: string[], current: string[]): LineChange[]
 /**
  * Group changes into hunks with surrounding context lines.
  */
-function createHunks(changes: LineChange[], contextLines: number): DiffHunk[] {
+function createHunks(
+  changes: LineChange[],
+  contextLines: number,
+  original: SplitContent,
+  current: SplitContent,
+): DiffHunk[] {
   // Find indices of actual changes (non-same lines)
   const changeIndices: number[] = [];
   for (let i = 0; i < changes.length; i++) {
@@ -259,14 +299,14 @@ function createHunks(changes: LineChange[], contextLines: number): DiffHunk[] {
       hunkEnd = Math.min(changes.length - 1, changeEnd);
     } else {
       // Create hunk from current range
-      hunks.push(buildHunk(changes, hunkStart, hunkEnd));
+      hunks.push(buildHunk(changes, hunkStart, hunkEnd, original, current));
       hunkStart = Math.max(0, changeStart);
       hunkEnd = Math.min(changes.length - 1, changeEnd);
     }
   }
 
   // Don't forget the last hunk
-  hunks.push(buildHunk(changes, hunkStart, hunkEnd));
+  hunks.push(buildHunk(changes, hunkStart, hunkEnd, original, current));
 
   return hunks;
 }
@@ -274,7 +314,13 @@ function createHunks(changes: LineChange[], contextLines: number): DiffHunk[] {
 /**
  * Build a single hunk from a range of changes.
  */
-function buildHunk(changes: LineChange[], start: number, end: number): DiffHunk {
+function buildHunk(
+  changes: LineChange[],
+  start: number,
+  end: number,
+  original: SplitContent,
+  current: SplitContent,
+): DiffHunk {
   const lines: string[] = [];
   let originalStart = 0;
   let originalCount = 0;
@@ -304,6 +350,9 @@ function buildHunk(changes: LineChange[], start: number, end: number): DiffHunk 
 
       case 'removed':
         lines.push(`-${change.text}`);
+        if (!original.hasTrailingNewline && change.originalIndex === original.lines.length - 1) {
+          lines.push('\\ No newline at end of file');
+        }
         if (!foundFirstOriginal && change.originalIndex !== null) {
           originalStart = change.originalIndex + 1;
           foundFirstOriginal = true;
@@ -313,6 +362,9 @@ function buildHunk(changes: LineChange[], start: number, end: number): DiffHunk 
 
       case 'added':
         lines.push(`+${change.text}`);
+        if (!current.hasTrailingNewline && change.currentIndex === current.lines.length - 1) {
+          lines.push('\\ No newline at end of file');
+        }
         if (!foundFirstCurrent && change.currentIndex !== null) {
           currentStart = change.currentIndex + 1;
           foundFirstCurrent = true;

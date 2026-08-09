@@ -73,6 +73,29 @@
     min-inline-size: 0;
   }
 
+  .cinder-schedule-builder__cron-advanced > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--cinder-space-2);
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .cinder-schedule-builder__cron-advanced > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .cinder-schedule-builder__cron-advanced-chevron {
+    transition: transform var(--cinder-duration-fast) var(--cinder-ease-standard);
+  }
+
+  .cinder-schedule-builder__cron-advanced[open]
+    > summary
+    .cinder-schedule-builder__cron-advanced-chevron {
+    transform: rotate(180deg);
+  }
+
   /* ----------------------------------------
    * Always-visible informational blocks: summary, preview, timezone
    * ---------------------------------------- */

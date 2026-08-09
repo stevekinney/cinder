@@ -13,7 +13,7 @@ The preset-kind selector inside Presets mode (Every N / Daily / Weekly / Monthly
 - The mode tabs (`SegmentedControl` `variant="tablist"`) render `role="tab"` on each `Segment`, with the selected tab's tabpanel matched via `aria-controls` / `aria-labelledby`. See `segmented-control.a11y.md` for the full tab pattern.
 - The preset-kind selector renders `role="radiogroup"` with `role="radio"` children — see `segmented-control.a11y.md`.
 - Every text/number/time field (`Input`, `NumberInput`, `TimeField`) carries its own `<label for>` association, so `getByLabelText`-style lookup and screen-reader field announcement both work out of the box.
-- Each cron field begins with a labeled native `Select` for Every, Specific value, Range, Step, or Advanced raw expression. Specific, Range, and Step reveal labeled `NumberInput` controls with native bounds. Structured validation is attached to those visible controls and repeated in a `role="alert"` message. A native `details` disclosure provides the labeled raw `Input` escape hatch with its range hint and inline validation. Editing that raw input switches the corresponding pattern selector to Advanced so the structured and raw representations never disagree.
+- Each cron field begins with a labeled native `Select` for Every, Specific value, Range, Step, or Advanced raw expression. Specific, Range, and Step reveal labeled `NumberInput` controls with native bounds. Structured validation is attached to those visible controls and repeated in a `role="alert"` message. A native disclosure with the standard rotating Lucide chevron provides the labeled raw `Input` escape hatch with its range hint and inline validation. Editing that raw input switches the corresponding pattern selector to Advanced so the structured and raw representations never disagree.
 - The weekly preset's day-of-week chips are `Chip` `mode="toggle"` buttons (`aria-pressed`) inside a `role="group"` labeled `"Days of week"`. Each chip shows the short day name (`"Mon"`) but carries the full day name (`"Monday"`) as its `aria-label` so the accessible name isn't a potentially ambiguous abbreviation.
 - The summary line is a `<dl>`/`<dt>`/`<dd>` pair (`"Summary"` term, plain-English description as the definition) — always present, updates live as any field changes.
 - The next-fires preview, when `computeNextFires` is supplied, is a labeled `<ul>` (`aria-labelledby` pointing at a visible `"Upcoming fires"` label) of `<li>` rows keyed by `ScheduleFire.id`. An empty result renders a `"No upcoming fires."` paragraph instead of an empty list.
@@ -21,13 +21,13 @@ The preset-kind selector inside Presets mode (Every N / Daily / Weekly / Monthly
 
 ## Keyboard
 
-| Key                           | Action                                                                                                                          |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `Tab` / `Shift+Tab`           | Move focus between the mode tablist, pattern selectors, visible structured controls, raw disclosures, and other visible fields. |
-| `ArrowLeft` / `ArrowRight`    | Move focus and selection between mode tabs (horizontal tablist), and between preset-kind options (radiogroup).                  |
-| `Space` / `Enter`             | Activate a focused day-of-week chip; commit a focused numeric field's stepper adjustment.                                       |
-| Native text/number/time entry | Standard browser editing keys apply inside `Input`, `NumberInput`, and `TimeField`; raw cron edits select Advanced mode.        |
-| `Space` / `Enter` on summary  | Toggle the native Advanced raw expression disclosure.                                                                           |
+| Key                                          | Action                                                                                                                          |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `Tab` / `Shift+Tab`                          | Move focus between the mode tablist, pattern selectors, visible structured controls, raw disclosures, and other visible fields. |
+| `ArrowLeft` / `ArrowRight`                   | Move focus and selection between mode tabs (horizontal tablist), and between preset-kind options (radiogroup).                  |
+| `Space` / `Enter`                            | Activate a focused day-of-week chip; commit a focused numeric field's stepper adjustment.                                       |
+| Native text/number/time entry                | Standard browser editing keys apply inside `Input`, `NumberInput`, and `TimeField`; raw cron edits select Advanced mode.        |
+| `Space` / `Enter` on Advanced raw expression | Toggle the native raw-expression disclosure.                                                                                    |
 
 ## Mouse / pointer
 
@@ -39,7 +39,7 @@ The structured cron editor was reviewed against a raw five-field cron form and
 the preset authoring mode. Presets remain the neighbour for common schedules;
 the structured cron panel is justified for field-level cron control without
 requiring users to memorize expression syntax. The review accepted native
-Select, NumberInput, Grid, and details/Input composition, provided validation is
+Select, NumberInput, Grid, and details/Input composition with the standard chevron, provided validation is
 visible on the active controls, raw editing switches to Advanced, and no focus is
 moved automatically. The roles, focus order, keyboard behavior, validation
 announcements, and disclosure behavior are recorded above and covered by tests.

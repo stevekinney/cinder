@@ -1024,5 +1024,18 @@ describe('ScheduleBuilder', () => {
         css.indexOf('@layer cinder.components'),
       );
     });
+
+    test('uses the standard rotating chevron for raw cron disclosures', async () => {
+      const [componentSource, cssSource] = await Promise.all([
+        Bun.file(new URL('./schedule-builder-cron-editor.svelte', import.meta.url)).text(),
+        Bun.file(new URL('./schedule-builder.css', import.meta.url)).text(),
+      ]);
+
+      expect(componentSource).toContain('ChevronDown');
+      expect(componentSource).toContain('cinder-schedule-builder__cron-advanced-chevron');
+      expect(cssSource).toMatch(
+        /\.cinder-schedule-builder__cron-advanced\[open\][\s\S]*?transform:\s*rotate\(180deg\)/,
+      );
+    });
   });
 });

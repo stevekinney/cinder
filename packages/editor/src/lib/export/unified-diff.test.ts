@@ -80,6 +80,21 @@ describe('generateUnifiedDiff', () => {
     expect(result.diff).toContain('+* item');
   });
 
+  test('does not count a trailing newline as an extra diff line', () => {
+    const result = generateUnifiedDiff(createState('a\n', 'b\n'), { normalizeInputs: false });
+
+    expect(result.diff).toContain('@@ -1,1 +1,1 @@');
+    expect(result.diff).not.toContain('@@ -1,2 +1,2 @@');
+    expect(result.diff).not.toContain('\\ No newline at end of file');
+  });
+
+  test('represents a removed EOF newline with the standard marker', () => {
+    const result = generateUnifiedDiff(createState('a\n', 'a'), { normalizeInputs: false });
+
+    expect(result.diff).toContain('@@ -1,1 +1,1 @@');
+    expect(result.diff).toContain('-a\n+a\n\\ No newline at end of file');
+  });
+
   describe('hunk generation', () => {
     test('includes context lines', () => {
       const original = 'Line 1\nLine 2\nLine 3\nLine 4\nLine 5';

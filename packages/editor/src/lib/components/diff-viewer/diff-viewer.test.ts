@@ -95,6 +95,18 @@ describe('DiffViewer: identical input (basic mount)', () => {
     // With nothing changed, there is no change-navigation counter.
     expect(container.querySelector('.change-counter')).toBeNull();
   });
+
+  test('the toolbar omits copy when there is no diff to copy', () => {
+    const { container } = render(DiffToolbar, {
+      stats: { added: 0, removed: 0, modified: 0 },
+      changeCount: 0,
+      currentChangeIndex: -1,
+      hasChanges: false,
+      oncopydiff: () => {},
+    });
+
+    expect(hasButtonLabelled(container, 'Copy unified diff')).toBe(false);
+  });
 });
 
 describe('DiffViewer: unified diff clipboard handling', () => {

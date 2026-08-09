@@ -20,6 +20,8 @@ Purpose: Rich Markdown editing surface bundling a Milkdown-powered ProseMirror e
 
 Keyboard behavior follows the rendered native elements and any ARIA pattern documented by the component. Avoid adding handlers that change focus order without a matching visible and programmatic state update.
 
+The **More formatting** button opens a priority-plus Popover containing the less-frequent formatting commands. Opening it moves focus to the first enabled formatting action. `Tab` and `Shift+Tab` follow the panel's native button order; each button's existing shortcut remains available while the editor is focused. `Escape` closes the panel and restores focus to More formatting. Activating Insert Link first closes the formatting panel, then opens the link dialog from the same visual anchor so only one floating focus scope is active. The panel is named **More formatting**, its command groups retain their accessible labels, and toggle buttons expose their pressed state without an additional live announcement.
+
 Keep focus indicators visible. If you wrap or restyle MarkdownEditor, verify the focused element remains visually apparent in default and forced-colors modes.
 
 ## Names, roles, and state
@@ -34,5 +36,7 @@ When MarkdownEditor accepts snippets or arbitrary children, the caller owns the 
 - Navigate the component with keyboard only.
 - Inspect the accessible name, role, and state in browser accessibility tools.
 - Check forced-colors mode when the component adds borders, focus rings, selected state, or status color.
+
+Accessibility review outcome: the priority-plus overflow is accepted because its trigger is named, opening enters the portaled command surface, Escape restores the trigger, commands retain native keyboard order and state, and the nested link flow closes the first Popover before opening the dialog.
 
 Related components: `review-editor`, `code-block`.

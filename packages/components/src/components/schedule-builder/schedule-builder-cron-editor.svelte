@@ -3,6 +3,7 @@
   import Grid from '../grid/grid.svelte';
   import NumberInput from '../number-input/number-input.svelte';
   import Select from '../select/select.svelte';
+  import { ChevronDown } from '@lostgradient/cinder/icons';
   import { CRON_FIELDS, validateCronField } from './schedule-builder.utilities.ts';
   import { cronExpressionForEditor, type CronEditor } from './schedule-builder-cron-editor.ts';
 
@@ -91,7 +92,10 @@
         <p class="cinder-schedule-builder__cron-structured-error" role="alert">{structuredError}</p>
       {/if}
       <details class="cinder-schedule-builder__cron-advanced">
-        <summary>Advanced raw expression</summary>
+        <summary>
+          <span>Advanced raw expression</span>
+          <ChevronDown class="cinder-schedule-builder__cron-advanced-chevron cinder-icon-sm" />
+        </summary>
         <Input
           id={`${baseId}-cron-field-${index}-raw`}
           label={field.name}

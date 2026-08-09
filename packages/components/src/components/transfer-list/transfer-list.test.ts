@@ -135,6 +135,28 @@ describe('TransferList', () => {
     );
   });
 
+  test('reconciles the active descendant when parent items change', async () => {
+    const { rerender } = render(TransferList, { props: { items, value: [] } });
+    const list = screen.getByRole('listbox');
+
+    await fireEvent.focus(list);
+    await fireEvent.keyDown(list, { key: 'ArrowDown' });
+    expect(
+      document.getElementById(list.getAttribute('aria-activedescendant')!)?.textContent,
+    ).toContain('Write');
+
+    await rerender({
+      items: items.map((item) => (item.id === 'write' ? { ...item, disabled: true } : item)),
+      value: [],
+    });
+
+    expect(
+      document.getElementById(list.getAttribute('aria-activedescendant')!)?.textContent,
+    ).toContain('Read');
+    await fireEvent.keyDown(list, { key: ' ' });
+    expect(screen.getByRole('option', { name: /Read/ }).getAttribute('aria-selected')).toBe('true');
+  });
+
   test('bind:value receives selection updates', async () => {
     render(TransferListFixture);
     expect(screen.getByTestId('value').textContent).toBe('read');

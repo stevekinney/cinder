@@ -246,7 +246,7 @@
     bind:open={formattingPopoverOpen}
     label="More formatting"
     placement="bottom-start"
-    focusManagement="preserve"
+    focusManagement="panel"
   >
     {#snippet trigger()}
       <Button

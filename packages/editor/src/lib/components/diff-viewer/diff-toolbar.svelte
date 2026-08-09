@@ -121,7 +121,7 @@
       {@render actions()}
     {/if}
 
-    {#if oncopydiff}
+    {#if oncopydiff && hasChanges}
       <Button variant="ghost" size="xs" onclick={oncopydiff} aria-label="Copy unified diff">
         <Copy class="cinder-icon-sm" />
         Copy diff

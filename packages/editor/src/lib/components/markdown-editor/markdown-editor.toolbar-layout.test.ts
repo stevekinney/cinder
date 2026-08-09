@@ -93,6 +93,7 @@ describe('MarkdownEditor toolbar layout CSS ownership', () => {
     expect(markdownEditorSource).toContain('aria-label="Rich editor"');
     expect(markdownEditorSource).toContain('aria-label="Raw Markdown"');
     expect(editorToolbarSource).toContain('label="More formatting"');
+    expect(editorToolbarSource).toContain('focusManagement="panel"');
     expect(editorToolbarSource).toContain('aria-label="Additional formatting"');
     expect(editorToolbarSource).toContain('aria-label="Text formatting"');
     expect(editorToolbarSource).toContain('{disabled}');

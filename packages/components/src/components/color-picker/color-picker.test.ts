@@ -97,6 +97,24 @@ describe('ColorPicker structure', () => {
     ]);
   });
 
+  test('preserves fractional HSL channels needed to round-trip dark colors', async () => {
+    const writeText = mock(async (_value: string) => {});
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    const { container } = render(ColorPicker, { value: '#010101' });
+    const hslButton = q<HTMLButtonElement>(
+      container,
+      '.cinder-color-picker__format[aria-label="Copy HSL format"]',
+    );
+
+    await fireEvent.click(hslButton);
+    await tick();
+
+    expect(writeText).toHaveBeenCalledWith('hsl(0, 0%, 0.39%)');
+  });
+
   test('exposes the copyable formats as a labelled group', () => {
     const { container } = render(ColorPicker, { value: '#336699' });
 

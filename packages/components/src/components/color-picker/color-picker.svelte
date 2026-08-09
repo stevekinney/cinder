@@ -343,10 +343,13 @@
     const channels = `${r}, ${g}, ${b}`;
     return alpha ? `rgba(${channels}, ${Math.round(alphaValue * 100) / 100})` : `rgb(${channels})`;
   });
+  function roundFormatChannel(value: number): number {
+    return Math.round(value * 100) / 100;
+  }
   const formatHsl = $derived(
     alpha
-      ? `hsla(${Math.round(hue)}, ${Math.round(saturation)}%, ${Math.round(lightnessValue)}%, ${Math.round(alphaValue * 100) / 100})`
-      : `hsl(${Math.round(hue)}, ${Math.round(saturation)}%, ${Math.round(lightnessValue)}%)`,
+      ? `hsla(${roundFormatChannel(hue)}, ${roundFormatChannel(saturation)}%, ${roundFormatChannel(lightnessValue)}%, ${Math.round(alphaValue * 100) / 100})`
+      : `hsl(${roundFormatChannel(hue)}, ${roundFormatChannel(saturation)}%, ${roundFormatChannel(lightnessValue)}%)`,
   );
   function handleSwatchChange(
     selectedColor: Parameters<NonNullable<ColorSwatchPickerProps['onValueChange']>>[0],

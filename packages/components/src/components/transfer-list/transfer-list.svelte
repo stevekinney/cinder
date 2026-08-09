@@ -84,6 +84,12 @@
     return enabled[0]?.id ?? null;
   }
 
+  $effect(() => {
+    if (activeId === null) return;
+    const resolvedId = resolveActiveId(activeId);
+    if (resolvedId !== activeId) activeId = resolvedId;
+  });
+
   function announceSelection(item: TransferListItem, selected: boolean): void {
     announcer.announce(
       `${item.label} ${selected ? 'added to' : 'removed from'} ${rightLabel}. ${selectedCount} ${selectedCount === 1 ? 'item' : 'items'} selected.`,
