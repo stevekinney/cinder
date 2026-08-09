@@ -97,7 +97,24 @@ export interface UseChatScrollStateReturn {
     viewport: HTMLElement | null,
     action: () => void,
     onSettled?: () => void,
+    destination?: () => number,
   ): void;
+  /**
+   * Instantly complete any in-flight `withUserScrollGuard`/`jumpToLatest`
+   * session: clear the guard, then issue an instant scroll to the session's
+   * declared `destination` (or pin the current position when the session
+   * declared none). The instant scroll aborts the browser's smooth-scroll
+   * animation, so nothing keeps animating toward a stale target afterwards.
+   *
+   * Call this before taking a scroll snapshot that must not race a
+   * still-animating programmatic scroll — e.g. the history-prepend capture
+   * (#1237): a load-earlier click mid scroll-to-top glide used to leave the
+   * glide's compositor animation (absolute target 0) racing the instant
+   * restore corrections, and whichever landed last won.
+   *
+   * Returns true when an active guarded session was finished.
+   */
+  finishUserScrollGuard(): boolean;
   /**
    * Immediately cancel any in-flight `withUserScrollGuard`/`jumpToLatest`
    * session and clear `isUserScrolling`, without arming a replacement timer.
@@ -214,6 +231,12 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
   // false while a later guarded scroll's animation is still in progress.
   let activeUserScrollGuardCancel: (() => void) | null = null;
   let activeUserScrollViewport: HTMLElement | null = null;
+  // Where the in-flight guarded scroll is headed, when its initiator declared
+  // one (scrollToTop → 0, jumpToLatest → the bottom). Read lazily so
+  // "the bottom" is computed against the scroll extent at finish time, not at
+  // guard start. Used by finishUserScrollGuard to complete the scroll
+  // instantly instead of leaving its animation racing a later instant scroll.
+  let activeUserScrollGuardDestination: (() => number) | null = null;
 
   /**
    * Set atBottom state directly.
@@ -450,6 +473,7 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
     viewport: HTMLElement | null,
     action: () => void,
     onSettled?: () => void,
+    destination?: () => number,
   ): void {
     // Cancel any previous in-flight guard first: without this, an earlier
     // overlapping guarded scroll (e.g. jumpToLatest() immediately followed by
@@ -476,6 +500,7 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
       cancel();
       activeUserScrollGuardCancel = null;
       activeUserScrollViewport = null;
+      activeUserScrollGuardDestination = null;
       isUserScrolling = false;
       applyPendingSentinelEntry(viewport);
       onSettled?.();
@@ -488,6 +513,7 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
 
     activeUserScrollGuardCancel = cancel;
     activeUserScrollViewport = viewport;
+    activeUserScrollGuardDestination = destination ?? null;
     viewport?.addEventListener('scrollend', settle, { once: true });
     viewport?.addEventListener('scroll', armBackstop, { passive: true });
 
@@ -511,8 +537,31 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
     activeUserScrollGuardCancel?.();
     activeUserScrollGuardCancel = null;
     activeUserScrollViewport = null;
+    activeUserScrollGuardDestination = null;
     isUserScrolling = false;
     applyPendingSentinelEntry(viewport);
+  }
+
+  /**
+   * Instantly complete any in-flight guarded scroll at its declared
+   * destination (or pin the current position when none was declared). See
+   * `UseChatScrollStateReturn.finishUserScrollGuard` for details.
+   */
+  function finishUserScrollGuard(): boolean {
+    if (activeUserScrollGuardCancel === null) return false;
+    const viewport = activeUserScrollViewport;
+    const destination = activeUserScrollGuardDestination;
+    clearUserScrollGuard();
+    if (viewport) {
+      // Either way this instant scroll aborts the browser's in-flight
+      // smooth-scroll animation; with a declared destination it also lands
+      // the scroll where the guarded session was already headed.
+      viewport.scrollTo({
+        top: destination ? destination() : viewport.scrollTop,
+        behavior: 'instant',
+      });
+    }
+    return true;
   }
 
   /**
@@ -534,9 +583,14 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
     if (viewport.scrollHeight > viewport.clientHeight) {
       atBottom = false;
     }
-    withUserScrollGuard(viewport, () => {
-      viewport.scrollTo({ top: 0, behavior: getScrollBehavior() });
-    });
+    withUserScrollGuard(
+      viewport,
+      () => {
+        viewport.scrollTo({ top: 0, behavior: getScrollBehavior() });
+      },
+      undefined,
+      () => 0,
+    );
   }
 
   /**
@@ -563,6 +617,7 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
         const lastMessage = lastWrapper?.querySelector<HTMLElement>('.chat-message') ?? null;
         lastMessage?.focus();
       },
+      () => viewport.scrollHeight,
     );
   }
 
@@ -577,6 +632,7 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
     activeUserScrollGuardCancel?.();
     activeUserScrollGuardCancel = null;
     activeUserScrollViewport = null;
+    activeUserScrollGuardDestination = null;
     isUserScrolling = false;
     pendingSentinelEntry = null;
   }
@@ -596,6 +652,7 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
     scrollToTop,
     jumpToLatest,
     withUserScrollGuard,
+    finishUserScrollGuard,
     clearUserScrollGuard,
     getScrollBehavior,
     destroy,

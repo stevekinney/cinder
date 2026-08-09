@@ -322,9 +322,14 @@
           scrollState.setAtBottom(false);
           updateAtBottomBinding(false);
         }
-        scrollState.withUserScrollGuard(viewport, () => {
-          chatVirtualizer.scrollToOffset(0, { behavior: scrollState.getScrollBehavior() });
-        });
+        scrollState.withUserScrollGuard(
+          viewport,
+          () => {
+            chatVirtualizer.scrollToOffset(0, { behavior: scrollState.getScrollBehavior() });
+          },
+          undefined,
+          () => 0,
+        );
       }
     },
     getScrollBehavior: scrollState.getScrollBehavior,
@@ -1368,6 +1373,17 @@
 
     isLoadingHistory = true;
     resetHistoryRestorationUserScrolling();
+    // #1237: a guarded programmatic scroll (scrollToTop / jump-to-latest) may
+    // still be animating when the user asks for older history — most commonly
+    // a scroll-to-top glide, since the top is where the load-earlier trigger
+    // lives. Capturing mid-animation would snapshot a moving viewport, and
+    // the still-running smooth-scroll animation (absolute target, e.g. 0)
+    // would then race the instant restore corrections — whichever landed last
+    // won, shifting the visible transcript by the prepended height or
+    // overshooting #911-style. Finish the guarded scroll instantly at its
+    // destination first, so the capture below snapshots a parked viewport and
+    // the restore has nothing left to race.
+    scrollState.finishUserScrollGuard();
     const requestId = ++historyLoadRequestId;
     captureHistoryScroll(requestId);
     if (pendingHistoryScroll === null) {
@@ -1837,9 +1853,14 @@
       // virtualizer remeasurement, and without this guard it would keep
       // snapping the viewport back toward the bottom mid-scroll since
       // `isUserScrolling` was never set for this branch.
-      scrollState.withUserScrollGuard(viewport, () => {
-        chatVirtualizer.scrollToOffset(0, { behavior: scrollState.getScrollBehavior() });
-      });
+      scrollState.withUserScrollGuard(
+        viewport,
+        () => {
+          chatVirtualizer.scrollToOffset(0, { behavior: scrollState.getScrollBehavior() });
+        },
+        undefined,
+        () => 0,
+      );
     } else {
       // Same canLeaveBottom reasoning as the virtualized branch above.
       const canLeaveBottom = !!viewport && viewport.scrollHeight > viewport.clientHeight;

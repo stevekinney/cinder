@@ -24,11 +24,12 @@ const HARNESS = '#example-mount-interactive-harness';
 /** Opens /page/chat and returns a Locator scoped to the harness mount. */
 async function openHarness(
   browser: Browser,
+  options?: { reducedMotion?: 'reduce' | 'no-preference' },
 ): Promise<{ page: Page; harness: Locator; dispose: () => Promise<void> }> {
   const context = await browser.newContext({
     baseURL: PLAYGROUND_URL,
     colorScheme: 'dark',
-    reducedMotion: 'reduce',
+    reducedMotion: options?.reducedMotion ?? 'reduce',
     viewport: { width: 1280, height: 900 },
   });
   await context.addInitScript(
@@ -440,6 +441,109 @@ test.describe('chat harness — scroll, unread, jump', () => {
           return Math.abs((after?.y ?? 0) - (afterTimeline?.y ?? 0) - beforeOffset);
         })
         .toBeLessThan(48);
+      await expect
+        .poll(async () => timeline.evaluate((element) => element.scrollTop))
+        .toBeGreaterThan(0);
+    } finally {
+      await dispose();
+    }
+  });
+
+  // Regression test for #1237: ask for older history while a smooth
+  // scroll-to-top glide is still in flight — the natural flow, since the top
+  // of the transcript is where the load-earlier trigger lives. The capture
+  // used to snapshot the still-moving viewport, and the glide's smooth-scroll
+  // animation (absolute target 0, where browsers also suppress native scroll
+  // anchoring) then raced Chat's instant restore corrections: whichever
+  // landed last won, either stranding the viewport mid-transcript or letting
+  // the glide finish at 0 so the transcript shifted by exactly the prepended
+  // height. Fixed by finishing the guarded scroll instantly at its
+  // destination before capturing, which makes the outcome deterministic: the
+  // viewport parks at the old top and the prepend leaves that content
+  // exactly where it was.
+  test('history prepend keeps the anchored message stable when parked at the top', async ({
+    browser,
+  }) => {
+    const { page, harness, dispose } = await openHarness(browser, {
+      reducedMotion: 'no-preference',
+    });
+    try {
+      await harness.locator('#t-history').click();
+      await harness.locator('[data-testid="seed-thread"]').click();
+
+      const timeline = harness.locator('.chat-timeline');
+      const anchor = timeline
+        .locator('.chat-message')
+        .filter({ hasText: 'Tell me about alpha.' })
+        .first();
+
+      // Pre-pass: measure the anchor's viewport-relative offset with the
+      // viewport genuinely parked at the top. This is the deterministic
+      // oracle the racy pass below must land on.
+      await harness.locator('[data-testid="scroll-top"]').click();
+      await expect.poll(async () => timeline.evaluate((element) => element.scrollTop)).toBe(0);
+      await page.waitForTimeout(150);
+      const parked = await anchor.boundingBox();
+      const parkedTimeline = await timeline.boundingBox();
+      expect(parked).not.toBeNull();
+      expect(parkedTimeline).not.toBeNull();
+      const parkedOffset = (parked?.y ?? 0) - (parkedTimeline?.y ?? 0);
+
+      // Back to the bottom, fully settled, so the next scroll-to-top is a
+      // real multi-hundred-millisecond glide.
+      await harness.locator('[data-testid="scroll-bottom"]').click();
+      await expect
+        .poll(async () =>
+          timeline.evaluate((element) =>
+            Math.abs(element.scrollHeight - element.clientHeight - element.scrollTop),
+          ),
+        )
+        .toBeLessThan(2);
+      await page.waitForTimeout(150);
+
+      // Racy pass: start the glide and ask for older history mid-flight.
+      // dispatchEvent rather than .click(): the trigger sits at the top of
+      // the transcript and Playwright's click would wait for stability and
+      // scroll on its own, destroying the mid-glide timing this regression
+      // depends on.
+      await harness.locator('[data-testid="scroll-top"]').click();
+      await timeline.getByRole('button', { name: /load earlier messages/i }).dispatchEvent('click');
+      await expectLoggedEvent(harness, 'onloadhistory');
+      await expect(timeline.getByText('Earlier context 1.1')).toBeAttached();
+
+      // Wait for restoration (and any leftover animation) to fully settle
+      // before measuring. Settling first — rather than polling for a
+      // momentarily-close position — matters because the failure mode is a
+      // race: a transiently correct position could still be shifted by
+      // whichever correction lands last.
+      await expect(timeline).not.toHaveAttribute('data-cinder-history-restoring');
+      await expect
+        .poll(async () =>
+          timeline.evaluate(
+            (element) =>
+              new Promise<boolean>((resolve) => {
+                const startTop = element.scrollTop;
+                let frames = 0;
+                const wait = () => {
+                  frames += 1;
+                  if (element.scrollTop !== startTop) resolve(false);
+                  else if (frames >= 8) resolve(true);
+                  else requestAnimationFrame(wait);
+                };
+                requestAnimationFrame(wait);
+              }),
+          ),
+        )
+        .toBe(true);
+
+      // The transcript parked at the old top: the content that was visible
+      // there is exactly where it was, with the prepended block above it.
+      const after = await anchor.boundingBox();
+      const afterTimeline = await timeline.boundingBox();
+      expect(after).not.toBeNull();
+      expect(afterTimeline).not.toBeNull();
+      expect(Math.abs((after?.y ?? 0) - (afterTimeline?.y ?? 0) - parkedOffset)).toBeLessThan(3);
+      // Position is held by scroll compensation, not by the prepend failing.
       await expect
         .poll(async () => timeline.evaluate((element) => element.scrollTop))
         .toBeGreaterThan(0);
