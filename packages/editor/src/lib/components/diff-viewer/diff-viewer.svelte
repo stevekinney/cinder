@@ -41,7 +41,11 @@
   import { classNames } from '../../utilities/class-names.ts';
   import Button from '@lostgradient/cinder/button';
   import { RotateCcw } from '@lostgradient/cinder/icons';
-  import { generateUnifiedDiff } from '../../export/unified-diff.ts';
+  import {
+    composeDisplayedDocument,
+    formatComputedUnifiedDiff,
+    generateUnifiedDiff,
+  } from '../../export/unified-diff.ts';
   import { onDestroy } from 'svelte';
 
   import Surface from '@lostgradient/cinder/surface';
@@ -149,7 +153,6 @@
   const frontMatterDiffs = $derived(
     hasFrontMatter ? computeLineDiff(originalFrontMatterText, currentFrontMatterText) : [],
   );
-  const frontMatterHunks = $derived(groupIntoHunks(frontMatterDiffs));
   const hasFrontMatterChanges = $derived(frontMatterDiffs.some((d) => d.type !== 'same'));
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -216,6 +219,13 @@
   // ─────────────────────────────────────────────────────────────────────────────
 
   const computedHunks = $derived(groupIntoHunks(lineDiffs));
+  const unifiedDiffHunks = $derived(groupIntoHunks([...frontMatterDiffs, ...lineDiffs]));
+  const displayedOriginal = $derived(
+    composeDisplayedDocument(originalFrontMatterText, normalizedOriginalBody),
+  );
+  const displayedCurrent = $derived(
+    composeDisplayedDocument(currentFrontMatterText, normalizedCurrentBody),
+  );
 
   // Sync computed hunks to bindable prop for reactive parent access
   $effect(() => {
@@ -304,30 +314,6 @@
     onreverthunk?.(hunk.index, hunk);
   }
 
-  function formatComputedUnifiedDiff(
-    frontMatterHunks: DiffHunk[],
-    bodyHunks: DiffHunk[],
-    originalOffset: number,
-    currentOffset: number,
-  ): string {
-    const hunks = [...frontMatterHunks, ...bodyHunks];
-    if (hunks.length === 0) return '';
-    const lines = ['--- a/document.md', '+++ b/document.md'];
-    for (const [index, hunk] of hunks.entries()) {
-      const isBody = index >= frontMatterHunks.length;
-      lines.push(
-        `@@ -${hunk.originalStart + (isBody ? originalOffset : 0)},${hunk.originalCount} +${hunk.currentStart + (isBody ? currentOffset : 0)},${hunk.currentCount} @@`,
-      );
-      for (const line of hunk.lines) {
-        if (line.type === 'same') lines.push(` ${line.text}`);
-        else if (line.type === 'added') lines.push(`+${line.text}`);
-        else if (line.type === 'removed') lines.push(`-${line.text}`);
-        else lines.push(`-${line.oldText}`, `+${line.newText}`);
-      }
-    }
-    return `${lines.join('\n')}\n`;
-  }
-
   let copyStatus = $state<'idle' | 'copied' | 'failed'>('idle');
   let copyStatusResetTimer: number | undefined;
   async function copyUnifiedDiff(): Promise<void> {
@@ -337,21 +323,16 @@
     }
     const diff =
       diffState.tier === 'manual'
-        ? formatComputedUnifiedDiff(
-            frontMatterHunks,
-            computedHunks,
-            originalFrontMatterText ? originalFrontMatterText.split('\n').length : 0,
-            currentFrontMatterText ? currentFrontMatterText.split('\n').length : 0,
-          )
+        ? formatComputedUnifiedDiff(unifiedDiffHunks)
         : generateUnifiedDiff(
             {
               schemaVersion: 1,
-              content: current,
-              original,
+              content: displayedCurrent,
+              original: displayedOriginal,
               threads: [],
               updatedAt: '',
             },
-            { normalizeInputs },
+            { normalizeInputs: false },
           ).diff;
     if (!diff || typeof navigator === 'undefined' || !navigator.clipboard) {
       copyStatus = 'failed';

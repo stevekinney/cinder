@@ -64,6 +64,8 @@
   const titleTag = $derived(`h${resolvedHeadingLevel}` as const);
   const hasGeneratedHeader = $derived(Boolean(title && !header));
   const titleId = $derived(hasGeneratedHeader ? `${generatedId}-title` : undefined);
+  const customHeaderId = $derived(onclick && header ? `${generatedId}-header` : undefined);
+  const bodyLabelId = $derived(onclick && !title && !header ? `${generatedId}-body` : undefined);
   const descriptionId = $derived(
     hasGeneratedHeader && description ? `${generatedId}-description` : undefined,
   );
@@ -73,13 +75,14 @@
       (typeof rest['aria-label'] === 'string' && rest['aria-label'].trim().length > 0),
   );
   const describedBy = $derived(composeDescribedBy(descriptionId, rest['aria-describedby']));
+  const ownedLabelId = $derived(titleId ?? customHeaderId ?? bodyLabelId);
   const labelAttributes = $derived(
-    hasGeneratedHeader
+    ownedLabelId
       ? {
           ...(!hasExternalRole && href === undefined && onclick === undefined
             ? { role: 'group' }
             : {}),
-          ...(!hasExternalLabel ? { 'aria-labelledby': titleId } : {}),
+          ...(!hasExternalLabel ? { 'aria-labelledby': ownedLabelId } : {}),
           ...(describedBy ? { 'aria-describedby': describedBy } : {}),
         }
       : {},
@@ -140,9 +143,7 @@
     {/if}
   </a>
 {:else if onclick}
-  <button
-    {...buttonAttributes}
-    type="button"
+  <div
     class={classNames('cinder-card', className)}
     data-cinder-variant={variant}
     data-cinder-tone={tone}
@@ -150,12 +151,10 @@
     data-cinder-elevation={elevation}
     data-cinder-interactive=""
     data-cinder-edge-to-edge-mobile={edgeToEdgeOnMobile ? '' : undefined}
-    {...labelAttributes}
-    onclick={handleClick}
   >
-    {#if header}<div class="cinder-card__header">{@render header()}</div>{:else if title}<div
-        class="cinder-card__header"
-      >
+    {#if header}<div id={customHeaderId} class="cinder-card__header">
+        {@render header()}
+      </div>{:else if title}<div class="cinder-card__header">
         <div class="cinder-card__title-row">
           {#if tone === 'danger'}<span class="cinder-card__risk-icon" aria-hidden="true"
               ><CircleAlert size={18} strokeWidth={2.25} /></span
@@ -167,13 +166,25 @@
             {description}
           </p>{/if}
       </div>{/if}
-    <div class="cinder-card__body" data-cinder-tone={bodyTone} data-cinder-padding={padding}>
+    <div
+      id={bodyLabelId}
+      class="cinder-card__body"
+      data-cinder-tone={bodyTone}
+      data-cinder-padding={padding}
+    >
       {@render children()}
     </div>
     {#if footer}<div class="cinder-card__footer" data-cinder-tone={footerTone}>
         {@render footer()}
       </div>{/if}
-  </button>
+    <button
+      {...buttonAttributes}
+      type="button"
+      class="cinder-card__action"
+      {...labelAttributes}
+      onclick={handleClick}
+    ></button>
+  </div>
 {:else}
   <div
     {...staticAttributes}

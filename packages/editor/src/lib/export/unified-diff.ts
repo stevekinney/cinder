@@ -4,6 +4,7 @@
  * Produces output that can be applied with `git apply` or `patch` command.
  */
 
+import type { DiffHunk as MarkdownDiffHunk } from '@lostgradient/markdown/diff/line-diff';
 import { normalize, parseFrontMatter } from '@lostgradient/markdown/pipeline';
 import type { ReviewState } from '../comments/types.js';
 import type { UnifiedDiffOptions, UnifiedDiffResult } from './types.js';
@@ -14,6 +15,29 @@ interface DiffHunk {
   currentStart: number;
   currentCount: number;
   lines: string[];
+}
+
+/** Join the exact front-matter and body strings rendered by DiffViewer. */
+export function composeDisplayedDocument(frontMatter: string, body: string): string {
+  return frontMatter ? `${frontMatter}\n${body}` : body;
+}
+
+/** Format already-computed viewer hunks without running another line diff. */
+export function formatComputedUnifiedDiff(hunks: MarkdownDiffHunk[]): string {
+  if (hunks.length === 0) return '';
+  const lines = ['--- a/document.md', '+++ b/document.md'];
+  for (const hunk of hunks) {
+    lines.push(
+      `@@ -${hunk.originalStart},${hunk.originalCount} +${hunk.currentStart},${hunk.currentCount} @@`,
+    );
+    for (const line of hunk.lines) {
+      if (line.type === 'same') lines.push(` ${line.text}`);
+      else if (line.type === 'added') lines.push(`+${line.text}`);
+      else if (line.type === 'removed') lines.push(`-${line.text}`);
+      else lines.push(`-${line.oldText}`, `+${line.newText}`);
+    }
+  }
+  return `${lines.join('\n')}\n`;
 }
 
 /**

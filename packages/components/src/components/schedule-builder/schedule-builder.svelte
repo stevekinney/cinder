@@ -318,6 +318,9 @@
     const next = [...cronFields];
     next[index] = raw;
     cronFields = next;
+    const nextEditors = [...cronEditors];
+    nextEditors[index] = { ...editorFromCronField(raw, index), mode: 'advanced' };
+    cronEditors = nextEditors;
     if (cronFieldsValid(next)) emitChange();
   }
 

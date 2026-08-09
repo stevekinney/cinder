@@ -98,6 +98,20 @@
       ? knownValue.filter((valueId) => valueId !== id)
       : [...knownValue, id];
     value = nextValue;
+    if (selected && item.disabled) {
+      const removedIndex = uniqueItems.findIndex((candidate) => candidate.id === id);
+      const nextSelectedIds = new Set(nextValue);
+      const selectableAfterCommit = uniqueItems.filter(
+        (candidate) => nextSelectedIds.has(candidate.id) || !candidate.disabled,
+      );
+      activeId =
+        selectableAfterCommit.find(
+          (candidate) =>
+            uniqueItems.findIndex((uniqueItem) => uniqueItem.id === candidate.id) > removedIndex,
+        )?.id ??
+        selectableAfterCommit.at(-1)?.id ??
+        null;
+    }
     onValueChange?.(nextValue);
     announceSelection(item, !selected);
   }

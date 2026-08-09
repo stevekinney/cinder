@@ -3,9 +3,14 @@
  * Tests for unified diff export functionality.
  */
 
+import { computeLineDiff, groupIntoHunks } from '@lostgradient/markdown/diff/line-diff';
 import { describe, expect, test } from 'bun:test';
 import type { ReviewState } from '../comments/types.js';
-import { generateUnifiedDiff } from './unified-diff';
+import {
+  composeDisplayedDocument,
+  formatComputedUnifiedDiff,
+  generateUnifiedDiff,
+} from './unified-diff';
 
 /** Create a minimal ReviewState for testing */
 function createState(original: string, current: string): ReviewState {
@@ -231,5 +236,34 @@ describe('generateUnifiedDiff', () => {
       // Unified diff should end with a newline
       expect(result.diff.endsWith('\n')).toBe(true);
     });
+  });
+});
+
+describe('DiffViewer unified diff formatting', () => {
+  test('anchors newly-added front matter with unchanged body context', () => {
+    const frontMatterDiffs = computeLineDiff('', '---\ntitle: Example\n---');
+    const bodyDiffs = computeLineDiff('Body text\n', 'Body text\n');
+    const diff = formatComputedUnifiedDiff(groupIntoHunks([...frontMatterDiffs, ...bodyDiffs]));
+
+    expect(diff).toContain('@@ -1,1 +1,4 @@');
+    expect(diff).toContain('+---\n+title: Example\n+---\n Body text');
+  });
+
+  test('composes the exact displayed document without canonicalizing markdown syntax', () => {
+    const original = composeDisplayedDocument('', '_italic_\n');
+    const current = composeDisplayedDocument('', '*italic*\n');
+    const result = generateUnifiedDiff(
+      {
+        schemaVersion: 1,
+        original,
+        content: current,
+        threads: [],
+        updatedAt: '',
+      },
+      { normalizeInputs: false },
+    );
+
+    expect(result.diff).toContain('-_italic_');
+    expect(result.diff).toContain('+*italic*');
   });
 });

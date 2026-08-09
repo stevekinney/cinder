@@ -180,11 +180,16 @@ describe('Card', () => {
 
   test('renders the whole card as a button when onclick is provided', () => {
     const { container } = render(Card, {
-      props: { onclick: () => {}, children: emptySnippet },
+      props: { onclick: () => {}, title: 'Open details', children: emptySnippet },
     });
     const root = container.querySelector('.cinder-card');
-    expect(root?.tagName).toBe('BUTTON');
-    expect(root?.getAttribute('type')).toBe('button');
+    const action = container.querySelector('.cinder-card__action');
+    const heading = container.querySelector('.cinder-card__title');
+    expect(root?.tagName).toBe('DIV');
+    expect(action?.tagName).toBe('BUTTON');
+    expect(action?.getAttribute('type')).toBe('button');
+    expect(action?.getAttribute('aria-labelledby')).toBe(heading?.getAttribute('id'));
+    expect(heading?.closest('button')).toBeNull();
     expect(root?.getAttribute('data-cinder-interactive')).toBe('');
   });
 

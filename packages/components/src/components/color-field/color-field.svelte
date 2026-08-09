@@ -444,6 +444,7 @@
     <ColorPicker
       value={committedHex}
       {alpha}
+      disabled={disabled || readonly}
       label="Choose a color"
       onValueCommit={handlePickerCommit}
     />

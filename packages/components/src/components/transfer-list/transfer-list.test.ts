@@ -100,6 +100,27 @@ describe('TransferList', () => {
     expect(onValueChange).toHaveBeenCalledWith([]);
   });
 
+  test('moves the active descendant after keyboard-removing a disabled selection', async () => {
+    render(TransferList, { props: { items, value: ['billing'] } });
+    const list = screen.getByRole('listbox');
+
+    await fireEvent.focus(list);
+    await fireEvent.keyDown(list, { key: 'ArrowDown' });
+    await fireEvent.keyDown(list, { key: 'ArrowDown' });
+    expect(
+      document.getElementById(list.getAttribute('aria-activedescendant')!)?.textContent,
+    ).toContain('Billing');
+
+    await fireEvent.keyDown(list, { key: ' ' });
+
+    expect(
+      document.getElementById(list.getAttribute('aria-activedescendant')!)?.textContent,
+    ).toContain('Admin');
+    expect(screen.getByRole('option', { name: 'Billing' }).getAttribute('aria-disabled')).toBe(
+      'true',
+    );
+  });
+
   test('supports keyboard navigation and toggling', async () => {
     render(TransferList, { props: { items, value: [] } });
     const list = screen.getByRole('listbox');

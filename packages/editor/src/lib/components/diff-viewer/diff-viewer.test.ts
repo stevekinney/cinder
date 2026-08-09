@@ -58,14 +58,16 @@ describe('DiffViewer: identical input (basic mount)', () => {
     const source = await Bun.file(new URL('./diff-viewer.svelte', import.meta.url)).text();
     expect(source).toContain("diffState.tier === 'manual'");
     expect(source).toContain('formatComputedUnifiedDiff(');
-    expect(source).toContain('computedHunks');
+    expect(source).toContain('unifiedDiffHunks');
   });
 
   test('copy includes front matter and preserves normalizeInputs semantics', async () => {
     const source = await Bun.file(new URL('./diff-viewer.svelte', import.meta.url)).text();
-    expect(source).toContain('frontMatterHunks');
-    expect(source).toContain('{ normalizeInputs }');
-    expect(source).toContain('content: current');
+    expect(source).toContain('[...frontMatterDiffs, ...lineDiffs]');
+    expect(source).toContain('composeDisplayedDocument(');
+    expect(source).toContain('content: displayedCurrent');
+    expect(source).toContain('original: displayedOriginal');
+    expect(source).toContain('{ normalizeInputs: false }');
     expect(source).not.toContain("split('\\n').filter(Boolean)");
   });
   test('two identical strings produce only unchanged lines and zero stats', () => {

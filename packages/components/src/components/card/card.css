@@ -5,6 +5,7 @@
  * ======================================== */
 
   .cinder-card {
+    position: relative;
     inline-size: 100%;
     border-radius: var(--cinder-radius-lg);
     background: var(--cinder-surface-raised);
@@ -37,6 +38,19 @@
     text-decoration: none;
   }
 
+  .cinder-card__action {
+    position: absolute;
+    inset: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .cinder-card__action:focus-visible {
+    /* cinder-focus-ring-owner: parent */
+    outline: none;
+  }
+
   @media (hover: hover) {
     .cinder-card[data-cinder-interactive]:hover {
       border-color: var(--cinder-border-strong);
@@ -49,8 +63,18 @@
     box-shadow: var(--_cinder-focus-ring-shadow), var(--cinder-shadow-md);
   }
 
+  .cinder-card[data-cinder-interactive]:has(.cinder-card__action:focus-visible) {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow), var(--cinder-shadow-md);
+  }
+
   @media (forced-colors: active) {
     .cinder-card[data-cinder-interactive]:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 3px;
+    }
+
+    .cinder-card[data-cinder-interactive]:has(.cinder-card__action:focus-visible) {
       outline: var(--cinder-ring-width) solid ButtonText;
       outline-offset: 3px;
     }

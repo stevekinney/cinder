@@ -714,6 +714,26 @@ describe('ScheduleBuilder', () => {
       });
     });
 
+    test('switches the field to advanced mode when the raw expression is edited', async () => {
+      const onValueChange = mock();
+      const { getByLabelText, queryByLabelText } = render(ScheduleBuilder, {
+        allowedModes: ['cron'],
+        onValueChange,
+      });
+
+      await fireEvent.change(getByLabelText('Minute pattern'), {
+        target: { value: 'specific' },
+      });
+      await fireEvent.input(getByLabelText('Minute'), { target: { value: '*/10' } });
+
+      expect((getByLabelText('Minute pattern') as HTMLSelectElement).value).toBe('advanced');
+      expect(queryByLabelText('Minute value', { exact: true })).toBeNull();
+      expect(onValueChange.mock.calls.at(-1)?.[0]).toEqual({
+        mode: 'cron',
+        expression: '*/10 * * * *',
+      });
+    });
+
     test('shows range validation on the visible structured controls', () => {
       const { getAllByText } = render(ScheduleBuilder, {
         allowedModes: ['cron'],

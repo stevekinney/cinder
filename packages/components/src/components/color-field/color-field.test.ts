@@ -75,6 +75,28 @@ describe('ColorField — color picker trigger', () => {
 
     expect(document.body.querySelector('.cinder-color-picker')).not.toBeNull();
   });
+
+  test('disables an open picker when the field becomes readonly', async () => {
+    const onValueChange = mock<(value: string) => void>(() => {});
+    const { container, rerender } = render(ColorField, {
+      id: 'color',
+      value: '#ff0000',
+      onValueChange,
+    });
+    await fireEvent.click(q<HTMLButtonElement>(container, '.cinder-color-field__swatch-button'));
+    const hue = q<HTMLElement>(document.body, '[role="slider"][aria-label="Hue"]');
+
+    await rerender({
+      id: 'color',
+      value: '#ff0000',
+      readonly: true,
+      onValueChange,
+    });
+    await fireEvent.keyDown(hue, { key: 'ArrowRight' });
+
+    expect(hue.getAttribute('aria-disabled')).toBe('true');
+    expect(onValueChange).not.toHaveBeenCalled();
+  });
 });
 
 describe('ColorField — parse round-trips', () => {
