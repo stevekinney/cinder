@@ -1447,6 +1447,13 @@
       pendingRetryMessageTokens = next;
     };
     try {
+      // `onretry` is typed as void-returning, but an async handler is
+      // assignable to that type and returns a promise at runtime.
+      // dispatchCommand deliberately discards the callback's return value, so
+      // capture it here — the in-flight token must hold until an async
+      // handler settles, not just until it is invoked, or two rapid retries
+      // for the same id would run the handler twice.
+      let callbackRun: Promise<void> | undefined;
       const run = dispatchCommand(
         'retryMessage',
         // Return `undefined` ONLY when the optional method is absent; otherwise
@@ -1455,9 +1462,13 @@
           resolvedAdapter.retryMessage
             ? Promise.resolve(resolvedAdapter.retryMessage(messageId))
             : undefined,
-        () => onretry?.(messageId),
+        () => {
+          const result = onretry?.(messageId) as void | Promise<void>;
+          if (result !== undefined) callbackRun = Promise.resolve(result);
+        },
       );
-      if (run !== undefined) void run.finally(clearPending);
+      const flight = run ?? callbackRun;
+      if (flight !== undefined) void flight.finally(clearPending);
       else clearPending();
     } catch (error) {
       clearPending();

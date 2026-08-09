@@ -450,6 +450,43 @@ describe('ChatAdapter — command equivalence', () => {
     unmount(instance);
   });
 
+  test('an ASYNC onretry callback (no adapter) is single-flighted for the same in-flight id', async () => {
+    // #1235 review follow-up — an async function is assignable to the
+    // void-returning `onretry` type, and dispatchCommand discards the
+    // callback's return value. The dispatch layer must still hold the
+    // in-flight token until the async handler SETTLES (not just until it is
+    // invoked), so two rapid retries for the same id run the handler once.
+    let calls = 0;
+    let release!: () => void;
+    const retryFinished = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const { instance } = mountChat({
+      id: 'chat-async-callback-retry-single-flight',
+      conversation: failedConversation(),
+      onretry: async () => {
+        calls += 1;
+        await retryFinished;
+      },
+    });
+    const chat = instance as unknown as ChatRetryImperative;
+
+    chat.retryMessage('failed-1');
+    chat.retryMessage('failed-1');
+    await Promise.resolve();
+    expect(calls).toBe(1);
+
+    release();
+    await retryFinished;
+    // Let the finally-clear settle, then a LATER retry for the same id works.
+    await Promise.resolve();
+    await Promise.resolve();
+    chat.retryMessage('failed-1');
+    expect(calls).toBe(2);
+
+    unmount(instance);
+  });
+
   test('does not let an old conversation clear a newer retry flight', async () => {
     let calls = 0;
     const releases: Array<() => void> = [];
