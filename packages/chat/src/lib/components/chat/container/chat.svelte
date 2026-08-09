@@ -1429,7 +1429,14 @@
     }
   }
 
-  function handleRetry(messageId: string): void {
+  // #897/#1235 — retries are single-flighted PER MESSAGE ID at the dispatch
+  // layer (mirroring how every command funnels through dispatchCommand), so the
+  // guard covers EVERY entry point — the UI Retry button and the exported
+  // programmatic `retryMessage()` — not just the click handler. A second retry
+  // for an id whose retry is still in flight is ignored; the flight token
+  // clears when the dispatch settles (resolve, reject, or sync throw), so a
+  // later retry for the same id dispatches again.
+  function dispatchRetryMessage(messageId: string): void {
     if (pendingRetryMessageTokens.has(messageId)) return;
     const flightToken = Symbol(messageId);
     pendingRetryMessageTokens = new Map(pendingRetryMessageTokens).set(messageId, flightToken);
@@ -1456,6 +1463,10 @@
       clearPending();
       throw error;
     }
+  }
+
+  function handleRetry(messageId: string): void {
+    dispatchRetryMessage(messageId);
   }
 
   function handleEdit(event: { messageId: string; content: string }): void {
@@ -1849,6 +1860,16 @@
       }
       scrollState.scrollToTop(viewport);
     }
+  }
+
+  /**
+   * Programmatically retry a failed message — the same guarded dispatch as the
+   * UI Retry button. A call for a message id whose retry is still in flight is
+   * ignored, so the adapter's `retryMessage` command (or the `onretry`
+   * callback) never double-fires for the same id regardless of entry point.
+   */
+  export function retryMessage(messageId: string): void {
+    dispatchRetryMessage(messageId);
   }
 
   export function focusInput(): void {
