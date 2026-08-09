@@ -8,7 +8,7 @@
  * a framework's native afterEach hook (Vitest/Jest globals), which Bun's test
  * runner does not provide, so it silently never registers under `bun:test`.
  * Every `render()` call across the suite then accumulates its mounted tree in
- * the one process-wide happy-dom `Window` (`--parallel=1` shares a single
+ * the one process-wide happy-dom `Window` (`--max-concurrency=1` shares a single
  * global), which is the direct cause of multi-gigabyte RSS over a full run.
  *
  * Called once from `scripts/preload.ts`, which runs before any test file's

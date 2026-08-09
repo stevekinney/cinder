@@ -117,7 +117,7 @@ test.describe('Footer responsive layout', () => {
         groups: '16px',
         list: '8px',
         legal: '16px',
-        legalPadding: '16px',
+        legalPadding: '8px',
       });
 
       if (width < 48) {

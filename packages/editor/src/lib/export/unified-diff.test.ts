@@ -3,9 +3,14 @@
  * Tests for unified diff export functionality.
  */
 
+import { computeLineDiff, groupIntoHunks } from '@lostgradient/markdown/diff/line-diff';
 import { describe, expect, test } from 'bun:test';
 import type { ReviewState } from '../comments/types.js';
-import { generateUnifiedDiff } from './unified-diff';
+import {
+  composeDisplayedDocument,
+  formatComputedUnifiedDiff,
+  generateUnifiedDiff,
+} from './unified-diff';
 
 /** Create a minimal ReviewState for testing */
 function createState(original: string, current: string): ReviewState {
@@ -64,6 +69,30 @@ describe('generateUnifiedDiff', () => {
       expect(result.stats.additions).toBe(0);
       expect(result.stats.deletions).toBe(1);
     });
+  });
+
+  test('preserves formatting-only changes when normalization is disabled', () => {
+    const result = generateUnifiedDiff(
+      { schemaVersion: 1, original: '- item\n', content: '* item\n', threads: [], updatedAt: '' },
+      { normalizeInputs: false },
+    );
+    expect(result.diff).toContain('-- item');
+    expect(result.diff).toContain('+* item');
+  });
+
+  test('does not count a trailing newline as an extra diff line', () => {
+    const result = generateUnifiedDiff(createState('a\n', 'b\n'), { normalizeInputs: false });
+
+    expect(result.diff).toContain('@@ -1,1 +1,1 @@');
+    expect(result.diff).not.toContain('@@ -1,2 +1,2 @@');
+    expect(result.diff).not.toContain('\\ No newline at end of file');
+  });
+
+  test('represents a removed EOF newline with the standard marker', () => {
+    const result = generateUnifiedDiff(createState('a\n', 'a'), { normalizeInputs: false });
+
+    expect(result.diff).toContain('@@ -1,1 +1,1 @@');
+    expect(result.diff).toContain('-a\n+a\n\\ No newline at end of file');
   });
 
   describe('hunk generation', () => {
@@ -222,5 +251,63 @@ describe('generateUnifiedDiff', () => {
       // Unified diff should end with a newline
       expect(result.diff.endsWith('\n')).toBe(true);
     });
+  });
+});
+
+describe('DiffViewer unified diff formatting', () => {
+  test('anchors newly-added front matter with unchanged body context', () => {
+    const frontMatterDiffs = computeLineDiff('', '---\ntitle: Example\n---');
+    const bodyDiffs = computeLineDiff('Body text\n', 'Body text\n');
+    const diff = formatComputedUnifiedDiff(groupIntoHunks([...frontMatterDiffs, ...bodyDiffs]));
+
+    expect(diff).toContain('@@ -1,1 +1,4 @@');
+    expect(diff).toContain('+---\n+title: Example\n+---\n Body text');
+  });
+
+  test('composes the exact displayed document without canonicalizing markdown syntax', () => {
+    const original = composeDisplayedDocument('', '_italic_\n', false);
+    const current = composeDisplayedDocument('', '*italic*\n', false);
+    const result = generateUnifiedDiff(
+      {
+        schemaVersion: 1,
+        original,
+        content: current,
+        threads: [],
+        updatedAt: '',
+      },
+      { normalizeInputs: false },
+    );
+
+    expect(result.diff).toContain('-_italic_');
+    expect(result.diff).toContain('+*italic*');
+  });
+
+  test('preserves both EOF states for front-matter-only documents', () => {
+    const frontMatter = '---\ntitle: Example\n---';
+
+    expect(composeDisplayedDocument(frontMatter, '', false)).toBe('---\ntitle: Example\n---');
+    expect(composeDisplayedDocument(frontMatter, '', true)).toBe('---\ntitle: Example\n---\n');
+  });
+
+  test('marks changed final lines that lack trailing newlines in computed hunks', () => {
+    const original = 'First line\nOld final line';
+    const current = 'First line\nNew final line';
+    const hunks = groupIntoHunks(computeLineDiff(original, current));
+
+    const diff = formatComputedUnifiedDiff(hunks, { original, current });
+
+    expect(diff).toContain(
+      '-Old final line\n\\ No newline at end of file\n+New final line\n\\ No newline at end of file',
+    );
+  });
+
+  test('marks unchanged final context when both documents lack trailing newlines', () => {
+    const original = 'Old first line\nShared final line';
+    const current = 'New first line\nShared final line';
+    const hunks = groupIntoHunks(computeLineDiff(original, current));
+
+    const diff = formatComputedUnifiedDiff(hunks, { original, current });
+
+    expect(diff).toContain(' Shared final line\n\\ No newline at end of file');
   });
 });

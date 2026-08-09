@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { afterEach, describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, mock, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -24,6 +24,15 @@ function q<T extends Element = HTMLElement>(root: ParentNode, selector: string):
 }
 
 describe('ColorPicker structure', () => {
+  test('composes CopyButton through its public component entrypoint', async () => {
+    const source = await Bun.file(
+      new URL('./color-picker-controls.svelte', import.meta.url),
+    ).text();
+
+    expect(source).toContain("from '@lostgradient/cinder/copy-button'");
+    expect(source).not.toContain("from '../copy-button/copy-button.svelte'");
+  });
+
   test('renders a labelled group with gradient, hue slider, and preview', () => {
     const { container } = render(ColorPicker, { value: '#ff0000' });
     expect(q(container, '[role="group"]').getAttribute('aria-label')).toBe('Color picker');
@@ -68,6 +77,78 @@ describe('ColorPicker structure', () => {
     const hidden = q<HTMLInputElement>(container, 'input[name="pick"]');
     expect(hidden.type).toBe('hidden');
     expect(hidden.value).toBe('#ff0000');
+  });
+
+  test('copies rounded HEX, RGB, and HSL values through CopyButton controls', async () => {
+    const writeText = mock(async (_value: string) => {});
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    const { container } = render(ColorPicker, { value: '#ff0000' });
+    const copyButtons = container.querySelectorAll<HTMLButtonElement>(
+      '.cinder-color-picker__format',
+    );
+
+    expect([...copyButtons].map((button) => button.getAttribute('aria-label'))).toEqual([
+      'Copy HEX format',
+      'Copy RGB format',
+      'Copy HSL format',
+    ]);
+
+    for (const button of copyButtons) await fireEvent.click(button);
+    await tick();
+
+    expect(writeText.mock.calls.map(([value]) => value)).toEqual([
+      '#ff0000',
+      'rgb(255, 0, 0)',
+      'hsl(0, 100%, 50%)',
+    ]);
+  });
+
+  test('preserves fractional HSL channels needed to round-trip dark colors', async () => {
+    const writeText = mock(async (_value: string) => {});
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    const { container } = render(ColorPicker, { value: '#010101' });
+    const hslButton = q<HTMLButtonElement>(
+      container,
+      '.cinder-color-picker__format[aria-label="Copy HSL format"]',
+    );
+
+    await fireEvent.click(hslButton);
+    await tick();
+
+    expect(writeText).toHaveBeenCalledWith('hsl(0, 0%, 0.39%)');
+  });
+
+  test('preserves enough alpha precision to round-trip 8-bit colors', async () => {
+    const writeText = mock(async (_value: string) => {});
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    const { container } = render(ColorPicker, { value: '#00000001', alpha: true });
+    const copyButtons = container.querySelectorAll<HTMLButtonElement>(
+      '.cinder-color-picker__format',
+    );
+
+    await fireEvent.click(copyButtons[1]!);
+    await fireEvent.click(copyButtons[2]!);
+    await tick();
+
+    expect(writeText.mock.calls.map(([value]) => value)).toEqual([
+      'rgba(0, 0, 0, 0.004)',
+      'hsla(0, 0%, 0%, 0.004)',
+    ]);
+  });
+
+  test('exposes the copyable formats as a labelled group', () => {
+    const { container } = render(ColorPicker, { value: '#336699' });
+
+    expect(q(container, '[role="group"][aria-label="Copy color formats"]')).toBeTruthy();
   });
 });
 

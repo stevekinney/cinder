@@ -277,6 +277,8 @@ describe('Table sort behavior', () => {
     const chevrons = indicator?.querySelectorAll('svg polyline');
     expect(indicator?.querySelector('svg')).not.toBeNull();
     expect(chevrons?.length).toBe(2);
+    expect(chevrons?.[0]?.getAttribute('points')).toBe('4 6 8 2 12 6');
+    expect(chevrons?.[1]?.getAttribute('points')).toBe('4 10 8 14 12 10');
   });
 
   test('sortable header cells default to aria-sort="none"', () => {
@@ -909,6 +911,14 @@ describe('CSS rule assertions — sort indicator and focus ring', () => {
       ".cinder-table__sort-indicator[data-cinder-direction='descending']",
     );
     expect(rule?.style.color).toBe('var(--cinder-text)');
+  });
+
+  test('inactive sort chevron remains visible', () => {
+    const rule = injectTableCssAndFindContaining(
+      ".cinder-table__sort-indicator[data-cinder-direction='ascending'] .cinder-table__sort-chevron-down",
+      ".cinder-table__sort-indicator[data-cinder-direction='descending'] .cinder-table__sort-chevron-up",
+    );
+    expect(rule?.style.opacity).toBe('0.4');
   });
 
   test('.cinder-table__sort-button declares position: relative', () => {

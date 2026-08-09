@@ -11,7 +11,36 @@
     children: Snippet;
   } = $props();
 
-  setFormFieldContext(context);
+  // Forward through getters so the provider retains reactive context values
+  // when its parent updates the derived field state.
+  const forwardedContext: FormFieldContext = {
+    get controlId() {
+      return context.controlId;
+    },
+    get labelId() {
+      return context.labelId;
+    },
+    get describedBy() {
+      return context.describedBy;
+    },
+    get descriptionId() {
+      return context.descriptionId;
+    },
+    get errorId() {
+      return context.errorId;
+    },
+    get invalid() {
+      return context.invalid;
+    },
+    get required() {
+      return context.required;
+    },
+    get disabled() {
+      return context.disabled;
+    },
+  };
+
+  setFormFieldContext(forwardedContext);
 </script>
 
 {@render children()}

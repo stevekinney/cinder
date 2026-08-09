@@ -64,6 +64,11 @@ const triggerSnippet = createRawSnippet(() => ({
   setup: () => {},
 }));
 
+const disabledTriggerSnippet = createRawSnippet(() => ({
+  render: () => `<button type="button" disabled>Open</button>`,
+  setup: () => {},
+}));
+
 function textSnippet(text: string) {
   return createRawSnippet(() => ({
     render: () => `<span>${text}</span>`,
@@ -157,6 +162,26 @@ describe('Popover — rendering', () => {
       props: { open: false, trigger: triggerSnippet, children: textSnippet('content') },
     });
     expect(queryPopoverPanel()).toBeNull();
+  });
+
+  test('re-resolves a trigger that becomes enabled before opening', async () => {
+    const { rerender } = render(Popover, {
+      props: {
+        open: false,
+        trigger: disabledTriggerSnippet,
+        children: textSnippet('content'),
+      },
+    });
+
+    await rerender({
+      open: true,
+      trigger: triggerSnippet,
+      children: textSnippet('content'),
+    });
+
+    await waitFor(() => {
+      expect(queryPopoverPanel()).not.toBeNull();
+    });
   });
 
   test('renders panel with role and aria-label when open=true', async () => {

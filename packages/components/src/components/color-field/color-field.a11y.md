@@ -22,11 +22,32 @@ Semantic errors are owned by the wrapping `FormField`. When a consumer passes `e
 
 Beyond ARIA, parse errors also participate in HTML constraint validation. The component calls `setCustomValidity` on the visible `<input>` whenever the parse state changes, so native form validation can block submit attempts while a parse error is present.
 
-## The trailing swatch is decorative
+## The picker trigger and swatch
 
-The trailing color swatch is rendered into Input's `trailing` snippet slot as a `<span aria-hidden="true">`. It exists to give sighted users a quick visual confirmation that their input parsed to roughly the color they expected. It is not a button, not a focusable element, and not interactive — clicking it does nothing. Assistive technology ignores it entirely.
+The trailing surface is an accessible Button named `Choose a color`. Its visual
+swatch remains a nested `<span aria-hidden="true">`, while the adjacent pipette
+icon is also decorative. Activating the button opens a labeled Popover containing
+ColorPicker. Popover moves focus into the picker, Escape and outside activation
+dismiss it, and focus returns to the trigger. The trigger is disabled whenever
+ColorField is disabled or read-only; an already-open ColorPicker receives that
+same disabled state so pointer and keyboard commits cannot change the field.
 
-Two consequences. First, the swatch's color comes from `committedHex`, not from the visible text. A user can type `not-a-color`, and the swatch stays the previous committed color (or empty) — at no point does the component paint arbitrary user input into a CSS variable. Second, the field's only interactive surface is the inner `<input>`. Screen readers describing the control announce the input's label, the value, and any error — there is nothing extra to interpret.
+The swatch color comes from `committedHex`, not visible uncommitted text. A user
+can type `not-a-color`, and the swatch keeps the previous committed color (or its
+empty treatment); arbitrary input is never painted into the CSS variable. Picker
+pointer and keyboard adjustments keep the Popover open, while choosing an
+explicit preset swatch commits and closes it. ColorPicker owns its slider roles,
+keyboard matrix, and value announcements as documented in `color-picker.a11y.md`.
+
+## Picker interaction review outcome
+
+The composed interaction was reviewed against standalone ColorPicker and the
+previous text-only ColorField. Standalone ColorPicker remains the neighbour for a
+large visual discovery surface; ColorField remains justified as a compact form
+control that combines exact text entry with optional visual selection. The review
+accepted Button + Popover + ColorPicker composition with the focus, dismissal,
+commit, disabled/read-only, and announcement behavior recorded above and covered
+by component and browser tests.
 
 ## Enter key behavior — and why it's explicit
 
@@ -52,4 +73,6 @@ In Windows High Contrast / forced-colors mode the swatch still renders as a smal
 
 ## Pairing recommendation
 
-For production forms where users need to choose a color, pair the field with `color-picker.svelte`. The picker is the discovery surface; the field is the precision surface. Wire them to the same controlled `value` and they stay in sync.
+For forms that need a permanently visible discovery surface, use standalone
+`color-picker.svelte` alongside or instead of ColorField. The field's own trailing
+trigger already provides a compact picker for ordinary precision-entry forms.

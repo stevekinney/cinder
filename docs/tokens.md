@@ -97,6 +97,21 @@ Font stacks, type scale, line heights, letter spacing, and weights. The base fon
 
 `--cinder-touch-target-min` is the WCAG AAA touch-target floor. Interactive primitives use it as a minimum height or width.
 
+### Label/value hierarchy
+
+Compact metadata and status pairs use one shared hierarchy: the label is
+`--cinder-text-base`, semibold, full-strength text with snug leading; its value
+or attached annotation is `--cinder-text-sm`, normal weight, muted text with
+normal leading. Cinder components consume the internal `cinder-_label-text` and
+`cinder-_value-text` recipes so all four axes move together. Primary body
+content is not an annotation: keep it at the normal body size and
+`--cinder-text` rather than muting it.
+
+Use `--cinder-text-muted` for readable secondary text that remains part of the
+content hierarchy. Reserve `--cinder-text-subtle` for tertiary metadata and
+low-emphasis chrome; never use it for primary content or the only visible
+label of a control.
+
 ## Layout
 
 | Token                           | Default |

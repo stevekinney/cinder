@@ -16,6 +16,16 @@ const { calculatePropertyValidationErrorCount } = await import('./property-list-
 afterEach(() => cleanup());
 
 describe('PropertyList', () => {
+  test('composes Collapsible for required names and avoids schema jargon', async () => {
+    const source = await Bun.file(new URL('./property-list.svelte', import.meta.url)).text();
+
+    expect(source).toContain("import Collapsible from '@lostgradient/cinder/collapsible'");
+    expect(source).not.toContain("from '../collapsible/collapsible.svelte'");
+    expect(source).toContain('Required fields not yet defined');
+    expect(source).not.toContain('<details class="cinder-jse-required-only"');
+    expect(source).not.toContain('Required without property schema');
+  });
+
   test('uses a rotating Lucide chevron for property disclosure', async () => {
     const { container } = render(PropertyList, {
       idPrefix: 'properties',

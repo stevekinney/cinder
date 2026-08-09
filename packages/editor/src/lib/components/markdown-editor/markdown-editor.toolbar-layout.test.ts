@@ -78,17 +78,26 @@ describe('MarkdownEditor toolbar layout CSS ownership', () => {
       markdownEditorSource,
       '.editor-toolbar-wrapper :global(.editor-toolbar)',
     );
-    expectDeclaration(nestedToolbarBlock, 'flex', '1 1 32rem');
-    expectDeclaration(nestedToolbarBlock, 'min-width', 'min(20rem, 100%)');
+    expectDeclaration(nestedToolbarBlock, 'flex', '1 1 0');
+    expectDeclaration(nestedToolbarBlock, 'min-width', '0');
     expectDeclaration(nestedToolbarBlock, 'padding', '0');
     expectDeclaration(nestedToolbarBlock, 'border', '0');
     expectDeclaration(nestedToolbarBlock, 'border-radius', '0');
     expectDeclaration(nestedToolbarBlock, 'background', 'transparent');
-    expectDeclaration(nestedToolbarBlock, 'row-gap', 'var(--cinder-space-1)');
+    expectDeclaration(nestedToolbarBlock, 'flex-wrap', 'nowrap');
+    expectDeclaration(nestedToolbarBlock, 'overflow-x', 'auto');
 
     const modeToggleBlock = cssBlock(markdownEditorSource, '.toolbar-mode-toggle');
     expectDeclaration(modeToggleBlock, 'display', 'flex');
     expectDeclaration(modeToggleBlock, 'justify-content', 'flex-end');
+    expect(markdownEditorSource).toContain('aria-label="Rich editor"');
+    expect(markdownEditorSource).toContain('aria-label="Raw Markdown"');
+    expect(editorToolbarSource).toContain('label="More formatting"');
+    expect(editorToolbarSource).toContain('focusManagement="panel"');
+    expect(editorToolbarSource).toContain('aria-label="Additional formatting"');
+    expect(editorToolbarSource).toContain('aria-label="Text formatting"');
+    expect(editorToolbarSource).toContain('{disabled}');
+    expect(editorToolbarSource).toContain('tabindex={disabled ? 0 : undefined}');
 
     const standaloneToolbarBlock = cssBlock(editorToolbarSource, '.editor-toolbar');
     expectDeclaration(
@@ -98,18 +107,11 @@ describe('MarkdownEditor toolbar layout CSS ownership', () => {
     );
   });
 
-  it('collapses the toolbar toggle and separators by editor container width', async () => {
+  it('keeps the toolbar on one row and hides separators by editor container width', async () => {
     const markdownEditorSource = stripCssComments(await Bun.file(markdownEditorPath).text());
     const narrowContainer = '@container cinder-markdown-editor (max-width: 42rem)';
 
     expect(markdownEditorSource).toContain(narrowContainer);
-
-    const narrowToolbarBlock = cssBlockAfter(
-      markdownEditorSource,
-      narrowContainer,
-      '.editor-toolbar-wrapper :global(.editor-toolbar)',
-    );
-    expectDeclaration(narrowToolbarBlock, 'flex-basis', '100%');
 
     const narrowSeparatorBlock = cssBlockAfter(
       markdownEditorSource,
@@ -123,8 +125,8 @@ describe('MarkdownEditor toolbar layout CSS ownership', () => {
       narrowContainer,
       '.toolbar-mode-toggle',
     );
-    expectDeclaration(narrowModeToggleBlock, 'flex-basis', '100%');
     expectDeclaration(narrowModeToggleBlock, 'margin-inline-start', '0');
+    expect(narrowModeToggleBlock).not.toContain('flex-basis');
   });
 
   it('keeps the fixed-position link popover outside the query container', async () => {
@@ -140,6 +142,10 @@ describe('MarkdownEditor toolbar layout CSS ownership', () => {
     expect(layoutStartIndex).toBeGreaterThanOrEqual(0);
     expect(layoutEndIndex).toBeGreaterThan(layoutStartIndex);
     expect(popoverIndex).toBeGreaterThan(layoutEndIndex);
+    expect(markdownEditorSource).toContain(
+      'const triggerRectangle = triggerElement.getBoundingClientRect()',
+    );
+    expect(markdownEditorSource).toContain('getBoundingClientRect: () => triggerRectangle');
   });
 
   it('gives raw source mode a usable minimum editing height', async () => {

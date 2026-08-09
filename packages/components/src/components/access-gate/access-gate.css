@@ -126,19 +126,6 @@
     min-inline-size: 0;
   }
 
-  .cinder-access-gate__section-title {
-    color: var(--cinder-text);
-    font-size: var(--cinder-text-base);
-    font-weight: var(--cinder-font-semibold);
-    line-height: var(--cinder-leading-snug);
-  }
-
-  .cinder-access-gate__section-reason {
-    color: var(--cinder-text-muted);
-    font-size: var(--cinder-text-sm);
-    line-height: var(--cinder-leading-normal);
-  }
-
   .cinder-access-gate__requirement {
     display: flex;
     flex-wrap: wrap;

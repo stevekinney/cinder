@@ -159,7 +159,7 @@
     <nav
       {...rest}
       {id}
-      role="navigation"
+      role={effectiveVariant === 'navigation' ? 'navigation' : undefined}
       aria-labelledby={`${id}-label`}
       data-cinder-orientation={orientation}
       data-cinder-size={effectiveSize}

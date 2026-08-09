@@ -816,7 +816,7 @@ describe('focus-ring lint rule gates at error severity', () => {
 });
 
 // ============================================================================
-// Issue #460 — forced-colors fallbacks for 9 components with box-shadow focus
+// Issue #460 — forced-colors fallbacks for components with box-shadow focus
 // rings and no prior forced-colors media block.
 // ============================================================================
 
@@ -858,7 +858,7 @@ function assertForcedColorsFallback(css: string, selector: string, expectedOffse
   expect(declValue(fallback, 'box-shadow')).toBe('none');
 }
 
-describe('forced-colors fallbacks — issue #460 (9 affected components)', () => {
+describe('forced-colors fallbacks — issue #460', () => {
   // Each entry asserts: transparent-outline + box-shadow in normal mode, plus
   // a non-transparent ButtonText outline, the correct per-control outline-offset,
   // and explicit box-shadow:none in @media (forced-colors: active).
@@ -924,12 +924,6 @@ describe('forced-colors fallbacks — issue #460 (9 affected components)', () =>
       selector: '.cinder-transfer-list__list:focus-visible',
       // overflow:auto clips a positive offset; inset ring avoids the clip
       expectedOffset: 'calc(-1 * var(--cinder-ring-width))',
-    },
-    {
-      name: 'transfer-list control',
-      css: transferListCss,
-      selector: '.cinder-transfer-list__control:focus-visible',
-      expectedOffset: '3px',
     },
     {
       name: 'table sort-button',

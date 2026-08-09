@@ -69,6 +69,9 @@
   } from '../../../editor/component-runtime.ts';
 
   import Toolbar from '@lostgradient/cinder/toolbar';
+  import Popover from '@lostgradient/cinder/popover';
+  import Button from '@lostgradient/cinder/button';
+  import { MoreHorizontal } from '@lostgradient/cinder/icons';
   import ToolbarButton from './toolbar-button.svelte';
   import ToolbarSeparator from './toolbar-separator.svelte';
   import ToolbarDropdown, { type BlockType, type BlockTypeOption } from './toolbar-dropdown.svelte';
@@ -94,6 +97,8 @@
     'aria-label': _ariaLabel,
     ...rest
   }: EditorToolbarProps = $props();
+
+  let formattingPopoverOpen = $state(false);
 
   // Block type options for dropdown
   // Note: codeBlock is omitted until proper toggle command is implemented
@@ -141,6 +146,7 @@
   }
 
   function handleLink(event: MouseEvent) {
+    formattingPopoverOpen = false;
     const triggerElement = event.currentTarget;
     if (triggerElement instanceof HTMLElement) {
       onLinkClick?.(triggerElement);
@@ -199,6 +205,7 @@
   aria-label="Formatting toolbar"
   aria-controls={editorId}
   aria-disabled={disabled || undefined}
+  tabindex={disabled ? 0 : undefined}
   class={classNames('editor-toolbar', className)}
   {...rest as Record<string, unknown>}
 >
@@ -235,109 +242,130 @@
     />
   </div>
 
-  <ToolbarSeparator />
+  <Popover
+    bind:open={formattingPopoverOpen}
+    label="More formatting"
+    placement="bottom-start"
+    focusManagement="panel"
+  >
+    {#snippet trigger()}
+      <Button
+        variant="ghost"
+        size="sm"
+        aria-label="More formatting"
+        iconOnly
+        {disabled}
+        onclick={() => (formattingPopoverOpen = !formattingPopoverOpen)}
+      >
+        <MoreHorizontal class="cinder-icon-sm" />
+      </Button>
+    {/snippet}
+    <div class="toolbar-overflow" role="group" aria-label="Additional formatting">
+      <ToolbarSeparator />
 
-  <!-- Inline formatting -->
-  <div class="toolbar-group" role="group" aria-label="Text formatting">
-    <ToolbarButton
-      icon={Bold}
-      label="Bold"
-      shortcut={getShortcutDisplay('Mod-b')}
-      toggle
-      pressed={activeMarks.bold}
-      {disabled}
-      onclick={handleBold}
-      data-testid="toolbar-bold"
-    />
-    <ToolbarButton
-      icon={Italic}
-      label="Italic"
-      shortcut={getShortcutDisplay('Mod-i')}
-      toggle
-      pressed={activeMarks.italic}
-      {disabled}
-      onclick={handleItalic}
-      data-testid="toolbar-italic"
-    />
-    <ToolbarButton
-      icon={Code}
-      label="Inline Code"
-      shortcut={getShortcutDisplay('Mod-e')}
-      toggle
-      pressed={activeMarks.code}
-      {disabled}
-      onclick={handleCode}
-      data-testid="toolbar-code"
-    />
-    <ToolbarButton
-      icon={Strikethrough}
-      label="Strikethrough"
-      shortcut={getShortcutDisplay('Mod-Shift-s')}
-      toggle
-      pressed={activeMarks.strikethrough}
-      {disabled}
-      onclick={handleStrikethrough}
-      data-testid="toolbar-strikethrough"
-    />
-  </div>
+      <!-- Inline formatting -->
+      <div class="toolbar-group" role="group" aria-label="Text formatting">
+        <ToolbarButton
+          icon={Bold}
+          label="Bold"
+          shortcut={getShortcutDisplay('Mod-b')}
+          toggle
+          pressed={activeMarks.bold}
+          {disabled}
+          onclick={handleBold}
+          data-testid="toolbar-bold"
+        />
+        <ToolbarButton
+          icon={Italic}
+          label="Italic"
+          shortcut={getShortcutDisplay('Mod-i')}
+          toggle
+          pressed={activeMarks.italic}
+          {disabled}
+          onclick={handleItalic}
+          data-testid="toolbar-italic"
+        />
+        <ToolbarButton
+          icon={Code}
+          label="Inline Code"
+          shortcut={getShortcutDisplay('Mod-e')}
+          toggle
+          pressed={activeMarks.code}
+          {disabled}
+          onclick={handleCode}
+          data-testid="toolbar-code"
+        />
+        <ToolbarButton
+          icon={Strikethrough}
+          label="Strikethrough"
+          shortcut={getShortcutDisplay('Mod-Shift-s')}
+          toggle
+          pressed={activeMarks.strikethrough}
+          {disabled}
+          onclick={handleStrikethrough}
+          data-testid="toolbar-strikethrough"
+        />
+      </div>
 
-  <ToolbarSeparator />
+      <ToolbarSeparator />
 
-  <!-- Link -->
-  <div class="toolbar-group" role="group" aria-label="Links">
-    <ToolbarButton
-      icon={Link}
-      label="Insert Link"
-      shortcut={getShortcutDisplay('Mod-k')}
-      aria-haspopup="dialog"
-      aria-expanded={linkPopoverOpen}
-      {disabled}
-      onclick={handleLink}
-      data-testid="toolbar-link"
-    />
-  </div>
+      <!-- Link -->
+      <div class="toolbar-group" role="group" aria-label="Links">
+        <ToolbarButton
+          icon={Link}
+          label="Insert Link"
+          shortcut={getShortcutDisplay('Mod-k')}
+          aria-haspopup="dialog"
+          aria-expanded={linkPopoverOpen}
+          {disabled}
+          onclick={handleLink}
+          data-testid="toolbar-link"
+        />
+      </div>
 
-  <ToolbarSeparator />
+      <ToolbarSeparator />
 
-  <!-- Lists -->
-  <div class="toolbar-group" role="group" aria-label="Lists">
-    <ToolbarButton
-      icon={List}
-      label="Bullet List"
-      shortcut={getShortcutDisplay('Mod-Shift-8')}
-      toggle
-      pressed={activeBlockType.type === 'listItem' && activeBlockType.listType === 'bullet'}
-      {disabled}
-      onclick={handleBulletList}
-      data-testid="toolbar-bullet-list"
-    />
-    <ToolbarButton
-      icon={ListOrdered}
-      label="Ordered List"
-      shortcut={getShortcutDisplay('Mod-Shift-7')}
-      toggle
-      pressed={activeBlockType.type === 'listItem' && activeBlockType.listType === 'ordered'}
-      {disabled}
-      onclick={handleOrderedList}
-      data-testid="toolbar-ordered-list"
-    />
-  </div>
+      <!-- Lists -->
+      <div class="toolbar-group" role="group" aria-label="Lists">
+        <ToolbarButton
+          icon={List}
+          label="Bullet List"
+          shortcut={getShortcutDisplay('Mod-Shift-8')}
+          toggle
+          pressed={activeBlockType.type === 'listItem' && activeBlockType.listType === 'bullet'}
+          {disabled}
+          onclick={handleBulletList}
+          data-testid="toolbar-bullet-list"
+        />
+        <ToolbarButton
+          icon={ListOrdered}
+          label="Ordered List"
+          shortcut={getShortcutDisplay('Mod-Shift-7')}
+          toggle
+          pressed={activeBlockType.type === 'listItem' && activeBlockType.listType === 'ordered'}
+          {disabled}
+          onclick={handleOrderedList}
+          data-testid="toolbar-ordered-list"
+        />
+      </div>
 
-  <ToolbarSeparator />
+      <ToolbarSeparator />
 
-  <!-- Block operations -->
-  <div class="toolbar-group" role="group" aria-label="Block operations">
-    <ToolbarButton
-      icon={Quote}
-      label="Blockquote"
-      shortcut={getShortcutDisplay('Mod-Shift-9')}
-      toggle
-      pressed={activeBlockType.type === 'blockquote'}
-      {disabled}
-      onclick={handleBlockquote}
-      data-testid="toolbar-blockquote"
-    />
-  </div>
+      <!-- Block operations -->
+      <div class="toolbar-group" role="group" aria-label="Block operations">
+        <ToolbarButton
+          icon={Quote}
+          label="Blockquote"
+          shortcut={getShortcutDisplay('Mod-Shift-9')}
+          toggle
+          pressed={activeBlockType.type === 'blockquote'}
+          {disabled}
+          onclick={handleBlockquote}
+          data-testid="toolbar-blockquote"
+        />
+      </div>
+    </div>
+  </Popover>
 
   {#if actions}
     <!-- Spacer pushes actions to the right -->
@@ -365,7 +393,8 @@
     background: var(--cinder-surface-raised);
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-md);
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    overflow-x: auto;
   }
 
   :global(.editor-toolbar[aria-disabled='true']) {
@@ -377,6 +406,13 @@
     display: flex;
     align-items: center;
     gap: var(--cinder-space-0-5);
+  }
+
+  .toolbar-overflow {
+    display: flex;
+    align-items: center;
+    gap: var(--cinder-space-1);
+    min-width: 14rem;
   }
 
   .toolbar-spacer {

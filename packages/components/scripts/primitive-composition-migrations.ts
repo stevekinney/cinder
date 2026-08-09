@@ -70,7 +70,6 @@ export const allowedGridCounts = new Map<string, number>(
     'grid/grid.css',
     'phone-input/phone-input.css',
     'radio-group/radio-group.css',
-    'schedule-builder/schedule-builder.css',
     'selectable-row/selectable-row.css',
     'sortable-list/sortable-list.css',
     'source-diff-viewer/source-diff-viewer.css',
@@ -78,7 +77,6 @@ export const allowedGridCounts = new Map<string, number>(
     'statistic-group/statistic-group.css',
     'statistic/statistic.css',
     'timeline/timeline.css',
-    'transfer-list/transfer-list.css',
   ].map((filePath) => [filePath, 1] as const),
 );
 allowedGridCounts.set('action-row/action-row.css', 4);
@@ -102,7 +100,6 @@ allowedGridCounts.set('statistic-group/statistic-group.css', 10);
 allowedGridCounts.set('statistic/statistic.css', 2);
 allowedGridCounts.set('steps/steps.css', 4);
 allowedGridCounts.set('timeline/timeline.css', 3);
-allowedGridCounts.set('transfer-list/transfer-list.css', 3);
 
 export const allowedFloatingCounts = new Map<string, number>(
   [

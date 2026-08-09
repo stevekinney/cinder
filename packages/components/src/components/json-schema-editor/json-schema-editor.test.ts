@@ -58,6 +58,36 @@ describe('JsonSchemaEditor — Diff tab source contract', () => {
     expect(source).toContain('aria-label=');
   });
 
+  test('toolbar actions are icon-only with accessible labels', async () => {
+    const source = await Bun.file(new URL('./json-schema-toolbar.svelte', import.meta.url)).text();
+
+    expect(source).toContain('iconOnly');
+    expect(source).toContain('label="Undo"');
+    expect(source).toContain('label="Redo"');
+    expect(source).toContain('label="Revert"');
+    expect(source).toContain('label="Copy JSON" iconOnly');
+  });
+
+  test('property editor uses Collapsible for every optional disclosure', async () => {
+    const source = await Bun.file(new URL('./property-editor.svelte', import.meta.url)).text();
+    const constraintsSource = await Bun.file(
+      new URL('./property-editor-constraints.svelte', import.meta.url),
+    ).text();
+    const disclosureSource = `${source}\n${constraintsSource}`;
+
+    expect(constraintsSource).toContain(
+      "import Collapsible from '@lostgradient/cinder/collapsible'",
+    );
+    expect(constraintsSource).toContain("import Input from '@lostgradient/cinder/input'");
+    expect(constraintsSource).not.toContain("from '../collapsible/collapsible.svelte'");
+    expect(constraintsSource).not.toContain("from '../input/input.svelte'");
+    expect(source).toContain("import Collapsible from '@lostgradient/cinder/collapsible'");
+    expect(source).not.toContain("from '../collapsible/collapsible.svelte'");
+    expect(disclosureSource).not.toContain('<details');
+    expect(disclosureSource).not.toContain('<summary');
+    expect(disclosureSource.match(/<Collapsible/g)?.length).toBe(3);
+  });
+
   test('json-schema-editor-impl.svelte scopes form validation count to the form view', async () => {
     const source = await Bun.file(
       new URL('./json-schema-editor-impl.svelte', import.meta.url),

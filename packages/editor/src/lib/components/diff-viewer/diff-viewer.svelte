@@ -41,6 +41,12 @@
   import { classNames } from '../../utilities/class-names.ts';
   import Button from '@lostgradient/cinder/button';
   import { RotateCcw } from '@lostgradient/cinder/icons';
+  import {
+    composeDisplayedDocument,
+    formatComputedUnifiedDiff,
+    generateUnifiedDiff,
+  } from '../../export/unified-diff.ts';
+  import { onDestroy } from 'svelte';
 
   import Surface from '@lostgradient/cinder/surface';
   import { createDiffController } from './diff-controller.svelte';
@@ -51,6 +57,7 @@
 
   type LocalFrontMatterBlock = {
     hasFrontMatter: boolean;
+    hasTerminatingNewline: boolean;
     raw: string | null;
     body: string;
     text: string;
@@ -76,6 +83,7 @@
     if (!match) {
       return {
         hasFrontMatter: false,
+        hasTerminatingNewline: false,
         raw: null,
         body: markdown,
         text: '',
@@ -84,6 +92,7 @@
 
     return {
       hasFrontMatter: true,
+      hasTerminatingNewline: match[0].endsWith('\n'),
       raw: match[1] ?? '',
       body: normalized.slice(match[0].length),
       text: `---\n${match[1] ?? ''}\n---`,
@@ -213,6 +222,21 @@
   // ─────────────────────────────────────────────────────────────────────────────
 
   const computedHunks = $derived(groupIntoHunks(lineDiffs));
+  const unifiedDiffHunks = $derived(groupIntoHunks([...frontMatterDiffs, ...lineDiffs]));
+  const displayedOriginal = $derived(
+    composeDisplayedDocument(
+      originalFrontMatterText,
+      normalizedOriginalBody,
+      originalParsed.hasTerminatingNewline,
+    ),
+  );
+  const displayedCurrent = $derived(
+    composeDisplayedDocument(
+      currentFrontMatterText,
+      normalizedCurrentBody,
+      currentParsed.hasTerminatingNewline,
+    ),
+  );
 
   // Sync computed hunks to bindable prop for reactive parent access
   $effect(() => {
@@ -301,6 +325,51 @@
     onreverthunk?.(hunk.index, hunk);
   }
 
+  let copyStatus = $state<'idle' | 'copied' | 'failed'>('idle');
+  let copyStatusResetTimer: number | undefined;
+  async function copyUnifiedDiff(): Promise<void> {
+    if (diffState.tier === 'manual' && (diffState.isStale || diffState.isComputing)) {
+      copyStatus = 'failed';
+      return;
+    }
+    const diff =
+      diffState.tier === 'manual'
+        ? formatComputedUnifiedDiff(unifiedDiffHunks, {
+            original: displayedOriginal,
+            current: displayedCurrent,
+          })
+        : generateUnifiedDiff(
+            {
+              schemaVersion: 1,
+              content: displayedCurrent,
+              original: displayedOriginal,
+              threads: [],
+              updatedAt: '',
+            },
+            { normalizeInputs: false },
+          ).diff;
+    if (!diff || typeof navigator === 'undefined' || !navigator.clipboard) {
+      copyStatus = 'failed';
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(diff);
+    } catch {
+      copyStatus = 'failed';
+      return;
+    }
+    copyStatus = 'copied';
+    if (copyStatusResetTimer !== undefined) window.clearTimeout(copyStatusResetTimer);
+    copyStatusResetTimer = window.setTimeout(() => {
+      copyStatus = 'idle';
+      copyStatusResetTimer = undefined;
+    }, 1200);
+  }
+
+  onDestroy(() => {
+    if (copyStatusResetTimer !== undefined) window.clearTimeout(copyStatusResetTimer);
+  });
+
   // ─────────────────────────────────────────────────────────────────────────────
   // Keyboard shortcuts
   // ─────────────────────────────────────────────────────────────────────────────
@@ -348,6 +417,7 @@
       onjumpprevious={jumpToPrevious}
       {onrevertall}
       ontriggercompute={() => diffController.triggerCompute()}
+      oncopydiff={copyUnifiedDiff}
     >
       {#snippet actions()}
         {#if toolbarActions}
@@ -355,6 +425,11 @@
         {/if}
       {/snippet}
     </DiffToolbar>
+  {/if}
+  {#if copyStatus === 'copied'}
+    <div class="cinder-sr-only" role="status">Unified diff copied.</div>
+  {:else if copyStatus === 'failed'}
+    <div class="diff-copy-error" role="status">Unable to copy unified diff.</div>
   {/if}
 
   <!-- Size warning banner (DEP-47) -->

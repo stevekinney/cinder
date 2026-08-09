@@ -1,5 +1,5 @@
 /** Accepted *input* color string formats. Output is always hex. */
-export type ColorFieldFormat = 'hex' | 'rgb' | 'hsl';
+export type ColorFieldFormat = 'hex' | 'rgb' | 'rgba' | 'hsl' | 'hsla' | 'hwb';
 
 /** Props for ColorField. */
 export type ColorFieldProps = {
@@ -16,7 +16,7 @@ export type ColorFieldProps = {
    * but alpha is stripped on emit.
    */
   alpha?: boolean;
-  /** Accepted *input* formats. Defaults to `['hex', 'rgb', 'hsl']`. Output is always hex. */
+  /** Accepted *input* formats. Defaults to `['hex', 'rgb', 'hsl', 'hwb']`; rgba/hsla aliases can be restricted independently. Output is always hex. */
   formats?: readonly ColorFieldFormat[];
   /** Disable the input. */
   disabled?: boolean;

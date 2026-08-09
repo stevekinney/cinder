@@ -116,8 +116,9 @@
     justify-content: center;
     align-items: center;
     gap: var(--cinder-space-1);
-    min-block-size: 3.75rem;
-    padding: var(--cinder-space-2);
+    min-block-size: 4rem;
+    padding-block: var(--cinder-space-1);
+    padding-inline: var(--cinder-space-2);
     border-bottom: none;
     border-top: 2px solid transparent;
     border-radius: 0;

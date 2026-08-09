@@ -4,10 +4,6 @@ const schema = {
   $schema: 'https://json-schema.org/draft/2020-12/schema',
   type: 'object',
   properties: {
-    title: {
-      type: 'string',
-      description: "Primary heading text rendered inside the card's header region.",
-    },
     class: {
       type: 'string',
       description: 'Custom class merged with `.cinder-card`.',
@@ -15,6 +11,10 @@ const schema = {
     variant: {
       enum: ['card', 'well'],
       description: 'Visual container style. `card` is raised; `well` is flatter and inset.',
+    },
+    elevation: {
+      enum: ['none', 'sm', 'md', 'lg'],
+      description: 'Elevation shadow applied to the card surface.',
     },
     tone: {
       enum: ['default', 'danger'],
@@ -34,9 +34,17 @@ const schema = {
       description: 'Remove side borders/radius and bleed to the viewport edge on narrow screens.',
     },
     padding: {
-      enum: ['default', 'none'],
+      enum: ['none', 'default'],
       description:
         'Body padding. `none` leaves header and footer padding intact while making body content flush with the card edges.',
+    },
+    title: {
+      type: 'string',
+      description: "Primary heading text rendered inside the card's header region.",
+    },
+    href: {
+      type: 'string',
+      description: 'Destination URL that makes the entire card an anchor.',
     },
     headingLevel: {
       enum: [2, 3, 4, 5, 6],
@@ -63,6 +71,11 @@ const schema = {
       {
         name: 'header',
         reason: 'function-or-snippet',
+      },
+      {
+        name: 'onclick',
+        reason: 'function-or-snippet',
+        description: 'Click handler that makes the entire card a button.',
       },
     ],
   },

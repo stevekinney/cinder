@@ -54,6 +54,24 @@ function hasButtonLabelled(container: HTMLElement, label: string): boolean {
 }
 
 describe('DiffViewer: identical input (basic mount)', () => {
+  test('manual-tier copy reuses computed hunks instead of invoking a second generator', async () => {
+    const source = await Bun.file(new URL('./diff-viewer.svelte', import.meta.url)).text();
+    expect(source).toContain("diffState.tier === 'manual'");
+    expect(source).toContain('formatComputedUnifiedDiff(');
+    expect(source).toContain('unifiedDiffHunks');
+    expect(source).toContain('original: displayedOriginal');
+    expect(source).toContain('current: displayedCurrent');
+  });
+
+  test('copy includes front matter and preserves normalizeInputs semantics', async () => {
+    const source = await Bun.file(new URL('./diff-viewer.svelte', import.meta.url)).text();
+    expect(source).toContain('[...frontMatterDiffs, ...lineDiffs]');
+    expect(source).toContain('composeDisplayedDocument(');
+    expect(source).toContain('content: displayedCurrent');
+    expect(source).toContain('original: displayedOriginal');
+    expect(source).toContain('{ normalizeInputs: false }');
+    expect(source).not.toContain("split('\\n').filter(Boolean)");
+  });
   test('two identical strings produce only unchanged lines and zero stats', () => {
     const diffs = computeLineDiff(
       'line one\nline two\nline three',
@@ -78,6 +96,30 @@ describe('DiffViewer: identical input (basic mount)', () => {
     expect(container.textContent).toContain('No changes');
     // With nothing changed, there is no change-navigation counter.
     expect(container.querySelector('.change-counter')).toBeNull();
+  });
+
+  test('the toolbar omits copy when there is no diff to copy', () => {
+    const { container } = render(DiffToolbar, {
+      stats: { added: 0, removed: 0, modified: 0 },
+      changeCount: 0,
+      currentChangeIndex: -1,
+      hasChanges: false,
+      oncopydiff: () => {},
+    });
+
+    expect(hasButtonLabelled(container, 'Copy unified diff')).toBe(false);
+  });
+});
+
+describe('DiffViewer: unified diff clipboard handling', () => {
+  test('handles clipboard rejection and clears the prior reset timer', async () => {
+    const source = await Bun.file(new URL('./diff-viewer.svelte', import.meta.url)).text();
+
+    expect(source).toMatch(
+      /try\s*\{[\s\S]*navigator\.clipboard\.writeText\(diff\)[\s\S]*\}\s*catch\s*\{/,
+    );
+    expect(source).toContain('window.clearTimeout(copyStatusResetTimer)');
+    expect(source).toContain('onDestroy(() => {');
   });
 });
 

@@ -1,4 +1,5 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@import '../collapsible/collapsible.css';
 @layer cinder.components {
   /**
  * Layout for the JsonSchemaEditor component.
@@ -77,35 +78,10 @@
     gap: var(--cinder-space-2);
   }
 
-  /* Collapsible <details> sections — chevron + section title combine into the
-   summary; body padding kicks in on expand. */
+  /* Collapsible sections use the shared disclosure trigger and panel. */
   .cinder-jse-section--collapsible {
+    gap: 0;
     padding: 0;
-  }
-
-  .cinder-jse-section--collapsible > summary {
-    display: flex;
-    align-items: center;
-    gap: var(--cinder-space-2);
-    list-style: none;
-    cursor: pointer;
-    padding: var(--cinder-space-3) var(--cinder-space-4);
-    user-select: none;
-  }
-
-  .cinder-jse-section--collapsible > summary::-webkit-details-marker {
-    display: none;
-  }
-
-  .cinder-jse-section--collapsible > summary::before {
-    content: '▸';
-    font-size: var(--cinder-text-xs);
-    color: var(--cinder-text-subtle);
-    transition: transform var(--cinder-duration-fast) ease;
-  }
-
-  .cinder-jse-section--collapsible[open] > summary::before {
-    transform: rotate(90deg);
   }
 
   .cinder-jse-section__body {
@@ -291,18 +267,6 @@
   /* Required-only chip area */
   .cinder-jse-required-only {
     margin-top: var(--cinder-space-2);
-  }
-
-  .cinder-jse-required-only__summary {
-    cursor: pointer;
-    font-size: var(--cinder-text-xs);
-    color: var(--cinder-text-subtle);
-    padding: var(--cinder-space-1) var(--cinder-space-2);
-    list-style: none;
-  }
-
-  .cinder-jse-required-only__summary::-webkit-details-marker {
-    display: none;
   }
 
   .cinder-jse-required-only__panel {

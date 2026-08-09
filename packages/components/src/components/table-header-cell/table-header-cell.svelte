@@ -92,8 +92,8 @@
           stroke-linecap="round"
           stroke-linejoin="round"
         >
-          <polyline class="cinder-table__sort-chevron-up" points="4 7 8 4 12 7" />
-          <polyline class="cinder-table__sort-chevron-down" points="4 9 8 12 12 9" />
+          <polyline class="cinder-table__sort-chevron-up" points="4 6 8 2 12 6" />
+          <polyline class="cinder-table__sort-chevron-down" points="4 10 8 14 12 10" />
         </svg>
       </span>
     </button>

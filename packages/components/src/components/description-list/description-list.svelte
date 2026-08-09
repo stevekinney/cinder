@@ -71,8 +71,8 @@
 >
   {#each items as item (item.id ?? item.term)}
     <div class="cinder-description-list__row">
-      <dt class={variant === 'narrow' ? 'cinder-sr-only' : undefined}>{item.term}</dt>
-      <dd>
+      <dt class={variant === 'narrow' ? 'cinder-sr-only' : 'cinder-_label-text'}>{item.term}</dt>
+      <dd class="cinder-_value-text">
         <div class="cinder-description-list__definition">
           {#if typeof item.definition === 'string'}
             {item.definition}

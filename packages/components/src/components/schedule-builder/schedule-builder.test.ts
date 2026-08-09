@@ -692,6 +692,74 @@ describe('ScheduleBuilder', () => {
   });
 
   describe('cron mode', () => {
+    test('composes Grid through its public component entry', async () => {
+      const source = await Bun.file(
+        new URL('./schedule-builder-cron-editor.svelte', import.meta.url),
+      ).text();
+
+      expect(source).toContain("import Grid from '@lostgradient/cinder/grid'");
+      expect(source).not.toContain("from '../grid/grid.svelte'");
+    });
+
+    test('offers structured every, specific, range, and step controls with raw cron as an escape hatch', async () => {
+      const onValueChange = mock();
+      const { getByLabelText, getAllByRole } = render(ScheduleBuilder, {
+        allowedModes: ['cron'],
+        onValueChange,
+      });
+
+      expect(getByLabelText('Minute pattern')).not.toBeNull();
+      expect(getAllByRole('option', { name: 'Every value (*)' })).not.toHaveLength(0);
+      expect(getAllByRole('option', { name: 'Specific value' })).not.toHaveLength(0);
+      expect(getAllByRole('option', { name: 'Range' })).not.toHaveLength(0);
+      expect(getAllByRole('option', { name: 'Step (every N)' })).not.toHaveLength(0);
+      expect(getAllByRole('option', { name: 'Advanced raw expression' })).not.toHaveLength(0);
+
+      const minuteRawExpression = getByLabelText('Minute') as HTMLInputElement;
+      expect((minuteRawExpression.closest('details') as HTMLDetailsElement).open).toBe(false);
+
+      await fireEvent.change(getByLabelText('Minute pattern'), {
+        target: { value: 'advanced' },
+      });
+      expect((minuteRawExpression.closest('details') as HTMLDetailsElement).open).toBe(true);
+
+      await fireEvent.change(getByLabelText('Minute pattern'), { target: { value: 'step' } });
+      await fireEvent.input(getByLabelText('Minute step'), { target: { value: '15' } });
+      expect(onValueChange.mock.calls.at(-1)?.[0]).toEqual({
+        mode: 'cron',
+        expression: '*/15 * * * *',
+      });
+    });
+
+    test('switches the field to advanced mode when the raw expression is edited', async () => {
+      const onValueChange = mock();
+      const { getByLabelText, queryByLabelText } = render(ScheduleBuilder, {
+        allowedModes: ['cron'],
+        onValueChange,
+      });
+
+      await fireEvent.change(getByLabelText('Minute pattern'), {
+        target: { value: 'specific' },
+      });
+      await fireEvent.input(getByLabelText('Minute'), { target: { value: '*/10' } });
+
+      expect((getByLabelText('Minute pattern') as HTMLSelectElement).value).toBe('advanced');
+      expect(queryByLabelText('Minute value', { exact: true })).toBeNull();
+      expect(onValueChange.mock.calls.at(-1)?.[0]).toEqual({
+        mode: 'cron',
+        expression: '*/10 * * * *',
+      });
+    });
+
+    test('shows range validation on the visible structured controls without a duplicate alert', () => {
+      const { getAllByText, queryByRole } = render(ScheduleBuilder, {
+        allowedModes: ['cron'],
+        value: { mode: 'cron', expression: '40-10 * * * *' },
+      });
+      expect(getAllByText('Range start is after its end.').length).toBeGreaterThan(0);
+      expect(queryByRole('alert')).toBeNull();
+    });
+
     test('a valid cron field edit commits a joined cron expression via onValueChange', async () => {
       const onValueChange = mock();
       const { getByLabelText, getByRole } = render(ScheduleBuilder, { onValueChange });
@@ -959,6 +1027,33 @@ describe('ScheduleBuilder', () => {
       const css = readFileSync(new URL('./schedule-builder.css', import.meta.url), 'utf8');
       expect(css).toContain('cinder-schedule-builder');
       expect(css).toContain('@layer cinder.components');
+      expect(css).toMatch(
+        /\.cinder-schedule-builder__panel\s*\{[^}]*padding-inline:\s*var\(--cinder-space-1\);/,
+      );
+    });
+
+    test('aggregates Grid styles before the component layer', async () => {
+      const { readFileSync } = await import('node:fs');
+      const css = readFileSync(new URL('./schedule-builder.css', import.meta.url), 'utf8');
+      expect(css.indexOf('@layer cinder.tokens')).toBeLessThan(
+        css.indexOf("@import '../grid/grid.css'"),
+      );
+      expect(css.indexOf("@import '../grid/grid.css'")).toBeLessThan(
+        css.indexOf('@layer cinder.components'),
+      );
+    });
+
+    test('uses the standard rotating chevron for raw cron disclosures', async () => {
+      const [componentSource, cssSource] = await Promise.all([
+        Bun.file(new URL('./schedule-builder-cron-editor.svelte', import.meta.url)).text(),
+        Bun.file(new URL('./schedule-builder.css', import.meta.url)).text(),
+      ]);
+
+      expect(componentSource).toContain('ChevronDown');
+      expect(componentSource).toContain('cinder-schedule-builder__cron-advanced-chevron');
+      expect(cssSource).toMatch(
+        /\.cinder-schedule-builder__cron-advanced\[open\][\s\S]*?transform:\s*rotate\(180deg\)/,
+      );
     });
   });
 });

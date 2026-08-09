@@ -2,84 +2,18 @@
   import type { JsonSchemaTypeName, JsonSchemaValue } from './json-schema-editor-types.ts';
 
   export type PropertyEditorProps = {
-    /** Stable identifier prefix for ARIA wiring. */
     idPrefix: string;
-    /** The schema node being edited. */
     value: JsonSchemaValue;
-    /** Path to this node within the root schema, for stable coalesce keys. */
     path: string;
-    /** Recursion depth — used to collapse deeply-nested nodes by default. */
     depth?: number;
-    /** Whether the editor is read-only. */
     readonly?: boolean;
-    /** Called when nested form-only validation errors change. */
     onvalidationErrorcount?: ((count: number) => void) | undefined;
-    /** Called whenever the value changes. */
     onValueChange: (
       next: JsonSchemaValue,
       options?: { coalesceKey?: string; label?: string },
     ) => void;
     class?: string;
   };
-
-  export const PRIMITIVE_TYPES: readonly JsonSchemaTypeName[] = [
-    'string',
-    'number',
-    'integer',
-    'boolean',
-    'null',
-    'object',
-    'array',
-  ] as const;
-
-  /** Editable keywords with dedicated UI. Everything else is preserved-only. */
-  export const EDITABLE_KEYWORDS = new Set<string>([
-    'type',
-    'title',
-    'description',
-    'default',
-    'examples',
-    'const',
-    'enum',
-    'minLength',
-    'maxLength',
-    'pattern',
-    'format',
-    'minimum',
-    'maximum',
-    'exclusiveMinimum',
-    'exclusiveMaximum',
-    'multipleOf',
-    'properties',
-    'required',
-    'additionalProperties',
-    'items',
-    'minItems',
-    'maxItems',
-    'uniqueItems',
-    'oneOf',
-    'anyOf',
-    'allOf',
-    'not',
-    '$ref',
-    '$schema',
-  ]);
-
-  /** Default render-collapsed depth for child nodes. */
-  export const DEFAULT_COLLAPSE_DEPTH = 3;
-
-  /** Hard recursion limit — deeper nodes show a placeholder. */
-  export const MAX_RENDER_DEPTH = 30;
-
-  export const NUMBER_CONSTRAINT_FIELDS = [
-    { key: 'minimum', label: 'Minimum' },
-    { key: 'maximum', label: 'Maximum' },
-    { key: 'exclusiveMinimum', label: 'Exclusive minimum' },
-    { key: 'exclusiveMaximum', label: 'Exclusive maximum' },
-    { key: 'multipleOf', label: 'Multiple of' },
-  ] as const;
-
-  export type NumberConstraintKeyword = (typeof NUMBER_CONSTRAINT_FIELDS)[number]['key'];
 
   // The branch-keying helper is extracted to a `.ts` sibling because TypeScript's
   // ambient `*.svelte` shape doesn't surface module-block named exports cleanly,
@@ -94,12 +28,20 @@
   import Badge from '../badge/badge.svelte';
   import Button from '../button/button.svelte';
   import Checkbox from '../checkbox/checkbox.svelte';
+  import Collapsible from '@lostgradient/cinder/collapsible';
   import Input from '../input/input.svelte';
   import Tooltip from '../tooltip/tooltip.svelte';
 
   import { reconcileCompositionBranchKeys } from './composition-branch-keys.ts';
+  import {
+    DEFAULT_COLLAPSE_DEPTH,
+    EDITABLE_KEYWORDS,
+    MAX_RENDER_DEPTH,
+    PRIMITIVE_TYPES,
+  } from './property-editor.constants.ts';
   import type { JsonSchemaObject } from './json-schema-editor-types.ts';
   import PropertyEditor from './property-editor.svelte';
+  import PropertyEditorConstraints from './property-editor-constraints.svelte';
   import PropertyList from './property-list.svelte';
 
   let {
@@ -192,24 +134,6 @@
   function convertBooleanToObject() {
     if (readonly) return;
     onValueChange({}, { label: 'convert to object schema' });
-  }
-
-  function parseOptionalFiniteNumber(raw: string): number | undefined {
-    if (raw === '') return undefined;
-    const parsed = Number(raw);
-    return Number.isFinite(parsed) ? parsed : undefined;
-  }
-
-  function numberConstraintValue(key: NumberConstraintKeyword): string {
-    const value = objectValue[key];
-    return typeof value === 'number' ? value.toString() : '';
-  }
-
-  function patchNumberConstraint(key: NumberConstraintKeyword, raw: string) {
-    patch({ [key]: parseOptionalFiniteNumber(raw) } as Partial<JsonSchemaObject>, {
-      coalesceKey: `${key}:${path}`,
-      label: `edit ${key}`,
-    });
   }
 
   // ===== Visibility flags for type-specific sections =====
@@ -458,91 +382,24 @@
       </div>
     {/if}
 
-    <!-- String constraints — collapsed by default. -->
-    {#if showStringConstraints}
-      <details class="cinder-jse-section cinder-jse-section--collapsible">
-        <summary class="cinder-jse-section__title">String constraints</summary>
-        <div class="cinder-jse-section__body">
-          <Input
-            id={`${idPrefix}-minLength`}
-            label="Min length"
-            type="text"
-            value={objectValue.minLength?.toString() ?? ''}
-            disabled={readonly}
-            oninput={(event: Event) => {
-              const raw = (event.target as HTMLInputElement).value;
-              const parsed = raw === '' ? undefined : Number.parseInt(raw, 10);
-              patch(
-                { minLength: Number.isNaN(parsed) ? undefined : parsed },
-                { coalesceKey: `minLength:${path}`, label: 'edit minLength' },
-              );
-            }}
-          />
-          <Input
-            id={`${idPrefix}-maxLength`}
-            label="Max length"
-            type="text"
-            value={objectValue.maxLength?.toString() ?? ''}
-            disabled={readonly}
-            oninput={(event: Event) => {
-              const raw = (event.target as HTMLInputElement).value;
-              const parsed = raw === '' ? undefined : Number.parseInt(raw, 10);
-              patch(
-                { maxLength: Number.isNaN(parsed) ? undefined : parsed },
-                { coalesceKey: `maxLength:${path}`, label: 'edit maxLength' },
-              );
-            }}
-          />
-          <Input
-            id={`${idPrefix}-pattern`}
-            label="Pattern (regex)"
-            value={objectValue.pattern ?? ''}
-            disabled={readonly}
-            oninput={(event: Event) =>
-              patch(
-                { pattern: (event.target as HTMLInputElement).value || undefined },
-                { coalesceKey: `pattern:${path}`, label: 'edit pattern' },
-              )}
-          />
-          <Input
-            id={`${idPrefix}-format`}
-            label="Format"
-            value={objectValue.format ?? ''}
-            disabled={readonly}
-            oninput={(event: Event) =>
-              patch(
-                { format: (event.target as HTMLInputElement).value || undefined },
-                { coalesceKey: `format:${path}`, label: 'edit format' },
-              )}
-          />
-        </div>
-      </details>
-    {/if}
-
-    <!-- Number constraints — collapsed by default. -->
-    {#if showNumberConstraints}
-      <details class="cinder-jse-section cinder-jse-section--collapsible">
-        <summary class="cinder-jse-section__title">Number constraints</summary>
-        <div class="cinder-jse-section__body">
-          {#each NUMBER_CONSTRAINT_FIELDS as field (field.key)}
-            <Input
-              id={`${idPrefix}-${field.key}`}
-              label={field.label}
-              value={numberConstraintValue(field.key)}
-              disabled={readonly}
-              oninput={(event: Event) =>
-                patchNumberConstraint(field.key, (event.target as HTMLInputElement).value)}
-            />
-          {/each}
-        </div>
-      </details>
-    {/if}
+    <PropertyEditorConstraints
+      {idPrefix}
+      value={objectValue}
+      {path}
+      {readonly}
+      showString={showStringConstraints}
+      showNumber={showNumberConstraints}
+      onPatch={patch}
+    />
 
     <!-- Composition (only when present) -->
     {#each ['allOf', 'anyOf', 'oneOf'] as const as keyword (keyword)}
       {#if Array.isArray(objectValue[keyword])}
-        <details class="cinder-jse-section cinder-jse-section--collapsible" open>
-          <summary class="cinder-jse-section__title">{keyword}</summary>
+        <Collapsible
+          class="cinder-jse-section cinder-jse-section--collapsible"
+          trigger={keyword}
+          open
+        >
           <div class="cinder-jse-section__body">
             {#each objectValue[keyword] as branch, branchIndex (compositionBranchKeys[keyword][branchIndex])}
               {@const branchKey = compositionBranchKeys[keyword][branchIndex]}
@@ -578,7 +435,7 @@
               Add {keyword} branch
             </Button>
           </div>
-        </details>
+        </Collapsible>
       {/if}
     {/each}
 

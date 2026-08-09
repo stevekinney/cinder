@@ -314,21 +314,11 @@ describe('DatePicker', () => {
     expect(values).toEqual(['2026-06-29']);
   });
 
-  test('renders the triggerLabel prop text when provided', () => {
-    const { container } = render(DatePicker, {
-      id: 'dp',
-      value: '2026-06-29',
-      triggerLabel: 'Choose date',
-    });
-    expect(container.querySelector('.cinder-date-picker__trigger')?.textContent?.trim()).toBe(
-      'Choose date',
-    );
-  });
-
-  test('falls back to "Open" when triggerLabel is omitted', () => {
+  test('renders a calendar icon while keeping the action in the accessible name', () => {
     const { container } = render(DatePicker, { id: 'dp', value: '2026-06-29' });
-    expect(container.querySelector('.cinder-date-picker__trigger')?.textContent?.trim()).toBe(
-      'Open',
-    );
+    const trigger = container.querySelector('.cinder-date-picker__trigger');
+    expect(trigger?.textContent?.trim()).toBe('');
+    expect(trigger?.querySelector('svg')).not.toBeNull();
+    expect(trigger?.getAttribute('aria-label')).toBe('Open date picker');
   });
 });

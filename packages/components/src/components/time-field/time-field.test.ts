@@ -35,6 +35,13 @@ function textForLabelledBy(container: Element, labelledBy: string): string {
 }
 
 describe('TimeField', () => {
+  test('gives the timezone select room for its caret and long options', async () => {
+    const css = await Bun.file(new URL('./time-field.css', import.meta.url)).text();
+    const rule = css.match(/\.cinder-time-field__timezone\s*\{[^}]*\}/)?.[0] ?? '';
+    expect(rule).toContain('padding-inline-end: var(--cinder-space-8);');
+    expect(rule).toContain('min-inline-size: 12rem;');
+  });
+
   test('imports the composed Input API through its public subpath', async () => {
     const componentSource = await Bun.file(new URL('./time-field.svelte', import.meta.url)).text();
 

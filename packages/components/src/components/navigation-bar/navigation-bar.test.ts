@@ -2115,6 +2115,12 @@ describe('NavigationBar responsive CSS', () => {
     expect(existsSync(new URL('../bottom-navigation', import.meta.url))).toBe(false);
   });
 
+  test('bottom tabs make the touch target the dominant bar dimension', () => {
+    expect(navigationBarCss).toMatch(
+      /data-cinder-placement='bottom'[\s\S]*?\.cinder-navigation-item\[data-variant='mobile'\][\s\S]*?min-block-size:\s*4rem;[\s\S]*?padding-block:\s*var\(--cinder-space-1\);/,
+    );
+  });
+
   test('top-collapsible mobile active items use row selection instead of the horizontal underline', () => {
     expect(navigationBarCss).toMatch(
       /\.cinder-navigation-bar__items\[data-cinder-mobile-panel\]\[data-open='true'\][\s\S]*?\.cinder-navigation-item\[data-variant='mobile'\][\s\S]*?border-bottom:\s*none;[\s\S]*?border-inline-start:\s*2px solid transparent;/,

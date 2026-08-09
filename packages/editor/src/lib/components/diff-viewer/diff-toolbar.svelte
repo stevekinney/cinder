@@ -29,6 +29,8 @@
     onrevertall?: (() => void) | undefined;
     /** Called when user triggers manual diff compute (for large docs) */
     ontriggercompute?: (() => void) | undefined;
+    /** Copy the current comparison as a complete unified diff. */
+    oncopydiff?: (() => void) | undefined;
     /** Additional toolbar actions rendered in the right section */
     actions?: Snippet;
     /** Additional CSS classes */
@@ -44,7 +46,13 @@
   import Segment from '@lostgradient/cinder/segment';
   import SegmentedControl from '@lostgradient/cinder/segmented-control';
   import Spinner from '@lostgradient/cinder/spinner';
-  import { ChevronLeft, ChevronRight, RefreshCw, RotateCcw } from '@lostgradient/cinder/icons';
+  import {
+    ChevronLeft,
+    ChevronRight,
+    Copy,
+    RefreshCw,
+    RotateCcw,
+  } from '@lostgradient/cinder/icons';
 
   let {
     viewMode = $bindable<DiffViewerMode>('unified'),
@@ -58,6 +66,7 @@
     onjumpprevious,
     onrevertall,
     ontriggercompute,
+    oncopydiff,
     actions,
     class: className,
     ...rest
@@ -110,6 +119,13 @@
     <!-- Custom toolbar actions (injected by parent) -->
     {#if actions}
       {@render actions()}
+    {/if}
+
+    {#if oncopydiff && hasChanges}
+      <Button variant="ghost" size="xs" onclick={oncopydiff} aria-label="Copy unified diff">
+        <Copy class="cinder-icon-sm" />
+        Copy diff
+      </Button>
     {/if}
 
     <!-- Revert All button -->

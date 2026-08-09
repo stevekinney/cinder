@@ -21,10 +21,10 @@ const schema = {
     formats: {
       type: 'array',
       items: {
-        enum: ['hex', 'rgb', 'hsl'],
+        enum: ['hex', 'rgb', 'rgba', 'hsl', 'hsla', 'hwb'],
       },
       description:
-        "Accepted *input* formats. Defaults to `['hex', 'rgb', 'hsl']`. Output is always hex.",
+        "Accepted *input* formats. Defaults to `['hex', 'rgb', 'hsl', 'hwb']`; rgba/hsla aliases can be restricted independently. Output is always hex.",
     },
     disabled: {
       type: 'boolean',

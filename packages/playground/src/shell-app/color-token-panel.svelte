@@ -876,6 +876,8 @@
 
   :global(.color-token-picker-popover) {
     width: min(18rem, calc(100vw - var(--cinder-space-4)));
+    max-height: calc(100vh - var(--cinder-space-4));
+    overflow-y: auto;
   }
 
   .picker-popover-content {

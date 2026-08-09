@@ -20,6 +20,8 @@ Purpose: Surface container that groups related content with optional header, tit
 
 Keyboard behavior follows the rendered native elements and any ARIA pattern documented by the component. Avoid adding handlers that change focus order without a matching visible and programmatic state update.
 
+Pass `href` to render the whole card as a link, or `onclick` to render it as a button. These arms keep native keyboard and focus behavior; do not place additional links or buttons inside an interactive Card, because nested interactive controls are invalid.
+
 Keep focus indicators visible. If you wrap or restyle Card, verify the focused element remains visually apparent in default and forced-colors modes.
 
 ## Names, roles, and state

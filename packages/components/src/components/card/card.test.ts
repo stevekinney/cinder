@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 import { describe, expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 import { createRawSnippet } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
@@ -160,6 +161,48 @@ describe('Card', () => {
     expect(container.querySelector('.cinder-card')?.getAttribute('data-cinder-variant')).toBe(
       'well',
     );
+  });
+
+  test('renders the whole card as a link when href is provided', () => {
+    const { container } = render(Card, {
+      props: { href: '/details', elevation: 'md', children: emptySnippet },
+    });
+    const root = container.querySelector('.cinder-card');
+    expect(root?.tagName).toBe('A');
+    expect(root?.getAttribute('href')).toBe('/details');
+    expect(root?.getAttribute('role')).toBeNull();
+    const css = readFileSync(new URL('./card.css', import.meta.url), 'utf8');
+    expect(css).toMatch(/\.cinder-card\[data-cinder-interactive\]\s*\{[^}]*display:\s*block/s);
+    expect(css).toMatch(/\.cinder-card\[data-cinder-interactive\]\s*\{[^}]*text-align:\s*start/s);
+    expect(root?.getAttribute('data-cinder-interactive')).toBe('');
+    expect(root?.getAttribute('data-cinder-elevation')).toBe('md');
+  });
+
+  test('renders the whole card as a button when onclick is provided', () => {
+    const { container } = render(Card, {
+      props: { onclick: () => {}, title: 'Open details', children: emptySnippet },
+    });
+    const root = container.querySelector('.cinder-card');
+    const action = container.querySelector('.cinder-card__action');
+    const heading = container.querySelector('.cinder-card__title');
+    expect(root?.tagName).toBe('DIV');
+    expect(action?.tagName).toBe('BUTTON');
+    expect(action?.getAttribute('type')).toBe('button');
+    expect(action?.getAttribute('aria-labelledby')).toBe(heading?.getAttribute('id'));
+    expect(heading?.closest('button')).toBeNull();
+    expect(root?.getAttribute('data-cinder-interactive')).toBe('');
+  });
+
+  test('suppresses interactive styling when a button card is disabled', () => {
+    const { container } = render(Card, {
+      props: { onclick: () => {}, disabled: true, title: 'Unavailable', children: emptySnippet },
+    });
+    const root = container.querySelector('.cinder-card');
+    const action = container.querySelector<HTMLButtonElement>('.cinder-card__action');
+
+    expect(action?.disabled).toBe(true);
+    expect(root?.getAttribute('data-cinder-disabled')).toBe('');
+    expect(root?.getAttribute('data-cinder-interactive')).toBeNull();
   });
 
   test('danger tone is reflected on the container and adds a non-color title cue', () => {

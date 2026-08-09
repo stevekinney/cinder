@@ -42,6 +42,15 @@ describe('StatisticGroup', () => {
     expect(cardsBlock).not.toContain('var(--cinder-border-muted)');
   });
 
+  test('default variant has an intentional resting surface', async () => {
+    const css = await Bun.file(new URL('./statistic-group.css', import.meta.url)).text();
+    const defaultBlock =
+      css.match(/\.cinder-statistic-group\[data-cinder-variant='default'\]\s*\{[^}]*\}/)?.[0] ?? '';
+
+    expect(defaultBlock).toContain('background: var(--cinder-surface-inset)');
+    expect(defaultBlock).toContain('padding: var(--cinder-statistic-group-card-padding,');
+  });
+
   test('renders .cinder-statistic-group wrapping its children', () => {
     const { container } = render(StatisticGroup, {
       children: textSnippet('stat content'),

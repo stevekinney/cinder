@@ -36,7 +36,7 @@
   .cinder-keyboard-shortcuts__list {
     display: flex;
     flex-direction: column;
-    gap: 0;
+    gap: var(--cinder-space-1);
     margin: 0;
     padding: 0;
     border: 1px solid var(--cinder-border);
@@ -51,10 +51,6 @@
     justify-content: space-between;
     padding: var(--cinder-space-1) var(--cinder-space-2);
     gap: var(--cinder-space-3);
-  }
-
-  .cinder-keyboard-shortcuts__row + .cinder-keyboard-shortcuts__row {
-    border-top: 1px solid var(--cinder-border-muted);
   }
 
   .cinder-keyboard-shortcuts__action {

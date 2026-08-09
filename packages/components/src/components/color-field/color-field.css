@@ -1,4 +1,8 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@import '../button/button.css';
+@import '../color-picker/color-picker.css';
+@import '../popover/popover.css';
+
 @layer cinder.components {
   /* ========================================
  * COLOR FIELD
@@ -18,6 +22,12 @@
     vertical-align: middle;
     pointer-events: none;
     cursor: default;
+  }
+
+  .cinder-color-field__swatch-button {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cinder-space-1);
   }
 
   .cinder-color-field__swatch[data-cinder-empty] {

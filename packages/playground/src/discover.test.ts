@@ -328,7 +328,6 @@ const SIDEBAR_BASELINE = [
   'tooltip',
   'transfer-list',
   'tree',
-  'typography',
   'virtual-list',
   'visually-hidden',
   'waveform',

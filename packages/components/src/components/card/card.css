@@ -5,6 +5,7 @@
  * ======================================== */
 
   .cinder-card {
+    position: relative;
     inline-size: 100%;
     border-radius: var(--cinder-radius-lg);
     background: var(--cinder-surface-raised);
@@ -12,6 +13,75 @@
     color: var(--cinder-text);
     box-shadow: var(--cinder-shadow-sm);
     overflow: hidden;
+    transition:
+      border-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+      box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard),
+      background-color var(--cinder-duration-fast) var(--cinder-ease-standard);
+  }
+
+  .cinder-card[data-cinder-elevation='none'] {
+    box-shadow: none;
+  }
+
+  .cinder-card[data-cinder-elevation='md'] {
+    box-shadow: var(--cinder-shadow-md);
+  }
+
+  .cinder-card[data-cinder-elevation='lg'] {
+    box-shadow: var(--cinder-shadow-lg);
+  }
+
+  .cinder-card[data-cinder-interactive] {
+    display: block;
+    cursor: pointer;
+    text-align: start;
+    text-decoration: none;
+  }
+
+  .cinder-card__action {
+    position: absolute;
+    inset: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .cinder-card__action:disabled {
+    cursor: default;
+  }
+
+  .cinder-card__action:focus-visible {
+    /* cinder-focus-ring-owner: parent */
+    outline: none;
+  }
+
+  @media (hover: hover) {
+    .cinder-card[data-cinder-interactive]:hover {
+      border-color: var(--cinder-border-strong);
+      box-shadow: var(--cinder-shadow-md);
+    }
+  }
+
+  .cinder-card[data-cinder-interactive]:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow), var(--cinder-shadow-md);
+  }
+
+  .cinder-card[data-cinder-interactive]:has(.cinder-card__action:focus-visible) {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow), var(--cinder-shadow-md);
+  }
+
+  @media (forced-colors: active) {
+    .cinder-card[data-cinder-interactive]:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 3px;
+    }
+
+    .cinder-card[data-cinder-interactive]:has(.cinder-card__action:focus-visible) {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 3px;
+    }
   }
 
   .cinder-card[data-cinder-variant='well'] {

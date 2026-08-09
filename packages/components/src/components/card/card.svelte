@@ -16,6 +16,7 @@
     CardHeadingLevel,
     CardPadding,
     CardProps,
+    CardElevation,
     CardSurfaceTone,
     CardTone,
     CardVariant,
@@ -24,6 +25,7 @@
 
 <script lang="ts">
   import CircleAlert from 'lucide-svelte/icons/circle-alert';
+  import type { HTMLAnchorAttributes, HTMLAttributes, HTMLButtonAttributes } from 'svelte/elements';
 
   import type { CardProps } from './card.types.ts';
   import { composeDescribedBy } from '../../_internal/field-control.ts';
@@ -45,6 +47,9 @@
     footerTone = 'default',
     edgeToEdgeOnMobile = false,
     padding = 'default',
+    elevation = 'sm',
+    href,
+    onclick,
     ...rest
   }: CardProps = $props();
 
@@ -59,6 +64,8 @@
   const titleTag = $derived(`h${resolvedHeadingLevel}` as const);
   const hasGeneratedHeader = $derived(Boolean(title && !header));
   const titleId = $derived(hasGeneratedHeader ? `${generatedId}-title` : undefined);
+  const customHeaderId = $derived(onclick && header ? `${generatedId}-header` : undefined);
+  const bodyLabelId = $derived(onclick && !title && !header ? `${generatedId}-body` : undefined);
   const descriptionId = $derived(
     hasGeneratedHeader && description ? `${generatedId}-description` : undefined,
   );
@@ -68,55 +75,148 @@
       (typeof rest['aria-label'] === 'string' && rest['aria-label'].trim().length > 0),
   );
   const describedBy = $derived(composeDescribedBy(descriptionId, rest['aria-describedby']));
+  const ownedLabelId = $derived(titleId ?? customHeaderId ?? bodyLabelId);
   const labelAttributes = $derived(
-    hasGeneratedHeader
+    ownedLabelId
       ? {
-          ...(!hasExternalRole ? { role: 'group' } : {}),
-          ...(!hasExternalLabel ? { 'aria-labelledby': titleId } : {}),
+          ...(!hasExternalRole && href === undefined && onclick === undefined
+            ? { role: 'group' }
+            : {}),
+          ...(!hasExternalLabel ? { 'aria-labelledby': ownedLabelId } : {}),
           ...(describedBy ? { 'aria-describedby': describedBy } : {}),
         }
       : {},
   );
+  const isLink = $derived(href !== undefined);
+  const anchorAttributes = $derived(rest as HTMLAnchorAttributes);
+  const buttonAttributes = $derived(rest as HTMLButtonAttributes);
+  const buttonDisabled = $derived(Boolean(buttonAttributes.disabled));
+  const staticAttributes = $derived(rest as HTMLAttributes<HTMLDivElement>);
+  function handleClick(event: MouseEvent): void {
+    onclick?.(event);
+  }
 </script>
 
-<div
-  {...rest}
-  class={classNames('cinder-card', className)}
-  data-cinder-variant={variant}
-  data-cinder-tone={tone}
-  data-cinder-padding={padding}
-  data-cinder-edge-to-edge-mobile={edgeToEdgeOnMobile ? '' : undefined}
-  {...labelAttributes}
->
-  {#if header}
-    <div class="cinder-card__header">
-      {@render header()}
-    </div>
-  {:else if title}
-    <div class="cinder-card__header">
-      <div class="cinder-card__title-row">
-        {#if tone === 'danger'}
-          <span class="cinder-card__risk-icon" aria-hidden="true">
-            <CircleAlert size={18} strokeWidth={2.25} />
-          </span>
-        {/if}
-        <svelte:element this={titleTag} id={titleId} class="cinder-card__title"
-          >{title}</svelte:element
-        >
+{#if isLink}
+  <a
+    {...anchorAttributes}
+    {href}
+    class={classNames('cinder-card', className)}
+    data-cinder-variant={variant}
+    data-cinder-tone={tone}
+    data-cinder-padding={padding}
+    data-cinder-elevation={elevation}
+    data-cinder-interactive=""
+    data-cinder-edge-to-edge-mobile={edgeToEdgeOnMobile ? '' : undefined}
+    {...labelAttributes}
+    onclick={handleClick}
+  >
+    {#if header}
+      <div class="cinder-card__header">
+        {@render header()}
       </div>
-      {#if description}
-        <p id={descriptionId} class="cinder-card__description">{description}</p>
-      {/if}
-    </div>
-  {/if}
+    {:else if title}
+      <div class="cinder-card__header">
+        <div class="cinder-card__title-row">
+          {#if tone === 'danger'}
+            <span class="cinder-card__risk-icon" aria-hidden="true">
+              <CircleAlert size={18} strokeWidth={2.25} />
+            </span>
+          {/if}
+          <svelte:element this={titleTag} id={titleId} class="cinder-card__title"
+            >{title}</svelte:element
+          >
+        </div>
+        {#if description}
+          <p id={descriptionId} class="cinder-card__description">{description}</p>
+        {/if}
+      </div>
+    {/if}
 
-  <div class="cinder-card__body" data-cinder-tone={bodyTone} data-cinder-padding={padding}>
-    {@render children()}
+    <div class="cinder-card__body" data-cinder-tone={bodyTone} data-cinder-padding={padding}>
+      {@render children()}
+    </div>
+
+    {#if footer}
+      <div class="cinder-card__footer" data-cinder-tone={footerTone}>
+        {@render footer()}
+      </div>
+    {/if}
+  </a>
+{:else if onclick}
+  <div
+    class={classNames('cinder-card', className)}
+    data-cinder-variant={variant}
+    data-cinder-tone={tone}
+    data-cinder-padding={padding}
+    data-cinder-elevation={elevation}
+    data-cinder-interactive={buttonDisabled ? undefined : ''}
+    data-cinder-disabled={buttonDisabled ? '' : undefined}
+    data-cinder-edge-to-edge-mobile={edgeToEdgeOnMobile ? '' : undefined}
+  >
+    {#if header}<div id={customHeaderId} class="cinder-card__header">
+        {@render header()}
+      </div>{:else if title}<div class="cinder-card__header">
+        <div class="cinder-card__title-row">
+          {#if tone === 'danger'}<span class="cinder-card__risk-icon" aria-hidden="true"
+              ><CircleAlert size={18} strokeWidth={2.25} /></span
+            >{/if}<svelte:element this={titleTag} id={titleId} class="cinder-card__title"
+            >{title}</svelte:element
+          >
+        </div>
+        {#if description}<p id={descriptionId} class="cinder-card__description">
+            {description}
+          </p>{/if}
+      </div>{/if}
+    <div
+      id={bodyLabelId}
+      class="cinder-card__body"
+      data-cinder-tone={bodyTone}
+      data-cinder-padding={padding}
+    >
+      {@render children()}
+    </div>
+    {#if footer}<div class="cinder-card__footer" data-cinder-tone={footerTone}>
+        {@render footer()}
+      </div>{/if}
+    <button
+      {...buttonAttributes}
+      type="button"
+      class="cinder-card__action"
+      {...labelAttributes}
+      onclick={handleClick}
+    ></button>
   </div>
-
-  {#if footer}
-    <div class="cinder-card__footer" data-cinder-tone={footerTone}>
-      {@render footer()}
+{:else}
+  <div
+    {...staticAttributes}
+    class={classNames('cinder-card', className)}
+    data-cinder-variant={variant}
+    data-cinder-tone={tone}
+    data-cinder-padding={padding}
+    data-cinder-elevation={elevation}
+    data-cinder-edge-to-edge-mobile={edgeToEdgeOnMobile ? '' : undefined}
+    {...labelAttributes}
+  >
+    {#if header}<div class="cinder-card__header">{@render header()}</div>{:else if title}<div
+        class="cinder-card__header"
+      >
+        <div class="cinder-card__title-row">
+          {#if tone === 'danger'}<span class="cinder-card__risk-icon" aria-hidden="true"
+              ><CircleAlert size={18} strokeWidth={2.25} /></span
+            >{/if}<svelte:element this={titleTag} id={titleId} class="cinder-card__title"
+            >{title}</svelte:element
+          >
+        </div>
+        {#if description}<p id={descriptionId} class="cinder-card__description">
+            {description}
+          </p>{/if}
+      </div>{/if}
+    <div class="cinder-card__body" data-cinder-tone={bodyTone} data-cinder-padding={padding}>
+      {@render children()}
     </div>
-  {/if}
-</div>
+    {#if footer}<div class="cinder-card__footer" data-cinder-tone={footerTone}>
+        {@render footer()}
+      </div>{/if}
+  </div>
+{/if}

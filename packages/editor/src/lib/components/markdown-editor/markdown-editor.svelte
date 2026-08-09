@@ -55,6 +55,7 @@
   } from '../../editor/component-runtime.ts';
   import Segment from '@lostgradient/cinder/segment';
   import SegmentedControl from '@lostgradient/cinder/segmented-control';
+  import { FileCode, Pencil } from '@lostgradient/cinder/icons';
   import EditorSkeleton from './editor-skeleton.svelte';
   import { EditorToolbar, LinkPopover } from './editor-toolbar/index.ts';
   import type { LinkPopoverMode } from './editor-toolbar/link-popover.svelte';
@@ -377,7 +378,13 @@
   function handleLinkClick(triggerElement: HTMLElement) {
     // Use the last known link range (updated reactively before focus changes)
     capturedLinkRange = lastKnownLinkRange;
-    linkPopoverAnchorElement = triggerElement;
+    // The formatting overflow closes as this callback runs, which detaches its
+    // Link button. Preserve that button's open-time rectangle as a Floating UI
+    // virtual anchor so the link popover remains aligned with its trigger.
+    const triggerRectangle = triggerElement.getBoundingClientRect();
+    linkPopoverAnchorElement = {
+      getBoundingClientRect: () => triggerRectangle,
+    };
     linkPopoverOpen = true;
   }
 
@@ -688,8 +695,12 @@
                 label={modeLabel}
                 labelVisible={false}
               >
-                <Segment value="wysiwyg">Rich</Segment>
-                <Segment value="source">Raw</Segment>
+                <Segment value="wysiwyg" aria-label="Rich editor"
+                  ><Pencil aria-hidden="true" /><span class="cinder-sr-only">Rich</span></Segment
+                >
+                <Segment value="source" aria-label="Raw Markdown"
+                  ><FileCode aria-hidden="true" /><span class="cinder-sr-only">Raw</span></Segment
+                >
               </SegmentedControl>
             </div>
           {/if}
@@ -781,21 +792,19 @@
     padding: var(--cinder-space-2) var(--cinder-space-3);
     border-bottom: 1px solid var(--cinder-border);
     /* Background inherited from .markdown-editor-wrapper per surface nesting rule. */
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
   }
 
   .editor-toolbar-wrapper :global(.editor-toolbar) {
-    flex: 1 1 32rem;
-    min-width: min(20rem, 100%);
+    flex: 1 1 0;
+    min-width: 0;
     padding: 0;
     border: 0;
     border-radius: 0;
     background: transparent;
-    /* toolbar.css defaults .cinder-toolbar to flex-wrap: nowrap; the scoped
-     * rule in editor-toolbar.svelte cannot cross the component boundary, so
-     * we override here where the rendered element lives. */
-    flex-wrap: wrap;
-    row-gap: var(--cinder-space-1);
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: thin;
   }
 
   .toolbar-mode-toggle {
@@ -864,16 +873,11 @@
   }
 
   @container cinder-markdown-editor (max-width: 42rem) {
-    .editor-toolbar-wrapper :global(.editor-toolbar) {
-      flex-basis: 100%;
-    }
-
     .editor-toolbar-wrapper :global(.toolbar-separator) {
       display: none;
     }
 
     .toolbar-mode-toggle {
-      flex-basis: 100%;
       margin-inline-start: 0;
     }
   }

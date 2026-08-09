@@ -1,22 +1,17 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+
 @layer cinder.components {
   .cinder-transfer-list {
     container-type: inline-size;
     container-name: cinder-transfer-list;
   }
 
-  .cinder-transfer-list__layout {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-    gap: var(--cinder-space-4);
-    align-items: stretch;
-  }
-
-  .cinder-transfer-list__panel {
-    display: grid;
-    grid-template-rows: auto minmax(12rem, 1fr);
-    min-inline-size: 0;
-    gap: var(--cinder-space-2);
+  .cinder-transfer-list__header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--cinder-space-3);
+    margin-block-end: var(--cinder-space-2);
   }
 
   .cinder-transfer-list__label {
@@ -26,8 +21,14 @@
     font-weight: var(--cinder-font-medium);
   }
 
+  .cinder-transfer-list__count {
+    color: var(--cinder-text-muted);
+    font-size: var(--cinder-text-xs);
+  }
+
   .cinder-transfer-list__list {
     min-block-size: 12rem;
+    max-block-size: 24rem;
     margin: 0;
     padding: var(--cinder-space-2);
     list-style: none;
@@ -35,24 +36,17 @@
     border: 1px solid var(--cinder-border-muted);
     border-radius: var(--cinder-radius-md);
     background: var(--cinder-surface);
-    /* Vertical analog of data-grid's `--_cinder-data-grid-overflow-shadow`
-     * inset-shadow affordance (data-grid.css) — this list scrolls block-axis,
-     * not inline, so the shadow is on the top/bottom edges instead of
-     * left/right. Driven by `overflowShadow('block')`
-     * (utilities/attachments.ts). */
     box-shadow: var(--_cinder-transfer-list-scroll-shadow, none);
   }
 
   .cinder-transfer-list__list[data-cinder-overflows-block] {
     --_cinder-transfer-list-scroll-shadow:
-      inset 0 1rem 1rem -1rem color-mix(in srgb, var(--cinder-text) 28%, transparent),
-      inset 0 -1rem 1rem -1rem color-mix(in srgb, var(--cinder-text) 28%, transparent);
+      inset 0 1rem 1rem -1rem color-mix(in srgb, var(--cinder-text) 20%, transparent),
+      inset 0 -1rem 1rem -1rem color-mix(in srgb, var(--cinder-text) 20%, transparent);
   }
 
   .cinder-transfer-list__list:focus-visible {
     outline: var(--cinder-ring-width) solid transparent;
-    /* Ring replaces the border while focused rather than stacking on it — the two
-       together read as one heavier shape than either was designed to be. */
     border-color: transparent;
     box-shadow: var(--_cinder-focus-ring-shadow);
   }
@@ -60,104 +54,35 @@
   @media (forced-colors: active) {
     .cinder-transfer-list__list:focus-visible {
       outline: var(--cinder-ring-width) solid ButtonText;
-      /* Negative offset because __list has overflow:auto — a positive offset
-         would be clipped by the scrolling container and the ring can disappear.
-         An inset ring always paints inside the box regardless of overflow. */
       outline-offset: calc(-1 * var(--cinder-ring-width));
       box-shadow: none;
     }
   }
 
-  /* Geometry, padding, active fill + keyboard cursor ring, disabled state,
-   and forced-colors treatment come from the shared `cinder-_option-row`
-   primitive on the markup. */
   .cinder-transfer-list__option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--cinder-space-3);
     color: var(--cinder-text);
     cursor: pointer;
     user-select: none;
   }
 
-  /* Deliberate component override of the primitive's raised-hover selected
-   fill: transfer-list is the one family where selection (staged for
-   transfer) must stay visually distinct from the keyboard cursor while both
-   are on screen. Compound selector so the override survives any import
-   order at higher specificity. */
-  .cinder-transfer-list__option.cinder-_option-row[aria-selected='true'] {
-    background: var(--cinder-surface-inset);
+  .cinder-transfer-list__option[aria-disabled='true'] {
+    color: var(--cinder-text-disabled);
+    cursor: not-allowed;
+  }
+
+  .cinder-transfer-list__status {
+    color: var(--cinder-text-muted);
+    font-size: var(--cinder-text-xs);
+    font-weight: var(--cinder-font-medium);
   }
 
   .cinder-transfer-list__empty {
     padding: var(--cinder-space-3);
     color: var(--cinder-text-muted);
     font-size: var(--cinder-text-sm);
-  }
-
-  .cinder-transfer-list__controls {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    gap: var(--cinder-space-2);
-  }
-
-  .cinder-transfer-list__control {
-    display: inline-grid;
-    place-items: center;
-    min-inline-size: 2.5rem;
-    min-block-size: 2.25rem;
-    padding: var(--cinder-space-1) var(--cinder-space-2);
-    border: 1px solid var(--cinder-border);
-    border-radius: var(--cinder-radius-sm);
-    background: var(--cinder-surface-raised);
-    color: var(--cinder-text);
-    font: inherit;
-    cursor: pointer;
-  }
-
-  .cinder-transfer-list:dir(rtl) .cinder-transfer-list__control svg {
-    transform: scaleX(-1);
-  }
-
-  .cinder-transfer-list__control:disabled {
-    color: var(--cinder-text-disabled);
-    cursor: not-allowed;
-    opacity: 0.7;
-  }
-
-  .cinder-transfer-list__control:focus-visible {
-    outline: var(--cinder-ring-width) solid transparent;
-    /* Ring replaces the border while focused rather than stacking on it — the two
-       together read as one heavier shape than either was designed to be. */
-    border-color: transparent;
-    box-shadow: var(--_cinder-focus-ring-shadow);
-  }
-
-  @media (forced-colors: active) {
-    .cinder-transfer-list__control:focus-visible {
-      outline: var(--cinder-ring-width) solid ButtonText;
-      /* 3px separates the outline from ButtonBorder (which renders in forced-colors
-         on all bordered controls and shares the ButtonText color family in HCM);
-         at 2px the ring and border can visually merge. */
-      outline-offset: 3px;
-      box-shadow: none;
-    }
-  }
-
-  @container cinder-transfer-list (max-width: 42rem) {
-    .cinder-transfer-list__layout {
-      grid-template-columns: minmax(0, 1fr);
-    }
-
-    .cinder-transfer-list__controls {
-      flex-direction: row;
-      flex-wrap: wrap;
-    }
-
-    .cinder-transfer-list .cinder-transfer-list__control--forward svg {
-      transform: rotate(90deg);
-    }
-
-    .cinder-transfer-list .cinder-transfer-list__control--backward svg {
-      transform: rotate(90deg);
-    }
   }
 }

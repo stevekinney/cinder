@@ -1112,7 +1112,7 @@
       "exportName": "ColorField",
       "category": "form",
       "status": "stable",
-      "purpose": "Text input that validates and normalizes hex, rgb(), and hsl() color strings into a canonical hex value emitted on blur.",
+      "purpose": "Text input that validates and normalizes hex, rgb(), hsl(), and hwb() color strings into a canonical hex value emitted on blur.",
       "tags": ["form", "color"],
       "useWhen": [
         "Accepting an exact color value via keyboard entry, including pasted hex, rgb(), or hsl() strings.",
@@ -5372,17 +5372,15 @@
       "exportName": "TransferList",
       "category": "form",
       "status": "beta",
-      "purpose": "Dual-list assignment control for moving items between an available pool and a selected set.",
+      "purpose": "Compact multi-select assignment control for choosing a subset from a fixed item pool.",
       "tags": ["form", "selection"],
-      "useWhen": [
-        "Letting users build a subset from a fixed pool such as permissions, tags, or visible columns."
-      ],
+      "useWhen": ["Letting users choose permissions, tags, or visible columns from a fixed pool."],
       "avoidWhen": [
         {
-          "reason": "The pool needs inline search or filtering - compose search controls around the lists instead."
+          "reason": "The pool needs inline search or filtering — compose search controls around the list instead."
         },
         {
-          "reason": "The user only needs independent checkbox choices - use checkbox-group instead.",
+          "reason": "The user only needs independent checkbox choices — use checkbox-group instead.",
           "alternative": "checkbox-group"
         }
       ],
@@ -5457,32 +5455,6 @@
       "artifacts": {
         "schema": "@lostgradient/cinder/tree-item/schema",
         "variables": "@lostgradient/cinder/tree-item/variables"
-      }
-    },
-    {
-      "name": "Typography",
-      "id": "typography",
-      "import": "@lostgradient/cinder/typography",
-      "exportName": "Typography",
-      "category": "typography",
-      "status": "beta",
-      "purpose": "Renders text with a named typographic variant mapped to the design token scale.",
-      "tags": ["typography", "text"],
-      "useWhen": [
-        "Applying a named typographic style (heading, body, caption) with semantic HTML."
-      ],
-      "avoidWhen": [
-        {
-          "reason": "Rendering inline text inside a paragraph — use a plain <span> with CSS."
-        }
-      ],
-      "related": ["label", "kbd"],
-      "hasConstraints": false,
-      "hasExamples": true,
-      "artifacts": {
-        "schema": "@lostgradient/cinder/typography/schema",
-        "variables": "@lostgradient/cinder/typography/variables",
-        "examples": "@lostgradient/cinder/typography/examples"
       }
     },
     {

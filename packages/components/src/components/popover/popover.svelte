@@ -80,15 +80,18 @@
   const generatedPanelId = $props.id();
   const panelId = $derived(panelIdProp ?? generatedPanelId);
 
-  // `triggerRef.isConnected` is a native DOM read, not a reactive source: this
-  // derived only re-evaluates when the triggerRef prop reference changes, not when
-  // the same element is detached/re-attached without a prop change. That edge is
-  // not supported — pass a fresh ref (or toggle it) to re-resolve the anchor.
-  const anchorElement = $derived<HTMLElement | null>(
-    triggerRef && triggerRef.isConnected
+  // `triggerRef.isConnected` is a native DOM read, not a reactive source. A
+  // direct triggerRef that detaches/re-attaches while the popover remains open
+  // still requires a fresh ref; an open transition re-resolves snippet triggers.
+  const anchorElement = $derived.by((): HTMLElement | null => {
+    // Re-resolve the snippet anchor on each open transition. A trigger can be
+    // disabled while its owner initializes and become focusable before the
+    // user opens the popover without replacing the wrapper element.
+    open;
+    return triggerRef && triggerRef.isConnected
       ? triggerRef
-      : (findFirstFocusable(triggerWrapper) ?? null),
-  );
+      : (findFirstFocusable(triggerWrapper) ?? null);
+  });
   const resolvedAriaLabel = $derived(
     ariaLabelledby ? undefined : role === 'dialog' ? (label ?? 'Popover') : label,
   );

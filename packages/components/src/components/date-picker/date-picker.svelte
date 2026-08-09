@@ -16,6 +16,7 @@
 </script>
 
 <script lang="ts">
+  import CalendarDays from 'lucide-svelte/icons/calendar-days';
   import type { DatePickerProps } from './date-picker.types.ts';
   import { normalizeDateValue as normalizeValue } from '../../_internal/date-value.ts';
   import FormFieldFrame from '../../_internal/form-field-frame.svelte';
@@ -38,7 +39,6 @@
     'aria-describedby': ariaDescribedBy,
     'aria-invalid': ariaInvalid,
     onValueChange,
-    triggerLabel = 'Open',
     ...rest
   }: DatePickerProps = $props();
 
@@ -234,7 +234,7 @@
         if (!disabled) open = true;
       }}
     >
-      {triggerLabel}
+      <CalendarDays class="cinder-icon-sm" aria-hidden="true" />
     </button>
   </div>
 

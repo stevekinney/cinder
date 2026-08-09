@@ -217,7 +217,7 @@
 
   .cinder-table__sort-indicator[data-cinder-direction='ascending'] .cinder-table__sort-chevron-down,
   .cinder-table__sort-indicator[data-cinder-direction='descending'] .cinder-table__sort-chevron-up {
-    opacity: 0.15;
+    opacity: 0.4;
   }
 
   /* ----------------------------------------

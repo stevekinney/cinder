@@ -1,5 +1,6 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
 @import '../chip/chip.css';
+@import '../grid/grid.css';
 @import '../input/input.css';
 @import '../number-input/number-input.css';
 @import '../segmented-control/segmented-control.css';
@@ -29,6 +30,7 @@
     flex-direction: column;
     gap: var(--cinder-space-3);
     padding-block-start: var(--cinder-space-1);
+    padding-inline: var(--cinder-space-1);
   }
 
   .cinder-schedule-builder__preset-kind {
@@ -54,9 +56,44 @@
   }
 
   .cinder-schedule-builder__cron-fields {
+    min-inline-size: 0;
+  }
+
+  .cinder-schedule-builder__cron-field {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
-    gap: var(--cinder-space-3);
+    gap: var(--cinder-space-2);
+    min-inline-size: 0;
+    padding: var(--cinder-space-2);
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-md);
+    background: var(--cinder-surface-raised);
+  }
+
+  .cinder-schedule-builder__cron-range {
+    min-inline-size: 0;
+  }
+
+  .cinder-schedule-builder__cron-advanced > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--cinder-space-2);
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .cinder-schedule-builder__cron-advanced > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .cinder-schedule-builder__cron-advanced-chevron {
+    transition: transform var(--cinder-duration-fast) var(--cinder-ease-standard);
+  }
+
+  .cinder-schedule-builder__cron-advanced[open]
+    > summary
+    .cinder-schedule-builder__cron-advanced-chevron {
+    transform: rotate(180deg);
   }
 
   /* ----------------------------------------

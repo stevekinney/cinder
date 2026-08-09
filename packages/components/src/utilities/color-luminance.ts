@@ -2,7 +2,8 @@
  * Color parsing and luminance utilities for swatch contrast computation.
  *
  * Supported input formats: `#rgb`, `#rgba`, `#rrggbb`, `#rrggbbaa`,
- * `rgb(r, g, b)`, `rgba(r, g, b, a)`, `hsl(h, s%, l%)`, `hsla(h, s%, l%, a)`.
+ * `rgb(r, g, b)`, `rgba(r, g, b, a)`, `hsl(h, s%, l%)`, `hsla(h, s%, l%, a)`,
+ * and `hwb(h w% b% / a)`.
  * All other CSS color syntaxes are treated as opaque with best-effort `'white'` contrast.
  */
 
@@ -28,6 +29,11 @@ export function parseColor(input: string): RgbaComponents | null {
   const hslMatch = trimmed.match(/^hsla?\(\s*([^)]+)\)$/);
   if (hslMatch) {
     return parseHsl(hslMatch[1]!);
+  }
+
+  const hwbMatch = trimmed.match(/^hwb\(\s*([^)]+)\)$/);
+  if (hwbMatch) {
+    return parseHwb(hwbMatch[1]!);
   }
 
   return null;
@@ -171,6 +177,48 @@ function parseHsl(inner: string): RgbaComponents | null {
 
   const { r, g, b } = hslToRgb(h, sPct / 100, lPct / 100);
   return { r, g, b, a };
+}
+
+function parseHwb(inner: string): RgbaComponents | null {
+  const [channels = '', alphaRaw] = inner.split('/').map((part) => part.trim());
+  const parts = channels.split(/\s+/);
+  if (parts.length !== 3 || inner.split('/').length > 2) return null;
+
+  const hueRaw = parts[0] ?? '';
+  const hue = Number.parseFloat(hueRaw);
+  const whitenessRaw = parts[1] ?? '';
+  const blacknessRaw = parts[2] ?? '';
+  const numberPattern = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?$/i;
+  const percentagePattern = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?%$/i;
+  if (
+    !numberPattern.test(hueRaw) ||
+    !percentagePattern.test(whitenessRaw) ||
+    !percentagePattern.test(blacknessRaw)
+  )
+    return null;
+  if (alphaRaw !== undefined && !numberPattern.test(alphaRaw) && !percentagePattern.test(alphaRaw))
+    return null;
+
+  let whiteness = Number.parseFloat(whitenessRaw) / 100;
+  let blackness = Number.parseFloat(blacknessRaw) / 100;
+  const alpha = alphaRaw === undefined ? 1 : parseAlphaValue(alphaRaw);
+  if ([hue, whiteness, blackness, alpha].some(Number.isNaN)) return null;
+
+  whiteness = Math.max(0, Math.min(1, whiteness));
+  blackness = Math.max(0, Math.min(1, blackness));
+  if (whiteness + blackness >= 1) {
+    const gray = Math.round((whiteness / (whiteness + blackness)) * 255);
+    return { r: gray, g: gray, b: gray, a: alpha };
+  }
+
+  const pure = hslToRgb(hue, 1, 0.5);
+  const scale = 1 - whiteness - blackness;
+  return {
+    r: Math.round((pure.r / 255) * scale * 255 + whiteness * 255),
+    g: Math.round((pure.g / 255) * scale * 255 + whiteness * 255),
+    b: Math.round((pure.b / 255) * scale * 255 + whiteness * 255),
+    a: alpha,
+  };
 }
 
 /**

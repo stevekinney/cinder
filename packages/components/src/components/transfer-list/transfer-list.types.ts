@@ -19,19 +19,19 @@ export type TransferListProps = Omit<
 > & {
   /** Full item pool. Item IDs must be unique; duplicate IDs after the first are ignored. The component never mutates this array. */
   items: TransferListItem[];
-  /** Unique IDs currently assigned to the right-side selected list. Supports `bind:value`. Unknown IDs are ignored and dropped on the next transfer. */
+  /** Unique IDs currently selected in the list. Supports `bind:value`. Unknown IDs are ignored and dropped on the next update. */
   value?: string[];
   /**
-   * Accessible and visible label for the left list.
+   * Accessible and visible label for the compact selection list.
    * @default "Available"
    */
   leftLabel?: string;
   /**
-   * Accessible and visible label for the right list.
+   * Label used in the selection count and transfer announcements.
    * @default "Selected"
    */
   rightLabel?: string;
-  /** Called with the next right-side value after a transfer. */
+  /** Called with the next selected value after an option is toggled. */
   onValueChange?: (value: string[]) => void;
   /** Custom class merged with `.cinder-transfer-list`. */
   class?: string;
@@ -41,15 +41,15 @@ export type TransferListProps = Omit<
 export interface TransferListSchemaProps {
   /** Full item pool. Item IDs must be unique; duplicate IDs after the first are ignored. The component never mutates this array. */
   items: TransferListItem[];
-  /** Unique IDs currently assigned to the right-side selected list. Supports `bind:value`. Unknown IDs are ignored and dropped on the next transfer. */
+  /** Unique IDs currently selected in the list. Supports `bind:value`. Unknown IDs are ignored and dropped on the next update. */
   value?: string[];
   /**
-   * Accessible and visible label for the left list.
+   * Accessible and visible label for the compact selection list.
    * @default "Available"
    */
   leftLabel?: string;
   /**
-   * Accessible and visible label for the right list.
+   * Label used in the selection count and transfer announcements.
    * @default "Selected"
    */
   rightLabel?: string;
