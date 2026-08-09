@@ -1,7 +1,7 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
 @import '../color-swatch-picker/color-swatch-picker.css';
 @import '../copy-button/copy-button.css';
 
-@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
 @layer cinder.components {
   /* ========================================
  * COLOR PICKER

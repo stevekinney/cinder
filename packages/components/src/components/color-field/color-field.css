@@ -1,4 +1,8 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@import '../button/button.css';
+@import '../color-picker/color-picker.css';
+@import '../popover/popover.css';
+
 @layer cinder.components {
   /* ========================================
  * COLOR FIELD
@@ -93,6 +97,3 @@
     }
   }
 }
-@import '../button/button.css';
-@import '../color-picker/color-picker.css';
-@import '../popover/popover.css';
