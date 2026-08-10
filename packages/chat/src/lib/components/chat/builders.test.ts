@@ -77,6 +77,28 @@ describe('chat conversation builders', () => {
     expect(cleared).not.toBe(failed);
   });
 
+  test('handles transcripts that omit metadata at runtime', () => {
+    const initial = appendUserMessage(
+      createConversationHistory({ id: 'conversation-missing-metadata' }),
+      'Send this',
+    );
+    const messageId = initial.ids[0]!;
+    const messageWithoutMetadata = { ...initial.messages[messageId]! } as {
+      metadata?: unknown;
+    } & (typeof initial.messages)[string];
+    delete (messageWithoutMetadata as unknown as { metadata?: unknown }).metadata;
+    const historyWithoutMetadata = {
+      ...initial,
+      messages: { ...initial.messages, [messageId]: messageWithoutMetadata },
+    };
+
+    const failed = markMessageDeliveryFailed(historyWithoutMetadata, messageId);
+    const cleared = clearMessageDeliveryStatus(historyWithoutMetadata, messageId);
+
+    expect(failed.messages[messageId]!.metadata).toEqual({ _deliveryStatus: 'failed' });
+    expect(cleared).toBe(historyWithoutMetadata);
+  });
+
   test('leaves history unchanged when the message id is unknown', () => {
     const initial = createConversationHistory({ id: 'conversation-missing-delivery-status' });
 
