@@ -52,7 +52,10 @@ export {
   createConversationHistory,
   markMessageDeliveryFailed,
   prependMessages,
+  rewindBeforeMessage,
+  rewindBeforePosition,
 } from './builders.ts';
+export type { RewindOptions } from './builders.ts';
 
 // Streaming conversation builders — keep the immutable snapshot and Chat's
 // imperative streaming surface in sync through the package's own

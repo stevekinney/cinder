@@ -136,6 +136,29 @@ used by Chat's failed-message label and Retry button. Apply the same pair around
 `retryMessage` and `editMessage` resends; the successful attempt clears the
 marker.
 
+### Edit and resend
+
+`ChatAdapter.editMessage` hands you the edited message's ID and new content;
+the superseded branch (the old reply, any tool calls after it) should be
+discarded before the edited content is re-sent. `rewindBeforeMessage` performs
+exactly that cut — it drops the named message and everything after it in the
+transcript, keeps tool-call/tool-result pairs atomic, and renumbers positions —
+so an edit flow never assembles `ids`/`messages`/`updatedAt` by hand:
+
+```ts
+import { appendUserMessage, rewindBeforeMessage } from '@lostgradient/chat';
+
+// Inside your ChatAdapter implementation:
+async editMessage({ messageId, content }) {
+  conversation = appendUserMessage(rewindBeforeMessage(conversation, messageId), content);
+  await yourBackend.send({ role: 'user', content });
+}
+```
+
+`rewindBeforePosition` is the position-keyed form, and both accept a
+`RewindOptions` bag (`preserveToolPairs: false` cuts strictly at the boundary,
+leaving a straddled tool call pending).
+
 > [!WARNING] `ChatAdapter.subscribe` runs inside Chat's own effect
 > Chat opens `subscribe` from inside its internal mount `$effect`, so a
 > synchronous `$state` write inside `subscribe` can throw

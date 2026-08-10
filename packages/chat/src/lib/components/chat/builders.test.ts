@@ -16,6 +16,8 @@ import {
   createConversationHistory,
   markMessageDeliveryFailed,
   prependMessages,
+  rewindBeforeMessage,
+  rewindBeforePosition,
 } from './builders.ts';
 
 describe('chat conversation builders', () => {
@@ -133,6 +135,25 @@ describe('chat conversation builders', () => {
     expect(final.ids).toHaveLength(2);
     expect(final.messages[final.ids[0]!]!.position).toBe(0);
     expect(final.messages[final.ids[1]!]!.position).toBe(1);
+  });
+
+  test('re-exports the rewind helpers for edit-and-resend flows', () => {
+    let conversation = createConversationHistory({ id: 'conversation-rewind' });
+    conversation = appendUserMessage(conversation, 'Original question');
+    conversation = appendAssistantMessage(conversation, 'Superseded answer');
+    conversation = appendUserMessage(conversation, 'Follow-up');
+    const editedId = conversation.ids[1]!;
+
+    const byMessage = rewindBeforeMessage(conversation, editedId);
+    expect(byMessage.ids).toHaveLength(1);
+    expect(byMessage.messages[byMessage.ids[0]!]!.content).toBe('Original question');
+
+    const byPosition = rewindBeforePosition(conversation, 1);
+    expect(byPosition.ids).toEqual(byMessage.ids);
+
+    // A rewind that drops nothing is a no-op returning the same reference.
+    expect(rewindBeforePosition(conversation, 99)).toBe(conversation);
+    expect(rewindBeforeMessage(conversation, 'unknown-id')).toBe(conversation);
   });
 
   test('re-exports all tool transcript builder variants', async () => {
