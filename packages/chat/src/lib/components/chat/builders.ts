@@ -30,7 +30,7 @@ export function markMessageDeliveryFailed(
   messageId: string,
 ): ConversationHistory {
   const message = history.messages[messageId];
-  if (!message || message.metadata?.['_deliveryStatus'] === 'failed') return history;
+  if (!message || message.metadata?.[DELIVERY_STATUS_METADATA_KEY] === 'failed') return history;
 
   return {
     ...history,
