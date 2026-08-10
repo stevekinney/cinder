@@ -687,6 +687,14 @@
         // would cancel that scroll's animation mid-flight (#1236).
         if (scrollState.isUserScrolling) return;
         if (isVirtualized) {
+          // A remeasurement can invalidate this effect without changing the
+          // viewport's actual position. Avoid another instant correction when
+          // the browser has already settled at the current bottom (#1243).
+          const maximumOffset = Math.max(
+            0,
+            chatVirtualizer.scrollSize - (viewport.clientHeight || virtualizationInitialHeight),
+          );
+          if (Math.abs((viewport.scrollTop || 0) - maximumOffset) <= 1) return;
           chatVirtualizer.scrollToOffset(chatVirtualizer.scrollSize, { behavior: 'instant' });
         } else {
           viewport?.scrollTo({ top: viewport.scrollHeight, behavior: 'instant' });
