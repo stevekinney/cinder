@@ -47,8 +47,10 @@ export {
   appendToolResultsAsync,
   appendUserMessage,
   buildMessage,
+  clearMessageDeliveryStatus,
   createConversation,
   createConversationHistory,
+  markMessageDeliveryFailed,
   prependMessages,
 } from './builders.ts';
 
