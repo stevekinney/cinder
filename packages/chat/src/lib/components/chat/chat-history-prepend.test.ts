@@ -179,6 +179,9 @@ function installLayoutModel(
 } {
   const idleTriggerHeight = options?.idleTriggerHeight ?? 0;
   const loadingTriggerHeight = options?.loadingTriggerHeight ?? idleTriggerHeight;
+  // TEMPORARY #1237 CI diagnostics: stamp the node the model is installed on
+  // so later probes can prove the component reads this exact element.
+  timeline.setAttribute('data-diag-stamp', `stamp-${Date.now()}`);
   // Message offsets relative to the END of the trigger row.
   const messageOffsets = new Map<string, number>();
 
@@ -283,6 +286,37 @@ describe('history prepend at scrollTop=0 (#1237)', () => {
       idleTriggerHeight: 50,
       loadingTriggerHeight: 30,
     });
+    // TEMPORARY #1237 CI diagnostics — remove once the CI-side state is known.
+    const diagnose = (label: string): void => {
+      const freshTimeline = container.querySelector<HTMLElement>('.chat-timeline');
+      const trigger = container.querySelector<HTMLButtonElement>(
+        '[data-cinder-history-trigger] button',
+      );
+      console.error(
+        `[1237-diag] ${label} ${JSON.stringify({
+          containerRows: container.querySelectorAll('.chat-message').length,
+          timelineRows: timeline.querySelectorAll('.chat-message').length,
+          bodyTimelines: document.querySelectorAll('.chat-timeline').length,
+          containerTimelines: container.querySelectorAll('.chat-timeline').length,
+          timelineIsCurrent: freshTimeline === timeline,
+          timelineConnected: timeline.isConnected,
+          stamp: timeline.getAttribute('data-diag-stamp'),
+          freshStamp: freshTimeline?.getAttribute('data-diag-stamp') ?? null,
+          scrollHeight: timeline.scrollHeight,
+          freshScrollHeight: freshTimeline ? freshTimeline.scrollHeight : null,
+          hasOwnScrollHeight:
+            Object.getOwnPropertyDescriptor(timeline, 'scrollHeight') !== undefined,
+          hasOwnClientHeight:
+            Object.getOwnPropertyDescriptor(timeline, 'clientHeight') !== undefined,
+          scrollToIsStubbed: Object.prototype.hasOwnProperty.call(timeline, 'scrollTo'),
+          scrollTop: timeline.scrollTop,
+          triggerPresent: trigger !== null,
+          triggerDisabled: trigger?.disabled ?? null,
+          triggerInTimeline: trigger ? timeline.contains(trigger) : null,
+          scrollTops: layout.scrollTops.slice(),
+        })}`,
+      );
+    };
     try {
       layout.relayout(conversation.ids);
       timeline.scrollTop = 0;
@@ -293,7 +327,9 @@ describe('history prepend at scrollTop=0 (#1237)', () => {
       const trigger = container.querySelector<HTMLButtonElement>(
         '[data-cinder-history-trigger] button',
       )!;
+      diagnose('pre-click');
       await fireEvent.click(trigger);
+      diagnose('post-click');
       // The loading state has committed by now: the trigger is disabled and
       // the model reports its loading (30px) height.
       await waitFor(() => {
@@ -307,7 +343,9 @@ describe('history prepend at scrollTop=0 (#1237)', () => {
       ];
       conversation = prependMessages(conversation, prepended);
       layout.relayout(conversation.ids);
+      diagnose('pre-rerender');
       await rerender({ id: 'prepend-anchor-chat', conversation, adapter });
+      diagnose('post-rerender');
 
       // The restore must land with the SAME flush that committed the prepend
       // — no animation-frame wait — so after rerender's tick the correction
