@@ -597,6 +597,27 @@ describe('useChatScrollState — isUserScrolling guard (regression for #774)', (
     expect(state.atBottom).toBe(false);
   });
 
+  test('settlement recomputes showJumpButton with the final geometry', async () => {
+    const state = useChatScrollState();
+    const viewport = createViewport();
+    const detach = state.createScrollAttachment()(viewport);
+    (viewport as { scrollTop: number }).scrollTop = 1600;
+
+    state.scrollToTop(viewport);
+    // A stale scroll tick from the previous bottom correction is processed
+    // while the smooth scroll is still at the bottom. Its deferred rAF leaves
+    // showJumpButton false even though the eventual top position must show it.
+    viewport.dispatchEvent(new Event('scroll'));
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+
+    (viewport as { scrollTop: number }).scrollTop = 0;
+    viewport.dispatchEvent(new Event('scrollend'));
+
+    expect(state.atBottom).toBe(false);
+    expect(state.showJumpButton).toBe(true);
+    detach?.();
+  });
+
   test('scrollToTop preserves atBottom when the viewport cannot actually leave the bottom', () => {
     // Regression guard (Codex review on #787): a transcript short enough to
     // fit entirely within the viewport (scrollHeight <= clientHeight) is

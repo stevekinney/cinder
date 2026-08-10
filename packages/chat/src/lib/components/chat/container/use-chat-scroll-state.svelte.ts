@@ -342,14 +342,13 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
    */
   function recomputeAtBottomAtSettlement(viewport: HTMLElement | null): void {
     if (viewport === null) return;
-    const scrolledToBottom = checkIsAtBottom(
-      {
-        scrollTop: viewport.scrollTop,
-        scrollHeight: viewport.scrollHeight,
-        clientHeight: viewport.clientHeight,
-      },
-      getBottomThreshold?.() ?? bottomThreshold,
-    );
+    const state = {
+      scrollTop: viewport.scrollTop,
+      scrollHeight: viewport.scrollHeight,
+      clientHeight: viewport.clientHeight,
+    };
+    const scrolledToBottom = checkIsAtBottom(state, getBottomThreshold?.() ?? bottomThreshold);
+    showJumpButton = shouldShowJumpToLatest(state, getJumpThreshold?.() ?? jumpThreshold);
     if (scrolledToBottom && !atBottom) {
       atBottom = true;
       onReachBottom?.();
@@ -594,10 +593,7 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
           // cancellation in the non-virtualized path.
           const targetGrewSinceGuardArmed =
             guardSettleTarget !== null && target > guardSettleTarget + SETTLE_TARGET_TOLERANCE;
-          if (
-            targetGrewSinceGuardArmed &&
-            target > viewport.scrollTop + SETTLE_TARGET_TOLERANCE
-          ) {
+          if (targetGrewSinceGuardArmed && target > viewport.scrollTop + SETTLE_TARGET_TOLERANCE) {
             viewport.scrollTo({ top: destination!(), behavior: getScrollBehavior() });
             guardSettleTarget = target;
           }
