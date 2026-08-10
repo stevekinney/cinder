@@ -11,8 +11,10 @@ import {
   appendToolResultsAsync,
   appendUserMessage,
   buildMessage,
+  clearMessageDeliveryStatus,
   createConversation,
   createConversationHistory,
+  markMessageDeliveryFailed,
   prependMessages,
 } from './builders.ts';
 
@@ -57,6 +59,62 @@ describe('chat conversation builders', () => {
 
     expect(conversation.messages[conversation.ids[0]!]!.role).toBe('user');
     expect(conversation.messages[conversation.ids[0]!]!.content).toBe('Hello');
+  });
+
+  test('marks and clears transient delivery status immutably', () => {
+    const initial = appendUserMessage(
+      createConversationHistory({ id: 'conversation-delivery-status' }),
+      'Send this',
+    );
+    const messageId = initial.ids[0]!;
+    const failed = markMessageDeliveryFailed(initial, messageId);
+    const cleared = clearMessageDeliveryStatus(failed, messageId);
+
+    expect(initial.messages[messageId]!.metadata).toEqual({});
+    expect(failed.messages[messageId]!.metadata).toEqual({ _deliveryStatus: 'failed' });
+    expect(cleared.messages[messageId]!.metadata).toEqual({});
+    expect(failed).not.toBe(initial);
+    expect(cleared).not.toBe(failed);
+  });
+
+  test('returns the same history when delivery is already marked failed', () => {
+    const initial = appendUserMessage(
+      createConversationHistory({ id: 'conversation-idempotent-delivery-status' }),
+      'Send this',
+    );
+    const messageId = initial.ids[0]!;
+    const failed = markMessageDeliveryFailed(initial, messageId);
+
+    expect(markMessageDeliveryFailed(failed, messageId)).toBe(failed);
+  });
+
+  test('handles transcripts that omit metadata at runtime', () => {
+    const initial = appendUserMessage(
+      createConversationHistory({ id: 'conversation-missing-metadata' }),
+      'Send this',
+    );
+    const messageId = initial.ids[0]!;
+    const messageWithoutMetadata = { ...initial.messages[messageId]! } as {
+      metadata?: unknown;
+    } & (typeof initial.messages)[string];
+    delete (messageWithoutMetadata as unknown as { metadata?: unknown }).metadata;
+    const historyWithoutMetadata = {
+      ...initial,
+      messages: { ...initial.messages, [messageId]: messageWithoutMetadata },
+    };
+
+    const failed = markMessageDeliveryFailed(historyWithoutMetadata, messageId);
+    const cleared = clearMessageDeliveryStatus(historyWithoutMetadata, messageId);
+
+    expect(failed.messages[messageId]!.metadata).toEqual({ _deliveryStatus: 'failed' });
+    expect(cleared).toBe(historyWithoutMetadata);
+  });
+
+  test('leaves history unchanged when the message id is unknown', () => {
+    const initial = createConversationHistory({ id: 'conversation-missing-delivery-status' });
+
+    expect(markMessageDeliveryFailed(initial, 'missing')).toBe(initial);
+    expect(clearMessageDeliveryStatus(initial, 'missing')).toBe(initial);
   });
 
   test('preserves immutable snapshots and dense message positions', () => {
