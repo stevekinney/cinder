@@ -580,6 +580,13 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
           // mid-flight. Keep the guard armed; the scroll-quiet backstop still
           // guarantees eventual settlement if no further progress is ever
           // made.
+          // A bottom-directed smooth scroll can also have its original target
+          // invalidated by content appended while the animation is in flight.
+          // Re-issue the destination so the browser retargets to the newly
+          // reachable bottom instead of settling above the latest message.
+          if (target > viewport.scrollTop + SETTLE_TARGET_TOLERANCE) {
+            viewport.scrollTo({ top: destination(), behavior: getScrollBehavior() });
+          }
           armBackstop();
           return;
         }

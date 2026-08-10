@@ -499,6 +499,34 @@ describe('useChatScrollState — isUserScrolling guard (regression for #774)', (
     expect(state.isUserScrolling).toBe(false);
   });
 
+  test('jumpToLatest retargets when appended content grows the bottom during smooth scrolling', () => {
+    jest.useFakeTimers();
+    const state = useChatScrollState();
+    const viewport = createViewport();
+    const scrollCalls: number[] = [];
+    viewport.scrollTo = ((options?: ScrollToOptions | number) => {
+      scrollCalls.push(typeof options === 'number' ? options : (options?.top ?? 0));
+    }) as typeof viewport.scrollTo;
+
+    state.jumpToLatest(viewport);
+    expect(scrollCalls).toEqual([2000]);
+
+    // The browser's smooth-scroll target was clamped to the old bottom.
+    // Appending a message grows the scroll extent before that animation ends.
+    Object.defineProperty(viewport, 'scrollHeight', { configurable: true, value: 2200 });
+    (viewport as { scrollTop: number }).scrollTop = 1600;
+    viewport.dispatchEvent(new Event('scrollend'));
+
+    // The old target is stale; the guard must retarget instead of settling
+    // above the newly appended latest message.
+    expect(state.isUserScrolling).toBe(true);
+    expect(scrollCalls).toEqual([2000, 2200]);
+
+    (viewport as { scrollTop: number }).scrollTop = 1800;
+    viewport.dispatchEvent(new Event('scrollend'));
+    expect(state.isUserScrolling).toBe(false);
+  });
+
   test('a guard whose target is never reached still settles via the scroll-quiet backstop', () => {
     jest.useFakeTimers();
     const state = useChatScrollState();
