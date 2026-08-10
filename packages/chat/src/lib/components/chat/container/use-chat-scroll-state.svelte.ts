@@ -538,6 +538,16 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
     const settleBackstopDuration = reducedMotion.current ? 50 : 500;
     let settled = false;
     let backstop: ReturnType<typeof setTimeout> | undefined;
+    let guardSettleTarget: number | null = null;
+
+    function readSettleTarget(): number | null {
+      if (destination === undefined || viewport === null) return null;
+      // Clamp the declared destination to the currently reachable scroll
+      // range: jumpToLatest declares "the bottom" as `scrollHeight`, which
+      // the browser clamps to `scrollHeight - clientHeight` when scrolling.
+      const maximumScrollTop = Math.max(0, viewport.scrollHeight - viewport.clientHeight);
+      return Math.min(maximumScrollTop, Math.max(0, destination()));
+    }
 
     function cancel(): void {
       if (settled) return;
@@ -568,12 +578,8 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
 
     function settleFromScrollEnd(): void {
       if (settled) return;
-      if (destination !== undefined && viewport !== null) {
-        // Clamp the declared destination to the currently reachable scroll
-        // range: jumpToLatest declares "the bottom" as `scrollHeight`, which
-        // the browser clamps to `scrollHeight - clientHeight` when scrolling.
-        const maximumScrollTop = Math.max(0, viewport.scrollHeight - viewport.clientHeight);
-        const target = Math.min(maximumScrollTop, Math.max(0, destination()));
+      const target = readSettleTarget();
+      if (target !== null && viewport !== null) {
         if (Math.abs(viewport.scrollTop - target) > SETTLE_TARGET_TOLERANCE) {
           // Stale scrollend from an earlier scroll (the guard's own animation
           // has not reached its destination), or an animation cancelled
@@ -583,9 +589,20 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
           // A bottom-directed smooth scroll can also have its original target
           // invalidated by content appended while the animation is in flight.
           // Re-issue the destination so the browser retargets to the newly
-          // reachable bottom instead of settling above the latest message.
-          if (target > viewport.scrollTop + SETTLE_TARGET_TOLERANCE) {
-            viewport.scrollTo({ top: destination(), behavior: getScrollBehavior() });
+          // reachable bottom instead of settling above the latest message. Do
+          // not re-issue for unchanged bottoms: that can fight a user's manual
+          // cancellation in the non-virtualized path.
+          const targetGrewSinceGuardArmed =
+            guardSettleTarget !== null && target > guardSettleTarget + SETTLE_TARGET_TOLERANCE;
+          if (
+            targetGrewSinceGuardArmed &&
+            target > viewport.scrollTop + SETTLE_TARGET_TOLERANCE
+          ) {
+            const activeDestination = destination;
+            if (activeDestination !== undefined) {
+              viewport.scrollTo({ top: activeDestination(), behavior: getScrollBehavior() });
+            }
+            guardSettleTarget = target;
           }
           armBackstop();
           return;
@@ -602,6 +619,7 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
     activeUserScrollGuardCancel = cancel;
     activeUserScrollViewport = viewport;
     activeUserScrollGuardDestination = destination ?? null;
+    guardSettleTarget = readSettleTarget();
     // NOT `{ once: true }`: a stale scrollend that fails the destination check
     // must not consume the listener, or the REAL animation's completion could
     // never settle the guard promptly.

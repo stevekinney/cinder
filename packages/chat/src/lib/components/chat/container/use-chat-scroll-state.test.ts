@@ -527,6 +527,31 @@ describe('useChatScrollState — isUserScrolling guard (regression for #774)', (
     expect(state.isUserScrolling).toBe(false);
   });
 
+  test('jumpToLatest does not re-issue scroll when the bottom target is unchanged', () => {
+    jest.useFakeTimers();
+    const state = useChatScrollState();
+    const viewport = createViewport();
+    const scrollCalls: number[] = [];
+    viewport.scrollTo = ((options?: ScrollToOptions | number) => {
+      scrollCalls.push(typeof options === 'number' ? options : (options?.top ?? 0));
+    }) as typeof viewport.scrollTo;
+
+    state.jumpToLatest(viewport);
+    expect(scrollCalls).toEqual([2000]);
+
+    // The bottom has not grown; this mismatch can represent an animation
+    // cancelled by user input. Keep the guard armed, but do not force a new
+    // downward scroll in the non-virtualized path.
+    (viewport as { scrollTop: number }).scrollTop = 1200;
+    viewport.dispatchEvent(new Event('scrollend'));
+
+    expect(state.isUserScrolling).toBe(true);
+    expect(scrollCalls).toEqual([2000]);
+
+    jest.advanceTimersByTime(500);
+    expect(state.isUserScrolling).toBe(false);
+  });
+
   test('a guard whose target is never reached still settles via the scroll-quiet backstop', () => {
     jest.useFakeTimers();
     const state = useChatScrollState();
