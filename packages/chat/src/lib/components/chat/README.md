@@ -105,10 +105,10 @@ complete finite stream without assuming a particular model provider.
 
 `ChatAdapter.sendMessage` receives a `MessageInput`, not a persisted `Message`,
 so it has no message ID. Append the optimistic user message to the
-authoritative snapshot first and retain the generated ID. `ChatAdapter` reports
-rejected commands to the consumer through `onadaptererror`; Chat routes those
-errors automatically. Adapter implementations should mark delivery status and
-then rethrow so Chat can handle the error consistently:
+authoritative snapshot first and retain the generated ID. Chat awaits adapter
+commands and reports rejected commands through `onadaptererror`; adapter
+implementations should mark delivery status and then rethrow so Chat can handle
+the error consistently:
 
 ```ts
 import {
