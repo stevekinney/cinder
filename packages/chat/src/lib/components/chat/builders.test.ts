@@ -11,8 +11,10 @@ import {
   appendToolResultsAsync,
   appendUserMessage,
   buildMessage,
+  clearMessageDeliveryStatus,
   createConversation,
   createConversationHistory,
+  markMessageDeliveryFailed,
   prependMessages,
 } from './builders.ts';
 
@@ -57,6 +59,29 @@ describe('chat conversation builders', () => {
 
     expect(conversation.messages[conversation.ids[0]!]!.role).toBe('user');
     expect(conversation.messages[conversation.ids[0]!]!.content).toBe('Hello');
+  });
+
+  test('marks and clears transient delivery status immutably', () => {
+    const initial = appendUserMessage(
+      createConversationHistory({ id: 'conversation-delivery-status' }),
+      'Send this',
+    );
+    const messageId = initial.ids[0]!;
+    const failed = markMessageDeliveryFailed(initial, messageId);
+    const cleared = clearMessageDeliveryStatus(failed, messageId);
+
+    expect(initial.messages[messageId]!.metadata).toEqual({});
+    expect(failed.messages[messageId]!.metadata).toEqual({ _deliveryStatus: 'failed' });
+    expect(cleared.messages[messageId]!.metadata).toEqual({});
+    expect(failed).not.toBe(initial);
+    expect(cleared).not.toBe(failed);
+  });
+
+  test('leaves history unchanged when the message id is unknown', () => {
+    const initial = createConversationHistory({ id: 'conversation-missing-delivery-status' });
+
+    expect(markMessageDeliveryFailed(initial, 'missing')).toBe(initial);
+    expect(clearMessageDeliveryStatus(initial, 'missing')).toBe(initial);
   });
 
   test('preserves immutable snapshots and dense message positions', () => {

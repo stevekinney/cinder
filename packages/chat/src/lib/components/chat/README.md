@@ -101,6 +101,29 @@ snapshot for each token, finalize it before `endStreaming`, and cancel it when
 the backend fails. The package's Adapter-driven streaming example uses a
 complete finite stream without assuming a particular model provider.
 
+### Failed delivery and retry
+
+`ChatAdapter` reports rejected commands through `onadaptererror`; it does not
+mutate the consumer-owned `conversation` snapshot. Use the typed helpers to
+keep the retry affordance in sync with that snapshot:
+
+```ts
+import { clearMessageDeliveryStatus, markMessageDeliveryFailed } from '@lostgradient/chat';
+
+try {
+  await adapter.sendMessage(message, attachments);
+  conversation = clearMessageDeliveryStatus(conversation, messageId);
+} catch (error) {
+  conversation = markMessageDeliveryFailed(conversation, messageId);
+  onadaptererror?.({ command: 'sendMessage', error });
+}
+```
+
+The helpers immutably set or clear the transient `_deliveryStatus` metadata
+used by Chat's failed-message label and Retry button. Apply the same pair around
+`retryMessage` and `editMessage` resends; the successful attempt clears the
+marker.
+
 > [!WARNING] `ChatAdapter.subscribe` runs inside Chat's own effect
 > Chat opens `subscribe` from inside its internal mount `$effect`, so a
 > synchronous `$state` write inside `subscribe` can throw

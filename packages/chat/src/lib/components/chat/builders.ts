@@ -1,3 +1,5 @@
+import type { ConversationHistory } from './conversation-model.ts';
+
 /**
  * Conversation builders re-exported from Chat's direct Conversationalist
  * dependency. Keeping these at the Chat boundary gives consumers one stable
@@ -19,6 +21,46 @@ export {
   createConversationHistory,
   prependMessages,
 } from 'conversationalist';
+
+const DELIVERY_STATUS_METADATA_KEY = '_deliveryStatus';
+
+/** Mark a message as failed so Chat renders its retry affordance. */
+export function markMessageDeliveryFailed(
+  history: ConversationHistory,
+  messageId: string,
+): ConversationHistory {
+  const message = history.messages[messageId];
+  if (!message) return history;
+
+  return {
+    ...history,
+    messages: {
+      ...history.messages,
+      [messageId]: {
+        ...message,
+        metadata: { ...message.metadata, [DELIVERY_STATUS_METADATA_KEY]: 'failed' },
+      },
+    },
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+/** Clear a message's failed-delivery marker after a successful retry. */
+export function clearMessageDeliveryStatus(
+  history: ConversationHistory,
+  messageId: string,
+): ConversationHistory {
+  const message = history.messages[messageId];
+  if (!message || !(DELIVERY_STATUS_METADATA_KEY in message.metadata)) return history;
+
+  const metadata = { ...message.metadata };
+  delete metadata[DELIVERY_STATUS_METADATA_KEY];
+  return {
+    ...history,
+    messages: { ...history.messages, [messageId]: { ...message, metadata } },
+    updatedAt: new Date().toISOString(),
+  };
+}
 
 /**
  * @deprecated Use {@link createConversationHistory}. This alias is retained
