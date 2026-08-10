@@ -9,6 +9,7 @@
 
 <script lang="ts">
   import { classNames } from '../../../utilities/class-names.ts';
+  import { preloadMarkdownPipeline } from './markdown-pipeline.ts';
 
   let { content, class: className, ...rest }: ChatMarkdownPreviewProps = $props();
 
@@ -44,7 +45,9 @@
     // even under per-token streaming.
     const handle = requestAnimationFrame(() => {
       if (cancelled) return;
-      void import('@lostgradient/markdown/rendering')
+      const pipelinePromise = preloadMarkdownPipeline();
+      if (!pipelinePromise) return;
+      void pipelinePromise
         .then(async ({ renderMarkdownWithMath }) => {
           if (cancelled) return;
           try {

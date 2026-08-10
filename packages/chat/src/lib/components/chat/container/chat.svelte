@@ -65,6 +65,7 @@
   import { useChatReadReceipts } from './use-chat-read-receipts.svelte.ts';
   import ChatParticipantTyping from './chat-participant-typing.svelte';
   import ChatReadReceipt from '../message/chat-read-receipt.svelte';
+  import { preloadMarkdownPipeline } from '../message/markdown-pipeline.ts';
 
   const noopAttachment: Attachment<HTMLElement> = () => {};
   const CONSUMER_ANNOUNCEMENT_CLEAR_DELAY_MS = 1000;
@@ -228,6 +229,12 @@
   }
   const reasoningState = useChatDisclosureState({ onRemeasureRow: remeasureRow });
   const toolCallState = useChatDisclosureState({ onRemeasureRow: remeasureRow });
+
+  // Warm the markdown renderer while the chat mounts so the first streamed
+  // message can format its initial tokens instead of showing raw markdown.
+  $effect(() => {
+    void preloadMarkdownPipeline();
+  });
 
   // Reset UI-only approval/disclosure/typing/receipt state on conversation change
   // so stale approved/denied sets, expanded reasoning/tool-call disclosures,
