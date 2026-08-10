@@ -47,6 +47,8 @@ export function createBarModel(options: {
   yAxis?: ChartAxisConfiguration | undefined;
   theme?: ChartTheme | undefined;
   measureText?: boolean | undefined;
+  measurementElement?: Element | undefined;
+  measurementVersion?: number | undefined;
 }): BarChartModel {
   const {
     data,
@@ -61,6 +63,8 @@ export function createBarModel(options: {
     yAxis,
     theme,
     measureText = false,
+    measurementElement,
+    measurementVersion = 0,
   } = options;
   assertUniqueSeriesIds('bar-chart', series);
   assertValidChartNumber('bar-chart', 'invalid-height', height, 'height');
@@ -155,6 +159,8 @@ export function createBarModel(options: {
     xAxis,
     yAxis,
     measureText,
+    measurementElement,
+    measurementVersion,
     marginLeft: horizontalCategoryLabelLayout?.marginLeft,
   });
   if (sortedCategories.length === 0) {

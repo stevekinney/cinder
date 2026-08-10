@@ -22,6 +22,7 @@
   import {
     createChartGeometry,
     dataTableClass,
+    observeChartFontLoading,
     resolveChartTheme,
   } from '../../_internal/chart/chart-utilities.ts';
   import ChartDataTable from '../_internal/chart-data-table.svelte';
@@ -61,9 +62,14 @@
   const descriptionId = $derived(description ? `${rootId}-description` : undefined);
 
   const resolvedTheme = $derived(resolveChartTheme(theme));
+  let rootElement = $state<HTMLElement>();
   let measureText = $state(false);
+  let measurementVersion = $state(0);
   onMount(() => {
     measureText = true;
+    return observeChartFontLoading(() => {
+      measurementVersion += 1;
+    });
   });
 
   let measuredWidth = $state(400);
@@ -112,6 +118,8 @@
       yTickLabels: yLabels,
       xTickPosition: 'top',
       measureText,
+      measurementElement: rootElement,
+      measurementVersion,
     }),
   );
   const { plotWidth, plotHeight, marginTop, marginLeft } = $derived(geometry);
@@ -243,9 +251,13 @@
 <figure
   {...rest}
   {@attach observeResize}
+  bind:this={rootElement}
   id={rootId}
   class={classNames('cinder-matrix-chart', customClassName)}
-  style={`--_cinder-chart-foreground: ${resolvedTheme.foreground}; --_cinder-chart-muted: ${resolvedTheme.muted}; --_cinder-chart-grid: ${resolvedTheme.grid}; --_cinder-chart-background: ${resolvedTheme.background};`}
+  style:--_cinder-chart-foreground={resolvedTheme.foreground}
+  style:--_cinder-chart-muted={resolvedTheme.muted}
+  style:--_cinder-chart-grid={resolvedTheme.grid}
+  style:--_cinder-chart-background={resolvedTheme.background}
   aria-label={label}
   aria-describedby={descriptionId}
   data-cinder-color-scale={colorScale}

@@ -317,4 +317,25 @@ describe('Spectrogram', () => {
       );
     }
   });
+
+  test('sampled plot buckets preserve a high-intensity value beyond the first source cell', () => {
+    const frameCount = 401;
+    const binCount = 257;
+    const denseFrames = Array.from({ length: frameCount }, (_, frameIndex) => ({
+      label: `frame-${frameIndex}`,
+      bins: Array.from({ length: binCount }, (_, binIndex) =>
+        frameIndex === 1 && binIndex === 1 ? 1 : 0,
+      ),
+    }));
+
+    const { container } = render(Spectrogram, {
+      label: 'Transient spectrogram',
+      frames: denseFrames,
+    });
+
+    // frame 1/bin 1 is covered by the first frame/bin bucket, but is not its
+    // first source cell. Maximum aggregation must preserve its full intensity.
+    const firstCell = container.querySelector<SVGRectElement>('.cinder-spectrogram__cell');
+    expect(firstCell?.getAttribute('fill')).toContain('100%');
+  });
 });

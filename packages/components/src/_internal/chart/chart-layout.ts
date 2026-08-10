@@ -18,6 +18,10 @@ export type ChartGeometryOptions = {
   marginLeft?: number | undefined;
   /** Enable browser text measurement after mount; defaults to deterministic fallback metrics. */
   measureText?: boolean | undefined;
+  /** Mounted chart root whose inherited typography should be used for browser measurement. */
+  measurementElement?: Element | undefined;
+  /** Invalidates cached measurements after web-font loading changes. */
+  measurementVersion?: number | undefined;
   xTickPosition?: 'top' | 'bottom';
 };
 
@@ -34,6 +38,11 @@ export function createChartGeometry(
   }
   const xTickLabels = options.xTickLabels ?? [];
   const yTickLabels = options.yTickLabels ?? [];
+  const measurementContext = createChartTextMeasurementContext(
+    options.measureText ?? false,
+    options.measurementElement,
+    options.measurementVersion ?? 0,
+  );
   const textMeasurements = measureChartTexts(
     [
       ...xTickLabels.map((label) => ({ label, rotation: xTickRotation })),
@@ -41,10 +50,10 @@ export function createChartGeometry(
       ...(options.xAxis?.label ? [{ label: options.xAxis.label, rotation: 0 }] : []),
       ...(options.yAxis?.label ? [{ label: options.yAxis.label, rotation: -90 }] : []),
     ],
-    options.measureText ?? false,
+    measurementContext,
   );
   const measurementFor = (label: string, rotation: number): ChartTextMeasurement =>
-    textMeasurements.get(chartTextMeasurementKey(label, rotation, options.measureText ?? false)) ??
+    textMeasurements.get(chartTextMeasurementKey(label, rotation, measurementContext.cacheKey)) ??
     fallbackChartTextMeasurement(label, rotation);
   const xTickHeight = maximumMeasurement(
     xTickLabels,
@@ -123,6 +132,20 @@ export function createHorizontalCategoryLabelLayout(
   };
 }
 
+export function observeChartFontLoading(onFontsChanged: () => void): () => void {
+  if (typeof document === 'undefined' || !document.fonts) return () => {};
+  let active = true;
+  const handleFontsChanged = (): void => {
+    if (active) onFontsChanged();
+  };
+  document.fonts.addEventListener('loadingdone', handleFontsChanged);
+  void document.fonts.ready.then(handleFontsChanged);
+  return () => {
+    active = false;
+    document.fonts.removeEventListener('loadingdone', handleFontsChanged);
+  };
+}
+
 function truncateHorizontalCategoryLabel(label: string, availableWidth: number): string {
   if (measureChartText(label).width <= availableWidth) return label;
 
@@ -136,6 +159,11 @@ function truncateHorizontalCategoryLabel(label: string, availableWidth: number):
 }
 
 type ChartTextMeasurement = { width: number; height: number };
+type ChartTextMeasurementContext = {
+  cacheKey: string;
+  container?: Element;
+  textStyle?: string;
+};
 
 function maximumMeasurement(labels: string[], select: (label: string) => number): number {
   let maximum = 0;
@@ -147,24 +175,27 @@ const chartTextMeasurementCache = new Map<string, ChartTextMeasurement>();
 
 function measureChartTexts(
   entries: Array<{ label: string; rotation: number }>,
-  allowBrowserMeasurement: boolean,
+  context: ChartTextMeasurementContext,
 ): Map<string, ChartTextMeasurement> {
-  if (!allowBrowserMeasurement || typeof document === 'undefined' || !document.body) {
+  if (!context.container || typeof document === 'undefined') {
     return new Map(
       entries.map(({ label, rotation }) => [
-        chartTextMeasurementKey(label, rotation, false),
+        chartTextMeasurementKey(label, rotation, context.cacheKey),
         fallbackChartTextMeasurement(label, rotation),
       ]),
     );
   }
   const uniqueEntries = [
     ...new Map(
-      entries.map((entry) => [chartTextMeasurementKey(entry.label, entry.rotation, true), entry]),
+      entries.map((entry) => [
+        chartTextMeasurementKey(entry.label, entry.rotation, context.cacheKey),
+        entry,
+      ]),
     ).values(),
   ];
   const missing = uniqueEntries.filter(
     ({ label, rotation }) =>
-      !chartTextMeasurementCache.has(chartTextMeasurementKey(label, rotation, true)),
+      !chartTextMeasurementCache.has(chartTextMeasurementKey(label, rotation, context.cacheKey)),
   );
   if (missing.length > 0) {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -174,32 +205,35 @@ function measureChartTexts(
     );
     const texts = missing.map((entry) => {
       const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      text.setAttribute('font-size', '12');
+      if (context.textStyle) text.setAttribute('style', context.textStyle);
       text.textContent = entry.label;
       svg.append(text);
       return { ...entry, text };
     });
-    document.body.append(svg);
+    context.container.append(svg);
     for (const { label, rotation, text } of texts) {
-      let measurement = { width: Array.from(label).length * 7, height: 12 };
+      let measurement: ChartTextMeasurement | undefined;
       try {
         const bounds = text.getBBox();
-        if (bounds.width > 0 && bounds.height > 0)
+        if (bounds.width > 0 && bounds.height > 0) {
           measurement = { width: bounds.width, height: bounds.height };
+        }
       } catch {
         // Keep deterministic fallback metrics when layout is unavailable.
       }
-      chartTextMeasurementCache.set(
-        chartTextMeasurementKey(label, rotation, true),
-        rotateChartTextMeasurement(measurement, rotation),
-      );
+      if (measurement) {
+        chartTextMeasurementCache.set(
+          chartTextMeasurementKey(label, rotation, context.cacheKey),
+          rotateChartTextMeasurement(measurement, rotation),
+        );
+      }
     }
     svg.remove();
   }
   return new Map(
     entries.map(({ label, rotation }) => [
-      chartTextMeasurementKey(label, rotation, true),
-      chartTextMeasurementCache.get(chartTextMeasurementKey(label, rotation, true)) ??
+      chartTextMeasurementKey(label, rotation, context.cacheKey),
+      chartTextMeasurementCache.get(chartTextMeasurementKey(label, rotation, context.cacheKey)) ??
         fallbackChartTextMeasurement(label, rotation),
     ]),
   );
@@ -212,9 +246,43 @@ function measureChartText(label: string, rotation = 0): ChartTextMeasurement {
 function chartTextMeasurementKey(
   label: string,
   rotation: number,
-  browserMeasurement: boolean,
+  measurementContext: string,
 ): string {
-  return `${label}\u0000${rotation}\u0000${browserMeasurement ? 'browser' : 'fallback'}`;
+  return `${label}\u0000${rotation}\u0000${measurementContext}`;
+}
+
+function createChartTextMeasurementContext(
+  allowBrowserMeasurement: boolean,
+  measurementElement: Element | undefined,
+  measurementVersion: number,
+): ChartTextMeasurementContext {
+  if (
+    !allowBrowserMeasurement ||
+    !measurementElement ||
+    typeof window === 'undefined' ||
+    !measurementElement.isConnected
+  ) {
+    return { cacheKey: 'fallback' };
+  }
+  const style = window.getComputedStyle(measurementElement);
+  const fontSize = style.getPropertyValue('--cinder-text-xs').trim() || style.fontSize;
+  const textStyle = [
+    `font-family:${style.fontFamily}`,
+    `font-size:${fontSize}`,
+    `font-style:${style.fontStyle}`,
+    `font-weight:${style.fontWeight}`,
+    `font-stretch:${style.fontStretch}`,
+    `font-variant:${style.fontVariant}`,
+    `font-feature-settings:${style.fontFeatureSettings}`,
+    `font-kerning:${style.fontKerning}`,
+    `letter-spacing:${style.letterSpacing}`,
+    `text-transform:${style.textTransform}`,
+  ].join(';');
+  return {
+    cacheKey: `browser\u0000${measurementVersion}\u0000${textStyle}`,
+    container: measurementElement,
+    textStyle,
+  };
 }
 
 function fallbackChartTextMeasurement(label: string, rotation: number): ChartTextMeasurement {

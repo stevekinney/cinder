@@ -7,11 +7,13 @@ import type { NormalizedXValue, PlacedPoint } from './chart-model-utilities.ts';
 
 export const MAXIMUM_RENDERED_SERIES_POINTS = 2_000;
 
-export function decimatePlacedPoints(
+export function decimationIndices(
   points: PlacedPoint[],
   maximumPoints = MAXIMUM_RENDERED_SERIES_POINTS,
-): PlacedPoint[] {
-  if (points.length <= maximumPoints || maximumPoints < 2) return points;
+): number[] {
+  if (points.length <= maximumPoints || maximumPoints < 2) {
+    return points.map((_, index) => index);
+  }
   const limit = Math.max(2, Math.floor(maximumPoints));
   const bucketCount = Math.max(1, Math.floor((limit - 2) / 2));
   const interiorLength = points.length - 2;
@@ -51,7 +53,7 @@ export function decimatePlacedPoints(
   }
 
   const ordered = [...selected].sort((a, b) => a - b);
-  if (ordered.length <= limit) return ordered.map((index) => points[index]!);
+  if (ordered.length <= limit) return ordered;
   // A pathological input with a null in every bucket can exceed the bound.
   // Preserve endpoints and choose evenly-spaced candidates from the remainder.
   const interiorLimit = limit - 2;
@@ -61,7 +63,14 @@ export function decimatePlacedPoints(
     bounded.push(ordered[1 + Math.round(index * step)]!);
   }
   bounded.push(ordered.at(-1)!);
-  return [...new Set(bounded)].sort((a, b) => a - b).map((index) => points[index]!);
+  return [...new Set(bounded)].sort((a, b) => a - b);
+}
+
+export function decimatePlacedPoints(
+  points: PlacedPoint[],
+  maximumPoints = MAXIMUM_RENDERED_SERIES_POINTS,
+): PlacedPoint[] {
+  return decimationIndices(points, maximumPoints).map((index) => points[index]!);
 }
 export function normalizeNumericValue(
   componentId: string,

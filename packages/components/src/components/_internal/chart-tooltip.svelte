@@ -29,6 +29,7 @@
   style:top={`${geometry.marginTop + (target?.y ?? 0)}px`}
 ></span>
 
+<!-- This non-interactive tooltip stays controlled by the chart's active target. -->
 <Popover
   id={`${id}-popover`}
   {open}
@@ -37,6 +38,7 @@
   arrowVisible
   role="group"
   focusManagement="preserve"
+  outsideClickIgnoreRefs={[() => anchorElement?.ownerDocument.body ?? null]}
   wireTriggerAria={false}
   closeOnEscape={false}
   widthMode="content"

@@ -27,6 +27,19 @@ afterAll(() => {
 const sineData = Array.from({ length: 64 }, (_, index) => Math.sin((index / 64) * Math.PI * 4));
 
 describe('Waveform', () => {
+  test('preserves consumer inline styles while applying theme variables', () => {
+    const { container } = render(Waveform, {
+      label: 'Styled waveform',
+      data: sineData,
+      style: 'inline-size: 20rem; --consumer-token: keep-me',
+      theme: { foreground: 'hotpink' },
+    });
+    const root = container.querySelector('.cinder-waveform');
+    expect(root?.getAttribute('style')).toContain('inline-size: 20rem');
+    expect(root?.getAttribute('style')).toContain('--consumer-token: keep-me');
+    expect(root?.getAttribute('style')).toContain('--_cinder-chart-foreground: hotpink');
+  });
+
   test('uses the default palette and inherits chart-local theme defaults', () => {
     const { container } = render(Waveform, { label: 'Sine wave', data: sineData });
     const chart = container.querySelector('.cinder-waveform');

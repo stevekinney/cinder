@@ -26,6 +26,7 @@
     dataTableClass,
     formatNumericValue,
     legendVisible,
+    observeChartFontLoading,
     type ChartTarget,
   } from '../../_internal/chart/chart-utilities.ts';
   import {
@@ -72,8 +73,12 @@
 
   let rootElement = $state<HTMLElement>();
   let measureText = $state(false);
+  let measurementVersion = $state(0);
   onMount(() => {
     measureText = true;
+    return observeChartFontLoading(() => {
+      measurementVersion += 1;
+    });
   });
 
   $effect(() => {
@@ -93,6 +98,8 @@
       stackedArea: mode === 'stacked',
       theme,
       measureText,
+      measurementElement: rootElement,
+      measurementVersion,
     }),
   );
   const keyboardEnabled = $derived(

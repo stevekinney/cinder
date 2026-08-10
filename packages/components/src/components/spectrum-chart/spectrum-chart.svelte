@@ -25,6 +25,7 @@
     createChartGeometry,
     dataTableClass,
     formatNumericValue,
+    observeChartFontLoading,
     resolveChartTheme,
   } from '../../_internal/chart/chart-utilities.ts';
   import { classNames } from '../../utilities/class-names.ts';
@@ -62,9 +63,14 @@
 
   const isEmpty = $derived(bins.length === 0);
   const resolvedTheme = $derived(resolveChartTheme(theme));
+  let rootElement = $state<HTMLElement>();
   let measureText = $state(false);
+  let measurementVersion = $state(0);
   onMount(() => {
     measureText = true;
+    return observeChartFontLoading(() => {
+      measurementVersion += 1;
+    });
   });
 
   // Spectrum magnitudes are linear non-negative. Coerce each bin's value to a
@@ -103,7 +109,13 @@
     yTicks.map((tick, index) => formatNumericValue(tick, undefined, undefined, { index })),
   );
   const geometry = $derived(
-    createChartGeometry(measuredWidth, height, { xTickLabels, yTickLabels, measureText }),
+    createChartGeometry(measuredWidth, height, {
+      xTickLabels,
+      yTickLabels,
+      measureText,
+      measurementElement: rootElement,
+      measurementVersion,
+    }),
   );
   const plotWidth = $derived(geometry.plotWidth);
   const plotHeight = $derived(geometry.plotHeight);
@@ -146,11 +158,16 @@
 <figure
   {...rest}
   {@attach observeResize}
+  bind:this={rootElement}
   id={rootId}
   class={classNames('cinder-spectrum-chart', customClassName)}
   aria-label={label}
   aria-describedby={descriptionId}
-  style={`--_cinder-chart-foreground: ${resolvedTheme.foreground}; --_cinder-chart-muted: ${resolvedTheme.muted}; --_cinder-chart-grid: ${resolvedTheme.grid}; --_cinder-chart-background: ${resolvedTheme.background}; --_cinder-chart-series-color: ${chartPaletteColor(0, resolvedTheme.palette)};`}
+  style:--_cinder-chart-foreground={resolvedTheme.foreground}
+  style:--_cinder-chart-muted={resolvedTheme.muted}
+  style:--_cinder-chart-grid={resolvedTheme.grid}
+  style:--_cinder-chart-background={resolvedTheme.background}
+  style:--_cinder-chart-series-color={chartPaletteColor(0, resolvedTheme.palette)}
 >
   {#if description}
     <p id={descriptionId} class="cinder-spectrum-chart__description">{description}</p>

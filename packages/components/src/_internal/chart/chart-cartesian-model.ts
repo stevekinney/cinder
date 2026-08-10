@@ -30,6 +30,7 @@ import {
   createPointScale,
   createTicks,
   decimatePlacedPoints,
+  decimationIndices,
   normalizeNumericValue,
   sortXValues,
   type BandlikeScale,
@@ -49,6 +50,8 @@ export function createCartesianModel(options: {
   stackedArea?: boolean;
   theme?: ChartTheme | undefined;
   measureText?: boolean | undefined;
+  measurementElement?: Element | undefined;
+  measurementVersion?: number | undefined;
 }): CartesianChartModel {
   const {
     componentId,
@@ -61,6 +64,8 @@ export function createCartesianModel(options: {
     stackedArea = false,
     theme,
     measureText = false,
+    measurementElement,
+    measurementVersion = 0,
   } = options;
   assertUniqueSeriesIds(componentId, series);
   assertValidChartNumber(componentId, 'invalid-height', height, 'height');
@@ -68,7 +73,11 @@ export function createCartesianModel(options: {
   assertValidTickCount(componentId, yAxis);
 
   const resolvedTheme = resolveChartTheme(theme);
-  let geometry = createChartGeometry(width, height, { measureText });
+  let geometry = createChartGeometry(width, height, {
+    measureText,
+    measurementElement,
+    measurementVersion,
+  });
   const allKinds = new Set<string>();
   const xValuesByKey = new Map<string, NormalizedXValue>();
 
@@ -156,6 +165,8 @@ export function createCartesianModel(options: {
     xAxis,
     yAxis,
     measureText,
+    measurementElement,
+    measurementVersion,
   });
 
   // Split scales into two correctly-typed variables so the use site can
@@ -186,6 +197,40 @@ export function createCartesianModel(options: {
   const targets: ChartTarget[] = [];
   const tableRows: CartesianChartModel['tableRows'] = [];
   const stackedOffsetsByKey = new Map(sortedXValues.map((value) => [value.key, 0]));
+  const normalizedPointsBySeriesId = stackedArea
+    ? new Map(
+        normalizedSeries.map((item) => [
+          item.id,
+          new Map(item.points.map((point) => [point.x.key, point])),
+        ]),
+      )
+    : undefined;
+  const stackedRenderIndices = stackedArea
+    ? decimationIndices(
+        sortedXValues.map((value, index) => {
+          let total = 0;
+          let hasValue = false;
+          for (const item of normalizedSeries) {
+            if (hiddenSeriesIds.includes(item.id)) continue;
+            const point = normalizedPointsBySeriesId?.get(item.id)?.get(value.key);
+            if (point?.y === null || point?.y === undefined) continue;
+            total += point.y;
+            hasValue = true;
+          }
+          return {
+            seriesId: '__stacked__',
+            seriesLabel: 'Stacked area',
+            color: 'transparent',
+            x: value,
+            y: hasValue ? total : null,
+            originalY: hasValue ? total : null,
+            index,
+            pixelX: index,
+            pixelY: total,
+          };
+        }),
+      )
+    : undefined;
   const renderedSeries = normalizedSeries.map((item) => {
     const hidden = hiddenSeriesIds.includes(item.id);
     const points = item.points
@@ -201,7 +246,28 @@ export function createCartesianModel(options: {
         pixelY: yScale(stackedArea ? upperValue : (point.y ?? 0)),
       };
     });
-    const renderPoints = decimatePlacedPoints(placedPoints);
+    const placedPointsByKey = stackedRenderIndices
+      ? new Map(placedPoints.map((point) => [point.x.key, point]))
+      : undefined;
+    const renderPoints = stackedRenderIndices
+      ? stackedRenderIndices.map((sourceIndex) => {
+          const x = sortedXValues[sourceIndex]!;
+          return (
+            placedPointsByKey?.get(x.key) ??
+            ({
+              seriesId: item.id,
+              seriesLabel: item.label,
+              color: item.color,
+              x,
+              y: null,
+              originalY: null,
+              index: -1,
+              pixelX: scaleX(x),
+              pixelY: 0,
+            } satisfies PlacedPoint)
+          );
+        })
+      : decimatePlacedPoints(placedPoints);
     const coordinates = renderPoints.map((placed) => ({
       x: placed.pixelX,
       y: placed.y === null ? null : placed.pixelY,

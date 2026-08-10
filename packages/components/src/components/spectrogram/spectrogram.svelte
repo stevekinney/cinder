@@ -27,6 +27,7 @@
   import {
     createChartGeometry,
     dataTableClass,
+    observeChartFontLoading,
     resolveChartTheme,
   } from '../../_internal/chart/chart-utilities.ts';
   import {
@@ -60,9 +61,14 @@
   const descriptionId = $derived(description ? `${rootId}-description` : undefined);
 
   const resolvedTheme = $derived(resolveChartTheme(theme));
+  let rootElement = $state<HTMLElement>();
   let measureText = $state(false);
+  let measurementVersion = $state(0);
   onMount(() => {
     measureText = true;
+    return observeChartFontLoading(() => {
+      measurementVersion += 1;
+    });
   });
 
   let measuredWidth = $state(400);
@@ -87,6 +93,28 @@
   // (NaN/Infinity) and out-of-range indices (ragged frames) are missing.
   function binValueAt(frameIndex: number, binIndex: number): number | null {
     return toFiniteOrNull(frames[frameIndex]?.bins[binIndex]);
+  }
+
+  // Sampled plot cells cover a rectangular bucket of source cells. Aggregate
+  // with a maximum so a narrow transient is not lost merely because it is not
+  // the bucket's first frame/bin. Each source cell is visited at most once
+  // across the rendered buckets, keeping this O(original frame × bin) work.
+  function plotBucketValue(
+    frameIndex: number,
+    frameSpan: number,
+    binIndex: number,
+    binSpan: number,
+  ): number | null {
+    let maximum: number | null = null;
+    for (let frameOffset = 0; frameOffset < frameSpan; frameOffset += 1) {
+      const frame = frames[frameIndex + frameOffset];
+      if (!frame) continue;
+      for (let binOffset = 0; binOffset < binSpan; binOffset += 1) {
+        const value = toFiniteOrNull(frame.bins[binIndex + binOffset]);
+        if (value !== null && (maximum === null || value > maximum)) maximum = value;
+      }
+    }
+    return maximum;
   }
 
   // Global color domain over the finite values only (shared with MatrixChart).
@@ -123,6 +151,8 @@
       xTickLabels: frames.map((frame) => frame.label),
       yTickLabels: yLabels,
       measureText,
+      measurementElement: rootElement,
+      measurementVersion,
     }),
   );
   const { plotWidth, plotHeight, marginTop, marginLeft } = $derived(geometry);
@@ -215,9 +245,13 @@
 <figure
   {...rest}
   {@attach observeResize}
+  bind:this={rootElement}
   id={rootId}
   class={classNames('cinder-spectrogram', customClassName)}
-  style={`--_cinder-chart-foreground: ${resolvedTheme.foreground}; --_cinder-chart-muted: ${resolvedTheme.muted}; --_cinder-chart-grid: ${resolvedTheme.grid}; --_cinder-chart-background: ${resolvedTheme.background};`}
+  style:--_cinder-chart-foreground={resolvedTheme.foreground}
+  style:--_cinder-chart-muted={resolvedTheme.muted}
+  style:--_cinder-chart-grid={resolvedTheme.grid}
+  style:--_cinder-chart-background={resolvedTheme.background}
   aria-label={label}
   aria-describedby={descriptionId}
 >
@@ -263,7 +297,9 @@
                 y={binY(bin.binIndex + bin.span - 1)}
                 width={entry.span * cellWidth}
                 height={bin.span * cellHeight}
-                fill={cellFill(binValueAt(entry.frameIndex, bin.binIndex))}
+                fill={cellFill(
+                  plotBucketValue(entry.frameIndex, entry.span, bin.binIndex, bin.span),
+                )}
                 aria-hidden="true"
               />
             {/each}

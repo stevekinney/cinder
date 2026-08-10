@@ -76,7 +76,10 @@ describe('createChartGeometry', () => {
   });
 
   test('batches browser text measurement into one hidden SVG', () => {
-    const append = spyOn(document.body, 'append');
+    const measurementElement = document.createElement('figure');
+    measurementElement.style.setProperty('--cinder-text-xs', '12px');
+    document.body.append(measurementElement);
+    const append = spyOn(measurementElement, 'append');
     try {
       createChartGeometry(640, 280, {
         xTickLabels: ['review-batch-x-1', 'review-batch-x-2'],
@@ -84,10 +87,23 @@ describe('createChartGeometry', () => {
         xAxis: { label: 'review-batch-x-title', tickLabelRotation: 30 },
         yAxis: { label: 'review-batch-y-title' },
         measureText: true,
+        measurementElement,
       });
       expect(append).toHaveBeenCalledTimes(1);
+
+      measurementElement.style.setProperty('--cinder-text-xs', '24px');
+      createChartGeometry(640, 280, {
+        xTickLabels: ['review-batch-x-1', 'review-batch-x-2'],
+        yTickLabels: ['review-batch-y-1', 'review-batch-y-2'],
+        xAxis: { label: 'review-batch-x-title', tickLabelRotation: 30 },
+        yAxis: { label: 'review-batch-y-title' },
+        measureText: true,
+        measurementElement,
+      });
+      expect(append).toHaveBeenCalledTimes(2);
     } finally {
       append.mockRestore();
+      measurementElement.remove();
     }
   });
 });
@@ -865,6 +881,35 @@ describe('createCartesianModel', () => {
       height: 280,
     });
     expect(model.normalizedSeries[0]?.areaPath.match(/M/g)).toHaveLength(2);
+  });
+
+  test('stacked decimation shares x positions and preserves adjacent boundaries', () => {
+    const data = Array.from({ length: 2_101 }, (_, index) => ({
+      x: index,
+      y: index % 11 === 0 ? 20 : 2,
+    }));
+    const model = createCartesianModel({
+      componentId: 'area-chart',
+      series: [
+        { id: 'base', label: 'Base', data },
+        {
+          id: 'top',
+          label: 'Top',
+          data: data.map((point) => ({ x: point.x, y: point.y / 2 })),
+        },
+      ],
+      hiddenSeriesIds: [],
+      width: 640,
+      height: 280,
+      stackedArea: true,
+    });
+    const [base, top] = model.normalizedSeries;
+    const baseKeys = base?.points.map((point) => point.x.key) ?? [];
+    const topKeys = top?.points.map((point) => point.x.key) ?? [];
+
+    expect(baseKeys).toEqual(topKeys);
+    expect(baseKeys.length).toBeLessThanOrEqual(2_000);
+    expect(base?.points[1]?.pixelY).toBeGreaterThan(top?.points[1]?.pixelY ?? Infinity);
   });
 
   test('derives margins from formatted tick labels, rotation, and axis titles', () => {

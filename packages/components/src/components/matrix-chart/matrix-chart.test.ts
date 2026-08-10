@@ -31,6 +31,22 @@ const confusionData = [
 ];
 
 describe('MatrixChart', () => {
+  test('preserves consumer inline styles while applying theme variables', () => {
+    const { container } = render(MatrixChart, {
+      label: 'Styled matrix',
+      data: confusionData,
+      xField: 'predicted',
+      yField: 'actual',
+      valueField: 'count',
+      style: 'inline-size: 20rem; --consumer-token: keep-me',
+      theme: { foreground: 'hotpink' },
+    });
+    const root = container.querySelector('.cinder-matrix-chart');
+    expect(root?.getAttribute('style')).toContain('inline-size: 20rem');
+    expect(root?.getAttribute('style')).toContain('--consumer-token: keep-me');
+    expect(root?.getAttribute('style')).toContain('--_cinder-chart-foreground: hotpink');
+  });
+
   test('uses the custom theme palette and background for heatmap fills', () => {
     const { container } = render(MatrixChart, {
       label: 'Themed matrix',

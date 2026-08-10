@@ -235,6 +235,25 @@ describe('LineChart', () => {
     expect(queryByText('Jan: 120')).toBeNull();
   });
 
+  test('keeps tooltip synchronized after outside pointer input and target movement', async () => {
+    const { getByRole, queryByText } = render(LineChart, {
+      label: 'Monthly revenue',
+      tooltip: true,
+      series,
+    });
+    const firstTarget = getByRole('button', { name: 'Revenue, Jan, 120' });
+    const secondTarget = getByRole('button', { name: 'Signups, Jan, 40' });
+
+    await fireEvent.focus(firstTarget);
+    expect(queryByText('Jan: 120')).toBeTruthy();
+
+    await fireEvent.mouseDown(document.body);
+    await fireEvent.focus(secondTarget);
+
+    expect(queryByText('Jan: 40')).toBeTruthy();
+    expect(secondTarget.getAttribute('aria-describedby')).toBeTruthy();
+  });
+
   test('renders custom tooltip content with the active semantic target', async () => {
     const tooltip = createRawSnippet<[ChartTarget]>((getTarget) => ({
       render: () => `<span data-custom-tooltip>${getTarget().seriesLabel} insight</span>`,

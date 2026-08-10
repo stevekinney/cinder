@@ -1,6 +1,6 @@
 export { createBarModel } from './chart-bar-model.ts';
 export { createCartesianModel } from './chart-cartesian-model.ts';
-export { createChartGeometry } from './chart-layout.ts';
+export { createChartGeometry, observeChartFontLoading } from './chart-layout.ts';
 export type { ChartGeometryOptions } from './chart-layout.ts';
 export * from './chart-model-utilities.ts';
 export {
@@ -15,6 +15,7 @@ export {
   createStackedBarDomainValues,
   createTicks,
   decimatePlacedPoints,
+  decimationIndices,
   normalizeNumericValue,
   sortXValues,
 } from './chart-scale.ts';
