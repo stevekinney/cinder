@@ -980,6 +980,40 @@ describe('createCartesianModel', () => {
     expect(base?.points[1]?.pixelY).toBeGreaterThan(top?.points[1]?.pixelY ?? Infinity);
   });
 
+  test('stacked decimation preserves extrema from every cumulative layer boundary', () => {
+    const model = createCartesianModel({
+      componentId: 'area-chart',
+      series: [
+        {
+          id: 'redistributed',
+          label: 'Redistributed',
+          data: Array.from({ length: 2_101 }, (_, index) => ({
+            x: index,
+            y: index === 1_000 ? 100 : 0,
+          })),
+        },
+        {
+          id: 'remainder',
+          label: 'Remainder',
+          data: Array.from({ length: 2_101 }, (_, index) => ({
+            x: index,
+            y: index === 1_000 ? 0 : 100,
+          })),
+        },
+      ],
+      hiddenSeriesIds: [],
+      width: 640,
+      height: 280,
+      stackedArea: true,
+    });
+    const [redistributed, remainder] = model.normalizedSeries;
+    const redistributedKeys = redistributed?.points.map((point) => point.x.key) ?? [];
+
+    expect(redistributed?.points.some((point) => point.x.raw === 1_000)).toBe(true);
+    expect(remainder?.points.map((point) => point.x.key)).toEqual(redistributedKeys);
+    expect(redistributedKeys.length).toBeLessThanOrEqual(2_000);
+  });
+
   test('stacked render points exclude x values owned only by hidden series', () => {
     const model = createCartesianModel({
       componentId: 'area-chart',

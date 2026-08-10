@@ -43,6 +43,19 @@ describe('Spectrogram', () => {
     expect(fill).toContain('custom-background');
   });
 
+  test('routes cell boundaries through the custom grid theme channel', async () => {
+    const { container } = render(Spectrogram, {
+      label: 'Grid-themed spectrogram',
+      frames: mockFrames,
+      theme: { grid: 'custom-grid' },
+    });
+    const rootStyle = container.querySelector('.cinder-spectrogram')?.getAttribute('style');
+    const cssText = await Bun.file(new URL('./spectrogram.css', import.meta.url)).text();
+
+    expect(rootStyle).toContain('--_cinder-chart-grid: custom-grid');
+    expect(cssText).toContain('var(--_cinder-chart-grid, currentColor)');
+  });
+
   test('keeps cells inside the plot with long frequency labels', () => {
     const { container } = render(Spectrogram, {
       label: 'Long labels',

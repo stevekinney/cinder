@@ -25,7 +25,7 @@
 
   .cinder-matrix-chart__cell {
     rx: 2;
-    stroke: var(--_cinder-chart-background, transparent);
+    stroke: var(--_cinder-chart-grid, currentColor);
     stroke-width: 1.5;
   }
 

@@ -7,6 +7,19 @@ import type { NormalizedXValue, PlacedPoint } from './chart-model-utilities.ts';
 
 export const MAXIMUM_RENDERED_SERIES_POINTS = 2_000;
 
+function boundSelectedIndices(selected: Set<number>, limit: number): number[] {
+  const ordered = [...selected].sort((a, b) => a - b);
+  if (ordered.length <= limit) return ordered;
+  const interiorLimit = limit - 2;
+  const step = (ordered.length - 3) / Math.max(1, interiorLimit - 1);
+  const bounded = [ordered[0]!];
+  for (let index = 0; index < interiorLimit; index++) {
+    bounded.push(ordered[1 + Math.round(index * step)]!);
+  }
+  bounded.push(ordered.at(-1)!);
+  return [...new Set(bounded)].sort((a, b) => a - b);
+}
+
 export function decimationIndices(
   points: PlacedPoint[],
   maximumPoints = MAXIMUM_RENDERED_SERIES_POINTS,
@@ -52,18 +65,60 @@ export function decimationIndices(
     if (maximumIndex !== undefined) selected.add(maximumIndex);
   }
 
-  const ordered = [...selected].sort((a, b) => a - b);
-  if (ordered.length <= limit) return ordered;
   // A pathological input with a null in every bucket can exceed the bound.
   // Preserve endpoints and choose evenly-spaced candidates from the remainder.
-  const interiorLimit = limit - 2;
-  const step = (ordered.length - 3) / Math.max(1, interiorLimit - 1);
-  const bounded = [ordered[0]!];
-  for (let index = 0; index < interiorLimit; index++) {
-    bounded.push(ordered[1 + Math.round(index * step)]!);
+  return boundSelectedIndices(selected, limit);
+}
+
+export function decimationIndicesForLayers(
+  layers: ReadonlyArray<ReadonlyArray<number | null>>,
+  maximumPoints = MAXIMUM_RENDERED_SERIES_POINTS,
+): number[] {
+  const pointCount = layers[0]?.length ?? 0;
+  if (pointCount <= maximumPoints || maximumPoints < 2) {
+    return Array.from({ length: pointCount }, (_, index) => index);
   }
-  bounded.push(ordered.at(-1)!);
-  return [...new Set(bounded)].sort((a, b) => a - b);
+  const limit = Math.max(2, Math.floor(maximumPoints));
+  // Each layer can contribute a minimum, maximum, and structural null per
+  // bucket. Size the buckets against that worst case so every cumulative
+  // boundary participates without exceeding the shared render budget.
+  const candidatesPerBucket = Math.max(1, layers.length * 3);
+  const bucketCount = Math.max(1, Math.floor((limit - 2) / candidatesPerBucket));
+  const interiorLength = pointCount - 2;
+  const selected = new Set<number>([0, pointCount - 1]);
+
+  for (let bucketIndex = 0; bucketIndex < bucketCount; bucketIndex++) {
+    const start = 1 + Math.floor((bucketIndex * interiorLength) / bucketCount);
+    const end = 1 + Math.floor(((bucketIndex + 1) * interiorLength) / bucketCount);
+    if (end <= start) continue;
+    for (const layer of layers) {
+      let minimumIndex: number | undefined;
+      let maximumIndex: number | undefined;
+      let nullIndex: number | undefined;
+      let minimumValue = Number.POSITIVE_INFINITY;
+      let maximumValue = Number.NEGATIVE_INFINITY;
+      for (let index = start; index < end; index++) {
+        const value = layer[index];
+        if (value === null || value === undefined) {
+          nullIndex ??= index;
+          continue;
+        }
+        if (value < minimumValue) {
+          minimumValue = value;
+          minimumIndex = index;
+        }
+        if (value > maximumValue) {
+          maximumValue = value;
+          maximumIndex = index;
+        }
+      }
+      if (nullIndex !== undefined) selected.add(nullIndex);
+      if (minimumIndex !== undefined) selected.add(minimumIndex);
+      if (maximumIndex !== undefined) selected.add(maximumIndex);
+    }
+  }
+
+  return boundSelectedIndices(selected, limit);
 }
 
 export function decimatePlacedPoints(

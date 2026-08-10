@@ -30,7 +30,7 @@ import {
   createPointScale,
   createTicks,
   decimatePlacedPoints,
-  decimationIndices,
+  decimationIndicesForLayers,
   normalizeNumericValue,
   sortXValues,
   type BandlikeScale,
@@ -218,32 +218,24 @@ export function createCartesianModel(options: {
       )
     : undefined;
   const stackedRenderDomain = stackedRenderXValues ?? [];
-  const stackedRenderIndices = stackedArea
-    ? decimationIndices(
-        stackedRenderDomain.map((value, index) => {
-          let total = 0;
-          let hasValue = false;
-          for (const item of normalizedSeries) {
-            if (hiddenSeriesIds.includes(item.id)) continue;
-            const point = normalizedPointsBySeriesId?.get(item.id)?.get(value.key);
-            if (point?.y === null || point?.y === undefined) continue;
-            total += point.y;
-            hasValue = true;
-          }
-          return {
-            seriesId: '__stacked__',
-            seriesLabel: 'Stacked area',
-            color: 'transparent',
-            x: value,
-            y: hasValue ? total : null,
-            originalY: hasValue ? total : null,
-            index,
-            pixelX: index,
-            pixelY: total,
-            pixelY0: 0,
-          };
-        }),
-      )
+  const stackedBoundaryLayers = stackedArea
+    ? (() => {
+        const cumulativeValuesByKey = new Map(stackedRenderDomain.map((value) => [value.key, 0]));
+        return normalizedSeries
+          .filter((item) => !hiddenSeriesIds.includes(item.id))
+          .map((item) =>
+            stackedRenderDomain.map((value) => {
+              const point = normalizedPointsBySeriesId?.get(item.id)?.get(value.key);
+              if (point?.y === null || point?.y === undefined) return null;
+              const cumulativeValue = (cumulativeValuesByKey.get(value.key) ?? 0) + point.y;
+              cumulativeValuesByKey.set(value.key, cumulativeValue);
+              return cumulativeValue;
+            }),
+          );
+      })()
+    : undefined;
+  const stackedRenderIndices = stackedBoundaryLayers
+    ? decimationIndicesForLayers(stackedBoundaryLayers)
     : undefined;
   const renderedSeries = normalizedSeries.map((item) => {
     const hidden = hiddenSeriesIds.includes(item.id);

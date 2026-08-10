@@ -61,6 +61,22 @@ describe('MatrixChart', () => {
     expect(fill).toContain('custom-background');
   });
 
+  test('routes cell boundaries through the custom grid theme channel', async () => {
+    const { container } = render(MatrixChart, {
+      label: 'Grid-themed matrix',
+      data: confusionData,
+      xField: 'predicted',
+      yField: 'actual',
+      valueField: 'count',
+      theme: { grid: 'custom-grid' },
+    });
+    const rootStyle = container.querySelector('.cinder-matrix-chart')?.getAttribute('style');
+    const cssText = await Bun.file(new URL('./matrix-chart.css', import.meta.url)).text();
+
+    expect(rootStyle).toContain('--_cinder-chart-grid: custom-grid');
+    expect(cssText).toContain('stroke: var(--_cinder-chart-grid, currentColor)');
+  });
+
   test('keeps cells inside the plot when category labels are long', () => {
     const { container } = render(MatrixChart, {
       label: 'Long labels',

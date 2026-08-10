@@ -23,7 +23,7 @@
   }
 
   .cinder-spectrogram__cell {
-    stroke: color-mix(in oklch, var(--_cinder-chart-foreground, currentColor), transparent 88%);
+    stroke: color-mix(in oklch, var(--_cinder-chart-grid, currentColor), transparent 88%);
     stroke-width: 0.5;
   }
 
