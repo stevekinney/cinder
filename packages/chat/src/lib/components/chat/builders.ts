@@ -38,7 +38,7 @@ export function markMessageDeliveryFailed(
       ...history.messages,
       [messageId]: {
         ...message,
-        metadata: { ...message.metadata, [DELIVERY_STATUS_METADATA_KEY]: 'failed' },
+        metadata: { ...(message.metadata ?? {}), [DELIVERY_STATUS_METADATA_KEY]: 'failed' },
       },
     },
     updatedAt: new Date().toISOString(),
@@ -51,7 +51,7 @@ export function clearMessageDeliveryStatus(
   messageId: string,
 ): ConversationHistory {
   const message = history.messages[messageId];
-  if (!message || !(DELIVERY_STATUS_METADATA_KEY in message.metadata)) return history;
+  if (!message || !message.metadata || !(DELIVERY_STATUS_METADATA_KEY in message.metadata)) return history;
 
   const metadata = { ...message.metadata };
   delete metadata[DELIVERY_STATUS_METADATA_KEY];

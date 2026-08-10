@@ -103,19 +103,22 @@ complete finite stream without assuming a particular model provider.
 
 ### Failed delivery and retry
 
-`ChatAdapter` reports rejected commands through `onadaptererror`; it does not
-mutate the consumer-owned `conversation` snapshot. Use the typed helpers to
-keep the retry affordance in sync with that snapshot:
+`ChatAdapter` reports rejected commands to the consumer through `onadaptererror`;
+Chat routes those errors automatically. Adapter implementations should mark
+delivery status and then rethrow so Chat can handle the error consistently:
 
 ```ts
 import { clearMessageDeliveryStatus, markMessageDeliveryFailed } from '@lostgradient/chat';
 
-try {
-  await adapter.sendMessage(message, attachments);
-  conversation = clearMessageDeliveryStatus(conversation, messageId);
-} catch (error) {
-  conversation = markMessageDeliveryFailed(conversation, messageId);
-  onadaptererror?.({ command: 'sendMessage', error });
+// Inside your ChatAdapter implementation:
+async sendMessage(message, attachments) {
+  try {
+    await yourBackend.send(message, attachments);
+    conversation = clearMessageDeliveryStatus(conversation, messageId);
+  } catch (error) {
+    conversation = markMessageDeliveryFailed(conversation, messageId);
+    throw error; // rethrow so Chat routes it to onadaptererror
+  }
 }
 ```
 
