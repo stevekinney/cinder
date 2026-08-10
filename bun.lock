@@ -24,7 +24,7 @@
       "name": "@lostgradient/chat",
       "version": "0.7.1",
       "dependencies": {
-        "conversationalist": "^0.5.0",
+        "conversationalist": "^0.6.0",
         "zod": "4.4.1",
       },
       "devDependencies": {
@@ -759,7 +759,7 @@
 
     "content-type": ["content-type@1.0.5", "", {}, "sha512-nTjqfcBFEipKdXCv4YDQWCfmcLZKm81ldF0pAopTvyrFGVbcR6P/VAAd5G7N+0tTr8QqiU0tFadD6FK4NtJwOA=="],
 
-    "conversationalist": ["conversationalist@0.5.0", "", { "dependencies": { "gray-matter": "^4.0.3" }, "peerDependencies": { "@anthropic-ai/sdk": "^0.71.2", "zod": "^4.4.1" } }, "sha512-VfITXaRZaNF/P1rMFQdSj/31otp2UmEz5V6MCH231sJm47OIDDTAu9bFGcTkohAdrCxasI31zTgB9299j4aR6g=="],
+    "conversationalist": ["conversationalist@0.6.0", "", { "dependencies": { "gray-matter": "^4.0.3" }, "peerDependencies": { "@anthropic-ai/sdk": "^0.116.0", "zod": "^4.4.3" } }, "sha512-GOIyX4TTDWfA0k5ngnjNsKBPNMGPlzjFx7OI9zf1unRfs7SSYhCP5pNHLMCw8w6Vswt299YaHbdKH/ZSFLQODQ=="],
 
     "cookie": ["cookie@0.7.2", "", {}, "sha512-yki5XnKuf750l50uGTllt6kKILY4nQ1eNIQatoXEByZ5dWgnKqbnqmTrBE5B4N7lrMJKQ2ytWMiTO2o0v6Ew/w=="],
 
