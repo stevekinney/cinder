@@ -92,6 +92,24 @@ export interface UseChatScrollStateReturn {
    * guard cancels it first). Use this for any caller-driven scroll
    * (e.g. a virtualized `scrollToOffset`/`scrollToIndex` call) that isn't
    * already routed through `scrollToBottom`/`scrollToTop`/`jumpToLatest`.
+   *
+   * `destination`, if given, declares where this guarded scroll is headed
+   * (scrollToTop → 0, jumpToLatest → the bottom) and serves two consumers:
+   *
+   * - `finishUserScrollGuard` completes the scroll instantly at the
+   *   destination instead of leaving its animation racing a later instant
+   *   scroll (#1237).
+   * - `scrollend` settlement becomes destination-aware: a `scrollend` whose
+   *   scroll position is not within a few pixels of the (viewport-clamped)
+   *   destination is treated as STALE — the tail end of an earlier scroll
+   *   (e.g. an auto-stick bottom correction issued just before this guard
+   *   was armed) whose scroll/scrollend pair lands after `action()` starts
+   *   its own animation (#1236). Such an event re-arms the scroll-quiet
+   *   backstop instead of settling, so the guard holds until the viewport
+   *   either reaches the destination or genuinely stops scrolling.
+   *
+   * It is read lazily so a destination like "the bottom" is computed against
+   * the scroll extent at read time, not at guard start.
    */
   withUserScrollGuard(
     viewport: HTMLElement | null,
@@ -143,6 +161,14 @@ export interface UseChatScrollStateReturn {
 // ==========================================================================
 // Utilities
 // ==========================================================================
+
+/**
+ * How far (px) a scrollend's position may sit from a guard's settle target and
+ * still count as "arrived". Covers fractional scroll positions and the ±1px
+ * rounding browsers apply to programmatic targets; anything farther is a stale
+ * scrollend from an earlier scroll, not this guard's own completion (#1236).
+ */
+const SETTLE_TARGET_TOLERANCE = 2;
 
 // ==========================================================================
 // Helper
@@ -304,6 +330,36 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
       atBottom = true;
       onReachBottom?.();
     }
+  }
+
+  /**
+   * Re-derive atBottom from the viewport's live geometry when a guarded scroll
+   * settles. The scroll listener's recompute is rAF-deferred, so at the exact
+   * moment a guard drops, `atBottom` may still describe a transient
+   * mid-animation position (e.g. "near the bottom" read milliseconds into a
+   * scroll-to-top). State is refreshed from final geometry, and reaching the
+   * bottom fires `onReachBottom` when the state transitions there.
+   */
+  function recomputeAtBottomAtSettlement(viewport: HTMLElement | null): void {
+    if (viewport === null) return;
+    const state = {
+      scrollTop: viewport.scrollTop,
+      scrollHeight: viewport.scrollHeight,
+      clientHeight: viewport.clientHeight,
+    };
+    const scrolledToBottom = checkIsAtBottom(state, getBottomThreshold?.() ?? bottomThreshold);
+    showJumpButton = shouldShowJumpToLatest(state, getJumpThreshold?.() ?? jumpThreshold);
+    if (scrolledToBottom && !atBottom) {
+      atBottom = true;
+      onReachBottom?.();
+    } else if (!scrolledToBottom && atBottom) {
+      atBottom = false;
+    }
+    onScrollStateChange?.({
+      atBottom: scrolledToBottom,
+      scrollTop: state.scrollTop,
+      scrollHeight: state.scrollHeight,
+    });
   }
 
   function applyPendingSentinelEntry(viewport: HTMLElement | null): void {
@@ -486,12 +542,22 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
     const settleBackstopDuration = reducedMotion.current ? 50 : 500;
     let settled = false;
     let backstop: ReturnType<typeof setTimeout> | undefined;
+    let guardSettleTarget: number | null = null;
+
+    function readSettleTarget(): number | null {
+      if (destination === undefined || viewport === null) return null;
+      // Clamp the declared destination to the currently reachable scroll
+      // range: jumpToLatest declares "the bottom" as `scrollHeight`, which
+      // the browser clamps to `scrollHeight - clientHeight` when scrolling.
+      const maximumScrollTop = Math.max(0, viewport.scrollHeight - viewport.clientHeight);
+      return Math.min(maximumScrollTop, Math.max(0, destination()));
+    }
 
     function cancel(): void {
       if (settled) return;
       settled = true;
       if (backstop !== undefined) clearTimeout(backstop);
-      viewport?.removeEventListener('scrollend', settle);
+      viewport?.removeEventListener('scrollend', settleFromScrollEnd);
       viewport?.removeEventListener('scroll', armBackstop);
     }
 
@@ -502,8 +568,47 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
       activeUserScrollViewport = null;
       activeUserScrollGuardDestination = null;
       isUserScrolling = false;
+      // Settlement leaves atBottom truthful for the FINAL geometry, not for
+      // whatever transient position the last coalesced/rAF-deferred recompute
+      // happened to observe mid-animation. Without this, a remeasurement
+      // landing in the sub-frame window between settlement and the scroll
+      // listener's next rAF recompute can re-fire the auto-stick effect
+      // against a stale `atBottom: true` and yank a just-completed top-scroll
+      // back to the bottom (#1236).
+      recomputeAtBottomAtSettlement(viewport);
       applyPendingSentinelEntry(viewport);
       onSettled?.();
+    }
+
+    function settleFromScrollEnd(): void {
+      if (settled) return;
+      const target = readSettleTarget();
+      if (target !== null && viewport !== null) {
+        if (Math.abs(viewport.scrollTop - target) > SETTLE_TARGET_TOLERANCE) {
+          // Stale scrollend from an earlier scroll (the guard's own animation
+          // has not reached its destination), or an animation cancelled
+          // mid-flight. Keep the guard armed; the scroll-quiet backstop still
+          // guarantees eventual settlement if no further progress is ever
+          // made.
+          // A bottom-directed smooth scroll can also have its original target
+          // invalidated by content appended while the animation is in flight.
+          // Re-issue the destination so the browser retargets to the newly
+          // reachable bottom instead of settling above the latest message. Do
+          // not re-issue for unchanged bottoms: that can fight a user's manual
+          // cancellation in the non-virtualized path.
+          const targetGrewSinceGuardArmed =
+            guardSettleTarget !== null && target > guardSettleTarget + SETTLE_TARGET_TOLERANCE;
+          if (targetGrewSinceGuardArmed && target > viewport.scrollTop + SETTLE_TARGET_TOLERANCE) {
+            withForcedLayout(viewport, () => {
+              viewport.scrollTo({ top: destination!(), behavior: getScrollBehavior() });
+            });
+            guardSettleTarget = target;
+          }
+          armBackstop();
+          return;
+        }
+      }
+      settle();
     }
 
     function armBackstop(): void {
@@ -514,7 +619,11 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
     activeUserScrollGuardCancel = cancel;
     activeUserScrollViewport = viewport;
     activeUserScrollGuardDestination = destination ?? null;
-    viewport?.addEventListener('scrollend', settle, { once: true });
+    guardSettleTarget = readSettleTarget();
+    // NOT `{ once: true }`: a stale scrollend that fails the destination check
+    // must not consume the listener, or the REAL animation's completion could
+    // never settle the guard promptly.
+    viewport?.addEventListener('scrollend', settleFromScrollEnd);
     viewport?.addEventListener('scroll', armBackstop, { passive: true });
 
     // Arm the no-event backstop AFTER `action()` runs. The action can include
@@ -524,6 +633,9 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
     try {
       action();
     } finally {
+      // Forced layout inside the action can change the reachable bottom. The
+      // cancellation baseline must describe the target actually issued.
+      guardSettleTarget = readSettleTarget();
       armBackstop();
     }
   }
@@ -589,6 +701,10 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
         viewport.scrollTo({ top: 0, behavior: getScrollBehavior() });
       },
       undefined,
+      // Destination: only a scrollend AT the top is this scroll's own
+      // completion — one from an earlier scroll's tail end must not settle
+      // the guard while the animation is still heading up (#1236) — and
+      // finishUserScrollGuard completes the scroll here instantly (#1237).
       () => 0,
     );
   }
