@@ -101,6 +101,41 @@ snapshot for each token, finalize it before `endStreaming`, and cancel it when
 the backend fails. The package's Adapter-driven streaming example uses a
 complete finite stream without assuming a particular model provider.
 
+### Failed delivery and retry
+
+`ChatAdapter.sendMessage` receives a `MessageInput`, not a persisted `Message`,
+so it has no message ID. Append the optimistic user message to the
+authoritative snapshot first and retain the generated ID. Chat awaits adapter
+commands and reports rejected commands through `onadaptererror`; adapter
+implementations should mark delivery status and then rethrow so Chat can handle
+the error consistently:
+
+```ts
+import {
+  appendUserMessage,
+  clearMessageDeliveryStatus,
+  markMessageDeliveryFailed,
+} from '@lostgradient/chat';
+
+// Inside your ChatAdapter implementation:
+async sendMessage(message, attachments) {
+  conversation = appendUserMessage(conversation, message.content);
+  const messageId = conversation.ids.at(-1)!;
+  try {
+    await yourBackend.send(message, attachments);
+    conversation = clearMessageDeliveryStatus(conversation, messageId);
+  } catch (error) {
+    conversation = markMessageDeliveryFailed(conversation, messageId);
+    throw error; // rethrow so Chat routes it to onadaptererror
+  }
+}
+```
+
+The helpers immutably set or clear the transient `_deliveryStatus` metadata
+used by Chat's failed-message label and Retry button. Apply the same pair around
+`retryMessage` and `editMessage` resends; the successful attempt clears the
+marker.
+
 > [!WARNING] `ChatAdapter.subscribe` runs inside Chat's own effect
 > Chat opens `subscribe` from inside its internal mount `$effect`, so a
 > synchronous `$state` write inside `subscribe` can throw
