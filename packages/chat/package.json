@@ -168,7 +168,7 @@
     "validate:consumer": "bun run scripts/validate-consumer.ts"
   },
   "dependencies": {
-    "conversationalist": "^0.6.0",
+    "conversationalist": "^0.6.1",
     "zod": "4.4.3"
   },
   "devDependencies": {
