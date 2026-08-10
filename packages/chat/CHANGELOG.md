@@ -1,5 +1,27 @@
 # @lostgradient/chat
 
+## 0.7.1
+
+### Patch Changes
+
+- [#1242](https://github.com/stevekinney/cinder/pull/1242) [`791094c`](https://github.com/stevekinney/cinder/commit/791094c2d2e441ae496db0e5d3613dda7971ce76) Thanks [@stevekinney](https://github.com/stevekinney)! - Make virtualized scrollToTop()/scrollToBottom() actually navigate the transcript: guard settlement is now target-aware, so a stale scrollend left in flight by an auto-stick bottom correction can no longer settle the user-scroll guard mid-animation and let the next remeasurement re-pin the viewport to the bottom.
+
+- [#1246](https://github.com/stevekinney/cinder/pull/1246) [`a4875f8`](https://github.com/stevekinney/cinder/commit/a4875f8990a96a89cc99af5a6b51b7452de81eb6) Thanks [@stevekinney](https://github.com/stevekinney)! - Export typed immutable helpers for marking failed message delivery and clearing
+  the marker after a successful retry. Document how adapter consumers keep Chat's
+  Retry affordance synchronized with their conversation snapshot ([#1240](https://github.com/stevekinney/cinder/issues/1240)).
+
+- [#1244](https://github.com/stevekinney/cinder/pull/1244) [`9059a23`](https://github.com/stevekinney/cinder/commit/9059a2352d8369f0a11f47dee20ee430f2cd0cf8) Thanks [@stevekinney](https://github.com/stevekinney)! - Fix the history-prepend anchoring race when older messages are requested while a guarded programmatic scroll (most commonly a smooth scroll-to-top glide — the top is where the load-earlier trigger lives) is still animating ([#1237](https://github.com/stevekinney/cinder/issues/1237)).
+
+  The capture used to snapshot a still-moving viewport, and the glide's smooth-scroll animation — with its absolute target of `scrollTop: 0`, where browsers also suppress native scroll anchoring — then raced Chat's instant restore corrections. Whichever landed last won: the restore could strand the viewport mid-transcript, or the glide could finish at 0 so the visible transcript shifted down by exactly the prepended block's height (with a [#911](https://github.com/stevekinney/cinder/issues/911)-style overshoot as the third possible interleaving).
+
+  `useChatScrollState` guarded scrolls now record their destination, and a new `finishUserScrollGuard()` completes an in-flight guarded scroll instantly at that destination (aborting the browser's animation) — `handleLoadHistory` calls it before capturing, so the capture always snapshots a parked viewport and the restore has nothing left to race. Loading earlier history mid-glide now deterministically parks the viewport at the old top with the previously visible content exactly where it was, the prepended block above it.
+
+- [#1239](https://github.com/stevekinney/cinder/pull/1239) [`742b43a`](https://github.com/stevekinney/cinder/commit/742b43a6f957744dc948c86f92df5697b4064d08) Thanks [@stevekinney](https://github.com/stevekinney)! - Single-flight message retries at the dispatch layer and expose a guarded programmatic `retryMessage(messageId)` on the Chat instance, so a second retry for an id whose retry is still in flight is ignored regardless of entry point (UI Retry button or direct call).
+
+- [#1247](https://github.com/stevekinney/cinder/pull/1247) [`b6e8f6b`](https://github.com/stevekinney/cinder/commit/b6e8f6bd47ac82890f0c55a1137c588b65814fb8) Thanks [@stevekinney](https://github.com/stevekinney)! - Avoid repeated virtualized bottom corrections when the transcript is already settled at the bottom after row measurement.
+
+- [#1245](https://github.com/stevekinney/cinder/pull/1245) [`4b6ca9f`](https://github.com/stevekinney/cinder/commit/4b6ca9fe2810a91b1aec4e6c21a4972f7b0bab34) Thanks [@stevekinney](https://github.com/stevekinney)! - Preload the markdown rendering pipeline when streaming begins so the first streamed message is formatted without a cold-import delay ([#1238](https://github.com/stevekinney/cinder/issues/1238)).
+
 ## 0.7.0
 
 ### Minor Changes
