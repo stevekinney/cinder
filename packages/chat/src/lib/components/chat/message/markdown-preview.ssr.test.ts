@@ -12,10 +12,10 @@
  * the server.
  *
  * markdown-preview.svelte satisfies this by:
- *   - importing the rendering pipeline DYNAMICALLY inside a `$effect`
- *     (`import('@lostgradient/markdown/rendering')`), never statically — `$effect`
- *     bodies never run during SSR, so the import is never evaluated on the
- *     server, and the heavy rendering graph stays out of the SSR path; and
+ *   - requesting the cached rendering-pipeline import inside a `$effect`, never
+ *     at module evaluation — `$effect` bodies never run during SSR, so the import
+ *     is never evaluated on the server, and the heavy rendering graph stays out
+ *     of the SSR path; and
  *   - rendering a raw-text fallback (`<p>{content}</p>`) in the `{:else}`
  *     branch, so the server emits the message text without throwing and the
  *     client swaps in formatted HTML after hydration.
@@ -25,11 +25,11 @@
  * `renderThenHydrate` (the recompiled SSR module resolves that import
  * against a missing "node"-conditional dist, producing `effect_orphan`) —
  * markdown-preview has no child components and no static markdown/editor import.
- * Its only heavy dependency is reached through a dynamic import inside an
- * `$effect`, which never runs during SSR. We therefore verify the SSR contract
- * by actually rendering on the server via `renderThenHydrate` and asserting on
- * the produced markup, the same pattern `portal.test.ts` uses for its
- * SSR-omission contract.
+ * Its only heavy dependency is reached through the cached loader inside an
+ * `$effect`, which never runs during SSR. We therefore verify the SSR contract by
+ * actually rendering on the server via `renderThenHydrate` and asserting on the
+ * produced markup, the same pattern `portal.test.ts` uses for its SSR-omission
+ * contract.
  */
 
 import { describe, expect, test } from 'bun:test';
