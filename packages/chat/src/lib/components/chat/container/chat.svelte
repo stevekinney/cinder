@@ -230,12 +230,6 @@
   const reasoningState = useChatDisclosureState({ onRemeasureRow: remeasureRow });
   const toolCallState = useChatDisclosureState({ onRemeasureRow: remeasureRow });
 
-  // Warm the markdown renderer while the chat mounts so the first streamed
-  // message can format its initial tokens instead of showing raw markdown.
-  $effect(() => {
-    void preloadMarkdownPipeline();
-  });
-
   // Reset UI-only approval/disclosure/typing/receipt state on conversation change
   // so stale approved/denied sets, expanded reasoning/tool-call disclosures,
   // adapter-derived typing state, and accumulated read receipts from the previous conversation
@@ -1944,6 +1938,9 @@
    * preceding endStreaming.
    */
   export function beginStreaming(messageId: string): void {
+    // Start loading before the first token arrives so the first streamed
+    // message can format its initial markdown instead of showing raw text.
+    void preloadMarkdownPipeline();
     if (streamingScrollRaf !== undefined) {
       cancelAnimationFrame(streamingScrollRaf);
       streamingScrollRaf = undefined;
