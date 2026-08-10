@@ -473,6 +473,166 @@ describe('useChatScrollState — isUserScrolling guard (regression for #774)', (
     expect(reachedBottom).toBe(1);
   });
 
+  test('a stale scrollend away from the settle target does not settle the guard (regression for #1236)', () => {
+    // In a real browser, a transcript pinned at the bottom routinely has an
+    // auto-stick instant correction's scroll/scrollend pair still in flight
+    // when scrollToTop() arms its guard. That scrollend fires with the
+    // viewport still at the bottom — nowhere near the guard's target (0) —
+    // and used to settle the guard milliseconds into the animation, letting
+    // the auto-stick effect re-pin the viewport on the next remeasurement.
+    jest.useFakeTimers();
+    const state = useChatScrollState();
+    const viewport = createViewport();
+    (viewport as { scrollTop: number }).scrollTop = 1600;
+
+    state.scrollToTop(viewport);
+    expect(state.isUserScrolling).toBe(true);
+
+    // Stale scrollend from the earlier bottom correction: viewport still at
+    // the bottom. Must NOT settle the guard.
+    viewport.dispatchEvent(new Event('scrollend'));
+    expect(state.isUserScrolling).toBe(true);
+
+    // The animation reaches the top; ITS scrollend settles the guard.
+    (viewport as { scrollTop: number }).scrollTop = 0;
+    viewport.dispatchEvent(new Event('scrollend'));
+    expect(state.isUserScrolling).toBe(false);
+  });
+
+  test('jumpToLatest retargets when appended content grows the bottom during smooth scrolling', () => {
+    jest.useFakeTimers();
+    const state = useChatScrollState();
+    const viewport = createViewport();
+    const scrollCalls: number[] = [];
+    viewport.scrollTo = ((options?: ScrollToOptions | number) => {
+      scrollCalls.push(typeof options === 'number' ? options : (options?.top ?? 0));
+    }) as typeof viewport.scrollTo;
+
+    state.jumpToLatest(viewport);
+    expect(scrollCalls).toEqual([2000]);
+
+    // The browser's smooth-scroll target was clamped to the old bottom.
+    // Appending a message grows the scroll extent before that animation ends.
+    Object.defineProperty(viewport, 'scrollHeight', { configurable: true, value: 2200 });
+    (viewport as { scrollTop: number }).scrollTop = 1600;
+    viewport.dispatchEvent(new Event('scrollend'));
+
+    // The old target is stale; the guard must retarget instead of settling
+    // above the newly appended latest message.
+    expect(state.isUserScrolling).toBe(true);
+    expect(scrollCalls).toEqual([2000, 2200]);
+
+    (viewport as { scrollTop: number }).scrollTop = 1800;
+    viewport.dispatchEvent(new Event('scrollend'));
+    expect(state.isUserScrolling).toBe(false);
+  });
+
+  test('jumpToLatest does not re-issue scroll when the bottom target is unchanged', () => {
+    jest.useFakeTimers();
+    const state = useChatScrollState();
+    const viewport = createViewport();
+    const scrollCalls: number[] = [];
+    viewport.scrollTo = ((options?: ScrollToOptions | number) => {
+      scrollCalls.push(typeof options === 'number' ? options : (options?.top ?? 0));
+    }) as typeof viewport.scrollTo;
+
+    state.jumpToLatest(viewport);
+    expect(scrollCalls).toEqual([2000]);
+
+    // The bottom has not grown; this mismatch can represent an animation
+    // cancelled by user input. Keep the guard armed, but do not force a new
+    // downward scroll in the non-virtualized path.
+    (viewport as { scrollTop: number }).scrollTop = 1200;
+    viewport.dispatchEvent(new Event('scrollend'));
+
+    expect(state.isUserScrolling).toBe(true);
+    expect(scrollCalls).toEqual([2000]);
+
+    jest.advanceTimersByTime(500);
+    expect(state.isUserScrolling).toBe(false);
+  });
+
+  test('a guard whose target is never reached still settles via the scroll-quiet backstop', () => {
+    jest.useFakeTimers();
+    const state = useChatScrollState();
+    const viewport = createViewport();
+    (viewport as { scrollTop: number }).scrollTop = 1600;
+
+    state.scrollToTop(viewport);
+    // A stale scrollend re-arms the backstop rather than settling.
+    viewport.dispatchEvent(new Event('scrollend'));
+    expect(state.isUserScrolling).toBe(true);
+
+    // The animation is cancelled (e.g. by user input) and no further events
+    // arrive: the backstop must still clear the guard.
+    jest.advanceTimersByTime(499);
+    expect(state.isUserScrolling).toBe(true);
+    jest.advanceTimersByTime(1);
+    expect(state.isUserScrolling).toBe(false);
+  });
+
+  test('settlement recomputes atBottom from final geometry instead of trusting a stale mid-animation value', () => {
+    // The scroll listener's recompute is rAF-deferred, so `atBottom` can
+    // still describe a transient near-bottom position at the instant a
+    // guarded scroll-to-top settles. Settlement must re-derive it from the
+    // live geometry so a remeasurement landing right after cannot re-engage
+    // the auto-stick effect against stale state (#1236).
+    jest.useFakeTimers();
+    const state = useChatScrollState();
+    const viewport = createViewport();
+    (viewport as { scrollTop: number }).scrollTop = 1600;
+
+    state.scrollToTop(viewport);
+    expect(state.atBottom).toBe(false);
+    // A stale scroll event's recompute flips atBottom back to true while the
+    // animation is in flight (simulated directly — the real recompute is
+    // rAF-deferred).
+    state.setAtBottom(true);
+
+    // The animation reaches the top and settles: atBottom must reflect the
+    // final position (1600px away from the bottom), not the stale flip.
+    (viewport as { scrollTop: number }).scrollTop = 0;
+    viewport.dispatchEvent(new Event('scrollend'));
+    expect(state.isUserScrolling).toBe(false);
+    expect(state.atBottom).toBe(false);
+  });
+
+  test('settlement recomputes showJumpButton with the final geometry', async () => {
+    const state = useChatScrollState();
+    const viewport = createViewport();
+    const detach = state.createScrollAttachment()(viewport);
+    (viewport as { scrollTop: number }).scrollTop = 1600;
+
+    state.scrollToTop(viewport);
+    // A stale scroll tick from the previous bottom correction is processed
+    // while the smooth scroll is still at the bottom. Its deferred rAF leaves
+    // showJumpButton false even though the eventual top position must show it.
+    viewport.dispatchEvent(new Event('scroll'));
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+
+    (viewport as { scrollTop: number }).scrollTop = 0;
+    viewport.dispatchEvent(new Event('scrollend'));
+
+    expect(state.atBottom).toBe(false);
+    expect(state.showJumpButton).toBe(true);
+    detach?.();
+  });
+
+  test('settlement emits one final scroll state change for bindable consumers', () => {
+    const stateChanges: Array<{ atBottom: boolean; scrollTop: number; scrollHeight: number }> = [];
+    const state = useChatScrollState({
+      onScrollStateChange: (event) => stateChanges.push(event),
+    });
+    const viewport = createViewport();
+    (viewport as { scrollTop: number }).scrollTop = 1600;
+
+    state.scrollToTop(viewport);
+    (viewport as { scrollTop: number }).scrollTop = 0;
+    viewport.dispatchEvent(new Event('scrollend'));
+
+    expect(stateChanges).toEqual([{ atBottom: false, scrollTop: 0, scrollHeight: 2000 }]);
+  });
+
   test('scrollToTop preserves atBottom when the viewport cannot actually leave the bottom', () => {
     // Regression guard (Codex review on #787): a transcript short enough to
     // fit entirely within the viewport (scrollHeight <= clientHeight) is

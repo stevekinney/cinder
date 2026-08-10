@@ -322,6 +322,8 @@
           scrollState.setAtBottom(false);
           updateAtBottomBinding(false);
         }
+        // Same destination as scrollToTop(): see that branch for why a
+        // stale scrollend must not settle this guard mid-animation (#1236).
         scrollState.withUserScrollGuard(
           viewport,
           () => {
@@ -665,6 +667,11 @@
         if (cancelled || !viewport || pendingHistoryScroll || historyAnchorMessageId !== null) {
           return;
         }
+        // Re-check the guard at execution time: a guarded scroll (e.g.
+        // scrollToTop()) can be issued between this effect's synchronous run
+        // and this deferred continuation. Correcting toward the bottom here
+        // would cancel that scroll's animation mid-flight (#1236).
+        if (scrollState.isUserScrolling) return;
         if (isVirtualized) {
           chatVirtualizer.scrollToOffset(chatVirtualizer.scrollSize, { behavior: 'instant' });
         } else {
@@ -1874,7 +1881,13 @@
       // section, above) fighting this animation: it re-fires on every
       // virtualizer remeasurement, and without this guard it would keep
       // snapping the viewport back toward the bottom mid-scroll since
-      // `isUserScrolling` was never set for this branch.
+      // `isUserScrolling` was never set for this branch. The destination
+      // keeps the guard armed through stale scroll/scrollend events left in
+      // flight by an instant bottom correction issued just before this call —
+      // without it, such a scrollend settles the guard milliseconds into the
+      // animation and the next remeasurement re-pins the viewport to the
+      // bottom (#1236) — and lets finishUserScrollGuard complete this scroll
+      // instantly at the top before a history-prepend capture (#1237).
       scrollState.withUserScrollGuard(
         viewport,
         () => {
