@@ -618,6 +618,21 @@ describe('useChatScrollState — isUserScrolling guard (regression for #774)', (
     detach?.();
   });
 
+  test('settlement emits one final scroll state change for bindable consumers', () => {
+    const stateChanges: Array<{ atBottom: boolean; scrollTop: number; scrollHeight: number }> = [];
+    const state = useChatScrollState({
+      onScrollStateChange: (event) => stateChanges.push(event),
+    });
+    const viewport = createViewport();
+    (viewport as { scrollTop: number }).scrollTop = 1600;
+
+    state.scrollToTop(viewport);
+    (viewport as { scrollTop: number }).scrollTop = 0;
+    viewport.dispatchEvent(new Event('scrollend'));
+
+    expect(stateChanges).toEqual([{ atBottom: false, scrollTop: 0, scrollHeight: 2000 }]);
+  });
+
   test('scrollToTop preserves atBottom when the viewport cannot actually leave the bottom', () => {
     // Regression guard (Codex review on #787): a transcript short enough to
     // fit entirely within the viewport (scrollHeight <= clientHeight) is

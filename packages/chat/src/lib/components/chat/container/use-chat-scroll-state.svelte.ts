@@ -355,6 +355,11 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
     } else if (!scrolledToBottom && atBottom) {
       atBottom = false;
     }
+    onScrollStateChange?.({
+      atBottom: scrolledToBottom,
+      scrollTop: state.scrollTop,
+      scrollHeight: state.scrollHeight,
+    });
   }
 
   function applyPendingSentinelEntry(viewport: HTMLElement | null): void {
