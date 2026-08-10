@@ -683,8 +683,6 @@
           if (Math.abs((viewport.scrollTop || 0) - maximumOffset) <= 1) return;
           chatVirtualizer.scrollToOffset(chatVirtualizer.scrollSize, { behavior: 'instant' });
         } else {
-          const maximumOffset = Math.max(0, viewport.scrollHeight - viewport.clientHeight);
-          if (Math.abs((viewport.scrollTop || 0) - maximumOffset) <= 1) return;
           viewport?.scrollTo({ top: viewport.scrollHeight, behavior: 'instant' });
         }
       });
