@@ -138,38 +138,72 @@ const MESSAGE_HEIGHT = 100;
 const VIEWPORT_HEIGHT = 300;
 
 /**
+ * Wait until every transcript row is committed to the DOM, then drain the
+ * microtask + macrotask queues so any mount-time auto-scroll continuation has
+ * already run. Bun/happy-dom versions differ in when the mount effects flush
+ * relative to the test's first interaction (bun 1.3.13 on CI committed the
+ * rows LATER than bun 1.3.14 locally, which changed what a click captured);
+ * settling first makes the starting state identical everywhere.
+ */
+async function settleRenderedRows(container: HTMLElement, expectedRows: number): Promise<void> {
+  await waitFor(() => {
+    expect(container.querySelectorAll('.chat-message').length).toBe(expectedRows);
+  });
+  await tick();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+/**
  * A tiny layout model driving `getBoundingClientRect` for message rows so the
  * anchor-measurement path (not the scrollHeight-delta fallback) is exercised.
- * Content coordinates: the trigger row occupies [0, triggerHeight), then each
- * transcript message occupies MESSAGE_HEIGHT starting at `triggerHeight`.
+ *
+ * Content coordinates: the load-earlier trigger row occupies
+ * [0, triggerHeight), then each transcript message occupies MESSAGE_HEIGHT.
  * Viewport-relative positions subtract the timeline's live scrollTop.
+ *
+ * The trigger row's height is derived from the trigger's LIVE DOM state —
+ * absent → 0, `disabled` (loading) → `loadingTriggerHeight`, idle →
+ * `idleTriggerHeight` — exactly as a real layout engine would report it the
+ * moment a flush commits. That keeps the model in lockstep with the
+ * component's own `isLoadingHistory` / trigger-unmount flushes without the
+ * test having to guess when those land (which varies across bun versions).
  */
-function installLayoutModel(timeline: HTMLElement): {
-  relayout: (ids: readonly string[], triggerHeight: number) => void;
+function installLayoutModel(
+  timeline: HTMLElement,
+  options?: { idleTriggerHeight?: number; loadingTriggerHeight?: number },
+): {
+  relayout: (ids: readonly string[]) => void;
+  triggerHeight: () => number;
   scrollTops: { top: number; behavior: string | undefined }[];
   uninstall: () => void;
 } {
-  const contentTops = new Map<string, number>();
-  let currentTriggerHeight = 0;
+  const idleTriggerHeight = options?.idleTriggerHeight ?? 0;
+  const loadingTriggerHeight = options?.loadingTriggerHeight ?? idleTriggerHeight;
+  // Message offsets relative to the END of the trigger row.
+  const messageOffsets = new Map<string, number>();
 
-  function relayout(ids: readonly string[], triggerHeight: number): void {
-    contentTops.clear();
-    currentTriggerHeight = triggerHeight;
-    let offset = triggerHeight;
-    for (const id of ids) {
-      contentTops.set(id, offset);
-      offset += MESSAGE_HEIGHT;
+  function relayout(ids: readonly string[]): void {
+    messageOffsets.clear();
+    for (const [index, id] of ids.entries()) {
+      messageOffsets.set(id, index * MESSAGE_HEIGHT);
     }
   }
 
-  // scrollHeight is derived from the message rows currently IN the DOM, not
-  // from the layout model directly: `$effect.pre` reads it before the DOM
-  // mutation commits and must see the pre-prepend extent, exactly as a real
-  // layout engine would report it.
+  function triggerHeight(): number {
+    const trigger = timeline.querySelector<HTMLButtonElement>(
+      '[data-cinder-history-trigger] button',
+    );
+    if (!trigger) return 0;
+    return trigger.disabled ? loadingTriggerHeight : idleTriggerHeight;
+  }
+
+  // scrollHeight is derived from the rows currently IN the DOM, not from the
+  // model's id list: `$effect.pre` reads it before the DOM mutation commits
+  // and must see the pre-prepend extent, exactly as a real layout engine
+  // would report it.
   Object.defineProperty(timeline, 'scrollHeight', {
     configurable: true,
-    get: () =>
-      currentTriggerHeight + timeline.querySelectorAll('.chat-message').length * MESSAGE_HEIGHT,
+    get: () => triggerHeight() + timeline.querySelectorAll('.chat-message').length * MESSAGE_HEIGHT,
   });
 
   Object.defineProperty(timeline, 'clientHeight', {
@@ -209,9 +243,9 @@ function installLayoutModel(timeline: HTMLElement): {
     }
     const elementId = (this as HTMLElement).id;
     if (elementId.startsWith('message-')) {
-      const contentTop = contentTops.get(elementId.slice('message-'.length));
-      if (contentTop !== undefined) {
-        const viewportTop = contentTop - timeline.scrollTop;
+      const messageOffset = messageOffsets.get(elementId.slice('message-'.length));
+      if (messageOffset !== undefined) {
+        const viewportTop = triggerHeight() + messageOffset - timeline.scrollTop;
         return domRect(viewportTop, viewportTop + MESSAGE_HEIGHT);
       }
     }
@@ -220,6 +254,7 @@ function installLayoutModel(timeline: HTMLElement): {
 
   return {
     relayout,
+    triggerHeight,
     scrollTops,
     uninstall: () => {
       Element.prototype.getBoundingClientRect = originalGetBoundingClientRect;
@@ -229,9 +264,6 @@ function installLayoutModel(timeline: HTMLElement): {
 
 describe('history prepend at scrollTop=0 (#1237)', () => {
   test('restores the anchor exactly, synchronously with the prepend flush, and absorbs the loading-trigger height change', async () => {
-    const IDLE_TRIGGER_HEIGHT = 50;
-    const LOADING_TRIGGER_HEIGHT = 30;
-
     let conversation = longConversation(20);
     let resolveLoad: ((result: { hasMore: boolean }) => void) | undefined;
     const adapter = {
@@ -245,46 +277,56 @@ describe('history prepend at scrollTop=0 (#1237)', () => {
     const { container, rerender } = render(Chat, {
       props: { id: 'prepend-anchor-chat', conversation, adapter },
     });
+    await settleRenderedRows(container, 20);
     const timeline = container.querySelector<HTMLElement>('.chat-timeline')!;
-    const layout = installLayoutModel(timeline);
+    const layout = installLayoutModel(timeline, {
+      idleTriggerHeight: 50,
+      loadingTriggerHeight: 30,
+    });
     try {
-      layout.relayout(conversation.ids, IDLE_TRIGGER_HEIGHT);
+      layout.relayout(conversation.ids);
       timeline.scrollTop = 0;
 
-      // Capture happens on the click, while the idle trigger (50px) is still
-      // measured: the first visible message (message-0) sits at offset 50.
-      await fireEvent.click(
-        container.querySelector<HTMLButtonElement>('[data-cinder-history-trigger] button')!,
-      );
+      // Capture happens synchronously inside the click handler, BEFORE the
+      // loading state flushes to the DOM: the idle trigger (50px) is still
+      // measured, so the first visible message (message-0) sits at offset 50.
+      const trigger = container.querySelector<HTMLButtonElement>(
+        '[data-cinder-history-trigger] button',
+      )!;
+      await fireEvent.click(trigger);
+      // The loading state has committed by now: the trigger is disabled and
+      // the model reports its loading (30px) height.
+      await waitFor(() => {
+        expect(trigger.disabled).toBe(true);
+      });
+      expect(layout.triggerHeight()).toBe(30);
 
-      // While the load is in flight the trigger renders its loading state,
-      // which is 20px SHORTER than the idle trigger in this model.
       const prepended = [
         { id: 'older-0', content: 'Older 0' },
         { id: 'older-1', content: 'Older 1' },
       ];
       conversation = prependMessages(conversation, prepended);
-      layout.relayout(conversation.ids, LOADING_TRIGGER_HEIGHT);
+      layout.relayout(conversation.ids);
       await rerender({ id: 'prepend-anchor-chat', conversation, adapter });
 
       // The restore must land with the SAME flush that committed the prepend
       // — no animation-frame wait — so after rerender's tick the correction
       // has already been applied: the anchor (message-0) moved from content
-      // offset 50 to 30 + 200 = 230, so scrollTop compensates to 180 and the
-      // anchor stays at viewport offset 50, exactly where it was captured.
+      // offset 50 (idle trigger) to 30 + 200 = 230 (loading trigger + two
+      // prepended rows), so scrollTop compensates to 180 and the anchor stays
+      // at viewport offset 50, exactly where it was captured.
       expect(timeline.scrollTop).toBe(180);
       const anchorRect = container
         .querySelector<HTMLElement>('#message-message-0')!
         .getBoundingClientRect();
       expect(Math.abs(anchorRect.top - 50)).toBeLessThanOrEqual(1);
 
-      // Once the adapter resolves, the trigger swaps back to its idle (50px)
-      // state — 20px taller. The post-settle correction must absorb exactly
-      // that delta or the anchored message drifts by the trigger-row height
-      // difference (#1237's deterministic under-compensation).
+      // Once the adapter resolves, isLoadingHistory flips back and the
+      // trigger re-enables — the model's trigger row grows back to 50px, a
+      // 20px shift above the anchor. The post-settle correction must absorb
+      // exactly that delta or the anchored message drifts by the trigger-row
+      // height difference (#1237's deterministic under-compensation).
       resolveLoad?.({ hasMore: true });
-      await tick();
-      layout.relayout(conversation.ids, IDLE_TRIGGER_HEIGHT);
       await waitFor(() => {
         expect(timeline.scrollTop).toBe(200);
       });
@@ -298,7 +340,7 @@ describe('history prepend at scrollTop=0 (#1237)', () => {
   });
 
   test('pins a still-running scroll animation before capturing when no guard is active', async () => {
-    let conversation = longConversation(20);
+    const conversation = longConversation(20);
     const adapter = {
       sendMessage: async () => {},
       loadOlderMessages: async () => ({ hasMore: true }),
@@ -306,10 +348,11 @@ describe('history prepend at scrollTop=0 (#1237)', () => {
     const { container } = render(Chat, {
       props: { id: 'prepend-pin-chat', conversation, adapter },
     });
+    await settleRenderedRows(container, 20);
     const timeline = container.querySelector<HTMLElement>('.chat-timeline')!;
-    const layout = installLayoutModel(timeline);
+    const layout = installLayoutModel(timeline, { idleTriggerHeight: 50 });
     try {
-      layout.relayout(conversation.ids, 50);
+      layout.relayout(conversation.ids);
       timeline.scrollTop = 120;
 
       await fireEvent.click(
@@ -333,13 +376,15 @@ describe('stick-to-bottom vs history prepend (#1237)', () => {
     let conversation = longConversation(20);
     const { container, rerender } = render(Chat, {
       // No adapter/onLoadHistory: this is a plain consumer prepend, so no
-      // pending history restoration guards the stick-to-bottom effect.
+      // pending history restoration guards the stick-to-bottom effect (and no
+      // trigger row is rendered, so the model's trigger height is 0).
       props: { id: 'prepend-stick-chat', conversation },
     });
+    await settleRenderedRows(container, 20);
     const timeline = container.querySelector<HTMLElement>('.chat-timeline')!;
     const layout = installLayoutModel(timeline);
     try {
-      layout.relayout(conversation.ids, 0);
+      layout.relayout(conversation.ids);
       // Parked at the very top of an overflowing transcript. The bindable
       // atBottom prop and the internal flag both still default to TRUE —
       // exactly the stale-flag state a rAF-deferred recompute leaves behind.
@@ -350,7 +395,7 @@ describe('stick-to-bottom vs history prepend (#1237)', () => {
         { id: 'older-stick-0', content: 'Older 0' },
         { id: 'older-stick-1', content: 'Older 1' },
       ]);
-      layout.relayout(conversation.ids, 0);
+      layout.relayout(conversation.ids);
       await rerender({ id: 'prepend-stick-chat', conversation });
       await tick();
       await new Promise((resolve) => setTimeout(resolve, 50));
@@ -372,10 +417,11 @@ describe('stick-to-bottom vs history prepend (#1237)', () => {
     const { container, rerender } = render(Chat, {
       props: { id: 'prepend-stick-bottom-chat', conversation },
     });
+    await settleRenderedRows(container, 20);
     const timeline = container.querySelector<HTMLElement>('.chat-timeline')!;
     const layout = installLayoutModel(timeline);
     try {
-      layout.relayout(conversation.ids, 0);
+      layout.relayout(conversation.ids);
       // Genuinely parked at the bottom: 20 * 100 - 300 = 1700.
       timeline.scrollTop = 1700;
       layout.scrollTops.length = 0;
@@ -384,7 +430,7 @@ describe('stick-to-bottom vs history prepend (#1237)', () => {
         { id: 'older-pin-0', content: 'Older 0' },
         { id: 'older-pin-1', content: 'Older 1' },
       ]);
-      layout.relayout(conversation.ids, 0);
+      layout.relayout(conversation.ids);
       await rerender({ id: 'prepend-stick-bottom-chat', conversation });
 
       // Stick-to-bottom keeps the latest message pinned by scrolling to the
