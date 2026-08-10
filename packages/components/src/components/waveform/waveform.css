@@ -29,7 +29,7 @@
 
   .cinder-waveform__path {
     fill: none;
-    stroke: var(--_cinder-chart-foreground, currentColor);
+    stroke: var(--_cinder-chart-series-color, currentColor);
     stroke-width: 1.5;
     stroke-linecap: round;
     stroke-linejoin: round;
@@ -37,7 +37,7 @@
   }
 
   .cinder-waveform__bar {
-    fill: var(--_cinder-chart-foreground, currentColor);
+    fill: var(--_cinder-chart-series-color, currentColor);
     rx: 1;
   }
 

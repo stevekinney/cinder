@@ -134,12 +134,19 @@ export function heatmapCellFill(
   const normalized = normalizeHeatmapValue(value, domain, scale);
 
   if (scale === 'diverging') {
+    const coolColor = chartPaletteColor(4, palette);
+    let warmColor = chartPaletteColor(2, palette);
+    // Short custom palettes wrap around. Keep the two diverging ends distinct
+    // whenever callers provide at least two colors.
+    if (palette && palette.length >= 2 && warmColor === coolColor) {
+      warmColor = chartPaletteColor(1, palette);
+    }
     if (normalized < 0.5) {
       const ratio = (0.5 - normalized) * 2;
-      return `color-mix(in oklch, ${chartPaletteColor(4, palette)} ${Math.round(ratio * 100)}%, ${background})`;
+      return `color-mix(in oklch, ${coolColor} ${Math.round(ratio * 100)}%, ${background})`;
     }
     const ratio = (normalized - 0.5) * 2;
-    return `color-mix(in oklch, ${chartPaletteColor(2, palette)} ${Math.round(ratio * 100)}%, ${background})`;
+    return `color-mix(in oklch, ${warmColor} ${Math.round(ratio * 100)}%, ${background})`;
   }
 
   return `color-mix(in oklch, ${chartPaletteColor(0, palette)} ${Math.round(normalized * 100)}%, ${background})`;
@@ -162,5 +169,8 @@ export function heatmapLabelFill(
     scale === 'diverging'
       ? Math.abs(normalizeHeatmapValue(value, domain, scale) - 0.5) * 2
       : normalizeHeatmapValue(value, domain, scale);
-  return intensity > 0.5 ? background : foreground;
+  if (intensity <= 0.5) return foreground;
+  // Transparent backgrounds cannot provide a contrast surface for the light
+  // high-intensity label; use the established inverse text token instead.
+  return background === 'transparent' ? 'var(--cinder-text-inverse)' : background;
 }

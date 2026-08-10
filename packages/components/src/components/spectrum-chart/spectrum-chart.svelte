@@ -19,6 +19,7 @@
 </script>
 
 <script lang="ts">
+  import { onMount } from 'svelte';
   import {
     chartPaletteColor,
     createChartGeometry,
@@ -61,6 +62,10 @@
 
   const isEmpty = $derived(bins.length === 0);
   const resolvedTheme = $derived(resolveChartTheme(theme));
+  let measureText = $state(false);
+  onMount(() => {
+    measureText = true;
+  });
 
   // Spectrum magnitudes are linear non-negative. Coerce each bin's value to a
   // finite, non-negative number so a stray NaN/Infinity/negative can't break the
@@ -98,7 +103,7 @@
     yTicks.map((tick, index) => formatNumericValue(tick, undefined, undefined, { index })),
   );
   const geometry = $derived(
-    createChartGeometry(measuredWidth, height, { xTickLabels, yTickLabels }),
+    createChartGeometry(measuredWidth, height, { xTickLabels, yTickLabels, measureText }),
   );
   const plotWidth = $derived(geometry.plotWidth);
   const plotHeight = $derived(geometry.plotHeight);
@@ -145,7 +150,7 @@
   class={classNames('cinder-spectrum-chart', customClassName)}
   aria-label={label}
   aria-describedby={descriptionId}
-  style={`--_cinder-chart-foreground: ${resolvedTheme.foreground}; --_cinder-chart-muted: ${resolvedTheme.muted}; --_cinder-chart-grid: ${resolvedTheme.grid}; --_cinder-chart-background: ${resolvedTheme.background};`}
+  style={`--_cinder-chart-foreground: ${resolvedTheme.foreground}; --_cinder-chart-muted: ${resolvedTheme.muted}; --_cinder-chart-grid: ${resolvedTheme.grid}; --_cinder-chart-background: ${resolvedTheme.background}; --_cinder-chart-series-color: ${chartPaletteColor(0, resolvedTheme.palette)};`}
 >
   {#if description}
     <p id={descriptionId} class="cinder-spectrum-chart__description">{description}</p>

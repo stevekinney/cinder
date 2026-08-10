@@ -1,4 +1,5 @@
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, spyOn, test } from 'bun:test';
+import type { ChartXAxisConfiguration } from '../../components/chart.types.ts';
 
 import {
   assertUniqueSeriesIds,
@@ -7,9 +8,12 @@ import {
   assertValidTickCount,
   chartPalette,
   chartPaletteColor,
+  chartResourceId,
   createBarModel,
   createCartesianModel,
+  createChartGeometry,
   dataTableClass,
+  decimatePlacedPoints,
   formatNumericValue,
   formatXValue,
   legendVisible,
@@ -18,6 +22,7 @@ import {
   resolveChartTheme,
   toggleSeriesId,
   type ChartTarget,
+  type PlacedPoint,
 } from './chart-utilities.ts';
 
 describe('chartPaletteColor', () => {
@@ -40,6 +45,61 @@ describe('chartPaletteColor', () => {
 
     expect(chartPaletteColor(0, palette)).toBe('rebeccapurple');
     expect(chartPaletteColor(3, palette)).toBe('tomato');
+  });
+});
+
+describe('createChartGeometry', () => {
+  test('reserves top space for matrix-style header labels', () => {
+    const geometry = createChartGeometry(640, 280, {
+      xTickLabels: ['A very long header'],
+      yTickLabels: ['Row'],
+      xTickPosition: 'top',
+    });
+    expect(geometry.marginTop).toBeGreaterThan(geometry.marginBottom);
+  });
+
+  test('rejects non-finite tick rotations', () => {
+    expect(() =>
+      createChartGeometry(640, 280, {
+        xAxis: { tickLabelRotation: Number.NaN } as ChartXAxisConfiguration,
+      }),
+    ).toThrow('invalid-tick-label-rotation');
+  });
+
+  test('reserves endpoint side space for rotated labels', () => {
+    const geometry = createChartGeometry(640, 280, {
+      xTickLabels: ['2026-01-01T00:00:00.000Z'],
+      xAxis: { tickLabelRotation: 45 },
+    });
+    expect(geometry.marginRight).toBeGreaterThan(16);
+    expect(geometry.marginLeft).toBeGreaterThanOrEqual(geometry.marginRight);
+  });
+
+  test('batches browser text measurement into one hidden SVG', () => {
+    const append = spyOn(document.body, 'append');
+    try {
+      createChartGeometry(640, 280, {
+        xTickLabels: ['review-batch-x-1', 'review-batch-x-2'],
+        yTickLabels: ['review-batch-y-1', 'review-batch-y-2'],
+        xAxis: { label: 'review-batch-x-title', tickLabelRotation: 30 },
+        yAxis: { label: 'review-batch-y-title' },
+        measureText: true,
+      });
+      expect(append).toHaveBeenCalledTimes(1);
+    } finally {
+      append.mockRestore();
+    }
+  });
+});
+
+describe('chartResourceId', () => {
+  test('keeps URI-escaped series IDs collision-free', () => {
+    const slash = chartResourceId('chart', 'gradient', 'a/b');
+    const escaped = chartResourceId('chart', 'gradient', 'a_2Fb');
+
+    expect(slash).toBe('chart-gradient-a_x2Fb');
+    expect(escaped).toBe('chart-gradient-a_u2Fb');
+    expect(slash).not.toBe(escaped);
   });
 });
 
@@ -764,6 +824,47 @@ describe('createCartesianModel', () => {
     expect(renderedPoints.at(-1)?.x.raw).toBe(2_500);
     expect(model.targets).toHaveLength(2_501);
     expect(model.tableRows).toHaveLength(2_501);
+    expect(model.xTicks).toHaveLength(8);
+  });
+
+  test('decimation preserves endpoints, separated spikes/dips, null gaps, and the bound', () => {
+    const points: PlacedPoint[] = Array.from({ length: 101 }, (_, index) => ({
+      seriesId: 'dense',
+      seriesLabel: 'Dense',
+      color: 'red',
+      x: normalizeXValue(index),
+      y: index === 12 ? 1_000 : index === 76 ? -1_000 : index === 50 ? null : 0,
+      originalY:
+        index === 50 ? null : index === 0 ? 0 : index === 12 ? 1_000 : index === 76 ? -1_000 : 0,
+      index,
+      pixelX: index,
+      pixelY: index,
+    }));
+
+    const decimated = decimatePlacedPoints(points, 20);
+    const rawValues = decimated.map((point) => point.y);
+
+    expect(decimated.length).toBeLessThanOrEqual(20);
+    expect(decimated[0]?.x.raw).toBe(0);
+    expect(decimated.at(-1)?.x.raw).toBe(100);
+    expect(rawValues).toContain(1_000);
+    expect(rawValues).toContain(-1_000);
+    expect(rawValues).toContain(null);
+
+    const model = createCartesianModel({
+      componentId: 'area-chart',
+      series: [
+        {
+          id: 'dense',
+          label: 'Dense',
+          data: points.map((point) => ({ x: point.x.raw, y: point.y })),
+        },
+      ],
+      hiddenSeriesIds: [],
+      width: 640,
+      height: 280,
+    });
+    expect(model.normalizedSeries[0]?.areaPath.match(/M/g)).toHaveLength(2);
   });
 
   test('derives margins from formatted tick labels, rotation, and axis titles', () => {
@@ -783,7 +884,7 @@ describe('createCartesianModel', () => {
       xAxis: {
         label: 'Reporting period',
         tickLabelRotation: -45,
-      },
+      } as ChartXAxisConfiguration,
       yAxis: {
         label: 'Monthly recurring revenue',
         format: () => '$10,000,000.00',

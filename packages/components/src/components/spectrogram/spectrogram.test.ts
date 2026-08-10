@@ -289,5 +289,32 @@ describe('Spectrogram', () => {
     const cells = container.querySelectorAll('.cinder-spectrogram__cell');
     expect(cells.length).toBe(expectedCellCount);
     expect(cells.length).toBeLessThanOrEqual(maxPlotFrames * maxPlotBins);
+
+    const plotFrameCount = Math.ceil(frameCount / frameStep);
+    const plotBinCount = Math.ceil(binCount / binStep);
+    const firstFrameCells = [...cells].slice(0, plotBinCount) as SVGRectElement[];
+    const frameBuckets = Array.from({ length: plotFrameCount }, (_, frameIndex) =>
+      cells.item(frameIndex * plotBinCount),
+    );
+
+    for (let index = 1; index < frameBuckets.length; index += 1) {
+      const previous = frameBuckets[index - 1]!;
+      const current = frameBuckets[index]!;
+      expect(Number(current.getAttribute('x'))).toBeCloseTo(
+        Number(previous.getAttribute('x')) + Number(previous.getAttribute('width')),
+      );
+    }
+
+    const binsFromTop = [...firstFrameCells].sort(
+      (left, right) => Number(left.getAttribute('y')) - Number(right.getAttribute('y')),
+    );
+    expect(Number(binsFromTop[0]?.getAttribute('y'))).toBeCloseTo(0);
+    for (let index = 1; index < binsFromTop.length; index += 1) {
+      const previous = binsFromTop[index - 1]!;
+      const current = binsFromTop[index]!;
+      expect(Number(current.getAttribute('y'))).toBeCloseTo(
+        Number(previous.getAttribute('y')) + Number(previous.getAttribute('height')),
+      );
+    }
   });
 });

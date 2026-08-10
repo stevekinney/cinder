@@ -41,9 +41,6 @@ const schema = {
         tickCount: {
           type: 'number',
         },
-        tickLabelRotation: {
-          type: 'number',
-        },
       },
       additionalProperties: false,
       description: 'Configuration for the y-axis label and tick count.',

@@ -23,6 +23,7 @@
 </script>
 
 <script lang="ts">
+  import { onMount } from 'svelte';
   import {
     createChartGeometry,
     dataTableClass,
@@ -59,6 +60,10 @@
   const descriptionId = $derived(description ? `${rootId}-description` : undefined);
 
   const resolvedTheme = $derived(resolveChartTheme(theme));
+  let measureText = $state(false);
+  onMount(() => {
+    measureText = true;
+  });
 
   let measuredWidth = $state(400);
 
@@ -73,11 +78,6 @@
   // rectangular grid: shorter frames leave explicit missing cells rather than
   // overflowing the plot or silently dropping rows.
   const binCount = $derived(frames.reduce((max, frame) => Math.max(max, frame.bins.length), 0));
-
-  // The bin-index list [0, 1, …, binCount-1], computed once and reused for every
-  // frame's column rather than rebuilding an Array.from() per frame in the render
-  // loop.
-  const binIndices = $derived(Array.from({ length: binCount }, (_, index) => index));
 
   // A frame with zero bins contributes no usable data; the chart is "empty" when
   // there are no frames OR no frequency bins anywhere.
@@ -122,6 +122,7 @@
     createChartGeometry(measuredWidth, height, {
       xTickLabels: frames.map((frame) => frame.label),
       yTickLabels: yLabels,
+      measureText,
     }),
   );
   const { plotWidth, plotHeight, marginTop, marginLeft } = $derived(geometry);
@@ -150,14 +151,29 @@
   const maxPlotBins = 256;
   const plotFrameStep = $derived(Math.max(1, Math.ceil(frames.length / maxPlotFrames)));
   const plotBinStep = $derived(Math.max(1, Math.ceil(binCount / maxPlotBins)));
-  const plotFrames = $derived(
-    frames
-      .map((frame, frameIndex) => ({ frame, frameIndex }))
-      .filter((_, index) => index % plotFrameStep === 0)
-      .slice(0, maxPlotFrames),
+  const plotFrames = $derived.by(() =>
+    Array.from(
+      { length: Math.min(maxPlotFrames, Math.ceil(frames.length / plotFrameStep)) },
+      (_, bucketIndex) => {
+        const frameIndex = bucketIndex * plotFrameStep;
+        return {
+          frameIndex,
+          span: Math.min(plotFrameStep, frames.length - frameIndex),
+        };
+      },
+    ),
   );
-  const plotBinIndices = $derived(
-    binIndices.filter((index) => index % plotBinStep === 0).slice(0, maxPlotBins),
+  const plotBins = $derived.by(() =>
+    Array.from(
+      { length: Math.min(maxPlotBins, Math.ceil(binCount / plotBinStep)) },
+      (_, bucketIndex) => {
+        const binIndex = bucketIndex * plotBinStep;
+        return {
+          binIndex,
+          span: Math.min(plotBinStep, binCount - binIndex),
+        };
+      },
+    ),
   );
 
   // Table rows: each frame is a column; rows are frequency bins.
@@ -240,14 +256,14 @@
                non-finite cells render as the "missing" fill. Low frequency (bin 0)
                is at the bottom. -->
           {#each plotFrames as entry (entry.frameIndex)}
-            {#each plotBinIndices as binIndex (binIndex)}
+            {#each plotBins as bin (bin.binIndex)}
               <rect
                 class="cinder-spectrogram__cell"
                 x={entry.frameIndex * cellWidth}
-                y={binY(binIndex)}
-                width={cellWidth}
-                height={cellHeight}
-                fill={cellFill(binValueAt(entry.frameIndex, binIndex))}
+                y={binY(bin.binIndex + bin.span - 1)}
+                width={entry.span * cellWidth}
+                height={bin.span * cellHeight}
+                fill={cellFill(binValueAt(entry.frameIndex, bin.binIndex))}
                 aria-hidden="true"
               />
             {/each}

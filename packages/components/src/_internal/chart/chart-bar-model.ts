@@ -5,6 +5,7 @@ import type {
   BarChartSeries,
   ChartAxisConfiguration,
   ChartTheme,
+  ChartXAxisConfiguration,
 } from '../../components/chart.types.ts';
 import {
   createChartGeometry,
@@ -42,9 +43,10 @@ export function createBarModel(options: {
   height: number;
   orientation: BarChartOrientation;
   mode: BarChartMode;
-  xAxis?: ChartAxisConfiguration | undefined;
+  xAxis?: ChartXAxisConfiguration | undefined;
   yAxis?: ChartAxisConfiguration | undefined;
   theme?: ChartTheme | undefined;
+  measureText?: boolean | undefined;
 }): BarChartModel {
   const {
     data,
@@ -58,6 +60,7 @@ export function createBarModel(options: {
     xAxis,
     yAxis,
     theme,
+    measureText = false,
   } = options;
   assertUniqueSeriesIds('bar-chart', series);
   assertValidChartNumber('bar-chart', 'invalid-height', height, 'height');
@@ -151,6 +154,7 @@ export function createBarModel(options: {
     yTickLabels: orientation === 'vertical' ? valueTickLabels : categoryLabels,
     xAxis,
     yAxis,
+    measureText,
     marginLeft: horizontalCategoryLabelLayout?.marginLeft,
   });
   if (sortedCategories.length === 0) {

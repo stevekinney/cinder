@@ -17,6 +17,7 @@ globalThis.ResizeObserver = TestResizeObserver as unknown as typeof ResizeObserv
 
 const { cleanup, render } = await import('@testing-library/svelte');
 const { default: SpectrumChart } = await import('./spectrum-chart.svelte');
+const spectrumChartCss = await Bun.file(new URL('./spectrum-chart.css', import.meta.url)).text();
 
 afterEach(() => cleanup());
 afterAll(() => {
@@ -57,6 +58,9 @@ describe('SpectrumChart', () => {
     expect(
       container.querySelector('.cinder-spectrum-chart__grid-line')?.getAttribute('stroke'),
     ).toBe('silver');
+    expect(spectrumChartCss).toMatch(
+      /\.cinder-spectrum-chart__state\s*\{[^}]*color:\s*var\(--_cinder-chart-muted, currentColor\)/,
+    );
   });
 
   test('derives a wider left margin for long numeric guide labels', () => {

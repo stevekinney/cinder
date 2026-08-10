@@ -18,6 +18,7 @@
 </script>
 
 <script lang="ts">
+  import { onMount } from 'svelte';
   import {
     createChartGeometry,
     dataTableClass,
@@ -60,6 +61,10 @@
   const descriptionId = $derived(description ? `${rootId}-description` : undefined);
 
   const resolvedTheme = $derived(resolveChartTheme(theme));
+  let measureText = $state(false);
+  onMount(() => {
+    measureText = true;
+  });
 
   let measuredWidth = $state(400);
 
@@ -102,7 +107,12 @@
   });
 
   const geometry = $derived(
-    createChartGeometry(measuredWidth, height, { xTickLabels: xLabels, yTickLabels: yLabels }),
+    createChartGeometry(measuredWidth, height, {
+      xTickLabels: xLabels,
+      yTickLabels: yLabels,
+      xTickPosition: 'top',
+      measureText,
+    }),
   );
   const { plotWidth, plotHeight, marginTop, marginLeft } = $derived(geometry);
 

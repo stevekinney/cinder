@@ -79,7 +79,9 @@
   role="group"
   aria-labelledby={`${labelId} ${valueId}`}
   data-cinder-has-icon={icon ? '' : undefined}
-  style={`--_cinder-chart-foreground: ${resolvedTheme.foreground}; --_cinder-chart-muted: ${resolvedTheme.muted}; --_cinder-chart-background: ${resolvedTheme.background};`}
+  style:--_cinder-chart-foreground={resolvedTheme.foreground}
+  style:--_cinder-chart-muted={resolvedTheme.muted}
+  style:--_cinder-chart-background={resolvedTheme.background}
 >
   {#if icon}
     <span class="cinder-statistic__icon" aria-hidden="true">{@render icon()}</span>

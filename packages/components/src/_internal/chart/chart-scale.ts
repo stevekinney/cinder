@@ -12,19 +12,56 @@ export function decimatePlacedPoints(
   maximumPoints = MAXIMUM_RENDERED_SERIES_POINTS,
 ): PlacedPoint[] {
   if (points.length <= maximumPoints || maximumPoints < 2) return points;
-  const lastIndex = points.length - 1;
-  const step = lastIndex / (maximumPoints - 1);
-  const decimated: PlacedPoint[] = [];
-  let previousIndex = -1;
-  for (let outputIndex = 0; outputIndex < maximumPoints; outputIndex++) {
-    const sourceIndex =
-      outputIndex === maximumPoints - 1 ? lastIndex : Math.round(outputIndex * step);
-    if (sourceIndex === previousIndex) continue;
-    const point = points[sourceIndex];
-    if (point) decimated.push(point);
-    previousIndex = sourceIndex;
+  const limit = Math.max(2, Math.floor(maximumPoints));
+  const bucketCount = Math.max(1, Math.floor((limit - 2) / 2));
+  const interiorLength = points.length - 2;
+  const selected = new Set<number>([0, points.length - 1]);
+
+  for (let bucketIndex = 0; bucketIndex < bucketCount; bucketIndex++) {
+    const start = 1 + Math.floor((bucketIndex * interiorLength) / bucketCount);
+    const end = 1 + Math.floor(((bucketIndex + 1) * interiorLength) / bucketCount);
+    if (end <= start) continue;
+    let minimumIndex: number | undefined;
+    let maximumIndex: number | undefined;
+    let minimumValue = Number.POSITIVE_INFINITY;
+    let maximumValue = Number.NEGATIVE_INFINITY;
+    let nullIndex: number | undefined;
+    for (let index = start; index < end; index++) {
+      const point = points[index];
+      if (!point) continue;
+      if (point.y === null) {
+        nullIndex ??= index;
+        continue;
+      }
+      if (point.y < minimumValue) {
+        minimumValue = point.y;
+        minimumIndex = index;
+      }
+      if (point.y > maximumValue) {
+        maximumValue = point.y;
+        maximumIndex = index;
+      }
+    }
+    // Nulls are structural: retain one gap marker per bucket where present,
+    // then retain both extrema when there is room. This keeps discontinuities
+    // visible while ensuring spikes and dips survive downsampling.
+    if (nullIndex !== undefined) selected.add(nullIndex);
+    if (minimumIndex !== undefined) selected.add(minimumIndex);
+    if (maximumIndex !== undefined) selected.add(maximumIndex);
   }
-  return decimated;
+
+  const ordered = [...selected].sort((a, b) => a - b);
+  if (ordered.length <= limit) return ordered.map((index) => points[index]!);
+  // A pathological input with a null in every bucket can exceed the bound.
+  // Preserve endpoints and choose evenly-spaced candidates from the remainder.
+  const interiorLimit = limit - 2;
+  const step = (ordered.length - 3) / Math.max(1, interiorLimit - 1);
+  const bounded = [ordered[0]!];
+  for (let index = 0; index < interiorLimit; index++) {
+    bounded.push(ordered[1 + Math.round(index * step)]!);
+  }
+  bounded.push(ordered.at(-1)!);
+  return [...new Set(bounded)].sort((a, b) => a - b).map((index) => points[index]!);
 }
 export function normalizeNumericValue(
   componentId: string,
@@ -43,7 +80,7 @@ export function normalizeNumericValue(
 
 export function sortXValues(values: NormalizedXValue[]): NormalizedXValue[] {
   if (values[0]?.kind === 'string') return values;
-  return [...values].toSorted((a, b) => Number(a.comparable) - Number(b.comparable));
+  return values.slice().sort((a, b) => Number(a.comparable) - Number(b.comparable));
 }
 
 export function createPaddedDomain(values: number[]): [number, number] {
@@ -150,33 +187,58 @@ export function createTicks(domain: [number, number], count: number): number[] {
   return Array.from({ length: safeCount }, (_, index) => domain[0] + step * index);
 }
 
-export function createLinePath(points: Array<{ x: number; y: number }>): string {
+export function createLinePath(points: Array<{ x: number; y: number | null }>): string {
   if (points.length === 0) return '';
-  const [firstPoint, ...remainingPoints] = points;
-  return [
-    `M${formatPathNumber(firstPoint?.x ?? 0)},${formatPathNumber(firstPoint?.y ?? 0)}`,
-    ...remainingPoints.map((point) => `L${formatPathNumber(point.x)},${formatPathNumber(point.y)}`),
-  ].join('');
+  const commands: string[] = [];
+  for (const [index, point] of points.entries()) {
+    if (point.y === null) continue;
+    const previous = points[index - 1];
+    commands.push(
+      previous?.y === null || commands.length === 0
+        ? `M${formatPathNumber(point.x)},${formatPathNumber(point.y)}`
+        : `L${formatPathNumber(point.x)},${formatPathNumber(point.y)}`,
+    );
+  }
+  return commands.join('');
 }
 
 export function createAreaPath(
-  points: Array<{ x: number; y: number; y0?: number }>,
+  points: Array<{ x: number; y: number | null; y0?: number }>,
   baseline: number | undefined,
 ): string {
-  if (points.length === 0) return '';
-  const firstPoint = points[0];
-  const lastPoint = points.at(-1);
-  if (!firstPoint || !lastPoint) return '';
-  const lowerPoints = points
-    .toReversed()
-    .map((point) => `L${formatPathNumber(point.x)},${formatPathNumber(point.y0 ?? baseline ?? 0)}`);
-  return [
-    `M${formatPathNumber(firstPoint.x)},${formatPathNumber(firstPoint.y0 ?? baseline ?? 0)}`,
-    `L${formatPathNumber(firstPoint.x)},${formatPathNumber(firstPoint.y)}`,
-    ...points.slice(1).map((point) => `L${formatPathNumber(point.x)},${formatPathNumber(point.y)}`),
-    ...lowerPoints,
-    'Z',
-  ].join('');
+  const segments: Array<Array<{ x: number; y: number; y0?: number }>> = [];
+  let segment: Array<{ x: number; y: number; y0?: number }> = [];
+  for (const point of points) {
+    if (point.y === null) {
+      if (segment.length > 0) segments.push(segment);
+      segment = [];
+      continue;
+    }
+    segment.push({ ...point, y: point.y });
+  }
+  if (segment.length > 0) segments.push(segment);
+
+  return segments
+    .map((visiblePoints) => {
+      const firstPoint = visiblePoints[0]!;
+      const lowerPoints: string[] = [];
+      for (let index = visiblePoints.length - 1; index >= 0; index--) {
+        const point = visiblePoints[index]!;
+        lowerPoints.push(
+          `L${formatPathNumber(point.x)},${formatPathNumber(point.y0 ?? baseline ?? 0)}`,
+        );
+      }
+      return [
+        `M${formatPathNumber(firstPoint.x)},${formatPathNumber(firstPoint.y0 ?? baseline ?? 0)}`,
+        `L${formatPathNumber(firstPoint.x)},${formatPathNumber(firstPoint.y)}`,
+        ...visiblePoints
+          .slice(1)
+          .map((point) => `L${formatPathNumber(point.x)},${formatPathNumber(point.y)}`),
+        ...lowerPoints,
+        'Z',
+      ].join('');
+    })
+    .join('');
 }
 
 export function createStackedBarDomainValues(

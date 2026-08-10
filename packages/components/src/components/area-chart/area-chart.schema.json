@@ -38,9 +38,6 @@
         },
         "tickCount": {
           "type": "number"
-        },
-        "tickLabelRotation": {
-          "type": "number"
         }
       },
       "additionalProperties": false,

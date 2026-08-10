@@ -2,7 +2,12 @@
 import { afterAll, afterEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
-import type { ChartXValue } from '../chart.types.ts';
+import type {
+  BarChartPlacedBar,
+  BarChartSeries,
+  ChartMarkContext,
+  ChartXValue,
+} from '../chart.types.ts';
 
 setupHappyDom();
 
@@ -18,6 +23,7 @@ afterAll(() => {
 });
 
 const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
+const { createRawSnippet } = await import('svelte');
 const { default: BarChart } = await import('./bar-chart.svelte');
 
 afterEach(() => cleanup());
@@ -32,6 +38,25 @@ const series = [
 ];
 
 describe('BarChart', () => {
+  test('does not invoke a custom mark for hidden series', () => {
+    const mark = createRawSnippet<[ChartMarkContext<BarChartSeries, BarChartPlacedBar>]>(
+      (getContext) => ({
+        render: () => `<g data-custom-mark="${getContext().series.id}"></g>`,
+      }),
+    );
+    const { container } = render(BarChart, {
+      label: 'Revenue by month',
+      data,
+      categoryKey: 'month',
+      series,
+      hiddenSeriesIds: ['revenue'],
+      mark,
+    });
+
+    expect(container.querySelector('[data-custom-mark="revenue"]')).toBeNull();
+    expect(container.querySelector('[data-custom-mark="expansion"]')).not.toBeNull();
+  });
+
   test('uses a chart-local theme palette for rendered bars', () => {
     const { container } = render(BarChart, {
       label: 'Revenue by month',

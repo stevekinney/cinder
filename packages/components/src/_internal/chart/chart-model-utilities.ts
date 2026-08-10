@@ -46,7 +46,9 @@ export function resolveChartTheme(theme: ChartTheme | undefined = undefined): Re
 }
 
 export function chartResourceId(idPrefix: string, resource: string, seriesId: string): string {
-  const safeSeriesId = encodeURIComponent(seriesId).replaceAll('%', '_');
+  // Escape the two sentinel characters as well as URI percent escapes so
+  // distinct IDs such as `a/b` and `a_2Fb` cannot collapse to one resource ID.
+  const safeSeriesId = encodeURIComponent(seriesId).replaceAll('_', '_u').replaceAll('%', '_x');
   return `${idPrefix}-${resource}-${safeSeriesId}`;
 }
 

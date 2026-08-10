@@ -35,7 +35,7 @@
     overflow: hidden;
     inline-size: 100%;
     border-radius: var(--cinder-radius-full);
-    background: var(--_cinder-chart-background, transparent);
+    background: var(--_cinder-sparkbar-track-background, var(--cinder-surface-inset));
     isolation: isolate;
   }
 

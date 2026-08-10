@@ -34,6 +34,17 @@ describe('Statistic', () => {
     expect(style).toContain('--_cinder-chart-background: transparent');
   });
 
+  test('preserves consumer inline styles while applying theme variables', () => {
+    const { container } = render(Statistic, {
+      label: 'Revenue',
+      value: '$1,000',
+      style: 'border: 1px solid red;',
+    });
+    const root = container.querySelector<HTMLElement>('.cinder-statistic');
+    expect(root?.getAttribute('style')).toContain('border: 1px solid red');
+    expect(root?.style.getPropertyValue('--_cinder-chart-foreground')).toBe('currentColor');
+  });
+
   test('applies custom theme colors without removing change direction cues', () => {
     const { container } = render(Statistic, {
       label: 'Revenue',

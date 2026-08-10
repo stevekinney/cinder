@@ -1,4 +1,7 @@
-import type { ChartAxisConfiguration } from '../../components/chart.types.ts';
+import type {
+  ChartAxisConfiguration,
+  ChartXAxisConfiguration,
+} from '../../components/chart.types.ts';
 import type { ChartGeometry } from './chart-model-utilities.ts';
 const CHART_OUTER_PADDING = 16;
 const CHART_GUIDE_GAP = 8;
@@ -10,9 +13,12 @@ const MAXIMUM_HORIZONTAL_CATEGORY_LABEL_FRACTION = 0.4;
 export type ChartGeometryOptions = {
   xTickLabels?: string[];
   yTickLabels?: string[];
-  xAxis?: ChartAxisConfiguration | undefined;
+  xAxis?: ChartXAxisConfiguration | undefined;
   yAxis?: ChartAxisConfiguration | undefined;
   marginLeft?: number | undefined;
+  /** Enable browser text measurement after mount; defaults to deterministic fallback metrics. */
+  measureText?: boolean | undefined;
+  xTickPosition?: 'top' | 'bottom';
 };
 
 export function createChartGeometry(
@@ -21,33 +27,63 @@ export function createChartGeometry(
   options: ChartGeometryOptions = {},
 ): ChartGeometry {
   const xTickRotation = options.xAxis?.tickLabelRotation ?? 0;
+  if (!Number.isFinite(xTickRotation)) {
+    throw new Error(
+      `[cinder/chart] rule=invalid-tick-label-rotation tickLabelRotation="${xTickRotation}": expected a finite number.`,
+    );
+  }
+  const xTickLabels = options.xTickLabels ?? [];
+  const yTickLabels = options.yTickLabels ?? [];
+  const textMeasurements = measureChartTexts(
+    [
+      ...xTickLabels.map((label) => ({ label, rotation: xTickRotation })),
+      ...yTickLabels.map((label) => ({ label, rotation: 0 })),
+      ...(options.xAxis?.label ? [{ label: options.xAxis.label, rotation: 0 }] : []),
+      ...(options.yAxis?.label ? [{ label: options.yAxis.label, rotation: -90 }] : []),
+    ],
+    options.measureText ?? false,
+  );
+  const measurementFor = (label: string, rotation: number): ChartTextMeasurement =>
+    textMeasurements.get(chartTextMeasurementKey(label, rotation, options.measureText ?? false)) ??
+    fallbackChartTextMeasurement(label, rotation);
   const xTickHeight = maximumMeasurement(
-    options.xTickLabels ?? [],
-    (measurement) => measurement.height,
-    xTickRotation,
+    xTickLabels,
+    (label) => measurementFor(label, xTickRotation).height,
   );
-  const yTickWidth = maximumMeasurement(
-    options.yTickLabels ?? [],
-    (measurement) => measurement.width,
+  const xTickWidth = maximumMeasurement(
+    xTickLabels,
+    (label) => measurementFor(label, xTickRotation).width,
   );
+  const yTickWidth = maximumMeasurement(yTickLabels, (label) => measurementFor(label, 0).width);
   const xAxisTitleHeight = options.xAxis?.label
-    ? measureChartText(options.xAxis.label).height + CHART_AXIS_TITLE_GAP
+    ? measurementFor(options.xAxis.label, 0).height + CHART_AXIS_TITLE_GAP
     : 0;
   const yAxisTitleWidth = options.yAxis?.label
-    ? measureChartText(options.yAxis.label, -90).width + CHART_AXIS_TITLE_GAP
+    ? measurementFor(options.yAxis.label, -90).width + CHART_AXIS_TITLE_GAP
     : 0;
   const derivedMarginLeft = CHART_OUTER_PADDING + yTickWidth + CHART_GUIDE_GAP + yAxisTitleWidth;
   const maximumMarginLeft = Math.max(CHART_OUTER_PADDING, Math.floor(width * 0.4));
+  const endpointSideMargin =
+    xTickRotation === 0 ? CHART_OUTER_PADDING : Math.ceil(xTickWidth / 2) + CHART_GUIDE_GAP;
   const marginLeft = Math.min(
     maximumMarginLeft,
-    Math.max(derivedMarginLeft, options.marginLeft ?? 0),
+    Math.max(derivedMarginLeft, options.marginLeft ?? 0, endpointSideMargin),
   );
-  const marginTop = CHART_OUTER_PADDING;
-  const marginRight = CHART_OUTER_PADDING;
-  const marginBottom = Math.min(
-    Math.max(CHART_OUTER_PADDING, Math.floor(height * 0.45)),
-    CHART_OUTER_PADDING + xTickHeight + CHART_GUIDE_GAP + xAxisTitleHeight,
-  );
+  const marginTop =
+    options.xTickPosition === 'top'
+      ? Math.min(
+          Math.max(CHART_OUTER_PADDING, Math.floor(height * 0.45)),
+          CHART_OUTER_PADDING + xTickHeight + CHART_GUIDE_GAP + xAxisTitleHeight,
+        )
+      : CHART_OUTER_PADDING;
+  const marginRight = endpointSideMargin;
+  const marginBottom =
+    options.xTickPosition === 'top'
+      ? CHART_OUTER_PADDING
+      : Math.min(
+          Math.max(CHART_OUTER_PADDING, Math.floor(height * 0.45)),
+          CHART_OUTER_PADDING + xTickHeight + CHART_GUIDE_GAP + xAxisTitleHeight,
+        );
   return {
     plotWidth: Math.max(1, width - marginLeft - marginRight),
     plotHeight: Math.max(1, height - marginTop - marginBottom),
@@ -101,44 +137,94 @@ function truncateHorizontalCategoryLabel(label: string, availableWidth: number):
 
 type ChartTextMeasurement = { width: number; height: number };
 
-function maximumMeasurement(
-  labels: string[],
-  select: (measurement: ChartTextMeasurement) => number,
-  rotation = 0,
-): number {
+function maximumMeasurement(labels: string[], select: (label: string) => number): number {
   let maximum = 0;
-  for (const label of labels) {
-    maximum = Math.max(maximum, select(measureChartText(label, rotation)));
-  }
+  for (const label of labels) maximum = Math.max(maximum, select(label));
   return maximum;
 }
 
-function measureChartText(label: string, rotation = 0): ChartTextMeasurement {
-  const fallback = { width: Array.from(label).length * 7, height: 12 };
-  let measurement = fallback;
-  if (typeof document !== 'undefined' && document.body) {
+const chartTextMeasurementCache = new Map<string, ChartTextMeasurement>();
+
+function measureChartTexts(
+  entries: Array<{ label: string; rotation: number }>,
+  allowBrowserMeasurement: boolean,
+): Map<string, ChartTextMeasurement> {
+  if (!allowBrowserMeasurement || typeof document === 'undefined' || !document.body) {
+    return new Map(
+      entries.map(({ label, rotation }) => [
+        chartTextMeasurementKey(label, rotation, false),
+        fallbackChartTextMeasurement(label, rotation),
+      ]),
+    );
+  }
+  const uniqueEntries = [
+    ...new Map(
+      entries.map((entry) => [chartTextMeasurementKey(entry.label, entry.rotation, true), entry]),
+    ).values(),
+  ];
+  const missing = uniqueEntries.filter(
+    ({ label, rotation }) =>
+      !chartTextMeasurementCache.has(chartTextMeasurementKey(label, rotation, true)),
+  );
+  if (missing.length > 0) {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     svg.setAttribute(
       'style',
       'position:absolute;visibility:hidden;pointer-events:none;inline-size:0;block-size:0',
     );
-    text.setAttribute('font-size', '12');
-    text.textContent = label;
-    svg.append(text);
+    const texts = missing.map((entry) => {
+      const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      text.setAttribute('font-size', '12');
+      text.textContent = entry.label;
+      svg.append(text);
+      return { ...entry, text };
+    });
     document.body.append(svg);
-    try {
-      const bounds = typeof text.getBBox === 'function' ? text.getBBox() : undefined;
-      if (bounds && bounds.width > 0 && bounds.height > 0) {
-        measurement = { width: bounds.width, height: bounds.height };
+    for (const { label, rotation, text } of texts) {
+      let measurement = { width: Array.from(label).length * 7, height: 12 };
+      try {
+        const bounds = text.getBBox();
+        if (bounds.width > 0 && bounds.height > 0)
+          measurement = { width: bounds.width, height: bounds.height };
+      } catch {
+        // Keep deterministic fallback metrics when layout is unavailable.
       }
-    } catch {
-      // Non-layout DOM implementations use the deterministic fallback above.
-    } finally {
-      svg.remove();
+      chartTextMeasurementCache.set(
+        chartTextMeasurementKey(label, rotation, true),
+        rotateChartTextMeasurement(measurement, rotation),
+      );
     }
+    svg.remove();
   }
+  return new Map(
+    entries.map(({ label, rotation }) => [
+      chartTextMeasurementKey(label, rotation, true),
+      chartTextMeasurementCache.get(chartTextMeasurementKey(label, rotation, true)) ??
+        fallbackChartTextMeasurement(label, rotation),
+    ]),
+  );
+}
 
+function measureChartText(label: string, rotation = 0): ChartTextMeasurement {
+  return fallbackChartTextMeasurement(label, rotation);
+}
+
+function chartTextMeasurementKey(
+  label: string,
+  rotation: number,
+  browserMeasurement: boolean,
+): string {
+  return `${label}\u0000${rotation}\u0000${browserMeasurement ? 'browser' : 'fallback'}`;
+}
+
+function fallbackChartTextMeasurement(label: string, rotation: number): ChartTextMeasurement {
+  return rotateChartTextMeasurement({ width: Array.from(label).length * 7, height: 12 }, rotation);
+}
+
+function rotateChartTextMeasurement(
+  measurement: ChartTextMeasurement,
+  rotation: number,
+): ChartTextMeasurement {
   if (rotation === 0) return measurement;
   const radians = (Math.abs(rotation) * Math.PI) / 180;
   return {

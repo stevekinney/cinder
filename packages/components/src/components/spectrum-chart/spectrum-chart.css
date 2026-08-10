@@ -23,7 +23,7 @@
   }
 
   .cinder-spectrum-chart__bar {
-    fill: var(--_cinder-chart-foreground, currentColor);
+    fill: var(--_cinder-chart-series-color, currentColor);
     rx: 2;
   }
 
@@ -42,7 +42,7 @@
     inset: 0;
     display: grid;
     place-items: center;
-    color: var(--cinder-text-muted);
+    color: var(--_cinder-chart-muted, currentColor);
     background: var(--_cinder-chart-background, transparent);
     z-index: 1;
   }

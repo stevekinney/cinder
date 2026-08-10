@@ -17,6 +17,7 @@
 </script>
 
 <script lang="ts">
+  import { onMount } from 'svelte';
   import {
     assertValidNonNegativeInteger,
     chartPaletteColor,
@@ -77,6 +78,10 @@
   });
 
   let rootElement = $state<HTMLElement>();
+  let measureText = $state(false);
+  onMount(() => {
+    measureText = true;
+  });
 
   $effect(() => {
     if (!rootElement) return;
@@ -96,6 +101,7 @@
       xAxis,
       yAxis,
       theme,
+      measureText,
     }),
   );
   const keyboardEnabled = $derived(
@@ -272,11 +278,13 @@
           <!-- Series-specific rendering: rectangular bars. -->
           {#if mark}
             {#each series as item (item.id)}
-              {@render mark({
-                series: item,
-                points: model.bars.filter((bar) => bar.seriesId === item.id),
-                geometry: model.geometry,
-              })}
+              {#if !hiddenSeriesIds.includes(item.id)}
+                {@render mark({
+                  series: item,
+                  points: model.bars.filter((bar) => bar.seriesId === item.id),
+                  geometry: model.geometry,
+                })}
+              {/if}
             {/each}
           {:else}
             {#each model.bars as bar (bar.id)}

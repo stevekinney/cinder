@@ -2,6 +2,7 @@ import type {
   ChartAxisConfiguration,
   ChartCartesianSeries,
   ChartTheme,
+  ChartXAxisConfiguration,
 } from '../../components/chart.types.ts';
 import { createChartGeometry } from './chart-layout.ts';
 import {
@@ -34,16 +35,20 @@ import {
   type BandlikeScale,
   type LinearScale,
 } from './chart-scale.ts';
+
+const DEFAULT_MAXIMUM_X_TICK_COUNT = 8;
+
 export function createCartesianModel(options: {
   componentId: 'line-chart' | 'area-chart';
   series: ChartCartesianSeries[];
   hiddenSeriesIds: string[];
   width: number;
   height: number;
-  xAxis?: ChartAxisConfiguration | undefined;
+  xAxis?: ChartXAxisConfiguration | undefined;
   yAxis?: ChartAxisConfiguration | undefined;
   stackedArea?: boolean;
   theme?: ChartTheme | undefined;
+  measureText?: boolean | undefined;
 }): CartesianChartModel {
   const {
     componentId,
@@ -55,6 +60,7 @@ export function createCartesianModel(options: {
     yAxis,
     stackedArea = false,
     theme,
+    measureText = false,
   } = options;
   assertUniqueSeriesIds(componentId, series);
   assertValidChartNumber(componentId, 'invalid-height', height, 'height');
@@ -62,7 +68,7 @@ export function createCartesianModel(options: {
   assertValidTickCount(componentId, yAxis);
 
   const resolvedTheme = resolveChartTheme(theme);
-  let geometry = createChartGeometry(width, height);
+  let geometry = createChartGeometry(width, height, { measureText });
   const allKinds = new Set<string>();
   const xValuesByKey = new Map<string, NormalizedXValue>();
 
@@ -140,7 +146,8 @@ export function createCartesianModel(options: {
   }
   const domainValues = stackedArea ? [0, ...stackedTotalsByKey.values()] : visibleNumericValues;
   const [yMinimum, yMaximum] = createPaddedDomain(domainValues);
-  const tickCount = xAxis?.tickCount ?? sortedXValues.length;
+  const tickCount =
+    xAxis?.tickCount ?? Math.min(sortedXValues.length, DEFAULT_MAXIMUM_X_TICK_COUNT);
   const preliminaryXTicks = buildXAxisTicks(sortedXValues, tickCount, xAxis, () => 0);
   const yTicks = createTicks([yMinimum, yMaximum], yAxis?.tickCount ?? 5);
   geometry = createChartGeometry(width, height, {
@@ -148,6 +155,7 @@ export function createCartesianModel(options: {
     yTickLabels: yTicks.map((tick, index) => formatNumericValue(tick, yAxis, undefined, { index })),
     xAxis,
     yAxis,
+    measureText,
   });
 
   // Split scales into two correctly-typed variables so the use site can
@@ -181,8 +189,8 @@ export function createCartesianModel(options: {
   const renderedSeries = normalizedSeries.map((item) => {
     const hidden = hiddenSeriesIds.includes(item.id);
     const points = item.points
-      .filter((point) => point.y !== null)
-      .toSorted((a, b) => (orderByKey.get(a.x.key) ?? 0) - (orderByKey.get(b.x.key) ?? 0));
+      .slice()
+      .sort((a, b) => (orderByKey.get(a.x.key) ?? 0) - (orderByKey.get(b.x.key) ?? 0));
 
     const placedPoints: PlacedPoint[] = points.map((point) => {
       const lowerValue = stackedArea ? (stackedOffsetsByKey.get(point.x.key) ?? 0) : 0;
@@ -196,12 +204,13 @@ export function createCartesianModel(options: {
     const renderPoints = decimatePlacedPoints(placedPoints);
     const coordinates = renderPoints.map((placed) => ({
       x: placed.pixelX,
-      y: placed.pixelY,
+      y: placed.y === null ? null : placed.pixelY,
       y0: yScale(stackedArea ? (stackedOffsetsByKey.get(placed.x.key) ?? 0) : 0),
     }));
 
     if (!hidden) {
       for (const placed of placedPoints) {
+        if (placed.y === null) continue;
         const xLabel = formatXValue(placed.x, xAxis, {
           seriesId: item.id,
           seriesLabel: item.label,

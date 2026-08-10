@@ -23,6 +23,9 @@ export type ChartAxisConfiguration = {
   label?: string;
   tickCount?: number;
   format?: ChartTickFormatter;
+};
+
+export type ChartXAxisConfiguration = ChartAxisConfiguration & {
   /** Tick-label rotation in degrees. Default `0`. */
   tickLabelRotation?: number;
 };
@@ -129,7 +132,7 @@ export type ChartSharedProps<TSeries = ChartCartesianSeries, TPoint = PlacedPoin
   /** Pixel height of the chart viewport. Default `280`. */
   height?: number;
   /** Configuration for the x-axis label and tick formatting. */
-  xAxis?: ChartAxisConfiguration;
+  xAxis?: ChartXAxisConfiguration;
   /** Configuration for the y-axis label and tick formatting. */
   yAxis?: ChartAxisConfiguration;
   /** Where to render the series legend relative to the chart. Default `top`. */
@@ -175,6 +178,12 @@ export type ChartJsonValue = string | number | null;
 
 /** @schemaObject */
 export type ChartAxisSchemaConfiguration = {
+  label?: string;
+  tickCount?: number;
+};
+
+/** @schemaObject */
+export type ChartXAxisSchemaConfiguration = {
   label?: string;
   tickCount?: number;
   tickLabelRotation?: number;

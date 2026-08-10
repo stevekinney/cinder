@@ -17,6 +17,7 @@
 </script>
 
 <script lang="ts">
+  import { onMount } from 'svelte';
   import {
     assertValidNonNegativeInteger,
     chartPaletteColor,
@@ -70,6 +71,10 @@
   const interaction = new ChartInteraction();
 
   let rootElement = $state<HTMLElement>();
+  let measureText = $state(false);
+  onMount(() => {
+    measureText = true;
+  });
 
   $effect(() => {
     if (!rootElement) return;
@@ -87,6 +92,7 @@
       yAxis,
       stackedArea: mode === 'stacked',
       theme,
+      measureText,
     }),
   );
   const keyboardEnabled = $derived(

@@ -11,6 +11,7 @@ import type {
   ChartLegendPosition,
   ChartSharedProps,
   ChartThemeSchema,
+  ChartXAxisSchemaConfiguration,
 } from '../chart.types.ts';
 
 export type BarChartProps = ChartSharedProps<BarChartSeries, BarChartPlacedBar> & {
@@ -34,7 +35,7 @@ export type BarChartSchemaProps = {
   /** Pixel height of the chart viewport. Default `280`. */
   height?: number;
   /** Configuration for the x-axis label and tick count. */
-  xAxis?: ChartAxisSchemaConfiguration;
+  xAxis?: ChartXAxisSchemaConfiguration;
   /** Configuration for the y-axis label and tick count. */
   yAxis?: ChartAxisSchemaConfiguration;
   /** Where to render the series legend relative to the chart. Default `top`. */
