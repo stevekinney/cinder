@@ -22,6 +22,13 @@ export {
   prependMessages,
 } from 'conversationalist';
 
+// Branch-rewind builders — the operation Chat's own `editMessage` adapter
+// command asks consumers to perform ("rewind to just before the edited
+// message, discard the superseded branch, re-send"). `rewindBeforeMessage` is
+// the form edit flows usually want, since the adapter hands them a message id.
+export { rewindBeforeMessage, rewindBeforePosition } from 'conversationalist/context';
+export type { RewindOptions } from 'conversationalist/context';
+
 const DELIVERY_STATUS_METADATA_KEY = '_deliveryStatus';
 
 /** Mark a message as failed so Chat renders its retry affordance. */
