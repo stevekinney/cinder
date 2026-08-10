@@ -337,8 +337,8 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
    * settles. The scroll listener's recompute is rAF-deferred, so at the exact
    * moment a guard drops, `atBottom` may still describe a transient
    * mid-animation position (e.g. "near the bottom" read milliseconds into a
-   * scroll-to-top). Only transitions are applied — reaching the bottom fires
-   * `onReachBottom` exactly like the scroll listener's recompute would.
+   * scroll-to-top). State is refreshed from final geometry, and reaching the
+   * bottom fires `onReachBottom` when the state transitions there.
    */
   function recomputeAtBottomAtSettlement(viewport: HTMLElement | null): void {
     if (viewport === null) return;
