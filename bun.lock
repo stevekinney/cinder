@@ -22,7 +22,7 @@
     },
     "packages/chat": {
       "name": "@lostgradient/chat",
-      "version": "0.7.0",
+      "version": "0.7.1",
       "dependencies": {
         "conversationalist": "^0.5.0",
         "zod": "4.4.1",
