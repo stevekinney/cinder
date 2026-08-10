@@ -33,7 +33,7 @@ describe('Waveform', () => {
     expect(container.querySelector('.cinder-waveform__path')?.getAttribute('stroke')).toBe(
       'var(--cinder-chart-series-1)',
     );
-    expect(chart?.getAttribute('style')).toContain('--cinder-chart-background: transparent');
+    expect(chart?.getAttribute('style')).toContain('--_cinder-chart-background: transparent');
   });
 
   test('applies a custom palette to path and bar marks', () => {

@@ -91,10 +91,10 @@ describe('Sparkbar', () => {
     });
 
     const style = container.querySelector('[role="meter"]')?.getAttribute('style') ?? '';
-    expect(style).toContain('--cinder-chart-foreground: currentColor');
-    expect(style).toContain('--cinder-chart-muted: currentColor');
-    expect(style).toContain('--cinder-chart-background: transparent');
-    expect(style).toContain('--cinder-chart-accent: var(--cinder-chart-series-1)');
+    expect(style).toContain('--_cinder-chart-foreground: currentColor');
+    expect(style).toContain('--_cinder-chart-muted: currentColor');
+    expect(style).toContain('--_cinder-chart-background: transparent');
+    expect(style).toContain('--_cinder-chart-accent: var(--cinder-chart-series-1)');
   });
 
   test('uses custom theme colors for foreground, background, and accent', () => {
@@ -110,10 +110,10 @@ describe('Sparkbar', () => {
     });
 
     const style = container.querySelector('[role="meter"]')?.getAttribute('style') ?? '';
-    expect(style).toContain('--cinder-chart-foreground: CanvasText');
-    expect(style).toContain('--cinder-chart-muted: GrayText');
-    expect(style).toContain('--cinder-chart-background: Canvas');
-    expect(style).toContain('--cinder-chart-accent: rebeccapurple');
+    expect(style).toContain('--_cinder-chart-foreground: CanvasText');
+    expect(style).toContain('--_cinder-chart-muted: GrayText');
+    expect(style).toContain('--_cinder-chart-background: Canvas');
+    expect(style).toContain('--_cinder-chart-accent: rebeccapurple');
   });
 
   test('falls back to zero when value is not finite', () => {

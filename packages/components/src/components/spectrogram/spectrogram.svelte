@@ -201,7 +201,7 @@
   {@attach observeResize}
   id={rootId}
   class={classNames('cinder-spectrogram', customClassName)}
-  style={`--cinder-chart-foreground: ${resolvedTheme.foreground}; --cinder-chart-muted: ${resolvedTheme.muted}; --cinder-chart-grid: ${resolvedTheme.grid}; --cinder-chart-background: ${resolvedTheme.background};`}
+  style={`--_cinder-chart-foreground: ${resolvedTheme.foreground}; --_cinder-chart-muted: ${resolvedTheme.muted}; --_cinder-chart-grid: ${resolvedTheme.grid}; --_cinder-chart-background: ${resolvedTheme.background};`}
   aria-label={label}
   aria-describedby={descriptionId}
 >

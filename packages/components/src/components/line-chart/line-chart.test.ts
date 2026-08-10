@@ -66,10 +66,10 @@ describe('LineChart', () => {
     container.style.background = 'black';
     const root = container.querySelector<HTMLElement>('.cinder-line-chart');
 
-    expect(root?.style.getPropertyValue('--cinder-chart-foreground')).toBe('currentColor');
-    expect(root?.style.getPropertyValue('--cinder-chart-muted')).toBe('currentColor');
-    expect(root?.style.getPropertyValue('--cinder-chart-grid')).toBe('currentColor');
-    expect(root?.style.getPropertyValue('--cinder-chart-background')).toBe('transparent');
+    expect(root?.style.getPropertyValue('--_cinder-chart-foreground')).toBe('currentColor');
+    expect(root?.style.getPropertyValue('--_cinder-chart-muted')).toBe('currentColor');
+    expect(root?.style.getPropertyValue('--_cinder-chart-grid')).toBe('currentColor');
+    expect(root?.style.getPropertyValue('--_cinder-chart-background')).toBe('transparent');
   });
 
   test('renders a custom mark snippet instead of the default series mark', () => {

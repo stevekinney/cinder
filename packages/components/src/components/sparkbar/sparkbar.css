@@ -5,7 +5,7 @@
     gap: 0.375rem;
     min-inline-size: 0;
     inline-size: 100%;
-    color: var(--cinder-chart-foreground, currentColor);
+    color: var(--_cinder-chart-foreground, currentColor);
   }
 
   .cinder-sparkbar__row {
@@ -26,7 +26,7 @@
 
   .cinder-sparkbar__trailing {
     flex: none;
-    color: var(--cinder-chart-muted, currentColor);
+    color: var(--_cinder-chart-muted, currentColor);
     font-variant-numeric: tabular-nums;
   }
 
@@ -35,7 +35,7 @@
     overflow: hidden;
     inline-size: 100%;
     border-radius: var(--cinder-radius-full);
-    background: var(--cinder-chart-background, transparent);
+    background: var(--_cinder-chart-background, transparent);
     isolation: isolate;
   }
 
@@ -45,7 +45,7 @@
     inset-inline-start: 0;
     inline-size: 100%;
     border-radius: inherit;
-    background: var(--cinder-chart-accent, currentColor);
+    background: var(--_cinder-chart-accent, currentColor);
     transform: scaleX(var(--_cinder-sparkbar-progress, 0));
     transform-origin: center left;
     transition: transform var(--cinder-duration-moderate) var(--cinder-ease-in-out);

@@ -59,7 +59,7 @@
   aria-valuetext={accessibleValueText}
   data-cinder-size={size}
   data-cinder-variant={variant}
-  style={`--cinder-chart-foreground: ${resolvedTheme.foreground}; --cinder-chart-muted: ${resolvedTheme.muted}; --cinder-chart-background: ${resolvedTheme.background}; --cinder-chart-accent: ${chartPaletteColor(0, resolvedTheme.palette)};`}
+  style={`--_cinder-chart-foreground: ${resolvedTheme.foreground}; --_cinder-chart-muted: ${resolvedTheme.muted}; --_cinder-chart-background: ${resolvedTheme.background}; --_cinder-chart-accent: ${chartPaletteColor(0, resolvedTheme.palette)};`}
 >
   <div class="cinder-sparkbar__row">
     <span class="cinder-sparkbar__label">{label}</span>

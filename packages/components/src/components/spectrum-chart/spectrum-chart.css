@@ -3,12 +3,12 @@
   .cinder-spectrum-chart {
     display: grid;
     gap: var(--cinder-space-3);
-    color: var(--cinder-chart-foreground, currentColor);
+    color: var(--_cinder-chart-foreground, currentColor);
   }
 
   .cinder-spectrum-chart__description {
     margin: 0;
-    color: var(--cinder-chart-muted, currentColor);
+    color: var(--_cinder-chart-muted, currentColor);
     font-size: var(--cinder-text-sm);
   }
 
@@ -23,17 +23,17 @@
   }
 
   .cinder-spectrum-chart__bar {
-    fill: var(--cinder-chart-foreground, currentColor);
+    fill: var(--_cinder-chart-foreground, currentColor);
     rx: 2;
   }
 
   .cinder-spectrum-chart__grid-line {
-    stroke: var(--cinder-chart-grid, currentColor);
+    stroke: var(--_cinder-chart-grid, currentColor);
     stroke-dasharray: 3 3;
   }
 
   .cinder-spectrum-chart__tick-label {
-    fill: var(--cinder-chart-muted, currentColor);
+    fill: var(--_cinder-chart-muted, currentColor);
     font-size: var(--cinder-text-xs);
   }
 
@@ -43,7 +43,7 @@
     display: grid;
     place-items: center;
     color: var(--cinder-text-muted);
-    background: var(--cinder-chart-background, transparent);
+    background: var(--_cinder-chart-background, transparent);
     z-index: 1;
   }
 }

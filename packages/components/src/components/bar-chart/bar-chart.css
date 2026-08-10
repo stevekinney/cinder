@@ -5,13 +5,13 @@
   .cinder-bar-chart {
     display: grid;
     gap: var(--cinder-space-3);
-    color: var(--cinder-chart-foreground, currentColor);
-    background: var(--cinder-chart-background, transparent);
+    color: var(--_cinder-chart-foreground, currentColor);
+    background: var(--_cinder-chart-background, transparent);
   }
 
   .cinder-bar-chart__description {
     margin: 0;
-    color: var(--cinder-chart-muted, currentColor);
+    color: var(--_cinder-chart-muted, currentColor);
     opacity: 0.72;
     font-size: var(--cinder-text-sm);
   }
@@ -70,7 +70,7 @@
   }
 
   .cinder-bar-chart__crosshair {
-    stroke: var(--cinder-chart-muted, currentColor);
+    stroke: var(--_cinder-chart-muted, currentColor);
     stroke-dasharray: 4 4;
     opacity: 0.72;
   }
@@ -147,7 +147,7 @@
 
   .cinder-bar-chart__tick-label,
   .cinder-bar-chart__axis-title {
-    fill: var(--cinder-chart-muted, currentColor);
+    fill: var(--_cinder-chart-muted, currentColor);
     font-size: var(--cinder-text-xs);
   }
 
@@ -160,8 +160,8 @@
     inset: 0;
     display: grid;
     place-items: center;
-    color: var(--cinder-chart-muted, currentColor);
-    background: var(--cinder-chart-background, transparent);
+    color: var(--_cinder-chart-muted, currentColor);
+    background: var(--_cinder-chart-background, transparent);
     z-index: 1;
   }
 

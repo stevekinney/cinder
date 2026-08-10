@@ -39,7 +39,7 @@ describe('SpectrumChart', () => {
     expect(container.querySelector('.cinder-spectrum-chart__bar')?.getAttribute('fill')).toBe(
       'var(--cinder-chart-series-1)',
     );
-    expect(chart?.getAttribute('style')).toContain('--cinder-chart-background: transparent');
+    expect(chart?.getAttribute('style')).toContain('--_cinder-chart-background: transparent');
   });
 
   test('applies a custom palette and theme colors', () => {

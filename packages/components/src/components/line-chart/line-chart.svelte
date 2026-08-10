@@ -173,10 +173,10 @@
   bind:this={rootElement}
   id={rootId}
   class={classNames('cinder-line-chart', customClassName)}
-  style:--cinder-chart-foreground={model.theme.foreground}
-  style:--cinder-chart-muted={model.theme.muted}
-  style:--cinder-chart-grid={model.theme.grid}
-  style:--cinder-chart-background={model.theme.background}
+  style:--_cinder-chart-foreground={model.theme.foreground}
+  style:--_cinder-chart-muted={model.theme.muted}
+  style:--_cinder-chart-grid={model.theme.grid}
+  style:--_cinder-chart-background={model.theme.background}
   aria-label={label}
   aria-describedby={descriptionId}
 >

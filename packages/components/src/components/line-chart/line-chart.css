@@ -5,13 +5,13 @@
   .cinder-line-chart {
     display: grid;
     gap: var(--cinder-space-3);
-    color: var(--cinder-chart-foreground, currentColor);
-    background: var(--cinder-chart-background, transparent);
+    color: var(--_cinder-chart-foreground, currentColor);
+    background: var(--_cinder-chart-background, transparent);
   }
 
   .cinder-line-chart__description {
     margin: 0;
-    color: var(--cinder-chart-muted, currentColor);
+    color: var(--_cinder-chart-muted, currentColor);
     opacity: 0.72;
     font-size: var(--cinder-text-sm);
   }
@@ -59,7 +59,7 @@
   }
 
   .cinder-line-chart__gridline {
-    stroke: var(--cinder-chart-grid, currentColor);
+    stroke: var(--_cinder-chart-grid, currentColor);
     opacity: 0.22;
     stroke-width: 1;
   }
@@ -73,7 +73,7 @@
   }
 
   .cinder-line-chart__crosshair {
-    stroke: var(--cinder-chart-muted, currentColor);
+    stroke: var(--_cinder-chart-muted, currentColor);
     opacity: 0.72;
     stroke-dasharray: 4 4;
   }
@@ -150,7 +150,7 @@
 
   .cinder-line-chart__tick-label,
   .cinder-line-chart__axis-title {
-    fill: var(--cinder-chart-muted, currentColor);
+    fill: var(--_cinder-chart-muted, currentColor);
     font-size: var(--cinder-text-xs);
   }
 
@@ -163,8 +163,8 @@
     inset: 0;
     display: grid;
     place-items: center;
-    color: var(--cinder-chart-muted, currentColor);
-    background: var(--cinder-chart-background, transparent);
+    color: var(--_cinder-chart-muted, currentColor);
+    background: var(--_cinder-chart-background, transparent);
     z-index: 1;
   }
 

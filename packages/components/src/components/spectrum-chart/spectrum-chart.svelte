@@ -145,7 +145,7 @@
   class={classNames('cinder-spectrum-chart', customClassName)}
   aria-label={label}
   aria-describedby={descriptionId}
-  style={`--cinder-chart-foreground: ${resolvedTheme.foreground}; --cinder-chart-muted: ${resolvedTheme.muted}; --cinder-chart-grid: ${resolvedTheme.grid}; --cinder-chart-background: ${resolvedTheme.background};`}
+  style={`--_cinder-chart-foreground: ${resolvedTheme.foreground}; --_cinder-chart-muted: ${resolvedTheme.muted}; --_cinder-chart-grid: ${resolvedTheme.grid}; --_cinder-chart-background: ${resolvedTheme.background};`}
 >
   {#if description}
     <p id={descriptionId} class="cinder-spectrum-chart__description">{description}</p>
