@@ -598,10 +598,7 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
             targetGrewSinceGuardArmed &&
             target > viewport.scrollTop + SETTLE_TARGET_TOLERANCE
           ) {
-            const activeDestination = destination;
-            if (activeDestination !== undefined) {
-              viewport.scrollTo({ top: activeDestination(), behavior: getScrollBehavior() });
-            }
+            viewport.scrollTo({ top: destination!(), behavior: getScrollBehavior() });
             guardSettleTarget = target;
           }
           armBackstop();
