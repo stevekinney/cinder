@@ -1085,7 +1085,7 @@ describe('Chat — imperative API forwarding', () => {
     expect(source).toMatch(
       /export function beginStreaming\(messageId: string\): void \{\s*\/\/[\s\S]*?void preloadMarkdownPipeline\(\);/,
     );
-    expect(source).toContain('if (streamingInitialized && streaming && !previousStreaming) {');
+    expect(source).toContain('if (streaming && (!streamingInitialized || !previousStreaming)) {');
     expect(source).toContain('previousStreaming = streaming;');
   });
 

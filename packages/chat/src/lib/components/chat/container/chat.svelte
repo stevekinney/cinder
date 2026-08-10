@@ -231,12 +231,12 @@
   const toolCallState = useChatDisclosureState({ onRemeasureRow: remeasureRow });
 
   // Content-driven streams do not call beginStreaming, so warm the renderer
-  // only when streaming transitions from false to true. Initial prop values do
-  // not represent a transition and should not preload on mount.
+  // when streaming starts or when Chat mounts during an already-active stream.
+  // Idle mounts remain lazy.
   let previousStreaming = $state(false);
   let streamingInitialized = $state(false);
   $effect(() => {
-    if (streamingInitialized && streaming && !previousStreaming) {
+    if (streaming && (!streamingInitialized || !previousStreaming)) {
       void preloadMarkdownPipeline();
     }
     previousStreaming = streaming;
