@@ -65,6 +65,7 @@
   import { useChatReadReceipts } from './use-chat-read-receipts.svelte.ts';
   import ChatParticipantTyping from './chat-participant-typing.svelte';
   import ChatReadReceipt from '../message/chat-read-receipt.svelte';
+  import { preloadMarkdownPipeline } from '../message/markdown-pipeline.ts';
 
   const noopAttachment: Attachment<HTMLElement> = () => {};
   const CONSUMER_ANNOUNCEMENT_CLEAR_DELAY_MS = 1000;
@@ -228,6 +229,19 @@
   }
   const reasoningState = useChatDisclosureState({ onRemeasureRow: remeasureRow });
   const toolCallState = useChatDisclosureState({ onRemeasureRow: remeasureRow });
+
+  // Content-driven streams do not call beginStreaming, so warm the renderer
+  // when streaming starts or when Chat mounts during an already-active stream.
+  // Idle mounts remain lazy.
+  let previousStreaming = $state(false);
+  let streamingInitialized = $state(false);
+  $effect(() => {
+    if (streaming && (!streamingInitialized || !previousStreaming)) {
+      void preloadMarkdownPipeline();
+    }
+    previousStreaming = streaming;
+    streamingInitialized = true;
+  });
 
   // Reset UI-only approval/disclosure/typing/receipt state on conversation change
   // so stale approved/denied sets, expanded reasoning/tool-call disclosures,
@@ -1950,6 +1964,9 @@
    * preceding endStreaming.
    */
   export function beginStreaming(messageId: string): void {
+    // Start loading before the first token arrives so the first streamed
+    // message can format its initial markdown instead of showing raw text.
+    void preloadMarkdownPipeline();
     if (streamingScrollRaf !== undefined) {
       cancelAnimationFrame(streamingScrollRaf);
       streamingScrollRaf = undefined;

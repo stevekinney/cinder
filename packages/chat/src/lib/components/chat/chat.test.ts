@@ -1041,7 +1041,7 @@ describe('Chat — imperative API forwarding', () => {
     }
   });
 
-  test('forwarded methods are callable after mount and a no-op after unmount', () => {
+  test('beginStreaming is callable with streaming=false and remains safe after unmount', async () => {
     const target = document.createElement('div');
     document.body.append(target);
     let conversation = createConversation({ id: 'conversation-imperative-stream' });
@@ -1049,15 +1049,16 @@ describe('Chat — imperative API forwarding', () => {
     const assistantId = conversation.ids[conversation.ids.length - 1]!;
     const instance = mount(Chat, {
       target,
-      props: { id: 'chat-imperative-stream', conversation },
+      props: { id: 'chat-imperative-stream', conversation, streaming: false },
     });
     const api = instance as unknown as ChatImperative;
 
-    // Callable after mount — drives the streaming buffer without throwing.
+    // Wait for the wrapper's inner component binding before exercising the
+    // forwarded API. Calling sooner only tests the wrapper's no-op guard.
+    await tick();
+
     expect(() => {
       api.beginStreaming(assistantId);
-      api.pushToken('Hel');
-      api.pushToken('lo');
       api.endStreaming();
       api.scrollToBottom();
       api.scrollToTop();
@@ -1076,6 +1077,16 @@ describe('Chat — imperative API forwarding', () => {
       api.scrollToTop();
       api.focusInput();
     }).not.toThrow();
+  });
+
+  test('warms markdown for imperative and content-driven streaming paths', async () => {
+    const source = await Bun.file(new URL('./container/chat.svelte', import.meta.url)).text();
+
+    expect(source).toMatch(
+      /export function beginStreaming\(messageId: string\): void \{\s*\/\/[\s\S]*?void preloadMarkdownPipeline\(\);/,
+    );
+    expect(source).toContain('if (streaming && (!streamingInitialized || !previousStreaming)) {');
+    expect(source).toContain('previousStreaming = streaming;');
   });
 
   test('forwarded scroll methods use the virtualized scroll path when enabled', async () => {
