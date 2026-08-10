@@ -18,7 +18,11 @@
 </script>
 
 <script lang="ts">
-  import { dataTableClass } from '../../_internal/chart/chart-utilities.ts';
+  import {
+    chartPaletteColor,
+    dataTableClass,
+    resolveChartTheme,
+  } from '../../_internal/chart/chart-utilities.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { useResizeObserver } from '../../utilities/use-resize-observer.svelte.ts';
   import type { WaveformProps } from './waveform.types.ts';
@@ -32,6 +36,7 @@
     loading = false,
     dataTableVisibility = 'screen-reader-only',
     dataTableCaption,
+    theme,
     class: customClassName,
     empty,
     loadingContent,
@@ -42,6 +47,7 @@
   const generatedId = $props.id();
   const rootId = $derived(id ?? generatedId);
   const descriptionId = $derived(description ? `${rootId}-description` : undefined);
+  const resolvedTheme = $derived(resolveChartTheme(theme));
 
   let measuredWidth = $state(400);
 
@@ -198,6 +204,7 @@
   aria-label={label}
   aria-describedby={descriptionId}
   data-cinder-render-mode={renderMode}
+  style={`--cinder-chart-foreground: ${resolvedTheme.foreground}; --cinder-chart-muted: ${resolvedTheme.muted}; --cinder-chart-grid: ${resolvedTheme.grid}; --cinder-chart-background: ${resolvedTheme.background};`}
 >
   {#if description}
     <p id={descriptionId} class="cinder-waveform__description">{description}</p>
@@ -233,6 +240,7 @@
           x2={measuredWidth}
           y1={midY}
           y2={midY}
+          stroke={resolvedTheme.grid}
           aria-hidden="true"
         />
         {#if renderMode === 'bars'}
@@ -243,11 +251,17 @@
               y={bar.y}
               width={bar.width}
               height={bar.height}
+              fill={chartPaletteColor(0, resolvedTheme.palette)}
               aria-hidden="true"
             />
           {/each}
         {:else}
-          <path class="cinder-waveform__path" d={waveformPath} aria-hidden="true" />
+          <path
+            class="cinder-waveform__path"
+            d={waveformPath}
+            stroke={chartPaletteColor(0, resolvedTheme.palette)}
+            aria-hidden="true"
+          />
         {/if}
       {/if}
     </svg>

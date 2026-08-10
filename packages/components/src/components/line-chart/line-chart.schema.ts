@@ -25,6 +25,9 @@ const schema = {
         tickCount: {
           type: 'number',
         },
+        tickLabelRotation: {
+          type: 'number',
+        },
       },
       additionalProperties: false,
       description: 'Configuration for the x-axis label and tick count.',
@@ -36,6 +39,9 @@ const schema = {
           type: 'string',
         },
         tickCount: {
+          type: 'number',
+        },
+        tickLabelRotation: {
           type: 'number',
         },
       },
@@ -70,6 +76,37 @@ const schema = {
       type: 'number',
       description:
         'Maximum number of interactive focus targets before keyboard navigation is disabled. Default `500`.',
+    },
+    theme: {
+      type: 'object',
+      properties: {
+        foreground: {
+          type: 'string',
+        },
+        muted: {
+          type: 'string',
+        },
+        grid: {
+          type: 'string',
+        },
+        background: {
+          type: 'string',
+        },
+        palette: {
+          type: 'array',
+          items: {
+            type: 'string',
+          },
+        },
+      },
+      additionalProperties: false,
+      description:
+        'Partial visual theme override. Omitted fields inherit the surrounding application.',
+    },
+    tooltip: {
+      type: 'boolean',
+      description:
+        'Enable the default visual tooltip. Custom snippet tooltips are available in the TypeScript API.',
     },
     class: {
       type: 'string',
@@ -137,6 +174,12 @@ const schema = {
       {
         name: 'loadingContent',
         reason: 'function-or-snippet',
+      },
+      {
+        name: 'mark',
+        reason: 'function-or-snippet',
+        description:
+          'Per-series renderer override. The chart retains scales, guides, focus, and data-table semantics.',
       },
     ],
   },

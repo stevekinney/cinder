@@ -217,11 +217,10 @@ function isOpaqueType(type: Type): boolean {
  * Describe a resolved type structurally, for value synthesis.
  *
  * Union handling is ordered by what produces a usable placeholder: an
- * all-string-literal union becomes an `enum`; a union with an object arm takes
- * the FIRST object arm (`MegaMenuItem`, `EventStreamEntry` and
- * `RunStepTimelineEntry` are all shaped that way); a union of primitives prefers
- * the `string` arm, since `Statistic.value: string | number` reads better as
- * text than as a number.
+ * all-string-literal union becomes an `enum`; a mixed union prefers a safe
+ * primitive arm before an object arm, so `string | number | Date` becomes a
+ * distinct readable string instead of `{}`; an all-object union takes its first
+ * object arm (`MegaMenuItem` and `RunStepTimelineEntry` are shaped that way).
  */
 /**
  * Memoizes {@link shapeFromType} by resolved type text and depth.
@@ -258,10 +257,10 @@ function computeShapeFromType(bare: Type, at: Node, depth: number): ValueShape |
 
   if (bare.isUnion()) {
     const arms = bare.getUnionTypes().filter((arm) => !arm.isNull() && !arm.isUndefined());
-    const objectArm = arms.find((arm) => arm.isObject() && !isOpaqueType(arm));
-    if (objectArm !== undefined) return objectShapeFromType(objectArm, at, depth);
     if (arms.some((arm) => arm.isString() || arm.isStringLiteral())) return { kind: 'string' };
     if (arms.some((arm) => arm.isNumber() || arm.isNumberLiteral())) return { kind: 'number' };
+    const objectArm = arms.find((arm) => arm.isObject() && !isOpaqueType(arm));
+    if (objectArm !== undefined) return objectShapeFromType(objectArm, at, depth);
     return { kind: 'opaque', rawType: bare.getText() };
   }
 

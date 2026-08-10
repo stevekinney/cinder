@@ -27,6 +27,37 @@ afterAll(() => {
 const sineData = Array.from({ length: 64 }, (_, index) => Math.sin((index / 64) * Math.PI * 4));
 
 describe('Waveform', () => {
+  test('uses the default palette and inherits chart-local theme defaults', () => {
+    const { container } = render(Waveform, { label: 'Sine wave', data: sineData });
+    const chart = container.querySelector('.cinder-waveform');
+    expect(container.querySelector('.cinder-waveform__path')?.getAttribute('stroke')).toBe(
+      'var(--cinder-chart-series-1)',
+    );
+    expect(chart?.getAttribute('style')).toContain('--cinder-chart-background: transparent');
+  });
+
+  test('applies a custom palette to path and bar marks', () => {
+    const pathView = render(Waveform, {
+      label: 'Sine wave',
+      data: sineData,
+      theme: { palette: ['rebeccapurple'] },
+    });
+    expect(pathView.container.querySelector('.cinder-waveform__path')?.getAttribute('stroke')).toBe(
+      'rebeccapurple',
+    );
+    pathView.unmount();
+
+    const { container } = render(Waveform, {
+      label: 'Sine wave',
+      data: sineData,
+      renderMode: 'bars',
+      theme: { palette: ['rebeccapurple'] },
+    });
+    expect(container.querySelector('.cinder-waveform__bar')?.getAttribute('fill')).toBe(
+      'rebeccapurple',
+    );
+  });
+
   test('renders an SVG with an accessible title when data is present', () => {
     const { container } = render(Waveform, {
       label: 'Sine wave',

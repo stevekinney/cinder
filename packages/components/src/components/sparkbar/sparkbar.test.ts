@@ -84,6 +84,38 @@ describe('Sparkbar', () => {
     expect(el?.getAttribute('aria-label')).toBe('Session cost usage');
   });
 
+  test('resolves theme defaults through currentColor and transparent', () => {
+    const { container } = render(Sparkbar, {
+      value: 0.5,
+      label: 'Usage',
+    });
+
+    const style = container.querySelector('[role="meter"]')?.getAttribute('style') ?? '';
+    expect(style).toContain('--cinder-chart-foreground: currentColor');
+    expect(style).toContain('--cinder-chart-muted: currentColor');
+    expect(style).toContain('--cinder-chart-background: transparent');
+    expect(style).toContain('--cinder-chart-accent: var(--cinder-chart-series-1)');
+  });
+
+  test('uses custom theme colors for foreground, background, and accent', () => {
+    const { container } = render(Sparkbar, {
+      value: 0.5,
+      label: 'Usage',
+      theme: {
+        foreground: 'CanvasText',
+        muted: 'GrayText',
+        background: 'Canvas',
+        palette: ['rebeccapurple'],
+      },
+    });
+
+    const style = container.querySelector('[role="meter"]')?.getAttribute('style') ?? '';
+    expect(style).toContain('--cinder-chart-foreground: CanvasText');
+    expect(style).toContain('--cinder-chart-muted: GrayText');
+    expect(style).toContain('--cinder-chart-background: Canvas');
+    expect(style).toContain('--cinder-chart-accent: rebeccapurple');
+  });
+
   test('falls back to zero when value is not finite', () => {
     const { container } = render(Sparkbar, {
       value: NaN,

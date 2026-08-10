@@ -33,6 +33,44 @@ const mockBins = [
 ];
 
 describe('SpectrumChart', () => {
+  test('uses the default palette and inherits chart-local theme defaults', () => {
+    const { container } = render(SpectrumChart, { label: 'Spectrum', bins: mockBins });
+    const chart = container.querySelector('.cinder-spectrum-chart');
+    expect(container.querySelector('.cinder-spectrum-chart__bar')?.getAttribute('fill')).toBe(
+      'var(--cinder-chart-series-1)',
+    );
+    expect(chart?.getAttribute('style')).toContain('--cinder-chart-background: transparent');
+  });
+
+  test('applies a custom palette and theme colors', () => {
+    const { container } = render(SpectrumChart, {
+      label: 'Spectrum',
+      bins: mockBins,
+      theme: { palette: ['hotpink'], muted: 'slategray', grid: 'silver' },
+    });
+    expect(container.querySelector('.cinder-spectrum-chart__bar')?.getAttribute('fill')).toBe(
+      'hotpink',
+    );
+    expect(
+      container.querySelector('.cinder-spectrum-chart__tick-label')?.getAttribute('fill'),
+    ).toBe('slategray');
+    expect(
+      container.querySelector('.cinder-spectrum-chart__grid-line')?.getAttribute('stroke'),
+    ).toBe('silver');
+  });
+
+  test('derives a wider left margin for long numeric guide labels', () => {
+    const { container } = render(SpectrumChart, {
+      label: 'Spectrum',
+      bins: [{ label: '1 Hz', value: 1e12 }],
+    });
+    const group = container.querySelector('.cinder-spectrum-chart__bar')?.parentElement;
+    expect(group?.getAttribute('transform')).toMatch(/^translate\(\d+, 16\)$/);
+    expect(
+      Number(group?.getAttribute('transform')?.match(/translate\((\d+),/)?.[1]),
+    ).toBeGreaterThan(40);
+  });
+
   test('renders a bar for each frequency bin', () => {
     const { container } = render(SpectrumChart, {
       label: 'Frequency spectrum',
@@ -165,8 +203,8 @@ describe('SpectrumChart', () => {
     });
     const rects = Array.from(container.querySelectorAll('.cinder-spectrum-chart__bar'));
     const heights = rects.map((r) => Number(r.getAttribute('height')));
-    // The tallest bar (value 0.8 === the max) fills the full plot height (160 - 8 - 32 = 120).
-    expect(Math.max(...heights)).toBeCloseTo(120, 0);
+    // The tallest bar (value 0.8 === the max) fills the dynamically-derived plot height.
+    expect(Math.max(...heights)).toBeCloseTo(108, 0);
   });
 
   test('all-zero bins render zero-height bars', () => {

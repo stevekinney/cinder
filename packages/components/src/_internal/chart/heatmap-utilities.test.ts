@@ -115,4 +115,13 @@ describe('heatmapCellFill', () => {
     expect(fill).toContain('var(--cinder-chart-series-5)');
     expect(fill).toContain('50%');
   });
+
+  test('uses a chart-local palette for sequential and diverging scales', () => {
+    const palette = ['sequential', 'unused', 'warm', 'unused', 'cool'];
+    const domain = heatmapDomain([-10, 10]);
+
+    expect(heatmapCellFill(10, domain, 'sequential', palette)).toContain('sequential');
+    expect(heatmapCellFill(-5, domain, 'diverging', palette)).toContain('cool');
+    expect(heatmapCellFill(5, domain, 'diverging', palette)).toContain('warm');
+  });
 });

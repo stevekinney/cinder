@@ -47,22 +47,27 @@ Responsive SVG frequency-bin bar chart for visualizing audio spectrum magnitude 
 - A full time × frequency heatmap is needed — use spectrogram instead.
 - General categorical bar comparison — use bar-chart instead.
 
+## Rendering and theming
+
+SpectrumChart uses SVG and derives guide margins from its formatted frequency and magnitude labels. Its foreground follows `currentColor`, its background remains transparent, and the spectrum marks use the first resolved `--cinder-chart-series-*` color. Pass a partial `theme` to override only the palette or chart colors you need; the semantic data table remains available independently of the visual theme.
+
 ## Props
 
 <!-- generated:props:start -->
 
-| Prop                  | Type                                                | Required | Default | Description                                                                                                         |
-| --------------------- | --------------------------------------------------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------- |
-| `bins`                | { label: `string`; value: `number` }[]              | yes      | —       | Frequency bins with label + magnitude value.                                                                        |
-| `class`               | `string`                                            | no       | —       | Custom class applied to the root element.                                                                           |
-| `dataTableCaption`    | `string`                                            | no       | —       | Custom data table caption; falls back to `label`.                                                                   |
-| `dataTableVisibility` | `"screen-reader-only"` \| `"visible"` \| `"hidden"` | no       | —       | Controls data table visibility. Default `screen-reader-only`.                                                       |
-| `description`         | `string`                                            | no       | —       | Optional description rendered below the label.                                                                      |
-| `height`              | `number`                                            | no       | —       | Pixel height of the chart. Default `160`.                                                                           |
-| `label`               | `string`                                            | yes      | —       | Accessible label for the chart. Required for screen readers.                                                        |
-| `loading`             | `boolean`                                           | no       | —       | Whether the chart is in a loading state. Default `false`.                                                           |
-| `empty`               | `(opaque)`                                          | no       | —       | Snippet rendered when there are no bins. Not expressible in JSON Schema; see the component types for the signature. |
-| `loadingContent`      | `(opaque)`                                          | no       | —       | Snippet rendered while loading. Not expressible in JSON Schema; see the component types for the signature.          |
+| Prop                  | Type                                                                                                      | Required | Default | Description                                                                                                         |
+| --------------------- | --------------------------------------------------------------------------------------------------------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------- |
+| `bins`                | { label: `string`; value: `number` }[]                                                                    | yes      | —       | Frequency bins with label + magnitude value.                                                                        |
+| `class`               | `string`                                                                                                  | no       | —       | Custom class applied to the root element.                                                                           |
+| `dataTableCaption`    | `string`                                                                                                  | no       | —       | Custom data table caption; falls back to `label`.                                                                   |
+| `dataTableVisibility` | `"screen-reader-only"` \| `"visible"` \| `"hidden"`                                                       | no       | —       | Controls data table visibility. Default `screen-reader-only`.                                                       |
+| `description`         | `string`                                                                                                  | no       | —       | Optional description rendered below the label.                                                                      |
+| `height`              | `number`                                                                                                  | no       | —       | Pixel height of the chart. Default `160`.                                                                           |
+| `label`               | `string`                                                                                                  | yes      | —       | Accessible label for the chart. Required for screen readers.                                                        |
+| `loading`             | `boolean`                                                                                                 | no       | —       | Whether the chart is in a loading state. Default `false`.                                                           |
+| `theme`               | { background?: `string`; foreground?: `string`; grid?: `string`; muted?: `string`; palette?: `string`[] } | no       | —       | Partial visual theme override. Omitted fields inherit the surrounding application.                                  |
+| `empty`               | `(opaque)`                                                                                                | no       | —       | Snippet rendered when there are no bins. Not expressible in JSON Schema; see the component types for the signature. |
+| `loadingContent`      | `(opaque)`                                                                                                | no       | —       | Snippet rendered while loading. Not expressible in JSON Schema; see the component types for the signature.          |
 
 <!-- generated:props:end -->
 

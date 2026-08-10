@@ -3,12 +3,12 @@
   .cinder-spectrogram {
     display: grid;
     gap: var(--cinder-space-3);
-    color: var(--cinder-text);
+    color: var(--cinder-chart-foreground, currentColor);
   }
 
   .cinder-spectrogram__description {
     margin: 0;
-    color: var(--cinder-text-muted);
+    color: var(--cinder-chart-muted, currentColor);
     font-size: var(--cinder-text-sm);
   }
 
@@ -23,12 +23,12 @@
   }
 
   .cinder-spectrogram__cell {
-    stroke: color-mix(in oklch, var(--cinder-text), transparent 88%);
+    stroke: color-mix(in oklch, var(--cinder-chart-foreground, currentColor), transparent 88%);
     stroke-width: 0.5;
   }
 
   .cinder-spectrogram__tick-label {
-    fill: var(--cinder-text-muted);
+    fill: var(--cinder-chart-muted, currentColor);
     font-size: var(--cinder-text-xs);
   }
 
@@ -37,8 +37,8 @@
     inset: 0;
     display: grid;
     place-items: center;
-    color: var(--cinder-text-muted);
-    background: color-mix(in oklch, var(--cinder-surface) 88%, transparent);
+    color: var(--cinder-chart-muted, currentColor);
+    background: var(--cinder-chart-background, transparent);
     z-index: 1;
   }
 }

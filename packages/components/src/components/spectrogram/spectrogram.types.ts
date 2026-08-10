@@ -1,6 +1,6 @@
 import type { Snippet } from 'svelte';
 import type { HTMLAttributes } from 'svelte/elements';
-import type { ChartDataTableVisibility } from '../chart.types.ts';
+import type { ChartDataTableVisibility, ChartTheme, ChartThemeSchema } from '../chart.types.ts';
 
 /**
  * A single time-frame of frequency-bin magnitudes.
@@ -42,6 +42,8 @@ export type SpectrogramProps = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
   loading?: boolean;
   /** Controls data table visibility. Default `screen-reader-only`. */
   dataTableVisibility?: ChartDataTableVisibility;
+  /** Partial visual theme override. */
+  theme?: ChartTheme;
   /** Custom data table caption; falls back to `label`. */
   dataTableCaption?: string;
   /** Custom class applied to the root element. */
@@ -67,6 +69,8 @@ export type SpectrogramSchemaProps = {
   loading?: boolean;
   /** Controls data table visibility. Default `screen-reader-only`. */
   dataTableVisibility?: ChartDataTableVisibility;
+  /** Partial visual theme override. */
+  theme?: ChartThemeSchema;
   /** Custom data table caption; falls back to `label`. */
   dataTableCaption?: string;
   /** Custom class applied to the root element. */

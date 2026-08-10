@@ -23,6 +23,8 @@ export type ChartAxisConfiguration = {
   label?: string;
   tickCount?: number;
   format?: ChartTickFormatter;
+  /** Tick-label rotation in degrees. Default `0`. */
+  tickLabelRotation?: number;
 };
 
 export type ChartPoint = {
@@ -38,7 +40,88 @@ export type ChartCartesianSeries = {
   valueFormatter?: ChartValueFormatter;
 };
 
-export type ChartSharedProps = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
+export type ChartTheme = {
+  foreground?: string;
+  muted?: string;
+  grid?: string;
+  background?: string;
+  palette?: string[];
+};
+
+export type ResolvedChartTheme = {
+  foreground: string;
+  muted: string;
+  grid: string;
+  background: string;
+  palette: string[];
+};
+
+export type NormalizedXValue = {
+  raw: ChartXValue;
+  key: string;
+  label: string;
+  comparable: string | number;
+  kind: 'string' | 'number' | 'date';
+};
+
+export type PlacedPoint = {
+  seriesId: string;
+  seriesLabel: string;
+  color: string;
+  x: NormalizedXValue;
+  y: number | null;
+  originalY: ChartNumericValue;
+  index: number;
+  pixelX: number;
+  pixelY: number;
+};
+
+export type ChartGeometry = {
+  plotWidth: number;
+  plotHeight: number;
+  marginTop: number;
+  marginRight: number;
+  marginBottom: number;
+  marginLeft: number;
+};
+
+export type ChartTarget = {
+  id: string;
+  seriesId: string;
+  seriesLabel: string;
+  xLabel: string;
+  valueLabel: string;
+  x: number;
+  y: number;
+  width?: number;
+  height?: number;
+  color: string;
+};
+
+export type BarChartPlacedBar = {
+  id: string;
+  seriesId: string;
+  seriesLabel: string;
+  categoryLabel: string;
+  valueLabel: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  color: string;
+  hidden: boolean;
+};
+
+export type ChartMarkContext<TSeries = ChartCartesianSeries, TPoint = PlacedPoint> = {
+  series: TSeries;
+  points: TPoint[];
+  geometry: ChartGeometry;
+};
+
+export type ChartSharedProps<TSeries = ChartCartesianSeries, TPoint = PlacedPoint> = Omit<
+  HTMLAttributes<HTMLElement>,
+  'class'
+> & {
   /** Accessible label for the chart. Required for screen readers. */
   label: string;
   /** Optional description rendered below the label. */
@@ -61,6 +144,12 @@ export type ChartSharedProps = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
   dataTableVisibility?: ChartDataTableVisibility;
   /** Maximum number of interactive focus targets before keyboard navigation is disabled. Default `500`. */
   maximumInteractivePoints?: number;
+  /** Partial visual theme override. Omitted fields inherit the surrounding application. */
+  theme?: ChartTheme;
+  /** Opt-in visual tooltip. Pass a snippet to replace the default visual content. */
+  tooltip?: boolean | Snippet<[ChartTarget]>;
+  /** Per-series renderer override. The chart retains scales, guides, focus, and data-table semantics. */
+  mark?: Snippet<[ChartMarkContext<TSeries, TPoint>]>;
   /** Custom class applied to the root element. */
   class?: string;
   empty?: Snippet;
@@ -88,6 +177,16 @@ export type ChartJsonValue = string | number | null;
 export type ChartAxisSchemaConfiguration = {
   label?: string;
   tickCount?: number;
+  tickLabelRotation?: number;
+};
+
+/** @schemaObject */
+export type ChartThemeSchema = {
+  foreground?: string;
+  muted?: string;
+  grid?: string;
+  background?: string;
+  palette?: string[];
 };
 
 /** @schemaObject */

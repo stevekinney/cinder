@@ -32,6 +32,28 @@ const mockFrames = [
 ];
 
 describe('Spectrogram', () => {
+  test('uses the custom theme palette and background for heatmap fills', () => {
+    const { container } = render(Spectrogram, {
+      label: 'Themed spectrogram',
+      frames: mockFrames,
+      theme: { palette: ['custom-palette'], background: 'custom-background' },
+    });
+    const fill = container.querySelector('.cinder-spectrogram__cell')?.getAttribute('fill');
+    expect(fill).toContain('custom-palette');
+    expect(fill).toContain('custom-background');
+  });
+
+  test('keeps cells inside the plot with long frequency labels', () => {
+    const { container } = render(Spectrogram, {
+      label: 'Long labels',
+      frames: [{ label: 'A very long time label', bins: [1] }],
+      frequencyLabels: ['An extremely long frequency label'],
+    });
+    const cell = container.querySelector<SVGRectElement>('.cinder-spectrogram__cell');
+    expect(cell?.getAttribute('x')).toBe('0');
+    expect(Number(cell?.getAttribute('width'))).toBeGreaterThan(0);
+  });
+
   test('renders cells for each frame × bin combination', () => {
     const { container } = render(Spectrogram, {
       label: 'Audio spectrogram',

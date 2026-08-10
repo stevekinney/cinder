@@ -26,20 +26,25 @@ namespace — see the [statistic-group README](../statistic-group/README.md#usag
 snippet. The flat `@lostgradient/cinder/statistic` subpath remains exported for
 à-la-carte builds that import the leaf directly.
 
+## Theming
+
+Statistic inherits its foreground and muted text from `currentColor` and keeps its background transparent. Pass a partial `theme` when a statistic needs an explicit local foreground, muted color, or background. Change direction remains visible through its arrow glyph, signed value, description, and screen-reader text rather than color alone.
+
 ## Props
 
 <!-- generated:props:start -->
 
-| Prop                 | Type                 | Required | Default | Description                                                                                                                                     |
-| -------------------- | -------------------- | -------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `class`              | `string`             | no       | —       | Additional class names merged with `.cinder-statistic`.                                                                                         |
-| `label`              | `string`             | yes      | —       | Short label describing the metric, e.g. "Monthly Revenue".                                                                                      |
-| `style`              | `string`             | no       | —       | Inline style string applied to the `.cinder-statistic` root.                                                                                    |
-| `value`              | `string` \| `number` | yes      | —       | The statistic. Strings rendered verbatim; numbers formatted via formatNumber.                                                                   |
-| `valueLocale`        | `string`             | no       | —       | Locale forwarded to formatNumber. Defaults to the nearest LocaleProvider locale, then en-US.                                                    |
-| `change`             | `(opaque)`           | no       | —       | Optional change indicator with direction and accessible wording. Not expressible in JSON Schema; see the component types for the signature.     |
-| `icon`               | `(opaque)`           | no       | —       | Optional leading icon snippet (decorative — wrapper is aria-hidden). Not expressible in JSON Schema; see the component types for the signature. |
-| `valueFormatOptions` | `(opaque)`           | no       | —       | Intl.NumberFormat options applied only when `value` is a number. Not expressible in JSON Schema; see the component types for the signature.     |
+| Prop                 | Type                                                                                                      | Required | Default | Description                                                                                                                                     |
+| -------------------- | --------------------------------------------------------------------------------------------------------- | -------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `class`              | `string`                                                                                                  | no       | —       | Additional class names merged with `.cinder-statistic`.                                                                                         |
+| `label`              | `string`                                                                                                  | yes      | —       | Short label describing the metric, e.g. "Monthly Revenue".                                                                                      |
+| `style`              | `string`                                                                                                  | no       | —       | Inline style string applied to the `.cinder-statistic` root.                                                                                    |
+| `theme`              | { background?: `string`; foreground?: `string`; grid?: `string`; muted?: `string`; palette?: `string`[] } | no       | —       | Partial visual theme override. Omitted fields inherit the surrounding application.                                                              |
+| `value`              | `string` \| `number`                                                                                      | yes      | —       | The statistic. Strings rendered verbatim; numbers formatted via formatNumber.                                                                   |
+| `valueLocale`        | `string`                                                                                                  | no       | —       | Locale forwarded to formatNumber. Defaults to the nearest LocaleProvider locale, then en-US.                                                    |
+| `change`             | `(opaque)`                                                                                                | no       | —       | Optional change indicator with direction and accessible wording. Not expressible in JSON Schema; see the component types for the signature.     |
+| `icon`               | `(opaque)`                                                                                                | no       | —       | Optional leading icon snippet (decorative — wrapper is aria-hidden). Not expressible in JSON Schema; see the component types for the signature. |
+| `valueFormatOptions` | `(opaque)`                                                                                                | no       | —       | Intl.NumberFormat options applied only when `value` is a number. Not expressible in JSON Schema; see the component types for the signature.     |
 
 <!-- generated:props:end -->
 

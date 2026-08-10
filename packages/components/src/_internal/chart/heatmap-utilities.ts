@@ -7,6 +7,8 @@
  * two component implementations.
  */
 
+import { chartPaletteColor } from './chart-utilities.ts';
+
 export type HeatmapColorScale = 'sequential' | 'diverging';
 
 /**
@@ -125,20 +127,22 @@ export function heatmapCellFill(
   value: number | null,
   domain: HeatmapDomain,
   scale: HeatmapColorScale = 'sequential',
+  palette?: readonly string[],
+  background = 'var(--cinder-surface-inset)',
 ): string {
-  if (value === null) return 'var(--cinder-surface-inset)';
+  if (value === null) return background;
   const normalized = normalizeHeatmapValue(value, domain, scale);
 
   if (scale === 'diverging') {
     if (normalized < 0.5) {
       const ratio = (0.5 - normalized) * 2;
-      return `color-mix(in oklch, var(--cinder-chart-series-5) ${Math.round(ratio * 100)}%, var(--cinder-surface-inset))`;
+      return `color-mix(in oklch, ${chartPaletteColor(4, palette)} ${Math.round(ratio * 100)}%, ${background})`;
     }
     const ratio = (normalized - 0.5) * 2;
-    return `color-mix(in oklch, var(--cinder-chart-series-3) ${Math.round(ratio * 100)}%, var(--cinder-surface-inset))`;
+    return `color-mix(in oklch, ${chartPaletteColor(2, palette)} ${Math.round(ratio * 100)}%, ${background})`;
   }
 
-  return `color-mix(in oklch, var(--cinder-chart-series-1) ${Math.round(normalized * 100)}%, var(--cinder-surface-inset))`;
+  return `color-mix(in oklch, ${chartPaletteColor(0, palette)} ${Math.round(normalized * 100)}%, ${background})`;
 }
 
 /**
@@ -149,11 +153,14 @@ export function heatmapLabelFill(
   value: number | null,
   domain: HeatmapDomain,
   scale: HeatmapColorScale = 'sequential',
+  foreground = 'currentColor',
+  muted = 'currentColor',
+  background = 'var(--cinder-surface)',
 ): string {
-  if (value === null) return 'var(--cinder-text-muted)';
+  if (value === null) return muted;
   const intensity =
     scale === 'diverging'
       ? Math.abs(normalizeHeatmapValue(value, domain, scale) - 0.5) * 2
       : normalizeHeatmapValue(value, domain, scale);
-  return intensity > 0.5 ? 'var(--cinder-surface)' : 'var(--cinder-text)';
+  return intensity > 0.5 ? background : foreground;
 }

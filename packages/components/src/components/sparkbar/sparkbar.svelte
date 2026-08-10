@@ -16,6 +16,7 @@
 </script>
 
 <script lang="ts">
+  import { chartPaletteColor, resolveChartTheme } from '../../_internal/chart/chart-utilities.ts';
   import { classNames } from '../../utilities/class-names.ts';
 
   import type { SparkbarProps } from './sparkbar.types.ts';
@@ -27,6 +28,7 @@
     trailing,
     size = 'md',
     variant = 'accent',
+    theme,
     ariaLabel,
     ariaValueText,
     class: customClassName,
@@ -43,6 +45,7 @@
   const normalizedAriaValueText = $derived(ariaValueText?.trim() || undefined);
   const accessibleName = $derived(normalizedAriaLabel ?? `${label}, ${percent}%`);
   const accessibleValueText = $derived(normalizedAriaValueText ?? normalizedTrailing);
+  const resolvedTheme = $derived(resolveChartTheme(theme));
 </script>
 
 <div
@@ -56,6 +59,7 @@
   aria-valuetext={accessibleValueText}
   data-cinder-size={size}
   data-cinder-variant={variant}
+  style={`--cinder-chart-foreground: ${resolvedTheme.foreground}; --cinder-chart-muted: ${resolvedTheme.muted}; --cinder-chart-background: ${resolvedTheme.background}; --cinder-chart-accent: ${chartPaletteColor(0, resolvedTheme.palette)};`}
 >
   <div class="cinder-sparkbar__row">
     <span class="cinder-sparkbar__label">{label}</span>

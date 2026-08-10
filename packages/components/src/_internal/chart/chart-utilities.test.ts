@@ -15,6 +15,7 @@ import {
   legendVisible,
   nearestTarget,
   normalizeXValue,
+  resolveChartTheme,
   toggleSeriesId,
   type ChartTarget,
 } from './chart-utilities.ts';
@@ -32,6 +33,35 @@ describe('chartPaletteColor', () => {
 
   test('falls back to the first palette color for negative indices', () => {
     expect(chartPaletteColor(-1)).toBe(chartPalette[0]);
+  });
+
+  test('wraps through a chart-local palette override', () => {
+    const palette = ['rebeccapurple', 'tomato'];
+
+    expect(chartPaletteColor(0, palette)).toBe('rebeccapurple');
+    expect(chartPaletteColor(3, palette)).toBe('tomato');
+  });
+});
+
+describe('resolveChartTheme', () => {
+  test('inherits currentColor and the CSS-variable palette by default', () => {
+    expect(resolveChartTheme()).toEqual({
+      foreground: 'currentColor',
+      muted: 'currentColor',
+      grid: 'currentColor',
+      background: 'transparent',
+      palette: [...chartPalette],
+    });
+  });
+
+  test('merges a partial override without replacing omitted defaults', () => {
+    expect(resolveChartTheme({ foreground: 'CanvasText', palette: ['hotpink'] })).toEqual({
+      foreground: 'CanvasText',
+      muted: 'currentColor',
+      grid: 'currentColor',
+      background: 'transparent',
+      palette: ['hotpink'],
+    });
   });
 });
 
@@ -652,6 +682,117 @@ describe('createCartesianModel', () => {
     expect(first?.areaPath).not.toBe('');
     expect(second?.areaPath).not.toBe('');
   });
+
+  test('returns the shared scene contract and internal mark descriptors', () => {
+    const model = createCartesianModel({
+      componentId: 'line-chart',
+      series: [{ id: 'usage', label: 'Usage', data: [{ x: 'Jan', y: 10 }] }],
+      hiddenSeriesIds: [],
+      width: 640,
+      height: 280,
+    });
+
+    expect(model).toMatchObject({
+      geometry: expect.any(Object),
+      targets: expect.any(Array),
+      tableRows: expect.any(Array),
+      empty: false,
+    });
+    expect(model.marks).toEqual([
+      {
+        seriesId: 'usage',
+        descriptors: [
+          { type: 'line', data: [{ x: 'Jan', y: 10 }] },
+          { type: 'point', data: [{ x: 'Jan', y: 10 }] },
+        ],
+      },
+    ]);
+  });
+
+  test('keeps target identity stable when only a value changes', () => {
+    const options = {
+      componentId: 'line-chart' as const,
+      hiddenSeriesIds: [] as string[],
+      width: 640,
+      height: 280,
+    };
+    const before = createCartesianModel({
+      ...options,
+      series: [
+        {
+          id: 'usage',
+          label: 'Usage',
+          data: [
+            { x: 'Jan', y: 10 },
+            { x: 'Feb', y: 20 },
+          ],
+        },
+      ],
+    });
+    const after = createCartesianModel({
+      ...options,
+      series: [
+        {
+          id: 'usage',
+          label: 'Usage',
+          data: [
+            { x: 'Jan', y: 15 },
+            { x: 'Feb', y: 20 },
+          ],
+        },
+      ],
+    });
+
+    expect(after.targets[0]?.id).toBe(before.targets[0]?.id);
+    expect(after.targets[0]?.valueLabel).toBe('15');
+    expect(after.targets[0]?.y).not.toBe(before.targets[0]?.y);
+  });
+
+  test('decimates rendering geometry above 2000 points without truncating semantic data', () => {
+    const data = Array.from({ length: 2_501 }, (_, index) => ({ x: index, y: index % 17 }));
+    const model = createCartesianModel({
+      componentId: 'line-chart',
+      series: [{ id: 'dense', label: 'Dense', data }],
+      hiddenSeriesIds: [],
+      width: 640,
+      height: 280,
+    });
+    const renderedPoints = model.normalizedSeries[0]?.points ?? [];
+
+    expect(renderedPoints.length).toBeLessThanOrEqual(2_000);
+    expect(renderedPoints[0]?.x.raw).toBe(0);
+    expect(renderedPoints.at(-1)?.x.raw).toBe(2_500);
+    expect(model.targets).toHaveLength(2_501);
+    expect(model.tableRows).toHaveLength(2_501);
+  });
+
+  test('derives margins from formatted tick labels, rotation, and axis titles', () => {
+    const baseline = createCartesianModel({
+      componentId: 'line-chart',
+      series: [{ id: 'usage', label: 'Usage', data: [{ x: 'Jan', y: 10 }] }],
+      hiddenSeriesIds: [],
+      width: 640,
+      height: 280,
+    });
+    const labelled = createCartesianModel({
+      componentId: 'line-chart',
+      series: [{ id: 'usage', label: 'Usage', data: [{ x: 'January 2026', y: 10 }] }],
+      hiddenSeriesIds: [],
+      width: 640,
+      height: 280,
+      xAxis: {
+        label: 'Reporting period',
+        tickLabelRotation: -45,
+      },
+      yAxis: {
+        label: 'Monthly recurring revenue',
+        format: () => '$10,000,000.00',
+      },
+    });
+
+    expect(labelled.geometry.marginLeft).toBeGreaterThan(baseline.geometry.marginLeft);
+    expect(labelled.geometry.marginBottom).toBeGreaterThan(baseline.geometry.marginBottom);
+  });
 });
 
 describe('createBarModel', () => {
@@ -670,6 +811,29 @@ describe('createBarModel', () => {
     expect(model.bars).toHaveLength(0);
   });
 
+  test('uses a chart-local palette while preserving the shared scene contract', () => {
+    const model = createBarModel({
+      data: [{ month: 'Jan', value: 9 }],
+      categoryKey: 'month',
+      series: [{ id: 'value', label: 'Value', valueKey: 'value' }],
+      hiddenSeriesIds: [],
+      width: 640,
+      height: 280,
+      orientation: 'vertical',
+      mode: 'grouped',
+      theme: { palette: ['rebeccapurple'] },
+    });
+
+    expect(model).toMatchObject({
+      geometry: expect.any(Object),
+      targets: expect.any(Array),
+      tableRows: expect.any(Array),
+      empty: false,
+    });
+    expect(model.bars[0]?.color).toBe('rebeccapurple');
+    expect(model.theme.palette).toEqual(['rebeccapurple']);
+  });
+
   test('expands the horizontal label margin for long category labels', () => {
     const model = createBarModel({
       data: [{ status: 'Completed', count: 9 }],
@@ -682,14 +846,14 @@ describe('createBarModel', () => {
       mode: 'grouped',
     });
 
-    expect(model.geometry.marginLeft).toBe(124);
+    expect(model.geometry.marginLeft).toBe(87);
     expect(model.categoryTicks[0]).toMatchObject({
       label: 'Completed',
       fullLabel: 'Completed',
     });
   });
 
-  test('reserves horizontal label space from estimated character width', () => {
+  test('reserves horizontal label space from measured text width', () => {
     const model = createBarModel({
       data: [{ status: 'WWWWWWWWWW', count: 9 }],
       categoryKey: 'status',
@@ -701,7 +865,7 @@ describe('createBarModel', () => {
       mode: 'grouped',
     });
 
-    expect(model.geometry.marginLeft).toBe(136);
+    expect(model.geometry.marginLeft).toBe(94);
     expect(model.categoryTicks[0]?.label).toBe('WWWWWWWWWW');
   });
 
@@ -720,10 +884,9 @@ describe('createBarModel', () => {
 
     expect(model.geometry.marginLeft).toBe(128);
     expect(model.geometry.plotWidth).toBe(176);
-    expect(model.categoryTicks[0]).toMatchObject({
-      label: 'WWWWWWWW…',
-      fullLabel,
-    });
+    expect(model.categoryTicks[0]?.label).not.toBe(fullLabel);
+    expect(model.categoryTicks[0]?.label.endsWith('…')).toBe(true);
+    expect(model.categoryTicks[0]?.fullLabel).toBe(fullLabel);
   });
 
   test('stacked domain reflects visible series only', () => {

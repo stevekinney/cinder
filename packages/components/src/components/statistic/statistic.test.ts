@@ -26,6 +26,38 @@ describe('Statistic', () => {
     expect(el?.getAttribute('role')).toBe('group');
   });
 
+  test('resolves theme defaults through currentColor and transparent', () => {
+    const { container } = render(Statistic, { label: 'Revenue', value: '$1,000' });
+    const style = container.querySelector('.cinder-statistic')?.getAttribute('style') ?? '';
+    expect(style).toContain('--cinder-chart-foreground: currentColor');
+    expect(style).toContain('--cinder-chart-muted: currentColor');
+    expect(style).toContain('--cinder-chart-background: transparent');
+  });
+
+  test('applies custom theme colors without removing change direction cues', () => {
+    const { container } = render(Statistic, {
+      label: 'Revenue',
+      value: '$1,000',
+      theme: {
+        foreground: 'CanvasText',
+        muted: 'GrayText',
+        background: 'Canvas',
+      },
+      change: { direction: 'up', value: '4.75%' },
+    });
+
+    const root = container.querySelector('.cinder-statistic');
+    const style = root?.getAttribute('style') ?? '';
+    expect(style).toContain('--cinder-chart-foreground: CanvasText');
+    expect(style).toContain('--cinder-chart-muted: GrayText');
+    expect(style).toContain('--cinder-chart-background: Canvas');
+    expect(
+      root?.querySelector('.cinder-statistic__change')?.getAttribute('data-cinder-direction'),
+    ).toBe('up');
+    expect(root?.querySelector('.cinder-statistic__change-icon')?.textContent).toBe('↑');
+    expect(root?.querySelector('.cinder-statistic__change-value')?.textContent).toBe('4.75%');
+  });
+
   test('aria-labelledby references both the label and value element ids', () => {
     const { container } = render(Statistic, { label: 'Revenue', value: '$1,000' });
     const root = container.querySelector('.cinder-statistic');

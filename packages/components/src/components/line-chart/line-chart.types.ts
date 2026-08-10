@@ -5,6 +5,7 @@ import type {
   ChartJsonXValue,
   ChartLegendPosition,
   ChartSharedProps,
+  ChartThemeSchema,
 } from '../chart.types.ts';
 
 export type LineChartProps = ChartSharedProps & {
@@ -49,6 +50,10 @@ export type LineChartSchemaProps = {
   dataTableVisibility?: ChartDataTableVisibility;
   /** Maximum number of interactive focus targets before keyboard navigation is disabled. Default `500`. */
   maximumInteractivePoints?: number;
+  /** Partial visual theme override. Omitted fields inherit the surrounding application. */
+  theme?: ChartThemeSchema;
+  /** Enable the default visual tooltip. Custom snippet tooltips are available in the TypeScript API. */
+  tooltip?: boolean;
   /** Custom class applied to the root element. */
   class?: string;
   /** Series to render as one or more connected line paths. */

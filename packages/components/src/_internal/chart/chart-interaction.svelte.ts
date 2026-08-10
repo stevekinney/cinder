@@ -74,12 +74,20 @@ export class ChartInteraction {
       this.focusedTarget = undefined;
       return;
     }
-    if (!this.#includesTarget(this.pointerTarget, targets)) this.pointerTarget = undefined;
-    if (!this.#includesTarget(this.focusedTarget, targets)) this.focusedTarget = undefined;
+    const refreshedPointerTarget = this.#refreshTarget(this.pointerTarget, targets);
+    const refreshedFocusedTarget = this.#refreshTarget(this.focusedTarget, targets);
+    if (refreshedPointerTarget !== this.pointerTarget) this.pointerTarget = refreshedPointerTarget;
+    if (refreshedFocusedTarget !== this.focusedTarget) this.focusedTarget = refreshedFocusedTarget;
   }
 
-  #includesTarget(candidate: ChartTarget | undefined, targets: readonly ChartTarget[]): boolean {
-    return Boolean(candidate && targets.some((target) => target.id === candidate.id));
+  #refreshTarget(
+    candidate: ChartTarget | undefined,
+    targets: readonly ChartTarget[],
+  ): ChartTarget | undefined {
+    if (!candidate) return undefined;
+    const latest = targets.find((target) => target.id === candidate.id);
+    if (!latest) return undefined;
+    return chartTargetsEqual(candidate, latest) ? candidate : latest;
   }
 
   /**
@@ -179,4 +187,19 @@ export class ChartInteraction {
   toggleSeries(hiddenSeriesIds: string[], seriesId: string): string[] {
     return toggleSeriesId(hiddenSeriesIds, seriesId);
   }
+}
+
+function chartTargetsEqual(left: ChartTarget, right: ChartTarget): boolean {
+  return (
+    left.id === right.id &&
+    left.seriesId === right.seriesId &&
+    left.seriesLabel === right.seriesLabel &&
+    left.xLabel === right.xLabel &&
+    left.valueLabel === right.valueLabel &&
+    left.x === right.x &&
+    left.y === right.y &&
+    left.width === right.width &&
+    left.height === right.height &&
+    left.color === right.color
+  );
 }

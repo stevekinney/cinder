@@ -23,7 +23,11 @@
 </script>
 
 <script lang="ts">
-  import { dataTableClass } from '../../_internal/chart/chart-utilities.ts';
+  import {
+    createChartGeometry,
+    dataTableClass,
+    resolveChartTheme,
+  } from '../../_internal/chart/chart-utilities.ts';
   import {
     heatmapCellFill,
     heatmapDomainOfRows,
@@ -41,6 +45,7 @@
     height = 200,
     loading = false,
     dataTableVisibility = 'screen-reader-only',
+    theme,
     dataTableCaption,
     class: customClassName,
     empty,
@@ -53,10 +58,7 @@
   const rootId = $derived(id ?? generatedId);
   const descriptionId = $derived(description ? `${rootId}-description` : undefined);
 
-  const marginTop = 8;
-  const marginRight = 16;
-  const marginBottom = 32;
-  const marginLeft = 60;
+  const resolvedTheme = $derived(resolveChartTheme(theme));
 
   let measuredWidth = $state(400);
 
@@ -66,9 +68,6 @@
     // width is kept rather than collapsing the geometry.
     if (entry && entry.contentRect.width > 0) measuredWidth = entry.contentRect.width;
   });
-
-  const plotWidth = $derived(Math.max(1, measuredWidth - marginLeft - marginRight));
-  const plotHeight = $derived(Math.max(1, height - marginTop - marginBottom));
 
   // Frequency-bin count is the MAX across frames so ragged input renders a full
   // rectangular grid: shorter frames leave explicit missing cells rather than
@@ -84,10 +83,6 @@
   // there are no frames OR no frequency bins anywhere.
   const isEmpty = $derived(frames.length === 0 || binCount === 0);
 
-  // Cell dimensions
-  const cellWidth = $derived(frames.length > 0 ? plotWidth / frames.length : 0);
-  const cellHeight = $derived(binCount > 0 ? plotHeight / binCount : 0);
-
   // Read a frame's bin as a finite value or null (missing). Non-finite values
   // (NaN/Infinity) and out-of-range indices (ragged frames) are missing.
   function binValueAt(frameIndex: number, binIndex: number): number | null {
@@ -100,7 +95,13 @@
   const domain = $derived(heatmapDomainOfRows(frames.map((frame) => frame.bins)));
 
   function cellFill(value: number | null): string {
-    return heatmapCellFill(value, domain, 'sequential');
+    return heatmapCellFill(
+      value,
+      domain,
+      'sequential',
+      resolvedTheme.palette,
+      theme?.background ?? 'var(--cinder-surface-inset)',
+    );
   }
 
   // Convert a bin index to a y-coordinate. Frequency increases UPWARD (the audio
@@ -116,6 +117,18 @@
   const yLabels = $derived.by(() =>
     Array.from({ length: binCount }, (_, index) => frequencyLabels?.[index] ?? String(index)),
   );
+
+  const geometry = $derived(
+    createChartGeometry(measuredWidth, height, {
+      xTickLabels: frames.map((frame) => frame.label),
+      yTickLabels: yLabels,
+    }),
+  );
+  const { plotWidth, plotHeight, marginTop, marginLeft } = $derived(geometry);
+
+  // Cell dimensions
+  const cellWidth = $derived(frames.length > 0 ? plotWidth / frames.length : 0);
+  const cellHeight = $derived(binCount > 0 ? plotHeight / binCount : 0);
 
   // Show a subset of y-axis labels
   const maxYLabels = 8;
@@ -188,6 +201,7 @@
   {@attach observeResize}
   id={rootId}
   class={classNames('cinder-spectrogram', customClassName)}
+  style={`--cinder-chart-foreground: ${resolvedTheme.foreground}; --cinder-chart-muted: ${resolvedTheme.muted}; --cinder-chart-grid: ${resolvedTheme.grid}; --cinder-chart-background: ${resolvedTheme.background};`}
   aria-label={label}
   aria-describedby={descriptionId}
 >

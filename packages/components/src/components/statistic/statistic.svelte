@@ -20,6 +20,7 @@
 </script>
 
 <script lang="ts">
+  import { resolveChartTheme } from '../../_internal/chart/chart-utilities.ts';
   import type { StatisticProps } from './statistic.types.ts';
   import { getLocaleContext } from '../../_internal/locale-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
@@ -35,6 +36,7 @@
     value,
     change,
     icon,
+    theme,
     valueFormatOptions,
     valueLocale,
     class: customClassName,
@@ -66,6 +68,8 @@
     if (change.direction === 'down') return `decreased by ${change.value}${suffix}`;
     return `no change, ${change.value}${suffix}`;
   });
+
+  const resolvedTheme = $derived(resolveChartTheme(theme));
 </script>
 
 <div
@@ -75,6 +79,7 @@
   role="group"
   aria-labelledby={`${labelId} ${valueId}`}
   data-cinder-has-icon={icon ? '' : undefined}
+  style={`--cinder-chart-foreground: ${resolvedTheme.foreground}; --cinder-chart-muted: ${resolvedTheme.muted}; --cinder-chart-background: ${resolvedTheme.background};`}
 >
   {#if icon}
     <span class="cinder-statistic__icon" aria-hidden="true">{@render icon()}</span>

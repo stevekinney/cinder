@@ -31,6 +31,33 @@ const confusionData = [
 ];
 
 describe('MatrixChart', () => {
+  test('uses the custom theme palette and background for heatmap fills', () => {
+    const { container } = render(MatrixChart, {
+      label: 'Themed matrix',
+      data: confusionData,
+      xField: 'predicted',
+      yField: 'actual',
+      valueField: 'count',
+      theme: { palette: ['custom-palette'], background: 'custom-background' },
+    });
+    const fill = container.querySelector('.cinder-matrix-chart__cell')?.getAttribute('fill');
+    expect(fill).toContain('custom-palette');
+    expect(fill).toContain('custom-background');
+  });
+
+  test('keeps cells inside the plot when category labels are long', () => {
+    const { container } = render(MatrixChart, {
+      label: 'Long labels',
+      data: [{ x: 'A very long category label', y: 'Another very long row label', value: 1 }],
+      xField: 'x',
+      yField: 'y',
+      valueField: 'value',
+    });
+    const cell = container.querySelector<SVGRectElement>('.cinder-matrix-chart__cell');
+    expect(cell?.getAttribute('x')).toBe('0');
+    expect(Number(cell?.getAttribute('width'))).toBeGreaterThan(0);
+  });
+
   test('renders cells for all categorical combinations', () => {
     const { container } = render(MatrixChart, {
       label: 'Confusion matrix',

@@ -74,6 +74,31 @@ const schema = {
       description: 'Controls data table visibility. Default `screen-reader-only`.',
       default: 'screen-reader-only',
     },
+    theme: {
+      type: 'object',
+      properties: {
+        foreground: {
+          type: 'string',
+        },
+        muted: {
+          type: 'string',
+        },
+        grid: {
+          type: 'string',
+        },
+        background: {
+          type: 'string',
+        },
+        palette: {
+          type: 'array',
+          items: {
+            type: 'string',
+          },
+        },
+      },
+      additionalProperties: false,
+      description: 'Partial visual theme override.',
+    },
     class: {
       type: 'string',
       description: 'Custom class applied to the root element.',

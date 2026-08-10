@@ -216,6 +216,35 @@ describe('analyzeComponent — imported prop type aliases', () => {
   });
 });
 
+describe('analyzeComponent — chart structural seeds', () => {
+  it('uses a primitive arm for mixed primitive and object unions', async () => {
+    const manifest = await analyzeComponent(componentPath('line-chart'));
+    const series = manifest.props.find((prop) => prop.name === 'series');
+
+    expect(series?.control).toMatchObject({
+      kind: 'array',
+      element: {
+        fields: [
+          { name: 'id', shape: { kind: 'string' } },
+          { name: 'label', shape: { kind: 'string' } },
+          {
+            name: 'data',
+            shape: {
+              kind: 'array',
+              element: {
+                fields: [
+                  { name: 'x', shape: { kind: 'string' } },
+                  { name: 'y', shape: { kind: 'number' } },
+                ],
+              },
+            },
+          },
+        ],
+      },
+    });
+  });
+});
+
 // ---------------------------------------------------------------------------
 // Accordion — bindable expandedIds
 // ---------------------------------------------------------------------------

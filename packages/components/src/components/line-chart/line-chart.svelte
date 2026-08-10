@@ -32,6 +32,7 @@
   } from '../../_internal/chart/chart-focus-ring.ts';
   import { ChartInteraction } from '../../_internal/chart/chart-interaction.svelte.ts';
   import ChartDataTable from '../_internal/chart-data-table.svelte';
+  import ChartTooltip from '../_internal/chart-tooltip.svelte';
   import { classNames } from '../../utilities/class-names.ts';
   import type { LineChartProps } from './line-chart.types.ts';
 
@@ -48,6 +49,9 @@
     dataTableCaption,
     dataTableVisibility = 'screen-reader-only',
     maximumInteractivePoints = 500,
+    theme,
+    tooltip = false,
+    mark,
     class: customClassName,
     empty,
     loadingContent,
@@ -79,6 +83,7 @@
       height,
       xAxis,
       yAxis,
+      theme,
     }),
   );
   const keyboardEnabled = $derived(
@@ -168,6 +173,10 @@
   bind:this={rootElement}
   id={rootId}
   class={classNames('cinder-line-chart', customClassName)}
+  style:--cinder-chart-foreground={model.theme.foreground}
+  style:--cinder-chart-muted={model.theme.muted}
+  style:--cinder-chart-grid={model.theme.grid}
+  style:--cinder-chart-background={model.theme.background}
   aria-label={label}
   aria-describedby={descriptionId}
 >
@@ -183,7 +192,8 @@
           aria-pressed={!hiddenSeriesIds.includes(item.id)}
           onclick={() => (hiddenSeriesIds = interaction.toggleSeries(hiddenSeriesIds, item.id))}
         >
-          <span style:background={item.color ?? chartPaletteColor(index)}></span>{item.label}
+          <span style:background={item.color ?? chartPaletteColor(index, model.theme.palette)}
+          ></span>{item.label}
         </button>
       {/each}
     </div>
@@ -233,39 +243,74 @@
               >{formatNumericValue(tick, yAxis, undefined, { index })}</text
             >
           {/each}
+          {#if yAxis?.label}
+            <text
+              class="cinder-line-chart__axis-title"
+              x={-model.geometry.plotHeight / 2}
+              y={-model.geometry.marginLeft + 12}
+              text-anchor="middle"
+              transform="rotate(-90)">{yAxis.label}</text
+            >
+          {/if}
           {#each model.xTicks as tick (tick.label)}
             <text
               class="cinder-line-chart__tick-label"
               x={tick.x}
               y={model.geometry.plotHeight + 20}
+              transform={xAxis?.tickLabelRotation
+                ? `rotate(${xAxis.tickLabelRotation} ${tick.x} ${model.geometry.plotHeight + 20})`
+                : undefined}
               text-anchor="middle">{tick.label}</text
             >
           {/each}
+          {#if xAxis?.label}
+            <text
+              class="cinder-line-chart__axis-title"
+              x={model.geometry.plotWidth / 2}
+              y={model.geometry.plotHeight + model.geometry.marginBottom - 4}
+              text-anchor="middle">{xAxis.label}</text
+            >
+          {/if}
           <!-- Series-specific rendering: connected line paths + data points. -->
-          {#each model.normalizedSeries as item (item.id)}
-            {#if !item.hidden && item.path}
-              <path
-                class="cinder-line-chart__line"
-                d={item.path}
-                stroke={item.color}
-                aria-hidden="true"
-                data-cinder-series={item.id}
-              />
-              {#each item.points as point (point.x.key)}
-                {#if point.y !== null}
-                  <circle
-                    class="cinder-line-chart__point"
-                    cx={point.pixelX}
-                    cy={point.pixelY}
-                    r="3"
-                    fill={item.color}
-                    aria-hidden="true"
-                    data-cinder-series={item.id}
-                  />
+          {#if mark}
+            {#each model.normalizedSeries as item (item.id)}
+              {#if !hiddenSeriesIds.includes(item.id)}
+                {@const sourceSeries = series.find((candidate) => candidate.id === item.id)}
+                {#if sourceSeries}
+                  {@render mark({
+                    series: sourceSeries,
+                    points: item.points,
+                    geometry: model.geometry,
+                  })}
                 {/if}
-              {/each}
-            {/if}
-          {/each}
+              {/if}
+            {/each}
+          {:else}
+            {#each model.normalizedSeries as item (item.id)}
+              {#if !hiddenSeriesIds.includes(item.id) && item.path}
+                <path
+                  class="cinder-line-chart__line"
+                  d={item.path}
+                  stroke={item.color}
+                  aria-hidden="true"
+                  data-cinder-series={item.id}
+                />
+                {#each item.points as point (point.x.key)}
+                  {#if point.y !== null}
+                    <circle
+                      class="cinder-line-chart__point"
+                      cx={point.pixelX}
+                      cy={point.pixelY}
+                      r="3"
+                      fill={item.color}
+                      aria-hidden="true"
+                      data-cinder-series={item.id}
+                    />
+                  {/if}
+                {/each}
+              {/if}
+            {/each}
+          {/if}
           {#if interaction.activeTarget}
             <!-- Vertical crosshair — line charts always use a vertical indicator. -->
             <line
@@ -302,7 +347,7 @@
                     ? 'true'
                     : undefined}
                   aria-label={`${target.seriesLabel}, ${target.xLabel}, ${target.valueLabel}`}
-                  aria-describedby={interaction.activeTarget?.id === target.id
+                  aria-describedby={tooltip && interaction.activeTarget?.id === target.id
                     ? `${rootId}-tooltip`
                     : undefined}
                   onfocus={() => handleTargetFocus(target)}
@@ -372,17 +417,13 @@
         </g>
       {/if}
     </svg>
-    {#if interaction.activeTarget}
-      <div
-        id="{rootId}-tooltip"
-        role="tooltip"
-        class="cinder-line-chart__tooltip"
-        style:left="{model.geometry.marginLeft + interaction.activeTarget.x}px"
-        style:top="{model.geometry.marginTop + interaction.activeTarget.y}px"
-      >
-        <strong>{interaction.activeTarget.seriesLabel}</strong>
-        <span>{interaction.activeTarget.xLabel}: {interaction.activeTarget.valueLabel}</span>
-      </div>
+    {#if tooltip}
+      <ChartTooltip
+        id={`${rootId}-tooltip`}
+        target={interaction.activeTarget}
+        geometry={model.geometry}
+        content={tooltip}
+      />
     {/if}
   </div>
 
@@ -414,7 +455,8 @@
           aria-pressed={!hiddenSeriesIds.includes(item.id)}
           onclick={() => (hiddenSeriesIds = interaction.toggleSeries(hiddenSeriesIds, item.id))}
         >
-          <span style:background={item.color ?? chartPaletteColor(index)}></span>{item.label}
+          <span style:background={item.color ?? chartPaletteColor(index, model.theme.palette)}
+          ></span>{item.label}
         </button>
       {/each}
     </div>
