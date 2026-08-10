@@ -986,6 +986,66 @@ test.describe('chat harness — imperative scroll + focus controls', () => {
       await dispose();
     }
   });
+
+  // Regression for cinder#1236: on a long VIRTUALIZED transcript pinned to
+  // the bottom, scrollToTop() was a no-op (or a snap-back) with real smooth
+  // scrolling. The auto-stick effect's instant bottom corrections leave stale
+  // scroll/scrollend events in flight at the bottom; one of them settled the
+  // user-scroll guard milliseconds into the animation, and the next
+  // virtualizer remeasurement re-pinned the viewport to the bottom. This test
+  // deliberately runs WITHOUT reducedMotion: 'reduce' (unlike openHarness):
+  // the bug only reproduces when behavior: 'smooth' produces a real,
+  // interruptible animation.
+  test('scrollToTop and scrollToBottom navigate a long virtualized transcript with smooth scrolling', async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({
+      baseURL: PLAYGROUND_URL,
+      colorScheme: 'dark',
+      // Explicit, not defaulted: this test is only meaningful when
+      // behavior: 'smooth' produces a real, interruptible animation. A
+      // config- or environment-level reduced-motion default would silently
+      // downgrade it to an instant scroll and stop covering the regression.
+      reducedMotion: 'no-preference',
+      viewport: { width: 1280, height: 900 },
+    });
+    try {
+      const page = await context.newPage();
+      await page.goto('/page/chat', { waitUntil: 'load' });
+      await page.waitForSelector('#app > *', { state: 'visible', timeout: 20_000 });
+      const harness = page.locator(HARNESS);
+      await harness.waitFor({ state: 'visible', timeout: 20_000 });
+
+      await harness.locator('#t-virtualized').click();
+      await harness.locator('[data-testid="seed-long"]').click();
+      const timeline = harness.locator('.chat-timeline');
+      // The transcript starts pinned to the bottom with the last rows rendered.
+      await expect(timeline.getByText('Answer 150:').first()).toBeVisible({ timeout: 10_000 });
+      await expect
+        .poll(async () => timeline.evaluate((element) => element.scrollTop))
+        .toBeGreaterThan(0);
+
+      await harness.locator('[data-testid="scroll-top"]').click();
+      await expect
+        .poll(async () => timeline.evaluate((element) => element.scrollTop), { timeout: 10_000 })
+        .toBe(0);
+      await expect(timeline.getByText('Question 1: tell me about alpha.').first()).toBeVisible();
+
+      await harness.locator('[data-testid="scroll-bottom"]').click();
+      await expect
+        .poll(
+          async () =>
+            timeline.evaluate(
+              (element) => element.scrollHeight - element.scrollTop - element.clientHeight,
+            ),
+          { timeout: 10_000 },
+        )
+        .toBeLessThan(50);
+      await expect(timeline.getByText('Answer 150:').first()).toBeVisible();
+    } finally {
+      await context.close();
+    }
+  });
 });
 
 test.describe('chat harness — attachments', () => {

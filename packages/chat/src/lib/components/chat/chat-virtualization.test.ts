@@ -350,6 +350,69 @@ describe('Chat virtualization', () => {
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(timeline.scrollTop).toBe(0);
   });
+
+  // Regression test for #1236: virtualized scrollToTop() was a no-op (or a
+  // snap-back) in a real browser because the user-scroll guard settled on the
+  // FIRST viewport `scrollend` — which, on a transcript pinned to the bottom,
+  // is routinely the tail end of an auto-stick instant correction issued just
+  // BEFORE the call, not the scroll-to-top animation itself. The stale scroll
+  // event's rAF recompute also flipped `atBottom` back to true (the viewport
+  // was still near the bottom when it fired), so the next virtualizer
+  // remeasurement re-ran the auto-stick $effect.pre — now unguarded — and its
+  // instant bottom correction cancelled the smooth animation and re-pinned
+  // the viewport at the bottom.
+  //
+  // The stubbed `scrollTo` here records the smooth command but deliberately
+  // does NOT move `scrollTop`, modeling the animation still being in flight
+  // when the stale scroll/scrollend pair from the earlier instant correction
+  // lands. The assertion is that a message arriving mid-animation does not
+  // produce a bottom correction that would cancel the navigation.
+  test('scrollToTop is not settled early by a stale scrollend from a prior bottom correction', async () => {
+    let conversation = longConversation(20);
+    const { container, component, rerender } = render(Chat, {
+      props: virtualizedProps(conversation),
+    });
+    const timeline = await waitForVirtualizedTimeline(container);
+    Object.defineProperty(timeline, 'clientHeight', { configurable: true, value: 100 });
+
+    await waitFor(() => expect(container.textContent).toContain('Message 19'));
+    await waitFor(() => expect(timeline.scrollTop).toBeGreaterThanOrEqual(300));
+    const pinnedBottomScrollTop = timeline.scrollTop;
+
+    const smoothScrollTargets: number[] = [];
+    timeline.scrollTo = (options?: ScrollToOptions | number, y?: number) => {
+      const top =
+        typeof options === 'number' ? (typeof y === 'number' ? y : options) : (options?.top ?? 0);
+      // Record the command but leave scrollTop where it is: a real smooth
+      // scroll animation has not moved the viewport yet.
+      smoothScrollTargets.push(top);
+    };
+
+    const api = component as unknown as { scrollToTop: () => void };
+    api.scrollToTop();
+    expect(smoothScrollTargets).toContain(0);
+
+    // The instant bottom correction that pinned the transcript just before
+    // the call completes: its scroll/scrollend pair lands after the guard was
+    // armed, with the viewport still sitting at the bottom.
+    timeline.dispatchEvent(new Event('scroll'));
+    timeline.dispatchEvent(new Event('scrollend'));
+    // Let the scroll listener's rAF-deferred recompute observe the (still
+    // near-bottom) stale position.
+    await new Promise((resolve) => requestAnimationFrame(() => resolve(undefined)));
+
+    // A message arrives while the scroll-to-top animation is still in flight,
+    // changing the virtualizer's scroll extent (the same dependency a real
+    // remeasurement changes).
+    conversation = appendMessage(conversation, 'assistant', 'message-20', 'Message 20');
+    await rerender(virtualizedProps(conversation));
+    await waitFor(() => expect(container.textContent).toContain('21 messages in conversation'));
+
+    // Give the (buggy) deferred bottom correction a chance to run: it would
+    // set scrollTop to the NEW bottom, cancelling the in-flight navigation.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(timeline.scrollTop).toBe(pinnedBottomScrollTop);
+  });
 });
 
 describe('Chat history pagination', () => {

@@ -361,6 +361,27 @@
     conversation = next;
   }
 
+  // A transcript long enough that the virtualized window at one end leaves the
+  // other end unrendered and unmeasured, with message lengths varied so real
+  // row heights diverge from `virtualizationEstimatedRowHeight` — the geometry
+  // that end-to-end scroll navigation (scrollToTop/scrollToBottom) has to
+  // survive remeasuring mid-flight.
+  function seedLongThread(): void {
+    cancelPending('discard');
+    cancelPendingHistoryRequest();
+    let next = createConversation({ id: 'harness-seeded-long' });
+    for (let index = 0; index < 150; index += 1) {
+      next = appendUserMessage(next, `Question ${index + 1}: tell me about alpha.`);
+      next = appendAssistantMessage(
+        next,
+        index % 3 === 0
+          ? `Answer ${index + 1}: a short reply.`
+          : `Answer ${index + 1}: a longer reply about alpha that wraps across several lines so the real row height diverges from the virtualization estimate and forces remeasurement as the row scrolls into view.`,
+      );
+    }
+    conversation = next;
+  }
+
   function seedFailedMessage(): void {
     conversation = appendMessages(conversation, {
       role: 'user',
@@ -577,6 +598,9 @@
         >
         <Button data-testid="seed-failed" variant="secondary" onclick={seedFailedMessage}
           >Seed failed message</Button
+        >
+        <Button data-testid="seed-long" variant="secondary" onclick={seedLongThread}
+          >Seed long thread</Button
         >
         <Button data-testid="clear" variant="secondary" onclick={clearConversation}>Clear</Button>
         <Button data-testid="scroll-top" variant="ghost" onclick={() => chat?.scrollToTop()}
