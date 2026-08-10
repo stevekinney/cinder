@@ -9,7 +9,6 @@
 
 <script lang="ts">
   import { classNames } from '../../../utilities/class-names.ts';
-  import { preloadMarkdownPipeline } from './markdown-pipeline.ts';
 
   let { content, class: className, ...rest }: ChatMarkdownPreviewProps = $props();
 
@@ -45,13 +44,11 @@
     // even under per-token streaming.
     const handle = requestAnimationFrame(() => {
       if (cancelled) return;
-      const pipelinePromise = preloadMarkdownPipeline();
-      if (!pipelinePromise) return;
-      void pipelinePromise
-        .then(async ({ renderMarkdownWithMath }) => {
+      void import('@lostgradient/markdown/rendering')
+        .then(async (pipeline) => {
           if (cancelled) return;
           try {
-            const result = await renderMarkdownWithMath(snapshot);
+            const result = await pipeline.renderMarkdownWithMath(snapshot);
             // Re-check cancelled and verify the snapshot still matches
             // the live content. The latter handles a subtle race: if
             // content updates AFTER cancelled was set but BEFORE this

@@ -2,4 +2,4 @@
 '@lostgradient/chat': patch
 ---
 
-Preload the markdown rendering pipeline when Chat mounts so the first streamed message is formatted without a cold-import delay (#1238).
+Preload the markdown rendering pipeline when streaming begins so the first streamed message is formatted without a cold-import delay (#1238).
