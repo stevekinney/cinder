@@ -20,4 +20,4 @@
   ];
 </script>
 
-<AreaChart label="Product usage" {series} />
+<AreaChart label="Product usage" {series} tooltip />
