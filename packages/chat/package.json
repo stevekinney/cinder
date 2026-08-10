@@ -169,7 +169,7 @@
   },
   "dependencies": {
     "conversationalist": "^0.6.0",
-    "zod": "4.4.1"
+    "zod": "4.4.3"
   },
   "devDependencies": {
     "@lostgradient/cinder": "workspace:*",
