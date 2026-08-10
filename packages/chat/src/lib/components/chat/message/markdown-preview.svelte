@@ -45,10 +45,10 @@
     const handle = requestAnimationFrame(() => {
       if (cancelled) return;
       void import('@lostgradient/markdown/rendering')
-        .then(async (pipeline) => {
+        .then(async ({ renderMarkdownWithMath }) => {
           if (cancelled) return;
           try {
-            const result = await pipeline.renderMarkdownWithMath(snapshot);
+            const result = await renderMarkdownWithMath(snapshot);
             // Re-check cancelled and verify the snapshot still matches
             // the live content. The latter handles a subtle race: if
             // content updates AFTER cancelled was set but BEFORE this
