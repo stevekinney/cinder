@@ -1041,7 +1041,7 @@ describe('Chat — imperative API forwarding', () => {
     }
   });
 
-  test('forwarded methods are callable after mount and a no-op after unmount', () => {
+  test('beginStreaming preloads with streaming=false and remains safe after unmount', () => {
     const target = document.createElement('div');
     document.body.append(target);
     let conversation = createConversation({ id: 'conversation-imperative-stream' });
@@ -1049,11 +1049,12 @@ describe('Chat — imperative API forwarding', () => {
     const assistantId = conversation.ids[conversation.ids.length - 1]!;
     const instance = mount(Chat, {
       target,
-      props: { id: 'chat-imperative-stream', conversation },
+      props: { id: 'chat-imperative-stream', conversation, streaming: false },
     });
     const api = instance as unknown as ChatImperative;
 
-    // Callable after mount — drives the streaming buffer without throwing.
+    // The imperative path must warm markdown even when the external streaming
+    // prop is false or has not caught up yet.
     expect(() => {
       api.beginStreaming(assistantId);
       api.pushToken('Hel');

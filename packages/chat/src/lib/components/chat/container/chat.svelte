@@ -233,7 +233,7 @@
   // Content-driven streams do not call beginStreaming, so warm the renderer
   // whenever the Chat enters streaming mode as well.
   $effect(() => {
-    if (streaming) void preloadMarkdownPipeline();
+    void preloadMarkdownPipeline();
   });
 
   // Reset UI-only approval/disclosure/typing/receipt state on conversation change
