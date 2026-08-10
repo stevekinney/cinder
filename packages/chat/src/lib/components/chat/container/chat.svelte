@@ -230,6 +230,12 @@
   const reasoningState = useChatDisclosureState({ onRemeasureRow: remeasureRow });
   const toolCallState = useChatDisclosureState({ onRemeasureRow: remeasureRow });
 
+  // Content-driven streams do not call beginStreaming, so warm the renderer
+  // whenever the Chat enters streaming mode as well.
+  $effect(() => {
+    if (streaming) void preloadMarkdownPipeline();
+  });
+
   // Reset UI-only approval/disclosure/typing/receipt state on conversation change
   // so stale approved/denied sets, expanded reasoning/tool-call disclosures,
   // adapter-derived typing state, and accumulated read receipts from the previous conversation
@@ -1940,7 +1946,7 @@
   export function beginStreaming(messageId: string): void {
     // Start loading before the first token arrives so the first streamed
     // message can format its initial markdown instead of showing raw text.
-    void preloadMarkdownPipeline();
+    if (streaming) void preloadMarkdownPipeline();
     if (streamingScrollRaf !== undefined) {
       cancelAnimationFrame(streamingScrollRaf);
       streamingScrollRaf = undefined;
