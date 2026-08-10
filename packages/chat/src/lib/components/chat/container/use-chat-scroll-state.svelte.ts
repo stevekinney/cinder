@@ -599,7 +599,9 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
           const targetGrewSinceGuardArmed =
             guardSettleTarget !== null && target > guardSettleTarget + SETTLE_TARGET_TOLERANCE;
           if (targetGrewSinceGuardArmed && target > viewport.scrollTop + SETTLE_TARGET_TOLERANCE) {
-            viewport.scrollTo({ top: destination!(), behavior: getScrollBehavior() });
+            withForcedLayout(viewport, () => {
+              viewport.scrollTo({ top: destination!(), behavior: getScrollBehavior() });
+            });
             guardSettleTarget = target;
           }
           armBackstop();
@@ -631,6 +633,9 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
     try {
       action();
     } finally {
+      // Forced layout inside the action can change the reachable bottom. The
+      // cancellation baseline must describe the target actually issued.
+      guardSettleTarget = readSettleTarget();
       armBackstop();
     }
   }
