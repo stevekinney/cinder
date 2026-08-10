@@ -295,6 +295,36 @@ describe('Chat virtualization', () => {
     }
   });
 
+  test('settled virtualized bottom does not issue repeated corrections after measurement', async () => {
+    let conversation = longConversation(20);
+    const { container, rerender } = render(Chat, {
+      props: virtualizedProps(conversation),
+    });
+    const timeline = await waitForVirtualizedTimeline(container);
+    Object.defineProperty(timeline, 'clientHeight', { configurable: true, value: 100 });
+
+    await waitFor(() => expect(container.textContent).toContain('Message 19'));
+    await waitFor(() => expect(timeline.scrollTop).toBeGreaterThan(0));
+
+    let writes = 0;
+    let scrollTop = timeline.scrollTop;
+    Object.defineProperty(timeline, 'scrollTop', {
+      configurable: true,
+      get: () => scrollTop,
+      set: (value: number) => {
+        writes += 1;
+        scrollTop = value;
+      },
+    });
+
+    // Rerendering the same pinned transcript re-runs the measurement-driven
+    // auto-stick dependency, but the viewport is already at its maximum.
+    await rerender(virtualizedProps(conversation));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(writes).toBe(0);
+  });
+
   // Regression test for #774: scrollToTop() fights the auto-stick-to-bottom
   // effect in virtualized mode and never reaches the top.
   //
