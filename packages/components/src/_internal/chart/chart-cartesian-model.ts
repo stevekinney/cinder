@@ -153,7 +153,10 @@ export function createCartesianModel(options: {
       }
     }
   }
-  const domainValues = stackedArea ? [0, ...stackedTotalsByKey.values()] : visibleNumericValues;
+  const domainValues =
+    stackedArea || componentId === 'area-chart'
+      ? [0, ...(stackedArea ? stackedTotalsByKey.values() : visibleNumericValues)]
+      : visibleNumericValues;
   const [yMinimum, yMaximum] = createPaddedDomain(domainValues);
   const tickCount =
     xAxis?.tickCount ?? Math.min(sortedXValues.length, DEFAULT_MAXIMUM_X_TICK_COUNT);
@@ -205,9 +208,19 @@ export function createCartesianModel(options: {
         ]),
       )
     : undefined;
+  const stackedRenderXValues = stackedArea
+    ? sortedXValues.filter((value) =>
+        normalizedSeries.some(
+          (item) =>
+            !hiddenSeriesIds.includes(item.id) &&
+            normalizedPointsBySeriesId?.get(item.id)?.has(value.key),
+        ),
+      )
+    : undefined;
+  const stackedRenderDomain = stackedRenderXValues ?? [];
   const stackedRenderIndices = stackedArea
     ? decimationIndices(
-        sortedXValues.map((value, index) => {
+        stackedRenderDomain.map((value, index) => {
           let total = 0;
           let hasValue = false;
           for (const item of normalizedSeries) {
@@ -245,7 +258,7 @@ export function createCartesianModel(options: {
         ...point,
         pixelX: scaleX(point.x),
         pixelY: yScale(stackedArea ? upperValue : (point.y ?? 0)),
-        pixelY0: stackedArea ? yScale(lowerValue) : geometry.plotHeight,
+        pixelY0: yScale(stackedArea ? lowerValue : 0),
       };
     });
     const placedPointsByKey = stackedRenderIndices
@@ -253,7 +266,7 @@ export function createCartesianModel(options: {
       : undefined;
     const renderPoints = stackedRenderIndices
       ? stackedRenderIndices.map((sourceIndex) => {
-          const x = sortedXValues[sourceIndex]!;
+          const x = stackedRenderDomain[sourceIndex]!;
           return (
             placedPointsByKey?.get(x.key) ??
             ({
@@ -266,9 +279,7 @@ export function createCartesianModel(options: {
               index: -1,
               pixelX: scaleX(x),
               pixelY: 0,
-              pixelY0: stackedArea
-                ? yScale(stackedOffsetsByKey.get(x.key) ?? 0)
-                : geometry.plotHeight,
+              pixelY0: stackedArea ? yScale(stackedOffsetsByKey.get(x.key) ?? 0) : yScale(0),
             } satisfies PlacedPoint)
           );
         })

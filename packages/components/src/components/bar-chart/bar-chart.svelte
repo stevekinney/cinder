@@ -111,6 +111,15 @@
       measurementVersion,
     }),
   );
+  const barsBySeriesId = $derived.by(() => {
+    const groupedBars = new Map<string, typeof model.bars>();
+    for (const bar of model.bars) {
+      const bars = groupedBars.get(bar.seriesId);
+      if (bars) bars.push(bar);
+      else groupedBars.set(bar.seriesId, [bar]);
+    }
+    return groupedBars;
+  });
   const keyboardEnabled = $derived(
     model.targets.length > 0 && model.targets.length <= maximumInteractivePoints,
   );
@@ -288,7 +297,7 @@
               {#if !hiddenSeriesIds.includes(item.id)}
                 {@render mark({
                   series: item,
-                  points: model.bars.filter((bar) => bar.seriesId === item.id),
+                  points: barsBySeriesId.get(item.id) ?? [],
                   geometry: model.geometry,
                 })}
               {/if}

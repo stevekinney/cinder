@@ -54,6 +54,32 @@ describe('Spectrogram', () => {
     expect(Number(cell?.getAttribute('width'))).toBeGreaterThan(0);
   });
 
+  test('measures only sampled time labels that are rendered', () => {
+    const shortFrames = Array.from({ length: 11 }, (_, index) => ({
+      label: `T${index}`,
+      bins: [1],
+    }));
+    const shortView = render(Spectrogram, { label: 'Short labels', frames: shortFrames });
+    const shortCellHeight = Number(
+      shortView.container.querySelector('.cinder-spectrogram__cell')?.getAttribute('height'),
+    );
+    shortView.unmount();
+
+    const framesWithHiddenLongLabel = shortFrames.map((frame, index) =>
+      index === 1 ? { ...frame, label: 'This unsampled label should not affect geometry' } : frame,
+    );
+    const longView = render(Spectrogram, {
+      label: 'Hidden long label',
+      frames: framesWithHiddenLongLabel,
+    });
+    const longCellHeight = Number(
+      longView.container.querySelector('.cinder-spectrogram__cell')?.getAttribute('height'),
+    );
+
+    expect(longView.queryByText('This unsampled label should not affect geometry')).toBeNull();
+    expect(longCellHeight).toBe(shortCellHeight);
+  });
+
   test('renders cells for each frame × bin combination', () => {
     const { container } = render(Spectrogram, {
       label: 'Audio spectrogram',

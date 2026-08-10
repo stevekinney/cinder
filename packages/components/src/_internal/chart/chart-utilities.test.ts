@@ -515,6 +515,34 @@ describe('createCartesianModel', () => {
     }
   });
 
+  test('places unstacked area baselines at the zero line for mixed-sign data', () => {
+    const model = createCartesianModel({
+      componentId: 'area-chart',
+      series: [
+        {
+          id: 'change',
+          label: 'Change',
+          data: [
+            { x: 'loss', y: -5 },
+            { x: 'gain', y: 5 },
+          ],
+        },
+      ],
+      hiddenSeriesIds: [],
+      width: 640,
+      height: 280,
+    });
+    const expectedZero =
+      model.geometry.plotHeight -
+      ((0 - model.yDomain[0]) / (model.yDomain[1] - model.yDomain[0])) * model.geometry.plotHeight;
+
+    for (const point of model.normalizedSeries[0]?.points ?? []) {
+      expect(point.pixelY0).toBeCloseTo(expectedZero);
+    }
+    expect(expectedZero).toBeGreaterThan(0);
+    expect(expectedZero).toBeLessThan(model.geometry.plotHeight);
+  });
+
   test('creates stable paths for a single-point series', () => {
     const model = createCartesianModel({
       componentId: 'area-chart',
@@ -950,6 +978,56 @@ describe('createCartesianModel', () => {
     expect(baseKeys).toEqual(topKeys);
     expect(baseKeys.length).toBeLessThanOrEqual(2_000);
     expect(base?.points[1]?.pixelY).toBeGreaterThan(top?.points[1]?.pixelY ?? Infinity);
+  });
+
+  test('stacked render points exclude x values owned only by hidden series', () => {
+    const model = createCartesianModel({
+      componentId: 'area-chart',
+      series: [
+        {
+          id: 'visible',
+          label: 'Visible',
+          data: [
+            { x: 0, y: 1 },
+            { x: 2, y: 2 },
+          ],
+        },
+        { id: 'hidden', label: 'Hidden', data: [{ x: 1, y: 4 }] },
+      ],
+      hiddenSeriesIds: ['hidden'],
+      width: 640,
+      height: 280,
+      stackedArea: true,
+    });
+    const visible = model.normalizedSeries.find((item) => item.id === 'visible');
+
+    expect(visible?.points.map((point) => point.x.raw)).toEqual([0, 2]);
+    expect(visible?.areaPath.match(/M/g)).toHaveLength(1);
+  });
+
+  test('stacked render points retain explicit null gaps from visible series', () => {
+    const model = createCartesianModel({
+      componentId: 'area-chart',
+      series: [
+        {
+          id: 'visible',
+          label: 'Visible',
+          data: [
+            { x: 0, y: 1 },
+            { x: 1, y: null },
+            { x: 2, y: 2 },
+          ],
+        },
+      ],
+      hiddenSeriesIds: [],
+      width: 640,
+      height: 280,
+      stackedArea: true,
+    });
+    const visible = model.normalizedSeries[0];
+
+    expect(visible?.points.map((point) => point.y)).toEqual([1, null, 2]);
+    expect(visible?.areaPath.match(/M/g)).toHaveLength(2);
   });
 
   test('derives margins from formatted tick labels, rotation, and axis titles', () => {

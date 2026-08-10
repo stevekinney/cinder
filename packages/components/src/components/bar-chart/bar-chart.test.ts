@@ -41,7 +41,10 @@ describe('BarChart', () => {
   test('does not invoke a custom mark for hidden series', () => {
     const mark = createRawSnippet<[ChartMarkContext<BarChartSeries, BarChartPlacedBar>]>(
       (getContext) => ({
-        render: () => `<g data-custom-mark="${getContext().series.id}"></g>`,
+        render: () => {
+          const context = getContext();
+          return `<g data-custom-mark="${context.series.id}" data-point-count="${context.points.length}"></g>`;
+        },
       }),
     );
     const { container } = render(BarChart, {
@@ -54,7 +57,9 @@ describe('BarChart', () => {
     });
 
     expect(container.querySelector('[data-custom-mark="revenue"]')).toBeNull();
-    expect(container.querySelector('[data-custom-mark="expansion"]')).not.toBeNull();
+    expect(
+      container.querySelector('[data-custom-mark="expansion"]')?.getAttribute('data-point-count'),
+    ).toBe('2');
   });
 
   test('uses a chart-local theme palette for rendered bars', () => {

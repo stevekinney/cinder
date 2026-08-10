@@ -1,8 +1,8 @@
 <script lang="ts">
+  import Popover from '@lostgradient/cinder/popover';
   import type { Snippet } from 'svelte';
 
   import type { ChartGeometry, ChartTarget } from '../chart.types.ts';
-  import Popover from '../popover/popover.svelte';
 
   let {
     id,

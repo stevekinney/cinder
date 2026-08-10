@@ -146,10 +146,21 @@
     Array.from({ length: binCount }, (_, index) => frequencyLabels?.[index] ?? String(index)),
   );
 
+  // Measure exactly the labels rendered by the sampled axes so hidden labels
+  // cannot reserve guide space that the SVG never uses.
+  const maxYLabels = 8;
+  const yLabelStep = $derived(Math.max(1, Math.ceil(binCount / maxYLabels)));
+  const renderedYLabels = $derived(yLabels.filter((_, index) => index % yLabelStep === 0));
+  const maxXLabels = 10;
+  const xLabelStep = $derived(Math.max(1, Math.ceil(frames.length / maxXLabels)));
+  const renderedXLabels = $derived(
+    frames.filter((_, index) => index % xLabelStep === 0).map((frame) => frame.label),
+  );
+
   const geometry = $derived(
     createChartGeometry(measuredWidth, height, {
-      xTickLabels: frames.map((frame) => frame.label),
-      yTickLabels: yLabels,
+      xTickLabels: renderedXLabels,
+      yTickLabels: renderedYLabels,
       measureText,
       measurementElement: rootElement,
       measurementVersion,
@@ -160,14 +171,6 @@
   // Cell dimensions
   const cellWidth = $derived(frames.length > 0 ? plotWidth / frames.length : 0);
   const cellHeight = $derived(binCount > 0 ? plotHeight / binCount : 0);
-
-  // Show a subset of y-axis labels
-  const maxYLabels = 8;
-  const yLabelStep = $derived(Math.max(1, Math.ceil(binCount / maxYLabels)));
-
-  // Show a subset of x-axis (time) labels
-  const maxXLabels = 10;
-  const xLabelStep = $derived(Math.max(1, Math.ceil(frames.length / maxXLabels)));
 
   const hasDataTable = $derived(dataTableVisibility !== 'hidden');
 
