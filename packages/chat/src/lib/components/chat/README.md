@@ -112,6 +112,7 @@ import { clearMessageDeliveryStatus, markMessageDeliveryFailed } from '@lostgrad
 
 // Inside your ChatAdapter implementation:
 async sendMessage(message, attachments) {
+  const messageId = message.id;
   try {
     await yourBackend.send(message, attachments);
     conversation = clearMessageDeliveryStatus(conversation, messageId);
