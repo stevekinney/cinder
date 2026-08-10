@@ -40,7 +40,10 @@
   } from '../utilities/index.ts';
   import { ChatMessage, ChatDateSeparator } from '../message/index.ts';
   import { ChatInput } from '../input/index.ts';
-  import { DEFAULT_SCROLL_CONFIGURATION } from './scroll-utilities.ts';
+  import {
+    DEFAULT_SCROLL_CONFIGURATION,
+    isAtBottom as checkIsAtBottom,
+  } from './scroll-utilities.ts';
   import { useChatScrollState } from './use-chat-scroll-state.svelte.ts';
   import { useChatUnreadState } from './use-chat-unread-state.svelte.ts';
   import { useChatKeyboardNav } from './use-chat-keyboard-nav.svelte.ts';
@@ -285,6 +288,10 @@
   let historyAnchorMessageId = $state<string | null>(null);
   let historyAnchorViewportOffset = $state<number | null>(null);
   let historyAnchorRestoredScrollTop: number | null = null;
+  // The pending snapshot the most recent NON-virtualized restore applied,
+  // kept so the post-settle trigger-swap correction (#1237) can re-anchor
+  // against the same baseline after `pendingHistoryScroll` has cleared.
+  let nonVirtualRestoredHistoryPending: PendingHistoryScroll | null = null;
   let previousHistoryConversationId: string | undefined;
   let previousHistoryAdapter: ChatAdapter | undefined;
 
@@ -357,7 +364,16 @@
   // C5 — suggested replies are a per-TURN affordance shown only beneath the last
   // message, not on every historical message that still carries the metadata.
   const lastMessageId = $derived(messages.at(-1)?.id);
-  let previousAutoScrollMessageCount = $state(untrack(() => messages.length));
+  // Transcript shape from the auto-scroll effect's previous run, used to tell
+  // a history PREPEND (first id changes, last id unchanged) from an APPEND
+  // (#1237). Plain lets, NOT $state: they are only read/written inside that
+  // effect, and a reactive write there would self-invalidate the effect — the
+  // rerun would see "no growth", lose the prepend signal, and pin a stale
+  // atBottom=true viewport to the bottom right after a prepend (#1237's
+  // nondeterministic bottom-snap).
+  let previousAutoScrollMessageCount = untrack(() => messages.length);
+  let previousAutoScrollFirstMessageId = untrack(() => messages[0]?.id);
+  let previousAutoScrollLastMessageId = untrack(() => messages.at(-1)?.id);
 
   // The conversation id as a stable VALUE dependency. The subscribe effect keys
   // on this (not on `conversation.id` read inline) so a consumer passing a fresh
@@ -548,6 +564,7 @@
       adapterHasMoreHistory = undefined;
       pendingHistoryScroll = null;
       deferredAdapterHasMoreHistory = null;
+      nonVirtualRestoredHistoryPending = null;
       clearHistoryAnchor();
     }
     previousHistoryConversationId = currentConversationId;
@@ -654,8 +671,20 @@
 
     // Register dependency on message count
     const currentCount = messages.length;
-    const isTranscriptAppend = currentCount > previousAutoScrollMessageCount;
+    const isTranscriptGrowth = currentCount > previousAutoScrollMessageCount;
     previousAutoScrollMessageCount = currentCount;
+    // A growth that changes the FIRST message while keeping the LAST one is a
+    // history prepend, not an append: nothing new arrived at the bottom, so
+    // there is nothing for stick-to-bottom to reveal (#1237).
+    const currentFirstMessageId = messages[0]?.id;
+    const currentLastMessageId = messages.at(-1)?.id;
+    const isHistoryPrepend =
+      isTranscriptGrowth &&
+      currentFirstMessageId !== previousAutoScrollFirstMessageId &&
+      currentLastMessageId === previousAutoScrollLastMessageId;
+    previousAutoScrollFirstMessageId = currentFirstMessageId;
+    previousAutoScrollLastMessageId = currentLastMessageId;
+    const isTranscriptAppend = isTranscriptGrowth && !isHistoryPrepend;
     // Keep the scroll extent as a dependency so virtual row measurement can
     // trigger one final bottom correction after the appended row is measured.
     const currentScrollExtent = isVirtualized ? chatVirtualizer.scrollSize : viewport.scrollHeight;
@@ -666,6 +695,25 @@
 
     // Skip if user initiated a smooth scroll (e.g., via jump button)
     if (scrollState.isUserScrolling) return undefined;
+
+    // A history prepend must never engage stick-to-bottom off a stale
+    // `atBottom` flag (#1237): the flag's recompute is rAF-deferred, so it can
+    // still say "at bottom" moments after a programmatic scroll away. This
+    // effect runs BEFORE the DOM mutation, so the viewport's live geometry
+    // still describes the pre-prepend transcript — verify the flag against it
+    // and let the prepend through only when the viewport genuinely sits at
+    // the bottom (where the correction keeps the latest message pinned).
+    if (isHistoryPrepend) {
+      const genuinelyAtBottom = checkIsAtBottom(
+        {
+          scrollTop: viewport.scrollTop,
+          scrollHeight: currentScrollExtent,
+          clientHeight: viewport.clientHeight,
+        },
+        bottomThreshold,
+      );
+      if (!genuinelyAtBottom) return undefined;
+    }
 
     // Explicit history anchoring owns scroll restoration while a prepend is pending
     // and until the user scrolls away from the restored anchor.
@@ -709,13 +757,34 @@
     return undefined;
   });
 
+  // Virtualized path: restore after a layout frame so freshly-mounted virtual
+  // rows can be measured first (the pinned anchor virtual item holds the
+  // anchor's on-screen position in the interim).
   $effect.pre(() => {
-    if (!viewport || !pendingHistoryScroll) return;
+    if (!viewport || !pendingHistoryScroll || !isVirtualized) return;
 
     const pending = pendingHistoryScroll;
     messages.length;
     messages[0]?.id;
     void restorePendingHistoryScrollAfterLayout(pending);
+  });
+
+  // Non-virtualized path: restore SYNCHRONOUSLY in the same flush that
+  // committed the prepend. A plain $effect runs after the DOM mutation but
+  // before the browser paints, so the anchor correction lands in the same
+  // rendered frame as the prepend — deferring it by even one animation frame
+  // (the pre-#1237-fix behavior) painted the un-compensated transcript first:
+  // a visible flash of the prepended block pushing the anchored content down.
+  $effect(() => {
+    if (!viewport || !pendingHistoryScroll || isVirtualized) return;
+
+    const pending = pendingHistoryScroll;
+    messages.length;
+    messages[0]?.id;
+    const restored = restoreHistoryScroll(pending);
+    if (restored) {
+      void stabilizeNonVirtualHistoryAnchor(pending);
+    }
   });
 
   async function waitForLayoutFrame(): Promise<void> {
@@ -766,6 +835,7 @@
       historyAnchorRestoredScrollTop = viewport?.scrollTop ?? chatVirtualizer.scrollOffset;
     } else {
       clearHistoryAnchor();
+      nonVirtualRestoredHistoryPending = pending;
       const anchorCorrection = nonVirtualHistoryAnchorCorrection(pending);
       const targetScrollTop =
         anchorCorrection === null
@@ -855,6 +925,40 @@
         isStabilizingNonVirtualHistoryAnchor = false;
       }
     }
+  }
+
+  /**
+   * One final anchor correction AFTER the history trigger settles into its
+   * post-load state (#1237). The restore itself measures while the trigger
+   * row still shows its loading state (and, when the last page loads, while
+   * the trigger is still mounted): `isLoadingHistory` / `adapterHasMoreHistory`
+   * flip only after restoration settles, so the swap back to the idle label —
+   * or the trigger unmounting entirely on `hasMore: false` — changes the
+   * height of the content ABOVE the anchor after the stabilization frames
+   * have already run, shifting the anchored message by exactly that height
+   * delta. Wait for the swap to commit, re-measure, and absorb it.
+   *
+   * Skipped when scrollTop moved between the flip and the re-measure: a
+   * position change in that window means the user (or another scroll owner)
+   * took over, and this restoration no longer owns the viewport.
+   */
+  async function correctNonVirtualAnchorAfterHistorySettle(requestId: number): Promise<void> {
+    const restored = nonVirtualRestoredHistoryPending;
+    if (!viewport || isVirtualized || restored === null || restored.requestId !== requestId) {
+      return;
+    }
+    if (historyRestorationUserScrollObserved || isHistoryRestorationUserScrolling) return;
+    const scrollTopAtFlip = viewport.scrollTop;
+    // Let the isLoadingHistory / adapterHasMoreHistory flips commit to the DOM
+    // (trigger label swap or unmount) before measuring.
+    await tick();
+    if (!viewport || nonVirtualRestoredHistoryPending !== restored) return;
+    // A position change across the flip means the user (or the stabilization
+    // loop) already moved the viewport; leave it alone.
+    if (Math.abs(viewport.scrollTop - scrollTopAtFlip) > 1) return;
+    const correction = nonVirtualHistoryAnchorCorrection(restored);
+    if (correction === null || Math.abs(correction) < 1) return;
+    viewport.scrollTo({ top: viewport.scrollTop + correction, behavior: 'instant' });
   }
 
   function cancelNonVirtualHistoryAnchorStabilization(): void {
@@ -1353,6 +1457,7 @@
         ? previousFirstMessageElement.getBoundingClientRect().top -
           viewport.getBoundingClientRect().top
         : 0);
+    nonVirtualRestoredHistoryPending = null;
     pendingHistoryScroll = {
       focusHistoryTriggerAfterRestore,
       requestId,
@@ -1412,7 +1517,18 @@
     // overshooting #911-style. Finish the guarded scroll instantly at its
     // destination first, so the capture below snapshots a parked viewport and
     // the restore has nothing left to race.
-    scrollState.finishUserScrollGuard();
+    //
+    // A glide can also outlive its guard: under main-thread jank the guard's
+    // scroll-quiet backstop can settle while the compositor-driven smooth
+    // scroll is still animating, leaving no active guard for
+    // finishUserScrollGuard to finish — yet the animation still races the
+    // capture below exactly as an unguarded one would (#1237's nondeterministic
+    // mode). Pin the current position with an instant scroll in that case:
+    // issuing any programmatic scroll aborts an in-flight smooth scroll, so
+    // the capture is guaranteed a parked viewport either way.
+    if (!scrollState.finishUserScrollGuard() && viewport) {
+      viewport.scrollTo({ top: viewport.scrollTop, behavior: 'instant' });
+    }
     const requestId = ++historyLoadRequestId;
     captureHistoryScroll(requestId);
     if (pendingHistoryScroll === null) {
@@ -1457,6 +1573,12 @@
       }
       adapterHasMoreHistory = nextHasMoreHistory;
       isLoadingHistory = false;
+      // The flips above swap the trigger back to idle (or unmount it on
+      // hasMore: false) — a height change the settled restore has not seen
+      // (#1237). Note the restore itself usually ran from the transcript
+      // effect before this resumes, so this keys on the request id, not on
+      // `pendingHistoryScroll` still being set.
+      await correctNonVirtualAnchorAfterHistorySettle(requestId);
       return;
     }
 
@@ -1466,6 +1588,10 @@
       if (currentPending !== null) {
         await settlePendingHistoryScroll(currentPending);
       }
+      isLoadingHistory = false;
+      // The flip above swaps the trigger back to idle — a height change the
+      // settled restore has not seen (#1237).
+      await correctNonVirtualAnchorAfterHistorySettle(requestId);
     } catch (error) {
       pendingHistoryScroll = null;
       throw error;
