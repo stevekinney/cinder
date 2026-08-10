@@ -17,6 +17,7 @@ globalThis.ResizeObserver = TestResizeObserver as unknown as typeof ResizeObserv
 
 const { cleanup, render, waitFor } = await import('@testing-library/svelte');
 const { default: Waveform } = await import('./waveform.svelte');
+const waveformCss = await Bun.file(new URL('./waveform.css', import.meta.url)).text();
 
 afterEach(() => cleanup());
 afterAll(() => {
@@ -68,6 +69,20 @@ describe('Waveform', () => {
     });
     expect(container.querySelector('.cinder-waveform__bar')?.getAttribute('fill')).toBe(
       'rebeccapurple',
+    );
+  });
+
+  test('applies the configured background to the rendered chart canvas', () => {
+    const { container } = render(Waveform, {
+      label: 'Themed waveform',
+      data: sineData,
+      theme: { background: 'midnightblue' },
+    });
+    const root = container.querySelector('.cinder-waveform');
+
+    expect(root?.getAttribute('style')).toContain('--_cinder-chart-background: midnightblue');
+    expect(waveformCss).toMatch(
+      /\.cinder-waveform\s*\{[^}]*background:\s*var\(--_cinder-chart-background, transparent\)/,
     );
   });
 

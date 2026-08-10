@@ -106,6 +106,44 @@ describe('createChartGeometry', () => {
       measurementElement.remove();
     }
   });
+
+  test('bounds browser text measurement caching and evicts the oldest entry', () => {
+    const measurementElement = document.createElement('figure');
+    measurementElement.style.setProperty('--cinder-text-xs', '12px');
+    document.body.append(measurementElement);
+    const append = spyOn(measurementElement, 'append');
+    const svgElementPrototype = globalThis.SVGElement.prototype;
+    const originalGetBoundingBox = Object.getOwnPropertyDescriptor(svgElementPrototype, 'getBBox');
+    Object.defineProperty(svgElementPrototype, 'getBBox', {
+      configurable: true,
+      value: () => ({ x: 0, y: 0, width: 10, height: 10 }),
+    });
+    const labels = Array.from({ length: 1_025 }, (_, index) => `cache-eviction-${index}`);
+
+    try {
+      createChartGeometry(640, 280, {
+        xTickLabels: labels,
+        measureText: true,
+        measurementElement,
+      });
+      expect(append).toHaveBeenCalledTimes(1);
+
+      createChartGeometry(640, 280, {
+        xTickLabels: [labels[0]!],
+        measureText: true,
+        measurementElement,
+      });
+      expect(append).toHaveBeenCalledTimes(2);
+    } finally {
+      append.mockRestore();
+      if (originalGetBoundingBox) {
+        Object.defineProperty(svgElementPrototype, 'getBBox', originalGetBoundingBox);
+      } else {
+        Reflect.deleteProperty(svgElementPrototype, 'getBBox');
+      }
+      measurementElement.remove();
+    }
+  });
 });
 
 describe('chartResourceId', () => {
@@ -473,6 +511,7 @@ describe('createCartesianModel', () => {
     for (const point of first?.points ?? []) {
       expect(Number.isFinite(point.pixelX)).toBe(true);
       expect(Number.isFinite(point.pixelY)).toBe(true);
+      expect(point.pixelY0).toBe(model.geometry.plotHeight);
     }
   });
 
@@ -855,6 +894,7 @@ describe('createCartesianModel', () => {
       index,
       pixelX: index,
       pixelY: index,
+      pixelY0: 100,
     }));
 
     const decimated = decimatePlacedPoints(points, 20);

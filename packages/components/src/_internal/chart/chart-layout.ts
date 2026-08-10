@@ -9,6 +9,7 @@ const CHART_AXIS_TITLE_GAP = 12;
 export const HORIZONTAL_CATEGORY_LABEL_GAP = 8;
 const HORIZONTAL_CATEGORY_LABEL_OUTER_PADDING = 8;
 const MAXIMUM_HORIZONTAL_CATEGORY_LABEL_FRACTION = 0.4;
+const MAXIMUM_CHART_TEXT_MEASUREMENTS = 1_024;
 
 export type ChartGeometryOptions = {
   xTickLabels?: string[];
@@ -222,7 +223,7 @@ function measureChartTexts(
         // Keep deterministic fallback metrics when layout is unavailable.
       }
       if (measurement) {
-        chartTextMeasurementCache.set(
+        cacheChartTextMeasurement(
           chartTextMeasurementKey(label, rotation, context.cacheKey),
           rotateChartTextMeasurement(measurement, rotation),
         );
@@ -237,6 +238,17 @@ function measureChartTexts(
         fallbackChartTextMeasurement(label, rotation),
     ]),
   );
+}
+
+function cacheChartTextMeasurement(key: string, measurement: ChartTextMeasurement): void {
+  if (!chartTextMeasurementCache.has(key)) {
+    while (chartTextMeasurementCache.size >= MAXIMUM_CHART_TEXT_MEASUREMENTS) {
+      const oldestKey = chartTextMeasurementCache.keys().next().value;
+      if (oldestKey === undefined) break;
+      chartTextMeasurementCache.delete(oldestKey);
+    }
+  }
+  chartTextMeasurementCache.set(key, measurement);
 }
 
 function measureChartText(label: string, rotation = 0): ChartTextMeasurement {

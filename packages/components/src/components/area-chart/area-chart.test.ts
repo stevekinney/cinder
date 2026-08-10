@@ -1,8 +1,8 @@
 /// <reference lib="dom" />
 import { afterAll, afterEach, describe, expect, test } from 'bun:test';
 
+import type { ChartMarkContext, ChartXAxisConfiguration, ChartXValue } from '../../index.ts';
 import { setupHappyDom } from '../../test/happy-dom.ts';
-import type { ChartXValue } from '../chart.types.ts';
 
 setupHappyDom();
 
@@ -18,6 +18,7 @@ afterAll(() => {
 });
 
 const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
+const { createRawSnippet } = await import('svelte');
 const { default: AreaChart } = await import('./area-chart.svelte');
 
 afterEach(() => cleanup());
@@ -50,8 +51,37 @@ describe('AreaChart', () => {
   });
 
   test('stacked mode marks the chart mode', () => {
-    const { container } = render(AreaChart, { label: 'Usage trend', mode: 'stacked', series });
+    const xAxis: ChartXAxisConfiguration = { tickLabelRotation: -30 };
+    const { container } = render(AreaChart, {
+      label: 'Usage trend',
+      mode: 'stacked',
+      series,
+      xAxis,
+    });
     expect(container.querySelector('[data-cinder-mode="stacked"]')).not.toBeNull();
+  });
+
+  test('exposes the resolved lower stack baseline to custom marks', () => {
+    const mark = createRawSnippet<[ChartMarkContext]>((getContext) => ({
+      render: () => {
+        const context = getContext();
+        const point = context.points[0];
+        return `<g data-custom-area="${context.series.id}" data-pixel-y="${point?.pixelY}" data-pixel-y0="${point?.pixelY0}"></g>`;
+      },
+    }));
+    const { container } = render(AreaChart, {
+      label: 'Stacked custom areas',
+      mode: 'stacked',
+      mark,
+      series,
+    });
+    const lowerSeries = container.querySelector('[data-custom-area="usage"]');
+    const upperSeries = container.querySelector('[data-custom-area="storage"]');
+    const lowerSeriesUpperCoordinate = Number(lowerSeries?.getAttribute('data-pixel-y'));
+    const upperSeriesBaseline = Number(upperSeries?.getAttribute('data-pixel-y0'));
+
+    expect(Number.isFinite(upperSeriesBaseline)).toBe(true);
+    expect(upperSeriesBaseline).toBeCloseTo(lowerSeriesUpperCoordinate);
   });
 
   test('scopes gradient resource ids to the existing chart id', () => {

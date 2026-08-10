@@ -78,11 +78,13 @@ export type NormalizedPoint = {
 
 /**
  * A point that has been placed in pixel space by the chart model. Components
- * read `pixelX`/`pixelY` directly without a secondary lookup against targets.
+ * read `pixelX`/`pixelY` directly without a secondary lookup against targets;
+ * filled marks use `pixelY0` as their resolved lower baseline.
  */
 export type PlacedPoint = NormalizedPoint & {
   pixelX: number;
   pixelY: number;
+  pixelY0: number;
 };
 
 export type ChartTarget = {

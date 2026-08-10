@@ -77,6 +77,8 @@ export type PlacedPoint = {
   index: number;
   pixelX: number;
   pixelY: number;
+  /** Pixel-space baseline for filled marks. In stacked areas, this is the lower stack coordinate. */
+  pixelY0: number;
 };
 
 export type ChartGeometry = {

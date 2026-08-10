@@ -227,6 +227,7 @@ export function createCartesianModel(options: {
             index,
             pixelX: index,
             pixelY: total,
+            pixelY0: 0,
           };
         }),
       )
@@ -244,6 +245,7 @@ export function createCartesianModel(options: {
         ...point,
         pixelX: scaleX(point.x),
         pixelY: yScale(stackedArea ? upperValue : (point.y ?? 0)),
+        pixelY0: stackedArea ? yScale(lowerValue) : geometry.plotHeight,
       };
     });
     const placedPointsByKey = stackedRenderIndices
@@ -264,6 +266,9 @@ export function createCartesianModel(options: {
               index: -1,
               pixelX: scaleX(x),
               pixelY: 0,
+              pixelY0: stackedArea
+                ? yScale(stackedOffsetsByKey.get(x.key) ?? 0)
+                : geometry.plotHeight,
             } satisfies PlacedPoint)
           );
         })
@@ -271,7 +276,7 @@ export function createCartesianModel(options: {
     const coordinates = renderPoints.map((placed) => ({
       x: placed.pixelX,
       y: placed.y === null ? null : placed.pixelY,
-      y0: yScale(stackedArea ? (stackedOffsetsByKey.get(placed.x.key) ?? 0) : 0),
+      y0: placed.pixelY0,
     }));
 
     if (!hidden) {

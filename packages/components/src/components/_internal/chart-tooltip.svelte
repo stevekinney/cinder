@@ -1,8 +1,8 @@
 <script lang="ts">
-  import Popover from '@lostgradient/cinder/popover';
   import type { Snippet } from 'svelte';
 
   import type { ChartGeometry, ChartTarget } from '../chart.types.ts';
+  import Popover from '../popover/popover.svelte';
 
   let {
     id,
@@ -17,6 +17,7 @@
   } = $props();
 
   let anchorElement = $state<HTMLSpanElement | null>(null);
+  const outsideClickIgnoreRefs = [() => anchorElement?.ownerDocument.body ?? null];
   const customContent = $derived(typeof content === 'function' ? content : undefined);
   const open = $derived(Boolean(anchorElement && target && content));
 </script>
@@ -38,7 +39,7 @@
   arrowVisible
   role="group"
   focusManagement="preserve"
-  outsideClickIgnoreRefs={[() => anchorElement?.ownerDocument.body ?? null]}
+  {outsideClickIgnoreRefs}
   wireTriggerAria={false}
   closeOnEscape={false}
   widthMode="content"

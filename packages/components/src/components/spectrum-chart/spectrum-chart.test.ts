@@ -47,7 +47,12 @@ describe('SpectrumChart', () => {
     const { container } = render(SpectrumChart, {
       label: 'Spectrum',
       bins: mockBins,
-      theme: { palette: ['hotpink'], muted: 'slategray', grid: 'silver' },
+      theme: {
+        palette: ['hotpink'],
+        muted: 'slategray',
+        grid: 'silver',
+        background: 'midnightblue',
+      },
     });
     expect(container.querySelector('.cinder-spectrum-chart__bar')?.getAttribute('fill')).toBe(
       'hotpink',
@@ -60,6 +65,9 @@ describe('SpectrumChart', () => {
     ).toBe('silver');
     expect(spectrumChartCss).toMatch(
       /\.cinder-spectrum-chart__state\s*\{[^}]*color:\s*var\(--_cinder-chart-muted, currentColor\)/,
+    );
+    expect(spectrumChartCss).toMatch(
+      /\.cinder-spectrum-chart\s*\{[^}]*background:\s*var\(--_cinder-chart-background, transparent\)/,
     );
   });
 

@@ -30,7 +30,7 @@ Responsive SVG rendering of time-domain audio amplitude data as a waveform path 
 
 ## Rendering and theming
 
-Waveform uses SVG, inherits its foreground from `currentColor`, keeps its background transparent, and resolves the path or bars through the first `--cinder-chart-series-*` color. Pass a partial `theme` to override only the palette or chart colors you need. Buffers above 2,000 rendered points use a min/max envelope so peaks remain visible without creating an unbounded SVG; the data-table caption reports when its readable sample is truncated.
+Waveform uses SVG, inherits its foreground from `currentColor`, defaults its background to transparent, and resolves the path or bars through the first `--cinder-chart-series-*` color. Pass a partial `theme` to override the palette or chart colors, including the rendered chart background. Buffers above 2,000 rendered points use a min/max envelope so peaks remain visible without creating an unbounded SVG; the data-table caption reports when its readable sample is truncated.
 
 ## Props
 

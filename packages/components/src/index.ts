@@ -118,6 +118,7 @@ export type {
   ChartTheme,
   ChartTickFormatter,
   ChartValueFormatter,
+  ChartXAxisConfiguration,
   ChartXValue,
   NormalizedXValue,
   PlacedPoint,

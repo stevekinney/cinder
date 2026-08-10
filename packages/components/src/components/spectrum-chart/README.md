@@ -49,7 +49,7 @@ Responsive SVG frequency-bin bar chart for visualizing audio spectrum magnitude 
 
 ## Rendering and theming
 
-SpectrumChart uses SVG and derives guide margins from its formatted frequency and magnitude labels. Its foreground follows `currentColor`, its background remains transparent, and the spectrum marks use the first resolved `--cinder-chart-series-*` color. Pass a partial `theme` to override only the palette or chart colors you need; the semantic data table remains available independently of the visual theme.
+SpectrumChart uses SVG and derives guide margins from its formatted frequency and magnitude labels. Its foreground follows `currentColor`, its background defaults to transparent, and the spectrum marks use the first resolved `--cinder-chart-series-*` color. Pass a partial `theme` to override the palette or chart colors, including the rendered chart background; the semantic data table remains available independently of the visual theme.
 
 ## Props
 
