@@ -71,6 +71,7 @@ afterEach(() => {
 });
 
 const { default: Chat } = await import('./chat.svelte');
+const markdownPipeline = await import('./message/markdown-pipeline.ts');
 
 // Local test builders for focused fixtures. The types come from the published
 // Conversationalist bridge so the fixtures stay aligned with the package shape.
@@ -1047,6 +1048,7 @@ describe('Chat — imperative API forwarding', () => {
     let conversation = createConversation({ id: 'conversation-imperative-stream' });
     conversation = appendAssistantMessage(conversation, '');
     const assistantId = conversation.ids[conversation.ids.length - 1]!;
+    const preload = jest.spyOn(markdownPipeline, 'preloadMarkdownPipeline');
     const instance = mount(Chat, {
       target,
       props: { id: 'chat-imperative-stream', conversation, streaming: false },
@@ -1064,6 +1066,7 @@ describe('Chat — imperative API forwarding', () => {
       api.scrollToTop();
       api.focusInput();
     }).not.toThrow();
+    expect(preload).toHaveBeenCalledTimes(1);
 
     // After unmount, the inner `impl` ref is gone; calls via the retained
     // reference must be safe no-ops (the `if (!impl) return;` guard), not throws.
@@ -1077,6 +1080,24 @@ describe('Chat — imperative API forwarding', () => {
       api.scrollToTop();
       api.focusInput();
     }).not.toThrow();
+    preload.mockRestore();
+  });
+
+  test('content-driven streaming preloads only on a false-to-true transition', async () => {
+    const conversation = createConversation({ id: 'conversation-external-stream' });
+    const preload = jest.spyOn(markdownPipeline, 'preloadMarkdownPipeline');
+    const view = render(Chat, {
+      props: { id: 'chat-external-stream', conversation, streaming: false },
+    });
+
+    expect(preload).not.toHaveBeenCalled();
+    await view.rerender({ streaming: true });
+    expect(preload).toHaveBeenCalledTimes(1);
+    await view.rerender({ streaming: true });
+    expect(preload).toHaveBeenCalledTimes(1);
+
+    view.unmount();
+    preload.mockRestore();
   });
 
   test('forwarded scroll methods use the virtualized scroll path when enabled', async () => {

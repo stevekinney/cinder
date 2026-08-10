@@ -231,9 +231,16 @@
   const toolCallState = useChatDisclosureState({ onRemeasureRow: remeasureRow });
 
   // Content-driven streams do not call beginStreaming, so warm the renderer
-  // whenever the Chat enters streaming mode as well.
+  // only when streaming transitions from false to true. Initial prop values do
+  // not represent a transition and should not preload on mount.
+  let previousStreaming = $state(false);
+  let streamingInitialized = $state(false);
   $effect(() => {
-    void preloadMarkdownPipeline();
+    if (streamingInitialized && streaming && !previousStreaming) {
+      void preloadMarkdownPipeline();
+    }
+    previousStreaming = streaming;
+    streamingInitialized = true;
   });
 
   // Reset UI-only approval/disclosure/typing/receipt state on conversation change
@@ -1946,7 +1953,7 @@
   export function beginStreaming(messageId: string): void {
     // Start loading before the first token arrives so the first streamed
     // message can format its initial markdown instead of showing raw text.
-    if (streaming) void preloadMarkdownPipeline();
+    void preloadMarkdownPipeline();
     if (streamingScrollRaf !== undefined) {
       cancelAnimationFrame(streamingScrollRaf);
       streamingScrollRaf = undefined;
