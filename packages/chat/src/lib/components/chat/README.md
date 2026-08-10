@@ -103,16 +103,24 @@ complete finite stream without assuming a particular model provider.
 
 ### Failed delivery and retry
 
-`ChatAdapter` reports rejected commands to the consumer through `onadaptererror`;
-Chat routes those errors automatically. Adapter implementations should mark
-delivery status and then rethrow so Chat can handle the error consistently:
+`ChatAdapter.sendMessage` receives a `MessageInput`, not a persisted `Message`,
+so it has no message ID. Append the optimistic user message to the
+authoritative snapshot first and retain the generated ID. `ChatAdapter` reports
+rejected commands to the consumer through `onadaptererror`; Chat routes those
+errors automatically. Adapter implementations should mark delivery status and
+then rethrow so Chat can handle the error consistently:
 
 ```ts
-import { clearMessageDeliveryStatus, markMessageDeliveryFailed } from '@lostgradient/chat';
+import {
+  appendUserMessage,
+  clearMessageDeliveryStatus,
+  markMessageDeliveryFailed,
+} from '@lostgradient/chat';
 
 // Inside your ChatAdapter implementation:
 async sendMessage(message, attachments) {
-  const messageId = message.id;
+  conversation = appendUserMessage(conversation, message.content);
+  const messageId = conversation.ids.at(-1)!;
   try {
     await yourBackend.send(message, attachments);
     conversation = clearMessageDeliveryStatus(conversation, messageId);

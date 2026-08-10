@@ -77,6 +77,17 @@ describe('chat conversation builders', () => {
     expect(cleared).not.toBe(failed);
   });
 
+  test('returns the same history when delivery is already marked failed', () => {
+    const initial = appendUserMessage(
+      createConversationHistory({ id: 'conversation-idempotent-delivery-status' }),
+      'Send this',
+    );
+    const messageId = initial.ids[0]!;
+    const failed = markMessageDeliveryFailed(initial, messageId);
+
+    expect(markMessageDeliveryFailed(failed, messageId)).toBe(failed);
+  });
+
   test('handles transcripts that omit metadata at runtime', () => {
     const initial = appendUserMessage(
       createConversationHistory({ id: 'conversation-missing-metadata' }),
