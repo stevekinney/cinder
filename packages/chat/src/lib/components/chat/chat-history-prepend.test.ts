@@ -366,6 +366,323 @@ describe('history prepend at scrollTop=0 (#1237)', () => {
     }
   });
 
+  test('absorbs the loading-trigger height change when the loader REJECTS after prepending', async () => {
+    let conversation = longConversation(20);
+    let rejectLoad: ((error: Error) => void) | undefined;
+    const adapterErrors: { command: string; error: unknown }[] = [];
+    const adapter = {
+      sendMessage: async () => {},
+      loadOlderMessages: async () => {
+        return await new Promise<{ hasMore: boolean }>((_resolve, reject) => {
+          rejectLoad = reject;
+        });
+      },
+    };
+    const { container, rerender } = render(Chat, {
+      props: {
+        id: 'prepend-reject-chat',
+        conversation,
+        adapter,
+        onadaptererror: (event: { command: string; error: unknown }) => {
+          adapterErrors.push(event);
+        },
+      },
+    });
+    await settleRenderedRows(container, 20);
+    const timeline = container.querySelector<HTMLElement>('.chat-timeline')!;
+    const layout = installLayoutModel(timeline, {
+      idleTriggerHeight: 50,
+      loadingTriggerHeight: 30,
+    });
+    try {
+      layout.relayout(conversation.ids);
+      timeline.scrollTop = 0;
+
+      const trigger = container.querySelector<HTMLButtonElement>(
+        '[data-cinder-history-trigger] button',
+      )!;
+      await fireEvent.click(trigger);
+      await waitFor(() => {
+        expect(trigger.disabled).toBe(true);
+      });
+
+      // The consumer prepended the page it had already streamed in before the
+      // follow-up metadata request failed.
+      conversation = prependMessages(conversation, [
+        { id: 'older-reject-0', content: 'Older 0' },
+        { id: 'older-reject-1', content: 'Older 1' },
+      ]);
+      layout.relayout(conversation.ids);
+      await rerender({
+        id: 'prepend-reject-chat',
+        conversation,
+        adapter,
+        onadaptererror: (event: { command: string; error: unknown }) => {
+          adapterErrors.push(event);
+        },
+      });
+      expect(timeline.scrollTop).toBe(180);
+
+      // Let the bounded stabilization loop retire first: a real failure
+      // arrives a network round-trip after the prepend, long after those five
+      // layout frames are gone, so nothing but the post-settle correction is
+      // left to absorb the trigger swap.
+      await waitFor(() => {
+        expect(timeline.hasAttribute('data-cinder-history-restoring')).toBe(false);
+      });
+      expect(timeline.scrollTop).toBe(180);
+
+      // A rejection flips `isLoadingHistory` back to idle exactly as a
+      // resolution does — the trigger row grows 30px → 50px above the anchor,
+      // and the post-settle correction must absorb it on this path too.
+      rejectLoad?.(new Error('metadata failed'));
+      await waitFor(() => {
+        expect(timeline.scrollTop).toBe(200);
+      });
+      const settledRect = timeline
+        .querySelector<HTMLElement>('#message-message-0')!
+        .getBoundingClientRect();
+      expect(Math.abs(settledRect.top - 50)).toBeLessThanOrEqual(1);
+      expect(adapterErrors).toHaveLength(1);
+      expect(adapterErrors[0]?.command).toBe('loadOlderMessages');
+    } finally {
+      layout.uninstall();
+    }
+  });
+
+  test('a rejection with nothing prepended leaves the viewport untouched', async () => {
+    const conversation = longConversation(20);
+    let rejectLoad: ((error: Error) => void) | undefined;
+    const adapterErrors: { command: string; error: unknown }[] = [];
+    const adapter = {
+      sendMessage: async () => {},
+      loadOlderMessages: async () => {
+        return await new Promise<{ hasMore: boolean }>((_resolve, reject) => {
+          rejectLoad = reject;
+        });
+      },
+    };
+    const { container } = render(Chat, {
+      props: {
+        id: 'prepend-reject-noop-chat',
+        conversation,
+        adapter,
+        onadaptererror: (event: { command: string; error: unknown }) => {
+          adapterErrors.push(event);
+        },
+      },
+    });
+    await settleRenderedRows(container, 20);
+    const timeline = container.querySelector<HTMLElement>('.chat-timeline')!;
+    const layout = installLayoutModel(timeline, {
+      idleTriggerHeight: 50,
+      loadingTriggerHeight: 30,
+    });
+    try {
+      layout.relayout(conversation.ids);
+      timeline.scrollTop = 0;
+
+      await fireEvent.click(
+        container.querySelector<HTMLButtonElement>('[data-cinder-history-trigger] button')!,
+      );
+      layout.scrollTops.length = 0;
+
+      rejectLoad?.(new Error('failed before prepending'));
+      await tick();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      await tick();
+
+      // `captureHistoryScroll` nulls the retained snapshot, so the newly-added
+      // error-path correction is a strict no-op when nothing was prepended.
+      expect(adapterErrors).toHaveLength(1);
+      expect(timeline.scrollTop).toBe(0);
+      expect(layout.scrollTops).toEqual([]);
+    } finally {
+      layout.uninstall();
+    }
+  });
+
+  test('a competing scroll owner during an open history request wins over the post-settle correction', async () => {
+    let conversation = longConversation(20);
+    let resolveLoad: ((result: { hasMore: boolean }) => void) | undefined;
+    const adapter = {
+      sendMessage: async () => {},
+      loadOlderMessages: async () => {
+        return await new Promise<{ hasMore: boolean }>((resolve) => {
+          resolveLoad = resolve;
+        });
+      },
+    };
+    const { container, component, rerender } = render(Chat, {
+      props: { id: 'prepend-owner-chat', conversation, adapter },
+    });
+    await settleRenderedRows(container, 20);
+    const timeline = container.querySelector<HTMLElement>('.chat-timeline')!;
+    const layout = installLayoutModel(timeline, {
+      idleTriggerHeight: 50,
+      loadingTriggerHeight: 30,
+    });
+    try {
+      layout.relayout(conversation.ids);
+      timeline.scrollTop = 0;
+
+      const trigger = container.querySelector<HTMLButtonElement>(
+        '[data-cinder-history-trigger] button',
+      )!;
+      await fireEvent.click(trigger);
+      await waitFor(() => {
+        expect(trigger.disabled).toBe(true);
+      });
+
+      conversation = prependMessages(conversation, [
+        { id: 'older-owner-0', content: 'Older 0' },
+        { id: 'older-owner-1', content: 'Older 1' },
+      ]);
+      layout.relayout(conversation.ids);
+      await rerender({ id: 'prepend-owner-chat', conversation, adapter });
+      expect(timeline.scrollTop).toBe(180);
+
+      // The consumer takes the viewport while the loader is STILL in flight —
+      // the adapter promise has not resolved, so `isLoadingHistory` is still
+      // true and the post-settle correction has not run yet.
+      (component as unknown as { scrollToBottom: () => void }).scrollToBottom();
+      expect(timeline.scrollTop).toBeGreaterThan(2000);
+
+      resolveLoad?.({ hasMore: true });
+      await tick();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      await tick();
+
+      // The trigger really did swap back to its idle height, so a retained
+      // snapshot would have produced a ~2030px correction back to the anchor.
+      expect(layout.triggerHeight()).toBe(50);
+      expect(timeline.scrollTop).toBeGreaterThan(2000);
+      expect(layout.scrollTops.at(-1)?.top).toBeGreaterThan(2000);
+    } finally {
+      layout.uninstall();
+    }
+  });
+
+  test('a submit during an open history request wins over the post-settle correction', async () => {
+    let conversation = longConversation(20);
+    let resolveLoad: ((result: { hasMore: boolean }) => void) | undefined;
+    const adapter = {
+      sendMessage: async () => {},
+      loadOlderMessages: async () => {
+        return await new Promise<{ hasMore: boolean }>((resolve) => {
+          resolveLoad = resolve;
+        });
+      },
+    };
+    const { container, rerender } = render(Chat, {
+      props: { id: 'prepend-submit-chat', conversation, adapter },
+    });
+    await settleRenderedRows(container, 20);
+    const timeline = container.querySelector<HTMLElement>('.chat-timeline')!;
+    const layout = installLayoutModel(timeline, {
+      idleTriggerHeight: 50,
+      loadingTriggerHeight: 30,
+    });
+    try {
+      layout.relayout(conversation.ids);
+      timeline.scrollTop = 0;
+
+      const trigger = container.querySelector<HTMLButtonElement>(
+        '[data-cinder-history-trigger] button',
+      )!;
+      await fireEvent.click(trigger);
+      await waitFor(() => {
+        expect(trigger.disabled).toBe(true);
+      });
+
+      conversation = prependMessages(conversation, [
+        { id: 'older-submit-0', content: 'Older 0' },
+        { id: 'older-submit-1', content: 'Older 1' },
+      ]);
+      layout.relayout(conversation.ids);
+      await rerender({ id: 'prepend-submit-chat', conversation, adapter });
+      expect(timeline.scrollTop).toBe(180);
+
+      const composer = container.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor')!;
+      await fireEvent.input(composer, { target: { value: 'sent mid-load' } });
+      await fireEvent.submit(container.querySelector<HTMLFormElement>('form.chat-input')!);
+      await tick();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(timeline.scrollTop).toBeGreaterThan(2000);
+
+      resolveLoad?.({ hasMore: true });
+      await tick();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      await tick();
+
+      expect(layout.triggerHeight()).toBe(50);
+      expect(timeline.scrollTop).toBeGreaterThan(2000);
+    } finally {
+      layout.uninstall();
+    }
+  });
+
+  test('a user scroll observed before the prepend rendered cancels the post-settle correction', async () => {
+    let conversation = longConversation(20);
+    let resolveLoad: ((result: { hasMore: boolean }) => void) | undefined;
+    const adapter = {
+      sendMessage: async () => {},
+      loadOlderMessages: async () => {
+        return await new Promise<{ hasMore: boolean }>((resolve) => {
+          resolveLoad = resolve;
+        });
+      },
+    };
+    const { container, rerender } = render(Chat, {
+      props: { id: 'prepend-userscroll-chat', conversation, adapter },
+    });
+    await settleRenderedRows(container, 20);
+    const timeline = container.querySelector<HTMLElement>('.chat-timeline')!;
+    const layout = installLayoutModel(timeline, {
+      idleTriggerHeight: 50,
+      loadingTriggerHeight: 30,
+    });
+    try {
+      layout.relayout(conversation.ids);
+      timeline.scrollTop = 0;
+
+      const trigger = container.querySelector<HTMLButtonElement>(
+        '[data-cinder-history-trigger] button',
+      )!;
+      await fireEvent.click(trigger);
+      await waitFor(() => {
+        expect(trigger.disabled).toBe(true);
+      });
+
+      // The user scrolls while the request is still open and the prepend has
+      // not rendered — the stabilization loop is skipped for exactly this
+      // reason, and the post-settle correction must be skipped with it.
+      await fireEvent.wheel(timeline);
+      timeline.scrollTop = 600;
+      await fireEvent.scroll(timeline);
+
+      conversation = prependMessages(conversation, [
+        { id: 'older-user-0', content: 'Older 0' },
+        { id: 'older-user-1', content: 'Older 1' },
+      ]);
+      layout.relayout(conversation.ids);
+      await rerender({ id: 'prepend-userscroll-chat', conversation, adapter });
+      expect(timeline.scrollTop).toBe(180);
+
+      resolveLoad?.({ hasMore: true });
+      await tick();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      await tick();
+
+      // The trigger swapped back to idle (a real 20px height change above the
+      // anchor), so a retained snapshot would have re-anchored to 200.
+      expect(layout.triggerHeight()).toBe(50);
+      expect(timeline.scrollTop).toBe(180);
+    } finally {
+      layout.uninstall();
+    }
+  });
+
   test('pins a still-running scroll animation before capturing when no guard is active', async () => {
     const conversation = longConversation(20);
     const adapter = {

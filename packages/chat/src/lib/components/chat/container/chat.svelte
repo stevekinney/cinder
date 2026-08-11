@@ -308,6 +308,8 @@
       // IntersectionObserver, which does not emit onScrollStateChange.
       // Update the bindable prop here so it stays in sync with the sentinel path.
       updateAtBottomBinding(true);
+      // The viewport really is at the bottom — release the prepend latch.
+      autoStickSuppressedByPrepend = false;
       if (unreadState.unreadCount > 0 || unreadState.newMessageIndicatorVisible) {
         unreadState.markAllAsRead();
       }
@@ -370,10 +372,24 @@
   // effect, and a reactive write there would self-invalidate the effect — the
   // rerun would see "no growth", lose the prepend signal, and pin a stale
   // atBottom=true viewport to the bottom right after a prepend (#1237's
-  // nondeterministic bottom-snap).
+  // nondeterministic bottom-snap). Every tracker below carries that same
+  // constraint: plain `let`, never `$state`.
   let previousAutoScrollMessageCount = untrack(() => messages.length);
   let previousAutoScrollFirstMessageId = untrack(() => messages[0]?.id);
   let previousAutoScrollLastMessageId = untrack(() => messages.at(-1)?.id);
+  // The VIRTUALIZED scroll extent from that effect's previous run. Virtualized
+  // `scrollSize` is derived from `renderRows.length`, which has ALREADY grown
+  // by the time `$effect.pre` runs, while `viewport.scrollTop`/`clientHeight`
+  // are still pre-mutation DOM reads — measuring one against the other mixes
+  // time bases and reports "not at the bottom" for every prepend of more than
+  // a row or two. This snapshot is the matching pre-mutation extent.
+  let previousAutoScrollVirtualExtent: number | null = null;
+  // Latches the prepend guard's DECISION so a rerun that carries no transcript
+  // growth — virtual-row measurement bumps the virtualizer's measurement
+  // version in the microtask flush right after a prepend, ahead of the rAF
+  // that refreshes `atBottom` — cannot fall through the guard it is no longer
+  // able to evaluate and pin a stale `atBottom: true` viewport to the bottom.
+  let autoStickSuppressedByPrepend = false;
 
   // The conversation id as a stable VALUE dependency. The subscribe effect keys
   // on this (not on `conversation.id` read inline) so a consumer passing a fresh
@@ -565,6 +581,8 @@
       pendingHistoryScroll = null;
       deferredAdapterHasMoreHistory = null;
       nonVirtualRestoredHistoryPending = null;
+      // Or the latch leaks across conversation switches.
+      autoStickSuppressedByPrepend = false;
       clearHistoryAnchor();
     }
     previousHistoryConversationId = currentConversationId;
@@ -685,33 +703,59 @@
     previousAutoScrollFirstMessageId = currentFirstMessageId;
     previousAutoScrollLastMessageId = currentLastMessageId;
     const isTranscriptAppend = isTranscriptGrowth && !isHistoryPrepend;
+    // Genuine growth at the bottom is the one thing that unambiguously makes
+    // stick-to-bottom relevant again — release the prepend latch on it.
+    if (isTranscriptAppend) autoStickSuppressedByPrepend = false;
     // Keep the scroll extent as a dependency so virtual row measurement can
     // trigger one final bottom correction after the appended row is measured.
     const currentScrollExtent = isVirtualized ? chatVirtualizer.scrollSize : viewport.scrollHeight;
     void currentScrollExtent;
+    // Snapshot it for the NEXT run, advancing before any early return below
+    // (exactly as the message trackers above do) so the value a prepend run
+    // reads always describes the transcript as it was before that prepend.
+    const previousVirtualExtent = previousAutoScrollVirtualExtent;
+    previousAutoScrollVirtualExtent = isVirtualized ? currentScrollExtent : null;
 
     // Read atBottom without making it a dependency (prevents loops)
     const atBottom = untrack(() => scrollState.atBottom);
 
     // Skip if user initiated a smooth scroll (e.g., via jump button)
+    // Note: a prepend that lands inside a guarded scroll bails here AFTER the
+    // trackers advanced but BEFORE the guard below runs, so it latches
+    // nothing. That is acceptable rather than silent — the guard's settlement
+    // recomputes `atBottom` against real geometry when it finishes.
     if (scrollState.isUserScrolling) return undefined;
 
     // A history prepend must never engage stick-to-bottom off a stale
     // `atBottom` flag (#1237): the flag's recompute is rAF-deferred, so it can
-    // still say "at bottom" moments after a programmatic scroll away. This
-    // effect runs BEFORE the DOM mutation, so the viewport's live geometry
-    // still describes the pre-prepend transcript — verify the flag against it
-    // and let the prepend through only when the viewport genuinely sits at
-    // the bottom (where the correction keeps the latest message pinned).
+    // still say "at bottom" moments after a programmatic scroll away. Verify
+    // the flag against the viewport's PRE-MUTATION geometry and let the
+    // prepend through only when it genuinely sits at the bottom (where the
+    // correction keeps the latest message pinned).
+    //
+    // "Pre-mutation" needs care per branch. `scrollTop`/`clientHeight` are DOM
+    // reads and this effect runs before the DOM update, so they always are.
+    // The extent is not: non-virtualized `viewport.scrollHeight` is also a DOM
+    // read and therefore still pre-prepend, but virtualized `scrollSize` is
+    // computed from `renderRows`, a `$derived` that has already recomputed
+    // with the prepended rows. Use the previous run's snapshot there.
     if (isHistoryPrepend) {
+      const preMutationExtent =
+        isVirtualized && previousVirtualExtent !== null
+          ? previousVirtualExtent
+          : currentScrollExtent;
       const genuinelyAtBottom = checkIsAtBottom(
         {
           scrollTop: viewport.scrollTop,
-          scrollHeight: currentScrollExtent,
+          scrollHeight: preMutationExtent,
           clientHeight: viewport.clientHeight,
         },
         bottomThreshold,
       );
+      // Carry the decision, not just "this was a prepend": the reruns that
+      // virtual-row measurement triggers no longer see any growth, so they
+      // cannot re-derive it.
+      autoStickSuppressedByPrepend = !genuinelyAtBottom;
       if (!genuinelyAtBottom) return undefined;
     }
 
@@ -721,6 +765,13 @@
       () => pendingHistoryScroll !== null || historyAnchorMessageId !== null,
     );
     if (hasActiveHistoryAnchor) return undefined;
+
+    // A rejected prepend stays rejected until something makes `atBottom`
+    // trustworthy again (a real scroll recompute, the bottom sentinel, a
+    // genuine append, or a conversation switch). Without this, the
+    // measurement-driven rerun above falls straight through to the correction
+    // below and snaps a stale-true viewport to the bottom (#1237).
+    if (!isTranscriptGrowth && autoStickSuppressedByPrepend) return undefined;
 
     if (atBottom && currentCount > 0) {
       let cancelled = false;
@@ -896,7 +947,14 @@
     deferredNonVirtualHistoryStabilization = null;
     const userScrolled = historyRestorationUserScrollObserved;
     resetHistoryRestorationUserScrolling();
-    if (userScrolled) return;
+    if (userScrolled) {
+      // The user moved the viewport before the prepend rendered, so this
+      // restoration no longer owns it. Drop the post-settle snapshot too —
+      // the reset above just cleared the only flags the post-settle
+      // correction could have used to notice (#1237).
+      nonVirtualRestoredHistoryPending = null;
+      return;
+    }
 
     const generation = ++nonVirtualHistoryStabilizationGeneration;
     const stabilizationConversationId = conversationId;
@@ -938,9 +996,16 @@
    * have already run, shifting the anchored message by exactly that height
    * delta. Wait for the swap to commit, re-measure, and absorb it.
    *
-   * Skipped when scrollTop moved between the flip and the re-measure: a
-   * position change in that window means the user (or another scroll owner)
-   * took over, and this restoration no longer owns the viewport.
+   * Ownership: the retained snapshot (`nonVirtualRestoredHistoryPending`) is
+   * now DROPPED at every ownership transfer — jump-to-latest, submit,
+   * `scrollToBottom()`, `scrollToTop()`, search navigation, and a user scroll
+   * observed before the prepend rendered — so this function is a strict no-op
+   * once another owner has the viewport. The scroll-flag guard below is a
+   * backstop, not the primary defense: `invalidatePendingHistoryRestoration()`
+   * zeroes both of those flags, so they read clean exactly when ownership just
+   * moved. The scrollTop-delta check is a second backstop and is likewise
+   * partial — `tick()` is a microtask, so it cannot see a scroll that finished
+   * before the loader resolved, nor a still-animating smooth scroll.
    */
   async function correctNonVirtualAnchorAfterHistorySettle(requestId: number): Promise<void> {
     const restored = nonVirtualRestoredHistoryPending;
@@ -961,6 +1026,26 @@
     viewport.scrollTo({ top: viewport.scrollTop + correction, behavior: 'instant' });
   }
 
+  /**
+   * The single exit from a history load: flip the loading flag back to idle and
+   * absorb the trigger-row height change that flip causes (#1237).
+   *
+   * Both outcomes need it. A REJECTION swaps the trigger back from its loading
+   * label exactly as a resolution does, and the bounded stabilization loop
+   * started by the restore has long since exited by the time a failure arrives
+   * a network round-trip later — so wiring the correction to the success paths
+   * only left the error paths uncorrected. Pairing the flip with the correction
+   * in one helper makes that asymmetry impossible to reintroduce.
+   *
+   * Safe to call unconditionally: the correction early-returns when the
+   * transcript never changed (`captureHistoryScroll` nulls the snapshot), so a
+   * load that failed before prepending anything is a strict no-op.
+   */
+  async function settleHistoryLoading(requestId: number): Promise<void> {
+    isLoadingHistory = false;
+    await correctNonVirtualAnchorAfterHistorySettle(requestId);
+  }
+
   function cancelNonVirtualHistoryAnchorStabilization(): void {
     nonVirtualHistoryStabilizationGeneration += 1;
     isStabilizingNonVirtualHistoryAnchor = false;
@@ -974,8 +1059,22 @@
     pendingHistoryAnchorRecaptureRaf = undefined;
   }
 
+  /**
+   * Another scroll owner is taking the viewport. Drop EVERY piece of retained
+   * history-restoration state, including the post-settle anchor snapshot
+   * (#1237): `resetHistoryRestorationUserScrolling()` zeroes both flags that
+   * `correctNonVirtualAnchorAfterHistorySettle` reads as its "did the user
+   * take over?" guard, so leaving the snapshot live here would let a late
+   * loader resolution re-anchor a viewport this call just moved — with the
+   * guard reading clean precisely because ownership moved.
+   *
+   * Callers are all unambiguous ownership transfers (jump-to-latest, submit,
+   * `scrollToBottom()`, `scrollToTop()`); none of them run on the normal
+   * restore path.
+   */
   function invalidatePendingHistoryRestoration(): void {
     pendingHistoryScroll = null;
+    nonVirtualRestoredHistoryPending = null;
     cancelPendingHistoryAnchorRecapture();
     resetHistoryRestorationUserScrolling();
   }
@@ -1076,6 +1175,14 @@
     scrollHeight: number;
   }): void {
     clearHistoryAnchorAfterScroll(event.scrollTop);
+
+    // `atBottom` was just recomputed from real geometry, so the prepend latch
+    // has nothing left to protect. This is the LOAD-BEARING clear of the two:
+    // it covers both the scroll listener's rAF recompute and
+    // `recomputeAtBottomAtSettlement`, whereas `onReachBottom` only fires on
+    // the sentinel's false→true transition — a latch stuck stale-true would
+    // never reach it.
+    autoStickSuppressedByPrepend = false;
 
     // Update the bindable prop at the mutation site rather than via a $effect.
     updateAtBottomBinding(event.atBottom);
@@ -1543,8 +1650,8 @@
         nextHasMoreHistory = result.hasMore;
       } catch (error) {
         pendingHistoryScroll = null;
-        isLoadingHistory = false;
         onadaptererror?.({ command: 'loadOlderMessages', error });
+        await settleHistoryLoading(requestId);
         return;
       }
 
@@ -1572,13 +1679,12 @@
         pendingHistoryScroll = null;
       }
       adapterHasMoreHistory = nextHasMoreHistory;
-      isLoadingHistory = false;
-      // The flips above swap the trigger back to idle (or unmount it on
+      // The flips here swap the trigger back to idle (or unmount it on
       // hasMore: false) — a height change the settled restore has not seen
       // (#1237). Note the restore itself usually ran from the transcript
       // effect before this resumes, so this keys on the request id, not on
       // `pendingHistoryScroll` still being set.
-      await correctNonVirtualAnchorAfterHistorySettle(requestId);
+      await settleHistoryLoading(requestId);
       return;
     }
 
@@ -1588,15 +1694,11 @@
       if (currentPending !== null) {
         await settlePendingHistoryScroll(currentPending);
       }
-      isLoadingHistory = false;
-      // The flip above swaps the trigger back to idle — a height change the
-      // settled restore has not seen (#1237).
-      await correctNonVirtualAnchorAfterHistorySettle(requestId);
     } catch (error) {
       pendingHistoryScroll = null;
       throw error;
     } finally {
-      isLoadingHistory = false;
+      await settleHistoryLoading(requestId);
     }
   }
 
@@ -1916,6 +2018,13 @@
     if (!viewport) return;
 
     cancelNonVirtualHistoryAnchorStabilization();
+    // Search navigation owns the viewport from here — a late loader
+    // resolution must not re-anchor it back to the history anchor (#1237).
+    // Deliberately NOT folded into cancelNonVirtualHistoryAnchorStabilization():
+    // that helper also runs from the maybe-scroll input heuristic, where
+    // dropping the snapshot on a single tap or zero-delta wheel would lose the
+    // post-settle correction entirely.
+    nonVirtualRestoredHistoryPending = null;
     if (isVirtualized) {
       const targetIndex = findRenderRowIndexByMessageId(renderRows, messageId);
       if (targetIndex >= 0) {
