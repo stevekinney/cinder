@@ -1350,7 +1350,7 @@ async function assertSvelteKitDevSsrRoute(fixtureDirectory: string, label: strin
     const sourceMapWarnings = extractPublishedPackageSourceMapWarnings(devServerOutput);
     if (sourceMapWarnings.length > 0) {
       const warningMessage =
-        `sveltekit-consumer ${label} dev SSR emitted source-map warnings for published cinder dist artifacts:\n` +
+        `sveltekit-consumer ${label} dev SSR emitted source-map warnings for published package dist artifacts:\n` +
         sourceMapWarnings.map((warning) => `  ${warning}`).join('\n');
       // Preserve the primary SSR failure if one occurred in the try block.
       if (!devSsrAssertionsPassed) {
