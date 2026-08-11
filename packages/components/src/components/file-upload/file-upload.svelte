@@ -142,10 +142,10 @@
   const renderedEntries = $derived(files ?? internalEntries);
   const resolvedDescription = $derived(description ?? formatAcceptDescription(accept));
 
-  function synchronizeNativeInputFiles() {
+  function synchronizeNativeInputFiles(entries: FileUploadEntry[] = renderedEntries) {
     if (!inputElement || typeof DataTransfer === 'undefined') return;
     const dataTransfer = new DataTransfer();
-    const acceptedEntries = renderedEntries.filter((entry) => entry.rejectionReason === undefined);
+    const acceptedEntries = entries.filter((entry) => entry.rejectionReason === undefined);
     for (const entry of multiple ? acceptedEntries : acceptedEntries.slice(0, 1)) {
       dataTransfer.items.add(entry.file);
     }
@@ -280,6 +280,7 @@
     const entries = createEntries(accepted, rejected);
     const nextEntries = multiple ? [...renderedEntries, ...entries] : entries;
     internalEntries = nextEntries;
+    synchronizeNativeInputFiles(files ?? nextEntries);
     if (accepted.length > 0) onFilesAccepted?.(accepted);
     onFilesChange?.(nextEntries);
     if (rejected.length > 0) onReject?.(rejected);
@@ -289,7 +290,6 @@
   function handleInputChange() {
     if (field.disabled || !inputElement?.files) return;
     processFiles(Array.from(inputElement.files));
-    if (files !== undefined) synchronizeNativeInputFiles();
   }
 
   function handleDragEnter(event: DragEvent) {

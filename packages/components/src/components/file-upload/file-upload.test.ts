@@ -448,6 +448,27 @@ describe('FileUpload validation and events', () => {
     expect(Array.from(input.files ?? [])).toEqual([firstFile, secondFile]);
   });
 
+  test('selection callbacks observe the synchronized native file queue', async () => {
+    const firstFile = createFile('first.txt', 'text/plain', 10);
+    const secondFile = createFile('second.txt', 'text/plain', 10);
+    let input: HTMLInputElement;
+    const nativeFilesDuringChange: File[][] = [];
+    const onFilesChange = mock(() => {
+      nativeFilesDuringChange.push(Array.from(input.files ?? []));
+    });
+    const { container } = render(FileUpload, {
+      props: { id: 'upload', multiple: true, onFilesChange },
+    });
+    input = container.querySelector('#upload') as HTMLInputElement;
+
+    attachInputFiles(input, [firstFile]);
+    await fireEvent.change(input);
+    attachInputFiles(input, [secondFile]);
+    await fireEvent.change(input);
+
+    expect(nativeFilesDuringChange).toEqual([[firstFile], [firstFile, secondFile]]);
+  });
+
   test('canceling a reopened picker restores the accumulated native file queue', async () => {
     const firstFile = createFile('first.txt', 'text/plain', 10);
     const oncancel = mock((_event) => {});
