@@ -273,7 +273,7 @@
   }
 
   @media (hover: hover) {
-    .cinder-file-upload__retry:hover,
+    .cinder-file-upload__retry:hover:not(:disabled),
     .cinder-file-upload__remove:hover:not(:disabled) {
       background: var(--cinder-surface-hover);
     }

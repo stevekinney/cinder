@@ -131,6 +131,7 @@
   const dropzoneLabel = $derived(dropzoneLabelledBy === undefined ? 'File upload' : undefined);
 
   let inputElement = $state<HTMLInputElement | null>(null);
+  let browseButtonElement = $state<HTMLButtonElement | null>(null);
   let dragDepth = $state(0);
   let internalEntries = $state<FileUploadEntry[]>([]);
   let internalEntryCounter = $state(0);
@@ -437,6 +438,7 @@
     {/if}
 
     <button
+      bind:this={browseButtonElement}
       type="button"
       class="cinder-file-upload__button"
       disabled={field.disabled}
@@ -455,8 +457,10 @@
         entries={renderedEntries}
         {resolvedId}
         disabled={field.disabled}
+        removable={files === undefined || onFilesChange !== undefined}
         {onRetry}
         onRemove={removeEntry}
+        onQueueEmptyFocus={() => browseButtonElement?.focus()}
       />
     {/if}
   {/if}

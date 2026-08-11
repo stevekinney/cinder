@@ -4,7 +4,7 @@
 - Drag feedback changes border style and background together; the state is not color-only.
 - After every selection or drop, a polite live region announces accepted and rejected counts so assistive-technology users receive immediate feedback.
 - Error rows render visible messages linked with `aria-describedby`; retry buttons reference the same message so the failure reason is announced when the action receives focus.
-- Default rows expose a native remove button with the file name in its accessible name. Successful removal is announced through the polite live region.
+- Default rows expose a native remove button with the file name in its accessible name. Successful removal is announced through the polite live region, then focus moves to the next row action or back to the browse button when the queue is empty.
 - Failed controlled uploads expose a native retry button when `onRetry` is provided; locally rejected rows do not. Each retry button's accessible name includes the file name, the button remains keyboard-focusable, and its icon is decorative.
 - When wrapped in `FormField`, the input inherits shared description and error wiring through context.
 

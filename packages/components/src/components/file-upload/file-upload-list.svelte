@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tick } from 'svelte';
   import RotateCcwIcon from 'lucide-svelte/icons/rotate-ccw';
   import XIcon from 'lucide-svelte/icons/x';
 
@@ -10,24 +11,41 @@
     entries,
     resolvedId,
     disabled,
+    removable,
     onRetry,
     onRemove,
+    onQueueEmptyFocus,
   }: {
     entries: FileUploadEntry[];
     resolvedId: string;
     disabled: boolean;
+    removable: boolean;
     onRetry: ((entry: FileUploadEntry) => void) | undefined;
     onRemove: (entry: FileUploadEntry) => void;
+    onQueueEmptyFocus: () => void;
   } = $props();
+
+  let listElement = $state<HTMLUListElement>();
 
   function progressValue(progress: number | undefined): number {
     if (progress === undefined) return 0;
     return Math.max(0, Math.min(100, progress));
   }
+
+  async function handleRemove(entry: FileUploadEntry, index: number) {
+    const removeButtons = listElement?.querySelectorAll<HTMLButtonElement>(
+      '.cinder-file-upload__remove',
+    );
+    const nextButton = removeButtons?.[index + 1] ?? removeButtons?.[index - 1];
+    onRemove(entry);
+    await tick();
+    if (nextButton?.isConnected) nextButton.focus();
+    else onQueueEmptyFocus();
+  }
 </script>
 
-<ul class="cinder-file-upload__list">
-  {#each entries as entry (entry.id)}
+<ul bind:this={listElement} class="cinder-file-upload__list">
+  {#each entries as entry, index (entry.id)}
     {@const errorId = entry.error ? `${resolvedId}-${entry.id}-error` : undefined}
     {@const FileTypeIcon = fileTypeIcon(entry.file.type)}
     <li class="cinder-file-upload__row" aria-describedby={errorId}>
@@ -84,15 +102,17 @@
           {:else}
             <span class="cinder-file-upload__status" data-status="pending">Pending</span>
           {/if}
-          <button
-            type="button"
-            class="cinder-file-upload__remove"
-            {disabled}
-            aria-label={`Remove ${entry.file.name}`}
-            onclick={() => onRemove(entry)}
-          >
-            <XIcon aria-hidden="true" />
-          </button>
+          {#if removable}
+            <button
+              type="button"
+              class="cinder-file-upload__remove"
+              {disabled}
+              aria-label={`Remove ${entry.file.name}`}
+              onclick={() => handleRemove(entry, index)}
+            >
+              <XIcon aria-hidden="true" />
+            </button>
+          {/if}
         </div>
       </div>
 
@@ -122,6 +142,7 @@
             <button
               type="button"
               class="cinder-file-upload__retry"
+              {disabled}
               aria-label={`Retry ${entry.file.name}`}
               aria-describedby={errorId}
               onclick={() => onRetry(entry)}

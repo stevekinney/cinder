@@ -513,6 +513,34 @@ describe('FileUpload validation and events', () => {
       expect.objectContaining({ file: replacementFile, status: 'pending' }),
     ]);
   });
+
+  test('removing uncontrolled entries preserves focus through the queue', async () => {
+    const firstFile = createFile('first.txt', 'text/plain', 10);
+    const secondFile = createFile('second.txt', 'text/plain', 10);
+    const { container } = render(FileUpload, {
+      props: { id: 'upload', multiple: true },
+    });
+    const input = container.querySelector('#upload') as HTMLInputElement;
+    const browseButton = container.querySelector(
+      '.cinder-file-upload__button',
+    ) as HTMLButtonElement;
+
+    attachInputFiles(input, [firstFile, secondFile]);
+    await fireEvent.change(input);
+    const firstRemoveButton = container.querySelector(
+      '.cinder-file-upload__remove',
+    ) as HTMLButtonElement;
+    firstRemoveButton.focus();
+    await fireEvent.click(firstRemoveButton);
+
+    const remainingRemoveButton = container.querySelector(
+      '.cinder-file-upload__remove',
+    ) as HTMLButtonElement;
+    expect(document.activeElement).toBe(remainingRemoveButton);
+
+    await fireEvent.click(remainingRemoveButton);
+    expect(document.activeElement).toBe(browseButton);
+  });
 });
 
 describe('FileUpload drag state and accessibility', () => {
@@ -761,6 +789,34 @@ describe('FileUpload file list rendering', () => {
     expect(retryButton.getAttribute('aria-describedby')).toBe('upload-1-error');
     await fireEvent.click(retryButton);
     expect(onRetry).toHaveBeenCalledWith(entry);
+  });
+
+  test('disabled uploads disable retry actions', () => {
+    const file = createFile('broken.zip', 'application/zip', 4096);
+    const { container } = render(FileUpload, {
+      props: {
+        id: 'upload',
+        disabled: true,
+        files: [{ id: '1', file, status: 'error', error: 'Upload failed' }],
+        onRetry: mock((_entry) => {}),
+      },
+    });
+
+    expect(
+      (container.querySelector('.cinder-file-upload__retry') as HTMLButtonElement).disabled,
+    ).toBe(true);
+  });
+
+  test('controlled queues without onFilesChange do not expose remove actions', () => {
+    const file = createFile('report.csv', 'text/csv', 100);
+    const { container } = render(FileUpload, {
+      props: {
+        id: 'upload',
+        files: [{ id: '1', file, status: 'pending' }],
+      },
+    });
+
+    expect(container.querySelector('.cinder-file-upload__remove')).toBeNull();
   });
 
   test('locally rejected entries expose their reason without offering retry', async () => {
