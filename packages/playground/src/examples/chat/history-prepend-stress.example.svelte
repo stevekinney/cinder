@@ -114,6 +114,11 @@
   </ul>
 
   <div style="flex: 1; min-height: 0;">
+    <!-- Interactive capabilities are switched off: this example exists to
+         stress scroll-anchoring geometry, and with 60 seeded messages the
+         per-message action buttons would add ~60 tab stops ahead of the
+         interactive harness on /page/chat, blowing the keyboard-walk budget
+         of the domain focus-ring tests. -->
     <Chat
       bind:this={chat}
       id="history-prepend-stress-chat"
@@ -121,6 +126,13 @@
       {adapter}
       bind:atBottom
       {moreHistoryAvailable}
+      capabilities={{
+        attachments: false,
+        search: false,
+        copy: false,
+        editing: false,
+        retry: false,
+      }}
     />
   </div>
 </div>
