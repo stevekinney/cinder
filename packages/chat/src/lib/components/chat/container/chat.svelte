@@ -27,7 +27,7 @@
 </script>
 
 <script lang="ts">
-  import { tick, untrack } from 'svelte';
+  import { flushSync, tick, untrack } from 'svelte';
   import { classNames } from '../../../utilities/class-names.ts';
   import { overflowFadeEdges } from '../../../utilities/overflow-fade-edges.ts';
   import {
@@ -1646,9 +1646,19 @@
     if (adapter?.loadOlderMessages) {
       let nextHasMoreHistory: boolean | undefined;
       try {
-        const result = await adapter.loadOlderMessages(conversationId);
+        const loading = adapter.loadOlderMessages(conversationId);
+        // A consumer can prepend synchronously before returning its loader
+        // promise. Flush that parent update and Chat's anchor-restoration
+        // effect before yielding back to the browser; otherwise Chromium can
+        // present the committed prepend once before the effect compensates it
+        // (#1259). Flush again after the promise settles for async consumers
+        // that prepend immediately before resolving.
+        flushSync();
+        const result = await loading;
+        flushSync();
         nextHasMoreHistory = result.hasMore;
       } catch (error) {
+        flushSync();
         pendingHistoryScroll = null;
         onadaptererror?.({ command: 'loadOlderMessages', error });
         await settleHistoryLoading(requestId);
@@ -1689,12 +1699,16 @@
     }
 
     try {
-      await onLoadHistory?.();
+      const loading = onLoadHistory?.();
+      flushSync();
+      await loading;
+      flushSync();
       const currentPending = pendingHistoryScrollForRequest(requestId);
       if (currentPending !== null) {
         await settlePendingHistoryScroll(currentPending);
       }
     } catch (error) {
+      flushSync();
       pendingHistoryScroll = null;
       throw error;
     } finally {
