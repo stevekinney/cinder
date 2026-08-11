@@ -40,9 +40,11 @@
     opacity: 0.7;
   }
 
-  .cinder-file-upload__dropzone:focus-within {
-    outline: var(--cinder-ring-width) solid transparent;
-    box-shadow: var(--_cinder-focus-ring-shadow);
+  @supports not selector(:has(*)) {
+    .cinder-file-upload__dropzone:focus-within {
+      outline: var(--cinder-ring-width) solid transparent;
+      box-shadow: var(--_cinder-focus-ring-shadow);
+    }
   }
 
   @supports selector(:has(*)) {
@@ -294,12 +296,17 @@
   }
 
   @media (forced-colors: active) {
-    .cinder-file-upload__dropzone:focus-within,
     .cinder-file-upload__dropzone--border-beam[data-drag-active],
     .cinder-file-upload__button:focus-visible,
     .cinder-file-upload__retry:focus-visible,
     .cinder-file-upload__remove:focus-visible {
       outline-color: Highlight;
+    }
+
+    @supports not selector(:has(*)) {
+      .cinder-file-upload__dropzone:focus-within {
+        outline-color: Highlight;
+      }
     }
 
     @supports selector(:has(*)) {

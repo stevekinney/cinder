@@ -593,10 +593,8 @@ describe('FileUpload validation and events', () => {
     Object.defineProperty(globalThis, 'DataTransfer', {
       configurable: true,
       writable: true,
-      value: class UnsupportedDataTransfer {
-        constructor() {
-          throw new TypeError('DataTransfer construction is unsupported');
-        }
+      value: function UnsupportedDataTransfer() {
+        throw new TypeError('DataTransfer construction is unsupported');
       },
     });
 
@@ -617,10 +615,8 @@ describe('FileUpload validation and events', () => {
     Object.defineProperty(globalThis, 'DataTransfer', {
       configurable: true,
       writable: true,
-      value: class UnsupportedDataTransfer {
-        constructor() {
-          throw new TypeError('DataTransfer construction is unsupported');
-        }
+      value: function UnsupportedDataTransfer() {
+        throw new TypeError('DataTransfer construction is unsupported');
       },
     });
 
@@ -752,6 +748,26 @@ describe('FileUpload validation and events', () => {
     await Promise.resolve();
 
     expect(onFilesChange).toHaveBeenLastCalledWith(entriesBeforeReset);
+    expect(Array.from(input.files ?? [])).toEqual([file]);
+  });
+
+  test('form reset restores the synchronized native files for a controlled queue', async () => {
+    const file = createFile('report.txt', 'text/plain', 10);
+    const entry = { id: 'report', file, status: 'success' as const };
+    const form = document.createElement('form');
+    form.id = 'controlled-upload-form';
+    document.body.append(form);
+    const { container } = render(FileUpload, {
+      props: { id: 'upload', form: 'controlled-upload-form', files: [entry] },
+    });
+    const input = container.querySelector('#upload') as HTMLInputElement;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(Array.from(input.files ?? [])).toEqual([file]);
+
+    attachInputFiles(input, []);
+    await fireEvent(form, new Event('reset', { bubbles: true, cancelable: true }));
+    await Promise.resolve();
+
     expect(Array.from(input.files ?? [])).toEqual([file]);
   });
 
@@ -1149,6 +1165,7 @@ describe('FileUpload file list rendering', () => {
   test('keeps a visible focus treatment when border beam emphasis is disabled', async () => {
     const css = await Bun.file(new URL('./file-upload.css', import.meta.url)).text();
 
+    expect(css).toContain('@supports not selector(:has(*))');
     expect(css).toContain('.cinder-file-upload__dropzone:focus-within');
     expect(css).toContain('@supports selector(:has(*))');
     expect(css).toContain(

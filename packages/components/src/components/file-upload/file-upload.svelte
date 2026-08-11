@@ -130,12 +130,17 @@
 
   $effect(() => {
     const ownerDocument = inputElement?.ownerDocument;
-    if (!ownerDocument || files !== undefined) return;
+    const controlledFiles = files;
+    if (!ownerDocument) return;
     let associatedForm: HTMLFormElement | null = null;
     let removeResetListener = () => {};
     function handleFormReset(event: Event) {
       queueMicrotask(() => {
-        if (event.defaultPrevented || files !== undefined) return;
+        if (event.defaultPrevented) return;
+        if (controlledFiles !== undefined) {
+          synchronizeNativeInputFiles(controlledFiles);
+          return;
+        }
         internalEntries = [];
         synchronizeNativeInputFiles([]);
         onFilesChange?.([]);
