@@ -112,6 +112,23 @@ function prependMessage(
   };
 }
 
+function prependMessages(
+  conversation: ConversationHistory,
+  count: number,
+  prefix: string,
+): ConversationHistory {
+  let next = conversation;
+  for (let index = count - 1; index >= 0; index -= 1) {
+    next = prependMessage(
+      next,
+      index % 2 === 0 ? 'user' : 'assistant',
+      `${prefix}-${index}`,
+      `Older ${index}`,
+    );
+  }
+  return next;
+}
+
 function longConversation(count: number): ConversationHistory {
   let conversation = createConversation();
   for (let index = 0; index < count; index++) {
@@ -323,6 +340,96 @@ describe('Chat virtualization', () => {
     await new Promise((resolve) => setTimeout(resolve, 50));
 
     expect(writes).toBe(0);
+  });
+
+  // #1237 (virtualized branch). The auto-stick $effect.pre guards a history
+  // prepend against the viewport's PRE-MUTATION geometry, but on the
+  // virtualized branch the extent it measured against was
+  // `chatVirtualizer.scrollSize` — derived from `renderRows`, a `$derived`
+  // that has ALREADY recomputed with the prepended rows by the time
+  // `$effect.pre` runs — while `scrollTop`/`clientHeight` are still
+  // pre-mutation DOM reads. Mixing those time bases rejected essentially every
+  // virtualized prepend, including one from a viewport genuinely parked at the
+  // bottom.
+  //
+  // These three tests deliberately do NOT stub `getBoundingClientRect` for
+  // `.chat-virtual-row`: `#readElementSize` then returns 0, `#measureNode`
+  // early-returns without bumping `#measurementVersion`, and the accidental
+  // measurement-rerun re-pin that would otherwise mask the defect never
+  // happens. Geometry injection stays node-level throughout.
+  test('a virtualized prepend keeps the bottom pinned when the viewport is genuinely at the bottom', async () => {
+    let conversation = longConversation(20);
+    const { container, rerender } = render(Chat, {
+      props: virtualizedProps(conversation),
+    });
+    const timeline = await waitForVirtualizedTimeline(container);
+    // REQUIRED: happy-dom reports clientHeight 0, which makes the
+    // distance-from-bottom guard artificially lenient.
+    Object.defineProperty(timeline, 'clientHeight', { configurable: true, value: 100 });
+
+    await waitFor(() => expect(container.textContent).toContain('Message 19'));
+    await waitFor(() => expect(timeline.scrollTop).toBeGreaterThanOrEqual(300));
+
+    // 10 rows x the 20px estimate = 200px of new content above the viewport,
+    // comfortably past the 150px bottomThreshold — so measuring the unchanged
+    // scrollTop against the POST-prepend extent reports "not at the bottom".
+    conversation = prependMessages(conversation, 10, 'older-pin');
+    await rerender(virtualizedProps(conversation));
+
+    await waitFor(() => expect(timeline.scrollTop).toBeGreaterThanOrEqual(500));
+  });
+
+  test('a virtualized prepend does not engage stick-to-bottom when parked at the top with a stale atBottom flag', async () => {
+    let conversation = longConversation(20);
+    const { container, rerender } = render(Chat, {
+      props: virtualizedProps(conversation),
+    });
+    const timeline = await waitForVirtualizedTimeline(container);
+    Object.defineProperty(timeline, 'clientHeight', { configurable: true, value: 100 });
+
+    await waitFor(() => expect(container.textContent).toContain('Message 19'));
+    await waitFor(() => expect(timeline.scrollTop).toBeGreaterThanOrEqual(300));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Parked at the top with NO scroll event dispatched, so the rAF-deferred
+    // `atBottom` flag is still stale-true.
+    timeline.scrollTop = 0;
+
+    conversation = prependMessages(conversation, 10, 'older-top');
+    await rerender(virtualizedProps(conversation));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(timeline.scrollTop).toBe(0);
+  });
+
+  test('a virtualized prepend rejected by the guard stays rejected across a rerun that carries no growth', async () => {
+    let conversation = longConversation(20);
+    const { container, rerender } = render(Chat, {
+      props: virtualizedProps(conversation),
+    });
+    const timeline = await waitForVirtualizedTimeline(container);
+    Object.defineProperty(timeline, 'clientHeight', { configurable: true, value: 100 });
+
+    await waitFor(() => expect(container.textContent).toContain('Message 19'));
+    await waitFor(() => expect(timeline.scrollTop).toBeGreaterThanOrEqual(300));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    timeline.scrollTop = 0;
+
+    conversation = prependMessages(conversation, 10, 'older-latch');
+    await rerender(virtualizedProps(conversation));
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(timeline.scrollTop).toBe(0);
+
+    // A rerun carrying NO transcript growth — the exact shape a virtual-row
+    // measurement produces in the microtask flush right after a prepend, ahead
+    // of the rAF that would refresh `atBottom`. The guard cannot re-derive the
+    // prepend classification on this run, so without the latch the effect
+    // falls straight through and snaps the stale-true viewport to the bottom.
+    await rerender(virtualizedProps({ ...conversation }));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(timeline.scrollTop).toBe(0);
   });
 
   // Regression test for #774: scrollToTop() fights the auto-stick-to-bottom
