@@ -25,6 +25,8 @@ export type FileUploadEntry = {
   progress?: number;
   /** Optional error message rendered and linked via aria-describedby. */
   error?: string;
+  /** Local validation reason. Omitted for errors produced after an accepted upload starts. */
+  rejectionReason?: FileUploadRejectionReason;
 };
 
 export type FileUploadProps = Omit<

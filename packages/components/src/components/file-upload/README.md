@@ -46,7 +46,7 @@ drop is validated as one batch before callbacks run:
 
 - `onFilesAccepted` receives the accepted native `File[]` so you can enqueue uploads.
 - `onReject` receives rejected files with `too-large`, `wrong-type`, or `too-many` reasons.
-- `onFilesChange` receives the full locally resolved list. Accepted rows start as `pending`; rejected rows start as `error` with a visible message.
+- `onFilesChange` receives the full locally resolved queue. Accepted rows start as `pending`; rejected rows start as `error` with a visible message and `rejectionReason`.
 
 Pass the controlled `files` prop to show your uploader's current `pending`,
 `uploading`, `success`, or `error` state. Set `progress` from 0–100 while an

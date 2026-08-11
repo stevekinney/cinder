@@ -374,6 +374,49 @@ describe('FileUpload validation and events', () => {
       expect.objectContaining({ file: nextFile, reason: 'too-many' }),
     );
   });
+
+  test('maxFiles counts failed uploads that remain in the queue', async () => {
+    const failedFile = createFile('failed.txt', 'text/plain', 10);
+    const nextFile = createFile('next.txt', 'text/plain', 10);
+    const onReject = mock((_files) => {});
+    const { container } = render(FileUpload, {
+      props: {
+        id: 'upload',
+        multiple: true,
+        maxFiles: 1,
+        files: [{ id: 'failed', file: failedFile, status: 'error', error: 'Upload failed' }],
+        onReject,
+      },
+    });
+    const input = container.querySelector('#upload') as HTMLInputElement;
+
+    attachInputFiles(input, [nextFile]);
+    await fireEvent.change(input);
+
+    expect(onReject.mock.calls[0]?.[0]?.[0]).toEqual(
+      expect.objectContaining({ file: nextFile, reason: 'too-many' }),
+    );
+  });
+
+  test('multiple selections accumulate without maxFiles', async () => {
+    const firstFile = createFile('first.txt', 'text/plain', 10);
+    const secondFile = createFile('second.txt', 'text/plain', 10);
+    const onFilesChange = mock((_entries) => {});
+    const { container } = render(FileUpload, {
+      props: { id: 'upload', multiple: true, onFilesChange },
+    });
+    const input = container.querySelector('#upload') as HTMLInputElement;
+
+    attachInputFiles(input, [firstFile]);
+    await fireEvent.change(input);
+    attachInputFiles(input, [secondFile]);
+    await fireEvent.change(input);
+
+    expect(onFilesChange.mock.calls[1]?.[0]).toEqual([
+      expect.objectContaining({ file: firstFile, status: 'pending' }),
+      expect.objectContaining({ file: secondFile, status: 'pending' }),
+    ]);
+  });
 });
 
 describe('FileUpload drag state and accessibility', () => {
@@ -603,6 +646,28 @@ describe('FileUpload file list rendering', () => {
     expect(retryButton.getAttribute('aria-label')).toBe('Retry broken.zip');
     await fireEvent.click(retryButton);
     expect(onRetry).toHaveBeenCalledWith(entry);
+  });
+
+  test('locally rejected entries expose their reason without offering retry', async () => {
+    const rejectedFile = createFile('large.txt', 'text/plain', 100);
+    const onFilesChange = mock((_entries) => {});
+    const onRetry = mock((_entry) => {});
+    const { container } = render(FileUpload, {
+      props: { id: 'upload', maxSize: 10, onFilesChange, onRetry },
+    });
+    const input = container.querySelector('#upload') as HTMLInputElement;
+
+    attachInputFiles(input, [rejectedFile]);
+    await fireEvent.change(input);
+
+    expect(onFilesChange.mock.calls[0]?.[0]?.[0]).toEqual(
+      expect.objectContaining({
+        file: rejectedFile,
+        status: 'error',
+        rejectionReason: 'too-large',
+      }),
+    );
+    expect(container.querySelector('.cinder-file-upload__retry')).toBeNull();
   });
 
   test('border beam emphasis is enabled by default and can be disabled', async () => {

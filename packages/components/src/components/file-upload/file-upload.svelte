@@ -141,7 +141,7 @@
     const acceptedFileLimit = multiple ? normalizedMaxFiles : Math.min(1, normalizedMaxFiles ?? 1);
     const existingAcceptedCount =
       multiple && normalizedMaxFiles !== undefined
-        ? renderedEntries.filter((entry) => entry.status !== 'error').length
+        ? renderedEntries.filter((entry) => entry.rejectionReason === undefined).length
         : 0;
     const remainingFileLimit =
       acceptedFileLimit === undefined
@@ -173,6 +173,7 @@
         file: entry.file,
         status: 'error' as const,
         error: entry.message,
+        rejectionReason: entry.reason,
       })),
     ];
   }
@@ -195,8 +196,7 @@
   function processFiles(sourceFiles: File[]) {
     const { accepted, rejected } = validateFiles(sourceFiles);
     const entries = createEntries(accepted, rejected);
-    const nextEntries =
-      multiple && maxFiles !== undefined ? [...renderedEntries, ...entries] : entries;
+    const nextEntries = multiple ? [...renderedEntries, ...entries] : entries;
     internalEntries = nextEntries;
     if (accepted.length > 0) onFilesAccepted?.(accepted);
     onFilesChange?.(nextEntries);
@@ -450,12 +450,12 @@
               </div>
             {/if}
 
-            {#if entry.error || (entry.status === 'error' && onRetry)}
+            {#if entry.error || (entry.status === 'error' && entry.rejectionReason === undefined && onRetry)}
               <div class="cinder-file-upload__error-row">
                 {#if entry.error}
                   <p id={errorId} class="cinder-file-upload__error">{entry.error}</p>
                 {/if}
-                {#if entry.status === 'error' && onRetry}
+                {#if entry.status === 'error' && entry.rejectionReason === undefined && onRetry}
                   <button
                     type="button"
                     class="cinder-file-upload__retry"
