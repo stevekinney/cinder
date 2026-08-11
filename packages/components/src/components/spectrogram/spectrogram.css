@@ -4,6 +4,7 @@
     display: grid;
     gap: var(--cinder-space-3);
     color: var(--_cinder-chart-foreground, currentColor);
+    background: var(--_cinder-chart-background, transparent);
   }
 
   .cinder-spectrogram__description {

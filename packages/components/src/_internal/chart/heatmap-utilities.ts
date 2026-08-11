@@ -162,7 +162,6 @@ export function heatmapLabelFill(
   scale: HeatmapColorScale = 'sequential',
   foreground = 'currentColor',
   muted = 'currentColor',
-  background = 'var(--cinder-surface)',
 ): string {
   if (value === null) return muted;
   const intensity =
@@ -170,7 +169,8 @@ export function heatmapLabelFill(
       ? Math.abs(normalizeHeatmapValue(value, domain, scale) - 0.5) * 2
       : normalizeHeatmapValue(value, domain, scale);
   if (intensity <= 0.5) return foreground;
-  // Transparent backgrounds cannot provide a contrast surface for the light
-  // high-intensity label; use the established inverse text token instead.
-  return background === 'transparent' ? 'var(--cinder-text-inverse)' : background;
+  // The inverse token is guaranteed to be opaque. A caller-provided background
+  // can be transparent in several equivalent CSS spellings and must never be
+  // reused as text fill.
+  return 'var(--cinder-text-inverse)';
 }

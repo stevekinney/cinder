@@ -220,7 +220,6 @@
       colorScale,
       resolvedTheme.foreground,
       resolvedTheme.muted,
-      theme?.background ?? 'var(--cinder-surface)',
     );
   }
 

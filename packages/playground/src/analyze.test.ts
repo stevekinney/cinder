@@ -686,6 +686,49 @@ describe('analyzeComponent — bare <script module> block', () => {
     expect(manifest.props.find((p) => p.name === 'count')?.control.kind).toBe('number');
     expect(manifest.props.find((p) => p.name === 'label')?.control.kind).toBe('text');
   });
+
+  it('prefers object seeds in mixed model unions while treating Date as opaque', async () => {
+    const typeFilePath = join(fixtureDir, 'model-fixture-types.ts');
+    await Bun.write(
+      typeFilePath,
+      [
+        'export interface JsonSchemaObject { [key: string]: unknown }',
+        'export type JsonSchemaValue = boolean | JsonSchemaObject;',
+        'export type FixtureModel = {',
+        '  schema: JsonSchemaValue | string;',
+        '  x: string | number | Date;',
+        '};',
+        '',
+      ].join('\n'),
+    );
+    const componentFilePath = await writeFixture(
+      'model-widget',
+      `<script lang="ts" module>
+  import type { FixtureModel } from './model-fixture-types.ts';
+
+  export type ModelWidgetProps = { models: FixtureModel[] };
+</script>
+
+<script lang="ts">
+  let { models }: ModelWidgetProps = $props();
+</script>
+
+<div>{models.length}</div>`,
+    );
+
+    const manifest = await analyzeComponent(componentFilePath);
+    const models = manifest.props.find((prop) => prop.name === 'models');
+
+    expect(models?.control).toMatchObject({
+      kind: 'array',
+      element: {
+        fields: [
+          { name: 'schema', shape: { fields: [], degenerate: true } },
+          { name: 'x', shape: { kind: 'string' } },
+        ],
+      },
+    });
+  });
 });
 
 // ---------------------------------------------------------------------------

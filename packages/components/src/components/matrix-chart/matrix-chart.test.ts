@@ -47,7 +47,7 @@ describe('MatrixChart', () => {
     expect(root?.getAttribute('style')).toContain('--_cinder-chart-foreground: hotpink');
   });
 
-  test('uses the custom theme palette and background for heatmap fills', () => {
+  test('uses the custom theme palette and paints the chart background', async () => {
     const { container } = render(MatrixChart, {
       label: 'Themed matrix',
       data: confusionData,
@@ -57,8 +57,33 @@ describe('MatrixChart', () => {
       theme: { palette: ['custom-palette'], background: 'custom-background' },
     });
     const fill = container.querySelector('.cinder-matrix-chart__cell')?.getAttribute('fill');
+    const rootStyle = container.querySelector('.cinder-matrix-chart')?.getAttribute('style');
+    const cssText = await Bun.file(new URL('./matrix-chart.css', import.meta.url)).text();
+
     expect(fill).toContain('custom-palette');
     expect(fill).toContain('custom-background');
+    expect(rootStyle).toContain('--_cinder-chart-background: custom-background');
+    expect(cssText).toMatch(
+      /\.cinder-matrix-chart\s*\{[^}]*background: var\(--_cinder-chart-background, transparent\)/s,
+    );
+  });
+
+  test('keeps high-intensity labels opaque for equivalent transparent CSS backgrounds', () => {
+    const { container } = render(MatrixChart, {
+      label: 'Transparent background matrix',
+      data: confusionData,
+      xField: 'predicted',
+      yField: 'actual',
+      valueField: 'count',
+      cellLabelsVisible: true,
+      theme: { background: '#0000' },
+    });
+    const fills = [...container.querySelectorAll('.cinder-matrix-chart__cell-label')].map((label) =>
+      label.getAttribute('fill'),
+    );
+
+    expect(fills).toContain('var(--cinder-text-inverse)');
+    expect(fills).not.toContain('#0000');
   });
 
   test('routes cell boundaries through the custom grid theme channel', async () => {

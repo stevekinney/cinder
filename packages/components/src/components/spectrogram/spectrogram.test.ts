@@ -32,15 +32,22 @@ const mockFrames = [
 ];
 
 describe('Spectrogram', () => {
-  test('uses the custom theme palette and background for heatmap fills', () => {
+  test('uses the custom theme palette and paints the chart background', async () => {
     const { container } = render(Spectrogram, {
       label: 'Themed spectrogram',
       frames: mockFrames,
       theme: { palette: ['custom-palette'], background: 'custom-background' },
     });
     const fill = container.querySelector('.cinder-spectrogram__cell')?.getAttribute('fill');
+    const rootStyle = container.querySelector('.cinder-spectrogram')?.getAttribute('style');
+    const cssText = await Bun.file(new URL('./spectrogram.css', import.meta.url)).text();
+
     expect(fill).toContain('custom-palette');
     expect(fill).toContain('custom-background');
+    expect(rootStyle).toContain('--_cinder-chart-background: custom-background');
+    expect(cssText).toMatch(
+      /\.cinder-spectrogram\s*\{[^}]*background: var\(--_cinder-chart-background, transparent\)/s,
+    );
   });
 
   test('routes cell boundaries through the custom grid theme channel', async () => {

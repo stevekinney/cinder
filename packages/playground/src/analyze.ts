@@ -208,19 +208,32 @@ function isNullishTypeNode(typeNode: TypeNode): boolean {
  */
 const MAX_SHAPE_DEPTH = 3;
 
+function isBuiltInObjectType(type: Type): boolean {
+  if (!type.isObject() || type.isArray() || type.isReadonlyArray()) return false;
+  return (
+    type
+      .getSymbol()
+      ?.getDeclarations()
+      .some((declaration) =>
+        declaration.getSourceFile().getFilePath().includes('/typescript/lib/lib.'),
+      ) ?? false
+  );
+}
+
 /** True for a resolved type the generator cannot invent a value for. */
 function isOpaqueType(type: Type): boolean {
-  return type.getCallSignatures().length > 0 || isSnippetType(type);
+  return type.getCallSignatures().length > 0 || isSnippetType(type) || isBuiltInObjectType(type);
 }
 
 /**
  * Describe a resolved type structurally, for value synthesis.
  *
  * Union handling is ordered by what produces a usable placeholder: an
- * all-string-literal union becomes an `enum`; a mixed union prefers a safe
- * primitive arm before an object arm, so `string | number | Date` becomes a
- * distinct readable string instead of `{}`; an all-object union takes its first
- * object arm (`MegaMenuItem` and `RunStepTimelineEntry` are shaped that way).
+ * all-string-literal union becomes an `enum`; a mixed union prefers a
+ * synthesizable structural arm before a primitive, while opaque built-ins such
+ * as `Date` are skipped so `string | number | Date` still becomes a readable
+ * string. An all-object union takes its first object arm (`MegaMenuItem` and
+ * `RunStepTimelineEntry` are shaped that way).
  */
 /**
  * Memoizes {@link shapeFromType} by resolved type text and depth.
@@ -257,10 +270,10 @@ function computeShapeFromType(bare: Type, at: Node, depth: number): ValueShape |
 
   if (bare.isUnion()) {
     const arms = bare.getUnionTypes().filter((arm) => !arm.isNull() && !arm.isUndefined());
+    const structuralArm = arms.find((arm) => arm.isObject() && !isOpaqueType(arm));
+    if (structuralArm !== undefined) return shapeFromType(structuralArm, at, depth);
     if (arms.some((arm) => arm.isString() || arm.isStringLiteral())) return { kind: 'string' };
     if (arms.some((arm) => arm.isNumber() || arm.isNumberLiteral())) return { kind: 'number' };
-    const objectArm = arms.find((arm) => arm.isObject() && !isOpaqueType(arm));
-    if (objectArm !== undefined) return objectShapeFromType(objectArm, at, depth);
     return { kind: 'opaque', rawType: bare.getText() };
   }
 
