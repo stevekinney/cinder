@@ -626,6 +626,18 @@ describe('FileUpload drag state and accessibility', () => {
       await fireEvent.click(interactiveElement);
     }
     expect(click).toHaveBeenCalledTimes(2);
+
+    const ariaButton = document.createElement('div');
+    ariaButton.setAttribute('role', 'button');
+    dropzone.append(ariaButton);
+    await fireEvent.click(ariaButton);
+    expect(click).toHaveBeenCalledTimes(2);
+
+    const decorativeImage = document.createElement('div');
+    decorativeImage.setAttribute('role', 'img');
+    dropzone.append(decorativeImage);
+    await fireEvent.click(decorativeImage);
+    expect(click).toHaveBeenCalledTimes(3);
   });
 });
 

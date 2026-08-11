@@ -32,6 +32,35 @@
   import { acceptsFile, fileTypeIcon, formatAcceptDescription } from './file-upload-utilities.ts';
   import type { FileUploadEntry, FileUploadProps, RejectedFile } from './file-upload.types.ts';
 
+  const INTERACTIVE_ARIA_ROLES = [
+    'button',
+    'checkbox',
+    'combobox',
+    'grid',
+    'gridcell',
+    'link',
+    'listbox',
+    'menu',
+    'menubar',
+    'menuitem',
+    'menuitemcheckbox',
+    'menuitemradio',
+    'option',
+    'radio',
+    'radiogroup',
+    'scrollbar',
+    'searchbox',
+    'slider',
+    'spinbutton',
+    'switch',
+    'tab',
+    'tablist',
+    'textbox',
+    'tree',
+    'treegrid',
+    'treeitem',
+  ];
+
   const INTERACTIVE_DESCENDANT_SELECTOR = [
     ':any-link',
     'button',
@@ -47,7 +76,7 @@
     'audio[controls]',
     'video[controls]',
     "[contenteditable]:not([contenteditable='false'])",
-    '[role]',
+    ...INTERACTIVE_ARIA_ROLES.map((role) => `[role~='${role}']`),
     '[tabindex]',
   ].join(', ');
 
