@@ -43,9 +43,13 @@ function importRule(imported: unknown): CSSRule {
   } as unknown as CSSRule;
 }
 
-/** A stylesheet whose top-level `cssRules` reads are counted. */
+/**
+ * A stylesheet whose top-level `cssRules` reads are counted. Carries an
+ * `ownerNode` by default, since a sheet WITHOUT one is a constructed sheet and
+ * is deliberately excluded from negative caching.
+ */
 function sheet(rules: CSSRule[], counter?: { reads: number }): CSSStyleSheet {
-  const object = {};
+  const object = { ownerNode: document.createElement('style') };
   Object.defineProperty(object, 'cssRules', {
     configurable: true,
     get: () => {
@@ -53,7 +57,20 @@ function sheet(rules: CSSRule[], counter?: { reads: number }): CSSStyleSheet {
       return rules;
     },
   });
-  return object as CSSStyleSheet;
+  return object as unknown as CSSStyleSheet;
+}
+
+/** A constructed stylesheet — `new CSSStyleSheet()` has no `ownerNode`. */
+function constructedSheet(rules: CSSRule[], counter?: { reads: number }): CSSStyleSheet {
+  const object = { ownerNode: null };
+  Object.defineProperty(object, 'cssRules', {
+    configurable: true,
+    get: () => {
+      if (counter) counter.reads++;
+      return rules;
+    },
+  });
+  return object as unknown as CSSStyleSheet;
 }
 
 describe('styleSheetDeclaresDirection', () => {
@@ -172,6 +189,35 @@ describe('caching', () => {
     expect(importedReads.reads).toBe(afterFirst);
   });
 
+  // `replace()`/`replaceSync()` throw on any sheet that is not constructed, so
+  // constructed sheets are exactly the ones whose contents can be swapped
+  // wholesale without the rule count moving. Caching a negative for one would
+  // permanently skip a sheet that later declares direction.
+  test('does not cache a negative result for a constructed stylesheet', () => {
+    const rules: CSSRule[] = [styleRule('.a')];
+    const target = constructedSheet(rules);
+
+    expect(styleSheetDeclaresDirection(target)).toBe(false);
+    // replaceSync() swapping one rule for another — same count, new contents.
+    rules[0] = styleRule('.b', 'rtl');
+    expect(styleSheetDeclaresDirection(target)).toBe(true);
+  });
+
+  test('still caches a positive result for a constructed stylesheet', () => {
+    // A stale positive is harmless: it only sends the caller down the walk it
+    // would have run anyway, which reads the live CSSOM itself. Counted on the
+    // NESTED reads — the one top-level `cssRules` length check per call is the
+    // cache's floor, not something it elides.
+    const nestedReads = { reads: 0 };
+    const target = constructedSheet([groupRule([styleRule('.deep', 'rtl')], nestedReads)]);
+
+    expect(styleSheetDeclaresDirection(target)).toBe(true);
+    const afterFirst = nestedReads.reads;
+    expect(afterFirst).toBeGreaterThan(0);
+    for (let i = 0; i < 10; i++) styleSheetDeclaresDirection(target);
+    expect(nestedReads.reads).toBe(afterFirst);
+  });
+
   test('resetDirectionStyleSheetIndex forces a re-walk', () => {
     const nestedReads = { reads: 0 };
     const target = sheet([groupRule([styleRule('.a')], nestedReads)]);
@@ -184,6 +230,27 @@ describe('caching', () => {
     resetDirectionStyleSheetIndex();
     styleSheetDeclaresDirection(target);
     expect(nestedReads.reads).toBeGreaterThan(afterFirst);
+  });
+});
+
+describe('invalidatePortalDirection integration', () => {
+  // The two mutations a rule-count key cannot see — an in-place declaration edit,
+  // and a deleteRule/insertRule pair landing on the same count — are covered by
+  // the library's existing public hook for CSSOM edits that emit no DOM mutation.
+  test('clears the index so a same-count in-place edit is picked up', async () => {
+    const { invalidatePortalDirection } =
+      await import('../components/portal/portal.utilities.svelte.ts');
+
+    const rules: CSSRule[] = [styleRule('.a')];
+    const target = sheet(rules);
+    expect(styleSheetDeclaresDirection(target)).toBe(false);
+
+    // An in-place declaration edit: same rule object, same count, new value.
+    (rules[0] as unknown as { style: { direction: string } }).style.direction = 'rtl';
+    expect(styleSheetDeclaresDirection(target)).toBe(false); // still cached, as documented
+
+    invalidatePortalDirection();
+    expect(styleSheetDeclaresDirection(target)).toBe(true);
   });
 });
 

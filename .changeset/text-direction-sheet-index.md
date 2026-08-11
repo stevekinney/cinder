@@ -25,11 +25,20 @@ match, and skipping it is behavior-preserving by construction. A new per-sheet
 index answers that question once and caches it, keyed by stylesheet and
 validated against the sheet's top-level rule count.
 
-The index is deliberately permissive: unreadable (cross-origin) CSSOM reports
-"declares direction" so the caller still runs its own guarded walk, and a
-negative result is not cached for a sheet containing `@import`, whose imported
-sheet can gain rules asynchronously without changing its importer's rule count.
-`resetDirectionStyleSheetIndex()` is exported for consumers that edit CSSOM
-declarations in place, which is the one mutation a rule-count key cannot see.
+Only negative results are cached, since a positive one just sends the caller
+down the walk it would have run anyway. Three kinds of sheet opt out of negative
+caching rather than risk a stale skip: constructed stylesheets (no `ownerNode`),
+because `replace()`/`replaceSync()` throw on anything else and so those are
+exactly the sheets whose contents can be swapped without the rule count moving;
+sheets containing `@import`, whose imported sheet can gain rules asynchronously;
+and sheets whose CSSOM is unreadable, which are reported as "declares direction"
+so the caller still runs its own guarded walk.
 
-No behavior change; resolves stevekinney/cinder#1262.
+Two mutations on a non-constructed sheet remain invisible to a rule-count key:
+an in-place declaration edit (`rule.style.direction = 'rtl'`), and a
+`deleteRule`/`insertRule` pair between two queries that lands on the same count.
+Both are covered by `invalidatePortalDirection()` — the existing public hook for
+"a CSSOM edit that emits no DOM mutation" — which now clears this index
+unconditionally, including when no portal is currently observing direction.
+
+Resolves stevekinney/cinder#1262.

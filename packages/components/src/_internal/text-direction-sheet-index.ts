@@ -28,21 +28,32 @@
  *
  * ## Cache validity
  *
- * Entries are keyed by stylesheet object and validated against the sheet's
- * top-level rule count, which changes on any `insertRule`/`deleteRule`. Two
- * cases deliberately opt out of caching rather than risk a stale answer:
+ * Only NEGATIVE results ("declares no direction") are risky to cache — a
+ * positive answer sends the caller down its normal walk, which re-reads the
+ * CSSOM anyway. Negative entries are keyed by stylesheet object and validated
+ * against the sheet's top-level rule count, which changes on any
+ * `insertRule`/`deleteRule`. Three cases opt out of negative caching entirely
+ * rather than risk a stale skip:
  *
+ * - A **constructed** stylesheet (`new CSSStyleSheet()`, i.e. no `ownerNode`).
+ *   `replace()`/`replaceSync()` throw on any sheet that is not constructed, so
+ *   constructed sheets are exactly the ones whose whole contents can be swapped
+ *   without the rule count moving. They are re-scanned on every query.
  * - A sheet containing `@import`, because an imported sheet loads
  *   asynchronously and can gain rules without changing its importer's count.
  * - A sheet whose CSSOM is unreadable (cross-origin), which is reported as
  *   "declares direction" so the caller falls through to its own guarded walk
  *   instead of being silently filtered out.
  *
- * The one mutation this cannot see is an in-place edit of an existing rule's
- * declaration (`rule.style.direction = 'rtl'`) that neither inserts nor deletes
- * a rule. Detecting that would require reading every rule's text on every
- * query, which is the cost this module exists to avoid. Consumers that mutate
- * CSSOM declarations in place can call {@link resetDirectionStyleSheetIndex}.
+ * That leaves two mutations a rule-count key cannot observe, both on a
+ * non-constructed sheet: an in-place declaration edit
+ * (`rule.style.direction = 'rtl'`), and a `deleteRule` + `insertRule` pair
+ * between two queries that lands on the same count. Detecting either would mean
+ * reading every rule's text on every query, which is the cost this module
+ * exists to avoid. Both are covered by `invalidatePortalDirection()`, the
+ * library's existing public hook for "a CSSOM edit that emits no DOM
+ * mutation", which clears this index; {@link resetDirectionStyleSheetIndex} is
+ * the internal entry point it calls.
  */
 
 interface SheetIndexEntry {
@@ -80,12 +91,17 @@ export function styleSheetDeclaresDirection(sheet: CSSStyleSheet): boolean {
   const cached = sheetIndex.get(sheet);
   if (cached !== undefined && cached.ruleCount === rules.length) return cached.declaresDirection;
 
-  const scan: ScanState = { declaresDirection: false, cacheable: true };
+  // `replace()`/`replaceSync()` throw on non-constructed sheets, so a
+  // constructed sheet is exactly the kind whose entire contents can be swapped
+  // without moving the rule count. Never cache a negative for one.
+  const isConstructed = Reflect.get(sheet, 'ownerNode') == null;
+
+  const scan: ScanState = { declaresDirection: false, cacheable: !isConstructed };
   scanRuleList(rules, scan);
 
-  // A negative answer from a sheet with `@import` is the only unsound thing to
-  // cache: the imported sheet may still be loading. A positive answer stays
-  // positive no matter what an import adds later, so it is always cacheable.
+  // A positive answer is always cacheable: it sends the caller down its normal
+  // walk, which re-reads the CSSOM itself. Only a negative can wrongly skip a
+  // sheet, so only a negative needs a key it can trust.
   if (scan.cacheable || scan.declaresDirection) {
     sheetIndex.set(sheet, { ruleCount: rules.length, declaresDirection: scan.declaresDirection });
   } else {

@@ -1,6 +1,7 @@
 import { untrack } from 'svelte';
 import type { Attachment } from 'svelte/attachments';
 
+import { resetDirectionStyleSheetIndex } from '../../_internal/text-direction-sheet-index.ts';
 import { devWarn } from '../../utilities/dev-warn.ts';
 
 import { readOption } from '../../utilities/read-option.ts';
@@ -674,6 +675,13 @@ function invalidateComputedDirections() {
  * `replace`, `replaceSync`, or assigning `adoptedStyleSheets` on a document or shadow root.
  */
 export function invalidatePortalDirection() {
+  // Cleared unconditionally, and before the early return below: the direction
+  // sheet index is global rather than portal-scoped, and its negative entries
+  // are keyed on a sheet's top-level rule count — which `replace`, `replaceSync`,
+  // and a `deleteRule`/`insertRule` pair can all leave unchanged. This hook is
+  // the documented signal for exactly those edits, so it has to invalidate the
+  // index even when nothing is currently observing direction.
+  resetDirectionStyleSheetIndex();
   if (computedDirectionObservations.size === 0) return;
   refreshMediaQueryObservers();
   invalidateComputedDirections();
