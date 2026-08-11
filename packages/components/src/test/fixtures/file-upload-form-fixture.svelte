@@ -5,10 +5,26 @@
   let {
     onFilesChange,
     customFileList = false,
+    controlledFiles,
+    nextControlledFiles,
   }: {
     onFilesChange?: (entries: FileUploadEntry[]) => void;
     customFileList?: boolean;
+    controlledFiles?: FileUploadEntry[];
+    nextControlledFiles?: FileUploadEntry[];
   } = $props();
+
+  let formElement = $state<HTMLFormElement>();
+  let currentControlledFiles = $state<FileUploadEntry[]>();
+
+  $effect(() => {
+    currentControlledFiles = controlledFiles;
+  });
+
+  function updateControlledFilesAndReset() {
+    currentControlledFiles = nextControlledFiles;
+    formElement?.reset();
+  }
 </script>
 
 {#snippet fileList(
@@ -33,12 +49,22 @@
   </ul>
 {/snippet}
 
-<form>
+<form bind:this={formElement}>
   <FileUpload
     id="upload"
     name="attachment"
     multiple
     {...onFilesChange ? { onFilesChange } : {}}
     {...customFileList ? { maxFiles: 1, fileList } : {}}
+    {...currentControlledFiles ? { files: currentControlledFiles } : {}}
   />
+  {#if nextControlledFiles}
+    <button
+      type="button"
+      data-testid="update-files-and-reset"
+      onclick={updateControlledFilesAndReset}
+    >
+      Update files and reset
+    </button>
+  {/if}
 </form>

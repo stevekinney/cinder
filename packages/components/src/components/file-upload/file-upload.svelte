@@ -21,6 +21,7 @@
 </script>
 
 <script lang="ts">
+  import { tick } from 'svelte';
   import { on } from 'svelte/events';
 
   import { resolveFieldControl } from '../../_internal/field-control.ts';
@@ -124,15 +125,16 @@
 
   $effect(() => {
     const ownerDocument = inputElement?.ownerDocument;
-    const controlledFiles = files;
     if (!ownerDocument) return;
     let associatedForm: HTMLFormElement | null = null;
     let removeResetListener = () => {};
     function handleFormReset(event: Event) {
-      queueMicrotask(() => {
+      queueMicrotask(async () => {
         if (event.defaultPrevented) return;
-        if (controlledFiles !== undefined) {
-          synchronizeNativeInputFiles(controlledFiles);
+        await tick();
+        const currentFiles = files;
+        if (currentFiles !== undefined) {
+          synchronizeNativeInputFiles(currentFiles);
           return;
         }
         internalEntries = [];

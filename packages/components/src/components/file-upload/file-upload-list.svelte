@@ -32,13 +32,20 @@
     return Math.max(0, Math.min(100, progress));
   }
 
-  async function handleRemove(entry: FileUploadEntry, index: number) {
+  async function handleRemove(
+    entry: FileUploadEntry,
+    index: number,
+    removeButton: HTMLButtonElement,
+  ) {
     const removeButtons = listElement?.querySelectorAll<HTMLButtonElement>(
       '.cinder-file-upload__remove',
     );
     const nextButton = removeButtons?.[index + 1] ?? removeButtons?.[index - 1];
     onRemove(entry);
     await tick();
+    if (removeButton.isConnected) return;
+    const activeElement = removeButton.ownerDocument.activeElement;
+    if (activeElement && activeElement !== removeButton.ownerDocument.body) return;
     if (nextButton?.isConnected) nextButton.focus();
     else onQueueEmptyFocus();
   }
@@ -120,7 +127,7 @@
               class="cinder-file-upload__remove"
               {disabled}
               aria-label={`Remove ${entry.file.name}`}
-              onclick={() => handleRemove(entry, index)}
+              onclick={(event) => handleRemove(entry, index, event.currentTarget)}
             >
               <XIcon aria-hidden="true" />
             </button>

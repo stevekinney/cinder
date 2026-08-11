@@ -895,6 +895,32 @@ describe('FileUpload validation and events', () => {
     expect(Array.from(input.files ?? [])).toEqual([firstFile, secondFile]);
   });
 
+  test('a declined controlled removal keeps focus on the originating button', async () => {
+    const firstFile = createFile('first.txt', 'text/plain', 10);
+    const secondFile = createFile('second.txt', 'text/plain', 10);
+    const onFilesChange = mock((_entries) => {});
+    const { container } = render(FileUpload, {
+      props: {
+        id: 'upload',
+        multiple: true,
+        files: [
+          { id: 'first', file: firstFile, status: 'success' },
+          { id: 'second', file: secondFile, status: 'success' },
+        ],
+        onFilesChange,
+      },
+    });
+    const firstRemoveButton = container.querySelector(
+      '.cinder-file-upload__remove',
+    ) as HTMLButtonElement;
+    firstRemoveButton.focus();
+
+    await fireEvent.click(firstRemoveButton);
+
+    expect(onFilesChange).toHaveBeenCalledTimes(1);
+    expect(document.activeElement).toBe(firstRemoveButton);
+  });
+
   test('form reset clears the uncontrolled queue and synchronized native files', async () => {
     const file = createFile('report.txt', 'text/plain', 10);
     const replacementFile = createFile('replacement.txt', 'text/plain', 10);
@@ -956,6 +982,25 @@ describe('FileUpload validation and events', () => {
     await Promise.resolve();
 
     expect(Array.from(input.files ?? [])).toEqual([file]);
+  });
+
+  test('form reset restores the latest controlled queue after a same-task prop update', async () => {
+    const firstFile = createFile('first.txt', 'text/plain', 10);
+    const secondFile = createFile('second.txt', 'text/plain', 10);
+    const firstEntry = { id: 'first', file: firstFile, status: 'success' as const };
+    const secondEntry = { id: 'second', file: secondFile, status: 'success' as const };
+    const { container } = render(FileUploadFormFixture, {
+      props: { controlledFiles: [firstEntry], nextControlledFiles: [secondEntry] },
+    });
+    const input = container.querySelector('#upload') as HTMLInputElement;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(Array.from(input.files ?? [])).toEqual([firstFile]);
+    attachInputFiles(input, []);
+
+    await fireEvent.click(container.querySelector('[data-testid="update-files-and-reset"]')!);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(Array.from(input.files ?? [])).toEqual([secondFile]);
   });
 
   test('form reset follows an external form that mounts after the file input', async () => {
