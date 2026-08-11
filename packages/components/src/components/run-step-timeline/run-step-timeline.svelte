@@ -500,10 +500,10 @@
             </Badge>
           {/if}
           {#if step.attemptCount !== undefined && step.attemptCount > 1}
-            <Badge variant="neutral" size="xs" monochrome>attempt {step.attemptCount}</Badge>
+            <Badge variant="neutral" size="xs" monospace>attempt {step.attemptCount}</Badge>
           {/if}
           {#if step.actionsCount !== undefined && step.actionsCount > 0}
-            <Badge variant="neutral" size="xs" monochrome
+            <Badge variant="neutral" size="xs" monospace
               >{actionsCountLabel(step.actionsCount)}</Badge
             >
           {/if}

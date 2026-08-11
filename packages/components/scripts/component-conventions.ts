@@ -48,6 +48,7 @@ export const PROP_NAME_DENYLIST = [
   'inputValue',
   'component',
   'mono',
+  'monochrome',
   'colSpan',
   'lockScroll',
 ] as const satisfies readonly string[];

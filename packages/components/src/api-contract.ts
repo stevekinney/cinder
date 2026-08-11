@@ -123,7 +123,7 @@ export const CONTRACT: Record<string, ComponentContract> = {
         props: {
           variant: { optional: true, type_kind: 'TSTypeReference', default: L('neutral') },
           size: { optional: true, type_kind: 'TSTypeReference', default: L('md') },
-          monochrome: { optional: true, type_kind: 'TSBooleanKeyword', default: L(false) },
+          monospace: { optional: true, type_kind: 'TSBooleanKeyword', default: L(false) },
           class: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) },
           subscriptionState: { optional: false, type_kind: 'TSTypeReference', default: REQUIRED },
         },
@@ -137,7 +137,7 @@ export const CONTRACT: Record<string, ComponentContract> = {
         props: {
           variant: { optional: true, type_kind: 'TSTypeReference', default: L('neutral') },
           size: { optional: true, type_kind: 'TSTypeReference', default: L('md') },
-          monochrome: { optional: true, type_kind: 'TSBooleanKeyword', default: L(false) },
+          monospace: { optional: true, type_kind: 'TSBooleanKeyword', default: L(false) },
           class: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) },
           subscriptionState: {
             optional: true,

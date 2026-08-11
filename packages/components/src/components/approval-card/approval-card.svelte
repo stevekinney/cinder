@@ -311,7 +311,7 @@
               >
                 {#each environmentNames as environmentName (environmentName)}
                   <li>
-                    <Badge size="sm" monochrome>{environmentName}</Badge>
+                    <Badge size="sm" monospace>{environmentName}</Badge>
                   </li>
                 {/each}
               </ul>

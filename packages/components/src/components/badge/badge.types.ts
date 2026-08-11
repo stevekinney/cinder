@@ -22,7 +22,7 @@ export type BadgeProps =
       variant?: BadgeVariant;
       size?: BadgeSize;
       /** Render the badge label in a monospace font. */
-      monochrome?: boolean;
+      monospace?: boolean;
       class?: string;
       /** Render a standardized subscription lifecycle badge without hand-wiring tone, icon, and label. */
       subscriptionState: BadgeSubscriptionState;
@@ -33,7 +33,7 @@ export type BadgeProps =
       variant?: BadgeVariant;
       size?: BadgeSize;
       /** Render the badge label in a monospace font. */
-      monochrome?: boolean;
+      monospace?: boolean;
       class?: string;
       subscriptionState?: undefined;
       /**
@@ -59,7 +59,7 @@ export interface BadgeSchemaProps {
    * Render the badge label in a monospace font. Useful for version strings, error codes, or other technical labels.
    * @default false
    */
-  monochrome?: boolean;
+  monospace?: boolean;
   /** Render a standardized subscription lifecycle badge without hand-wiring tone, icon, and label. */
   subscriptionState?: BadgeSubscriptionState;
   /** Custom class merged with `.cinder-badge`. */
