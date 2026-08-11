@@ -37,3 +37,7 @@ When SpectrumChart accepts snippets or arbitrary children, the caller owns the s
 - Check forced-colors mode when the component adds borders, focus rings, selected state, or status color.
 
 Related components: `waveform`, `spectrogram`, `bar-chart`.
+
+## Rendering review (2026-08-10)
+
+The implementation review retained SpectrumChart for a single frequency snapshot rather than a time-domain Waveform or time-by-frequency Spectrogram. Browser review confirmed inherited foreground and background colors, palette-driven bars, automatic tick spacing, and unclipped frequency labels. The semantic table exposes each frequency and magnitude without relying on bar color.

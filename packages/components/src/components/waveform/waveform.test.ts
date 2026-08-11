@@ -17,6 +17,7 @@ globalThis.ResizeObserver = TestResizeObserver as unknown as typeof ResizeObserv
 
 const { cleanup, render, waitFor } = await import('@testing-library/svelte');
 const { default: Waveform } = await import('./waveform.svelte');
+const waveformCss = await Bun.file(new URL('./waveform.css', import.meta.url)).text();
 
 afterEach(() => cleanup());
 afterAll(() => {
@@ -27,6 +28,64 @@ afterAll(() => {
 const sineData = Array.from({ length: 64 }, (_, index) => Math.sin((index / 64) * Math.PI * 4));
 
 describe('Waveform', () => {
+  test('preserves consumer inline styles while applying theme variables', () => {
+    const { container } = render(Waveform, {
+      label: 'Styled waveform',
+      data: sineData,
+      style: 'inline-size: 20rem; --consumer-token: keep-me',
+      theme: { foreground: 'hotpink' },
+    });
+    const root = container.querySelector('.cinder-waveform');
+    expect(root?.getAttribute('style')).toContain('inline-size: 20rem');
+    expect(root?.getAttribute('style')).toContain('--consumer-token: keep-me');
+    expect(root?.getAttribute('style')).toContain('--_cinder-chart-foreground: hotpink');
+  });
+
+  test('uses the default palette and inherits chart-local theme defaults', () => {
+    const { container } = render(Waveform, { label: 'Sine wave', data: sineData });
+    const chart = container.querySelector('.cinder-waveform');
+    expect(container.querySelector('.cinder-waveform__path')?.getAttribute('stroke')).toBe(
+      'var(--cinder-chart-series-1)',
+    );
+    expect(chart?.getAttribute('style')).toContain('--_cinder-chart-background: transparent');
+  });
+
+  test('applies a custom palette to path and bar marks', () => {
+    const pathView = render(Waveform, {
+      label: 'Sine wave',
+      data: sineData,
+      theme: { palette: ['rebeccapurple'] },
+    });
+    expect(pathView.container.querySelector('.cinder-waveform__path')?.getAttribute('stroke')).toBe(
+      'rebeccapurple',
+    );
+    pathView.unmount();
+
+    const { container } = render(Waveform, {
+      label: 'Sine wave',
+      data: sineData,
+      renderMode: 'bars',
+      theme: { palette: ['rebeccapurple'] },
+    });
+    expect(container.querySelector('.cinder-waveform__bar')?.getAttribute('fill')).toBe(
+      'rebeccapurple',
+    );
+  });
+
+  test('applies the configured background to the rendered chart canvas', () => {
+    const { container } = render(Waveform, {
+      label: 'Themed waveform',
+      data: sineData,
+      theme: { background: 'midnightblue' },
+    });
+    const root = container.querySelector('.cinder-waveform');
+
+    expect(root?.getAttribute('style')).toContain('--_cinder-chart-background: midnightblue');
+    expect(waveformCss).toMatch(
+      /\.cinder-waveform\s*\{[^}]*background:\s*var\(--_cinder-chart-background, transparent\)/,
+    );
+  });
+
   test('renders an SVG with an accessible title when data is present', () => {
     const { container } = render(Waveform, {
       label: 'Sine wave',

@@ -7,6 +7,8 @@
  * two component implementations.
  */
 
+import { chartPaletteColor } from './chart-utilities.ts';
+
 export type HeatmapColorScale = 'sequential' | 'diverging';
 
 /**
@@ -125,35 +127,37 @@ export function heatmapCellFill(
   value: number | null,
   domain: HeatmapDomain,
   scale: HeatmapColorScale = 'sequential',
+  palette?: readonly string[],
+  background = 'var(--cinder-surface-inset)',
 ): string {
-  if (value === null) return 'var(--cinder-surface-inset)';
+  if (value === null) return background;
   const normalized = normalizeHeatmapValue(value, domain, scale);
 
   if (scale === 'diverging') {
+    const coolColor = chartPaletteColor(4, palette);
+    let warmColor = chartPaletteColor(2, palette);
+    // Short custom palettes wrap around. Keep the two diverging ends distinct
+    // whenever callers provide at least two colors.
+    if (palette && palette.length >= 2 && warmColor === coolColor) {
+      warmColor = chartPaletteColor(1, palette);
+    }
     if (normalized < 0.5) {
       const ratio = (0.5 - normalized) * 2;
-      return `color-mix(in oklch, var(--cinder-chart-series-5) ${Math.round(ratio * 100)}%, var(--cinder-surface-inset))`;
+      return `color-mix(in oklch, ${coolColor} ${Math.round(ratio * 100)}%, ${background})`;
     }
     const ratio = (normalized - 0.5) * 2;
-    return `color-mix(in oklch, var(--cinder-chart-series-3) ${Math.round(ratio * 100)}%, var(--cinder-surface-inset))`;
+    return `color-mix(in oklch, ${warmColor} ${Math.round(ratio * 100)}%, ${background})`;
   }
 
-  return `color-mix(in oklch, var(--cinder-chart-series-1) ${Math.round(normalized * 100)}%, var(--cinder-surface-inset))`;
+  return `color-mix(in oklch, ${chartPaletteColor(0, palette)} ${Math.round(normalized * 100)}%, ${background})`;
 }
 
 /**
- * Choose a readable label colour for a cell: a light colour over high-intensity
- * (dark) fills, a dark colour over low-intensity (light) fills.
+ * Provide the opaque source colour used by the MatrixChart's difference blend.
+ * The browser composites this against the actual rendered cell, so arbitrary
+ * custom palettes remain readable without guessing their luminance in JavaScript.
  */
-export function heatmapLabelFill(
-  value: number | null,
-  domain: HeatmapDomain,
-  scale: HeatmapColorScale = 'sequential',
-): string {
-  if (value === null) return 'var(--cinder-text-muted)';
-  const intensity =
-    scale === 'diverging'
-      ? Math.abs(normalizeHeatmapValue(value, domain, scale) - 0.5) * 2
-      : normalizeHeatmapValue(value, domain, scale);
-  return intensity > 0.5 ? 'var(--cinder-surface)' : 'var(--cinder-text)';
+export function heatmapLabelFill(value: number | null, muted = 'currentColor'): string {
+  if (value === null) return muted;
+  return 'var(--cinder-text-inverse)';
 }

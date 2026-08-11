@@ -1,0 +1,21 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@layer cinder.components {
+  .cinder-chart-tooltip-anchor {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    pointer-events: none;
+  }
+
+  .cinder-chart-tooltip {
+    display: grid;
+    gap: var(--cinder-space-1);
+    color: inherit;
+    font-size: var(--cinder-text-sm);
+  }
+
+  .cinder-chart-tooltip strong,
+  .cinder-chart-tooltip span {
+    display: block;
+  }
+}

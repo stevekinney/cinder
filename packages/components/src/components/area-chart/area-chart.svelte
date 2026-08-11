@@ -17,13 +17,17 @@
 </script>
 
 <script lang="ts">
+  import { onMount } from 'svelte';
   import {
     assertValidNonNegativeInteger,
     chartPaletteColor,
+    chartResourceId,
     createCartesianModel,
     dataTableClass,
+    formatDataTableCaption,
     formatNumericValue,
     legendVisible,
+    observeChartFontLoading,
     type ChartTarget,
   } from '../../_internal/chart/chart-utilities.ts';
   import {
@@ -32,6 +36,7 @@
   } from '../../_internal/chart/chart-focus-ring.ts';
   import { ChartInteraction } from '../../_internal/chart/chart-interaction.svelte.ts';
   import ChartDataTable from '../_internal/chart-data-table.svelte';
+  import ChartTooltip from '../_internal/chart-tooltip.svelte';
   import { classNames } from '../../utilities/class-names.ts';
   import type { AreaChartProps } from './area-chart.types.ts';
 
@@ -49,6 +54,9 @@
     dataTableCaption,
     dataTableVisibility = 'screen-reader-only',
     maximumInteractivePoints = 500,
+    theme,
+    tooltip = false,
+    mark,
     class: customClassName,
     empty,
     loadingContent,
@@ -65,6 +73,14 @@
   const interaction = new ChartInteraction();
 
   let rootElement = $state<HTMLElement>();
+  let measureText = $state(false);
+  let measurementVersion = $state(0);
+  onMount(() => {
+    measureText = true;
+    return observeChartFontLoading(() => {
+      measurementVersion += 1;
+    });
+  });
 
   $effect(() => {
     if (!rootElement) return;
@@ -81,6 +97,10 @@
       xAxis,
       yAxis,
       stackedArea: mode === 'stacked',
+      theme,
+      measureText,
+      measurementElement: rootElement,
+      measurementVersion,
     }),
   );
   const keyboardEnabled = $derived(
@@ -170,6 +190,10 @@
   bind:this={rootElement}
   id={rootId}
   class={classNames('cinder-area-chart', customClassName)}
+  style:--_cinder-chart-foreground={model.theme.foreground}
+  style:--_cinder-chart-muted={model.theme.muted}
+  style:--_cinder-chart-grid={model.theme.grid}
+  style:--_cinder-chart-background={model.theme.background}
   aria-label={label}
   aria-describedby={descriptionId}
   data-cinder-mode={mode}
@@ -184,7 +208,7 @@
           type="button"
           aria-pressed={!hiddenSeriesIds.includes(item.id)}
           onclick={() => (hiddenSeriesIds = interaction.toggleSeries(hiddenSeriesIds, item.id))}
-          ><span style:background={item.color ?? chartPaletteColor(index)}
+          ><span style:background={item.color ?? chartPaletteColor(index, model.theme.palette)}
           ></span>{item.label}</button
         >
       {/each}
@@ -234,33 +258,82 @@
               >{formatNumericValue(tick, yAxis, undefined, { index })}</text
             >
           {/each}
+          {#if yAxis?.label}
+            <text
+              class="cinder-area-chart__axis-title"
+              x={-model.geometry.plotHeight / 2}
+              y={-model.geometry.marginLeft + 12}
+              text-anchor="middle"
+              transform="rotate(-90)">{yAxis.label}</text
+            >
+          {/if}
           {#each model.xTicks as tick (tick.label)}
             <text
               class="cinder-area-chart__tick-label"
               x={tick.x}
               y={model.geometry.plotHeight + 20}
+              transform={xAxis?.tickLabelRotation
+                ? `rotate(${xAxis.tickLabelRotation} ${tick.x} ${model.geometry.plotHeight + 20})`
+                : undefined}
               text-anchor="middle">{tick.label}</text
             >
           {/each}
+          {#if xAxis?.label}
+            <text
+              class="cinder-area-chart__axis-title"
+              x={model.geometry.plotWidth / 2}
+              y={model.geometry.plotHeight + model.geometry.marginBottom - 4}
+              text-anchor="middle">{xAxis.label}</text
+            >
+          {/if}
+          <defs>
+            {#each model.normalizedSeries as item (item.id)}
+              <linearGradient
+                id={chartResourceId(rootId, 'gradient', item.id)}
+                x1="0"
+                x2="0"
+                y1="0"
+                y2="1"
+              >
+                <stop offset="0" stop-color={item.color} stop-opacity="0.42" />
+                <stop offset="1" stop-color={item.color} stop-opacity="0.08" />
+              </linearGradient>
+            {/each}
+          </defs>
           <!-- Series-specific rendering: filled area paths + stroke line paths. -->
-          {#each model.normalizedSeries as item (item.id)}
-            {#if !item.hidden && item.areaPath}
-              <path
-                class="cinder-area-chart__area"
-                d={item.areaPath}
-                fill={item.color}
-                aria-hidden="true"
-                data-cinder-series={item.id}
-              />
-              <path
-                class="cinder-area-chart__line"
-                d={item.path}
-                stroke={item.color}
-                aria-hidden="true"
-                data-cinder-series={item.id}
-              />
-            {/if}
-          {/each}
+          {#if mark}
+            {#each model.normalizedSeries as item (item.id)}
+              {#if !hiddenSeriesIds.includes(item.id)}
+                {@const sourceSeries = series.find((candidate) => candidate.id === item.id)}
+                {#if sourceSeries}
+                  {@render mark({
+                    series: sourceSeries,
+                    points: item.points,
+                    geometry: model.geometry,
+                  })}
+                {/if}
+              {/if}
+            {/each}
+          {:else}
+            {#each model.normalizedSeries as item (item.id)}
+              {#if !hiddenSeriesIds.includes(item.id) && item.areaPath}
+                <path
+                  class="cinder-area-chart__area"
+                  d={item.areaPath}
+                  fill={`url(#${chartResourceId(rootId, 'gradient', item.id)})`}
+                  aria-hidden="true"
+                  data-cinder-series={item.id}
+                />
+                <path
+                  class="cinder-area-chart__line"
+                  d={item.path}
+                  stroke={item.color}
+                  aria-hidden="true"
+                  data-cinder-series={item.id}
+                />
+              {/if}
+            {/each}
+          {/if}
           {#if interaction.activeTarget}
             <!-- Vertical crosshair — area charts always use a vertical indicator. -->
             <line
@@ -297,7 +370,7 @@
                     ? 'true'
                     : undefined}
                   aria-label={`${target.seriesLabel}, ${target.xLabel}, ${target.valueLabel}`}
-                  aria-describedby={interaction.activeTarget?.id === target.id
+                  aria-describedby={tooltip && interaction.activeTarget?.id === target.id
                     ? `${rootId}-tooltip`
                     : undefined}
                   onfocus={() => handleTargetFocus(target)}
@@ -367,24 +440,25 @@
         </g>
       {/if}
     </svg>
-    {#if interaction.activeTarget}<div
-        id="{rootId}-tooltip"
-        role="tooltip"
-        class="cinder-area-chart__tooltip"
-        style:left="{model.geometry.marginLeft + interaction.activeTarget.x}px"
-        style:top="{model.geometry.marginTop + interaction.activeTarget.y}px"
-      >
-        <strong>{interaction.activeTarget.seriesLabel}</strong><span
-          >{interaction.activeTarget.xLabel}: {interaction.activeTarget.valueLabel}</span
-        >
-      </div>{/if}
+    {#if tooltip}
+      <ChartTooltip
+        id={`${rootId}-tooltip`}
+        target={interaction.activeTarget}
+        geometry={model.geometry}
+        content={tooltip}
+      />
+    {/if}
   </div>
   {#if guidanceId}<p id={guidanceId} class="cinder-sr-only">
       Use the data table to inspect this chart with a keyboard.
     </p>{/if}
   {#if hasDataTable}
     <ChartDataTable
-      caption={dataTableCaption ?? label}
+      caption={formatDataTableCaption(
+        dataTableCaption ?? label,
+        model.tableRows.length,
+        model.targets.length,
+      )}
       headers={['Series', 'X', 'Value']}
       rows={model.tableRows.map((row) => ({
         id: row.id,
@@ -402,7 +476,7 @@
           type="button"
           aria-pressed={!hiddenSeriesIds.includes(item.id)}
           onclick={() => (hiddenSeriesIds = interaction.toggleSeries(hiddenSeriesIds, item.id))}
-          ><span style:background={item.color ?? chartPaletteColor(index)}
+          ><span style:background={item.color ?? chartPaletteColor(index, model.theme.palette)}
           ></span>{item.label}</button
         >
       {/each}

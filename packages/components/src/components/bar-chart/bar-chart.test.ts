@@ -2,7 +2,12 @@
 import { afterAll, afterEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
-import type { ChartXValue } from '../chart.types.ts';
+import type {
+  BarChartPlacedBar,
+  BarChartSeries,
+  ChartMarkContext,
+  ChartXValue,
+} from '../chart.types.ts';
 
 setupHappyDom();
 
@@ -18,6 +23,7 @@ afterAll(() => {
 });
 
 const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
+const { createRawSnippet } = await import('svelte');
 const { default: BarChart } = await import('./bar-chart.svelte');
 
 afterEach(() => cleanup());
@@ -32,6 +38,46 @@ const series = [
 ];
 
 describe('BarChart', () => {
+  test('does not invoke a custom mark for hidden series', () => {
+    const mark = createRawSnippet<[ChartMarkContext<BarChartSeries, BarChartPlacedBar>]>(
+      (getContext) => ({
+        render: () => {
+          const context = getContext();
+          return `<g data-custom-mark="${context.series.id}" data-point-count="${context.points.length}"></g>`;
+        },
+      }),
+    );
+    const { container } = render(BarChart, {
+      label: 'Revenue by month',
+      data,
+      categoryKey: 'month',
+      series,
+      hiddenSeriesIds: ['revenue'],
+      mark,
+    });
+
+    expect(container.querySelector('[data-custom-mark="revenue"]')).toBeNull();
+    expect(
+      container.querySelector('[data-custom-mark="expansion"]')?.getAttribute('data-point-count'),
+    ).toBe('2');
+  });
+
+  test('uses a chart-local theme palette for rendered bars', () => {
+    const { container } = render(BarChart, {
+      label: 'Revenue by month',
+      data,
+      categoryKey: 'month',
+      series,
+      theme: { palette: ['rebeccapurple', 'tomato'] },
+    });
+
+    expect(
+      [...container.querySelectorAll('.cinder-bar-chart__bar')].map((bar) =>
+        bar.getAttribute('fill'),
+      ),
+    ).toEqual(['rebeccapurple', 'tomato', 'rebeccapurple', 'tomato']);
+  });
+
   test('renders grouped vertical bars and a visible table', () => {
     const { container } = render(BarChart, {
       label: 'Revenue by month',
@@ -206,6 +252,7 @@ describe('BarChart', () => {
   test('loading state clears an active tooltip', async () => {
     const { getByRole, queryByText, rerender } = render(BarChart, {
       label: 'Revenue by month',
+      tooltip: true,
       data,
       categoryKey: 'month',
       series,
@@ -217,6 +264,7 @@ describe('BarChart', () => {
     await rerender({
       label: 'Revenue by month',
       loading: true,
+      tooltip: true,
       data,
       categoryKey: 'month',
       series,
@@ -239,6 +287,7 @@ describe('BarChart', () => {
   test('keyboard focus shows the tooltip; Escape clears it', async () => {
     const { getByRole, queryByText } = render(BarChart, {
       label: 'Revenue by month',
+      tooltip: true,
       data,
       categoryKey: 'month',
       series,
@@ -283,6 +332,7 @@ describe('BarChart', () => {
   test('pointer input hides a keyboard focus-ring layer without clearing the focused tooltip', async () => {
     const { container, getByRole, queryByText } = render(BarChart, {
       label: 'Revenue by month',
+      tooltip: true,
       data,
       categoryKey: 'month',
       series,
@@ -305,6 +355,7 @@ describe('BarChart', () => {
   test('hiding the focused series clears focus-ring and tooltip state', async () => {
     const { container, getByRole, queryByText } = render(BarChart, {
       label: 'Revenue by month',
+      tooltip: true,
       data,
       categoryKey: 'month',
       series,
@@ -326,6 +377,7 @@ describe('BarChart', () => {
   test('controlled hiddenSeriesIds clears stale focus-ring and tooltip state without a legend click', async () => {
     const { container, getByRole, queryByText, rerender } = render(BarChart, {
       label: 'Revenue by month',
+      tooltip: true,
       data,
       categoryKey: 'month',
       series,
@@ -342,6 +394,7 @@ describe('BarChart', () => {
       data,
       categoryKey: 'month',
       hiddenSeriesIds: ['revenue'],
+      tooltip: true,
       series,
     });
 
@@ -354,6 +407,7 @@ describe('BarChart', () => {
   test('arrow keys move DOM focus to the active target', async () => {
     const { container, getByRole, queryByText } = render(BarChart, {
       label: 'Revenue by month',
+      tooltip: true,
       data,
       categoryKey: 'month',
       series,
@@ -375,6 +429,7 @@ describe('BarChart', () => {
   test('pointer hover does not override the focused target description', async () => {
     const { container, getByRole, queryByText } = render(BarChart, {
       label: 'Revenue by month',
+      tooltip: true,
       data,
       categoryKey: 'month',
       series,
@@ -499,7 +554,26 @@ describe('BarChart', () => {
     expect(cssText).toContain('.cinder-bar-chart__bar[data-cinder-active]');
   });
 
-  test('chart legend buttons keep full-strength outer borders', async () => {
+  test('cartesian mark transitions are interruptible and respect reduced motion', async () => {
+    const [lineStyles, areaStyles, barStyles] = await Promise.all([
+      Bun.file(new URL('../line-chart/line-chart.css', import.meta.url)).text(),
+      Bun.file(new URL('../area-chart/area-chart.css', import.meta.url)).text(),
+      Bun.file(new URL('./bar-chart.css', import.meta.url)).text(),
+    ]);
+
+    expect(lineStyles).toContain('transition: d 0.3s ease');
+    expect(areaStyles.match(/transition: d 0\.3s ease/g)?.length).toBe(2);
+    expect(barStyles).toContain('x 0.3s ease');
+    expect(barStyles).toContain('y 0.3s ease');
+    expect(barStyles).toContain('width 0.3s ease');
+    expect(barStyles).toContain('height 0.3s ease');
+    for (const stylesheet of [lineStyles, areaStyles, barStyles]) {
+      expect(stylesheet).toContain('@media (prefers-reduced-motion: reduce)');
+      expect(stylesheet).toContain('transition: none');
+    }
+  });
+
+  test('chart legend buttons keep full-strength borders and local chart surfaces', async () => {
     const chartStylesheets = await Promise.all(
       ['../area-chart/area-chart.css', './bar-chart.css', '../line-chart/line-chart.css'].map(
         (path) => Bun.file(new URL(path, import.meta.url)).text(),
@@ -510,6 +584,9 @@ describe('BarChart', () => {
       const legendButtonBlock = stylesheet.match(/__legend button\s*\{[^}]*\}/)?.[0] ?? '';
       expect(legendButtonBlock).toContain('border: 1px solid var(--cinder-border)');
       expect(legendButtonBlock).not.toContain('var(--cinder-border-muted)');
+      expect(legendButtonBlock).toContain(
+        'background: var(--_cinder-chart-background, transparent)',
+      );
     }
   });
 });

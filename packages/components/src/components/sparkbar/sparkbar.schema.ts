@@ -28,6 +28,32 @@ const schema = {
       enum: ['accent', 'success', 'warning'],
       description: 'Fill color intent. Default `accent`.',
     },
+    theme: {
+      type: 'object',
+      properties: {
+        foreground: {
+          type: 'string',
+        },
+        muted: {
+          type: 'string',
+        },
+        grid: {
+          type: 'string',
+        },
+        background: {
+          type: 'string',
+        },
+        palette: {
+          type: 'array',
+          items: {
+            type: 'string',
+          },
+        },
+      },
+      additionalProperties: false,
+      description:
+        'Partial visual theme override. Omitted fields inherit the surrounding application.',
+    },
     ariaLabel: {
       type: 'string',
       description: 'Accessible name override. Defaults to `${label}, ${percentage}%`.',

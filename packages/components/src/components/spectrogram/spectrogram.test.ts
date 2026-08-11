@@ -32,6 +32,74 @@ const mockFrames = [
 ];
 
 describe('Spectrogram', () => {
+  test('uses the custom theme palette and paints the chart background', async () => {
+    const { container } = render(Spectrogram, {
+      label: 'Themed spectrogram',
+      frames: mockFrames,
+      theme: { palette: ['custom-palette'], background: 'custom-background' },
+    });
+    const fill = container.querySelector('.cinder-spectrogram__cell')?.getAttribute('fill');
+    const rootStyle = container.querySelector('.cinder-spectrogram')?.getAttribute('style');
+    const cssText = await Bun.file(new URL('./spectrogram.css', import.meta.url)).text();
+
+    expect(fill).toContain('custom-palette');
+    expect(fill).toContain('custom-background');
+    expect(rootStyle).toContain('--_cinder-chart-background: custom-background');
+    expect(cssText).toMatch(
+      /\.cinder-spectrogram\s*\{[^}]*background: var\(--_cinder-chart-background, transparent\)/s,
+    );
+  });
+
+  test('routes cell boundaries through the custom grid theme channel', async () => {
+    const { container } = render(Spectrogram, {
+      label: 'Grid-themed spectrogram',
+      frames: mockFrames,
+      theme: { grid: 'custom-grid' },
+    });
+    const rootStyle = container.querySelector('.cinder-spectrogram')?.getAttribute('style');
+    const cssText = await Bun.file(new URL('./spectrogram.css', import.meta.url)).text();
+
+    expect(rootStyle).toContain('--_cinder-chart-grid: custom-grid');
+    expect(cssText).toContain('var(--_cinder-chart-grid, currentColor)');
+  });
+
+  test('keeps cells inside the plot with long frequency labels', () => {
+    const { container } = render(Spectrogram, {
+      label: 'Long labels',
+      frames: [{ label: 'A very long time label', bins: [1] }],
+      frequencyLabels: ['An extremely long frequency label'],
+    });
+    const cell = container.querySelector<SVGRectElement>('.cinder-spectrogram__cell');
+    expect(cell?.getAttribute('x')).toBe('0');
+    expect(Number(cell?.getAttribute('width'))).toBeGreaterThan(0);
+  });
+
+  test('measures only sampled time labels that are rendered', () => {
+    const shortFrames = Array.from({ length: 11 }, (_, index) => ({
+      label: `T${index}`,
+      bins: [1],
+    }));
+    const shortView = render(Spectrogram, { label: 'Short labels', frames: shortFrames });
+    const shortCellHeight = Number(
+      shortView.container.querySelector('.cinder-spectrogram__cell')?.getAttribute('height'),
+    );
+    shortView.unmount();
+
+    const framesWithHiddenLongLabel = shortFrames.map((frame, index) =>
+      index === 1 ? { ...frame, label: 'This unsampled label should not affect geometry' } : frame,
+    );
+    const longView = render(Spectrogram, {
+      label: 'Hidden long label',
+      frames: framesWithHiddenLongLabel,
+    });
+    const longCellHeight = Number(
+      longView.container.querySelector('.cinder-spectrogram__cell')?.getAttribute('height'),
+    );
+
+    expect(longView.queryByText('This unsampled label should not affect geometry')).toBeNull();
+    expect(longCellHeight).toBe(shortCellHeight);
+  });
+
   test('renders cells for each frame × bin combination', () => {
     const { container } = render(Spectrogram, {
       label: 'Audio spectrogram',
@@ -267,5 +335,53 @@ describe('Spectrogram', () => {
     const cells = container.querySelectorAll('.cinder-spectrogram__cell');
     expect(cells.length).toBe(expectedCellCount);
     expect(cells.length).toBeLessThanOrEqual(maxPlotFrames * maxPlotBins);
+
+    const plotFrameCount = Math.ceil(frameCount / frameStep);
+    const plotBinCount = Math.ceil(binCount / binStep);
+    const firstFrameCells = [...cells].slice(0, plotBinCount) as SVGRectElement[];
+    const frameBuckets = Array.from({ length: plotFrameCount }, (_, frameIndex) =>
+      cells.item(frameIndex * plotBinCount),
+    );
+
+    for (let index = 1; index < frameBuckets.length; index += 1) {
+      const previous = frameBuckets[index - 1]!;
+      const current = frameBuckets[index]!;
+      expect(Number(current.getAttribute('x'))).toBeCloseTo(
+        Number(previous.getAttribute('x')) + Number(previous.getAttribute('width')),
+      );
+    }
+
+    const binsFromTop = [...firstFrameCells].sort(
+      (left, right) => Number(left.getAttribute('y')) - Number(right.getAttribute('y')),
+    );
+    expect(Number(binsFromTop[0]?.getAttribute('y'))).toBeCloseTo(0);
+    for (let index = 1; index < binsFromTop.length; index += 1) {
+      const previous = binsFromTop[index - 1]!;
+      const current = binsFromTop[index]!;
+      expect(Number(current.getAttribute('y'))).toBeCloseTo(
+        Number(previous.getAttribute('y')) + Number(previous.getAttribute('height')),
+      );
+    }
+  });
+
+  test('sampled plot buckets preserve a high-intensity value beyond the first source cell', () => {
+    const frameCount = 401;
+    const binCount = 257;
+    const denseFrames = Array.from({ length: frameCount }, (_, frameIndex) => ({
+      label: `frame-${frameIndex}`,
+      bins: Array.from({ length: binCount }, (_, binIndex) =>
+        frameIndex === 1 && binIndex === 1 ? 1 : 0,
+      ),
+    }));
+
+    const { container } = render(Spectrogram, {
+      label: 'Transient spectrogram',
+      frames: denseFrames,
+    });
+
+    // frame 1/bin 1 is covered by the first frame/bin bucket, but is not its
+    // first source cell. Maximum aggregation must preserve its full intensity.
+    const firstCell = container.querySelector<SVGRectElement>('.cinder-spectrogram__cell');
+    expect(firstCell?.getAttribute('fill')).toContain('100%');
   });
 });

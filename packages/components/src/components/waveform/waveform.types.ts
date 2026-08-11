@@ -1,6 +1,6 @@
 import type { Snippet } from 'svelte';
 import type { HTMLAttributes } from 'svelte/elements';
-import type { ChartDataTableVisibility } from '../chart.types.ts';
+import type { ChartDataTableVisibility, ChartTheme, ChartThemeSchema } from '../chart.types.ts';
 
 export type WaveformRenderMode = 'path' | 'bars';
 
@@ -24,6 +24,8 @@ export type WaveformProps = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
   dataTableVisibility?: ChartDataTableVisibility;
   /** Custom data table caption; falls back to `label`. */
   dataTableCaption?: string;
+  /** Partial visual theme override. Omitted fields inherit the surrounding application. */
+  theme?: ChartTheme;
   /** Custom class applied to the root element. */
   class?: string;
   /** Snippet rendered when the chart has no data. */
@@ -49,6 +51,8 @@ export type WaveformSchemaProps = {
   dataTableVisibility?: ChartDataTableVisibility;
   /** Custom data table caption; falls back to `label`. */
   dataTableCaption?: string;
+  /** Partial visual theme override. Omitted fields inherit the surrounding application. */
+  theme?: ChartThemeSchema;
   /** Custom class applied to the root element. */
   class?: string;
 };
