@@ -149,7 +149,11 @@
     for (const entry of multiple ? acceptedEntries : acceptedEntries.slice(0, 1)) {
       dataTransfer.items.add(entry.file);
     }
-    inputElement.files = dataTransfer.files;
+    try {
+      inputElement.files = dataTransfer.files;
+    } catch {
+      inputElement.value = '';
+    }
   }
 
   $effect(() => {

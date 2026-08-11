@@ -508,6 +508,33 @@ describe('FileUpload validation and events', () => {
     expect(Array.from(input.files ?? [])).toEqual([existingFile]);
   });
 
+  test('native synchronization clears the input when assigning files is unsupported', async () => {
+    const rejectedFile = createFile('rejected.txt', 'text/plain', 10);
+    const onReject = mock((_files) => {});
+    const { container } = render(FileUpload, {
+      props: { id: 'upload', accept: 'image/*', files: [], onReject },
+    });
+    const input = container.querySelector('#upload') as HTMLInputElement;
+    const rejectedFiles = createFileList([rejectedFile]);
+    Object.defineProperty(input, 'files', {
+      configurable: true,
+      get: () => rejectedFiles,
+      set: () => {
+        throw new TypeError('FileList assignment is unsupported');
+      },
+    });
+    Object.defineProperty(input, 'value', {
+      configurable: true,
+      writable: true,
+      value: 'C:\\fakepath\\rejected.txt',
+    });
+
+    await fireEvent.change(input);
+
+    expect(onReject).toHaveBeenCalledTimes(1);
+    expect(input.value).toBe('');
+  });
+
   test('removing an uncontrolled entry frees its maxFiles slot', async () => {
     const firstFile = createFile('first.txt', 'text/plain', 10);
     const replacementFile = createFile('replacement.txt', 'text/plain', 10);
