@@ -445,6 +445,22 @@ describe('FileUpload validation and events', () => {
     ]);
     expect(Array.from(input.files ?? [])).toEqual([firstFile, secondFile]);
   });
+
+  test('canceling a reopened picker restores the accumulated native file queue', async () => {
+    const firstFile = createFile('first.txt', 'text/plain', 10);
+    const { container } = render(FileUpload, {
+      props: { id: 'upload', multiple: true },
+    });
+    const input = container.querySelector('#upload') as HTMLInputElement;
+
+    attachInputFiles(input, [firstFile]);
+    await fireEvent.change(input);
+    await fireEvent.click(input);
+    attachInputFiles(input, []);
+    await fireEvent(input, new Event('cancel', { bubbles: true }));
+
+    expect(Array.from(input.files ?? [])).toEqual([firstFile]);
+  });
 });
 
 describe('FileUpload drag state and accessibility', () => {

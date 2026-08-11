@@ -110,13 +110,17 @@
   const renderedEntries = $derived(files ?? internalEntries);
   const resolvedDescription = $derived(description ?? formatAcceptDescription(accept));
 
-  $effect(() => {
+  function synchronizeNativeInputFiles() {
     if (!inputElement || typeof DataTransfer === 'undefined') return;
     const dataTransfer = new DataTransfer();
     for (const entry of renderedEntries) {
       if (entry.rejectionReason === undefined) dataTransfer.items.add(entry.file);
     }
     inputElement.files = dataTransfer.files;
+  }
+
+  $effect(() => {
+    synchronizeNativeInputFiles();
   });
 
   $effect(() => {
@@ -309,6 +313,10 @@
     clearInputValue();
   }
 
+  function handleInputCancel() {
+    synchronizeNativeInputFiles();
+  }
+
   function progressValue(progress: number | undefined): number {
     if (progress === undefined) return 0;
     return Math.max(0, Math.min(100, progress));
@@ -378,6 +386,7 @@
       aria-describedby={field.describedBy}
       aria-invalid={field.ariaInvalid}
       onclick={handleInputClick}
+      oncancel={handleInputCancel}
       onchange={handleInputChange}
     />
 
