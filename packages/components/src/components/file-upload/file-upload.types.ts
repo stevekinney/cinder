@@ -25,6 +25,8 @@ export type FileUploadEntry = {
   progress?: number;
   /** Optional error message rendered and linked via aria-describedby. */
   error?: string;
+  /** Local validation reason. Omitted for errors produced after an accepted upload starts. */
+  rejectionReason?: FileUploadRejectionReason;
 };
 
 export type FileUploadProps = Omit<
@@ -39,24 +41,50 @@ export type FileUploadProps = Omit<
   multiple?: boolean;
   /** Maximum allowed file size in bytes. */
   maxSize?: number;
+  /** Maximum number of files allowed. Files beyond this limit are rejected. */
+  maxFiles?: number;
   /** Disables the file picker and drag-and-drop surface. */
   disabled?: boolean;
   /** Native input name used for form submission. */
   name?: string;
   /** Additional classes merged with `.cinder-file-upload`. */
   class?: string;
-  /** Visible text for the picker trigger button. Default `Choose files`. */
-  triggerLabel?: string;
+  /**
+   * Visible title for the dropzone.
+   * @default Click to upload or drop files
+   */
+  title?: string;
+  /** Visible description below the title. Defaults to a summary derived from `accept`. */
+  description?: string;
+  /**
+   * Visible label shown while files are dragged over the dropzone.
+   * @default Drop to add
+   */
+  draggingLabel?: string;
+  /**
+   * Visible text for the browse button.
+   * @default Browse files
+   */
+  browseLabel?: string;
+  /**
+   * Adds focus and drag-active border emphasis to the dropzone.
+   * @default true
+   */
+  borderBeamVisible?: boolean;
   /** Consumer-driven file rows, including upload progress and error states. */
   files?: FileUploadEntry[];
   /** Replaces the default resting-state dropzone body. */
   idle?: Snippet;
   /** Replaces the default drag-active dropzone body. */
   dragActive?: Snippet;
-  /** Replaces the default file-list renderer. Receives the resolved rows. */
-  fileList?: Snippet<[FileUploadEntry[]]>;
+  /** Replaces the default file-list renderer. Receives the live resolved rows, including an empty array, and a removal callback when the queue is mutable. */
+  fileList?: Snippet<[FileUploadEntry[], ((entry: FileUploadEntry) => void) | undefined]>;
   /** Fires with accepted files after local validation passes. */
-  onFilesChange?: (files: File[]) => void;
+  onFilesAccepted?: (files: File[]) => void;
+  /** Fires with the full resolved entry list after local validation changes it. */
+  onFilesChange?: (entries: FileUploadEntry[]) => void;
   /** Fires with rejected files and reasons after local validation runs. */
   onReject?: (files: RejectedFile[]) => void;
+  /** Called when the retry button is activated for a failed file. */
+  onFileRetry?: (entry: FileUploadEntry) => void;
 };

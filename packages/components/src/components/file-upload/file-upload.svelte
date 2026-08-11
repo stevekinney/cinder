@@ -21,12 +21,26 @@
 </script>
 
 <script lang="ts">
+  import { onDestroy, tick } from 'svelte';
+  import { on } from 'svelte/events';
+
   import { resolveFieldControl } from '../../_internal/field-control.ts';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
   import { formatBytes } from '../../utilities/format-bytes.ts';
   import { useAnnouncer } from '../../utilities/use-announcer.svelte.ts';
+  import FileUploadList from './file-upload-list.svelte';
+  import {
+    acceptsFile,
+    constrainFileUploadEntries,
+    dataTransferHasFiles,
+    fileUploadLimit,
+    formatAcceptDescription,
+    installFilePickerReturnFallback,
+    installFileUploadSurfaceActivation,
+    synchronizeNativeFileInput,
+  } from './file-upload-utilities.ts';
   import type { FileUploadEntry, FileUploadProps, RejectedFile } from './file-upload.types.ts';
 
   let {
@@ -34,17 +48,25 @@
     accept,
     multiple = false,
     maxSize,
+    maxFiles,
     disabled,
     required,
     name,
     class: className,
-    triggerLabel = 'Choose files',
+    title = 'Click to upload or drop files',
+    description,
+    draggingLabel = 'Drop to add',
+    browseLabel = 'Browse files',
+    borderBeamVisible = true,
     files,
     idle,
     dragActive,
     fileList,
+    onFilesAccepted,
     onFilesChange,
     onReject,
+    onFileRetry,
+    oncancel,
     'aria-describedby': consumerDescribedBy,
     'aria-invalid': consumerInvalid,
     ...rest
@@ -59,7 +81,8 @@
       ...(id !== undefined ? { id } : {}),
       generatedId,
       context,
-      hasDescription: false,
+      localIdNamespace: 'file-upload',
+      hasDescription: idle === undefined,
       hasError: false,
       consumerDescribedBy,
       consumerInvalid,
@@ -72,12 +95,88 @@
   const dropzoneLabel = $derived(dropzoneLabelledBy === undefined ? 'File upload' : undefined);
 
   let inputElement = $state<HTMLInputElement | null>(null);
+  let browseButtonElement = $state<HTMLButtonElement | null>(null);
   let dragDepth = $state(0);
   let internalEntries = $state<FileUploadEntry[]>([]);
   let internalEntryCounter = $state(0);
+  let cancelPickerReturnFallback = () => {};
+  let pendingRemovalAnnouncement = $state<{ id: string; name: string }>();
 
+  onDestroy(() => cancelPickerReturnFallback());
   const isDragActive = $derived(dragDepth > 0);
   const renderedEntries = $derived(files ?? internalEntries);
+  const resolvedDescription = $derived(description ?? formatAcceptDescription(accept));
+
+  $effect(() => {
+    const pending = pendingRemovalAnnouncement;
+    if (!pending) return;
+    if (files === undefined) {
+      pendingRemovalAnnouncement = undefined;
+    } else if (!files.some((entry) => entry.id === pending.id)) {
+      announcer.announce(`${pending.name} removed`);
+      pendingRemovalAnnouncement = undefined;
+    }
+  });
+
+  function synchronizeNativeInputFiles(entries: FileUploadEntry[] = renderedEntries) {
+    synchronizeNativeFileInput(inputElement, entries, multiple, maxFiles);
+  }
+
+  $effect(() => {
+    synchronizeNativeInputFiles();
+  });
+
+  $effect(() => {
+    if (files !== undefined) return;
+    const nextEntries = constrainFileUploadEntries(
+      internalEntries,
+      fileUploadLimit(multiple, maxFiles),
+    );
+    if (nextEntries.length === internalEntries.length) return;
+    if (files === undefined) internalEntries = nextEntries;
+    synchronizeNativeInputFiles(nextEntries);
+    onFilesChange?.(nextEntries);
+  });
+
+  $effect(() => {
+    const ownerDocument = inputElement?.ownerDocument;
+    if (!ownerDocument) return;
+    let associatedForm: HTMLFormElement | null = null;
+    let removeResetListener = () => {};
+    function handleFormReset(event: Event) {
+      queueMicrotask(async () => {
+        if (event.defaultPrevented) return;
+        await tick();
+        const currentFiles = files;
+        if (currentFiles !== undefined) {
+          synchronizeNativeInputFiles(currentFiles);
+          return;
+        }
+        internalEntries = [];
+        synchronizeNativeInputFiles([]);
+        onFilesChange?.([]);
+      });
+    }
+    function bindAssociatedForm() {
+      const nextForm = inputElement?.form ?? null;
+      if (nextForm === associatedForm) return;
+      removeResetListener();
+      associatedForm = nextForm;
+      removeResetListener = nextForm ? on(nextForm, 'reset', handleFormReset) : () => {};
+    }
+    bindAssociatedForm();
+    const observer = new MutationObserver(bindAssociatedForm);
+    observer.observe(ownerDocument.documentElement, {
+      attributes: true,
+      attributeFilter: ['form', 'id'],
+      childList: true,
+      subtree: true,
+    });
+    return () => {
+      observer.disconnect();
+      removeResetListener();
+    };
+  });
 
   $effect(() => {
     if (context && id && context.controlId !== id) {
@@ -90,39 +189,6 @@
   function nextEntryId(status: FileUploadEntry['status']): string {
     internalEntryCounter += 1;
     return `${resolvedId}-entry-${internalEntryCounter}-${status}`;
-  }
-
-  function hasFilesPayload(dataTransfer: DataTransfer | null | undefined): boolean {
-    const fileTypes = dataTransfer?.types;
-    if (!fileTypes) return false;
-    return Array.from(fileTypes).includes('Files');
-  }
-
-  function matchesAcceptToken(file: File, token: string): boolean {
-    const normalizedToken = token.trim().toLowerCase();
-    if (!normalizedToken) return true;
-
-    if (normalizedToken.startsWith('.')) {
-      return file.name.toLowerCase().endsWith(normalizedToken);
-    }
-
-    const fileType = file.type.toLowerCase();
-    if (normalizedToken.endsWith('/*')) {
-      const prefix = normalizedToken.slice(0, -1);
-      return fileType.startsWith(prefix);
-    }
-
-    return fileType === normalizedToken;
-  }
-
-  function acceptsFile(file: File): boolean {
-    if (!accept?.trim()) return true;
-    const tokens = accept
-      .split(',')
-      .map((token) => token.trim())
-      .filter(Boolean);
-    if (tokens.length === 0) return true;
-    return tokens.some((token) => matchesAcceptToken(file, token));
   }
 
   function validateFiles(sourceFiles: File[]): { accepted: File[]; rejected: RejectedFile[] } {
@@ -139,7 +205,7 @@
         continue;
       }
 
-      if (!acceptsFile(file)) {
+      if (!acceptsFile(file, accept)) {
         rejected.push({
           file,
           reason: 'wrong-type',
@@ -151,13 +217,22 @@
       accepted.push(file);
     }
 
-    if (!multiple && accepted.length > 1) {
-      const extras = accepted.splice(1);
+    const acceptedFileLimit = fileUploadLimit(multiple, maxFiles);
+    const existingAcceptedCount =
+      multiple && acceptedFileLimit !== undefined
+        ? renderedEntries.filter((entry) => entry.rejectionReason === undefined).length
+        : 0;
+    const remainingFileLimit =
+      acceptedFileLimit === undefined
+        ? undefined
+        : Math.max(0, acceptedFileLimit - existingAcceptedCount);
+    if (remainingFileLimit !== undefined && accepted.length > remainingFileLimit) {
+      const extras = accepted.splice(remainingFileLimit);
       for (const file of extras) {
         rejected.push({
           file,
           reason: 'too-many',
-          message: `Only one file is allowed; ${file.name} was ignored`,
+          message: `${acceptedFileLimit === 1 ? 'Only one file is' : `Only ${acceptedFileLimit} files are`} allowed; ${file.name} was ignored`,
         });
       }
     }
@@ -165,18 +240,19 @@
     return { accepted, rejected };
   }
 
-  function updateInternalEntries(accepted: File[], rejected: RejectedFile[]) {
-    internalEntries = [
+  function createEntries(accepted: File[], rejected: RejectedFile[]): FileUploadEntry[] {
+    return [
       ...accepted.map((file) => ({
-        id: nextEntryId('success'),
+        id: nextEntryId('pending'),
         file,
-        status: 'success' as const,
+        status: 'pending' as const,
       })),
       ...rejected.map((entry) => ({
         id: nextEntryId('error'),
         file: entry.file,
         status: 'error' as const,
         error: entry.message,
+        rejectionReason: entry.reason,
       })),
     ];
   }
@@ -198,19 +274,25 @@
 
   function processFiles(sourceFiles: File[]) {
     const { accepted, rejected } = validateFiles(sourceFiles);
-    updateInternalEntries(accepted, rejected);
-    if (accepted.length > 0) onFilesChange?.(accepted);
+    const entries = createEntries(accepted, rejected);
+    const nextEntries = multiple ? [...renderedEntries, ...entries] : entries;
+    if (files === undefined) internalEntries = nextEntries;
+    synchronizeNativeInputFiles(files !== undefined && accepted.length === 0 ? files : nextEntries);
+    if (accepted.length > 0) onFilesAccepted?.(accepted);
+    onFilesChange?.(nextEntries);
     if (rejected.length > 0) onReject?.(rejected);
     announceResult(accepted, rejected);
+    if (files !== undefined) queueMicrotask(() => synchronizeNativeInputFiles());
   }
 
   function handleInputChange() {
+    cancelPickerReturnFallback();
     if (field.disabled || !inputElement?.files) return;
     processFiles(Array.from(inputElement.files));
   }
 
   function handleDragEnter(event: DragEvent) {
-    if (field.disabled || !hasFilesPayload(event.dataTransfer)) return;
+    if (field.disabled || !dataTransferHasFiles(event.dataTransfer)) return;
     dragDepth += 1;
   }
 
@@ -223,12 +305,12 @@
     // overlay stuck open — see the "clear drag state after cancelled upload"
     // fix and its dedicated regression test. Only a present-but-non-Files
     // dataTransfer (e.g. a text drag) is ignored here.
-    if (event.dataTransfer && !hasFilesPayload(event.dataTransfer)) return;
+    if (event.dataTransfer && !dataTransferHasFiles(event.dataTransfer)) return;
     dragDepth = Math.max(0, dragDepth - 1);
   }
 
   function handleDragOver(event: DragEvent) {
-    if (!hasFilesPayload(event.dataTransfer)) return;
+    if (!dataTransferHasFiles(event.dataTransfer)) return;
     event.preventDefault();
     if (field.disabled) return;
     if (event.dataTransfer) {
@@ -237,7 +319,7 @@
   }
 
   function handleDrop(event: DragEvent) {
-    if (!hasFilesPayload(event.dataTransfer)) return;
+    if (!dataTransferHasFiles(event.dataTransfer)) return;
     event.preventDefault();
     dragDepth = 0;
     if (field.disabled) return;
@@ -252,29 +334,54 @@
     inputElement?.click();
   }
 
+  function surfaceActivation(node: HTMLElement) {
+    return installFileUploadSurfaceActivation(node, () => field.disabled, openPicker);
+  }
+
   function clearInputValue() {
-    if (inputElement) {
-      inputElement.value = '';
-    }
+    if (inputElement) inputElement.value = '';
   }
 
   function handleInputClick() {
     if (field.disabled) return;
+    cancelPickerReturnFallback();
+    if (inputElement) {
+      cancelPickerReturnFallback = installFilePickerReturnFallback(inputElement, () =>
+        synchronizeNativeInputFiles(),
+      );
+    }
     clearInputValue();
   }
 
-  function progressValue(progress: number | undefined): number {
-    if (progress === undefined) return 0;
-    return Math.max(0, Math.min(100, progress));
+  function handleInputCancel(event: Event) {
+    cancelPickerReturnFallback();
+    synchronizeNativeInputFiles();
+    oncancel?.(event as Event & { currentTarget: EventTarget & HTMLInputElement });
+  }
+
+  function removeEntry(entry: FileUploadEntry) {
+    if (field.disabled) return;
+    const nextEntries = renderedEntries.filter((candidate) => candidate.id !== entry.id);
+    if (files === undefined) internalEntries = nextEntries;
+    synchronizeNativeInputFiles(nextEntries);
+    onFilesChange?.(nextEntries);
+    if (files === undefined) {
+      announcer.announce(`${entry.file.name} removed`);
+      return;
+    }
+    pendingRemovalAnnouncement = { id: entry.id, name: entry.file.name };
+    queueMicrotask(async () => {
+      await tick();
+      synchronizeNativeInputFiles();
+    });
   }
 </script>
 
 {#snippet defaultIdle()}
   <div class="cinder-file-upload__body">
-    <span class="cinder-file-upload__eyebrow">
+    <span class="cinder-file-upload__upload-icon" aria-hidden="true">
       <svg
-        class="cinder-file-upload__eyebrow-icon"
-        aria-hidden="true"
+        class="cinder-file-upload__upload-icon-svg"
         viewBox="0 0 16 16"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
@@ -287,22 +394,29 @@
           stroke-linejoin="round"
         />
       </svg>
-      Drag files here, or use the {triggerLabel} button.
     </span>
-    <p class="cinder-file-upload__hint">Drop files on this area or use the native file picker.</p>
+    <p class="cinder-file-upload__title">{title}</p>
+    <p id={field.ownDescriptionId} class="cinder-file-upload__description">
+      {resolvedDescription}
+    </p>
   </div>
 {/snippet}
 
 {#snippet defaultDragActive()}
   <div class="cinder-file-upload__body">
-    <span class="cinder-file-upload__eyebrow">Drop files to add them</span>
-    <p class="cinder-file-upload__hint">Release now to validate and queue the selected files.</p>
+    <p class="cinder-file-upload__title">{draggingLabel}</p>
+    <p id={field.ownDescriptionId} class="cinder-file-upload__hint">
+      Release now to validate and queue the selected files.
+    </p>
   </div>
 {/snippet}
 
 <div class={classNames('cinder-file-upload', className)}>
   <div
-    class="cinder-file-upload__dropzone"
+    class={classNames(
+      'cinder-file-upload__dropzone',
+      borderBeamVisible && 'cinder-file-upload__dropzone--border-beam',
+    )}
     role="group"
     aria-label={dropzoneLabel}
     aria-labelledby={dropzoneLabelledBy}
@@ -312,6 +426,7 @@
     ondragleave={handleDragLeave}
     ondragover={handleDragOver}
     ondrop={handleDrop}
+    use:surfaceActivation
   >
     <input
       bind:this={inputElement}
@@ -327,6 +442,7 @@
       aria-describedby={field.describedBy}
       aria-invalid={field.ariaInvalid}
       onclick={handleInputClick}
+      oncancel={handleInputCancel}
       onchange={handleInputChange}
     />
 
@@ -343,99 +459,31 @@
     {/if}
 
     <button
+      bind:this={browseButtonElement}
       type="button"
       class="cinder-file-upload__button"
       disabled={field.disabled}
+      aria-describedby={field.describedBy}
       onclick={openPicker}
     >
-      {triggerLabel}
+      {browseLabel}
     </button>
   </div>
 
-  {#if renderedEntries.length > 0}
-    {#if fileList}
-      {@render fileList(renderedEntries)}
-    {:else}
-      <ul class="cinder-file-upload__list">
-        {#each renderedEntries as entry (entry.id)}
-          {@const errorId = entry.error ? `${resolvedId}-${entry.id}-error` : undefined}
-          <li class="cinder-file-upload__row" aria-describedby={errorId}>
-            <div class="cinder-file-upload__row-main">
-              <div class="cinder-file-upload__file-meta">
-                <span class="cinder-file-upload__file-name cinder-_truncate">{entry.file.name}</span
-                >
-                <span class="cinder-file-upload__file-size">{formatBytes(entry.file.size)}</span>
-              </div>
-
-              {#if entry.status === 'uploading'}
-                <span class="cinder-file-upload__status" data-status="uploading">Uploading</span>
-              {:else if entry.status === 'success'}
-                <span class="cinder-file-upload__status" data-status="success">
-                  <svg
-                    class="cinder-file-upload__status-icon"
-                    aria-hidden="true"
-                    viewBox="0 0 16 16"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      d="M3.5 8.5L6.25 11.25L12.5 5"
-                      stroke="currentColor"
-                      stroke-width="1.5"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                  </svg>
-                  Complete
-                </span>
-              {:else if entry.status === 'error'}
-                <span class="cinder-file-upload__status" data-status="error">
-                  <svg
-                    class="cinder-file-upload__status-icon"
-                    aria-hidden="true"
-                    viewBox="0 0 16 16"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      d="M8 4.5V8.25M8 11H8.00667M14 8C14 11.3137 11.3137 14 8 14C4.68629 14 2 11.3137 2 8C2 4.68629 4.68629 2 8 2C11.3137 2 14 4.68629 14 8Z"
-                      stroke="currentColor"
-                      stroke-width="1.5"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                  </svg>
-                  Failed
-                </span>
-              {:else}
-                <span class="cinder-file-upload__status" data-status="pending">Pending</span>
-              {/if}
-            </div>
-
-            {#if entry.status === 'uploading'}
-              {@const value = progressValue(entry.progress)}
-              <div
-                class="cinder-file-upload__progress"
-                role="progressbar"
-                aria-label={`Uploading ${entry.file.name}`}
-                aria-valuemin="0"
-                aria-valuemax="100"
-                aria-valuenow={value}
-              >
-                <div
-                  class="cinder-file-upload__progress-fill"
-                  style={`--cinder-file-upload-progress: ${value}`}
-                ></div>
-              </div>
-            {/if}
-
-            {#if entry.error}
-              <p id={errorId} class="cinder-file-upload__error">{entry.error}</p>
-            {/if}
-          </li>
-        {/each}
-      </ul>
-    {/if}
+  {#if fileList}
+    {@render fileList(
+      renderedEntries,
+      files === undefined || onFilesChange !== undefined ? removeEntry : undefined,
+    )}
+  {:else}
+    <FileUploadList
+      entries={renderedEntries}
+      disabled={field.disabled}
+      removable={files === undefined || onFilesChange !== undefined}
+      {onFileRetry}
+      onRemove={removeEntry}
+      onQueueEmptyFocus={() => browseButtonElement?.focus()}
+    />
   {/if}
 
   <div class="cinder-sr-only" aria-live="polite" aria-atomic="true">{announcer.message}</div>

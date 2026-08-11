@@ -24,17 +24,42 @@ const schema = {
       type: 'string',
       description: 'Stable id for the native file input. Required when composing with `FormField`.',
     },
+    title: {
+      type: 'string',
+      description: 'Visible title for the dropzone.',
+      default: 'Click to upload or drop files',
+    },
     maxSize: {
       type: 'number',
       description: 'Maximum allowed file size in bytes.',
+    },
+    maxFiles: {
+      type: 'number',
+      description: 'Maximum number of files allowed. Files beyond this limit are rejected.',
     },
     class: {
       type: 'string',
       description: 'Additional classes merged with `.cinder-file-upload`.',
     },
-    triggerLabel: {
+    description: {
       type: 'string',
-      description: 'Visible text for the picker trigger button. Default `Choose files`.',
+      description:
+        'Visible description below the title. Defaults to a summary derived from `accept`.',
+    },
+    draggingLabel: {
+      type: 'string',
+      description: 'Visible label shown while files are dragged over the dropzone.',
+      default: 'Drop to add',
+    },
+    browseLabel: {
+      type: 'string',
+      description: 'Visible text for the browse button.',
+      default: 'Browse files',
+    },
+    borderBeamVisible: {
+      type: 'boolean',
+      description: 'Adds focus and drag-active border emphasis to the dropzone.',
+      default: true,
     },
   },
   additionalProperties: false,
@@ -48,7 +73,8 @@ const schema = {
       {
         name: 'fileList',
         reason: 'function-or-snippet',
-        description: 'Replaces the default file-list renderer. Receives the resolved rows.',
+        description:
+          'Replaces the default file-list renderer. Receives the live resolved rows, including an empty array, and a removal callback when the queue is mutable.',
       },
       {
         name: 'files',
@@ -61,9 +87,19 @@ const schema = {
         description: 'Replaces the default resting-state dropzone body.',
       },
       {
-        name: 'onFilesChange',
+        name: 'onFileRetry',
+        reason: 'function-or-snippet',
+        description: 'Called when the retry button is activated for a failed file.',
+      },
+      {
+        name: 'onFilesAccepted',
         reason: 'function-or-snippet',
         description: 'Fires with accepted files after local validation passes.',
+      },
+      {
+        name: 'onFilesChange',
+        reason: 'function-or-snippet',
+        description: 'Fires with the full resolved entry list after local validation changes it.',
       },
       {
         name: 'onReject',

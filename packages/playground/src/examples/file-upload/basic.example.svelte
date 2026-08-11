@@ -5,7 +5,7 @@
 
 <script lang="ts">
   import { FileUpload } from '@lostgradient/cinder/file-upload';
-  import type { RejectedFile } from '@lostgradient/cinder/file-upload';
+  import type { FileUploadEntry } from '@lostgradient/cinder/file-upload';
   import { FormField } from '@lostgradient/cinder/form-field';
 
   let { mountIdPrefix }: { mountIdPrefix?: string } = $props();
@@ -15,15 +15,13 @@
   let acceptedNames = $state<string[]>([]);
   let rejectedMessages = $state<string[]>([]);
 
-  // A single drop/pick can include both valid and invalid files — FileUpload
-  // fires `onFilesChange` (accepted) AND `onReject` (rejected) for the same batch.
-  // Each handler updates only its own list so a mixed batch shows both results.
-  function handleChange(files: File[]) {
-    acceptedNames = files.map((file) => file.name);
-  }
-
-  function handleReject(rejected: RejectedFile[]) {
-    rejectedMessages = rejected.map((entry) => entry.message);
+  function handleFilesChange(entries: FileUploadEntry[]) {
+    acceptedNames = entries
+      .filter((entry) => entry.rejectionReason === undefined)
+      .map((entry) => entry.file.name);
+    rejectedMessages = entries.flatMap((entry) =>
+      entry.rejectionReason !== undefined && entry.error ? [entry.error] : [],
+    );
   }
 </script>
 
@@ -34,8 +32,7 @@
     accept="image/*,.pdf"
     multiple
     maxSize={5 * 1024 * 1024}
-    onFilesChange={handleChange}
-    onReject={handleReject}
+    onFilesChange={handleFilesChange}
   />
 </FormField>
 
