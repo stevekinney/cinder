@@ -1100,3 +1100,137 @@ test.describe('chat harness — accessibility', () => {
     }
   });
 });
+
+// Regression suite for #1237's reopened symptoms, driven against the
+// `history-prepend-stress` example: an adapter-mode load-earlier flow inside
+// a full-height app shell whose header content (an event log line) grows when
+// a load completes — the same geometry as the downstream repro. Three loads
+// walk through every trigger state: idle → loading → idle, and finally
+// idle → unmounted (last page, hasMore: false).
+test.describe('chat harness — history prepend stress (#1237)', () => {
+  const STRESS = '#example-mount-history-prepend-stress';
+
+  test('adapter prepends at scrollTop=0 hold the anchor on every rendered frame', async ({
+    browser,
+  }) => {
+    test.setTimeout(120_000);
+    const context = await browser.newContext({
+      baseURL: PLAYGROUND_URL,
+      colorScheme: 'dark',
+      reducedMotion: 'no-preference',
+      viewport: { width: 1280, height: 900 },
+    });
+    await context.addInitScript(
+      ([key, value]) => {
+        try {
+          localStorage.setItem(key, value);
+        } catch {
+          /* ignore */
+        }
+      },
+      [THEME_STORAGE_KEY, 'dark'] as const,
+    );
+    const page = await context.newPage();
+    try {
+      await page.goto('/page/chat?snapshot=1', { waitUntil: 'load' });
+      await page.waitForSelector('#app > *', { state: 'visible', timeout: 20_000 });
+      const mount = page.locator(STRESS);
+      await mount.waitFor({ state: 'visible', timeout: 20_000 });
+      await mount.scrollIntoViewIfNeeded();
+      const timeline = mount.locator('.chat-timeline');
+
+      // Three pages: the first two swap the trigger idle → loading → idle,
+      // the third also unmounts it (hasMore: false) after the restore.
+      for (let load = 0; load < 3; load += 1) {
+        await mount.locator('[data-testid="stress-scroll-bottom"]').click();
+        await page.waitForTimeout(600);
+        await mount.locator('[data-testid="stress-scroll-top"]').click();
+        await expect.poll(async () => timeline.evaluate((element) => element.scrollTop)).toBe(0);
+        await page.waitForTimeout(400);
+
+        // Sample the anchor's viewport-relative offset on EVERY animation
+        // frame. The restore must land in the same rendered frame as the
+        // prepend — a single frame showing the anchor shifted is the visible
+        // flash this test exists to prevent.
+        const preloadBaseline = await timeline.evaluate((element) => {
+          const w = window as unknown as {
+            __anchorSamples?: number[];
+            __anchorStop?: boolean;
+          };
+          w.__anchorSamples = [];
+          w.__anchorStop = false;
+          const measure = (): number | null => {
+            const target = Array.from(element.querySelectorAll('.chat-message-body')).find(
+              (candidate) => candidate.textContent?.trimStart().startsWith('Live message 5 —'),
+            );
+            if (!target) return null;
+            return target.getBoundingClientRect().top - element.getBoundingClientRect().top;
+          };
+          // Seed the series SYNCHRONOUSLY. `evaluate` resolves the moment this
+          // body returns, so the requestAnimationFrame below only SCHEDULES
+          // the first sample — nothing forces a frame boundary before the
+          // click dispatched two statements later, and the click routinely
+          // wins. When it does, samples[0] is a POST-restore reading (the
+          // stress example is non-virtualized and prepends synchronously
+          // inside the dispatch, and the non-virtualized restore lands in the
+          // same microtask flush), so a regression that anchors at a
+          // wrong-but-stable offset just moves the baseline with it and every
+          // comparison below passes vacuously.
+          const initial = measure();
+          if (initial !== null) w.__anchorSamples.push(initial);
+          const sample = () => {
+            if (w.__anchorStop) return;
+            const offset = measure();
+            if (offset !== null) w.__anchorSamples!.push(offset);
+            requestAnimationFrame(sample);
+          };
+          requestAnimationFrame(sample);
+          return initial;
+        });
+        // A missed lookup would silently slide the baseline to a later frame.
+        expect(preloadBaseline).not.toBeNull();
+        // And at least one genuinely PAINTED pre-prepend frame must be in the
+        // series before the prepend is triggered.
+        await expect
+          .poll(async () =>
+            page.evaluate(
+              () =>
+                (window as unknown as { __anchorSamples?: number[] }).__anchorSamples?.length ?? 0,
+            ),
+          )
+          .toBeGreaterThan(1);
+
+        // dispatchEvent rather than .click(): the trigger sits at the top of
+        // the transcript and Playwright's click would scroll on its own.
+        await timeline
+          .getByRole('button', { name: /load earlier messages/i })
+          .dispatchEvent('click');
+        await expect(mount.locator('[data-testid="stress-message-count"]')).toHaveText(
+          `messages: ${60 + (load + 1) * 4}`,
+        );
+        await page.waitForTimeout(500);
+
+        const samples = await page.evaluate(() => {
+          const w = window as unknown as {
+            __anchorSamples?: number[];
+            __anchorStop?: boolean;
+          };
+          w.__anchorStop = true;
+          return w.__anchorSamples ?? [];
+        });
+        expect(samples.length).toBeGreaterThan(5);
+        const baseline = samples[0]!;
+        for (const sample of samples) {
+          expect(Math.abs(sample - baseline)).toBeLessThanOrEqual(2);
+        }
+        expect(Math.abs(samples[samples.length - 1]! - baseline)).toBeLessThanOrEqual(1);
+      }
+
+      // The final page reported hasMore: false — the trigger is gone and the
+      // anchored content stayed put through its unmount.
+      await expect(timeline.getByRole('button', { name: /load earlier messages/i })).toHaveCount(0);
+    } finally {
+      await context.close();
+    }
+  });
+});
