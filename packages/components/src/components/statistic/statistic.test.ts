@@ -26,11 +26,18 @@ describe('Statistic', () => {
     expect(el?.getAttribute('role')).toBe('group');
   });
 
-  test('resolves theme defaults through currentColor and transparent', () => {
+  test('resolves unthemed defaults to the text tokens, keeping the muted hierarchy', () => {
+    // Regression pin. These previously resolved to `currentColor` (the shared
+    // chart default), and because the component writes them as INLINE custom
+    // properties, the `var(--_cinder-chart-*, …)` fallbacks in statistic.css
+    // could never apply — so an unthemed Statistic painted its label, icon,
+    // and change description at full text colour, identical to the value.
+    // `muted` must stay a distinct, contrast-tuned token, not `currentColor`
+    // and not an opacity multiplier (this is text, held to 4.5:1).
     const { container } = render(Statistic, { label: 'Revenue', value: '$1,000' });
     const style = container.querySelector('.cinder-statistic')?.getAttribute('style') ?? '';
-    expect(style).toContain('--_cinder-chart-foreground: currentColor');
-    expect(style).toContain('--_cinder-chart-muted: currentColor');
+    expect(style).toContain('--_cinder-chart-foreground: var(--cinder-text)');
+    expect(style).toContain('--_cinder-chart-muted: var(--cinder-text-muted)');
     expect(style).toContain('--_cinder-chart-background: transparent');
   });
 
@@ -42,7 +49,7 @@ describe('Statistic', () => {
     });
     const root = container.querySelector<HTMLElement>('.cinder-statistic');
     expect(root?.getAttribute('style')).toContain('border: 1px solid red');
-    expect(root?.style.getPropertyValue('--_cinder-chart-foreground')).toBe('currentColor');
+    expect(root?.style.getPropertyValue('--_cinder-chart-foreground')).toBe('var(--cinder-text)');
   });
 
   test('applies custom theme colors without removing change direction cues', () => {

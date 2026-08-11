@@ -69,7 +69,27 @@
     return `no change, ${change.value}${suffix}`;
   });
 
-  const resolvedTheme = $derived(resolveChartTheme(theme));
+  /**
+   * Statistic is page text, not chart glyphs, so it cannot take
+   * `resolveChartTheme`'s unthemed defaults as-is: that returns
+   * `currentColor` for `foreground` and `muted`, and this component writes
+   * both as INLINE custom properties, so the `var(--_cinder-chart-*, …)`
+   * fallbacks in `statistic.css` can never apply. An unthemed Statistic
+   * therefore painted its label, icon, and change description at full text
+   * colour — visually identical to the value, with the muted hierarchy gone.
+   *
+   * The chart components absorb the same `currentColor` default with a
+   * compensating `opacity` on their tick labels; that is the wrong tool for
+   * text, which has to clear the 4.5:1 AA floor rather than land wherever a
+   * multiplier puts it. So the unthemed defaults here are the contrast-tuned
+   * text tokens, and an explicit `theme` still wins for a Statistic composed
+   * into a themed chart surface.
+   */
+  const resolvedTheme = $derived({
+    ...resolveChartTheme(theme),
+    foreground: theme?.foreground ?? 'var(--cinder-text)',
+    muted: theme?.muted ?? 'var(--cinder-text-muted)',
+  });
 </script>
 
 <div
