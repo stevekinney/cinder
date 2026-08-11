@@ -20,6 +20,12 @@ wherever a multiplier puts it — the same reasoning that moved status text
 off the fill tokens in 0.21.
 
 Unthemed `Statistic` now defaults to the contrast-tuned text tokens
-(`--cinder-text` / `--cinder-text-muted`). An explicit `theme` still wins, so
-a `Statistic` composed onto a themed chart surface is unaffected, and
-`background` keeps its `transparent` default. No API change.
+(`--cinder-text` / `--cinder-text-muted`). The substitution is all-or-nothing on
+`theme`'s presence rather than per-field: supplying any theme — including a
+partial one — keeps `resolveChartTheme()`'s `currentColor` inheritance for the
+fields it omits, so `theme={{ foreground: 'white', background: 'black' }}`
+leaves the label inheriting white instead of dropping the application's dark
+muted token onto a black panel. `background` keeps its `transparent` default.
+To make an otherwise-unthemed Statistic follow an ancestor's `color`, ask for
+it explicitly with `theme={{ foreground: 'currentColor', muted: 'currentColor' }}`.
+No API change.

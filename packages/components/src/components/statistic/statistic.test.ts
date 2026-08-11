@@ -41,6 +41,34 @@ describe('Statistic', () => {
     expect(style).toContain('--_cinder-chart-background: transparent');
   });
 
+  test('a partial theme keeps currentColor inheritance for the fields it omits', () => {
+    // The token substitution is all-or-nothing on `theme`'s presence. A
+    // per-field fallback would drop the application-wide (light-theme: dark)
+    // `--cinder-text-muted` onto this caller's black panel, making the label
+    // unreadable — and would contradict the documented partial-theme contract
+    // that omitted fields inherit the surrounding application.
+    const { container } = render(Statistic, {
+      label: 'Revenue',
+      value: '$1,000',
+      theme: { foreground: 'white', background: 'black' },
+    });
+    const root = container.querySelector<HTMLElement>('.cinder-statistic');
+    expect(root?.style.getPropertyValue('--_cinder-chart-foreground')).toBe('white');
+    expect(root?.style.getPropertyValue('--_cinder-chart-muted')).toBe('currentColor');
+    expect(root?.style.getPropertyValue('--_cinder-chart-background')).toBe('black');
+  });
+
+  test('an explicit currentColor theme opts back into ancestor colour inheritance', () => {
+    const { container } = render(Statistic, {
+      label: 'Revenue',
+      value: '$1,000',
+      theme: { foreground: 'currentColor', muted: 'currentColor' },
+    });
+    const root = container.querySelector<HTMLElement>('.cinder-statistic');
+    expect(root?.style.getPropertyValue('--_cinder-chart-foreground')).toBe('currentColor');
+    expect(root?.style.getPropertyValue('--_cinder-chart-muted')).toBe('currentColor');
+  });
+
   test('preserves consumer inline styles while applying theme variables', () => {
     const { container } = render(Statistic, {
       label: 'Revenue',
