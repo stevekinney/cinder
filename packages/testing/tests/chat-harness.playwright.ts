@@ -1155,12 +1155,11 @@ test.describe('chat harness — history prepend stress (#1237)', () => {
       // actually displayed.
       await page.addStyleTag({
         content: `
-          .chat-timeline { border-top: 5px solid rgb(0 255 255) !important; }
+          .chat-timeline { box-shadow: inset 0 5px 0 rgb(0 255 255) !important; }
           [data-cinder-paint-anchor] {
             background: rgb(255 0 255) !important;
             border-color: rgb(255 0 255) !important;
             color: rgb(255 0 255) !important;
-            min-height: 40px !important;
           }
         `,
       });
