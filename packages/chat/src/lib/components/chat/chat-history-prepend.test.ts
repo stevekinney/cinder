@@ -167,6 +167,16 @@ async function settleRenderedRows(container: HTMLElement, expectedRows: number):
  * moment a flush commits. That keeps the model in lockstep with the
  * component's own `isLoadingHistory` / trigger-unmount flushes without the
  * test having to guess when those land (which varies across bun versions).
+ *
+ * All geometry is injected via OWN properties on the nodes the component
+ * actually reads, never via `Element.prototype` patching: every element that
+ * Chat obtains goes through the timeline's `querySelector`/`querySelectorAll`,
+ * so wrapping those (node-level, like the scrollHeight/clientHeight stubs)
+ * lets the model stamp a live `getBoundingClientRect` onto each row at the
+ * moment the component retrieves it — including rows freshly created by the
+ * `{#key}` block mid-flush. A prototype patch proved unreliable on the CI
+ * runner (rects read as zeros there, sending the restore down the
+ * scrollHeight-delta fallback) even though node-level stubs held.
  */
 function installLayoutModel(
   timeline: HTMLElement,
@@ -179,9 +189,6 @@ function installLayoutModel(
 } {
   const idleTriggerHeight = options?.idleTriggerHeight ?? 0;
   const loadingTriggerHeight = options?.loadingTriggerHeight ?? idleTriggerHeight;
-  // TEMPORARY #1237 CI diagnostics: stamp the node the model is installed on
-  // so later probes can prove the component reads this exact element.
-  timeline.setAttribute('data-diag-stamp', `stamp-${Date.now()}`);
   // Message offsets relative to the END of the trigger row.
   const messageOffsets = new Map<string, number>();
 
@@ -192,13 +199,61 @@ function installLayoutModel(
     }
   }
 
+  const originalQuerySelector = timeline.querySelector.bind(timeline);
+  const originalQuerySelectorAll = timeline.querySelectorAll.bind(timeline);
+
   function triggerHeight(): number {
-    const trigger = timeline.querySelector<HTMLButtonElement>(
-      '[data-cinder-history-trigger] button',
-    );
+    const trigger = originalQuerySelector('[data-cinder-history-trigger] button');
     if (!trigger) return 0;
-    return trigger.disabled ? loadingTriggerHeight : idleTriggerHeight;
+    // Attribute check rather than the HTMLButtonElement `disabled` property:
+    // the bound querySelector's return type is plain `Element | null`.
+    return trigger.hasAttribute('disabled') ? loadingTriggerHeight : idleTriggerHeight;
   }
+
+  function domRect(top: number, bottom: number): DOMRect {
+    return {
+      top,
+      bottom,
+      left: 0,
+      right: 400,
+      width: 400,
+      height: bottom - top,
+      x: 0,
+      y: top,
+      toJSON: () => ({}),
+    } as DOMRect;
+  }
+
+  // Stamp a LIVE rect (computed from the model + current scrollTop at call
+  // time) as an own property on a message row. Own properties cannot be
+  // shadowed or bypassed the way a prototype patch can.
+  function stampMessageRect(element: Element | null): void {
+    if (!element) return;
+    const elementId = (element as HTMLElement).id;
+    if (!elementId.startsWith('message-')) return;
+    (element as HTMLElement).getBoundingClientRect = () => {
+      const messageOffset = messageOffsets.get(elementId.slice('message-'.length));
+      if (messageOffset === undefined) return domRect(0, 0);
+      const viewportTop = triggerHeight() + messageOffset - timeline.scrollTop;
+      return domRect(viewportTop, viewportTop + MESSAGE_HEIGHT);
+    };
+  }
+
+  timeline.querySelector = ((selector: string) => {
+    const element = originalQuerySelector(selector);
+    stampMessageRect(element);
+    return element;
+  }) as typeof timeline.querySelector;
+
+  timeline.querySelectorAll = ((selector: string) => {
+    const elements = originalQuerySelectorAll(selector);
+    for (const element of elements) {
+      stampMessageRect(element);
+    }
+    return elements;
+  }) as typeof timeline.querySelectorAll;
+
+  timeline.getBoundingClientRect = () => domRect(0, VIEWPORT_HEIGHT);
 
   // scrollHeight is derived from the rows currently IN the DOM, not from the
   // model's id list: `$effect.pre` reads it before the DOM mutation commits
@@ -206,7 +261,7 @@ function installLayoutModel(
   // would report it.
   Object.defineProperty(timeline, 'scrollHeight', {
     configurable: true,
-    get: () => triggerHeight() + timeline.querySelectorAll('.chat-message').length * MESSAGE_HEIGHT,
+    get: () => triggerHeight() + originalQuerySelectorAll('.chat-message').length * MESSAGE_HEIGHT,
   });
 
   Object.defineProperty(timeline, 'clientHeight', {
@@ -223,45 +278,12 @@ function installLayoutModel(
     timeline.scrollTop = top;
   }) as typeof timeline.scrollTo;
 
-  function domRect(top: number, bottom: number): DOMRect {
-    return {
-      top,
-      bottom,
-      left: 0,
-      right: 400,
-      width: 400,
-      height: bottom - top,
-      x: 0,
-      y: top,
-      toJSON: () => ({}),
-    } as DOMRect;
-  }
-
-  const originalGetBoundingClientRect = Element.prototype.getBoundingClientRect;
-  // Prototype-level: the `{#key}` block recreates every message element on a
-  // prepend, so element-level stubs would be lost with the old nodes.
-  Element.prototype.getBoundingClientRect = function (this: Element): DOMRect {
-    if (this === timeline) {
-      return domRect(0, VIEWPORT_HEIGHT);
-    }
-    const elementId = (this as HTMLElement).id;
-    if (elementId.startsWith('message-')) {
-      const messageOffset = messageOffsets.get(elementId.slice('message-'.length));
-      if (messageOffset !== undefined) {
-        const viewportTop = triggerHeight() + messageOffset - timeline.scrollTop;
-        return domRect(viewportTop, viewportTop + MESSAGE_HEIGHT);
-      }
-    }
-    return originalGetBoundingClientRect.call(this);
-  };
-
   return {
     relayout,
     triggerHeight,
     scrollTops,
-    uninstall: () => {
-      Element.prototype.getBoundingClientRect = originalGetBoundingClientRect;
-    },
+    // Node-level stubs die with the rendered tree; nothing global to undo.
+    uninstall: () => {},
   };
 }
 
@@ -286,37 +308,6 @@ describe('history prepend at scrollTop=0 (#1237)', () => {
       idleTriggerHeight: 50,
       loadingTriggerHeight: 30,
     });
-    // TEMPORARY #1237 CI diagnostics — remove once the CI-side state is known.
-    const diagnose = (label: string): void => {
-      const freshTimeline = container.querySelector<HTMLElement>('.chat-timeline');
-      const trigger = container.querySelector<HTMLButtonElement>(
-        '[data-cinder-history-trigger] button',
-      );
-      console.error(
-        `[1237-diag] ${label} ${JSON.stringify({
-          containerRows: container.querySelectorAll('.chat-message').length,
-          timelineRows: timeline.querySelectorAll('.chat-message').length,
-          bodyTimelines: document.querySelectorAll('.chat-timeline').length,
-          containerTimelines: container.querySelectorAll('.chat-timeline').length,
-          timelineIsCurrent: freshTimeline === timeline,
-          timelineConnected: timeline.isConnected,
-          stamp: timeline.getAttribute('data-diag-stamp'),
-          freshStamp: freshTimeline?.getAttribute('data-diag-stamp') ?? null,
-          scrollHeight: timeline.scrollHeight,
-          freshScrollHeight: freshTimeline ? freshTimeline.scrollHeight : null,
-          hasOwnScrollHeight:
-            Object.getOwnPropertyDescriptor(timeline, 'scrollHeight') !== undefined,
-          hasOwnClientHeight:
-            Object.getOwnPropertyDescriptor(timeline, 'clientHeight') !== undefined,
-          scrollToIsStubbed: Object.prototype.hasOwnProperty.call(timeline, 'scrollTo'),
-          scrollTop: timeline.scrollTop,
-          triggerPresent: trigger !== null,
-          triggerDisabled: trigger?.disabled ?? null,
-          triggerInTimeline: trigger ? timeline.contains(trigger) : null,
-          scrollTops: layout.scrollTops.slice(),
-        })}`,
-      );
-    };
     try {
       layout.relayout(conversation.ids);
       timeline.scrollTop = 0;
@@ -327,9 +318,7 @@ describe('history prepend at scrollTop=0 (#1237)', () => {
       const trigger = container.querySelector<HTMLButtonElement>(
         '[data-cinder-history-trigger] button',
       )!;
-      diagnose('pre-click');
       await fireEvent.click(trigger);
-      diagnose('post-click');
       // The loading state has committed by now: the trigger is disabled and
       // the model reports its loading (30px) height.
       await waitFor(() => {
@@ -343,18 +332,18 @@ describe('history prepend at scrollTop=0 (#1237)', () => {
       ];
       conversation = prependMessages(conversation, prepended);
       layout.relayout(conversation.ids);
-      diagnose('pre-rerender');
       await rerender({ id: 'prepend-anchor-chat', conversation, adapter });
-      diagnose('post-rerender');
 
       // The restore must land with the SAME flush that committed the prepend
       // — no animation-frame wait — so after rerender's tick the correction
       // has already been applied: the anchor (message-0) moved from content
       // offset 50 (idle trigger) to 30 + 200 = 230 (loading trigger + two
       // prepended rows), so scrollTop compensates to 180 and the anchor stays
-      // at viewport offset 50, exactly where it was captured.
+      // at viewport offset 50, exactly where it was captured. (Anchor reads
+      // go through the timeline's stamped querySelector so the assertion uses
+      // the same injected geometry the component measured.)
       expect(timeline.scrollTop).toBe(180);
-      const anchorRect = container
+      const anchorRect = timeline
         .querySelector<HTMLElement>('#message-message-0')!
         .getBoundingClientRect();
       expect(Math.abs(anchorRect.top - 50)).toBeLessThanOrEqual(1);
@@ -368,7 +357,7 @@ describe('history prepend at scrollTop=0 (#1237)', () => {
       await waitFor(() => {
         expect(timeline.scrollTop).toBe(200);
       });
-      const settledRect = container
+      const settledRect = timeline
         .querySelector<HTMLElement>('#message-message-0')!
         .getBoundingClientRect();
       expect(Math.abs(settledRect.top - 50)).toBeLessThanOrEqual(1);
