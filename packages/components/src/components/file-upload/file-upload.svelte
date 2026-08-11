@@ -21,6 +21,8 @@
 </script>
 
 <script lang="ts">
+  import { on } from 'svelte/events';
+
   import { resolveFieldControl } from '../../_internal/field-control.ts';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
@@ -152,6 +154,17 @@
 
   $effect(() => {
     synchronizeNativeInputFiles();
+  });
+
+  $effect(() => {
+    const formElement = inputElement?.form;
+    if (!formElement || files !== undefined) return;
+    function handleFormReset(event: Event) {
+      if (event.defaultPrevented || files !== undefined) return;
+      internalEntries = [];
+      onFilesChange?.([]);
+    }
+    return on(formElement, 'reset', handleFormReset);
   });
 
   $effect(() => {

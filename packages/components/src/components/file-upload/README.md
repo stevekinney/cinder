@@ -52,6 +52,8 @@ The default file list includes a remove button for every row. In uncontrolled
 use, removing a row immediately updates the local queue and frees a `maxFiles`
 slot. In controlled use, removal reports the next queue through
 `onFilesChange`; update `files` with that value to reflect the change.
+Resetting an associated native form clears the uncontrolled queue and reports
+an empty list through `onFilesChange`.
 
 Pass the controlled `files` prop to show your uploader's current `pending`,
 `uploading`, `success`, or `error` state. Set `progress` from 0–100 while an

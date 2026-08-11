@@ -23,6 +23,8 @@ afterEach(() => {
 const { default: FileUpload } = await import('./file-upload.svelte');
 const { default: FormFieldFileUploadFixture } =
   await import('../../test/fixtures/form-field-file-upload-fixture.svelte');
+const { default: FileUploadFormFixture } =
+  await import('../../test/fixtures/file-upload-form-fixture.svelte');
 
 function createFile(name: string, type: string, size: number): File {
   const file = new File(['x'.repeat(Math.max(1, Math.min(size, 16)))], name, { type });
@@ -540,6 +542,30 @@ describe('FileUpload validation and events', () => {
 
     await fireEvent.click(remainingRemoveButton);
     expect(document.activeElement).toBe(browseButton);
+  });
+
+  test('form reset clears the uncontrolled queue and synchronized native files', async () => {
+    const file = createFile('report.txt', 'text/plain', 10);
+    const replacementFile = createFile('replacement.txt', 'text/plain', 10);
+    const onFilesChange = mock((_entries) => {});
+    const { container } = render(FileUploadFormFixture, { props: { onFilesChange } });
+    const form = container.querySelector('form') as HTMLFormElement;
+    const input = container.querySelector('#upload') as HTMLInputElement;
+
+    attachInputFiles(input, [file]);
+    await fireEvent.change(input);
+    await fireEvent(form, new Event('reset', { bubbles: true, cancelable: true }));
+
+    expect(onFilesChange).toHaveBeenLastCalledWith([]);
+    expect(Array.from(input.files ?? [])).toEqual([]);
+
+    attachInputFiles(input, [replacementFile]);
+    await fireEvent.change(input);
+
+    expect(onFilesChange).toHaveBeenLastCalledWith([
+      expect.objectContaining({ file: replacementFile, status: 'pending' }),
+    ]);
+    expect(Array.from(input.files ?? [])).toEqual([replacementFile]);
   });
 });
 
