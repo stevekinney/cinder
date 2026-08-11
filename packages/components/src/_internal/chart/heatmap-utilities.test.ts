@@ -137,8 +137,8 @@ describe('heatmapCellFill', () => {
     expect(cool).not.toContain('warm');
   });
 
-  test('uses an opaque inverse token for high-intensity labels regardless of background theme', () => {
-    const fill = heatmapLabelFill(10, heatmapDomain([0, 10]), 'sequential', 'foreground', 'muted');
+  test('uses an opaque source token for rendered-color contrast blending', () => {
+    const fill = heatmapLabelFill(10, 'muted');
     expect(fill).toBe('var(--cinder-text-inverse)');
   });
 });

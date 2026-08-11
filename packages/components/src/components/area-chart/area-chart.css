@@ -28,7 +28,7 @@
     gap: var(--cinder-space-1);
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-sm);
-    background: var(--cinder-surface-raised);
+    background: var(--_cinder-chart-background, transparent);
     color: inherit;
     cursor: pointer;
     font: inherit;

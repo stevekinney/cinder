@@ -214,13 +214,7 @@
   }
 
   function cellLabelFill(value: number | null): string {
-    return heatmapLabelFill(
-      value,
-      domain,
-      colorScale,
-      resolvedTheme.foreground,
-      resolvedTheme.muted,
-    );
+    return heatmapLabelFill(value, resolvedTheme.muted);
   }
 
   const hasDataTable = $derived(dataTableVisibility !== 'hidden');
@@ -321,7 +315,7 @@
           {/each}
           <!-- Matrix cells -->
           {#each cells as cell (cell.key)}
-            <g>
+            <g class="cinder-matrix-chart__cell-group">
               <rect
                 class="cinder-matrix-chart__cell"
                 x={cell.x}

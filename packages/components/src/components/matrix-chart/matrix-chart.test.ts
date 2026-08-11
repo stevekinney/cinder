@@ -68,7 +68,7 @@ describe('MatrixChart', () => {
     );
   });
 
-  test('keeps high-intensity labels opaque for equivalent transparent CSS backgrounds', () => {
+  test('derives label contrast from the rendered cell color', async () => {
     const { container } = render(MatrixChart, {
       label: 'Transparent background matrix',
       data: confusionData,
@@ -76,14 +76,16 @@ describe('MatrixChart', () => {
       yField: 'actual',
       valueField: 'count',
       cellLabelsVisible: true,
-      theme: { background: '#0000' },
+      theme: { palette: ['white'], background: '#0000' },
     });
     const fills = [...container.querySelectorAll('.cinder-matrix-chart__cell-label')].map((label) =>
       label.getAttribute('fill'),
     );
+    const cssText = await Bun.file(new URL('./matrix-chart.css', import.meta.url)).text();
 
     expect(fills).toContain('var(--cinder-text-inverse)');
     expect(fills).not.toContain('#0000');
+    expect(cssText).toMatch(/__cell-label\s*\{[^}]*mix-blend-mode: difference/s);
   });
 
   test('routes cell boundaries through the custom grid theme channel', async () => {

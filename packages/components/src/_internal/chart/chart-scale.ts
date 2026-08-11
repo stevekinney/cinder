@@ -7,6 +7,78 @@ import type { NormalizedXValue, PlacedPoint } from './chart-model-utilities.ts';
 
 export const MAXIMUM_RENDERED_SERIES_POINTS = 2_000;
 
+export type LayerDecimationSelection = {
+  sourceIndex: number;
+  forceGap: boolean;
+};
+
+function evenlySample<T>(values: readonly T[], count: number): T[] {
+  if (values.length <= count) return [...values];
+  if (count <= 1) return values[0] === undefined ? [] : [values[0]];
+  return Array.from({ length: count }, (_, index) => {
+    const sourceIndex = Math.round((index * (values.length - 1)) / (count - 1));
+    return values[sourceIndex]!;
+  });
+}
+
+function boundedGapHeavyIndices(points: PlacedPoint[], limit: number): number[] {
+  const finiteRuns: Array<{ end: number; representative: number }> = [];
+  let index = 0;
+  while (index < points.length) {
+    while (index < points.length && points[index]?.y === null) index += 1;
+    if (index >= points.length) break;
+
+    let representative = index;
+    let maximumMagnitude = Math.abs(points[index]?.y ?? 0);
+    while (index + 1 < points.length && points[index + 1]?.y !== null) {
+      index += 1;
+      const magnitude = Math.abs(points[index]?.y ?? 0);
+      if (magnitude > maximumMagnitude) {
+        maximumMagnitude = magnitude;
+        representative = index;
+      }
+    }
+    finiteRuns.push({ end: index, representative });
+    index += 1;
+  }
+
+  const maximumFiniteRuns = Math.max(1, Math.floor((limit + 1) / 2));
+  const sampledRuns = evenlySample(finiteRuns, maximumFiniteRuns);
+  const selected: number[] = [];
+  sampledRuns.forEach((run, runIndex) => {
+    const previousRun = sampledRuns[runIndex - 1];
+    if (previousRun) selected.push(previousRun.end + 1);
+    selected.push(run.representative);
+  });
+  return selected.sort((a, b) => a - b);
+}
+
+function boundedGapHeavyLayerSelections(
+  layers: ReadonlyArray<ReadonlyArray<number | null>>,
+  pointCount: number,
+  limit: number,
+): LayerDecimationSelection[] {
+  const finiteIndices: number[] = [];
+  for (let index = 0; index < pointCount; index++) {
+    if (layers.some((layer) => layer[index] != null)) finiteIndices.push(index);
+  }
+
+  const maximumFiniteSamples = Math.max(1, Math.floor((limit + 1) / 2));
+  const sampledIndices = evenlySample(finiteIndices, maximumFiniteSamples);
+  const selections: LayerDecimationSelection[] = [];
+  sampledIndices.forEach((sourceIndex, selectionIndex) => {
+    const previousSourceIndex = sampledIndices[selectionIndex - 1];
+    if (previousSourceIndex !== undefined && sourceIndex > previousSourceIndex + 1) {
+      selections.push({
+        sourceIndex: previousSourceIndex + Math.floor((sourceIndex - previousSourceIndex) / 2),
+        forceGap: true,
+      });
+    }
+    selections.push({ sourceIndex, forceGap: false });
+  });
+  return selections;
+}
+
 function addGapBoundaryIndices(
   selected: Set<number>,
   pointCount: number,
@@ -33,12 +105,12 @@ export function decimationIndices(
   const selected = new Set<number>([0, points.length - 1]);
   addGapBoundaryIndices(selected, points.length, (index) => points[index]?.y);
 
-  // Every finite/null transition is structural. If a pathological series has
-  // more transitions than the nominal render budget, keep the boundaries: a
-  // false connecting line is worse than exceeding the approximate cap.
+  // Every finite/null transition is structural. When the transitions alone
+  // exceed the budget, sample complete finite runs and retain a real null
+  // between them. This remains bounded without drawing across an omitted gap.
   const remainingExtremaBudget = limit - selected.size;
   const bucketCount = Math.floor(remainingExtremaBudget / 2);
-  if (bucketCount < 1) return [...selected].sort((a, b) => a - b);
+  if (bucketCount < 1) return boundedGapHeavyIndices(points, limit);
 
   for (let bucketIndex = 0; bucketIndex < bucketCount; bucketIndex++) {
     const start = 1 + Math.floor((bucketIndex * interiorLength) / bucketCount);
@@ -71,10 +143,13 @@ export function decimationIndices(
 export function decimationIndicesForLayers(
   layers: ReadonlyArray<ReadonlyArray<number | null>>,
   maximumPoints = MAXIMUM_RENDERED_SERIES_POINTS,
-): number[] {
+): LayerDecimationSelection[] {
   const pointCount = layers[0]?.length ?? 0;
   if (pointCount <= maximumPoints || maximumPoints < 2) {
-    return Array.from({ length: pointCount }, (_, index) => index);
+    return Array.from({ length: pointCount }, (_, sourceIndex) => ({
+      sourceIndex,
+      forceGap: false,
+    }));
   }
   const limit = Math.max(2, Math.floor(maximumPoints));
   const interiorLength = pointCount - 2;
@@ -88,7 +163,7 @@ export function decimationIndicesForLayers(
   // discontinuities into one marker.
   const candidatesPerBucket = Math.max(1, layers.length * 2);
   const bucketCount = Math.floor((limit - selected.size) / candidatesPerBucket);
-  if (bucketCount < 1) return [...selected].sort((a, b) => a - b);
+  if (bucketCount < 1) return boundedGapHeavyLayerSelections(layers, pointCount, limit);
 
   for (let bucketIndex = 0; bucketIndex < bucketCount; bucketIndex++) {
     const start = 1 + Math.floor((bucketIndex * interiorLength) / bucketCount);
@@ -116,7 +191,9 @@ export function decimationIndicesForLayers(
     }
   }
 
-  return [...selected].sort((a, b) => a - b);
+  return [...selected]
+    .sort((a, b) => a - b)
+    .map((sourceIndex) => ({ sourceIndex, forceGap: false }));
 }
 
 export function decimatePlacedPoints(

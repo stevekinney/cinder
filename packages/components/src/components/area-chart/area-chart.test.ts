@@ -98,6 +98,15 @@ describe('AreaChart', () => {
     );
   });
 
+  test('escapes functional-IRI characters in explicit chart ids', () => {
+    const { container } = render(AreaChart, { id: 'usage)', label: 'Unsafe id usage', series });
+    const gradient = container.querySelector('linearGradient');
+    const area = container.querySelector('.cinder-area-chart__area');
+
+    expect(gradient?.id).toBe('usage_x29-gradient-usage');
+    expect(area?.getAttribute('fill')).toBe('url(#usage_x29-gradient-usage)');
+  });
+
   test('stacked mode draws upper series from cumulative offsets', () => {
     const { container } = render(AreaChart, { label: 'Usage trend', mode: 'stacked', series });
     const paths = [...container.querySelectorAll('.cinder-area-chart__area')].map((path) =>

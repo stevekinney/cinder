@@ -34,8 +34,13 @@
     filter: brightness(1.15);
   }
 
+  .cinder-matrix-chart__cell-group {
+    isolation: isolate;
+  }
+
   .cinder-matrix-chart__cell-label {
     font-size: var(--cinder-text-xs);
+    mix-blend-mode: difference;
     pointer-events: none;
   }
 

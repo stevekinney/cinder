@@ -155,6 +155,11 @@ describe('chartResourceId', () => {
     expect(escaped).toBe('chart-gradient-a_u2Fb');
     expect(slash).not.toBe(escaped);
   });
+
+  test('escapes functional-IRI characters in the chart prefix', () => {
+    expect(chartResourceId('usage)', 'gradient', 'series')).toBe('usage_x29-gradient-series');
+    expect(chartResourceId('usage_x29', 'gradient', 'series')).toBe('usage_ux29-gradient-series');
+  });
 });
 
 describe('resolveChartTheme', () => {
@@ -1006,6 +1011,33 @@ describe('createCartesianModel', () => {
     ).toBe(true);
   });
 
+  test('gap-heavy decimation remains bounded without connecting sampled finite runs', () => {
+    const points: PlacedPoint[] = Array.from({ length: 100_000 }, (_, index) => {
+      const value = index % 2 === 0 ? index : null;
+      return {
+        seriesId: 'dense',
+        seriesLabel: 'Dense',
+        color: 'red',
+        x: normalizeXValue(index),
+        y: value,
+        originalY: value,
+        index,
+        pixelX: index,
+        pixelY: index,
+        pixelY0: 100,
+      };
+    });
+
+    const decimated = decimatePlacedPoints(points);
+
+    expect(decimated.length).toBeLessThanOrEqual(2_000);
+    expect(decimated[0]?.x.raw).toBe(0);
+    expect(decimated.filter((point) => point.y !== null)).toHaveLength(1_000);
+    for (let index = 1; index < decimated.length; index++) {
+      expect(decimated[index - 1]?.y === null || decimated[index]?.y === null).toBe(true);
+    }
+  });
+
   test('stacked decimation shares x positions and preserves adjacent boundaries', () => {
     const data = Array.from({ length: 2_101 }, (_, index) => ({
       x: index,
@@ -1147,6 +1179,48 @@ describe('createCartesianModel', () => {
       ),
     ).toHaveLength(2);
     expect(visible?.areaPath.match(/M/g)).toHaveLength(3);
+  });
+
+  test('gap-heavy stacked decimation stays bounded with shared synthetic breaks', () => {
+    const model = createCartesianModel({
+      componentId: 'area-chart',
+      series: [
+        {
+          id: 'even',
+          label: 'Even',
+          data: Array.from({ length: 10_000 }, (_, index) => ({
+            x: index,
+            y: index % 2 === 0 ? 1 : null,
+          })),
+        },
+        {
+          id: 'odd',
+          label: 'Odd',
+          data: Array.from({ length: 10_000 }, (_, index) => ({
+            x: index,
+            y: index % 2 === 1 ? 1 : null,
+          })),
+        },
+      ],
+      hiddenSeriesIds: [],
+      width: 640,
+      height: 280,
+      stackedArea: true,
+    });
+    const [even, odd] = model.normalizedSeries;
+
+    expect(even?.points.length).toBeLessThanOrEqual(2_000);
+    expect(odd?.points.map((point) => point.x.key)).toEqual(
+      even?.points.map((point) => point.x.key),
+    );
+    for (const renderedSeries of [even, odd]) {
+      for (let index = 1; index < (renderedSeries?.points.length ?? 0); index++) {
+        expect(
+          renderedSeries?.points[index - 1]?.y === null ||
+            renderedSeries?.points[index]?.y === null,
+        ).toBe(true);
+      }
+    }
   });
 
   test('derives margins from formatted tick labels, rotation, and axis titles', () => {

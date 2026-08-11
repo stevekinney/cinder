@@ -153,24 +153,11 @@ export function heatmapCellFill(
 }
 
 /**
- * Choose a readable label colour for a cell: a light colour over high-intensity
- * (dark) fills, a dark colour over low-intensity (light) fills.
+ * Provide the opaque source colour used by the MatrixChart's difference blend.
+ * The browser composites this against the actual rendered cell, so arbitrary
+ * custom palettes remain readable without guessing their luminance in JavaScript.
  */
-export function heatmapLabelFill(
-  value: number | null,
-  domain: HeatmapDomain,
-  scale: HeatmapColorScale = 'sequential',
-  foreground = 'currentColor',
-  muted = 'currentColor',
-): string {
+export function heatmapLabelFill(value: number | null, muted = 'currentColor'): string {
   if (value === null) return muted;
-  const intensity =
-    scale === 'diverging'
-      ? Math.abs(normalizeHeatmapValue(value, domain, scale) - 0.5) * 2
-      : normalizeHeatmapValue(value, domain, scale);
-  if (intensity <= 0.5) return foreground;
-  // The inverse token is guaranteed to be opaque. A caller-provided background
-  // can be transparent in several equivalent CSS spellings and must never be
-  // reused as text fill.
   return 'var(--cinder-text-inverse)';
 }

@@ -573,7 +573,7 @@ describe('BarChart', () => {
     }
   });
 
-  test('chart legend buttons keep full-strength outer borders', async () => {
+  test('chart legend buttons keep full-strength borders and local chart surfaces', async () => {
     const chartStylesheets = await Promise.all(
       ['../area-chart/area-chart.css', './bar-chart.css', '../line-chart/line-chart.css'].map(
         (path) => Bun.file(new URL(path, import.meta.url)).text(),
@@ -584,6 +584,9 @@ describe('BarChart', () => {
       const legendButtonBlock = stylesheet.match(/__legend button\s*\{[^}]*\}/)?.[0] ?? '';
       expect(legendButtonBlock).toContain('border: 1px solid var(--cinder-border)');
       expect(legendButtonBlock).not.toContain('var(--cinder-border-muted)');
+      expect(legendButtonBlock).toContain(
+        'background: var(--_cinder-chart-background, transparent)',
+      );
     }
   });
 });

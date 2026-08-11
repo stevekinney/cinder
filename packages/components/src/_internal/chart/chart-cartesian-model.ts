@@ -234,7 +234,7 @@ export function createCartesianModel(options: {
           );
       })()
     : undefined;
-  const stackedRenderIndices = stackedBoundaryLayers
+  const stackedRenderSelections = stackedBoundaryLayers
     ? decimationIndicesForLayers(stackedBoundaryLayers)
     : undefined;
   const renderedSeries = normalizedSeries.map((item) => {
@@ -253,27 +253,28 @@ export function createCartesianModel(options: {
         pixelY0: yScale(stackedArea ? lowerValue : 0),
       };
     });
-    const placedPointsByKey = stackedRenderIndices
+    const placedPointsByKey = stackedRenderSelections
       ? new Map(placedPoints.map((point) => [point.x.key, point]))
       : undefined;
-    const renderPoints = stackedRenderIndices
-      ? stackedRenderIndices.map((sourceIndex) => {
+    const renderPoints = stackedRenderSelections
+      ? stackedRenderSelections.map(({ sourceIndex, forceGap }) => {
           const x = stackedRenderDomain[sourceIndex]!;
-          return (
-            placedPointsByKey?.get(x.key) ??
-            ({
-              seriesId: item.id,
-              seriesLabel: item.label,
-              color: item.color,
-              x,
-              y: null,
-              originalY: null,
-              index: -1,
-              pixelX: scaleX(x),
-              pixelY: 0,
-              pixelY0: stackedArea ? yScale(stackedOffsetsByKey.get(x.key) ?? 0) : yScale(0),
-            } satisfies PlacedPoint)
-          );
+          if (!forceGap) {
+            const placedPoint = placedPointsByKey?.get(x.key);
+            if (placedPoint) return placedPoint;
+          }
+          return {
+            seriesId: item.id,
+            seriesLabel: item.label,
+            color: item.color,
+            x,
+            y: null,
+            originalY: null,
+            index: -1,
+            pixelX: scaleX(x),
+            pixelY: 0,
+            pixelY0: stackedArea ? yScale(stackedOffsetsByKey.get(x.key) ?? 0) : yScale(0),
+          } satisfies PlacedPoint;
         })
       : decimatePlacedPoints(placedPoints);
     const coordinates = renderPoints.map((placed) => ({
