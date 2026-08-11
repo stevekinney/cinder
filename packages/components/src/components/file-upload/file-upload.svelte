@@ -144,7 +144,13 @@
 
   function synchronizeNativeInputFiles(entries: FileUploadEntry[] = renderedEntries) {
     if (!inputElement || typeof DataTransfer === 'undefined') return;
-    const dataTransfer = new DataTransfer();
+    let dataTransfer: DataTransfer;
+    try {
+      dataTransfer = new DataTransfer();
+    } catch {
+      inputElement.value = '';
+      return;
+    }
     const acceptedEntries = entries.filter((entry) => entry.rejectionReason === undefined);
     for (const entry of multiple ? acceptedEntries : acceptedEntries.slice(0, 1)) {
       dataTransfer.items.add(entry.file);

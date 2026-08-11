@@ -556,6 +556,35 @@ describe('FileUpload validation and events', () => {
     expect(input.value).toBe('');
   });
 
+  test('native synchronization clears the input when DataTransfer is not constructible', async () => {
+    const rejectedFile = createFile('rejected.txt', 'text/plain', 10);
+    const onReject = mock((_files) => {});
+    const { container } = render(FileUpload, {
+      props: { id: 'upload', accept: 'image/*', files: [], onReject },
+    });
+    const input = container.querySelector('#upload') as HTMLInputElement;
+    attachInputFiles(input, [rejectedFile]);
+    Object.defineProperty(input, 'value', {
+      configurable: true,
+      writable: true,
+      value: 'C:\\fakepath\\rejected.txt',
+    });
+    Object.defineProperty(globalThis, 'DataTransfer', {
+      configurable: true,
+      writable: true,
+      value: class UnsupportedDataTransfer {
+        constructor() {
+          throw new TypeError('DataTransfer construction is unsupported');
+        }
+      },
+    });
+
+    await fireEvent.change(input);
+
+    expect(onReject).toHaveBeenCalledTimes(1);
+    expect(input.value).toBe('');
+  });
+
   test('removing an uncontrolled entry frees its maxFiles slot', async () => {
     const firstFile = createFile('first.txt', 'text/plain', 10);
     const replacementFile = createFile('replacement.txt', 'text/plain', 10);
