@@ -32,6 +32,8 @@
   import FileUploadList from './file-upload-list.svelte';
   import {
     acceptsFile,
+    constrainFileUploadEntries,
+    fileUploadLimit,
     formatAcceptDescription,
     INTERACTIVE_DESCENDANT_SELECTOR,
     nativeFilesMatch,
@@ -100,15 +102,16 @@
   const resolvedDescription = $derived(description ?? formatAcceptDescription(accept));
 
   function synchronizeNativeInputFiles(entries: FileUploadEntry[] = renderedEntries) {
-    if (!inputElement || typeof DataTransfer === 'undefined') return;
+    if (!inputElement) return;
     const acceptedEntries = entries.filter((entry) => entry.rejectionReason === undefined);
+    const limit = fileUploadLimit(multiple, maxFiles);
     const acceptedFiles = (
-      multiple
-        ? maxFiles === undefined
-          ? acceptedEntries
-          : acceptedEntries.slice(0, Math.max(0, Math.floor(maxFiles)))
-        : acceptedEntries.slice(0, 1)
+      limit === undefined ? acceptedEntries : acceptedEntries.slice(0, limit)
     ).map((entry) => entry.file);
+    if (typeof DataTransfer === 'undefined') {
+      if (!nativeFilesMatch(inputElement.files, acceptedFiles)) inputElement.value = '';
+      return;
+    }
     let dataTransfer: DataTransfer;
     try {
       dataTransfer = new DataTransfer();
@@ -126,6 +129,18 @@
 
   $effect(() => {
     synchronizeNativeInputFiles();
+  });
+
+  $effect(() => {
+    if (files !== undefined) return;
+    const nextEntries = constrainFileUploadEntries(
+      internalEntries,
+      fileUploadLimit(multiple, maxFiles),
+    );
+    if (nextEntries.length === internalEntries.length) return;
+    internalEntries = nextEntries;
+    synchronizeNativeInputFiles(nextEntries);
+    onFilesChange?.(nextEntries);
   });
 
   $effect(() => {
@@ -212,11 +227,9 @@
       accepted.push(file);
     }
 
-    const normalizedMaxFiles =
-      maxFiles === undefined ? undefined : Math.max(0, Math.floor(maxFiles));
-    const acceptedFileLimit = multiple ? normalizedMaxFiles : Math.min(1, normalizedMaxFiles ?? 1);
+    const acceptedFileLimit = fileUploadLimit(multiple, maxFiles);
     const existingAcceptedCount =
-      multiple && normalizedMaxFiles !== undefined
+      multiple && acceptedFileLimit !== undefined
         ? renderedEntries.filter((entry) => entry.rejectionReason === undefined).length
         : 0;
     const remainingFileLimit =
@@ -279,6 +292,7 @@
     onFilesChange?.(nextEntries);
     if (rejected.length > 0) onReject?.(rejected);
     announceResult(accepted, rejected);
+    if (files !== undefined) queueMicrotask(() => synchronizeNativeInputFiles());
   }
 
   function handleInputChange() {
@@ -369,6 +383,7 @@
     if (files === undefined) internalEntries = nextEntries;
     synchronizeNativeInputFiles(nextEntries);
     onFilesChange?.(nextEntries);
+    if (files !== undefined) queueMicrotask(() => synchronizeNativeInputFiles());
     announcer.announce(`${entry.file.name} removed`);
   }
 </script>

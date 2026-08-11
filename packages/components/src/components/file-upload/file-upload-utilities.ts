@@ -3,6 +3,8 @@ import FileTextIcon from 'lucide-svelte/icons/file-text';
 import ImageIcon from 'lucide-svelte/icons/image';
 import TableIcon from 'lucide-svelte/icons/table';
 
+import type { FileUploadEntry } from './file-upload.types.ts';
+
 const INTERACTIVE_ARIA_ROLES = [
   'button',
   'checkbox',
@@ -117,6 +119,21 @@ export function nativeFilesMatch(fileList: FileList | null, files: File[]): bool
     currentFiles.length === files.length &&
     currentFiles.every((file, index) => file === files[index])
   );
+}
+
+export function fileUploadLimit(multiple: boolean, maxFiles: number | undefined) {
+  const normalizedMaxFiles = maxFiles === undefined ? undefined : Math.max(0, Math.floor(maxFiles));
+  return multiple ? normalizedMaxFiles : Math.min(1, normalizedMaxFiles ?? 1);
+}
+
+export function constrainFileUploadEntries(entries: FileUploadEntry[], limit: number | undefined) {
+  if (limit === undefined) return entries;
+  let acceptedCount = 0;
+  return entries.filter((entry) => {
+    if (entry.rejectionReason !== undefined) return true;
+    acceptedCount += 1;
+    return acceptedCount <= limit;
+  });
 }
 
 export function formatAcceptDescription(accept: string | undefined): string {

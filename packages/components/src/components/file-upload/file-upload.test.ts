@@ -492,6 +492,7 @@ describe('FileUpload validation and events', () => {
     await fireEvent.change(input);
 
     expect(nativeFilesDuringChange).toEqual([[existingFile, selectedFile]]);
+    expect(Array.from(input.files ?? [])).toEqual([existingFile]);
   });
 
   test('canceling a reopened picker restores the accumulated native file queue', async () => {
@@ -651,6 +652,54 @@ describe('FileUpload validation and events', () => {
     expect(Array.from(input.files ?? [])).toEqual([acceptedFile]);
   });
 
+  test('native synchronization clears rejected files when DataTransfer is unavailable', async () => {
+    const rejectedFile = createFile('rejected.txt', 'text/plain', 10);
+    const onReject = mock((_files) => {});
+    const { container } = render(FileUpload, {
+      props: { id: 'upload', accept: 'image/*', files: [], onReject },
+    });
+    const input = container.querySelector('#upload') as HTMLInputElement;
+    attachInputFiles(input, [rejectedFile]);
+    Object.defineProperty(input, 'value', {
+      configurable: true,
+      writable: true,
+      value: 'C:\\fakepath\\rejected.txt',
+    });
+    Object.defineProperty(globalThis, 'DataTransfer', {
+      configurable: true,
+      writable: true,
+      value: undefined,
+    });
+
+    await fireEvent.change(input);
+
+    expect(onReject).toHaveBeenCalledTimes(1);
+    expect(input.value).toBe('');
+  });
+
+  test('lowering maxFiles reconciles an uncontrolled rendered and native queue', async () => {
+    const firstFile = createFile('first.txt', 'text/plain', 10);
+    const secondFile = createFile('second.txt', 'text/plain', 10);
+    const thirdFile = createFile('third.txt', 'text/plain', 10);
+    const onFilesChange = mock((_entries) => {});
+    const { container, rerender } = render(FileUpload, {
+      props: { id: 'upload', multiple: true, maxFiles: 3, onFilesChange },
+    });
+    const input = container.querySelector('#upload') as HTMLInputElement;
+    attachInputFiles(input, [firstFile, secondFile, thirdFile]);
+    await fireEvent.change(input);
+
+    await rerender({ id: 'upload', multiple: true, maxFiles: 2, onFilesChange });
+    await Promise.resolve();
+
+    expect(container.querySelectorAll('.cinder-file-upload__row')).toHaveLength(2);
+    expect(Array.from(input.files ?? [])).toEqual([firstFile, secondFile]);
+    expect(onFilesChange).toHaveBeenLastCalledWith([
+      expect.objectContaining({ file: firstFile }),
+      expect.objectContaining({ file: secondFile }),
+    ]);
+  });
+
   test('removing an uncontrolled entry frees its maxFiles slot', async () => {
     const firstFile = createFile('first.txt', 'text/plain', 10);
     const replacementFile = createFile('replacement.txt', 'text/plain', 10);
@@ -761,6 +810,7 @@ describe('FileUpload validation and events', () => {
     await fireEvent.click(firstRemoveButton);
 
     expect(nativeFilesDuringChange).toEqual([[secondFile]]);
+    expect(Array.from(input.files ?? [])).toEqual([firstFile, secondFile]);
   });
 
   test('form reset clears the uncontrolled queue and synchronized native files', async () => {
