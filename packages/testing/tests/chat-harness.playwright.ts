@@ -14,6 +14,7 @@
  * streaming cadence reliably observable.
  */
 import { expect, test, type Browser, type Locator, type Page } from '@playwright/test';
+import { PNG } from 'pngjs';
 
 import { runAxe } from '../src/helpers/axe.ts';
 import { PLAYGROUND_URL } from '../src/helpers/playground-url.ts';
@@ -1110,7 +1111,155 @@ test.describe('chat harness — accessibility', () => {
 test.describe('chat harness — history prepend stress (#1237)', () => {
   const STRESS = '#example-mount-history-prepend-stress';
 
-  test('adapter prepends at scrollTop=0 hold the anchor on every rendered frame', async ({
+  test('adapter prepend never presents an uncompensated anchor to the compositor', async ({
+    browser,
+  }) => {
+    test.setTimeout(120_000);
+    const context = await browser.newContext({
+      baseURL: PLAYGROUND_URL,
+      colorScheme: 'dark',
+      reducedMotion: 'no-preference',
+      viewport: { width: 1280, height: 900 },
+    });
+    const page = await context.newPage();
+    const session = await context.newCDPSession(page);
+    let screencastStarted = false;
+    try {
+      await page.goto('/page/chat?snapshot=1', { waitUntil: 'load' });
+      const mount = page.locator(STRESS);
+      await mount.waitFor({ state: 'visible', timeout: 20_000 });
+      await mount.scrollIntoViewIfNeeded();
+      const timeline = mount.locator('.chat-timeline');
+
+      await mount.locator('[data-testid="stress-scroll-top"]').click();
+      await expect.poll(async () => timeline.evaluate((element) => element.scrollTop)).toBe(0);
+      await page.waitForTimeout(400);
+
+      const anchorMarkerObserver = await timeline.evaluateHandle((element) => {
+        const markAnchor = () => {
+          const anchor = Array.from(element.querySelectorAll('.chat-message-body')).find(
+            (candidate) => candidate.textContent?.trimStart().startsWith('Live message 1 —'),
+          );
+          anchor?.setAttribute('data-cinder-paint-anchor', '');
+        };
+        markAnchor();
+        const observer = new MutationObserver(markAnchor);
+        observer.observe(element, { childList: true, subtree: true });
+        return observer;
+      });
+
+      // Paint two high-contrast rulers into the real surface: cyan at the
+      // timeline's top edge and magenta across the retained message. CDP's
+      // screencast event is emitted from compositor presentations, so unlike
+      // a DOM read inside requestAnimationFrame this observes what Chromium
+      // actually displayed.
+      await page.addStyleTag({
+        content: `
+          .chat-timeline { box-shadow: inset 0 5px 0 rgb(0 255 255) !important; }
+          [data-cinder-paint-anchor] {
+            background: rgb(255 0 255) !important;
+            border-color: rgb(255 0 255) !important;
+            color: rgb(255 0 255) !important;
+          }
+        `,
+      });
+
+      const measureFrame = (data: Buffer): number | null => {
+        const image = PNG.sync.read(data);
+        let timelineTop = -1;
+        let anchorTop = -1;
+
+        for (let y = 0; y < image.height; y += 1) {
+          let cyanPixels = 0;
+          let magentaPixels = 0;
+          for (let x = 0; x < image.width; x += 1) {
+            const pixel = (y * image.width + x) * 4;
+            const red = image.data[pixel] ?? 0;
+            const green = image.data[pixel + 1] ?? 0;
+            const blue = image.data[pixel + 2] ?? 0;
+            if (timelineTop < 0 && red < 30 && green > 225 && blue > 225) {
+              cyanPixels += 1;
+              if (cyanPixels > 100) timelineTop = y;
+            }
+            if (anchorTop < 0 && red > 225 && green < 30 && blue > 225) {
+              magentaPixels += 1;
+              if (magentaPixels > 100) anchorTop = y;
+            }
+            if (timelineTop >= 0 && anchorTop >= 0) break;
+          }
+          if (timelineTop >= 0 && anchorTop >= 0) break;
+        }
+
+        return timelineTop >= 0 && anchorTop >= 0 ? anchorTop - timelineTop : null;
+      };
+      const baseline = measureFrame(await page.screenshot());
+      expect(baseline).not.toBeNull();
+
+      const samples: Array<number | null> = [];
+      let imageProcessing = Promise.resolve();
+      const handleScreencastFrame = (event: { data: string; sessionId: number }) => {
+        void session.send('Page.screencastFrameAck', { sessionId: event.sessionId }).catch(() => {
+          // A final frame can race Page.stopScreencast during test cleanup.
+        });
+        imageProcessing = imageProcessing.then(() => {
+          samples.push(measureFrame(Buffer.from(event.data, 'base64')));
+        });
+      };
+      session.on('Page.screencastFrame', handleScreencastFrame);
+      await session.send('Page.startScreencast', {
+        everyNthFrame: 1,
+        format: 'png',
+        maxHeight: 900,
+        maxWidth: 1280,
+      });
+      screencastStarted = true;
+
+      const paintProbe = await page.evaluateHandle(() => {
+        const probe = document.createElement('div');
+        probe.style.cssText =
+          'position:fixed;left:0;top:0;width:50px;height:50px;z-index:2147483647;pointer-events:none';
+        document.body.append(probe);
+        let frame = 0;
+        return setInterval(() => {
+          probe.style.background = frame++ % 2 === 0 ? 'black' : 'white';
+        }, 16);
+      });
+      try {
+        await timeline
+          .getByRole('button', { name: /load earlier messages/i })
+          .dispatchEvent('click');
+        await expect(mount.locator('[data-testid="stress-message-count"]')).toHaveText(
+          'messages: 64',
+        );
+        await page.waitForTimeout(500);
+        await session.send('Page.stopScreencast');
+        screencastStarted = false;
+        session.off('Page.screencastFrame', handleScreencastFrame);
+        await imageProcessing;
+
+        expect(samples.length).toBeGreaterThan(2);
+        for (const sample of samples) {
+          expect(sample).not.toBeNull();
+          expect(Math.abs((sample ?? 0) - (baseline ?? 0))).toBeLessThanOrEqual(2);
+        }
+      } finally {
+        await page.evaluate((interval) => clearInterval(interval), paintProbe);
+        await paintProbe.dispose();
+        await anchorMarkerObserver.evaluate((observer) => observer.disconnect());
+        await anchorMarkerObserver.dispose();
+        if (screencastStarted) {
+          await session.send('Page.stopScreencast');
+          screencastStarted = false;
+        }
+        session.off('Page.screencastFrame', handleScreencastFrame);
+      }
+    } finally {
+      if (screencastStarted) await session.send('Page.stopScreencast');
+      await context.close();
+    }
+  });
+
+  test('adapter prepends at scrollTop=0 hold the anchor at every animation-frame checkpoint', async ({
     browser,
   }) => {
     test.setTimeout(120_000);
