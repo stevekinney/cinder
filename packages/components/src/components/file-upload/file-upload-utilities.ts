@@ -53,6 +53,31 @@ export const INTERACTIVE_DESCENDANT_SELECTOR = [
   '[tabindex]',
 ].join(', ');
 
+export function installFileUploadSurfaceActivation(
+  node: HTMLElement,
+  isDisabled: () => boolean,
+  openPicker: () => void,
+) {
+  function handleClick(event: MouseEvent) {
+    if (isDisabled()) return;
+    const ElementConstructor = node.ownerDocument.defaultView?.Element;
+    const target = event.target;
+    const interactiveDescendant =
+      ElementConstructor && target instanceof ElementConstructor
+        ? target.closest(INTERACTIVE_DESCENDANT_SELECTOR)
+        : null;
+    if (
+      interactiveDescendant &&
+      interactiveDescendant !== node &&
+      node.contains(interactiveDescendant)
+    )
+      return;
+    openPicker();
+  }
+  node.addEventListener('click', handleClick);
+  return { destroy: () => node.removeEventListener('click', handleClick) };
+}
+
 export function dataTransferHasFiles(dataTransfer: DataTransfer | null | undefined): boolean {
   const fileTypes = dataTransfer?.types;
   return fileTypes ? Array.from(fileTypes).includes('Files') : false;

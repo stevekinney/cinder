@@ -25,6 +25,10 @@
     currentControlledFiles = nextControlledFiles;
     formElement?.reset();
   }
+
+  function releaseControl() {
+    currentControlledFiles = undefined;
+  }
 </script>
 
 {#snippet fileList(
@@ -67,4 +71,7 @@
       Update files and reset
     </button>
   {/if}
+  <button type="button" data-testid="release-control" onclick={releaseControl}
+    >Release control</button
+  >
 </form>

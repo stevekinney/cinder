@@ -38,7 +38,7 @@
     fileUploadLimit,
     formatAcceptDescription,
     installFilePickerReturnFallback,
-    INTERACTIVE_DESCENDANT_SELECTOR,
+    installFileUploadSurfaceActivation,
     synchronizeNativeFileInput,
   } from './file-upload-utilities.ts';
   import type { FileUploadEntry, FileUploadProps, RejectedFile } from './file-upload.types.ts';
@@ -100,11 +100,23 @@
   let internalEntries = $state<FileUploadEntry[]>([]);
   let internalEntryCounter = $state(0);
   let cancelPickerReturnFallback = () => {};
+  let pendingRemovalAnnouncement = $state<{ id: string; name: string }>();
 
   onDestroy(() => cancelPickerReturnFallback());
   const isDragActive = $derived(dragDepth > 0);
   const renderedEntries = $derived(files ?? internalEntries);
   const resolvedDescription = $derived(description ?? formatAcceptDescription(accept));
+
+  $effect(() => {
+    const pending = pendingRemovalAnnouncement;
+    if (!pending) return;
+    if (files === undefined) {
+      pendingRemovalAnnouncement = undefined;
+    } else if (!files.some((entry) => entry.id === pending.id)) {
+      announcer.announce(`${pending.name} removed`);
+      pendingRemovalAnnouncement = undefined;
+    }
+  });
 
   function synchronizeNativeInputFiles(entries: FileUploadEntry[] = renderedEntries) {
     synchronizeNativeFileInput(inputElement, entries, multiple, maxFiles);
@@ -121,7 +133,7 @@
       fileUploadLimit(multiple, maxFiles),
     );
     if (nextEntries.length === internalEntries.length) return;
-    internalEntries = nextEntries;
+    if (files === undefined) internalEntries = nextEntries;
     synchronizeNativeInputFiles(nextEntries);
     onFilesChange?.(nextEntries);
   });
@@ -264,7 +276,7 @@
     const { accepted, rejected } = validateFiles(sourceFiles);
     const entries = createEntries(accepted, rejected);
     const nextEntries = multiple ? [...renderedEntries, ...entries] : entries;
-    internalEntries = nextEntries;
+    if (files === undefined) internalEntries = nextEntries;
     synchronizeNativeInputFiles(files !== undefined && accepted.length === 0 ? files : nextEntries);
     if (accepted.length > 0) onFilesAccepted?.(accepted);
     onFilesChange?.(nextEntries);
@@ -323,29 +335,7 @@
   }
 
   function surfaceActivation(node: HTMLElement) {
-    function handleClick(event: MouseEvent) {
-      if (field.disabled) return;
-      const target = event.target;
-      const ElementConstructor = node.ownerDocument.defaultView?.Element;
-      const interactiveDescendant =
-        ElementConstructor && target instanceof ElementConstructor
-          ? target.closest(INTERACTIVE_DESCENDANT_SELECTOR)
-          : null;
-      if (
-        interactiveDescendant &&
-        interactiveDescendant !== node &&
-        node.contains(interactiveDescendant)
-      )
-        return;
-      openPicker();
-    }
-
-    node.addEventListener('click', handleClick);
-    return {
-      destroy() {
-        node.removeEventListener('click', handleClick);
-      },
-    };
+    return installFileUploadSurfaceActivation(node, () => field.disabled, openPicker);
   }
 
   function clearInputValue() {
@@ -379,12 +369,10 @@
       announcer.announce(`${entry.file.name} removed`);
       return;
     }
+    pendingRemovalAnnouncement = { id: entry.id, name: entry.file.name };
     queueMicrotask(async () => {
       await tick();
       synchronizeNativeInputFiles();
-      if (!files?.some((candidate) => candidate.id === entry.id)) {
-        announcer.announce(`${entry.file.name} removed`);
-      }
     });
   }
 </script>
@@ -417,7 +405,9 @@
 {#snippet defaultDragActive()}
   <div class="cinder-file-upload__body">
     <p class="cinder-file-upload__title">{draggingLabel}</p>
-    <p class="cinder-file-upload__hint">Release now to validate and queue the selected files.</p>
+    <p id={field.ownDescriptionId} class="cinder-file-upload__hint">
+      Release now to validate and queue the selected files.
+    </p>
   </div>
 {/snippet}
 
@@ -485,7 +475,7 @@
       renderedEntries,
       files === undefined || onFilesChange !== undefined ? removeEntry : undefined,
     )}
-  {:else if renderedEntries.length > 0}
+  {:else}
     <FileUploadList
       entries={renderedEntries}
       disabled={field.disabled}

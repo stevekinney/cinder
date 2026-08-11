@@ -514,6 +514,23 @@ describe('FileUpload validation and events', () => {
     expect(Array.from(input.files ?? [])).toEqual([existingFile]);
   });
 
+  test('a declined controlled proposal is not retained when control is released', async () => {
+    const existingFile = createFile('existing.txt', 'text/plain', 10);
+    const selectedFile = createFile('selected.txt', 'text/plain', 10);
+    const entry = { id: 'existing', file: existingFile, status: 'success' as const };
+    const result = render(FileUploadFormFixture, {
+      props: { controlledFiles: [entry], onFilesChange: () => {} },
+    });
+    const input = result.container.querySelector('#upload') as HTMLInputElement;
+
+    attachInputFiles(input, [selectedFile]);
+    await fireEvent.change(input);
+    await fireEvent.click(result.container.querySelector('[data-testid="release-control"]')!);
+
+    expect(result.container.querySelectorAll('.cinder-file-upload__row')).toHaveLength(0);
+    expect(Array.from(input.files ?? [])).toEqual([]);
+  });
+
   test('canceling a reopened picker restores the accumulated native file queue', async () => {
     const firstFile = createFile('first.txt', 'text/plain', 10);
     const oncancel = mock((_event) => {});
@@ -1008,6 +1025,37 @@ describe('FileUpload validation and events', () => {
     expect(document.activeElement).toBe(
       result.container.querySelector('.cinder-file-upload__remove'),
     );
+    expect(result.container.querySelector('[aria-live="polite"]')?.textContent).toContain(
+      'first.txt removed',
+    );
+  });
+
+  test('an asynchronously removed last controlled row focuses browse', async () => {
+    const entry = {
+      id: 'only',
+      file: createFile('only.txt', 'text/plain', 10),
+      status: 'success' as const,
+    };
+    let rerender: ReturnType<typeof render>['rerender'];
+    const onFilesChange = mock(() => {
+      setTimeout(() => void rerender({ id: 'upload', files: [], onFilesChange }));
+    });
+    const result = render(FileUpload, {
+      props: { id: 'upload', files: [entry], onFilesChange },
+    });
+    rerender = result.rerender;
+    const removeButton = result.container.querySelector(
+      '.cinder-file-upload__remove',
+    ) as HTMLButtonElement;
+    removeButton.focus();
+
+    await fireEvent.click(removeButton);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(document.activeElement).toBe(
+      result.container.querySelector('.cinder-file-upload__button'),
+    );
   });
 
   test('an adopted controlled removal announces after the row is removed', async () => {
@@ -1175,6 +1223,8 @@ describe('FileUpload drag state and accessibility', () => {
     expect(container.querySelector('.cinder-file-upload__title')?.textContent).toBe(
       'Release the documents',
     );
+    const descriptionId = container.querySelector('#upload')?.getAttribute('aria-describedby');
+    expect(container.querySelector(`#${descriptionId}`)).not.toBeNull();
     await fireEvent(dropzone, createDropEvent('dragleave', []));
     expect(dropzone.hasAttribute('data-drag-active')).toBe(false);
   });
