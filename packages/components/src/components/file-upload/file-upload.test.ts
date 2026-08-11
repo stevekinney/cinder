@@ -615,6 +615,29 @@ describe('FileUpload validation and events', () => {
     expect(document.activeElement).toBe(browseButton);
   });
 
+  test('removal callbacks observe the synchronized native file queue', async () => {
+    const firstFile = createFile('first.txt', 'text/plain', 10);
+    const secondFile = createFile('second.txt', 'text/plain', 10);
+    let input: HTMLInputElement;
+    const nativeFilesDuringChange: File[][] = [];
+    const onFilesChange = mock(() => {
+      nativeFilesDuringChange.push(Array.from(input.files ?? []));
+    });
+    const { container } = render(FileUpload, {
+      props: { id: 'upload', multiple: true, onFilesChange },
+    });
+    input = container.querySelector('#upload') as HTMLInputElement;
+
+    attachInputFiles(input, [firstFile, secondFile]);
+    await fireEvent.change(input);
+    const firstRemoveButton = container.querySelector(
+      '.cinder-file-upload__remove',
+    ) as HTMLButtonElement;
+    await fireEvent.click(firstRemoveButton);
+
+    expect(nativeFilesDuringChange.at(-1)).toEqual([secondFile]);
+  });
+
   test('form reset clears the uncontrolled queue and synchronized native files', async () => {
     const file = createFile('report.txt', 'text/plain', 10);
     const replacementFile = createFile('replacement.txt', 'text/plain', 10);

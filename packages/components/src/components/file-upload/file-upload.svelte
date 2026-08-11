@@ -167,6 +167,7 @@
       queueMicrotask(() => {
         if (event.defaultPrevented || files !== undefined) return;
         internalEntries = [];
+        synchronizeNativeInputFiles([]);
         onFilesChange?.([]);
       });
     }
@@ -373,6 +374,7 @@
     if (field.disabled) return;
     const nextEntries = renderedEntries.filter((candidate) => candidate.id !== entry.id);
     if (files === undefined) internalEntries = nextEntries;
+    synchronizeNativeInputFiles(files ?? nextEntries);
     onFilesChange?.(nextEntries);
     announcer.announce(`${entry.file.name} removed`);
   }
