@@ -352,7 +352,7 @@ describe('buildPublishedManifest', () => {
     expect(exportTargets).not.toContain('dist/server/components/button/index.d.ts');
   });
 
-  it('preserves component condition order so Node SSR wins over browser/svelte builds', () => {
+  it('preserves component condition order so Svelte-aware SSR uses source before plain Node', () => {
     const manifest: SourceManifest = {
       name: '@lostgradient/cinder',
       version: '0.0.0',
@@ -379,15 +379,15 @@ describe('buildPublishedManifest', () => {
     expect(Object.keys(published.exports['.']!)).toEqual([
       'types',
       'browser',
-      'node',
       'svelte',
+      'node',
       'default',
     ]);
     expect(Object.keys(published.exports['./button']!)).toEqual([
       'types',
       'browser',
-      'node',
       'svelte',
+      'node',
       'default',
     ]);
   });

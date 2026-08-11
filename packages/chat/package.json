@@ -29,8 +29,8 @@
     ".": {
       "types": "./dist/index.d.ts",
       "browser": "./src/lib/index.ts",
-      "node": "./dist/server/index.js",
       "svelte": "./src/lib/index.ts",
+      "node": "./dist/server/index.js",
       "import": "./src/lib/index.ts",
       "default": "./dist/index.js"
     },
@@ -58,8 +58,8 @@
     "./composer-popover": {
       "types": "./dist/components/chat-composer-popover/index.d.ts",
       "browser": "./src/lib/components/chat-composer-popover/index.ts",
-      "node": "./dist/server/components/chat-composer-popover/index.js",
       "svelte": "./src/lib/components/chat-composer-popover/index.ts",
+      "node": "./dist/server/components/chat-composer-popover/index.js",
       "import": "./src/lib/components/chat-composer-popover/index.ts",
       "default": "./dist/components/chat-composer-popover/index.js"
     },
@@ -85,8 +85,8 @@
     "./conversation-header": {
       "types": "./dist/components/chat-conversation-header/index.d.ts",
       "browser": "./src/lib/components/chat-conversation-header/index.ts",
-      "node": "./dist/server/components/chat-conversation-header/index.js",
       "svelte": "./src/lib/components/chat-conversation-header/index.ts",
+      "node": "./dist/server/components/chat-conversation-header/index.js",
       "import": "./src/lib/components/chat-conversation-header/index.ts",
       "default": "./dist/components/chat-conversation-header/index.js"
     },
@@ -112,8 +112,8 @@
     "./conversation-list": {
       "types": "./dist/components/chat-conversation-list/index.d.ts",
       "browser": "./src/lib/components/chat-conversation-list/index.ts",
-      "node": "./dist/server/components/chat-conversation-list/index.js",
       "svelte": "./src/lib/components/chat-conversation-list/index.ts",
+      "node": "./dist/server/components/chat-conversation-list/index.js",
       "import": "./src/lib/components/chat-conversation-list/index.ts",
       "default": "./dist/components/chat-conversation-list/index.js"
     },

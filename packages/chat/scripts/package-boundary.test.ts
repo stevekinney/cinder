@@ -135,8 +135,8 @@ describe('Chat package ownership boundary', () => {
     expect(cinderManifest.exports['./icons']).toEqual({
       types: './dist/components/icons/index.d.ts',
       browser: './src/components/icons/index.ts',
-      node: './dist/server/components/icons/index.js',
       svelte: './src/components/icons/index.ts',
+      node: './dist/server/components/icons/index.js',
       import: './src/components/icons/index.ts',
       default: './dist/components/icons/index.js',
     });
@@ -174,8 +174,8 @@ describe('Chat package ownership boundary', () => {
     expect(exportKeys(published.exports['.'])).toEqual([
       'types',
       'browser',
-      'node',
       'svelte',
+      'node',
       'import',
       'default',
     ]);
@@ -190,8 +190,8 @@ describe('Chat package ownership boundary', () => {
     expect(exportKeys(published.exports['./composer-popover'])).toEqual([
       'types',
       'browser',
-      'node',
       'svelte',
+      'node',
       'import',
       'default',
     ]);

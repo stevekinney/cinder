@@ -1,14 +1,21 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
+
   import '../../app.css';
   import Chat, { createConversation, type ConversationHistory } from '@lostgradient/chat';
 
   let conversation = $state<ConversationHistory>(
     createConversation({ id: 'consumer-chat-layout' }),
   );
+  let hydrated = $state(false);
+
+  onMount(() => {
+    hydrated = true;
+  });
 </script>
 
 <h1>Empty Chat hydration</h1>
-<main class="chat-layout-fixture">
+<main class="chat-layout-fixture" data-chat-layout-hydrated={hydrated}>
   <Chat id="consumer-chat-layout" {conversation} />
 </main>
 

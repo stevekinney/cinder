@@ -94,6 +94,39 @@ function serverCompilePlugin(): BunPlugin {
 }
 
 /**
+ * Cache immutable server bundle source by component entrypoint. Rebuilding the
+ * same Cinder source graph repeatedly in one Bun process can corrupt Bun's
+ * path-keyed module cache after the first build (`EISDIR`/`Unseekable reading
+ * file`). A real application compiles that graph once, and every test still
+ * gets its own imported module and runtime shim below.
+ */
+const serverBundleSourceByEntrypoint = new Map<string, Promise<string>>();
+
+async function buildServerBundleSource(sourcePath: string): Promise<string> {
+  let bundleSource = serverBundleSourceByEntrypoint.get(sourcePath);
+  if (bundleSource === undefined) {
+    bundleSource = (async () => {
+      const build = await Bun.build({
+        entrypoints: [sourcePath],
+        target: 'bun',
+        conditions: ['svelte'],
+        external: ['svelte', 'svelte/*'],
+        plugins: [serverCompilePlugin()],
+      });
+      if (!build.success) {
+        const logText = build.logs.map((log) => String(log.message ?? log)).join('\n');
+        throw new Error(`hydrate: server build failed for ${sourcePath}\n${logText}`);
+      }
+      const artifact = build.outputs[0];
+      if (!artifact) throw new Error(`hydrate: no server artifact for ${sourcePath}`);
+      return artifact.text();
+    })();
+    serverBundleSourceByEntrypoint.set(sourcePath, bundleSource);
+  }
+  return bundleSource;
+}
+
+/**
  * Every temp SSR module this helper writes is registered here. The per-test
  * `cleanup()` removes its own file and deregisters it; the process-exit handler
  * below is the safety net that synchronously unlinks anything still registered
@@ -194,20 +227,6 @@ export async function renderThenHydrate<Props extends Record<string, unknown>>(
 ): Promise<HydrateResult> {
   setupHappyDom();
 
-  const build = await Bun.build({
-    entrypoints: [sourcePath],
-    target: 'bun',
-    conditions: ['svelte'],
-    external: ['svelte', 'svelte/*'],
-    plugins: [serverCompilePlugin()],
-  });
-  if (!build.success) {
-    const logText = build.logs.map((log) => String(log.message ?? log)).join('\n');
-    throw new Error(`hydrate: server build failed for ${sourcePath}\n${logText}`);
-  }
-  const artifact = build.outputs[0];
-  if (!artifact) throw new Error(`hydrate: no server artifact for ${sourcePath}`);
-
   const sveltePackageUrl = import.meta.resolve('svelte/package.json');
   const serverAbortSignalUrl = new URL('./src/internal/server/abort-signal.js', sveltePackageUrl)
     .href;
@@ -271,7 +290,7 @@ export async function renderThenHydrate<Props extends Record<string, unknown>>(
         '',
       ].join('\n'),
     );
-    let serverCode = await artifact.text();
+    let serverCode = await buildServerBundleSource(sourcePath);
     serverCode = serverCode
       .replaceAll(
         /from\s*['"]svelte\/internal\/server['"]/g,

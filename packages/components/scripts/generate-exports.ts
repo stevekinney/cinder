@@ -2,9 +2,9 @@
  * Generates subpath exports for every directory-shaped component under
  * `src/components/`. Each component contributes up to six subpaths:
  *
- *   ./<name>             → component (types/browser/node/svelte/import/default conditions)
- *   ./<name>/schema      → schema module (types/browser/node/svelte/import/default conditions)
- *   ./<name>/variables   → variables module (types/browser/node/svelte/import/default conditions)
+ *   ./<name>             → component (types/browser/svelte/node/import/default conditions)
+ *   ./<name>/schema      → schema module (types/browser/svelte/node/import/default conditions)
+ *   ./<name>/variables   → variables module (types/browser/svelte/node/import/default conditions)
  *   ./<name>/styles      → layer-wrapped CSS sidecar (`types` + `default`; emitted when the component ships a source <name>.css). Compound parents (tabs/table/accordion/side-navigation) @import their leaves' sidecars so the family arrives together.
  *   ./<name>/examples    → examples JSON (import/default only; emitted when file exists)
  *   ./<name>/constraints → constraints JSON (import/default only; emitted when file exists)
@@ -13,11 +13,14 @@
  *
  * Condition ordering for component subpaths follows TypeScript `nodenext`
  * requirements and SSR safety: `types` MUST be first within any conditional
- * object, followed by `browser` (source for browser/Svelte tooling that also
- * activates Bun's built-in `node` condition), `node` (per-component SSR build),
- * `svelte` (source for Svelte-aware browser tooling), `import` (source for
- * Vite/esbuild dependency optimization that does not activate `browser` or
- * `svelte`), and `default` (per-component browser ESM build) last.
+ * object, followed by `browser` (source for browser tooling), `svelte` (source
+ * for Svelte-aware SSR and browser tooling), `node` (precompiled fallback for
+ * plain Node consumers), `import` (source for Vite/esbuild dependency
+ * optimization that does not activate `browser` or `svelte`), and `default`
+ * (per-component browser ESM build) last. `svelte` must precede `node` because
+ * SvelteKit SSR activates both conditions and conditional exports select the
+ * first match. Choosing the precompiled Node tree on the server while compiling
+ * source in the browser can produce incompatible hydration markers.
  *
  * Additionally, a package-level `./manifest` entry is emitted pointing at
  * `./components.json` with `import`/`default` conditions only (no `svelte` or
@@ -280,8 +283,8 @@ export const FORBIDDEN_EXPORT_KEY_PATTERN =
  *
  *   1. `types`
  *   2. `browser`
- *   3. `node`
- *   4. `svelte`
+ *   3. `svelte`
+ *   4. `node`
  *   5. `import`
  *   6. `default`
  *
@@ -292,8 +295,8 @@ export function orderedExportEntry(entry: ExportEntry): ExportEntry {
   if (entry.types !== undefined) out.types = entry.types;
   if (entry.browser !== undefined) out.browser = entry.browser;
   if (entry.bun !== undefined) out.bun = entry.bun;
-  if (entry.node !== undefined) out.node = entry.node;
   if (entry.svelte !== undefined) out.svelte = entry.svelte;
+  if (entry.node !== undefined) out.node = entry.node;
   if (entry.import !== undefined) out.import = entry.import;
   if (entry.default !== undefined) out.default = entry.default;
   return out;
@@ -450,12 +453,11 @@ export function computeExports(
       : `./dist/server/components/${name}`;
 
     // Component subpath: full conditional shape. `types` first for TypeScript
-    // `nodenext`, `browser` second so browser/Bun source workflows that also
-    // activate `node` still get source, `node` third so Node SSR wins when both
-    // `node` and source conditions are active, `svelte` next so Svelte tooling
-    // still gets source, `import` next so Vite/esbuild optimizeDeps resolves
-    // source before falling through to compiled output, `default` last as the
-    // catch-all for non-source-aware bundlers.
+    // `nodenext`, `browser` second for browser source workflows, `svelte` next
+    // so Svelte-aware SSR and browser builds compile the same source tree,
+    // `node` after it as the precompiled plain-Node fallback, `import` next so
+    // Vite/esbuild optimizeDeps resolves source before falling through to
+    // compiled output, and `default` last for non-source-aware bundlers.
     out[prefix] = orderedExportEntry({
       types: `${distDir}/index.d.ts`,
       browser: `${srcDir}/index.ts`,

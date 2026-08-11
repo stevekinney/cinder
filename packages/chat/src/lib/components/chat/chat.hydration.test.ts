@@ -7,23 +7,18 @@
  * Chat never renders conversation timestamps, so a differing clock cannot
  * produce a mismatch.
  *
- * They do NOT reproduce #756's actual `hydration_mismatch`. The real cause is
- * a `@lostgradient/cinder` build/packaging bug: `lucide-svelte` was a loosely
- * ranged peer dependency, so Cinder's prebuilt SSR bundle (built once, at
- * Cinder's own `lucide-svelte` version) could render different icon SVG
- * markup than a consuming app's client bundle (compiled fresh, at whatever
- * `lucide-svelte` version that app's package manager resolved) whenever
- * Lucide's icon artwork changed between those two versions. This harness
- * compiles both the server and client side from the SAME workspace source
- * against the SAME single `lucide-svelte` install, so it structurally cannot
- * exercise a cross-version divergence — see the packed-tarball,
- * real-SvelteKit-dev-server, real-browser regression in
- * `packages/components/scripts/validate-consumers.ts`
- * (`sveltekit-consumer`'s `/chat-layout` route, which now pins a
- * `lucide-svelte` version in that fixture deliberately newer than Cinder's
- * own, to keep exercising the skew) and the fix itself in
- * `packages/components/package.json` (`lucide-svelte` moved from
- * `peerDependencies` to a pinned, exact-version `dependencies` entry).
+ * They do NOT reproduce #756's packaged-consumer `hydration_mismatch`. One
+ * earlier occurrence came from differing Lucide icon artwork and is guarded by
+ * Cinder's exact `lucide-svelte` dependency. The recurring case was caused by
+ * conditional export order: SvelteKit SSR selected Cinder's precompiled `node`
+ * tree while the browser compiled its `svelte` source tree. Those independently
+ * compiled trees emitted incompatible hydration markers at a nested Chat/Cinder
+ * snippet boundary even though the visible icon markup matched.
+ *
+ * This harness compiles server and client from the SAME workspace source, so it
+ * structurally cannot exercise either packaged-artifact divergence. The durable
+ * regression is the packed-tarball, real-SvelteKit-dev-server, real-browser
+ * `/chat-layout` assertion in `packages/components/scripts/validate-consumers.ts`.
  */
 import { afterAll, describe, expect, test } from 'bun:test';
 
@@ -89,8 +84,7 @@ describe('Chat hydration', () => {
   // harmless: no conversation timestamp reaches the markup, so SSR output
   // cannot vary with the clock. That is asserted rather than assumed, because
   // anything that started rendering one would make the reporter's theory
-  // correct. (The real cause turned out to be elsewhere entirely — an
-  // SSR/client version skew in a prebuilt icon dependency.)
+  // correct. (The packaged-consumer causes turned out to be elsewhere.)
   test('hydrates a default-environment createConversation without a mismatch warning', async () => {
     const conversation = createConversation({ id: 'real-clock-conversation' });
     const result = await renderThenHydrate(Chat, sourcePath, {

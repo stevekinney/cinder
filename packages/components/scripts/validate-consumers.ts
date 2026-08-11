@@ -478,7 +478,7 @@ function assertPackedExportConditionOrder(
     fail(`packed exports["${exportKey}"] must be a conditional export object`);
   }
 
-  const expectedOrder = ['types', 'browser', 'node', 'svelte', 'import', 'default'];
+  const expectedOrder = ['types', 'browser', 'svelte', 'node', 'import', 'default'];
   const actualOrder = Object.keys(entry);
   if (actualOrder.join(',') !== expectedOrder.join(',')) {
     fail(
@@ -1192,16 +1192,91 @@ function formatHtmlExcerpt(body: string): string {
   return body.replace(/\s+/g, ' ').trim().slice(0, 1_000);
 }
 
-function extractCinderSourceMapWarnings(logOutput: string): string[] {
+function extractPublishedPackageSourceMapWarnings(logOutput: string): string[] {
   const warningLines = logOutput
     .split('\n')
     .map((line) => line.trim())
-    .filter((line) => line.includes('@lostgradient/cinder/dist/'))
+    .filter((line) => /@lostgradient\/(?:cinder|chat)\/dist\//u.test(line))
     .filter((line) => /(sourcemap|source map|\.js\.map)/i.test(line))
     .filter((line) =>
       /(missing|not found|can't resolve|could not read|enoent|points to missing)/i.test(line),
     );
   return [...new Set(warningLines)];
+}
+
+async function assertSvelteKitDevChatHydrationRoute(
+  fixtureDirectory: string,
+  label: string,
+): Promise<void> {
+  const httpPort = await pickEphemeralPort();
+  let hydrationAssertionsPassed = false;
+  const devServer = Bun.spawn(
+    [
+      'bunx',
+      'vite',
+      'dev',
+      '--force',
+      '--host',
+      '127.0.0.1',
+      '--port',
+      String(httpPort),
+      '--strictPort',
+    ],
+    {
+      cwd: fixtureDirectory,
+      stdout: 'pipe',
+      stderr: 'pipe',
+      env: {
+        ...Bun.env,
+        CINDER_CHAT_DEV_HYDRATION: '1',
+        TZ: 'UTC',
+        LANG: 'en_US.UTF-8',
+      },
+    },
+  );
+  const devServerStdout = devServer.stdout
+    ? new Response(devServer.stdout).text()
+    : Promise.resolve('');
+  const devServerStderr = devServer.stderr
+    ? new Response(devServer.stderr).text()
+    : Promise.resolve('');
+
+  try {
+    const routeUrl = `http://127.0.0.1:${httpPort}/chat-layout`;
+    await waitForReadyHtml({
+      url: routeUrl,
+      timeoutMs: SVELTEKIT_DEV_SSR_READINESS_TIMEOUT_MS,
+      pollIntervalMs: SVELTEKIT_DEV_SSR_POLL_INTERVAL_MS,
+      runningServer: devServer,
+      isReady: (html) => html.includes('Empty Chat hydration') && html.includes('No messages yet'),
+    }).catch((error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      fail(`sveltekit-consumer ${label} /chat-layout dev readiness failed: ${message}`);
+    });
+
+    // This server deliberately uses Vite's default dependency optimizer. The
+    // published Chat regression only exists when dev SSR and the optimized
+    // browser graph resolve different package export conditions; the broad
+    // /dev-ssr fixture above disables discovery to keep its hundreds of source
+    // transforms deterministic, so it cannot own this assertion.
+    await assertSvelteKitClientRoutesHydrate(httpPort, `${label} dev`, ['/chat-layout']);
+    hydrationAssertionsPassed = true;
+  } finally {
+    devServer.kill();
+    await devServer.exited;
+    const devServerOutput = `${await devServerStdout}\n${await devServerStderr}`;
+    const sourceMapWarnings = extractPublishedPackageSourceMapWarnings(devServerOutput);
+    if (sourceMapWarnings.length > 0) {
+      const warningMessage =
+        `sveltekit-consumer ${label} dev hydration emitted source-map warnings for published package artifacts:\n` +
+        sourceMapWarnings.map((warning) => `  ${warning}`).join('\n');
+      if (!hydrationAssertionsPassed) {
+        process.stderr.write(`[validate-consumers] ${warningMessage}\n`);
+      } else {
+        fail(warningMessage);
+      }
+    }
+  }
 }
 
 async function assertSvelteKitDevSsrRoute(fixtureDirectory: string, label: string): Promise<void> {
@@ -1247,32 +1322,32 @@ async function assertSvelteKitDevSsrRoute(fixtureDirectory: string, label: strin
       );
     }
 
-    // Deliberately NO client-hydration assertion here. This phase owns dev-mode
-    // SSR only — that transform-on-request HTML renders — which the marker check
-    // above proves deterministically.
+    // Deliberately NO client-hydration assertion for the broad /dev-ssr route.
+    // This phase owns only its transform-on-request SSR HTML; the focused
+    // /chat-layout helper above owns dev-mode browser hydration against the
+    // default dependency optimizer.
     //
-    // Client hydration MUST NOT be asserted against a `vite dev` server. The
-    // fixture sets `optimizeDeps: { noDiscovery: true, holdUntilCrawlEnd: false }`,
-    // so /dev-ssr's nine cinder subpath imports are served as unbundled ESM
-    // through Vite's transform-on-request pipeline. On a cold CI runner that is
-    // a request waterfall of hundreds of sequential module transforms, and any
-    // on-request dep discovery triggers a full page reload that resets the
-    // route's `hydrated` $effect mid-wait. Either mechanism outruns a bounded
-    // wait; both produced 22 red `main` runs between 2026-07-24 and 2026-08-05
-    // against ~100 passes on unchanged code, including a docs-only commit.
+    // Broad /dev-ssr client hydration MUST NOT be asserted against this `vite
+    // dev` server. The fixture sets `optimizeDeps: { noDiscovery: true,
+    // holdUntilCrawlEnd: false }`, so /dev-ssr's nine Cinder subpath imports are
+    // served as unbundled ESM through Vite's transform-on-request pipeline. On a
+    // cold CI runner that is a request waterfall of hundreds of sequential
+    // module transforms, and any on-request dependency discovery triggers a full
+    // page reload that resets the route's `hydrated` effect mid-wait. Either
+    // mechanism outruns a bounded wait; both produced 22 red `main` runs between
+    // 2026-07-24 and 2026-08-05 against ~100 passes on unchanged code, including
+    // a docs-only commit.
     //
-    // The client JS is identical under dev and prod, so this costs no coverage:
     // /dev-ssr's hydration — including the ConfirmDialog interaction and focus
-    // restoration — is asserted against the prebuilt adapter-node server in
-    // `runSveltekitFixture`, where dependencies are bundled at build time and
-    // the race cannot exist. Raising the timeout here would mask the waterfall,
-    // not fix it.
+    // restoration — remains asserted against the prebuilt adapter-node server
+    // in `runSveltekitFixture`, where the transform waterfall cannot exist.
+    // Raising the timeout here would mask the waterfall, not fix it.
     devSsrAssertionsPassed = true;
   } finally {
     devServer.kill();
     await devServer.exited;
     const devServerOutput = `${await devServerStdout}\n${await devServerStderr}`;
-    const sourceMapWarnings = extractCinderSourceMapWarnings(devServerOutput);
+    const sourceMapWarnings = extractPublishedPackageSourceMapWarnings(devServerOutput);
     if (sourceMapWarnings.length > 0) {
       const warningMessage =
         `sveltekit-consumer ${label} dev SSR emitted source-map warnings for published cinder dist artifacts:\n` +
@@ -1361,6 +1436,7 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
     process.stdout.write(`[validate-consumers] sveltekit-consumer ${label}: types checked.\n`);
 
     await assertSvelteKitDevSsrRoute(fixtureDirectory, label);
+    await assertSvelteKitDevChatHydrationRoute(fixtureDirectory, label);
 
     process.stdout.write(`[validate-consumers] sveltekit-consumer ${label}: building…\n`);
     const viteBuildResult = await runHookCommand('bun', ['x', 'vite', 'build'], {
@@ -2144,6 +2220,7 @@ async function assertSvelteKitHydrationRouteContent(
   }
 
   if (routePath === '/chat-layout') {
+    await page.locator('[data-chat-layout-hydrated="true"]').waitFor({ timeout: 5_000 });
     await page.getByRole('heading', { name: 'Empty Chat hydration' }).waitFor({ timeout: 5_000 });
     await page.getByText('No messages yet').waitFor({ timeout: 5_000 });
     await page.getByRole('textbox', { name: 'Message' }).waitFor({ timeout: 5_000 });
@@ -2317,33 +2394,47 @@ function hasDeclaration(
   );
 }
 
-function verifyNodeSsrConditionPrecedence(fixtureDirectory: string): void {
+function verifyNodeExportConditionPrecedence(fixtureDirectory: string): void {
   const script = [
     "const root = import.meta.resolve('@lostgradient/cinder');",
     "const button = import.meta.resolve('@lostgradient/cinder/button');",
     'console.log(JSON.stringify({ root, button }));',
   ].join('\n');
-  const result = Bun.spawnSync(
-    [nodeBinaryPath, '--conditions=svelte', '--input-type=module', '-e', script],
+  const probes = [
     {
+      label: 'plain Node',
+      arguments: [nodeBinaryPath, '--input-type=module', '-e', script],
+      expectedRoot: '/dist/server/index.js',
+      expectedButton: '/dist/server/components/button/index.js',
+    },
+    {
+      label: 'Svelte-aware Node',
+      arguments: [nodeBinaryPath, '--conditions=svelte', '--input-type=module', '-e', script],
+      expectedRoot: '/src/index.ts',
+      expectedButton: '/src/components/button/index.ts',
+    },
+  ];
+
+  for (const probe of probes) {
+    const result = Bun.spawnSync(probe.arguments, {
       cwd: fixtureDirectory,
       env: { ...Bun.env, TZ: 'UTC', LANG: 'en_US.UTF-8' },
-    },
-  );
-  if (result.exitCode !== 0) {
-    fail(
-      `node --conditions=svelte resolver probe exited ${result.exitCode}\n` +
-        `stdout: ${result.stdout.toString()}\n` +
-        `stderr: ${result.stderr.toString()}`,
-    );
-  }
+    });
+    if (result.exitCode !== 0) {
+      fail(
+        `${probe.label} resolver probe exited ${result.exitCode}\n` +
+          `stdout: ${result.stdout.toString()}\n` +
+          `stderr: ${result.stderr.toString()}`,
+      );
+    }
 
-  const resolved = parseJsonFile<{ root: string; button: string }>(result.stdout.toString());
-  if (!resolved.root.includes('/dist/server/index.js')) {
-    fail(`node --conditions=svelte resolved @lostgradient/cinder to ${resolved.root}`);
-  }
-  if (!resolved.button.includes('/dist/server/components/button/index.js')) {
-    fail(`node --conditions=svelte resolved @lostgradient/cinder/button to ${resolved.button}`);
+    const resolved = parseJsonFile<{ root: string; button: string }>(result.stdout.toString());
+    if (!resolved.root.includes(probe.expectedRoot)) {
+      fail(`${probe.label} resolved @lostgradient/cinder to ${resolved.root}`);
+    }
+    if (!resolved.button.includes(probe.expectedButton)) {
+      fail(`${probe.label} resolved @lostgradient/cinder/button to ${resolved.button}`);
+    }
   }
 }
 
@@ -2495,7 +2586,7 @@ async function runManifestConsumerFixture(): Promise<void> {
       );
     }
 
-    verifyNodeSsrConditionPrecedence(fixtureDirectory);
+    verifyNodeExportConditionPrecedence(fixtureDirectory);
 
     const checkResult = Bun.spawnSync([nodeBinaryPath, 'check.mjs'], {
       cwd: fixtureDirectory,
