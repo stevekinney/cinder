@@ -308,7 +308,7 @@ export const CONTRACT: Record<string, ComponentContract> = {
       onFilesAccepted: { optional: true, type_kind: 'TSFunctionType', default: NO_DEFAULT },
       onFilesChange: { optional: true, type_kind: 'TSFunctionType', default: NO_DEFAULT },
       onReject: { optional: true, type_kind: 'TSFunctionType', default: NO_DEFAULT },
-      onRetry: { optional: true, type_kind: 'TSFunctionType', default: NO_DEFAULT },
+      onFileRetry: { optional: true, type_kind: 'TSFunctionType', default: NO_DEFAULT },
     },
     snippets: {
       idle: s0(true),

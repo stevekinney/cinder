@@ -12,7 +12,7 @@
     resolvedId,
     disabled,
     removable,
-    onRetry,
+    onFileRetry,
     onRemove,
     onQueueEmptyFocus,
   }: {
@@ -20,7 +20,7 @@
     resolvedId: string;
     disabled: boolean;
     removable: boolean;
-    onRetry: ((entry: FileUploadEntry) => void) | undefined;
+    onFileRetry: ((entry: FileUploadEntry) => void) | undefined;
     onRemove: (entry: FileUploadEntry) => void;
     onQueueEmptyFocus: () => void;
   } = $props();
@@ -44,7 +44,7 @@
   }
 
   async function handleRetry(entry: FileUploadEntry, retryButton: HTMLButtonElement) {
-    onRetry?.(entry);
+    onFileRetry?.(entry);
     await tick();
     if (!retryButton.isConnected) onQueueEmptyFocus();
   }
@@ -139,12 +139,12 @@
         </div>
       {/if}
 
-      {#if entry.error || (entry.status === 'error' && entry.rejectionReason === undefined && onRetry)}
+      {#if entry.error || (entry.status === 'error' && entry.rejectionReason === undefined && onFileRetry)}
         <div class="cinder-file-upload__error-row">
           {#if entry.error}
             <p id={errorId} class="cinder-file-upload__error">{entry.error}</p>
           {/if}
-          {#if entry.status === 'error' && entry.rejectionReason === undefined && onRetry}
+          {#if entry.status === 'error' && entry.rejectionReason === undefined && onFileRetry}
             <button
               type="button"
               class="cinder-file-upload__retry"

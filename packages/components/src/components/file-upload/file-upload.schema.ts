@@ -86,6 +86,11 @@ const schema = {
         description: 'Replaces the default resting-state dropzone body.',
       },
       {
+        name: 'onFileRetry',
+        reason: 'function-or-snippet',
+        description: 'Called when the retry button is activated for a failed file.',
+      },
+      {
         name: 'onFilesAccepted',
         reason: 'function-or-snippet',
         description: 'Fires with accepted files after local validation passes.',
@@ -99,11 +104,6 @@ const schema = {
         name: 'onReject',
         reason: 'function-or-snippet',
         description: 'Fires with rejected files and reasons after local validation runs.',
-      },
-      {
-        name: 'onRetry',
-        reason: 'function-or-snippet',
-        description: 'Called when the retry button is activated for a failed file.',
       },
     ],
   },

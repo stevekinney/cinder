@@ -57,7 +57,7 @@ an empty list through `onFilesChange`.
 
 Pass the controlled `files` prop to show your uploader's current `pending`,
 `uploading`, `success`, or `error` state. Set `progress` from 0–100 while an
-entry uploads. When you provide `onRetry`, failed rows render a retry button and
+entry uploads. When you provide `onFileRetry`, failed rows render a retry button and
 return the complete entry to your upload queue handler. The component never
 starts, cancels, or retries a network request by itself.
 
@@ -84,10 +84,10 @@ starts, cancels, or retries a network request by itself.
 | `fileList`          | `(opaque)` | no       | —                                 | Replaces the default file-list renderer. Receives the resolved rows. Not expressible in JSON Schema; see the component types for the signature.       |
 | `files`             | `(opaque)` | no       | —                                 | Consumer-driven file rows, including upload progress and error states. Not expressible in JSON Schema; see the component types for the signature.     |
 | `idle`              | `(opaque)` | no       | —                                 | Replaces the default resting-state dropzone body. Not expressible in JSON Schema; see the component types for the signature.                          |
+| `onFileRetry`       | `(opaque)` | no       | —                                 | Called when the retry button is activated for a failed file. Not expressible in JSON Schema; see the component types for the signature.               |
 | `onFilesAccepted`   | `(opaque)` | no       | —                                 | Fires with accepted files after local validation passes. Not expressible in JSON Schema; see the component types for the signature.                   |
 | `onFilesChange`     | `(opaque)` | no       | —                                 | Fires with the full resolved entry list after local validation changes it. Not expressible in JSON Schema; see the component types for the signature. |
 | `onReject`          | `(opaque)` | no       | —                                 | Fires with rejected files and reasons after local validation runs. Not expressible in JSON Schema; see the component types for the signature.         |
-| `onRetry`           | `(opaque)` | no       | —                                 | Called when the retry button is activated for a failed file. Not expressible in JSON Schema; see the component types for the signature.               |
 
 <!-- generated:props:end -->
 

@@ -506,6 +506,27 @@ describe('FileUpload validation and events', () => {
     expect(Array.from(input.files ?? [])).toEqual([firstFile]);
   });
 
+  test('native synchronization respects maxFiles when the controlled limit is lowered', async () => {
+    const firstFile = createFile('first.txt', 'text/plain', 10);
+    const secondFile = createFile('second.txt', 'text/plain', 10);
+    const thirdFile = createFile('third.txt', 'text/plain', 10);
+    const files = [firstFile, secondFile, thirdFile].map((file, index) => ({
+      id: String(index),
+      file,
+      status: 'success' as const,
+    }));
+    const { container, rerender } = render(FileUpload, {
+      props: { id: 'upload', multiple: true, maxFiles: 3, files },
+    });
+    const input = container.querySelector('#upload') as HTMLInputElement;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(Array.from(input.files ?? [])).toEqual([firstFile, secondFile, thirdFile]);
+
+    await rerender({ id: 'upload', multiple: true, maxFiles: 2, files });
+
+    expect(Array.from(input.files ?? [])).toEqual([firstFile, secondFile]);
+  });
+
   test('controlled validation restores the native input from the controlled queue', async () => {
     const existingFile = createFile('existing.png', 'image/png', 10);
     const rejectedFile = createFile('rejected.txt', 'text/plain', 10);
@@ -732,6 +753,57 @@ describe('FileUpload validation and events', () => {
 
     expect(onFilesChange).toHaveBeenLastCalledWith(entriesBeforeReset);
     expect(Array.from(input.files ?? [])).toEqual([file]);
+  });
+
+  test('form reset follows an external form that mounts after the file input', async () => {
+    const file = createFile('report.txt', 'text/plain', 10);
+    const onFilesChange = mock((_entries) => {});
+    const { container } = render(FileUpload, {
+      props: { id: 'upload', form: 'external-upload-form', onFilesChange },
+    });
+    const input = container.querySelector('#upload') as HTMLInputElement;
+    const form = document.createElement('form');
+    form.id = 'external-upload-form';
+    document.body.append(form);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(input.form).toBe(form);
+
+    attachInputFiles(input, [file]);
+    await fireEvent.change(input);
+    await fireEvent(form, new Event('reset', { bubbles: true, cancelable: true }));
+    await Promise.resolve();
+
+    expect(onFilesChange).toHaveBeenLastCalledWith([]);
+    expect(Array.from(input.files ?? [])).toEqual([]);
+  });
+
+  test('form reset follows a changed external form association', async () => {
+    const file = createFile('report.txt', 'text/plain', 10);
+    const onFilesChange = mock((_entries) => {});
+    const firstForm = document.createElement('form');
+    firstForm.id = 'first-upload-form';
+    const secondForm = document.createElement('form');
+    secondForm.id = 'second-upload-form';
+    document.body.append(firstForm, secondForm);
+    const { container, rerender } = render(FileUpload, {
+      props: { id: 'upload', form: 'first-upload-form', onFilesChange },
+    });
+    const input = container.querySelector('#upload') as HTMLInputElement;
+
+    await rerender({ id: 'upload', form: 'second-upload-form', onFilesChange });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(input.form).toBe(secondForm);
+    attachInputFiles(input, [file]);
+    await fireEvent.change(input);
+    const entriesBeforeReset = onFilesChange.mock.calls.at(-1)?.[0];
+
+    await fireEvent(firstForm, new Event('reset', { bubbles: true, cancelable: true }));
+    await Promise.resolve();
+    expect(onFilesChange).toHaveBeenLastCalledWith(entriesBeforeReset);
+
+    await fireEvent(secondForm, new Event('reset', { bubbles: true, cancelable: true }));
+    await Promise.resolve();
+    expect(onFilesChange).toHaveBeenLastCalledWith([]);
   });
 });
 
@@ -963,16 +1035,16 @@ describe('FileUpload file list rendering', () => {
     expect(container.querySelector(`#${describedBy}`)?.textContent).toBe('Upload failed');
   });
 
-  test('error entry offers retry when onRetry is provided', async () => {
+  test('error entry offers retry when onFileRetry is provided', async () => {
     const entry = {
       id: '1',
       file: createFile('broken.zip', 'application/zip', 4096),
       status: 'error' as const,
       error: 'Upload failed',
     };
-    const onRetry = mock((_entry) => {});
+    const onFileRetry = mock((_entry) => {});
     const { container } = render(FileUpload, {
-      props: { id: 'upload', files: [entry], onRetry },
+      props: { id: 'upload', files: [entry], onFileRetry },
     });
     const retryButton = container.querySelector('.cinder-file-upload__retry') as HTMLButtonElement;
 
@@ -980,7 +1052,7 @@ describe('FileUpload file list rendering', () => {
     expect(retryButton.getAttribute('aria-label')).toBe('Retry broken.zip');
     expect(retryButton.getAttribute('aria-describedby')).toBe('upload-1-error');
     await fireEvent.click(retryButton);
-    expect(onRetry).toHaveBeenCalledWith(entry);
+    expect(onFileRetry).toHaveBeenCalledWith(entry);
   });
 
   test('retry moves focus to the browse control when the retry action is removed', async () => {
@@ -991,15 +1063,15 @@ describe('FileUpload file list rendering', () => {
       error: 'Network error',
     };
     let rerender: ReturnType<typeof render>['rerender'];
-    const onRetry = mock(() => {
+    const onFileRetry = mock(() => {
       void rerender({
         id: 'upload',
         files: [{ ...entry, status: 'uploading' }],
-        onRetry,
+        onFileRetry,
       });
     });
     const result = render(FileUpload, {
-      props: { id: 'upload', files: [entry], onRetry },
+      props: { id: 'upload', files: [entry], onFileRetry },
     });
     rerender = result.rerender;
     const retryButton = result.container.querySelector(
@@ -1022,7 +1094,7 @@ describe('FileUpload file list rendering', () => {
         id: 'upload',
         disabled: true,
         files: [{ id: '1', file, status: 'error', error: 'Upload failed' }],
-        onRetry: mock((_entry) => {}),
+        onFileRetry: mock((_entry) => {}),
       },
     });
 
@@ -1046,9 +1118,9 @@ describe('FileUpload file list rendering', () => {
   test('locally rejected entries expose their reason without offering retry', async () => {
     const rejectedFile = createFile('large.txt', 'text/plain', 100);
     const onFilesChange = mock((_entries) => {});
-    const onRetry = mock((_entry) => {});
+    const onFileRetry = mock((_entry) => {});
     const { container } = render(FileUpload, {
-      props: { id: 'upload', maxSize: 10, onFilesChange, onRetry },
+      props: { id: 'upload', maxSize: 10, onFilesChange, onFileRetry },
     });
     const input = container.querySelector('#upload') as HTMLInputElement;
 

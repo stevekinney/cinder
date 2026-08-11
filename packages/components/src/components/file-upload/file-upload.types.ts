@@ -86,5 +86,5 @@ export type FileUploadProps = Omit<
   /** Fires with rejected files and reasons after local validation runs. */
   onReject?: (files: RejectedFile[]) => void;
   /** Called when the retry button is activated for a failed file. */
-  onRetry?: (entry: FileUploadEntry) => void;
+  onFileRetry?: (entry: FileUploadEntry) => void;
 };

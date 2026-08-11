@@ -60,7 +60,7 @@
     onFilesAccepted,
     onFilesChange,
     onReject,
-    onRetry,
+    onFileRetry,
     oncancel,
     'aria-describedby': consumerDescribedBy,
     'aria-invalid': consumerInvalid,
@@ -102,9 +102,13 @@
   function synchronizeNativeInputFiles(entries: FileUploadEntry[] = renderedEntries) {
     if (!inputElement || typeof DataTransfer === 'undefined') return;
     const acceptedEntries = entries.filter((entry) => entry.rejectionReason === undefined);
-    const acceptedFiles = (multiple ? acceptedEntries : acceptedEntries.slice(0, 1)).map(
-      (entry) => entry.file,
-    );
+    const acceptedFiles = (
+      multiple
+        ? maxFiles === undefined
+          ? acceptedEntries
+          : acceptedEntries.slice(0, Math.max(0, Math.floor(maxFiles)))
+        : acceptedEntries.slice(0, 1)
+    ).map((entry) => entry.file);
     let dataTransfer: DataTransfer;
     try {
       dataTransfer = new DataTransfer();
@@ -125,8 +129,10 @@
   });
 
   $effect(() => {
-    const formElement = inputElement?.form;
-    if (!formElement || files !== undefined) return;
+    const ownerDocument = inputElement?.ownerDocument;
+    if (!ownerDocument || files !== undefined) return;
+    let associatedForm: HTMLFormElement | null = null;
+    let removeResetListener = () => {};
     function handleFormReset(event: Event) {
       queueMicrotask(() => {
         if (event.defaultPrevented || files !== undefined) return;
@@ -135,7 +141,25 @@
         onFilesChange?.([]);
       });
     }
-    return on(formElement, 'reset', handleFormReset);
+    function bindAssociatedForm() {
+      const nextForm = inputElement?.form ?? null;
+      if (nextForm === associatedForm) return;
+      removeResetListener();
+      associatedForm = nextForm;
+      removeResetListener = nextForm ? on(nextForm, 'reset', handleFormReset) : () => {};
+    }
+    bindAssociatedForm();
+    const observer = new MutationObserver(bindAssociatedForm);
+    observer.observe(ownerDocument.documentElement, {
+      attributes: true,
+      attributeFilter: ['form', 'id'],
+      childList: true,
+      subtree: true,
+    });
+    return () => {
+      observer.disconnect();
+      removeResetListener();
+    };
   });
 
   $effect(() => {
@@ -444,7 +468,7 @@
         {resolvedId}
         disabled={field.disabled}
         removable={files === undefined || onFilesChange !== undefined}
-        {onRetry}
+        {onFileRetry}
         onRemove={removeEntry}
         onQueueEmptyFocus={() => browseButtonElement?.focus()}
       />
