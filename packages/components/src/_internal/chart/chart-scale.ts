@@ -53,6 +53,35 @@ function boundedGapHeavyIndices(points: PlacedPoint[], limit: number): number[] 
   return selected.sort((a, b) => a - b);
 }
 
+function layerExtremaIndices(
+  layers: ReadonlyArray<ReadonlyArray<number | null>>,
+  startIndex: number,
+  endIndex: number,
+): number[] {
+  const extrema = new Set<number>();
+  for (const layer of layers) {
+    let minimumIndex: number | undefined;
+    let maximumIndex: number | undefined;
+    let minimumValue = Number.POSITIVE_INFINITY;
+    let maximumValue = Number.NEGATIVE_INFINITY;
+    for (let index = startIndex; index < endIndex; index++) {
+      const value = layer[index];
+      if (value == null) continue;
+      if (value < minimumValue) {
+        minimumValue = value;
+        minimumIndex = index;
+      }
+      if (value > maximumValue) {
+        maximumValue = value;
+        maximumIndex = index;
+      }
+    }
+    if (minimumIndex !== undefined) extrema.add(minimumIndex);
+    if (maximumIndex !== undefined) extrema.add(maximumIndex);
+  }
+  return [...extrema];
+}
+
 function boundedGapHeavyLayerSelections(
   layers: ReadonlyArray<ReadonlyArray<number | null>>,
   pointCount: number,
@@ -64,7 +93,34 @@ function boundedGapHeavyLayerSelections(
   }
 
   const maximumFiniteSamples = Math.max(1, Math.floor((limit + 1) / 2));
-  const sampledIndices = evenlySample(finiteIndices, maximumFiniteSamples);
+  const retainedIndices = new Set<number>();
+  const priorityIndices = [
+    finiteIndices[0],
+    finiteIndices.at(-1),
+    ...layerExtremaIndices(layers, 0, pointCount),
+  ];
+  for (const index of priorityIndices) {
+    if (index !== undefined && retainedIndices.size < maximumFiniteSamples) {
+      retainedIndices.add(index);
+    }
+  }
+  const extremaPerBucket = Math.max(1, layers.length * 2);
+  const bucketCount = Math.floor((maximumFiniteSamples - retainedIndices.size) / extremaPerBucket);
+  for (let bucketIndex = 0; bucketIndex < bucketCount; bucketIndex++) {
+    const startIndex = Math.floor((bucketIndex * pointCount) / bucketCount);
+    const endIndex = Math.floor(((bucketIndex + 1) * pointCount) / bucketCount);
+    for (const index of layerExtremaIndices(layers, startIndex, endIndex)) {
+      if (retainedIndices.size < maximumFiniteSamples) retainedIndices.add(index);
+    }
+  }
+  const remainingCapacity = maximumFiniteSamples - retainedIndices.size;
+  if (remainingCapacity > 0) {
+    const coverageCandidates = finiteIndices.filter((index) => !retainedIndices.has(index));
+    for (const index of evenlySample(coverageCandidates, remainingCapacity)) {
+      retainedIndices.add(index);
+    }
+  }
+  const sampledIndices = [...retainedIndices].sort((a, b) => a - b);
   const selectedSourceIndices: number[] = [];
   sampledIndices.forEach((sourceIndex, selectionIndex) => {
     const previousSourceIndex = sampledIndices[selectionIndex - 1];

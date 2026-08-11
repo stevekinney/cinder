@@ -1273,6 +1273,40 @@ describe('createCartesianModel', () => {
     expect(continuous?.areaPath).toContain('L');
   });
 
+  test('gap-heavy stacked decimation preserves continuous sibling extrema', () => {
+    const model = createCartesianModel({
+      componentId: 'area-chart',
+      series: [
+        {
+          id: 'gap-trigger',
+          label: 'Gap trigger',
+          data: Array.from({ length: 10_000 }, (_, index) => ({
+            x: index,
+            y: index % 2 === 0 ? 1 : null,
+          })),
+        },
+        {
+          id: 'continuous',
+          label: 'Continuous',
+          data: Array.from({ length: 10_000 }, (_, index) => ({
+            x: index,
+            y: index === 3 ? 1_000 : 1,
+          })),
+        },
+      ],
+      hiddenSeriesIds: [],
+      width: 640,
+      height: 280,
+      stackedArea: true,
+    });
+    const continuous = model.normalizedSeries[1];
+
+    expect(continuous?.points.length).toBeLessThanOrEqual(2_000);
+    expect(continuous?.points.some((point) => point.x.raw === 3 && point.originalY === 1_000)).toBe(
+      true,
+    );
+  });
+
   test('rechecks every stacked layer after inserting shared synthetic breaks', () => {
     const lateGapData = Array.from({ length: 10_000 }, (_, index) => ({
       x: index,
