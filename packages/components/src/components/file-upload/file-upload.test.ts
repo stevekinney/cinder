@@ -485,6 +485,29 @@ describe('FileUpload validation and events', () => {
     expect(Array.from(input.files ?? [])).toEqual([firstFile]);
   });
 
+  test('controlled validation restores the native input from the controlled queue', async () => {
+    const existingFile = createFile('existing.png', 'image/png', 10);
+    const rejectedFile = createFile('rejected.txt', 'text/plain', 10);
+    const onReject = mock((_files) => {});
+    const { container } = render(FileUpload, {
+      props: {
+        id: 'upload',
+        accept: 'image/*',
+        files: [{ id: 'existing', file: existingFile, status: 'success' }],
+        onReject,
+      },
+    });
+    const input = container.querySelector('#upload') as HTMLInputElement;
+
+    attachInputFiles(input, [rejectedFile]);
+    await fireEvent.change(input);
+
+    expect(onReject.mock.calls[0]?.[0]?.[0]).toEqual(
+      expect.objectContaining({ file: rejectedFile, reason: 'wrong-type' }),
+    );
+    expect(Array.from(input.files ?? [])).toEqual([existingFile]);
+  });
+
   test('removing an uncontrolled entry frees its maxFiles slot', async () => {
     const firstFile = createFile('first.txt', 'text/plain', 10);
     const replacementFile = createFile('replacement.txt', 'text/plain', 10);
@@ -834,6 +857,38 @@ describe('FileUpload file list rendering', () => {
     expect(retryButton.getAttribute('aria-describedby')).toBe('upload-1-error');
     await fireEvent.click(retryButton);
     expect(onRetry).toHaveBeenCalledWith(entry);
+  });
+
+  test('retry moves focus to the browse control when the retry action is removed', async () => {
+    const entry = {
+      id: '1',
+      file: createFile('broken.zip', 'application/zip', 10),
+      status: 'error' as const,
+      error: 'Network error',
+    };
+    let rerender: ReturnType<typeof render>['rerender'];
+    const onRetry = mock(() => {
+      void rerender({
+        id: 'upload',
+        files: [{ ...entry, status: 'uploading' }],
+        onRetry,
+      });
+    });
+    const result = render(FileUpload, {
+      props: { id: 'upload', files: [entry], onRetry },
+    });
+    rerender = result.rerender;
+    const retryButton = result.container.querySelector(
+      '.cinder-file-upload__retry',
+    ) as HTMLButtonElement;
+    const browseButton = result.container.querySelector(
+      '.cinder-file-upload__button',
+    ) as HTMLButtonElement;
+    retryButton.focus();
+
+    await fireEvent.click(retryButton);
+
+    expect(document.activeElement).toBe(browseButton);
   });
 
   test('disabled uploads disable retry actions', () => {

@@ -42,6 +42,12 @@
     if (nextButton?.isConnected) nextButton.focus();
     else onQueueEmptyFocus();
   }
+
+  async function handleRetry(entry: FileUploadEntry, retryButton: HTMLButtonElement) {
+    onRetry?.(entry);
+    await tick();
+    if (!retryButton.isConnected) onQueueEmptyFocus();
+  }
 </script>
 
 <ul bind:this={listElement} class="cinder-file-upload__list">
@@ -145,7 +151,7 @@
               {disabled}
               aria-label={`Retry ${entry.file.name}`}
               aria-describedby={errorId}
-              onclick={() => onRetry(entry)}
+              onclick={(event) => handleRetry(entry, event.currentTarget)}
             >
               <RotateCcwIcon class="cinder-file-upload__retry-icon" aria-hidden="true" />
               Retry

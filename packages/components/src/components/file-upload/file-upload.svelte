@@ -285,6 +285,7 @@
   function handleInputChange() {
     if (field.disabled || !inputElement?.files) return;
     processFiles(Array.from(inputElement.files));
+    if (files !== undefined) synchronizeNativeInputFiles();
   }
 
   function handleDragEnter(event: DragEvent) {
