@@ -3,6 +3,54 @@ import FileTextIcon from 'lucide-svelte/icons/file-text';
 import ImageIcon from 'lucide-svelte/icons/image';
 import TableIcon from 'lucide-svelte/icons/table';
 
+const INTERACTIVE_ARIA_ROLES = [
+  'button',
+  'checkbox',
+  'combobox',
+  'grid',
+  'gridcell',
+  'link',
+  'listbox',
+  'menu',
+  'menubar',
+  'menuitem',
+  'menuitemcheckbox',
+  'menuitemradio',
+  'option',
+  'radio',
+  'radiogroup',
+  'scrollbar',
+  'searchbox',
+  'slider',
+  'spinbutton',
+  'switch',
+  'tab',
+  'tablist',
+  'textbox',
+  'tree',
+  'treegrid',
+  'treeitem',
+];
+
+export const INTERACTIVE_DESCENDANT_SELECTOR = [
+  ':any-link',
+  'button',
+  'input',
+  'select',
+  'textarea',
+  'label',
+  'summary',
+  'details',
+  'iframe',
+  'object',
+  'embed',
+  'audio[controls]',
+  'video[controls]',
+  "[contenteditable]:not([contenteditable='false'])",
+  ...INTERACTIVE_ARIA_ROLES.map((role) => `[role~='${role}']`),
+  '[tabindex]',
+].join(', ');
+
 const FILE_TYPE_ICONS: Record<string, typeof FileIcon> = {
   'image/': ImageIcon,
   'application/pdf': FileTextIcon,
@@ -61,6 +109,14 @@ export function acceptsFile(file: File, accept: string | undefined): boolean {
     .filter(Boolean);
   if (tokens.length === 0) return true;
   return tokens.some((token) => matchesAcceptToken(file, token));
+}
+
+export function nativeFilesMatch(fileList: FileList | null, files: File[]): boolean {
+  const currentFiles = Array.from(fileList ?? []);
+  return (
+    currentFiles.length === files.length &&
+    currentFiles.every((file, index) => file === files[index])
+  );
 }
 
 export function formatAcceptDescription(accept: string | undefined): string {

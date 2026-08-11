@@ -49,15 +49,27 @@ export type FileUploadProps = Omit<
   name?: string;
   /** Additional classes merged with `.cinder-file-upload`. */
   class?: string;
-  /** Visible title for the dropzone. Default `Click to upload or drop files`. */
+  /**
+   * Visible title for the dropzone.
+   * @default Click to upload or drop files
+   */
   title?: string;
   /** Visible description below the title. Defaults to a summary derived from `accept`. */
   description?: string;
-  /** Visible label shown while files are dragged over the dropzone. Default `Drop to add`. */
+  /**
+   * Visible label shown while files are dragged over the dropzone.
+   * @default Drop to add
+   */
   draggingLabel?: string;
-  /** Visible text for the browse button. Default `Browse files`. */
+  /**
+   * Visible text for the browse button.
+   * @default Browse files
+   */
   browseLabel?: string;
-  /** Adds focus and drag-active border emphasis to the dropzone. Default `true`. */
+  /**
+   * Adds focus and drag-active border emphasis to the dropzone.
+   * @default true
+   */
   borderBeamVisible?: boolean;
   /** Consumer-driven file rows, including upload progress and error states. */
   files?: FileUploadEntry[];

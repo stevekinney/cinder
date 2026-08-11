@@ -26,7 +26,8 @@ const schema = {
     },
     title: {
       type: 'string',
-      description: 'Visible title for the dropzone. Default `Click to upload or drop files`.',
+      description: 'Visible title for the dropzone.',
+      default: 'Click to upload or drop files',
     },
     maxSize: {
       type: 'number',
@@ -47,16 +48,18 @@ const schema = {
     },
     draggingLabel: {
       type: 'string',
-      description:
-        'Visible label shown while files are dragged over the dropzone. Default `Drop to add`.',
+      description: 'Visible label shown while files are dragged over the dropzone.',
+      default: 'Drop to add',
     },
     browseLabel: {
       type: 'string',
-      description: 'Visible text for the browse button. Default `Browse files`.',
+      description: 'Visible text for the browse button.',
+      default: 'Browse files',
     },
     borderBeamVisible: {
       type: 'boolean',
-      description: 'Adds focus and drag-active border emphasis to the dropzone. Default `true`.',
+      description: 'Adds focus and drag-active border emphasis to the dropzone.',
+      default: true,
     },
   },
   additionalProperties: false,

@@ -30,56 +30,13 @@
   import { formatBytes } from '../../utilities/format-bytes.ts';
   import { useAnnouncer } from '../../utilities/use-announcer.svelte.ts';
   import FileUploadList from './file-upload-list.svelte';
-  import { acceptsFile, formatAcceptDescription } from './file-upload-utilities.ts';
+  import {
+    acceptsFile,
+    formatAcceptDescription,
+    INTERACTIVE_DESCENDANT_SELECTOR,
+    nativeFilesMatch,
+  } from './file-upload-utilities.ts';
   import type { FileUploadEntry, FileUploadProps, RejectedFile } from './file-upload.types.ts';
-
-  const INTERACTIVE_ARIA_ROLES = [
-    'button',
-    'checkbox',
-    'combobox',
-    'grid',
-    'gridcell',
-    'link',
-    'listbox',
-    'menu',
-    'menubar',
-    'menuitem',
-    'menuitemcheckbox',
-    'menuitemradio',
-    'option',
-    'radio',
-    'radiogroup',
-    'scrollbar',
-    'searchbox',
-    'slider',
-    'spinbutton',
-    'switch',
-    'tab',
-    'tablist',
-    'textbox',
-    'tree',
-    'treegrid',
-    'treeitem',
-  ];
-
-  const INTERACTIVE_DESCENDANT_SELECTOR = [
-    ':any-link',
-    'button',
-    'input',
-    'select',
-    'textarea',
-    'label',
-    'summary',
-    'details',
-    'iframe',
-    'object',
-    'embed',
-    'audio[controls]',
-    'video[controls]',
-    "[contenteditable]:not([contenteditable='false'])",
-    ...INTERACTIVE_ARIA_ROLES.map((role) => `[role~='${role}']`),
-    '[tabindex]',
-  ].join(', ');
 
   let {
     id,
@@ -144,21 +101,22 @@
 
   function synchronizeNativeInputFiles(entries: FileUploadEntry[] = renderedEntries) {
     if (!inputElement || typeof DataTransfer === 'undefined') return;
+    const acceptedEntries = entries.filter((entry) => entry.rejectionReason === undefined);
+    const acceptedFiles = (multiple ? acceptedEntries : acceptedEntries.slice(0, 1)).map(
+      (entry) => entry.file,
+    );
     let dataTransfer: DataTransfer;
     try {
       dataTransfer = new DataTransfer();
     } catch {
-      inputElement.value = '';
+      if (!nativeFilesMatch(inputElement.files, acceptedFiles)) inputElement.value = '';
       return;
     }
-    const acceptedEntries = entries.filter((entry) => entry.rejectionReason === undefined);
-    for (const entry of multiple ? acceptedEntries : acceptedEntries.slice(0, 1)) {
-      dataTransfer.items.add(entry.file);
-    }
+    for (const file of acceptedFiles) dataTransfer.items.add(file);
     try {
       inputElement.files = dataTransfer.files;
     } catch {
-      inputElement.value = '';
+      if (!nativeFilesMatch(inputElement.files, acceptedFiles)) inputElement.value = '';
     }
   }
 
