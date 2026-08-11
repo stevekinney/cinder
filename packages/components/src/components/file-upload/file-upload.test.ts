@@ -555,6 +555,7 @@ describe('FileUpload validation and events', () => {
     attachInputFiles(input, [file]);
     await fireEvent.change(input);
     await fireEvent(form, new Event('reset', { bubbles: true, cancelable: true }));
+    await Promise.resolve();
 
     expect(onFilesChange).toHaveBeenLastCalledWith([]);
     expect(Array.from(input.files ?? [])).toEqual([]);
@@ -566,6 +567,24 @@ describe('FileUpload validation and events', () => {
       expect.objectContaining({ file: replacementFile, status: 'pending' }),
     ]);
     expect(Array.from(input.files ?? [])).toEqual([replacementFile]);
+  });
+
+  test('canceled form reset preserves the uncontrolled queue and native files', async () => {
+    const file = createFile('report.txt', 'text/plain', 10);
+    const onFilesChange = mock((_entries) => {});
+    const { container } = render(FileUploadFormFixture, { props: { onFilesChange } });
+    const form = container.querySelector('form') as HTMLFormElement;
+    const input = container.querySelector('#upload') as HTMLInputElement;
+    form.addEventListener('reset', (event) => event.preventDefault());
+
+    attachInputFiles(input, [file]);
+    await fireEvent.change(input);
+    const entriesBeforeReset = onFilesChange.mock.calls.at(-1)?.[0];
+    await fireEvent(form, new Event('reset', { bubbles: true, cancelable: true }));
+    await Promise.resolve();
+
+    expect(onFilesChange).toHaveBeenLastCalledWith(entriesBeforeReset);
+    expect(Array.from(input.files ?? [])).toEqual([file]);
   });
 });
 

@@ -160,9 +160,11 @@
     const formElement = inputElement?.form;
     if (!formElement || files !== undefined) return;
     function handleFormReset(event: Event) {
-      if (event.defaultPrevented || files !== undefined) return;
-      internalEntries = [];
-      onFilesChange?.([]);
+      queueMicrotask(() => {
+        if (event.defaultPrevented || files !== undefined) return;
+        internalEntries = [];
+        onFilesChange?.([]);
+      });
     }
     return on(formElement, 'reset', handleFormReset);
   });
