@@ -24,10 +24,11 @@
  *
  * This helper deliberately exercises Chat with Cinder's plain-Node export.
  * Svelte-aware source compilation and hydration are covered by `hydrate.ts`
- * and the packed SvelteKit browser regression. Keeping this build on the
- * precompiled `node` fallback also avoids asking Bun to compile the same Cinder
- * source graph independently for every SSR probe in one test process, which
- * corrupts Bun's path-keyed module cache on Linux.
+ * and the packed SvelteKit browser regression. Chat's `test:prepare` builds
+ * Cinder's ignored server artifacts before either package test command runs.
+ * Keeping this build on that precompiled `node` fallback also avoids asking
+ * Bun to compile the same Cinder source graph independently for every SSR probe
+ * in one test process, which corrupts Bun's path-keyed module cache on Linux.
  */
 
 /// <reference lib="dom" />

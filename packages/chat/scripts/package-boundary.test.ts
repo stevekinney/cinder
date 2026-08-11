@@ -201,4 +201,12 @@ describe('Chat package ownership boundary', () => {
     expect(chatManifest.scripts?.['test:coverage']).toContain('--coverage-reporter=lcov');
     expect(chatManifest.scripts?.['test:coverage']).not.toContain('--parallel');
   });
+
+  test('builds the plain-Node Cinder entries before Chat tests use them', () => {
+    expect(chatManifest.scripts?.['test:prepare']).toBe(
+      'bun run --filter=@lostgradient/cinder build',
+    );
+    expect(chatManifest.scripts?.['test']).toStartWith('bun run test:prepare && ');
+    expect(chatManifest.scripts?.['test:coverage']).toStartWith('bun run test:prepare && ');
+  });
 });
