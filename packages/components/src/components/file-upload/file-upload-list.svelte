@@ -9,7 +9,6 @@
 
   let {
     entries,
-    resolvedId,
     disabled,
     removable,
     onFileRetry,
@@ -17,7 +16,6 @@
     onQueueEmptyFocus,
   }: {
     entries: FileUploadEntry[];
-    resolvedId: string;
     disabled: boolean;
     removable: boolean;
     onFileRetry: ((entry: FileUploadEntry) => void) | undefined;
@@ -25,6 +23,7 @@
     onQueueEmptyFocus: () => void;
   } = $props();
 
+  const generatedId = $props.id();
   let listElement = $state<HTMLUListElement>();
   let pendingRemovalFocus = $state<{
     entryId: string;
@@ -113,7 +112,7 @@
 
 <ul bind:this={listElement} class="cinder-file-upload__list">
   {#each entries as entry, index (entry.id)}
-    {@const errorId = entry.error ? `${resolvedId}-${entry.id}-error` : undefined}
+    {@const errorId = entry.error ? `${generatedId}-${index}-error` : undefined}
     {@const FileTypeIcon = fileTypeIcon(entry.file.type)}
     <li class="cinder-file-upload__row" aria-describedby={errorId}>
       <div class="cinder-file-upload__row-main">

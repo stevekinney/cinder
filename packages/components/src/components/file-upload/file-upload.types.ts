@@ -77,7 +77,7 @@ export type FileUploadProps = Omit<
   idle?: Snippet;
   /** Replaces the default drag-active dropzone body. */
   dragActive?: Snippet;
-  /** Replaces the default file-list renderer. Receives the resolved rows and a removal callback when the queue is mutable. */
+  /** Replaces the default file-list renderer. Receives the live resolved rows, including an empty array, and a removal callback when the queue is mutable. */
   fileList?: Snippet<[FileUploadEntry[], ((entry: FileUploadEntry) => void) | undefined]>;
   /** Fires with accepted files after local validation passes. */
   onFilesAccepted?: (files: File[]) => void;

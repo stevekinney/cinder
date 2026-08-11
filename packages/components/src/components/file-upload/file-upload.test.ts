@@ -549,6 +549,25 @@ describe('FileUpload validation and events', () => {
     expect(Array.from(input.files ?? [])).toEqual([firstFile]);
   });
 
+  test('picker focus return restores the latest controlled queue', async () => {
+    const firstFile = createFile('first.txt', 'text/plain', 10);
+    const secondFile = createFile('second.txt', 'text/plain', 10);
+    const firstEntry = { id: 'first', file: firstFile, status: 'success' as const };
+    const secondEntry = { id: 'second', file: secondFile, status: 'success' as const };
+    const result = render(FileUpload, {
+      props: { id: 'upload', multiple: true, files: [firstEntry] },
+    });
+    const input = result.container.querySelector('#upload') as HTMLInputElement;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    await fireEvent.click(input);
+    await result.rerender({ id: 'upload', multiple: true, files: [secondEntry] });
+    window.dispatchEvent(new Event('focus'));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(Array.from(input.files ?? [])).toEqual([secondFile]);
+  });
+
   test('single-file mode synchronizes only the first controlled entry to the native input', async () => {
     const firstFile = createFile('first.txt', 'text/plain', 10);
     const secondFile = createFile('second.txt', 'text/plain', 10);
@@ -1323,6 +1342,23 @@ describe('FileUpload drag state and accessibility', () => {
     await fireEvent.click(decorativeImage);
     expect(click).toHaveBeenCalledTimes(3);
   });
+
+  test('interactive controls use the dropzone document realm', async () => {
+    const iframe = document.createElement('iframe');
+    document.body.append(iframe);
+    const { container } = render(FileUpload, {
+      target: iframe.contentDocument!.body,
+      props: { id: 'upload' },
+    });
+    const input = container.querySelector('#upload') as HTMLInputElement;
+    const button = container.querySelector('.cinder-file-upload__button') as HTMLButtonElement;
+    const click = mock(() => {});
+    input.addEventListener('click', click);
+
+    await fireEvent.click(button);
+
+    expect(click).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('FileUpload file list rendering', () => {
@@ -1377,7 +1413,7 @@ describe('FileUpload file list rendering', () => {
 
   test('error entry offers retry when onFileRetry is provided', async () => {
     const entry = {
-      id: '1',
+      id: 'broken file.zip',
       file: createFile('broken.zip', 'application/zip', 4096),
       status: 'error' as const,
       error: 'Upload failed',
@@ -1390,7 +1426,10 @@ describe('FileUpload file list rendering', () => {
 
     expect(retryButton.textContent).toContain('Retry');
     expect(retryButton.getAttribute('aria-label')).toBe('Retry broken.zip');
-    expect(retryButton.getAttribute('aria-describedby')).toBe('upload-1-error');
+    const errorId = retryButton.getAttribute('aria-describedby');
+    expect(errorId).toBeTruthy();
+    expect(errorId).not.toContain(' ');
+    expect(container.querySelector(`#${errorId}`)?.textContent).toBe('Upload failed');
     await fireEvent.click(retryButton);
     expect(onFileRetry).toHaveBeenCalledWith(entry);
   });

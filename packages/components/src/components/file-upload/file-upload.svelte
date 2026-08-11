@@ -102,7 +102,6 @@
   let cancelPickerReturnFallback = () => {};
 
   onDestroy(() => cancelPickerReturnFallback());
-
   const isDragActive = $derived(dragDepth > 0);
   const renderedEntries = $derived(files ?? internalEntries);
   const resolvedDescription = $derived(description ?? formatAcceptDescription(accept));
@@ -327,8 +326,11 @@
     function handleClick(event: MouseEvent) {
       if (field.disabled) return;
       const target = event.target;
+      const ElementConstructor = node.ownerDocument.defaultView?.Element;
       const interactiveDescendant =
-        target instanceof Element ? target.closest(INTERACTIVE_DESCENDANT_SELECTOR) : null;
+        ElementConstructor && target instanceof ElementConstructor
+          ? target.closest(INTERACTIVE_DESCENDANT_SELECTOR)
+          : null;
       if (
         interactiveDescendant &&
         interactiveDescendant !== node &&
@@ -353,10 +355,9 @@
   function handleInputClick() {
     if (field.disabled) return;
     cancelPickerReturnFallback();
-    const entriesBeforePicker = [...renderedEntries];
     if (inputElement) {
       cancelPickerReturnFallback = installFilePickerReturnFallback(inputElement, () =>
-        synchronizeNativeInputFiles(entriesBeforePicker),
+        synchronizeNativeInputFiles(),
       );
     }
     clearInputValue();
@@ -487,7 +488,6 @@
   {:else if renderedEntries.length > 0}
     <FileUploadList
       entries={renderedEntries}
-      {resolvedId}
       disabled={field.disabled}
       removable={files === undefined || onFilesChange !== undefined}
       {onFileRetry}
