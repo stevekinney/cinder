@@ -1135,12 +1135,18 @@ test.describe('chat harness — history prepend stress (#1237)', () => {
       await expect.poll(async () => timeline.evaluate((element) => element.scrollTop)).toBe(0);
       await page.waitForTimeout(400);
 
-      const anchor = timeline
-        .locator('.chat-message')
-        .filter({ hasText: 'Live message 1 —' })
-        .first();
-      const anchorId = await anchor.getAttribute('id');
-      expect(anchorId).not.toBeNull();
+      const anchorMarkerObserver = await timeline.evaluateHandle((element) => {
+        const markAnchor = () => {
+          const anchor = Array.from(element.querySelectorAll('.chat-message-body')).find(
+            (candidate) => candidate.textContent?.trimStart().startsWith('Live message 1 —'),
+          );
+          anchor?.setAttribute('data-cinder-paint-anchor', '');
+        };
+        markAnchor();
+        const observer = new MutationObserver(markAnchor);
+        observer.observe(element, { childList: true, subtree: true });
+        return observer;
+      });
 
       // Paint two high-contrast rulers into the real surface: cyan at the
       // timeline's top edge and magenta across the retained message. CDP's
@@ -1150,7 +1156,7 @@ test.describe('chat harness — history prepend stress (#1237)', () => {
       await page.addStyleTag({
         content: `
           .chat-timeline { border-top: 5px solid rgb(0 255 255) !important; }
-          #${anchorId} .chat-message-body {
+          [data-cinder-paint-anchor] {
             background: rgb(255 0 255) !important;
             border-color: rgb(255 0 255) !important;
             color: rgb(255 0 255) !important;
@@ -1161,26 +1167,30 @@ test.describe('chat harness — history prepend stress (#1237)', () => {
 
       const measureFrame = (data: Buffer): number | null => {
         const image = PNG.sync.read(data);
-        const cyanRows = new Array<number>(image.height).fill(0);
-        const magentaRows = new Array<number>(image.height).fill(0);
+        let timelineTop = -1;
+        let anchorTop = -1;
 
         for (let y = 0; y < image.height; y += 1) {
+          let cyanPixels = 0;
+          let magentaPixels = 0;
           for (let x = 0; x < image.width; x += 1) {
             const pixel = (y * image.width + x) * 4;
             const red = image.data[pixel] ?? 0;
             const green = image.data[pixel + 1] ?? 0;
             const blue = image.data[pixel + 2] ?? 0;
-            if (red < 30 && green > 225 && blue > 225) {
-              cyanRows[y] = (cyanRows[y] ?? 0) + 1;
+            if (timelineTop < 0 && red < 30 && green > 225 && blue > 225) {
+              cyanPixels += 1;
+              if (cyanPixels > 100) timelineTop = y;
             }
-            if (red > 225 && green < 30 && blue > 225) {
-              magentaRows[y] = (magentaRows[y] ?? 0) + 1;
+            if (anchorTop < 0 && red > 225 && green < 30 && blue > 225) {
+              magentaPixels += 1;
+              if (magentaPixels > 100) anchorTop = y;
             }
+            if (timelineTop >= 0 && anchorTop >= 0) break;
           }
+          if (timelineTop >= 0 && anchorTop >= 0) break;
         }
 
-        const timelineTop = cyanRows.findIndex((count) => count > 100);
-        const anchorTop = magentaRows.findIndex((count) => count > 100);
         return timelineTop >= 0 && anchorTop >= 0 ? anchorTop - timelineTop : null;
       };
       const baseline = measureFrame(await page.screenshot());
@@ -1236,6 +1246,8 @@ test.describe('chat harness — history prepend stress (#1237)', () => {
       } finally {
         await page.evaluate((interval) => clearInterval(interval), paintProbe);
         await paintProbe.dispose();
+        await anchorMarkerObserver.evaluate((observer) => observer.disconnect());
+        await anchorMarkerObserver.dispose();
         if (screencastStarted) {
           await session.send('Page.stopScreencast');
           screencastStarted = false;
