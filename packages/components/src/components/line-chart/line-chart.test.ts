@@ -1,8 +1,9 @@
 /// <reference lib="dom" />
 import { afterAll, afterEach, describe, expect, test } from 'bun:test';
 
+import type { ChartTarget } from '../../_internal/chart/chart-utilities.ts';
 import { setupHappyDom } from '../../test/happy-dom.ts';
-import type { ChartXValue } from '../chart.types.ts';
+import type { ChartMarkContext, ChartXValue } from '../chart.types.ts';
 
 setupHappyDom();
 
@@ -18,6 +19,7 @@ afterAll(() => {
 });
 
 const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
+const { createRawSnippet } = await import('svelte');
 const { default: LineChart } = await import('./line-chart.svelte');
 
 afterEach(() => cleanup());
@@ -42,6 +44,49 @@ const series = [
 ];
 
 describe('LineChart', () => {
+  test('renders one line per series using the resolved categorical palette', () => {
+    const { container } = render(LineChart, {
+      label: 'Three trends',
+      series: [...series, { id: 'retention', label: 'Retention', data: [{ x: 'Jan', y: 80 }] }],
+    });
+
+    const strokes = [...container.querySelectorAll('.cinder-line-chart__line')].map((path) =>
+      path.getAttribute('stroke'),
+    );
+    expect(strokes).toEqual([
+      'var(--cinder-chart-series-1)',
+      'var(--cinder-chart-series-2)',
+      'var(--cinder-chart-series-3)',
+    ]);
+  });
+
+  test('inherits foreground and background from a dark container by default', () => {
+    const { container } = render(LineChart, { label: 'Inherited theme', series });
+    container.style.color = 'white';
+    container.style.background = 'black';
+    const root = container.querySelector<HTMLElement>('.cinder-line-chart');
+
+    expect(root?.style.getPropertyValue('--_cinder-chart-foreground')).toBe('currentColor');
+    expect(root?.style.getPropertyValue('--_cinder-chart-muted')).toBe('currentColor');
+    expect(root?.style.getPropertyValue('--_cinder-chart-grid')).toBe('currentColor');
+    expect(root?.style.getPropertyValue('--_cinder-chart-background')).toBe('transparent');
+  });
+
+  test('renders a custom mark snippet instead of the default series mark', () => {
+    const mark = createRawSnippet<[ChartMarkContext]>((getContext) => ({
+      render: () => {
+        const context = getContext();
+        return `<g data-custom-mark="${context.series.id}" data-point-count="${context.points.length}"></g>`;
+      },
+    }));
+    const { container } = render(LineChart, { label: 'Custom marks', mark, series });
+
+    expect(container.querySelectorAll('.cinder-line-chart__line')).toHaveLength(0);
+    expect(
+      container.querySelector('[data-custom-mark="revenue"]')?.getAttribute('data-point-count'),
+    ).toBe('2');
+  });
+
   test('renders a semantic data table fallback with caption', () => {
     const { container } = render(LineChart, {
       label: 'Monthly revenue',
@@ -57,6 +102,25 @@ describe('LineChart', () => {
     expect(container.querySelector('th.cinder-table__header-cell')).not.toBeNull();
     expect(container.querySelector('td.cinder-table__cell')).not.toBeNull();
     expect(container.querySelector('table')?.className).not.toContain('cinder-sr-only');
+  });
+
+  test('bounds dense fallback rows and discloses sampling in the caption', () => {
+    const { container } = render(LineChart, {
+      label: 'Dense signal',
+      dataTableCaption: 'Dense values',
+      series: [
+        {
+          id: 'signal',
+          label: 'Signal',
+          data: Array.from({ length: 2_001 }, (_, index) => ({ x: index, y: index % 17 })),
+        },
+      ],
+    });
+
+    expect(container.querySelectorAll('tbody tr')).toHaveLength(2_000);
+    expect(container.querySelector('table caption')?.textContent).toBe(
+      'Dense values (showing 2000 of 2001 data points)',
+    );
   });
 
   test('svg has an accessible title matching the label when data is present', () => {
@@ -168,8 +232,19 @@ describe('LineChart', () => {
     ).toThrow('rule=invalid-maximum-interactive-points');
   });
 
-  test('keyboard focus shows tooltip and escape clears it', async () => {
+  test('does not render a visual tooltip unless the tooltip prop is enabled', async () => {
     const { getByRole, queryByText } = render(LineChart, { label: 'Monthly revenue', series });
+    await fireEvent.focus(getByRole('button', { name: 'Revenue, Jan, 120' }));
+
+    expect(queryByText('Jan: 120')).toBeNull();
+  });
+
+  test('keyboard focus shows an enabled tooltip and escape clears it', async () => {
+    const { getByRole, queryByText } = render(LineChart, {
+      label: 'Monthly revenue',
+      tooltip: true,
+      series,
+    });
     const plot = getByRole('button', { name: 'Revenue, Jan, 120' });
 
     await fireEvent.focus(plot);
@@ -177,6 +252,39 @@ describe('LineChart', () => {
 
     await fireEvent.keyDown(plot, { key: 'Escape' });
     expect(queryByText('Jan: 120')).toBeNull();
+  });
+
+  test('keeps tooltip synchronized after outside pointer input and target movement', async () => {
+    const { getByRole, queryByText } = render(LineChart, {
+      label: 'Monthly revenue',
+      tooltip: true,
+      series,
+    });
+    const firstTarget = getByRole('button', { name: 'Revenue, Jan, 120' });
+    const secondTarget = getByRole('button', { name: 'Signups, Jan, 40' });
+
+    await fireEvent.focus(firstTarget);
+    expect(queryByText('Jan: 120')).toBeTruthy();
+
+    await fireEvent.mouseDown(document.body);
+    await fireEvent.focus(secondTarget);
+
+    expect(queryByText('Jan: 40')).toBeTruthy();
+    expect(secondTarget.getAttribute('aria-describedby')).toBeTruthy();
+  });
+
+  test('renders custom tooltip content with the active semantic target', async () => {
+    const tooltip = createRawSnippet<[ChartTarget]>((getTarget) => ({
+      render: () => `<span data-custom-tooltip>${getTarget().seriesLabel} insight</span>`,
+    }));
+    const { getByRole, findByText } = render(LineChart, {
+      label: 'Monthly revenue',
+      tooltip,
+      series,
+    });
+
+    await fireEvent.focus(getByRole('button', { name: 'Revenue, Jan, 120' }));
+    expect(await findByText('Revenue insight')).toBeTruthy();
   });
 
   test('keyboard focus renders one visual-only SVG focus-ring layer', async () => {
@@ -205,6 +313,7 @@ describe('LineChart', () => {
   test('pointer input hides a keyboard focus-ring layer without clearing the focused tooltip', async () => {
     const { container, getByRole, queryByText } = render(LineChart, {
       label: 'Monthly revenue',
+      tooltip: true,
       series,
     });
     const target = getByRole('button', { name: 'Revenue, Jan, 120' });
@@ -225,6 +334,7 @@ describe('LineChart', () => {
   test('hiding the focused series clears focus-ring and tooltip state', async () => {
     const { container, getByRole, queryByText } = render(LineChart, {
       label: 'Monthly revenue',
+      tooltip: true,
       series,
     });
     const target = getByRole('button', { name: 'Revenue, Jan, 120' });
@@ -244,6 +354,7 @@ describe('LineChart', () => {
   test('controlled hiddenSeriesIds clears stale focus-ring and tooltip state without a legend click', async () => {
     const { container, getByRole, queryByText, rerender } = render(LineChart, {
       label: 'Monthly revenue',
+      tooltip: true,
       series,
     });
     const target = getByRole('button', { name: 'Revenue, Jan, 120' });
@@ -253,7 +364,12 @@ describe('LineChart', () => {
     expect(container.querySelector('.cinder-line-chart__focus-ring-layer')).not.toBeNull();
     expect(queryByText('Jan: 120')).toBeTruthy();
 
-    await rerender({ label: 'Monthly revenue', hiddenSeriesIds: ['revenue'], series });
+    await rerender({
+      label: 'Monthly revenue',
+      hiddenSeriesIds: ['revenue'],
+      tooltip: true,
+      series,
+    });
 
     expect(container.querySelectorAll('[data-cinder-series-id="revenue"]').length).toBe(0);
     expect(container.querySelector('.cinder-line-chart__focus-ring-layer')).toBeNull();
@@ -264,6 +380,7 @@ describe('LineChart', () => {
   test('arrow keys move DOM focus to the active target', async () => {
     const { container, getByRole, queryByText } = render(LineChart, {
       label: 'Monthly revenue',
+      tooltip: true,
       series,
     });
     const firstTarget = getByRole('button', { name: 'Revenue, Jan, 120' });
@@ -283,6 +400,7 @@ describe('LineChart', () => {
   test('pointer hover does not override the focused target description', async () => {
     const { container, getByRole, queryByText } = render(LineChart, {
       label: 'Monthly revenue',
+      tooltip: true,
       series,
     });
     const focusedTarget = getByRole('button', { name: 'Revenue, Jan, 120' });
@@ -373,6 +491,7 @@ describe('LineChart', () => {
   test('non-loading, non-empty state renders plot marks', () => {
     const { container } = render(LineChart, {
       label: 'Monthly revenue',
+      tooltip: true,
       series,
     });
 
@@ -382,13 +501,14 @@ describe('LineChart', () => {
   test('loading state clears an active tooltip', async () => {
     const { getByRole, queryByText, rerender } = render(LineChart, {
       label: 'Monthly revenue',
+      tooltip: true,
       series,
     });
 
     await fireEvent.focus(getByRole('button', { name: 'Revenue, Jan, 120' }));
     expect(queryByText('Jan: 120')).toBeTruthy();
 
-    await rerender({ label: 'Monthly revenue', loading: true, series });
+    await rerender({ label: 'Monthly revenue', loading: true, tooltip: true, series });
     expect(queryByText('Jan: 120')).toBeNull();
   });
 

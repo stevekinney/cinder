@@ -163,6 +163,21 @@ describe('ChartInteraction', () => {
       expect(interaction.focusedTarget?.id).toBe('t1');
     });
 
+    test('rebinds a stable target id to the latest geometry and value', () => {
+      const interaction = new ChartInteraction();
+      interaction.focusedTarget = makeTarget('t1', 100, 50, { valueLabel: '100' });
+      const updated = makeTarget('t1', 140, 25, { valueLabel: '125' });
+
+      interaction.clearStaleTargets(false, false, [updated]);
+
+      expect(interaction.focusedTarget).toMatchObject({
+        id: 't1',
+        x: 140,
+        y: 25,
+        valueLabel: '125',
+      });
+    });
+
     test('does not clear targets when neither loading nor empty', () => {
       const interaction = new ChartInteraction();
       const target = makeTarget('t1', 100, 50);

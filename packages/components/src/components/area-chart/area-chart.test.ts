@@ -1,8 +1,8 @@
 /// <reference lib="dom" />
 import { afterAll, afterEach, describe, expect, test } from 'bun:test';
 
+import type { ChartMarkContext, ChartXAxisConfiguration, ChartXValue } from '../../index.ts';
 import { setupHappyDom } from '../../test/happy-dom.ts';
-import type { ChartXValue } from '../chart.types.ts';
 
 setupHappyDom();
 
@@ -18,6 +18,7 @@ afterAll(() => {
 });
 
 const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
+const { createRawSnippet } = await import('svelte');
 const { default: AreaChart } = await import('./area-chart.svelte');
 
 afterEach(() => cleanup());
@@ -50,8 +51,60 @@ describe('AreaChart', () => {
   });
 
   test('stacked mode marks the chart mode', () => {
-    const { container } = render(AreaChart, { label: 'Usage trend', mode: 'stacked', series });
+    const xAxis: ChartXAxisConfiguration = { tickLabelRotation: -30 };
+    const { container } = render(AreaChart, {
+      label: 'Usage trend',
+      mode: 'stacked',
+      series,
+      xAxis,
+    });
     expect(container.querySelector('[data-cinder-mode="stacked"]')).not.toBeNull();
+  });
+
+  test('exposes the resolved lower stack baseline to custom marks', () => {
+    const mark = createRawSnippet<[ChartMarkContext]>((getContext) => ({
+      render: () => {
+        const context = getContext();
+        const point = context.points[0];
+        return `<g data-custom-area="${context.series.id}" data-pixel-y="${point?.pixelY}" data-pixel-y0="${point?.pixelY0}"></g>`;
+      },
+    }));
+    const { container } = render(AreaChart, {
+      label: 'Stacked custom areas',
+      mode: 'stacked',
+      mark,
+      series,
+    });
+    const lowerSeries = container.querySelector('[data-custom-area="usage"]');
+    const upperSeries = container.querySelector('[data-custom-area="storage"]');
+    const lowerSeriesUpperCoordinate = Number(lowerSeries?.getAttribute('data-pixel-y'));
+    const upperSeriesBaseline = Number(upperSeries?.getAttribute('data-pixel-y0'));
+
+    expect(Number.isFinite(upperSeriesBaseline)).toBe(true);
+    expect(upperSeriesBaseline).toBeCloseTo(lowerSeriesUpperCoordinate);
+  });
+
+  test('scopes gradient resource ids to the existing chart id', () => {
+    const first = render(AreaChart, { id: 'usage-primary', label: 'Primary usage', series });
+    const second = render(AreaChart, { id: 'usage-comparison', label: 'Comparison usage', series });
+    const firstGradient = first.container.querySelector('linearGradient');
+    const secondGradient = second.container.querySelector('linearGradient');
+
+    expect(firstGradient?.id).toBe('usage_dprimary-gradient-usage');
+    expect(secondGradient?.id).toBe('usage_dcomparison-gradient-usage');
+    expect(firstGradient?.id).not.toBe(secondGradient?.id);
+    expect(first.container.querySelector('.cinder-area-chart__area')?.getAttribute('fill')).toBe(
+      'url(#usage_dprimary-gradient-usage)',
+    );
+  });
+
+  test('escapes functional-IRI characters in explicit chart ids', () => {
+    const { container } = render(AreaChart, { id: 'usage)', label: 'Unsafe id usage', series });
+    const gradient = container.querySelector('linearGradient');
+    const area = container.querySelector('.cinder-area-chart__area');
+
+    expect(gradient?.id).toBe('usage_x29-gradient-usage');
+    expect(area?.getAttribute('fill')).toBe('url(#usage_x29-gradient-usage)');
   });
 
   test('stacked mode draws upper series from cumulative offsets', () => {
@@ -161,13 +214,14 @@ describe('AreaChart', () => {
   test('loading state clears an active tooltip', async () => {
     const { getByRole, queryByText, rerender } = render(AreaChart, {
       label: 'Usage trend',
+      tooltip: true,
       series,
     });
 
     await fireEvent.focus(getByRole('button', { name: 'Usage, Jan, 30' }));
     expect(queryByText('Jan: 30')).toBeTruthy();
 
-    await rerender({ label: 'Usage trend', loading: true, series });
+    await rerender({ label: 'Usage trend', loading: true, tooltip: true, series });
     expect(queryByText('Jan: 30')).toBeNull();
   });
 
@@ -182,7 +236,11 @@ describe('AreaChart', () => {
   });
 
   test('keyboard focus shows the tooltip; Escape clears it', async () => {
-    const { getByRole, queryByText } = render(AreaChart, { label: 'Usage trend', series });
+    const { getByRole, queryByText } = render(AreaChart, {
+      label: 'Usage trend',
+      tooltip: true,
+      series,
+    });
     const target = getByRole('button', { name: 'Usage, Jan, 30' });
 
     await fireEvent.focus(target);
@@ -218,6 +276,7 @@ describe('AreaChart', () => {
   test('pointer input hides a keyboard focus-ring layer without clearing the focused tooltip', async () => {
     const { container, getByRole, queryByText } = render(AreaChart, {
       label: 'Usage trend',
+      tooltip: true,
       series,
     });
     const target = getByRole('button', { name: 'Usage, Jan, 30' });
@@ -238,6 +297,7 @@ describe('AreaChart', () => {
   test('hiding the focused series clears focus-ring and tooltip state', async () => {
     const { container, getByRole, queryByText } = render(AreaChart, {
       label: 'Usage trend',
+      tooltip: true,
       series,
     });
     const target = getByRole('button', { name: 'Usage, Jan, 30' });
@@ -257,6 +317,7 @@ describe('AreaChart', () => {
   test('controlled hiddenSeriesIds clears stale focus-ring and tooltip state without a legend click', async () => {
     const { container, getByRole, queryByText, rerender } = render(AreaChart, {
       label: 'Usage trend',
+      tooltip: true,
       series,
     });
     const target = getByRole('button', { name: 'Usage, Jan, 30' });
@@ -266,7 +327,7 @@ describe('AreaChart', () => {
     expect(container.querySelector('.cinder-area-chart__focus-ring-layer')).not.toBeNull();
     expect(queryByText('Jan: 30')).toBeTruthy();
 
-    await rerender({ label: 'Usage trend', hiddenSeriesIds: ['usage'], series });
+    await rerender({ label: 'Usage trend', hiddenSeriesIds: ['usage'], tooltip: true, series });
 
     expect(container.querySelectorAll('[data-cinder-series-id="usage"]').length).toBe(0);
     expect(container.querySelector('.cinder-area-chart__focus-ring-layer')).toBeNull();
@@ -277,6 +338,7 @@ describe('AreaChart', () => {
   test('arrow keys move DOM focus to the active target', async () => {
     const { container, getByRole, queryByText } = render(AreaChart, {
       label: 'Usage trend',
+      tooltip: true,
       series,
     });
     const firstTarget = getByRole('button', { name: 'Usage, Jan, 30' });
@@ -296,6 +358,7 @@ describe('AreaChart', () => {
   test('pointer hover does not override the focused target description', async () => {
     const { container, getByRole, queryByText } = render(AreaChart, {
       label: 'Usage trend',
+      tooltip: true,
       series,
     });
     const focusedTarget = getByRole('button', { name: 'Usage, Jan, 30' });

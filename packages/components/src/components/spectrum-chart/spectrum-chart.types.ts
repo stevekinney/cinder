@@ -1,6 +1,6 @@
 import type { Snippet } from 'svelte';
 import type { HTMLAttributes } from 'svelte/elements';
-import type { ChartDataTableVisibility } from '../chart.types.ts';
+import type { ChartDataTableVisibility, ChartTheme, ChartThemeSchema } from '../chart.types.ts';
 
 /** @schemaObject */
 export type SpectrumBin = {
@@ -25,6 +25,8 @@ export type SpectrumChartProps = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
   dataTableVisibility?: ChartDataTableVisibility;
   /** Custom data table caption; falls back to `label`. */
   dataTableCaption?: string;
+  /** Partial visual theme override. Omitted fields inherit the surrounding application. */
+  theme?: ChartTheme;
   /** Custom class applied to the root element. */
   class?: string;
   /** Snippet rendered when there are no bins. */
@@ -48,6 +50,8 @@ export type SpectrumChartSchemaProps = {
   dataTableVisibility?: ChartDataTableVisibility;
   /** Custom data table caption; falls back to `label`. */
   dataTableCaption?: string;
+  /** Partial visual theme override. Omitted fields inherit the surrounding application. */
+  theme?: ChartThemeSchema;
   /** Custom class applied to the root element. */
   class?: string;
 };

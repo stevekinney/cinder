@@ -1,6 +1,6 @@
 import type { Snippet } from 'svelte';
 import type { HTMLAttributes } from 'svelte/elements';
-import type { ChartDataTableVisibility } from '../chart.types.ts';
+import type { ChartDataTableVisibility, ChartTheme, ChartThemeSchema } from '../chart.types.ts';
 
 export type MatrixColorScale = 'sequential' | 'diverging';
 
@@ -31,6 +31,8 @@ export type MatrixChartProps = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
   dataTableCaption?: string;
   /** Controls data table visibility. Default `screen-reader-only`. */
   dataTableVisibility?: ChartDataTableVisibility;
+  /** Partial visual theme override. */
+  theme?: ChartTheme;
   /** Custom class applied to the root element. */
   class?: string;
   /** Snippet rendered when the chart has no data. */
@@ -64,6 +66,8 @@ export type MatrixChartSchemaProps = {
   dataTableCaption?: string;
   /** Controls data table visibility. Default `screen-reader-only`. @default "screen-reader-only" */
   dataTableVisibility?: ChartDataTableVisibility;
+  /** Partial visual theme override. */
+  theme?: ChartThemeSchema;
   /** Custom class applied to the root element. */
   class?: string;
 };

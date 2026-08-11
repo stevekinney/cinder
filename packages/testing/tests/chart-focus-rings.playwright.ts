@@ -93,6 +93,13 @@ async function focusTargetDirectly(page: Page, chart: ChartDefinition): Promise<
   return target;
 }
 
+async function tooltipDescribedByTarget(page: Page, target: Locator): Promise<Locator> {
+  await expect(target).toHaveAttribute('aria-describedby', /-tooltip$/);
+  const tooltipId = await target.getAttribute('aria-describedby');
+  if (!tooltipId) throw new Error('Chart target does not describe a tooltip.');
+  return page.locator(`[id="${tooltipId}"][role="tooltip"]`).first();
+}
+
 async function activeElementSummary(page: Page): Promise<TabbableSummary> {
   return page.evaluate(() => {
     const active = document.activeElement;
@@ -457,10 +464,10 @@ test.describe('chart SVG focus rings', () => {
     await page.waitForLoadState('networkidle');
     const root = await chartRoot(page, chart);
     const target = await focusTargetDirectly(page, chart);
+    const tooltip = await tooltipDescribedByTarget(page, target);
 
-    await expect(target).toHaveAttribute('aria-describedby', /-tooltip$/);
     await expect(root.locator(`.${chart.rootClass}__focus-ring-layer`)).toHaveCount(0);
-    await expect(root.locator('[role="tooltip"]').first()).toContainText(chart.tooltipText);
+    await expect(tooltip).toContainText(chart.tooltipText);
   });
 
   test('tooltip does not fully cover a focused area-chart ring', async ({ page }) => {
@@ -470,7 +477,8 @@ test.describe('chart SVG focus rings', () => {
     const root = await chartRoot(page, chart);
     await insertSentinelBeforeChartViewport(root, chart);
     await focusFromSentinel(page, chart);
-    const tooltip = root.locator('[role="tooltip"]').first();
+    const target = page.locator(targetSelector(chart)).first();
+    const tooltip = await tooltipDescribedByTarget(page, target);
     await expect(tooltip).toContainText(chart.tooltipText);
 
     const ringBox = await root.locator(primaryRingSelector(chart)).first().boundingBox();
@@ -498,8 +506,9 @@ test.describe('chart SVG focus rings', () => {
 
     await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2);
 
+    const tooltip = await tooltipDescribedByTarget(page, target);
     await expect(root.locator(`.${chart.rootClass}__focus-ring-layer`)).toHaveCount(0);
-    await expect(root.locator('[role="tooltip"]').first()).toContainText(chart.tooltipText);
+    await expect(tooltip).toContainText(chart.tooltipText);
     await expect(root.locator(`.${chart.hitSurfaceClass}`).first()).toBeVisible();
   });
 

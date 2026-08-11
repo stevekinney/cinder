@@ -208,20 +208,43 @@ function isNullishTypeNode(typeNode: TypeNode): boolean {
  */
 const MAX_SHAPE_DEPTH = 3;
 
+function isBuiltInObjectType(type: Type): boolean {
+  if (!type.isObject() || type.isArray() || type.isReadonlyArray()) return false;
+  return (
+    type
+      .getSymbol()
+      ?.getDeclarations()
+      .some((declaration) => {
+        // Mapped utility aliases such as Record, Pick, and Partial are
+        // structural even though their declarations live in TypeScript's
+        // standard library. Interfaces/classes such as Date and Element are
+        // genuine runtime objects that the playground cannot synthesize.
+        if (
+          declaration.getKind() === SyntaxKind.TypeAliasDeclaration ||
+          declaration.getKind() === SyntaxKind.MappedType
+        ) {
+          return false;
+        }
+        const sourcePath = declaration.getSourceFile().getFilePath().replaceAll('\\', '/');
+        return sourcePath.includes('/typescript/lib/lib.');
+      }) ?? false
+  );
+}
+
 /** True for a resolved type the generator cannot invent a value for. */
 function isOpaqueType(type: Type): boolean {
-  return type.getCallSignatures().length > 0 || isSnippetType(type);
+  return type.getCallSignatures().length > 0 || isSnippetType(type) || isBuiltInObjectType(type);
 }
 
 /**
  * Describe a resolved type structurally, for value synthesis.
  *
  * Union handling is ordered by what produces a usable placeholder: an
- * all-string-literal union becomes an `enum`; a union with an object arm takes
- * the FIRST object arm (`MegaMenuItem`, `EventStreamEntry` and
- * `RunStepTimelineEntry` are all shaped that way); a union of primitives prefers
- * the `string` arm, since `Statistic.value: string | number` reads better as
- * text than as a number.
+ * all-string-literal union becomes an `enum`; a mixed union prefers a
+ * synthesizable structural arm before a primitive, while opaque built-ins such
+ * as `Date` are skipped so `string | number | Date` still becomes a readable
+ * string. An all-object union takes its first object arm (`MegaMenuItem` and
+ * `RunStepTimelineEntry` are shaped that way).
  */
 /**
  * Memoizes {@link shapeFromType} by resolved type text and depth.
@@ -258,8 +281,8 @@ function computeShapeFromType(bare: Type, at: Node, depth: number): ValueShape |
 
   if (bare.isUnion()) {
     const arms = bare.getUnionTypes().filter((arm) => !arm.isNull() && !arm.isUndefined());
-    const objectArm = arms.find((arm) => arm.isObject() && !isOpaqueType(arm));
-    if (objectArm !== undefined) return objectShapeFromType(objectArm, at, depth);
+    const structuralArm = arms.find((arm) => arm.isObject() && !isOpaqueType(arm));
+    if (structuralArm !== undefined) return shapeFromType(structuralArm, at, depth);
     if (arms.some((arm) => arm.isString() || arm.isStringLiteral())) return { kind: 'string' };
     if (arms.some((arm) => arm.isNumber() || arm.isNumberLiteral())) return { kind: 'number' };
     return { kind: 'opaque', rawType: bare.getText() };

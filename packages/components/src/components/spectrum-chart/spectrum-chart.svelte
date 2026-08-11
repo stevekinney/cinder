@@ -19,7 +19,15 @@
 </script>
 
 <script lang="ts">
-  import { dataTableClass, formatNumericValue } from '../../_internal/chart/chart-utilities.ts';
+  import { onMount } from 'svelte';
+  import {
+    chartPaletteColor,
+    createChartGeometry,
+    dataTableClass,
+    formatNumericValue,
+    observeChartFontLoading,
+    resolveChartTheme,
+  } from '../../_internal/chart/chart-utilities.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { useResizeObserver } from '../../utilities/use-resize-observer.svelte.ts';
   import type { SpectrumChartProps } from './spectrum-chart.types.ts';
@@ -32,6 +40,7 @@
     loading = false,
     dataTableVisibility = 'screen-reader-only',
     dataTableCaption,
+    theme,
     class: customClassName,
     empty,
     loadingContent,
@@ -43,11 +52,6 @@
   const rootId = $derived(id ?? generatedId);
   const descriptionId = $derived(description ? `${rootId}-description` : undefined);
 
-  const marginTop = 8;
-  const marginRight = 8;
-  const marginBottom = 32;
-  const marginLeft = 40;
-
   let measuredWidth = $state(400);
 
   const observeResize = useResizeObserver((entries) => {
@@ -57,10 +61,17 @@
     if (entry && entry.contentRect.width > 0) measuredWidth = entry.contentRect.width;
   });
 
-  const plotWidth = $derived(Math.max(1, measuredWidth - marginLeft - marginRight));
-  const plotHeight = $derived(Math.max(1, height - marginTop - marginBottom));
-
   const isEmpty = $derived(bins.length === 0);
+  const resolvedTheme = $derived(resolveChartTheme(theme));
+  let rootElement = $state<HTMLElement>();
+  let measureText = $state(false);
+  let measurementVersion = $state(0);
+  onMount(() => {
+    measureText = true;
+    return observeChartFontLoading(() => {
+      measurementVersion += 1;
+    });
+  });
 
   // Spectrum magnitudes are linear non-negative. Coerce each bin's value to a
   // finite, non-negative number so a stray NaN/Infinity/negative can't break the
@@ -86,6 +97,28 @@
     if (maxValue <= 0) return [0];
     return Array.from({ length: tickCount }, (_, index) => (maxValue * index) / (tickCount - 1));
   });
+
+  // Feed the actual guide labels into the shared geometry calculator so long
+  // numeric/frequency labels receive enough room without fixed margins.
+  const maxXLabels = 8;
+  const xLabelStep = $derived(Math.max(1, Math.ceil(bins.length / maxXLabels)));
+  const xTickLabels = $derived(
+    bins.filter((_, index) => index % xLabelStep === 0).map((bin) => bin.label),
+  );
+  const yTickLabels = $derived(
+    yTicks.map((tick, index) => formatNumericValue(tick, undefined, undefined, { index })),
+  );
+  const geometry = $derived(
+    createChartGeometry(measuredWidth, height, {
+      xTickLabels,
+      yTickLabels,
+      measureText,
+      measurementElement: rootElement,
+      measurementVersion,
+    }),
+  );
+  const plotWidth = $derived(geometry.plotWidth);
+  const plotHeight = $derived(geometry.plotHeight);
 
   function scaleY(value: number): number {
     if (maxValue <= 0) return plotHeight;
@@ -119,20 +152,22 @@
     });
   });
 
-  // Show only a subset of x-axis labels to avoid clutter
-  const maxXLabels = 8;
-  const xLabelStep = $derived(Math.max(1, Math.ceil(bins.length / maxXLabels)));
-
   const hasDataTable = $derived(dataTableVisibility !== 'hidden');
 </script>
 
 <figure
   {...rest}
   {@attach observeResize}
+  bind:this={rootElement}
   id={rootId}
   class={classNames('cinder-spectrum-chart', customClassName)}
   aria-label={label}
   aria-describedby={descriptionId}
+  style:--_cinder-chart-foreground={resolvedTheme.foreground}
+  style:--_cinder-chart-muted={resolvedTheme.muted}
+  style:--_cinder-chart-grid={resolvedTheme.grid}
+  style:--_cinder-chart-background={resolvedTheme.background}
+  style:--_cinder-chart-series-color={chartPaletteColor(0, resolvedTheme.palette)}
 >
   {#if description}
     <p id={descriptionId} class="cinder-spectrum-chart__description">{description}</p>
@@ -164,7 +199,7 @@
            overlay would have a stray baseline grid line and ticks drawn under it
            (yTicks falls back to [0] when there is no data). -->
       {#if !loading && !isEmpty}
-        <g transform={`translate(${marginLeft}, ${marginTop})`}>
+        <g transform={`translate(${geometry.marginLeft}, ${geometry.marginTop})`}>
           <!-- Y-axis ticks -->
           {#each yTicks as tick, index (index)}
             <text
@@ -173,6 +208,7 @@
               y={scaleY(tick)}
               text-anchor="end"
               dominant-baseline="middle"
+              fill={resolvedTheme.muted}
               >{formatNumericValue(tick, undefined, undefined, { index })}</text
             >
             <line
@@ -182,6 +218,7 @@
               y1={scaleY(tick)}
               y2={scaleY(tick)}
               aria-hidden="true"
+              stroke={resolvedTheme.grid}
             />
           {/each}
           <!-- Frequency bars -->
@@ -194,6 +231,7 @@
               height={bar.barHeight}
               aria-hidden="true"
               data-cinder-bin={bar.label}
+              fill={chartPaletteColor(0, resolvedTheme.palette)}
             />
           {/each}
           <!-- X-axis frequency labels (sampled to avoid overlap) -->

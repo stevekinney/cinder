@@ -14,7 +14,8 @@
     grid-template-rows: auto auto auto;
     row-gap: var(--cinder-statistic-row-gap, var(--cinder-space-1, 0.25rem));
     align-items: start;
-    color: var(--cinder-text);
+    color: var(--_cinder-chart-foreground, currentColor);
+    background: var(--_cinder-chart-background, transparent);
   }
 
   .cinder-statistic[data-cinder-has-icon] {
@@ -29,12 +30,12 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    color: var(--cinder-text-muted);
+    color: var(--_cinder-chart-muted, currentColor);
   }
 
   .cinder-statistic__label {
     font-size: var(--cinder-statistic-label-font-size, var(--cinder-text-sm));
-    color: var(--cinder-text-muted);
+    color: var(--_cinder-chart-muted, currentColor);
   }
 
   .cinder-statistic[data-cinder-has-icon] .cinder-statistic__label {
@@ -72,10 +73,10 @@
   }
 
   .cinder-statistic__change[data-cinder-direction='neutral'] {
-    color: var(--cinder-text-muted);
+    color: var(--_cinder-chart-muted, currentColor);
   }
 
   .cinder-statistic__change-description {
-    color: var(--cinder-text-muted);
+    color: var(--_cinder-chart-muted, currentColor);
   }
 }

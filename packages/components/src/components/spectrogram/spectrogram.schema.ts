@@ -56,6 +56,31 @@ const schema = {
       enum: ['screen-reader-only', 'visible', 'hidden'],
       description: 'Controls data table visibility. Default `screen-reader-only`.',
     },
+    theme: {
+      type: 'object',
+      properties: {
+        foreground: {
+          type: 'string',
+        },
+        muted: {
+          type: 'string',
+        },
+        grid: {
+          type: 'string',
+        },
+        background: {
+          type: 'string',
+        },
+        palette: {
+          type: 'array',
+          items: {
+            type: 'string',
+          },
+        },
+      },
+      additionalProperties: false,
+      description: 'Partial visual theme override.',
+    },
     dataTableCaption: {
       type: 'string',
       description: 'Custom data table caption; falls back to `label`.',

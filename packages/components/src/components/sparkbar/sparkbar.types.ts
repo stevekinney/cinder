@@ -1,4 +1,5 @@
 import type { HTMLAttributes } from 'svelte/elements';
+import type { ChartTheme, ChartThemeSchema } from '../chart.types.ts';
 
 export type SparkbarSize = 'sm' | 'md' | 'lg';
 export type SparkbarVariant = 'accent' | 'success' | 'warning';
@@ -17,6 +18,8 @@ export type SparkbarProps = HTMLAttributes<HTMLDivElement> & {
   size?: SparkbarSize;
   /** Fill color intent. Default `accent`. */
   variant?: SparkbarVariant;
+  /** Partial visual theme override. Omitted fields inherit the surrounding application. */
+  theme?: ChartTheme;
   /** Accessible name override. Defaults to `${label}, ${percentage}%`. */
   ariaLabel?: string;
   /** Accessible value text override. Defaults to the trimmed trailing value when provided. */
@@ -39,6 +42,8 @@ export type SparkbarSchemaProps = {
   size?: SparkbarSize;
   /** Fill color intent. Default `accent`. */
   variant?: SparkbarVariant;
+  /** Partial visual theme override. Omitted fields inherit the surrounding application. */
+  theme?: ChartThemeSchema;
   /** Accessible name override. Defaults to `${label}, ${percentage}%`. */
   ariaLabel?: string;
   /** Accessible value text override. Defaults to the trimmed trailing value when provided. */

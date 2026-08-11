@@ -18,7 +18,13 @@
 </script>
 
 <script lang="ts">
-  import { dataTableClass } from '../../_internal/chart/chart-utilities.ts';
+  import { onMount } from 'svelte';
+  import {
+    createChartGeometry,
+    dataTableClass,
+    observeChartFontLoading,
+    resolveChartTheme,
+  } from '../../_internal/chart/chart-utilities.ts';
   import ChartDataTable from '../_internal/chart-data-table.svelte';
   import {
     heatmapCellFill,
@@ -43,6 +49,7 @@
     loading = false,
     dataTableCaption,
     dataTableVisibility = 'screen-reader-only',
+    theme,
     class: customClassName,
     empty,
     loadingContent,
@@ -54,11 +61,16 @@
   const rootId = $derived(id ?? generatedId);
   const descriptionId = $derived(description ? `${rootId}-description` : undefined);
 
-  // Geometry constants
-  const marginTop = 40;
-  const marginRight = 16;
-  const marginBottom = 16;
-  const marginLeft = 80;
+  const resolvedTheme = $derived(resolveChartTheme(theme));
+  let rootElement = $state<HTMLElement>();
+  let measureText = $state(false);
+  let measurementVersion = $state(0);
+  onMount(() => {
+    measureText = true;
+    return observeChartFontLoading(() => {
+      measurementVersion += 1;
+    });
+  });
 
   let measuredWidth = $state(400);
 
@@ -68,9 +80,6 @@
     // last good width is kept instead of collapsing the chart geometry.
     if (entry && entry.contentRect.width > 0) measuredWidth = entry.contentRect.width;
   });
-
-  const plotWidth = $derived(Math.max(1, measuredWidth - marginLeft - marginRight));
-  const plotHeight = $derived(Math.max(1, height - marginTop - marginBottom));
 
   // Collect unique x and y labels in insertion order
   const xLabels = $derived.by(() => {
@@ -102,6 +111,18 @@
     }
     return result;
   });
+
+  const geometry = $derived(
+    createChartGeometry(measuredWidth, height, {
+      xTickLabels: xLabels,
+      yTickLabels: yLabels,
+      xTickPosition: 'top',
+      measureText,
+      measurementElement: rootElement,
+      measurementVersion,
+    }),
+  );
+  const { plotWidth, plotHeight, marginTop, marginLeft } = $derived(geometry);
 
   const isEmpty = $derived(xLabels.length === 0 || yLabels.length === 0);
 
@@ -173,7 +194,13 @@
   const domain = $derived(heatmapDomain(cells.map((cell) => cell.value)));
 
   function cellFill(value: number | null): string {
-    return heatmapCellFill(value, domain, colorScale);
+    return heatmapCellFill(
+      value,
+      domain,
+      colorScale,
+      resolvedTheme.palette,
+      theme?.background ?? 'var(--cinder-surface-inset)',
+    );
   }
 
   // Hoisted so a dense grid's ~3x(rows*cols) formatting calls (tooltip
@@ -187,7 +214,7 @@
   }
 
   function cellLabelFill(value: number | null): string {
-    return heatmapLabelFill(value, domain, colorScale);
+    return heatmapLabelFill(value, resolvedTheme.muted);
   }
 
   const hasDataTable = $derived(dataTableVisibility !== 'hidden');
@@ -217,8 +244,13 @@
 <figure
   {...rest}
   {@attach observeResize}
+  bind:this={rootElement}
   id={rootId}
   class={classNames('cinder-matrix-chart', customClassName)}
+  style:--_cinder-chart-foreground={resolvedTheme.foreground}
+  style:--_cinder-chart-muted={resolvedTheme.muted}
+  style:--_cinder-chart-grid={resolvedTheme.grid}
+  style:--_cinder-chart-background={resolvedTheme.background}
   aria-label={label}
   aria-describedby={descriptionId}
   data-cinder-color-scale={colorScale}
@@ -283,7 +315,7 @@
           {/each}
           <!-- Matrix cells -->
           {#each cells as cell (cell.key)}
-            <g>
+            <g class="cinder-matrix-chart__cell-group">
               <rect
                 class="cinder-matrix-chart__cell"
                 x={cell.x}

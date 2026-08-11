@@ -37,3 +37,7 @@ When Spectrogram accepts snippets or arbitrary children, the caller owns the sem
 - Check forced-colors mode when the component adds borders, focus rings, selected state, or status color.
 
 Related components: `spectrum-chart`, `waveform`, `matrix-chart`.
+
+## Rendering review (2026-08-10)
+
+The implementation review retained Spectrogram for time-by-frequency density rather than a categorical MatrixChart. Browser review in dark and light modes confirmed inherited text and background colors, automatic guide spacing, unclipped labels, and palette-driven intensity. The bounded SVG representation does not replace the semantic table, which exposes the sampled time, frequency, and magnitude relationships without relying on color.

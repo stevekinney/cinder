@@ -23,7 +23,13 @@
 </script>
 
 <script lang="ts">
-  import { dataTableClass } from '../../_internal/chart/chart-utilities.ts';
+  import { onMount } from 'svelte';
+  import {
+    createChartGeometry,
+    dataTableClass,
+    observeChartFontLoading,
+    resolveChartTheme,
+  } from '../../_internal/chart/chart-utilities.ts';
   import {
     heatmapCellFill,
     heatmapDomainOfRows,
@@ -41,6 +47,7 @@
     height = 200,
     loading = false,
     dataTableVisibility = 'screen-reader-only',
+    theme,
     dataTableCaption,
     class: customClassName,
     empty,
@@ -53,10 +60,16 @@
   const rootId = $derived(id ?? generatedId);
   const descriptionId = $derived(description ? `${rootId}-description` : undefined);
 
-  const marginTop = 8;
-  const marginRight = 16;
-  const marginBottom = 32;
-  const marginLeft = 60;
+  const resolvedTheme = $derived(resolveChartTheme(theme));
+  let rootElement = $state<HTMLElement>();
+  let measureText = $state(false);
+  let measurementVersion = $state(0);
+  onMount(() => {
+    measureText = true;
+    return observeChartFontLoading(() => {
+      measurementVersion += 1;
+    });
+  });
 
   let measuredWidth = $state(400);
 
@@ -67,31 +80,41 @@
     if (entry && entry.contentRect.width > 0) measuredWidth = entry.contentRect.width;
   });
 
-  const plotWidth = $derived(Math.max(1, measuredWidth - marginLeft - marginRight));
-  const plotHeight = $derived(Math.max(1, height - marginTop - marginBottom));
-
   // Frequency-bin count is the MAX across frames so ragged input renders a full
   // rectangular grid: shorter frames leave explicit missing cells rather than
   // overflowing the plot or silently dropping rows.
   const binCount = $derived(frames.reduce((max, frame) => Math.max(max, frame.bins.length), 0));
 
-  // The bin-index list [0, 1, …, binCount-1], computed once and reused for every
-  // frame's column rather than rebuilding an Array.from() per frame in the render
-  // loop.
-  const binIndices = $derived(Array.from({ length: binCount }, (_, index) => index));
-
   // A frame with zero bins contributes no usable data; the chart is "empty" when
   // there are no frames OR no frequency bins anywhere.
   const isEmpty = $derived(frames.length === 0 || binCount === 0);
-
-  // Cell dimensions
-  const cellWidth = $derived(frames.length > 0 ? plotWidth / frames.length : 0);
-  const cellHeight = $derived(binCount > 0 ? plotHeight / binCount : 0);
 
   // Read a frame's bin as a finite value or null (missing). Non-finite values
   // (NaN/Infinity) and out-of-range indices (ragged frames) are missing.
   function binValueAt(frameIndex: number, binIndex: number): number | null {
     return toFiniteOrNull(frames[frameIndex]?.bins[binIndex]);
+  }
+
+  // Sampled plot cells cover a rectangular bucket of source cells. Aggregate
+  // with a maximum so a narrow transient is not lost merely because it is not
+  // the bucket's first frame/bin. Each source cell is visited at most once
+  // across the rendered buckets, keeping this O(original frame × bin) work.
+  function plotBucketValue(
+    frameIndex: number,
+    frameSpan: number,
+    binIndex: number,
+    binSpan: number,
+  ): number | null {
+    let maximum: number | null = null;
+    for (let frameOffset = 0; frameOffset < frameSpan; frameOffset += 1) {
+      const frame = frames[frameIndex + frameOffset];
+      if (!frame) continue;
+      for (let binOffset = 0; binOffset < binSpan; binOffset += 1) {
+        const value = toFiniteOrNull(frame.bins[binIndex + binOffset]);
+        if (value !== null && (maximum === null || value > maximum)) maximum = value;
+      }
+    }
+    return maximum;
   }
 
   // Global color domain over the finite values only (shared with MatrixChart).
@@ -100,7 +123,13 @@
   const domain = $derived(heatmapDomainOfRows(frames.map((frame) => frame.bins)));
 
   function cellFill(value: number | null): string {
-    return heatmapCellFill(value, domain, 'sequential');
+    return heatmapCellFill(
+      value,
+      domain,
+      'sequential',
+      resolvedTheme.palette,
+      theme?.background ?? 'var(--cinder-surface-inset)',
+    );
   }
 
   // Convert a bin index to a y-coordinate. Frequency increases UPWARD (the audio
@@ -117,13 +146,31 @@
     Array.from({ length: binCount }, (_, index) => frequencyLabels?.[index] ?? String(index)),
   );
 
-  // Show a subset of y-axis labels
+  // Measure exactly the labels rendered by the sampled axes so hidden labels
+  // cannot reserve guide space that the SVG never uses.
   const maxYLabels = 8;
   const yLabelStep = $derived(Math.max(1, Math.ceil(binCount / maxYLabels)));
-
-  // Show a subset of x-axis (time) labels
+  const renderedYLabels = $derived(yLabels.filter((_, index) => index % yLabelStep === 0));
   const maxXLabels = 10;
   const xLabelStep = $derived(Math.max(1, Math.ceil(frames.length / maxXLabels)));
+  const renderedXLabels = $derived(
+    frames.filter((_, index) => index % xLabelStep === 0).map((frame) => frame.label),
+  );
+
+  const geometry = $derived(
+    createChartGeometry(measuredWidth, height, {
+      xTickLabels: renderedXLabels,
+      yTickLabels: renderedYLabels,
+      measureText,
+      measurementElement: rootElement,
+      measurementVersion,
+    }),
+  );
+  const { plotWidth, plotHeight, marginTop, marginLeft } = $derived(geometry);
+
+  // Cell dimensions
+  const cellWidth = $derived(frames.length > 0 ? plotWidth / frames.length : 0);
+  const cellHeight = $derived(binCount > 0 ? plotHeight / binCount : 0);
 
   const hasDataTable = $derived(dataTableVisibility !== 'hidden');
 
@@ -137,14 +184,29 @@
   const maxPlotBins = 256;
   const plotFrameStep = $derived(Math.max(1, Math.ceil(frames.length / maxPlotFrames)));
   const plotBinStep = $derived(Math.max(1, Math.ceil(binCount / maxPlotBins)));
-  const plotFrames = $derived(
-    frames
-      .map((frame, frameIndex) => ({ frame, frameIndex }))
-      .filter((_, index) => index % plotFrameStep === 0)
-      .slice(0, maxPlotFrames),
+  const plotFrames = $derived.by(() =>
+    Array.from(
+      { length: Math.min(maxPlotFrames, Math.ceil(frames.length / plotFrameStep)) },
+      (_, bucketIndex) => {
+        const frameIndex = bucketIndex * plotFrameStep;
+        return {
+          frameIndex,
+          span: Math.min(plotFrameStep, frames.length - frameIndex),
+        };
+      },
+    ),
   );
-  const plotBinIndices = $derived(
-    binIndices.filter((index) => index % plotBinStep === 0).slice(0, maxPlotBins),
+  const plotBins = $derived.by(() =>
+    Array.from(
+      { length: Math.min(maxPlotBins, Math.ceil(binCount / plotBinStep)) },
+      (_, bucketIndex) => {
+        const binIndex = bucketIndex * plotBinStep;
+        return {
+          binIndex,
+          span: Math.min(plotBinStep, binCount - binIndex),
+        };
+      },
+    ),
   );
 
   // Table rows: each frame is a column; rows are frequency bins.
@@ -186,8 +248,13 @@
 <figure
   {...rest}
   {@attach observeResize}
+  bind:this={rootElement}
   id={rootId}
   class={classNames('cinder-spectrogram', customClassName)}
+  style:--_cinder-chart-foreground={resolvedTheme.foreground}
+  style:--_cinder-chart-muted={resolvedTheme.muted}
+  style:--_cinder-chart-grid={resolvedTheme.grid}
+  style:--_cinder-chart-background={resolvedTheme.background}
   aria-label={label}
   aria-describedby={descriptionId}
 >
@@ -226,14 +293,16 @@
                non-finite cells render as the "missing" fill. Low frequency (bin 0)
                is at the bottom. -->
           {#each plotFrames as entry (entry.frameIndex)}
-            {#each plotBinIndices as binIndex (binIndex)}
+            {#each plotBins as bin (bin.binIndex)}
               <rect
                 class="cinder-spectrogram__cell"
                 x={entry.frameIndex * cellWidth}
-                y={binY(binIndex)}
-                width={cellWidth}
-                height={cellHeight}
-                fill={cellFill(binValueAt(entry.frameIndex, binIndex))}
+                y={binY(bin.binIndex + bin.span - 1)}
+                width={entry.span * cellWidth}
+                height={bin.span * cellHeight}
+                fill={cellFill(
+                  plotBucketValue(entry.frameIndex, entry.span, bin.binIndex, bin.span),
+                )}
                 aria-hidden="true"
               />
             {/each}

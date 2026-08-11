@@ -21,4 +21,4 @@
   ];
 </script>
 
-<LineChart label="Monthly recurring revenue" {series} dataTableVisibility="visible" />
+<LineChart label="Monthly recurring revenue" {series} tooltip dataTableVisibility="visible" />
