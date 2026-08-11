@@ -69,7 +69,45 @@
     return `no change, ${change.value}${suffix}`;
   });
 
-  const resolvedTheme = $derived(resolveChartTheme(theme));
+  /**
+   * Statistic is page text, not chart glyphs, so it cannot take
+   * `resolveChartTheme`'s unthemed defaults as-is: that returns
+   * `currentColor` for `foreground` and `muted`, and this component writes
+   * both as INLINE custom properties, so the `var(--_cinder-chart-*, …)`
+   * fallbacks in `statistic.css` can never apply. An unthemed Statistic
+   * therefore painted its label, icon, and change description at full text
+   * colour — visually identical to the value, with the muted hierarchy gone.
+   *
+   * The chart components absorb the same `currentColor` default with a
+   * compensating `opacity` on their tick labels; that is the wrong tool for
+   * text, which has to clear the 4.5:1 AA floor rather than land wherever a
+   * multiplier puts it.
+   *
+   * So the substitution is all-or-nothing on `theme`'s presence, NOT
+   * per-field: with no theme at all, both colours come from the
+   * contrast-tuned text tokens (restoring the pre-#1248 hierarchy); with any
+   * theme, `resolveChartTheme` is used untouched so omitted fields still
+   * inherit `currentColor` as the partial-theme contract documents. A
+   * per-field fallback would put the app's `--cinder-text-muted` on a caller's
+   * custom dark panel. A surface that colours its own text through an
+   * ancestor and wants the Statistic to follow can say so explicitly with
+   * `theme={{ foreground: 'currentColor', muted: 'currentColor' }}`.
+   */
+  const resolvedTheme = $derived(
+    theme
+      ? // A supplied theme — even a partial one — keeps `resolveChartTheme`'s
+        // `currentColor` inheritance for the fields it omits, per the documented
+        // partial-theme contract. Substituting the global text tokens here would
+        // break exactly the case the contract exists for: a caller passing
+        // `{ foreground: 'white', background: 'black' }` for a dark panel would
+        // get the app's dark `--cinder-text-muted` label on that black surface.
+        resolveChartTheme(theme)
+      : {
+          ...resolveChartTheme(undefined),
+          foreground: 'var(--cinder-text)',
+          muted: 'var(--cinder-text-muted)',
+        },
+  );
 </script>
 
 <div
