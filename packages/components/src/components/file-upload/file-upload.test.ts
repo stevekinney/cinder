@@ -5,12 +5,19 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
+const nativeDataTransfer = globalThis.DataTransfer;
+
 const { render, fireEvent, cleanup } = await import('@testing-library/svelte');
 
 // Unmount renders between tests; shared document.body otherwise leaks activeElement/nodes.
 afterEach(() => {
   cleanup();
   document.body.replaceChildren();
+  Object.defineProperty(globalThis, 'DataTransfer', {
+    configurable: true,
+    writable: true,
+    value: nativeDataTransfer,
+  });
 });
 
 const { default: FileUpload } = await import('./file-upload.svelte');
@@ -39,9 +46,24 @@ function createFileList(files: File[]): FileList {
   return fileList;
 }
 
+class TestDataTransfer {
+  readonly #files: File[] = [];
+  readonly items = {
+    add: (file: File) => {
+      this.#files.push(file);
+      return null;
+    },
+  };
+
+  get files(): FileList {
+    return createFileList(this.#files);
+  }
+}
+
 function attachInputFiles(input: HTMLInputElement, files: File[]) {
   Object.defineProperty(input, 'files', {
     configurable: true,
+    writable: true,
     value: createFileList(files),
   });
 }
@@ -83,6 +105,11 @@ function createDragLeaveWithoutDataTransfer(): DragEvent {
 
 beforeEach(() => {
   document.body.innerHTML = '';
+  Object.defineProperty(globalThis, 'DataTransfer', {
+    configurable: true,
+    writable: true,
+    value: TestDataTransfer,
+  });
 });
 
 describe('FileUpload rendering', () => {
@@ -416,6 +443,7 @@ describe('FileUpload validation and events', () => {
       expect.objectContaining({ file: firstFile, status: 'pending' }),
       expect.objectContaining({ file: secondFile, status: 'pending' }),
     ]);
+    expect(Array.from(input.files ?? [])).toEqual([firstFile, secondFile]);
   });
 });
 
@@ -555,26 +583,20 @@ describe('FileUpload drag state and accessibility', () => {
   test('clicking the advertised dropzone surface opens the picker without double-activating the button', async () => {
     const { container } = render(FileUpload, { props: { id: 'upload' } });
     const input = container.querySelector('#upload') as HTMLInputElement;
+    const dropzone = container.querySelector('.cinder-file-upload__dropzone') as HTMLDivElement;
     const button = container.querySelector('.cinder-file-upload__button') as HTMLButtonElement;
-    const surfaceTrigger = container.querySelector(
-      '.cinder-file-upload__surface-trigger',
-    ) as HTMLButtonElement;
     const click = mock(() => {});
     input.click = click as unknown as typeof input.click;
 
-    await fireEvent.click(surfaceTrigger);
+    await fireEvent.click(dropzone);
     expect(click).toHaveBeenCalledTimes(1);
 
-    const css = await Bun.file(new URL('./file-upload.css', import.meta.url)).text();
-    const surfaceTarget = css.match(/\.cinder-file-upload__surface-trigger\s*\{[^}]*\}/)?.[0];
-    expect(surfaceTarget).toContain('grid-area: 1 / 1');
-    expect(surfaceTarget).toContain('margin: calc(-1 * var(--cinder-space-6))');
-    const interactiveContentTarget = css.match(
-      /\.cinder-file-upload__content\s+:is\(a, button, input, select, textarea, \[role='button'\], \[tabindex\]\)\s*\{[^}]*\}/,
-    )?.[0];
-    expect(interactiveContentTarget).toContain('pointer-events: auto');
-
     await fireEvent.click(button);
+    expect(click).toHaveBeenCalledTimes(2);
+
+    const customControl = document.createElement('button');
+    dropzone.append(customControl);
+    await fireEvent.click(customControl);
     expect(click).toHaveBeenCalledTimes(2);
   });
 });

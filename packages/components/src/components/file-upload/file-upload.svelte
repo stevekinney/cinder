@@ -92,6 +92,15 @@
   const resolvedDescription = $derived(description ?? formatAcceptDescription(accept));
 
   $effect(() => {
+    if (!inputElement || typeof DataTransfer === 'undefined') return;
+    const dataTransfer = new DataTransfer();
+    for (const entry of renderedEntries) {
+      if (entry.rejectionReason === undefined) dataTransfer.items.add(entry.file);
+    }
+    inputElement.files = dataTransfer.files;
+  });
+
+  $effect(() => {
     if (context && id && context.controlId !== id) {
       devWarn(
         `[cinder/FileUpload] id mismatch: FileUpload id="${id}" but wrapping FormField expects controlId="${context.controlId}". Set the same id on both.`,
@@ -252,6 +261,26 @@
     inputElement?.click();
   }
 
+  function surfaceActivation(node: HTMLElement) {
+    function handleClick(event: MouseEvent) {
+      if (field.disabled) return;
+      const target = event.target;
+      if (
+        target instanceof Element &&
+        target.closest("a, button, input, select, textarea, [role='button'], [tabindex]")
+      )
+        return;
+      openPicker();
+    }
+
+    node.addEventListener('click', handleClick);
+    return {
+      destroy() {
+        node.removeEventListener('click', handleClick);
+      },
+    };
+  }
+
   function clearInputValue() {
     if (inputElement) {
       inputElement.value = '';
@@ -316,6 +345,7 @@
     ondragleave={handleDragLeave}
     ondragover={handleDragOver}
     ondrop={handleDrop}
+    use:surfaceActivation
   >
     <input
       bind:this={inputElement}
@@ -334,38 +364,27 @@
       onchange={handleInputChange}
     />
 
+    {#if isDragActive}
+      {#if dragActive}
+        {@render dragActive()}
+      {:else}
+        {@render defaultDragActive()}
+      {/if}
+    {:else if idle}
+      {@render idle()}
+    {:else}
+      {@render defaultIdle()}
+    {/if}
+
     <button
       type="button"
-      class="cinder-file-upload__surface-trigger"
-      tabindex="-1"
-      aria-hidden="true"
+      class="cinder-file-upload__button"
       disabled={field.disabled}
+      aria-describedby={field.describedBy}
       onclick={openPicker}
-    ></button>
-
-    <div class="cinder-file-upload__content">
-      {#if isDragActive}
-        {#if dragActive}
-          {@render dragActive()}
-        {:else}
-          {@render defaultDragActive()}
-        {/if}
-      {:else if idle}
-        {@render idle()}
-      {:else}
-        {@render defaultIdle()}
-      {/if}
-
-      <button
-        type="button"
-        class="cinder-file-upload__button"
-        disabled={field.disabled}
-        aria-describedby={field.describedBy}
-        onclick={openPicker}
-      >
-        {browseLabel}
-      </button>
-    </div>
+    >
+      {browseLabel}
+    </button>
   </div>
 
   {#if renderedEntries.length > 0}

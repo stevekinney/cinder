@@ -65,34 +65,6 @@
     white-space: nowrap;
   }
 
-  .cinder-file-upload__surface-trigger {
-    grid-area: 1 / 1;
-    align-self: stretch;
-    justify-self: stretch;
-    margin: calc(-1 * var(--cinder-space-6));
-    border: 0;
-    border-radius: inherit;
-    background: transparent;
-    cursor: pointer;
-  }
-
-  .cinder-file-upload__surface-trigger:disabled {
-    cursor: not-allowed;
-  }
-
-  .cinder-file-upload__content {
-    grid-area: 1 / 1;
-    display: grid;
-    gap: var(--cinder-space-3);
-    justify-items: center;
-    pointer-events: none;
-  }
-
-  .cinder-file-upload__content
-    :is(a, button, input, select, textarea, [role='button'], [tabindex]) {
-    pointer-events: auto;
-  }
-
   .cinder-file-upload__body {
     display: grid;
     gap: var(--cinder-space-2);
