@@ -32,6 +32,25 @@
   import { acceptsFile, fileTypeIcon, formatAcceptDescription } from './file-upload-utilities.ts';
   import type { FileUploadEntry, FileUploadProps, RejectedFile } from './file-upload.types.ts';
 
+  const INTERACTIVE_DESCENDANT_SELECTOR = [
+    ':any-link',
+    'button',
+    'input',
+    'select',
+    'textarea',
+    'label',
+    'summary',
+    'details',
+    'iframe',
+    'object',
+    'embed',
+    'audio[controls]',
+    'video[controls]',
+    "[contenteditable]:not([contenteditable='false'])",
+    '[role]',
+    '[tabindex]',
+  ].join(', ');
+
   let {
     id,
     accept,
@@ -265,11 +284,9 @@
     function handleClick(event: MouseEvent) {
       if (field.disabled) return;
       const target = event.target;
-      if (
-        target instanceof Element &&
-        target.closest("a, button, input, select, textarea, [role='button'], [tabindex]")
-      )
-        return;
+      const interactiveDescendant =
+        target instanceof Element ? target.closest(INTERACTIVE_DESCENDANT_SELECTOR) : null;
+      if (interactiveDescendant && interactiveDescendant !== node) return;
       openPicker();
     }
 

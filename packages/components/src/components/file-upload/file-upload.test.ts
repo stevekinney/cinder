@@ -598,6 +598,18 @@ describe('FileUpload drag state and accessibility', () => {
     dropzone.append(customControl);
     await fireEvent.click(customControl);
     expect(click).toHaveBeenCalledTimes(2);
+
+    const editableRegion = document.createElement('div');
+    editableRegion.setAttribute('contenteditable', 'true');
+    for (const interactiveElement of [
+      document.createElement('label'),
+      document.createElement('summary'),
+      editableRegion,
+    ]) {
+      dropzone.append(interactiveElement);
+      await fireEvent.click(interactiveElement);
+    }
+    expect(click).toHaveBeenCalledTimes(2);
   });
 });
 
