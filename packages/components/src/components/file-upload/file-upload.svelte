@@ -22,6 +22,7 @@
 
 <script lang="ts">
   import RotateCcwIcon from 'lucide-svelte/icons/rotate-ccw';
+  import XIcon from 'lucide-svelte/icons/x';
 
   import { resolveFieldControl } from '../../_internal/field-control.ts';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
@@ -103,6 +104,7 @@
     onFilesChange,
     onReject,
     onRetry,
+    oncancel,
     'aria-describedby': consumerDescribedBy,
     'aria-invalid': consumerInvalid,
     ...rest
@@ -142,8 +144,9 @@
   function synchronizeNativeInputFiles() {
     if (!inputElement || typeof DataTransfer === 'undefined') return;
     const dataTransfer = new DataTransfer();
-    for (const entry of renderedEntries) {
-      if (entry.rejectionReason === undefined) dataTransfer.items.add(entry.file);
+    const acceptedEntries = renderedEntries.filter((entry) => entry.rejectionReason === undefined);
+    for (const entry of multiple ? acceptedEntries : acceptedEntries.slice(0, 1)) {
+      dataTransfer.items.add(entry.file);
     }
     inputElement.files = dataTransfer.files;
   }
@@ -342,8 +345,17 @@
     clearInputValue();
   }
 
-  function handleInputCancel() {
+  function handleInputCancel(event: Event) {
     synchronizeNativeInputFiles();
+    oncancel?.(event as Event & { currentTarget: EventTarget & HTMLInputElement });
+  }
+
+  function removeEntry(entry: FileUploadEntry) {
+    if (field.disabled) return;
+    const nextEntries = renderedEntries.filter((candidate) => candidate.id !== entry.id);
+    if (files === undefined) internalEntries = nextEntries;
+    onFilesChange?.(nextEntries);
+    announcer.announce(`${entry.file.name} removed`);
   }
 
   function progressValue(progress: number | undefined): number {
@@ -462,49 +474,60 @@
                 </div>
               </div>
 
-              {#if entry.status === 'uploading'}
-                <span class="cinder-file-upload__status" data-status="uploading">Uploading</span>
-              {:else if entry.status === 'success'}
-                <span class="cinder-file-upload__status" data-status="success">
-                  <svg
-                    class="cinder-file-upload__status-icon"
-                    aria-hidden="true"
-                    viewBox="0 0 16 16"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      d="M3.5 8.5L6.25 11.25L12.5 5"
-                      stroke="currentColor"
-                      stroke-width="1.5"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                  </svg>
-                  Complete
-                </span>
-              {:else if entry.status === 'error'}
-                <span class="cinder-file-upload__status" data-status="error">
-                  <svg
-                    class="cinder-file-upload__status-icon"
-                    aria-hidden="true"
-                    viewBox="0 0 16 16"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      d="M8 4.5V8.25M8 11H8.00667M14 8C14 11.3137 11.3137 14 8 14C4.68629 14 2 11.3137 2 8C2 4.68629 4.68629 2 8 2C11.3137 2 14 4.68629 14 8Z"
-                      stroke="currentColor"
-                      stroke-width="1.5"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                  </svg>
-                  Failed
-                </span>
-              {:else}
-                <span class="cinder-file-upload__status" data-status="pending">Pending</span>
-              {/if}
+              <div class="cinder-file-upload__row-actions">
+                {#if entry.status === 'uploading'}
+                  <span class="cinder-file-upload__status" data-status="uploading">Uploading</span>
+                {:else if entry.status === 'success'}
+                  <span class="cinder-file-upload__status" data-status="success">
+                    <svg
+                      class="cinder-file-upload__status-icon"
+                      aria-hidden="true"
+                      viewBox="0 0 16 16"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M3.5 8.5L6.25 11.25L12.5 5"
+                        stroke="currentColor"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                    Complete
+                  </span>
+                {:else if entry.status === 'error'}
+                  <span class="cinder-file-upload__status" data-status="error">
+                    <svg
+                      class="cinder-file-upload__status-icon"
+                      aria-hidden="true"
+                      viewBox="0 0 16 16"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M8 4.5V8.25M8 11H8.00667M14 8C14 11.3137 11.3137 14 8 14C4.68629 14 2 11.3137 2 8C2 4.68629 4.68629 2 8 2C11.3137 2 14 4.68629 14 8Z"
+                        stroke="currentColor"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                    Failed
+                  </span>
+                {:else}
+                  <span class="cinder-file-upload__status" data-status="pending">Pending</span>
+                {/if}
+                <button
+                  type="button"
+                  class="cinder-file-upload__remove"
+                  disabled={field.disabled}
+                  aria-label={`Remove ${entry.file.name}`}
+                  onclick={() => removeEntry(entry)}
+                >
+                  <XIcon aria-hidden="true" />
+                </button>
+              </div>
             </div>
 
             {#if entry.status === 'uploading'}
@@ -534,6 +557,7 @@
                     type="button"
                     class="cinder-file-upload__retry"
                     aria-label={`Retry ${entry.file.name}`}
+                    aria-describedby={errorId}
                     onclick={() => onRetry(entry)}
                   >
                     <RotateCcwIcon class="cinder-file-upload__retry-icon" aria-hidden="true" />

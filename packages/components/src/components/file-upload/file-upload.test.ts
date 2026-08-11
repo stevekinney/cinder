@@ -448,8 +448,9 @@ describe('FileUpload validation and events', () => {
 
   test('canceling a reopened picker restores the accumulated native file queue', async () => {
     const firstFile = createFile('first.txt', 'text/plain', 10);
+    const oncancel = mock((_event) => {});
     const { container } = render(FileUpload, {
-      props: { id: 'upload', multiple: true },
+      props: { id: 'upload', multiple: true, oncancel },
     });
     const input = container.querySelector('#upload') as HTMLInputElement;
 
@@ -460,6 +461,57 @@ describe('FileUpload validation and events', () => {
     await fireEvent(input, new Event('cancel', { bubbles: true }));
 
     expect(Array.from(input.files ?? [])).toEqual([firstFile]);
+    expect(oncancel).toHaveBeenCalledTimes(1);
+  });
+
+  test('single-file mode synchronizes only the first controlled entry to the native input', async () => {
+    const firstFile = createFile('first.txt', 'text/plain', 10);
+    const secondFile = createFile('second.txt', 'text/plain', 10);
+    const { container } = render(FileUpload, {
+      props: {
+        id: 'upload',
+        files: [
+          { id: 'first', file: firstFile, status: 'success' },
+          { id: 'second', file: secondFile, status: 'success' },
+        ],
+      },
+    });
+    const input = container.querySelector('#upload') as HTMLInputElement;
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(Array.from(input.files ?? [])).toEqual([firstFile]);
+  });
+
+  test('removing an uncontrolled entry frees its maxFiles slot', async () => {
+    const firstFile = createFile('first.txt', 'text/plain', 10);
+    const replacementFile = createFile('replacement.txt', 'text/plain', 10);
+    const onFilesAccepted = mock((_files) => {});
+    const onFilesChange = mock((_entries) => {});
+    const { container } = render(FileUpload, {
+      props: {
+        id: 'upload',
+        multiple: true,
+        maxFiles: 1,
+        onFilesAccepted,
+        onFilesChange,
+      },
+    });
+    const input = container.querySelector('#upload') as HTMLInputElement;
+
+    attachInputFiles(input, [firstFile]);
+    await fireEvent.change(input);
+    const removeButton = container.querySelector(
+      '.cinder-file-upload__remove',
+    ) as HTMLButtonElement;
+    await fireEvent.click(removeButton);
+    attachInputFiles(input, [replacementFile]);
+    await fireEvent.change(input);
+
+    expect(onFilesAccepted).toHaveBeenLastCalledWith([replacementFile]);
+    expect(onFilesChange).toHaveBeenLastCalledWith([
+      expect.objectContaining({ file: replacementFile, status: 'pending' }),
+    ]);
   });
 });
 
@@ -706,6 +758,7 @@ describe('FileUpload file list rendering', () => {
 
     expect(retryButton.textContent).toContain('Retry');
     expect(retryButton.getAttribute('aria-label')).toBe('Retry broken.zip');
+    expect(retryButton.getAttribute('aria-describedby')).toBe('upload-1-error');
     await fireEvent.click(retryButton);
     expect(onRetry).toHaveBeenCalledWith(entry);
   });

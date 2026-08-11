@@ -209,6 +209,28 @@
     flex: none;
   }
 
+  .cinder-file-upload__row-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--cinder-space-2);
+  }
+
+  .cinder-file-upload__remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: var(--cinder-radius-sm);
+    background: transparent;
+    color: var(--cinder-text-muted);
+    padding: var(--cinder-space-1);
+  }
+
+  .cinder-file-upload__remove svg {
+    inline-size: 1rem;
+    block-size: 1rem;
+  }
+
   .cinder-file-upload__progress {
     overflow: hidden;
     border-radius: 999px;
@@ -251,12 +273,14 @@
   }
 
   @media (hover: hover) {
-    .cinder-file-upload__retry:hover {
+    .cinder-file-upload__retry:hover,
+    .cinder-file-upload__remove:hover:not(:disabled) {
       background: var(--cinder-surface-hover);
     }
   }
 
-  .cinder-file-upload__retry:focus-visible {
+  .cinder-file-upload__retry:focus-visible,
+  .cinder-file-upload__remove:focus-visible {
     outline: var(--cinder-ring-width) solid transparent;
     box-shadow: var(--_cinder-focus-ring-shadow);
   }
@@ -272,7 +296,8 @@
     .cinder-file-upload__dropzone--border-beam:has(.cinder-file-upload__input:focus-visible),
     .cinder-file-upload__dropzone--border-beam:has(.cinder-file-upload__button:focus-visible),
     .cinder-file-upload__button:focus-visible,
-    .cinder-file-upload__retry:focus-visible {
+    .cinder-file-upload__retry:focus-visible,
+    .cinder-file-upload__remove:focus-visible {
       outline-color: Highlight;
     }
   }
