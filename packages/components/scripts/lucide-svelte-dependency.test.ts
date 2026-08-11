@@ -2,8 +2,9 @@ import { describe, expect, it } from 'bun:test';
 import { join } from 'node:path';
 
 /**
- * Regression guard for issue #756 (`hydration_mismatch` on Chat's first SSR
- * load, root-caused to `@lostgradient/cinder`).
+ * Regression guard for an earlier issue #756 occurrence
+ * (`hydration_mismatch` on Chat's first SSR load, root-caused to
+ * `@lostgradient/cinder`).
  *
  * `lucide-svelte` used to be a loosely ranged `peerDependency`
  * (`>=0.400.0 <1`). Cinder's prebuilt SSR bundle (`dist/server`, resolved via
@@ -27,7 +28,9 @@ import { join } from 'node:path';
  * first place; see `packages/components/scripts/validate-consumers.ts`'s
  * `sveltekit-consumer` `/chat-layout` route, which now pins a deliberately
  * different `lucide-svelte` version in that fixture to keep exercising this
- * exact skew end-to-end).
+ * exact skew end-to-end). A separate export-condition-order guard owns the
+ * later recurrence where SvelteKit SSR and the browser selected independently
+ * compiled Cinder trees even with identical Lucide artwork.
  */
 
 const EXACT_VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;

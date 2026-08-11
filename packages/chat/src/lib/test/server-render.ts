@@ -21,6 +21,14 @@
  * during a server render. We rewrite the compiled module's `from 'svelte'`
  * imports to point at Svelte's server index so those helpers resolve to their
  * server-safe variants.
+ *
+ * This helper deliberately exercises Chat with Cinder's plain-Node export.
+ * Svelte-aware source compilation and hydration are covered by `hydrate.ts`
+ * and the packed SvelteKit browser regression. Chat's `test:prepare` builds
+ * Cinder's ignored server artifacts before either package test command runs.
+ * Keeping this build on that precompiled `node` fallback also avoids asking
+ * Bun to compile the same Cinder source graph independently for every SSR probe
+ * in one test process, which corrupts Bun's path-keyed module cache on Linux.
  */
 
 /// <reference lib="dom" />
@@ -102,7 +110,7 @@ export async function renderToServerHtml<Props extends Record<string, unknown>>(
   const build = await Bun.build({
     entrypoints: [sourcePath],
     target: 'bun',
-    conditions: ['svelte'],
+    conditions: ['node'],
     external: ['svelte', 'svelte/*'],
     plugins: [serverCompilePlugin()],
   });

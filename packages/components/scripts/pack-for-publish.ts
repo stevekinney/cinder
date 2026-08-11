@@ -35,6 +35,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
 
+import { orderedExportEntry } from './generate-exports.ts';
 import { BUILD_INPUT_HASH_MARKER } from './lib/build-cache.ts';
 import { readJsonFile } from './lib/read-json-file.ts';
 
@@ -209,7 +210,9 @@ function buildPublishedManifest(source: SourceManifest): SourceManifest {
   const transformedExports: ExportsMap = {};
   for (const [key, entry] of Object.entries(source.exports)) {
     transformedExports[key] =
-      typeof entry === 'object' ? rewriteComponentMetadataNodeEntry(key, entry) : entry;
+      typeof entry === 'object'
+        ? orderedExportEntry(rewriteComponentMetadataNodeEntry(key, entry))
+        : entry;
   }
 
   // Shallow clone, then transform workspace-local deps and replace `exports`
