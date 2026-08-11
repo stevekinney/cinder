@@ -236,8 +236,10 @@
     font-weight: var(--cinder-font-medium);
   }
 
-  .cinder-file-upload__retry:hover {
-    background: var(--cinder-surface-hover);
+  @media (hover: hover) {
+    .cinder-file-upload__retry:hover {
+      background: var(--cinder-surface-hover);
+    }
   }
 
   .cinder-file-upload__retry:focus-visible {
