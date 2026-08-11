@@ -116,6 +116,14 @@ describe('Sparkbar', () => {
     expect(style).toContain('--_cinder-chart-accent: rebeccapurple');
   });
 
+  test('paints the themed background on the root', async () => {
+    const cssText = await Bun.file(new URL('./sparkbar.css', import.meta.url)).text();
+
+    expect(cssText).toMatch(
+      /\.cinder-sparkbar\s*\{[^}]*background: var\(--_cinder-chart-background, transparent\)/s,
+    );
+  });
+
   test('falls back to zero when value is not finite', () => {
     const { container } = render(Sparkbar, {
       value: NaN,

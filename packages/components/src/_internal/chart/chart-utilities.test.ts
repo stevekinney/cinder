@@ -927,6 +927,34 @@ describe('createCartesianModel', () => {
     expect(model.xTicks).toHaveLength(8);
   });
 
+  test('passes sampled source indices to x-axis formatters', () => {
+    const model = createCartesianModel({
+      componentId: 'line-chart',
+      series: [
+        {
+          id: 'sampled',
+          label: 'Sampled',
+          data: Array.from({ length: 10 }, (_, index) => ({ x: index, y: index })),
+        },
+      ],
+      hiddenSeriesIds: [],
+      width: 640,
+      height: 280,
+      xAxis: { format: (_value, context) => String(context.index) },
+    });
+
+    expect(model.xTicks.map((tick) => tick.label)).toEqual([
+      '0',
+      '1',
+      '3',
+      '4',
+      '5',
+      '6',
+      '8',
+      '9',
+    ]);
+  });
+
   test('decimation preserves endpoints, separated spikes/dips, null gaps, and the bound', () => {
     const points: PlacedPoint[] = Array.from({ length: 101 }, (_, index) => ({
       seriesId: 'dense',
@@ -1243,6 +1271,51 @@ describe('createCartesianModel', () => {
     }
     expect(continuous?.points.every((point) => point.y !== null)).toBe(true);
     expect(continuous?.areaPath).toContain('L');
+  });
+
+  test('rechecks every stacked layer after inserting shared synthetic breaks', () => {
+    const lateGapData = Array.from({ length: 10_000 }, (_, index) => ({
+      x: index,
+      y: index === 0 || index === 7 ? null : 1,
+    }));
+    const model = createCartesianModel({
+      componentId: 'area-chart',
+      series: [
+        {
+          id: 'gap-trigger',
+          label: 'Gap trigger',
+          data: Array.from({ length: 10_000 }, (_, index) => ({
+            x: index,
+            y: index % 2 === 0 ? 1 : null,
+          })),
+        },
+        { id: 'late-gap', label: 'Late gap', data: lateGapData },
+        {
+          id: 'continuous',
+          label: 'Continuous',
+          data: Array.from({ length: 10_000 }, (_, index) => ({ x: index, y: 1 })),
+        },
+      ],
+      hiddenSeriesIds: [],
+      width: 640,
+      height: 280,
+      stackedArea: true,
+    });
+    const lateGapPoints = model.normalizedSeries[1]?.points ?? [];
+
+    for (let index = 1; index < lateGapPoints.length; index++) {
+      const previousPoint = lateGapPoints[index - 1];
+      const currentPoint = lateGapPoints[index];
+      if (!previousPoint || !currentPoint || previousPoint.y === null || currentPoint.y === null) {
+        continue;
+      }
+      const previousSourceIndex = Number(previousPoint.x.raw);
+      const currentSourceIndex = Number(currentPoint.x.raw);
+      const omittedNull = lateGapData
+        .slice(previousSourceIndex + 1, currentSourceIndex)
+        .some((point) => point.y === null);
+      expect(omittedNull).toBe(false);
+    }
   });
 
   test('derives margins from formatted tick labels, rotation, and axis titles', () => {

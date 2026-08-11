@@ -65,30 +65,42 @@ function boundedGapHeavyLayerSelections(
 
   const maximumFiniteSamples = Math.max(1, Math.floor((limit + 1) / 2));
   const sampledIndices = evenlySample(finiteIndices, maximumFiniteSamples);
-  const selections: LayerDecimationSelection[] = [];
+  const selectedSourceIndices: number[] = [];
   sampledIndices.forEach((sourceIndex, selectionIndex) => {
     const previousSourceIndex = sampledIndices[selectionIndex - 1];
     if (previousSourceIndex !== undefined && sourceIndex > previousSourceIndex + 1) {
-      const forceGapLayerIndices: number[] = [];
-      layers.forEach((layer, layerIndex) => {
-        if (layer[previousSourceIndex] == null || layer[sourceIndex] == null) return;
-        for (let gapIndex = previousSourceIndex + 1; gapIndex < sourceIndex; gapIndex++) {
-          if (layer[gapIndex] == null) {
-            forceGapLayerIndices.push(layerIndex);
-            break;
-          }
-        }
-      });
-      if (forceGapLayerIndices.length > 0) {
-        selections.push({
-          sourceIndex: previousSourceIndex + Math.floor((sourceIndex - previousSourceIndex) / 2),
-          forceGapLayerIndices,
-        });
+      if (layers.some((layer) => layerHasOmittedGap(layer, previousSourceIndex, sourceIndex))) {
+        selectedSourceIndices.push(
+          previousSourceIndex + Math.floor((sourceIndex - previousSourceIndex) / 2),
+        );
       }
     }
-    selections.push({ sourceIndex, forceGapLayerIndices: [] });
+    selectedSourceIndices.push(sourceIndex);
   });
-  return selections;
+  return selectedSourceIndices.map((sourceIndex, selectionIndex) => {
+    const previousSourceIndex = selectedSourceIndices[selectionIndex - 1];
+    const forceGapLayerIndices: number[] = [];
+    if (previousSourceIndex !== undefined && sourceIndex > previousSourceIndex + 1) {
+      layers.forEach((layer, layerIndex) => {
+        if (layerHasOmittedGap(layer, previousSourceIndex, sourceIndex)) {
+          forceGapLayerIndices.push(layerIndex);
+        }
+      });
+    }
+    return { sourceIndex, forceGapLayerIndices };
+  });
+}
+
+function layerHasOmittedGap(
+  layer: ReadonlyArray<number | null>,
+  startIndex: number,
+  endIndex: number,
+): boolean {
+  if (layer[startIndex] == null || layer[endIndex] == null) return false;
+  for (let gapIndex = startIndex + 1; gapIndex < endIndex; gapIndex++) {
+    if (layer[gapIndex] == null) return true;
+  }
+  return false;
 }
 
 function addGapBoundaryIndices(

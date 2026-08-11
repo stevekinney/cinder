@@ -394,7 +394,7 @@ function buildXAxisTicks(
     const value = sortedXValues[sourceIndex];
     if (!value) continue;
     ticks.push({
-      label: formatXValue(value, xAxis, { index: i }),
+      label: formatXValue(value, xAxis, { index: sourceIndex }),
       x: scaleX(value),
     });
   }

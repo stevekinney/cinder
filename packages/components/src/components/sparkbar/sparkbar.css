@@ -6,6 +6,7 @@
     min-inline-size: 0;
     inline-size: 100%;
     color: var(--_cinder-chart-foreground, currentColor);
+    background: var(--_cinder-chart-background, transparent);
   }
 
   .cinder-sparkbar__row {
