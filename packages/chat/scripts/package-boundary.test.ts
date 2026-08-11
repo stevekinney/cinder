@@ -40,8 +40,8 @@ describe('Chat package ownership boundary', () => {
   test('keeps host-supplied runtime singletons peer-only and owns its conversation-model dependencies', () => {
     expect(() => assertSourceManifest(chatManifest)).not.toThrow();
     expect(chatManifest.dependencies).toEqual({
-      conversationalist: '^0.5.0',
-      zod: '4.4.1',
+      conversationalist: '^0.6.1',
+      zod: '4.4.3',
     });
     // The Cinder floor tracks the Cinder minor released alongside Chat —
     // caret on 0.x pins the minor, so each Cinder minor bump MUST widen this
