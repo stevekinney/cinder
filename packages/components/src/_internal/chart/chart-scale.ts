@@ -7,17 +7,18 @@ import type { NormalizedXValue, PlacedPoint } from './chart-model-utilities.ts';
 
 export const MAXIMUM_RENDERED_SERIES_POINTS = 2_000;
 
-function boundSelectedIndices(selected: Set<number>, limit: number): number[] {
-  const ordered = [...selected].sort((a, b) => a - b);
-  if (ordered.length <= limit) return ordered;
-  const interiorLimit = limit - 2;
-  const step = (ordered.length - 3) / Math.max(1, interiorLimit - 1);
-  const bounded = [ordered[0]!];
-  for (let index = 0; index < interiorLimit; index++) {
-    bounded.push(ordered[1 + Math.round(index * step)]!);
+function addGapBoundaryIndices(
+  selected: Set<number>,
+  pointCount: number,
+  valueAt: (index: number) => number | null | undefined,
+): void {
+  for (let index = 1; index < pointCount; index++) {
+    const previousIsNull = valueAt(index - 1) == null;
+    const currentIsNull = valueAt(index) == null;
+    if (previousIsNull === currentIsNull) continue;
+    selected.add(index - 1);
+    selected.add(index);
   }
-  bounded.push(ordered.at(-1)!);
-  return [...new Set(bounded)].sort((a, b) => a - b);
 }
 
 export function decimationIndices(
@@ -28,12 +29,16 @@ export function decimationIndices(
     return points.map((_, index) => index);
   }
   const limit = Math.max(2, Math.floor(maximumPoints));
-  // A bucket can contribute one structural null plus distinct minimum and
-  // maximum values. Reserve all three slots so enforcing the cap never has to
-  // discard a gap marker.
-  const bucketCount = Math.max(1, Math.floor((limit - 2) / 3));
   const interiorLength = points.length - 2;
   const selected = new Set<number>([0, points.length - 1]);
+  addGapBoundaryIndices(selected, points.length, (index) => points[index]?.y);
+
+  // Every finite/null transition is structural. If a pathological series has
+  // more transitions than the nominal render budget, keep the boundaries: a
+  // false connecting line is worse than exceeding the approximate cap.
+  const remainingExtremaBudget = limit - selected.size;
+  const bucketCount = Math.floor(remainingExtremaBudget / 2);
+  if (bucketCount < 1) return [...selected].sort((a, b) => a - b);
 
   for (let bucketIndex = 0; bucketIndex < bucketCount; bucketIndex++) {
     const start = 1 + Math.floor((bucketIndex * interiorLength) / bucketCount);
@@ -43,14 +48,10 @@ export function decimationIndices(
     let maximumIndex: number | undefined;
     let minimumValue = Number.POSITIVE_INFINITY;
     let maximumValue = Number.NEGATIVE_INFINITY;
-    let nullIndex: number | undefined;
     for (let index = start; index < end; index++) {
       const point = points[index];
       if (!point) continue;
-      if (point.y === null) {
-        nullIndex ??= index;
-        continue;
-      }
+      if (point.y === null) continue;
       if (point.y < minimumValue) {
         minimumValue = point.y;
         minimumIndex = index;
@@ -60,16 +61,11 @@ export function decimationIndices(
         maximumIndex = index;
       }
     }
-    // Nulls are structural: retain one gap marker per bucket where present,
-    // then retain both extrema when there is room. This keeps discontinuities
-    // visible while ensuring spikes and dips survive downsampling.
-    if (nullIndex !== undefined) selected.add(nullIndex);
     if (minimumIndex !== undefined) selected.add(minimumIndex);
     if (maximumIndex !== undefined) selected.add(maximumIndex);
   }
 
-  // Preserve the defensive bound for unusually small caller-supplied limits.
-  return boundSelectedIndices(selected, limit);
+  return [...selected].sort((a, b) => a - b);
 }
 
 export function decimationIndicesForLayers(
@@ -81,13 +77,18 @@ export function decimationIndicesForLayers(
     return Array.from({ length: pointCount }, (_, index) => index);
   }
   const limit = Math.max(2, Math.floor(maximumPoints));
-  // Each layer can contribute a minimum, maximum, and structural null per
-  // bucket. Size the buckets against that worst case so every cumulative
-  // boundary participates without exceeding the shared render budget.
-  const candidatesPerBucket = Math.max(1, layers.length * 3);
-  const bucketCount = Math.max(1, Math.floor((limit - 2) / candidatesPerBucket));
   const interiorLength = pointCount - 2;
   const selected = new Set<number>([0, pointCount - 1]);
+  for (const layer of layers) {
+    addGapBoundaryIndices(selected, pointCount, (index) => layer[index]);
+  }
+
+  // Gap boundaries are shared across layers before extrema are bucketed, so
+  // every retained layer uses the same x keys without collapsing separate
+  // discontinuities into one marker.
+  const candidatesPerBucket = Math.max(1, layers.length * 2);
+  const bucketCount = Math.floor((limit - selected.size) / candidatesPerBucket);
+  if (bucketCount < 1) return [...selected].sort((a, b) => a - b);
 
   for (let bucketIndex = 0; bucketIndex < bucketCount; bucketIndex++) {
     const start = 1 + Math.floor((bucketIndex * interiorLength) / bucketCount);
@@ -96,15 +97,11 @@ export function decimationIndicesForLayers(
     for (const layer of layers) {
       let minimumIndex: number | undefined;
       let maximumIndex: number | undefined;
-      let nullIndex: number | undefined;
       let minimumValue = Number.POSITIVE_INFINITY;
       let maximumValue = Number.NEGATIVE_INFINITY;
       for (let index = start; index < end; index++) {
         const value = layer[index];
-        if (value === null || value === undefined) {
-          nullIndex ??= index;
-          continue;
-        }
+        if (value === null || value === undefined) continue;
         if (value < minimumValue) {
           minimumValue = value;
           minimumIndex = index;
@@ -114,13 +111,12 @@ export function decimationIndicesForLayers(
           maximumIndex = index;
         }
       }
-      if (nullIndex !== undefined) selected.add(nullIndex);
       if (minimumIndex !== undefined) selected.add(minimumIndex);
       if (maximumIndex !== undefined) selected.add(maximumIndex);
     }
   }
 
-  return boundSelectedIndices(selected, limit);
+  return [...selected].sort((a, b) => a - b);
 }
 
 export function decimatePlacedPoints(

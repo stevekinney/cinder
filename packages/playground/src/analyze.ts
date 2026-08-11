@@ -214,9 +214,20 @@ function isBuiltInObjectType(type: Type): boolean {
     type
       .getSymbol()
       ?.getDeclarations()
-      .some((declaration) =>
-        declaration.getSourceFile().getFilePath().includes('/typescript/lib/lib.'),
-      ) ?? false
+      .some((declaration) => {
+        // Mapped utility aliases such as Record, Pick, and Partial are
+        // structural even though their declarations live in TypeScript's
+        // standard library. Interfaces/classes such as Date and Element are
+        // genuine runtime objects that the playground cannot synthesize.
+        if (
+          declaration.getKind() === SyntaxKind.TypeAliasDeclaration ||
+          declaration.getKind() === SyntaxKind.MappedType
+        ) {
+          return false;
+        }
+        const sourcePath = declaration.getSourceFile().getFilePath().replaceAll('\\', '/');
+        return sourcePath.includes('/typescript/lib/lib.');
+      }) ?? false
   );
 }
 

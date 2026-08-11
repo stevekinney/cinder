@@ -243,6 +243,18 @@ describe('analyzeComponent — chart structural seeds', () => {
       },
     });
   });
+
+  it('keeps mapped Record chart data synthesizable', async () => {
+    for (const componentName of ['bar-chart', 'matrix-chart']) {
+      const manifest = await analyzeComponent(componentPath(componentName));
+      const data = manifest.props.find((prop) => prop.name === 'data');
+
+      expect(data?.control).toMatchObject({
+        kind: 'array',
+        element: { fields: [], degenerate: true },
+      });
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------

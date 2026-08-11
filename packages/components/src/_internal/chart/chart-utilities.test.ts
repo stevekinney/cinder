@@ -975,6 +975,37 @@ describe('createCartesianModel', () => {
     expect(decimated.some((point) => point.x.raw === gapIndex && point.y === null)).toBe(true);
   });
 
+  test('decimation preserves separated null runs that share a bucket', () => {
+    const gapIndices = [4_992, 4_995];
+    const points: PlacedPoint[] = Array.from({ length: 10_000 }, (_, index) => {
+      const value = gapIndices.includes(index) ? null : index % 2 === 0 ? -1 : 1;
+      return {
+        seriesId: 'dense',
+        seriesLabel: 'Dense',
+        color: 'red',
+        x: normalizeXValue(index),
+        y: value,
+        originalY: value,
+        index,
+        pixelX: index,
+        pixelY: index,
+        pixelY0: 100,
+      };
+    });
+
+    const decimated = decimatePlacedPoints(points);
+
+    expect(decimated.length).toBeLessThanOrEqual(2_000);
+    expect(
+      decimated.filter((point) => gapIndices.includes(Number(point.x.raw)) && point.y === null),
+    ).toHaveLength(2);
+    expect(
+      decimated.some(
+        (point) => Number(point.x.raw) > gapIndices[0]! && Number(point.x.raw) < gapIndices[1]!,
+      ),
+    ).toBe(true);
+  });
+
   test('stacked decimation shares x positions and preserves adjacent boundaries', () => {
     const data = Array.from({ length: 2_101 }, (_, index) => ({
       x: index,
@@ -1086,6 +1117,36 @@ describe('createCartesianModel', () => {
 
     expect(visible?.points.map((point) => point.y)).toEqual([1, null, 2]);
     expect(visible?.areaPath.match(/M/g)).toHaveLength(2);
+  });
+
+  test('stacked decimation preserves separated null runs that share a bucket', () => {
+    const gapIndices = [4_992, 4_995];
+    const model = createCartesianModel({
+      componentId: 'area-chart',
+      series: [
+        {
+          id: 'visible',
+          label: 'Visible',
+          data: Array.from({ length: 10_000 }, (_, index) => ({
+            x: index,
+            y: gapIndices.includes(index) ? null : index % 2 === 0 ? 1 : 2,
+          })),
+        },
+      ],
+      hiddenSeriesIds: [],
+      width: 640,
+      height: 280,
+      stackedArea: true,
+    });
+    const visible = model.normalizedSeries[0];
+
+    expect(visible?.points.length).toBeLessThanOrEqual(2_000);
+    expect(
+      visible?.points.filter(
+        (point) => gapIndices.includes(Number(point.x.raw)) && point.y === null,
+      ),
+    ).toHaveLength(2);
+    expect(visible?.areaPath.match(/M/g)).toHaveLength(3);
   });
 
   test('derives margins from formatted tick labels, rotation, and axis titles', () => {
