@@ -107,14 +107,30 @@ export function createChartGeometry(
 export function createHorizontalCategoryLabelLayout(
   labels: string[],
   chartWidth: number,
+  options: Pick<
+    ChartGeometryOptions,
+    'measureText' | 'measurementElement' | 'measurementVersion'
+  > = {},
 ): { labels: string[]; marginLeft: number } {
+  const measurementContext = createChartTextMeasurementContext(
+    options.measureText ?? false,
+    options.measurementElement,
+    options.measurementVersion ?? 0,
+  );
+  const textMeasurements = measureChartTexts(
+    [...labels.map((label) => ({ label, rotation: 0 })), { label: '…', rotation: 0 }],
+    measurementContext,
+  );
+  const measurementFor = (label: string): ChartTextMeasurement =>
+    textMeasurements.get(chartTextMeasurementKey(label, 0, measurementContext.cacheKey)) ??
+    fallbackChartTextMeasurement(label, 0);
   const maximumMarginLeft = Math.max(
     CHART_OUTER_PADDING,
     Math.floor(chartWidth * MAXIMUM_HORIZONTAL_CATEGORY_LABEL_FRACTION),
   );
   let longestLabelWidth = 0;
   for (const label of labels) {
-    longestLabelWidth = Math.max(longestLabelWidth, measureChartText(label).width);
+    longestLabelWidth = Math.max(longestLabelWidth, measurementFor(label).width);
   }
   const requestedMarginLeft =
     longestLabelWidth + HORIZONTAL_CATEGORY_LABEL_GAP + HORIZONTAL_CATEGORY_LABEL_OUTER_PADDING;
@@ -129,7 +145,9 @@ export function createHorizontalCategoryLabelLayout(
 
   return {
     marginLeft,
-    labels: labels.map((label) => truncateHorizontalCategoryLabel(label, availableLabelWidth)),
+    labels: labels.map((label) =>
+      truncateHorizontalCategoryLabel(label, availableLabelWidth, measurementFor),
+    ),
   };
 }
 
@@ -147,16 +165,27 @@ export function observeChartFontLoading(onFontsChanged: () => void): () => void 
   };
 }
 
-function truncateHorizontalCategoryLabel(label: string, availableWidth: number): string {
-  if (measureChartText(label).width <= availableWidth) return label;
+function truncateHorizontalCategoryLabel(
+  label: string,
+  availableWidth: number,
+  measurementFor: (label: string) => ChartTextMeasurement,
+): string {
+  const measuredWidth = measurementFor(label).width;
+  if (measuredWidth <= availableWidth) return label;
+  const fallbackWidth = fallbackChartTextMeasurement(label, 0).width;
+  const measurementScale = fallbackWidth > 0 ? measuredWidth / fallbackWidth : 1;
+  const estimatedWidth = (candidate: string): number =>
+    candidate === '…'
+      ? measurementFor('…').width
+      : fallbackChartTextMeasurement(candidate, 0).width * measurementScale;
 
   const characters = Array.from(label);
   while (characters.length > 0) {
     const truncated = `${characters.join('')}…`;
-    if (measureChartText(truncated).width <= availableWidth) return truncated;
+    if (estimatedWidth(truncated) <= availableWidth) return truncated;
     characters.pop();
   }
-  return availableWidth >= measureChartText('…').width ? '…' : '';
+  return availableWidth >= estimatedWidth('…') ? '…' : '';
 }
 
 type ChartTextMeasurement = { width: number; height: number };
@@ -249,10 +278,6 @@ function cacheChartTextMeasurement(key: string, measurement: ChartTextMeasuremen
     }
   }
   chartTextMeasurementCache.set(key, measurement);
-}
-
-function measureChartText(label: string, rotation = 0): ChartTextMeasurement {
-  return fallbackChartTextMeasurement(label, rotation);
 }
 
 function chartTextMeasurementKey(

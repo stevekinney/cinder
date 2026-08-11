@@ -218,20 +218,24 @@ export function createCartesianModel(options: {
       )
     : undefined;
   const stackedRenderDomain = stackedRenderXValues ?? [];
+  const stackedVisibleSeries = stackedArea
+    ? normalizedSeries.filter((item) => !hiddenSeriesIds.includes(item.id))
+    : [];
+  const stackedLayerIndexBySeriesId = new Map(
+    stackedVisibleSeries.map((item, layerIndex) => [item.id, layerIndex]),
+  );
   const stackedBoundaryLayers = stackedArea
     ? (() => {
         const cumulativeValuesByKey = new Map(stackedRenderDomain.map((value) => [value.key, 0]));
-        return normalizedSeries
-          .filter((item) => !hiddenSeriesIds.includes(item.id))
-          .map((item) =>
-            stackedRenderDomain.map((value) => {
-              const point = normalizedPointsBySeriesId?.get(item.id)?.get(value.key);
-              if (point?.y === null || point?.y === undefined) return null;
-              const cumulativeValue = (cumulativeValuesByKey.get(value.key) ?? 0) + point.y;
-              cumulativeValuesByKey.set(value.key, cumulativeValue);
-              return cumulativeValue;
-            }),
-          );
+        return stackedVisibleSeries.map((item) =>
+          stackedRenderDomain.map((value) => {
+            const point = normalizedPointsBySeriesId?.get(item.id)?.get(value.key);
+            if (point?.y === null || point?.y === undefined) return null;
+            const cumulativeValue = (cumulativeValuesByKey.get(value.key) ?? 0) + point.y;
+            cumulativeValuesByKey.set(value.key, cumulativeValue);
+            return cumulativeValue;
+          }),
+        );
       })()
     : undefined;
   const stackedRenderSelections = stackedBoundaryLayers
@@ -257,8 +261,10 @@ export function createCartesianModel(options: {
       ? new Map(placedPoints.map((point) => [point.x.key, point]))
       : undefined;
     const renderPoints = stackedRenderSelections
-      ? stackedRenderSelections.map(({ sourceIndex, forceGap }) => {
+      ? stackedRenderSelections.map(({ sourceIndex, forceGapLayerIndices }) => {
           const x = stackedRenderDomain[sourceIndex]!;
+          const layerIndex = stackedLayerIndexBySeriesId.get(item.id);
+          const forceGap = layerIndex !== undefined && forceGapLayerIndices.includes(layerIndex);
           if (!forceGap) {
             const placedPoint = placedPointsByKey?.get(x.key);
             if (placedPoint) return placedPoint;

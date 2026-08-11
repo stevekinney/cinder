@@ -49,6 +49,7 @@ function chartResourceSegment(segment: string): string {
   return encodeURIComponent(segment)
     .replace(/[!'()*]/g, (character) => `%${character.charCodeAt(0).toString(16).toUpperCase()}`)
     .replaceAll('_', '_u')
+    .replaceAll('-', '_d')
     .replaceAll('%', '_x');
 }
 

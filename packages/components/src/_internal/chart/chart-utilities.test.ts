@@ -112,9 +112,12 @@ describe('createChartGeometry', () => {
     measurementElement.style.setProperty('--cinder-text-xs', '12px');
     document.body.append(measurementElement);
     const append = spyOn(measurementElement, 'append');
-    const svgElementPrototype = globalThis.SVGElement.prototype;
-    const originalGetBoundingBox = Object.getOwnPropertyDescriptor(svgElementPrototype, 'getBBox');
-    Object.defineProperty(svgElementPrototype, 'getBBox', {
+    const svgTextElementPrototype = globalThis.SVGTextElement.prototype;
+    const originalGetBoundingBox = Object.getOwnPropertyDescriptor(
+      svgTextElementPrototype,
+      'getBBox',
+    );
+    Object.defineProperty(svgTextElementPrototype, 'getBBox', {
       configurable: true,
       value: () => ({ x: 0, y: 0, width: 10, height: 10 }),
     });
@@ -137,9 +140,9 @@ describe('createChartGeometry', () => {
     } finally {
       append.mockRestore();
       if (originalGetBoundingBox) {
-        Object.defineProperty(svgElementPrototype, 'getBBox', originalGetBoundingBox);
+        Object.defineProperty(svgTextElementPrototype, 'getBBox', originalGetBoundingBox);
       } else {
-        Reflect.deleteProperty(svgElementPrototype, 'getBBox');
+        Reflect.deleteProperty(svgTextElementPrototype, 'getBBox');
       }
       measurementElement.remove();
     }
@@ -159,6 +162,15 @@ describe('chartResourceId', () => {
   test('escapes functional-IRI characters in the chart prefix', () => {
     expect(chartResourceId('usage)', 'gradient', 'series')).toBe('usage_x29-gradient-series');
     expect(chartResourceId('usage_x29', 'gradient', 'series')).toBe('usage_ux29-gradient-series');
+  });
+
+  test('escapes tuple delimiters without collapsing distinct resource ids', () => {
+    const delimiterInSeries = chartResourceId('a', 'gradient', 'b-gradient-c');
+    const delimiterInPrefix = chartResourceId('a-gradient-b', 'gradient', 'c');
+
+    expect(delimiterInSeries).toBe('a-gradient-b_dgradient_dc');
+    expect(delimiterInPrefix).toBe('a_dgradient_db-gradient-c');
+    expect(delimiterInSeries).not.toBe(delimiterInPrefix);
   });
 });
 
@@ -1201,16 +1213,24 @@ describe('createCartesianModel', () => {
             y: index % 2 === 1 ? 1 : null,
           })),
         },
+        {
+          id: 'continuous',
+          label: 'Continuous',
+          data: Array.from({ length: 10_000 }, (_, index) => ({ x: index, y: 1 })),
+        },
       ],
       hiddenSeriesIds: [],
       width: 640,
       height: 280,
       stackedArea: true,
     });
-    const [even, odd] = model.normalizedSeries;
+    const [even, odd, continuous] = model.normalizedSeries;
 
     expect(even?.points.length).toBeLessThanOrEqual(2_000);
     expect(odd?.points.map((point) => point.x.key)).toEqual(
+      even?.points.map((point) => point.x.key),
+    );
+    expect(continuous?.points.map((point) => point.x.key)).toEqual(
       even?.points.map((point) => point.x.key),
     );
     for (const renderedSeries of [even, odd]) {
@@ -1221,6 +1241,8 @@ describe('createCartesianModel', () => {
         ).toBe(true);
       }
     }
+    expect(continuous?.points.every((point) => point.y !== null)).toBe(true);
+    expect(continuous?.areaPath).toContain('L');
   });
 
   test('derives margins from formatted tick labels, rotation, and axis titles', () => {
@@ -1324,6 +1346,49 @@ describe('createBarModel', () => {
 
     expect(model.geometry.marginLeft).toBe(94);
     expect(model.categoryTicks[0]?.label).toBe('WWWWWWWWWW');
+  });
+
+  test('uses browser measurements when truncating horizontal category labels', () => {
+    const measurementElement = document.createElement('figure');
+    measurementElement.style.setProperty('--cinder-text-xs', '12px');
+    document.body.append(measurementElement);
+    const svgTextElementPrototype = globalThis.SVGTextElement.prototype;
+    const originalGetBoundingBox = Object.getOwnPropertyDescriptor(
+      svgTextElementPrototype,
+      'getBBox',
+    );
+    Object.defineProperty(svgTextElementPrototype, 'getBBox', {
+      configurable: true,
+      value(this: SVGTextElement) {
+        return { x: 0, y: 0, width: (this.textContent?.length ?? 0) * 40, height: 12 };
+      },
+    });
+
+    try {
+      const fullLabel = 'WWWWWWWWWW';
+      const model = createBarModel({
+        data: [{ status: fullLabel, count: 9 }],
+        categoryKey: 'status',
+        series: [{ id: 'count', label: 'Count', valueKey: 'count' }],
+        hiddenSeriesIds: [],
+        width: 320,
+        height: 280,
+        orientation: 'horizontal',
+        mode: 'grouped',
+        measureText: true,
+        measurementElement,
+      });
+
+      expect(model.categoryTicks[0]?.label).not.toBe(fullLabel);
+      expect(model.categoryTicks[0]?.label.endsWith('…')).toBe(true);
+    } finally {
+      if (originalGetBoundingBox) {
+        Object.defineProperty(svgTextElementPrototype, 'getBBox', originalGetBoundingBox);
+      } else {
+        Reflect.deleteProperty(svgTextElementPrototype, 'getBBox');
+      }
+      measurementElement.remove();
+    }
   });
 
   test('truncates extreme horizontal labels without removing the plot', () => {

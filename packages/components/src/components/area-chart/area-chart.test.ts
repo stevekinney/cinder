@@ -90,11 +90,11 @@ describe('AreaChart', () => {
     const firstGradient = first.container.querySelector('linearGradient');
     const secondGradient = second.container.querySelector('linearGradient');
 
-    expect(firstGradient?.id).toBe('usage-primary-gradient-usage');
-    expect(secondGradient?.id).toBe('usage-comparison-gradient-usage');
+    expect(firstGradient?.id).toBe('usage_dprimary-gradient-usage');
+    expect(secondGradient?.id).toBe('usage_dcomparison-gradient-usage');
     expect(firstGradient?.id).not.toBe(secondGradient?.id);
     expect(first.container.querySelector('.cinder-area-chart__area')?.getAttribute('fill')).toBe(
-      'url(#usage-primary-gradient-usage)',
+      'url(#usage_dprimary-gradient-usage)',
     );
   });
 

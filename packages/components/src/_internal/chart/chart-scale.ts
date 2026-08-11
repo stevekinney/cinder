@@ -9,7 +9,7 @@ export const MAXIMUM_RENDERED_SERIES_POINTS = 2_000;
 
 export type LayerDecimationSelection = {
   sourceIndex: number;
-  forceGap: boolean;
+  forceGapLayerIndices: readonly number[];
 };
 
 function evenlySample<T>(values: readonly T[], count: number): T[] {
@@ -69,12 +69,24 @@ function boundedGapHeavyLayerSelections(
   sampledIndices.forEach((sourceIndex, selectionIndex) => {
     const previousSourceIndex = sampledIndices[selectionIndex - 1];
     if (previousSourceIndex !== undefined && sourceIndex > previousSourceIndex + 1) {
-      selections.push({
-        sourceIndex: previousSourceIndex + Math.floor((sourceIndex - previousSourceIndex) / 2),
-        forceGap: true,
+      const forceGapLayerIndices: number[] = [];
+      layers.forEach((layer, layerIndex) => {
+        if (layer[previousSourceIndex] == null || layer[sourceIndex] == null) return;
+        for (let gapIndex = previousSourceIndex + 1; gapIndex < sourceIndex; gapIndex++) {
+          if (layer[gapIndex] == null) {
+            forceGapLayerIndices.push(layerIndex);
+            break;
+          }
+        }
       });
+      if (forceGapLayerIndices.length > 0) {
+        selections.push({
+          sourceIndex: previousSourceIndex + Math.floor((sourceIndex - previousSourceIndex) / 2),
+          forceGapLayerIndices,
+        });
+      }
     }
-    selections.push({ sourceIndex, forceGap: false });
+    selections.push({ sourceIndex, forceGapLayerIndices: [] });
   });
   return selections;
 }
@@ -148,7 +160,7 @@ export function decimationIndicesForLayers(
   if (pointCount <= maximumPoints || maximumPoints < 2) {
     return Array.from({ length: pointCount }, (_, sourceIndex) => ({
       sourceIndex,
-      forceGap: false,
+      forceGapLayerIndices: [],
     }));
   }
   const limit = Math.max(2, Math.floor(maximumPoints));
@@ -193,7 +205,7 @@ export function decimationIndicesForLayers(
 
   return [...selected]
     .sort((a, b) => a - b)
-    .map((sourceIndex) => ({ sourceIndex, forceGap: false }));
+    .map((sourceIndex) => ({ sourceIndex, forceGapLayerIndices: [] }));
 }
 
 export function decimatePlacedPoints(

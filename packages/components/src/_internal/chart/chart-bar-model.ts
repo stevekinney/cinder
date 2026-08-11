@@ -139,7 +139,11 @@ export function createBarModel(options: {
   );
   const horizontalCategoryLabelLayout =
     orientation === 'horizontal'
-      ? createHorizontalCategoryLabelLayout(categoryLabels, width)
+      ? createHorizontalCategoryLabelLayout(categoryLabels, width, {
+          measureText,
+          measurementElement,
+          measurementVersion,
+        })
       : undefined;
   // Domain is computed from visible series only — same convention as cartesian
   // charts — so the value scale shrinks correctly when a series is hidden.
