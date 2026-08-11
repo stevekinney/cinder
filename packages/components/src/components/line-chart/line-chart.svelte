@@ -23,6 +23,7 @@
     chartPaletteColor,
     createCartesianModel,
     dataTableClass,
+    formatDataTableCaption,
     formatNumericValue,
     legendVisible,
     observeChartFontLoading,
@@ -448,7 +449,11 @@
 
   {#if hasDataTable}
     <ChartDataTable
-      caption={dataTableCaption ?? label}
+      caption={formatDataTableCaption(
+        dataTableCaption ?? label,
+        model.tableRows.length,
+        model.targets.length,
+      )}
       headers={['Series', 'X', 'Value']}
       rows={model.tableRows.map((row) => ({
         id: row.id,

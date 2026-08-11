@@ -104,6 +104,25 @@ describe('LineChart', () => {
     expect(container.querySelector('table')?.className).not.toContain('cinder-sr-only');
   });
 
+  test('bounds dense fallback rows and discloses sampling in the caption', () => {
+    const { container } = render(LineChart, {
+      label: 'Dense signal',
+      dataTableCaption: 'Dense values',
+      series: [
+        {
+          id: 'signal',
+          label: 'Signal',
+          data: Array.from({ length: 2_001 }, (_, index) => ({ x: index, y: index % 17 })),
+        },
+      ],
+    });
+
+    expect(container.querySelectorAll('tbody tr')).toHaveLength(2_000);
+    expect(container.querySelector('table caption')?.textContent).toBe(
+      'Dense values (showing 2000 of 2001 data points)',
+    );
+  });
+
   test('svg has an accessible title matching the label when data is present', () => {
     const { container } = render(LineChart, { label: 'Monthly revenue', series });
     const svg = container.querySelector('svg');

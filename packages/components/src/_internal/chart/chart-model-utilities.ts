@@ -221,6 +221,16 @@ export function dataTableClass(visibility: ChartDataTableVisibility): string | u
   return visibility === 'screen-reader-only' ? 'cinder-sr-only' : undefined;
 }
 
+export function formatDataTableCaption(
+  caption: string,
+  displayedRowCount: number,
+  totalRowCount: number,
+): string {
+  return totalRowCount > displayedRowCount
+    ? `${caption} (showing ${displayedRowCount} of ${totalRowCount} data points)`
+    : caption;
+}
+
 export function formatXValue(
   value: NormalizedXValue,
   axis: ChartAxisConfiguration | undefined,

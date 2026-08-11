@@ -31,6 +31,7 @@ import {
   createTicks,
   decimatePlacedPoints,
   decimationIndicesForLayers,
+  MAXIMUM_RENDERED_SERIES_POINTS,
   normalizeNumericValue,
   sortXValues,
   type BandlikeScale,
@@ -347,7 +348,7 @@ export function createCartesianModel(options: {
     xTicks,
     yTicks,
     normalizedSeries: renderedSeries,
-    tableRows,
+    tableRows: evenlySampleTableRows(tableRows, MAXIMUM_RENDERED_SERIES_POINTS),
     targets,
     empty: targets.length === 0,
     yDomain: [yMinimum, yMaximum],
@@ -366,6 +367,15 @@ export function createCartesianModel(options: {
             ],
     })),
   };
+}
+
+function evenlySampleTableRows<T>(rows: T[], maximumRows: number): T[] {
+  if (rows.length <= maximumRows) return rows;
+  if (maximumRows <= 1) return rows[0] === undefined ? [] : [rows[0]];
+  return Array.from({ length: maximumRows }, (_, index) => {
+    const sourceIndex = Math.round((index * (rows.length - 1)) / (maximumRows - 1));
+    return rows[sourceIndex]!;
+  });
 }
 
 function buildXAxisTicks(

@@ -60,10 +60,9 @@ export function createChartGeometry(
     xTickLabels,
     (label) => measurementFor(label, xTickRotation).height,
   );
-  const xTickWidth = maximumMeasurement(
-    xTickLabels,
-    (label) => measurementFor(label, xTickRotation).width,
-  );
+  const firstXTickWidth = xTickLabels[0] ? measurementFor(xTickLabels[0], xTickRotation).width : 0;
+  const lastXTickLabel = xTickLabels.at(-1);
+  const lastXTickWidth = lastXTickLabel ? measurementFor(lastXTickLabel, xTickRotation).width : 0;
   const yTickWidth = maximumMeasurement(yTickLabels, (label) => measurementFor(label, 0).width);
   const xAxisTitleHeight = options.xAxis?.label
     ? measurementFor(options.xAxis.label, 0).height + CHART_AXIS_TITLE_GAP
@@ -73,11 +72,17 @@ export function createChartGeometry(
     : 0;
   const derivedMarginLeft = CHART_OUTER_PADDING + yTickWidth + CHART_GUIDE_GAP + yAxisTitleWidth;
   const maximumMarginLeft = Math.max(CHART_OUTER_PADDING, Math.floor(width * 0.4));
-  const endpointSideMargin =
-    xTickRotation === 0 ? CHART_OUTER_PADDING : Math.ceil(xTickWidth / 2) + CHART_GUIDE_GAP;
+  const endpointLeftMargin = Math.max(
+    CHART_OUTER_PADDING,
+    Math.ceil(firstXTickWidth / 2) + CHART_GUIDE_GAP,
+  );
+  const endpointRightMargin = Math.max(
+    CHART_OUTER_PADDING,
+    Math.ceil(lastXTickWidth / 2) + CHART_GUIDE_GAP,
+  );
   const marginLeft = Math.min(
     maximumMarginLeft,
-    Math.max(derivedMarginLeft, options.marginLeft ?? 0, endpointSideMargin),
+    Math.max(derivedMarginLeft, options.marginLeft ?? 0, endpointLeftMargin),
   );
   const marginTop =
     options.xTickPosition === 'top'
@@ -86,7 +91,7 @@ export function createChartGeometry(
           CHART_OUTER_PADDING + xTickHeight + CHART_GUIDE_GAP + xAxisTitleHeight,
         )
       : CHART_OUTER_PADDING;
-  const marginRight = endpointSideMargin;
+  const marginRight = endpointRightMargin;
   const marginBottom =
     options.xTickPosition === 'top'
       ? CHART_OUTER_PADDING

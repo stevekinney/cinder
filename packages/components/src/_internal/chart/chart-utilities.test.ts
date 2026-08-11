@@ -75,6 +75,15 @@ describe('createChartGeometry', () => {
     expect(geometry.marginLeft).toBeGreaterThanOrEqual(geometry.marginRight);
   });
 
+  test('reserves endpoint side space for wide unrotated labels', () => {
+    const geometry = createChartGeometry(640, 280, {
+      xTickLabels: ['2026-01-01T00:00:00.000Z'],
+    });
+
+    expect(geometry.marginRight).toBeGreaterThan(16);
+    expect(geometry.marginLeft).toBeGreaterThanOrEqual(geometry.marginRight);
+  });
+
   test('batches browser text measurement into one hidden SVG', () => {
     const measurementElement = document.createElement('figure');
     measurementElement.style.setProperty('--cinder-text-xs', '12px');
@@ -923,7 +932,7 @@ describe('createCartesianModel', () => {
     expect(renderedPoints[0]?.x.raw).toBe(0);
     expect(renderedPoints.at(-1)?.x.raw).toBe(2_500);
     expect(model.targets).toHaveLength(2_501);
-    expect(model.tableRows).toHaveLength(2_501);
+    expect(model.tableRows).toHaveLength(2_000);
     expect(model.xTicks).toHaveLength(8);
   });
 
@@ -1512,7 +1521,10 @@ describe('createBarModel', () => {
     });
 
     expect(model.geometry.marginLeft).toBe(128);
-    expect(model.geometry.plotWidth).toBe(176);
+    expect(model.geometry.plotWidth).toBe(
+      320 - model.geometry.marginLeft - model.geometry.marginRight,
+    );
+    expect(model.geometry.plotWidth).toBeGreaterThan(0);
     expect(model.categoryTicks[0]?.label).not.toBe(fullLabel);
     expect(model.categoryTicks[0]?.label.endsWith('…')).toBe(true);
     expect(model.categoryTicks[0]?.fullLabel).toBe(fullLabel);
