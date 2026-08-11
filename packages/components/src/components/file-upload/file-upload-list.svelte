@@ -1,0 +1,224 @@
+<script lang="ts">
+  import { tick } from 'svelte';
+  import RotateCcwIcon from 'lucide-svelte/icons/rotate-ccw';
+  import XIcon from 'lucide-svelte/icons/x';
+
+  import { formatBytes } from '../../utilities/format-bytes.ts';
+  import { fileTypeIcon } from './file-upload-utilities.ts';
+  import type { FileUploadEntry } from './file-upload.types.ts';
+
+  let {
+    entries,
+    disabled,
+    removable,
+    onFileRetry,
+    onRemove,
+    onQueueEmptyFocus,
+  }: {
+    entries: FileUploadEntry[];
+    disabled: boolean;
+    removable: boolean;
+    onFileRetry: ((entry: FileUploadEntry) => void) | undefined;
+    onRemove: (entry: FileUploadEntry) => void;
+    onQueueEmptyFocus: () => void;
+  } = $props();
+
+  const generatedId = $props.id();
+  let listElement = $state<HTMLUListElement>();
+  let pendingRemovalFocus = $state<{
+    entryId: string;
+    removeButton: HTMLButtonElement;
+    nextButton: HTMLButtonElement | undefined;
+  }>();
+  let pendingRetryFocus = $state<{
+    entryId: string;
+    retryButton: HTMLButtonElement;
+  }>();
+
+  function restoreRemovalFocus(pending: NonNullable<typeof pendingRemovalFocus>) {
+    const activeElement = pending.removeButton.ownerDocument.activeElement;
+    if (activeElement && activeElement !== pending.removeButton.ownerDocument.body) return;
+    if (pending.nextButton?.isConnected) pending.nextButton.focus();
+    else onQueueEmptyFocus();
+  }
+
+  $effect(() => {
+    const pending = pendingRemovalFocus;
+    if (!pending || entries.some((entry) => entry.id === pending.entryId)) return;
+    queueMicrotask(async () => {
+      await tick();
+      if (pendingRemovalFocus !== pending) return;
+      restoreRemovalFocus(pending);
+      pendingRemovalFocus = undefined;
+    });
+  });
+
+  $effect(() => {
+    const pending = pendingRetryFocus;
+    const entry = pending && entries.find((candidate) => candidate.id === pending.entryId);
+    if (entry?.status === 'error' && entry.rejectionReason === undefined && onFileRetry) return;
+    if (!pending) return;
+    queueMicrotask(async () => {
+      await tick();
+      if (pendingRetryFocus !== pending || pending.retryButton.isConnected) return;
+      const activeElement = pending.retryButton.ownerDocument.activeElement;
+      if (!activeElement || activeElement === pending.retryButton.ownerDocument.body) {
+        onQueueEmptyFocus();
+      }
+      pendingRetryFocus = undefined;
+    });
+  });
+
+  function progressValue(progress: number | undefined): number {
+    if (progress === undefined) return 0;
+    return Math.max(0, Math.min(100, progress));
+  }
+
+  async function handleRemove(
+    entry: FileUploadEntry,
+    index: number,
+    removeButton: HTMLButtonElement,
+  ) {
+    const removeButtons = listElement?.querySelectorAll<HTMLButtonElement>(
+      '.cinder-file-upload__remove',
+    );
+    const nextButton = removeButtons?.[index + 1] ?? removeButtons?.[index - 1];
+    pendingRemovalFocus = { entryId: entry.id, removeButton, nextButton };
+    const pending = pendingRemovalFocus;
+    onRemove(entry);
+    await tick();
+    if (pendingRemovalFocus !== pending) return;
+    if (removeButton.isConnected) return;
+    restoreRemovalFocus(pending);
+    pendingRemovalFocus = undefined;
+  }
+
+  async function handleRetry(entry: FileUploadEntry, retryButton: HTMLButtonElement) {
+    pendingRetryFocus = { entryId: entry.id, retryButton };
+    const pending = pendingRetryFocus;
+    onFileRetry?.(entry);
+    await tick();
+    if (pendingRetryFocus !== pending) return;
+    const activeElement = retryButton.ownerDocument.activeElement;
+    if (
+      !retryButton.isConnected &&
+      (!activeElement || activeElement === retryButton.ownerDocument.body)
+    ) {
+      onQueueEmptyFocus();
+    }
+    if (!retryButton.isConnected) pendingRetryFocus = undefined;
+  }
+</script>
+
+<ul bind:this={listElement} class="cinder-file-upload__list">
+  {#each entries as entry, index (entry.id)}
+    {@const errorId = entry.error ? `${generatedId}-${index}-error` : undefined}
+    {@const FileTypeIcon = fileTypeIcon(entry.file.type)}
+    <li class="cinder-file-upload__row" aria-describedby={errorId}>
+      <div class="cinder-file-upload__row-main">
+        <div class="cinder-file-upload__file-details">
+          <FileTypeIcon class="cinder-file-upload__file-icon" aria-hidden="true" />
+          <div class="cinder-file-upload__file-meta">
+            <span class="cinder-file-upload__file-name cinder-_truncate">{entry.file.name}</span>
+            <span class="cinder-file-upload__file-size">{formatBytes(entry.file.size)}</span>
+          </div>
+        </div>
+
+        <div class="cinder-file-upload__row-actions">
+          {#if entry.status === 'uploading'}
+            <span class="cinder-file-upload__status" data-status="uploading">Uploading</span>
+          {:else if entry.status === 'success'}
+            <span class="cinder-file-upload__status" data-status="success">
+              <svg
+                class="cinder-file-upload__status-icon"
+                aria-hidden="true"
+                viewBox="0 0 16 16"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M3.5 8.5L6.25 11.25L12.5 5"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+              Complete
+            </span>
+          {:else if entry.status === 'error'}
+            <span class="cinder-file-upload__status" data-status="error">
+              <svg
+                class="cinder-file-upload__status-icon"
+                aria-hidden="true"
+                viewBox="0 0 16 16"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M8 4.5V8.25M8 11H8.00667M14 8C14 11.3137 11.3137 14 8 14C4.68629 14 2 11.3137 2 8C2 4.68629 4.68629 2 8 2C11.3137 2 14 4.68629 14 8Z"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+              Failed
+            </span>
+          {:else}
+            <span class="cinder-file-upload__status" data-status="pending">Pending</span>
+          {/if}
+          {#if removable}
+            <button
+              type="button"
+              class="cinder-file-upload__remove"
+              {disabled}
+              aria-label={`Remove ${entry.file.name}`}
+              onclick={(event) => handleRemove(entry, index, event.currentTarget)}
+            >
+              <XIcon aria-hidden="true" />
+            </button>
+          {/if}
+        </div>
+      </div>
+
+      {#if entry.status === 'uploading'}
+        {@const value = progressValue(entry.progress)}
+        <div
+          class="cinder-file-upload__progress"
+          role="progressbar"
+          aria-label={`Uploading ${entry.file.name}`}
+          aria-valuemin="0"
+          aria-valuemax="100"
+          aria-valuenow={value}
+        >
+          <div
+            class="cinder-file-upload__progress-fill"
+            style={`--cinder-file-upload-progress: ${value}`}
+          ></div>
+        </div>
+      {/if}
+
+      {#if entry.error || (entry.status === 'error' && entry.rejectionReason === undefined && onFileRetry)}
+        <div class="cinder-file-upload__error-row">
+          {#if entry.error}
+            <p id={errorId} class="cinder-file-upload__error">{entry.error}</p>
+          {/if}
+          {#if entry.status === 'error' && entry.rejectionReason === undefined && onFileRetry}
+            <button
+              type="button"
+              class="cinder-file-upload__retry"
+              {disabled}
+              aria-label={`Retry ${entry.file.name}`}
+              aria-describedby={errorId}
+              onclick={(event) => handleRetry(entry, event.currentTarget)}
+            >
+              <RotateCcwIcon class="cinder-file-upload__retry-icon" aria-hidden="true" />
+              Retry
+            </button>
+          {/if}
+        </div>
+      {/if}
+    </li>
+  {/each}
+</ul>

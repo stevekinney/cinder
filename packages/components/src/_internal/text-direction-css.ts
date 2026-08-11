@@ -3,6 +3,7 @@ import {
   hasUnsupportedContainerSizeQuery,
   parseStyleQuery,
 } from './text-direction-container.ts';
+import { styleSheetDeclaresDirection } from './text-direction-sheet-index.ts';
 
 export type ParentElementResolver = (element: HTMLElement) => HTMLElement | null;
 
@@ -26,6 +27,11 @@ export function matchesDirectionStyleRule(
   }
   for (const [sheet, fallbackRoot] of styleSheets) {
     if (!isActiveStyleSheet(sheet)) continue;
+    // A sheet that declares `direction` nowhere in its rule tree cannot produce
+    // a match — the only `true` below requires `rule.style.direction` — so skip
+    // it before resolving nested selectors, `@scope` roots, or container
+    // conditions. Cached per sheet; see text-direction-sheet-index.ts.
+    if (!styleSheetDeclaresDirection(sheet)) continue;
     let rules: CSSRuleList;
     try {
       rules = sheet.cssRules;
