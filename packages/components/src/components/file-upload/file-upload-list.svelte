@@ -31,6 +31,10 @@
     removeButton: HTMLButtonElement;
     nextButton: HTMLButtonElement | undefined;
   }>();
+  let pendingRetryFocus = $state<{
+    entryId: string;
+    retryButton: HTMLButtonElement;
+  }>();
 
   function restoreRemovalFocus(pending: NonNullable<typeof pendingRemovalFocus>) {
     const activeElement = pending.removeButton.ownerDocument.activeElement;
@@ -47,6 +51,22 @@
       if (pendingRemovalFocus !== pending) return;
       restoreRemovalFocus(pending);
       pendingRemovalFocus = undefined;
+    });
+  });
+
+  $effect(() => {
+    const pending = pendingRetryFocus;
+    const entry = pending && entries.find((candidate) => candidate.id === pending.entryId);
+    if (entry?.status === 'error' && entry.rejectionReason === undefined && onFileRetry) return;
+    if (!pending) return;
+    queueMicrotask(async () => {
+      await tick();
+      if (pendingRetryFocus !== pending || pending.retryButton.isConnected) return;
+      const activeElement = pending.retryButton.ownerDocument.activeElement;
+      if (!activeElement || activeElement === pending.retryButton.ownerDocument.body) {
+        onQueueEmptyFocus();
+      }
+      pendingRetryFocus = undefined;
     });
   });
 
@@ -75,8 +95,11 @@
   }
 
   async function handleRetry(entry: FileUploadEntry, retryButton: HTMLButtonElement) {
+    pendingRetryFocus = { entryId: entry.id, retryButton };
+    const pending = pendingRetryFocus;
     onFileRetry?.(entry);
     await tick();
+    if (pendingRetryFocus !== pending) return;
     const activeElement = retryButton.ownerDocument.activeElement;
     if (
       !retryButton.isConnected &&
@@ -84,6 +107,7 @@
     ) {
       onQueueEmptyFocus();
     }
+    if (!retryButton.isConnected) pendingRetryFocus = undefined;
   }
 </script>
 

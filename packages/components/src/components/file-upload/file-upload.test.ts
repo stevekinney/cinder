@@ -1427,6 +1427,42 @@ describe('FileUpload file list rendering', () => {
     expect(document.activeElement).toBe(browseButton);
   });
 
+  test('an asynchronously removed retry action moves focus to the browse control', async () => {
+    const entry = {
+      id: '1',
+      file: createFile('broken.zip', 'application/zip', 10),
+      status: 'error' as const,
+      error: 'Network error',
+    };
+    let rerender: ReturnType<typeof render>['rerender'];
+    const onFileRetry = mock(() => {
+      setTimeout(
+        () =>
+          void rerender({
+            id: 'upload',
+            files: [{ ...entry, status: 'uploading' }],
+            onFileRetry,
+          }),
+      );
+    });
+    const result = render(FileUpload, {
+      props: { id: 'upload', files: [entry], onFileRetry },
+    });
+    rerender = result.rerender;
+    const retryButton = result.container.querySelector(
+      '.cinder-file-upload__retry',
+    ) as HTMLButtonElement;
+    retryButton.focus();
+
+    await fireEvent.click(retryButton);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(document.activeElement).toBe(
+      result.container.querySelector('.cinder-file-upload__button'),
+    );
+  });
+
   test('retry preserves focus moved by the consumer when the retry action is removed', async () => {
     const entry = {
       id: '1',
