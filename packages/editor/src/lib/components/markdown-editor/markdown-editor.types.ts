@@ -14,7 +14,15 @@ import type {
 /** Editor display mode */
 export type EditorMode = 'wysiwyg' | 'source';
 
-/** Context passed to toolbar snippets for custom rendering */
+/**
+ * Context passed to toolbar snippets for custom rendering.
+ *
+ * This carries everything `EditorToolbar` needs, so a caller can render a
+ * complete toolbar — including one hosted outside this component, via
+ * `ontoolbarcontextchange`. The handler fields matter: without them the
+ * documented `toolbar` snippet ("replaces default toolbar") could not
+ * reproduce undo, redo, or the link popover.
+ */
 export interface ToolbarContext {
   /** The Milkdown editor context (null if not ready) */
   editorContext: Ctx | null;
@@ -28,6 +36,14 @@ export interface ToolbarContext {
   canRedo: boolean;
   /** Whether the editor is readonly */
   readonly: boolean;
+  /** Apply an undo step */
+  onUndo: () => void;
+  /** Apply a redo step */
+  onRedo: () => void;
+  /** Open the link popover, anchored to the triggering button */
+  onLinkClick: (triggerElement: HTMLElement) => void;
+  /** Whether the link popover is currently open */
+  linkPopoverOpen: boolean;
 }
 
 export type MarkdownEditorProps = Omit<
@@ -91,6 +107,16 @@ export type MarkdownEditorProps = Omit<
    * Receives ToolbarContext for building custom toolbar UI.
    */
   toolbar?: Snippet<[ToolbarContext]>;
+
+  /**
+   * Notified whenever the toolbar context changes.
+   *
+   * Use this to host the formatting controls somewhere this component does not
+   * render — for example folding them into a surrounding application toolbar so
+   * the editor does not stack a second bar of its own. Pair it with
+   * `showToolbar={false}`.
+   */
+  ontoolbarcontextchange?: (context: ToolbarContext) => void;
 
   /**
    * Additional toolbar actions (appended to default toolbar).

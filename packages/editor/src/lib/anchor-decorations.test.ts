@@ -99,9 +99,11 @@ describe('anchor plugin meta-transactions', () => {
       expect(thread.anchor.lastKnownOffset).toBe(42);
     });
 
-    test('clears needsReanchor flag on sync', () => {
-      // After a sync, the plugin state should have needsReanchor = false
-      // This is tested by verifying the initial state structure
+    test('starts with needsReanchor clear', () => {
+      // A sync no longer clears this unconditionally: it verifies each incoming
+      // anchor against the document and raises needsReanchor for any whose
+      // quote is not actually at its stated range, so re-anchoring can place it.
+      // See review-editor-regressions.test.ts for that contract.
       const initialState: AnchorPluginState = {
         anchors: new Map(),
         needsReanchor: false,

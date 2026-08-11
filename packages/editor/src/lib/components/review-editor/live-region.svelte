@@ -107,10 +107,18 @@
 <!--
   Using two regions: one for polite, one for assertive.
   This ensures the correct aria-live value is always used.
-  The visually hidden class ensures screen readers can access it.
+
+  The hiding utility is `cinder-sr-only`, the class Cinder's base stylesheet
+  actually ships. A bare `sr-only` is defined nowhere, so it left the region
+  fully visible — every announcement printed itself into the page.
 -->
 {#if priority === 'polite'}
-  <div role="status" aria-live="polite" aria-atomic="true" class={classNames('sr-only', className)}>
+  <div
+    role="status"
+    aria-live="polite"
+    aria-atomic="true"
+    class={classNames('cinder-sr-only', className)}
+  >
     {message}
   </div>
 {:else}
@@ -118,7 +126,7 @@
     role="alert"
     aria-live="assertive"
     aria-atomic="true"
-    class={classNames('sr-only', className)}
+    class={classNames('cinder-sr-only', className)}
   >
     {message}
   </div>

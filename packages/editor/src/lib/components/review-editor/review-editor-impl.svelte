@@ -40,6 +40,8 @@
   import CommentSidebar from './comment-sidebar.svelte';
   import FrontMatterFields from './front-matter-fields.svelte';
   import ReviewEditorControls from './review-editor-controls.svelte';
+  import { EditorToolbar } from '../markdown-editor/editor-toolbar/index.ts';
+  import type { ToolbarContext } from '../markdown-editor/markdown-editor.types.ts';
   import {
     bodyAnchorToDocumentAnchor,
     bodyAnchorUpdateToDocumentAnchorUpdate,
@@ -108,6 +110,11 @@
       active.blur();
     }
   });
+
+  // Formatting-toolbar context, published by the inner MarkdownEditor so this
+  // component can host the formatting controls inside its own unified bar
+  // instead of letting the editor stack a second toolbar underneath it.
+  let editorToolbarContext = $state<ToolbarContext | null>(null);
 
   // Reference to the underlying MarkdownEditor. Using the imported component
   // as a type is the Svelte ambient pattern — `*.svelte` declares the import
@@ -484,11 +491,28 @@
     lastSyncedFingerprint = createPluginSyncFingerprint(threads);
   }
 
+  /**
+   * Handle an anchor whose quoted text no longer exists anywhere in the
+   * document. `comments/types.ts` documents this as the reason there is no
+   * "orphaned" anchor status: "When anchor text is deleted, threads are
+   * automatically removed." The plugin detects the condition; without this
+   * handler the removal never happened, leaving the thread in the bindable
+   * `threads` array with an anchor pointing at text that is gone.
+   */
+  function handleAnchorDeleted(threadId: string): void {
+    if (!threads.some((thread) => thread.id === threadId)) return;
+    threads = threads.filter((thread) => thread.id !== threadId);
+    lastSyncedFingerprint = createPluginSyncFingerprint(threads);
+    announce('Comment thread removed because its anchored text was deleted');
+    onthreaddelete?.({ threadId });
+  }
+
   // Create anchor plugin in instance script (per-instance, before mount)
   // This runs once per ReviewEditor instance during initialization
   const anchorPlugin = createAnchorPlugin({
     onAnchorsUpdate: handleAnchorsUpdate,
     onAnchorClick: handleAnchorClick,
+    onAnchorDeleted: handleAnchorDeleted,
   });
 
   /**
@@ -1582,6 +1606,30 @@
   }
 </script>
 
+<!--
+  Formatting controls, hosted inside the unified bar. Only rendered in the
+  editor view (the diff and summary views have no text formatting to offer) and
+  only once the inner editor has published a context.
+-->
+{#snippet formattingSnippet()}
+  {#if editorToolbarContext}
+    <EditorToolbar
+      id="{id}-toolbar"
+      editorId={id}
+      editorContext={editorToolbarContext.editorContext}
+      activeMarks={editorToolbarContext.activeMarks}
+      activeBlockType={editorToolbarContext.activeBlockType}
+      canUndo={editorToolbarContext.canUndo}
+      canRedo={editorToolbarContext.canRedo}
+      linkPopoverOpen={editorToolbarContext.linkPopoverOpen}
+      disabled={!editorToolbarContext.editorContext}
+      onLinkClick={editorToolbarContext.onLinkClick}
+      onUndo={editorToolbarContext.onUndo}
+      onRedo={editorToolbarContext.onRedo}
+    />
+  {/if}
+{/snippet}
+
 <!-- Export actions snippet for passing to controls -->
 {#snippet exportActionsSnippet()}
   <ExportActions
@@ -1650,8 +1698,10 @@
       announce('All changes reverted');
     }}
     {commentCount}
+    sidebarId="{id}-sidebar"
     {sidebarOpen}
     onSidebarToggle={() => (sidebarOpen = !sidebarOpen)}
+    formatting={activeView === 'editor' && !isReadonly ? formattingSnippet : undefined}
     trailing={exportActionsSnippet}
   />
 
@@ -1683,6 +1733,8 @@
           {placeholder}
           plugins={[anchorPlugin]}
           {snapshotMode}
+          showToolbar={false}
+          ontoolbarcontextchange={(context) => (editorToolbarContext = context)}
           onchange={handleEditorBodyChange}
           onready={() => {
             if (!editorViewReady) {

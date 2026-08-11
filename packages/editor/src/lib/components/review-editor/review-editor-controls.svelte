@@ -28,10 +28,27 @@
     onRevertAll?: () => void;
     /** Comment count */
     commentCount?: number;
+    /**
+     * ID of the comments sidebar this toolbar's toggle controls.
+     *
+     * Must be passed explicitly: this component is instantiated with its own
+     * `id` (`{editorId}-controls`), so deriving the sidebar's ID from `id`
+     * yields `{editorId}-controls-sidebar` and points `aria-controls` at an
+     * element that never exists.
+     */
+    sidebarId?: string;
     /** Whether sidebar is open */
     sidebarOpen?: boolean;
     /** Callback for sidebar toggle */
     onSidebarToggle?: () => void;
+    /**
+     * Formatting controls, rendered inline after the view switcher.
+     *
+     * The editor's formatting toolbar lives here rather than in a second bar
+     * below: the diff and summary views already fold their controls into this
+     * one, and a stacked pair cost ~90px of chrome before any document.
+     */
+    formatting?: Snippet | undefined;
     /** Trailing actions snippet (e.g., export menu) */
     trailing?: Snippet;
     /** Additional CSS class */
@@ -66,8 +83,10 @@
     readonly = false,
     onRevertAll,
     commentCount = 0,
+    sidebarId,
     sidebarOpen = false,
     onSidebarToggle,
+    formatting,
     trailing,
     class: className,
   }: ReviewEditorControlsProps = $props();
@@ -105,10 +124,17 @@
   });
 </script>
 
+<!--
+  `group`, not `toolbar`: this bar is a container of control groups rather than
+  a flat set of toolbar widgets. It holds a `tablist` (never a valid child of
+  `toolbar`) and, in the editor view, the editor's own `toolbar` — and a
+  `toolbar` inside a `toolbar` is not a valid nesting either. `group` with a
+  label describes what this actually is and keeps the children valid.
+-->
 <div
   {id}
   class={classNames('review-editor-controls', className)}
-  role="toolbar"
+  role="group"
   aria-label="Review editor controls"
 >
   <div class="controls-leading">
@@ -149,6 +175,13 @@
       />
     {/if}
 
+    {#if formatting}
+      <div class="controls-separator" aria-hidden="true"></div>
+      <div class="controls-formatting">
+        {@render formatting()}
+      </div>
+    {/if}
+
     {#if activeView === 'diff'}
       <div class="controls-separator" aria-hidden="true"></div>
       <SegmentedControl
@@ -187,7 +220,7 @@
         size="sm"
         onclick={onSidebarToggle}
         aria-expanded={sidebarOpen}
-        aria-controls="{id}-sidebar"
+        aria-controls={sidebarId ?? `${id}-sidebar`}
         aria-label={commentsToggleLabel}
         title={sidebarOpen ? 'Close comments sidebar' : 'Open comments sidebar'}
       >
@@ -244,6 +277,27 @@
     gap: var(--cinder-space-2);
     flex-wrap: nowrap;
     flex: 0 0 auto;
+  }
+
+  /* The hosted formatting toolbar sheds its standalone chrome — it is a group
+     inside this bar now, not a bar of its own. */
+  .controls-formatting {
+    display: flex;
+    align-items: center;
+    /* Hold intrinsic width: the parent row is `flex-wrap: nowrap` with an
+       auto-scrolling overflow, so a shrinkable child collapses to 0 instead
+       of pushing the row into its scroll region. */
+    flex: 0 0 auto;
+  }
+
+  .controls-formatting :global(.editor-toolbar) {
+    border: none;
+    border-radius: 0;
+    background: none;
+    padding: 0;
+    min-block-size: auto;
+    flex: 0 0 auto;
+    overflow: visible;
   }
 
   .controls-separator {

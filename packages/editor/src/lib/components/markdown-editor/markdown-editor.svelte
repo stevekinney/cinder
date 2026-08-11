@@ -81,6 +81,7 @@
     readonly = false,
     placeholder = 'Start writing...',
     showToolbar = true,
+    ontoolbarcontextchange,
     class: className,
     onchange,
     onready,
@@ -245,7 +246,14 @@
     showToolbar && !readonly && browser && (mode === 'wysiwyg' || showModeToggle),
   );
 
-  // Toolbar context for snippets
+  // Link popover state
+  let linkPopoverOpen = $state(false);
+  let linkPopoverAnchorElement = $state<
+    HTMLElement | import('@floating-ui/dom').VirtualElement | null
+  >(null);
+
+  // Toolbar context for snippets. Declared after the link-popover state it
+  // reads; the handlers below are function declarations, so they hoist.
   const toolbarContext: ToolbarContext = $derived({
     editorContext,
     activeMarks,
@@ -253,13 +261,16 @@
     canUndo,
     canRedo,
     readonly,
+    onUndo: handleUndo,
+    onRedo: handleRedo,
+    onLinkClick: handleLinkClick,
+    linkPopoverOpen,
   });
 
-  // Link popover state
-  let linkPopoverOpen = $state(false);
-  let linkPopoverAnchorElement = $state<
-    HTMLElement | import('@floating-ui/dom').VirtualElement | null
-  >(null);
+  // Publish the context so a parent can host the formatting controls itself.
+  $effect(() => {
+    ontoolbarcontextchange?.(toolbarContext);
+  });
 
   // Derive link popover props based on current selection
   const linkPopoverMode = $derived.by((): LinkPopoverMode => {
