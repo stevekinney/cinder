@@ -936,6 +936,26 @@ describe('createCartesianModel', () => {
     expect(model.xTicks).toHaveLength(8);
   });
 
+  test('preserves every visible series in a sampled semantic table', () => {
+    const denseData = Array.from({ length: 2_000 }, (_, index) => ({ x: index, y: index }));
+    const model = createCartesianModel({
+      componentId: 'line-chart',
+      series: [
+        { id: 'before', label: 'Before', data: denseData },
+        { id: 'tiny', label: 'Tiny', data: [{ x: 0, y: 1 }] },
+        { id: 'after', label: 'After', data: denseData },
+      ],
+      hiddenSeriesIds: [],
+      width: 640,
+      height: 280,
+    });
+
+    expect(model.tableRows).toHaveLength(2_000);
+    expect(new Set(model.tableRows.map((row) => row.seriesId))).toEqual(
+      new Set(['before', 'tiny', 'after']),
+    );
+  });
+
   test('passes sampled source indices to x-axis formatters', () => {
     const model = createCartesianModel({
       componentId: 'line-chart',

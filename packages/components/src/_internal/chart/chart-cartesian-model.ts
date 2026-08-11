@@ -316,6 +316,7 @@ export function createCartesianModel(options: {
         });
         tableRows.push({
           id: `${item.id}-${placed.x.key}`,
+          seriesId: item.id,
           seriesLabel: item.label,
           xLabel,
           valueLabel,
@@ -369,11 +370,48 @@ export function createCartesianModel(options: {
   };
 }
 
-function evenlySampleTableRows<T>(rows: T[], maximumRows: number): T[] {
+function evenlySampleTableRows(
+  rows: CartesianChartModel['tableRows'],
+  maximumRows: number,
+): CartesianChartModel['tableRows'] {
   if (rows.length <= maximumRows) return rows;
-  if (maximumRows <= 1) return rows[0] === undefined ? [] : [rows[0]];
-  return Array.from({ length: maximumRows }, (_, index) => {
-    const sourceIndex = Math.round((index * (rows.length - 1)) / (maximumRows - 1));
+  if (maximumRows <= 0) return [];
+
+  const rowsBySeriesId = new Map<string, CartesianChartModel['tableRows']>();
+  for (const row of rows) {
+    const seriesRows = rowsBySeriesId.get(row.seriesId);
+    if (seriesRows) seriesRows.push(row);
+    else rowsBySeriesId.set(row.seriesId, [row]);
+  }
+  const seriesGroups = [...rowsBySeriesId.values()];
+  if (seriesGroups.length >= maximumRows) {
+    return seriesGroups.slice(0, maximumRows).map((group) => group[0]!);
+  }
+
+  const remainingRows = maximumRows - seriesGroups.length;
+  const capacities = seriesGroups.map((group) => group.length - 1);
+  const totalCapacity = capacities.reduce((total, capacity) => total + capacity, 0);
+  const exactShares = capacities.map((capacity) => (remainingRows * capacity) / totalCapacity);
+  const allocations = exactShares.map((share) => 1 + Math.floor(share));
+  let undistributedRows = maximumRows - allocations.reduce((total, count) => total + count, 0);
+  const allocationOrder = exactShares
+    .map((share, index) => ({ index, remainder: share - Math.floor(share) }))
+    .sort((a, b) => b.remainder - a.remainder || a.index - b.index);
+  for (const { index } of allocationOrder) {
+    if (undistributedRows === 0) break;
+    if (allocations[index]! >= seriesGroups[index]!.length) continue;
+    allocations[index]! += 1;
+    undistributedRows -= 1;
+  }
+
+  return seriesGroups.flatMap((group, index) => evenlySampleRows(group, allocations[index]!));
+}
+
+function evenlySampleRows<T>(rows: T[], requestedRows: number): T[] {
+  if (rows.length <= requestedRows) return rows;
+  if (requestedRows <= 1) return rows[0] === undefined ? [] : [rows[0]];
+  return Array.from({ length: requestedRows }, (_, index) => {
+    const sourceIndex = Math.round((index * (rows.length - 1)) / (requestedRows - 1));
     return rows[sourceIndex]!;
   });
 }

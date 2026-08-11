@@ -118,6 +118,7 @@ export type ChartGeometry = {
 
 export type CartesianChartTableRow = {
   id: string;
+  seriesId: string;
   seriesLabel: string;
   xLabel: string;
   valueLabel: string;
