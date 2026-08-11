@@ -1,5 +1,36 @@
 # @lostgradient/cinder
 
+## 0.23.0
+
+### Minor Changes
+
+- [#1254](https://github.com/stevekinney/cinder/pull/1254) [`0db00f8`](https://github.com/stevekinney/cinder/commit/0db00f891e94ab9c9c4776af1608654b03003de0) Thanks [@stevekinney](https://github.com/stevekinney)! - feat(badge)!: rename `monochrome` to `monospace` ([#1251](https://github.com/stevekinney/cinder/issues/1251))
+
+  BREAKING: Badge's `monochrome` prop is renamed to `monospace`, and the
+  `data-cinder-monochrome` attribute (CSS/test hook) to
+  `data-cinder-monospace`. No compatibility alias — cinder is pre-release.
+
+  The prop has always rendered the badge label in a monospace font (version
+  strings, error codes, commit SHAs); the `monochrome` name came from the
+  0.22 no-abbreviations sweep expanding the old `mono` to the wrong full
+  word — "monochrome" is color vocabulary, not typeface vocabulary.
+  `check:prop-conventions` now bans both `mono` and `monochrome` with
+  pointed messages, so a stale name fails the gate instead of silently
+  type-erroring. Internal consumers (RunStepTimeline's attempt badges,
+  ApprovalCard's environment badge) are migrated.
+
+  Also repaired in the same sweep-audit: comments and an identifier mangled
+  by the original blanket replace (`monorepoRoot` had become
+  `monochromerepoRoot` in `run-consumer-fixture.ts`, "monorepo root" had
+  become "monochromerepo root" in a toast-region test comment, and the
+  playground's `dx-spec__val--mono` class had become `--monochrome` while
+  still applying `--cinder-font-mono`).
+
+- [#1248](https://github.com/stevekinney/cinder/pull/1248) [`649a5ee`](https://github.com/stevekinney/cinder/commit/649a5eea8056501f009aeee2b7f32e52ed67c595) Thanks [@stevekinney](https://github.com/stevekinney)! - Unify Cinder charts around a shared SVG scene model with measured guide spacing,
+  stable interaction targets, bounded high-cardinality rendering, opt-in tooltips,
+  custom mark snippets, and inheritable theme and palette overrides. Apply the
+  same theme contract across matrix, audio, Sparkbar, and Statistic displays.
+
 ## 0.22.0
 
 ### Minor Changes

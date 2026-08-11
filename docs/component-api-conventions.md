@@ -62,7 +62,7 @@ Use one name for one concept:
 
 Do not abbreviate public prop or component names. Current banned forms:
 
-- `mono` → `monochrome`
+- `mono` → `monospace` (typeface meaning — and `monochrome` is likewise banned: the Badge prop renders a monospace font, not a single-color treatment)
 - `colSpan` → `columnSpan`
 - `lockScroll` → `scrollLocked`
 - `CtaSection` → `CallToActionSection`

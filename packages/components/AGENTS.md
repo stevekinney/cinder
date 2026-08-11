@@ -840,7 +840,8 @@ valid camelCase but still forbidden, because cinder components expose
 | `inputValue`   | `textInputValue`                                                           |
 | `leadingicon`  | `leadingIcon`                                                              |
 | `lockScroll`   | `scrollLocked`                                                             |
-| `mono`         | `monochrome`                                                               |
+| `mono`         | `monospace`                                                                |
+| `monochrome`   | `monospace` (the prop renders a monospace font)                            |
 | `trailingicon` | `trailingIcon`                                                             |
 | `onChange`     | `onValueChange` (value callbacks) or native `onchange` (Event passthrough) |
 | `onClick`      | native `onclick` (Event passthrough only)                                  |
