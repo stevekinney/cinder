@@ -242,11 +242,6 @@
     inputElement?.click();
   }
 
-  function handleSurfaceClick(event: MouseEvent) {
-    event.preventDefault();
-    openPicker();
-  }
-
   function clearInputValue() {
     if (inputElement) {
       inputElement.value = '';
@@ -328,13 +323,6 @@
       onclick={handleInputClick}
       onchange={handleInputChange}
     />
-
-    <label
-      class="cinder-file-upload__surface-trigger"
-      for={resolvedId}
-      aria-hidden="true"
-      onclick={handleSurfaceClick}
-    ></label>
 
     {#if isDragActive}
       {#if dragActive}

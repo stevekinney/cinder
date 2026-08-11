@@ -463,18 +463,17 @@ describe('FileUpload drag state and accessibility', () => {
   test('clicking the advertised dropzone surface opens the picker without double-activating the button', async () => {
     const { container } = render(FileUpload, { props: { id: 'upload' } });
     const input = container.querySelector('#upload') as HTMLInputElement;
-    const surfaceTrigger = container.querySelector(
-      '.cinder-file-upload__surface-trigger',
-    ) as HTMLLabelElement;
     const button = container.querySelector('.cinder-file-upload__button') as HTMLButtonElement;
     const click = mock(() => {});
     input.click = click as unknown as typeof input.click;
 
-    await fireEvent.click(surfaceTrigger);
+    await fireEvent.click(button);
     expect(click).toHaveBeenCalledTimes(1);
 
-    await fireEvent.click(button);
-    expect(click).toHaveBeenCalledTimes(2);
+    const css = await Bun.file(new URL('./file-upload.css', import.meta.url)).text();
+    const stretchedTarget = css.match(/\.cinder-file-upload__button::after\s*\{[^}]*\}/)?.[0];
+    expect(stretchedTarget).toContain('position: absolute');
+    expect(stretchedTarget).toContain('inset: 0');
   });
 });
 
