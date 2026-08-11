@@ -91,16 +91,45 @@ describe('FileUpload rendering', () => {
     const input = container.querySelector('input[type="file"]');
     expect(input).not.toBeNull();
     expect(input?.classList.contains('cinder-file-upload__input')).toBe(true);
-    expect(container.querySelector('button')?.textContent).toBe('Choose files');
+    expect(container.querySelector('button')?.textContent).toBe('Browse files');
+    expect(container.querySelector('.cinder-file-upload__title')?.textContent).toBe(
+      'Click to upload or drop files',
+    );
+    expect(container.querySelector('.cinder-file-upload__description')?.textContent).toBe(
+      'Any file type',
+    );
   });
 
   test('renders custom picker trigger text', () => {
     const { container } = render(FileUpload, {
-      props: { id: 'history-import', triggerLabel: 'Import history JSON' },
+      props: { id: 'history-import', browseLabel: 'Import history JSON' },
     });
     expect(container.querySelector('button')?.textContent).toBe('Import history JSON');
-    expect(container.querySelector('.cinder-file-upload__eyebrow')?.textContent).toContain(
-      'use the Import history JSON button',
+  });
+
+  test('renders custom dropzone copy and derives a readable description from accept', () => {
+    const { container, rerender } = render(FileUpload, {
+      props: {
+        id: 'documents',
+        accept: '.pdf,.doc,.docx,.xlsx,.csv,.png,.jpg,.jpeg',
+        title: 'Add source documents',
+      },
+    });
+
+    expect(container.querySelector('.cinder-file-upload__title')?.textContent).toBe(
+      'Add source documents',
+    );
+    expect(container.querySelector('.cinder-file-upload__description')?.textContent).toBe(
+      'PDF, DOC/DOCX, XLSX, CSV, PNG, or JPG',
+    );
+
+    rerender({
+      id: 'documents',
+      accept: '.pdf',
+      description: 'Signed PDF documents only',
+    });
+    expect(container.querySelector('.cinder-file-upload__description')?.textContent).toBe(
+      'Signed PDF documents only',
     );
   });
 
@@ -154,17 +183,22 @@ describe('FileUpload rendering', () => {
 });
 
 describe('FileUpload validation and events', () => {
-  test('change fires onFilesChange with accepted files', async () => {
-    const onFilesChange = mock((_files: File[]) => {});
+  test('change reports accepted files and the full resolved entry list', async () => {
+    const onFilesAccepted = mock((_files: File[]) => {});
+    const onFilesChange = mock((_entries) => {});
     const file = createFile('resume.pdf', 'application/pdf', 512_000);
     const { container } = render(FileUpload, {
-      props: { id: 'resume-upload', onFilesChange },
+      props: { id: 'resume-upload', onFilesAccepted, onFilesChange },
     });
     const input = container.querySelector('#resume-upload') as HTMLInputElement;
     attachInputFiles(input, [file]);
     await fireEvent.change(input);
+    expect(onFilesAccepted).toHaveBeenCalledTimes(1);
+    expect(onFilesAccepted.mock.calls[0]?.[0]).toEqual([file]);
     expect(onFilesChange).toHaveBeenCalledTimes(1);
-    expect(onFilesChange.mock.calls[0]?.[0]).toEqual([file]);
+    expect(onFilesChange.mock.calls[0]?.[0]).toEqual([
+      expect.objectContaining({ file, status: 'pending' }),
+    ]);
   });
 
   test('maxSize rejection reports reason and message', async () => {
@@ -193,30 +227,30 @@ describe('FileUpload validation and events', () => {
   });
 
   test('accept wildcard allows related image types', async () => {
-    const onFilesChange = mock((_files: File[]) => {});
+    const onFilesAccepted = mock((_files: File[]) => {});
     const file = createFile('photo.jpg', 'image/jpeg', 2300);
     const { container } = render(FileUpload, {
-      props: { id: 'upload', accept: 'image/*', onFilesChange },
+      props: { id: 'upload', accept: 'image/*', onFilesAccepted },
     });
     const dropzone = container.querySelector('.cinder-file-upload__dropzone') as HTMLDivElement;
     await fireEvent(dropzone, createDropEvent('drop', [file]));
-    expect(onFilesChange).toHaveBeenCalledTimes(1);
-    expect(onFilesChange.mock.calls[0]?.[0]).toEqual([file]);
+    expect(onFilesAccepted).toHaveBeenCalledTimes(1);
+    expect(onFilesAccepted.mock.calls[0]?.[0]).toEqual([file]);
   });
 
   test('accept extension match works when MIME type is empty', async () => {
-    const onFilesChange = mock((_files: File[]) => {});
+    const onFilesAccepted = mock((_files: File[]) => {});
     const file = createFile('contract.pdf', '', 2048);
     const { container } = render(FileUpload, {
-      props: { id: 'upload', accept: '.pdf,.docx', onFilesChange },
+      props: { id: 'upload', accept: '.pdf,.docx', onFilesAccepted },
     });
     const dropzone = container.querySelector('.cinder-file-upload__dropzone') as HTMLDivElement;
     await fireEvent(dropzone, createDropEvent('drop', [file]));
-    expect(onFilesChange).toHaveBeenCalledTimes(1);
+    expect(onFilesAccepted).toHaveBeenCalledTimes(1);
   });
 
   test('multiple false accepts one file and rejects the extras', async () => {
-    const onFilesChange = mock((_files: File[]) => {});
+    const onFilesAccepted = mock((_files: File[]) => {});
     const onReject = mock((_files) => {});
     const files = [
       createFile('one.txt', 'text/plain', 100),
@@ -224,22 +258,61 @@ describe('FileUpload validation and events', () => {
       createFile('three.txt', 'text/plain', 100),
     ];
     const { container } = render(FileUpload, {
-      props: { id: 'upload', onFilesChange, onReject },
+      props: { id: 'upload', onFilesAccepted, onReject },
     });
     const dropzone = container.querySelector('.cinder-file-upload__dropzone') as HTMLDivElement;
     await fireEvent(dropzone, createDropEvent('drop', files));
-    expect(onFilesChange.mock.calls[0]?.[0]).toEqual([files[0]!]);
+    expect(onFilesAccepted.mock.calls[0]?.[0]).toEqual([files[0]!]);
     expect(onReject.mock.calls[0]?.[0]).toHaveLength(2);
     expect(onReject.mock.calls[0]?.[0]?.[0]?.reason).toBe('too-many');
+  });
+
+  test('maxFiles rejects files beyond the configured limit', async () => {
+    const onFilesAccepted = mock((_files: File[]) => {});
+    const onFilesChange = mock((_entries) => {});
+    const onReject = mock((_files) => {});
+    const files = [
+      createFile('one.txt', 'text/plain', 100),
+      createFile('two.txt', 'text/plain', 100),
+      createFile('three.txt', 'text/plain', 100),
+    ];
+    const { container } = render(FileUpload, {
+      props: {
+        id: 'upload',
+        multiple: true,
+        maxFiles: 2,
+        onFilesAccepted,
+        onFilesChange,
+        onReject,
+      },
+    });
+    const dropzone = container.querySelector('.cinder-file-upload__dropzone') as HTMLDivElement;
+
+    await fireEvent(dropzone, createDropEvent('drop', files));
+
+    expect(onFilesAccepted.mock.calls[0]?.[0]).toEqual(files.slice(0, 2));
+    expect(onReject.mock.calls[0]?.[0]).toEqual([
+      expect.objectContaining({ file: files[2], reason: 'too-many' }),
+    ]);
+    expect(onFilesChange.mock.calls[0]?.[0]).toEqual([
+      expect.objectContaining({ file: files[0], status: 'pending' }),
+      expect.objectContaining({ file: files[1], status: 'pending' }),
+      expect.objectContaining({ file: files[2], status: 'error' }),
+    ]);
   });
 });
 
 describe('FileUpload drag state and accessibility', () => {
-  test('drag state toggles data-drag-active', async () => {
-    const { container } = render(FileUpload, { props: { id: 'upload' } });
+  test('drag state toggles data-drag-active and renders the dragging label', async () => {
+    const { container } = render(FileUpload, {
+      props: { id: 'upload', draggingLabel: 'Release the documents' },
+    });
     const dropzone = container.querySelector('.cinder-file-upload__dropzone') as HTMLDivElement;
     await fireEvent(dropzone, createDropEvent('dragenter', []));
     expect(dropzone.hasAttribute('data-drag-active')).toBe(true);
+    expect(container.querySelector('.cinder-file-upload__title')?.textContent).toBe(
+      'Release the documents',
+    );
     await fireEvent(dropzone, createDropEvent('dragleave', []));
     expect(dropzone.hasAttribute('data-drag-active')).toBe(false);
   });
@@ -272,7 +345,7 @@ describe('FileUpload drag state and accessibility', () => {
   });
 
   test('disabled ignores drops', async () => {
-    const onFilesChange = mock((_files: File[]) => {});
+    const onFilesChange = mock((_entries) => {});
     const onReject = mock((_files) => {});
     const file = createFile('resume.pdf', 'application/pdf', 1200);
     const { container } = render(FileUpload, {
@@ -289,7 +362,7 @@ describe('FileUpload drag state and accessibility', () => {
   test('non-file drops do not clear existing rendered entries', async () => {
     const file = createFile('resume.pdf', 'application/pdf', 1200);
     const { container } = render(FileUpload, {
-      props: { id: 'upload', onFilesChange: mock((_files: File[]) => {}) },
+      props: { id: 'upload' },
     });
     const dropzone = container.querySelector('.cinder-file-upload__dropzone') as HTMLDivElement;
     await fireEvent(dropzone, createDropEvent('drop', [file]));
@@ -304,7 +377,7 @@ describe('FileUpload drag state and accessibility', () => {
       createFile('bad.mov', 'video/quicktime', 2 * 1024 * 1024),
     ];
     const { container } = render(FileUpload, {
-      props: { id: 'upload', maxSize: 1024, multiple: true, triggerLabel: 'Import files' },
+      props: { id: 'upload', maxSize: 1024, multiple: true, browseLabel: 'Import files' },
     });
     const dropzone = container.querySelector('.cinder-file-upload__dropzone') as HTMLDivElement;
     await fireEvent(dropzone, createDropEvent('drop', files));
@@ -345,7 +418,7 @@ describe('FileUpload drag state and accessibility', () => {
 
   test('visible button trigger opens the native picker path with custom text', async () => {
     const { container } = render(FileUpload, {
-      props: { id: 'upload', triggerLabel: 'Choose directory' },
+      props: { id: 'upload', browseLabel: 'Choose directory' },
     });
     const input = container.querySelector('#upload') as HTMLInputElement;
     const button = container.querySelector('button') as HTMLButtonElement;
@@ -384,6 +457,21 @@ describe('FileUpload file list rendering', () => {
     expect(progressbar?.getAttribute('aria-valuenow')).toBe('42');
   });
 
+  test('renders a file-type icon for known and unknown MIME types', () => {
+    const files = [
+      { id: 'image', file: createFile('photo.png', 'image/png', 100), status: 'success' as const },
+      { id: 'sheet', file: createFile('report.csv', 'text/csv', 100), status: 'success' as const },
+      {
+        id: 'unknown',
+        file: createFile('archive.zip', 'application/zip', 100),
+        status: 'success' as const,
+      },
+    ];
+    const { container } = render(FileUpload, { props: { id: 'upload', files } });
+
+    expect(container.querySelectorAll('.cinder-file-upload__file-icon')).toHaveLength(3);
+  });
+
   test('error entry wires aria-describedby to the visible error text', () => {
     const file = createFile('broken.zip', 'application/zip', 4096);
     const { container } = render(FileUpload, {
@@ -396,5 +484,33 @@ describe('FileUpload file list rendering', () => {
     const describedBy = row?.getAttribute('aria-describedby');
     expect(describedBy).toBeTruthy();
     expect(container.querySelector(`#${describedBy}`)?.textContent).toBe('Upload failed');
+  });
+
+  test('error entry offers retry when onRetry is provided', async () => {
+    const entry = {
+      id: '1',
+      file: createFile('broken.zip', 'application/zip', 4096),
+      status: 'error' as const,
+      error: 'Upload failed',
+    };
+    const onRetry = mock((_entry) => {});
+    const { container } = render(FileUpload, {
+      props: { id: 'upload', files: [entry], onRetry },
+    });
+    const retryButton = container.querySelector('.cinder-file-upload__retry') as HTMLButtonElement;
+
+    expect(retryButton.textContent).toContain('Retry');
+    expect(retryButton.getAttribute('aria-label')).toBe('Retry broken.zip');
+    await fireEvent.click(retryButton);
+    expect(onRetry).toHaveBeenCalledWith(entry);
+  });
+
+  test('border beam emphasis is enabled by default and can be disabled', async () => {
+    const { container, rerender } = render(FileUpload, { props: { id: 'upload' } });
+    const dropzone = container.querySelector('.cinder-file-upload__dropzone') as HTMLDivElement;
+    expect(dropzone.classList.contains('cinder-file-upload__dropzone--border-beam')).toBe(true);
+
+    await rerender({ id: 'upload', borderBeamVisible: false });
+    expect(dropzone.classList.contains('cinder-file-upload__dropzone--border-beam')).toBe(false);
   });
 });

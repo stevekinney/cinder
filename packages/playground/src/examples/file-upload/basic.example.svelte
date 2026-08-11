@@ -16,9 +16,8 @@
   let rejectedMessages = $state<string[]>([]);
 
   // A single drop/pick can include both valid and invalid files — FileUpload
-  // fires `onFilesChange` (accepted) AND `onReject` (rejected) for the same batch.
-  // Each handler updates only its own list so a mixed batch shows both results.
-  function handleChange(files: File[]) {
+  // fires `onFilesAccepted` and `onReject` for their respective batch results.
+  function handleAccepted(files: File[]) {
     acceptedNames = files.map((file) => file.name);
   }
 
@@ -34,7 +33,7 @@
     accept="image/*,.pdf"
     multiple
     maxSize={5 * 1024 * 1024}
-    onFilesChange={handleChange}
+    onFilesAccepted={handleAccepted}
     onReject={handleReject}
   />
 </FormField>

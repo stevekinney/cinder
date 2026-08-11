@@ -13,10 +13,13 @@
   .cinder-file-upload__dropzone {
     display: grid;
     gap: var(--cinder-space-3);
+    justify-items: center;
     border: 2px dashed var(--cinder-file-upload-border-color);
     border-radius: var(--cinder-radius-lg);
-    background: var(--cinder-file-upload-background);
-    padding: var(--cinder-space-4);
+    background: var(--cinder-surface-raised);
+    min-block-size: 12rem;
+    padding: var(--cinder-space-6);
+    text-align: center;
     transition:
       border-color var(--cinder-duration-fast) var(--cinder-ease-standard),
       background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
@@ -34,7 +37,8 @@
     opacity: 0.7;
   }
 
-  .cinder-file-upload__dropzone:focus-within {
+  .cinder-file-upload__dropzone--border-beam[data-drag-active],
+  .cinder-file-upload__dropzone--border-beam:has(.cinder-file-upload__input:focus-visible) {
     outline: var(--cinder-ring-width) solid transparent;
     box-shadow: var(--_cinder-focus-ring-shadow);
   }
@@ -55,22 +59,41 @@
   .cinder-file-upload__body {
     display: grid;
     gap: var(--cinder-space-2);
-    justify-items: start;
+    justify-items: center;
   }
 
-  .cinder-file-upload__eyebrow {
+  .cinder-file-upload__upload-icon {
     display: inline-flex;
     align-items: center;
-    gap: var(--cinder-space-2);
+    justify-content: center;
+    border: 1px solid var(--cinder-border-muted);
+    border-radius: var(--cinder-radius-md);
+    background: var(--cinder-surface);
+    color: var(--cinder-accent-text);
+    inline-size: 2.5rem;
+    block-size: 2.5rem;
+  }
+
+  .cinder-file-upload__upload-icon-svg {
+    inline-size: 1rem;
+    block-size: 1rem;
+  }
+
+  .cinder-file-upload__title,
+  .cinder-file-upload__description {
+    margin: 0;
+  }
+
+  .cinder-file-upload__title {
     color: var(--cinder-text);
     font-size: var(--cinder-text-sm);
     font-weight: var(--cinder-font-medium);
   }
 
-  .cinder-file-upload__eyebrow-icon {
-    inline-size: 1rem;
-    block-size: 1rem;
-    color: var(--cinder-accent-text);
+  .cinder-file-upload__description {
+    color: var(--cinder-text-muted);
+    font-size: var(--cinder-text-xs);
+    line-height: var(--cinder-leading-relaxed);
   }
 
   .cinder-file-upload__button {
@@ -123,6 +146,20 @@
     min-inline-size: 0;
   }
 
+  .cinder-file-upload__file-details {
+    display: flex;
+    align-items: center;
+    gap: var(--cinder-space-3);
+    min-inline-size: 0;
+  }
+
+  .cinder-file-upload__file-icon {
+    flex: none;
+    color: var(--cinder-text-muted);
+    inline-size: 1.25rem;
+    block-size: 1.25rem;
+  }
+
   .cinder-file-upload__file-name {
     overflow-wrap: anywhere;
     color: var(--cinder-text);
@@ -173,8 +210,52 @@
   }
 
   .cinder-file-upload__error {
+    margin: 0;
     color: var(--cinder-color-danger-fg);
     font-size: var(--cinder-text-xs);
+  }
+
+  .cinder-file-upload__error-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--cinder-space-2);
+    flex-wrap: wrap;
+  }
+
+  .cinder-file-upload__retry {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cinder-space-1);
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-sm);
+    background: var(--cinder-surface-raised);
+    color: var(--cinder-text);
+    padding: var(--cinder-space-1) var(--cinder-space-2);
+    font-size: var(--cinder-text-xs);
+    font-weight: var(--cinder-font-medium);
+  }
+
+  .cinder-file-upload__retry:hover {
+    background: var(--cinder-surface-hover);
+  }
+
+  .cinder-file-upload__retry:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+
+  .cinder-file-upload__retry-icon {
+    inline-size: 0.875rem;
+    block-size: 0.875rem;
+  }
+
+  @media (forced-colors: active) {
+    .cinder-file-upload__dropzone--border-beam[data-drag-active],
+    .cinder-file-upload__dropzone--border-beam:has(.cinder-file-upload__input:focus-visible),
+    .cinder-file-upload__retry:focus-visible {
+      outline-color: Highlight;
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {

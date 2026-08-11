@@ -39,14 +39,24 @@ export type FileUploadProps = Omit<
   multiple?: boolean;
   /** Maximum allowed file size in bytes. */
   maxSize?: number;
+  /** Maximum number of files allowed. Files beyond this limit are rejected. */
+  maxFiles?: number;
   /** Disables the file picker and drag-and-drop surface. */
   disabled?: boolean;
   /** Native input name used for form submission. */
   name?: string;
   /** Additional classes merged with `.cinder-file-upload`. */
   class?: string;
-  /** Visible text for the picker trigger button. Default `Choose files`. */
-  triggerLabel?: string;
+  /** Visible title for the dropzone. Default `Click to upload or drop files`. */
+  title?: string;
+  /** Visible description below the title. Defaults to a summary derived from `accept`. */
+  description?: string;
+  /** Visible label shown while files are dragged over the dropzone. Default `Drop to add`. */
+  draggingLabel?: string;
+  /** Visible text for the browse button. Default `Browse files`. */
+  browseLabel?: string;
+  /** Adds focus and drag-active border emphasis to the dropzone. Default `true`. */
+  borderBeamVisible?: boolean;
   /** Consumer-driven file rows, including upload progress and error states. */
   files?: FileUploadEntry[];
   /** Replaces the default resting-state dropzone body. */
@@ -56,7 +66,11 @@ export type FileUploadProps = Omit<
   /** Replaces the default file-list renderer. Receives the resolved rows. */
   fileList?: Snippet<[FileUploadEntry[]]>;
   /** Fires with accepted files after local validation passes. */
-  onFilesChange?: (files: File[]) => void;
+  onFilesAccepted?: (files: File[]) => void;
+  /** Fires with the full resolved entry list after local validation changes it. */
+  onFilesChange?: (entries: FileUploadEntry[]) => void;
   /** Fires with rejected files and reasons after local validation runs. */
   onReject?: (files: RejectedFile[]) => void;
+  /** Called when the retry button is activated for a failed file. */
+  onRetry?: (entry: FileUploadEntry) => void;
 };

@@ -11,7 +11,15 @@ announces results, and can render consumer-driven upload progress rows.
   import type { FileUploadEntry } from '@lostgradient/cinder/file-upload';
   import FormField from '@lostgradient/cinder/form-field';
 
-  let files = $state<FileUploadEntry[]>([]);
+  let entries = $state<FileUploadEntry[]>([]);
+
+  function queueFiles(acceptedFiles: File[]) {
+    entries = acceptedFiles.map((file) => ({
+      id: crypto.randomUUID(),
+      file,
+      status: 'pending',
+    }));
+  }
 </script>
 
 <FormField id="resume" label="Resume" description="PDF up to 5 MB">
@@ -19,46 +27,63 @@ announces results, and can render consumer-driven upload progress rows.
     id="resume"
     accept=".pdf"
     maxSize={5 * 1024 * 1024}
-    onFilesChange={(accepted) => {
-      files = accepted.map((file) => ({
-        id: crypto.randomUUID(),
-        file,
-        status: 'success' as const,
-      }));
-    }}
-    {files}
+    onFilesAccepted={queueFiles}
+    onFilesChange={(nextEntries) => (entries = nextEntries)}
+    files={entries}
   />
 </FormField>
 ```
 
-Use `triggerLabel` when the picker action needs more specific text, such as
+Use `browseLabel` when the picker action needs more specific text, such as
 directory or import flows. Native input attributes still pass through to the
 real file input, so directory selection can use `webkitdirectory`:
 
 ```svelte
-<FileUpload id="history" triggerLabel="Choose directory" multiple webkitdirectory />
+<FileUpload id="history" browseLabel="Choose directory" multiple webkitdirectory />
 ```
+
+## Upload queue and retry
+
+`FileUpload` owns local validation, not network upload. Each picker selection or
+drop is validated as one batch before callbacks run:
+
+- `onFilesAccepted` receives the accepted native `File[]` so you can enqueue uploads.
+- `onReject` receives rejected files with `too-large`, `wrong-type`, or `too-many` reasons.
+- `onFilesChange` receives the full locally resolved list. Accepted rows start as `pending`; rejected rows start as `error` with a visible message.
+
+Pass the controlled `files` prop to show your uploader's current `pending`,
+`uploading`, `success`, or `error` state. Set `progress` from 0–100 while an
+entry uploads. When you provide `onRetry`, failed rows render a retry button and
+return the complete entry to your upload queue handler. The component never
+starts, cancels, or retries a network request by itself.
 
 ## Props
 
 <!-- generated:props:start -->
 
-| Prop            | Type       | Required | Default | Description                                                                                                                                       |
-| --------------- | ---------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `accept`        | `string`   | no       | —       | Native file accept filter.                                                                                                                        |
-| `class`         | `string`   | no       | —       | Additional classes merged with `.cinder-file-upload`.                                                                                             |
-| `disabled`      | `boolean`  | no       | —       | Disables the file picker and drag-and-drop surface.                                                                                               |
-| `id`            | `string`   | no       | —       | Stable id for the native file input. Required when composing with `FormField`.                                                                    |
-| `maxSize`       | `number`   | no       | —       | Maximum allowed file size in bytes.                                                                                                               |
-| `multiple`      | `boolean`  | no       | —       | Allow more than one file. Default `false`.                                                                                                        |
-| `name`          | `string`   | no       | —       | Native input name used for form submission.                                                                                                       |
-| `triggerLabel`  | `string`   | no       | —       | Visible text for the picker trigger button. Default `Choose files`.                                                                               |
-| `dragActive`    | `(opaque)` | no       | —       | Replaces the default drag-active dropzone body. Not expressible in JSON Schema; see the component types for the signature.                        |
-| `fileList`      | `(opaque)` | no       | —       | Replaces the default file-list renderer. Receives the resolved rows. Not expressible in JSON Schema; see the component types for the signature.   |
-| `files`         | `(opaque)` | no       | —       | Consumer-driven file rows, including upload progress and error states. Not expressible in JSON Schema; see the component types for the signature. |
-| `idle`          | `(opaque)` | no       | —       | Replaces the default resting-state dropzone body. Not expressible in JSON Schema; see the component types for the signature.                      |
-| `onFilesChange` | `(opaque)` | no       | —       | Fires with accepted files after local validation passes. Not expressible in JSON Schema; see the component types for the signature.               |
-| `onReject`      | `(opaque)` | no       | —       | Fires with rejected files and reasons after local validation runs. Not expressible in JSON Schema; see the component types for the signature.     |
+| Prop                | Type       | Required | Default | Description                                                                                                                                           |
+| ------------------- | ---------- | -------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `accept`            | `string`   | no       | —       | Native file accept filter.                                                                                                                            |
+| `borderBeamVisible` | `boolean`  | no       | —       | Adds focus and drag-active border emphasis to the dropzone. Default `true`.                                                                           |
+| `browseLabel`       | `string`   | no       | —       | Visible text for the browse button. Default `Browse files`.                                                                                           |
+| `class`             | `string`   | no       | —       | Additional classes merged with `.cinder-file-upload`.                                                                                                 |
+| `description`       | `string`   | no       | —       | Visible description below the title. Defaults to a summary derived from `accept`.                                                                     |
+| `disabled`          | `boolean`  | no       | —       | Disables the file picker and drag-and-drop surface.                                                                                                   |
+| `draggingLabel`     | `string`   | no       | —       | Visible label shown while files are dragged over the dropzone. Default `Drop to add`.                                                                 |
+| `id`                | `string`   | no       | —       | Stable id for the native file input. Required when composing with `FormField`.                                                                        |
+| `maxFiles`          | `number`   | no       | —       | Maximum number of files allowed. Files beyond this limit are rejected.                                                                                |
+| `maxSize`           | `number`   | no       | —       | Maximum allowed file size in bytes.                                                                                                                   |
+| `multiple`          | `boolean`  | no       | —       | Allow more than one file. Default `false`.                                                                                                            |
+| `name`              | `string`   | no       | —       | Native input name used for form submission.                                                                                                           |
+| `title`             | `string`   | no       | —       | Visible title for the dropzone. Default `Click to upload or drop files`.                                                                              |
+| `dragActive`        | `(opaque)` | no       | —       | Replaces the default drag-active dropzone body. Not expressible in JSON Schema; see the component types for the signature.                            |
+| `fileList`          | `(opaque)` | no       | —       | Replaces the default file-list renderer. Receives the resolved rows. Not expressible in JSON Schema; see the component types for the signature.       |
+| `files`             | `(opaque)` | no       | —       | Consumer-driven file rows, including upload progress and error states. Not expressible in JSON Schema; see the component types for the signature.     |
+| `idle`              | `(opaque)` | no       | —       | Replaces the default resting-state dropzone body. Not expressible in JSON Schema; see the component types for the signature.                          |
+| `onFilesAccepted`   | `(opaque)` | no       | —       | Fires with accepted files after local validation passes. Not expressible in JSON Schema; see the component types for the signature.                   |
+| `onFilesChange`     | `(opaque)` | no       | —       | Fires with the full resolved entry list after local validation changes it. Not expressible in JSON Schema; see the component types for the signature. |
+| `onReject`          | `(opaque)` | no       | —       | Fires with rejected files and reasons after local validation runs. Not expressible in JSON Schema; see the component types for the signature.         |
+| `onRetry`           | `(opaque)` | no       | —       | Called when the retry button is activated for a failed file. Not expressible in JSON Schema; see the component types for the signature.               |
 
 <!-- generated:props:end -->
 

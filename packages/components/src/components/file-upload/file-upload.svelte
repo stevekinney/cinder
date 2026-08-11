@@ -21,12 +21,15 @@
 </script>
 
 <script lang="ts">
+  import RotateCcwIcon from 'lucide-svelte/icons/rotate-ccw';
+
   import { resolveFieldControl } from '../../_internal/field-control.ts';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
   import { formatBytes } from '../../utilities/format-bytes.ts';
   import { useAnnouncer } from '../../utilities/use-announcer.svelte.ts';
+  import { acceptsFile, fileTypeIcon, formatAcceptDescription } from './file-upload-utilities.ts';
   import type { FileUploadEntry, FileUploadProps, RejectedFile } from './file-upload.types.ts';
 
   let {
@@ -34,17 +37,24 @@
     accept,
     multiple = false,
     maxSize,
+    maxFiles,
     disabled,
     required,
     name,
     class: className,
-    triggerLabel = 'Choose files',
+    title = 'Click to upload or drop files',
+    description,
+    draggingLabel = 'Drop to add',
+    browseLabel = 'Browse files',
+    borderBeamVisible = true,
     files,
     idle,
     dragActive,
     fileList,
+    onFilesAccepted,
     onFilesChange,
     onReject,
+    onRetry,
     'aria-describedby': consumerDescribedBy,
     'aria-invalid': consumerInvalid,
     ...rest
@@ -78,6 +88,7 @@
 
   const isDragActive = $derived(dragDepth > 0);
   const renderedEntries = $derived(files ?? internalEntries);
+  const resolvedDescription = $derived(description ?? formatAcceptDescription(accept));
 
   $effect(() => {
     if (context && id && context.controlId !== id) {
@@ -98,33 +109,6 @@
     return Array.from(fileTypes).includes('Files');
   }
 
-  function matchesAcceptToken(file: File, token: string): boolean {
-    const normalizedToken = token.trim().toLowerCase();
-    if (!normalizedToken) return true;
-
-    if (normalizedToken.startsWith('.')) {
-      return file.name.toLowerCase().endsWith(normalizedToken);
-    }
-
-    const fileType = file.type.toLowerCase();
-    if (normalizedToken.endsWith('/*')) {
-      const prefix = normalizedToken.slice(0, -1);
-      return fileType.startsWith(prefix);
-    }
-
-    return fileType === normalizedToken;
-  }
-
-  function acceptsFile(file: File): boolean {
-    if (!accept?.trim()) return true;
-    const tokens = accept
-      .split(',')
-      .map((token) => token.trim())
-      .filter(Boolean);
-    if (tokens.length === 0) return true;
-    return tokens.some((token) => matchesAcceptToken(file, token));
-  }
-
   function validateFiles(sourceFiles: File[]): { accepted: File[]; rejected: RejectedFile[] } {
     const accepted: File[] = [];
     const rejected: RejectedFile[] = [];
@@ -139,7 +123,7 @@
         continue;
       }
 
-      if (!acceptsFile(file)) {
+      if (!acceptsFile(file, accept)) {
         rejected.push({
           file,
           reason: 'wrong-type',
@@ -151,13 +135,16 @@
       accepted.push(file);
     }
 
-    if (!multiple && accepted.length > 1) {
-      const extras = accepted.splice(1);
+    const normalizedMaxFiles =
+      maxFiles === undefined ? undefined : Math.max(0, Math.floor(maxFiles));
+    const acceptedFileLimit = multiple ? normalizedMaxFiles : Math.min(1, normalizedMaxFiles ?? 1);
+    if (acceptedFileLimit !== undefined && accepted.length > acceptedFileLimit) {
+      const extras = accepted.splice(Math.max(0, acceptedFileLimit));
       for (const file of extras) {
         rejected.push({
           file,
           reason: 'too-many',
-          message: `Only one file is allowed; ${file.name} was ignored`,
+          message: `${acceptedFileLimit === 1 ? 'Only one file is' : `Only ${acceptedFileLimit} files are`} allowed; ${file.name} was ignored`,
         });
       }
     }
@@ -165,12 +152,12 @@
     return { accepted, rejected };
   }
 
-  function updateInternalEntries(accepted: File[], rejected: RejectedFile[]) {
-    internalEntries = [
+  function createEntries(accepted: File[], rejected: RejectedFile[]): FileUploadEntry[] {
+    return [
       ...accepted.map((file) => ({
-        id: nextEntryId('success'),
+        id: nextEntryId('pending'),
         file,
-        status: 'success' as const,
+        status: 'pending' as const,
       })),
       ...rejected.map((entry) => ({
         id: nextEntryId('error'),
@@ -198,8 +185,10 @@
 
   function processFiles(sourceFiles: File[]) {
     const { accepted, rejected } = validateFiles(sourceFiles);
-    updateInternalEntries(accepted, rejected);
-    if (accepted.length > 0) onFilesChange?.(accepted);
+    const entries = createEntries(accepted, rejected);
+    internalEntries = entries;
+    if (accepted.length > 0) onFilesAccepted?.(accepted);
+    onFilesChange?.(entries);
     if (rejected.length > 0) onReject?.(rejected);
     announceResult(accepted, rejected);
   }
@@ -271,10 +260,9 @@
 
 {#snippet defaultIdle()}
   <div class="cinder-file-upload__body">
-    <span class="cinder-file-upload__eyebrow">
+    <span class="cinder-file-upload__upload-icon" aria-hidden="true">
       <svg
-        class="cinder-file-upload__eyebrow-icon"
-        aria-hidden="true"
+        class="cinder-file-upload__upload-icon-svg"
         viewBox="0 0 16 16"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
@@ -287,22 +275,25 @@
           stroke-linejoin="round"
         />
       </svg>
-      Drag files here, or use the {triggerLabel} button.
     </span>
-    <p class="cinder-file-upload__hint">Drop files on this area or use the native file picker.</p>
+    <p class="cinder-file-upload__title">{title}</p>
+    <p class="cinder-file-upload__description">{resolvedDescription}</p>
   </div>
 {/snippet}
 
 {#snippet defaultDragActive()}
   <div class="cinder-file-upload__body">
-    <span class="cinder-file-upload__eyebrow">Drop files to add them</span>
+    <p class="cinder-file-upload__title">{draggingLabel}</p>
     <p class="cinder-file-upload__hint">Release now to validate and queue the selected files.</p>
   </div>
 {/snippet}
 
 <div class={classNames('cinder-file-upload', className)}>
   <div
-    class="cinder-file-upload__dropzone"
+    class={classNames(
+      'cinder-file-upload__dropzone',
+      borderBeamVisible && 'cinder-file-upload__dropzone--border-beam',
+    )}
     role="group"
     aria-label={dropzoneLabel}
     aria-labelledby={dropzoneLabelledBy}
@@ -348,7 +339,7 @@
       disabled={field.disabled}
       onclick={openPicker}
     >
-      {triggerLabel}
+      {browseLabel}
     </button>
   </div>
 
@@ -359,12 +350,17 @@
       <ul class="cinder-file-upload__list">
         {#each renderedEntries as entry (entry.id)}
           {@const errorId = entry.error ? `${resolvedId}-${entry.id}-error` : undefined}
+          {@const FileTypeIcon = fileTypeIcon(entry.file.type)}
           <li class="cinder-file-upload__row" aria-describedby={errorId}>
             <div class="cinder-file-upload__row-main">
-              <div class="cinder-file-upload__file-meta">
-                <span class="cinder-file-upload__file-name cinder-_truncate">{entry.file.name}</span
-                >
-                <span class="cinder-file-upload__file-size">{formatBytes(entry.file.size)}</span>
+              <div class="cinder-file-upload__file-details">
+                <FileTypeIcon class="cinder-file-upload__file-icon" aria-hidden="true" />
+                <div class="cinder-file-upload__file-meta">
+                  <span class="cinder-file-upload__file-name cinder-_truncate"
+                    >{entry.file.name}</span
+                  >
+                  <span class="cinder-file-upload__file-size">{formatBytes(entry.file.size)}</span>
+                </div>
               </div>
 
               {#if entry.status === 'uploading'}
@@ -429,8 +425,23 @@
               </div>
             {/if}
 
-            {#if entry.error}
-              <p id={errorId} class="cinder-file-upload__error">{entry.error}</p>
+            {#if entry.error || (entry.status === 'error' && onRetry)}
+              <div class="cinder-file-upload__error-row">
+                {#if entry.error}
+                  <p id={errorId} class="cinder-file-upload__error">{entry.error}</p>
+                {/if}
+                {#if entry.status === 'error' && onRetry}
+                  <button
+                    type="button"
+                    class="cinder-file-upload__retry"
+                    aria-label={`Retry ${entry.file.name}`}
+                    onclick={() => onRetry(entry)}
+                  >
+                    <RotateCcwIcon class="cinder-file-upload__retry-icon" aria-hidden="true" />
+                    Retry
+                  </button>
+                {/if}
+              </div>
             {/if}
           </li>
         {/each}
