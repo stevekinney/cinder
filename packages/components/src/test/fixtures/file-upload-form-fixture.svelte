@@ -38,8 +38,7 @@
     id="upload"
     name="attachment"
     multiple
-    maxFiles={customFileList ? 1 : undefined}
     {...onFilesChange ? { onFilesChange } : {}}
-    {...customFileList ? { fileList } : {}}
+    {...customFileList ? { maxFiles: 1, fileList } : {}}
   />
 </form>

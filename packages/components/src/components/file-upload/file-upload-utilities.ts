@@ -137,7 +137,7 @@ export function fileUploadLimit(multiple: boolean, maxFiles: number | undefined)
 }
 
 export function synchronizeNativeFileInput(
-  inputElement: HTMLInputElement | undefined,
+  inputElement: HTMLInputElement | null | undefined,
   entries: FileUploadEntry[],
   multiple: boolean,
   maxFiles: number | undefined,
