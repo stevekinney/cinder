@@ -1,5 +1,6 @@
 import type { Snippet } from 'svelte';
 import type { HTMLAttributes } from 'svelte/elements';
+import type { ChartTheme, ChartThemeSchema } from '../chart.types.ts';
 /** Direction of a stat change indicator. */
 export type StatisticChangeDirection = 'up' | 'down' | 'neutral';
 /** Data for the optional change indicator rendered below the stat value. */
@@ -24,6 +25,8 @@ export type StatisticProps = Omit<HTMLAttributes<HTMLDivElement>, 'class'> & {
   value: string | number;
   /** Optional change indicator with direction and accessible wording. */
   change?: StatisticChange;
+  /** Partial visual theme override. Omitted fields inherit the surrounding application. */
+  theme?: ChartTheme;
   /** Optional leading icon snippet (decorative — wrapper is aria-hidden). */
   icon?: Snippet;
   /** Intl.NumberFormat options applied only when `value` is a number. */
@@ -42,6 +45,8 @@ export interface StatisticSchemaProps {
   value: string | number;
   /** Optional change indicator with direction and accessible wording. */
   change?: StatisticChange;
+  /** Partial visual theme override. Omitted fields inherit the surrounding application. */
+  theme?: ChartThemeSchema;
   /** Optional leading icon snippet (decorative — wrapper is aria-hidden). */
   icon?: Snippet;
   /** Intl.NumberFormat options applied only when `value` is a number. */

@@ -36,3 +36,7 @@ When MatrixChart accepts snippets or arbitrary children, the caller owns the sem
 - Check forced-colors mode when the component adds borders, focus rings, selected state, or status color.
 
 Related components: `bar-chart`, `line-chart`, `area-chart`.
+
+## Rendering review (2026-08-10)
+
+The implementation review retained MatrixChart for two categorical dimensions rather than a general BarChart. Browser review in dark mode confirmed automatic space for row and column labels, unclipped cells, readable inherited text, and a sequential palette with distinguishable intensity. The semantic table exposes the same row, column, and value relationships without relying on color.

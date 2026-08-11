@@ -19,6 +19,32 @@ const schema = {
       ],
       description: 'The statistic. Strings rendered verbatim; numbers formatted via formatNumber.',
     },
+    theme: {
+      type: 'object',
+      properties: {
+        foreground: {
+          type: 'string',
+        },
+        muted: {
+          type: 'string',
+        },
+        grid: {
+          type: 'string',
+        },
+        background: {
+          type: 'string',
+        },
+        palette: {
+          type: 'array',
+          items: {
+            type: 'string',
+          },
+        },
+      },
+      additionalProperties: false,
+      description:
+        'Partial visual theme override. Omitted fields inherit the surrounding application.',
+    },
     valueLocale: {
       type: 'string',
       description:

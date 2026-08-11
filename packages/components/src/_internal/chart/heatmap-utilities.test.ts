@@ -5,6 +5,7 @@ import {
   heatmapCellFill,
   heatmapDomain,
   heatmapDomainOfRows,
+  heatmapLabelFill,
   normalizeHeatmapValue,
   toFiniteOrNull,
 } from './heatmap-utilities.ts';
@@ -114,5 +115,30 @@ describe('heatmapCellFill', () => {
 
     expect(fill).toContain('var(--cinder-chart-series-5)');
     expect(fill).toContain('50%');
+  });
+
+  test('uses a chart-local palette for sequential and diverging scales', () => {
+    const palette = ['sequential', 'unused', 'warm', 'unused', 'cool'];
+    const domain = heatmapDomain([-10, 10]);
+
+    expect(heatmapCellFill(10, domain, 'sequential', palette)).toContain('sequential');
+    expect(heatmapCellFill(-5, domain, 'diverging', palette)).toContain('cool');
+    expect(heatmapCellFill(5, domain, 'diverging', palette)).toContain('warm');
+  });
+
+  test('keeps diverging ends distinct for a two-color palette', () => {
+    const palette = ['cool', 'warm'];
+    const domain = heatmapDomain([-10, 10]);
+    const cool = heatmapCellFill(-10, domain, 'diverging', palette);
+    const warm = heatmapCellFill(10, domain, 'diverging', palette);
+
+    expect(cool).toContain('cool');
+    expect(warm).toContain('warm');
+    expect(cool).not.toContain('warm');
+  });
+
+  test('uses an opaque source token for rendered-color contrast blending', () => {
+    const fill = heatmapLabelFill(10, 'muted');
+    expect(fill).toBe('var(--cinder-text-inverse)');
   });
 });

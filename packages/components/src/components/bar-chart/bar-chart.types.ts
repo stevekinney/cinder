@@ -2,6 +2,7 @@ import type {
   BarChartDatum,
   BarChartMode,
   BarChartOrientation,
+  BarChartPlacedBar,
   BarChartSchemaDatum,
   BarChartSchemaSeries,
   BarChartSeries,
@@ -9,9 +10,11 @@ import type {
   ChartDataTableVisibility,
   ChartLegendPosition,
   ChartSharedProps,
+  ChartThemeSchema,
+  ChartXAxisSchemaConfiguration,
 } from '../chart.types.ts';
 
-export type BarChartProps = ChartSharedProps & {
+export type BarChartProps = ChartSharedProps<BarChartSeries, BarChartPlacedBar> & {
   /** Rows containing the category and value-key fields used by each series. */
   data: BarChartDatum[];
   /** Datum key used for the category axis. Runtime validation requires string, number, or Date values. */
@@ -32,7 +35,7 @@ export type BarChartSchemaProps = {
   /** Pixel height of the chart viewport. Default `280`. */
   height?: number;
   /** Configuration for the x-axis label and tick count. */
-  xAxis?: ChartAxisSchemaConfiguration;
+  xAxis?: ChartXAxisSchemaConfiguration;
   /** Configuration for the y-axis label and tick count. */
   yAxis?: ChartAxisSchemaConfiguration;
   /** Where to render the series legend relative to the chart. Default `top`. */
@@ -47,6 +50,10 @@ export type BarChartSchemaProps = {
   dataTableVisibility?: ChartDataTableVisibility;
   /** Maximum number of interactive focus targets before keyboard navigation is disabled. Default `500`. */
   maximumInteractivePoints?: number;
+  /** Partial visual theme override. Omitted fields inherit the surrounding application. */
+  theme?: ChartThemeSchema;
+  /** Enable the default visual tooltip. Custom snippet tooltips are available in the TypeScript API. */
+  tooltip?: boolean;
   /** Custom class applied to the root element. */
   class?: string;
   /** JSON-safe data rows. Schema cannot express dynamic categoryKey/valueKey relationships; runtime validation narrows value-key fields to number, null, or undefined. */

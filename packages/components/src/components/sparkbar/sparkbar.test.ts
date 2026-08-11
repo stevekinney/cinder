@@ -84,6 +84,46 @@ describe('Sparkbar', () => {
     expect(el?.getAttribute('aria-label')).toBe('Session cost usage');
   });
 
+  test('resolves theme defaults through currentColor and transparent', () => {
+    const { container } = render(Sparkbar, {
+      value: 0.5,
+      label: 'Usage',
+    });
+
+    const style = container.querySelector('[role="meter"]')?.getAttribute('style') ?? '';
+    expect(style).toContain('--_cinder-chart-foreground: currentColor');
+    expect(style).toContain('--_cinder-chart-muted: currentColor');
+    expect(style).toContain('--_cinder-chart-background: transparent');
+    expect(style).toContain('--_cinder-chart-accent: var(--cinder-chart-series-1)');
+  });
+
+  test('uses custom theme colors for foreground, background, and accent', () => {
+    const { container } = render(Sparkbar, {
+      value: 0.5,
+      label: 'Usage',
+      theme: {
+        foreground: 'CanvasText',
+        muted: 'GrayText',
+        background: 'Canvas',
+        palette: ['rebeccapurple'],
+      },
+    });
+
+    const style = container.querySelector('[role="meter"]')?.getAttribute('style') ?? '';
+    expect(style).toContain('--_cinder-chart-foreground: CanvasText');
+    expect(style).toContain('--_cinder-chart-muted: GrayText');
+    expect(style).toContain('--_cinder-chart-background: Canvas');
+    expect(style).toContain('--_cinder-chart-accent: rebeccapurple');
+  });
+
+  test('paints the themed background on the root', async () => {
+    const cssText = await Bun.file(new URL('./sparkbar.css', import.meta.url)).text();
+
+    expect(cssText).toMatch(
+      /\.cinder-sparkbar\s*\{[^}]*background: var\(--_cinder-chart-background, transparent\)/s,
+    );
+  });
+
   test('falls back to zero when value is not finite', () => {
     const { container } = render(Sparkbar, {
       value: NaN,

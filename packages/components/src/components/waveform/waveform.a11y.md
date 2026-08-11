@@ -36,3 +36,7 @@ When Waveform accepts snippets or arbitrary children, the caller owns the semant
 - Check forced-colors mode when the component adds borders, focus rings, selected state, or status color.
 
 Related components: `spectrum-chart`, `spectrogram`, `bar-chart`, `line-chart`.
+
+## Rendering review (2026-08-10)
+
+The implementation review retained Waveform for time-domain audio amplitude rather than frequency-domain SpectrumChart. Browser review confirmed inherited foreground and background colors plus palette-driven path and bar marks. Large inputs use a bounded minimum/maximum envelope for the SVG while the labelled table communicates representative sample values in text.

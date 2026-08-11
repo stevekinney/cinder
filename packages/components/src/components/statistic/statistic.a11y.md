@@ -43,3 +43,7 @@ The `value` prop is `string | number`. The stat primitive intentionally does not
 ## Possible Duplication During Screen-Reader Navigation
 
 `aria-labelledby` referencing visible text means some traversal modes may re-announce the label and value both as the group's accessible name and again as individual text nodes when the user navigates inside the group. This pattern (group named from visible label + value) is the WAI-ARIA Authoring Practices–recommended approach for statistic widgets and is generally well-tolerated in practice. If duplication is problematic in a specific deployment, adding `aria-hidden="true"` to one of the referenced spans is a follow-up mitigation — it is not part of the v1 contract.
+
+## Rendering review (2026-08-10)
+
+The implementation review retained Statistic for a labelled scalar rather than a chart or meter. Browser and focused-test review confirmed readable inherited foreground and muted text. Directional states preserve three channels: semantic status color, arrow direction, and explicit screen-reader wording, so custom chart theming does not erase the meaning of a change.

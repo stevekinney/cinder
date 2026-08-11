@@ -4,12 +4,13 @@
   .cinder-matrix-chart {
     display: grid;
     gap: var(--cinder-space-3);
-    color: var(--cinder-text);
+    color: var(--_cinder-chart-foreground, currentColor);
+    background: var(--_cinder-chart-background, transparent);
   }
 
   .cinder-matrix-chart__description {
     margin: 0;
-    color: var(--cinder-text-muted);
+    color: var(--_cinder-chart-muted, currentColor);
     font-size: var(--cinder-text-sm);
   }
 
@@ -25,7 +26,7 @@
 
   .cinder-matrix-chart__cell {
     rx: 2;
-    stroke: var(--cinder-surface);
+    stroke: var(--_cinder-chart-grid, currentColor);
     stroke-width: 1.5;
   }
 
@@ -33,13 +34,18 @@
     filter: brightness(1.15);
   }
 
+  .cinder-matrix-chart__cell-group {
+    isolation: isolate;
+  }
+
   .cinder-matrix-chart__cell-label {
     font-size: var(--cinder-text-xs);
+    mix-blend-mode: difference;
     pointer-events: none;
   }
 
   .cinder-matrix-chart__tick-label {
-    fill: var(--cinder-text-muted);
+    fill: var(--_cinder-chart-muted, currentColor);
     font-size: var(--cinder-text-xs);
   }
 
@@ -48,8 +54,8 @@
     inset: 0;
     display: grid;
     place-items: center;
-    color: var(--cinder-text-muted);
-    background: color-mix(in oklch, var(--cinder-surface) 88%, transparent);
+    color: var(--_cinder-chart-muted, currentColor);
+    background: var(--_cinder-chart-background, transparent);
     z-index: 1;
   }
 }

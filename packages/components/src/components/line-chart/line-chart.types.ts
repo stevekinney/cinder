@@ -5,6 +5,8 @@ import type {
   ChartJsonXValue,
   ChartLegendPosition,
   ChartSharedProps,
+  ChartThemeSchema,
+  ChartXAxisSchemaConfiguration,
 } from '../chart.types.ts';
 
 export type LineChartProps = ChartSharedProps & {
@@ -34,7 +36,7 @@ export type LineChartSchemaProps = {
   /** Pixel height of the chart viewport. Default `280`. */
   height?: number;
   /** Configuration for the x-axis label and tick count. */
-  xAxis?: ChartAxisSchemaConfiguration;
+  xAxis?: ChartXAxisSchemaConfiguration;
   /** Configuration for the y-axis label and tick count. */
   yAxis?: ChartAxisSchemaConfiguration;
   /** Where to render the series legend relative to the chart. Default `top`. */
@@ -49,6 +51,10 @@ export type LineChartSchemaProps = {
   dataTableVisibility?: ChartDataTableVisibility;
   /** Maximum number of interactive focus targets before keyboard navigation is disabled. Default `500`. */
   maximumInteractivePoints?: number;
+  /** Partial visual theme override. Omitted fields inherit the surrounding application. */
+  theme?: ChartThemeSchema;
+  /** Enable the default visual tooltip. Custom snippet tooltips are available in the TypeScript API. */
+  tooltip?: boolean;
   /** Custom class applied to the root element. */
   class?: string;
   /** Series to render as one or more connected line paths. */
