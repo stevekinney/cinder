@@ -919,6 +919,27 @@ describe('FileUpload validation and events', () => {
 
     expect(onFilesChange).toHaveBeenCalledTimes(1);
     expect(document.activeElement).toBe(firstRemoveButton);
+    expect(container.querySelector('[aria-live="polite"]')?.textContent).not.toContain('removed');
+  });
+
+  test('an adopted controlled removal announces after the row is removed', async () => {
+    const file = createFile('report.txt', 'text/plain', 10);
+    const entry = { id: 'report', file, status: 'success' as const };
+    let rerender: ReturnType<typeof render>['rerender'];
+    const onFilesChange = mock(() => {
+      void rerender({ id: 'upload', files: [], onFilesChange });
+    });
+    const result = render(FileUpload, {
+      props: { id: 'upload', files: [entry], onFilesChange },
+    });
+    rerender = result.rerender;
+
+    await fireEvent.click(result.container.querySelector('.cinder-file-upload__remove')!);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(result.container.querySelector('[aria-live="polite"]')?.textContent).toContain(
+      'report.txt removed',
+    );
   });
 
   test('form reset clears the uncontrolled queue and synchronized native files', async () => {

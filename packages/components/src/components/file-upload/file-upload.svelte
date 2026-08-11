@@ -363,8 +363,17 @@
     if (files === undefined) internalEntries = nextEntries;
     synchronizeNativeInputFiles(nextEntries);
     onFilesChange?.(nextEntries);
-    if (files !== undefined) queueMicrotask(() => synchronizeNativeInputFiles());
-    announcer.announce(`${entry.file.name} removed`);
+    if (files === undefined) {
+      announcer.announce(`${entry.file.name} removed`);
+      return;
+    }
+    queueMicrotask(async () => {
+      await tick();
+      synchronizeNativeInputFiles();
+      if (!files?.some((candidate) => candidate.id === entry.id)) {
+        announcer.announce(`${entry.file.name} removed`);
+      }
+    });
   }
 </script>
 
