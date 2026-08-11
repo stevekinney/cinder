@@ -69,7 +69,8 @@
       ...(id !== undefined ? { id } : {}),
       generatedId,
       context,
-      hasDescription: false,
+      localIdNamespace: 'file-upload',
+      hasDescription: idle === undefined,
       hasError: false,
       consumerDescribedBy,
       consumerInvalid,
@@ -241,6 +242,11 @@
     inputElement?.click();
   }
 
+  function handleSurfaceClick(event: MouseEvent) {
+    event.preventDefault();
+    openPicker();
+  }
+
   function clearInputValue() {
     if (inputElement) {
       inputElement.value = '';
@@ -277,7 +283,9 @@
       </svg>
     </span>
     <p class="cinder-file-upload__title">{title}</p>
-    <p class="cinder-file-upload__description">{resolvedDescription}</p>
+    <p id={field.ownDescriptionId} class="cinder-file-upload__description">
+      {resolvedDescription}
+    </p>
   </div>
 {/snippet}
 
@@ -321,6 +329,13 @@
       onchange={handleInputChange}
     />
 
+    <label
+      class="cinder-file-upload__surface-trigger"
+      for={resolvedId}
+      aria-hidden="true"
+      onclick={handleSurfaceClick}
+    ></label>
+
     {#if isDragActive}
       {#if dragActive}
         {@render dragActive()}
@@ -337,6 +352,7 @@
       type="button"
       class="cinder-file-upload__button"
       disabled={field.disabled}
+      aria-describedby={field.describedBy}
       onclick={openPicker}
     >
       {browseLabel}

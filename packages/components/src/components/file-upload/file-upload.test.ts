@@ -91,7 +91,9 @@ describe('FileUpload rendering', () => {
     const input = container.querySelector('input[type="file"]');
     expect(input).not.toBeNull();
     expect(input?.classList.contains('cinder-file-upload__input')).toBe(true);
-    expect(container.querySelector('button')?.textContent).toBe('Browse files');
+    expect(container.querySelector('.cinder-file-upload__button')?.textContent).toBe(
+      'Browse files',
+    );
     expect(container.querySelector('.cinder-file-upload__title')?.textContent).toBe(
       'Click to upload or drop files',
     );
@@ -104,7 +106,9 @@ describe('FileUpload rendering', () => {
     const { container } = render(FileUpload, {
       props: { id: 'history-import', browseLabel: 'Import history JSON' },
     });
-    expect(container.querySelector('button')?.textContent).toBe('Import history JSON');
+    expect(container.querySelector('.cinder-file-upload__button')?.textContent).toBe(
+      'Import history JSON',
+    );
   });
 
   test('renders custom dropzone copy and derives a readable description from accept', () => {
@@ -131,6 +135,20 @@ describe('FileUpload rendering', () => {
     expect(container.querySelector('.cinder-file-upload__description')?.textContent).toBe(
       'Signed PDF documents only',
     );
+  });
+
+  test('keeps a derived Word description faithful to the accepted extensions', async () => {
+    const { container, rerender } = render(FileUpload, {
+      props: { id: 'documents', accept: '.doc' },
+    });
+    const description = () =>
+      container.querySelector('.cinder-file-upload__description')?.textContent;
+
+    expect(description()).toBe('DOC');
+    await rerender({ id: 'documents', accept: '.docx' });
+    expect(description()).toBe('DOCX');
+    await rerender({ id: 'documents', accept: '.doc,.docx' });
+    expect(description()).toBe('DOC/DOCX');
   });
 
   test('forwards accept, multiple, name, disabled, required, and webkitdirectory to the input', () => {
@@ -164,7 +182,14 @@ describe('FileUpload rendering', () => {
       },
     });
     const input = container.querySelector('#resume') as HTMLInputElement;
-    expect(input.getAttribute('aria-describedby')).toBe('resume-description resume-help');
+    const button = container.querySelector('.cinder-file-upload__button') as HTMLButtonElement;
+    expect(input.getAttribute('aria-describedby')).toBe(
+      'resume-file-upload-description resume-description resume-help',
+    );
+    expect(button.getAttribute('aria-describedby')).toBe(input.getAttribute('aria-describedby'));
+    expect(container.querySelector('#resume-file-upload-description')?.textContent).toBe(
+      'Any file type',
+    );
   });
 
   test('inherits required and disabled from FormField context', () => {
@@ -421,7 +446,7 @@ describe('FileUpload drag state and accessibility', () => {
       props: { id: 'upload', browseLabel: 'Choose directory' },
     });
     const input = container.querySelector('#upload') as HTMLInputElement;
-    const button = container.querySelector('button') as HTMLButtonElement;
+    const button = container.querySelector('.cinder-file-upload__button') as HTMLButtonElement;
     const click = mock(() => {});
     Object.defineProperty(input, 'value', {
       configurable: true,
@@ -433,6 +458,23 @@ describe('FileUpload drag state and accessibility', () => {
     expect(button.textContent).toBe('Choose directory');
     expect(input.value).toBe('');
     expect(click).toHaveBeenCalledTimes(1);
+  });
+
+  test('clicking the advertised dropzone surface opens the picker without double-activating the button', async () => {
+    const { container } = render(FileUpload, { props: { id: 'upload' } });
+    const input = container.querySelector('#upload') as HTMLInputElement;
+    const surfaceTrigger = container.querySelector(
+      '.cinder-file-upload__surface-trigger',
+    ) as HTMLLabelElement;
+    const button = container.querySelector('.cinder-file-upload__button') as HTMLButtonElement;
+    const click = mock(() => {});
+    input.click = click as unknown as typeof input.click;
+
+    await fireEvent.click(surfaceTrigger);
+    expect(click).toHaveBeenCalledTimes(1);
+
+    await fireEvent.click(button);
+    expect(click).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -512,5 +554,17 @@ describe('FileUpload file list rendering', () => {
 
     await rerender({ id: 'upload', borderBeamVisible: false });
     expect(dropzone.classList.contains('cinder-file-upload__dropzone--border-beam')).toBe(false);
+  });
+
+  test('keeps a visible focus treatment when border beam emphasis is disabled', async () => {
+    const css = await Bun.file(new URL('./file-upload.css', import.meta.url)).text();
+
+    expect(css).toContain(
+      '.cinder-file-upload__dropzone:has(.cinder-file-upload__input:focus-visible)',
+    );
+    expect(css).toContain('.cinder-file-upload__button:focus-visible');
+    expect(css).toContain(
+      '.cinder-file-upload__dropzone--border-beam:has(.cinder-file-upload__button:focus-visible)',
+    );
   });
 });

@@ -12,13 +12,10 @@ announces results, and can render consumer-driven upload progress rows.
   import FormField from '@lostgradient/cinder/form-field';
 
   let entries = $state<FileUploadEntry[]>([]);
+  let uploadQueue = $state<File[]>([]);
 
   function queueFiles(acceptedFiles: File[]) {
-    entries = acceptedFiles.map((file) => ({
-      id: crypto.randomUUID(),
-      file,
-      status: 'pending',
-    }));
+    uploadQueue.push(...acceptedFiles);
   }
 </script>
 

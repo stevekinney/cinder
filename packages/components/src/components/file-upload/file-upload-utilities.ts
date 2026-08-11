@@ -15,10 +15,10 @@ const FILE_TYPE_ICONS: Record<string, typeof FileIcon> = {
 const ACCEPT_TOKEN_LABELS: Record<string, string> = {
   '.pdf': 'PDF',
   'application/pdf': 'PDF',
-  '.doc': 'DOC/DOCX',
-  '.docx': 'DOC/DOCX',
-  'application/msword': 'DOC/DOCX',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'DOC/DOCX',
+  '.doc': 'DOC',
+  '.docx': 'DOCX',
+  'application/msword': 'DOC',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'DOCX',
   '.xlsx': 'XLSX',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'XLSX',
   '.csv': 'CSV',
@@ -76,7 +76,14 @@ export function formatAcceptDescription(accept: string | undefined): string {
       if (token.endsWith('/*')) return `${token.slice(0, -2)} files`;
       return token;
     });
-  return formatList([...new Set(labels)]);
+  const uniqueLabels = [...new Set(labels)];
+  const docIndex = uniqueLabels.indexOf('DOC');
+  const docxIndex = uniqueLabels.indexOf('DOCX');
+  if (docIndex !== -1 && docxIndex !== -1) {
+    uniqueLabels.splice(Math.max(docIndex, docxIndex), 1);
+    uniqueLabels[Math.min(docIndex, docxIndex)] = 'DOC/DOCX';
+  }
+  return formatList(uniqueLabels);
 }
 
 export function fileTypeIcon(fileType: string): typeof FileIcon {
