@@ -325,6 +325,55 @@ describe('FileUpload validation and events', () => {
       expect.objectContaining({ file: files[2], status: 'error' }),
     ]);
   });
+
+  test('maxFiles counts accepted entries from earlier selections', async () => {
+    const onFilesAccepted = mock((_files: File[]) => {});
+    const onFilesChange = mock((_entries) => {});
+    const firstFiles = [
+      createFile('first.txt', 'text/plain', 10),
+      createFile('second.txt', 'text/plain', 10),
+    ];
+    const laterFile = createFile('third.txt', 'text/plain', 10);
+    const { container } = render(FileUpload, {
+      props: { id: 'upload', multiple: true, maxFiles: 2, onFilesAccepted, onFilesChange },
+    });
+    const input = container.querySelector('#upload') as HTMLInputElement;
+
+    attachInputFiles(input, firstFiles);
+    await fireEvent.change(input);
+    attachInputFiles(input, [laterFile]);
+    await fireEvent.change(input);
+
+    expect(onFilesAccepted).toHaveBeenCalledTimes(1);
+    expect(onFilesChange.mock.calls[1]?.[0]).toEqual([
+      expect.objectContaining({ file: firstFiles[0], status: 'pending' }),
+      expect.objectContaining({ file: firstFiles[1], status: 'pending' }),
+      expect.objectContaining({ file: laterFile, status: 'error' }),
+    ]);
+  });
+
+  test('maxFiles counts controlled accepted entries', async () => {
+    const existingFile = createFile('existing.txt', 'text/plain', 10);
+    const nextFile = createFile('next.txt', 'text/plain', 10);
+    const onReject = mock((_files) => {});
+    const { container } = render(FileUpload, {
+      props: {
+        id: 'upload',
+        multiple: true,
+        maxFiles: 1,
+        files: [{ id: 'existing', file: existingFile, status: 'success' }],
+        onReject,
+      },
+    });
+    const input = container.querySelector('#upload') as HTMLInputElement;
+
+    attachInputFiles(input, [nextFile]);
+    await fireEvent.change(input);
+
+    expect(onReject.mock.calls[0]?.[0]?.[0]).toEqual(
+      expect.objectContaining({ file: nextFile, reason: 'too-many' }),
+    );
+  });
 });
 
 describe('FileUpload drag state and accessibility', () => {
@@ -464,16 +513,26 @@ describe('FileUpload drag state and accessibility', () => {
     const { container } = render(FileUpload, { props: { id: 'upload' } });
     const input = container.querySelector('#upload') as HTMLInputElement;
     const button = container.querySelector('.cinder-file-upload__button') as HTMLButtonElement;
+    const surfaceTrigger = container.querySelector(
+      '.cinder-file-upload__surface-trigger',
+    ) as HTMLButtonElement;
     const click = mock(() => {});
     input.click = click as unknown as typeof input.click;
 
-    await fireEvent.click(button);
+    await fireEvent.click(surfaceTrigger);
     expect(click).toHaveBeenCalledTimes(1);
 
     const css = await Bun.file(new URL('./file-upload.css', import.meta.url)).text();
-    const stretchedTarget = css.match(/\.cinder-file-upload__button::after\s*\{[^}]*\}/)?.[0];
-    expect(stretchedTarget).toContain('position: absolute');
-    expect(stretchedTarget).toContain('inset: 0');
+    const surfaceTarget = css.match(/\.cinder-file-upload__surface-trigger\s*\{[^}]*\}/)?.[0];
+    expect(surfaceTarget).toContain('grid-area: 1 / 1');
+    expect(surfaceTarget).toContain('margin: calc(-1 * var(--cinder-space-6))');
+    const interactiveContentTarget = css.match(
+      /\.cinder-file-upload__content\s+:is\(a, button, input, select, textarea, \[role='button'\], \[tabindex\]\)\s*\{[^}]*\}/,
+    )?.[0];
+    expect(interactiveContentTarget).toContain('pointer-events: auto');
+
+    await fireEvent.click(button);
+    expect(click).toHaveBeenCalledTimes(2);
   });
 });
 

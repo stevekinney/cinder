@@ -139,8 +139,16 @@
     const normalizedMaxFiles =
       maxFiles === undefined ? undefined : Math.max(0, Math.floor(maxFiles));
     const acceptedFileLimit = multiple ? normalizedMaxFiles : Math.min(1, normalizedMaxFiles ?? 1);
-    if (acceptedFileLimit !== undefined && accepted.length > acceptedFileLimit) {
-      const extras = accepted.splice(Math.max(0, acceptedFileLimit));
+    const existingAcceptedCount =
+      multiple && normalizedMaxFiles !== undefined
+        ? renderedEntries.filter((entry) => entry.status !== 'error').length
+        : 0;
+    const remainingFileLimit =
+      acceptedFileLimit === undefined
+        ? undefined
+        : Math.max(0, acceptedFileLimit - existingAcceptedCount);
+    if (remainingFileLimit !== undefined && accepted.length > remainingFileLimit) {
+      const extras = accepted.splice(remainingFileLimit);
       for (const file of extras) {
         rejected.push({
           file,
@@ -187,9 +195,11 @@
   function processFiles(sourceFiles: File[]) {
     const { accepted, rejected } = validateFiles(sourceFiles);
     const entries = createEntries(accepted, rejected);
-    internalEntries = entries;
+    const nextEntries =
+      multiple && maxFiles !== undefined ? [...renderedEntries, ...entries] : entries;
+    internalEntries = nextEntries;
     if (accepted.length > 0) onFilesAccepted?.(accepted);
-    onFilesChange?.(entries);
+    onFilesChange?.(nextEntries);
     if (rejected.length > 0) onReject?.(rejected);
     announceResult(accepted, rejected);
   }
@@ -324,27 +334,38 @@
       onchange={handleInputChange}
     />
 
-    {#if isDragActive}
-      {#if dragActive}
-        {@render dragActive()}
-      {:else}
-        {@render defaultDragActive()}
-      {/if}
-    {:else if idle}
-      {@render idle()}
-    {:else}
-      {@render defaultIdle()}
-    {/if}
-
     <button
       type="button"
-      class="cinder-file-upload__button"
+      class="cinder-file-upload__surface-trigger"
+      tabindex="-1"
+      aria-hidden="true"
       disabled={field.disabled}
-      aria-describedby={field.describedBy}
       onclick={openPicker}
-    >
-      {browseLabel}
-    </button>
+    ></button>
+
+    <div class="cinder-file-upload__content">
+      {#if isDragActive}
+        {#if dragActive}
+          {@render dragActive()}
+        {:else}
+          {@render defaultDragActive()}
+        {/if}
+      {:else if idle}
+        {@render idle()}
+      {:else}
+        {@render defaultIdle()}
+      {/if}
+
+      <button
+        type="button"
+        class="cinder-file-upload__button"
+        disabled={field.disabled}
+        aria-describedby={field.describedBy}
+        onclick={openPicker}
+      >
+        {browseLabel}
+      </button>
+    </div>
   </div>
 
   {#if renderedEntries.length > 0}
