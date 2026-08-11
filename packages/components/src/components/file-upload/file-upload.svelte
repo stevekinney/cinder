@@ -21,7 +21,7 @@
 </script>
 
 <script lang="ts">
-  import { tick } from 'svelte';
+  import { onDestroy, tick } from 'svelte';
   import { on } from 'svelte/events';
 
   import { resolveFieldControl } from '../../_internal/field-control.ts';
@@ -37,6 +37,7 @@
     dataTransferHasFiles,
     fileUploadLimit,
     formatAcceptDescription,
+    installFilePickerReturnFallback,
     INTERACTIVE_DESCENDANT_SELECTOR,
     synchronizeNativeFileInput,
   } from './file-upload-utilities.ts';
@@ -98,6 +99,9 @@
   let dragDepth = $state(0);
   let internalEntries = $state<FileUploadEntry[]>([]);
   let internalEntryCounter = $state(0);
+  let cancelPickerReturnFallback = () => {};
+
+  onDestroy(() => cancelPickerReturnFallback());
 
   const isDragActive = $derived(dragDepth > 0);
   const renderedEntries = $derived(files ?? internalEntries);
@@ -271,6 +275,7 @@
   }
 
   function handleInputChange() {
+    cancelPickerReturnFallback();
     if (field.disabled || !inputElement?.files) return;
     processFiles(Array.from(inputElement.files));
   }
@@ -342,17 +347,23 @@
   }
 
   function clearInputValue() {
-    if (inputElement) {
-      inputElement.value = '';
-    }
+    if (inputElement) inputElement.value = '';
   }
 
   function handleInputClick() {
     if (field.disabled) return;
+    cancelPickerReturnFallback();
+    const entriesBeforePicker = [...renderedEntries];
+    if (inputElement) {
+      cancelPickerReturnFallback = installFilePickerReturnFallback(inputElement, () =>
+        synchronizeNativeInputFiles(entriesBeforePicker),
+      );
+    }
     clearInputValue();
   }
 
   function handleInputCancel(event: Event) {
+    cancelPickerReturnFallback();
     synchronizeNativeInputFiles();
     oncancel?.(event as Event & { currentTarget: EventTarget & HTMLInputElement });
   }

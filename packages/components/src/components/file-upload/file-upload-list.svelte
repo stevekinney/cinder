@@ -26,6 +26,29 @@
   } = $props();
 
   let listElement = $state<HTMLUListElement>();
+  let pendingRemovalFocus = $state<{
+    entryId: string;
+    removeButton: HTMLButtonElement;
+    nextButton: HTMLButtonElement | undefined;
+  }>();
+
+  function restoreRemovalFocus(pending: NonNullable<typeof pendingRemovalFocus>) {
+    const activeElement = pending.removeButton.ownerDocument.activeElement;
+    if (activeElement && activeElement !== pending.removeButton.ownerDocument.body) return;
+    if (pending.nextButton?.isConnected) pending.nextButton.focus();
+    else onQueueEmptyFocus();
+  }
+
+  $effect(() => {
+    const pending = pendingRemovalFocus;
+    if (!pending || entries.some((entry) => entry.id === pending.entryId)) return;
+    queueMicrotask(async () => {
+      await tick();
+      if (pendingRemovalFocus !== pending) return;
+      restoreRemovalFocus(pending);
+      pendingRemovalFocus = undefined;
+    });
+  });
 
   function progressValue(progress: number | undefined): number {
     if (progress === undefined) return 0;
@@ -41,13 +64,14 @@
       '.cinder-file-upload__remove',
     );
     const nextButton = removeButtons?.[index + 1] ?? removeButtons?.[index - 1];
+    pendingRemovalFocus = { entryId: entry.id, removeButton, nextButton };
+    const pending = pendingRemovalFocus;
     onRemove(entry);
     await tick();
+    if (pendingRemovalFocus !== pending) return;
     if (removeButton.isConnected) return;
-    const activeElement = removeButton.ownerDocument.activeElement;
-    if (activeElement && activeElement !== removeButton.ownerDocument.body) return;
-    if (nextButton?.isConnected) nextButton.focus();
-    else onQueueEmptyFocus();
+    restoreRemovalFocus(pending);
+    pendingRemovalFocus = undefined;
   }
 
   async function handleRetry(entry: FileUploadEntry, retryButton: HTMLButtonElement) {

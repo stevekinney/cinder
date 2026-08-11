@@ -132,8 +132,33 @@ function nativeFilesFitTarget(fileList: FileList | null, files: File[]): boolean
 }
 
 export function fileUploadLimit(multiple: boolean, maxFiles: number | undefined) {
-  const normalizedMaxFiles = maxFiles === undefined ? undefined : Math.max(0, Math.floor(maxFiles));
+  const normalizedMaxFiles =
+    maxFiles === undefined || !Number.isFinite(maxFiles)
+      ? undefined
+      : Math.max(0, Math.floor(maxFiles));
   return multiple ? normalizedMaxFiles : Math.min(1, normalizedMaxFiles ?? 1);
+}
+
+export function installFilePickerReturnFallback(
+  inputElement: HTMLInputElement,
+  handleReturn: () => void,
+): () => void {
+  const ownerWindow = inputElement.ownerDocument.defaultView;
+  if (!ownerWindow) return () => {};
+  const windowTarget: Window = ownerWindow;
+  let timeoutId: number | undefined;
+  function cleanup() {
+    windowTarget.removeEventListener('focus', handleFocus);
+    if (timeoutId !== undefined) windowTarget.clearTimeout(timeoutId);
+  }
+  function handleFocus() {
+    timeoutId = windowTarget.setTimeout(() => {
+      cleanup();
+      handleReturn();
+    });
+  }
+  windowTarget.addEventListener('focus', handleFocus, { once: true });
+  return cleanup;
 }
 
 export function synchronizeNativeFileInput(

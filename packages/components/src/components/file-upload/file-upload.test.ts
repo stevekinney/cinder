@@ -355,6 +355,25 @@ describe('FileUpload validation and events', () => {
     ]);
   });
 
+  test('a non-finite maxFiles value behaves as an omitted limit', async () => {
+    const files = [
+      createFile('one.txt', 'text/plain', 100),
+      createFile('two.txt', 'text/plain', 100),
+    ];
+    const onFilesAccepted = mock((_files: File[]) => {});
+    const { container } = render(FileUpload, {
+      props: { id: 'upload', multiple: true, maxFiles: Number.NaN, onFilesAccepted },
+    });
+    const input = container.querySelector('#upload') as HTMLInputElement;
+
+    attachInputFiles(input, files);
+    await fireEvent.change(input);
+
+    expect(onFilesAccepted.mock.calls[0]?.[0]).toEqual(files);
+    expect(Array.from(input.files ?? [])).toEqual(files);
+    expect(container.querySelectorAll('.cinder-file-upload__row')).toHaveLength(2);
+  });
+
   test('maxFiles counts accepted entries from earlier selections', async () => {
     const onFilesAccepted = mock((_files: File[]) => {});
     const onFilesChange = mock((_entries) => {});
@@ -511,6 +530,23 @@ describe('FileUpload validation and events', () => {
 
     expect(Array.from(input.files ?? [])).toEqual([firstFile]);
     expect(oncancel).toHaveBeenCalledTimes(1);
+  });
+
+  test('returning focus restores the queue when the picker omits cancel', async () => {
+    const firstFile = createFile('first.txt', 'text/plain', 10);
+    const { container } = render(FileUpload, {
+      props: { id: 'upload', multiple: true },
+    });
+    const input = container.querySelector('#upload') as HTMLInputElement;
+
+    attachInputFiles(input, [firstFile]);
+    await fireEvent.change(input);
+    await fireEvent.click(input);
+    attachInputFiles(input, []);
+    window.dispatchEvent(new Event('focus'));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(Array.from(input.files ?? [])).toEqual([firstFile]);
   });
 
   test('single-file mode synchronizes only the first controlled entry to the native input', async () => {
@@ -920,6 +956,39 @@ describe('FileUpload validation and events', () => {
     expect(onFilesChange).toHaveBeenCalledTimes(1);
     expect(document.activeElement).toBe(firstRemoveButton);
     expect(container.querySelector('[aria-live="polite"]')?.textContent).not.toContain('removed');
+  });
+
+  test('an asynchronously adopted controlled removal focuses the next action', async () => {
+    const firstEntry = {
+      id: 'first',
+      file: createFile('first.txt', 'text/plain', 10),
+      status: 'success' as const,
+    };
+    const secondEntry = {
+      id: 'second',
+      file: createFile('second.txt', 'text/plain', 10),
+      status: 'success' as const,
+    };
+    let rerender: ReturnType<typeof render>['rerender'];
+    const onFilesChange = mock(() => {
+      setTimeout(() => void rerender({ id: 'upload', files: [secondEntry], onFilesChange }));
+    });
+    const result = render(FileUpload, {
+      props: { id: 'upload', files: [firstEntry, secondEntry], onFilesChange },
+    });
+    rerender = result.rerender;
+    const firstRemoveButton = result.container.querySelector(
+      '.cinder-file-upload__remove',
+    ) as HTMLButtonElement;
+    firstRemoveButton.focus();
+
+    await fireEvent.click(firstRemoveButton);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(document.activeElement).toBe(
+      result.container.querySelector('.cinder-file-upload__remove'),
+    );
   });
 
   test('an adopted controlled removal announces after the row is removed', async () => {
