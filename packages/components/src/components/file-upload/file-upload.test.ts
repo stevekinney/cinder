@@ -980,6 +980,8 @@ describe('FileUpload file list rendering', () => {
   test('keeps a visible focus treatment when border beam emphasis is disabled', async () => {
     const css = await Bun.file(new URL('./file-upload.css', import.meta.url)).text();
 
+    expect(css).toContain('.cinder-file-upload__dropzone:focus-within');
+    expect(css).toContain('@supports selector(:has(*))');
     expect(css).toContain(
       '.cinder-file-upload__dropzone:has(.cinder-file-upload__input:focus-visible)',
     );
