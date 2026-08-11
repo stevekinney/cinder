@@ -29,14 +29,16 @@
     /** Comment count */
     commentCount?: number;
     /**
-     * ID of the comments sidebar this toolbar's toggle controls.
+     * ID of the comments sidebar the comments toggle controls.
      *
-     * Must be passed explicitly: this component is instantiated with its own
-     * `id` (`{editorId}-controls`), so deriving the sidebar's ID from `id`
-     * yields `{editorId}-controls-sidebar` and points `aria-controls` at an
-     * element that never exists.
+     * Required, and deliberately not defaulted: this component is instantiated
+     * with its own `id` (`{editorId}-controls`), so any fallback derived from
+     * `id` yields `{editorId}-controls-sidebar` and points `aria-controls` at
+     * an element that never exists. Making it required means a caller that
+     * forgets it fails to typecheck instead of silently shipping a dangling
+     * reference.
      */
-    sidebarId?: string;
+    sidebarId: string;
     /** Whether sidebar is open */
     sidebarOpen?: boolean;
     /** Callback for sidebar toggle */
@@ -220,7 +222,7 @@
         size="sm"
         onclick={onSidebarToggle}
         aria-expanded={sidebarOpen}
-        aria-controls={sidebarId ?? `${id}-sidebar`}
+        aria-controls={sidebarId}
         aria-label={commentsToggleLabel}
         title={sidebarOpen ? 'Close comments sidebar' : 'Open comments sidebar'}
       >

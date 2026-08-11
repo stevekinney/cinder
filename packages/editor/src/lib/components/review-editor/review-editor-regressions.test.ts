@@ -152,8 +152,12 @@ describe('the comments toggle points at the sidebar that exists', () => {
    * `aria-controls` target that never resolves in any state.
    */
   test('the sidebar id is passed in rather than derived from the toolbar id', () => {
-    expect(controlsSource).toContain('sidebarId');
-    expect(controlsSource).toMatch(/aria-controls=\{sidebarId \?\? `\$\{id\}-sidebar`\}/);
+    // Required, with no `id`-derived fallback: a default would silently
+    // reintroduce the dangling `{id}-controls-sidebar` target the moment a
+    // caller forgot the prop.
+    expect(controlsSource).toMatch(/sidebarId: string;/);
+    expect(controlsSource).toMatch(/aria-controls=\{sidebarId\}/);
+    expect(controlsSource).not.toMatch(/sidebarId \?\?/);
     expect(implementationSource).toMatch(/sidebarId="\{id\}-sidebar"/);
   });
 });
