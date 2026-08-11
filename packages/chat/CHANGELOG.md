@@ -1,5 +1,18 @@
 # @lostgradient/chat
 
+## 0.8.0
+
+### Minor Changes
+
+- [#1250](https://github.com/stevekinney/cinder/pull/1250) [`6ef9a0d`](https://github.com/stevekinney/cinder/commit/6ef9a0db9d3719cf32c06fafce8ccdd9d9e61e45) Thanks [@stevekinney](https://github.com/stevekinney)! - Bump Chat's `conversationalist` dependency to `^0.6.0` and re-export the new branch-rewind builders — `rewindBeforeMessage`, `rewindBeforePosition`, and the `RewindOptions` type — from the package root alongside the existing builder family.
+
+  The dependency bump is consumer-visible in two ways. `updateStreamingMessage` (re-exported via `@lostgradient/chat`) now guards against writing to a message that is no longer streaming, so the late-token-after-stop race no-ops at the library boundary instead of every consumer hand-rolling a `shouldStop()` guard. And the rewind helpers are the operation Chat's own `editMessage` adapter command asks consumers to perform — rewind to just before the edited message, discard the superseded branch, re-send — which previously required assembling `ids`/`messages`/`updatedAt` by hand.
+
+### Patch Changes
+
+- Updated dependencies [[`0db00f8`](https://github.com/stevekinney/cinder/commit/0db00f891e94ab9c9c4776af1608654b03003de0), [`649a5ee`](https://github.com/stevekinney/cinder/commit/649a5eea8056501f009aeee2b7f32e52ed67c595)]:
+  - @lostgradient/cinder@0.23.0
+
 ## 0.7.1
 
 ### Patch Changes
