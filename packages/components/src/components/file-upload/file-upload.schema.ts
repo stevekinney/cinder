@@ -73,7 +73,8 @@ const schema = {
       {
         name: 'fileList',
         reason: 'function-or-snippet',
-        description: 'Replaces the default file-list renderer. Receives the resolved rows.',
+        description:
+          'Replaces the default file-list renderer. Receives the resolved rows and a removal callback when the queue is mutable.',
       },
       {
         name: 'files',

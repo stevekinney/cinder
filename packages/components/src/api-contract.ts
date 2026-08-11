@@ -313,7 +313,7 @@ export const CONTRACT: Record<string, ComponentContract> = {
     snippets: {
       idle: s0(true),
       dragActive: s0(true),
-      fileList: sp(1, true),
+      fileList: sp(2, true),
     },
   },
 

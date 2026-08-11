@@ -53,6 +53,11 @@ export const INTERACTIVE_DESCENDANT_SELECTOR = [
   '[tabindex]',
 ].join(', ');
 
+export function dataTransferHasFiles(dataTransfer: DataTransfer | null | undefined): boolean {
+  const fileTypes = dataTransfer?.types;
+  return fileTypes ? Array.from(fileTypes).includes('Files') : false;
+}
+
 const FILE_TYPE_ICONS: Record<string, typeof FileIcon> = {
   'image/': ImageIcon,
   'application/pdf': FileTextIcon,
@@ -121,9 +126,46 @@ export function nativeFilesMatch(fileList: FileList | null, files: File[]): bool
   );
 }
 
+function nativeFilesFitTarget(fileList: FileList | null, files: File[]): boolean {
+  const currentFiles = Array.from(fileList ?? []);
+  return currentFiles.length > 0 && currentFiles.every((file) => files.includes(file));
+}
+
 export function fileUploadLimit(multiple: boolean, maxFiles: number | undefined) {
   const normalizedMaxFiles = maxFiles === undefined ? undefined : Math.max(0, Math.floor(maxFiles));
   return multiple ? normalizedMaxFiles : Math.min(1, normalizedMaxFiles ?? 1);
+}
+
+export function synchronizeNativeFileInput(
+  inputElement: HTMLInputElement | undefined,
+  entries: FileUploadEntry[],
+  multiple: boolean,
+  maxFiles: number | undefined,
+) {
+  if (!inputElement) return;
+  const acceptedEntries = entries.filter((entry) => entry.rejectionReason === undefined);
+  const limit = fileUploadLimit(multiple, maxFiles);
+  const acceptedFiles = (
+    limit === undefined ? acceptedEntries : acceptedEntries.slice(0, limit)
+  ).map((entry) => entry.file);
+  if (nativeFilesMatch(inputElement.files, acceptedFiles)) return;
+  if (typeof DataTransfer === 'undefined') {
+    if (!nativeFilesFitTarget(inputElement.files, acceptedFiles)) inputElement.value = '';
+    return;
+  }
+  let dataTransfer: DataTransfer;
+  try {
+    dataTransfer = new DataTransfer();
+  } catch {
+    if (!nativeFilesFitTarget(inputElement.files, acceptedFiles)) inputElement.value = '';
+    return;
+  }
+  for (const file of acceptedFiles) dataTransfer.items.add(file);
+  try {
+    inputElement.files = dataTransfer.files;
+  } catch {
+    if (!nativeFilesFitTarget(inputElement.files, acceptedFiles)) inputElement.value = '';
+  }
 }
 
 export function constrainFileUploadEntries(entries: FileUploadEntry[], limit: number | undefined) {

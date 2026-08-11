@@ -652,6 +652,61 @@ describe('FileUpload validation and events', () => {
     expect(Array.from(input.files ?? [])).toEqual([acceptedFile]);
   });
 
+  test('native synchronization preserves the latest valid picker batch when accumulated files cannot be assigned', async () => {
+    const firstFile = createFile('first.png', 'image/png', 10);
+    const secondFile = createFile('second.png', 'image/png', 10);
+    const onFilesChange = mock((_entries) => {});
+    const { container } = render(FileUpload, {
+      props: { id: 'upload', accept: 'image/*', multiple: true, onFilesChange },
+    });
+    const input = container.querySelector('#upload') as HTMLInputElement;
+
+    attachInputFiles(input, [firstFile]);
+    await fireEvent.change(input);
+    Object.defineProperty(globalThis, 'DataTransfer', {
+      configurable: true,
+      writable: true,
+      value: function UnsupportedDataTransfer() {
+        throw new TypeError('DataTransfer construction is unsupported');
+      },
+    });
+    attachInputFiles(input, [secondFile]);
+    await fireEvent.change(input);
+
+    expect(onFilesChange).toHaveBeenLastCalledWith([
+      expect.objectContaining({ file: firstFile }),
+      expect.objectContaining({ file: secondFile }),
+    ]);
+    expect(Array.from(input.files ?? [])).toEqual([secondFile]);
+  });
+
+  test('native synchronization does not rebuild an unchanged controlled FileList', async () => {
+    const file = createFile('report.png', 'image/png', 10);
+    const entry = { id: 'report', file, status: 'pending' as const };
+    let constructions = 0;
+    Object.defineProperty(globalThis, 'DataTransfer', {
+      configurable: true,
+      writable: true,
+      value: class CountingDataTransfer extends TestDataTransfer {
+        constructor() {
+          super();
+          constructions += 1;
+        }
+      },
+    });
+    const { rerender } = render(FileUpload, {
+      props: { id: 'upload', files: [entry] },
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const constructionsAfterSynchronization = constructions;
+
+    await rerender({ id: 'upload', files: [{ ...entry, status: 'uploading', progress: 25 }] });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(constructionsAfterSynchronization).toBeGreaterThan(0);
+    expect(constructions).toBe(constructionsAfterSynchronization);
+  });
+
   test('native synchronization clears rejected files when DataTransfer is unavailable', async () => {
     const rejectedFile = createFile('rejected.txt', 'text/plain', 10);
     const onReject = mock((_files) => {});
@@ -729,6 +784,33 @@ describe('FileUpload validation and events', () => {
     expect(onFilesChange).toHaveBeenLastCalledWith([
       expect.objectContaining({ file: replacementFile, status: 'pending' }),
     ]);
+  });
+
+  test('a custom uncontrolled file list can remove an entry and free its maxFiles slot', async () => {
+    const firstFile = createFile('first.txt', 'text/plain', 10);
+    const replacementFile = createFile('replacement.txt', 'text/plain', 10);
+    const onFilesChange = mock((_entries) => {});
+    const { container } = render(FileUploadFormFixture, {
+      props: { customFileList: true, onFilesChange },
+    });
+    const input = container.querySelector('#upload') as HTMLInputElement;
+
+    attachInputFiles(input, [firstFile]);
+    await fireEvent.change(input);
+    await fireEvent.click(container.querySelector('button[aria-label="Remove first.txt"]')!);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(onFilesChange).toHaveBeenLastCalledWith([]);
+    attachInputFiles(input, [replacementFile]);
+    await fireEvent.change(input);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(onFilesChange).toHaveBeenLastCalledWith([
+      expect.objectContaining({ file: replacementFile, status: 'pending' }),
+    ]);
+    expect(container.querySelectorAll('[data-testid="custom-file-list"]')).toHaveLength(1);
+    const customFileList = container.querySelector('[data-testid="custom-file-list"]');
+    expect(customFileList?.textContent).toContain('replacement.txt');
+    expect(customFileList?.textContent).not.toContain('first.txt');
   });
 
   test('removing uncontrolled entries preserves focus through the queue', async () => {
@@ -1069,6 +1151,8 @@ describe('FileUpload drag state and accessibility', () => {
     const click = mock(() => {});
     input.click = click as unknown as typeof input.click;
 
+    container.setAttribute('tabindex', '-1');
+
     await fireEvent.click(dropzone);
     expect(click).toHaveBeenCalledTimes(1);
 
@@ -1206,6 +1290,38 @@ describe('FileUpload file list rendering', () => {
     await fireEvent.click(retryButton);
 
     expect(document.activeElement).toBe(browseButton);
+  });
+
+  test('retry preserves focus moved by the consumer when the retry action is removed', async () => {
+    const entry = {
+      id: '1',
+      file: createFile('broken.zip', 'application/zip', 10),
+      status: 'error' as const,
+      error: 'Network error',
+    };
+    const consumerTarget = document.createElement('button');
+    document.body.append(consumerTarget);
+    let rerender: ReturnType<typeof render>['rerender'];
+    const onFileRetry = mock(() => {
+      consumerTarget.focus();
+      void rerender({
+        id: 'upload',
+        files: [{ ...entry, status: 'uploading' }],
+        onFileRetry,
+      });
+    });
+    const result = render(FileUpload, {
+      props: { id: 'upload', files: [entry], onFileRetry },
+    });
+    rerender = result.rerender;
+    const retryButton = result.container.querySelector(
+      '.cinder-file-upload__retry',
+    ) as HTMLButtonElement;
+    retryButton.focus();
+
+    await fireEvent.click(retryButton);
+
+    expect(document.activeElement).toBe(consumerTarget);
   });
 
   test('disabled uploads disable retry actions', () => {

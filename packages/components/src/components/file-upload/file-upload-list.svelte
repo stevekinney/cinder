@@ -46,7 +46,13 @@
   async function handleRetry(entry: FileUploadEntry, retryButton: HTMLButtonElement) {
     onFileRetry?.(entry);
     await tick();
-    if (!retryButton.isConnected) onQueueEmptyFocus();
+    const activeElement = retryButton.ownerDocument.activeElement;
+    if (
+      !retryButton.isConnected &&
+      (!activeElement || activeElement === retryButton.ownerDocument.body)
+    ) {
+      onQueueEmptyFocus();
+    }
   }
 </script>
 

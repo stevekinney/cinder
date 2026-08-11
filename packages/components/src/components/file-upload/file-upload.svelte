@@ -33,10 +33,11 @@
   import {
     acceptsFile,
     constrainFileUploadEntries,
+    dataTransferHasFiles,
     fileUploadLimit,
     formatAcceptDescription,
     INTERACTIVE_DESCENDANT_SELECTOR,
-    nativeFilesMatch,
+    synchronizeNativeFileInput,
   } from './file-upload-utilities.ts';
   import type { FileUploadEntry, FileUploadProps, RejectedFile } from './file-upload.types.ts';
 
@@ -102,29 +103,7 @@
   const resolvedDescription = $derived(description ?? formatAcceptDescription(accept));
 
   function synchronizeNativeInputFiles(entries: FileUploadEntry[] = renderedEntries) {
-    if (!inputElement) return;
-    const acceptedEntries = entries.filter((entry) => entry.rejectionReason === undefined);
-    const limit = fileUploadLimit(multiple, maxFiles);
-    const acceptedFiles = (
-      limit === undefined ? acceptedEntries : acceptedEntries.slice(0, limit)
-    ).map((entry) => entry.file);
-    if (typeof DataTransfer === 'undefined') {
-      if (!nativeFilesMatch(inputElement.files, acceptedFiles)) inputElement.value = '';
-      return;
-    }
-    let dataTransfer: DataTransfer;
-    try {
-      dataTransfer = new DataTransfer();
-    } catch {
-      if (!nativeFilesMatch(inputElement.files, acceptedFiles)) inputElement.value = '';
-      return;
-    }
-    for (const file of acceptedFiles) dataTransfer.items.add(file);
-    try {
-      inputElement.files = dataTransfer.files;
-    } catch {
-      if (!nativeFilesMatch(inputElement.files, acceptedFiles)) inputElement.value = '';
-    }
+    synchronizeNativeFileInput(inputElement, entries, multiple, maxFiles);
   }
 
   $effect(() => {
@@ -193,12 +172,6 @@
   function nextEntryId(status: FileUploadEntry['status']): string {
     internalEntryCounter += 1;
     return `${resolvedId}-entry-${internalEntryCounter}-${status}`;
-  }
-
-  function hasFilesPayload(dataTransfer: DataTransfer | null | undefined): boolean {
-    const fileTypes = dataTransfer?.types;
-    if (!fileTypes) return false;
-    return Array.from(fileTypes).includes('Files');
   }
 
   function validateFiles(sourceFiles: File[]): { accepted: File[]; rejected: RejectedFile[] } {
@@ -301,7 +274,7 @@
   }
 
   function handleDragEnter(event: DragEvent) {
-    if (field.disabled || !hasFilesPayload(event.dataTransfer)) return;
+    if (field.disabled || !dataTransferHasFiles(event.dataTransfer)) return;
     dragDepth += 1;
   }
 
@@ -314,12 +287,12 @@
     // overlay stuck open — see the "clear drag state after cancelled upload"
     // fix and its dedicated regression test. Only a present-but-non-Files
     // dataTransfer (e.g. a text drag) is ignored here.
-    if (event.dataTransfer && !hasFilesPayload(event.dataTransfer)) return;
+    if (event.dataTransfer && !dataTransferHasFiles(event.dataTransfer)) return;
     dragDepth = Math.max(0, dragDepth - 1);
   }
 
   function handleDragOver(event: DragEvent) {
-    if (!hasFilesPayload(event.dataTransfer)) return;
+    if (!dataTransferHasFiles(event.dataTransfer)) return;
     event.preventDefault();
     if (field.disabled) return;
     if (event.dataTransfer) {
@@ -328,7 +301,7 @@
   }
 
   function handleDrop(event: DragEvent) {
-    if (!hasFilesPayload(event.dataTransfer)) return;
+    if (!dataTransferHasFiles(event.dataTransfer)) return;
     event.preventDefault();
     dragDepth = 0;
     if (field.disabled) return;
@@ -349,7 +322,12 @@
       const target = event.target;
       const interactiveDescendant =
         target instanceof Element ? target.closest(INTERACTIVE_DESCENDANT_SELECTOR) : null;
-      if (interactiveDescendant && interactiveDescendant !== node) return;
+      if (
+        interactiveDescendant &&
+        interactiveDescendant !== node &&
+        node.contains(interactiveDescendant)
+      )
+        return;
       openPicker();
     }
 
@@ -479,20 +457,21 @@
     </button>
   </div>
 
-  {#if renderedEntries.length > 0}
-    {#if fileList}
-      {@render fileList(renderedEntries)}
-    {:else}
-      <FileUploadList
-        entries={renderedEntries}
-        {resolvedId}
-        disabled={field.disabled}
-        removable={files === undefined || onFilesChange !== undefined}
-        {onFileRetry}
-        onRemove={removeEntry}
-        onQueueEmptyFocus={() => browseButtonElement?.focus()}
-      />
-    {/if}
+  {#if fileList}
+    {@render fileList(
+      renderedEntries,
+      files === undefined || onFilesChange !== undefined ? removeEntry : undefined,
+    )}
+  {:else if renderedEntries.length > 0}
+    <FileUploadList
+      entries={renderedEntries}
+      {resolvedId}
+      disabled={field.disabled}
+      removable={files === undefined || onFilesChange !== undefined}
+      {onFileRetry}
+      onRemove={removeEntry}
+      onQueueEmptyFocus={() => browseButtonElement?.focus()}
+    />
   {/if}
 
   <div class="cinder-sr-only" aria-live="polite" aria-atomic="true">{announcer.message}</div>
