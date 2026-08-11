@@ -14,7 +14,11 @@ export const bannedNames = new Map<string, string>([
   ['fieldClass', 'Use `fieldClassName`.'],
   ['inputValue', 'Use `textInputValue`.'],
   ['component', 'Use `as`.'],
-  ['mono', 'Use `monochrome`.'],
+  ['mono', 'Use `monospace` (the abbreviation expands to the typeface meaning, not a color word).'],
+  [
+    'monochrome',
+    'Use `monospace` — the prop renders a monospace font; `monochrome` is color vocabulary.',
+  ],
   ['colSpan', 'Use `columnSpan`.'],
   ['lockScroll', 'Use `scrollLocked`.'],
   ['onClick', 'Use Svelte native `onclick`.'],

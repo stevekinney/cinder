@@ -81,13 +81,26 @@ describe('check-prop-conventions', () => {
   test('treats banned names as exact prop names, not substrings', () => {
     const source = `
       export type Props = {
-        monochrome?: boolean;
+        monotonic?: boolean;
         monospaceToken?: '--cinder-font-mono';
         monospacePlatformFamily?: 'ui-monospace' | 'SFMono-Regular' | 'SF Mono' | 'Liberation Mono' | 'monospace';
       };
     `;
 
     expect(collectPropConventionViolations(source)).toEqual([]);
+  });
+
+  test('flags the retired monochrome name with the monospace redirect', () => {
+    const source = `
+      export type Props = {
+        monochrome?: boolean;
+      };
+    `;
+
+    const violations = collectPropConventionViolations(source);
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.propName).toBe('monochrome');
+    expect(violations[0]?.message).toContain('monospace');
   });
 
   test('ignores non-prop helper types and nested domain model fields', () => {
