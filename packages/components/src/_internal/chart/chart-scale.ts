@@ -28,7 +28,10 @@ export function decimationIndices(
     return points.map((_, index) => index);
   }
   const limit = Math.max(2, Math.floor(maximumPoints));
-  const bucketCount = Math.max(1, Math.floor((limit - 2) / 2));
+  // A bucket can contribute one structural null plus distinct minimum and
+  // maximum values. Reserve all three slots so enforcing the cap never has to
+  // discard a gap marker.
+  const bucketCount = Math.max(1, Math.floor((limit - 2) / 3));
   const interiorLength = points.length - 2;
   const selected = new Set<number>([0, points.length - 1]);
 
@@ -65,8 +68,7 @@ export function decimationIndices(
     if (maximumIndex !== undefined) selected.add(maximumIndex);
   }
 
-  // A pathological input with a null in every bucket can exceed the bound.
-  // Preserve endpoints and choose evenly-spaced candidates from the remainder.
+  // Preserve the defensive bound for unusually small caller-supplied limits.
   return boundSelectedIndices(selected, limit);
 }
 

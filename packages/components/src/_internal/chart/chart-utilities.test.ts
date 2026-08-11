@@ -951,6 +951,30 @@ describe('createCartesianModel', () => {
     expect(model.normalizedSeries[0]?.areaPath.match(/M/g)).toHaveLength(2);
   });
 
+  test('decimation retains a structural null when every bucket also has distinct extrema', () => {
+    const gapIndex = 4_995;
+    const points: PlacedPoint[] = Array.from({ length: 10_000 }, (_, index) => {
+      const value = index === gapIndex ? null : index % 2 === 0 ? -1 : 1;
+      return {
+        seriesId: 'dense',
+        seriesLabel: 'Dense',
+        color: 'red',
+        x: normalizeXValue(index),
+        y: value,
+        originalY: value,
+        index,
+        pixelX: index,
+        pixelY: index,
+        pixelY0: 100,
+      };
+    });
+
+    const decimated = decimatePlacedPoints(points);
+
+    expect(decimated.length).toBeLessThanOrEqual(2_000);
+    expect(decimated.some((point) => point.x.raw === gapIndex && point.y === null)).toBe(true);
+  });
+
   test('stacked decimation shares x positions and preserves adjacent boundaries', () => {
     const data = Array.from({ length: 2_101 }, (_, index) => ({
       x: index,
