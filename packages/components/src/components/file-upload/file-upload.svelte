@@ -274,7 +274,7 @@
     const entries = createEntries(accepted, rejected);
     const nextEntries = multiple ? [...renderedEntries, ...entries] : entries;
     internalEntries = nextEntries;
-    synchronizeNativeInputFiles(files ?? nextEntries);
+    synchronizeNativeInputFiles(files !== undefined && accepted.length === 0 ? files : nextEntries);
     if (accepted.length > 0) onFilesAccepted?.(accepted);
     onFilesChange?.(nextEntries);
     if (rejected.length > 0) onReject?.(rejected);
@@ -367,7 +367,7 @@
     if (field.disabled) return;
     const nextEntries = renderedEntries.filter((candidate) => candidate.id !== entry.id);
     if (files === undefined) internalEntries = nextEntries;
-    synchronizeNativeInputFiles(files ?? nextEntries);
+    synchronizeNativeInputFiles(nextEntries);
     onFilesChange?.(nextEntries);
     announcer.announce(`${entry.file.name} removed`);
   }

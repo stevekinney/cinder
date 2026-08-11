@@ -469,6 +469,31 @@ describe('FileUpload validation and events', () => {
     expect(nativeFilesDuringChange).toEqual([[firstFile], [firstFile, secondFile]]);
   });
 
+  test('controlled selection callbacks observe the proposed native file queue', async () => {
+    const existingFile = createFile('existing.txt', 'text/plain', 10);
+    const selectedFile = createFile('selected.txt', 'text/plain', 10);
+    let input: HTMLInputElement;
+    const nativeFilesDuringChange: File[][] = [];
+    const onFilesChange = mock(() => {
+      nativeFilesDuringChange.push(Array.from(input.files ?? []));
+    });
+    const { container } = render(FileUpload, {
+      props: {
+        id: 'upload',
+        multiple: true,
+        files: [{ id: 'existing', file: existingFile, status: 'success' }],
+        onFilesChange,
+      },
+    });
+    input = container.querySelector('#upload') as HTMLInputElement;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    attachInputFiles(input, [selectedFile]);
+    await fireEvent.change(input);
+
+    expect(nativeFilesDuringChange).toEqual([[existingFile, selectedFile]]);
+  });
+
   test('canceling a reopened picker restores the accumulated native file queue', async () => {
     const firstFile = createFile('first.txt', 'text/plain', 10);
     const oncancel = mock((_event) => {});
@@ -706,6 +731,36 @@ describe('FileUpload validation and events', () => {
     await fireEvent.click(firstRemoveButton);
 
     expect(nativeFilesDuringChange.at(-1)).toEqual([secondFile]);
+  });
+
+  test('controlled removal callbacks observe the proposed native file queue', async () => {
+    const firstFile = createFile('first.txt', 'text/plain', 10);
+    const secondFile = createFile('second.txt', 'text/plain', 10);
+    let input: HTMLInputElement;
+    const nativeFilesDuringChange: File[][] = [];
+    const onFilesChange = mock(() => {
+      nativeFilesDuringChange.push(Array.from(input.files ?? []));
+    });
+    const { container } = render(FileUpload, {
+      props: {
+        id: 'upload',
+        multiple: true,
+        files: [
+          { id: 'first', file: firstFile, status: 'success' },
+          { id: 'second', file: secondFile, status: 'success' },
+        ],
+        onFilesChange,
+      },
+    });
+    input = container.querySelector('#upload') as HTMLInputElement;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const firstRemoveButton = container.querySelector(
+      '.cinder-file-upload__remove',
+    ) as HTMLButtonElement;
+    await fireEvent.click(firstRemoveButton);
+
+    expect(nativeFilesDuringChange).toEqual([[secondFile]]);
   });
 
   test('form reset clears the uncontrolled queue and synchronized native files', async () => {
