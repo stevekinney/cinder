@@ -1,5 +1,16 @@
 # @lostgradient/chat
 
+## 0.9.1
+
+### Patch Changes
+
+- [#1260](https://github.com/stevekinney/cinder/pull/1260) [`39794b6`](https://github.com/stevekinney/cinder/commit/39794b62a7d7e04d0664434b5f1946481170026a) Thanks [@stevekinney](https://github.com/stevekinney)! - Keep non-virtualized history prepends anchored before Chromium presents the updated transcript.
+
+- [#1261](https://github.com/stevekinney/cinder/pull/1261) [`c89a8b8`](https://github.com/stevekinney/cinder/commit/c89a8b88b62349baadeaf205546dcc3cca139613) Thanks [@stevekinney](https://github.com/stevekinney)! - Prefer Svelte source exports during SvelteKit server-side rendering so Chat and Cinder compile one matching hydration tree on the server and in the browser.
+
+- Updated dependencies [[`c89a8b8`](https://github.com/stevekinney/cinder/commit/c89a8b88b62349baadeaf205546dcc3cca139613)]:
+  - @lostgradient/cinder@0.24.1
+
 ## 0.9.0
 
 ### Minor Changes
