@@ -8,7 +8,9 @@
  * anywhere else.
  */
 
-import type { EditorState } from '@milkdown/kit/prose/state';
+import { Schema } from '@milkdown/kit/prose/model';
+import { EditorState, TextSelection } from '@milkdown/kit/prose/state';
+import { EditorView } from '@milkdown/kit/prose/view';
 import { beforeEach, describe, expect, it } from 'bun:test';
 
 import { createKeymapBindings } from './keymap-plugin.js';
@@ -125,5 +127,184 @@ describe('editor keymap: Tab inside a list item', () => {
   it('does not release a Tab that no Escape preceded', () => {
     expect(bindings['Tab']!(state)).toBe(true);
     expect(calls).toEqual([SINK]);
+  });
+});
+
+/**
+ * Focus leaving the editor has to invalidate the escape, and is the one
+ * invalidation editor state cannot report: leaving and returning to the same
+ * caret applies no transaction, so doc and selection still satisfy the identity
+ * check. Escape is usually pressed to dismiss a menu rather than to leave, so a
+ * latch that outlived focus would sit armed until the user came back and
+ * pressed Tab meaning "indent".
+ */
+describe('editor keymap: the Tab escape does not outlive focus', () => {
+  let calls: string[];
+  let bindings: ReturnType<typeof createKeymapBindings>;
+  let state: EditorState;
+  let surface: ReturnType<typeof focusSurface>;
+
+  /**
+   * Stands in for the editor's editable element, and counts the listeners left
+   * on it so a test can catch both a leak and a stacked duplicate.
+   */
+  function focusSurface() {
+    const listeners = new Set<EventListener>();
+
+    const dom = {
+      addEventListener: (type: string, listener: EventListener) => {
+        if (type === 'blur') listeners.add(listener);
+      },
+      removeEventListener: (type: string, listener: EventListener) => {
+        if (type === 'blur') listeners.delete(listener);
+      },
+    };
+
+    return {
+      view: { dom } as unknown as EditorView,
+      blur: () => {
+        // Each listener detaches itself as it runs, which Set iteration allows.
+        for (const listener of listeners) listener(new Event('blur'));
+      },
+      listenerCount: () => listeners.size,
+    };
+  }
+
+  beforeEach(() => {
+    calls = [];
+    surface = focusSurface();
+    state = editorState({ id: 'doc' }, 10);
+    bindings = createKeymapBindings(runtime, (key) => {
+      calls.push(typeof key === 'string' ? key : JSON.stringify(key));
+      return key === SINK || key === LIFT;
+    });
+  });
+
+  it('indents a Tab pressed after focus left and came back', () => {
+    bindings['Escape']!(state, undefined, surface.view);
+    surface.blur();
+
+    // Same doc, same caret — the state check alone would still call this valid.
+    expect(bindings['Tab']!(state, undefined, surface.view)).toBe(true);
+    expect(calls).toEqual([SINK]);
+  });
+
+  it('outdents a Shift-Tab pressed after focus left and came back', () => {
+    bindings['Escape']!(state, undefined, surface.view);
+    surface.blur();
+
+    expect(bindings['Shift-Tab']!(state, undefined, surface.view)).toBe(true);
+    expect(calls).toEqual([LIFT]);
+  });
+
+  it('still releases the Tab that follows Escape while focus stays put', () => {
+    bindings['Escape']!(state, undefined, surface.view);
+
+    expect(bindings['Tab']!(state, undefined, surface.view)).toBe(false);
+    expect(calls).toEqual([]);
+  });
+
+  it('stops watching focus once the Tab is spent', () => {
+    bindings['Escape']!(state, undefined, surface.view);
+    bindings['Tab']!(state, undefined, surface.view);
+
+    expect(surface.listenerCount()).toBe(0);
+  });
+
+  it('does not stack a listener per Escape', () => {
+    bindings['Escape']!(state, undefined, surface.view);
+    bindings['Escape']!(state, undefined, surface.view);
+
+    expect(surface.listenerCount()).toBe(1);
+  });
+
+  it('arms without a view — the keymap is still usable headless', () => {
+    bindings['Escape']!(state);
+
+    expect(bindings['Tab']!(state)).toBe(false);
+    expect(calls).toEqual([]);
+  });
+});
+
+/**
+ * The same regression against a real ProseMirror view, because the claim the
+ * fix rests on is a fact about ProseMirror rather than about this file: a focus
+ * round trip that does not move the caret dispatches no transaction at all.
+ */
+describe('editor keymap: focus departure in a real editor view', () => {
+  const schema = new Schema({
+    nodes: {
+      doc: { content: 'block+' },
+      paragraph: { content: 'inline*', group: 'block', toDOM: () => ['p', 0] },
+      bullet_list: { content: 'list_item+', group: 'block', toDOM: () => ['ul', 0] },
+      list_item: { content: 'paragraph block*', toDOM: () => ['li', 0] },
+      text: { group: 'inline' },
+    },
+  });
+
+  function mountListEditor() {
+    const mount = document.createElement('div');
+    document.body.append(mount);
+
+    const doc = schema.node('doc', null, [
+      schema.node('bullet_list', null, [
+        schema.node('list_item', null, [schema.node('paragraph', null, [schema.text('one')])]),
+        schema.node('list_item', null, [schema.node('paragraph', null, [schema.text('two')])]),
+      ]),
+    ]);
+
+    let transactions = 0;
+    const view: EditorView = new EditorView(mount, {
+      state: EditorState.create({ doc, schema }),
+      dispatchTransaction(transaction) {
+        transactions += 1;
+        view.updateState(view.state.apply(transaction));
+      },
+    });
+
+    // Caret inside the second bullet, where sink-list-item succeeds.
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, 4)));
+
+    return {
+      view,
+      transactionsSince: (mark: number) => transactions - mark,
+      mark: () => transactions,
+      destroy: () => {
+        view.destroy();
+        mount.remove();
+      },
+    };
+  }
+
+  it('indents the Tab that follows a real focus round trip', () => {
+    const editor = mountListEditor();
+    const elsewhere = document.createElement('input');
+    document.body.append(elsewhere);
+
+    try {
+      const calls: string[] = [];
+      const bindings = createKeymapBindings(runtime, (key) => {
+        calls.push(typeof key === 'string' ? key : JSON.stringify(key));
+        return key === SINK || key === LIFT;
+      });
+
+      editor.view.focus();
+      const stateAtEscape = editor.view.state;
+      const mark = editor.mark();
+
+      bindings['Escape']!(editor.view.state, undefined, editor.view);
+      elsewhere.focus();
+      editor.view.focus();
+
+      // The premise: nothing about the editor's own state records the trip.
+      expect(editor.transactionsSince(mark)).toBe(0);
+      expect(editor.view.state).toBe(stateAtEscape);
+
+      expect(bindings['Tab']!(editor.view.state, undefined, editor.view)).toBe(true);
+      expect(calls).toEqual([SINK]);
+    } finally {
+      elsewhere.remove();
+      editor.destroy();
+    }
   });
 });

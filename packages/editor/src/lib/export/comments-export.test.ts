@@ -285,6 +285,24 @@ describe('generateCommentsExport', () => {
       expect(result.markdown).not.toContain('### Comment at offset 50');
     });
 
+    test('omits the offset when the anchor never recorded one', () => {
+      const thread = createThread({
+        anchor: {
+          quote: 'test document',
+          prefix: '',
+          suffix: '',
+          status: 'orphaned',
+          originalPosition: { offset: 50, line: 3, column: 11 },
+        },
+      });
+      const result = generateCommentsExport(createState([thread]));
+
+      expect(result.markdown).toContain(
+        '*This text was not found in the current document. Last known position: Line 3, Column 11*',
+      );
+      expect(result.markdown).not.toContain('offset');
+    });
+
     test('reports the absence even with no positional data at all', () => {
       const thread = createThread({
         anchor: { quote: 'test document', prefix: '', suffix: '', status: 'orphaned' },
@@ -444,6 +462,44 @@ describe('generateCommentsJSON', () => {
       expect(result.stats.threadCount).toBe(1);
       expect(result.stats.commentCount).toBe(1);
       expect(result.data.threads[0].comments[0].body).toBe('This needs clarification.');
+    });
+
+    test('omits lastKnownSelection when the anchor never recorded an offset', () => {
+      // A review persisted before `lastKnownOffset` existed genuinely has no
+      // offset. Exporting `0..quote.length` would send a consumer to the top of
+      // the document, and the quote is gone, so nothing can contradict it.
+      const thread = createThread({
+        anchor: { quote: 'test document', prefix: '', suffix: '', status: 'orphaned' },
+      });
+      const [exported] = generateCommentsJSON(createState([thread])).data.threads;
+
+      expect(exported.status).toBe('orphaned');
+      expect(exported.lastKnownSelection).toBeUndefined();
+      expect(exported.selection).toBeUndefined();
+      expect(Object.keys(exported)).toEqual(['id', 'type', 'comments', 'status']);
+    });
+
+    test('falls back to the original position offset rather than zero', () => {
+      const thread = createThread({
+        anchor: {
+          quote: 'test document',
+          prefix: '',
+          suffix: '',
+          status: 'orphaned',
+          originalPosition: { offset: 50, line: 3, column: 11 },
+        },
+      });
+      const [exported] = generateCommentsJSON(createState([thread])).data.threads;
+
+      // The offset has to agree with the line and column beside it; reporting
+      // `from: 0` next to `line: 3` describes no document that ever existed.
+      expect(exported.lastKnownSelection).toEqual({
+        text: 'test document',
+        from: 50,
+        to: 63,
+        line: 3,
+        column: 11,
+      });
     });
 
     test('serializes the status into the JSON string', () => {

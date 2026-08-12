@@ -324,6 +324,22 @@ describe('generateMarkdownSummary', () => {
       expect(result.markdown).toContain('### On "present text"\n');
       expect(result.markdown).not.toContain('no longer in the document');
     });
+
+    test('claims no position for the vanished text', () => {
+      // The summary is the one format that never printed coordinates, which is
+      // why the quote heading was its only misleading signal. Keep it that way:
+      // an orphan's stored offsets describe a document that no longer exists.
+      const state = createState({
+        original: 'Unchanged content',
+        current: 'Unchanged content',
+        threads: [createThread({ quote: 'vanished text', status: 'orphaned', line: 12 })],
+      });
+      const result = generateMarkdownSummary(state);
+
+      expect(result.markdown).not.toContain('offset');
+      expect(result.markdown).not.toMatch(/Line \d+/);
+      expect(result.markdown).not.toContain('position');
+    });
   });
 
   describe('statistics (internal)', () => {

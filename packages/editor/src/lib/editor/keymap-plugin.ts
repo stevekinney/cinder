@@ -6,7 +6,8 @@
  */
 
 import type { MilkdownPlugin } from '@milkdown/ctx';
-import type { EditorState } from '@milkdown/kit/prose/state';
+import type { Command, EditorState } from '@milkdown/kit/prose/state';
+import type { EditorView } from '@milkdown/kit/prose/view';
 
 type ShortcutRuntime = {
   $shortcut: typeof import('@milkdown/kit/utils').$shortcut;
@@ -94,10 +95,21 @@ export interface EditorKeymapOptions {
  * move in between, so Tab-to-indent — a real and expected editor affordance —
  * keeps working: an Escape pressed to dismiss a menu, followed by more typing,
  * must not turn a later Tab into a focus move.
+ *
+ * Focus departure invalidates it too, and cannot be inferred from editor state:
+ * leaving the editor and returning to the same caret applies no transaction, so
+ * the identity check below cannot tell that interval apart from no time passing
+ * at all. Escape is most often pressed to dismiss something rather than to leave
+ * the editor, so a latch that survived focus leaving would keep the escape armed
+ * indefinitely and throw focus out of the list on a Tab the user meant as an
+ * indent.
  */
 interface TabEscapeLatch {
-  /** Remember the state Escape was pressed in. */
-  arm(state: EditorState): void;
+  /**
+   * Remember the state Escape was pressed in. The view — when the keymap has
+   * one — is watched for focus leaving, which disarms.
+   */
+  arm(state: EditorState, view?: EditorView): void;
   /**
    * Spend the latch. Returns true when this Tab should fall through to the
    * browser rather than run the list command.
@@ -107,15 +119,38 @@ interface TabEscapeLatch {
 
 function createTabEscapeLatch(): TabEscapeLatch {
   let armedState: EditorState | null = null;
+  let stopWatchingFocus: (() => void) | null = null;
+
+  function disarm(): void {
+    armedState = null;
+    stopWatchingFocus?.();
+    stopWatchingFocus = null;
+  }
 
   return {
-    arm(state) {
+    arm(state, view) {
+      // Re-arming from a second Escape replaces the first, listener included.
+      disarm();
       armedState = state;
+
+      const editable = view?.dom;
+      if (!editable) return;
+
+      // `blur` fires only for the editable surface itself, and only after the
+      // keydown that moved focus has already run — so the Escape-then-Tab it
+      // exists to serve still releases, and everything after it does not.
+      const onBlur = () => {
+        disarm();
+      };
+      editable.addEventListener('blur', onBlur);
+      stopWatchingFocus = () => {
+        editable.removeEventListener('blur', onBlur);
+      };
     },
     release(state) {
       const armed = armedState;
       // One-shot: a Tab spends the latch whether or not it was still valid.
-      armedState = null;
+      disarm();
       if (!armed) return false;
       // Identity comparison is sound because EditorState is immutable — a new
       // doc/selection object exists only if a transaction was applied since
@@ -144,10 +179,10 @@ export function createKeymapBindings(
   runtime: ShortcutRuntime,
   call: CommandCaller,
   options: EditorKeymapOptions = {},
-): Record<string, (state: EditorState) => boolean> {
+): Record<string, Command> {
   const tabEscape = createTabEscapeLatch();
 
-  const bindings: Record<string, (state: EditorState) => boolean> = {
+  const bindings: Record<string, Command> = {
     'Mod-b': () => call(runtime.toggleStrongCommand.key),
     'Mod-i': () => call(runtime.toggleEmphasisCommand.key),
     'Mod-e': () => call(runtime.toggleInlineCodeCommand.key),
@@ -164,8 +199,8 @@ export function createKeymapBindings(
       tabEscape.release(state) ? false : call(runtime.liftListItemCommand.key),
     // Arm, then decline the key: Escape has other listeners (menus, popovers,
     // the comment composer), and swallowing it here would break them.
-    Escape: (state) => {
-      tabEscape.arm(state);
+    Escape: (state, _dispatch, view) => {
+      tabEscape.arm(state, view);
       return false;
     },
     'Mod-Shift-9': () => call(runtime.wrapInBlockquoteCommand.key),

@@ -183,6 +183,10 @@ export interface ExportedThread {
    * Same shape as {@link ExportedThread.selection}, deliberately under a
    * different key: these offsets describe a document that no longer exists, and
    * applying feedback at them would land it in the wrong place.
+   *
+   * Absent when the anchor recorded no offset to report — an orphan's quote is
+   * gone, so a guessed range is one a consumer has no way to disprove. Check
+   * `status` rather than this field to tell an orphan from a placed thread.
    */
   lastKnownSelection?: ExportedSelection | undefined;
   /** Comments in the thread */
