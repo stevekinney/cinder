@@ -139,25 +139,26 @@ describe('Chat jump-to-latest focus in a virtualized transcript', () => {
     await waitFor(() => expect(timeline.scrollTop).toBe(bottomScrollTop));
   });
 
-  test('reclaims focus orphaned by a row that leaves the DOM', async () => {
-    const { container, chatContainer, timeline } = await renderVirtualizedChat();
-
-    const row = container.querySelector<HTMLElement>('.chat-message')!;
-    row.focus();
-    expect(document.activeElement).toBe(row);
-
-    // Browsers that report the unmount fire `focusout` with a null
-    // `relatedTarget` from the still-attached node, then detach it.
-    row.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: null }));
-    row.closest('.chat-virtual-row')!.remove();
-    expect(document.activeElement).toBe(document.body);
-
-    // The backstop runs on the microtask after the removal steps.
-    await Promise.resolve();
-    await Promise.resolve();
-    expect(document.activeElement).toBe(timeline);
-    expect(chatContainer.contains(document.activeElement)).toBe(true);
-  });
+  // NOT TESTED HERE, deliberately: the reclaim path itself.
+  //
+  // `reclaimFocusIfRowDetached` re-checks the focused row's connectivity on
+  // every scroll-state recompute, because a browser removing the focused node
+  // moves focus to <body> WITHOUT reliably dispatching `focusout` from it. An
+  // earlier version of this file dispatched a synthetic `focusout` before
+  // detaching a row, which passed while masking exactly that.
+  //
+  // Driving the honest version — detach a row, then let a real scroll recompute
+  // notice — segfaults Bun's happy-dom harness: hand-removing a node the
+  // virtualizer believes it owns and then running its measurement pass over the
+  // result is not a state it is built to survive, and the `waitFor` polling
+  // that the rAF-deferred recompute requires makes it worse. Three attempts,
+  // three crashes (RSS peaked at 8.8GB).
+  //
+  // What IS covered: the test above proves the user-facing consequence — after
+  // a real window pass recycles the rows, keyboard shortcuts still work — and
+  // the test below proves the reclaim does not fire when nothing was recycled.
+  // The gap is the isolated unit, and it wants a real browser, which is what
+  // chatroom's Playwright suite is for.
 
   test('leaves focus alone when the user clicks away onto inert page chrome', async () => {
     const { container, timeline } = await renderVirtualizedChat();
@@ -165,15 +166,14 @@ describe('Chat jump-to-latest focus in a virtualized transcript', () => {
     const row = container.querySelector<HTMLElement>('.chat-message')!;
     row.focus();
 
-    // A click-away onto inert page chrome also reports a null `relatedTarget`,
-    // but the blurred row is still connected — nothing was recycled, so the
-    // chat must not yank focus back off the body.
-    row.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: null }));
+    // A click-away onto inert page chrome leaves the row CONNECTED — nothing
+    // was recycled — so the chat must not yank focus back off the body.
     row.blur();
     expect(document.activeElement).toBe(document.body);
 
-    await Promise.resolve();
-    await Promise.resolve();
+    // A scroll that recycles nothing must not yank focus back: the row the user
+    // left is still connected, so nothing was taken from them.
+    await fireEvent.scroll(timeline);
     expect(document.activeElement).toBe(document.body);
     expect(document.activeElement).not.toBe(timeline);
   });

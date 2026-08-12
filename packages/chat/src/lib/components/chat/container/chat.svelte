@@ -1177,6 +1177,10 @@
   }): void {
     clearHistoryAnchorAfterScroll(event.scrollTop);
 
+    // Scrolling is what recycles rows, so this is where a focused row can have
+    // been unmounted out from under the user.
+    reclaimFocusIfRowDetached();
+
     // `atBottom` was just recomputed from real geometry, so the prepend latch
     // has nothing left to protect. This is the LOAD-BEARING clear of the two:
     // it covers both the scroll listener's rAF recompute and
@@ -1489,38 +1493,53 @@
    *
    * Any row inside the timeline can be unmounted while it holds focus — a
    * virtualizer window pass recycling it, a message removed from the
-   * transcript, a keyed re-render. The browser then drops focus to <body>, and
-   * because the keydown handler is bound on the container, every keyboard
+   * transcript, a keyed re-render. The browser then drops focus to `<body>`,
+   * and because the keydown handler is bound on the container, every keyboard
    * shortcut dies with it. Pull focus back onto the timeline, which outlives
    * every row.
    *
-   * The guards keep this to that one signature and off the ordinary paths:
-   * a real focus move names its incoming element in `relatedTarget`; a
-   * click-away onto inert page chrome reports `relatedTarget: null` too, but
-   * leaves the blurred node CONNECTED, so only a node that has left the
-   * document (checked a microtask later, after the browser's removal steps
-   * finish) reclaims focus. Window/tab blur is filtered by `document.hasFocus`
-   * — reclaiming there would steal focus back from whatever the user switched
-   * to.
+   * The blur is NOT the trigger. When the focused element is *removed*, browsers
+   * move focus to `<body>` without reliably dispatching `focusout` from the
+   * detached node, so a design that waits for that event misses precisely the
+   * case it exists for. Instead this records which row holds focus and re-checks
+   * its connectivity wherever recycling can happen — which is only on scroll
+   * (`handleScrollStateChange`). A `MutationObserver` over the timeline would
+   * also catch it, and did originally, but `subtree: true` on a list that
+   * mutates every scroll frame costs far more than this check is worth.
+   *
+   * `focusin`/`focusout` are still used, but only to track *which* row to watch,
+   * never to decide that a reclaim is due. The guards below keep this off the
+   * ordinary paths: a click-away onto inert page chrome leaves the blurred node
+   * CONNECTED, so it never reclaims, and window/tab blur is filtered by
+   * `document.hasFocus` — reclaiming there would steal focus back from whatever
+   * the user switched to.
    */
+  let focusedRow: Node | null = null;
+
+  function handleTimelineFocusIn(event: FocusEvent): void {
+    const target = event.target;
+    focusedRow = target instanceof Node && target !== viewport ? target : null;
+  }
+
   function handleTimelineFocusOut(event: FocusEvent): void {
-    if (event.relatedTarget !== null) return;
+    // Focus moved somewhere real; stop tracking. A null `relatedTarget` is
+    // ambiguous — it also covers the detach — so keep tracking in that case and
+    // let `reclaimFocusIfRowDetached` decide.
+    if (event.relatedTarget !== null) focusedRow = null;
+  }
 
+  function reclaimFocusIfRowDetached(): void {
     const timeline = viewport;
-    const blurred = event.target;
-    if (!timeline || !(blurred instanceof Node)) return;
+    if (!timeline || !focusedRow || focusedRow.isConnected) return;
 
-    queueMicrotask(() => {
-      if (!timeline.isConnected || blurred.isConnected) return;
-      if (typeof document.hasFocus === 'function' && !document.hasFocus()) return;
+    focusedRow = null;
+    if (!timeline.isConnected) return;
+    // Do not fight a window/tab blur, or a focus move that actually landed.
+    if (typeof document.hasFocus === 'function' && !document.hasFocus()) return;
+    const active = document.activeElement;
+    if (active !== null && active !== document.body) return;
 
-      // Anything that took focus for real leaves `activeElement` pointing at
-      // it; only genuinely orphaned focus parks on <body> (or nothing).
-      const active = document.activeElement;
-      if (active !== null && active !== document.body) return;
-
-      timeline.focus({ preventScroll: true });
-    });
+    timeline.focus({ preventScroll: true });
   }
 
   // ==========================================================================
@@ -2538,6 +2557,7 @@
       onwheel={handleHistoryRestorationUserInput}
       ontouchstart={handleHistoryRestorationUserInput}
       onpointerdown={handleHistoryRestorationUserInput}
+      onfocusin={handleTimelineFocusIn}
       onfocusout={handleTimelineFocusOut}
       {@attach scrollAttachment}
       {@attach historyAnchorScrollAttachment}

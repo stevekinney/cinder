@@ -17,6 +17,14 @@ every wrapper, since each is the only child of its virtual row, so it focused th
 row at the TOP of the window rather than the last message.
 
 Focus now goes to the `.chat-timeline` viewport, which is focusable, sits above
-the recycled rows, and never unmounts while the chat is alive; a `focusout`
-backstop reclaims focus if a row is unmounted from under it. Home had the same
-defect and the same fix.
+the recycled rows, and never unmounts while the chat is alive. A backstop
+re-checks the focused row's connectivity on each scroll-state recompute and
+pulls focus back to the timeline if the row was unmounted from under it —
+checked on scroll rather than on `focusout`, because a browser removing the
+focused node moves focus to `<body>` without reliably dispatching a focus event
+from the detached element.
+
+Home had the same defect, but only when virtualized: there the viewport is the
+stable target for the same reason. In a plain transcript the rows do not recycle,
+so Home still focuses the first message, which scrolls it into view and gives
+arrow navigation a starting point.

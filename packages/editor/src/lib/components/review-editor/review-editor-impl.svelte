@@ -450,8 +450,12 @@
     return threadsToSync
       .map((t) => {
         const a = t.anchor;
-        // Include lastKnownOffset to propagate disambiguation updates
-        return `${t.id}:${a.from}:${a.to}:${a.quote}:${a.prefix}:${a.suffix}:${a.lastKnownOffset ?? ''}`;
+        // Include lastKnownOffset to propagate disambiguation updates, and
+        // status because it is mutable plugin state now: a consumer (or a
+        // collaborative update) that changes ONLY `anchor.status` must still
+        // reach the plugin, or an externally-orphaned thread keeps its
+        // decoration and a recovered one stays undecorated until the next edit.
+        return `${t.id}:${a.from}:${a.to}:${a.quote}:${a.prefix}:${a.suffix}:${a.lastKnownOffset ?? ''}:${a.status}`;
       })
       .join('|');
   }
@@ -627,9 +631,23 @@
       );
       const result = reanchorQuote(documentText, bodyPersistedAnchor);
 
-      // If anchor text not found, skip this thread (auto-delete)
+      // Quote not in this document. KEEP the thread, orphaned — the same
+      // contract the live editing path follows (cinder#1284). Restoring a saved
+      // review against a document whose text has since changed must not
+      // silently destroy comments; the thread renders no decoration, shows in
+      // the sidebar as missing its text, and re-anchors if the text returns.
+      // Removing it is the consumer's decision, so `onthreaddelete` does not
+      // fire here. (Document-level anchors never reach this branch — they are
+      // handled by the `isDocumentAnchor` guard above.)
       if (!result.found) {
-        onthreaddelete?.({ threadId: persistedThread.id });
+        reanchoredThreads.push({
+          ...persistedThread,
+          // Collapsed: a persisted anchor carries no positions, and an orphaned
+          // one has nowhere to point until its quote comes back. `from >= to`
+          // is also what the decoration pass skips on, so it renders nothing
+          // even before the status is consulted.
+          anchor: { ...persistedThread.anchor, from: 0, to: 0, status: 'orphaned' },
+        });
         continue;
       }
 
@@ -906,17 +924,41 @@
     };
   }
 
+  /**
+   * Resolve an anchor position to viewport coordinates, or null.
+   *
+   * `coordsAtPos` throws a RangeError for a position outside the document, and
+   * an anchor's stored position outlives the text it described: an orphaned
+   * anchor keeps its old range (so a later paste can be matched against it),
+   * and a shorter document replacement can leave that range past the end.
+   * Selecting such a thread in the sidebar is an ordinary click, so it must not
+   * be able to throw. `calculateViewportPosition` already guards its own call
+   * this way; these two did not.
+   */
+  function anchorCoords(
+    view: NonNullable<ReturnType<NonNullable<typeof editorRef>['getView']>>,
+    anchor: Thread['anchor'],
+  ): { left: number; top: number } | null {
+    if (anchor.status === 'orphaned') return null;
+    const position = documentPositionToBodyPosition(anchor.from, currentDocument.bodyOffset);
+    if (position < 0 || position > view.state.doc.content.size) return null;
+    try {
+      return view.coordsAtPos(position);
+    } catch {
+      // Position was valid by size but not addressable (mid-node boundary).
+      return null;
+    }
+  }
+
   /** Scroll to a specific thread's anchor position in the editor */
   export function scrollToThread(threadId: string): void {
     const thread = threads.find((t) => t.id === threadId);
     if (!thread) return;
 
     const view = editorRef?.getView();
-    if (view && thread.anchor.from !== undefined) {
+    if (view) {
       // Scroll the anchor position into view
-      const coords = view.coordsAtPos(
-        documentPositionToBodyPosition(thread.anchor.from, currentDocument.bodyOffset),
-      );
+      const coords = anchorCoords(view, thread.anchor);
       if (coords) {
         view.dom.scrollTo({
           top: coords.top - 100, // Offset from top
@@ -943,15 +985,21 @@
     // Open popover at anchor position after scroll completes
     setTimeout(() => {
       const view = editorRef?.getView();
-      if (view && thread.anchor.from !== undefined) {
-        const coords = view.coordsAtPos(
-          documentPositionToBodyPosition(thread.anchor.from, currentDocument.bodyOffset),
-        );
-        if (coords) {
-          popoverPosition = { x: coords.left + 16, y: coords.top };
-          popoverThreadId = threadId;
-        }
+      if (!view) return;
+
+      const coords = anchorCoords(view, thread.anchor);
+      if (coords) {
+        popoverPosition = { x: coords.left + 16, y: coords.top };
+        popoverThreadId = threadId;
+        return;
       }
+
+      // An orphaned thread has no position to anchor to — that is what makes it
+      // orphaned. Its comments still have to be readable, so open the popover
+      // against the editor's own box rather than dropping the click silently.
+      const editorBox = view.dom.getBoundingClientRect();
+      popoverPosition = { x: editorBox.left + 16, y: editorBox.top + 16 };
+      popoverThreadId = threadId;
     }, POSITION_DELAY_MS);
   }
 
