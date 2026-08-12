@@ -1307,6 +1307,11 @@ async function assertSvelteKitDevSsrRoute(fixtureDirectory: string, label: strin
     const body = await waitForReadyHtml({
       url: routeUrl,
       timeoutMs: SVELTEKIT_DEV_SSR_READINESS_TIMEOUT_MS,
+      // The export-condition regression makes dev SSR compile Cinder's Svelte
+      // source, so this cold route is one intentional transform waterfall. Do
+      // not abort and restart that work every five seconds; give the first
+      // request the existing overall budget without increasing the budget.
+      requestTimeoutMs: SVELTEKIT_DEV_SSR_READINESS_TIMEOUT_MS,
       pollIntervalMs: SVELTEKIT_DEV_SSR_POLL_INTERVAL_MS,
       runningServer: devServer,
       isReady: (html) => SVELTEKIT_DEV_SSR_MARKERS.every((marker) => html.includes(marker)),

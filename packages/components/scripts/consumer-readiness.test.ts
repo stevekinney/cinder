@@ -55,6 +55,27 @@ describe('waitForReadyHtml', () => {
     expect(observedTimeouts[0]).toBe(250);
   });
 
+  test('lets a caller give one cold SSR transform the remaining readiness budget', async () => {
+    const observedTimeouts: number[] = [];
+    const fetcher: ReadinessFetch = async (_url, timeoutMs) => {
+      observedTimeouts.push(timeoutMs);
+      return response('<main data-ready>ready</main>');
+    };
+
+    await waitForReadyHtml({
+      url: 'http://127.0.0.1:5173/dev-ssr',
+      timeoutMs: 1_000,
+      requestTimeoutMs: 1_000,
+      pollIntervalMs: 0,
+      runningServer: { exitCode: null },
+      fetcher,
+      isReady: (body) => body.includes('data-ready'),
+    });
+
+    expect(observedTimeouts).toHaveLength(1);
+    expect(observedTimeouts[0]).toBeGreaterThan(900);
+  });
+
   test('retries after a per-request timeout while the overall readiness budget remains open', async () => {
     const observedTimeouts: number[] = [];
     let attempts = 0;
