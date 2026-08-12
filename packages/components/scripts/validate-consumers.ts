@@ -1186,13 +1186,18 @@ const SVELTEKIT_DEV_SSR_MARKERS = [
 ];
 
 /**
- * Overall deadline for a dev-server route to render once.
+ * Overall deadline for the readiness poll: how long to keep re-requesting a
+ * dev-server route before giving up. It bounds the whole loop, not one render —
+ * `waitForReadyHtml` retries on non-200s and on 200s that do not yet satisfy the
+ * marker predicate.
  *
- * Unchanged at 25s deliberately. `waitForReadyHtml` used to cap each attempt at
- * 5s, so this number was never actually reachable — see the note there. Now that
- * one attempt can use the whole budget, 25s is a real deadline, and it should
- * stay one. If a single uninterrupted render cannot finish in 25s, the render is
- * the problem and raising this would only hide it.
+ * Note that each individual attempt is separately capped (5s, see
+ * `waitForReadyHtml`), so a response that consistently needs longer than that is
+ * aborted and retried rather than ever completing. That interaction is a latent
+ * sharp edge documented at the call site; it is not what failed the release, and
+ * raising either number is not the fix. AGENTS.md rejects wait-threshold bumps
+ * outright, and the measurements at the call site show the failure was a wedged
+ * server rather than a slow one.
  */
 const SVELTEKIT_DEV_SSR_READINESS_TIMEOUT_MS = 25_000;
 const SVELTEKIT_DEV_SSR_POLL_INTERVAL_MS = 200;
@@ -1376,13 +1381,15 @@ async function assertSvelteKitDevSsrRoute(fixtureDirectory: string, label: strin
     // Raising the timeout would not make hydration assertable here; that is a
     // race, and waiting longer does not settle it.
     //
-    // The READINESS wait above is a different thing, and it had a real bug: it
-    // capped each attempt at 5s, then aborted and retried. Aborting discards the
-    // in-flight render rather than pausing it, so the loop destroyed its own
-    // work and the declared budget was unreachable. Fixed — one attempt now gets
-    // the whole budget, which stays 25s.
+    // The READINESS wait above has a separate, latent sharp edge, deliberately
+    // NOT changed here: each attempt is capped at 5s and an abort discards the
+    // in-flight render rather than pausing it, so a response that consistently
+    // needs more than 5s can never be observed completing however large the
+    // overall budget is. Changing either value would be a wait-threshold bump,
+    // which AGENTS.md rejects outright — and the measurements below show it is
+    // not what failed anyway. Left in place, documented, for a human to decide.
     //
-    // That fix does NOT explain the 2026-08-12 release failure, and the
+    // That sharp edge does NOT explain the 2026-08-12 release failure, and the
     // "transform waterfall is slow" story above should not be used as if it
     // did. Measured on this fixture with `.vite` and `.svelte-kit/output`
     // deleted, `noDiscovery: true`, and nothing warm: server ready in 828ms,
