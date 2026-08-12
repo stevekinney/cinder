@@ -1390,9 +1390,25 @@ async function assertSvelteKitDevSsrRoute(fixtureDirectory: string, label: strin
     // locally does not credibly cost more than 5s on CI — yet EVERY attempt
     // there aborted at 5s for 25s straight, which is a hang, not slowness.
     //
-    // So the cause of that hang is still unknown. Do not "fix" a recurrence by
-    // widening a timeout; make it tell you what it was stuck on. That is what
-    // the dev-server output in the failure message below is for.
+    // So the cause of that hang is still unknown. Ruled out so far, to save the
+    // next person the experiment:
+    //
+    //   - Pipe-buffer backpressure. `new Response(child.stdout).text()` is
+    //     created but not awaited until `finally`, which would deadlock a chatty
+    //     child once the ~64KB pipe filled. Bun drains it eagerly: a child
+    //     writing 512KB with the promise un-awaited for 4s still ran to
+    //     completion and exited 0.
+    //   - Server death. `waitForReadyHtml` checks `exitCode` every poll and
+    //     reports "server exited" distinctly; we got timeouts, so the server was
+    //     alive and accepting connections without answering.
+    //
+    // Still plausible and NOT yet tested: CPU contention on a 2-vCPU runner
+    // where this job also runs other fixtures and browser tests — which would
+    // be slowness from scheduling, not from module count.
+    //
+    // Do not "fix" a recurrence by widening a timeout; make it tell you what it
+    // was stuck on. That is what the dev-server output in the failure message
+    // below is for.
     devSsrAssertionsPassed = true;
   } finally {
     devServer.kill();
