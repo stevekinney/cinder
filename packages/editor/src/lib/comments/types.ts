@@ -480,6 +480,7 @@ export function toPersistedThreads(threads: Thread[]): PersistedThread[] {
  * @example
  * ```svelte
  * <script lang="ts">
+ *   // The README's complete example imports onMount from Svelte.
  *   let value = $state('');
  *   let threads = $state<Thread[]>([]);
  *
