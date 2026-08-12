@@ -469,10 +469,10 @@ export function toPersistedThreads(threads: Thread[]): PersistedThread[] {
  * `ReviewEditor` and `toRuntimeThreads` are both exported from the
  * `review-editor` subpath. The import lines are left out of the example below
  * on purpose: validate-consumer greps the packed `dist/**` text for import
- * specifiers and cannot tell a documentation comment from real code, so naming
- * this package's own subpath in a doc block fails the packed-import closure
- * check at release time. The README carries the full copy-paste version with
- * its imports.
+ * specifiers and cannot tell a documentation comment from real code, so an
+ * import-shaped reference to this package's own subpath in a doc block fails
+ * the packed-import closure check at release time. The README carries the full
+ * copy-paste version with its imports.
  *
  * Reading storage inside `onMount` also matters — the component script runs on
  * the server under SSR, where `localStorage` does not exist.
