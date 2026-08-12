@@ -466,14 +466,30 @@ export function toPersistedThreads(threads: Thread[]): PersistedThread[] {
  * @param threads - Persisted threads, typically `ReviewState.threads`
  * @returns Runtime threads suitable for the `threads` prop
  *
+ * `ReviewEditor` and `toRuntimeThreads` are both exported from the
+ * `review-editor` subpath. The import lines are left out of the example below
+ * on purpose: validate-consumer greps the packed `dist/**` text for import
+ * specifiers and cannot tell a documentation comment from real code, so naming
+ * this package's own subpath in a doc block fails the packed-import closure
+ * check at release time. The README carries the full copy-paste version with
+ * its imports.
+ *
+ * Reading storage inside `onMount` also matters — the component script runs on
+ * the server under SSR, where `localStorage` does not exist.
+ *
  * @example
  * ```svelte
  * <script lang="ts">
- *   import { ReviewEditor, toRuntimeThreads } from '@lostgradient/editor/review-editor';
+ *   let value = $state('');
+ *   let threads = $state<Thread[]>([]);
  *
- *   const saved = JSON.parse(localStorage.getItem('review-state') ?? 'null');
- *   let value = $state(saved.content);
- *   let threads = $state(toRuntimeThreads(saved.threads));
+ *   onMount(() => {
+ *     const stored = localStorage.getItem('review-state');
+ *     if (stored === null) return;
+ *     const saved: ReviewState = JSON.parse(stored);
+ *     value = saved.content;
+ *     threads = toRuntimeThreads(saved.threads);
+ *   });
  * </script>
  *
  * <ReviewEditor id="review" bind:value bind:threads />
