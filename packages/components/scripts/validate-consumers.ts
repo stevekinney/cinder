@@ -1258,9 +1258,18 @@ async function assertSvelteKitDevChatHydrationRoute(
       pollIntervalMs: SVELTEKIT_DEV_SSR_POLL_INTERVAL_MS,
       runningServer: devServer,
       isReady: (html) => html.includes('Empty Chat hydration') && html.includes('No messages yet'),
-    }).catch((error) => {
+    }).catch(async (error) => {
       const message = error instanceof Error ? error.message : String(error);
-      fail(`sveltekit-consumer ${label} /chat-layout dev readiness failed: ${message}`);
+      // Same reasoning as the dev-SSR readiness failure below: surface the
+      // server's own output, since "we stopped waiting" says nothing about why.
+      devServer.kill();
+      await devServer.exited;
+      const output = `${await devServerStdout}\n${await devServerStderr}`.trim();
+      fail(
+        `sveltekit-consumer ${label} /chat-layout dev readiness failed: ${message}\n` +
+          `dev server output (port ${httpPort}):\n` +
+          (output.length > 0 ? output : '(no output)'),
+      );
     });
 
     // This server deliberately uses Vite's default dependency optimizer. The
@@ -1332,9 +1341,25 @@ async function assertSvelteKitDevSsrRoute(fixtureDirectory: string, label: strin
         pollIntervalMs: SVELTEKIT_DEV_SSR_POLL_INTERVAL_MS,
         runningServer: devServer,
         isReady: (html) => markers.every((marker) => html.includes(marker)),
-      }).catch((error) => {
+      }).catch(async (error) => {
         const message = error instanceof Error ? error.message : String(error);
-        fail(`sveltekit-consumer ${label} ${routePath} dev SSR readiness failed: ${message}`);
+        // Report what the server was DOING, not just that we gave up on it.
+        // `timeout waiting for ready HTML (last error: The operation timed
+        // out.)` on its own cannot distinguish a slow render from a wedged
+        // optimizer from something else answering on this port — which is
+        // exactly why the 2026-08-12 release failure (#1270) could not be
+        // diagnosed from its logs. The output promises only resolve once the
+        // streams close, so the server has to be killed before it can be read.
+        devServer.kill();
+        await devServer.exited;
+        const output = `${await devServerStdout}\n${await devServerStderr}`.trim();
+        fail(
+          `sveltekit-consumer ${label} ${routePath} dev SSR readiness failed: ${message}\n` +
+            `dev server output (${remainingReadinessBudget}ms remaining of a shared ` +
+            `${SVELTEKIT_DEV_SSR_READINESS_TIMEOUT_MS}ms budget, poll ` +
+            `${SVELTEKIT_DEV_SSR_POLL_INTERVAL_MS}ms, port ${httpPort}):\n` +
+            (output.length > 0 ? output : '(no output)'),
+        );
       });
 
       const missingMarkers = markers.filter((marker) => !body.includes(marker));
@@ -1345,6 +1370,38 @@ async function assertSvelteKitDevSsrRoute(fixtureDirectory: string, label: strin
       }
     }
 
+    // WHAT THE 2026-08-12 RELEASE FAILURE (#1270) WAS NOT.
+    //
+    // Splitting these routes attacks render cost, which is the right instinct.
+    // But the failure that motivated it was not render cost, and the following
+    // were each eliminated by measurement rather than argument, so nobody
+    // repeats the experiments:
+    //
+    //   - Transform waterfall / slow render. Cold `/dev-ssr` (pre-split, whole
+    //     graph, `.vite` and `.svelte-kit/output` deleted): 0.67s on macOS,
+    //     1.086s on Linux in Docker at `--cpus=2` installing the packed tarball
+    //     as CI does. Server ready in ~1.4s, warm render 11ms. Never near 5s.
+    //   - "Just slow" as a category. Aborting PARTIALLY RETAINS Vite's work: a
+    //     retry after a 300ms abort finished in 0.630s against 1.086s cold. So a
+    //     slow render RECOVERS — each attempt resumes warmer and one lands. The
+    //     failing run made no progress across five attempts in 25s.
+    //   - Pipe-buffer backpressure. The output promises below are created at
+    //     spawn and only awaited later, which would deadlock a chatty child once
+    //     the ~64KB pipe filled. Bun drains eagerly: a child writing 512KB with
+    //     the promise un-awaited for 4s ran to completion and exited 0.
+    //   - Server death. `waitForReadyHtml` checks `exitCode` every poll and
+    //     reports it distinctly; the failure reported timeouts instead.
+    //   - Retry pile-up. Six CONCURRENT requests to a cold fixture each returned
+    //     in 0.667s, identical to one — Vite dedupes the module-graph work, so
+    //     there is no contention to compound.
+    //   - Sibling-fixture contention. release.yaml runs each package's
+    //     `validate:consumer` as a separate sequential step in one job.
+    //
+    // What that leaves: a server accepting connections and never answering, and
+    // never recovering — wedged, not slow. Cause still unknown. Do not widen a
+    // timeout on recurrence (AGENTS.md forbids it, correctly); read the server
+    // output the failure handlers now attach.
+    //
     // Deliberately NO client-hydration assertion for these focused dev routes.
     // This phase owns only their transform-on-request SSR HTML; the focused
     // /chat-layout helper above owns dev-mode browser hydration against the
