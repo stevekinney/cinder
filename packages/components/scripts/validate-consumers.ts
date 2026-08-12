@@ -1258,9 +1258,18 @@ async function assertSvelteKitDevChatHydrationRoute(
       pollIntervalMs: SVELTEKIT_DEV_SSR_POLL_INTERVAL_MS,
       runningServer: devServer,
       isReady: (html) => html.includes('Empty Chat hydration') && html.includes('No messages yet'),
-    }).catch((error) => {
+    }).catch(async (error) => {
       const message = error instanceof Error ? error.message : String(error);
-      fail(`sveltekit-consumer ${label} /chat-layout dev readiness failed: ${message}`);
+      // Same reasoning as the /dev-ssr readiness failure below: surface the
+      // server's own output, since "we stopped waiting" says nothing about why.
+      devServer.kill();
+      await devServer.exited;
+      const output = `${await devServerStdout}\n${await devServerStderr}`.trim();
+      fail(
+        `sveltekit-consumer ${label} /chat-layout dev readiness failed: ${message}\n` +
+          `dev server output (port ${httpPort}):\n` +
+          (output.length > 0 ? output : '(no output)'),
+      );
     });
 
     // This server deliberately uses Vite's default dependency optimizer. The
@@ -1319,9 +1328,23 @@ async function assertSvelteKitDevSsrRoute(fixtureDirectory: string, label: strin
       pollIntervalMs: SVELTEKIT_DEV_SSR_POLL_INTERVAL_MS,
       runningServer: devServer,
       isReady: (html) => SVELTEKIT_DEV_SSR_MARKERS.every((marker) => html.includes(marker)),
-    }).catch((error) => {
+    }).catch(async (error) => {
       const message = error instanceof Error ? error.message : String(error);
-      fail(`sveltekit-consumer ${label} /dev-ssr dev SSR readiness failed: ${message}`);
+      // Report what the server was DOING, not just that we gave up on it.
+      // `timeout waiting for ready HTML (last error: The operation timed out.)`
+      // on its own is unactionable — it cannot distinguish a slow render from a
+      // wedged optimizer from a server answering on a port we did not expect.
+      // The output promises only resolve once the streams close, so the server
+      // has to be killed before it can be read.
+      devServer.kill();
+      await devServer.exited;
+      const output = `${await devServerStdout}\n${await devServerStderr}`.trim();
+      fail(
+        `sveltekit-consumer ${label} /dev-ssr dev SSR readiness failed: ${message}\n` +
+          `dev server output (${SVELTEKIT_DEV_SSR_READINESS_TIMEOUT_MS}ms budget, ` +
+          `poll ${SVELTEKIT_DEV_SSR_POLL_INTERVAL_MS}ms, port ${httpPort}):\n` +
+          (output.length > 0 ? output : '(no output)'),
+      );
     });
 
     const missingMarkers = SVELTEKIT_DEV_SSR_MARKERS.filter((marker) => !body.includes(marker));
@@ -1355,12 +1378,21 @@ async function assertSvelteKitDevSsrRoute(fixtureDirectory: string, label: strin
     //
     // The READINESS wait above is a different thing, and it had a real bug: it
     // capped each attempt at 5s, then aborted and retried. Aborting discards the
-    // in-flight render, so a render slower than 5s could never be observed
-    // finishing no matter how large the overall budget was — the loop destroyed
-    // its own work. That failed the release on 2026-08-12 with `last error: The
-    // operation timed out.` against a healthy server. The fix is that one
-    // attempt now gets the declared budget; the budget itself is unchanged at
-    // 25s and should stay a real deadline.
+    // in-flight render rather than pausing it, so the loop destroyed its own
+    // work and the declared budget was unreachable. Fixed — one attempt now gets
+    // the whole budget, which stays 25s.
+    //
+    // That fix does NOT explain the 2026-08-12 release failure, and the
+    // "transform waterfall is slow" story above should not be used as if it
+    // did. Measured on this fixture with `.vite` and `.svelte-kit/output`
+    // deleted, `noDiscovery: true`, and nothing warm: server ready in 828ms,
+    // first cold /dev-ssr render 0.67s, second 7ms. A render that costs 0.67s
+    // locally does not credibly cost more than 5s on CI — yet EVERY attempt
+    // there aborted at 5s for 25s straight, which is a hang, not slowness.
+    //
+    // So the cause of that hang is still unknown. Do not "fix" a recurrence by
+    // widening a timeout; make it tell you what it was stuck on. That is what
+    // the dev-server output in the failure message below is for.
     devSsrAssertionsPassed = true;
   } finally {
     devServer.kill();
