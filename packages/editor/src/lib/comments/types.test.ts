@@ -111,12 +111,25 @@ describe('createDocumentAnchor', () => {
     expect(isTextAnchor(anchor)).toBe(false);
   });
 
-  test('an anchor with no type is treated as text for backwards compatibility', () => {
+  test('an anchor with no type but a quote is treated as text for backwards compatibility', () => {
     const anchor = createTestAnchor();
 
     expect(anchor.type).toBeUndefined();
     expect(isTextAnchor(anchor)).toBe(true);
     expect(isDocumentAnchor(anchor)).toBe(false);
+  });
+
+  test('a legacy untyped anchor with no quote is a document anchor, not a text one', () => {
+    // `getState()` used to omit `type`, so every review persisted before that
+    // was fixed carries document anchors identified only by the absence of a
+    // quote. Reading one as a text anchor sends it through reanchorQuote, which
+    // cannot find an empty quote and deletes the thread — opening an older
+    // saved review would silently lose its document-level comments.
+    const legacyAnchor = { ...createDocumentAnchor(), type: undefined };
+
+    expect(legacyAnchor.quote).toBe('');
+    expect(isDocumentAnchor(legacyAnchor)).toBe(true);
+    expect(isTextAnchor(legacyAnchor)).toBe(false);
   });
 });
 

@@ -55,14 +55,22 @@ To restore, bind `value` and `threads` from the same saved state and run the thr
 
 ```svelte
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { ReviewEditor, toRuntimeThreads } from '@lostgradient/editor/review-editor';
-  import type { ReviewState } from '@lostgradient/editor/review-editor';
+  import type { ReviewState, Thread } from '@lostgradient/editor/review-editor';
 
-  const stored = localStorage.getItem('review-state');
-  const saved: ReviewState | null = stored === null ? null : JSON.parse(stored);
+  let value = $state('');
+  let threads = $state<Thread[]>([]);
 
-  let value = $state(saved?.content ?? '');
-  let threads = $state(toRuntimeThreads(saved?.threads ?? []));
+  // `localStorage` does not exist while the component script runs on the
+  // server, and the saved key may be missing on a first visit.
+  onMount(() => {
+    const stored = localStorage.getItem('review-state');
+    if (stored === null) return;
+    const saved: ReviewState = JSON.parse(stored);
+    value = saved.content;
+    threads = toRuntimeThreads(saved.threads);
+  });
 </script>
 
 <ReviewEditor id="review" bind:value bind:threads currentUserId="steve" />

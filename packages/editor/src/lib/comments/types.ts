@@ -386,16 +386,29 @@ export function createDocumentAnchor(): CommentAnchor {
 
 /**
  * Check if an anchor is a document-level anchor.
+ *
+ * A quote-less anchor with no explicit `type` is treated as document-level.
+ * `getState()` used to omit `type` entirely, so every review persisted before
+ * that was fixed carries document anchors identified only by the absence of a
+ * quote. Reading them as text anchors sends them through `reanchorQuote`, which
+ * cannot find an empty quote, reports "not found", and deletes the thread — so
+ * opening an older saved review would silently lose its document-level
+ * comments. There is nothing else a text anchor with no quote could mean: it
+ * can neither be highlighted nor re-anchored.
  */
 export function isDocumentAnchor(anchor: CommentAnchor | PersistedAnchor): boolean {
-  return anchor.type === 'document';
+  if (anchor.type === 'document') return true;
+  return anchor.type === undefined && !anchor.quote;
 }
 
 /**
- * Check if an anchor is a text anchor (explicit 'text' type or undefined for backwards compat).
+ * Check if an anchor is a text anchor (explicit 'text' type, or an untyped
+ * anchor that carries a quote — the legacy shape).
+ *
+ * The exact complement of {@link isDocumentAnchor}.
  */
 export function isTextAnchor(anchor: CommentAnchor | PersistedAnchor): boolean {
-  return anchor.type === 'text' || anchor.type === undefined;
+  return !isDocumentAnchor(anchor);
 }
 
 // ============================================================================
