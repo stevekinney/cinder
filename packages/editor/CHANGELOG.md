@@ -1,5 +1,16 @@
 # @lostgradient/editor
 
+## 0.8.0
+
+### Minor Changes
+
+- [`8c3065a`](https://github.com/stevekinney/cinder/commit/8c3065a5889811bc3315e3a7fcbfa1bfc816b62c) Thanks [@stevekinney](https://github.com/stevekinney)! - Add `toRuntimeThreads`, the documented inverse of `toPersistedThreads`, so a saved `ReviewState` can be bound straight to ReviewEditor's `threads` prop without casting through `unknown`. It seeds `from`/`to` with a neutral unplaced sentinel and lets the anchor plugin place each thread by its quote. Both converters now preserve `anchor.type`, which fixes document-level threads being silently deleted when restored via `setState`. Anchor coordinate spaces are documented on the `threads` prop, and the `with-comments` example now seeds real ProseMirror positions instead of raw-Markdown indices.
+
+### Patch Changes
+
+- Updated dependencies [[`8c3065a`](https://github.com/stevekinney/cinder/commit/8c3065a5889811bc3315e3a7fcbfa1bfc816b62c)]:
+  - @lostgradient/cinder@0.24.2
+
 ## 0.7.0
 
 ### Minor Changes
