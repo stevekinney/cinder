@@ -224,4 +224,71 @@ describe('useChatKeyboardNav', () => {
     expect(event.defaultPrevented).toBe(false);
     expect(jumpCount).toBe(0);
   });
+
+  // In a virtualized transcript Home focuses the VIEWPORT, because rows recycle
+  // and a focused row can be unmounted from under the user. That made arrow
+  // navigation unreachable: the arrow handlers only fired on a focused
+  // `.chat-message`, so the ArrowDown right after Home did nothing at all and
+  // there was no keyboard route into the transcript.
+  test('arrows enter message navigation from the focused viewport', () => {
+    const { messages, scrollIntoViewCalls, viewport } = createViewport();
+    viewport.tabIndex = 0;
+    viewport.focus();
+    expect(document.activeElement).toBe(viewport);
+
+    const nav = useChatKeyboardNav({
+      onJumpToLatest: () => {},
+      getScrollBehavior: () => 'auto',
+    });
+
+    const down = keyEvent('ArrowDown');
+    nav.handleKeyDown(down, viewport);
+
+    expect(down.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(messages[0]!);
+    expect(scrollIntoViewCalls).toEqual(['first']);
+
+    // And stepping continues normally from there.
+    const next = keyEvent('ArrowDown');
+    nav.handleKeyDown(next, viewport);
+    expect(document.activeElement).toBe(messages[1]!);
+  });
+
+  test('ArrowUp from the focused viewport enters at the last message', () => {
+    const { messages, viewport } = createViewport();
+    viewport.tabIndex = 0;
+    viewport.focus();
+
+    const nav = useChatKeyboardNav({
+      onJumpToLatest: () => {},
+      getScrollBehavior: () => 'auto',
+    });
+
+    const up = keyEvent('ArrowUp');
+    nav.handleKeyDown(up, viewport);
+
+    expect(up.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(messages.at(-1)!);
+  });
+
+  // The entry point must not swallow arrows meant for a control inside a
+  // message — approval buttons, suggestion chips — which are neither the
+  // viewport nor carry `chat-message`.
+  test('arrows inside a message child control keep native behavior', () => {
+    const { viewport } = createViewport();
+    const button = document.createElement('button');
+    viewport.querySelector('.chat-message')!.append(button);
+    button.focus();
+
+    const nav = useChatKeyboardNav({
+      onJumpToLatest: () => {},
+      getScrollBehavior: () => 'auto',
+    });
+
+    const down = keyEvent('ArrowDown');
+    nav.handleKeyDown(down, viewport);
+
+    expect(down.defaultPrevented).toBe(false);
+    expect(document.activeElement).toBe(button);
+  });
 });

@@ -28,3 +28,11 @@ Home had the same defect, but only when virtualized: there the viewport is the
 stable target for the same reason. In a plain transcript the rows do not recycle,
 so Home still focuses the first message, which scrolls it into view and gives
 arrow navigation a starting point.
+
+ArrowUp/ArrowDown now also enter message navigation from the focused viewport,
+not only from an already-focused message. Without that, the virtualized Home
+above would have been a dead end — it focuses the viewport, and the next arrow
+key would have done nothing, leaving no keyboard route into the transcript.
+ArrowDown enters at the first rendered message and ArrowUp at the last; arrows
+pressed inside a control within a message (approval buttons, suggestion chips)
+still belong to that control.

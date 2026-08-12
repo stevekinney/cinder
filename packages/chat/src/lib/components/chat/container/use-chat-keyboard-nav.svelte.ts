@@ -124,6 +124,31 @@ export function useChatKeyboardNav(options: UseChatKeyboardNavOptions): UseChatK
   const TEXT_EDITING_SELECTOR = 'input, textarea, select, [contenteditable]';
 
   /**
+   * Whether ArrowUp/ArrowDown should move between messages.
+   *
+   * True on a focused `.chat-message` — the ordinary case, stepping row to row.
+   * Also true on the viewport ITSELF, which is what makes message navigation
+   * reachable at all in a virtualized transcript: there `Home` focuses the
+   * viewport (rows recycle, so they are unsafe focus targets), and without this
+   * the very next ArrowDown would do nothing, leaving no keyboard route into the
+   * transcript. `navigateMessages` already treats "nothing focused" as "start at
+   * the first (or last) rendered message", so entry needs no special case.
+   *
+   * Focus inside a child interactive element — tool-approval buttons, suggestion
+   * chips — is excluded, because those elements are neither the viewport nor
+   * carry `chat-message`, and arrows belong to the control there.
+   *
+   * The cost is that arrows no longer scroll the focused viewport natively. That
+   * is the better trade: navigation scrolls each target into view as it goes, so
+   * the content still moves, and it moves in message-sized steps that match what
+   * a screen reader announces.
+   */
+  function canNavigateMessagesFrom(viewport: HTMLElement): boolean {
+    const active = document.activeElement;
+    return active === viewport || (active?.classList.contains('chat-message') ?? false);
+  }
+
+  /**
    * Handle keydown events for keyboard navigation.
    */
   function handleKeyDown(event: KeyboardEvent, viewport: HTMLElement | null): void {
@@ -206,7 +231,7 @@ export function useChatKeyboardNav(options: UseChatKeyboardNavOptions): UseChatK
       // `[data-cinder-tool-approval]` and `[data-cinder-suggested-replies]` are
       // descendants — so they always returned null, making `!null` always true.
       case 'ArrowDown':
-        if (document.activeElement?.classList.contains('chat-message')) {
+        if (canNavigateMessagesFrom(viewport)) {
           event.preventDefault();
           if (!onVirtualMessageNavigation?.('next')) {
             navigateMessages(viewport, 'next');
@@ -215,7 +240,7 @@ export function useChatKeyboardNav(options: UseChatKeyboardNavOptions): UseChatK
         break;
 
       case 'ArrowUp':
-        if (document.activeElement?.classList.contains('chat-message')) {
+        if (canNavigateMessagesFrom(viewport)) {
           event.preventDefault();
           if (!onVirtualMessageNavigation?.('previous')) {
             navigateMessages(viewport, 'previous');

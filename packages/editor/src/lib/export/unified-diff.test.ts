@@ -266,11 +266,14 @@ describe('front matter', () => {
    */
   function gitApplyCheck(originalDocument: string, diff: string): { ok: boolean; error: string } {
     const directory = mkdtempSync(join(tmpdir(), 'unified-diff-'));
-    execFileSync('git', ['init', '--quiet'], { cwd: directory });
-    writeFileSync(join(directory, 'document.md'), originalDocument);
-    writeFileSync(join(directory, 'patch.diff'), diff);
 
+    // Setup is inside the try as well: a failing `git init` or write would
+    // otherwise leak the directory it just created.
     try {
+      execFileSync('git', ['init', '--quiet'], { cwd: directory });
+      writeFileSync(join(directory, 'document.md'), originalDocument);
+      writeFileSync(join(directory, 'patch.diff'), diff);
+
       execFileSync('git', ['apply', '--check', 'patch.diff'], { cwd: directory, stdio: 'pipe' });
       return { ok: true, error: '' };
     } catch (error) {
