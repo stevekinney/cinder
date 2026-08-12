@@ -1174,16 +1174,25 @@ function ensureSvelteKitAdapterNodeStaticAssetLink(fixtureDirectory: string): vo
   }
 }
 
-const SVELTEKIT_DEV_SSR_MARKERS = [
-  'data-dev-ssr-confirm-dialog-trigger',
-  'data-dev-ssr-card-body',
-  'data-dev-ssr-sidebar-navigation',
-  'data-dev-ssr-side-navigation-item',
-  'data-dev-ssr-tabs-namespace-trigger',
-  'data-dev-ssr-tabs-namespace-panel',
-  'data-dev-ssr-tabs-direct-trigger',
-  'data-dev-ssr-tabs-direct-panel',
-];
+const SVELTEKIT_DEV_SSR_ROUTES = [
+  {
+    routePath: '/dev-ssr-dialog',
+    markers: ['data-dev-ssr-confirm-dialog-trigger', 'data-dev-ssr-card-body'],
+  },
+  {
+    routePath: '/dev-ssr-navigation',
+    markers: ['data-dev-ssr-sidebar-navigation', 'data-dev-ssr-side-navigation-item'],
+  },
+  {
+    routePath: '/dev-ssr-tabs',
+    markers: [
+      'data-dev-ssr-tabs-namespace-trigger',
+      'data-dev-ssr-tabs-namespace-panel',
+      'data-dev-ssr-tabs-direct-trigger',
+      'data-dev-ssr-tabs-direct-panel',
+    ],
+  },
+] as const;
 
 const SVELTEKIT_DEV_SSR_READINESS_TIMEOUT_MS = 25_000;
 const SVELTEKIT_DEV_SSR_POLL_INTERVAL_MS = 200;
@@ -1303,44 +1312,57 @@ async function assertSvelteKitDevSsrRoute(fixtureDirectory: string, label: strin
     : Promise.resolve('');
 
   try {
-    const routeUrl = `http://127.0.0.1:${httpPort}/dev-ssr`;
-    const body = await waitForReadyHtml({
-      url: routeUrl,
-      timeoutMs: SVELTEKIT_DEV_SSR_READINESS_TIMEOUT_MS,
-      pollIntervalMs: SVELTEKIT_DEV_SSR_POLL_INTERVAL_MS,
-      runningServer: devServer,
-      isReady: (html) => SVELTEKIT_DEV_SSR_MARKERS.every((marker) => html.includes(marker)),
-    }).catch((error) => {
-      const message = error instanceof Error ? error.message : String(error);
-      fail(`sveltekit-consumer ${label} /dev-ssr dev SSR readiness failed: ${message}`);
-    });
+    // Keep each cold source transform bounded below the per-request deadline.
+    // A single route importing all nine components made one request carry the
+    // entire transform graph after Svelte-aware SSR began selecting source.
+    // Splitting by feature preserves every marker while letting Vite cache the
+    // shared graph between small, independently bounded requests.
+    const readinessDeadline = Date.now() + SVELTEKIT_DEV_SSR_READINESS_TIMEOUT_MS;
+    for (const { routePath, markers } of SVELTEKIT_DEV_SSR_ROUTES) {
+      const remainingReadinessBudget = readinessDeadline - Date.now();
+      if (remainingReadinessBudget <= 0) {
+        fail(
+          `sveltekit-consumer ${label} dev SSR exhausted its shared ${SVELTEKIT_DEV_SSR_READINESS_TIMEOUT_MS}ms readiness budget before ${routePath}`,
+        );
+      }
+      const routeUrl = `http://127.0.0.1:${httpPort}${routePath}`;
+      const body = await waitForReadyHtml({
+        url: routeUrl,
+        timeoutMs: remainingReadinessBudget,
+        pollIntervalMs: SVELTEKIT_DEV_SSR_POLL_INTERVAL_MS,
+        runningServer: devServer,
+        isReady: (html) => markers.every((marker) => html.includes(marker)),
+      }).catch((error) => {
+        const message = error instanceof Error ? error.message : String(error);
+        fail(`sveltekit-consumer ${label} ${routePath} dev SSR readiness failed: ${message}`);
+      });
 
-    const missingMarkers = SVELTEKIT_DEV_SSR_MARKERS.filter((marker) => !body.includes(marker));
-    if (missingMarkers.length > 0) {
-      fail(
-        `sveltekit-consumer ${label} /dev-ssr dev SSR missing marker(s): ${missingMarkers.join(', ')}\n${formatHtmlExcerpt(body)}`,
-      );
+      const missingMarkers = markers.filter((marker) => !body.includes(marker));
+      if (missingMarkers.length > 0) {
+        fail(
+          `sveltekit-consumer ${label} ${routePath} dev SSR missing marker(s): ${missingMarkers.join(', ')}\n${formatHtmlExcerpt(body)}`,
+        );
+      }
     }
 
-    // Deliberately NO client-hydration assertion for the broad /dev-ssr route.
-    // This phase owns only its transform-on-request SSR HTML; the focused
+    // Deliberately NO client-hydration assertion for these focused dev routes.
+    // This phase owns only their transform-on-request SSR HTML; the focused
     // /chat-layout helper above owns dev-mode browser hydration against the
     // default dependency optimizer.
     //
-    // Broad /dev-ssr client hydration MUST NOT be asserted against this `vite
-    // dev` server. The fixture sets `optimizeDeps: { noDiscovery: true,
-    // holdUntilCrawlEnd: false }`, so /dev-ssr's nine Cinder subpath imports are
-    // served as unbundled ESM through Vite's transform-on-request pipeline. On a
-    // cold CI runner that is a request waterfall of hundreds of sequential
-    // module transforms, and any on-request dependency discovery triggers a full
-    // page reload that resets the route's `hydrated` effect mid-wait. Either
-    // mechanism outruns a bounded wait; both produced 22 red `main` runs between
-    // 2026-07-24 and 2026-08-05 against ~100 passes on unchanged code, including
-    // a docs-only commit.
+    // Client hydration MUST NOT be asserted against this `vite dev` server. The
+    // fixture sets `optimizeDeps: { noDiscovery: true, holdUntilCrawlEnd: false
+    // }`, so Cinder subpath imports are served as unbundled ESM through Vite's
+    // transform-on-request pipeline. On a cold CI runner that is a request
+    // waterfall of sequential module transforms, and any on-request dependency
+    // discovery triggers a full page reload that resets the route's `hydrated`
+    // effect mid-wait. Either mechanism outruns a bounded wait; both produced 22
+    // red `main` runs between 2026-07-24 and 2026-08-05 against ~100 passes on
+    // unchanged code, including a docs-only commit.
     //
-    // /dev-ssr's hydration — including the ConfirmDialog interaction and focus
-    // restoration — remains asserted against the prebuilt adapter-node server
-    // in `runSveltekitFixture`, where the transform waterfall cannot exist.
+    // The original all-components /dev-ssr route remains the built-server
+    // hydration fixture — including the ConfirmDialog interaction and focus
+    // restoration — where the transform waterfall cannot exist.
     // Raising the timeout here would mask the waterfall, not fix it.
     devSsrAssertionsPassed = true;
   } finally {
