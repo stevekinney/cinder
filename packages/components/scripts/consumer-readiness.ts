@@ -6,7 +6,15 @@ export type ReadinessFetch = (url: string, timeoutMs: number) => Promise<Respons
 
 type WaitForReadyHtmlInput = {
   url: string;
+  /** Overall deadline for the route to become ready. */
   timeoutMs: number;
+  /**
+   * Optional cap on a SINGLE attempt. Defaults to `timeoutMs`, i.e. one slow
+   * response may use the entire budget. Only set this when a request that
+   * outlives the cap is itself the failure you want to detect — capping below
+   * the time the work actually needs makes readiness unreachable, because
+   * aborting discards the in-flight render rather than pausing it.
+   */
   requestTimeoutMs?: number;
   pollIntervalMs: number;
   runningServer: RunningServerStatus;
@@ -20,7 +28,22 @@ async function defaultFetch(url: string, timeoutMs: number): Promise<Response> {
 
 export async function waitForReadyHtml(input: WaitForReadyHtmlInput): Promise<string> {
   const fetcher = input.fetcher ?? defaultFetch;
-  const requestTimeoutMs = input.requestTimeoutMs ?? 5_000;
+  // Default a single attempt to the WHOLE readiness budget.
+  //
+  // This used to default to 5s, which quietly made the loop unable to wait for
+  // anything slower than 5s no matter how large `timeoutMs` was: each attempt
+  // aborted at 5s, and aborting an in-flight SSR request throws away the render
+  // it was waiting on, so the next attempt started from scratch and hit the same
+  // wall. A cold `vite dev` server rendering a route through hundreds of
+  // unbundled transform-on-request modules legitimately exceeds 5s, so the poll
+  // loop cancelled the very work it was polling for until the budget expired —
+  // failing with `last error: The operation timed out.` while the server was
+  // healthy and still working.
+  //
+  // A per-request cap is still available to callers that genuinely want to bound
+  // individual attempts (a hung socket that never responds); it is just no
+  // longer imposed on callers that only want an overall deadline.
+  const requestTimeoutMs = input.requestTimeoutMs ?? input.timeoutMs;
   const startTime = Date.now();
   let lastStatus: number | null = null;
   let lastError: string | null = null;

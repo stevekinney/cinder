@@ -1185,6 +1185,15 @@ const SVELTEKIT_DEV_SSR_MARKERS = [
   'data-dev-ssr-tabs-direct-panel',
 ];
 
+/**
+ * Overall deadline for a dev-server route to render once.
+ *
+ * Unchanged at 25s deliberately. `waitForReadyHtml` used to cap each attempt at
+ * 5s, so this number was never actually reachable — see the note there. Now that
+ * one attempt can use the whole budget, 25s is a real deadline, and it should
+ * stay one. If a single uninterrupted render cannot finish in 25s, the render is
+ * the problem and raising this would only hide it.
+ */
 const SVELTEKIT_DEV_SSR_READINESS_TIMEOUT_MS = 25_000;
 const SVELTEKIT_DEV_SSR_POLL_INTERVAL_MS = 200;
 
@@ -1341,7 +1350,17 @@ async function assertSvelteKitDevSsrRoute(fixtureDirectory: string, label: strin
     // /dev-ssr's hydration — including the ConfirmDialog interaction and focus
     // restoration — remains asserted against the prebuilt adapter-node server
     // in `runSveltekitFixture`, where the transform waterfall cannot exist.
-    // Raising the timeout here would mask the waterfall, not fix it.
+    // Raising the timeout would not make hydration assertable here; that is a
+    // race, and waiting longer does not settle it.
+    //
+    // The READINESS wait above is a different thing, and it had a real bug: it
+    // capped each attempt at 5s, then aborted and retried. Aborting discards the
+    // in-flight render, so a render slower than 5s could never be observed
+    // finishing no matter how large the overall budget was — the loop destroyed
+    // its own work. That failed the release on 2026-08-12 with `last error: The
+    // operation timed out.` against a healthy server. The fix is that one
+    // attempt now gets the declared budget; the budget itself is unchanged at
+    // 25s and should stay a real deadline.
     devSsrAssertionsPassed = true;
   } finally {
     devServer.kill();
