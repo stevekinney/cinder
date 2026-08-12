@@ -193,11 +193,17 @@ function warnOnMisSeededAnchor(
   if (anchorMatchesDocument(doc, anchor)) return;
 
   const inBounds = anchor.from >= 0 && anchor.to <= doc.content.size && anchor.from < anchor.to;
-  const found = inBounds ? doc.textBetween(anchor.from, anchor.to, '\n') : null;
+  // Say WHY the quote could not be confirmed. `reads null` would be ambiguous —
+  // it looks like the document contains the string "null" — and an out-of-range
+  // anchor is a distinct, common case: a persisted copy pointing past the end of
+  // a document that has since shrunk.
+  const reading = inBounds
+    ? `the document reads ${JSON.stringify(doc.textBetween(anchor.from, anchor.to, '\n'))} there`
+    : `that range lies outside the document (valid positions are 0–${doc.content.size})`;
 
   devWarn(
     `[cinder/ReviewEditor] thread "${anchor.threadId}" anchors ${JSON.stringify(anchor.quote)} at ` +
-      `${anchor.from}–${anchor.to}, but the document reads ${JSON.stringify(found)} there. ` +
+      `${anchor.from}–${anchor.to}, but ${reading}. ` +
       `anchor.from/to are ProseMirror positions, in which markup occupies nothing — so ` +
       `"Release Plan" in "# Release Plan" is 1–13, not 2–14 (raw-Markdown indices) and not 0–12 ` +
       `(textBetween offsets, which is what anchor.lastKnownOffset uses). Re-anchoring by quote; ` +
