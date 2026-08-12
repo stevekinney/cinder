@@ -30,6 +30,8 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import type { AnchorPluginState, AnchorState } from './anchor-decorations.js';
 import { anchorPluginKey, createAnchorPlugin } from './anchor-decorations.js';
 import type { AnchorUpdate, Thread } from './comments/types.js';
+import type { FakeClock } from './test/fake-clock.js';
+import { installFakeClock } from './test/fake-clock.js';
 
 // ============================================================================
 // Fixture
@@ -141,51 +143,6 @@ function restoredOrphanThread(lastKnownOffset: number): Thread {
     },
     comments: [],
     createdAt: '2026-01-01T00:00:00.000Z',
-  };
-}
-
-// ============================================================================
-// Controllable clock
-// ============================================================================
-
-interface FakeClock {
-  advance(ms: number): void;
-  restore(): void;
-}
-
-function installFakeClock(): FakeClock {
-  const originalSetTimeout = globalThis.setTimeout;
-  const originalClearTimeout = globalThis.clearTimeout;
-
-  let now = 0;
-  let nextId = 1;
-  const pending = new Map<number, { callback: () => void; dueAt: number }>();
-
-  globalThis.setTimeout = ((callback: () => void, delay = 0) => {
-    const id = nextId++;
-    pending.set(id, { callback, dueAt: now + delay });
-    return id as unknown as ReturnType<typeof setTimeout>;
-  }) as unknown as typeof setTimeout;
-
-  globalThis.clearTimeout = ((id: unknown) => {
-    if (typeof id === 'number') pending.delete(id);
-  }) as unknown as typeof clearTimeout;
-
-  return {
-    advance(ms: number) {
-      now += ms;
-      const due = [...pending.entries()]
-        .filter(([, timer]) => timer.dueAt <= now)
-        .sort((a, b) => a[1].dueAt - b[1].dueAt);
-      for (const [id, timer] of due) {
-        pending.delete(id);
-        timer.callback();
-      }
-    },
-    restore() {
-      globalThis.setTimeout = originalSetTimeout;
-      globalThis.clearTimeout = originalClearTimeout;
-    },
   };
 }
 

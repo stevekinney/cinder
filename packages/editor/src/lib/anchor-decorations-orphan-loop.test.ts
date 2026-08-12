@@ -35,6 +35,8 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import type { AnchorPluginState, AnchorState } from './anchor-decorations.js';
 import { anchorPluginKey, createAnchorPlugin } from './anchor-decorations.js';
 import type { AnchorUpdate, Thread } from './comments/types.js';
+import type { FakeClock } from './test/fake-clock.js';
+import { installFakeClock } from './test/fake-clock.js';
 
 // ============================================================================
 // Schema
@@ -89,66 +91,6 @@ function rangeOf(doc: ProseMirrorNode, quote: string): { from: number; to: numbe
     throw new Error(`Computed range ${range.from}-${range.to} does not read ${quote}`);
   }
   return range;
-}
-
-// ============================================================================
-// Controllable clock
-// ============================================================================
-
-interface FakeClock {
-  /** Fire every timer due at or before `now + ms`. Timers scheduled by a firing
-   *  timer are NOT fired in the same advance — that is how a self-rescheduling
-   *  loop stays visible instead of running away inside one call. */
-  advance(ms: number): void;
-  /** Total `setTimeout` calls since install. */
-  readonly scheduledCount: number;
-  /** Timers currently armed. */
-  readonly pendingCount: number;
-  restore(): void;
-}
-
-function installFakeClock(): FakeClock {
-  const originalSetTimeout = globalThis.setTimeout;
-  const originalClearTimeout = globalThis.clearTimeout;
-
-  let now = 0;
-  let nextId = 1;
-  let scheduledCount = 0;
-  const pending = new Map<number, { callback: () => void; dueAt: number }>();
-
-  globalThis.setTimeout = ((callback: () => void, delay = 0) => {
-    const id = nextId++;
-    scheduledCount += 1;
-    pending.set(id, { callback, dueAt: now + delay });
-    return id as unknown as ReturnType<typeof setTimeout>;
-  }) as unknown as typeof setTimeout;
-
-  globalThis.clearTimeout = ((id: unknown) => {
-    if (typeof id === 'number') pending.delete(id);
-  }) as unknown as typeof clearTimeout;
-
-  return {
-    advance(ms: number) {
-      now += ms;
-      const due = [...pending.entries()]
-        .filter(([, timer]) => timer.dueAt <= now)
-        .sort((a, b) => a[1].dueAt - b[1].dueAt);
-      for (const [id, timer] of due) {
-        pending.delete(id);
-        timer.callback();
-      }
-    },
-    get scheduledCount() {
-      return scheduledCount;
-    },
-    get pendingCount() {
-      return pending.size;
-    },
-    restore() {
-      globalThis.setTimeout = originalSetTimeout;
-      globalThis.clearTimeout = originalClearTimeout;
-    },
-  };
 }
 
 // ============================================================================

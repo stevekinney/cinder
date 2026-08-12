@@ -31,11 +31,13 @@ import { Schema } from '@milkdown/kit/prose/model';
 import type { Plugin, Transaction } from '@milkdown/kit/prose/state';
 import { EditorState } from '@milkdown/kit/prose/state';
 import type { DecorationSet, EditorView } from '@milkdown/kit/prose/view';
-import { describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
 import type { AnchorPluginState, AnchorState } from './anchor-decorations.js';
 import { anchorPluginKey, createAnchorPlugin } from './anchor-decorations.js';
 import type { AnchorUpdate, Thread } from './comments/types.js';
+import type { FakeClock } from './test/fake-clock.js';
+import { installFakeClock } from './test/fake-clock.js';
 
 // ============================================================================
 // Fixtures
@@ -70,8 +72,26 @@ const SECOND_PARAGRAPH_CONTENT_START =
 
 const THREAD_ID = 'thread-1';
 
-/** The debounce is 300ms; wait past it, plus slack for a loaded CI machine. */
-const PAST_DEBOUNCE = 450;
+/**
+ * Comfortably past the 300ms re-anchoring debounce, on a clock this file owns.
+ *
+ * No slack is needed and none is wanted: the earlier version of this file slept
+ * for a real 450ms "plus slack for a loaded CI machine", which is a guess that
+ * flakes when CI beats it and then invites a bigger guess. Advancing a fake
+ * clock removes the wall clock from the test entirely.
+ */
+const PAST_DEBOUNCE = 400;
+
+let clock: FakeClock | null = null;
+
+beforeEach(() => {
+  clock = installFakeClock();
+});
+
+afterEach(() => {
+  clock?.restore();
+  clock = null;
+});
 
 function createDocument() {
   return schema.node('doc', null, [
@@ -189,8 +209,15 @@ class AnchorHarness {
     return this.state.doc.textBetween(0, this.state.doc.content.size, '\n');
   }
 
+  /**
+   * Cross the debounce so the deferred re-anchoring pass runs.
+   *
+   * `advance` fires the pass synchronously; the awaited microtask that follows
+   * lets anything the pass scheduled as a promise settle before assertions.
+   */
   async settle(): Promise<void> {
-    await new Promise((resolve) => setTimeout(resolve, PAST_DEBOUNCE));
+    clock?.advance(PAST_DEBOUNCE);
+    await Promise.resolve();
   }
 
   destroy(): void {
