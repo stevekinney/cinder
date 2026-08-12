@@ -154,19 +154,39 @@ function didTransactionAffectAnchorRange(tr: Transaction, from: number, to: numb
 }
 
 /**
+ * Does the document actually contain this anchor's quote at its stored range?
+ *
+ * Supplied `from`/`to` are only trustworthy when they came from this plugin.
+ * A consumer seeding `threads` has no documented way to know that they are
+ * ProseMirror positions (not `textBetween` offsets, and not raw-Markdown
+ * indices), and a persisted anchor can be restored against a document that has
+ * since moved on. Rather than trust the numbers and render a highlight over
+ * whatever happens to sit there, verify them and let re-anchoring — which
+ * searches by quote — correct any that do not check out.
+ */
+function anchorMatchesDocument(doc: ProseMirrorNode, anchor: AnchorState): boolean {
+  if (!anchor.quote) return true; // Document-level anchors have no quote to verify.
+  const docSize = doc.content.size;
+  if (anchor.from < 0 || anchor.to > docSize || anchor.from >= anchor.to) return false;
+  return doc.textBetween(anchor.from, anchor.to, '\n') === anchor.quote;
+}
+
+/**
  * Handle meta-transactions (add/remove/sync anchors).
  */
 function handleMetaTransaction(
   meta: AnchorPluginMeta,
   prevState: AnchorPluginState,
+  doc: ProseMirrorNode,
 ): AnchorPluginState {
   switch (meta.type) {
     case 'sync': {
       // Sync external thread state into plugin
       const newAnchors = new Map<string, AnchorState>();
+      let needsReanchor = false;
       for (const thread of meta.threads) {
         const anchor = thread.anchor;
-        newAnchors.set(thread.id, {
+        const anchorState: AnchorState = {
           threadId: thread.id,
           from: anchor.from,
           to: anchor.to,
@@ -176,11 +196,13 @@ function handleMetaTransaction(
           suffix: anchor.suffix,
           originalPosition: anchor.originalPosition,
           lastKnownOffset: anchor.lastKnownOffset,
-        });
+        };
+        if (!anchorMatchesDocument(doc, anchorState)) needsReanchor = true;
+        newAnchors.set(thread.id, anchorState);
       }
       return {
         anchors: newAnchors,
-        needsReanchor: false,
+        needsReanchor,
         activeThreadId: prevState.activeThreadId,
         hoveredThreadId: prevState.hoveredThreadId,
       };
@@ -189,7 +211,7 @@ function handleMetaTransaction(
     case 'add': {
       const newAnchors = new Map(prevState.anchors);
       const anchor = meta.thread.anchor;
-      newAnchors.set(meta.thread.id, {
+      const anchorState: AnchorState = {
         threadId: meta.thread.id,
         from: anchor.from,
         to: anchor.to,
@@ -199,8 +221,13 @@ function handleMetaTransaction(
         suffix: anchor.suffix,
         originalPosition: anchor.originalPosition,
         lastKnownOffset: anchor.lastKnownOffset,
-      });
-      return { ...prevState, anchors: newAnchors };
+      };
+      newAnchors.set(meta.thread.id, anchorState);
+      return {
+        ...prevState,
+        anchors: newAnchors,
+        needsReanchor: prevState.needsReanchor || !anchorMatchesDocument(doc, anchorState),
+      };
     }
 
     case 'remove': {
@@ -220,6 +247,30 @@ function handleMetaTransaction(
 }
 
 /**
+ * Detect a transaction that replaces the document wholesale.
+ *
+ * Milkdown sets the initial document with a single step spanning the entire
+ * old doc. Position mapping is meaningless across such a step: `map(from, -1)`
+ * collapses to the start and `map(to, 1)` expands to the end, so every anchor
+ * would come out spanning the whole document. Anchors must be located by quote
+ * instead, which is what deferred re-anchoring does.
+ *
+ * The same reasoning applies to any later full replacement (`setMarkdown`,
+ * loading a new revision), so this is keyed on the shape of the step rather
+ * than on "is this the first transaction".
+ */
+function isFullDocumentReplacement(tr: Transaction, oldDocSize: number): boolean {
+  for (const step of tr.steps) {
+    let replacesEverything = false;
+    step.getMap().forEach((oldStart, oldEnd) => {
+      if (oldStart <= 0 && oldEnd >= oldDocSize) replacesEverything = true;
+    });
+    if (replacesEverything) return true;
+  }
+  return false;
+}
+
+/**
  * Map anchor positions through a transaction.
  */
 function mapAnchorsThroughTransaction(
@@ -229,6 +280,24 @@ function mapAnchorsThroughTransaction(
 ): AnchorPluginState {
   const newAnchors = new Map<string, AnchorState>();
   let needsReanchor = false;
+
+  // A wholesale replacement carries no usable position mapping. Keep every
+  // anchor's quote/prefix/suffix untouched and defer to re-anchoring, which
+  // searches by quote. Mapping through it instead would expand each anchor to
+  // the full document AND (via the "follow the edit" branch below) overwrite
+  // `quote` with the entire document text — destroying the only information
+  // re-anchoring could have used to recover.
+  if (isFullDocumentReplacement(tr, tr.before.content.size)) {
+    for (const [threadId, anchor] of prevState.anchors) {
+      newAnchors.set(threadId, anchor);
+    }
+    return {
+      anchors: newAnchors,
+      needsReanchor: newAnchors.size > 0,
+      activeThreadId: prevState.activeThreadId,
+      hoveredThreadId: prevState.hoveredThreadId,
+    };
+  }
 
   for (const [threadId, anchor] of prevState.anchors) {
     // Map positions through the transaction
@@ -338,9 +407,11 @@ function performDeferredReanchoring(
   const newAnchors = new Map<string, AnchorState>();
 
   for (const [threadId, anchor] of pluginState.anchors) {
-    // Re-anchor if the quote at current position doesn't match
-    const currentQuote = doc.textBetween(anchor.from, anchor.to, '\n');
-    if (currentQuote === anchor.quote) {
+    // Re-anchor if the quote at current position doesn't match. Checked via
+    // anchorMatchesDocument rather than a bare textBetween: after a wholesale
+    // document replacement the stored positions can point past the end of the
+    // new document, and textBetween throws a RangeError on out-of-range input.
+    if (anchorMatchesDocument(doc, anchor)) {
       // Quote still matches, no re-anchoring needed
       newAnchors.set(threadId, anchor);
       continue;
@@ -528,7 +599,7 @@ export function createAnchorPlugin(options: AnchorPluginOptions = {}) {
           // Handle meta-transactions first
           const meta = tr.getMeta(anchorPluginKey) as unknown;
           if (isAnchorPluginMeta(meta)) {
-            return handleMetaTransaction(meta, prevState);
+            return handleMetaTransaction(meta, prevState, newState.doc);
           }
 
           // No doc change = no position updates needed

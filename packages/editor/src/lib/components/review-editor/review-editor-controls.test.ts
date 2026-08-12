@@ -27,6 +27,9 @@ describe('ReviewEditorControls source contract', () => {
 
 const BASE_PROPS = {
   id: 'test-controls',
+  // Required, and deliberately unrelated to `id`: the sidebar is a sibling of
+  // this bar, not a child of it, so it cannot be derived from the bar's own id.
+  sidebarId: 'test-editor-sidebar',
   activeView: 'editor',
 } as const;
 
@@ -35,7 +38,7 @@ describe('ReviewEditorControls — comments toggle ARIA attributes', () => {
     const { container } = render(ReviewEditorControls, {
       props: { ...BASE_PROPS, commentCount: 3, sidebarOpen: false },
     });
-    const button = container.querySelector('button[aria-controls="test-controls-sidebar"]');
+    const button = container.querySelector('button[aria-controls="test-editor-sidebar"]');
     expect(button).not.toBeNull();
     expect(button?.getAttribute('aria-expanded')).toBe('false');
   });
@@ -44,7 +47,7 @@ describe('ReviewEditorControls — comments toggle ARIA attributes', () => {
     const { container } = render(ReviewEditorControls, {
       props: { ...BASE_PROPS, commentCount: 3, sidebarOpen: true },
     });
-    const button = container.querySelector('button[aria-controls="test-controls-sidebar"]');
+    const button = container.querySelector('button[aria-controls="test-editor-sidebar"]');
     expect(button?.getAttribute('aria-expanded')).toBe('true');
   });
 
@@ -52,7 +55,7 @@ describe('ReviewEditorControls — comments toggle ARIA attributes', () => {
     const { container } = render(ReviewEditorControls, {
       props: { ...BASE_PROPS, commentCount: 5 },
     });
-    const button = container.querySelector('button[aria-controls="test-controls-sidebar"]');
+    const button = container.querySelector('button[aria-controls="test-editor-sidebar"]');
     expect(button).not.toBeNull();
   });
 
@@ -60,7 +63,7 @@ describe('ReviewEditorControls — comments toggle ARIA attributes', () => {
     const { container } = render(ReviewEditorControls, {
       props: { ...BASE_PROPS, commentCount: 7 },
     });
-    const button = container.querySelector('button[aria-controls="test-controls-sidebar"]');
+    const button = container.querySelector('button[aria-controls="test-editor-sidebar"]');
     const label = button?.getAttribute('aria-label') ?? '';
     expect(label).toContain('7');
   });
@@ -69,7 +72,7 @@ describe('ReviewEditorControls — comments toggle ARIA attributes', () => {
     const { container } = render(ReviewEditorControls, {
       props: { ...BASE_PROPS, commentCount: 1 },
     });
-    const button = container.querySelector('button[aria-controls="test-controls-sidebar"]');
+    const button = container.querySelector('button[aria-controls="test-editor-sidebar"]');
     const label = button?.getAttribute('aria-label') ?? '';
     expect(label).toContain('1 comment');
     expect(label).not.toContain('1 comments');
@@ -79,7 +82,7 @@ describe('ReviewEditorControls — comments toggle ARIA attributes', () => {
     const { container } = render(ReviewEditorControls, {
       props: { ...BASE_PROPS, commentCount: 4 },
     });
-    const button = container.querySelector('button[aria-controls="test-controls-sidebar"]');
+    const button = container.querySelector('button[aria-controls="test-editor-sidebar"]');
     const label = button?.getAttribute('aria-label') ?? '';
     expect(label).toContain('4 comments');
   });

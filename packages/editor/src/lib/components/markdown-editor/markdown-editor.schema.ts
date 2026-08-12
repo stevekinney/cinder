@@ -80,6 +80,12 @@ const schema = {
         description: 'Called when selection changes (stub for DEP-39)',
       },
       {
+        name: 'ontoolbarcontextchange',
+        reason: 'function-or-snippet',
+        description:
+          'Notified whenever the toolbar context changes.\n\nUse this to host the formatting controls somewhere this component does not\nrender — for example folding them into a surrounding application toolbar so\nthe editor does not stack a second bar of its own. Pair it with\n`showToolbar={false}`.',
+      },
+      {
         name: 'placeholderCompletion',
         reason: 'unknown-shape',
         description:
