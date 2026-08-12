@@ -1219,34 +1219,47 @@ const SERVER_OUTPUT_TAIL_LINES = 60;
 const SERVER_OUTPUT_TAIL_CHARS = 8_000;
 
 /**
- * Format a dev server's captured output for a failure message, keeping the END.
+ * Bound ONE stream's captured output, keeping the end and announcing any cut.
  *
- * A wedged or erroring Vite server can emit a lot, and dumping all of it bloats
- * CI logs and buries the useful part — which is almost always the last thing it
- * said before it stopped answering. Truncation is announced rather than silent,
- * so a reader knows there was more and can pull the full log from the run.
+ * The tail is what matters — the last thing the server said before it stopped
+ * answering — but the announcement matters just as much: a diagnostic that
+ * silently drops data is worse than no diagnostic, because it reads as complete.
  */
-function formatServerOutputTail(output: string): string {
-  if (output.length === 0) return ': (no output)';
+function formatStreamTail(name: string, raw: string): string {
+  const stream = raw.trim();
+  if (stream.length === 0) return `  ${name}: (empty)`;
 
-  const lines = output.split('\n');
-  let kept = lines.slice(-SERVER_OUTPUT_TAIL_LINES);
-  let droppedLines = lines.length - kept.length;
-  let text = kept.join('\n');
+  const lines = stream.split('\n');
+  const keptLines = lines.slice(-SERVER_OUTPUT_TAIL_LINES);
+  const droppedLines = lines.length - keptLines.length;
 
+  let text = keptLines.join('\n');
+  let charsDropped = 0;
   if (text.length > SERVER_OUTPUT_TAIL_CHARS) {
+    charsDropped = text.length - SERVER_OUTPUT_TAIL_CHARS;
     text = text.slice(-SERVER_OUTPUT_TAIL_CHARS);
-    const firstNewline = text.indexOf('\n');
-    if (firstNewline !== -1) text = text.slice(firstNewline + 1);
-    kept = text.split('\n');
-    droppedLines = lines.length - kept.length;
   }
 
-  const header =
-    droppedLines > 0
-      ? ` (last ${kept.length} of ${lines.length} lines; ${droppedLines} earlier line(s) omitted)`
-      : ` (${lines.length} line(s))`;
-  return `${header}:\n${text}`;
+  // Report both kinds of truncation independently. Deriving one from the other
+  // hides the single-very-long-line case, where no lines are dropped but a lot
+  // of characters are.
+  const notes: string[] = [`${lines.length} line(s)`];
+  if (droppedLines > 0) notes.push(`${droppedLines} earlier line(s) omitted`);
+  if (charsDropped > 0) notes.push(`${charsDropped} leading char(s) omitted mid-line`);
+
+  return `  ${name} (${notes.join('; ')}):\n${text}`;
+}
+
+/**
+ * Format a dev server's captured streams for a failure message.
+ *
+ * stdout and stderr are bounded SEPARATELY and both are always shown. Joining
+ * them and taking one tail would let a noisy stderr evict stdout completely,
+ * which is exactly the case where knowing what the server was serving matters.
+ */
+function formatServerOutput(stdout: string, stderr: string): string {
+  if (stdout.trim().length === 0 && stderr.trim().length === 0) return ': (no output)';
+  return `:\n${formatStreamTail('stdout', stdout)}\n${formatStreamTail('stderr', stderr)}`;
 }
 
 async function assertSvelteKitDevChatHydrationRoute(
@@ -1288,6 +1301,8 @@ async function assertSvelteKitDevChatHydrationRoute(
 
   try {
     const routeUrl = `http://127.0.0.1:${httpPort}/chat-layout`;
+    // Elapsed, not allocated — see the dev-SSR readiness failure below.
+    const chatLayoutStartedAt = Date.now();
     await waitForReadyHtml({
       url: routeUrl,
       timeoutMs: SVELTEKIT_DEV_SSR_READINESS_TIMEOUT_MS,
@@ -1298,13 +1313,13 @@ async function assertSvelteKitDevChatHydrationRoute(
       const message = error instanceof Error ? error.message : String(error);
       // Same reasoning as the dev-SSR readiness failure below: surface the
       // server's own output, since "we stopped waiting" says nothing about why.
+      const waitedMs = Date.now() - chatLayoutStartedAt;
       devServer.kill();
       await devServer.exited;
-      const output = `${await devServerStdout}\n${await devServerStderr}`.trim();
       fail(
         `sveltekit-consumer ${label} /chat-layout dev readiness failed: ${message}\n` +
-          `(port ${httpPort})\n` +
-          `dev server output${formatServerOutputTail(output)}`,
+          `(waited ${waitedMs}ms; port ${httpPort})\n` +
+          `dev server output${formatServerOutput(await devServerStdout, await devServerStderr)}`,
       );
     });
 
@@ -1371,6 +1386,11 @@ async function assertSvelteKitDevSsrRoute(fixtureDirectory: string, label: strin
         );
       }
       const routeUrl = `http://127.0.0.1:${httpPort}${routePath}`;
+      // Elapsed, not allocated. `remainingReadinessBudget` is what this route
+      // was ALLOWED; if the server dies on startup the wait rejects almost
+      // immediately, and reporting the allocation would log a 25-second route
+      // wait after a single poll.
+      const routeStartedAt = Date.now();
       const body = await waitForReadyHtml({
         url: routeUrl,
         timeoutMs: remainingReadinessBudget,
@@ -1389,17 +1409,18 @@ async function assertSvelteKitDevSsrRoute(fixtureDirectory: string, label: strin
         // Measure at failure time. `remainingReadinessBudget` was computed
         // BEFORE the wait, so reporting it here would describe the budget this
         // attempt started with, not what was left when it gave up.
+        const waitedMs = Date.now() - routeStartedAt;
         const spentMs = Date.now() - (readinessDeadline - SVELTEKIT_DEV_SSR_READINESS_TIMEOUT_MS);
         const leftMs = Math.max(0, readinessDeadline - Date.now());
         devServer.kill();
         await devServer.exited;
-        const output = `${await devServerStdout}\n${await devServerStderr}`.trim();
         fail(
           `sveltekit-consumer ${label} ${routePath} dev SSR readiness failed: ${message}\n` +
-            `(waited ${remainingReadinessBudget}ms on this route; ${spentMs}ms spent and ` +
-            `${leftMs}ms left of the shared ${SVELTEKIT_DEV_SSR_READINESS_TIMEOUT_MS}ms budget; ` +
+            `(waited ${waitedMs}ms on this route of ${remainingReadinessBudget}ms allowed; ` +
+            `${spentMs}ms spent and ${leftMs}ms left of the shared ` +
+            `${SVELTEKIT_DEV_SSR_READINESS_TIMEOUT_MS}ms budget; ` +
             `poll ${SVELTEKIT_DEV_SSR_POLL_INTERVAL_MS}ms; port ${httpPort})\n` +
-            `dev server output${formatServerOutputTail(output)}`,
+            `dev server output${formatServerOutput(await devServerStdout, await devServerStderr)}`,
         );
       });
 
