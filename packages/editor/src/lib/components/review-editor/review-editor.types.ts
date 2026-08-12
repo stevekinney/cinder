@@ -54,11 +54,13 @@ export type ReviewEditorProps = {
    * YAML front matter, the component subtracts the front matter's character
    * length before handing anchors to the editor.
    *
-   * Positions are verified against the document, so a seeded anchor that does
-   * not match is discarded and re-anchored by its `quote` instead. To restore
-   * persisted state, convert it with `toRuntimeThreads(state.threads)` (or call
-   * `setState`) rather than hand-computing positions. See
-   * `shared/anchor-types.ts` for the field-by-field contract.
+   * Positions are verified against the document, and a seeded anchor that does
+   * not match is usually re-anchored by its `quote` — but not always: one whose
+   * range overlaps the quote it names can be adopted as-is and left pointing at
+   * the wrong text (see issue #1275). Restore persisted state with
+   * `toRuntimeThreads(state.threads)` (or call `setState`) rather than
+   * hand-computing positions. See `shared/anchor-types.ts` for the
+   * field-by-field contract.
    */
   threads?: Thread[];
   /** Editor mode. */
