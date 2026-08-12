@@ -1213,6 +1213,42 @@ function extractPublishedPackageSourceMapWarnings(logOutput: string): string[] {
   return [...new Set(warningLines)];
 }
 
+/** Lines of dev-server output to keep when a readiness wait fails. */
+const SERVER_OUTPUT_TAIL_LINES = 60;
+/** Hard character ceiling, in case the server emits very long single lines. */
+const SERVER_OUTPUT_TAIL_CHARS = 8_000;
+
+/**
+ * Format a dev server's captured output for a failure message, keeping the END.
+ *
+ * A wedged or erroring Vite server can emit a lot, and dumping all of it bloats
+ * CI logs and buries the useful part — which is almost always the last thing it
+ * said before it stopped answering. Truncation is announced rather than silent,
+ * so a reader knows there was more and can pull the full log from the run.
+ */
+function formatServerOutputTail(output: string): string {
+  if (output.length === 0) return ': (no output)';
+
+  const lines = output.split('\n');
+  let kept = lines.slice(-SERVER_OUTPUT_TAIL_LINES);
+  let droppedLines = lines.length - kept.length;
+  let text = kept.join('\n');
+
+  if (text.length > SERVER_OUTPUT_TAIL_CHARS) {
+    text = text.slice(-SERVER_OUTPUT_TAIL_CHARS);
+    const firstNewline = text.indexOf('\n');
+    if (firstNewline !== -1) text = text.slice(firstNewline + 1);
+    kept = text.split('\n');
+    droppedLines = lines.length - kept.length;
+  }
+
+  const header =
+    droppedLines > 0
+      ? ` (last ${kept.length} of ${lines.length} lines; ${droppedLines} earlier line(s) omitted)`
+      : ` (${lines.length} line(s))`;
+  return `${header}:\n${text}`;
+}
+
 async function assertSvelteKitDevChatHydrationRoute(
   fixtureDirectory: string,
   label: string,
@@ -1267,8 +1303,8 @@ async function assertSvelteKitDevChatHydrationRoute(
       const output = `${await devServerStdout}\n${await devServerStderr}`.trim();
       fail(
         `sveltekit-consumer ${label} /chat-layout dev readiness failed: ${message}\n` +
-          `dev server output (port ${httpPort}):\n` +
-          (output.length > 0 ? output : '(no output)'),
+          `(port ${httpPort})\n` +
+          `dev server output${formatServerOutputTail(output)}`,
       );
     });
 
@@ -1350,15 +1386,20 @@ async function assertSvelteKitDevSsrRoute(fixtureDirectory: string, label: strin
         // exactly why the 2026-08-12 release failure (#1270) could not be
         // diagnosed from its logs. The output promises only resolve once the
         // streams close, so the server has to be killed before it can be read.
+        // Measure at failure time. `remainingReadinessBudget` was computed
+        // BEFORE the wait, so reporting it here would describe the budget this
+        // attempt started with, not what was left when it gave up.
+        const spentMs = Date.now() - (readinessDeadline - SVELTEKIT_DEV_SSR_READINESS_TIMEOUT_MS);
+        const leftMs = Math.max(0, readinessDeadline - Date.now());
         devServer.kill();
         await devServer.exited;
         const output = `${await devServerStdout}\n${await devServerStderr}`.trim();
         fail(
           `sveltekit-consumer ${label} ${routePath} dev SSR readiness failed: ${message}\n` +
-            `dev server output (${remainingReadinessBudget}ms remaining of a shared ` +
-            `${SVELTEKIT_DEV_SSR_READINESS_TIMEOUT_MS}ms budget, poll ` +
-            `${SVELTEKIT_DEV_SSR_POLL_INTERVAL_MS}ms, port ${httpPort}):\n` +
-            (output.length > 0 ? output : '(no output)'),
+            `(waited ${remainingReadinessBudget}ms on this route; ${spentMs}ms spent and ` +
+            `${leftMs}ms left of the shared ${SVELTEKIT_DEV_SSR_READINESS_TIMEOUT_MS}ms budget; ` +
+            `poll ${SVELTEKIT_DEV_SSR_POLL_INTERVAL_MS}ms; port ${httpPort})\n` +
+            `dev server output${formatServerOutputTail(output)}`,
         );
       });
 
@@ -1375,16 +1416,26 @@ async function assertSvelteKitDevSsrRoute(fixtureDirectory: string, label: strin
     // Splitting these routes attacks render cost, which is the right instinct.
     // But the failure that motivated it was not render cost, and the following
     // were each eliminated by measurement rather than argument, so nobody
-    // repeats the experiments:
+    // repeats the experiments.
     //
-    //   - Transform waterfall / slow render. Cold `/dev-ssr` (pre-split, whole
-    //     graph, `.vite` and `.svelte-kit/output` deleted): 0.67s on macOS,
-    //     1.086s on Linux in Docker at `--cpus=2` installing the packed tarball
-    //     as CI does. Server ready in ~1.4s, warm render 11ms. Never near 5s.
-    //   - "Just slow" as a category. Aborting PARTIALLY RETAINS Vite's work: a
-    //     retry after a 300ms abort finished in 0.630s against 1.086s cold. So a
-    //     slow render RECOVERS — each attempt resumes warmer and one lands. The
-    //     failing run made no progress across five attempts in 25s.
+    // PROVENANCE, because absolute numbers age: all timings below were taken on
+    // 2026-08-12 against the PRE-SPLIT single `/dev-ssr` route at commit
+    // ee74c4ced, on an Apple-silicon laptop and (where noted) Linux in Docker at
+    // `--cpus=2`, with `node_modules/.vite` and `.svelte-kit/output` deleted and
+    // the packed tarball installed as CI does. Treat them as one dated
+    // observation of the ORDER OF MAGNITUDE — roughly a second, not roughly ten
+    // — not as thresholds to assert against. #1271 has since reduced per-route
+    // cost further.
+    //
+    //   - Transform waterfall / slow render. Cold render 0.67s (macOS) and
+    //     1.086s (Linux, 2 vCPU); server ready ~1.4s; warm render 11ms. An
+    //     order of magnitude below the 5s per-attempt cap, not marginally under.
+    //   - "Just slow" as a category. This is the structural one, and it does not
+    //     depend on the absolute numbers: aborting PARTIALLY RETAINS Vite's
+    //     work. A retry after a 300ms abort finished in 0.630s against 1.086s
+    //     cold. So a slow render RECOVERS — each attempt resumes warmer than the
+    //     last and one lands. The failing run made no progress across five
+    //     attempts in 25s, which no amount of mere slowness produces.
     //   - Pipe-buffer backpressure. The output promises below are created at
     //     spawn and only awaited later, which would deadlock a chatty child once
     //     the ~64KB pipe filled. Bun drains eagerly: a child writing 512KB with
