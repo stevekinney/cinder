@@ -154,8 +154,11 @@ function publishedExport(entry: string | ConditionalExport): string | Conditiona
   if (entry.types !== undefined) published.types = entry.types;
   if (publishedClientTarget !== undefined) {
     if (entry.browser !== undefined) published.browser = publishedClientTarget;
-    if (entry.node !== undefined) published.node = entry.node;
     if (entry.svelte !== undefined) published.svelte = publishedClientTarget;
+    // SvelteKit SSR activates both `svelte` and `node`. Keep the Svelte source
+    // first so server and browser compile one component tree and emit matching
+    // hydration markers; `node` remains the plain-Node precompiled fallback.
+    if (entry.node !== undefined) published.node = entry.node;
     if (entry.import !== undefined) published.import = publishedClientTarget;
     published.default = publishedClientTarget;
   } else if (entry.node !== undefined) {

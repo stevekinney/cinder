@@ -39,8 +39,8 @@
     "./markdown-editor": {
       "types": "./dist/components/markdown-editor/index.d.ts",
       "browser": "./src/lib/components/markdown-editor/index.ts",
-      "node": "./dist/server/components/markdown-editor/index.js",
       "svelte": "./src/lib/components/markdown-editor/index.ts",
+      "node": "./dist/server/components/markdown-editor/index.js",
       "import": "./src/lib/components/markdown-editor/index.ts",
       "default": "./dist/components/markdown-editor/index.js"
     },
@@ -62,8 +62,8 @@
     "./review-editor": {
       "types": "./dist/components/review-editor/index.d.ts",
       "browser": "./src/lib/components/review-editor/index.ts",
-      "node": "./dist/server/components/review-editor/index.js",
       "svelte": "./src/lib/components/review-editor/index.ts",
+      "node": "./dist/server/components/review-editor/index.js",
       "import": "./src/lib/components/review-editor/index.ts",
       "default": "./dist/components/review-editor/index.js"
     },
@@ -89,8 +89,8 @@
     "./diff-viewer": {
       "types": "./dist/components/diff-viewer/index.d.ts",
       "browser": "./src/lib/components/diff-viewer/index.ts",
-      "node": "./dist/server/components/diff-viewer/index.js",
       "svelte": "./src/lib/components/diff-viewer/index.ts",
+      "node": "./dist/server/components/diff-viewer/index.js",
       "import": "./src/lib/components/diff-viewer/index.ts",
       "default": "./dist/components/diff-viewer/index.js"
     },

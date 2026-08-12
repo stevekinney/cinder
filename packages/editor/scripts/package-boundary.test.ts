@@ -188,8 +188,8 @@ describe('Editor package ownership boundary', () => {
     expect(exportKeys(published.exports['./markdown-editor'])).toEqual([
       'types',
       'browser',
-      'node',
       'svelte',
+      'node',
       'import',
       'default',
     ]);
@@ -209,5 +209,51 @@ describe('Editor package ownership boundary', () => {
       import: './dist/components/diff-viewer/index.js',
       default: './dist/components/diff-viewer/index.js',
     });
+
+    // `toMatchObject` above ignores key ORDER, which is the whole bug — so
+    // assert it explicitly for the other two subpaths too.
+    for (const subpath of ['./review-editor', './diff-viewer'] as const) {
+      expect(exportKeys(published.exports[subpath])).toEqual([
+        'types',
+        'browser',
+        'svelte',
+        'node',
+        'import',
+        'default',
+      ]);
+    }
+  });
+
+  /**
+   * cinder#1277: `./markdown-editor`, `./review-editor` and `./diff-viewer` all
+   * listed `node` BEFORE `svelte`. Conditional exports resolve to the first
+   * matching key and SvelteKit SSR activates both, so the server loaded the
+   * precompiled `dist/server` bundle while the browser compiled the same
+   * components from source. Two independent compilations of one page disagree
+   * on hydration anchor comments, and ReviewEditor threw `hydration_mismatch`
+   * on every load. cinder#1261 fixed exactly this for chat and cinder; editor
+   * was missed because the assertion above pinned the broken order and the
+   * other two subpaths were only checked order-insensitively.
+   *
+   * Stated as an invariant over EVERY conditional export rather than a list, so
+   * a fourth subpath cannot be added wrong — in either manifest.
+   */
+  test('every conditional export offering both keys lists svelte before node', () => {
+    const manifests = {
+      source: editorManifest,
+      published: buildPublishedManifest(editorManifest),
+    };
+
+    for (const [label, manifest] of Object.entries(manifests)) {
+      for (const [subpath, entry] of Object.entries(manifest.exports ?? {})) {
+        if (typeof entry !== 'object' || entry === null) continue;
+        const keys = Object.keys(entry as Record<string, unknown>);
+        if (!keys.includes('node') || !keys.includes('svelte')) continue;
+        expect(
+          keys.indexOf('svelte'),
+          `${label} manifest: "${subpath}" must list svelte before node (SSR resolves the first match)`,
+        ).toBeLessThan(keys.indexOf('node'));
+      }
+    }
   });
 });

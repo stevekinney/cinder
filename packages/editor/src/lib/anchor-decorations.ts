@@ -34,6 +34,7 @@ import {
   proseMirrorPositionToTextOffset,
   textOffsetToProseMirrorPosition,
 } from './editor/bridge.js';
+import { devWarn } from './utilities/dev-warn.js';
 
 // ============================================================================
 // Plugin State Types
@@ -172,6 +173,51 @@ function anchorMatchesDocument(doc: ProseMirrorNode, anchor: AnchorState): boole
 }
 
 /**
+ * Warn, in dev only, the first time the plugin sees a thread whose stored range
+ * does not describe its own quote.
+ *
+ * Scoped to threads this plugin has NOT tracked before, which is what keeps it
+ * off ordinary editing drift: the plugin maps its own copy on every edit
+ * without writing back, so a consumer's `threads` legitimately carries stale
+ * positions — but those threads are already in `prevState.anchors` and never
+ * reach here. The first sync of a seeded thread happens against the fully
+ * loaded document, which is exactly when a wrong coordinate space is knowable
+ * and still worth reporting.
+ */
+function warnOnMisSeededAnchor(
+  doc: ProseMirrorNode,
+  anchor: AnchorState,
+  alreadyTracked: boolean,
+): void {
+  if (alreadyTracked || !anchor.quote || doc.content.size === 0) return;
+  // `toRuntimeThreads` deliberately restores text anchors at 0/0 so the
+  // deferred pass can place them by quote against the live document. That is a
+  // valid persistence sentinel, not a consumer-supplied coordinate mistake.
+  if (anchor.from === 0 && anchor.to === 0) return;
+  if (anchorMatchesDocument(doc, anchor)) return;
+
+  const inBounds = anchor.from >= 0 && anchor.to <= doc.content.size && anchor.from < anchor.to;
+  // Say WHY the quote could not be confirmed. `reads null` would be ambiguous —
+  // it looks like the document contains the string "null" — and an out-of-range
+  // anchor is a distinct, common case: a persisted copy pointing past the end of
+  // a document that has since shrunk.
+  const reading = inBounds
+    ? `the document reads ${JSON.stringify(doc.textBetween(anchor.from, anchor.to, '\n'))} there`
+    : `that range lies outside the document (valid positions are 0–${doc.content.size})`;
+
+  devWarn(
+    `[cinder/ReviewEditor] thread "${anchor.threadId}" anchors ${JSON.stringify(anchor.quote)} at ` +
+      `${anchor.from}–${anchor.to}, but ${reading}. ` +
+      `anchor.from/to are ProseMirror positions, in which markup occupies nothing — so ` +
+      `"Release Plan" in "# Release Plan" is 1–13, not 2–14 (raw-Markdown indices) and not 0–12 ` +
+      `(textBetween offsets, which is what anchor.lastKnownOffset uses). Re-anchoring by quote; ` +
+      `the stored range is ignored. If these coordinates came from a saved session, restore ` +
+      `through setState rather than reusing raw from/to — the editor does not write mapped ` +
+      `positions back to \`threads\` during editing, so a persisted copy drifts.`,
+  );
+}
+
+/**
  * Handle meta-transactions (add/remove/sync anchors).
  */
 function handleMetaTransaction(
@@ -198,6 +244,7 @@ function handleMetaTransaction(
           lastKnownOffset: anchor.lastKnownOffset,
         };
         if (!anchorMatchesDocument(doc, anchorState)) needsReanchor = true;
+        warnOnMisSeededAnchor(doc, anchorState, prevState.anchors.has(thread.id));
         newAnchors.set(thread.id, anchorState);
       }
       return {
@@ -222,6 +269,7 @@ function handleMetaTransaction(
         originalPosition: anchor.originalPosition,
         lastKnownOffset: anchor.lastKnownOffset,
       };
+      warnOnMisSeededAnchor(doc, anchorState, prevState.anchors.has(meta.thread.id));
       newAnchors.set(meta.thread.id, anchorState);
       return {
         ...prevState,
@@ -329,8 +377,27 @@ function mapAnchorsThroughTransaction(
     // This can happen from cut/paste, undo/redo, or collaborative edits
     const quoteDrifted = currentQuote !== anchor.quote;
 
-    // Check if edit affected this anchor's range
-    if (didTransactionAffectAnchorRange(tr, anchor.from, anchor.to)) {
+    // Only an anchor that verifiably described its own text BEFORE this
+    // transaction may adopt the text at its mapped range afterwards.
+    //
+    // An anchor that never checked out — a consumer seeded the wrong coordinate
+    // space, or restored a copy the document has moved past — is already
+    // flagged for the deferred re-anchoring pass, which searches by QUOTE.
+    // Letting it take the branch below would overwrite that quote with whatever
+    // text happens to sit at the bad range; `anchorMatchesDocument` would then
+    // report it healthy and the deferred pass would skip it forever.
+    //
+    // That is not hypothetical. Milkdown's `syncHeadingIdPlugin` stamps `id`
+    // attributes onto every heading on load, as an attribute-only
+    // `replaceAround` spanning the whole heading. It lands inside the 300ms
+    // debounce, reaches this branch, and cements a mis-seeded heading anchor
+    // one character off — `{from: 2, to: 14}` for "Release Plan" renders
+    // "elease Plan" permanently, while the same mistake in a paragraph (which
+    // that transaction does not touch) repairs correctly. cinder#1275.
+    if (
+      didTransactionAffectAnchorRange(tr, anchor.from, anchor.to) &&
+      anchorMatchesDocument(tr.before, anchor)
+    ) {
       // Update quote/prefix/suffix to follow the edit
       const newPrefix = newState.doc.textBetween(Math.max(0, mappedFrom - 50), mappedFrom, '\n');
       const newSuffix = newState.doc.textBetween(
