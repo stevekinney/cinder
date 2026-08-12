@@ -268,16 +268,60 @@ describe('deleteComment', () => {
       expect(result.changed).toBe(false);
     });
 
-    test('returns unchanged when deletedAt not provided for soft delete', () => {
+    // Regression: CommentDeleteEvent is `{ threadId, commentId, soft }` — no
+    // deletedAt — so the obvious consumer wiring omits it. deleteComment used to
+    // bail in that case, silently no-opping the primary deletion path while
+    // ReviewEditor had already announced "Comment deleted" to screen readers.
+    test('stamps the current time when a soft delete omits deletedAt', () => {
       const threads = [
         createTestThread({
           id: 'thread-1',
           comments: [createTestComment({ id: 'comment-1' })],
         }),
       ];
+      const before = Date.now();
+      const result = deleteComment(threads, 'thread-1', 'comment-1', { soft: true });
+      const after = Date.now();
+
+      expect(result.changed).toBe(true);
+      const { deletedAt } = result.threads[0].comments[0];
+      expect(typeof deletedAt).toBe('string');
+      // Stamped by the reducer, so assert it is a real ISO instant from this moment.
+      expect(deletedAt).toBe(new Date(deletedAt as string).toISOString());
+      const stamped = Date.parse(deletedAt as string);
+      expect(stamped).toBeGreaterThanOrEqual(before);
+      expect(stamped).toBeLessThanOrEqual(after);
+
+      // The comment stays in the array but drops out of the visible set.
+      expect(result.threads[0].comments).toHaveLength(1);
+      expect(getVisibleComments(result.threads[0])).toHaveLength(0);
+    });
+
+    test('an explicit deletedAt still wins over the stamped default', () => {
+      const threads = [
+        createTestThread({
+          id: 'thread-1',
+          comments: [createTestComment({ id: 'comment-1' })],
+        }),
+      ];
+      const result = deleteComment(threads, 'thread-1', 'comment-1', {
+        soft: true,
+        deletedAt: '2020-01-01T00:00:00.000Z',
+      });
+      expect(result.threads[0].comments[0].deletedAt).toBe('2020-01-01T00:00:00.000Z');
+    });
+
+    test('still returns unchanged for an already-deleted comment when deletedAt is omitted', () => {
+      const threads = [
+        createTestThread({
+          id: 'thread-1',
+          comments: [createTestComment({ id: 'comment-1', deletedAt: '2024-01-02T00:00:00.000Z' })],
+        }),
+      ];
       const result = deleteComment(threads, 'thread-1', 'comment-1', { soft: true });
       expect(result.changed).toBe(false);
-      expect(result.threads[0].comments[0].deletedAt).toBeUndefined();
+      expect(result.threads).toBe(threads);
+      expect(result.threads[0].comments[0].deletedAt).toBe('2024-01-02T00:00:00.000Z');
     });
   });
 

@@ -1,14 +1,19 @@
 /**
  * Pure update helpers for thread and comment state management.
  *
- * All functions are pure (no side effects, no ID/timestamp generation).
- * They return new arrays/objects for Svelte 5 reactivity.
- * The `changed` flag indicates whether the operation had any effect.
+ * All functions are pure (no side effects, no ID generation). They return new
+ * arrays/objects for Svelte 5 reactivity. The `changed` flag indicates whether
+ * the operation had any effect.
+ *
+ * One deliberate exception: a soft delete that omits `deletedAt` stamps the
+ * current time itself. `CommentDeleteEvent` — the payload ReviewEditor emits —
+ * carries only `{ threadId, commentId, soft }`, so the timestamp has to come
+ * from somewhere and the reducer is the only place that sees the omission.
  *
  * @module
  */
 
-import type { Comment, Thread } from './types.js';
+import { timestamp, type Comment, type Thread } from './types.js';
 
 // ============================================================================
 // Result Types
@@ -181,7 +186,9 @@ export function updateComment(
  * @param threads - Current threads array
  * @param threadId - ID of the thread containing the comment
  * @param commentId - ID of the comment to delete
- * @param options - Delete options with soft flag and deletedAt timestamp (for soft delete)
+ * @param options - Delete options with soft flag and an optional deletedAt timestamp;
+ *   a soft delete without one is stamped with the current time (see module docs).
+ *   Ignored for hard delete, which removes the comment outright.
  */
 export function deleteComment(
   threads: Thread[],
@@ -199,13 +206,16 @@ export function deleteComment(
     return { threads, changed: false };
   }
 
-  // For soft delete, no-op if already deleted or if deletedAt not provided
+  // For soft delete, no-op only if the comment is already deleted. A missing
+  // deletedAt is not a reason to bail: the CommentDeleteEvent consumers wire up
+  // has no timestamp field, so bailing made the primary deletion path silently
+  // no-op after ReviewEditor had already announced "Comment deleted".
   if (options.soft) {
-    if (comment.deletedAt || !options.deletedAt) {
+    if (comment.deletedAt) {
       return { threads, changed: false };
     }
 
-    const { deletedAt } = options;
+    const deletedAt = options.deletedAt ?? timestamp();
 
     // Soft delete: set deletedAt
     return {

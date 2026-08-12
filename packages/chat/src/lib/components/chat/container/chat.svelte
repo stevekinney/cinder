@@ -1457,11 +1457,22 @@
       updateAtBottomBinding(true);
       unreadState.markAllAsRead();
       onjumptolatest?.();
-      tick().then(() => {
-        const lastMessage = viewport?.querySelector<HTMLElement>(
-          `.chat-message-wrapper:last-of-type .chat-message`,
-        );
-        lastMessage?.focus();
+      // Park focus on the timeline, NOT on the bottom row. A virtualized row is
+      // a recycled window slot: the virtualizer's next window pass (a
+      // post-mount remeasurement that shifts the offsets, or any subsequent
+      // scroll) unmounts it, and removing the focused node hands focus back to
+      // <body>. Since the keydown handler is bound on the container, focus
+      // landing outside it silently kills EVERY shortcut — End, Home,
+      // PageUp/PageDown, arrow navigation, Ctrl+F. The timeline is
+      // `tabindex="0"`, lives above the recycled rows, and never unmounts while
+      // the chat is alive, so shortcuts survive the pass.
+      //
+      // (The old row lookup was doubly wrong: every `.chat-message-wrapper` is
+      // the only child of its `.chat-virtual-row`, so `:last-of-type` matches
+      // all of them and `querySelector` returned the row at the TOP of the
+      // window — the first row a downward pass recycles away.)
+      void tick().then(() => {
+        viewport?.focus({ preventScroll: true });
       });
       return;
     }
@@ -1469,6 +1480,45 @@
     scrollState.jumpToLatest(viewport, () => {
       unreadState.markAllAsRead();
       onjumptolatest?.();
+    });
+  }
+
+  /**
+   * Backstop for focus orphaned by a row leaving the DOM.
+   *
+   * Any row inside the timeline can be unmounted while it holds focus — a
+   * virtualizer window pass recycling it, a message removed from the
+   * transcript, a keyed re-render. The browser then drops focus to <body>, and
+   * because the keydown handler is bound on the container, every keyboard
+   * shortcut dies with it. Pull focus back onto the timeline, which outlives
+   * every row.
+   *
+   * The guards keep this to that one signature and off the ordinary paths:
+   * a real focus move names its incoming element in `relatedTarget`; a
+   * click-away onto inert page chrome reports `relatedTarget: null` too, but
+   * leaves the blurred node CONNECTED, so only a node that has left the
+   * document (checked a microtask later, after the browser's removal steps
+   * finish) reclaims focus. Window/tab blur is filtered by `document.hasFocus`
+   * — reclaiming there would steal focus back from whatever the user switched
+   * to.
+   */
+  function handleTimelineFocusOut(event: FocusEvent): void {
+    if (event.relatedTarget !== null) return;
+
+    const timeline = viewport;
+    const blurred = event.target;
+    if (!timeline || !(blurred instanceof Node)) return;
+
+    queueMicrotask(() => {
+      if (!timeline.isConnected || blurred.isConnected) return;
+      if (typeof document.hasFocus === 'function' && !document.hasFocus()) return;
+
+      // Anything that took focus for real leaves `activeElement` pointing at
+      // it; only genuinely orphaned focus parks on <body> (or nothing).
+      const active = document.activeElement;
+      if (active !== null && active !== document.body) return;
+
+      timeline.focus({ preventScroll: true });
     });
   }
 
@@ -2487,6 +2537,7 @@
       onwheel={handleHistoryRestorationUserInput}
       ontouchstart={handleHistoryRestorationUserInput}
       onpointerdown={handleHistoryRestorationUserInput}
+      onfocusout={handleTimelineFocusOut}
       {@attach scrollAttachment}
       {@attach historyAnchorScrollAttachment}
       {@attach viewportAttach}

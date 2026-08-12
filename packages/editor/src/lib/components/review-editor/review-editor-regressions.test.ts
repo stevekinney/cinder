@@ -25,6 +25,9 @@ const liveRegionSource = await Bun.file(here('live-region.svelte')).text();
 const anchorDecorationsSource = await Bun.file(
   new URL('../../anchor-decorations.ts', import.meta.url).pathname,
 ).text();
+const anchorTypesSource = await Bun.file(
+  new URL('../../shared/anchor-types.ts', import.meta.url).pathname,
+).text();
 const exampleSet = (await Bun.file(here('review-editor.examples.json')).json()) as {
   examples: { id: string; code: string }[];
 };
@@ -132,27 +135,54 @@ describe('seeded threads no longer highlight the whole document', () => {
   });
 });
 
-describe('documented thread auto-delete is actually wired', () => {
+describe('a vanished anchor orphans its thread rather than deleting it', () => {
   /**
-   * `comments/types.ts` states that threads have no "orphaned" status because
-   * "When anchor text is deleted, threads are automatically removed." The
-   * plugin detects the condition and calls `onAnchorDeleted` — but ReviewEditor
-   * constructed the plugin without that handler, so the removal never happened.
-   * The thread stayed in the bindable `threads` array pointing at text that no
-   * longer existed, and `onthreaddelete` never fired.
+   * This block previously asserted the opposite, and both versions were right
+   * at the time.
+   *
+   * `comments/types.ts` used to justify having no "orphaned" status by saying
+   * threads are deleted when their anchor text goes. The plugin detected the
+   * condition and called `onAnchorDeleted`, but ReviewEditor never passed that
+   * handler, so nothing happened — the thread sat in `threads` pointing at text
+   * that no longer existed. cinder#1266 wired it, honouring the documented
+   * contract.
+   *
+   * Wiring it turned a silent inconsistency into silent DATA LOSS. Deletion and
+   * cut-and-paste are indistinguishable at the moment the text disappears, and
+   * re-anchoring is debounced 300ms — quicker than a person cutting a paragraph
+   * and pasting it back. Cut, pause, paste: the comment was gone, with no undo
+   * (cinder#1284).
+   *
+   * So the contract changed instead: `AnchorStatus` gained `orphaned`, the
+   * thread is kept and retried on every later pass, and removing it is the
+   * consumer's decision.
    */
-  test('the anchor plugin receives an onAnchorDeleted handler', () => {
-    expect(implementationSource).toMatch(
-      /createAnchorPlugin\(\{[\s\S]*?onAnchorDeleted:\s*handleAnchorDeleted[\s\S]*?\}\)/,
-    );
+  test('the plugin no longer asks the component to delete a thread', () => {
+    expect(implementationSource).not.toMatch(/onAnchorDeleted:/);
+    expect(anchorDecorationsSource).not.toMatch(/options\.onAnchorDeleted\?\.\(/);
   });
 
-  test('the handler drops the thread and notifies the consumer', () => {
-    const handler = implementationSource.slice(
-      implementationSource.indexOf('function handleAnchorDeleted'),
+  test('a not-found quote marks the anchor orphaned and keeps it tracked', () => {
+    const deferred = anchorDecorationsSource.slice(
+      anchorDecorationsSource.indexOf('function performDeferredReanchoring'),
     );
-    expect(handler).toContain('threads = threads.filter');
-    expect(handler).toContain('onthreaddelete?.({ threadId })');
+    expect(deferred).toMatch(/if \(!result\.found\)/);
+    expect(deferred).toMatch(/status: 'orphaned'/);
+    // Kept, not dropped: the anchor goes back into the map on the not-found path.
+    expect(deferred).toMatch(/if \(!result\.found\)[\s\S]*?newAnchors\.set\(threadId, orphaned\)/);
+  });
+
+  test('an orphaned anchor renders no decoration', () => {
+    expect(anchorDecorationsSource).toMatch(/status === 'orphaned'\) continue/);
+  });
+
+  test('the status reaches the consumer through the bindable threads', () => {
+    expect(implementationSource).toMatch(/status: update\.status/);
+    expect(implementationSource).toContain('function announceOrphanedThreads');
+  });
+
+  test('orphaned status is a real member of the union, not a comment', () => {
+    expect(anchorTypesSource).toMatch(/AnchorStatus = 'anchored' \| 'orphaned'/);
   });
 });
 

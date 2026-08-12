@@ -149,10 +149,18 @@ export function useChatKeyboardNav(options: UseChatKeyboardNavOptions): UseChatK
             const historyTrigger = getHistoryTrigger?.();
             if (historyTrigger) {
               historyTrigger.focus();
-            } else {
-              const firstMessage = viewport.querySelector<HTMLElement>('.chat-message');
-              firstMessage?.focus();
+              return undefined;
             }
+            // Focus the viewport itself, not a message row.
+            //
+            // In a virtualized transcript `.chat-message` is a recycled window
+            // slot: the virtualizer's next pass unmounts it, and removing the
+            // focused node drops focus to `<body>`. Since the keydown handler is
+            // bound on the container, that kills every shortcut — including the
+            // Home that just ran. The viewport is `tabindex="0"`, sits above the
+            // recycled rows, and never unmounts while the chat is alive. Same
+            // reasoning as the jump-to-latest branch in `chat.svelte`.
+            viewport.focus({ preventScroll: true });
             return undefined;
           },
           () => undefined,

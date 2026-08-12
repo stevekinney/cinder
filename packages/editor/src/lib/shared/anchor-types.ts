@@ -22,13 +22,22 @@ export type AnchorType = 'text' | 'document';
 /**
  * Anchor status indicates whether the anchor is successfully placed.
  *
- * - 'anchored': Anchor is confidently placed at the correct location
+ * - 'anchored': the quote was located; the thread renders in the document
+ * - 'orphaned': the quote is not currently in the document. The thread is KEPT,
+ *   renders no decoration, and is retried on every later re-anchoring pass, so
+ *   restoring the text restores the anchor.
  *
- * Note: When anchor text is deleted (anchor cannot be placed), the thread is
- * automatically deleted. There is no 'orphaned' state - threads either have
- * valid anchors or they don't exist.
+ * `orphaned` exists because deletion and cut-and-paste are indistinguishable at
+ * the moment the text disappears. Re-anchoring is debounced 300ms; a person who
+ * cuts a commented paragraph and pastes it back a second later is slower than
+ * that. Treating "not found" as "delete the thread" made that ordinary edit
+ * destroy a comment with no undo (cinder#1284).
+ *
+ * A thread is therefore removed only when a consumer asks for it — via
+ * `deleteThread`, or by acting on an orphaned thread surfaced in the UI. The
+ * component no longer deletes one on the user's behalf.
  */
-export type AnchorStatus = 'anchored';
+export type AnchorStatus = 'anchored' | 'orphaned';
 
 // ============================================================================
 // TextQuoteSelector Anchor

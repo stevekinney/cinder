@@ -483,30 +483,37 @@
             prefix: documentUpdate.prefix,
             suffix: documentUpdate.suffix,
             lastKnownOffset: documentUpdate.lastKnownOffset,
+            status: update.status,
           },
         };
       }
       return thread;
     });
 
+    announceOrphanedThreads(updates);
+
     // Update fingerprint to skip re-sync
     lastSyncedFingerprint = createPluginSyncFingerprint(threads);
   }
 
   /**
-   * Handle an anchor whose quoted text no longer exists anywhere in the
-   * document. `comments/types.ts` documents this as the reason there is no
-   * "orphaned" anchor status: "When anchor text is deleted, threads are
-   * automatically removed." The plugin detects the condition; without this
-   * handler the removal never happened, leaving the thread in the bindable
-   * `threads` array with an anchor pointing at text that is gone.
+   * Announce a thread whose anchored text has left the document.
+   *
+   * It is NOT deleted. Deletion and cut-and-paste are indistinguishable at the
+   * moment the text disappears, and re-anchoring runs 300ms later — quicker than
+   * a person cutting a paragraph and pasting it back. Deleting here destroyed a
+   * comment during an ordinary edit with no undo (cinder#1284). The anchor is
+   * marked `orphaned` instead, keeps its place in `threads`, and re-anchors if
+   * the text returns.
    */
-  function handleAnchorDeleted(threadId: string): void {
-    if (!threads.some((thread) => thread.id === threadId)) return;
-    threads = threads.filter((thread) => thread.id !== threadId);
-    lastSyncedFingerprint = createPluginSyncFingerprint(threads);
-    announce('Comment thread removed because its anchored text was deleted');
-    onthreaddelete?.({ threadId });
+  function announceOrphanedThreads(updates: AnchorUpdate[]): void {
+    const orphaned = updates.filter((update) => update.status === 'orphaned');
+    if (orphaned.length === 0) return;
+    announce(
+      orphaned.length === 1
+        ? 'A comment’s anchored text is no longer in the document. The comment is kept.'
+        : `${orphaned.length} comments’ anchored text is no longer in the document. They are kept.`,
+    );
   }
 
   // Create anchor plugin in instance script (per-instance, before mount)
@@ -514,7 +521,6 @@
   const anchorPlugin = createAnchorPlugin({
     onAnchorsUpdate: handleAnchorsUpdate,
     onAnchorClick: handleAnchorClick,
-    onAnchorDeleted: handleAnchorDeleted,
   });
 
   /**

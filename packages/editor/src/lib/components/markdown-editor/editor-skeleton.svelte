@@ -35,7 +35,14 @@
   aria-label="Loading editor"
   {...rest}
 >
-  <span class="sr-only">Loading editor...</span>
+  <!--
+    The hiding utility is `cinder-sr-only`, the class Cinder's base stylesheet
+    actually ships. A bare `sr-only` is defined nowhere, and this component has
+    no rule of its own for it, so the status text rendered as ordinary body copy
+    for every user during load — and permanently for a reader without
+    JavaScript, since the skeleton is what SSR emits.
+  -->
+  <span class="cinder-sr-only">Loading editor...</span>
 
   <div class="skeleton-content">
     {#each lineWidths as width, i (i)}
