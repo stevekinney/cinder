@@ -1405,11 +1405,25 @@ async function assertSvelteKitDevSsrRoute(fixtureDirectory: string, label: strin
     //   - Contention from sibling fixtures. release.yaml runs each package's
     //     `validate:consumer` as a SEPARATE SEQUENTIAL STEP in one `release`
     //     job, so no other fixture's dev server is competing with this one.
+    //   - Retry pile-up. Attractive theory: an aborted attempt leaves the server
+    //     still rendering, the next attempt stacks on it, and contention
+    //     compounds until every attempt times out. A model of that reproduces
+    //     the exact CI signature (5 attempts, all timed out, 25.2s) for a render
+    //     needing only 6s. But it does not happen on the real server: six
+    //     CONCURRENT requests to a cold fixture each returned in 0.667s —
+    //     identical to a single one, because Vite dedupes the module-graph work.
+    //     No amplification exists to compound.
     //
     // What is left: a single `vite dev` on a 2-vCPU `ubuntu-latest` runner
     // taking >5s to answer once, repeatedly, for 25s — which the 0.67s local
-    // figure does not explain even allowing for a slower machine. Nobody has
-    // seen the server's side of it yet.
+    // figure does not explain even allowing for a slower machine, and which
+    // none of the mechanisms above accounts for. Every local measurement here
+    // was taken on macOS against a warm filesystem; the runner is Linux, cold,
+    // and installs the fixture from packed tarballs. That gap is the remaining
+    // suspect, and it is not one this machine can close.
+    //
+    // Nobody has seen the server's side of it yet. That is the next piece of
+    // evidence to get, and the failure message below now captures it.
     //
     // Do not "fix" a recurrence by widening a timeout; make it tell you what it
     // was stuck on. That is what the dev-server output in the failure message
