@@ -12,6 +12,15 @@
  * testing and potential future refactoring, but the component does not currently
  * delegate to this factory.
  *
+ * **Known divergence — front matter.** Unlike the inline implementation, this
+ * manager does not parse YAML front matter: it compares `getMarkdown()` against
+ * the raw `pendingState.content` and writes body-relative positions, where the
+ * inline version threads `parseReviewEditorFrontMatter`'s `bodyOffset` through
+ * both the comparison and the computed `from`/`to`/`lastKnownOffset`. Anchors
+ * restored through this manager are therefore off by the front matter's length
+ * on any document that has some. Pre-existing, and the reason to finish or
+ * delete this factory rather than adopt it as-is.
+ *
  * @module
  * @experimental
  */
@@ -20,8 +29,8 @@ import { contentEquals } from '@lostgradient/markdown/pipeline';
 import type { MilkdownPlugin } from '@milkdown/kit/ctx';
 import type { EditorView } from '@milkdown/kit/prose/view';
 import { anchorPluginKey, createAnchorPlugin } from '../../anchor-decorations.ts';
-import type { AnchorUpdate, ReviewState, Thread, ThreadDeleteEvent } from '../../comments/index.ts';
-import { ANCHOR_CONTEXT_LENGTH, reanchorQuote } from '../../comments/index.ts';
+import type { AnchorUpdate, PersistedThread, ReviewState, Thread } from '../../comments/index.ts';
+import { ANCHOR_CONTEXT_LENGTH, isDocumentAnchor, reanchorQuote } from '../../comments/index.ts';
 import { textOffsetToProseMirrorPosition } from '../../editor/index.ts';
 
 /**
@@ -40,8 +49,11 @@ export interface AnchorManagerOptions {
   getValue: () => string;
   /** Event callback for anchor click */
   onAnchorClick: (threadId: string, event: MouseEvent) => void;
-  /** Event callback for thread delete (when re-anchoring fails) */
-  onthreaddelete?: (event: ThreadDeleteEvent) => void;
+  // NOTE: there is deliberately no `onthreaddelete` here. It existed to report
+  // the thread this manager deleted when re-anchoring failed; re-anchoring now
+  // orphans instead of deleting (cinder#1284), so the callback would never fire.
+  // Keeping it would be worse than removing it — a consumer wiring cleanup to an
+  // event that never arrives has no way to notice.
 }
 
 /**
@@ -73,12 +85,16 @@ export interface AnchorManager {
 /**
  * Create fingerprint including all mutable anchor fields.
  * This prevents sync thrashing when quote/prefix/suffix change.
+ *
+ * `status` is part of it: an update that flips a thread between anchored and
+ * orphaned without moving it leaves every other field identical, so omitting
+ * status makes the sync a no-op and the plugin keeps rendering the stale state.
  */
 function createSyncFingerprint(threads: Thread[]): string {
   return threads
     .map((thread) => {
       const anchor = thread.anchor;
-      return `${thread.id}:${anchor.from}:${anchor.to}:${anchor.quote}:${anchor.prefix}:${anchor.suffix}:${anchor.lastKnownOffset ?? ''}`;
+      return `${thread.id}:${anchor.from}:${anchor.to}:${anchor.status}:${anchor.quote}:${anchor.prefix}:${anchor.suffix}:${anchor.lastKnownOffset ?? ''}`;
     })
     .join('|');
 }
@@ -98,7 +114,6 @@ function createSyncFingerprint(threads: Thread[]): string {
  *     getMarkdown: () => editorRef?.getMarkdown() ?? value,
  *     getValue: () => value,
  *     onAnchorClick: threadManager.handleAnchorClick,
- *     onthreaddelete,
  *   });
  *
  *   // Use plugin in MarkdownEditor
@@ -114,15 +129,7 @@ function createSyncFingerprint(threads: Thread[]): string {
  * ```
  */
 export function createAnchorManager(options: AnchorManagerOptions): AnchorManager {
-  const {
-    getThreads,
-    setThreads,
-    getEditorView,
-    getMarkdown,
-    getValue,
-    onAnchorClick,
-    onthreaddelete,
-  } = options;
+  const { getThreads, setThreads, getEditorView, getMarkdown, getValue, onAnchorClick } = options;
 
   // Non-reactive bookkeeping (not state - doesn't need reactivity)
   let lastSyncedFingerprint: string | null = null;
@@ -190,7 +197,12 @@ export function createAnchorManager(options: AnchorManagerOptions): AnchorManage
 
   /**
    * Attempt re-anchoring for pending state.
-   * Threads whose anchor text cannot be found are removed (auto-delete behavior).
+   *
+   * Threads whose anchor text cannot be found are KEPT and marked `orphaned`,
+   * matching {@link CommentAnchor.status} and the inline ReviewEditor path.
+   * Deletion and cut-and-paste are indistinguishable at the moment text goes
+   * missing, so removing a thread here destroyed comments during ordinary edits
+   * with no undo (cinder#1284). Removal is now the consumer's decision.
    */
   function attemptReanchoring(): void {
     if (!pendingState) return;
@@ -213,22 +225,57 @@ export function createAnchorManager(options: AnchorManagerOptions): AnchorManage
     const { doc } = view.state;
     const documentText = doc.textBetween(0, doc.content.size, '\n');
 
-    // Re-anchor threads, filtering out those that can't be found
+    // Re-anchor threads. Every thread survives the pass: one that cannot be
+    // placed comes out `orphaned` rather than dropped.
     const reanchoredThreads: Thread[] = [];
 
+    /** Keep a thread that has nowhere to point, so its text can bring it back. */
+    function orphan(thread: PersistedThread): void {
+      reanchoredThreads.push({
+        ...thread,
+        // Collapsed: an orphaned anchor has nowhere to point until its quote
+        // returns, and `from >= to` is what the decoration pass skips on, so it
+        // renders nothing even before the status is consulted.
+        anchor: { ...thread.anchor, from: 0, to: 0, status: 'orphaned' },
+      });
+    }
+
     for (const persistedThread of state.threads) {
+      // Document-level anchors have no quote to search for, so `reanchorQuote`
+      // would always report "not found" and orphan a thread that is not
+      // actually lost. They have no position to restore either — they stay at
+      // 0/0, anchored. Matches `review-editor-impl.svelte`.
+      if (isDocumentAnchor(persistedThread.anchor)) {
+        reanchoredThreads.push({
+          ...persistedThread,
+          anchor: { ...persistedThread.anchor, from: 0, to: 0 },
+        });
+        continue;
+      }
+
       const result = reanchorQuote(documentText, persistedThread.anchor);
 
-      // If anchor text not found, skip this thread (auto-delete)
+      // Quote not in this document. KEEP the thread, orphaned (cinder#1284):
+      // restoring a saved review against a document whose text has since
+      // changed must not silently destroy comments. It renders no decoration,
+      // shows in the sidebar as missing its text, and re-anchors if the text
+      // returns. Removal is the consumer's decision, so `onthreaddelete` does
+      // not fire here.
       if (!result.found) {
-        onthreaddelete?.({ threadId: persistedThread.id });
+        orphan(persistedThread);
         continue;
       }
 
       const from = textOffsetToProseMirrorPosition(doc, result.from);
       const to = textOffsetToProseMirrorPosition(doc, result.to);
 
-      if (from !== null && to !== null) {
+      if (from === null || to === null) {
+        // The quote was located in the text but its offsets do not map back to
+        // positions. Previously the thread fell out of the loop unpushed and
+        // vanished with no event at all — quieter than the delete branch, and
+        // just as lossy.
+        orphan(persistedThread);
+      } else {
         // Extract the matched quote and context from the current document
         const matchedQuote = documentText.slice(result.from, result.to);
         const newPrefix = documentText.slice(
