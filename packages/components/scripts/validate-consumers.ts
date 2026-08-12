@@ -1402,9 +1402,14 @@ async function assertSvelteKitDevSsrRoute(fixtureDirectory: string, label: strin
     //     reports "server exited" distinctly; we got timeouts, so the server was
     //     alive and accepting connections without answering.
     //
-    // Still plausible and NOT yet tested: CPU contention on a 2-vCPU runner
-    // where this job also runs other fixtures and browser tests — which would
-    // be slowness from scheduling, not from module count.
+    //   - Contention from sibling fixtures. release.yaml runs each package's
+    //     `validate:consumer` as a SEPARATE SEQUENTIAL STEP in one `release`
+    //     job, so no other fixture's dev server is competing with this one.
+    //
+    // What is left: a single `vite dev` on a 2-vCPU `ubuntu-latest` runner
+    // taking >5s to answer once, repeatedly, for 25s — which the 0.67s local
+    // figure does not explain even allowing for a slower machine. Nobody has
+    // seen the server's side of it yet.
     //
     // Do not "fix" a recurrence by widening a timeout; make it tell you what it
     // was stuck on. That is what the dev-server output in the failure message
