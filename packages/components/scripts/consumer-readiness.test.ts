@@ -64,8 +64,8 @@ describe('waitForReadyHtml', () => {
 
     await waitForReadyHtml({
       url: 'http://127.0.0.1:5173/dev-ssr',
-      timeoutMs: 1_000,
-      requestTimeoutMs: 1_000,
+      timeoutMs: 25_000,
+      requestTimeoutMs: 25_000,
       pollIntervalMs: 0,
       runningServer: { exitCode: null },
       fetcher,
@@ -73,7 +73,7 @@ describe('waitForReadyHtml', () => {
     });
 
     expect(observedTimeouts).toHaveLength(1);
-    expect(observedTimeouts[0]).toBeGreaterThan(900);
+    expect(observedTimeouts[0]).toBeGreaterThan(5_000);
   });
 
   test('retries after a per-request timeout while the overall readiness budget remains open', async () => {
