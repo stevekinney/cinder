@@ -1414,13 +1414,21 @@ async function assertSvelteKitDevSsrRoute(fixtureDirectory: string, label: strin
     //     identical to a single one, because Vite dedupes the module-graph work.
     //     No amplification exists to compound.
     //
-    // What is left: a single `vite dev` on a 2-vCPU `ubuntu-latest` runner
-    // taking >5s to answer once, repeatedly, for 25s — which the 0.67s local
-    // figure does not explain even allowing for a slower machine, and which
-    // none of the mechanisms above accounts for. Every local measurement here
-    // was taken on macOS against a warm filesystem; the runner is Linux, cold,
-    // and installs the fixture from packed tarballs. That gap is the remaining
-    // suspect, and it is not one this machine can close.
+    //   - Platform/CPU. Reproduced the fixture on Linux in Docker with
+    //     `--cpus=2` and a cold FS, installing the packed tarball the way CI
+    //     does: server ready in 1.38s, cold /dev-ssr 1.086s, warm 11ms. Not 5s.
+    //   - "Just slow." This is the one everybody assumes, and it is ruled out by
+    //     the fact that ABORTING PARTIALLY RETAINS WORK. Measured on Linux/2vCPU:
+    //     abort the cold render at 300ms, and the next attempt completes in
+    //     0.630s rather than the full 1.086s — Vite keeps the modules it already
+    //     transformed. A merely-slow render therefore RECOVERS: each attempt
+    //     resumes warmer than the last and one of them lands. In the failed run
+    //     all five attempts timed out across 25s with no progress at all.
+    //
+    // So the server was not slow — it was wedged: accepting connections, never
+    // answering, never recovering. That is a much narrower thing to look for
+    // than "CI is slow", and it means the fix above (one attempt gets the whole
+    // budget) is NOT a fix for this failure either. Do not treat it as one.
     //
     // Nobody has seen the server's side of it yet. That is the next piece of
     // evidence to get, and the failure message below now captures it.
