@@ -1174,16 +1174,25 @@ function ensureSvelteKitAdapterNodeStaticAssetLink(fixtureDirectory: string): vo
   }
 }
 
-const SVELTEKIT_DEV_SSR_MARKERS = [
-  'data-dev-ssr-confirm-dialog-trigger',
-  'data-dev-ssr-card-body',
-  'data-dev-ssr-sidebar-navigation',
-  'data-dev-ssr-side-navigation-item',
-  'data-dev-ssr-tabs-namespace-trigger',
-  'data-dev-ssr-tabs-namespace-panel',
-  'data-dev-ssr-tabs-direct-trigger',
-  'data-dev-ssr-tabs-direct-panel',
-];
+const SVELTEKIT_DEV_SSR_ROUTES = [
+  {
+    routePath: '/dev-ssr',
+    markers: ['data-dev-ssr-confirm-dialog-trigger', 'data-dev-ssr-card-body'],
+  },
+  {
+    routePath: '/dev-ssr-navigation',
+    markers: ['data-dev-ssr-sidebar-navigation', 'data-dev-ssr-side-navigation-item'],
+  },
+  {
+    routePath: '/dev-ssr-tabs',
+    markers: [
+      'data-dev-ssr-tabs-namespace-trigger',
+      'data-dev-ssr-tabs-namespace-panel',
+      'data-dev-ssr-tabs-direct-trigger',
+      'data-dev-ssr-tabs-direct-panel',
+    ],
+  },
+] as const;
 
 const SVELTEKIT_DEV_SSR_READINESS_TIMEOUT_MS = 25_000;
 const SVELTEKIT_DEV_SSR_POLL_INTERVAL_MS = 200;
@@ -1303,28 +1312,30 @@ async function assertSvelteKitDevSsrRoute(fixtureDirectory: string, label: strin
     : Promise.resolve('');
 
   try {
-    const routeUrl = `http://127.0.0.1:${httpPort}/dev-ssr`;
-    const body = await waitForReadyHtml({
-      url: routeUrl,
-      timeoutMs: SVELTEKIT_DEV_SSR_READINESS_TIMEOUT_MS,
-      // The export-condition regression makes dev SSR compile Cinder's Svelte
-      // source, so this cold route is one intentional transform waterfall. Do
-      // not abort and restart that work every five seconds; give the first
-      // request the existing overall budget without increasing the budget.
-      requestTimeoutMs: SVELTEKIT_DEV_SSR_READINESS_TIMEOUT_MS,
-      pollIntervalMs: SVELTEKIT_DEV_SSR_POLL_INTERVAL_MS,
-      runningServer: devServer,
-      isReady: (html) => SVELTEKIT_DEV_SSR_MARKERS.every((marker) => html.includes(marker)),
-    }).catch((error) => {
-      const message = error instanceof Error ? error.message : String(error);
-      fail(`sveltekit-consumer ${label} /dev-ssr dev SSR readiness failed: ${message}`);
-    });
+    // Keep each cold source transform bounded below the per-request deadline.
+    // A single route importing all nine components made one request carry the
+    // entire transform graph after Svelte-aware SSR began selecting source.
+    // Splitting by feature preserves every marker while letting Vite cache the
+    // shared graph between small, independently bounded requests.
+    for (const { routePath, markers } of SVELTEKIT_DEV_SSR_ROUTES) {
+      const routeUrl = `http://127.0.0.1:${httpPort}${routePath}`;
+      const body = await waitForReadyHtml({
+        url: routeUrl,
+        timeoutMs: SVELTEKIT_DEV_SSR_READINESS_TIMEOUT_MS,
+        pollIntervalMs: SVELTEKIT_DEV_SSR_POLL_INTERVAL_MS,
+        runningServer: devServer,
+        isReady: (html) => markers.every((marker) => html.includes(marker)),
+      }).catch((error) => {
+        const message = error instanceof Error ? error.message : String(error);
+        fail(`sveltekit-consumer ${label} ${routePath} dev SSR readiness failed: ${message}`);
+      });
 
-    const missingMarkers = SVELTEKIT_DEV_SSR_MARKERS.filter((marker) => !body.includes(marker));
-    if (missingMarkers.length > 0) {
-      fail(
-        `sveltekit-consumer ${label} /dev-ssr dev SSR missing marker(s): ${missingMarkers.join(', ')}\n${formatHtmlExcerpt(body)}`,
-      );
+      const missingMarkers = markers.filter((marker) => !body.includes(marker));
+      if (missingMarkers.length > 0) {
+        fail(
+          `sveltekit-consumer ${label} ${routePath} dev SSR missing marker(s): ${missingMarkers.join(', ')}\n${formatHtmlExcerpt(body)}`,
+        );
+      }
     }
 
     // Deliberately NO client-hydration assertion for the broad /dev-ssr route.
@@ -1667,6 +1678,8 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
         '/subpath',
         '/chat-layout',
         '/dev-ssr',
+        '/dev-ssr-navigation',
+        '/dev-ssr-tabs',
       ]);
 
       // Subpath page
@@ -1785,7 +1798,12 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
   }
 }
 
-type SvelteKitHydrationRoute = '/subpath' | '/chat-layout' | '/dev-ssr';
+type SvelteKitHydrationRoute =
+  | '/subpath'
+  | '/chat-layout'
+  | '/dev-ssr'
+  | '/dev-ssr-navigation'
+  | '/dev-ssr-tabs';
 
 /**
  * `--disable-dev-shm-usage` is Playwright's documented remedy for Chromium
@@ -2234,6 +2252,8 @@ async function assertSvelteKitHydrationRouteContent(
   }
 
   await page.locator('[data-dev-ssr-hydrated="true"]').waitFor({ timeout: 5_000 });
+  if (routePath !== '/dev-ssr') return;
+
   const trigger = page.getByRole('button', { name: 'Reset state' });
   await trigger.click();
   const dialog = page.getByRole('dialog', { name: 'Reset all local state?' });
