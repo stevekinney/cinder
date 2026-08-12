@@ -28,22 +28,21 @@ async function defaultFetch(url: string, timeoutMs: number): Promise<Response> {
 
 export async function waitForReadyHtml(input: WaitForReadyHtmlInput): Promise<string> {
   const fetcher = input.fetcher ?? defaultFetch;
-  // Default a single attempt to the WHOLE readiness budget.
+  // NOTE, deliberately not "fixed" by raising this: each attempt is capped at
+  // 5s, and aborting an in-flight request discards the server-side work rather
+  // than pausing it. So a response that consistently needs more than 5s can
+  // never be observed completing, however large `timeoutMs` is.
   //
-  // This used to default to 5s, which quietly made the loop unable to wait for
-  // anything slower than 5s no matter how large `timeoutMs` was: each attempt
-  // aborted at 5s, and aborting an in-flight SSR request throws away the render
-  // it was waiting on, so the next attempt started from scratch and hit the same
-  // wall. A cold `vite dev` server rendering a route through hundreds of
-  // unbundled transform-on-request modules legitimately exceeds 5s, so the poll
-  // loop cancelled the very work it was polling for until the budget expired —
-  // failing with `last error: The operation timed out.` while the server was
-  // healthy and still working.
+  // That is a latent sharp edge, but it is NOT what failed the release on
+  // 2026-08-12, and raising this value would be a wait-threshold bump — which
+  // AGENTS.md rejects outright, correctly. The measurements are in
+  // validate-consumers.ts: aborting PARTIALLY RETAINS Vite's work (a retry after
+  // a 300ms abort finished in 0.630s against 1.086s cold), so a merely-slow
+  // render recovers across attempts and lands. The failing run made no progress
+  // at all across five attempts, which is a wedged server, not a slow one.
   //
-  // A per-request cap is still available to callers that genuinely want to bound
-  // individual attempts (a hung socket that never responds); it is just no
-  // longer imposed on callers that only want an overall deadline.
-  const requestTimeoutMs = input.requestTimeoutMs ?? input.timeoutMs;
+  // If a future failure is ever shown to be genuine slowness, fix the slowness.
+  const requestTimeoutMs = input.requestTimeoutMs ?? 5_000;
   const startTime = Date.now();
   let lastStatus: number | null = null;
   let lastError: string | null = null;

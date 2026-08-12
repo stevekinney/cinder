@@ -81,53 +81,6 @@ describe('waitForReadyHtml', () => {
     expect(observedTimeouts).toEqual([250, 250]);
   });
 
-  test('lets a single slow render use the whole budget when no per-request cap is given', async () => {
-    // The release-blocking regression: `requestTimeoutMs` defaulted to 5s, so a
-    // cold `vite dev` SSR render that legitimately took longer was aborted and
-    // restarted every 5s until the 25s budget expired — the loop cancelled the
-    // work it was polling for, and reported `last error: The operation timed
-    // out.` while the server was healthy. Read the timeout handed to the
-    // fetcher: it must be the remaining budget, not a fixed 5s.
-    const observedTimeouts: number[] = [];
-    const fetcher: ReadinessFetch = async (_url, timeoutMs) => {
-      observedTimeouts.push(timeoutMs);
-      return response('<main data-ready>ready</main>');
-    };
-
-    await waitForReadyHtml({
-      url: 'http://127.0.0.1:5173/dev-ssr',
-      timeoutMs: 25_000,
-      pollIntervalMs: 0,
-      runningServer: { exitCode: null },
-      fetcher,
-      isReady: (body) => body.includes('data-ready'),
-    });
-
-    expect(observedTimeouts).toHaveLength(1);
-    expect(observedTimeouts[0]).toBe(25_000);
-  });
-
-  test('a render slower than the old 5s default now succeeds instead of being cancelled', async () => {
-    // End-to-end shape of the same bug: one attempt that takes longer than the
-    // previous default. Under the old behavior this never resolved — every
-    // attempt was aborted at 5s and retried from scratch.
-    const fetcher: ReadinessFetch = async (_url, timeoutMs) => {
-      if (timeoutMs <= 5_000) throw new Error('The operation timed out.');
-      return response('<main data-ready>ready</main>');
-    };
-
-    const html = await waitForReadyHtml({
-      url: 'http://127.0.0.1:5173/dev-ssr',
-      timeoutMs: 25_000,
-      pollIntervalMs: 0,
-      runningServer: { exitCode: null },
-      fetcher,
-      isReady: (body) => body.includes('data-ready'),
-    });
-
-    expect(html).toContain('data-ready');
-  });
-
   test('fails immediately when the server exits before the target route is ready', async () => {
     await expect(
       waitForReadyHtml({
