@@ -1176,7 +1176,7 @@ function ensureSvelteKitAdapterNodeStaticAssetLink(fixtureDirectory: string): vo
 
 const SVELTEKIT_DEV_SSR_ROUTES = [
   {
-    routePath: '/dev-ssr',
+    routePath: '/dev-ssr-dialog',
     markers: ['data-dev-ssr-confirm-dialog-trigger', 'data-dev-ssr-card-body'],
   },
   {
@@ -1317,11 +1317,18 @@ async function assertSvelteKitDevSsrRoute(fixtureDirectory: string, label: strin
     // entire transform graph after Svelte-aware SSR began selecting source.
     // Splitting by feature preserves every marker while letting Vite cache the
     // shared graph between small, independently bounded requests.
+    const readinessDeadline = Date.now() + SVELTEKIT_DEV_SSR_READINESS_TIMEOUT_MS;
     for (const { routePath, markers } of SVELTEKIT_DEV_SSR_ROUTES) {
+      const remainingReadinessBudget = readinessDeadline - Date.now();
+      if (remainingReadinessBudget <= 0) {
+        fail(
+          `sveltekit-consumer ${label} dev SSR exhausted its shared ${SVELTEKIT_DEV_SSR_READINESS_TIMEOUT_MS}ms readiness budget before ${routePath}`,
+        );
+      }
       const routeUrl = `http://127.0.0.1:${httpPort}${routePath}`;
       const body = await waitForReadyHtml({
         url: routeUrl,
-        timeoutMs: SVELTEKIT_DEV_SSR_READINESS_TIMEOUT_MS,
+        timeoutMs: remainingReadinessBudget,
         pollIntervalMs: SVELTEKIT_DEV_SSR_POLL_INTERVAL_MS,
         runningServer: devServer,
         isReady: (html) => markers.every((marker) => html.includes(marker)),
@@ -1338,25 +1345,24 @@ async function assertSvelteKitDevSsrRoute(fixtureDirectory: string, label: strin
       }
     }
 
-    // Deliberately NO client-hydration assertion for the broad /dev-ssr route.
-    // This phase owns only its transform-on-request SSR HTML; the focused
+    // Deliberately NO client-hydration assertion for these focused dev routes.
+    // This phase owns only their transform-on-request SSR HTML; the focused
     // /chat-layout helper above owns dev-mode browser hydration against the
     // default dependency optimizer.
     //
-    // Broad /dev-ssr client hydration MUST NOT be asserted against this `vite
-    // dev` server. The fixture sets `optimizeDeps: { noDiscovery: true,
-    // holdUntilCrawlEnd: false }`, so /dev-ssr's nine Cinder subpath imports are
-    // served as unbundled ESM through Vite's transform-on-request pipeline. On a
-    // cold CI runner that is a request waterfall of hundreds of sequential
-    // module transforms, and any on-request dependency discovery triggers a full
-    // page reload that resets the route's `hydrated` effect mid-wait. Either
-    // mechanism outruns a bounded wait; both produced 22 red `main` runs between
-    // 2026-07-24 and 2026-08-05 against ~100 passes on unchanged code, including
-    // a docs-only commit.
+    // Client hydration MUST NOT be asserted against this `vite dev` server. The
+    // fixture sets `optimizeDeps: { noDiscovery: true, holdUntilCrawlEnd: false
+    // }`, so Cinder subpath imports are served as unbundled ESM through Vite's
+    // transform-on-request pipeline. On a cold CI runner that is a request
+    // waterfall of sequential module transforms, and any on-request dependency
+    // discovery triggers a full page reload that resets the route's `hydrated`
+    // effect mid-wait. Either mechanism outruns a bounded wait; both produced 22
+    // red `main` runs between 2026-07-24 and 2026-08-05 against ~100 passes on
+    // unchanged code, including a docs-only commit.
     //
-    // /dev-ssr's hydration — including the ConfirmDialog interaction and focus
-    // restoration — remains asserted against the prebuilt adapter-node server
-    // in `runSveltekitFixture`, where the transform waterfall cannot exist.
+    // The original all-components /dev-ssr route remains the built-server
+    // hydration fixture — including the ConfirmDialog interaction and focus
+    // restoration — where the transform waterfall cannot exist.
     // Raising the timeout here would mask the waterfall, not fix it.
     devSsrAssertionsPassed = true;
   } finally {
@@ -1678,8 +1684,6 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
         '/subpath',
         '/chat-layout',
         '/dev-ssr',
-        '/dev-ssr-navigation',
-        '/dev-ssr-tabs',
       ]);
 
       // Subpath page
@@ -1798,12 +1802,7 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
   }
 }
 
-type SvelteKitHydrationRoute =
-  | '/subpath'
-  | '/chat-layout'
-  | '/dev-ssr'
-  | '/dev-ssr-navigation'
-  | '/dev-ssr-tabs';
+type SvelteKitHydrationRoute = '/subpath' | '/chat-layout' | '/dev-ssr';
 
 /**
  * `--disable-dev-shm-usage` is Playwright's documented remedy for Chromium
@@ -2252,8 +2251,6 @@ async function assertSvelteKitHydrationRouteContent(
   }
 
   await page.locator('[data-dev-ssr-hydrated="true"]').waitFor({ timeout: 5_000 });
-  if (routePath !== '/dev-ssr') return;
-
   const trigger = page.getByRole('button', { name: 'Reset state' });
   await trigger.click();
   const dialog = page.getByRole('dialog', { name: 'Reset all local state?' });
