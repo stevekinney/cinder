@@ -68,10 +68,20 @@ export interface TextQuoteAnchor {
  * ProseMirror's transaction mapping (tr.mapping.map()).
  */
 export interface RuntimeAnchor {
-  /** Start position in ProseMirror document */
+  /**
+   * Start position in the ProseMirror document.
+   *
+   * ReviewEditor's `threads` prop expresses this against the full document: when
+   * the content has YAML front matter, the position is the body ProseMirror
+   * position plus the front matter's character length.
+   */
   from: number;
 
-  /** End position in ProseMirror document */
+  /**
+   * End position in the ProseMirror document.
+   *
+   * Same coordinate space as {@link RuntimeAnchor.from}.
+   */
   to: number;
 }
 
@@ -102,7 +112,8 @@ export interface CommentAnchor extends TextQuoteAnchor, RuntimeAnchor {
   originalQuote?: string | undefined;
 
   /**
-   * Last known text offset (not ProseMirror position).
+   * Last known text offset (matching doc.textBetween() semantics, not a
+   * ProseMirror position).
    * Updated on each edit, used for re-anchoring disambiguation.
    * Prevents bias toward the original position when the anchor has moved.
    */

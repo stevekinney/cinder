@@ -60,5 +60,9 @@ describe('review-editor public entrypoint', () => {
     expect(reviewEditorModule.ReviewEditor).toBeDefined();
     expect(reviewEditorModule.createReviewEditorState).toBeTypeOf('function');
     expect(reviewEditorModule.buildFormDataFromValues).toBeTypeOf('function');
+    // Both directions of the persistence round trip must reach the subpath a
+    // consumer restoring a saved ReviewState actually imports from.
+    expect(reviewEditorModule.toPersistedThreads).toBeTypeOf('function');
+    expect(reviewEditorModule.toRuntimeThreads).toBeTypeOf('function');
   });
 });

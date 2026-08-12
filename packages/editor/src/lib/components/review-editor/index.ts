@@ -29,7 +29,11 @@ export type { ThreadManager, ThreadManagerOptions } from './review-editor-thread
 export type { SelectionPopover, SelectionPopoverOptions } from './review-editor-selection-types.ts';
 export { createSelectionPopover } from './review-editor-selection.svelte';
 
-export { createAnchorManager, toPersistedThreads } from './review-editor-anchors.svelte';
+export {
+  createAnchorManager,
+  toPersistedThreads,
+  toRuntimeThreads,
+} from './review-editor-anchors.svelte';
 export type { AnchorManager, AnchorManagerOptions } from './review-editor-anchors.svelte';
 
 // DEP-422: Pure export utilities

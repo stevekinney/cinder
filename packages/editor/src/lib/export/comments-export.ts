@@ -23,10 +23,14 @@ import type {
 
 /**
  * Check if an anchor is a document-level anchor.
- * Duplicated from comments/types to avoid circular dependency.
+ * Duplicated from comments/types to avoid circular dependency — keep the two in
+ * step. The quote-less case covers reviews persisted before `getState()`
+ * recorded `type`; see the original for why that shape can only be a document
+ * anchor.
  */
 function isDocumentAnchor(anchor: PersistedAnchor): boolean {
-  return anchor.type === 'document';
+  if (anchor.type === 'document') return true;
+  return anchor.type === undefined && !anchor.quote;
 }
 
 /**

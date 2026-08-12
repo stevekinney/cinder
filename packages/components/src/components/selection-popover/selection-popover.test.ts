@@ -373,6 +373,159 @@ describe('SelectionPopover', () => {
     trigger.remove();
   });
 
+  test('Escape without a prior expand restores focus to the pre-open owner', async () => {
+    // Control case for the regression below: this path always worked, because
+    // the remembered element was still unspent when the Escape arrived.
+    const trigger = document.createElement('button');
+    trigger.textContent = 'Open selection actions';
+    document.body.append(trigger);
+    trigger.focus();
+
+    let closed = false;
+
+    render(SelectionPopover, {
+      props: {
+        id: 'selection-comment',
+        open: true,
+        position: { x: 120, y: 80 },
+        onClose: () => {
+          closed = true;
+        },
+      },
+    });
+
+    try {
+      const collapsedAction = screen.getByRole('button', { name: 'Add comment' });
+      collapsedAction.focus();
+      expect(document.activeElement).toBe(collapsedAction);
+
+      await fireEvent.keyDown(screen.getByRole('toolbar', { name: 'Selection actions' }), {
+        key: 'Escape',
+      });
+
+      expect(closed).toBe(true);
+      expect(document.activeElement).toBe(trigger);
+    } finally {
+      trigger.remove();
+    }
+  });
+
+  test('Escape after a cancel still restores focus to the pre-open owner', async () => {
+    // Regression test for issue #1269: the remembered element used to be spent
+    // by the first restore, so a cancel consumed it and the later Escape —
+    // pressed from a control inside the still-mounted popover — restored
+    // nothing, dropping focus on <body>.
+    const trigger = document.createElement('button');
+    trigger.textContent = 'Open selection actions';
+    document.body.append(trigger);
+    trigger.focus();
+
+    let closed = false;
+
+    render(SelectionPopover, {
+      props: {
+        id: 'selection-comment',
+        open: true,
+        position: { x: 120, y: 80 },
+        onClose: () => {
+          closed = true;
+        },
+      },
+    });
+
+    try {
+      await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
+      await fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+      expect(document.activeElement).toBe(trigger);
+
+      // The popover is still mounted, collapsed back to its icon. Focus moves
+      // onto that control, which is where a keyboard user presses Escape from.
+      const collapsedAction = screen.getByRole('button', { name: 'Add comment' });
+      collapsedAction.focus();
+      expect(document.activeElement).toBe(collapsedAction);
+
+      await fireEvent.keyDown(screen.getByRole('toolbar', { name: 'Selection actions' }), {
+        key: 'Escape',
+      });
+
+      expect(closed).toBe(true);
+      expect(document.activeElement).toBe(trigger);
+      expect(document.activeElement).not.toBe(document.body);
+    } finally {
+      trigger.remove();
+    }
+  });
+
+  test('re-opening after an external close re-arms the focus memory', async () => {
+    // The reference now survives a restore, so it MUST be released when the
+    // popover closes — otherwise a second open would restore to the first
+    // session's owner.
+    const firstOwner = document.createElement('button');
+    firstOwner.textContent = 'First owner';
+    const secondOwner = document.createElement('button');
+    secondOwner.textContent = 'Second owner';
+    document.body.append(firstOwner, secondOwner);
+    firstOwner.focus();
+
+    const props = { id: 'selection-comment', position: { x: 120, y: 80 } };
+    const { rerender } = render(SelectionPopover, { props: { ...props, open: true } });
+
+    try {
+      await rerender({ ...props, open: false });
+      expect(document.activeElement).toBe(firstOwner);
+
+      secondOwner.focus();
+      await rerender({ ...props, open: true });
+      screen.getByRole('button', { name: 'Add comment' }).focus();
+      await rerender({ ...props, open: false });
+
+      expect(document.activeElement).toBe(secondOwner);
+    } finally {
+      firstOwner.remove();
+      secondOwner.remove();
+    }
+  });
+
+  test('a cancel followed by a real external focus move abandons restoration', async () => {
+    // The surviving reference must still be abandoned when the user genuinely
+    // moves on — onFocusMovedOutside clears it, so a later dismissal does not
+    // steal focus back from wherever they went.
+    const trigger = document.createElement('button');
+    trigger.textContent = 'Open selection actions';
+    const outside = document.createElement('button');
+    outside.textContent = 'Somewhere else';
+    document.body.append(trigger, outside);
+    trigger.focus();
+
+    let closed = false;
+
+    render(SelectionPopover, {
+      props: {
+        id: 'selection-comment',
+        open: true,
+        position: { x: 120, y: 80 },
+        onClose: () => {
+          closed = true;
+        },
+      },
+    });
+
+    try {
+      await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
+      await fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+      expect(document.activeElement).toBe(trigger);
+
+      outside.focus();
+      await fireEvent.scroll(window);
+
+      expect(closed).toBe(true);
+      expect(document.activeElement).toBe(outside);
+    } finally {
+      trigger.remove();
+      outside.remove();
+    }
+  });
+
   test('portals the toolbar to document.body', () => {
     const { container } = render(SelectionPopover, {
       props: {
@@ -1552,6 +1705,11 @@ describe('SelectionPopover', () => {
 
     try {
       await rerender({ open: true, position: { x: 120, y: 80 } });
+      // Focus has to be inside the popover when Escape is pressed, otherwise
+      // the restore short-circuits on "already focused" and the stubbed
+      // scroll never fires — leaving this passing vacuously instead of
+      // exercising the closeRequested latch it exists to pin.
+      screen.getByRole('button', { name: 'Add comment' }).focus();
       await fireEvent.keyDown(screen.getByRole('toolbar', { name: 'Selection actions' }), {
         key: 'Escape',
       });
@@ -1643,6 +1801,11 @@ describe('SelectionPopover', () => {
     });
 
     await rerender({ open: true, position: { x: 120, y: 80 } });
+    // Move focus onto the collapsed action first — the realistic sequence, and
+    // the one that leaves something to restore. The resulting `focusin` targets
+    // a node inside the panel, so the virtual-keyboard listener early-returns
+    // and the remembered pre-open owner survives.
+    screen.getByRole('button', { name: 'Add comment' }).focus();
     await fireEvent.scroll(window);
 
     expect(focusOptions).toEqual({ preventScroll: true });

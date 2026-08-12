@@ -20,13 +20,7 @@ import { contentEquals } from '@lostgradient/markdown/pipeline';
 import type { MilkdownPlugin } from '@milkdown/kit/ctx';
 import type { EditorView } from '@milkdown/kit/prose/view';
 import { anchorPluginKey, createAnchorPlugin } from '../../anchor-decorations.ts';
-import type {
-  AnchorUpdate,
-  PersistedThread,
-  ReviewState,
-  Thread,
-  ThreadDeleteEvent,
-} from '../../comments/index.ts';
+import type { AnchorUpdate, ReviewState, Thread, ThreadDeleteEvent } from '../../comments/index.ts';
 import { ANCHOR_CONTEXT_LENGTH, reanchorQuote } from '../../comments/index.ts';
 import { textOffsetToProseMirrorPosition } from '../../editor/index.ts';
 
@@ -296,24 +290,8 @@ export function createAnchorManager(options: AnchorManagerOptions): AnchorManage
   };
 }
 
-/**
- * Convert threads to persisted format for serialization.
- *
- * @param threads - Live threads with position info
- * @returns Persisted threads suitable for storage
- */
-export function toPersistedThreads(threads: Thread[]): PersistedThread[] {
-  return threads.map((thread) => ({
-    ...thread,
-    anchor: {
-      quote: thread.anchor.quote,
-      prefix: thread.anchor.prefix,
-      suffix: thread.anchor.suffix,
-      status: thread.anchor.status,
-      blockId: thread.anchor.blockId,
-      originalPosition: thread.anchor.originalPosition,
-      originalQuote: thread.anchor.originalQuote,
-      lastKnownOffset: thread.anchor.lastKnownOffset,
-    },
-  }));
-}
+// The persistence converters live in `comments/types.ts` alongside the anchor
+// constructors so both directions of the round trip sit in one pure module.
+// Re-exported here to keep the published `@lostgradient/editor/review-editor`
+// surface unchanged.
+export { toPersistedThreads, toRuntimeThreads } from '../../comments/index.ts';

@@ -79,7 +79,8 @@ const schema = {
       {
         name: 'threads',
         reason: 'unknown-shape',
-        description: 'Comment threads (two-way bindable).',
+        description:
+          "Comment threads (two-way bindable).\n\nAnchor positions use two different coordinate spaces, and neither is a raw\nMarkdown string index: `anchor.from` and `anchor.to` are ProseMirror\ndocument positions, while `anchor.lastKnownOffset` and\n`anchor.originalPosition.offset` are `doc.textBetween()` text offsets. All\nfour are expressed against the full document — when the content carries\nYAML front matter, the component subtracts the front matter's character\nlength before handing anchors to the editor.\n\nPositions are verified against the document, and a seeded anchor that does\nnot match is usually re-anchored by its `quote` — but not always: one whose\nrange overlaps the quote it names can be adopted as-is and left pointing at\nthe wrong text (see issue #1275). Restore persisted state with\n`toRuntimeThreads(state.threads)` (or call `setState`) rather than\nhand-computing positions. See `shared/anchor-types.ts` for the\nfield-by-field contract.",
       },
     ],
   },

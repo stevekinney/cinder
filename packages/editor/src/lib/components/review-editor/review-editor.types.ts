@@ -43,7 +43,25 @@ export type ReviewEditorProps = {
   original?: string;
   /** Current markdown content (two-way bindable). */
   value?: string;
-  /** Comment threads (two-way bindable). */
+  /**
+   * Comment threads (two-way bindable).
+   *
+   * Anchor positions use two different coordinate spaces, and neither is a raw
+   * Markdown string index: `anchor.from` and `anchor.to` are ProseMirror
+   * document positions, while `anchor.lastKnownOffset` and
+   * `anchor.originalPosition.offset` are `doc.textBetween()` text offsets. All
+   * four are expressed against the full document — when the content carries
+   * YAML front matter, the component subtracts the front matter's character
+   * length before handing anchors to the editor.
+   *
+   * Positions are verified against the document, and a seeded anchor that does
+   * not match is usually re-anchored by its `quote` — but not always: one whose
+   * range overlaps the quote it names can be adopted as-is and left pointing at
+   * the wrong text (see issue #1275). Restore persisted state with
+   * `toRuntimeThreads(state.threads)` (or call `setState`) rather than
+   * hand-computing positions. See `shared/anchor-types.ts` for the
+   * field-by-field contract.
+   */
   threads?: Thread[];
   /** Editor mode. */
   mode?: ReviewMode;

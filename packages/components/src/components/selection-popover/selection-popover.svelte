@@ -133,14 +133,29 @@
     restoreFocusElement = activeElement instanceof HTMLElement ? activeElement : null;
   }
 
+  // The remembered element describes "what had focus before this popover
+  // opened", which stays true for the popover's whole open lifetime — not just
+  // until the first restore. Keeping the reference here (rather than spending
+  // it) is what lets a second restore work: expand -> cancel restores once
+  // while the popover stays open, and a later Escape must restore again
+  // instead of dropping focus on <body> (issue #1269). The reference is
+  // released where the `wasOpen` latch resets, so the next open re-arms it,
+  // and by onFocusMovedOutside once the user genuinely moves on.
   function restoreFocus(preventScroll = true): void {
     const target = restoreFocusElement;
-    restoreFocusElement = null;
     if (!target) return;
+    // Focus is already where it belongs, so there is nothing to restore. Now
+    // that the reference outlives the first restore, this is what keeps an
+    // external close following an internal cancel/submit from driving focus
+    // onto the same element a second time.
+    if (document.activeElement === target) return;
     // .focus() dispatches `focusin` synchronously, and the window-level
     // ownership-tracking listener below can't otherwise tell this
     // component-driven restoration apart from the user genuinely moving on
     // to something outside the popover. Flag it so that listener exempts it.
+    // Load-bearing now that the reference outlives the restore: without the
+    // exemption, restoring to the (outside-the-popover) pre-open owner would
+    // trip onFocusMovedOutside and clear the very reference we are keeping.
     isRestoringFocus = true;
     target.focus({ preventScroll });
     isRestoringFocus = false;
@@ -254,10 +269,14 @@
         wasOpen = false;
         expanded = false;
         commentBody = '';
-        // Return focus to wherever it was before the popover opened.
-        // restoreFocus() null-guards and clears the ref, so an internal close
-        // that already restored leaves this a safe no-op (no double-restore).
+        // Return focus to wherever it was before the popover opened, then
+        // release the reference: this open session is over, so the next open
+        // must re-arm from whatever has focus then rather than reuse a stale
+        // element. restoreFocus() null-guards and no-ops when the target
+        // already has focus, so an internal close that already restored does
+        // not drive focus a second time.
         restoreFocus();
+        restoreFocusElement = null;
       }
       return;
     }

@@ -32,6 +32,8 @@
     generateId,
     extractMentions,
     createDocumentAnchor,
+    isDocumentAnchor,
+    toPersistedThreads,
   } from '../../comments/index.ts';
   import { buildAnchorFromSelection } from '../../anchoring.ts';
   import ThreadPopover from './thread-popover.svelte';
@@ -602,6 +604,17 @@
     const reanchoredThreads: Thread[] = [];
 
     for (const persistedThread of state.threads) {
+      // Document-level anchors have no quote to search for, so reanchorQuote
+      // would always report "not found" and silently delete them. They have no
+      // position to restore either - they stay at 0/0.
+      if (isDocumentAnchor(persistedThread.anchor)) {
+        reanchoredThreads.push({
+          ...persistedThread,
+          anchor: { ...persistedThread.anchor, from: 0, to: 0 },
+        });
+        continue;
+      }
+
       const bodyPersistedAnchor = documentPersistedAnchorToBodyAnchor(
         persistedThread.anchor,
         pendingDocument.bodyOffset,
@@ -956,19 +969,9 @@
    * Content is preserved as the complete Markdown document, including front matter.
    */
   export function getState(): ReviewState {
-    const persistedThreads: PersistedThread[] = threads.map((thread) => ({
-      ...thread,
-      anchor: {
-        quote: thread.anchor.quote,
-        prefix: thread.anchor.prefix,
-        suffix: thread.anchor.suffix,
-        status: thread.anchor.status,
-        blockId: thread.anchor.blockId,
-        originalPosition: thread.anchor.originalPosition,
-        originalQuote: thread.anchor.originalQuote, // Preserve for history
-        lastKnownOffset: thread.anchor.lastKnownOffset, // For disambiguation
-      },
-    }));
+    // Shared with the public `toPersistedThreads` export so a saved state and a
+    // hand-converted one round-trip through `toRuntimeThreads` identically.
+    const persistedThreads: PersistedThread[] = toPersistedThreads(threads);
 
     return {
       schemaVersion: 4,
