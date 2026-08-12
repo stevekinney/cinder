@@ -151,6 +151,12 @@ export function createAnchorManager(options: AnchorManagerOptions): AnchorManage
             ...thread.anchor,
             from: update.from,
             to: update.to,
+            // Without this the manager drops the one field that says the anchor
+            // stopped being placed: the plugin orphans it and stops decorating,
+            // but consumers keep seeing `anchored` and cannot show or persist
+            // the orphan. Adding `status` to the sync fingerprint does nothing
+            // on its own — the value never gets applied to compare against.
+            status: update.status,
             quote: update.quote,
             prefix: update.prefix,
             suffix: update.suffix,

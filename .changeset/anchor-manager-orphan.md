@@ -25,5 +25,9 @@ the thread instead of dropping it silently, with no event at all.
 `AnchorManagerOptions.onthreaddelete` is removed rather than left in place. It
 reported a deletion that no longer happens, so it would never fire, and a
 consumer wiring cleanup to an event that never arrives has no way to notice.
-The manager's sync fingerprint also now includes `status`, so a thread that flips
-between anchored and orphaned without moving still re-syncs to the plugin.
+The manager also now propagates `status` in both directions. `handleAnchorsUpdate`
+copies the plugin's reported status onto the thread, so an anchor orphaned during
+live editing actually reaches consumers instead of continuing to read `anchored`
+while the plugin has already stopped decorating it. And the sync fingerprint
+includes `status`, so a thread that flips between anchored and orphaned without
+moving still re-syncs to the plugin.

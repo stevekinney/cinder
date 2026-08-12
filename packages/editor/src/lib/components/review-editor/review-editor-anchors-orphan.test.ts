@@ -20,7 +20,7 @@ import { Schema } from 'prosemirror-model';
 // @ts-expect-error -- untyped internal entry point
 import { effect_root as untypedEffectRoot } from 'svelte/internal/client';
 
-import type { PersistedThread, ReviewState, Thread } from '../../comments/index.ts';
+import type { AnchorUpdate, PersistedThread, ReviewState, Thread } from '../../comments/index.ts';
 import { createAnchorManager } from './review-editor-anchors.svelte.ts';
 
 const effectRoot = untypedEffectRoot as (run: () => void) => () => void;
@@ -80,6 +80,8 @@ function persistedThread(
 interface Harness {
   attemptReanchoring: () => void;
   destroy: () => void;
+  handleAnchorsUpdate: (updates: AnchorUpdate[]) => void;
+  seedThreads: (threads: Thread[]) => void;
   threads: () => Thread[];
 }
 
@@ -91,6 +93,7 @@ function createHarness(state: ReviewState, documentText = DOCUMENT_TEXT): Harnes
   const { view } = createFakeView(documentText);
   let threads: Thread[] = [];
   let attemptReanchoring: () => void = () => {};
+  let handleAnchorsUpdate: (updates: AnchorUpdate[]) => void = () => {};
 
   const destroy = effectRoot(() => {
     const manager = createAnchorManager({
@@ -106,11 +109,16 @@ function createHarness(state: ReviewState, documentText = DOCUMENT_TEXT): Harnes
 
     manager.setPendingState(state);
     attemptReanchoring = manager.attemptReanchoring;
+    handleAnchorsUpdate = manager.handleAnchorsUpdate;
   });
 
   return {
     attemptReanchoring,
     destroy,
+    handleAnchorsUpdate,
+    seedThreads: (next) => {
+      threads = next;
+    },
     threads: () => threads,
   };
 }
@@ -230,6 +238,57 @@ describe('createAnchorManager (exported, experimental) vs. orphan preservation',
       expect(harness.threads()).toHaveLength(1);
       expect(harness.threads()[0]?.id).toBe('thread-document');
       expect(harness.threads()[0]?.anchor.status).toBe('anchored');
+    } finally {
+      harness.destroy();
+    }
+  });
+
+  // The plugin reports orphaning through `onAnchorsUpdate` during LIVE editing,
+  // which is a different route into the manager than the setState pass above.
+  test('propagates an orphaned status reported by the plugin to consumers', () => {
+    const state: ReviewState = {
+      schemaVersion: 4,
+      content: DOCUMENT_TEXT,
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      threads: [],
+    };
+
+    const harness = createHarness(state);
+    try {
+      harness.seedThreads([
+        {
+          id: 'thread-live',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          comments: [],
+          anchor: {
+            from: 4,
+            to: 19,
+            quote: 'quick brown fox',
+            prefix: 'The ',
+            suffix: ' jumps',
+            status: 'anchored',
+          },
+        },
+      ]);
+
+      // What the plugin emits once the quoted text leaves the document.
+      harness.handleAnchorsUpdate([
+        {
+          threadId: 'thread-live',
+          from: 0,
+          to: 0,
+          status: 'orphaned',
+          quote: 'quick brown fox',
+          prefix: 'The ',
+          suffix: ' jumps',
+          lastKnownOffset: 4,
+        },
+      ]);
+
+      // The plugin has already stopped decorating it. If the manager drops
+      // `status`, consumers still see `anchored` and can neither surface the
+      // orphan in their own UI nor persist it.
+      expect(harness.threads()[0]?.anchor.status).toBe('orphaned');
     } finally {
       harness.destroy();
     }
