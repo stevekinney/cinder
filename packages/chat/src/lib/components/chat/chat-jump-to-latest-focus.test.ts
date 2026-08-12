@@ -178,3 +178,22 @@ describe('Chat jump-to-latest focus in a virtualized transcript', () => {
     expect(document.activeElement).not.toBe(timeline);
   });
 });
+
+// NOT TESTED HERE, deliberately, for the same reason the reclaim itself is not:
+// the paths added for review round 5 both depend on `reclaimFocusIfRowDetached`
+// actually running, and this harness cannot exercise it (see the note above).
+//
+// Two attempts are worth recording so they are not repeated:
+//
+// 1. Driving a non-scroll row removal through the `conversation` prop does not
+//    work, because Chat does not remove rows when the conversation shrinks. A
+//    Chat rendered with 6 messages and then re-rendered with 3 still shows all
+//    6, container-scoped, with one instance mounted — while message CONTENT
+//    updates flow through normally. That is a separate pre-existing bug
+//    (cinder#1286); the rendered-set effect is dead code until it is fixed, and
+//    load-bearing after.
+//
+// 2. A "clicked away, then the row recycled" test passes identically with and
+//    without the outside-pointer clearing, because happy-dom does not blur a
+//    focused element when a pointerdown lands on inert chrome. A test that
+//    cannot fail is worse than no test, so it is not here.

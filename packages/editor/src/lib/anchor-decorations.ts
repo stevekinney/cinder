@@ -376,6 +376,17 @@ function mapAnchorsThroughTransaction(
     // bounded, unlike re-raising on every sync, which loops on an idle document.
     if (anchor.status === 'orphaned') needsReanchor = true;
 
+    // An orphan restored from persistence sits at the unplaced `0`/`0` sentinel
+    // `toRuntimeThreads` writes: the range says "nowhere", while
+    // `lastKnownOffset` still records where the quote used to be. Mapping that
+    // sentinel produces offset 0, so recomputing the hint from it below would
+    // trade the saved location for the top of the document. Re-anchoring leans
+    // on that hint to choose between repeated occurrences of the same quote, so
+    // losing it reattaches the recovered comment to the FIRST occurrence rather
+    // than the one it was written against. Only an anchor that collapsed
+    // somewhere real has a mapped position worth reading.
+    const isUnplacedOrphan = anchor.status === 'orphaned' && anchor.from === 0 && anchor.to === 0;
+
     // Map positions through the transaction
     const mappedFrom = tr.mapping.map(anchor.from, -1);
     const mappedTo = tr.mapping.map(anchor.to, 1);
@@ -387,7 +398,9 @@ function mapAnchorsThroughTransaction(
     if (mappedFrom >= mappedTo) {
       needsReanchor = true;
       // Update lastKnownOffset so re-anchoring doesn't bias toward stale position
-      const collapsedOffset = proseMirrorPositionToTextOffset(newState.doc, mappedFrom);
+      const collapsedOffset = isUnplacedOrphan
+        ? anchor.lastKnownOffset
+        : proseMirrorPositionToTextOffset(newState.doc, mappedFrom);
       newAnchors.set(threadId, {
         ...anchor,
         from: mappedFrom,
@@ -451,7 +464,13 @@ function mapAnchorsThroughTransaction(
       // Edit was outside but quote drifted (cut/paste scenario)
       // Mark for deferred re-anchoring
       needsReanchor = true;
-      const newLastKnownOffset = proseMirrorPositionToTextOffset(newState.doc, mappedFrom);
+      // Inserting a block at the very top of the document expands the sentinel
+      // range instead of leaving it collapsed, which lands a restored orphan
+      // here rather than in the branch above. The hint is no more recoverable
+      // from `0`/`15` than from `0`/`0`, so preserve it on the same terms.
+      const newLastKnownOffset = isUnplacedOrphan
+        ? anchor.lastKnownOffset
+        : proseMirrorPositionToTextOffset(newState.doc, mappedFrom);
       newAnchors.set(threadId, {
         ...anchor,
         from: mappedFrom,

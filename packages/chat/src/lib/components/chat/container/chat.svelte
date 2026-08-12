@@ -1502,14 +1502,17 @@
    * move focus to `<body>` without reliably dispatching `focusout` from the
    * detached node, so a design that waits for that event misses precisely the
    * case it exists for. Instead this records which row holds focus and re-checks
-   * its connectivity wherever recycling can happen — which is only on scroll
-   * (`handleScrollStateChange`). A `MutationObserver` over the timeline would
-   * also catch it, and did originally, but `subtree: true` on a list that
+   * its connectivity from the two places a row can leave: a scroll-state
+   * recompute (`handleScrollStateChange`, which is what recycling runs through)
+   * and a change to the rendered set (the effect below, which covers removals
+   * that never scroll — a message deleted from the conversation while the user
+   * reads further up, a keyed re-render). A `MutationObserver` over the timeline
+   * would catch both, and did originally, but `subtree: true` on a list that
    * mutates every scroll frame costs far more than this check is worth.
    *
    * `focusin`/`focusout` are still used, but only to track *which* row to watch,
-   * never to decide that a reclaim is due. The guards below keep this off the
-   * ordinary paths: a click-away onto inert page chrome leaves the blurred node
+   * never to decide that a reclaim is due. The guards keep this off the ordinary
+   * paths: a click-away onto inert page chrome leaves the blurred node
    * CONNECTED, so it never reclaims, and window/tab blur is filtered by
    * `document.hasFocus` — reclaiming there would steal focus back from whatever
    * the user switched to.
@@ -1527,6 +1530,44 @@
     // let `reclaimFocusIfRowDetached` decide.
     if (event.relatedTarget !== null) focusedRow = null;
   }
+
+  // A deliberate click onto inert page chrome also reports `relatedTarget: null`
+  // and leaves the row connected, so the handler above keeps tracking it. That is
+  // correct at the time, but the tracking must not outlive the user's departure:
+  // if that row is recycled by a later scroll, the reclaim would see `<body>`
+  // focused and haul focus back into a chat the user had already left. A pointer
+  // landing outside the container is the unambiguous signal that they left.
+  $effect(() => {
+    if (!containerRef) return;
+    function clearTrackingOnOutsidePointer(event: PointerEvent): void {
+      const target = event.target;
+      if (target instanceof Node && containerRef?.contains(target)) return;
+      focusedRow = null;
+    }
+    document.addEventListener('pointerdown', clearTrackingOnOutsidePointer, { capture: true });
+    return () => {
+      document.removeEventListener('pointerdown', clearTrackingOnOutsidePointer, {
+        capture: true,
+      });
+    };
+  });
+
+  // Rows can leave the DOM without any scroll: a message removed from the
+  // conversation, a keyed re-render. Reading both rendered sets reruns this on
+  // any add or remove, and an effect body runs after Svelte has applied the DOM
+  // change, so `isConnected` is already accurate here.
+  //
+  // Honest status: this cannot fire today, because Chat does not actually drop
+  // rows when the conversation shrinks (cinder#1286 — a Chat rendered with six
+  // messages and re-rendered with three still shows six). It is kept rather
+  // than deferred because it costs one early-returning call per rendered-set
+  // change, and it is the difference between the backstop working and not the
+  // moment that bug is fixed.
+  $effect(() => {
+    void messages;
+    void renderRows;
+    reclaimFocusIfRowDetached();
+  });
 
   function reclaimFocusIfRowDetached(): void {
     const timeline = viewport;

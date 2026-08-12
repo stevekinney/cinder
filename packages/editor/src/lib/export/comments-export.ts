@@ -34,6 +34,20 @@ function isDocumentAnchor(anchor: PersistedAnchor): boolean {
 }
 
 /**
+ * Check whether a thread's quoted text is missing from the document.
+ *
+ * Every position an orphaned anchor carries (`lastKnownOffset`,
+ * `originalPosition`) describes where the text used to be, and the quote
+ * describes text that is no longer there. Presenting either as current invites
+ * a reader, human or model, to apply the feedback at a location that now holds
+ * something else. Document-level anchors are excluded because they are never
+ * re-anchored, so their status says nothing about the document.
+ */
+function isOrphanedAnchor(anchor: PersistedAnchor): boolean {
+  return anchor.status === 'orphaned' && !isDocumentAnchor(anchor);
+}
+
+/**
  * Generate an LLM-optimized Markdown export of comment threads.
  *
  * Supports both text-anchored comments (with blockquoted selections) and
@@ -195,7 +209,9 @@ export function generateCommentsJSON(
       comments: exportedComments,
     };
 
-    // Add selection info for text-anchored threads
+    // Add selection info for text-anchored threads. An orphaned thread keeps
+    // its comments and its quote, but reports both the status and the fact that
+    // the offsets are historical rather than a place to act on.
     if (!isDocument) {
       const selection: ExportedSelection = {
         text: thread.anchor.quote,
@@ -206,7 +222,13 @@ export function generateCommentsJSON(
         selection.line = thread.anchor.originalPosition.line;
         selection.column = thread.anchor.originalPosition.column;
       }
-      exportedThread.selection = selection;
+
+      if (isOrphanedAnchor(thread.anchor)) {
+        exportedThread.status = 'orphaned';
+        exportedThread.lastKnownSelection = selection;
+      } else {
+        exportedThread.selection = selection;
+      }
     }
 
     exportedThreads.push(exportedThread);
@@ -252,8 +274,12 @@ function formatThread(
     lines.push('');
   }
 
-  // Position details for precise reference
-  if (anchor.originalPosition) {
+  // Position details for precise reference. For an orphaned thread the same
+  // numbers are still worth printing as a hint about where the text used to
+  // live, but only once they are labelled as history.
+  if (isOrphanedAnchor(anchor)) {
+    lines.push(`*${formatLastKnownPosition(anchor)}*\n`);
+  } else if (anchor.originalPosition) {
     const { line, column } = anchor.originalPosition;
     const range = anchor.lastKnownOffset !== undefined ? `offset ${anchor.lastKnownOffset}` : '';
     lines.push(`*Position: Line ${line}, Column ${column}${range ? ` (${range})` : ''}*\n`);
@@ -301,6 +327,10 @@ function formatDocumentThread(
  * Format location information for a thread.
  */
 function formatLocation(anchor: PersistedThread['anchor']): string {
+  if (isOrphanedAnchor(anchor)) {
+    return 'Comment on text no longer in the document';
+  }
+
   if (anchor.originalPosition) {
     const { line, column } = anchor.originalPosition;
     return `Comment at Line ${line}:${column}`;
@@ -311,6 +341,29 @@ function formatLocation(anchor: PersistedThread['anchor']): string {
   }
 
   return 'Comment (location unknown)';
+}
+
+/**
+ * Describe where an orphaned thread's quote was last seen.
+ *
+ * The sentence leads with the absence rather than the coordinates so that a
+ * reader skimming italics cannot mistake the numbers for a current position.
+ */
+function formatLastKnownPosition(anchor: PersistedThread['anchor']): string {
+  const missing = 'This text was not found in the current document.';
+
+  if (anchor.originalPosition) {
+    const { line, column } = anchor.originalPosition;
+    const offset =
+      anchor.lastKnownOffset !== undefined ? ` (offset ${anchor.lastKnownOffset})` : '';
+    return `${missing} Last known position: Line ${line}, Column ${column}${offset}`;
+  }
+
+  if (anchor.lastKnownOffset !== undefined) {
+    return `${missing} Last known position: offset ${anchor.lastKnownOffset}`;
+  }
+
+  return missing;
 }
 
 /**
