@@ -75,6 +75,38 @@ describe('seeded threads no longer highlight the whole document', () => {
     expect(computeDecorationsBody).toMatch(/if \(from >= to\) continue;/);
   });
 
+  test('an unverified anchor may not adopt the text at its own bad range', () => {
+    // cinder#1275. An anchor seeded in the wrong coordinate space is flagged for
+    // the deferred re-anchoring pass, but that pass is debounced 300ms — and
+    // Milkdown's `syncHeadingIdPlugin` stamps `id` attributes onto headings
+    // inside that window. That transaction's step map spans the whole heading,
+    // so `didTransactionAffectAnchorRange` was true and the "follow the edit"
+    // branch overwrote the anchor's `quote` with whatever text sat at the bad
+    // range. `anchorMatchesDocument` then reported it healthy and the deferred
+    // pass skipped it forever: `{from: 2, to: 14}` for "Release Plan" rendered
+    // "elease Plan" permanently, while the identical mistake in a paragraph
+    // (untouched by that transaction) repaired correctly.
+    //
+    // The gate is `anchorMatchesDocument(tr.before, anchor)` — did this anchor
+    // describe its own text BEFORE this transaction. `tr.before` is the correct
+    // document to pair with the pre-map `anchor.from`/`anchor.to`.
+    expect(anchorDecorationsSource).toMatch(
+      /didTransactionAffectAnchorRange\(tr, anchor\.from, anchor\.to\) &&\s*\n?\s*anchorMatchesDocument\(tr\.before, anchor\)/,
+    );
+  });
+
+  test('a mis-seeded anchor is reported in dev rather than silently relocated', () => {
+    // The same issue's other half: nothing told a consumer their coordinates
+    // were wrong. Scoped to threads the plugin has not tracked before, which is
+    // what keeps it off ordinary editing drift — the plugin maps its own copy
+    // without writing back, so a consumer's `threads` legitimately goes stale,
+    // but those threads are already tracked and never reach the warning.
+    expect(anchorDecorationsSource).toContain('function warnOnMisSeededAnchor');
+    expect(anchorDecorationsSource).toMatch(/if \(alreadyTracked \|\| !anchor\.quote/);
+    expect(anchorDecorationsSource).toMatch(/case 'sync':[\s\S]*?warnOnMisSeededAnchor/);
+    expect(anchorDecorationsSource).toMatch(/case 'add':[\s\S]*?warnOnMisSeededAnchor/);
+  });
+
   test('deferred re-anchoring reads the stored range safely', () => {
     // After a wholesale replacement the stored positions can point past the end
     // of the new document, and `textBetween` throws a RangeError on
