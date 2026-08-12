@@ -190,6 +190,10 @@ function warnOnMisSeededAnchor(
   alreadyTracked: boolean,
 ): void {
   if (alreadyTracked || !anchor.quote || doc.content.size === 0) return;
+  // `toRuntimeThreads` deliberately restores text anchors at 0/0 so the
+  // deferred pass can place them by quote against the live document. That is a
+  // valid persistence sentinel, not a consumer-supplied coordinate mistake.
+  if (anchor.from === 0 && anchor.to === 0) return;
   if (anchorMatchesDocument(doc, anchor)) return;
 
   const inBounds = anchor.from >= 0 && anchor.to <= doc.content.size && anchor.from < anchor.to;

@@ -107,6 +107,18 @@ describe('seeded threads no longer highlight the whole document', () => {
     expect(anchorDecorationsSource).toMatch(/case 'add':[\s\S]*?warnOnMisSeededAnchor/);
   });
 
+  test('the documented unplaced sentinel re-anchors without a warning', () => {
+    // `toRuntimeThreads` intentionally restores every text anchor at 0/0 so
+    // the plugin can place it by quote against the live document. That
+    // persistence path is valid and must not be diagnosed as hand-computed
+    // coordinates.
+    const warningBody = anchorDecorationsSource.slice(
+      anchorDecorationsSource.indexOf('function warnOnMisSeededAnchor'),
+      anchorDecorationsSource.indexOf('/**\n * Handle meta-transactions'),
+    );
+    expect(warningBody).toMatch(/anchor\.from === 0 && anchor\.to === 0/);
+  });
+
   test('deferred re-anchoring reads the stored range safely', () => {
     // After a wholesale replacement the stored positions can point past the end
     // of the new document, and `textBetween` throws a RangeError on
