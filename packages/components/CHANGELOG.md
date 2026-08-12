@@ -1,5 +1,11 @@
 # @lostgradient/cinder
 
+## 0.24.1
+
+### Patch Changes
+
+- [#1261](https://github.com/stevekinney/cinder/pull/1261) [`c89a8b8`](https://github.com/stevekinney/cinder/commit/c89a8b88b62349baadeaf205546dcc3cca139613) Thanks [@stevekinney](https://github.com/stevekinney)! - Prefer Svelte source exports during SvelteKit server-side rendering so Chat and Cinder compile one matching hydration tree on the server and in the browser.
+
 ## 0.24.0
 
 ### Minor Changes
