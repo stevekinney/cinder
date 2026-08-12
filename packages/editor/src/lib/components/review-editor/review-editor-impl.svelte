@@ -511,8 +511,8 @@
     if (orphaned.length === 0) return;
     announce(
       orphaned.length === 1
-        ? 'A comment’s anchored text is no longer in the document. The comment is kept.'
-        : `${orphaned.length} comments’ anchored text is no longer in the document. They are kept.`,
+        ? 'The text a comment was anchored to is no longer in the document. The comment is kept.'
+        : `The text ${orphaned.length} comments were anchored to is no longer in the document. Those comments are kept.`,
     );
   }
 

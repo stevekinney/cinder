@@ -25,6 +25,17 @@ export interface UseChatKeyboardNavOptions {
   getHistoryTrigger?: () => { focus: () => void } | null | undefined;
   /** Optional virtualized message navigation hook for off-window rows. */
   onVirtualMessageNavigation?: (direction: 'next' | 'previous') => boolean;
+  /**
+   * Whether the transcript is virtualized.
+   *
+   * Only virtualization makes a message row an unsafe focus target: the
+   * virtualizer recycles rows, and focusing one that is later unmounted drops
+   * focus to `<body>`, killing the container-bound shortcuts. In a plain
+   * transcript the rows are stable, so focusing a message is both safe and
+   * better — it scrolls the row into view and gives arrow navigation a starting
+   * point, neither of which focusing the viewport does.
+   */
+  getIsVirtualized?: () => boolean;
 }
 
 /** Return type for the keyboard navigation helper */
@@ -69,6 +80,7 @@ export function useChatKeyboardNav(options: UseChatKeyboardNavOptions): UseChatK
   const {
     onJumpToLatest,
     onJumpToStart,
+    getIsVirtualized,
     getScrollBehavior,
     getHistoryTrigger,
     onVirtualMessageNavigation,
@@ -151,16 +163,24 @@ export function useChatKeyboardNav(options: UseChatKeyboardNavOptions): UseChatK
               historyTrigger.focus();
               return undefined;
             }
-            // Focus the viewport itself, not a message row.
+            // Only a VIRTUALIZED row is an unsafe focus target: the virtualizer
+            // recycles it, and removing the focused node drops focus to `<body>`,
+            // killing every container-bound shortcut including the Home that just
+            // ran. There the viewport — `tabindex="0"`, above the rows, never
+            // unmounted — is the stable choice.
             //
-            // In a virtualized transcript `.chat-message` is a recycled window
-            // slot: the virtualizer's next pass unmounts it, and removing the
-            // focused node drops focus to `<body>`. Since the keydown handler is
-            // bound on the container, that kills every shortcut — including the
-            // Home that just ran. The viewport is `tabindex="0"`, sits above the
-            // recycled rows, and never unmounts while the chat is alive. Same
-            // reasoning as the jump-to-latest branch in `chat.svelte`.
-            viewport.focus({ preventScroll: true });
+            // In a plain transcript the rows are stable, and focusing the first
+            // message is strictly better: it brings the row into view and gives
+            // ArrowUp/ArrowDown somewhere to start. Focusing the viewport with
+            // `preventScroll` would do neither, and `onJumpToStart` is a no-op
+            // outside virtualization, so nothing else would scroll either.
+            if (getIsVirtualized?.() ?? false) {
+              viewport.focus({ preventScroll: true });
+            } else {
+              const firstMessage = viewport.querySelector<HTMLElement>('.chat-message');
+              if (firstMessage) firstMessage.focus();
+              else viewport.focus({ preventScroll: true });
+            }
             return undefined;
           },
           () => undefined,

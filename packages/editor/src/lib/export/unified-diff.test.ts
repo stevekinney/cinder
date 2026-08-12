@@ -6,7 +6,7 @@
 import { computeLineDiff, groupIntoHunks } from '@lostgradient/markdown/diff/line-diff';
 import { describe, expect, test } from 'bun:test';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { ReviewState } from '../comments/types.js';
@@ -276,6 +276,10 @@ describe('front matter', () => {
     } catch (error) {
       const stderr = (error as { stderr?: Buffer }).stderr;
       return { ok: false, error: stderr ? stderr.toString() : String(error) };
+    } finally {
+      // Each call makes a git repo under the OS temp dir; without this they
+      // accumulate one per run, per CI shard.
+      rmSync(directory, { recursive: true, force: true });
     }
   }
 

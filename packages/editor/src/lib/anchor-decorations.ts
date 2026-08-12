@@ -259,7 +259,13 @@ function handleMetaTransaction(
           lastKnownOffset: anchor.lastKnownOffset,
           status: anchor.status ?? 'anchored',
         };
-        if (!anchorMatchesDocument(doc, anchorState)) needsReanchor = true;
+        // An anchor that is ALREADY orphaned is known-bad: re-raising here would
+        // make the deferred pass dispatch this same sync, which re-raises again,
+        // forever, on an idle document. Only a later document change (handled in
+        // `mapAnchorsThroughTransaction`) should schedule another attempt.
+        if (anchorState.status !== 'orphaned' && !anchorMatchesDocument(doc, anchorState)) {
+          needsReanchor = true;
+        }
         warnOnMisSeededAnchor(doc, anchorState, prevState.anchors.has(thread.id));
         newAnchors.set(thread.id, anchorState);
       }
@@ -365,6 +371,11 @@ function mapAnchorsThroughTransaction(
   }
 
   for (const [threadId, anchor] of prevState.anchors) {
+    // Any document change is a chance for an orphan's text to have come back,
+    // so retry it. This runs only on `docChanged`, so it is one retry per edit —
+    // bounded, unlike re-raising on every sync, which loops on an idle document.
+    if (anchor.status === 'orphaned') needsReanchor = true;
+
     // Map positions through the transaction
     const mappedFrom = tr.mapping.map(anchor.from, -1);
     const mappedTo = tr.mapping.map(anchor.to, 1);
@@ -503,6 +514,28 @@ function performDeferredReanchoring(
     // document replacement the stored positions can point past the end of the
     // new document, and textBetween throws a RangeError on out-of-range input.
     if (anchorMatchesDocument(doc, anchor)) {
+      // The quote is at the stored range. If this anchor was orphaned, the text
+      // has come back — a paste that restored it at the SAME position, where the
+      // insertion mapping expands the collapsed range onto the restored quote so
+      // no drift is detected. Recover it here; otherwise it would sit orphaned
+      // and undecorated forever with its own text sitting under it.
+      if (anchor.status === 'orphaned') {
+        const recovered: AnchorState = { ...anchor, status: 'anchored' };
+        newAnchors.set(threadId, recovered);
+        updates.push({
+          threadId,
+          from: recovered.from,
+          to: recovered.to,
+          quote: recovered.quote,
+          prefix: recovered.prefix,
+          suffix: recovered.suffix,
+          status: 'anchored',
+          ...(recovered.lastKnownOffset !== undefined
+            ? { lastKnownOffset: recovered.lastKnownOffset }
+            : {}),
+        });
+        continue;
+      }
       // Quote still matches, no re-anchoring needed
       newAnchors.set(threadId, anchor);
       continue;

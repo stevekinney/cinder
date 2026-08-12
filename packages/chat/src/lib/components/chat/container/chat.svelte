@@ -360,6 +360,7 @@
     getScrollBehavior: scrollState.getScrollBehavior,
     getHistoryTrigger: () => (showHistoryTrigger ? historyTriggerRef : null),
     onVirtualMessageNavigation: (direction) => navigateVirtualMessage(direction),
+    getIsVirtualized: () => isVirtualized,
   });
 
   const messages = $derived(getMessages(conversation));

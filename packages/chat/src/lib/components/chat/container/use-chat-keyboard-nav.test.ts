@@ -105,13 +105,10 @@ describe('useChatKeyboardNav', () => {
     expect(scrollToCalls).toEqual([]);
   });
 
-  test('Home falls back to scrolling and focusing the viewport, not a message row', async () => {
-    // Deliberate change from focusing `messages[0]`. In a virtualized
-    // transcript a `.chat-message` is a recycled window slot: the virtualizer's
-    // next pass unmounts it, and removing the focused node drops focus to
-    // `<body>`. The keydown handler is bound on the container, so that kills
-    // every shortcut — including the Home that just ran. The viewport is
-    // `tabindex="0"` and never unmounts while the chat is alive.
+  test('Home focuses the first message in a plain (non-virtualized) transcript', async () => {
+    // Rows are stable here, so focusing a message is safe AND better than the
+    // viewport: it brings the row into view and gives ArrowUp/ArrowDown a
+    // starting point. This is the default configuration.
     const { messages, scrollIntoViewCalls, scrollToCalls, viewport } = createViewport();
     const nav = useChatKeyboardNav({
       onJumpToLatest: () => {},
@@ -122,9 +119,29 @@ describe('useChatKeyboardNav', () => {
     await tick();
 
     expect(scrollToCalls).toEqual([{ top: 0, behavior: 'auto' }]);
+    expect(document.activeElement).toBe(messages[0]!);
+    expect(scrollIntoViewCalls).toEqual([]);
+  });
+
+  test('Home focuses the viewport when virtualized, because rows are recycled', async () => {
+    // A virtualized row is a window slot: the virtualizer's next pass unmounts
+    // it, and removing the focused node drops focus to `<body>`. The keydown
+    // handler is bound on the container, so that kills every shortcut —
+    // including the Home that just ran. The viewport is `tabindex="0"` and
+    // never unmounts while the chat is alive.
+    const { messages, viewport } = createViewport();
+    const nav = useChatKeyboardNav({
+      onJumpToLatest: () => {},
+      onJumpToStart: () => {},
+      getIsVirtualized: () => true,
+      getScrollBehavior: () => 'auto',
+    });
+
+    nav.handleKeyDown(keyEvent('Home'), viewport);
+    await tick();
+
     expect(document.activeElement).toBe(viewport);
     expect(document.activeElement).not.toBe(messages[0]!);
-    expect(scrollIntoViewCalls).toEqual([]);
   });
 
   test('Arrow keys move focus between rendered messages', () => {

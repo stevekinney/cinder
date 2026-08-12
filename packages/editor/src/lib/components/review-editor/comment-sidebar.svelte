@@ -414,7 +414,7 @@
 
   .thread-orphaned {
     margin: var(--cinder-space-1) 0 0;
-    font-size: var(--cinder-font-size-xs);
+    font-size: var(--cinder-text-xs);
     color: var(--cinder-text-muted);
     font-style: italic;
   }
