@@ -31,19 +31,27 @@ Comments should stay anchored when nearby text changes. Export actions should pr
 
 The editor should make source, rendered, and diff modes available without leaving the review context.`);
 
+  // Anchor positions are ProseMirror positions against the full document, never
+  // indices into the Markdown string. "Architecture Notes" occupies body
+  // positions 1..19 in the parsed document, and its doc.textBetween() offset —
+  // which is what lastKnownOffset stores — is 0. The front matter above is 38
+  // characters, and the component subtracts that before handing anchors to the
+  // editor, so the values below are the body numbers plus 38.
+  // prefix/suffix are text too: heading markup like "# " appears in no text
+  // space at all, and textBetween joins blocks with a single newline.
   let threads = $state<Thread[]>([
     {
       id: 'thread-architecture-title',
       createdAt: '2026-04-30T12:00:00.000Z',
       anchor: {
-        from: 3,
-        to: 21,
+        from: 39,
+        to: 57,
         quote: 'Architecture Notes',
-        prefix: '# ',
-        suffix: '\n\nThis document',
+        prefix: '',
+        suffix: '\nThis document describes the review workflow for ',
         status: 'anchored',
         originalQuote: 'Architecture Notes',
-        lastKnownOffset: 3,
+        lastKnownOffset: 38,
       },
       comments: [
         {

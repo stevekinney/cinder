@@ -13,6 +13,9 @@ export {
   isDocumentAnchor,
   isTextAnchor,
   timestamp,
+  // Persistence converters
+  toPersistedThreads,
+  toRuntimeThreads,
 } from './types.js';
 
 export type {

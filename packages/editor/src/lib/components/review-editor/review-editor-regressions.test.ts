@@ -12,6 +12,9 @@
  * @module
  */
 import { describe, expect, test } from 'bun:test';
+import { proseMirrorPositionToTextOffset } from '../../editor/index.ts';
+import { createDocFromMarkdown } from '../../editor/test-utilities.ts';
+import { parseReviewEditorFrontMatter } from './review-editor-front-matter.ts';
 
 const here = (file: string) => new URL(`./${file}`, import.meta.url).pathname;
 
@@ -22,6 +25,9 @@ const liveRegionSource = await Bun.file(here('live-region.svelte')).text();
 const anchorDecorationsSource = await Bun.file(
   new URL('../../anchor-decorations.ts', import.meta.url).pathname,
 ).text();
+const exampleSet = (await Bun.file(here('review-editor.examples.json')).json()) as {
+  examples: { id: string; code: string }[];
+};
 
 describe('seeded threads no longer highlight the whole document', () => {
   /**
@@ -55,6 +61,18 @@ describe('seeded threads no longer highlight the whole document', () => {
     expect(anchorDecorationsSource).toContain('function anchorMatchesDocument');
     expect(anchorDecorationsSource).toMatch(/case 'sync':[\s\S]*?anchorMatchesDocument/);
     expect(anchorDecorationsSource).toMatch(/case 'add':[\s\S]*?anchorMatchesDocument/);
+  });
+
+  test('a collapsed range paints nothing, so the 0/0 sentinel is invisible', () => {
+    // `toRuntimeThreads` seeds restored threads with `from: 0, to: 0` and lets
+    // re-anchoring place them. That is only safe because a collapsed range is
+    // skipped when decorations are computed — otherwise every restored thread
+    // would flash a highlight over the top of the document.
+    const computeDecorationsBody = anchorDecorationsSource.slice(
+      anchorDecorationsSource.indexOf('function computeDecorations'),
+      anchorDecorationsSource.indexOf('Decoration.inline('),
+    );
+    expect(computeDecorationsBody).toMatch(/if \(from >= to\) continue;/);
   });
 
   test('deferred re-anchoring reads the stored range safely', () => {
@@ -192,4 +210,75 @@ describe('the editor view renders one control row, not two', () => {
     expect(controlsSource).toMatch(/role="group"/);
     expect(controlsSource).not.toMatch(/role="toolbar"/);
   });
+});
+
+describe('the shipped examples seed anchors in the documented coordinate space', () => {
+  /**
+   * The `with-comments` example seeded `from: 3, to: 21` — indices into the
+   * front-matter-stripped Markdown string, not ProseMirror positions. Post-
+   * #1266 the component verifies seeded positions and re-anchors by quote, so
+   * the example still rendered correctly and the wrong numbers were discarded
+   * silently. Consumers copy examples, so the mistake propagated into every app
+   * that seeded persisted threads.
+   *
+   * This reads the generated examples artifact, which `components:check` keeps
+   * in sync with the playground source, and re-derives the arithmetic against a
+   * real ProseMirror document.
+   */
+  const readStringLiteral = (block: string, field: string): string => {
+    const match = block.match(new RegExp(`\\b${field}: '([^']*)'`));
+    expect(match).not.toBeNull();
+    // Source escapes (\n) are JSON escapes too, and no literal here uses ".
+    return JSON.parse(`"${match![1]}"`) as string;
+  };
+
+  const readNumber = (block: string, field: string): number => {
+    const match = block.match(new RegExp(`\\b${field}: (\\d+)`));
+    expect(match).not.toBeNull();
+    return Number(match![1]);
+  };
+
+  for (const example of exampleSet.examples) {
+    const anchorBlocks = [...example.code.matchAll(/anchor: \{([\s\S]*?)\n {6}\},/g)].map(
+      (match) => match[1]!,
+    );
+    const textAnchors = anchorBlocks.filter((block) => !block.includes("type: 'document'"));
+    if (textAnchors.length === 0) continue;
+
+    test(`${example.id} anchors resolve to their quotes`, async () => {
+      const valueMatch = example.code.match(/let value = \$state\(`([\s\S]*?)`\)/);
+      expect(valueMatch).not.toBeNull();
+      const { body, bodyOffset } = parseReviewEditorFrontMatter(valueMatch![1]!);
+      const { doc, destroy } = await createDocFromMarkdown(body);
+
+      try {
+        for (const block of textAnchors) {
+          const from = readNumber(block, 'from') - bodyOffset;
+          const to = readNumber(block, 'to') - bodyOffset;
+          const quote = readStringLiteral(block, 'quote');
+
+          // from/to are ProseMirror positions, so the document text between
+          // them is exactly the quote.
+          expect(doc.textBetween(from, to, '\n')).toBe(quote);
+
+          // lastKnownOffset is a textBetween() offset, a different space.
+          expect(readNumber(block, 'lastKnownOffset') - bodyOffset).toBe(
+            proseMirrorPositionToTextOffset(doc, from),
+          );
+
+          // prefix/suffix are text context too - never Markdown markup, and
+          // blocks are joined by a single newline.
+          const docSize = doc.content.size;
+          expect(readStringLiteral(block, 'prefix')).toBe(
+            doc.textBetween(Math.max(0, from - 50), from, '\n'),
+          );
+          expect(readStringLiteral(block, 'suffix')).toBe(
+            doc.textBetween(to, Math.min(docSize, to + 50), '\n'),
+          );
+        }
+      } finally {
+        destroy();
+      }
+    });
+  }
 });

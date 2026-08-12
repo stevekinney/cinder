@@ -397,3 +397,80 @@ export function isDocumentAnchor(anchor: CommentAnchor | PersistedAnchor): boole
 export function isTextAnchor(anchor: CommentAnchor | PersistedAnchor): boolean {
   return anchor.type === 'text' || anchor.type === undefined;
 }
+
+// ============================================================================
+// Persistence Converters
+// ============================================================================
+
+/**
+ * Convert threads to persisted format for serialization.
+ *
+ * Drops the runtime ProseMirror positions (`from`/`to`), which are only
+ * meaningful against a live document. Use {@link toRuntimeThreads} to convert
+ * back.
+ *
+ * @param threads - Live threads with position info
+ * @returns Persisted threads suitable for storage
+ */
+export function toPersistedThreads(threads: Thread[]): PersistedThread[] {
+  return threads.map((thread) => ({
+    ...thread,
+    anchor: {
+      type: thread.anchor.type,
+      quote: thread.anchor.quote,
+      prefix: thread.anchor.prefix,
+      suffix: thread.anchor.suffix,
+      status: thread.anchor.status,
+      blockId: thread.anchor.blockId,
+      originalPosition: thread.anchor.originalPosition,
+      originalQuote: thread.anchor.originalQuote,
+      lastKnownOffset: thread.anchor.lastKnownOffset,
+    },
+  }));
+}
+
+/**
+ * Convert persisted threads back to runtime format.
+ *
+ * The inverse of {@link toPersistedThreads}. `PersistedAnchor` deliberately
+ * omits the ProseMirror `from`/`to` positions, so a saved `ReviewState` cannot
+ * be bound to the ReviewEditor `threads` prop until they are put back.
+ *
+ * Both are seeded to `0`. That pair is a neutral "unplaced" sentinel, not a
+ * position: a collapsed range paints no decoration, so nothing is highlighted
+ * at the top of the document. The anchor plugin sees the mismatch, re-anchors
+ * each thread by its quote against the live document, and writes the real
+ * positions back through the two-way binding shortly after mount.
+ *
+ * Two consequences worth planning for:
+ * - Bind `value` from the same saved state. Because every restored thread goes
+ *   through re-anchoring, a thread whose quote is absent from the document is
+ *   removed and `onthreaddelete` fires - the automatic removal described at the
+ *   top of this module.
+ * - Document-level anchors (`type: 'document'`) carry no quote, are never
+ *   re-anchored, and stay at `0`/`0`.
+ *
+ * @param threads - Persisted threads, typically `ReviewState.threads`
+ * @returns Runtime threads suitable for the `threads` prop
+ *
+ * @example
+ * ```svelte
+ * <script lang="ts">
+ *   import { ReviewEditor, toRuntimeThreads } from '@lostgradient/editor/review-editor';
+ *
+ *   const saved = JSON.parse(localStorage.getItem('review-state') ?? 'null');
+ *   let value = $state(saved.content);
+ *   let threads = $state(toRuntimeThreads(saved.threads));
+ * </script>
+ *
+ * <ReviewEditor id="review" bind:value bind:threads />
+ * ```
+ */
+export function toRuntimeThreads(threads: PersistedThread[]): Thread[] {
+  return threads.map((thread) => ({
+    ...thread,
+    // Spread first so any stray from/to on untyped JSON is overwritten by the
+    // sentinel rather than trusted as a real position.
+    anchor: { ...thread.anchor, from: 0, to: 0 },
+  }));
+}
