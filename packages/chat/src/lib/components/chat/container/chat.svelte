@@ -1557,12 +1557,9 @@
   // any add or remove, and an effect body runs after Svelte has applied the DOM
   // change, so `isConnected` is already accurate here.
   //
-  // Honest status: this cannot fire today, because Chat does not actually drop
-  // rows when the conversation shrinks (cinder#1286 — a Chat rendered with six
-  // messages and re-rendered with three still shows six). It is kept rather
-  // than deferred because it costs one early-returning call per rendered-set
-  // change, and it is the difference between the backstop working and not the
-  // moment that bug is fixed.
+  // This was unreachable until #1286: the static row list stopped reconciling
+  // after its first render, so a row could never leave without a scroll. Now
+  // that removals actually happen, so does this.
   $effect(() => {
     void messages;
     void renderRows;
@@ -2652,6 +2649,29 @@
       {:else}
         {#key staticRowsResetIdentity}
           {#each renderRows as renderRow (chatRenderRowKey(renderRow))}
+            <!--
+              A keyed `{#each}` whose body starts with a CONDITIONAL renders its
+              initial items and then never inserts or removes another one
+              (Svelte 5.56.4). `renderChatRow` opens with `{#if renderRow.type
+              === 'date'}`, so the transcript froze at whatever it first
+              rendered: messages added to `conversation` never appeared, and
+              removed or hidden ones never left (#1286).
+
+              A static element in the body is what restores reconciliation.
+              Nothing else does: an inline conditional, a per-branch snippet, and
+              a component whose own root is conditional all reproduce it.
+
+              It has to be a real element that stays a direct child of the
+              timeline — `display: contents` would drop the row out of
+              `.chat-timeline > :not(:last-child)`, silently un-suppressing
+              scroll anchoring on every non-last row. `display: none` keeps it
+              out of layout, out of the flex gap, and out of the a11y tree.
+
+              The virtualized branch above needs none of this: its rows are
+              already wrapped in `.chat-virtual-row`, which is why only the
+              static path was affected.
+            -->
+            <span class="chat-row-anchor"></span>
             {@render renderChatRow(renderRow)}
           {/each}
         {/key}
@@ -2860,6 +2880,11 @@
       outline: var(--cinder-ring-width) solid ButtonText;
       outline-offset: calc(var(--cinder-ring-width) * -1);
     }
+  }
+
+  /* Reconciliation anchor for the static row list; see the each block above. */
+  .chat-row-anchor {
+    display: none;
   }
 
   /* Prevent non-last messages from being scroll anchors */
