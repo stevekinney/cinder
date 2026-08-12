@@ -78,7 +78,15 @@ To restore, bind `value` and `threads` from the same saved state and run the thr
 
 `toRuntimeThreads` seeds `from`/`to` with `0`. That pair is an _unplaced_ sentinel rather than a position: a collapsed range paints no highlight, and the anchor plugin locates each thread by its `quote` against the live document and writes the real positions back through the binding shortly after mount.
 
-Restoring against different content is the one thing to watch. Because every restored thread goes through re-anchoring, a thread whose quote is no longer in the document is removed and `onthreaddelete` fires. That is the same automatic removal that happens when a reviewer deletes anchored text while editing.
+Restoring against different content is survivable. Because every restored thread goes through re-anchoring, a thread whose quote is no longer in the document comes back _orphaned_ rather than placed: it is kept in `threads`, paints no highlight, shows in the sidebar as missing its text, and re-anchors on a later pass if the text returns. `onthreaddelete` does **not** fire, and no cleanup is owed — removing an orphaned thread is your decision, made with `deleteThread`.
+
+The same is true while editing. Deleting anchored text orphans its thread instead of destroying it, because a deletion and the first half of a cut-and-paste are indistinguishable at the moment the text disappears, and re-anchoring is debounced 300ms — faster than anyone cutting a paragraph and pasting it back. Check `anchor.status` to tell the two states apart:
+
+```ts
+const orphaned = threads.filter((thread) => thread.anchor.status === 'orphaned');
+```
+
+Comment exports carry the same signal: an orphaned thread serializes with `status: 'orphaned'`, and its stale coordinates move to `lastKnownSelection` (omitted entirely when no genuine historical offset exists) so nothing reads as a current position.
 
 The imperative alternative is `setState(saved)`, which sets the content and re-anchors in one call:
 
