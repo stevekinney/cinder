@@ -1,5 +1,11 @@
 # @lostgradient/cinder
 
+## 0.24.2
+
+### Patch Changes
+
+- [`8c3065a`](https://github.com/stevekinney/cinder/commit/8c3065a5889811bc3315e3a7fcbfa1bfc816b62c) Thanks [@stevekinney](https://github.com/stevekinney)! - Keep SelectionPopover's pre-open focus owner for the popover's whole open lifetime so an Escape that follows a cancel or submit still returns focus to it instead of dropping it on `<body>`.
+
 ## 0.24.1
 
 ### Patch Changes
