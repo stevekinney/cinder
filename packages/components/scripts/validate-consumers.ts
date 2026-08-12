@@ -1213,6 +1213,55 @@ function extractPublishedPackageSourceMapWarnings(logOutput: string): string[] {
   return [...new Set(warningLines)];
 }
 
+/** Lines of dev-server output to keep when a readiness wait fails. */
+const SERVER_OUTPUT_TAIL_LINES = 60;
+/** Hard character ceiling, in case the server emits very long single lines. */
+const SERVER_OUTPUT_TAIL_CHARS = 8_000;
+
+/**
+ * Bound ONE stream's captured output, keeping the end and announcing any cut.
+ *
+ * The tail is what matters — the last thing the server said before it stopped
+ * answering — but the announcement matters just as much: a diagnostic that
+ * silently drops data is worse than no diagnostic, because it reads as complete.
+ */
+function formatStreamTail(name: string, raw: string): string {
+  const stream = raw.trim();
+  if (stream.length === 0) return `  ${name}: (empty)`;
+
+  const lines = stream.split('\n');
+  const keptLines = lines.slice(-SERVER_OUTPUT_TAIL_LINES);
+  const droppedLines = lines.length - keptLines.length;
+
+  let text = keptLines.join('\n');
+  let charsDropped = 0;
+  if (text.length > SERVER_OUTPUT_TAIL_CHARS) {
+    charsDropped = text.length - SERVER_OUTPUT_TAIL_CHARS;
+    text = text.slice(-SERVER_OUTPUT_TAIL_CHARS);
+  }
+
+  // Report both kinds of truncation independently. Deriving one from the other
+  // hides the single-very-long-line case, where no lines are dropped but a lot
+  // of characters are.
+  const notes: string[] = [`${lines.length} line(s)`];
+  if (droppedLines > 0) notes.push(`${droppedLines} earlier line(s) omitted`);
+  if (charsDropped > 0) notes.push(`${charsDropped} leading char(s) omitted mid-line`);
+
+  return `  ${name} (${notes.join('; ')}):\n${text}`;
+}
+
+/**
+ * Format a dev server's captured streams for a failure message.
+ *
+ * stdout and stderr are bounded SEPARATELY and both are always shown. Joining
+ * them and taking one tail would let a noisy stderr evict stdout completely,
+ * which is exactly the case where knowing what the server was serving matters.
+ */
+function formatServerOutput(stdout: string, stderr: string): string {
+  if (stdout.trim().length === 0 && stderr.trim().length === 0) return ': (no output)';
+  return `:\n${formatStreamTail('stdout', stdout)}\n${formatStreamTail('stderr', stderr)}`;
+}
+
 async function assertSvelteKitDevChatHydrationRoute(
   fixtureDirectory: string,
   label: string,
@@ -1252,15 +1301,26 @@ async function assertSvelteKitDevChatHydrationRoute(
 
   try {
     const routeUrl = `http://127.0.0.1:${httpPort}/chat-layout`;
+    // Elapsed, not allocated — see the dev-SSR readiness failure below.
+    const chatLayoutStartedAt = Date.now();
     await waitForReadyHtml({
       url: routeUrl,
       timeoutMs: SVELTEKIT_DEV_SSR_READINESS_TIMEOUT_MS,
       pollIntervalMs: SVELTEKIT_DEV_SSR_POLL_INTERVAL_MS,
       runningServer: devServer,
       isReady: (html) => html.includes('Empty Chat hydration') && html.includes('No messages yet'),
-    }).catch((error) => {
+    }).catch(async (error) => {
       const message = error instanceof Error ? error.message : String(error);
-      fail(`sveltekit-consumer ${label} /chat-layout dev readiness failed: ${message}`);
+      // Same reasoning as the dev-SSR readiness failure below: surface the
+      // server's own output, since "we stopped waiting" says nothing about why.
+      const waitedMs = Date.now() - chatLayoutStartedAt;
+      devServer.kill();
+      await devServer.exited;
+      fail(
+        `sveltekit-consumer ${label} /chat-layout dev readiness failed: ${message}\n` +
+          `(waited ${waitedMs}ms; port ${httpPort})\n` +
+          `dev server output${formatServerOutput(await devServerStdout, await devServerStderr)}`,
+      );
     });
 
     // This server deliberately uses Vite's default dependency optimizer. The
@@ -1326,15 +1386,42 @@ async function assertSvelteKitDevSsrRoute(fixtureDirectory: string, label: strin
         );
       }
       const routeUrl = `http://127.0.0.1:${httpPort}${routePath}`;
+      // Elapsed, not allocated. `remainingReadinessBudget` is what this route
+      // was ALLOWED; if the server dies on startup the wait rejects almost
+      // immediately, and reporting the allocation would log a 25-second route
+      // wait after a single poll.
+      const routeStartedAt = Date.now();
       const body = await waitForReadyHtml({
         url: routeUrl,
         timeoutMs: remainingReadinessBudget,
         pollIntervalMs: SVELTEKIT_DEV_SSR_POLL_INTERVAL_MS,
         runningServer: devServer,
         isReady: (html) => markers.every((marker) => html.includes(marker)),
-      }).catch((error) => {
+      }).catch(async (error) => {
         const message = error instanceof Error ? error.message : String(error);
-        fail(`sveltekit-consumer ${label} ${routePath} dev SSR readiness failed: ${message}`);
+        // Report what the server was DOING, not just that we gave up on it.
+        // `timeout waiting for ready HTML (last error: The operation timed
+        // out.)` on its own cannot distinguish a slow render from a wedged
+        // optimizer from something else answering on this port — which is
+        // exactly why the 2026-08-12 release failure (#1270) could not be
+        // diagnosed from its logs. The output promises only resolve once the
+        // streams close, so the server has to be killed before it can be read.
+        // Measure at failure time. `remainingReadinessBudget` was computed
+        // BEFORE the wait, so reporting it here would describe the budget this
+        // attempt started with, not what was left when it gave up.
+        const waitedMs = Date.now() - routeStartedAt;
+        const spentMs = Date.now() - (readinessDeadline - SVELTEKIT_DEV_SSR_READINESS_TIMEOUT_MS);
+        const leftMs = Math.max(0, readinessDeadline - Date.now());
+        devServer.kill();
+        await devServer.exited;
+        fail(
+          `sveltekit-consumer ${label} ${routePath} dev SSR readiness failed: ${message}\n` +
+            `(waited ${waitedMs}ms on this route of ${remainingReadinessBudget}ms allowed; ` +
+            `${spentMs}ms spent and ${leftMs}ms left of the shared ` +
+            `${SVELTEKIT_DEV_SSR_READINESS_TIMEOUT_MS}ms budget; ` +
+            `poll ${SVELTEKIT_DEV_SSR_POLL_INTERVAL_MS}ms; port ${httpPort})\n` +
+            `dev server output${formatServerOutput(await devServerStdout, await devServerStderr)}`,
+        );
       });
 
       const missingMarkers = markers.filter((marker) => !body.includes(marker));
@@ -1345,6 +1432,48 @@ async function assertSvelteKitDevSsrRoute(fixtureDirectory: string, label: strin
       }
     }
 
+    // WHAT THE 2026-08-12 RELEASE FAILURE (#1270) WAS NOT.
+    //
+    // Splitting these routes attacks render cost, which is the right instinct.
+    // But the failure that motivated it was not render cost, and the following
+    // were each eliminated by measurement rather than argument, so nobody
+    // repeats the experiments.
+    //
+    // PROVENANCE, because absolute numbers age: all timings below were taken on
+    // 2026-08-12 against the PRE-SPLIT single `/dev-ssr` route at commit
+    // ee74c4ced, on an Apple-silicon laptop and (where noted) Linux in Docker at
+    // `--cpus=2`, with `node_modules/.vite` and `.svelte-kit/output` deleted and
+    // the packed tarball installed as CI does. Treat them as one dated
+    // observation of the ORDER OF MAGNITUDE — roughly a second, not roughly ten
+    // — not as thresholds to assert against. #1271 has since reduced per-route
+    // cost further.
+    //
+    //   - Transform waterfall / slow render. Cold render 0.67s (macOS) and
+    //     1.086s (Linux, 2 vCPU); server ready ~1.4s; warm render 11ms. An
+    //     order of magnitude below the 5s per-attempt cap, not marginally under.
+    //   - "Just slow" as a category. This is the structural one, and it does not
+    //     depend on the absolute numbers: aborting PARTIALLY RETAINS Vite's
+    //     work. A retry after a 300ms abort finished in 0.630s against 1.086s
+    //     cold. So a slow render RECOVERS — each attempt resumes warmer than the
+    //     last and one lands. The failing run made no progress across five
+    //     attempts in 25s, which no amount of mere slowness produces.
+    //   - Pipe-buffer backpressure. The output promises below are created at
+    //     spawn and only awaited later, which would deadlock a chatty child once
+    //     the ~64KB pipe filled. Bun drains eagerly: a child writing 512KB with
+    //     the promise un-awaited for 4s ran to completion and exited 0.
+    //   - Server death. `waitForReadyHtml` checks `exitCode` every poll and
+    //     reports it distinctly; the failure reported timeouts instead.
+    //   - Retry pile-up. Six CONCURRENT requests to a cold fixture each returned
+    //     in 0.667s, identical to one — Vite dedupes the module-graph work, so
+    //     there is no contention to compound.
+    //   - Sibling-fixture contention. release.yaml runs each package's
+    //     `validate:consumer` as a separate sequential step in one job.
+    //
+    // What that leaves: a server accepting connections and never answering, and
+    // never recovering — wedged, not slow. Cause still unknown. Do not widen a
+    // timeout on recurrence (AGENTS.md forbids it, correctly); read the server
+    // output the failure handlers now attach.
+    //
     // Deliberately NO client-hydration assertion for these focused dev routes.
     // This phase owns only their transform-on-request SSR HTML; the focused
     // /chat-layout helper above owns dev-mode browser hydration against the
