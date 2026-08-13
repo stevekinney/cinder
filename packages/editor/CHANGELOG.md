@@ -1,5 +1,170 @@
 # @lostgradient/editor
 
+## 0.9.0
+
+### Minor Changes
+
+- [#1285](https://github.com/stevekinney/cinder/pull/1285) [`bfcd9ed`](https://github.com/stevekinney/cinder/commit/bfcd9ed490ebfb19ed9c1f14c9c7032bef5efdee) Thanks [@stevekinney](https://github.com/stevekinney)! - Keep a comment when its anchored text is cut, stop trapping Tab inside lists,
+  fix front-matter diffs, and make soft comment deletion work.
+
+  **Cutting and pasting commented text no longer destroys the comment**
+  (cinder#1284). Re-anchoring is debounced 300ms, and deletion is indistinguishable
+  from a cut at the moment the text disappears — so a person who cut a commented
+  paragraph and pasted it back a second later lost the comment, with no undo.
+  `AnchorStatus` gains `'orphaned'`: a vanished quote now marks the anchor orphaned
+  and KEEPS the thread, rendering no decoration and retrying on every later pass, so
+  restoring the text restores the anchor. The comment sidebar marks such threads and
+  says their quoted text is missing. Removing a thread is now the consumer's
+  decision — the component no longer does it on the user's behalf, and
+  `onAnchorDeleted` is deprecated and never called.
+
+  **Tab is no longer a keyboard trap inside list items** (WCAG 2.1.2). Tabbing in
+  put the caret at the end of the document; if that block was a list item, the
+  sink/lift keymap consumed both Tab and Shift+Tab, so the only way out was to keep
+  re-indenting the bullet. Tab still indents inside a list, but there is now an
+  escape.
+
+  **`generateUnifiedDiff` no longer corrupts YAML front matter.** `normalize()`
+  re-read the `---` fences as a thematic break plus a setext heading, injecting
+  8-dash lines and wrong hunk headers and producing a patch `git apply` rejects —
+  through `exportUnifiedDiff()`, the `<name>-diff` hidden input, and the Copy Diff
+  menu item, while the docs promise git-appliable output. Front matter is parsed
+  off, only the body is normalized, and the front matter is re-attached verbatim.
+
+  **`deleteComment` no longer silently no-ops on the event the component emits.**
+  It bailed when a soft delete omitted `deletedAt`, but `CommentDeleteEvent` has no
+  such field, so the obvious wiring typechecked and did nothing — after the
+  component had already announced "Comment deleted". The reducer now stamps the
+  timestamp itself; an explicit `deletedAt` still wins.
+
+  **The editor's loading placeholder is no longer visible text.** `EditorSkeleton`
+  hid it with a bare `sr-only` class that Cinder does not ship, so "Loading
+  editor..." rendered as body copy during load and permanently without JavaScript.
+
+### Patch Changes
+
+- [#1285](https://github.com/stevekinney/cinder/pull/1285) [`bfcd9ed`](https://github.com/stevekinney/cinder/commit/bfcd9ed490ebfb19ed9c1f14c9c7032bef5efdee) Thanks [@stevekinney](https://github.com/stevekinney)! - Align the exported `createAnchorManager` with the orphan-preservation contract.
+
+  `AnchorStatus` gained an `orphaned` member so a thread whose quoted text goes
+  missing is kept and retried rather than destroyed — deletion and cut-and-paste
+  are indistinguishable at the moment the text disappears. The inline ReviewEditor
+  implementation was updated for that; the separately exported
+  `createAnchorManager` (`@lostgradient/editor/review-editor`) was not, leaving one
+  shipped path that still deleted the thread and fired `onthreaddelete`. Restoring
+  a saved review against a document whose text had since changed silently lost
+  those comments.
+
+  Re-anchoring there now keeps every thread: a missing quote yields a collapsed
+  `orphaned` anchor that renders nothing and re-anchors if the text returns.
+
+  Two related gaps in the same function are fixed with it. Document-level anchors
+  now short-circuit before the quote search, since an empty quote can never be
+  "found" and they were being deleted despite not being lost. And a quote that
+  resolves in the text but whose offsets do not map back to positions now orphans
+  the thread instead of dropping it silently, with no event at all.
+
+  `AnchorManagerOptions.onthreaddelete` is removed rather than left in place. It
+  reported a deletion that no longer happens, so it would never fire, and a
+  consumer wiring cleanup to an event that never arrives has no way to notice.
+  The manager also now propagates `status` in both directions. `handleAnchorsUpdate`
+  copies the plugin's reported status onto the thread, so an anchor orphaned during
+  live editing actually reaches consumers instead of continuing to read `anchored`
+  while the plugin has already stopped decorating it. And the sync fingerprint
+  includes `status`, so a thread that flips between anchored and orphaned without
+  moving still re-syncs to the plugin.
+
+- [#1285](https://github.com/stevekinney/cinder/pull/1285) [`bfcd9ed`](https://github.com/stevekinney/cinder/commit/bfcd9ed490ebfb19ed9c1f14c9c7032bef5efdee) Thanks [@stevekinney](https://github.com/stevekinney)! - Keep a restored orphan's disambiguation offset, so a recovered comment reattaches
+  to the occurrence it was written against.
+
+  `anchor.lastKnownOffset` is the proximity hint re-anchoring uses to choose
+  between repeated occurrences of the same quote. When the surrounding context is
+  identical (a repeated checklist row, boilerplate, near-identical table entries),
+  context scoring ties and that offset is the only thing left to break it.
+
+  `toRuntimeThreads`/`setState` restore a persisted anchor at the unplaced `0`/`0`
+  sentinel while keeping the saved offset: the range says "nowhere", the offset
+  says where the quote used to live. For an orphaned thread that offset is the
+  whole record of its location, and the first document edit after the restore was
+  throwing it away. Mapping the sentinel yields position 0, which was written back
+  as the new hint, so re-anchoring then measured proximity from the top of the
+  document. Restore a review, type the deleted sentence back where it belonged, and
+  the comment reappeared on the FIRST copy of that sentence instead of yours.
+
+  The hint is now preserved while an orphan is still unplaced, through both the
+  collapsed-range path and the drifted path a new top-of-document paragraph takes.
+  An anchor that collapsed at a real position during the session keeps updating its
+  offset as before, so a hint that legitimately tracks the document still moves
+  with it.
+
+- [#1285](https://github.com/stevekinney/cinder/pull/1285) [`bfcd9ed`](https://github.com/stevekinney/cinder/commit/bfcd9ed490ebfb19ed9c1f14c9c7032bef5efdee) Thanks [@stevekinney](https://github.com/stevekinney)! - Stop inventing a last-known position for orphans that never recorded one.
+
+  `lastKnownOffset` is optional on a persisted anchor, so a review saved before it
+  was recorded genuinely has no offset. `generateCommentsJSON` read it as
+  `lastKnownOffset ?? 0`, which was harmless while that number only ever fed
+  `selection` on a thread whose quote was still in the document — a consumer that
+  distrusted the offset could search for the quote. Once such a state loads as
+  `orphaned`, the same `0` is exported as `lastKnownSelection`, and it now asserts
+  that the missing text was last seen at the very start of the document. Nothing
+  supports the claim and nothing can contradict it, because the quote is by
+  definition no longer there to search for; a JSON consumer following it applies
+  the feedback to whatever the document opens with.
+
+  `lastKnownSelection` is therefore omitted entirely when the anchor carries no
+  offset, which leaves the absence consumers already handle for document-level
+  threads. `status: 'orphaned'` is still emitted either way, so the thread remains
+  identifiable as one whose text is gone — losing that would be worse than the
+  invented number. When `lastKnownOffset` is missing but `originalPosition` is
+  present, its `offset` is used instead: it is a real historical offset in the same
+  `doc.textBetween()` space, and is the fallback re-anchoring itself uses. That
+  also settles a contradiction, since those exports previously paired `from: 0`
+  with the original position's own `line` and `column`.
+
+  Anchored threads are untouched, and an orphan that does carry a
+  `lastKnownOffset` still exports `lastKnownSelection` as before. The Markdown
+  export and the summary were already honest here — the former prints an offset
+  only when one exists, and the latter prints no coordinates at all — so only the
+  JSON export changes.
+
+- [#1285](https://github.com/stevekinney/cinder/pull/1285) [`bfcd9ed`](https://github.com/stevekinney/cinder/commit/bfcd9ed490ebfb19ed9c1f14c9c7032bef5efdee) Thanks [@stevekinney](https://github.com/stevekinney)! - Tell comment exports apart from the document they no longer describe.
+
+  A thread whose quoted text goes missing is now kept and marked `orphaned`
+  instead of being deleted. Orphans consequently reach code that never used to see
+  them, and the comment exports were the worst place for that: they described an
+  orphaned thread as an ordinary text selection. `generateCommentsJSON` built
+  `selection.from`/`selection.to` out of the stale `lastKnownOffset`, the Markdown
+  export headed the thread `Comment at Line 12:4` and printed `*Position: Line 12,
+Column 4*`, and the summary wrote `### On "the quoted text"` as though that text
+  were still there. All three were byte-identical to a healthy thread. Copy
+  Comments output, form summaries, and JSON consumers therefore had no way to know
+  the anchor was lost, and applying the feedback at those coordinates lands it on
+  whatever occupies that position now.
+
+  The comments stay in every format, because the feedback is still worth reading.
+  What changes is that the positional claim is withdrawn:
+  - JSON emits `status: 'orphaned'` and moves the stale offsets from `selection` to
+    `lastKnownSelection`. Dropping `selection` is deliberate: document-level
+    threads already have none, so consumers branch on its absence today and orphans
+    reuse a path they must already handle rather than a new one they would have to
+    learn.
+  - The Markdown export heads the thread "Comment on text no longer in the
+    document" and replaces the position line with "This text was not found in the
+    current document. Last known position: ...", so the coordinates read as
+    history.
+  - The summary appends `(no longer in the document)` to the quote heading. It
+    carries no line numbers, so the bare quote was its only misleading signal.
+
+  Anchored threads are untouched, byte for byte. `status` is emitted only when it
+  is not `anchored`, so an absent `status` still means what it has always meant.
+
+- [#1285](https://github.com/stevekinney/cinder/pull/1285) [`bfcd9ed`](https://github.com/stevekinney/cinder/commit/bfcd9ed490ebfb19ed9c1f14c9c7032bef5efdee) Thanks [@stevekinney](https://github.com/stevekinney)! - Stop the Escape-then-Tab focus escape from outliving focus. Pressing Escape inside a list arms a
+  one-shot latch that lets the next Tab leave the editor (WCAG 2.1.2), and the latch was validated
+  only against editor state. Leaving the editor and returning to the same caret applies no
+  ProseMirror transaction, so the document and selection still looked untouched and the latch stayed
+  armed indefinitely: press Escape to dismiss a menu, click away, click back, then press Tab meaning
+  "indent this bullet" and focus is thrown out of the editor instead. The latch now clears when focus
+  leaves the editable surface. Escape immediately followed by Tab still escapes, and a Tab with no
+  Escape before it still indents.
+
 ## 0.8.1
 
 ### Patch Changes
