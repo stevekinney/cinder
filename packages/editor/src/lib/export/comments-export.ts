@@ -34,6 +34,20 @@ function isDocumentAnchor(anchor: PersistedAnchor): boolean {
 }
 
 /**
+ * Check whether a thread's quoted text is missing from the document.
+ *
+ * Every position an orphaned anchor carries (`lastKnownOffset`,
+ * `originalPosition`) describes where the text used to be, and the quote
+ * describes text that is no longer there. Presenting either as current invites
+ * a reader, human or model, to apply the feedback at a location that now holds
+ * something else. Document-level anchors are excluded because they are never
+ * re-anchored, so their status says nothing about the document.
+ */
+function isOrphanedAnchor(anchor: PersistedAnchor): boolean {
+  return anchor.status === 'orphaned' && !isDocumentAnchor(anchor);
+}
+
+/**
  * Generate an LLM-optimized Markdown export of comment threads.
  *
  * Supports both text-anchored comments (with blockquoted selections) and
@@ -195,18 +209,26 @@ export function generateCommentsJSON(
       comments: exportedComments,
     };
 
-    // Add selection info for text-anchored threads
+    // Add selection info for text-anchored threads. An orphaned thread keeps
+    // its comments and its quote, but reports both the status and the fact that
+    // the offsets are historical rather than a place to act on.
     if (!isDocument) {
-      const selection: ExportedSelection = {
-        text: thread.anchor.quote,
-        from: thread.anchor.lastKnownOffset ?? 0,
-        to: (thread.anchor.lastKnownOffset ?? 0) + thread.anchor.quote.length,
-      };
-      if (thread.anchor.originalPosition) {
-        selection.line = thread.anchor.originalPosition.line;
-        selection.column = thread.anchor.originalPosition.column;
+      if (isOrphanedAnchor(thread.anchor)) {
+        exportedThread.status = 'orphaned';
+        const lastKnownSelection = buildLastKnownSelection(thread.anchor);
+        if (lastKnownSelection) exportedThread.lastKnownSelection = lastKnownSelection;
+      } else {
+        const selection: ExportedSelection = {
+          text: thread.anchor.quote,
+          from: thread.anchor.lastKnownOffset ?? 0,
+          to: (thread.anchor.lastKnownOffset ?? 0) + thread.anchor.quote.length,
+        };
+        if (thread.anchor.originalPosition) {
+          selection.line = thread.anchor.originalPosition.line;
+          selection.column = thread.anchor.originalPosition.column;
+        }
+        exportedThread.selection = selection;
       }
-      exportedThread.selection = selection;
     }
 
     exportedThreads.push(exportedThread);
@@ -223,6 +245,36 @@ export function generateCommentsJSON(
       documentThreadCount,
     },
   };
+}
+
+/**
+ * Describe where an orphaned thread's quote was last seen, or `undefined` when
+ * the anchor records no offset at all.
+ *
+ * `lastKnownOffset` is optional, so a review persisted before it was recorded
+ * carries none. Defaulting it to `0` would report the quote as last seen at the
+ * very start of the document — a claim nothing on the anchor supports, and one
+ * a consumer cannot check, because the quote is by definition no longer in the
+ * text to search for. `originalPosition.offset` is a genuine historical offset
+ * in the same `doc.textBetween()` space, and is the same fallback re-anchoring
+ * uses when `lastKnownOffset` is missing. When neither exists the whole object
+ * is omitted, leaving the absence consumers already handle for document-level
+ * threads rather than a fabricated range.
+ */
+function buildLastKnownSelection(anchor: PersistedAnchor): ExportedSelection | undefined {
+  const offset = anchor.lastKnownOffset ?? anchor.originalPosition?.offset;
+  if (offset === undefined) return undefined;
+
+  const selection: ExportedSelection = {
+    text: anchor.quote,
+    from: offset,
+    to: offset + anchor.quote.length,
+  };
+  if (anchor.originalPosition) {
+    selection.line = anchor.originalPosition.line;
+    selection.column = anchor.originalPosition.column;
+  }
+  return selection;
 }
 
 /**
@@ -252,8 +304,12 @@ function formatThread(
     lines.push('');
   }
 
-  // Position details for precise reference
-  if (anchor.originalPosition) {
+  // Position details for precise reference. For an orphaned thread the same
+  // numbers are still worth printing as a hint about where the text used to
+  // live, but only once they are labelled as history.
+  if (isOrphanedAnchor(anchor)) {
+    lines.push(`*${formatLastKnownPosition(anchor)}*\n`);
+  } else if (anchor.originalPosition) {
     const { line, column } = anchor.originalPosition;
     const range = anchor.lastKnownOffset !== undefined ? `offset ${anchor.lastKnownOffset}` : '';
     lines.push(`*Position: Line ${line}, Column ${column}${range ? ` (${range})` : ''}*\n`);
@@ -301,6 +357,10 @@ function formatDocumentThread(
  * Format location information for a thread.
  */
 function formatLocation(anchor: PersistedThread['anchor']): string {
+  if (isOrphanedAnchor(anchor)) {
+    return 'Comment on text no longer in the document';
+  }
+
   if (anchor.originalPosition) {
     const { line, column } = anchor.originalPosition;
     return `Comment at Line ${line}:${column}`;
@@ -311,6 +371,29 @@ function formatLocation(anchor: PersistedThread['anchor']): string {
   }
 
   return 'Comment (location unknown)';
+}
+
+/**
+ * Describe where an orphaned thread's quote was last seen.
+ *
+ * The sentence leads with the absence rather than the coordinates so that a
+ * reader skimming italics cannot mistake the numbers for a current position.
+ */
+function formatLastKnownPosition(anchor: PersistedThread['anchor']): string {
+  const missing = 'This text was not found in the current document.';
+
+  if (anchor.originalPosition) {
+    const { line, column } = anchor.originalPosition;
+    const offset =
+      anchor.lastKnownOffset !== undefined ? ` (offset ${anchor.lastKnownOffset})` : '';
+    return `${missing} Last known position: Line ${line}, Column ${column}${offset}`;
+  }
+
+  if (anchor.lastKnownOffset !== undefined) {
+    return `${missing} Last known position: offset ${anchor.lastKnownOffset}`;
+  }
+
+  return missing;
 }
 
 /**

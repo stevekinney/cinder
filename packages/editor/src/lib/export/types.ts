@@ -5,6 +5,8 @@
  * in LLM-friendly and Git-compatible formats.
  */
 
+import type { AnchorStatus } from '../shared/anchor-types.js';
+
 /**
  * Options for generating an LLM-optimized Markdown summary.
  */
@@ -157,8 +159,36 @@ export interface ExportedThread {
   id: string;
   /** Thread type: 'text' for text-anchored, 'document' for document-level */
   type: 'text' | 'document';
-  /** Selection info (only for text-anchored threads) */
+  /**
+   * Anchor status, emitted only when it is not `anchored`.
+   *
+   * An absent `status` therefore means the anchor is placed, which is also what
+   * every export written before orphaned anchors existed meant. Emitting
+   * `'anchored'` explicitly would change output that consumers already parse,
+   * to say the thing its absence already said.
+   */
+  status?: AnchorStatus | undefined;
+  /**
+   * Where the thread is anchored right now (text-anchored threads only).
+   *
+   * Absent for document-level threads and for orphaned ones, because neither
+   * has a current location. Consumers already branch on that absence for
+   * document-level threads, so orphans take a path they have to handle anyway
+   * rather than a new one they would have to learn.
+   */
   selection?: ExportedSelection | undefined;
+  /**
+   * Where an orphaned thread's quote was last seen.
+   *
+   * Same shape as {@link ExportedThread.selection}, deliberately under a
+   * different key: these offsets describe a document that no longer exists, and
+   * applying feedback at them would land it in the wrong place.
+   *
+   * Absent when the anchor recorded no offset to report — an orphan's quote is
+   * gone, so a guessed range is one a consumer has no way to disprove. Check
+   * `status` rather than this field to tell an orphan from a placed thread.
+   */
+  lastKnownSelection?: ExportedSelection | undefined;
   /** Comments in the thread */
   comments: ExportedComment[];
 }

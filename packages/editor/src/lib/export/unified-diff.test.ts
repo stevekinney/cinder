@@ -5,6 +5,10 @@
 
 import { computeLineDiff, groupIntoHunks } from '@lostgradient/markdown/diff/line-diff';
 import { describe, expect, test } from 'bun:test';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type { ReviewState } from '../comments/types.js';
 import {
   composeDisplayedDocument,
@@ -251,6 +255,96 @@ describe('generateUnifiedDiff', () => {
       // Unified diff should end with a newline
       expect(result.diff.endsWith('\n')).toBe(true);
     });
+  });
+});
+
+describe('front matter', () => {
+  /**
+   * Apply a patch the way a consumer would, with git itself. A string comparison
+   * would not catch the failure mode this guards: hunk headers whose line counts
+   * disagree with the lines they introduce still *look* like a diff.
+   */
+  function gitApplyCheck(originalDocument: string, diff: string): { ok: boolean; error: string } {
+    const directory = mkdtempSync(join(tmpdir(), 'unified-diff-'));
+
+    // Setup is inside the try as well: a failing `git init` or write would
+    // otherwise leak the directory it just created.
+    try {
+      execFileSync('git', ['init', '--quiet'], { cwd: directory });
+      writeFileSync(join(directory, 'document.md'), originalDocument);
+      writeFileSync(join(directory, 'patch.diff'), diff);
+
+      execFileSync('git', ['apply', '--check', 'patch.diff'], { cwd: directory, stdio: 'pipe' });
+      return { ok: true, error: '' };
+    } catch (error) {
+      const stderr = (error as { stderr?: Buffer }).stderr;
+      return { ok: false, error: stderr ? stderr.toString() : String(error) };
+    } finally {
+      // Each call makes a git repo under the OS temp dir; without this they
+      // accumulate one per run, per CI shard.
+      rmSync(directory, { recursive: true, force: true });
+    }
+  }
+
+  const original = [
+    '---',
+    'title: Release Plan',
+    'draft: true',
+    'tags:',
+    '  - launch',
+    '  - q3',
+    '---',
+    '',
+    '# Release Plan',
+    '',
+    '- Ship the thing',
+    '- Tell people about it',
+    '',
+  ].join('\n');
+  const current = original.replace('draft: true', 'draft: false');
+
+  test('produces a patch git can actually apply to the original document', () => {
+    const { diff } = generateUnifiedDiff(createState(original, current));
+
+    const applied = gitApplyCheck(original, diff);
+    expect(applied.error).toBe('');
+    expect(applied.ok).toBe(true);
+  });
+
+  test('keeps the front matter block verbatim instead of re-reading it as Markdown', () => {
+    const { diff } = generateUnifiedDiff(createState(original, current));
+
+    // The signature of the bug: normalize() has no front-matter step, so it reads
+    // the fences as a thematic break plus a setext heading and re-emits the
+    // underline as a run of dashes as long as the text above it. Such a line
+    // appears in neither input document.
+    expect(diff).not.toMatch(/^[-+ ]-{4,}$/m);
+    // Indented YAML sequence items survive as context rather than being rewritten
+    // into flush-left list items separated by blank lines.
+    expect(diff).toContain('   - launch');
+    expect(diff).toContain('@@ -1,6 +1,6 @@');
+    expect(diff).toContain('\n-draft: true\n+draft: false\n');
+    expect(diff.split('\n').filter((line) => line.startsWith('@@'))).toHaveLength(1);
+  });
+
+  test('still normalizes the body underneath front matter', () => {
+    const starred = original.replace(/^- /gm, '* ');
+
+    // A list-marker-only change is exactly what normalization exists to swallow;
+    // preserving front matter must not cost us that.
+    expect(generateUnifiedDiff(createState(original, starred)).diff).toBe('');
+  });
+
+  test('reports body edits at line numbers that count the front matter', () => {
+    const edited = original.replace('- Ship the thing', '- Ship the thing on time');
+    const { diff } = generateUnifiedDiff(createState(original, edited));
+
+    const applied = gitApplyCheck(original, diff);
+    expect(applied.error).toBe('');
+    expect(applied.ok).toBe(true);
+    // Line 8 is the blank line after the closing fence: the seven front-matter
+    // lines are counted, not swallowed or re-expanded.
+    expect(diff).toContain('@@ -8,5 +8,5 @@');
   });
 });
 

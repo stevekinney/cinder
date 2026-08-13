@@ -30,6 +30,7 @@ function createThread(
     id?: string;
     quote?: string;
     line?: number;
+    status?: 'anchored' | 'orphaned';
     comments?: Array<{ id: string; authorId: string; body: string; deletedAt?: string }>;
   } = {},
 ): PersistedThread {
@@ -59,7 +60,7 @@ function createThread(
       quote: options.quote ?? 'selected text',
       prefix: 'before ',
       suffix: ' after',
-      status: 'anchored',
+      status: options.status ?? 'anchored',
       originalPosition: {
         offset: 0,
         line: options.line ?? 1,
@@ -291,6 +292,53 @@ describe('generateMarkdownSummary', () => {
       const result = generateMarkdownSummary(state);
 
       expect(result.markdown).not.toContain('## Feedback');
+    });
+  });
+
+  describe('orphaned anchors', () => {
+    test('marks the quote as gone from the document', () => {
+      const state = createState({
+        threads: [createThread({ quote: 'vanished text', status: 'orphaned' })],
+      });
+      const result = generateMarkdownSummary(state);
+
+      expect(result.markdown).toContain('### On "vanished text" (no longer in the document)');
+    });
+
+    test('still reports the feedback itself', () => {
+      const state = createState({
+        threads: [createThread({ quote: 'vanished text', status: 'orphaned' })],
+      });
+      const result = generateMarkdownSummary(state);
+
+      expect(result.markdown).toContain('Test comment');
+      expect(result.stats.threadCount).toBe(1);
+    });
+
+    test('leaves anchored threads unlabelled', () => {
+      const state = createState({
+        threads: [createThread({ quote: 'present text' })],
+      });
+      const result = generateMarkdownSummary(state);
+
+      expect(result.markdown).toContain('### On "present text"\n');
+      expect(result.markdown).not.toContain('no longer in the document');
+    });
+
+    test('claims no position for the vanished text', () => {
+      // The summary is the one format that never printed coordinates, which is
+      // why the quote heading was its only misleading signal. Keep it that way:
+      // an orphan's stored offsets describe a document that no longer exists.
+      const state = createState({
+        original: 'Unchanged content',
+        current: 'Unchanged content',
+        threads: [createThread({ quote: 'vanished text', status: 'orphaned', line: 12 })],
+      });
+      const result = generateMarkdownSummary(state);
+
+      expect(result.markdown).not.toContain('offset');
+      expect(result.markdown).not.toMatch(/Line \d+/);
+      expect(result.markdown).not.toContain('position');
     });
   });
 

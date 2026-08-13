@@ -25,6 +25,17 @@ export interface UseChatKeyboardNavOptions {
   getHistoryTrigger?: () => { focus: () => void } | null | undefined;
   /** Optional virtualized message navigation hook for off-window rows. */
   onVirtualMessageNavigation?: (direction: 'next' | 'previous') => boolean;
+  /**
+   * Whether the transcript is virtualized.
+   *
+   * Only virtualization makes a message row an unsafe focus target: the
+   * virtualizer recycles rows, and focusing one that is later unmounted drops
+   * focus to `<body>`, killing the container-bound shortcuts. In a plain
+   * transcript the rows are stable, so focusing a message is both safe and
+   * better — it scrolls the row into view and gives arrow navigation a starting
+   * point, neither of which focusing the viewport does.
+   */
+  getIsVirtualized?: () => boolean;
 }
 
 /** Return type for the keyboard navigation helper */
@@ -34,6 +45,31 @@ export interface UseChatKeyboardNavReturn {
    * Should be attached to the container's onkeydown event.
    */
   handleKeyDown(event: KeyboardEvent, viewport: HTMLElement | null): void;
+}
+
+/**
+ * Whether ArrowUp/ArrowDown should move between messages.
+ *
+ * True on a focused `.chat-message` — the ordinary case, stepping row to row.
+ * Also true on the viewport ITSELF, which is what makes message navigation
+ * reachable at all in a virtualized transcript: there `Home` focuses the
+ * viewport (rows recycle, so they are unsafe focus targets), and without this
+ * the very next ArrowDown would do nothing, leaving no keyboard route into the
+ * transcript. `navigateMessages` already treats "nothing focused" as "start at
+ * the first (or last) rendered message", so entry needs no special case.
+ *
+ * Focus inside a child interactive element — tool-approval buttons, suggestion
+ * chips — is excluded, because those elements are neither the viewport nor
+ * carry `chat-message`, and arrows belong to the control there.
+ *
+ * The cost is that arrows no longer scroll the focused viewport natively. That
+ * is the better trade: navigation scrolls each target into view as it goes, so
+ * the content still moves, and it moves in message-sized steps that match what
+ * a screen reader announces.
+ */
+function canNavigateMessagesFrom(viewport: HTMLElement): boolean {
+  const active = document.activeElement;
+  return active === viewport || (active?.classList.contains('chat-message') ?? false);
 }
 
 // ==========================================================================
@@ -69,6 +105,7 @@ export function useChatKeyboardNav(options: UseChatKeyboardNavOptions): UseChatK
   const {
     onJumpToLatest,
     onJumpToStart,
+    getIsVirtualized,
     getScrollBehavior,
     getHistoryTrigger,
     onVirtualMessageNavigation,
@@ -149,9 +186,25 @@ export function useChatKeyboardNav(options: UseChatKeyboardNavOptions): UseChatK
             const historyTrigger = getHistoryTrigger?.();
             if (historyTrigger) {
               historyTrigger.focus();
+              return undefined;
+            }
+            // Only a VIRTUALIZED row is an unsafe focus target: the virtualizer
+            // recycles it, and removing the focused node drops focus to `<body>`,
+            // killing every container-bound shortcut including the Home that just
+            // ran. There the viewport — `tabindex="0"`, above the rows, never
+            // unmounted — is the stable choice.
+            //
+            // In a plain transcript the rows are stable, and focusing the first
+            // message is strictly better: it brings the row into view and gives
+            // ArrowUp/ArrowDown somewhere to start. Focusing the viewport with
+            // `preventScroll` would do neither, and `onJumpToStart` is a no-op
+            // outside virtualization, so nothing else would scroll either.
+            if (getIsVirtualized?.() ?? false) {
+              viewport.focus({ preventScroll: true });
             } else {
               const firstMessage = viewport.querySelector<HTMLElement>('.chat-message');
-              firstMessage?.focus();
+              if (firstMessage) firstMessage.focus();
+              else viewport.focus({ preventScroll: true });
             }
             return undefined;
           },
@@ -178,7 +231,7 @@ export function useChatKeyboardNav(options: UseChatKeyboardNavOptions): UseChatK
       // `[data-cinder-tool-approval]` and `[data-cinder-suggested-replies]` are
       // descendants — so they always returned null, making `!null` always true.
       case 'ArrowDown':
-        if (document.activeElement?.classList.contains('chat-message')) {
+        if (canNavigateMessagesFrom(viewport)) {
           event.preventDefault();
           if (!onVirtualMessageNavigation?.('next')) {
             navigateMessages(viewport, 'next');
@@ -187,7 +240,7 @@ export function useChatKeyboardNav(options: UseChatKeyboardNavOptions): UseChatK
         break;
 
       case 'ArrowUp':
-        if (document.activeElement?.classList.contains('chat-message')) {
+        if (canNavigateMessagesFrom(viewport)) {
           event.preventDefault();
           if (!onVirtualMessageNavigation?.('previous')) {
             navigateMessages(viewport, 'previous');

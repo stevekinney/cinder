@@ -221,10 +221,13 @@ function generateThreadsSection(
     const visibleComments = thread.comments.filter((c) => !c.deletedAt);
     if (visibleComments.length === 0) continue;
 
-    // Show what text the comment is about
+    // Show what text the comment is about. The summary carries no line numbers,
+    // so an orphaned thread's only misleading signal is the bare quote implying
+    // the text is still there to act on; say that it isn't.
     const quote = thread.anchor.quote;
     if (quote) {
-      lines.push(`### On "${truncate(quote, 60)}"\n`);
+      const missing = thread.anchor.status === 'orphaned' ? ' (no longer in the document)' : '';
+      lines.push(`### On "${truncate(quote, 60)}"${missing}\n`);
     } else {
       // Document-level comment
       lines.push(`### Document-level feedback\n`);

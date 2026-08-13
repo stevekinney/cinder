@@ -360,6 +360,7 @@
     getScrollBehavior: scrollState.getScrollBehavior,
     getHistoryTrigger: () => (showHistoryTrigger ? historyTriggerRef : null),
     onVirtualMessageNavigation: (direction) => navigateVirtualMessage(direction),
+    getIsVirtualized: () => isVirtualized,
   });
 
   const messages = $derived(getMessages(conversation));
@@ -1176,6 +1177,10 @@
   }): void {
     clearHistoryAnchorAfterScroll(event.scrollTop);
 
+    // Scrolling is what recycles rows, so this is where a focused row can have
+    // been unmounted out from under the user.
+    reclaimFocusIfRowDetached();
+
     // `atBottom` was just recomputed from real geometry, so the prepend latch
     // has nothing left to protect. This is the LOAD-BEARING clear of the two:
     // it covers both the scroll listener's rAF recompute and
@@ -1457,11 +1462,22 @@
       updateAtBottomBinding(true);
       unreadState.markAllAsRead();
       onjumptolatest?.();
-      tick().then(() => {
-        const lastMessage = viewport?.querySelector<HTMLElement>(
-          `.chat-message-wrapper:last-of-type .chat-message`,
-        );
-        lastMessage?.focus();
+      // Park focus on the timeline, NOT on the bottom row. A virtualized row is
+      // a recycled window slot: the virtualizer's next window pass (a
+      // post-mount remeasurement that shifts the offsets, or any subsequent
+      // scroll) unmounts it, and removing the focused node hands focus back to
+      // <body>. Since the keydown handler is bound on the container, focus
+      // landing outside it silently kills EVERY shortcut — End, Home,
+      // PageUp/PageDown, arrow navigation, Ctrl+F. The timeline is
+      // `tabindex="0"`, lives above the recycled rows, and never unmounts while
+      // the chat is alive, so shortcuts survive the pass.
+      //
+      // (The old row lookup was doubly wrong: every `.chat-message-wrapper` is
+      // the only child of its `.chat-virtual-row`, so `:last-of-type` matches
+      // all of them and `querySelector` returned the row at the TOP of the
+      // window — the first row a downward pass recycles away.)
+      void tick().then(() => {
+        viewport?.focus({ preventScroll: true });
       });
       return;
     }
@@ -1470,6 +1486,101 @@
       unreadState.markAllAsRead();
       onjumptolatest?.();
     });
+  }
+
+  /**
+   * Backstop for focus orphaned by a row leaving the DOM.
+   *
+   * Any row inside the timeline can be unmounted while it holds focus — a
+   * virtualizer window pass recycling it, a message removed from the
+   * transcript, a keyed re-render. The browser then drops focus to `<body>`,
+   * and because the keydown handler is bound on the container, every keyboard
+   * shortcut dies with it. Pull focus back onto the timeline, which outlives
+   * every row.
+   *
+   * The blur is NOT the trigger. When the focused element is *removed*, browsers
+   * move focus to `<body>` without reliably dispatching `focusout` from the
+   * detached node, so a design that waits for that event misses precisely the
+   * case it exists for. Instead this records which row holds focus and re-checks
+   * its connectivity from the two places a row can leave: a scroll-state
+   * recompute (`handleScrollStateChange`, which is what recycling runs through)
+   * and a change to the rendered set (the effect below, which covers removals
+   * that never scroll — a message deleted from the conversation while the user
+   * reads further up, a keyed re-render). A `MutationObserver` over the timeline
+   * would catch both, and did originally, but `subtree: true` on a list that
+   * mutates every scroll frame costs far more than this check is worth.
+   *
+   * `focusin`/`focusout` are still used, but only to track *which* row to watch,
+   * never to decide that a reclaim is due. The guards keep this off the ordinary
+   * paths: a click-away onto inert page chrome leaves the blurred node
+   * CONNECTED, so it never reclaims, and window/tab blur is filtered by
+   * `document.hasFocus` — reclaiming there would steal focus back from whatever
+   * the user switched to.
+   */
+  let focusedRow: Node | null = null;
+
+  function handleTimelineFocusIn(event: FocusEvent): void {
+    const target = event.target;
+    focusedRow = target instanceof Node && target !== viewport ? target : null;
+  }
+
+  function handleTimelineFocusOut(event: FocusEvent): void {
+    // Focus moved somewhere real; stop tracking. A null `relatedTarget` is
+    // ambiguous — it also covers the detach — so keep tracking in that case and
+    // let `reclaimFocusIfRowDetached` decide.
+    if (event.relatedTarget !== null) focusedRow = null;
+  }
+
+  // A deliberate click onto inert page chrome also reports `relatedTarget: null`
+  // and leaves the row connected, so the handler above keeps tracking it. That is
+  // correct at the time, but the tracking must not outlive the user's departure:
+  // if that row is recycled by a later scroll, the reclaim would see `<body>`
+  // focused and haul focus back into a chat the user had already left. A pointer
+  // landing outside the container is the unambiguous signal that they left.
+  $effect(() => {
+    if (!containerRef) return;
+    function clearTrackingOnOutsidePointer(event: PointerEvent): void {
+      const target = event.target;
+      if (target instanceof Node && containerRef?.contains(target)) return;
+      focusedRow = null;
+    }
+    document.addEventListener('pointerdown', clearTrackingOnOutsidePointer, { capture: true });
+    return () => {
+      document.removeEventListener('pointerdown', clearTrackingOnOutsidePointer, {
+        capture: true,
+      });
+    };
+  });
+
+  // Rows can leave the DOM without any scroll: a message removed from the
+  // conversation, a keyed re-render. Reading both rendered sets reruns this on
+  // any add or remove, and an effect body runs after Svelte has applied the DOM
+  // change, so `isConnected` is already accurate here.
+  //
+  // Not covered by a unit test, and the reason is worth recording: under
+  // happy-dom a keyed `{#each}` whose body starts with a conditional stops
+  // reconciling after its first render, so a row never leaves and this never
+  // fires there. That is a harness artifact, not a Chat one — the same
+  // component tracks adds and removes correctly in Chrome, verified against a
+  // standalone repro. Testing this path wants a real browser.
+  $effect(() => {
+    void messages;
+    void renderRows;
+    reclaimFocusIfRowDetached();
+  });
+
+  function reclaimFocusIfRowDetached(): void {
+    const timeline = viewport;
+    if (!timeline || !focusedRow || focusedRow.isConnected) return;
+
+    focusedRow = null;
+    if (!timeline.isConnected) return;
+    // Do not fight a window/tab blur, or a focus move that actually landed.
+    if (typeof document.hasFocus === 'function' && !document.hasFocus()) return;
+    const active = document.activeElement;
+    if (active !== null && active !== document.body) return;
+
+    timeline.focus({ preventScroll: true });
   }
 
   // ==========================================================================
@@ -2487,6 +2598,8 @@
       onwheel={handleHistoryRestorationUserInput}
       ontouchstart={handleHistoryRestorationUserInput}
       onpointerdown={handleHistoryRestorationUserInput}
+      onfocusin={handleTimelineFocusIn}
+      onfocusout={handleTimelineFocusOut}
       {@attach scrollAttachment}
       {@attach historyAnchorScrollAttachment}
       {@attach viewportAttach}

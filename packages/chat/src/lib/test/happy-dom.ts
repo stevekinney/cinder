@@ -7,6 +7,31 @@
  * Called from test files via top-level `setupHappyDom()` before dynamic-importing
  * `@testing-library/svelte`. The dynamic import is important: testing-library reads
  * `globalThis.document` during module init, so it must load AFTER happy-dom is installed.
+ *
+ * ## Known limitation: keyed `{#each}` with a conditional body does not reconcile
+ *
+ * Under happy-dom, a keyed `{#each}` whose body STARTS with a conditional renders
+ * its initial items and then never inserts or removes another one. The list looks
+ * frozen at whatever it first rendered, while the underlying `$derived` values
+ * hold the correct data the whole time.
+ *
+ * This is a happy-dom artifact, NOT a component defect. The same component tracks
+ * adds, removes, and replacements correctly in Chrome — verified against a
+ * standalone repro on svelte 5.56.9, with and without a static anchor element in
+ * the each body, which produced identical and correct results in the browser and
+ * diverged only here.
+ *
+ * It matters because `Chat`'s static row list has exactly this shape: its body is
+ * `{@render renderChatRow(row)}` and that snippet opens with
+ * `{#if renderRow.type === 'date'}`. So a test that asserts a message row
+ * appearing or disappearing through that path will report a frozen transcript and
+ * look like a real bug. It cost a filed issue, a shipped workaround, and a revert
+ * before being pinned down (cinder#1286).
+ *
+ * Assert row insertion and removal in a real browser instead — chatroom's
+ * Playwright suite is the place. Adding a static element to the each body does
+ * work around it, but that is production DOM in every consumer's app paying for a
+ * test environment, so do not.
  */
 import { Window } from 'happy-dom';
 

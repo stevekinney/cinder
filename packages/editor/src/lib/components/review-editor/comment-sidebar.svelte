@@ -219,12 +219,23 @@
           type="button"
           class="thread-item"
           data-active={activeThreadId === thread.id || undefined}
+          data-orphaned={thread.anchor.status === 'orphaned' || undefined}
           onclick={() => handleThreadClick(thread.id)}
           aria-current={activeThreadId === thread.id ? 'true' : undefined}
         >
           <blockquote class="thread-quote">
             {truncate(thread.anchor.quote, 60)}
           </blockquote>
+          <!--
+            An orphaned thread's quote is not in the document, so it has no
+            highlight to jump to. Saying so is the difference between a comment
+            that looks broken and one the reader knows is waiting for its text
+            to come back — the text often does, since a cut-and-paste orphans an
+            anchor until the paste lands (cinder#1284).
+          -->
+          {#if thread.anchor.status === 'orphaned'}
+            <p class="thread-orphaned">Quoted text is not in the document</p>
+          {/if}
           <p class="thread-preview">{getPreview(thread)}</p>
         </button>
       {/each}
@@ -399,6 +410,18 @@
   .thread-item[data-active] {
     background: color-mix(in oklch, var(--cinder-accent), transparent 90%);
     border-color: var(--cinder-accent);
+  }
+
+  .thread-orphaned {
+    margin: var(--cinder-space-1) 0 0;
+    font-size: var(--cinder-text-xs);
+    color: var(--cinder-text-muted);
+    font-style: italic;
+  }
+
+  .thread-item[data-orphaned] .thread-quote {
+    opacity: 0.7;
+    text-decoration: line-through;
   }
 
   .thread-quote {

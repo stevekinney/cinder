@@ -5,7 +5,8 @@
  * - Tracks anchor positions through document edits via tr.mapping.map()
  * - Detects when anchors need re-anchoring (quote drift)
  * - Provides decorations for visual anchor highlights
- * - Auto-deletes threads when their anchor text is removed
+ * - Marks anchors orphaned when their quote leaves the document, and
+ *   re-anchors them if it comes back
  *
  * @module
  *
@@ -34,6 +35,7 @@ import {
   proseMirrorPositionToTextOffset,
   textOffsetToProseMirrorPosition,
 } from './editor/bridge.js';
+import type { AnchorStatus } from './shared/anchor-types.js';
 import { devWarn } from './utilities/dev-warn.js';
 
 // ============================================================================
@@ -62,6 +64,13 @@ export interface AnchorState {
   originalPosition?: { offset: number; line: number; column: number } | undefined;
   /** Last known text offset (updated on each edit) */
   lastKnownOffset?: number | undefined;
+  /**
+   * Whether the quote is currently in the document.
+   *
+   * `orphaned` anchors are tracked but render nothing, and are retried on every
+   * later re-anchoring pass so restoring the text restores the anchor.
+   */
+  status: AnchorStatus;
 }
 
 /**
@@ -84,7 +93,13 @@ export interface AnchorPluginState {
 export interface AnchorPluginOptions {
   /** Called when anchor positions change */
   onAnchorsUpdate?: (updates: AnchorUpdate[]) => void;
-  /** Called when an anchor's text is deleted and the thread should be removed */
+  /**
+   * @deprecated Never called. An anchor whose quote leaves the document is
+   * marked `orphaned` and reported through `onAnchorsUpdate` with
+   * `status: 'orphaned'` instead of being deleted, because deletion and
+   * cut-and-paste are indistinguishable within the re-anchoring window
+   * (cinder#1284). Removing a thread is the consumer's decision.
+   */
   onAnchorDeleted?: (threadId: string) => void;
   /** Called when user clicks on an anchor decoration */
   onAnchorClick?: (threadId: string, event: MouseEvent) => void;
@@ -242,8 +257,15 @@ function handleMetaTransaction(
           suffix: anchor.suffix,
           originalPosition: anchor.originalPosition,
           lastKnownOffset: anchor.lastKnownOffset,
+          status: anchor.status ?? 'anchored',
         };
-        if (!anchorMatchesDocument(doc, anchorState)) needsReanchor = true;
+        // An anchor that is ALREADY orphaned is known-bad: re-raising here would
+        // make the deferred pass dispatch this same sync, which re-raises again,
+        // forever, on an idle document. Only a later document change (handled in
+        // `mapAnchorsThroughTransaction`) should schedule another attempt.
+        if (anchorState.status !== 'orphaned' && !anchorMatchesDocument(doc, anchorState)) {
+          needsReanchor = true;
+        }
         warnOnMisSeededAnchor(doc, anchorState, prevState.anchors.has(thread.id));
         newAnchors.set(thread.id, anchorState);
       }
@@ -268,6 +290,7 @@ function handleMetaTransaction(
         suffix: anchor.suffix,
         originalPosition: anchor.originalPosition,
         lastKnownOffset: anchor.lastKnownOffset,
+        status: anchor.status ?? 'anchored',
       };
       warnOnMisSeededAnchor(doc, anchorState, prevState.anchors.has(meta.thread.id));
       newAnchors.set(meta.thread.id, anchorState);
@@ -348,6 +371,22 @@ function mapAnchorsThroughTransaction(
   }
 
   for (const [threadId, anchor] of prevState.anchors) {
+    // Any document change is a chance for an orphan's text to have come back,
+    // so retry it. This runs only on `docChanged`, so it is one retry per edit —
+    // bounded, unlike re-raising on every sync, which loops on an idle document.
+    if (anchor.status === 'orphaned') needsReanchor = true;
+
+    // An orphan restored from persistence sits at the unplaced `0`/`0` sentinel
+    // `toRuntimeThreads` writes: the range says "nowhere", while
+    // `lastKnownOffset` still records where the quote used to be. Mapping that
+    // sentinel produces offset 0, so recomputing the hint from it below would
+    // trade the saved location for the top of the document. Re-anchoring leans
+    // on that hint to choose between repeated occurrences of the same quote, so
+    // losing it reattaches the recovered comment to the FIRST occurrence rather
+    // than the one it was written against. Only an anchor that collapsed
+    // somewhere real has a mapped position worth reading.
+    const isUnplacedOrphan = anchor.status === 'orphaned' && anchor.from === 0 && anchor.to === 0;
+
     // Map positions through the transaction
     const mappedFrom = tr.mapping.map(anchor.from, -1);
     const mappedTo = tr.mapping.map(anchor.to, 1);
@@ -359,7 +398,9 @@ function mapAnchorsThroughTransaction(
     if (mappedFrom >= mappedTo) {
       needsReanchor = true;
       // Update lastKnownOffset so re-anchoring doesn't bias toward stale position
-      const collapsedOffset = proseMirrorPositionToTextOffset(newState.doc, mappedFrom);
+      const collapsedOffset = isUnplacedOrphan
+        ? anchor.lastKnownOffset
+        : proseMirrorPositionToTextOffset(newState.doc, mappedFrom);
       newAnchors.set(threadId, {
         ...anchor,
         from: mappedFrom,
@@ -423,7 +464,13 @@ function mapAnchorsThroughTransaction(
       // Edit was outside but quote drifted (cut/paste scenario)
       // Mark for deferred re-anchoring
       needsReanchor = true;
-      const newLastKnownOffset = proseMirrorPositionToTextOffset(newState.doc, mappedFrom);
+      // Inserting a block at the very top of the document expands the sentinel
+      // range instead of leaving it collapsed, which lands a restored orphan
+      // here rather than in the branch above. The hint is no more recoverable
+      // from `0`/`15` than from `0`/`0`, so preserve it on the same terms.
+      const newLastKnownOffset = isUnplacedOrphan
+        ? anchor.lastKnownOffset
+        : proseMirrorPositionToTextOffset(newState.doc, mappedFrom);
       newAnchors.set(threadId, {
         ...anchor,
         from: mappedFrom,
@@ -458,8 +505,16 @@ function mapAnchorsThroughTransaction(
 /**
  * Perform deferred re-anchoring for anchors that drifted.
  *
- * When an anchor's text is deleted (found: false), the anchor is removed
- * and onAnchorDeleted is called so the parent can delete the thread.
+ * An anchor whose quote is not in the document is marked `orphaned` and KEPT,
+ * not deleted. Deletion and cut-and-paste look identical at the moment the text
+ * disappears, and this pass runs 300ms after the last change — far quicker than
+ * a person cutting a paragraph and pasting it back. Deleting on `found: false`
+ * therefore destroyed a comment during an ordinary edit, with no undo
+ * (cinder#1284).
+ *
+ * An orphaned anchor renders nothing and is retried on every later pass, so
+ * restoring the text restores the anchor. Removing the thread is the consumer's
+ * call.
  */
 function performDeferredReanchoring(
   view: EditorView,
@@ -469,7 +524,6 @@ function performDeferredReanchoring(
   const { doc } = view.state;
   const documentText = doc.textBetween(0, doc.content.size, '\n');
   const updates: AnchorUpdate[] = [];
-  const deletedThreadIds: string[] = [];
 
   const newAnchors = new Map<string, AnchorState>();
 
@@ -479,6 +533,28 @@ function performDeferredReanchoring(
     // document replacement the stored positions can point past the end of the
     // new document, and textBetween throws a RangeError on out-of-range input.
     if (anchorMatchesDocument(doc, anchor)) {
+      // The quote is at the stored range. If this anchor was orphaned, the text
+      // has come back — a paste that restored it at the SAME position, where the
+      // insertion mapping expands the collapsed range onto the restored quote so
+      // no drift is detected. Recover it here; otherwise it would sit orphaned
+      // and undecorated forever with its own text sitting under it.
+      if (anchor.status === 'orphaned') {
+        const recovered: AnchorState = { ...anchor, status: 'anchored' };
+        newAnchors.set(threadId, recovered);
+        updates.push({
+          threadId,
+          from: recovered.from,
+          to: recovered.to,
+          quote: recovered.quote,
+          prefix: recovered.prefix,
+          suffix: recovered.suffix,
+          status: 'anchored',
+          ...(recovered.lastKnownOffset !== undefined
+            ? { lastKnownOffset: recovered.lastKnownOffset }
+            : {}),
+        });
+        continue;
+      }
       // Quote still matches, no re-anchoring needed
       newAnchors.set(threadId, anchor);
       continue;
@@ -493,9 +569,28 @@ function performDeferredReanchoring(
       lastKnownOffset: anchor.lastKnownOffset,
     });
 
-    // If the text was deleted, mark for removal
+    // The quote is not in the document right now. Keep the anchor, mark it
+    // orphaned, and report the status change so the consumer can surface it.
+    // The next pass retries it — `mapAnchorsThroughTransaction` re-raises
+    // `needsReanchor` for a collapsed range on every later edit — so a paste
+    // that restores the text restores the anchor.
     if (!result.found) {
-      deletedThreadIds.push(threadId);
+      const orphaned: AnchorState = { ...anchor, status: 'orphaned' };
+      newAnchors.set(threadId, orphaned);
+      if (anchor.status !== 'orphaned') {
+        updates.push({
+          threadId,
+          from: anchor.from,
+          to: anchor.to,
+          quote: anchor.quote,
+          prefix: anchor.prefix,
+          suffix: anchor.suffix,
+          status: 'orphaned',
+          ...(anchor.lastKnownOffset !== undefined
+            ? { lastKnownOffset: anchor.lastKnownOffset }
+            : {}),
+        });
+      }
       continue;
     }
 
@@ -531,6 +626,7 @@ function performDeferredReanchoring(
       prefix: newPrefix,
       suffix: newSuffix,
       lastKnownOffset: result.from,
+      status: 'anchored',
     };
 
     newAnchors.set(threadId, newAnchor);
@@ -554,7 +650,7 @@ function performDeferredReanchoring(
       type: 'sync',
       threads: Array.from(newAnchors.values()).map((a) => ({
         id: a.threadId,
-        anchor: { ...a, status: 'anchored' as const },
+        anchor: { ...a },
         comments: [],
         createdAt: new Date().toISOString(),
       })),
@@ -565,11 +661,6 @@ function performDeferredReanchoring(
   // Fire updates callback
   if (updates.length > 0) {
     options.onAnchorsUpdate?.(updates);
-  }
-
-  // Fire deleted callbacks - parent should delete these threads
-  for (const threadId of deletedThreadIds) {
-    options.onAnchorDeleted?.(threadId);
   }
 }
 
@@ -593,6 +684,10 @@ function computeDecorations(state: EditorState): DecorationSet {
   const hoveredThreadId = pluginState.hoveredThreadId;
 
   for (const [threadId, anchor] of pluginState.anchors) {
+    // An orphaned anchor's quote is not in the document, so there is nothing to
+    // highlight. It stays tracked (and retried) rather than decorated.
+    if (anchor.status === 'orphaned') continue;
+
     // Bounds checking: clamp positions to valid doc range
     const from = Math.max(0, Math.min(anchor.from, docSize));
     const to = Math.max(from, Math.min(anchor.to, docSize));

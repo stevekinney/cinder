@@ -6,8 +6,12 @@
  * - Runtime position tracking (ProseMirror positions)
  * - Serialization for persistence
  *
- * Threads have no lifecycle status - they exist until deleted.
- * When anchor text is deleted, threads are automatically removed.
+ * Threads have no lifecycle status of their own - they exist until a consumer
+ * deletes them. Their ANCHOR has one: see {@link AnchorStatus}. When the quoted
+ * text leaves the document the anchor is marked `orphaned` and the thread is
+ * KEPT, because a deletion and the first half of a cut-and-paste are
+ * indistinguishable at that moment (cinder#1284). It re-anchors if the text
+ * comes back.
  *
  * @module
  */
@@ -457,9 +461,11 @@ export function toPersistedThreads(threads: Thread[]): PersistedThread[] {
  *
  * Two consequences worth planning for:
  * - Bind `value` from the same saved state. Because every restored thread goes
- *   through re-anchoring, a thread whose quote is absent from the document is
- *   removed and `onthreaddelete` fires - the automatic removal described at the
- *   top of this module.
+ *   through re-anchoring, a thread whose quote is absent from that document
+ *   comes back `orphaned` rather than placed: kept, undecorated, and retried on
+ *   every later pass. `onthreaddelete` does NOT fire - removing it is the
+ *   consumer's decision. Binding a DIFFERENT document is therefore survivable;
+ *   it orphans the comments rather than destroying them.
  * - Document-level anchors (`type: 'document'`) carry no quote, are never
  *   re-anchored, and stay at `0`/`0`.
  *
