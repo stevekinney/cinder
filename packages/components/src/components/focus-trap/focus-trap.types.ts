@@ -10,6 +10,7 @@ export type FocusTrapProps = Omit<HTMLAttributes<HTMLDivElement>, 'children' | '
   initialFocus?: Exclude<FocusTargetInput, Function>;
   fallbackFocus?: Exclude<FocusTargetInput, Function>;
   restoreFallback?: Exclude<FocusTargetInput, Function>;
+  preferRestoreFallback?: boolean;
   class?: string;
 };
 
@@ -24,6 +25,8 @@ export interface FocusTrapSchemaProps {
   fallbackFocus?: string | null;
   /** CSS selector, resolved against the document, for the element that receives focus when the previously focused element cannot take it back — typically because it was removed from the DOM while the trap was open. Without it, focus falls to `<body>`. */
   restoreFallback?: string | null;
+  /** When true, `restoreFallback` is tried before the previously focused element rather than only after it. For hosts that know the captured element is about to be removed but cannot prove it yet, such as a delete that awaits a server round trip. */
+  preferRestoreFallback?: boolean;
   /** Additional class applied to the focus-trap wrapper element. */
   class?: string;
 }

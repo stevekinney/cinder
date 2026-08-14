@@ -8,6 +8,25 @@
  * `@testing-library/svelte`. The dynamic import is important: testing-library reads
  * `globalThis.document` during module init, so it must load AFTER happy-dom is installed.
  */
+/**
+ * ## Known limitation: `.focus()` succeeds on elements a browser would refuse
+ *
+ * happy-dom sets `document.activeElement` for any element `.focus()` is called
+ * on. Measured against this helper: a `disabled` button, a `hidden` button, an
+ * `inert` button, a plain `<div>`, and a `<div>` whose `tabindex` was removed
+ * all report `document.activeElement === element` afterwards. A real browser
+ * refuses every one of them, leaving focus where it was.
+ *
+ * So any test whose subject is "focus did NOT land here" cannot distinguish a
+ * correct refusal from happy-dom's permissiveness, and code that branches on
+ * whether a `.focus()` call actually landed is untestable in this suite by
+ * construction — it will always look like it landed. `createFocusTrap`'s
+ * restore path has one such branch, deliberately left unpinned with a note
+ * rather than covered by a test that would only be measuring this helper.
+ *
+ * The *disconnected* case is different and is testable: `restoreFocusTo` checks
+ * `isConnected` itself, so it refuses before `.focus()` is ever called.
+ */
 import { Window } from 'happy-dom';
 
 type Global = typeof globalThis & Record<string, unknown>;

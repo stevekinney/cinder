@@ -189,6 +189,75 @@ describe('FocusTrap', () => {
     expect(document.activeElement).not.toBe(fallback);
   });
 
+  // NOT PINNED HERE, stated rather than quietly omitted: `deactivate()` also
+  // confirms `document.activeElement === candidate` before accepting a restore,
+  // because `restoreFocusTo` reports success whenever `.focus()` did not throw —
+  // which is also true for a still-connected element that has since become
+  // `disabled` or `inert` and cannot actually take focus.
+  //
+  // That branch is unreachable under this suite's DOM. happy-dom focuses every
+  // element handed to it: measured here, `.focus()` lands on a disabled button,
+  // a hidden button, an inert button, a plain `<div>`, and a `<div>` whose
+  // `tabindex` was removed — all five report `document.activeElement === el`,
+  // where a real browser refuses all five. A test written against any of them
+  // would be measuring happy-dom, not this code. See
+  // `packages/components/src/test/happy-dom.ts` for the recorded limitation.
+  //
+  // The reachable half — a DISCONNECTED captured element — is pinned above, and
+  // is the case the bug was filed for.
+
+  test('prefers the fallback when the host says the captured element is on its way out', async () => {
+    // The asynchronous-removal window: a server-backed delete closes the overlay
+    // immediately while the item that opened it is still on screen awaiting the
+    // response. Ordinary restoration finds that item perfectly focusable, hands
+    // focus back, and then watches it unmount — landing on <body> after all,
+    // with the fallback never consulted.
+    const fallback = document.createElement('button');
+    fallback.setAttribute('data-testid', 'restore-fallback');
+    document.body.appendChild(fallback);
+
+    const trigger = document.createElement('button');
+    document.body.appendChild(trigger);
+    trigger.focus();
+
+    const { unmount } = render(FocusTrap, {
+      props: {
+        restoreFallback: '[data-testid="restore-fallback"]',
+        preferRestoreFallback: true,
+        children: focusTrapChildren,
+      },
+    });
+
+    await tick();
+    unmount();
+
+    // The trigger is STILL CONNECTED here, which is the whole point: without the
+    // preference this restores to it and the fallback is never reached.
+    expect(trigger.isConnected).toBe(true);
+    expect(document.activeElement).toBe(fallback);
+  });
+
+  test('still restores to the captured element when a preferred fallback cannot take focus', async () => {
+    // Preference reorders the candidates; it does not discard one. A fallback
+    // that has gone missing must not cost the restore that would have worked.
+    const trigger = document.createElement('button');
+    document.body.appendChild(trigger);
+    trigger.focus();
+
+    const { unmount } = render(FocusTrap, {
+      props: {
+        restoreFallback: '[data-testid="not-in-the-document"]',
+        preferRestoreFallback: true,
+        children: focusTrapChildren,
+      },
+    });
+
+    await tick();
+    unmount();
+
+    expect(document.activeElement).toBe(trigger);
+  });
+
   test('ignores a fallback that cannot accept focus, rather than reporting success', async () => {
     // `restoreFallback` is resolved through the same programmatic-focusability
     // check as the other targets: focusing a plain <div> is a silent no-op, so

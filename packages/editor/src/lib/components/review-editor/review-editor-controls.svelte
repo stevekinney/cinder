@@ -220,6 +220,7 @@
       <Button
         variant="ghost"
         size="sm"
+        id={`${sidebarId}-toggle`}
         onclick={onSidebarToggle}
         aria-expanded={sidebarOpen}
         aria-controls={sidebarId}

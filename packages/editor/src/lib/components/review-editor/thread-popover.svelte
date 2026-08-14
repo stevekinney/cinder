@@ -16,15 +16,23 @@
     /** Additional CSS class */
     class?: string;
     /**
-     * CSS selector, resolved against the document, for where focus goes when the
-     * element that opened this popover can no longer take it back.
+     * `id` of the element that should receive focus when the element that opened
+     * this popover can no longer take it back.
      *
      * Deleting a thread from inside its own popover is the case that needs it:
      * the sidebar item the user opened the popover from is removed by the same
      * action, so the focus trap's captured element is gone by the time it tries
      * to restore, and focus lands on `<body>`.
+     *
+     * An id rather than a selector, deliberately. The value is derived from the
+     * consumer-supplied editor `id`, which only has to be a valid HTML id and so
+     * may contain `"` or `\\` — characters that make an interpolated attribute
+     * selector invalid or change what it matches, whereupon the lookup fails
+     * silently and focus lands on `<body>` after all. `getElementById` takes a
+     * raw string and parses nothing, so the failure mode does not exist rather
+     * than being escaped around.
      */
-    restoreFallback?: string;
+    restoreFallbackId?: string;
     /** Called when the popover should close */
     onclose?: () => void;
     /** Called when thread is deleted */
@@ -57,7 +65,7 @@
     mode = 'edit',
     position,
     class: className,
-    restoreFallback,
+    restoreFallbackId,
     onclose,
     ondelete,
     oncommentcreate,
@@ -100,7 +108,22 @@
     }
   }
 
+  /**
+   * Set once the user has asked for this thread to be deleted, so focus
+   * restoration prefers `restoreFallback` over the element that opened the
+   * popover.
+   *
+   * Without it, a consumer whose `onthreaddelete` is server-backed gets the bug
+   * back: the popover closes as soon as the request is made, the sidebar item is
+   * still on screen awaiting the response, so restoration hands focus back to it
+   * — and then it unmounts, dropping focus on `<body>` with the fallback never
+   * consulted. A consumer that removes the thread synchronously never reaches
+   * that window, which is why the synchronous case looks fixed either way.
+   */
+  let deleteRequested = $state(false);
+
   function handleDelete() {
+    deleteRequested = true;
     ondelete?.(thread.id);
   }
 
@@ -142,7 +165,8 @@
   inert={!anchoredOverlay.positionReady ? true : undefined}
   {@attach createFocusTrap({
     active: () => anchoredOverlay.positionReady,
-    restoreFallback: () => restoreFallback ?? null,
+    restoreFallback: () => (restoreFallbackId ? document.getElementById(restoreFallbackId) : null),
+    preferRestoreFallback: () => deleteRequested,
   })}
   {@attach createClickOutside({ handler: () => onclose?.() })}
   onkeydown={handleKeyDown}

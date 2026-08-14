@@ -1865,7 +1865,7 @@
       {currentUserId}
       {mode}
       position={popoverPosition}
-      restoreFallback={`[aria-controls="${id}-sidebar"]`}
+      restoreFallbackId={`${id}-sidebar-toggle`}
       onclose={handlePopoverClose}
       ondelete={handlePopoverDelete}
       oncommentcreate={handlePopoverCommentCreate}
