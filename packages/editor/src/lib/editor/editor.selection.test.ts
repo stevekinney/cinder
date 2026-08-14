@@ -1,9 +1,9 @@
 /// <reference lib="dom" />
 import { TextSelection } from '@milkdown/prose/state';
 import { afterEach, describe, expect, test } from 'bun:test';
-import { setupHappyDom } from '../test/happy-dom.ts';
-import { createEditor } from './editor.ts';
-import type { EditorState } from './types.ts';
+import { setupHappyDom } from '../test/happy-dom.js';
+import { createEditor } from './editor.js';
+import type { EditorState } from './types.js';
 
 setupHappyDom();
 
@@ -62,7 +62,7 @@ describe('createEditor selection notifications', () => {
     // The selectionUpdated callback must report the mapped selection while
     // the document-change listener is still inside its debounce window.
     expect(selections.at(-1)).toEqual({ from: 3, to: 9, isCollapsed: false });
-    await new Promise((resolve) => setTimeout(resolve, 250));
+    await new Promise((resolve) => setTimeout(resolve, 350));
 
     expect(selections.at(-1)).toEqual({ from: 3, to: 9, isCollapsed: false });
     container.remove();
