@@ -180,7 +180,35 @@
     ></textarea>
 
     <div class="comment-composer-inline-submit">
-      <Button type="submit" variant="primary" size="xs" disabled={!canSubmit} {loading}>
+      <!--
+        `onmousedown` preventDefault keeps this button clickable in WebKit, and
+        it is load-bearing rather than defensive.
+
+        The button is revealed by `:focus-within` on the container below, which
+        also flips it from `pointer-events: none` to `auto`. WebKit does not
+        focus a `<button>` on mousedown — so mid-gesture the textarea blurs,
+        `:focus-within` drops, `pointer-events` goes back to `none` BEFORE
+        mouseup, and the mouseup hit-tests to the textarea instead. Per spec the
+        `click` then retargets to the nearest common ancestor, the wrapper
+        `<div>`, so the button never sees a click and the form never submits.
+        The only working path left was the undiscoverable Cmd+Enter.
+
+        Suppressing mousedown's default focus change means the textarea keeps
+        focus through the whole gesture, so `:focus-within` never drops. Chromium
+        and Firefox were unaffected either way — they focus the button on
+        mousedown, which keeps `:focus-within` true via the container.
+
+        Not fixed by keeping `pointer-events: auto` while `opacity: 0`: that
+        leaves an invisible click target sitting over the textarea.
+      -->
+      <Button
+        type="submit"
+        variant="primary"
+        size="xs"
+        disabled={!canSubmit}
+        {loading}
+        onmousedown={(event: MouseEvent) => event.preventDefault()}
+      >
         {loading ? 'Sending...' : 'Comment'}
       </Button>
     </div>
