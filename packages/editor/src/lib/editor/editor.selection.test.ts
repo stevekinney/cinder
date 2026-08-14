@@ -1,6 +1,8 @@
 /// <reference lib="dom" />
 import { TextSelection } from '@milkdown/prose/state';
 import { afterEach, describe, expect, test } from 'bun:test';
+import type { FakeClock } from '../test/fake-clock.js';
+import { installFakeClock } from '../test/fake-clock.js';
 import { setupHappyDom } from '../test/happy-dom.js';
 import { createEditor } from './editor.js';
 import type { EditorState } from './types.js';
@@ -8,8 +10,12 @@ import type { EditorState } from './types.js';
 setupHappyDom();
 
 let editorState: EditorState | undefined;
+let clock: FakeClock | undefined;
 
 afterEach(async () => {
+  clock?.advance(200);
+  clock?.restore();
+  clock = undefined;
   if (editorState) {
     editorState.markDestroyed();
     await editorState.editor.destroy();
@@ -29,7 +35,6 @@ describe('createEditor selection notifications', () => {
         if (selection) selections.push(selection);
       },
     });
-
     const transaction = editorState.view.state.tr.setSelection(
       TextSelection.create(editorState.view.state.doc, 1, 10),
     );
@@ -50,6 +55,7 @@ describe('createEditor selection notifications', () => {
         if (selection) selections.push(selection);
       },
     });
+    clock = installFakeClock();
 
     editorState.view.dispatch(
       editorState.view.state.tr.setSelection(
@@ -62,6 +68,7 @@ describe('createEditor selection notifications', () => {
     // The selectionUpdated callback must report the mapped selection while
     // the document-change listener is still inside its debounce window.
     expect(selections.at(-1)).toEqual({ from: 3, to: 9, isCollapsed: false });
+    clock.advance(200);
     container.remove();
   });
 });
