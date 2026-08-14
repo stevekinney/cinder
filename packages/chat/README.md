@@ -112,3 +112,17 @@ Pass a `mermaidRenderer` snippet to delegate only the Mermaid branch to an appli
 ```
 
 The Mermaid snippet has type `Snippet<[content: string, type: 'mermaid']>`. `ArtifactViewer` invokes it only when `type` is `mermaid`; HTML, SVG, and code continue through their built-in renderers unless a code snippet is supplied. The application-owned component is responsible for loading Mermaid, handling asynchronous rendering and errors, and applying its required content-safety policy.
+
+## Overriding built-in rendering
+
+`Chat`'s per-row and per-part overrides (`row`, `messagePart`) are inversion-of-control snippets: each receives the thing being rendered plus a `renderDefault` snippet that renders Chat's own built-in output for it. Supplying an override wraps the built-in rendering rather than replacing it outright — a consumer adds markup around `renderDefault()`'s output, or conditionally calls it, but the built-in behavior stays reachable:
+
+```svelte
+{#snippet messagePart(part, renderDefault)}
+  <div class="my-wrapper">
+    {@render renderDefault(part)}
+  </div>
+{/snippet}
+```
+
+This is a deliberate difference from `@lostgradient/editor`'s `DiffViewer`, whose `toolbar` override is total replacement with no `renderDefault` — see the "DiffViewer toolbar override" section of [`@lostgradient/editor`'s README](https://github.com/stevekinney/cinder/blob/main/packages/editor/README.md) for why. Message-part and row rendering carry built-in behavior (streaming state, tool-call presentation, artifact resolution) that most wrappers want to keep and only augment, which is what `renderDefault` is for.

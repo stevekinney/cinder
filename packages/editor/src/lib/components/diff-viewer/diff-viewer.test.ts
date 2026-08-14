@@ -452,3 +452,123 @@ describe('DiffViewer: front-matter section', () => {
     expect(source).toMatch(/id=\{`\$\{instanceId\}-front-matter`\}/);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// cinder#1309 — DiffToolbar's hardcoded view-mode id collided across instances
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Find a descendant element with the given id, without relying on `#id` CSS-selector escaping. */
+function findById(container: HTMLElement, id: string): Element | null {
+  return Array.from(container.querySelectorAll('[id]')).find((el) => el.id === id) ?? null;
+}
+
+describe('DiffViewer: toolbar id uniqueness (cinder#1309)', () => {
+  test('two DiffToolbar instances mounted without an explicit id get distinct view-mode ids', () => {
+    // Reverting the diff-toolbar.svelte fix (restoring the literal
+    // id="diff-view-mode") makes both instances produce the SAME id here,
+    // which fails the inequality assertions below.
+    const { container: containerA } = render(DiffToolbar, {
+      stats: { added: 1, removed: 0, modified: 0 },
+      changeCount: 1,
+      currentChangeIndex: 0,
+      hasChanges: true,
+    });
+    const { container: containerB } = render(DiffToolbar, {
+      stats: { added: 0, removed: 1, modified: 0 },
+      changeCount: 1,
+      currentChangeIndex: 0,
+      hasChanges: true,
+    });
+
+    const radiogroupA = containerA.querySelector('[role="radiogroup"]');
+    const radiogroupB = containerB.querySelector('[role="radiogroup"]');
+    expect(radiogroupA).not.toBeNull();
+    expect(radiogroupB).not.toBeNull();
+    expect(radiogroupA?.id).toBeTruthy();
+    expect(radiogroupB?.id).toBeTruthy();
+
+    // The actual bug: both were the literal "diff-view-mode" regardless of
+    // how many instances were on the page.
+    expect(radiogroupA?.id).not.toBe(radiogroupB?.id);
+
+    const labelledByA = radiogroupA?.getAttribute('aria-labelledby');
+    const labelledByB = radiogroupB?.getAttribute('aria-labelledby');
+    expect(labelledByA).toBeTruthy();
+    expect(labelledByB).toBeTruthy();
+    expect(labelledByA).not.toBe(labelledByB);
+
+    // Each aria-labelledby resolves to a label INSIDE THAT INSTANCE's own
+    // container...
+    expect(findById(containerA, labelledByA as string)).not.toBeNull();
+    expect(findById(containerB, labelledByB as string)).not.toBeNull();
+
+    // ...and, the actual consequence of the collision: A's label id must not
+    // resolve inside B's container (a real getElementById lookup from B's
+    // radiogroup would otherwise silently find A's label, which is exactly
+    // what happened before the fix).
+    expect(findById(containerB, labelledByA as string)).toBeNull();
+    expect(findById(containerA, labelledByB as string)).toBeNull();
+  });
+
+  test('an explicit id prop is honoured and its paired label id follows it', () => {
+    const { container } = render(DiffToolbar, {
+      id: 'my-toolbar-view-mode',
+      stats: { added: 0, removed: 0, modified: 0 },
+      changeCount: 0,
+      currentChangeIndex: -1,
+      hasChanges: false,
+    });
+
+    const radiogroup = container.querySelector('[role="radiogroup"]');
+    expect(radiogroup?.id).toBe('my-toolbar-view-mode');
+    expect(radiogroup?.getAttribute('aria-labelledby')).toBe('my-toolbar-view-mode-label');
+    expect(findById(container, 'my-toolbar-view-mode-label')).not.toBeNull();
+  });
+
+  test('diff-viewer.svelte passes a $props.id()-derived id to DiffToolbar, not the colliding literal', async () => {
+    // The behavioural tests above prove DiffToolbar namespaces its view-mode
+    // id from whatever `id` it receives — but the actual bug lived in
+    // diff-viewer.svelte, which never passed an id at all (so DiffToolbar's
+    // own internal `$props.id()` fallback was never reached from a stable,
+    // predictable per-instance value at the call site — instead the literal
+    // default markup hardcoded "diff-view-mode" directly). The composed shell
+    // cannot be mounted under happy-dom (see the file header), so the
+    // shell-level wiring is guarded at the source level. Reverting the
+    // diff-viewer.svelte change (removing the `id={...}` prop passed to
+    // <DiffToolbar>) fails this test.
+    const source = await Bun.file(new URL('./diff-viewer.svelte', import.meta.url)).text();
+
+    expect(source).not.toMatch(/id=["']diff-view-mode["']/);
+    expect(source).toMatch(/<DiffToolbar[\s\S]*?id=\{`\$\{instanceId\}-view-mode`\}/);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// cinder#1310 — DiffViewer's window-level key bindings fired on every instance
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('DiffViewer: keyboard shortcut ownership (cinder#1310)', () => {
+  test("handleKeydown is bound on the component's own root, not on <svelte:window>", async () => {
+    // The composed shell cannot be mounted under happy-dom (see the file
+    // header), so — like the two shell-wiring tests above — this guards the
+    // fix at the source level. Before the fix, `<svelte:window
+    // onkeydown={handleKeydown} />` meant every DiffViewer instance on a page
+    // reacted to every keystroke, regardless of focus. The fix removes the
+    // window-level listener and instead binds `onkeydown` on this instance's
+    // own <Surface> root: because keydown only reaches an element listener
+    // when the event's target is that element or one of its descendants, and
+    // focus is exclusive to a single element in the whole document, at most
+    // one DiffViewer instance can ever have the focused element inside its
+    // own subtree — so at most one instance's handler can ever fire for a
+    // given keystroke. Reverting the fix (restoring
+    // `<svelte:window onkeydown={handleKeydown} />` and removing `onkeydown`
+    // from the <Surface> tag) fails this test.
+    const source = await Bun.file(new URL('./diff-viewer.svelte', import.meta.url)).text();
+
+    // Tight enough to match only the actual markup (not this file's own
+    // prose, which mentions the old `<svelte:window onkeydown>` tag without
+    // the `={handleKeydown}` binding it had when it was live markup).
+    expect(source).not.toMatch(/<svelte:window\s+onkeydown=\{handleKeydown\}/);
+    expect(source).toMatch(/<Surface\b[\s\S]*?onkeydown=\{handleKeydown\}/);
+  });
+});
