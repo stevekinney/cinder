@@ -1911,9 +1911,31 @@
    * so visual regression screenshots are pixel-stable across runs.
    * Scoped to [data-snapshot-mode] so normal editing is completely unaffected.
    */
+  /*
+   * `:global(*)` and a transparent `::selection`, and both halves are load-bearing.
+   *
+   * Svelte scopes a bare `*` to `:where(.svelte-…)`, so the descendant half only
+   * ever reached elements this component rendered — never `.milkdown` /
+   * `.ProseMirror`, which Milkdown creates at runtime with no scope class. That
+   * was true in every engine; Chromium merely LOOKED correct because Blink
+   * inherits `user-select`, which css-ui-4 defines as non-inherited and Gecko
+   * implements as such. Firefox reporting `auto` there is the spec-correct value
+   * and is what surfaced this.
+   *
+   * `user-select` alone would still not deliver the promise: a real drag inside a
+   * snapshot-mode editor selected and repainted in BOTH Chromium and Firefox even
+   * where the property computed to `none`, because ProseMirror's contenteditable
+   * stays selectable regardless. Painting the selection transparent is what
+   * actually makes the surface pixel-stable, which is what the prop documents.
+   */
   .review-editor-container[data-snapshot-mode],
-  .review-editor-container[data-snapshot-mode] * {
+  .review-editor-container[data-snapshot-mode] :global(*) {
     caret-color: transparent;
     user-select: none;
+  }
+
+  .review-editor-container[data-snapshot-mode] :global(::selection) {
+    background: transparent;
+    color: inherit;
   }
 </style>
