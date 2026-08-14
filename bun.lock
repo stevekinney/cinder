@@ -50,7 +50,7 @@
     },
     "packages/components": {
       "name": "@lostgradient/cinder",
-      "version": "0.24.2",
+      "version": "0.24.3",
       "bin": {
         "cinder": "./dist/cli/index.js",
       },
@@ -105,7 +105,7 @@
     },
     "packages/editor": {
       "name": "@lostgradient/editor",
-      "version": "0.9.1",
+      "version": "0.9.2",
       "dependencies": {
         "@floating-ui/dom": "1.7.6",
         "esm-env": "^1.2.0",
@@ -177,7 +177,7 @@
     },
     "packages/mcp": {
       "name": "@lostgradient/cinder-mcp",
-      "version": "0.1.7",
+      "version": "0.1.8",
       "bin": {
         "cinder-mcp": "./dist/bin.js",
       },

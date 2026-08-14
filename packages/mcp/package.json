@@ -1,6 +1,6 @@
 {
   "name": "@lostgradient/cinder-mcp",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "Model Context Protocol server exposing Cinder component discovery, comparison, and best-practice guidance to MCP clients.",
   "keywords": [
     "mcp",
