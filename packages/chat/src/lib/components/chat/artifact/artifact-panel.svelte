@@ -21,8 +21,36 @@
 
   const titleId = $derived(`${instanceId}-panel-title`);
 
+  /**
+   * Take focus on open, and give it back on close.
+   *
+   * The taking half is deliberate: a keyboard user who opens the panel should
+   * land inside it rather than being left behind in the transcript. The giving
+   * half was missing, and the asymmetry is the whole bug — a component that
+   * moves focus owes a restore, or closing drops the user on `<body>`, where the
+   * next Tab restarts at the top of the document and a screen reader says
+   * nothing. Reproduced identically in Chromium, Firefox, and WebKit, so this
+   * was never an engine quirk.
+   *
+   * `isConnected` is checked because restoring to a detached node is a silent
+   * no-op: `.focus()` succeeds, focus stays on `<body>`, and the bug is back
+   * with no signal. Stated rather than papered over — if a consumer's close ALSO
+   * removes the control that opened the panel, this restores nothing, because by
+   * teardown the panel has no surviving element of its own to offer either. That
+   * consumer has to manage focus itself, the same way `createFocusTrap`'s
+   * `restoreFallback` exists for exactly that case. The common path, where the
+   * message row outlives the panel, is what this fixes.
+   *
+   * This is `role="complementary"`, not a dialog: nothing here traps focus, and
+   * nothing should. The contract is only "return it where you found it".
+   */
   function focusOnMount(element: HTMLButtonElement) {
+    const previous = document.activeElement;
     element.focus();
+
+    return () => {
+      if (previous instanceof HTMLElement && previous.isConnected) previous.focus();
+    };
   }
 </script>
 

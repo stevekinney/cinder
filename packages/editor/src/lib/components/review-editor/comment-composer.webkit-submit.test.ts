@@ -30,7 +30,7 @@ const { default: CommentComposer } = await import('./comment-composer.svelte');
 describe('CommentComposer inline submit', () => {
   test('suppresses the default focus change on mousedown, so :focus-within survives the click', () => {
     const { container } = render(CommentComposer, {
-      props: { value: 'A reply', onsubmit: () => {} },
+      props: { id: 'test-composer', value: 'A reply', onsubmit: () => {} },
     });
 
     const submit = container.querySelector<HTMLButtonElement>('button[type="submit"]');
@@ -47,7 +47,7 @@ describe('CommentComposer inline submit', () => {
     // preventing the activation. If this ever went the other way the button
     // would be inert in EVERY engine rather than just WebKit.
     const { container } = render(CommentComposer, {
-      props: { value: 'A reply', onsubmit: () => {} },
+      props: { id: 'test-composer', value: 'A reply', onsubmit: () => {} },
     });
 
     const submit = container.querySelector<HTMLButtonElement>('button[type="submit"]');
