@@ -15,6 +15,16 @@
     position?: { x: number; y: number };
     /** Additional CSS class */
     class?: string;
+    /**
+     * CSS selector, resolved against the document, for where focus goes when the
+     * element that opened this popover can no longer take it back.
+     *
+     * Deleting a thread from inside its own popover is the case that needs it:
+     * the sidebar item the user opened the popover from is removed by the same
+     * action, so the focus trap's captured element is gone by the time it tries
+     * to restore, and focus lands on `<body>`.
+     */
+    restoreFallback?: string;
     /** Called when the popover should close */
     onclose?: () => void;
     /** Called when thread is deleted */
@@ -47,6 +57,7 @@
     mode = 'edit',
     position,
     class: className,
+    restoreFallback,
     onclose,
     ondelete,
     oncommentcreate,
@@ -129,7 +140,10 @@
   style={anchoredOverlay.positionStyle}
   data-position-ready={anchoredOverlay.positionReady}
   inert={!anchoredOverlay.positionReady ? true : undefined}
-  {@attach createFocusTrap({ active: () => anchoredOverlay.positionReady })}
+  {@attach createFocusTrap({
+    active: () => anchoredOverlay.positionReady,
+    restoreFallback: () => restoreFallback ?? null,
+  })}
   {@attach createClickOutside({ handler: () => onclose?.() })}
   onkeydown={handleKeyDown}
 >

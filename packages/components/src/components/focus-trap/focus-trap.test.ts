@@ -130,6 +130,91 @@ describe('FocusTrap', () => {
     expect(document.activeElement).toBe(trigger);
   });
 
+  test('falls back when the element that opened the trap was removed while it was open', async () => {
+    // The overlay-outlives-its-opener case: a popover opened from a list item,
+    // and the action taken inside the popover deletes that item. `restoreFocusTo`
+    // correctly refuses to focus a disconnected node, so without a fallback
+    // focus lands on <body> — silence for a screen reader, and a keyboard user
+    // restarted at the top of the document.
+    const fallback = document.createElement('button');
+    fallback.setAttribute('data-testid', 'restore-fallback');
+    document.body.appendChild(fallback);
+
+    const trigger = document.createElement('button');
+    document.body.appendChild(trigger);
+    trigger.focus();
+
+    const { unmount } = render(FocusTrap, {
+      props: {
+        restoreFallback: '[data-testid="restore-fallback"]',
+        children: focusTrapChildren,
+      },
+    });
+
+    await tick();
+
+    // The opener goes away while the trap is still open, exactly as deleting the
+    // item would remove it.
+    trigger.remove();
+    unmount();
+
+    expect(document.activeElement).toBe(fallback);
+    expect(document.activeElement).not.toBe(document.body);
+  });
+
+  test('does not use the fallback when the original element can still take focus back', async () => {
+    // Guards the direction of the change: supplying `restoreFallback` must never
+    // hijack a restore that would have worked. Without this, a fallback that
+    // fired unconditionally would pass the test above while breaking every
+    // ordinary open/close.
+    const fallback = document.createElement('button');
+    fallback.setAttribute('data-testid', 'restore-fallback');
+    document.body.appendChild(fallback);
+
+    const trigger = document.createElement('button');
+    document.body.appendChild(trigger);
+    trigger.focus();
+
+    const { unmount } = render(FocusTrap, {
+      props: {
+        restoreFallback: '[data-testid="restore-fallback"]',
+        children: focusTrapChildren,
+      },
+    });
+
+    await tick();
+    unmount();
+
+    expect(document.activeElement).toBe(trigger);
+    expect(document.activeElement).not.toBe(fallback);
+  });
+
+  test('ignores a fallback that cannot accept focus, rather than reporting success', async () => {
+    // `restoreFallback` is resolved through the same programmatic-focusability
+    // check as the other targets: focusing a plain <div> is a silent no-op, so
+    // accepting one would leave focus on <body> while looking like it worked.
+    const unfocusable = document.createElement('div');
+    unfocusable.setAttribute('data-testid', 'unfocusable-fallback');
+    document.body.appendChild(unfocusable);
+
+    const trigger = document.createElement('button');
+    document.body.appendChild(trigger);
+    trigger.focus();
+
+    const { unmount } = render(FocusTrap, {
+      props: {
+        restoreFallback: '[data-testid="unfocusable-fallback"]',
+        children: focusTrapChildren,
+      },
+    });
+
+    await tick();
+    trigger.remove();
+    unmount();
+
+    expect(document.activeElement).not.toBe(unfocusable);
+  });
+
   test('focuses the requested initial focus target on mount', async () => {
     const { getByTestId } = render(FocusTrap, {
       props: {

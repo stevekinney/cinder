@@ -19,14 +19,15 @@ Traps keyboard focus within a container and restores focus to the previously foc
 
 <!-- generated:props:start -->
 
-| Prop            | Type               | Required | Default | Description                                                                                                                                        |
-| --------------- | ------------------ | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `active`        | `boolean`          | no       | —       | When true (default), Tab key navigation is constrained within the trap container. Set to false to temporarily suspend trapping without unmounting. |
-| `class`         | `string`           | no       | —       | Additional class applied to the focus-trap wrapper element.                                                                                        |
-| `fallbackFocus` | `string` \| `null` | no       | —       | CSS selector for the element that receives focus when `initialFocus` is unset or unresolvable. Defaults to the trap container itself.              |
-| `initialFocus`  | `string` \| `null` | no       | —       | CSS selector for the element that should receive focus when the trap activates. Falls back to `fallbackFocus` when the selector matches nothing.   |
-| `restoreFocus`  | `boolean`          | no       | —       | When true (default), returns focus to the previously focused element when the trap is deactivated or unmounted.                                    |
-| `children`      | `(opaque)`         | yes      | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                         |
+| Prop              | Type               | Required | Default | Description                                                                                                                                                                                                                                            |
+| ----------------- | ------------------ | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `active`          | `boolean`          | no       | —       | When true (default), Tab key navigation is constrained within the trap container. Set to false to temporarily suspend trapping without unmounting.                                                                                                     |
+| `class`           | `string`           | no       | —       | Additional class applied to the focus-trap wrapper element.                                                                                                                                                                                            |
+| `fallbackFocus`   | `string` \| `null` | no       | —       | CSS selector for the element that receives focus when `initialFocus` is unset or unresolvable. Defaults to the trap container itself.                                                                                                                  |
+| `initialFocus`    | `string` \| `null` | no       | —       | CSS selector for the element that should receive focus when the trap activates. Falls back to `fallbackFocus` when the selector matches nothing.                                                                                                       |
+| `restoreFallback` | `string` \| `null` | no       | —       | CSS selector, resolved against the document, for the element that receives focus when the previously focused element cannot take it back — typically because it was removed from the DOM while the trap was open. Without it, focus falls to `<body>`. |
+| `restoreFocus`    | `boolean`          | no       | —       | When true (default), returns focus to the previously focused element when the trap is deactivated or unmounted.                                                                                                                                        |
+| `children`        | `(opaque)`         | yes      | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                                                                                                             |
 
 <!-- generated:props:end -->
 

@@ -206,6 +206,7 @@ export async function createEditor(
   if (readonly && view) {
     view.setProps({ editable: () => false });
   }
+  applyReadonlyAria(view, readonly);
 
   // Apply aria-label to the ProseMirror DOM element (the element with role="textbox")
   if (resolvedAriaLabel && view?.dom) {
@@ -256,10 +257,35 @@ export async function createEditor(
 }
 
 /**
+ * Mirror the readonly flag onto the ProseMirror DOM node as `aria-readonly`.
+ *
+ * `editable: () => false` gives that node `contenteditable="false"`, which stops
+ * edits but does NOT convey read-only-ness: Chromium still computes the textbox
+ * as `readonly=false, settable=true` — indistinguishable from an editable
+ * editor, so a screen reader announces an editable field that silently ignores
+ * typing.
+ *
+ * It has to go on `view.dom` specifically. Measured with CDP
+ * `Accessibility.getFullAXTree`: `aria-readonly` on the wrapping
+ * `role="application"` host changes nothing, because the textbox role lives on
+ * the ProseMirror node, and ARIA states do not inherit down to it. That is the
+ * same reason `aria-label` is applied to `view.dom` rather than to the host.
+ */
+function applyReadonlyAria(view: EditorState['view'] | null | undefined, readonly: boolean): void {
+  if (!view?.dom) return;
+  if (readonly) {
+    view.dom.setAttribute('aria-readonly', 'true');
+  } else {
+    view.dom.removeAttribute('aria-readonly');
+  }
+}
+
+/**
  * Update the readonly state of an editor.
  */
 export function setEditorReadonly(state: EditorState, readonly: boolean): void {
   state.view?.setProps({ editable: () => !readonly });
+  applyReadonlyAria(state.view, readonly);
 }
 
 // Track stderr suppression nesting to prevent race conditions (DEP-139).

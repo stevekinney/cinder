@@ -38,6 +38,18 @@ const schema = {
       description:
         'CSS selector for the element that receives focus when `initialFocus` is unset or unresolvable. Defaults to the trap container itself.',
     },
+    restoreFallback: {
+      anyOf: [
+        {
+          type: 'string',
+        },
+        {
+          type: 'null',
+        },
+      ],
+      description:
+        'CSS selector, resolved against the document, for the element that receives focus when the previously focused element cannot take it back — typically because it was removed from the DOM while the trap was open. Without it, focus falls to `<body>`.',
+    },
     class: {
       type: 'string',
       description: 'Additional class applied to the focus-trap wrapper element.',
