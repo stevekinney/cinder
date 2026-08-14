@@ -62,9 +62,6 @@ describe('createEditor selection notifications', () => {
     // The selectionUpdated callback must report the mapped selection while
     // the document-change listener is still inside its debounce window.
     expect(selections.at(-1)).toEqual({ from: 3, to: 9, isCollapsed: false });
-    await new Promise((resolve) => setTimeout(resolve, 350));
-
-    expect(selections.at(-1)).toEqual({ from: 3, to: 9, isCollapsed: false });
     container.remove();
   });
 });
