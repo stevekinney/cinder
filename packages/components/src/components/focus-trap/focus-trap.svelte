@@ -25,6 +25,8 @@
     restoreFocus = true,
     initialFocus = null,
     fallbackFocus = null,
+    restoreFallback = null,
+    preferRestoreFallback = false,
     class: className,
     children,
     ...rest
@@ -37,6 +39,8 @@
     restoreFocus,
     initialFocus: () => initialFocus,
     fallbackFocus: () => fallbackFocus,
+    restoreFallback: () => restoreFallback,
+    preferRestoreFallback: () => preferRestoreFallback,
   })}
   class={classNames(className)}
   {...rest}

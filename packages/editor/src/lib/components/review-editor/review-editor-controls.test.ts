@@ -33,6 +33,21 @@ const BASE_PROPS = {
   activeView: 'editor',
 } as const;
 
+describe('ReviewEditorControls — comments toggle identity', () => {
+  test('the toggle carries an id derived from sidebarId, so it can be focused by id', () => {
+    // `ThreadPopover` restores focus here when the thread it was opened for is
+    // deleted, and it resolves the target with `getElementById` rather than a
+    // selector — the editor `id` is consumer-supplied and may legally contain
+    // characters that break an interpolated attribute selector. That only works
+    // if this button actually has the id the impl derives.
+    const { container } = render(ReviewEditorControls, {
+      props: { ...BASE_PROPS, commentCount: 0, sidebarOpen: false },
+    });
+    const button = container.querySelector('button[aria-controls="test-editor-sidebar"]');
+    expect(button?.getAttribute('id')).toBe('test-editor-sidebar-toggle');
+  });
+});
+
 describe('ReviewEditorControls — comments toggle ARIA attributes', () => {
   test('toggle has aria-expanded reflecting sidebarOpen=false', () => {
     const { container } = render(ReviewEditorControls, {

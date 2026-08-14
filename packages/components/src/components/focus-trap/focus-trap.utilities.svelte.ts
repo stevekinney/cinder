@@ -29,6 +29,43 @@ export type FocusTrapOptions = {
    * `restoreFocus: false`.
    */
   manageInitialFocus?: boolean;
+  /**
+   * Where focus goes when the element captured at activation cannot take it
+   * back — most often because the control that opened the overlay was removed
+   * from the DOM while the overlay was open. Deleting the item whose popover
+   * you are standing in is the canonical case: the popover closes, its opener
+   * no longer exists, and without this focus lands on `<body>`, which reads as
+   * "nowhere" to a screen reader and restarts a keyboard user at the top of the
+   * document.
+   *
+   * Resolved against the DOCUMENT, unlike {@link initialFocus} and
+   * {@link fallbackFocus}, which are scoped to the trap root. That difference is
+   * deliberate and not an inconsistency: a restore target lives outside the trap
+   * by definition, and by the time restoration runs on unmount the trap's own
+   * node is usually already detached, so a root-scoped lookup would find
+   * nothing.
+   *
+   * Consulted only when restoring to the captured element fails, so supplying it
+   * can never override a restore that would have worked. Ignored entirely when
+   * `restoreFocus` is `false`.
+   */
+  restoreFallback?: FocusTargetInput;
+  /**
+   * Go to {@link restoreFallback} FIRST on the next deactivation, rather than
+   * only when the captured element fails.
+   *
+   * For hosts that know the captured element is on its way out but cannot prove
+   * it yet. A popover whose delete action is server-backed is the case: the
+   * popover closes as soon as the request is made, while the list item that
+   * opened it is still on screen waiting for the response. Restoration would
+   * find that item perfectly focusable, hand focus back to it, and then watch it
+   * unmount a moment later — landing on `<body>` after all, with the fallback
+   * never consulted.
+   *
+   * Still falls through to the captured element if the fallback cannot take
+   * focus, so this changes the order rather than discarding a candidate.
+   */
+  preferRestoreFallback?: boolean | (() => boolean);
 };
 
 type TrapInstance = {
@@ -126,6 +163,32 @@ function getFallbackTarget(root: HTMLElement, fallbackFocus: FocusTargetInput): 
 }
 
 /**
+ * Resolve a focus target against the document rather than the trap root.
+ *
+ * Used only for {@link FocusTrapOptions.restoreFallback} — see that option for
+ * why restoration cannot use the root-scoped `resolveScopedTarget`.
+ */
+function getRestoreFallbackTarget(restoreFallback: FocusTargetInput): HTMLElement | null {
+  const resolved = readOption(restoreFallback);
+  if (!resolved) return null;
+
+  if (typeof resolved === 'string') {
+    if (typeof document === 'undefined') return null;
+    let match: HTMLElement | null;
+    try {
+      match = document.querySelector<HTMLElement>(resolved);
+    } catch {
+      // An invalid selector is a caller mistake, not a reason to throw out of an
+      // unmount path and leave the trap stack inconsistent.
+      return null;
+    }
+    return match && isProgrammaticallyFocusable(match) ? match : null;
+  }
+
+  return resolved instanceof HTMLElement && isProgrammaticallyFocusable(resolved) ? resolved : null;
+}
+
+/**
  * Calls `.focus()` and returns whether the element actually became `document.activeElement`.
  * `isProgrammaticallyFocusable` cannot tell whether a plain `<div>` or `<h2>` (no `tabindex`,
  * no native focus behavior) will accept focus — `.focus()` is a no-op on those. Verifying the
@@ -174,6 +237,8 @@ export function createFocusTrap(options: FocusTrapOptions = {}): Attachment<HTML
     const restoreFocus = options.restoreFocus ?? true;
     const initialFocus = options.initialFocus ?? null;
     const fallbackFocus = options.fallbackFocus ?? null;
+    const restoreFallback = options.restoreFallback ?? null;
+    const preferRestoreFallback = options.preferRestoreFallback ?? false;
     const manageInitialFocus = options.manageInitialFocus ?? true;
 
     let activated = false;
@@ -237,7 +302,19 @@ export function createFocusTrap(options: FocusTrapOptions = {}): Attachment<HTML
       restoreRootFocusability = noop;
       removeTrap(trapId);
       if (restoreFocus) {
-        restoreFocusTo(capturedFocus);
+        // Both candidates, in preference order, taking the first that actually
+        // lands. `restoreFocusTo`'s own boolean is necessary but not sufficient:
+        // it reports success whenever `.focus()` did not throw, which is also
+        // true for a still-connected element that has since become `disabled` or
+        // `inert` and cannot take focus. Confirming `document.activeElement`
+        // is what makes "restored" mean restored.
+        const candidates = readOption(preferRestoreFallback ?? false)
+          ? [getRestoreFallbackTarget(restoreFallback), capturedFocus]
+          : [capturedFocus, getRestoreFallbackTarget(restoreFallback)];
+
+        for (const candidate of candidates) {
+          if (restoreFocusTo(candidate) && document.activeElement === candidate) break;
+        }
       }
       capturedFocus = null;
     }

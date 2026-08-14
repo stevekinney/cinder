@@ -1865,6 +1865,7 @@
       {currentUserId}
       {mode}
       position={popoverPosition}
+      restoreFallbackId={`${id}-sidebar-toggle`}
       onclose={handlePopoverClose}
       ondelete={handlePopoverDelete}
       oncommentcreate={handlePopoverCommentCreate}
