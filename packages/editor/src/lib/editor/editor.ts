@@ -127,7 +127,10 @@ export async function createEditor(
       // 2. updated - fires on document changes (which also change the selection position)
       // Together, these ensure the toolbar always reflects the current cursor position.
       if (onselectionchange) {
-        const notifySelectionChange = (listenerContext: Ctx) => {
+        const notifySelectionChange = (
+          listenerContext: Ctx,
+          liveSelection?: { from: number; to: number },
+        ) => {
           // Skip if editor is destroyed
           if (isDestroyed) return;
 
@@ -143,7 +146,7 @@ export async function createEditor(
           // Guard against view not being ready or state not yet attached
           if (!view?.state) return;
 
-          const { from, to } = view.state.selection;
+          const { from, to } = liveSelection ?? view.state.selection;
           const selection: EditorSelection = {
             from,
             to,
@@ -154,10 +157,12 @@ export async function createEditor(
         };
 
         // Listen for selection-only changes (clicking without editing)
-        listenerManager.selectionUpdated(notifySelectionChange);
+        listenerManager.selectionUpdated((listenerContext, selection) =>
+          notifySelectionChange(listenerContext, selection),
+        );
 
         // Listen for document changes (which also affect selection position)
-        listenerManager.updated(notifySelectionChange);
+        listenerManager.updated((listenerContext) => notifySelectionChange(listenerContext));
       }
     })
     .use(commonmark)
