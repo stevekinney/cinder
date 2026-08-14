@@ -7,6 +7,15 @@
   import type { DiffViewerMode } from './diff-viewer.types.ts';
 
   export type DiffToolbarProps = Omit<HTMLAttributes<HTMLDivElement>, 'class'> & {
+    /**
+     * Base id for this toolbar's internal ids (currently the view-mode
+     * segmented control and its label). Optional: when omitted, a stable id
+     * is generated via `$props.id()`, matching Checkbox/Input and the rest of
+     * the package's id-generation convention. Provide it when a consumer
+     * mounts more than one `DiffToolbar`-bearing `DiffViewer` on the same
+     * page and needs a known, stable id to reference — cinder#1309.
+     */
+    id?: string;
     /** Current view mode (bindable) */
     viewMode?: DiffViewerMode;
     /** Diff statistics */
@@ -55,6 +64,7 @@
   } from '@lostgradient/cinder/icons';
 
   let {
+    id,
     viewMode = $bindable<DiffViewerMode>('unified'),
     stats,
     changeCount,
@@ -76,12 +86,22 @@
   const tier = $derived<DiffTier>(diffState?.tier ?? 'realtime');
   const isStale = $derived(diffState?.isStale ?? false);
   const isComputing = $derived(diffState?.isComputing ?? false);
+
+  // Per-instance id for the view-mode control, matching the rest of the
+  // package's convention (Checkbox, Tabs, Dropdown, …): an explicit `id` prop
+  // wins, otherwise fall back to Svelte's SSR-stable `$props.id()`. Previously
+  // this was the literal "diff-view-mode" on every instance, which collided
+  // across multiple `DiffViewer`s on one page — `SegmentedControl` derives its
+  // label id as `${id}-label`, so every instance's `aria-labelledby` resolved
+  // to the FIRST instance's label via `getElementById` (cinder#1309).
+  const generatedId = $props.id();
+  const resolvedViewModeId = $derived(id ?? generatedId);
 </script>
 
 <div class={classNames('diff-toolbar', className)} {...rest}>
   <div class="toolbar-left">
     <SegmentedControl
-      id="diff-view-mode"
+      id={resolvedViewModeId}
       selectionMode="single"
       size="sm"
       label="View mode"

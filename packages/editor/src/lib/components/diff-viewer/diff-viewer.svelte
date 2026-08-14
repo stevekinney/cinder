@@ -376,6 +376,26 @@
 
   const VIEW_MODES: DiffViewerMode[] = ['unified', 'final', 'original'];
 
+  // Instance-owned, not window-owned (cinder#1310). This used to be a bare
+  // `<svelte:window onkeydown>` with only an input/textarea/contenteditable
+  // guard, so with more than one `DiffViewer` on a page every instance's
+  // listener fired on the same keystroke regardless of which one (if any)
+  // had focus. Binding the handler on this instance's own root element
+  // instead relies on ordinary DOM event bubbling: a `keydown` only reaches
+  // an element listener if the event's target — which for a global key
+  // shortcut is always the currently focused element, or `<body>` when
+  // nothing in particular is focused — is that element or one of its
+  // descendants. Because focus is exclusive to a single element in the
+  // whole document, at most one `DiffViewer` instance can ever have the
+  // focused element inside its own subtree at a time, so at most one
+  // instance's handler can ever fire for a given keystroke. This is a
+  // deliberate behavior change, not just a bug fix: a keystroke with focus
+  // on `<body>` (or anywhere outside this instance's own DOM) no longer
+  // triggers navigation, even with a single `DiffViewer` on the page —
+  // previously it did, because the listener was global. A user who wants
+  // to use `]` / `[` / `Ctrl+Shift+D` now needs focus somewhere inside the
+  // viewer first (e.g. a toolbar button), which is what makes the shortcuts
+  // belong to the instance that has them rather than to the page.
   function handleKeydown(event: KeyboardEvent) {
     const target = event.target as HTMLElement;
     if (target.matches('input, textarea, [contenteditable]')) return;
@@ -394,18 +414,18 @@
   }
 </script>
 
-<svelte:window onkeydown={handleKeydown} />
-
 <!-- Expose data-ready for E2E test synchronization (DEP-138) -->
 <Surface
   class={classNames('diff-viewer', className)}
   data-ready={!diffState.isComputing && !diffState.isStale ? true : undefined}
+  onkeydown={handleKeydown}
 >
   <!-- Toolbar: Full override or default -->
   {#if toolbar}
     {@render toolbar(toolbarContext)}
   {:else}
     <DiffToolbar
+      id={`${instanceId}-view-mode`}
       bind:viewMode
       stats={diffStats}
       {changeCount}
