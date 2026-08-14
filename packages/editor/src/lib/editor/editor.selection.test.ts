@@ -39,7 +39,7 @@ describe('createEditor selection notifications', () => {
     container.remove();
   });
 
-  test('document updates resynchronize selection after the listener debounce', async () => {
+  test('emits the mapped selection during the document-update debounce window', async () => {
     const container = document.createElement('div');
     document.body.append(container);
     const selections: Array<{ from: number; to: number; isCollapsed: boolean }> = [];
