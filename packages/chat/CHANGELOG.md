@@ -1,5 +1,17 @@
 # @lostgradient/chat
 
+## 0.9.3
+
+### Patch Changes
+
+- [#1296](https://github.com/stevekinney/cinder/pull/1296) [`885f92a`](https://github.com/stevekinney/cinder/commit/885f92a672145d08f9ea4ba5c7e2fadfc9e85769) Thanks [@stevekinney](https://github.com/stevekinney)! - Return focus when the artifact panel closes, instead of dropping it on `<body>`.
+
+  `ArtifactPanel` focuses its Close button on mount so a keyboard user lands inside the panel — deliberate and good — but nothing restored focus on unmount. Closing therefore left `document.activeElement` as `<body>`: the next Tab restarts at the top of the document, and a screen reader announces nothing. Reproduced identically in Chromium, Firefox, and WebKit, so this was never an engine quirk.
+
+  The attachment now captures the previously focused element before taking focus and restores it on teardown, guarded on `isConnected` — restoring to a detached node is a silent no-op that would leave the bug in place with no signal. Stated plainly because it is a real limit: a consumer whose close also removes the control that opened the panel still has to manage focus itself, since by teardown the panel has no surviving element of its own to offer either.
+
+  Fixes [#1299](https://github.com/stevekinney/cinder/issues/1299).
+
 ## 0.9.2
 
 ### Patch Changes
