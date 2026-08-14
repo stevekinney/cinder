@@ -1,5 +1,11 @@
 # @lostgradient/editor
 
+## 0.9.1
+
+### Patch Changes
+
+- [#1289](https://github.com/stevekinney/cinder/pull/1289) [`3c41f9e`](https://github.com/stevekinney/cinder/commit/3c41f9e3c985cc40878de7d920cff7fa34ae1f35) Thanks [@stevekinney](https://github.com/stevekinney)! - Use Milkdown's live selection payload for selection-change notifications so review anchors and toolbar state do not lag one transaction behind.
+
 ## 0.9.0
 
 ### Minor Changes
