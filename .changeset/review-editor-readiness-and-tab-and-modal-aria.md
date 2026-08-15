@@ -52,6 +52,16 @@ keep escapable. Fixed by closing the thread popover in the same
 "left the editor view" branch that already clears the (separate) selection
 popover for the same reason.
 
+That popover-close, in turn, unmounts `ThreadPopover`, and its own focus trap
+unconditionally restores focus on deactivate — even when the SAME
+interaction that triggered the close (arrow-key roving-tabindex on the view
+switcher) had already moved focus to the newly active tab a moment earlier
+in the same call stack, stealing it back to the trap's `restoreFallback`
+(the sidebar toggle). Corrected by re-asserting focus on the active tab
+after `tick()`, once the trap's own restore has had its say — there is no
+reactive hook into the trap's restore decision from the outside, so this
+corrects the result rather than preventing the race.
+
 Verified against the real Chromium accessibility tree (via the CDP
 `Accessibility` domain), not just DOM attribute presence, for all three:
 `role="textbox"` appearing/disappearing on the ProseMirror node in step with

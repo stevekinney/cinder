@@ -361,9 +361,14 @@ test.describe('ReviewEditor thread popover modality (cinder#1305)', () => {
     await expect(diffTab).toHaveAttribute('aria-selected', 'true');
     await expect(popover).toHaveCount(0);
 
-    // Focus must land somewhere real, not get stranded and not drop to
-    // <body>.
-    const strandedOnBody = await page.evaluate(() => document.activeElement === document.body);
-    expect(strandedOnBody).toBe(false);
+    // Third-round review finding: closing the popover here unmounts it, and
+    // its OWN focus trap unconditionally restores focus on deactivate —
+    // stealing focus BACK from the tab that ArrowRight just moved it to,
+    // landing it on the trap's restoreFallback (the sidebar toggle) instead.
+    // A weaker "just not <body>" assertion would not have caught this: the
+    // sidebar toggle is a real, valid element, just the WRONG one — the
+    // roving-tabindex/ARIA-tabs contract requires focus to stay on the tab
+    // that was just activated.
+    await expect(diffTab).toBeFocused();
   });
 });
