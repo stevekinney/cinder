@@ -12,8 +12,14 @@
  * rather than reintroducing a direct `normalize()` call that would make the
  * bug come back invisibly to this test file.
  */
-import { describe, expect, spyOn, test } from 'bun:test';
-import * as normalizeDocumentModule from '../../export/normalize-document.ts';
+import { afterEach, describe, expect, mock, spyOn, test } from 'bun:test';
+// Imported with the SAME specifier extension (`.js`) `review-editor-diff-stats.ts` itself uses to
+// import `normalizeDocument` — confirmed by a standalone check that both specifiers resolve to
+// the identical module instance (`viaJsImport.normalizeDocument === viaTsImport.normalizeDocument`
+// via `toBe`), but matching the production import's own specifier removes any doubt for a reader,
+// and matches this package's own convention for spying on a sibling module's export (see
+// `editor/attach.test.ts`'s `import * as editorRuntime from './editor.js'`).
+import * as normalizeDocumentModule from '../../export/normalize-document.js';
 import { computeReviewEditorDiffStats } from './review-editor-diff-stats.ts';
 
 describe('computeReviewEditorDiffStats', () => {
@@ -96,6 +102,17 @@ describe('computeReviewEditorDiffStats normalization cost (cinder#1336)', () => 
   // wall-clock cost, per this repo's own stance against timing-threshold
   // assertions: a call-count assertion is deterministic and can't flake the
   // way a duration budget can.
+  //
+  // `mock.restore()` runs after every test in this describe block, not just
+  // the one that creates the spy: restoring only at the end of that test's
+  // own body would leak the spy into every subsequent test if an assertion
+  // above it throws first (review finding on the initial version of this
+  // file, which restored manually and only reached that call on the happy
+  // path).
+  afterEach(() => {
+    mock.restore();
+  });
+
   test('does not re-normalize an unchanged original across repeated calls', () => {
     // Unique per test run (not just per test in this file): the cache this
     // pins is module-global and never cleared, so a fixed literal here would
@@ -125,8 +142,6 @@ describe('computeReviewEditorDiffStats normalization cost (cinder#1336)', () => 
     // this is a performance fix, not a behavior change.
     expect(first).toEqual({ added: 1, removed: 0, modified: 0 });
     expect(second).toEqual({ added: 1, removed: 0, modified: 0 });
-
-    normalizeSpy.mockRestore();
   });
 
   test('still produces correct results when original changes between calls', () => {
