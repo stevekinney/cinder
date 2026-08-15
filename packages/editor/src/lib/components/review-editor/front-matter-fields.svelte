@@ -4,7 +4,17 @@
     data: Record<string, unknown> | null;
     raw: string | null;
     readonly?: boolean;
-    onchange: (data: Record<string, unknown> | null) => void;
+    /**
+     * `raw` is the literal text `data` was parsed from (or `null` when
+     * there's genuinely nothing between the fences). Callers that only look
+     * at `data` can't tell "recognized front matter with no data" (a
+     * comment-only YAML block -- `raw` non-null) apart from "genuinely
+     * empty, safe to collapse" (`raw` null): both produce `data: null`.
+     * `replaceFrontMatterData` (`review-editor-front-matter.ts`) uses this
+     * distinction to avoid discarding comment-only text (cinder#1330
+     * round-6 finding).
+     */
+    onchange: (data: Record<string, unknown> | null, raw?: string | null) => void;
   };
 </script>
 
@@ -86,11 +96,37 @@
   function handleRawInput(rawValue: string): void {
     rawDraft = rawValue;
     const validation = validateFrontMatter(rawValue);
-    rawError = validation.error;
-    if (!validation.valid || readonly) return;
+    if (!validation.valid) {
+      rawError = validation.error;
+      return;
+    }
+    if (readonly) return;
 
+    // validateFrontMatter only checks that `rawValue` parses as YAML *at
+    // all* -- it says "valid" for a bare scalar or a sequence (e.g. `- one`)
+    // just as readily as for a real key/value mapping. parseFrontMatter is
+    // the source of truth for whether that's actually front-matter data
+    // (cinder#1325): confirm hasFrontMatter here too, or a value that
+    // "passes validation" but isn't object-shaped commits as `null`, which
+    // the parent round-trips back through `preserveEmptyFrontMatter` to the
+    // document's *previous* front matter -- silently discarding the input
+    // while the textarea shows no error and keeps displaying what the user
+    // typed, making the discard invisible.
     const parsed = parseFrontMatter(`---\n${rawValue}\n---\n`);
-    onchange(parsed.data);
+    if (!parsed.hasFrontMatter) {
+      rawError = 'Front matter must be a YAML mapping (key: value pairs), not a list or a value.';
+      return;
+    }
+
+    rawError = undefined;
+    // `parsed.data` alone is `null` for two different cases this component
+    // can't otherwise distinguish: a comment-only block (`# TODO: fill this
+    // in` -- recognized front matter, `parsed.raw` holds the actual text)
+    // and a genuinely blank one (`parsed.raw` is `null`). Passing
+    // `parsed.raw` through lets `replaceFrontMatterData` preserve the
+    // former instead of collapsing it to an empty fence, while still
+    // collapsing the latter correctly (cinder#1330 round-6 finding).
+    onchange(parsed.data, parsed.raw);
   }
 
   function fieldId(name: string): string {

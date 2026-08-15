@@ -466,4 +466,172 @@ describe('generateMarkdownSummary', () => {
       expect(result.stats.changeCount).toBeGreaterThan(0);
     });
   });
+
+  describe('line numbers reference source, not normalized text (cinder#1324)', () => {
+    test('the exact cinder#1324 repro: reports the source line, not the normalized one', () => {
+      // normalizeDocument() collapses the run of 3 blank lines to 1, so
+      // "Original text" is normalized-document line 3 but source line 5.
+      // The heading must report the source line.
+      const state = createState({
+        original: 'Alpha\n\n\n\nOriginal text\n',
+        current: 'Alpha\n\n\n\nChanged text\n',
+      });
+      const result = generateMarkdownSummary(state, { contextLines: 0 });
+
+      expect(result.markdown).toMatch(/### Lines 5-5/);
+      expect(result.markdown).not.toMatch(/### Lines 3-3/);
+    });
+
+    test('the end line, not just the start line, is mapped through the collapsed run -- "start + count - 1" would undercount it', () => {
+      // With the default 2 lines of context, the displayed range covers the
+      // entire (short) document: normalized-document lines 1-3 ("Alpha",
+      // blank, the edited line). Naive "start + count - 1" arithmetic in
+      // normalized-space (1 + 3 - 1 = 3) would report line 3 for the end --
+      // still wrong, even with the start correctly mapped -- because the
+      // collapsed blank-line run sits *inside* the displayed range. The
+      // edited line must be reported at its own mapped position (5), not
+      // derived from the start and a normalized-space line count.
+      const state = createState({
+        original: 'Alpha\n\n\n\nOriginal text\n',
+        current: 'Alpha\n\n\n\nChanged text\n',
+      });
+      const result = generateMarkdownSummary(state);
+
+      expect(result.markdown).toMatch(/### Lines 1-5/);
+      expect(result.markdown).not.toMatch(/### Lines 1-3/);
+    });
+
+    test('interaction with cinder#1325: a false-positive front-matter block is now body, and its reported line stays source-accurate', () => {
+      // Before cinder#1325, this `---`-opening span (invalid YAML) would
+      // have been classified as front matter and preserved byte-for-byte,
+      // so the blank-run collapse below it would never interact with it.
+      // After cinder#1325, it's ordinary body content the normalizer
+      // reaches -- both fixes have to agree on where "line 7" is.
+      const state = createState({
+        original: ['---', 'owner: [', '---', '', '', '', 'Original text', ''].join('\n'),
+        current: ['---', 'owner: [', '---', '', '', '', 'Changed text', ''].join('\n'),
+      });
+      const result = generateMarkdownSummary(state, { contextLines: 0 });
+
+      expect(result.markdown).toMatch(/### Lines 7-7/);
+    });
+
+    test('normalizeInputs: false reports normalized-space numbers unchanged (identity map)', () => {
+      const state = createState({
+        original: 'Alpha\n\n\n\nOriginal text\n',
+        current: 'Alpha\n\n\n\nChanged text\n',
+      });
+      const result = generateMarkdownSummary(state, { contextLines: 0, normalizeInputs: false });
+
+      // No normalization means no drift: line 5 is exactly where it always was.
+      expect(result.markdown).toMatch(/### Lines 5-5/);
+    });
+
+    test('a pure trailing addition reports the "insert after EOF" position, not the last real line (review finding)', () => {
+      // mapNormalizedLineNumber used to clamp any out-of-range lookup to the
+      // map's last real entry. A pure addition past the end of `original`
+      // legitimately produces a lookup one past the map's length ("insert
+      // after this line") -- clamping silently relocated that onto the
+      // document's last real line instead of reporting it as after it.
+      const state = createState({
+        original: 'Alpha',
+        current: 'Alpha\nBeta',
+      });
+      const result = generateMarkdownSummary(state, { contextLines: 0, normalizeInputs: false });
+
+      expect(result.markdown).toMatch(/### Lines 2-2/);
+      expect(result.markdown).not.toMatch(/### Lines 1-1/);
+    });
+
+    test("extrapolates from the source document's true end, not the normalized document's, when normalization strips trailing lines entirely (review finding, follow-up)", () => {
+      // Distinct from the test above: this uses DEFAULT normalization (not
+      // normalizeInputs: false), against a source with real trailing blank
+      // lines that normalizeDocument() strips away entirely rather than
+      // collapsing to a representative line -- `original` here is 3 source
+      // lines (Alpha, blank, blank) that normalize to just "Alpha" (1 line).
+      // Anchoring the "insert after EOF" extrapolation to the *normalized*
+      // line count (1) instead of the *source*'s real line count (3) reports
+      // the addition several lines too early.
+      const state = createState({
+        original: 'Alpha\n\n\n',
+        current: 'Alpha\n\n\nBeta',
+      });
+      const result = generateMarkdownSummary(state, { contextLines: 0 });
+
+      expect(result.markdown).toMatch(/### Lines 4-4/);
+      expect(result.markdown).not.toMatch(/### Lines 2-2/);
+    });
+
+    test('a normalized line rewritten by normalization (not just deleted) maps to its own line, not the line before it (review finding)', () => {
+      // A Setext heading collapses two source lines into one normalized ATX
+      // line, which has no verbatim match in the source. The naive fallback
+      // -- freeze on the nearest preceding match -- would report the blank
+      // line above the heading; interpolating forward instead reports the
+      // heading's own line.
+      const state = createState({
+        original: 'Intro\n\nOld title\n===\n',
+        current: 'Intro\n\nNew title\n===\n',
+      });
+      const result = generateMarkdownSummary(state, { contextLines: 0 });
+
+      expect(result.markdown).toMatch(/### Lines 3-3/);
+      expect(result.markdown).not.toMatch(/### Lines 2-2/);
+    });
+
+    test('a rewritten list item does not absorb a deleted separator line into its own position (review finding)', () => {
+      // normalize() both rewrites `*` markers to `-` and deletes the blank
+      // line between tight list items in the same pass. Editing the second
+      // item must report its own source line (5), not the deleted blank
+      // separator's line (4) that a marker-blind alignment would land on.
+      const state = createState({
+        original: 'Intro\n\n* one\n\n* old\n',
+        current: 'Intro\n\n* one\n\n* new\n',
+      });
+      const result = generateMarkdownSummary(state, { contextLines: 0 });
+
+      expect(result.markdown).toMatch(/### Lines 5-5/);
+      expect(result.markdown).not.toMatch(/### Lines 4-4/);
+    });
+
+    test('the same absorption bug, one rewrite kind later: an ordered-list marker rewrite does not absorb the deleted separator either (cinder#1324, round 4 review finding)', () => {
+      // Identical shape to the `*`/`-` case above, with ordered markers
+      // instead: normalize() rewrites `1)`/`2)` to `1.`/`2.` (preserving
+      // each item's own start number) and deletes the blank separator
+      // between them in the same tight-list pass. A canonicalizer that
+      // only recognized unordered markers (the round-3 fix alone) still
+      // lost this -- fixed by canonicalizing through the real `normalize()`
+      // per line instead of a hand-listed marker set, source-line-map.ts's
+      // own docblock and tests.
+      const state = createState({
+        original: 'Intro\n\n1) one\n\n2) old\n',
+        current: 'Intro\n\n1) one\n\n2) new\n',
+      });
+      const result = generateMarkdownSummary(state, { contextLines: 0 });
+
+      expect(result.markdown).toMatch(/### Lines 5-5/);
+      expect(result.markdown).not.toMatch(/### Lines 4-4/);
+    });
+
+    test('a Setext underline and a thematic break do not get confused for each other, even though both can canonicalize to "---" (cinder#1324, round 5 review finding)', () => {
+      // `Title\n---` (a Setext heading) and `***` (a thematic break) are
+      // different mdast node types that can both serialize to the literal
+      // string `---`. The previous (per-line-text-canonicalization)
+      // implementation of source-line-map.ts compared canonicalized
+      // *strings*, so it had no way to tell these two `---`-shaped lines
+      // apart -- reverting to that implementation and running this exact
+      // case reports "Lines 2-2" (the Setext underline that folded into
+      // the heading above it), not "Lines 3-3" (the actual, edited
+      // thematic break). AST-based alignment pairs nodes by *type*
+      // (`heading` vs `thematicBreak`), which are never confusable no
+      // matter what text they happen to serialize to.
+      const state = createState({
+        original: 'Title\n---\n***\nAfter\n',
+        current: 'Title\n---\nChanged\n\nAfter\n',
+      });
+      const result = generateMarkdownSummary(state, { contextLines: 0 });
+
+      expect(result.markdown).toMatch(/### Lines 3-3/);
+      expect(result.markdown).not.toMatch(/### Lines 2-2/);
+    });
+  });
 });

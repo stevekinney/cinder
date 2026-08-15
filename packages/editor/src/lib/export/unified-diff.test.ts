@@ -258,34 +258,34 @@ describe('generateUnifiedDiff', () => {
   });
 });
 
-describe('front matter', () => {
-  /**
-   * Apply a patch the way a consumer would, with git itself. A string comparison
-   * would not catch the failure mode this guards: hunk headers whose line counts
-   * disagree with the lines they introduce still *look* like a diff.
-   */
-  function gitApplyCheck(originalDocument: string, diff: string): { ok: boolean; error: string } {
-    const directory = mkdtempSync(join(tmpdir(), 'unified-diff-'));
+/**
+ * Apply a patch the way a consumer would, with git itself. A string comparison
+ * would not catch the failure mode this guards: hunk headers whose line counts
+ * disagree with the lines they introduce still *look* like a diff.
+ */
+function gitApplyCheck(originalDocument: string, diff: string): { ok: boolean; error: string } {
+  const directory = mkdtempSync(join(tmpdir(), 'unified-diff-'));
 
-    // Setup is inside the try as well: a failing `git init` or write would
-    // otherwise leak the directory it just created.
-    try {
-      execFileSync('git', ['init', '--quiet'], { cwd: directory });
-      writeFileSync(join(directory, 'document.md'), originalDocument);
-      writeFileSync(join(directory, 'patch.diff'), diff);
+  // Setup is inside the try as well: a failing `git init` or write would
+  // otherwise leak the directory it just created.
+  try {
+    execFileSync('git', ['init', '--quiet'], { cwd: directory });
+    writeFileSync(join(directory, 'document.md'), originalDocument);
+    writeFileSync(join(directory, 'patch.diff'), diff);
 
-      execFileSync('git', ['apply', '--check', 'patch.diff'], { cwd: directory, stdio: 'pipe' });
-      return { ok: true, error: '' };
-    } catch (error) {
-      const stderr = (error as { stderr?: Buffer }).stderr;
-      return { ok: false, error: stderr ? stderr.toString() : String(error) };
-    } finally {
-      // Each call makes a git repo under the OS temp dir; without this they
-      // accumulate one per run, per CI shard.
-      rmSync(directory, { recursive: true, force: true });
-    }
+    execFileSync('git', ['apply', '--check', 'patch.diff'], { cwd: directory, stdio: 'pipe' });
+    return { ok: true, error: '' };
+  } catch (error) {
+    const stderr = (error as { stderr?: Buffer }).stderr;
+    return { ok: false, error: stderr ? stderr.toString() : String(error) };
+  } finally {
+    // Each call makes a git repo under the OS temp dir; without this they
+    // accumulate one per run, per CI shard.
+    rmSync(directory, { recursive: true, force: true });
   }
+}
 
+describe('front matter', () => {
   const original = [
     '---',
     'title: Release Plan',
@@ -345,6 +345,227 @@ describe('front matter', () => {
     // Line 8 is the blank line after the closing fence: the seven front-matter
     // lines are counted, not swallowed or re-expanded.
     expect(diff).toContain('@@ -8,5 +8,5 @@');
+  });
+
+  test('includeFrontMatter does not duplicate a fence that already exists but is not valid front matter (review finding)', () => {
+    // `includeFrontMatter` exists to restore a front-matter block onto
+    // older, body-only state payloads -- it must not fire when
+    // `state.content` already starts with a `---`...`---` span, even one
+    // that isn't *valid* front matter (a Markdown list, post-cinder#1325).
+    // The realistic trigger: persisted state saved before #1325 shipped,
+    // whose `frontMatterRaw` is stale relative to what `state.content` now
+    // parses as. Checking `hasFrontMatter` instead of `fencePresent` here
+    // used to prepend a second `---` block onto content that already had
+    // one, duplicating the prefix.
+    //
+    // Asserted against the *applied* result, not the diff's own hunk text:
+    // with `contextLines: 0`, the unchanged fence lines don't necessarily
+    // appear literally in the hunk body even when the underlying bug is
+    // present, so parsing the diff text directly isn't a reliable check
+    // here -- applying the patch and reading the resulting file is.
+    const original = '---\ntitle: Old\n---\n\nBody.\n';
+    const state = {
+      schemaVersion: 1,
+      documentId: 'doc',
+      original,
+      content: '---\n- one\n- two\n---\n\nBody changed.\n',
+      threads: [],
+      frontMatterRaw: 'title: Old',
+    };
+
+    const { diff, stats } = generateUnifiedDiff(state, {
+      includeFrontMatter: true,
+      contextLines: 0,
+    });
+
+    // The buggy version prepends a *second* `---`...`---` block ahead of
+    // the one `state.content` already has, which always adds a brand-new
+    // `---` line to the diff (there was no such line in either input for it
+    // to be a "same" context line, and no existing `---` line changes
+    // *into* it either) -- the one unambiguous signal a prepended fence
+    // leaves in the diff regardless of how the surrounding hunk shape
+    // otherwise renders. The fixed version never adds a `---` line here:
+    // both documents' *existing* fences are unchanged, so under
+    // `contextLines: 0` they don't appear in the diff at all.
+    expect(diff).not.toContain('\n+---\n');
+    // The buggy version's single hunk wraps the entire remainder of the
+    // document (the prepended block plus the real body edit) into one 8-line
+    // addition; the fixed version's edit stays proportional to the two real
+    // differences (the front-matter/list mismatch, and "Body." -> "Body
+    // changed.").
+    expect(stats.additions).toBeLessThan(8);
+  });
+});
+
+describe('hunk header line numbers reference source, not normalized text (cinder#1324)', () => {
+  test('the exact cinder#1324 repro: an edit past collapsed blank lines', () => {
+    // normalizeDocument() collapses the run of 3 blank lines to 1, so the
+    // normalized document is 2 lines shorter than the source above the edit.
+    // With no context lines to obscure it, the header must point at line 5
+    // (where "Original text" actually is in `original`), not line 3 (where
+    // it landed after normalization).
+    const original = 'Alpha\n\n\n\nOriginal text\n';
+    const current = 'Alpha\n\n\n\nChanged text\n';
+
+    const { diff } = generateUnifiedDiff(createState(original, current), { contextLines: 0 });
+
+    expect(diff).toContain('@@ -5,1 +5,1 @@');
+    const applied = gitApplyCheck(original, diff);
+    expect(applied.error).toBe('');
+    expect(applied.ok).toBe(true);
+  });
+
+  test('maps the hunk start through a collapsed run even with default context, when the edit is far enough away that context never re-enters the collapsed lines', () => {
+    const original = [
+      'Intro',
+      '',
+      '',
+      '',
+      'Middle paragraph one.',
+      '',
+      'Middle paragraph two.',
+      '',
+      'Original text',
+      '',
+    ].join('\n');
+    const current = original.replace('Original text', 'Changed text');
+
+    const { diff } = generateUnifiedDiff(createState(original, current));
+
+    // Source line 6 is the blank line before "Middle paragraph two." -- three
+    // lines earlier than normalized-space would report, since normalization
+    // collapsed the 3-blank-line run after "Intro" down to one.
+    expect(diff).toContain('@@ -6,4 +6,4 @@');
+    const applied = gitApplyCheck(original, diff);
+    expect(applied.error).toBe('');
+    expect(applied.ok).toBe(true);
+  });
+
+  test('still reports normalized-space numbers when normalizeInputs is off (identity map)', () => {
+    const original = 'Alpha\n\n\n\nOriginal text\n';
+    const current = 'Alpha\n\n\n\nChanged text\n';
+
+    const { diff } = generateUnifiedDiff(createState(original, current), {
+      contextLines: 0,
+      normalizeInputs: false,
+    });
+
+    // No normalization means no drift: normalized-space and source-space are
+    // the same coordinate space, and line 5 is exactly where it always was.
+    expect(diff).toContain('@@ -5,1 +5,1 @@');
+  });
+
+  test('interaction with cinder#1325: a false-positive front-matter block is now body, and its line numbers are still source-accurate', () => {
+    // Before cinder#1325, this `---`-opening span (invalid YAML: an
+    // unclosed bracket) would have been classified as front matter and
+    // preserved byte-for-byte by normalizeDocument -- no blank-line
+    // collapsing would ever reach it. After cinder#1325, it is ordinary
+    // body content, so the blank-run collapse a few lines down interacts
+    // with it: this only passes if both fixes are built against each
+    // other, which is why they ship in one PR.
+    const original = ['---', 'owner: [', '---', '', '', '', 'Original text', ''].join('\n');
+    const current = original.replace('Original text', 'Changed text');
+
+    const { diff } = generateUnifiedDiff(createState(original, current), { contextLines: 0 });
+
+    // Source line 7 is "Original text" -- the 3-blank-line run at lines 4-6
+    // collapses to 1 in the normalized document, same as the plain
+    // blank-line case, now that the `---` span itself is ordinary body
+    // content the normalizer actually reaches.
+    expect(diff).toContain('@@ -7,1 +7,1 @@');
+    const applied = gitApplyCheck(original, diff);
+    expect(applied.error).toBe('');
+    expect(applied.ok).toBe(true);
+  });
+
+  test('a pure trailing addition reports the "insert after EOF" position, not the last real line', () => {
+    // Behavioral pin, not a direct exercise of mapNormalizedLineNumber's
+    // extrapolation branch: buildHunk's own "start=0 when count=0" git
+    // convention means a pure-addition hunk's originalStart is 0 before it
+    // ever reaches the line-map lookup, so this test's currentStart (2)
+    // stays within currentLineMap's bounds (2 lines: "Alpha", "Beta") and
+    // never triggers extrapolation either. generateUnifiedDiff structurally
+    // can't reach that branch the way generateMarkdownSummary's own
+    // line-counting does -- see source-line-map.test.ts and
+    // markdown-summary.test.ts's own "insert after EOF" tests for the
+    // extrapolation mechanism itself.
+    const original = 'Alpha';
+    const current = 'Alpha\nBeta';
+
+    const { diff } = generateUnifiedDiff(createState(original, current), {
+      contextLines: 0,
+      normalizeInputs: false,
+    });
+
+    expect(diff).toContain('@@ -0,0 +2,1 @@');
+    expect(diff).not.toContain('@@ -0,0 +1,1 @@');
+  });
+
+  test('a normalized line rewritten by normalization (not just deleted) maps to its own line, not the line before it (review finding)', () => {
+    // A Setext heading collapses two source lines ("Old title" and its "==="
+    // underline) into one normalized ATX line ("# Old title"), which has no
+    // verbatim match in the source. The naive fallback -- freeze on the
+    // nearest preceding match -- would report the blank line above the
+    // heading; interpolating forward instead reports the heading's own line.
+    const original = 'Intro\n\nOld title\n===\n';
+    const current = 'Intro\n\nNew title\n===\n';
+
+    const { diff } = generateUnifiedDiff(createState(original, current), { contextLines: 0 });
+
+    expect(diff).toContain('@@ -3,1 +3,1 @@');
+    expect(diff).not.toContain('@@ -2,1 +2,1 @@');
+  });
+
+  test('a rewritten list item does not absorb a deleted separator line into its own position (review finding)', () => {
+    // normalize() both rewrites `*` markers to `-` and deletes the blank
+    // line between tight list items in the same pass. Editing the second
+    // item must report its own source line (5), not the deleted blank
+    // separator's line (4) that a marker-blind alignment would land on.
+    const original = 'Intro\n\n* one\n\n* old\n';
+    const current = 'Intro\n\n* one\n\n* new\n';
+
+    const { diff } = generateUnifiedDiff(createState(original, current), { contextLines: 0 });
+
+    expect(diff).toContain('@@ -5,1 +5,1 @@');
+    expect(diff).not.toContain('@@ -4,1 +4,1 @@');
+  });
+
+  test('the same absorption bug, one rewrite kind later: an ordered-list marker rewrite does not absorb the deleted separator either (cinder#1324, round 4 review finding)', () => {
+    // Identical shape to the `*`/`-` case above, with ordered markers
+    // instead: normalize() rewrites `1)`/`2)` to `1.`/`2.` (preserving each
+    // item's own start number) and deletes the blank separator between them
+    // in the same tight-list pass. A canonicalizer that only recognized
+    // unordered markers (the round-3 fix alone) still lost this -- fixed by
+    // canonicalizing through the real `normalize()` per line instead of a
+    // hand-listed marker set, source-line-map.ts's own docblock and tests.
+    const original = 'Intro\n\n1) one\n\n2) old\n';
+    const current = 'Intro\n\n1) one\n\n2) new\n';
+
+    const { diff } = generateUnifiedDiff(createState(original, current), { contextLines: 0 });
+
+    expect(diff).toContain('@@ -5,1 +5,1 @@');
+    expect(diff).not.toContain('@@ -4,1 +4,1 @@');
+  });
+
+  test('a Setext underline and a thematic break do not get confused for each other, even though both can canonicalize to "---" (cinder#1324, round 5 review finding)', () => {
+    // `Title\n---` (a Setext heading) and `***` (a thematic break) are
+    // different mdast node types that can both serialize to the literal
+    // string `---`. The previous (per-line-text-canonicalization)
+    // implementation of source-line-map.ts compared canonicalized
+    // *strings*, so it had no way to tell these two `---`-shaped lines
+    // apart -- reverting to that implementation and running this exact
+    // case reports the edited thematic break (source line 3) as if it were
+    // the Setext underline that folded into the heading above it (source
+    // line 2) instead. AST-based alignment pairs nodes by *type*
+    // (`heading` vs `thematicBreak`), which are never confusable no matter
+    // what text they happen to serialize to.
+    const original = 'Title\n---\n***\nAfter\n';
+    const current = 'Title\n---\nChanged\n\nAfter\n';
+
+    const { diff } = generateUnifiedDiff(createState(original, current), { contextLines: 0 });
+
+    expect(diff).toContain('@@ -3,1 +3,1 @@');
+    expect(diff).not.toContain('@@ -2,1 +3,1 @@');
   });
 });
 

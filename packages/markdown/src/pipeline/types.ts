@@ -102,8 +102,33 @@ export interface FrontMatterParseResult {
   raw: string | null;
   /** Document body (Markdown content after front matter) */
   body: string;
-  /** Whether front matter was present in the document */
+  /**
+   * Whether the document has *valid, recognized* front matter -- a
+   * `---`-delimited span whose content parses as object-shaped YAML (or is
+   * blank/comment-only). `false` covers two genuinely different cases a
+   * caller must not conflate: "there's no `---` fence here at all," and
+   * "there's a `---`...`---` fence, but its content isn't valid front
+   * matter" (a Markdown list, a scalar, invalid YAML). Only the first case
+   * is safe to treat as "prepend a fresh front-matter block onto this
+   * document" -- see {@link fencePresent}, which distinguishes them.
+   */
   hasFrontMatter: boolean;
+  /**
+   * Whether a `---`...`---` delimited span exists at the start of the
+   * document at all, regardless of whether its content is valid front
+   * matter. `true` whenever `hasFrontMatter` is `true`, and also `true` for
+   * a fenced span whose content failed YAML/object-shape validation --
+   * `false` only when there is no such span (no leading `---`, or no
+   * matching closing `---`).
+   *
+   * A caller deciding whether it's safe to *prepend* a new front-matter
+   * block onto a document's raw text should check `fencePresent`, not
+   * `hasFrontMatter`: `hasFrontMatter === false` does not mean "this text
+   * has no `---` prefix to collide with" -- it can also mean "this text
+   * has a `---`...`---` prefix that just isn't valid front matter," and
+   * prepending onto that duplicates the fence (cinder#1324/#1325 follow-up).
+   */
+  fencePresent: boolean;
 }
 
 /**

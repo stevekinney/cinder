@@ -893,9 +893,9 @@
     handleChange(combineFrontMatterAndBody(currentDocument, newBody));
   }
 
-  function handleFrontMatterChange(data: Record<string, unknown> | null) {
+  function handleFrontMatterChange(data: Record<string, unknown> | null, raw?: string | null) {
     const previousBodyOffset = currentDocument.bodyOffset;
-    const nextValue = replaceFrontMatterData(value, data);
+    const nextValue = replaceFrontMatterData(value, data, raw);
     const nextDocument = parseReviewEditorFrontMatter(nextValue);
 
     if (previousBodyOffset !== nextDocument.bodyOffset) {

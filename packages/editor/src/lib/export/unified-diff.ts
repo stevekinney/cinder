@@ -8,6 +8,11 @@ import type { DiffHunk as MarkdownDiffHunk } from '@lostgradient/markdown/diff/l
 import { parseFrontMatter } from '@lostgradient/markdown/pipeline';
 import type { ReviewState } from '../comments/types.js';
 import { normalizeDocument } from './normalize-document.js';
+import {
+  buildSourceLineMapCached,
+  identitySourceLineMap,
+  mapNormalizedLineNumber,
+} from './source-line-map.js';
 import type { UnifiedDiffOptions, UnifiedDiffResult } from './types.js';
 
 interface DiffHunk {
@@ -105,6 +110,20 @@ function isFinalLineWithoutNewline(content: SplitContent | undefined, lineNumber
 /**
  * Generate a Git-compatible unified diff from review state.
  *
+ * Known limitation (cinder#1324): hunk headers' `@@ -start,count +start,count @@`
+ * report `start` in source-space (mapped back through {@link buildSourceLineMap})
+ * but `count` in normalized-space (how many lines the hunk's own body shows,
+ * since the body is still generated from the normalized documents by design
+ * -- see `normalizeDocument`'s docs for why). When normalization collapsed
+ * lines entirely *before* a hunk's displayed range (`contextLines: 0`, or the
+ * common case generally), the header is exact and `git apply` succeeds. When
+ * a collapse falls *inside* the displayed range, `start` and `count` can
+ * still disagree with the raw document's actual line span, and `git apply`
+ * can reject the patch -- a structural consequence of diffing normalized
+ * text while reporting source-space line numbers, not a gap this fix left
+ * unclosed. This is not something to "fix" by adjusting `count` to a
+ * source-space span; that would make the header disagree with its own body.
+ *
  * @param state - The current review state containing original and current content
  * @param options - Configuration options for diff generation
  * @returns UnifiedDiffResult with diff string and statistics
@@ -139,11 +158,17 @@ export function generateUnifiedDiff(
   let currentContent = state.content;
 
   // Optionally prepend front matter for older body-only state payloads. Avoid
-  // duplicating front matter when state.content is already full Markdown.
+  // duplicating front matter when state.content is already full Markdown --
+  // checking `fencePresent`, not `hasFrontMatter`: a `---`...`---` span that
+  // exists but isn't *valid* front matter (invalid/non-object, post-
+  // cinder#1325) still means `currentContent` already has a fence there.
+  // `hasFrontMatter === false` doesn't rule that out, and prepending onto it
+  // anyway would duplicate the fence rather than restore missing front
+  // matter (cinder#1324/#1325 follow-up).
   if (
     includeFrontMatter &&
     state.frontMatterRaw &&
-    !parseFrontMatter(currentContent).hasFrontMatter
+    !parseFrontMatter(currentContent).fencePresent
   ) {
     currentContent = `---\n${state.frontMatterRaw}\n---\n\n${currentContent}`;
   }
@@ -166,6 +191,34 @@ export function generateUnifiedDiff(
     };
   }
 
+  // Line numbers below are computed against `original`/`current` -- the
+  // *normalized* documents, diffed instead of the raw inputs to avoid
+  // reporting formatting-only differences as edits. Normalization can
+  // change the line count (collapsed blank runs, a dropped front-matter
+  // separator, a folded Setext underline), so a normalized-space line index
+  // is not the same line in `state.original`/`state.content`. Map each side
+  // back to its own source before rendering `@@` headers (cinder#1324).
+  // `normalizeInputs: false` needs no mapping: `original`/`current` above
+  // are already the (CRLF-folded) source text unchanged, so the identity
+  // map is exact, not an approximation.
+  //
+  // `buildSourceLineMapCached`, not the raw builder: `ReviewEditor`'s
+  // hidden `formDiff` input is a `$derived` value, so this function runs on
+  // every content edit whenever the component has a `name`, not just on a
+  // user-triggered export. `original`/`originalContent` rarely change
+  // across those calls -- caching by the exact `(source, normalized)` pair
+  // means that side is a cache hit after the first call.
+  const originalLineMap = normalizeInputs
+    ? buildSourceLineMapCached(originalContent.replace(/\r\n?/g, '\n'), original)
+    : identitySourceLineMap(original);
+  // Mapped against `currentContent`, not `state.content` -- when
+  // `includeFrontMatter` synthesizes a front-matter prefix above, that
+  // synthesized text is the only coherent "source" a diff against `current`
+  // can reference.
+  const currentLineMap = normalizeInputs
+    ? buildSourceLineMapCached(currentContent.replace(/\r\n?/g, '\n'), current)
+    : identitySourceLineMap(current);
+
   const originalSplit = splitIntoLines(original, normalizeInputs);
   const currentSplit = splitIntoLines(current, normalizeInputs);
 
@@ -183,8 +236,22 @@ export function generateUnifiedDiff(
   let deletions = 0;
 
   for (const hunk of hunks) {
+    // `0` is git's own convention for "no lines on this side" (a pure
+    // addition or deletion hunk) -- not a line number to remap.
+    const originalStart =
+      hunk.originalStart === 0 ? 0 : mapNormalizedLineNumber(originalLineMap, hunk.originalStart);
+    const currentStart =
+      hunk.currentStart === 0 ? 0 : mapNormalizedLineNumber(currentLineMap, hunk.currentStart);
+    // This header mixes coordinate spaces on purpose, not by oversight:
+    // `originalStart`/`currentStart` are source-space (mapped above), but
+    // `hunk.originalCount`/`hunk.currentCount` stay normalized-space --
+    // they describe how many lines this hunk's own body shows, which is the
+    // only count a unified-diff body can self-consistently carry (see the
+    // module-level "Known limitation" note and this PR's changeset). Do not
+    // "fix" the count to a source-space span; that would make it disagree
+    // with the body instead of the header.
     diffLines.push(
-      `@@ -${hunk.originalStart},${hunk.originalCount} +${hunk.currentStart},${hunk.currentCount} @@`,
+      `@@ -${originalStart},${hunk.originalCount} +${currentStart},${hunk.currentCount} @@`,
     );
     for (const line of hunk.lines) {
       diffLines.push(line);

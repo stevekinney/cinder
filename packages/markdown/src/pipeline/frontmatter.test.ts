@@ -106,6 +106,114 @@ Content`;
       },
     });
   });
+
+  describe('rejects false-positive front matter (cinder#1325)', () => {
+    test('treats a `---`-delimited YAML sequence as body, not front matter', () => {
+      // `- one` is valid YAML, but it parses to an array, not an object --
+      // front matter must be key/value data.
+      const markdown = '---\n- one\n- two\n---\n\nBody.\n';
+
+      const result = parseFrontMatter(markdown);
+
+      expect(result.hasFrontMatter).toBe(false);
+      expect(result.data).toBeNull();
+      expect(result.raw).toBeNull();
+      expect(result.body).toBe(markdown);
+    });
+
+    test('treats unparseable YAML between delimiters as body, not front matter', () => {
+      // `* one` is not valid YAML (an alias reference with no matching
+      // anchor) -- js-yaml throws parsing it.
+      const markdown = '---\n* one\n---\n\nBody.\n';
+
+      const result = parseFrontMatter(markdown);
+
+      expect(result.hasFrontMatter).toBe(false);
+      expect(result.data).toBeNull();
+      expect(result.raw).toBeNull();
+      expect(result.body).toBe(markdown);
+    });
+
+    test('two documents differing only by list-marker style inside a false-positive block parse identically', () => {
+      // The exact cinder#1325 repro: both fail YAML parsing (`* one` throws,
+      // `- one` parses but isn't object-shaped), so both are "not front
+      // matter" and their entire text -- including the marker-style
+      // difference -- lands in `body`, ready for Markdown-aware comparison
+      // upstream instead of being frozen as an opaque "front matter" span.
+      const withAsterisk = '---\n\n* one\n\n---\n\nBody.\n';
+      const withDash = '---\n\n- one\n\n---\n\nBody.\n';
+
+      const resultA = parseFrontMatter(withAsterisk);
+      const resultB = parseFrontMatter(withDash);
+
+      expect(resultA.hasFrontMatter).toBe(false);
+      expect(resultB.hasFrontMatter).toBe(false);
+      expect(resultA.body).toBe(withAsterisk);
+      expect(resultB.body).toBe(withDash);
+    });
+
+    test('still recognizes an empty front-matter block (not a parse failure)', () => {
+      // Blank content between delimiters is intentionally-empty front
+      // matter, not invalid YAML -- must not be swept into the new
+      // false-positive handling.
+      const markdown = '---\n---\n\n# Content';
+
+      const result = parseFrontMatter(markdown);
+
+      expect(result.hasFrontMatter).toBe(true);
+      expect(result.data).toBeNull();
+    });
+
+    test('still recognizes a comment-only front-matter block, the "empty block with a note" idiom, not a false positive (review finding)', () => {
+      // `load()` returns `null` for `'# note'` -- the exact same value it
+      // returns for a genuinely blank block -- so a comment-only span fell
+      // into the "not front matter" branch above it, alongside real
+      // sequences/scalars, before this fix. Unlike a Markdown list or a
+      // bare scalar, `# note` immediately after the opening `---` was never
+      // plausibly ordinary Markdown body content: it's the standard way to
+      // leave a note in an otherwise-empty front-matter block.
+      const markdown = '---\n# TODO: fill this in\n---\n\n# Content';
+
+      const result = parseFrontMatter(markdown);
+
+      expect(result.hasFrontMatter).toBe(true);
+      expect(result.data).toBeNull();
+      expect(result.body).toBe('\n# Content');
+    });
+
+    test('a comment mixed with blank lines is still comment-only, not real content', () => {
+      const markdown = '---\n\n  # note\n\n---\n\nBody.\n';
+
+      const result = parseFrontMatter(markdown);
+
+      expect(result.hasFrontMatter).toBe(true);
+      expect(result.data).toBeNull();
+    });
+
+    test('a real key past an inline comment is not treated as comment-only (only a full-line `#` counts)', () => {
+      // `title: Hello # a note` has real content before its `#` -- the line
+      // doesn't *start* with `#`, so isCommentOnlyYaml correctly leaves it
+      // alone (YAML itself strips the trailing `# a note` as an inline
+      // comment, same as it would for hand-written front matter), and the
+      // block parses as ordinary front matter with real data, not as an
+      // "empty, comment-only" block.
+      const markdown = '---\ntitle: Hello # a note\n---\n\nBody.\n';
+
+      const result = parseFrontMatter(markdown);
+
+      expect(result.hasFrontMatter).toBe(true);
+      expect(result.data).toEqual({ title: 'Hello' });
+    });
+
+    test('still recognizes valid object-shaped front matter', () => {
+      const markdown = '---\ntitle: Real front matter\n---\n\nBody.\n';
+
+      const result = parseFrontMatter(markdown);
+
+      expect(result.hasFrontMatter).toBe(true);
+      expect(result.data).toEqual({ title: 'Real front matter' });
+    });
+  });
 });
 
 describe('stringifyFrontMatter', () => {
@@ -281,6 +389,18 @@ describe('hasFrontMatter', () => {
     // which also requires front matter to start at position 0
     expect(hasFrontMatter('  ---\ntitle: Test\n---')).toBe(false);
   });
+
+  test('stays consistent with parseFrontMatter for a false-positive span (cinder#1325)', () => {
+    // Before delegating to parseFrontMatter, this was a bare
+    // `markdown.startsWith('---')`, so it said `true` here even after
+    // parseFrontMatter() itself was fixed to say `false` -- directly
+    // contradicting this function's own "mirrors parseFrontMatter" contract
+    // for exactly the input the cinder#1325 fix targets.
+    const markdown = '---\n- one\n- two\n---\n\nBody.';
+
+    expect(hasFrontMatter(markdown)).toBe(parseFrontMatter(markdown).hasFrontMatter);
+    expect(hasFrontMatter(markdown)).toBe(false);
+  });
 });
 
 describe('validateFrontMatter', () => {
@@ -360,6 +480,56 @@ apple: a
 
     expect(result).not.toContain('---');
     expect(result).toContain('# Heading');
+  });
+
+  test('preserves a false-positive front-matter span as body instead of silently dropping it (cinder#1325)', () => {
+    // Before cinder#1325, `hasFrontMatter` was true here with `data: null`,
+    // so this function's `!hasFrontMatter || !data` branch returned only
+    // `normalize(body)` -- and `body` is everything *after* the closing
+    // fence, per `parseFrontMatter`. The `---\n- one\n- two\n---` span
+    // itself was silently discarded from the output. Now that the span is
+    // correctly classified as ordinary body content, it survives
+    // normalization instead of vanishing.
+    const markdown = '---\n- one\n- two\n---\n\nBody.';
+
+    const result = normalizeWithFrontMatter(markdown);
+
+    expect(result).toContain('one');
+    expect(result).toContain('two');
+    expect(result).toContain('Body.');
+  });
+
+  test('preserves a comment-only front-matter span verbatim instead of dropping it (cinder#1330 round-6 finding)', () => {
+    // `isCommentOnlyYaml` classifies `# Title\n## Subtitle` (between the
+    // fences) as an intentionally-empty front-matter block with a comment,
+    // so `hasFrontMatter: true, data: null` -- the exact same shape a truly
+    // blank block reports. Before this fix, this function's `!data` branch
+    // returned only `normalize(body)`, discarding the raw span entirely: the
+    // two headings would vanish from the output with no error.
+    const markdown = '---\n# Title\n## Subtitle\n---\nBody content\n';
+
+    const result = normalizeWithFrontMatter(markdown);
+
+    expect(result).toContain('# Title');
+    expect(result).toContain('## Subtitle');
+    expect(result).toContain('Body content');
+  });
+
+  test('a genuinely blank front-matter block still normalizes to just the body (no raw text to lose)', () => {
+    const markdown = '---\n---\n\nBody content\n';
+
+    const result = normalizeWithFrontMatter(markdown);
+
+    expect(result).toBe('Body content\n');
+  });
+
+  test('normalizing a comment-only span is idempotent', () => {
+    const markdown = '---\n# Title\n## Subtitle\n---\nBody content\n';
+
+    const once = normalizeWithFrontMatter(markdown);
+    const twice = normalizeWithFrontMatter(once);
+
+    expect(twice).toBe(once);
   });
 });
 
@@ -487,5 +657,66 @@ title: Test
     const withoutFm = '# Content';
 
     expect(contentEqualsWithFrontMatter(withFm, withoutFm)).toBe(false);
+  });
+
+  test('a false-positive front-matter span now enters the comparison, instead of being invisible to it (cinder#1325)', () => {
+    // Before cinder#1325, both documents parsed to `hasFrontMatter: true,
+    // data: null` (neither `- one` nor `- two` is object-shaped YAML), and
+    // `contentEqualsWithFrontMatter` compares `data` and `body` -- `body`
+    // being only what follows the closing fence. Both bodies are identical
+    // ("Body.\n"), and `data` was null on both sides regardless of what the
+    // list actually said, so the function returned true without the list
+    // content -- "one" vs "two" -- ever being compared.
+    //
+    // After the fix, the whole `---`-delimited span is ordinary body text
+    // on both sides, so it's part of what `contentEquals` normalizes and
+    // compares. Genuinely different list content now makes these documents
+    // compare unequal, as they should.
+    const withOne = '---\n\n- one\n\n---\n\nBody.\n';
+    const withTwo = '---\n\n- two\n\n---\n\nBody.\n';
+
+    expect(contentEqualsWithFrontMatter(withOne, withTwo)).toBe(false);
+  });
+
+  test('the cinder#1325 repro itself still compares equal, now for the right reason (real Markdown normalization, not an invisible span)', () => {
+    // `* one` and `- one` are the same Markdown list with a different
+    // marker character -- semantically equivalent, and now actually
+    // compared as such, rather than both bodies just happening to be
+    // identical strings after an ignored front-matter-shaped prefix.
+    const withAsterisk = '---\n\n* one\n\n---\n\nBody.\n';
+    const withDash = '---\n\n- one\n\n---\n\nBody.\n';
+
+    expect(contentEqualsWithFrontMatter(withAsterisk, withDash)).toBe(true);
+  });
+
+  test('a comment-only front-matter span is compared, not made invisible by data equality (cinder#1330 round-6 finding)', () => {
+    // Both documents parse to `hasFrontMatter: true, data: null` -- the
+    // comment text itself carries the only difference, and `data` equality
+    // alone can't see it. Before this fix these compared equal (a false
+    // "unchanged"); the differing raw text must make them unequal.
+    const docA = '---\n# Title A\n---\nBody.\n';
+    const docB = '---\n# Title B\n---\nBody.\n';
+
+    expect(contentEqualsWithFrontMatter(docA, docB)).toBe(false);
+  });
+
+  test('identical comment-only front-matter spans still compare equal', () => {
+    const docA = '---\n# Same title\n---\nBody.\n';
+    const docB = '---\n# Same title\n---\nBody.\n';
+
+    expect(contentEqualsWithFrontMatter(docA, docB)).toBe(true);
+  });
+
+  test('an empty-object span and a genuinely blank span both have data: null but are not the same raw text -- compares unequal, not silently equal (documented edge case)', () => {
+    // `---\n{}\n---` parses to `data: null` (an object with zero keys is
+    // normalized to `null`, same as blank) but `raw: '{}'`; `---\n---`
+    // parses to `raw: null`. Comparing `raw` byte-for-byte means these two
+    // differ, even though neither has visible "data" -- a spurious inequality
+    // rather than a missed one, which is the safe direction to be wrong on
+    // here. Documented so a later round doesn't rediscover this as a mystery.
+    const emptyObject = '---\n{}\n---\n\nBody.\n';
+    const trulyBlank = '---\n---\n\nBody.\n';
+
+    expect(contentEqualsWithFrontMatter(emptyObject, trulyBlank)).toBe(false);
   });
 });

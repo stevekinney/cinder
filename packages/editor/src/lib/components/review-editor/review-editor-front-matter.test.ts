@@ -37,6 +37,40 @@ describe('review editor front matter helpers', () => {
     expect(next.endsWith('\n# Architecture\n')).toBe(true);
   });
 
+  test('preserves comment-only raw text instead of collapsing it to an empty fence (cinder#1330 round-6 finding)', () => {
+    // `FrontMatterFields`' raw-YAML textarea commits comment-only content
+    // (`# TODO: fill this in`) as `data: null` -- the same shape genuinely
+    // blank content produces -- so without passing `raw` through,
+    // `replaceFrontMatterData` couldn't tell them apart and collapsed both
+    // to a bare `---\n---\n`, silently discarding the comment text with no
+    // error shown.
+    const markdown = '---\n# TODO: fill this in\n---\n\n# Architecture\n';
+    const next = replaceFrontMatterData(markdown, null, '# DONE');
+
+    expect(next).toBe('---\n# DONE\n---\n\n# Architecture\n');
+  });
+
+  test('still collapses genuinely empty front matter when raw is null (not a regression from the comment-only fix)', () => {
+    const markdown = '---\nowner: platform\n---\n\n# Architecture\n';
+    const next = replaceFrontMatterData(markdown, null, null);
+
+    expect(next).toBe('---\n---\n\n# Architecture\n');
+  });
+
+  test('still collapses genuinely empty front matter when raw is omitted (existing callers unaffected)', () => {
+    const markdown = '---\nowner: platform\n---\n\n# Architecture\n';
+    const next = replaceFrontMatterData(markdown, null);
+
+    expect(next).toBe('---\n---\n\n# Architecture\n');
+  });
+
+  test('a whitespace-only raw string is treated the same as no raw text to preserve', () => {
+    const markdown = '---\nowner: platform\n---\n\n# Architecture\n';
+    const next = replaceFrontMatterData(markdown, null, '   \n  ');
+
+    expect(next).toBe('---\n---\n\n# Architecture\n');
+  });
+
   test('keeps empty front matter editable as raw YAML', () => {
     const markdown = '---\n---\n\n# Architecture\n';
     const frontMatter = parseReviewEditorFrontMatter(markdown);
@@ -47,12 +81,20 @@ describe('review editor front matter helpers', () => {
     expect(combineFrontMatterAndBody(frontMatter, frontMatter.body)).toBe(markdown);
   });
 
-  test('preserves non-empty raw front matter that cannot be parsed', () => {
+  test('treats a `---`-delimited span that fails to parse as YAML as body, not front matter (cinder#1325)', () => {
+    // `owner: [` never closes its bracket, so this isn't valid YAML at all --
+    // as of cinder#1325, parseFrontMatter reports hasFrontMatter: false for
+    // that (previously it reported true with data: null, which meant this
+    // markdown-shaped content was silently swallowed as an opaque "front
+    // matter" span instead of being editable as ordinary document body).
+    // Round-trip fidelity is still preserved: the whole markdown, including
+    // the `---` lines, is now the body, so recombining reproduces it exactly.
     const markdown = '---\nowner: [\n---\n\n# Architecture\n';
     const frontMatter = parseReviewEditorFrontMatter(markdown);
 
-    expect(frontMatter.hasFrontMatter).toBe(true);
+    expect(frontMatter.hasFrontMatter).toBe(false);
     expect(frontMatter.data).toBeNull();
+    expect(frontMatter.body).toBe(markdown);
     expect(combineFrontMatterAndBody(frontMatter, frontMatter.body)).toBe(markdown);
   });
 
@@ -64,6 +106,31 @@ describe('review editor front matter helpers', () => {
         frontMatterRaw: 'owner: platform',
       }),
     ).toBe('---\nowner: platform\n---\n\n# Architecture\n');
+  });
+
+  test('does not prepend a second fence when content already starts with one that is not valid front matter (review finding)', () => {
+    // The realistic trigger: persisted v4 state saved before cinder#1325
+    // shipped, when a `---`-delimited YAML sequence still counted as front
+    // matter (`hasFrontMatter: true, data: null`) -- so `frontMatterRaw`
+    // was populated for content shaped exactly like this. After #1325, that
+    // same content parses as `hasFrontMatter: false` (correctly -- it's a
+    // Markdown list, not front matter), but it still has a `---`...`---`
+    // span at the start. Checking `hasFrontMatter` instead of
+    // `fencePresent` here used to treat that as "no fence, safe to
+    // prepend," producing a second `---`...`---` block ahead of the first.
+    const content = '---\n- one\n- two\n---\n\nBody.\n';
+
+    const result = reviewStateToMarkdown({
+      content,
+      frontMatter: null,
+      frontMatterRaw: 'owner: platform',
+    });
+
+    // Unchanged: fencePresent is true (there's already a `---`...`---` span,
+    // even though it's not valid front matter), so nothing gets prepended.
+    expect(result).toBe(content);
+    const fenceLineCount = result.split('\n').filter((line) => line === '---').length;
+    expect(fenceLineCount).toBe(2);
   });
 
   test('round-trips complex field values through YAML text', () => {

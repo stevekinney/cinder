@@ -13,6 +13,17 @@ import type {
 
 export type ReviewEditorFrontMatterState = {
   hasFrontMatter: boolean;
+  /**
+   * Whether a `---`...`---` fenced span exists at the start of the
+   * document at all, regardless of whether its content is valid front
+   * matter -- see `FrontMatterParseResult.fencePresent`
+   * (`@lostgradient/markdown/pipeline`). `reviewStateToMarkdown` checks
+   * this, not `hasFrontMatter`, before deciding it's safe to prepend a new
+   * front-matter block: `hasFrontMatter === false` doesn't mean "no fence
+   * to collide with," it can also mean "a fence is there, it just isn't
+   * valid front matter" (cinder#1324/#1325 follow-up).
+   */
+  fencePresent: boolean;
   data: Record<string, unknown> | null;
   raw: string | null;
   body: string;
@@ -27,6 +38,7 @@ export function parseReviewEditorFrontMatter(markdown: string): ReviewEditorFron
 
   return {
     hasFrontMatter: parsed.hasFrontMatter,
+    fencePresent: parsed.fencePresent,
     data: parsed.data,
     raw: parsed.hasFrontMatter ? (parsed.raw ?? '') : null,
     body: parsed.hasFrontMatter ? parsed.body : markdown,
@@ -37,7 +49,15 @@ export function parseReviewEditorFrontMatter(markdown: string): ReviewEditorFron
 export function reviewStateToMarkdown(
   state: Pick<ReviewState, 'content' | 'frontMatter' | 'frontMatterRaw'>,
 ): string {
-  if (parseReviewEditorFrontMatter(state.content).hasFrontMatter) return state.content;
+  // `fencePresent`, not `hasFrontMatter`: `state.content` might already
+  // start with a `---`...`---` span that isn't *valid* front matter (an
+  // invalid/non-object fence, post-cinder#1325) -- prepending a new block
+  // from `state.frontMatterRaw` below onto text like that would duplicate
+  // the fence rather than genuinely restoring missing front matter. The
+  // realistic trigger is persisted v4 state saved before #1325 shipped,
+  // whose `frontMatterRaw` is stale relative to what `state.content` now
+  // parses as (cinder#1324/#1325 follow-up).
+  if (parseReviewEditorFrontMatter(state.content).fencePresent) return state.content;
   if (state.frontMatterRaw == null && state.frontMatter == null) return state.content;
   if (state.frontMatterRaw === undefined) return state.content;
 
@@ -68,9 +88,25 @@ export function combineFrontMatterAndBody(
 export function replaceFrontMatterData(
   markdown: string,
   data: Record<string, unknown> | null,
+  raw?: string | null,
 ): string {
   const frontMatter = parseReviewEditorFrontMatter(markdown);
   if (!frontMatter.hasFrontMatter) return markdown;
+
+  if (!data && raw != null && raw.trim() !== '') {
+    // `data: null` alone doesn't distinguish "recognized front matter with
+    // no data" (a comment-only YAML block, e.g. `# TODO: fill this in` --
+    // `raw` carries the actual text) from "genuinely empty, safe to
+    // collapse" (no `raw` to preserve). `stringifyFrontMatter`'s own
+    // null-data branch can't make that distinction either -- it only ever
+    // sees `data` -- so without this, a comment-only edit committed through
+    // `FrontMatterFields`'s raw-YAML textarea collapsed to a bare
+    // `---\n---\n`, silently discarding whatever the user typed with no
+    // error shown (cinder#1330 round-6 finding). Mirrors the same
+    // `data === null && raw !== null` branch `combineFrontMatterAndBody`
+    // (above) already uses for the same reason.
+    return `---\n${raw}\n---\n${frontMatter.body}`;
+  }
 
   return stringifyFrontMatter(data, frontMatter.body, {
     originalRaw: frontMatter.raw,
