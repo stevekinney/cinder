@@ -23,7 +23,8 @@
   import { createChangeTracker } from '../../utilities/change-tracker.svelte.ts';
   import { stringifyOrNull } from '../../utilities/stringify.ts';
   import MarkdownEditor from '../markdown-editor/markdown-editor.svelte';
-  import { contentEquals, normalize } from '@lostgradient/markdown/pipeline';
+  import { contentEquals } from '@lostgradient/markdown/pipeline';
+  import { computeReviewEditorDiffStats } from './review-editor-diff-stats.ts';
   import { textOffsetToProseMirrorPosition } from '../../editor/index.ts';
   import { createAnchorPlugin, anchorPluginKey } from '../../anchor-decorations.ts';
   import {
@@ -66,7 +67,6 @@
   } from './review-editor-selection-geometry.ts';
   import DiffViewer from '../diff-viewer/diff-viewer.svelte';
   import SelectionPopover from '@lostgradient/cinder/selection-popover';
-  import { computeLineDiff, getDiffStats } from '@lostgradient/markdown/diff/line-diff';
   import {
     generateMarkdownSummary,
     generateUnifiedDiff,
@@ -185,18 +185,10 @@
 
   /**
    * Compute diff statistics from original vs current content.
-   * Uses the same line-diff algorithm as DiffViewer for consistency.
+   * Uses the same front-matter-aware normalization as generateUnifiedDiff and
+   * the diff panel (cinder#1307) — see computeReviewEditorDiffStats.
    */
-  const diffStats = $derived.by(() => {
-    if (!original) {
-      return { added: 0, removed: 0, modified: 0 };
-    }
-    // Normalize both inputs to avoid false positives from formatting differences
-    const normalizedOriginal = normalize(original);
-    const normalizedCurrent = normalize(value);
-    const lineDiffs = computeLineDiff(normalizedOriginal, normalizedCurrent);
-    return getDiffStats(lineDiffs);
-  });
+  const diffStats = $derived.by(() => computeReviewEditorDiffStats(original, value));
 
   /** Whether there are any content changes */
   const hasContentChanges = $derived(

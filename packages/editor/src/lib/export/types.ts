@@ -19,6 +19,17 @@ export interface MarkdownSummaryOptions {
 
   /** Number of context lines around changes. Default: 2 */
   contextLines?: number | undefined;
+
+  /**
+   * Normalize `original`/`current` (CRLF to LF, front-matter-aware Markdown
+   * canonicalization) before diffing, matching {@link UnifiedDiffOptions.normalizeInputs}'s
+   * default. Default: true.
+   *
+   * Set to false to compare the raw strings verbatim — the same opt-out
+   * `generateUnifiedDiff` offers for callers that want formatting-only
+   * differences (list markers, blank-line padding, CRLF) to count as edits.
+   */
+  normalizeInputs?: boolean | undefined;
 }
 
 /**

@@ -362,4 +362,92 @@ describe('generateMarkdownSummary', () => {
       expect(result.stats.threadCount).toBe(2);
     });
   });
+
+  describe('normalization (cinder#1318)', () => {
+    // generateMarkdownSummary used to run computeLineDiff directly on the raw
+    // original/current strings, with no CRLF handling and no front-matter
+    // awareness — unlike generateUnifiedDiff, whose normalizeInputs default
+    // runs both through normalizeDocument first. That gap let the two exports
+    // disagree about whether the exact same ReviewState contained a real edit.
+
+    test('front matter, repro 1: blank-line padding after the closing fence is not a change', () => {
+      // Exact repro from cinder#1318. Same front matter, same body text; the
+      // only difference is how many blank lines separate the closing `---`
+      // from the body (one vs. three). generateUnifiedDiff already reports
+      // zero hunks for this pair — generateMarkdownSummary must agree.
+      const frontMatter = ['---', 'title: Release Plan', 'draft: true', '---'].join('\n');
+      const state = createState({
+        original: `${frontMatter}\n\nAlpha line.`,
+        current: `${frontMatter}\n\n\n\nAlpha line.`,
+      });
+      const result = generateMarkdownSummary(state);
+
+      expect(result.markdown).toBe('No changes or feedback to report.');
+      expect(result.stats.changeCount).toBe(0);
+    });
+
+    test('front matter, repro 1 with feedback: the changes section is omitted, the feedback section is not', () => {
+      const frontMatter = ['---', 'title: Release Plan', 'draft: true', '---'].join('\n');
+      const state = createState({
+        original: `${frontMatter}\n\nAlpha line.`,
+        current: `${frontMatter}\n\n\n\nAlpha line.`,
+        threads: [createThread()],
+      });
+      const result = generateMarkdownSummary(state);
+
+      expect(result.markdown).not.toContain('## Changes Made');
+      expect(result.markdown).toContain('## Feedback');
+      expect(result.stats.changeCount).toBe(0);
+    });
+
+    test('repro 2: blank-line padding with no front matter at all is not a change', () => {
+      // Proves the root cause is missing normalization in general, not a gap
+      // specific to front-matter parsing.
+      const state = createState({
+        original: 'Alpha.\n\nBeta.',
+        current: 'Alpha.\n\n\n\nBeta.',
+      });
+      const result = generateMarkdownSummary(state);
+
+      expect(result.markdown).toBe('No changes or feedback to report.');
+      expect(result.stats.changeCount).toBe(0);
+    });
+
+    test('CRLF-only differences are not a change, and no literal \\r reaches the diff fence', () => {
+      const state = createState({
+        original: 'Line 1\r\nLine 2\r\nLine 3',
+        current: 'Line 1\nLine 2\nLine 3',
+      });
+      const result = generateMarkdownSummary(state);
+
+      expect(result.markdown).toBe('No changes or feedback to report.');
+      expect(result.stats.changeCount).toBe(0);
+    });
+
+    test('a genuine edit alongside CRLF differences is still reported, without a stray \\r', () => {
+      const state = createState({
+        original: 'Line 1\r\nLine 2\r\nLine 3',
+        current: 'Line 1\nLine 2 modified\nLine 3',
+      });
+      const result = generateMarkdownSummary(state);
+
+      expect(result.markdown).toContain('## Changes Made');
+      expect(result.markdown).toContain('+Line 2 modified');
+      expect(result.markdown).not.toContain('\r');
+    });
+
+    test('normalizeInputs: false restores the raw, unnormalized comparison', () => {
+      // The same opt-out generateUnifiedDiff offers, for callers that want
+      // formatting-only differences to count as edits.
+      const frontMatter = ['---', 'title: Release Plan', 'draft: true', '---'].join('\n');
+      const state = createState({
+        original: `${frontMatter}\n\nAlpha line.`,
+        current: `${frontMatter}\n\n\n\nAlpha line.`,
+      });
+      const result = generateMarkdownSummary(state, { normalizeInputs: false });
+
+      expect(result.markdown).toContain('## Changes Made');
+      expect(result.stats.changeCount).toBeGreaterThan(0);
+    });
+  });
 });
