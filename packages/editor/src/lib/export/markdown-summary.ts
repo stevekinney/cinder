@@ -62,12 +62,17 @@ export function generateMarkdownSummary(
   // computeLineDiff runs on raw strings with no CRLF handling and no
   // front-matter awareness, and can disagree with generateUnifiedDiff about
   // documents that are semantically identical.
-  const original = normalizeInputs
-    ? normalizeDocument(originalContent)
-    : originalContent.replace(/\r\n?/g, '\n');
-  const current = normalizeInputs
-    ? normalizeDocument(currentContent)
-    : currentContent.replace(/\r\n?/g, '\n');
+  //
+  // Deliberately NOT mirroring generateUnifiedDiff's own normalizeInputs:
+  // false branch here, which still folds CRLF to LF even with normalization
+  // "off" — a pre-existing wrinkle in that function, not a contract this new
+  // option needs to inherit. `normalizeInputs: false` promises a raw,
+  // verbatim comparison (see MarkdownSummaryOptions' doc comment); honoring
+  // that for CRLF as well as Markdown canonicalization is what makes the
+  // option's own contract true rather than only true for some formatting
+  // differences and not others.
+  const original = normalizeInputs ? normalizeDocument(originalContent) : originalContent;
+  const current = normalizeInputs ? normalizeDocument(currentContent) : currentContent;
 
   if (original !== current) {
     const changesSection = generateChangesSection(original, current, contextLines);

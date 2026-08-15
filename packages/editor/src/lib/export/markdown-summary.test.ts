@@ -437,12 +437,28 @@ describe('generateMarkdownSummary', () => {
     });
 
     test('normalizeInputs: false restores the raw, unnormalized comparison', () => {
-      // The same opt-out generateUnifiedDiff offers, for callers that want
-      // formatting-only differences to count as edits.
+      // For callers that want formatting-only differences (blank-line
+      // padding, Markdown canonicalization) to count as edits.
       const frontMatter = ['---', 'title: Release Plan', 'draft: true', '---'].join('\n');
       const state = createState({
         original: `${frontMatter}\n\nAlpha line.`,
         current: `${frontMatter}\n\n\n\nAlpha line.`,
+      });
+      const result = generateMarkdownSummary(state, { normalizeInputs: false });
+
+      expect(result.markdown).toContain('## Changes Made');
+      expect(result.stats.changeCount).toBeGreaterThan(0);
+    });
+
+    test('normalizeInputs: false preserves CRLF differences too — a genuinely raw comparison', () => {
+      // Deliberately does NOT mirror generateUnifiedDiff's own normalizeInputs:
+      // false branch, which still folds CRLF to LF even with normalization
+      // "off". This option's doc comment promises a raw, verbatim comparison;
+      // a CRLF-only difference must count as an edit for that promise to be
+      // true rather than true only for some kinds of formatting difference.
+      const state = createState({
+        original: 'Line 1\r\nLine 2\r\nLine 3',
+        current: 'Line 1\nLine 2\nLine 3',
       });
       const result = generateMarkdownSummary(state, { normalizeInputs: false });
 

@@ -20,7 +20,10 @@ edit had touched.
 `generateUnifiedDiff`'s own default, and normalizes through the same shared `normalizeDocument`
 (now factored out of `unified-diff.ts` into `export/normalize-document.ts` so `diffStats`, this
 function, and `generateUnifiedDiff` share one implementation — see the cinder#1307 changeset in
-this same batch). Pass `normalizeInputs: false` to restore the previous raw-string comparison.
+this same batch). Pass `normalizeInputs: false` for a byte-for-byte raw comparison, including
+CRLF line endings — stricter than `generateUnifiedDiff`'s own `normalizeInputs: false`, which
+still folds CRLF to LF even with normalization off (a pre-existing quirk of that function, not a
+contract this new option inherits).
 
 This changes `generateMarkdownSummary`'s default output for formatting-only and
 blank-line-only edits: they no longer appear in the "Changes Made" section or count toward
