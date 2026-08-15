@@ -21,6 +21,45 @@ const ROUTE = `${PLAYGROUND_URL}/page/review-editor?snapshot=1`;
 // packages/playground/src/examples/review-editor/with-comments.example.svelte.
 const EXAMPLE_MOUNT = '#example-mount-with-comments';
 
+/**
+ * The comment-navigation chord is platform-aware (Cmd+Option on mac,
+ * Ctrl+Alt elsewhere) specifically to avoid colliding with macOS
+ * VoiceOver's own Control+Option modifier prefix — a PR review finding on
+ * this fix (a literal Ctrl-Alt-Arrow chord is consumed by VoiceOver before
+ * it ever reaches the page on a Mac, defeating the one keyboard route this
+ * fix gives AT users). CI's Chromium runs on Linux; a local run may be on
+ * darwin — computing the chord from the PAGE's own `navigator.platform`
+ * (not the test runner's OS) is what actually matches what the component
+ * itself checks.
+ */
+async function commentNavigationChord(page: import('@playwright/test').Page): Promise<string> {
+  const isMacPlatform = await page.evaluate(() => /Mac|iPod|iPhone|iPad/.test(navigator.platform));
+  return isMacPlatform ? 'Meta+Alt+ArrowDown' : 'Control+Alt+ArrowDown';
+}
+
+/**
+ * `getByRole('textbox')` matches a plain `<input>` too (its implicit ARIA
+ * role), and this fixture's front-matter panel renders `owner`/`status`
+ * text inputs ahead of the ProseMirror editor in DOM order — `.first()`
+ * silently grabbed one of those instead of the editor during this fix's own
+ * review round, making every assertion after `.click()` operate on the
+ * wrong element while still reporting "focused" successfully. The editor's
+ * accessible name (`label` prop, defaulted in markdown-editor.svelte) is
+ * distinct from any front-matter field's own label, so naming it is what
+ * actually disambiguates — `.first()` never did.
+ */
+function getEditorSurface(mount: import('@playwright/test').Locator) {
+  return mount.getByRole('textbox', { name: 'Markdown editor' });
+}
+
+async function waitForReviewEditorReady(mount: import('@playwright/test').Locator) {
+  await expect(mount.locator('[data-testid="review-editor"]')).toHaveAttribute(
+    'data-ready',
+    'true',
+    { timeout: 20_000 },
+  );
+}
+
 test.describe('ReviewEditor comment-anchor accessibility (cinder#1304)', () => {
   test('the anchor is announced as a mark in the real accessibility tree, not just via a DOM attribute', async ({
     page,
@@ -58,14 +97,15 @@ test.describe('ReviewEditor comment-anchor accessibility (cinder#1304)', () => {
     expect(violations, JSON.stringify(violations, null, 2)).toHaveLength(0);
   });
 
-  test('Ctrl-Alt-ArrowDown moves the caret to the anchor and opens its thread — the real keyboard route, not tabindex', async ({
+  test('the comment-navigation chord moves the caret to the anchor and opens its thread — the real keyboard route, not tabindex', async ({
     page,
   }) => {
     await page.goto(ROUTE, { waitUntil: 'load' });
     await page.waitForSelector('#app > *', { state: 'visible', timeout: 20_000 });
 
     const mount = page.locator(EXAMPLE_MOUNT);
-    const editorSurface = mount.getByRole('textbox').first();
+    await waitForReviewEditorReady(mount);
+    const editorSurface = getEditorSurface(mount);
     await expect(editorSurface).toBeVisible();
 
     // Confirm the decoration genuinely is NOT a Tab stop — the issue itself
@@ -76,11 +116,12 @@ test.describe('ReviewEditor comment-anchor accessibility (cinder#1304)', () => {
     expect(await anchor.getAttribute('tabindex')).toBeNull();
 
     await editorSurface.click();
+    await expect(editorSurface).toBeFocused();
     // Put the caret at the very start of the document, before the anchored
     // heading, so "next comment" has somewhere real to move it TO.
     await page.keyboard.press('Control+Home');
 
-    await page.keyboard.press('Control+Alt+ArrowDown');
+    await page.keyboard.press(await commentNavigationChord(page));
 
     // The popover for the thread opened — the keyboard route actually works.
     // Scoped to `.thread-popover` specifically: the same text is ALSO
@@ -96,5 +137,50 @@ test.describe('ReviewEditor comment-anchor accessibility (cinder#1304)', () => {
     // a real keydown reaching the real ProseMirror view produces.
     const selectedText = await page.evaluate(() => window.getSelection()?.toString() ?? '');
     expect(selectedText).toBe('Architecture Notes');
+
+    // A PR review finding raised the concern that the anchor's own
+    // non-collapsed text selection (this example is editable, with
+    // currentUserId set) could also arm the "add new comment" selection
+    // popover. Investigated directly (see navigateToAdjacentComment's own
+    // doc comment in review-editor-impl.svelte for the full real-Chromium
+    // probe): it does not reproduce — the element never enters the DOM.
+    // This assertion is a plain regression guard for that, not proof of a
+    // fix for a bug that was never confirmed to exist.
+    const selectionPopover = page.locator('[id$="-selection-popover"]');
+    await expect(selectionPopover).toBeHidden();
+  });
+
+  test('the comment-navigation chord is scoped to the editor surface — it does nothing when focus is elsewhere in the component', async ({
+    page,
+  }) => {
+    await page.goto(ROUTE, { waitUntil: 'load' });
+    await page.waitForSelector('#app > *', { state: 'visible', timeout: 20_000 });
+
+    const mount = page.locator(EXAMPLE_MOUNT);
+    await waitForReviewEditorReady(mount);
+
+    // A PR review finding on this fix: the chord was originally bound to
+    // the WHOLE container's keydown, so it also fired from inside the
+    // sidebar, a comment composer, or front-matter fields — e.g. hijacking
+    // focus into the editor mid-reply. The sidebar starts collapsed; open it
+    // first, then focus "Add document comment" — a stable, always-present
+    // control clearly outside the ProseMirror surface.
+    const sidebarToggle = mount.getByRole('button', { name: /open comments sidebar/i });
+    await expect(sidebarToggle).toBeVisible();
+    await sidebarToggle.click();
+
+    const sidebarButton = mount.getByLabel('Add document comment');
+    await expect(sidebarButton).toBeVisible();
+    await sidebarButton.focus();
+    await expect(sidebarButton).toBeFocused();
+
+    await page.keyboard.press(await commentNavigationChord(page));
+
+    // Nothing should have happened: focus stays put, and the text-anchored
+    // thread's popover — which the chord would have opened if the guard
+    // were missing — never appears.
+    await expect(sidebarButton).toBeFocused();
+    const popover = page.locator('.thread-popover');
+    await expect(popover).toBeHidden();
   });
 });

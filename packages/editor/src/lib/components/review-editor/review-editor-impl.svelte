@@ -1132,6 +1132,30 @@
    * The ordering/wrap-around math lives in comment-navigation.ts, split out
    * so it is unit-testable without mounting the full component (which pulls
    * in ReviewEditorControls' formatting toolbar).
+   *
+   * A PR review on this fix flagged that `selectAnchorRange` below creates a
+   * real, non-collapsed browser selection, which — in an editable,
+   * `currentUserId`-bearing ReviewEditor — could also arm
+   * `handleBrowserSelectionChange`'s "add new comment" selection popover,
+   * flashing it open over this function's own (correct) thread popover.
+   * Investigated with a real-Chromium probe against this exact scenario
+   * (with-comments example, `currentUserId` set): `showSelectionPopover`'s
+   * derivation does compute `true` once the debounced position calculation
+   * completes (confirmed by mirroring its exact condition inline against
+   * live component state at that instant — `popoverThreadId` is genuinely
+   * still `null`, since `handleSidebarThreadSelect` below does not set it
+   * until its own 350ms `POSITION_DELAY_MS` elapses), but the selection
+   * popover element (`document.getElementById` on the same id string the
+   * component's own selection-popover-focus check uses) never appears in
+   * the DOM at any sampled point from 10ms to 600ms after the chord fires.
+   * No suppression mechanism was added on the strength of that: a flag that
+   * guards against something that doesn't visibly happen is complexity with
+   * no proven benefit, and a one-shot "consume on the next selectionchange"
+   * flag has its own failure mode (an earlier version of this fix could
+   * silently swallow an unrelated real selection if the programmatic one
+   * happened not to fire a selectionchange event at all). If this ever
+   * reproduces in a real browser, re-open cinder#1304 with a repro rather
+   * than re-adding the flag speculatively.
    */
   function navigateToAdjacentComment(direction: 1 | -1): void {
     const ordered = orderedTextThreads(threads);
@@ -1803,8 +1827,27 @@
   });
 
   /**
+   * cinder#1304: `.comment-anchor` decorations are deliberately not
+   * tabindex-focusable (see anchor-decorations.ts), so this chord is the
+   * keyboard route the issue asks for instead.
+   *
+   * Platform-aware rather than a literal Ctrl-Alt, unlike this component's
+   * own Ctrl-Alt-C (add comment, keymap-plugin.ts): Control+Option is
+   * macOS VoiceOver's own modifier prefix, so a literal Ctrl-Alt-Arrow chord
+   * is consumed by VoiceOver before it ever reaches this handler on a Mac —
+   * the one platform where an AT-only keyboard route matters most. Same
+   * mac-detection `getShortcutDisplay` already uses (keymap-plugin.ts).
+   */
+  function isCommentNavigationChord(event: KeyboardEvent): boolean {
+    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return false;
+    const isMacPlatform =
+      typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
+    return isMacPlatform ? event.metaKey && event.altKey : event.ctrlKey && event.altKey;
+  }
+
+  /**
    * Handle F6 keyboard navigation between regions, and cinder#1304's
-   * Ctrl-Alt-ArrowDown/Up "next/previous comment" navigation.
+   * comment-navigation chord (see isCommentNavigationChord above).
    * Uses event.currentTarget to scope navigation to this specific editor instance,
    * supporting multiple ReviewEditor instances on the same page.
    */
@@ -1821,13 +1864,17 @@
       return;
     }
 
-    // cinder#1304: `.comment-anchor` decorations are deliberately not
-    // tabindex-focusable (see anchor-decorations.ts), so Tab alone never
-    // reaches one. This is the keyboard route the issue asks for instead —
-    // Ctrl-Alt matches the modifier family this component already uses for
-    // Ctrl-Alt-C (add comment, keymap-plugin.ts), so a keyboard user who has
-    // found one review shortcut can guess at the others.
-    if (event.ctrlKey && event.altKey && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
+    if (isCommentNavigationChord(event)) {
+      // Scoped to the ProseMirror surface itself, not the whole container:
+      // the container also holds the comment composer, thread popovers,
+      // front-matter fields, sidebar, and toolbar. Without this guard, the
+      // chord fired from inside any of those too — e.g. typing a reply in
+      // an open thread's composer — hijacking focus into the editor and
+      // changing the active thread mid-reply.
+      const editorDom = editorRef?.getView()?.dom;
+      if (!editorDom || !(event.target instanceof Node) || !editorDom.contains(event.target)) {
+        return;
+      }
       event.preventDefault();
       navigateToAdjacentComment(event.key === 'ArrowDown' ? 1 : -1);
     }

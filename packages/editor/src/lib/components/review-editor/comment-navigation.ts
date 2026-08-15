@@ -8,7 +8,7 @@
  * thread is next.
  */
 
-import { isDocumentAnchor } from '../../comments/index.ts';
+import { getVisibleComments, isDocumentAnchor } from '../../comments/index.ts';
 import type { Thread } from '../../comments/types.ts';
 
 /**
@@ -16,13 +16,23 @@ import type { Thread } from '../../comments/types.ts';
  * actually has a `.comment-anchor` decoration to navigate between.
  * Document-level threads have no position (reachable from the sidebar's own
  * "Document comment" entry instead), and an orphaned thread's quote is not
- * in the document, so there is nothing there to land the caret on. Mirrors
- * CommentSidebar's own `textThreads` ordering so keyboard order matches the
- * order comments already appear in visually.
+ * in the document, so there is nothing there to land the caret on. Also
+ * drops any thread whose comments are all soft-deleted, via the same
+ * `getVisibleComments(thread).length > 0` check CommentSidebar's own
+ * `textThreads` derivation uses (comment-sidebar.svelte) — without it, a
+ * thread that never appears in the sidebar could still be reached by
+ * keyboard, opening a popover with an inflated "Comment N of M" count and no
+ * visible content. Mirrors CommentSidebar's ordering exactly so keyboard
+ * order matches the order comments already appear in visually.
  */
 export function orderedTextThreads(threads: Thread[]): Thread[] {
   return threads
-    .filter((thread) => !isDocumentAnchor(thread.anchor) && thread.anchor.status !== 'orphaned')
+    .filter(
+      (thread) =>
+        !isDocumentAnchor(thread.anchor) &&
+        thread.anchor.status !== 'orphaned' &&
+        getVisibleComments(thread).length > 0,
+    )
     .sort((a, b) => (a.anchor.from ?? 0) - (b.anchor.from ?? 0));
 }
 

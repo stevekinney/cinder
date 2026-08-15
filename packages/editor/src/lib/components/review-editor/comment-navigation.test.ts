@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import type { Thread } from '../../comments/types.ts';
+import type { Comment, Thread } from '../../comments/types.ts';
 import { nextCommentThread, orderedTextThreads } from './comment-navigation.ts';
 
 /**
@@ -16,11 +16,31 @@ import { nextCommentThread, orderedTextThreads } from './comment-navigation.ts';
  * a real browser separately, per this package's harness-skeptic guidance.
  */
 
+function visibleComment(id: string): Comment {
+  return {
+    id,
+    threadId: 'thread',
+    authorId: 'author',
+    body: 'A comment.',
+    createdAt: '2026-01-01T00:00:00.000Z',
+  };
+}
+
+function softDeletedComment(id: string): Comment {
+  return { ...visibleComment(id), deletedAt: '2026-01-02T00:00:00.000Z' };
+}
+
+// Defaults to one visible comment: `orderedTextThreads` requires at least
+// one (mirroring CommentSidebar's own `getVisibleComments(thread).length >
+// 0` filter), so an all-empty-comments thread would otherwise be silently
+// excluded from every test in this file, including ones about ordering and
+// wrap-around that have nothing to do with comment visibility.
 function textThread(
   id: string,
   from: number,
   to: number,
   status: 'anchored' | 'orphaned' = 'anchored',
+  comments: Comment[] = [visibleComment(`${id}-comment`)],
 ): Thread {
   return {
     id,
@@ -34,7 +54,7 @@ function textThread(
       status,
       originalQuote: 'quote',
     },
-    comments: [],
+    comments,
   };
 }
 
@@ -70,6 +90,25 @@ describe('orderedTextThreads', () => {
   test('excludes orphaned threads — their quote is not in the document', () => {
     const threads = [textThread('a', 1, 10), textThread('b', 15, 20, 'orphaned')];
     expect(orderedTextThreads(threads).map((t) => t.id)).toEqual(['a']);
+  });
+
+  test('excludes a thread whose comments are all soft-deleted — it never appears in the sidebar either', () => {
+    const allDeleted = textThread('deleted-only', 15, 20, 'anchored', [
+      softDeletedComment('c1'),
+      softDeletedComment('c2'),
+    ]);
+    const mixed = textThread('mixed', 30, 40, 'anchored', [
+      softDeletedComment('c3'),
+      visibleComment('c4'),
+    ]);
+    const threads = [textThread('a', 1, 10), allDeleted, mixed];
+    // A thread with at least one visible comment stays; one with none does
+    // not — mirroring comment-sidebar.svelte's `getVisibleComments(thread)
+    // .length > 0` filter for `textThreads`. Before this filter existed,
+    // Ctrl+Alt+Arrow navigation could land on `allDeleted`, opening a
+    // popover with an inflated "Comment N of M" count and no visible
+    // content — a thread the sidebar itself never shows.
+    expect(orderedTextThreads(threads).map((t) => t.id)).toEqual(['a', 'mixed']);
   });
 });
 

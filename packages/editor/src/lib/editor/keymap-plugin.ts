@@ -377,7 +377,14 @@ export function getShortcutDefinitions(isMac: boolean = false): ShortcutDefiniti
     // without a mouse. Wired in ReviewEditor's container keydown handler
     // (review-editor-impl.svelte), not in this package's own keymap, because
     // it needs `threads` state only ReviewEditor has.
-    { action: 'Next Comment (ReviewEditor only)', keys: ['Ctrl', alt, '↓'] },
-    { action: 'Previous Comment (ReviewEditor only)', keys: ['Ctrl', alt, '↑'] },
+    //
+    // `mod` (⌘ on mac, Ctrl elsewhere), not the literal `Ctrl` the other
+    // review shortcuts above use: Control+Option is macOS VoiceOver's own
+    // modifier prefix, so a literal Ctrl-Alt-Arrow chord is consumed by
+    // VoiceOver before it ever reaches this component on a Mac — the one
+    // platform where an AT-only keyboard route matters most. Cmd+Option
+    // does not collide with VO's modifier.
+    { action: 'Next Comment (ReviewEditor only)', keys: [mod, alt, '↓'] },
+    { action: 'Previous Comment (ReviewEditor only)', keys: [mod, alt, '↑'] },
   ];
 }

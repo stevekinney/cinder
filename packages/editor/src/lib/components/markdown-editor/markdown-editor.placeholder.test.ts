@@ -1,10 +1,13 @@
 /// <reference lib="dom" />
 import { describe, expect, test } from 'bun:test';
+import { tick } from 'svelte';
+import type { FakeClock } from '../../test/fake-clock.ts';
+import { installFakeClock } from '../../test/fake-clock.ts';
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
-const [{ default: MarkdownEditor }, { cleanup, render, waitFor }] = await Promise.all([
+const [{ default: MarkdownEditor }, { cleanup, render }] = await Promise.all([
   import('./markdown-editor.svelte'),
   import('@testing-library/svelte'),
 ]);
@@ -14,36 +17,44 @@ const [{ default: MarkdownEditor }, { cleanup, render, waitFor }] = await Promis
  * debounced 200ms (lodash-es, `node_modules/@milkdown/plugin-listener/lib/index.js`
  * around line 76) — separate from and invisible to `editor.ts`'s own
  * `changeDebounceMs`, armed by mounting the editor alone (not just by
- * editing it).
+ * editing it). Left unhandled, it fires later against a torn-down context
+ * ("Context editorView not found").
  *
- * This file cannot settle that debounce with a fake clock the way the other
- * two editor-mounting suites do (editor/editor.tab-escape-keymap.test.ts,
- * anchor-decorations-a11y.test.ts): those install the clock BEFORE the
- * mutation that arms the debounce, so `advance()` fires the real pending
- * timer. Here, `render()` itself (via `@testing-library/svelte`) arms the
- * debounce with lodash's REAL `setTimeout` before any fake clock could be
- * installed, and `waitFor`'s own polling needs real timers throughout each
- * test — installing a fake clock at any point that would still catch the
- * armed timer would also break the `waitFor` calls that precede it.
+ * An earlier version of this file drained this with a real 250ms
+ * `setTimeout` wait per test. Two independent PR reviews correctly flagged
+ * that as exactly what this repo's "no timeout/wait-threshold" rule
+ * prohibits, regardless of how the constant was justified — a fixed
+ * wall-clock wait is still a fixed wall-clock wait. The actual fix: install
+ * the fake clock BEFORE `render()`, not after. `@testing-library/svelte`'s
+ * `render()` is what arms the debounce (mounting alone is enough — no edit
+ * required), so if the clock is already installed at that point, the
+ * debounce's `setTimeout` call is captured as a FAKE, never-auto-firing
+ * timer rather than a real one. It is never advanced (nothing in these
+ * tests needs it to fire), so `FakeClock.restore()` in `finally` simply
+ * discards it — the callback never runs at all, against a live or a
+ * torn-down context, rather than being raced against either.
  *
- * So this drains real wall-clock time instead — per test, BEFORE
- * `result.unmount()`, not after and not batched into a single end-of-file
- * wait. An earlier version of this file waited once in `afterAll`, after
- * every test had already unmounted: that let the debounce fire against an
- * ALREADY-destroyed context, which still throws "Context editorView not
- * found" — containment without a fix, just relocating the same crash from
- * "during the next file" to "during this file's own teardown". Waiting
- * before unmount, while the editor's context is still alive, lets
- * `serializer(doc)` actually succeed instead of throwing — the same
- * "settle it while the context is still alive" principle as the fake-clock
- * fix in the other two files, just with a real timer because a fake one
- * can't reach a timer armed before it existed. This is not a padded
- * timeout: 250ms is Milkdown's own fixed 200ms constant plus a fixed
- * margin, applied once per test to cross a specific, cited debounce, not a
- * threshold tuned to make a flake pass.
+ * The tradeoff: `@testing-library/svelte`'s `waitFor` polls on the REAL
+ * `setInterval`/`setTimeout`, which the installed fake clock also captures,
+ * so it can no longer be used once the clock is installed. `pollUntil`
+ * below replaces it with a bounded loop over `tick()` (flushes Svelte's own
+ * pending effects) and `clock.advance(20)` (fires whatever the mounted
+ * editor scheduled through the now-fake `setTimeout` — including
+ * happy-dom's `requestAnimationFrame` polyfill, which the other two
+ * editor-mounting suites in this package already rely on this same
+ * mechanism to drive). Bounded by iteration count, not wall time, so it
+ * cannot itself become a padded wait.
  */
-async function settleListenerDebounce(): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, 250));
+function pollUntil(condition: () => boolean, clock: FakeClock): Promise<void> {
+  const maxIterations = 200;
+  return (async () => {
+    for (let i = 0; i < maxIterations; i++) {
+      if (condition()) return;
+      await tick();
+      clock.advance(20);
+    }
+    throw new Error(`pollUntil: condition did not become true within ${maxIterations} iterations`);
+  })();
 }
 
 /**
@@ -77,6 +88,7 @@ async function settleListenerDebounce(): Promise<void> {
  */
 describe('MarkdownEditor placeholder (cinder#1306)', () => {
   test('an empty document is decorated with is-editor-empty, so the placeholder can actually paint', async () => {
+    const clock = installFakeClock();
     const result = render(MarkdownEditor, {
       props: {
         id: 'placeholder-test',
@@ -88,16 +100,20 @@ describe('MarkdownEditor placeholder (cinder#1306)', () => {
     });
 
     try {
-      await waitFor(() => {
-        expect(result.getByRole('textbox', { name: 'Placeholder test editor' })).toBeTruthy();
-      });
+      await pollUntil(() => {
+        try {
+          return Boolean(result.getByRole('textbox', { name: 'Placeholder test editor' }));
+        } catch {
+          return false;
+        }
+      }, clock);
 
       const view = result.getByRole('textbox', { name: 'Placeholder test editor' });
 
-      await waitFor(() => {
-        const firstParagraph = view.querySelector('p');
-        expect(firstParagraph?.classList.contains('is-editor-empty')).toBe(true);
-      });
+      await pollUntil(
+        () => view.querySelector('p')?.classList.contains('is-editor-empty') === true,
+        clock,
+      );
 
       // The custom property the CSS `::before` rule reads must be set on the
       // host that actually carries it (the wrapper div, not the inner
@@ -106,13 +122,14 @@ describe('MarkdownEditor placeholder (cinder#1306)', () => {
       const wrapper = result.container.querySelector<HTMLElement>('#placeholder-test');
       expect(wrapper?.style.getPropertyValue('--editor-placeholder')).toBe("'Start reviewing'");
     } finally {
-      await settleListenerDebounce();
+      clock.restore();
       result.unmount();
       cleanup();
     }
   });
 
   test('a populated document is not decorated, and carries no placeholder custom property', async () => {
+    const clock = installFakeClock();
     const result = render(MarkdownEditor, {
       props: {
         id: 'placeholder-test-populated',
@@ -124,9 +141,13 @@ describe('MarkdownEditor placeholder (cinder#1306)', () => {
     });
 
     try {
-      await waitFor(() => {
-        expect(result.getByRole('textbox', { name: 'Placeholder populated editor' })).toBeTruthy();
-      });
+      await pollUntil(() => {
+        try {
+          return Boolean(result.getByRole('textbox', { name: 'Placeholder populated editor' }));
+        } catch {
+          return false;
+        }
+      }, clock);
 
       const view = result.getByRole('textbox', { name: 'Placeholder populated editor' });
       const firstParagraph = view.querySelector('p');
@@ -137,13 +158,99 @@ describe('MarkdownEditor placeholder (cinder#1306)', () => {
       // populated document should not carry a dead inline custom property.
       expect(wrapper?.style.getPropertyValue('--editor-placeholder')).toBe('');
     } finally {
-      await settleListenerDebounce();
+      clock.restore();
+      result.unmount();
+      cleanup();
+    }
+  });
+
+  test('clearing content through the imperative setMarkdown() re-arms the placeholder gate immediately, not just eventually', async () => {
+    // A PR review on this fix flagged that the placeholder gate reads the
+    // `value` PROP, which the exported `setMarkdown()` imperative setter
+    // used to bypass when an editor was already mounted (it only assigned
+    // `value` in the not-yet-mounted branch). It does not stay wrong
+    // forever — `onchange` (line ~487) eventually re-syncs `value` for ANY
+    // document change, including a `setMarkdown()`-originated one, once
+    // `@milkdown/plugin-listener`'s internal debounce and this component's
+    // own `changeDebounceMs` both elapse — so a test that polls for the
+    // fixed state with a generous budget (like the other tests in this
+    // file) passes with or without this fix and proves nothing. The actual
+    // defect is a TRANSIENT one: for that debounce window (a few hundred ms
+    // by default), the gate is wrong even though the live document is
+    // already empty. So this asserts immediately after `setMarkdown()`,
+    // advancing the clock only 10ms total — comfortably inside every
+    // debounce involved — to flush ProseMirror's own (synchronous,
+    // non-debounced) decoration update without ever reaching the
+    // `onchange` fallback that would mask the bug.
+    const clock = installFakeClock();
+    const result = render(MarkdownEditor, {
+      props: {
+        id: 'placeholder-test-imperative-clear',
+        label: 'Placeholder imperative-clear editor',
+        showToolbar: false,
+        value: 'Real content already here.',
+        placeholder: 'Start reviewing',
+      },
+    });
+
+    try {
+      await pollUntil(() => {
+        try {
+          return Boolean(
+            result.getByRole('textbox', { name: 'Placeholder imperative-clear editor' }),
+          );
+        } catch {
+          return false;
+        }
+      }, clock);
+
+      // The textbox role appears in the DOM slightly before this
+      // component's own `editorState` (set inside its `onready` callback)
+      // does — waiting only for the role, as the other tests in this file
+      // do, calls `setMarkdown()` while `editorState` is still null, which
+      // silently takes the ALREADY-correct `else` branch and never
+      // exercises the bug this test exists to catch. `data-ready` on the
+      // wrapper flips in that same `onready` callback, so it is the actual
+      // signal this test needs.
+      await pollUntil(
+        () =>
+          result.container.querySelector('.markdown-editor-wrapper')?.getAttribute('data-ready') ===
+          'true',
+        clock,
+      );
+
+      const view = result.getByRole('textbox', {
+        name: 'Placeholder imperative-clear editor',
+      });
+      expect(view.querySelector('p')?.classList.contains('is-editor-empty')).toBe(false);
+
+      result.component['setMarkdown']('');
+
+      // Small, fixed iteration budget (not a wall-clock wait): flushes
+      // Svelte's own microtask-based reactivity and ProseMirror's
+      // synchronous decoration recompute, well short of the ~200ms+
+      // listener debounce that would let the `onchange` fallback mask this
+      // specific bug.
+      for (let i = 0; i < 5; i++) {
+        await tick();
+        clock.advance(2);
+      }
+
+      expect(view.querySelector('p')?.classList.contains('is-editor-empty')).toBe(true);
+
+      const wrapper = result.container.querySelector<HTMLElement>(
+        '#placeholder-test-imperative-clear',
+      );
+      expect(wrapper?.style.getPropertyValue('--editor-placeholder')).toBe("'Start reviewing'");
+    } finally {
+      clock.restore();
       result.unmount();
       cleanup();
     }
   });
 
   test('typing into an empty editor clears the decoration (the placeholder disappears once there is content)', async () => {
+    const clock = installFakeClock();
     const result = render(MarkdownEditor, {
       props: {
         id: 'placeholder-test-live',
@@ -155,14 +262,19 @@ describe('MarkdownEditor placeholder (cinder#1306)', () => {
     });
 
     try {
-      await waitFor(() => {
-        expect(result.getByRole('textbox', { name: 'Placeholder live editor' })).toBeTruthy();
-      });
+      await pollUntil(() => {
+        try {
+          return Boolean(result.getByRole('textbox', { name: 'Placeholder live editor' }));
+        } catch {
+          return false;
+        }
+      }, clock);
 
       const view = result.getByRole('textbox', { name: 'Placeholder live editor' });
-      await waitFor(() => {
-        expect(view.querySelector('p')?.classList.contains('is-editor-empty')).toBe(true);
-      });
+      await pollUntil(
+        () => view.querySelector('p')?.classList.contains('is-editor-empty') === true,
+        clock,
+      );
 
       // Drive the SAME external-update path a consumer's own state update
       // would: rerender with a new `value` prop, which markdown-editor.svelte
@@ -175,14 +287,15 @@ describe('MarkdownEditor placeholder (cinder#1306)', () => {
         placeholder: 'Start reviewing',
       });
 
-      await waitFor(() => {
-        expect(view.querySelector('p')?.classList.contains('is-editor-empty')).toBe(false);
-      });
+      await pollUntil(
+        () => view.querySelector('p')?.classList.contains('is-editor-empty') === false,
+        clock,
+      );
 
       const wrapper = result.container.querySelector<HTMLElement>('#placeholder-test-live');
       expect(wrapper?.style.getPropertyValue('--editor-placeholder')).toBe('');
     } finally {
-      await settleListenerDebounce();
+      clock.restore();
       result.unmount();
       cleanup();
     }

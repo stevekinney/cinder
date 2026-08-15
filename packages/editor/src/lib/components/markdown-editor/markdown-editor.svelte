@@ -636,6 +636,14 @@
   export function setMarkdown(content: string): void {
     if (editorState) {
       editorState.setMarkdown(content);
+      // `value` is $bindable and drives `placeholderStyleValue` below (and
+      // any consumer's own bound state) — it has to move with an imperative
+      // content change too, not just a typed one, or the placeholder gate
+      // reads a stale emptiness the live document has already left. The
+      // "sync external value changes" effect above no-ops on this: it only
+      // acts when `value` differs from `editorState.getMarkdown()`, which is
+      // now already true.
+      value = content;
     } else {
       value = content;
     }
