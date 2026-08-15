@@ -1,5 +1,163 @@
 # @lostgradient/editor
 
+## 0.11.0
+
+### Minor Changes
+
+- [#1327](https://github.com/stevekinney/cinder/pull/1327) [`4f34b76`](https://github.com/stevekinney/cinder/commit/4f34b764190b05be221aec8a0eea789a369eb9af) Thanks [@stevekinney](https://github.com/stevekinney)! - Fix three defects found exercising `ReviewEditor`/`MarkdownEditor` from a standalone consumer app: a keyboard trap inside lists, unreachable comment anchors, and a placeholder that silently never painted.
+
+  Inside a list, Tab was swallowed and silently indented the item instead of moving focus, with no escape — a WCAG 2.1.2 keyboard trap. `[#1285](https://github.com/stevekinney/cinder/issues/1285)`'s Escape-then-Tab release (`TabEscapeLatch` in `keymap-plugin.ts`) never actually reached the key: the commonmark preset's own `listItemKeymap` (and, one node type over, the GFM preset's `tableKeymap`) binds plain Tab/Shift-Tab to sink/lift-list-item and next/prev-table-cell independently of `createEditorKeymap`. Milkdown's `KeymapManager` merges every registered keymap into one ProseMirror plugin, and the preset's handler is registered first, so a successful sink/lift returned `true` and ended the chain before the latch-aware handler ever ran — the latch's own bookkeeping was correct, but it was unreachable in a real editor. Fixed at the merge itself, not the latch: `editor.ts` reconfigures both presets' keymaps so Tab/Shift-Tab are no longer bound there at all, moving list indent/outdent (and table-cell navigation) onto `Mod-]`/`Mod-[` instead, which do not collide with focus movement and cannot be shadowed by the escape latch. Plain Tab/Shift-Tab now always reach `createEditorKeymap`'s own sink/lift-or-move-focus chain, so the existing latch finally governs the key it was written for, in both lists and tables. A review round on this fix caught a second, more severe problem the `Mod-]`/`Mod-[` move introduced: on macOS, `Mod-` maps to Cmd, so `Cmd+]`/`Cmd+[` are the browser's own Back/Forward shortcuts. The presets' own `sinkListItem`/`liftListItem`/cell-navigation commands (still bound to these same shortcuts — the earlier fix only stripped Tab/Shift-Tab from them) return `false`, not `preventDefault()`, whenever they don't apply — sinking the first item in a list, lifting outside a list, or cell-navigating outside a table — so a `false` there was falling through to the browser and silently navigating away from the editor, discarding unsaved work. `createKeymapBindings` (`keymap-plugin.ts`) now binds `Mod-]`/`Mod-[` itself, trying the same sink/lift/cell-nav commands and then unconditionally returning `true`: while the editor has focus, these chords are always consumed and never reach the browser, whether or not list/table navigation had anything to do. This is consumer-visible beyond the original Tab change: `Mod-]`/`Mod-[` now do nothing (rather than navigating the browser) when pressed with focus in the editor but outside any list or table. Fixes [#1302](https://github.com/stevekinney/cinder/issues/1302).
+
+  `ReviewEditor`'s `.comment-anchor` decorations carried only `class` and `data-thread-id` — no `role`, `tabindex`, or `aria-*` — so an anchored comment was invisible to a screen reader and unreachable by keyboard; the only way to open a thread was to click the highlighted span directly. Fixed by giving each decoration `role="mark"` (the correct semantic for "this span of text has an annotation," without implying it is itself interactive) and an `aria-description` naming it as commented text, and by adding a genuine keyboard route — `Ctrl+Alt+ArrowDown`/`ArrowUp` (`Cmd+Option+ArrowDown`/`ArrowUp` on macOS) inside the editor now moves the selection to the next/previous anchored comment in document order and opens its thread, wrapping at the ends. The chord is platform-aware rather than a literal `Ctrl+Alt` on every platform: `Control+Option` is macOS VoiceOver's own modifier prefix, so a literal `Ctrl+Alt` chord would be consumed by VoiceOver before ever reaching the page on a Mac — defeating the one keyboard route this fix gives assistive-technology users, on the one platform where that route matters most. `tabindex` was deliberately rejected: making an inline mark focusable inside a contenteditable surface, one stop per comment, is the fragile route the issue itself warns against — it multiplies the surface's tab stops by comment count and fights ProseMirror's own selection model. `aria-details` pointing at the sidebar's comment id was also rejected: `CommentSidebar` mounts its panel conditionally, so the id an anchor would reference is not reliably present in the DOM, which is exactly the dangling-reference shape axe flags. Verified against the real Chromium accessibility tree (`page.accessibility.snapshot()`/axe-core), not just DOM attribute presence — per the cinder#1292 precedent, an a11y fix proven only by asserting the right strings landed in markup is not proof of anything a screen reader actually does with them. Fixes [#1304](https://github.com/stevekinney/cinder/issues/1304).
+
+  Two further review findings on the [#1304](https://github.com/stevekinney/cinder/issues/1304) fix, both in `review-editor-impl.svelte`. First, the chord's caret navigation (`navigateToAdjacentComment`) already read a thread's position from the anchor plugin's live, per-transaction-mapped state rather than the possibly-stale cached `thread.anchor`, but the popover it opens (`handleSidebarThreadSelect`, reached via the sidebar as well as this chord) computed its screen position from the stale cached anchor directly — so after an edit shifted an anchor, the caret could land correctly while the popover opened beside unrelated text at the anchor's former position. `anchorCoords` now resolves through the same `resolveAnchorSelectionRange` helper the caret path already used, so both agree on the same live position. Second, the chord's focus-scoping guard — added to keep the chord from firing inside the sidebar, a comment composer, or front-matter fields — checked only `editorDom.contains(event.target)`, which excludes a real ancestor: in readonly mode ProseMirror's `contenteditable="false"` removes the editor DOM's own native tab-stop (it was never given an explicit `tabindex`), so a real Tab press lands on `MarkdownEditor`'s outer `.markdown-editor.surface` wrapper instead — the element the editor DOM is mounted inside, i.e. its parent. `editorDom.contains(wrapper)` is false for a parent, so the chord was silently dead for read-only consumers specifically, the audience most likely to rely on a keyboard-only review flow. The guard now also accepts `target.contains(editorDom)`, safe because the wrapper is the only focusable ancestor of the editor DOM and the sidebar/toolbar/composers this guard excludes are never ancestors either way.
+
+  `MarkdownEditor`'s `placeholder` prop was written as an inline `--editor-placeholder` custom property on every render regardless of document state, but the CSS that reads it is gated on an `.is-editor-empty` class an internal decoration plugin is supposed to add — and that plugin, `createLazyProsePlugin` in `milkdown-plugin-runtime.ts`, raced `EditorState.create()`'s one-time snapshot of `prosePluginsCtx`: it registered itself via a dynamic `import()` with no synchronous timer, so Milkdown's own startup sequence usually finished snapshotting the active plugin list before the import resolved, silently dropping the plugin from the live editor. The placeholder therefore never painted on an empty document, in a way that reproduced only some of the time depending on module-loading speed, and looked from the outside like a CSS bug rather than a plugin that was simply never running. Fixed by mirroring Milkdown's own pattern for a genuinely async plugin: register a `createTimer` synchronously and record it into `editorStateTimerCtx` before the async registration begins, so `EditorState.create()` waits for it rather than racing it. `--editor-placeholder` itself remains an unconditional inline property, as it always was — an earlier version of this fix gated it on document emptiness, reasoning a populated document shouldn't carry a dead custom property, but review caught that the gate read a component-level `value` that lags the live document by a debounce window, so it could read "not empty" for a span where the document genuinely was empty, painting the CSS's own fallback text instead of the real placeholder. The property is inert on a populated document either way (the `::before` rule that reads it only paints when the empty-decoration is present), so leaving it unconditional trades a cosmetic non-issue for closing a real, visible one. This package's own happy-dom harness cannot reproduce the race — measured directly, the suite stays green even with the fix reverted, because Bun's dynamic `import()` for an already-loaded module resolves fast enough locally to win the race regardless — so the closing proof is real-browser Playwright against the playground's actual Vite/Chromium module graph, not the happy-dom suite. Fixes [#1306](https://github.com/stevekinney/cinder/issues/1306).
+
+  Minor, not patch: [#1302](https://github.com/stevekinney/cinder/issues/1302) changes default Tab/Shift-Tab behavior inside lists and tables (indent/outdent moves to `Mod-]`/`Mod-[`) and [#1304](https://github.com/stevekinney/cinder/issues/1304) adds new keyboard shortcuts and ARIA attributes to `ReviewEditor` — both are consumer-visible behavior changes, not just internal fixes.
+
+- [#1323](https://github.com/stevekinney/cinder/pull/1323) [`0c4e790`](https://github.com/stevekinney/cinder/commit/0c4e79078d49ad68cdf8666647c5e08ea4a5587c) Thanks [@stevekinney](https://github.com/stevekinney)! - Fix four thread-selection/scroll/popover defects in `ReviewEditor`, all clustered in the sidebar and scroll-to-thread path.
+
+  `scrollToThread(threadId)` called `view.dom.scrollTo(...)`. `view.dom` is the `.ProseMirror` contenteditable, which has no `overflow` in any shipped stylesheet — the ancestor that actually scrolls is `.markdown-editor` — so the call was clamped to 0 and never moved anything, even for a thread genuinely off-screen. The sibling function `scrollAnchorIntoView` a few lines above already scrolled correctly via `anchorElement.scrollIntoView(...)`; `scrollToThread` now delegates to it instead of computing its own (wrong) scroll target. Fixes [#1316](https://github.com/stevekinney/cinder/issues/1316).
+
+  `scrollToThread` given an unknown thread id returned silently — no throw, no return value, nothing observable — indistinguishable from a known id whose anchor happened to already be in view. A caller driving navigation from a deep link, a notification, or a "jump to comment" action had no way to tell a stale id from a real bug in its own code. `scrollToThread` now throws for an unknown id. This is a deliberate departure from this package's mutation methods (`deleteThread`, `deleteComment`, ...), which document a silent no-op on a missing id as intentional — that convention supports declarative UI patterns where a caller doesn't pre-check state before issuing a delete. `scrollToThread` is a one-shot imperative navigation call with no equivalent use case, so failing loudly is the right default. Internal callers already guard on thread existence before calling it. Fixes [#1317](https://github.com/stevekinney/cinder/issues/1317).
+
+  Selecting a thread from the comment sidebar scheduled a ~350ms popover-position timer that was never stored in the component's own cancelable `selectTimeoutId` — so `handleAnchorClick`'s existing cancellation of that timer (guarding exactly this race) was a no-op against it. Selecting a different thread by clicking its document anchor within 350ms of a sidebar click opened the anchor-clicked thread correctly, and then the stale sidebar timer fired anyway ~350ms later and silently reverted the popover back to the thread the user had already left. The timer is now stored where the rest of the component already expected it to be. Fixes [#1319](https://github.com/stevekinney/cinder/issues/1319).
+
+  Re-clicking the sidebar row for the thread that is already open destroyed and recreated its popover, discarding any unsent reply text sitting in `CommentComposer`'s draft state. `ThreadPopover` dismisses via a capture-phase `document` click-outside listener, which runs before the row's own bubble-phase `onclick` — so every sidebar click, including a re-click of the active row, closed the popover before the row's own selection handler ever ran. `ThreadPopover` now accepts an `ignoreClickOutsideRef` that resolves the currently-active sidebar row (scoped per editor instance), so a click on that specific row no longer counts as "outside." Paired with a no-op guard in the sidebar-select handler for re-selecting the already-active thread, so the fix doesn't just avoid destroying the popover — it also stops rescheduling a redundant scroll and reposition for a click that changes nothing. Clicking a _different_ row is unaffected: it still closes the current popover immediately and opens the new one. Fixes [#1320](https://github.com/stevekinney/cinder/issues/1320).
+
+  Minor, not patch: `scrollToThread` throwing on an unknown id is consumer-visible behavior for any caller not already guarding thread existence, and `ThreadPopoverProps` gained a new optional `ignoreClickOutsideRef` prop.
+
+  All four were pinned in `review-editor-threads.svelte.ts` too — an experimental, currently-unwired module whose own docblock asks for behavior fixes to be mirrored there until the component is refactored to use it. [#1316](https://github.com/stevekinney/cinder/issues/1316)/[#1317](https://github.com/stevekinney/cinder/issues/1317) apply directly; [#1320](https://github.com/stevekinney/cinder/issues/1320)'s popover-teardown wiring has no equivalent in that state-only module (there is no `ThreadPopover`/click-outside component to patch), but [#1319](https://github.com/stevekinney/cinder/issues/1319)'s timer-cancellation race is present in this module's own `handleSidebarThreadSelect` and is fixed there too, along with the same follow-up review finding described below.
+
+  Four follow-up fixes from review, in the same area:
+  - `handleSidebarThreadSelect` now clears any timer from a _previous_ sidebar selection before scheduling a new one, in both `review-editor-impl.svelte` and its mirrored `review-editor-threads.svelte.ts` copy. Choosing a second thread within the ~350ms delay of a first previously orphaned that first timer instead of cancelling it — a narrower recurrence of the [#1319](https://github.com/stevekinney/cinder/issues/1319) race, this time between two sidebar selections rather than a sidebar selection and an anchor click.
+  - The re-select no-op guard now checks that the popover is _actually open_ for the clicked thread (`activeThreadId` **and** `popoverThreadId` both match), not just `activeThreadId`. A guard keyed on `activeThreadId` alone could in principle block a legitimate retry after a failed popover open (e.g. the deferred timer running while the editor view was unmounted). In the live component this specific scenario already self-heals via the separate deep-linking `$effect`, independent of this guard — verified empirically — but the guard is still tightened to match what it was always meant to check.
+  - `scrollAnchorIntoView` now escapes `threadId` with `CSS.escape()` before interpolating it into the `[data-thread-id="..."]` attribute selector. `Thread.id` is consumer-supplied and not guaranteed to avoid CSS-meaningful characters; routing `scrollToThread` through this function (the [#1316](https://github.com/stevekinney/cinder/issues/1316) fix) made a pre-existing selector-injection risk reachable from the public, throwing imperative API rather than only from the internal deep-linking effect.
+
+### Patch Changes
+
+- [#1321](https://github.com/stevekinney/cinder/pull/1321) [`e1853df`](https://github.com/stevekinney/cinder/commit/e1853dff365b029e549ad5a65bed8cbfb6a0dee6) Thanks [@stevekinney](https://github.com/stevekinney)! - Fix `generateMarkdownSummary` disagreeing with `generateUnifiedDiff` about whether an edit
+  happened (cinder#1318).
+
+  `generateMarkdownSummary` ran `computeLineDiff` directly on the raw `original`/`current`
+  strings, with no normalization at all — no CRLF handling, no front-matter awareness, no
+  blank-line collapsing. `generateUnifiedDiff` normalizes both inputs by default
+  (`normalizeInputs: true`) through `normalizeDocument`, which strips leading blank lines from the
+  body before re-serializing and reattaches front matter through a single canonical separator. So
+  two documents whose front matter and body were byte-identical, differing only in how many blank
+  lines separated the closing `---` from the body (or only in line-ending style), made
+  `generateUnifiedDiff` report zero hunks ("nothing changed") while `generateMarkdownSummary`
+  reported a two-line edit — genuinely disagreeing outputs for a `ReviewState` no consumer-visible
+  edit had touched.
+
+  `generateMarkdownSummary` now takes a `normalizeInputs` option, defaulting to `true` to match
+  `generateUnifiedDiff`'s own default, and normalizes through the same shared `normalizeDocument`
+  (now factored out of `unified-diff.ts` into `export/normalize-document.ts` so `diffStats`, this
+  function, and `generateUnifiedDiff` share one implementation — see the cinder#1307 changeset in
+  this same batch). Pass `normalizeInputs: false` for a byte-for-byte raw comparison, including
+  CRLF line endings — stricter than `generateUnifiedDiff`'s own `normalizeInputs: false`, which
+  still folds CRLF to LF even with normalization off (a pre-existing quirk of that function, not a
+  contract this new option inherits).
+
+  This changes `generateMarkdownSummary`'s default output for formatting-only and
+  blank-line-only edits: they no longer appear in the "Changes Made" section or count toward
+  `changeCount`, matching what `generateUnifiedDiff` and the diff panel already reported for the
+  same input. CRLF line endings no longer leak a literal `\r` into the ` ```diff ` code fence.
+
+- [#1322](https://github.com/stevekinney/cinder/pull/1322) [`adfccbb`](https://github.com/stevekinney/cinder/commit/adfccbbda75a01086a268f859fa4642027860306) Thanks [@stevekinney](https://github.com/stevekinney)! - Fix three `ReviewEditor` a11y/state-liveness defects, all found by
+  `stevekinney/chatroom`'s `/exercises/review-*` suite carrying them as pinned
+  known-bug regression tests.
+
+  `data-ready` was a latch (`editorViewReady`) set true on the inner editor's
+  first `onready`/selection-change and never cleared. Switching to the Diff or
+  Summary tab destroys the `MarkdownEditor` instance behind the `{#if
+activeView === 'editor'}` branch, but `data-ready` kept reporting `"true"`
+  with no editor mounted — a consumer that waits on `data-ready` after a view
+  switch was acting on an editor that no longer existed. Fixed by deriving the
+  reset from `editorRef` itself (which Svelte's own `bind:this` unbinds to
+  `undefined` on unmount) rather than from a one-way latch, so `data-ready`
+  means "an editor is available right now" and comes back once the editor view
+  remounts and finishes initializing. Fixes [#1301](https://github.com/stevekinney/cinder/issues/1301).
+
+  Two of the three view tabs (`Diff`, `Summary`) always pointed `aria-controls`
+  at a panel id that was not in the document, because the view area renders
+  exactly one panel via an `{#if}`/`{:else if}`/`{:else}` chain — the inactive
+  views' panels are removed entirely, not hidden. A screen reader following the
+  tab-to-panel relationship on an inactive tab found nothing. Fixed by only
+  passing `controls` to the ACTIVE segment; the inactive tabs now claim no
+  panel at all instead of a dangling one, which axe's `aria-valid-attr-value`
+  rule (every IDREF-valued ARIA attribute must resolve) confirms is clean.
+  Fixes [#1303](https://github.com/stevekinney/cinder/issues/1303).
+
+  The thread popover declared `role="dialog" aria-modal="true"` while nothing
+  outside it — `.review-editor-main`, the comment sidebar — was made `inert` or
+  `aria-hidden`, and the component's own F6 landmark navigation deliberately
+  moves focus OUT of the popover into `.review-editor-main` while it stays
+  open. `aria-modal="true"` is a promise that everything outside the dialog is
+  unavailable; this popover never kept that promise, and F6 proves it was never
+  meant to. Chose to drop `aria-modal="true"` (rather than making the popover
+  genuinely modal by adding `inert` to the surrounding regions and removing
+  F6) because F6-out-without-closing is the popover's actual, intended
+  behavior — an anchored, non-modal comment popover, the same pattern as
+  Google Docs or a GitHub PR review thread, not a page-blocking dialog. The
+  existing Tab-trap-within-the-popover and Escape-to-restore behavior needed no
+  change either way and are unaffected. Fixes [#1305](https://github.com/stevekinney/cinder/issues/1305).
+
+  Review follow-up on [#1305](https://github.com/stevekinney/cinder/issues/1305): the thread popover's anchor only exists in the
+  editor view, so leaving it (Diff/Summary) unmounts `editorRef` — the same
+  unbind [#1301](https://github.com/stevekinney/cinder/issues/1301)'s fix relies on. That turned F6's `customFocusHandler` for the
+  `'editor'` region into a no-op (`editorRef?.getView()?.focus()` on a null
+  ref) that still returned `true`, suppressing the region navigator's fallback
+  and stranding focus inside a popover pointing at content that was no longer
+  rendered — precisely the failure mode dropping `aria-modal` was supposed to
+  keep escapable. Fixed by closing the thread popover in the same
+  "left the editor view" branch that already clears the (separate) selection
+  popover for the same reason.
+
+  That popover-close, in turn, unmounts `ThreadPopover`, and its own focus trap
+  unconditionally restores focus on deactivate — even when the SAME
+  interaction that triggered the close (arrow-key roving-tabindex on the view
+  switcher) had already moved focus to the newly active tab a moment earlier
+  in the same call stack, stealing it back to the trap's `restoreFallback`
+  (the sidebar toggle). Corrected by re-asserting focus on the active tab
+  after `tick()`, once the trap's own restore has had its say — there is no
+  reactive hook into the trap's restore decision from the outside, so this
+  corrects the result rather than preventing the race.
+
+  Verified against the real Chromium accessibility tree (via the CDP
+  `Accessibility` domain), not just DOM attribute presence, for all three:
+  `role="textbox"` appearing/disappearing on the ProseMirror node in step with
+  `data-ready` ([#1301](https://github.com/stevekinney/cinder/issues/1301), an implicit ARIA role from `contenteditable` with no DOM
+  attribute to assert on directly), an `aria-valid-attr-value` axe pass on the
+  tablist ([#1303](https://github.com/stevekinney/cinder/issues/1303)), and the computed `modal` AX property on the popover node
+  ([#1305](https://github.com/stevekinney/cinder/issues/1305)) — the same category of gap that made cinder#1292's first fix attempt
+  wrong until it was checked against the computed tree instead of attribute
+  presence alone.
+
+- [#1321](https://github.com/stevekinney/cinder/pull/1321) [`e1853df`](https://github.com/stevekinney/cinder/commit/e1853dff365b029e549ad5a65bed8cbfb6a0dee6) Thanks [@stevekinney](https://github.com/stevekinney)! - Fix ReviewEditor's toolbar change counter over-counting front-matter edits (cinder#1307).
+
+  The toolbar's `diffStats` normalized the whole document — front matter and body together —
+  with `normalize()`, a Markdown pipeline with no front-matter step. Handed `---\ntitle: …\n---`
+  it read the fences as a thematic break plus a setext heading and re-emitted the closing
+  underline at the new content's width, so shortening `owner: jane` to `owner: bob` changed the
+  value line AND (because it no longer recognized the fence) the underline beneath it — one real
+  edit counted as two modified lines, while the diff panel and `exportUnifiedDiff()` (already
+  fixed for this in cinder#1285) correctly reported one.
+
+  `diffStats` is now computed by `computeReviewEditorDiffStats`, a small function pulled out of
+  `review-editor-impl.svelte` into its own module so it is testable without mounting the
+  component (which needs a real browser DOM for Milkdown). It calls the same front-matter-aware
+  `normalizeDocument` `generateUnifiedDiff` already used, split out of `unified-diff.ts` into
+  `export/normalize-document.ts` so it has exactly one implementation instead of one per
+  consumer — see the cinder#1318 changeset in this same batch for the second consumer that fix
+  reaches.
+
+  The same fix also reaches `createReviewEditorState` (`@lostgradient/editor/review-editor`'s
+  exported state-manager factory): it had its own copy of the same bare-`normalize()` `diffStats`
+  computation, a second public API path that disagreed with the fixed toolbar about the same
+  content until it was routed through `computeReviewEditorDiffStats` too.
+
 ## 0.10.0
 
 ### Minor Changes
