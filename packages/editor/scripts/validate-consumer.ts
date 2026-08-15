@@ -1,3 +1,80 @@
+/**
+ * Validates a real, packed `@lostgradient/editor` publish artifact against
+ * a fixture that installs only its *declared* peers and dependencies --
+ * catching a missing `peerDependencies`/`dependencies` entry before it
+ * reaches npm, rather than after a consumer's install breaks.
+ *
+ * ## Limitations of the static import-closure scan (`assertImportClosure`)
+ *
+ * This file's static scan (`assertImportClosure`) is deliberately not a
+ * full bundler-grade static analyzer -- that has no finite closure short of
+ * actually embedding one, which this gate script isn't. What it checks
+ * comes from a real lexer's structured output (`Bun.Transpiler.scanImports`
+ * for JS/TS, quote-aware tag extraction for Svelte markup) wherever one is
+ * available, never from a regex scanning unlexed source text -- that
+ * distinction is the entire lesson of cinder#1334 (a regex matching the
+ * word "from" plus a quote character inside a doc comment, mistaken for a
+ * real import) and cinder#1335's own round-1 regression (a narrower
+ * "restore old behavior" regex for computed dynamic imports that reopened
+ * the identical failure mode for `import(` specifically). A few import
+ * shapes genuinely can't be covered that way with the tools actually
+ * available here; each is named below, with why the gap is acceptable
+ * rather than silently accepted:
+ *
+ * - **A dynamic `import()` with a non-static (computed) specifier** --
+ *   `import('pkg/' + feature)` -- has no complete specifier for any lexer
+ *   to report; `scanImports` correctly reports nothing for it. Verified via
+ *   `npm pack --dry-run` against this package's actual published output:
+ *   zero computed dynamic imports exist anywhere in it today (this is
+ *   compiled Svelte component output, not hand-written app code with
+ *   feature-flag-style dynamic imports). If one is ever added, the runtime
+ *   fixture below (`buildConsumerEntries` / `runPlainNodeConsumer`) still
+ *   catches it if it's genuinely reachable: both build and execute every
+ *   export target with *only* the declared peers installed, so an
+ *   undeclared dependency that's actually imported at runtime fails there
+ *   regardless of what this static scan does or doesn't see.
+ * - **A dynamic `import()` inside Svelte template markup** (an
+ *   `onclick`/`{#await}` expression, outside every `<script>` block) --
+ *   there's no Svelte-markup-aware lexer available here, and regexing
+ *   markup text is exactly the class of check this file avoids. Verified
+ *   empirically: zero instances anywhere in the actual published artifact
+ *   (every `import(` call site is inside a `<script>` block, and every one
+ *   is a fully static specifier). Same runtime-fixture backstop as above if
+ *   that ever changes.
+ * - **A `require()` call through a locally-shadowed `require` identifier**
+ *   (`const require = (v) => v; require('not-a-package')`) would be
+ *   misreported as a real import by `scanImports`, which has no binding
+ *   awareness. Not just unlikely but structurally absent today: this
+ *   package's actual published output contains zero `require()` call sites
+ *   of any kind -- it's 100% ESM. Revisit if that ever stops being true.
+ * - **A type-only import** (`import type { X } from 'pkg'`) in published
+ *   `.svelte` *source* files is invisible to `Bun.Transpiler.scanImports`
+ *   by design -- confirmed against the documented `TranspilerOptions` API
+ *   (no flag surfaces type-only imports) and empirically (`scan`,
+ *   `scanImports`, and `transformSync` all erase them identically). This is
+ *   a real, live pattern in this package's actual output (`import type` is
+ *   used throughout its `.svelte` sources, currently always against an
+ *   already-declared peer or a relative import), so an undeclared type-only
+ *   peer would pass this static check silently. Partially, not fully,
+ *   backstopped: `runSvelteCheckConsumer`'s `svelte-check` pass against a
+ *   packed consumer app currently only exercises `MarkdownEditor`'s own
+ *   transitive type-import graph, not `ReviewEditor`'s or `DiffViewer`'s
+ *   independently -- a genuine, narrow, currently-inert gap, named here
+ *   rather than left to be rediscovered as a mystery.
+ * - **CSS `@import`** (standalone `.css` files and a `.svelte` file's
+ *   `<style>` block) has no real lexer available in this toolchain at all,
+ *   so detection stays regex-based -- the one place in this file a pattern
+ *   still runs over source text -- but scoped as narrowly as CSS's own
+ *   `@import '...'` at-rule syntax allows, and validated against only the
+ *   bare-package-name portion of a capture (see {@link
+ *   isPlausibleCssImportSpecifier}) rather than the whole captured string,
+ *   so a comment containing prose is still rejected while a real quoted
+ *   path with a space in a later subpath segment (a real, legal filename)
+ *   is not incorrectly discarded.
+ *
+ * @module
+ */
+
 import { Glob } from 'bun';
 import { existsSync, realpathSync } from 'node:fs';
 import { mkdir, mkdtemp, rename, rm, symlink } from 'node:fs/promises';
@@ -201,13 +278,298 @@ async function linkFixtureDependencyGraph(fixture: ValidationFixture): Promise<v
   }
 }
 
-function barePackageName(specifier: string): string {
+export function barePackageName(specifier: string): string {
   return specifier.startsWith('@')
     ? specifier.split('/').slice(0, 2).join('/')
     : (specifier.split('/')[0] ?? specifier);
 }
 
-async function assertImportClosure(
+/**
+ * Locate a real Node.js executable -- not Bun's own `bun-node` shim, which
+ * `Bun.which('node')` can resolve to depending on `PATH` ordering. Shared by
+ * {@link runPlainNodeConsumer} (which needs a real Node to prove the packed
+ * artifact's server entries actually run there) and {@link
+ * nodeBuiltinMembership} (which needs to ask a real Node which specifiers
+ * it considers builtin -- see that function's own doc for why Bun's own
+ * `node:module` cannot answer that question correctly).
+ *
+ * Probes every `node`/`node.exe` found on `PATH` plus a handful of common
+ * install locations, running each candidate and checking
+ * `process.release.name === 'node'` with no `process.versions.bun` --
+ * `realpathSync` first, so a `bun-node` shim symlinked as `node` is caught
+ * even when its un-resolved path doesn't say so.
+ */
+export async function findRealNodeExecutable(): Promise<string | undefined> {
+  const nodeFromPath = Bun.which('node');
+  const nodeCandidates = new Set([
+    '/opt/homebrew/bin/node',
+    '/usr/local/bin/node',
+    '/usr/bin/node',
+    '/opt/local/bin/node',
+    ...(process.env['PATH'] ?? '')
+      .split(delimiter)
+      .filter((directory) => directory.length > 0)
+      .map((directory) => join(directory, process.platform === 'win32' ? 'node.exe' : 'node')),
+    ...(nodeFromPath === null ? [] : [nodeFromPath]),
+  ]);
+  for (const candidate of nodeCandidates) {
+    if (!existsSync(candidate)) continue;
+
+    const resolvedCandidate = realpathSync(candidate);
+    if (resolvedCandidate.includes('bun-node')) continue;
+    const probe = Bun.spawnSync(
+      [
+        resolvedCandidate,
+        '--print',
+        "[process.release.name, process.execPath, process.versions.bun ?? ''].join('\\n')",
+      ],
+      { stdout: 'pipe', stderr: 'pipe' },
+    );
+    const [releaseName, executablePath, bunVersion] = new TextDecoder()
+      .decode(probe.stdout)
+      .trimEnd()
+      .split('\n');
+    if (
+      probe.exitCode === 0 &&
+      releaseName === 'node' &&
+      executablePath !== undefined &&
+      !executablePath.includes('bun') &&
+      (bunVersion === undefined || bunVersion.length === 0)
+    ) {
+      return resolvedCandidate;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Ask a real Node executable which of `specifiers` it considers a builtin
+ * module (bare, `node:`-prefixed, or a legitimate subpath of either --
+ * `node:fs/promises` is builtin, `assert/not-real` is not, and only Node's
+ * own `module.isBuiltin()` gets that distinction right).
+ *
+ * Deliberately does NOT use Bun's own `node:module` (`builtinModules` or
+ * `isBuiltin`) -- verified empirically that Bun's compatibility surface
+ * disagrees with real Node's in both directions: under Bun,
+ * `isBuiltin('ws')` and `isBuiltin('undici')` both incorrectly return
+ * `true` (Bun ships these as built-in shims; real Node does not, so a
+ * packed `import 'ws'` would pass this check without a declared dependency
+ * and then fail for every actual Node consumer -- cinder#1335 round-3
+ * finding). Spawning the actual target Node and asking it directly is the
+ * only way to get an answer that matches what a real consumer's runtime
+ * will do, matching this module's `runPlainNodeConsumer` step, which
+ * already runs the packed artifact under a real Node for the same reason.
+ *
+ * A single batch call (specifiers piped in as JSON over stdin, builtin
+ * membership piped back as JSON over stdout) rather than one process spawn
+ * per specifier -- cheap regardless of how many distinct specifiers a scan
+ * turns up, and `assertImportClosure` only calls this at all when there's
+ * at least one specifier not already resolved by a declared peer/dependency,
+ * so the common case (nothing undeclared) never spawns a process.
+ */
+export async function nodeBuiltinMembership(
+  nodeExecutable: string,
+  specifiers: readonly string[],
+): Promise<Set<string>> {
+  if (specifiers.length === 0) return new Set();
+  const script =
+    'const { isBuiltin } = require("node:module");' +
+    'const specifiers = JSON.parse(require("fs").readFileSync(0, "utf8"));' +
+    'process.stdout.write(JSON.stringify(specifiers.filter((s) => isBuiltin(s))));';
+  const probe = Bun.spawnSync([nodeExecutable, '-e', script], {
+    stdin: new TextEncoder().encode(JSON.stringify(specifiers)),
+    stdout: 'pipe',
+    stderr: 'pipe',
+  });
+  if (probe.exitCode !== 0) {
+    fail(
+      `failed to query the target Node executable for builtin-module membership:\n${new TextDecoder().decode(probe.stderr)}`,
+    );
+  }
+  const parsed: unknown = JSON.parse(new TextDecoder().decode(probe.stdout));
+  if (!Array.isArray(parsed) || !parsed.every((entry) => typeof entry === 'string')) {
+    fail('the target Node executable returned an unexpected result for builtin-module membership');
+  }
+  return new Set(parsed);
+}
+
+/**
+ * Finds the index of the `>` that closes an opening tag starting at
+ * `openIndex` (the index of its `<`), respecting quoted attribute values --
+ * a `>` inside a quoted attribute (`generics="T extends Array<string>"`, a
+ * real Svelte generics annotation) is not the tag's own closing bracket.
+ * The original `[^>]*` regex-based extraction had no such awareness: it
+ * stopped at the FIRST `>`, wherever it fell, so a script tag with this
+ * kind of attribute produced a malformed extracted block starting mid
+ * attribute-value, which `Bun.Transpiler.scanImports` then threw on
+ * ("Unterminated string literal") -- failing the release validator on
+ * legitimate Editor source (cinder#1335 round-2 finding). Returns -1 if no
+ * unquoted `>` is found before the end of `source` (a malformed or
+ * truncated tag).
+ */
+function findTagEnd(source: string, openIndex: number): number {
+  let quote: '"' | "'" | null = null;
+  for (let index = openIndex; index < source.length; index++) {
+    const character = source[index];
+    if (quote !== null) {
+      if (character === quote) quote = null;
+      continue;
+    }
+    if (character === '"' || character === "'") {
+      quote = character;
+      continue;
+    }
+    if (character === '>') return index;
+  }
+  return -1;
+}
+
+/**
+ * Extract the content of every `<script>` or `<style>` block from a
+ * `.svelte` file's markup, using {@link findTagEnd} to find each opening
+ * tag's real closing `>` rather than a regex that can't tell a quoted
+ * attribute's `>` from the tag's own.
+ */
+function extractSvelteTagBlocks(source: string, tagName: 'script' | 'style'): string[] {
+  const blocks: string[] = [];
+  const openTagPattern = new RegExp(`<${tagName}\\b`, 'giu');
+  const closeTag = `</${tagName}>`;
+  let match: RegExpExecArray | null;
+  while ((match = openTagPattern.exec(source)) !== null) {
+    const tagEnd = findTagEnd(source, match.index);
+    if (tagEnd === -1) break; // malformed opening tag -- nothing more to extract safely
+    const closeIndex = source.toLowerCase().indexOf(closeTag, tagEnd + 1);
+    if (closeIndex === -1) break; // malformed -- no matching close tag
+    blocks.push(source.slice(tagEnd + 1, closeIndex));
+    openTagPattern.lastIndex = closeIndex + closeTag.length;
+  }
+  return blocks;
+}
+
+/**
+ * Extract the JS/TS content of every `<script>` block (both a `module`
+ * block and an instance block) from a `.svelte` file's markup, so it can be
+ * fed through the same real lexer {@link assertImportClosure} uses for
+ * `.js` files. There is no Svelte-markup-aware import lexer available here,
+ * but isolating just the script content first, then handing only that to
+ * `Bun.Transpiler`, still means nothing outside a `<script>` tag -- markup,
+ * text content, a `<style>` block -- is ever scanned for imports at all.
+ */
+export function extractSvelteScriptBlocks(source: string): string[] {
+  return extractSvelteTagBlocks(source, 'script');
+}
+
+/**
+ * Extract the content of every `<style>` block from a `.svelte` file's
+ * markup, so its CSS `@import`s can be checked the same way a standalone
+ * `.css` file's are. Scanning only `<script>` blocks and skipping `<style>`
+ * entirely was a real coverage regression from the original regex-based
+ * scanner, which (despite its comment-prose bug) did at least scan the
+ * whole `.svelte` file: a component declaring
+ * `@import 'undeclared-package/styles.css';` in its `<style>` block would
+ * previously pass this check silently (cinder#1335 round-2 finding).
+ */
+export function extractSvelteStyleBlocks(source: string): string[] {
+  return extractSvelteTagBlocks(source, 'style');
+}
+
+/**
+ * True for a CSS `@import` capture whose *bare package-name portion* --
+ * not necessarily the whole captured string -- looks like a real
+ * specifier. A real npm package name can never contain whitespace, but a
+ * legal quoted CSS path's *subpath* can (`'undeclared-package/theme
+ * dark.css'` is a real, valid quoted path to a file with a space in its
+ * name) -- so validating the whole capture for "any whitespace at all"
+ * (the round-2 shape) incorrectly discarded that case as if it were
+ * comment prose (cinder#1335 round-3 finding). Validating only {@link
+ * barePackageName}'s portion instead stays fail-closed against prose
+ * (which has no `/`, so its own "bare name portion" is the whole string,
+ * still whitespace-laden) while no longer discarding a real quoted path
+ * just because a later subpath segment has a space in it.
+ */
+export function isPlausibleCssImportSpecifier(specifier: string): boolean {
+  if (specifier.length === 0) return false;
+  const name = barePackageName(specifier);
+  return name.length > 0 && !/\s/u.test(name);
+}
+
+/**
+ * Scan CSS `@import` statements in `content`, calling `record` for each
+ * plausible specifier. Shared between standalone `.css` files and the
+ * `<style>` block content extracted from `.svelte` files. The one place in
+ * this file a regex still runs over raw source text -- see the module
+ * header's limitations section for why CSS has no real-lexer alternative
+ * here, and why this stays narrowly scoped to CSS's own `@import '...'`
+ * at-rule syntax rather than anything broader.
+ */
+function scanCssImports(content: string, record: (specifier: string) => void): void {
+  for (const match of content.matchAll(/@import\s+['"]([^'"]+)['"]/gu)) {
+    const specifier = match[1];
+    if (specifier !== undefined && isPlausibleCssImportSpecifier(specifier)) {
+      record(specifier);
+    }
+  }
+}
+
+/**
+ * Scan JS/TS-shaped `content` for import specifiers, calling `record` for
+ * each one found. `Bun.Transpiler.scanImports` only -- a real lexer, no
+ * supplementary regex. An earlier version of this function added a
+ * supplementary `import(` regex specifically to catch a dynamic import
+ * with a computed specifier (`import('pkg/' + feature)`, which
+ * `scanImports` can't report since the full specifier isn't statically
+ * known); that regex ran over the same raw, comment-bearing source text
+ * that caused cinder#1334 in the first place, and reopened the identical
+ * failure mode for `import(` specifically (a doc comment containing
+ * `import('example')` as sample code would be misread as a real dynamic
+ * import). Removed entirely rather than narrowed further -- see the module
+ * header's limitations section for why this specific gap (verified: zero
+ * live instances in this package's actual published output) is an accepted
+ * one, backed by the runtime fixture below, not a hole.
+ */
+function scanJsLikeImports(content: string, record: (specifier: string) => void): void {
+  const transpiler = new Bun.Transpiler({ loader: 'ts' });
+  for (const { path: specifier } of transpiler.scanImports(content)) {
+    record(specifier);
+  }
+}
+
+/**
+ * Every bare external import reachable from the packed `dist/**` must be a
+ * declared runtime peer or dependency, or a real Node.js builtin module
+ * (see {@link nodeBuiltinMembership} for why that check has to ask an
+ * actual Node executable rather than trusting Bun's own `node:module`).
+ * Uses {@link scanJsLikeImports} (a real lexer, never a text regex) for
+ * `.js` files and for the `<script>` content extracted from `.svelte`
+ * files, because the compiled output preserves doc comments verbatim, and
+ * prose in those comments can contain the literal word "from" followed by
+ * a quote character (a scare-quote, a contraction) that a regex like
+ * `/(?:\bfrom\s*|\bimport\s*\()\s*['"]([^'"]+)['"]/` cannot distinguish
+ * from a real `import ... from '...'` statement. This is exactly what
+ * happened in practice (cinder#1334): captured "specifiers" like `for
+ * every node the\n * parser understood, with no string comparison
+ * anywhere` from a doc comment, not an import path. The transpiler
+ * tokenizes the file the way it would to actually run it, so comment text
+ * is structurally invisible to it -- mirrors
+ * `packages/markdown/scripts/validate-consumer.ts`'s own
+ * `assertImportClosure`, which already used this approach for its `.js`-only
+ * case; this is the same fix applied to Editor's larger `.js` + `.svelte` +
+ * `.css` surface.
+ *
+ * CSS (both standalone `.css` files and a `.svelte` file's `<style>` block,
+ * via {@link scanCssImports}) has no equivalent lexer available here, so
+ * `@import` detection stays regex-based, guarded by {@link
+ * isPlausibleCssImportSpecifier}.
+ *
+ * Two passes, not one: the file scan below only *collects* candidate
+ * violations (already filtered against declared peers/dependencies and
+ * relative/absolute specifiers); Node-builtin membership is resolved
+ * afterward, in one batched call to a real Node executable, only if there's
+ * at least one unresolved candidate at all. See the module header's
+ * limitations section for what this static scan deliberately does not
+ * cover and why.
+ */
+export async function assertImportClosure(
   manifest: PackageManifest,
   installedEditorRoot: string,
 ): Promise<void> {
@@ -215,33 +577,53 @@ async function assertImportClosure(
     ...Object.keys(manifest.peerDependencies ?? {}),
     ...Object.keys(manifest.dependencies ?? {}),
   ]);
-  const violations: string[] = [];
+  const candidates: { relativePath: string; specifier: string }[] = [];
   const sourceGlob = new Glob('dist/**/*.{js,svelte,css}');
+
+  function collectCandidate(relativePath: string, specifier: string): void {
+    if (specifier.startsWith('.') || specifier.startsWith('/')) return;
+    if (declaredRuntimeSpecifiers.has(barePackageName(specifier))) return;
+    candidates.push({ relativePath, specifier });
+  }
+
   for await (const relativePath of sourceGlob.scan({ cwd: installedEditorRoot })) {
     const source = await Bun.file(join(installedEditorRoot, relativePath)).text();
-    const patterns = [
-      /(?:\bfrom\s*|\bimport\s*\()\s*['"]([^'"]+)['"]/gu,
-      /@import\s+['"]([^'"]+)['"]/gu,
-    ];
-    for (const pattern of patterns) {
-      for (const match of source.matchAll(pattern)) {
-        const specifier = match[1];
-        if (
-          specifier === undefined ||
-          specifier.startsWith('.') ||
-          specifier.startsWith('/') ||
-          specifier.startsWith('node:')
-        ) {
-          continue;
-        }
-        if (!declaredRuntimeSpecifiers.has(barePackageName(specifier))) {
-          violations.push(`${relativePath}: ${specifier}`);
-        }
-      }
+
+    if (relativePath.endsWith('.js')) {
+      scanJsLikeImports(source, (specifier) => collectCandidate(relativePath, specifier));
+      continue;
     }
+
+    if (relativePath.endsWith('.svelte')) {
+      for (const scriptContent of extractSvelteScriptBlocks(source)) {
+        scanJsLikeImports(scriptContent, (specifier) => collectCandidate(relativePath, specifier));
+      }
+      for (const styleContent of extractSvelteStyleBlocks(source)) {
+        scanCssImports(styleContent, (specifier) => collectCandidate(relativePath, specifier));
+      }
+      continue;
+    }
+
+    scanCssImports(source, (specifier) => collectCandidate(relativePath, specifier));
   }
-  if (violations.length > 0) {
-    fail(`packed production imports are not declared peers:\n  ${violations.join('\n  ')}`);
+
+  if (candidates.length === 0) return;
+
+  const nodeExecutable = await findRealNodeExecutable();
+  if (nodeExecutable === undefined) {
+    fail('a real Node executable is required to check builtin-module membership');
+  }
+  const uniqueSpecifiers = [...new Set(candidates.map((candidate) => candidate.specifier))];
+  const builtinSpecifiers = await nodeBuiltinMembership(nodeExecutable, uniqueSpecifiers);
+
+  const violations = new Set(
+    candidates
+      .filter((candidate) => !builtinSpecifiers.has(candidate.specifier))
+      .map((candidate) => `${candidate.relativePath}: ${candidate.specifier}`),
+  );
+
+  if (violations.size > 0) {
+    fail(`packed production imports are not declared peers:\n  ${[...violations].join('\n  ')}`);
   }
 }
 
@@ -437,47 +819,7 @@ async function runSvelteCheckConsumer(fixture: ValidationFixture): Promise<void>
 }
 
 async function runPlainNodeConsumer(fixture: ValidationFixture): Promise<void> {
-  const nodeFromPath = Bun.which('node');
-  const nodeCandidates = new Set([
-    '/opt/homebrew/bin/node',
-    '/usr/local/bin/node',
-    '/usr/bin/node',
-    '/opt/local/bin/node',
-    ...(process.env['PATH'] ?? '')
-      .split(delimiter)
-      .filter((directory) => directory.length > 0)
-      .map((directory) => join(directory, process.platform === 'win32' ? 'node.exe' : 'node')),
-    ...(nodeFromPath === null ? [] : [nodeFromPath]),
-  ]);
-  let node: string | undefined;
-  for (const candidate of nodeCandidates) {
-    if (!existsSync(candidate)) continue;
-
-    const resolvedCandidate = realpathSync(candidate);
-    if (resolvedCandidate.includes('bun-node')) continue;
-    const probe = Bun.spawnSync(
-      [
-        resolvedCandidate,
-        '--print',
-        "[process.release.name, process.execPath, process.versions.bun ?? ''].join('\\n')",
-      ],
-      { stdout: 'pipe', stderr: 'pipe' },
-    );
-    const [releaseName, executablePath, bunVersion] = new TextDecoder()
-      .decode(probe.stdout)
-      .trimEnd()
-      .split('\n');
-    if (
-      probe.exitCode === 0 &&
-      releaseName === 'node' &&
-      executablePath !== undefined &&
-      !executablePath.includes('bun') &&
-      (bunVersion === undefined || bunVersion.length === 0)
-    ) {
-      node = resolvedCandidate;
-      break;
-    }
-  }
+  const node = await findRealNodeExecutable();
   if (node === undefined) fail('a real Node executable is required for the packed SSR fixture');
   const entryPath = join(fixture.root, 'plain-node-consumer.mjs');
   await Bun.write(
