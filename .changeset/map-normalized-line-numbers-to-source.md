@@ -47,6 +47,15 @@ lines that normalize away completely produces a 1-line normalized document, and 
 after it needs to land on source line 4, not line 2. `buildSourceLineMap` now tracks the source's own
 line count alongside the map for exactly this.
 
+The forward-interpolation fallback for rewritten lines matches lines byte-exact first, then falls
+back to comparing with unordered list markers (`-`/`*`/`+`) canonicalized to one form, since
+`normalize()` rewrites those markers in the same pass that deletes blank separator lines between
+tight list items. Without that, a marker-only change on a surviving list item looked "unmatched"
+to a strict-equality alignment, which could misalign an unrelated, genuinely deleted source line
+(the blank separator) into the rewritten item's position — `* one\n\n* old` normalizing to
+`- one\n- old` mapped the second item to the deleted blank line's line number instead of `* old`'s
+own, later line.
+
 One limitation, stated plainly rather than glossed over: this fixes the reported _line number_, not
 universal `git apply` fidelity. The hunk _body_ is still rendered from the normalized documents (by
 design — that's what keeps formatting-only differences out of the diff), so a hunk's line count

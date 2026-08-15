@@ -466,6 +466,20 @@ describe('hunk header line numbers reference source, not normalized text (cinder
     expect(diff).toContain('@@ -3,1 +3,1 @@');
     expect(diff).not.toContain('@@ -2,1 +2,1 @@');
   });
+
+  test('a rewritten list item does not absorb a deleted separator line into its own position (review finding)', () => {
+    // normalize() both rewrites `*` markers to `-` and deletes the blank
+    // line between tight list items in the same pass. Editing the second
+    // item must report its own source line (5), not the deleted blank
+    // separator's line (4) that a marker-blind alignment would land on.
+    const original = 'Intro\n\n* one\n\n* old\n';
+    const current = 'Intro\n\n* one\n\n* new\n';
+
+    const { diff } = generateUnifiedDiff(createState(original, current), { contextLines: 0 });
+
+    expect(diff).toContain('@@ -5,1 +5,1 @@');
+    expect(diff).not.toContain('@@ -4,1 +4,1 @@');
+  });
 });
 
 describe('DiffViewer unified diff formatting', () => {

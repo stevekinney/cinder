@@ -100,6 +100,23 @@ describe('buildSourceLineMap', () => {
     expect(map.lines).toEqual([1]);
     expect(map.sourceLineCount).toBe(3);
   });
+
+  test('preserves provenance for a source line deleted from within a rewritten run, instead of absorbing it into the next rewritten line (review finding)', () => {
+    // The exact follow-up repro: normalize() both rewrites list markers
+    // (`*` -> `-`) and deletes the blank separator between tight list items
+    // in the same pass. Before marker canonicalization, "- old" (no
+    // verbatim match) fell through to the interpolation fallback, which
+    // advances exactly one source line per unmatched normalized line --
+    // correct only when nothing was *also* deleted in between. Here source
+    // line 4 (the blank separator) was deleted outright, so "- old" is
+    // really source line 5, not line 4 (one past "- one"'s line 3).
+    const source = 'Intro\n\n* one\n\n* old\n';
+    const normalized = 'Intro\n\n- one\n- old';
+
+    const map = buildSourceLineMap(source, normalized);
+
+    expect(map.lines).toEqual([1, 2, 3, 5]);
+  });
 });
 
 describe('identitySourceLineMap', () => {

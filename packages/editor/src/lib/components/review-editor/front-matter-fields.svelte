@@ -86,10 +86,29 @@
   function handleRawInput(rawValue: string): void {
     rawDraft = rawValue;
     const validation = validateFrontMatter(rawValue);
-    rawError = validation.error;
-    if (!validation.valid || readonly) return;
+    if (!validation.valid) {
+      rawError = validation.error;
+      return;
+    }
+    if (readonly) return;
 
+    // validateFrontMatter only checks that `rawValue` parses as YAML *at
+    // all* -- it says "valid" for a bare scalar or a sequence (e.g. `- one`)
+    // just as readily as for a real key/value mapping. parseFrontMatter is
+    // the source of truth for whether that's actually front-matter data
+    // (cinder#1325): confirm hasFrontMatter here too, or a value that
+    // "passes validation" but isn't object-shaped commits as `null`, which
+    // the parent round-trips back through `preserveEmptyFrontMatter` to the
+    // document's *previous* front matter -- silently discarding the input
+    // while the textarea shows no error and keeps displaying what the user
+    // typed, making the discard invisible.
     const parsed = parseFrontMatter(`---\n${rawValue}\n---\n`);
+    if (!parsed.hasFrontMatter) {
+      rawError = 'Front matter must be a YAML mapping (key: value pairs), not a list or a value.';
+      return;
+    }
+
+    rawError = undefined;
     onchange(parsed.data);
   }
 

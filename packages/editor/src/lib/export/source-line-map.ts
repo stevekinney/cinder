@@ -162,10 +162,9 @@ function alignNormalizedToSource(
   );
   for (let i = 1; i <= m; i++) {
     for (let j = 1; j <= n; j++) {
-      lcs[i]![j] =
-        sourceLines[i - 1] === normalizedLines[j - 1]
-          ? lcs[i - 1]![j - 1]! + 1
-          : Math.max(lcs[i - 1]![j]!, lcs[i]![j - 1]!);
+      lcs[i]![j] = linesMatchForAlignment(sourceLines[i - 1]!, normalizedLines[j - 1]!)
+        ? lcs[i - 1]![j - 1]! + 1
+        : Math.max(lcs[i - 1]![j]!, lcs[i]![j - 1]!);
     }
   }
 
@@ -173,7 +172,7 @@ function alignNormalizedToSource(
   let i = m;
   let j = n;
   while (i > 0 && j > 0) {
-    if (sourceLines[i - 1] === normalizedLines[j - 1]) {
+    if (linesMatchForAlignment(sourceLines[i - 1]!, normalizedLines[j - 1]!)) {
       matched[j - 1] = i - 1;
       i--;
       j--;
@@ -185,6 +184,32 @@ function alignNormalizedToSource(
   }
 
   return matched;
+}
+
+/**
+ * Line-equality for alignment purposes: byte-exact first, then falling back
+ * to comparing with unordered list markers canonicalized to one form.
+ *
+ * `normalize()` rewrites `*`/`+` unordered list markers to `-` (see its own
+ * "Remove blank lines between list items (unordered: -, *, +)" comment) as
+ * part of the *same* transform that also deletes the blank separator lines
+ * between tight list items. A strict-equality LCS treats a marker-only
+ * change as "no match at all," which can misalign an unrelated, genuinely
+ * deleted source line (the blank separator) into the rewritten item's
+ * position instead of recognizing the item itself survived. For example,
+ * source `* one\n\n* old` normalizing to `- one\n- old`: without marker
+ * canonicalization, `- old` looks unmatched and interpolation places it one
+ * line past `- one` -- landing on the deleted blank separator's line
+ * instead of `* old`'s own, later line (cinder#1324 follow-up).
+ */
+function linesMatchForAlignment(a: string, b: string): boolean {
+  return a === b || canonicalizeListMarker(a) === canonicalizeListMarker(b);
+}
+
+const LIST_MARKER = /^(\s*)[-*+](\s+)/;
+
+function canonicalizeListMarker(line: string): string {
+  return line.replace(LIST_MARKER, '$1-$2');
 }
 
 /**

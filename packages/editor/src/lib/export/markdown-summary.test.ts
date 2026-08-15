@@ -577,5 +577,20 @@ describe('generateMarkdownSummary', () => {
       expect(result.markdown).toMatch(/### Lines 3-3/);
       expect(result.markdown).not.toMatch(/### Lines 2-2/);
     });
+
+    test('a rewritten list item does not absorb a deleted separator line into its own position (review finding)', () => {
+      // normalize() both rewrites `*` markers to `-` and deletes the blank
+      // line between tight list items in the same pass. Editing the second
+      // item must report its own source line (5), not the deleted blank
+      // separator's line (4) that a marker-blind alignment would land on.
+      const state = createState({
+        original: 'Intro\n\n* one\n\n* old\n',
+        current: 'Intro\n\n* one\n\n* new\n',
+      });
+      const result = generateMarkdownSummary(state, { contextLines: 0 });
+
+      expect(result.markdown).toMatch(/### Lines 5-5/);
+      expect(result.markdown).not.toMatch(/### Lines 4-4/);
+    });
   });
 });
