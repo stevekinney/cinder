@@ -128,14 +128,32 @@ test.describe('ReviewEditor comment-anchor accessibility (cinder#1304)', () => {
 
     await page.keyboard.press(await commentNavigationChord(page));
 
-    // The popover for the thread opened — the keyboard route actually works.
-    // Scoped to `.thread-popover` specifically: the same text is ALSO
-    // announced via the live region (`.cinder-sr-only`), which is a second,
-    // independent confirmation the navigation fired, not a false match.
+    // The live-region announcement (`LiveRegion.announce`,
+    // review-editor-impl.svelte) self-clears via a hard-coded 1000ms
+    // `setTimeout` — it is not "the popover's own text mirrored a second
+    // place," it is a genuinely TRANSIENT piece of DOM state with a fixed
+    // lifetime. Checked FIRST, before the (structurally slower) popover
+    // wait below: `handleSidebarThreadSelect`'s own 350ms `POSITION_DELAY_MS`
+    // plus Playwright's per-`expect` polling overhead measured ~620ms
+    // end-to-end locally in development — comfortably under 1000ms on a
+    // fast machine, but this exact test failed in CI with only this
+    // assertion red (the popover checks right before it passed), which is
+    // consistent with a slower CI runner's cumulative wait for the popover
+    // alone consuming enough of that 1000ms budget to lose the race, not
+    // with a locator-scope bug (a scope bug would fail deterministically,
+    // including locally, not intermittently on one runner). Checking this
+    // FIRST — nothing before it can consume any of the 1000ms window —
+    // removes the race instead of budgeting around it with a longer timeout,
+    // which this repo's policy blocks regardless of justification.
+    await expect(mount.getByText('Comment 1 of 1', { exact: false })).toBeVisible();
+
+    // The popover for the thread opened — the keyboard route actually
+    // works. This has no comparable lifetime limit (it stays open until
+    // dismissed), so checking it after the transient announcement above is
+    // safe.
     const popover = page.locator('.thread-popover');
     await expect(popover).toBeVisible({ timeout: 5_000 });
     await expect(popover.getByText('This title is clear. I would keep it.')).toBeVisible();
-    await expect(mount.getByText('Comment 1 of 1', { exact: false })).toBeVisible();
 
     // The caret genuinely moved onto the anchor's text, not just "a popover
     // opened somewhere" — checked via the live browser selection, which only
