@@ -88,9 +88,25 @@ export function combineFrontMatterAndBody(
 export function replaceFrontMatterData(
   markdown: string,
   data: Record<string, unknown> | null,
+  raw?: string | null,
 ): string {
   const frontMatter = parseReviewEditorFrontMatter(markdown);
   if (!frontMatter.hasFrontMatter) return markdown;
+
+  if (!data && raw != null && raw.trim() !== '') {
+    // `data: null` alone doesn't distinguish "recognized front matter with
+    // no data" (a comment-only YAML block, e.g. `# TODO: fill this in` --
+    // `raw` carries the actual text) from "genuinely empty, safe to
+    // collapse" (no `raw` to preserve). `stringifyFrontMatter`'s own
+    // null-data branch can't make that distinction either -- it only ever
+    // sees `data` -- so without this, a comment-only edit committed through
+    // `FrontMatterFields`'s raw-YAML textarea collapsed to a bare
+    // `---\n---\n`, silently discarding whatever the user typed with no
+    // error shown (cinder#1330 round-6 finding). Mirrors the same
+    // `data === null && raw !== null` branch `combineFrontMatterAndBody`
+    // (above) already uses for the same reason.
+    return `---\n${raw}\n---\n${frontMatter.body}`;
+  }
 
   return stringifyFrontMatter(data, frontMatter.body, {
     originalRaw: frontMatter.raw,

@@ -56,7 +56,7 @@ describe('FrontMatterFields raw-YAML editing', () => {
   });
 
   test('still commits real object-shaped front matter', async () => {
-    const onchange = mock((_data: Record<string, unknown> | null) => {});
+    const onchange = mock((_data: Record<string, unknown> | null, _raw?: string | null) => {});
     render(FrontMatterFields, {
       props: { id: 'fm', data: null, raw: '', onchange },
     });
@@ -64,11 +64,11 @@ describe('FrontMatterFields raw-YAML editing', () => {
     const textarea = queryTextarea();
     await fireEvent.input(textarea, { target: { value: 'title: Hello' } });
 
-    expect(onchange).toHaveBeenCalledWith({ title: 'Hello' });
+    expect(onchange).toHaveBeenCalledWith({ title: 'Hello' }, 'title: Hello');
   });
 
   test('still commits clearing the field back to empty', async () => {
-    const onchange = mock((_data: Record<string, unknown> | null) => {});
+    const onchange = mock((_data: Record<string, unknown> | null, _raw?: string | null) => {});
     render(FrontMatterFields, {
       props: { id: 'fm', data: null, raw: 'title: Hello', onchange },
     });
@@ -76,6 +76,30 @@ describe('FrontMatterFields raw-YAML editing', () => {
     const textarea = queryTextarea();
     await fireEvent.input(textarea, { target: { value: '' } });
 
-    expect(onchange).toHaveBeenCalledWith(null);
+    // Genuinely blank content: `parseFrontMatter` reports `raw: null`
+    // (nothing between the fences to preserve), so this really is a
+    // removal, not the comment-only case below.
+    expect(onchange).toHaveBeenCalledWith(null, null);
+  });
+
+  test('committing a comment-only block passes the raw text through, not just null data (cinder#1330 round-6 finding)', async () => {
+    // Before the fix: `handleRawInput` called `onchange(parsed.data)` --
+    // `null` for a comment-only block, indistinguishable from "genuinely
+    // empty" -- and the parent (`replaceFrontMatterData`) collapsed it to
+    // a bare `---\n---\n`, discarding whatever the user typed with no
+    // error shown.
+    const onchange = mock((_data: Record<string, unknown> | null, _raw?: string | null) => {});
+    render(FrontMatterFields, {
+      props: { id: 'fm', data: null, raw: '# TODO: fill this in', onchange },
+    });
+
+    const textarea = queryTextarea();
+    await fireEvent.input(textarea, { target: { value: '# DONE' } });
+
+    // No error shown -- comment-only content is valid, recognized front
+    // matter (cinder#1325's round-5 follow-up) -- and the raw text is
+    // passed as the second argument so the parent can preserve it.
+    expect(document.body.textContent).not.toContain('mapping');
+    expect(onchange).toHaveBeenCalledWith(null, '# DONE');
   });
 });

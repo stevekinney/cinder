@@ -25,3 +25,24 @@ discarding the input when the YAML is syntactically valid but not object-shaped.
 back to empty is unaffected — that still hits `parseFrontMatter`'s existing "blank content between
 the delimiters" branch, which reports `hasFrontMatter: true` with `data: null`, the intentional
 "empty front matter" case, not a rejection.
+
+**Follow-up (review finding): the commit path above still lost a comment-only edit, a different bug
+in the same file.** `@lostgradient/markdown`'s round-6 comment-only-YAML fix (see the
+`@lostgradient/markdown` changeset) means `parseFrontMatter` now correctly reports
+`hasFrontMatter: true` for a block like `# TODO: fill this in` — so the fix above, which gates on
+exactly that boolean, lets it through as intended. But `handleRawInput` then called
+`onchange(parsed.data)`, and `parsed.data` is `null` for comment-only content, indistinguishable
+from the genuinely-empty case `onchange` is also expected to send `null` for. The parent
+(`replaceFrontMatterData`, `review-editor-front-matter.ts`) received only that `null` and collapsed
+the block to a bare `---\n---\n`, discarding whatever the user actually typed — the textarea showed
+no error, so editing `# TODO` to `# DONE` looked like it saved.
+
+`data` alone can never resolve this: both "recognized front matter with no data" and "genuinely
+empty" produce it. Fixed by threading `parsed.raw` through as a second argument —
+`FrontMatterFieldsProps.onchange` is now `(data, raw?) => void`, `handleFrontMatterChange` forwards
+it, and `replaceFrontMatterData` gained a `raw` parameter: when `data` is null but `raw` is a
+non-blank string, it preserves `raw` verbatim (`` `---\n${raw}\n---\n${body}` ``) instead of falling
+into `stringifyFrontMatter`'s null-data collapse — the same `data === null && raw !== null` pattern
+`combineFrontMatterAndBody` already used elsewhere in this file for the identical reason. Genuinely
+empty input (`raw: null`, or whitespace-only) still collapses correctly; only comment-only content
+changes behavior.

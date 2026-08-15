@@ -4,7 +4,17 @@
     data: Record<string, unknown> | null;
     raw: string | null;
     readonly?: boolean;
-    onchange: (data: Record<string, unknown> | null) => void;
+    /**
+     * `raw` is the literal text `data` was parsed from (or `null` when
+     * there's genuinely nothing between the fences). Callers that only look
+     * at `data` can't tell "recognized front matter with no data" (a
+     * comment-only YAML block -- `raw` non-null) apart from "genuinely
+     * empty, safe to collapse" (`raw` null): both produce `data: null`.
+     * `replaceFrontMatterData` (`review-editor-front-matter.ts`) uses this
+     * distinction to avoid discarding comment-only text (cinder#1330
+     * round-6 finding).
+     */
+    onchange: (data: Record<string, unknown> | null, raw?: string | null) => void;
   };
 </script>
 
@@ -109,7 +119,14 @@
     }
 
     rawError = undefined;
-    onchange(parsed.data);
+    // `parsed.data` alone is `null` for two different cases this component
+    // can't otherwise distinguish: a comment-only block (`# TODO: fill this
+    // in` -- recognized front matter, `parsed.raw` holds the actual text)
+    // and a genuinely blank one (`parsed.raw` is `null`). Passing
+    // `parsed.raw` through lets `replaceFrontMatterData` preserve the
+    // former instead of collapsing it to an empty fence, while still
+    // collapsing the latter correctly (cinder#1330 round-6 finding).
+    onchange(parsed.data, parsed.raw);
   }
 
   function fieldId(name: string): string {

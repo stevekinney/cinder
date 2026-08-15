@@ -37,6 +37,40 @@ describe('review editor front matter helpers', () => {
     expect(next.endsWith('\n# Architecture\n')).toBe(true);
   });
 
+  test('preserves comment-only raw text instead of collapsing it to an empty fence (cinder#1330 round-6 finding)', () => {
+    // `FrontMatterFields`' raw-YAML textarea commits comment-only content
+    // (`# TODO: fill this in`) as `data: null` -- the same shape genuinely
+    // blank content produces -- so without passing `raw` through,
+    // `replaceFrontMatterData` couldn't tell them apart and collapsed both
+    // to a bare `---\n---\n`, silently discarding the comment text with no
+    // error shown.
+    const markdown = '---\n# TODO: fill this in\n---\n\n# Architecture\n';
+    const next = replaceFrontMatterData(markdown, null, '# DONE');
+
+    expect(next).toBe('---\n# DONE\n---\n\n# Architecture\n');
+  });
+
+  test('still collapses genuinely empty front matter when raw is null (not a regression from the comment-only fix)', () => {
+    const markdown = '---\nowner: platform\n---\n\n# Architecture\n';
+    const next = replaceFrontMatterData(markdown, null, null);
+
+    expect(next).toBe('---\n---\n\n# Architecture\n');
+  });
+
+  test('still collapses genuinely empty front matter when raw is omitted (existing callers unaffected)', () => {
+    const markdown = '---\nowner: platform\n---\n\n# Architecture\n';
+    const next = replaceFrontMatterData(markdown, null);
+
+    expect(next).toBe('---\n---\n\n# Architecture\n');
+  });
+
+  test('a whitespace-only raw string is treated the same as no raw text to preserve', () => {
+    const markdown = '---\nowner: platform\n---\n\n# Architecture\n';
+    const next = replaceFrontMatterData(markdown, null, '   \n  ');
+
+    expect(next).toBe('---\n---\n\n# Architecture\n');
+  });
+
   test('keeps empty front matter editable as raw YAML', () => {
     const markdown = '---\n---\n\n# Architecture\n';
     const frontMatter = parseReviewEditorFrontMatter(markdown);
