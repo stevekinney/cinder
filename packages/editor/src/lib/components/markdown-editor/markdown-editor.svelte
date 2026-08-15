@@ -117,25 +117,33 @@
   // Escape single quotes in placeholder for CSS content property
   const escapedPlaceholder = $derived(placeholder.replace(/'/g, "\\'"));
   /**
-   * cinder#1306: `--editor-placeholder` used to be written unconditionally,
-   * so a fully populated document carried the inline property too, even
-   * though the `::before` rule that consumes it only ever paints for an
-   * empty document (`.is-editor-empty:first-child::before` — placeholder.ts
-   * decorates the first paragraph with that class only when the document is
-   * empty). `value` is this component's own source of truth for the
-   * document's content, so it doubles as a close enough proxy for "empty"
-   * here without reaching into ProseMirror state for a purely cosmetic gate.
+   * cinder#1306's actual bug was never about this property's presence — it
+   * was that `is-editor-empty` (`.markdown-editor :global(.ProseMirror
+   * p.is-editor-empty:first-child::before)` below) never reached the DOM at
+   * all, because `createLazyProsePlugin` raced `EditorState.create()`'s
+   * one-time plugin snapshot (fixed in milkdown-plugin-runtime.ts). The
+   * `::before` rule only ever paints when that class is present, so writing
+   * `--editor-placeholder` unconditionally was always cosmetically inert on
+   * a populated document, never visibly wrong.
    *
-   * `null` means "no property at all": Svelte's `style:` directive removes
-   * the property when the bound value is nullish (see
-   * `set_style`/`update_styles` in svelte/internal/client/dom/elements/style.js),
-   * so this isn't a placeholder value that happens to render as nothing —
-   * the attribute is genuinely absent, the same way it would be if this line
-   * were never rendered at all.
+   * An earlier version of this fix ALSO gated this property on
+   * `value.trim().length === 0`, reasoning that a populated document
+   * shouldn't carry a dead custom property. That gate was itself a
+   * regression, caught in review: `value` is this component's own
+   * `$bindable` state, kept in sync with the live document through
+   * `onchange`'s debounced callback (`changeDebounceMs`, stacked on top of
+   * `@milkdown/plugin-listener`'s own ~200ms internal debounce) — so for a
+   * few hundred ms after a user deletes the last character, `is-editor-empty`
+   * is already present (ProseMirror's own decoration recompute is
+   * synchronous, not debounced) while `value` still reports the old,
+   * non-empty content. Gated on `value`, `--editor-placeholder` was
+   * genuinely ABSENT during that window, and the CSS's own fallback
+   * (`var(--editor-placeholder, 'Start writing...')`, below) painted the
+   * generic string instead of the consumer's real placeholder — a visible
+   * wrong-text flash on every deletion-to-empty, on every document. Visibly
+   * wrong beats cosmetically inert; the gate is gone.
    */
-  const placeholderStyleValue = $derived(
-    value.trim().length === 0 ? `'${escapedPlaceholder}'` : null,
-  );
+  const placeholderStyleValue = $derived(`'${escapedPlaceholder}'`);
   const accessibleEditorLabel = $derived(
     label.trim().length > 0 ? label.trim() : 'Markdown editor',
   );
@@ -636,13 +644,16 @@
   export function setMarkdown(content: string): void {
     if (editorState) {
       editorState.setMarkdown(content);
-      // `value` is $bindable and drives `placeholderStyleValue` below (and
-      // any consumer's own bound state) — it has to move with an imperative
-      // content change too, not just a typed one, or the placeholder gate
-      // reads a stale emptiness the live document has already left. The
-      // "sync external value changes" effect above no-ops on this: it only
-      // acts when `value` differs from `editorState.getMarkdown()`, which is
-      // now already true.
+      // `value` is $bindable — a consumer that binds it (`bind:value`)
+      // expects it to reflect an imperative content change the same way it
+      // reflects a typed one, not go stale until the next debounced
+      // `onchange` fires (or never, if `onchange` is suppressed for this
+      // external update). This no longer feeds a placeholder gate
+      // (`placeholderStyleValue` is unconditional now — see its own doc
+      // comment), just plain prop-binding correctness. The "sync external
+      // value changes" effect above no-ops on this: it only acts when
+      // `value` differs from `editorState.getMarkdown()`, which is now
+      // already true.
       value = content;
     } else {
       value = content;

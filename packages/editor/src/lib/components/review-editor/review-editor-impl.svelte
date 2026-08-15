@@ -32,6 +32,7 @@
     createAnchorPlugin,
     anchorPluginKey,
     selectAnchorRange,
+    resolveAnchorSelectionRange,
   } from '../../anchor-decorations.ts';
   import { nextCommentThread, orderedTextThreads } from './comment-navigation.ts';
   import {
@@ -1170,8 +1171,16 @@
 
     const view = editorRef?.getView();
     if (view) {
-      const from = documentPositionToBodyPosition(target.anchor.from, currentDocument.bodyOffset);
-      const to = documentPositionToBodyPosition(target.anchor.to, currentDocument.bodyOffset);
+      // `target.anchor.from`/`to` come from `threads` (converted to body
+      // positions below), which a review finding on this fix caught can go
+      // stale after an ordinary edit — see resolveAnchorSelectionRange's own
+      // doc comment in anchor-decorations.ts for the full mechanism and why
+      // this is only a fallback, not the primary source.
+      const fallback = {
+        from: documentPositionToBodyPosition(target.anchor.from, currentDocument.bodyOffset),
+        to: documentPositionToBodyPosition(target.anchor.to, currentDocument.bodyOffset),
+      };
+      const { from, to } = resolveAnchorSelectionRange(view, target.id, fallback);
       if (selectAnchorRange(view, from, to)) {
         view.focus();
       }

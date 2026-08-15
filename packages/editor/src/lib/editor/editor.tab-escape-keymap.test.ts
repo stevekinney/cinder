@@ -3,7 +3,7 @@ import type { Node as ProseMirrorNode } from '@milkdown/prose/model';
 import { Selection, TextSelection } from '@milkdown/prose/state';
 import { afterEach, describe, expect, test } from 'bun:test';
 import type { FakeClock } from '../test/fake-clock.js';
-import { installFakeClock } from '../test/fake-clock.js';
+import { drainMount, installFakeClock } from '../test/fake-clock.js';
 import { setupHappyDom } from '../test/happy-dom.js';
 import { createEditor } from './editor.js';
 import type { EditorState } from './types.js';
@@ -90,31 +90,36 @@ function isMacPlatform(): boolean {
 async function mountListEditor(): Promise<EditorState> {
   const container = document.createElement('div');
   document.body.append(container);
-  const state = await createEditor(container, {
-    // The last block is a list item that is NOT the first item of its list —
-    // the exact shape the issue's repro requires (a non-first item is what
-    // makes sink/lift succeed and therefore swallow the key).
-    initialContent: '- First\n- Second',
-  });
-  // Installed after the editor's own async startup, matching
-  // editor.selection.test.ts's convention — a fake clock in place during
-  // createEditor()'s own initialization risks hanging any real setTimeout
-  // startup uses on legitimately.
+  // Installed BEFORE createEditor(), not after: a real timer createEditor's
+  // own startup arms is otherwise captured by NOTHING (this suite's earlier
+  // late-install left such a timer real, defeating the whole point of a
+  // fake clock for it) — see drainMount's own doc comment above for why a
+  // bare `await` can't be used once the clock is installed first.
   clock = installFakeClock();
-  return state;
+  return drainMount(
+    createEditor(container, {
+      // The last block is a list item that is NOT the first item of its
+      // list — the exact shape the issue's repro requires (a non-first item
+      // is what makes sink/lift succeed and therefore swallow the key).
+      initialContent: '- First\n- Second',
+    }),
+    clock,
+  );
 }
 
 async function mountTableEditor(): Promise<EditorState> {
   const container = document.createElement('div');
   document.body.append(container);
-  const state = await createEditor(container, {
-    // A two-cell header row. Caret in cell "A" (not the table's LAST cell) is
-    // where goToNextTableCellCommand legitimately succeeds — the table's
-    // analogue of "not the first list item" above.
-    initialContent: '| A | B |\n| --- | --- |',
-  });
   clock = installFakeClock();
-  return state;
+  return drainMount(
+    createEditor(container, {
+      // A two-cell header row. Caret in cell "A" (not the table's LAST
+      // cell) is where goToNextTableCellCommand legitimately succeeds — the
+      // table's analogue of "not the first list item" above.
+      initialContent: '| A | B |\n| --- | --- |',
+    }),
+    clock,
+  );
 }
 
 /** Position right after the given text's own text node — a valid caret spot inside it. */

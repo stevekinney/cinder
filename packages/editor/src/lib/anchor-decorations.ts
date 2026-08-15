@@ -770,6 +770,35 @@ export function selectAnchorRange(view: EditorView, from: number, to: number): b
   }
 }
 
+/**
+ * Resolve the range to select for `threadId`'s anchor, preferring this
+ * plugin's own LIVE, per-transaction-mapped position over the caller's
+ * `fallback` (typically converted from the thread's own cached
+ * `anchor.from`/`to`, which `computeDecorations` above also reads from the
+ * SAME plugin state, not from a thread).
+ *
+ * cinder#1304's keyboard "next/previous comment" navigation used to read
+ * only the fallback: an ordinary edit before an anchor maps this plugin's
+ * tracked position through the transaction immediately (the position
+ * `computeDecorations` paints the live decoration from), but does not call
+ * `onAnchorsUpdate` — that only fires during deferred re-anchoring — so a
+ * caller holding the thread's own cached anchor (never told about the
+ * mapped shift) could select stale, unrelated text at the anchor's FORMER
+ * position even though the decoration itself had already moved to the
+ * right one. Falls back to `fallback` if the plugin has no live entry for
+ * `threadId` (e.g. the anchor plugin isn't mounted, or the thread was never
+ * synced into it).
+ */
+export function resolveAnchorSelectionRange(
+  view: EditorView,
+  threadId: string,
+  fallback: { from: number; to: number },
+): { from: number; to: number } {
+  const liveAnchor = anchorPluginKey.getState(view.state)?.anchors.get(threadId);
+  if (!liveAnchor) return fallback;
+  return { from: liveAnchor.from, to: liveAnchor.to };
+}
+
 // ============================================================================
 // Plugin Factory
 // ============================================================================

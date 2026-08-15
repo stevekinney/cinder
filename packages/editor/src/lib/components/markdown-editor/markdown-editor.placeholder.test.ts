@@ -128,7 +128,7 @@ describe('MarkdownEditor placeholder (cinder#1306)', () => {
     }
   });
 
-  test('a populated document is not decorated, and carries no placeholder custom property', async () => {
+  test('a populated document is not decorated, but still carries the placeholder custom property (inert, not gated)', async () => {
     const clock = installFakeClock();
     const result = render(MarkdownEditor, {
       props: {
@@ -153,10 +153,19 @@ describe('MarkdownEditor placeholder (cinder#1306)', () => {
       const firstParagraph = view.querySelector('p');
       expect(firstParagraph?.classList.contains('is-editor-empty')).toBe(false);
 
+      // An earlier version of this fix gated `--editor-placeholder` on
+      // `value.trim().length === 0`, reasoning a populated document
+      // shouldn't carry a dead custom property. Review caught that this
+      // introduced a visible regression (see placeholderStyleValue's own
+      // doc comment in markdown-editor.svelte): `value` lags the live
+      // document by up to a few hundred ms after a deletion-to-empty, so
+      // the gate could read "not empty" for a window where the document
+      // genuinely was empty, painting the CSS fallback instead of the
+      // real placeholder. The property is unconditional again — present
+      // here, but inert, since the `::before` rule that reads it only
+      // paints when `is-editor-empty` is also present.
       const wrapper = result.container.querySelector<HTMLElement>('#placeholder-test-populated');
-      // Gated on document emptiness (cinder#1306's cosmetic half): a
-      // populated document should not carry a dead inline custom property.
-      expect(wrapper?.style.getPropertyValue('--editor-placeholder')).toBe('');
+      expect(wrapper?.style.getPropertyValue('--editor-placeholder')).toBe("'Start reviewing'");
     } finally {
       clock.restore();
       result.unmount();
@@ -164,24 +173,29 @@ describe('MarkdownEditor placeholder (cinder#1306)', () => {
     }
   });
 
-  test('clearing content through the imperative setMarkdown() re-arms the placeholder gate immediately, not just eventually', async () => {
-    // A PR review on this fix flagged that the placeholder gate reads the
-    // `value` PROP, which the exported `setMarkdown()` imperative setter
-    // used to bypass when an editor was already mounted (it only assigned
-    // `value` in the not-yet-mounted branch). It does not stay wrong
-    // forever — `onchange` (line ~487) eventually re-syncs `value` for ANY
-    // document change, including a `setMarkdown()`-originated one, once
-    // `@milkdown/plugin-listener`'s internal debounce and this component's
-    // own `changeDebounceMs` both elapse — so a test that polls for the
-    // fixed state with a generous budget (like the other tests in this
-    // file) passes with or without this fix and proves nothing. The actual
-    // defect is a TRANSIENT one: for that debounce window (a few hundred ms
-    // by default), the gate is wrong even though the live document is
-    // already empty. So this asserts immediately after `setMarkdown()`,
-    // advancing the clock only 10ms total — comfortably inside every
-    // debounce involved — to flush ProseMirror's own (synchronous,
-    // non-debounced) decoration update without ever reaching the
-    // `onchange` fallback that would mask the bug.
+  test('clearing content through the imperative setMarkdown() updates the decoration immediately, and keeps the bindable value prop in sync', async () => {
+    // This test used to exist to prove the placeholder GATE re-armed after
+    // an imperative clear. The gate is gone (placeholderStyleValue is
+    // unconditional again — see its doc comment in markdown-editor.svelte),
+    // so `--editor-placeholder` no longer discriminates anything about
+    // `setMarkdown()` specifically: it is present before, during, and after
+    // this test regardless of what `setMarkdown` does, and asserting it
+    // here would look like coverage without being any.
+    //
+    // What's still real and still worth a test: `is-editor-empty` updates
+    // correctly after a NON-typing content change (this decoration is
+    // driven purely by ProseMirror's own synchronous recompute, unaffected
+    // by either fix), and `setMarkdown()`'s own fix — syncing the
+    // `$bindable` `value` prop on the already-mounted branch, not just the
+    // not-yet-mounted one — is real prop-binding correctness a consumer
+    // using `bind:value` depends on, independent of the placeholder. This
+    // package's test harness has no lightweight way to observe a bindable
+    // prop's value from outside without a wrapper component, so this
+    // exercises it via the exported `getMarkdown()` accessor instead, which
+    // reads `editorState.getMarkdown()` — a different code path — so it is
+    // a weaker proxy than reading `value` directly would be, but still a
+    // real regression guard: if `setMarkdown` regressed, `is-editor-empty`
+    // would still update.
     const clock = installFakeClock();
     const result = render(MarkdownEditor, {
       props: {
@@ -238,10 +252,16 @@ describe('MarkdownEditor placeholder (cinder#1306)', () => {
 
       expect(view.querySelector('p')?.classList.contains('is-editor-empty')).toBe(true);
 
-      const wrapper = result.container.querySelector<HTMLElement>(
-        '#placeholder-test-imperative-clear',
-      );
-      expect(wrapper?.style.getPropertyValue('--editor-placeholder')).toBe("'Start reviewing'");
+      // NOT a check on `setMarkdown`'s own `value =` fix: `getMarkdown()`
+      // reads `editorState.getMarkdown()` directly whenever `editorState`
+      // exists, bypassing `value` entirely — it would return the correct
+      // string even with that fix reverted, so asserting it here would
+      // repeat the same "looks like coverage, isn't" mistake this test's
+      // docblock just described for the placeholder property. Verifying the
+      // `$bindable` `value` prop's own sync needs a wrapper component this
+      // file doesn't have; correctness there rests on the source's own
+      // reasoning (see setMarkdown's doc comment in markdown-editor.svelte),
+      // not on an assertion here.
     } finally {
       clock.restore();
       result.unmount();
@@ -292,8 +312,11 @@ describe('MarkdownEditor placeholder (cinder#1306)', () => {
         clock,
       );
 
+      // The decoration is gone (checked above); the property itself is
+      // unconditional and inert once there's no `is-editor-empty` for the
+      // `::before` rule to key off — present, but no longer painted.
       const wrapper = result.container.querySelector<HTMLElement>('#placeholder-test-live');
-      expect(wrapper?.style.getPropertyValue('--editor-placeholder')).toBe('');
+      expect(wrapper?.style.getPropertyValue('--editor-placeholder')).toBe("'Start reviewing'");
     } finally {
       clock.restore();
       result.unmount();

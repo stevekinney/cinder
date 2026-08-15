@@ -62,11 +62,26 @@ export async function preloadLazyPluginRuntime(): Promise<void> {
   await resolveLazyPluginRuntime();
 }
 
-/** Synchronous accessor: the cache if primed, `null` otherwise. Never blocks. */
+/**
+ * Synchronous accessor: the cache if primed, `null` otherwise. Never blocks
+ * and never has a side effect on `lazyPluginRuntimePromise` — an earlier
+ * version of this function also did `lazyPluginRuntimePromise ??=
+ * resolveLazyPluginRuntime()` here on a cache miss, which is redundant with
+ * `preloadLazyPluginRuntime()` (the only caller `createEditor()` actually
+ * uses, always awaited before any plugin factory runs) and was flagged in
+ * review as looking like a self-referential await: `resolveLazyPluginRuntime`
+ * awaiting `lazyPluginRuntimePromise` while THIS function's own call to
+ * `resolveLazyPluginRuntime()` was itself in the middle of being assigned TO
+ * `lazyPluginRuntimePromise`. Traced through, it does not actually deadlock —
+ * `await` captures the promise value at evaluation time, not a live
+ * reference to the variable, so the inner assignment (to the real IIFE
+ * promise) happens before the outer one overwrites the variable, and the
+ * overwritten (outer) promise still resolves transitively — but it achieved
+ * nothing useful once traced, at the cost of being genuinely confusing to
+ * read. Removed.
+ */
 function getLazyPluginRuntime(): LazyPluginRuntime | null {
-  if (lazyPluginRuntime) return lazyPluginRuntime;
-  lazyPluginRuntimePromise ??= resolveLazyPluginRuntime();
-  return null;
+  return lazyPluginRuntime;
 }
 
 /**
@@ -100,7 +115,12 @@ function getLazyPluginRuntime(): LazyPluginRuntime | null {
  * entirely, using the cached references instead. If unprimed — unreachable
  * through `createEditor()`, kept only so a hypothetical caller that skips
  * preloading still gets a working (if unordered, pre-fix) plugin rather than
- * a hard failure — falls back to the original dynamic-import behavior.
+ * a hard failure — falls back to the original dynamic-import behavior. That
+ * fallback does not self-heal if the cache primes later: `getLazyPluginRuntime`
+ * is a passive read with no side effect on the cache (see its own doc
+ * comment), so a caller that never calls `preloadLazyPluginRuntime()` stays
+ * on this branch for that plugin instance's whole lifetime. Acceptable only
+ * because the branch is unreachable through the one real caller.
  */
 export function createLazyProsePlugin(
   createProseMirrorPlugin: (context: Ctx) => Plugin | Promise<Plugin>,

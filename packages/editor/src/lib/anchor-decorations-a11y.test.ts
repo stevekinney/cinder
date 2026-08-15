@@ -5,7 +5,7 @@ import type { Thread } from './comments/types.js';
 import { createEditor } from './editor/editor.js';
 import type { EditorState } from './editor/types.js';
 import type { FakeClock } from './test/fake-clock.js';
-import { installFakeClock } from './test/fake-clock.js';
+import { drainMount, installFakeClock } from './test/fake-clock.js';
 import { setupHappyDom } from './test/happy-dom.js';
 
 setupHappyDom();
@@ -89,11 +89,21 @@ describe('comment-anchor decoration accessibility attrs (cinder#1304)', () => {
     document.body.append(container);
     const anchorPlugin = createAnchorPlugin();
 
-    editorState = await createEditor(container, {
-      initialContent: 'Commented text follows in this paragraph.',
-      plugins: [anchorPlugin],
-    });
+    // Installed BEFORE createEditor(), not after: a real timer createEditor's
+    // own startup arms is otherwise left uncaptured by any clock at all — a
+    // review finding on this file's earlier late-install caught the same
+    // issue in a sibling file (editor.tab-escape-keymap.test.ts), whose doc
+    // comment (and drainMount's own, in test/fake-clock.ts) has the fuller
+    // explanation of why a bare `await createEditor(...)` can't be used once
+    // the clock is already installed.
     clock = installFakeClock();
+    editorState = await drainMount(
+      createEditor(container, {
+        initialContent: 'Commented text follows in this paragraph.',
+        plugins: [anchorPlugin],
+      }),
+      clock,
+    );
     const { view } = editorState;
     if (!view) throw new Error('view not ready');
 

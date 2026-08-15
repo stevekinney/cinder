@@ -53,10 +53,15 @@ function getEditorSurface(mount: import('@playwright/test').Locator) {
 }
 
 async function waitForReviewEditorReady(mount: import('@playwright/test').Locator) {
+  // Default assertion budget (this package's playwright.config.ts sets no
+  // `expect.timeout`, so 5s) — a review finding correctly flagged the
+  // earlier 20s override as exactly the kind of timeout increase this
+  // repo's policy blocks. Local runs settle this well under 5s; if CI ever
+  // needs longer, that's a real startup-race fact to investigate, not a
+  // threshold to pre-pad.
   await expect(mount.locator('[data-testid="review-editor"]')).toHaveAttribute(
     'data-ready',
     'true',
-    { timeout: 20_000 },
   );
 }
 
@@ -184,3 +189,27 @@ test.describe('ReviewEditor comment-anchor accessibility (cinder#1304)', () => {
     await expect(popover).toBeHidden();
   });
 });
+
+/**
+ * cinder#1304's stale-vs-live anchor position finding
+ * (`navigateToAdjacentComment` used to read `target.anchor` — cached in
+ * `threads`, synced only during deferred re-anchoring — instead of the
+ * anchor plugin's own live, per-transaction-mapped state, so an edit before
+ * an anchor could select stale, unrelated text) is proven in
+ * `packages/editor/src/lib/resolve-anchor-selection-range.test.ts`, not
+ * here. That file drives a real editor with the real anchor plugin and a
+ * precisely controlled `view.dispatch()` insertion strictly inside an
+ * existing paragraph's text.
+ *
+ * A real-browser mouse/keyboard version of this scenario was attempted
+ * here first and removed: the only text-anchored thread in this route's
+ * `with-comments` fixture starts at the very beginning of the document
+ * body (`with-comments.example.svelte`'s `# Architecture Notes`), so
+ * "insert something before it" necessarily means inserting a new block at
+ * position 0 — which hits a SEPARATE, pre-existing position-mapping
+ * ambiguity in the anchor plugin's own boundary handling for that specific
+ * edge case (confirmed independent of this fix: it reproduced identically
+ * with `resolveAnchorSelectionRange` fully reverted). That ambiguity is out
+ * of scope for cinder#1302/#1304/#1306; conflating it with the stale-vs-live
+ * claim in one flaky real-browser test would have proven neither cleanly.
+ */
