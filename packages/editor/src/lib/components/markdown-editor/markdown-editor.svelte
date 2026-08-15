@@ -116,6 +116,34 @@
 
   // Escape single quotes in placeholder for CSS content property
   const escapedPlaceholder = $derived(placeholder.replace(/'/g, "\\'"));
+  /**
+   * cinder#1306's actual bug was never about this property's presence — it
+   * was that `is-editor-empty` (`.markdown-editor :global(.ProseMirror
+   * p.is-editor-empty:first-child::before)` below) never reached the DOM at
+   * all, because `createLazyProsePlugin` raced `EditorState.create()`'s
+   * one-time plugin snapshot (fixed in milkdown-plugin-runtime.ts). The
+   * `::before` rule only ever paints when that class is present, so writing
+   * `--editor-placeholder` unconditionally was always cosmetically inert on
+   * a populated document, never visibly wrong.
+   *
+   * An earlier version of this fix ALSO gated this property on
+   * `value.trim().length === 0`, reasoning that a populated document
+   * shouldn't carry a dead custom property. That gate was itself a
+   * regression, caught in review: `value` is this component's own
+   * `$bindable` state, kept in sync with the live document through
+   * `onchange`'s debounced callback (`changeDebounceMs`, stacked on top of
+   * `@milkdown/plugin-listener`'s own ~200ms internal debounce) — so for a
+   * few hundred ms after a user deletes the last character, `is-editor-empty`
+   * is already present (ProseMirror's own decoration recompute is
+   * synchronous, not debounced) while `value` still reports the old,
+   * non-empty content. Gated on `value`, `--editor-placeholder` was
+   * genuinely ABSENT during that window, and the CSS's own fallback
+   * (`var(--editor-placeholder, 'Start writing...')`, below) painted the
+   * generic string instead of the consumer's real placeholder — a visible
+   * wrong-text flash on every deletion-to-empty, on every document. Visibly
+   * wrong beats cosmetically inert; the gate is gone.
+   */
+  const placeholderStyleValue = $derived(`'${escapedPlaceholder}'`);
   const accessibleEditorLabel = $derived(
     label.trim().length > 0 ? label.trim() : 'Markdown editor',
   );
@@ -616,6 +644,17 @@
   export function setMarkdown(content: string): void {
     if (editorState) {
       editorState.setMarkdown(content);
+      // `value` is $bindable — a consumer that binds it (`bind:value`)
+      // expects it to reflect an imperative content change the same way it
+      // reflects a typed one, not go stale until the next debounced
+      // `onchange` fires (or never, if `onchange` is suppressed for this
+      // external update). This no longer feeds a placeholder gate
+      // (`placeholderStyleValue` is unconditional now — see its own doc
+      // comment), just plain prop-binding correctness. The "sync external
+      // value changes" effect above no-ops on this: it only acts when
+      // `value` differs from `editorState.getMarkdown()`, which is now
+      // already true.
+      value = content;
     } else {
       value = content;
     }
@@ -727,7 +766,7 @@
           {id}
           class="cinder-markdown-content markdown-editor surface"
           data-readonly={readonly || undefined}
-          style:--editor-placeholder="'{escapedPlaceholder}'"
+          style:--editor-placeholder={placeholderStyleValue}
           role="application"
           aria-label={accessibleEditorLabel}
           tabindex="0"

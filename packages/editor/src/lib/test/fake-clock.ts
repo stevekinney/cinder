@@ -79,3 +79,46 @@ export function installFakeClock(): FakeClock {
     },
   };
 }
+
+/**
+ * Drive `promise` to settlement while a fake clock is already installed,
+ * without ever directly `await`ing it.
+ *
+ * The whole point of installing a fake clock BEFORE some async startup
+ * (rather than after, once it's already mounting) is to capture every
+ * `setTimeout` that startup arms — but a bare `await promise` at that point
+ * blocks this function's own stack until `promise` settles, and nothing
+ * else runs meanwhile to call `clock.advance()`. If `promise`'s own chain
+ * is waiting on one of those now-fake timers, it hangs forever. This drains
+ * it instead: yield a microtask (letting any of `promise`'s own pending
+ * `.then`s run), advance the clock (firing whatever real code scheduled
+ * through the now-fake `setTimeout`), repeat. Bounded by iteration count,
+ * not wall time, so it can never itself become a padded wait — a review
+ * finding on an earlier, less careful version of this pattern (installing
+ * the clock AFTER the async work had already started) is why late-install
+ * call sites in this package were migrated to this one.
+ */
+export async function drainMount<T>(promise: Promise<T>, clock: FakeClock): Promise<T> {
+  const outcome: { settled: boolean; value?: T; error?: unknown } = { settled: false };
+  promise
+    .then((value) => {
+      outcome.value = value;
+      outcome.settled = true;
+      return value;
+    })
+    .catch((reason: unknown) => {
+      outcome.error = reason;
+      outcome.settled = true;
+    });
+
+  const maxIterations = 200;
+  for (let i = 0; i < maxIterations && !outcome.settled; i++) {
+    await Promise.resolve();
+    clock.advance(20);
+  }
+  if (!outcome.settled) {
+    throw new Error(`drainMount: promise did not settle within ${maxIterations} iterations`);
+  }
+  if (outcome.error !== undefined) throw outcome.error;
+  return outcome.value as T;
+}

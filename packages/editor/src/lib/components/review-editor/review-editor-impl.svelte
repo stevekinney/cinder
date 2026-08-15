@@ -19,6 +19,7 @@
   import { tick } from 'svelte';
   import { classNames } from '../../utilities/class-names.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
+  import { truncate } from '../../utilities/truncate.ts';
   import { useReducedMotion } from '../../utilities/use-reduced-motion.svelte.ts';
   import { createFocusRegionNavigator, type FocusRegion } from './focus-navigation.ts';
   import { createChangeTracker } from '../../utilities/change-tracker.svelte.ts';
@@ -27,7 +28,13 @@
   import { contentEquals } from '@lostgradient/markdown/pipeline';
   import { computeReviewEditorDiffStats } from './review-editor-diff-stats.ts';
   import { textOffsetToProseMirrorPosition } from '../../editor/index.ts';
-  import { createAnchorPlugin, anchorPluginKey } from '../../anchor-decorations.ts';
+  import {
+    createAnchorPlugin,
+    anchorPluginKey,
+    selectAnchorRange,
+    resolveAnchorSelectionRange,
+  } from '../../anchor-decorations.ts';
+  import { nextCommentThread, orderedTextThreads } from './comment-navigation.ts';
   import {
     reanchorQuote,
     ANCHOR_CONTEXT_LENGTH,
@@ -35,6 +42,7 @@
     extractMentions,
     createDocumentAnchor,
     isDocumentAnchor,
+    getVisibleComments,
     toPersistedThreads,
   } from '../../comments/index.ts';
   import { buildAnchorFromSelection } from '../../anchoring.ts';
@@ -952,13 +960,29 @@
    * Selecting such a thread in the sidebar is an ordinary click, so it must not
    * be able to throw. `calculateViewportPosition` already guards its own call
    * this way; these two did not.
+   *
+   * A review finding caught that this used `anchor.from` (the caller's cached
+   * `thread.anchor`) directly, unlike `navigateToAdjacentComment` right above,
+   * which already routes its own position through `resolveAnchorSelectionRange`
+   * for exactly this reason: an edit before an anchor maps this plugin's live
+   * position immediately, but does not update `threads` until deferred
+   * re-anchoring. `resolveAnchorSelectionRange`'s selection fix and this
+   * popover-positioning fix were the same underlying bug in two call sites —
+   * fixing the selection alone left the popover opening beside unrelated text
+   * at the anchor's former position even though the caret landed correctly.
+   * `threadId` is now required so this can resolve the same live position.
    */
   function anchorCoords(
     view: NonNullable<ReturnType<NonNullable<typeof editorRef>['getView']>>,
+    threadId: string,
     anchor: Thread['anchor'],
   ): { left: number; top: number } | null {
     if (anchor.status === 'orphaned') return null;
-    const position = documentPositionToBodyPosition(anchor.from, currentDocument.bodyOffset);
+    const fallback = {
+      from: documentPositionToBodyPosition(anchor.from, currentDocument.bodyOffset),
+      to: documentPositionToBodyPosition(anchor.to, currentDocument.bodyOffset),
+    };
+    const { from: position } = resolveAnchorSelectionRange(view, threadId, fallback);
     if (position < 0 || position > view.state.doc.content.size) return null;
     try {
       return view.coordsAtPos(position);
@@ -1071,7 +1095,7 @@
       const view = editorRef?.getView();
       if (!view) return;
 
-      const coords = anchorCoords(view, thread.anchor);
+      const coords = anchorCoords(view, threadId, thread.anchor);
       if (coords) {
         popoverPosition = { x: coords.left + 16, y: coords.top };
         popoverThreadId = threadId;
@@ -1110,6 +1134,80 @@
         .getElementById(`${id}-sidebar`)
         ?.querySelector<HTMLElement>('.thread-item[data-active]') ?? null
     );
+  }
+
+  /**
+   * cinder#1304: the keyboard route to an anchored comment. `.comment-anchor`
+   * decorations are intentionally not `tabindex`-focusable (see
+   * anchor-decorations.ts's `computeDecorations` doc comment for why), so Tab
+   * alone can never reach one — this is the substitute. Moves the caret to
+   * the next/previous anchor in document order and opens its thread the same
+   * way clicking the decoration does (`handleSidebarThreadSelect` already
+   * does exactly that "scroll, then open popover at the anchor" sequence for
+   * the sidebar's own click handler; reused here rather than duplicated).
+   *
+   * The ordering/wrap-around math lives in comment-navigation.ts, split out
+   * so it is unit-testable without mounting the full component (which pulls
+   * in ReviewEditorControls' formatting toolbar).
+   *
+   * A PR review on this fix flagged that `selectAnchorRange` below creates a
+   * real, non-collapsed browser selection, which — in an editable,
+   * `currentUserId`-bearing ReviewEditor — could also arm
+   * `handleBrowserSelectionChange`'s "add new comment" selection popover,
+   * flashing it open over this function's own (correct) thread popover.
+   * Investigated with a real-Chromium probe against this exact scenario
+   * (with-comments example, `currentUserId` set): `showSelectionPopover`'s
+   * derivation does compute `true` once the debounced position calculation
+   * completes (confirmed by mirroring its exact condition inline against
+   * live component state at that instant — `popoverThreadId` is genuinely
+   * still `null`, since `handleSidebarThreadSelect` below does not set it
+   * until its own 350ms `POSITION_DELAY_MS` elapses), but the selection
+   * popover element (`document.getElementById` on the same id string the
+   * component's own selection-popover-focus check uses) never appears in
+   * the DOM at any sampled point from 10ms to 600ms after the chord fires.
+   * No suppression mechanism was added on the strength of that: a flag that
+   * guards against something that doesn't visibly happen is complexity with
+   * no proven benefit, and a one-shot "consume on the next selectionchange"
+   * flag has its own failure mode (an earlier version of this fix could
+   * silently swallow an unrelated real selection if the programmatic one
+   * happened not to fire a selectionchange event at all). If this ever
+   * reproduces in a real browser, re-open cinder#1304 with a repro rather
+   * than re-adding the flag speculatively.
+   */
+  function navigateToAdjacentComment(direction: 1 | -1): void {
+    const ordered = orderedTextThreads(threads);
+    if (ordered.length === 0) {
+      announce('No commented text in this document.');
+      return;
+    }
+
+    const target = nextCommentThread(threads, activeThreadId, direction);
+    if (!target) return;
+    const nextIndex = ordered.findIndex((t) => t.id === target.id);
+
+    const view = editorRef?.getView();
+    if (view) {
+      // `target.anchor.from`/`to` come from `threads` (converted to body
+      // positions below), which a review finding on this fix caught can go
+      // stale after an ordinary edit — see resolveAnchorSelectionRange's own
+      // doc comment in anchor-decorations.ts for the full mechanism and why
+      // this is only a fallback, not the primary source.
+      const fallback = {
+        from: documentPositionToBodyPosition(target.anchor.from, currentDocument.bodyOffset),
+        to: documentPositionToBodyPosition(target.anchor.to, currentDocument.bodyOffset),
+      };
+      const { from, to } = resolveAnchorSelectionRange(view, target.id, fallback);
+      if (selectAnchorRange(view, from, to)) {
+        view.focus();
+      }
+      // else: position not resolvable right now — still open the thread
+      // below, just without moving the caret.
+    }
+
+    handleSidebarThreadSelect(target.id);
+
+    const preview = truncate(getVisibleComments(target)[0]?.body ?? '', 60);
+    announce(`Comment ${nextIndex + 1} of ${ordered.length}${preview ? `: ${preview}` : ''}`);
   }
 
   /**
@@ -1754,21 +1852,83 @@
   });
 
   /**
-   * Handle F6 keyboard navigation between regions.
+   * cinder#1304: `.comment-anchor` decorations are deliberately not
+   * tabindex-focusable (see anchor-decorations.ts), so this chord is the
+   * keyboard route the issue asks for instead.
+   *
+   * Platform-aware rather than a literal Ctrl-Alt, unlike this component's
+   * own Ctrl-Alt-C (add comment, keymap-plugin.ts): Control+Option is
+   * macOS VoiceOver's own modifier prefix, so a literal Ctrl-Alt-Arrow chord
+   * is consumed by VoiceOver before it ever reaches this handler on a Mac —
+   * the one platform where an AT-only keyboard route matters most. Same
+   * mac-detection `getShortcutDisplay` already uses (keymap-plugin.ts).
+   */
+  function isCommentNavigationChord(event: KeyboardEvent): boolean {
+    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return false;
+    const isMacPlatform =
+      typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
+    return isMacPlatform ? event.metaKey && event.altKey : event.ctrlKey && event.altKey;
+  }
+
+  /**
+   * Handle F6 keyboard navigation between regions, and cinder#1304's
+   * comment-navigation chord (see isCommentNavigationChord above).
    * Uses event.currentTarget to scope navigation to this specific editor instance,
    * supporting multiple ReviewEditor instances on the same page.
    */
   function handleContainerKeyDown(event: KeyboardEvent): void {
-    if (event.key !== 'F6') return;
+    if (event.key === 'F6') {
+      // Use currentTarget (the element with the listener) to get this specific editor container
+      const container = event.currentTarget;
+      if (!(container instanceof HTMLElement)) return;
 
-    // Use currentTarget (the element with the listener) to get this specific editor container
-    const container = event.currentTarget;
-    if (!(container instanceof HTMLElement)) return;
+      event.preventDefault();
+      const current = focusNavigator.getCurrentRegion(container);
+      const next = focusNavigator.getNextRegion(current, event.shiftKey);
+      focusNavigator.focusRegion(container, next);
+      return;
+    }
 
-    event.preventDefault();
-    const current = focusNavigator.getCurrentRegion(container);
-    const next = focusNavigator.getNextRegion(current, event.shiftKey);
-    focusNavigator.focusRegion(container, next);
+    if (isCommentNavigationChord(event)) {
+      // Scoped to the ProseMirror surface itself, not the whole container:
+      // the container also holds the comment composer, thread popovers,
+      // front-matter fields, sidebar, and toolbar. Without this guard, the
+      // chord fired from inside any of those too — e.g. typing a reply in
+      // an open thread's composer — hijacking focus into the editor and
+      // changing the active thread mid-reply.
+      //
+      // A review finding caught that `editorDom.contains(event.target)`
+      // alone excludes a real ancestor: in readonly mode `setEditorReadonly`
+      // (editor.ts) sets `contenteditable="false"` on `editorDom`, which
+      // removes its native tab-stop (ProseMirror never sets an explicit
+      // `tabindex` on it — that implicit stop is the ONLY thing
+      // `contenteditable="true"` was providing). `MarkdownEditor`'s own
+      // `.markdown-editor.surface` wrapper — the element `editorDom` is
+      // mounted inside via the `{@attach}` directive, i.e. its parent, not
+      // its child — keeps `tabindex="0"` unconditionally. So a real Tab
+      // press in readonly mode lands there instead, `event.target` is that
+      // wrapper, and `editorDom.contains(wrapper)` is false (`contains`
+      // only looks at descendants), silently defeating this entire chord
+      // for exactly the review-only consumers most likely to want it.
+      // `target.contains(editorDom)` catches that ancestor case; it's safe
+      // to add unconditionally because the only focusable ancestor of
+      // `editorDom` is this one wrapper (the container itself carries no
+      // tabindex — see the comment on the container element below), and
+      // the sidebar/toolbar/composers this guard exists to exclude are
+      // never ancestors of `editorDom` either way, so they still fail both
+      // checks.
+      const editorDom = editorRef?.getView()?.dom;
+      const target = event.target;
+      if (
+        !editorDom ||
+        !(target instanceof Node) ||
+        !(editorDom.contains(target) || target.contains(editorDom))
+      ) {
+        return;
+      }
+      event.preventDefault();
+      navigateToAdjacentComment(event.key === 'ArrowDown' ? 1 : -1);
+    }
   }
 </script>
 

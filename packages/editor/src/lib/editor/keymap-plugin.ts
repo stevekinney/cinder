@@ -23,6 +23,14 @@ type ShortcutRuntime = {
   sinkListItemCommand: typeof import('@milkdown/kit/preset/commonmark').sinkListItemCommand;
   liftListItemCommand: typeof import('@milkdown/kit/preset/commonmark').liftListItemCommand;
   toggleStrikethroughCommand: typeof import('@milkdown/kit/preset/gfm').toggleStrikethroughCommand;
+  // cinder#1302: GFM's tableKeymap binds plain Tab/Shift-Tab to cell
+  // navigation with the SAME shape as commonmark's listItemKeymap, and is
+  // neutralized in editor.ts (config()) the same way — so Tab/Shift-Tab
+  // inside a table have to be handled here too, or table cell navigation
+  // would silently stop working the moment the preset's own binding is
+  // stripped.
+  goToNextTableCellCommand: typeof import('@milkdown/kit/preset/gfm').goToNextTableCellCommand;
+  goToPrevTableCellCommand: typeof import('@milkdown/kit/preset/gfm').goToPrevTableCellCommand;
   undoCommand: typeof import('@milkdown/kit/plugin/history').undoCommand;
   redoCommand: typeof import('@milkdown/kit/plugin/history').redoCommand;
 };
@@ -55,6 +63,8 @@ async function resolveShortcutRuntime(): Promise<ShortcutRuntime> {
       sinkListItemCommand: commonmark.sinkListItemCommand,
       liftListItemCommand: commonmark.liftListItemCommand,
       toggleStrikethroughCommand: gfm.toggleStrikethroughCommand,
+      goToNextTableCellCommand: gfm.goToNextTableCellCommand,
+      goToPrevTableCellCommand: gfm.goToPrevTableCellCommand,
       undoCommand: history.undoCommand,
       redoCommand: history.redoCommand,
     };
@@ -77,15 +87,19 @@ export interface EditorKeymapOptions {
 /**
  * One-shot latch that lets the next Tab leave the editor (WCAG 2.1.2).
  *
- * Tab/Shift-Tab are bound to sink/lift-list-item, and inside a list item those
- * commands SUCCEED — a successful ProseMirror command returns true, which is
- * also what tells the keymap plugin to `preventDefault` the key. So while the
- * caret sits in a bullet, no Tab ever reaches the browser's sequential
- * navigation: focus cannot leave the editable surface, and every attempt
- * silently re-indents the bullet instead. In prose the same commands return
- * false, the keymap declines the key, and Tab moves focus normally — which is
- * why the trap reads as intermittent: it is a property of the caret's BLOCK,
- * not of the surface, and the user cannot see which one they are in.
+ * Tab/Shift-Tab are bound to sink/lift-list-item (and, inside a table, to
+ * next/previous-cell — cinder#1302 found the identical trap in GFM's
+ * tableKeymap while fixing the list case, and both are handled the same way),
+ * and inside a list item or table cell those commands SUCCEED — a successful
+ * ProseMirror command returns true, which is also what tells the keymap
+ * plugin to `preventDefault` the key. So while the caret sits in a bullet or a
+ * cell, no Tab ever reaches the browser's sequential navigation: focus cannot
+ * leave the editable surface, and every attempt silently re-indents the
+ * bullet (or moves to the next cell) instead. In prose the same commands
+ * return false, the keymap declines the key, and Tab moves focus normally —
+ * which is why the trap reads as intermittent: it is a property of the
+ * caret's BLOCK, not of the surface, and the user cannot see which one they
+ * are in.
  *
  * WCAG 2.1.2 requires a keyboard escape, so Escape arms this latch and the next
  * Tab/Shift-Tab is declined by the keymap and handed to the browser instead of
@@ -194,9 +208,43 @@ export function createKeymapBindings(
     'Mod-Shift-7': () => call(runtime.wrapInOrderedListCommand.key),
     // Returning false leaves the event unhandled: the keymap does not
     // preventDefault, so the browser moves focus out of the editor.
-    Tab: (state) => (tabEscape.release(state) ? false : call(runtime.sinkListItemCommand.key)),
+    //
+    // Two structural commands can legitimately want this key — sink-list-item
+    // and next-table-cell — because commonmark's listItemKeymap and GFM's
+    // tableKeymap both bound Tab natively before cinder#1302 stripped it from
+    // each (editor.ts's config()) so this latch could ever be reached. Try
+    // both, in the same order ProseMirror's own chainCommands would have:
+    // whichever node type the caret is actually in succeeds and the other is
+    // a no-op false.
+    Tab: (state) =>
+      tabEscape.release(state)
+        ? false
+        : call(runtime.sinkListItemCommand.key) || call(runtime.goToNextTableCellCommand.key),
     'Shift-Tab': (state) =>
-      tabEscape.release(state) ? false : call(runtime.liftListItemCommand.key),
+      tabEscape.release(state)
+        ? false
+        : call(runtime.liftListItemCommand.key) || call(runtime.goToPrevTableCellCommand.key),
+    // cinder#1302 review finding: on macOS, Mod-]/Mod-[ resolve to Cmd+]/
+    // Cmd+[ — browser Back/Forward. The commonmark/GFM presets' own
+    // SinkListItem/LiftListItem/NextCell/PrevCell commands (still bound to
+    // these same shortcuts; editor.ts's config() only stripped Tab/Shift-Tab
+    // from them, not Mod-]/Mod-[, since sink/lift/cell-nav is the intended
+    // keyboard route for THOSE) return `false` — declining the key, not
+    // handling it — whenever they don't apply: sinking the first item in a
+    // list, lifting outside a list entirely, or cell-nav outside a table.
+    // `prosemirror-keymap` only calls `event.preventDefault()` when a bound
+    // handler returns true, so a `false` here previously fell through to the
+    // browser's own binding, navigating away from the editor — silently
+    // discarding unsaved work, a far worse regression than the Tab-trap this
+    // fix closes. These try the SAME commands the presets' own handlers
+    // already tried (redundant if this runs after them in the merge chain,
+    // harmless either way) and then unconditionally return `true`: while
+    // this editor has focus, Mod-]/Mod-[ must never reach the browser,
+    // whether or not sink/lift/cell-nav had anything to do.
+    'Mod-]': () =>
+      call(runtime.sinkListItemCommand.key) || call(runtime.goToNextTableCellCommand.key) || true,
+    'Mod-[': () =>
+      call(runtime.liftListItemCommand.key) || call(runtime.goToPrevTableCellCommand.key) || true,
     // Arm, then decline the key: Escape has other listeners (menus, popovers,
     // the comment composer), and swallowing it here would break them.
     Escape: (state, _dispatch, view) => {
@@ -330,12 +378,21 @@ export function getShortcutDefinitions(isMac: boolean = false): ShortcutDefiniti
     { action: 'Bullet List', keys: [mod, shift, '8'] },
     { action: 'Ordered List', keys: [mod, shift, '7'] },
     { action: 'Blockquote', keys: [mod, shift, '9'] },
-    { action: 'Indent', keys: ['Tab'] },
-    { action: 'Outdent', keys: [shift, 'Tab'] },
+    // cinder#1302: this row previously listed plain Tab/Shift-Tab as the
+    // indent/outdent shortcut. That was accurate before this fix (Tab
+    // unconditionally indented) and is misleading after it: Tab still
+    // indents contextually (inside a list/table, unless the Escape-then-Tab
+    // latch just released it — see the row below), but it is no longer the
+    // shortcut a user should be told to rely on, since it can decline to
+    // indent depending on focus-escape state. Mod-]/Mod-[ indent/outdent
+    // unconditionally, with no such caveat, so they're what this row
+    // documents now.
+    { action: 'Indent / Next Table Cell', keys: [mod, ']'] },
+    { action: 'Outdent / Previous Table Cell', keys: [mod, '['] },
     // WCAG 2.1.2 requires that a component whose keys are not all unmodified —
-    // Tab indents inside a list rather than moving focus — document how to get
-    // out. This row IS that documentation, so it has to stay in the list users
-    // can see.
+    // Tab indents inside a list, or moves to the next table cell, rather than
+    // moving focus — document how to get out. This row IS that documentation,
+    // so it has to stay in the list users can see.
     { action: 'Move focus out of the editor (then Tab)', keys: ['Esc'] },
     { action: 'Undo', keys: [mod, 'Z'] },
     { action: 'Redo', keys: isMac ? [mod, shift, 'Z'] : [mod, 'Y'] },
@@ -344,5 +401,20 @@ export function getShortcutDefinitions(isMac: boolean = false): ShortcutDefiniti
     { action: 'Reject Suggestion (Suggest mode only)', keys: [mod, shift, 'N'] },
     // Comment shortcut (DEP-47) - review-mode-specific
     { action: 'Add Comment (Comment mode only)', keys: ['Ctrl', alt, 'C'] },
+    // cinder#1304: keyboard route to an anchored comment. `.comment-anchor`
+    // decorations carry no tabindex (deliberately — see
+    // anchor-decorations.ts), so this is how a keyboard/AT user reaches one
+    // without a mouse. Wired in ReviewEditor's container keydown handler
+    // (review-editor-impl.svelte), not in this package's own keymap, because
+    // it needs `threads` state only ReviewEditor has.
+    //
+    // `mod` (⌘ on mac, Ctrl elsewhere), not the literal `Ctrl` the other
+    // review shortcuts above use: Control+Option is macOS VoiceOver's own
+    // modifier prefix, so a literal Ctrl-Alt-Arrow chord is consumed by
+    // VoiceOver before it ever reaches this component on a Mac — the one
+    // platform where an AT-only keyboard route matters most. Cmd+Option
+    // does not collide with VO's modifier.
+    { action: 'Next Comment (ReviewEditor only)', keys: [mod, alt, '↓'] },
+    { action: 'Previous Comment (ReviewEditor only)', keys: [mod, alt, '↑'] },
   ];
 }
