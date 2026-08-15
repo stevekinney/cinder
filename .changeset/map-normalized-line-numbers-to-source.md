@@ -60,6 +60,12 @@ hand-rolled regex for unordered markers, then (when ordered markers turned out t
 same treatment) calling the real `normalize()` per line instead of re-deriving its rewrite rules by
 hand, closing that class of gap by construction for anything a single line can reproduce.
 
+(Numbering note: "Round 1" through "Round 4" here count _shipped revisions to this mechanism_,
+which is a narrower count than the PR's own review-round numbering used in its commit messages and
+thread comments — this changeset's "Round 4" and the PR's "round 5" are the same event; the
+"Round 6" section below is the PR's round 6, and is the first one this changeset's own numbering
+and the PR's agree on, since no revision to this mechanism was needed in between.)
+
 **Round 4 (a bot review round after the above shipped) proved that per-line-string approach
 categorically unsound, not just incompletely enumerated.** A Setext heading's underline
 (`Title\n---`) and a bare thematic break (`***`) are different mdast node types that can both
@@ -126,3 +132,53 @@ normalized-space body can still disagree on span, and `git apply` can still reje
 is a structural consequence of diffing normalized text while reporting source coordinates, not a
 gap this fix left unclosed. Reporting the correct _number_ for every line still narrows the
 original bug to exactly that structural case.
+
+**Round 6 (review finding): the AST-pairing fix above traded the old line-based `O(m×n)` table for
+a new one, still built unconditionally.** `pairChildrenByType` — the per-container node-type LCS —
+built a full `(m+1) x (n+1)` table on every call, even in the single most common case: content
+edited _within_ an existing node (typing inside a paragraph, say) changes no top-level node
+_types_ at all, so `source` and `normalized` have the identical children-type sequence throughout,
+and the table's answer was always going to be a plain diagonal zip.
+
+Fixed by trimming a common _suffix_ first — walking both children arrays backward from their ends,
+matching greedily while `nodeKey`s agree — before falling back to the table for whatever's left.
+This is provably _exactly_ equivalent to the untrimmed backtrace, not an approximation of it: the
+backtrace already starts at `(m, n)` — the very end of both arrays — and its first action every
+iteration is an unconditional matching step whenever the trailing types agree, before it ever
+consults the DP table. Replaying that same walk directly for the trailing run the table doesn't
+need to arbitrate reproduces the identical matches, just without paying for the table cells
+underneath it. In the common typing-edit case, this suffix walk alone consumes the entire array
+and the table never runs at all.
+
+A mirror-image _prefix_ trim (walking forward from index 0) was considered and rejected: it is
+**not** equivalent, because a duplicate type run at the front can make the real backtrace match a
+_later_ occurrence of that type than a naive forward walk would pick. Worked counterexample:
+`source = [A, A, B]`, `normalized = [A, B]` (types, not literal node kinds). The untrimmed
+backtrace matches normalized's lone `A` against source's _second_ `A`, not its first, because by
+the time the walk — which starts from the end — reaches index 0, it has already consumed the first
+`A` via a different path. A naive prefix trim would match the first `A` instead: a different,
+wrong answer, not merely a different-but-equally-valid one, since which specific source node a
+normalized line anchors to is exactly what this module exists to get right. Pinned as a regression
+test (`source-line-map.test.ts`, `pairChildrenByType suffix-trim optimization`) against an
+independent, deliberately-not-imported untrimmed-LCS oracle, across 12 shape-varied and
+shape-mismatched cases including this exact one.
+
+Measured, not just asymptotically argued: `pairChildrenByType` called directly on two identical
+2000-element type arrays went from ~28.4ms/call (untrimmed) to ~0.083ms/call (trimmed) — roughly
+340x. End-to-end, `generateUnifiedDiff` on a 2000-paragraph document with a single paragraph edited
+(the `original`-side line map cache warm, as it is after the first keystroke in a real editing
+session) went from ~477ms to ~399ms — a real but much smaller ~16% improvement, because parsing,
+`normalize()`'s own serialization, and the pre-existing `computeLineChanges` line-diff in
+`unified-diff.ts` dominate the total cost at this scale far more than the matcher does
+post-fix. The asymptotic fix matters most as documents grow relative to those fixed costs, not as
+a claim that the matcher was ever the dominant cost end-to-end — this changeset's earlier
+"Performance" framing (in the PR body, not duplicated here) previously implied otherwise and has
+been corrected.
+
+This is a pure optimization: its output is identical to the untrimmed version by construction, so
+there is no test that fails without it — a timing assertion would be exactly the kind of
+threshold-padding this repo's own rules prohibit. Its test coverage is the equivalence check
+above, which exists to catch a _future_ regression in the trim's soundness (e.g. someone later
+"simplifying" it into the unsound prefix-trim shape), not to prove the optimization currently
+exists; that proof is the benchmark numbers above, run manually and reported here and in the PR
+thread, not committed as an assertion.
