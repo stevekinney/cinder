@@ -8,8 +8,9 @@ import {
   assertImportClosure,
   extractSvelteScriptBlocks,
   extractSvelteStyleBlocks,
-  isNodeBuiltinSpecifier,
-  isPlausibleImportSpecifier,
+  findRealNodeExecutable,
+  isPlausibleCssImportSpecifier,
+  nodeBuiltinMembership,
 } from './validate-consumer.ts';
 
 /**
@@ -76,6 +77,29 @@ describe('assertImportClosure (cinder#1334)', () => {
  * looks -- this comment exists only to contain the word "from" immediately
  * followed by a quote character, the exact text shape that broke the old
  * regex-based scanner (cinder#1334).
+ */
+export const value = 1;
+`,
+    });
+
+    await expect(assertImportClosure(manifestWithDeclaredPeers, root)).resolves.toBeUndefined();
+  });
+
+  test('comment prose containing "import(" followed by a quote is not mistaken for a dynamic import (cinder#1335 round-3 finding)', async () => {
+    // Round 2 added a supplementary regex specifically to catch a computed
+    // dynamic import's static prefix -- but that regex ran over the same
+    // raw, comment-bearing source text #1334 was about, and reopened the
+    // identical failure mode for `import(` specifically: a doc comment
+    // containing sample code like `import('example')` would be misread as
+    // a real dynamic import. That regex was removed entirely (not
+    // narrowed) rather than patched again -- see the module header's
+    // limitations section for why the resulting gap (a genuinely computed
+    // dynamic import specifier) is accepted rather than covered.
+    const root = await makeFixture({
+      'dist/prose-with-import-call.js': `/**
+ * Elsewhere in this codebase, code like import('undeclared-package') shows
+ * up as a documentation example of the dynamic import syntax -- this
+ * comment exists only to contain that exact text shape.
  */
 export const value = 1;
 `,
@@ -191,7 +215,7 @@ export const value = 1;
 
 <style>
   /* @import "some prose that mentions an import" is not a real @import,
-     because the capture below contains whitespace. */
+     because "some" (its bare-name portion) contains whitespace. */
   p { color: red; }
 </style>
 `,
@@ -236,29 +260,21 @@ export const value = 1;
     );
   });
 
-  test('a dynamic import() with a computed specifier still catches its static literal prefix (cinder#1335 round-2 finding)', async () => {
-    // `Bun.Transpiler.scanImports` reports nothing for
-    // `import('undeclared-package/' + feature)`, since the full specifier
-    // isn't statically resolvable -- but the literal prefix is still real,
-    // evident text, and the original regex-based scanner caught it
-    // (accidentally, as part of matching every `import(` call). Losing
-    // that was a real regression relative to the old behavior.
+  test('a dynamic import() with a computed specifier is no longer caught -- a deliberate, documented gap, not an oversight (cinder#1335 round-3)', async () => {
+    // scanImports correctly reports nothing for a non-static specifier,
+    // and this module no longer supplements that with a regex (see the
+    // test above for why). Verified separately (module header, PR
+    // discussion) that this pattern has zero live instances in the
+    // package's actual published output, and that a genuinely-reachable
+    // undeclared dependency still fails the runtime fixture regardless.
     const root = await makeFixture({
       'dist/dynamic.js': `const feature = getFeatureName();\nimport('totally-undeclared-package/' + feature);\n`,
     });
 
-    await expect(assertImportClosure(manifestWithDeclaredPeers, root)).rejects.toThrow(
-      /totally-undeclared-package/u,
-    );
+    await expect(assertImportClosure(manifestWithDeclaredPeers, root)).resolves.toBeUndefined();
   });
 
-  test('Node builtins loaded via require() or a bare specifier are not flagged as undeclared (cinder#1335 round-2 finding)', async () => {
-    // scanImports reports require('fs') as a require-call with the bare
-    // specifier "fs", not "node:fs" -- checking only for the "node:"
-    // prefix (the original check) rejected every builtin loaded via its
-    // un-prefixed name. The old regex never scanned require() calls at
-    // all, so this false-positive surface didn't exist before this module
-    // started using a real lexer that does.
+  test('Node builtins loaded via require() or a bare specifier are not flagged as undeclared', async () => {
     const root = await makeFixture({
       'dist/node-builtins.js': `const fs = require('fs');\nconst path = require('node:path');\nimport('fs');\nimport('node:child_process');\nexport const value = [fs, path];\n`,
     });
@@ -266,7 +282,31 @@ export const value = 1;
     await expect(assertImportClosure(manifestWithDeclaredPeers, root)).resolves.toBeUndefined();
   });
 
-  test('.css files: @import inside a comment is rejected by the whitespace-shape guard, but a real @import to an undeclared package is still caught', async () => {
+  test('a package Bun treats as builtin but real Node does not (ws, undici) is still flagged as undeclared (cinder#1335 round-3 finding)', async () => {
+    // Verified empirically: under Bun, `require('node:module').isBuiltin('ws')`
+    // and `isBuiltin('undici')` both incorrectly return true (Bun ships
+    // these as built-in shims; real Node does not). If this validator ever
+    // asked Bun's own node:module instead of a real Node executable, a
+    // packed `import 'ws'` would pass this check without a declared
+    // dependency and then fail for every actual Node consumer.
+    const root = await makeFixture({
+      'dist/bun-only-builtin.js': `import { WebSocket } from 'ws';\nexport const value = WebSocket;\n`,
+    });
+
+    await expect(assertImportClosure(manifestWithDeclaredPeers, root)).rejects.toThrow(/\bws\b/u);
+  });
+
+  test('a non-builtin subpath of a real builtin name (assert/not-real) is still flagged, not exempted by first-segment matching (cinder#1335 round-3 finding)', async () => {
+    const root = await makeFixture({
+      'dist/fake-builtin-subpath.js': `import { danger } from 'assert/not-real';\nexport const value = danger;\n`,
+    });
+
+    await expect(assertImportClosure(manifestWithDeclaredPeers, root)).rejects.toThrow(
+      /assert\/not-real/u,
+    );
+  });
+
+  test('.css files: @import inside a comment is rejected, but a real @import to an undeclared package is still caught', async () => {
     const proseOnly = await makeFixture({
       'dist/styles.css': `/* See @import "prose that happens to look like a specifier" for context. */\n.foo { color: red; }\n`,
     });
@@ -279,6 +319,23 @@ export const value = 1;
     });
     await expect(assertImportClosure(manifestWithDeclaredPeers, realUndeclared)).rejects.toThrow(
       /totally-undeclared-package/u,
+    );
+  });
+
+  test('.css files: a real quoted @import path with a space in a later subpath segment is still caught, not discarded (cinder#1335 round-3 finding)', async () => {
+    // Round 2's whitespace guard rejected the WHOLE captured string if it
+    // contained any whitespace at all -- which incorrectly discarded a
+    // legally-quoted CSS path whose subpath (not its package name) has a
+    // space, like a real file named "theme dark.css". Validating only the
+    // bare-package-name portion fixes this while staying fail-closed
+    // against comment prose (which has no "/", so its own bare-name
+    // portion is the whole whitespace-laden string).
+    const root = await makeFixture({
+      'dist/styles.css': `@import 'totally-undeclared-package/theme dark.css';\n.foo { color: red; }\n`,
+    });
+
+    await expect(assertImportClosure(manifestWithDeclaredPeers, root)).rejects.toThrow(
+      /totally-undeclared-package\/theme dark\.css/u,
     );
   });
 });
@@ -312,22 +369,6 @@ describe('extractSvelteScriptBlocks', () => {
   });
 });
 
-describe('isPlausibleImportSpecifier', () => {
-  test('accepts a real-looking specifier', () => {
-    expect(isPlausibleImportSpecifier('@lostgradient/cinder/styles')).toBe(true);
-    expect(isPlausibleImportSpecifier('svelte')).toBe(true);
-  });
-
-  test('rejects text containing whitespace -- no real specifier can contain a space', () => {
-    expect(isPlausibleImportSpecifier('prose that looks like a specifier')).toBe(false);
-    expect(isPlausibleImportSpecifier('a\nmultiline\ncapture')).toBe(false);
-  });
-
-  test('rejects an empty string', () => {
-    expect(isPlausibleImportSpecifier('')).toBe(false);
-  });
-});
-
 describe('extractSvelteStyleBlocks', () => {
   test('extracts a single style block', () => {
     const source = `<script lang="ts">1</script>\n<style>\n  p { color: red; }\n</style>\n`;
@@ -344,25 +385,90 @@ describe('extractSvelteStyleBlocks', () => {
   });
 });
 
-describe('isNodeBuiltinSpecifier', () => {
-  test('accepts a bare builtin name', () => {
-    expect(isNodeBuiltinSpecifier('fs')).toBe(true);
-    expect(isNodeBuiltinSpecifier('path')).toBe(true);
+describe('isPlausibleCssImportSpecifier (cinder#1335 round-3)', () => {
+  test('accepts a real-looking specifier with no subpath', () => {
+    expect(isPlausibleCssImportSpecifier('@lostgradient/cinder/styles')).toBe(true);
+    expect(isPlausibleCssImportSpecifier('svelte')).toBe(true);
   });
 
-  test('accepts a node:-prefixed builtin name', () => {
-    expect(isNodeBuiltinSpecifier('node:fs')).toBe(true);
-    expect(isNodeBuiltinSpecifier('node:path')).toBe(true);
+  test('accepts a real quoted path whose subpath (not its package name) contains whitespace', () => {
+    expect(isPlausibleCssImportSpecifier('undeclared-package/theme dark.css')).toBe(true);
+    expect(isPlausibleCssImportSpecifier('@lostgradient/cinder/some file.css')).toBe(true);
   });
 
-  test('accepts a subpath of a builtin, prefixed or bare', () => {
-    expect(isNodeBuiltinSpecifier('node:fs/promises')).toBe(true);
-    expect(isNodeBuiltinSpecifier('fs/promises')).toBe(true);
+  test('rejects comment prose -- whose own bare-name portion is still whitespace-laden, since it has no "/"', () => {
+    expect(isPlausibleCssImportSpecifier('prose that looks like a specifier')).toBe(false);
+    expect(isPlausibleCssImportSpecifier('a\nmultiline\ncapture')).toBe(false);
   });
 
-  test('rejects a real (non-builtin) package name, even one that looks path-like', () => {
-    expect(isNodeBuiltinSpecifier('svelte')).toBe(false);
-    expect(isNodeBuiltinSpecifier('@lostgradient/cinder')).toBe(false);
-    expect(isNodeBuiltinSpecifier('totally-undeclared-package')).toBe(false);
+  test('rejects prose whose first segment (before an early "/") still contains whitespace', () => {
+    expect(isPlausibleCssImportSpecifier('see docs/for more info')).toBe(false);
+  });
+
+  test('rejects an empty string', () => {
+    expect(isPlausibleCssImportSpecifier('')).toBe(false);
+  });
+});
+
+describe('findRealNodeExecutable', () => {
+  test('finds a real Node executable, not a bun-node shim', async () => {
+    const node = await findRealNodeExecutable();
+    expect(node).toBeDefined();
+    if (node === undefined) return;
+    expect(node).not.toContain('bun-node');
+  });
+});
+
+describe('nodeBuiltinMembership (cinder#1335 round-3 finding)', () => {
+  test('recognizes real Node builtins, bare and node:-prefixed, including subpaths', async () => {
+    const node = await findRealNodeExecutable();
+    expect(node).toBeDefined();
+    if (node === undefined) return;
+
+    const result = await nodeBuiltinMembership(node, ['fs', 'node:fs', 'node:fs/promises']);
+    expect(result.has('fs')).toBe(true);
+    expect(result.has('node:fs')).toBe(true);
+    expect(result.has('node:fs/promises')).toBe(true);
+  });
+
+  test('does not recognize packages Bun treats as builtin but real Node does not (ws, undici)', async () => {
+    // The actual bug this fix closes: under Bun, `node:module`'s own
+    // `isBuiltin('ws')`/`isBuiltin('undici')` both incorrectly return
+    // `true`. Querying the real target Node instead gets the right answer.
+    const node = await findRealNodeExecutable();
+    expect(node).toBeDefined();
+    if (node === undefined) return;
+
+    const result = await nodeBuiltinMembership(node, ['ws', 'undici']);
+    expect(result.has('ws')).toBe(false);
+    expect(result.has('undici')).toBe(false);
+  });
+
+  test('does not recognize a non-builtin subpath of a real builtin name', async () => {
+    const node = await findRealNodeExecutable();
+    expect(node).toBeDefined();
+    if (node === undefined) return;
+
+    const result = await nodeBuiltinMembership(node, ['assert', 'assert/not-real']);
+    expect(result.has('assert')).toBe(true);
+    expect(result.has('assert/not-real')).toBe(false);
+  });
+
+  test('does not recognize a real (non-builtin) package name', async () => {
+    const node = await findRealNodeExecutable();
+    expect(node).toBeDefined();
+    if (node === undefined) return;
+
+    const result = await nodeBuiltinMembership(node, [
+      'svelte',
+      '@lostgradient/cinder',
+      'totally-undeclared-package',
+    ]);
+    expect(result.size).toBe(0);
+  });
+
+  test('returns an empty set without spawning anything for an empty specifier list', async () => {
+    const result = await nodeBuiltinMembership('/nonexistent/node/binary', []);
+    expect(result.size).toBe(0);
   });
 });
