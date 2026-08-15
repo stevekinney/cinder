@@ -1749,6 +1749,19 @@
         selectionPopoverPosition = null;
         capturedSelectionForPopover = null;
         selectionPopoverExpanded = false;
+
+        // Close the thread popover too (cinder#1305 review follow-up): its
+        // anchor only exists in the editor view, and leaving it destroys
+        // editorRef (the same unbind #1301 relies on), which turns F6's
+        // `customFocusHandler` for the 'editor' region into a no-op
+        // (`editorRef?.getView()?.focus()` on a null ref) that still returns
+        // `true` — suppressing the navigator's fallback and stranding focus
+        // inside a popover pointing at content that is no longer rendered.
+        // Closing here, alongside the selection popover this branch already
+        // clears for the same "left the editor view" reason, means F6 never
+        // gets the chance to strand: there is nothing left to navigate away
+        // from.
+        handlePopoverClose();
       }
       activeView = view;
       announce(`Switched to ${view} view`);

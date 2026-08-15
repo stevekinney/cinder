@@ -41,6 +41,17 @@ Google Docs or a GitHub PR review thread, not a page-blocking dialog. The
 existing Tab-trap-within-the-popover and Escape-to-restore behavior needed no
 change either way and are unaffected. Fixes #1305.
 
+Review follow-up on #1305: the thread popover's anchor only exists in the
+editor view, so leaving it (Diff/Summary) unmounts `editorRef` — the same
+unbind #1301's fix relies on. That turned F6's `customFocusHandler` for the
+`'editor'` region into a no-op (`editorRef?.getView()?.focus()` on a null
+ref) that still returned `true`, suppressing the region navigator's fallback
+and stranding focus inside a popover pointing at content that was no longer
+rendered — precisely the failure mode dropping `aria-modal` was supposed to
+keep escapable. Fixed by closing the thread popover in the same
+"left the editor view" branch that already clears the (separate) selection
+popover for the same reason.
+
 Verified against the real Chromium accessibility tree (via the CDP
 `Accessibility` domain), not just DOM attribute presence, for all three:
 `role="textbox"` appearing/disappearing on the ProseMirror node in step with

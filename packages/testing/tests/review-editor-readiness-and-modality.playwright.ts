@@ -90,7 +90,7 @@ async function computedAxProperty(
     });
     const node = nodes[0];
     const property = node?.properties?.find((candidate) => candidate.name === propertyName);
-    return property?.value.value;
+    return property?.value?.value;
   } finally {
     await client.detach();
   }
@@ -214,6 +214,40 @@ test.describe('ReviewEditor view-tab aria-controls (cinder#1303)', () => {
     ].filter((violation) => violation.id === 'aria-valid-attr-value');
     expect(idrefViolations, JSON.stringify(idrefViolations, null, 2)).toHaveLength(0);
   });
+
+  test('keyboard roving-tabindex navigation settles on a resolving aria-controls, not a stale one', async ({
+    page,
+  }) => {
+    // Review round finding: SegmentedControlController.handleKeydown calls
+    // toggle() (updates `activeView`) and then focuses the destination tab
+    // SYNCHRONOUSLY, before Svelte's own reactive DOM patch for that state
+    // change has necessarily been applied. This drives that exact path (a
+    // real ArrowRight keypress, not a click) and asserts the SETTLED state
+    // once Playwright reads it back — which is also the earliest point a
+    // real screen reader could ever observe it, since AT reads the
+    // accessibility tree only after the current script task yields back to
+    // the browser's render/AX pipeline, by which point Svelte's synchronous
+    // post-handler flush has already run.
+    await openBasicReviewEditor(page);
+
+    const editorTab = page.locator(BASIC).getByRole('tab', { name: 'Editor', exact: true });
+    await editorTab.focus();
+    await expect(editorTab).toBeFocused();
+
+    await page.keyboard.press('ArrowRight');
+
+    const diffTab = page.locator(BASIC).getByRole('tab', { name: 'Diff', exact: true });
+    await expect(diffTab).toBeFocused();
+    await expect(diffTab).toHaveAttribute('aria-selected', 'true');
+
+    const controlsId = await diffTab.getAttribute('aria-controls');
+    expect(controlsId).not.toBeNull();
+    const resolves = await page.evaluate((id) => document.getElementById(id) !== null, controlsId!);
+    expect(resolves).toBe(true);
+
+    // The tab that lost selection makes no aria-controls claim at all.
+    await expect(editorTab).not.toHaveAttribute('aria-controls');
+  });
 });
 
 test.describe('ReviewEditor thread popover modality (cinder#1305)', () => {
@@ -288,5 +322,48 @@ test.describe('ReviewEditor thread popover modality (cinder#1305)', () => {
 
     await page.keyboard.press('Escape');
     await expect(popover).toHaveCount(0);
+  });
+
+  test('switching away from the editor view closes the popover instead of stranding focus in it', async ({
+    page,
+  }) => {
+    // Review round finding: the popover's anchor only exists in the editor
+    // view. Leaving it unmounts editorRef (the same unbind #1301's fix
+    // relies on), which turns F6's `customFocusHandler` for the 'editor'
+    // region into a no-op (`editorRef?.getView()?.focus()` on a null ref)
+    // that still returns `true` — suppressing the navigator's fallback and
+    // stranding focus inside a popover pointing at content no longer
+    // rendered. `onViewChange` already clears the (unrelated) selection
+    // popover for the same "left the editor view" reason; the thread popover
+    // needed the same treatment.
+    //
+    // The view change here is driven via the tablist's ArrowRight
+    // roving-tabindex handler, not a click: `SegmentedControlController`'s
+    // keyboard path calls `toggle()` and `.focus()` directly with no
+    // synthetic `click` event, so it does NOT pass through
+    // `createClickOutside`'s click listener — which would otherwise close
+    // the popover on its own (any click landing outside it, including a
+    // real OR keyboard-synthesized one on the Diff tab, triggers that
+    // listener) and mask whether THIS fix is what actually closed it.
+    const popover = await openThreadPopover(page);
+
+    const editorTab = page.locator(WITH_COMMENTS).getByRole('tab', { name: 'Editor', exact: true });
+    await editorTab.focus();
+    await expect(editorTab).toBeFocused();
+    // Moving focus via .focus() (not a click) must not have already closed
+    // the popover — otherwise the assertions below would not be exercising
+    // the view-change path at all.
+    await expect(popover).toBeVisible();
+
+    await page.keyboard.press('ArrowRight');
+
+    const diffTab = page.locator(WITH_COMMENTS).getByRole('tab', { name: 'Diff', exact: true });
+    await expect(diffTab).toHaveAttribute('aria-selected', 'true');
+    await expect(popover).toHaveCount(0);
+
+    // Focus must land somewhere real, not get stranded and not drop to
+    // <body>.
+    const strandedOnBody = await page.evaluate(() => document.activeElement === document.body);
+    expect(strandedOnBody).toBe(false);
   });
 });
