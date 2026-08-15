@@ -377,14 +377,33 @@ export interface RoundTripWithFrontMatterResult {
  * ```
  */
 export function normalizeWithFrontMatter(markdown: string): string {
-  const { data, body, hasFrontMatter } = parseFrontMatter(markdown);
+  const { data, raw, body, hasFrontMatter } = parseFrontMatter(markdown);
 
   // Normalize the body content
   const normalizedBody = normalize(body);
 
-  // If no front matter, return normalized body
-  if (!hasFrontMatter || !data) {
+  // No fence at all, or a `---`-opening span that isn't valid front matter:
+  // `body` already is the whole document in the rejected case, so there's
+  // nothing else to recombine.
+  if (!hasFrontMatter) {
     return normalizedBody;
+  }
+
+  if (!data) {
+    // `hasFrontMatter: true` with `data: null` covers two different cases
+    // that `parseFrontMatter` deliberately can't tell apart: a genuinely
+    // blank block (`raw === null`, nothing to preserve) and a comment-only
+    // block (`raw` holds the actual `#`-prefixed text). A comment-only span
+    // can collide with ordinary Markdown that happens to be all ATX
+    // headings (`# Title\n## Subtitle`) -- ambiguous the same way a list vs.
+    // a YAML sequence is, and unlike that case there's no object-shape test
+    // to disambiguate it, since neither reading produces YAML data. Rather
+    // than guess, preserve `raw` verbatim inside the re-wrapped fence: no
+    // content is ever silently dropped regardless of which reading was
+    // intended (cinder#1330 round-6 finding). This mirrors the round-5
+    // precedent for genuinely-invalid front matter losing its dedicated
+    // recovery affordance without losing the underlying bytes.
+    return raw ? `---\n${raw}\n---\n${normalizedBody}` : normalizedBody;
   }
 
   // Serialize front matter with deterministic ordering and recombine
@@ -500,6 +519,24 @@ export function contentEqualsWithFrontMatter(a: string, b: string): boolean {
 
   // Compare front matter data
   if (!frontMatterDataEquals(parsedA.data, parsedB.data)) {
+    return false;
+  }
+
+  // `data` equality alone can't see a comment-only front-matter span (`data`
+  // is `null` on both sides regardless of what the comment text says), so
+  // two documents differing only in that text would otherwise compare equal
+  // -- the same silent-drop failure mode `normalizeWithFrontMatter` had,
+  // just surfacing as a false "unchanged" instead of missing content
+  // (cinder#1330 round-6 finding). Compare `raw` byte-for-byte whenever
+  // neither side has data: it's opaque text at this point (we don't know if
+  // it's meant as YAML comments or collided-with Markdown), so no
+  // normalization is applied to it, same as `normalizeWithFrontMatter`'s
+  // verbatim preservation. This is intentionally conservative in one
+  // direction: `---\n{}\n---` (`raw: '{}'`) no longer compares equal to
+  // `---\n---` (`raw: null`), even though both have `data: null` -- a
+  // spurious "changed" rather than a missed change, which is the safe side
+  // to be wrong on here.
+  if (!parsedA.data && !parsedB.data && parsedA.raw !== parsedB.raw) {
     return false;
   }
 

@@ -73,9 +73,21 @@ function parseYaml(raw: string): Record<string, unknown> | null {
  * delimiters. Without this check, `parseYaml` returning `null` for
  * comment-only content fell into the *rejected* branch below (treated as
  * "not front matter at all," the same as a Markdown list or a bare scalar),
- * which is wrong for a case that was never ambiguous with ordinary Markdown
- * the way a sequence or scalar is: a document doesn't ordinarily have
- * `# ...` as its very first line followed immediately by a second `---`.
+ * which is wrong for the common "empty block with a note" idiom.
+ *
+ * This *is* ambiguous with ordinary Markdown, though, in exactly the way a
+ * sequence or scalar is: `# Title\n## Subtitle` between two `---` lines is
+ * simultaneously valid as "nothing but YAML comments" and as two ordinary
+ * ATX headings sandwiched between thematic breaks (cinder#1330 round-6
+ * finding). Unlike the object-shape test above, there's no content-shape
+ * signal that resolves this one -- both readings produce the same `data:
+ * null`. This function doesn't try to guess; `parseFrontMatter` classifies
+ * comment-only content as front matter either way, and
+ * `normalizeWithFrontMatter`/`contentEqualsWithFrontMatter` preserve and
+ * compare the raw text verbatim rather than dropping it, so misclassifying
+ * ATX headings as a comment-only block costs a display affordance (they
+ * round-trip as part of the front-matter span, not as rendered headings),
+ * never the underlying bytes.
  *
  * Only *full*-line comments are recognized (a line whose trimmed content
  * starts with `#`); a line like `title: Hello # a note` has a real value

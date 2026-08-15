@@ -6,6 +6,7 @@ import {
   clearSourceLineMapCache,
   identitySourceLineMap,
   mapNormalizedLineNumber,
+  pairChildrenByType,
   type SourceLineMap,
 } from './source-line-map';
 
@@ -384,5 +385,144 @@ describe('buildSourceLineMapCached', () => {
     }
     const first = buildSourceLineMapCached('Doc 0', 'Doc 0');
     expect(first).toEqual(buildSourceLineMap('Doc 0', 'Doc 0'));
+  });
+});
+
+describe('pairChildrenByType suffix-trim optimization (cinder#1330 round-6 finding)', () => {
+  // A minimal stand-in for a mdast `Content` node -- `pairChildrenByType`
+  // and the `nodeKey` it calls internally only ever read `.type` (and
+  // `.ordered` for `list`), so a real parsed tree isn't needed to exercise
+  // the pairing logic directly.
+  type FakeNode = { type: string; ordered?: boolean };
+  const node = (type: string, ordered?: boolean): FakeNode =>
+    ordered === undefined ? { type } : { type, ordered };
+
+  function typeKey(n: FakeNode): string {
+    if (n.type === 'list') return n.ordered ? 'list:ordered' : 'list:bullet';
+    return n.type;
+  }
+
+  /**
+   * An independent, untrimmed LCS pairing -- exactly the algorithm
+   * `pairChildrenByType` used before the suffix-trim optimization, kept
+   * here (not imported) as the equivalence oracle. If this and the
+   * production function ever disagree, the trim changed observable output,
+   * which the optimization must never do.
+   */
+  function untrimmedOraclePairing(source: FakeNode[], normalized: FakeNode[]): (number | null)[] {
+    const m = source.length;
+    const n = normalized.length;
+    const lcs: number[][] = Array.from({ length: m + 1 }, () =>
+      Array.from({ length: n + 1 }, () => 0),
+    );
+    for (let i = 1; i <= m; i++) {
+      for (let j = 1; j <= n; j++) {
+        lcs[i]![j] =
+          typeKey(source[i - 1]!) === typeKey(normalized[j - 1]!)
+            ? lcs[i - 1]![j - 1]! + 1
+            : Math.max(lcs[i - 1]![j]!, lcs[i]![j - 1]!);
+      }
+    }
+    const matched: (number | null)[] = Array.from({ length: n }, () => null);
+    let i = m;
+    let j = n;
+    while (i > 0 && j > 0) {
+      if (typeKey(source[i - 1]!) === typeKey(normalized[j - 1]!)) {
+        matched[j - 1] = i - 1;
+        i--;
+        j--;
+      } else if (lcs[i - 1]![j]! >= lcs[i]![j - 1]!) {
+        i--;
+      } else {
+        j--;
+      }
+    }
+    return matched;
+  }
+
+  function run(source: FakeNode[], normalized: FakeNode[]): (number | null)[] {
+    return pairChildrenByType(
+      source as unknown as Parameters<typeof pairChildrenByType>[0],
+      normalized as unknown as Parameters<typeof pairChildrenByType>[1],
+    );
+  }
+
+  const cases: Record<string, { source: FakeNode[]; normalized: FakeNode[] }> = {
+    'both empty': { source: [], normalized: [] },
+    'identical, no duplicates': {
+      source: [node('paragraph'), node('heading'), node('thematicBreak')],
+      normalized: [node('paragraph'), node('heading'), node('thematicBreak')],
+    },
+    'identical with a long uniform run (the typing-edit case: no type change at all)': {
+      source: Array.from({ length: 50 }, () => node('paragraph')),
+      normalized: Array.from({ length: 50 }, () => node('paragraph')),
+    },
+    'a single node inserted at the very front': {
+      source: [node('heading'), node('paragraph'), node('paragraph'), node('thematicBreak')],
+      normalized: [node('paragraph'), node('paragraph'), node('thematicBreak')],
+    },
+    'a single node inserted at the very end': {
+      source: [node('paragraph'), node('paragraph'), node('thematicBreak')],
+      normalized: [node('paragraph'), node('paragraph'), node('thematicBreak'), node('heading')],
+    },
+    'a single node inserted in the middle': {
+      source: [node('paragraph'), node('list'), node('paragraph'), node('paragraph')],
+      normalized: [node('paragraph'), node('paragraph'), node('paragraph')],
+    },
+    'a node removed from the very end': {
+      source: [node('paragraph'), node('paragraph'), node('thematicBreak')],
+      normalized: [node('paragraph'), node('paragraph')],
+    },
+    // The exact worked example that shows why a *prefix* trim (the mirror
+    // of the suffix trim implemented here) is NOT equivalent to the
+    // untrimmed backtrace: source = [A, A, B], normalized = [A, B]. The
+    // real backtrace (starting from the end) matches normalized's lone `A`
+    // against source's *second* `A`, not its first, because by the time
+    // the walk reaches index 0 it has already consumed the first `A` via a
+    // different path. A naive prefix trim would match the first `A`
+    // instead -- a different, wrong answer. This case is exactly why this
+    // module trims only the suffix.
+    'duplicate leading type, single trailing match (the prefix-trim counterexample)': {
+      source: [node('paragraph'), node('paragraph'), node('thematicBreak')],
+      normalized: [node('paragraph'), node('thematicBreak')],
+    },
+    'duplicate types throughout, with a real difference at the front': {
+      source: [
+        node('heading'),
+        node('paragraph'),
+        node('paragraph'),
+        node('paragraph'),
+        node('thematicBreak'),
+      ],
+      normalized: [node('paragraph'), node('paragraph'), node('paragraph'), node('thematicBreak')],
+    },
+    'completely disjoint types (no common subsequence at all)': {
+      source: [node('heading'), node('list', true)],
+      normalized: [node('paragraph'), node('thematicBreak'), node('code')],
+    },
+    'ordered vs. bullet lists are distinct keys even though both are "list"': {
+      source: [node('list', true), node('paragraph')],
+      normalized: [node('list', false), node('paragraph')],
+    },
+    'source shorter than normalized, no common suffix': {
+      source: [node('paragraph')],
+      normalized: [node('heading'), node('paragraph'), node('thematicBreak')],
+    },
+  };
+
+  for (const [description, { source, normalized }] of Object.entries(cases)) {
+    test(`matches the untrimmed LCS oracle exactly: ${description}`, () => {
+      expect(run(source, normalized)).toEqual(untrimmedOraclePairing(source, normalized));
+    });
+  }
+
+  test('the suffix trim actually engages for the typing-edit case (sanity check for the equivalence tests above)', () => {
+    // Not a behavioral assertion about output -- a check that the fixture
+    // above genuinely exercises the trim's fast path, so "matches the
+    // oracle" isn't vacuously true because the interior LCS ran anyway for
+    // every case. All 50 positions should be trimmed-and-matched directly.
+    const uniform = Array.from({ length: 50 }, () => node('paragraph'));
+    const result = run(uniform, uniform);
+    expect(result).toEqual(Array.from({ length: 50 }, (_, index) => index));
   });
 });

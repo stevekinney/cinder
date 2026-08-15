@@ -498,6 +498,39 @@ apple: a
     expect(result).toContain('two');
     expect(result).toContain('Body.');
   });
+
+  test('preserves a comment-only front-matter span verbatim instead of dropping it (cinder#1330 round-6 finding)', () => {
+    // `isCommentOnlyYaml` classifies `# Title\n## Subtitle` (between the
+    // fences) as an intentionally-empty front-matter block with a comment,
+    // so `hasFrontMatter: true, data: null` -- the exact same shape a truly
+    // blank block reports. Before this fix, this function's `!data` branch
+    // returned only `normalize(body)`, discarding the raw span entirely: the
+    // two headings would vanish from the output with no error.
+    const markdown = '---\n# Title\n## Subtitle\n---\nBody content\n';
+
+    const result = normalizeWithFrontMatter(markdown);
+
+    expect(result).toContain('# Title');
+    expect(result).toContain('## Subtitle');
+    expect(result).toContain('Body content');
+  });
+
+  test('a genuinely blank front-matter block still normalizes to just the body (no raw text to lose)', () => {
+    const markdown = '---\n---\n\nBody content\n';
+
+    const result = normalizeWithFrontMatter(markdown);
+
+    expect(result).toBe('Body content\n');
+  });
+
+  test('normalizing a comment-only span is idempotent', () => {
+    const markdown = '---\n# Title\n## Subtitle\n---\nBody content\n';
+
+    const once = normalizeWithFrontMatter(markdown);
+    const twice = normalizeWithFrontMatter(once);
+
+    expect(twice).toBe(once);
+  });
 });
 
 describe('roundTripWithFrontMatter', () => {
@@ -654,5 +687,36 @@ title: Test
     const withDash = '---\n\n- one\n\n---\n\nBody.\n';
 
     expect(contentEqualsWithFrontMatter(withAsterisk, withDash)).toBe(true);
+  });
+
+  test('a comment-only front-matter span is compared, not made invisible by data equality (cinder#1330 round-6 finding)', () => {
+    // Both documents parse to `hasFrontMatter: true, data: null` -- the
+    // comment text itself carries the only difference, and `data` equality
+    // alone can't see it. Before this fix these compared equal (a false
+    // "unchanged"); the differing raw text must make them unequal.
+    const docA = '---\n# Title A\n---\nBody.\n';
+    const docB = '---\n# Title B\n---\nBody.\n';
+
+    expect(contentEqualsWithFrontMatter(docA, docB)).toBe(false);
+  });
+
+  test('identical comment-only front-matter spans still compare equal', () => {
+    const docA = '---\n# Same title\n---\nBody.\n';
+    const docB = '---\n# Same title\n---\nBody.\n';
+
+    expect(contentEqualsWithFrontMatter(docA, docB)).toBe(true);
+  });
+
+  test('an empty-object span and a genuinely blank span both have data: null but are not the same raw text -- compares unequal, not silently equal (documented edge case)', () => {
+    // `---\n{}\n---` parses to `data: null` (an object with zero keys is
+    // normalized to `null`, same as blank) but `raw: '{}'`; `---\n---`
+    // parses to `raw: null`. Comparing `raw` byte-for-byte means these two
+    // differ, even though neither has visible "data" -- a spurious inequality
+    // rather than a missed one, which is the safe direction to be wrong on
+    // here. Documented so a later round doesn't rediscover this as a mystery.
+    const emptyObject = '---\n{}\n---\n\nBody.\n';
+    const trulyBlank = '---\n---\n\nBody.\n';
+
+    expect(contentEqualsWithFrontMatter(emptyObject, trulyBlank)).toBe(false);
   });
 });

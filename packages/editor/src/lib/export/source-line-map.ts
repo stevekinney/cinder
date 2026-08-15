@@ -300,19 +300,81 @@ function nodeKey(node: Content): string {
  * misaligning everything after the first difference, if some future
  * `normalize()` change ever inserts, removes, or reorders a node a source
  * document didn't have.
+ *
+ * Exported (rather than module-private) so the test suite can check it
+ * directly against an independent LCS oracle -- see the suffix-trim
+ * equivalence tests, which exist because the trim implemented below is
+ * `O(n)` in the common case but only safe in one direction; see its own
+ * comment for why.
  */
-function pairChildrenByType(
+export function pairChildrenByType(
   sourceChildren: Content[],
   normalizedChildren: Content[],
 ): (number | null)[] {
   const m = sourceChildren.length;
   const n = normalizedChildren.length;
+  const matched: (number | null)[] = Array.from({ length: n }, () => null);
 
-  const lcs: number[][] = Array.from({ length: m + 1 }, () =>
-    Array.from({ length: n + 1 }, () => 0),
+  // Trim a common *suffix* first, by walking both arrays backward from
+  // their ends and matching greedily while types agree. This is exactly
+  // equivalent to the LCS backtrace below on its own, not an approximation
+  // of it: the backtrace starts at `(m, n)` -- the very end of both arrays
+  // -- and its first check every iteration is "do these types match?",
+  // taking that diagonal (matching) step unconditionally whenever they do,
+  // before it ever looks at the DP table. Replaying that same walk directly
+  // for the trailing run the table doesn't need to arbitrate reproduces the
+  // identical matches the full backtrace would have produced for that run,
+  // just without paying for the table cells underneath it.
+  //
+  // A *prefix* trim by the mirror-image logic (walk forward from index 0,
+  // matching while types agree) is deliberately NOT done here, because it
+  // is not equivalent: this backtrace's direction, combined with its
+  // `i--` bias on DP ties, means a repeated type at the front (`[A, A, B]`
+  // vs `[A, B]`) can end up matched to the *second* `A`, not the first, once
+  // the walk from the end reaches it -- a real divergence, not a
+  // hypothetical one; see `pairChildrenByType`'s test file for the worked
+  // example and the equivalence test that checks this trimmed version
+  // against an untrimmed LCS oracle across shape-varied and
+  // shape-mismatched inputs, precisely because that asymmetry makes this
+  // easy to get wrong silently.
+  //
+  // In the common case -- content edited within an existing node rather
+  // than a node inserted, removed, or reordered, which is what typing a
+  // single keystroke does to the top-level child sequence -- source and
+  // normalized have the identical type sequence throughout, so this suffix
+  // walk alone consumes the *entire* array and the LCS table below never
+  // runs at all. This is the fix for the "quadratic AST child matcher on
+  // every keystroke" finding (cinder#1330 round-6): the table this module
+  // used to build unconditionally, on every call, for every container, at
+  // full `(m+1) x (n+1)` size, now only gets built for the span an actual
+  // structural difference falls within -- typically empty, and never
+  // larger than the distance between the outermost two differing nodes.
+  let mEnd = m;
+  let nEnd = n;
+  while (
+    mEnd > 0 &&
+    nEnd > 0 &&
+    nodeKey(sourceChildren[mEnd - 1]!) === nodeKey(normalizedChildren[nEnd - 1]!)
+  ) {
+    matched[nEnd - 1] = mEnd - 1;
+    mEnd--;
+    nEnd--;
+  }
+
+  if (mEnd === 0 || nEnd === 0) {
+    // Either side (or both) is fully consumed by the suffix trim -- nothing
+    // left to align via the table. Any remaining `normalizedChildren`
+    // indices below `nEnd` (when `mEnd === 0` but `nEnd > 0`) stay `null`,
+    // already their initialized value: there's no `sourceChildren` left to
+    // pair them with.
+    return matched;
+  }
+
+  const lcs: number[][] = Array.from({ length: mEnd + 1 }, () =>
+    Array.from({ length: nEnd + 1 }, () => 0),
   );
-  for (let i = 1; i <= m; i++) {
-    for (let j = 1; j <= n; j++) {
+  for (let i = 1; i <= mEnd; i++) {
+    for (let j = 1; j <= nEnd; j++) {
       lcs[i]![j] =
         nodeKey(sourceChildren[i - 1]!) === nodeKey(normalizedChildren[j - 1]!)
           ? lcs[i - 1]![j - 1]! + 1
@@ -320,9 +382,8 @@ function pairChildrenByType(
     }
   }
 
-  const matched: (number | null)[] = Array.from({ length: n }, () => null);
-  let i = m;
-  let j = n;
+  let i = mEnd;
+  let j = nEnd;
   while (i > 0 && j > 0) {
     if (nodeKey(sourceChildren[i - 1]!) === nodeKey(normalizedChildren[j - 1]!)) {
       matched[j - 1] = i - 1;

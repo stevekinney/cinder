@@ -87,3 +87,31 @@ audited (`@lostgradient/chat` has none): the two "is it safe to prepend" call si
 entirely separate `DiffViewer`-local implementation that never called the shared `parseFrontMatter`
 in the first place) only ever _conditionally split or validate_, never prepend, so `hasFrontMatter`
 stays the correct check for them.
+
+**Follow-up (round-6 review finding): the comment-only fix above reopened the exact silent-drop bug
+the `fencePresent` fix just closed, in a new spot.** `# Title\n## Subtitle` between `---` fences is
+simultaneously valid as "nothing but YAML comments" _and_ as two ordinary ATX headings sandwiched
+between thematic breaks — the same irreducible ambiguity a Markdown list has with a YAML sequence,
+except here there's no object-shape test to resolve it, since neither reading produces YAML data.
+`parseFrontMatter` classifies it as front matter (`hasFrontMatter: true, data: null`, same shape as
+a genuinely blank block) either way, which is correct for the "note" reading — but `normalizeWithFrontMatter`
+and `contentEqualsWithFrontMatter` (`@lostgradient/markdown/pipeline`) both treated `data: null` as
+"nothing here to preserve or compare," a shortcut that was true when only genuinely-blank content
+could reach that branch and became false once comment-only content could too: `normalizeWithFrontMatter`
+silently dropped the `# Title\n## Subtitle` span from its output, and `contentEqualsWithFrontMatter`
+reported two documents differing only in that span as equal.
+
+Fixed the same way as the earlier "preserved as body instead of silently dropping it" fix in this
+same changeset, not by re-litigating whether comment-only content should count as front matter:
+both functions now fall back to the parsed `raw` text (the literal bytes between the fences) whenever
+`hasFrontMatter` is true but `data` is null and `raw` is non-null, rather than assuming there's
+nothing there. `normalizeWithFrontMatter` re-wraps `raw` verbatim in the output instead of discarding
+it; `contentEqualsWithFrontMatter` compares `raw` byte-for-byte before falling through to the body
+comparison. Neither treats `raw` as YAML or Markdown at this point — it's opaque preserved text either
+way, so misclassifying ATX headings as a comment-only block costs a display affordance (they round-trip
+as part of the front-matter span rather than rendering as headings in the body), never the underlying
+bytes, matching the precedent this changeset already established for invalid front matter losing its
+dedicated recovery affordance without losing data. One deliberately-accepted, documented edge case:
+comparing `raw` byte-for-byte means `---\n{}\n---` (`raw: '{}'`, an empty YAML mapping) no longer
+compares equal to `---\n---` (`raw: null`), even though both have `data: null` — a spurious "changed"
+rather than a missed one, the safe side to be wrong on.
