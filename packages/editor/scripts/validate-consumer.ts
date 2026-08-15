@@ -201,13 +201,68 @@ async function linkFixtureDependencyGraph(fixture: ValidationFixture): Promise<v
   }
 }
 
-function barePackageName(specifier: string): string {
+export function barePackageName(specifier: string): string {
   return specifier.startsWith('@')
     ? specifier.split('/').slice(0, 2).join('/')
     : (specifier.split('/')[0] ?? specifier);
 }
 
-async function assertImportClosure(
+/**
+ * Extract the JS/TS content of every `<script>` block (both a `module`
+ * block and an instance block) from a `.svelte` file's markup, so it can be
+ * fed through the same real lexer {@link assertImportClosure} uses for
+ * `.js` files. There is no Svelte-markup-aware import lexer available here,
+ * but isolating just the script content first, then handing only that to
+ * `Bun.Transpiler`, still means nothing outside a `<script>` tag -- markup,
+ * text content, a `<style>` block -- is ever scanned for imports at all.
+ */
+export function extractSvelteScriptBlocks(source: string): string[] {
+  const blocks: string[] = [];
+  for (const match of source.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/giu)) {
+    const content = match[1];
+    if (content !== undefined) blocks.push(content);
+  }
+  return blocks;
+}
+
+/**
+ * True only for text that could plausibly BE a real import specifier: a
+ * single token with no whitespace. Used as the CSS `@import` fallback
+ * below, where (unlike `.js`/`.svelte`) no real lexer is available -- a
+ * regex capture is still text-matched, but this guard is enough to rule
+ * out comment prose specifically, since prose is exactly the one thing a
+ * real specifier structurally cannot be: no import path a bundler resolves
+ * can contain a space.
+ */
+export function isPlausibleImportSpecifier(specifier: string): boolean {
+  return specifier.length > 0 && !/\s/u.test(specifier);
+}
+
+/**
+ * Every bare external import reachable from the packed `dist/**` must be a
+ * declared runtime peer or dependency. Uses `Bun.Transpiler.scanImports`
+ * for `.js` files and for the extracted `<script>` content of `.svelte`
+ * files -- a real lexer, not a text regex -- because the compiled output
+ * preserves doc comments verbatim, and prose in those comments can contain
+ * the literal word "from" followed by a quote character (a scare-quote, a
+ * contraction) that a regex like `/(?:\bfrom\s*|\bimport\s*\()\s*['"]([^'"]+)['"]/`
+ * cannot distinguish from a real `import ... from '...'` statement. This is
+ * exactly what happened in practice (cinder#1334): captured "specifiers"
+ * like `for every node the\n * parser understood, with no string
+ * comparison anywhere` from a doc comment, not an import path. The
+ * transpiler tokenizes the file the way it would to actually run it, so
+ * comment text is structurally invisible to it -- mirrors
+ * `packages/markdown/scripts/validate-consumer.ts`'s own
+ * `assertImportClosure`, which already used this approach for its `.js`-only
+ * case; this is the same fix applied to Editor's larger `.js` + `.svelte` +
+ * `.css` surface.
+ *
+ * CSS has no equivalent lexer available here, so `@import` detection stays
+ * regex-based for `.css` files, guarded by {@link isPlausibleImportSpecifier}
+ * to reject any capture containing whitespace -- which rules out comment
+ * prose specifically, since no real specifier can contain a space.
+ */
+export async function assertImportClosure(
   manifest: PackageManifest,
   installedEditorRoot: string,
 ): Promise<void> {
@@ -216,30 +271,44 @@ async function assertImportClosure(
     ...Object.keys(manifest.dependencies ?? {}),
   ]);
   const violations: string[] = [];
+  const transpiler = new Bun.Transpiler({ loader: 'ts' });
   const sourceGlob = new Glob('dist/**/*.{js,svelte,css}');
-  for await (const relativePath of sourceGlob.scan({ cwd: installedEditorRoot })) {
-    const source = await Bun.file(join(installedEditorRoot, relativePath)).text();
-    const patterns = [
-      /(?:\bfrom\s*|\bimport\s*\()\s*['"]([^'"]+)['"]/gu,
-      /@import\s+['"]([^'"]+)['"]/gu,
-    ];
-    for (const pattern of patterns) {
-      for (const match of source.matchAll(pattern)) {
-        const specifier = match[1];
-        if (
-          specifier === undefined ||
-          specifier.startsWith('.') ||
-          specifier.startsWith('/') ||
-          specifier.startsWith('node:')
-        ) {
-          continue;
-        }
-        if (!declaredRuntimeSpecifiers.has(barePackageName(specifier))) {
-          violations.push(`${relativePath}: ${specifier}`);
-        }
-      }
+
+  function recordSpecifier(relativePath: string, specifier: string): void {
+    if (specifier.startsWith('.') || specifier.startsWith('/') || specifier.startsWith('node:')) {
+      return;
+    }
+    if (!declaredRuntimeSpecifiers.has(barePackageName(specifier))) {
+      violations.push(`${relativePath}: ${specifier}`);
     }
   }
+
+  for await (const relativePath of sourceGlob.scan({ cwd: installedEditorRoot })) {
+    const source = await Bun.file(join(installedEditorRoot, relativePath)).text();
+
+    if (relativePath.endsWith('.js')) {
+      for (const { path: specifier } of transpiler.scanImports(source)) {
+        recordSpecifier(relativePath, specifier);
+      }
+      continue;
+    }
+
+    if (relativePath.endsWith('.svelte')) {
+      for (const scriptContent of extractSvelteScriptBlocks(source)) {
+        for (const { path: specifier } of transpiler.scanImports(scriptContent)) {
+          recordSpecifier(relativePath, specifier);
+        }
+      }
+      continue;
+    }
+
+    for (const match of source.matchAll(/@import\s+['"]([^'"]+)['"]/gu)) {
+      const specifier = match[1];
+      if (specifier === undefined || !isPlausibleImportSpecifier(specifier)) continue;
+      recordSpecifier(relativePath, specifier);
+    }
+  }
+
   if (violations.length > 0) {
     fail(`packed production imports are not declared peers:\n  ${violations.join('\n  ')}`);
   }
