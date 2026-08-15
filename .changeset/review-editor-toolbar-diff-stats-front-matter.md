@@ -19,3 +19,8 @@ component (which needs a real browser DOM for Milkdown). It calls the same front
 `export/normalize-document.ts` so it has exactly one implementation instead of one per
 consumer — see the cinder#1318 changeset in this same batch for the second consumer that fix
 reaches.
+
+The same fix also reaches `createReviewEditorState` (`@lostgradient/editor/review-editor`'s
+exported state-manager factory): it had its own copy of the same bare-`normalize()` `diffStats`
+computation, a second public API path that disagreed with the fixed toolbar about the same
+content until it was routed through `computeReviewEditorDiffStats` too.
