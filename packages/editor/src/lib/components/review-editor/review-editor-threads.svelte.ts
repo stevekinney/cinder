@@ -275,8 +275,12 @@ export function createThreadManager(options: ThreadManagerOptions): ThreadManage
    * Scroll the editor to bring an anchor position into view.
    */
   function scrollAnchorIntoView(threadId: ThreadId): void {
+    // Thread.id is consumer-supplied and may contain CSS-meaningful
+    // characters ('"', etc.), so it is escaped before being interpolated
+    // into the attribute selector — kept in parity with the identical fix in
+    // review-editor-impl.svelte's scrollAnchorIntoView.
     const editorDom = getEditorView()?.dom;
-    const anchorElement = editorDom?.querySelector(`[data-thread-id="${threadId}"]`);
+    const anchorElement = editorDom?.querySelector(`[data-thread-id="${CSS.escape(threadId)}"]`);
     if (anchorElement) {
       anchorElement.scrollIntoView({ behavior: getScrollBehavior(), block: 'center' });
     }

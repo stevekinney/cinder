@@ -1,7 +1,7 @@
 <script lang="ts" module>
   export const title = 'Scroll-to-thread and sidebar selection';
   export const description =
-    'A tall document with two off-screen anchored threads, an imperative scrollToThread control, and the comment sidebar open — for exercising ReviewEditor.scrollToThread and sidebar/anchor thread selection.';
+    'A tall document with two off-screen anchored threads and an imperative scrollToThread control — open the comments sidebar from the toolbar to exercise ReviewEditor.scrollToThread and sidebar/anchor thread selection.';
 </script>
 
 <script lang="ts">
@@ -9,7 +9,44 @@
   import type { Thread } from '@lostgradient/editor/review-editor';
   import Button from '@lostgradient/cinder/button';
 
-  const original = '';
+  // ReviewEditor only renders its Diff/Summary tabs when `original` is
+  // truthy (showDiffTabs={!!original} in review-editor-impl.svelte). Set to
+  // the same text as the initial `value` below — not meant to demonstrate a
+  // real diff, just to make those tabs reachable so tests can switch away
+  // from (and back to) the editor view, which is what unmounts and remounts
+  // the ProseMirror view the scroll/sidebar behavior above depends on.
+  const original = `# Deep Anchor Playground
+
+Intro paragraph explaining the scenario for automated scroll and sidebar regression tests against ReviewEditor's imperative and sidebar interactions.
+
+## Section One
+
+Paragraph one is filler text that adds vertical height to the document, so that anchors placed further down sit below the viewport fold when the page first loads scrolled to the top.
+
+Paragraph two is filler text as well, again only adding vertical height without changing anything about the anchors that come later in the document.
+
+Paragraph three continues the filler, still just padding out the vertical height of this section before the first real anchor target appears further below.
+
+Paragraph four keeps padding the section with more filler text, so the document grows tall enough for a real off-screen scroll to be observable in a browser.
+
+Paragraph five is the last filler paragraph in this section, bringing the section to a close before the next heading and the first anchor target.
+
+## Section Two
+
+The quick fox anchor sits in this sentence for the first automated thread.
+
+## Section Three
+
+Paragraph six is more filler text between the two anchor targets, so that selecting the second thread requires a further scroll past the first.
+
+Paragraph seven continues that filler, padding out the space between the two anchors so both are meaningfully separated on screen.
+
+The lazy dog anchor sits in this later sentence for the second automated thread.
+
+## Section Four
+
+Closing paragraph after both anchors, just to round out the document.
+`;
 
   // No front matter, so ProseMirror body positions below match the document
   // 1:1 (bodyOffset is 0). Positions were derived from this exact text via

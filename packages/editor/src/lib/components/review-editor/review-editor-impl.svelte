@@ -355,8 +355,16 @@
     // Query using the passed threadId, not the reactive activeThreadId,
     // to avoid race conditions when called from setTimeout.
     // Scope query to editor DOM to handle multiple ReviewEditor instances on page.
+    //
+    // Thread.id is consumer-supplied (not necessarily generateId()'s output —
+    // a consumer's own database key can contain '"' or other CSS-meaningful
+    // characters), so it is escaped before being interpolated into the
+    // attribute selector. An unescaped id could throw a DOM SyntaxError or
+    // silently match the wrong element. Now that scrollToThread (below)
+    // routes through this function too, that risk is reachable from the
+    // public imperative API, not just the internal deep-linking effect.
     const editorDom = editorRef?.getView()?.dom;
-    const anchorElement = editorDom?.querySelector(`[data-thread-id="${threadId}"]`);
+    const anchorElement = editorDom?.querySelector(`[data-thread-id="${CSS.escape(threadId)}"]`);
     if (anchorElement) {
       anchorElement.scrollIntoView({ behavior: getScrollBehavior(), block: 'center' });
     }
@@ -1001,15 +1009,47 @@
    * Scrolls to the thread and opens its popover.
    */
   function handleSidebarThreadSelect(threadId: string): void {
-    // Re-selecting the thread that is already active is a no-op. Without
-    // this guard, re-clicking the active sidebar row rescheduled a redundant
-    // 350ms scroll-then-reposition even once ThreadPopover's ignoreRefs (see
-    // thread-popover.svelte) stopped the click from destroying the open
-    // popover in the first place (cinder#1320).
-    if (threadId === activeThreadId) return;
+    // Re-selecting a thread whose popover is ALREADY open is a no-op.
+    // Deliberately checks BOTH activeThreadId and popoverThreadId, not just
+    // activeThreadId: guarding on activeThreadId alone would also block a
+    // legitimate RETRY. If the deferred timer below runs while the editor
+    // view is unmounted (e.g. the user switched to the Diff/Summary tab
+    // before it fired), `view` is unavailable and the callback bails without
+    // ever setting popoverThreadId — activeThreadId stays set to this
+    // thread, but no popover exists. A later re-click on the same row must
+    // be allowed to try again rather than silently doing nothing forever.
+    //
+    // In the live component this exact scenario is already recovered by the
+    // deep-linking `$effect` above (re-mounting MarkdownEditor re-syncs
+    // `threads` through the anchor plugin, which is enough on its own to
+    // retrigger that effect and reopen the popover — verified empirically,
+    // with no re-click at all). This guard is kept anyway: it matches what
+    // its own name promises rather than a narrower approximation of it, and
+    // it is the only thing that would still matter for a consumer whose
+    // `threads` prop stays reference-stable across the failed attempt (no
+    // anchor-plugin re-sync to fall back on).
+    //
+    // Without any guard at all, re-clicking the active sidebar row
+    // rescheduled a redundant 350ms scroll-then-reposition even once
+    // ThreadPopover's ignoreRefs (see thread-popover.svelte) stopped the
+    // click from destroying the open popover in the first place
+    // (cinder#1320).
+    if (threadId === activeThreadId && threadId === popoverThreadId) return;
 
     const thread = threads.find((t) => t.id === threadId);
     if (!thread) return;
+
+    // Cancel any timer from a PREVIOUS sidebar selection still in flight.
+    // Without this, choosing a second thread within POSITION_DELAY_MS of the
+    // first orphans that first timer instead of cancelling it — it still
+    // fires later, on its own original schedule, and can briefly reopen the
+    // earlier thread's popover after the newer selection: the same class of
+    // bug cinder#1319 fixed for the anchor-click path, recurring narrowly
+    // between two sidebar selections.
+    if (selectTimeoutId !== null) {
+      clearTimeout(selectTimeoutId);
+      selectTimeoutId = null;
+    }
 
     // Set active thread
     activeThreadId = threadId;

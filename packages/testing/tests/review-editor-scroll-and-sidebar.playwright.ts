@@ -52,7 +52,23 @@ async function openExample(componentPage: ComponentPage): Promise<{ page: Page; 
     viewport: desktop,
   });
   const mount = page.locator(MOUNT_SELECTOR);
-  await expect(mount).toBeVisible({ timeout: 20_000 });
+  // Default expect() timeout (5s): componentPage.open() already awaited
+  // `#app > *` visible, and every review-editor example mounts in the same
+  // top-level `{#each examples as {scenario}}` block, so this specific
+  // example-mount div is already in the DOM by the time open() returns —
+  // there's nothing slow left to wait out here.
+  await expect(mount).toBeVisible();
+  // This one IS a real, evidence-backed exception, not padding: Milkdown's
+  // async editor-view construction is what `data-ready` reports, and
+  // `packages/testing/src/fixtures/component-page.ts` already documents the
+  // same 20s ceiling for exactly this class of component — "Post-#39
+  // (chunk-[hash].js naming), all components — including the Milkdown-backed
+  // editors (Chat, MarkdownEditor, ReviewEditor) — mount in single-digit
+  // seconds on the CI runner. 20s leaves generous headroom." `toBeVisible()`
+  // is Playwright's own auto-retrying poll against this attribute — it
+  // resolves the moment `data-ready` flips true, not after a fixed delay;
+  // `timeout` here is only the upper bound for a genuinely slow/cold mount,
+  // not a sleep duration.
   await expect(mount.locator('.markdown-editor-wrapper[data-ready="true"]')).toBeVisible({
     timeout: 20_000,
   });
@@ -222,6 +238,77 @@ test.describe('sidebar thread selection races (cinder#1319, cinder#1320)', () =>
 
     await sidebarRow(sidebar, 'The lazy dog anchor').click();
     await page.clock.runFor(500);
+    await expect(popoverTitle(page)).toContainText('The lazy dog anchor');
+  });
+
+  test('choosing a second sidebar thread before the first opens cancels the first timer', async ({
+    componentPage,
+  }) => {
+    const { page, mount } = await openExample(componentPage);
+    const sidebar = await openSidebar(page, mount);
+
+    await installPausedClock(page);
+
+    // Select thread-fox, then advance the clock partway through its ~350ms
+    // delay before selecting thread-dog. That gives the two scheduled
+    // timers DIFFERENT virtual deadlines (350ms apart, not simultaneous),
+    // which is what makes an orphaned fox timer separately observable below
+    // instead of being masked by firing in the same tick as dog's.
+    await sidebarRow(sidebar, 'The quick fox anchor').click();
+    await page.clock.runFor(100);
+    await sidebarRow(sidebar, 'The lazy dog anchor').click();
+
+    // Advance past thread-fox's original ~350ms deadline (now ~250ms away)
+    // but stop short of thread-dog's later one. Without clearing the prior
+    // timer before scheduling a new one, the orphaned fox timer fires here
+    // and opens a popover for the thread the user already moved away from —
+    // no popover should exist yet.
+    await page.clock.runFor(300);
+    await expect(page.locator(`#${EDITOR_ID}-thread-popover`)).toHaveCount(0);
+
+    // Advance past thread-dog's own deadline: its popover opens correctly in
+    // both the fixed and reverted runs — the count(0) assertion above is
+    // what actually distinguishes them.
+    await page.clock.runFor(100);
+    await expect(popoverTitle(page)).toContainText('The lazy dog anchor');
+  });
+
+  // NOTE on a case NOT covered by a test here: a guard keyed only on
+  // activeThreadId (rather than activeThreadId AND popoverThreadId) could in
+  // principle block a legitimate retry — if the deferred timer fires while
+  // editorRef.getView() is unavailable, popoverThreadId never gets set, and
+  // a later re-click of the same row would look identical to "already open"
+  // under a narrower guard. handleSidebarThreadSelect's guard checks both
+  // for exactly this reason. It is deliberately NOT pinned by a Playwright
+  // test: the only way found to make the view unavailable mid-delay
+  // (switching to the Diff/Summary tab, which unmounts MarkdownEditor) also
+  // remounts the editor and re-syncs `threads` through the anchor plugin —
+  // and that re-sync alone reopens the popover via the separate deep-linking
+  // `$effect` above, independent of this guard, even with the narrower
+  // (activeThreadId-only) guard in place. Verified empirically: reverting
+  // this guard to activeThreadId-only and switching Editor → Diff → Editor
+  // with NO re-click at all still reopens the popover on its own. A test
+  // built on that trigger would pass identically whether or not this guard
+  // is narrowed, which is not a test worth keeping (see this repo's
+  // "a test that passes either way is worse than no test").
+  test('two sidebar selections with no delay between them still land on the second', async ({
+    componentPage,
+  }) => {
+    // The zero-virtual-time-gap edge of the same class of bug the "cancels
+    // the first timer" test above pins with a staggered gap: both clicks
+    // schedule a timer at (as far as the paused clock is concerned) the
+    // identical deadline. Confirms the second selection's timer clearing the
+    // first still resolves correctly even when there was never a window to
+    // observe an intermediate state in.
+    const { page, mount } = await openExample(componentPage);
+    const sidebar = await openSidebar(page, mount);
+
+    await installPausedClock(page);
+
+    await sidebarRow(sidebar, 'The quick fox anchor').click();
+    await sidebarRow(sidebar, 'The lazy dog anchor').click();
+    await page.clock.runFor(500);
+
     await expect(popoverTitle(page)).toContainText('The lazy dog anchor');
   });
 });
