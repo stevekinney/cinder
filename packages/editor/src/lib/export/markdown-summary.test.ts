@@ -543,6 +543,25 @@ describe('generateMarkdownSummary', () => {
       expect(result.markdown).not.toMatch(/### Lines 1-1/);
     });
 
+    test("extrapolates from the source document's true end, not the normalized document's, when normalization strips trailing lines entirely (review finding, follow-up)", () => {
+      // Distinct from the test above: this uses DEFAULT normalization (not
+      // normalizeInputs: false), against a source with real trailing blank
+      // lines that normalizeDocument() strips away entirely rather than
+      // collapsing to a representative line -- `original` here is 3 source
+      // lines (Alpha, blank, blank) that normalize to just "Alpha" (1 line).
+      // Anchoring the "insert after EOF" extrapolation to the *normalized*
+      // line count (1) instead of the *source*'s real line count (3) reports
+      // the addition several lines too early.
+      const state = createState({
+        original: 'Alpha\n\n\n',
+        current: 'Alpha\n\n\nBeta',
+      });
+      const result = generateMarkdownSummary(state, { contextLines: 0 });
+
+      expect(result.markdown).toMatch(/### Lines 4-4/);
+      expect(result.markdown).not.toMatch(/### Lines 2-2/);
+    });
+
     test('a normalized line rewritten by normalization (not just deleted) maps to its own line, not the line before it (review finding)', () => {
       // A Setext heading collapses two source lines into one normalized ATX
       // line, which has no verbatim match in the source. The naive fallback

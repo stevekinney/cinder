@@ -18,9 +18,28 @@
  */
 
 /**
- * Build a 0-indexed array where `map[normalizedLineIndex]` is the 1-based
- * line number in `source` that normalized line most plausibly corresponds
- * to.
+ * A normalized-to-source line mapping, plus the source document's own true
+ * line count.
+ *
+ * `lines[normalizedLineIndex]` (0-based index) is the 1-based line number in
+ * `source` that normalized line most plausibly corresponds to.
+ * `sourceLineCount` is `source`'s own line count, tracked separately because
+ * `lines.length` is the *normalized* document's line count -- normalization
+ * can shrink a document by dropping trailing content entirely (blank lines
+ * at EOF collapse away with nothing left to anchor them, unlike a mid-
+ * document blank run, which always leaves one representative line behind).
+ * When that happens, `lines.length` alone is not "how many lines `source`
+ * really has," and extrapolating a past-the-end lookup from it instead of
+ * from `sourceLineCount` reports a line well before the source's actual end
+ * (cinder#1324 follow-up).
+ */
+export interface SourceLineMap {
+  lines: number[];
+  sourceLineCount: number;
+}
+
+/**
+ * Build a {@link SourceLineMap} from `source` to `normalized`.
  *
  * Alignment matches identical lines between the two documents in order (the
  * same longest-common-subsequence approach the line-level diff itself
@@ -36,14 +55,17 @@
  * against, since those transforms only ever remove lines, never rewrite the
  * ones that remain.
  */
-export function buildSourceLineMap(source: string, normalized: string): number[] {
+export function buildSourceLineMap(source: string, normalized: string): SourceLineMap {
   const sourceLines = splitLines(source);
   const normalizedLines = splitLines(normalized);
 
   const matched = alignNormalizedToSource(sourceLines, normalizedLines);
   const filled = fillUnmatchedRuns(matched, sourceLines.length);
 
-  return filled.map((sourceIndex) => sourceIndex + 1); // 1-based
+  return {
+    lines: filled.map((sourceIndex) => sourceIndex + 1), // 1-based
+    sourceLineCount: sourceLines.length,
+  };
 }
 
 /**
@@ -91,30 +113,40 @@ function fillUnmatchedRuns(matched: (number | null)[], sourceLength: number): nu
   return filled;
 }
 
-/** Identity map: normalized line N is source line N (unnormalized inputs). */
-export function identitySourceLineMap(normalized: string): number[] {
-  return splitLines(normalized).map((_, index) => index + 1);
+/**
+ * Identity map: normalized line N is source line N (unnormalized inputs).
+ * `sourceLineCount` equals the line count of the same text, since with no
+ * normalization applied there's nothing for it to diverge from.
+ */
+export function identitySourceLineMap(normalized: string): SourceLineMap {
+  const lines = splitLines(normalized).map((_, index) => index + 1);
+  return { lines, sourceLineCount: lines.length };
 }
 
 /**
  * Look up a normalized-space line number (1-based, as `unified-diff.ts` and
- * `markdown-summary.ts` already track it) in a source line map.
+ * `markdown-summary.ts` already track it) in a {@link SourceLineMap}.
  *
- * A lookup past the end of the map (normalized line count + 1, the "insert
+ * A lookup past the end of `lines` (normalized line count + 1, the "insert
  * after the last line" position both callers use for a pure trailing
- * addition) extrapolates past the last mapped source line rather than
- * clamping back onto it -- clamping would silently relocate a legitimate
- * append-at-EOF position onto the document's last real line instead of
- * reporting it as after that line.
+ * addition) extrapolates from `sourceLineCount` -- the source document's own
+ * true end -- rather than from `lines`' own length or its last entry.
+ * Anchoring to `lines.length` instead would undercount whenever
+ * normalization stripped trailing source content (e.g. blank lines at EOF)
+ * entirely rather than collapsing it to a representative line, since then
+ * the normalized document, and therefore `lines`, is shorter than `source`
+ * itself by more than just the collapsed lines' difference.
  */
-export function mapNormalizedLineNumber(lineMap: number[], normalizedLineNumber: number): number {
-  if (lineMap.length === 0) return normalizedLineNumber;
-  if (normalizedLineNumber > lineMap.length) {
-    const lastSourceLine = lineMap[lineMap.length - 1]!;
-    return lastSourceLine + (normalizedLineNumber - lineMap.length);
+export function mapNormalizedLineNumber(
+  lineMap: SourceLineMap,
+  normalizedLineNumber: number,
+): number {
+  const { lines, sourceLineCount } = lineMap;
+  if (normalizedLineNumber > lines.length) {
+    return sourceLineCount + (normalizedLineNumber - lines.length);
   }
   const index = Math.max(normalizedLineNumber - 1, 0);
-  return lineMap[index]!;
+  return lines[index]!;
 }
 
 /** Longest-common-subsequence line alignment, matching `computeLineChanges`'s DP shape. */

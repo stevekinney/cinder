@@ -429,13 +429,17 @@ describe('hunk header line numbers reference source, not normalized text (cinder
     expect(applied.ok).toBe(true);
   });
 
-  test('a pure trailing addition reports the "insert after EOF" position, not the last real line (review finding)', () => {
-    // mapNormalizedLineNumber used to clamp any out-of-range lookup to the
-    // map's last real entry. A pure addition past the end of `original`
-    // legitimately produces a lookup one past the map's length (git's own
-    // "insert after this line" convention) -- clamping silently relocated
-    // that onto the document's last real line instead of reporting it as
-    // after that line.
+  test('a pure trailing addition reports the "insert after EOF" position, not the last real line', () => {
+    // Behavioral pin, not a direct exercise of mapNormalizedLineNumber's
+    // extrapolation branch: buildHunk's own "start=0 when count=0" git
+    // convention means a pure-addition hunk's originalStart is 0 before it
+    // ever reaches the line-map lookup, so this test's currentStart (2)
+    // stays within currentLineMap's bounds (2 lines: "Alpha", "Beta") and
+    // never triggers extrapolation either. generateUnifiedDiff structurally
+    // can't reach that branch the way generateMarkdownSummary's own
+    // line-counting does -- see source-line-map.test.ts and
+    // markdown-summary.test.ts's own "insert after EOF" tests for the
+    // extrapolation mechanism itself.
     const original = 'Alpha';
     const current = 'Alpha\nBeta';
 

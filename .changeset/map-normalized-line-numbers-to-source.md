@@ -23,14 +23,29 @@ this package's diff-like exports normalize, not a `normalizeDocument()` change) 
 normalized document's lines back to the source document's lines the same way the diff itself finds
 sameness: matching identical lines in document order (a longest-common-subsequence alignment). A
 normalized line that survives verbatim in the source maps to its exact source line; a line
-normalization actually rewrote (a collapsed heading, a canonicalized list marker) falls back to the
-nearest preceding matched line. Both `generateUnifiedDiff` (hunk `originalStart`/`currentStart`) and
-`generateMarkdownSummary` (`startOriginalLine`/`endOriginalLine`, mapped independently rather than
-derived by adding the normalized-space line count to the mapped start — a collapsed run inside the
-displayed range makes that arithmetic undercount even after the start itself is correctly mapped)
-now report source-space numbers. `normalizeInputs: false` needs no mapping: the diffed strings
-already _are_ the (CRLF-folded) source text, so an identity map is exact rather than an
-approximation.
+normalization actually rewrote (a collapsed heading, a canonicalized list marker) has no verbatim
+match, and interpolates forward from the nearest preceding match instead of freezing on it — a
+frozen fallback would report the line _before_ a rewritten line (e.g. the blank line above a
+collapsed Setext heading) rather than the rewritten line's own position. The forward interpolation
+is itself clamped to the next real match, so a long unmatched run between two closely-spaced matches
+can't push the map past where the alignment resumes and produce a decrease. Both `generateUnifiedDiff`
+(hunk `originalStart`/`currentStart`) and `generateMarkdownSummary` (`startOriginalLine`/`endOriginalLine`,
+mapped independently rather than derived by adding the normalized-space line count to the mapped
+start — a collapsed run inside the displayed range makes that arithmetic undercount even after the
+start itself is correctly mapped) now report source-space numbers. `normalizeInputs: false` needs
+no mapping: the diffed strings already _are_ the (CRLF-folded) source text, so an identity map is
+exact rather than an approximation.
+
+A lookup past the end of the mapped range (the "insert after the last line" position both callers
+use for a pure trailing addition) extrapolates from the _source_ document's own true line count,
+not from the normalized document's line count or the map's last entry. Both matter independently:
+clamping to the map's last entry loses the append-past-EOF position entirely (a one-line source
+document with a trailing addition reported the addition on line 1, not line 2); anchoring only to
+the normalized line count still undercounts when normalization strips trailing source content
+_entirely_ rather than collapsing it to a representative line — a 3-line source ending in two blank
+lines that normalize away completely produces a 1-line normalized document, and an addition appended
+after it needs to land on source line 4, not line 2. `buildSourceLineMap` now tracks the source's own
+line count alongside the map for exactly this.
 
 One limitation, stated plainly rather than glossed over: this fixes the reported _line number_, not
 universal `git apply` fidelity. The hunk _body_ is still rendered from the normalized documents (by

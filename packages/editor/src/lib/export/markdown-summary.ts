@@ -17,6 +17,7 @@ import {
   buildSourceLineMap,
   identitySourceLineMap,
   mapNormalizedLineNumber,
+  type SourceLineMap,
 } from './source-line-map.js';
 import type { MarkdownSummaryOptions, MarkdownSummaryResult } from './types.js';
 
@@ -136,7 +137,7 @@ function generateChangesSection(
   original: string,
   current: string,
   contextLines: number,
-  originalLineMap: number[],
+  originalLineMap: SourceLineMap,
 ): { markdown: string; changeCount: number } {
   const lineDiffs = computeLineDiff(original, current);
 
