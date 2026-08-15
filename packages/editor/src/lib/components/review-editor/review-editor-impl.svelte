@@ -960,22 +960,40 @@
     }
   }
 
-  /** Scroll to a specific thread's anchor position in the editor */
+  /**
+   * Scroll to a specific thread's anchor position in the editor.
+   *
+   * Throws if `threadId` does not match any thread in `threads`. This is a
+   * deliberate departure from the mutation methods' (`deleteThread`,
+   * `deleteComment`, ...) documented silent-no-op-on-missing-id convention —
+   * those exist to support declarative UI patterns where a caller doesn't
+   * pre-check state before issuing a delete. `scrollToThread` is a one-shot
+   * imperative navigation call (driven by a deep link, a notification, a
+   * "jump to comment" action); a stale or mistyped id there is a caller bug
+   * that should fail loudly rather than silently do nothing, since a
+   * successful no-op scroll (the anchor happened to already be in view) and
+   * an unknown-id no-op were otherwise indistinguishable from the outside
+   * (cinder#1317). Internal callers (`handleSidebarThreadSelect`) already
+   * guard on thread existence before calling this, so they never hit the
+   * throw.
+   *
+   * @throws {Error} if no thread with `threadId` exists.
+   */
   export function scrollToThread(threadId: string): void {
     const thread = threads.find((t) => t.id === threadId);
-    if (!thread) return;
-
-    const view = editorRef?.getView();
-    if (view) {
-      // Scroll the anchor position into view
-      const coords = anchorCoords(view, thread.anchor);
-      if (coords) {
-        view.dom.scrollTo({
-          top: coords.top - 100, // Offset from top
-          behavior: getScrollBehavior(),
-        });
-      }
+    if (!thread) {
+      throw new Error(`ReviewEditor.scrollToThread: no thread with id "${threadId}"`);
     }
+
+    // Scroll the anchor element itself into view via scrollIntoView — the
+    // same mechanism scrollAnchorIntoView already uses successfully. The
+    // previous implementation called `view.dom.scrollTo(...)`: `view.dom`
+    // (the .ProseMirror contenteditable) has no `overflow` in any shipped
+    // stylesheet, so that call was clamped to 0 and never moved anything
+    // (cinder#1316). A thread with no anchor element in the document (a
+    // document-level comment, or one still orphaned) is a silent no-op here,
+    // same as before — there is nowhere to scroll it to.
+    scrollAnchorIntoView(threadId);
   }
 
   /**
@@ -983,6 +1001,13 @@
    * Scrolls to the thread and opens its popover.
    */
   function handleSidebarThreadSelect(threadId: string): void {
+    // Re-selecting the thread that is already active is a no-op. Without
+    // this guard, re-clicking the active sidebar row rescheduled a redundant
+    // 350ms scroll-then-reposition even once ThreadPopover's ignoreRefs (see
+    // thread-popover.svelte) stopped the click from destroying the open
+    // popover in the first place (cinder#1320).
+    if (threadId === activeThreadId) return;
+
     const thread = threads.find((t) => t.id === threadId);
     if (!thread) return;
 
@@ -992,8 +1017,17 @@
     // Scroll to the thread
     scrollToThread(threadId);
 
-    // Open popover at anchor position after scroll completes
-    setTimeout(() => {
+    // Open popover at anchor position after scroll completes. Stored in
+    // selectTimeoutId — matching handleAnchorClick's and the unmount
+    // cleanup's expectations — so a thread selected afterward by anchor
+    // click can actually cancel this timer. Previously this assigned
+    // nothing, so handleAnchorClick's own cancellation was a no-op against
+    // it, and selecting a different thread by anchor click within 350ms of a
+    // sidebar click did not stop this timer: it fired anyway and silently
+    // overwrote the popover back to the stale sidebar selection
+    // (cinder#1319).
+    selectTimeoutId = setTimeout(() => {
+      selectTimeoutId = null;
       const view = editorRef?.getView();
       if (!view) return;
 
@@ -1011,6 +1045,31 @@
       popoverPosition = { x: editorBox.left + 16, y: editorBox.top + 16 };
       popoverThreadId = threadId;
     }, POSITION_DELAY_MS);
+  }
+
+  /**
+   * Resolve the sidebar row for the currently active thread, scoped to this
+   * editor instance's own sidebar (`{id}-sidebar`) so a page with more than
+   * one ReviewEditor never matches another instance's row.
+   *
+   * Passed to ThreadPopover as `ignoreClickOutsideRef`: its click-outside
+   * dismiss listener runs in the capture phase, before the row's own
+   * `onclick`, so without this every click on the active row — including a
+   * re-click that changes nothing — closed the popover before
+   * `handleSidebarThreadSelect` ever ran, destroying and reopening it
+   * ~350ms later and discarding any unsent reply text sitting in
+   * CommentComposer's draft state (cinder#1320). Ignoring only the active
+   * row (not the whole sidebar) is deliberate: clicking a DIFFERENT row
+   * must still close this popover immediately rather than leaving it
+   * visible for 350ms.
+   */
+  function activeSidebarRowElement(): HTMLElement | null {
+    if (!activeThreadId) return null;
+    return (
+      document
+        .getElementById(`${id}-sidebar`)
+        ?.querySelector<HTMLElement>('.thread-item[data-active]') ?? null
+    );
   }
 
   /**
@@ -1916,6 +1975,7 @@
       {mode}
       position={popoverPosition}
       restoreFallbackId={`${id}-sidebar-toggle`}
+      ignoreClickOutsideRef={activeSidebarRowElement}
       onclose={handlePopoverClose}
       ondelete={handlePopoverDelete}
       oncommentcreate={handlePopoverCommentCreate}

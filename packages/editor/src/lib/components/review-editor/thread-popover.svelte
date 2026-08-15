@@ -33,6 +33,25 @@
      * than being escaped around.
      */
     restoreFallbackId?: string;
+    /**
+     * Resolves an element whose clicks should NOT count as "outside" this
+     * popover for the purposes of the dismiss-on-click-outside listener.
+     *
+     * Concretely: the sidebar row that opened this popover, while it is still
+     * the active selection. `createClickOutside`'s listener runs in the
+     * `document` capture phase, before that row's own bubble-phase `onclick`,
+     * so a re-click on the row you are already looking at would otherwise
+     * close this popover before the row's click handler ever runs — a
+     * destroy-then-recreate round trip for a gesture that changes nothing,
+     * and one that silently drops any unsent reply text sitting in
+     * CommentComposer's draft state (cinder#1320).
+     *
+     * A getter, not a static ref, because "the active row" changes: the
+     * consumer resolves it fresh (by DOM query, scoped to its own sidebar) on
+     * every click, so clicking a DIFFERENT row is unaffected and still closes
+     * this popover immediately.
+     */
+    ignoreClickOutsideRef?: () => Element | null;
     /** Called when the popover should close */
     onclose?: () => void;
     /** Called when thread is deleted */
@@ -66,6 +85,7 @@
     position,
     class: className,
     restoreFallbackId,
+    ignoreClickOutsideRef,
     onclose,
     ondelete,
     oncommentcreate,
@@ -188,7 +208,10 @@
     restoreFallback: () => (restoreFallbackId ? document.getElementById(restoreFallbackId) : null),
     preferRestoreFallback: () => deleteRequested,
   })}
-  {@attach createClickOutside({ handler: () => onclose?.() })}
+  {@attach createClickOutside({
+    handler: () => onclose?.(),
+    ...(ignoreClickOutsideRef ? { ignoreRefs: [ignoreClickOutsideRef] } : {}),
+  })}
   onkeydown={handleKeyDown}
 >
   <header class="thread-popover-header">

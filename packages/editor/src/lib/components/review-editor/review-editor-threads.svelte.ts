@@ -284,21 +284,25 @@ export function createThreadManager(options: ThreadManagerOptions): ThreadManage
 
   /**
    * Scroll to a specific thread's anchor position.
+   *
+   * Throws if `threadId` does not match any thread — see the identical fix
+   * and its rationale in review-editor-impl.svelte's `scrollToThread`
+   * (cinder#1317). Kept in parity per this module's own module-level
+   * docblock.
+   *
+   * @throws {Error} if no thread with `threadId` exists.
    */
   function scrollToThread(threadId: ThreadId): void {
     const thread = getThreads().find((t) => t.id === threadId);
-    if (!thread) return;
-
-    const view = getEditorView();
-    if (view && thread.anchor.from !== undefined) {
-      const coords = view.coordsAtPos(thread.anchor.from);
-      if (coords) {
-        view.dom.scrollTo({
-          top: coords.top - 100,
-          behavior: getScrollBehavior(),
-        });
-      }
+    if (!thread) {
+      throw new Error(`scrollToThread: no thread with id "${threadId}"`);
     }
+
+    // Scroll the anchor element into view rather than calling
+    // `view.dom.scrollTo(...)` — `view.dom` has no `overflow` in any shipped
+    // stylesheet, so that call was clamped to 0 and never moved anything
+    // (cinder#1316). Mirrors scrollAnchorIntoView above.
+    scrollAnchorIntoView(threadId);
   }
 
   /**
