@@ -275,8 +275,12 @@ export function createThreadManager(options: ThreadManagerOptions): ThreadManage
    * Scroll the editor to bring an anchor position into view.
    */
   function scrollAnchorIntoView(threadId: ThreadId): void {
+    // Thread.id is consumer-supplied and may contain CSS-meaningful
+    // characters ('"', etc.), so it is escaped before being interpolated
+    // into the attribute selector — kept in parity with the identical fix in
+    // review-editor-impl.svelte's scrollAnchorIntoView.
     const editorDom = getEditorView()?.dom;
-    const anchorElement = editorDom?.querySelector(`[data-thread-id="${threadId}"]`);
+    const anchorElement = editorDom?.querySelector(`[data-thread-id="${CSS.escape(threadId)}"]`);
     if (anchorElement) {
       anchorElement.scrollIntoView({ behavior: getScrollBehavior(), block: 'center' });
     }
@@ -284,21 +288,25 @@ export function createThreadManager(options: ThreadManagerOptions): ThreadManage
 
   /**
    * Scroll to a specific thread's anchor position.
+   *
+   * Throws if `threadId` does not match any thread — see the identical fix
+   * and its rationale in review-editor-impl.svelte's `scrollToThread`
+   * (cinder#1317). Kept in parity per this module's own module-level
+   * docblock.
+   *
+   * @throws {Error} if no thread with `threadId` exists.
    */
   function scrollToThread(threadId: ThreadId): void {
     const thread = getThreads().find((t) => t.id === threadId);
-    if (!thread) return;
-
-    const view = getEditorView();
-    if (view && thread.anchor.from !== undefined) {
-      const coords = view.coordsAtPos(thread.anchor.from);
-      if (coords) {
-        view.dom.scrollTo({
-          top: coords.top - 100,
-          behavior: getScrollBehavior(),
-        });
-      }
+    if (!thread) {
+      throw new Error(`scrollToThread: no thread with id "${threadId}"`);
     }
+
+    // Scroll the anchor element into view rather than calling
+    // `view.dom.scrollTo(...)` — `view.dom` has no `overflow` in any shipped
+    // stylesheet, so that call was clamped to 0 and never moved anything
+    // (cinder#1316). Mirrors scrollAnchorIntoView above.
+    scrollAnchorIntoView(threadId);
   }
 
   /**
@@ -351,6 +359,20 @@ export function createThreadManager(options: ThreadManagerOptions): ThreadManage
   function handleSidebarThreadSelect(threadId: ThreadId): void {
     const thread = getThreads().find((t) => t.id === threadId);
     if (!thread) return;
+
+    // Cancel any timer from a PREVIOUS sidebar selection still in flight.
+    // Without this, choosing a second thread within POSITION_DELAY_MS of the
+    // first orphans that first timer instead of cancelling it — it still
+    // fires later, on its own original schedule, and can briefly reopen the
+    // earlier thread's popover after the newer selection: the same class of
+    // bug cinder#1319 fixed for the anchor-click path, recurring narrowly
+    // between two sidebar selections. Mirrors the fix in
+    // `review-editor-impl.svelte`'s `handleSidebarThreadSelect`, per this
+    // module's own parity contract.
+    if (selectTimeoutId !== null) {
+      clearTimeout(selectTimeoutId);
+      selectTimeoutId = null;
+    }
 
     // Clear selection popover before opening thread popover
     onBeforePopoverOpen?.();
