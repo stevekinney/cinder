@@ -47,14 +47,27 @@ lines that normalize away completely produces a 1-line normalized document, and 
 after it needs to land on source line 4, not line 2. `buildSourceLineMap` now tracks the source's own
 line count alongside the map for exactly this.
 
-The forward-interpolation fallback for rewritten lines matches lines byte-exact first, then falls
-back to comparing with unordered list markers (`-`/`*`/`+`) canonicalized to one form, since
-`normalize()` rewrites those markers in the same pass that deletes blank separator lines between
-tight list items. Without that, a marker-only change on a surviving list item looked "unmatched"
-to a strict-equality alignment, which could misalign an unrelated, genuinely deleted source line
-(the blank separator) into the rewritten item's position — `* one\n\n* old` normalizing to
-`- one\n- old` mapped the second item to the deleted blank line's line number instead of `* old`'s
-own, later line.
+The alignment recognizes a rewritten-but-surviving line by canonicalizing each line through the real
+`normalize()` itself — not by re-deriving a second copy of its rewrite rules. That replaced an
+earlier version of this fix that hand-coded the recognition one rewrite kind at a time: first a
+Setext-fold special case, then a regex canonicalizing unordered list markers (`-`/`*`/`+`) only.
+Each of those was a patch on an _instance_ of the same underlying problem — normalization rewrites
+a surviving line in the same pass that deletes a genuinely-removed neighboring line (a blank
+separator between tight list items, most commonly), and a strict-equality alignment that doesn't
+recognize the rewrite treats the surviving line as "unmatched," letting the deletion get
+misattributed onto the rewritten line's own position instead. `* one\n\n* old` normalizing to
+`- one\n- old` is the shape: without marker recognition, the second item's line number came out as
+the deleted blank line's, not `* old`'s own, later line. The unordered-marker patch fixed that one
+case; the very next review round found the identical shape one rewrite kind later, with ordered
+markers (`1)` → `1.`). Patching per rewrite kind is exactly the "two normalizers drift apart" defect
+class `normalizeDocument()`/`splitDocument()` (cinder#1307, cinder#1318) already fixed once, for
+front-matter handling — re-deriving a second, hand-maintained notion of "the normalizer's rewrite
+rules" here was the same mistake in a different function. Calling the real `normalize()` per line
+closes the class instead of the instance: every member of `serializerOptions`
+(`@lostgradient/markdown`'s `pipeline/serializer.ts`) — both list marker kinds, emphasis, strong,
+thematic-break rule characters, list-item indent spacing, tight-definition-list spacing — plus every
+`remark-stringify`/`remark-gfm` default it doesn't override, is covered by construction, including
+whichever of those the _next_ review round would otherwise have found by trial.
 
 One limitation, stated plainly rather than glossed over: this fixes the reported _line number_, not
 universal `git apply` fidelity. The hunk _body_ is still rendered from the normalized documents (by
@@ -68,3 +81,10 @@ normalized-space body can still disagree on span, and `git apply` can still reje
 is a structural consequence of diffing normalized text while reporting source coordinates, not a
 gap this fix left unclosed. Reporting the correct _number_ for every line still narrows the
 original bug to exactly that structural case.
+
+Performance note: calling `normalize()` per line adds up to one full parse+serialize per distinct
+line in the two documents being mapped (`O(m+n)` in the line counts), on top of the existing
+`O(m×n)` LCS table. It's memoized per `buildSourceLineMap` call — most normalized lines are
+byte-identical to some source line, so the cache hits constantly in practice — and scoped to that
+one call rather than shared across export invocations, so it costs no persistent memory. This runs
+only on user-triggered exports (generating a diff or summary), not on every keystroke.

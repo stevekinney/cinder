@@ -117,6 +117,104 @@ describe('buildSourceLineMap', () => {
 
     expect(map.lines).toEqual([1, 2, 3, 5]);
   });
+
+  test('the same provenance loss, with `+` instead of `*` as the unordered marker (review finding, round 3 follow-up)', () => {
+    // `normalize()` canonicalizes both `*` and `+` unordered markers to `-`
+    // -- `+` was already covered by canonicalizeLine calling the real
+    // normalizer, but had no dedicated regression test of its own.
+    const source = 'Intro\n\n+ one\n\n+ old\n';
+    const normalized = 'Intro\n\n- one\n- old';
+
+    const map = buildSourceLineMap(source, normalized);
+
+    expect(map.lines).toEqual([1, 2, 3, 5]);
+  });
+
+  test('preserves provenance across an ordered-list marker rewrite with its separator deleted (cinder#1324, round 4 review finding)', () => {
+    // The same failure shape as the `*`/`+` case above, one rewrite kind
+    // later: normalize() rewrites ordered markers (`1)` -> `1.`, preserving
+    // each item's own start number -- `2) old` stays `2.`, not `1.` -- and
+    // deletes the blank separator between them in the same tight-list pass.
+    // A canonicalizer that only recognized unordered markers (the round-3
+    // fix) still lost this: "2. old" had no verbatim match, fell through to
+    // interpolation, and landed on source line 4 (the deleted separator)
+    // instead of its own line 5. This is why the fix now calls the real
+    // `normalize()` per line instead of hand-listing marker styles --
+    // ordered markers fall out of that for free, the same way any other
+    // rewrite kind normalize() ever adds will.
+    const source = 'Intro\n\n1) one\n\n2) old\n';
+    const normalized = 'Intro\n\n1. one\n2. old';
+
+    const map = buildSourceLineMap(source, normalized);
+
+    expect(map.lines).toEqual([1, 2, 3, 5]);
+  });
+
+  describe('canonicalizes every other line-local rewrite normalize() makes (cinder#1324, round 4 -- closing the class, not just the ordered-marker instance)', () => {
+    // Each case below is a real divergence between the marker-only
+    // canonicalizer this module used to have and calling the real
+    // `normalize()`: verified by reverting to the marker-only version and
+    // confirming each one actually produces a *different, wrong* map
+    // before writing these assertions (not just "the fix doesn't hurt this
+    // case," which the first draft of this block mistakenly settled for --
+    // see the PR discussion). Bullet/ordered markers are covered by their
+    // own dedicated tests above (loose-to-tight list separator removal, a
+    // zero-residue deletion); this block is the rest of
+    // `serializerOptions`'s inventory (`@lostgradient/markdown`'s
+    // `pipeline/serializer.ts`) plus one remark-stringify default it
+    // doesn't override: `emphasis`, `strong`, `rule`, and
+    // `listItemIndent`.
+    //
+    // Emphasis, strong, and indent spacing reuse the same zero-residue
+    // deletion mechanism as the marker tests (tight-list separator
+    // removal) -- putting the rewrite *inside* list-item content, since
+    // marker-only canonicalization made the marker match but left the
+    // emphasis/strong/spacing difference unresolved, so the line still
+    // failed to match as a whole and fell through to interpolation exactly
+    // as if canonicalization didn't exist at all. A thematic break can't
+    // be list-item content, so it uses a different, equally unambiguous
+    // construction: `normalize()` inserts blank padding around a bare
+    // `***`/`---`, and with no blank lines of its own to create alignment
+    // slack, an unmatched `***` has nowhere to go but the wrong neighbor.
+
+    test('emphasis inside tight-list content (`_x_` -> `*x*`, serializerOptions.emphasis)', () => {
+      // Old (marker-only) result: [1, 2] -- "_two_"'s line collapses onto
+      // the deleted blank separator (source line 2) instead of its own
+      // line 3, because matching the marker alone still left "_two_" !==
+      // "*two*" as whole lines.
+      const map = buildSourceLineMap('* _one_\n\n* _two_\n', '- *one*\n- *two*\n');
+      expect(map.lines).toEqual([1, 3]);
+      expect(map.sourceLineCount).toBe(3);
+    });
+
+    test('strong inside tight-list content (`__x__` -> `**x**`, serializerOptions.strong)', () => {
+      // Old (marker-only) result: [1, 2], same failure shape as emphasis.
+      const map = buildSourceLineMap('* __one__\n\n* __two__\n', '- **one**\n- **two**\n');
+      expect(map.lines).toEqual([1, 3]);
+      expect(map.sourceLineCount).toBe(3);
+    });
+
+    test('list-item indent spacing (`-   x` -> `- x`, serializerOptions.listItemIndent)', () => {
+      // Old (marker-only) result: [1, 2]. canonicalizeListMarker's
+      // replacement kept the *captured* interior whitespace unchanged
+      // (`'$1-$2'`), so "-   one" canonicalized to itself rather than to
+      // "- one" -- the marker character matched but the spacing rewrite
+      // didn't, same failure shape again.
+      const map = buildSourceLineMap('-   one\n\n-   two\n', '- one\n- two\n');
+      expect(map.lines).toEqual([1, 3]);
+      expect(map.sourceLineCount).toBe(3);
+    });
+
+    test('thematic break (`***` -> `---`, serializerOptions.rule)', () => {
+      // Old (marker-only) result: [1, 2, 3, 3, 3] -- "---" (unmatched, no
+      // marker-canonicalization rule covers rule characters) absorbed into
+      // "After"'s slot instead of resolving to its own line, source line 2
+      // ("***"). New result correctly reports source line 2.
+      const map = buildSourceLineMap('Before\n***\nAfter\n', 'Before\n\n---\n\nAfter\n');
+      expect(map.lines).toEqual([1, 2, 2, 3, 3]);
+      expect(map.sourceLineCount).toBe(3);
+    });
+  });
 });
 
 describe('identitySourceLineMap', () => {
