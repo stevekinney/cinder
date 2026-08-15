@@ -52,15 +52,31 @@ describe('Chat package ownership boundary', () => {
     // consumer resolved its own Lucide against Cinder's prebuilt SSR bundle
     // and hit a hydration_mismatch, while Chat's README says Lucide is not
     // needed at all.
+    // `@lostgradient/cinder` and `@lostgradient/markdown` are both excluded
+    // from this literal comparison, not just Cinder: both ranges move
+    // across releases (Cinder moved on cinder#879's reconciliation, Markdown
+    // on this repo's own `reconcile-internal-peers.ts`, which post-#1330
+    // widened this range to `^0.3.0` on `changeset-release/main` the moment
+    // this test's PR merged) and each has its own dynamic guard below
+    // ("...covering the current ... version") that actually tracks the
+    // released version instead of hardcoding one. A previous version of
+    // this test hardcoded `@lostgradient/markdown: '^0.2.0'` here anyway,
+    // which is exactly the kind of drift the dynamic guards exist to
+    // prevent -- it went stale the first time this range moved, and failed
+    // CI on the version-packages PR that moved it for a reason unrelated to
+    // any actual regression.
     const remainingPeerDependencies = Object.fromEntries(
       Object.entries(chatManifest.peerDependencies ?? {}).filter(
-        ([peer]) => peer !== '@lostgradient/cinder',
+        ([peer]) => peer !== '@lostgradient/cinder' && peer !== '@lostgradient/markdown',
       ),
     );
     expect(remainingPeerDependencies).toEqual({
-      '@lostgradient/markdown': '^0.2.0',
       svelte: '>=5.56.0 <6',
     });
+    // Still pins the peer *set* (that Markdown must be declared at all),
+    // just not its exact range -- that's what the dynamic guard below
+    // checks.
+    expect(Object.keys(chatManifest.peerDependencies ?? {})).toContain('@lostgradient/markdown');
     expect(runtimeExternalSpecifiers(chatManifest)).toEqual([
       '@lostgradient/cinder',
       '@lostgradient/cinder/*',
