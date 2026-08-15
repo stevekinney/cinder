@@ -157,13 +157,19 @@ describe('buildSourceLineMap', () => {
     // confirming each one actually produces a *different, wrong* map
     // before writing these assertions (not just "the fix doesn't hurt this
     // case," which the first draft of this block mistakenly settled for --
-    // see the PR discussion). Bullet/ordered markers are covered by their
-    // own dedicated tests above (loose-to-tight list separator removal, a
-    // zero-residue deletion); this block is the rest of
-    // `serializerOptions`'s inventory (`@lostgradient/markdown`'s
-    // `pipeline/serializer.ts`) plus one remark-stringify default it
-    // doesn't override: `emphasis`, `strong`, `rule`, and
-    // `listItemIndent`.
+    // see the PR discussion). Unordered markers (a `serializerOptions`
+    // member: `bullet`) and ordered markers (a `remark-stringify` default
+    // this file doesn't override: `bulletOrdered` -- which is exactly why
+    // the ordered-marker case was its own review-round finding rather than
+    // falling out of the unordered fix) are covered by their own dedicated
+    // tests above, both using the same loose-to-tight zero-residue
+    // deletion; this block is the rest of `serializerOptions`'s inventory
+    // (`@lostgradient/markdown`'s `pipeline/serializer.ts`) that rewrites
+    // in a way a *single* line can reproduce: `emphasis`, `strong`,
+    // `rule`, and `listItemIndent`. (`fence`/`fences` and `setext` are
+    // also `serializerOptions` members, but their rewrites need multi-line
+    // context and hit `canonicalizeLine`'s multi-line guard instead --
+    // see the module docblock's carve-out paragraph, not this block.)
     //
     // Emphasis, strong, and indent spacing reuse the same zero-residue
     // deletion mechanism as the marker tests (tight-list separator

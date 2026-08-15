@@ -592,5 +592,24 @@ describe('generateMarkdownSummary', () => {
       expect(result.markdown).toMatch(/### Lines 5-5/);
       expect(result.markdown).not.toMatch(/### Lines 4-4/);
     });
+
+    test('the same absorption bug, one rewrite kind later: an ordered-list marker rewrite does not absorb the deleted separator either (cinder#1324, round 4 review finding)', () => {
+      // Identical shape to the `*`/`-` case above, with ordered markers
+      // instead: normalize() rewrites `1)`/`2)` to `1.`/`2.` (preserving
+      // each item's own start number) and deletes the blank separator
+      // between them in the same tight-list pass. A canonicalizer that
+      // only recognized unordered markers (the round-3 fix alone) still
+      // lost this -- fixed by canonicalizing through the real `normalize()`
+      // per line instead of a hand-listed marker set, source-line-map.ts's
+      // own docblock and tests.
+      const state = createState({
+        original: 'Intro\n\n1) one\n\n2) old\n',
+        current: 'Intro\n\n1) one\n\n2) new\n',
+      });
+      const result = generateMarkdownSummary(state, { contextLines: 0 });
+
+      expect(result.markdown).toMatch(/### Lines 5-5/);
+      expect(result.markdown).not.toMatch(/### Lines 4-4/);
+    });
   });
 });

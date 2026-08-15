@@ -38,13 +38,19 @@
  * `pipeline/ast.ts`) splits into two kinds, and only one of them needs
  * {@link canonicalizeLine} at all:
  *
- * - **Line-rewriting**: everything `serialize()` does -- `serializerOptions`
- *   (bullet, ordered-bullet, emphasis, strong, fence, rule, listItemIndent,
- *   tightDefinitions, ...) plus every `remark-stringify`/`remark-gfm`
- *   default it doesn't override (GFM tables, strikethrough, task-list
- *   checkboxes, autolinks, ...). {@link canonicalizeLine} reaches all of
- *   this by construction, by calling the exact same `serialize()` path on
- *   one line -- there is nothing here to enumerate or fall behind on.
+ * - **Line-rewriting**: everything `serialize()` does -- every member of
+ *   `serializerOptions` (`pipeline/serializer.ts`: `bullet`, `emphasis`,
+ *   `fence`, `fences`, `setext`, `listItemIndent`, `rule`, `strong`,
+ *   `tightDefinitions`) plus every `remark-stringify`/`remark-gfm` default
+ *   it doesn't override -- notably `bulletOrdered` (`.` vs `)`, the
+ *   *default*, not a `serializerOptions` entry -- which is exactly why the
+ *   ordered-marker case below was its own review-round finding rather than
+ *   falling out of the unordered-marker fix for free; also GFM tables,
+ *   strikethrough, task-list checkboxes, autolinks. {@link canonicalizeLine}
+ *   reaches all of it by construction, by calling the exact same
+ *   `serialize()` path on one line -- there is nothing here to enumerate or
+ *   fall behind on for any rewrite that stays on one line, whether it comes
+ *   from `serializerOptions` or a default this file never named.
  * - **Line-deleting**: `normalize()`'s own post-serialization regex passes
  *   -- tight-list separator removal (both marker kinds), 3+ blank lines
  *   collapsing to 1, and leading/trailing blank-run trimming. These only
@@ -54,21 +60,26 @@
  *   a run of lines that simply disappeared.
  *
  * Two known limits of canonicalizing one line in isolation, both
- * deliberately accepted rather than chased further: a transform that only
- * makes sense with multi-line context (a Setext underline folding into the
- * heading above it, four leading spaces being read as an indented code
- * block and re-fenced) can't be reproduced by re-running `normalize()` on
- * just that one line -- {@link canonicalizeLine} detects a multi-line
- * result and falls back to the original line rather than risk comparing
- * it against something unrelated, leaving these cases exactly as
- * approximate as they were before this fix (see the Setext test below).
- * And a line whose *correct* canonical form depends on surrounding
- * document context that a lone line doesn't have (a lazy paragraph
- * continuation's leading whitespace, a table row with no header separator
- * next to it) may canonicalize to something a full-document `normalize()`
- * wouldn't -- this can only cause a missed match (falling back to
- * interpolation, the same approximate behavior this file always had for
- * an unmatched line), never a *false* match, since both sides of any
+ * deliberately accepted rather than chased further. First: a rewrite that
+ * only makes sense with multi-line context can't be reproduced by
+ * re-running `normalize()` on just one line -- a Setext underline folding
+ * into the heading above it (`setext: false`), four leading spaces being
+ * read as an indented code block and re-fenced, or `~~~` becoming a
+ * ` ``` ` *pair* rather than a one-line rewrite (`fence`/`fences`, the
+ * same guard). {@link canonicalizeLine} detects a multi-line result and
+ * falls back to the original line rather than risk comparing it against
+ * something unrelated, leaving these specific cases exactly as
+ * approximate as they were before this fix (see the Setext test below;
+ * fence-style is the same shape and isn't separately tested for the same
+ * reason a passing-either-way test isn't committed anywhere else in this
+ * file -- the guard's fallback is the *documented* behavior here, not an
+ * unverified claim). Second: a line whose *correct* canonical form depends
+ * on surrounding document context that a lone line doesn't have (a lazy
+ * paragraph continuation's leading whitespace, a table row with no header
+ * separator next to it) may canonicalize to something a full-document
+ * `normalize()` wouldn't -- this can only cause a missed match (falling
+ * back to interpolation, the same approximate behavior this file always had
+ * for an unmatched line), never a *false* match, since both sides of any
  * comparison run through the identical function.
  *
  * @module

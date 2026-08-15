@@ -63,11 +63,19 @@ markers (`1)` → `1.`). Patching per rewrite kind is exactly the "two normalize
 class `normalizeDocument()`/`splitDocument()` (cinder#1307, cinder#1318) already fixed once, for
 front-matter handling — re-deriving a second, hand-maintained notion of "the normalizer's rewrite
 rules" here was the same mistake in a different function. Calling the real `normalize()` per line
-closes the class instead of the instance: every member of `serializerOptions`
-(`@lostgradient/markdown`'s `pipeline/serializer.ts`) — both list marker kinds, emphasis, strong,
-thematic-break rule characters, list-item indent spacing, tight-definition-list spacing — plus every
-`remark-stringify`/`remark-gfm` default it doesn't override, is covered by construction, including
-whichever of those the _next_ review round would otherwise have found by trial.
+closes the class instead of the instance for any rewrite a single line can reproduce: every member
+of `serializerOptions` (`@lostgradient/markdown`'s `pipeline/serializer.ts`) — `bullet`, `emphasis`,
+`rule`, `listItemIndent`, `strong`, `tightDefinitions` — plus every `remark-stringify`/`remark-gfm`
+default it doesn't override, notably `bulletOrdered` (`.` vs `)`), which is a _default_, not a
+`serializerOptions` entry — exactly why the ordered-marker case was its own review-round finding
+rather than falling out of the unordered-marker fix for free, and exactly the kind of gap calling
+the real normalizer now closes instead of requiring a fifth round to find. Two `serializerOptions`
+members — `fence`/`fences` and `setext` — are exceptions stated plainly rather than glossed over:
+their rewrites need multi-line context (a Setext underline folding into the heading above it,
+`~~~` becoming a fenced _pair_) that a single isolated line can't reproduce, so they hit a guard
+that falls back to the original line instead of risking a false match, leaving those specific cases
+exactly as approximate as they were before this fix — not a gap this fix claims to close, and not
+untested by omission: it's the same guard the pre-existing Setext test already exercises.
 
 One limitation, stated plainly rather than glossed over: this fixes the reported _line number_, not
 universal `git apply` fidelity. The hunk _body_ is still rendered from the normalized documents (by

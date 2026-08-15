@@ -480,6 +480,23 @@ describe('hunk header line numbers reference source, not normalized text (cinder
     expect(diff).toContain('@@ -5,1 +5,1 @@');
     expect(diff).not.toContain('@@ -4,1 +4,1 @@');
   });
+
+  test('the same absorption bug, one rewrite kind later: an ordered-list marker rewrite does not absorb the deleted separator either (cinder#1324, round 4 review finding)', () => {
+    // Identical shape to the `*`/`-` case above, with ordered markers
+    // instead: normalize() rewrites `1)`/`2)` to `1.`/`2.` (preserving each
+    // item's own start number) and deletes the blank separator between them
+    // in the same tight-list pass. A canonicalizer that only recognized
+    // unordered markers (the round-3 fix alone) still lost this -- fixed by
+    // canonicalizing through the real `normalize()` per line instead of a
+    // hand-listed marker set, source-line-map.ts's own docblock and tests.
+    const original = 'Intro\n\n1) one\n\n2) old\n';
+    const current = 'Intro\n\n1) one\n\n2) new\n';
+
+    const { diff } = generateUnifiedDiff(createState(original, current), { contextLines: 0 });
+
+    expect(diff).toContain('@@ -5,1 +5,1 @@');
+    expect(diff).not.toContain('@@ -4,1 +4,1 @@');
+  });
 });
 
 describe('DiffViewer unified diff formatting', () => {
