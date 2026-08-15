@@ -360,6 +360,20 @@ export function createThreadManager(options: ThreadManagerOptions): ThreadManage
     const thread = getThreads().find((t) => t.id === threadId);
     if (!thread) return;
 
+    // Cancel any timer from a PREVIOUS sidebar selection still in flight.
+    // Without this, choosing a second thread within POSITION_DELAY_MS of the
+    // first orphans that first timer instead of cancelling it — it still
+    // fires later, on its own original schedule, and can briefly reopen the
+    // earlier thread's popover after the newer selection: the same class of
+    // bug cinder#1319 fixed for the anchor-click path, recurring narrowly
+    // between two sidebar selections. Mirrors the fix in
+    // `review-editor-impl.svelte`'s `handleSidebarThreadSelect`, per this
+    // module's own parity contract.
+    if (selectTimeoutId !== null) {
+      clearTimeout(selectTimeoutId);
+      selectTimeoutId = null;
+    }
+
     // Clear selection popover before opening thread popover
     onBeforePopoverOpen?.();
 
