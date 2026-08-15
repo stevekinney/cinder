@@ -19,6 +19,7 @@
   import { tick } from 'svelte';
   import { classNames } from '../../utilities/class-names.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
+  import { truncate } from '../../utilities/truncate.ts';
   import { useReducedMotion } from '../../utilities/use-reduced-motion.svelte.ts';
   import { createFocusRegionNavigator, type FocusRegion } from './focus-navigation.ts';
   import { createChangeTracker } from '../../utilities/change-tracker.svelte.ts';
@@ -27,7 +28,12 @@
   import { contentEquals } from '@lostgradient/markdown/pipeline';
   import { computeReviewEditorDiffStats } from './review-editor-diff-stats.ts';
   import { textOffsetToProseMirrorPosition } from '../../editor/index.ts';
-  import { createAnchorPlugin, anchorPluginKey } from '../../anchor-decorations.ts';
+  import {
+    createAnchorPlugin,
+    anchorPluginKey,
+    selectAnchorRange,
+  } from '../../anchor-decorations.ts';
+  import { nextCommentThread, orderedTextThreads } from './comment-navigation.ts';
   import {
     reanchorQuote,
     ANCHOR_CONTEXT_LENGTH,
@@ -35,6 +41,7 @@
     extractMentions,
     createDocumentAnchor,
     isDocumentAnchor,
+    getVisibleComments,
     toPersistedThreads,
   } from '../../comments/index.ts';
   import { buildAnchorFromSelection } from '../../anchoring.ts';
@@ -1113,6 +1120,48 @@
   }
 
   /**
+   * cinder#1304: the keyboard route to an anchored comment. `.comment-anchor`
+   * decorations are intentionally not `tabindex`-focusable (see
+   * anchor-decorations.ts's `computeDecorations` doc comment for why), so Tab
+   * alone can never reach one — this is the substitute. Moves the caret to
+   * the next/previous anchor in document order and opens its thread the same
+   * way clicking the decoration does (`handleSidebarThreadSelect` already
+   * does exactly that "scroll, then open popover at the anchor" sequence for
+   * the sidebar's own click handler; reused here rather than duplicated).
+   *
+   * The ordering/wrap-around math lives in comment-navigation.ts, split out
+   * so it is unit-testable without mounting the full component (which pulls
+   * in ReviewEditorControls' formatting toolbar).
+   */
+  function navigateToAdjacentComment(direction: 1 | -1): void {
+    const ordered = orderedTextThreads(threads);
+    if (ordered.length === 0) {
+      announce('No commented text in this document.');
+      return;
+    }
+
+    const target = nextCommentThread(threads, activeThreadId, direction);
+    if (!target) return;
+    const nextIndex = ordered.findIndex((t) => t.id === target.id);
+
+    const view = editorRef?.getView();
+    if (view) {
+      const from = documentPositionToBodyPosition(target.anchor.from, currentDocument.bodyOffset);
+      const to = documentPositionToBodyPosition(target.anchor.to, currentDocument.bodyOffset);
+      if (selectAnchorRange(view, from, to)) {
+        view.focus();
+      }
+      // else: position not resolvable right now — still open the thread
+      // below, just without moving the caret.
+    }
+
+    handleSidebarThreadSelect(target.id);
+
+    const preview = truncate(getVisibleComments(target)[0]?.body ?? '', 60);
+    announce(`Comment ${nextIndex + 1} of ${ordered.length}${preview ? `: ${preview}` : ''}`);
+  }
+
+  /**
    * Handle request to add a document-level comment from the sidebar.
    * The body is provided by the inline CommentComposer in the sidebar.
    */
@@ -1754,21 +1803,34 @@
   });
 
   /**
-   * Handle F6 keyboard navigation between regions.
+   * Handle F6 keyboard navigation between regions, and cinder#1304's
+   * Ctrl-Alt-ArrowDown/Up "next/previous comment" navigation.
    * Uses event.currentTarget to scope navigation to this specific editor instance,
    * supporting multiple ReviewEditor instances on the same page.
    */
   function handleContainerKeyDown(event: KeyboardEvent): void {
-    if (event.key !== 'F6') return;
+    if (event.key === 'F6') {
+      // Use currentTarget (the element with the listener) to get this specific editor container
+      const container = event.currentTarget;
+      if (!(container instanceof HTMLElement)) return;
 
-    // Use currentTarget (the element with the listener) to get this specific editor container
-    const container = event.currentTarget;
-    if (!(container instanceof HTMLElement)) return;
+      event.preventDefault();
+      const current = focusNavigator.getCurrentRegion(container);
+      const next = focusNavigator.getNextRegion(current, event.shiftKey);
+      focusNavigator.focusRegion(container, next);
+      return;
+    }
 
-    event.preventDefault();
-    const current = focusNavigator.getCurrentRegion(container);
-    const next = focusNavigator.getNextRegion(current, event.shiftKey);
-    focusNavigator.focusRegion(container, next);
+    // cinder#1304: `.comment-anchor` decorations are deliberately not
+    // tabindex-focusable (see anchor-decorations.ts), so Tab alone never
+    // reaches one. This is the keyboard route the issue asks for instead —
+    // Ctrl-Alt matches the modifier family this component already uses for
+    // Ctrl-Alt-C (add comment, keymap-plugin.ts), so a keyboard user who has
+    // found one review shortcut can guess at the others.
+    if (event.ctrlKey && event.altKey && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
+      event.preventDefault();
+      navigateToAdjacentComment(event.key === 'ArrowDown' ? 1 : -1);
+    }
   }
 </script>
 

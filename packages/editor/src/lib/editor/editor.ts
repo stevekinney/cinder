@@ -31,12 +31,13 @@ export async function createEditor(
 
   const [
     { Editor, rootCtx, defaultValueCtx, editorViewCtx, editorViewOptionsCtx },
-    { commonmark },
-    { gfm },
+    { commonmark, listItemKeymap },
+    { gfm, tableKeymap },
     { history },
     { listener, listenerCtx },
     { getMarkdown, replaceAll },
     { preloadCommandRuntime },
+    { preloadLazyPluginRuntime },
     { placeholderPlugin },
     { createEditorKeymap },
     { clipboardPlugin },
@@ -51,6 +52,7 @@ export async function createEditor(
     import('@milkdown/kit/plugin/listener'),
     import('@milkdown/kit/utils'),
     import('./commands.js'),
+    import('./milkdown-plugin-runtime.js'),
     import('./placeholder.js'),
     import('./keymap-plugin.js'),
     import('./clipboard.js'),
@@ -59,6 +61,12 @@ export async function createEditor(
     import('./template-invalid-decoration-plugin.js'),
   ]);
   await preloadCommandRuntime();
+  // cinder#1306: primes the cache createLazyProsePlugin/createLazyInputRule
+  // need to register a timer synchronously (see milkdown-plugin-runtime.ts).
+  // Must resolve before any `.use(...)` call below reaches one of those
+  // plugins' outer function, so it runs alongside preloadCommandRuntime(),
+  // before the builder chain starts.
+  await preloadLazyPluginRuntime();
 
   const {
     initialContent = '',
@@ -164,6 +172,47 @@ export async function createEditor(
         // Listen for document changes (which also affect selection position)
         listenerManager.updated((listenerContext) => notifySelectionChange(listenerContext));
       }
+    })
+    .config((ctx) => {
+      // cinder#1302: the commonmark preset's own listItemKeymap binds plain
+      // Tab/Shift-Tab to sink/lift-list-item (see @milkdown/preset-commonmark's
+      // listItemKeymap). That binding and createEditorKeymap's Tab-escape latch
+      // (keymap-plugin.ts) both get merged into ONE ProseMirror keymap plugin —
+      // Milkdown's KeymapManager chains every handler registered for a key into
+      // a single command, in priority order (ties broken by registration
+      // order) — and the preset's plugin registers first, so its handler always
+      // ran before ours got a chance. A successful sink/lift returns true,
+      // which stops the chain and preventDefaults the key, so the latch's
+      // Escape-then-Tab release (armed correctly) was never actually reachable:
+      // the preset's Tab handler re-indented before the chain ever reached the
+      // latch-aware binding.
+      //
+      // Fix: strip Tab/Shift-Tab from the preset's own keymap here, before its
+      // $shortcut plugin builds (it waits on KeymapReady, which is gated on
+      // SchemaReady — far later than this synchronous config callback runs —
+      // so there is no race). Mod-]/Mod-[ stay bound, so indent/outdent remains
+      // reachable by keyboard; Tab/Shift-Tab become exclusively
+      // createEditorKeymap's to handle, which is the only place the WCAG 2.1.2
+      // escape latch lives.
+      ctx.update(listItemKeymap.key, (current) => ({
+        ...current,
+        SinkListItem: { ...current.SinkListItem, shortcuts: 'Mod-]' },
+        LiftListItem: { ...current.LiftListItem, shortcuts: 'Mod-[' },
+      }));
+
+      // GFM's tableKeymap binds the identical trap one node type over: plain
+      // Tab/Shift-Tab move between table cells, with the SAME
+      // registers-before-the-latch ordering (and higher priority — 100 vs.
+      // the default 50 — so it would win even more decisively). Found while
+      // implementing the list fix above; same mechanism, same fix. Mod-]/
+      // Mod-[ already exist as tableKeymap's OWN alternate bindings for
+      // NextCell/PrevCell, so keeping them here costs nothing extra and
+      // matches the list keymap's shape.
+      ctx.update(tableKeymap.key, (current) => ({
+        ...current,
+        NextCell: { ...current.NextCell, shortcuts: 'Mod-]' },
+        PrevCell: { ...current.PrevCell, shortcuts: 'Mod-[' },
+      }));
     })
     .use(commonmark)
     .use(gfm)

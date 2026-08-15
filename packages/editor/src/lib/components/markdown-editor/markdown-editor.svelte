@@ -116,6 +116,26 @@
 
   // Escape single quotes in placeholder for CSS content property
   const escapedPlaceholder = $derived(placeholder.replace(/'/g, "\\'"));
+  /**
+   * cinder#1306: `--editor-placeholder` used to be written unconditionally,
+   * so a fully populated document carried the inline property too, even
+   * though the `::before` rule that consumes it only ever paints for an
+   * empty document (`.is-editor-empty:first-child::before` — placeholder.ts
+   * decorates the first paragraph with that class only when the document is
+   * empty). `value` is this component's own source of truth for the
+   * document's content, so it doubles as a close enough proxy for "empty"
+   * here without reaching into ProseMirror state for a purely cosmetic gate.
+   *
+   * `null` means "no property at all": Svelte's `style:` directive removes
+   * the property when the bound value is nullish (see
+   * `set_style`/`update_styles` in svelte/internal/client/dom/elements/style.js),
+   * so this isn't a placeholder value that happens to render as nothing —
+   * the attribute is genuinely absent, the same way it would be if this line
+   * were never rendered at all.
+   */
+  const placeholderStyleValue = $derived(
+    value.trim().length === 0 ? `'${escapedPlaceholder}'` : null,
+  );
   const accessibleEditorLabel = $derived(
     label.trim().length > 0 ? label.trim() : 'Markdown editor',
   );
@@ -727,7 +747,7 @@
           {id}
           class="cinder-markdown-content markdown-editor surface"
           data-readonly={readonly || undefined}
-          style:--editor-placeholder="'{escapedPlaceholder}'"
+          style:--editor-placeholder={placeholderStyleValue}
           role="application"
           aria-label={accessibleEditorLabel}
           tabindex="0"

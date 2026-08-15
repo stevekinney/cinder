@@ -188,10 +188,26 @@ async function createCompletionHarness(
   configuration: PlaceholderCompletionConfiguration,
   text = '{{',
 ): Promise<CompletionHarness> {
+  // cinder#1306: createLazyProsePlugin's outer function now ALSO calls
+  // ctx.record/ctx.update(editorStateTimerCtx, ...) when
+  // milkdown-plugin-runtime.ts's runtime cache happens to already be primed
+  // (which it may be, from an earlier test in this shared process — the
+  // cache is intentionally module-global, matching commands.ts's
+  // preloadCommandRuntime pattern). This fake ctx has to tolerate both
+  // calls: `record`/`done`/`clearTimer` as no-ops (this harness does not
+  // model Milkdown's timer system), and `update` scoped to ONLY the prose
+  // plugins slice — an unscoped fake would otherwise splice a raw Timer
+  // object into `registeredPlugins`, corrupting ProseMirror's actual plugin
+  // list for the rest of the test.
+  const { prosePluginsCtx } = await import('@milkdown/kit/core');
+
   const completionPlugin = createTemplateCompletionPlugin(() => configuration) as unknown as {
     (ctx: {
       wait: () => Promise<void>;
-      update: (slice: unknown, updater: (plugins: Plugin[]) => Plugin[]) => void;
+      record: (timer: unknown) => void;
+      done: (timer: unknown) => void;
+      clearTimer: (timer: unknown) => void;
+      update: (slice: unknown, updater: (value: unknown) => unknown) => void;
     }): () => Promise<unknown>;
     plugin: () => Plugin;
   };
@@ -199,8 +215,12 @@ async function createCompletionHarness(
   const registeredPlugins: Plugin[] = [];
   const initializePlugin = completionPlugin({
     wait: async () => {},
-    update: (_slice, updater) => {
-      const updated = updater(registeredPlugins);
+    record: () => {},
+    done: () => {},
+    clearTimer: () => {},
+    update: (slice, updater) => {
+      if (slice !== prosePluginsCtx) return;
+      const updated = updater(registeredPlugins) as Plugin[];
       registeredPlugins.length = 0;
       registeredPlugins.push(...updated);
     },
