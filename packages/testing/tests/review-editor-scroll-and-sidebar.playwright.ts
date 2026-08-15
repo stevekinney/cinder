@@ -42,7 +42,13 @@ const reviewEditorEntry = {
 
 const desktop = VIEWPORTS.find((viewport) => viewport.name === 'desktop')!;
 
-const EDITOR_ID = 'playground-review-editor-scroll-sidebar';
+// The example derives its id from `mountIdPrefix ?? $props.id()`, matching
+// every other playground example (see `featured-examples.ts`'s
+// `usesMountIdPrefix`/`usesUidFallback` checks). `mountIdPrefix` is the
+// mount container's own DOM id, `example-mount-<scenario>` — see
+// `component-page-example-mounts.ts` — so this is deterministic, not a
+// runtime `$props.id()` value this test would have no way to predict.
+const EDITOR_ID = 'example-mount-scroll-and-sidebar-review-editor';
 const MOUNT_SELECTOR = '#example-mount-scroll-and-sidebar';
 
 async function openExample(componentPage: ComponentPage): Promise<{ page: Page; mount: Locator }> {

@@ -9,6 +9,10 @@
   import type { Thread } from '@lostgradient/editor/review-editor';
   import Button from '@lostgradient/cinder/button';
 
+  let { mountIdPrefix }: { mountIdPrefix?: string } = $props();
+  const uid = $props.id();
+  let editorId = $derived(`${mountIdPrefix ?? uid}-review-editor`);
+
   // ReviewEditor only renders its Diff/Summary tabs when `original` is
   // truthy (showDiffTabs={!!original} in review-editor-impl.svelte). Set to
   // the same text as the initial `value` below — not meant to demonstrate a
@@ -168,7 +172,7 @@ Closing paragraph after both anchors, just to round out the document.
 
   <ReviewEditor
     bind:this={editorRef}
-    id="playground-review-editor-scroll-sidebar"
+    id={editorId}
     {original}
     bind:value
     bind:threads
