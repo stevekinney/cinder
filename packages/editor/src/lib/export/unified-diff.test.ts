@@ -346,6 +346,55 @@ describe('front matter', () => {
     // lines are counted, not swallowed or re-expanded.
     expect(diff).toContain('@@ -8,5 +8,5 @@');
   });
+
+  test('includeFrontMatter does not duplicate a fence that already exists but is not valid front matter (review finding)', () => {
+    // `includeFrontMatter` exists to restore a front-matter block onto
+    // older, body-only state payloads -- it must not fire when
+    // `state.content` already starts with a `---`...`---` span, even one
+    // that isn't *valid* front matter (a Markdown list, post-cinder#1325).
+    // The realistic trigger: persisted state saved before #1325 shipped,
+    // whose `frontMatterRaw` is stale relative to what `state.content` now
+    // parses as. Checking `hasFrontMatter` instead of `fencePresent` here
+    // used to prepend a second `---` block onto content that already had
+    // one, duplicating the prefix.
+    //
+    // Asserted against the *applied* result, not the diff's own hunk text:
+    // with `contextLines: 0`, the unchanged fence lines don't necessarily
+    // appear literally in the hunk body even when the underlying bug is
+    // present, so parsing the diff text directly isn't a reliable check
+    // here -- applying the patch and reading the resulting file is.
+    const original = '---\ntitle: Old\n---\n\nBody.\n';
+    const state = {
+      schemaVersion: 1,
+      documentId: 'doc',
+      original,
+      content: '---\n- one\n- two\n---\n\nBody changed.\n',
+      threads: [],
+      frontMatterRaw: 'title: Old',
+    };
+
+    const { diff, stats } = generateUnifiedDiff(state, {
+      includeFrontMatter: true,
+      contextLines: 0,
+    });
+
+    // The buggy version prepends a *second* `---`...`---` block ahead of
+    // the one `state.content` already has, which always adds a brand-new
+    // `---` line to the diff (there was no such line in either input for it
+    // to be a "same" context line, and no existing `---` line changes
+    // *into* it either) -- the one unambiguous signal a prepended fence
+    // leaves in the diff regardless of how the surrounding hunk shape
+    // otherwise renders. The fixed version never adds a `---` line here:
+    // both documents' *existing* fences are unchanged, so under
+    // `contextLines: 0` they don't appear in the diff at all.
+    expect(diff).not.toContain('\n+---\n');
+    // The buggy version's single hunk wraps the entire remainder of the
+    // document (the prepended block plus the real body edit) into one 8-line
+    // addition; the fixed version's edit stays proportional to the two real
+    // differences (the front-matter/list mismatch, and "Body." -> "Body
+    // changed.").
+    expect(stats.additions).toBeLessThan(8);
+  });
 });
 
 describe('hunk header line numbers reference source, not normalized text (cinder#1324)', () => {
@@ -496,6 +545,27 @@ describe('hunk header line numbers reference source, not normalized text (cinder
 
     expect(diff).toContain('@@ -5,1 +5,1 @@');
     expect(diff).not.toContain('@@ -4,1 +4,1 @@');
+  });
+
+  test('a Setext underline and a thematic break do not get confused for each other, even though both can canonicalize to "---" (cinder#1324, round 5 review finding)', () => {
+    // `Title\n---` (a Setext heading) and `***` (a thematic break) are
+    // different mdast node types that can both serialize to the literal
+    // string `---`. The previous (per-line-text-canonicalization)
+    // implementation of source-line-map.ts compared canonicalized
+    // *strings*, so it had no way to tell these two `---`-shaped lines
+    // apart -- reverting to that implementation and running this exact
+    // case reports the edited thematic break (source line 3) as if it were
+    // the Setext underline that folded into the heading above it (source
+    // line 2) instead. AST-based alignment pairs nodes by *type*
+    // (`heading` vs `thematicBreak`), which are never confusable no matter
+    // what text they happen to serialize to.
+    const original = 'Title\n---\n***\nAfter\n';
+    const current = 'Title\n---\nChanged\n\nAfter\n';
+
+    const { diff } = generateUnifiedDiff(createState(original, current), { contextLines: 0 });
+
+    expect(diff).toContain('@@ -3,1 +3,1 @@');
+    expect(diff).not.toContain('@@ -2,1 +3,1 @@');
   });
 });
 

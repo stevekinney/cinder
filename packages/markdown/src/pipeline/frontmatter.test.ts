@@ -164,6 +164,47 @@ Content`;
       expect(result.data).toBeNull();
     });
 
+    test('still recognizes a comment-only front-matter block, the "empty block with a note" idiom, not a false positive (review finding)', () => {
+      // `load()` returns `null` for `'# note'` -- the exact same value it
+      // returns for a genuinely blank block -- so a comment-only span fell
+      // into the "not front matter" branch above it, alongside real
+      // sequences/scalars, before this fix. Unlike a Markdown list or a
+      // bare scalar, `# note` immediately after the opening `---` was never
+      // plausibly ordinary Markdown body content: it's the standard way to
+      // leave a note in an otherwise-empty front-matter block.
+      const markdown = '---\n# TODO: fill this in\n---\n\n# Content';
+
+      const result = parseFrontMatter(markdown);
+
+      expect(result.hasFrontMatter).toBe(true);
+      expect(result.data).toBeNull();
+      expect(result.body).toBe('\n# Content');
+    });
+
+    test('a comment mixed with blank lines is still comment-only, not real content', () => {
+      const markdown = '---\n\n  # note\n\n---\n\nBody.\n';
+
+      const result = parseFrontMatter(markdown);
+
+      expect(result.hasFrontMatter).toBe(true);
+      expect(result.data).toBeNull();
+    });
+
+    test('a real key past an inline comment is not treated as comment-only (only a full-line `#` counts)', () => {
+      // `title: Hello # a note` has real content before its `#` -- the line
+      // doesn't *start* with `#`, so isCommentOnlyYaml correctly leaves it
+      // alone (YAML itself strips the trailing `# a note` as an inline
+      // comment, same as it would for hand-written front matter), and the
+      // block parses as ordinary front matter with real data, not as an
+      // "empty, comment-only" block.
+      const markdown = '---\ntitle: Hello # a note\n---\n\nBody.\n';
+
+      const result = parseFrontMatter(markdown);
+
+      expect(result.hasFrontMatter).toBe(true);
+      expect(result.data).toEqual({ title: 'Hello' });
+    });
+
     test('still recognizes valid object-shaped front matter', () => {
       const markdown = '---\ntitle: Real front matter\n---\n\nBody.\n';
 

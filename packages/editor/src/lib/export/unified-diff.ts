@@ -9,7 +9,7 @@ import { parseFrontMatter } from '@lostgradient/markdown/pipeline';
 import type { ReviewState } from '../comments/types.js';
 import { normalizeDocument } from './normalize-document.js';
 import {
-  buildSourceLineMap,
+  buildSourceLineMapCached,
   identitySourceLineMap,
   mapNormalizedLineNumber,
 } from './source-line-map.js';
@@ -158,11 +158,17 @@ export function generateUnifiedDiff(
   let currentContent = state.content;
 
   // Optionally prepend front matter for older body-only state payloads. Avoid
-  // duplicating front matter when state.content is already full Markdown.
+  // duplicating front matter when state.content is already full Markdown --
+  // checking `fencePresent`, not `hasFrontMatter`: a `---`...`---` span that
+  // exists but isn't *valid* front matter (invalid/non-object, post-
+  // cinder#1325) still means `currentContent` already has a fence there.
+  // `hasFrontMatter === false` doesn't rule that out, and prepending onto it
+  // anyway would duplicate the fence rather than restore missing front
+  // matter (cinder#1324/#1325 follow-up).
   if (
     includeFrontMatter &&
     state.frontMatterRaw &&
-    !parseFrontMatter(currentContent).hasFrontMatter
+    !parseFrontMatter(currentContent).fencePresent
   ) {
     currentContent = `---\n${state.frontMatterRaw}\n---\n\n${currentContent}`;
   }
@@ -195,15 +201,22 @@ export function generateUnifiedDiff(
   // `normalizeInputs: false` needs no mapping: `original`/`current` above
   // are already the (CRLF-folded) source text unchanged, so the identity
   // map is exact, not an approximation.
+  //
+  // `buildSourceLineMapCached`, not the raw builder: `ReviewEditor`'s
+  // hidden `formDiff` input is a `$derived` value, so this function runs on
+  // every content edit whenever the component has a `name`, not just on a
+  // user-triggered export. `original`/`originalContent` rarely change
+  // across those calls -- caching by the exact `(source, normalized)` pair
+  // means that side is a cache hit after the first call.
   const originalLineMap = normalizeInputs
-    ? buildSourceLineMap(originalContent.replace(/\r\n?/g, '\n'), original)
+    ? buildSourceLineMapCached(originalContent.replace(/\r\n?/g, '\n'), original)
     : identitySourceLineMap(original);
   // Mapped against `currentContent`, not `state.content` -- when
   // `includeFrontMatter` synthesizes a front-matter prefix above, that
   // synthesized text is the only coherent "source" a diff against `current`
   // can reference.
   const currentLineMap = normalizeInputs
-    ? buildSourceLineMap(currentContent.replace(/\r\n?/g, '\n'), current)
+    ? buildSourceLineMapCached(currentContent.replace(/\r\n?/g, '\n'), current)
     : identitySourceLineMap(current);
 
   const originalSplit = splitIntoLines(original, normalizeInputs);

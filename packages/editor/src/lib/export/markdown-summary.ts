@@ -14,7 +14,7 @@ import { computeLineDiff } from '@lostgradient/markdown/diff/line-diff';
 import type { PersistedThread, ReviewState } from '../comments/types.js';
 import { normalizeDocument } from './normalize-document.js';
 import {
-  buildSourceLineMap,
+  buildSourceLineMapCached,
   identitySourceLineMap,
   mapNormalizedLineNumber,
   type SourceLineMap,
@@ -89,8 +89,17 @@ export function generateMarkdownSummary(
     // heading (cinder#1324). `normalizeInputs: false` needs no mapping:
     // `original` above is the caller's own text, so the identity map is
     // exact.
+    //
+    // `buildSourceLineMapCached`, not the raw builder, for the same reason
+    // `unified-diff.ts` uses it: `ReviewEditor`'s hidden `formSummary` input
+    // is a `$derived` value, so this runs on every content edit whenever
+    // the component has a `name`. Caching by the exact `(source,
+    // normalized)` pair also means this and `generateUnifiedDiff`'s own
+    // `originalLineMap` -- built from the identical `originalContent`/
+    // `original` pair when both hidden inputs derive off the same edit --
+    // share one cached result instead of each rebuilding it independently.
     const originalLineMap = normalizeInputs
-      ? buildSourceLineMap(originalContent.replace(/\r\n?/g, '\n'), original)
+      ? buildSourceLineMapCached(originalContent.replace(/\r\n?/g, '\n'), original)
       : identitySourceLineMap(original);
     const changesSection = generateChangesSection(original, current, contextLines, originalLineMap);
     if (changesSection.markdown) {

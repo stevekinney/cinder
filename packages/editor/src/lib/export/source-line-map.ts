@@ -14,78 +14,49 @@
  * the wrong line whenever normalization changed the line count above the
  * edit (cinder#1324).
  *
- * Alignment (see {@link alignNormalizedToSource}) has to recognize when a
- * normalized line is really the *same* source line under a rewritten
- * spelling -- `*` becoming `-`, `1)` becoming `1.`, `_em_` becoming `*em*` --
- * rather than treating the rewrite as "no match, fall back to
- * interpolation." The rewrite rules live in exactly one place already:
- * `serializerOptions` (`@lostgradient/markdown`'s `pipeline/serializer.ts`)
- * plus `remark-stringify`/`remark-gfm`'s own defaults, both reached by
- * calling `normalize()` itself. Earlier revisions of this module
- * re-encoded pieces of that rule set by hand (first a Setext-fold special
- * case, then a `canonicalizeListMarker` regex for unordered markers only) --
- * each review round found the next rewrite kind the hand-rolled copy
- * missed (ordered markers, then whatever comes after that), which is the
- * same "two normalizers drift apart" defect class `normalizeDocument()` /
- * `splitDocument()` (cinder#1307, cinder#1318) already fixed once for
- * front-matter handling. {@link canonicalizeLine} closes it the same way:
- * it calls the real `normalize()` per line instead of re-deriving a second
- * notion of "these two lines are the same modulo style," so the alignment
- * automatically covers every rewrite `normalize()` makes, including ones
- * added after this file was written.
+ * Alignment is built from the AST, not from comparing lines of text.
+ * `parseOrThrow(source)` and `parseOrThrow(normalized)` each produce an
+ * mdast tree whose nodes carry their own source positions; walking both
+ * trees in lockstep and pairing corresponding nodes (see
+ * {@link collectLeafAnchors}) gives an exact, structural answer to "what
+ * source line does this normalized line come from" for every node the
+ * parser understood, with no string comparison anywhere.
  *
- * `normalize()`'s full rewrite inventory (`@lostgradient/markdown`'s
- * `pipeline/ast.ts`) splits into two kinds, and only one of them needs
- * {@link canonicalizeLine} at all:
+ * This module used to do the opposite: reconstruct the mapping *after*
+ * serialization by comparing normalized and source text line by line
+ * (first raw equality, then a hand-rolled marker canonicalizer, then a
+ * canonicalizer that called the real `normalize()` per line). Each version
+ * was a strictly better string heuristic than the last, but a review round
+ * proved the whole *approach* unsound, not just under-enumerated: a Setext
+ * heading's underline (`Title\n---`) and a thematic break (`***`) are
+ * different mdast node types that can both canonicalize to the identical
+ * string `---`. No per-line canonicalization -- however complete -- can
+ * recover which source line a normalized `---` actually came from once two
+ * structurally different nodes produce the same text; equal strings don't
+ * establish provenance. Comparing node *types* instead of rendered text
+ * makes that collision structurally impossible: a `heading` node and a
+ * `thematicBreak` node are never "the same node" no matter what text they
+ * happen to serialize to, so pairing can't confuse them (see the collision
+ * regression test below).
  *
- * - **Line-rewriting**: everything `serialize()` does -- every member of
- *   `serializerOptions` (`pipeline/serializer.ts`: `bullet`, `emphasis`,
- *   `fence`, `fences`, `setext`, `listItemIndent`, `rule`, `strong`,
- *   `tightDefinitions`) plus every `remark-stringify`/`remark-gfm` default
- *   it doesn't override -- notably `bulletOrdered` (`.` vs `)`, the
- *   *default*, not a `serializerOptions` entry -- which is exactly why the
- *   ordered-marker case below was its own review-round finding rather than
- *   falling out of the unordered-marker fix for free; also GFM tables,
- *   strikethrough, task-list checkboxes, autolinks. {@link canonicalizeLine}
- *   reaches all of it by construction, by calling the exact same
- *   `serialize()` path on one line -- there is nothing here to enumerate or
- *   fall behind on for any rewrite that stays on one line, whether it comes
- *   from `serializerOptions` or a default this file never named.
- * - **Line-deleting**: `normalize()`'s own post-serialization regex passes
- *   -- tight-list separator removal (both marker kinds), 3+ blank lines
- *   collapsing to 1, and leading/trailing blank-run trimming. These only
- *   ever remove lines, never rewrite the content of a line that survives,
- *   so they need no canonicalization: a surviving line still matches
- *   itself, and {@link fillUnmatchedRuns}'s interpolation already handles
- *   a run of lines that simply disappeared.
- *
- * Two known limits of canonicalizing one line in isolation, both
- * deliberately accepted rather than chased further. First: a rewrite that
- * only makes sense with multi-line context can't be reproduced by
- * re-running `normalize()` on just one line -- a Setext underline folding
- * into the heading above it (`setext: false`), four leading spaces being
- * read as an indented code block and re-fenced, or `~~~` becoming a
- * ` ``` ` *pair* rather than a one-line rewrite (`fence`/`fences`, the
- * same guard). {@link canonicalizeLine} detects a multi-line result and
- * falls back to the original line rather than risk comparing it against
- * something unrelated, leaving these specific cases exactly as
- * approximate as they were before this fix (see the Setext test below;
- * fence-style is the same shape and isn't separately tested for the same
- * reason a passing-either-way test isn't committed anywhere else in this
- * file -- the guard's fallback is the *documented* behavior here, not an
- * unverified claim). Second: a line whose *correct* canonical form depends
- * on surrounding document context that a lone line doesn't have (a lazy
- * paragraph continuation's leading whitespace, a table row with no header
- * separator next to it) may canonicalize to something a full-document
- * `normalize()` wouldn't -- this can only cause a missed match (falling
- * back to interpolation, the same approximate behavior this file always had
- * for an unmatched line), never a *false* match, since both sides of any
- * comparison run through the identical function.
+ * This also settles the earlier, real performance question head-on:
+ * `buildSourceLineMap` can run on every keystroke (`ReviewEditor`'s hidden
+ * `formDiff`/`formSummary` inputs are reactive whenever the component has a
+ * `name`, so this runs far more often than "once per user-triggered
+ * export," a claim an earlier version of this module's changeset made
+ * incorrectly). Two parses plus one tree walk is no worse asymptotically
+ * than the LCS table the old approach also paid for, and {@link
+ * buildSourceLineMapCached} (used by both `unified-diff.ts` and
+ * `markdown-summary.ts`) memoizes per distinct `(source, normalized)` pair
+ * the same way `@lostgradient/markdown`'s own `normalizeWithCache` does, so
+ * repeated calls against an unchanged `original` -- the common case, since
+ * only `current` changes per keystroke -- are free after the first.
  *
  * @module
  */
 
-import { normalize } from '@lostgradient/markdown/pipeline';
+import type { Content, Root } from '@lostgradient/markdown/pipeline';
+import { parseOrThrow } from '@lostgradient/markdown/pipeline';
 
 /**
  * A normalized-to-source line mapping, plus the source document's own true
@@ -111,39 +82,31 @@ export interface SourceLineMap {
 /**
  * Build a {@link SourceLineMap} from `source` to `normalized`.
  *
- * Alignment matches lines between the two documents in order (the same
- * longest-common-subsequence approach the line-level diff itself uses),
- * comparing each pair through {@link canonicalizeLine} rather than by raw
- * equality -- so a normalized line rewritten by `normalize()` (`#   Heading`
- * becoming `# Heading`, `*` becoming `-`, `1)` becoming `1.`, ...) still
- * maps to its own source line instead of registering as "no match at all."
- * A normalized line with no match even under canonicalization -- content
- * normalization synthesized or restructured it in a way {@link
- * canonicalizeLine}'s single-line view can't reconstruct, e.g. a Setext
- * underline disappearing into its heading's own line -- is filled in by
- * {@link fillUnmatchedRuns}, which interpolates forward from the nearest
- * preceding match rather than freezing on it, so the rewritten line itself
- * (not the line before it) is what gets reported. That fallback is
- * approximate for lines normalization synthesized from multi-line context;
- * it is exact for the blank-line and front-matter drift cinder#1324 was
- * filed against, since those transforms only ever remove lines, never
- * rewrite the ones that remain.
+ * Parses both documents and walks their ASTs in lockstep ({@link
+ * collectLeafAnchors}), pairing corresponding nodes by structural type
+ * rather than comparing rendered text. Each paired *leaf* node (a node this
+ * module doesn't recurse further into -- see {@link CONTAINER_TYPES})
+ * contributes an exact anchor: its own source and normalized line spans,
+ * linearly interpolated against each other when the two spans differ in
+ * length (a Setext heading's two source lines folding into one normalized
+ * ATX line, for instance). Lines no anchor covers -- gaps between sibling
+ * nodes, and any leading or trailing blank run -- are filled by {@link
+ * fillUnmatchedRuns}, interpolating forward from the nearest preceding
+ * anchor and clamped to the next one, exactly as before, just now anchored
+ * by node boundaries instead of string matches.
  *
- * The canonicalization cache is created fresh per call (not shared across
- * calls) and shared between the source and normalized arrays within this
- * one call -- most normalized lines are byte-identical to some source line,
- * so the cache hits constantly within a single `buildSourceLineMap` run,
- * without holding memory across unrelated export calls.
+ * If parsing either document fails (not expected -- `normalize()` itself
+ * just parsed and reserialized `normalized`, and `source` is ordinary
+ * Markdown -- but not guaranteed either), this degrades to treating the
+ * entire document as unanchored rather than throwing: {@link
+ * fillUnmatchedRuns}'s pure forward interpolation still produces a
+ * monotonic, in-range (if approximate) map.
  */
 export function buildSourceLineMap(source: string, normalized: string): SourceLineMap {
   const sourceLines = splitLines(source);
   const normalizedLines = splitLines(normalized);
 
-  const cache = new Map<string, string>();
-  const canonicalSourceLines = sourceLines.map((line) => canonicalizeLine(line, cache));
-  const canonicalNormalizedLines = normalizedLines.map((line) => canonicalizeLine(line, cache));
-
-  const matched = alignNormalizedToSource(canonicalSourceLines, canonicalNormalizedLines);
+  const matched = alignNormalizedToSourceByAst(source, normalized, normalizedLines.length);
   const filled = fillUnmatchedRuns(matched, sourceLines.length);
 
   return {
@@ -153,17 +116,62 @@ export function buildSourceLineMap(source: string, normalized: string): SourceLi
 }
 
 /**
- * Fill the gaps `alignNormalizedToSource` left as `null` (normalized lines
- * with no verbatim source match) by interpolating forward from the nearest
- * preceding match, one source line per unmatched normalized line, clamped
- * to the nearest *following* match so the result never overshoots past
- * where the alignment resumes. Freezing on the preceding match instead
- * (the simpler alternative) reports the line *before* a rewritten line --
- * e.g. the blank line above a collapsed Setext heading -- instead of the
- * rewritten line's own position; clamping to the following match instead of
- * advancing unboundedly keeps the result monotonically non-decreasing even
- * when a long unmatched run sits between two matches that are close
- * together in `source`.
+ * Small LRU cache in front of {@link buildSourceLineMap}, mirroring
+ * `@lostgradient/markdown`'s own `normalizeWithCache` (same size, same
+ * "first key evicted" policy). `unified-diff.ts` and `markdown-summary.ts`
+ * both call this instead of the raw builder: `ReviewEditor`'s hidden
+ * `formDiff`/`formSummary` inputs are `$derived`, so both exports re-run on
+ * every content edit whenever the component has a `name` -- not just on a
+ * user-triggered "export" action. Each export needs a line map for
+ * `original` (which rarely changes across keystrokes) and one for
+ * `current` (which changes every keystroke); caching by the exact
+ * `(source, normalized)` pair means the `original` side is typically a
+ * cache hit after the first call, and repeated calls with an unchanged
+ * document pair (e.g. two exports reading the same original) cost nothing
+ * beyond the lookup.
+ */
+const lineMapCache = new Map<string, SourceLineMap>();
+const LINE_MAP_CACHE_SIZE = 10;
+
+export function buildSourceLineMapCached(source: string, normalized: string): SourceLineMap {
+  // `JSON.stringify` of a two-element array, not `${source} ${normalized}`
+  // string concatenation: a plain join is ambiguous -- `source: "X"`,
+  // `normalized: "Y Z"` and `source: "X Y"`, `normalized: "Z"` both
+  // concatenate to `"X Y Z"`, which would return the wrong cached map for
+  // one of the two genuinely different input pairs. `JSON.stringify`
+  // escapes each string, so the pair boundary is never ambiguous.
+  const key = JSON.stringify([source, normalized]);
+  const cached = lineMapCache.get(key);
+  if (cached !== undefined) return cached;
+
+  const map = buildSourceLineMap(source, normalized);
+
+  if (lineMapCache.size >= LINE_MAP_CACHE_SIZE) {
+    const firstKey = lineMapCache.keys().next().value;
+    if (firstKey !== undefined) lineMapCache.delete(firstKey);
+  }
+  lineMapCache.set(key, map);
+
+  return map;
+}
+
+/** Clears {@link buildSourceLineMapCached}'s cache. Exposed for tests. */
+export function clearSourceLineMapCache(): void {
+  lineMapCache.clear();
+}
+
+/**
+ * Fill the gaps AST alignment left as `null` (normalized lines no leaf
+ * anchor covers) by interpolating forward from the nearest preceding
+ * anchor, one source line per unanchored normalized line, clamped to the
+ * nearest *following* anchor so the result never overshoots past where
+ * alignment resumes. Freezing on the preceding anchor instead (the simpler
+ * alternative) reports the line *before* a gap -- e.g. the blank line
+ * before a synthesized paragraph break -- instead of interpolating toward
+ * the gap's own approximate position; clamping to the following anchor
+ * instead of advancing unboundedly keeps the result monotonically
+ * non-decreasing even when a long gap sits between two anchors that are
+ * close together in `source`.
  */
 function fillUnmatchedRuns(matched: (number | null)[], sourceLength: number): number[] {
   const n = matched.length;
@@ -178,13 +186,13 @@ function fillUnmatchedRuns(matched: (number | null)[], sourceLength: number): nu
       continue;
     }
 
-    // Start of a run of unmatched normalized lines: find where it ends and
-    // what the next real match (if any) is, so the interpolation below has
-    // both an anchor to advance from and a ceiling not to cross.
+    // Start of a run of unanchored normalized lines: find where it ends and
+    // what the next real anchor (if any) is, so the interpolation below has
+    // both a point to advance from and a ceiling not to cross.
     let end = i;
     while (end < n && (matched[end] === null || matched[end] === undefined)) end++;
 
-    const precedingMatch = i > 0 ? filled[i - 1]! : -1; // -1: no match yet
+    const precedingMatch = i > 0 ? filled[i - 1]! : -1; // -1: no anchor yet
     const followingMatch = end < n ? matched[end]! : sourceLength - 1;
 
     for (let k = 0; k < end - i; k++) {
@@ -234,20 +242,71 @@ export function mapNormalizedLineNumber(
 }
 
 /**
- * Longest-common-subsequence line alignment, matching `computeLineChanges`'s
- * DP shape. Callers pass already-{@link canonicalizeLine}-canonicalized
- * arrays, so equality here is plain `===` -- comparing canonical strings
- * subsumes exact-match comparison, since `canonicalizeLine` is a
- * deterministic function of its input (`a === b` implies
- * `canonicalizeLine(a) === canonicalizeLine(b)`), so there is no separate
- * "byte-exact first" case to special-case.
+ * Node types this module recurses into for finer-grained alignment --
+ * markdown's own block containers. Every other node type (`paragraph`,
+ * `heading`, `thematicBreak`, `code`, `html`, table nodes, and every inline
+ * node) is treated as an atomic leaf: its own `position.start`/`.end` line
+ * span is mapped as a single unit, without looking at its children. This
+ * is coarser than line-level for a node whose content spans multiple lines
+ * (a paragraph with a soft line break, a table, a fenced code block whose
+ * fence style changed), but no coarser than the interpolation this module
+ * always used for a rewritten-and-unmatched run -- see {@link
+ * collectLeafAnchors}'s interpolation within a single anchor's span.
  */
-function alignNormalizedToSource(
-  canonicalSourceLines: string[],
-  canonicalNormalizedLines: string[],
+const CONTAINER_TYPES = new Set(['root', 'blockquote', 'list', 'listItem']);
+
+/** A paired leaf node's source and normalized line spans (1-based, inclusive). */
+interface LeafAnchor {
+  sourceStart: number;
+  sourceEnd: number;
+  normalizedStart: number;
+  normalizedEnd: number;
+}
+
+function childrenOf(node: Root | Content): Content[] {
+  return 'children' in node && Array.isArray(node.children) ? (node.children as Content[]) : [];
+}
+
+/**
+ * A node's pairing key: its type, plus (for lists) whether it's ordered.
+ * `normalize()` never turns an ordered list into an unordered one or vice
+ * versa, so this distinction is never exercised by any current repro --
+ * it's a defensive detail that costs nothing and rules out a pairing this
+ * module should never want to make.
+ */
+function nodeKey(node: Content): string {
+  if (node.type === 'list') {
+    // `node.type === 'list'` already narrows `Content` (a discriminated
+    // union) to mdast's `List`, which declares `ordered`, so no cast is
+    // needed to read it.
+    return node.ordered ? 'list:ordered' : 'list:bullet';
+  }
+  return node.type;
+}
+
+/**
+ * Pair a container's children in document order by structural type -- the
+ * same longest-common-subsequence shape `computeLineChanges` (and this
+ * module's own earlier string-based alignment) used, now comparing
+ * {@link nodeKey} instead of line text. Returns, for each index into
+ * `normalizedChildren`, the matched index into `sourceChildren`, or `null`
+ * if nothing paired.
+ *
+ * Every repro in this file's test suite has a 1:1 matching child-type
+ * sequence between `source` and `normalized` (see the tree-shape
+ * assertions there), so this degrades to a plain zip in every case this
+ * module has ever seen in practice. Pairing by type rather than by
+ * position is what makes it degrade *gracefully*, rather than silently
+ * misaligning everything after the first difference, if some future
+ * `normalize()` change ever inserts, removes, or reorders a node a source
+ * document didn't have.
+ */
+function pairChildrenByType(
+  sourceChildren: Content[],
+  normalizedChildren: Content[],
 ): (number | null)[] {
-  const m = canonicalSourceLines.length;
-  const n = canonicalNormalizedLines.length;
+  const m = sourceChildren.length;
+  const n = normalizedChildren.length;
 
   const lcs: number[][] = Array.from({ length: m + 1 }, () =>
     Array.from({ length: n + 1 }, () => 0),
@@ -255,7 +314,7 @@ function alignNormalizedToSource(
   for (let i = 1; i <= m; i++) {
     for (let j = 1; j <= n; j++) {
       lcs[i]![j] =
-        canonicalSourceLines[i - 1] === canonicalNormalizedLines[j - 1]
+        nodeKey(sourceChildren[i - 1]!) === nodeKey(normalizedChildren[j - 1]!)
           ? lcs[i - 1]![j - 1]! + 1
           : Math.max(lcs[i - 1]![j]!, lcs[i]![j - 1]!);
     }
@@ -265,7 +324,7 @@ function alignNormalizedToSource(
   let i = m;
   let j = n;
   while (i > 0 && j > 0) {
-    if (canonicalSourceLines[i - 1] === canonicalNormalizedLines[j - 1]) {
+    if (nodeKey(sourceChildren[i - 1]!) === nodeKey(normalizedChildren[j - 1]!)) {
       matched[j - 1] = i - 1;
       i--;
       j--;
@@ -280,64 +339,110 @@ function alignNormalizedToSource(
 }
 
 /**
- * Canonicalize a single line the way `normalize()` -- the real Markdown
- * pipeline, `@lostgradient/markdown/pipeline` -- would rewrite it, memoized
- * per {@link buildSourceLineMap} call.
+ * Walk a paired `(sourceNode, normalizedNode)` -- guaranteed the same
+ * {@link nodeKey} by construction, since {@link pairChildrenByType} only
+ * pairs same-key nodes, and the two ASTs' roots are both always `root` --
+ * recursing into {@link CONTAINER_TYPES} for finer-grained pairing and
+ * pushing a {@link LeafAnchor} for everything else.
  *
- * This exists so alignment's notion of "these two lines are the same
- * modulo style" comes from calling the normalizer, not from re-deriving a
- * second copy of its rules. Earlier versions of this module hand-encoded
- * that notion one rewrite kind at a time (Setext folding, then unordered
- * list markers), and each review round found the next kind the copy
- * missed -- ordered list markers (`1)` vs `1.`), which is exactly what
- * calling `normalize()` here picks up for free, along with emphasis
- * (`_x_`/`*x*`), strong (`__x__`/`**x**`), thematic breaks
- * (`***`/`___`/`- - -`), and list-item indent spacing, without this file
- * needing to know any of those rules exist.
- *
- * Two guards keep a per-line call safe even though `normalize()` is really
- * a whole-document pipeline:
- *
- * - **Blank/whitespace-only lines canonicalize to `''`** without calling
- *   `normalize()` at all, so a trailing-whitespace source line still
- *   matches its stripped normalized twin.
- * - **A result containing a newline is discarded, falling back to the
- *   original line.** Most rewrites `normalize()` makes are line-local, but
- *   a few are multi-line-context transforms that don't make sense run on
- *   an isolated line -- a Setext heading's underline folding into the
- *   heading above it, or four spaces of leading whitespace being
- *   (mis)read as an indented code block and re-fenced. Trusting a
- *   multi-line result here would risk comparing it against an unrelated
- *   single line and calling that a match; falling back to the original
- *   line instead means these lines simply don't canonicalize, and the
- *   surrounding LCS/interpolation fallback handles them the way it always
- *   has (approximate, but never a false match).
- *
- * `normalize()` is not expected to throw on a single line -- it's a
- * complete (if often small) Markdown document -- but a `try`/`catch`
- * falls back to the original line rather than letting a parser edge case
- * here break the whole export.
+ * A leaf anchor's line span is linearly interpolated when `source`'s and
+ * `normalized`'s spans differ in length: offset 0 of the normalized span
+ * maps to `sourceStart`, offset `normalizedSpan` (the last line) maps to
+ * `sourceEnd`, and everything between is scaled proportionally. For a
+ * single-line normalized span (`normalizedSpan === 0`) this always resolves
+ * to `sourceStart` -- exactly the desired "a rewritten line maps to the
+ * *start* of what it was rewritten from" behavior for a Setext heading's
+ * one-line ATX form, whose normalized span is one line but whose source
+ * span is two (the heading text plus its underline).
  */
-function canonicalizeLine(line: string, cache: Map<string, string>): string {
-  const cached = cache.get(line);
-  if (cached !== undefined) return cached;
+function collectLeafAnchors(
+  sourceNode: Root | Content,
+  normalizedNode: Root | Content,
+  anchors: LeafAnchor[],
+): void {
+  if (CONTAINER_TYPES.has(sourceNode.type) && CONTAINER_TYPES.has(normalizedNode.type)) {
+    const sourceChildren = childrenOf(sourceNode);
+    const normalizedChildren = childrenOf(normalizedNode);
+    const matched = pairChildrenByType(sourceChildren, normalizedChildren);
 
-  const canonical = computeCanonicalLine(line);
-  cache.set(line, canonical);
-  return canonical;
-}
-
-function computeCanonicalLine(line: string): string {
-  if (line.trim() === '') return '';
-
-  let normalized: string;
-  try {
-    normalized = normalize(line).replace(/\n+$/, '');
-  } catch {
-    return line;
+    for (let j = 0; j < normalizedChildren.length; j++) {
+      const sourceIndex = matched[j];
+      const normalizedChild = normalizedChildren[j];
+      // `sourceIndex === null`: unpaired normalized child, no anchor, becomes
+      // a gap. The `undefined` checks below (both from `noUncheckedIndexedAccess`,
+      // since `matched`/`normalizedChildren` are indexed by a bounded loop
+      // variable) are never actually reachable, but narrow explicitly via a
+      // real conditional rather than a non-null assertion.
+      if (sourceIndex === null || sourceIndex === undefined || normalizedChild === undefined) {
+        continue;
+      }
+      const sourceChild = sourceChildren[sourceIndex];
+      if (sourceChild === undefined) continue;
+      collectLeafAnchors(sourceChild, normalizedChild, anchors);
+    }
+    return;
   }
 
-  return normalized.includes('\n') ? line : normalized;
+  const sourceStart = sourceNode.position?.start.line;
+  const sourceEnd = sourceNode.position?.end.line;
+  const normalizedStart = normalizedNode.position?.start.line;
+  const normalizedEnd = normalizedNode.position?.end.line;
+  if (
+    sourceStart == null ||
+    sourceEnd == null ||
+    normalizedStart == null ||
+    normalizedEnd == null
+  ) {
+    return; // no position data to anchor with -- leave this span as a gap
+  }
+
+  anchors.push({ sourceStart, sourceEnd, normalizedStart, normalizedEnd });
+}
+
+/**
+ * Build the `(number | null)[]` alignment array {@link fillUnmatchedRuns}
+ * expects -- indexed by 0-based normalized line, valued by 0-based source
+ * line, `null` where no leaf anchor covers -- from an AST lockstep walk
+ * instead of string comparison.
+ */
+function alignNormalizedToSourceByAst(
+  source: string,
+  normalized: string,
+  normalizedLineCount: number,
+): (number | null)[] {
+  const matched: (number | null)[] = Array.from({ length: normalizedLineCount }, () => null);
+
+  let sourceAst: Root;
+  let normalizedAst: Root;
+  try {
+    sourceAst = parseOrThrow(source);
+    normalizedAst = parseOrThrow(normalized);
+  } catch {
+    // Not expected -- `normalize()` itself just parsed and reserialized
+    // `normalized`, and `source` is the caller's own ordinary Markdown --
+    // but if parsing fails anyway, leave everything unanchored rather than
+    // throwing: fillUnmatchedRuns's pure forward interpolation still
+    // produces a monotonic, in-range map for the whole document.
+    return matched;
+  }
+
+  const anchors: LeafAnchor[] = [];
+  collectLeafAnchors(sourceAst, normalizedAst, anchors);
+
+  for (const anchor of anchors) {
+    const sourceSpan = anchor.sourceEnd - anchor.sourceStart;
+    const normalizedSpan = anchor.normalizedEnd - anchor.normalizedStart;
+
+    for (let line = anchor.normalizedStart; line <= anchor.normalizedEnd; line++) {
+      if (line < 1 || line > matched.length) continue; // defensive: stay in range
+      const offset = line - anchor.normalizedStart;
+      const sourceOffset =
+        normalizedSpan <= 0 ? 0 : Math.round((offset * sourceSpan) / normalizedSpan);
+      matched[line - 1] = anchor.sourceStart + sourceOffset - 1; // 0-based
+    }
+  }
+
+  return matched;
 }
 
 /**

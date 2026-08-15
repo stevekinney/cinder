@@ -53,3 +53,37 @@ this) now renders that span as plain Markdown body content in the main editor in
 the friendlier raw-YAML recovery field. No data is lost — `combineFrontMatterAndBody` still
 round-trips the document byte-for-byte — but the recovery affordance moves from a dedicated field
 to inline editing of what displays as a thematic break, a paragraph, and a second thematic break.
+
+**Follow-up (review finding): a `---`-delimited block containing only YAML comments is valid
+front matter, not a false positive.** `# TODO: fill this in` between the delimiters is the standard
+idiom for "an intentionally empty front-matter block with a note" — but `js-yaml`'s `load()` returns
+`null` for it, the exact same value it returns for content that's genuinely blank, and the object-shape
+gate above couldn't tell those two `null`s apart. Comment-only content fell into the _rejected_
+branch, alongside a real Markdown list or scalar, even though a document doesn't ordinarily open
+with `# ...` immediately followed by a second `---`. Fixed by a line-oriented check
+(`isCommentOnlyYaml`: every line, trimmed, is either blank or starts with `#`) that routes
+comment-only content to the same "empty, still front matter" treatment the whitespace-only case
+already gets, without needing full YAML-comment-aware parsing (which would also have to reason
+about `#` inside quoted strings) — it only has to recognize "nothing but comments," not parse
+comments in general.
+
+**Follow-up (review finding, more consequential): callers deciding whether to prepend a new
+front-matter block must not use `hasFrontMatter === false` to mean "there's no fence here to
+collide with."** After the fix above, that's also true for a document whose `---` span exists but
+is invalid or non-object YAML — so a caller using `!hasFrontMatter` as its "safe to prepend" guard
+(`@lostgradient/editor`'s `generateUnifiedDiff` with `includeFrontMatter`, and
+`reviewStateToMarkdown`) could stringify a _second_ `---`...`---` block onto content that already
+starts with one, duplicating the prefix. The realistic trigger is persisted state saved before this
+patch shipped, whose `frontMatterRaw` field is stale relative to what the document's own content now
+parses as. This is the same defect class the front-matter corruption bug this whole area exists to
+prevent (cinder#1285) — fixed by inventory, not by patching the two call sites a bot review named:
+`FrontMatterParseResult` gains a third state, `fencePresent` (`@lostgradient/markdown/pipeline`),
+`true` whenever a `---`...`---` span exists at all regardless of validity, distinct from
+`hasFrontMatter` (`true` only when that span is _valid_ front matter). Every consumer of
+`hasFrontMatter`/`parseFrontMatter` across `@lostgradient/markdown` and `@lostgradient/editor` was
+audited (`@lostgradient/chat` has none): the two "is it safe to prepend" call sites now check
+`fencePresent`; the remaining consumers (`normalizeDocument`/`splitDocument`,
+`computeDiffWithFrontMatter`, `front-matter-fields.svelte`'s raw-YAML validation, and a hand-rolled,
+entirely separate `DiffViewer`-local implementation that never called the shared `parseFrontMatter`
+in the first place) only ever _conditionally split or validate_, never prepend, so `hasFrontMatter`
+stays the correct check for them.

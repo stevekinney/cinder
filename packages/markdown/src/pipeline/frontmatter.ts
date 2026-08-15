@@ -62,6 +62,36 @@ function parseYaml(raw: string): Record<string, unknown> | null {
   return parsed;
 }
 
+/**
+ * True if every line of `raw` is blank or a full-line YAML comment (`#...`,
+ * possibly indented).
+ *
+ * A `---`-delimited block containing only comments (`---\n# TODO: fill in\n---`)
+ * is the usual idiom for "an intentionally empty front-matter block with a
+ * note," and is valid YAML -- but `load()` returns `null` for it, the exact
+ * same value it returns for a document that's genuinely blank between the
+ * delimiters. Without this check, `parseYaml` returning `null` for
+ * comment-only content fell into the *rejected* branch below (treated as
+ * "not front matter at all," the same as a Markdown list or a bare scalar),
+ * which is wrong for a case that was never ambiguous with ordinary Markdown
+ * the way a sequence or scalar is: a document doesn't ordinarily have
+ * `# ...` as its very first line followed immediately by a second `---`.
+ *
+ * Only *full*-line comments are recognized (a line whose trimmed content
+ * starts with `#`); a line like `title: Hello # a note` has a real value
+ * before its `#`, so it doesn't start with one and correctly isn't treated
+ * as comment-only. This is a deliberately narrow, line-oriented check, not
+ * a general YAML-comment-aware scan (which would also need to reason about
+ * `#` inside quoted strings) -- it only has to distinguish "nothing but
+ * comments" from "real content," not parse comments in general.
+ */
+function isCommentOnlyYaml(raw: string): boolean {
+  return raw.split('\n').every((line) => {
+    const trimmed = line.trim();
+    return trimmed === '' || trimmed.startsWith('#');
+  });
+}
+
 function extractFrontMatterSegments(markdown: string): FrontMatterSegments | null {
   if (!markdown.startsWith('---')) {
     return null;
@@ -151,6 +181,7 @@ export function parseFrontMatter(markdown: string): FrontMatterParseResult {
       raw: null,
       body: '',
       hasFrontMatter: false,
+      fencePresent: false,
     };
   }
 
@@ -162,19 +193,30 @@ export function parseFrontMatter(markdown: string): FrontMatterParseResult {
       raw: null,
       body: markdown,
       hasFrontMatter: false,
+      fencePresent: false,
     };
   }
 
   const segments = extractFrontMatterSegments(markdown);
   if (!segments) {
+    // Leading `---` but no matching closing `---` -- there's no well-formed
+    // fenced span here at all (this `---` is ordinary document content,
+    // e.g. a thematic break), so `fencePresent` is `false` too: prepending
+    // a new front-matter block onto text like this doesn't collide with
+    // anything a reader would recognize as an existing fence.
     return {
       data: null,
       raw: null,
       body: markdown,
       hasFrontMatter: false,
+      fencePresent: false,
     };
   }
 
+  // From here on, a well-formed `---`...`---` span was found -- `fencePresent`
+  // is `true` regardless of whether its content turns out to be valid front
+  // matter, since a caller deciding "is it safe to prepend a new fence here"
+  // cares about the span existing, not about what's inside it.
   const { raw, rawForParse, body } = segments;
   if (!rawForParse) {
     // Blank/whitespace-only content between the delimiters is an
@@ -186,6 +228,7 @@ export function parseFrontMatter(markdown: string): FrontMatterParseResult {
       raw,
       body,
       hasFrontMatter: true,
+      fencePresent: true,
     };
   }
 
@@ -193,17 +236,41 @@ export function parseFrontMatter(markdown: string): FrontMatterParseResult {
     const parsed = parseYaml(rawForParse);
 
     if (!parsed) {
-      // `parseYaml` returns null for YAML that parsed but isn't
-      // object-shaped (a bare scalar, a sequence, or `null`). That means
-      // this `---`-opening span was never front matter -- it's ordinary
+      // `parseYaml` returns null both for YAML that parsed but isn't
+      // object-shaped (a bare scalar, a sequence, or explicit `null`) *and*
+      // for content that's nothing but comments -- `load()` can't tell
+      // those apart, but they aren't the same case. Comment-only content is
+      // the "empty block with a note" idiom (see `isCommentOnlyYaml`), not
+      // ordinary Markdown that happens to look front-matter-shaped, so it
+      // gets the same "empty, still front matter" treatment the
+      // whitespace-only case above already gets. A real sequence or scalar
+      // -- content that could just as easily be a Markdown list or a plain
+      // paragraph bracketed by two thematic breaks -- still isn't front
+      // matter, same as before.
+      if (isCommentOnlyYaml(rawForParse)) {
+        return {
+          data: null,
+          raw,
+          body,
+          hasFrontMatter: true,
+          fencePresent: true,
+        };
+      }
+
+      // This `---`-opening span was never front matter -- it's ordinary
       // document content (often a thematic break, some other block, and a
       // second thematic break) that happens to look front-matter-shaped.
       // Treat the whole document as body, same as "no closing delimiter".
+      // `fencePresent: true`, though, since a well-formed `---`...`---` span
+      // really is there -- a caller deciding whether it's safe to prepend a
+      // *new* fence onto this text needs to know that, even though this one
+      // isn't valid front matter (cinder#1324/#1325 follow-up).
       return {
         data: null,
         raw: null,
         body: markdown,
         hasFrontMatter: false,
+        fencePresent: true,
       };
     }
 
@@ -214,16 +281,19 @@ export function parseFrontMatter(markdown: string): FrontMatterParseResult {
       raw,
       body,
       hasFrontMatter: true,
+      fencePresent: true,
     };
   } catch {
     // Content between the delimiters doesn't parse as YAML at all (e.g. an
     // unclosed bracket, an unresolvable alias reference). Also not front
-    // matter, for the same reason as the non-record case above.
+    // matter, for the same reason as the non-record case above -- and
+    // `fencePresent: true` for the same reason too.
     return {
       data: null,
       raw: null,
       body: markdown,
       hasFrontMatter: false,
+      fencePresent: true,
     };
   }
 }

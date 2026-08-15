@@ -611,5 +611,27 @@ describe('generateMarkdownSummary', () => {
       expect(result.markdown).toMatch(/### Lines 5-5/);
       expect(result.markdown).not.toMatch(/### Lines 4-4/);
     });
+
+    test('a Setext underline and a thematic break do not get confused for each other, even though both can canonicalize to "---" (cinder#1324, round 5 review finding)', () => {
+      // `Title\n---` (a Setext heading) and `***` (a thematic break) are
+      // different mdast node types that can both serialize to the literal
+      // string `---`. The previous (per-line-text-canonicalization)
+      // implementation of source-line-map.ts compared canonicalized
+      // *strings*, so it had no way to tell these two `---`-shaped lines
+      // apart -- reverting to that implementation and running this exact
+      // case reports "Lines 2-2" (the Setext underline that folded into
+      // the heading above it), not "Lines 3-3" (the actual, edited
+      // thematic break). AST-based alignment pairs nodes by *type*
+      // (`heading` vs `thematicBreak`), which are never confusable no
+      // matter what text they happen to serialize to.
+      const state = createState({
+        original: 'Title\n---\n***\nAfter\n',
+        current: 'Title\n---\nChanged\n\nAfter\n',
+      });
+      const result = generateMarkdownSummary(state, { contextLines: 0 });
+
+      expect(result.markdown).toMatch(/### Lines 3-3/);
+      expect(result.markdown).not.toMatch(/### Lines 2-2/);
+    });
   });
 });

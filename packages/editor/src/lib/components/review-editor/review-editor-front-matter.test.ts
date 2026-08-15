@@ -74,6 +74,31 @@ describe('review editor front matter helpers', () => {
     ).toBe('---\nowner: platform\n---\n\n# Architecture\n');
   });
 
+  test('does not prepend a second fence when content already starts with one that is not valid front matter (review finding)', () => {
+    // The realistic trigger: persisted v4 state saved before cinder#1325
+    // shipped, when a `---`-delimited YAML sequence still counted as front
+    // matter (`hasFrontMatter: true, data: null`) -- so `frontMatterRaw`
+    // was populated for content shaped exactly like this. After #1325, that
+    // same content parses as `hasFrontMatter: false` (correctly -- it's a
+    // Markdown list, not front matter), but it still has a `---`...`---`
+    // span at the start. Checking `hasFrontMatter` instead of
+    // `fencePresent` here used to treat that as "no fence, safe to
+    // prepend," producing a second `---`...`---` block ahead of the first.
+    const content = '---\n- one\n- two\n---\n\nBody.\n';
+
+    const result = reviewStateToMarkdown({
+      content,
+      frontMatter: null,
+      frontMatterRaw: 'owner: platform',
+    });
+
+    // Unchanged: fencePresent is true (there's already a `---`...`---` span,
+    // even though it's not valid front matter), so nothing gets prepended.
+    expect(result).toBe(content);
+    const fenceLineCount = result.split('\n').filter((line) => line === '---').length;
+    expect(fenceLineCount).toBe(2);
+  });
+
   test('round-trips complex field values through YAML text', () => {
     const raw = serializeYamlFieldValue({ labels: ['editor', 'review'], priority: 2 });
     const parsed = parseYamlFieldValue(raw);
