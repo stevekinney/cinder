@@ -12,6 +12,7 @@
 
 import { computeLineDiff } from '@lostgradient/markdown/diff/line-diff';
 import type { PersistedThread, ReviewState } from '../comments/types.js';
+import { normalizeDocument } from './normalize-document.js';
 import type { MarkdownSummaryOptions, MarkdownSummaryResult } from './types.js';
 
 /**
@@ -40,6 +41,12 @@ export function generateMarkdownSummary(
     includeTimestamps = false,
     includeAuthorIds = false,
     contextLines = 2,
+    // Mirrors generateUnifiedDiff's own default: without this, a document
+    // whose front matter and body are byte-identical to another can still be
+    // reported as a real edit purely from CRLF or blank-line formatting
+    // differences that normalizeDocument treats as equivalent everywhere else
+    // in this package (cinder#1318).
+    normalizeInputs = true,
   } = options;
 
   const sections: string[] = [];
@@ -47,8 +54,25 @@ export function generateMarkdownSummary(
   let threadCount = 0;
 
   // Document Changes Section
-  const original = state.original ?? '';
-  const current = state.content;
+  const originalContent = state.original ?? '';
+  const currentContent = state.content;
+
+  // Normalize both inputs the same way generateUnifiedDiff does, so the two
+  // exports agree about whether an edit happened. Without this,
+  // computeLineDiff runs on raw strings with no CRLF handling and no
+  // front-matter awareness, and can disagree with generateUnifiedDiff about
+  // documents that are semantically identical.
+  //
+  // Deliberately NOT mirroring generateUnifiedDiff's own normalizeInputs:
+  // false branch here, which still folds CRLF to LF even with normalization
+  // "off" — a pre-existing wrinkle in that function, not a contract this new
+  // option needs to inherit. `normalizeInputs: false` promises a raw,
+  // verbatim comparison (see MarkdownSummaryOptions' doc comment); honoring
+  // that for CRLF as well as Markdown canonicalization is what makes the
+  // option's own contract true rather than only true for some formatting
+  // differences and not others.
+  const original = normalizeInputs ? normalizeDocument(originalContent) : originalContent;
+  const current = normalizeInputs ? normalizeDocument(currentContent) : currentContent;
 
   if (original !== current) {
     const changesSection = generateChangesSection(original, current, contextLines);

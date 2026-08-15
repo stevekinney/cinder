@@ -13,10 +13,9 @@
  * @module
  */
 
-import { computeLineDiff, getDiffStats } from '@lostgradient/markdown/diff/line-diff';
-import { normalize } from '@lostgradient/markdown/pipeline';
 import type { Thread } from '../../comments/index.ts';
 import { generateMarkdownSummary } from '../../export/index.ts';
+import { computeReviewEditorDiffStats } from './review-editor-diff-stats.ts';
 import type {
   ReviewEditorDiffViewMode as DiffViewMode,
   ReviewEditorViewType as ViewType,
@@ -94,18 +93,13 @@ export function createReviewEditorState(options: ReviewEditorStateOptions): Revi
   let activeView = $state<ViewType>('editor');
   let diffViewMode = $state<DiffViewMode>('unified');
 
-  // Computed diff statistics
-  const diffStats = $derived.by((): DiffStats => {
-    const original = getOriginal();
-    if (!original) {
-      return { added: 0, removed: 0, modified: 0 };
-    }
-    // Normalize both inputs to avoid false positives from formatting differences
-    const normalizedOriginal = normalize(original);
-    const normalizedCurrent = normalize(getValue());
-    const lineDiffs = computeLineDiff(normalizedOriginal, normalizedCurrent);
-    return getDiffStats(lineDiffs);
-  });
+  // Computed diff statistics. Front-matter-aware (cinder#1307): must use the
+  // same computeReviewEditorDiffStats the ReviewEditor toolbar uses, not a
+  // bare normalize() call, or this exported state manager silently disagrees
+  // with the component's own diffStats about the same content.
+  const diffStats = $derived.by(
+    (): DiffStats => computeReviewEditorDiffStats(getOriginal(), getValue()),
+  );
 
   // Whether there are any content changes
   const hasContentChanges = $derived(
