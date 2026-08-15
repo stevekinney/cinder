@@ -12,7 +12,8 @@
  * rather than reintroducing a direct `normalize()` call that would make the
  * bug come back invisibly to this test file.
  */
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, spyOn, test } from 'bun:test';
+import * as normalizeDocumentModule from '../../export/normalize-document.ts';
 import { computeReviewEditorDiffStats } from './review-editor-diff-stats.ts';
 
 describe('computeReviewEditorDiffStats', () => {
@@ -78,6 +79,112 @@ describe('computeReviewEditorDiffStats', () => {
       removed: 0,
       modified: 0,
     });
+  });
+});
+
+describe('computeReviewEditorDiffStats normalization cost (cinder#1336)', () => {
+  // review-editor-impl.svelte's toolbar badge recomputes this on every settled
+  // edit while `original` — the review session's fixed baseline — never
+  // changes. cinder#1336 measured that re-normalizing `original` from scratch
+  // on every call, alongside `current`, accounted for >99% of a ~30ms-median
+  // recompute on a realistic document: the two normalizeDocument calls were
+  // "essentially identical in cost," and one of them (original's) was pure
+  // waste once original stopped moving.
+  //
+  // This spies on the real normalizeDocument (call-through preserved, so the
+  // returned stats stay correct — see the assertion below) rather than timing
+  // wall-clock cost, per this repo's own stance against timing-threshold
+  // assertions: a call-count assertion is deterministic and can't flake the
+  // way a duration budget can.
+  test('does not re-normalize an unchanged original across repeated calls', () => {
+    // Unique per test run (not just per test in this file): the cache this
+    // pins is module-global and never cleared, so a fixed literal here would
+    // make `callsAfterFirst` depend on process history — cold under a single
+    // run, warm (and wrong) under `--rerun-each` or if an earlier test in
+    // this file happens to reuse the same string. A nonce keeps this test's
+    // `original` guaranteed cache-cold regardless of what ran before it.
+    const nonce = `${Date.now()}-${Math.random()}`;
+    const original = `# Title ${nonce}\n\nOne paragraph.\n\nAnother paragraph.\n`;
+    const normalizeSpy = spyOn(normalizeDocumentModule, 'normalizeDocument');
+
+    const first = computeReviewEditorDiffStats(original, `${original}Edit one.\n`);
+    const callsAfterFirst = normalizeSpy.mock.calls.length;
+    // The very first call for a given `original` must still normalize it —
+    // there's nothing to reuse yet.
+    expect(callsAfterFirst).toBe(2); // original once, current once
+
+    const second = computeReviewEditorDiffStats(original, `${original}Edit two.\n`);
+    const callsAfterSecond = normalizeSpy.mock.calls.length;
+    // A second call with the SAME original and a DIFFERENT current must only
+    // normalize current. Without the fix, this call count matches the first
+    // call's exactly (original gets re-normalized every time); with the fix,
+    // it grows by exactly one (current only).
+    expect(callsAfterSecond - callsAfterFirst).toBe(1);
+
+    // Reusing the cached normalized original must not change the result:
+    // this is a performance fix, not a behavior change.
+    expect(first).toEqual({ added: 1, removed: 0, modified: 0 });
+    expect(second).toEqual({ added: 1, removed: 0, modified: 0 });
+
+    normalizeSpy.mockRestore();
+  });
+
+  test('still produces correct results when original changes between calls', () => {
+    // A cache keyed on the wrong thing (or a single slot that goes stale)
+    // would be invisible in the call-count assertion above if it also
+    // silently returned wrong stats. Interleave two different originals —
+    // as two concurrent ReviewEditor instances on the same page would — and
+    // confirm each is diffed against ITS OWN original, not a leftover cached
+    // one from the other instance.
+    const originalA = '# Doc A\n\nOriginal A body.\n';
+    const originalB = '# Doc B\n\nOriginal B body.\n';
+
+    const statsA1 = computeReviewEditorDiffStats(originalA, '# Doc A\n\nEdited A body.\n');
+    const statsB1 = computeReviewEditorDiffStats(originalB, '# Doc B\n\nEdited B body.\n');
+    // Re-visit A after B interleaved — this must still diff against
+    // originalA, not originalB.
+    const statsA2 = computeReviewEditorDiffStats(originalA, '# Doc A\n\nEdited A again.\n');
+
+    expect(statsA1).toEqual({ added: 0, removed: 0, modified: 1 });
+    expect(statsB1).toEqual({ added: 0, removed: 0, modified: 1 });
+    expect(statsA2).toEqual({ added: 0, removed: 0, modified: 1 });
+  });
+
+  test('recomputes correctly once an original ages out of the bounded cache', () => {
+    // The cache is intentionally bounded (a page can hold more than one
+    // ReviewEditor, but not an unbounded number forever) and evicts the
+    // least-recently-used entry once over capacity. That eviction path has
+    // no other coverage: push enough distinct originals through to guarantee
+    // the first one has been evicted by the time it's revisited, and confirm
+    // the eviction recomputes correctly rather than corrupting anything (a
+    // stale-cache bug here would still return SOME normalized string, so
+    // this checks the returned stats are right, not just that nothing
+    // throws).
+    const nonce = `${Date.now()}-${Math.random()}`;
+    const originals = Array.from(
+      { length: 20 },
+      (_, i) => `# Doc ${nonce}-${i}\n\nOriginal body ${i}.\n`,
+    );
+    const [firstOriginal] = originals;
+    if (firstOriginal === undefined) throw new Error('expected at least one generated original');
+
+    for (const [i, original] of originals.entries()) {
+      const stats = computeReviewEditorDiffStats(
+        original,
+        `# Doc ${nonce}-${i}\n\nEdited body ${i}.\n`,
+      );
+      expect(stats).toEqual({ added: 0, removed: 0, modified: 1 });
+    }
+
+    // firstOriginal is long since evicted (20 distinct originals pushed
+    // through a cache far smaller than that) — revisiting it must still
+    // diff correctly against ITS OWN original, not throw, and not return a
+    // stale/wrong result from whatever now occupies that cache slot.
+    const revisited = computeReviewEditorDiffStats(
+      firstOriginal,
+      `# Doc ${nonce}-0\n\nRevisited edit.\n`,
+    );
+    expect(revisited).toEqual({ added: 0, removed: 0, modified: 1 });
   });
 });
 
