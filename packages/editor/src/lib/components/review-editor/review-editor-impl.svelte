@@ -16,6 +16,7 @@
 </script>
 
 <script lang="ts">
+  import { tick } from 'svelte';
   import { classNames } from '../../utilities/class-names.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
   import { useReducedMotion } from '../../utilities/use-reduced-motion.svelte.ts';
@@ -128,6 +129,23 @@
 
   // Track when editor view is ready (for effects that need to wait for async editor creation)
   let editorViewReady = $state(false);
+
+  // `editorViewReady` is a latch set true by `handleSelectionChange`/the
+  // `MarkdownEditor` `onready` callback below, but nothing symmetrically
+  // cleared it when the editor view unmounted (cinder#1301): switching to the
+  // Diff or Summary tab destroys the `MarkdownEditor` instance behind the
+  // `{#if activeView === 'editor'}` branch, `editorRef` unbinds back to
+  // `undefined` (Svelte's own `bind:this` contract on block teardown), but the
+  // latch stayed `true` — so `data-ready` kept reporting an editor that no
+  // longer existed. Deriving the reset from `editorRef` itself, rather than
+  // from `activeView`, covers every teardown path (view switch, and any other
+  // reason the inner editor unmounts) without duplicating that branching logic
+  // here.
+  $effect(() => {
+    if (!editorRef) {
+      editorViewReady = false;
+    }
+  });
 
   // Track current selection for thread creation
   let currentSelection = $state<EditorSelection | null>(null);
@@ -1732,6 +1750,46 @@
         selectionPopoverPosition = null;
         capturedSelectionForPopover = null;
         selectionPopoverExpanded = false;
+
+        // Close the thread popover too (cinder#1305 review follow-up): its
+        // anchor only exists in the editor view, and leaving it destroys
+        // editorRef (the same unbind #1301 relies on), which turns F6's
+        // `customFocusHandler` for the 'editor' region into a no-op
+        // (`editorRef?.getView()?.focus()` on a null ref) that still returns
+        // `true` — suppressing the navigator's fallback and stranding focus
+        // inside a popover pointing at content that is no longer rendered.
+        // Closing here, alongside the selection popover this branch already
+        // clears for the same "left the editor view" reason, means F6 never
+        // gets the chance to strand: there is nothing left to navigate away
+        // from.
+        if (popoverThreadId !== null) {
+          handlePopoverClose();
+
+          // Second review-round finding: closing the popover here unmounts
+          // it, and its OWN focus trap unconditionally restores focus on
+          // deactivate — to whatever had focus when the popover opened, or
+          // its restoreFallback (the sidebar toggle) — even when THIS SAME
+          // interaction already moved focus to the newly active tab a
+          // moment earlier in the same call stack. Concretely, for the
+          // arrow-key roving-tabindex path: `SegmentedControlController`
+          // calls `toggle()` (reaching this callback, synchronously) and
+          // THEN focuses the destination tab — so the trap's restore, which
+          // runs when this state change flushes, lands AFTER that focus
+          // move and steals it. There is no reactive hook into the trap's
+          // own restore decision from here (it is not exposed as
+          // reactive), so this corrects it afterward instead: `tick()`
+          // resolves once the pending state changes above — including the
+          // trap's synchronous `deactivate()` — have been applied, and only
+          // then is it safe to re-assert focus on the tab that is actually
+          // selected now.
+          tick().then(() => {
+            if (activeView !== view || !containerElement) return;
+            const activeTab = containerElement.querySelector<HTMLElement>(
+              '.review-editor-controls [role="tab"][aria-selected="true"]',
+            );
+            activeTab?.focus();
+          });
+        }
       }
       activeView = view;
       announce(`Switched to ${view} view`);
