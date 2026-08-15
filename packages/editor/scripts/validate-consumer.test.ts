@@ -1,12 +1,14 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 
 import type { PackageManifest } from './pack-for-publish.ts';
 import {
   assertImportClosure,
   extractSvelteScriptBlocks,
+  extractSvelteStyleBlocks,
+  isNodeBuiltinSpecifier,
   isPlausibleImportSpecifier,
 } from './validate-consumer.ts';
 
@@ -43,7 +45,14 @@ describe('assertImportClosure (cinder#1334)', () => {
     tempRoots.push(root);
     for (const [relativePath, content] of Object.entries(files)) {
       const fullPath = join(root, relativePath);
-      await mkdir(join(fullPath, '..'), { recursive: true });
+      // `dirname()`, not `join(fullPath, '..')`: both happen to resolve to
+      // the same parent directory here (`path.join`'s lexical normalization
+      // cancels a trailing `/<segment>/..` regardless of whether `<segment>`
+      // looks like a file or a directory name -- verified empirically, this
+      // was never actually broken), but `dirname()` says what it means
+      // instead of relying on a normalization side effect a reviewer has to
+      // re-derive to trust (review finding, cinder#1335 round 2).
+      await mkdir(dirname(fullPath), { recursive: true });
       await Bun.write(fullPath, content);
     }
     return root;
@@ -133,7 +142,7 @@ export const value = 1;
     );
   });
 
-  test('.svelte files: markup and <style> content outside <script> is never scanned at all', async () => {
+  test('.svelte files: markup outside <script> and <style> is never scanned at all', async () => {
     const root = await makeFixture({
       'dist/component.svelte': `<script lang="ts">
   export const label = 'ok';
@@ -142,12 +151,116 @@ export const value = 1;
 <p>Import your data from 'wherever you like' -- this is markup text, not a script.</p>
 
 <style>
-  /* @import "some-undeclared-package/styles.css" would be flagged if this
-     were a real CSS @import, but it's inside a <style> block, outside any
-     <script> tag, and never reaches extractSvelteScriptBlocks at all. */
   p { color: red; }
 </style>
 `,
+    });
+
+    await expect(assertImportClosure(manifestWithDeclaredPeers, root)).resolves.toBeUndefined();
+  });
+
+  test('.svelte files: a real @import in a <style> block is still caught -- not silently skipped (cinder#1335 round-2 finding)', async () => {
+    // The first version of this fix (cinder#1334) only extracted and
+    // scanned <script> blocks, then `continue`d for every .svelte file --
+    // a component declaring an undeclared CSS dependency in its <style>
+    // block passed the check silently. The original regex-based scanner
+    // (despite its comment-prose bug) at least scanned the whole file, so
+    // this was a real coverage regression, not a pre-existing gap.
+    const root = await makeFixture({
+      'dist/component.svelte': `<script lang="ts">
+  export const label = 'ok';
+</script>
+
+<style>
+  @import 'totally-undeclared-package/styles.css';
+  p { color: red; }
+</style>
+`,
+    });
+
+    await expect(assertImportClosure(manifestWithDeclaredPeers, root)).rejects.toThrow(
+      /totally-undeclared-package/u,
+    );
+  });
+
+  test('.svelte files: @import inside a <style> block comment is not mistaken for a real import', async () => {
+    const root = await makeFixture({
+      'dist/component.svelte': `<script lang="ts">
+  export const label = 'ok';
+</script>
+
+<style>
+  /* @import "some prose that mentions an import" is not a real @import,
+     because the capture below contains whitespace. */
+  p { color: red; }
+</style>
+`,
+    });
+
+    await expect(assertImportClosure(manifestWithDeclaredPeers, root)).resolves.toBeUndefined();
+  });
+
+  test('.svelte files: a <script> tag with a generic constraint attribute containing ">" extracts and scans correctly (cinder#1335 round-2 finding)', async () => {
+    // The original `<script\b[^>]*>` extraction stopped at the FIRST `>`,
+    // wherever it fell -- including one inside a quoted attribute value,
+    // like a real Svelte generics annotation
+    // (`generics="T extends Array<string>"`). The malformed extracted
+    // block then started mid-attribute-value, and Bun.Transpiler.scanImports
+    // threw "Unterminated string literal" on it, failing the release
+    // validator on legitimate Editor source, not just on a contrived case.
+    const declaredImport = await makeFixture({
+      'dist/generic.svelte': `<script lang="ts" generics="T extends Array<string>">
+  import { onMount } from 'svelte';
+  export let value: T;
+  onMount(() => {});
+</script>
+
+<p>{value}</p>
+`,
+    });
+    await expect(
+      assertImportClosure(manifestWithDeclaredPeers, declaredImport),
+    ).resolves.toBeUndefined();
+
+    const undeclaredImport = await makeFixture({
+      'dist/generic.svelte': `<script lang="ts" generics="T extends Array<string>">
+  import { danger } from 'totally-undeclared-package';
+  export let value: T;
+</script>
+
+<p>{value}</p>
+`,
+    });
+    await expect(assertImportClosure(manifestWithDeclaredPeers, undeclaredImport)).rejects.toThrow(
+      /totally-undeclared-package/u,
+    );
+  });
+
+  test('a dynamic import() with a computed specifier still catches its static literal prefix (cinder#1335 round-2 finding)', async () => {
+    // `Bun.Transpiler.scanImports` reports nothing for
+    // `import('undeclared-package/' + feature)`, since the full specifier
+    // isn't statically resolvable -- but the literal prefix is still real,
+    // evident text, and the original regex-based scanner caught it
+    // (accidentally, as part of matching every `import(` call). Losing
+    // that was a real regression relative to the old behavior.
+    const root = await makeFixture({
+      'dist/dynamic.js': `const feature = getFeatureName();\nimport('totally-undeclared-package/' + feature);\n`,
+    });
+
+    await expect(assertImportClosure(manifestWithDeclaredPeers, root)).rejects.toThrow(
+      /totally-undeclared-package/u,
+    );
+  });
+
+  test('Node builtins loaded via require() or a bare specifier are not flagged as undeclared (cinder#1335 round-2 finding)', async () => {
+    // scanImports reports require('fs') as a require-call with the bare
+    // specifier "fs", not "node:fs" -- checking only for the "node:"
+    // prefix (the original check) rejected every builtin loaded via its
+    // un-prefixed name. The old regex never scanned require() calls at
+    // all, so this false-positive surface didn't exist before this module
+    // started using a real lexer that does.
+    const root = await makeFixture({
+      'dist/node-builtins.js': `const fs = require('fs');\nconst path = require('node:path');\nimport('fs');\nimport('node:child_process');\nexport const value = [fs, path];\n`,
     });
 
     await expect(assertImportClosure(manifestWithDeclaredPeers, root)).resolves.toBeUndefined();
@@ -184,6 +297,16 @@ describe('extractSvelteScriptBlocks', () => {
     ]);
   });
 
+  test('a ">" inside a quoted attribute value does not end the tag early (cinder#1335 round-2 finding)', () => {
+    const source = `<script lang="ts" generics="T extends Array<string>">\n  export let value: T;\n</script>\n`;
+    expect(extractSvelteScriptBlocks(source)).toEqual(['\n  export let value: T;\n']);
+  });
+
+  test('a "<" inside a quoted attribute value does not confuse the scan either', () => {
+    const source = `<script lang="ts" title="a < b">\n  const x = 1;\n</script>\n`;
+    expect(extractSvelteScriptBlocks(source)).toEqual(['\n  const x = 1;\n']);
+  });
+
   test('returns an empty array when there is no <script> block', () => {
     expect(extractSvelteScriptBlocks('<p>no script here</p>')).toEqual([]);
   });
@@ -202,5 +325,44 @@ describe('isPlausibleImportSpecifier', () => {
 
   test('rejects an empty string', () => {
     expect(isPlausibleImportSpecifier('')).toBe(false);
+  });
+});
+
+describe('extractSvelteStyleBlocks', () => {
+  test('extracts a single style block', () => {
+    const source = `<script lang="ts">1</script>\n<style>\n  p { color: red; }\n</style>\n`;
+    expect(extractSvelteStyleBlocks(source)).toEqual(['\n  p { color: red; }\n']);
+  });
+
+  test('a ">" inside a quoted attribute on <style> does not end the tag early', () => {
+    const source = `<style data-note="a > b">\n  p { color: red; }\n</style>\n`;
+    expect(extractSvelteStyleBlocks(source)).toEqual(['\n  p { color: red; }\n']);
+  });
+
+  test('returns an empty array when there is no <style> block', () => {
+    expect(extractSvelteStyleBlocks('<script>1</script>\n<p>no style here</p>')).toEqual([]);
+  });
+});
+
+describe('isNodeBuiltinSpecifier', () => {
+  test('accepts a bare builtin name', () => {
+    expect(isNodeBuiltinSpecifier('fs')).toBe(true);
+    expect(isNodeBuiltinSpecifier('path')).toBe(true);
+  });
+
+  test('accepts a node:-prefixed builtin name', () => {
+    expect(isNodeBuiltinSpecifier('node:fs')).toBe(true);
+    expect(isNodeBuiltinSpecifier('node:path')).toBe(true);
+  });
+
+  test('accepts a subpath of a builtin, prefixed or bare', () => {
+    expect(isNodeBuiltinSpecifier('node:fs/promises')).toBe(true);
+    expect(isNodeBuiltinSpecifier('fs/promises')).toBe(true);
+  });
+
+  test('rejects a real (non-builtin) package name, even one that looks path-like', () => {
+    expect(isNodeBuiltinSpecifier('svelte')).toBe(false);
+    expect(isNodeBuiltinSpecifier('@lostgradient/cinder')).toBe(false);
+    expect(isNodeBuiltinSpecifier('totally-undeclared-package')).toBe(false);
   });
 });
