@@ -466,4 +466,65 @@ describe('generateMarkdownSummary', () => {
       expect(result.stats.changeCount).toBeGreaterThan(0);
     });
   });
+
+  describe('line numbers reference source, not normalized text (cinder#1324)', () => {
+    test('the exact cinder#1324 repro: reports the source line, not the normalized one', () => {
+      // normalizeDocument() collapses the run of 3 blank lines to 1, so
+      // "Original text" is normalized-document line 3 but source line 5.
+      // The heading must report the source line.
+      const state = createState({
+        original: 'Alpha\n\n\n\nOriginal text\n',
+        current: 'Alpha\n\n\n\nChanged text\n',
+      });
+      const result = generateMarkdownSummary(state, { contextLines: 0 });
+
+      expect(result.markdown).toMatch(/### Lines 5-5/);
+      expect(result.markdown).not.toMatch(/### Lines 3-3/);
+    });
+
+    test('the end line, not just the start line, is mapped through the collapsed run -- "start + count - 1" would undercount it', () => {
+      // With the default 2 lines of context, the displayed range covers the
+      // entire (short) document: normalized-document lines 1-3 ("Alpha",
+      // blank, the edited line). Naive "start + count - 1" arithmetic in
+      // normalized-space (1 + 3 - 1 = 3) would report line 3 for the end --
+      // still wrong, even with the start correctly mapped -- because the
+      // collapsed blank-line run sits *inside* the displayed range. The
+      // edited line must be reported at its own mapped position (5), not
+      // derived from the start and a normalized-space line count.
+      const state = createState({
+        original: 'Alpha\n\n\n\nOriginal text\n',
+        current: 'Alpha\n\n\n\nChanged text\n',
+      });
+      const result = generateMarkdownSummary(state);
+
+      expect(result.markdown).toMatch(/### Lines 1-5/);
+      expect(result.markdown).not.toMatch(/### Lines 1-3/);
+    });
+
+    test('interaction with cinder#1325: a false-positive front-matter block is now body, and its reported line stays source-accurate', () => {
+      // Before cinder#1325, this `---`-opening span (invalid YAML) would
+      // have been classified as front matter and preserved byte-for-byte,
+      // so the blank-run collapse below it would never interact with it.
+      // After cinder#1325, it's ordinary body content the normalizer
+      // reaches -- both fixes have to agree on where "line 7" is.
+      const state = createState({
+        original: ['---', 'owner: [', '---', '', '', '', 'Original text', ''].join('\n'),
+        current: ['---', 'owner: [', '---', '', '', '', 'Changed text', ''].join('\n'),
+      });
+      const result = generateMarkdownSummary(state, { contextLines: 0 });
+
+      expect(result.markdown).toMatch(/### Lines 7-7/);
+    });
+
+    test('normalizeInputs: false reports normalized-space numbers unchanged (identity map)', () => {
+      const state = createState({
+        original: 'Alpha\n\n\n\nOriginal text\n',
+        current: 'Alpha\n\n\n\nChanged text\n',
+      });
+      const result = generateMarkdownSummary(state, { contextLines: 0, normalizeInputs: false });
+
+      // No normalization means no drift: line 5 is exactly where it always was.
+      expect(result.markdown).toMatch(/### Lines 5-5/);
+    });
+  });
 });

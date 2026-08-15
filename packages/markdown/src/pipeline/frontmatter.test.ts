@@ -106,6 +106,73 @@ Content`;
       },
     });
   });
+
+  describe('rejects false-positive front matter (cinder#1325)', () => {
+    test('treats a `---`-delimited YAML sequence as body, not front matter', () => {
+      // `- one` is valid YAML, but it parses to an array, not an object --
+      // front matter must be key/value data.
+      const markdown = '---\n- one\n- two\n---\n\nBody.\n';
+
+      const result = parseFrontMatter(markdown);
+
+      expect(result.hasFrontMatter).toBe(false);
+      expect(result.data).toBeNull();
+      expect(result.raw).toBeNull();
+      expect(result.body).toBe(markdown);
+    });
+
+    test('treats unparseable YAML between delimiters as body, not front matter', () => {
+      // `* one` is not valid YAML (an alias reference with no matching
+      // anchor) -- js-yaml throws parsing it.
+      const markdown = '---\n* one\n---\n\nBody.\n';
+
+      const result = parseFrontMatter(markdown);
+
+      expect(result.hasFrontMatter).toBe(false);
+      expect(result.data).toBeNull();
+      expect(result.raw).toBeNull();
+      expect(result.body).toBe(markdown);
+    });
+
+    test('two documents differing only by list-marker style inside a false-positive block parse identically', () => {
+      // The exact cinder#1325 repro: both fail YAML parsing (`* one` throws,
+      // `- one` parses but isn't object-shaped), so both are "not front
+      // matter" and their entire text -- including the marker-style
+      // difference -- lands in `body`, ready for Markdown-aware comparison
+      // upstream instead of being frozen as an opaque "front matter" span.
+      const withAsterisk = '---\n\n* one\n\n---\n\nBody.\n';
+      const withDash = '---\n\n- one\n\n---\n\nBody.\n';
+
+      const resultA = parseFrontMatter(withAsterisk);
+      const resultB = parseFrontMatter(withDash);
+
+      expect(resultA.hasFrontMatter).toBe(false);
+      expect(resultB.hasFrontMatter).toBe(false);
+      expect(resultA.body).toBe(withAsterisk);
+      expect(resultB.body).toBe(withDash);
+    });
+
+    test('still recognizes an empty front-matter block (not a parse failure)', () => {
+      // Blank content between delimiters is intentionally-empty front
+      // matter, not invalid YAML -- must not be swept into the new
+      // false-positive handling.
+      const markdown = '---\n---\n\n# Content';
+
+      const result = parseFrontMatter(markdown);
+
+      expect(result.hasFrontMatter).toBe(true);
+      expect(result.data).toBeNull();
+    });
+
+    test('still recognizes valid object-shaped front matter', () => {
+      const markdown = '---\ntitle: Real front matter\n---\n\nBody.\n';
+
+      const result = parseFrontMatter(markdown);
+
+      expect(result.hasFrontMatter).toBe(true);
+      expect(result.data).toEqual({ title: 'Real front matter' });
+    });
+  });
 });
 
 describe('stringifyFrontMatter', () => {
@@ -361,6 +428,23 @@ apple: a
     expect(result).not.toContain('---');
     expect(result).toContain('# Heading');
   });
+
+  test('preserves a false-positive front-matter span as body instead of silently dropping it (cinder#1325)', () => {
+    // Before cinder#1325, `hasFrontMatter` was true here with `data: null`,
+    // so this function's `!hasFrontMatter || !data` branch returned only
+    // `normalize(body)` -- and `body` is everything *after* the closing
+    // fence, per `parseFrontMatter`. The `---\n- one\n- two\n---` span
+    // itself was silently discarded from the output. Now that the span is
+    // correctly classified as ordinary body content, it survives
+    // normalization instead of vanishing.
+    const markdown = '---\n- one\n- two\n---\n\nBody.';
+
+    const result = normalizeWithFrontMatter(markdown);
+
+    expect(result).toContain('one');
+    expect(result).toContain('two');
+    expect(result).toContain('Body.');
+  });
 });
 
 describe('roundTripWithFrontMatter', () => {
@@ -487,5 +571,35 @@ title: Test
     const withoutFm = '# Content';
 
     expect(contentEqualsWithFrontMatter(withFm, withoutFm)).toBe(false);
+  });
+
+  test('a false-positive front-matter span now enters the comparison, instead of being invisible to it (cinder#1325)', () => {
+    // Before cinder#1325, both documents parsed to `hasFrontMatter: true,
+    // data: null` (neither `- one` nor `- two` is object-shaped YAML), and
+    // `contentEqualsWithFrontMatter` compares `data` and `body` -- `body`
+    // being only what follows the closing fence. Both bodies are identical
+    // ("Body.\n"), and `data` was null on both sides regardless of what the
+    // list actually said, so the function returned true without the list
+    // content -- "one" vs "two" -- ever being compared.
+    //
+    // After the fix, the whole `---`-delimited span is ordinary body text
+    // on both sides, so it's part of what `contentEquals` normalizes and
+    // compares. Genuinely different list content now makes these documents
+    // compare unequal, as they should.
+    const withOne = '---\n\n- one\n\n---\n\nBody.\n';
+    const withTwo = '---\n\n- two\n\n---\n\nBody.\n';
+
+    expect(contentEqualsWithFrontMatter(withOne, withTwo)).toBe(false);
+  });
+
+  test('the cinder#1325 repro itself still compares equal, now for the right reason (real Markdown normalization, not an invisible span)', () => {
+    // `* one` and `- one` are the same Markdown list with a different
+    // marker character -- semantically equivalent, and now actually
+    // compared as such, rather than both bodies just happening to be
+    // identical strings after an ignored front-matter-shaped prefix.
+    const withAsterisk = '---\n\n* one\n\n---\n\nBody.\n';
+    const withDash = '---\n\n- one\n\n---\n\nBody.\n';
+
+    expect(contentEqualsWithFrontMatter(withAsterisk, withDash)).toBe(true);
   });
 });

@@ -258,34 +258,34 @@ describe('generateUnifiedDiff', () => {
   });
 });
 
-describe('front matter', () => {
-  /**
-   * Apply a patch the way a consumer would, with git itself. A string comparison
-   * would not catch the failure mode this guards: hunk headers whose line counts
-   * disagree with the lines they introduce still *look* like a diff.
-   */
-  function gitApplyCheck(originalDocument: string, diff: string): { ok: boolean; error: string } {
-    const directory = mkdtempSync(join(tmpdir(), 'unified-diff-'));
+/**
+ * Apply a patch the way a consumer would, with git itself. A string comparison
+ * would not catch the failure mode this guards: hunk headers whose line counts
+ * disagree with the lines they introduce still *look* like a diff.
+ */
+function gitApplyCheck(originalDocument: string, diff: string): { ok: boolean; error: string } {
+  const directory = mkdtempSync(join(tmpdir(), 'unified-diff-'));
 
-    // Setup is inside the try as well: a failing `git init` or write would
-    // otherwise leak the directory it just created.
-    try {
-      execFileSync('git', ['init', '--quiet'], { cwd: directory });
-      writeFileSync(join(directory, 'document.md'), originalDocument);
-      writeFileSync(join(directory, 'patch.diff'), diff);
+  // Setup is inside the try as well: a failing `git init` or write would
+  // otherwise leak the directory it just created.
+  try {
+    execFileSync('git', ['init', '--quiet'], { cwd: directory });
+    writeFileSync(join(directory, 'document.md'), originalDocument);
+    writeFileSync(join(directory, 'patch.diff'), diff);
 
-      execFileSync('git', ['apply', '--check', 'patch.diff'], { cwd: directory, stdio: 'pipe' });
-      return { ok: true, error: '' };
-    } catch (error) {
-      const stderr = (error as { stderr?: Buffer }).stderr;
-      return { ok: false, error: stderr ? stderr.toString() : String(error) };
-    } finally {
-      // Each call makes a git repo under the OS temp dir; without this they
-      // accumulate one per run, per CI shard.
-      rmSync(directory, { recursive: true, force: true });
-    }
+    execFileSync('git', ['apply', '--check', 'patch.diff'], { cwd: directory, stdio: 'pipe' });
+    return { ok: true, error: '' };
+  } catch (error) {
+    const stderr = (error as { stderr?: Buffer }).stderr;
+    return { ok: false, error: stderr ? stderr.toString() : String(error) };
+  } finally {
+    // Each call makes a git repo under the OS temp dir; without this they
+    // accumulate one per run, per CI shard.
+    rmSync(directory, { recursive: true, force: true });
   }
+}
 
+describe('front matter', () => {
   const original = [
     '---',
     'title: Release Plan',
@@ -345,6 +345,88 @@ describe('front matter', () => {
     // Line 8 is the blank line after the closing fence: the seven front-matter
     // lines are counted, not swallowed or re-expanded.
     expect(diff).toContain('@@ -8,5 +8,5 @@');
+  });
+});
+
+describe('hunk header line numbers reference source, not normalized text (cinder#1324)', () => {
+  test('the exact cinder#1324 repro: an edit past collapsed blank lines', () => {
+    // normalizeDocument() collapses the run of 3 blank lines to 1, so the
+    // normalized document is 2 lines shorter than the source above the edit.
+    // With no context lines to obscure it, the header must point at line 5
+    // (where "Original text" actually is in `original`), not line 3 (where
+    // it landed after normalization).
+    const original = 'Alpha\n\n\n\nOriginal text\n';
+    const current = 'Alpha\n\n\n\nChanged text\n';
+
+    const { diff } = generateUnifiedDiff(createState(original, current), { contextLines: 0 });
+
+    expect(diff).toContain('@@ -5,1 +5,1 @@');
+    const applied = gitApplyCheck(original, diff);
+    expect(applied.error).toBe('');
+    expect(applied.ok).toBe(true);
+  });
+
+  test('maps the hunk start through a collapsed run even with default context, when the edit is far enough away that context never re-enters the collapsed lines', () => {
+    const original = [
+      'Intro',
+      '',
+      '',
+      '',
+      'Middle paragraph one.',
+      '',
+      'Middle paragraph two.',
+      '',
+      'Original text',
+      '',
+    ].join('\n');
+    const current = original.replace('Original text', 'Changed text');
+
+    const { diff } = generateUnifiedDiff(createState(original, current));
+
+    // Source line 6 is the blank line before "Middle paragraph two." -- three
+    // lines earlier than normalized-space would report, since normalization
+    // collapsed the 3-blank-line run after "Intro" down to one.
+    expect(diff).toContain('@@ -6,4 +6,4 @@');
+    const applied = gitApplyCheck(original, diff);
+    expect(applied.error).toBe('');
+    expect(applied.ok).toBe(true);
+  });
+
+  test('still reports normalized-space numbers when normalizeInputs is off (identity map)', () => {
+    const original = 'Alpha\n\n\n\nOriginal text\n';
+    const current = 'Alpha\n\n\n\nChanged text\n';
+
+    const { diff } = generateUnifiedDiff(createState(original, current), {
+      contextLines: 0,
+      normalizeInputs: false,
+    });
+
+    // No normalization means no drift: normalized-space and source-space are
+    // the same coordinate space, and line 5 is exactly where it always was.
+    expect(diff).toContain('@@ -5,1 +5,1 @@');
+  });
+
+  test('interaction with cinder#1325: a false-positive front-matter block is now body, and its line numbers are still source-accurate', () => {
+    // Before cinder#1325, this `---`-opening span (invalid YAML: an
+    // unclosed bracket) would have been classified as front matter and
+    // preserved byte-for-byte by normalizeDocument -- no blank-line
+    // collapsing would ever reach it. After cinder#1325, it is ordinary
+    // body content, so the blank-run collapse a few lines down interacts
+    // with it: this only passes if both fixes are built against each
+    // other, which is why they ship in one PR.
+    const original = ['---', 'owner: [', '---', '', '', '', 'Original text', ''].join('\n');
+    const current = original.replace('Original text', 'Changed text');
+
+    const { diff } = generateUnifiedDiff(createState(original, current), { contextLines: 0 });
+
+    // Source line 7 is "Original text" -- the 3-blank-line run at lines 4-6
+    // collapses to 1 in the normalized document, same as the plain
+    // blank-line case, now that the `---` span itself is ordinary body
+    // content the normalizer actually reaches.
+    expect(diff).toContain('@@ -7,1 +7,1 @@');
+    const applied = gitApplyCheck(original, diff);
+    expect(applied.error).toBe('');
+    expect(applied.ok).toBe(true);
   });
 });
 

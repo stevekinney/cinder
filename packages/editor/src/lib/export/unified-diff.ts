@@ -8,6 +8,11 @@ import type { DiffHunk as MarkdownDiffHunk } from '@lostgradient/markdown/diff/l
 import { parseFrontMatter } from '@lostgradient/markdown/pipeline';
 import type { ReviewState } from '../comments/types.js';
 import { normalizeDocument } from './normalize-document.js';
+import {
+  buildSourceLineMap,
+  identitySourceLineMap,
+  mapNormalizedLineNumber,
+} from './source-line-map.js';
 import type { UnifiedDiffOptions, UnifiedDiffResult } from './types.js';
 
 interface DiffHunk {
@@ -166,6 +171,27 @@ export function generateUnifiedDiff(
     };
   }
 
+  // Line numbers below are computed against `original`/`current` -- the
+  // *normalized* documents, diffed instead of the raw inputs to avoid
+  // reporting formatting-only differences as edits. Normalization can
+  // change the line count (collapsed blank runs, a dropped front-matter
+  // separator, a folded Setext underline), so a normalized-space line index
+  // is not the same line in `state.original`/`state.content`. Map each side
+  // back to its own source before rendering `@@` headers (cinder#1324).
+  // `normalizeInputs: false` needs no mapping: `original`/`current` above
+  // are already the (CRLF-folded) source text unchanged, so the identity
+  // map is exact, not an approximation.
+  const originalLineMap = normalizeInputs
+    ? buildSourceLineMap(originalContent.replace(/\r\n?/g, '\n'), original)
+    : identitySourceLineMap(original);
+  // Mapped against `currentContent`, not `state.content` -- when
+  // `includeFrontMatter` synthesizes a front-matter prefix above, that
+  // synthesized text is the only coherent "source" a diff against `current`
+  // can reference.
+  const currentLineMap = normalizeInputs
+    ? buildSourceLineMap(currentContent.replace(/\r\n?/g, '\n'), current)
+    : identitySourceLineMap(current);
+
   const originalSplit = splitIntoLines(original, normalizeInputs);
   const currentSplit = splitIntoLines(current, normalizeInputs);
 
@@ -183,8 +209,14 @@ export function generateUnifiedDiff(
   let deletions = 0;
 
   for (const hunk of hunks) {
+    // `0` is git's own convention for "no lines on this side" (a pure
+    // addition or deletion hunk) -- not a line number to remap.
+    const originalStart =
+      hunk.originalStart === 0 ? 0 : mapNormalizedLineNumber(originalLineMap, hunk.originalStart);
+    const currentStart =
+      hunk.currentStart === 0 ? 0 : mapNormalizedLineNumber(currentLineMap, hunk.currentStart);
     diffLines.push(
-      `@@ -${hunk.originalStart},${hunk.originalCount} +${hunk.currentStart},${hunk.currentCount} @@`,
+      `@@ -${originalStart},${hunk.originalCount} +${currentStart},${hunk.currentCount} @@`,
     );
     for (const line of hunk.lines) {
       diffLines.push(line);

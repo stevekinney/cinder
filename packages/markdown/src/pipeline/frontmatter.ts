@@ -112,6 +112,17 @@ function extractFrontMatterSegments(markdown: string): FrontMatterSegments | nul
  * # Content starts here
  * ```
  *
+ * The content between the delimiters must actually parse as YAML *and* be
+ * object-shaped (a key/value mapping) for the document to count as having
+ * front matter. A `---`-opening span whose content is invalid YAML, or valid
+ * YAML that isn't object-shaped (a bare scalar, a sequence, `null`), is not
+ * front matter -- `hasFrontMatter` comes back `false` and the entire
+ * document (delimiters included) is returned as `body`, the same as when no
+ * closing delimiter is found at all. This matters because Markdown list
+ * markers (`- one`) are also valid YAML sequences, and two documents that
+ * differ only in list-marker style (`* one` vs `- one`) must be recognized
+ * as ordinary Markdown, not as two different "front matter" blocks.
+ *
  * @param markdown - The full Markdown document (may or may not contain front matter)
  * @returns Parsed result with data, raw YAML, and body content
  *
@@ -122,6 +133,14 @@ function extractFrontMatterSegments(markdown: string): FrontMatterSegments | nul
  * console.log(result.raw);            // 'title: Hello'
  * console.log(result.body);           // '\n# Content'
  * console.log(result.hasFrontMatter); // true
+ * ```
+ *
+ * @example
+ * ```ts
+ * // Not front matter: valid YAML, but a sequence rather than a mapping.
+ * const result = parseFrontMatter('---\n- one\n- two\n---\n\nBody.');
+ * console.log(result.hasFrontMatter); // false
+ * console.log(result.body);           // '---\n- one\n- two\n---\n\nBody.'
  * ```
  */
 export function parseFrontMatter(markdown: string): FrontMatterParseResult {
@@ -158,6 +177,10 @@ export function parseFrontMatter(markdown: string): FrontMatterParseResult {
 
   const { raw, rawForParse, body } = segments;
   if (!rawForParse) {
+    // Blank/whitespace-only content between the delimiters is an
+    // intentionally empty front-matter block (`---\n---\n`), not a parse
+    // failure -- there's no YAML there to be invalid, so this stays
+    // front matter with no data (cinder#1325 doesn't apply here).
     return {
       data: null,
       raw,
@@ -168,7 +191,23 @@ export function parseFrontMatter(markdown: string): FrontMatterParseResult {
 
   try {
     const parsed = parseYaml(rawForParse);
-    const hasData = parsed ? Object.keys(parsed).length > 0 : false;
+
+    if (!parsed) {
+      // `parseYaml` returns null for YAML that parsed but isn't
+      // object-shaped (a bare scalar, a sequence, or `null`). That means
+      // this `---`-opening span was never front matter -- it's ordinary
+      // document content (often a thematic break, some other block, and a
+      // second thematic break) that happens to look front-matter-shaped.
+      // Treat the whole document as body, same as "no closing delimiter".
+      return {
+        data: null,
+        raw: null,
+        body: markdown,
+        hasFrontMatter: false,
+      };
+    }
+
+    const hasData = Object.keys(parsed).length > 0;
 
     return {
       data: hasData ? parsed : null,
@@ -176,13 +215,15 @@ export function parseFrontMatter(markdown: string): FrontMatterParseResult {
       body,
       hasFrontMatter: true,
     };
-  } catch (error) {
-    console.warn('Failed to parse front matter:', error);
+  } catch {
+    // Content between the delimiters doesn't parse as YAML at all (e.g. an
+    // unclosed bracket, an unresolvable alias reference). Also not front
+    // matter, for the same reason as the non-record case above.
     return {
       data: null,
-      raw,
-      body,
-      hasFrontMatter: true,
+      raw: null,
+      body: markdown,
+      hasFrontMatter: false,
     };
   }
 }

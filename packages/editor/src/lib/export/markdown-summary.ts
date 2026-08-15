@@ -13,6 +13,11 @@
 import { computeLineDiff } from '@lostgradient/markdown/diff/line-diff';
 import type { PersistedThread, ReviewState } from '../comments/types.js';
 import { normalizeDocument } from './normalize-document.js';
+import {
+  buildSourceLineMap,
+  identitySourceLineMap,
+  mapNormalizedLineNumber,
+} from './source-line-map.js';
 import type { MarkdownSummaryOptions, MarkdownSummaryResult } from './types.js';
 
 /**
@@ -75,7 +80,18 @@ export function generateMarkdownSummary(
   const current = normalizeInputs ? normalizeDocument(currentContent) : currentContent;
 
   if (original !== current) {
-    const changesSection = generateChangesSection(original, current, contextLines);
+    // `### Lines X-Y` below is computed against `original` -- the
+    // *normalized* document -- but reported to the caller as a line number
+    // in their own `state.original`. Normalization can change the line
+    // count (collapsed blank runs, a dropped front-matter separator, a
+    // folded Setext underline), so map back to source before rendering the
+    // heading (cinder#1324). `normalizeInputs: false` needs no mapping:
+    // `original` above is the caller's own text, so the identity map is
+    // exact.
+    const originalLineMap = normalizeInputs
+      ? buildSourceLineMap(originalContent.replace(/\r\n?/g, '\n'), original)
+      : identitySourceLineMap(original);
+    const changesSection = generateChangesSection(original, current, contextLines, originalLineMap);
     if (changesSection.markdown) {
       sections.push(changesSection.markdown);
       changeCount = changesSection.changeCount;
@@ -120,6 +136,7 @@ function generateChangesSection(
   original: string,
   current: string,
   contextLines: number,
+  originalLineMap: number[],
 ): { markdown: string; changeCount: number } {
   const lineDiffs = computeLineDiff(original, current);
 
@@ -168,34 +185,45 @@ function generateChangesSection(
     const contextStart = Math.max(0, range.start - contextLines);
     const contextEnd = Math.min(lineDiffs.length - 1, range.end + contextLines);
 
-    // Calculate original line number (1-based)
-    let originalLineNumber = 1;
+    // Calculate the normalized-space original line number (1-based) that
+    // `contextStart` starts at, by counting how many original-side lines
+    // precede it -- same technique `buildHunk` in unified-diff.ts uses.
+    let normalizedOriginalLineNumber = 1;
 
     for (let i = 0; i < contextStart; i++) {
       const diff = lineDiffs[i];
       if (!diff) continue;
 
       if (diff.type === 'same' || diff.type === 'removed' || diff.type === 'modified') {
-        originalLineNumber++;
+        normalizedOriginalLineNumber++;
       }
     }
 
-    const startOriginalLine = originalLineNumber;
+    const startNormalizedLine = normalizedOriginalLineNumber;
 
-    // Calculate end line number by counting only lines that exist in the original
+    // Find the *last* original-side line displayed in this range (not just
+    // a count): with a collapsed run inside the display range, "start +
+    // count - 1" arithmetic in normalized-space would still be wrong once
+    // mapped back to source, since normalized-space and source-space counts
+    // can differ within the same range (cinder#1324).
     let originalLinesInDisplayRange = 0;
+    let endNormalizedLine = startNormalizedLine;
+    let runningNormalizedLine = startNormalizedLine;
     for (let i = contextStart; i <= contextEnd; i++) {
       const diff = lineDiffs[i];
       if (!diff) continue;
 
       if (diff.type === 'same' || diff.type === 'removed' || diff.type === 'modified') {
         originalLinesInDisplayRange++;
+        endNormalizedLine = runningNormalizedLine;
+        runningNormalizedLine++;
       }
     }
 
+    const startOriginalLine = mapNormalizedLineNumber(originalLineMap, startNormalizedLine);
     const endOriginalLine =
       originalLinesInDisplayRange > 0
-        ? startOriginalLine + originalLinesInDisplayRange - 1
+        ? mapNormalizedLineNumber(originalLineMap, endNormalizedLine)
         : startOriginalLine;
 
     lines.push(`### Lines ${startOriginalLine}-${endOriginalLine}\n`);

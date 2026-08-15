@@ -47,12 +47,20 @@ describe('review editor front matter helpers', () => {
     expect(combineFrontMatterAndBody(frontMatter, frontMatter.body)).toBe(markdown);
   });
 
-  test('preserves non-empty raw front matter that cannot be parsed', () => {
+  test('treats a `---`-delimited span that fails to parse as YAML as body, not front matter (cinder#1325)', () => {
+    // `owner: [` never closes its bracket, so this isn't valid YAML at all --
+    // as of cinder#1325, parseFrontMatter reports hasFrontMatter: false for
+    // that (previously it reported true with data: null, which meant this
+    // markdown-shaped content was silently swallowed as an opaque "front
+    // matter" span instead of being editable as ordinary document body).
+    // Round-trip fidelity is still preserved: the whole markdown, including
+    // the `---` lines, is now the body, so recombining reproduces it exactly.
     const markdown = '---\nowner: [\n---\n\n# Architecture\n';
     const frontMatter = parseReviewEditorFrontMatter(markdown);
 
-    expect(frontMatter.hasFrontMatter).toBe(true);
+    expect(frontMatter.hasFrontMatter).toBe(false);
     expect(frontMatter.data).toBeNull();
+    expect(frontMatter.body).toBe(markdown);
     expect(combineFrontMatterAndBody(frontMatter, frontMatter.body)).toBe(markdown);
   });
 
