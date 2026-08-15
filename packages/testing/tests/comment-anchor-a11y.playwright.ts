@@ -208,6 +208,99 @@ test.describe('ReviewEditor comment-anchor accessibility (cinder#1304)', () => {
   });
 });
 
+const READONLY_ROUTE = `${PLAYGROUND_URL}/page/review-editor?snapshot=1`;
+// with-comments-readonly.example.svelte — same "Architecture Notes" text
+// anchor as with-comments, but mode="readonly". No front matter, so no
+// front-matter text inputs ahead of the editor in DOM order.
+const READONLY_EXAMPLE_MOUNT = '#example-mount-with-comments-readonly';
+
+test.describe('ReviewEditor comment-anchor accessibility, readonly mode (cinder#1304 review finding)', () => {
+  test('the comment-navigation chord still works when Tab lands on the readonly host, not inside the editor', async ({
+    page,
+  }) => {
+    await page.goto(READONLY_ROUTE, { waitUntil: 'load' });
+    await page.waitForSelector('#app > *', { state: 'visible', timeout: 20_000 });
+
+    const mount = page.locator(READONLY_EXAMPLE_MOUNT);
+    await waitForReviewEditorReady(mount);
+
+    // The behavioral premise this test depends on, checked directly rather
+    // than assumed: `setEditorReadonly` (editor.ts) sets
+    // `contenteditable="false"` on the ProseMirror DOM node and nothing
+    // else — ProseMirror itself never sets an explicit `tabindex` on that
+    // node (its focusability normally comes entirely from
+    // `contenteditable="true"`'s implicit tab-stop). So in readonly mode a
+    // real Tab press cannot land inside the editor at all; it has to land
+    // on the outer `.markdown-editor.surface` host instead, which carries
+    // `tabindex="0"` unconditionally (markdown-editor.svelte). Confirmed
+    // here via the real accessibility/focus machinery, not inferred from
+    // source reading alone.
+    const editorSurface = getEditorSurface(mount);
+    await expect(editorSurface).toBeVisible();
+    expect(await editorSurface.getAttribute('contenteditable')).toBe('false');
+
+    // Tab from a known point before the editor (the sidebar toggle, always
+    // present and first-focusable in this fixture) until focus reaches
+    // either the editor dom or its outer host, whichever the browser's
+    // real tab order hits first. There's a "Copy to clipboard" button
+    // between the two in DOM order, so a single Tab press does not land
+    // here directly — a bounded loop (deterministic step count, not a
+    // timeout) advances past it without hard-coding how many stops away
+    // the editor is, which would silently drift if the toolbar between
+    // them ever changes.
+    const hostLocator = mount.locator('.markdown-editor.surface');
+    const sidebarToggle = mount.getByRole('button', { name: /open comments sidebar/i });
+    await sidebarToggle.focus();
+    await expect(sidebarToggle).toBeFocused();
+
+    let landedOnHost = false;
+    let landedOnEditorDom = false;
+    for (let step = 0; step < 10 && !landedOnHost && !landedOnEditorDom; step++) {
+      await page.keyboard.press('Tab');
+      landedOnEditorDom = await editorSurface.evaluate((node) => node === document.activeElement);
+      landedOnHost = await hostLocator.evaluate((node) => node === document.activeElement);
+    }
+
+    // The behavioral claim: a real Tab traversal never lands focus inside
+    // the (now non-editable) editor dom in readonly mode — it lands on the
+    // host instead.
+    expect(landedOnEditorDom).toBe(false);
+    expect(landedOnHost).toBe(true);
+
+    // The actual finding: fire the chord from here (host-focused, not
+    // editor-dom-focused) and confirm it still navigates — i.e. the
+    // scoping guard accepts an ancestor of the editor dom, not just the
+    // editor dom or its descendants.
+    await page.keyboard.press(await commentNavigationChord(page));
+
+    await expect(mount.getByText('Comment 1 of 1', { exact: false })).toBeVisible();
+    const popover = page.locator('.thread-popover');
+    await expect(popover).toBeVisible({ timeout: 5_000 });
+    await expect(popover.getByText('This title is clear. I would keep it.')).toBeVisible();
+  });
+
+  test('the chord still ignores focus genuinely outside the editor in readonly mode too', async ({
+    page,
+  }) => {
+    await page.goto(READONLY_ROUTE, { waitUntil: 'load' });
+    await page.waitForSelector('#app > *', { state: 'visible', timeout: 20_000 });
+
+    const mount = page.locator(READONLY_EXAMPLE_MOUNT);
+    await waitForReviewEditorReady(mount);
+
+    const sidebarToggle = mount.getByRole('button', { name: /open comments sidebar/i });
+    await expect(sidebarToggle).toBeVisible();
+    await sidebarToggle.focus();
+    await expect(sidebarToggle).toBeFocused();
+
+    await page.keyboard.press(await commentNavigationChord(page));
+
+    await expect(sidebarToggle).toBeFocused();
+    const popover = page.locator('.thread-popover');
+    await expect(popover).toBeHidden();
+  });
+});
+
 /**
  * cinder#1304's stale-vs-live anchor position finding
  * (`navigateToAdjacentComment` used to read `target.anchor` — cached in

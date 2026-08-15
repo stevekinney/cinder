@@ -107,6 +107,19 @@ async function mountListEditor(): Promise<EditorState> {
   );
 }
 
+async function mountPlainEditor(): Promise<EditorState> {
+  const container = document.createElement('div');
+  document.body.append(container);
+  clock = installFakeClock();
+  return drainMount(
+    // No list, no table — sinkListItem/liftListItem/cell-nav all have
+    // nothing to act on here, the scenario the Mod-]/Mod-[
+    // browser-navigation-collision review finding is about.
+    createEditor(container, { initialContent: 'Just a plain paragraph.' }),
+    clock,
+  );
+}
+
 async function mountTableEditor(): Promise<EditorState> {
   const container = document.createElement('div');
   document.body.append(container);
@@ -213,6 +226,32 @@ describe('createEditor: Tab-escape latch vs. the commonmark list keymap (cinder#
     expect(editorState.getMarkdown()).not.toBe(lifted);
   });
 
+  test('Mod-] on the FIRST list item still preventDefaults, even though sink has nothing to nest under', async () => {
+    // cinder#1302 review finding: on macOS, Mod-]/Mod-[ resolve to Cmd+]/
+    // Cmd+[ — browser Back/Forward. sinkListItem legitimately returns false
+    // for the first item of a list (nothing to nest it under), and
+    // prosemirror-keymap only preventDefaults when a bound handler returns
+    // true — so before this fix, THIS specific keystroke fell through to
+    // the browser, silently navigating away from the editor.
+    editorState = await mountListEditor();
+    const { view } = editorState;
+    if (!view) throw new Error('view not ready');
+
+    // "First" is the doc's first list item — caret at its end.
+    const pos = findTextEnd(view.state.doc, 'First');
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, pos)));
+    const mac = isMacPlatform();
+    const before = editorState.getMarkdown();
+
+    const event = dispatchKeydown(view.dom, { key: ']', metaKey: mac, ctrlKey: !mac });
+
+    expect(event.defaultPrevented).toBe(true);
+    // Confirms the premise: sink genuinely had nothing to do here (the
+    // document is unchanged), so a naive "return whatever the command
+    // returned" binding would have declined the key.
+    expect(editorState.getMarkdown()).toBe(before);
+  });
+
   test('an Escape that only dismisses something (no Tab follows) does not arm a stale trap release', async () => {
     // Guards against over-correcting: the latch must still require Escape
     // IMMEDIATELY before Tab. Typing after Escape invalidates the latch, so a
@@ -291,5 +330,64 @@ describe('createEditor: Tab-escape latch vs. the GFM table keymap (cinder#1302, 
     const prevEvent = dispatchKeydown(view.dom, { key: '[', metaKey: mac, ctrlKey: !mac });
     expect(prevEvent.defaultPrevented).toBe(true);
     expect(view.state.selection.from).toBeLessThan(afterNext);
+  });
+
+  test('Mod-] in the LAST table cell still preventDefaults, even though cell-nav has nowhere to go', async () => {
+    // Same cinder#1302 review finding as the list-item test above, for the
+    // table analogue: goToNextTableCellCommand legitimately returns false
+    // in the last cell.
+    editorState = await mountTableEditor();
+    const { view } = editorState;
+    if (!view) throw new Error('view not ready');
+
+    const pos = findTextEnd(view.state.doc, 'B');
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, pos)));
+    const mac = isMacPlatform();
+    const beforeSelection = view.state.selection.from;
+
+    const event = dispatchKeydown(view.dom, { key: ']', metaKey: mac, ctrlKey: !mac });
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(view.state.selection.from).toBe(beforeSelection);
+  });
+});
+
+/**
+ * cinder#1302 review finding: Mod-]/Mod-[ resolve to Cmd+]/Cmd+] on macOS —
+ * browser Back/Forward — and must never reach the browser while this editor
+ * has focus, with or without a list or table anywhere in the document. The
+ * two suites above prove the "structural command legitimately declines"
+ * case; this proves the simpler "no list, no table, nothing structural
+ * applies at all" case the review finding's own repro leads with.
+ */
+describe('createEditor: Mod-]/Mod-[ never reach the browser, even with no list or table at all (cinder#1302)', () => {
+  test('Mod-] in plain prose preventDefaults', async () => {
+    editorState = await mountPlainEditor();
+    const { view } = editorState;
+    if (!view) throw new Error('view not ready');
+
+    view.dispatch(view.state.tr.setSelection(Selection.atEnd(view.state.doc)));
+    const mac = isMacPlatform();
+    const before = editorState.getMarkdown();
+
+    const event = dispatchKeydown(view.dom, { key: ']', metaKey: mac, ctrlKey: !mac });
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(editorState.getMarkdown()).toBe(before);
+  });
+
+  test('Mod-[ in plain prose preventDefaults', async () => {
+    editorState = await mountPlainEditor();
+    const { view } = editorState;
+    if (!view) throw new Error('view not ready');
+
+    view.dispatch(view.state.tr.setSelection(Selection.atEnd(view.state.doc)));
+    const mac = isMacPlatform();
+    const before = editorState.getMarkdown();
+
+    const event = dispatchKeydown(view.dom, { key: '[', metaKey: mac, ctrlKey: !mac });
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(editorState.getMarkdown()).toBe(before);
   });
 });

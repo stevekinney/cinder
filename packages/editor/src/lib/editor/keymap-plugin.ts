@@ -224,6 +224,27 @@ export function createKeymapBindings(
       tabEscape.release(state)
         ? false
         : call(runtime.liftListItemCommand.key) || call(runtime.goToPrevTableCellCommand.key),
+    // cinder#1302 review finding: on macOS, Mod-]/Mod-[ resolve to Cmd+]/
+    // Cmd+[ — browser Back/Forward. The commonmark/GFM presets' own
+    // SinkListItem/LiftListItem/NextCell/PrevCell commands (still bound to
+    // these same shortcuts; editor.ts's config() only stripped Tab/Shift-Tab
+    // from them, not Mod-]/Mod-[, since sink/lift/cell-nav is the intended
+    // keyboard route for THOSE) return `false` — declining the key, not
+    // handling it — whenever they don't apply: sinking the first item in a
+    // list, lifting outside a list entirely, or cell-nav outside a table.
+    // `prosemirror-keymap` only calls `event.preventDefault()` when a bound
+    // handler returns true, so a `false` here previously fell through to the
+    // browser's own binding, navigating away from the editor — silently
+    // discarding unsaved work, a far worse regression than the Tab-trap this
+    // fix closes. These try the SAME commands the presets' own handlers
+    // already tried (redundant if this runs after them in the merge chain,
+    // harmless either way) and then unconditionally return `true`: while
+    // this editor has focus, Mod-]/Mod-[ must never reach the browser,
+    // whether or not sink/lift/cell-nav had anything to do.
+    'Mod-]': () =>
+      call(runtime.sinkListItemCommand.key) || call(runtime.goToNextTableCellCommand.key) || true,
+    'Mod-[': () =>
+      call(runtime.liftListItemCommand.key) || call(runtime.goToPrevTableCellCommand.key) || true,
     // Arm, then decline the key: Escape has other listeners (menus, popovers,
     // the comment composer), and swallowing it here would break them.
     Escape: (state, _dispatch, view) => {
@@ -357,8 +378,17 @@ export function getShortcutDefinitions(isMac: boolean = false): ShortcutDefiniti
     { action: 'Bullet List', keys: [mod, shift, '8'] },
     { action: 'Ordered List', keys: [mod, shift, '7'] },
     { action: 'Blockquote', keys: [mod, shift, '9'] },
-    { action: 'Indent / Next Table Cell', keys: ['Tab'] },
-    { action: 'Outdent / Previous Table Cell', keys: [shift, 'Tab'] },
+    // cinder#1302: this row previously listed plain Tab/Shift-Tab as the
+    // indent/outdent shortcut. That was accurate before this fix (Tab
+    // unconditionally indented) and is misleading after it: Tab still
+    // indents contextually (inside a list/table, unless the Escape-then-Tab
+    // latch just released it — see the row below), but it is no longer the
+    // shortcut a user should be told to rely on, since it can decline to
+    // indent depending on focus-escape state. Mod-]/Mod-[ indent/outdent
+    // unconditionally, with no such caveat, so they're what this row
+    // documents now.
+    { action: 'Indent / Next Table Cell', keys: [mod, ']'] },
+    { action: 'Outdent / Previous Table Cell', keys: [mod, '['] },
     // WCAG 2.1.2 requires that a component whose keys are not all unmodified —
     // Tab indents inside a list, or moves to the next table cell, rather than
     // moving focus — document how to get out. This row IS that documentation,

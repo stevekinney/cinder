@@ -9,7 +9,7 @@ import type { Thread } from './comments/types.js';
 import { createEditor } from './editor/editor.js';
 import type { EditorState } from './editor/types.js';
 import type { FakeClock } from './test/fake-clock.js';
-import { installFakeClock } from './test/fake-clock.js';
+import { drainMount, installFakeClock } from './test/fake-clock.js';
 import { setupHappyDom } from './test/happy-dom.js';
 
 setupHappyDom();
@@ -94,11 +94,22 @@ describe('resolveAnchorSelectionRange (cinder#1304)', () => {
     document.body.append(container);
     const anchorPlugin = createAnchorPlugin();
 
-    editorState = await createEditor(container, {
-      initialContent: 'Preface paragraph.\n\nCommented text follows in this paragraph.',
-      plugins: [anchorPlugin],
-    });
+    // Clock installed BEFORE createEditor, drained via drainMount — see
+    // anchor-decorations-a11y.test.ts and editor.tab-escape-keymap.test.ts,
+    // whose sibling suites in this same PR established this ordering after a
+    // review finding: a bare `await createEditor(...)` issued once the clock
+    // is already fake can hang on a timer nothing will ever advance, or (if
+    // the clock is installed only afterward, as this test previously did)
+    // race the mount's own real timers against a fake clock that starts
+    // advancing mid-flight. Installing first and draining removes both.
     clock = installFakeClock();
+    editorState = await drainMount(
+      createEditor(container, {
+        initialContent: 'Preface paragraph.\n\nCommented text follows in this paragraph.',
+        plugins: [anchorPlugin],
+      }),
+      clock,
+    );
     const { view } = editorState;
     if (!view) throw new Error('view not ready');
 
@@ -138,11 +149,14 @@ describe('resolveAnchorSelectionRange (cinder#1304)', () => {
     document.body.append(container);
     const anchorPlugin = createAnchorPlugin();
 
-    editorState = await createEditor(container, {
-      initialContent: 'Preface paragraph.\n\nCommented text follows in this paragraph.',
-      plugins: [anchorPlugin],
-    });
     clock = installFakeClock();
+    editorState = await drainMount(
+      createEditor(container, {
+        initialContent: 'Preface paragraph.\n\nCommented text follows in this paragraph.',
+        plugins: [anchorPlugin],
+      }),
+      clock,
+    );
     const { view } = editorState;
     if (!view) throw new Error('view not ready');
 

@@ -960,13 +960,29 @@
    * Selecting such a thread in the sidebar is an ordinary click, so it must not
    * be able to throw. `calculateViewportPosition` already guards its own call
    * this way; these two did not.
+   *
+   * A review finding caught that this used `anchor.from` (the caller's cached
+   * `thread.anchor`) directly, unlike `navigateToAdjacentComment` right above,
+   * which already routes its own position through `resolveAnchorSelectionRange`
+   * for exactly this reason: an edit before an anchor maps this plugin's live
+   * position immediately, but does not update `threads` until deferred
+   * re-anchoring. `resolveAnchorSelectionRange`'s selection fix and this
+   * popover-positioning fix were the same underlying bug in two call sites —
+   * fixing the selection alone left the popover opening beside unrelated text
+   * at the anchor's former position even though the caret landed correctly.
+   * `threadId` is now required so this can resolve the same live position.
    */
   function anchorCoords(
     view: NonNullable<ReturnType<NonNullable<typeof editorRef>['getView']>>,
+    threadId: string,
     anchor: Thread['anchor'],
   ): { left: number; top: number } | null {
     if (anchor.status === 'orphaned') return null;
-    const position = documentPositionToBodyPosition(anchor.from, currentDocument.bodyOffset);
+    const fallback = {
+      from: documentPositionToBodyPosition(anchor.from, currentDocument.bodyOffset),
+      to: documentPositionToBodyPosition(anchor.to, currentDocument.bodyOffset),
+    };
+    const { from: position } = resolveAnchorSelectionRange(view, threadId, fallback);
     if (position < 0 || position > view.state.doc.content.size) return null;
     try {
       return view.coordsAtPos(position);
@@ -1079,7 +1095,7 @@
       const view = editorRef?.getView();
       if (!view) return;
 
-      const coords = anchorCoords(view, thread.anchor);
+      const coords = anchorCoords(view, threadId, thread.anchor);
       if (coords) {
         popoverPosition = { x: coords.left + 16, y: coords.top };
         popoverThreadId = threadId;
@@ -1880,8 +1896,34 @@
       // chord fired from inside any of those too — e.g. typing a reply in
       // an open thread's composer — hijacking focus into the editor and
       // changing the active thread mid-reply.
+      //
+      // A review finding caught that `editorDom.contains(event.target)`
+      // alone excludes a real ancestor: in readonly mode `setEditorReadonly`
+      // (editor.ts) sets `contenteditable="false"` on `editorDom`, which
+      // removes its native tab-stop (ProseMirror never sets an explicit
+      // `tabindex` on it — that implicit stop is the ONLY thing
+      // `contenteditable="true"` was providing). `MarkdownEditor`'s own
+      // `.markdown-editor.surface` wrapper — the element `editorDom` is
+      // mounted inside via the `{@attach}` directive, i.e. its parent, not
+      // its child — keeps `tabindex="0"` unconditionally. So a real Tab
+      // press in readonly mode lands there instead, `event.target` is that
+      // wrapper, and `editorDom.contains(wrapper)` is false (`contains`
+      // only looks at descendants), silently defeating this entire chord
+      // for exactly the review-only consumers most likely to want it.
+      // `target.contains(editorDom)` catches that ancestor case; it's safe
+      // to add unconditionally because the only focusable ancestor of
+      // `editorDom` is this one wrapper (the container itself carries no
+      // tabindex — see the comment on the container element below), and
+      // the sidebar/toolbar/composers this guard exists to exclude are
+      // never ancestors of `editorDom` either way, so they still fail both
+      // checks.
       const editorDom = editorRef?.getView()?.dom;
-      if (!editorDom || !(event.target instanceof Node) || !editorDom.contains(event.target)) {
+      const target = event.target;
+      if (
+        !editorDom ||
+        !(target instanceof Node) ||
+        !(editorDom.contains(target) || target.contains(editorDom))
+      ) {
         return;
       }
       event.preventDefault();
