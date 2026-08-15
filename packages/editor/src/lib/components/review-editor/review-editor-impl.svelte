@@ -129,6 +129,23 @@
   // Track when editor view is ready (for effects that need to wait for async editor creation)
   let editorViewReady = $state(false);
 
+  // `editorViewReady` is a latch set true by `handleSelectionChange`/the
+  // `MarkdownEditor` `onready` callback below, but nothing symmetrically
+  // cleared it when the editor view unmounted (cinder#1301): switching to the
+  // Diff or Summary tab destroys the `MarkdownEditor` instance behind the
+  // `{#if activeView === 'editor'}` branch, `editorRef` unbinds back to
+  // `undefined` (Svelte's own `bind:this` contract on block teardown), but the
+  // latch stayed `true` — so `data-ready` kept reporting an editor that no
+  // longer existed. Deriving the reset from `editorRef` itself, rather than
+  // from `activeView`, covers every teardown path (view switch, and any other
+  // reason the inner editor unmounts) without duplicating that branching logic
+  // here.
+  $effect(() => {
+    if (!editorRef) {
+      editorViewReady = false;
+    }
+  });
+
   // Track current selection for thread creation
   let currentSelection = $state<EditorSelection | null>(null);
 

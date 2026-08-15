@@ -150,16 +150,30 @@
       value={activeView}
       onValueChange={handleViewChange}
     >
-      <Segment value="editor" controls={viewPanelIds?.editor}>
+      <!--
+        `controls` is only passed for the ACTIVE segment (cinder#1303). The view
+        area below renders exactly one panel at a time via an `{#if}` chain — the
+        other two views' panels are not in the document at all, not merely
+        hidden — so an inactive tab's `aria-controls` would point at an id that
+        does not exist. A dangling id reference is worse than an absent one: it
+        fails "every IDREF resolves" (axe's aria-valid-attr-value, and any
+        screen reader that follows the tab-to-panel relationship), where
+        omitting `controls` on the inactive tabs is simply a tab that doesn't
+        (yet) claim to control anything.
+      -->
+      <Segment value="editor" controls={activeView === 'editor' ? viewPanelIds?.editor : undefined}>
         {#snippet leading()}<Pencil class="cinder-icon-xs" />{/snippet}
         Editor
       </Segment>
       {#if showDiffTabs}
-        <Segment value="diff" controls={viewPanelIds?.diff}>
+        <Segment value="diff" controls={activeView === 'diff' ? viewPanelIds?.diff : undefined}>
           {#snippet leading()}<GitBranch class="cinder-icon-xs" />{/snippet}
           Diff
         </Segment>
-        <Segment value="summary" controls={viewPanelIds?.summary}>
+        <Segment
+          value="summary"
+          controls={activeView === 'summary' ? viewPanelIds?.summary : undefined}
+        >
           {#snippet leading()}<FileText class="cinder-icon-xs" />{/snippet}
           Summary
         </Segment>

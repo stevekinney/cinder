@@ -152,11 +152,31 @@
   });
 </script>
 
+<!--
+  Deliberately `role="dialog"` WITHOUT `aria-modal="true"` (cinder#1305). This
+  is an anchored, non-modal dialog — the same pattern as a comment popover in
+  Google Docs or a GitHub PR review thread — not a blocking modal, and the
+  component's own keyboard design says so: F6 landmark navigation
+  (`handleContainerKeyDown` in `review-editor-impl.svelte`) deliberately moves
+  focus from this popover to `.review-editor-main` while the popover stays
+  open, so a reviewer can jump back to the document without closing the
+  thread. `aria-modal="true"` is a promise that everything outside the dialog
+  is unavailable; nothing here makes `.review-editor-main` or the comment
+  sidebar `inert` while this is open, and F6 proves they are still reachable
+  on purpose. Making the markup honest about that (rather than adding
+  `inert`/`aria-hidden` to the rest of the editor and removing F6) is the
+  smaller change AND the one that keeps this popover's actual, intended
+  workflow — F6 out, `Escape` or click-outside to close, `Tab` cycling the
+  popover's own controls while it has focus. Tab-trapping while non-modal is
+  intentional here too: this is a transient, anchored control surface (much
+  like a menu or combobox listbox), not a page-blocking dialog, so trapping
+  Tab within it while open — while still leaving F6/Escape/click-outside as
+  explicit ways out — is consistent, not contradictory.
+-->
 <div
   bind:this={popoverElement}
   {id}
   role="dialog"
-  aria-modal="true"
   aria-labelledby="{id}-title"
   tabindex="-1"
   class={classNames('thread-popover', className)}
