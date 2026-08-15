@@ -643,19 +643,59 @@
 
   export function setMarkdown(content: string): void {
     if (editorState) {
+      // Push the content into the live document synchronously — a caller
+      // reading getMarkdown()/getAst() right after this call must see it.
       editorState.setMarkdown(content);
-      // `value` is $bindable — a consumer that binds it (`bind:value`)
-      // expects it to reflect an imperative content change the same way it
-      // reflects a typed one, not go stale until the next debounced
-      // `onchange` fires (or never, if `onchange` is suppressed for this
-      // external update). This no longer feeds a placeholder gate
-      // (`placeholderStyleValue` is unconditional now — see its own doc
-      // comment), just plain prop-binding correctness. The "sync external
-      // value changes" effect above no-ops on this: it only acts when
-      // `value` differs from `editorState.getMarkdown()`, which is now
-      // already true.
-      value = content;
-    } else {
+    }
+
+    // `value` is $bindable — a consumer that binds it (`bind:value`) expects
+    // it to reflect an imperative content change the same way it reflects a
+    // typed one, not go stale until the next debounced `onchange` fires (or
+    // never, if `onchange` is suppressed for this external update).
+    //
+    // cinder#1328: an UNCONDITIONAL `value = content;` here permanently
+    // broke a LATER, unrelated parent-driven value change (e.g.
+    // `ReviewEditor.reset()`, called any amount of time afterward) from
+    // ever reaching the live document again. Empirically: not a debounce
+    // race — it reproduced with zero delay between the two calls (and with
+    // an added `await tick()` between them) and stayed broken indefinitely
+    // afterward, across a full 0-1200ms sweep of delay in both shapes,
+    // against a harness mirroring `ReviewEditor.setMarkdown()`'s actual
+    // dual write (review-editor-impl.svelte, ~932-934: it writes ITS OWN
+    // `value` immediately before calling this function — a one-way
+    // `value={editorValue}` consumer, not `bind:value`, writing the same
+    // prop from two places in one synchronous pass).
+    //
+    // Guarding the write with a read-compare (`value !== content`) fixes
+    // it. The read resolves whatever the parent already wrote through the
+    // ordinary path BEFORE this line runs — since the parent's write always
+    // lands first (it happens earlier in the same script, before
+    // `editorRef.setMarkdown()` is even called) — so by the time this
+    // comparison runs, `value` already reflects it, and the follow-up write
+    // is skipped as a no-op. There is then no unconditional force-write left
+    // to interfere with. A `tick()`-deferred version of this fix was tried
+    // first and rejected: deferring the SAME forced write just relocated it
+    // to a later point where it could still race a still-not-fully-settled
+    // parent write and reproduce the identical class of bug one microtask
+    // later — confirmed by the deferred version actually failing that way
+    // under a slightly different call sequence during review.
+    //
+    // Working theory for WHY an unconditional write breaks this, pinned to
+    // svelte@5.56.4 and not independently verified against the engine
+    // itself (worth a look if this class of bug resurfaces after a Svelte
+    // upgrade): `value`'s backing node here is a writable `derived` — the
+    // "prop written to, no `bind:`" branch of `prop()` in
+    // `svelte/src/internal/client/reactivity/props.js`. The parent's write
+    // (moments earlier, in the caller) leaves that derived MAYBE_DIRTY,
+    // pending a real re-execution. Force-writing it while still in that
+    // state (`set()` in sources.js) calls `update_derived_status`, which
+    // marks it CLEAN outright without re-executing it — never clearing its
+    // `WAS_MARKED` propagation flag (status.js / the `mark_reactions`
+    // early-return on `WAS_MARKED` in sources.js). A later, unrelated
+    // parent-driven change then finds that flag already set and
+    // `mark_reactions` never propagates to this prop again, so the "sync
+    // external value changes" effect below never re-fires.
+    if (value !== content) {
       value = content;
     }
   }
