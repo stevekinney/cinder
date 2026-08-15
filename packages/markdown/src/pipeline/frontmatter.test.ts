@@ -348,6 +348,18 @@ describe('hasFrontMatter', () => {
     // which also requires front matter to start at position 0
     expect(hasFrontMatter('  ---\ntitle: Test\n---')).toBe(false);
   });
+
+  test('stays consistent with parseFrontMatter for a false-positive span (cinder#1325)', () => {
+    // Before delegating to parseFrontMatter, this was a bare
+    // `markdown.startsWith('---')`, so it said `true` here even after
+    // parseFrontMatter() itself was fixed to say `false` -- directly
+    // contradicting this function's own "mirrors parseFrontMatter" contract
+    // for exactly the input the cinder#1325 fix targets.
+    const markdown = '---\n- one\n- two\n---\n\nBody.';
+
+    expect(hasFrontMatter(markdown)).toBe(parseFrontMatter(markdown).hasFrontMatter);
+    expect(hasFrontMatter(markdown)).toBe(false);
+  });
 });
 
 describe('validateFrontMatter', () => {

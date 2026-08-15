@@ -526,5 +526,37 @@ describe('generateMarkdownSummary', () => {
       // No normalization means no drift: line 5 is exactly where it always was.
       expect(result.markdown).toMatch(/### Lines 5-5/);
     });
+
+    test('a pure trailing addition reports the "insert after EOF" position, not the last real line (review finding)', () => {
+      // mapNormalizedLineNumber used to clamp any out-of-range lookup to the
+      // map's last real entry. A pure addition past the end of `original`
+      // legitimately produces a lookup one past the map's length ("insert
+      // after this line") -- clamping silently relocated that onto the
+      // document's last real line instead of reporting it as after it.
+      const state = createState({
+        original: 'Alpha',
+        current: 'Alpha\nBeta',
+      });
+      const result = generateMarkdownSummary(state, { contextLines: 0, normalizeInputs: false });
+
+      expect(result.markdown).toMatch(/### Lines 2-2/);
+      expect(result.markdown).not.toMatch(/### Lines 1-1/);
+    });
+
+    test('a normalized line rewritten by normalization (not just deleted) maps to its own line, not the line before it (review finding)', () => {
+      // A Setext heading collapses two source lines into one normalized ATX
+      // line, which has no verbatim match in the source. The naive fallback
+      // -- freeze on the nearest preceding match -- would report the blank
+      // line above the heading; interpolating forward instead reports the
+      // heading's own line.
+      const state = createState({
+        original: 'Intro\n\nOld title\n===\n',
+        current: 'Intro\n\nNew title\n===\n',
+      });
+      const result = generateMarkdownSummary(state, { contextLines: 0 });
+
+      expect(result.markdown).toMatch(/### Lines 3-3/);
+      expect(result.markdown).not.toMatch(/### Lines 2-2/);
+    });
   });
 });

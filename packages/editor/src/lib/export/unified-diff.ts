@@ -110,6 +110,20 @@ function isFinalLineWithoutNewline(content: SplitContent | undefined, lineNumber
 /**
  * Generate a Git-compatible unified diff from review state.
  *
+ * Known limitation (cinder#1324): hunk headers' `@@ -start,count +start,count @@`
+ * report `start` in source-space (mapped back through {@link buildSourceLineMap})
+ * but `count` in normalized-space (how many lines the hunk's own body shows,
+ * since the body is still generated from the normalized documents by design
+ * -- see `normalizeDocument`'s docs for why). When normalization collapsed
+ * lines entirely *before* a hunk's displayed range (`contextLines: 0`, or the
+ * common case generally), the header is exact and `git apply` succeeds. When
+ * a collapse falls *inside* the displayed range, `start` and `count` can
+ * still disagree with the raw document's actual line span, and `git apply`
+ * can reject the patch -- a structural consequence of diffing normalized
+ * text while reporting source-space line numbers, not a gap this fix left
+ * unclosed. This is not something to "fix" by adjusting `count` to a
+ * source-space span; that would make the header disagree with its own body.
+ *
  * @param state - The current review state containing original and current content
  * @param options - Configuration options for diff generation
  * @returns UnifiedDiffResult with diff string and statistics
@@ -215,6 +229,14 @@ export function generateUnifiedDiff(
       hunk.originalStart === 0 ? 0 : mapNormalizedLineNumber(originalLineMap, hunk.originalStart);
     const currentStart =
       hunk.currentStart === 0 ? 0 : mapNormalizedLineNumber(currentLineMap, hunk.currentStart);
+    // This header mixes coordinate spaces on purpose, not by oversight:
+    // `originalStart`/`currentStart` are source-space (mapped above), but
+    // `hunk.originalCount`/`hunk.currentCount` stay normalized-space --
+    // they describe how many lines this hunk's own body shows, which is the
+    // only count a unified-diff body can self-consistently carry (see the
+    // module-level "Known limitation" note and this PR's changeset). Do not
+    // "fix" the count to a source-space span; that would make it disagree
+    // with the body instead of the header.
     diffLines.push(
       `@@ -${originalStart},${hunk.originalCount} +${currentStart},${hunk.currentCount} @@`,
     );

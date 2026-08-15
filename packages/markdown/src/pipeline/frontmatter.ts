@@ -495,16 +495,19 @@ export function extractFrontMatter(
 /**
  * Check if a Markdown document has front matter.
  *
- * Front matter must be at the very beginning of the document (no leading whitespace)
- * for it to be recognized by `parseFrontMatter()`. This function mirrors that behavior
- * to ensure consistency.
+ * Delegates to `parseFrontMatter()` rather than re-deriving the check, so
+ * the two can't drift out of sync the way they did before cinder#1325: this
+ * function used to be a bare `markdown.startsWith('---')`, which said
+ * `true` for a `---`-opening span whose content wasn't valid, object-shaped
+ * YAML even after `parseFrontMatter()` itself was corrected to say `false`
+ * for exactly that case -- the opposite of the "mirrors that behavior"
+ * consistency this function's contract promises.
  *
  * @param markdown - The Markdown document to check
- * @returns True if the document starts with `---` front matter delimiters
+ * @returns True if `parseFrontMatter()` recognizes real front matter
  */
 export function hasFrontMatter(markdown: string): boolean {
-  // Must start exactly at position 0, consistent with parseFrontMatter()
-  return markdown.startsWith('---');
+  return parseFrontMatter(markdown).hasFrontMatter;
 }
 
 /**

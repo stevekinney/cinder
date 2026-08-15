@@ -428,6 +428,40 @@ describe('hunk header line numbers reference source, not normalized text (cinder
     expect(applied.error).toBe('');
     expect(applied.ok).toBe(true);
   });
+
+  test('a pure trailing addition reports the "insert after EOF" position, not the last real line (review finding)', () => {
+    // mapNormalizedLineNumber used to clamp any out-of-range lookup to the
+    // map's last real entry. A pure addition past the end of `original`
+    // legitimately produces a lookup one past the map's length (git's own
+    // "insert after this line" convention) -- clamping silently relocated
+    // that onto the document's last real line instead of reporting it as
+    // after that line.
+    const original = 'Alpha';
+    const current = 'Alpha\nBeta';
+
+    const { diff } = generateUnifiedDiff(createState(original, current), {
+      contextLines: 0,
+      normalizeInputs: false,
+    });
+
+    expect(diff).toContain('@@ -0,0 +2,1 @@');
+    expect(diff).not.toContain('@@ -0,0 +1,1 @@');
+  });
+
+  test('a normalized line rewritten by normalization (not just deleted) maps to its own line, not the line before it (review finding)', () => {
+    // A Setext heading collapses two source lines ("Old title" and its "==="
+    // underline) into one normalized ATX line ("# Old title"), which has no
+    // verbatim match in the source. The naive fallback -- freeze on the
+    // nearest preceding match -- would report the blank line above the
+    // heading; interpolating forward instead reports the heading's own line.
+    const original = 'Intro\n\nOld title\n===\n';
+    const current = 'Intro\n\nNew title\n===\n';
+
+    const { diff } = generateUnifiedDiff(createState(original, current), { contextLines: 0 });
+
+    expect(diff).toContain('@@ -3,1 +3,1 @@');
+    expect(diff).not.toContain('@@ -2,1 +2,1 @@');
+  });
 });
 
 describe('DiffViewer unified diff formatting', () => {
