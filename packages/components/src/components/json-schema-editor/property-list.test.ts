@@ -139,9 +139,11 @@ describe('PropertyList', () => {
     expect(source).toContain('aria-live="polite"');
     expect(source).toContain('Moved ${key} property to position ${target + 1}');
     expect(source).toContain('Deleted ${key} property.');
+    expect(source).toContain('async function announceAction');
+    expect(source).toContain("actionAnnouncement = ''");
     expect(source).toContain('await tick()');
-    expect(source).toContain('`${idPrefix}-${focusKey}-trigger`');
-    expect(source).toContain('`${idPrefix}-add-property`');
+    expect(source).toContain('data-cinder-property-trigger');
+    expect(source).toContain('data-cinder-add-property');
   });
 
   test('keeps enum in the preserved-keywords count when a schema is loaded', () => {

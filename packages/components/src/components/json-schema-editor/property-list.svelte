@@ -112,6 +112,13 @@
   }
 
   let actionAnnouncement = $state('');
+  let listElement: HTMLDivElement | undefined = $state();
+
+  async function announceAction(message: string) {
+    actionAnnouncement = '';
+    await tick();
+    actionAnnouncement = message;
+  }
 
   async function deleteProperty(key: string, index: number) {
     if (readonly) return;
@@ -124,11 +131,13 @@
     const { [key]: _removedChildCount, ...remainingChildCounts } = childValidationCounts;
     childValidationCounts = remainingChildCounts;
     onValueChange(next, nextRequired);
-    actionAnnouncement = `Deleted ${key} property.`;
+    await announceAction(`Deleted ${key} property.`);
     await tick();
     const focusTarget = focusKey
-      ? document.getElementById(`${idPrefix}-${focusKey}-trigger`)
-      : document.getElementById(`${idPrefix}-add-property`);
+      ? listElement?.querySelector<HTMLButtonElement>(
+          `[data-cinder-property-trigger="${focusKey}"]`,
+        )
+      : listElement?.querySelector<HTMLButtonElement>('[data-cinder-add-property]');
     focusTarget?.focus();
   }
 
@@ -147,7 +156,7 @@
     if (isOpen) setChildValidationErrorCount(key, 0);
   }
 
-  function moveProperty(key: string, direction: -1 | 1, index: number) {
+  async function moveProperty(key: string, direction: -1 | 1, index: number) {
     if (readonly) return;
     const target = index + direction;
     if (target < 0 || target >= propertyNames.length) return;
@@ -157,7 +166,7 @@
     const next: Record<string, JsonSchemaValue> = {};
     for (const name of reordered) next[name] = properties[name]!;
     onValueChange(next, required);
-    actionAnnouncement = `Moved ${key} property to position ${target + 1} of ${reordered.length}.`;
+    await announceAction(`Moved ${key} property to position ${target + 1} of ${reordered.length}.`);
   }
 
   function toggleRequired(key: string) {
@@ -215,7 +224,7 @@
   }
 </script>
 
-<div class="cinder-jse-property-list">
+<div class="cinder-jse-property-list" bind:this={listElement}>
   <p class="cinder-sr-only" aria-live="polite">{actionAnnouncement}</p>
   {#if renameError}
     <Alert variant="danger">{renameError}</Alert>
@@ -243,7 +252,7 @@
     >
       <div class="cinder-jse-property-row__summary" style={`--cinder-jse-property-depth: ${depth}`}>
         <button
-          id={`${idPrefix}-${key}-trigger`}
+          data-cinder-property-trigger={key}
           type="button"
           class="cinder-jse-property-row__trigger"
           aria-label={`${isOpen ? 'Collapse' : 'Expand'} ${key} property${childValidationErrorCount > 0 ? `, ${childValidationErrorCount} validation ${childValidationErrorCount === 1 ? 'error' : 'errors'}` : ''}`}
@@ -334,7 +343,7 @@
   {/each}
 
   <Button
-    id={`${idPrefix}-add-property`}
+    data-cinder-add-property
     variant="secondary"
     size="sm"
     disabled={readonly}
