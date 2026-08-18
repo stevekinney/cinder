@@ -1,19 +1,17 @@
 export type ScanMetadata = {
   escaped: Uint8Array;
   lineStarts: Int32Array;
-  containerStarts: Int32Array;
-  codeSpanEnds: Int32Array;
-  mathEnds: Int32Array;
+  containerStarts: Map<number, number>;
+  codeSpanEnds: Map<number, number>;
+  mathEnds: Map<number, number>;
 };
 
 export function makeScanMetadata(value: string): ScanMetadata {
   const escaped = new Uint8Array(value.length);
   const lineStarts = new Int32Array(value.length);
-  const containerStarts = new Int32Array(value.length);
-  const codeSpanEnds = new Int32Array(value.length);
-  const mathEnds = new Int32Array(value.length);
-  codeSpanEnds.fill(-1);
-  mathEnds.fill(-1);
+  const containerStarts = new Map<number, number>();
+  const codeSpanEnds = new Map<number, number>();
+  const mathEnds = new Map<number, number>();
 
   let backslashes = 0;
   let lineStart = 0;
@@ -57,7 +55,7 @@ export function makeScanMetadata(value: string): ScanMetadata {
         indentation += 1;
       }
     }
-    containerStarts[start] = cursor;
+    containerStarts.set(start, cursor);
     const lineEnd = value.indexOf('\n', start);
     if (lineEnd === -1) break;
     start = lineEnd + 1;
@@ -77,11 +75,11 @@ export function makeScanMetadata(value: string): ScanMetadata {
     const length = index - start + 1;
     if (character === '`') {
       const next = nextCodeRun.get(length);
-      if (next !== undefined) codeSpanEnds[start] = next + length;
+      if (next !== undefined) codeSpanEnds.set(start, next + length);
       nextCodeRun.set(length, start);
     } else if (escaped[start] !== 1) {
       const next = nextMathClose.get(length);
-      if (next !== undefined) mathEnds[start] = next + length;
+      if (next !== undefined) mathEnds.set(start, next + length);
       if (
         length === 2 ||
         (length === 1 &&

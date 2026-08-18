@@ -5,6 +5,7 @@ import {
   getClosingHtmlBlockEnd,
   getHtmlBlockBlankLineEnd,
   getHtmlTagEnd,
+  isInterruptingHtmlBlockTag,
   isVoidHtmlTag,
 } from './chat-composer-mention-html.ts';
 import {
@@ -13,6 +14,7 @@ import {
   isEntityUri,
   unescapeMarkdown,
 } from './chat-composer-mention-link.ts';
+import { getReferenceDefinitionEnd } from './chat-composer-mention-reference.ts';
 import {
   hasEscapedPrefix,
   makeScanMetadata,
@@ -70,7 +72,7 @@ function isIndentedCodeStart(value: string, index: number, metadata: ScanMetadat
 
 function getContainerPrefix(value: string, start: number, metadata: ScanMetadata): string {
   const lineStart = metadata.lineStarts[start] ?? 0;
-  return value.slice(lineStart, metadata.containerStarts[lineStart]);
+  return value.slice(lineStart, metadata.containerStarts.get(lineStart) ?? lineStart);
 }
 
 function getOpeningCodeFence(
@@ -84,7 +86,7 @@ function getOpeningCodeFence(
   if (
     (delimiter !== '`' && delimiter !== '~') ||
     hasEscapedPrefix(start, metadata) ||
-    start !== metadata.containerStarts[lineStart] ||
+    start !== (metadata.containerStarts.get(lineStart) ?? lineStart) ||
     (prefix.length > 3 && !/[>*+\-0-9.]/u.test(prefix))
   ) {
     return null;
@@ -105,7 +107,10 @@ function isClosingCodeFence(
   metadata: ScanMetadata,
 ): boolean {
   const lineStart = metadata.lineStarts[start] ?? 0;
-  if (!value.startsWith(fence.prefix, lineStart) || start !== metadata.containerStarts[lineStart])
+  if (
+    !value.startsWith(fence.prefix, lineStart) ||
+    start !== (metadata.containerStarts.get(lineStart) ?? lineStart)
+  )
     return false;
 
   const length = countRun(value, start, fence.delimiter);
@@ -148,81 +153,17 @@ function getOrdinaryLinkEnd(value: string, start: number): number | null {
   return null;
 }
 
-function getReferenceDefinitionEnd(
-  value: string,
-  start: number,
-  metadata: ScanMetadata,
-): number | null {
-  const lineStart = metadata.lineStarts[start] ?? 0;
-  if (!/^ {0,3}$/u.test(value.slice(lineStart, start))) return null;
-
-  let labelEnd = start + 1;
-  while (labelEnd < value.length && value[labelEnd] !== ']') {
-    if (value[labelEnd] === '\\') labelEnd += 2;
-    else labelEnd += 1;
-  }
-
-  if (value[labelEnd] !== ']' || value[labelEnd + 1] !== ':') return null;
-
-  const lineEnd = value.indexOf('\n', labelEnd + 2);
-  const end = lineEnd === -1 ? value.length : lineEnd;
-  let cursor = labelEnd + 2;
-  while (value[cursor] === ' ' || value[cursor] === '\t') cursor += 1;
-  if (cursor >= end) return null;
-
-  if (value[cursor] === '<') {
-    cursor += 1;
-    while (cursor < end && value[cursor] !== '>') {
-      if (value[cursor] === '\\') cursor += 1;
-      cursor += 1;
-    }
-    if (value[cursor] !== '>') return null;
-    cursor += 1;
-  } else {
-    let parentheses = 0;
-    while (cursor < end && !/\s/u.test(value[cursor]!)) {
-      if (value[cursor] === '\\') cursor += 1;
-      else if (value[cursor] === '(') parentheses += 1;
-      else if (value[cursor] === ')') {
-        if (parentheses === 0) break;
-        parentheses -= 1;
-      }
-      cursor += 1;
-    }
-    if (parentheses !== 0) return null;
-  }
-
-  while (value[cursor] === ' ' || value[cursor] === '\t') cursor += 1;
-  if (cursor < end && value[cursor] !== '\r') {
-    const opener = value[cursor];
-    const closer = opener === '(' ? ')' : opener;
-    if (opener !== '"' && opener !== "'" && opener !== '(') return null;
-    cursor += 1;
-    while (cursor < end && value[cursor] !== closer) {
-      if (value[cursor] === '\\') cursor += 1;
-      cursor += 1;
-    }
-    if (value[cursor] !== closer) return null;
-    cursor += 1;
-    while (value[cursor] === ' ' || value[cursor] === '\t') cursor += 1;
-  }
-
-  return cursor === end || (value[cursor] === '\r' && cursor + 1 === end) ? end : null;
-}
-
 function getInlineCodeSpanEnd(start: number, metadata: ScanMetadata): number | null {
-  const end = metadata.codeSpanEnds[start];
-  return end === undefined || end < 0 ? null : end;
+  return metadata.codeSpanEnds.get(start) ?? null;
 }
 
 function getMathEnd(value: string, start: number, metadata: ScanMetadata): number | null {
   if (hasEscapedPrefix(start, metadata)) return null;
 
-  const delimiterLength = countRun(value, start, '$');
+  const delimiterLength = value[start + 1] !== '$' ? 1 : value[start + 2] !== '$' ? 2 : 3;
   if (delimiterLength > 2) return null;
   if (delimiterLength === 1 && /[0-9\s]/u.test(value[start + 1] ?? '')) return null;
-  const end = metadata.mathEnds[start];
-  return end === undefined || end < 0 ? null : end;
+  return metadata.mathEnds.get(start) ?? null;
 }
 
 function parseLink(value: string, start: number): ParsedLink | null {
@@ -376,6 +317,13 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
         sourceIndex += 4;
         continue;
       }
+      if (value.startsWith('<![CDATA[', sourceIndex)) {
+        const closingStart = value.indexOf(']]>', sourceIndex + 9);
+        const end = closingStart === -1 ? value.length : closingStart + 3;
+        text += value.slice(sourceIndex, end);
+        sourceIndex = end;
+        continue;
+      }
       const autolinkEnd = getAutolinkEnd(value, sourceIndex);
       if (autolinkEnd !== null) {
         text += value.slice(sourceIndex, autolinkEnd);
@@ -384,6 +332,7 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
       }
       const tagEnd = getHtmlTagEnd(value, sourceIndex);
       if (tagEnd !== null) {
+        const tagStart = sourceIndex;
         const tag = /^<([A-Za-z][A-Za-z0-9-]*)(?:\s|>)/u.exec(value.slice(sourceIndex, tagEnd + 1));
         text += value.slice(sourceIndex, tagEnd + 1);
         sourceIndex = tagEnd + 1;
@@ -394,10 +343,14 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
         ) {
           const lineStart = metadata.lineStarts[sourceIndex - 1] ?? 0;
           const normalizedTag = tag[1]!.toLowerCase();
-          if (
+          const startsAtBlockColumn = /^ {0,3}$/u.test(value.slice(lineStart, tagStart));
+          const isStandaloneTag =
             /^\s*<[A-Za-z][A-Za-z0-9-]*(?:\s[^>]*)?>$/u.test(value.slice(lineStart, sourceIndex)) &&
-            value[sourceIndex] === '\n' &&
-            canStartHtmlBlock(value, lineStart, normalizedTag, metadata)
+            value[sourceIndex] === '\n';
+          if (
+            startsAtBlockColumn &&
+            (isInterruptingHtmlBlockTag(normalizedTag) ||
+              (isStandaloneTag && canStartHtmlBlock(value, lineStart, metadata)))
           ) {
             htmlBlock = {
               tag: normalizedTag,

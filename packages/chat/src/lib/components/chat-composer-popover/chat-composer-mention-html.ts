@@ -18,13 +18,15 @@ export function closesHtmlBlockWithTag(tag: string): boolean {
   return RAW_TEXT_HTML_TAGS.has(tag);
 }
 
+export function isInterruptingHtmlBlockTag(tag: string): boolean {
+  return RAW_TEXT_HTML_TAGS.has(tag) || BLOCK_HTML_TAGS.has(tag);
+}
+
 export function canStartHtmlBlock(
   value: string,
   lineStart: number,
-  tag: string,
   metadata: ScanMetadata,
 ): boolean {
-  if (RAW_TEXT_HTML_TAGS.has(tag) || BLOCK_HTML_TAGS.has(tag)) return true;
   if (lineStart === 0) return true;
 
   const previousLineStart = metadata.lineStarts[lineStart - 1] ?? 0;
@@ -65,7 +67,10 @@ export function getAutolinkEnd(value: string, start: number): number | null {
 
   const destination = value.slice(start + 1, cursor);
   const uri = /^[A-Za-z][A-Za-z0-9+.-]{1,31}:[^<>]*$/u.test(destination);
-  const email = /^[^<>@]+@[^<>@]+$/u.test(destination);
+  const email =
+    /^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$/u.test(
+      destination,
+    );
   return uri || email ? cursor + 1 : null;
 }
 
