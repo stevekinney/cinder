@@ -53,8 +53,13 @@ export function extractRootBlock(css: string): string {
  * declaration.
  */
 export function readRootTokenNames(css: string): Set<string> {
+  return new Set(readRootTokenValues(css).keys());
+}
+
+/** Returns authored `--cinder-*` values from the top-level `:root` block. */
+export function readRootTokenValues(css: string): Map<string, string> {
   const root = parse(css);
-  const names = new Set<string>();
+  const values = new Map<string, string>();
   let found = false;
 
   root.walkRules(':root', (rule) => {
@@ -63,7 +68,7 @@ export function readRootTokenNames(css: string): Set<string> {
 
     for (const node of rule.nodes) {
       if (node.type === 'decl' && node.prop.startsWith('--cinder-')) {
-        names.add(node.prop);
+        values.set(node.prop, node.value);
       }
     }
 
@@ -74,5 +79,5 @@ export function readRootTokenNames(css: string): Set<string> {
     throw new Error('Could not find :root { ... } block in tokens-base.css');
   }
 
-  return names;
+  return values;
 }
