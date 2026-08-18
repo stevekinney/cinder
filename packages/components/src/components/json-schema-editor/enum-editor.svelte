@@ -1,10 +1,17 @@
 <script lang="ts" module>
+  export type EnumDraft = {
+    text: string;
+    error: 'invalid-json' | 'duplicate';
+  };
+
   export type EnumEditorProps = {
     idPrefix: string;
     path: string;
     values: unknown[];
+    drafts?: Record<number, EnumDraft>;
     readonly?: boolean;
     onvalidationErrorcount?: ((count: number) => void) | undefined;
+    onDraftsChange?: ((next: Record<number, EnumDraft>) => void) | undefined;
     onValuesChange: (next: unknown[], options?: { coalesceKey?: string; label?: string }) => void;
   };
 </script>
@@ -18,31 +25,28 @@
     idPrefix,
     path,
     values,
+    drafts = {},
     readonly = false,
     onvalidationErrorcount,
+    onDraftsChange,
     onValuesChange,
   }: EnumEditorProps = $props();
 
-  let invalidValueIndexes = $state<Set<number>>(new Set());
-  let draftTextByIndex = $state<Record<number, string>>({});
+  let localDrafts = $state<Record<number, EnumDraft>>({});
+  let previousDrafts: Record<number, EnumDraft> | null = null;
+  let emittedDrafts: Record<number, EnumDraft> | null = null;
+  const activeDrafts = $derived({ ...drafts, ...localDrafts });
+  const invalidValueIndexes = $derived(new Set(Object.keys(activeDrafts).map(Number)));
   let actionAnnouncement = $state('');
-  let previousValues: unknown[] | null = null;
-  let pendingLocalValues: unknown[] | null = null;
 
   $effect(() => onvalidationErrorcount?.(invalidValueIndexes.size));
   onDestroy(() => onvalidationErrorcount?.(0));
 
   $effect(() => {
-    if (previousValues === null) {
-      previousValues = values;
-    } else if (values !== previousValues) {
-      previousValues = values;
-      const receivedLocalUpdate = values === pendingLocalValues;
-      pendingLocalValues = null;
-      if (!receivedLocalUpdate) {
-        invalidValueIndexes = new Set();
-        draftTextByIndex = {};
-      }
+    if (drafts !== previousDrafts) {
+      if (drafts !== emittedDrafts) localDrafts = {};
+      previousDrafts = drafts;
+      emittedDrafts = null;
     }
   });
 
@@ -74,35 +78,43 @@
     return values.some((item, index) => index !== exceptIndex && canonicalJson(item) === encoded);
   }
 
-  function commitValues(
-    next: unknown[],
-    options: { coalesceKey?: string; label?: string } | undefined = undefined,
-  ): void {
-    pendingLocalValues = next;
-    onValuesChange(next, options);
+  function setDraft(index: number, draft: EnumDraft | undefined): void {
+    if (draft === undefined) {
+      const { [index]: _removedLocalDraft, ...remainingLocalDrafts } = localDrafts;
+      const { [index]: _removedDraft, ...remainingDrafts } = activeDrafts;
+      localDrafts = remainingLocalDrafts;
+      emittedDrafts = remainingDrafts;
+      onDraftsChange?.(remainingDrafts);
+      return;
+    }
+    localDrafts = { ...localDrafts, [index]: draft };
+    emittedDrafts = { ...activeDrafts, [index]: draft };
+    onDraftsChange?.(emittedDrafts);
   }
 
-  $effect(() => {
-    const validIndexes = [...invalidValueIndexes].filter((index) => index < values.length);
-    if (validIndexes.length !== invalidValueIndexes.size)
-      invalidValueIndexes = new Set(validIndexes);
-  });
+  function errorMessage(index: number): string {
+    return activeDrafts[index]?.error === 'duplicate'
+      ? 'Enum values must be unique.'
+      : 'Enter a valid JSON value.';
+  }
 
   function setValue(index: number, text: string): void {
-    draftTextByIndex = { ...draftTextByIndex, [index]: text };
     try {
       const nextValue = JSON.parse(text) as unknown;
-      if (!isJsonValue(nextValue) || hasDuplicateValue(nextValue, index)) {
-        throw new Error('Enum values must be unique finite JSON values.');
+      if (!isJsonValue(nextValue)) {
+        setDraft(index, { text, error: 'invalid-json' });
+        return;
+      }
+      if (hasDuplicateValue(nextValue, index)) {
+        setDraft(index, { text, error: 'duplicate' });
+        return;
       }
       const next = [...values];
       next[index] = nextValue;
-      invalidValueIndexes = new Set([...invalidValueIndexes].filter((item) => item !== index));
-      const { [index]: _committedDraft, ...remainingDrafts } = draftTextByIndex;
-      draftTextByIndex = remainingDrafts;
-      commitValues(next, { coalesceKey: `enum:${path}:${index}`, label: 'edit enum value' });
+      setDraft(index, undefined);
+      onValuesChange(next, { coalesceKey: `enum:${path}:${index}`, label: 'edit enum value' });
     } catch {
-      invalidValueIndexes = new Set([...invalidValueIndexes, index]);
+      setDraft(index, { text, error: 'invalid-json' });
     }
   }
 
@@ -112,24 +124,14 @@
       return;
     const next = [...values];
     [next[index], next[targetIndex]] = [next[targetIndex]!, next[index]!];
-    invalidValueIndexes = new Set(
-      [...invalidValueIndexes].map((item) =>
-        item === index ? targetIndex : item === targetIndex ? index : item,
-      ),
-    );
-    commitValues(next);
+    onValuesChange(next);
     actionAnnouncement = `Moved enum value ${index + 1} to position ${targetIndex + 1} of ${values.length}.`;
   }
 
   async function removeValue(index: number): Promise<void> {
     if (readonly || invalidValueIndexes.size > 0 || values.length === 1) return;
-    invalidValueIndexes = new Set(
-      [...invalidValueIndexes]
-        .filter((item) => item !== index)
-        .map((item) => (item > index ? item - 1 : item)),
-    );
     const focusIndex = Math.min(index, values.length - 2);
-    commitValues(values.filter((_, itemIndex) => itemIndex !== index));
+    onValuesChange(values.filter((_, itemIndex) => itemIndex !== index));
     await tick();
     document.getElementById(`${idPrefix}-remove-${focusIndex}`)?.focus();
   }
@@ -139,7 +141,7 @@
     let nextValue = '';
     let suffix = 1;
     while (hasDuplicateValue(nextValue, -1)) nextValue = `value ${suffix++}`;
-    commitValues([...values, nextValue]);
+    onValuesChange([...values, nextValue]);
   }
 </script>
 
@@ -160,7 +162,7 @@
             <Input
               id={inputId}
               label={`Enum value ${index + 1}`}
-              value={draftTextByIndex[index] ?? jsonText(value)}
+              value={activeDrafts[index]?.text ?? jsonText(value)}
               disabled={readonly}
               aria-invalid={invalidValueIndexes.has(index) || undefined}
               aria-describedby={invalidValueIndexes.has(index) ? errorId : undefined}
@@ -168,7 +170,7 @@
             />
             {#if invalidValueIndexes.has(index)}
               <p id={errorId} class="cinder-jse-enum-editor__error" role="alert">
-                Enter a valid JSON value.
+                {errorMessage(index)}
               </p>
             {/if}
           </td>

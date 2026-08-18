@@ -66,6 +66,7 @@
   import Tabs from '../tabs/tabs.svelte';
 
   import DiffView from './diff-view.svelte';
+  import type { EnumDraft } from './enum-editor.svelte';
   import FormView from './form-view.svelte';
   import { createEditorState } from './json-schema-editor-state.svelte.ts';
   import JsonSchemaToolbar from './json-schema-toolbar.svelte';
@@ -110,6 +111,7 @@
   });
 
   let localValidationErrorCount = $state(0);
+  let enumDrafts = $state<Record<string, Record<number, EnumDraft>>>({});
   const editorState = createEditorState(stateOptions);
   const toolbarValidationErrorCount = $derived(view === 'form' ? localValidationErrorCount : 0);
 
@@ -154,6 +156,7 @@
       lastSchemaKey = schemaKey;
       untrack(() => {
         editorState.reload(schema, original);
+        enumDrafts = {};
       });
       announcer.announce('Schema reloaded');
     }
@@ -174,16 +177,19 @@
 
   // Action handlers used by the toolbar.
   function handleUndo() {
+    enumDrafts = {};
     const label = editorState.undo();
     announcer.announce(label ? `Undid: ${label}` : 'Undid last edit');
   }
 
   function handleRedo() {
+    enumDrafts = {};
     const label = editorState.redo();
     announcer.announce(label ? `Redid: ${label}` : 'Redid edit');
   }
 
   function handleRevert() {
+    enumDrafts = {};
     editorState.revert();
     announcer.announce('Reverted to original schema');
   }
@@ -255,11 +261,13 @@
       <FormView
         state={editorState}
         idPrefix={`${id}-form`}
+        {enumDrafts}
         onvalidationErrorcount={(count) => (localValidationErrorCount = count)}
+        onEnumDraftsChange={(next) => (enumDrafts = next)}
       />
     </TabPanel>
     <TabPanel value="json">
-      <JsonView state={editorState} idPrefix={`${id}-json`} />
+      <JsonView state={editorState} idPrefix={`${id}-json`} onApply={() => (enumDrafts = {})} />
     </TabPanel>
     <TabPanel value="diff">
       <DiffView state={editorState} />

@@ -1,5 +1,6 @@
 <script lang="ts" module>
   import type { JsonSchemaTypeName, JsonSchemaValue } from './json-schema-editor-types.ts';
+  import type { EnumDraft } from './enum-editor.svelte';
 
   export type PropertyEditorProps = {
     idPrefix: string;
@@ -7,7 +8,9 @@
     path: string;
     depth?: number;
     readonly?: boolean;
+    enumDrafts?: Record<string, Record<number, EnumDraft>>;
     onvalidationErrorcount?: ((count: number) => void) | undefined;
+    onEnumDraftsChange?: ((next: Record<string, Record<number, EnumDraft>>) => void) | undefined;
     onValueChange: (
       next: JsonSchemaValue,
       options?: { coalesceKey?: string; label?: string },
@@ -39,6 +42,7 @@
     PRIMITIVE_TYPES,
   } from './property-editor.constants.ts';
   import type { JsonSchemaObject } from './json-schema-editor-types.ts';
+  import type { EnumDraft } from './enum-editor.svelte';
   import PropertyEditor from './property-editor.svelte';
   import PropertyEditorConstraints from './property-editor-constraints.svelte';
   import EnumEditor from './enum-editor.svelte';
@@ -50,7 +54,9 @@
     path,
     depth = 0,
     readonly = false,
+    enumDrafts = {},
     onvalidationErrorcount,
+    onEnumDraftsChange,
     onValueChange,
     class: className,
   }: PropertyEditorProps = $props();
@@ -379,8 +385,10 @@
           idPrefix={`${idPrefix}-enum`}
           path={`${path}/enum`}
           values={objectValue.enum ?? []}
+          drafts={enumDrafts[`${path}/enum`] ?? {}}
           {readonly}
           onvalidationErrorcount={(count) => setChildValidationErrorCount('enum', count)}
+          onDraftsChange={(next) => onEnumDraftsChange?.({ ...enumDrafts, [`${path}/enum`]: next })}
           onValuesChange={setEnumValues}
         />
       {/if}
@@ -412,8 +420,10 @@
           path={`${path}/items`}
           depth={depth + 1}
           {readonly}
+          {enumDrafts}
           value={objectValue.items ?? {}}
           onvalidationErrorcount={(count) => setChildValidationErrorCount('items', count)}
+          {onEnumDraftsChange}
           onValueChange={(next) => setItems(next)}
         />
       </div>
@@ -445,9 +455,11 @@
                 path={`${path}/${keyword}/${branchIndex}`}
                 depth={depth + 1}
                 {readonly}
+                {enumDrafts}
                 value={branch}
                 onvalidationErrorcount={(count) =>
                   setChildValidationErrorCount(`${keyword}:${branchKey}`, count)}
+                {onEnumDraftsChange}
                 onValueChange={(next) => {
                   const list = [...objectValue[keyword]!];
                   list[branchIndex] = next;

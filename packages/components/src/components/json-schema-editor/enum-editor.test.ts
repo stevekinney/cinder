@@ -120,10 +120,12 @@ describe('EnumEditor', () => {
       'disabled',
       true,
     );
+    expect(screen.getByText('Enum values must be unique.')).not.toBeNull();
   });
 
   test('retains an invalid row draft when a sibling value is committed', async () => {
     let values: unknown[] = ['draft', 'published'];
+    let drafts: Record<number, { text: string; error: 'invalid-json' | 'duplicate' }> = {};
     const onValuesChange = (next: unknown[]) => {
       values = next;
     };
@@ -131,6 +133,10 @@ describe('EnumEditor', () => {
       idPrefix: 'status-enum',
       path: '/status/enum',
       values,
+      drafts,
+      onDraftsChange: (next: typeof drafts) => {
+        drafts = next;
+      },
       onValuesChange,
     });
 
@@ -142,6 +148,10 @@ describe('EnumEditor', () => {
       idPrefix: 'status-enum',
       path: '/status/enum',
       values,
+      drafts,
+      onDraftsChange: (next: typeof drafts) => {
+        drafts = next;
+      },
       onValuesChange,
     });
 

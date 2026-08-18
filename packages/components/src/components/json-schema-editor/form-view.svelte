@@ -1,10 +1,13 @@
 <script lang="ts" module>
   import type { EditorState } from './json-schema-editor-state.types.ts';
+  import type { EnumDraft } from './enum-editor.svelte';
 
   export type FormViewProps = {
     state: EditorState;
     idPrefix: string;
+    enumDrafts: Record<string, Record<number, EnumDraft>>;
     onvalidationErrorcount?: ((count: number) => void) | undefined;
+    onEnumDraftsChange: (next: Record<string, Record<number, EnumDraft>>) => void;
     class?: string;
   };
 </script>
@@ -16,7 +19,14 @@
   import EmptyState from '../empty-state/empty-state.svelte';
   import PropertyEditor from './property-editor.svelte';
 
-  let { state, idPrefix, onvalidationErrorcount, class: className }: FormViewProps = $props();
+  let {
+    state,
+    idPrefix,
+    enumDrafts,
+    onvalidationErrorcount,
+    onEnumDraftsChange,
+    class: className,
+  }: FormViewProps = $props();
 
   // Snapshot the committed schema each render so changes propagate via the
   // value prop on PropertyEditor. We don't pass the live committed schema by
@@ -52,7 +62,9 @@
       depth={0}
       readonly={state.readonly || state.jsonDraftIsDirty}
       value={rootSchema}
+      {enumDrafts}
       {onvalidationErrorcount}
+      {onEnumDraftsChange}
       onValueChange={(next, options) => state.commitFromForm(next, options)}
     />
   {/if}

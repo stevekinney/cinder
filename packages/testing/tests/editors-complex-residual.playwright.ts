@@ -485,6 +485,24 @@ test.describe('JSON schema editor', () => {
     await expect(editor.getByRole('textbox', { name: 'Enum value 2' })).toHaveValue('"published"');
   });
 
+  test('invalid enum drafts survive switching away from the form view', async ({ page }) => {
+    const editor = await openFirstEditor(page);
+    const jsonTab = editor.getByRole('tab', { name: /JSON/ });
+    await jsonTab.click();
+    await editor.locator('textarea').first().fill('{"type":"string","enum":["draft","published"]}');
+    await editor.getByRole('button', { name: 'Apply' }).click();
+
+    await editor.getByRole('tab', { name: /^Form/ }).click();
+    const enumValue = editor.getByRole('textbox', { name: 'Enum value 2' });
+    await enumValue.fill('{');
+    await expect(editor.getByText('Enter a valid JSON value.')).toBeVisible();
+
+    await jsonTab.click();
+    await editor.getByRole('tab', { name: /^Form/ }).click();
+    await expect(editor.getByRole('textbox', { name: 'Enum value 2' })).toHaveValue('{');
+    await expect(editor.getByText('Enter a valid JSON value.')).toBeVisible();
+  });
+
   test('exactly one enabled toolbar action is in the tab order at rest', async ({ page }) => {
     const editor = await openFirstEditor(page);
     const toolbarRight = editor.locator('.cinder-jse-toolbar__right').first();

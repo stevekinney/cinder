@@ -1,5 +1,6 @@
 <script lang="ts" module>
   import type { JsonSchemaValue } from './json-schema-editor-types.ts';
+  import type { EnumDraft } from './enum-editor.svelte';
 
   export type PropertyListProps = {
     idPrefix: string;
@@ -8,7 +9,9 @@
     path: string;
     depth?: number;
     readonly?: boolean;
+    enumDrafts?: Record<string, Record<number, EnumDraft>>;
     onvalidationErrorcount?: ((count: number) => void) | undefined;
+    onEnumDraftsChange?: ((next: Record<string, Record<number, EnumDraft>>) => void) | undefined;
     onValueChange: (properties: Record<string, JsonSchemaValue>, required: string[]) => void;
   };
 </script>
@@ -22,6 +25,7 @@
   import Badge from '@lostgradient/cinder/badge';
   import Collapsible from '@lostgradient/cinder/collapsible';
   import Input from '../input/input.svelte';
+  import type { EnumDraft } from './enum-editor.svelte';
   import PropertyEditor from './property-editor.svelte';
   import { calculatePropertyValidationErrorCount } from './property-list-validation.ts';
 
@@ -32,7 +36,9 @@
     path,
     depth = 0,
     readonly = false,
+    enumDrafts = {},
     onvalidationErrorcount,
+    onEnumDraftsChange,
     onValueChange,
   }: PropertyListProps = $props();
 
@@ -358,8 +364,10 @@
             path={`${path}/${key}`}
             depth={depth + 1}
             {readonly}
+            {enumDrafts}
             value={properties[key] ?? {}}
             onvalidationErrorcount={(count) => setChildValidationErrorCount(key, count)}
+            {onEnumDraftsChange}
             onValueChange={(next) => setPropertySchema(key, next)}
           />
         </div>
