@@ -19,6 +19,23 @@
     position: relative;
   }
 
+  .cinder-waveform__table-scroll {
+    inline-size: 100%;
+    max-inline-size: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .cinder-waveform__table-scroll > table {
+    min-inline-size: max-content;
+  }
+
+  .cinder-waveform__table-scroll:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+
   .cinder-waveform svg {
     display: block;
     inline-size: 100%;

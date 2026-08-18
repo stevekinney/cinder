@@ -274,9 +274,10 @@
     <div
       class={dataTableVisibility === 'screen-reader-only'
         ? 'cinder-sr-only'
-        : 'cinder-table-scroll'}
-      role="region"
-      aria-label={tableCaption}
+        : 'cinder-waveform__table-scroll'}
+      {...dataTableVisibility === 'visible'
+        ? { role: 'region', 'aria-label': `${label} data table`, tabindex: 0 }
+        : {}}
     >
       <table
         class={dataTableClass(

@@ -604,6 +604,7 @@
           playgroundValues,
           playgroundModel.seeds,
           documentation.propsManifest.importPath,
+          previewRecipe?.props,
         ),
   );
   /**
@@ -1063,23 +1064,25 @@
                 <!-- Stage controls. Width simulation and focus mode used to live on
                      the shell's top bar and act on an iframe; they now sit with the
                      stage they resize, and work by constraining a plain container. -->
-                {#if playgroundModel.controls.length > 0}
+                {#if playgroundModel.controls.length > 0 || isFocusMode}
                   <div class="dx-viewport" role="group" aria-label="Stage width">
-                    <div class="dx-viewport__sizes">
-                      {#each PREVIEW_WIDTHS as option (option.label)}
-                        <button
-                          type="button"
-                          class="dx-viewport__size"
-                          aria-pressed={previewWidth === option.width}
-                          onclick={() => (previewWidth = option.width)}
-                        >
-                          {option.label}
-                        </button>
-                      {/each}
-                    </div>
-                    <span class="dx-viewport__readout" aria-live="polite">
-                      {previewWidth === null ? 'Full' : `${previewWidth}px`}
-                    </span>
+                    {#if playgroundModel.controls.length > 0}
+                      <div class="dx-viewport__sizes">
+                        {#each PREVIEW_WIDTHS as option (option.label)}
+                          <button
+                            type="button"
+                            class="dx-viewport__size"
+                            aria-pressed={previewWidth === option.width}
+                            onclick={() => (previewWidth = option.width)}
+                          >
+                            {option.label}
+                          </button>
+                        {/each}
+                      </div>
+                      <span class="dx-viewport__readout" aria-live="polite">
+                        {previewWidth === null ? 'Full' : `${previewWidth}px`}
+                      </span>
+                    {/if}
                     <button
                       type="button"
                       class="dx-viewport__expand"
