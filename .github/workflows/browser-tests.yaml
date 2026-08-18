@@ -157,6 +157,7 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           BASE_REF: ${{ github.base_ref }}
+          CLASSIFIER_BROWSER_RELEVANT: ${{ steps.decide.outputs.browser_relevant }}
           DISPATCH_COMPONENTS: ${{ github.event.inputs.components || '' }}
         run: |
           set -euo pipefail
@@ -289,6 +290,14 @@ jobs:
                 break
               fi
             done <<< "$changed"
+          fi
+
+          # The component classifier has one narrower, semantically-aware
+          # exclusion: static guard scripts have no browser surface. Preserve
+          # that result while retaining this path matcher for documentation-only
+          # changes, which the component graph intentionally treats as full.
+          if [ "$CLASSIFIER_BROWSER_RELEVANT" = false ]; then
+            relevant=false
           fi
 
           # The shared classifier above owns the fail-safe decision. Keep this

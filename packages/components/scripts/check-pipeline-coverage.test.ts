@@ -65,6 +65,7 @@ describe('Turbo input topology', () => {
     expect(browserWorkflow).toContain('playwright-visual:');
     expect(browserWorkflow).toContain('test:browser:docker');
     expect(browserWorkflow).toContain('echo "browser_relevant=true" >> "$GITHUB_OUTPUT"');
+    expect(browserWorkflow).toContain('CLASSIFIER_BROWSER_RELEVANT');
     expect(browserWorkflow).toContain('Merge visual-report fragments');
     expect(browserWorkflow).toContain('name: playwright');
     expect(browserWorkflow).toContain('path: packages/testing/blob-report');
