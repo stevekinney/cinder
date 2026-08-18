@@ -23,7 +23,7 @@ The disclosure button has an explicit name such as `Expand address property` or 
 
 All property-list controls use their native button and input keyboard behavior.
 
-- `Tab` and `Shift+Tab` move through the disclosure, required toggle, move-up, move-down, delete, and then the revealed editor controls when a row is expanded.
+- `Tab` and `Shift+Tab` move through enabled disclosure, required-toggle, reorder, and delete controls, then the revealed editor controls when a row is expanded. The unavailable direction on the first or last row, and all disabled controls in read-only or dirty-JSON form state, are skipped by native sequential navigation.
 - `Enter` and `Space` activate the disclosure, required, reorder, and delete buttons.
 - Expanding or collapsing leaves focus on the disclosure button; it does not move focus into or out of the panel.
 - Editable property names commit when their input loses focus. Text-entry keys remain native input behavior.
