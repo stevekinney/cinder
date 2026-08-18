@@ -38,14 +38,6 @@
 
   const propertyNames = $derived(Object.keys(properties));
   const requiredOnly = $derived(required.filter((name) => !propertyNames.includes(name)));
-  const hasArrayIndexPropertyName = $derived(
-    propertyNames.some((key) => {
-      const number = Number(key);
-      return (
-        Number.isInteger(number) && number >= 0 && number < 4_294_967_295 && String(number) === key
-      );
-    }),
-  );
 
   // Per-row draft names so a partial typed name doesn't reshape the parent.
   let draftNames = $state<Record<string, string>>({});
@@ -179,7 +171,7 @@
   }
 
   async function moveProperty(key: string, direction: -1 | 1, index: number) {
-    if (readonly || hasArrayIndexPropertyName) return;
+    if (readonly || !canMoveProperty(index, direction)) return;
     const target = index + direction;
     if (target < 0 || target >= propertyNames.length) return;
 
@@ -189,6 +181,16 @@
     for (const name of reordered) next[name] = properties[name]!;
     onValueChange(next, required);
     await announceAction(`Moved ${key} property to position ${target + 1} of ${reordered.length}.`);
+  }
+
+  function canMoveProperty(index: number, direction: -1 | 1): boolean {
+    const target = index + direction;
+    if (target < 0 || target >= propertyNames.length) return false;
+    const reordered = [...propertyNames];
+    [reordered[index], reordered[target]] = [reordered[target]!, reordered[index]!];
+    const next: Record<string, JsonSchemaValue> = {};
+    for (const name of reordered) next[name] = properties[name]!;
+    return Object.keys(next).every((name, nextIndex) => name === reordered[nextIndex]);
   }
 
   function toggleRequired(key: string) {
@@ -315,7 +317,7 @@
         <Button
           variant="ghost"
           size="xs"
-          disabled={readonly || hasArrayIndexPropertyName || index === 0}
+          disabled={readonly || !canMoveProperty(index, -1)}
           aria-label={`Move ${key} up`}
           onclick={() => moveProperty(key, -1, index)}
         >
@@ -324,7 +326,7 @@
         <Button
           variant="ghost"
           size="xs"
-          disabled={readonly || hasArrayIndexPropertyName || index === propertyNames.length - 1}
+          disabled={readonly || !canMoveProperty(index, 1)}
           aria-label={`Move ${key} down`}
           onclick={() => moveProperty(key, 1, index)}
         >
@@ -365,7 +367,7 @@
     </div>
   {/each}
 
-  <span bind:this={addPropertyElement}>
+  <span style="display: contents" bind:this={addPropertyElement}>
     <Button variant="secondary" size="sm" disabled={readonly} onclick={addProperty}>
       Add property
     </Button>

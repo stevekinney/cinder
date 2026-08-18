@@ -170,6 +170,18 @@ describe('PropertyList', () => {
     expect(screen.getByRole('button', { name: 'Move 1 up' })).toHaveProperty('disabled', true);
   });
 
+  test('keeps representable string-key moves available in mixed-key schemas', () => {
+    render(PropertyList, {
+      idPrefix: 'properties',
+      path: '/properties',
+      properties: { 0: { type: 'string' }, alpha: { type: 'string' }, beta: { type: 'string' } },
+      required: [],
+      onValueChange: () => {},
+    });
+
+    expect(screen.getByRole('button', { name: 'Move beta up' })).toHaveProperty('disabled', false);
+  });
+
   test('keeps enum in the preserved-keywords count when a schema is loaded', () => {
     const loadedSchema = { type: 'string', enum: ['draft', 'published'] };
     const preservedKeys = Object.keys(loadedSchema).filter((key) => !EDITABLE_KEYWORDS.has(key));
