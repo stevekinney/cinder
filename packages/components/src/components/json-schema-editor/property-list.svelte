@@ -273,7 +273,7 @@
           variant="ghost"
           size="xs"
           disabled={readonly}
-          aria-label="Move up"
+          aria-label={`Move ${key} up`}
           onclick={() => moveProperty(key, -1)}
         >
           ↑
@@ -282,7 +282,7 @@
           variant="ghost"
           size="xs"
           disabled={readonly}
-          aria-label="Move down"
+          aria-label={`Move ${key} down`}
           onclick={() => moveProperty(key, 1)}
         >
           ↓
