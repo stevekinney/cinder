@@ -182,7 +182,12 @@ function getHtmlTagEnd(value: string, start: number): number | null {
     } else if (character === '<') {
       return null;
     } else if (character === '>') {
-      return index;
+      const token = value.slice(start, index + 1);
+      return /^(?:<\/?[A-Za-z][A-Za-z0-9-]*(?:\s+[A-Za-z_:][A-Za-z0-9_.:-]*(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'=<>`]+))?)*\s*\/?>|<![A-Z][^>]*>|<\?[^>]*\?>)$/u.test(
+        token,
+      )
+        ? index
+        : null;
     }
   }
   return null;
@@ -266,12 +271,50 @@ function getReferenceDefinitionEnd(
 
   if (value[labelEnd] !== ']' || value[labelEnd + 1] !== ':') return null;
 
-  let destinationStart = labelEnd + 2;
-  while (value[destinationStart] === ' ' || value[destinationStart] === '\t') destinationStart += 1;
-  if (!/\S/u.test(value[destinationStart] ?? '')) return null;
+  const lineEnd = value.indexOf('\n', labelEnd + 2);
+  const end = lineEnd === -1 ? value.length : lineEnd;
+  let cursor = labelEnd + 2;
+  while (value[cursor] === ' ' || value[cursor] === '\t') cursor += 1;
+  if (cursor >= end) return null;
 
-  const lineEnd = value.indexOf('\n', destinationStart);
-  return lineEnd === -1 ? value.length : lineEnd;
+  if (value[cursor] === '<') {
+    cursor += 1;
+    while (cursor < end && value[cursor] !== '>') {
+      if (value[cursor] === '\\') cursor += 1;
+      cursor += 1;
+    }
+    if (value[cursor] !== '>') return null;
+    cursor += 1;
+  } else {
+    let parentheses = 0;
+    while (cursor < end && !/\s/u.test(value[cursor]!)) {
+      if (value[cursor] === '\\') cursor += 1;
+      else if (value[cursor] === '(') parentheses += 1;
+      else if (value[cursor] === ')') {
+        if (parentheses === 0) break;
+        parentheses -= 1;
+      }
+      cursor += 1;
+    }
+    if (parentheses !== 0) return null;
+  }
+
+  while (value[cursor] === ' ' || value[cursor] === '\t') cursor += 1;
+  if (cursor < end && value[cursor] !== '\r') {
+    const opener = value[cursor];
+    const closer = opener === '(' ? ')' : opener;
+    if (opener !== '"' && opener !== "'" && opener !== '(') return null;
+    cursor += 1;
+    while (cursor < end && value[cursor] !== closer) {
+      if (value[cursor] === '\\') cursor += 1;
+      cursor += 1;
+    }
+    if (value[cursor] !== closer) return null;
+    cursor += 1;
+    while (value[cursor] === ' ' || value[cursor] === '\t') cursor += 1;
+  }
+
+  return cursor === end || (value[cursor] === '\r' && cursor + 1 === end) ? end : null;
 }
 
 function getInlineCodeSpanEnd(start: number, metadata: ScanMetadata): number | null {
