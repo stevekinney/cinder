@@ -116,5 +116,27 @@ describe('EnumEditor', () => {
       'disabled',
       true,
     );
+    expect(screen.getByRole('button', { name: 'Remove enum value 1' })).toHaveProperty(
+      'disabled',
+      true,
+    );
+  });
+
+  test('treats object values with different member order as duplicates', async () => {
+    let values: unknown[] = [];
+    render(EnumEditor, {
+      idPrefix: 'status-enum',
+      path: '/status/enum',
+      values: [{ a: 1, b: 2 }, { label: 'other' }],
+      onValuesChange: (next: unknown[]) => {
+        values = next;
+      },
+    });
+
+    await fireEvent.input(screen.getByRole('textbox', { name: 'Enum value 2' }), {
+      target: { value: '{"b":2,"a":1}' },
+    });
+
+    expect(values).toEqual([]);
   });
 });

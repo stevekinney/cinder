@@ -24,9 +24,20 @@
   }: EnumEditorProps = $props();
 
   let invalidValueIndexes = $state<Set<number>>(new Set());
+  let actionAnnouncement = $state('');
+  let previousValues: unknown[] | null = null;
 
   $effect(() => onvalidationErrorcount?.(invalidValueIndexes.size));
   onDestroy(() => onvalidationErrorcount?.(0));
+
+  $effect(() => {
+    if (previousValues === null) {
+      previousValues = values;
+    } else if (values !== previousValues) {
+      previousValues = values;
+      if (invalidValueIndexes.size > 0) invalidValueIndexes = new Set();
+    }
+  });
 
   function jsonText(value: unknown): string {
     return JSON.stringify(value) ?? 'null';
@@ -39,9 +50,21 @@
     return value === null || typeof value === 'string' || typeof value === 'boolean';
   }
 
+  function canonicalJson(value: unknown): string {
+    if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
+    if (value !== null && typeof value === 'object') {
+      const object = value as Record<string, unknown>;
+      return `{${Object.keys(object)
+        .sort()
+        .map((key) => `${JSON.stringify(key)}:${canonicalJson(object[key])}`)
+        .join(',')}}`;
+    }
+    return JSON.stringify(value) ?? 'null';
+  }
+
   function hasDuplicateValue(value: unknown, exceptIndex: number): boolean {
-    const encoded = JSON.stringify(value);
-    return values.some((item, index) => index !== exceptIndex && JSON.stringify(item) === encoded);
+    const encoded = canonicalJson(value);
+    return values.some((item, index) => index !== exceptIndex && canonicalJson(item) === encoded);
   }
 
   $effect(() => {
@@ -77,10 +100,11 @@
       ),
     );
     onValuesChange(next);
+    actionAnnouncement = `Moved enum value ${index + 1} to position ${targetIndex + 1} of ${values.length}.`;
   }
 
   async function removeValue(index: number): Promise<void> {
-    if (readonly || values.length === 1) return;
+    if (readonly || invalidValueIndexes.size > 0 || values.length === 1) return;
     invalidValueIndexes = new Set(
       [...invalidValueIndexes]
         .filter((item) => item !== index)
@@ -153,7 +177,7 @@
             <Button
               variant="ghost"
               size="xs"
-              disabled={readonly || values.length === 1}
+              disabled={readonly || invalidValueIndexes.size > 0 || values.length === 1}
               aria-label={`Remove enum value ${index + 1}`}
               onclick={() => void removeValue(index)}
             >
@@ -164,6 +188,7 @@
       {/each}
     </tbody>
   </table>
+  <p class="cinder-sr-only" aria-live="polite">{actionAnnouncement}</p>
   <Button variant="secondary" size="sm" disabled={readonly} onclick={addValue}
     >Add enum value</Button
   >
