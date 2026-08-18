@@ -77,6 +77,18 @@ describe('DTCG semantic validation', () => {
     expect(() => validateTokenDocument({ value: { $value: 1 } })).toThrow('no $type');
   });
 
+  test('accepts root tokens and rejects unknown reserved metadata', () => {
+    expect(() =>
+      validateTokenDocument({ group: { $type: 'number', $root: { $value: 1 } } }),
+    ).not.toThrow();
+    expect(() => validateTokenDocument({ value: { $type: 'number', $valu: 1 } })).toThrow(
+      'unknown reserved property $valu',
+    );
+    expect(() => validateTokenDocument({ group: { $extends: 42 } })).toThrow(
+      '$extends must be a token reference',
+    );
+  });
+
   test('validates resolver modifier and ordering contracts', () => {
     expect(() =>
       validateResolverDocument({

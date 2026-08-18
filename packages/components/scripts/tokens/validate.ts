@@ -20,6 +20,16 @@ const TOKEN_TYPES = new Set<string>([
 ]);
 
 type JsonObject = Record<string, unknown>;
+const GROUP_METADATA = new Set([
+  '$type',
+  '$description',
+  '$deprecated',
+  '$extensions',
+  '$extends',
+  '$root',
+  '$schema',
+]);
+const TOKEN_METADATA = new Set(['$value', '$type', '$description', '$deprecated', '$extensions']);
 
 function isObject(value: unknown): value is JsonObject {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -199,9 +209,25 @@ function validateGroup(
   issues: ValidationIssue[],
 ): void {
   validateMetadata(group, path, issues);
+  for (const key of Object.keys(group))
+    if (key.startsWith('$') && !GROUP_METADATA.has(key))
+      addIssue(issues, path, `unknown reserved property ${key}`);
   const groupType =
     group['$type'] === undefined ? inheritedType : tokenType(group, inheritedType, path, issues);
   for (const [name, value] of Object.entries(group)) {
+    if (name === '$root') {
+      if (!isObject(value) || !('$value' in value)) {
+        addIssue(issues, path, '$root must be a token object');
+        continue;
+      }
+      validateMetadata(value, path, issues);
+      for (const key of Object.keys(value))
+        if (key.startsWith('$') && !TOKEN_METADATA.has(key))
+          addIssue(issues, path, `unknown reserved property ${key}`);
+      const type = tokenType(value, groupType, path, issues);
+      if (type) validateValue(type, value['$value'], path, issues);
+      continue;
+    }
     if (name.startsWith('$')) continue;
     const childPath = `${path}.${name}`;
     if (!TOKEN_NAME_PATTERN.test(name)) {
@@ -221,6 +247,9 @@ function validateGroup(
       if (nonMetadataChildren.length > 0)
         addIssue(issues, childPath, 'a token with $value cannot contain child groups');
       validateMetadata(value, childPath, issues);
+      for (const key of Object.keys(value))
+        if (key.startsWith('$') && !TOKEN_METADATA.has(key))
+          addIssue(issues, childPath, `unknown reserved property ${key}`);
       const type = tokenType(value, groupType, childPath, issues);
       if (type) validateValue(type, value['$value'], childPath, issues);
       continue;
