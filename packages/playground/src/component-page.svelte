@@ -1425,7 +1425,12 @@
                         <span class="dx-stage__dot" aria-hidden="true"></span>
                         <span class="dx-stage__label">Live preview</span>
                       </div>
-                      <div class="dx-stage__canvas" role="region" aria-label="Preview" tabindex="0">
+                      <div
+                        class="dx-stage__canvas"
+                        role="region"
+                        aria-label="Overview preview"
+                        tabindex="0"
+                      >
                         {#if mountErrors[`overview-mount-${overviewExample.scenario}`] !== undefined}
                           {@const error = mountErrors[`overview-mount-${overviewExample.scenario}`]}
                           <Callout variant="danger" title="This preview failed to render">
@@ -1531,7 +1536,7 @@
                                 <div
                                   class="dx-stage__canvas"
                                   role="region"
-                                  aria-label="Preview"
+                                  aria-label={`${title} preview`}
                                   tabindex="0"
                                 >
                                   <div
