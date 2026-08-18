@@ -594,6 +594,7 @@
         // Editor may be in the middle of teardown; fail open to avoid crashing.
         return;
       }
+      if (editorState.getPendingInternalMarkdown() === currentMarkdown) return;
       // Only update if actually different
       if (externalValue !== currentMarkdown) {
         try {

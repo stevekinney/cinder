@@ -132,6 +132,8 @@ export interface EditorState {
   view: EditorView;
   focus(): void;
   getMarkdown(): string;
+  /** Live user-authored value awaiting the debounced onchange callback. */
+  getPendingInternalMarkdown(): string | null;
   setMarkdown(content: string): void;
   /** Clear any pending debounce timers (called on destroy) */
   clearPendingTimers(): void;

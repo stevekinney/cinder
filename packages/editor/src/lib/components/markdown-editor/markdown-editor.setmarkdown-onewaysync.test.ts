@@ -211,3 +211,39 @@ describe('MarkdownEditor.setMarkdown() vs. a one-way value prop (cinder#1328)', 
     }
   });
 });
+
+describe('MarkdownEditor live value ownership (CIN-406)', () => {
+  test('does not reconcile a stale one-way parent value over a settled user edit', async () => {
+    const clock = installFakeClock();
+    const result = render(OneWaySyncHarness, {
+      props: { initialValue: 'Original content.' },
+    });
+
+    try {
+      await pollUntil(() => isReady(result.container), clock);
+      const component = result.component as unknown as {
+        applyUserEdit: (suffix: string) => void;
+        setOuterValue: (content: string) => void;
+        getLiveMarkdown: () => string;
+      };
+
+      // Let the editor's initial one-way value reconciliation release its
+      // external-update guard before simulating live user input.
+      await tick();
+      await Promise.resolve();
+      component.applyUserEdit(' User edit.');
+      expect(component.getLiveMarkdown().trim()).toBe('Original content. User edit.');
+
+      // A one-way parent update can still contain the value from immediately
+      // before this edit while the public onchange callback is debounced.
+      component.setOuterValue('Stale parent value.');
+      await tick();
+
+      expect(component.getLiveMarkdown().trim()).toBe('Original content. User edit.');
+    } finally {
+      clock.restore();
+      result.unmount();
+      cleanup();
+    }
+  });
+});
