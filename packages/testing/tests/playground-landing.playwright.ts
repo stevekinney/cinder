@@ -28,7 +28,7 @@ test.describe('playground landing page', () => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
 
     await expect(page.getByRole('heading', { name: 'cinder', exact: true })).toBeVisible();
-    await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
+    await expect(page.getByRole('heading', { level: 1, includeHidden: true })).toHaveCount(1);
     await expect(page.getByText('Svelte 5 components for product interfaces')).toHaveCount(0);
     await expect(page.locator('.dx-content--landing .readme-content')).toContainText('Install');
     await expect(page.locator('iframe')).toHaveCount(0);
@@ -61,7 +61,7 @@ test.describe('playground landing page', () => {
     await expect.poll(() => readShellMarker(page)).toBeUndefined();
     await expect(page.locator('#sidebar-filter')).toHaveValue('button');
     await expect(page.getByRole('heading', { name: 'cinder', exact: true })).toBeVisible();
-    await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
+    await expect(page.getByRole('heading', { level: 1, includeHidden: true })).toHaveCount(1);
     await expect(page.locator('iframe')).toHaveCount(0);
     await expect(page.locator('#viewport-preset')).toHaveCount(0);
     // The landing page shares the documentation chrome now, rather than a
