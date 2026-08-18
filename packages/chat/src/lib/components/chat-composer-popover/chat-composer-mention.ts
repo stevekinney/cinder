@@ -13,6 +13,7 @@ import { getLineEnd, getLineEndingLength, isLineEnding } from './chat-composer-m
 import {
   escapeMentionLabel,
   escapeMentionUri,
+  getGfmLiteralAutolinkEnd,
   hasMarkdownParagraphBreak,
   isEntityUri,
   unescapeMarkdown,
@@ -21,6 +22,7 @@ import { getReferenceDefinitionEnd } from './chat-composer-mention-reference.ts'
 import {
   countRun,
   getContainerContext,
+  getMathEnd,
   getOpeningCodeFence,
   hasEscapedPrefix,
   isClosingCodeFence,
@@ -110,7 +112,9 @@ function getOrdinaryLinkEnd(value: string, start: number, allowNestedLabel = fal
   }
 
   if (!/\s/u.test(value[cursor] ?? '')) return value[cursor] === ')' ? cursor + 1 : null;
+  const titleWhitespaceStart = cursor;
   while (/\s/u.test(value[cursor] ?? '')) cursor += 1;
+  if (hasMarkdownParagraphBreak(value.slice(titleWhitespaceStart, cursor))) return null;
 
   const opener = value[cursor];
   const closer = opener === '(' ? ')' : opener;
@@ -127,22 +131,15 @@ function getOrdinaryLinkEnd(value: string, start: number, allowNestedLabel = fal
   }
   if (value[cursor] !== closer) return null;
   cursor += 1;
+  const closingWhitespaceStart = cursor;
   while (/\s/u.test(value[cursor] ?? '')) cursor += 1;
+  if (hasMarkdownParagraphBreak(value.slice(closingWhitespaceStart, cursor))) return null;
 
   return value[cursor] === ')' ? cursor + 1 : null;
 }
 
 function getInlineCodeSpanEnd(start: number, metadata: ScanMetadata): number | null {
   return metadata.codeSpanEnds.get(start) ?? null;
-}
-
-function getMathEnd(value: string, start: number, metadata: ScanMetadata): number | null {
-  if (hasEscapedPrefix(start, metadata)) return null;
-
-  const delimiterLength = value[start + 1] !== '$' ? 1 : value[start + 2] !== '$' ? 2 : 3;
-  if (delimiterLength > 2) return null;
-  if (delimiterLength === 1 && /[0-9\s]/u.test(value[start + 1] ?? '')) return null;
-  return metadata.mathEnds.get(start) ?? null;
 }
 
 function parseLink(value: string, start: number): ParsedLink | null {
@@ -344,6 +341,19 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
         sourceIndex += 2;
         continue;
       }
+      if (
+        /^<![A-Z]/u.test(value.slice(sourceIndex)) &&
+        isAtBlockStart(value, sourceIndex, metadata)
+      ) {
+        const lineStart = metadata.lineStarts[sourceIndex] ?? 0;
+        htmlDelimitedBlock = {
+          terminator: '>',
+          container: getContainerContext(lineStart, metadata),
+        };
+        text += '<!';
+        sourceIndex += 2;
+        continue;
+      }
       if (value.startsWith('<![CDATA[', sourceIndex)) {
         const closingStart = value.indexOf(']]>', sourceIndex + 9);
         const end = closingStart === -1 ? value.length : closingStart + 3;
@@ -404,6 +414,13 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
         }
         continue;
       }
+    }
+
+    const gfmLiteralAutolinkEnd = getGfmLiteralAutolinkEnd(value, sourceIndex);
+    if (gfmLiteralAutolinkEnd !== null) {
+      text += value.slice(sourceIndex, gfmLiteralAutolinkEnd);
+      sourceIndex = gfmLiteralAutolinkEnd;
+      continue;
     }
 
     const openingCodeFence =

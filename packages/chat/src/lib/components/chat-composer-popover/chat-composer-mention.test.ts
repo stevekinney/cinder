@@ -104,6 +104,14 @@ describe('chat composer mentions', () => {
         },
       ],
     });
+    expect(parseChatComposerMentions('[Docs](https://x\n\n"[Ada](person:ada)")')).toEqual({
+      text: '[Docs](https://x\n\n"Ada")',
+      mentions: [{ label: 'Ada', uri: 'person:ada', start: 19, end: 22 }],
+    });
+    expect(parseChatComposerMentions('[Docs](https://x "title"\n\n) [Ada](person:ada)')).toEqual({
+      text: '[Docs](https://x "title"\n\n) Ada',
+      mentions: [{ label: 'Ada', uri: 'person:ada', start: 28, end: 31 }],
+    });
     for (const malformedAngleDestination of [
       '[Docs](<https://x\n[Ada](person:ada)>',
       '[Docs](<https://x<[Ada](person:ada)>)',
@@ -168,6 +176,10 @@ describe('chat composer mentions', () => {
 
     expect(parseChatComposerMentions('    [Ada](person:ada)')).toEqual({
       text: '    [Ada](person:ada)',
+      mentions: [],
+    });
+    expect(parseChatComposerMentions(' \t[Ada](person:ada)')).toEqual({
+      text: ' \t[Ada](person:ada)',
       mentions: [],
     });
 
@@ -236,6 +248,24 @@ describe('chat composer mentions', () => {
           end: visibleMentionStart + 3,
         },
       ],
+    });
+    const containerDefinition = '> [ref]: /url "[Ada](person:ada)"';
+    expect(parseChatComposerMentions(containerDefinition)).toEqual({
+      text: containerDefinition,
+      mentions: [],
+    });
+    const nextLineDestination = '[ref]:\n  /url "[Ada](person:ada)"';
+    expect(parseChatComposerMentions(nextLineDestination)).toEqual({
+      text: nextLineDestination,
+      mentions: [],
+    });
+    expect(parseChatComposerMentions('> [ref]: /url\n[Ada](person:ada)')).toEqual({
+      text: '> [ref]: /url\nAda',
+      mentions: [{ label: 'Ada', uri: 'person:ada', start: 14, end: 17 }],
+    });
+    expect(parseChatComposerMentions('> [ref]:\n/url "[Ada](person:ada)"')).toEqual({
+      text: '> [ref]:\n/url "Ada"',
+      mentions: [{ label: 'Ada', uri: 'person:ada', start: 15, end: 18 }],
     });
     expect(parseChatComposerMentions('[ref]: /url\n  "[Ada](person:ada)" trailing')).toEqual({
       text: '[ref]: /url\n  "Ada" trailing',
@@ -362,6 +392,14 @@ describe('chat composer mentions', () => {
       text: '$[Ada](person:ada)+2$',
       mentions: [],
     });
+    expect(parseChatComposerMentions('$2+[Ada](person:ada)$')).toEqual({
+      text: '$2+[Ada](person:ada)$',
+      mentions: [],
+    });
+    expect(parseChatComposerMentions('$x\n\n[Ada](person:ada)x$')).toEqual({
+      text: '$x\n\nAdax$',
+      mentions: [{ label: 'Ada', uri: 'person:ada', start: 4, end: 7 }],
+    });
     const raw =
       '<!-- [Ada](person:comment) -->\n<div>\n[Ada](person:block)\n</div>\n\n[Ada](person:real)';
     expect(parseChatComposerMentions(raw)).toEqual({
@@ -381,6 +419,16 @@ describe('chat composer mentions', () => {
     ).toEqual({
       text: 'Intro <!-- [Ada](person:comment) --> Ada',
       mentions: [{ label: 'Ada', uri: 'person:real', start: 37, end: 40 }],
+    });
+    const blockCommentClosingLine = '<!-- x --> [Ada](person:comment)\n[Ada](person:real)';
+    expect(parseChatComposerMentions(blockCommentClosingLine)).toEqual({
+      text: '<!-- x --> [Ada](person:comment)\nAda',
+      mentions: [{ label: 'Ada', uri: 'person:real', start: 33, end: 36 }],
+    });
+    const processingInstructionClosingLine = '<?x?> [Ada](person:instruction)\n[Ada](person:real)';
+    expect(parseChatComposerMentions(processingInstructionClosingLine)).toEqual({
+      text: '<?x?> [Ada](person:instruction)\nAda',
+      mentions: [{ label: 'Ada', uri: 'person:real', start: 32, end: 35 }],
     });
     expect(parseChatComposerMentions('<div>\n[Ada](person:block)\n</div')).toEqual({
       text: '<div>\n[Ada](person:block)\n</div',
@@ -402,6 +450,10 @@ describe('chat composer mentions', () => {
     );
     expect(parseChatComposerMentions('<?php\n[Ada](person:block)')).toEqual({
       text: '<?php\n[Ada](person:block)',
+      mentions: [],
+    });
+    expect(parseChatComposerMentions('<!DOCTYPE\n[Ada](person:block)')).toEqual({
+      text: '<!DOCTYPE\n[Ada](person:block)',
       mentions: [],
     });
     expect(parseChatComposerMentions('<!-- [Ada](person:comment)')).toEqual({
@@ -431,6 +483,11 @@ describe('chat composer mentions', () => {
     expect(parseChatComposerMentions('<a<a')).toEqual({ text: '<a<a', mentions: [] });
     const uriAutolink = '<https://example.com/[Ada](person:ada)>';
     expect(parseChatComposerMentions(uriAutolink)).toEqual({ text: uriAutolink, mentions: [] });
+    const gfmLiteralAutolink = 'https://example.com/[Ada](person:ada)';
+    expect(parseChatComposerMentions(gfmLiteralAutolink)).toEqual({
+      text: gfmLiteralAutolink,
+      mentions: [],
+    });
     const emailAutolink = '<ada@example.com>';
     expect(parseChatComposerMentions(emailAutolink)).toEqual({ text: emailAutolink, mentions: [] });
     expect(parseChatComposerMentions('<[Ada](person:ada)@example.com>')).toEqual({

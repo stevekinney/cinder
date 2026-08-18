@@ -104,7 +104,8 @@ export function getHtmlDelimitedBlockEnd(
   const boundary = getContainerBoundary(value, start, container, metadata);
   const closingStart = value.indexOf(terminator, start);
   if (closingStart !== -1 && closingStart + terminator.length <= boundary) {
-    return closingStart + terminator.length;
+    const closingLineEnd = getLineEnd(value, closingStart + terminator.length);
+    return Math.min(boundary, closingLineEnd + getLineEndingLength(value, closingLineEnd));
   }
   return boundary < value.length ? boundary : null;
 }

@@ -1,5 +1,9 @@
 import { getLineEnd, getLineEndingLength } from './chat-composer-mention-lines.ts';
-import type { ScanMetadata } from './chat-composer-mention-scan.ts';
+import {
+  getContainerContext,
+  isContainerActive,
+  type ScanMetadata,
+} from './chat-composer-mention-scan.ts';
 
 export function getReferenceDefinitionEnd(
   value: string,
@@ -7,7 +11,8 @@ export function getReferenceDefinitionEnd(
   metadata: ScanMetadata,
 ): number | null {
   const lineStart = metadata.lineStarts[start] ?? 0;
-  if (!/^ {0,3}$/u.test(value.slice(lineStart, start))) return null;
+  const containerStart = metadata.containerStarts.get(lineStart) ?? lineStart;
+  if (!/^ {0,3}$/u.test(value.slice(containerStart, start))) return null;
 
   let labelEnd = start + 1;
   if (value[labelEnd] === '^') return null;
@@ -18,11 +23,22 @@ export function getReferenceDefinitionEnd(
   if (!/\S/u.test(value.slice(start + 1, labelEnd))) return null;
   if (value[labelEnd] !== ']' || value[labelEnd + 1] !== ':') return null;
 
-  const lineEnd = getLineEnd(value, labelEnd + 2);
-  const end = lineEnd;
+  let lineEnd = getLineEnd(value, labelEnd + 2);
+  let end = lineEnd;
   let cursor = labelEnd + 2;
   while (value[cursor] === ' ' || value[cursor] === '\t') cursor += 1;
-  if (cursor >= end) return null;
+  if (cursor >= end) {
+    if (lineEnd === value.length) return null;
+    const nextLineStart = lineEnd + getLineEndingLength(value, lineEnd);
+    if (!isContainerActive(getContainerContext(lineStart, metadata), nextLineStart, metadata)) {
+      return null;
+    }
+    if (getContainerContext(nextLineStart, metadata).maximumIndentation > 3) return null;
+    cursor = metadata.containerStarts.get(nextLineStart) ?? nextLineStart;
+    lineEnd = getLineEnd(value, cursor);
+    end = lineEnd;
+    if (cursor >= end) return null;
+  }
 
   if (value[cursor] === '<') {
     cursor += 1;
@@ -64,15 +80,17 @@ export function getReferenceDefinitionEnd(
   if (cursor !== end && !(value[cursor] === '\r' && cursor + 1 === end)) return null;
   if (lineEnd === value.length) return end;
 
-  const titleLineStart = lineEnd + getLineEndingLength(value, lineEnd);
+  const physicalTitleLineStart = lineEnd + getLineEndingLength(value, lineEnd);
+  if (
+    !isContainerActive(getContainerContext(lineStart, metadata), physicalTitleLineStart, metadata)
+  ) {
+    return end;
+  }
+  const titleLineStart =
+    metadata.containerStarts.get(physicalTitleLineStart) ?? physicalTitleLineStart;
   const titleEnd = getLineEnd(value, titleLineStart);
   let titleCursor = titleLineStart;
-  let indentation = 0;
-  while (indentation < 4 && value[titleCursor] === ' ') {
-    titleCursor += 1;
-    indentation += 1;
-  }
-  if (indentation > 3) return end;
+  if (getContainerContext(physicalTitleLineStart, metadata).maximumIndentation > 3) return end;
 
   const opener = value[titleCursor];
   const closer = opener === '(' ? ')' : opener;

@@ -28,6 +28,21 @@ export function hasMarkdownParagraphBreak(value: string): boolean {
   return /(?:\r\n?|\n)[ \t]*(?:\r\n?|\n)/u.test(value);
 }
 
+export function getGfmLiteralAutolinkEnd(value: string, start: number): number | null {
+  if (
+    (start > 0 && /[A-Za-z0-9_]/u.test(value[start - 1]!)) ||
+    (!value.startsWith('http://', start) &&
+      !value.startsWith('https://', start) &&
+      !value.startsWith('www.', start))
+  ) {
+    return null;
+  }
+
+  let cursor = start;
+  while (cursor < value.length && !/[\s<>]/u.test(value[cursor]!)) cursor += 1;
+  return cursor;
+}
+
 export function unescapeMarkdown(value: string, escapeWhitespace = false): string | null {
   let unescaped = '';
 

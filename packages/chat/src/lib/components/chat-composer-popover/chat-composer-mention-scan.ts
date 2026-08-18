@@ -129,7 +129,10 @@ export function makeScanMetadata(value: string): ScanMetadata {
   const nextMathClose = new Map<number, number>();
   for (let index = value.length - 1; index >= 0; ) {
     const character = value[index];
-    if (paragraphBreaks.has(index)) nextCodeRun.clear();
+    if (paragraphBreaks.has(index)) {
+      nextCodeRun.clear();
+      nextMathClose.clear();
+    }
     if (character !== '`' && character !== '$') {
       index -= 1;
       continue;
@@ -224,6 +227,15 @@ export function hasEscapedPrefix(index: number, metadata: ScanMetadata): boolean
   return metadata.escaped[index] === 1;
 }
 
+export function getMathEnd(value: string, start: number, metadata: ScanMetadata): number | null {
+  if (hasEscapedPrefix(start, metadata)) return null;
+  const delimiterLength = value[start + 1] !== '$' ? 1 : value[start + 2] !== '$' ? 2 : 3;
+  if (delimiterLength > 2 || (delimiterLength === 1 && /\s/u.test(value[start + 1] ?? ''))) {
+    return null;
+  }
+  return metadata.mathEnds.get(start) ?? null;
+}
+
 export function isIndentedCodeStart(value: string, index: number, metadata: ScanMetadata): boolean {
   const lineStart = metadata.lineStarts[index] ?? 0;
   if (lineStart !== index || !isIndentedCodeLine(value, lineStart)) return false;
@@ -246,17 +258,21 @@ export function isIndentedCodeStart(value: string, index: number, metadata: Scan
 
 export function isIndentedCodeLine(value: string, lineStart: number): boolean {
   let cursor = lineStart;
-  let indentation = 0;
-  while (indentation < 3 && value[cursor] === ' ') {
-    cursor += 1;
-    indentation += 1;
+  let column = 0;
+  while (cursor < value.length) {
+    if (value[cursor] === ' ') {
+      column += 1;
+      cursor += 1;
+    } else if (value[cursor] === '\t') {
+      column += 4 - (column % 4);
+      cursor += 1;
+    } else if (value[cursor] === '>' && column <= 3) {
+      cursor += 1;
+      if (value[cursor] === ' ') cursor += 1;
+      column = 0;
+    } else {
+      break;
+    }
   }
-
-  if (value[cursor] !== '>') cursor = lineStart;
-  while (value[cursor] === '>') {
-    cursor += 1;
-    if (value[cursor] === ' ') cursor += 1;
-  }
-
-  return value.startsWith('    ', cursor) || value[cursor] === '\t';
+  return column >= 4;
 }
