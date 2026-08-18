@@ -298,9 +298,9 @@ The ring tokens drive the focus-visible outline used across interactive primitiv
 | `--cinder-ring-offset`       | `2px`                                                                                                |
 | `--cinder-ring-offset-color` | `var(--cinder-surface-raised)`                                                                       |
 | `--cinder-ring-color`        | `light-dark(oklch(from var(--cinder-accent)0.55 0.16 h),oklch(from var(--cinder-accent)0.7 0.14 h))` |
-| `--cinder-ring-on-accent`    | `light-dark(oklch(100% 0 0), oklch(15% 0.035 245))`                                                  |
+| `--cinder-ring-on-accent`    | `light-dark(oklch(15% 0.035 245), oklch(100% 0 0))`                                                  |
 
-`--cinder-ring-on-accent` is a high-contrast focus ring for solid accent-fill surfaces (e.g. the primary `FloatingAction`). It uses the same white light-mode and dark-ink dark-mode foregrounds as `--cinder-accent-contrast`, each clearing 3:1 against its accent fill. Regular interactive elements on neutral surfaces use `--cinder-ring-color` instead.
+`--cinder-ring-on-accent` is a high-contrast focus ring for solid accent-fill surfaces (e.g. the primary `FloatingAction`). It uses dark ink in light mode and white in dark mode, contrasting with both the accent fill and surrounding surface. Regular interactive elements on neutral surfaces use `--cinder-ring-color` instead.
 
 ## Z-index layers
 

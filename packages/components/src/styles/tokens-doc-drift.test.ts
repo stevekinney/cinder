@@ -25,6 +25,7 @@ const THEMING_DOC = join(REPO_ROOT, 'docs', 'theming.md');
 function normalizeTokenValue(value: string): string {
   let normalized = '';
   let quote: '"' | "'" | undefined;
+  let whitespace = false;
   for (let index = 0; index < value.length; index += 1) {
     const character = value[index]!;
     if (quote !== undefined) {
@@ -33,16 +34,22 @@ function normalizeTokenValue(value: string): string {
       continue;
     }
     if (character === '"' || character === "'") {
+      if (whitespace && normalized.length > 0) normalized += ' ';
+      whitespace = false;
       quote = character;
       normalized += character;
       continue;
     }
-    normalized += /\s/.test(character) ? ' ' : character;
+    if (/\s/.test(character)) {
+      whitespace = true;
+      continue;
+    }
+    if ('(),'.includes(character)) normalized = normalized.trimEnd();
+    else if (whitespace && normalized.length > 0 && !/[(),]$/.test(normalized)) normalized += ' ';
+    whitespace = false;
+    normalized += character;
   }
-  return normalized
-    .replace(/ +/g, ' ')
-    .replace(/\s*([(),])\s*/g, '$1')
-    .trim();
+  return normalized.trim();
 }
 
 function extractDocTokens(markdown: string): { duplicates: string[]; tokens: Map<string, string> } {
