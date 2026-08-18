@@ -12,6 +12,10 @@ function isToken(value: unknown): value is DesignToken {
   return isObject(value) && '$value' in value;
 }
 
+function isTokenGroup(value: unknown): value is TokenGroup {
+  return isObject(value) && !isToken(value);
+}
+
 function clone<T>(value: T): T {
   return structuredClone(value);
 }
@@ -44,7 +48,7 @@ function collectGroups(group: TokenGroup, prefix: string, groups: Map<string, To
   for (const [name, value] of Object.entries(group)) {
     if (name.startsWith('$') || !isObject(value)) continue;
     const path = prefix ? `${prefix}.${name}` : name;
-    if (!isToken(value)) collectGroups(value, path, groups);
+    if (isTokenGroup(value)) collectGroups(value, path, groups);
   }
 }
 
@@ -53,7 +57,7 @@ function collectTokens(group: TokenGroup, prefix: string, tokens: ResolvedTokens
     if (name.startsWith('$') || !isObject(value)) continue;
     const path = prefix ? `${prefix}.${name}` : name;
     if (isToken(value)) tokens.set(path, clone(value));
-    else collectTokens(value, path, tokens);
+    else if (isTokenGroup(value)) collectTokens(value, path, tokens);
   }
 }
 

@@ -214,7 +214,7 @@ function validateGroup(
   }
 }
 
-export function validateTokenDocument(document: TokenDocument, source = '$'): void {
+export function validateTokenDocument(document: unknown, source = '$'): void {
   const issues: ValidationIssue[] = [];
   if (!isObject(document)) addIssue(issues, source, 'document must be an object');
   else validateGroup(document, source, undefined, issues);
