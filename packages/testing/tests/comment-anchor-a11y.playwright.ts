@@ -37,6 +37,56 @@ async function commentNavigationChord(page: import('@playwright/test').Page): Pr
   return isMacPlatform ? 'Meta+Alt+ArrowDown' : 'Control+Alt+ArrowDown';
 }
 
+async function pressCommentNavigationChordAndExpectAnnouncement(
+  page: import('@playwright/test').Page,
+  mount: import('@playwright/test').Locator,
+): Promise<void> {
+  const chord = await commentNavigationChord(page);
+  const liveRegion = mount.locator(
+    '[role="status"][aria-live="polite"]:not(.comments-count-announcer)',
+  );
+
+  // The message clears after 1000ms. Capture mutations from the always-present
+  // live region before dispatching the chord so the assertion does not depend
+  // on Playwright observing the node during that transient lifetime.
+  await liveRegion.evaluate((region) => {
+    const observedRegion = region as HTMLElement & {
+      cinderAnnouncementObserver?: MutationObserver;
+    };
+    observedRegion.cinderAnnouncementObserver?.disconnect();
+    const captureAnnouncement = () => {
+      const announcement = observedRegion.textContent?.trim();
+      if (announcement) {
+        observedRegion.dataset['observedAnnouncement'] = announcement;
+      }
+    };
+    observedRegion.cinderAnnouncementObserver = new MutationObserver(captureAnnouncement);
+    observedRegion.cinderAnnouncementObserver.observe(observedRegion, {
+      childList: true,
+      characterData: true,
+      subtree: true,
+    });
+    captureAnnouncement();
+  });
+
+  try {
+    await page.keyboard.press(chord);
+    await expect(liveRegion).toHaveAttribute(
+      'data-observed-announcement',
+      /^Comment 1 of 1(?:$|:)/,
+    );
+  } finally {
+    await liveRegion.evaluate((region) => {
+      const observedRegion = region as HTMLElement & {
+        cinderAnnouncementObserver?: MutationObserver;
+      };
+      observedRegion.cinderAnnouncementObserver?.disconnect();
+      delete observedRegion.cinderAnnouncementObserver;
+      delete observedRegion.dataset['observedAnnouncement'];
+    });
+  }
+}
+
 /**
  * `getByRole('textbox')` matches a plain `<input>` too (its implicit ARIA
  * role), and this fixture's front-matter panel renders `owner`/`status`
@@ -126,26 +176,7 @@ test.describe('ReviewEditor comment-anchor accessibility (cinder#1304)', () => {
     // heading, so "next comment" has somewhere real to move it TO.
     await page.keyboard.press('Control+Home');
 
-    await page.keyboard.press(await commentNavigationChord(page));
-
-    // The live-region announcement (`LiveRegion.announce`,
-    // review-editor-impl.svelte) self-clears via a hard-coded 1000ms
-    // `setTimeout` — it is not "the popover's own text mirrored a second
-    // place," it is a genuinely TRANSIENT piece of DOM state with a fixed
-    // lifetime. Checked FIRST, before the (structurally slower) popover
-    // wait below: `handleSidebarThreadSelect`'s own 350ms `POSITION_DELAY_MS`
-    // plus Playwright's per-`expect` polling overhead measured ~620ms
-    // end-to-end locally in development — comfortably under 1000ms on a
-    // fast machine, but this exact test failed in CI with only this
-    // assertion red (the popover checks right before it passed), which is
-    // consistent with a slower CI runner's cumulative wait for the popover
-    // alone consuming enough of that 1000ms budget to lose the race, not
-    // with a locator-scope bug (a scope bug would fail deterministically,
-    // including locally, not intermittently on one runner). Checking this
-    // FIRST — nothing before it can consume any of the 1000ms window —
-    // removes the race instead of budgeting around it with a longer timeout,
-    // which this repo's policy blocks regardless of justification.
-    await expect(mount.getByText('Comment 1 of 1', { exact: false })).toBeVisible();
+    await pressCommentNavigationChordAndExpectAnnouncement(page, mount);
 
     // The popover for the thread opened — the keyboard route actually
     // works. This has no comparable lifetime limit (it stays open until
@@ -271,9 +302,7 @@ test.describe('ReviewEditor comment-anchor accessibility, readonly mode (cinder#
     // editor-dom-focused) and confirm it still navigates — i.e. the
     // scoping guard accepts an ancestor of the editor dom, not just the
     // editor dom or its descendants.
-    await page.keyboard.press(await commentNavigationChord(page));
-
-    await expect(mount.getByText('Comment 1 of 1', { exact: false })).toBeVisible();
+    await pressCommentNavigationChordAndExpectAnnouncement(page, mount);
     const popover = page.locator('.thread-popover');
     await expect(popover).toBeVisible({ timeout: 5_000 });
     await expect(popover.getByText('This title is clear. I would keep it.')).toBeVisible();
