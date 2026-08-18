@@ -412,7 +412,7 @@ export function assertValidResolverDocument(
   if (!document['resolutionOrder'].every(isString))
     addIssue(issues, '$.resolutionOrder', 'resolution order must contain strings');
   if (issues.length > 0) throw new TokenValidationError(issues);
-  validateResolverDocument(document as ResolverDocument);
+  validateResolverDocument(document);
 }
 
 function isString(value: unknown): value is string {
