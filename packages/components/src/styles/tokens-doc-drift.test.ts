@@ -2,8 +2,8 @@
  * Drift test for docs/tokens.md.
  *
  * The doc is hand-maintained, so this test makes sure it stays in sync with
- * the actual `--cinder-*` declarations in tokens-base.css. We extract the set
- * of token names from each source and assert they match exactly.
+ * the actual `--cinder-*` declarations in tokens-base.css. It compares names
+ * and authored values; CSS functions remain part of that exact contract.
  *
  * Test files may use `any` per project conventions.
  */
@@ -13,22 +13,29 @@ import { join } from 'node:path';
 
 import { describe, expect, test } from 'bun:test';
 
-import { readRootTokenNames } from '../test/token-introspection.ts';
+import { readRootTokenValues } from '../test/token-introspection.ts';
 
 const PACKAGE_ROOT = join(import.meta.dir, '..', '..');
 const REPO_ROOT = join(PACKAGE_ROOT, '..', '..');
 const TOKENS_CSS = join(PACKAGE_ROOT, 'src', 'styles', 'tokens-base.css');
 const TOKENS_DOC = join(REPO_ROOT, 'docs', 'tokens.md');
 
-function extractDocTokens(markdown: string): Set<string> {
+function normalizeTokenValue(value: string): string {
+  return value
+    .replace(/\s+/g, ' ')
+    .replace(/\s*([(),])\s*/g, '$1')
+    .trim();
+}
+
+function extractDocTokens(markdown: string): Map<string, string> {
   // Doc lists tokens as inline code in table rows: `` `--cinder-space-4` ``.
   // We deliberately only count tokens that appear inside backticks at the start
   // of a table cell (i.e. `| \`--cinder-...\``) so that incidental mentions in
   // prose (e.g. "override `--cinder-accent` to re-derive both") don't count.
-  const tokens = new Set<string>();
-  const rowPattern = /^\|\s*`(--cinder-[a-z0-9-]+)`/gm;
+  const tokens = new Map<string, string>();
+  const rowPattern = /^\|\s*`(--cinder-[a-z0-9-]+)`\s*\|\s*`([^`]+)`\s*\|/gm;
   for (const match of markdown.matchAll(rowPattern)) {
-    if (match[1]) tokens.add(match[1]);
+    if (match[1] && match[2]) tokens.set(match[1], normalizeTokenValue(match[2]));
   }
   return tokens;
 }
@@ -40,7 +47,7 @@ describe('docs/tokens.md drift', () => {
       readFile(TOKENS_DOC, 'utf8'),
     ]);
 
-    const cssTokens = readRootTokenNames(css);
+    const cssTokens = readRootTokenValues(css);
     const docTokens = extractDocTokens(doc);
 
     // Sanity floor: a parser regression that silently returns a tiny set would
@@ -50,12 +57,25 @@ describe('docs/tokens.md drift', () => {
     expect(cssTokens.size).toBeGreaterThan(50);
     expect(docTokens.size).toBeGreaterThan(50);
 
-    const missingFromDoc = [...cssTokens].filter((token) => !docTokens.has(token)).toSorted();
-    const missingFromCss = [...docTokens].filter((token) => !cssTokens.has(token)).toSorted();
+    const missingFromDoc = [...cssTokens.keys()]
+      .filter((token) => !docTokens.has(token))
+      .toSorted();
+    const missingFromCss = [...docTokens.keys()]
+      .filter((token) => !cssTokens.has(token))
+      .toSorted();
+    const mismatchedValues = [...cssTokens]
+      .flatMap(([token, value]) => {
+        const documented = docTokens.get(token);
+        return documented === undefined || documented === normalizeTokenValue(value)
+          ? []
+          : [`${token}: docs=${documented} source=${normalizeTokenValue(value)}`];
+      })
+      .toSorted();
 
-    expect({ missingFromDoc, missingFromCss }).toEqual({
+    expect({ missingFromDoc, missingFromCss, mismatchedValues }).toEqual({
       missingFromDoc: [],
       missingFromCss: [],
+      mismatchedValues: [],
     });
   });
 });
