@@ -43,7 +43,7 @@ When JsonSchemaEditor accepts snippets or arbitrary children, the caller owns th
 
 ## Verification
 
-- Automated: `bun run --filter=@lostgradient/cinder test -- property-list.test.ts` verifies disclosure resting/resulting states, controlled-panel linkage, property-specific reorder names, and resulting order.
+- Automated: `bun run --filter=@lostgradient/cinder test -- property-list.test.ts` verifies disclosure resting semantics, property-specific reorder names, and resulting order.
 - Automated: `bun run --filter=@lostgradient/cinder test -- json-schema-editor-state.svelte.test.ts` verifies form and JSON commits, validation hooks, undo/redo history, diff baselines, dirty-draft handling, and `draftOverride` behavior.
 - Manual browser check: tab through a nested object row, expand and collapse it with `Enter` and `Space`, then confirm focus remains on the disclosure and the nested panel controls join the tab order.
 - Manual browser check: use a screen reader to confirm property-specific disclosure and reorder names, expanded state, nested-validation counts, and disabled controls in read-only or dirty-JSON form state.
