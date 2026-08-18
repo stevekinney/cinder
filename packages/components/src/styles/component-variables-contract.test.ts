@@ -44,15 +44,9 @@ const COMPONENTS_DIR = join(import.meta.dir, '..', 'components');
 setDefaultTimeout(30_000);
 
 /**
- * Runtime-state variable names which must never appear in public override
- * manifests. Each entry is `{ component, variable }`.
- *
- * See: packages/components/scripts/generate-component-variables.ts
+ * Static progress color variables are public FileUpload theme overrides.
  */
-const RUNTIME_STATE_VARIABLES: Array<{ component: string; variable: string }> = [
-  // The bare --cinder-file-upload-progress counter is set via inline style= from
-  // file-upload.svelte, and the *-background/*-fill variables describe that
-  // dynamic UI rather than a consumer theme API.
+const FILE_UPLOAD_PROGRESS_COLOR_VARIABLES = [
   { component: 'file-upload', variable: '--cinder-file-upload-progress-background' },
   { component: 'file-upload', variable: '--cinder-file-upload-progress-fill' },
 ];
@@ -169,26 +163,22 @@ describe('component *.variables.json contract', () => {
     expect(violations).toEqual([]);
   });
 
-  test('no component variables.json contains a known runtime-state variable', async () => {
+  test('FileUpload exposes static progress color overrides', async () => {
     const allComponents = await loadAllComponentVariables();
 
     const allVariablesByComponent = new Map(
       allComponents.map(({ componentName, variables }) => [componentName, variables]),
     );
 
-    const violations: string[] = [];
+    const missing: string[] = [];
 
-    for (const { component, variable } of RUNTIME_STATE_VARIABLES) {
+    for (const { component, variable } of FILE_UPLOAD_PROGRESS_COLOR_VARIABLES) {
       const componentVariables = allVariablesByComponent.get(component);
       if (componentVariables === undefined) continue;
 
-      if (componentVariables.includes(variable)) {
-        violations.push(
-          `${component}: runtime-state variable "${variable}" is incorrectly listed as a public override variable`,
-        );
-      }
+      if (!componentVariables.includes(variable)) missing.push(`${component}: ${variable}`);
     }
 
-    expect(violations).toEqual([]);
+    expect(missing).toEqual([]);
   });
 });

@@ -3,9 +3,7 @@
   .cinder-file-upload {
     --cinder-file-upload-border-color: var(--cinder-border);
     --cinder-file-upload-background: var(--cinder-surface);
-    /* @runtime-state: progress rendering is controlled by the component. */
     --cinder-file-upload-progress-background: var(--cinder-surface-inset);
-    /* @runtime-state: progress rendering is controlled by the component. */
     --cinder-file-upload-progress-fill: var(--cinder-accent);
 
     display: grid;
