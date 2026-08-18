@@ -214,6 +214,7 @@
   // part re-derives to show the resolved state.
   let approvedToolCallIds = $state(new Set<string>());
   let deniedToolCallIds = $state(new Set<string>());
+  let editingMessageIds = $state(new Set<string>());
   let pendingRetryMessageTokens = $state(new Map<string, symbol>());
 
   // Per-message disclosure state (reasoning blocks + tool-call cards). UI-only;
@@ -257,6 +258,7 @@
     approvedToolCallIds = new Set();
     pendingRetryMessageTokens = new Map();
     deniedToolCallIds = new Set();
+    editingMessageIds = new Set();
     reasoningState.reset();
     toolCallState.reset();
     typingIndicatorState.reset();
@@ -783,7 +785,7 @@
           !viewport ||
           pendingHistoryScroll ||
           historyAnchorMessageId !== null ||
-          hasActiveMessageEdit()
+          editingMessageIds.size > 0
         ) {
           return;
         }
@@ -2374,7 +2376,7 @@
           });
         }
         // Auto-scroll if at bottom
-        if (scrollState.atBottom && viewport && !hasActiveMessageEdit()) {
+        if (scrollState.atBottom && viewport && editingMessageIds.size === 0) {
           if (isVirtualized) {
             chatVirtualizer.scrollToOffset(chatVirtualizer.scrollSize, { behavior: 'instant' });
           } else {
@@ -2385,8 +2387,11 @@
     }
   }
 
-  function hasActiveMessageEdit(): boolean {
-    return Boolean(viewport?.querySelector('.chat-message-edit'));
+  function handleEditingChange(messageId: string, editing: boolean): void {
+    const next = new Set(editingMessageIds);
+    if (editing) next.add(messageId);
+    else next.delete(messageId);
+    editingMessageIds = next;
   }
 
   /**
@@ -2531,6 +2536,7 @@
         {messagePart}
         onretry={allowRetry && canRetry ? handleRetry : undefined}
         onedit={allowEditing && canEdit ? handleEdit : undefined}
+        oneditingchange={(editing) => handleEditingChange(message.id, editing)}
         showDefaultActions={allowCopy}
         {onExpandedChange}
         streaming={isStreamingMessage}

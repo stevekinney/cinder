@@ -1067,6 +1067,21 @@ describe('ChatAdapter — command equivalence', () => {
   });
 
   test('streaming another message preserves edit controls and suspends auto-scroll', async () => {
+    const frames: FrameRequestCallback[] = [];
+    const originalRaf = globalThis.requestAnimationFrame;
+    const originalCancelRaf = globalThis.cancelAnimationFrame;
+    globalThis.requestAnimationFrame = ((callback: FrameRequestCallback) => {
+      frames.push(callback);
+      return frames.length;
+    }) as typeof requestAnimationFrame;
+    globalThis.cancelAnimationFrame = ((handle: number) => {
+      if (handle >= 1 && handle <= frames.length) frames[handle - 1] = () => {};
+    }) as typeof cancelAnimationFrame;
+    const flushFrames = (): void => {
+      const pending = frames.splice(0);
+      for (const frame of pending) frame(performance.now());
+      flushSync();
+    };
     const conversation = conversationFromMessages('adapter-edit-stream', [
       message('user-1', 'user', 'Original text', 0),
       message('assistant-1', 'assistant', 'Streaming reply', 1),
@@ -1080,41 +1095,45 @@ describe('ChatAdapter — command equivalence', () => {
       } satisfies ChatAdapter,
     });
 
-    container.querySelector<HTMLButtonElement>('.chat-message-edit-button')!.click();
-    flushSync();
-    const editor = container.querySelector<HTMLTextAreaElement>('.chat-message-edit-textarea');
-    const save = container.querySelector<HTMLButtonElement>('.chat-message-edit-save');
-    const cancel = container.querySelector<HTMLButtonElement>('.chat-message-edit-cancel');
-    expect(editor).not.toBeNull();
-    expect(save).not.toBeNull();
-    expect(cancel).not.toBeNull();
-    const timeline = container.querySelector<HTMLElement>('.chat-timeline')!;
-    const scrollCalls: ScrollToOptions[] = [];
-    timeline.scrollTo = ((options: ScrollToOptions) => {
-      scrollCalls.push(options);
-    }) as HTMLElement['scrollTo'];
+    try {
+      container.querySelector<HTMLButtonElement>('.chat-message-edit-button')!.click();
+      flushSync();
+      const editor = container.querySelector<HTMLTextAreaElement>('.chat-message-edit-textarea');
+      const save = container.querySelector<HTMLButtonElement>('.chat-message-edit-save');
+      const cancel = container.querySelector<HTMLButtonElement>('.chat-message-edit-cancel');
+      expect(editor).not.toBeNull();
+      expect(save).not.toBeNull();
+      expect(cancel).not.toBeNull();
+      const timeline = container.querySelector<HTMLElement>('.chat-timeline')!;
+      const scrollCalls: ScrollToOptions[] = [];
+      timeline.scrollTo = ((options: ScrollToOptions) => {
+        scrollCalls.push(options);
+      }) as HTMLElement['scrollTo'];
 
-    const chat = instance as unknown as ChatImperative;
-    chat.beginStreaming('assistant-1');
-    chat.pushToken('Partial streaming reply');
-    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-    await tick();
-    flushSync();
+      const chat = instance as unknown as ChatImperative;
+      chat.beginStreaming('assistant-1');
+      chat.pushToken('Partial streaming reply');
+      flushFrames();
+      await tick();
+      flushSync();
 
-    expect(container.querySelector('.chat-message-edit-textarea')).toBe(editor);
-    expect(container.querySelector('.chat-message-edit-save')).toBe(save);
-    expect(container.querySelector('.chat-message-edit-cancel')).toBe(cancel);
-    expect(scrollCalls).toEqual([]);
+      expect(container.querySelector('.chat-message-edit-textarea')).toBe(editor);
+      expect(container.querySelector('.chat-message-edit-save')).toBe(save);
+      expect(container.querySelector('.chat-message-edit-cancel')).toBe(cancel);
+      expect(scrollCalls).toEqual([]);
 
-    cancel!.click();
-    flushSync();
-    chat.pushToken(' after editing');
-    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-    await tick();
-    flushSync();
-    expect(scrollCalls.length).toBeGreaterThan(0);
-
-    unmount(instance);
+      cancel!.click();
+      flushSync();
+      chat.pushToken(' after editing');
+      flushFrames();
+      await tick();
+      flushSync();
+      expect(scrollCalls.length).toBeGreaterThan(0);
+    } finally {
+      globalThis.requestAnimationFrame = originalRaf;
+      globalThis.cancelAnimationFrame = originalCancelRaf;
+      unmount(instance);
+    }
   });
 
   test('file drag overlay is container state and empty file drops do not touch the transcript', () => {

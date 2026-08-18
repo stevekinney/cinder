@@ -38,6 +38,8 @@
     onretry?: ((messageId: string) => void) | undefined;
     /** Called when user edits a message (fires with new content). Only applies to user messages. */
     onedit?: ((event: { messageId: string; content: string }) => void) | undefined;
+    /** Called when this message enters or leaves edit mode. */
+    oneditingchange?: ((editing: boolean) => void) | undefined;
     /** The set of approved tool call IDs for deriving approval state. */
     approvedToolCallIds?: ReadonlySet<string> | undefined;
     /** The set of denied tool call IDs for deriving denial state. */
@@ -83,6 +85,7 @@
 </script>
 
 <script lang="ts">
+  import { onDestroy } from 'svelte';
   import { classNames } from '../../../utilities/class-names.ts';
   import {
     deriveMessageParts,
@@ -108,6 +111,7 @@
     onExpandedChange,
     onretry,
     onedit,
+    oneditingchange,
     approvedToolCallIds,
     deniedToolCallIds,
     onapprove,
@@ -132,11 +136,13 @@
   function startEditing() {
     editContent = textContent;
     isEditing = true;
+    oneditingchange?.(true);
   }
 
   function cancelEditing() {
     isEditing = false;
     editContent = '';
+    oneditingchange?.(false);
   }
 
   function saveEdit() {
@@ -146,7 +152,12 @@
     }
     isEditing = false;
     editContent = '';
+    oneditingchange?.(false);
   }
+
+  onDestroy(() => {
+    if (isEditing) oneditingchange?.(false);
+  });
 
   function handleEditKeyDown(event: KeyboardEvent) {
     if (event.key === 'Escape') {
