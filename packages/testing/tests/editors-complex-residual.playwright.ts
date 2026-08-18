@@ -440,6 +440,28 @@ test.describe('JSON schema editor', () => {
     return editor;
   }
 
+  test('property disclosures retain focus and expose their resulting editing panel', async ({
+    page,
+  }) => {
+    const editor = await openFirstEditor(page);
+    const disclosure = editor.getByRole('button', { name: 'Expand name property' });
+
+    await expect(disclosure).toHaveAttribute('aria-expanded', 'false');
+    const panelId = await disclosure.getAttribute('aria-controls');
+    expect(panelId).toBeTruthy();
+    const panel = editor.locator(`[id="${panelId}"]`);
+    await expect(panel).toHaveCount(0);
+
+    await disclosure.focus();
+    await page.keyboard.press('Space');
+
+    const expandedDisclosure = editor.getByRole('button', { name: 'Collapse name property' });
+    await expect(expandedDisclosure).toBeFocused();
+    await expect(expandedDisclosure).toHaveAttribute('aria-expanded', 'true');
+    await expect(panel).toBeVisible();
+    await expect(panel.getByRole('textbox', { name: 'Name', exact: true })).toBeVisible();
+  });
+
   test('Diff tab shows "Diff" without a raw bullet and carries accessible change markup', async ({
     page,
   }) => {

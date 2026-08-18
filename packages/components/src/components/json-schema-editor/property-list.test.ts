@@ -95,6 +95,26 @@ describe('PropertyList', () => {
     expect(screen.getByRole('button', { name: 'Move age down' })).not.toBeNull();
   });
 
+  test('reorders properties through the row controls', async () => {
+    let latestProperties: Record<string, unknown> = {};
+    render(PropertyList, {
+      idPrefix: 'properties',
+      path: '/properties',
+      properties: {
+        email: { type: 'string' },
+        age: { type: 'integer' },
+      },
+      required: [],
+      onValueChange: (properties) => {
+        latestProperties = properties;
+      },
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Move age up' }));
+
+    expect(Object.keys(latestProperties)).toEqual(['age', 'email']);
+  });
+
   test('keeps enum in the preserved-keywords count when a schema is loaded', () => {
     const loadedSchema = { type: 'string', enum: ['draft', 'published'] };
     const preservedKeys = Object.keys(loadedSchema).filter((key) => !EDITABLE_KEYWORDS.has(key));
