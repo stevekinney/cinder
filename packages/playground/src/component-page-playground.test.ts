@@ -513,6 +513,30 @@ describe('buildSnippet', () => {
     );
   });
 
+  test('keeps an accessible recipe baseline until its empty control changes it', () => {
+    const labelControl = buildPlaygroundModel(
+      manifest([
+        {
+          name: 'ariaLabel',
+          control: { kind: 'text' },
+          bindable: false,
+          optional: true,
+        },
+      ]),
+    ).controls;
+
+    expect(
+      buildSnippet('Progress', labelControl, { ariaLabel: '' }, [], undefined, {
+        ariaLabel: 'Loading progress',
+      }),
+    ).toBe('<Progress ariaLabel="Loading progress" />');
+    expect(
+      buildSnippet('Progress', labelControl, { ariaLabel: 'Upload progress' }, [], undefined, {
+        ariaLabel: 'Loading progress',
+      }),
+    ).toBe('<Progress ariaLabel="Upload progress" />');
+  });
+
   test('renders string attributes and stacks multiple onto separate lines', () => {
     expect(buildSnippet('Accordion', controls, { multiple: true, size: 'sm' })).toBe(
       '<Accordion\n  multiple\n  size="sm"\n/>',

@@ -574,7 +574,13 @@ export function buildSnippet(
 
   const attributes = [
     ...Object.entries(baselineProps)
-      .filter(([name]) => !controls.some((control) => control.name === name))
+      .filter(([name]) => {
+        const matchingControl = controls.find((control) => control.name === name);
+        return (
+          matchingControl === undefined ||
+          !shouldEmit(matchingControl, values[matchingControl.name] ?? matchingControl.value)
+        );
+      })
       .flatMap(([name, value]) =>
         typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean'
           ? [attributeFor(name, value)]

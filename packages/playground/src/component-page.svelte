@@ -1064,7 +1064,13 @@
                      the shell's top bar and act on an iframe; they now sit with the
                      stage they resize, and work by constraining a plain container. -->
                 {#if playgroundModel.controls.length > 0 || isFocusMode}
-                  <div class="dx-viewport" role="group" aria-label="Stage width">
+                  <div
+                    class="dx-viewport"
+                    role="group"
+                    aria-label={playgroundModel.controls.length > 0
+                      ? 'Stage width'
+                      : 'Preview controls'}
+                  >
                     {#if playgroundModel.controls.length > 0}
                       <div class="dx-viewport__sizes">
                         {#each PREVIEW_WIDTHS as option (option.label)}
@@ -1419,7 +1425,7 @@
                         <span class="dx-stage__dot" aria-hidden="true"></span>
                         <span class="dx-stage__label">Live preview</span>
                       </div>
-                      <div class="dx-stage__canvas">
+                      <div class="dx-stage__canvas" role="region" aria-label="Preview" tabindex="0">
                         {#if mountErrors[`overview-mount-${overviewExample.scenario}`] !== undefined}
                           {@const error = mountErrors[`overview-mount-${overviewExample.scenario}`]}
                           <Callout variant="danger" title="This preview failed to render">
@@ -1522,7 +1528,12 @@
                             </div>
                             <div class="dx-example__body">
                               <div class="dx-stage">
-                                <div class="dx-stage__canvas">
+                                <div
+                                  class="dx-stage__canvas"
+                                  role="region"
+                                  aria-label="Preview"
+                                  tabindex="0"
+                                >
                                   <div
                                     class="example-preview"
                                     id="example-mount-{scenario}"
