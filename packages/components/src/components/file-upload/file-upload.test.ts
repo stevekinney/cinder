@@ -131,6 +131,22 @@ describe('FileUpload rendering', () => {
     );
   });
 
+  test('exposes the dropzone as a group and keeps the native picker keyboard reachable', async () => {
+    const { container } = render(FileUpload, { props: { id: 'resume-upload' } });
+    const dropzone = container.querySelector('.cinder-file-upload__dropzone') as HTMLDivElement;
+    const input = container.querySelector('#resume-upload') as HTMLInputElement;
+    const button = container.querySelector('.cinder-file-upload__button') as HTMLButtonElement;
+    const inputClick = mock(() => {});
+    input.click = inputClick;
+
+    expect(dropzone.getAttribute('role')).toBe('group');
+    button.focus();
+    expect(document.activeElement).toBe(button);
+
+    await fireEvent.click(button);
+    expect(inputClick).toHaveBeenCalledTimes(1);
+  });
+
   test('renders custom picker trigger text', () => {
     const { container } = render(FileUpload, {
       props: { id: 'history-import', browseLabel: 'Import history JSON' },
@@ -253,6 +269,20 @@ describe('FileUpload validation and events', () => {
     expect(onFilesChange.mock.calls[0]?.[0]).toEqual([
       expect.objectContaining({ file, status: 'pending' }),
     ]);
+  });
+
+  test('adds files through the native picker without a drag event', async () => {
+    const onFilesAccepted = mock((_files: File[]) => {});
+    const file = createFile('resume.pdf', 'application/pdf', 512_000);
+    const { container } = render(FileUpload, {
+      props: { id: 'resume-upload', onFilesAccepted },
+    });
+    const input = container.querySelector('#resume-upload') as HTMLInputElement;
+
+    attachInputFiles(input, [file]);
+    await fireEvent.change(input);
+
+    expect(onFilesAccepted).toHaveBeenCalledWith([file]);
   });
 
   test('maxSize rejection reports reason and message', async () => {
