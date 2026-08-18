@@ -23,7 +23,11 @@ describe('Turbo input topology', () => {
       expect(task?.inputs).not.toContain('$TURBO_ROOT$/packages/components/scripts/**');
       expect(task?.inputs).not.toContain('$TURBO_ROOT$/packages/testing/scripts/**');
     }
-    expect(turboConfiguration.tasks.test?.env).toEqual(['TURBO_PLATFORM', 'RUNNER_OS', 'NODE_ENV']);
+    expect(turboConfiguration.tasks['test']?.env).toEqual([
+      'TURBO_PLATFORM',
+      'RUNNER_OS',
+      'NODE_ENV',
+    ]);
   });
 
   it('pins fail-closed PR aggregators and forced audit policy in workflow source', () => {
