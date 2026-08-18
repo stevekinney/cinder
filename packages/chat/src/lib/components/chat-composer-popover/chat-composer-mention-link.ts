@@ -17,11 +17,11 @@ const NON_ENTITY_URI_SCHEMES = new Set([
 ]);
 
 export function escapeMentionLabel(value: string): string {
-  return value.replaceAll('\\', '\\\\').replaceAll('[', '\\[').replaceAll(']', '\\]');
+  return value.replace(/[!"#$%&'()*+,\-./:;<=>?@[\\\]^_`{|}~]/gu, '\\$&');
 }
 
 export function escapeMentionUri(value: string): string {
-  return value.replaceAll('\\', '\\\\').replace(/([()[\]<>\s])/gu, '\\$1');
+  return value.replaceAll('\\', '\\\\').replace(/([()[\]<>])/gu, '\\$1');
 }
 
 export function unescapeMarkdown(value: string, escapeWhitespace = false): string | null {
@@ -52,5 +52,5 @@ export function unescapeMarkdown(value: string, escapeWhitespace = false): strin
 
 export function isEntityUri(uri: string): boolean {
   const match = ABSOLUTE_URI_SCHEME.exec(uri);
-  return match !== null && !NON_ENTITY_URI_SCHEMES.has(match[1]!.toLowerCase());
+  return match !== null && !/\s/u.test(uri) && !NON_ENTITY_URI_SCHEMES.has(match[1]!.toLowerCase());
 }

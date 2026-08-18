@@ -4,6 +4,7 @@ import {
   getAutolinkEnd,
   getClosingHtmlBlockEnd,
   getHtmlBlockBlankLineEnd,
+  getHtmlDelimitedBlockEnd,
   getHtmlTagEnd,
   isInterruptingHtmlBlockTag,
   isVoidHtmlTag,
@@ -17,10 +18,17 @@ import {
 } from './chat-composer-mention-link.ts';
 import { getReferenceDefinitionEnd } from './chat-composer-mention-reference.ts';
 import {
+  countRun,
+  getContainerContext,
+  getOpeningCodeFence,
   hasEscapedPrefix,
+  isClosingCodeFence,
+  isContainerActive,
   isIndentedCodeLine,
   isIndentedCodeStart,
   makeScanMetadata,
+  type CodeFence,
+  type ContainerContext,
   type ScanMetadata,
 } from './chat-composer-mention-scan.ts';
 
@@ -48,74 +56,10 @@ type ParsedLink = {
   end: number;
 };
 
-type CodeFence = {
-  delimiter: '`' | '~';
-  minimumLength: number;
-  prefix: string;
-};
-
-function countRun(value: string, start: number, character: string): number {
-  let length = 0;
-
-  while (value[start + length] === character) length += 1;
-
-  return length;
-}
-
 function isAtBlockStart(value: string, index: number, metadata: ScanMetadata): boolean {
   const lineStart = metadata.lineStarts[index] ?? 0;
   const containerStart = metadata.containerStarts.get(lineStart) ?? lineStart;
   return /^ {0,3}$/u.test(value.slice(containerStart, index));
-}
-
-function getContainerPrefix(value: string, start: number, metadata: ScanMetadata): string {
-  const lineStart = metadata.lineStarts[start] ?? 0;
-  return value.slice(lineStart, metadata.containerStarts.get(lineStart) ?? lineStart);
-}
-
-function getOpeningCodeFence(
-  value: string,
-  start: number,
-  metadata: ScanMetadata,
-): CodeFence | null {
-  const delimiter = value[start];
-  const prefix = getContainerPrefix(value, start, metadata);
-  const lineStart = metadata.lineStarts[start] ?? 0;
-  if (
-    (delimiter !== '`' && delimiter !== '~') ||
-    hasEscapedPrefix(start, metadata) ||
-    start !== (metadata.containerStarts.get(lineStart) ?? lineStart) ||
-    (prefix.length > 3 && !/[>*+\-0-9.]/u.test(prefix))
-  ) {
-    return null;
-  }
-
-  const minimumLength = countRun(value, start, delimiter);
-  const lineEnd = getLineEnd(value, start + minimumLength);
-  const info = value.slice(start + minimumLength, lineEnd);
-  if (delimiter === '`' && info.includes('`')) return null;
-
-  return minimumLength >= 3 ? { delimiter, minimumLength, prefix } : null;
-}
-
-function isClosingCodeFence(
-  value: string,
-  start: number,
-  fence: CodeFence,
-  metadata: ScanMetadata,
-): boolean {
-  const lineStart = metadata.lineStarts[start] ?? 0;
-  if (
-    !value.startsWith(fence.prefix, lineStart) ||
-    start !== (metadata.containerStarts.get(lineStart) ?? lineStart)
-  )
-    return false;
-
-  const length = countRun(value, start, fence.delimiter);
-  if (length < fence.minimumLength) return false;
-
-  const lineEnd = getLineEnd(value, start + length);
-  return /^ *$/u.test(value.slice(start + length, lineEnd));
 }
 
 function getOrdinaryLinkEnd(value: string, start: number): number | null {
@@ -240,7 +184,7 @@ function parseLink(value: string, start: number): ParsedLink | null {
   if (value[destinationEnd] !== ')') return null;
 
   const label = unescapeMarkdown(value.slice(start + 1, labelEnd));
-  const uri = unescapeMarkdown(value.slice(destinationStart, destinationEnd), true);
+  const uri = unescapeMarkdown(value.slice(destinationStart, destinationEnd));
   if (label === null || label.length === 0 || uri === null || !isEntityUri(uri)) return null;
 
   return { label, uri, end: destinationEnd + 1 };
@@ -275,25 +219,35 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
   let sourceIndex = 0;
   let codeFence: CodeFence | null = null;
   let indentedCode = false;
-  let htmlComment = false;
-  let htmlBlock: { tag: string; closesWithTag: boolean } | null = null;
+  let htmlDelimitedBlock: { terminator: string; container: ContainerContext } | null = null;
+  let htmlBlock: {
+    tag: string;
+    closesWithTag: boolean;
+    container: ContainerContext;
+  } | null = null;
 
   while (sourceIndex < value.length) {
-    if (htmlComment) {
-      const end = value.indexOf('-->', sourceIndex);
-      if (end === -1) {
+    if (htmlDelimitedBlock !== null) {
+      const end = getHtmlDelimitedBlockEnd(
+        value,
+        sourceIndex,
+        htmlDelimitedBlock.terminator,
+        htmlDelimitedBlock.container,
+        metadata,
+      );
+      if (end === null) {
         text += value.slice(sourceIndex);
         break;
       }
-      text += value.slice(sourceIndex, end + 3);
-      sourceIndex = end + 3;
-      htmlComment = false;
+      text += value.slice(sourceIndex, end);
+      sourceIndex = end;
+      htmlDelimitedBlock = null;
       continue;
     }
     if (htmlBlock !== null) {
       const end = htmlBlock.closesWithTag
-        ? getClosingHtmlBlockEnd(value, sourceIndex, htmlBlock.tag)
-        : getHtmlBlockBlankLineEnd(value, sourceIndex);
+        ? getClosingHtmlBlockEnd(value, sourceIndex, htmlBlock.tag, htmlBlock.container, metadata)
+        : getHtmlBlockBlankLineEnd(value, sourceIndex, htmlBlock.container, metadata);
       if (end === null) {
         text += value.slice(sourceIndex);
         break;
@@ -304,6 +258,14 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
       continue;
     }
     if (codeFence !== null) {
+      const lineStart = metadata.lineStarts[sourceIndex] ?? 0;
+      if (
+        sourceIndex === lineStart &&
+        !isContainerActive(codeFence.container, lineStart, metadata)
+      ) {
+        codeFence = null;
+        continue;
+      }
       if (
         value[sourceIndex] === codeFence.delimiter &&
         (sourceIndex === 0 || /[\r\n >*+\-.]/u.test(value[sourceIndex - 1]!)) &&
@@ -339,15 +301,34 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
 
     if (value[sourceIndex] === '<' && !hasEscapedPrefix(sourceIndex, metadata)) {
       if (value.startsWith('<!--', sourceIndex)) {
-        if (
-          value.indexOf('-->', sourceIndex + 4) !== -1 ||
-          isAtBlockStart(value, sourceIndex, metadata)
-        ) {
-          htmlComment = true;
+        const isBlock = isAtBlockStart(value, sourceIndex, metadata);
+        const closingStart = value.indexOf('-->', sourceIndex + 4);
+        if (closingStart !== -1 || isBlock) {
+          const lineStart = metadata.lineStarts[sourceIndex] ?? 0;
+          if (isBlock) {
+            htmlDelimitedBlock = {
+              terminator: '-->',
+              container: getContainerContext(lineStart, metadata),
+            };
+          }
           text += '<!--';
           sourceIndex += 4;
+          if (!isBlock && closingStart !== -1) {
+            text += value.slice(sourceIndex, closingStart + 3);
+            sourceIndex = closingStart + 3;
+          }
           continue;
         }
+      }
+      if (value.startsWith('<?', sourceIndex) && isAtBlockStart(value, sourceIndex, metadata)) {
+        const lineStart = metadata.lineStarts[sourceIndex] ?? 0;
+        htmlDelimitedBlock = {
+          terminator: '?>',
+          container: getContainerContext(lineStart, metadata),
+        };
+        text += '<?';
+        sourceIndex += 2;
+        continue;
       }
       if (value.startsWith('<![CDATA[', sourceIndex)) {
         const closingStart = value.indexOf(']]>', sourceIndex + 9);
@@ -358,7 +339,12 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
       }
       const rawBlock = /^<(pre|script|style|textarea)(?=[\s>])/iu.exec(value.slice(sourceIndex));
       if (rawBlock !== null && isAtBlockStart(value, sourceIndex, metadata)) {
-        htmlBlock = { tag: rawBlock[1]!.toLowerCase(), closesWithTag: true };
+        const lineStart = metadata.lineStarts[sourceIndex] ?? 0;
+        htmlBlock = {
+          tag: rawBlock[1]!.toLowerCase(),
+          closesWithTag: true,
+          container: getContainerContext(lineStart, metadata),
+        };
         text += '<';
         sourceIndex += 1;
         continue;
@@ -398,6 +384,7 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
             htmlBlock = {
               tag: normalizedTag,
               closesWithTag: closesHtmlBlockWithTag(normalizedTag),
+              container: getContainerContext(lineStart, metadata),
             };
           }
         }

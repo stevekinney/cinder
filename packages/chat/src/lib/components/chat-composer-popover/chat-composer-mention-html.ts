@@ -1,5 +1,9 @@
 import { getLineEnd, getLineEndingLength } from './chat-composer-mention-lines.ts';
-import type { ScanMetadata } from './chat-composer-mention-scan.ts';
+import {
+  isContainerActive,
+  type ContainerContext,
+  type ScanMetadata,
+} from './chat-composer-mention-scan.ts';
 
 const VOID_HTML_TAGS = new Set(
   'area base br col embed hr img input link meta source track wbr'.split(' '),
@@ -75,23 +79,66 @@ export function getAutolinkEnd(value: string, start: number): number | null {
   return uri || email ? cursor + 1 : null;
 }
 
-export function getHtmlBlockBlankLineEnd(value: string, start: number): number | null {
+function getContainerBoundary(
+  value: string,
+  start: number,
+  container: ContainerContext,
+  metadata: ScanMetadata,
+): number {
+  let lineStart = metadata.lineStarts[start] ?? start;
+  while (lineStart < value.length) {
+    if (!isContainerActive(container, lineStart, metadata)) return lineStart;
+    const lineEnd = getLineEnd(value, lineStart);
+    lineStart = lineEnd + getLineEndingLength(value, lineEnd);
+  }
+  return value.length;
+}
+
+export function getHtmlDelimitedBlockEnd(
+  value: string,
+  start: number,
+  terminator: string,
+  container: ContainerContext,
+  metadata: ScanMetadata,
+): number | null {
+  const boundary = getContainerBoundary(value, start, container, metadata);
+  const closingStart = value.indexOf(terminator, start);
+  if (closingStart !== -1 && closingStart + terminator.length <= boundary) {
+    return closingStart + terminator.length;
+  }
+  return boundary < value.length ? boundary : null;
+}
+
+export function getHtmlBlockBlankLineEnd(
+  value: string,
+  start: number,
+  container: ContainerContext,
+  metadata: ScanMetadata,
+): number | null {
+  const boundary = getContainerBoundary(value, start, container, metadata);
   let lineEnd = getLineEnd(value, start);
   let lineStart = lineEnd + getLineEndingLength(value, lineEnd);
-  while (lineStart < value.length) {
+  while (lineStart < boundary) {
     lineEnd = getLineEnd(value, lineStart);
     if (/^[ \t]*$/u.test(value.slice(lineStart, lineEnd))) {
       return lineEnd + getLineEndingLength(value, lineEnd);
     }
     lineStart = lineEnd + getLineEndingLength(value, lineEnd);
   }
-  return null;
+  return boundary < value.length ? boundary : null;
 }
 
-export function getClosingHtmlBlockEnd(value: string, start: number, tag: string): number | null {
+export function getClosingHtmlBlockEnd(
+  value: string,
+  start: number,
+  tag: string,
+  container: ContainerContext,
+  metadata: ScanMetadata,
+): number | null {
+  const boundary = getContainerBoundary(value, start, container, metadata);
   const normalizedTag = tag.toLowerCase();
   let candidate = value.indexOf('</', start);
-  while (candidate !== -1) {
+  while (candidate !== -1 && candidate < boundary) {
     const nameStart = candidate + 2;
     const nameEnd = nameStart + tag.length;
     if (
@@ -103,5 +150,5 @@ export function getClosingHtmlBlockEnd(value: string, start: number, tag: string
     }
     candidate = value.indexOf('</', candidate + 2);
   }
-  return null;
+  return boundary < value.length ? boundary : null;
 }
