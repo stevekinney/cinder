@@ -1066,6 +1066,57 @@ describe('ChatAdapter — command equivalence', () => {
     unmount(instance);
   });
 
+  test('streaming another message preserves edit controls and suspends auto-scroll', async () => {
+    const conversation = conversationFromMessages('adapter-edit-stream', [
+      message('user-1', 'user', 'Original text', 0),
+      message('assistant-1', 'assistant', 'Streaming reply', 1),
+    ]);
+    const { container, instance } = mountChat({
+      id: 'chat-adapter-edit-stream',
+      conversation,
+      adapter: {
+        sendMessage: async () => {},
+        editMessage: async () => {},
+      } satisfies ChatAdapter,
+    });
+
+    container.querySelector<HTMLButtonElement>('.chat-message-edit-button')!.click();
+    flushSync();
+    const editor = container.querySelector<HTMLTextAreaElement>('.chat-message-edit-textarea');
+    const save = container.querySelector<HTMLButtonElement>('.chat-message-edit-save');
+    const cancel = container.querySelector<HTMLButtonElement>('.chat-message-edit-cancel');
+    expect(editor).not.toBeNull();
+    expect(save).not.toBeNull();
+    expect(cancel).not.toBeNull();
+    const timeline = container.querySelector<HTMLElement>('.chat-timeline')!;
+    const scrollCalls: ScrollToOptions[] = [];
+    timeline.scrollTo = ((options: ScrollToOptions) => {
+      scrollCalls.push(options);
+    }) as HTMLElement['scrollTo'];
+
+    const chat = instance as unknown as ChatImperative;
+    chat.beginStreaming('assistant-1');
+    chat.pushToken('Partial streaming reply');
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    await tick();
+    flushSync();
+
+    expect(container.querySelector('.chat-message-edit-textarea')).toBe(editor);
+    expect(container.querySelector('.chat-message-edit-save')).toBe(save);
+    expect(container.querySelector('.chat-message-edit-cancel')).toBe(cancel);
+    expect(scrollCalls).toEqual([]);
+
+    cancel!.click();
+    flushSync();
+    chat.pushToken(' after editing');
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    await tick();
+    flushSync();
+    expect(scrollCalls.length).toBeGreaterThan(0);
+
+    unmount(instance);
+  });
+
   test('file drag overlay is container state and empty file drops do not touch the transcript', () => {
     const conversation = conversationFromMessages('adapter-file-drag', [
       message('user-1', 'user', 'Keep this transcript stable', 0),

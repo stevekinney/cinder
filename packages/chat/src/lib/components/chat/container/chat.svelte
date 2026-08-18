@@ -778,7 +778,13 @@
       let cancelled = false;
       const waitForBottomTarget = isTranscriptAppend ? waitForLayoutFrame() : tick();
       void waitForBottomTarget.then(() => {
-        if (cancelled || !viewport || pendingHistoryScroll || historyAnchorMessageId !== null) {
+        if (
+          cancelled ||
+          !viewport ||
+          pendingHistoryScroll ||
+          historyAnchorMessageId !== null ||
+          hasActiveMessageEdit()
+        ) {
           return;
         }
         // Re-check the guard at execution time: a guarded scroll (e.g.
@@ -2368,7 +2374,7 @@
           });
         }
         // Auto-scroll if at bottom
-        if (scrollState.atBottom && viewport) {
+        if (scrollState.atBottom && viewport && !hasActiveMessageEdit()) {
           if (isVirtualized) {
             chatVirtualizer.scrollToOffset(chatVirtualizer.scrollSize, { behavior: 'instant' });
           } else {
@@ -2377,6 +2383,10 @@
         }
       });
     }
+  }
+
+  function hasActiveMessageEdit(): boolean {
+    return Boolean(viewport?.querySelector('.chat-message-edit'));
   }
 
   /**
