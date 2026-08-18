@@ -144,6 +144,22 @@ export function componentClassNamesFromMarkup(source: string): string[] {
   ].toSorted();
 }
 
+/** Extract only the rendered classes owned by a component, not sibling primitives it composes. */
+export function componentClassNamesForComponent(source: string, componentName: string): string[] {
+  const [block, ...element] = componentName.split('-');
+  const roots = [`cinder-${componentName}`];
+  if (block !== undefined && element.length > 0)
+    roots.push(`cinder-${block}__${element.join('-')}`);
+  return componentClassNamesFromMarkup(source).filter((className) =>
+    roots.some(
+      (root) =>
+        className === root ||
+        className.startsWith(`${root}--`) ||
+        className.startsWith(`${root}__`),
+    ),
+  );
+}
+
 /** Extract Cinder classes from component CSS when markup computes them dynamically. */
 export function componentClassNamesFromStylesheet(stylesheet: Root): string[] {
   const classNames = new Set<string>();
@@ -282,8 +298,9 @@ async function collectComponentCss(): Promise<ComponentCss[]> {
     const classNames = new Set([`cinder-${component.name}`]);
     for (const entry of readdirSync(component.directory, { withFileTypes: true })) {
       if (!entry.isFile() || !entry.name.endsWith('.svelte')) continue;
-      for (const className of componentClassNamesFromMarkup(
+      for (const className of componentClassNamesForComponent(
         readFileSync(join(component.directory, entry.name), 'utf8'),
+        component.name,
       )) {
         classNames.add(className);
       }

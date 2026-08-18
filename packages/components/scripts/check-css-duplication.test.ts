@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { parse } from 'postcss';
 
 import {
+  componentClassNamesForComponent,
   componentClassNamesFromMarkup,
   componentClassNamesFromStylesheet,
   compoundFamilies,
@@ -95,6 +96,15 @@ describe('declarationMultiset', () => {
         `<tr class="cinder-table__row"><td class:cinder-table__row--selected={selected}></td></tr>`,
       ),
     ).toEqual(['cinder-table__row', 'cinder-table__row--selected']);
+  });
+
+  test('does not claim sibling primitive classes rendered by a compound leaf', () => {
+    expect(
+      componentClassNamesForComponent(
+        `<tr class="cinder-table__row"><td class="cinder-table__header-cell cinder-table__cell"></td></tr>`,
+        'table-row',
+      ),
+    ).toEqual(['cinder-table__row']);
   });
 
   test('discovers compound-leaf selectors from sidecar CSS', () => {
