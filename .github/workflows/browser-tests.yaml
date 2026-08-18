@@ -211,7 +211,7 @@ jobs:
           if [ "$EVENT_NAME" != "pull_request" ]; then
             # push (already path-filtered at the workflow level, unchanged)
             # and workflow_dispatch always run the real jobs.
-            echo "relevant=true" >> "$GITHUB_OUTPUT"
+            echo "browser_relevant=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -554,6 +554,18 @@ jobs:
           CINDER_TEST_COMPONENTS: ${{ needs.scope.outputs.component_scope_mode == 'filtered' && needs.scope.outputs.components || '' }}
           CINDER_VISUAL_DIFF: ${{ github.event.inputs.mode }}
         run: bun run --filter=@cinder/testing test:browser:docker
+      - name: Merge visual-report fragments
+        if: always() && github.event.inputs.mode == 'report'
+        run: |
+          set -euo pipefail
+          REPORT_DIRECTORY=packages/testing/test-results/visual-report
+          if [ ! -d "$REPORT_DIRECTORY" ]; then
+            echo "No visual-report fragments emitted; nothing to merge."
+            exit 0
+          fi
+          find "$REPORT_DIRECTORY" -name '*.json' -print0 \
+            | xargs -0 -I {} cat {} \
+            | jq -s '.' > packages/testing/test-results/visual-report.json
       - name: Upload visual report
         if: always() && github.event.inputs.mode == 'report'
         uses: actions/upload-artifact@v7
