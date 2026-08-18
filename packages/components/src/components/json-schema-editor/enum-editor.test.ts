@@ -95,4 +95,26 @@ describe('EnumEditor', () => {
       true,
     );
   });
+
+  test('keeps duplicate values local and disables reordering while a draft is invalid', async () => {
+    let values: unknown[] = [];
+    render(EnumEditor, {
+      idPrefix: 'status-enum',
+      path: '/status/enum',
+      values: ['draft', 'published'],
+      onValuesChange: (next: unknown[]) => {
+        values = next;
+      },
+    });
+
+    await fireEvent.input(screen.getByRole('textbox', { name: 'Enum value 2' }), {
+      target: { value: '"draft"' },
+    });
+
+    expect(values).toEqual([]);
+    expect(screen.getByRole('button', { name: 'Move enum value 2 up' })).toHaveProperty(
+      'disabled',
+      true,
+    );
+  });
 });

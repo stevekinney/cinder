@@ -30,7 +30,7 @@
   onDestroy(() => onvalidationErrorcount?.(0));
 
   function jsonText(value: unknown): string {
-    return JSON.stringify(value);
+    return JSON.stringify(value) ?? 'null';
   }
 
   function isJsonValue(value: unknown): boolean {
@@ -40,10 +40,23 @@
     return value === null || typeof value === 'string' || typeof value === 'boolean';
   }
 
+  function hasDuplicateValue(value: unknown, exceptIndex: number): boolean {
+    const encoded = JSON.stringify(value);
+    return values.some((item, index) => index !== exceptIndex && JSON.stringify(item) === encoded);
+  }
+
+  $effect(() => {
+    const validIndexes = [...invalidValueIndexes].filter((index) => index < values.length);
+    if (validIndexes.length !== invalidValueIndexes.size)
+      invalidValueIndexes = new Set(validIndexes);
+  });
+
   function setValue(index: number, text: string): void {
     try {
       const nextValue = JSON.parse(text) as unknown;
-      if (!isJsonValue(nextValue)) throw new Error('Enum values must be finite JSON values.');
+      if (!isJsonValue(nextValue) || hasDuplicateValue(nextValue, index)) {
+        throw new Error('Enum values must be unique finite JSON values.');
+      }
       const next = [...values];
       next[index] = nextValue;
       invalidValueIndexes = new Set([...invalidValueIndexes].filter((item) => item !== index));
@@ -55,7 +68,8 @@
 
   function moveValue(index: number, direction: -1 | 1): void {
     const targetIndex = index + direction;
-    if (readonly || targetIndex < 0 || targetIndex >= values.length) return;
+    if (readonly || invalidValueIndexes.size > 0 || targetIndex < 0 || targetIndex >= values.length)
+      return;
     const next = [...values];
     [next[index], next[targetIndex]] = [next[targetIndex]!, next[index]!];
     invalidValueIndexes = new Set(
@@ -73,14 +87,18 @@
         .filter((item) => item !== index)
         .map((item) => (item > index ? item - 1 : item)),
     );
+    const focusIndex = Math.min(index, values.length - 2);
     onValuesChange(values.filter((_, itemIndex) => itemIndex !== index));
     await tick();
-    removeButtons[Math.min(index, values.length - 2)]?.focus();
+    removeButtons[focusIndex]?.focus();
   }
 
   function addValue(): void {
     if (readonly) return;
-    onValuesChange([...values, '']);
+    let nextValue = '';
+    let suffix = 1;
+    while (hasDuplicateValue(nextValue, -1)) nextValue = `value ${suffix++}`;
+    onValuesChange([...values, nextValue]);
   }
 </script>
 
@@ -117,7 +135,7 @@
             <Button
               variant="ghost"
               size="xs"
-              disabled={readonly || index === 0}
+              disabled={readonly || invalidValueIndexes.size > 0 || index === 0}
               aria-label={`Move enum value ${index + 1} up`}
               onclick={() => moveValue(index, -1)}
             >
@@ -126,7 +144,7 @@
             <Button
               variant="ghost"
               size="xs"
-              disabled={readonly || index === values.length - 1}
+              disabled={readonly || invalidValueIndexes.size > 0 || index === values.length - 1}
               aria-label={`Move enum value ${index + 1} down`}
               onclick={() => moveValue(index, 1)}
             >
