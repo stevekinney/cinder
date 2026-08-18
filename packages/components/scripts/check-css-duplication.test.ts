@@ -3,6 +3,7 @@ import { parse } from 'postcss';
 
 import {
   componentClassNamesFromMarkup,
+  componentClassNamesFromStylesheet,
   compoundFamilies,
   declarationMultiset,
   declarationMultisetForComponent,
@@ -94,6 +95,14 @@ describe('declarationMultiset', () => {
         `<tr class="cinder-table__row"><td class:cinder-table__row--selected={selected}></td></tr>`,
       ),
     ).toEqual(['cinder-table__row', 'cinder-table__row--selected']);
+  });
+
+  test('discovers compound-leaf selectors from sidecar CSS', () => {
+    expect(
+      componentClassNamesFromStylesheet(
+        parse('.cinder-table__row--selected { color: var(--cinder-accent); }'),
+      ),
+    ).toEqual(['cinder-table__row--selected']);
   });
 
   test('keeps keyframe declarations in their owning component stylesheet', () => {

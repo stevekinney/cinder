@@ -144,6 +144,17 @@ export function componentClassNamesFromMarkup(source: string): string[] {
   ].toSorted();
 }
 
+/** Extract Cinder classes from component CSS when markup computes them dynamically. */
+export function componentClassNamesFromStylesheet(stylesheet: Root): string[] {
+  const classNames = new Set<string>();
+  stylesheet.walkRules((rule) => {
+    for (const match of rule.selector.matchAll(/\.([a-z][a-z0-9_-]*)/gi)) {
+      if (match[1]?.startsWith('cinder-')) classNames.add(match[1]);
+    }
+  });
+  return [...classNames].toSorted();
+}
+
 /**
  * Build a declaration multiset from rules owned by one component. This lets a
  * compound parent keep leaf rules in its stylesheet without hiding that leaf
@@ -278,11 +289,7 @@ async function collectComponentCss(): Promise<ComponentCss[]> {
       }
     }
     for (const source of componentSources) {
-      source.walkRules((rule) => {
-        for (const match of rule.selector.matchAll(/\\.([a-z][a-z0-9-]*)/gi)) {
-          if (match[1]?.startsWith('cinder-')) classNames.add(match[1]);
-        }
-      });
+      for (const className of componentClassNamesFromStylesheet(source)) classNames.add(className);
       for (const [key, count] of declarationMultisetForComponent(
         source,
         component.name,
