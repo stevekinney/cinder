@@ -776,7 +776,9 @@
     // below and snaps a stale-true viewport to the bottom (#1237).
     if (!isTranscriptGrowth && autoStickSuppressedByPrepend) return undefined;
 
-    if (atBottom && currentCount > 0) {
+    const activeEditNeedsScrollRecompute =
+      isTranscriptAppend && untrack(() => editingMessageIds.size > 0);
+    if ((atBottom || activeEditNeedsScrollRecompute) && currentCount > 0) {
       let cancelled = false;
       const waitForBottomTarget = isTranscriptAppend ? waitForLayoutFrame() : tick();
       void waitForBottomTarget.then(() => {

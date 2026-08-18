@@ -1180,6 +1180,15 @@ describe('ChatAdapter — command equivalence', () => {
       for (const frame of pending) frame(performance.now());
       flushSync();
     };
+    const finishConversationGrowth = async (): Promise<void> => {
+      await tick();
+      await Promise.resolve();
+      expect(frames.length).toBeGreaterThan(0);
+      flushFrames();
+      await tick();
+      await Promise.resolve();
+      flushSync();
+    };
     const initial = conversationFromMessages('adapter-edit-conversation-growth', [
       message('user-1', 'user', 'Original text', 0),
     ]);
@@ -1211,7 +1220,7 @@ describe('ChatAdapter — command equivalence', () => {
         scrollCalls.push(options);
       }) as HTMLElement['scrollTo'];
 
-      scrollHeight = 500;
+      scrollHeight = 270;
       instance.setConversation(
         conversationFromMessages('adapter-edit-conversation-growth', [
           message('user-1', 'user', 'Original text', 0),
@@ -1219,13 +1228,22 @@ describe('ChatAdapter — command equivalence', () => {
         ]),
       );
       flushSync();
-      await tick();
-      await Promise.resolve();
-      expect(frames.length).toBeGreaterThan(0);
-      flushFrames();
-      await tick();
-      await Promise.resolve();
+      await finishConversationGrowth();
+
+      expect(target.querySelector('.chat-message-edit-textarea')).toBe(editor);
+      expect(scrollCalls).toEqual([]);
+      expect(target.querySelector('.chat-jump-button')).toBeNull();
+
+      scrollHeight = 500;
+      instance.setConversation(
+        conversationFromMessages('adapter-edit-conversation-growth', [
+          message('user-1', 'user', 'Original text', 0),
+          message('assistant-1', 'assistant', 'A new response', 1),
+          message('assistant-2', 'assistant', 'Another response', 2),
+        ]),
+      );
       flushSync();
+      await finishConversationGrowth();
 
       expect(target.querySelector('.chat-message-edit-textarea')).toBe(editor);
       expect(scrollCalls).toEqual([]);
