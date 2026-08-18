@@ -7,7 +7,7 @@ setupHappyDom();
 
 const nativeDataTransfer = globalThis.DataTransfer;
 
-const { render, fireEvent, cleanup } = await import('@testing-library/svelte');
+const { render, fireEvent, cleanup, screen } = await import('@testing-library/svelte');
 
 // Unmount renders between tests; shared document.body otherwise leaks activeElement/nodes.
 afterEach(() => {
@@ -131,15 +131,17 @@ describe('FileUpload rendering', () => {
     );
   });
 
-  test('exposes the dropzone as a group and keeps the native picker keyboard reachable', async () => {
+  test('exposes a named dropzone group and keeps the native picker keyboard reachable', async () => {
     const { container } = render(FileUpload, { props: { id: 'resume-upload' } });
-    const dropzone = container.querySelector('.cinder-file-upload__dropzone') as HTMLDivElement;
     const input = container.querySelector('#resume-upload') as HTMLInputElement;
-    const button = container.querySelector('.cinder-file-upload__button') as HTMLButtonElement;
+    const button = screen.getByRole('button', { name: 'Browse files' });
     const inputClick = mock(() => {});
     input.click = inputClick;
 
-    expect(dropzone.getAttribute('role')).toBe('group');
+    expect(screen.getByRole('group', { name: 'File upload' })).toBe(
+      container.querySelector('.cinder-file-upload__dropzone'),
+    );
+    expect(button.hasAttribute('tabindex')).toBe(false);
     button.focus();
     expect(document.activeElement).toBe(button);
 
@@ -237,6 +239,16 @@ describe('FileUpload rendering', () => {
     );
   });
 
+  test('uses the FormField label as the dropzone group name', () => {
+    render(FormFieldFileUploadFixture, {
+      props: { fieldId: 'resume', fieldLabel: 'Resume' },
+    });
+
+    expect(screen.getByRole('group', { name: 'Resume' }).classList).toContain(
+      'cinder-file-upload__dropzone',
+    );
+  });
+
   test('inherits required and disabled from FormField context', () => {
     const { container } = render(FormFieldFileUploadFixture, {
       props: {
@@ -282,6 +294,7 @@ describe('FileUpload validation and events', () => {
     attachInputFiles(input, [file]);
     await fireEvent.change(input);
 
+    expect(onFilesAccepted).toHaveBeenCalledTimes(1);
     expect(onFilesAccepted).toHaveBeenCalledWith([file]);
   });
 
