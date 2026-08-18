@@ -27,17 +27,20 @@ function normalizeTokenValue(value: string): string {
     .trim();
 }
 
-function extractDocTokens(markdown: string): Map<string, string> {
+function extractDocTokens(markdown: string): { duplicates: string[]; tokens: Map<string, string> } {
   // Doc lists tokens as inline code in table rows: `` `--cinder-space-4` ``.
   // We deliberately only count tokens that appear inside backticks at the start
   // of a table cell (i.e. `| \`--cinder-...\``) so that incidental mentions in
   // prose (e.g. "override `--cinder-accent` to re-derive both") don't count.
   const tokens = new Map<string, string>();
+  const duplicates: string[] = [];
   const rowPattern = /^\|\s*`(--cinder-[a-z0-9-]+)`\s*\|\s*`([^`]+)`\s*\|/gm;
   for (const match of markdown.matchAll(rowPattern)) {
-    if (match[1] && match[2]) tokens.set(match[1], normalizeTokenValue(match[2]));
+    if (!match[1] || !match[2]) continue;
+    if (tokens.has(match[1])) duplicates.push(match[1]);
+    tokens.set(match[1], normalizeTokenValue(match[2]));
   }
-  return tokens;
+  return { duplicates: duplicates.toSorted(), tokens };
 }
 
 describe('docs/tokens.md drift', () => {
@@ -48,7 +51,7 @@ describe('docs/tokens.md drift', () => {
     ]);
 
     const cssTokens = readRootTokenValues(css);
-    const docTokens = extractDocTokens(doc);
+    const { duplicates, tokens: docTokens } = extractDocTokens(doc);
 
     // Sanity floor: a parser regression that silently returns a tiny set would
     // otherwise show up as a confusing "missing from CSS: [137 tokens]" diff
@@ -72,7 +75,8 @@ describe('docs/tokens.md drift', () => {
       })
       .toSorted();
 
-    expect({ missingFromDoc, missingFromCss, mismatchedValues }).toEqual({
+    expect({ duplicates, missingFromDoc, missingFromCss, mismatchedValues }).toEqual({
+      duplicates: [],
       missingFromDoc: [],
       missingFromCss: [],
       mismatchedValues: [],

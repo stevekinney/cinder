@@ -207,9 +207,9 @@ The brand color and its derivatives. `hover` and `active` are computed from `--c
 | `--cinder-accent-active`         | `oklch(from var(--cinder-accent) calc(l - 0.15) c h)`      |
 | `--cinder-accent-active-on-fill` | `oklch(from var(--cinder-accent) calc(l - 0.11) c h)`      |
 
-`--cinder-accent-text` is the brand color used _as_ text/icon on a light surface. `--cinder-accent` is now a darker, more ink-like cyan (`oklch(0.66 0.16 195)`); as a foreground its contrast improves over the previous bright fill but still does _not_ clear the 3:1 UI floor (≈2.7:1 on the raised surface, lower on `--cinder-bg` / `--cinder-surface-inset`) — so foreground usages (links, accent chip/badge labels, active tab labels, selected rows, toast actions, and the current-step marker) keep using this darker on-brand cyan, which clears 4.5:1 on every surface. `--cinder-accent` remains a _fill_: it carries the dark-ink `--cinder-accent-contrast` label at ≈7.2:1. `--cinder-accent-text-hover` is the hover step for those text/icon links: it darkens `--cinder-accent-text` by 0.08 lightness (light arm ≈ 7.9:1 on white) so links get _darker_ on hover. It exists because the fill-derived `--cinder-accent-hover` is _lighter_ than the resting text color and drops to ~2.75:1 on near-white — links must use `--cinder-accent-text-hover`, not `--cinder-accent-hover`, for their hover color.
+`--cinder-accent-text` is the brand color used _as_ text/icon on a light surface. `--cinder-accent` is a deep indigo fill (`oklch(50% 0.22 270)` in light mode) that carries the white `--cinder-accent-contrast` label at 6.45:1; its bright periwinkle dark-mode arm carries the dark-ink label at 7.77:1. Foreground usages (links, accent chip/badge labels, active tab labels, selected rows, toast actions, and the current-step marker) use the dedicated `--cinder-accent-text` token, which clears 4.5:1 on every light surface. `--cinder-accent-text-hover` darkens that foreground by 0.08 lightness (light arm ≈7.9:1 on white) so links get darker on hover; links must not use the fill-derived `--cinder-accent-hover`, which does not preserve the foreground contrast contract.
 
-`--cinder-accent-active-on-fill` is the pressed fill for solid accent surfaces that carry the dark-ink `--cinder-accent-contrast` label (primary `Button`, `FloatingAction`). The general `--cinder-accent-active` darkens the accent by `0.15`; on the darker `L=0.66` accent that resolves to `L=0.51`, where the dark-ink label drops to only ~4.09:1 — under WCAG AA. This token darkens by a gentler `0.11` (light → `L=0.55`, ~4.79:1; dark → `L=0.67`, ~7.1:1) so the pressed label stays AA-legible in both arms. Accent surfaces that do _not_ bear an on-fill label keep using `--cinder-accent-active`.
+`--cinder-accent-active-on-fill` is the pressed fill for solid accent surfaces that carry `--cinder-accent-contrast` labels (primary `Button`, `FloatingAction`). It darkens the light indigo arm by 0.11 to `L=0.39`, increasing white-label contrast to 10.5:1, while retaining a separate token so label-bearing and non-label consumers can diverge when needed. Accent surfaces that do not bear an on-fill label keep using `--cinder-accent-active`.
 
 ## Semantic aliases
 
@@ -271,22 +271,11 @@ Shared checkerboard colors for color-domain components that need to show alpha o
 | `--cinder-color-checker-base` | `light-dark(#fff, oklch(28% 0.02 245))` |
 | `--cinder-color-checker-tile` | `light-dark(#ccc, oklch(38% 0.02 245))` |
 
-## Scrollbar
-
-Used by the `ScrollArea` component and any consumer that opts into themed native scrollbars. Thumb alpha is tuned so the resolved thumb-on-surface contrast clears WCAG 1.4.11 (3:1) over common light- and dark-mode surface tokens.
-
-| Token                            | Default                                                    |
-| -------------------------------- | ---------------------------------------------------------- |
-| `--cinder-scrollbar-size`        | `0.625rem`                                                 |
-| `--cinder-scrollbar-track`       | `light-dark(oklch(0% 0 0 / 0.04), oklch(100% 0 0 / 0.04))` |
-| `--cinder-scrollbar-thumb`       | `light-dark(oklch(0% 0 0 / 0.45), oklch(100% 0 0 / 0.45))` |
-| `--cinder-scrollbar-thumb-hover` | `light-dark(oklch(0% 0 0 / 0.65), oklch(100% 0 0 / 0.65))` |
-
 ## Chart series
 
 Categorical chart colors for LineChart, BarChart, AreaChart, and consumers that need to keep custom chart marks aligned with cinder's default series palette.
 
-Each `--cinder-chart-series-*` is a theme-aware design token: it wraps a distinct per-theme OKLCH value in `light-dark()`, darker and higher-chroma in light mode so the mark reads against pale light surfaces, lighter in dark mode so it reads against dark surfaces. Only the color values branch — the hue assigned to each series index is held constant across themes so a given series keeps its identity when the theme flips. This mirrors the Shadow-section rationale: the per-theme arms exist to preserve perceived contrast and hierarchy, not to recolor the chart.
+Each `--cinder-chart-series-*` is a theme-aware design token: it wraps a distinct per-theme OKLCH value in `light-dark()`, darker and higher-chroma in light mode so the mark reads against pale light surfaces, lighter in dark mode so it reads against dark surfaces. Both color values and hues may change between theme arms: the index keeps its position in the series sequence, while the palette remaps it for contrast and visual separation in the active theme. This mirrors the Shadow-section rationale: the per-theme arms preserve perceived contrast and hierarchy.
 
 | Token                     | Default                                                 |
 | ------------------------- | ------------------------------------------------------- |
