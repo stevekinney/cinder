@@ -122,6 +122,16 @@ describe('docs/tokens.md drift', () => {
     );
     expect(focusRingPolicy).toContain(`\`${value('--cinder-ring-offset-color')}\``);
 
+    const scopedThemeBlock = (theme: 'light' | 'dark') => {
+      const block = theming.match(
+        new RegExp(`^  \\[data-theme='${theme}'\\] \\{([\\s\\S]*?)\\n  \\}`, 'm'),
+      )?.[1];
+      expect(block).toBeDefined();
+      return block!;
+    };
+    const darkTheme = scopedThemeBlock('dark');
+    const lightTheme = scopedThemeBlock('light');
+
     for (const token of [
       '--cinder-surface',
       '--cinder-surface-raised',
@@ -136,8 +146,8 @@ describe('docs/tokens.md drift', () => {
           .map((arm) => arm.trim()) ?? [];
       expect(light).toBeDefined();
       expect(dark).toBeDefined();
-      expect(theming).toContain(`${token}: ${light};`);
-      expect(theming).toContain(`${token}: ${dark};`);
+      expect(lightTheme).toContain(`${token}: ${light};`);
+      expect(darkTheme).toContain(`${token}: ${dark};`);
     }
   });
 });
