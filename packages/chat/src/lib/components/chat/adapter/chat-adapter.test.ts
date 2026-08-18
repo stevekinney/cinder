@@ -1086,11 +1086,14 @@ describe('ChatAdapter — command equivalence', () => {
       message('user-1', 'user', 'Original text', 0),
       message('assistant-1', 'assistant', 'Streaming reply', 1),
     ]);
+    const sent: MessageInput[] = [];
     const { container, instance } = mountChat({
       id: 'chat-adapter-edit-stream',
       conversation,
       adapter: {
-        sendMessage: async () => {},
+        sendMessage: async (message) => {
+          sent.push(message);
+        },
         editMessage: async () => {},
       } satisfies ChatAdapter,
     });
@@ -1105,6 +1108,12 @@ describe('ChatAdapter — command equivalence', () => {
       expect(save).not.toBeNull();
       expect(cancel).not.toBeNull();
       const timeline = container.querySelector<HTMLElement>('.chat-timeline')!;
+      let scrollHeight = 500;
+      Object.defineProperties(timeline, {
+        clientHeight: { configurable: true, value: 100 },
+        scrollHeight: { configurable: true, get: () => scrollHeight },
+      });
+      timeline.scrollTop = 0;
       const scrollCalls: ScrollToOptions[] = [];
       timeline.scrollTo = ((options: ScrollToOptions) => {
         scrollCalls.push(options);
@@ -1121,7 +1130,26 @@ describe('ChatAdapter — command equivalence', () => {
       expect(container.querySelector('.chat-message-edit-save')).toBe(save);
       expect(container.querySelector('.chat-message-edit-cancel')).toBe(cancel);
       expect(scrollCalls).toEqual([]);
+      expect(container.querySelector('.chat-jump-button')).not.toBeNull();
 
+      const composer = container.querySelector<HTMLTextAreaElement>('.chat-input-editor')!;
+      composer.value = 'A new message';
+      composer.dispatchEvent(new Event('input', { bubbles: true }));
+      flushSync();
+      container.querySelector<HTMLButtonElement>('.chat-input-send')!.click();
+      await tick();
+      flushSync();
+
+      expect(sent).toEqual([{ content: 'A new message', role: 'user' }]);
+      expect(container.querySelector('.chat-message-edit-textarea')).toBe(editor);
+      expect(scrollCalls).toEqual([]);
+
+      timeline.scrollTop = 400;
+      timeline.dispatchEvent(new Event('scroll'));
+      flushFrames();
+      await tick();
+      flushSync();
+      scrollHeight = 600;
       cancel!.click();
       flushSync();
       chat.pushToken(' after editing');

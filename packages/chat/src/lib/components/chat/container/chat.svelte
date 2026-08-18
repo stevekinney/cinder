@@ -1639,6 +1639,7 @@
   function handleSubmit(message: MessageInput, attachments: ChatAttachment[]): void {
     cancelNonVirtualHistoryAnchorStabilization();
     invalidatePendingHistoryRestoration();
+    const autoScrollSuppressed = editingMessageIds.size > 0;
     // Fire-and-forget the command (the dispatcher owns awaiting + error routing);
     // scroll immediately so the round-trip latency never delays the auto-scroll.
     // `Promise.resolve(...)` normalizes a sync-returning method to a promise so
@@ -1655,9 +1656,15 @@
     // atBottom=true state immediately — scrollState.setAtBottom() only
     // updates the internal helper state; the bindable must be written explicitly
     // (matching the pattern in handleScrollStateChange and onReachBottom).
-    scrollState.setAtBottom(true);
-    updateAtBottomBinding(true);
+    if (!autoScrollSuppressed) {
+      scrollState.setAtBottom(true);
+      updateAtBottomBinding(true);
+    }
     tick().then(() => {
+      if (autoScrollSuppressed) {
+        scrollState.recomputeFromViewport(viewport);
+        return;
+      }
       if (isVirtualized) {
         chatVirtualizer.scrollToOffset(chatVirtualizer.scrollSize, { behavior: 'instant' });
       } else {
@@ -2366,17 +2373,20 @@
     if (streamingScrollRaf === undefined) {
       streamingScrollRaf = requestAnimationFrame(() => {
         streamingScrollRaf = undefined;
+        const autoScrollSuppressed = editingMessageIds.size > 0;
         // Flush: join the entire buffer once per frame
         streamingContent = tokenBuffer.join('');
-        if (streamingRowElement) {
-          tick().then(() => {
-            if (streamingRowElement) {
-              chatVirtualizer.measureElementNode(streamingRowElement);
-            }
-          });
-        }
+        void tick().then(async () => {
+          if (streamingRowElement) {
+            chatVirtualizer.measureElementNode(streamingRowElement);
+            if (isVirtualized) await tick();
+          }
+          if (autoScrollSuppressed) {
+            scrollState.recomputeFromViewport(viewport);
+          }
+        });
         // Auto-scroll if at bottom
-        if (scrollState.atBottom && viewport && editingMessageIds.size === 0) {
+        if (scrollState.atBottom && viewport && !autoScrollSuppressed) {
           if (isVirtualized) {
             chatVirtualizer.scrollToOffset(chatVirtualizer.scrollSize, { behavior: 'instant' });
           } else {
