@@ -1129,7 +1129,7 @@
                       <span class="dx-stage__dot" aria-hidden="true"></span>
                       <span class="dx-stage__label">Live preview</span>
                     </div>
-                    <div class="dx-stage__canvas">
+                    <div class="dx-stage__canvas" role="region" aria-label="Preview" tabindex="0">
                       {#if previewRecipe?.referenceHtml !== undefined}
                         <!-- A styling primitive is invisible without something to
                                be compared against. -->
@@ -1171,7 +1171,7 @@
                       <span class="dx-stage__dot" aria-hidden="true"></span>
                       <span class="dx-stage__label">Featured example</span>
                     </div>
-                    <div class="dx-stage__canvas">
+                    <div class="dx-stage__canvas" role="region" aria-label="Preview" tabindex="0">
                       {#if mountErrors[`playground-mount-${overviewExample.scenario}`] !== undefined}
                         {@const error = mountErrors[`playground-mount-${overviewExample.scenario}`]}
                         <Callout variant="danger" title="This preview failed to render">
@@ -1199,7 +1199,7 @@
                       <span class="dx-stage__dot" aria-hidden="true"></span>
                       <span class="dx-stage__label">Composed component</span>
                     </div>
-                    <div class="dx-stage__canvas">
+                    <div class="dx-stage__canvas" role="region" aria-label="Preview" tabindex="0">
                       <p class="dx-stage__compose">
                         {documentation.component.name} is composed inside
                         <a href={buildComponentHref(composesInto)} target="_top">
@@ -1228,7 +1228,12 @@
                       <span class="dx-stage__dot" aria-hidden="true"></span>
                       <span class="dx-stage__label">Live preview</span>
                     </div>
-                    <div class="dx-stage__canvas"></div>
+                    <div
+                      class="dx-stage__canvas"
+                      role="region"
+                      aria-label="Preview"
+                      tabindex="0"
+                    ></div>
                     <p class="dx-stage__note">
                       Renders with the props below. Adjust the controls to update it live.
                     </p>
