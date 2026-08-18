@@ -147,7 +147,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .cinder-side-navigation-group__chevron {
+    :root:not([data-cinder-reduced-motion='false']) .cinder-side-navigation-group__chevron {
       transition: none;
     }
   }

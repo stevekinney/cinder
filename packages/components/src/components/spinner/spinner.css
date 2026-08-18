@@ -37,7 +37,7 @@
 
   /* Respect the user's reduced-motion preference */
   @media (prefers-reduced-motion: reduce) {
-    .cinder-spinner {
+    :root:not([data-cinder-reduced-motion='false']) .cinder-spinner {
       animation: none;
       border-top-color: var(--cinder-border-muted, #ccc);
       opacity: 0.5;

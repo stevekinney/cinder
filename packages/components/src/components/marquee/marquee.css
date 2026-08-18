@@ -122,16 +122,16 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .cinder-marquee__viewport {
+    :root:not([data-cinder-reduced-motion='false']) .cinder-marquee__viewport {
       overflow: auto;
     }
 
-    .cinder-marquee__track {
+    :root:not([data-cinder-reduced-motion='false']) .cinder-marquee__track {
       animation: none;
       transform: none;
     }
 
-    .cinder-marquee__item[aria-hidden='true'] {
+    :root:not([data-cinder-reduced-motion='false']) .cinder-marquee__item[aria-hidden='true'] {
       display: none;
     }
   }

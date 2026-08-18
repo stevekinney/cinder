@@ -199,7 +199,8 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .cinder-selection-popover[data-cinder-position-ready='true'] {
+    :root:not([data-cinder-reduced-motion='false'])
+      .cinder-selection-popover[data-cinder-position-ready='true'] {
       animation: cinder-selection-popover-fade var(--cinder-duration-fast) linear;
     }
 

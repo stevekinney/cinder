@@ -171,8 +171,8 @@
  * ---------------------------------------- */
 
   @media (prefers-reduced-motion: reduce) {
-    .cinder-pagination__step,
-    .cinder-pagination__page {
+    :root:not([data-cinder-reduced-motion='false']) .cinder-pagination__step,
+    :root:not([data-cinder-reduced-motion='false']) .cinder-pagination__page {
       transition: none;
     }
   }

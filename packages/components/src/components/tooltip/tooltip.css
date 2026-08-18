@@ -67,7 +67,7 @@
  * ---------------------------------------- */
 
   @media (prefers-reduced-motion: reduce) {
-    .cinder-tooltip {
+    :root:not([data-cinder-reduced-motion='false']) .cinder-tooltip {
       transition: none;
     }
   }

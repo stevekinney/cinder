@@ -166,7 +166,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .cinder-bar-chart__bar {
+    :root:not([data-cinder-reduced-motion='false']) .cinder-bar-chart__bar {
       transition: none;
     }
   }

@@ -142,7 +142,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .cinder-popover {
+    :root:not([data-cinder-reduced-motion='false']) .cinder-popover {
       transition: none;
     }
   }

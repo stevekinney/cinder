@@ -47,7 +47,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .cinder-progress--bar .cinder-progress__fill {
+    :root:not([data-cinder-reduced-motion='false']) .cinder-progress--bar .cinder-progress__fill {
       transition: none;
     }
   }
@@ -68,7 +68,9 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .cinder-progress--bar .cinder-progress__fill--indeterminate {
+    :root:not([data-cinder-reduced-motion='false'])
+      .cinder-progress--bar
+      .cinder-progress__fill--indeterminate {
       animation: none;
       width: 100%;
       opacity: 0.5;
@@ -118,7 +120,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .cinder-progress--ring .cinder-progress__fill {
+    :root:not([data-cinder-reduced-motion='false']) .cinder-progress--ring .cinder-progress__fill {
       transition: none;
     }
   }
@@ -140,7 +142,9 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .cinder-progress--ring .cinder-progress__fill--indeterminate {
+    :root:not([data-cinder-reduced-motion='false'])
+      .cinder-progress--ring
+      .cinder-progress__fill--indeterminate {
       animation: none;
       stroke-dasharray: 100.53;
       stroke-dashoffset: 0;

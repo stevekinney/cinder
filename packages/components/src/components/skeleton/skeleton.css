@@ -29,7 +29,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .cinder-skeleton {
+    :root:not([data-cinder-reduced-motion='false']) .cinder-skeleton {
       animation: none;
       background: var(--cinder-surface-inset);
     }

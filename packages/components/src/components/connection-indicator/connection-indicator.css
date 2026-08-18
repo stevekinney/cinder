@@ -41,7 +41,9 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .cinder-connection-indicator[data-cinder-status='live'] .cinder-connection-indicator__dot {
+    :root:not([data-cinder-reduced-motion='false'])
+      .cinder-connection-indicator[data-cinder-status='live']
+      .cinder-connection-indicator__dot {
       animation: none;
     }
   }
@@ -78,9 +80,11 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .cinder-connection-indicator[data-cinder-status='connecting']
+    :root:not([data-cinder-reduced-motion='false'])
+      .cinder-connection-indicator[data-cinder-status='connecting']
       .cinder-connection-indicator__icon,
-    .cinder-connection-indicator[data-cinder-status='reconnecting']
+    :root:not([data-cinder-reduced-motion='false'])
+      .cinder-connection-indicator[data-cinder-status='reconnecting']
       .cinder-connection-indicator__icon {
       animation: none;
     }

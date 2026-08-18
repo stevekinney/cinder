@@ -70,7 +70,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .cinder-mega-menu__indicator {
+    :root:not([data-cinder-reduced-motion='false']) .cinder-mega-menu__indicator {
       transition: none;
     }
   }
@@ -97,8 +97,10 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .cinder-mega-menu__content[data-motion='from-start'],
-    .cinder-mega-menu__content[data-motion='from-end'] {
+    :root:not([data-cinder-reduced-motion='false'])
+      .cinder-mega-menu__content[data-motion='from-start'],
+    :root:not([data-cinder-reduced-motion='false'])
+      .cinder-mega-menu__content[data-motion='from-end'] {
       animation: none;
     }
   }

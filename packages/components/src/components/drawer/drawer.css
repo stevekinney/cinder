@@ -268,11 +268,11 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .cinder-drawer__panel {
+    :root:not([data-cinder-reduced-motion='false']) .cinder-drawer__panel {
       transition: none;
     }
 
-    .cinder-drawer::backdrop {
+    :root:not([data-cinder-reduced-motion='false']) .cinder-drawer::backdrop {
       transition: none;
     }
   }

@@ -92,7 +92,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .cinder-json-viewer__caret {
+    :root:not([data-cinder-reduced-motion='false']) .cinder-json-viewer__caret {
       transition: none;
     }
   }

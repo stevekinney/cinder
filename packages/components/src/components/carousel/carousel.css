@@ -161,7 +161,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .cinder-carousel__viewport {
+    :root:not([data-cinder-reduced-motion='false']) .cinder-carousel__viewport {
       scroll-behavior: auto;
     }
   }

@@ -94,7 +94,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .cinder-hover-card {
+    :root:not([data-cinder-reduced-motion='false']) .cinder-hover-card {
       transition: none;
       transform: none;
     }

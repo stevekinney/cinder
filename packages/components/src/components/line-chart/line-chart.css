@@ -169,7 +169,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .cinder-line-chart__line {
+    :root:not([data-cinder-reduced-motion='false']) .cinder-line-chart__line {
       transition: none;
     }
   }

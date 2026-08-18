@@ -89,7 +89,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .cinder-sparkbar__fill {
+    :root:not([data-cinder-reduced-motion='false']) .cinder-sparkbar__fill {
       transition: none;
     }
   }

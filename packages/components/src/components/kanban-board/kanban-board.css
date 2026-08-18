@@ -229,7 +229,8 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .cinder-kanban-board__card.cinder-sortable-item--placeholder {
+    :root:not([data-cinder-reduced-motion='false'])
+      .cinder-kanban-board__card.cinder-sortable-item--placeholder {
       opacity: 0.6;
     }
   }
@@ -301,7 +302,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .cinder-sortable-drag-preview {
+    :root:not([data-cinder-reduced-motion='false']) .cinder-sortable-drag-preview {
       transform: none;
     }
   }

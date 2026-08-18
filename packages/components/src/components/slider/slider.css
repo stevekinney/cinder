@@ -129,8 +129,8 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .cinder-slider__range,
-    .cinder-slider__thumb {
+    :root:not([data-cinder-reduced-motion='false']) .cinder-slider__range,
+    :root:not([data-cinder-reduced-motion='false']) .cinder-slider__thumb {
       transition: none;
     }
   }

@@ -215,7 +215,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .cinder-command-palette {
+    :root:not([data-cinder-reduced-motion='false']) .cinder-command-palette {
       animation: cinder-command-palette-fade var(--cinder-duration-fast) linear forwards;
     }
 

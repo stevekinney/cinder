@@ -118,7 +118,7 @@
  * ---------------------------------------- */
 
   @media (prefers-reduced-motion: reduce) {
-    .cinder-collapsible__chevron {
+    :root:not([data-cinder-reduced-motion='false']) .cinder-collapsible__chevron {
       transition: none;
     }
   }

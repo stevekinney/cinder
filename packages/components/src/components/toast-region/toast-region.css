@@ -123,9 +123,9 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .cinder-toast-shell,
-    .cinder-toast,
-    .cinder-toast__spinner {
+    :root:not([data-cinder-reduced-motion='false']) .cinder-toast-shell,
+    :root:not([data-cinder-reduced-motion='false']) .cinder-toast,
+    :root:not([data-cinder-reduced-motion='false']) .cinder-toast__spinner {
       animation: none;
       transition-duration: 0ms;
     }

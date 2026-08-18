@@ -117,7 +117,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .cinder-speed-dial-action {
+    :root:not([data-cinder-reduced-motion='false']) .cinder-speed-dial-action {
       transition: none;
     }
   }

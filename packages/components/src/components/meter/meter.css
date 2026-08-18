@@ -71,7 +71,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .cinder-meter__fill {
+    :root:not([data-cinder-reduced-motion='false']) .cinder-meter__fill {
       transition: none;
     }
   }
