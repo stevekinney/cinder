@@ -86,6 +86,10 @@ function isAtRule(node: Container | Document): node is AtRule {
   return node.type === 'atrule';
 }
 
+function isRule(node: Container | Document): node is Rule {
+  return node.type === 'rule';
+}
+
 function atRuleContext(node: Declaration): string {
   const parts: string[] = [];
   // Climb through every container (rules included) to the root, collecting
@@ -114,7 +118,7 @@ function declarationBelongsToComponent(declaration: Declaration, componentName: 
   const className = `cinder-${componentName}`;
   let current: Container | Document | undefined = declaration.parent;
   while (current && current.type !== 'root') {
-    if (current.type === 'rule' && selectorContainsComponent(current, className)) return true;
+    if (isRule(current) && selectorContainsComponent(current, className)) return true;
     current = current.parent;
   }
   return false;
