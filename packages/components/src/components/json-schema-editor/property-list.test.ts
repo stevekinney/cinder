@@ -142,8 +142,9 @@ describe('PropertyList', () => {
     expect(source).toContain('async function announceAction');
     expect(source).toContain("actionAnnouncement = ''");
     expect(source).toContain('await tick()');
-    expect(source).toContain('data-cinder-property-trigger');
-    expect(source).toContain('data-cinder-add-property');
+    expect(source).toContain('propertyTriggerElements.get(focusKey)');
+    expect(source).toContain('use:propertyTrigger={key}');
+    expect(source).toContain('bind:this={addPropertyElement}');
   });
 
   test('keeps enum in the preserved-keywords count when a schema is loaded', () => {

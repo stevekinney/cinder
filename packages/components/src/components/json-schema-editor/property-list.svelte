@@ -112,7 +112,23 @@
   }
 
   let actionAnnouncement = $state('');
-  let listElement: HTMLDivElement | undefined = $state();
+  const propertyTriggerElements = new Map<string, HTMLButtonElement>();
+  let addPropertyElement: HTMLSpanElement | undefined = $state();
+
+  function propertyTrigger(element: HTMLButtonElement, key: string) {
+    propertyTriggerElements.set(key, element);
+    return {
+      update(nextKey: string) {
+        if (nextKey === key) return;
+        propertyTriggerElements.delete(key);
+        key = nextKey;
+        propertyTriggerElements.set(key, element);
+      },
+      destroy() {
+        propertyTriggerElements.delete(key);
+      },
+    };
+  }
 
   async function announceAction(message: string) {
     actionAnnouncement = '';
@@ -134,10 +150,8 @@
     await announceAction(`Deleted ${key} property.`);
     await tick();
     const focusTarget = focusKey
-      ? listElement?.querySelector<HTMLButtonElement>(
-          `[data-cinder-property-trigger="${focusKey}"]`,
-        )
-      : listElement?.querySelector<HTMLButtonElement>('[data-cinder-add-property]');
+      ? propertyTriggerElements.get(focusKey)
+      : addPropertyElement?.querySelector<HTMLButtonElement>('button');
     focusTarget?.focus();
   }
 
@@ -224,7 +238,7 @@
   }
 </script>
 
-<div class="cinder-jse-property-list" bind:this={listElement}>
+<div class="cinder-jse-property-list">
   <p class="cinder-sr-only" aria-live="polite">{actionAnnouncement}</p>
   {#if renameError}
     <Alert variant="danger">{renameError}</Alert>
@@ -252,7 +266,7 @@
     >
       <div class="cinder-jse-property-row__summary" style={`--cinder-jse-property-depth: ${depth}`}>
         <button
-          data-cinder-property-trigger={key}
+          use:propertyTrigger={key}
           type="button"
           class="cinder-jse-property-row__trigger"
           aria-label={`${isOpen ? 'Collapse' : 'Expand'} ${key} property${childValidationErrorCount > 0 ? `, ${childValidationErrorCount} validation ${childValidationErrorCount === 1 ? 'error' : 'errors'}` : ''}`}
@@ -342,15 +356,11 @@
     </div>
   {/each}
 
-  <Button
-    data-cinder-add-property
-    variant="secondary"
-    size="sm"
-    disabled={readonly}
-    onclick={addProperty}
-  >
-    Add property
-  </Button>
+  <span bind:this={addPropertyElement}>
+    <Button variant="secondary" size="sm" disabled={readonly} onclick={addProperty}>
+      Add property
+    </Button>
+  </span>
 
   {#if !readonly || requiredOnly.length > 0}
     <Collapsible
