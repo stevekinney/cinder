@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -9,7 +9,9 @@ import {
   type Document,
   parse,
   type Root,
+  type Rule,
 } from 'postcss';
+import selectorParser from 'postcss-selector-parser';
 
 import { discoverComponentDirectories } from './discover-component-directories.ts';
 
@@ -85,6 +87,10 @@ function isAtRule(node: Container | Document): node is AtRule {
   return node.type === 'atrule';
 }
 
+function isRule(node: Container | Document): node is Rule {
+  return node.type === 'rule';
+}
+
 function atRuleContext(node: Declaration): string {
   const parts: string[] = [];
   // Climb through every container (rules included) to the root, collecting
@@ -106,8 +112,104 @@ function atRuleContext(node: Declaration): string {
  * not the layer wrapper) prefixes each key so responsive clones count.
  */
 export function declarationMultiset(root: Root, componentName: string): DeclarationMultiset {
+  return declarationMultisetForComponent(root, componentName, () => true);
+}
+
+function declarationBelongsToComponent(declaration: Declaration, componentName: string): boolean {
+  return declarationBelongsToClasses(declaration, [`cinder-${componentName}`]);
+}
+
+function declarationBelongsToClasses(
+  declaration: Declaration,
+  classNames: readonly string[],
+): boolean {
+  let current: Container | Document | undefined = declaration.parent;
+  while (current && current.type !== 'root') {
+    if (isRule(current)) {
+      const rule = current;
+      if (classNames.some((className) => selectorContainsComponent(rule, className))) return true;
+    }
+    current = current.parent;
+  }
+  return false;
+}
+
+function selectorContainsComponent(rule: Rule, className: string): boolean {
+  let matches = false;
+  selectorParser((selectors) => {
+    selectors.each((selector) => {
+      const lastCombinator = selector.nodes.reduce(
+        (index, node, nodeIndex) => (node.type === 'combinator' ? nodeIndex : index),
+        -1,
+      );
+      for (const node of selector.nodes.slice(lastCombinator + 1)) {
+        if (node.type !== 'class') continue;
+        if (
+          node.value === className ||
+          node.value.startsWith(`${className}--`) ||
+          node.value.startsWith(`${className}__`)
+        ) {
+          matches = true;
+        }
+      }
+    });
+  }).processSync(rule.selector);
+  return matches;
+}
+
+/** Extract Cinder classes rendered by a component, including declaration-free leaves. */
+export function componentClassNamesFromMarkup(source: string): string[] {
+  const markup = source.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '');
+  return [
+    ...new Set([...markup.matchAll(/\bcinder-[a-z0-9_-]+/gi)].map((match) => match[0])),
+  ].toSorted();
+}
+
+/** Extract only the rendered classes owned by a component, not sibling primitives it composes. */
+export function componentClassNamesForComponent(
+  source: string,
+  componentName: string,
+  compoundParents: readonly string[] = [],
+): string[] {
+  const roots = [`cinder-${componentName}`];
+  for (const parent of compoundParents) {
+    if (!componentName.startsWith(`${parent}-`)) continue;
+    roots.push(`cinder-${parent}__${componentName.slice(parent.length + 1)}`);
+  }
+  return componentClassNamesFromMarkup(source).filter((className) =>
+    roots.some(
+      (root) =>
+        className === root ||
+        className.startsWith(`${root}--`) ||
+        className.startsWith(`${root}__`),
+    ),
+  );
+}
+
+/** Extract Cinder classes from component CSS when markup computes them dynamically. */
+export function componentClassNamesFromStylesheet(stylesheet: Root): string[] {
+  const classNames = new Set<string>();
+  stylesheet.walkRules((rule) => {
+    for (const match of rule.selector.matchAll(/\.([a-z][a-z0-9_-]*)/gi)) {
+      if (match[1]?.startsWith('cinder-')) classNames.add(match[1]);
+    }
+  });
+  return [...classNames].toSorted();
+}
+
+/**
+ * Build a declaration multiset from rules owned by one component. This lets a
+ * compound parent keep leaf rules in its stylesheet without hiding that leaf
+ * from cross-component duplication detection.
+ */
+export function declarationMultisetForComponent(
+  root: Root,
+  componentName: string,
+  belongsToComponent = declarationBelongsToComponent,
+): DeclarationMultiset {
   const multiset: DeclarationMultiset = new Map();
   root.walkDecls((declaration) => {
+    if (!belongsToComponent(declaration, componentName)) return;
     const context = atRuleContext(declaration);
     const key = `${context}|${normalizeProperty(declaration.prop, componentName)}:${normalizeValue(
       declaration.value,
@@ -190,30 +292,72 @@ type ComponentCss = {
 
 async function collectComponentCss(): Promise<ComponentCss[]> {
   const components = await discoverComponentDirectories();
-  const sources = new Map<string, string>();
+  const sources = new Map<string, Root[]>();
   for (const component of components) {
-    const sidecarPath = join(component.directory, `${component.name}.css`);
-    if (!existsSync(sidecarPath)) continue;
-    sources.set(component.name, readFileSync(sidecarPath, 'utf8'));
+    const componentSources: Root[] = [];
+    for (const entry of readdirSync(component.directory, { withFileTypes: true })) {
+      if (!entry.isFile() || !entry.name.endsWith('.css')) continue;
+      const sourcePath = join(component.directory, entry.name);
+      componentSources.push(parse(readFileSync(sourcePath, 'utf8'), { from: sourcePath }));
+    }
+    sources.set(component.name, componentSources);
   }
 
   const edges: Array<readonly [string, string]> = [];
+  const compoundParents = new Map<string, Set<string>>();
   for (const component of components) {
     const indexPath = join(component.directory, 'index.ts');
     if (!existsSync(indexPath)) continue;
     for (const leaf of siblingLeafImports(readFileSync(indexPath, 'utf8'))) {
       edges.push([component.name, leaf]);
+      const parents = compoundParents.get(leaf) ?? new Set<string>();
+      parents.add(component.name);
+      compoundParents.set(leaf, parents);
     }
   }
   const families = compoundFamilies(edges);
 
   const results: ComponentCss[] = [];
-  for (const [name, source] of sources) {
-    const root = parse(source, { from: name });
+  for (const component of components) {
+    const multiset: DeclarationMultiset = new Map();
+    const componentSources = sources.get(component.name) ?? [];
+    const classNames = new Set([`cinder-${component.name}`]);
+    for (const entry of readdirSync(component.directory, { withFileTypes: true })) {
+      if (!entry.isFile() || !entry.name.endsWith('.svelte')) continue;
+      for (const className of componentClassNamesForComponent(
+        readFileSync(join(component.directory, entry.name), 'utf8'),
+        component.name,
+        [...(compoundParents.get(component.name) ?? [])],
+      )) {
+        classNames.add(className);
+      }
+    }
+    for (const source of componentSources) {
+      for (const className of componentClassNamesFromStylesheet(source)) classNames.add(className);
+      for (const [key, count] of declarationMultisetForComponent(
+        source,
+        component.name,
+        () => true,
+      )) {
+        multiset.set(key, (multiset.get(key) ?? 0) + count);
+      }
+    }
+    for (const parent of compoundParents.get(component.name) ?? []) {
+      for (const source of sources.get(parent) ?? []) {
+        for (const [key, count] of declarationMultisetForComponent(
+          source,
+          component.name,
+          (declaration) => declarationBelongsToClasses(declaration, [...classNames]),
+        )) {
+          multiset.set(key, (multiset.get(key) ?? 0) + count);
+        }
+      }
+    }
+    if (multiset.size === 0) continue;
     results.push({
-      name,
-      multiset: declarationMultiset(root, name),
-      familyRoot: families.get(name) ?? name,
+      name: component.name,
+      multiset,
+      familyRoot: families.get(component.name) ?? component.name,
     });
   }
   return results;

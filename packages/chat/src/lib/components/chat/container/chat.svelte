@@ -214,6 +214,7 @@
   // part re-derives to show the resolved state.
   let approvedToolCallIds = $state(new Set<string>());
   let deniedToolCallIds = $state(new Set<string>());
+  let editingMessageIds = $state(new Set<string>());
   let pendingRetryMessageTokens = $state(new Map<string, symbol>());
 
   // Per-message disclosure state (reasoning blocks + tool-call cards). UI-only;
@@ -257,6 +258,7 @@
     approvedToolCallIds = new Set();
     pendingRetryMessageTokens = new Map();
     deniedToolCallIds = new Set();
+    editingMessageIds = new Set();
     reasoningState.reset();
     toolCallState.reset();
     typingIndicatorState.reset();
@@ -774,11 +776,17 @@
     // below and snaps a stale-true viewport to the bottom (#1237).
     if (!isTranscriptGrowth && autoStickSuppressedByPrepend) return undefined;
 
-    if (atBottom && currentCount > 0) {
+    const activeEditNeedsScrollRecompute =
+      isTranscriptAppend && untrack(() => editingMessageIds.size > 0);
+    if ((atBottom || activeEditNeedsScrollRecompute) && currentCount > 0) {
       let cancelled = false;
       const waitForBottomTarget = isTranscriptAppend ? waitForLayoutFrame() : tick();
       void waitForBottomTarget.then(() => {
         if (cancelled || !viewport || pendingHistoryScroll || historyAnchorMessageId !== null) {
+          return;
+        }
+        if (editingMessageIds.size > 0) {
+          scrollState.recomputeFromViewport(viewport);
           return;
         }
         // Re-check the guard at execution time: a guarded scroll (e.g.
@@ -1631,6 +1639,7 @@
   function handleSubmit(message: MessageInput, attachments: ChatAttachment[]): void {
     cancelNonVirtualHistoryAnchorStabilization();
     invalidatePendingHistoryRestoration();
+    const autoScrollSuppressed = editingMessageIds.size > 0;
     // Fire-and-forget the command (the dispatcher owns awaiting + error routing);
     // scroll immediately so the round-trip latency never delays the auto-scroll.
     // `Promise.resolve(...)` normalizes a sync-returning method to a promise so
@@ -1647,9 +1656,15 @@
     // atBottom=true state immediately — scrollState.setAtBottom() only
     // updates the internal helper state; the bindable must be written explicitly
     // (matching the pattern in handleScrollStateChange and onReachBottom).
-    scrollState.setAtBottom(true);
-    updateAtBottomBinding(true);
+    if (!autoScrollSuppressed) {
+      scrollState.setAtBottom(true);
+      updateAtBottomBinding(true);
+    }
     tick().then(() => {
+      if (autoScrollSuppressed) {
+        scrollState.recomputeFromViewport(viewport);
+        return;
+      }
       if (isVirtualized) {
         chatVirtualizer.scrollToOffset(chatVirtualizer.scrollSize, { behavior: 'instant' });
       } else {
@@ -2358,17 +2373,20 @@
     if (streamingScrollRaf === undefined) {
       streamingScrollRaf = requestAnimationFrame(() => {
         streamingScrollRaf = undefined;
+        const autoScrollSuppressed = editingMessageIds.size > 0;
         // Flush: join the entire buffer once per frame
         streamingContent = tokenBuffer.join('');
-        if (streamingRowElement) {
-          tick().then(() => {
-            if (streamingRowElement) {
-              chatVirtualizer.measureElementNode(streamingRowElement);
-            }
-          });
-        }
+        void tick().then(async () => {
+          if (streamingRowElement) {
+            chatVirtualizer.measureElementNode(streamingRowElement);
+            if (isVirtualized) await tick();
+          }
+          if (autoScrollSuppressed) {
+            scrollState.recomputeFromViewport(viewport);
+          }
+        });
         // Auto-scroll if at bottom
-        if (scrollState.atBottom && viewport) {
+        if (scrollState.atBottom && viewport && !autoScrollSuppressed) {
           if (isVirtualized) {
             chatVirtualizer.scrollToOffset(chatVirtualizer.scrollSize, { behavior: 'instant' });
           } else {
@@ -2377,6 +2395,13 @@
         }
       });
     }
+  }
+
+  function handleEditingChange(messageId: string, editing: boolean): void {
+    const next = new Set(editingMessageIds);
+    if (editing) next.add(messageId);
+    else next.delete(messageId);
+    editingMessageIds = next;
   }
 
   /**
@@ -2521,6 +2546,7 @@
         {messagePart}
         onretry={allowRetry && canRetry ? handleRetry : undefined}
         onedit={allowEditing && canEdit ? handleEdit : undefined}
+        oneditingchange={(editing) => handleEditingChange(message.id, editing)}
         showDefaultActions={allowCopy}
         {onExpandedChange}
         streaming={isStreamingMessage}

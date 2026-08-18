@@ -1066,6 +1066,196 @@ describe('ChatAdapter — command equivalence', () => {
     unmount(instance);
   });
 
+  test('streaming another message preserves edit controls and suspends auto-scroll', async () => {
+    const frames: FrameRequestCallback[] = [];
+    const originalRaf = globalThis.requestAnimationFrame;
+    const originalCancelRaf = globalThis.cancelAnimationFrame;
+    globalThis.requestAnimationFrame = ((callback: FrameRequestCallback) => {
+      frames.push(callback);
+      return frames.length;
+    }) as typeof requestAnimationFrame;
+    globalThis.cancelAnimationFrame = ((handle: number) => {
+      if (handle >= 1 && handle <= frames.length) frames[handle - 1] = () => {};
+    }) as typeof cancelAnimationFrame;
+    const flushFrames = (): void => {
+      const pending = frames.splice(0);
+      for (const frame of pending) frame(performance.now());
+      flushSync();
+    };
+    const conversation = conversationFromMessages('adapter-edit-stream', [
+      message('user-1', 'user', 'Original text', 0),
+      message('assistant-1', 'assistant', 'Streaming reply', 1),
+    ]);
+    const sent: MessageInput[] = [];
+    const { container, instance } = mountChat({
+      id: 'chat-adapter-edit-stream',
+      conversation,
+      adapter: {
+        sendMessage: async (message) => {
+          sent.push(message);
+        },
+        editMessage: async () => {},
+      } satisfies ChatAdapter,
+    });
+
+    try {
+      container.querySelector<HTMLButtonElement>('.chat-message-edit-button')!.click();
+      flushSync();
+      const editor = container.querySelector<HTMLTextAreaElement>('.chat-message-edit-textarea');
+      const save = container.querySelector<HTMLButtonElement>('.chat-message-edit-save');
+      const cancel = container.querySelector<HTMLButtonElement>('.chat-message-edit-cancel');
+      expect(editor).not.toBeNull();
+      expect(save).not.toBeNull();
+      expect(cancel).not.toBeNull();
+      const timeline = container.querySelector<HTMLElement>('.chat-timeline')!;
+      let scrollHeight = 500;
+      Object.defineProperties(timeline, {
+        clientHeight: { configurable: true, value: 100 },
+        scrollHeight: { configurable: true, get: () => scrollHeight },
+      });
+      timeline.scrollTop = 0;
+      const scrollCalls: ScrollToOptions[] = [];
+      timeline.scrollTo = ((options: ScrollToOptions) => {
+        scrollCalls.push(options);
+      }) as HTMLElement['scrollTo'];
+
+      const chat = instance as unknown as ChatImperative;
+      chat.beginStreaming('assistant-1');
+      chat.pushToken('Partial streaming reply');
+      flushFrames();
+      await tick();
+      flushSync();
+
+      expect(container.querySelector('.chat-message-edit-textarea')).toBe(editor);
+      expect(container.querySelector('.chat-message-edit-save')).toBe(save);
+      expect(container.querySelector('.chat-message-edit-cancel')).toBe(cancel);
+      expect(scrollCalls).toEqual([]);
+      expect(container.querySelector('.chat-jump-button')).not.toBeNull();
+
+      const composer = container.querySelector<HTMLTextAreaElement>('.chat-input-editor')!;
+      composer.value = 'A new message';
+      composer.dispatchEvent(new Event('input', { bubbles: true }));
+      flushSync();
+      container.querySelector<HTMLButtonElement>('.chat-input-send')!.click();
+      await tick();
+      flushSync();
+
+      expect(sent).toEqual([{ content: 'A new message', role: 'user' }]);
+      expect(container.querySelector('.chat-message-edit-textarea')).toBe(editor);
+      expect(scrollCalls).toEqual([]);
+
+      timeline.scrollTop = 400;
+      timeline.dispatchEvent(new Event('scroll'));
+      flushFrames();
+      await tick();
+      flushSync();
+      scrollHeight = 600;
+      cancel!.click();
+      flushSync();
+      chat.pushToken(' after editing');
+      flushFrames();
+      await tick();
+      flushSync();
+      expect(scrollCalls.length).toBeGreaterThan(0);
+    } finally {
+      globalThis.requestAnimationFrame = originalRaf;
+      globalThis.cancelAnimationFrame = originalCancelRaf;
+      unmount(instance);
+    }
+  });
+
+  test('conversation growth recomputes scroll state without moving active edit controls', async () => {
+    const frames: FrameRequestCallback[] = [];
+    const originalRaf = globalThis.requestAnimationFrame;
+    const originalCancelRaf = globalThis.cancelAnimationFrame;
+    globalThis.requestAnimationFrame = ((callback: FrameRequestCallback) => {
+      frames.push(callback);
+      return frames.length;
+    }) as typeof requestAnimationFrame;
+    globalThis.cancelAnimationFrame = ((handle: number) => {
+      if (handle >= 1 && handle <= frames.length) frames[handle - 1] = () => {};
+    }) as typeof cancelAnimationFrame;
+    const flushFrames = (): void => {
+      const pending = frames.splice(0);
+      for (const frame of pending) frame(performance.now());
+      flushSync();
+    };
+    const finishConversationGrowth = async (): Promise<void> => {
+      await tick();
+      await Promise.resolve();
+      expect(frames.length).toBeGreaterThan(0);
+      flushFrames();
+      await tick();
+      await Promise.resolve();
+      flushSync();
+    };
+    const initial = conversationFromMessages('adapter-edit-conversation-growth', [
+      message('user-1', 'user', 'Original text', 0),
+    ]);
+    const target = document.createElement('div');
+    document.body.append(target);
+    const instance = mount(AdapterSwitchFixture, {
+      target,
+      props: {
+        initial,
+        adapter: { sendMessage: async () => {}, editMessage: async () => {} },
+      },
+    }) as SwitchFixtureInstance;
+
+    try {
+      flushSync();
+      target.querySelector<HTMLButtonElement>('.chat-message-edit-button')!.click();
+      flushSync();
+      const editor = target.querySelector<HTMLTextAreaElement>('.chat-message-edit-textarea');
+      expect(editor).not.toBeNull();
+      const timeline = target.querySelector<HTMLElement>('.chat-timeline')!;
+      let scrollHeight = 100;
+      Object.defineProperties(timeline, {
+        clientHeight: { configurable: true, value: 100 },
+        scrollHeight: { configurable: true, get: () => scrollHeight },
+      });
+      timeline.scrollTop = 0;
+      const scrollCalls: ScrollToOptions[] = [];
+      timeline.scrollTo = ((options: ScrollToOptions) => {
+        scrollCalls.push(options);
+      }) as HTMLElement['scrollTo'];
+
+      scrollHeight = 270;
+      instance.setConversation(
+        conversationFromMessages('adapter-edit-conversation-growth', [
+          message('user-1', 'user', 'Original text', 0),
+          message('assistant-1', 'assistant', 'A new response', 1),
+        ]),
+      );
+      flushSync();
+      await finishConversationGrowth();
+
+      expect(target.querySelector('.chat-message-edit-textarea')).toBe(editor);
+      expect(scrollCalls).toEqual([]);
+      expect(target.querySelector('.chat-jump-button')).toBeNull();
+
+      scrollHeight = 500;
+      instance.setConversation(
+        conversationFromMessages('adapter-edit-conversation-growth', [
+          message('user-1', 'user', 'Original text', 0),
+          message('assistant-1', 'assistant', 'A new response', 1),
+          message('assistant-2', 'assistant', 'Another response', 2),
+        ]),
+      );
+      flushSync();
+      await finishConversationGrowth();
+
+      expect(target.querySelector('.chat-message-edit-textarea')).toBe(editor);
+      expect(scrollCalls).toEqual([]);
+      expect(target.querySelector('.chat-jump-button')).not.toBeNull();
+    } finally {
+      globalThis.requestAnimationFrame = originalRaf;
+      globalThis.cancelAnimationFrame = originalCancelRaf;
+      unmount(instance);
+      target.remove();
+    }
+  });
+
   test('file drag overlay is container state and empty file drops do not touch the transcript', () => {
     const conversation = conversationFromMessages('adapter-file-drag', [
       message('user-1', 'user', 'Keep this transcript stable', 0),
