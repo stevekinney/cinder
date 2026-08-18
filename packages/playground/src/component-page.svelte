@@ -583,6 +583,14 @@
         }
       : buildPlaygroundModel(documentation.propsManifest),
   );
+  /**
+   * Stage scaffolding for components no amount of prop seeding makes legible —
+   * layout primitives, Surface, and the behavior-only wrappers. See
+   * `component-page-preview-recipes.ts`.
+   */
+  const previewRecipe = $derived(
+    documentation === null ? undefined : previewRecipeFor(documentation.propsManifest.kebabName),
+  );
   // Live control values, keyed by prop name. Seeded from each control's default
   // the first time the model resolves.
   const playgroundValues: Record<string, PlaygroundValue> = $state({});
@@ -667,15 +675,6 @@
   const canMountBare = $derived(
     documentation !== null &&
       canBareMount(documentation.propsManifest.kebabName, documentation.propsManifest.isCompound),
-  );
-
-  /**
-   * Stage scaffolding for components no amount of prop seeding makes legible —
-   * layout primitives, Surface, and the behavior-only wrappers. See
-   * `component-page-preview-recipes.ts`.
-   */
-  const previewRecipe = $derived(
-    documentation === null ? undefined : previewRecipeFor(documentation.propsManifest.kebabName),
   );
 
   const bareComponent = $derived(
