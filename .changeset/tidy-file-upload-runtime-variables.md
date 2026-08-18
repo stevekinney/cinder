@@ -2,4 +2,4 @@
 '@lostgradient/cinder': patch
 ---
 
-Exclude FileUpload runtime-state variables from the public CSS override manifest.
+Exclude CSS variables explicitly marked `@runtime-state` from the public override manifest.
