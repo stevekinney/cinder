@@ -22,6 +22,7 @@ function createEditorState(): EditorState {
     view: {} as EditorState['view'],
     focus: mock(() => {}),
     getMarkdown: mock(() => ''),
+    hasPendingInternalChange: mock(() => false),
     setMarkdown: mock((_content: string) => {}),
     clearPendingTimers: mock(() => {}),
     markDestroyed: mock(() => {}),

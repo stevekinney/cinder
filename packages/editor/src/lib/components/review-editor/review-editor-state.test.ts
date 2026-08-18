@@ -70,4 +70,55 @@ describe('createReviewEditorState diffStats', () => {
 
     expect(state.diffStats).toEqual({ added: 0, removed: 0, modified: 0 });
   });
+
+  test('exposes view controls, visible comment count, and summary content', () => {
+    const state = createReviewEditorState({
+      getOriginal: () => 'Original content.\n',
+      getValue: () => 'Updated content.\n',
+      getThreads: () => [
+        {
+          id: 'thread-1',
+          createdAt: '2026-08-18T00:00:00.000Z',
+          anchor: {
+            quote: 'Updated',
+            prefix: '',
+            suffix: ' content.',
+            status: 'anchored',
+            from: 0,
+            to: 7,
+            originalPosition: { offset: 0, line: 1, column: 1 },
+          },
+          comments: [
+            {
+              id: 'comment-1',
+              threadId: 'thread-1',
+              authorId: 'reviewer',
+              body: 'Visible comment',
+              createdAt: '2026-08-18T00:00:00.000Z',
+            },
+            {
+              id: 'comment-2',
+              threadId: 'thread-1',
+              authorId: 'reviewer',
+              body: 'Deleted comment',
+              createdAt: '2026-08-18T00:00:00.000Z',
+              deletedAt: '2026-08-18T00:01:00.000Z',
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(state.activeView).toBe('editor');
+    state.setActiveView('summary');
+    expect(state.activeView).toBe('summary');
+
+    expect(state.diffViewMode).toBe('unified');
+    state.setDiffViewMode('final');
+    expect(state.diffViewMode).toBe('final');
+
+    expect(state.commentCount).toBe(1);
+    expect(state.summaryContent).toContain('Visible comment');
+    expect(state.summaryContent).not.toContain('# Review Summary');
+  });
 });
