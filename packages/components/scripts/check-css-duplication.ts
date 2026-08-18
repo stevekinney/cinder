@@ -115,17 +115,26 @@ export function declarationMultiset(root: Root, componentName: string): Declarat
 }
 
 function declarationBelongsToComponent(declaration: Declaration, componentName: string): boolean {
-  const className = `cinder-${componentName}`;
+  return declarationBelongsToClasses(declaration, [`cinder-${componentName}`]);
+}
+
+function declarationBelongsToClasses(
+  declaration: Declaration,
+  classNames: readonly string[],
+): boolean {
   let current: Container | Document | undefined = declaration.parent;
   while (current && current.type !== 'root') {
-    if (isRule(current) && selectorContainsComponent(current, className)) return true;
+    if (isRule(current)) {
+      const rule = current;
+      if (classNames.some((className) => selectorContainsComponent(rule, className))) return true;
+    }
     current = current.parent;
   }
   return false;
 }
 
 function selectorContainsComponent(rule: Rule, className: string): boolean {
-  return new RegExp(`(^|[^a-z0-9-])\\.${className}($|[^a-z0-9-])`, 'i').test(rule.selector);
+  return new RegExp(`(^|[^a-z0-9-])\\.${className}(?:$|--|__|[^a-z0-9-])`, 'i').test(rule.selector);
 }
 
 /**
@@ -223,21 +232,27 @@ type ComponentCss = {
 
 async function collectComponentCss(): Promise<ComponentCss[]> {
   const components = await discoverComponentDirectories();
-  const sources: Root[] = [];
+  const sources = new Map<string, Root[]>();
   for (const component of components) {
+    const componentSources: Root[] = [];
     for (const entry of readdirSync(component.directory, { withFileTypes: true })) {
       if (!entry.isFile() || !entry.name.endsWith('.css')) continue;
       const sourcePath = join(component.directory, entry.name);
-      sources.push(parse(readFileSync(sourcePath, 'utf8'), { from: sourcePath }));
+      componentSources.push(parse(readFileSync(sourcePath, 'utf8'), { from: sourcePath }));
     }
+    sources.set(component.name, componentSources);
   }
 
   const edges: Array<readonly [string, string]> = [];
+  const compoundParents = new Map<string, Set<string>>();
   for (const component of components) {
     const indexPath = join(component.directory, 'index.ts');
     if (!existsSync(indexPath)) continue;
     for (const leaf of siblingLeafImports(readFileSync(indexPath, 'utf8'))) {
       edges.push([component.name, leaf]);
+      const parents = compoundParents.get(leaf) ?? new Set<string>();
+      parents.add(component.name);
+      compoundParents.set(leaf, parents);
     }
   }
   const families = compoundFamilies(edges);
@@ -245,9 +260,31 @@ async function collectComponentCss(): Promise<ComponentCss[]> {
   const results: ComponentCss[] = [];
   for (const component of components) {
     const multiset: DeclarationMultiset = new Map();
-    for (const source of sources) {
-      for (const [key, count] of declarationMultisetForComponent(source, component.name)) {
+    const componentSources = sources.get(component.name) ?? [];
+    const classNames = new Set([`cinder-${component.name}`]);
+    for (const source of componentSources) {
+      source.walkRules((rule) => {
+        for (const match of rule.selector.matchAll(/\\.([a-z][a-z0-9-]*)/gi)) {
+          if (match[1]?.startsWith('cinder-')) classNames.add(match[1]);
+        }
+      });
+      for (const [key, count] of declarationMultisetForComponent(
+        source,
+        component.name,
+        () => true,
+      )) {
         multiset.set(key, (multiset.get(key) ?? 0) + count);
+      }
+    }
+    for (const parent of compoundParents.get(component.name) ?? []) {
+      for (const source of sources.get(parent) ?? []) {
+        for (const [key, count] of declarationMultisetForComponent(
+          source,
+          component.name,
+          (declaration) => declarationBelongsToClasses(declaration, [...classNames]),
+        )) {
+          multiset.set(key, (multiset.get(key) ?? 0) + count);
+        }
       }
     }
     if (multiset.size === 0) continue;

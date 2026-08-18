@@ -75,6 +75,28 @@ describe('declarationMultiset', () => {
     expect(multisetSize(gridItem.multiset)).toBeGreaterThanOrEqual(MINIMUM_DECLARATIONS);
     expect(findDuplicatePairs([gridItem, duplicate], [])).toHaveLength(1);
   });
+
+  test('attributes BEM modifier rules without absorbing unrelated selectors', () => {
+    const stylesheet = parse(`
+      .cinder-grid-item--active { color: red; }
+      .cinder-grid-item__label { font-weight: 600; }
+      .cinder-grid { display: grid; }
+    `);
+    const multiset = declarationMultisetForComponent(stylesheet, 'grid-item');
+
+    expect([...multiset.keys()]).toEqual(['|color:red', '|font-weight:600']);
+  });
+
+  test('keeps keyframe declarations in their owning component stylesheet', () => {
+    const stylesheet = parse(`
+      @keyframes cinder-jse-pulse { from { opacity: 0; } to { opacity: 1; } }
+      .cinder-jse { animation: cinder-jse-pulse 1s; }
+    `);
+    const multiset = declarationMultisetForComponent(stylesheet, 'json-schema-editor', () => true);
+
+    expect(multisetSize(multiset)).toBe(3);
+    expect([...multiset.keys()]).toContain('@keyframes cinder-jse-pulse|opacity:0');
+  });
 });
 
 describe('multisetSimilarity', () => {
