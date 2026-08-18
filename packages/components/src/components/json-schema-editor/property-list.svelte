@@ -92,7 +92,7 @@
     }
     renameError = null;
 
-    const next: Record<string, JsonSchemaValue> = {};
+    const next: Record<string, JsonSchemaValue> = Object.create(null);
     for (const k of propertyNames) {
       next[k === oldKey ? draft : k] = properties[k]!;
     }
@@ -177,7 +177,7 @@
 
     const reordered = [...propertyNames];
     [reordered[index], reordered[target]] = [reordered[target]!, reordered[index]!];
-    const next: Record<string, JsonSchemaValue> = {};
+    const next: Record<string, JsonSchemaValue> = Object.create(null);
     for (const name of reordered) next[name] = properties[name]!;
     onValueChange(next, required);
     await announceAction(`Moved ${key} property to position ${target + 1} of ${reordered.length}.`);
@@ -188,7 +188,7 @@
     if (target < 0 || target >= propertyNames.length) return false;
     const reordered = [...propertyNames];
     [reordered[index], reordered[target]] = [reordered[target]!, reordered[index]!];
-    const next: Record<string, JsonSchemaValue> = {};
+    const next: Record<string, JsonSchemaValue> = Object.create(null);
     for (const name of reordered) next[name] = properties[name]!;
     return Object.keys(next).every((name, nextIndex) => name === reordered[nextIndex]);
   }

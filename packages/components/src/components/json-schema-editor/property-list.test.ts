@@ -182,6 +182,21 @@ describe('PropertyList', () => {
     expect(screen.getByRole('button', { name: 'Move beta up' })).toHaveProperty('disabled', false);
   });
 
+  test('keeps reorderable properties available beside an own __proto__ key', () => {
+    const properties = JSON.parse(
+      '{"__proto__":{"type":"string"},"alpha":{"type":"string"},"beta":{"type":"string"}}',
+    ) as Record<string, JsonSchemaValue>;
+    render(PropertyList, {
+      idPrefix: 'properties',
+      path: '/properties',
+      properties,
+      required: [],
+      onValueChange: () => {},
+    });
+
+    expect(screen.getByRole('button', { name: 'Move beta up' })).toHaveProperty('disabled', false);
+  });
+
   test('keeps the Add property focus reference layout-neutral', async () => {
     const css = await Bun.file(new URL('./json-schema-editor.css', import.meta.url)).text();
 
