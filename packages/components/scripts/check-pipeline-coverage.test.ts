@@ -50,6 +50,10 @@ describe('Turbo input topology', () => {
     );
     expect(browserWorkflow).toContain('playwright_matrix={"shard":[1,2,3,4]}');
     expect(browserWorkflow).toContain('name: playwright');
+    expect(browserWorkflow).toContain('path: packages/testing/blob-report');
+    expect(browserWorkflow).toContain(
+      'bunx playwright merge-reports --reporter html packages/testing/blob-reports',
+    );
     expect(mainWorkflow).toContain("github.event_name == 'schedule'");
     expect(mainWorkflow).toContain("github.event.inputs.force_audit == 'true'");
   });

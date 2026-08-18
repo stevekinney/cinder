@@ -450,7 +450,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: playwright-blob-${{ matrix.shard }}
-          path: blob-report
+          path: packages/testing/blob-report
           retention-days: 14
           if-no-files-found: warn
 
@@ -545,6 +545,11 @@ jobs:
     if: '!cancelled()'
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - run: bun install --frozen-lockfile
       - name: Require every selected Playwright shard
         env:
           SCOPE: ${{ needs.scope.result }}
@@ -560,11 +565,11 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           pattern: playwright-blob-*
-          path: blob-reports
+          path: packages/testing/blob-reports
           merge-multiple: true
       - name: Merge sharded report
         if: needs.scope.outputs.component_scope_mode == 'full'
-        run: npx playwright merge-reports --reporter html blob-reports
+        run: bunx playwright merge-reports --reporter html packages/testing/blob-reports
       - name: Upload merged report
         if: always() && needs.scope.outputs.component_scope_mode == 'full'
         uses: actions/upload-artifact@v7
