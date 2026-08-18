@@ -7,6 +7,12 @@ on:
   schedule:
     - cron: '17 10 * * *'
   workflow_dispatch:
+    inputs:
+      force_audit:
+        description: Force deterministic Turbo tasks to execute without cache reuse.
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -36,7 +42,7 @@ env:
   # `turbo-<os>-<lock>-<config>`, entries saved here under any other key are
   # never consumed. Remote caching is the cross-run sharing mechanism now, and
   # this workflow always has secrets (push to main + schedule, never a fork).
-  TURBO_FORCE: 'true'
+  TURBO_FORCE: ${{ (github.event_name == 'schedule' || github.event.inputs.force_audit == 'true') && 'true' || 'false' }}
   TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
   TURBO_TEAM: ${{ vars.TURBO_TEAM }}
 
@@ -56,6 +62,16 @@ jobs:
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
+
+      - name: Describe Turbo cache policy
+        run: |
+          if [ "$TURBO_FORCE" = true ]; then
+            echo '## Forced validation audit' >> "$GITHUB_STEP_SUMMARY"
+            echo 'Turbo cache reuse is disabled for this scheduled or explicitly forced audit.' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo '## Trusted push validation' >> "$GITHUB_STEP_SUMMARY"
+            echo 'Turbo may reuse matching content-addressed results; direct runtime smokes still execute.' >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       # No --affected here: main-green is the full-suite safety net (the doc's
       # explicit non-goal is scoping this workflow), so `bun run lint` /

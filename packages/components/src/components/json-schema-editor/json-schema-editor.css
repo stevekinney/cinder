@@ -174,6 +174,10 @@
     border-top: 0;
   }
 
+  .cinder-jse-property-list__add-property-reference {
+    display: contents;
+  }
+
   .cinder-jse-property-row[data-cinder-invalid] {
     border-inline-start: 2px solid var(--cinder-color-danger-border);
   }

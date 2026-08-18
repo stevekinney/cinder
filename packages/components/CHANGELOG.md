@@ -1,5 +1,15 @@
 # @lostgradient/cinder
 
+## 0.24.5
+
+### Patch Changes
+
+- [#1342](https://github.com/stevekinney/cinder/pull/1342) [`dc2c6e1`](https://github.com/stevekinney/cinder/commit/dc2c6e131ea12e3c4b3e30099f3ac2cc9475fe0c) Thanks [@stevekinney](https://github.com/stevekinney)! - Fix JSON Schema Editor property reorder diffs, inline validation indicators, and email-format validation.
+
+- [#1346](https://github.com/stevekinney/cinder/pull/1346) [`70b59ba`](https://github.com/stevekinney/cinder/commit/70b59ba53c6e8640a7e103c456d44d36bfd75d64) Thanks [@stevekinney](https://github.com/stevekinney)! - Synchronize documented design-token values and prevent future value drift.
+
+- [#1350](https://github.com/stevekinney/cinder/pull/1350) [`710d400`](https://github.com/stevekinney/cinder/commit/710d40092a975711eed8f8149a64bca2d0ecc035) Thanks [@stevekinney](https://github.com/stevekinney)! - Surface unsupported JSON Schema enum metadata and clarify property reorder controls for assistive technology.
+
 ## 0.24.4
 
 ### Patch Changes

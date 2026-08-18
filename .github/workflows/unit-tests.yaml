@@ -1,413 +1,193 @@
 name: unit-tests
 
-# Dependency-aware unit tests for the component library.
-#
-# On a pull request this scopes `bun test` to the changed components AND their
-# transitive dependents (the same import-graph the browser-tests `scope` job
-# uses), giving fast per-PR unit feedback that previously only existed
-# post-merge in `main-green`. On push to `main` and `workflow_dispatch` it runs
-# the FULL unit suite — `main-green` remains the authoritative full-suite gate,
-# and this push run is a redundant safety net.
-#
-# Scope decision lives in packages/testing/scripts/changed-components.ts
-# (delegating to packages/components/scripts/component-graph.ts). It force-fulls
-# on any uncertainty (shared/harness/config change, deletion, computed dynamic
-# import, ambiguous resolution, unknown slug), so a missed edge can never
-# silently skip a test.
-
 on:
-  # Unit tests own component source, package test/build scripts, and this
-  # workflow's scoping behavior.
-  #
-  # `pull_request` runs unconditionally — NO path filter. `unit-tests` and
-  # `typecheck` (browser-tests.yaml) are required status checks on `main`
-  # (see docs/validation-topology.md's "Branch protection" section); a path
-  # filter here would leave a PR whose changes match none of the filtered
-  # paths (e.g. a root lint-config-only edit) with a required check stuck at
-  # "Expected" forever, permanently blocking the merge. Running unconditionally
-  # is the direct fix — a no-op PR pays a full (if fast) run instead of being
-  # unmergeable.
   pull_request: {}
-
-  # `merge_group` is what makes the merge queue safe. A required check must run
-  # on the queue's candidate ref too, or the queue can never see it pass.
-  #
-  # This exists because of a real `main` breakage on 2026-07-28: #972 added the
-  # `cinder/interior-border-weight` stylelint rule while #1011 added CSS that
-  # violates it. Both were green — #1011's run finished fourteen minutes BEFORE
-  # #972 merged, so the rule did not yet exist when #1011 was validated. Branch
-  # protection was `strict: false`, so nothing forced a re-run, and `main` went
-  # red on the merge. The lint sweep was never missing (the `unit-tests` job
-  # below has always run it unconditionally); it simply ran against a tree that
-  # no longer existed by merge time.
-  #
-  # The `scope` job below fails safe here: it only scopes on `pull_request`, so
-  # a `merge_group` run executes the FULL unit suite against the exact tree that
-  # is about to become `main`.
   merge_group: {}
-  push:
-    branches:
-      - main
-    paths:
-      - 'packages/components/**'
-      - 'packages/chat/**'
-      - 'packages/*/package.json'
-      - 'packages/*/scripts/**'
-      - 'packages/*/tsconfig*.json'
-      - 'packages/editor/src/**'
-      - 'packages/markdown/src/**'
-      - 'packages/mcp/**'
-      - 'packages/playground/src/discover.ts'
-      - 'packages/playground/src/examples/**'
-      - 'packages/playground/src/**'
-      - 'packages/testing/**'
-      - 'packages/testing/scripts/changed-components.ts'
-      - 'packages/testing/src/helpers/component-filter.ts'
-      - '.github/workflows/unit-tests.yaml'
-      - '.github/workflows/release.yaml'
-      - '.github/workflows/release-manual.yaml'
-      - '.github/workflows/main-green.yaml'
-      - '.github/workflows/browser-tests.yaml'
-      - '.github/workflows/changeset-guard.yaml'
-      - '.github/workflows/deploy-playground.yaml'
-      - '.changeset/**'
-      - 'package.json'
-      - 'bun.lock'
-      - 'bun.lockb'
-      - 'bunfig.toml'
-      - '.npmrc'
-      - 'tsconfig*.json'
-      - 'turbo.json'
-      - '.oxlintrc.json'
-      - '!packages/**/*.md'
-      - '!packages/**/README*'
-      - '!packages/**/CHANGELOG*'
-  workflow_dispatch:
+  workflow_dispatch: {}
 
 permissions:
   actions: read
   contents: read
 
 concurrency:
-  # PR runs cancel each other (superseded by a new push to the same PR). Push-to-main
-  # runs each get a unique group (keyed by SHA) so a rapid follow-up merge never cancels
-  # the in-flight full-suite safety-net run.
   group: unit-tests-${{ github.ref }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   BUN_VERSION: 1.3.13
-  # Read by `turbo run --affected`; harmless on push/workflow_dispatch runs
-  # since those invocations omit --affected entirely.
   TURBO_SCM_BASE: origin/${{ github.base_ref }}
-  # Remote cache. This trigger is `pull_request`, NOT `pull_request_target`, so
-  # runs from forks get an empty string for both of these — turbo then silently
-  # skips the remote cache and falls back to the `actions/cache` .turbo restore
-  # below. That fallback is why this workflow keeps its local cache step even
-  # though main-green.yaml drops its restore: it is the only cache a fork PR
-  # can reach. Do not "clean it up".
   TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
   TURBO_TEAM: ${{ vars.TURBO_TEAM }}
-  # No OS discriminator is set here on purpose. The `test` tasks in turbo.json
-  # declare `RUNNER_OS`, which GitHub already defines in every job — nothing to
-  # wire up. (`${{ runner.os }}` cannot be used in a workflow-level `env:` block
-  # at all: the `runner` context only exists at step level, and referencing it
-  # here makes GitHub reject the whole workflow file.)
 
 jobs:
   scope:
-    # Compute the scoped slug set for a pull request. Non-PR events run full.
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
       mode: ${{ steps.decide.outputs.mode }}
       components: ${{ steps.decide.outputs.components }}
-      # Narrowed to just the slugs @lostgradient/cinder's own test:changed can
-      # resolve — `components` above can also carry an extracted package's
-      # slugs (e.g. @lostgradient/chat's `chat*` family), which cinder's
-      # component graph has never heard of and correctly rejects as unknown.
       cinder_components: ${{ steps.decide.outputs.cinder_components }}
+      unit_lanes: ${{ steps.decide.outputs.unit_lanes }}
+      full_scope_reason: ${{ steps.decide.outputs.full_scope_reason }}
+      component_matrix: ${{ steps.matrix.outputs.component_matrix }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
+      - uses: actions/checkout@v7
         with:
-          # The graph reads source files at HEAD and detects deletions by disk
-          # absence; the diff needs the merge base. fetch-depth: 0 is the
-          # simplest reliable option (the scope job is fast regardless).
           fetch-depth: 0
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@v2
         with:
           bun-version: ${{ env.BUN_VERSION }}
-
-      # No `bun install` here by design: changed-components.ts and the
-      # component-graph module it imports use ONLY Bun/Node built-ins and
-      # relative-path imports — no npm dependencies, no workspace package
-      # resolution. Verified to run in a fresh checkout with no node_modules.
-      # If the graph ever gains a third-party import, add a cache + `bun install
-      # --frozen-lockfile` step here (mirroring the unit-tests job).
-
-      - name: Decide scope
-        id: decide
+      - id: decide
         env:
           EVENT_NAME: ${{ github.event_name }}
           BASE_REF: ${{ github.base_ref }}
         run: |
           set -euo pipefail
           if [ "$EVENT_NAME" != "pull_request" ]; then
-            echo "Non-PR event ($EVENT_NAME): running full unit suite."
-            echo "mode=full" >> "$GITHUB_OUTPUT"
-            echo "components=" >> "$GITHUB_OUTPUT"
-            echo "cinder_components=" >> "$GITHUB_OUTPUT"
-            exit 0
+            printf '%s\n' 'mode=full' 'component_scope_mode=full' 'components=' 'cinder_components=' 'unit_lanes=static,package,playground,components' 'full_scope_reason=non-pull-request event' >> "$GITHUB_OUTPUT"
+          else
+            git diff --name-only "origin/${BASE_REF}...HEAD" | bun run packages/testing/scripts/changed-components.ts
           fi
+      - id: matrix
+        env:
+          MODE: ${{ steps.decide.outputs.mode }}
+        run: |
+          if [ "$MODE" = full ]; then
+            echo 'component_matrix={"chunk":[1,2,3,4]}' >> "$GITHUB_OUTPUT"
+          else
+            echo 'component_matrix={"chunk":[0]}' >> "$GITHUB_OUTPUT"
+          fi
+      - run: |
+          {
+            echo '## CI scope'
+            echo "- Mode: ${{ steps.decide.outputs.mode }}"
+            echo "- Unit lanes: ${{ steps.decide.outputs.unit_lanes }}"
+            echo "- Full-scope reason: ${{ steps.decide.outputs.full_scope_reason || 'none' }}"
+          } >> "$GITHUB_STEP_SUMMARY"
 
-          # Three-dot: diff against the merge base, so only the PR's own changes
-          # are considered (not commits that landed on the base since the fork).
-          # Matches test-changed.ts's local behavior.
-          changed=$(git diff --name-only "origin/${BASE_REF}...HEAD")
-          echo "Changed files:"
-          printf '%s\n' "$changed"
-
-          printf '%s\n' "$changed" | bun run packages/testing/scripts/changed-components.ts
-
-  unit-tests:
+  static-artifact:
     needs: scope
-    # `!cancelled()` so a `scope` job FAILURE (e.g. `changed-components.ts`
-    # erroring) still runs this job instead of the default GitHub behavior —
-    # silently SKIPPING every job that `needs` a failed job. `unit-tests` is
-    # a required status check (see docs/validation-topology.md's "Branch
-    # protection" section) and a skipped check run satisfies branch
-    # protection, so an unhealthy `scope` job would otherwise let a PR merge
-    # with no lint/build/test signal at all. This job's own steps already
-    # degrade safely when `scope`'s outputs are missing (the unconditional
-    # lint/aggregator/components:check steps don't read them at all; the
-    # final scoped-test step falls back to the full suite when
-    # `needs.scope.outputs.mode` isn't `'filtered'`), so running unconditionally
-    # is safe, not merely safe-ish.
-    #
-    # Deliberately `!cancelled()`, NOT `always()`: GitHub re-evaluates a
-    # job's `if:` when the workflow is cancelled (e.g. a newer push
-    # superseding this run via the concurrency group above), and a truthy
-    # `always()` condition is documented to keep the job from being
-    # cancelled — so an `always()`-gated required job would keep burning its
-    # full runner budget on an already-superseded run instead of stopping.
-    # `!cancelled()` gets the same "run despite scope failing" behavior
-    # (it's true for both success and failure, just not cancellation)
-    # without disabling cancellation.
-    if: '!cancelled()'
+    if: "!cancelled() && (needs.scope.result != 'success' || contains(needs.scope.outputs.unit_lanes, 'static'))"
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
+      - uses: actions/checkout@v7
         with:
-          # turbo run --affected diffs against TURBO_SCM_BASE, which needs
-          # full history to resolve a merge base (mirrors the `scope` job's
-          # checkout above).
           fetch-depth: 0
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@v2
         with:
           bun-version: ${{ env.BUN_VERSION }}
-
-      - name: Restore Turbo cache
-        uses: actions/cache@v6
+      - uses: actions/cache@v6
         with:
           path: .turbo
           key: turbo-${{ runner.os }}-${{ hashFiles('bun.lock') }}-${{ hashFiles('turbo.json') }}
-          restore-keys: |
-            turbo-${{ runner.os }}-
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      # Unconditional whole-repo gate: lint previously ran only in main-green
-      # (post-merge) and local hooks (skippable via --no-verify), so a lint
-      # failure could merge and turn main red. `--filter='*' lint` covers the
-      # fast oxlint-only pass for every workspace package (measured ~4s across
-      # all 7 packages locally, well under CI budget), so it is cheap enough to
-      # run unconditionally rather than trying to scope it to changed packages.
-      # `lint:invariants` is called out explicitly (not folded into the `--filter='*'`
-      # sweep) because `@lostgradient/cinder`'s 7 custom tree-walk invariant checks
-      # (no-cycle-imports, no-bare-console-warn, no-inline-match-media,
-      # svelte-ts-runtime-types, data-cinder-boolean-attributes, test-cleanup,
-      # tokens:literals --strict) live in that script, not in `lint` itself — so
-      # this step keeps gating them even if `lint`'s composition changes later.
-      # stylelint runs across all package CSS/Svelte sources, mirroring the
-      # invocation in the root package.json `lint` script.
-      - name: Lint (workspace)
-        # Full (not --affected) on every run: the workflow comment above
-        # measures this at ~4s across all packages, cheap enough to run
-        # unconditionally rather than risk a scoping gap on a blocking gate.
+          restore-keys: turbo-${{ runner.os }}-
+      - run: bun install --frozen-lockfile
+      - name: Static, generated, and workflow contracts
         run: |
           bunx turbo run lint
           bun run --filter=@lostgradient/cinder lint:invariants
-          bun run --filter=@lostgradient/cinder validate:release-workflow
           bunx stylelint 'packages/**/src/**/*.{css,svelte}'
-
-      # Unconditional whole-repo invariant: every component CSS partial must be
-      # reachable from the aggregate styles/components.css @import chain, or the
-      # component ships UNSTYLED to `/styles` consumers. Runs regardless of scope
-      # because the gap can be introduced by a CSS-file change while the checker's
-      # own test file is unchanged (so `test:changed` would miss it). Sub-second.
-      - name: Check styles aggregator completeness
-        run: bun run --filter=@lostgradient/cinder aggregator:check
-
-      # Unconditional whole-repo invariant: every var(--cinder-*) reference in
-      # component styling must resolve to a declared global token, a component-
-      # owned variable, or an explicitly allowed runtime variable. This used to
-      # run only in main-green, which let #1232 merge a second stale token
-      # reference and made #1233 the first failing signal. Keep the strict audit
-      # in PR CI so the introducing change is rejected before merge.
-      - name: Check component token references
-        run: bun run --filter=@lostgradient/cinder tokens:audit -- --strict
-
-      # Unconditional whole-repo invariant: the generated component artifacts —
-      # per-component schemas (.schema.json/.schema.ts), constraints (.constraints.json),
-      # examples manifests (.examples.json), generated README regions, and the
-      # aggregate components.json manifest — must match what the generator would
-      # produce from the current sources. (The package exports map is a separate
-      # generator, gated by exports-drift.test.ts, not by this step.) Drift ships
-      # stale docs and metadata to consumers. Runs regardless of scope because a
-      # source change (e.g. a *.example.svelte edit) can desync a committed manifest
-      # while the generator's own files are unchanged (so `test:changed` would miss
-      # it). Sub-second; mirrors the aggregator gate above.
-      - name: Check generated component artifacts are up to date
-        run: |
+          bun run --filter=@lostgradient/cinder aggregator:check
+          bun run --filter=@lostgradient/cinder tokens:audit -- --strict
           bun run --filter=@lostgradient/cinder components:check
           bun run --filter=@lostgradient/chat components:check
           bun run --filter=@lostgradient/editor components:check
+          bun run --filter=@lostgradient/cinder validate:consumer:manifest-smoke
+          bun run --filter=@lostgradient/cinder validate:release-workflow
+          bun test packages/components/scripts/check-css-duplication.test.ts
 
-      # Cheap packed-artifact contract: catches export/manifest drift before merge.
-      # Full consumer fixtures remain release-only.
-      - name: Consumer manifest smoke (cinder)
-        run: bun run --filter=@lostgradient/cinder validate:consumer:manifest-smoke
-
-      # Scoped to the pull request's affected packages via `turbo run
-      # --affected` (diffing against TURBO_SCM_BASE) so a chat-only PR stops
-      # building cinder and vice versa. Push/workflow_dispatch runs the full
-      # graph — same as before turbo, and the redundant safety net main-green
-      # also runs.
-      - name: Build workspace (affected)
+  package:
+    needs: scope
+    if: "!cancelled() && (needs.scope.result != 'success' || contains(needs.scope.outputs.unit_lanes, 'package'))"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - run: bun install --frozen-lockfile
+      - name: Build and package tests
         env:
           AFFECTED: ${{ github.event_name == 'pull_request' && '--affected' || '' }}
-        run: bunx turbo run build --filter=@lostgradient/cinder --filter=@lostgradient/cinder-mcp --filter=@lostgradient/chat $AFFECTED
-
-      - name: Run workspace script unit tests
-        run: bun run test:workspace-scripts
-
-      # @lostgradient/markdown and @lostgradient/editor are bundled into
-      # @lostgradient/cinder (markdown is also independently published — see
-      # docs/decisions/package-boundaries.md Phase 2 — but still has no
-      # dedicated CI test step of its own beyond this one), so unlike
-      # @lostgradient/chat (covered below) and @lostgradient/cinder (covered
-      # by the scoped test:changed step further down) they had no dedicated CI
-      # test step of their own. Before pre-push was thinned to a fast,
-      # fail-open sanity check, its local dispatch covered these two on the
-      # pushing branch pre-merge; CI must own that entirely now (see
-      # docs/validation-topology.md's "Push-layer inversion"). `--affected`
-      # (via turbo, diffing against TURBO_SCM_BASE) makes this near-free when
-      # neither changed -- their `dist/` is already fresh from the
-      # "Build workspace (affected)" step above (turbo builds them
-      # transparently to satisfy cinder's `^build` dependency, filter or not),
-      # so a skip here is a cache hit, not a rebuild.
-      - name: Run private package unit tests (git-range scoped on PRs)
-        # Deliberately NOT `--filter=X --filter=Y --affected`:
-        # turbo combines multiple --filter flags as a UNION, and --affected is
-        # itself shorthand for a repo-wide `--filter=...[origin/main...HEAD]`
-        # — appending it to the two package filters doesn't intersect with
-        # them, it unions in every OTHER affected workspace too (so a
-        # cinder-only PR would also run cinder's/chat's full `test` task here,
-        # duplicating the scoped test:changed step below and risking this
-        # job's 20-minute timeout on a large unrelated diff).
-        #
-        # Each `<package>...[<range>]` filter is already its own
-        # package+git-range intersection ("select this package if it OR its
-        # dependencies changed in that range" — verified against turbo 2.x
-        # docs and a local --dry=json run: an unrelated diff selects zero
-        # tasks, a diff touching only @lostgradient/markdown selects markdown AND
-        # its dependent editor, exactly the reverse-dependency closure the
-        # old pre-push dispatch covered). Unioning two of these pre-intersected
-        # filters is exactly "run each of these two if it's affected",
-        # nothing more.
-        env:
           BASE_REF: ${{ github.base_ref }}
         run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
+          bunx turbo run build --filter=@lostgradient/cinder --filter=@lostgradient/cinder-mcp --filter=@lostgradient/chat $AFFECTED
+          bun run test:workspace-scripts
+          if [ "${{ github.event_name }}" = pull_request ]; then
             bunx turbo run test --filter="@lostgradient/markdown...[origin/${BASE_REF}...HEAD]" --filter="@lostgradient/editor...[origin/${BASE_REF}...HEAD]" --filter="@lostgradient/cinder-mcp...[origin/${BASE_REF}...HEAD]"
           else
             bunx turbo run test --filter=@lostgradient/markdown --filter=@lostgradient/editor --filter=@lostgradient/cinder-mcp
           fi
+          bunx turbo run test:coverage --filter=@lostgradient/chat $AFFECTED
 
-      - name: Run Chat unit tests with coverage (affected)
-        env:
-          AFFECTED: ${{ github.event_name == 'pull_request' && '--affected' || '' }}
-        run: bunx turbo run test:coverage --filter=@lostgradient/chat $AFFECTED
-
-      # Playground tests exercise source-driven Bun.build routes that have
-      # failed only on Linux after merge when their process isolation regressed.
-      # Run the package when it or one of its workspace dependencies changes so
-      # the exact package runner is proven on the pull request head instead of
-      # relying on main-green to discover the failure after merge.
-      - name: Run Playground unit tests (git-range scoped on PRs)
-        env:
+  playground:
+    needs: scope
+    if: "!cancelled() && (needs.scope.result != 'success' || contains(needs.scope.outputs.unit_lanes, 'playground'))"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - run: bun install --frozen-lockfile
+      - env:
           BASE_REF: ${{ github.base_ref }}
         run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
+          if [ "${{ github.event_name }}" = pull_request ]; then
             bunx turbo run test --filter="@cinder/playground...[origin/${BASE_REF}...HEAD]"
           else
             bunx turbo run test --filter=@cinder/playground
           fi
+          bun run --filter=@cinder/playground check:source-temp
 
-      - name: Check Playground source temporary directories
-        run: bun run --filter=@cinder/playground check:source-temp
-
-      - name: Run component unit tests (scoped)
-        # Scopes the `@lostgradient/cinder` (components) package to the changed components and
-        # their dependents. `@lostgradient/markdown`/`@lostgradient/editor`
-        # and `@cinder/playground` have their own git-range-scoped steps above
-        # now; `@cinder/testing` still keeps its authoritative coverage in
-        # `main-green` only.
-        #
-        # `needs.scope.outputs.components` can carry an extracted package's
-        # slugs (e.g. @lostgradient/chat's `chat*` family — already fully
-        # covered above by "Run Chat unit tests with coverage") alongside, or
-        # instead of, cinder's own. `cinder_components` is pre-narrowed by
-        # changed-components.ts to just the slugs cinder's own `test:changed`
-        # can resolve; passing it the combined list would hard-error on any
-        # extracted-package slug (unknown to cinder's component graph — see
-        # #788). A filtered scope that narrows to NOTHING for cinder (a PR
-        # touching only an extracted package) skips this step outright, rather
-        # than passing test-changed.ts an empty CINDER_TEST_COMPONENTS — which
-        # would fall back to a local `git diff` against this job's shallow
-        # (non-fetch-depth-0) checkout.
-        env:
-          # CINDER_TEST_MODE is the explicit signal: `full` → test-changed.ts runs
-          # the full suite without touching git. `filtered` → CINDER_TEST_COMPONENTS
-          # carries the scoped slug list. (The checkout is full-history as of the
-          # turbo --affected adoption above, but test-changed.ts still uses the
-          # explicit signal rather than doing its own git diff.)
-          #
-          # Explicitly defaults to `full` when `scope` did not succeed (see
-          # this job's `if: "!cancelled()"`) —
-          # `test-changed.ts` treats ONLY the literal string `full` as
-          # full-suite mode, so leaving this as the bare (and on a scope
-          # failure, empty) `needs.scope.outputs.mode` would make it fall
-          # through to its own local `git diff` instead of the intended
-          # fail-safe full run.
+  component:
+    needs: scope
+    if: "!cancelled() && (needs.scope.result != 'success' || contains(needs.scope.outputs.unit_lanes, 'components'))"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.scope.result == 'success' && needs.scope.outputs.component_matrix || '{"chunk":[1,2,3,4]}') }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - run: bun install --frozen-lockfile
+      - env:
           CINDER_TEST_MODE: ${{ needs.scope.result == 'success' && needs.scope.outputs.mode || 'full' }}
-          CINDER_TEST_COMPONENTS: ${{ needs.scope.result == 'success' && needs.scope.outputs.mode == 'filtered' && needs.scope.outputs.cinder_components || '' }}
+          CINDER_TEST_COMPONENTS: ${{ needs.scope.outputs.cinder_components }}
+          CINDER_TEST_FULL_SUITE_CHUNK: ${{ (needs.scope.result != 'success' || needs.scope.outputs.mode == 'full') && matrix.chunk || '' }}
         run: |
-          if [ "$CINDER_TEST_MODE" = "filtered" ] && [ -z "${CINDER_TEST_COMPONENTS:-}" ]; then
-            echo "Filtered scope has no @lostgradient/cinder components (changes belong to another package, e.g. chat) — skipping cinder-scoped unit tests."
-            exit 0
-          fi
-          if [ -n "${CINDER_TEST_COMPONENTS:-}" ]; then
-            echo "Scoped unit tests: $CINDER_TEST_COMPONENTS"
-          else
-            echo "Full unit suite (mode=${{ needs.scope.outputs.mode }})."
-          fi
+          if [ "$CINDER_TEST_MODE" = filtered ] && [ -z "$CINDER_TEST_COMPONENTS" ]; then exit 0; fi
           bun run --filter=@lostgradient/cinder test:changed
+
+  unit-tests:
+    name: unit-tests
+    needs: [scope, static-artifact, package, playground, component]
+    if: '!cancelled()'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every selected lane to succeed
+        env:
+          SCOPE: ${{ needs.scope.result }}
+          STATIC: ${{ needs.static-artifact.result }}
+          PACKAGE: ${{ needs.package.result }}
+          PLAYGROUND: ${{ needs.playground.result }}
+          COMPONENT: ${{ needs.component.result }}
+          LANES: ${{ needs.scope.outputs.unit_lanes }}
+        run: |
+          set -euo pipefail
+          echo "scope=$SCOPE lanes=$LANES static=$STATIC package=$PACKAGE playground=$PLAYGROUND component=$COMPONENT" | tee -a "$GITHUB_STEP_SUMMARY"
+          [ "$SCOPE" = success ] || exit 1
+          case ",$LANES," in *,static,*) [ "$STATIC" = success ] || exit 1;; esac
+          case ",$LANES," in *,package,*) [ "$PACKAGE" = success ] || exit 1;; esac
+          case ",$LANES," in *,playground,*) [ "$PLAYGROUND" = success ] || exit 1;; esac
+          case ",$LANES," in *,components,*) [ "$COMPONENT" = success ] || exit 1;; esac
