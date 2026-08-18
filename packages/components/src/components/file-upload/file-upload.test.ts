@@ -139,7 +139,7 @@ describe('FileUpload rendering', () => {
     input.click = inputClick;
 
     expect(screen.getByRole('group', { name: 'File upload' })).toBe(
-      container.querySelector('.cinder-file-upload__dropzone'),
+      container.querySelector('.cinder-file-upload__dropzone')!,
     );
     expect(button.hasAttribute('tabindex')).toBe(false);
     button.focus();
