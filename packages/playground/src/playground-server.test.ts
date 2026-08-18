@@ -344,7 +344,7 @@ describe('/', () => {
     expect(match).not.toBeNull();
     const payload = JSON.parse(match![1]!) as { component: string; readmeHtml: string };
     expect(payload.component).toBe('');
-    expect(payload.readmeHtml).not.toContain('<h1>cinder</h1>');
+    expect(payload.readmeHtml).not.toMatch(/<h1\b/i);
     expect(payload.readmeHtml).toContain('<h2>Install</h2>');
     expect(payload.readmeHtml).not.toContain('href="./docs/');
     expect(payload.readmeHtml).not.toContain('href="docs/');
