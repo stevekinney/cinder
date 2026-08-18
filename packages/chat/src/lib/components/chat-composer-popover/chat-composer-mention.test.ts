@@ -81,6 +81,21 @@ describe('chat composer mentions', () => {
       text: mismatchedDelimiter,
       mentions: [],
     });
+
+    expect(parseChatComposerMentions('```\ncode\n```\n[Ada](person:ada)')).toEqual({
+      text: '```\ncode\n```\nAda',
+      mentions: [{ label: 'Ada', uri: 'person:ada', start: 13, end: 16 }],
+    });
+
+    expect(parseChatComposerMentions('```code``` [Ada](person:ada)')).toEqual({
+      text: '```code``` Ada',
+      mentions: [{ label: 'Ada', uri: 'person:ada', start: 11, end: 14 }],
+    });
+
+    expect(parseChatComposerMentions('`unfinished [Ada](person:ada)')).toEqual({
+      text: '`unfinished Ada',
+      mentions: [{ label: 'Ada', uri: 'person:ada', start: 12, end: 15 }],
+    });
   });
 
   test('preserves escaped Markdown characters in labels and destinations', () => {

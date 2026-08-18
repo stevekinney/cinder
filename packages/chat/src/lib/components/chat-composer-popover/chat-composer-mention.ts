@@ -102,6 +102,10 @@ function getOpeningCodeFence(value: string, start: number): CodeFence | null {
   }
 
   const minimumLength = countRun(value, start, delimiter);
+  const lineEnd = value.indexOf('\n', start + minimumLength);
+  const info = value.slice(start + minimumLength, lineEnd === -1 ? value.length : lineEnd);
+  if (delimiter === '`' && info.includes('`')) return null;
+
   return minimumLength >= 3 ? { delimiter, minimumLength } : null;
 }
 
@@ -208,7 +212,13 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
 
   while (sourceIndex < value.length) {
     if (codeFence !== null) {
-      if (isClosingCodeFence(value, sourceIndex, codeFence)) codeFence = null;
+      if (isClosingCodeFence(value, sourceIndex, codeFence)) {
+        const closingLength = countRun(value, sourceIndex, codeFence.delimiter);
+        text += value.slice(sourceIndex, sourceIndex + closingLength);
+        sourceIndex += closingLength;
+        codeFence = null;
+        continue;
+      }
 
       text += value[sourceIndex];
       sourceIndex += 1;
