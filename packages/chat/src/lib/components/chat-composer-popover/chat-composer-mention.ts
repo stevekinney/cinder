@@ -1,4 +1,19 @@
 import {
+  canStartHtmlBlock,
+  closesHtmlBlockWithTag,
+  getAutolinkEnd,
+  getClosingHtmlBlockEnd,
+  getHtmlBlockBlankLineEnd,
+  getHtmlTagEnd,
+  isVoidHtmlTag,
+} from './chat-composer-mention-html.ts';
+import {
+  escapeMentionLabel,
+  escapeMentionUri,
+  isEntityUri,
+  unescapeMarkdown,
+} from './chat-composer-mention-link.ts';
+import {
   hasEscapedPrefix,
   makeScanMetadata,
   type ScanMetadata,
@@ -33,75 +48,6 @@ type CodeFence = {
   minimumLength: number;
   prefix: string;
 };
-
-const ABSOLUTE_URI_SCHEME = /^([A-Za-z][A-Za-z0-9+.-]*):/u;
-const NON_ENTITY_URI_SCHEMES = new Set([
-  'about',
-  'blob',
-  'data',
-  'file',
-  'http',
-  'https',
-  'javascript',
-  'mailto',
-  'tel',
-  'vbscript',
-]);
-const VOID_HTML_TAGS = new Set([
-  'area',
-  'base',
-  'br',
-  'col',
-  'embed',
-  'hr',
-  'img',
-  'input',
-  'link',
-  'meta',
-  'source',
-  'track',
-  'wbr',
-]);
-const RAW_TEXT_HTML_TAGS = new Set(['pre', 'script', 'style', 'textarea']);
-
-function escapeLabel(value: string): string {
-  return value.replaceAll('\\', '\\\\').replaceAll('[', '\\[').replaceAll(']', '\\]');
-}
-
-function escapeUri(value: string): string {
-  return value.replaceAll('\\', '\\\\').replace(/([()[\]\s])/gu, '\\$1');
-}
-
-function unescapeMarkdown(value: string, escapeWhitespace = false): string | null {
-  let unescaped = '';
-
-  for (let index = 0; index < value.length; index += 1) {
-    if (value[index] !== '\\') {
-      unescaped += value[index];
-      continue;
-    }
-
-    const escapedCharacter = value[index + 1];
-    if (escapedCharacter === undefined) return null;
-
-    const isPunctuation = /[!"#$%&'()*+,-./:;<=>?@[\]^_`{|}~\\]/u.test(escapedCharacter);
-    if (!isPunctuation && !(escapeWhitespace && /\s/u.test(escapedCharacter))) {
-      unescaped += `\\${escapedCharacter}`;
-      index += 1;
-      continue;
-    }
-
-    unescaped += escapedCharacter;
-    index += 1;
-  }
-
-  return unescaped;
-}
-
-function isEntityUri(uri: string): boolean {
-  const match = ABSOLUTE_URI_SCHEME.exec(uri);
-  return match !== null && !NON_ENTITY_URI_SCHEMES.has(match[1]!.toLowerCase());
-}
 
 function countRun(value: string, start: number, character: string): number {
   let length = 0;
@@ -167,59 +113,6 @@ function isClosingCodeFence(
 
   const lineEnd = value.indexOf('\n', start + length);
   return /^ *\r?$/u.test(value.slice(start + length, lineEnd === -1 ? value.length : lineEnd));
-}
-
-function getHtmlTagEnd(value: string, start: number): number | null {
-  if (!/[A-Za-z/!?]/u.test(value[start + 1] ?? '')) return null;
-
-  let quote: '"' | "'" | null = null;
-  for (let index = start + 1; index < value.length; index += 1) {
-    const character = value[index];
-    if (quote !== null) {
-      if (character === quote) quote = null;
-    } else if (character === '"' || character === "'") {
-      quote = character;
-    } else if (character === '<') {
-      return null;
-    } else if (character === '>') {
-      const token = value.slice(start, index + 1);
-      return /^(?:<\/?[A-Za-z][A-Za-z0-9-]*(?:\s+[A-Za-z_:][A-Za-z0-9_.:-]*(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'=<>`]+))?)*\s*\/?>|<![A-Z][^>]*>|<\?[^>]*\?>)$/u.test(
-        token,
-      )
-        ? index
-        : null;
-    }
-  }
-  return null;
-}
-
-function getHtmlBlockBlankLineEnd(value: string, start: number): number | null {
-  let lineEnd = value.indexOf('\n', start);
-  while (lineEnd !== -1) {
-    let cursor = lineEnd + 1;
-    while (value[cursor] === ' ' || value[cursor] === '\t' || value[cursor] === '\r') cursor += 1;
-    if (value[cursor] === '\n') return cursor + 1;
-    lineEnd = value.indexOf('\n', cursor);
-  }
-  return null;
-}
-
-function getClosingHtmlBlockEnd(value: string, start: number, tag: string): number | null {
-  const normalizedTag = tag.toLowerCase();
-  let candidate = value.indexOf('</', start);
-  while (candidate !== -1) {
-    const nameStart = candidate + 2;
-    const nameEnd = nameStart + tag.length;
-    if (
-      value.slice(nameStart, nameEnd).toLowerCase() === normalizedTag &&
-      /[\s>]/u.test(value[nameEnd] ?? '')
-    ) {
-      const tagEnd = getHtmlTagEnd(value, candidate);
-      if (tagEnd !== null) return tagEnd + 1;
-    }
-    candidate = value.indexOf('</', candidate + 2);
-  }
-  return null;
 }
 
 function getOrdinaryLinkEnd(value: string, start: number): number | null {
@@ -395,7 +288,7 @@ export function serializeChatComposerMention({ label, uri }: ChatComposerMention
     throw new TypeError('serializeChatComposerMention requires an absolute non-web entity URI.');
   }
 
-  return `[${escapeLabel(label)}](${escapeUri(uri)})`;
+  return `[${escapeMentionLabel(label)}](${escapeMentionUri(uri)})`;
 }
 
 /** Deserializes one serialized entity mention, or returns `null` for any other text. */
@@ -483,6 +376,12 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
         sourceIndex += 4;
         continue;
       }
+      const autolinkEnd = getAutolinkEnd(value, sourceIndex);
+      if (autolinkEnd !== null) {
+        text += value.slice(sourceIndex, autolinkEnd);
+        sourceIndex = autolinkEnd;
+        continue;
+      }
       const tagEnd = getHtmlTagEnd(value, sourceIndex);
       if (tagEnd !== null) {
         const tag = /^<([A-Za-z][A-Za-z0-9-]*)(?:\s|>)/u.exec(value.slice(sourceIndex, tagEnd + 1));
@@ -491,17 +390,18 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
         if (
           tag !== null &&
           !value.slice(sourceIndex - 2, sourceIndex).includes('/') &&
-          !VOID_HTML_TAGS.has(tag[1]!.toLowerCase())
+          !isVoidHtmlTag(tag[1]!.toLowerCase())
         ) {
           const lineStart = metadata.lineStarts[sourceIndex - 1] ?? 0;
+          const normalizedTag = tag[1]!.toLowerCase();
           if (
             /^\s*<[A-Za-z][A-Za-z0-9-]*(?:\s[^>]*)?>$/u.test(value.slice(lineStart, sourceIndex)) &&
-            value[sourceIndex] === '\n'
+            value[sourceIndex] === '\n' &&
+            canStartHtmlBlock(value, lineStart, normalizedTag, metadata)
           ) {
-            const normalizedTag = tag[1]!.toLowerCase();
             htmlBlock = {
               tag: normalizedTag,
-              closesWithTag: RAW_TEXT_HTML_TAGS.has(normalizedTag),
+              closesWithTag: closesHtmlBlockWithTag(normalizedTag),
             };
           }
         }

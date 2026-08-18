@@ -282,6 +282,14 @@ describe('chat composer mentions', () => {
     expect(parseChatComposerMentions('<')).toEqual({ text: '<', mentions: [] });
     expect(parseChatComposerMentions('<a')).toEqual({ text: '<a', mentions: [] });
     expect(parseChatComposerMentions('<a<a')).toEqual({ text: '<a<a', mentions: [] });
+    const uriAutolink = '<https://example.com/[Ada](person:ada)>';
+    expect(parseChatComposerMentions(uriAutolink)).toEqual({ text: uriAutolink, mentions: [] });
+    const emailAutolink = '<ada@example.com>';
+    expect(parseChatComposerMentions(emailAutolink)).toEqual({ text: emailAutolink, mentions: [] });
+    expect(parseChatComposerMentions('<https://bad value [Ada](person:real)>')).toEqual({
+      text: '<https://bad value Ada>',
+      mentions: [{ label: 'Ada', uri: 'person:real', start: 19, end: 22 }],
+    });
     expect(parseChatComposerMentions('<span [Ada](person:ada)>')).toEqual({
       text: '<span Ada>',
       mentions: [{ label: 'Ada', uri: 'person:ada', start: 6, end: 9 }],
@@ -297,6 +305,18 @@ describe('chat composer mentions', () => {
     expect(parseChatComposerMentions('<DIV>\n[Ada](person:block)\n\n[Ada](person:real)')).toEqual({
       text: '<DIV>\n[Ada](person:block)\n\nAda',
       mentions: [{ label: 'Ada', uri: 'person:real', start: 27, end: 30 }],
+    });
+    expect(parseChatComposerMentions('<span>\n[Ada](person:block)')).toEqual({
+      text: '<span>\n[Ada](person:block)',
+      mentions: [],
+    });
+    expect(parseChatComposerMentions('Intro\n\n<span>\n[Ada](person:block)')).toEqual({
+      text: 'Intro\n\n<span>\n[Ada](person:block)',
+      mentions: [],
+    });
+    expect(parseChatComposerMentions('Intro\n<span>\n[Ada](person:real)')).toEqual({
+      text: 'Intro\n<span>\nAda',
+      mentions: [{ label: 'Ada', uri: 'person:real', start: 13, end: 16 }],
     });
     expect(
       parseChatComposerMentions('<SCRIPT>\n[Ada](person:block)\n</script>\n[Ada](person:real)'),
