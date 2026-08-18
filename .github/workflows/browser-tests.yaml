@@ -157,7 +157,6 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           BASE_REF: ${{ github.base_ref }}
-          CLASSIFIER_BROWSER_RELEVANT: ${{ steps.decide.outputs.browser_relevant }}
           DISPATCH_COMPONENTS: ${{ github.event.inputs.components || '' }}
         run: |
           set -euo pipefail
@@ -206,6 +205,7 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           BASE_REF: ${{ github.base_ref }}
+          CLASSIFIER_BROWSER_RELEVANT: ${{ steps.decide.outputs.browser_relevant }}
         run: |
           set -euo pipefail
 
