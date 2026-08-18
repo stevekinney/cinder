@@ -122,6 +122,36 @@ describe('EnumEditor', () => {
     );
   });
 
+  test('retains an invalid row draft when a sibling value is committed', async () => {
+    let values: unknown[] = ['draft', 'published'];
+    const onValuesChange = (next: unknown[]) => {
+      values = next;
+    };
+    const view = render(EnumEditor, {
+      idPrefix: 'status-enum',
+      path: '/status/enum',
+      values,
+      onValuesChange,
+    });
+
+    const firstInput = screen.getByRole('textbox', { name: 'Enum value 1' });
+    const secondInput = screen.getByRole('textbox', { name: 'Enum value 2' });
+    await fireEvent.input(secondInput, { target: { value: '{' } });
+    await fireEvent.input(firstInput, { target: { value: '"review"' } });
+    await view.rerender({
+      idPrefix: 'status-enum',
+      path: '/status/enum',
+      values,
+      onValuesChange,
+    });
+
+    const invalidInput = screen.getByRole('textbox', { name: 'Enum value 2' });
+    expect(values).toEqual(['review', 'published']);
+    expect(invalidInput).toHaveProperty('value', '{');
+    expect(invalidInput.getAttribute('aria-invalid')).toBe('true');
+    expect(screen.getByText('Enter a valid JSON value.')).not.toBeNull();
+  });
+
   test('treats object values with different member order as duplicates', async () => {
     let values: unknown[] = [];
     render(EnumEditor, {

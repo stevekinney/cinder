@@ -24,8 +24,10 @@
   }: EnumEditorProps = $props();
 
   let invalidValueIndexes = $state<Set<number>>(new Set());
+  let draftTextByIndex = $state<Record<number, string>>({});
   let actionAnnouncement = $state('');
   let previousValues: unknown[] | null = null;
+  let pendingLocalValues: unknown[] | null = null;
 
   $effect(() => onvalidationErrorcount?.(invalidValueIndexes.size));
   onDestroy(() => onvalidationErrorcount?.(0));
@@ -35,7 +37,12 @@
       previousValues = values;
     } else if (values !== previousValues) {
       previousValues = values;
-      if (invalidValueIndexes.size > 0) invalidValueIndexes = new Set();
+      const receivedLocalUpdate = values === pendingLocalValues;
+      pendingLocalValues = null;
+      if (!receivedLocalUpdate) {
+        invalidValueIndexes = new Set();
+        draftTextByIndex = {};
+      }
     }
   });
 
@@ -67,6 +74,14 @@
     return values.some((item, index) => index !== exceptIndex && canonicalJson(item) === encoded);
   }
 
+  function commitValues(
+    next: unknown[],
+    options: { coalesceKey?: string; label?: string } | undefined = undefined,
+  ): void {
+    pendingLocalValues = next;
+    onValuesChange(next, options);
+  }
+
   $effect(() => {
     const validIndexes = [...invalidValueIndexes].filter((index) => index < values.length);
     if (validIndexes.length !== invalidValueIndexes.size)
@@ -74,6 +89,7 @@
   });
 
   function setValue(index: number, text: string): void {
+    draftTextByIndex = { ...draftTextByIndex, [index]: text };
     try {
       const nextValue = JSON.parse(text) as unknown;
       if (!isJsonValue(nextValue) || hasDuplicateValue(nextValue, index)) {
@@ -82,7 +98,9 @@
       const next = [...values];
       next[index] = nextValue;
       invalidValueIndexes = new Set([...invalidValueIndexes].filter((item) => item !== index));
-      onValuesChange(next, { coalesceKey: `enum:${path}:${index}`, label: 'edit enum value' });
+      const { [index]: _committedDraft, ...remainingDrafts } = draftTextByIndex;
+      draftTextByIndex = remainingDrafts;
+      commitValues(next, { coalesceKey: `enum:${path}:${index}`, label: 'edit enum value' });
     } catch {
       invalidValueIndexes = new Set([...invalidValueIndexes, index]);
     }
@@ -99,7 +117,7 @@
         item === index ? targetIndex : item === targetIndex ? index : item,
       ),
     );
-    onValuesChange(next);
+    commitValues(next);
     actionAnnouncement = `Moved enum value ${index + 1} to position ${targetIndex + 1} of ${values.length}.`;
   }
 
@@ -111,7 +129,7 @@
         .map((item) => (item > index ? item - 1 : item)),
     );
     const focusIndex = Math.min(index, values.length - 2);
-    onValuesChange(values.filter((_, itemIndex) => itemIndex !== index));
+    commitValues(values.filter((_, itemIndex) => itemIndex !== index));
     await tick();
     document.getElementById(`${idPrefix}-remove-${focusIndex}`)?.focus();
   }
@@ -121,7 +139,7 @@
     let nextValue = '';
     let suffix = 1;
     while (hasDuplicateValue(nextValue, -1)) nextValue = `value ${suffix++}`;
-    onValuesChange([...values, nextValue]);
+    commitValues([...values, nextValue]);
   }
 </script>
 
@@ -142,7 +160,7 @@
             <Input
               id={inputId}
               label={`Enum value ${index + 1}`}
-              value={jsonText(value)}
+              value={draftTextByIndex[index] ?? jsonText(value)}
               disabled={readonly}
               aria-invalid={invalidValueIndexes.has(index) || undefined}
               aria-describedby={invalidValueIndexes.has(index) ? errorId : undefined}
