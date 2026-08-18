@@ -57,6 +57,8 @@ export interface UseChatScrollStateReturn {
   readonly isUserScrolling: boolean;
   /** Set atBottom state directly */
   setAtBottom(value: boolean): void;
+  /** Recompute bottom and jump-button state from the viewport's current geometry. */
+  recomputeFromViewport(viewport: HTMLElement | null): void;
   /** Create a scroll event listener attachment for the viewport */
   createScrollAttachment(): Attachment<HTMLElement>;
   /**
@@ -340,7 +342,7 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
    * scroll-to-top). State is refreshed from final geometry, and reaching the
    * bottom fires `onReachBottom` when the state transitions there.
    */
-  function recomputeAtBottomAtSettlement(viewport: HTMLElement | null): void {
+  function recomputeFromViewport(viewport: HTMLElement | null): void {
     if (viewport === null) return;
     const state = {
       scrollTop: viewport.scrollTop,
@@ -575,7 +577,7 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
       // listener's next rAF recompute can re-fire the auto-stick effect
       // against a stale `atBottom: true` and yank a just-completed top-scroll
       // back to the bottom (#1236).
-      recomputeAtBottomAtSettlement(viewport);
+      recomputeFromViewport(viewport);
       applyPendingSentinelEntry(viewport);
       onSettled?.();
     }
@@ -761,6 +763,7 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
       return showJumpButton;
     },
     setAtBottom,
+    recomputeFromViewport,
     createScrollAttachment,
     createSentinelObserver,
     handleSentinelEntry,
