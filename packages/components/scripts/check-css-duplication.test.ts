@@ -4,6 +4,7 @@ import { parse } from 'postcss';
 import {
   compoundFamilies,
   declarationMultiset,
+  declarationMultisetForComponent,
   findDuplicatePairs,
   MINIMUM_DECLARATIONS,
   multisetSimilarity,
@@ -50,6 +51,29 @@ describe('declarationMultiset', () => {
   test('keeps shared public tokens verbatim — token reuse is not duplication evidence', () => {
     const multiset = multisetFor(`.a { gap: var(--cinder-space-2); }`, 'a');
     expect(multiset.get('|gap:var(--cinder-space-2)')).toBe(1);
+  });
+
+  test('attributes child rules in a parent stylesheet to the child component', () => {
+    const parentStylesheet = parse(`
+      .cinder-grid { display: grid; gap: 1rem; }
+      .cinder-grid-item { grid-column-start: auto; grid-column-end: span 1; grid-row-start: auto; padding: 1rem; margin: 0; border: 0; background: transparent; min-width: 0; min-height: 0; position: relative; outline: 0; box-sizing: border-box; }
+    `);
+    const bentoCell = parse(`
+      .cinder-bento-cell { grid-column-start: auto; grid-column-end: span 1; grid-row-start: auto; padding: 1rem; margin: 0; border: 0; background: transparent; min-width: 0; min-height: 0; position: relative; outline: 0; box-sizing: border-box; }
+    `);
+    const gridItem = {
+      name: 'grid-item',
+      multiset: declarationMultisetForComponent(parentStylesheet, 'grid-item'),
+      familyRoot: 'grid',
+    };
+    const duplicate = {
+      name: 'bento-cell',
+      multiset: declarationMultisetForComponent(bentoCell, 'bento-cell'),
+      familyRoot: 'bento-cell',
+    };
+
+    expect(multisetSize(gridItem.multiset)).toBeGreaterThanOrEqual(MINIMUM_DECLARATIONS);
+    expect(findDuplicatePairs([gridItem, duplicate], [])).toHaveLength(1);
   });
 });
 

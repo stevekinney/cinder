@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -9,6 +9,7 @@ import {
   type Document,
   parse,
   type Root,
+  type Rule,
 } from 'postcss';
 
 import { discoverComponentDirectories } from './discover-component-directories.ts';
@@ -106,8 +107,36 @@ function atRuleContext(node: Declaration): string {
  * not the layer wrapper) prefixes each key so responsive clones count.
  */
 export function declarationMultiset(root: Root, componentName: string): DeclarationMultiset {
+  return declarationMultisetForComponent(root, componentName, () => true);
+}
+
+function declarationBelongsToComponent(declaration: Declaration, componentName: string): boolean {
+  const className = `cinder-${componentName}`;
+  let current: Container | Document | undefined = declaration.parent;
+  while (current && current.type !== 'root') {
+    if (current.type === 'rule' && selectorContainsComponent(current, className)) return true;
+    current = current.parent;
+  }
+  return false;
+}
+
+function selectorContainsComponent(rule: Rule, className: string): boolean {
+  return new RegExp(`(^|[^a-z0-9-])\\.${className}($|[^a-z0-9-])`, 'i').test(rule.selector);
+}
+
+/**
+ * Build a declaration multiset from rules owned by one component. This lets a
+ * compound parent keep leaf rules in its stylesheet without hiding that leaf
+ * from cross-component duplication detection.
+ */
+export function declarationMultisetForComponent(
+  root: Root,
+  componentName: string,
+  belongsToComponent = declarationBelongsToComponent,
+): DeclarationMultiset {
   const multiset: DeclarationMultiset = new Map();
   root.walkDecls((declaration) => {
+    if (!belongsToComponent(declaration, componentName)) return;
     const context = atRuleContext(declaration);
     const key = `${context}|${normalizeProperty(declaration.prop, componentName)}:${normalizeValue(
       declaration.value,
@@ -190,11 +219,13 @@ type ComponentCss = {
 
 async function collectComponentCss(): Promise<ComponentCss[]> {
   const components = await discoverComponentDirectories();
-  const sources = new Map<string, string>();
+  const sources: Root[] = [];
   for (const component of components) {
-    const sidecarPath = join(component.directory, `${component.name}.css`);
-    if (!existsSync(sidecarPath)) continue;
-    sources.set(component.name, readFileSync(sidecarPath, 'utf8'));
+    for (const entry of readdirSync(component.directory, { withFileTypes: true })) {
+      if (!entry.isFile() || !entry.name.endsWith('.css')) continue;
+      const sourcePath = join(component.directory, entry.name);
+      sources.push(parse(readFileSync(sourcePath, 'utf8'), { from: sourcePath }));
+    }
   }
 
   const edges: Array<readonly [string, string]> = [];
@@ -208,12 +239,18 @@ async function collectComponentCss(): Promise<ComponentCss[]> {
   const families = compoundFamilies(edges);
 
   const results: ComponentCss[] = [];
-  for (const [name, source] of sources) {
-    const root = parse(source, { from: name });
+  for (const component of components) {
+    const multiset: DeclarationMultiset = new Map();
+    for (const source of sources) {
+      for (const [key, count] of declarationMultisetForComponent(source, component.name)) {
+        multiset.set(key, (multiset.get(key) ?? 0) + count);
+      }
+    }
+    if (multiset.size === 0) continue;
     results.push({
-      name,
-      multiset: declarationMultiset(root, name),
-      familyRoot: families.get(name) ?? name,
+      name: component.name,
+      multiset,
+      familyRoot: families.get(component.name) ?? component.name,
     });
   }
   return results;
