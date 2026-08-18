@@ -459,6 +459,14 @@ export function playgroundBundleDependencyBuildPackages(): readonly string[] {
   return playgroundBundleDependencyPackages;
 }
 
+/** CI prebuilds this exact Turbo graph before Playwright starts. Local and fork
+ * runs leave the flag unset and retain the self-contained build fallback. */
+export function shouldBuildPlaygroundBundleDependencies(
+  environment: NodeJS.ProcessEnv = process.env,
+): boolean {
+  return environment['PLAYGROUND_DEPENDENCIES_PREBUILT'] !== '1';
+}
+
 export function playgroundWarmReadinessEndpointPath(): string {
   return warmReadinessPath;
 }
@@ -775,10 +783,14 @@ async function main(): Promise<void> {
     process.exit(1);
   } else {
     console.log(`Starting playground server (target: ${targetPlaygroundUrl})...`);
-    await buildPlaygroundBundleDependencies(
-      (childProcess) => children.push(childProcess),
-      () => shouldStartManagedChildProcess(shutdownExitCode),
-    );
+    if (shouldBuildPlaygroundBundleDependencies()) {
+      await buildPlaygroundBundleDependencies(
+        (childProcess) => children.push(childProcess),
+        () => shouldStartManagedChildProcess(shutdownExitCode),
+      );
+    } else {
+      console.log('Using Turbo-prebuilt playground bundle dependencies.');
+    }
     await exitIfShuttingDown();
     dependencyWatchController = startPlaygroundBundleDependencyWatchers(
       (childProcess) => children.push(childProcess),

@@ -120,7 +120,8 @@ jobs:
     outputs:
       component_scope_mode: ${{ steps.decide.outputs.component_scope_mode }}
       components: ${{ steps.decide.outputs.components }}
-      relevant: ${{ steps.relevance.outputs.relevant }}
+      browser_relevant: ${{ steps.decide.outputs.browser_relevant }}
+      playwright_matrix: ${{ steps.matrix.outputs.playwright_matrix }}
     steps:
       - name: Validate dispatch source ref
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.source_ref != ''
@@ -169,6 +170,7 @@ jobs:
             echo "Non-PR event ($EVENT_NAME): running full matrix."
             echo "component_scope_mode=full" >> "$GITHUB_OUTPUT"
             echo "components=" >> "$GITHUB_OUTPUT"
+            echo "browser_relevant=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -184,7 +186,7 @@ jobs:
           # loudly.
           printf '%s\n' "$changed" | bun run packages/testing/scripts/changed-components.ts
 
-      - name: Decide whether this diff is browser-test relevant
+      - name: Record shared browser scope
         id: relevance
         # This workflow no longer declares an `on.pull_request.paths` filter
         # (see docs/validation-topology.md's "Branch protection" section): a
@@ -289,7 +291,20 @@ jobs:
             done <<< "$changed"
           fi
 
-          echo "relevant=$relevant" >> "$GITHUB_OUTPUT"
+          # The shared classifier above owns the fail-safe decision. Keep this
+          # step only as a human-readable summary while migrating old logs.
+          echo "browser_relevant=${{ steps.decide.outputs.browser_relevant }}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Select Playwright shard matrix
+        id: matrix
+        env:
+          MODE: ${{ steps.decide.outputs.component_scope_mode }}
+        run: |
+          if [ "$MODE" = full ]; then
+            echo 'playwright_matrix={"shard":[1,2,3,4]}' >> "$GITHUB_OUTPUT"
+          else
+            echo 'playwright_matrix={"shard":[1]}' >> "$GITHUB_OUTPUT"
+          fi
 
   typecheck:
     needs: scope
@@ -314,7 +329,7 @@ jobs:
     # runner budget on an already-superseded run. `!cancelled()` gives the
     # same "run despite scope failing" behavior without disabling
     # cancellation.
-    if: "!cancelled() && (needs.scope.result != 'success' || needs.scope.outputs.relevant == 'true')"
+    if: "!cancelled() && (needs.scope.result != 'success' || needs.scope.outputs.browser_relevant == 'true')"
     # Runs the workspace typecheck against a fresh checkout — explicitly does
     # NOT pre-build cinder. Catches the regression class where `cinder/<name>`
     # imports stop resolving via the package's exports map (svelte/types
@@ -337,7 +352,7 @@ jobs:
       - name: Typecheck workspace
         run: bun run typecheck
 
-  playwright:
+  playwright-lane:
     needs: scope
     # See the `typecheck` job's comment: `!cancelled()` + explicit
     # result/output checks so a `scope` job FAILURE runs this job (fail safe)
@@ -349,9 +364,13 @@ jobs:
     # runner budget after a newer push already superseded it. Only a `scope`
     # job that succeeded and explicitly determined the diff irrelevant skips
     # this one.
-    if: "!cancelled() && (needs.scope.result != 'success' || needs.scope.outputs.relevant == 'true')"
+    if: "!cancelled() && (needs.scope.result != 'success' || needs.scope.outputs.browser_relevant == 'true')"
     runs-on: ubuntu-latest
+    container: mcr.microsoft.com/playwright:v1.60.0-noble
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.scope.outputs.playwright_matrix) }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -364,37 +383,14 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Resolve Playwright version
-        id: playwright-version
-        # Resolve via Bun's module resolution rather than a hardcoded
-        # node_modules path — Bun's workspace install may hoist or
-        # restructure the on-disk layout, but `require.resolve` always
-        # finds the package as imported by @cinder/testing.
-        run: |
-          version=$(bun --cwd packages/testing -e "const p = require.resolve('@playwright/test/package.json'); const m = await Bun.file(p).json(); console.log(m.version);")
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "Playwright version: $version"
+      - name: Verify pinned Playwright image
+        run: test "$(bun --cwd packages/testing -e \"const p = require.resolve('@playwright/test/package.json'); console.log((await Bun.file(p).json()).version)\")" = 1.60.0
 
-      - name: Cache Playwright browsers
-        id: playwright-cache
-        uses: actions/cache@v6
-        with:
-          path: ~/.cache/ms-playwright
-          # runner.arch guards against accidental cross-arch corruption if
-          # the runner pool ever expands beyond x64.
-          key: playwright-${{ runner.os }}-${{ runner.arch }}-${{ steps.playwright-version.outputs.version }}
-
-      - name: Install Chromium system dependencies
-        # System libs (libgbm, libasound2, etc.) live in apt, not in the
-        # Playwright cache. They must be installed on every CI run,
-        # cache-hit or cache-miss, or Chromium fails to launch.
-        run: bunx playwright install-deps chromium
-
-      - name: Install Chromium browser
-        # Only the browser binaries are cacheable; skip the download on
-        # cache hits.
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: bunx playwright install chromium
+      - name: Restore workspace builds through Turbo
+        env:
+          TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+          TURBO_TEAM: ${{ vars.TURBO_TEAM }}
+        run: bunx turbo run build --filter=@cinder/playground...
 
       - name: Run Playwright suite
         # What CINDER_VISUAL_DIFF actually governs: screenshot capture-vs-compare
@@ -418,6 +414,7 @@ jobs:
           # Visual-regression dispatch mode. Defaults to 'off' (legacy capture);
           # flip to 'report' during soak, 'block' once approved (Phase 5 single-line PR).
           CINDER_VISUAL_DIFF: ${{ github.event.inputs.mode || 'off' }}
+          PLAYGROUND_DEPENDENCIES_PREBUILT: '1'
         run: |
           echo "Scope: ${{ needs.scope.outputs.component_scope_mode }}"
           echo "Visual-diff mode: $CINDER_VISUAL_DIFF"
@@ -425,7 +422,11 @@ jobs:
             echo "Components: $CINDER_TEST_COMPONENTS"
           fi
           if [ "$CINDER_VISUAL_DIFF" = "off" ]; then
-            bun run test:browser
+            if [ "${{ needs.scope.outputs.component_scope_mode }}" = full ]; then
+              bun run test:browser -- --shard=${{ matrix.shard }}/4 --reporter=blob
+            else
+              bun run test:browser
+            fi
           else
             bun run --filter=@cinder/testing test:browser:docker
           fi
@@ -434,8 +435,17 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.shard }}
           path: packages/testing/playwright-report
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Upload Playwright blob report
+        if: always() && needs.scope.outputs.component_scope_mode == 'full'
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-blob-${{ matrix.shard }}
+          path: blob-report
           retention-days: 14
           if-no-files-found: warn
 
@@ -443,7 +453,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: axe-results
+          name: axe-results-${{ matrix.shard }}
           path: packages/testing/test-results/axe
           retention-days: 14
           if-no-files-found: warn
@@ -452,7 +462,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: axe-summary
+          name: axe-summary-${{ matrix.shard }}
           path: packages/testing/test-results/axe-summary.json
           retention-days: 30
           if-no-files-found: warn
@@ -464,7 +474,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: screenshots
+          name: screenshots-${{ matrix.shard }}
           path: packages/testing/screenshots
           retention-days: 7
           if-no-files-found: warn
@@ -524,6 +534,41 @@ jobs:
           path: packages/testing/test-results/visual-report.json
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  playwright:
+    name: playwright
+    needs: [scope, playwright-lane]
+    if: '!cancelled()'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every selected Playwright shard
+        env:
+          SCOPE: ${{ needs.scope.result }}
+          LANES: ${{ needs.playwright-lane.result }}
+          RELEVANT: ${{ needs.scope.outputs.browser_relevant }}
+        run: |
+          set -euo pipefail
+          echo "scope=$SCOPE relevant=$RELEVANT playwright-lane=$LANES" | tee -a "$GITHUB_STEP_SUMMARY"
+          [ "$SCOPE" = success ] || exit 1
+          if [ "$RELEVANT" = true ]; then [ "$LANES" = success ] || exit 1; fi
+      - name: Download blob reports
+        if: needs.scope.outputs.component_scope_mode == 'full'
+        uses: actions/download-artifact@v8
+        with:
+          pattern: playwright-blob-*
+          path: blob-reports
+          merge-multiple: true
+      - name: Merge sharded report
+        if: needs.scope.outputs.component_scope_mode == 'full'
+        run: npx playwright merge-reports --reporter html blob-reports
+      - name: Upload merged report
+        if: always() && needs.scope.outputs.component_scope_mode == 'full'
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report-merged
+          path: playwright-report
+          retention-days: 14
+          if-no-files-found: warn
+
   baseline-coverage:
     # Runs on every trigger, including pull requests. The check is scoped per
     # slug: a component is enforced only once it has adopted baselines, so
@@ -534,7 +579,7 @@ jobs:
     # Gated on scope relevance like `typecheck` and `playwright` above, so a
     # docs-only pull request does not pay to boot the playground. This job is
     # NOT a required status check, so a failure informs rather than blocks.
-    if: "!cancelled() && (needs.scope.result != 'success' || needs.scope.outputs.relevant == 'true')"
+    if: "!cancelled() && (needs.scope.result != 'success' || needs.scope.outputs.browser_relevant == 'true')"
     needs: scope
     runs-on: ubuntu-latest
     timeout-minutes: 5

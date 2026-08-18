@@ -3,7 +3,34 @@ import { spawnSync } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { cinderOnlyComponents, decide, decideExplicitComponents } from './changed-components.ts';
+import {
+  cinderOnlyComponents,
+  decide,
+  decideExplicitComponents,
+  planForChanges,
+} from './changed-components.ts';
+
+describe('shared workflow scope plan', () => {
+  it('classifies the CSS duplication guard without creating a component matrix', () => {
+    expect(
+      decide(['packages/components/scripts/check-css-duplication.ts'], sourceFiles, knownSlugs),
+    ).toEqual({ mode: 'filtered', components: [] });
+  });
+
+  it('keeps a known static guard change out of package and browser matrices', () => {
+    const plan = planForChanges(['packages/components/scripts/check-css-duplication.ts'], {
+      mode: 'filtered',
+      components: [],
+    });
+    expect(plan).toMatchObject({ unitLanes: ['static'], browserRelevant: false });
+  });
+
+  it('fails safe to every lane when the classifier reports full scope', () => {
+    const plan = planForChanges(['bun.lock'], { mode: 'full', reason: 'lockfile changed' });
+    expect(plan.unitLanes).toEqual(['static', 'package', 'playground', 'components']);
+    expect(plan.browserRelevant).toBe(true);
+  });
+});
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const workspaceRoot = resolve(scriptDirectory, '..', '..', '..');
@@ -146,6 +173,24 @@ describe('changed-components extracted packages', () => {
       knownWithChat,
     );
     expect(result).toEqual({ mode: 'filtered', components: chatSlugs });
+  });
+
+  it('maps Chat barrel changes to the Chat family instead of full scope', () => {
+    expect(decide(['packages/chat/src/lib/index.ts'], sourceFiles, knownWithChat)).toEqual({
+      mode: 'filtered',
+      components: chatSlugs,
+    });
+  });
+
+  it('maps Editor implementation tests to Editor browser surfaces', () => {
+    const editorSlugs = ['markdown-editor', 'review-editor', 'diff-viewer'];
+    expect(
+      decide(
+        ['packages/editor/src/lib/editor/editor.selection.test.ts'],
+        sourceFiles,
+        new Set([...knownWithChat, ...editorSlugs]),
+      ),
+    ).toEqual({ mode: 'filtered', components: editorSlugs.toSorted() });
   });
 
   it('includes the Chat family when a Cinder primitive changes', () => {
