@@ -165,7 +165,7 @@ describe('chat composer mentions', () => {
   });
 
   test('handles delimiter-heavy input with bounded forward scans', () => {
-    const value = `${'`'.repeat(100_000)}\n${'$5 '.repeat(25_000)}\n${' ~'.repeat(25_000)}`;
+    const value = `${'`'.repeat(100_000)}\n${'$5 '.repeat(25_000)}\n${' ~'.repeat(25_000)}\n${'<a'.repeat(25_000)}`;
 
     expect(parseChatComposerMentions(value)).toEqual({ text: value, mentions: [] });
   });
@@ -214,10 +214,10 @@ describe('chat composer mentions', () => {
       mentions: [{ label: 'Ada', uri: 'person:ada', start: 3, end: 6 }],
     });
     const raw =
-      '<!-- [Ada](person:comment) -->\n<div>\n[Ada](person:block)\n</div>\n[Ada](person:real)';
+      '<!-- [Ada](person:comment) -->\n<div>\n[Ada](person:block)\n</div>\n\n[Ada](person:real)';
     expect(parseChatComposerMentions(raw)).toEqual({
       text: raw.slice(0, raw.lastIndexOf('[Ada]')) + 'Ada',
-      mentions: [{ label: 'Ada', uri: 'person:real', start: 64, end: 67 }],
+      mentions: [{ label: 'Ada', uri: 'person:real', start: 65, end: 68 }],
     });
     expect(parseChatComposerMentions('<!-- [Ada](person:comment)')).toEqual({
       text: '<!-- [Ada](person:comment)',
@@ -254,6 +254,8 @@ describe('chat composer mentions', () => {
       mentions: [{ label: 'Ada', uri: 'person:real', start: 9, end: 12 }],
     });
     expect(parseChatComposerMentions('<')).toEqual({ text: '<', mentions: [] });
+    expect(parseChatComposerMentions('<a')).toEqual({ text: '<a', mentions: [] });
+    expect(parseChatComposerMentions('<a<a')).toEqual({ text: '<a<a', mentions: [] });
     expect(parseChatComposerMentions('<span title=">[Ada](person:attribute)">x</span>')).toEqual({
       text: '<span title=">[Ada](person:attribute)">x</span>',
       mentions: [],
@@ -262,11 +264,27 @@ describe('chat composer mentions', () => {
       text: '<hr>\nAda',
       mentions: [{ label: 'Ada', uri: 'person:real', start: 5, end: 8 }],
     });
+    expect(parseChatComposerMentions('<DIV>\n[Ada](person:block)\n\n[Ada](person:real)')).toEqual({
+      text: '<DIV>\n[Ada](person:block)\n\nAda',
+      mentions: [{ label: 'Ada', uri: 'person:real', start: 27, end: 30 }],
+    });
     expect(
-      parseChatComposerMentions('<DIV>\n[Ada](person:block)\n</div>\n[Ada](person:real)'),
+      parseChatComposerMentions('<SCRIPT>\n[Ada](person:block)\n</script>\n[Ada](person:real)'),
     ).toEqual({
-      text: '<DIV>\n[Ada](person:block)\n</div>\nAda',
-      mentions: [{ label: 'Ada', uri: 'person:real', start: 33, end: 36 }],
+      text: '<SCRIPT>\n[Ada](person:block)\n</script>\nAda',
+      mentions: [{ label: 'Ada', uri: 'person:real', start: 39, end: 42 }],
+    });
+    expect(parseChatComposerMentions('<script>\n[Ada](person:block)')).toEqual({
+      text: '<script>\n[Ada](person:block)',
+      mentions: [],
+    });
+    expect(parseChatComposerMentions('<script>\n</script')).toEqual({
+      text: '<script>\n</script',
+      mentions: [],
+    });
+    expect(parseChatComposerMentions('<script>\n</style>\n</script>\n[Ada](person:real)')).toEqual({
+      text: '<script>\n</style>\n</script>\nAda',
+      mentions: [{ label: 'Ada', uri: 'person:real', start: 28, end: 31 }],
     });
     const image = '![Logo](asset:logo "[Ada](person:ada)")';
     expect(parseChatComposerMentions(image)).toEqual({ text: image, mentions: [] });

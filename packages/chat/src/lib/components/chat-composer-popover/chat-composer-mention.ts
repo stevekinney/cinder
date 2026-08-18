@@ -62,6 +62,7 @@ const VOID_HTML_TAGS = new Set([
   'track',
   'wbr',
 ]);
+const RAW_TEXT_HTML_TAGS = new Set(['pre', 'script', 'style', 'textarea']);
 
 function escapeLabel(value: string): string {
   return value.replaceAll('\\', '\\\\').replaceAll('[', '\\[').replaceAll(']', '\\]');
@@ -169,6 +170,8 @@ function isClosingCodeFence(
 }
 
 function getHtmlTagEnd(value: string, start: number): number | null {
+  if (!/[A-Za-z/!?]/u.test(value[start + 1] ?? '')) return null;
+
   let quote: '"' | "'" | null = null;
   for (let index = start + 1; index < value.length; index += 1) {
     const character = value[index];
@@ -176,9 +179,22 @@ function getHtmlTagEnd(value: string, start: number): number | null {
       if (character === quote) quote = null;
     } else if (character === '"' || character === "'") {
       quote = character;
+    } else if (character === '<') {
+      return null;
     } else if (character === '>') {
       return index;
     }
+  }
+  return null;
+}
+
+function getHtmlBlockBlankLineEnd(value: string, start: number): number | null {
+  let lineEnd = value.indexOf('\n', start);
+  while (lineEnd !== -1) {
+    let cursor = lineEnd + 1;
+    while (value[cursor] === ' ' || value[cursor] === '\t' || value[cursor] === '\r') cursor += 1;
+    if (value[cursor] === '\n') return cursor + 1;
+    lineEnd = value.indexOf('\n', cursor);
   }
   return null;
 }
@@ -356,7 +372,7 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
   let codeFence: CodeFence | null = null;
   let indentedCode = false;
   let htmlComment = false;
-  let htmlBlockTag: string | null = null;
+  let htmlBlock: { tag: string; closesWithTag: boolean } | null = null;
 
   while (sourceIndex < value.length) {
     if (htmlComment) {
@@ -370,15 +386,17 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
       htmlComment = false;
       continue;
     }
-    if (htmlBlockTag !== null) {
-      const end = getClosingHtmlBlockEnd(value, sourceIndex, htmlBlockTag);
+    if (htmlBlock !== null) {
+      const end = htmlBlock.closesWithTag
+        ? getClosingHtmlBlockEnd(value, sourceIndex, htmlBlock.tag)
+        : getHtmlBlockBlankLineEnd(value, sourceIndex);
       if (end === null) {
         text += value.slice(sourceIndex);
         break;
       }
       text += value.slice(sourceIndex, end);
       sourceIndex = end;
-      htmlBlockTag = null;
+      htmlBlock = null;
       continue;
     }
     if (codeFence !== null) {
@@ -437,7 +455,11 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
             /^\s*<[A-Za-z][A-Za-z0-9-]*(?:\s[^>]*)?>$/u.test(value.slice(lineStart, sourceIndex)) &&
             value[sourceIndex] === '\n'
           ) {
-            htmlBlockTag = tag[1]!;
+            const normalizedTag = tag[1]!.toLowerCase();
+            htmlBlock = {
+              tag: normalizedTag,
+              closesWithTag: RAW_TEXT_HTML_TAGS.has(normalizedTag),
+            };
           }
         }
         continue;
