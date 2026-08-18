@@ -19,6 +19,8 @@ const PACKAGE_ROOT = join(import.meta.dir, '..', '..');
 const REPO_ROOT = join(PACKAGE_ROOT, '..', '..');
 const TOKENS_CSS = join(PACKAGE_ROOT, 'src', 'styles', 'tokens-base.css');
 const TOKENS_DOC = join(REPO_ROOT, 'docs', 'tokens.md');
+const FOCUS_RING_POLICY_DOC = join(REPO_ROOT, 'docs', 'focus-ring-policy.md');
+const THEMING_DOC = join(REPO_ROOT, 'docs', 'theming.md');
 
 function normalizeTokenValue(value: string): string {
   let normalized = '';
@@ -97,5 +99,45 @@ describe('docs/tokens.md drift', () => {
       missingFromCss: [],
       mismatchedValues: [],
     });
+  });
+
+  test('keeps exact token references in focused guides current', async () => {
+    const [css, focusRingPolicy, theming] = await Promise.all([
+      readFile(TOKENS_CSS, 'utf8'),
+      readFile(FOCUS_RING_POLICY_DOC, 'utf8'),
+      readFile(THEMING_DOC, 'utf8'),
+    ]);
+    const tokens = readRootTokenValues(css);
+    const value = (token: string) => {
+      const resolved = tokens.get(token);
+      expect(resolved).toBeDefined();
+      return resolved!;
+    };
+
+    expect(focusRingPolicy).toContain(
+      `| \`--cinder-ring-width\`        | \`${value('--cinder-ring-width')}\``,
+    );
+    expect(focusRingPolicy).toContain(
+      `| \`--cinder-ring-offset\`       | \`${value('--cinder-ring-offset')}\``,
+    );
+    expect(focusRingPolicy).toContain(`\`${value('--cinder-ring-offset-color')}\``);
+
+    for (const token of [
+      '--cinder-surface',
+      '--cinder-surface-raised',
+      '--cinder-text',
+      '--cinder-border',
+      '--cinder-accent',
+    ]) {
+      const [light, dark] =
+        value(token)
+          .match(/^light-dark\((.*),(.*)\)$/)
+          ?.slice(1)
+          .map((arm) => arm.trim()) ?? [];
+      expect(light).toBeDefined();
+      expect(dark).toBeDefined();
+      expect(theming).toContain(`${token}: ${light};`);
+      expect(theming).toContain(`${token}: ${dark};`);
+    }
   });
 });
