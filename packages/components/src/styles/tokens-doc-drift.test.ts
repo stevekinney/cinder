@@ -21,8 +21,24 @@ const TOKENS_CSS = join(PACKAGE_ROOT, 'src', 'styles', 'tokens-base.css');
 const TOKENS_DOC = join(REPO_ROOT, 'docs', 'tokens.md');
 
 function normalizeTokenValue(value: string): string {
-  return value
-    .replace(/\s+/g, ' ')
+  let normalized = '';
+  let quote: '"' | "'" | undefined;
+  for (let index = 0; index < value.length; index += 1) {
+    const character = value[index]!;
+    if (quote !== undefined) {
+      normalized += character;
+      if (character === quote && value[index - 1] !== '\\') quote = undefined;
+      continue;
+    }
+    if (character === '"' || character === "'") {
+      quote = character;
+      normalized += character;
+      continue;
+    }
+    normalized += /\s/.test(character) ? ' ' : character;
+  }
+  return normalized
+    .replace(/ +/g, ' ')
     .replace(/\s*([(),])\s*/g, '$1')
     .trim();
 }
