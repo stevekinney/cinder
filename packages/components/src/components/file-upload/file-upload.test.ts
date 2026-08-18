@@ -136,7 +136,7 @@ describe('FileUpload rendering', () => {
     const input = container.querySelector('#resume-upload') as HTMLInputElement;
     const button = screen.getByRole('button', { name: 'Browse files' });
     const inputClick = mock(() => {});
-    input.click = inputClick;
+    input.click = inputClick as unknown as typeof input.click;
 
     expect(screen.getByRole('group', { name: 'File upload' })).toBe(
       container.querySelector('.cinder-file-upload__dropzone')!,
