@@ -478,7 +478,7 @@
    * accent (≥5:1) and the dark page bg (≥18:1). Used by FloatingAction
    * primary variant. Raw oklch is legitimate here (tokens-base.css is the
    * one place raw colors are allowed). */
-  --cinder-ring-on-accent: light-dark(oklch(20% 0.02 245), oklch(95% 0.01 245));
+  --cinder-ring-on-accent: light-dark(oklch(15% 0.035 245), oklch(100% 0 0));
 
   /* Focus ring.
    *
@@ -694,7 +694,7 @@
   --cinder-scrollbar-thumb: oklch(100% 0 0 / 0.45);
   --cinder-scrollbar-thumb-hover: oklch(100% 0 0 / 0.65);
   --cinder-ring-offset-color: var(--cinder-surface-raised);
-  --cinder-ring-on-accent: oklch(95% 0.01 245);
+  --cinder-ring-on-accent: oklch(100% 0 0);
   --cinder-ring-color: oklch(from var(--cinder-accent) 0.7 0.14 h);
   --cinder-button-bg: var(--cinder-surface-raised);
   --cinder-button-fg: var(--cinder-text);
@@ -782,7 +782,7 @@
   --cinder-scrollbar-thumb: oklch(0% 0 0 / 0.45);
   --cinder-scrollbar-thumb-hover: oklch(0% 0 0 / 0.65);
   --cinder-ring-offset-color: var(--cinder-surface-raised);
-  --cinder-ring-on-accent: oklch(20% 0.02 245);
+  --cinder-ring-on-accent: oklch(15% 0.035 245);
   --cinder-ring-color: oklch(from var(--cinder-accent) 0.55 0.16 h);
   --cinder-button-bg: var(--cinder-surface-raised);
   --cinder-button-fg: var(--cinder-text);

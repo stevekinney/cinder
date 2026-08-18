@@ -45,10 +45,10 @@ To override the OS preference, cinder supports two related paths. They both infl
   }
   [data-theme='light'] {
     color-scheme: light;
-    --cinder-surface: oklch(98% 0.008 245);
-    --cinder-surface-raised: oklch(100% 0.006 245);
+    --cinder-surface: oklch(99.4% 0.002 255);
+    --cinder-surface-raised: oklch(100% 0 255);
     --cinder-text: oklch(20% 0.018 245);
-    --cinder-border: oklch(79% 0.013 245);
+    --cinder-border: oklch(83% 0.005 255);
     --cinder-accent: oklch(50% 0.22 270);
     --cinder-ring-color: oklch(from var(--cinder-accent) 0.55 0.16 h);
   }
