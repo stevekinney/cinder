@@ -242,9 +242,9 @@
       <Tab value="form">Form</Tab>
       <Tab value="json">JSON</Tab>
       <Tab value="diff">
-        Diff{#if editorState.hasChanges}<span class="cinder-sr-only">, has changes</span>{/if}
+        Diff{#if editorState.hasDiffChanges}<span class="cinder-sr-only">, has changes</span>{/if}
         {#snippet trailing()}
-          {#if editorState.hasChanges}
+          {#if editorState.hasDiffChanges}
             <Badge variant="neutral" aria-hidden="true">●</Badge>
           {/if}
         {/snippet}

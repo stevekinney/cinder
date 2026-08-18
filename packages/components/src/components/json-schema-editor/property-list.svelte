@@ -19,6 +19,7 @@
   import Alert from '../alert/alert.svelte';
   import Button from '../button/button.svelte';
   import Chip from '../chip/chip.svelte';
+  import Badge from '@lostgradient/cinder/badge';
   import Collapsible from '@lostgradient/cinder/collapsible';
   import Input from '../input/input.svelte';
   import PropertyEditor from './property-editor.svelte';
@@ -217,6 +218,7 @@
   {#each propertyNames as key (key)}
     {@const isRequired = required.includes(key)}
     {@const isOpen = expanded[key] === true}
+    {@const childValidationErrorCount = childValidationCounts[key] ?? 0}
     {@const panelId = `${idPrefix}-${key}-panel`}
     <!--
       Custom disclosure (not <details>/<summary>) so the action buttons can
@@ -224,12 +226,16 @@
       <button> inside <summary> creates an ARIA "interactive within
       interactive" violation.
     -->
-    <div class="cinder-jse-property-row" data-cinder-required={isRequired ? '' : undefined}>
+    <div
+      class="cinder-jse-property-row"
+      data-cinder-required={isRequired ? '' : undefined}
+      data-cinder-invalid={childValidationErrorCount > 0 ? '' : undefined}
+    >
       <div class="cinder-jse-property-row__summary" style={`--cinder-jse-property-depth: ${depth}`}>
         <button
           type="button"
           class="cinder-jse-property-row__trigger"
-          aria-label={`${isOpen ? 'Collapse' : 'Expand'} ${key} property`}
+          aria-label={`${isOpen ? 'Collapse' : 'Expand'} ${key} property${childValidationErrorCount > 0 ? `, ${childValidationErrorCount} validation ${childValidationErrorCount === 1 ? 'error' : 'errors'}` : ''}`}
           aria-expanded={isOpen}
           aria-controls={panelId}
           onclick={() => toggleExpanded(key, isOpen)}
@@ -242,6 +248,15 @@
           />
           <span class="cinder-jse-property-row__name">{key}</span>
           <span class="cinder-jse-property-row__type">{summariseType(properties[key] ?? {})}</span>
+          {#if childValidationErrorCount > 0}
+            <Badge
+              variant="danger"
+              aria-label={`${childValidationErrorCount} validation ${childValidationErrorCount === 1 ? 'error' : 'errors'} in ${key}`}
+            >
+              {childValidationErrorCount}{' '}
+              {childValidationErrorCount === 1 ? 'error' : 'errors'}
+            </Badge>
+          {/if}
         </button>
         <span class="cinder-jse-property-row__spacer"></span>
         <Button

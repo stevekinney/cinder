@@ -117,6 +117,18 @@ describe('tryCompile', () => {
     expect(result.ok).toBe(true);
   });
 
+  test('registers the standard email format before compiling', async () => {
+    const originalWarn = console.warn;
+    const warnings: unknown[][] = [];
+    console.warn = (...values: unknown[]) => warnings.push(values);
+    try {
+      expect(await tryCompile({ type: 'string', format: 'email' })).toEqual({ ok: true });
+    } finally {
+      console.warn = originalWarn;
+    }
+    expect(warnings).toEqual([]);
+  });
+
   test('flags an unresolved $ref even when meta-schema validation passes', async () => {
     const schema = { $ref: '#/$defs/missing' };
     const metaResult = await validateMetaSchema(schema);

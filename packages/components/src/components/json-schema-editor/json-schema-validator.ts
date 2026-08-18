@@ -19,6 +19,7 @@
  */
 
 import type Ajv from 'ajv';
+import type { FormatsPlugin } from 'ajv-formats';
 import type Ajv2019 from 'ajv/dist/2019.js';
 import type Ajv2020 from 'ajv/dist/2020.js';
 
@@ -83,6 +84,15 @@ const loadAjv2019 = createRetryingLoaderCache(() =>
 const loadAjv2020 = createRetryingLoaderCache(() =>
   import('ajv/dist/2020.js').then((module) => module.default),
 );
+const loadAjvFormats = createRetryingLoaderCache(() =>
+  import('ajv-formats').then((module) => module.default),
+);
+
+async function registerStandardFormats(ajv: Ajv | Ajv2019 | Ajv2020) {
+  const formats: FormatsPlugin = await loadAjvFormats();
+  formats(ajv);
+  return ajv;
+}
 
 // Long-lived meta-schema validators. Safe to share — they don't compile the
 // user's schema, only validate against the meta-schema.
@@ -192,13 +202,17 @@ export async function tryCompile(
     let ajv: Ajv | Ajv2020 | Ajv2019;
     if (resolved === '2020-12') {
       const Ajv2020Class = await loadAjv2020();
-      ajv = new Ajv2020Class({ strict: false, addUsedSchema: false });
+      ajv = await registerStandardFormats(
+        new Ajv2020Class({ strict: false, addUsedSchema: false }),
+      );
     } else if (resolved === '2019-09') {
       const Ajv2019Class = await loadAjv2019();
-      ajv = new Ajv2019Class({ strict: false, addUsedSchema: false });
+      ajv = await registerStandardFormats(
+        new Ajv2019Class({ strict: false, addUsedSchema: false }),
+      );
     } else {
       const AjvClass = await loadAjv();
-      ajv = new AjvClass({ strict: false, addUsedSchema: false });
+      ajv = await registerStandardFormats(new AjvClass({ strict: false, addUsedSchema: false }));
     }
 
     ajv.compile(schema);

@@ -49,7 +49,7 @@
     </Alert>
   {/if}
 
-  {#if !state.hasChanges}
+  {#if !state.hasDiffChanges}
     <EmptyState title="No changes yet" description="Edit the schema to see a diff here." />
   {:else}
     <div class="cinder-jse-diff-lines" role="group" aria-label="JSON diff">
