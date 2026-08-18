@@ -133,6 +133,17 @@ describe('PropertyList', () => {
     expect(source).toContain('aria-controls={isOpen ? panelId : undefined}');
   });
 
+  test('announces property moves and restores focus after deletion', async () => {
+    const source = await Bun.file(new URL('./property-list.svelte', import.meta.url)).text();
+
+    expect(source).toContain('aria-live="polite"');
+    expect(source).toContain('Moved ${key} property to position ${target + 1}');
+    expect(source).toContain('Deleted ${key} property.');
+    expect(source).toContain('await tick()');
+    expect(source).toContain('`${idPrefix}-${focusKey}-trigger`');
+    expect(source).toContain('`${idPrefix}-add-property`');
+  });
+
   test('keeps enum in the preserved-keywords count when a schema is loaded', () => {
     const loadedSchema = { type: 'string', enum: ['draft', 'published'] };
     const preservedKeys = Object.keys(loadedSchema).filter((key) => !EDITABLE_KEYWORDS.has(key));

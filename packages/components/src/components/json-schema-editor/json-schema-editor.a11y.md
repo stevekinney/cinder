@@ -27,7 +27,7 @@ All property-list controls use their native button and input keyboard behavior.
 - `Enter` and `Space` activate the disclosure, required, reorder, and delete buttons.
 - Expanding or collapsing leaves focus on the disclosure button; it does not move focus into or out of the panel.
 - Editable property names commit when their input loses focus. Text-entry keys remain native input behavior.
-- `Cmd+Z` and `Shift+Cmd+Z` undo and redo on macOS. `Ctrl+Z`, `Shift+Ctrl+Z`, and `Ctrl+Y` provide the corresponding shortcuts elsewhere. They act only outside editable text controls, so native text-editing shortcuts remain available while focus is in an input.
+- `Cmd+Z`, `Shift+Cmd+Z`, and `Cmd+Y` undo and redo on macOS. `Ctrl+Z`, `Shift+Ctrl+Z`, and `Ctrl+Y` provide the corresponding shortcuts elsewhere. They act only outside editable text controls, so native text-editing shortcuts remain available while focus is in an input.
 
 Keep focus indicators visible. If you wrap or restyle JsonSchemaEditor, verify the focused element remains visually apparent in default and forced-colors modes.
 
@@ -35,7 +35,7 @@ Keep focus indicators visible. If you wrap or restyle JsonSchemaEditor, verify t
 
 The disclosure’s accessible name includes the property key and, when present, its nested validation-error count. Its `aria-expanded` state conveys whether its controlled panel is visible. The required toggle exposes its pressed state and an accessible name that explains the next action. Disabled controls communicate the read-only and dirty-JSON states through their native disabled state.
 
-Nested validation is announced through the disclosure name and a danger badge labelled with the error count and property key. Reordering does not use a live region: activating a move button commits the new schema order, updates the form/JSON/diff views, and leaves focus on the named control. Verify that the resulting row order is perceptible in the rendered list and in the updated JSON source.
+Nested validation is announced through the disclosure name and a danger badge labelled with the error count and property key. Reordering commits the new schema order, updates the form/JSON/diff views, leaves focus on the named control, and announces the property’s resulting position. Deleting a property announces the deletion and moves focus to the next property, previous property, or Add property when the list becomes empty.
 
 Do not rely on color, icon shape, placeholder text, or layout position as the only way to communicate state or available actions.
 

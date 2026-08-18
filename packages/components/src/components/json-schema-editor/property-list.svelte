@@ -15,7 +15,7 @@
 
 <script lang="ts">
   import ChevronDown from 'lucide-svelte/icons/chevron-down';
-  import { onDestroy } from 'svelte';
+  import { onDestroy, tick } from 'svelte';
   import Alert from '../alert/alert.svelte';
   import Button from '../button/button.svelte';
   import Chip from '../chip/chip.svelte';
@@ -111,8 +111,11 @@
     onValueChange(next, nextRequired);
   }
 
-  function deleteProperty(key: string) {
+  let actionAnnouncement = $state('');
+
+  async function deleteProperty(key: string, index: number) {
     if (readonly) return;
+    const focusKey = propertyNames[index + 1] ?? propertyNames[index - 1];
     const next = { ...properties };
     delete next[key];
     const nextRequired = required.filter((name) => name !== key);
@@ -121,6 +124,12 @@
     const { [key]: _removedChildCount, ...remainingChildCounts } = childValidationCounts;
     childValidationCounts = remainingChildCounts;
     onValueChange(next, nextRequired);
+    actionAnnouncement = `Deleted ${key} property.`;
+    await tick();
+    const focusTarget = focusKey
+      ? document.getElementById(`${idPrefix}-${focusKey}-trigger`)
+      : document.getElementById(`${idPrefix}-add-property`);
+    focusTarget?.focus();
   }
 
   function setChildValidationErrorCount(key: string, count: number): void {
@@ -138,9 +147,8 @@
     if (isOpen) setChildValidationErrorCount(key, 0);
   }
 
-  function moveProperty(key: string, direction: -1 | 1) {
+  function moveProperty(key: string, direction: -1 | 1, index: number) {
     if (readonly) return;
-    const index = propertyNames.indexOf(key);
     const target = index + direction;
     if (target < 0 || target >= propertyNames.length) return;
 
@@ -149,6 +157,7 @@
     const next: Record<string, JsonSchemaValue> = {};
     for (const name of reordered) next[name] = properties[name]!;
     onValueChange(next, required);
+    actionAnnouncement = `Moved ${key} property to position ${target + 1} of ${reordered.length}.`;
   }
 
   function toggleRequired(key: string) {
@@ -207,6 +216,7 @@
 </script>
 
 <div class="cinder-jse-property-list">
+  <p class="cinder-sr-only" aria-live="polite">{actionAnnouncement}</p>
   {#if renameError}
     <Alert variant="danger">{renameError}</Alert>
   {/if}
@@ -215,7 +225,7 @@
     <p class="cinder-jse-property-list__empty">No properties yet.</p>
   {/if}
 
-  {#each propertyNames as key (key)}
+  {#each propertyNames as key, index (key)}
     {@const isRequired = required.includes(key)}
     {@const isOpen = expanded[key] === true}
     {@const childValidationErrorCount = childValidationCounts[key] ?? 0}
@@ -233,6 +243,7 @@
     >
       <div class="cinder-jse-property-row__summary" style={`--cinder-jse-property-depth: ${depth}`}>
         <button
+          id={`${idPrefix}-${key}-trigger`}
           type="button"
           class="cinder-jse-property-row__trigger"
           aria-label={`${isOpen ? 'Collapse' : 'Expand'} ${key} property${childValidationErrorCount > 0 ? `, ${childValidationErrorCount} validation ${childValidationErrorCount === 1 ? 'error' : 'errors'}` : ''}`}
@@ -272,18 +283,18 @@
         <Button
           variant="ghost"
           size="xs"
-          disabled={readonly || propertyNames.indexOf(key) === 0}
+          disabled={readonly || index === 0}
           aria-label={`Move ${key} up`}
-          onclick={() => moveProperty(key, -1)}
+          onclick={() => moveProperty(key, -1, index)}
         >
           ↑
         </Button>
         <Button
           variant="ghost"
           size="xs"
-          disabled={readonly || propertyNames.indexOf(key) === propertyNames.length - 1}
+          disabled={readonly || index === propertyNames.length - 1}
           aria-label={`Move ${key} down`}
-          onclick={() => moveProperty(key, 1)}
+          onclick={() => moveProperty(key, 1, index)}
         >
           ↓
         </Button>
@@ -292,7 +303,7 @@
           size="xs"
           disabled={readonly}
           aria-label={`Delete ${key}`}
-          onclick={() => deleteProperty(key)}
+          onclick={() => deleteProperty(key, index)}
         >
           Delete
         </Button>
@@ -322,7 +333,13 @@
     </div>
   {/each}
 
-  <Button variant="secondary" size="sm" disabled={readonly} onclick={addProperty}>
+  <Button
+    id={`${idPrefix}-add-property`}
+    variant="secondary"
+    size="sm"
+    disabled={readonly}
+    onclick={addProperty}
+  >
     Add property
   </Button>
 
