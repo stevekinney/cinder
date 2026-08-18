@@ -139,17 +139,23 @@ function selectorContainsComponent(rule: Rule, className: string): boolean {
 
 /** Extract Cinder classes rendered by a component, including declaration-free leaves. */
 export function componentClassNamesFromMarkup(source: string): string[] {
+  const markup = source.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '');
   return [
-    ...new Set([...source.matchAll(/\bcinder-[a-z0-9_-]+/gi)].map((match) => match[0])),
+    ...new Set([...markup.matchAll(/\bcinder-[a-z0-9_-]+/gi)].map((match) => match[0])),
   ].toSorted();
 }
 
 /** Extract only the rendered classes owned by a component, not sibling primitives it composes. */
-export function componentClassNamesForComponent(source: string, componentName: string): string[] {
-  const [block, ...element] = componentName.split('-');
+export function componentClassNamesForComponent(
+  source: string,
+  componentName: string,
+  compoundParents: readonly string[] = [],
+): string[] {
   const roots = [`cinder-${componentName}`];
-  if (block !== undefined && element.length > 0)
-    roots.push(`cinder-${block}__${element.join('-')}`);
+  for (const parent of compoundParents) {
+    if (!componentName.startsWith(`${parent}-`)) continue;
+    roots.push(`cinder-${parent}__${componentName.slice(parent.length + 1)}`);
+  }
   return componentClassNamesFromMarkup(source).filter((className) =>
     roots.some(
       (root) =>
@@ -277,24 +283,6 @@ async function collectComponentCss(): Promise<ComponentCss[]> {
     sources.set(component.name, componentSources);
   }
 
-  const renderedClasses = new Map<string, Set<string>>();
-  const renderedClassOwners = new Map<string, Set<string>>();
-  for (const component of components) {
-    const classNames = new Set<string>();
-    for (const entry of readdirSync(component.directory, { withFileTypes: true })) {
-      if (!entry.isFile() || !entry.name.endsWith('.svelte')) continue;
-      for (const className of componentClassNamesFromMarkup(
-        readFileSync(join(component.directory, entry.name), 'utf8'),
-      )) {
-        classNames.add(className);
-        const owners = renderedClassOwners.get(className) ?? new Set<string>();
-        owners.add(component.name);
-        renderedClassOwners.set(className, owners);
-      }
-    }
-    renderedClasses.set(component.name, classNames);
-  }
-
   const edges: Array<readonly [string, string]> = [];
   const compoundParents = new Map<string, Set<string>>();
   for (const component of components) {
@@ -314,8 +302,15 @@ async function collectComponentCss(): Promise<ComponentCss[]> {
     const multiset: DeclarationMultiset = new Map();
     const componentSources = sources.get(component.name) ?? [];
     const classNames = new Set([`cinder-${component.name}`]);
-    for (const className of renderedClasses.get(component.name) ?? []) {
-      if (renderedClassOwners.get(className)?.size === 1) classNames.add(className);
+    for (const entry of readdirSync(component.directory, { withFileTypes: true })) {
+      if (!entry.isFile() || !entry.name.endsWith('.svelte')) continue;
+      for (const className of componentClassNamesForComponent(
+        readFileSync(join(component.directory, entry.name), 'utf8'),
+        component.name,
+        [...(compoundParents.get(component.name) ?? [])],
+      )) {
+        classNames.add(className);
+      }
     }
     for (const source of componentSources) {
       for (const className of componentClassNamesFromStylesheet(source)) classNames.add(className);

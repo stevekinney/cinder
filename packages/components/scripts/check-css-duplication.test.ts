@@ -103,8 +103,29 @@ describe('declarationMultiset', () => {
       componentClassNamesForComponent(
         `<tr class="cinder-table__row"><td class="cinder-table__header-cell cinder-table__cell"></td></tr>`,
         'table-row',
+        ['table'],
       ),
     ).toEqual(['cinder-table__row']);
+  });
+
+  test('keeps a shared compound leaf root while ignoring parent script queries', () => {
+    expect(
+      componentClassNamesForComponent(
+        `<script>panel.querySelectorAll('.cinder-speed-dial-action');</script><button class="cinder-speed-dial-action"></button>`,
+        'speed-dial-action',
+        ['speed-dial'],
+      ),
+    ).toEqual(['cinder-speed-dial-action']);
+  });
+
+  test('keeps a BEM compound leaf root rendered by its parent and other composites', () => {
+    expect(
+      componentClassNamesForComponent(
+        `<td class="cinder-table__cell cinder-table__cell--selection"></td>`,
+        'table-cell',
+        ['table'],
+      ),
+    ).toEqual(['cinder-table__cell', 'cinder-table__cell--selection']);
   });
 
   test('discovers compound-leaf selectors from sidecar CSS', () => {

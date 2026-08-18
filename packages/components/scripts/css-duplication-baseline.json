@@ -13,10 +13,5 @@
     "a": "bar-chart",
     "b": "line-chart",
     "reason": "Same SVG chart-family shared plot-frame chrome as the area-chart/bar-chart pair — distinct mark types over common axis/grid/overlay styling."
-  },
-  {
-    "a": "checkbox-group",
-    "b": "radio-group",
-    "reason": "Both are native fieldset wrappers with the same legend, hint, and validation layout; their child controls retain distinct multiple-selection and single-selection behavior, keyboard models, and semantics."
   }
 ]
