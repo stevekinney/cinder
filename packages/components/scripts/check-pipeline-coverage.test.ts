@@ -42,7 +42,7 @@ describe('Turbo input topology', () => {
       'needs: [scope, static-artifact, package, playground, component]',
     );
     expect(unitWorkflow).toContain('component_matrix={"chunk":[1,2,3,4]}');
-    expect(browserWorkflow).toContain('container: mcr.microsoft.com/playwright:v1.60.0-noble');
+    expect(browserWorkflow).toContain('image: mcr.microsoft.com/playwright:v1.60.0-noble');
     expect(browserWorkflow).toContain('playwright_matrix={"shard":[1,2,3,4]}');
     expect(browserWorkflow).toContain('name: playwright');
     expect(mainWorkflow).toContain("github.event_name == 'schedule'");

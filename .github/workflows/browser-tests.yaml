@@ -366,7 +366,9 @@ jobs:
     # this one.
     if: "!cancelled() && (needs.scope.result != 'success' || needs.scope.outputs.browser_relevant == 'true')"
     runs-on: ubuntu-latest
-    container: mcr.microsoft.com/playwright:v1.60.0-noble
+    container:
+      image: mcr.microsoft.com/playwright:v1.60.0-noble
+      options: --user root
     timeout-minutes: 30
     strategy:
       fail-fast: false
@@ -374,6 +376,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+
+      # setup-bun downloads a zip release. The Playwright image deliberately
+      # omits archive utilities, so install only the bootstrap tool before it
+      # runs; browser and OS dependencies still come from the pinned image.
+      - name: Install Bun bootstrap dependency
+        run: apt-get update && apt-get install --no-install-recommends --yes unzip
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
