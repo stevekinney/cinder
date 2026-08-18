@@ -11,6 +11,7 @@ import {
   type Root,
   type Rule,
 } from 'postcss';
+import selectorParser from 'postcss-selector-parser';
 
 import { discoverComponentDirectories } from './discover-component-directories.ts';
 
@@ -134,7 +135,26 @@ function declarationBelongsToClasses(
 }
 
 function selectorContainsComponent(rule: Rule, className: string): boolean {
-  return new RegExp(`(^|[^a-z0-9-])\\.${className}(?:$|--|__|[^a-z0-9-])`, 'i').test(rule.selector);
+  let matches = false;
+  selectorParser((selectors) => {
+    selectors.each((selector) => {
+      const lastCombinator = selector.nodes.reduce(
+        (index, node, nodeIndex) => (node.type === 'combinator' ? nodeIndex : index),
+        -1,
+      );
+      for (const node of selector.nodes.slice(lastCombinator + 1)) {
+        if (node.type !== 'class') continue;
+        if (
+          node.value === className ||
+          node.value.startsWith(`${className}--`) ||
+          node.value.startsWith(`${className}__`)
+        ) {
+          matches = true;
+        }
+      }
+    });
+  }).processSync(rule.selector);
+  return matches;
 }
 
 /** Extract Cinder classes rendered by a component, including declaration-free leaves. */

@@ -90,6 +90,15 @@ describe('declarationMultiset', () => {
     expect([...multiset.keys()]).toEqual(['|color:red', '|font-weight:600']);
   });
 
+  test('attributes descendant rules to their rightmost component target', () => {
+    const stylesheet = parse(`
+      .cinder-tab-list .cinder-tab[data-cinder-active]::after { height: 2px; }
+    `);
+
+    expect(multisetSize(declarationMultisetForComponent(stylesheet, 'tab-list'))).toBe(0);
+    expect([...declarationMultisetForComponent(stylesheet, 'tab').keys()]).toEqual(['|height:2px']);
+  });
+
   test('discovers compound-leaf selectors from rendered markup', () => {
     expect(
       componentClassNamesFromMarkup(
