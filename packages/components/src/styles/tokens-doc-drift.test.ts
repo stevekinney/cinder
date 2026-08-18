@@ -44,7 +44,7 @@ function normalizeTokenValue(value: string): string {
       whitespace = true;
       continue;
     }
-    if ('(),'.includes(character)) normalized = normalized.trimEnd();
+    if (character === ',' || character === ')') normalized = normalized.trimEnd();
     else if (whitespace && normalized.length > 0 && !/[(),]$/.test(normalized)) normalized += ' ';
     whitespace = false;
     normalized += character;
