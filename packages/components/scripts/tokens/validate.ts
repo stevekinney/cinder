@@ -1,15 +1,9 @@
-import type {
-  ResolverDocument,
-  TokenDocument,
-  TokenType,
-  TokenValue,
-  ValidationIssue,
-} from './types.ts';
+import type { ResolverDocument, TokenDocument, TokenType, ValidationIssue } from './types.ts';
 import { TokenValidationError } from './types.ts';
 
 const TOKEN_NAME_PATTERN = /^[^${}.][^${}.]*$/;
 const VENDOR_EXTENSION_PATTERN = /^(?:[a-z0-9-]+\.)+[a-z0-9-]+$/i;
-const TOKEN_TYPES = new Set<TokenType>([
+const TOKEN_TYPES = new Set<string>([
   'color',
   'dimension',
   'fontFamily',
@@ -41,12 +35,12 @@ function addIssue(issues: ValidationIssue[], path: string, reason: string): void
 
 function validateValue(
   type: TokenType,
-  value: TokenValue,
+  value: unknown,
   path: string,
   issues: ValidationIssue[],
 ): void {
   if (isReference(value)) return;
-  const objectValue: JsonObject | undefined = isObject(value) ? (value as JsonObject) : undefined;
+  const objectValue: JsonObject | undefined = isObject(value) ? value : undefined;
   switch (type) {
     case 'color':
       if (
@@ -158,11 +152,11 @@ function tokenType(
   issues: ValidationIssue[],
 ): TokenType | undefined {
   const declaredType = token['$type'];
-  if (declaredType !== undefined && !TOKEN_TYPES.has(declaredType as TokenType)) {
-    addIssue(issues, path, `unknown $type ${String(declaredType)}`);
+  if (declaredType !== undefined && !isTokenType(declaredType)) {
+    addIssue(issues, path, `unknown $type ${JSON.stringify(declaredType)}`);
     return undefined;
   }
-  const resolvedType = (declaredType as TokenType | undefined) ?? inheritedType;
+  const resolvedType = declaredType ?? inheritedType;
   if (!resolvedType) addIssue(issues, path, 'token has no $type and no inherited type');
   return resolvedType;
 }
@@ -213,7 +207,7 @@ function validateGroup(
         addIssue(issues, childPath, 'a token with $value cannot contain child groups');
       validateMetadata(value, childPath, issues);
       const type = tokenType(value, groupType, childPath, issues);
-      if (type) validateValue(type, value['$value'] as TokenValue, childPath, issues);
+      if (type) validateValue(type, value['$value'], childPath, issues);
       continue;
     }
     validateGroup(value, childPath, groupType, issues);
@@ -257,5 +251,48 @@ export function assertValidTokenDocument(
   document: unknown,
   source?: string,
 ): asserts document is TokenDocument {
-  validateTokenDocument(document as TokenDocument, source);
+  const issues: ValidationIssue[] = [];
+  if (!isObject(document)) addIssue(issues, source ?? '$', 'document must be an object');
+  if (issues.length > 0) throw new TokenValidationError(issues);
+  validateTokenDocument(document, source);
+}
+
+export function assertValidResolverDocument(
+  document: unknown,
+): asserts document is ResolverDocument {
+  if (!isObject(document))
+    throw new TokenValidationError([{ path: '$', reason: 'resolver must be an object' }]);
+  if (
+    document['version'] !== '2025.10' ||
+    !Array.isArray(document['sets']) ||
+    !Array.isArray(document['modifiers']) ||
+    !Array.isArray(document['resolutionOrder'])
+  )
+    throw new TokenValidationError([
+      {
+        path: '$',
+        reason: 'resolver must contain version, sets, modifiers, and resolutionOrder',
+      },
+    ]);
+  validateResolverDocument({
+    version: document['version'],
+    sets: document['sets'].filter(isObject).map((set) => ({
+      name: typeof set['name'] === 'string' ? set['name'] : '',
+      source: Array.isArray(set['source']) ? set['source'].filter(isString) : [],
+    })),
+    modifiers: document['modifiers'].filter(isObject).map((modifier) => ({
+      name: typeof modifier['name'] === 'string' ? modifier['name'] : '',
+      values: Array.isArray(modifier['values']) ? modifier['values'].filter(isString) : [],
+      ...(typeof modifier['default'] === 'string' ? { default: modifier['default'] } : {}),
+    })),
+    resolutionOrder: document['resolutionOrder'].filter(isString),
+  });
+}
+
+function isString(value: unknown): value is string {
+  return typeof value === 'string';
+}
+
+function isTokenType(value: unknown): value is TokenType {
+  return typeof value === 'string' && TOKEN_TYPES.has(value);
 }

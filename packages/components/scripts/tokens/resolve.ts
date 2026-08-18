@@ -1,4 +1,4 @@
-import type { DesignToken, TokenDocument, TokenGroup, TokenValue } from './types.ts';
+import type { DesignToken, TokenDocument, TokenGroup } from './types.ts';
 import { TokenValidationError } from './types.ts';
 
 type JsonObject = Record<string, unknown>;
@@ -13,7 +13,7 @@ function isToken(value: unknown): value is DesignToken {
 }
 
 function clone<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T;
+  return structuredClone(value);
 }
 
 function issue(path: string, reason: string): never {
@@ -44,7 +44,7 @@ function collectGroups(group: TokenGroup, prefix: string, groups: Map<string, To
   for (const [name, value] of Object.entries(group)) {
     if (name.startsWith('$') || !isObject(value)) continue;
     const path = prefix ? `${prefix}.${name}` : name;
-    if (!isToken(value)) collectGroups(value as TokenGroup, path, groups);
+    if (!isToken(value)) collectGroups(value, path, groups);
   }
 }
 
@@ -53,7 +53,7 @@ function collectTokens(group: TokenGroup, prefix: string, tokens: ResolvedTokens
     if (name.startsWith('$') || !isObject(value)) continue;
     const path = prefix ? `${prefix}.${name}` : name;
     if (isToken(value)) tokens.set(path, clone(value));
-    else collectTokens(value as TokenGroup, path, tokens);
+    else collectTokens(value, path, tokens);
   }
 }
 
@@ -98,22 +98,17 @@ function resolveReference(
   return issue(reference, 'reference target does not exist');
 }
 
-function resolveValue(
-  value: TokenValue,
-  tokens: ResolvedTokens,
-  resolving: Set<string>,
-): TokenValue {
+function resolveValue(value: unknown, tokens: ResolvedTokens, resolving: Set<string>): unknown {
   if (typeof value === 'string')
     return /^\{[^{}]+\}$/.test(value) || value.startsWith('#/')
-      ? (resolveReference(value, tokens, resolving) as TokenValue)
+      ? resolveReference(value, tokens, resolving)
       : value;
-  if (Array.isArray(value))
-    return value.map((entry) => resolveValue(entry as TokenValue, tokens, resolving)) as TokenValue;
+  if (Array.isArray(value)) return value.map((entry) => resolveValue(entry, tokens, resolving));
   if (!isObject(value)) return value;
   const resolved: JsonObject = {};
   for (const [key, entry] of Object.entries(value))
-    resolved[key] = resolveValue(entry as TokenValue, tokens, resolving);
-  return resolved as TokenValue;
+    resolved[key] = resolveValue(entry, tokens, resolving);
+  return resolved;
 }
 
 function resolveToken(path: string, tokens: ResolvedTokens, resolving: Set<string>): DesignToken {
@@ -143,8 +138,7 @@ export function resolveDocuments(documents: TokenDocument[]): Record<string, Des
 export function mergeDocuments(documents: TokenDocument[]): TokenDocument {
   const result: TokenDocument = {};
   for (const document of documents) {
-    for (const [key, value] of Object.entries(document))
-      result[key] = clone(value) as TokenDocument[typeof key];
+    for (const [key, value] of Object.entries(document)) result[key] = clone(value);
   }
   return result;
 }

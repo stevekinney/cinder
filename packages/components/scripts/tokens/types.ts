@@ -11,9 +11,7 @@ export type ColorValue = {
 export type DimensionValue = { value: number; unit: 'px' | 'rem' };
 export type DurationValue = { value: number; unit: 'ms' | 's' };
 export type StrokeStyleValue =
-  | 'solid'
-  | 'dashed'
-  | 'dotted'
+  | string
   | { dashArray: DimensionValue[]; lineCap: 'round' | 'butt' | 'square' };
 export type BorderValue = {
   color: ColorValue | string;
@@ -75,7 +73,8 @@ export type TokenType =
 export type TokenExtensions = Record<string, unknown>;
 
 export type DesignToken = {
-  $value: TokenValue;
+  /** Parsed JSON remains unknown until it is validated for the token's $type. */
+  $value: unknown;
   $type?: TokenType;
   $description?: string;
   $deprecated?: boolean | string;
@@ -89,14 +88,7 @@ export type TokenGroup = {
   $extensions?: TokenExtensions;
   $root?: DesignToken;
   $extends?: string;
-  [name: TokenName]:
-    | DesignToken
-    | TokenGroup
-    | TokenType
-    | string
-    | boolean
-    | TokenExtensions
-    | undefined;
+  [name: TokenName]: DesignToken | TokenGroup | string | boolean | TokenExtensions | undefined;
 };
 
 export type TokenDocument = TokenGroup & {

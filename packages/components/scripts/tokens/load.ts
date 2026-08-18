@@ -1,8 +1,9 @@
 import { Glob } from 'bun';
-import { dirname, join, relative } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import type { ResolverDocument, TokenDocument } from './types.ts';
+import { assertValidResolverDocument, assertValidTokenDocument } from './validate.ts';
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 export const tokenRoot = join(scriptDirectory, '..', '..', 'src', 'tokens');
@@ -14,15 +15,15 @@ export async function loadTokenDocuments(): Promise<
   const glob = new Glob('**/*.tokens.json');
   for await (const path of glob.scan({ cwd: tokenRoot })) {
     const absolutePath = join(tokenRoot, path);
-    files.push({ path, document: (await Bun.file(absolutePath).json()) as TokenDocument });
+    const document: unknown = await Bun.file(absolutePath).json();
+    assertValidTokenDocument(document, path);
+    files.push({ path, document });
   }
   return files.toSorted((left, right) => left.path.localeCompare(right.path));
 }
 
 export async function loadResolverDocument(): Promise<ResolverDocument> {
-  return Bun.file(join(tokenRoot, 'cinder.resolver.json')).json() as Promise<ResolverDocument>;
-}
-
-export function resolveSourcePath(source: string): string {
-  return relative(tokenRoot, join(tokenRoot, source));
+  const document: unknown = await Bun.file(join(tokenRoot, 'cinder.resolver.json')).json();
+  assertValidResolverDocument(document);
+  return document;
 }

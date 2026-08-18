@@ -11,7 +11,8 @@ import { readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { AtRule, parse, Rule, type Container, type Declaration, type Node } from 'postcss';
+import { AtRule, parse, Rule, type Container, type Node } from 'postcss';
+import { format } from 'prettier';
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const packageRoot = join(scriptDirectory, '..', '..');
@@ -68,15 +69,14 @@ function collectDeclarations(
     }
     if (node.type !== 'decl' || !node.prop.startsWith('--cinder-')) continue;
 
-    const declaration = node as Declaration;
     entries.push({
-      cssProperty: declaration.prop,
-      proposedPath: tokenPath(declaration.prop),
+      cssProperty: node.prop,
+      proposedPath: tokenPath(node.prop),
       section,
       source,
-      value: declaration.value,
-      aliases: aliases(declaration.value),
-      needsCssRecipe: needsCssRecipe(declaration.value),
+      value: node.value,
+      aliases: aliases(node.value),
+      needsCssRecipe: needsCssRecipe(node.value),
     });
   }
 }
@@ -134,7 +134,7 @@ export function renderInventory(entries: readonly TokenInventoryEntry[]): string
 async function main(): Promise<void> {
   const check = process.argv.includes('--check');
   const source = await readFile(tokensBasePath, 'utf8');
-  const output = renderInventory(inventoryFromCss(source));
+  const output = await format(renderInventory(inventoryFromCss(source)), { parser: 'markdown' });
   const existing = await Bun.file(inventoryPath)
     .text()
     .catch(() => '');
