@@ -49,6 +49,22 @@
   export function getLiveMarkdown(): string {
     return editorRef?.getMarkdown() ?? '';
   }
+
+  export function applyUserEdit(suffix: string): void {
+    const view = editorRef?.getView();
+    if (!view) return;
+    view.dispatch(view.state.tr.insertText(suffix, view.state.doc.content.size - 1));
+  }
+
+  export function applyUserEditWithoutHistory(suffix: string): void {
+    const view = editorRef?.getView();
+    if (!view) return;
+    view.dispatch(
+      view.state.tr
+        .insertText(suffix, view.state.doc.content.size - 1)
+        .setMeta('addToHistory', false),
+    );
+  }
 </script>
 
 <MarkdownEditor

@@ -132,6 +132,8 @@ export interface EditorState {
   view: EditorView;
   focus(): void;
   getMarkdown(): string;
+  /** Whether a live document change is awaiting the debounced onchange callback. */
+  hasPendingInternalChange(): boolean;
   setMarkdown(content: string): void;
   /** Clear any pending debounce timers (called on destroy) */
   clearPendingTimers(): void;

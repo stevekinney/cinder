@@ -104,6 +104,7 @@
   // ring or blinking caret at an arbitrary position. We target the wrapper
   // element via a reactive reference set during rendering.
   let wrapperElement = $state<HTMLDivElement | null>(null);
+  let lastObservedExternalValue: string | undefined;
 
   $effect(() => {
     if (!snapshotMode) return;
@@ -587,6 +588,10 @@
     const externalValue = value;
 
     if (editorState && !isInternalUpdate) {
+      if (editorState.hasPendingInternalChange() && externalValue === lastObservedExternalValue) {
+        return;
+      }
+      lastObservedExternalValue = externalValue;
       let currentMarkdown: string;
       try {
         currentMarkdown = editorState.getMarkdown();

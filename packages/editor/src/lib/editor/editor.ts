@@ -89,7 +89,7 @@ export async function createEditor(
   // Track if editor is destroyed to prevent accessing context after cleanup
   let isDestroyed = false;
   let debounceTimeout: ReturnType<typeof setTimeout> | null = null;
-
+  let hasPendingInternalChange = false;
   // Build the editor
   let builder = Editor.make()
     .config((ctx) => {
@@ -125,6 +125,7 @@ export async function createEditor(
         if (debounceTimeout) clearTimeout(debounceTimeout);
         debounceTimeout = setTimeout(() => {
           if (isDestroyed) return; // Guard after debounce
+          hasPendingInternalChange = false;
           onchange?.(markdown);
         }, changeDebounceMs);
       });
@@ -251,6 +252,23 @@ export async function createEditor(
   // Get the view for direct access
   const view = editor.ctx.get(editorViewCtx);
 
+  // ProseMirror's transaction dispatch is the first synchronous point at
+  // which the live document is authoritative. Keep the component's value
+  // owner current there, while leaving the public onchange callback debounced.
+  const dispatchTransaction = view.props.dispatchTransaction;
+  view.setProps({
+    dispatchTransaction: (transaction) => {
+      if (dispatchTransaction) {
+        dispatchTransaction.call(view, transaction);
+      } else {
+        view.updateState(view.state.apply(transaction));
+      }
+      if (transaction.docChanged && !isDestroyed && !isExternalUpdate) {
+        hasPendingInternalChange = true;
+      }
+    },
+  });
+
   // Apply readonly state
   if (readonly && view) {
     view.setProps({ editable: () => false });
@@ -275,6 +293,10 @@ export async function createEditor(
       return editor.action(getMarkdown());
     },
 
+    hasPendingInternalChange() {
+      return hasPendingInternalChange;
+    },
+
     setMarkdown(content: string) {
       // Clear any pending debounce to prevent stale callbacks
       if (debounceTimeout) {
@@ -282,12 +304,13 @@ export async function createEditor(
         debounceTimeout = null;
       }
 
+      hasPendingInternalChange = false;
       isExternalUpdate = true;
-      editor.action(replaceAll(content));
-      // Reset flag after microtask
-      queueMicrotask(() => {
+      try {
+        editor.action(replaceAll(content));
+      } finally {
         isExternalUpdate = false;
-      });
+      }
     },
 
     clearPendingTimers() {
