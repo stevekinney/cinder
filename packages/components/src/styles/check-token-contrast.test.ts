@@ -567,6 +567,12 @@ describe('sRGB gamut integrity (no silent chroma clamping)', () => {
     // arm because red (h 25) clamps at low lightness; this gate is what enforces that.
     dangerHover,
     dangerActive,
+    infoHover,
+    infoActive,
+    successHover,
+    successActive,
+    warningHover,
+    warningActive,
   };
   for (const [name, token] of Object.entries(namedTokens)) {
     for (const arm of ['light', 'dark'] as const) {

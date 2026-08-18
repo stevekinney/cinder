@@ -433,11 +433,11 @@
   --cinder-danger-hover: light-dark(oklch(42% 0.171 25), oklch(64% 0.172 25));
   --cinder-danger-active: light-dark(oklch(35% 0.142 25), oklch(60% 0.172 25));
   --cinder-info-hover: light-dark(oklch(42% 0.079 230), oklch(70% 0.13 230));
-  --cinder-info-active: light-dark(oklch(35% 0.065 230), oklch(62% 0.13 230));
-  --cinder-success-hover: light-dark(oklch(42% 0.14 145), oklch(70% 0.14 145));
-  --cinder-success-active: light-dark(oklch(35% 0.12 145), oklch(62% 0.14 145));
-  --cinder-warning-hover: light-dark(oklch(42% 0.092 75), oklch(74% 0.156 75));
-  --cinder-warning-active: light-dark(oklch(38% 0.083 75), oklch(66% 0.156 75));
+  --cinder-info-active: light-dark(oklch(35% 0.065 230), oklch(62% 0.12 230));
+  --cinder-success-hover: light-dark(oklch(42% 0.12 145), oklch(70% 0.14 145));
+  --cinder-success-active: light-dark(oklch(35% 0.1 145), oklch(62% 0.14 145));
+  --cinder-warning-hover: light-dark(oklch(42% 0.08 75), oklch(74% 0.156 75));
+  --cinder-warning-active: light-dark(oklch(38% 0.07 75), oklch(66% 0.13 75));
 
   /* Status — semantic triples (foreground / background / border) for soft surfaces.
      Use these in components like Alert and Toast where you need a soft tinted surface
@@ -735,11 +735,11 @@
   --cinder-danger-hover: oklch(64% 0.172 25);
   --cinder-danger-active: oklch(60% 0.172 25);
   --cinder-info-hover: oklch(70% 0.13 230);
-  --cinder-info-active: oklch(62% 0.13 230);
+  --cinder-info-active: oklch(62% 0.12 230);
   --cinder-success-hover: oklch(70% 0.14 145);
   --cinder-success-active: oklch(62% 0.14 145);
   --cinder-warning-hover: oklch(74% 0.156 75);
-  --cinder-warning-active: oklch(66% 0.156 75);
+  --cinder-warning-active: oklch(66% 0.13 75);
   --cinder-color-info-bg: oklch(28% 0.057 230);
   --cinder-color-info-fg: oklch(88% 0.071 230);
   --cinder-color-info-border: oklch(45% 0.08 230);
@@ -861,10 +861,10 @@
   --cinder-danger-active: oklch(35% 0.142 25);
   --cinder-info-hover: oklch(42% 0.079 230);
   --cinder-info-active: oklch(35% 0.065 230);
-  --cinder-success-hover: oklch(42% 0.14 145);
-  --cinder-success-active: oklch(35% 0.12 145);
-  --cinder-warning-hover: oklch(42% 0.092 75);
-  --cinder-warning-active: oklch(38% 0.083 75);
+  --cinder-success-hover: oklch(42% 0.12 145);
+  --cinder-success-active: oklch(35% 0.1 145);
+  --cinder-warning-hover: oklch(42% 0.08 75);
+  --cinder-warning-active: oklch(38% 0.07 75);
   --cinder-color-info-bg: oklch(94.5% 0.03 230);
   --cinder-color-info-fg: oklch(40% 0.079 230);
   --cinder-color-info-border: oklch(80% 0.05 230);
