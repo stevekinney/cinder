@@ -57,9 +57,19 @@ const workspaceRoot = resolve(scriptDirectory, '..', '..', '..');
 
 /** `packages/playground/src/examples/<slug>/…` → `<slug>`. */
 const examplePattern = /^packages\/playground\/src\/examples\/([a-z0-9][a-z0-9-]*)\//;
+const staticGuardPattern = /^packages\/components\/scripts\/check-css-duplication(?:\.test)?\.ts$/;
 const extractedComponentSources = COMPONENT_SOURCES.filter(
   (source) => source.id !== CINDER_COMPONENT_SOURCE.id && source.componentNames !== null,
 );
+
+function extractedPackageSourceMatch(path: string): ComponentSource | null {
+  return (
+    extractedComponentSources.find((source) => {
+      const packageSourceRoot = `${source.repositoryComponentsRoot.split('/src/')[0]}/src/`;
+      return path.startsWith(packageSourceRoot);
+    }) ?? null
+  );
+}
 
 function extractedComponentSourceMatch(
   path: string,
@@ -78,6 +88,48 @@ function extractedComponentSourceMatch(
 export type Decision =
   | { mode: 'full'; reason: string }
   | { mode: 'filtered'; components: string[] };
+
+export type ScopePlan = {
+  mode: 'full' | 'filtered';
+  components: string[];
+  cinderComponents: string[];
+  unitLanes: string[];
+  browserRelevant: boolean;
+  reason: string | null;
+};
+
+/** The single typed decision shared by the pull-request workflows. */
+export function planForChanges(changedFiles: readonly string[], decision: Decision): ScopePlan {
+  const files = changedFiles.map((file) => file.trim()).filter(Boolean);
+  if (decision.mode === 'full') {
+    return {
+      mode: 'full',
+      components: [],
+      cinderComponents: [],
+      unitLanes: ['static', 'package', 'playground', 'components'],
+      browserRelevant: true,
+      reason: decision.reason,
+    };
+  }
+  const staticOnly =
+    files.length > 0 &&
+    files.every(
+      (file) =>
+        file.startsWith('packages/components/scripts/') ||
+        file.startsWith('packages/components/src/styles/'),
+    );
+  const cinderComponents = cinderOnlyComponents(decision.components);
+  return {
+    mode: 'filtered',
+    components: decision.components,
+    cinderComponents,
+    unitLanes: staticOnly
+      ? ['static']
+      : ['static', 'package', 'playground', ...(cinderComponents.length > 0 ? ['components'] : [])],
+    browserRelevant: !staticOnly,
+    reason: null,
+  };
+}
 
 /**
  * Normalize an explicit component scope from `workflow_dispatch` inputs.
@@ -131,11 +183,15 @@ export function decide(
   // unknown-slug guard) rather than silently inventing a slug.
   const exampleSlugs = new Set<string>();
   const extractedPackageSlugs = new Set<string>();
+  let staticGuardChanged = false;
   const nonExampleChanges: string[] = [];
   for (const path of cleaned) {
     const exampleMatch = examplePattern.exec(path);
     const extractedSourceMatch = extractedComponentSourceMatch(path);
-    if (exampleMatch?.[1] !== undefined) {
+    const extractedPackageSource = extractedPackageSourceMatch(path);
+    if (staticGuardPattern.test(path)) {
+      staticGuardChanged = true;
+    } else if (exampleMatch?.[1] !== undefined) {
       if (!knownSlugs.has(exampleMatch[1])) {
         return { mode: 'full', reason: `example for unknown slug: ${path}` };
       }
@@ -148,6 +204,13 @@ export function decide(
         return { mode: 'full', reason: `deleted extracted-package source: ${path}` };
       }
       for (const componentName of extractedSourceMatch.source.componentNames ?? []) {
+        if (knownSlugs.has(componentName)) extractedPackageSlugs.add(componentName);
+      }
+    } else if (extractedPackageSource !== null) {
+      if (deletedFileSet.has(path)) {
+        return { mode: 'full', reason: `deleted extracted-package source: ${path}` };
+      }
+      for (const componentName of extractedPackageSource.componentNames ?? []) {
         if (knownSlugs.has(componentName)) extractedPackageSlugs.add(componentName);
       }
     } else {
@@ -164,6 +227,9 @@ export function decide(
   });
 
   if (graphDecision.mode === 'full') {
+    if (staticGuardChanged && graphDecision.reason === 'no component-mapped changes detected') {
+      return { mode: 'filtered', components: [] };
+    }
     // If the ONLY changes were examples (the graph saw nothing to map and said
     // "no component-mapped changes"), the example slugs are still a valid
     // filtered scope. Any other full reason (real force-full trigger) wins.
@@ -237,19 +303,22 @@ function partitionDeleted(changedFiles: string[]): { all: string[]; deleted: str
   return { all, deleted };
 }
 
-async function emit(decision: Decision): Promise<void> {
+async function emit(decision: Decision, changedFiles: readonly string[] = []): Promise<void> {
   const githubOutput = process.env['GITHUB_OUTPUT'];
   const componentsValue = decision.mode === 'filtered' ? decision.components.join(',') : '';
   // `unit-tests.yaml` scopes @lostgradient/cinder specifically (unlike
   // browser-tests.yaml's combined Playwright manifest), so it gets its own
   // narrowed output rather than reusing `components` for a different package.
-  const cinderComponentsValue =
-    decision.mode === 'filtered' ? cinderOnlyComponents(decision.components).join(',') : '';
+  const plan = planForChanges(changedFiles, decision);
+  const cinderComponentsValue = plan.cinderComponents.join(',');
   const payload = [
     `mode=${decision.mode}`,
     `component_scope_mode=${decision.mode}`,
     `components=${componentsValue}`,
     `cinder_components=${cinderComponentsValue}`,
+    `unit_lanes=${plan.unitLanes.join(',')}`,
+    `browser_relevant=${plan.browserRelevant}`,
+    `full_scope_reason=${plan.reason ?? ''}`,
     '',
   ].join('\n');
 
@@ -274,11 +343,13 @@ async function main(): Promise<void> {
   const knownSlugs = new Set(await discoverComponents());
 
   let decision: Decision;
+  let changedFiles: string[] = [];
   if (explicitComponents !== undefined) {
     decision = decideExplicitComponents(explicitComponents, knownSlugs);
   } else {
     const input = await Bun.stdin.text();
     const { all, deleted } = partitionDeleted(input.split('\n'));
+    changedFiles = all;
     const sourceFiles = await loadSourceFiles();
     // composeOnlySlugs defaults to COMPOSE_ONLY_COMPONENTS (decide()'s default),
     // so the real CI run threads the canonical compose-only set; the discover.ts
@@ -286,7 +357,7 @@ async function main(): Promise<void> {
     decision = decide(all, sourceFiles, knownSlugs, deleted);
   }
 
-  await emit(decision);
+  await emit(decision, changedFiles);
 }
 
 if (import.meta.main) {

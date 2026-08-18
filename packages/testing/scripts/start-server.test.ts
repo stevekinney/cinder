@@ -25,6 +25,7 @@ import {
   playwrightCommandArguments,
   playwrightProcessEnvironment,
   respondingPlaygroundUrl,
+  shouldBuildPlaygroundBundleDependencies,
   shouldRefuseStaleServerReuse,
   shouldStartManagedChildProcess,
   shutdownExitCodeAfterRequest,
@@ -120,6 +121,13 @@ describe('appendServerOutputBuffer', () => {
 });
 
 describe('playground bundle dependency build preflight', () => {
+  test('skips duplicate builds only after CI has prebuilt the exact Turbo graph', () => {
+    expect(shouldBuildPlaygroundBundleDependencies({ PLAYGROUND_DEPENDENCIES_PREBUILT: '1' })).toBe(
+      false,
+    );
+    expect(shouldBuildPlaygroundBundleDependencies({})).toBe(true);
+  });
+
   test('builds every workspace package the playground browser bundle resolves through dist', () => {
     expect(playgroundBundleDependencyBuildPackages()).toEqual([
       '@lostgradient/markdown',

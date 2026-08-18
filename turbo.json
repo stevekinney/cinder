@@ -45,11 +45,7 @@
       "dependsOn": ["^build"],
       "outputs": ["dist/**"],
       "env": ["CINDER_FORCE_BUILD"],
-      "inputs": [
-        "$TURBO_DEFAULT$",
-        "$TURBO_ROOT$/packages/components/scripts/**",
-        "$TURBO_ROOT$/packages/testing/scripts/**"
-      ]
+      "inputs": ["$TURBO_DEFAULT$"]
     },
     // `RUNNER_OS` + `TURBO_PLATFORM` are OS discriminators for the REMOTE cache. Turbo's hash covers
     // declared files, env vars, and engines — there is no platform component (confirmed absent from
@@ -83,39 +79,62 @@
     "test": {
       "dependsOn": ["^build"],
       "outputs": [],
-      "inputs": [
-        "$TURBO_DEFAULT$",
-        "$TURBO_ROOT$/packages/components/scripts/**",
-        "$TURBO_ROOT$/packages/testing/scripts/**",
-        "$TURBO_ROOT$/.github/workflows/**",
-        "$TURBO_ROOT$/docs/**",
-        "$TURBO_ROOT$/.changeset/**",
-        "$TURBO_ROOT$/packages/*/package.json"
-      ],
+      "inputs": ["$TURBO_DEFAULT$"],
       "env": ["TURBO_PLATFORM", "RUNNER_OS", "NODE_ENV"]
     },
     "test:coverage": {
       "dependsOn": ["^build"],
       "outputs": ["coverage/**"],
+      "inputs": ["$TURBO_DEFAULT$"],
+      "env": ["TURBO_PLATFORM", "RUNNER_OS", "NODE_ENV"]
+    },
+    "@lostgradient/cinder#test": {
+      "dependsOn": ["^build"],
+      "outputs": [],
       "inputs": [
         "$TURBO_DEFAULT$",
-        "$TURBO_ROOT$/packages/components/scripts/**",
-        "$TURBO_ROOT$/packages/testing/scripts/**",
         "$TURBO_ROOT$/.github/workflows/**",
         "$TURBO_ROOT$/docs/**",
-        "$TURBO_ROOT$/.changeset/**",
         "$TURBO_ROOT$/packages/*/package.json"
       ],
+      "env": ["TURBO_PLATFORM", "RUNNER_OS", "NODE_ENV"]
+    },
+    "@lostgradient/cinder#test:coverage": {
+      "dependsOn": ["^build"],
+      "outputs": ["coverage/**"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/.github/workflows/**",
+        "$TURBO_ROOT$/docs/**",
+        "$TURBO_ROOT$/packages/*/package.json"
+      ],
+      "env": ["TURBO_PLATFORM", "RUNNER_OS", "NODE_ENV"]
+    },
+    "@cinder/playground#test": {
+      "dependsOn": ["^build"],
+      "outputs": [],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/packages/testing/scripts/source-fingerprint.ts",
+        "$TURBO_ROOT$/README.md"
+      ],
+      "env": ["TURBO_PLATFORM", "RUNNER_OS", "NODE_ENV"]
+    },
+    "@cinder/playground#typecheck": {
+      "dependsOn": ["^build"],
+      "outputs": [],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/testing/scripts/source-fingerprint.ts"]
+    },
+    "@lostgradient/markdown#test": {
+      "dependsOn": ["^build"],
+      "outputs": [],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/components/package.json"],
       "env": ["TURBO_PLATFORM", "RUNNER_OS", "NODE_ENV"]
     },
     "typecheck": {
       "dependsOn": ["^build"],
       "outputs": [],
-      "inputs": [
-        "$TURBO_DEFAULT$",
-        "$TURBO_ROOT$/packages/components/scripts/**",
-        "$TURBO_ROOT$/packages/testing/scripts/**"
-      ]
+      "inputs": ["$TURBO_DEFAULT$"]
     },
     // `^build`, not `[]`: oxlint runs with `--type-aware`, which reads dependency `.d.ts` files, so
     // a package's lint genuinely needs its dependencies built. Builds hash-skip, so the added edge
@@ -123,11 +142,7 @@
     "lint": {
       "dependsOn": ["^build"],
       "outputs": [],
-      "inputs": [
-        "$TURBO_DEFAULT$",
-        "$TURBO_ROOT$/packages/components/scripts/**",
-        "$TURBO_ROOT$/packages/testing/scripts/**"
-      ]
+      "inputs": ["$TURBO_DEFAULT$"]
     },
     // `@cinder/testing` reaches the other way across the boundary: `scripts/changed-components.ts`
     // imports `packages/playground/src/component-sources.ts`, and testing does not depend on

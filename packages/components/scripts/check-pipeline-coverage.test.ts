@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'bun:test';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 import {
   checkPipelineCoverage,
@@ -9,6 +11,91 @@ import {
   resolveScriptChain,
   type DeclarationRow,
 } from './check-pipeline-coverage.ts';
+
+describe('Turbo input topology', () => {
+  it('keeps broad script trees out of base tasks while retaining platform test keys', () => {
+    const turboConfiguration = Bun.JSONC.parse(
+      readFileSync(resolve(import.meta.dir, '../../../turbo.json'), 'utf8'),
+    ) as { tasks: Record<string, { inputs?: string[]; env?: string[] }> };
+    for (const taskName of ['build', 'test', 'test:coverage', 'typecheck', 'lint']) {
+      const task = turboConfiguration.tasks[taskName];
+      expect(task).toBeDefined();
+      expect(task?.inputs).not.toContain('$TURBO_ROOT$/packages/components/scripts/**');
+      expect(task?.inputs).not.toContain('$TURBO_ROOT$/packages/testing/scripts/**');
+    }
+    expect(turboConfiguration.tasks['test']?.env).toEqual([
+      'TURBO_PLATFORM',
+      'RUNNER_OS',
+      'NODE_ENV',
+    ]);
+  });
+
+  it('pins fail-closed PR aggregators and forced audit policy in workflow source', () => {
+    const root = resolve(import.meta.dir, '../../..');
+    const unitWorkflow = readFileSync(resolve(root, '.github/workflows/unit-tests.yaml'), 'utf8');
+    const browserWorkflow = readFileSync(
+      resolve(root, '.github/workflows/browser-tests.yaml'),
+      'utf8',
+    );
+    const mainWorkflow = readFileSync(resolve(root, '.github/workflows/main-green.yaml'), 'utf8');
+    const turboConfiguration = Bun.JSONC.parse(
+      readFileSync(resolve(root, 'turbo.json'), 'utf8'),
+    ) as { tasks: Record<string, { inputs?: string[]; env?: string[] }> };
+    const componentsManifest = JSON.parse(
+      readFileSync(resolve(root, 'packages/components/package.json'), 'utf8'),
+    ) as { devDependencies: Record<string, string> };
+    expect(unitWorkflow).toContain('name: unit-tests');
+    expect(unitWorkflow).toContain(
+      'needs: [scope, static-artifact, package, playground, component]',
+    );
+    expect(unitWorkflow).toContain('component_matrix={"chunk":[1,2,3,4]}');
+    expect(unitWorkflow).toContain(
+      "needs.scope.result == 'success' && needs.scope.outputs.component_matrix",
+    );
+    expect(unitWorkflow).toContain(
+      'bun test packages/components/scripts/check-css-duplication.test.ts',
+    );
+    expect(browserWorkflow).toContain(
+      `image: mcr.microsoft.com/playwright:v${componentsManifest.devDependencies['@playwright/test']}-noble`,
+    );
+    expect(browserWorkflow).toContain('playwright_matrix={"shard":[1,2,3,4]}');
+    expect(browserWorkflow).toContain(
+      "needs.scope.result == 'success' && needs.scope.outputs.playwright_matrix",
+    );
+    expect(browserWorkflow).toContain('playwright-visual:');
+    expect(browserWorkflow).toContain('test:browser:docker');
+    expect(browserWorkflow).toContain('echo "browser_relevant=true" >> "$GITHUB_OUTPUT"');
+    expect(browserWorkflow).toContain('CLASSIFIER_BROWSER_RELEVANT');
+    expect(browserWorkflow).toContain('Merge visual-report fragments');
+    expect(browserWorkflow).toContain('name: playwright');
+    expect(browserWorkflow).toContain('path: packages/testing/blob-report');
+    expect(browserWorkflow).toContain(
+      'bunx playwright merge-reports --reporter html packages/testing/blob-reports',
+    );
+    expect(mainWorkflow).toContain("github.event_name == 'schedule'");
+    expect(mainWorkflow).toContain("github.event.inputs.force_audit == 'true'");
+    expect(turboConfiguration.tasks['@lostgradient/cinder#test']?.inputs).toContain(
+      '$TURBO_ROOT$/.github/workflows/**',
+    );
+    expect(turboConfiguration.tasks['@lostgradient/cinder#test']?.inputs).toContain(
+      '$TURBO_ROOT$/packages/*/package.json',
+    );
+    expect(turboConfiguration.tasks['@cinder/playground#typecheck']?.inputs).toContain(
+      '$TURBO_ROOT$/packages/testing/scripts/source-fingerprint.ts',
+    );
+    expect(turboConfiguration.tasks['@cinder/playground#test']?.inputs).toContain(
+      '$TURBO_ROOT$/README.md',
+    );
+    expect(turboConfiguration.tasks['@cinder/playground#test']?.env).toEqual([
+      'TURBO_PLATFORM',
+      'RUNNER_OS',
+      'NODE_ENV',
+    ]);
+    expect(turboConfiguration.tasks['@lostgradient/markdown#test']?.inputs).toContain(
+      '$TURBO_ROOT$/packages/components/package.json',
+    );
+  });
+});
 
 describe('resolveScriptChain', () => {
   it('resolves a script chain transitively, following bun run invocations', () => {
