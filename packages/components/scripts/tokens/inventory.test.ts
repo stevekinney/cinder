@@ -17,6 +17,10 @@ const sample = `
     --cinder-duration: 0ms;
   }
 }
+
+:root[data-reduced-motion='on'] {
+  --cinder-duration: 0ms;
+}
 `;
 
 describe('token inventory', () => {
@@ -47,6 +51,15 @@ describe('token inventory', () => {
         proposedPath: 'duration',
         section: 'unclassified',
         source: 'reduced-motion',
+        value: '0ms',
+        aliases: [],
+        needsCssRecipe: false,
+      },
+      {
+        cssProperty: '--cinder-duration',
+        proposedPath: 'duration',
+        section: 'unclassified',
+        source: 'forced-reduced-motion',
         value: '0ms',
         aliases: [],
         needsCssRecipe: false,

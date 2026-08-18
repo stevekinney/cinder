@@ -113,22 +113,31 @@ from color-mix(in oklch, var(--cinder-warning), var(--cinder-text) 36%) l c h
 |`--cinder-danger-hover`|`danger.hover`| semantic-colors | default | — | yes |`light-dark(oklch(42% 0.171 25), oklch(64% 0.172 25))`|
 |`--cinder-duration`|`duration`| motion | default | — | no |`200ms`|
 |`--cinder-duration`|`duration`| unclassified | reduced-motion | — | no |`0ms`|
+|`--cinder-duration`|`duration`| unclassified | forced-reduced-motion | — | no |`0ms`|
 |`--cinder-duration-fast`|`duration.fast`| motion | default | — | no |`120ms`|
 |`--cinder-duration-fast`|`duration.fast`| unclassified | reduced-motion | — | no |`0ms`|
+|`--cinder-duration-fast`|`duration.fast`| unclassified | forced-reduced-motion | — | no |`0ms`|
 |`--cinder-duration-instant`|`duration.instant`| motion | default | — | no |`0ms`|
 |`--cinder-duration-instant`|`duration.instant`| unclassified | reduced-motion | — | no |`0ms`|
+|`--cinder-duration-instant`|`duration.instant`| unclassified | forced-reduced-motion | — | no |`0ms`|
 |`--cinder-duration-moderate`|`duration.moderate`| motion | default | — | no |`280ms`|
 |`--cinder-duration-moderate`|`duration.moderate`| unclassified | reduced-motion | — | no |`0ms`|
+|`--cinder-duration-moderate`|`duration.moderate`| unclassified | forced-reduced-motion | — | no |`0ms`|
 |`--cinder-duration-normal`|`duration.normal`| motion | default |`--cinder-duration`| no |`var(--cinder-duration)`|
 |`--cinder-duration-normal`|`duration.normal`| unclassified | reduced-motion | — | no |`0ms`|
+|`--cinder-duration-normal`|`duration.normal`| unclassified | forced-reduced-motion | — | no |`0ms`|
 |`--cinder-duration-progress-bar-indeterminate`|`duration.progress.bar.indeterminate`| motion | default | — | no |`1.6s`|
 |`--cinder-duration-progress-bar-indeterminate`|`duration.progress.bar.indeterminate`| unclassified | reduced-motion | — | no |`0ms`|
+|`--cinder-duration-progress-bar-indeterminate`|`duration.progress.bar.indeterminate`| unclassified | forced-reduced-motion | — | no |`0ms`|
 |`--cinder-duration-progress-ring-spin`|`duration.progress.ring.spin`| motion | default | — | no |`1.4s`|
 |`--cinder-duration-progress-ring-spin`|`duration.progress.ring.spin`| unclassified | reduced-motion | — | no |`0ms`|
+|`--cinder-duration-progress-ring-spin`|`duration.progress.ring.spin`| unclassified | forced-reduced-motion | — | no |`0ms`|
 |`--cinder-duration-slow`|`duration.slow`| motion | default | — | no |`400ms`|
 |`--cinder-duration-slow`|`duration.slow`| unclassified | reduced-motion | — | no |`0ms`|
+|`--cinder-duration-slow`|`duration.slow`| unclassified | forced-reduced-motion | — | no |`0ms`|
 |`--cinder-duration-spin`|`duration.spin`| motion | default | — | no |`750ms`|
 |`--cinder-duration-spin`|`duration.spin`| unclassified | reduced-motion | — | no |`0ms`|
+|`--cinder-duration-spin`|`duration.spin`| unclassified | forced-reduced-motion | — | no |`0ms`|
 |`--cinder-ease-accelerate`|`ease.accelerate`| motion | default | — | no |`cubic-bezier(0.3, 0, 1, 1)`|
 |`--cinder-ease-decelerate`|`ease.decelerate`| motion | default | — | no |`cubic-bezier(0, 0, 0, 1)`|
 |`--cinder-ease-in-out`|`ease.in.out`| motion | default | — | no |`cubic-bezier(0.4, 0, 0.2, 1)`|
@@ -144,7 +153,7 @@ from color-mix(in oklch, var(--cinder-warning), var(--cinder-text) 36%) l c h
 |`--cinder-gap-inline`|`gap.inline`| semantic-aliases | default |`--cinder-space-2`| no |`var(--cinder-space-2)`|
 |`--cinder-gap-stack`|`gap.stack`| semantic-aliases | default |`--cinder-space-3`| no |`var(--cinder-space-3)`|
 |`--cinder-info`|`info`| semantic-colors | default | — | yes |`light-dark(oklch(50% 0.098 230), oklch(78% 0.13 230))`|
-|`--cinder-info-active`|`info.active`| semantic-colors | default | — | yes |`light-dark(oklch(35% 0.065 230), oklch(62% 0.13 230))`|
+|`--cinder-info-active`|`info.active`| semantic-colors | default | — | yes |`light-dark(oklch(35% 0.065 230), oklch(62% 0.12 230))`|
 |`--cinder-info-contrast`|`info.contrast`| semantic-colors | default | — | yes |`light-dark(oklch(100% 0 0), oklch(15% 0.03 230))`|
 |`--cinder-info-hover`|`info.hover`| semantic-colors | default | — | yes |`light-dark(oklch(42% 0.079 230), oklch(70% 0.13 230))`|
 |`--cinder-leading-none`|`leading.none`| typography | default | — | no |`1`|
@@ -207,9 +216,9 @@ oklch(from var(--cinder-accent) 0.7 0.14 h)
 |`--cinder-space-7`|`space.7`| spacing | default | — | no |`1.75rem`|
 |`--cinder-space-8`|`space.8`| spacing | default | — | no |`2rem`|
 |`--cinder-success`|`success`| semantic-colors | default | — | yes |`light-dark(oklch(50% 0.157 145), oklch(78% 0.14 145))`|
-|`--cinder-success-active`|`success.active`| semantic-colors | default | — | yes |`light-dark(oklch(35% 0.12 145), oklch(62% 0.14 145))`|
+|`--cinder-success-active`|`success.active`| semantic-colors | default | — | yes |`light-dark(oklch(35% 0.1 145), oklch(62% 0.14 145))`|
 |`--cinder-success-contrast`|`success.contrast`| semantic-colors | default | — | yes |`light-dark(oklch(100% 0 0), oklch(15% 0.03 145))`|
-|`--cinder-success-hover`|`success.hover`| semantic-colors | default | — | yes |`light-dark(oklch(42% 0.14 145), oklch(70% 0.14 145))`|
+|`--cinder-success-hover`|`success.hover`| semantic-colors | default | — | yes |`light-dark(oklch(42% 0.12 145), oklch(70% 0.14 145))`|
 |`--cinder-surface`|`surface`| semantic-colors | default | — | yes |`light-dark(oklch(99.4% 0.002 255), oklch(21% 0.04 245))`|
 |`--cinder-surface-hover`|`surface.hover`| semantic-colors | default |`--cinder-accent`, `--cinder-surface`, `--cinder-surface`| yes |`light-dark(
 color-mix(in oklch, var(--cinder-surface), var(--cinder-accent) 6%),
@@ -254,9 +263,9 @@ color-mix(in oklch, var(--cinder-surface-raised), oklch(100% 0 0) 6%)
 |`--cinder-tracking-tight`|`tracking.tight`| typography | default | — | no |`-0.01em`|
 |`--cinder-tracking-wide`|`tracking.wide`| typography | default | — | no |`0.02em`|
 |`--cinder-warning`|`warning`| semantic-colors | default | — | yes |`light-dark(oklch(54% 0.113 75), oklch(82% 0.156 75))`|
-|`--cinder-warning-active`|`warning.active`| semantic-colors | default | — | yes |`light-dark(oklch(38% 0.083 75), oklch(66% 0.156 75))`|
+|`--cinder-warning-active`|`warning.active`| semantic-colors | default | — | yes |`light-dark(oklch(38% 0.07 75), oklch(66% 0.13 75))`|
 |`--cinder-warning-contrast`|`warning.contrast`| semantic-colors | default | — | yes |`light-dark(oklch(100% 0 0), oklch(20% 0.04 75))`|
-|`--cinder-warning-hover`|`warning.hover`| semantic-colors | default | — | yes |`light-dark(oklch(42% 0.092 75), oklch(74% 0.156 75))`|
+|`--cinder-warning-hover`|`warning.hover`| semantic-colors | default | — | yes |`light-dark(oklch(42% 0.08 75), oklch(74% 0.156 75))`|
 |`--cinder-z-backdrop`|`z.backdrop`| semantic-colors | default | — | no |`1150`|
 |`--cinder-z-drag-preview`|`z.drag.preview`| semantic-colors | default | — | no |`1400`|
 |`--cinder-z-dropdown`|`z.dropdown`| semantic-colors | default | — | no |`1100`|

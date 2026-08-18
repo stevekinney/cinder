@@ -23,7 +23,7 @@ type TokenInventoryEntry = {
   cssProperty: string;
   proposedPath: string;
   section: string;
-  source: 'default' | 'reduced-motion';
+  source: 'default' | 'reduced-motion' | 'forced-reduced-motion';
   value: string;
   aliases: readonly string[];
   needsCssRecipe: boolean;
@@ -104,11 +104,21 @@ function findReducedMotionRoot(nodes: readonly Node[]): Container {
   return findTopLevelRoot(media.nodes ?? []);
 }
 
+function findForcedReducedMotionRoot(nodes: readonly Node[]): Container {
+  const rootRule = nodes.find(
+    (node): node is Rule =>
+      node instanceof Rule && node.selector.startsWith(":root[data-reduced-motion='on']"),
+  );
+  if (!rootRule) throw new Error('Could not find the forced reduced-motion token block.');
+  return rootRule;
+}
+
 export function inventoryFromCss(source: string): readonly TokenInventoryEntry[] {
   const root = parse(source, { from: tokensBasePath });
   const entries: TokenInventoryEntry[] = [];
   collectDeclarations(findTopLevelRoot(root.nodes), 'default', entries);
   collectDeclarations(findReducedMotionRoot(root.nodes), 'reduced-motion', entries);
+  collectDeclarations(findForcedReducedMotionRoot(root.nodes), 'forced-reduced-motion', entries);
   return entries.toSorted((left, right) => left.cssProperty.localeCompare(right.cssProperty));
 }
 
