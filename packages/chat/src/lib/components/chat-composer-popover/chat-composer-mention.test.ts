@@ -51,6 +51,7 @@ describe('chat composer mentions', () => {
       '[Data](data:text/plain,hello)',
       '[Relative](./notes)',
       '[Docs](https://example.com "[Ada](person:ada)")',
+      '[Escaped](https://example.com\\) "[Ada](person:ada)")',
       '![Image](asset:logo)',
       '\\[Escaped](person:ada)',
       '[Missing destination](person:ada',
