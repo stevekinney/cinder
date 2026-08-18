@@ -367,7 +367,7 @@
     </div>
   {/each}
 
-  <span style="display: contents" bind:this={addPropertyElement}>
+  <span class="cinder-jse-property-list__add-property-reference" bind:this={addPropertyElement}>
     <Button variant="secondary" size="sm" disabled={readonly} onclick={addProperty}>
       Add property
     </Button>

@@ -182,6 +182,15 @@ describe('PropertyList', () => {
     expect(screen.getByRole('button', { name: 'Move beta up' })).toHaveProperty('disabled', false);
   });
 
+  test('keeps the Add property focus reference layout-neutral', async () => {
+    const css = await Bun.file(new URL('./json-schema-editor.css', import.meta.url)).text();
+
+    expect(css).toContain('.cinder-jse-property-list__add-property-reference');
+    expect(css).toMatch(
+      /\.cinder-jse-property-list__add-property-reference\s*\{[^}]*display:\s*contents/,
+    );
+  });
+
   test('keeps enum in the preserved-keywords count when a schema is loaded', () => {
     const loadedSchema = { type: 'string', enum: ['draft', 'published'] };
     const preservedKeys = Object.keys(loadedSchema).filter((key) => !EDITABLE_KEYWORDS.has(key));
