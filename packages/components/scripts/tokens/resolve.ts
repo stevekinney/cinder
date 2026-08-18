@@ -39,18 +39,21 @@ function getByPath(value: unknown, segments: string[]): unknown {
   return current;
 }
 
-function collectGroup(
-  group: TokenGroup,
-  prefix: string,
-  tokens: ResolvedTokens,
-  groups: Map<string, TokenGroup>,
-): void {
+function collectGroups(group: TokenGroup, prefix: string, groups: Map<string, TokenGroup>): void {
   groups.set(prefix, group);
   for (const [name, value] of Object.entries(group)) {
     if (name.startsWith('$') || !isObject(value)) continue;
     const path = prefix ? `${prefix}.${name}` : name;
+    if (!isToken(value)) collectGroups(value as TokenGroup, path, groups);
+  }
+}
+
+function collectTokens(group: TokenGroup, prefix: string, tokens: ResolvedTokens): void {
+  for (const [name, value] of Object.entries(group)) {
+    if (name.startsWith('$') || !isObject(value)) continue;
+    const path = prefix ? `${prefix}.${name}` : name;
     if (isToken(value)) tokens.set(path, clone(value));
-    else collectGroup(value as TokenGroup, path, tokens, groups);
+    else collectTokens(value as TokenGroup, path, tokens);
   }
 }
 
@@ -127,8 +130,10 @@ function resolveToken(path: string, tokens: ResolvedTokens, resolving: Set<strin
 export function resolveDocuments(documents: TokenDocument[]): Record<string, DesignToken> {
   const tokens: ResolvedTokens = new Map();
   const groups = new Map<string, TokenGroup>();
-  for (const document of documents) collectGroup(clone(document), '', tokens, groups);
+  const documentCopies = documents.map((document) => clone(document));
+  for (const document of documentCopies) collectGroups(document, '', groups);
   for (const groupPath of groups.keys()) resolveExtends(groupPath, groups, new Set(), new Set());
+  for (const document of documentCopies) collectTokens(document, '', tokens);
   const resolved: Record<string, DesignToken> = {};
   for (const path of tokens.keys()) resolved[path] = clone(resolveToken(path, tokens, new Set()));
   return resolved;

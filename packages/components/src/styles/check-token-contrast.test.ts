@@ -319,6 +319,12 @@ const infoBorder = readOklchToken(css, '--cinder-color-info-border');
 // clamps at low lightness, so these are pinned to their in-gamut chroma maxima.
 const dangerHover = readOklchToken(css, '--cinder-danger-hover');
 const dangerActive = readOklchToken(css, '--cinder-danger-active');
+const infoHover = readOklchToken(css, '--cinder-info-hover');
+const infoActive = readOklchToken(css, '--cinder-info-active');
+const successHover = readOklchToken(css, '--cinder-success-hover');
+const successActive = readOklchToken(css, '--cinder-success-active');
+const warningHover = readOklchToken(css, '--cinder-warning-hover');
+const warningActive = readOklchToken(css, '--cinder-warning-active');
 const bg = readOklchToken(css, '--cinder-bg');
 const surface = readOklchToken(css, '--cinder-surface');
 const surfaceInset = readOklchToken(css, '--cinder-surface-inset');
@@ -459,6 +465,27 @@ describe('status color contrast', () => {
       for (const arm of ['light', 'dark'] as const) {
         expect(
           contrastRatio(wcagLuminance(fill[arm]), wcagLuminance(label[arm])),
+        ).toBeGreaterThanOrEqual(AA_TEXT);
+      }
+    }
+  });
+
+  it('every solid status interaction state keeps its contrast label at AA', () => {
+    const pairs: Array<[string, TokenArms, TokenArms]> = [
+      ['info hover', infoHover, infoContrast],
+      ['info active', infoActive, infoContrast],
+      ['success hover', successHover, successContrast],
+      ['success active', successActive, successContrast],
+      ['warning hover', warningHover, warningContrast],
+      ['warning active', warningActive, warningContrast],
+      ['danger hover', dangerHover, dangerContrast],
+      ['danger active', dangerActive, dangerContrast],
+    ];
+    for (const [name, fill, label] of pairs) {
+      for (const arm of ['light', 'dark'] as const) {
+        expect(
+          contrastRatio(wcagLuminance(fill[arm]), wcagLuminance(label[arm])),
+          `${name} ${arm}`,
         ).toBeGreaterThanOrEqual(AA_TEXT);
       }
     }

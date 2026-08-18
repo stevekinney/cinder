@@ -1,0 +1,5 @@
+{
+  "$schema": "https://www.designtokens.org/schemas/2025.10/format.json",
+  "$extensions": { "com.lostgradient.cinder": { "modifier": { "motion": "reduced" } } },
+  "motion": { "$type": "duration", "fast": { "$value": { "value": 0, "unit": "ms" } } }
+}

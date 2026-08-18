@@ -39,6 +39,14 @@ describe('DTCG resolver', () => {
     ).toThrow('circular $extends');
   });
 
+  test('inherits group tokens through $extends', () => {
+    const resolved = resolveDocument({
+      base: { $type: 'number', value: { $value: 1 } },
+      derived: { $extends: '{base}' },
+    });
+    expect(resolved['derived.value']?.$value).toBe(1);
+  });
+
   test('merges ordered sources with the final source winning', () => {
     const first: TokenDocument = { $type: 'number', token: { $value: 1 } };
     const last: TokenDocument = { $type: 'number', token: { $value: 2 } };

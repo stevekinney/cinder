@@ -352,6 +352,9 @@
      The dark muted value rises above the raised-surface endpoint for the same reason:
      0.30 on 0.28 resolved to an invisible 1.07:1 line. */
   --cinder-border: light-dark(oklch(63% 0.006 255), oklch(58% 0.05 245));
+  /* Decorative-only hairline. Never use this as a control boundary: it is
+     intentionally below the WCAG 1.4.11 3:1 non-text threshold. */
+  --cinder-border-faint: light-dark(oklch(92% 0.003 255), oklch(33% 0.03 245));
   --cinder-border-muted: light-dark(oklch(85% 0.004 255), oklch(38% 0.04 245));
   --cinder-border-strong: light-dark(oklch(60% 0.008 255), oklch(66% 0.06 245));
 
@@ -362,6 +365,12 @@
      (near-neutral). Hover steps up by 0.07 to be distinguishable from rest. */
   --cinder-toggle-track-off-resting: light-dark(var(--cinder-border-muted), oklch(45% 0.02 245));
   --cinder-toggle-track-off-hover-resting: light-dark(var(--cinder-border), oklch(52% 0.02 245));
+
+  /* Do not add an opacity hover tier: state colors preserve text contrast where
+     whole-element opacity would dim labels against an unknown backdrop. */
+  --cinder-opacity-disabled: 0.55;
+  --cinder-opacity-muted: 0.72;
+  --cinder-opacity-faint: 0.4;
 
   /* Accent - indigo (hue 270). Light arm is a deep indigo at L=0.50 — dark enough
      that WHITE clears WCAG AA on it (6.45:1), so the brand fill carries white labels
@@ -422,7 +431,13 @@
      White labels clear WCAG AA on every state (6.7 / 9.3 / 12.1 : 1). Gated by
      check-token-contrast.test.ts. */
   --cinder-danger-hover: light-dark(oklch(42% 0.171 25), oklch(64% 0.172 25));
-  --cinder-danger-active: light-dark(oklch(35% 0.142 25), oklch(57% 0.172 25));
+  --cinder-danger-active: light-dark(oklch(35% 0.142 25), oklch(60% 0.172 25));
+  --cinder-info-hover: light-dark(oklch(42% 0.079 230), oklch(70% 0.13 230));
+  --cinder-info-active: light-dark(oklch(35% 0.065 230), oklch(62% 0.13 230));
+  --cinder-success-hover: light-dark(oklch(42% 0.14 145), oklch(70% 0.14 145));
+  --cinder-success-active: light-dark(oklch(35% 0.12 145), oklch(62% 0.14 145));
+  --cinder-warning-hover: light-dark(oklch(42% 0.092 75), oklch(74% 0.156 75));
+  --cinder-warning-active: light-dark(oklch(38% 0.083 75), oklch(66% 0.156 75));
 
   /* Status — semantic triples (foreground / background / border) for soft surfaces.
      Use these in components like Alert and Toast where you need a soft tinted surface
@@ -457,6 +472,15 @@
   --cinder-color-danger-bg: light-dark(oklch(94.5% 0.026 25), oklch(28% 0.09 25));
   --cinder-color-danger-fg: light-dark(oklch(42% 0.16 25), oklch(90% 0.12 25));
   --cinder-color-danger-border: light-dark(oklch(80% 0.06 25), oklch(50% 0.11 25));
+
+  /* Neutral and accent retain the status-triple shape, so components never
+     need ad hoc surface mixing for default or brand-tinted variants. */
+  --cinder-color-neutral-bg: light-dark(oklch(94.5% 0.004 255), oklch(28% 0.04 245));
+  --cinder-color-neutral-fg: var(--cinder-text);
+  --cinder-color-neutral-border: var(--cinder-border);
+  --cinder-color-accent-bg: color-mix(in oklch, var(--cinder-accent), var(--cinder-surface) 88%);
+  --cinder-color-accent-fg: var(--cinder-accent-text);
+  --cinder-color-accent-border: color-mix(in oklch, var(--cinder-accent), transparent 60%);
 
   /* Transparency checkerboard tokens shared by color-domain components. Light
      mode preserves the historical white/gray grid; dark mode keeps the pattern
@@ -656,9 +680,10 @@
   --cinder-text-subtle: oklch(72% 0.02 245);
   --cinder-text-disabled: oklch(64% 0.02 245);
   --cinder-fill-disabled: oklch(30% 0.015 245);
-  --cinder-border: oklch(40% 0.05 245);
-  --cinder-border-muted: oklch(30% 0.04 245);
-  --cinder-border-strong: oklch(45% 0.06 245);
+  --cinder-border: oklch(58% 0.05 245);
+  --cinder-border-faint: oklch(33% 0.03 245);
+  --cinder-border-muted: oklch(38% 0.04 245);
+  --cinder-border-strong: oklch(66% 0.06 245);
   --cinder-toggle-track-off-resting: oklch(45% 0.02 245);
   --cinder-toggle-track-off-hover-resting: oklch(52% 0.02 245);
   --cinder-accent: oklch(72% 0.14 270);
@@ -677,7 +702,13 @@
   --cinder-warning-contrast: oklch(20% 0.04 75);
   --cinder-info-contrast: oklch(15% 0.03 230);
   --cinder-danger-hover: oklch(64% 0.172 25);
-  --cinder-danger-active: oklch(57% 0.172 25);
+  --cinder-danger-active: oklch(60% 0.172 25);
+  --cinder-info-hover: oklch(70% 0.13 230);
+  --cinder-info-active: oklch(62% 0.13 230);
+  --cinder-success-hover: oklch(70% 0.14 145);
+  --cinder-success-active: oklch(62% 0.14 145);
+  --cinder-warning-hover: oklch(74% 0.156 75);
+  --cinder-warning-active: oklch(66% 0.156 75);
   --cinder-color-info-bg: oklch(28% 0.057 230);
   --cinder-color-info-fg: oklch(88% 0.071 230);
   --cinder-color-info-border: oklch(45% 0.08 230);
@@ -690,6 +721,12 @@
   --cinder-color-danger-bg: oklch(28% 0.09 25);
   --cinder-color-danger-fg: oklch(90% 0.12 25);
   --cinder-color-danger-border: oklch(50% 0.11 25);
+  --cinder-color-neutral-bg: oklch(28% 0.04 245);
+  --cinder-color-neutral-fg: var(--cinder-text);
+  --cinder-color-neutral-border: var(--cinder-border);
+  --cinder-color-accent-bg: color-mix(in oklch, var(--cinder-accent), var(--cinder-surface) 88%);
+  --cinder-color-accent-fg: var(--cinder-accent-text);
+  --cinder-color-accent-border: color-mix(in oklch, var(--cinder-accent), transparent 60%);
   --cinder-color-checker-base: oklch(28% 0.02 245);
   --cinder-color-checker-tile: oklch(38% 0.02 245);
   --cinder-scrollbar-track: oklch(100% 0 0 / 0.04);
@@ -744,9 +781,10 @@
   --cinder-text-subtle: oklch(42% 0.012 245);
   --cinder-text-disabled: oklch(52% 0.01 245);
   --cinder-fill-disabled: oklch(86% 0.006 255);
-  --cinder-border: oklch(83% 0.005 255);
-  --cinder-border-muted: oklch(90% 0.004 255);
-  --cinder-border-strong: oklch(72% 0.006 255);
+  --cinder-border: oklch(63% 0.006 255);
+  --cinder-border-faint: oklch(92% 0.003 255);
+  --cinder-border-muted: oklch(85% 0.004 255);
+  --cinder-border-strong: oklch(60% 0.008 255);
   --cinder-toggle-track-off-resting: var(--cinder-border-muted);
   --cinder-toggle-track-off-hover-resting: var(--cinder-border);
   --cinder-accent: oklch(50% 0.22 270);
@@ -766,6 +804,12 @@
   --cinder-info-contrast: oklch(100% 0 0);
   --cinder-danger-hover: oklch(42% 0.171 25);
   --cinder-danger-active: oklch(35% 0.142 25);
+  --cinder-info-hover: oklch(42% 0.079 230);
+  --cinder-info-active: oklch(35% 0.065 230);
+  --cinder-success-hover: oklch(42% 0.14 145);
+  --cinder-success-active: oklch(35% 0.12 145);
+  --cinder-warning-hover: oklch(42% 0.092 75);
+  --cinder-warning-active: oklch(38% 0.083 75);
   --cinder-color-info-bg: oklch(94.5% 0.03 230);
   --cinder-color-info-fg: oklch(40% 0.079 230);
   --cinder-color-info-border: oklch(80% 0.05 230);
@@ -778,6 +822,12 @@
   --cinder-color-danger-bg: oklch(94.5% 0.026 25);
   --cinder-color-danger-fg: oklch(42% 0.16 25);
   --cinder-color-danger-border: oklch(80% 0.06 25);
+  --cinder-color-neutral-bg: oklch(94.5% 0.004 255);
+  --cinder-color-neutral-fg: var(--cinder-text);
+  --cinder-color-neutral-border: var(--cinder-border);
+  --cinder-color-accent-bg: color-mix(in oklch, var(--cinder-accent), var(--cinder-surface) 88%);
+  --cinder-color-accent-fg: var(--cinder-accent-text);
+  --cinder-color-accent-border: color-mix(in oklch, var(--cinder-accent), transparent 60%);
   --cinder-color-checker-base: #fff;
   --cinder-color-checker-tile: #ccc;
   --cinder-scrollbar-track: oklch(0% 0 0 / 0.04);

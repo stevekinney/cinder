@@ -1,0 +1,23 @@
+{
+  "$schema": "https://www.designtokens.org/schemas/2025.10/resolver.json",
+  "version": "2025.10",
+  "sets": [
+    {
+      "name": "foundation",
+      "source": ["sets/foundation.tokens.json", "sets/semantic.tokens.json"]
+    }
+  ],
+  "modifiers": [
+    {
+      "name": "theme",
+      "values": ["light", "dark"],
+      "default": "light"
+    },
+    {
+      "name": "motion",
+      "values": ["default", "reduced"],
+      "default": "default"
+    }
+  ],
+  "resolutionOrder": ["theme", "motion"]
+}

@@ -39,7 +39,7 @@ describe('status token usage', () => {
     const badgeSource = await readFile(join(COMPONENTS_DIR, 'badge', 'badge.css'), 'utf-8');
     const chipSource = await readFile(join(COMPONENTS_DIR, 'chip', 'chip.css'), 'utf-8');
 
-    for (const status of ['success', 'warning', 'danger', 'info']) {
+    for (const status of ['neutral', 'accent', 'success', 'warning', 'danger', 'info']) {
       expect(badgeSource).toContain(`var(--cinder-color-${status}-bg)`);
       expect(badgeSource).toContain(`var(--cinder-color-${status}-fg)`);
       expect(badgeSource).toContain(`var(--cinder-color-${status}-border)`);
