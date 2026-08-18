@@ -213,7 +213,40 @@ describe('MarkdownEditor.setMarkdown() vs. a one-way value prop (cinder#1328)', 
 });
 
 describe('MarkdownEditor live value ownership (CIN-406)', () => {
-  test('does not reconcile a stale one-way parent value over a settled user edit', async () => {
+  test('does not reconcile the previously observed one-way parent value over a pending user edit', async () => {
+    const clock = installFakeClock();
+    const result = render(OneWaySyncHarness, {
+      props: { initialValue: 'Original content.' },
+    });
+
+    try {
+      await pollUntil(() => isReady(result.container), clock);
+      const component = result.component as unknown as {
+        applyUserEdit: (suffix: string) => void;
+        getLiveMarkdown: () => string;
+      };
+
+      // Let the editor's initial one-way value reconciliation release its
+      // external-update guard before simulating live user input.
+      await tick();
+      await Promise.resolve();
+      component.applyUserEdit(' User edit.');
+      expect(component.getLiveMarkdown().trim()).toBe('Original content. User edit.');
+
+      // The component's bindable value can react while the one-way parent
+      // still owns the previously observed value. Let Svelte flush that
+      // propagation without advancing either debounce.
+      await tick();
+
+      expect(component.getLiveMarkdown().trim()).toBe('Original content. User edit.');
+    } finally {
+      clock.restore();
+      result.unmount();
+      cleanup();
+    }
+  });
+
+  test('applies a genuinely new parent value while a user edit is pending', async () => {
     const clock = installFakeClock();
     const result = render(OneWaySyncHarness, {
       props: { initialValue: 'Original content.' },
@@ -227,19 +260,72 @@ describe('MarkdownEditor live value ownership (CIN-406)', () => {
         getLiveMarkdown: () => string;
       };
 
-      // Let the editor's initial one-way value reconciliation release its
-      // external-update guard before simulating live user input.
       await tick();
       await Promise.resolve();
       component.applyUserEdit(' User edit.');
-      expect(component.getLiveMarkdown().trim()).toBe('Original content. User edit.');
-
-      // A one-way parent update can still contain the value from immediately
-      // before this edit while the public onchange callback is debounced.
-      component.setOuterValue('Stale parent value.');
+      component.setOuterValue('Authoritative reset.');
       await tick();
 
-      expect(component.getLiveMarkdown().trim()).toBe('Original content. User edit.');
+      expect(component.getLiveMarkdown().trim()).toBe('Authoritative reset.');
+
+      // The external replacement cancels the pending internal callback, so
+      // advancing both debounce boundaries cannot resurrect the user edit.
+      clock.advance(1000);
+      await tick();
+      expect(component.getLiveMarkdown().trim()).toBe('Authoritative reset.');
+    } finally {
+      clock.restore();
+      result.unmount();
+      cleanup();
+    }
+  });
+
+  test('protects document changes excluded from undo history as internal edits', async () => {
+    const clock = installFakeClock();
+    const result = render(OneWaySyncHarness, {
+      props: { initialValue: 'Original content.' },
+    });
+
+    try {
+      await pollUntil(() => isReady(result.container), clock);
+      const component = result.component as unknown as {
+        applyUserEditWithoutHistory: (suffix: string) => void;
+        getLiveMarkdown: () => string;
+      };
+
+      await tick();
+      await Promise.resolve();
+      component.applyUserEditWithoutHistory(' Normalized.');
+      await tick();
+
+      expect(component.getLiveMarkdown().trim()).toBe('Original content. Normalized.');
+    } finally {
+      clock.restore();
+      result.unmount();
+      cleanup();
+    }
+  });
+
+  test('protects multiple internal transactions until their debounced publication', async () => {
+    const clock = installFakeClock();
+    const result = render(OneWaySyncHarness, {
+      props: { initialValue: 'Original content.' },
+    });
+
+    try {
+      await pollUntil(() => isReady(result.container), clock);
+      const component = result.component as unknown as {
+        applyUserEdit: (suffix: string) => void;
+        getLiveMarkdown: () => string;
+      };
+
+      await tick();
+      await Promise.resolve();
+      component.applyUserEdit(' First.');
+      component.applyUserEdit(' Second.');
+      await tick();
+
+      expect(component.getLiveMarkdown().trim()).toBe('Original content. First. Second.');
     } finally {
       clock.restore();
       result.unmount();

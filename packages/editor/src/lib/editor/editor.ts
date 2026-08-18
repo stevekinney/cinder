@@ -89,7 +89,7 @@ export async function createEditor(
   // Track if editor is destroyed to prevent accessing context after cleanup
   let isDestroyed = false;
   let debounceTimeout: ReturnType<typeof setTimeout> | null = null;
-  let pendingInternalMarkdown: string | null = null;
+  let hasPendingInternalChange = false;
   // Build the editor
   let builder = Editor.make()
     .config((ctx) => {
@@ -125,7 +125,7 @@ export async function createEditor(
         if (debounceTimeout) clearTimeout(debounceTimeout);
         debounceTimeout = setTimeout(() => {
           if (isDestroyed) return; // Guard after debounce
-          pendingInternalMarkdown = null;
+          hasPendingInternalChange = false;
           onchange?.(markdown);
         }, changeDebounceMs);
       });
@@ -259,17 +259,12 @@ export async function createEditor(
   view.setProps({
     dispatchTransaction: (transaction) => {
       if (dispatchTransaction) {
-        dispatchTransaction(transaction);
+        dispatchTransaction.call(view, transaction);
       } else {
         view.updateState(view.state.apply(transaction));
       }
-      if (
-        transaction.docChanged &&
-        transaction.getMeta('addToHistory') !== false &&
-        !isDestroyed &&
-        !isExternalUpdate
-      ) {
-        pendingInternalMarkdown = editor.action(getMarkdown());
+      if (transaction.docChanged && !isDestroyed && !isExternalUpdate) {
+        hasPendingInternalChange = true;
       }
     },
   });
@@ -298,8 +293,8 @@ export async function createEditor(
       return editor.action(getMarkdown());
     },
 
-    getPendingInternalMarkdown() {
-      return pendingInternalMarkdown;
+    hasPendingInternalChange() {
+      return hasPendingInternalChange;
     },
 
     setMarkdown(content: string) {
@@ -309,7 +304,7 @@ export async function createEditor(
         debounceTimeout = null;
       }
 
-      pendingInternalMarkdown = null;
+      hasPendingInternalChange = false;
       isExternalUpdate = true;
       try {
         editor.action(replaceAll(content));
