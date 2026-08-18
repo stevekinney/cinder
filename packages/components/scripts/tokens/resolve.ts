@@ -93,6 +93,7 @@ function resolveExtends(
   if (group.$extends) {
     const extendedPath = tokenPathFromReference(group.$extends);
     const extended = resolveExtends(extendedPath, groups, visiting, complete);
+    if (group.$type === undefined && extended.$type !== undefined) group.$type = extended.$type;
     for (const [name, value] of Object.entries(extended))
       if (!name.startsWith('$') && group[name] === undefined) group[name] = clone(value);
   }

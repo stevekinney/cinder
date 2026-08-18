@@ -1,7 +1,11 @@
 import { loadResolverDocument, loadTokenDocuments } from './load.ts';
 import { resolveDocuments } from './resolve.ts';
 import { TokenValidationError } from './types.ts';
-import { validateResolverDocument, validateTokenDocument } from './validate.ts';
+import {
+  validateResolvedToken,
+  validateResolverDocument,
+  validateTokenDocument,
+} from './validate.ts';
 
 async function main(): Promise<void> {
   const [resolver, documents] = await Promise.all([loadResolverDocument(), loadTokenDocuments()]);
@@ -19,7 +23,8 @@ async function main(): Promise<void> {
   );
   if (missingSources.length > 0) throw new TokenValidationError(missingSources);
 
-  resolveDocuments(documents.map(({ document }) => document));
+  const resolved = resolveDocuments(documents.map(({ document }) => document));
+  for (const [path, token] of Object.entries(resolved)) validateResolvedToken(token, path);
 }
 
 await main();

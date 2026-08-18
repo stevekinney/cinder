@@ -60,7 +60,7 @@ describe('DTCG resolver', () => {
       base: { $type: 'number', value: { $value: 1 } },
       derived: { $extends: '{base}' },
     });
-    expect(resolved['derived.value']?.$value).toBe(1);
+    expect(resolved['derived.value']).toEqual({ $type: 'number', $value: 1 });
   });
 
   test('resolves nested extensions before copying an extended group', () => {

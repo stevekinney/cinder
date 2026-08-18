@@ -1,6 +1,10 @@
 import { describe, expect, test } from 'bun:test';
 import { TokenValidationError, type TokenDocument } from './types.ts';
-import { validateResolverDocument, validateTokenDocument } from './validate.ts';
+import {
+  validateResolvedToken,
+  validateResolverDocument,
+  validateTokenDocument,
+} from './validate.ts';
 
 const cases: Array<{ type: NonNullable<TokenDocument['$type']>; value: unknown }> = [
   { type: 'color', value: { colorSpace: 'oklch', components: [0.5, 0.1, 255] } },
@@ -114,6 +118,15 @@ describe('DTCG semantic validation', () => {
         },
       }),
     ).toThrow('cubicBezier must be four numbers');
+  });
+
+  test('revalidates a resolved alias against its declared type', () => {
+    expect(() =>
+      validateResolvedToken(
+        { $type: 'number', $value: { colorSpace: 'oklch', components: [0.5, 0.1, 255] } },
+        'number-alias',
+      ),
+    ).toThrow('number must be numeric');
   });
 
   test('validates resolver modifier and ordering contracts', () => {

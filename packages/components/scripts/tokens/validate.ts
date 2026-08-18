@@ -1,4 +1,10 @@
-import type { ResolverDocument, TokenDocument, TokenType, ValidationIssue } from './types.ts';
+import type {
+  DesignToken,
+  ResolverDocument,
+  TokenDocument,
+  TokenType,
+  ValidationIssue,
+} from './types.ts';
 import { TokenValidationError } from './types.ts';
 
 const TOKEN_NAME_PATTERN = /^[^${}.][^{}.]*$/;
@@ -312,6 +318,14 @@ export function validateTokenDocument(document: unknown, source = '$'): void {
   const issues: ValidationIssue[] = [];
   if (!isObject(document)) addIssue(issues, source, 'document must be an object');
   else validateGroup(document, source, undefined, issues);
+  if (issues.length > 0) throw new TokenValidationError(issues);
+}
+
+/** Validates a fully resolved token so aliases cannot change its declared value shape. */
+export function validateResolvedToken(token: DesignToken, path: string): void {
+  const issues: ValidationIssue[] = [];
+  if (!token.$type) addIssue(issues, path, 'resolved token has no $type');
+  else validateValue(token.$type, token.$value, path, issues);
   if (issues.length > 0) throw new TokenValidationError(issues);
 }
 
