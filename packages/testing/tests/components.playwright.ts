@@ -349,8 +349,33 @@ for (const entry of entries) {
               'fixtureContentHash' in fixture ? fixture.fixtureContentHash : undefined;
             const route = fixtureRoute(entry.route, fixture.name, fixtureContentHash);
 
+            const category =
+              'category' in fixture && typeof fixture.category === 'string'
+                ? fixture.category
+                : 'visual-contract';
+            const masks =
+              'mask' in fixture && Array.isArray(fixture.mask) ? fixture.mask : undefined;
+
+            // The baseline is always the documented resting state. Interaction
+            // steps below exercise behavior and accessibility, but cannot
+            // replace the state a user sees before acting.
+            await captureScreenshot(page, key, masks !== undefined ? { masks } : undefined);
+            await writeScreenshotMetadata({
+              key,
+              component: entry.name,
+              category,
+              route,
+              fixtureContentHash,
+              interact:
+                'interact' in fixture && Array.isArray(fixture.interact)
+                  ? fixture.interact
+                  : undefined,
+              mask: masks,
+            });
+
             // Apply interaction steps (e.g. click trigger, focus input) before
-            // capture so the screenshot shows the post-interaction state.
+            // accessibility assertions. Resting-state capture above remains
+            // independent of the transition's resulting state.
             if (
               'interact' in fixture &&
               Array.isArray(fixture.interact) &&
@@ -371,29 +396,7 @@ for (const entry of entries) {
 
             // Record the screenshot taxonomy so contact sheets can group
             // captures by intent.
-            const category =
-              'category' in fixture && typeof fixture.category === 'string'
-                ? fixture.category
-                : 'visual-contract';
             test.info().annotations.push({ type: 'category', description: category });
-
-            // Pass mask rules from the fixture so toHaveScreenshot can exclude
-            // dynamic regions from the pixel comparison.
-            const masks =
-              'mask' in fixture && Array.isArray(fixture.mask) ? fixture.mask : undefined;
-            await captureScreenshot(page, key, masks !== undefined ? { masks } : undefined);
-            await writeScreenshotMetadata({
-              key,
-              component: entry.name,
-              category,
-              route,
-              fixtureContentHash,
-              interact:
-                'interact' in fixture && Array.isArray(fixture.interact)
-                  ? fixture.interact
-                  : undefined,
-              mask: masks,
-            });
 
             // Accessibility gate: `critical` and `serious` violations fail the
             // sweep; `moderate`/`minor` stay annotation-only (recorded above).

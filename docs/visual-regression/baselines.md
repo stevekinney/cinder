@@ -43,6 +43,22 @@ when any baseline is absent. CI runs it whenever diffing is active (report or
 block), so a new component added without baselines is caught in one place rather
 than as scattered per-test failures.
 
+## Resting-state coverage
+
+Every manifest entry contributes a resting-state capture. Components without an
+explicit visual fixture receive the synthesized `default` fixture; components
+with fixtures capture each fixture before any optional interaction steps run.
+The route is always `/page/<component>?snapshot=1`, which freezes animation and
+caret rendering without changing the component's behavior. Interaction fixtures
+may add a second post-interaction capture, but they never replace the resting
+baseline.
+
+This is intentionally a coverage rule, not a visual convention. A component
+with dismissal, toggle, or auto-load behavior must retain its resulting state in
+its unit contract test; the visual sweep separately pins how each documented
+resting example looks. Together those checks catch a transition that fires but
+leaves the wrong stable DOM or geometry behind.
+
 ## Why baselines are authored only in Docker
 
 Pixel output is environment-sensitive: font hinting, anti-aliasing, and the
