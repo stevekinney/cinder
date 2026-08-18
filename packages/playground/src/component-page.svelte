@@ -583,6 +583,14 @@
         }
       : buildPlaygroundModel(documentation.propsManifest),
   );
+  /**
+   * Stage scaffolding for components no amount of prop seeding makes legible —
+   * layout primitives, Surface, and the behavior-only wrappers. See
+   * `component-page-preview-recipes.ts`.
+   */
+  const previewRecipe = $derived(
+    documentation === null ? undefined : previewRecipeFor(documentation.propsManifest.kebabName),
+  );
   // Live control values, keyed by prop name. Seeded from each control's default
   // the first time the model resolves.
   const playgroundValues: Record<string, PlaygroundValue> = $state({});
@@ -604,6 +612,7 @@
           playgroundValues,
           playgroundModel.seeds,
           documentation.propsManifest.importPath,
+          previewRecipe?.props,
         ),
   );
   /**
@@ -666,15 +675,6 @@
   const canMountBare = $derived(
     documentation !== null &&
       canBareMount(documentation.propsManifest.kebabName, documentation.propsManifest.isCompound),
-  );
-
-  /**
-   * Stage scaffolding for components no amount of prop seeding makes legible —
-   * layout primitives, Surface, and the behavior-only wrappers. See
-   * `component-page-preview-recipes.ts`.
-   */
-  const previewRecipe = $derived(
-    documentation === null ? undefined : previewRecipeFor(documentation.propsManifest.kebabName),
   );
 
   const bareComponent = $derived(
@@ -970,7 +970,7 @@
                   {#if component.tags.length > 0}
                     <div class="dx-tags">
                       {#each component.tags as tag (tag)}
-                        <Badge variant="accent" size="sm">{tag}</Badge>
+                        <Badge variant="neutral" size="sm">{tag}</Badge>
                       {/each}
                     </div>
                   {/if}
@@ -1063,31 +1063,41 @@
                 <!-- Stage controls. Width simulation and focus mode used to live on
                      the shell's top bar and act on an iframe; they now sit with the
                      stage they resize, and work by constraining a plain container. -->
-                <div class="dx-viewport" role="group" aria-label="Stage width">
-                  <div class="dx-viewport__sizes">
-                    {#each PREVIEW_WIDTHS as option (option.label)}
-                      <button
-                        type="button"
-                        class="dx-viewport__size"
-                        aria-pressed={previewWidth === option.width}
-                        onclick={() => (previewWidth = option.width)}
-                      >
-                        {option.width === null ? 'Full' : `${option.width}`}
-                      </button>
-                    {/each}
-                  </div>
-                  <span class="dx-viewport__readout" aria-live="polite">
-                    {previewWidth === null ? 'Full' : `${previewWidth}px`}
-                  </span>
-                  <button
-                    type="button"
-                    class="dx-viewport__expand"
-                    aria-pressed={isFocusMode}
-                    onclick={() => (isFocusMode = !isFocusMode)}
+                {#if playgroundModel.controls.length > 0 || isFocusMode}
+                  <div
+                    class="dx-viewport"
+                    role="group"
+                    aria-label={playgroundModel.controls.length > 0
+                      ? 'Stage width'
+                      : 'Preview controls'}
                   >
-                    {isFocusMode ? 'Exit' : 'Expand'}
-                  </button>
-                </div>
+                    {#if playgroundModel.controls.length > 0}
+                      <div class="dx-viewport__sizes">
+                        {#each PREVIEW_WIDTHS as option (option.label)}
+                          <button
+                            type="button"
+                            class="dx-viewport__size"
+                            aria-pressed={previewWidth === option.width}
+                            onclick={() => (previewWidth = option.width)}
+                          >
+                            {option.label}
+                          </button>
+                        {/each}
+                      </div>
+                      <span class="dx-viewport__readout" aria-live="polite">
+                        {previewWidth === null ? 'Full' : `${previewWidth}px`}
+                      </span>
+                    {/if}
+                    <button
+                      type="button"
+                      class="dx-viewport__expand"
+                      aria-pressed={isFocusMode}
+                      onclick={() => (isFocusMode = !isFocusMode)}
+                    >
+                      {isFocusMode ? 'Exit' : 'Expand'}
+                    </button>
+                  </div>
+                {/if}
                 <!-- Single wrapper: a branch with several top-level children trips
                        happy-dom's fragment handling in the documentation tests.
 
@@ -1124,7 +1134,7 @@
                       <span class="dx-stage__dot" aria-hidden="true"></span>
                       <span class="dx-stage__label">Live preview</span>
                     </div>
-                    <div class="dx-stage__canvas">
+                    <div class="dx-stage__canvas" role="region" aria-label="Preview" tabindex="0">
                       {#if previewRecipe?.referenceHtml !== undefined}
                         <!-- A styling primitive is invisible without something to
                                be compared against. -->
@@ -1166,7 +1176,7 @@
                       <span class="dx-stage__dot" aria-hidden="true"></span>
                       <span class="dx-stage__label">Featured example</span>
                     </div>
-                    <div class="dx-stage__canvas">
+                    <div class="dx-stage__canvas" role="region" aria-label="Preview" tabindex="0">
                       {#if mountErrors[`playground-mount-${overviewExample.scenario}`] !== undefined}
                         {@const error = mountErrors[`playground-mount-${overviewExample.scenario}`]}
                         <Callout variant="danger" title="This preview failed to render">
@@ -1194,7 +1204,7 @@
                       <span class="dx-stage__dot" aria-hidden="true"></span>
                       <span class="dx-stage__label">Composed component</span>
                     </div>
-                    <div class="dx-stage__canvas">
+                    <div class="dx-stage__canvas" role="region" aria-label="Preview" tabindex="0">
                       <p class="dx-stage__compose">
                         {documentation.component.name} is composed inside
                         <a href={buildComponentHref(composesInto)} target="_top">
@@ -1223,7 +1233,12 @@
                       <span class="dx-stage__dot" aria-hidden="true"></span>
                       <span class="dx-stage__label">Live preview</span>
                     </div>
-                    <div class="dx-stage__canvas"></div>
+                    <div
+                      class="dx-stage__canvas"
+                      role="region"
+                      aria-label="Preview"
+                      tabindex="0"
+                    ></div>
                     <p class="dx-stage__note">
                       Renders with the props below. Adjust the controls to update it live.
                     </p>
@@ -1410,7 +1425,12 @@
                         <span class="dx-stage__dot" aria-hidden="true"></span>
                         <span class="dx-stage__label">Live preview</span>
                       </div>
-                      <div class="dx-stage__canvas">
+                      <div
+                        class="dx-stage__canvas"
+                        role="region"
+                        aria-label="Overview preview"
+                        tabindex="0"
+                      >
                         {#if mountErrors[`overview-mount-${overviewExample.scenario}`] !== undefined}
                           {@const error = mountErrors[`overview-mount-${overviewExample.scenario}`]}
                           <Callout variant="danger" title="This preview failed to render">
@@ -1513,7 +1533,12 @@
                             </div>
                             <div class="dx-example__body">
                               <div class="dx-stage">
-                                <div class="dx-stage__canvas">
+                                <div
+                                  class="dx-stage__canvas"
+                                  role="region"
+                                  aria-label={`${title} preview`}
+                                  tabindex="0"
+                                >
                                   <div
                                     class="example-preview"
                                     id="example-mount-{scenario}"
@@ -2161,6 +2186,7 @@
     max-width: var(--dx-max);
     margin-inline: auto;
     padding-inline: var(--dx-gutter);
+    min-width: 0;
   }
 
   /* ===== Top bar ===== */
@@ -2385,6 +2411,7 @@
       'docs';
     padding-block: clamp(1.25rem, 2vw, 1.75rem) clamp(3rem, 6vw, 5rem);
     align-items: start;
+    min-width: 0;
   }
 
   /* View switcher. */
@@ -2479,6 +2506,7 @@
   }
   .dx-content {
     grid-area: docs;
+    min-width: 0;
   }
 
   .dx-landing-cta {
@@ -2590,6 +2618,14 @@
   .dx-playground__stage .dx-stage__canvas {
     min-height: 18rem;
   }
+  /* Examples and demos may intentionally have a minimum usable width (a
+     permission matrix or sortable row cannot collapse into 200px). Keep that
+     width reachable inside its own stage instead of letting it widen the page. */
+  .dx-stage__canvas {
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+  }
   .dx.is-focus-mode .dx-playground__stage .dx-stage {
     flex: 1;
   }
@@ -2691,6 +2727,7 @@
      * fully transparent. */
     background: color-mix(in oklch, var(--cinder-surface-raised), transparent 8%);
     backdrop-filter: blur(8px);
+    min-width: 0;
   }
   .dx-toc__list {
     list-style: none;
@@ -3194,6 +3231,7 @@
   .dx-examples {
     display: flex;
     flex-direction: column;
+    min-width: 0;
     gap: var(--cinder-space-6);
   }
   .dx-example {
@@ -3309,11 +3347,14 @@
     gap: var(--cinder-space-0-5, 0.125rem);
     align-items: flex-start;
     max-inline-size: 40rem;
+    min-inline-size: 0;
     overflow-wrap: break-word;
   }
   .props-type__member {
     white-space: pre-wrap;
     max-width: 28rem;
+    min-inline-size: 0;
+    overflow-wrap: anywhere;
   }
   .props-type--union .props-type__member {
     display: flex;
@@ -3421,7 +3462,10 @@
   /* Narrow container → stacked cards (same ::before-label pattern as before). */
   @container props-section (max-width: 34rem) {
     .props-table-scroll {
-      overflow-x: visible;
+      /* Some generated TypeScript signatures remain wider than a phone-sized
+       * card. Keep that overflow on the table's own scroll surface instead of
+       * allowing it to widen the whole documentation page. */
+      overflow-x: auto;
     }
     .props-table-scroll.is-scrollable::after {
       display: none;
@@ -3447,11 +3491,14 @@
     }
     .props-section :global(.cinder-table td) {
       display: grid;
-      grid-template-columns: minmax(4.5rem, max-content) 1fr;
+      grid-template-columns: minmax(4.5rem, max-content) minmax(0, 1fr);
       gap: var(--cinder-space-3);
       padding-block: var(--cinder-space-1);
       border: none;
       text-align: start;
+    }
+    .props-section :global(.cinder-table td > *) {
+      min-inline-size: 0;
     }
     /* Labels come from each cell's own `data-label`, which the template emits
        from `PROP_COLUMNS`. The previous `nth-child` rules encoded column

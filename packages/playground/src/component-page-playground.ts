@@ -555,6 +555,7 @@ export function buildSnippet(
   values: Record<string, PlaygroundValue>,
   seeds: readonly PlaygroundSeed[] = [],
   importPath?: string,
+  baselineProps: Readonly<Record<string, unknown>> = {},
 ): string {
   // The synthesized `children` control renders as element CONTENT, not an
   // attribute, so it is partitioned out of the attribute list.
@@ -572,6 +573,19 @@ export function buildSnippet(
   const preambleSeeds = seeds.filter((seed) => seed.source.length > INLINE_SEED_MAX_CHARS);
 
   const attributes = [
+    ...Object.entries(baselineProps)
+      .filter(([name]) => {
+        const matchingControl = controls.find((control) => control.name === name);
+        return (
+          matchingControl === undefined ||
+          !shouldEmit(matchingControl, values[matchingControl.name] ?? matchingControl.value)
+        );
+      })
+      .flatMap(([name, value]) =>
+        typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean'
+          ? [attributeFor(name, value)]
+          : [],
+      ),
     ...controls
       .filter((control) => !(control.kind === 'text' && control.isChildren))
       .filter((control) => shouldEmit(control, values[control.name] ?? control.value))

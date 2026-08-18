@@ -25,6 +25,13 @@
 /** Scaffolding for one component's live-preview stage. */
 export type PreviewRecipe = {
   /**
+   * Deterministic props required for a meaningful bare preview but not useful
+   * as editable controls. In particular, controls whose contract requires an
+   * accessible name receive a domain-specific name here rather than mounting
+   * in a warning-producing state.
+   */
+  props?: Readonly<Record<string, unknown>>;
+  /**
    * Raw HTML mounted as the component's `children`, replacing the synthesized
    * name-as-text seed.
    */
@@ -56,6 +63,12 @@ const PLACEHOLDER_BOXES = [1, 2, 3]
 const LAYOUT_RECIPE: PreviewRecipe = { childrenHtml: PLACEHOLDER_BOXES };
 
 export const PREVIEW_RECIPES: Readonly<Record<string, PreviewRecipe>> = {
+  'floating-action': { props: { 'aria-label': 'Create item' } },
+  meter: { props: { ariaLabel: 'Storage usage' } },
+  'phone-input': { props: { id: 'playground-phone-input', label: 'Phone number' } },
+  'pin-input': { props: { id: 'playground-pin-input', label: 'Verification code' } },
+  progress: { props: { ariaLabel: 'Task progress' } },
+  rating: { props: { id: 'playground-rating', label: 'Rating' } },
   container: LAYOUT_RECIPE,
   grid: LAYOUT_RECIPE,
   'grid-item': LAYOUT_RECIPE,

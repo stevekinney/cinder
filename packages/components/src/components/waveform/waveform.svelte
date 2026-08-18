@@ -271,22 +271,35 @@
     </svg>
   </div>
   {#if hasDataTable}
-    <table class={dataTableClass(dataTableVisibility)}>
-      <caption>{tableCaption}</caption>
-      <thead>
-        <tr>
-          <th scope="col">Sample index</th>
-          <th scope="col">Amplitude</th>
-        </tr>
-      </thead>
-      <tbody>
-        {#each tableSamples as sample (sample.index)}
+    <div
+      class={dataTableVisibility === 'screen-reader-only'
+        ? 'cinder-sr-only'
+        : 'cinder-waveform__table-scroll'}
+      {...dataTableVisibility === 'visible'
+        ? { role: 'region', 'aria-label': `${label} data table`, tabindex: 0 }
+        : {}}
+    >
+      <table
+        class={dataTableClass(
+          dataTableVisibility === 'screen-reader-only' ? 'visible' : dataTableVisibility,
+        )}
+      >
+        <caption>{tableCaption}</caption>
+        <thead>
           <tr>
-            <td>{sample.index}</td>
-            <td>{sample.value.toFixed(4)}</td>
+            <th scope="col">Sample index</th>
+            <th scope="col">Amplitude</th>
           </tr>
-        {/each}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {#each tableSamples as sample (sample.index)}
+            <tr>
+              <td>{sample.index}</td>
+              <td>{sample.value.toFixed(4)}</td>
+            </tr>
+          {/each}
+        </tbody>
+      </table>
+    </div>
   {/if}
 </figure>

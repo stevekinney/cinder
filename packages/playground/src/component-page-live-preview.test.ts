@@ -48,6 +48,7 @@ import {
   toMountProps,
 } from './component-page-live-preview.ts';
 import type { PlaygroundControl } from './component-page-playground.ts';
+import { previewRecipeFor } from './component-page-preview-recipes.ts';
 
 setupHappyDom();
 
@@ -84,6 +85,17 @@ describe('toMountProps', () => {
       { name: 'children', kind: 'text', isChildren: true, value: '', hasDefault: false },
     ];
     expect('children' in toMountProps(controls, { children: '' })).toBe(false);
+  });
+
+  test.each([
+    ['floating-action', { 'aria-label': 'Create item' }],
+    ['meter', { ariaLabel: 'Storage usage' }],
+    ['phone-input', { id: 'playground-phone-input', label: 'Phone number' }],
+    ['pin-input', { id: 'playground-pin-input', label: 'Verification code' }],
+    ['progress', { ariaLabel: 'Task progress' }],
+    ['rating', { id: 'playground-rating', label: 'Rating' }],
+  ])('supplies an accessible preview baseline for %s', (componentName, expectedProps) => {
+    expect(toMountProps([], {}, [], previewRecipeFor(componentName))).toMatchObject(expectedProps);
   });
 });
 

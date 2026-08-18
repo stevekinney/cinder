@@ -60,7 +60,9 @@ export function toMountProps(
   seeds: readonly PlaygroundSeed[] = [],
   recipe?: PreviewRecipe,
 ): Record<string, unknown> {
-  const props: Record<string, unknown> = {};
+  // Recipe props establish a valid baseline for the bare preview. Editable
+  // controls still win below, so changing a generated control remains live.
+  const props: Record<string, unknown> = { ...recipe?.props };
   // A recipe's children are a repo constant (placeholder boxes for a layout
   // primitive, a padded block for Surface), so they are inserted as MARKUP —
   // that is the point, since the whole failure being fixed is that one text run
