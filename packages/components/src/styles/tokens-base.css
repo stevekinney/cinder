@@ -482,6 +482,35 @@
   --cinder-color-accent-fg: var(--cinder-accent-text);
   --cinder-color-accent-border: color-mix(in oklch, var(--cinder-accent), transparent 60%);
 
+  /* Status tiers are derived in one polarity-aware recipe. `muted` moves the
+     solid status color toward the current surface; `subtle` moves it toward
+     current text. Relative color re-emits components so consumers can still
+     apply alpha without freezing a light or dark result. */
+  --cinder-color-info-muted: oklch(
+    from color-mix(in oklch, var(--cinder-info), var(--cinder-surface) 36%) l c h
+  );
+  --cinder-color-info-subtle: oklch(
+    from color-mix(in oklch, var(--cinder-info), var(--cinder-text) 36%) l c h
+  );
+  --cinder-color-success-muted: oklch(
+    from color-mix(in oklch, var(--cinder-success), var(--cinder-surface) 36%) l c h
+  );
+  --cinder-color-success-subtle: oklch(
+    from color-mix(in oklch, var(--cinder-success), var(--cinder-text) 36%) l c h
+  );
+  --cinder-color-warning-muted: oklch(
+    from color-mix(in oklch, var(--cinder-warning), var(--cinder-surface) 36%) l c h
+  );
+  --cinder-color-warning-subtle: oklch(
+    from color-mix(in oklch, var(--cinder-warning), var(--cinder-text) 36%) l c h
+  );
+  --cinder-color-danger-muted: oklch(
+    from color-mix(in oklch, var(--cinder-danger), var(--cinder-surface) 36%) l c h
+  );
+  --cinder-color-danger-subtle: oklch(
+    from color-mix(in oklch, var(--cinder-danger), var(--cinder-text) 36%) l c h
+  );
+
   /* Transparency checkerboard tokens shared by color-domain components. Light
      mode preserves the historical white/gray grid; dark mode keeps the pattern
      visible without flashing a white backing inside dark chrome. */

@@ -284,6 +284,14 @@ Foreground / background / border triples for soft tinted surfaces. Use these in 
 | `--cinder-color-accent-bg`      | derived from `--cinder-accent` and `--cinder-surface`    |
 | `--cinder-color-accent-fg`      | `var(--cinder-accent-text)`                               |
 | `--cinder-color-accent-border`  | derived from `--cinder-accent`                           |
+| `--cinder-color-info-muted`     | derived toward the current surface                        |
+| `--cinder-color-info-subtle`    | derived toward current text                               |
+| `--cinder-color-success-muted`  | derived toward the current surface                        |
+| `--cinder-color-success-subtle` | derived toward current text                               |
+| `--cinder-color-warning-muted`  | derived toward the current surface                        |
+| `--cinder-color-warning-subtle` | derived toward current text                               |
+| `--cinder-color-danger-muted`   | derived toward the current surface                        |
+| `--cinder-color-danger-subtle`  | derived toward current text                               |
 
 ## Transparency checkerboard
 

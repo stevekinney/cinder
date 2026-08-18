@@ -49,4 +49,20 @@ describe('status token usage', () => {
       expect(chipSource).toContain(`var(--cinder-color-${status}-border)`);
     }
   });
+
+  test('derived status tiers retain the polarity-aware relative-color formula', async () => {
+    const tokens = await readFile(join(import.meta.dir, 'tokens-base.css'), 'utf-8');
+    for (const status of ['info', 'success', 'warning', 'danger']) {
+      expect(tokens).toMatch(
+        new RegExp(
+          `--cinder-color-${status}-muted:[\\s\\S]*?var\\(--cinder-${status}\\)[\\s\\S]*?var\\(--cinder-surface\\)[\\s\\S]*?36%`,
+        ),
+      );
+      expect(tokens).toMatch(
+        new RegExp(
+          `--cinder-color-${status}-subtle:[\\s\\S]*?var\\(--cinder-${status}\\)[\\s\\S]*?var\\(--cinder-text\\)[\\s\\S]*?36%`,
+        ),
+      );
+    }
+  });
 });
