@@ -237,7 +237,7 @@
           class="cinder-jse-property-row__trigger"
           aria-label={`${isOpen ? 'Collapse' : 'Expand'} ${key} property${childValidationErrorCount > 0 ? `, ${childValidationErrorCount} validation ${childValidationErrorCount === 1 ? 'error' : 'errors'}` : ''}`}
           aria-expanded={isOpen}
-          aria-controls={panelId}
+          aria-controls={isOpen ? panelId : undefined}
           onclick={() => toggleExpanded(key, isOpen)}
         >
           <ChevronDown
@@ -264,7 +264,7 @@
           size="xs"
           disabled={readonly}
           aria-pressed={isRequired}
-          aria-label={isRequired ? 'Required (toggle off)' : 'Optional (toggle required)'}
+          aria-label={`${key}: ${isRequired ? 'Required (toggle off)' : 'Optional (toggle required)'}`}
           onclick={() => toggleRequired(key)}
         >
           {isRequired ? 'Required' : 'Optional'}
@@ -272,7 +272,7 @@
         <Button
           variant="ghost"
           size="xs"
-          disabled={readonly}
+          disabled={readonly || propertyNames.indexOf(key) === 0}
           aria-label={`Move ${key} up`}
           onclick={() => moveProperty(key, -1)}
         >
@@ -281,7 +281,7 @@
         <Button
           variant="ghost"
           size="xs"
-          disabled={readonly}
+          disabled={readonly || propertyNames.indexOf(key) === propertyNames.length - 1}
           aria-label={`Move ${key} down`}
           onclick={() => moveProperty(key, 1)}
         >

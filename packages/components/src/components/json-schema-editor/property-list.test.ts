@@ -79,7 +79,7 @@ describe('PropertyList', () => {
   });
 
   test('identifies each property in the accessible names of its reorder controls', () => {
-    render(PropertyList, {
+    const { container } = render(PropertyList, {
       idPrefix: 'properties',
       path: '/properties',
       properties: {
@@ -90,10 +90,21 @@ describe('PropertyList', () => {
       onValueChange: () => {},
     });
 
+    expect(
+      screen.getByRole('button', { name: 'email: Optional (toggle required)' }),
+    ).not.toBeNull();
+    expect(screen.getByRole('button', { name: 'age: Optional (toggle required)' })).not.toBeNull();
     expect(screen.getByRole('button', { name: 'Move email up' })).not.toBeNull();
     expect(screen.getByRole('button', { name: 'Move email down' })).not.toBeNull();
     expect(screen.getByRole('button', { name: 'Move age up' })).not.toBeNull();
     expect(screen.getByRole('button', { name: 'Move age down' })).not.toBeNull();
+    expect(screen.getByRole('button', { name: 'Move email up' })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: 'Move age down' })).toHaveProperty('disabled', true);
+    expect(
+      container
+        .querySelector('[aria-label="Expand email property"]')
+        ?.getAttribute('aria-controls'),
+    ).toBeNull();
   });
 
   test('reorders properties through the row controls', async () => {
@@ -114,6 +125,12 @@ describe('PropertyList', () => {
     await fireEvent.click(screen.getByRole('button', { name: 'Move age up' }));
 
     expect(Object.keys(latestProperties)).toEqual(['age', 'email']);
+  });
+
+  test('only links a disclosure trigger to its panel while that panel is rendered', async () => {
+    const source = await Bun.file(new URL('./property-list.svelte', import.meta.url)).text();
+
+    expect(source).toContain('aria-controls={isOpen ? panelId : undefined}');
   });
 
   test('keeps enum in the preserved-keywords count when a schema is loaded', () => {

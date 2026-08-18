@@ -27,7 +27,7 @@ All property-list controls use their native button and input keyboard behavior.
 - `Enter` and `Space` activate the disclosure, required, reorder, and delete buttons.
 - Expanding or collapsing leaves focus on the disclosure button; it does not move focus into or out of the panel.
 - Editable property names commit when their input loses focus. Text-entry keys remain native input behavior.
-- Undo and redo use the editor-region shortcuts documented by `JsonSchemaEditor`; they do not replace native text-editing shortcuts while focus is in an input.
+- `Cmd+Z` and `Shift+Cmd+Z` undo and redo on macOS. `Ctrl+Z`, `Shift+Ctrl+Z`, and `Ctrl+Y` provide the corresponding shortcuts elsewhere. They act only outside editable text controls, so native text-editing shortcuts remain available while focus is in an input.
 
 Keep focus indicators visible. If you wrap or restyle JsonSchemaEditor, verify the focused element remains visually apparent in default and forced-colors modes.
 
