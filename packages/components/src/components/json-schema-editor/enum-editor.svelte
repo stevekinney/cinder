@@ -24,7 +24,6 @@
   }: EnumEditorProps = $props();
 
   let invalidValueIndexes = $state<Set<number>>(new Set());
-  let removeButtons = $state<Array<HTMLButtonElement | undefined>>([]);
 
   $effect(() => onvalidationErrorcount?.(invalidValueIndexes.size));
   onDestroy(() => onvalidationErrorcount?.(0));
@@ -90,7 +89,7 @@
     const focusIndex = Math.min(index, values.length - 2);
     onValuesChange(values.filter((_, itemIndex) => itemIndex !== index));
     await tick();
-    removeButtons[focusIndex]?.focus();
+    document.getElementById(`${idPrefix}-remove-${focusIndex}`)?.focus();
   }
 
   function addValue(): void {
@@ -133,6 +132,7 @@
           </td>
           <td class="cinder-jse-enum-editor__actions">
             <Button
+              id={`${idPrefix}-remove-${index}`}
               variant="ghost"
               size="xs"
               disabled={readonly || invalidValueIndexes.size > 0 || index === 0}
@@ -155,7 +155,6 @@
               size="xs"
               disabled={readonly || values.length === 1}
               aria-label={`Remove enum value ${index + 1}`}
-              bind:this={removeButtons[index]}
               onclick={() => void removeValue(index)}
             >
               Remove
