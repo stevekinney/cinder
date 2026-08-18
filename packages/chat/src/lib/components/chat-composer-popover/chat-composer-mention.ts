@@ -22,6 +22,11 @@ type ParsedLink = {
   end: number;
 };
 
+type CodeFence = {
+  delimiter: '`' | '~';
+  minimumLength: number;
+};
+
 const ABSOLUTE_URI_SCHEME = /^([A-Za-z][A-Za-z0-9+.-]*):/u;
 const NON_ENTITY_URI_SCHEMES = new Set([
   'about',
@@ -75,6 +80,54 @@ function hasEscapedPrefix(value: string, index: number): boolean {
 function isEntityUri(uri: string): boolean {
   const match = ABSOLUTE_URI_SCHEME.exec(uri);
   return match !== null && !NON_ENTITY_URI_SCHEMES.has(match[1]!.toLowerCase());
+}
+
+function countRun(value: string, start: number, character: string): number {
+  let length = 0;
+
+  while (value[start + length] === character) length += 1;
+
+  return length;
+}
+
+function isIndentedAtMostThreeSpaces(value: string, index: number): boolean {
+  const lineStart = value.lastIndexOf('\n', index - 1) + 1;
+  return /^ {0,3}$/u.test(value.slice(lineStart, index));
+}
+
+function getOpeningCodeFence(value: string, start: number): CodeFence | null {
+  const delimiter = value[start];
+  if ((delimiter !== '`' && delimiter !== '~') || !isIndentedAtMostThreeSpaces(value, start)) {
+    return null;
+  }
+
+  const minimumLength = countRun(value, start, delimiter);
+  return minimumLength >= 3 ? { delimiter, minimumLength } : null;
+}
+
+function isClosingCodeFence(value: string, start: number, fence: CodeFence): boolean {
+  if (!isIndentedAtMostThreeSpaces(value, start)) return false;
+
+  const length = countRun(value, start, fence.delimiter);
+  if (length < fence.minimumLength) return false;
+
+  const lineEnd = value.indexOf('\n', start + length);
+  return /^ *$/u.test(value.slice(start + length, lineEnd === -1 ? value.length : lineEnd));
+}
+
+function getInlineCodeSpanEnd(value: string, start: number): number | null {
+  const delimiterLength = countRun(value, start, '`');
+
+  for (let index = start + delimiterLength; index < value.length; index += 1) {
+    if (value[index] !== '`') continue;
+
+    const closingLength = countRun(value, index, '`');
+    if (closingLength === delimiterLength) return index + closingLength;
+
+    index += closingLength - 1;
+  }
+
+  return null;
 }
 
 function parseLink(value: string, start: number): ParsedLink | null {
@@ -131,6 +184,10 @@ function parseLink(value: string, start: number): ParsedLink | null {
 
 /** Serializes an entity mention as Markdown suitable for a plain textarea. */
 export function serializeChatComposerMention({ label, uri }: ChatComposerMention): string {
+  if (!isEntityUri(uri)) {
+    throw new TypeError('serializeChatComposerMention requires an absolute non-web entity URI.');
+  }
+
   return `[${escapeLabel(label)}](${escapeUri(uri)})`;
 }
 
@@ -147,8 +204,34 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
   const mentions: ChatComposerMentionRange[] = [];
   let text = '';
   let sourceIndex = 0;
+  let codeFence: CodeFence | null = null;
 
   while (sourceIndex < value.length) {
+    if (codeFence !== null) {
+      if (isClosingCodeFence(value, sourceIndex, codeFence)) codeFence = null;
+
+      text += value[sourceIndex];
+      sourceIndex += 1;
+      continue;
+    }
+
+    const openingCodeFence = getOpeningCodeFence(value, sourceIndex);
+    if (openingCodeFence !== null) {
+      codeFence = openingCodeFence;
+      text += value[sourceIndex];
+      sourceIndex += 1;
+      continue;
+    }
+
+    if (value[sourceIndex] === '`') {
+      const codeSpanEnd = getInlineCodeSpanEnd(value, sourceIndex);
+      if (codeSpanEnd !== null) {
+        text += value.slice(sourceIndex, codeSpanEnd);
+        sourceIndex = codeSpanEnd;
+        continue;
+      }
+    }
+
     if (
       value[sourceIndex] === '[' &&
       value[sourceIndex - 1] !== '!' &&

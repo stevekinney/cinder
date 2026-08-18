@@ -14,6 +14,9 @@ describe('chat composer mentions', () => {
     expect(serializeChatComposerMention({ label: 'A[da]', uri: 'person:ada (eng)' })).toBe(
       '[A\\[da\\]](person:ada\\ \\(eng\\))',
     );
+    expect(() =>
+      serializeChatComposerMention({ label: 'Docs', uri: 'https://example.com' }),
+    ).toThrow('requires an absolute non-web entity URI');
   });
 
   test('serializes and deserializes escaped labels and entity URIs without loss', () => {
@@ -62,6 +65,21 @@ describe('chat composer mentions', () => {
     expect(parseChatComposerMentions('Before [unfinished [Ada](person:ada)')).toEqual({
       text: 'Before [unfinished Ada',
       mentions: [{ label: 'Ada', uri: 'person:ada', start: 19, end: 22 }],
+    });
+  });
+
+  test('leaves mention syntax inside inline and fenced code literal', () => {
+    const value = '`[Ada](person:ada)` [Ada](person:ada)\n```\n[Ada](person:ada)\n```';
+
+    expect(parseChatComposerMentions(value)).toEqual({
+      text: '`[Ada](person:ada)` Ada\n```\n[Ada](person:ada)\n```',
+      mentions: [{ label: 'Ada', uri: 'person:ada', start: 20, end: 23 }],
+    });
+
+    const mismatchedDelimiter = '`literal `` [Ada](person:ada) `';
+    expect(parseChatComposerMentions(mismatchedDelimiter)).toEqual({
+      text: mismatchedDelimiter,
+      mentions: [],
     });
   });
 
