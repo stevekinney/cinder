@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { parse } from 'postcss';
 
 import {
+  componentClassNamesFromMarkup,
   compoundFamilies,
   declarationMultiset,
   declarationMultisetForComponent,
@@ -85,6 +86,14 @@ describe('declarationMultiset', () => {
     const multiset = declarationMultisetForComponent(stylesheet, 'grid-item');
 
     expect([...multiset.keys()]).toEqual(['|color:red', '|font-weight:600']);
+  });
+
+  test('discovers compound-leaf selectors from rendered markup', () => {
+    expect(
+      componentClassNamesFromMarkup(
+        `<tr class="cinder-table__row"><td class:cinder-table__row--selected={selected}></td></tr>`,
+      ),
+    ).toEqual(['cinder-table__row', 'cinder-table__row--selected']);
   });
 
   test('keeps keyframe declarations in their owning component stylesheet', () => {

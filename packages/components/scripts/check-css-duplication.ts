@@ -137,6 +137,13 @@ function selectorContainsComponent(rule: Rule, className: string): boolean {
   return new RegExp(`(^|[^a-z0-9-])\\.${className}(?:$|--|__|[^a-z0-9-])`, 'i').test(rule.selector);
 }
 
+/** Extract Cinder classes rendered by a component, including declaration-free leaves. */
+export function componentClassNamesFromMarkup(source: string): string[] {
+  return [
+    ...new Set([...source.matchAll(/\bcinder-[a-z0-9_-]+/gi)].map((match) => match[0])),
+  ].toSorted();
+}
+
 /**
  * Build a declaration multiset from rules owned by one component. This lets a
  * compound parent keep leaf rules in its stylesheet without hiding that leaf
@@ -262,6 +269,14 @@ async function collectComponentCss(): Promise<ComponentCss[]> {
     const multiset: DeclarationMultiset = new Map();
     const componentSources = sources.get(component.name) ?? [];
     const classNames = new Set([`cinder-${component.name}`]);
+    for (const entry of readdirSync(component.directory, { withFileTypes: true })) {
+      if (!entry.isFile() || !entry.name.endsWith('.svelte')) continue;
+      for (const className of componentClassNamesFromMarkup(
+        readFileSync(join(component.directory, entry.name), 'utf8'),
+      )) {
+        classNames.add(className);
+      }
+    }
     for (const source of componentSources) {
       source.walkRules((rule) => {
         for (const match of rule.selector.matchAll(/\\.([a-z][a-z0-9-]*)/gi)) {
