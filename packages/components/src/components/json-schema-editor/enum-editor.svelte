@@ -50,6 +50,29 @@
     }
   });
 
+  $effect(() => {
+    const resolvedDuplicateIndexes = Object.entries(activeDrafts)
+      .filter(([index, draft]) => {
+        if (draft.error !== 'duplicate') return false;
+        try {
+          return !hasDuplicateValue(JSON.parse(draft.text) as unknown, Number(index));
+        } catch {
+          return false;
+        }
+      })
+      .map(([index]) => Number(index));
+    if (resolvedDuplicateIndexes.length === 0) return;
+    const nextDrafts = { ...activeDrafts };
+    for (const index of resolvedDuplicateIndexes) delete nextDrafts[index];
+    localDrafts = Object.fromEntries(
+      Object.entries(localDrafts).filter(
+        ([index]) => !resolvedDuplicateIndexes.includes(Number(index)),
+      ),
+    );
+    emittedDrafts = nextDrafts;
+    onDraftsChange?.(nextDrafts);
+  });
+
   function jsonText(value: unknown): string {
     return JSON.stringify(value) ?? 'null';
   }
@@ -176,7 +199,6 @@
           </td>
           <td class="cinder-jse-enum-editor__actions">
             <Button
-              id={`${idPrefix}-remove-${index}`}
               variant="ghost"
               size="xs"
               disabled={readonly || invalidValueIndexes.size > 0 || index === 0}
@@ -186,6 +208,7 @@
               Up
             </Button>
             <Button
+              id={`${idPrefix}-remove-${index}`}
               variant="ghost"
               size="xs"
               disabled={readonly || invalidValueIndexes.size > 0 || index === values.length - 1}

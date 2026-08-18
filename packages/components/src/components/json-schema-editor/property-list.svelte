@@ -70,6 +70,24 @@
     return draftNames[key] ?? key;
   }
 
+  function pointerSegment(value: string): string {
+    return value.replaceAll('~', '~0').replaceAll('/', '~1');
+  }
+
+  function rebaseEnumDrafts(oldKey: string, newKey: string): void {
+    const oldPrefix = `${path}/${pointerSegment(oldKey)}`;
+    const newPrefix = `${path}/${pointerSegment(newKey)}`;
+    const next = Object.fromEntries(
+      Object.entries(enumDrafts).map(([draftPath, draft]) => [
+        draftPath.startsWith(oldPrefix)
+          ? `${newPrefix}${draftPath.slice(oldPrefix.length)}`
+          : draftPath,
+        draft,
+      ]),
+    );
+    onEnumDraftsChange?.(next);
+  }
+
   function uniqueNewKey(): string {
     let suffix = 1;
     let candidate = 'newField';
@@ -96,6 +114,7 @@
       return;
     }
     renameError = null;
+    rebaseEnumDrafts(oldKey, draft);
 
     const next: Record<string, JsonSchemaValue> = Object.create(null);
     for (const k of propertyNames) {
@@ -360,7 +379,7 @@
           />
           <PropertyEditor
             idPrefix={`${idPrefix}-${key}-schema`}
-            path={`${path}/${key}`}
+            path={`${path}/${pointerSegment(key)}`}
             depth={depth + 1}
             {readonly}
             {enumDrafts}

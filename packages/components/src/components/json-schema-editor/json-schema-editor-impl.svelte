@@ -177,12 +177,14 @@
 
   // Action handlers used by the toolbar.
   function handleUndo() {
+    if (editorState.readonly || !editorState.canUndo) return;
     enumDrafts = {};
     const label = editorState.undo();
     announcer.announce(label ? `Undid: ${label}` : 'Undid last edit');
   }
 
   function handleRedo() {
+    if (editorState.readonly || !editorState.canRedo) return;
     enumDrafts = {};
     const label = editorState.redo();
     announcer.announce(label ? `Redid: ${label}` : 'Redid edit');
@@ -264,6 +266,9 @@
         {enumDrafts}
         onvalidationErrorcount={(count) => (localValidationErrorCount = count)}
         onEnumDraftsChange={(next) => (enumDrafts = next)}
+        onApplyJsonDraft={async () => {
+          if (await editorState.applyJsonDraft()) enumDrafts = {};
+        }}
       />
     </TabPanel>
     <TabPanel value="json">

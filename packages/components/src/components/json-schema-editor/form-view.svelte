@@ -8,6 +8,7 @@
     enumDrafts: Record<string, Record<number, EnumDraft>>;
     onvalidationErrorcount?: ((count: number) => void) | undefined;
     onEnumDraftsChange: (next: Record<string, Record<number, EnumDraft>>) => void;
+    onApplyJsonDraft: () => Promise<void>;
     class?: string;
   };
 </script>
@@ -25,6 +26,7 @@
     enumDrafts,
     onvalidationErrorcount,
     onEnumDraftsChange,
+    onApplyJsonDraft,
     class: className,
   }: FormViewProps = $props();
 
@@ -39,7 +41,7 @@
     <Alert variant="warning">
       <p>The JSON view has uncommitted changes. Apply or discard them to edit in the form.</p>
       <div class="cinder-jse-dirty-actions">
-        <Button variant="primary" size="sm" onclick={() => void state.applyJsonDraft()}>
+        <Button variant="primary" size="sm" onclick={() => void onApplyJsonDraft()}>
           Apply JSON
         </Button>
         <Button variant="secondary" size="sm" onclick={() => state.discardJsonDraft()}>
