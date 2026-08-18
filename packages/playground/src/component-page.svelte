@@ -2861,9 +2861,6 @@
   .readme-content :global(h3:first-child) {
     margin-top: 0;
   }
-  .readme-content :global(h1:first-child) {
-    display: none;
-  }
   /*
    * ONE prose scale, for both surfaces.
    *

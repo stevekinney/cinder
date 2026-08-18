@@ -284,7 +284,10 @@ export async function runStaticExport(options: StaticExportOptions = {}): Promis
 
   // Root landing page + the shell bundle graph (shared by every shell page).
   const rootHtml = await render('/', context);
-  if (rootHtml !== null) collect(rootHtml);
+  if (rootHtml !== null) {
+    assertExactlyOneH1('landing page', rootHtml);
+    collect(rootHtml);
+  }
   await renderJsBundleGraph('/shell-bundle/shell.js', context);
   await render('/ping', context);
   // NOTE: the full `/api/manifest` array is intentionally NOT rendered. The UI
@@ -353,6 +356,11 @@ const PRE_RENDER_MARKERS = ['data-component-page', '<h1'] as const;
 /** An `#app` with no children is the exact shape of the regression guarded here. */
 const EMPTY_MOUNT_ROOT = '<div id="app"></div>';
 
+export function assertExactlyOneH1(name: string, html: string): void {
+  const count = html.match(/<h1\b/gi)?.length ?? 0;
+  if (count !== 1) throw new Error(`${name}: expected exactly one h1, found ${count}`);
+}
+
 /**
  * Fail the build when a documentation page exported without server-rendered
  * content.
@@ -381,6 +389,12 @@ export function assertDocumentationPagesArePreRendered(
     const missing = PRE_RENDER_MARKERS.filter((marker) => !html.includes(marker));
     if (missing.length > 0) {
       failures.push(`${name}: missing ${missing.join(', ')}`);
+      continue;
+    }
+    try {
+      assertExactlyOneH1(name, html);
+    } catch (error) {
+      failures.push(error instanceof Error ? error.message : `${name}: invalid h1 count`);
     }
   }
 

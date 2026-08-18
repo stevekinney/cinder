@@ -648,6 +648,16 @@ export function rewriteRepositoryRelativeReadmeLinks(html: string): string {
   return rewriteRelativeRenderedMarkdownLinks(html, (href) => repositorySourceHref('', href));
 }
 
+/**
+ * The landing hero owns the document's sole top-level heading. The root README
+ * starts with the same title, so leaving its rendered H1 in the prose would
+ * expose duplicate H1s before and after hydration. Remove that leading source
+ * title structurally rather than concealing it with CSS.
+ */
+export function omitLandingReadmeTitle(html: string): string {
+  return html.replace(/^\s*<h1\b[^>]*>[\s\S]*?<\/h1>\s*/, '');
+}
+
 async function renderLandingReadmeHtml(): Promise<string> {
   await initializeHighlighter();
   const markdown = await Bun.file(join(PLAYGROUND_ROOT, '..', '..', 'README.md')).text();
@@ -657,7 +667,7 @@ async function renderLandingReadmeHtml(): Promise<string> {
       'Root README rendering stripped unsafe content. Update README.md to remove raw HTML, unsafe URLs, or other sanitizer-blocked content.',
     );
   }
-  return rewriteRepositoryRelativeReadmeLinks(rendered.html);
+  return omitLandingReadmeTitle(rewriteRepositoryRelativeReadmeLinks(rendered.html));
 }
 
 /**
