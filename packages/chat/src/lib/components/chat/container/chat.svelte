@@ -780,13 +780,11 @@
       let cancelled = false;
       const waitForBottomTarget = isTranscriptAppend ? waitForLayoutFrame() : tick();
       void waitForBottomTarget.then(() => {
-        if (
-          cancelled ||
-          !viewport ||
-          pendingHistoryScroll ||
-          historyAnchorMessageId !== null ||
-          editingMessageIds.size > 0
-        ) {
+        if (cancelled || !viewport || pendingHistoryScroll || historyAnchorMessageId !== null) {
+          return;
+        }
+        if (editingMessageIds.size > 0) {
+          scrollState.recomputeFromViewport(viewport);
           return;
         }
         // Re-check the guard at execution time: a guarded scroll (e.g.
