@@ -82,9 +82,11 @@
   const isAnyType = $derived(selectedTypes.length === 0);
   const hasEnum = $derived(Array.isArray(objectValue.enum));
 
-  const preservedKeys = $derived.by(() => {
-    return Object.keys(objectValue).filter((key) => !EDITABLE_KEYWORDS.has(key));
-  });
+  const preservedKeys = $derived.by(() =>
+    Object.keys(objectValue).filter(
+      (key) => !EDITABLE_KEYWORDS.has(key) || (key === 'enum' && !Array.isArray(objectValue.enum)),
+    ),
+  );
 
   // ===== Mutation helpers =====
   function patch(
@@ -203,11 +205,17 @@
   }
 
   function setEnum(enabled: boolean) {
-    patch({ enum: enabled ? (objectValue.enum ?? ['']) : undefined }, { label: 'edit enum' });
+    patch(
+      { enum: enabled ? (Array.isArray(objectValue.enum) ? objectValue.enum : ['']) : undefined },
+      { label: 'edit enum' },
+    );
   }
 
-  function setEnumValues(values: unknown[]) {
-    patch({ enum: values }, { label: 'edit enum values' });
+  function setEnumValues(
+    values: unknown[],
+    options: { coalesceKey?: string; label?: string } | undefined = undefined,
+  ) {
+    patch({ enum: values }, options ?? { label: 'edit enum values' });
   }
 
   // ===== Composition =====
@@ -369,8 +377,10 @@
       {#if hasEnum}
         <EnumEditor
           idPrefix={`${idPrefix}-enum`}
+          path={`${path}/enum`}
           values={objectValue.enum ?? []}
           {readonly}
+          onvalidationErrorcount={(count) => setChildValidationErrorCount('enum', count)}
           onValuesChange={setEnumValues}
         />
       {/if}

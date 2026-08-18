@@ -1,31 +1,53 @@
 <script lang="ts" module>
   export type EnumEditorProps = {
     idPrefix: string;
+    path: string;
     values: unknown[];
     readonly?: boolean;
-    onValuesChange: (next: unknown[]) => void;
+    onvalidationErrorcount?: ((count: number) => void) | undefined;
+    onValuesChange: (next: unknown[], options?: { coalesceKey?: string; label?: string }) => void;
   };
 </script>
 
 <script lang="ts">
-  import Button from '../button/button.svelte';
-  import Input from '../input/input.svelte';
+  import { onDestroy, tick } from 'svelte';
+  import Button from '@lostgradient/cinder/button';
+  import Input from '@lostgradient/cinder/input';
 
-  let { idPrefix, values, readonly = false, onValuesChange }: EnumEditorProps = $props();
+  let {
+    idPrefix,
+    path,
+    values,
+    readonly = false,
+    onvalidationErrorcount,
+    onValuesChange,
+  }: EnumEditorProps = $props();
 
   let invalidValueIndexes = $state<Set<number>>(new Set());
+  let removeButtons = $state<Array<HTMLButtonElement | undefined>>([]);
+
+  $effect(() => onvalidationErrorcount?.(invalidValueIndexes.size));
+  onDestroy(() => onvalidationErrorcount?.(0));
 
   function jsonText(value: unknown): string {
     return JSON.stringify(value);
   }
 
+  function isJsonValue(value: unknown): boolean {
+    if (typeof value === 'number') return Number.isFinite(value);
+    if (Array.isArray(value)) return value.every(isJsonValue);
+    if (value !== null && typeof value === 'object') return Object.values(value).every(isJsonValue);
+    return value === null || typeof value === 'string' || typeof value === 'boolean';
+  }
+
   function setValue(index: number, text: string): void {
     try {
       const nextValue = JSON.parse(text) as unknown;
+      if (!isJsonValue(nextValue)) throw new Error('Enum values must be finite JSON values.');
       const next = [...values];
       next[index] = nextValue;
       invalidValueIndexes = new Set([...invalidValueIndexes].filter((item) => item !== index));
-      onValuesChange(next);
+      onValuesChange(next, { coalesceKey: `enum:${path}:${index}`, label: 'edit enum value' });
     } catch {
       invalidValueIndexes = new Set([...invalidValueIndexes, index]);
     }
@@ -36,12 +58,24 @@
     if (readonly || targetIndex < 0 || targetIndex >= values.length) return;
     const next = [...values];
     [next[index], next[targetIndex]] = [next[targetIndex]!, next[index]!];
+    invalidValueIndexes = new Set(
+      [...invalidValueIndexes].map((item) =>
+        item === index ? targetIndex : item === targetIndex ? index : item,
+      ),
+    );
     onValuesChange(next);
   }
 
-  function removeValue(index: number): void {
-    if (readonly) return;
+  async function removeValue(index: number): Promise<void> {
+    if (readonly || values.length === 1) return;
+    invalidValueIndexes = new Set(
+      [...invalidValueIndexes]
+        .filter((item) => item !== index)
+        .map((item) => (item > index ? item - 1 : item)),
+    );
     onValuesChange(values.filter((_, itemIndex) => itemIndex !== index));
+    await tick();
+    removeButtons[Math.min(index, values.length - 2)]?.focus();
   }
 
   function addValue(): void {
@@ -69,6 +103,7 @@
               label={`Enum value ${index + 1}`}
               value={jsonText(value)}
               disabled={readonly}
+              aria-invalid={invalidValueIndexes.has(index) || undefined}
               aria-describedby={invalidValueIndexes.has(index) ? errorId : undefined}
               oninput={(event: Event) => setValue(index, (event.target as HTMLInputElement).value)}
             />
@@ -100,9 +135,10 @@
             <Button
               variant="ghost"
               size="xs"
-              disabled={readonly}
+              disabled={readonly || values.length === 1}
               aria-label={`Remove enum value ${index + 1}`}
-              onclick={() => removeValue(index)}
+              bind:this={removeButtons[index]}
+              onclick={() => void removeValue(index)}
             >
               Remove
             </Button>
