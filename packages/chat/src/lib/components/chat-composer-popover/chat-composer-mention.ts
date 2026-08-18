@@ -13,6 +13,7 @@ import { getLineEnd, getLineEndingLength, isLineEnding } from './chat-composer-m
 import {
   escapeMentionLabel,
   escapeMentionUri,
+  hasMarkdownParagraphBreak,
   isEntityUri,
   unescapeMarkdown,
 } from './chat-composer-mention-link.ts';
@@ -62,13 +63,20 @@ function isAtBlockStart(value: string, index: number, metadata: ScanMetadata): b
   return /^ {0,3}$/u.test(value.slice(containerStart, index));
 }
 
-function getOrdinaryLinkEnd(value: string, start: number): number | null {
+function getOrdinaryLinkEnd(value: string, start: number, allowNestedLabel = false): number | null {
   let labelEnd = start + 1;
+  let labelDepth = 0;
   while (labelEnd < value.length) {
     if (value[labelEnd] === '\\') labelEnd += 2;
-    else if (value[labelEnd] === '[') return null;
-    else if (value[labelEnd] === ']') break;
-    else labelEnd += 1;
+    else if (value[labelEnd] === '[') {
+      if (!allowNestedLabel) return null;
+      labelDepth += 1;
+      labelEnd += 1;
+    } else if (value[labelEnd] === ']') {
+      if (labelDepth === 0) break;
+      labelDepth -= 1;
+      labelEnd += 1;
+    } else labelEnd += 1;
   }
   if (value[labelEnd] !== ']' || value[labelEnd + 1] !== '(') return null;
 
@@ -183,7 +191,9 @@ function parseLink(value: string, start: number): ParsedLink | null {
 
   if (value[destinationEnd] !== ')') return null;
 
-  const label = unescapeMarkdown(value.slice(start + 1, labelEnd));
+  const rawLabel = value.slice(start + 1, labelEnd);
+  if (hasMarkdownParagraphBreak(rawLabel)) return null;
+  const label = unescapeMarkdown(rawLabel);
   const uri = unescapeMarkdown(value.slice(destinationStart, destinationEnd));
   if (label === null || label.length === 0 || uri === null || !isEntityUri(uri)) return null;
 
@@ -194,6 +204,10 @@ function parseLink(value: string, start: number): ParsedLink | null {
 export function serializeChatComposerMention({ label, uri }: ChatComposerMention): string {
   if (label.length === 0) {
     throw new TypeError('serializeChatComposerMention requires a non-empty label.');
+  }
+
+  if (hasMarkdownParagraphBreak(label)) {
+    throw new TypeError('serializeChatComposerMention does not accept paragraph breaks in labels.');
   }
 
   if (!isEntityUri(uri)) {
@@ -427,7 +441,7 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
 
     if (value[sourceIndex] === '[' && !hasEscapedPrefix(sourceIndex, metadata)) {
       if (value[sourceIndex - 1] === '!' && !hasEscapedPrefix(sourceIndex - 1, metadata)) {
-        const imageEnd = getOrdinaryLinkEnd(value, sourceIndex);
+        const imageEnd = getOrdinaryLinkEnd(value, sourceIndex, true);
         if (imageEnd !== null) {
           text += value.slice(sourceIndex, imageEnd);
           sourceIndex = imageEnd;

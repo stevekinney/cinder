@@ -52,7 +52,7 @@ export function getHtmlTagEnd(value: string, start: number): number | null {
       return null;
     } else if (character === '>') {
       const token = value.slice(start, index + 1);
-      return /^(?:<\/?[A-Za-z][A-Za-z0-9-]*(?:\s+[A-Za-z_:][A-Za-z0-9_.:-]*(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'=<>`]+))?)*\s*\/?>|<![A-Z][^>]*>|<\?[^>]*\?>)$/u.test(
+      return /^(?:<[A-Za-z][A-Za-z0-9-]*(?:\s+[A-Za-z_:][A-Za-z0-9_.:-]*(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'=<>`]+))?)*\s*\/?>|<\/[A-Za-z][A-Za-z0-9-]*\s*>|<![A-Z][^>]*>|<\?[^>]*\?>)$/u.test(
         token,
       )
         ? index

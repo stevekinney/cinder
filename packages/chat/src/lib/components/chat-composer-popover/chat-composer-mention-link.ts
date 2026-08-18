@@ -24,6 +24,10 @@ export function escapeMentionUri(value: string): string {
   return value.replaceAll('\\', '\\\\').replace(/([()[\]<>])/gu, '\\$1');
 }
 
+export function hasMarkdownParagraphBreak(value: string): boolean {
+  return /(?:\r\n?|\n)[ \t]*(?:\r\n?|\n)/u.test(value);
+}
+
 export function unescapeMarkdown(value: string, escapeWhitespace = false): string | null {
   let unescaped = '';
 

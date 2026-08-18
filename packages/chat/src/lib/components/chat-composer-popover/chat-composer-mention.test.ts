@@ -30,6 +30,9 @@ describe('chat composer mentions', () => {
     expect(() =>
       serializeChatComposerMention({ label: 'Ada', uri: 'person:ada lovelace' }),
     ).toThrow('requires an absolute non-web entity URI');
+    expect(() =>
+      serializeChatComposerMention({ label: 'Ada\n\nLovelace', uri: 'person:ada' }),
+    ).toThrow('does not accept paragraph breaks');
   });
 
   test('serializes and deserializes escaped labels and entity URIs without loss', () => {
@@ -141,6 +144,11 @@ describe('chat composer mentions', () => {
     expect(parseChatComposerMentions('```\ncode\n```\n[Ada](person:ada)')).toEqual({
       text: '```\ncode\n```\nAda',
       mentions: [{ label: 'Ada', uri: 'person:ada', start: 13, end: 16 }],
+    });
+
+    expect(parseChatComposerMentions('  ```\ncode\n```\n[Ada](person:ada)')).toEqual({
+      text: '  ```\ncode\n```\nAda',
+      mentions: [{ label: 'Ada', uri: 'person:ada', start: 15, end: 18 }],
     });
 
     expect(parseChatComposerMentions('```code``` [Ada](person:ada)')).toEqual({
@@ -441,6 +449,10 @@ describe('chat composer mentions', () => {
       text: '<span title=">[Ada](person:attribute)">x</span>',
       mentions: [],
     });
+    expect(parseChatComposerMentions('Text </span title="[Ada](person:ada)">')).toEqual({
+      text: 'Text </span title="Ada">',
+      mentions: [{ label: 'Ada', uri: 'person:ada', start: 19, end: 22 }],
+    });
     expect(parseChatComposerMentions('<hr>\n[Ada](person:real)')).toEqual({
       text: '<hr>\n[Ada](person:real)',
       mentions: [],
@@ -515,5 +527,12 @@ describe('chat composer mentions', () => {
     });
     const image = '![Logo](asset:logo "[Ada](person:ada)")';
     expect(parseChatComposerMentions(image)).toEqual({ text: image, mentions: [] });
+    const nestedImage = '![Team [Ada](person:ada)](asset:logo)';
+    expect(parseChatComposerMentions(nestedImage)).toEqual({ text: nestedImage, mentions: [] });
+    const paragraphBreakLabel = '[Ada\n\nLovelace](person:ada)';
+    expect(parseChatComposerMentions(paragraphBreakLabel)).toEqual({
+      text: paragraphBreakLabel,
+      mentions: [],
+    });
   });
 });
