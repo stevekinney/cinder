@@ -29,8 +29,9 @@ export interface GenerateVariablesOptions {
 /**
  * Extract declared CSS custom properties (`--cinder-*`) from every `.css` file
  * in the component directory. Includes `@property --cinder-*` at-rules.
- * Excludes consumption via `var(--cinder-*, fallback)`, comments, and
- * declarations on the right-hand side of another declaration.
+ * Excludes declarations explicitly marked `@runtime-state`, consumption via
+ * `var(--cinder-*, fallback)`, comments, and declarations on the right-hand
+ * side of another declaration.
  */
 export async function generateVariablesForComponent(
   options: GenerateVariablesOptions,
@@ -47,7 +48,9 @@ export async function generateVariablesForComponent(
     const root = parse(source, { from: filePath });
 
     root.walkDecls((decl: Declaration) => {
-      if (decl.prop.startsWith(PREFIX)) collected.add(decl.prop);
+      if (decl.prop.startsWith(PREFIX) && !isRuntimeStateDeclaration(decl)) {
+        collected.add(decl.prop);
+      }
     });
 
     root.walkAtRules('property', (atRule: AtRule) => {
@@ -61,6 +64,13 @@ export async function generateVariablesForComponent(
   const variablesModule = renderVariablesModule(variables);
 
   return { variables, variablesJson, variablesModule };
+}
+
+/** Runtime-state variables are implementation details, not theme overrides. */
+function isRuntimeStateDeclaration(declaration: Declaration): boolean {
+  return (
+    declaration.prev()?.type === 'comment' && declaration.prev().text.includes('@runtime-state')
+  );
 }
 
 function renderVariablesModule(variables: readonly string[]): string {

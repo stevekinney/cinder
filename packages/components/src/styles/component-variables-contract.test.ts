@@ -25,10 +25,8 @@
  * `--cinder-file-upload-progress` counter set via `style=`), making them
  * semantically "runtime-state" rather than "consumer theme API".
  *
- * Fixing the generator is design-gated (task 2f6e14c8). The test below is
- * written to assert the CORRECT contract; the file-upload case is marked
- * `.skip` with an explicit note so it becomes a forcing function to fix the
- * generator once the design question is resolved.
+ * Runtime-state declarations use the `@runtime-state` marker and must never
+ * enter the generated public override manifest.
  *
  * Test files may use `any` per project conventions.
  */
@@ -46,18 +44,15 @@ const COMPONENTS_DIR = join(import.meta.dir, '..', 'components');
 setDefaultTimeout(30_000);
 
 /**
- * Runtime-state variable names that the generator currently mis-emits as public
- * override variables. Each entry is `{ component, variable }`. The test that
- * checks for these is skipped until the generator is fixed.
+ * Runtime-state variable names which must never appear in public override
+ * manifests. Each entry is `{ component, variable }`.
  *
  * See: packages/components/scripts/generate-component-variables.ts
  */
 const KNOWN_RUNTIME_STATE_LEAKS: Array<{ component: string; variable: string }> = [
-  // KNOWN: file-upload progress vars are runtime-state mis-emitted as public.
   // The bare --cinder-file-upload-progress counter is set via inline style= from
-  // file-upload.svelte, and the *-background/*-fill tokens describe that dynamic
-  // UI. Un-skip when generate-component-variables.ts is fixed — task 2f6e14c8
-  // design-gated item.
+  // file-upload.svelte, and the *-background/*-fill variables describe that
+  // dynamic UI rather than a consumer theme API.
   { component: 'file-upload', variable: '--cinder-file-upload-progress-background' },
   { component: 'file-upload', variable: '--cinder-file-upload-progress-fill' },
 ];
@@ -174,17 +169,7 @@ describe('component *.variables.json contract', () => {
     expect(violations).toEqual([]);
   });
 
-  // SKIPPED — known generator regression for file-upload runtime-state variables.
-  //
-  // KNOWN: file-upload progress vars are runtime-state mis-emitted as public;
-  // un-skip when generate-component-variables.ts is fixed — task 2f6e14c8
-  // design-gated item.
-  //
-  // This test encodes the CORRECT contract: the runtime-state variables listed in
-  // KNOWN_RUNTIME_STATE_LEAKS should NOT appear in any variables.json because they
-  // are driven by JS at runtime (not by consumer CSS overrides). Once the
-  // generator is fixed to exclude them, remove the `.skip` and this comment.
-  test.skip('no component variables.json contains a known runtime-state variable', async () => {
+  test('no component variables.json contains a known runtime-state variable', async () => {
     const allComponents = await loadAllComponentVariables();
 
     const allVariablesByComponent = new Map(
