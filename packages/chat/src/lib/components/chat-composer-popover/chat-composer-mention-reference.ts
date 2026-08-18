@@ -12,7 +12,10 @@ export function getReferenceDefinitionEnd(
 ): number | null {
   const lineStart = metadata.lineStarts[start] ?? 0;
   const containerStart = metadata.containerStarts.get(lineStart) ?? lineStart;
-  if (!/^ {0,3}$/u.test(value.slice(containerStart, start))) return null;
+  if (start - containerStart > 3) return null;
+  for (let index = containerStart; index < start; index += 1) {
+    if (value[index] !== ' ') return null;
+  }
   if (lineStart > 0) {
     const previousLineStart = metadata.lineStarts[lineStart - 1] ?? 0;
     const currentContainer = getContainerContext(lineStart, metadata);
@@ -31,7 +34,7 @@ export function getReferenceDefinitionEnd(
     if (value[labelEnd] === '\\') labelEnd += 2;
     else labelEnd += 1;
   }
-  if (/(?:\r\n?|\n)[ \t]*(?:\r\n?|\n)/u.test(value.slice(start + 1, labelEnd))) return null;
+  if (/(?:\r\n?|\n)[ \t>]*(?:\r\n?|\n)/u.test(value.slice(start + 1, labelEnd))) return null;
   if (!/\S/u.test(value.slice(start + 1, labelEnd))) return null;
   if (value[labelEnd] !== ']' || value[labelEnd + 1] !== ':') return null;
 

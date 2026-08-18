@@ -15,6 +15,7 @@ import {
   escapeMentionUri,
   getGfmLiteralAutolinkEnd,
   getOrdinaryLinkEnd,
+  getReferenceImageEnd,
   hasMarkdownParagraphBreak,
   isEntityUri,
   unescapeMarkdown,
@@ -238,11 +239,24 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
       }
     }
 
+    if (value[sourceIndex] === '!' && value[sourceIndex + 1] === '[') {
+      const imageEnd = getReferenceImageEnd(value, sourceIndex);
+      if (imageEnd !== null) {
+        text += value.slice(sourceIndex, imageEnd);
+        sourceIndex = imageEnd;
+        continue;
+      }
+    }
+
     if (value[sourceIndex] === '<' && !hasEscapedPrefix(sourceIndex, metadata)) {
       if (value.startsWith('<!--', sourceIndex)) {
         const isBlock = isAtBlockStart(value, sourceIndex, metadata);
         const closingStart = value.indexOf('-->', sourceIndex + 4);
-        if (closingStart !== -1 && !isValidHtmlComment(value, sourceIndex, closingStart + 3)) {
+        if (
+          closingStart !== -1 &&
+          !isBlock &&
+          !isValidHtmlComment(value, sourceIndex, closingStart + 3)
+        ) {
           sourceIndex += 4;
           text += '<!--';
           continue;
@@ -363,7 +377,7 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
           const lineEnd = getLineEnd(value, sourceIndex);
           const startsAtBlockColumn = /^ {0,3}$/u.test(value.slice(containerStart, tagStart));
           const isStandaloneTag =
-            /^\s*<[A-Za-z][A-Za-z0-9-]*(?:\s[^>]*)?>[ \t]*$/u.test(
+            /^\s*(?:<\/?[A-Za-z][A-Za-z0-9-]*(?:\s[^>]*)?>)[ \t]*$/u.test(
               value.slice(containerStart, lineEnd),
             ) && isLineEnding(value[lineEnd]);
           const canOwnHtmlBlock =

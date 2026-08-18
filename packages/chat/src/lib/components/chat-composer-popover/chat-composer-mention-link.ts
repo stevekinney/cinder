@@ -23,7 +23,7 @@ export function escapeMentionLabel(value: string): string {
 }
 
 export function escapeMentionUri(value: string): string {
-  return value.replaceAll('\\', '\\\\').replace(/([()[\]<>])/gu, '\\$1');
+  return value.replaceAll('\\', '\\\\').replace(/([()[\]<>|])/gu, '\\$1');
 }
 
 export function hasMarkdownParagraphBreak(value: string): boolean {
@@ -35,6 +35,7 @@ export function getGfmLiteralAutolinkEnd(value: string, start: number): number |
     (start > 0 && /[A-Za-z0-9_]/u.test(value[start - 1]!)) ||
     (!value.startsWith('http://', start) &&
       !value.startsWith('https://', start) &&
+      !value.startsWith('ftp://', start) &&
       !value.startsWith('www.', start))
   ) {
     return null;
@@ -44,7 +45,7 @@ export function getGfmLiteralAutolinkEnd(value: string, start: number): number |
   while (cursor < value.length && !/[\s<>]/u.test(value[cursor]!)) cursor += 1;
   const destination = value.slice(start, cursor);
   if (
-    !/^(?:(?:https?:\/\/)|www\.)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,}(?::\d+)?(?:[/?#].*)?$/u.test(
+    !/^(?:(?:https?|ftp):\/\/|www\.)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,}(?::\d+)?(?:[/?#].*)?$/u.test(
       destination,
     )
   )
@@ -61,6 +62,8 @@ export function getOrdinaryLinkEnd(
   let labelDepth = 0;
   while (labelEnd < value.length) {
     if (value[labelEnd] === '\\') labelEnd += 2;
+    else if (allowNestedLabel && value[labelEnd] === '!' && value[labelEnd + 1] === '[')
+      return null;
     else if (value[labelEnd] === '[') {
       if (!allowNestedLabel) return null;
       labelDepth += 1;
@@ -92,7 +95,7 @@ export function getOrdinaryLinkEnd(
     while (cursor < value.length && !/\s/u.test(value[cursor]!)) {
       const character = value[cursor];
       if (character === '\\') {
-        if (value[cursor + 1] === '<') return null;
+        if (value[cursor + 1] === '<' || /\s/u.test(value[cursor + 1] ?? '')) return null;
         cursor += 2;
         continue;
       }
@@ -132,6 +135,34 @@ export function getOrdinaryLinkEnd(
   if (hasMarkdownParagraphBreak(value.slice(closingWhitespaceStart, cursor))) return null;
 
   return value[cursor] === ')' ? cursor + 1 : null;
+}
+
+export function getReferenceImageEnd(value: string, start: number): number | null {
+  if (value[start] !== '!' || value[start + 1] !== '[') return null;
+  let cursor = start + 2;
+  let depth = 0;
+  while (cursor < value.length) {
+    if (value[cursor] === '\\') {
+      cursor += 2;
+      continue;
+    }
+    if (value[cursor] === '!' && value[cursor + 1] === '[') return null;
+    if (value[cursor] === '[') depth += 1;
+    else if (value[cursor] === ']') {
+      if (depth === 0) break;
+      depth -= 1;
+    }
+    cursor += 1;
+  }
+  if (value[cursor] !== ']') return null;
+  if (value[cursor + 1] === '(') return null;
+  if (value[cursor + 1] !== '[') return cursor + 1;
+  cursor += 2;
+  while (cursor < value.length && value[cursor] !== ']') {
+    if (value[cursor] === '\\') cursor += 2;
+    else cursor += 1;
+  }
+  return value[cursor] === ']' ? cursor + 1 : null;
 }
 
 export function unescapeMarkdown(value: string, escapeWhitespace = false): string | null {

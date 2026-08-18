@@ -267,7 +267,15 @@ export function isIndentedCodeStart(value: string, index: number, metadata: Scan
   if (lineStart === 0) return true;
 
   const previousLineStart = metadata.lineStarts[lineStart - 1] ?? 0;
-  if (/^\s*$/u.test(value.slice(previousLineStart, lineStart - 1))) return true;
+  const beforeBlankLine = metadata.lineStarts[previousLineStart - 1] ?? previousLineStart;
+  if (/^\s*$/u.test(value.slice(previousLineStart, lineStart - 1))) {
+    const parentContainer = getContainerContext(beforeBlankLine, metadata);
+    if (parentContainer.listDepth === 0) return true;
+    return (
+      getContainerContext(lineStart, metadata).maximumIndentation >=
+      parentContainer.listContinuationIndentation + 4
+    );
+  }
 
   const previousContentStart = metadata.containerStarts.get(previousLineStart) ?? previousLineStart;
   const previousLine = value.slice(previousContentStart, lineStart - 1).trimEnd();
