@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
+import type { JsonSchemaValue } from './json-schema-editor-types.ts';
 
 setupHappyDom();
 
@@ -78,7 +79,7 @@ describe('PropertyList', () => {
   });
 
   test('identifies each property in the accessible names of its reorder controls', () => {
-    render(PropertyList, {
+    const { container } = render(PropertyList, {
       idPrefix: 'properties',
       path: '/properties',
       properties: {
@@ -89,10 +90,120 @@ describe('PropertyList', () => {
       onValueChange: () => {},
     });
 
+    expect(
+      screen.getByRole('button', { name: 'email: Optional (toggle required)' }),
+    ).not.toBeNull();
+    expect(screen.getByRole('button', { name: 'age: Optional (toggle required)' })).not.toBeNull();
     expect(screen.getByRole('button', { name: 'Move email up' })).not.toBeNull();
     expect(screen.getByRole('button', { name: 'Move email down' })).not.toBeNull();
     expect(screen.getByRole('button', { name: 'Move age up' })).not.toBeNull();
     expect(screen.getByRole('button', { name: 'Move age down' })).not.toBeNull();
+    expect(screen.getByRole('button', { name: 'Move email up' })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: 'Move age down' })).toHaveProperty('disabled', true);
+    expect(
+      container
+        .querySelector('[aria-label="Expand email property"]')
+        ?.getAttribute('aria-controls'),
+    ).toBeNull();
+  });
+
+  test('reorders properties through the row controls', async () => {
+    let latestProperties: Record<string, JsonSchemaValue> = {};
+    render(PropertyList, {
+      idPrefix: 'properties',
+      path: '/properties',
+      properties: {
+        email: { type: 'string' },
+        age: { type: 'integer' },
+      },
+      required: [],
+      onValueChange: (properties: Record<string, JsonSchemaValue>) => {
+        latestProperties = properties;
+      },
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Move age up' }));
+
+    expect(Object.keys(latestProperties)).toEqual(['age', 'email']);
+  });
+
+  test('only links a disclosure trigger to its panel while that panel is rendered', async () => {
+    const source = await Bun.file(new URL('./property-list.svelte', import.meta.url)).text();
+
+    expect(source).toContain('aria-controls={isOpen ? panelId : undefined}');
+  });
+
+  test('announces moves and restores focus after deletion', async () => {
+    render(PropertyList, {
+      idPrefix: 'properties',
+      path: '/properties',
+      properties: { email: { type: 'string' }, age: { type: 'integer' } },
+      required: [],
+      onValueChange: () => {},
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Move age up' }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(document.querySelector('[aria-live="polite"]')?.textContent).toContain(
+      'Moved age property to position 1 of 2.',
+    );
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Delete email' }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(document.querySelector('[aria-live="polite"]')?.textContent).toContain(
+      'Deleted email property.',
+    );
+    expect(document.activeElement).toBe(
+      screen.getByRole('button', { name: 'Expand age property' }),
+    );
+  });
+
+  test('disables reordering numeric property names whose object order cannot change', () => {
+    render(PropertyList, {
+      idPrefix: 'properties',
+      path: '/properties',
+      properties: { 0: { type: 'string' }, 1: { type: 'integer' } },
+      required: [],
+      onValueChange: () => {},
+    });
+
+    expect(screen.getByRole('button', { name: 'Move 1 up' })).toHaveProperty('disabled', true);
+  });
+
+  test('keeps representable string-key moves available in mixed-key schemas', () => {
+    render(PropertyList, {
+      idPrefix: 'properties',
+      path: '/properties',
+      properties: { 0: { type: 'string' }, alpha: { type: 'string' }, beta: { type: 'string' } },
+      required: [],
+      onValueChange: () => {},
+    });
+
+    expect(screen.getByRole('button', { name: 'Move beta up' })).toHaveProperty('disabled', false);
+  });
+
+  test('keeps reorderable properties available beside an own __proto__ key', () => {
+    const properties = JSON.parse(
+      '{"__proto__":{"type":"string"},"alpha":{"type":"string"},"beta":{"type":"string"}}',
+    ) as Record<string, JsonSchemaValue>;
+    render(PropertyList, {
+      idPrefix: 'properties',
+      path: '/properties',
+      properties,
+      required: [],
+      onValueChange: () => {},
+    });
+
+    expect(screen.getByRole('button', { name: 'Move beta up' })).toHaveProperty('disabled', false);
+  });
+
+  test('keeps the Add property focus reference layout-neutral', async () => {
+    const css = await Bun.file(new URL('./json-schema-editor.css', import.meta.url)).text();
+
+    expect(css).toContain('.cinder-jse-property-list__add-property-reference');
+    expect(css).toMatch(
+      /\.cinder-jse-property-list__add-property-reference\s*\{[^}]*display:\s*contents/,
+    );
   });
 
   test('keeps enum in the preserved-keywords count when a schema is loaded', () => {

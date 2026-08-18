@@ -15,7 +15,7 @@
 
 <script lang="ts">
   import ChevronDown from 'lucide-svelte/icons/chevron-down';
-  import { onDestroy } from 'svelte';
+  import { onDestroy, tick } from 'svelte';
   import Alert from '../alert/alert.svelte';
   import Button from '../button/button.svelte';
   import Chip from '../chip/chip.svelte';
@@ -92,7 +92,7 @@
     }
     renameError = null;
 
-    const next: Record<string, JsonSchemaValue> = {};
+    const next: Record<string, JsonSchemaValue> = Object.create(null);
     for (const k of propertyNames) {
       next[k === oldKey ? draft : k] = properties[k]!;
     }
@@ -111,8 +111,34 @@
     onValueChange(next, nextRequired);
   }
 
-  function deleteProperty(key: string) {
+  let actionAnnouncement = $state('');
+  const propertyTriggerElements = new Map<string, HTMLButtonElement>();
+  let addPropertyElement: HTMLSpanElement | undefined = $state();
+
+  function propertyTrigger(element: HTMLButtonElement, key: string) {
+    propertyTriggerElements.set(key, element);
+    return {
+      update(nextKey: string) {
+        if (nextKey === key) return;
+        propertyTriggerElements.delete(key);
+        key = nextKey;
+        propertyTriggerElements.set(key, element);
+      },
+      destroy() {
+        propertyTriggerElements.delete(key);
+      },
+    };
+  }
+
+  async function announceAction(message: string) {
+    actionAnnouncement = '';
+    await tick();
+    actionAnnouncement = message;
+  }
+
+  async function deleteProperty(key: string, index: number) {
     if (readonly) return;
+    const focusKey = propertyNames[index + 1] ?? propertyNames[index - 1];
     const next = { ...properties };
     delete next[key];
     const nextRequired = required.filter((name) => name !== key);
@@ -121,6 +147,12 @@
     const { [key]: _removedChildCount, ...remainingChildCounts } = childValidationCounts;
     childValidationCounts = remainingChildCounts;
     onValueChange(next, nextRequired);
+    await announceAction(`Deleted ${key} property.`);
+    await tick();
+    const focusTarget = focusKey
+      ? propertyTriggerElements.get(focusKey)
+      : addPropertyElement?.querySelector<HTMLButtonElement>('button');
+    focusTarget?.focus();
   }
 
   function setChildValidationErrorCount(key: string, count: number): void {
@@ -138,17 +170,27 @@
     if (isOpen) setChildValidationErrorCount(key, 0);
   }
 
-  function moveProperty(key: string, direction: -1 | 1) {
-    if (readonly) return;
-    const index = propertyNames.indexOf(key);
+  async function moveProperty(key: string, direction: -1 | 1, index: number) {
+    if (readonly || !canMoveProperty(index, direction)) return;
     const target = index + direction;
     if (target < 0 || target >= propertyNames.length) return;
 
     const reordered = [...propertyNames];
     [reordered[index], reordered[target]] = [reordered[target]!, reordered[index]!];
-    const next: Record<string, JsonSchemaValue> = {};
+    const next: Record<string, JsonSchemaValue> = Object.create(null);
     for (const name of reordered) next[name] = properties[name]!;
     onValueChange(next, required);
+    await announceAction(`Moved ${key} property to position ${target + 1} of ${reordered.length}.`);
+  }
+
+  function canMoveProperty(index: number, direction: -1 | 1): boolean {
+    const target = index + direction;
+    if (target < 0 || target >= propertyNames.length) return false;
+    const reordered = [...propertyNames];
+    [reordered[index], reordered[target]] = [reordered[target]!, reordered[index]!];
+    const next: Record<string, JsonSchemaValue> = Object.create(null);
+    for (const name of reordered) next[name] = properties[name]!;
+    return Object.keys(next).every((name, nextIndex) => name === reordered[nextIndex]);
   }
 
   function toggleRequired(key: string) {
@@ -206,6 +248,8 @@
   }
 </script>
 
+<p class="cinder-sr-only" aria-live="polite">{actionAnnouncement}</p>
+
 <div class="cinder-jse-property-list">
   {#if renameError}
     <Alert variant="danger">{renameError}</Alert>
@@ -215,7 +259,7 @@
     <p class="cinder-jse-property-list__empty">No properties yet.</p>
   {/if}
 
-  {#each propertyNames as key (key)}
+  {#each propertyNames as key, index (key)}
     {@const isRequired = required.includes(key)}
     {@const isOpen = expanded[key] === true}
     {@const childValidationErrorCount = childValidationCounts[key] ?? 0}
@@ -233,11 +277,12 @@
     >
       <div class="cinder-jse-property-row__summary" style={`--cinder-jse-property-depth: ${depth}`}>
         <button
+          use:propertyTrigger={key}
           type="button"
           class="cinder-jse-property-row__trigger"
           aria-label={`${isOpen ? 'Collapse' : 'Expand'} ${key} property${childValidationErrorCount > 0 ? `, ${childValidationErrorCount} validation ${childValidationErrorCount === 1 ? 'error' : 'errors'}` : ''}`}
           aria-expanded={isOpen}
-          aria-controls={panelId}
+          aria-controls={isOpen ? panelId : undefined}
           onclick={() => toggleExpanded(key, isOpen)}
         >
           <ChevronDown
@@ -264,7 +309,7 @@
           size="xs"
           disabled={readonly}
           aria-pressed={isRequired}
-          aria-label={isRequired ? 'Required (toggle off)' : 'Optional (toggle required)'}
+          aria-label={`${key}: ${isRequired ? 'Required (toggle off)' : 'Optional (toggle required)'}`}
           onclick={() => toggleRequired(key)}
         >
           {isRequired ? 'Required' : 'Optional'}
@@ -272,18 +317,18 @@
         <Button
           variant="ghost"
           size="xs"
-          disabled={readonly}
+          disabled={readonly || !canMoveProperty(index, -1)}
           aria-label={`Move ${key} up`}
-          onclick={() => moveProperty(key, -1)}
+          onclick={() => moveProperty(key, -1, index)}
         >
           ↑
         </Button>
         <Button
           variant="ghost"
           size="xs"
-          disabled={readonly}
+          disabled={readonly || !canMoveProperty(index, 1)}
           aria-label={`Move ${key} down`}
-          onclick={() => moveProperty(key, 1)}
+          onclick={() => moveProperty(key, 1, index)}
         >
           ↓
         </Button>
@@ -292,7 +337,7 @@
           size="xs"
           disabled={readonly}
           aria-label={`Delete ${key}`}
-          onclick={() => deleteProperty(key)}
+          onclick={() => deleteProperty(key, index)}
         >
           Delete
         </Button>
@@ -322,9 +367,11 @@
     </div>
   {/each}
 
-  <Button variant="secondary" size="sm" disabled={readonly} onclick={addProperty}>
-    Add property
-  </Button>
+  <span class="cinder-jse-property-list__add-property-reference" bind:this={addPropertyElement}>
+    <Button variant="secondary" size="sm" disabled={readonly} onclick={addProperty}>
+      Add property
+    </Button>
+  </span>
 
   {#if !readonly || requiredOnly.length > 0}
     <Collapsible
