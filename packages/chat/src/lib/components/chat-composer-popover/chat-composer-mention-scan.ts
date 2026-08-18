@@ -1,3 +1,5 @@
+import { getLineEnd, getLineEndingLength } from './chat-composer-mention-lines.ts';
+
 export type ScanMetadata = {
   escaped: Uint8Array;
   lineStarts: Int32Array;
@@ -12,6 +14,7 @@ export function makeScanMetadata(value: string): ScanMetadata {
   const containerStarts = new Map<number, number>();
   const codeSpanEnds = new Map<number, number>();
   const mathEnds = new Map<number, number>();
+  const paragraphBreaks = new Set<number>();
 
   let backslashes = 0;
   let lineStart = 0;
@@ -19,7 +22,10 @@ export function makeScanMetadata(value: string): ScanMetadata {
     escaped[index] = backslashes % 2;
     lineStarts[index] = lineStart;
     backslashes = value[index] === '\\' ? backslashes + 1 : 0;
-    if (value[index] === '\n') lineStart = index + 1;
+    if (value[index] === '\n' || (value[index] === '\r' && value[index + 1] !== '\n')) {
+      if (/^\s*$/u.test(value.slice(lineStart, index))) paragraphBreaks.add(index);
+      lineStart = index + 1;
+    }
   }
 
   for (let start = 0; start < value.length; ) {
@@ -35,14 +41,21 @@ export function makeScanMetadata(value: string): ScanMetadata {
       cursor += 1;
       if (value[cursor] === ' ') cursor += 1;
     }
-    if (value[cursor] === '-' || value[cursor] === '*' || value[cursor] === '+') {
+    if (
+      (value[cursor] === '-' || value[cursor] === '*' || value[cursor] === '+') &&
+      /[\t \r\n]/u.test(value[cursor + 1] ?? '\n')
+    ) {
       hasContainer = true;
       cursor += 1;
       if (value[cursor] === ' ') cursor += 1;
     } else {
       const markerStart = cursor;
       while (/\d/u.test(value[cursor] ?? '')) cursor += 1;
-      if (cursor > markerStart && value[cursor] === '.') {
+      if (
+        cursor > markerStart &&
+        value[cursor] === '.' &&
+        /[\t \r\n]/u.test(value[cursor + 1] ?? '\n')
+      ) {
         hasContainer = true;
         cursor += 1;
         if (value[cursor] === ' ') cursor += 1;
@@ -56,15 +69,16 @@ export function makeScanMetadata(value: string): ScanMetadata {
       }
     }
     containerStarts.set(start, cursor);
-    const lineEnd = value.indexOf('\n', start);
-    if (lineEnd === -1) break;
-    start = lineEnd + 1;
+    const lineEnd = getLineEnd(value, start);
+    if (lineEnd === value.length) break;
+    start = lineEnd + getLineEndingLength(value, lineEnd);
   }
 
   const nextCodeRun = new Map<number, number>();
   const nextMathClose = new Map<number, number>();
   for (let index = value.length - 1; index >= 0; ) {
     const character = value[index];
+    if (paragraphBreaks.has(index)) nextCodeRun.clear();
     if (character !== '`' && character !== '$') {
       index -= 1;
       continue;

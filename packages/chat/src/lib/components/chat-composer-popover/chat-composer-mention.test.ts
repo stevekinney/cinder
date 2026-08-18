@@ -15,6 +15,9 @@ describe('chat composer mentions', () => {
     expect(serializeChatComposerMention({ label: 'A[da]', uri: 'person:ada (eng)' })).toBe(
       '[A\\[da\\]](person:ada\\ \\(eng\\))',
     );
+    expect(serializeChatComposerMention({ label: 'Ada', uri: 'person:<ada>' })).toBe(
+      '[Ada](person:\\<ada\\>)',
+    );
     expect(() =>
       serializeChatComposerMention({ label: 'Docs', uri: 'https://example.com' }),
     ).toThrow('requires an absolute non-web entity URI');
@@ -124,6 +127,10 @@ describe('chat composer mentions', () => {
       text: mismatchedDelimiter,
       mentions: [],
     });
+    expect(parseChatComposerMentions('`[Ada](person:ada)\n\n`')).toEqual({
+      text: '`Ada\n\n`',
+      mentions: [{ label: 'Ada', uri: 'person:ada', start: 1, end: 4 }],
+    });
 
     expect(parseChatComposerMentions('```\ncode\n```\n[Ada](person:ada)')).toEqual({
       text: '```\ncode\n```\nAda',
@@ -182,6 +189,10 @@ describe('chat composer mentions', () => {
     expect(parseChatComposerMentions('[note]: this is [Ada](person:ada)')).toEqual({
       text: '[note]: this is Ada',
       mentions: [{ label: 'Ada', uri: 'person:ada', start: 16, end: 19 }],
+    });
+    expect(parseChatComposerMentions('[^note]: [Ada](person:ada)')).toEqual({
+      text: '[^note]: Ada',
+      mentions: [{ label: 'Ada', uri: 'person:ada', start: 9, end: 12 }],
     });
     const angleDestination = '[ref]: <person:a\\>da> "[Ada](person:ada)"';
     expect(parseChatComposerMentions(angleDestination)).toEqual({
@@ -293,6 +304,14 @@ describe('chat composer mentions', () => {
     expect(parseChatComposerMentions('text ``` [Ada](person:ada)').mentions).toEqual([
       { label: 'Ada', uri: 'person:ada', start: 9, end: 12 },
     ]);
+    expect(parseChatComposerMentions('-~~~\n\n[Ada](person:ada)')).toEqual({
+      text: '-~~~\n\nAda',
+      mentions: [{ label: 'Ada', uri: 'person:ada', start: 6, end: 9 }],
+    });
+    expect(parseChatComposerMentions('    code\r\r[Ada](person:ada)')).toEqual({
+      text: '    code\r\rAda',
+      mentions: [{ label: 'Ada', uri: 'person:ada', start: 10, end: 13 }],
+    });
   });
 
   test('distinguishes currency, math, references, and raw HTML', () => {
@@ -316,6 +335,10 @@ describe('chat composer mentions', () => {
     });
     expect(parseChatComposerMentions('<div>\n[Ada](person:block)')).toEqual({
       text: '<div>\n[Ada](person:block)',
+      mentions: [],
+    });
+    expect(parseChatComposerMentions('> <div>\n> [Ada](person:block)\n>')).toEqual({
+      text: '> <div>\n> [Ada](person:block)\n>',
       mentions: [],
     });
     expect(parseChatComposerMentions('<!-- [Ada](person:comment)')).toEqual({

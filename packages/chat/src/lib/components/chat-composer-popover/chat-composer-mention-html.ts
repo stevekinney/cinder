@@ -1,3 +1,4 @@
+import { getLineEnd, getLineEndingLength } from './chat-composer-mention-lines.ts';
 import type { ScanMetadata } from './chat-composer-mention-scan.ts';
 
 const VOID_HTML_TAGS = new Set(
@@ -75,12 +76,14 @@ export function getAutolinkEnd(value: string, start: number): number | null {
 }
 
 export function getHtmlBlockBlankLineEnd(value: string, start: number): number | null {
-  let lineEnd = value.indexOf('\n', start);
-  while (lineEnd !== -1) {
-    let cursor = lineEnd + 1;
-    while (value[cursor] === ' ' || value[cursor] === '\t' || value[cursor] === '\r') cursor += 1;
-    if (value[cursor] === '\n') return cursor + 1;
-    lineEnd = value.indexOf('\n', cursor);
+  let lineEnd = getLineEnd(value, start);
+  let lineStart = lineEnd + getLineEndingLength(value, lineEnd);
+  while (lineStart < value.length) {
+    lineEnd = getLineEnd(value, lineStart);
+    if (/^[ \t]*$/u.test(value.slice(lineStart, lineEnd))) {
+      return lineEnd + getLineEndingLength(value, lineEnd);
+    }
+    lineStart = lineEnd + getLineEndingLength(value, lineEnd);
   }
   return null;
 }

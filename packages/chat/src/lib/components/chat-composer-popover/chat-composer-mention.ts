@@ -8,6 +8,7 @@ import {
   isInterruptingHtmlBlockTag,
   isVoidHtmlTag,
 } from './chat-composer-mention-html.ts';
+import { getLineEnd, getLineEndingLength, isLineEnding } from './chat-composer-mention-lines.ts';
 import {
   escapeMentionLabel,
   escapeMentionUri,
@@ -109,8 +110,8 @@ function getOpeningCodeFence(
   }
 
   const minimumLength = countRun(value, start, delimiter);
-  const lineEnd = value.indexOf('\n', start + minimumLength);
-  const info = value.slice(start + minimumLength, lineEnd === -1 ? value.length : lineEnd);
+  const lineEnd = getLineEnd(value, start + minimumLength);
+  const info = value.slice(start + minimumLength, lineEnd);
   if (delimiter === '`' && info.includes('`')) return null;
 
   return minimumLength >= 3 ? { delimiter, minimumLength, prefix } : null;
@@ -132,8 +133,8 @@ function isClosingCodeFence(
   const length = countRun(value, start, fence.delimiter);
   if (length < fence.minimumLength) return false;
 
-  const lineEnd = value.indexOf('\n', start + length);
-  return /^ *\r?$/u.test(value.slice(start + length, lineEnd === -1 ? value.length : lineEnd));
+  const lineEnd = getLineEnd(value, start + length);
+  return /^ *$/u.test(value.slice(start + length, lineEnd));
 }
 
 function getOrdinaryLinkEnd(value: string, start: number): number | null {
@@ -151,7 +152,7 @@ function getOrdinaryLinkEnd(value: string, start: number): number | null {
     cursor += 1;
     while (cursor < value.length && value[cursor] !== '>') {
       if (value[cursor] === '\\') cursor += 1;
-      if (value[cursor] === '\n' || value[cursor] === '<') return null;
+      if (isLineEnding(value[cursor]) || value[cursor] === '<') return null;
       cursor += 1;
     }
     if (value[cursor] !== '>') return null;
@@ -186,7 +187,7 @@ function getOrdinaryLinkEnd(value: string, start: number): number | null {
     const character = value[cursor];
     if (character === '\\') {
       cursor += 1;
-    } else if (character === '\n' && opener === '(') {
+    } else if (isLineEnding(character) && opener === '(') {
       return null;
     }
     cursor += 1;
@@ -324,7 +325,7 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
     if (codeFence !== null) {
       if (
         value[sourceIndex] === codeFence.delimiter &&
-        (sourceIndex === 0 || /[\n >*+\-.]/u.test(value[sourceIndex - 1]!)) &&
+        (sourceIndex === 0 || /[\r\n >*+\-.]/u.test(value[sourceIndex - 1]!)) &&
         isClosingCodeFence(value, sourceIndex, codeFence, metadata)
       ) {
         const closingLength = countRun(value, sourceIndex, codeFence.delimiter);
@@ -342,10 +343,10 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
     if (metadata.escaped[sourceIndex] === 0 && isIndentedCodeStart(value, sourceIndex, metadata)) {
       indentedCode = true;
     }
-    if (indentedCode && (sourceIndex === 0 || value[sourceIndex - 1] === '\n')) {
-      const lineEnd = value.indexOf('\n', sourceIndex);
-      const end = lineEnd === -1 ? value.length : lineEnd + 1;
-      const line = value.slice(sourceIndex, lineEnd === -1 ? value.length : lineEnd);
+    if (indentedCode && (sourceIndex === 0 || isLineEnding(value[sourceIndex - 1]))) {
+      const lineEnd = getLineEnd(value, sourceIndex);
+      const end = lineEnd + getLineEndingLength(value, lineEnd);
+      const line = value.slice(sourceIndex, lineEnd);
       if (line.trim().length === 0 || !isIndentedCodeLine(value, sourceIndex)) {
         indentedCode = false;
       } else {
@@ -390,10 +391,11 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
         ) {
           const lineStart = metadata.lineStarts[sourceIndex - 1] ?? 0;
           const normalizedTag = tag[1]!.toLowerCase();
-          const startsAtBlockColumn = /^ {0,3}$/u.test(value.slice(lineStart, tagStart));
+          const containerStart = metadata.containerStarts.get(lineStart) ?? lineStart;
+          const startsAtBlockColumn = /^ {0,3}$/u.test(value.slice(containerStart, tagStart));
           const isStandaloneTag =
             /^\s*<[A-Za-z][A-Za-z0-9-]*(?:\s[^>]*)?>$/u.test(value.slice(lineStart, sourceIndex)) &&
-            value[sourceIndex] === '\n';
+            isLineEnding(value[sourceIndex]);
           if (
             startsAtBlockColumn &&
             (isInterruptingHtmlBlockTag(normalizedTag) ||
@@ -411,7 +413,7 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
 
     const openingCodeFence =
       (value[sourceIndex] === '`' || value[sourceIndex] === '~') &&
-      (sourceIndex === 0 || /[\n >*+\-.]/u.test(value[sourceIndex - 1]!))
+      (sourceIndex === 0 || /[\r\n >*+\-.]/u.test(value[sourceIndex - 1]!))
         ? getOpeningCodeFence(value, sourceIndex, metadata)
         : null;
     if (openingCodeFence !== null) {

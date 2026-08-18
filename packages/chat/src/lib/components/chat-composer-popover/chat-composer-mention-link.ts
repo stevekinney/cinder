@@ -21,7 +21,7 @@ export function escapeMentionLabel(value: string): string {
 }
 
 export function escapeMentionUri(value: string): string {
-  return value.replaceAll('\\', '\\\\').replace(/([()[\]\s])/gu, '\\$1');
+  return value.replaceAll('\\', '\\\\').replace(/([()[\]<>\s])/gu, '\\$1');
 }
 
 export function unescapeMarkdown(value: string, escapeWhitespace = false): string | null {

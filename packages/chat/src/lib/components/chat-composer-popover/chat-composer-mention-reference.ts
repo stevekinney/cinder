@@ -1,3 +1,4 @@
+import { getLineEnd, getLineEndingLength } from './chat-composer-mention-lines.ts';
 import type { ScanMetadata } from './chat-composer-mention-scan.ts';
 
 export function getReferenceDefinitionEnd(
@@ -9,14 +10,15 @@ export function getReferenceDefinitionEnd(
   if (!/^ {0,3}$/u.test(value.slice(lineStart, start))) return null;
 
   let labelEnd = start + 1;
+  if (value[labelEnd] === '^') return null;
   while (labelEnd < value.length && value[labelEnd] !== ']') {
     if (value[labelEnd] === '\\') labelEnd += 2;
     else labelEnd += 1;
   }
   if (value[labelEnd] !== ']' || value[labelEnd + 1] !== ':') return null;
 
-  const lineEnd = value.indexOf('\n', labelEnd + 2);
-  const end = lineEnd === -1 ? value.length : lineEnd;
+  const lineEnd = getLineEnd(value, labelEnd + 2);
+  const end = lineEnd;
   let cursor = labelEnd + 2;
   while (value[cursor] === ' ' || value[cursor] === '\t') cursor += 1;
   if (cursor >= end) return null;
@@ -59,11 +61,10 @@ export function getReferenceDefinitionEnd(
   }
 
   if (cursor !== end && !(value[cursor] === '\r' && cursor + 1 === end)) return null;
-  if (lineEnd === -1) return end;
+  if (lineEnd === value.length) return end;
 
-  const titleLineStart = lineEnd + 1;
-  const titleLineEnd = value.indexOf('\n', titleLineStart);
-  const titleEnd = titleLineEnd === -1 ? value.length : titleLineEnd;
+  const titleLineStart = lineEnd + getLineEndingLength(value, lineEnd);
+  const titleEnd = getLineEnd(value, titleLineStart);
   let titleCursor = titleLineStart;
   let indentation = 0;
   while (indentation < 4 && value[titleCursor] === ' ') {
