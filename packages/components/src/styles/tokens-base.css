@@ -486,6 +486,7 @@
      solid status color toward the current surface; `subtle` moves it toward
      current text. Relative color re-emits components so consumers can still
      apply alpha without freezing a light or dark result. */
+  /* stylelint-disable declaration-property-value-disallowed-list -- these eight canonical token formulas are the intentional, shared status-mixing contract; component CSS must still use the named tiers instead of recreating them. */
   --cinder-color-info-muted: oklch(
     from color-mix(in oklch, var(--cinder-info), var(--cinder-surface) 36%) l c h
   );
@@ -510,6 +511,7 @@
   --cinder-color-danger-subtle: oklch(
     from color-mix(in oklch, var(--cinder-danger), var(--cinder-text) 36%) l c h
   );
+  /* stylelint-enable declaration-property-value-disallowed-list */
 
   /* Transparency checkerboard tokens shared by color-domain components. Light
      mode preserves the historical white/gray grid; dark mode keeps the pattern
