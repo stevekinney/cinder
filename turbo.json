@@ -91,24 +91,45 @@
     "@lostgradient/cinder#test": {
       "dependsOn": ["^build"],
       "outputs": [],
-      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/.github/workflows/**", "$TURBO_ROOT$/docs/**"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/.github/workflows/**",
+        "$TURBO_ROOT$/docs/**",
+        "$TURBO_ROOT$/packages/*/package.json"
+      ],
       "env": ["TURBO_PLATFORM", "RUNNER_OS", "NODE_ENV"]
     },
     "@lostgradient/cinder#test:coverage": {
       "dependsOn": ["^build"],
       "outputs": ["coverage/**"],
-      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/.github/workflows/**", "$TURBO_ROOT$/docs/**"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/.github/workflows/**",
+        "$TURBO_ROOT$/docs/**",
+        "$TURBO_ROOT$/packages/*/package.json"
+      ],
       "env": ["TURBO_PLATFORM", "RUNNER_OS", "NODE_ENV"]
     },
     "@cinder/playground#test": {
       "dependsOn": ["^build"],
       "outputs": [],
-      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/testing/scripts/source-fingerprint.ts"]
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/packages/testing/scripts/source-fingerprint.ts",
+        "$TURBO_ROOT$/README.md"
+      ],
+      "env": ["TURBO_PLATFORM", "RUNNER_OS", "NODE_ENV"]
     },
     "@cinder/playground#typecheck": {
       "dependsOn": ["^build"],
       "outputs": [],
       "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/testing/scripts/source-fingerprint.ts"]
+    },
+    "@lostgradient/markdown#test": {
+      "dependsOn": ["^build"],
+      "outputs": [],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/components/package.json"],
+      "env": ["TURBO_PLATFORM", "RUNNER_OS", "NODE_ENV"]
     },
     "typecheck": {
       "dependsOn": ["^build"],

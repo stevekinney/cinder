@@ -164,7 +164,7 @@ jobs:
       - env:
           CINDER_TEST_MODE: ${{ needs.scope.result == 'success' && needs.scope.outputs.mode || 'full' }}
           CINDER_TEST_COMPONENTS: ${{ needs.scope.outputs.cinder_components }}
-          CINDER_TEST_FULL_SUITE_CHUNK: ${{ needs.scope.outputs.mode == 'full' && matrix.chunk || '' }}
+          CINDER_TEST_FULL_SUITE_CHUNK: ${{ (needs.scope.result != 'success' || needs.scope.outputs.mode == 'full') && matrix.chunk || '' }}
         run: |
           if [ "$CINDER_TEST_MODE" = filtered ] && [ -z "$CINDER_TEST_COMPONENTS" ]; then exit 0; fi
           bun run --filter=@lostgradient/cinder test:changed

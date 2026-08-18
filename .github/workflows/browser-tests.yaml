@@ -413,19 +413,20 @@ jobs:
         # changes are always swept.
         env:
           CI: 'true'
+          CINDER_TEST_SCOPE_MODE: ${{ needs.scope.result == 'success' && needs.scope.outputs.component_scope_mode || 'full' }}
           # Empty when component_scope_mode=full; comma-separated slug list when filtered.
           CINDER_TEST_COMPONENTS: ${{ needs.scope.outputs.component_scope_mode == 'filtered' && needs.scope.outputs.components || '' }}
           # Trace recording is kept only for the full main-branch run.
-          PLAYWRIGHT_TRACE: ${{ needs.scope.outputs.component_scope_mode == 'full' && 'retain-on-failure' || 'off' }}
+          PLAYWRIGHT_TRACE: ${{ (needs.scope.result != 'success' || needs.scope.outputs.component_scope_mode == 'full') && 'retain-on-failure' || 'off' }}
           CINDER_VISUAL_DIFF: 'off'
           PLAYGROUND_DEPENDENCIES_PREBUILT: '1'
         run: |
-          echo "Scope: ${{ needs.scope.outputs.component_scope_mode }}"
+          echo "Scope: $CINDER_TEST_SCOPE_MODE"
           echo "Visual-diff mode: $CINDER_VISUAL_DIFF"
           if [ -n "${CINDER_TEST_COMPONENTS:-}" ]; then
             echo "Components: $CINDER_TEST_COMPONENTS"
           fi
-          if [ "${{ needs.scope.outputs.component_scope_mode }}" = full ]; then
+          if [ "$CINDER_TEST_SCOPE_MODE" = full ]; then
             bun run test:browser -- --shard=${{ matrix.shard }}/4 --reporter=blob
           else
             bun run test:browser
@@ -441,7 +442,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload Playwright blob report
-        if: always() && needs.scope.outputs.component_scope_mode == 'full'
+        if: "always() && (needs.scope.result != 'success' || needs.scope.outputs.component_scope_mode == 'full')"
         uses: actions/upload-artifact@v7
         with:
           name: playwright-blob-${{ matrix.shard }}
@@ -574,6 +575,17 @@ jobs:
           path: packages/testing/test-results/visual-report.json
           retention-days: 14
           if-no-files-found: ignore
+      - name: Upload visual failure diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-visual-diagnostics
+          path: |
+            packages/testing/playwright-report
+            packages/testing/test-results
+            packages/testing/screenshots
+          retention-days: 14
+          if-no-files-found: warn
 
   playwright:
     name: playwright
@@ -616,6 +628,7 @@ jobs:
           set -euo pipefail
           echo "scope=$SCOPE relevant=$RELEVANT playwright-lane=$LANES playwright-visual=$VISUAL mode=$VISUAL_MODE" | tee -a "$GITHUB_STEP_SUMMARY"
           if [ "$EVENT_NAME" = workflow_dispatch ] && [ "$VISUAL_MODE" != off ]; then
+            [ "$SCOPE" = success ]
             [ "$VISUAL" = success ]
             exit 0
           fi

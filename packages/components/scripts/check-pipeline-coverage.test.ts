@@ -40,7 +40,7 @@ describe('Turbo input topology', () => {
     const mainWorkflow = readFileSync(resolve(root, '.github/workflows/main-green.yaml'), 'utf8');
     const turboConfiguration = Bun.JSONC.parse(
       readFileSync(resolve(root, 'turbo.json'), 'utf8'),
-    ) as { tasks: Record<string, { inputs?: string[] }> };
+    ) as { tasks: Record<string, { inputs?: string[]; env?: string[] }> };
     const componentsManifest = JSON.parse(
       readFileSync(resolve(root, 'packages/components/package.json'), 'utf8'),
     ) as { devDependencies: Record<string, string> };
@@ -76,8 +76,22 @@ describe('Turbo input topology', () => {
     expect(turboConfiguration.tasks['@lostgradient/cinder#test']?.inputs).toContain(
       '$TURBO_ROOT$/.github/workflows/**',
     );
+    expect(turboConfiguration.tasks['@lostgradient/cinder#test']?.inputs).toContain(
+      '$TURBO_ROOT$/packages/*/package.json',
+    );
     expect(turboConfiguration.tasks['@cinder/playground#typecheck']?.inputs).toContain(
       '$TURBO_ROOT$/packages/testing/scripts/source-fingerprint.ts',
+    );
+    expect(turboConfiguration.tasks['@cinder/playground#test']?.inputs).toContain(
+      '$TURBO_ROOT$/README.md',
+    );
+    expect(turboConfiguration.tasks['@cinder/playground#test']?.env).toEqual([
+      'TURBO_PLATFORM',
+      'RUNNER_OS',
+      'NODE_ENV',
+    ]);
+    expect(turboConfiguration.tasks['@lostgradient/markdown#test']?.inputs).toContain(
+      '$TURBO_ROOT$/packages/components/package.json',
     );
   });
 });
