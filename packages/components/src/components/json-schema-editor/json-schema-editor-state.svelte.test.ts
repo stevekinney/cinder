@@ -246,6 +246,13 @@ describe('createEditorState — diff and copy values', () => {
     expect(state.hasDiffChanges).toBe(true);
   });
 
+  test('hasDiffChanges is false for an unchanged malformed initial schema', () => {
+    const state = createEditorState({ schema: '{not-valid' });
+
+    expect(state.hasChanges).toBe(false);
+    expect(state.hasDiffChanges).toBe(false);
+  });
+
   test('separate `original` overrides the diff baseline', () => {
     const state = createEditorState({
       schema: { type: 'number' },

@@ -17,9 +17,9 @@
   import ChevronDown from 'lucide-svelte/icons/chevron-down';
   import { onDestroy } from 'svelte';
   import Alert from '../alert/alert.svelte';
-  import Badge from '../badge/badge.svelte';
   import Button from '../button/button.svelte';
   import Chip from '../chip/chip.svelte';
+  import Badge from '@lostgradient/cinder/badge';
   import Collapsible from '@lostgradient/cinder/collapsible';
   import Input from '../input/input.svelte';
   import PropertyEditor from './property-editor.svelte';
@@ -235,7 +235,7 @@
         <button
           type="button"
           class="cinder-jse-property-row__trigger"
-          aria-label={`${isOpen ? 'Collapse' : 'Expand'} ${key} property`}
+          aria-label={`${isOpen ? 'Collapse' : 'Expand'} ${key} property${childValidationErrorCount > 0 ? `, ${childValidationErrorCount} validation ${childValidationErrorCount === 1 ? 'error' : 'errors'}` : ''}`}
           aria-expanded={isOpen}
           aria-controls={panelId}
           onclick={() => toggleExpanded(key, isOpen)}
@@ -253,7 +253,7 @@
               variant="danger"
               aria-label={`${childValidationErrorCount} validation ${childValidationErrorCount === 1 ? 'error' : 'errors'} in ${key}`}
             >
-              {childValidationErrorCount}
+              {childValidationErrorCount}{' '}
               {childValidationErrorCount === 1 ? 'error' : 'errors'}
             </Badge>
           {/if}

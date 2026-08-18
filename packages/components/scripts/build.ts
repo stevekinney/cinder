@@ -191,6 +191,8 @@ const runtimeDependencyExternals = [
   'shiki/*',
   'ajv',
   'ajv/*',
+  'ajv-formats',
+  'ajv-formats/*',
   'shiki',
 ];
 

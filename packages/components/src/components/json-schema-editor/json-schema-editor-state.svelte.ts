@@ -376,9 +376,10 @@ export function createEditorState(options: CreateEditorStateOptions) {
   // `hasChanges` intentionally treats object-key order as semantically equal.
   // The Diff view, however, presents the emitted JSON text, where property
   // order is observable (for example in generated forms and documentation).
-  const hasDiffChanges = $derived(
-    (originalCanonicalText || originalRawText) !== committedCanonicalText,
-  );
+  const hasDiffChanges = $derived.by(() => {
+    if (originalSchema === null && committedSchema === null) return false;
+    return (originalCanonicalText || originalRawText) !== committedCanonicalText;
+  });
   const isFormEditable = $derived(committedSchema !== null && !readonly && !jsonDraftIsDirty);
 
   // ===== Public API =====

@@ -19,7 +19,7 @@
  */
 
 import type Ajv from 'ajv';
-import type addFormats from 'ajv-formats';
+import type { FormatsPlugin } from 'ajv-formats';
 import type Ajv2019 from 'ajv/dist/2019.js';
 import type Ajv2020 from 'ajv/dist/2020.js';
 
@@ -89,7 +89,7 @@ const loadAjvFormats = createRetryingLoaderCache(() =>
 );
 
 async function registerStandardFormats(ajv: Ajv | Ajv2019 | Ajv2020) {
-  const formats: typeof addFormats = await loadAjvFormats();
+  const formats: FormatsPlugin = await loadAjvFormats();
   formats(ajv);
   return ajv;
 }
