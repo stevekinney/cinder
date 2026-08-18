@@ -79,7 +79,7 @@
     const newPrefix = `${path}/${pointerSegment(newKey)}`;
     const next = Object.fromEntries(
       Object.entries(enumDrafts).map(([draftPath, draft]) => [
-        draftPath.startsWith(oldPrefix)
+        draftPath === oldPrefix || draftPath.startsWith(`${oldPrefix}/`)
           ? `${newPrefix}${draftPath.slice(oldPrefix.length)}`
           : draftPath,
         draft,
@@ -168,6 +168,15 @@
     const nextRequired = required.filter((name) => name !== key);
     delete draftNames[key];
     delete expanded[key];
+    const propertyPrefix = `${path}/${pointerSegment(key)}`;
+    onEnumDraftsChange?.(
+      Object.fromEntries(
+        Object.entries(enumDrafts).filter(
+          ([draftPath]) =>
+            draftPath !== propertyPrefix && !draftPath.startsWith(`${propertyPrefix}/`),
+        ),
+      ),
+    );
     const { [key]: _removedChildCount, ...remainingChildCounts } = childValidationCounts;
     childValidationCounts = remainingChildCounts;
     onValueChange(next, nextRequired);

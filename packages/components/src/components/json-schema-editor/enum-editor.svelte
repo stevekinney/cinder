@@ -62,8 +62,12 @@
       })
       .map(([index]) => Number(index));
     if (resolvedDuplicateIndexes.length === 0) return;
+    const nextValues = [...values];
     const nextDrafts = { ...activeDrafts };
-    for (const index of resolvedDuplicateIndexes) delete nextDrafts[index];
+    for (const index of resolvedDuplicateIndexes) {
+      nextValues[index] = JSON.parse(activeDrafts[index]!.text) as unknown;
+      delete nextDrafts[index];
+    }
     localDrafts = Object.fromEntries(
       Object.entries(localDrafts).filter(
         ([index]) => !resolvedDuplicateIndexes.includes(Number(index)),
@@ -71,6 +75,7 @@
     );
     emittedDrafts = nextDrafts;
     onDraftsChange?.(nextDrafts);
+    onValuesChange(nextValues, { label: 'resolve duplicate enum value' });
   });
 
   function jsonText(value: unknown): string {

@@ -288,6 +288,21 @@
     const nextBranchKeys = [...compositionBranchKeys[keyword]];
     list.splice(branchIndex, 1);
     nextBranchKeys.splice(branchIndex, 1);
+    const branchPrefix = `${path}/${keyword}/`;
+    onEnumDraftsChange?.(
+      Object.fromEntries(
+        Object.entries(enumDrafts).flatMap(([draftPath, draft]) => {
+          if (!draftPath.startsWith(branchPrefix)) return [[draftPath, draft]];
+          const remainder = draftPath.slice(branchPrefix.length);
+          const match = /^(\d+)(\/.*)?$/.exec(remainder);
+          if (!match) return [[draftPath, draft]];
+          const index = Number(match[1]);
+          if (index === branchIndex) return [];
+          const nextIndex = index > branchIndex ? index - 1 : index;
+          return [[`${branchPrefix}${nextIndex}${match[2] ?? ''}`, draft]];
+        }),
+      ),
+    );
     setKeywordKeys(keyword, nextBranchKeys);
     if (removedBranchKey) setChildValidationErrorCount(`${keyword}:${removedBranchKey}`, 0);
     patchComposition(keyword, list.length > 0 ? list : undefined);
