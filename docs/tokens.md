@@ -275,7 +275,7 @@ Shared checkerboard colors for color-domain components that need to show alpha o
 
 Categorical chart colors for LineChart, BarChart, AreaChart, and consumers that need to keep custom chart marks aligned with cinder's default series palette.
 
-Each `--cinder-chart-series-*` is a theme-aware design token: it wraps a distinct per-theme OKLCH value in `light-dark()`, darker and higher-chroma in light mode so the mark reads against pale light surfaces, lighter in dark mode so it reads against dark surfaces. Both color values and hues may change between theme arms: the index keeps its position in the series sequence, while the palette remaps it for contrast and visual separation in the active theme. This mirrors the Shadow-section rationale: the per-theme arms preserve perceived contrast and hierarchy.
+Each `--cinder-chart-series-*` is a theme-aware design token: it wraps independently selected per-theme OKLCH values in `light-dark()`. Light-mode marks are generally darker for pale surfaces, while dark-mode marks are lighter for dark surfaces; hue and chroma both vary as needed for contrast and separation. The index keeps its position in the series sequence while the palette remaps it for the active theme.
 
 | Token                     | Default                                                 |
 | ------------------------- | ------------------------------------------------------- |
@@ -298,9 +298,9 @@ The ring tokens drive the focus-visible outline used across interactive primitiv
 | `--cinder-ring-offset`       | `2px`                                                                                                |
 | `--cinder-ring-offset-color` | `var(--cinder-surface-raised)`                                                                       |
 | `--cinder-ring-color`        | `light-dark(oklch(from var(--cinder-accent)0.55 0.16 h),oklch(from var(--cinder-accent)0.7 0.14 h))` |
-| `--cinder-ring-on-accent`    | `light-dark(oklch(20% 0.02 245), oklch(95% 0.01 245))`                                               |
+| `--cinder-ring-on-accent`    | `light-dark(oklch(100% 0 0), oklch(15% 0.035 245))`                                                  |
 
-`--cinder-ring-on-accent` is a high-contrast focus ring for use on solid accent-fill surfaces (e.g. the primary `FloatingAction`). The light arm is a near-black that contrasts both the accent fill (≥11:1) and the page background (≥19:1). The dark arm is a near-white that contrasts the bright dark-mode accent (≥5:1) and the dark page background (≥18:1). Regular interactive elements on neutral surfaces use `--cinder-ring-color` instead.
+`--cinder-ring-on-accent` is a high-contrast focus ring for solid accent-fill surfaces (e.g. the primary `FloatingAction`). It uses the same white light-mode and dark-ink dark-mode foregrounds as `--cinder-accent-contrast`, each clearing 3:1 against its accent fill. Regular interactive elements on neutral surfaces use `--cinder-ring-color` instead.
 
 ## Z-index layers
 
