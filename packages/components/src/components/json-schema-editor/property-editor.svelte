@@ -42,7 +42,6 @@
     PRIMITIVE_TYPES,
   } from './property-editor.constants.ts';
   import type { JsonSchemaObject } from './json-schema-editor-types.ts';
-  import type { EnumDraft } from './enum-editor.svelte';
   import PropertyEditor from './property-editor.svelte';
   import PropertyEditorConstraints from './property-editor-constraints.svelte';
   import EnumEditor from './enum-editor.svelte';

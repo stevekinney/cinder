@@ -25,7 +25,6 @@
   import Badge from '@lostgradient/cinder/badge';
   import Collapsible from '@lostgradient/cinder/collapsible';
   import Input from '../input/input.svelte';
-  import type { EnumDraft } from './enum-editor.svelte';
   import PropertyEditor from './property-editor.svelte';
   import { calculatePropertyValidationErrorCount } from './property-list-validation.ts';
 
