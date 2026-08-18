@@ -102,6 +102,12 @@ describe('PropertyList', () => {
     expect(preservedKeys).toEqual(['enum']);
   });
 
+  test('renders preserved keywords visibly beside a $ref editor', async () => {
+    const source = await Bun.file(new URL('./property-editor.svelte', import.meta.url)).text();
+
+    expect(source).toContain("Preserved keywords: {preservedKeys.join(', ')}");
+  });
+
   test('aggregates local and nested validation error counts', async () => {
     expect(
       calculatePropertyValidationErrorCount(
