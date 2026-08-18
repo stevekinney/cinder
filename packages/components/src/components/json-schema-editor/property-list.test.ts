@@ -206,11 +206,11 @@ describe('PropertyList', () => {
     );
   });
 
-  test('keeps enum in the preserved-keywords count when a schema is loaded', () => {
+  test('treats enum as editable rather than a preserved keyword', () => {
     const loadedSchema = { type: 'string', enum: ['draft', 'published'] };
     const preservedKeys = Object.keys(loadedSchema).filter((key) => !EDITABLE_KEYWORDS.has(key));
 
-    expect(preservedKeys).toEqual(['enum']);
+    expect(preservedKeys).toEqual([]);
   });
 
   test('renders preserved keywords visibly beside a $ref editor', async () => {

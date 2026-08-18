@@ -41,6 +41,7 @@
   import type { JsonSchemaObject } from './json-schema-editor-types.ts';
   import PropertyEditor from './property-editor.svelte';
   import PropertyEditorConstraints from './property-editor-constraints.svelte';
+  import EnumEditor from './enum-editor.svelte';
   import PropertyList from './property-list.svelte';
 
   let {
@@ -79,6 +80,7 @@
   });
 
   const isAnyType = $derived(selectedTypes.length === 0);
+  const hasEnum = $derived(Array.isArray(objectValue.enum));
 
   const preservedKeys = $derived.by(() => {
     return Object.keys(objectValue).filter((key) => !EDITABLE_KEYWORDS.has(key));
@@ -198,6 +200,14 @@
 
   function setItems(items: JsonSchemaValue) {
     patch({ items }, { label: 'edit items' });
+  }
+
+  function setEnum(enabled: boolean) {
+    patch({ enum: enabled ? (objectValue.enum ?? ['']) : undefined }, { label: 'edit enum' });
+  }
+
+  function setEnumValues(values: unknown[]) {
+    patch({ enum: values }, { label: 'edit enum values' });
   }
 
   // ===== Composition =====
@@ -346,6 +356,24 @@
           />
         {/each}
       </div>
+    </div>
+
+    <div class="cinder-jse-section">
+      <Checkbox
+        id={`${idPrefix}-enum`}
+        checked={hasEnum}
+        label="Enum values"
+        disabled={readonly}
+        onchange={(event: Event) => setEnum((event.target as HTMLInputElement).checked)}
+      />
+      {#if hasEnum}
+        <EnumEditor
+          idPrefix={`${idPrefix}-enum`}
+          values={objectValue.enum ?? []}
+          {readonly}
+          onValuesChange={setEnumValues}
+        />
+      {/if}
     </div>
 
     <!-- Object constraints (properties + required) — comes early because it's the heaviest. -->

@@ -17,6 +17,7 @@ export const EDITABLE_KEYWORDS = new Set([
   'description',
   'default',
   'examples',
+  'enum',
   'const',
   'minLength',
   'maxLength',
