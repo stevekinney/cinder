@@ -84,6 +84,26 @@ function clampRgb([r, g, b]: Rgb): Rgb {
   return [clamp(r), clamp(g), clamp(b)];
 }
 
+function mixOklch(base: OklchColor, target: OklchColor, targetPercent: number): OklchColor {
+  const weight = targetPercent / 100;
+  const baseHue = base.c === 0 ? target.h : base.h;
+  const targetHue = target.c === 0 ? base.h : target.h;
+  let hueDelta = targetHue - baseHue;
+  if (hueDelta > 180) hueDelta -= 360;
+  if (hueDelta < -180) hueDelta += 360;
+  return {
+    l: base.l + (target.l - base.l) * weight,
+    c: base.c + (target.c - base.c) * weight,
+    h: baseHue + hueDelta * weight,
+  };
+}
+
+function compositeOver(foreground: Rgb, background: Rgb, opacity: number): Rgb {
+  return foreground.map(
+    (channel, index) => channel * opacity + background[index]! * (1 - opacity),
+  ) as Rgb;
+}
+
 /** WCAG relative luminance of an OKLCH color (computed on its clamped sRGB output). */
 function wcagLuminance(color: OklchColor): number {
   const [r, g, b] = clampRgb(oklchToLinearSrgb(color.l, color.c, color.h));
@@ -470,6 +490,36 @@ describe('status color contrast', () => {
           `${name} border ${arm}`,
         ).toBeGreaterThanOrEqual(DECORATIVE_BORDER);
       }
+    }
+  });
+
+  it('accent status triple clears its foreground and border floors in both theme arms', () => {
+    expect(readTokenValue(css, '--cinder-color-accent-bg')).toBe(
+      'color-mix(in oklch, var(--cinder-accent), var(--cinder-surface) 88%)',
+    );
+    expect(readTokenValue(css, '--cinder-color-accent-fg')).toBe('var(--cinder-accent-text)');
+    expect(readTokenValue(css, '--cinder-color-accent-border')).toBe(
+      'color-mix(in oklch, var(--cinder-accent), transparent 60%)',
+    );
+    for (const arm of ['light', 'dark'] as const) {
+      const background = mixOklch(accent[arm], surface[arm], 88);
+      const backgroundRgb = oklchToLinearSrgb(background.l, background.c, background.h);
+      const borderRgb = compositeOver(
+        oklchToLinearSrgb(accent[arm].l, accent[arm].c, accent[arm].h),
+        backgroundRgb,
+        0.4,
+      );
+      expect(
+        contrastRatio(wcagLuminance(accentText[arm]), wcagLuminance(background)),
+        `accent foreground ${arm}`,
+      ).toBeGreaterThanOrEqual(AA_TEXT);
+      expect(
+        contrastRatio(
+          0.2126 * borderRgb[0] + 0.7152 * borderRgb[1] + 0.0722 * borderRgb[2],
+          0.2126 * backgroundRgb[0] + 0.7152 * backgroundRgb[1] + 0.0722 * backgroundRgb[2],
+        ),
+        `accent border ${arm}`,
+      ).toBeGreaterThanOrEqual(DECORATIVE_BORDER);
     }
   });
 
