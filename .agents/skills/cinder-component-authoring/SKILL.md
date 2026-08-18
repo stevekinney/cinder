@@ -18,6 +18,9 @@ links generated READMEs back to the live package guidance.
 - [ ] Apply the `cinder-_floating-surface` class to floating panels (defined in `_floating-surface.css`), and compose form controls from `Input` and `FormField`. (#921, #923)
 - [ ] Use a rotating chevron for disclosure controls that render an indicator; use direction-aware lateral chevrons for nested submenus, keep intentionally text-only disclosures icon-free, and use icons from the lucide-svelte set. (#957)
 - [ ] Add tests for resulting state and resting appearance, not only transitions. (#931)
+- [ ] For every leaf, add a substantive test, README skeleton, stylesheet registration in src/styles/components.css, generated exports, and the sidebar count-gate update. (#310)
+- [ ] For every new token, add check-token-contrast.test.ts coverage and its docs/tokens.md entry; tokens-doc-drift.test.ts must stay green. (#310)
+- [ ] Register every new guard script in check-pipeline-coverage.ts in the same change. (#310)
 - [ ] Get a design review for every new component; record its nearest neighbours, why it exists, and the review outcome in `*.a11y.md`. (#968)
 - [ ] For a novel interaction model, get an accessibility review covering focus management, the keyboard matrix, and assistive-technology announcements; record the outcome in `*.a11y.md`. (#968)
 <!-- component-authoring-checklist:end -->
