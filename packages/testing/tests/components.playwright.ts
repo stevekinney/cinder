@@ -355,21 +355,22 @@ for (const entry of entries) {
                 : 'visual-contract';
             const masks =
               'mask' in fixture && Array.isArray(fixture.mask) ? fixture.mask : undefined;
+            const interactionSteps =
+              'interact' in fixture && Array.isArray(fixture.interact) ? fixture.interact : [];
+            const hasInteractions = interactionSteps.length > 0;
+            const restingKey = hasInteractions
+              ? { ...key, fixture: `${fixture.name}-resting` }
+              : key;
 
-            // The baseline is always the documented resting state. Interaction
-            // steps below exercise behavior and accessibility, but cannot
-            // replace the state a user sees before acting.
-            await captureScreenshot(page, key, masks !== undefined ? { masks } : undefined);
+            // Every fixture has a resting-state capture. Interaction fixtures
+            // use a second key so their resulting state remains pixel-checked.
+            await captureScreenshot(page, restingKey, masks !== undefined ? { masks } : undefined);
             await writeScreenshotMetadata({
-              key,
+              key: restingKey,
               component: entry.name,
-              category,
+              category: 'visual-contract',
               route,
               fixtureContentHash,
-              interact:
-                'interact' in fixture && Array.isArray(fixture.interact)
-                  ? fixture.interact
-                  : undefined,
               mask: masks,
             });
 
@@ -381,9 +382,19 @@ for (const entry of entries) {
               Array.isArray(fixture.interact) &&
               fixture.interact.length > 0
             ) {
-              await applyInteractions(page, fixture.interact, {
+              await applyInteractions(page, interactionSteps, {
                 component: entry.slug,
                 fixture: fixture.name,
+              });
+              await captureScreenshot(page, key, masks !== undefined ? { masks } : undefined);
+              await writeScreenshotMetadata({
+                key,
+                component: entry.name,
+                category,
+                route,
+                fixtureContentHash,
+                interact: interactionSteps,
+                mask: masks,
               });
             }
 

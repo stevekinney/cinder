@@ -48,10 +48,10 @@ than as scattered per-test failures.
 Every manifest entry contributes a resting-state capture. Components without an
 explicit visual fixture receive the synthesized `default` fixture; components
 with fixtures capture each fixture before any optional interaction steps run.
-The route is always `/page/<component>?snapshot=1`, which freezes animation and
-caret rendering without changing the component's behavior. Interaction fixtures
-may add a second post-interaction capture, but they never replace the resting
-baseline.
+The route is the manifest page route with `snapshot=1` applied; fixture routes
+also include their fixture and content-hash query parameters. Interaction
+fixtures create a separately keyed `<fixture>-resting` capture before acting,
+then retain their original key for the post-interaction capture.
 
 This is intentionally a coverage rule, not a visual convention. A component
 with dismissal, toggle, or auto-load behavior must retain its resulting state in
