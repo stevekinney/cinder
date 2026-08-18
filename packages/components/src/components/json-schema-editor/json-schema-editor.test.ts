@@ -157,6 +157,43 @@ describe('JsonSchemaEditor — Diff tab Badge indicator', () => {
     expect(badge?.textContent).toBe('●');
     expect(badge?.getAttribute('aria-hidden')).toBe('true');
   });
+
+  test('renders the Diff badge and lines for a committed property reordering', async () => {
+    render(JsonSchemaEditorImplementation, {
+      props: {
+        id: 'jse-reorder-diff-badge',
+        schema: {
+          type: 'object',
+          properties: { first: { type: 'string' }, second: { type: 'number' } },
+        },
+        view: 'json' as const,
+      },
+    });
+    await flushEffects();
+
+    const textarea = screen.getByRole('textbox', { name: 'JSON' });
+    await fireEvent.input(textarea, {
+      target: {
+        value: JSON.stringify({
+          type: 'object',
+          properties: { second: { type: 'number' }, first: { type: 'string' } },
+        }),
+      },
+    });
+    await flushEffects();
+    const applyButton = screen
+      .getAllByRole('button')
+      .find((button) => button.textContent?.trim() === 'Apply');
+    await fireEvent.click(applyButton as HTMLElement);
+    await flushEffects();
+
+    const diffTab = screen.getByRole('tab', { name: /Diff/ });
+    await fireEvent.click(diffTab);
+    await flushEffects();
+
+    expect(diffTab.querySelector('.cinder-badge')).not.toBeNull();
+    expect(screen.getByRole('group', { name: 'JSON diff' })).not.toBeNull();
+  });
 });
 
 // ---------------------------------------------------------------------------

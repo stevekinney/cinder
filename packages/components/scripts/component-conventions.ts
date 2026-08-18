@@ -92,6 +92,21 @@ export const COMPONENT_AUTHORING_CHECKLIST = [
     references: ['#931'],
   },
   {
+    id: 'component-delivery-artifacts',
+    text: 'For every leaf, add a substantive test, README skeleton, stylesheet registration in src/styles/components.css, generated exports, and the sidebar count-gate update.',
+    references: ['#310'],
+  },
+  {
+    id: 'token-delivery-artifacts',
+    text: 'For every new token, add check-token-contrast.test.ts coverage and its docs/tokens.md entry; tokens-doc-drift.test.ts must stay green.',
+    references: ['#310'],
+  },
+  {
+    id: 'guard-pipeline-registration',
+    text: 'Register every new guard script in check-pipeline-coverage.ts in the same change.',
+    references: ['#310'],
+  },
+  {
     id: 'human-design-review',
     text: 'Get a design review for every new component; record its nearest neighbours, why it exists, and the review outcome in `*.a11y.md`.',
     references: ['#968'],

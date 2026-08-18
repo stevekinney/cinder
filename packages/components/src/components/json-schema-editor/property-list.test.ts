@@ -5,8 +5,9 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
+const { cleanup, fireEvent, render, screen } = await import('@testing-library/svelte');
 const { default: PropertyList } = await import('./property-list.svelte');
+const { EDITABLE_KEYWORDS } = await import('./property-editor.constants.ts');
 const { calculatePropertyValidationErrorCount } = await import('./property-list-validation.ts');
 
 // @testing-library/svelte v5's auto-cleanup does not register under bun:test (no
@@ -76,6 +77,37 @@ describe('PropertyList', () => {
     expect(latestRequired).toEqual(['missingSchema']);
   });
 
+  test('identifies each property in the accessible names of its reorder controls', () => {
+    render(PropertyList, {
+      idPrefix: 'properties',
+      path: '/properties',
+      properties: {
+        email: { type: 'string' },
+        age: { type: 'integer' },
+      },
+      required: [],
+      onValueChange: () => {},
+    });
+
+    expect(screen.getByRole('button', { name: 'Move email up' })).not.toBeNull();
+    expect(screen.getByRole('button', { name: 'Move email down' })).not.toBeNull();
+    expect(screen.getByRole('button', { name: 'Move age up' })).not.toBeNull();
+    expect(screen.getByRole('button', { name: 'Move age down' })).not.toBeNull();
+  });
+
+  test('keeps enum in the preserved-keywords count when a schema is loaded', () => {
+    const loadedSchema = { type: 'string', enum: ['draft', 'published'] };
+    const preservedKeys = Object.keys(loadedSchema).filter((key) => !EDITABLE_KEYWORDS.has(key));
+
+    expect(preservedKeys).toEqual(['enum']);
+  });
+
+  test('renders preserved keywords visibly beside a $ref editor', async () => {
+    const source = await Bun.file(new URL('./property-editor.svelte', import.meta.url)).text();
+
+    expect(source).toContain("Preserved keywords: {preservedKeys.join(', ')}");
+  });
+
   test('aggregates local and nested validation error counts', async () => {
     expect(
       calculatePropertyValidationErrorCount(
@@ -88,6 +120,15 @@ describe('PropertyList', () => {
         true,
       ),
     ).toBe(4);
+  });
+
+  test('renders a danger indicator on the row with nested validation errors', async () => {
+    const source = await Bun.file(new URL('./property-list.svelte', import.meta.url)).text();
+
+    expect(source).toContain("import Badge from '@lostgradient/cinder/badge'");
+    expect(source).toContain('data-cinder-invalid={childValidationErrorCount > 0');
+    expect(source).toMatch(/<Badge\s+variant="danger"/);
+    expect(source).toContain('validation ${childValidationErrorCount');
   });
 
   test('property-list.svelte clears nested validation counts on collapse and unmount', async () => {

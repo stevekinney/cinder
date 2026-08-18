@@ -7,6 +7,7 @@ import { describe, expect, test } from 'bun:test';
 
 import {
   assertDocumentationPagesArePreRendered,
+  assertExactlyOneH1,
   assetUrlsFromHtml,
   runStaticExport,
 } from './static-export.ts';
@@ -237,6 +238,21 @@ describe('assertDocumentationPagesArePreRendered', () => {
     expect(error?.message).toContain('2 of 3');
     expect(error?.message).toContain('badge');
     expect(error?.message).toContain('card');
+  });
+});
+
+describe('assertExactlyOneH1', () => {
+  test('accepts one semantic top-level heading', () => {
+    expect(() => assertExactlyOneH1('landing', '<main><h1>cinder</h1></main>')).not.toThrow();
+  });
+
+  test('rejects duplicate or missing top-level headings', () => {
+    expect(() => assertExactlyOneH1('landing', '<h1>cinder</h1><h1>cinder</h1>')).toThrow(
+      'landing: expected exactly one h1, found 2',
+    );
+    expect(() => assertExactlyOneH1('landing', '<main></main>')).toThrow(
+      'landing: expected exactly one h1, found 0',
+    );
   });
 });
 

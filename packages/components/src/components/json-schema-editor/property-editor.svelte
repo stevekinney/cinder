@@ -30,7 +30,6 @@
   import Checkbox from '../checkbox/checkbox.svelte';
   import Collapsible from '@lostgradient/cinder/collapsible';
   import Input from '../input/input.svelte';
-  import Tooltip from '../tooltip/tooltip.svelte';
 
   import { reconcileCompositionBranchKeys } from './composition-branch-keys.ts';
   import {
@@ -472,19 +471,14 @@
         >
           Add $ref
         </Button>
-        {#if preservedKeys.length > 0}
-          <Tooltip text={`Preserved keys: ${preservedKeys.join(', ')}`}>
-            <Badge variant="info">+{preservedKeys.length} preserved</Badge>
-          </Tooltip>
-        {/if}
       </div>
     {/if}
 
-    <!-- Preserved-keywords badge for the readonly case (Add $ref is hidden). -->
-    {#if readonly && objectValue.$ref === undefined && preservedKeys.length > 0}
-      <Tooltip text={`Preserved keys: ${preservedKeys.join(', ')}`}>
+    {#if preservedKeys.length > 0}
+      <div class="cinder-jse-advanced-row">
         <Badge variant="info">+{preservedKeys.length} preserved</Badge>
-      </Tooltip>
+        <span>Preserved keywords: {preservedKeys.join(', ')}</span>
+      </div>
     {/if}
   {/if}
 </div>
