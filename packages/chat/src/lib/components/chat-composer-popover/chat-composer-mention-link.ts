@@ -64,13 +64,17 @@ export function getOrdinaryLinkEnd(
       labelEnd += 1;
     } else labelEnd += 1;
   }
+  if (hasMarkdownParagraphBreak(value.slice(start + 1, labelEnd))) return null;
   if (value[labelEnd] !== ']' || value[labelEnd + 1] !== '(') return null;
 
   let cursor = labelEnd + 2;
   if (value[cursor] === '<') {
     cursor += 1;
     while (cursor < value.length && value[cursor] !== '>') {
-      if (value[cursor] === '\\') cursor += 1;
+      if (value[cursor] === '\\') {
+        cursor += 2;
+        continue;
+      }
       if (isLineEnding(value[cursor]) || value[cursor] === '<') return null;
       cursor += 1;
     }

@@ -7,6 +7,7 @@ export type ScanMetadata = {
   containerContexts: Map<number, ContainerContext>;
   codeSpanEnds: Map<number, number>;
   mathEnds: Map<number, number>;
+  paragraphLineStarts: Set<number>;
 };
 
 export type ContainerContext = {
@@ -43,6 +44,7 @@ export function makeScanMetadata(value: string): ScanMetadata {
   const codeSpanEnds = new Map<number, number>();
   const mathEnds = new Map<number, number>();
   const paragraphBreaks = new Set<number>();
+  const paragraphLineStarts = new Set<number>();
   let previousLineWasParagraph = false;
 
   let backslashes = 0;
@@ -129,6 +131,7 @@ export function makeScanMetadata(value: string): ScanMetadata {
       listDepth === 0 &&
       content.length > 0 &&
       !/^(?:#{1,6}(?:[ \t]+|$)|(?:[*_-][ \t]*){3,}$|(?:`{3,}|~{3,})|<|\[[^\]^]+\]:)/u.test(content);
+    if (previousLineWasParagraph) paragraphLineStarts.add(start);
     if (lineEnd === value.length) break;
     start = lineEnd + getLineEndingLength(value, lineEnd);
   }
@@ -168,7 +171,15 @@ export function makeScanMetadata(value: string): ScanMetadata {
     index = start - 1;
   }
 
-  return { escaped, lineStarts, containerStarts, containerContexts, codeSpanEnds, mathEnds };
+  return {
+    escaped,
+    lineStarts,
+    containerStarts,
+    containerContexts,
+    codeSpanEnds,
+    mathEnds,
+    paragraphLineStarts,
+  };
 }
 
 export function isContainerActive(

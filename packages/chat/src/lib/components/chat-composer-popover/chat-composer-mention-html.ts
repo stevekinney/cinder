@@ -5,19 +5,12 @@ import {
   type ScanMetadata,
 } from './chat-composer-mention-scan.ts';
 
-const VOID_HTML_TAGS = new Set(
-  'area base br col embed hr img input link meta source track wbr'.split(' '),
-);
 const RAW_TEXT_HTML_TAGS = new Set(['pre', 'script', 'style', 'textarea']);
 const BLOCK_HTML_TAGS = new Set(
   'address article aside blockquote body caption center colgroup dd details dialog dir div dl dt fieldset figcaption figure footer form frameset h1 h2 h3 h4 h5 h6 head header hr html iframe legend li main menu nav noframes ol p section summary table tbody td tfoot th thead title tr ul'.split(
     ' ',
   ),
 );
-
-export function isVoidHtmlTag(tag: string): boolean {
-  return VOID_HTML_TAGS.has(tag);
-}
 
 export function closesHtmlBlockWithTag(tag: string): boolean {
   return RAW_TEXT_HTML_TAGS.has(tag);
@@ -147,15 +140,8 @@ export function getClosingHtmlBlockEnd(
   while (candidate !== -1 && candidate < boundary) {
     const nameStart = candidate + 2;
     const nameEnd = nameStart + tag.length;
-    if (
-      value.slice(nameStart, nameEnd).toLowerCase() === normalizedTag &&
-      /[\s>]/u.test(value[nameEnd] ?? '')
-    ) {
-      const tagEnd = getHtmlTagEnd(value, candidate);
-      if (tagEnd === null) {
-        candidate = value.indexOf('</', candidate + 2);
-        continue;
-      }
+    if (value.slice(nameStart, nameEnd).toLowerCase() === normalizedTag && value[nameEnd] === '>') {
+      const tagEnd = getHtmlTagEnd(value, candidate)!;
       const closingLineEnd = getLineEnd(value, tagEnd + 1);
       return Math.min(boundary, closingLineEnd + getLineEndingLength(value, closingLineEnd));
     }

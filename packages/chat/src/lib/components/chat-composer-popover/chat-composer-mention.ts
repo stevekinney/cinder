@@ -7,7 +7,6 @@ import {
   getHtmlDelimitedBlockEnd,
   getHtmlTagEnd,
   isInterruptingHtmlBlockTag,
-  isVoidHtmlTag,
 } from './chat-composer-mention-html.ts';
 import { getLineEnd, getLineEndingLength, isLineEnding } from './chat-composer-mention-lines.ts';
 import {
@@ -259,15 +258,23 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
           continue;
         }
       }
-      if (value.startsWith('<?', sourceIndex) && isAtBlockStart(value, sourceIndex, metadata)) {
-        const lineStart = metadata.lineStarts[sourceIndex] ?? 0;
-        htmlDelimitedBlock = {
-          terminator: '?>',
-          container: getContainerContext(lineStart, metadata),
-        };
-        text += '<?';
-        sourceIndex += 2;
-        continue;
+      if (value.startsWith('<?', sourceIndex)) {
+        if (isAtBlockStart(value, sourceIndex, metadata)) {
+          const lineStart = metadata.lineStarts[sourceIndex] ?? 0;
+          htmlDelimitedBlock = {
+            terminator: '?>',
+            container: getContainerContext(lineStart, metadata),
+          };
+          text += '<?';
+          sourceIndex += 2;
+          continue;
+        }
+        const closingStart = value.indexOf('?>', sourceIndex + 2);
+        if (closingStart !== -1) {
+          text += value.slice(sourceIndex, closingStart + 2);
+          sourceIndex = closingStart + 2;
+          continue;
+        }
       }
       if (
         /^<![A-Z]/u.test(value.slice(sourceIndex)) &&
@@ -313,6 +320,22 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
         sourceIndex += 1;
         continue;
       }
+      const blockTagPrefix = /^<([A-Za-z][A-Za-z0-9-]*)(?=[\s>])/u.exec(value.slice(sourceIndex));
+      if (
+        blockTagPrefix !== null &&
+        isInterruptingHtmlBlockTag(blockTagPrefix[1]!.toLowerCase()) &&
+        isAtBlockStart(value, sourceIndex, metadata)
+      ) {
+        const lineStart = metadata.lineStarts[sourceIndex] ?? 0;
+        htmlBlock = {
+          tag: blockTagPrefix[1]!.toLowerCase(),
+          closesWithTag: false,
+          container: getContainerContext(lineStart, metadata),
+        };
+        text += '<';
+        sourceIndex += 1;
+        continue;
+      }
       const autolinkEnd = getAutolinkEnd(value, sourceIndex);
       if (autolinkEnd !== null) {
         text += value.slice(sourceIndex, autolinkEnd);
@@ -339,8 +362,7 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
             ) && isLineEnding(value[lineEnd]);
           const canOwnHtmlBlock =
             isInterruptingHtmlBlockTag(normalizedTag) ||
-            (!value.slice(sourceIndex - 2, sourceIndex).includes('/') &&
-              !isVoidHtmlTag(normalizedTag));
+            !value.slice(sourceIndex - 2, sourceIndex).includes('/');
           if (
             canOwnHtmlBlock &&
             startsAtBlockColumn &&

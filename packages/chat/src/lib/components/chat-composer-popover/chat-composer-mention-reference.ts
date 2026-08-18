@@ -13,11 +13,21 @@ export function getReferenceDefinitionEnd(
   const lineStart = metadata.lineStarts[start] ?? 0;
   const containerStart = metadata.containerStarts.get(lineStart) ?? lineStart;
   if (!/^ {0,3}$/u.test(value.slice(containerStart, start))) return null;
+  if (lineStart > 0) {
+    const previousLineStart = metadata.lineStarts[lineStart - 1] ?? 0;
+    if (metadata.paragraphLineStarts.has(previousLineStart)) return null;
+  }
 
   let labelEnd = start + 1;
   if (value[labelEnd] === '^') return null;
   while (labelEnd < value.length && value[labelEnd] !== ']') {
-    if (labelEnd - start > 999 || value[labelEnd] === '\r' || value[labelEnd] === '\n') return null;
+    if (
+      labelEnd - start > 999 ||
+      value[labelEnd] === '\r' ||
+      value[labelEnd] === '\n' ||
+      value[labelEnd] === '['
+    )
+      return null;
     if (value[labelEnd] === '\\') labelEnd += 2;
     else labelEnd += 1;
   }
@@ -45,6 +55,8 @@ export function getReferenceDefinitionEnd(
     cursor += 1;
     while (cursor < end && value[cursor] !== '>') {
       if (value[cursor] === '\\') cursor += 1;
+      else if (value[cursor] === '<' || value[cursor] === '\r' || value[cursor] === '\n')
+        return null;
       cursor += 1;
     }
     if (value[cursor] !== '>') return null;
@@ -69,13 +81,27 @@ export function getReferenceDefinitionEnd(
     const closer = opener === '(' ? ')' : opener;
     if (opener !== '"' && opener !== "'" && opener !== '(') return null;
     cursor += 1;
-    while (cursor < end && value[cursor] !== closer) {
+    while (value[cursor] !== closer) {
+      if (cursor >= end) {
+        if (lineEnd === value.length) return null;
+        const nextLineStart = lineEnd + getLineEndingLength(value, lineEnd);
+        if (!isContainerActive(getContainerContext(lineStart, metadata), nextLineStart, metadata)) {
+          return null;
+        }
+        const nextContainer = getContainerContext(nextLineStart, metadata);
+        if (nextContainer.maximumIndentation > 3) return null;
+        cursor = metadata.containerStarts.get(nextLineStart) ?? nextLineStart;
+        lineEnd = getLineEnd(value, cursor);
+        end = lineEnd;
+        if (cursor >= end) return null;
+        continue;
+      }
       if (value[cursor] === '\\') cursor += 1;
       cursor += 1;
     }
-    if (value[cursor] !== closer) return null;
     cursor += 1;
     while (value[cursor] === ' ' || value[cursor] === '\t') cursor += 1;
+    return cursor === end || (value[cursor] === '\r' && cursor + 1 === end) ? end : null;
   }
 
   if (cursor !== end && !(value[cursor] === '\r' && cursor + 1 === end)) return null;

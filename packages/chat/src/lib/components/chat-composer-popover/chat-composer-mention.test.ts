@@ -663,5 +663,86 @@ describe('chat composer mentions', () => {
       text: paragraphBreakLabel,
       mentions: [],
     });
+    const paragraphBreakImage = parseChatComposerMentions('![Docs\n\n[Ada](person:a)](asset:x)');
+    expect(paragraphBreakImage.text).toBe('![Docs\n\nAda](asset:x)');
+    expect(paragraphBreakImage.mentions).toEqual([
+      {
+        label: 'Ada',
+        uri: 'person:a',
+        start: paragraphBreakImage.text.indexOf('Ada'),
+        end: paragraphBreakImage.text.indexOf('Ada') + 3,
+      },
+    ]);
+    const invalidAngleReference = parseChatComposerMentions(
+      '[ref]: <https://x<y> "[Ada](person:a)"',
+    );
+    expect(invalidAngleReference.text).toBe('[ref]: <https://x<y> "Ada"');
+    expect(invalidAngleReference.mentions).toEqual([
+      {
+        label: 'Ada',
+        uri: 'person:a',
+        start: invalidAngleReference.text.indexOf('Ada'),
+        end: invalidAngleReference.text.indexOf('Ada') + 3,
+      },
+    ]);
+    expect(parseChatComposerMentions('Intro <?x > [Ada](person:a) ?>')).toEqual({
+      text: 'Intro <?x > [Ada](person:a) ?>',
+      mentions: [],
+    });
+    expect(parseChatComposerMentions('Intro <?x [Ada](person:a)')).toEqual({
+      text: 'Intro <?x Ada',
+      mentions: [{ label: 'Ada', uri: 'person:a', start: 10, end: 13 }],
+    });
+    expect(parseChatComposerMentions('<script>\n</script >\n[Ada](person:a)')).toEqual({
+      text: '<script>\n</script >\n[Ada](person:a)',
+      mentions: [],
+    });
+    const interruptedReference = parseChatComposerMentions(
+      'paragraph\n[ref]: /url "[Ada](person:a)"',
+    );
+    expect(interruptedReference.text).toBe('paragraph\n[ref]: /url "Ada"');
+    expect(interruptedReference.mentions).toEqual([
+      {
+        label: 'Ada',
+        uri: 'person:a',
+        start: interruptedReference.text.indexOf('Ada'),
+        end: interruptedReference.text.indexOf('Ada') + 3,
+      },
+    ]);
+    const nestedReferenceLabel = parseChatComposerMentions('[ref[x]: /url "[Ada](person:a)"');
+    expect(nestedReferenceLabel.text).toBe('[ref[x]: /url "Ada"');
+    expect(nestedReferenceLabel.mentions).toEqual([
+      {
+        label: 'Ada',
+        uri: 'person:a',
+        start: nestedReferenceLabel.text.indexOf('Ada'),
+        end: nestedReferenceLabel.text.indexOf('Ada') + 3,
+      },
+    ]);
+    expect(parseChatComposerMentions('<input>\n[Ada](person:a)')).toEqual({
+      text: '<input>\n[Ada](person:a)',
+      mentions: [],
+    });
+    const escapedAngleLink = '[Docs](<https://x\\<y> "[Ada](person:a)")';
+    expect(parseChatComposerMentions(escapedAngleLink)).toEqual({
+      text: escapedAngleLink,
+      mentions: [],
+    });
+    expect(parseChatComposerMentions('<div\n[Ada](person:a)')).toEqual({
+      text: '<div\n[Ada](person:a)',
+      mentions: [],
+    });
+    const multilineReferenceTitle = '[ref]: /url "title\n[Ada](person:a)\nend"';
+    expect(parseChatComposerMentions(multilineReferenceTitle)).toEqual({
+      text: multilineReferenceTitle,
+      mentions: [],
+    });
+    const escapedReferenceContainer = parseChatComposerMentions(
+      '> [ref]: /url "title\n[Ada](person:a)\nend"',
+    );
+    expect(escapedReferenceContainer.text).toBe('> [ref]: /url "title\nAda\nend"');
+    expect(escapedReferenceContainer.mentions).toEqual([
+      { label: 'Ada', uri: 'person:a', start: 21, end: 24 },
+    ]);
   });
 });
