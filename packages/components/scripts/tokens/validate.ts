@@ -111,9 +111,10 @@ function validateValue(
       if (
         !objectValue ||
         typeof objectValue['value'] !== 'number' ||
+        objectValue['value'] < 0 ||
         !['ms', 's'].includes(String(objectValue['unit']))
       )
-        addIssue(issues, path, 'duration must have a numeric value and ms or s unit');
+        addIssue(issues, path, 'duration must have a non-negative numeric value and ms or s unit');
       return;
     case 'fontFamily':
       if (
@@ -212,7 +213,7 @@ function validateValue(
     case 'typography':
       if (!objectValue)
         addIssue(issues, path, 'typography must contain all five composite properties');
-      else
+      else {
         validateCompositeMembers(
           objectValue,
           {
@@ -220,11 +221,15 @@ function validateValue(
             fontSize: 'dimension',
             fontWeight: 'fontWeight',
             letterSpacing: 'dimension',
-            lineHeight: 'number',
           },
           path,
           issues,
         );
+        if (!('lineHeight' in objectValue))
+          addIssue(issues, path, 'composite value must include lineHeight');
+        else if (typeof objectValue['lineHeight'] !== 'number')
+          validateValue('dimension', objectValue['lineHeight'], `${path}.lineHeight`, issues);
+      }
   }
 }
 
@@ -362,12 +367,16 @@ export function validateResolverDocument(document: ResolverDocumentShape): void 
     )
       addIssue(issues, `$.modifiers.${name}`, 'modifier default must be one of its values');
   }
+  const setNames = new Set<string>();
   for (const set of document.sets) {
     if (!isObject(set) || typeof set['name'] !== 'string' || !Array.isArray(set['source'])) {
       addIssue(issues, '$.sets', 'set must have a string name and string source array');
       continue;
     }
     if (!set['name']) addIssue(issues, '$.sets', 'set names must be non-empty strings');
+    if (setNames.has(set['name']))
+      addIssue(issues, `$.sets.${set['name']}`, 'set names must be unique');
+    setNames.add(set['name']);
     if (!set['source'].every(isString))
       addIssue(issues, `$.sets.${set['name']}`, 'set sources must be strings');
   }

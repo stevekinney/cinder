@@ -41,6 +41,16 @@ const cases: Array<{ type: NonNullable<TokenDocument['$type']>; value: unknown }
       lineHeight: 1.5,
     },
   },
+  {
+    type: 'typography',
+    value: {
+      fontFamily: '{family}',
+      fontSize: '{dimension}',
+      fontWeight: '{weight}',
+      letterSpacing: '{dimension}',
+      lineHeight: { value: 24, unit: 'px' },
+    },
+  },
 ];
 
 describe('DTCG semantic validation', () => {
@@ -120,6 +130,12 @@ describe('DTCG semantic validation', () => {
     ).toThrow('cubicBezier must be four numbers');
   });
 
+  test('rejects negative durations', () => {
+    expect(() =>
+      validateTokenDocument({ duration: { $type: 'duration', $value: { value: -1, unit: 'ms' } } }),
+    ).toThrow('non-negative');
+  });
+
   test('revalidates a resolved alias against its declared type', () => {
     expect(() =>
       validateResolvedToken(
@@ -146,5 +162,16 @@ describe('DTCG semantic validation', () => {
         resolutionOrder: ['theme'],
       }),
     ).toThrow('unknown modifier');
+    expect(() =>
+      validateResolverDocument({
+        version: '2025.10',
+        sets: [
+          { name: 'base', source: ['sets/base.tokens.json'] },
+          { name: 'base', source: ['sets/other.tokens.json'] },
+        ],
+        modifiers: [],
+        resolutionOrder: [],
+      }),
+    ).toThrow('set names must be unique');
   });
 });

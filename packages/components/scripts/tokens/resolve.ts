@@ -139,7 +139,7 @@ function resolveValue(value: unknown, tokens: ResolvedTokens, resolving: Set<str
       : value;
   if (Array.isArray(value)) return value.map((entry) => resolveValue(entry, tokens, resolving));
   if (!isObject(value)) return value;
-  const resolved: JsonObject = {};
+  const resolved: JsonObject = Object.create(null);
   for (const [key, entry] of Object.entries(value))
     resolved[key] = resolveValue(entry, tokens, resolving);
   return resolved;
@@ -163,14 +163,14 @@ export function resolveDocuments(documents: TokenDocument[]): Record<string, Des
   for (const document of documentCopies) collectGroups(document, '', groups);
   for (const groupPath of groups.keys()) resolveExtends(groupPath, groups, new Set(), new Set());
   for (const document of documentCopies) collectTokens(document, '', tokens);
-  const resolved: Record<string, DesignToken> = {};
+  const resolved: Record<string, DesignToken> = Object.create(null);
   for (const path of tokens.keys()) resolved[path] = clone(resolveToken(path, tokens, new Set()));
   return resolved;
 }
 
 /** Merges ordered documents, retaining only the last occurrence of each token path. */
 export function mergeDocuments(documents: TokenDocument[]): TokenDocument {
-  const result: TokenDocument = {};
+  const result: TokenDocument = Object.create(null);
   for (const document of documents) mergeGroup(result, document);
   return result;
 }

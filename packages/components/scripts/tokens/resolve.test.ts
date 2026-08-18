@@ -86,4 +86,13 @@ describe('DTCG resolver', () => {
     expect(resolveDocument(merged)['group.first']?.$value).toBe(3);
     expect(resolveDocument(merged)['group.second']?.$value).toBe(2);
   });
+
+  test('retains tokens named __proto__ through resolution and document merging', () => {
+    const document = JSON.parse('{"$type":"number","__proto__":{"$value":1}}') as TokenDocument;
+    expect(resolveDocument(document)['__proto__']).toMatchObject({ $type: 'number', $value: 1 });
+    expect(resolveDocument(mergeDocuments([document]))['__proto__']).toMatchObject({
+      $type: 'number',
+      $value: 1,
+    });
+  });
 });

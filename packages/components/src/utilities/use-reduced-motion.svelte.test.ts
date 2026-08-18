@@ -154,6 +154,19 @@ describe('useReducedMotion', () => {
     expect(motion.current).toBe(false);
   });
 
+  test('seeds and synchronizes the default preference from the public root attribute', () => {
+    mock = installMatchMediaMock(false);
+    document.documentElement.dataset['reducedMotion'] = 'on';
+    const motion = useReducedMotion();
+
+    expect(motion.current).toBe(true);
+
+    document.documentElement.dataset['reducedMotion'] = 'off';
+    expect(motion.current).toBe(false);
+
+    applyReducedMotionPreference(document.documentElement, 'system');
+  });
+
   test('rejects a non-root preference target because the CSS contract is rooted at html', () => {
     expect(() => applyReducedMotionPreference(document.createElement('div'), 'on')).toThrow(
       'applyReducedMotionPreference must target document.documentElement',

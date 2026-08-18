@@ -4,8 +4,36 @@ const applicationPreferences = new SvelteMap<
   'current',
   import('./use-reduced-motion.types.ts').ReducedMotionPreference
 >([['current', 'system']]);
+let observedRoot: HTMLElement | undefined;
+let rootPreferenceObserver: MutationObserver | undefined;
+
+function readRootPreference(
+  root: HTMLElement,
+): import('./use-reduced-motion.types.ts').ReducedMotionPreference {
+  const preference = root.dataset['reducedMotion'];
+  return preference === 'on' || preference === 'off' || preference === 'system'
+    ? preference
+    : 'system';
+}
+
+function synchronizeRootPreference(): void {
+  if (typeof document === 'undefined') return;
+  const root = document.documentElement;
+  applicationPreferences.set('current', readRootPreference(root));
+  if (root === observedRoot || typeof MutationObserver === 'undefined') return;
+  rootPreferenceObserver?.disconnect();
+  observedRoot = root;
+  rootPreferenceObserver = new MutationObserver(() => {
+    applicationPreferences.set('current', readRootPreference(root));
+  });
+  rootPreferenceObserver.observe(root, {
+    attributes: true,
+    attributeFilter: ['data-reduced-motion'],
+  });
+}
 
 function getApplicationPreference(): import('./use-reduced-motion.types.ts').ReducedMotionPreference {
+  synchronizeRootPreference();
   return applicationPreferences.get('current') ?? 'system';
 }
 
