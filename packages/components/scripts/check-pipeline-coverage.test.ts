@@ -37,12 +37,17 @@ describe('Turbo input topology', () => {
       'utf8',
     );
     const mainWorkflow = readFileSync(resolve(root, '.github/workflows/main-green.yaml'), 'utf8');
+    const componentsManifest = JSON.parse(
+      readFileSync(resolve(root, 'packages/components/package.json'), 'utf8'),
+    ) as { devDependencies: Record<string, string> };
     expect(unitWorkflow).toContain('name: unit-tests');
     expect(unitWorkflow).toContain(
       'needs: [scope, static-artifact, package, playground, component]',
     );
     expect(unitWorkflow).toContain('component_matrix={"chunk":[1,2,3,4]}');
-    expect(browserWorkflow).toContain('image: mcr.microsoft.com/playwright:v1.60.0-noble');
+    expect(browserWorkflow).toContain(
+      `image: mcr.microsoft.com/playwright:v${componentsManifest.devDependencies['@playwright/test']}-noble`,
+    );
     expect(browserWorkflow).toContain('playwright_matrix={"shard":[1,2,3,4]}');
     expect(browserWorkflow).toContain('name: playwright');
     expect(mainWorkflow).toContain("github.event_name == 'schedule'");

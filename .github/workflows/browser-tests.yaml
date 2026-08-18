@@ -391,9 +391,6 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Verify pinned Playwright image
-        run: test "$(bun --cwd packages/testing -e \"const p = require.resolve('@playwright/test/package.json'); console.log((await Bun.file(p).json()).version)\")" = 1.60.0
-
       - name: Restore workspace builds through Turbo
         env:
           TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
