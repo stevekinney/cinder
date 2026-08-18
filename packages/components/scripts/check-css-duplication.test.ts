@@ -2,8 +2,12 @@ import { describe, expect, test } from 'bun:test';
 import { parse } from 'postcss';
 
 import {
+  componentClassNamesForComponent,
+  componentClassNamesFromMarkup,
+  componentClassNamesFromStylesheet,
   compoundFamilies,
   declarationMultiset,
+  declarationMultisetForComponent,
   findDuplicatePairs,
   MINIMUM_DECLARATIONS,
   multisetSimilarity,
@@ -50,6 +54,106 @@ describe('declarationMultiset', () => {
   test('keeps shared public tokens verbatim — token reuse is not duplication evidence', () => {
     const multiset = multisetFor(`.a { gap: var(--cinder-space-2); }`, 'a');
     expect(multiset.get('|gap:var(--cinder-space-2)')).toBe(1);
+  });
+
+  test('attributes child rules in a parent stylesheet to the child component', () => {
+    const parentStylesheet = parse(`
+      .cinder-grid { display: grid; gap: 1rem; }
+      .cinder-grid-item { grid-column-start: auto; grid-column-end: span 1; grid-row-start: auto; padding: 1rem; margin: 0; border: 0; background: transparent; min-width: 0; min-height: 0; position: relative; outline: 0; box-sizing: border-box; }
+    `);
+    const bentoCell = parse(`
+      .cinder-bento-cell { grid-column-start: auto; grid-column-end: span 1; grid-row-start: auto; padding: 1rem; margin: 0; border: 0; background: transparent; min-width: 0; min-height: 0; position: relative; outline: 0; box-sizing: border-box; }
+    `);
+    const gridItem = {
+      name: 'grid-item',
+      multiset: declarationMultisetForComponent(parentStylesheet, 'grid-item'),
+      familyRoot: 'grid',
+    };
+    const duplicate = {
+      name: 'bento-cell',
+      multiset: declarationMultisetForComponent(bentoCell, 'bento-cell'),
+      familyRoot: 'bento-cell',
+    };
+
+    expect(multisetSize(gridItem.multiset)).toBeGreaterThanOrEqual(MINIMUM_DECLARATIONS);
+    expect(findDuplicatePairs([gridItem, duplicate], [])).toHaveLength(1);
+  });
+
+  test('attributes BEM modifier rules without absorbing unrelated selectors', () => {
+    const stylesheet = parse(`
+      .cinder-grid-item--active { color: red; }
+      .cinder-grid-item__label { font-weight: 600; }
+      .cinder-grid { display: grid; }
+    `);
+    const multiset = declarationMultisetForComponent(stylesheet, 'grid-item');
+
+    expect([...multiset.keys()]).toEqual(['|color:red', '|font-weight:600']);
+  });
+
+  test('attributes descendant rules to their rightmost component target', () => {
+    const stylesheet = parse(`
+      .cinder-tab-list .cinder-tab[data-cinder-active]::after { height: 2px; }
+    `);
+
+    expect(multisetSize(declarationMultisetForComponent(stylesheet, 'tab-list'))).toBe(0);
+    expect([...declarationMultisetForComponent(stylesheet, 'tab').keys()]).toEqual(['|height:2px']);
+  });
+
+  test('discovers compound-leaf selectors from rendered markup', () => {
+    expect(
+      componentClassNamesFromMarkup(
+        `<tr class="cinder-table__row"><td class:cinder-table__row--selected={selected}></td></tr>`,
+      ),
+    ).toEqual(['cinder-table__row', 'cinder-table__row--selected']);
+  });
+
+  test('does not claim sibling primitive classes rendered by a compound leaf', () => {
+    expect(
+      componentClassNamesForComponent(
+        `<tr class="cinder-table__row"><td class="cinder-table__header-cell cinder-table__cell"></td></tr>`,
+        'table-row',
+        ['table'],
+      ),
+    ).toEqual(['cinder-table__row']);
+  });
+
+  test('keeps a shared compound leaf root while ignoring parent script queries', () => {
+    expect(
+      componentClassNamesForComponent(
+        `<script>panel.querySelectorAll('.cinder-speed-dial-action');</script><button class="cinder-speed-dial-action"></button>`,
+        'speed-dial-action',
+        ['speed-dial'],
+      ),
+    ).toEqual(['cinder-speed-dial-action']);
+  });
+
+  test('keeps a BEM compound leaf root rendered by its parent and other composites', () => {
+    expect(
+      componentClassNamesForComponent(
+        `<td class="cinder-table__cell cinder-table__cell--selection"></td>`,
+        'table-cell',
+        ['table'],
+      ),
+    ).toEqual(['cinder-table__cell', 'cinder-table__cell--selection']);
+  });
+
+  test('discovers compound-leaf selectors from sidecar CSS', () => {
+    expect(
+      componentClassNamesFromStylesheet(
+        parse('.cinder-table__row--selected { color: var(--cinder-accent); }'),
+      ),
+    ).toEqual(['cinder-table__row--selected']);
+  });
+
+  test('keeps keyframe declarations in their owning component stylesheet', () => {
+    const stylesheet = parse(`
+      @keyframes cinder-jse-pulse { from { opacity: 0; } to { opacity: 1; } }
+      .cinder-jse { animation: cinder-jse-pulse 1s; }
+    `);
+    const multiset = declarationMultisetForComponent(stylesheet, 'json-schema-editor', () => true);
+
+    expect(multisetSize(multiset)).toBe(3);
+    expect([...multiset.keys()]).toContain('@keyframes cinder-jse-pulse|opacity:0');
   });
 });
 
