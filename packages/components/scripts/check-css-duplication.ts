@@ -277,6 +277,24 @@ async function collectComponentCss(): Promise<ComponentCss[]> {
     sources.set(component.name, componentSources);
   }
 
+  const renderedClasses = new Map<string, Set<string>>();
+  const renderedClassOwners = new Map<string, Set<string>>();
+  for (const component of components) {
+    const classNames = new Set<string>();
+    for (const entry of readdirSync(component.directory, { withFileTypes: true })) {
+      if (!entry.isFile() || !entry.name.endsWith('.svelte')) continue;
+      for (const className of componentClassNamesFromMarkup(
+        readFileSync(join(component.directory, entry.name), 'utf8'),
+      )) {
+        classNames.add(className);
+        const owners = renderedClassOwners.get(className) ?? new Set<string>();
+        owners.add(component.name);
+        renderedClassOwners.set(className, owners);
+      }
+    }
+    renderedClasses.set(component.name, classNames);
+  }
+
   const edges: Array<readonly [string, string]> = [];
   const compoundParents = new Map<string, Set<string>>();
   for (const component of components) {
@@ -296,14 +314,8 @@ async function collectComponentCss(): Promise<ComponentCss[]> {
     const multiset: DeclarationMultiset = new Map();
     const componentSources = sources.get(component.name) ?? [];
     const classNames = new Set([`cinder-${component.name}`]);
-    for (const entry of readdirSync(component.directory, { withFileTypes: true })) {
-      if (!entry.isFile() || !entry.name.endsWith('.svelte')) continue;
-      for (const className of componentClassNamesForComponent(
-        readFileSync(join(component.directory, entry.name), 'utf8'),
-        component.name,
-      )) {
-        classNames.add(className);
-      }
+    for (const className of renderedClasses.get(component.name) ?? []) {
+      if (renderedClassOwners.get(className)?.size === 1) classNames.add(className);
     }
     for (const source of componentSources) {
       for (const className of componentClassNamesFromStylesheet(source)) classNames.add(className);
