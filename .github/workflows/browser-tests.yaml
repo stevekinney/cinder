@@ -120,7 +120,7 @@ jobs:
     outputs:
       component_scope_mode: ${{ steps.decide.outputs.component_scope_mode }}
       components: ${{ steps.decide.outputs.components }}
-      browser_relevant: ${{ steps.decide.outputs.browser_relevant }}
+      browser_relevant: ${{ steps.relevance.outputs.browser_relevant }}
       playwright_matrix: ${{ steps.matrix.outputs.playwright_matrix }}
     steps:
       - name: Validate dispatch source ref
@@ -293,7 +293,8 @@ jobs:
 
           # The shared classifier above owns the fail-safe decision. Keep this
           # step only as a human-readable summary while migrating old logs.
-          echo "browser_relevant=${{ steps.decide.outputs.browser_relevant }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "browser_relevant=$relevant" >> "$GITHUB_OUTPUT"
+          echo "browser_relevant=$relevant" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Select Playwright shard matrix
         id: matrix
@@ -364,7 +365,7 @@ jobs:
     # runner budget after a newer push already superseded it. Only a `scope`
     # job that succeeded and explicitly determined the diff irrelevant skips
     # this one.
-    if: "!cancelled() && (needs.scope.result != 'success' || needs.scope.outputs.browser_relevant == 'true')"
+    if: "!cancelled() && (needs.scope.result != 'success' || needs.scope.outputs.browser_relevant == 'true') && (github.event_name != 'workflow_dispatch' || github.event.inputs.mode == 'off')"
     runs-on: ubuntu-latest
     container:
       image: mcr.microsoft.com/playwright:v1.60.0-noble
@@ -372,7 +373,7 @@ jobs:
     timeout-minutes: 30
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.scope.outputs.playwright_matrix) }}
+      matrix: ${{ fromJSON(needs.scope.result == 'success' && needs.scope.outputs.playwright_matrix || '{"shard":[1,2,3,4]}') }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -416,9 +417,7 @@ jobs:
           CINDER_TEST_COMPONENTS: ${{ needs.scope.outputs.component_scope_mode == 'filtered' && needs.scope.outputs.components || '' }}
           # Trace recording is kept only for the full main-branch run.
           PLAYWRIGHT_TRACE: ${{ needs.scope.outputs.component_scope_mode == 'full' && 'retain-on-failure' || 'off' }}
-          # Visual-regression dispatch mode. Defaults to 'off' (legacy capture);
-          # flip to 'report' during soak, 'block' once approved (Phase 5 single-line PR).
-          CINDER_VISUAL_DIFF: ${{ github.event.inputs.mode || 'off' }}
+          CINDER_VISUAL_DIFF: 'off'
           PLAYGROUND_DEPENDENCIES_PREBUILT: '1'
         run: |
           echo "Scope: ${{ needs.scope.outputs.component_scope_mode }}"
@@ -426,14 +425,10 @@ jobs:
           if [ -n "${CINDER_TEST_COMPONENTS:-}" ]; then
             echo "Components: $CINDER_TEST_COMPONENTS"
           fi
-          if [ "$CINDER_VISUAL_DIFF" = "off" ]; then
-            if [ "${{ needs.scope.outputs.component_scope_mode }}" = full ]; then
-              bun run test:browser -- --shard=${{ matrix.shard }}/4 --reporter=blob
-            else
-              bun run test:browser
-            fi
+          if [ "${{ needs.scope.outputs.component_scope_mode }}" = full ]; then
+            bun run test:browser -- --shard=${{ matrix.shard }}/4 --reporter=blob
           else
-            bun run --filter=@cinder/testing test:browser:docker
+            bun run test:browser
           fi
 
       - name: Upload Playwright HTML report
@@ -539,9 +534,38 @@ jobs:
           path: packages/testing/test-results/visual-report.json
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  # The visual-diff wrapper owns Docker build/run itself, so it must remain on
+  # the host runner. Ordinary full Playwright coverage stays in the pinned
+  # Playwright container above.
+  playwright-visual:
+    needs: scope
+    if: "!cancelled() && github.event_name == 'workflow_dispatch' && github.event.inputs.mode != 'off'"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - run: bun install --frozen-lockfile
+      - name: Run visual-regression Docker wrapper
+        env:
+          CI: 'true'
+          CINDER_TEST_COMPONENTS: ${{ needs.scope.outputs.component_scope_mode == 'filtered' && needs.scope.outputs.components || '' }}
+          CINDER_VISUAL_DIFF: ${{ github.event.inputs.mode }}
+        run: bun run --filter=@cinder/testing test:browser:docker
+      - name: Upload visual report
+        if: always() && github.event.inputs.mode == 'report'
+        uses: actions/upload-artifact@v7
+        with:
+          name: visual-report
+          path: packages/testing/test-results/visual-report.json
+          retention-days: 14
+          if-no-files-found: ignore
+
   playwright:
     name: playwright
-    needs: [scope, playwright-lane]
+    needs: [scope, playwright-lane, playwright-visual]
     if: '!cancelled()'
     runs-on: ubuntu-latest
     steps:
@@ -550,34 +574,41 @@ jobs:
         with:
           bun-version: ${{ env.BUN_VERSION }}
       - run: bun install --frozen-lockfile
-      - name: Require every selected Playwright shard
-        env:
-          SCOPE: ${{ needs.scope.result }}
-          LANES: ${{ needs.playwright-lane.result }}
-          RELEVANT: ${{ needs.scope.outputs.browser_relevant }}
-        run: |
-          set -euo pipefail
-          echo "scope=$SCOPE relevant=$RELEVANT playwright-lane=$LANES" | tee -a "$GITHUB_STEP_SUMMARY"
-          [ "$SCOPE" = success ] || exit 1
-          if [ "$RELEVANT" = true ]; then [ "$LANES" = success ] || exit 1; fi
       - name: Download blob reports
-        if: needs.scope.outputs.component_scope_mode == 'full'
+        if: "always() && needs.playwright-lane.result != 'skipped' && (needs.scope.result != 'success' || needs.scope.outputs.component_scope_mode == 'full')"
         uses: actions/download-artifact@v8
         with:
           pattern: playwright-blob-*
           path: packages/testing/blob-reports
           merge-multiple: true
       - name: Merge sharded report
-        if: needs.scope.outputs.component_scope_mode == 'full'
+        if: "always() && needs.playwright-lane.result != 'skipped' && (needs.scope.result != 'success' || needs.scope.outputs.component_scope_mode == 'full')"
         run: bunx playwright merge-reports --reporter html packages/testing/blob-reports
       - name: Upload merged report
-        if: always() && needs.scope.outputs.component_scope_mode == 'full'
+        if: "always() && needs.playwright-lane.result != 'skipped' && (needs.scope.result != 'success' || needs.scope.outputs.component_scope_mode == 'full')"
         uses: actions/upload-artifact@v7
         with:
           name: playwright-report-merged
           path: playwright-report
           retention-days: 14
           if-no-files-found: warn
+      - name: Require the selected Playwright mode to succeed
+        env:
+          SCOPE: ${{ needs.scope.result }}
+          LANES: ${{ needs.playwright-lane.result }}
+          VISUAL: ${{ needs.playwright-visual.result }}
+          RELEVANT: ${{ needs.scope.outputs.browser_relevant }}
+          EVENT_NAME: ${{ github.event_name }}
+          VISUAL_MODE: ${{ github.event.inputs.mode || 'off' }}
+        run: |
+          set -euo pipefail
+          echo "scope=$SCOPE relevant=$RELEVANT playwright-lane=$LANES playwright-visual=$VISUAL mode=$VISUAL_MODE" | tee -a "$GITHUB_STEP_SUMMARY"
+          if [ "$EVENT_NAME" = workflow_dispatch ] && [ "$VISUAL_MODE" != off ]; then
+            [ "$VISUAL" = success ]
+            exit 0
+          fi
+          [ "$SCOPE" = success ] || exit 1
+          if [ "$RELEVANT" = true ]; then [ "$LANES" = success ] || exit 1; fi
 
   baseline-coverage:
     # Runs on every trigger, including pull requests. The check is scoped per

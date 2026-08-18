@@ -95,6 +95,7 @@ jobs:
           bun run --filter=@lostgradient/editor components:check
           bun run --filter=@lostgradient/cinder validate:consumer:manifest-smoke
           bun run --filter=@lostgradient/cinder validate:release-workflow
+          bun test packages/components/scripts/check-css-duplication.test.ts
 
   package:
     needs: scope
@@ -153,7 +154,7 @@ jobs:
     timeout-minutes: 20
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.scope.outputs.component_matrix) }}
+      matrix: ${{ fromJSON(needs.scope.result == 'success' && needs.scope.outputs.component_matrix || '{"chunk":[1,2,3,4]}') }}
     steps:
       - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2

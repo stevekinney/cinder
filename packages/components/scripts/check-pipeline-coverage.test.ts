@@ -14,19 +14,16 @@ import {
 
 describe('Turbo input topology', () => {
   it('keeps broad script trees out of base tasks while retaining platform test keys', () => {
-    const turboConfiguration = readFileSync(
-      resolve(import.meta.dir, '../../../turbo.json'),
-      'utf8',
-    );
+    const turboConfiguration = Bun.JSONC.parse(
+      readFileSync(resolve(import.meta.dir, '../../../turbo.json'), 'utf8'),
+    ) as { tasks: Record<string, { inputs?: string[]; env?: string[] }> };
     for (const taskName of ['build', 'test', 'test:coverage', 'typecheck', 'lint']) {
-      const task = new RegExp(`"${taskName}":\\s*\\{([\\s\\S]*?)\\n    \\}`, 'm').exec(
-        turboConfiguration,
-      )?.[1];
+      const task = turboConfiguration.tasks[taskName];
       expect(task).toBeDefined();
-      expect(task).not.toContain('$TURBO_ROOT$/packages/components/scripts/**');
-      expect(task).not.toContain('$TURBO_ROOT$/packages/testing/scripts/**');
+      expect(task?.inputs).not.toContain('$TURBO_ROOT$/packages/components/scripts/**');
+      expect(task?.inputs).not.toContain('$TURBO_ROOT$/packages/testing/scripts/**');
     }
-    expect(turboConfiguration).toContain('"env": ["TURBO_PLATFORM", "RUNNER_OS", "NODE_ENV"]');
+    expect(turboConfiguration.tasks.test?.env).toEqual(['TURBO_PLATFORM', 'RUNNER_OS', 'NODE_ENV']);
   });
 
   it('pins fail-closed PR aggregators and forced audit policy in workflow source', () => {
@@ -37,6 +34,9 @@ describe('Turbo input topology', () => {
       'utf8',
     );
     const mainWorkflow = readFileSync(resolve(root, '.github/workflows/main-green.yaml'), 'utf8');
+    const turboConfiguration = Bun.JSONC.parse(
+      readFileSync(resolve(root, 'turbo.json'), 'utf8'),
+    ) as { tasks: Record<string, { inputs?: string[] }> };
     const componentsManifest = JSON.parse(
       readFileSync(resolve(root, 'packages/components/package.json'), 'utf8'),
     ) as { devDependencies: Record<string, string> };
@@ -45,10 +45,21 @@ describe('Turbo input topology', () => {
       'needs: [scope, static-artifact, package, playground, component]',
     );
     expect(unitWorkflow).toContain('component_matrix={"chunk":[1,2,3,4]}');
+    expect(unitWorkflow).toContain(
+      "needs.scope.result == 'success' && needs.scope.outputs.component_matrix",
+    );
+    expect(unitWorkflow).toContain(
+      'bun test packages/components/scripts/check-css-duplication.test.ts',
+    );
     expect(browserWorkflow).toContain(
       `image: mcr.microsoft.com/playwright:v${componentsManifest.devDependencies['@playwright/test']}-noble`,
     );
     expect(browserWorkflow).toContain('playwright_matrix={"shard":[1,2,3,4]}');
+    expect(browserWorkflow).toContain(
+      "needs.scope.result == 'success' && needs.scope.outputs.playwright_matrix",
+    );
+    expect(browserWorkflow).toContain('playwright-visual:');
+    expect(browserWorkflow).toContain('test:browser:docker');
     expect(browserWorkflow).toContain('name: playwright');
     expect(browserWorkflow).toContain('path: packages/testing/blob-report');
     expect(browserWorkflow).toContain(
@@ -56,6 +67,12 @@ describe('Turbo input topology', () => {
     );
     expect(mainWorkflow).toContain("github.event_name == 'schedule'");
     expect(mainWorkflow).toContain("github.event.inputs.force_audit == 'true'");
+    expect(turboConfiguration.tasks['@lostgradient/cinder#test']?.inputs).toContain(
+      '$TURBO_ROOT$/.github/workflows/**',
+    );
+    expect(turboConfiguration.tasks['@cinder/playground#typecheck']?.inputs).toContain(
+      '$TURBO_ROOT$/packages/testing/scripts/source-fingerprint.ts',
+    );
   });
 });
 

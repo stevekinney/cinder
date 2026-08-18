@@ -88,6 +88,28 @@
       "inputs": ["$TURBO_DEFAULT$"],
       "env": ["TURBO_PLATFORM", "RUNNER_OS", "NODE_ENV"]
     },
+    "@lostgradient/cinder#test": {
+      "dependsOn": ["^build"],
+      "outputs": [],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/.github/workflows/**", "$TURBO_ROOT$/docs/**"],
+      "env": ["TURBO_PLATFORM", "RUNNER_OS", "NODE_ENV"]
+    },
+    "@lostgradient/cinder#test:coverage": {
+      "dependsOn": ["^build"],
+      "outputs": ["coverage/**"],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/.github/workflows/**", "$TURBO_ROOT$/docs/**"],
+      "env": ["TURBO_PLATFORM", "RUNNER_OS", "NODE_ENV"]
+    },
+    "@cinder/playground#test": {
+      "dependsOn": ["^build"],
+      "outputs": [],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/testing/scripts/source-fingerprint.ts"]
+    },
+    "@cinder/playground#typecheck": {
+      "dependsOn": ["^build"],
+      "outputs": [],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/testing/scripts/source-fingerprint.ts"]
+    },
     "typecheck": {
       "dependsOn": ["^build"],
       "outputs": [],
