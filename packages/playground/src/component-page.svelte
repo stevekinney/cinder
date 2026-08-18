@@ -2861,6 +2861,13 @@
   .readme-content :global(h3:first-child) {
     margin-top: 0;
   }
+  /* Component README titles are removed in the documentation transform; keep
+     this defensive rule for fixture and malformed-content paths. The landing
+     README title is instead omitted structurally in the server renderer, so it
+     never contributes a duplicate H1 to exported or hydrated markup. */
+  .readme-content :global(h1:first-child) {
+    display: none;
+  }
   /*
    * ONE prose scale, for both surfaces.
    *
