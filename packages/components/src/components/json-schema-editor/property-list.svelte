@@ -38,6 +38,14 @@
 
   const propertyNames = $derived(Object.keys(properties));
   const requiredOnly = $derived(required.filter((name) => !propertyNames.includes(name)));
+  const hasArrayIndexPropertyName = $derived(
+    propertyNames.some((key) => {
+      const number = Number(key);
+      return (
+        Number.isInteger(number) && number >= 0 && number < 4_294_967_295 && String(number) === key
+      );
+    }),
+  );
 
   // Per-row draft names so a partial typed name doesn't reshape the parent.
   let draftNames = $state<Record<string, string>>({});
@@ -171,7 +179,7 @@
   }
 
   async function moveProperty(key: string, direction: -1 | 1, index: number) {
-    if (readonly) return;
+    if (readonly || hasArrayIndexPropertyName) return;
     const target = index + direction;
     if (target < 0 || target >= propertyNames.length) return;
 
@@ -238,8 +246,9 @@
   }
 </script>
 
+<p class="cinder-sr-only" aria-live="polite">{actionAnnouncement}</p>
+
 <div class="cinder-jse-property-list">
-  <p class="cinder-sr-only" aria-live="polite">{actionAnnouncement}</p>
   {#if renameError}
     <Alert variant="danger">{renameError}</Alert>
   {/if}
@@ -306,7 +315,7 @@
         <Button
           variant="ghost"
           size="xs"
-          disabled={readonly || index === 0}
+          disabled={readonly || hasArrayIndexPropertyName || index === 0}
           aria-label={`Move ${key} up`}
           onclick={() => moveProperty(key, -1, index)}
         >
@@ -315,7 +324,7 @@
         <Button
           variant="ghost"
           size="xs"
-          disabled={readonly || index === propertyNames.length - 1}
+          disabled={readonly || hasArrayIndexPropertyName || index === propertyNames.length - 1}
           aria-label={`Move ${key} down`}
           onclick={() => moveProperty(key, 1, index)}
         >

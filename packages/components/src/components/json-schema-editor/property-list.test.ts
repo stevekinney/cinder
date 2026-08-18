@@ -133,18 +133,41 @@ describe('PropertyList', () => {
     expect(source).toContain('aria-controls={isOpen ? panelId : undefined}');
   });
 
-  test('announces property moves and restores focus after deletion', async () => {
-    const source = await Bun.file(new URL('./property-list.svelte', import.meta.url)).text();
+  test('announces moves and restores focus after deletion', async () => {
+    render(PropertyList, {
+      idPrefix: 'properties',
+      path: '/properties',
+      properties: { email: { type: 'string' }, age: { type: 'integer' } },
+      required: [],
+      onValueChange: () => {},
+    });
 
-    expect(source).toContain('aria-live="polite"');
-    expect(source).toContain('Moved ${key} property to position ${target + 1}');
-    expect(source).toContain('Deleted ${key} property.');
-    expect(source).toContain('async function announceAction');
-    expect(source).toContain("actionAnnouncement = ''");
-    expect(source).toContain('await tick()');
-    expect(source).toContain('propertyTriggerElements.get(focusKey)');
-    expect(source).toContain('use:propertyTrigger={key}');
-    expect(source).toContain('bind:this={addPropertyElement}');
+    await fireEvent.click(screen.getByRole('button', { name: 'Move age up' }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(document.querySelector('[aria-live="polite"]')?.textContent).toContain(
+      'Moved age property to position 1 of 2.',
+    );
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Delete email' }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(document.querySelector('[aria-live="polite"]')?.textContent).toContain(
+      'Deleted email property.',
+    );
+    expect(document.activeElement).toBe(
+      screen.getByRole('button', { name: 'Expand age property' }),
+    );
+  });
+
+  test('disables reordering numeric property names whose object order cannot change', () => {
+    render(PropertyList, {
+      idPrefix: 'properties',
+      path: '/properties',
+      properties: { 0: { type: 'string' }, 1: { type: 'integer' } },
+      required: [],
+      onValueChange: () => {},
+    });
+
+    expect(screen.getByRole('button', { name: 'Move 1 up' })).toHaveProperty('disabled', true);
   });
 
   test('keeps enum in the preserved-keywords count when a schema is loaded', () => {
