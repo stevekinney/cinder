@@ -462,15 +462,15 @@
   --cinder-color-info-border: light-dark(oklch(80% 0.05 230), oklch(45% 0.08 230));
 
   --cinder-color-success-bg: light-dark(oklch(94.5% 0.045 145), oklch(28% 0.07 145));
-  --cinder-color-success-fg: light-dark(oklch(40% 0.13 145), oklch(88% 0.11 145));
+  --cinder-color-success-fg: light-dark(oklch(40% 0.127 145), oklch(88% 0.11 145));
   --cinder-color-success-border: light-dark(oklch(80% 0.05 145), oklch(45% 0.09 145));
 
-  --cinder-color-warning-bg: light-dark(oklch(94.5% 0.042 75), oklch(28% 0.08 75));
-  --cinder-color-warning-fg: light-dark(oklch(40% 0.13 75), oklch(90% 0.12 75));
+  --cinder-color-warning-bg: light-dark(oklch(94.5% 0.042 75), oklch(28% 0.06 75));
+  --cinder-color-warning-fg: light-dark(oklch(40% 0.085 75), oklch(90% 0.08 75));
   --cinder-color-warning-border: light-dark(oklch(80% 0.06 75), oklch(50% 0.1 75));
 
   --cinder-color-danger-bg: light-dark(oklch(94.5% 0.026 25), oklch(28% 0.09 25));
-  --cinder-color-danger-fg: light-dark(oklch(42% 0.16 25), oklch(90% 0.12 25));
+  --cinder-color-danger-fg: light-dark(oklch(42% 0.16 25), oklch(90% 0.05 25));
   --cinder-color-danger-border: light-dark(oklch(80% 0.06 25), oklch(50% 0.11 25));
 
   /* Neutral and accent retain the status-triple shape, so components never
@@ -746,11 +746,11 @@
   --cinder-color-success-bg: oklch(28% 0.07 145);
   --cinder-color-success-fg: oklch(88% 0.11 145);
   --cinder-color-success-border: oklch(45% 0.09 145);
-  --cinder-color-warning-bg: oklch(28% 0.08 75);
-  --cinder-color-warning-fg: oklch(90% 0.12 75);
+  --cinder-color-warning-bg: oklch(28% 0.06 75);
+  --cinder-color-warning-fg: oklch(90% 0.08 75);
   --cinder-color-warning-border: oklch(50% 0.1 75);
   --cinder-color-danger-bg: oklch(28% 0.09 25);
-  --cinder-color-danger-fg: oklch(90% 0.12 25);
+  --cinder-color-danger-fg: oklch(90% 0.05 25);
   --cinder-color-danger-border: oklch(50% 0.11 25);
   --cinder-color-neutral-bg: oklch(28% 0.04 245);
   --cinder-color-neutral-fg: var(--cinder-text);
@@ -869,10 +869,10 @@
   --cinder-color-info-fg: oklch(40% 0.079 230);
   --cinder-color-info-border: oklch(80% 0.05 230);
   --cinder-color-success-bg: oklch(94.5% 0.045 145);
-  --cinder-color-success-fg: oklch(40% 0.13 145);
+  --cinder-color-success-fg: oklch(40% 0.127 145);
   --cinder-color-success-border: oklch(80% 0.05 145);
   --cinder-color-warning-bg: oklch(94.5% 0.042 75);
-  --cinder-color-warning-fg: oklch(40% 0.13 75);
+  --cinder-color-warning-fg: oklch(40% 0.085 75);
   --cinder-color-warning-border: oklch(80% 0.06 75);
   --cinder-color-danger-bg: oklch(94.5% 0.026 25);
   --cinder-color-danger-fg: oklch(42% 0.16 25);

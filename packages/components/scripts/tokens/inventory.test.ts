@@ -86,4 +86,20 @@ describe('token inventory', () => {
       '| `--cinder-duration` | `duration` | unclassified | reduced-motion | — | no |',
     );
   });
+
+  test('keeps multiline values within one Markdown table cell', () => {
+    const output = renderInventory([
+      {
+        cssProperty: '--cinder-gradient',
+        proposedPath: 'gradient',
+        section: 'color',
+        source: 'default',
+        aliases: [],
+        needsCssRecipe: true,
+        value: 'linear-gradient(\n  red | blue\n)',
+      },
+    ]);
+
+    expect(output).toContain('`linear-gradient( red \\| blue )`');
+  });
 });

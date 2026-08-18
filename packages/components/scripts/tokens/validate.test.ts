@@ -89,6 +89,33 @@ describe('DTCG semantic validation', () => {
     );
   });
 
+  test('validates composite member shapes', () => {
+    expect(() =>
+      validateTokenDocument({
+        $type: 'border',
+        sample: {
+          $value: {
+            color: { colorSpace: 'oklch', components: ['invalid', 0.1, 255] },
+            width: { value: 1, unit: 'px' },
+            style: 'solid',
+          },
+        },
+      }),
+    ).toThrow('three numeric or none components');
+    expect(() =>
+      validateTokenDocument({
+        $type: 'transition',
+        sample: {
+          $value: {
+            duration: { value: 1, unit: 'ms' },
+            delay: { value: 0, unit: 'ms' },
+            timingFunction: [0, 0, 'invalid', 1],
+          },
+        },
+      }),
+    ).toThrow('cubicBezier must be four numbers');
+  });
+
   test('validates resolver modifier and ordering contracts', () => {
     expect(() =>
       validateResolverDocument({

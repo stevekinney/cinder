@@ -133,8 +133,9 @@ export function renderInventory(entries: readonly TokenInventoryEntry[]): string
   ];
 
   for (const entry of entries) {
+    const value = entry.value.replaceAll(/\s+/g, ' ').trim().replaceAll('|', '\\|');
     lines.push(
-      `| \`${entry.cssProperty}\` | \`${entry.proposedPath}\` | ${entry.section} | ${entry.source} | ${entry.aliases.map((alias) => `\`${alias}\``).join(', ') || '—'} | ${entry.needsCssRecipe ? 'yes' : 'no'} | \`${entry.value.replaceAll('|', '\\|')}\` |`,
+      `| \`${entry.cssProperty}\` | \`${entry.proposedPath}\` | ${entry.section} | ${entry.source} | ${entry.aliases.map((alias) => `\`${alias}\``).join(', ') || '—'} | ${entry.needsCssRecipe ? 'yes' : 'no'} | \`${value}\` |`,
     );
   }
 

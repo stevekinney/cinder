@@ -43,6 +43,21 @@ function addIssue(issues: ValidationIssue[], path: string, reason: string): void
   issues.push({ path, reason });
 }
 
+function validateCompositeMembers(
+  value: JsonObject,
+  members: Readonly<Record<string, TokenType>>,
+  path: string,
+  issues: ValidationIssue[],
+): void {
+  for (const [name, type] of Object.entries(members)) {
+    if (!(name in value)) {
+      addIssue(issues, path, `composite value must include ${name}`);
+      continue;
+    }
+    validateValue(type, value[name], `${path}.${name}`, issues);
+  }
+}
+
 function validateValue(
   type: TokenType,
   value: unknown,
@@ -121,48 +136,83 @@ function validateValue(
         addIssue(issues, path, 'strokeStyle must be a named style or dash array');
       return;
     case 'border':
-      if (
-        !objectValue ||
-        !('color' in objectValue && 'width' in objectValue && 'style' in objectValue)
-      )
-        addIssue(issues, path, 'border must include color, width, and style');
+      if (!objectValue) addIssue(issues, path, 'border must include color, width, and style');
+      else
+        validateCompositeMembers(
+          objectValue,
+          { color: 'color', width: 'dimension', style: 'strokeStyle' },
+          path,
+          issues,
+        );
       return;
     case 'transition':
-      if (
-        !objectValue ||
-        !('duration' in objectValue && 'delay' in objectValue && 'timingFunction' in objectValue)
-      )
+      if (!objectValue)
         addIssue(issues, path, 'transition must include duration, delay, and timingFunction');
+      else
+        validateCompositeMembers(
+          objectValue,
+          { duration: 'duration', delay: 'duration', timingFunction: 'cubicBezier' },
+          path,
+          issues,
+        );
       return;
     case 'shadow':
-      if (
-        !(
-          Array.isArray(value) ||
-          (objectValue &&
-            'color' in objectValue &&
-            'offsetX' in objectValue &&
-            'offsetY' in objectValue &&
-            'blur' in objectValue &&
-            'spread' in objectValue)
-        )
-      )
+      if (!objectValue && !Array.isArray(value))
         addIssue(issues, path, 'shadow must be a shadow object or array');
+      else {
+        const shadows = Array.isArray(value) ? value : [objectValue];
+        for (const [index, shadow] of shadows.entries()) {
+          if (!isObject(shadow)) {
+            addIssue(issues, `${path}.${index}`, 'shadow must be an object');
+            continue;
+          }
+          validateCompositeMembers(
+            shadow,
+            {
+              color: 'color',
+              offsetX: 'dimension',
+              offsetY: 'dimension',
+              blur: 'dimension',
+              spread: 'dimension',
+            },
+            Array.isArray(value) ? `${path}.${index}` : path,
+            issues,
+          );
+        }
+      }
       return;
     case 'gradient':
-      if (
-        !Array.isArray(value) ||
-        value.some((entry) => !isObject(entry) || !('color' in entry && 'position' in entry))
-      )
-        addIssue(issues, path, 'gradient must be color-position stops');
+      if (!Array.isArray(value)) addIssue(issues, path, 'gradient must be color-position stops');
+      else
+        for (const [index, stop] of value.entries()) {
+          if (!isObject(stop)) {
+            addIssue(issues, `${path}.${index}`, 'gradient stop must be an object');
+            continue;
+          }
+          validateCompositeMembers(
+            stop,
+            { color: 'color', position: 'number' },
+            `${path}.${index}`,
+            issues,
+          );
+        }
       return;
     case 'typography':
-      if (
-        !objectValue ||
-        !['fontFamily', 'fontSize', 'fontWeight', 'letterSpacing', 'lineHeight'].every(
-          (key) => key in objectValue,
-        )
-      )
+      if (!objectValue)
         addIssue(issues, path, 'typography must contain all five composite properties');
+      else
+        validateCompositeMembers(
+          objectValue,
+          {
+            fontFamily: 'fontFamily',
+            fontSize: 'dimension',
+            fontWeight: 'fontWeight',
+            letterSpacing: 'dimension',
+            lineHeight: 'number',
+          },
+          path,
+          issues,
+        );
   }
 }
 

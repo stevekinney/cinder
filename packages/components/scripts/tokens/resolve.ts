@@ -20,6 +20,13 @@ function clone<T>(value: T): T {
   return structuredClone(value);
 }
 
+function withResolvedType(token: DesignToken, inheritedType?: DesignToken['$type']): DesignToken {
+  const resolved = clone(token);
+  const type = resolved.$type ?? inheritedType;
+  if (type) resolved.$type = type;
+  return resolved;
+}
+
 function issue(path: string, reason: string): never {
   throw new TokenValidationError([{ path, reason }]);
 }
@@ -63,16 +70,11 @@ function collectTokens(
   tokens: ResolvedTokens,
   inheritedType?: DesignToken['$type'],
 ): void {
-  if (group.$root)
-    tokens.set(prefix, {
-      ...clone(group.$root),
-      $type: group.$root.$type ?? group.$type ?? inheritedType,
-    });
+  if (group.$root) tokens.set(prefix, withResolvedType(group.$root, group.$type ?? inheritedType));
   for (const [name, value] of Object.entries(group)) {
     if (name.startsWith('$') || !isObject(value)) continue;
     const path = prefix ? `${prefix}.${name}` : name;
-    if (isToken(value))
-      tokens.set(path, { ...clone(value), $type: value.$type ?? group.$type ?? inheritedType });
+    if (isToken(value)) tokens.set(path, withResolvedType(value, group.$type ?? inheritedType));
     else if (isTokenGroup(value)) collectTokens(value, path, tokens, group.$type ?? inheritedType);
   }
 }
@@ -93,6 +95,11 @@ function resolveExtends(
     const extended = resolveExtends(extendedPath, groups, visiting, complete);
     for (const [name, value] of Object.entries(extended))
       if (!name.startsWith('$') && group[name] === undefined) group[name] = clone(value);
+  }
+  for (const [name, value] of Object.entries(group)) {
+    if (name.startsWith('$') || !isTokenGroup(value)) continue;
+    const nestedPath = groupPath ? `${groupPath}.${name}` : name;
+    if (groups.has(nestedPath)) resolveExtends(nestedPath, groups, visiting, complete);
   }
   visiting.delete(groupPath);
   complete.add(groupPath);

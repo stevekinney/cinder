@@ -249,11 +249,11 @@ Single-value status tokens for solid fills like badges and dot indicators. For s
 | `--cinder-danger-hover`     | `light-dark(oklch(42% 0.171 25),oklch(64% 0.172 25))`  |
 | `--cinder-danger-active`    | `light-dark(oklch(35% 0.142 25),oklch(60% 0.172 25))`  |
 | `--cinder-info-hover`       | `light-dark(oklch(42% 0.079 230),oklch(70% 0.13 230))` |
-| `--cinder-info-active`      | `light-dark(oklch(35% 0.065 230),oklch(62% 0.13 230))` |
-| `--cinder-success-hover`    | `light-dark(oklch(42% 0.14 145),oklch(70% 0.14 145))`  |
-| `--cinder-success-active`   | `light-dark(oklch(35% 0.12 145),oklch(62% 0.14 145))`  |
-| `--cinder-warning-hover`    | `light-dark(oklch(42% 0.092 75),oklch(74% 0.156 75))`  |
-| `--cinder-warning-active`   | `light-dark(oklch(38% 0.083 75),oklch(66% 0.156 75))`  |
+| `--cinder-info-active`      | `light-dark(oklch(35% 0.065 230),oklch(62% 0.12 230))` |
+| `--cinder-success-hover`    | `light-dark(oklch(42% 0.12 145),oklch(70% 0.14 145))`  |
+| `--cinder-success-active`   | `light-dark(oklch(35% 0.1 145),oklch(62% 0.14 145))`   |
+| `--cinder-warning-hover`    | `light-dark(oklch(42% 0.08 75),oklch(74% 0.156 75))`   |
+| `--cinder-warning-active`   | `light-dark(oklch(38% 0.07 75),oklch(66% 0.13 75))`    |
 | `--cinder-success-contrast` | `light-dark(oklch(100% 0 0), oklch(15% 0.03 145))`     |
 | `--cinder-warning-contrast` | `light-dark(oklch(100% 0 0), oklch(20% 0.04 75))`      |
 | `--cinder-info-contrast`    | `light-dark(oklch(100% 0 0),oklch(15% 0.03 230))`      |
@@ -270,13 +270,13 @@ Foreground / background / border triples for soft tinted surfaces. Use these in 
 | `--cinder-color-info-fg`        | `light-dark(oklch(40% 0.079 230),oklch(88% 0.071 230))`                                   |
 | `--cinder-color-info-border`    | `light-dark(oklch(80% 0.05 230),oklch(45% 0.08 230))`                                     |
 | `--cinder-color-success-bg`     | `light-dark(oklch(94.5% 0.045 145),oklch(28% 0.07 145))`                                  |
-| `--cinder-color-success-fg`     | `light-dark(oklch(40% 0.13 145), oklch(88% 0.11 145))`                                    |
+| `--cinder-color-success-fg`     | `light-dark(oklch(40% 0.127 145), oklch(88% 0.11 145))`                                   |
 | `--cinder-color-success-border` | `light-dark(oklch(80% 0.05 145), oklch(45% 0.09 145))`                                    |
-| `--cinder-color-warning-bg`     | `light-dark(oklch(94.5% 0.042 75),oklch(28% 0.08 75))`                                    |
-| `--cinder-color-warning-fg`     | `light-dark(oklch(40% 0.13 75), oklch(90% 0.12 75))`                                      |
+| `--cinder-color-warning-bg`     | `light-dark(oklch(94.5% 0.042 75),oklch(28% 0.06 75))`                                    |
+| `--cinder-color-warning-fg`     | `light-dark(oklch(40% 0.085 75), oklch(90% 0.08 75))`                                     |
 | `--cinder-color-warning-border` | `light-dark(oklch(80% 0.06 75), oklch(50% 0.1 75))`                                       |
 | `--cinder-color-danger-bg`      | `light-dark(oklch(94.5% 0.026 25),oklch(28% 0.09 25))`                                    |
-| `--cinder-color-danger-fg`      | `light-dark(oklch(42% 0.16 25), oklch(90% 0.12 25))`                                      |
+| `--cinder-color-danger-fg`      | `light-dark(oklch(42% 0.16 25), oklch(90% 0.05 25))`                                      |
 | `--cinder-color-danger-border`  | `light-dark(oklch(80% 0.06 25), oklch(50% 0.11 25))`                                      |
 | `--cinder-color-neutral-bg`     | `light-dark(oklch(94.5% 0.004 255),oklch(28% 0.04 245))`                                  |
 | `--cinder-color-neutral-fg`     | `var(--cinder-text)`                                                                      |

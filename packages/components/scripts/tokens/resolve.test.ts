@@ -31,14 +31,14 @@ describe('DTCG resolver', () => {
       'a/b': { $type: 'dimension', $value: { value: 2, unit: 'px' } },
       copy: { $type: 'number', $value: '#/a~1b/$value/value' },
     });
-    expect(resolved.copy?.$value).toBe(2);
+    expect(resolved['copy']?.$value).toBe(2);
   });
 
   test('retains inherited types and a group root token', () => {
     const resolved = resolveDocument({
       group: { $type: 'number', $root: { $value: 1 }, child: { $value: 2 } },
     });
-    expect(resolved.group).toMatchObject({ $type: 'number', $value: 1 });
+    expect(resolved['group']).toMatchObject({ $type: 'number', $value: 1 });
     expect(resolved['group.child']).toMatchObject({ $type: 'number', $value: 2 });
   });
 
@@ -61,6 +61,15 @@ describe('DTCG resolver', () => {
       derived: { $extends: '{base}' },
     });
     expect(resolved['derived.value']?.$value).toBe(1);
+  });
+
+  test('resolves nested extensions before copying an extended group', () => {
+    const resolved = resolveDocument({
+      common: { value: { $value: 1 } },
+      base: { nested: { $extends: '{common}' } },
+      derived: { $extends: '{base}' },
+    });
+    expect(resolved['derived.nested.value']?.$value).toBe(1);
   });
 
   test('merges ordered sources with the final source winning', () => {

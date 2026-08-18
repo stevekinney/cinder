@@ -308,6 +308,12 @@ const info = readOklchToken(css, '--cinder-info');
 const infoContrast = readOklchToken(css, '--cinder-info-contrast');
 const infoBg = readOklchToken(css, '--cinder-color-info-bg');
 const infoFg = readOklchToken(css, '--cinder-color-info-fg');
+const successBg = readOklchToken(css, '--cinder-color-success-bg');
+const successFg = readOklchToken(css, '--cinder-color-success-fg');
+const warningBg = readOklchToken(css, '--cinder-color-warning-bg');
+const warningFg = readOklchToken(css, '--cinder-color-warning-fg');
+const dangerBg = readOklchToken(css, '--cinder-color-danger-bg');
+const dangerFg = readOklchToken(css, '--cinder-color-danger-fg');
 const success = readOklchToken(css, '--cinder-success');
 const warning = readOklchToken(css, '--cinder-warning');
 const danger = readOklchToken(css, '--cinder-danger');
@@ -315,6 +321,9 @@ const successContrast = readOklchToken(css, '--cinder-success-contrast');
 const warningContrast = readOklchToken(css, '--cinder-warning-contrast');
 const dangerContrast = readOklchToken(css, '--cinder-danger-contrast');
 const infoBorder = readOklchToken(css, '--cinder-color-info-border');
+const successBorder = readOklchToken(css, '--cinder-color-success-border');
+const warningBorder = readOklchToken(css, '--cinder-color-warning-border');
+const dangerBorder = readOklchToken(css, '--cinder-color-danger-border');
 // Authored (not relative-derived) so the gamut gate can parse them directly — red (h 25)
 // clamps at low lightness, so these are pinned to their in-gamut chroma maxima.
 const dangerHover = readOklchToken(css, '--cinder-danger-hover');
@@ -434,6 +443,8 @@ describe('accent + accent-text contrast (both arms)', () => {
 });
 
 describe('status color contrast', () => {
+  const DECORATIVE_BORDER = 1.4;
+
   it('info fill carries white label at AA (light arm)', () => {
     const white = { l: 1, c: 0, h: 0 };
     expect(contrastRatio(wcagLuminance(white), wcagLuminance(info.light))).toBeGreaterThanOrEqual(
@@ -441,11 +452,24 @@ describe('status color contrast', () => {
     );
   });
 
-  it('info soft-surface fg clears AA on its soft bg (both arms)', () => {
-    for (const arm of ['light', 'dark'] as const) {
-      expect(
-        contrastRatio(wcagLuminance(infoFg[arm]), wcagLuminance(infoBg[arm])),
-      ).toBeGreaterThanOrEqual(AA_TEXT);
+  it('every soft status tier provides readable foreground and perceptible border contrast', () => {
+    const statuses: Array<[string, TokenArms, TokenArms, TokenArms]> = [
+      ['info', infoBg, infoFg, infoBorder],
+      ['success', successBg, successFg, successBorder],
+      ['warning', warningBg, warningFg, warningBorder],
+      ['danger', dangerBg, dangerFg, dangerBorder],
+    ];
+    for (const [name, background, foreground, border] of statuses) {
+      for (const arm of ['light', 'dark'] as const) {
+        expect(
+          contrastRatio(wcagLuminance(foreground[arm]), wcagLuminance(background[arm])),
+          `${name} foreground ${arm}`,
+        ).toBeGreaterThanOrEqual(AA_TEXT);
+        expect(
+          contrastRatio(wcagLuminance(border[arm]), wcagLuminance(background[arm])),
+          `${name} border ${arm}`,
+        ).toBeGreaterThanOrEqual(DECORATIVE_BORDER);
+      }
     }
   });
 
@@ -552,6 +576,12 @@ describe('sRGB gamut integrity (no silent chroma clamping)', () => {
     info,
     infoBg,
     infoFg,
+    successBg,
+    successFg,
+    warningBg,
+    warningFg,
+    dangerBg,
+    dangerFg,
     success,
     warning,
     danger,
@@ -563,6 +593,9 @@ describe('sRGB gamut integrity (no silent chroma clamping)', () => {
     // Soft-surface info border (success/warning/danger borders parse the same way; info
     // is the one this PR re-hued, so it anchors the border family here).
     infoBorder,
+    successBorder,
+    warningBorder,
+    dangerBorder,
     // Authored danger hover/active — pinned to their in-gamut chroma maxima on the light
     // arm because red (h 25) clamps at low lightness; this gate is what enforces that.
     dangerHover,

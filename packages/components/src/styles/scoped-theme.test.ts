@@ -84,7 +84,7 @@ describe('scoped theme tokens', () => {
       '--cinder-danger-hover': 'oklch(64% 0.172 25)',
       '--cinder-danger-active': 'oklch(60% 0.172 25)',
       '--cinder-color-danger-bg': 'oklch(28% 0.09 25)',
-      '--cinder-color-danger-fg': 'oklch(90% 0.12 25)',
+      '--cinder-color-danger-fg': 'oklch(90% 0.05 25)',
       '--cinder-color-danger-border': 'oklch(50% 0.11 25)',
       '--cinder-color-checker-base': 'oklch(28% 0.02 245)',
       '--cinder-color-checker-tile': 'oklch(38% 0.02 245)',
