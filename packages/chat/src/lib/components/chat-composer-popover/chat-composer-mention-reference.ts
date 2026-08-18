@@ -15,6 +15,7 @@ export function getReferenceDefinitionEnd(
     if (value[labelEnd] === '\\') labelEnd += 2;
     else labelEnd += 1;
   }
+  if (!/\S/u.test(value.slice(start + 1, labelEnd))) return null;
   if (value[labelEnd] !== ']' || value[labelEnd + 1] !== ':') return null;
 
   const lineEnd = getLineEnd(value, labelEnd + 2);

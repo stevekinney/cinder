@@ -6,7 +6,7 @@ const VOID_HTML_TAGS = new Set(
 );
 const RAW_TEXT_HTML_TAGS = new Set(['pre', 'script', 'style', 'textarea']);
 const BLOCK_HTML_TAGS = new Set(
-  'address article aside blockquote body caption center colgroup dd details dialog dir div dl dt fieldset figcaption figure footer form frameset h1 h2 h3 h4 h5 h6 head header html iframe legend li main menu nav noframes ol p section summary table tbody td tfoot th thead title tr ul'.split(
+  'address article aside blockquote body caption center colgroup dd details dialog dir div dl dt fieldset figcaption figure footer form frameset h1 h2 h3 h4 h5 h6 head header hr html iframe legend li main menu nav noframes ol p section summary table tbody td tfoot th thead title tr ul'.split(
     ' ',
   ),
 );

@@ -97,7 +97,7 @@ export function makeScanMetadata(value: string): ScanMetadata {
       if (
         length === 2 ||
         (length === 1 &&
-          !/[0-9\s]/u.test(value[start - 1] ?? '') &&
+          !/\s/u.test(value[start - 1] ?? '') &&
           !/[0-9]/u.test(value[index + 1] ?? ''))
       ) {
         nextMathClose.set(length, start);
@@ -111,4 +111,30 @@ export function makeScanMetadata(value: string): ScanMetadata {
 
 export function hasEscapedPrefix(index: number, metadata: ScanMetadata): boolean {
   return metadata.escaped[index] === 1;
+}
+
+export function isIndentedCodeStart(value: string, index: number, metadata: ScanMetadata): boolean {
+  const lineStart = metadata.lineStarts[index] ?? 0;
+  if (lineStart !== index || !isIndentedCodeLine(value, lineStart)) return false;
+  if (lineStart === 0) return true;
+
+  const previousLineStart = metadata.lineStarts[lineStart - 1] ?? 0;
+  return /^\s*$/u.test(value.slice(previousLineStart, lineStart - 1));
+}
+
+export function isIndentedCodeLine(value: string, lineStart: number): boolean {
+  let cursor = lineStart;
+  let indentation = 0;
+  while (indentation < 3 && value[cursor] === ' ') {
+    cursor += 1;
+    indentation += 1;
+  }
+
+  if (value[cursor] !== '>') cursor = lineStart;
+  while (value[cursor] === '>') {
+    cursor += 1;
+    if (value[cursor] === ' ') cursor += 1;
+  }
+
+  return value.startsWith('    ', cursor) || value[cursor] === '\t';
 }

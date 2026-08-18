@@ -18,6 +18,8 @@ import {
 import { getReferenceDefinitionEnd } from './chat-composer-mention-reference.ts';
 import {
   hasEscapedPrefix,
+  isIndentedCodeLine,
+  isIndentedCodeStart,
   makeScanMetadata,
   type ScanMetadata,
 } from './chat-composer-mention-scan.ts';
@@ -60,31 +62,10 @@ function countRun(value: string, start: number, character: string): number {
   return length;
 }
 
-function isIndentedCodeStart(value: string, index: number, metadata: ScanMetadata): boolean {
+function isAtBlockStart(value: string, index: number, metadata: ScanMetadata): boolean {
   const lineStart = metadata.lineStarts[index] ?? 0;
-  if (lineStart !== index || !isIndentedCodeLine(value, lineStart)) return false;
-
-  if (lineStart === 0) return true;
-
-  const previousLineStart = metadata.lineStarts[lineStart - 1] ?? 0;
-  return /^\s*$/u.test(value.slice(previousLineStart, lineStart - 1));
-}
-
-function isIndentedCodeLine(value: string, lineStart: number): boolean {
-  let cursor = lineStart;
-  let indentation = 0;
-  while (indentation < 3 && value[cursor] === ' ') {
-    cursor += 1;
-    indentation += 1;
-  }
-
-  if (value[cursor] !== '>') cursor = lineStart;
-  while (value[cursor] === '>') {
-    cursor += 1;
-    if (value[cursor] === ' ') cursor += 1;
-  }
-
-  return value.startsWith('    ', cursor) || value[cursor] === '\t';
+  const containerStart = metadata.containerStarts.get(lineStart) ?? lineStart;
+  return /^ {0,3}$/u.test(value.slice(containerStart, index));
 }
 
 function getContainerPrefix(value: string, start: number, metadata: ScanMetadata): string {
@@ -358,16 +339,28 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
 
     if (value[sourceIndex] === '<' && !hasEscapedPrefix(sourceIndex, metadata)) {
       if (value.startsWith('<!--', sourceIndex)) {
-        htmlComment = true;
-        text += '<!--';
-        sourceIndex += 4;
-        continue;
+        if (
+          value.indexOf('-->', sourceIndex + 4) !== -1 ||
+          isAtBlockStart(value, sourceIndex, metadata)
+        ) {
+          htmlComment = true;
+          text += '<!--';
+          sourceIndex += 4;
+          continue;
+        }
       }
       if (value.startsWith('<![CDATA[', sourceIndex)) {
         const closingStart = value.indexOf(']]>', sourceIndex + 9);
         const end = closingStart === -1 ? value.length : closingStart + 3;
         text += value.slice(sourceIndex, end);
         sourceIndex = end;
+        continue;
+      }
+      const rawBlock = /^<(pre|script|style|textarea)(?=[\s>])/iu.exec(value.slice(sourceIndex));
+      if (rawBlock !== null && isAtBlockStart(value, sourceIndex, metadata)) {
+        htmlBlock = { tag: rawBlock[1]!.toLowerCase(), closesWithTag: true };
+        text += '<';
+        sourceIndex += 1;
         continue;
       }
       const autolinkEnd = getAutolinkEnd(value, sourceIndex);
@@ -379,16 +372,12 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
       const tagEnd = getHtmlTagEnd(value, sourceIndex);
       if (tagEnd !== null) {
         const tagStart = sourceIndex;
-        const tag = /^<\/?([A-Za-z][A-Za-z0-9-]*)(?:\s|>)/u.exec(
+        const tag = /^<\/?([A-Za-z][A-Za-z0-9-]*)(?=\s|\/?>)/u.exec(
           value.slice(sourceIndex, tagEnd + 1),
         );
         text += value.slice(sourceIndex, tagEnd + 1);
         sourceIndex = tagEnd + 1;
-        if (
-          tag !== null &&
-          !value.slice(sourceIndex - 2, sourceIndex).includes('/') &&
-          !isVoidHtmlTag(tag[1]!.toLowerCase())
-        ) {
+        if (tag !== null) {
           const lineStart = metadata.lineStarts[sourceIndex - 1] ?? 0;
           const normalizedTag = tag[1]!.toLowerCase();
           const containerStart = metadata.containerStarts.get(lineStart) ?? lineStart;
@@ -396,7 +385,12 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
           const isStandaloneTag =
             /^\s*<[A-Za-z][A-Za-z0-9-]*(?:\s[^>]*)?>$/u.test(value.slice(lineStart, sourceIndex)) &&
             isLineEnding(value[sourceIndex]);
+          const canOwnHtmlBlock =
+            isInterruptingHtmlBlockTag(normalizedTag) ||
+            (!value.slice(sourceIndex - 2, sourceIndex).includes('/') &&
+              !isVoidHtmlTag(normalizedTag));
           if (
+            canOwnHtmlBlock &&
             startsAtBlockColumn &&
             (isInterruptingHtmlBlockTag(normalizedTag) ||
               (isStandaloneTag && canStartHtmlBlock(value, lineStart, metadata)))
