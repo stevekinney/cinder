@@ -27,8 +27,7 @@
   let { state: editorState, idPrefix, onApply, class: className }: JsonViewProps = $props();
 
   async function applyDraft(): Promise<void> {
-    await editorState.applyJsonDraft();
-    onApply?.();
+    if (await editorState.applyJsonDraft()) onApply?.();
   }
 
   // Parse is synchronous; the meta-schema check is not (validateMetaSchema

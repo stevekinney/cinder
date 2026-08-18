@@ -210,6 +210,10 @@
   }
 
   function setEnum(enabled: boolean) {
+    if (!enabled) {
+      const { [`${path}/enum`]: _removedDraft, ...remainingDrafts } = enumDrafts;
+      onEnumDraftsChange?.(remainingDrafts);
+    }
     patch(
       { enum: enabled ? (Array.isArray(objectValue.enum) ? objectValue.enum : ['']) : undefined },
       { label: 'edit enum' },
@@ -401,10 +405,12 @@
           {idPrefix}
           {readonly}
           {depth}
+          {enumDrafts}
           path={`${path}/properties`}
           properties={objectValue.properties ?? {}}
           required={objectValue.required ?? []}
           onvalidationErrorcount={(count) => setChildValidationErrorCount('properties', count)}
+          {onEnumDraftsChange}
           onValueChange={patchProperties}
         />
       </div>
