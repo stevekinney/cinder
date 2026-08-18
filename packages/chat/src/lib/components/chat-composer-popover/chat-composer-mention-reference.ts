@@ -15,22 +15,23 @@ export function getReferenceDefinitionEnd(
   if (!/^ {0,3}$/u.test(value.slice(containerStart, start))) return null;
   if (lineStart > 0) {
     const previousLineStart = metadata.lineStarts[lineStart - 1] ?? 0;
-    if (metadata.paragraphLineStarts.has(previousLineStart)) return null;
+    const currentContainer = getContainerContext(lineStart, metadata);
+    const previousContainer = getContainerContext(previousLineStart, metadata);
+    if (
+      currentContainer.quoteDepth === previousContainer.quoteDepth &&
+      currentContainer.listDepth === previousContainer.listDepth &&
+      metadata.paragraphLineStarts.has(previousLineStart)
+    )
+      return null;
   }
-
   let labelEnd = start + 1;
   if (value[labelEnd] === '^') return null;
   while (labelEnd < value.length && value[labelEnd] !== ']') {
-    if (
-      labelEnd - start > 999 ||
-      value[labelEnd] === '\r' ||
-      value[labelEnd] === '\n' ||
-      value[labelEnd] === '['
-    )
-      return null;
+    if (labelEnd - start > 999 || value[labelEnd] === '[') return null;
     if (value[labelEnd] === '\\') labelEnd += 2;
     else labelEnd += 1;
   }
+  if (/(?:\r\n?|\n)[ \t]*(?:\r\n?|\n)/u.test(value.slice(start + 1, labelEnd))) return null;
   if (!/\S/u.test(value.slice(start + 1, labelEnd))) return null;
   if (value[labelEnd] !== ']' || value[labelEnd + 1] !== ':') return null;
 

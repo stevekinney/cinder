@@ -7,7 +7,7 @@ import {
 
 const RAW_TEXT_HTML_TAGS = new Set(['pre', 'script', 'style', 'textarea']);
 const BLOCK_HTML_TAGS = new Set(
-  'address article aside blockquote body caption center colgroup dd details dialog dir div dl dt fieldset figcaption figure footer form frameset h1 h2 h3 h4 h5 h6 head header hr html iframe legend li main menu nav noframes ol p section summary table tbody td tfoot th thead title tr ul'.split(
+  'address article aside base basefont blockquote body caption center col colgroup dd details dialog dir div dl dt fieldset figcaption figure footer form frame frameset h1 h2 h3 h4 h5 h6 head header hr html iframe legend li link main menu menuitem nav noframes ol optgroup option p param search section summary table tbody td tfoot th thead title tr track ul'.split(
     ' ',
   ),
 );
@@ -20,6 +20,14 @@ export function isInterruptingHtmlBlockTag(tag: string): boolean {
   return RAW_TEXT_HTML_TAGS.has(tag) || BLOCK_HTML_TAGS.has(tag);
 }
 
+export function isValidHtmlComment(value: string, start: number, end: number): boolean {
+  return (
+    value.startsWith('<!--', start) &&
+    value.startsWith('-->', end - 3) &&
+    !value.slice(start + 4, end - 3).includes('--')
+  );
+}
+
 export function canStartHtmlBlock(
   value: string,
   lineStart: number,
@@ -28,6 +36,13 @@ export function canStartHtmlBlock(
   if (lineStart === 0) return true;
 
   const previousLineStart = metadata.lineStarts[lineStart - 1] ?? 0;
+  const current = metadata.containerContexts.get(lineStart);
+  const previous = metadata.containerContexts.get(previousLineStart);
+  if (
+    (current?.quoteDepth ?? 0) > (previous?.quoteDepth ?? 0) ||
+    (current?.listDepth ?? 0) > (previous?.listDepth ?? 0)
+  )
+    return true;
   return /^\s*$/u.test(value.slice(previousLineStart, lineStart - 1));
 }
 

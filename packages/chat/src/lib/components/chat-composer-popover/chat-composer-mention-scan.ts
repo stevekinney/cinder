@@ -131,7 +131,12 @@ export function makeScanMetadata(value: string): ScanMetadata {
       listDepth === 0 &&
       content.length > 0 &&
       !/^(?:#{1,6}(?:[ \t]+|$)|(?:[*_-][ \t]*){3,}$|(?:`{3,}|~{3,})|<|\[[^\]^]+\]:)/u.test(content);
-    if (previousLineWasParagraph) paragraphLineStarts.add(start);
+    if (
+      content.length > 0 &&
+      !/^(?:#{1,6}(?:[ \t]+|$)|(?:[*_-][ \t]*){3,}$|(?:`{3,}|~{3,})|<|\[[^\]^]+\]:)/u.test(content)
+    ) {
+      paragraphLineStarts.add(start);
+    }
     if (lineEnd === value.length) break;
     start = lineEnd + getLineEndingLength(value, lineEnd);
   }
@@ -140,6 +145,7 @@ export function makeScanMetadata(value: string): ScanMetadata {
   const nextMathClose = new Map<number, number>();
   for (let index = value.length - 1; index >= 0; ) {
     const character = value[index];
+    if (index === lineStarts[index] && !paragraphLineStarts.has(index)) nextCodeRun.clear();
     if (paragraphBreaks.has(index)) {
       nextCodeRun.clear();
       nextMathClose.delete(1);
@@ -239,7 +245,7 @@ export function isClosingCodeFence(
   const length = countRun(value, start, fence.delimiter);
   if (length < fence.minimumLength) return false;
   const lineEnd = getLineEnd(value, start + length);
-  return /^ *$/u.test(value.slice(start + length, lineEnd));
+  return /^[ \t]*$/u.test(value.slice(start + length, lineEnd));
 }
 
 export function hasEscapedPrefix(index: number, metadata: ScanMetadata): boolean {
@@ -266,9 +272,10 @@ export function isIndentedCodeStart(value: string, index: number, metadata: Scan
   const previousContentStart = metadata.containerStarts.get(previousLineStart) ?? previousLineStart;
   const previousLine = value.slice(previousContentStart, lineStart - 1).trimEnd();
   const previousContainer = metadata.containerContexts.get(previousLineStart);
+  const currentContainer = metadata.containerContexts.get(lineStart);
   return (
-    (previousContainer?.quoteDepth ?? 0) > 0 ||
-    (previousContainer?.listDepth ?? 0) > 0 ||
+    (currentContainer?.quoteDepth ?? 0) > (previousContainer?.quoteDepth ?? 0) ||
+    (currentContainer?.listDepth ?? 0) > (previousContainer?.listDepth ?? 0) ||
     /^(?:#{1,6}(?:[ \t]+|$)|(?:=+|-+)[ \t]*$|(?:`{3,}|~{3,})|<\/?[A-Za-z]|<!--|<\?|<!\[CDATA\[)/u.test(
       previousLine,
     )

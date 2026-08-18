@@ -7,6 +7,7 @@ import {
   getHtmlDelimitedBlockEnd,
   getHtmlTagEnd,
   isInterruptingHtmlBlockTag,
+  isValidHtmlComment,
 } from './chat-composer-mention-html.ts';
 import { getLineEnd, getLineEndingLength, isLineEnding } from './chat-composer-mention-lines.ts';
 import {
@@ -104,7 +105,7 @@ function parseLink(value: string, start: number): ParsedLink | null {
       destinationEnd += 1;
       continue;
     }
-    if (character === '[') return null;
+    if (character === '[' || character === '<' || character === '>') return null;
     if (character === ')') {
       if (nestedParentheses === 0) break;
       nestedParentheses -= 1;
@@ -241,6 +242,11 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
       if (value.startsWith('<!--', sourceIndex)) {
         const isBlock = isAtBlockStart(value, sourceIndex, metadata);
         const closingStart = value.indexOf('-->', sourceIndex + 4);
+        if (closingStart !== -1 && !isValidHtmlComment(value, sourceIndex, closingStart + 3)) {
+          sourceIndex += 4;
+          text += '<!--';
+          continue;
+        }
         if (closingStart !== -1 || isBlock) {
           const lineStart = metadata.lineStarts[sourceIndex] ?? 0;
           if (isBlock) {

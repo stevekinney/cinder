@@ -116,12 +116,15 @@ describe('chat composer mentions', () => {
       '[Docs](<https://x\n[Ada](person:ada)>',
       '[Docs](<https://x<[Ada](person:ada)>)',
       '[Docs](<https://x [Ada](person:ada)',
-      '[Docs](https://x (title\n[Ada](person:ada))',
     ]) {
       expect(parseChatComposerMentions(malformedAngleDestination).mentions).toEqual([
         expect.objectContaining({ label: 'Ada', uri: 'person:ada' }),
       ]);
     }
+    expect(parseChatComposerMentions('[Docs](https://x (title\n[Ada](person:ada))')).toEqual({
+      text: '[Docs](https://x (title\n[Ada](person:ada))',
+      mentions: [],
+    });
   });
 
   test('does not let an unclosed label absorb a later serialized mention', () => {
@@ -731,6 +734,59 @@ describe('chat composer mentions', () => {
     expect(parseChatComposerMentions('<div\n[Ada](person:a)')).toEqual({
       text: '<div\n[Ada](person:a)',
       mentions: [],
+    });
+    expect(parseChatComposerMentions('<www.example.com> [Ada](person:a)')).toEqual({
+      text: '<www.example.com> Ada',
+      mentions: [{ label: 'Ada', uri: 'person:a', start: 18, end: 21 }],
+    });
+    expect(parseChatComposerMentions('<www.> [Ada](person:a)')).toEqual({
+      text: '<www.> Ada',
+      mentions: [{ label: 'Ada', uri: 'person:a', start: 7, end: 10 }],
+    });
+    expect(parseChatComposerMentions('https://[Ada](person:a)')).toEqual({
+      text: 'https://Ada',
+      mentions: [{ label: 'Ada', uri: 'person:a', start: 8, end: 11 }],
+    });
+    expect(parseChatComposerMentions('www.[Ada](person:a)')).toEqual({
+      text: 'www.Ada',
+      mentions: [{ label: 'Ada', uri: 'person:a', start: 4, end: 7 }],
+    });
+    expect(parseChatComposerMentions('www.example.com [Ada](person:a)')).toEqual({
+      text: 'www.example.com Ada',
+      mentions: [{ label: 'Ada', uri: 'person:a', start: 16, end: 19 }],
+    });
+    expect(parseChatComposerMentions('Intro <!-- bad--comment [Ada](person:a) -->')).toEqual({
+      text: 'Intro <!-- bad--comment Ada -->',
+      mentions: [{ label: 'Ada', uri: 'person:a', start: 24, end: 27 }],
+    });
+    expect(parseChatComposerMentions('> text\n> <div>\n> [Ada](person:block)\n> </div>')).toEqual({
+      text: '> text\n> <div>\n> [Ada](person:block)\n> </div>',
+      mentions: [],
+    });
+    expect(parseChatComposerMentions('paragraph\n>     [Ada](person:code)')).toEqual({
+      text: 'paragraph\n>     [Ada](person:code)',
+      mentions: [],
+    });
+    expect(parseChatComposerMentions('> paragraph\n> [ref]: /url "[Ada](person:a)"')).toEqual({
+      text: '> paragraph\n> [ref]: /url "Ada"',
+      mentions: [{ label: 'Ada', uri: 'person:a', start: 27, end: 30 }],
+    });
+    for (const tag of ['base', 'basefont', 'option', 'search', 'track']) {
+      const value = `<${tag}>\n[Ada](person:a)`;
+      expect(parseChatComposerMentions(value)).toEqual({ text: value, mentions: [] });
+    }
+    const multilineReferenceLabel = '[ref\nlabel]: /url "[Ada](person:a)"';
+    expect(parseChatComposerMentions(multilineReferenceLabel)).toEqual({
+      text: multilineReferenceLabel,
+      mentions: [],
+    });
+    expect(parseChatComposerMentions('[Ada](person:<id>)')).toEqual({
+      text: '[Ada](person:<id>)',
+      mentions: [],
+    });
+    expect(parseChatComposerMentions('[Docs](https://x (title\n\n[Ada](person:a)))')).toEqual({
+      text: '[Docs](https://x (title\n\nAda))',
+      mentions: [{ label: 'Ada', uri: 'person:a', start: 25, end: 28 }],
     });
     const multilineReferenceTitle = '[ref]: /url "title\n[Ada](person:a)\nend"';
     expect(parseChatComposerMentions(multilineReferenceTitle)).toEqual({

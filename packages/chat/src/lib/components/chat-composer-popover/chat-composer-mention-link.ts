@@ -42,6 +42,13 @@ export function getGfmLiteralAutolinkEnd(value: string, start: number): number |
 
   let cursor = start;
   while (cursor < value.length && !/[\s<>]/u.test(value[cursor]!)) cursor += 1;
+  const destination = value.slice(start, cursor);
+  if (
+    !/^(?:(?:https?:\/\/)|www\.)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,}(?::\d+)?(?:[/?#].*)?$/u.test(
+      destination,
+    )
+  )
+    return null;
   return cursor;
 }
 
@@ -85,10 +92,11 @@ export function getOrdinaryLinkEnd(
     while (cursor < value.length && !/\s/u.test(value[cursor]!)) {
       const character = value[cursor];
       if (character === '\\') {
+        if (value[cursor + 1] === '<') return null;
         cursor += 2;
         continue;
       }
-      if (character === '[') return null;
+      if (character === '[' || character === '<' || character === '>') return null;
       if (character === '(') depth += 1;
       if (character === ')') {
         if (depth === 0) return cursor + 1;
@@ -108,16 +116,16 @@ export function getOrdinaryLinkEnd(
   const closer = opener === '(' ? ')' : opener;
   if (opener !== '"' && opener !== "'" && opener !== '(') return null;
   cursor += 1;
+  const titleStart = cursor;
   while (cursor < value.length && value[cursor] !== closer) {
     const character = value[cursor];
     if (character === '\\') {
       cursor += 1;
-    } else if (isLineEnding(character) && opener === '(') {
-      return null;
     }
     cursor += 1;
   }
   if (value[cursor] !== closer) return null;
+  if (hasMarkdownParagraphBreak(value.slice(titleStart, cursor))) return null;
   cursor += 1;
   const closingWhitespaceStart = cursor;
   while (/\s/u.test(value[cursor] ?? '')) cursor += 1;
