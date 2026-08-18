@@ -61,13 +61,29 @@ function countRun(value: string, start: number, character: string): number {
 
 function isIndentedCodeStart(value: string, index: number, metadata: ScanMetadata): boolean {
   const lineStart = metadata.lineStarts[index] ?? 0;
-  if (lineStart !== index || (!value.startsWith('    ', index) && value[index] !== '\t'))
-    return false;
+  if (lineStart !== index || !isIndentedCodeLine(value, lineStart)) return false;
 
   if (lineStart === 0) return true;
 
   const previousLineStart = metadata.lineStarts[lineStart - 1] ?? 0;
   return /^\s*$/u.test(value.slice(previousLineStart, lineStart - 1));
+}
+
+function isIndentedCodeLine(value: string, lineStart: number): boolean {
+  let cursor = lineStart;
+  let indentation = 0;
+  while (indentation < 3 && value[cursor] === ' ') {
+    cursor += 1;
+    indentation += 1;
+  }
+
+  if (value[cursor] !== '>') cursor = lineStart;
+  while (value[cursor] === '>') {
+    cursor += 1;
+    if (value[cursor] === ' ') cursor += 1;
+  }
+
+  return value.startsWith('    ', cursor) || value[cursor] === '\t';
 }
 
 function getContainerPrefix(value: string, start: number, metadata: ScanMetadata): string {
@@ -130,27 +146,56 @@ function getOrdinaryLinkEnd(value: string, start: number): number | null {
   }
   if (value[labelEnd] !== ']' || value[labelEnd + 1] !== '(') return null;
 
-  let depth = 0;
-  let quote: '"' | "'" | null = null;
-  for (let index = labelEnd + 2; index < value.length; index += 1) {
-    const character = value[index];
-    if (character === '\\') {
-      index += 1;
-    } else if (quote !== null) {
-      if (character === quote) quote = null;
-    } else if (character === '"' || character === "'") {
-      quote = character;
-    } else if (character === '[') {
-      return null;
-    } else if (character === '(') {
-      depth += 1;
-    } else if (character === ')') {
-      if (depth === 0) return index + 1;
-      depth -= 1;
+  let cursor = labelEnd + 2;
+  if (value[cursor] === '<') {
+    cursor += 1;
+    while (cursor < value.length && value[cursor] !== '>') {
+      if (value[cursor] === '\\') cursor += 1;
+      if (value[cursor] === '\n' || value[cursor] === '<') return null;
+      cursor += 1;
     }
+    if (value[cursor] !== '>') return null;
+    cursor += 1;
+  } else {
+    let depth = 0;
+    while (cursor < value.length && !/\s/u.test(value[cursor]!)) {
+      const character = value[cursor];
+      if (character === '\\') {
+        cursor += 2;
+        continue;
+      }
+      if (character === '[') return null;
+      if (character === '(') depth += 1;
+      if (character === ')') {
+        if (depth === 0) return cursor + 1;
+        depth -= 1;
+      }
+      cursor += 1;
+    }
+    if (depth !== 0) return null;
   }
 
-  return null;
+  if (!/\s/u.test(value[cursor] ?? '')) return value[cursor] === ')' ? cursor + 1 : null;
+  while (/\s/u.test(value[cursor] ?? '')) cursor += 1;
+
+  const opener = value[cursor];
+  const closer = opener === '(' ? ')' : opener;
+  if (opener !== '"' && opener !== "'" && opener !== '(') return null;
+  cursor += 1;
+  while (cursor < value.length && value[cursor] !== closer) {
+    const character = value[cursor];
+    if (character === '\\') {
+      cursor += 1;
+    } else if (character === '\n' && opener === '(') {
+      return null;
+    }
+    cursor += 1;
+  }
+  if (value[cursor] !== closer) return null;
+  cursor += 1;
+  while (/\s/u.test(value[cursor] ?? '')) cursor += 1;
+
+  return value[cursor] === ')' ? cursor + 1 : null;
 }
 
 function getInlineCodeSpanEnd(start: number, metadata: ScanMetadata): number | null {
@@ -301,7 +346,7 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
       const lineEnd = value.indexOf('\n', sourceIndex);
       const end = lineEnd === -1 ? value.length : lineEnd + 1;
       const line = value.slice(sourceIndex, lineEnd === -1 ? value.length : lineEnd);
-      if (line.trim().length === 0 || (!/^ {4}/u.test(line) && !line.startsWith('\t'))) {
+      if (line.trim().length === 0 || !isIndentedCodeLine(value, sourceIndex)) {
         indentedCode = false;
       } else {
         text += value.slice(sourceIndex, end);
@@ -333,7 +378,9 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
       const tagEnd = getHtmlTagEnd(value, sourceIndex);
       if (tagEnd !== null) {
         const tagStart = sourceIndex;
-        const tag = /^<([A-Za-z][A-Za-z0-9-]*)(?:\s|>)/u.exec(value.slice(sourceIndex, tagEnd + 1));
+        const tag = /^<\/?([A-Za-z][A-Za-z0-9-]*)(?:\s|>)/u.exec(
+          value.slice(sourceIndex, tagEnd + 1),
+        );
         text += value.slice(sourceIndex, tagEnd + 1);
         sourceIndex = tagEnd + 1;
         if (

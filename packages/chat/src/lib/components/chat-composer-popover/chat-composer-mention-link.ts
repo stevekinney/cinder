@@ -4,12 +4,16 @@ const NON_ENTITY_URI_SCHEMES = new Set([
   'blob',
   'data',
   'file',
+  'ftp',
+  'ftps',
   'http',
   'https',
   'javascript',
   'mailto',
   'tel',
   'vbscript',
+  'ws',
+  'wss',
 ]);
 
 export function escapeMentionLabel(value: string): string {
