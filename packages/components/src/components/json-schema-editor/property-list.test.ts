@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
+import type { JsonSchemaValue } from './json-schema-editor-types.ts';
 
 setupHappyDom();
 
@@ -96,7 +97,7 @@ describe('PropertyList', () => {
   });
 
   test('reorders properties through the row controls', async () => {
-    let latestProperties: Record<string, unknown> = {};
+    let latestProperties: Record<string, JsonSchemaValue> = {};
     render(PropertyList, {
       idPrefix: 'properties',
       path: '/properties',
@@ -105,7 +106,7 @@ describe('PropertyList', () => {
         age: { type: 'integer' },
       },
       required: [],
-      onValueChange: (properties) => {
+      onValueChange: (properties: Record<string, JsonSchemaValue>) => {
         latestProperties = properties;
       },
     });
