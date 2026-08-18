@@ -19,8 +19,15 @@ describe('EnumEditor', () => {
     });
 
     expect(screen.getByRole('table', { name: 'Enum values' })).not.toBeNull();
-    expect(screen.getByRole('textbox', { name: 'Enum value 1' }).value).toBe('"draft"');
-    expect(screen.getByRole('textbox', { name: 'Enum value 2' }).value).toBe('"published"');
+    const firstValue = screen.getByRole('textbox', { name: 'Enum value 1' });
+    const secondValue = screen.getByRole('textbox', { name: 'Enum value 2' });
+    expect(firstValue).toBeInstanceOf(HTMLInputElement);
+    expect(secondValue).toBeInstanceOf(HTMLInputElement);
+    if (!(firstValue instanceof HTMLInputElement) || !(secondValue instanceof HTMLInputElement)) {
+      throw new Error('Enum values must render as inputs.');
+    }
+    expect(firstValue.value).toBe('"draft"');
+    expect(secondValue.value).toBe('"published"');
     expect(screen.getByRole('button', { name: 'Move enum value 1 up' })).toHaveProperty(
       'disabled',
       true,
