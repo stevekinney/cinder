@@ -553,6 +553,7 @@ describe('component-page single-scroll layout', () => {
     await showPlayground();
     const note = document.querySelector('.dx-play__note');
     expect(note?.textContent).toContain('no adjustable props');
+    expect(screen.queryByRole('group', { name: 'Stage width' })).toBeNull();
 
     unmount();
     await tick();

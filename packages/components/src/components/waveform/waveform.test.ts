@@ -181,7 +181,7 @@ describe('Waveform', () => {
       data: sineData,
     });
 
-    expect(container.querySelector('table.cinder-sr-only')).not.toBeNull();
+    expect(container.querySelector('.cinder-sr-only > table')).not.toBeNull();
   });
 
   test('clamps samples outside [-1, 1] range', () => {

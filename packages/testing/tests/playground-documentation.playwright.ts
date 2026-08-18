@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
 
+import { runAxe } from '../src/helpers/axe.ts';
+
 /**
  * The component documentation page is a single scrolling reference (the
  * three-tab Documentation / Examples / Raw Artifacts layout was removed). Every
@@ -153,4 +155,74 @@ test.describe('canonical page preview controls', () => {
     await page.getByRole('tab', { name: 'Playground' }).click();
     await expect(page.getByRole('group', { name: 'Stage width' })).toContainText('768px');
   });
+});
+
+test.describe('generated Playground accessibility', () => {
+  for (const name of [
+    'floating-action',
+    'meter',
+    'phone-input',
+    'pin-input',
+    'progress',
+    'rating',
+  ]) {
+    test(`mounts ${name} without accessibility warnings at desktop and mobile widths`, async ({
+      page,
+    }) => {
+      for (const [viewport, width] of [
+        ['desktop', 1440],
+        ['mobile', 390],
+      ] as const) {
+        const errors: string[] = [];
+        page.removeAllListeners('console');
+        page.on('console', (message) => {
+          if (message.type() === 'error' || message.type() === 'warning')
+            errors.push(message.text());
+        });
+        await page.setViewportSize({ width, height: 844 });
+        await page.goto(`/page/${name}?view=playground`, { waitUntil: 'load' });
+        await expect(page.locator('#playground-live-mount')).toBeVisible();
+
+        const buckets = await runAxe(page, {
+          slug: name,
+          theme: 'light',
+          viewport,
+          fixture: 'generated-playground',
+        });
+        expect(buckets.critical, `${name} at ${viewport}`).toEqual([]);
+        expect(buckets.serious, `${name} at ${viewport}`).toEqual([]);
+        expect(
+          errors.filter((message) => /accessible name|aria-label|ariaLabel/i.test(message)),
+          `${name} at ${viewport}`,
+        ).toEqual([]);
+      }
+    });
+  }
+});
+
+test.describe('narrow documentation layout', () => {
+  for (const name of [
+    'autocomplete',
+    'chat-composer-popover',
+    'checkbox',
+    'permission-matrix',
+    'pin-input',
+    'sortable-list',
+    'table',
+    'waveform',
+  ]) {
+    test(`${name} does not widen the document`, async ({ page }) => {
+      for (const width of [320, 375, 390, 430]) {
+        await page.setViewportSize({ width, height: 844 });
+        await page.goto(`/page/${name}`, { waitUntil: 'load' });
+        const dimensions = await page.evaluate(() => ({
+          clientWidth: document.documentElement.clientWidth,
+          scrollWidth: document.documentElement.scrollWidth,
+        }));
+        expect(dimensions.scrollWidth, `${name} at ${width}px`).toBeLessThanOrEqual(
+          dimensions.clientWidth,
+        );
+      }
+    });
+  }
 });

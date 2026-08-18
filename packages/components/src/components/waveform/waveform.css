@@ -3,6 +3,8 @@
   .cinder-waveform {
     display: grid;
     gap: var(--cinder-space-2);
+    min-inline-size: 0;
+    max-inline-size: 100%;
     color: var(--_cinder-chart-foreground, currentColor);
     background: var(--_cinder-chart-background, transparent);
   }
