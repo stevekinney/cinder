@@ -6,6 +6,7 @@
  */
 
 @media (prefers-reduced-motion: reduce) {
+  :root:not([data-cinder-reduced-motion='false']),
   :root:not([data-cinder-reduced-motion='false']) *,
   :root:not([data-cinder-reduced-motion='false']) *::before,
   :root:not([data-cinder-reduced-motion='false']) *::after {
@@ -17,6 +18,7 @@
 }
 
 :root[data-reduced-motion='on'] *,
+:root[data-reduced-motion='on'],
 :root[data-reduced-motion='on'] *::before,
 :root[data-reduced-motion='on'] *::after {
   animation-duration: 0.01ms !important;
