@@ -49,7 +49,7 @@ setDefaultTimeout(30_000);
  *
  * See: packages/components/scripts/generate-component-variables.ts
  */
-const KNOWN_RUNTIME_STATE_LEAKS: Array<{ component: string; variable: string }> = [
+const RUNTIME_STATE_VARIABLES: Array<{ component: string; variable: string }> = [
   // The bare --cinder-file-upload-progress counter is set via inline style= from
   // file-upload.svelte, and the *-background/*-fill variables describe that
   // dynamic UI rather than a consumer theme API.
@@ -178,7 +178,7 @@ describe('component *.variables.json contract', () => {
 
     const violations: string[] = [];
 
-    for (const { component, variable } of KNOWN_RUNTIME_STATE_LEAKS) {
+    for (const { component, variable } of RUNTIME_STATE_VARIABLES) {
       const componentVariables = allVariablesByComponent.get(component);
       if (componentVariables === undefined) continue;
 
