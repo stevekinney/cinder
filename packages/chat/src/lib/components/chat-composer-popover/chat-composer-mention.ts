@@ -37,6 +37,7 @@ const NON_ENTITY_URI_SCHEMES = new Set([
   'https',
   'javascript',
   'mailto',
+  'tel',
   'vbscript',
 ]);
 
@@ -48,7 +49,7 @@ function escapeUri(value: string): string {
   return value.replaceAll('\\', '\\\\').replace(/([()\s])/gu, '\\$1');
 }
 
-function unescapeMarkdown(value: string): string | null {
+function unescapeMarkdown(value: string, escapeWhitespace = false): string | null {
   let unescaped = '';
 
   for (let index = 0; index < value.length; index += 1) {
@@ -59,6 +60,13 @@ function unescapeMarkdown(value: string): string | null {
 
     const escapedCharacter = value[index + 1];
     if (escapedCharacter === undefined) return null;
+
+    const isPunctuation = /[!"#$%&'()*+,-./:;<=>?@[\]^_`{|}~\\]/u.test(escapedCharacter);
+    if (!isPunctuation && !(escapeWhitespace && /\s/u.test(escapedCharacter))) {
+      unescaped += `\\${escapedCharacter}`;
+      index += 1;
+      continue;
+    }
 
     unescaped += escapedCharacter;
     index += 1;
@@ -95,6 +103,10 @@ function isIndentedAtMostThreeSpaces(value: string, index: number): boolean {
   return /^ {0,3}$/u.test(value.slice(lineStart, index));
 }
 
+function isIndentedCodeStart(value: string, index: number): boolean {
+  return value.lastIndexOf('\n', index - 1) + 1 === index && value.startsWith('    ', index);
+}
+
 function getOpeningCodeFence(value: string, start: number): CodeFence | null {
   const delimiter = value[start];
   if ((delimiter !== '`' && delimiter !== '~') || !isIndentedAtMostThreeSpaces(value, start)) {
@@ -116,7 +128,32 @@ function isClosingCodeFence(value: string, start: number, fence: CodeFence): boo
   if (length < fence.minimumLength) return false;
 
   const lineEnd = value.indexOf('\n', start + length);
-  return /^ *$/u.test(value.slice(start + length, lineEnd === -1 ? value.length : lineEnd));
+  return /^ *\r?$/u.test(value.slice(start + length, lineEnd === -1 ? value.length : lineEnd));
+}
+
+function getOrdinaryLinkEnd(value: string, start: number): number | null {
+  let labelEnd = start + 1;
+  while (labelEnd < value.length) {
+    if (value[labelEnd] === '\\') labelEnd += 2;
+    else if (value[labelEnd] === '[') return null;
+    else if (value[labelEnd] === ']') break;
+    else labelEnd += 1;
+  }
+  if (value[labelEnd] !== ']' || value[labelEnd + 1] !== '(') return null;
+
+  let depth = 0;
+  for (let index = labelEnd + 2; index < value.length; index += 1) {
+    if (value[index] === '\\') {
+      index += 1;
+    } else if (value[index] === '(') {
+      depth += 1;
+    } else if (value[index] === ')') {
+      if (depth === 0) return index + 1;
+      depth -= 1;
+    }
+  }
+
+  return null;
 }
 
 function getInlineCodeSpanEnd(value: string, start: number): number | null {
@@ -180,7 +217,7 @@ function parseLink(value: string, start: number): ParsedLink | null {
   if (value[destinationEnd] !== ')') return null;
 
   const label = unescapeMarkdown(value.slice(start + 1, labelEnd));
-  const uri = unescapeMarkdown(value.slice(destinationStart, destinationEnd));
+  const uri = unescapeMarkdown(value.slice(destinationStart, destinationEnd), true);
   if (label === null || uri === null || !isEntityUri(uri)) return null;
 
   return { label, uri, end: destinationEnd + 1 };
@@ -212,7 +249,10 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
 
   while (sourceIndex < value.length) {
     if (codeFence !== null) {
-      if (isClosingCodeFence(value, sourceIndex, codeFence)) {
+      if (
+        value[sourceIndex] === codeFence.delimiter &&
+        isClosingCodeFence(value, sourceIndex, codeFence)
+      ) {
         const closingLength = countRun(value, sourceIndex, codeFence.delimiter);
         text += value.slice(sourceIndex, sourceIndex + closingLength);
         sourceIndex += closingLength;
@@ -222,6 +262,14 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
 
       text += value[sourceIndex];
       sourceIndex += 1;
+      continue;
+    }
+
+    if (isIndentedCodeStart(value, sourceIndex)) {
+      const lineEnd = value.indexOf('\n', sourceIndex);
+      const end = lineEnd === -1 ? value.length : lineEnd + 1;
+      text += value.slice(sourceIndex, end);
+      sourceIndex = end;
       continue;
     }
 
@@ -244,7 +292,7 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
 
     if (
       value[sourceIndex] === '[' &&
-      value[sourceIndex - 1] !== '!' &&
+      (value[sourceIndex - 1] !== '!' || hasEscapedPrefix(value, sourceIndex - 1)) &&
       !hasEscapedPrefix(value, sourceIndex)
     ) {
       const link = parseLink(value, sourceIndex);
@@ -253,6 +301,13 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
         text += link.label;
         mentions.push({ label: link.label, uri: link.uri, start, end: text.length });
         sourceIndex = link.end;
+        continue;
+      }
+
+      const ordinaryLinkEnd = getOrdinaryLinkEnd(value, sourceIndex);
+      if (ordinaryLinkEnd !== null) {
+        text += value.slice(sourceIndex, ordinaryLinkEnd);
+        sourceIndex = ordinaryLinkEnd;
         continue;
       }
     }

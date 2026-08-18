@@ -50,6 +50,7 @@ describe('chat composer mentions', () => {
       '[Script](javascript:alert(1))',
       '[Data](data:text/plain,hello)',
       '[Relative](./notes)',
+      '[Docs](https://example.com "[Ada](person:ada)")',
       '![Image](asset:logo)',
       '\\[Escaped](person:ada)',
       '[Missing destination](person:ada',
@@ -59,6 +60,10 @@ describe('chat composer mentions', () => {
     expect(parseChatComposerMentions(value)).toEqual({ text: value, mentions: [] });
     expect(deserializeChatComposerMention('[Docs](https://example.com)')).toBeNull();
     expect(deserializeChatComposerMention('[Broken](person:ada')).toBeNull();
+    expect(parseChatComposerMentions('[C:\\new](person:folder)')).toEqual({
+      text: 'C:\\new',
+      mentions: [{ label: 'C:\\new', uri: 'person:folder', start: 0, end: 6 }],
+    });
   });
 
   test('does not let an unclosed label absorb a later serialized mention', () => {
@@ -95,6 +100,11 @@ describe('chat composer mentions', () => {
     expect(parseChatComposerMentions('`unfinished [Ada](person:ada)')).toEqual({
       text: '`unfinished Ada',
       mentions: [{ label: 'Ada', uri: 'person:ada', start: 12, end: 15 }],
+    });
+
+    expect(parseChatComposerMentions('    [Ada](person:ada)')).toEqual({
+      text: '    [Ada](person:ada)',
+      mentions: [],
     });
   });
 
