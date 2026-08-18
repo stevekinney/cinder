@@ -2,7 +2,7 @@ import {
   hasEscapedPrefix,
   makeScanMetadata,
   type ScanMetadata,
-} from './chat-composer-mention-scan';
+} from './chat-composer-mention-scan.ts';
 
 /** An addressable entity selected from a chat composer suggestion list. */
 export type ChatComposerMention = {
@@ -46,6 +46,21 @@ const NON_ENTITY_URI_SCHEMES = new Set([
   'mailto',
   'tel',
   'vbscript',
+]);
+const VOID_HTML_TAGS = new Set([
+  'area',
+  'base',
+  'br',
+  'col',
+  'embed',
+  'hr',
+  'img',
+  'input',
+  'link',
+  'meta',
+  'source',
+  'track',
+  'wbr',
 ]);
 
 function escapeLabel(value: string): string {
@@ -97,7 +112,8 @@ function countRun(value: string, start: number, character: string): number {
 
 function isIndentedCodeStart(value: string, index: number, metadata: ScanMetadata): boolean {
   const lineStart = metadata.lineStarts[index] ?? 0;
-  if (lineStart !== index || !value.startsWith('    ', index)) return false;
+  if (lineStart !== index || (!value.startsWith('    ', index) && value[index] !== '\t'))
+    return false;
 
   if (lineStart === 0) return true;
 
@@ -150,6 +166,21 @@ function isClosingCodeFence(
 
   const lineEnd = value.indexOf('\n', start + length);
   return /^ *\r?$/u.test(value.slice(start + length, lineEnd === -1 ? value.length : lineEnd));
+}
+
+function getHtmlTagEnd(value: string, start: number): number | null {
+  let quote: '"' | "'" | null = null;
+  for (let index = start + 1; index < value.length; index += 1) {
+    const character = value[index];
+    if (quote !== null) {
+      if (character === quote) quote = null;
+    } else if (character === '"' || character === "'") {
+      quote = character;
+    } else if (character === '>') {
+      return index;
+    }
+  }
+  return null;
 }
 
 function getOrdinaryLinkEnd(value: string, start: number): number | null {
@@ -362,7 +393,7 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
       const lineEnd = value.indexOf('\n', sourceIndex);
       const end = lineEnd === -1 ? value.length : lineEnd + 1;
       const line = value.slice(sourceIndex, lineEnd === -1 ? value.length : lineEnd);
-      if (line.trim().length === 0 || !/^ {4}/u.test(line)) {
+      if (line.trim().length === 0 || (!/^ {4}/u.test(line) && !line.startsWith('\t'))) {
         indentedCode = false;
       } else {
         text += value.slice(sourceIndex, end);
@@ -378,12 +409,16 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
         sourceIndex += 4;
         continue;
       }
-      const tagEnd = value.indexOf('>', sourceIndex + 1);
-      if (tagEnd !== -1) {
+      const tagEnd = getHtmlTagEnd(value, sourceIndex);
+      if (tagEnd !== null) {
         const tag = /^<([A-Za-z][A-Za-z0-9-]*)(?:\s|>)/u.exec(value.slice(sourceIndex, tagEnd + 1));
         text += value.slice(sourceIndex, tagEnd + 1);
         sourceIndex = tagEnd + 1;
-        if (tag !== null && !value.slice(sourceIndex - 2, sourceIndex).includes('/')) {
+        if (
+          tag !== null &&
+          !value.slice(sourceIndex - 2, sourceIndex).includes('/') &&
+          !VOID_HTML_TAGS.has(tag[1]!.toLowerCase())
+        ) {
           const lineStart = metadata.lineStarts[sourceIndex - 1] ?? 0;
           if (
             /^\s*<[A-Za-z][A-Za-z0-9-]*(?:\s[^>]*)?>$/u.test(value.slice(lineStart, sourceIndex)) &&

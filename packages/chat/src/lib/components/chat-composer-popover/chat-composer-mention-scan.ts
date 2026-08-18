@@ -26,20 +26,35 @@ export function makeScanMetadata(value: string): ScanMetadata {
 
   for (let start = 0; start < value.length; ) {
     let cursor = start;
-    while (value[cursor] === ' ') cursor += 1;
+    let hasContainer = false;
+    let indentation = 0;
+    while (indentation < 3 && value[cursor] === ' ') {
+      cursor += 1;
+      indentation += 1;
+    }
     while (value[cursor] === '>') {
+      hasContainer = true;
       cursor += 1;
       if (value[cursor] === ' ') cursor += 1;
     }
     if (value[cursor] === '-' || value[cursor] === '*' || value[cursor] === '+') {
+      hasContainer = true;
       cursor += 1;
       if (value[cursor] === ' ') cursor += 1;
     } else {
       const markerStart = cursor;
       while (/\d/u.test(value[cursor] ?? '')) cursor += 1;
       if (cursor > markerStart && value[cursor] === '.') {
+        hasContainer = true;
         cursor += 1;
         if (value[cursor] === ' ') cursor += 1;
+      }
+    }
+    if (hasContainer) {
+      indentation = 0;
+      while (indentation < 3 && value[cursor] === ' ') {
+        cursor += 1;
+        indentation += 1;
       }
     }
     containerStarts[start] = cursor;
@@ -60,7 +75,7 @@ export function makeScanMetadata(value: string): ScanMetadata {
     let start = index;
     while (start > 0 && value[start - 1] === character) start -= 1;
     const length = index - start + 1;
-    if (character === '`') {
+    if (character === '`' && escaped[start] !== 1) {
       const next = nextCodeRun.get(length);
       if (next !== undefined) codeSpanEnds[start] = next + length;
       nextCodeRun.set(length, start);

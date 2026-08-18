@@ -108,6 +108,11 @@ describe('chat composer mentions', () => {
       mentions: [{ label: 'Ada', uri: 'person:ada', start: 12, end: 15 }],
     });
 
+    expect(parseChatComposerMentions('`[Ada](person:ada)\\`')).toEqual({
+      text: '`Ada\\`',
+      mentions: [{ label: 'Ada', uri: 'person:ada', start: 1, end: 4 }],
+    });
+
     expect(parseChatComposerMentions('    [Ada](person:ada)')).toEqual({
       text: '    [Ada](person:ada)',
       mentions: [],
@@ -179,7 +184,19 @@ describe('chat composer mentions', () => {
       parseChatComposerMentions('- ```\n- [Ada](person:ada)\n- ```\n- [Ada](person:real)').mentions,
     ).toEqual([{ label: 'Ada', uri: 'person:real', start: 34, end: 37 }]);
     expect(parseChatComposerMentions('1. ```\n1. [Ada](person:ada)\n1. ```').mentions).toEqual([]);
+    expect(
+      parseChatComposerMentions('>    ```\n>    [Ada](person:ada)\n>    ```').mentions,
+    ).toEqual([]);
+    expect(parseChatComposerMentions('>     ```\n> [Ada](person:ada)').mentions).toEqual([
+      { label: 'Ada', uri: 'person:ada', start: 12, end: 15 },
+    ]);
     expect(parseChatComposerMentions('> ```\n```\n[Ada](person:ada)\n> ```').mentions).toEqual([]);
+    expect(
+      parseChatComposerMentions('```\n    ```\n[Ada](person:inside)\n```\n[Ada](person:outside)'),
+    ).toEqual({
+      text: '```\n    ```\n[Ada](person:inside)\n```\nAda',
+      mentions: [{ label: 'Ada', uri: 'person:outside', start: 37, end: 40 }],
+    });
     expect(parseChatComposerMentions('text ``` [Ada](person:ada)').mentions).toEqual([
       { label: 'Ada', uri: 'person:ada', start: 9, end: 12 },
     ]);
@@ -220,10 +237,24 @@ describe('chat composer mentions', () => {
       text: '    code\n    [Ada](person:continuation)',
       mentions: [],
     });
+    expect(parseChatComposerMentions('\t[Ada](person:code)\n\t[Ada](person:continuation)')).toEqual(
+      {
+        text: '\t[Ada](person:code)\n\t[Ada](person:continuation)',
+        mentions: [],
+      },
+    );
     expect(parseChatComposerMentions('    code\n[Ada](person:real)')).toEqual({
       text: '    code\nAda',
       mentions: [{ label: 'Ada', uri: 'person:real', start: 9, end: 12 }],
     });
     expect(parseChatComposerMentions('<')).toEqual({ text: '<', mentions: [] });
+    expect(parseChatComposerMentions('<span title=">[Ada](person:attribute)">x</span>')).toEqual({
+      text: '<span title=">[Ada](person:attribute)">x</span>',
+      mentions: [],
+    });
+    expect(parseChatComposerMentions('<hr>\n[Ada](person:real)')).toEqual({
+      text: '<hr>\nAda',
+      mentions: [{ label: 'Ada', uri: 'person:real', start: 5, end: 8 }],
+    });
   });
 });
