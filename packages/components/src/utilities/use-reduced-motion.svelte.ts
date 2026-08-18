@@ -1,7 +1,13 @@
-import { MediaQuery } from 'svelte/reactivity';
+import { MediaQuery, SvelteMap } from 'svelte/reactivity';
 
-let applicationPreference =
-  $state<import('./use-reduced-motion.types.ts').ReducedMotionPreference>('system');
+const applicationPreferences = new SvelteMap<
+  'current',
+  import('./use-reduced-motion.types.ts').ReducedMotionPreference
+>([['current', 'system']]);
+
+function getApplicationPreference(): import('./use-reduced-motion.types.ts').ReducedMotionPreference {
+  return applicationPreferences.get('current') ?? 'system';
+}
 
 /** Resolves an explicit motion preference against the current system preference. */
 export function resolveReducedMotion(
@@ -27,7 +33,7 @@ export function applyReducedMotionPreference(
     throw new Error('applyReducedMotionPreference must target document.documentElement');
   }
 
-  applicationPreference = preference;
+  applicationPreferences.set('current', preference);
   element.dataset['reducedMotion'] = preference;
   if (preference === 'system') {
     delete element.dataset['cinderReducedMotion'];
@@ -79,7 +85,7 @@ export function useReducedMotion(
   // Guard on `matchMedia` so the documented SSR-safe `false` fallback holds
   // regardless of which `MediaQuery` build module resolution selected.
   if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
-    return { current: resolveReducedMotion(preference ?? applicationPreference, false) };
+    return { current: resolveReducedMotion(preference ?? getApplicationPreference(), false) };
   }
 
   // Pass the parenthesized form explicitly. MediaQuery's constructor regex
@@ -90,7 +96,7 @@ export function useReducedMotion(
 
   return {
     get current() {
-      return resolveReducedMotion(preference ?? applicationPreference, query.current);
+      return resolveReducedMotion(preference ?? getApplicationPreference(), query.current);
     },
   };
 }
