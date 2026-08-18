@@ -1,0 +1,47 @@
+import { describe, expect, test } from 'bun:test';
+import { mergeDocuments, resolveDocument } from './resolve.ts';
+import { TokenValidationError, type TokenDocument } from './types.ts';
+
+describe('DTCG resolver', () => {
+  test('resolves curly aliases and composite property references', () => {
+    const resolved = resolveDocument({
+      primitive: { $type: 'dimension', value: { $value: { value: 2, unit: 'px' } } },
+      border: {
+        $type: 'border',
+        base: { $value: { color: '{color}', width: '{primitive.value}', style: 'solid' } },
+      },
+      color: { $type: 'color', $value: { colorSpace: 'oklch', components: [0.5, 0.1, 255] } },
+    });
+    expect(resolved['border.base']?.$value).toEqual({
+      color: { colorSpace: 'oklch', components: [0.5, 0.1, 255] },
+      width: { value: 2, unit: 'px' },
+      style: 'solid',
+    });
+  });
+
+  test('resolves JSON Pointer aliases', () => {
+    const resolved = resolveDocument({
+      group: { $type: 'number', base: { $value: 2 }, copy: { $value: '#/group/base' } },
+    });
+    expect(resolved['group.copy']?.$value).toBe(2);
+  });
+
+  test('rejects circular aliases and group extensions', () => {
+    expect(() =>
+      resolveDocument({
+        $type: 'number',
+        first: { $value: '{second}' },
+        second: { $value: '{first}' },
+      }),
+    ).toThrow(TokenValidationError);
+    expect(() =>
+      resolveDocument({ one: { $extends: '{two}' }, two: { $extends: '{one}' } }),
+    ).toThrow('circular $extends');
+  });
+
+  test('merges ordered sources with the final source winning', () => {
+    const first: TokenDocument = { $type: 'number', token: { $value: 1 } };
+    const last: TokenDocument = { $type: 'number', token: { $value: 2 } };
+    expect(resolveDocument(mergeDocuments([first, last]))['token']?.$value).toBe(2);
+  });
+});

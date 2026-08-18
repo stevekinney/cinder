@@ -1,0 +1,149 @@
+import type { DesignToken, TokenDocument, TokenGroup, TokenValue } from './types.ts';
+import { TokenValidationError } from './types.ts';
+
+type JsonObject = Record<string, unknown>;
+type ResolvedTokens = Map<string, DesignToken>;
+
+function isObject(value: unknown): value is JsonObject {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isToken(value: unknown): value is DesignToken {
+  return isObject(value) && '$value' in value;
+}
+
+function clone<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
+function issue(path: string, reason: string): never {
+  throw new TokenValidationError([{ path, reason }]);
+}
+
+function tokenPathFromReference(reference: string): string {
+  if (/^\{[^{}]+\}$/.test(reference)) return reference.slice(1, -1);
+  if (reference.startsWith('#/')) return reference.slice(2).replaceAll('/', '.');
+  return issue(reference, 'reference must use curly-brace or JSON Pointer syntax');
+}
+
+function getByPath(value: unknown, segments: string[]): unknown {
+  let current = value;
+  for (const segment of segments) {
+    if (Array.isArray(current)) {
+      const index = Number(segment);
+      if (!Number.isInteger(index)) return undefined;
+      current = current[index];
+    } else if (isObject(current)) current = current[segment];
+    else return undefined;
+  }
+  return current;
+}
+
+function collectGroup(
+  group: TokenGroup,
+  prefix: string,
+  tokens: ResolvedTokens,
+  groups: Map<string, TokenGroup>,
+): void {
+  groups.set(prefix, group);
+  for (const [name, value] of Object.entries(group)) {
+    if (name.startsWith('$') || !isObject(value)) continue;
+    const path = prefix ? `${prefix}.${name}` : name;
+    if (isToken(value)) tokens.set(path, clone(value));
+    else collectGroup(value as TokenGroup, path, tokens, groups);
+  }
+}
+
+function resolveExtends(
+  groupPath: string,
+  groups: Map<string, TokenGroup>,
+  visiting: Set<string>,
+  complete: Set<string>,
+): TokenGroup {
+  const group = groups.get(groupPath);
+  if (!group) return issue(groupPath, '$extends must reference an existing group');
+  if (complete.has(groupPath)) return group;
+  if (visiting.has(groupPath)) return issue(groupPath, 'circular $extends reference');
+  visiting.add(groupPath);
+  if (group.$extends) {
+    const extendedPath = tokenPathFromReference(group.$extends);
+    const extended = resolveExtends(extendedPath, groups, visiting, complete);
+    for (const [name, value] of Object.entries(extended))
+      if (!name.startsWith('$') && group[name] === undefined) group[name] = clone(value);
+  }
+  visiting.delete(groupPath);
+  complete.add(groupPath);
+  return group;
+}
+
+function resolveReference(
+  reference: string,
+  tokens: ResolvedTokens,
+  resolving: Set<string>,
+): unknown {
+  const segments = tokenPathFromReference(reference).split('.');
+  for (let end = segments.length; end > 0; end -= 1) {
+    const candidatePath = segments.slice(0, end).join('.');
+    const token = tokens.get(candidatePath);
+    if (!token) continue;
+    const value = resolveToken(candidatePath, tokens, resolving).$value;
+    const propertyValue = getByPath(value, segments.slice(end));
+    if (propertyValue === undefined)
+      issue(reference, `reference target ${candidatePath} has no requested property`);
+    return clone(propertyValue);
+  }
+  return issue(reference, 'reference target does not exist');
+}
+
+function resolveValue(
+  value: TokenValue,
+  tokens: ResolvedTokens,
+  resolving: Set<string>,
+): TokenValue {
+  if (typeof value === 'string')
+    return /^\{[^{}]+\}$/.test(value) || value.startsWith('#/')
+      ? (resolveReference(value, tokens, resolving) as TokenValue)
+      : value;
+  if (Array.isArray(value))
+    return value.map((entry) => resolveValue(entry as TokenValue, tokens, resolving)) as TokenValue;
+  if (!isObject(value)) return value;
+  const resolved: JsonObject = {};
+  for (const [key, entry] of Object.entries(value))
+    resolved[key] = resolveValue(entry as TokenValue, tokens, resolving);
+  return resolved as TokenValue;
+}
+
+function resolveToken(path: string, tokens: ResolvedTokens, resolving: Set<string>): DesignToken {
+  const token = tokens.get(path);
+  if (!token) return issue(path, 'token does not exist');
+  if (resolving.has(path)) return issue(path, 'circular token alias');
+  resolving.add(path);
+  token.$value = resolveValue(token.$value, tokens, resolving);
+  resolving.delete(path);
+  return token;
+}
+
+/** Resolves group inheritance, whole-token aliases, and property-level aliases. */
+export function resolveDocuments(documents: TokenDocument[]): Record<string, DesignToken> {
+  const tokens: ResolvedTokens = new Map();
+  const groups = new Map<string, TokenGroup>();
+  for (const document of documents) collectGroup(clone(document), '', tokens, groups);
+  for (const groupPath of groups.keys()) resolveExtends(groupPath, groups, new Set(), new Set());
+  const resolved: Record<string, DesignToken> = {};
+  for (const path of tokens.keys()) resolved[path] = clone(resolveToken(path, tokens, new Set()));
+  return resolved;
+}
+
+/** Merges ordered documents, retaining only the last occurrence of each token path. */
+export function mergeDocuments(documents: TokenDocument[]): TokenDocument {
+  const result: TokenDocument = {};
+  for (const document of documents) {
+    for (const [key, value] of Object.entries(document))
+      result[key] = clone(value) as TokenDocument[typeof key];
+  }
+  return result;
+}
+
+export function resolveDocument(document: TokenDocument): Record<string, DesignToken> {
+  return resolveDocuments([document]);
+}

@@ -322,6 +322,10 @@ const dangerActive = readOklchToken(css, '--cinder-danger-active');
 const bg = readOklchToken(css, '--cinder-bg');
 const surface = readOklchToken(css, '--cinder-surface');
 const surfaceInset = readOklchToken(css, '--cinder-surface-inset');
+const surfaceRaised = readOklchToken(css, '--cinder-surface-raised');
+const borderMuted = readOklchToken(css, '--cinder-border-muted');
+const border = readOklchToken(css, '--cinder-border');
+const borderStrong = readOklchToken(css, '--cinder-border-strong');
 
 // The active command-palette item paints --cinder-accent-contrast text on a solid
 // --cinder-accent fill (command-item.css), so that pair is gated here too.
@@ -473,6 +477,36 @@ describe('focus ring contrast (WCAG 1.4.11)', () => {
       NON_TEXT,
     );
   });
+});
+
+describe('border-on-surface contrast', () => {
+  // A muted border is decorative, but still has to remain perceptible. The 1.4:1
+  // floor rejects the formerly invisible 1.07:1 dark raised-surface pairing
+  // without pretending a divider has the same semantic job as a control outline.
+  const DECORATIVE_BORDER = 1.4;
+  const surfaces = { inset: surfaceInset, bg, surface, raised: surfaceRaised } as const;
+
+  for (const arm of ['light', 'dark'] as const) {
+    for (const [surfaceName, surfaceToken] of Object.entries(surfaces)) {
+      it(`${arm}: muted border is perceptible on ${surfaceName}`, () => {
+        expect(
+          contrastRatio(wcagLuminance(borderMuted[arm]), wcagLuminance(surfaceToken[arm])),
+        ).toBeGreaterThanOrEqual(DECORATIVE_BORDER);
+      });
+
+      it(`${arm}: functional border clears WCAG 1.4.11 on ${surfaceName}`, () => {
+        expect(
+          contrastRatio(wcagLuminance(border[arm]), wcagLuminance(surfaceToken[arm])),
+        ).toBeGreaterThanOrEqual(NON_TEXT);
+      });
+
+      it(`${arm}: strong control border clears WCAG 1.4.11 on ${surfaceName}`, () => {
+        expect(
+          contrastRatio(wcagLuminance(borderStrong[arm]), wcagLuminance(surfaceToken[arm])),
+        ).toBeGreaterThanOrEqual(NON_TEXT);
+      });
+    }
+  }
 });
 
 describe('sRGB gamut integrity (no silent chroma clamping)', () => {

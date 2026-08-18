@@ -1,0 +1,98 @@
+import { describe, expect, test } from 'bun:test';
+import { TokenValidationError, type TokenDocument } from './types.ts';
+import { validateResolverDocument, validateTokenDocument } from './validate.ts';
+
+const cases: Array<{ type: NonNullable<TokenDocument['$type']>; value: unknown }> = [
+  { type: 'color', value: { colorSpace: 'oklch', components: [0.5, 0.1, 255] } },
+  { type: 'dimension', value: { value: 1, unit: 'rem' } },
+  { type: 'fontFamily', value: ['Inter', 'sans-serif'] },
+  { type: 'fontWeight', value: 600 },
+  { type: 'duration', value: { value: 150, unit: 'ms' } },
+  { type: 'cubicBezier', value: [0.2, 0, 0, 1] },
+  { type: 'number', value: 1 },
+  { type: 'strokeStyle', value: 'solid' },
+  { type: 'border', value: { color: '{color}', width: '{dimension}', style: 'solid' } },
+  {
+    type: 'transition',
+    value: { duration: '{duration}', delay: '{duration}', timingFunction: '{easing}' },
+  },
+  {
+    type: 'shadow',
+    value: {
+      color: '{color}',
+      offsetX: '{dimension}',
+      offsetY: '{dimension}',
+      blur: '{dimension}',
+      spread: '{dimension}',
+    },
+  },
+  { type: 'gradient', value: [{ color: '{color}', position: 0 }] },
+  {
+    type: 'typography',
+    value: {
+      fontFamily: '{family}',
+      fontSize: '{dimension}',
+      fontWeight: '{weight}',
+      letterSpacing: '{dimension}',
+      lineHeight: 1.5,
+    },
+  },
+];
+
+describe('DTCG semantic validation', () => {
+  test.each(cases)('accepts the $type value shape', ({ type, value }) => {
+    expect(() => validateTokenDocument({ $type: type, sample: { $value: value } })).not.toThrow();
+  });
+
+  test('preserves unknown vendor extension data', () => {
+    const document: TokenDocument = {
+      color: {
+        $type: 'color',
+        $value: { colorSpace: 'oklch', components: [0.5, 0.1, 255] },
+        $extensions: { 'com.example.vendor': { untouched: ['exact', 1] } },
+      },
+    };
+    validateTokenDocument(document);
+    expect(JSON.parse(JSON.stringify(document))).toEqual(document);
+  });
+
+  test('reports source paths and invalid names', () => {
+    expect(() =>
+      validateTokenDocument({ bad: { 'also.bad': { $type: 'number', $value: 1 } } }),
+    ).toThrow(TokenValidationError);
+    try {
+      validateTokenDocument({ bad: { 'also.bad': { $type: 'number', $value: 1 } } });
+    } catch (error) {
+      expect(String(error)).toContain('$.bad.also.bad');
+    }
+  });
+
+  test('rejects tokens that also contain groups', () => {
+    expect(() =>
+      validateTokenDocument({ $type: 'number', value: { $value: 1, child: {} } }),
+    ).toThrow('cannot contain child groups');
+  });
+
+  test('requires a direct or inherited type', () => {
+    expect(() => validateTokenDocument({ value: { $value: 1 } })).toThrow('no $type');
+  });
+
+  test('validates resolver modifier and ordering contracts', () => {
+    expect(() =>
+      validateResolverDocument({
+        version: '2025.10',
+        sets: [{ name: 'base', source: ['sets/base.tokens.json'] }],
+        modifiers: [{ name: 'theme', values: ['light', 'dark'], default: 'light' }],
+        resolutionOrder: ['theme'],
+      }),
+    ).not.toThrow();
+    expect(() =>
+      validateResolverDocument({
+        version: '2025.10',
+        sets: [],
+        modifiers: [],
+        resolutionOrder: ['theme'],
+      }),
+    ).toThrow('unknown modifier');
+  });
+});

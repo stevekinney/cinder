@@ -4,7 +4,8 @@ import { setupHappyDom } from '../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { useReducedMotion } = await import('./use-reduced-motion.svelte.ts');
+const { applyReducedMotionPreference, resolveReducedMotion, useReducedMotion } =
+  await import('./use-reduced-motion.svelte.ts');
 
 type Listener = (event: { matches: boolean }) => void;
 
@@ -107,6 +108,37 @@ describe('useReducedMotion', () => {
     const motion = useReducedMotion();
 
     expect(motion.current).toBe(false);
+  });
+
+  test('resolves every explicit preference against the system preference', () => {
+    expect(resolveReducedMotion('off', true)).toBe(false);
+    expect(resolveReducedMotion('off', false)).toBe(false);
+    expect(resolveReducedMotion('on', true)).toBe(true);
+    expect(resolveReducedMotion('on', false)).toBe(true);
+    expect(resolveReducedMotion('system', true)).toBe(true);
+    expect(resolveReducedMotion('system', false)).toBe(false);
+  });
+
+  test('explicit preferences override the browser media query', () => {
+    mock = installMatchMediaMock(true);
+    expect(useReducedMotion('off').current).toBe(false);
+    expect(useReducedMotion('on').current).toBe(true);
+  });
+
+  test('emits the selected state and only adds the boolean override for explicit choices', () => {
+    const element = document.createElement('div');
+
+    applyReducedMotionPreference(element, 'on');
+    expect(element.dataset['reducedMotion']).toBe('on');
+    expect(element.dataset['cinderReducedMotion']).toBe('true');
+
+    applyReducedMotionPreference(element, 'off');
+    expect(element.dataset['reducedMotion']).toBe('off');
+    expect(element.dataset['cinderReducedMotion']).toBe('false');
+
+    applyReducedMotionPreference(element, 'system');
+    expect(element.dataset['reducedMotion']).toBe('system');
+    expect(element.dataset['cinderReducedMotion']).toBeUndefined();
   });
 
   test('returns the false fallback without throwing when matchMedia is unavailable', () => {

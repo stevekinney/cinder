@@ -239,8 +239,11 @@
    * where vibrancy comes from in a light theme: saturated accents against white,
    * not tinted greys.
    *
-   * The dark arm is unchanged — it was never the complaint, and it builds up from
-   * near-black where a wide fill-carried ramp is the right model. */
+   * The two hue arms deliberately differ. Light surfaces sit at hue 255, which
+   * keeps their barely-visible cast aligned with the indigo accent without reading
+   * blue-grey at page scale; dark surfaces stay at hue 245, a cooler neutral that
+   * keeps the near-black ramp visually distinct from that accent. Preserve that
+   * warm-light/cool-dark split unless a full surface retune reviews both arms. */
   --cinder-bg: light-dark(oklch(98.4% 0.003 255), oklch(15% 0.035 245));
   --cinder-surface: light-dark(oklch(99.4% 0.002 255), oklch(21% 0.04 245));
   --cinder-surface-raised: light-dark(oklch(100% 0 255), oklch(28% 0.045 245));
@@ -342,16 +345,15 @@
      fill is ΔL 0.132 — a barely-there hairline). Dividers that genuinely want less
      weight should use `--cinder-border-muted`.
 
-     `--cinder-border-strong` deliberately does NOT move. It is the token carrying
-     control outlines answerable to WCAG 1.4.11 (3:1 non-text), and at 0.72 against
-     white it resolves to roughly 2.5:1 — already short of the floor. That gap
-     predates this change and lightening the token would widen it. Fixing it properly
-     means taking control outlines to about L 0.68 and re-checking every control that
-     pairs a border with a fill, which is its own change with its own visual review,
-     not a rider on a surface retune. Left at 0.72, flagged, not quietly made worse. */
-  --cinder-border: light-dark(oklch(83% 0.005 255), oklch(40% 0.05 245));
-  --cinder-border-muted: light-dark(oklch(90% 0.004 255), oklch(30% 0.04 245));
-  --cinder-border-strong: light-dark(oklch(72% 0.006 255), oklch(45% 0.06 245));
+     The contrast gate makes the policy executable. `--cinder-border` and
+     `--cinder-border-strong` are control boundaries and clear WCAG 1.4.11's 3:1
+     floor against every supported surface. `--cinder-border-muted` is decorative,
+     but has a separate 1.4:1 floor so a divider never converges into its backdrop.
+     The dark muted value rises above the raised-surface endpoint for the same reason:
+     0.30 on 0.28 resolved to an invisible 1.07:1 line. */
+  --cinder-border: light-dark(oklch(63% 0.006 255), oklch(58% 0.05 245));
+  --cinder-border-muted: light-dark(oklch(85% 0.004 255), oklch(38% 0.04 245));
+  --cinder-border-strong: light-dark(oklch(60% 0.008 255), oklch(66% 0.06 245));
 
   /* Toggle track off-state defaults — encode dark-arm contrast improvement here
      so toggle.css uses only var() references and stays guard-clean.
@@ -799,7 +801,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  :root {
+  :root:not([data-cinder-reduced-motion='false']) {
     --cinder-duration-instant: 0ms;
     --cinder-duration-fast: 0ms;
     --cinder-duration: 0ms;
@@ -810,4 +812,16 @@
     --cinder-duration-progress-bar-indeterminate: 0ms;
     --cinder-duration-progress-ring-spin: 0ms;
   }
+}
+
+:root[data-reduced-motion='on'] {
+  --cinder-duration-instant: 0ms;
+  --cinder-duration-fast: 0ms;
+  --cinder-duration: 0ms;
+  --cinder-duration-normal: 0ms;
+  --cinder-duration-moderate: 0ms;
+  --cinder-duration-slow: 0ms;
+  --cinder-duration-spin: 0ms;
+  --cinder-duration-progress-bar-indeterminate: 0ms;
+  --cinder-duration-progress-ring-spin: 0ms;
 }

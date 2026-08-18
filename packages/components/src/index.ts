@@ -957,8 +957,15 @@ export type {
 
 export { useIntersection } from './utilities/use-intersection.svelte.ts';
 export { useMutationObserver } from './utilities/use-mutation-observer.svelte.ts';
-export { useReducedMotion } from './utilities/use-reduced-motion.svelte.ts';
-export type { UseReducedMotion } from './utilities/use-reduced-motion.types.ts';
+export {
+  applyReducedMotionPreference,
+  resolveReducedMotion,
+  useReducedMotion,
+} from './utilities/use-reduced-motion.svelte.ts';
+export type {
+  ReducedMotionPreference,
+  UseReducedMotion,
+} from './utilities/use-reduced-motion.types.ts';
 export { useResizeObserver } from './utilities/use-resize-observer.svelte.ts';
 
 export { useToast } from './utilities/use-toast.ts';
