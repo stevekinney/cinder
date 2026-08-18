@@ -183,6 +183,24 @@ function getHtmlTagEnd(value: string, start: number): number | null {
   return null;
 }
 
+function getClosingHtmlBlockEnd(value: string, start: number, tag: string): number | null {
+  const normalizedTag = tag.toLowerCase();
+  let candidate = value.indexOf('</', start);
+  while (candidate !== -1) {
+    const nameStart = candidate + 2;
+    const nameEnd = nameStart + tag.length;
+    if (
+      value.slice(nameStart, nameEnd).toLowerCase() === normalizedTag &&
+      /[\s>]/u.test(value[nameEnd] ?? '')
+    ) {
+      const tagEnd = getHtmlTagEnd(value, candidate);
+      if (tagEnd !== null) return tagEnd + 1;
+    }
+    candidate = value.indexOf('</', candidate + 2);
+  }
+  return null;
+}
+
 function getOrdinaryLinkEnd(value: string, start: number): number | null {
   let labelEnd = start + 1;
   while (labelEnd < value.length) {
@@ -221,7 +239,8 @@ function getReferenceDefinitionEnd(
   start: number,
   metadata: ScanMetadata,
 ): number | null {
-  if (metadata.lineStarts[start] !== start) return null;
+  const lineStart = metadata.lineStarts[start] ?? 0;
+  if (!/^ {0,3}$/u.test(value.slice(lineStart, start))) return null;
 
   let labelEnd = start + 1;
   while (labelEnd < value.length && value[labelEnd] !== ']') {
@@ -352,19 +371,13 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
       continue;
     }
     if (htmlBlockTag !== null) {
-      const endTag = `</${htmlBlockTag}`;
-      const end = value.indexOf(endTag, sourceIndex);
-      if (end === -1) {
+      const end = getClosingHtmlBlockEnd(value, sourceIndex, htmlBlockTag);
+      if (end === null) {
         text += value.slice(sourceIndex);
         break;
       }
-      const lineEnd = value.indexOf('>', end);
-      if (lineEnd === -1) {
-        text += value.slice(sourceIndex);
-        break;
-      }
-      text += value.slice(sourceIndex, lineEnd + 1);
-      sourceIndex = lineEnd + 1;
+      text += value.slice(sourceIndex, end);
+      sourceIndex = end;
       htmlBlockTag = null;
       continue;
     }
@@ -464,11 +477,16 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
       }
     }
 
-    if (
-      value[sourceIndex] === '[' &&
-      (value[sourceIndex - 1] !== '!' || hasEscapedPrefix(sourceIndex - 1, metadata)) &&
-      !hasEscapedPrefix(sourceIndex, metadata)
-    ) {
+    if (value[sourceIndex] === '[' && !hasEscapedPrefix(sourceIndex, metadata)) {
+      if (value[sourceIndex - 1] === '!' && !hasEscapedPrefix(sourceIndex - 1, metadata)) {
+        const imageEnd = getOrdinaryLinkEnd(value, sourceIndex);
+        if (imageEnd !== null) {
+          text += value.slice(sourceIndex, imageEnd);
+          sourceIndex = imageEnd;
+          continue;
+        }
+      }
+
       const referenceDefinitionEnd = getReferenceDefinitionEnd(value, sourceIndex, metadata);
       if (referenceDefinitionEnd !== null) {
         text += value.slice(sourceIndex, referenceDefinitionEnd);

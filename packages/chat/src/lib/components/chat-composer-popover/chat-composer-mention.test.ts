@@ -70,6 +70,10 @@ describe('chat composer mentions', () => {
       text: 'C:\\new',
       mentions: [{ label: 'C:\\new', uri: 'person:folder', start: 0, end: 6 }],
     });
+    expect(parseChatComposerMentions('![unfinished [Ada](person:ada)')).toEqual({
+      text: '![unfinished Ada',
+      mentions: [{ label: 'Ada', uri: 'person:ada', start: 13, end: 16 }],
+    });
   });
 
   test('does not let an unclosed label absorb a later serialized mention', () => {
@@ -109,8 +113,8 @@ describe('chat composer mentions', () => {
     });
 
     expect(parseChatComposerMentions('`[Ada](person:ada)\\`')).toEqual({
-      text: '`Ada\\`',
-      mentions: [{ label: 'Ada', uri: 'person:ada', start: 1, end: 4 }],
+      text: '`[Ada](person:ada)\\`',
+      mentions: [],
     });
 
     expect(parseChatComposerMentions('    [Ada](person:ada)')).toEqual({
@@ -145,6 +149,8 @@ describe('chat composer mentions', () => {
     const value = '[ref]: https://example.com "[Ada](person:ada)"\n$$\n[Ada](person:ada)\n$$';
 
     expect(parseChatComposerMentions(value)).toEqual({ text: value, mentions: [] });
+    const indented = '   [ref]: https://example.com "[Ada](person:ada)"';
+    expect(parseChatComposerMentions(indented)).toEqual({ text: indented, mentions: [] });
     expect(parseChatComposerMentions('$$$literal')).toEqual({ text: '$$$literal', mentions: [] });
     expect(parseChatComposerMentions('\\$[Ada](person:ada)\\$')).toEqual({
       text: '\\$Ada\\$',
@@ -256,5 +262,13 @@ describe('chat composer mentions', () => {
       text: '<hr>\nAda',
       mentions: [{ label: 'Ada', uri: 'person:real', start: 5, end: 8 }],
     });
+    expect(
+      parseChatComposerMentions('<DIV>\n[Ada](person:block)\n</div>\n[Ada](person:real)'),
+    ).toEqual({
+      text: '<DIV>\n[Ada](person:block)\n</div>\nAda',
+      mentions: [{ label: 'Ada', uri: 'person:real', start: 33, end: 36 }],
+    });
+    const image = '![Logo](asset:logo "[Ada](person:ada)")';
+    expect(parseChatComposerMentions(image)).toEqual({ text: image, mentions: [] });
   });
 });
