@@ -90,6 +90,15 @@ describe('PropertyList', () => {
     ).toBe(4);
   });
 
+  test('renders a danger indicator on the row with nested validation errors', async () => {
+    const source = await Bun.file(new URL('./property-list.svelte', import.meta.url)).text();
+
+    expect(source).toContain("import Badge from '../badge/badge.svelte'");
+    expect(source).toContain('data-cinder-invalid={childValidationErrorCount > 0');
+    expect(source).toContain('<Badge\n              variant="danger"');
+    expect(source).toContain('validation ${childValidationErrorCount');
+  });
+
   test('property-list.svelte clears nested validation counts on collapse and unmount', async () => {
     const source = await Bun.file(new URL('./property-list.svelte', import.meta.url)).text();
 

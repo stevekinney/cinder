@@ -17,6 +17,7 @@
   import ChevronDown from 'lucide-svelte/icons/chevron-down';
   import { onDestroy } from 'svelte';
   import Alert from '../alert/alert.svelte';
+  import Badge from '../badge/badge.svelte';
   import Button from '../button/button.svelte';
   import Chip from '../chip/chip.svelte';
   import Collapsible from '@lostgradient/cinder/collapsible';
@@ -217,6 +218,7 @@
   {#each propertyNames as key (key)}
     {@const isRequired = required.includes(key)}
     {@const isOpen = expanded[key] === true}
+    {@const childValidationErrorCount = childValidationCounts[key] ?? 0}
     {@const panelId = `${idPrefix}-${key}-panel`}
     <!--
       Custom disclosure (not <details>/<summary>) so the action buttons can
@@ -224,7 +226,11 @@
       <button> inside <summary> creates an ARIA "interactive within
       interactive" violation.
     -->
-    <div class="cinder-jse-property-row" data-cinder-required={isRequired ? '' : undefined}>
+    <div
+      class="cinder-jse-property-row"
+      data-cinder-required={isRequired ? '' : undefined}
+      data-cinder-invalid={childValidationErrorCount > 0 ? '' : undefined}
+    >
       <div class="cinder-jse-property-row__summary" style={`--cinder-jse-property-depth: ${depth}`}>
         <button
           type="button"
@@ -242,6 +248,15 @@
           />
           <span class="cinder-jse-property-row__name">{key}</span>
           <span class="cinder-jse-property-row__type">{summariseType(properties[key] ?? {})}</span>
+          {#if childValidationErrorCount > 0}
+            <Badge
+              variant="danger"
+              aria-label={`${childValidationErrorCount} validation ${childValidationErrorCount === 1 ? 'error' : 'errors'} in ${key}`}
+            >
+              {childValidationErrorCount}
+              {childValidationErrorCount === 1 ? 'error' : 'errors'}
+            </Badge>
+          {/if}
         </button>
         <span class="cinder-jse-property-row__spacer"></span>
         <Button

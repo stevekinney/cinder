@@ -51,6 +51,22 @@ function serialise(value: JsonSchemaValue): string {
   return JSON.stringify(value, null, PRETTY_INDENT);
 }
 
+function createSchemaHistory(initial: JsonSchemaValue, maxDepth?: number) {
+  const options: {
+    initial: JsonSchemaValue;
+    maxDepth?: number;
+    equals: (left: JsonSchemaValue, right: JsonSchemaValue) => boolean;
+  } = {
+    initial,
+    // Schema property order is observable in the editor's emitted JSON and
+    // diff. History must retain a reorder even though `hasChanges` keeps its
+    // documented key-order-insensitive semantic comparison.
+    equals: (left, right) => JSON.stringify(left) === JSON.stringify(right),
+  };
+  if (maxDepth !== undefined) options.maxDepth = maxDepth;
+  return useHistory<JsonSchemaValue>(options);
+}
+
 function isPlainRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
@@ -329,11 +345,7 @@ export function createEditorState(options: CreateEditorStateOptions) {
     }
 
     if (schemaResult.ok) {
-      const useHistoryOptions: { initial: JsonSchemaValue; maxDepth?: number } = {
-        initial: schemaResult.schema,
-      };
-      if (options.maxHistory !== undefined) useHistoryOptions.maxDepth = options.maxHistory;
-      history = useHistory<JsonSchemaValue>(useHistoryOptions);
+      history = createSchemaHistory(schemaResult.schema, options.maxHistory);
       jsonDraftText = schemaResult.canonicalText;
     } else {
       history = null;
@@ -361,6 +373,12 @@ export function createEditorState(options: CreateEditorStateOptions) {
     if (committedSchema === null) return originalRawText.length > 0;
     return stableSerialise(originalSchema) !== stableSerialise(committedSchema);
   });
+  // `hasChanges` intentionally treats object-key order as semantically equal.
+  // The Diff view, however, presents the emitted JSON text, where property
+  // order is observable (for example in generated forms and documentation).
+  const hasDiffChanges = $derived(
+    (originalCanonicalText || originalRawText) !== committedCanonicalText,
+  );
   const isFormEditable = $derived(committedSchema !== null && !readonly && !jsonDraftIsDirty);
 
   // ===== Public API =====
@@ -401,6 +419,9 @@ export function createEditorState(options: CreateEditorStateOptions) {
     },
     get hasChanges() {
       return hasChanges;
+    },
+    get hasDiffChanges() {
+      return hasDiffChanges;
     },
     get isFormEditable() {
       return isFormEditable;
@@ -503,9 +524,7 @@ export function createEditorState(options: CreateEditorStateOptions) {
       if (history) {
         history.commit(schema, { label: 'apply JSON' });
       } else {
-        const applyOptions: { initial: JsonSchemaValue; maxDepth?: number } = { initial: schema };
-        if (options.maxHistory !== undefined) applyOptions.maxDepth = options.maxHistory;
-        history = useHistory<JsonSchemaValue>(applyOptions);
+        history = createSchemaHistory(schema, options.maxHistory);
       }
       jsonDraftText = serialise(history.current);
       metaResult = meta;
@@ -557,11 +576,7 @@ export function createEditorState(options: CreateEditorStateOptions) {
     revert() {
       if (readonly) return;
       if (originalSchema !== null) {
-        const revertOptions: { initial: JsonSchemaValue; maxDepth?: number } = {
-          initial: originalSchema,
-        };
-        if (options.maxHistory !== undefined) revertOptions.maxDepth = options.maxHistory;
-        history = useHistory<JsonSchemaValue>(revertOptions);
+        history = createSchemaHistory(originalSchema, options.maxHistory);
         jsonDraftText = originalCanonicalText;
         emitChange();
         const epoch = beginValidationCycle();

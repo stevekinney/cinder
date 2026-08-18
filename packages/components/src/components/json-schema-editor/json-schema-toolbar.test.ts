@@ -24,6 +24,7 @@ function makeFakeState(
     canUndo: boolean;
     canRedo: boolean;
     hasChanges: boolean;
+    hasDiffChanges: boolean;
     readonly: boolean;
     copyValue: string;
     validationStatus: 'valid' | 'invalid' | 'pending';
@@ -35,6 +36,7 @@ function makeFakeState(
     canUndo: false,
     canRedo: false,
     hasChanges: false,
+    hasDiffChanges: overrides.hasDiffChanges ?? overrides.hasChanges ?? false,
     readonly: false,
     copyValue: '{}',
     validationStatus: 'valid' as const,
@@ -57,6 +59,9 @@ function makeFakeState(
     },
     get hasChanges() {
       return merged.hasChanges;
+    },
+    get hasDiffChanges() {
+      return merged.hasDiffChanges;
     },
     get readonly() {
       return merged.readonly;
@@ -177,7 +182,7 @@ describe('JsonSchemaToolbar — ARIA structure', () => {
 describe('JsonSchemaToolbar — roving tabindex participants', () => {
   test('the rendered .cinder-copy-button is included in the roving participant set', async () => {
     const { container } = render(JsonSchemaToolbar, {
-      props: { state: makeFakeState({ canUndo: true, canRedo: true, hasChanges: true }) },
+      props: { state: makeFakeState({ canUndo: true, canRedo: true, hasDiffChanges: true }) },
     });
     await tick();
 
@@ -358,9 +363,11 @@ describe('JsonSchemaToolbar — tabindex recomputation on state change', () => {
     // First button (Undo) should have tabindex=0 initially
     expect(actionButtons[0]?.tabIndex).toBe(0);
 
-    // Rerender with canUndo=false, canRedo=false, hasChanges=false
+    // Rerender with canUndo=false, canRedo=false, hasDiffChanges=false
     // → Undo, Redo, and Revert become disabled; only CopyButton remains
-    await rerender({ state: makeFakeState({ canUndo: false, canRedo: false, hasChanges: false }) });
+    await rerender({
+      state: makeFakeState({ canUndo: false, canRedo: false, hasDiffChanges: false }),
+    });
     await tick();
 
     actionButtons = getActionButtons(container);

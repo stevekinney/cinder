@@ -85,7 +85,7 @@
     // when participation changes.
     void editorState.canUndo;
     void editorState.canRedo;
-    void editorState.hasChanges;
+    void editorState.hasDiffChanges;
     void editorState.readonly;
     void editorState.copyValue;
     // Track `rovingIndex` too so a keydown/focusin handler moving the roved
@@ -204,7 +204,7 @@
       size="sm"
       iconOnly
       label="Revert"
-      disabled={!editorState.hasChanges || editorState.readonly}
+      disabled={!editorState.hasDiffChanges || editorState.readonly}
       onclick={() => onRevert?.()}
     >
       <RotateCcw class="cinder-icon-sm" />

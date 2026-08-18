@@ -229,6 +229,23 @@ describe('createEditorState — diff and copy values', () => {
     expect(state.hasChanges).toBe(true);
   });
 
+  test('hasDiffChanges tracks property reordering while hasChanges remains semantic', () => {
+    const state = createEditorState({
+      schema: {
+        type: 'object',
+        properties: { first: { type: 'string' }, second: { type: 'number' } },
+      },
+    });
+
+    state.commitFromForm({
+      type: 'object',
+      properties: { second: { type: 'number' }, first: { type: 'string' } },
+    });
+
+    expect(state.hasChanges).toBe(false);
+    expect(state.hasDiffChanges).toBe(true);
+  });
+
   test('separate `original` overrides the diff baseline', () => {
     const state = createEditorState({
       schema: { type: 'number' },
