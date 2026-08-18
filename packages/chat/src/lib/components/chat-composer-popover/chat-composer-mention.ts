@@ -23,7 +23,17 @@ type ParsedLink = {
 };
 
 const ABSOLUTE_URI_SCHEME = /^([A-Za-z][A-Za-z0-9+.-]*):/u;
-const WEB_URI_SCHEMES = new Set(['http', 'https', 'mailto']);
+const NON_ENTITY_URI_SCHEMES = new Set([
+  'about',
+  'blob',
+  'data',
+  'file',
+  'http',
+  'https',
+  'javascript',
+  'mailto',
+  'vbscript',
+]);
 
 function escapeLabel(value: string): string {
   return value.replaceAll('\\', '\\\\').replaceAll('[', '\\[').replaceAll(']', '\\]');
@@ -64,7 +74,7 @@ function hasEscapedPrefix(value: string, index: number): boolean {
 
 function isEntityUri(uri: string): boolean {
   const match = ABSOLUTE_URI_SCHEME.exec(uri);
-  return match !== null && !WEB_URI_SCHEMES.has(match[1]!.toLowerCase());
+  return match !== null && !NON_ENTITY_URI_SCHEMES.has(match[1]!.toLowerCase());
 }
 
 function parseLink(value: string, start: number): ParsedLink | null {
@@ -77,6 +87,7 @@ function parseLink(value: string, start: number): ParsedLink | null {
       continue;
     }
 
+    if (value[labelEnd] === '[') return null;
     if (value[labelEnd] === ']') break;
     labelEnd += 1;
   }

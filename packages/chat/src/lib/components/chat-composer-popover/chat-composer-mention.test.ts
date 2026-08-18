@@ -44,6 +44,8 @@ describe('chat composer mentions', () => {
     const value = [
       '[Docs](https://example.com)',
       '[Email](mailto:hello@example.com)',
+      '[Script](javascript:alert(1))',
+      '[Data](data:text/plain,hello)',
       '[Relative](./notes)',
       '![Image](asset:logo)',
       '\\[Escaped](person:ada)',
@@ -54,6 +56,13 @@ describe('chat composer mentions', () => {
     expect(parseChatComposerMentions(value)).toEqual({ text: value, mentions: [] });
     expect(deserializeChatComposerMention('[Docs](https://example.com)')).toBeNull();
     expect(deserializeChatComposerMention('[Broken](person:ada')).toBeNull();
+  });
+
+  test('does not let an unclosed label absorb a later serialized mention', () => {
+    expect(parseChatComposerMentions('Before [unfinished [Ada](person:ada)')).toEqual({
+      text: 'Before [unfinished Ada',
+      mentions: [{ label: 'Ada', uri: 'person:ada', start: 19, end: 22 }],
+    });
   });
 
   test('preserves escaped Markdown characters in labels and destinations', () => {
