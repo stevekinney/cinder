@@ -655,7 +655,7 @@ export function rewriteRepositoryRelativeReadmeLinks(html: string): string {
  * title structurally rather than concealing it with CSS.
  */
 export function omitLandingReadmeTitle(html: string): string {
-  return html.replace(/^\s*<h1\b[^>]*>[\s\S]*?<\/h1>\s*/, '');
+  return html.replace(/^\s*<h1\b[^>]*>.*?<\/h1>\s*/is, '');
 }
 
 async function renderLandingReadmeHtml(): Promise<string> {
