@@ -1,3 +1,9 @@
+import {
+  hasEscapedPrefix,
+  makeScanMetadata,
+  type ScanMetadata,
+} from './chat-composer-mention-scan';
+
 /** An addressable entity selected from a chat composer suggestion list. */
 export type ChatComposerMention = {
   label: string;
@@ -25,6 +31,7 @@ type ParsedLink = {
 type CodeFence = {
   delimiter: '`' | '~';
   minimumLength: number;
+  prefix: string;
 };
 
 const ABSOLUTE_URI_SCHEME = /^([A-Za-z][A-Za-z0-9+.-]*):/u;
@@ -75,16 +82,6 @@ function unescapeMarkdown(value: string, escapeWhitespace = false): string | nul
   return unescaped;
 }
 
-function hasEscapedPrefix(value: string, index: number): boolean {
-  let slashCount = 0;
-
-  for (let cursor = index - 1; cursor >= 0 && value[cursor] === '\\'; cursor -= 1) {
-    slashCount += 1;
-  }
-
-  return slashCount % 2 === 1;
-}
-
 function isEntityUri(uri: string): boolean {
   const match = ABSOLUTE_URI_SCHEME.exec(uri);
   return match !== null && !NON_ENTITY_URI_SCHEMES.has(match[1]!.toLowerCase());
@@ -98,27 +95,34 @@ function countRun(value: string, start: number, character: string): number {
   return length;
 }
 
-function isIndentedAtMostThreeSpaces(value: string, index: number): boolean {
-  const lineStart = value.lastIndexOf('\n', index - 1) + 1;
-  return /^ {0,3}$/u.test(value.slice(lineStart, index));
-}
-
-function isIndentedCodeStart(value: string, index: number): boolean {
-  const lineStart = value.lastIndexOf('\n', index - 1) + 1;
+function isIndentedCodeStart(value: string, index: number, metadata: ScanMetadata): boolean {
+  const lineStart = metadata.lineStarts[index] ?? 0;
   if (lineStart !== index || !value.startsWith('    ', index)) return false;
 
   if (lineStart === 0) return true;
 
-  const previousLineStart = value.lastIndexOf('\n', lineStart - 2) + 1;
+  const previousLineStart = metadata.lineStarts[lineStart - 1] ?? 0;
   return /^\s*$/u.test(value.slice(previousLineStart, lineStart - 1));
 }
 
-function getOpeningCodeFence(value: string, start: number): CodeFence | null {
+function getContainerPrefix(value: string, start: number, metadata: ScanMetadata): string {
+  const lineStart = metadata.lineStarts[start] ?? 0;
+  return value.slice(lineStart, metadata.containerStarts[lineStart]);
+}
+
+function getOpeningCodeFence(
+  value: string,
+  start: number,
+  metadata: ScanMetadata,
+): CodeFence | null {
   const delimiter = value[start];
+  const prefix = getContainerPrefix(value, start, metadata);
+  const lineStart = metadata.lineStarts[start] ?? 0;
   if (
     (delimiter !== '`' && delimiter !== '~') ||
-    hasEscapedPrefix(value, start) ||
-    !isIndentedAtMostThreeSpaces(value, start)
+    hasEscapedPrefix(start, metadata) ||
+    start !== metadata.containerStarts[lineStart] ||
+    (prefix.length > 3 && !/[>*+\-0-9.]/u.test(prefix))
   ) {
     return null;
   }
@@ -128,11 +132,18 @@ function getOpeningCodeFence(value: string, start: number): CodeFence | null {
   const info = value.slice(start + minimumLength, lineEnd === -1 ? value.length : lineEnd);
   if (delimiter === '`' && info.includes('`')) return null;
 
-  return minimumLength >= 3 ? { delimiter, minimumLength } : null;
+  return minimumLength >= 3 ? { delimiter, minimumLength, prefix } : null;
 }
 
-function isClosingCodeFence(value: string, start: number, fence: CodeFence): boolean {
-  if (!isIndentedAtMostThreeSpaces(value, start)) return false;
+function isClosingCodeFence(
+  value: string,
+  start: number,
+  fence: CodeFence,
+  metadata: ScanMetadata,
+): boolean {
+  const lineStart = metadata.lineStarts[start] ?? 0;
+  if (!value.startsWith(fence.prefix, lineStart) || start !== metadata.containerStarts[lineStart])
+    return false;
 
   const length = countRun(value, start, fence.delimiter);
   if (length < fence.minimumLength) return false;
@@ -174,8 +185,12 @@ function getOrdinaryLinkEnd(value: string, start: number): number | null {
   return null;
 }
 
-function getReferenceDefinitionEnd(value: string, start: number): number | null {
-  if (value.lastIndexOf('\n', start - 1) + 1 !== start) return null;
+function getReferenceDefinitionEnd(
+  value: string,
+  start: number,
+  metadata: ScanMetadata,
+): number | null {
+  if (metadata.lineStarts[start] !== start) return null;
 
   let labelEnd = start + 1;
   while (labelEnd < value.length && value[labelEnd] !== ']') {
@@ -186,42 +201,26 @@ function getReferenceDefinitionEnd(value: string, start: number): number | null 
   if (value[labelEnd] !== ']' || value[labelEnd + 1] !== ':') return null;
 
   let destinationStart = labelEnd + 2;
-  while (/\s/u.test(value[destinationStart] ?? '')) destinationStart += 1;
+  while (value[destinationStart] === ' ' || value[destinationStart] === '\t') destinationStart += 1;
   if (!/\S/u.test(value[destinationStart] ?? '')) return null;
 
   const lineEnd = value.indexOf('\n', destinationStart);
   return lineEnd === -1 ? value.length : lineEnd;
 }
 
-function getInlineCodeSpanEnd(value: string, start: number): number | null {
-  const delimiterLength = countRun(value, start, '`');
-
-  for (let index = start + delimiterLength; index < value.length; index += 1) {
-    if (value[index] !== '`') continue;
-
-    const closingLength = countRun(value, index, '`');
-    if (closingLength === delimiterLength) return index + closingLength;
-
-    index += closingLength - 1;
-  }
-
-  return null;
+function getInlineCodeSpanEnd(start: number, metadata: ScanMetadata): number | null {
+  const end = metadata.codeSpanEnds[start];
+  return end === undefined || end < 0 ? null : end;
 }
 
-function getMathEnd(value: string, start: number): number | null {
-  if (hasEscapedPrefix(value, start)) return null;
+function getMathEnd(value: string, start: number, metadata: ScanMetadata): number | null {
+  if (hasEscapedPrefix(start, metadata)) return null;
 
-  const delimiterLength = value[start + 1] === '$' ? 2 : 1;
-  for (let index = start + delimiterLength; index < value.length; index += 1) {
-    if (value[index] !== '$' || hasEscapedPrefix(value, index)) continue;
-
-    const closingLength = countRun(value, index, '$');
-    if (closingLength === delimiterLength) return index + closingLength;
-
-    index += closingLength - 1;
-  }
-
-  return null;
+  const delimiterLength = countRun(value, start, '$');
+  if (delimiterLength > 2) return null;
+  if (delimiterLength === 1 && /[0-9\s]/u.test(value[start + 1] ?? '')) return null;
+  const end = metadata.mathEnds[start];
+  return end === undefined || end < 0 ? null : end;
 }
 
 function parseLink(value: string, start: number): ParsedLink | null {
@@ -301,15 +300,48 @@ export function deserializeChatComposerMention(value: string): ChatComposerMenti
 /** Projects entity mentions to visible text and reports their UTF-16 ranges. */
 export function parseChatComposerMentions(value: string): ChatComposerMentionParseResult {
   const mentions: ChatComposerMentionRange[] = [];
+  const metadata = makeScanMetadata(value);
   let text = '';
   let sourceIndex = 0;
   let codeFence: CodeFence | null = null;
+  let indentedCode = false;
+  let htmlComment = false;
+  let htmlBlockTag: string | null = null;
 
   while (sourceIndex < value.length) {
+    if (htmlComment) {
+      const end = value.indexOf('-->', sourceIndex);
+      if (end === -1) {
+        text += value.slice(sourceIndex);
+        break;
+      }
+      text += value.slice(sourceIndex, end + 3);
+      sourceIndex = end + 3;
+      htmlComment = false;
+      continue;
+    }
+    if (htmlBlockTag !== null) {
+      const endTag = `</${htmlBlockTag}`;
+      const end = value.indexOf(endTag, sourceIndex);
+      if (end === -1) {
+        text += value.slice(sourceIndex);
+        break;
+      }
+      const lineEnd = value.indexOf('>', end);
+      if (lineEnd === -1) {
+        text += value.slice(sourceIndex);
+        break;
+      }
+      text += value.slice(sourceIndex, lineEnd + 1);
+      sourceIndex = lineEnd + 1;
+      htmlBlockTag = null;
+      continue;
+    }
     if (codeFence !== null) {
       if (
         value[sourceIndex] === codeFence.delimiter &&
-        isClosingCodeFence(value, sourceIndex, codeFence)
+        (sourceIndex === 0 || /[\n >*+\-.]/u.test(value[sourceIndex - 1]!)) &&
+        isClosingCodeFence(value, sourceIndex, codeFence, metadata)
       ) {
         const closingLength = countRun(value, sourceIndex, codeFence.delimiter);
         text += value.slice(sourceIndex, sourceIndex + closingLength);
@@ -323,35 +355,62 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
       continue;
     }
 
-    if (isIndentedCodeStart(value, sourceIndex)) {
+    if (metadata.escaped[sourceIndex] === 0 && isIndentedCodeStart(value, sourceIndex, metadata)) {
+      indentedCode = true;
+    }
+    if (indentedCode && (sourceIndex === 0 || value[sourceIndex - 1] === '\n')) {
       const lineEnd = value.indexOf('\n', sourceIndex);
       const end = lineEnd === -1 ? value.length : lineEnd + 1;
-      text += value.slice(sourceIndex, end);
-      sourceIndex = end;
-      continue;
-    }
-
-    const openingCodeFence = getOpeningCodeFence(value, sourceIndex);
-    if (openingCodeFence !== null) {
-      codeFence = openingCodeFence;
-      text += value[sourceIndex];
-      sourceIndex += 1;
-      continue;
-    }
-
-    if (value[sourceIndex] === '`') {
-      const codeSpanEnd = hasEscapedPrefix(value, sourceIndex)
-        ? null
-        : getInlineCodeSpanEnd(value, sourceIndex);
-      if (codeSpanEnd !== null) {
-        text += value.slice(sourceIndex, codeSpanEnd);
-        sourceIndex = codeSpanEnd;
+      const line = value.slice(sourceIndex, lineEnd === -1 ? value.length : lineEnd);
+      if (line.trim().length === 0 || !/^ {4}/u.test(line)) {
+        indentedCode = false;
+      } else {
+        text += value.slice(sourceIndex, end);
+        sourceIndex = end;
         continue;
       }
     }
 
+    if (value[sourceIndex] === '<' && !hasEscapedPrefix(sourceIndex, metadata)) {
+      if (value.startsWith('<!--', sourceIndex)) {
+        htmlComment = true;
+        text += '<!--';
+        sourceIndex += 4;
+        continue;
+      }
+      const tagEnd = value.indexOf('>', sourceIndex + 1);
+      if (tagEnd !== -1) {
+        const tag = /^<([A-Za-z][A-Za-z0-9-]*)(?:\s|>)/u.exec(value.slice(sourceIndex, tagEnd + 1));
+        text += value.slice(sourceIndex, tagEnd + 1);
+        sourceIndex = tagEnd + 1;
+        if (tag !== null && !value.slice(sourceIndex - 2, sourceIndex).includes('/')) {
+          const lineStart = metadata.lineStarts[sourceIndex - 1] ?? 0;
+          if (
+            /^\s*<[A-Za-z][A-Za-z0-9-]*(?:\s[^>]*)?>$/u.test(value.slice(lineStart, sourceIndex)) &&
+            value[sourceIndex] === '\n'
+          ) {
+            htmlBlockTag = tag[1]!;
+          }
+        }
+        continue;
+      }
+    }
+
+    const openingCodeFence =
+      (value[sourceIndex] === '`' || value[sourceIndex] === '~') &&
+      (sourceIndex === 0 || /[\n >*+\-.]/u.test(value[sourceIndex - 1]!))
+        ? getOpeningCodeFence(value, sourceIndex, metadata)
+        : null;
+    if (openingCodeFence !== null) {
+      codeFence = openingCodeFence;
+      const run = countRun(value, sourceIndex, openingCodeFence.delimiter);
+      text += value.slice(sourceIndex, sourceIndex + run);
+      sourceIndex += run;
+      continue;
+    }
+
     if (value[sourceIndex] === '$') {
-      const mathEnd = getMathEnd(value, sourceIndex);
+      const mathEnd = getMathEnd(value, sourceIndex, metadata);
       if (mathEnd !== null) {
         text += value.slice(sourceIndex, mathEnd);
         sourceIndex = mathEnd;
@@ -359,12 +418,23 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
       }
     }
 
+    if (value[sourceIndex] === '`') {
+      const codeSpanEnd = hasEscapedPrefix(sourceIndex, metadata)
+        ? null
+        : getInlineCodeSpanEnd(sourceIndex, metadata);
+      if (codeSpanEnd !== null) {
+        text += value.slice(sourceIndex, codeSpanEnd);
+        sourceIndex = codeSpanEnd;
+        continue;
+      }
+    }
+
     if (
       value[sourceIndex] === '[' &&
-      (value[sourceIndex - 1] !== '!' || hasEscapedPrefix(value, sourceIndex - 1)) &&
-      !hasEscapedPrefix(value, sourceIndex)
+      (value[sourceIndex - 1] !== '!' || hasEscapedPrefix(sourceIndex - 1, metadata)) &&
+      !hasEscapedPrefix(sourceIndex, metadata)
     ) {
-      const referenceDefinitionEnd = getReferenceDefinitionEnd(value, sourceIndex);
+      const referenceDefinitionEnd = getReferenceDefinitionEnd(value, sourceIndex, metadata);
       if (referenceDefinitionEnd !== null) {
         text += value.slice(sourceIndex, referenceDefinitionEnd);
         sourceIndex = referenceDefinitionEnd;
@@ -380,7 +450,8 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
         continue;
       }
 
-      const ordinaryLinkEnd = getOrdinaryLinkEnd(value, sourceIndex);
+      const ordinaryLinkEnd =
+        value[sourceIndex + 1] === '[' ? null : getOrdinaryLinkEnd(value, sourceIndex);
       if (ordinaryLinkEnd !== null) {
         text += value.slice(sourceIndex, ordinaryLinkEnd);
         sourceIndex = ordinaryLinkEnd;

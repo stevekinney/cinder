@@ -152,4 +152,78 @@ describe('chat composer mentions', () => {
 
     expect(parseChatComposerMentions(value)).toEqual({ text: value, mentions: [] });
   });
+
+  test('handles delimiter-heavy input with bounded forward scans', () => {
+    const value = `${'`'.repeat(100_000)}\n${'$5 '.repeat(25_000)}\n${' ~'.repeat(25_000)}`;
+
+    expect(parseChatComposerMentions(value)).toEqual({ text: value, mentions: [] });
+  });
+
+  test('keeps Markdown block constructs literal across containers and continuations', () => {
+    const value =
+      'Intro\n    [Ada](person:ada)\n    continuation\n\n```\n[Ada](person:ada)\n```\n[Ada](person:real)';
+    expect(parseChatComposerMentions(value)).toEqual({
+      text: 'Intro\n    Ada\n    continuation\n\n```\n[Ada](person:ada)\n```\nAda',
+      mentions: [
+        { label: 'Ada', uri: 'person:ada', start: 10, end: 13 },
+        { label: 'Ada', uri: 'person:real', start: 58, end: 61 },
+      ],
+    });
+
+    const container = '> ```\n> [Ada](person:ada)\n> ```\n> [Ada](person:real)';
+    expect(parseChatComposerMentions(container).mentions).toEqual([
+      { label: 'Ada', uri: 'person:real', start: 34, end: 37 },
+    ]);
+
+    expect(
+      parseChatComposerMentions('- ```\n- [Ada](person:ada)\n- ```\n- [Ada](person:real)').mentions,
+    ).toEqual([{ label: 'Ada', uri: 'person:real', start: 34, end: 37 }]);
+    expect(parseChatComposerMentions('1. ```\n1. [Ada](person:ada)\n1. ```').mentions).toEqual([]);
+    expect(parseChatComposerMentions('> ```\n```\n[Ada](person:ada)\n> ```').mentions).toEqual([]);
+    expect(parseChatComposerMentions('text ``` [Ada](person:ada)').mentions).toEqual([
+      { label: 'Ada', uri: 'person:ada', start: 9, end: 12 },
+    ]);
+  });
+
+  test('distinguishes currency, math, references, and raw HTML', () => {
+    expect(parseChatComposerMentions('$5 [Ada](person:ada) $10')).toEqual({
+      text: '$5 Ada $10',
+      mentions: [{ label: 'Ada', uri: 'person:ada', start: 3, end: 6 }],
+    });
+    const raw =
+      '<!-- [Ada](person:comment) -->\n<div>\n[Ada](person:block)\n</div>\n[Ada](person:real)';
+    expect(parseChatComposerMentions(raw)).toEqual({
+      text: raw.slice(0, raw.lastIndexOf('[Ada]')) + 'Ada',
+      mentions: [{ label: 'Ada', uri: 'person:real', start: 64, end: 67 }],
+    });
+    expect(parseChatComposerMentions('<!-- [Ada](person:comment)')).toEqual({
+      text: '<!-- [Ada](person:comment)',
+      mentions: [],
+    });
+    expect(parseChatComposerMentions('<div>\n[Ada](person:block)\n</div')).toEqual({
+      text: '<div>\n[Ada](person:block)\n</div',
+      mentions: [],
+    });
+    expect(parseChatComposerMentions('<div>\n[Ada](person:block)')).toEqual({
+      text: '<div>\n[Ada](person:block)',
+      mentions: [],
+    });
+    expect(parseChatComposerMentions('<!-- [Ada](person:comment)')).toEqual({
+      text: '<!-- [Ada](person:comment)',
+      mentions: [],
+    });
+    expect(parseChatComposerMentions('Intro\n\n    [Ada](person:code)')).toEqual({
+      text: 'Intro\n\n    [Ada](person:code)',
+      mentions: [],
+    });
+    expect(parseChatComposerMentions('    code\n    [Ada](person:continuation)')).toEqual({
+      text: '    code\n    [Ada](person:continuation)',
+      mentions: [],
+    });
+    expect(parseChatComposerMentions('    code\n[Ada](person:real)')).toEqual({
+      text: '    code\nAda',
+      mentions: [{ label: 'Ada', uri: 'person:real', start: 9, end: 12 }],
+    });
+    expect(parseChatComposerMentions('<')).toEqual({ text: '<', mentions: [] });
+  });
 });
