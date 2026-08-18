@@ -46,7 +46,7 @@ function escapeLabel(value: string): string {
 }
 
 function escapeUri(value: string): string {
-  return value.replaceAll('\\', '\\\\').replace(/([()\s])/gu, '\\$1');
+  return value.replaceAll('\\', '\\\\').replace(/([()[\]\s])/gu, '\\$1');
 }
 
 function unescapeMarkdown(value: string, escapeWhitespace = false): string | null {
@@ -104,12 +104,22 @@ function isIndentedAtMostThreeSpaces(value: string, index: number): boolean {
 }
 
 function isIndentedCodeStart(value: string, index: number): boolean {
-  return value.lastIndexOf('\n', index - 1) + 1 === index && value.startsWith('    ', index);
+  const lineStart = value.lastIndexOf('\n', index - 1) + 1;
+  if (lineStart !== index || !value.startsWith('    ', index)) return false;
+
+  if (lineStart === 0) return true;
+
+  const previousLineStart = value.lastIndexOf('\n', lineStart - 2) + 1;
+  return /^\s*$/u.test(value.slice(previousLineStart, lineStart - 1));
 }
 
 function getOpeningCodeFence(value: string, start: number): CodeFence | null {
   const delimiter = value[start];
-  if ((delimiter !== '`' && delimiter !== '~') || !isIndentedAtMostThreeSpaces(value, start)) {
+  if (
+    (delimiter !== '`' && delimiter !== '~') ||
+    hasEscapedPrefix(value, start) ||
+    !isIndentedAtMostThreeSpaces(value, start)
+  ) {
     return null;
   }
 
@@ -142,18 +152,45 @@ function getOrdinaryLinkEnd(value: string, start: number): number | null {
   if (value[labelEnd] !== ']' || value[labelEnd + 1] !== '(') return null;
 
   let depth = 0;
+  let quote: '"' | "'" | null = null;
   for (let index = labelEnd + 2; index < value.length; index += 1) {
-    if (value[index] === '\\') {
+    const character = value[index];
+    if (character === '\\') {
       index += 1;
-    } else if (value[index] === '(') {
+    } else if (quote !== null) {
+      if (character === quote) quote = null;
+    } else if (character === '"' || character === "'") {
+      quote = character;
+    } else if (character === '[') {
+      return null;
+    } else if (character === '(') {
       depth += 1;
-    } else if (value[index] === ')') {
+    } else if (character === ')') {
       if (depth === 0) return index + 1;
       depth -= 1;
     }
   }
 
   return null;
+}
+
+function getReferenceDefinitionEnd(value: string, start: number): number | null {
+  if (value.lastIndexOf('\n', start - 1) + 1 !== start) return null;
+
+  let labelEnd = start + 1;
+  while (labelEnd < value.length && value[labelEnd] !== ']') {
+    if (value[labelEnd] === '\\') labelEnd += 2;
+    else labelEnd += 1;
+  }
+
+  if (value[labelEnd] !== ']' || value[labelEnd + 1] !== ':') return null;
+
+  let destinationStart = labelEnd + 2;
+  while (/\s/u.test(value[destinationStart] ?? '')) destinationStart += 1;
+  if (!/\S/u.test(value[destinationStart] ?? '')) return null;
+
+  const lineEnd = value.indexOf('\n', destinationStart);
+  return lineEnd === -1 ? value.length : lineEnd;
 }
 
 function getInlineCodeSpanEnd(value: string, start: number): number | null {
@@ -163,6 +200,22 @@ function getInlineCodeSpanEnd(value: string, start: number): number | null {
     if (value[index] !== '`') continue;
 
     const closingLength = countRun(value, index, '`');
+    if (closingLength === delimiterLength) return index + closingLength;
+
+    index += closingLength - 1;
+  }
+
+  return null;
+}
+
+function getMathEnd(value: string, start: number): number | null {
+  if (hasEscapedPrefix(value, start)) return null;
+
+  const delimiterLength = value[start + 1] === '$' ? 2 : 1;
+  for (let index = start + delimiterLength; index < value.length; index += 1) {
+    if (value[index] !== '$' || hasEscapedPrefix(value, index)) continue;
+
+    const closingLength = countRun(value, index, '$');
     if (closingLength === delimiterLength) return index + closingLength;
 
     index += closingLength - 1;
@@ -206,6 +259,7 @@ function parseLink(value: string, start: number): ParsedLink | null {
       destinationEnd += 1;
       continue;
     }
+    if (character === '[') return null;
     if (character === ')') {
       if (nestedParentheses === 0) break;
       nestedParentheses -= 1;
@@ -218,13 +272,17 @@ function parseLink(value: string, start: number): ParsedLink | null {
 
   const label = unescapeMarkdown(value.slice(start + 1, labelEnd));
   const uri = unescapeMarkdown(value.slice(destinationStart, destinationEnd), true);
-  if (label === null || uri === null || !isEntityUri(uri)) return null;
+  if (label === null || label.length === 0 || uri === null || !isEntityUri(uri)) return null;
 
   return { label, uri, end: destinationEnd + 1 };
 }
 
 /** Serializes an entity mention as Markdown suitable for a plain textarea. */
 export function serializeChatComposerMention({ label, uri }: ChatComposerMention): string {
+  if (label.length === 0) {
+    throw new TypeError('serializeChatComposerMention requires a non-empty label.');
+  }
+
   if (!isEntityUri(uri)) {
     throw new TypeError('serializeChatComposerMention requires an absolute non-web entity URI.');
   }
@@ -282,10 +340,21 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
     }
 
     if (value[sourceIndex] === '`') {
-      const codeSpanEnd = getInlineCodeSpanEnd(value, sourceIndex);
+      const codeSpanEnd = hasEscapedPrefix(value, sourceIndex)
+        ? null
+        : getInlineCodeSpanEnd(value, sourceIndex);
       if (codeSpanEnd !== null) {
         text += value.slice(sourceIndex, codeSpanEnd);
         sourceIndex = codeSpanEnd;
+        continue;
+      }
+    }
+
+    if (value[sourceIndex] === '$') {
+      const mathEnd = getMathEnd(value, sourceIndex);
+      if (mathEnd !== null) {
+        text += value.slice(sourceIndex, mathEnd);
+        sourceIndex = mathEnd;
         continue;
       }
     }
@@ -295,6 +364,13 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
       (value[sourceIndex - 1] !== '!' || hasEscapedPrefix(value, sourceIndex - 1)) &&
       !hasEscapedPrefix(value, sourceIndex)
     ) {
+      const referenceDefinitionEnd = getReferenceDefinitionEnd(value, sourceIndex);
+      if (referenceDefinitionEnd !== null) {
+        text += value.slice(sourceIndex, referenceDefinitionEnd);
+        sourceIndex = referenceDefinitionEnd;
+        continue;
+      }
+
       const link = parseLink(value, sourceIndex);
       if (link !== null) {
         const start = text.length;

@@ -17,6 +17,9 @@ describe('chat composer mentions', () => {
     expect(() =>
       serializeChatComposerMention({ label: 'Docs', uri: 'https://example.com' }),
     ).toThrow('requires an absolute non-web entity URI');
+    expect(() => serializeChatComposerMention({ label: '', uri: 'person:ada' })).toThrow(
+      'requires a non-empty label',
+    );
   });
 
   test('serializes and deserializes escaped labels and entity URIs without loss', () => {
@@ -51,6 +54,7 @@ describe('chat composer mentions', () => {
       '[Data](data:text/plain,hello)',
       '[Relative](./notes)',
       '[Docs](https://example.com "[Ada](person:ada)")',
+      '[Docs](https://example.com "a ) [Ada](person:ada)")',
       '[Escaped](https://example.com\\) "[Ada](person:ada)")',
       '![Image](asset:logo)',
       '\\[Escaped](person:ada)',
@@ -61,6 +65,7 @@ describe('chat composer mentions', () => {
     expect(parseChatComposerMentions(value)).toEqual({ text: value, mentions: [] });
     expect(deserializeChatComposerMention('[Docs](https://example.com)')).toBeNull();
     expect(deserializeChatComposerMention('[Broken](person:ada')).toBeNull();
+    expect(deserializeChatComposerMention('[](person:ada)')).toBeNull();
     expect(parseChatComposerMentions('[C:\\new](person:folder)')).toEqual({
       text: 'C:\\new',
       mentions: [{ label: 'C:\\new', uri: 'person:folder', start: 0, end: 6 }],
@@ -107,6 +112,16 @@ describe('chat composer mentions', () => {
       text: '    [Ada](person:ada)',
       mentions: [],
     });
+
+    expect(parseChatComposerMentions('Intro\n    [Ada](person:ada)')).toEqual({
+      text: 'Intro\n    Ada',
+      mentions: [{ label: 'Ada', uri: 'person:ada', start: 10, end: 13 }],
+    });
+
+    expect(parseChatComposerMentions('\\`[Ada](person:ada)\\`')).toEqual({
+      text: '\\`Ada\\`',
+      mentions: [{ label: 'Ada', uri: 'person:ada', start: 2, end: 5 }],
+    });
   });
 
   test('preserves escaped Markdown characters in labels and destinations', () => {
@@ -119,5 +134,22 @@ describe('chat composer mentions', () => {
       label: 'Ada',
       uri: 'person:ada(eng)',
     });
+  });
+
+  test('leaves reference definition and math content literal', () => {
+    const value = '[ref]: https://example.com "[Ada](person:ada)"\n$$\n[Ada](person:ada)\n$$';
+
+    expect(parseChatComposerMentions(value)).toEqual({ text: value, mentions: [] });
+    expect(parseChatComposerMentions('$$$literal')).toEqual({ text: '$$$literal', mentions: [] });
+    expect(parseChatComposerMentions('\\$[Ada](person:ada)\\$')).toEqual({
+      text: '\\$Ada\\$',
+      mentions: [{ label: 'Ada', uri: 'person:ada', start: 2, end: 5 }],
+    });
+  });
+
+  test('does not rescan malformed link starts to the end of the input', () => {
+    const value = '[x]('.repeat(10_000);
+
+    expect(parseChatComposerMentions(value)).toEqual({ text: value, mentions: [] });
   });
 });
