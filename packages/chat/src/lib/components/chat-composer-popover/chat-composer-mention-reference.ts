@@ -17,6 +17,7 @@ export function getReferenceDefinitionEnd(
   let labelEnd = start + 1;
   if (value[labelEnd] === '^') return null;
   while (labelEnd < value.length && value[labelEnd] !== ']') {
+    if (labelEnd - start > 999 || value[labelEnd] === '\r' || value[labelEnd] === '\n') return null;
     if (value[labelEnd] === '\\') labelEnd += 2;
     else labelEnd += 1;
   }

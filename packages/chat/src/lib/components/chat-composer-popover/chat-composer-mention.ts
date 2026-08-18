@@ -14,6 +14,7 @@ import {
   escapeMentionLabel,
   escapeMentionUri,
   getGfmLiteralAutolinkEnd,
+  getOrdinaryLinkEnd,
   hasMarkdownParagraphBreak,
   isEntityUri,
   unescapeMarkdown,
@@ -63,79 +64,6 @@ function isAtBlockStart(value: string, index: number, metadata: ScanMetadata): b
   const lineStart = metadata.lineStarts[index] ?? 0;
   const containerStart = metadata.containerStarts.get(lineStart) ?? lineStart;
   return /^ {0,3}$/u.test(value.slice(containerStart, index));
-}
-
-function getOrdinaryLinkEnd(value: string, start: number, allowNestedLabel = false): number | null {
-  let labelEnd = start + 1;
-  let labelDepth = 0;
-  while (labelEnd < value.length) {
-    if (value[labelEnd] === '\\') labelEnd += 2;
-    else if (value[labelEnd] === '[') {
-      if (!allowNestedLabel) return null;
-      labelDepth += 1;
-      labelEnd += 1;
-    } else if (value[labelEnd] === ']') {
-      if (labelDepth === 0) break;
-      labelDepth -= 1;
-      labelEnd += 1;
-    } else labelEnd += 1;
-  }
-  if (value[labelEnd] !== ']' || value[labelEnd + 1] !== '(') return null;
-
-  let cursor = labelEnd + 2;
-  if (value[cursor] === '<') {
-    cursor += 1;
-    while (cursor < value.length && value[cursor] !== '>') {
-      if (value[cursor] === '\\') cursor += 1;
-      if (isLineEnding(value[cursor]) || value[cursor] === '<') return null;
-      cursor += 1;
-    }
-    if (value[cursor] !== '>') return null;
-    cursor += 1;
-  } else {
-    let depth = 0;
-    while (cursor < value.length && !/\s/u.test(value[cursor]!)) {
-      const character = value[cursor];
-      if (character === '\\') {
-        cursor += 2;
-        continue;
-      }
-      if (character === '[') return null;
-      if (character === '(') depth += 1;
-      if (character === ')') {
-        if (depth === 0) return cursor + 1;
-        depth -= 1;
-      }
-      cursor += 1;
-    }
-    if (depth !== 0) return null;
-  }
-
-  if (!/\s/u.test(value[cursor] ?? '')) return value[cursor] === ')' ? cursor + 1 : null;
-  const titleWhitespaceStart = cursor;
-  while (/\s/u.test(value[cursor] ?? '')) cursor += 1;
-  if (hasMarkdownParagraphBreak(value.slice(titleWhitespaceStart, cursor))) return null;
-
-  const opener = value[cursor];
-  const closer = opener === '(' ? ')' : opener;
-  if (opener !== '"' && opener !== "'" && opener !== '(') return null;
-  cursor += 1;
-  while (cursor < value.length && value[cursor] !== closer) {
-    const character = value[cursor];
-    if (character === '\\') {
-      cursor += 1;
-    } else if (isLineEnding(character) && opener === '(') {
-      return null;
-    }
-    cursor += 1;
-  }
-  if (value[cursor] !== closer) return null;
-  cursor += 1;
-  const closingWhitespaceStart = cursor;
-  while (/\s/u.test(value[cursor] ?? '')) cursor += 1;
-  if (hasMarkdownParagraphBreak(value.slice(closingWhitespaceStart, cursor))) return null;
-
-  return value[cursor] === ')' ? cursor + 1 : null;
 }
 
 function getInlineCodeSpanEnd(start: number, metadata: ScanMetadata): number | null {
@@ -356,10 +284,22 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
       }
       if (value.startsWith('<![CDATA[', sourceIndex)) {
         const closingStart = value.indexOf(']]>', sourceIndex + 9);
-        const end = closingStart === -1 ? value.length : closingStart + 3;
-        text += value.slice(sourceIndex, end);
-        sourceIndex = end;
-        continue;
+        const isBlock = isAtBlockStart(value, sourceIndex, metadata);
+        if (closingStart !== -1 || isBlock) {
+          if (isBlock) {
+            const lineStart = metadata.lineStarts[sourceIndex] ?? 0;
+            htmlDelimitedBlock = {
+              terminator: ']]>',
+              container: getContainerContext(lineStart, metadata),
+            };
+            text += '<![CDATA[';
+            sourceIndex += 9;
+          } else {
+            text += value.slice(sourceIndex, closingStart + 3);
+            sourceIndex = closingStart + 3;
+          }
+          continue;
+        }
       }
       const rawBlock = /^<(pre|script|style|textarea)(?=[\s>])/iu.exec(value.slice(sourceIndex));
       if (rawBlock !== null && isAtBlockStart(value, sourceIndex, metadata)) {
@@ -391,10 +331,12 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
           const lineStart = metadata.lineStarts[sourceIndex - 1] ?? 0;
           const normalizedTag = tag[1]!.toLowerCase();
           const containerStart = metadata.containerStarts.get(lineStart) ?? lineStart;
+          const lineEnd = getLineEnd(value, sourceIndex);
           const startsAtBlockColumn = /^ {0,3}$/u.test(value.slice(containerStart, tagStart));
           const isStandaloneTag =
-            /^\s*<[A-Za-z][A-Za-z0-9-]*(?:\s[^>]*)?>$/u.test(value.slice(lineStart, sourceIndex)) &&
-            isLineEnding(value[sourceIndex]);
+            /^\s*<[A-Za-z][A-Za-z0-9-]*(?:\s[^>]*)?>[ \t]*$/u.test(
+              value.slice(containerStart, lineEnd),
+            ) && isLineEnding(value[lineEnd]);
           const canOwnHtmlBlock =
             isInterruptingHtmlBlockTag(normalizedTag) ||
             (!value.slice(sourceIndex - 2, sourceIndex).includes('/') &&

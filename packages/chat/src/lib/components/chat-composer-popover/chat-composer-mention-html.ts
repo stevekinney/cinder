@@ -1,4 +1,4 @@
-import { getLineEnd, getLineEndingLength } from './chat-composer-mention-lines.ts';
+import { getLineEnd, getLineEndingLength, isLineEnding } from './chat-composer-mention-lines.ts';
 import {
   isContainerActive,
   type ContainerContext,
@@ -44,6 +44,11 @@ export function getHtmlTagEnd(value: string, start: number): number | null {
   let quote: '"' | "'" | null = null;
   for (let index = start + 1; index < value.length; index += 1) {
     const character = value[index];
+    if (isLineEnding(character)) {
+      let next = index + getLineEndingLength(value, index);
+      while (value[next] === ' ' || value[next] === '\t') next += 1;
+      if (isLineEnding(value[next])) return null;
+    }
     if (quote !== null) {
       if (character === quote) quote = null;
     } else if (character === '"' || character === "'") {
@@ -147,7 +152,12 @@ export function getClosingHtmlBlockEnd(
       /[\s>]/u.test(value[nameEnd] ?? '')
     ) {
       const tagEnd = getHtmlTagEnd(value, candidate);
-      if (tagEnd !== null) return tagEnd + 1;
+      if (tagEnd === null) {
+        candidate = value.indexOf('</', candidate + 2);
+        continue;
+      }
+      const closingLineEnd = getLineEnd(value, tagEnd + 1);
+      return Math.min(boundary, closingLineEnd + getLineEndingLength(value, closingLineEnd));
     }
     candidate = value.indexOf('</', candidate + 2);
   }

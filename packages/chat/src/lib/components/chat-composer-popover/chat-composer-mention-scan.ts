@@ -43,6 +43,7 @@ export function makeScanMetadata(value: string): ScanMetadata {
   const codeSpanEnds = new Map<number, number>();
   const mathEnds = new Map<number, number>();
   const paragraphBreaks = new Set<number>();
+  let previousLineWasParagraph = false;
 
   let backslashes = 0;
   let lineStart = 0;
@@ -93,7 +94,8 @@ export function makeScanMetadata(value: string): ScanMetadata {
           cursor > markerStart &&
           cursor - markerStart <= 9 &&
           (value[cursor] === '.' || value[cursor] === ')') &&
-          /[\t \r\n]/u.test(value[cursor + 1] ?? '\n')
+          /[\t \r\n]/u.test(value[cursor + 1] ?? '\n') &&
+          (!previousLineWasParagraph || value.slice(markerStart, cursor) === '1')
         ) {
           markerWidth = cursor - markerStart + 1;
         }
@@ -121,6 +123,12 @@ export function makeScanMetadata(value: string): ScanMetadata {
       });
     }
     const lineEnd = getLineEnd(value, start);
+    const content = value.slice(cursor, lineEnd).trim();
+    previousLineWasParagraph =
+      quoteDepth === 0 &&
+      listDepth === 0 &&
+      content.length > 0 &&
+      !/^(?:#{1,6}(?:[ \t]+|$)|(?:[*_-][ \t]*){3,}$|(?:`{3,}|~{3,})|<|\[[^\]^]+\]:)/u.test(content);
     if (lineEnd === value.length) break;
     start = lineEnd + getLineEndingLength(value, lineEnd);
   }
@@ -131,7 +139,7 @@ export function makeScanMetadata(value: string): ScanMetadata {
     const character = value[index];
     if (paragraphBreaks.has(index)) {
       nextCodeRun.clear();
-      nextMathClose.clear();
+      nextMathClose.delete(1);
     }
     if (character !== '`' && character !== '$') {
       index -= 1;
