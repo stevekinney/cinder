@@ -166,7 +166,7 @@ function extractReducedMotionBlocks(css: string): string[] {
     }
 
     if (closeIndex !== -1) {
-      blocks.push(css.slice(openBrace + 1, closeIndex));
+      blocks.push(css.slice(openBrace + 1, closeIndex).replaceAll(/\s+/g, ' '));
     }
 
     searchFrom = closeIndex === -1 ? openBrace + 1 : closeIndex + 1;
