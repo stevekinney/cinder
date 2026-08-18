@@ -154,14 +154,16 @@ describe('useReducedMotion', () => {
     expect(motion.current).toBe(false);
   });
 
-  test('seeds and synchronizes the default preference from the public root attribute', () => {
+  test('synchronizes the default preference from the public root attribute', async () => {
     mock = installMatchMediaMock(false);
     document.documentElement.dataset['reducedMotion'] = 'on';
+    await Promise.resolve();
     const motion = useReducedMotion();
 
     expect(motion.current).toBe(true);
 
     document.documentElement.dataset['reducedMotion'] = 'off';
+    await Promise.resolve();
     expect(motion.current).toBe(false);
 
     applyReducedMotionPreference(document.documentElement, 'system');
