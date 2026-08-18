@@ -29,36 +29,6 @@ on:
   # is deliberately unscoped: it pays the full Playwright cost in exchange for
   # testing the exact merged result.
   merge_group: {}
-  push:
-    branches:
-      - main
-    paths:
-      - 'packages/components/src/**'
-      - 'packages/components/components.json'
-      - 'packages/components/package.json'
-      - 'packages/components/scripts/**'
-      - 'packages/chat/**'
-      - 'packages/*/package.json'
-      - 'packages/*/scripts/**'
-      - 'packages/*/tsconfig*.json'
-      - 'packages/editor/src/**'
-      - 'packages/editor/components.json'
-      - 'packages/markdown/src/**'
-      - 'packages/playground/src/**'
-      - 'packages/playground/scripts/**'
-      - 'packages/testing/**'
-      - '.github/workflows/browser-tests.yaml'
-      - 'package.json'
-      - 'bun.lock'
-      - 'bun.lockb'
-      - 'bunfig.toml'
-      - 'packages/*/bunfig.toml'
-      - 'turbo.json'
-      - '.npmrc'
-      - 'tsconfig*.json'
-      - '!packages/**/*.md'
-      - '!packages/**/README*'
-      - '!packages/**/CHANGELOG*'
   workflow_dispatch:
     inputs:
       mode:
