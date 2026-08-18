@@ -196,21 +196,35 @@
  * Reduced motion — panel enter animation
  * ---------------------------------------- */
 
+  @keyframes cinder-command-palette-enter {
+    from {
+      opacity: 0;
+      translate: 0 -0.75rem;
+    }
+    to {
+      opacity: 1;
+      translate: 0 0;
+    }
+  }
+
   @media (prefers-reduced-motion: no-preference) {
-    .cinder-command-palette {
+    :root:not([data-cinder-reduced-motion='true']) .cinder-command-palette {
       animation: cinder-command-palette-enter var(--cinder-duration-normal)
         var(--cinder-ease-spring) forwards;
     }
+  }
 
-    @keyframes cinder-command-palette-enter {
-      from {
-        opacity: 0;
-        translate: 0 -0.75rem;
-      }
-      to {
-        opacity: 1;
-        translate: 0 0;
-      }
+  :root[data-cinder-reduced-motion='false'] .cinder-command-palette {
+    animation: cinder-command-palette-enter var(--cinder-duration-normal) var(--cinder-ease-spring)
+      forwards;
+  }
+
+  @keyframes cinder-command-palette-fade {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
     }
   }
 
@@ -218,14 +232,9 @@
     :root:not([data-cinder-reduced-motion='false']) .cinder-command-palette {
       animation: cinder-command-palette-fade var(--cinder-duration-fast) linear forwards;
     }
+  }
 
-    @keyframes cinder-command-palette-fade {
-      from {
-        opacity: 0;
-      }
-      to {
-        opacity: 1;
-      }
-    }
+  :root[data-cinder-reduced-motion='true'] .cinder-command-palette {
+    animation: cinder-command-palette-fade var(--cinder-duration-fast) linear forwards;
   }
 }

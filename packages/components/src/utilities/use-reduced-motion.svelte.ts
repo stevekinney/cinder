@@ -1,7 +1,7 @@
 import { MediaQuery } from 'svelte/reactivity';
 
-let applicationPreference: import('./use-reduced-motion.types.ts').ReducedMotionPreference =
-  'system';
+let applicationPreference =
+  $state<import('./use-reduced-motion.types.ts').ReducedMotionPreference>('system');
 
 /** Resolves an explicit motion preference against the current system preference. */
 export function resolveReducedMotion(

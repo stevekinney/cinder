@@ -221,6 +221,18 @@ describe('Progress CSS reduced-motion audit', () => {
 
     expect(ringRuleBlock).not.toBeUndefined();
   });
+
+  test('progress.css applies indeterminate fallbacks when reduction is explicitly enabled', async () => {
+    const css = await Bun.file(progressCssPath).text();
+    const normalizedCss = css.replaceAll(/\s+/g, ' ');
+
+    expect(normalizedCss).toContain(
+      ":root[data-cinder-reduced-motion='true'] .cinder-progress--bar .cinder-progress__fill--indeterminate { animation: none; width: 100%; opacity: 0.5; }",
+    );
+    expect(normalizedCss).toContain(
+      ":root[data-cinder-reduced-motion='true'] .cinder-progress--ring .cinder-progress__fill--indeterminate { animation: none; stroke-dasharray: 100.53; stroke-dashoffset: 0; opacity: 0.5; }",
+    );
+  });
 });
 
 describe('Progress — degenerate max/value guards', () => {

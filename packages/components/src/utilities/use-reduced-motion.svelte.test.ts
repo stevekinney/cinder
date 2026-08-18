@@ -143,11 +143,15 @@ describe('useReducedMotion', () => {
 
   test('makes the application preference the default for imperative motion consumers', () => {
     mock = installMatchMediaMock(false);
+    const motion = useReducedMotion();
+
+    expect(motion.current).toBe(false);
+
     applyReducedMotionPreference(document.documentElement, 'on');
-    expect(useReducedMotion().current).toBe(true);
+    expect(motion.current).toBe(true);
 
     applyReducedMotionPreference(document.documentElement, 'off');
-    expect(useReducedMotion().current).toBe(false);
+    expect(motion.current).toBe(false);
   });
 
   test('rejects a non-root preference target because the CSS contract is rooted at html', () => {

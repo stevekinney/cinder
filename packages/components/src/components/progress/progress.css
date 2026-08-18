@@ -52,6 +52,10 @@
     }
   }
 
+  :root[data-cinder-reduced-motion='true'] .cinder-progress--bar .cinder-progress__fill {
+    transition: none;
+  }
+
   .cinder-progress--bar .cinder-progress__fill--indeterminate {
     width: 30%;
     animation: cinder-progress-bar-slide var(--cinder-duration-progress-bar-indeterminate) linear
@@ -75,6 +79,14 @@
       width: 100%;
       opacity: 0.5;
     }
+  }
+
+  :root[data-cinder-reduced-motion='true']
+    .cinder-progress--bar
+    .cinder-progress__fill--indeterminate {
+    animation: none;
+    width: 100%;
+    opacity: 0.5;
   }
 
   /* ----------------------------------------
@@ -125,6 +137,10 @@
     }
   }
 
+  :root[data-cinder-reduced-motion='true'] .cinder-progress--ring .cinder-progress__fill {
+    transition: none;
+  }
+
   .cinder-progress--ring .cinder-progress__fill--indeterminate {
     stroke-dasharray: 25 75;
     stroke-dashoffset: 0;
@@ -150,5 +166,14 @@
       stroke-dashoffset: 0;
       opacity: 0.5;
     }
+  }
+
+  :root[data-cinder-reduced-motion='true']
+    .cinder-progress--ring
+    .cinder-progress__fill--indeterminate {
+    animation: none;
+    stroke-dasharray: 100.53;
+    stroke-dashoffset: 0;
+    opacity: 0.5;
   }
 }
