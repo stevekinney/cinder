@@ -68,9 +68,8 @@ export async function generateVariablesForComponent(
 
 /** Runtime-state variables are implementation details, not theme overrides. */
 function isRuntimeStateDeclaration(declaration: Declaration): boolean {
-  return (
-    declaration.prev()?.type === 'comment' && declaration.prev().text.includes('@runtime-state')
-  );
+  const previous = declaration.prev();
+  return previous?.type === 'comment' && previous.text.includes('@runtime-state');
 }
 
 function renderVariablesModule(variables: readonly string[]): string {
