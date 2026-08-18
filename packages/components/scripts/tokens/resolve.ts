@@ -26,7 +26,12 @@ function issue(path: string, reason: string): never {
 
 function tokenPathFromReference(reference: string): string {
   if (/^\{[^{}]+\}$/.test(reference)) return reference.slice(1, -1);
-  if (reference.startsWith('#/')) return reference.slice(2).replaceAll('/', '.');
+  if (reference.startsWith('#/'))
+    return reference
+      .slice(2)
+      .split('/')
+      .map((segment) => segment.replaceAll('~1', '/').replaceAll('~0', '~'))
+      .join('.');
   return issue(reference, 'reference must use curly-brace or JSON Pointer syntax');
 }
 
@@ -52,12 +57,23 @@ function collectGroups(group: TokenGroup, prefix: string, groups: Map<string, To
   }
 }
 
-function collectTokens(group: TokenGroup, prefix: string, tokens: ResolvedTokens): void {
+function collectTokens(
+  group: TokenGroup,
+  prefix: string,
+  tokens: ResolvedTokens,
+  inheritedType?: DesignToken['$type'],
+): void {
+  if (group.$root)
+    tokens.set(prefix, {
+      ...clone(group.$root),
+      $type: group.$root.$type ?? group.$type ?? inheritedType,
+    });
   for (const [name, value] of Object.entries(group)) {
     if (name.startsWith('$') || !isObject(value)) continue;
     const path = prefix ? `${prefix}.${name}` : name;
-    if (isToken(value)) tokens.set(path, clone(value));
-    else if (isTokenGroup(value)) collectTokens(value, path, tokens);
+    if (isToken(value))
+      tokens.set(path, { ...clone(value), $type: value.$type ?? group.$type ?? inheritedType });
+    else if (isTokenGroup(value)) collectTokens(value, path, tokens, group.$type ?? inheritedType);
   }
 }
 
@@ -93,8 +109,14 @@ function resolveReference(
     const candidatePath = segments.slice(0, end).join('.');
     const token = tokens.get(candidatePath);
     if (!token) continue;
-    const value = resolveToken(candidatePath, tokens, resolving).$value;
-    const propertyValue = getByPath(value, segments.slice(end));
+    const resolvedToken = resolveToken(candidatePath, tokens, resolving);
+    const propertySegments = segments.slice(end);
+    const propertyValue = getByPath(
+      reference.startsWith('#/') && propertySegments[0] === '$value'
+        ? resolvedToken
+        : resolvedToken.$value,
+      propertySegments,
+    );
     if (propertyValue === undefined)
       issue(reference, `reference target ${candidatePath} has no requested property`);
     return clone(propertyValue);
@@ -141,10 +163,16 @@ export function resolveDocuments(documents: TokenDocument[]): Record<string, Des
 /** Merges ordered documents, retaining only the last occurrence of each token path. */
 export function mergeDocuments(documents: TokenDocument[]): TokenDocument {
   const result: TokenDocument = {};
-  for (const document of documents) {
-    for (const [key, value] of Object.entries(document)) result[key] = clone(value);
-  }
+  for (const document of documents) mergeGroup(result, document);
   return result;
+}
+
+function mergeGroup(target: TokenGroup, source: TokenGroup): void {
+  for (const [key, value] of Object.entries(source)) {
+    const existing = target[key];
+    if (isTokenGroup(existing) && isTokenGroup(value)) mergeGroup(existing, value);
+    else target[key] = clone(value);
+  }
 }
 
 export function resolveDocument(document: TokenDocument): Record<string, DesignToken> {

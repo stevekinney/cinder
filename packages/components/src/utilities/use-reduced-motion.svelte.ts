@@ -1,8 +1,12 @@
 import { MediaQuery } from 'svelte/reactivity';
 
+import type { ReducedMotionPreference, UseReducedMotion } from './use-reduced-motion.types.ts';
+
+let applicationPreference: ReducedMotionPreference = 'system';
+
 /** Resolves an explicit motion preference against the current system preference. */
 export function resolveReducedMotion(
-  preference: import('./use-reduced-motion.types.ts').ReducedMotionPreference,
+  preference: ReducedMotionPreference,
   systemPrefersReducedMotion: boolean,
 ): boolean {
   return preference === 'on' || (preference === 'system' && systemPrefersReducedMotion);
@@ -18,8 +22,13 @@ export function resolveReducedMotion(
  */
 export function applyReducedMotionPreference(
   element: HTMLElement,
-  preference: import('./use-reduced-motion.types.ts').ReducedMotionPreference,
+  preference: ReducedMotionPreference,
 ): void {
+  if (element !== element.ownerDocument.documentElement) {
+    throw new Error('applyReducedMotionPreference must target document.documentElement');
+  }
+
+  applicationPreference = preference;
   element.dataset['reducedMotion'] = preference;
   if (preference === 'system') {
     delete element.dataset['cinderReducedMotion'];
@@ -60,9 +69,7 @@ export function applyReducedMotionPreference(
  * <button type="button" on:click={scrollToEnd}>Scroll to end</button>
  * ```
  */
-export function useReducedMotion(
-  preference: import('./use-reduced-motion.types.ts').ReducedMotionPreference = 'system',
-): import('./use-reduced-motion.types.ts').UseReducedMotion {
+export function useReducedMotion(preference?: ReducedMotionPreference): UseReducedMotion {
   // On the server, `svelte/reactivity` resolves to a stub whose `MediaQuery`
   // never touches `window`. But when the *client* build of `MediaQuery` is
   // loaded in a context without a DOM (e.g. our SSR-contract test harness runs
@@ -71,7 +78,7 @@ export function useReducedMotion(
   // Guard on `matchMedia` so the documented SSR-safe `false` fallback holds
   // regardless of which `MediaQuery` build module resolution selected.
   if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
-    return { current: resolveReducedMotion(preference, false) };
+    return { current: resolveReducedMotion(preference ?? applicationPreference, false) };
   }
 
   // Pass the parenthesized form explicitly. MediaQuery's constructor regex
@@ -82,7 +89,7 @@ export function useReducedMotion(
 
   return {
     get current() {
-      return resolveReducedMotion(preference, query.current);
+      return resolveReducedMotion(preference ?? applicationPreference, query.current);
     },
   };
 }

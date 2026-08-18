@@ -126,7 +126,7 @@ describe('useReducedMotion', () => {
   });
 
   test('emits the selected state and only adds the boolean override for explicit choices', () => {
-    const element = document.createElement('div');
+    const element = document.documentElement;
 
     applyReducedMotionPreference(element, 'on');
     expect(element.dataset['reducedMotion']).toBe('on');
@@ -139,6 +139,21 @@ describe('useReducedMotion', () => {
     applyReducedMotionPreference(element, 'system');
     expect(element.dataset['reducedMotion']).toBe('system');
     expect(element.dataset['cinderReducedMotion']).toBeUndefined();
+  });
+
+  test('makes the application preference the default for imperative motion consumers', () => {
+    mock = installMatchMediaMock(false);
+    applyReducedMotionPreference(document.documentElement, 'on');
+    expect(useReducedMotion().current).toBe(true);
+
+    applyReducedMotionPreference(document.documentElement, 'off');
+    expect(useReducedMotion().current).toBe(false);
+  });
+
+  test('rejects a non-root preference target because the CSS contract is rooted at html', () => {
+    expect(() => applyReducedMotionPreference(document.createElement('div'), 'on')).toThrow(
+      'applyReducedMotionPreference must target document.documentElement',
+    );
   });
 
   test('returns the false fallback without throwing when matchMedia is unavailable', () => {

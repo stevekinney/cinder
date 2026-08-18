@@ -26,6 +26,22 @@ describe('DTCG resolver', () => {
     expect(resolved['group.copy']?.$value).toBe(2);
   });
 
+  test('resolves canonical escaped JSON Pointers into token properties', () => {
+    const resolved = resolveDocument({
+      'a/b': { $type: 'dimension', $value: { value: 2, unit: 'px' } },
+      copy: { $type: 'number', $value: '#/a~1b/$value/value' },
+    });
+    expect(resolved.copy?.$value).toBe(2);
+  });
+
+  test('retains inherited types and a group root token', () => {
+    const resolved = resolveDocument({
+      group: { $type: 'number', $root: { $value: 1 }, child: { $value: 2 } },
+    });
+    expect(resolved.group).toMatchObject({ $type: 'number', $value: 1 });
+    expect(resolved['group.child']).toMatchObject({ $type: 'number', $value: 2 });
+  });
+
   test('rejects circular aliases and group extensions', () => {
     expect(() =>
       resolveDocument({
@@ -51,5 +67,14 @@ describe('DTCG resolver', () => {
     const first: TokenDocument = { $type: 'number', token: { $value: 1 } };
     const last: TokenDocument = { $type: 'number', token: { $value: 2 } };
     expect(resolveDocument(mergeDocuments([first, last]))['token']?.$value).toBe(2);
+  });
+
+  test('merges sparse nested modifiers without dropping untouched tokens', () => {
+    const merged = mergeDocuments([
+      { group: { $type: 'number', first: { $value: 1 }, second: { $value: 2 } } },
+      { group: { first: { $value: 3 } } },
+    ]);
+    expect(resolveDocument(merged)['group.first']?.$value).toBe(3);
+    expect(resolveDocument(merged)['group.second']?.$value).toBe(2);
   });
 });

@@ -1,7 +1,7 @@
 import type { ResolverDocument, TokenDocument, TokenType, ValidationIssue } from './types.ts';
 import { TokenValidationError } from './types.ts';
 
-const TOKEN_NAME_PATTERN = /^[^${}.][^${}.]*$/;
+const TOKEN_NAME_PATTERN = /^[^${}.][^{}.]*$/;
 const VENDOR_EXTENSION_PATTERN = /^(?:[a-z0-9-]+\.)+[a-z0-9-]+$/i;
 const TOKEN_TYPES = new Set<string>([
   'color',
@@ -47,9 +47,20 @@ function validateValue(
         !objectValue ||
         typeof objectValue['colorSpace'] !== 'string' ||
         !Array.isArray(objectValue['components']) ||
-        objectValue['components'].length !== 3
+        objectValue['components'].length !== 3 ||
+        !objectValue['components'].every(
+          (component) => typeof component === 'number' || component === 'none',
+        ) ||
+        (objectValue['alpha'] !== undefined &&
+          typeof objectValue['alpha'] !== 'number' &&
+          objectValue['alpha'] !== 'none') ||
+        (objectValue['hex'] !== undefined && typeof objectValue['hex'] !== 'string')
       )
-        addIssue(issues, path, 'color must have colorSpace and three components');
+        addIssue(
+          issues,
+          path,
+          'color must have a colorSpace, three numeric or none components, and valid optional alpha or hex',
+        );
       return;
     case 'dimension':
       if (
@@ -162,6 +173,10 @@ function tokenType(
 }
 
 function validateMetadata(node: JsonObject, path: string, issues: ValidationIssue[]): void {
+  if (node['$description'] !== undefined && typeof node['$description'] !== 'string')
+    addIssue(issues, path, '$description must be a string');
+  if (node['$extends'] !== undefined && !isReference(node['$extends']))
+    addIssue(issues, path, '$extends must be a token reference');
   if (
     node['$deprecated'] !== undefined &&
     typeof node['$deprecated'] !== 'boolean' &&
@@ -227,6 +242,7 @@ export function validateResolverDocument(document: ResolverDocument): void {
     addIssue(issues, '$.version', 'resolver version must be 2025.10');
   const modifierNames = new Set<string>();
   for (const modifier of document.modifiers) {
+    if (!modifier.name) addIssue(issues, '$.modifiers', 'modifier names must be non-empty strings');
     if (modifierNames.has(modifier.name))
       addIssue(issues, `$.modifiers.${modifier.name}`, 'modifier names must be unique');
     modifierNames.add(modifier.name);
@@ -239,9 +255,11 @@ export function validateResolverDocument(document: ResolverDocument): void {
         'modifier default must be one of its values',
       );
   }
-  for (const set of document.sets)
+  for (const set of document.sets) {
+    if (!set.name) addIssue(issues, '$.sets', 'set names must be non-empty strings');
     if (set.source.some((source) => typeof source !== 'string'))
       addIssue(issues, `$.sets.${set.name}`, 'set sources must be strings');
+  }
   for (const name of document.resolutionOrder)
     if (!modifierNames.has(name)) addIssue(issues, '$.resolutionOrder', `unknown modifier ${name}`);
   if (issues.length > 0) throw new TokenValidationError(issues);
@@ -274,19 +292,34 @@ export function assertValidResolverDocument(
         reason: 'resolver must contain version, sets, modifiers, and resolutionOrder',
       },
     ]);
-  validateResolverDocument({
-    version: document['version'],
-    sets: document['sets'].filter(isObject).map((set) => ({
-      name: typeof set['name'] === 'string' ? set['name'] : '',
-      source: Array.isArray(set['source']) ? set['source'].filter(isString) : [],
-    })),
-    modifiers: document['modifiers'].filter(isObject).map((modifier) => ({
-      name: typeof modifier['name'] === 'string' ? modifier['name'] : '',
-      values: Array.isArray(modifier['values']) ? modifier['values'].filter(isString) : [],
-      ...(typeof modifier['default'] === 'string' ? { default: modifier['default'] } : {}),
-    })),
-    resolutionOrder: document['resolutionOrder'].filter(isString),
-  });
+  const issues: ValidationIssue[] = [];
+  for (const [index, set] of document['sets'].entries()) {
+    if (
+      !isObject(set) ||
+      typeof set['name'] !== 'string' ||
+      !Array.isArray(set['source']) ||
+      !set['source'].every(isString)
+    )
+      addIssue(issues, `$.sets.${index}`, 'set must have a string name and string source array');
+  }
+  for (const [index, modifier] of document['modifiers'].entries()) {
+    if (
+      !isObject(modifier) ||
+      typeof modifier['name'] !== 'string' ||
+      !Array.isArray(modifier['values']) ||
+      !modifier['values'].every(isString) ||
+      (modifier['default'] !== undefined && typeof modifier['default'] !== 'string')
+    )
+      addIssue(
+        issues,
+        `$.modifiers.${index}`,
+        'modifier must have a string name, string values, and optional string default',
+      );
+  }
+  if (!document['resolutionOrder'].every(isString))
+    addIssue(issues, '$.resolutionOrder', 'resolution order must contain strings');
+  if (issues.length > 0) throw new TokenValidationError(issues);
+  validateResolverDocument(document as ResolverDocument);
 }
 
 function isString(value: unknown): value is string {

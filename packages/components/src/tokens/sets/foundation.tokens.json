@@ -18,7 +18,7 @@
   "radius": {
     "$type": "dimension",
     "medium": {
-      "$value": { "value": 0.375, "unit": "rem" },
+      "$value": { "value": 0.5, "unit": "rem" },
       "$description": "Default control corner radius.",
       "$extensions": {
         "com.lostgradient.cinder": {
@@ -33,7 +33,7 @@
   "motion": {
     "$type": "duration",
     "fast": {
-      "$value": { "value": 150, "unit": "ms" },
+      "$value": { "value": 120, "unit": "ms" },
       "$description": "Fast interaction duration before a reduced-motion modifier applies.",
       "$extensions": {
         "com.lostgradient.cinder": {

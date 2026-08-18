@@ -173,7 +173,7 @@ oklch(from var(--cinder-accent) 0.7 0.14 h)
 )`|
 |`--cinder-ring-offset`|`ring.offset`| semantic-colors | default | — | no |`2px`|
 |`--cinder-ring-offset-color`|`ring.offset.color`| semantic-colors | default |`--cinder-surface-raised`| no |`var(--cinder-surface-raised)`|
-|`--cinder-ring-on-accent`|`ring.on.accent`| semantic-colors | default | — | yes |`light-dark(oklch(20% 0.02 245), oklch(95% 0.01 245))`|
+|`--cinder-ring-on-accent`|`ring.on.accent`| semantic-colors | default | — | yes |`light-dark(oklch(15% 0.035 245), oklch(100% 0 0))`|
 |`--cinder-ring-width`|`ring.width`| semantic-colors | default | — | no |`2px`|
 |`--cinder-scrollbar-size`|`scrollbar.size`| semantic-colors | default | — | no |`0.625rem`|
 |`--cinder-scrollbar-thumb`|`scrollbar.thumb`| semantic-colors | default | — | yes |`light-dark(oklch(0% 0 0 / 0.45), oklch(100% 0 0 / 0.45))`|
