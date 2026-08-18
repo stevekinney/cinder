@@ -1,10 +1,8 @@
 import { MediaQuery } from 'svelte/reactivity';
 
-import type { ReducedMotionPreference } from './use-reduced-motion.types.ts';
-
 /** Resolves an explicit motion preference against the current system preference. */
 export function resolveReducedMotion(
-  preference: ReducedMotionPreference,
+  preference: import('./use-reduced-motion.types.ts').ReducedMotionPreference,
   systemPrefersReducedMotion: boolean,
 ): boolean {
   return preference === 'on' || (preference === 'system' && systemPrefersReducedMotion);
@@ -20,7 +18,7 @@ export function resolveReducedMotion(
  */
 export function applyReducedMotionPreference(
   element: HTMLElement,
-  preference: ReducedMotionPreference,
+  preference: import('./use-reduced-motion.types.ts').ReducedMotionPreference,
 ): void {
   element.dataset['reducedMotion'] = preference;
   if (preference === 'system') {
@@ -63,7 +61,7 @@ export function applyReducedMotionPreference(
  * ```
  */
 export function useReducedMotion(
-  preference: ReducedMotionPreference = 'system',
+  preference: import('./use-reduced-motion.types.ts').ReducedMotionPreference = 'system',
 ): import('./use-reduced-motion.types.ts').UseReducedMotion {
   // On the server, `svelte/reactivity` resolves to a stub whose `MediaQuery`
   // never touches `window`. But when the *client* build of `MediaQuery` is
