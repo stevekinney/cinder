@@ -168,9 +168,15 @@ function validateValue(
       )
         addIssue(issues, path, 'strokeStyle must be a named style or dash array');
       else
-        objectValue['dashArray'].forEach((entry, index) =>
-          validateValue('dimension', entry, `${path}.dashArray.${index}`, issues),
-        );
+        objectValue['dashArray'].forEach((entry, index) => {
+          validateValue('dimension', entry, `${path}.dashArray.${index}`, issues);
+          if (isObject(entry) && typeof entry['value'] === 'number' && entry['value'] < 0)
+            addIssue(
+              issues,
+              `${path}.dashArray.${index}`,
+              'stroke dash length must be non-negative',
+            );
+        });
       return;
     case 'border':
       if (!objectValue) addIssue(issues, path, 'border must include color, width, and style');
@@ -282,6 +288,12 @@ function validateValue(
           addIssue(issues, path, 'composite value must include lineHeight');
         else if (typeof objectValue['lineHeight'] !== 'number')
           validateValue('dimension', objectValue['lineHeight'], `${path}.lineHeight`, issues);
+        if (
+          isObject(objectValue['fontSize']) &&
+          typeof objectValue['fontSize']['value'] === 'number' &&
+          objectValue['fontSize']['value'] < 0
+        )
+          addIssue(issues, `${path}.fontSize`, 'typography fontSize must be non-negative');
       }
   }
 }
@@ -303,6 +315,8 @@ function tokenType(
 }
 
 function validateMetadata(node: JsonObject, path: string, issues: ValidationIssue[]): void {
+  if (node['$schema'] !== undefined && (path !== '$' || typeof node['$schema'] !== 'string'))
+    addIssue(issues, path, '$schema must be a root-level string URI');
   if (node['$description'] !== undefined && typeof node['$description'] !== 'string')
     addIssue(issues, path, '$description must be a string');
   if (node['$extends'] !== undefined && !isReference(node['$extends']))
@@ -426,6 +440,8 @@ export function validateResolverDocument(document: ResolverDocumentShape): void 
       addIssue(issues, `$.modifiers.${name}`, 'modifier default must be one of its values');
   }
   const setNames = new Set<string>();
+  if (document.sets.length === 0)
+    addIssue(issues, '$.sets', 'resolver must include at least one set');
   for (const set of document.sets) {
     if (!isObject(set) || typeof set['name'] !== 'string' || !Array.isArray(set['source'])) {
       addIssue(issues, '$.sets', 'set must have a string name and string source array');
