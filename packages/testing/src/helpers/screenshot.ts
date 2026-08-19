@@ -269,8 +269,10 @@ function manifestSlugSet(): ReadonlySet<string> {
  * Deterministic worker-safe path for a report fragment.
  * Uses a sha256 of the testId so filenames stay filesystem-safe.
  */
-function reportFragmentPath(testId: string): string {
-  const hash = createHash('sha256').update(testId).digest('hex');
+function reportFragmentPath(testId: string, key: ArtifactKey): string {
+  const hash = createHash('sha256')
+    .update(JSON.stringify([testId, key.slug, key.theme, key.viewport, key.fixture]))
+    .digest('hex');
   const workerId = process.env['TEST_WORKER_INDEX'] ?? '0';
   return `test-results/visual-report/${workerId}/${hash}.json`;
 }
@@ -404,6 +406,8 @@ async function captureReportMode(
     return;
   }
 
+  const attachmentsBefore = test.info().attachments.length;
+
   try {
     const name: [string, string] = [key.slug, `${key.theme}-${key.viewport}-${key.fixture}.png`];
     const snapshotOptions: ToHaveScreenshotOptions = { ...SNAPSHOT_DIFF_OPTIONS };
@@ -430,13 +434,14 @@ async function captureReportMode(
       diffPixels,
     };
 
-    const fragmentPath = reportFragmentPath(testInfo.testId);
+    const fragmentPath = reportFragmentPath(testInfo.testId, key);
     await mkdir(dirname(fragmentPath), { recursive: true });
     await writeFile(fragmentPath, JSON.stringify(fragment, null, 2));
 
     // Attach the diff PNG if Playwright produced one.
-    const attachments = testInfo.attachments;
-    const diffAttachment = attachments.find((a) => a.name === 'diff' && a.path !== undefined);
+    const diffAttachment = testInfo.attachments
+      .slice(attachmentsBefore)
+      .find((attachment) => attachment.name === 'diff' && attachment.path !== undefined);
     if (diffAttachment?.path !== undefined) {
       await testInfo.attach('visual-diff', {
         path: diffAttachment.path,

@@ -63,18 +63,34 @@ type FakeEntry = {
   fixtures?: ManifestFixtureEntry[];
 };
 
-function makeFixture(name: string): ManifestFixtureEntry {
+function makeFixture(
+  name: string,
+  interact?: ManifestFixtureEntry['interact'],
+): ManifestFixtureEntry {
   return {
     name,
     mode: 'direct',
     fixtureContentHash: '0'.repeat(64),
     category: 'visual-contract',
+    ...(interact !== undefined ? { interact } : {}),
   };
 }
 
-function makeEntry(slug: string, fixtures?: string[]): FakeEntry {
+function makeEntry(
+  slug: string,
+  fixtures?: Array<string | { name: string; interact?: ManifestFixtureEntry['interact'] }>,
+): FakeEntry {
   if (fixtures !== undefined) {
-    return { name: slug, slug, route: `/page/${slug}`, fixtures: fixtures.map(makeFixture) };
+    return {
+      name: slug,
+      slug,
+      route: `/page/${slug}`,
+      fixtures: fixtures.map((fixture) =>
+        typeof fixture === 'string'
+          ? makeFixture(fixture)
+          : makeFixture(fixture.name, fixture.interact),
+      ),
+    };
   }
   return { name: slug, slug, route: `/page/${slug}` };
 }
@@ -112,7 +128,7 @@ describe('findMissingBaselines — all baselines present', () => {
   });
 
   it('returns an empty array for a component with explicit fixtures', () => {
-    const entries = [makeEntry('badge', ['open', 'closed'])];
+    const entries = [makeEntry('badge', [{ name: 'open' }, { name: 'closed' }])];
 
     for (const theme of ['light', 'dark']) {
       for (const viewport of ['mobile', 'tablet', 'desktop']) {
@@ -123,6 +139,33 @@ describe('findMissingBaselines — all baselines present', () => {
 
     const missing = findMissingBaselines(entries);
     expect(missing).toHaveLength(0);
+  });
+});
+
+describe('interaction fixture baseline inventory', () => {
+  const click = [{ action: 'click', target: { testId: 'trigger' } }] as const;
+
+  it('requires both the resting and resulting baselines', () => {
+    const entries = [makeEntry('menu', [{ name: 'open', interact: [...click] }])];
+    for (const theme of ['light', 'dark']) {
+      for (const viewport of ['mobile', 'tablet', 'desktop']) {
+        writeFakeSnapshot('menu', theme, viewport, 'open');
+      }
+    }
+
+    const missing = findMissingBaselines(entries);
+
+    expect(missing).toHaveLength(6);
+    for (const item of missing) expect(item.fixture).toBe('open-resting');
+  });
+
+  it('includes resting fixture names in the shared expected inventory', () => {
+    const entries = [makeEntry('menu', [{ name: 'open', interact: [...click] }])];
+
+    const expected = expectedBaselineFileNames(entries).get('menu');
+
+    expect(expected).toContain('light-mobile-open-resting.png');
+    expect(expected).toContain('light-mobile-open.png');
   });
 });
 

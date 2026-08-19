@@ -1,5 +1,14 @@
 # @lostgradient/chat
 
+## 0.10.1
+
+### Patch Changes
+
+- [#1359](https://github.com/stevekinney/cinder/pull/1359) [`f629fec`](https://github.com/stevekinney/cinder/commit/f629fec71c44e06d657ee40b590d1ce30762babb) Thanks [@stevekinney](https://github.com/stevekinney)! - Keep active message edit controls stationary while another message streams.
+
+- Updated dependencies [[`338a673`](https://github.com/stevekinney/cinder/commit/338a673a546b9322bdce78cf8465debd187c178d), [`bdf4af3`](https://github.com/stevekinney/cinder/commit/bdf4af36aa5e434855e2544e7b61a7bb0d2d051b)]:
+  - @lostgradient/cinder@0.24.6
+
 ## 0.10.0
 
 ### Minor Changes
