@@ -139,6 +139,44 @@ describe('DTCG semantic validation', () => {
         },
       }),
     ).toThrow('cubicBezier must be four numbers');
+    expect(() =>
+      validateTokenDocument({
+        $type: 'strokeStyle',
+        sample: { $value: { dashArray: ['invalid'], lineCap: 'round' } },
+      }),
+    ).toThrow('dimension must have a numeric value');
+    expect(() =>
+      validateTokenDocument({
+        $type: 'shadow',
+        sample: {
+          $value: {
+            color: '{color}',
+            offsetX: '{dimension}',
+            offsetY: '{dimension}',
+            blur: '{dimension}',
+            spread: '{dimension}',
+            inset: 'invalid',
+          },
+        },
+      }),
+    ).toThrow('inset must be boolean');
+    expect(() =>
+      validateTokenDocument({
+        $type: 'shadow',
+        sample: {
+          $value: [
+            {
+              color: '{color}',
+              offsetX: '{dimension}',
+              offsetY: '{dimension}',
+              blur: '{dimension}',
+              spread: '{dimension}',
+              inset: 'invalid',
+            },
+          ],
+        },
+      }),
+    ).toThrow('inset must be boolean');
   });
 
   test('rejects negative durations', () => {

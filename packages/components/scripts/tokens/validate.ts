@@ -140,15 +140,17 @@ function validateValue(
         addIssue(issues, path, 'cubicBezier must be four numbers with x coordinates in [0, 1]');
       return;
     case 'strokeStyle':
+      if (typeof value === 'string') return;
       if (
-        !(
-          typeof value === 'string' ||
-          (objectValue &&
-            Array.isArray(objectValue['dashArray']) &&
-            ['round', 'butt', 'square'].includes(String(objectValue['lineCap'])))
-        )
+        !objectValue ||
+        !Array.isArray(objectValue['dashArray']) ||
+        !['round', 'butt', 'square'].includes(String(objectValue['lineCap']))
       )
         addIssue(issues, path, 'strokeStyle must be a named style or dash array');
+      else
+        objectValue['dashArray'].forEach((entry, index) =>
+          validateValue('dimension', entry, `${path}.dashArray.${index}`, issues),
+        );
       return;
     case 'border':
       if (!objectValue) addIssue(issues, path, 'border must include color, width, and style');
@@ -193,6 +195,12 @@ function validateValue(
             Array.isArray(value) ? `${path}.${index}` : path,
             issues,
           );
+          if (shadow['inset'] !== undefined && typeof shadow['inset'] !== 'boolean')
+            addIssue(
+              issues,
+              `${Array.isArray(value) ? `${path}.${index}` : path}.inset`,
+              'inset must be boolean',
+            );
         }
       }
       return;

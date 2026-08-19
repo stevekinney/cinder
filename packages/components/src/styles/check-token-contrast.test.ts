@@ -331,6 +331,7 @@ const accentContrast = readOklchToken(css, '--cinder-accent-contrast');
 const accentText = readOklchToken(css, '--cinder-accent-text');
 const info = readOklchToken(css, '--cinder-info');
 const infoContrast = readOklchToken(css, '--cinder-info-contrast');
+const neutralBg = readOklchToken(css, '--cinder-color-neutral-bg');
 const infoBg = readOklchToken(css, '--cinder-color-info-bg');
 const infoFg = readOklchToken(css, '--cinder-color-info-fg');
 const successBg = readOklchToken(css, '--cinder-color-success-bg');
@@ -368,6 +369,9 @@ const borderFaint = readOklchToken(css, '--cinder-border-faint');
 const borderMuted = readOklchToken(css, '--cinder-border-muted');
 const border = readOklchToken(css, '--cinder-border');
 const borderStrong = readOklchToken(css, '--cinder-border-strong');
+const opacityDisabled = Number(readTokenValue(css, '--cinder-opacity-disabled'));
+const opacityMuted = Number(readTokenValue(css, '--cinder-opacity-muted'));
+const opacityFaint = Number(readTokenValue(css, '--cinder-opacity-faint'));
 
 // The active command-palette item paints --cinder-accent-contrast text on a solid
 // --cinder-accent fill (command-item.css), so that pair is gated here too.
@@ -472,6 +476,15 @@ describe('accent + accent-text contrast (both arms)', () => {
 describe('status color contrast', () => {
   const DECORATIVE_BORDER = 1.4;
 
+  it('keeps the opacity scale bounded and ordered by visual weight', () => {
+    for (const [name, value] of Object.entries({ opacityDisabled, opacityMuted, opacityFaint })) {
+      expect(value, name).toBeGreaterThanOrEqual(0);
+      expect(value, name).toBeLessThanOrEqual(1);
+    }
+    expect(opacityFaint).toBeLessThan(opacityDisabled);
+    expect(opacityDisabled).toBeLessThan(opacityMuted);
+  });
+
   it('info fill carries white label at AA (light arm)', () => {
     const white = { l: 1, c: 0, h: 0 };
     expect(contrastRatio(wcagLuminance(white), wcagLuminance(info.light))).toBeGreaterThanOrEqual(
@@ -481,11 +494,14 @@ describe('status color contrast', () => {
 
   it('every soft status tier provides readable foreground and perceptible border contrast', () => {
     const statuses: Array<[string, TokenArms, TokenArms, TokenArms]> = [
+      ['neutral', neutralBg, text, border],
       ['info', infoBg, infoFg, infoBorder],
       ['success', successBg, successFg, successBorder],
       ['warning', warningBg, warningFg, warningBorder],
       ['danger', dangerBg, dangerFg, dangerBorder],
     ];
+    expect(readTokenValue(css, '--cinder-color-neutral-fg')).toBe('var(--cinder-text)');
+    expect(readTokenValue(css, '--cinder-color-neutral-border')).toBe('var(--cinder-border)');
     for (const [name, background, foreground, border] of statuses) {
       for (const arm of ['light', 'dark'] as const) {
         expect(
