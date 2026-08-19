@@ -196,6 +196,29 @@ describe('workflow-level env block scanning', () => {
   });
 });
 
+describe('main-green hydration browser setup', () => {
+  test('normalizes the hosted-runner Ubuntu mirror before installing Playwright dependencies', () => {
+    const workspaceRoot = resolve(import.meta.dirname, '../../..');
+    const workflow = readFileSync(
+      join(workspaceRoot, '.github', 'workflows', 'main-green.yaml'),
+      'utf8',
+    );
+    const mirrorNormalizationIndex = workflow.indexOf(
+      'Normalize Ubuntu mirror for hydration smoke',
+    );
+    const runnerMirrorIndex = workflow.indexOf('/etc/apt/apt-mirrors.txt');
+    const azureMirrorIndex = workflow.indexOf('http://azure.archive.ubuntu.com/ubuntu/');
+    const canonicalMirrorIndex = workflow.indexOf('https://archive.ubuntu.com/ubuntu/');
+    const playwrightInstallIndex = workflow.indexOf('bunx playwright install --with-deps chromium');
+
+    expect(mirrorNormalizationIndex).toBeGreaterThan(-1);
+    expect(runnerMirrorIndex).toBeGreaterThan(mirrorNormalizationIndex);
+    expect(azureMirrorIndex).toBeGreaterThan(mirrorNormalizationIndex);
+    expect(canonicalMirrorIndex).toBeGreaterThan(azureMirrorIndex);
+    expect(playwrightInstallIndex).toBeGreaterThan(canonicalMirrorIndex);
+  });
+});
+
 describe('validate-release-workflow changeset guards', () => {
   test('requires artifact and publish commands for every public package', () => {
     const workflow = {
