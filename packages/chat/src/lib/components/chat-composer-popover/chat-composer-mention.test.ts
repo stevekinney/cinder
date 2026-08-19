@@ -172,9 +172,10 @@ describe('chat composer mentions', () => {
       mentions: [{ label: 'Ada', uri: 'person:ada', start: 12, end: 15 }],
     });
 
-    expect(parseChatComposerMentions('`[Ada](person:ada)\\`')).toEqual({
-      text: '`Ada\\`',
-      mentions: [{ label: 'Ada', uri: 'person:ada', start: 1, end: 4 }],
+    const codeWithBackslashedCloser = '`[Ada](person:ada)\\`';
+    expect(parseChatComposerMentions(codeWithBackslashedCloser)).toEqual({
+      text: codeWithBackslashedCloser,
+      mentions: [],
     });
 
     expect(parseChatComposerMentions('    [Ada](person:ada)')).toEqual({
@@ -601,6 +602,15 @@ describe('chat composer mentions', () => {
     expect(parseChatComposerMentions(gfmLiteralAutolink)).toEqual({
       text: gfmLiteralAutolink,
       mentions: [],
+    });
+    const ipv4LiteralAutolink = 'https://127.0.0.1/[Ada](person:ada)';
+    expect(parseChatComposerMentions(ipv4LiteralAutolink)).toEqual({
+      text: ipv4LiteralAutolink,
+      mentions: [],
+    });
+    expect(parseChatComposerMentions('https://999.0.0.1/[Ada](person:ada)')).toEqual({
+      text: 'https://999.0.0.1/Ada',
+      mentions: [{ label: 'Ada', uri: 'person:ada', start: 18, end: 21 }],
     });
     const emailAutolink = '<ada@example.com>';
     expect(parseChatComposerMentions(emailAutolink)).toEqual({ text: emailAutolink, mentions: [] });
@@ -1078,6 +1088,25 @@ describe('chat composer mentions', () => {
       text: multilineReferenceTitle,
       mentions: [],
     });
+    const nextLineMultilineReferenceTitle = '[ref]: /url\n"line\n[Ada](person:a)"';
+    expect(parseChatComposerMentions(nextLineMultilineReferenceTitle)).toEqual({
+      text: nextLineMultilineReferenceTitle,
+      mentions: [],
+    });
+    const interruptedNextLineReferenceTitle = '> [ref]: /url\n> "line\n[Ada](person:a)"';
+    const interruptedNextLineReferenceText = '> [ref]: /url\n> "line\nAda"';
+    const interruptedNextLineMentionStart = interruptedNextLineReferenceText.indexOf('Ada');
+    expect(parseChatComposerMentions(interruptedNextLineReferenceTitle)).toEqual({
+      text: interruptedNextLineReferenceText,
+      mentions: [
+        {
+          label: 'Ada',
+          uri: 'person:a',
+          start: interruptedNextLineMentionStart,
+          end: interruptedNextLineMentionStart + 3,
+        },
+      ],
+    });
     const escapedReferenceContainer = parseChatComposerMentions(
       '> [ref]: /url "title\n[Ada](person:a)\nend"',
     );
@@ -1128,6 +1157,10 @@ describe('chat composer mentions', () => {
     expect(parseChatComposerMentions('[A `]` B](person:a)')).toEqual({
       text: 'A ] B',
       mentions: [{ label: 'A ] B', uri: 'person:a', start: 0, end: 5 }],
+    });
+    expect(parseChatComposerMentions('[A `x\\`](person:a)')).toEqual({
+      text: 'A x\\',
+      mentions: [{ label: 'A x\\', uri: 'person:a', start: 0, end: 4 }],
     });
     const codeSpanOrdinaryLink = '[Docs `]`](https://x "[Ada](person:a)")';
     expect(parseChatComposerMentions(codeSpanOrdinaryLink)).toEqual({

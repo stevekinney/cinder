@@ -221,9 +221,9 @@ export function makeScanMetadata(value: string): ScanMetadata {
     let start = index;
     while (start > 0 && value[start - 1] === character) start -= 1;
     const length = index - start + 1;
-    if (character === '`' && escaped[start] !== 1) {
+    if (character === '`') {
       const next = nextCodeRun.get(length);
-      if (next !== undefined) codeSpanEnds.set(start, next + length);
+      if (escaped[start] !== 1 && next !== undefined) codeSpanEnds.set(start, next + length);
       nextCodeRun.set(length, start);
     } else if (escaped[start] !== 1) {
       const next = nextMathClose.get(length);

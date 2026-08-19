@@ -29,11 +29,9 @@ export function projectMentionLabel(value: string): string | null {
     let start = index;
     while (start > 0 && value[start - 1] === '`') start -= 1;
     const length = index - start + 1;
-    if (escaped[start] === 0) {
-      const next = nextCodeRun.get(length);
-      if (next !== undefined) codeEnds.set(start, next);
-      nextCodeRun.set(length, start);
-    }
+    const next = nextCodeRun.get(length);
+    if (escaped[start] === 0 && next !== undefined) codeEnds.set(start, next);
+    nextCodeRun.set(length, start);
     index = start - 1;
   }
 

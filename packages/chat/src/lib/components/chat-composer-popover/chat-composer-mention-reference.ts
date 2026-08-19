@@ -136,7 +136,7 @@ export function getReferenceDefinitionEnd(
   }
   const titleLineStart =
     metadata.containerStarts.get(physicalTitleLineStart) ?? physicalTitleLineStart;
-  const titleEnd = getLineEnd(value, titleLineStart);
+  let titleEnd = getLineEnd(value, titleLineStart);
   let titleCursor = titleLineStart;
   if (getContainerContext(physicalTitleLineStart, metadata).maximumIndentation > 3) return end;
 
@@ -144,8 +144,21 @@ export function getReferenceDefinitionEnd(
   const closer = opener === '(' ? ')' : opener;
   if (opener !== '"' && opener !== "'" && opener !== '(') return end;
   titleCursor += 1;
-  while (titleCursor < titleEnd && value[titleCursor] !== closer) {
+  while (value[titleCursor] !== closer) {
     if (opener === '(' && value[titleCursor] === '(') return end;
+    if (titleCursor >= titleEnd) {
+      if (titleEnd === value.length) return end;
+      const nextLineStart = titleEnd + getLineEndingLength(value, titleEnd);
+      if (!isContainerActive(getContainerContext(lineStart, metadata), nextLineStart, metadata)) {
+        return end;
+      }
+      const nextContainer = getContainerContext(nextLineStart, metadata);
+      if (nextContainer.maximumIndentation > 3) return end;
+      titleCursor = metadata.containerStarts.get(nextLineStart) ?? nextLineStart;
+      titleEnd = getLineEnd(value, titleCursor);
+      if (titleCursor >= titleEnd) return end;
+      continue;
+    }
     if (value[titleCursor] === '\\') titleCursor += 1;
     titleCursor += 1;
   }

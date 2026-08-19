@@ -172,12 +172,15 @@ export function scanGfmLiteralAutolink(
   const domainStart = start + prefixLength;
   let cursor = domainStart;
   while (/[A-Za-z0-9.-]/u.test(value[cursor] ?? '')) cursor += 1;
-  if (
-    !/^(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,}$/u.test(
-      value.slice(domainStart, cursor),
-    )
-  )
-    return { end: null, scanEnd: domainStart };
+  const host = value.slice(domainStart, cursor);
+  const domainName = /^(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,}$/u.test(
+    host,
+  );
+  const ipv4Parts = host.split('.');
+  const ipv4 =
+    ipv4Parts.length === 4 &&
+    ipv4Parts.every((part) => /^\d{1,3}$/u.test(part) && Number(part) <= 255);
+  if (!domainName && !ipv4) return { end: null, scanEnd: domainStart };
 
   if (value[cursor] === ':') {
     cursor += 1;
