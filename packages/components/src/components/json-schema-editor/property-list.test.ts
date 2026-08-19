@@ -145,6 +145,22 @@ describe('PropertyList', () => {
     ).toContain('array of any');
   });
 
+  test('a multi-type schema including array does not get an "of <items>" suffix', () => {
+    render(PropertyList, {
+      idPrefix: 'properties',
+      path: '/properties',
+      properties: {
+        nullableList: { type: ['array', 'null'], items: { type: 'string' } },
+      },
+      required: [],
+      onValueChange: () => {},
+    });
+
+    const rowText = screen.getByRole('row', { name: /nullableList/ }).textContent;
+    expect(rowText).toContain('array | null');
+    expect(rowText).not.toContain('of string');
+  });
+
   test('can add the first required-only property name', async () => {
     let latestRequired: string[] = [];
     const { container } = render(PropertyList, {

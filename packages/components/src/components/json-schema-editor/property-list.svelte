@@ -280,8 +280,13 @@
     const t = schema.type;
     if (t === undefined && Array.isArray(schema.enum)) return 'enum';
     const base = t === undefined ? 'any' : Array.isArray(t) ? t.join(' | ') : t;
-    const isArray = Array.isArray(t) ? t.includes('array') : t === 'array';
-    if (isArray) {
+    // "of <items>" only makes sense when the schema is exclusively an array —
+    // a multi-type schema like ['array', 'null'] isn't only an array, so
+    // items don't describe every value it can hold.
+    const isExclusivelyArray = Array.isArray(t)
+      ? t.length === 1 && t[0] === 'array'
+      : t === 'array';
+    if (isExclusivelyArray) {
       return `${base} of ${summariseType(schema.items ?? {})}`;
     }
     return base;
