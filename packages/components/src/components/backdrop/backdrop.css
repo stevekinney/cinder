@@ -30,4 +30,8 @@
       backdrop-filter: none;
     }
   }
+
+  :root[data-cinder-reduced-motion='true'] .cinder-backdrop {
+    backdrop-filter: none;
+  }
 }

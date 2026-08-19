@@ -64,6 +64,7 @@ function getByPath(value: unknown, segments: string[]): unknown {
   let current = value;
   for (const segment of segments) {
     if (Array.isArray(current)) {
+      if (!/^(0|[1-9][0-9]*)$/.test(segment)) return undefined;
       const index = Number(segment);
       if (!Number.isInteger(index)) return undefined;
       current = current[index];

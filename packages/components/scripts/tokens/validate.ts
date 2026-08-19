@@ -126,12 +126,17 @@ function validateValue(
       if (
         !(
           typeof value === 'string' ||
-          (Array.isArray(value) && value.every((entry) => typeof entry === 'string'))
+          (Array.isArray(value) &&
+            value.length > 0 &&
+            value.every((entry) => typeof entry === 'string'))
         )
       )
         addIssue(issues, path, 'fontFamily must be a string or string array');
       return;
     case 'fontWeight':
+      if (typeof value !== 'number' || value < 1 || value > 1000)
+        addIssue(issues, path, 'fontWeight must be within [1, 1000]');
+      return;
     case 'number':
       if (typeof value !== 'number') addIssue(issues, path, `${type} must be numeric`);
       return;
@@ -140,7 +145,8 @@ function validateValue(
         addIssue(issues, path, 'cubicBezier must be four numbers with x coordinates in [0, 1]');
       return;
     case 'strokeStyle':
-      if (typeof value === 'string') return;
+      if (typeof value === 'string' && ['solid', 'dashed', 'dotted', 'double'].includes(value))
+        return;
       if (
         !objectValue ||
         !Array.isArray(objectValue['dashArray']) ||
@@ -205,7 +211,8 @@ function validateValue(
       }
       return;
     case 'gradient':
-      if (!Array.isArray(value)) addIssue(issues, path, 'gradient must be color-position stops');
+      if (!Array.isArray(value) || value.length < 2)
+        addIssue(issues, path, 'gradient must contain at least two color-position stops');
       else
         for (const [index, stop] of value.entries()) {
           if (!isObject(stop)) {
@@ -218,6 +225,15 @@ function validateValue(
             `${path}.${index}`,
             issues,
           );
+          if (
+            typeof stop['position'] === 'number' &&
+            (stop['position'] < 0 || stop['position'] > 1)
+          )
+            addIssue(
+              issues,
+              `${path}.${index}.position`,
+              'gradient position must be within [0, 1]',
+            );
         }
       return;
     case 'typography':

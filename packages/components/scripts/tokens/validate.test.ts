@@ -30,7 +30,13 @@ const cases: Array<{ type: NonNullable<TokenDocument['$type']>; value: unknown }
       spread: '{dimension}',
     },
   },
-  { type: 'gradient', value: [{ color: '{color}', position: 0 }] },
+  {
+    type: 'gradient',
+    value: [
+      { color: '{color}', position: 0 },
+      { color: '{color}', position: 1 },
+    ],
+  },
   {
     type: 'typography',
     value: {
@@ -183,6 +189,26 @@ describe('DTCG semantic validation', () => {
     expect(() =>
       validateTokenDocument({ duration: { $type: 'duration', $value: { value: -1, unit: 'ms' } } }),
     ).toThrow('non-negative');
+  });
+
+  test('rejects invalid font, stroke, and gradient values', () => {
+    expect(() => validateTokenDocument({ $type: 'fontFamily', sample: { $value: [] } })).toThrow();
+    expect(() => validateTokenDocument({ $type: 'fontWeight', sample: { $value: 0 } })).toThrow();
+    expect(() =>
+      validateTokenDocument({ $type: 'strokeStyle', sample: { $value: 'banana' } }),
+    ).toThrow();
+    expect(() => validateTokenDocument({ $type: 'gradient', sample: { $value: [] } })).toThrow();
+    expect(() =>
+      validateTokenDocument({
+        $type: 'gradient',
+        sample: {
+          $value: [
+            { color: '{x}', position: 2 },
+            { color: '{x}', position: 1 },
+          ],
+        },
+      }),
+    ).toThrow('position must be within');
   });
 
   test('revalidates a resolved alias against its declared type', () => {
