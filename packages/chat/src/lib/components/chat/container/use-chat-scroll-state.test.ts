@@ -691,21 +691,37 @@ describe('useChatScrollState — isUserScrolling guard (regression for #774)', (
     expect(state.isUserScrolling).toBe(false);
   });
 
-  test('scrollToBottom supersedes a stale scrollToTop guard instead of leaving it to expire on its own schedule', () => {
-    // Regression guard (Codex review on #787): "Clear stale top-scroll guards
-    // before bottom jumps" — a bottom-directed jump whose own target already
-    // matches the auto-stick effect (so it needs no guard of its own) must
-    // still cancel an EARLIER guard from a top-scroll, or that stale guard
-    // keeps suppressing auto-stick corrections for messages appended after
-    // the user's intent already changed.
+  test('scrollToBottom supersedes a stale scrollToTop guard with its own, rather than leaving the old one to expire on its own schedule', () => {
+    // Regression guard (Codex review on #787), updated for CIN-418: a
+    // bottom-directed scroll must still cancel an EARLIER guard from a
+    // top-scroll, or that stale guard's own timer could clear
+    // `isUserScrolling` out from under the new scrollToBottom animation.
+    // Before CIN-418, scrollToBottom wasn't guarded at all, so superseding
+    // meant clearing to no-guard; scrollToBottom is now itself guarded (so
+    // it gets the same scrollend-driven final recompute scrollToTop/
+    // jumpToLatest already had), so superseding now means its OWN guard
+    // replaces the stale one — proven the same way the other overlapping-
+    // guard regressions in this file are: the OLDER session's original
+    // timer must not fire on its own schedule.
     jest.useFakeTimers();
     const state = useChatScrollState();
     const viewport = createViewport();
 
-    state.scrollToTop(viewport);
+    state.scrollToTop(viewport); // session A: backstop armed for ~500ms from t=0
     expect(state.isUserScrolling).toBe(true);
 
-    state.scrollToBottom(viewport);
+    jest.advanceTimersByTime(50);
+    state.scrollToBottom(viewport); // session B: backstop armed for ~500ms from t=50
+    expect(state.isUserScrolling).toBe(true);
+
+    // At t≈520ms: session A's original (500ms) deadline has passed, but
+    // session B's (550ms) has not. isUserScrolling must still be true —
+    // proving session A's timer was actually cancelled, not just racing.
+    jest.advanceTimersByTime(470);
+    expect(state.isUserScrolling).toBe(true);
+
+    // Session B's own timer eventually settles it.
+    jest.advanceTimersByTime(30);
     expect(state.isUserScrolling).toBe(false);
   });
 
@@ -842,5 +858,93 @@ describe('useChatScrollState — finishUserScrollGuard (regression for #1237)', 
 
     expect(() => jest.advanceTimersByTime(600)).not.toThrow();
     expect(state.isUserScrolling).toBe(false);
+  });
+});
+
+describe('useChatScrollState — content-visibility churn during scroll-to-top/bottom (CIN-418)', () => {
+  // CIN-418: off-screen `.chat-message` rows use `content-visibility: auto`
+  // with a `contain-intrinsic-size` estimate. When a scroll-to-top/bottom
+  // animation runs long enough (CI CPU pressure), rows scrolled past
+  // re-collapse to the estimate and rows newly in view expand to real height,
+  // shifting `scrollHeight` by hundreds of px mid-flight. Two asymmetries in
+  // the settle logic let that churn leave `atBottom` wrong at the end:
+  //
+  // 1. `scrollToBottom()` never went through `withUserScrollGuard`, so it had
+  //    no `scrollend`-driven final `recomputeFromViewport` — only the
+  //    passive, rAF-batched `scroll` listener, which can lag/coalesce under
+  //    load and never fire again after the last geometry change.
+  // 2. `scrollToTop()` went through the guard but never forced layout, so a
+  //    `scrollend` arriving while bottom rows are transiently collapsed
+  //    (content-visibility churn, not a genuinely short transcript) reads a
+  //    collapsed `scrollHeight <= clientHeight` and `isAtBottom` reports
+  //    "fits in viewport" — true — even though the real, expanded transcript
+  //    does not fit and the viewport is actually at the top.
+
+  test('scrollToBottom recomputes atBottom from final geometry after scrollend, not only from the passive scroll listener (regression for CIN-418)', () => {
+    // Reproduces the scrollToBottom side of CIN-418 deterministically: the
+    // animation's own scrollend is the last recompute opportunity if the
+    // final passive `scroll` tick doesn't survive rAF batching before it —
+    // exactly the CI-CPU-pressure scenario the diagnostic run observed
+    // (4/5 flakes were scrollToBottom, atBottom stuck false).
+    const state = useChatScrollState();
+    const viewport = createViewport(); // scrollTop 0, scrollHeight 2000, clientHeight 400
+    state.setAtBottom(false);
+
+    state.scrollToBottom(viewport);
+
+    // The animation actually reaches the bottom, but — simulating a
+    // coalesced/lagged passive scroll listener — no further 'scroll' event
+    // fires before 'scrollend'. Only a scrollend-driven recompute can catch
+    // this.
+    (viewport as { scrollTop: number }).scrollTop = 1600; // scrollHeight(2000) - clientHeight(400)
+    viewport.dispatchEvent(new Event('scrollend'));
+
+    expect(state.atBottom).toBe(true);
+  });
+
+  test('scrollToTop is unaffected by transient content-visibility collapse of bottom rows during the animation (regression for CIN-418)', () => {
+    // Reproduces the scrollToTop side of CIN-418: bottom rows collapse to
+    // their content-visibility estimate mid-scroll (scrollHeight briefly
+    // reads smaller than clientHeight — indistinguishable from a genuinely
+    // short transcript to `isAtBottom` unless layout is forced for the
+    // animation's duration, the same treatment scrollToBottom/jumpToLatest
+    // already get).
+    const state = useChatScrollState();
+    const viewport = document.createElement('div');
+    let churnCollapsed = false;
+    Object.defineProperty(viewport, 'scrollHeight', {
+      configurable: true,
+      get() {
+        // While layout is forced (data-cinder-force-visible set), every row
+        // is held at real height regardless of content-visibility churn —
+        // that's the mechanism under test. Only when the attribute is absent
+        // can a transient collapse be observed.
+        if (viewport.hasAttribute('data-cinder-force-visible')) return 2000;
+        return churnCollapsed ? 350 : 2000;
+      },
+    });
+    Object.defineProperty(viewport, 'scrollTop', {
+      value: 1600,
+      writable: true,
+      configurable: true,
+    });
+    Object.defineProperty(viewport, 'clientHeight', { value: 400, configurable: true });
+    viewport.scrollTo = () => {};
+    document.body.appendChild(viewport);
+
+    state.scrollToTop(viewport);
+    expect(state.atBottom).toBe(false);
+
+    // Mid-animation content-visibility churn collapses the (now off-screen)
+    // bottom rows just as the animation reaches the top.
+    churnCollapsed = true;
+    (viewport as { scrollTop: number }).scrollTop = 0;
+    viewport.dispatchEvent(new Event('scrollend'));
+
+    // The transcript never actually got shorter than the viewport — this
+    // must not read as "fits in viewport, therefore at bottom".
+    expect(state.atBottom).toBe(false);
+
+    viewport.remove();
   });
 });
