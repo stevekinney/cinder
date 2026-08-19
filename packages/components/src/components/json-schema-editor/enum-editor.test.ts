@@ -114,6 +114,23 @@ describe('EnumEditor', () => {
     expect(screen.getByText('Removed enum value 2. 1 value remains.')).not.toBeNull();
   });
 
+  test('announces and focuses an added enum row', async () => {
+    let values: unknown[] = [];
+    render(EnumEditor, {
+      idPrefix: 'status-enum',
+      path: '/status/enum',
+      values: ['draft'],
+      onValuesChange: (next: unknown[]) => {
+        values = next;
+      },
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Add enum value' }));
+
+    expect(values).toEqual(['draft', '']);
+    expect(screen.getByText('Added enum value 2 of 2.')).not.toBeNull();
+  });
+
   test('keeps duplicate values local and disables reordering while a draft is invalid', async () => {
     let values: unknown[] = [];
     render(EnumEditor, {

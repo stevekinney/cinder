@@ -127,6 +127,14 @@ describe('JsonSchemaEditor — Diff tab source contract', () => {
     expect(source).not.toContain('.toSpliced(');
     expect(source).toContain('onvalidationErrorcount?.(0)');
   });
+
+  test('property-editor.svelte retains enum draft errors while collapsed', async () => {
+    const source = await Bun.file(new URL('./property-editor.svelte', import.meta.url)).text();
+
+    expect(source).toContain('const retainedDraftCount = $derived');
+    expect(source).toContain('draftPath === `${path}/enum`');
+    expect(source).toContain('Math.max(');
+  });
 });
 
 // ---------------------------------------------------------------------------

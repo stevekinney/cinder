@@ -179,8 +179,16 @@
 
   // ===== Children (object/array) =====
   let childValidationCounts = $state<Record<string, number>>({});
+  const retainedDraftCount = $derived(
+    Object.entries(enumDrafts)
+      .filter(([draftPath]) => draftPath === `${path}/enum` || draftPath.startsWith(`${path}/`))
+      .reduce((count, [, drafts]) => count + Object.keys(drafts).length, 0),
+  );
   const validationErrorCount = $derived(
-    Object.values(childValidationCounts).reduce((total, count) => total + count, 0),
+    Math.max(
+      Object.values(childValidationCounts).reduce((total, count) => total + count, 0),
+      retainedDraftCount,
+    ),
   );
 
   $effect(() => {

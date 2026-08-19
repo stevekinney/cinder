@@ -42,6 +42,7 @@
   const activeDrafts = $derived({ ...drafts, ...localDrafts });
   const invalidValueIndexes = $derived(new Set(Object.keys(activeDrafts).map(Number)));
   let actionAnnouncement = $state('');
+  let editorElement = $state<HTMLDivElement>();
 
   $effect(() => onvalidationErrorcount?.(invalidValueIndexes.size));
   onDestroy(() => onvalidationErrorcount?.(0));
@@ -125,6 +126,13 @@
     );
   }
 
+  function focusValue(index: number): void {
+    const inputId = `${idPrefix}-value-${index}`;
+    Array.from(editorElement?.querySelectorAll('input') ?? [])
+      .find((input) => input.id === inputId)
+      ?.focus();
+  }
+
   function setDraft(index: number, draft: EnumDraft | undefined): void {
     if (draft === undefined) {
       const { [index]: _removedLocalDraft, ...remainingLocalDrafts } = localDrafts;
@@ -173,30 +181,33 @@
     [next[index], next[targetIndex]] = [next[targetIndex]!, next[index]!];
     onValuesChange(next);
     await tick();
-    document.getElementById(`${idPrefix}-value-${targetIndex}`)?.focus();
+    focusValue(targetIndex);
     actionAnnouncement = `Moved enum value ${index + 1} to position ${targetIndex + 1} of ${values.length}.`;
   }
 
   async function removeValue(index: number): Promise<void> {
     if (readonly || invalidValueIndexes.size > 0 || values.length === 1) return;
     const focusIndex = Math.min(index, values.length - 2);
+    const remainingCount = values.length - 1;
     onValuesChange(values.filter((_, itemIndex) => itemIndex !== index));
     await tick();
-    document.getElementById(`${idPrefix}-remove-${focusIndex}`)?.focus();
-    const remainingCount = values.length - 1;
+    focusValue(focusIndex);
     actionAnnouncement = `Removed enum value ${index + 1}. ${remainingCount} ${remainingCount === 1 ? 'value remains' : 'values remain'}.`;
   }
 
-  function addValue(): void {
+  async function addValue(): Promise<void> {
     if (readonly) return;
     let nextValue = '';
     let suffix = 1;
     while (hasDuplicateValue(nextValue, -1)) nextValue = `value ${suffix++}`;
     onValuesChange([...values, nextValue]);
+    await tick();
+    focusValue(values.length);
+    actionAnnouncement = `Added enum value ${values.length + 1} of ${values.length + 1}.`;
   }
 </script>
 
-<div class="cinder-jse-enum-editor">
+<div class="cinder-jse-enum-editor" bind:this={editorElement}>
   <table class="cinder-jse-enum-editor__table" aria-label="Enum values">
     <thead>
       <tr>
@@ -260,7 +271,7 @@
     </tbody>
   </table>
   <p class="cinder-sr-only" aria-live="polite">{actionAnnouncement}</p>
-  <Button variant="secondary" size="sm" disabled={readonly} onclick={addValue}
+  <Button variant="secondary" size="sm" disabled={readonly} onclick={() => void addValue()}
     >Add enum value</Button
   >
 </div>
