@@ -235,6 +235,6 @@
   }
 
   :root[data-cinder-reduced-motion='true'] .cinder-command-palette {
-    animation: cinder-command-palette-fade var(--cinder-duration-fast) linear forwards;
+    animation: cinder-command-palette-fade var(--cinder-duration-fast) linear forwards !important;
   }
 }

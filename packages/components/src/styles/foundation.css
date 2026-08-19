@@ -23,9 +23,11 @@
 :root[data-reduced-motion='on'] *::after {
   /* Explicit application opt-in must also reach component fallbacks that
      otherwise only exist inside the system media query. */
+  animation: none !important;
   animation-duration: 0.01ms !important;
   animation-iteration-count: 1 !important;
   transition-duration: 0.01ms !important;
+  transition: none !important;
   scroll-behavior: auto !important;
 }
 
