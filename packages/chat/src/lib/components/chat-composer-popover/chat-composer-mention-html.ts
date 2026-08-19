@@ -45,9 +45,16 @@ export function canStartHtmlBlock(
   return /^\s*$/u.test(value.slice(previousLineStart, lineStart - 1));
 }
 
-export function getHtmlTagEnd(value: string, start: number): number | null {
+export function getHtmlTagEnd(
+  value: string,
+  start: number,
+  metadata?: ScanMetadata,
+): number | null {
   if (!/[A-Za-z/!?]/u.test(value[start + 1] ?? '')) return null;
 
+  const startingLine = metadata?.lineStarts[start] ?? 0;
+  const startingContainer =
+    metadata === undefined ? null : getContainerContext(startingLine, metadata);
   let quote: '"' | "'" | null = null;
   for (let index = start + 1; index < value.length; index += 1) {
     const character = value[index];
@@ -55,6 +62,17 @@ export function getHtmlTagEnd(value: string, start: number): number | null {
       let next = index + getLineEndingLength(value, index);
       while (value[next] === ' ' || value[next] === '\t') next += 1;
       if (isLineEnding(value[next])) return null;
+      if (metadata !== undefined && startingContainer !== null) {
+        const nextLineStart = index + getLineEndingLength(value, index);
+        const nextContainer = getContainerContext(nextLineStart, metadata);
+        if (
+          nextContainer.quoteDepth !== startingContainer.quoteDepth ||
+          nextContainer.listDepth !== startingContainer.listDepth ||
+          metadata.completedBlockLineStarts.has(nextLineStart) ||
+          !metadata.paragraphLineStarts.has(nextLineStart)
+        )
+          return null;
+      }
     }
     if (quote !== null) {
       if (character === quote) quote = null;

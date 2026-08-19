@@ -324,7 +324,7 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
         sourceIndex = autolinkEnd;
         continue;
       }
-      const tagEnd = getHtmlTagEnd(value, sourceIndex);
+      const tagEnd = getHtmlTagEnd(value, sourceIndex, metadata);
       if (tagEnd !== null) {
         const tagStart = sourceIndex;
         const tag = /^<\/?([A-Za-z][A-Za-z0-9-]*)(?=\s|\/?>)/u.exec(
@@ -402,8 +402,9 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
     }
 
     if (value[sourceIndex] === '[' && !hasEscapedPrefix(sourceIndex, metadata)) {
+      const labelBounds = metadata.labelBounds.get(sourceIndex) ?? null;
       if (value[sourceIndex - 1] === '!' && !hasEscapedPrefix(sourceIndex - 1, metadata)) {
-        const imageEnd = getOrdinaryLinkEnd(value, sourceIndex, true);
+        const imageEnd = getOrdinaryLinkEnd(value, sourceIndex, true, labelBounds?.end);
         if (imageEnd !== null) {
           text += value.slice(sourceIndex, imageEnd);
           sourceIndex = imageEnd;
@@ -418,7 +419,6 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
         continue;
       }
 
-      const labelBounds = metadata.labelBounds.get(sourceIndex) ?? null;
       const link = parseMentionLink(value, sourceIndex, labelBounds);
       if (link !== null) {
         const start = text.length;

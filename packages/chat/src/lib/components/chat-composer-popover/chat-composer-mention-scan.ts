@@ -42,6 +42,32 @@ export function countRun(value: string, start: number, character: string): numbe
   return length;
 }
 
+function advanceMarkdownColumn(column: number, character: string): number {
+  return character === '\t' ? column + 4 - (column % 4) : column + 1;
+}
+
+function scanIndentation(value: string, start: number, startingColumn: number, limit: number) {
+  let cursor = start;
+  let column = startingColumn;
+  let consumedEnd = start;
+  let consumedColumn = startingColumn;
+  while (value[cursor] === ' ' || value[cursor] === '\t') {
+    column = advanceMarkdownColumn(column, value[cursor]!);
+    cursor += 1;
+    if (column - startingColumn <= limit) {
+      consumedEnd = cursor;
+      consumedColumn = column;
+    }
+  }
+  return {
+    availableColumns: column - startingColumn,
+    end: cursor,
+    column,
+    consumedEnd,
+    consumedColumn,
+  };
+}
+
 export function makeScanMetadata(value: string): ScanMetadata {
   const escaped = new Uint8Array(value.length);
   const lineStarts = new Int32Array(value.length);
@@ -58,24 +84,9 @@ export function makeScanMetadata(value: string): ScanMetadata {
 
   let backslashes = 0;
   let lineStart = 0;
-  let nestedLinkCount = 0;
-  const labelStack: Array<{ start: number; nestedLinkCount: number }> = [];
   for (let index = 0; index < value.length; index += 1) {
     escaped[index] = backslashes % 2;
     lineStarts[index] = lineStart;
-    if (escaped[index] === 0) {
-      if (value[index] === '!' && value[index + 1] === '[') nestedLinkCount += 1;
-      if (value[index] === '[') {
-        labelStack.push({ start: index, nestedLinkCount });
-      } else if (value[index] === ']' && labelStack.length > 0) {
-        const opening = labelStack.pop()!;
-        labelBounds.set(opening.start, {
-          end: index,
-          containsNestedLink: nestedLinkCount > opening.nestedLinkCount,
-        });
-        if (value[index + 1] === '(' || value[index + 1] === '[') nestedLinkCount += 1;
-      }
-    }
     backslashes = value[index] === '\\' ? backslashes + 1 : 0;
     if (value[index] === '\n' || (value[index] === '\r' && value[index + 1] !== '\n')) {
       if (/^\s*$/u.test(value.slice(lineStart, index))) paragraphBreaks.add(index);
@@ -90,21 +101,25 @@ export function makeScanMetadata(value: string): ScanMetadata {
     let listDepth = 0;
     let listContinuationIndentation = 0;
     let maximumIndentation = 0;
-    let indentation = 0;
-    const consumeIndentation = (limit: number) => {
-      let available = 0;
-      while (value[cursor + available] === ' ') available += 1;
-      indentation = Math.min(limit, available);
-      maximumIndentation = Math.max(maximumIndentation, available);
-      cursor += indentation;
-    };
-
-    consumeIndentation(3);
+    let column = 0;
+    const initialIndentation = scanIndentation(value, cursor, column, 3);
+    maximumIndentation = initialIndentation.availableColumns;
+    cursor = initialIndentation.consumedEnd;
+    column = initialIndentation.consumedColumn;
     while (cursor < value.length) {
       if (value[cursor] === '>') {
         quoteDepth += 1;
         cursor += 1;
-        consumeIndentation(4);
+        column += 1;
+        const padding = scanIndentation(value, cursor, column, 4);
+        maximumIndentation = Math.max(maximumIndentation, padding.availableColumns);
+        if (padding.availableColumns > 4) {
+          column = advanceMarkdownColumn(column, value[cursor]!);
+          cursor += 1;
+        } else {
+          cursor = padding.end;
+          column = padding.column;
+        }
         continue;
       }
 
@@ -136,13 +151,21 @@ export function makeScanMetadata(value: string): ScanMetadata {
       }
 
       cursor = markerStart + markerWidth;
-      let followingWhitespace = 0;
-      while (/[ \t]/u.test(value[cursor + followingWhitespace] ?? '')) followingWhitespace += 1;
-      const consumedWhitespace = followingWhitespace > 4 ? 1 : followingWhitespace;
-      cursor += consumedWhitespace;
-      maximumIndentation = Math.max(maximumIndentation, followingWhitespace);
+      column += markerWidth;
+      const followingWhitespace = scanIndentation(value, cursor, column, 4);
+      maximumIndentation = Math.max(maximumIndentation, followingWhitespace.availableColumns);
+      let consumedWhitespaceColumns = followingWhitespace.availableColumns;
+      if (followingWhitespace.availableColumns > 4) {
+        const nextColumn = advanceMarkdownColumn(column, value[cursor]!);
+        consumedWhitespaceColumns = nextColumn - column;
+        column = nextColumn;
+        cursor += 1;
+      } else {
+        cursor = followingWhitespace.end;
+        column = followingWhitespace.column;
+      }
       listDepth += 1;
-      listContinuationIndentation += markerWidth + Math.max(1, consumedWhitespace);
+      listContinuationIndentation += markerWidth + Math.max(1, consumedWhitespaceColumns);
     }
     if (cursor !== start) containerStarts.set(start, cursor);
     if (quoteDepth > 0 || listDepth > 0 || maximumIndentation > 0) {
@@ -215,6 +238,28 @@ export function makeScanMetadata(value: string): ScanMetadata {
       }
     }
     index = start - 1;
+  }
+
+  let nestedLinkCount = 0;
+  const labelStack: Array<{ start: number; nestedLinkCount: number }> = [];
+  for (let index = 0; index < value.length; index += 1) {
+    const codeSpanEnd = codeSpanEnds.get(index);
+    if (codeSpanEnd !== undefined) {
+      index = codeSpanEnd - 1;
+      continue;
+    }
+    if (escaped[index] === 1) continue;
+    if (value[index] === '!' && value[index + 1] === '[') nestedLinkCount += 1;
+    if (value[index] === '[') {
+      labelStack.push({ start: index, nestedLinkCount });
+    } else if (value[index] === ']' && labelStack.length > 0) {
+      const opening = labelStack.pop()!;
+      labelBounds.set(opening.start, {
+        end: index,
+        containsNestedLink: nestedLinkCount > opening.nestedLinkCount,
+      });
+      if (value[index + 1] === '(' || value[index + 1] === '[') nestedLinkCount += 1;
+    }
   }
 
   return {
@@ -361,14 +406,16 @@ export function isIndentedCodeLine(value: string, lineStart: number): boolean {
   let column = 0;
   while (cursor < value.length) {
     if (value[cursor] === ' ') {
-      column += 1;
+      column = advanceMarkdownColumn(column, value[cursor]!);
       cursor += 1;
     } else if (value[cursor] === '\t') {
-      column += 4 - (column % 4);
+      column = advanceMarkdownColumn(column, value[cursor]!);
       cursor += 1;
     } else if (value[cursor] === '>' && column <= 3) {
       cursor += 1;
-      if (value[cursor] === ' ') cursor += 1;
+      const padding = scanIndentation(value, cursor, column + 1, 4);
+      if (padding.availableColumns > 4) cursor += 1;
+      else cursor = padding.end;
       column = 0;
     } else {
       break;

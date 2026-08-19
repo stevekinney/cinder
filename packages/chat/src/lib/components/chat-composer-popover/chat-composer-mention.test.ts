@@ -186,6 +186,29 @@ describe('chat composer mentions', () => {
       mentions: [],
     });
 
+    expect(parseChatComposerMentions('>\t[Ada](person:a)')).toEqual({
+      text: '>\tAda',
+      mentions: [{ label: 'Ada', uri: 'person:a', start: 2, end: 5 }],
+    });
+    const blockquoteIndentedCode = '>   \t[Ada](person:a)';
+    expect(parseChatComposerMentions(blockquoteIndentedCode)).toEqual({
+      text: blockquoteIndentedCode,
+      mentions: [],
+    });
+    const tabbedHtmlBlock = '>\t<div>\n>\t[Ada](person:a)';
+    expect(parseChatComposerMentions(tabbedHtmlBlock)).toEqual({
+      text: tabbedHtmlBlock,
+      mentions: [],
+    });
+    expect(parseChatComposerMentions('>\t- [Ada](person:a)')).toEqual({
+      text: '>\t- Ada',
+      mentions: [{ label: 'Ada', uri: 'person:a', start: 4, end: 7 }],
+    });
+    expect(parseChatComposerMentions('>   \t<div>\n>\t[Ada](person:a)')).toEqual({
+      text: '>   \t<div>\n>\tAda',
+      mentions: [{ label: 'Ada', uri: 'person:a', start: 13, end: 16 }],
+    });
+
     expect(parseChatComposerMentions('Intro\n    [Ada](person:ada)')).toEqual({
       text: 'Intro\n    Ada',
       mentions: [{ label: 'Ada', uri: 'person:ada', start: 10, end: 13 }],
@@ -471,6 +494,29 @@ describe('chat composer mentions', () => {
     expect(parseChatComposerMentions('Intro <!-- [Ada](person:ada)')).toEqual({
       text: 'Intro <!-- Ada',
       mentions: [{ label: 'Ada', uri: 'person:ada', start: 11, end: 14 }],
+    });
+    const interruptedInlineTag = '> text <span title="\n# [Ada](person:a)">';
+    const interruptedInlineTagText = '> text <span title="\n# Ada">';
+    const interruptedMentionStart = interruptedInlineTagText.indexOf('Ada');
+    expect(parseChatComposerMentions(interruptedInlineTag)).toEqual({
+      text: interruptedInlineTagText,
+      mentions: [
+        {
+          label: 'Ada',
+          uri: 'person:a',
+          start: interruptedMentionStart,
+          end: interruptedMentionStart + 3,
+        },
+      ],
+    });
+    const listInterruptedInlineTag = '<span\n- [Ada](person:a)>';
+    expect(parseChatComposerMentions(listInterruptedInlineTag)).toEqual({
+      text: '<span\n- Ada>',
+      mentions: [{ label: 'Ada', uri: 'person:a', start: 8, end: 11 }],
+    });
+    expect(parseChatComposerMentions('Intro <span\n title="x"> [Ada](person:a)')).toEqual({
+      text: 'Intro <span\n title="x"> Ada',
+      mentions: [{ label: 'Ada', uri: 'person:a', start: 24, end: 27 }],
     });
     expect(
       parseChatComposerMentions('Intro <!-- [Ada](person:comment) --> [Ada](person:real)'),
@@ -1079,6 +1125,17 @@ describe('chat composer mentions', () => {
       text: 'Ada',
       mentions: [{ label: 'Ada', uri: 'person:a', start: 0, end: 3 }],
     });
+    expect(parseChatComposerMentions('[A `]` B](person:a)')).toEqual({
+      text: 'A ] B',
+      mentions: [{ label: 'A ] B', uri: 'person:a', start: 0, end: 5 }],
+    });
+    const codeSpanOrdinaryLink = '[Docs `]`](https://x "[Ada](person:a)")';
+    expect(parseChatComposerMentions(codeSpanOrdinaryLink)).toEqual({
+      text: codeSpanOrdinaryLink,
+      mentions: [],
+    });
+    const codeSpanImage = '![foo `[bar]` baz](asset:image)';
+    expect(parseChatComposerMentions(codeSpanImage)).toEqual({ text: codeSpanImage, mentions: [] });
     expect(parseChatComposerMentions('[~Ada~](person:a)')).toEqual({
       text: '[~Ada~](person:a)',
       mentions: [],
