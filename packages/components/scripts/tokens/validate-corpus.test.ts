@@ -19,6 +19,20 @@ describe('token corpus validation', () => {
     ).toEqual({ path: 'renamed.tokens.json', document });
   });
 
+  test('does not select empty modifier assignment maps', () => {
+    expect(
+      findModifierDocuments(
+        [
+          {
+            path: 'empty.tokens.json',
+            document: { $extensions: { 'com.lostgradient.cinder': { modifier: {} } } },
+          },
+        ],
+        { theme: 'dark' },
+      ),
+    ).toEqual([]);
+  });
+
   test('only selects multi-axis modifier documents for matching combinations', () => {
     const document = {
       $extensions: {

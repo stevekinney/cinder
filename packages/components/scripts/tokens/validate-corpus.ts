@@ -96,6 +96,7 @@ function modifierAssignments(document: TokenDocument): Record<string, string> | 
   const extensions = document.$extensions?.['com.lostgradient.cinder'];
   if (!isObject(extensions) || !isObject(extensions['modifier'])) return undefined;
   const assignments = extensions['modifier'];
+  if (Object.keys(assignments).length === 0) return undefined;
   const result: Record<string, string> = {};
   for (const [name, value] of Object.entries(assignments)) {
     if (typeof value !== 'string') return undefined;

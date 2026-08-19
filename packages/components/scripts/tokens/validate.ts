@@ -289,7 +289,11 @@ function validateValue(
               `${Array.isArray(value) ? `${path}.${index}` : path}.blur`,
               'shadow blur must be non-negative',
             );
-          if (shadow['inset'] !== undefined && typeof shadow['inset'] !== 'boolean')
+          if (
+            shadow['inset'] !== undefined &&
+            typeof shadow['inset'] !== 'boolean' &&
+            !isReference(shadow['inset'])
+          )
             addIssue(
               issues,
               `${Array.isArray(value) ? `${path}.${index}` : path}.inset`,

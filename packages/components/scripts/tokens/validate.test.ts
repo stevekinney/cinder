@@ -273,6 +273,21 @@ describe('DTCG semantic validation', () => {
         sample: { $value: { value: 1, unit: 'ms', units: 's' } },
       }),
     ).toThrow('unknown duration member units');
+    expect(() =>
+      validateTokenDocument({
+        $type: 'shadow',
+        sample: {
+          $value: {
+            color: '{color}',
+            offsetX: '{dimension}',
+            offsetY: '{dimension}',
+            blur: '{dimension}',
+            spread: '{dimension}',
+            inset: '{inset}',
+          },
+        },
+      }),
+    ).not.toThrow();
   });
 
   test('rejects negative durations', () => {

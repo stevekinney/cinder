@@ -54,7 +54,9 @@
     }
   }
 
-  :root[data-cinder-reduced-motion='true'] .cinder-progress--bar .cinder-progress__fill {
+  :root:is([data-cinder-reduced-motion='true'], [data-reduced-motion='on'])
+    .cinder-progress--bar
+    .cinder-progress__fill {
     transition: none;
   }
 
@@ -83,7 +85,7 @@
     }
   }
 
-  :root[data-cinder-reduced-motion='true']
+  :root:is([data-cinder-reduced-motion='true'], [data-reduced-motion='on'])
     .cinder-progress--bar
     .cinder-progress__fill--indeterminate {
     animation: none;
@@ -141,7 +143,9 @@
     }
   }
 
-  :root[data-cinder-reduced-motion='true'] .cinder-progress--ring .cinder-progress__fill {
+  :root:is([data-cinder-reduced-motion='true'], [data-reduced-motion='on'])
+    .cinder-progress--ring
+    .cinder-progress__fill {
     transition: none;
   }
 
@@ -172,7 +176,7 @@
     }
   }
 
-  :root[data-cinder-reduced-motion='true']
+  :root:is([data-cinder-reduced-motion='true'], [data-reduced-motion='on'])
     .cinder-progress--ring
     .cinder-progress__fill--indeterminate {
     animation: none;
