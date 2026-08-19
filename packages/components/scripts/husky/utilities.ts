@@ -102,7 +102,7 @@ export function prePushPackageScript(
 }
 
 type HookSignal = 'SIGINT' | 'SIGTERM' | 'SIGHUP';
-type CleanupSignal = HookSignal | 'SIGKILL';
+export type HookCleanupSignal = HookSignal | 'SIGKILL';
 
 const SIGNAL_EXIT_CODES: Record<HookSignal, number> = {
   SIGHUP: 129,
@@ -193,7 +193,7 @@ function isProcessGroupAlive(pid: number): boolean {
   }
 }
 
-function signalProcessGroup(pid: number, signal: CleanupSignal): void {
+export function signalHookProcessGroup(pid: number, signal: HookCleanupSignal): void {
   try {
     process.kill(-pid, signal);
     return;
@@ -215,27 +215,30 @@ function drainActiveProcessGroups(): number[] {
   return pids;
 }
 
-export function cleanupHookProcessesImmediately(signal: CleanupSignal = 'SIGTERM'): void {
+export function cleanupHookProcessesImmediately(signal: HookCleanupSignal = 'SIGTERM'): void {
   for (const pid of drainActiveProcessGroups()) {
-    signalProcessGroup(pid, signal);
+    signalHookProcessGroup(pid, signal);
   }
 }
 
-export async function cleanupHookProcesses(signal: CleanupSignal = 'SIGTERM'): Promise<void> {
+export async function cleanupHookProcesses(signal: HookCleanupSignal = 'SIGTERM'): Promise<void> {
   const pids = drainActiveProcessGroups();
   await cleanupProcessGroups(pids, signal);
 }
 
-async function cleanupProcessGroups(pids: readonly number[], signal: CleanupSignal): Promise<void> {
+async function cleanupProcessGroups(
+  pids: readonly number[],
+  signal: HookCleanupSignal,
+): Promise<void> {
   for (const pid of pids) {
-    signalProcessGroup(pid, signal);
+    signalHookProcessGroup(pid, signal);
   }
 
   await Bun.sleep(250);
 
   for (const pid of pids) {
     if (isProcessGroupAlive(pid)) {
-      signalProcessGroup(pid, 'SIGKILL');
+      signalHookProcessGroup(pid, 'SIGKILL');
     }
   }
 }

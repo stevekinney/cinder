@@ -24,6 +24,7 @@ import {
   registerHookProcessGroup,
   REPO_ROOT,
   runHookCommand,
+  signalHookProcessGroup,
   withGateLock,
   withLocalValidationGateLock,
   type GitRunner,
@@ -369,6 +370,27 @@ describe('registerHookProcessGroup', () => {
     } finally {
       killProcessGroup(processGroup.pid);
       await processGroup.exited;
+    }
+  });
+});
+
+describe('signalHookProcessGroup', () => {
+  it('falls back to the direct process when the group signal fails', () => {
+    const calls: Array<{ pid: number; signal: string | number }> = [];
+    const kill = spyOn(process, 'kill').mockImplementation((pid, signal) => {
+      calls.push({ pid, signal: signal ?? 0 });
+      if (pid < 0) throw Object.assign(new Error('group unavailable'), { code: 'ESRCH' });
+      return true;
+    });
+
+    try {
+      signalHookProcessGroup(4_242, 'SIGTERM');
+      expect(calls).toEqual([
+        { pid: -4_242, signal: 'SIGTERM' },
+        { pid: 4_242, signal: 'SIGTERM' },
+      ]);
+    } finally {
+      kill.mockRestore();
     }
   });
 });

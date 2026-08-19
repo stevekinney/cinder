@@ -22,12 +22,13 @@ import {
   installHookProcessCleanup,
   registerHookProcessGroup,
   runHookCommand,
+  signalHookProcessGroup,
   withLocalValidationGateLock,
 } from './husky/utilities.ts';
 import {
-  type CommentScanState,
   containsUpstreamSpecifier,
   lineHasUpstreamSpecifierResidue,
+  type CommentScanState,
 } from './lib/cinder-specifier-residue.ts';
 import { discoverComponents } from './lib/discover-components.ts';
 import { parseJsonFile, readJsonFile } from './lib/read-json-file.ts';
@@ -1215,7 +1216,8 @@ const SVELTEKIT_DEV_SSR_POLL_INTERVAL_MS = 200;
 const DEVELOPMENT_SERVER_TEARDOWN_TIMEOUT_MS = 5_000;
 
 type DevelopmentServerProcess = Pick<Bun.Subprocess, 'exitCode' | 'exited' | 'pid'>;
-type SignalProcessGroup = (pid: number, signal: NodeJS.Signals) => void;
+type DevelopmentServerSignal = 'SIGTERM' | 'SIGKILL';
+type SignalProcessGroup = (pid: number, signal: DevelopmentServerSignal) => void;
 type IsProcessGroupAlive = (pid: number) => boolean;
 
 function processGroupIsAlive(pid: number): boolean {
@@ -1253,12 +1255,13 @@ async function waitForProcessGroupExit(
 export async function stopDevelopmentServer(
   server: DevelopmentServerProcess,
   timeoutMs = DEVELOPMENT_SERVER_TEARDOWN_TIMEOUT_MS,
-  signalProcessGroup: SignalProcessGroup = (pid, signal) => process.kill(pid, signal),
+  signalProcessGroup: SignalProcessGroup = (pid, signal) =>
+    signalHookProcessGroup(Math.abs(pid), signal),
   isProcessGroupAlive: IsProcessGroupAlive = processGroupIsAlive,
 ): Promise<void> {
   if (!isProcessGroupAlive(server.pid)) return;
 
-  const stop = async (signal: NodeJS.Signals): Promise<void> => {
+  const stop = async (signal: DevelopmentServerSignal): Promise<void> => {
     signalProcessGroup(-server.pid, signal);
     await promiseWithTimeout(
       Promise.all([
