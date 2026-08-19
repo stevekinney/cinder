@@ -43,7 +43,6 @@
   import {
     buildEnumPatch,
     detectEnumSource,
-    isEnumLikeOneOf,
     readEnumDescriptions,
     readEnumValues,
   } from './enum-composition.ts';
@@ -241,13 +240,15 @@
     if (!enabled) {
       const { [`${path}/enum`]: _removedDraft, ...remainingDrafts } = enumDrafts;
       onEnumDraftsChange?.(remainingDrafts);
-      // Only clear `oneOf` when it's the enum's own promoted representation —
-      // a schema could (unusually) carry a real composition alongside a bare
-      // `enum` at the same time, and that must not be silently deleted.
+      // Only clear `oneOf` when it's the enum's own promoted representation
+      // that is CURRENTLY active — not merely "some oneOf that happens to be
+      // enum-shaped." `detectEnumSource` prefers `enum` when both are
+      // present, so an enum-shaped `oneOf` sitting unused alongside an
+      // active bare `enum` must not be silently deleted.
       patch(
         {
           enum: undefined,
-          oneOf: isEnumLikeOneOf(objectValue.oneOf) ? undefined : objectValue.oneOf,
+          oneOf: enumSource === 'oneOf' ? undefined : objectValue.oneOf,
         },
         { label: 'edit enum' },
       );

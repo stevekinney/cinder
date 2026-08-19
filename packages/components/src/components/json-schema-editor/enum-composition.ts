@@ -11,7 +11,11 @@ function isEnumOneOfBranch(branch: JsonSchemaValue): branch is EnumOneOfBranch {
   if (typeof branch !== 'object' || branch === null || Array.isArray(branch)) return false;
   const keys = Object.keys(branch);
   if (!keys.includes('const')) return false;
-  return keys.every((key) => key === 'const' || key === 'description');
+  if (!keys.every((key) => key === 'const' || key === 'description')) return false;
+  // A foreign/hand-authored schema could carry `description` as a non-string.
+  // Reject it here rather than let it reach `buildEnumPatch`'s `.trim()` later.
+  const description = (branch as { description?: unknown }).description;
+  return description === undefined || typeof description === 'string';
 }
 
 /**

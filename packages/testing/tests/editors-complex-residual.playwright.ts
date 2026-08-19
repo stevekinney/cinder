@@ -629,6 +629,37 @@ test.describe('JSON schema editor', () => {
     await expect(editor.getByText('oneOf', { exact: true })).toBeVisible();
   });
 
+  test('disabling an active bare enum does not delete an unrelated enum-shaped oneOf sitting alongside it', async ({
+    page,
+  }) => {
+    const editor = await openFirstEditor(page);
+    const jsonTab = editor.getByRole('tab', { name: /JSON/ });
+    await jsonTab.click();
+    // `enum` is the active representation (detectEnumSource prefers it), but
+    // `oneOf` here happens to also satisfy the enum-shaped predicate even
+    // though it is not what the enum table is reading from.
+    await editor
+      .locator('textarea')
+      .first()
+      .fill(
+        '{"type":"object","properties":{"status":{"type":"string","enum":["draft","published"],"oneOf":[{"const":"x"},{"const":"y"}]}}}',
+      );
+    await editor.getByRole('button', { name: 'Apply' }).click();
+
+    await editor.getByRole('tab', { name: /^Form/ }).click();
+    await editor.getByRole('button', { name: 'Expand status property' }).click();
+
+    // Switch away from enum — this disables it via setEnum(false).
+    await editor.getByRole('combobox', { name: 'status type' }).selectOption('number');
+
+    await jsonTab.click();
+    const draft = await editor.locator('textarea').first().inputValue();
+    expect(draft).not.toContain('enum');
+    expect(draft).toContain('"oneOf"');
+    expect(draft).toContain('"const": "x"');
+    expect(draft).toContain('"const": "y"');
+  });
+
   test('exactly one enabled toolbar action is in the tab order at rest', async ({ page }) => {
     const editor = await openFirstEditor(page);
     const toolbarRight = editor.locator('.cinder-jse-toolbar__right').first();
