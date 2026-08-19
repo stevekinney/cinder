@@ -18,12 +18,12 @@ import {
 describe('SvelteKit hydration route matrix', () => {
   test('uses focused feature routes instead of the monolithic dev SSR fixture', () => {
     expect(SVELTEKIT_HYDRATION_ROUTES).toEqual([
-      '/subpath',
       '/chat-layout',
       '/dev-ssr-dialog',
       '/dev-ssr-navigation',
       '/dev-ssr-tabs',
     ]);
+    expect(SVELTEKIT_HYDRATION_ROUTES).not.toContain('/subpath');
     expect(SVELTEKIT_HYDRATION_ROUTES).not.toContain('/dev-ssr');
   });
 });
