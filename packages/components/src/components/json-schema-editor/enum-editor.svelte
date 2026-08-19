@@ -35,6 +35,7 @@
   let localDrafts = $state<Record<number, EnumDraft>>({});
   let previousDrafts: Record<number, EnumDraft> | null = null;
   let emittedDrafts: Record<number, EnumDraft> | null = null;
+  let lastResolvedDuplicateSignature: string | null = null;
   const activeDrafts = $derived({ ...drafts, ...localDrafts });
   const invalidValueIndexes = $derived(new Set(Object.keys(activeDrafts).map(Number)));
   let actionAnnouncement = $state('');
@@ -51,21 +52,30 @@
   });
 
   $effect(() => {
-    const resolvedDuplicateIndexes = Object.entries(activeDrafts)
-      .filter(([index, draft]) => {
-        if (draft.error !== 'duplicate') return false;
-        try {
-          return !hasDuplicateValue(JSON.parse(draft.text) as unknown, Number(index));
-        } catch {
-          return false;
-        }
-      })
-      .map(([index]) => Number(index));
-    if (resolvedDuplicateIndexes.length === 0) return;
+    const duplicateSignature = `${values.map(canonicalJson).join('\u0000')}:${JSON.stringify(
+      Object.entries(activeDrafts)
+        .filter(([, draft]) => draft.error === 'duplicate')
+        .sort(([left], [right]) => Number(left) - Number(right)),
+    )}`;
+    if (duplicateSignature === lastResolvedDuplicateSignature) return;
     const nextValues = [...values];
+    const resolvedDuplicateIndexes: number[] = [];
+    for (const [indexText, draft] of Object.entries(activeDrafts)) {
+      if (draft.error !== 'duplicate') continue;
+      const index = Number(indexText);
+      try {
+        const nextValue = JSON.parse(draft.text) as unknown;
+        if (hasDuplicateValue(nextValue, index, nextValues)) continue;
+        nextValues[index] = nextValue;
+        resolvedDuplicateIndexes.push(index);
+      } catch {
+        // A duplicate draft was previously parseable; retain it if it no longer is.
+      }
+    }
+    if (resolvedDuplicateIndexes.length === 0) return;
+    lastResolvedDuplicateSignature = duplicateSignature;
     const nextDrafts = { ...activeDrafts };
     for (const index of resolvedDuplicateIndexes) {
-      nextValues[index] = JSON.parse(activeDrafts[index]!.text) as unknown;
       delete nextDrafts[index];
     }
     localDrafts = Object.fromEntries(
@@ -101,9 +111,11 @@
     return JSON.stringify(value) ?? 'null';
   }
 
-  function hasDuplicateValue(value: unknown, exceptIndex: number): boolean {
+  function hasDuplicateValue(value: unknown, exceptIndex: number, candidates = values): boolean {
     const encoded = canonicalJson(value);
-    return values.some((item, index) => index !== exceptIndex && canonicalJson(item) === encoded);
+    return candidates.some(
+      (item, index) => index !== exceptIndex && canonicalJson(item) === encoded,
+    );
   }
 
   function setDraft(index: number, draft: EnumDraft | undefined): void {
@@ -146,13 +158,15 @@
     }
   }
 
-  function moveValue(index: number, direction: -1 | 1): void {
+  async function moveValue(index: number, direction: -1 | 1): Promise<void> {
     const targetIndex = index + direction;
     if (readonly || invalidValueIndexes.size > 0 || targetIndex < 0 || targetIndex >= values.length)
       return;
     const next = [...values];
     [next[index], next[targetIndex]] = [next[targetIndex]!, next[index]!];
     onValuesChange(next);
+    await tick();
+    document.getElementById(`${idPrefix}-value-${targetIndex}`)?.focus();
     actionAnnouncement = `Moved enum value ${index + 1} to position ${targetIndex + 1} of ${values.length}.`;
   }
 
@@ -208,7 +222,7 @@
               size="xs"
               disabled={readonly || invalidValueIndexes.size > 0 || index === 0}
               aria-label={`Move enum value ${index + 1} up`}
-              onclick={() => moveValue(index, -1)}
+              onclick={() => void moveValue(index, -1)}
             >
               Up
             </Button>
@@ -218,7 +232,7 @@
               size="xs"
               disabled={readonly || invalidValueIndexes.size > 0 || index === values.length - 1}
               aria-label={`Move enum value ${index + 1} down`}
-              onclick={() => moveValue(index, 1)}
+              onclick={() => void moveValue(index, 1)}
             >
               Down
             </Button>

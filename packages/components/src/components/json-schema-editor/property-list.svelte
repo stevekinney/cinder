@@ -58,6 +58,15 @@
     ),
   );
 
+  function retainedDraftCount(key: string): number {
+    const propertyPrefix = `${path}/${pointerSegment(key)}`;
+    return Object.entries(enumDrafts)
+      .filter(
+        ([draftPath]) => draftPath === propertyPrefix || draftPath.startsWith(`${propertyPrefix}/`),
+      )
+      .reduce((count, [, drafts]) => count + Object.keys(drafts).length, 0);
+  }
+
   $effect(() => {
     onvalidationErrorcount?.(validationErrorCount);
   });
@@ -295,7 +304,10 @@
   {#each propertyNames as key, index (key)}
     {@const isRequired = required.includes(key)}
     {@const isOpen = expanded[key] === true}
-    {@const childValidationErrorCount = childValidationCounts[key] ?? 0}
+    {@const childValidationErrorCount = Math.max(
+      childValidationCounts[key] ?? 0,
+      retainedDraftCount(key),
+    )}
     {@const panelId = `${idPrefix}-${key}-panel`}
     <!--
       Custom disclosure (not <details>/<summary>) so the action buttons can

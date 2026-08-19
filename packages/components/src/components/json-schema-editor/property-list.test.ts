@@ -250,4 +250,12 @@ describe('PropertyList', () => {
     expect(source).toContain('function toggleExpanded');
     expect(source).toContain('if (isOpen) setChildValidationErrorCount(key, 0)');
   });
+
+  test('property-list.svelte retains enum-draft error counts while a property is collapsed', async () => {
+    const source = await Bun.file(new URL('./property-list.svelte', import.meta.url)).text();
+
+    expect(source).toContain('function retainedDraftCount(key: string)');
+    expect(source).toContain('retainedDraftCount(key)');
+    expect(source).toContain('Math.max(');
+  });
 });

@@ -69,6 +69,7 @@ describe('EnumEditor', () => {
     await fireEvent.click(screen.getByRole('button', { name: 'Move enum value 2 up' }));
 
     expect(values).toEqual(['published', 'draft']);
+    expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Enum value 1' }));
   });
 
   test('does not commit non-finite values or remove the final value', async () => {
@@ -178,5 +179,28 @@ describe('EnumEditor', () => {
     });
 
     expect(values).toEqual([]);
+  });
+
+  test('resolves only one of several drafts that would otherwise duplicate each other', async () => {
+    let values: unknown[] = [];
+    let drafts: Record<number, { text: string; error: 'invalid-json' | 'duplicate' }> = {};
+    render(EnumEditor, {
+      idPrefix: 'status-enum',
+      path: '/status/enum',
+      values: [1, 2, 4],
+      drafts: {
+        0: { text: '3', error: 'duplicate' },
+        1: { text: '3', error: 'duplicate' },
+      },
+      onDraftsChange: (next) => {
+        drafts = next;
+      },
+      onValuesChange: (next) => {
+        values = next;
+      },
+    });
+
+    expect(values).toEqual([3, 2, 4]);
+    expect(drafts).toEqual({ 1: { text: '3', error: 'duplicate' } });
   });
 });
