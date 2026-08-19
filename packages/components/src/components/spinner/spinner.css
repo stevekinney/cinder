@@ -45,6 +45,12 @@
     }
   }
 
+  :root:is([data-cinder-reduced-motion='true'], [data-reduced-motion='on']) .cinder-spinner {
+    animation: none;
+    border-top-color: var(--cinder-border-muted, #ccc);
+    opacity: 0.5;
+  }
+
   /* ----------------------------------------
  * Size variants
  * ---------------------------------------- */

@@ -186,6 +186,7 @@ function validateValue(
           'bold',
           'extra-bold',
           'black',
+          'extra-black',
         ].includes(String(value))
       )
         addIssue(issues, path, 'fontWeight must be within [1, 1000] or a named weight');
@@ -528,6 +529,8 @@ export function validateResolverDocument(document: ResolverDocumentShape): void 
       addIssue(issues, `$.modifiers.${name}`, 'modifier values must be strings');
     if (values.length === 0)
       addIssue(issues, `$.modifiers.${name}`, 'modifier values must not be empty');
+    if (new Set(values).size !== values.length)
+      addIssue(issues, `$.modifiers.${name}`, 'modifier values must be unique');
     if (
       modifier['default'] !== undefined &&
       (!isString(modifier['default']) || !values.includes(modifier['default']))
