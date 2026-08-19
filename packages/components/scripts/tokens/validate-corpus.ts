@@ -33,12 +33,9 @@ async function main(): Promise<void> {
   const referencedPaths = new Set(resolver.sets.flatMap((set) => set.source));
   const modifiersByName = new Map(resolver.modifiers.map((modifier) => [modifier.name, modifier]));
   const orderedModifiers = resolver.resolutionOrder.map((name) => modifiersByName.get(name)!);
-  for (const modifier of orderedModifiers) {
-    for (const value of modifier.values) {
-      const document = findModifierDocument(documents, modifier, value);
-      if (document) referencedPaths.add(document.path);
-    }
-  }
+  for (const modifierValues of combinations(orderedModifiers))
+    for (const document of findModifierDocuments(documents, modifierValues))
+      referencedPaths.add(document.path);
   const unreferencedDocuments = documents
     .filter(({ path }) => !referencedPaths.has(path))
     .map(({ path }) => ({ path, reason: 'token document is not referenced by the resolver' }));
@@ -49,17 +46,20 @@ async function main(): Promise<void> {
         const document = documentsByPath.get(source);
         return document ? [document] : [];
       });
-      const modifierDocuments = orderedModifiers.map((modifier) => {
-        const document = findModifierDocument(documents, modifier, modifierValues[modifier.name]);
-        if (!document)
+      const modifierDocuments = findModifierDocuments(documents, modifierValues);
+      for (const modifier of orderedModifiers)
+        if (
+          !modifierDocuments.some(
+            ({ document }) =>
+              modifierAssignments(document)?.[modifier.name] === modifierValues[modifier.name],
+          )
+        )
           throw new TokenValidationError([
             {
               path: `$.modifiers.${modifier.name}`,
               reason: `no token document exists for ${modifier.name}=${modifierValues[modifier.name]}`,
             },
           ]);
-        return document;
-      });
       const resolved = resolveDocuments([
         ...sourceDocuments,
         ...modifierDocuments.map(({ document }) => document),
@@ -85,9 +85,28 @@ export function findModifierDocument(
 ): TokenDocumentEntry | undefined {
   if (!value) return undefined;
   return documents.find(({ document }) => {
-    const extensions = document.$extensions?.['com.lostgradient.cinder'];
-    if (!isObject(extensions) || !isObject(extensions['modifier'])) return false;
-    return extensions['modifier'][modifier.name] === value;
+    return modifierAssignments(document)?.[modifier.name] === value;
+  });
+}
+
+function modifierAssignments(document: TokenDocument): Record<string, string> | undefined {
+  const extensions = document.$extensions?.['com.lostgradient.cinder'];
+  if (!isObject(extensions) || !isObject(extensions['modifier'])) return undefined;
+  const assignments = extensions['modifier'];
+  if (!Object.values(assignments).every((value) => typeof value === 'string')) return undefined;
+  return assignments as Record<string, string>;
+}
+
+export function findModifierDocuments(
+  documents: TokenDocumentEntry[],
+  modifierValues: Record<string, string>,
+): TokenDocumentEntry[] {
+  return documents.filter(({ document }) => {
+    const assignments = modifierAssignments(document);
+    return (
+      assignments !== undefined &&
+      Object.entries(assignments).every(([name, value]) => modifierValues[name] === value)
+    );
   });
 }
 

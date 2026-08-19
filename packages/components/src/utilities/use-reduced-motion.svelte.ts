@@ -24,20 +24,25 @@ const applicationRoot = typeof document === 'undefined' ? undefined : document.d
 const applicationPreferences = new SvelteMap<
   'current',
   import('./use-reduced-motion.types.ts').ReducedMotionPreference
->([['current', synchronizeRootPreference(applicationRoot)]]);
+>([['current', 'system']]);
+const ApplicationMutationObserver =
+  applicationRoot?.ownerDocument.defaultView?.MutationObserver ?? globalThis.MutationObserver;
 
-if (applicationRoot && typeof MutationObserver !== 'undefined') {
-  new MutationObserver(() => {
+if (applicationRoot && ApplicationMutationObserver) {
+  new ApplicationMutationObserver(() => {
     applicationPreferences.set('current', synchronizeRootPreference(applicationRoot));
   }).observe(applicationRoot, {
     attributes: true,
     attributeFilter: ['data-reduced-motion'],
   });
+
+  queueMicrotask(() => {
+    applicationPreferences.set('current', synchronizeRootPreference(applicationRoot));
+  });
 }
 
 function getApplicationPreference(): import('./use-reduced-motion.types.ts').ReducedMotionPreference {
-  const preference = applicationPreferences.get('current') ?? 'system';
-  return applicationRoot ? readRootPreference(applicationRoot) : preference;
+  return applicationPreferences.get('current') ?? 'system';
 }
 
 /** Resolves an explicit motion preference against the current system preference. */

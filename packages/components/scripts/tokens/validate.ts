@@ -40,7 +40,7 @@ const COLOR_SPACES = new Set([
   'lch',
   'oklch',
 ]);
-const HEX_COLOR_PATTERN = /^#[0-9a-f]{3,4}(?:[0-9a-f]{2})?$/i;
+const HEX_COLOR_PATTERN = /^#(?:[0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
 const COLOR_MEMBERS = new Set(['colorSpace', 'components', 'alpha', 'hex']);
 
 type JsonObject = Record<string, unknown>;
@@ -164,8 +164,21 @@ function validateValue(
         addIssue(issues, path, 'fontFamily must be a string or string array');
       return;
     case 'fontWeight':
-      if (typeof value !== 'number' || value < 1 || value > 1000)
-        addIssue(issues, path, 'fontWeight must be within [1, 1000]');
+      if (
+        !(typeof value === 'number' && value >= 1 && value <= 1000) &&
+        ![
+          'thin',
+          'extra-light',
+          'light',
+          'normal',
+          'medium',
+          'semi-bold',
+          'bold',
+          'extra-bold',
+          'black',
+        ].includes(String(value))
+      )
+        addIssue(issues, path, 'fontWeight must be within [1, 1000] or a named weight');
       return;
     case 'number':
       if (typeof value !== 'number') addIssue(issues, path, `${type} must be numeric`);

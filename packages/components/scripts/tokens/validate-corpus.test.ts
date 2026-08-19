@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { findModifierDocument } from './validate-corpus.ts';
+import { findModifierDocument, findModifierDocuments } from './validate-corpus.ts';
 
 describe('token corpus validation', () => {
   test('finds modifier documents through authored metadata instead of file names', () => {
@@ -13,5 +13,18 @@ describe('token corpus validation', () => {
         'dark',
       ),
     ).toEqual({ path: 'renamed.tokens.json', document });
+  });
+
+  test('only selects multi-axis modifier documents for matching combinations', () => {
+    const document = {
+      $extensions: {
+        'com.lostgradient.cinder': { modifier: { theme: 'dark', motion: 'reduced' } },
+      },
+    };
+    const documents = [{ path: 'combined.tokens.json', document }];
+    expect(findModifierDocuments(documents, { theme: 'dark', motion: 'default' })).toEqual([]);
+    expect(findModifierDocuments(documents, { theme: 'dark', motion: 'reduced' })).toEqual(
+      documents,
+    );
   });
 });

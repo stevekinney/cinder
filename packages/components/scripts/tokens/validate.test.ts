@@ -243,6 +243,18 @@ describe('DTCG semantic validation', () => {
         },
       }),
     ).toThrow('lineHeight must be non-negative');
+    expect(() =>
+      validateTokenDocument({
+        $type: 'color',
+        sample: { $value: { colorSpace: 'oklch', components: [0, 0, 0], hex: '#11223380' } },
+      }),
+    ).not.toThrow();
+    expect(() =>
+      validateTokenDocument({
+        $type: 'color',
+        sample: { $value: { colorSpace: 'oklch', components: [0, 0, 0], hex: '#12345' } },
+      }),
+    ).toThrow('valid optional alpha or hex');
   });
 
   test('rejects negative durations', () => {
@@ -254,6 +266,9 @@ describe('DTCG semantic validation', () => {
   test('rejects invalid font, stroke, and gradient values', () => {
     expect(() => validateTokenDocument({ $type: 'fontFamily', sample: { $value: [] } })).toThrow();
     expect(() => validateTokenDocument({ $type: 'fontWeight', sample: { $value: 0 } })).toThrow();
+    expect(() =>
+      validateTokenDocument({ $type: 'fontWeight', sample: { $value: 'semi-bold' } }),
+    ).not.toThrow();
     expect(() =>
       validateTokenDocument({ $type: 'strokeStyle', sample: { $value: 'banana' } }),
     ).toThrow();

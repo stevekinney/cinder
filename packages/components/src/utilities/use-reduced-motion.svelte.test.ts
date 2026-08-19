@@ -157,13 +157,13 @@ describe('useReducedMotion', () => {
   test('synchronizes the default preference from the public root attribute', async () => {
     mock = installMatchMediaMock(false);
     document.documentElement.dataset['reducedMotion'] = 'on';
-    await Promise.resolve();
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
     const motion = useReducedMotion();
 
     expect(motion.current).toBe(true);
 
     document.documentElement.dataset['reducedMotion'] = 'off';
-    await Promise.resolve();
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
     expect(motion.current).toBe(false);
     expect(document.documentElement.dataset['cinderReducedMotion']).toBe('false');
 
