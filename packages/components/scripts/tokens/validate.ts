@@ -201,6 +201,13 @@ function validateValue(
             Array.isArray(value) ? `${path}.${index}` : path,
             issues,
           );
+          const blur = shadow['blur'];
+          if (isObject(blur) && typeof blur['value'] === 'number' && blur['value'] < 0)
+            addIssue(
+              issues,
+              `${Array.isArray(value) ? `${path}.${index}` : path}.blur`,
+              'shadow blur must be non-negative',
+            );
           if (shadow['inset'] !== undefined && typeof shadow['inset'] !== 'boolean')
             addIssue(
               issues,

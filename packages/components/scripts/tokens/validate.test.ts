@@ -211,6 +211,19 @@ describe('DTCG semantic validation', () => {
     ).toThrow('position must be within');
   });
 
+  test('rejects negative shadow blur while permitting negative offsets', () => {
+    const shadow = {
+      color: '{color}',
+      offsetX: { value: -1, unit: 'px' },
+      offsetY: '{dimension}',
+      blur: { value: -1, unit: 'px' },
+      spread: '{dimension}',
+    };
+    expect(() => validateTokenDocument({ $type: 'shadow', sample: { $value: shadow } })).toThrow(
+      'blur must be non-negative',
+    );
+  });
+
   test('revalidates a resolved alias against its declared type', () => {
     expect(() =>
       validateResolvedToken(

@@ -135,4 +135,17 @@
       display: none;
     }
   }
+
+  :root[data-cinder-reduced-motion='true'] .cinder-marquee__viewport {
+    overflow: auto;
+  }
+
+  :root[data-cinder-reduced-motion='true'] .cinder-marquee__track {
+    animation: none;
+    transform: none;
+  }
+
+  :root[data-cinder-reduced-motion='true'] .cinder-marquee__item[aria-hidden='true'] {
+    display: none;
+  }
 }
