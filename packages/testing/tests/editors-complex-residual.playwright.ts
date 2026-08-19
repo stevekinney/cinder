@@ -538,6 +538,38 @@ test.describe('JSON schema editor', () => {
     await expect(editor.locator('textarea').first()).toHaveValue(/"type":\s*\[\s*"string",\s*"null"\s*\]/);
   });
 
+  test('selecting "Multiple types" from an enum on an already multi-type schema preserves the existing types', async ({
+    page,
+  }) => {
+    const editor = await openFirstEditor(page);
+    const jsonTab = editor.getByRole('tab', { name: /JSON/ });
+    await jsonTab.click();
+    await editor
+      .locator('textarea')
+      .first()
+      .fill('{"type":"object","properties":{"code":{"type":["string","number"],"enum":["a",1]}}}');
+    await editor.getByRole('button', { name: 'Apply' }).click();
+
+    await editor.getByRole('tab', { name: /^Form/ }).click();
+    await editor.getByRole('button', { name: 'Expand code property' }).click();
+
+    const typeSelect = editor.getByRole('combobox', { name: 'code type' });
+    await expect(typeSelect).toHaveValue('enum');
+
+    await typeSelect.selectOption('multiple');
+
+    // Existing multi-type set survives — not reseeded to [base, 'null'].
+    await expect(editor.getByRole('checkbox', { name: 'string', exact: true })).toBeChecked();
+    await expect(editor.getByRole('checkbox', { name: 'number', exact: true })).toBeChecked();
+    await expect(editor.getByRole('checkbox', { name: 'null', exact: true })).not.toBeChecked();
+    await expect(editor.getByRole('table', { name: 'Enum values' })).toHaveCount(0);
+
+    await jsonTab.click();
+    await expect(editor.locator('textarea').first()).toHaveValue(
+      /"type":\s*\[\s*"string",\s*"number"\s*\]/,
+    );
+  });
+
   test('exactly one enabled toolbar action is in the tab order at rest', async ({ page }) => {
     const editor = await openFirstEditor(page);
     const toolbarRight = editor.locator('.cinder-jse-toolbar__right').first();

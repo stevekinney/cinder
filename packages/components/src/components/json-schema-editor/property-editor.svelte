@@ -271,12 +271,17 @@
   function setTypeFromSelect(next: string) {
     if (readonly || next === typeSelectValue) return;
     if (next === 'multiple') {
-      // Seed a sensible starting multi-type set from the current single type
-      // (or 'string' from 'any'/'enum') so the checkbox row opens with
+      if (hasEnum) setEnum(false);
+      // `type` is already multi-type or `null` (it just wasn't visible behind
+      // an active `enum`) — reveal the checkbox row on the existing value
+      // rather than reseeding it and silently dropping types the schema
+      // already had.
+      if (selectedTypes.length > 1 || selectedTypes.includes('null')) return;
+      // Otherwise seed a sensible starting multi-type set from the current
+      // single type (or 'string' from 'any') so the checkbox row opens with
       // something already checked rather than empty.
       const base = selectedTypes[0] ?? 'string';
       setTypeFromCheckboxes([base, 'null']);
-      if (hasEnum) setEnum(false);
       return;
     }
     if (next === 'enum') {
