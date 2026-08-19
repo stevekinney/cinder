@@ -174,7 +174,7 @@ jobs:
       # When that mirror is unreachable, apt can fetch release metadata from
       # its fallback but then hang indefinitely on package indexes. Select the
       # canonical archive explicitly before Playwright invokes apt.
-      - name: Normalize Ubuntu mirror for hydration smoke
+      - name: Normalize Ubuntu mirror for Playwright dependencies
         run: >-
           sudo sed -i
           's|http://azure.archive.ubuntu.com/ubuntu/|https://archive.ubuntu.com/ubuntu/|g'

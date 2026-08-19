@@ -196,27 +196,42 @@ describe('workflow-level env block scanning', () => {
   });
 });
 
-describe('main-green hydration browser setup', () => {
-  test('normalizes the hosted-runner Ubuntu mirror before installing Playwright dependencies', () => {
-    const workspaceRoot = resolve(import.meta.dirname, '../../..');
-    const workflow = readFileSync(
-      join(workspaceRoot, '.github', 'workflows', 'main-green.yaml'),
-      'utf8',
-    );
-    const mirrorNormalizationIndex = workflow.indexOf(
-      'Normalize Ubuntu mirror for hydration smoke',
-    );
-    const runnerMirrorIndex = workflow.indexOf('/etc/apt/apt-mirrors.txt');
-    const azureMirrorIndex = workflow.indexOf('http://azure.archive.ubuntu.com/ubuntu/');
-    const canonicalMirrorIndex = workflow.indexOf('https://archive.ubuntu.com/ubuntu/');
-    const playwrightInstallIndex = workflow.indexOf('bunx playwright install --with-deps chromium');
+describe('Playwright dependency setup', () => {
+  test.each(['main-green.yaml', 'release.yaml', 'release-manual.yaml'])(
+    '%s normalizes the hosted-runner Ubuntu mirror before installing Playwright dependencies',
+    (workflowName) => {
+      const workspaceRoot = resolve(import.meta.dirname, '../../..');
+      const workflow = readFileSync(
+        join(workspaceRoot, '.github', 'workflows', workflowName),
+        'utf8',
+      );
+      const mirrorNormalizationIndex = workflow.indexOf(
+        'Normalize Ubuntu mirror for Playwright dependencies',
+      );
+      const runnerMirrorIndex = workflow.indexOf(
+        '/etc/apt/apt-mirrors.txt',
+        mirrorNormalizationIndex,
+      );
+      const azureMirrorIndex = workflow.indexOf(
+        'http://azure.archive.ubuntu.com/ubuntu/',
+        mirrorNormalizationIndex,
+      );
+      const canonicalMirrorIndex = workflow.indexOf(
+        'https://archive.ubuntu.com/ubuntu/',
+        azureMirrorIndex,
+      );
+      const playwrightInstallIndex = workflow.indexOf(
+        'bunx playwright install --with-deps chromium',
+        canonicalMirrorIndex,
+      );
 
-    expect(mirrorNormalizationIndex).toBeGreaterThan(-1);
-    expect(runnerMirrorIndex).toBeGreaterThan(mirrorNormalizationIndex);
-    expect(azureMirrorIndex).toBeGreaterThan(mirrorNormalizationIndex);
-    expect(canonicalMirrorIndex).toBeGreaterThan(azureMirrorIndex);
-    expect(playwrightInstallIndex).toBeGreaterThan(canonicalMirrorIndex);
-  });
+      expect(mirrorNormalizationIndex).toBeGreaterThan(-1);
+      expect(runnerMirrorIndex).toBeGreaterThan(mirrorNormalizationIndex);
+      expect(azureMirrorIndex).toBeGreaterThan(mirrorNormalizationIndex);
+      expect(canonicalMirrorIndex).toBeGreaterThan(azureMirrorIndex);
+      expect(playwrightInstallIndex).toBeGreaterThan(canonicalMirrorIndex);
+    },
+  );
 });
 
 describe('validate-release-workflow changeset guards', () => {

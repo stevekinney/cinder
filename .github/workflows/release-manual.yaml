@@ -220,6 +220,12 @@ jobs:
             echo "Published ${peer} satisfies Editor peer ${peer_range}: ${published_versions}"
           done
 
+      - name: Normalize Ubuntu mirror for Playwright dependencies
+        run: >-
+          sudo sed -i
+          's|http://azure.archive.ubuntu.com/ubuntu/|https://archive.ubuntu.com/ubuntu/|g'
+          /etc/apt/apt-mirrors.txt
+
       - name: Install Chromium for consumer validation
         run: bunx playwright install --with-deps chromium
 
