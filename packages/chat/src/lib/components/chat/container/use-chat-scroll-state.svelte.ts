@@ -501,18 +501,31 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
 
   /**
    * Scroll to the bottom of the viewport.
+   *
+   * Routed through `withUserScrollGuard` (CIN-418) so it gets the same
+   * `scrollend`-driven final `recomputeAtBottomAtSettlement` that
+   * `scrollToTop`/`jumpToLatest` already get. Without it, `atBottom` depended
+   * solely on the passive `scroll` listener's rAF-batched recompute — under
+   * `content-visibility: auto` row virtualization, off-screen rows collapse
+   * to their `contain-intrinsic-size` estimate and newly-visible rows expand
+   * to real height continuously during the animation, which can shift
+   * `scrollHeight` by hundreds of px mid-flight and coalesce/lag the passive
+   * listener's last recompute under load (observed on CI WebKit, ~20% of
+   * runs). `withUserScrollGuard`'s own `scrollend` handler is the backstop
+   * that still recomputes from final geometry even if that happens.
    */
   function scrollToBottom(viewport: HTMLElement | null): void {
     if (!viewport) return;
-    // Supersede any stale guard from an earlier top-scroll (scrollToTop) that
-    // hasn't expired yet — this scroll's own target already matches what the
-    // auto-stick-to-bottom effect wants, so it needs no guard of its own, but
-    // an older guard left active would keep suppressing that effect's
-    // correction for messages appended after this call.
-    clearUserScrollGuard();
-    withForcedLayout(viewport, () => {
-      viewport.scrollTo({ top: viewport.scrollHeight, behavior: getScrollBehavior() });
-    });
+    withUserScrollGuard(
+      viewport,
+      () => {
+        withForcedLayout(viewport, () => {
+          viewport.scrollTo({ top: viewport.scrollHeight, behavior: getScrollBehavior() });
+        });
+      },
+      undefined,
+      () => viewport.scrollHeight,
+    );
   }
 
   /**
@@ -700,7 +713,17 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
     withUserScrollGuard(
       viewport,
       () => {
-        viewport.scrollTo({ top: 0, behavior: getScrollBehavior() });
+        // Force layout for the duration of the animation (CIN-418), same
+        // treatment scrollToBottom/jumpToLatest already get. Without this,
+        // rows scrolled past re-collapse to their content-visibility
+        // estimate as the scroll-to-top animation passes them, which can
+        // shrink `scrollHeight` below `clientHeight` right as `scrollend`
+        // fires — indistinguishable from a genuinely short transcript to
+        // `recomputeAtBottomAtSettlement`'s `isAtBottom` check, so the guard
+        // settled with `atBottom` stuck `true` instead of `false`.
+        withForcedLayout(viewport, () => {
+          viewport.scrollTo({ top: 0, behavior: getScrollBehavior() });
+        });
       },
       undefined,
       // Destination: only a scrollend AT the top is this scroll's own
