@@ -481,8 +481,8 @@ test.describe('JSON schema editor', () => {
     await editor.getByRole('tab', { name: /^Form/ }).click();
     const enumTable = editor.getByRole('table', { name: 'Enum values' });
     await expect(enumTable).toBeVisible();
-    await expect(editor.getByRole('textbox', { name: 'Enum value 1' })).toHaveValue('"draft"');
-    await expect(editor.getByRole('textbox', { name: 'Enum value 2' })).toHaveValue('"published"');
+    await expect(editor.getByRole('textbox', { name: 'Enum value 1', exact: true })).toHaveValue('"draft"');
+    await expect(editor.getByRole('textbox', { name: 'Enum value 2', exact: true })).toHaveValue('"published"');
   });
 
   test('invalid enum drafts survive switching away from the form view', async ({ page }) => {
@@ -493,13 +493,13 @@ test.describe('JSON schema editor', () => {
     await editor.getByRole('button', { name: 'Apply' }).click();
 
     await editor.getByRole('tab', { name: /^Form/ }).click();
-    const enumValue = editor.getByRole('textbox', { name: 'Enum value 2' });
+    const enumValue = editor.getByRole('textbox', { name: 'Enum value 2', exact: true });
     await enumValue.fill('{');
     await expect(editor.getByText('Enter a valid JSON value.')).toBeVisible();
 
     await jsonTab.click();
     await editor.getByRole('tab', { name: /^Form/ }).click();
-    await expect(editor.getByRole('textbox', { name: 'Enum value 2' })).toHaveValue('{');
+    await expect(editor.getByRole('textbox', { name: 'Enum value 2', exact: true })).toHaveValue('{');
     await expect(editor.getByText('Enter a valid JSON value.')).toBeVisible();
   });
 
@@ -516,7 +516,7 @@ test.describe('JSON schema editor', () => {
     await typeSelect.selectOption('enum');
 
     await expect(editor.getByRole('table', { name: 'Enum values' })).toBeVisible();
-    await expect(editor.getByRole('textbox', { name: 'Enum value 1' })).toHaveValue('""');
+    await expect(editor.getByRole('textbox', { name: 'Enum value 1', exact: true })).toHaveValue('""');
   });
 
   test('selecting "Multiple types" seeds a starting array and reveals the checkbox row', async ({
@@ -568,6 +568,65 @@ test.describe('JSON schema editor', () => {
     await expect(editor.locator('textarea').first()).toHaveValue(
       /"type":\s*\[\s*"string",\s*"number"\s*\]/,
     );
+  });
+
+  test('typing an enum value description promotes to oneOf, and clearing it demotes back to a bare enum', async ({
+    page,
+  }) => {
+    const editor = await openFirstEditor(page);
+    const jsonTab = editor.getByRole('tab', { name: /JSON/ });
+    await jsonTab.click();
+    await editor
+      .locator('textarea')
+      .first()
+      .fill('{"type":"object","properties":{"status":{"type":"string","enum":["draft","published"]}}}');
+    await editor.getByRole('button', { name: 'Apply' }).click();
+
+    await editor.getByRole('tab', { name: /^Form/ }).click();
+    await editor.getByRole('button', { name: 'Expand status property' }).click();
+    await editor
+      .getByRole('textbox', { name: 'Enum value 1 description' })
+      .fill('Not yet visible');
+
+    await jsonTab.click();
+    await expect(editor.locator('textarea').first()).toHaveValue(
+      /"oneOf":\s*\[\s*\{\s*"const":\s*"draft",\s*"description":\s*"Not yet visible"\s*\},\s*\{\s*"const":\s*"published"\s*\}\s*\]/,
+    );
+
+    await editor.getByRole('tab', { name: /^Form/ }).click();
+    // Switching views remounts the form tree, collapsing the row again.
+    await editor.getByRole('button', { name: 'Expand status property' }).click();
+    await editor
+      .getByRole('textbox', { name: 'Enum value 1 description' })
+      .fill('');
+
+    await jsonTab.click();
+    await expect(editor.locator('textarea').first()).toHaveValue(
+      /"enum":\s*\[\s*"draft",\s*"published"\s*\]/,
+    );
+    await expect(editor.locator('textarea').first()).not.toHaveValue(/oneOf/);
+  });
+
+  test('a real oneOf composition is unaffected by the enum-description promotion', async ({
+    page,
+  }) => {
+    const editor = await openFirstEditor(page);
+    const jsonTab = editor.getByRole('tab', { name: /JSON/ });
+    await jsonTab.click();
+    await editor
+      .locator('textarea')
+      .first()
+      .fill(
+        '{"type":"object","properties":{"identifier":{"oneOf":[{"type":"string","pattern":"^[a-z]+$"},{"type":"integer","minimum":1}]}}}',
+      );
+    await editor.getByRole('button', { name: 'Apply' }).click();
+
+    await editor.getByRole('tab', { name: /^Form/ }).click();
+    await editor.getByRole('button', { name: 'Expand identifier property' }).click();
+
+    // A real composition renders its branch editors, not the enum table.
+    await expect(editor.getByRole('table', { name: 'Enum values' })).toHaveCount(0);
+    await expect(editor.getByText('oneOf', { exact: true })).toBeVisible();
   });
 
   test('exactly one enabled toolbar action is in the tab order at rest', async ({ page }) => {

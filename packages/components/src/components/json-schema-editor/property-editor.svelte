@@ -41,6 +41,13 @@
 
   import { reconcileCompositionBranchKeys } from './composition-branch-keys.ts';
   import {
+    buildEnumPatch,
+    detectEnumSource,
+    isEnumLikeOneOf,
+    readEnumDescriptions,
+    readEnumValues,
+  } from './enum-composition.ts';
+  import {
     DEFAULT_COLLAPSE_DEPTH,
     EDITABLE_KEYWORDS,
     MAX_RENDER_DEPTH,
@@ -92,7 +99,13 @@
   });
 
   const isAnyType = $derived(selectedTypes.length === 0);
-  const hasEnum = $derived(Array.isArray(objectValue.enum));
+  // A described enum value is promoted to a `oneOf` of `{const, description?}`
+  // branches (see enum-composition.ts) since bare `enum` has no description
+  // slot. `enumSource` is which representation (if either) is currently active.
+  const enumSource = $derived(detectEnumSource(objectValue));
+  const hasEnum = $derived(enumSource !== null);
+  const enumValues = $derived(readEnumValues(objectValue, enumSource));
+  const enumDescriptions = $derived(readEnumDescriptions(objectValue, enumSource));
 
   const preservedKeys = $derived.by(() =>
     Object.keys(objectValue).filter(
@@ -228,18 +241,28 @@
     if (!enabled) {
       const { [`${path}/enum`]: _removedDraft, ...remainingDrafts } = enumDrafts;
       onEnumDraftsChange?.(remainingDrafts);
+      // Only clear `oneOf` when it's the enum's own promoted representation —
+      // a schema could (unusually) carry a real composition alongside a bare
+      // `enum` at the same time, and that must not be silently deleted.
+      patch(
+        {
+          enum: undefined,
+          oneOf: isEnumLikeOneOf(objectValue.oneOf) ? undefined : objectValue.oneOf,
+        },
+        { label: 'edit enum' },
+      );
+      return;
     }
-    patch(
-      { enum: enabled ? (Array.isArray(objectValue.enum) ? objectValue.enum : ['']) : undefined },
-      { label: 'edit enum' },
-    );
+    if (enumSource !== null) return; // already enabled, in either representation
+    patch({ enum: [''] }, { label: 'edit enum' });
   }
 
-  function setEnumValues(
+  function setEnumEntries(
     values: unknown[],
+    descriptions: string[],
     options: { coalesceKey?: string; label?: string } | undefined = undefined,
   ) {
-    patch({ enum: values }, options ?? { label: 'edit enum values' });
+    patch(buildEnumPatch(values, descriptions), options ?? { label: 'edit enum values' });
   }
 
   // ===== Type select =====
@@ -475,13 +498,14 @@
         <EnumEditor
           idPrefix={`${idPrefix}-enum`}
           path={`${path}/enum`}
-          values={objectValue.enum ?? []}
+          values={enumValues}
+          descriptions={enumDescriptions}
           drafts={enumDrafts[`${path}/enum`] ?? {}}
           {historyRevision}
           {readonly}
           onvalidationErrorcount={(count) => setChildValidationErrorCount('enum', count)}
           onDraftsChange={(next) => onEnumDraftsChange?.({ ...enumDrafts, [`${path}/enum`]: next })}
-          onValuesChange={setEnumValues}
+          onValuesChange={setEnumEntries}
         />
       </div>
     {/if}
@@ -536,9 +560,12 @@
       onPatch={patch}
     />
 
-    <!-- Composition (only when present) -->
+    <!-- Composition (only when present). A oneOf standing in for a described
+         enum (enumSource === 'oneOf') is rendered by the enum table above
+         instead — showing it here too would double-render every value as
+         both an enum row and a full recursive branch editor. -->
     {#each ['allOf', 'anyOf', 'oneOf'] as const as keyword (keyword)}
-      {#if Array.isArray(objectValue[keyword])}
+      {#if Array.isArray(objectValue[keyword]) && !(keyword === 'oneOf' && enumSource === 'oneOf')}
         <Collapsible
           class="cinder-jse-section cinder-jse-section--collapsible"
           trigger={keyword}
