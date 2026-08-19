@@ -98,6 +98,11 @@ function mixOklch(base: OklchColor, target: OklchColor, targetPercent: number): 
   };
 }
 
+function deriveStatusTier(base: OklchColor, target: OklchColor): OklchColor {
+  const mixed = mixOklch(base, target, 36);
+  return { ...mixed, c: Math.min(mixed.c, 0.05) };
+}
+
 function compositeOver(foreground: Rgb, background: Rgb, opacity: number): Rgb {
   return foreground.map(
     (channel, index) => channel * opacity + background[index]! * (1 - opacity),
@@ -358,6 +363,7 @@ const bg = readOklchToken(css, '--cinder-bg');
 const surface = readOklchToken(css, '--cinder-surface');
 const surfaceInset = readOklchToken(css, '--cinder-surface-inset');
 const surfaceRaised = readOklchToken(css, '--cinder-surface-raised');
+const text = readOklchToken(css, '--cinder-text');
 const borderFaint = readOklchToken(css, '--cinder-border-faint');
 const borderMuted = readOklchToken(css, '--cinder-border-muted');
 const border = readOklchToken(css, '--cinder-border');
@@ -702,6 +708,28 @@ describe('sRGB gamut integrity (no silent chroma clamping)', () => {
     },
   };
   for (const [name, token] of Object.entries(derivedFromAccent)) {
+    for (const arm of ['light', 'dark'] as const) {
+      it(`${name} ${arm} arm is in sRGB gamut`, () => {
+        expect(isInSrgbGamut(token[arm])).toBe(true);
+      });
+    }
+  }
+
+  // The status tiers first mix with their semantic target then reduce chroma to
+  // 0.05. This reproduces the relative-color formula and keeps every resolved
+  // light/dark result inside the sRGB gamut instead of relying on browser mapping.
+  const derivedStatusTiers: Record<string, TokenArms> = {};
+  for (const [name, status] of Object.entries({ info, success, warning, danger })) {
+    derivedStatusTiers[`${name}Muted`] = {
+      light: deriveStatusTier(status.light, surface.light),
+      dark: deriveStatusTier(status.dark, surface.dark),
+    };
+    derivedStatusTiers[`${name}Subtle`] = {
+      light: deriveStatusTier(status.light, text.light),
+      dark: deriveStatusTier(status.dark, text.dark),
+    };
+  }
+  for (const [name, token] of Object.entries(derivedStatusTiers)) {
     for (const arm of ['light', 'dark'] as const) {
       it(`${name} ${arm} arm is in sRGB gamut`, () => {
         expect(isInSrgbGamut(token[arm])).toBe(true);

@@ -58,6 +58,12 @@ describe('DTCG semantic validation', () => {
     expect(() => validateTokenDocument({ $type: type, sample: { $value: value } })).not.toThrow();
   });
 
+  test('rejects cubicBezier values with out-of-range x coordinates', () => {
+    expect(() =>
+      validateTokenDocument({ $type: 'cubicBezier', sample: { $value: [2, 0, -1, 1] } }),
+    ).toThrow('x coordinates');
+  });
+
   test('preserves unknown vendor extension data', () => {
     const document: TokenDocument = {
       color: {
@@ -181,5 +187,13 @@ describe('DTCG semantic validation', () => {
         resolutionOrder: ['theme'],
       }),
     ).toThrow('modifier values must not be empty');
+    expect(() =>
+      validateResolverDocument({
+        version: '2025.10',
+        sets: [{ name: 'base', source: ['sets/base.tokens.json'] }],
+        modifiers: [{ name: 'theme', values: ['light', 'dark'] }],
+        resolutionOrder: [],
+      }),
+    ).toThrow('must list every modifier exactly once');
   });
 });

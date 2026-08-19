@@ -30,8 +30,10 @@ async function main(): Promise<void> {
       return document ? [document] : [];
     }),
   );
-  for (const modifierValues of combinations(resolver.modifiers)) {
-    const modifierDocuments = resolver.modifiers.map((modifier) => {
+  const modifiersByName = new Map(resolver.modifiers.map((modifier) => [modifier.name, modifier]));
+  const orderedModifiers = resolver.resolutionOrder.map((name) => modifiersByName.get(name)!);
+  for (const modifierValues of combinations(orderedModifiers)) {
+    const modifierDocuments = orderedModifiers.map((modifier) => {
       const document = findModifierDocument(documents, modifier, modifierValues[modifier.name]);
       if (!document)
         throw new TokenValidationError([

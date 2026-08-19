@@ -133,9 +133,13 @@ function validateValue(
       if (
         !Array.isArray(value) ||
         value.length !== 4 ||
-        !value.every((entry) => typeof entry === 'number')
+        !value.every((entry) => typeof entry === 'number') ||
+        value[0] < 0 ||
+        value[0] > 1 ||
+        value[2] < 0 ||
+        value[2] > 1
       )
-        addIssue(issues, path, 'cubicBezier must be four numbers');
+        addIssue(issues, path, 'cubicBezier must be four numbers with x coordinates in [0, 1]');
       return;
     case 'strokeStyle':
       if (
@@ -382,9 +386,16 @@ export function validateResolverDocument(document: ResolverDocumentShape): void 
     if (!set['source'].every(isString))
       addIssue(issues, `$.sets.${set['name']}`, 'set sources must be strings');
   }
-  for (const name of document.resolutionOrder)
+  const resolutionOrderNames = new Set<string>();
+  for (const name of document.resolutionOrder) {
     if (!isString(name) || !modifierNames.has(name))
       addIssue(issues, '$.resolutionOrder', `unknown modifier ${String(name)}`);
+    else if (resolutionOrderNames.has(name))
+      addIssue(issues, '$.resolutionOrder', 'modifier names must appear only once');
+    else resolutionOrderNames.add(name);
+  }
+  if (resolutionOrderNames.size !== modifierNames.size)
+    addIssue(issues, '$.resolutionOrder', 'must list every modifier exactly once');
   if (issues.length > 0) throw new TokenValidationError(issues);
 }
 
