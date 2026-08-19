@@ -165,6 +165,7 @@ describe('useReducedMotion', () => {
     document.documentElement.dataset['reducedMotion'] = 'off';
     await Promise.resolve();
     expect(motion.current).toBe(false);
+    expect(document.documentElement.dataset['cinderReducedMotion']).toBe('false');
 
     applyReducedMotionPreference(document.documentElement, 'system');
   });

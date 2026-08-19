@@ -173,5 +173,13 @@ describe('DTCG semantic validation', () => {
         resolutionOrder: [],
       }),
     ).toThrow('set names must be unique');
+    expect(() =>
+      validateResolverDocument({
+        version: '2025.10',
+        sets: [{ name: 'base', source: ['sets/base.tokens.json'] }],
+        modifiers: [{ name: 'theme', values: [] }],
+        resolutionOrder: ['theme'],
+      }),
+    ).toThrow('modifier values must not be empty');
   });
 });

@@ -10,15 +10,25 @@ function readRootPreference(
     : 'system';
 }
 
+function synchronizeRootPreference(
+  root: HTMLElement | undefined,
+): import('./use-reduced-motion.types.ts').ReducedMotionPreference {
+  const preference = readRootPreference(root);
+  if (!root) return preference;
+  if (preference === 'system') delete root.dataset['cinderReducedMotion'];
+  else root.dataset['cinderReducedMotion'] = String(preference === 'on');
+  return preference;
+}
+
 const applicationRoot = typeof document === 'undefined' ? undefined : document.documentElement;
 const applicationPreferences = new SvelteMap<
   'current',
   import('./use-reduced-motion.types.ts').ReducedMotionPreference
->([['current', readRootPreference(applicationRoot)]]);
+>([['current', synchronizeRootPreference(applicationRoot)]]);
 
 if (applicationRoot && typeof MutationObserver !== 'undefined') {
   new MutationObserver(() => {
-    applicationPreferences.set('current', readRootPreference(applicationRoot));
+    applicationPreferences.set('current', synchronizeRootPreference(applicationRoot));
   }).observe(applicationRoot, {
     attributes: true,
     attributeFilter: ['data-reduced-motion'],

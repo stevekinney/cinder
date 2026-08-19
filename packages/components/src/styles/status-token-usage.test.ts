@@ -20,6 +20,12 @@ const auditedFiles = [
 const forbiddenStatusMixPattern =
   /color-mix\((?:(?!;).|\r|\n)*?var\(\s*--cinder-(info|success|warning|danger)\s*(?:[,)\s])/m;
 
+function declarationValue(source: string, token: string): string {
+  const match = source.match(new RegExp(`${token}:\\s*([^;]+);`));
+  if (!match?.[1]) throw new Error(`Missing ${token} declaration`);
+  return match[1];
+}
+
 describe('status token usage', () => {
   test('audited files do not mix solid status tokens into soft surfaces', async () => {
     const failures: string[] = [];
@@ -53,16 +59,14 @@ describe('status token usage', () => {
   test('derived status tiers retain the polarity-aware relative-color formula', async () => {
     const tokens = await readFile(join(import.meta.dir, 'tokens-base.css'), 'utf-8');
     for (const status of ['info', 'success', 'warning', 'danger']) {
-      expect(tokens).toMatch(
-        new RegExp(
-          `--cinder-color-${status}-muted:[\\s\\S]*?var\\(--cinder-${status}\\)[\\s\\S]*?var\\(--cinder-surface\\)[\\s\\S]*?36%`,
-        ),
-      );
-      expect(tokens).toMatch(
-        new RegExp(
-          `--cinder-color-${status}-subtle:[\\s\\S]*?var\\(--cinder-${status}\\)[\\s\\S]*?var\\(--cinder-text\\)[\\s\\S]*?36%`,
-        ),
-      );
+      const muted = declarationValue(tokens, `--cinder-color-${status}-muted`);
+      const subtle = declarationValue(tokens, `--cinder-color-${status}-subtle`);
+      expect(muted).toContain(`var(--cinder-${status})`);
+      expect(muted).toContain('var(--cinder-surface)');
+      expect(muted).toContain('36%');
+      expect(subtle).toContain(`var(--cinder-${status})`);
+      expect(subtle).toContain('var(--cinder-text)');
+      expect(subtle).toContain('36%');
     }
   });
 });

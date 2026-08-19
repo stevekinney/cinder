@@ -361,6 +361,8 @@ export function validateResolverDocument(document: ResolverDocumentShape): void 
     modifierNames.add(name);
     if (!values.every(isString))
       addIssue(issues, `$.modifiers.${name}`, 'modifier values must be strings');
+    if (values.length === 0)
+      addIssue(issues, `$.modifiers.${name}`, 'modifier values must not be empty');
     if (
       modifier['default'] !== undefined &&
       (!isString(modifier['default']) || !values.includes(modifier['default']))
