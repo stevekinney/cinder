@@ -7,6 +7,12 @@ import {
   validateTokenDocument,
 } from './validate.ts';
 
+type TokenDocumentEntry = { path: string; document: TokenDocument };
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 async function main(): Promise<void> {
   const [resolver, documents] = await Promise.all([loadResolverDocument(), loadTokenDocuments()]);
   validateResolverDocument(resolver);
@@ -72,21 +78,17 @@ function combinations(modifiers: ResolverModifier[]): Array<Record<string, strin
   );
 }
 
-function findModifierDocument(
-  documents: Array<{ path: string; document: TokenDocument }>,
+export function findModifierDocument(
+  documents: TokenDocumentEntry[],
   modifier: ResolverModifier,
   value: string | undefined,
-): { path: string; document: TokenDocument } | undefined {
+): TokenDocumentEntry | undefined {
   if (!value) return undefined;
-  const directPath = `${modifier.name}-${value}.tokens.json`;
-  const themedPath = `${modifier.name}s/${value}.tokens.json`;
-  return documents.find(
-    ({ path }) =>
-      path === directPath ||
-      path.endsWith(`/${directPath}`) ||
-      path === themedPath ||
-      path.endsWith(`/${themedPath}`),
-  );
+  return documents.find(({ document }) => {
+    const extensions = document.$extensions?.['com.lostgradient.cinder'];
+    if (!isObject(extensions) || !isObject(extensions['modifier'])) return false;
+    return extensions['modifier'][modifier.name] === value;
+  });
 }
 
-await main();
+if (import.meta.main) await main();

@@ -102,6 +102,20 @@ function collectTokens(
   }
 }
 
+function inheritMissingGroupMembers(target: TokenGroup, source: TokenGroup): void {
+  for (const [name, value] of Object.entries(source)) {
+    const existing = target[name];
+    if (isTokenGroup(existing) && isTokenGroup(value)) inheritMissingGroupMembers(existing, value);
+    else if (!Object.hasOwn(target, name))
+      Object.defineProperty(target, name, {
+        configurable: true,
+        enumerable: true,
+        value: clone(value),
+        writable: true,
+      });
+  }
+}
+
 function resolveExtends(
   groupPath: string,
   groups: Map<string, TokenGroup>,
@@ -118,13 +132,18 @@ function resolveExtends(
     const extended = resolveExtends(extendedPath, groups, visiting, complete);
     if (group.$type === undefined && extended.$type !== undefined) group.$type = extended.$type;
     for (const [name, value] of Object.entries(extended))
-      if ((!name.startsWith('$') || name === '$root') && !Object.hasOwn(group, name))
-        Object.defineProperty(group, name, {
-          configurable: true,
-          enumerable: true,
-          value: clone(value),
-          writable: true,
-        });
+      if (!name.startsWith('$') || name === '$root') {
+        const existing = group[name];
+        if (isTokenGroup(existing) && isTokenGroup(value))
+          inheritMissingGroupMembers(existing, value);
+        else if (!Object.hasOwn(group, name))
+          Object.defineProperty(group, name, {
+            configurable: true,
+            enumerable: true,
+            value: clone(value),
+            writable: true,
+          });
+      }
   }
   for (const [name, value] of Object.entries(group)) {
     if (name.startsWith('$') || !isTokenGroup(value)) continue;

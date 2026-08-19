@@ -120,6 +120,15 @@ describe('DTCG semantic validation', () => {
     ).toThrow('$root token cannot contain child groups');
   });
 
+  test('defers nested token types inherited through a group extension', () => {
+    expect(() =>
+      validateTokenDocument({
+        base: { $type: 'number', token: { $value: 1 } },
+        derived: { $extends: '{base}', nested: { token: { $value: 2 } } },
+      }),
+    ).not.toThrow();
+  });
+
   test('validates composite member shapes', () => {
     expect(() =>
       validateTokenDocument({

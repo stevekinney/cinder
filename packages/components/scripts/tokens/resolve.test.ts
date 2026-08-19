@@ -79,6 +79,15 @@ describe('DTCG resolver', () => {
     expect(resolved['derived.value']).toEqual({ $type: 'number', $value: 1 });
   });
 
+  test('retains inherited nested group members through sparse overrides', () => {
+    const resolved = resolveDocument({
+      base: { $type: 'number', nested: { first: { $value: 1 }, second: { $value: 2 } } },
+      derived: { $extends: '{base}', nested: { first: { $value: 3 } } },
+    });
+    expect(resolved['derived.nested.first']?.$value).toBe(3);
+    expect(resolved['derived.nested.second']?.$value).toBe(2);
+  });
+
   test('resolves nested extensions before copying an extended group', () => {
     const resolved = resolveDocument({
       common: { value: { $value: 1 } },

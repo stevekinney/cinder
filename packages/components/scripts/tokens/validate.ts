@@ -114,7 +114,8 @@ function validateValue(
         !Array.isArray(objectValue['components']) ||
         objectValue['components'].length !== 3 ||
         !objectValue['components'].every(
-          (component) => typeof component === 'number' || component === 'none',
+          (component) =>
+            typeof component === 'number' || component === 'none' || isReference(component),
         ) ||
         (objectValue['alpha'] !== undefined &&
           (typeof objectValue['alpha'] !== 'number' ||
@@ -381,6 +382,7 @@ function validateGroup(
   inheritedType: TokenType | undefined,
   issues: ValidationIssue[],
   isDocumentRoot = false,
+  inheritsTypeThroughExtension = false,
 ): void {
   validateMetadata(group, path, issues, isDocumentRoot);
   for (const key of Object.keys(group))
@@ -388,6 +390,8 @@ function validateGroup(
       addIssue(issues, path, `unknown reserved property ${key}`);
   const groupType =
     group['$type'] === undefined ? inheritedType : tokenType(group, inheritedType, path, issues);
+  const mayInheritTypeThroughExtension =
+    inheritsTypeThroughExtension || (groupType === undefined && group['$extends'] !== undefined);
   for (const [name, value] of Object.entries(group)) {
     if (name === '$root') {
       if (!isObject(value) || !('$value' in value)) {
@@ -402,7 +406,7 @@ function validateGroup(
         if (key.startsWith('$') && !TOKEN_METADATA.has(key))
           addIssue(issues, path, `unknown reserved property ${key}`);
       const type =
-        groupType === undefined && group['$extends'] !== undefined && value['$type'] === undefined
+        groupType === undefined && mayInheritTypeThroughExtension && value['$type'] === undefined
           ? undefined
           : tokenType(value, groupType, path, issues);
       if (type) validateValue(type, value['$value'], path, issues);
@@ -431,13 +435,13 @@ function validateGroup(
         if (key.startsWith('$') && !TOKEN_METADATA.has(key))
           addIssue(issues, childPath, `unknown reserved property ${key}`);
       const type =
-        groupType === undefined && group['$extends'] !== undefined && value['$type'] === undefined
+        groupType === undefined && mayInheritTypeThroughExtension && value['$type'] === undefined
           ? undefined
           : tokenType(value, groupType, childPath, issues);
       if (type) validateValue(type, value['$value'], childPath, issues);
       continue;
     }
-    validateGroup(value, childPath, groupType, issues);
+    validateGroup(value, childPath, groupType, issues, false, mayInheritTypeThroughExtension);
   }
 }
 
