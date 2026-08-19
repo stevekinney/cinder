@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
+import { tick } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -195,6 +196,113 @@ describe('EnumEditor', () => {
     expect(invalidInput).toHaveProperty('value', '{');
     expect(invalidInput.getAttribute('aria-invalid')).toBe('true');
     expect(screen.getByText('Enter a valid JSON value.')).not.toBeNull();
+  });
+
+  test('does not resurrect a stale draft on a row added back at the same index', async () => {
+    let values: unknown[] = ['draft', 'published'];
+    let drafts: Record<number, { text: string; error: 'invalid-json' | 'duplicate' }> = {};
+    const view = render(EnumEditor, {
+      idPrefix: 'status-enum',
+      path: '/status/enum',
+      values,
+      drafts,
+      historyRevision: 0,
+      onDraftsChange: (next: typeof drafts) => {
+        drafts = next;
+      },
+      onValuesChange: (next: unknown[]) => {
+        values = next;
+      },
+    });
+
+    // Leave an invalid draft on the second row.
+    await fireEvent.input(screen.getByRole('textbox', { name: 'Enum value 2' }), {
+      target: { value: '{' },
+    });
+    expect(screen.getByText('Enter a valid JSON value.')).not.toBeNull();
+    expect(drafts[1]).toEqual({ text: '{', error: 'invalid-json' });
+
+    // Simulate an undo that shrinks `values` back to one entry while bumping
+    // historyRevision — the row the draft pointed at no longer exists. The
+    // stale draft is invisible here (nothing renders index 1), which is
+    // exactly why it can survive undetected without the fix.
+    values = ['draft'];
+    await view.rerender({
+      idPrefix: 'status-enum',
+      path: '/status/enum',
+      values,
+      drafts,
+      historyRevision: 1,
+      onDraftsChange: (next: typeof drafts) => {
+        drafts = next;
+      },
+      onValuesChange: (next: unknown[]) => {
+        values = next;
+      },
+    });
+    expect(screen.queryByText('Enter a valid JSON value.')).toBeNull();
+
+    // A property list re-adding a value lands it back at index 1, passing
+    // the SAME `drafts` object prop back down (the parent only ever prunes
+    // by rebasing, it doesn't know this row is "new"). Without the fix, the
+    // stale index-1 draft resurrects and this brand-new valid row inherits
+    // an error it never earned.
+    values = ['draft', ''];
+    await view.rerender({
+      idPrefix: 'status-enum',
+      path: '/status/enum',
+      values,
+      drafts,
+      historyRevision: 1,
+      onDraftsChange: (next: typeof drafts) => {
+        drafts = next;
+      },
+      onValuesChange: (next: unknown[]) => {
+        values = next;
+      },
+    });
+
+    expect(screen.queryByText('Enter a valid JSON value.')).toBeNull();
+    expect(
+      screen.getByRole('textbox', { name: 'Enum value 2' }).getAttribute('aria-invalid'),
+    ).toBeNull();
+  });
+
+  test('produces the correct final announcement across two moves with identical text', async () => {
+    // Regression coverage for the functional half of clearing the live
+    // region before re-setting it: two consecutive moves that happen to
+    // produce the exact same announcement string must both still leave the
+    // region holding that string, not some stale intermediate value. Whether
+    // assistive technology actually re-announces an unchanged-looking string
+    // is a timing property happy-dom's MutationObserver doesn't reliably
+    // surface — that half is manual-verification-only, per the a11y record.
+    let values: unknown[] = ['a', 'b', 'c'];
+    const view = render(EnumEditor, {
+      idPrefix: 'status-enum',
+      path: '/status/enum',
+      values,
+      onValuesChange: (next: unknown[]) => {
+        values = next;
+      },
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Move enum value 3 up' }));
+    await tick();
+    expect(screen.getByText('Moved enum value 3 to position 2 of 3.')).not.toBeNull();
+
+    await view.rerender({
+      idPrefix: 'status-enum',
+      path: '/status/enum',
+      values,
+      onValuesChange: (next: unknown[]) => {
+        values = next;
+      },
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Move enum value 3 up' }));
+    await tick();
+
+    expect(screen.getByText('Moved enum value 3 to position 2 of 3.')).not.toBeNull();
   });
 
   test('treats object values with different member order as duplicates', async () => {

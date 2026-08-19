@@ -50,6 +50,22 @@
   $effect(() => {
     if (historyRevision !== previousHistoryRevision) {
       previousHistoryRevision = historyRevision;
+      // Undo/redo can shrink `values` out from under a draft that pointed at a
+      // row past the end. Drop drafts whose row no longer exists instead of
+      // leaving them stranded with no visible input to correct — this needs
+      // to prune both our own local echo AND the persisted `drafts` prop,
+      // since undo/redo only bumps `historyRevision` and never re-derives
+      // the parent's stored draft record on its own.
+      localDrafts = Object.fromEntries(
+        Object.entries(localDrafts).filter(([index]) => Number(index) < values.length),
+      );
+      const prunedDrafts = Object.fromEntries(
+        Object.entries(drafts).filter(([index]) => Number(index) < values.length),
+      );
+      if (Object.keys(prunedDrafts).length !== Object.keys(drafts).length) {
+        emittedDrafts = prunedDrafts;
+        onDraftsChange?.(prunedDrafts);
+      }
       return;
     }
     if (drafts !== previousDrafts) {
@@ -182,6 +198,12 @@
     onValuesChange(next);
     await tick();
     focusValue(targetIndex);
+    // Clear the live region first so two consecutive moves that produce the
+    // identical announcement string still trigger a DOM change — otherwise
+    // Svelte sees no diff on the second move and assistive technology stays
+    // silent.
+    actionAnnouncement = '';
+    await tick();
     actionAnnouncement = `Moved enum value ${index + 1} to position ${targetIndex + 1} of ${values.length}.`;
   }
 
