@@ -503,7 +503,7 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
    * Scroll to the bottom of the viewport.
    *
    * Routed through `withUserScrollGuard` (CIN-418) so it gets the same
-   * `scrollend`-driven final `recomputeAtBottomAtSettlement` that
+   * `scrollend`-driven final `recomputeFromViewport` that
    * `scrollToTop`/`jumpToLatest` already get. Without it, `atBottom` depended
    * solely on the passive `scroll` listener's rAF-batched recompute — under
    * `content-visibility: auto` row virtualization, off-screen rows collapse
@@ -719,7 +719,7 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
         // estimate as the scroll-to-top animation passes them, which can
         // shrink `scrollHeight` below `clientHeight` right as `scrollend`
         // fires — indistinguishable from a genuinely short transcript to
-        // `recomputeAtBottomAtSettlement`'s `isAtBottom` check, so the guard
+        // `recomputeFromViewport`'s `isAtBottom` check, so the guard
         // settled with `atBottom` stuck `true` instead of `false`.
         withForcedLayout(viewport, () => {
           viewport.scrollTo({ top: 0, behavior: getScrollBehavior() });
