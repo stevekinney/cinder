@@ -41,6 +41,7 @@ const COLOR_SPACES = new Set([
   'oklch',
 ]);
 const HEX_COLOR_PATTERN = /^#[0-9a-f]{3,4}(?:[0-9a-f]{2})?$/i;
+const COLOR_MEMBERS = new Set(['colorSpace', 'components', 'alpha', 'hex']);
 
 type JsonObject = Record<string, unknown>;
 type ResolverDocumentShape = {
@@ -130,6 +131,9 @@ function validateValue(
           path,
           'color must have a colorSpace, three numeric or none components, and valid optional alpha or hex',
         );
+      if (objectValue)
+        for (const name of Object.keys(objectValue))
+          if (!COLOR_MEMBERS.has(name)) addIssue(issues, path, `unknown color member ${name}`);
       return;
     case 'dimension':
       if (
@@ -318,9 +322,10 @@ function validateValue(
         else if (typeof objectValue['lineHeight'] !== 'number')
           validateValue('dimension', objectValue['lineHeight'], `${path}.lineHeight`, issues);
         if (
-          isObject(objectValue['lineHeight']) &&
-          typeof objectValue['lineHeight']['value'] === 'number' &&
-          objectValue['lineHeight']['value'] < 0
+          (typeof objectValue['lineHeight'] === 'number' && objectValue['lineHeight'] < 0) ||
+          (isObject(objectValue['lineHeight']) &&
+            typeof objectValue['lineHeight']['value'] === 'number' &&
+            objectValue['lineHeight']['value'] < 0)
         )
           addIssue(issues, `${path}.lineHeight`, 'typography lineHeight must be non-negative');
         if (

@@ -161,6 +161,15 @@ function resolveReference(
   resolving: Set<string>,
 ): unknown {
   const segments = tokenPathFromReference(reference).split('.');
+  if (reference.startsWith('#/') && segments[0] === '$root') {
+    const rootToken = tokens.get('');
+    if (!rootToken) return issue(reference, 'reference target does not exist');
+    const resolvedToken = resolveToken('', tokens, resolving);
+    const propertyValue = getByPath(resolvedToken, segments.slice(1));
+    if (propertyValue === undefined)
+      issue(reference, 'reference target $root has no requested property');
+    return clone(propertyValue);
+  }
   for (let end = segments.length; end > 0; end -= 1) {
     const candidatePath = segments.slice(0, end).join('.');
     const token = tokens.get(candidatePath);

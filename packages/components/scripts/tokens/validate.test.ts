@@ -223,6 +223,26 @@ describe('DTCG semantic validation', () => {
         },
       }),
     ).toThrow('unknown composite member timingFuction');
+    expect(() =>
+      validateTokenDocument({
+        $type: 'color',
+        sample: { $value: { colorSpace: 'oklch', components: [0, 0, 0], alpah: 0.5 } },
+      }),
+    ).toThrow('unknown color member alpah');
+    expect(() =>
+      validateTokenDocument({
+        $type: 'typography',
+        sample: {
+          $value: {
+            fontFamily: '{family}',
+            fontSize: '{dimension}',
+            fontWeight: '{weight}',
+            letterSpacing: '{dimension}',
+            lineHeight: -1,
+          },
+        },
+      }),
+    ).toThrow('lineHeight must be non-negative');
   });
 
   test('rejects negative durations', () => {

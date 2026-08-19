@@ -58,6 +58,15 @@ describe('DTCG resolver', () => {
     expect(resolved['copy']?.$value).toBe(1);
   });
 
+  test('resolves JSON Pointers to document root tokens', () => {
+    const resolved = resolveDocument({
+      $type: 'number',
+      $root: { $value: 1 },
+      copy: { $value: '#/$root/$value' },
+    });
+    expect(resolved['copy']?.$value).toBe(1);
+  });
+
   test('rejects circular aliases and group extensions', () => {
     expect(() =>
       resolveDocument({
