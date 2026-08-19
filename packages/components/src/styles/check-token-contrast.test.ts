@@ -737,6 +737,16 @@ describe('sRGB gamut integrity (no silent chroma clamping)', () => {
     }
   }
 
+  it('applies the status-tier chroma clamp in every theme declaration', () => {
+    const declarations = [
+      ...css.matchAll(
+        /--cinder-color-(?:info|success|warning|danger)-(?:muted|subtle):\s*oklch\(\s*from color-mix\(in oklch, var\(--cinder-(?:info|success|warning|danger)\), var\(--cinder-(?:surface|text)\) 36%\) l min\(c, 0\.05\) h\s*\);/g,
+      ),
+    ];
+
+    expect(declarations).toHaveLength(24);
+  });
+
   chartSeries.forEach((series, index) => {
     for (const arm of ['light', 'dark'] as const) {
       it(`chart-series-${index + 1} ${arm} arm is in sRGB gamut`, () => {
