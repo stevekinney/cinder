@@ -90,10 +90,8 @@ describe('PropertyList', () => {
       onValueChange: () => {},
     });
 
-    expect(
-      screen.getByRole('button', { name: 'email: Optional (toggle required)' }),
-    ).not.toBeNull();
-    expect(screen.getByRole('button', { name: 'age: Optional (toggle required)' })).not.toBeNull();
+    expect(screen.getByRole('checkbox', { name: 'email' })).not.toBeNull();
+    expect(screen.getByRole('checkbox', { name: 'age' })).not.toBeNull();
     expect(screen.getByRole('button', { name: 'Move email up' })).not.toBeNull();
     expect(screen.getByRole('button', { name: 'Move email down' })).not.toBeNull();
     expect(screen.getByRole('button', { name: 'Move age up' })).not.toBeNull();

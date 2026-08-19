@@ -160,17 +160,17 @@
     color: var(--cinder-text-subtle);
   }
 
-  /* Each property is a custom disclosure (not <details>/<summary> — putting the
-   action buttons inside <summary> creates an ARIA "interactive within
-   interactive" violation). One top divider per row; no per-row card chrome.
-   The Required pill's primary/ghost variant conveys required state, so we
-   don't render a separate text marker. */
-  .cinder-jse-property-row {
+  .cinder-jse-property-table {
+    inline-size: 100%;
+    border-collapse: collapse;
+  }
+
+  .cinder-jse-property-row > .cinder-table__cell {
     border-top: 1px solid var(--cinder-border-muted);
     background: transparent;
   }
 
-  .cinder-jse-property-row:first-child {
+  .cinder-jse-property-row:first-child > .cinder-table__cell {
     border-top: 0;
   }
 
@@ -208,25 +208,34 @@
     margin-block: var(--cinder-space-1) 0;
   }
 
-  .cinder-jse-property-row[data-cinder-invalid] {
+  .cinder-jse-property-row[data-cinder-invalid] > .cinder-table__cell:first-child {
     border-inline-start: 2px solid var(--cinder-color-danger-border);
   }
 
-  .cinder-jse-property-row__summary {
-    display: flex;
-    align-items: center;
-    gap: var(--cinder-space-2);
-    padding-block: var(--cinder-space-1-5);
-    padding-inline-end: var(--cinder-space-3);
+  .cinder-jse-property-row__key {
     padding-inline-start: calc(
       var(--cinder-space-3) + var(--cinder-jse-property-depth, 0) * var(--cinder-space-4)
     );
-    min-height: var(--cinder-button-height-md);
+    white-space: nowrap;
   }
 
-  /* The chevron + name + type form a single clickable disclosure trigger.
-   Action buttons live as siblings inside __summary so they keep the
-   single-baseline layout without nesting interactive elements. */
+  .cinder-jse-property-row__type,
+  .cinder-jse-property-row__description {
+    font-size: var(--cinder-text-xs);
+    color: var(--cinder-text-subtle);
+  }
+
+  .cinder-jse-property-row__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--cinder-space-1);
+    text-align: end;
+  }
+
+  /* The chevron + name form a single clickable disclosure trigger. Action
+   buttons live in their own cell so they keep the single-baseline layout
+   without nesting interactive elements inside the trigger. */
   .cinder-jse-property-row__trigger {
     display: inline-flex;
     align-items: center;
@@ -272,33 +281,27 @@
     color: var(--cinder-text);
   }
 
-  .cinder-jse-property-row__type {
-    font-size: var(--cinder-text-xs);
-    color: var(--cinder-text-subtle);
-    padding: 0 var(--cinder-space-1-5);
-  }
-
-  .cinder-jse-property-row__spacer {
-    flex: 1 1 auto;
-  }
-
-  .cinder-jse-property-row__panel {
-    display: flex;
-    flex-direction: column;
-    gap: var(--cinder-space-3);
+  .cinder-jse-property-row__detail-cell {
+    display: table-cell;
     padding: var(--cinder-space-3) var(--cinder-space-3) var(--cinder-space-4);
-    margin-inline-start: calc(var(--cinder-jse-property-depth, 0) * var(--cinder-space-4));
+    padding-inline-start: calc(
+      var(--cinder-space-3) + var(--cinder-jse-property-depth, 0) * var(--cinder-space-4)
+    );
     background: transparent;
   }
 
+  .cinder-jse-property-row__detail-cell > * + * {
+    margin-block-start: var(--cinder-space-3);
+  }
+
   /* The nested PropertyEditor inside an open property panel doesn't get a card. */
-  .cinder-jse-property-row__panel > .cinder-jse-property-editor[data-cinder-jse-depth] {
+  .cinder-jse-property-row__detail-cell > .cinder-jse-property-editor[data-cinder-jse-depth] {
     border: 0;
     background: transparent;
     border-radius: 0;
   }
 
-  .cinder-jse-property-row__panel > .cinder-jse-property-editor > .cinder-jse-section {
+  .cinder-jse-property-row__detail-cell > .cinder-jse-property-editor > .cinder-jse-section {
     padding-inline: 0;
   }
 

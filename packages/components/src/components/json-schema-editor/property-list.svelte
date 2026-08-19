@@ -11,6 +11,8 @@
     readonly?: boolean;
     enumDrafts?: Record<string, Record<number, EnumDraft>>;
     historyRevision?: number;
+    /** The owning property's key, when this list renders a nested object's properties. Used to give the nested table a distinguishing accessible name. */
+    parentKey?: string | undefined;
     onvalidationErrorcount?: ((count: number) => void) | undefined;
     onEnumDraftsChange?: ((next: Record<string, Record<number, EnumDraft>>) => void) | undefined;
     onValueChange: (properties: Record<string, JsonSchemaValue>, required: string[]) => void;
@@ -20,12 +22,15 @@
 <script lang="ts">
   import ChevronDown from 'lucide-svelte/icons/chevron-down';
   import { onDestroy, tick } from 'svelte';
+  import { classNames } from '../../utilities/class-names.ts';
   import Alert from '../alert/alert.svelte';
   import Button from '../button/button.svelte';
+  import Checkbox from '../checkbox/checkbox.svelte';
   import Chip from '../chip/chip.svelte';
   import Badge from '@lostgradient/cinder/badge';
   import Collapsible from '@lostgradient/cinder/collapsible';
   import Input from '../input/input.svelte';
+  import Table from '@lostgradient/cinder/table';
   import PropertyEditor from './property-editor.svelte';
   import { calculatePropertyValidationErrorCount } from './property-list-validation.ts';
 
@@ -38,6 +43,7 @@
     readonly = false,
     enumDrafts = {},
     historyRevision = 0,
+    parentKey,
     onvalidationErrorcount,
     onEnumDraftsChange,
     onValueChange,
@@ -237,11 +243,11 @@
     return Object.keys(next).every((name, nextIndex) => name === reordered[nextIndex]);
   }
 
-  function toggleRequired(key: string) {
+  function setRequired(key: string, isRequired: boolean) {
     if (readonly) return;
     const set = new Set(required);
-    if (set.has(key)) set.delete(key);
-    else set.add(key);
+    if (isRequired) set.add(key);
+    else set.delete(key);
     onValueChange(properties, [...set]);
   }
 
@@ -294,128 +300,155 @@
 
 <p class="cinder-sr-only" aria-live="polite">{actionAnnouncement}</p>
 
-<div class="cinder-jse-property-list">
-  {#if renameError}
-    <Alert variant="danger">{renameError}</Alert>
-  {/if}
+{#if renameError}
+  <Alert variant="danger">{renameError}</Alert>
+{/if}
 
+<div class="cinder-jse-property-list">
   {#if propertyNames.length === 0}
     <p class="cinder-jse-property-list__empty">No properties yet.</p>
-  {/if}
-
-  {#each propertyNames as key, index (key)}
-    {@const isRequired = required.includes(key)}
-    {@const isOpen = expanded[key] === true}
-    {@const childValidationErrorCount = Math.max(
-      childValidationCounts[key] ?? 0,
-      retainedDraftCount(key),
-    )}
-    {@const panelId = `${idPrefix}-${key}-panel`}
-    <!--
-      Custom disclosure (not <details>/<summary>) so the action buttons can
-      live as siblings of the trigger rather than nested inside it.
-      <button> inside <summary> creates an ARIA "interactive within
-      interactive" violation.
-    -->
-    <div
-      class="cinder-jse-property-row"
-      data-cinder-required={isRequired ? '' : undefined}
-      data-cinder-invalid={childValidationErrorCount > 0 ? '' : undefined}
+  {:else}
+    <Table
+      class="cinder-jse-property-table"
+      aria-label={parentKey ? `Properties of ${parentKey}` : 'Schema properties'}
     >
-      <div class="cinder-jse-property-row__summary" style={`--cinder-jse-property-depth: ${depth}`}>
-        <button
-          use:propertyTrigger={key}
-          type="button"
-          class="cinder-jse-property-row__trigger"
-          aria-label={`${isOpen ? 'Collapse' : 'Expand'} ${key} property${childValidationErrorCount > 0 ? `, ${childValidationErrorCount} validation ${childValidationErrorCount === 1 ? 'error' : 'errors'}` : ''}`}
-          aria-expanded={isOpen}
-          aria-controls={isOpen ? panelId : undefined}
-          onclick={() => toggleExpanded(key, isOpen)}
-        >
-          <ChevronDown
-            class="cinder-jse-property-row__chevron"
-            size={14}
-            strokeWidth={2}
-            aria-hidden="true"
-          />
-          <span class="cinder-jse-property-row__name">{key}</span>
-          <span class="cinder-jse-property-row__type">{summariseType(properties[key] ?? {})}</span>
-          {#if childValidationErrorCount > 0}
-            <Badge
-              variant="danger"
-              aria-label={`${childValidationErrorCount} validation ${childValidationErrorCount === 1 ? 'error' : 'errors'} in ${key}`}
+      <Table.Header class={classNames(depth > 0 && 'cinder-sr-only')}>
+        <Table.Row>
+          <Table.HeaderCell>Property key</Table.HeaderCell>
+          <Table.HeaderCell>Type</Table.HeaderCell>
+          <Table.HeaderCell>Description</Table.HeaderCell>
+          <Table.HeaderCell><span class="cinder-sr-only">Actions</span></Table.HeaderCell>
+        </Table.Row>
+      </Table.Header>
+      <Table.Body>
+        {#each propertyNames as key, index (key)}
+          {@const isRequired = required.includes(key)}
+          {@const isOpen = expanded[key] === true}
+          {@const childValidationErrorCount = Math.max(
+            childValidationCounts[key] ?? 0,
+            retainedDraftCount(key),
+          )}
+          {@const panelId = `${idPrefix}-${key}-panel`}
+          {@const propertySchema = properties[key] ?? {}}
+          {@const description =
+            typeof propertySchema === 'object' ? (propertySchema.description ?? '') : ''}
+          <Table.Row
+            class="cinder-jse-property-row"
+            data-cinder-required={isRequired ? '' : undefined}
+            data-cinder-invalid={childValidationErrorCount > 0 ? '' : undefined}
+          >
+            <Table.Cell
+              as="th"
+              class="cinder-jse-property-row__key"
+              style={`--cinder-jse-property-depth: ${depth}`}
             >
-              {childValidationErrorCount}{' '}
-              {childValidationErrorCount === 1 ? 'error' : 'errors'}
-            </Badge>
-          {/if}
-        </button>
-        <span class="cinder-jse-property-row__spacer"></span>
-        <Button
-          variant={isRequired ? 'primary' : 'ghost'}
-          size="xs"
-          disabled={readonly}
-          aria-pressed={isRequired}
-          aria-label={`${key}: ${isRequired ? 'Required (toggle off)' : 'Optional (toggle required)'}`}
-          onclick={() => toggleRequired(key)}
-        >
-          {isRequired ? 'Required' : 'Optional'}
-        </Button>
-        <Button
-          variant="ghost"
-          size="xs"
-          disabled={readonly || !canMoveProperty(index, -1)}
-          aria-label={`Move ${key} up`}
-          onclick={() => moveProperty(key, -1, index)}
-        >
-          ↑
-        </Button>
-        <Button
-          variant="ghost"
-          size="xs"
-          disabled={readonly || !canMoveProperty(index, 1)}
-          aria-label={`Move ${key} down`}
-          onclick={() => moveProperty(key, 1, index)}
-        >
-          ↓
-        </Button>
-        <Button
-          variant="ghost-danger"
-          size="xs"
-          disabled={readonly}
-          aria-label={`Delete ${key}`}
-          onclick={() => deleteProperty(key, index)}
-        >
-          Delete
-        </Button>
-      </div>
+              <button
+                use:propertyTrigger={key}
+                type="button"
+                class="cinder-jse-property-row__trigger"
+                aria-label={`${isOpen ? 'Collapse' : 'Expand'} ${key} property${childValidationErrorCount > 0 ? `, ${childValidationErrorCount} validation ${childValidationErrorCount === 1 ? 'error' : 'errors'}` : ''}`}
+                aria-expanded={isOpen}
+                aria-controls={isOpen ? panelId : undefined}
+                onclick={() => toggleExpanded(key, isOpen)}
+              >
+                <ChevronDown
+                  class="cinder-jse-property-row__chevron"
+                  size={14}
+                  strokeWidth={2}
+                  aria-hidden="true"
+                />
+                <span class="cinder-jse-property-row__name">{key}</span>
+                {#if childValidationErrorCount > 0}
+                  <Badge
+                    variant="danger"
+                    aria-label={`${childValidationErrorCount} validation ${childValidationErrorCount === 1 ? 'error' : 'errors'} in ${key}`}
+                  >
+                    {childValidationErrorCount}{' '}
+                    {childValidationErrorCount === 1 ? 'error' : 'errors'}
+                  </Badge>
+                {/if}
+              </button>
+            </Table.Cell>
+            <Table.Cell class="cinder-jse-property-row__type">
+              {summariseType(propertySchema)}
+            </Table.Cell>
+            <Table.Cell class="cinder-jse-property-row__description">
+              {description}
+            </Table.Cell>
+            <Table.Cell class="cinder-jse-property-row__actions">
+              <Checkbox
+                checked={isRequired}
+                disabled={readonly}
+                aria-label={key}
+                onValueChange={(next) => setRequired(key, next)}
+              />
+              <Button
+                variant="ghost"
+                size="xs"
+                disabled={readonly || !canMoveProperty(index, -1)}
+                aria-label={`Move ${key} up`}
+                onclick={() => moveProperty(key, -1, index)}
+              >
+                ↑
+              </Button>
+              <Button
+                variant="ghost"
+                size="xs"
+                disabled={readonly || !canMoveProperty(index, 1)}
+                aria-label={`Move ${key} down`}
+                onclick={() => moveProperty(key, 1, index)}
+              >
+                ↓
+              </Button>
+              <Button
+                variant="ghost-danger"
+                size="xs"
+                disabled={readonly}
+                aria-label={`Delete ${key}`}
+                onclick={() => deleteProperty(key, index)}
+              >
+                Delete
+              </Button>
+            </Table.Cell>
+          </Table.Row>
 
-      {#if isOpen}
-        <div id={panelId} class="cinder-jse-property-row__panel">
-          <Input
-            id={`${idPrefix}-${key}-name`}
-            label="Name"
-            value={getDraftName(key)}
-            disabled={readonly}
-            oninput={(event: Event) => (draftNames[key] = (event.target as HTMLInputElement).value)}
-            onblur={() => commitRename(key)}
-          />
-          <PropertyEditor
-            idPrefix={`${idPrefix}-${key}-schema`}
-            path={`${path}/${pointerSegment(key)}`}
-            depth={depth + 1}
-            {readonly}
-            {enumDrafts}
-            {historyRevision}
-            value={properties[key] ?? {}}
-            onvalidationErrorcount={(count) => setChildValidationErrorCount(key, count)}
-            {onEnumDraftsChange}
-            onValueChange={(next) => setPropertySchema(key, next)}
-          />
-        </div>
-      {/if}
-    </div>
-  {/each}
+          {#if isOpen}
+            <Table.Row class="cinder-jse-property-row__detail-row">
+              <Table.Cell
+                id={panelId}
+                colspan={4}
+                class="cinder-jse-property-row__detail-cell"
+                style={`--cinder-jse-property-depth: ${depth}`}
+              >
+                <Input
+                  id={`${idPrefix}-${key}-name`}
+                  label="Name"
+                  value={getDraftName(key)}
+                  disabled={readonly}
+                  oninput={(event: Event) =>
+                    (draftNames[key] = (event.target as HTMLInputElement).value)}
+                  onblur={() => commitRename(key)}
+                />
+                <PropertyEditor
+                  idPrefix={`${idPrefix}-${key}-schema`}
+                  path={`${path}/${pointerSegment(key)}`}
+                  depth={depth + 1}
+                  propertyKey={key}
+                  {readonly}
+                  {enumDrafts}
+                  {historyRevision}
+                  value={properties[key] ?? {}}
+                  onvalidationErrorcount={(count) => setChildValidationErrorCount(key, count)}
+                  {onEnumDraftsChange}
+                  onValueChange={(next) => setPropertySchema(key, next)}
+                />
+              </Table.Cell>
+            </Table.Row>
+          {/if}
+        {/each}
+      </Table.Body>
+    </Table>
+  {/if}
 
   <span class="cinder-jse-property-list__add-property-reference" bind:this={addPropertyElement}>
     <Button variant="secondary" size="sm" disabled={readonly} onclick={addProperty}>
