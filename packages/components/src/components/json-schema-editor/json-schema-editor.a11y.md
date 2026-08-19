@@ -60,7 +60,7 @@ All property-table controls use their native button, checkbox, and input keyboar
 - `Tab` and `Shift+Tab` move through enabled controls in reading order: disclosure, required, move up, move down, delete — then, if the row is expanded, its detail controls (including any nested table) — then the next row. Disabled controls, and all controls in read-only or dirty-JSON form state, are skipped by native sequential navigation.
 - `Enter` and `Space` activate the disclosure, move, and delete buttons.
 - `Space` toggles the required checkbox. `Enter` does not — that's native checkbox behavior and isn't overridden.
-- `Enter` and `Space` also move through the enabled enum value input and its move or remove controls. The first Up and last Down controls are disabled and skipped.
+- `Tab` and `Shift+Tab` also move through the enabled enum value input and its move or remove controls. The first Up and last Down controls are disabled and skipped.
 - Editable property names commit when their input loses focus. Text-entry keys remain native input behavior.
 - `Cmd+Z`, `Shift+Cmd+Z`, and `Cmd+Y` undo and redo on macOS. `Ctrl+Z`, `Shift+Ctrl+Z`, and `Ctrl+Y` provide the corresponding shortcuts elsewhere. They act only outside editable text controls, so native text-editing shortcuts remain available while focus is in an input.
 
@@ -71,7 +71,7 @@ All property-table controls use their native button, checkbox, and input keyboar
 | Property table | `table` | `Schema properties` (root) or `Properties of <key>` (nested) | — |
 | Enum table | `table` | `Enum values` | — |
 | Disclosure | `button` | `Expand <key> property` / `Collapse <key> property`, suffixed with `, N validation errors` when the row has nested errors | `aria-expanded`; `aria-controls` present only while the detail row is rendered |
-| Required | `checkbox` | `<key>` — the column header supplies the word "Required" | `checked` |
+| Required | `checkbox` | `<key>` | `checked` |
 | Move up / down | `button` | `Move <key> up` / `Move <key> down` | `disabled` at the ends of the table, in read-only mode, and while a JSON draft is dirty |
 | Delete | `button` | `Delete <key>` | `disabled` in read-only mode and while a JSON draft is dirty |
 | Validation badge | — | `N validation errors in <key>` | — |
@@ -80,7 +80,7 @@ All property-table controls use their native button, checkbox, and input keyboar
 
 Reorder and delete controls repeat identically on every row, so each one carries the property key in its name — without that, a screen-reader control list reads as a column of indistinguishable "Move up" entries.
 
-The required control's accessible name is the bare property key, not `<key>: Required (toggle off)`. Naming it after the next action would make the name change on every toggle, which announces the change twice and breaks a reference a screen-reader user just built by name; the column header already supplies "Required" as context, matching how the reorder and delete controls rely on their own column position plus name.
+The required control's accessible name is the bare property key, not `<key>: Required (toggle off)`. Naming it after the next action would make the name change on every toggle, which announces the change twice and breaks a reference a screen-reader user just built by name. It lives in the same visually-hidden `Actions` column as the reorder and delete buttons; a `checkbox` role already announces as "checkbox," so nothing else in the name needs to say "required" for it to be understood in context, and the row-header key told the user which row they're in before they got there.
 
 Do not rely on color, icon shape, placeholder text, or a control's column position as the only way to communicate state or available actions.
 

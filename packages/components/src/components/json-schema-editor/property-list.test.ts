@@ -105,6 +105,44 @@ describe('PropertyList', () => {
     ).toBeNull();
   });
 
+  test('the required checkbox adds and removes the key from the required array', async () => {
+    let latestRequired: string[] = [];
+    const { rerender } = render(PropertyList, {
+      idPrefix: 'properties',
+      path: '/properties',
+      properties: {
+        name: { type: 'string' },
+        age: { type: 'integer' },
+      },
+      required: ['name'],
+      onValueChange: (_properties: unknown, required: string[]) => {
+        latestRequired = required;
+      },
+    });
+
+    expect(screen.getByRole('checkbox', { name: 'name' })).toHaveProperty('checked', true);
+    expect(screen.getByRole('checkbox', { name: 'age' })).toHaveProperty('checked', false);
+
+    await fireEvent.click(screen.getByRole('checkbox', { name: 'age' }));
+    expect(latestRequired).toEqual(['name', 'age']);
+
+    await rerender({
+      idPrefix: 'properties',
+      path: '/properties',
+      properties: {
+        name: { type: 'string' },
+        age: { type: 'integer' },
+      },
+      required: latestRequired,
+      onValueChange: (_properties: unknown, required: string[]) => {
+        latestRequired = required;
+      },
+    });
+
+    await fireEvent.click(screen.getByRole('checkbox', { name: 'name' }));
+    expect(latestRequired).toEqual(['age']);
+  });
+
   test('reorders properties through the row controls', async () => {
     let latestProperties: Record<string, JsonSchemaValue> = {};
     render(PropertyList, {
