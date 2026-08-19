@@ -21,6 +21,7 @@ import {
   nodeModulesTopology,
   parsePushRefs,
   prePushPackageScript,
+  registerHookProcessGroup,
   REPO_ROOT,
   runHookCommand,
   withGateLock,
@@ -329,6 +330,45 @@ describe('runHookCommand', () => {
     } finally {
       if (childPid !== undefined) killProcessGroup(childPid);
       await rm(directory, { force: true, recursive: true });
+    }
+  });
+});
+
+describe('registerHookProcessGroup', () => {
+  it('includes a directly spawned detached process in hook cleanup', async () => {
+    const processGroup = Bun.spawn(['bun', '-e', 'setInterval(() => {}, 1000)'], {
+      detached: true,
+      stderr: 'ignore',
+      stdin: 'ignore',
+      stdout: 'ignore',
+    });
+    registerHookProcessGroup(processGroup.pid);
+
+    try {
+      await cleanupHookProcesses();
+      await waitForProcessExit(processGroup.pid);
+    } finally {
+      killProcessGroup(processGroup.pid);
+      await processGroup.exited;
+    }
+  });
+
+  it('does not clean up a directly spawned process after it is unregistered', async () => {
+    const processGroup = Bun.spawn(['bun', '-e', 'setInterval(() => {}, 1000)'], {
+      detached: true,
+      stderr: 'ignore',
+      stdin: 'ignore',
+      stdout: 'ignore',
+    });
+    const unregisterProcessGroup = registerHookProcessGroup(processGroup.pid);
+    unregisterProcessGroup();
+
+    try {
+      await cleanupHookProcesses();
+      expect(isProcessAlive(processGroup.pid)).toBe(true);
+    } finally {
+      killProcessGroup(processGroup.pid);
+      await processGroup.exited;
     }
   });
 });

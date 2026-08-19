@@ -129,6 +129,12 @@ export type HookCommandOptions = {
   readonly stderr?: 'inherit' | 'pipe';
 };
 
+/** Register a detached process group for cleanup when the validation hook exits. */
+export function registerHookProcessGroup(pid: number): () => void {
+  activeHookProcessGroups.add(pid);
+  return () => activeHookProcessGroups.delete(pid);
+}
+
 type HookSignalCleanupOptions = {
   readonly exitAfterCleanup?: boolean;
 };
@@ -298,7 +304,7 @@ export async function runHookCommand(
     };
   }
 
-  activeHookProcessGroups.add(subprocess.pid);
+  const unregisterProcessGroup = registerHookProcessGroup(subprocess.pid);
 
   const abort = () => {
     aborted = true;
@@ -350,7 +356,7 @@ export async function runHookCommand(
     if (hookSignalCleanupPromise) {
       await hookSignalCleanupPromise;
     }
-    activeHookProcessGroups.delete(subprocess.pid);
+    unregisterProcessGroup();
   }
 }
 

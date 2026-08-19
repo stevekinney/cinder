@@ -29,13 +29,35 @@ describe('SvelteKit hydration route matrix', () => {
 });
 
 describe('development server teardown', () => {
-  test('does not signal a server that already exited', async () => {
+  test('does not signal a process group that is already gone', async () => {
     let signalCount = 0;
-    await stopDevelopmentServer({ exitCode: 0, exited: Promise.resolve(0), pid: 4_242 }, 1, () => {
-      signalCount += 1;
-    });
+    await stopDevelopmentServer(
+      { exitCode: 0, exited: Promise.resolve(0), pid: 4_242 },
+      1,
+      () => {
+        signalCount += 1;
+      },
+      () => false,
+    );
 
     expect(signalCount).toBe(0);
+  });
+
+  test('signals a live process group after its leader already exited', async () => {
+    const signals: NodeJS.Signals[] = [];
+    let processGroupAlive = true;
+
+    await stopDevelopmentServer(
+      { exitCode: 0, exited: Promise.resolve(0), pid: 4_242 },
+      1,
+      (_pid, signal) => {
+        signals.push(signal);
+        processGroupAlive = false;
+      },
+      () => processGroupAlive,
+    );
+
+    expect(signals).toEqual(['SIGTERM']);
   });
 
   test('escalates to SIGKILL when graceful termination never settles', async () => {
@@ -58,7 +80,7 @@ describe('development server teardown', () => {
       }
     };
 
-    await stopDevelopmentServer(server, 1, signalProcessGroup);
+    await stopDevelopmentServer(server, 1, signalProcessGroup, () => server.exitCode === null);
 
     expect(signals).toEqual(['SIGTERM', 'SIGKILL']);
     expect(server.exitCode).toBe(137);
@@ -73,9 +95,14 @@ describe('development server teardown', () => {
     };
 
     await expect(
-      stopDevelopmentServer(server, 1, (_pid, signal) => {
-        signals.push(signal);
-      }),
+      stopDevelopmentServer(
+        server,
+        1,
+        (_pid, signal) => {
+          signals.push(signal);
+        },
+        () => true,
+      ),
     ).rejects.toThrow('still running after SIGKILL');
 
     expect(signals).toEqual(['SIGTERM', 'SIGKILL']);

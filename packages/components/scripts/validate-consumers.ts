@@ -20,6 +20,7 @@ import { parse } from 'postcss';
 import { waitForReadyHtml } from './consumer-readiness.ts';
 import {
   installHookProcessCleanup,
+  registerHookProcessGroup,
   runHookCommand,
   withLocalValidationGateLock,
 } from './husky/utilities.ts';
@@ -1215,19 +1216,55 @@ const DEVELOPMENT_SERVER_TEARDOWN_TIMEOUT_MS = 5_000;
 
 type DevelopmentServerProcess = Pick<Bun.Subprocess, 'exitCode' | 'exited' | 'pid'>;
 type SignalProcessGroup = (pid: number, signal: NodeJS.Signals) => void;
+type IsProcessGroupAlive = (pid: number) => boolean;
+
+function processGroupIsAlive(pid: number): boolean {
+  try {
+    process.kill(-pid, 0);
+    return true;
+  } catch (caught) {
+    if (
+      typeof caught === 'object' &&
+      caught !== null &&
+      'code' in caught &&
+      caught.code === 'ESRCH'
+    ) {
+      return false;
+    }
+    return true;
+  }
+}
+
+async function waitForProcessGroupExit(
+  pid: number,
+  timeoutMs: number,
+  isProcessGroupAlive: IsProcessGroupAlive,
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (isProcessGroupAlive(pid)) {
+    if (Date.now() >= deadline) {
+      throw new Error(`process group ${pid} did not exit within ${timeoutMs}ms`);
+    }
+    await Bun.sleep(Math.min(25, timeoutMs));
+  }
+}
 
 /** Stop the detached Vite process group without letting cleanup hide the readiness result. */
 export async function stopDevelopmentServer(
   server: DevelopmentServerProcess,
   timeoutMs = DEVELOPMENT_SERVER_TEARDOWN_TIMEOUT_MS,
   signalProcessGroup: SignalProcessGroup = (pid, signal) => process.kill(pid, signal),
+  isProcessGroupAlive: IsProcessGroupAlive = processGroupIsAlive,
 ): Promise<void> {
-  if (server.exitCode !== null) return;
+  if (!isProcessGroupAlive(server.pid)) return;
 
   const stop = async (signal: NodeJS.Signals): Promise<void> => {
     signalProcessGroup(-server.pid, signal);
     await promiseWithTimeout(
-      server.exited,
+      Promise.all([
+        server.exited,
+        waitForProcessGroupExit(server.pid, timeoutMs, isProcessGroupAlive),
+      ]),
       timeoutMs,
       `stopping development server process group with ${signal}`,
     );
@@ -1236,7 +1273,7 @@ export async function stopDevelopmentServer(
   try {
     await stop('SIGTERM');
   } catch (gracefulError) {
-    if (server.exitCode !== null) return;
+    if (!isProcessGroupAlive(server.pid)) return;
     try {
       await stop('SIGKILL');
     } catch (forceError) {
@@ -1355,6 +1392,7 @@ async function assertSvelteKitDevChatHydrationRoute(
       },
     },
   );
+  const unregisterDevServerProcessGroup = registerHookProcessGroup(devServer.pid);
   const devServerStdout = devServer.stdout
     ? new Response(devServer.stdout).text()
     : Promise.resolve('');
@@ -1398,6 +1436,7 @@ async function assertSvelteKitDevChatHydrationRoute(
     hydrationAssertionsPassed = true;
   } finally {
     const teardownError = await developmentServerTeardownError(devServer);
+    if (teardownError === undefined) unregisterDevServerProcessGroup();
     if (teardownError !== undefined) {
       if (!hydrationAssertionsPassed) {
         process.stderr.write(
@@ -1441,6 +1480,7 @@ async function assertSvelteKitDevSsrRoute(fixtureDirectory: string, label: strin
       },
     },
   );
+  const unregisterDevServerProcessGroup = registerHookProcessGroup(devServer.pid);
   const devServerStdout = devServer.stdout
     ? new Response(devServer.stdout).text()
     : Promise.resolve('');
@@ -1576,6 +1616,7 @@ async function assertSvelteKitDevSsrRoute(fixtureDirectory: string, label: strin
     devSsrAssertionsPassed = true;
   } finally {
     const teardownError = await developmentServerTeardownError(devServer);
+    if (teardownError === undefined) unregisterDevServerProcessGroup();
     if (teardownError !== undefined) {
       if (!devSsrAssertionsPassed) {
         process.stderr.write(
