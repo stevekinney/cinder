@@ -130,10 +130,14 @@ export function makeScanMetadata(value: string): ScanMetadata {
       quoteDepth === 0 &&
       listDepth === 0 &&
       content.length > 0 &&
-      !/^(?:#{1,6}(?:[ \t]+|$)|(?:[*_-][ \t]*){3,}$|(?:`{3,}|~{3,})|<|\[[^\]^]+\]:)/u.test(content);
+      !/^(?:#{1,6}(?:[ \t]+|$)|(?:[*_-][ \t]*){3,}$|(?:=+|-+)[ \t]*$|(?:`{3,}|~{3,})|<|\[[^\]^]+\]:)/u.test(
+        content,
+      );
     if (
       content.length > 0 &&
-      !/^(?:#{1,6}(?:[ \t]+|$)|(?:[*_-][ \t]*){3,}$|(?:`{3,}|~{3,})|<|\[[^\]^]+\]:)/u.test(content)
+      !/^(?:#{1,6}(?:[ \t]+|$)|(?:[*_-][ \t]*){3,}$|(?:=+|-+)[ \t]*$|(?:`{3,}|~{3,})|<|\[[^\]^]+\]:)/u.test(
+        content,
+      )
     ) {
       paragraphLineStarts.add(start);
     }
@@ -169,7 +173,7 @@ export function makeScanMetadata(value: string): ScanMetadata {
       const next = nextMathClose.get(length);
       if (next !== undefined) mathEnds.set(start, next + length);
       if (
-        length === 2 ||
+        length >= 2 ||
         (length === 1 &&
           !/\s/u.test(value[start - 1] ?? '') &&
           !/[0-9]/u.test(value[index + 1] ?? ''))
@@ -257,8 +261,7 @@ export function hasEscapedPrefix(index: number, metadata: ScanMetadata): boolean
 
 export function getMathEnd(value: string, start: number, metadata: ScanMetadata): number | null {
   if (hasEscapedPrefix(start, metadata)) return null;
-  const delimiterLength = value[start + 1] !== '$' ? 1 : value[start + 2] !== '$' ? 2 : 3;
-  if (delimiterLength > 2 || (delimiterLength === 1 && /\s/u.test(value[start + 1] ?? ''))) {
+  if (value[start + 1] !== '$' && /\s/u.test(value[start + 1] ?? '')) {
     return null;
   }
   return metadata.mathEnds.get(start) ?? null;

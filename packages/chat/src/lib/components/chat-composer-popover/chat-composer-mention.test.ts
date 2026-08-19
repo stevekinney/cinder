@@ -121,10 +121,6 @@ describe('chat composer mentions', () => {
         expect.objectContaining({ label: 'Ada', uri: 'person:ada' }),
       ]);
     }
-    expect(parseChatComposerMentions('[Docs](https://x (title\n[Ada](person:ada))')).toEqual({
-      text: '[Docs](https://x (title\n[Ada](person:ada))',
-      mentions: [],
-    });
   });
 
   test('does not let an unclosed label absorb a later serialized mention', () => {
@@ -815,9 +811,92 @@ describe('chat composer mentions', () => {
       text: '$x\n# Ada\nend$',
       mentions: [{ label: 'Ada', uri: 'person:a', start: 5, end: 8 }],
     });
+    expect(parseChatComposerMentions('$$$[Ada](person:a)$$$')).toEqual({
+      text: '$$$[Ada](person:a)$$$',
+      mentions: [],
+    });
+    expect(parseChatComposerMentions('$ [Ada](person:a)')).toEqual({
+      text: '$ Ada',
+      mentions: [{ label: 'Ada', uri: 'person:a', start: 2, end: 5 }],
+    });
+    expect(parseChatComposerMentions('![Ada](person:image)')).toEqual({
+      text: '![Ada](person:image)',
+      mentions: [],
+    });
+    expect(parseChatComposerMentions('![Ada][missing]')).toEqual({
+      text: '![Ada][missing]',
+      mentions: [],
+    });
+    expect(parseChatComposerMentions('![logo [Ada](person:a)][missing]')).toEqual({
+      text: '![logo Ada][missing]',
+      mentions: [{ label: 'Ada', uri: 'person:a', start: 7, end: 10 }],
+    });
+    expect(parseChatComposerMentions('![logo [Ada](person:a)]')).toEqual({
+      text: '![logo Ada]',
+      mentions: [{ label: 'Ada', uri: 'person:a', start: 7, end: 10 }],
+    });
+    const resolvedImage = '[logo]: /logo\n![Ada][logo]';
+    expect(parseChatComposerMentions(resolvedImage)).toEqual({ text: resolvedImage, mentions: [] });
+    const normalizedResolvedImage = '[lo  go]: /logo\n![logo [Ada](person:a)][LO GO]';
+    expect(parseChatComposerMentions(normalizedResolvedImage)).toEqual({
+      text: normalizedResolvedImage,
+      mentions: [],
+    });
+    const fencedDefinition = '```\n[logo]: /logo\n```\n![logo [Ada](person:a)][logo]';
+    expect(parseChatComposerMentions(fencedDefinition)).toEqual({
+      text: '```\n[logo]: /logo\n```\n![logo Ada][logo]',
+      mentions: [{ label: 'Ada', uri: 'person:a', start: 29, end: 32 }],
+    });
+    const indentedDefinition = '    [logo]: /logo\n\n![logo [Ada](person:a)][logo]';
+    expect(parseChatComposerMentions(indentedDefinition)).toEqual({
+      text: '    [logo]: /logo\n\n![logo Ada][logo]',
+      mentions: [{ label: 'Ada', uri: 'person:a', start: 26, end: 29 }],
+    });
+    expect(parseChatComposerMentions('[Docs](https://x (bad [Ada](person:a)))')).toEqual({
+      text: '[Docs](https://x (bad Ada))',
+      mentions: [{ label: 'Ada', uri: 'person:a', start: 22, end: 25 }],
+    });
+    expect(parseChatComposerMentions('[Docs](https://x (title\n[Ada](person:a))')).toEqual({
+      text: '[Docs](https://x (title\nAda)',
+      mentions: [{ label: 'Ada', uri: 'person:a', start: 24, end: 27 }],
+    });
+    expect(parseChatComposerMentions('Heading\n---\n[ref]: /url "[Ada](person:a)"')).toEqual({
+      text: 'Heading\n---\n[ref]: /url "[Ada](person:a)"',
+      mentions: [],
+    });
+    const setextReference = 'Heading\n===\n[ref]: /url "[Ada](person:a)"';
+    expect(parseChatComposerMentions(setextReference)).toEqual({
+      text: setextReference,
+      mentions: [],
+    });
     expect(parseChatComposerMentions('ftp://example.com/[Ada](person:a)')).toEqual({
       text: 'ftp://example.com/[Ada](person:a)',
       mentions: [],
+    });
+    const repeatedInvalidAutolinks = 'http://x/'.repeat(20000);
+    expect(parseChatComposerMentions(repeatedInvalidAutolinks)).toEqual({
+      text: repeatedInvalidAutolinks,
+      mentions: [],
+    });
+    expect(parseChatComposerMentions('http://x/http://example.com/[Ada](person:a)')).toEqual({
+      text: 'http://x/http://example.com/[Ada](person:a)',
+      mentions: [],
+    });
+    expect(parseChatComposerMentions('http://http://example.com/[Ada](person:a)')).toEqual({
+      text: 'http://http://example.com/[Ada](person:a)',
+      mentions: [],
+    });
+    expect(parseChatComposerMentions('http://example.com:8080/[Ada](person:a)')).toEqual({
+      text: 'http://example.com:8080/[Ada](person:a)',
+      mentions: [],
+    });
+    expect(parseChatComposerMentions('http://example.com:/[Ada](person:a)')).toEqual({
+      text: 'http://example.com:/Ada',
+      mentions: [{ label: 'Ada', uri: 'person:a', start: 20, end: 23 }],
+    });
+    expect(parseChatComposerMentions('http://example.com!/[Ada](person:a)')).toEqual({
+      text: 'http://example.com!/Ada',
+      mentions: [{ label: 'Ada', uri: 'person:a', start: 20, end: 23 }],
     });
     for (const image of ['![Ada][logo]', '![Ada]', '![Ada](asset:logo)', '![A\\]da][logo]']) {
       expect(parseChatComposerMentions(image).mentions).toEqual([]);

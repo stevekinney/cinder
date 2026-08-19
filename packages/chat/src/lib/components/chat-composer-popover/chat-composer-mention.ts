@@ -13,14 +13,17 @@ import { getLineEnd, getLineEndingLength, isLineEnding } from './chat-composer-m
 import {
   escapeMentionLabel,
   escapeMentionUri,
-  getGfmLiteralAutolinkEnd,
   getOrdinaryLinkEnd,
   getReferenceImageEnd,
   hasMarkdownParagraphBreak,
   isEntityUri,
+  scanGfmLiteralAutolink,
   unescapeMarkdown,
 } from './chat-composer-mention-link.ts';
-import { getReferenceDefinitionEnd } from './chat-composer-mention-reference.ts';
+import {
+  collectResolvedReferenceLabels,
+  getReferenceDefinitionEnd,
+} from './chat-composer-mention-reference.ts';
 import {
   countRun,
   getContainerContext,
@@ -155,8 +158,10 @@ export function deserializeChatComposerMention(value: string): ChatComposerMenti
 export function parseChatComposerMentions(value: string): ChatComposerMentionParseResult {
   const mentions: ChatComposerMentionRange[] = [];
   const metadata = makeScanMetadata(value);
+  const resolvedReferenceLabels = collectResolvedReferenceLabels(value, metadata);
   let text = '';
   let sourceIndex = 0;
+  let gfmAutolinkScanEnd = 0;
   let codeFence: CodeFence | null = null;
   let indentedCode = false;
   let htmlDelimitedBlock: { terminator: string; container: ContainerContext } | null = null;
@@ -240,7 +245,7 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
     }
 
     if (value[sourceIndex] === '!' && value[sourceIndex + 1] === '[') {
-      const imageEnd = getReferenceImageEnd(value, sourceIndex);
+      const imageEnd = getReferenceImageEnd(value, sourceIndex, resolvedReferenceLabels);
       if (imageEnd !== null) {
         text += value.slice(sourceIndex, imageEnd);
         sourceIndex = imageEnd;
@@ -400,11 +405,14 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
       }
     }
 
-    const gfmLiteralAutolinkEnd = getGfmLiteralAutolinkEnd(value, sourceIndex);
-    if (gfmLiteralAutolinkEnd !== null) {
-      text += value.slice(sourceIndex, gfmLiteralAutolinkEnd);
-      sourceIndex = gfmLiteralAutolinkEnd;
-      continue;
+    if (sourceIndex >= gfmAutolinkScanEnd) {
+      const gfmLiteralAutolink = scanGfmLiteralAutolink(value, sourceIndex);
+      gfmAutolinkScanEnd = gfmLiteralAutolink.scanEnd;
+      if (gfmLiteralAutolink.end !== null) {
+        text += value.slice(sourceIndex, gfmLiteralAutolink.end);
+        sourceIndex = gfmLiteralAutolink.end;
+        continue;
+      }
     }
 
     const openingCodeFence =

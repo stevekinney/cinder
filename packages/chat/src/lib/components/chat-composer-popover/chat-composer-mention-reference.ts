@@ -1,7 +1,13 @@
 import { getLineEnd, getLineEndingLength } from './chat-composer-mention-lines.ts';
+import { normalizeReferenceLabel } from './chat-composer-mention-link.ts';
 import {
   getContainerContext,
+  getOpeningCodeFence,
+  isClosingCodeFence,
   isContainerActive,
+  isIndentedCodeLine,
+  isIndentedCodeStart,
+  type CodeFence,
   type ScanMetadata,
 } from './chat-composer-mention-scan.ts';
 
@@ -139,4 +145,66 @@ export function getReferenceDefinitionEnd(
   return titleCursor === titleEnd || (value[titleCursor] === '\r' && titleCursor + 1 === titleEnd)
     ? titleEnd
     : end;
+}
+
+export function collectResolvedReferenceLabels(value: string, metadata: ScanMetadata): Set<string> {
+  const labels = new Set<string>();
+  let codeFence: CodeFence | null = null;
+  let indentedCode = false;
+  for (let lineStart = 0; lineStart < value.length; ) {
+    const lineEnd = getLineEnd(value, lineStart);
+    let candidate = metadata.containerStarts.get(lineStart) ?? lineStart;
+    let indentation = 0;
+    while (indentation < 3 && value[candidate] === ' ') {
+      candidate += 1;
+      indentation += 1;
+    }
+    let literalCodeLine = false;
+    if (codeFence !== null) {
+      if (!isContainerActive(codeFence.container, lineStart, metadata)) {
+        codeFence = null;
+      } else {
+        if (
+          value[candidate] === codeFence.delimiter &&
+          isClosingCodeFence(value, candidate, codeFence, metadata)
+        ) {
+          codeFence = null;
+        }
+        literalCodeLine = true;
+      }
+    }
+    if (!literalCodeLine && indentedCode) {
+      const line = value.slice(lineStart, lineEnd);
+      if (line.trim().length === 0 || !isIndentedCodeLine(value, lineStart)) {
+        indentedCode = false;
+      } else {
+        literalCodeLine = true;
+      }
+    }
+    if (!literalCodeLine && isIndentedCodeStart(value, lineStart, metadata)) {
+      indentedCode = true;
+      literalCodeLine = true;
+    }
+    if (!literalCodeLine) {
+      const openingCodeFence = getOpeningCodeFence(value, candidate, metadata);
+      if (openingCodeFence !== null) {
+        codeFence = openingCodeFence;
+        literalCodeLine = true;
+      }
+    }
+    if (
+      !literalCodeLine &&
+      value[candidate] === '[' &&
+      getReferenceDefinitionEnd(value, candidate, metadata) !== null
+    ) {
+      let labelEnd = candidate + 1;
+      while (labelEnd < value.length && value[labelEnd] !== ']') {
+        labelEnd += value[labelEnd] === '\\' ? 2 : 1;
+      }
+      labels.add(normalizeReferenceLabel(value.slice(candidate + 1, labelEnd)));
+    }
+    if (lineEnd === value.length) break;
+    lineStart = lineEnd + getLineEndingLength(value, lineEnd);
+  }
+  return labels;
 }

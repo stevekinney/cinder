@@ -32,27 +32,42 @@ export function hasMarkdownParagraphBreak(value: string): boolean {
   return /(?:\r\n?|\n)[ \t]*(?:\r\n?|\n)/u.test(value);
 }
 
-export function getGfmLiteralAutolinkEnd(value: string, start: number): number | null {
-  if (
-    (start > 0 && /[A-Za-z0-9_]/u.test(value[start - 1]!)) ||
-    (!value.startsWith('http://', start) &&
-      !value.startsWith('https://', start) &&
-      !value.startsWith('ftp://', start) &&
-      !value.startsWith('www.', start))
-  ) {
-    return null;
+export function scanGfmLiteralAutolink(
+  value: string,
+  start: number,
+): { end: number | null; scanEnd: number } {
+  const prefixLength = value.startsWith('https://', start)
+    ? 8
+    : value.startsWith('http://', start) || value.startsWith('ftp://', start)
+      ? 7
+      : value.startsWith('www.', start)
+        ? 4
+        : 0;
+  if ((start > 0 && /[A-Za-z0-9_]/u.test(value[start - 1]!)) || prefixLength === 0) {
+    return { end: null, scanEnd: start };
   }
 
-  let cursor = start;
-  while (cursor < value.length && !/[\s<>]/u.test(value[cursor]!)) cursor += 1;
-  const destination = value.slice(start, cursor);
+  const domainStart = start + prefixLength;
+  let cursor = domainStart;
+  while (/[A-Za-z0-9.-]/u.test(value[cursor] ?? '')) cursor += 1;
   if (
-    !/^(?:(?:https?|ftp):\/\/|www\.)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,}(?::\d+)?(?:[/?#].*)?$/u.test(
-      destination,
+    !/^(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,}$/u.test(
+      value.slice(domainStart, cursor),
     )
   )
-    return null;
-  return cursor;
+    return { end: null, scanEnd: domainStart };
+
+  if (value[cursor] === ':') {
+    cursor += 1;
+    const portStart = cursor;
+    while (/[0-9]/u.test(value[cursor] ?? '')) cursor += 1;
+    if (cursor === portStart) return { end: null, scanEnd: domainStart };
+  }
+  if (cursor < value.length && !/[\s<>/?#]/u.test(value[cursor]!)) {
+    return { end: null, scanEnd: domainStart };
+  }
+  while (cursor < value.length && !/[\s<>]/u.test(value[cursor]!)) cursor += 1;
+  return { end: cursor, scanEnd: cursor };
 }
 
 export function getOrdinaryLinkEnd(
@@ -124,6 +139,7 @@ export function getOrdinaryLinkEnd(
   const titleStart = cursor;
   while (cursor < value.length && value[cursor] !== closer) {
     const character = value[cursor];
+    if (opener === '(' && character === '(') return null;
     if (character === '\\') {
       cursor += 1;
     }
@@ -139,7 +155,11 @@ export function getOrdinaryLinkEnd(
   return value[cursor] === ')' ? cursor + 1 : null;
 }
 
-export function getReferenceImageEnd(value: string, start: number): number | null {
+export function getReferenceImageEnd(
+  value: string,
+  start: number,
+  resolvedLabels: ReadonlySet<string> = new Set(),
+): number | null {
   if (value[start] !== '!' || value[start + 1] !== '[') return null;
   let cursor = start + 2;
   let depth = 0;
@@ -158,13 +178,27 @@ export function getReferenceImageEnd(value: string, start: number): number | nul
   }
   if (value[cursor] !== ']') return null;
   if (value[cursor + 1] === '(') return null;
-  if (value[cursor + 1] !== '[') return cursor + 1;
-  cursor += 2;
-  while (cursor < value.length && value[cursor] !== ']') {
-    if (value[cursor] === '\\') cursor += 2;
-    else cursor += 1;
+  const description = value.slice(start + 2, cursor);
+  if (value[cursor + 1] !== '[') {
+    return resolvedLabels.has(normalizeReferenceLabel(description)) ? cursor + 1 : null;
   }
-  return value[cursor] === ']' ? cursor + 1 : null;
+  const referenceStart = cursor + 2;
+  let referenceEnd = referenceStart;
+  while (referenceEnd < value.length && value[referenceEnd] !== ']') {
+    if (value[referenceEnd] === '\\') referenceEnd += 2;
+    else referenceEnd += 1;
+  }
+  if (value[referenceEnd] !== ']') return null;
+  const reference = value.slice(referenceStart, referenceEnd) || description;
+  return resolvedLabels.has(normalizeReferenceLabel(reference)) ? referenceEnd + 1 : null;
+}
+
+export function normalizeReferenceLabel(value: string): string {
+  return (unescapeMarkdown(value) ?? value)
+    .replace(/[\t\n\r ]+/gu, ' ')
+    .trim()
+    .toLowerCase()
+    .toUpperCase();
 }
 
 export function unescapeMarkdown(value: string, escapeWhitespace = false): string | null {
