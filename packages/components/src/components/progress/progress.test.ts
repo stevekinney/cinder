@@ -227,10 +227,10 @@ describe('Progress CSS reduced-motion audit', () => {
     const normalizedCss = css.replaceAll(/\s+/g, ' ');
 
     expect(normalizedCss).toContain(
-      ":root[data-cinder-reduced-motion='true'] .cinder-progress--bar .cinder-progress__fill--indeterminate { animation: none; width: 100%; opacity: 0.5; }",
+      ":root:is([data-cinder-reduced-motion='true'], [data-reduced-motion='on']) .cinder-progress--bar .cinder-progress__fill--indeterminate { animation: none; width: 100%; opacity: 0.5; }",
     );
     expect(normalizedCss).toContain(
-      ":root[data-cinder-reduced-motion='true'] .cinder-progress--ring .cinder-progress__fill--indeterminate { animation: none; stroke-dasharray: 100.53; stroke-dashoffset: 0; opacity: 0.5; }",
+      ":root:is([data-cinder-reduced-motion='true'], [data-reduced-motion='on']) .cinder-progress--ring .cinder-progress__fill--indeterminate { animation: none; stroke-dasharray: 100.53; stroke-dashoffset: 0; opacity: 0.5; }",
     );
   });
 });
