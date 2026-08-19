@@ -19,12 +19,17 @@ const workspaceRoot = resolve(packageRoot, '../..');
 // top-level node_modules the way a real host app would after installing
 // them directly.
 const requiredPeers = ['@lostgradient/cinder', '@lostgradient/markdown', 'svelte'] as const;
-// Chat's own conversation-model dependencies — the fixture symlinks these
+// Chat's own runtime dependencies — the fixture symlinks these
 // into the *installed chat package's own* node_modules, simulating what a
 // package manager does automatically for a regular `dependencies` entry
 // (nested resolution), never into the fixture's top-level node_modules. A
 // host app never provides these.
-const requiredOwnDependencies = ['conversationalist', 'zod'] as const;
+const requiredOwnDependencies = [
+  'conversationalist',
+  'decode-named-character-reference',
+  'micromark-util-decode-numeric-character-reference',
+  'zod',
+] as const;
 
 type ValidationFixture = {
   root: string;
@@ -49,7 +54,7 @@ async function run(command: string, arguments_: string[], cwd = packageRoot): Pr
 
 function assertPackedManifest(manifest: PackageManifest): void {
   // assertSourceManifest enforces the exact `dependencies` contract
-  // (conversationalist + zod) and the exact peer set.
+  // and the exact peer set.
   assertSourceManifest(manifest);
   if (manifest.devDependencies !== undefined) fail('packed manifest must omit devDependencies');
   if (manifest.optionalDependencies !== undefined) {
@@ -537,7 +542,7 @@ export async function validateConsumer(): Promise<void> {
     process.stdout.write('[validate-consumer] running svelte-check against the packed artifact…\n');
     await runSvelteCheckConsumer(fixture);
     process.stdout.write(
-      `[validate-consumer] OK — isolated artifact, import closure, client build, plugin SSR, plain-Node SSR, and svelte-check bind: forwarding verified without a host-installed conversationalist/zod.\n`,
+      `[validate-consumer] OK — isolated artifact, import closure, client build, plugin SSR, plain-Node SSR, and svelte-check bind: forwarding verified without host-installed Chat runtime dependencies.\n`,
     );
   } finally {
     await rm(fixtureRoot, { recursive: true, force: true });

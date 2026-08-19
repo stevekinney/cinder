@@ -1,0 +1,336 @@
+import { projectMentionLabel, unescapeMarkdown } from './chat-composer-mention-label.ts';
+import { isLineEnding } from './chat-composer-mention-lines.ts';
+
+const ABSOLUTE_URI_SCHEME = /^([A-Za-z][A-Za-z0-9+.-]*):/u;
+const NON_ENTITY_URI_SCHEMES = new Set([
+  'about',
+  'blob',
+  'data',
+  'file',
+  'ftp',
+  'ftps',
+  'http',
+  'https',
+  'javascript',
+  'mailto',
+  'tel',
+  'vbscript',
+  'ws',
+  'wss',
+]);
+export function escapeMentionLabel(value: string): string {
+  return value.replace(/[!"#$%&'()*+,\-./:;<=>?@[\\\]^_`{|}~]/gu, '\\$&');
+}
+
+export function escapeMentionUri(value: string): string {
+  return value.replaceAll('\\', '\\\\').replace(/([&()[\]<>|])/gu, '\\$1');
+}
+
+export function hasMarkdownParagraphBreak(value: string): boolean {
+  return /(?:\r\n?|\n)[ \t]*(?:\r\n?|\n)/u.test(value);
+}
+
+export type ParsedMentionLink = {
+  label: string;
+  uri: string;
+  end: number;
+};
+
+type MentionLabelBounds = { end: number; containsNestedLink: boolean };
+
+export function parseMentionLink(
+  value: string,
+  start: number,
+  knownLabelBounds?: MentionLabelBounds | null,
+): ParsedMentionLink | null {
+  if (value[start] !== '[') return null;
+
+  if (knownLabelBounds === null || knownLabelBounds?.containsNestedLink) return null;
+  let labelEnd = knownLabelBounds?.end ?? start + 1;
+  if (knownLabelBounds === undefined) {
+    let labelDepth = 0;
+    while (labelEnd < value.length) {
+      if (value[labelEnd] === '\\') {
+        labelEnd += 2;
+        continue;
+      }
+
+      if (value[labelEnd] === '!' && value[labelEnd + 1] === '[') return null;
+      if (value[labelEnd] === '[') {
+        labelDepth += 1;
+        labelEnd += 1;
+        continue;
+      }
+      if (value[labelEnd] === ']') {
+        if (labelDepth === 0) break;
+        labelDepth -= 1;
+        if (value[labelEnd + 1] === '(' || value[labelEnd + 1] === '[') return null;
+      }
+      labelEnd += 1;
+    }
+  }
+
+  if (value[labelEnd] !== ']' || value[labelEnd + 1] !== '(') return null;
+
+  const destinationStart = labelEnd + 2;
+  let destinationEnd = destinationStart;
+  let rawDestinationStart = destinationStart;
+  let rawDestinationEnd = destinationStart;
+  let nestedParentheses = 0;
+
+  if (value[destinationStart] === '<') {
+    rawDestinationStart += 1;
+    destinationEnd += 1;
+    while (destinationEnd < value.length && value[destinationEnd] !== '>') {
+      if (value[destinationEnd] === '\\') {
+        if (/\s/u.test(value[destinationEnd + 1] ?? '')) return null;
+        destinationEnd += 2;
+        continue;
+      }
+      if (isLineEnding(value[destinationEnd]) || value[destinationEnd] === '<') return null;
+      destinationEnd += 1;
+    }
+    if (value[destinationEnd] !== '>') return null;
+    rawDestinationEnd = destinationEnd;
+    destinationEnd += 1;
+  } else {
+    while (destinationEnd < value.length) {
+      const character = value[destinationEnd]!;
+
+      if (character === '\\') {
+        destinationEnd += 2;
+        continue;
+      }
+
+      if (/\s/u.test(character)) break;
+      if (character === '(') {
+        nestedParentheses += 1;
+        destinationEnd += 1;
+        continue;
+      }
+      if (character === '[' || character === '<' || character === '>') return null;
+      if (character === ')') {
+        if (nestedParentheses === 0) break;
+        nestedParentheses -= 1;
+      }
+
+      destinationEnd += 1;
+    }
+    rawDestinationEnd = destinationEnd;
+  }
+
+  if (nestedParentheses !== 0) return null;
+  let linkEnd = destinationEnd;
+  if (/\s/u.test(value[linkEnd] ?? '')) {
+    const titleWhitespaceStart = linkEnd;
+    while (/\s/u.test(value[linkEnd] ?? '')) linkEnd += 1;
+    if (hasMarkdownParagraphBreak(value.slice(titleWhitespaceStart, linkEnd))) return null;
+    const opener = value[linkEnd];
+    const closer = opener === '(' ? ')' : opener;
+    if (opener !== '"' && opener !== "'" && opener !== '(') return null;
+    linkEnd += 1;
+    const titleStart = linkEnd;
+    while (linkEnd < value.length && value[linkEnd] !== closer) {
+      if (opener === '(' && value[linkEnd] === '(') return null;
+      if (value[linkEnd] === '\\') linkEnd += 1;
+      linkEnd += 1;
+    }
+    if (value[linkEnd] !== closer || hasMarkdownParagraphBreak(value.slice(titleStart, linkEnd))) {
+      return null;
+    }
+    linkEnd += 1;
+    const closingWhitespaceStart = linkEnd;
+    while (/\s/u.test(value[linkEnd] ?? '')) linkEnd += 1;
+    if (hasMarkdownParagraphBreak(value.slice(closingWhitespaceStart, linkEnd))) return null;
+  }
+  if (value[linkEnd] !== ')') return null;
+
+  const rawLabel = value.slice(start + 1, labelEnd);
+  if (hasMarkdownParagraphBreak(rawLabel)) return null;
+  const label = projectMentionLabel(rawLabel);
+  const uri = unescapeMarkdown(value.slice(rawDestinationStart, rawDestinationEnd));
+  if (label === null || label.length === 0 || uri === null || !isEntityUri(uri)) return null;
+
+  return { label, uri, end: linkEnd + 1 };
+}
+
+export function scanGfmLiteralAutolink(
+  value: string,
+  start: number,
+): { end: number | null; scanEnd: number } {
+  const prefixLength = value.startsWith('https://', start)
+    ? 8
+    : value.startsWith('http://', start) || value.startsWith('ftp://', start)
+      ? 7
+      : value.startsWith('www.', start)
+        ? 4
+        : 0;
+  if ((start > 0 && /[A-Za-z0-9_]/u.test(value[start - 1]!)) || prefixLength === 0) {
+    return { end: null, scanEnd: start };
+  }
+
+  const domainStart = start + prefixLength;
+  let cursor = domainStart;
+  while (/[A-Za-z0-9.-]/u.test(value[cursor] ?? '')) cursor += 1;
+  const host = value.slice(domainStart, cursor);
+  const domainName = /^(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,}$/u.test(
+    host,
+  );
+  const ipv4Parts = host.split('.');
+  const ipv4 =
+    ipv4Parts.length === 4 &&
+    ipv4Parts.every((part) => /^\d{1,3}$/u.test(part) && Number(part) <= 255);
+  if (!domainName && !ipv4) return { end: null, scanEnd: domainStart };
+
+  if (value[cursor] === ':') {
+    cursor += 1;
+    const portStart = cursor;
+    while (/[0-9]/u.test(value[cursor] ?? '')) cursor += 1;
+    if (cursor === portStart) return { end: null, scanEnd: domainStart };
+  }
+  if (cursor < value.length && !/[\s<>/?#]/u.test(value[cursor]!)) {
+    return { end: null, scanEnd: domainStart };
+  }
+  while (cursor < value.length && !/[\s<>]/u.test(value[cursor]!)) cursor += 1;
+  return { end: cursor, scanEnd: cursor };
+}
+
+export function getOrdinaryLinkEnd(
+  value: string,
+  start: number,
+  allowNestedLabel = false,
+  knownLabelEnd?: number,
+): number | null {
+  let labelEnd = knownLabelEnd ?? start + 1;
+  let labelDepth = 0;
+  if (knownLabelEnd === undefined) {
+    while (labelEnd < value.length) {
+      if (value[labelEnd] === '\\') labelEnd += 2;
+      else if (allowNestedLabel && value[labelEnd] === '!' && value[labelEnd + 1] === '[')
+        return null;
+      else if (value[labelEnd] === '[') {
+        labelDepth += 1;
+        labelEnd += 1;
+      } else if (value[labelEnd] === ']') {
+        if (labelDepth === 0) break;
+        labelDepth -= 1;
+        if (value[labelEnd + 1] === '(' || value[labelEnd + 1] === '[') return null;
+        labelEnd += 1;
+      } else labelEnd += 1;
+    }
+  }
+  if (hasMarkdownParagraphBreak(value.slice(start + 1, labelEnd))) return null;
+  if (value[labelEnd] !== ']' || value[labelEnd + 1] !== '(') return null;
+
+  let cursor = labelEnd + 2;
+  if (value[cursor] === '<') {
+    cursor += 1;
+    while (cursor < value.length && value[cursor] !== '>') {
+      if (value[cursor] === '\\') {
+        if (/\s/u.test(value[cursor + 1] ?? '')) return null;
+        cursor += 2;
+        continue;
+      }
+      if (isLineEnding(value[cursor]) || value[cursor] === '<') return null;
+      cursor += 1;
+    }
+    if (value[cursor] !== '>') return null;
+    cursor += 1;
+  } else {
+    let depth = 0;
+    while (cursor < value.length && !/\s/u.test(value[cursor]!)) {
+      const character = value[cursor];
+      if (character === '\\') {
+        if (value[cursor + 1] === '<' || /\s/u.test(value[cursor + 1] ?? '')) return null;
+        cursor += 2;
+        continue;
+      }
+      if (character === '[' || character === '<' || character === '>') return null;
+      if (character === '(') depth += 1;
+      if (character === ')') {
+        if (depth === 0) return cursor + 1;
+        depth -= 1;
+      }
+      cursor += 1;
+    }
+    if (depth !== 0) return null;
+  }
+
+  if (!/\s/u.test(value[cursor] ?? '')) return value[cursor] === ')' ? cursor + 1 : null;
+  const titleWhitespaceStart = cursor;
+  while (/\s/u.test(value[cursor] ?? '')) cursor += 1;
+  if (hasMarkdownParagraphBreak(value.slice(titleWhitespaceStart, cursor))) return null;
+
+  const opener = value[cursor];
+  const closer = opener === '(' ? ')' : opener;
+  if (opener !== '"' && opener !== "'" && opener !== '(') return null;
+  cursor += 1;
+  const titleStart = cursor;
+  while (cursor < value.length && value[cursor] !== closer) {
+    const character = value[cursor];
+    if (opener === '(' && character === '(') return null;
+    if (character === '\\') {
+      cursor += 1;
+    }
+    cursor += 1;
+  }
+  if (value[cursor] !== closer) return null;
+  if (hasMarkdownParagraphBreak(value.slice(titleStart, cursor))) return null;
+  cursor += 1;
+  const closingWhitespaceStart = cursor;
+  while (/\s/u.test(value[cursor] ?? '')) cursor += 1;
+  if (hasMarkdownParagraphBreak(value.slice(closingWhitespaceStart, cursor))) return null;
+
+  return value[cursor] === ')' ? cursor + 1 : null;
+}
+
+export function getReferenceImageEnd(
+  value: string,
+  start: number,
+  resolvedLabels: ReadonlySet<string> = new Set(),
+): number | null {
+  if (value[start] !== '!' || value[start + 1] !== '[') return null;
+  let cursor = start + 2;
+  let depth = 0;
+  while (cursor < value.length) {
+    if (value[cursor] === '\\') {
+      cursor += 2;
+      continue;
+    }
+    if (value[cursor] === '!' && value[cursor + 1] === '[') return null;
+    if (value[cursor] === '[') depth += 1;
+    else if (value[cursor] === ']') {
+      if (depth === 0) break;
+      depth -= 1;
+    }
+    cursor += 1;
+  }
+  if (value[cursor] !== ']') return null;
+  if (value[cursor + 1] === '(') return null;
+  const description = value.slice(start + 2, cursor);
+  if (value[cursor + 1] !== '[') {
+    return resolvedLabels.has(normalizeReferenceLabel(description)) ? cursor + 1 : null;
+  }
+  const referenceStart = cursor + 2;
+  let referenceEnd = referenceStart;
+  while (referenceEnd < value.length && value[referenceEnd] !== ']') {
+    if (value[referenceEnd] === '\\') referenceEnd += 2;
+    else referenceEnd += 1;
+  }
+  if (value[referenceEnd] !== ']') return null;
+  const reference = value.slice(referenceStart, referenceEnd) || description;
+  return resolvedLabels.has(normalizeReferenceLabel(reference)) ? referenceEnd + 1 : null;
+}
+
+export function normalizeReferenceLabel(value: string): string {
+  return (unescapeMarkdown(value) ?? value)
+    .replace(/[\t\n\r ]+/gu, ' ')
+    .trim()
+    .toLowerCase()
+    .toUpperCase();
+}
+
+export function isEntityUri(uri: string): boolean {
+  const match = ABSOLUTE_URI_SCHEME.exec(uri);
+  return match !== null && !/\s/u.test(uri) && !NON_ENTITY_URI_SCHEMES.has(match[1]!.toLowerCase());
+}
