@@ -236,7 +236,7 @@
   .cinder-dropdown-separator {
     height: 1px;
     margin-block: var(--cinder-space-1);
-    background: var(--cinder-border);
+    background: var(--cinder-border-faint);
   }
 
   /* ----------------------------------------

@@ -28,6 +28,7 @@ A loading indicator with size variants and an accessible status label.
 
 <!-- generated:variables:start -->
 
+- `--cinder-spinner-indicator`
 - `--cinder-spinner-size`
 <!-- generated:variables:end -->
 
