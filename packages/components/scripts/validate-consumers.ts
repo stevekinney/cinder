@@ -1197,14 +1197,12 @@ const SVELTEKIT_DEV_SSR_ROUTES = [
 ] as const;
 
 type SvelteKitHydrationRoute =
-  | '/subpath'
   | '/chat-layout'
   | '/dev-ssr-dialog'
   | '/dev-ssr-navigation'
   | '/dev-ssr-tabs';
 
 export const SVELTEKIT_HYDRATION_ROUTES = [
-  '/subpath',
   '/chat-layout',
   '/dev-ssr-dialog',
   '/dev-ssr-navigation',
@@ -1938,13 +1936,6 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
         );
       }
 
-      // Every client-hydration assertion belongs here, against the prebuilt
-      // adapter-node server — never against the `vite dev` server in
-      // `assertSvelteKitDevSsrRoute` (see the note there). Dependencies are
-      // bundled at build time, so there is no transform waterfall and no
-      // optimizer-triggered reload to race.
-      await assertSvelteKitClientRoutesHydrate(httpPort, label, SVELTEKIT_HYDRATION_ROUTES);
-
       // Subpath page
       const subpathResponse = await fetchWithTimeout(
         `http://127.0.0.1:${httpPort}/subpath`,
@@ -1964,6 +1955,16 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
           'fixture HTML (/subpath) is missing the NavigationBar menuToggle trigger marker (subpath route SSR did not render the toggle snippet)',
         );
       }
+
+      // Every client-hydration assertion belongs here, against the prebuilt
+      // adapter-node server — never against the `vite dev` server in
+      // `assertSvelteKitDevSsrRoute` (see the note there). Dependencies are
+      // bundled at build time, so there is no transform waterfall and no
+      // optimizer-triggered reload to race. The broad `/subpath` fixture stays
+      // above as an SSR/package-export contract; its 20-component client graph
+      // has no client-only marker or interaction and therefore proves no
+      // hydration behavior.
+      await assertSvelteKitClientRoutesHydrate(httpPort, label, SVELTEKIT_HYDRATION_ROUTES);
 
       async function assertRenderedRouteServesButtonCss(
         routePath: '/a-la-carte',
@@ -2491,13 +2492,6 @@ async function assertSvelteKitHydrationRouteContent(
   errors: string[],
   routePath: SvelteKitHydrationRoute,
 ): Promise<void> {
-  if (routePath === '/subpath') {
-    await page.getByRole('heading', { name: /subpath imports/i }).waitFor({ timeout: 5_000 });
-    await page.getByRole('button', { name: 'subpath button' }).waitFor({ timeout: 5_000 });
-    await page.getByRole('button', { name: 'Subpath accordion' }).waitFor({ timeout: 5_000 });
-    return;
-  }
-
   if (routePath === '/chat-layout') {
     await page.locator('[data-chat-layout-hydrated="true"]').waitFor({ timeout: 5_000 });
     await page.getByRole('heading', { name: 'Empty Chat hydration' }).waitFor({ timeout: 5_000 });
