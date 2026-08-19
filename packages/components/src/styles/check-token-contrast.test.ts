@@ -358,6 +358,7 @@ const bg = readOklchToken(css, '--cinder-bg');
 const surface = readOklchToken(css, '--cinder-surface');
 const surfaceInset = readOklchToken(css, '--cinder-surface-inset');
 const surfaceRaised = readOklchToken(css, '--cinder-surface-raised');
+const borderFaint = readOklchToken(css, '--cinder-border-faint');
 const borderMuted = readOklchToken(css, '--cinder-border-muted');
 const border = readOklchToken(css, '--cinder-border');
 const borderStrong = readOklchToken(css, '--cinder-border-strong');
@@ -581,6 +582,9 @@ describe('focus ring contrast (WCAG 1.4.11)', () => {
 });
 
 describe('border-on-surface contrast', () => {
+  // Faint borders are decorative hairlines rather than controls, but must stay
+  // distinguishable from the surfaces they divide.
+  const FAINT_BORDER = 1.1;
   // A muted border is decorative, but still has to remain perceptible. The 1.4:1
   // floor rejects the formerly invisible 1.07:1 dark raised-surface pairing
   // without pretending a divider has the same semantic job as a control outline.
@@ -589,6 +593,12 @@ describe('border-on-surface contrast', () => {
 
   for (const arm of ['light', 'dark'] as const) {
     for (const [surfaceName, surfaceToken] of Object.entries(surfaces)) {
+      it(`${arm}: faint border remains distinguishable on ${surfaceName}`, () => {
+        expect(
+          contrastRatio(wcagLuminance(borderFaint[arm]), wcagLuminance(surfaceToken[arm])),
+        ).toBeGreaterThanOrEqual(FAINT_BORDER);
+      });
+
       it(`${arm}: muted border is perceptible on ${surfaceName}`, () => {
         expect(
           contrastRatio(wcagLuminance(borderMuted[arm]), wcagLuminance(surfaceToken[arm])),
