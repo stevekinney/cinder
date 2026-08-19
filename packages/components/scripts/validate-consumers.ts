@@ -20,13 +20,15 @@ import { parse } from 'postcss';
 import { waitForReadyHtml } from './consumer-readiness.ts';
 import {
   installHookProcessCleanup,
+  registerHookProcessGroup,
   runHookCommand,
+  signalHookProcessGroup,
   withLocalValidationGateLock,
 } from './husky/utilities.ts';
 import {
-  type CommentScanState,
   containsUpstreamSpecifier,
   lineHasUpstreamSpecifierResidue,
+  type CommentScanState,
 } from './lib/cinder-specifier-residue.ts';
 import { discoverComponents } from './lib/discover-components.ts';
 import { parseJsonFile, readJsonFile } from './lib/read-json-file.ts';
@@ -1194,8 +1196,108 @@ const SVELTEKIT_DEV_SSR_ROUTES = [
   },
 ] as const;
 
+type SvelteKitHydrationRoute =
+  | '/subpath'
+  | '/chat-layout'
+  | '/dev-ssr-dialog'
+  | '/dev-ssr-navigation'
+  | '/dev-ssr-tabs';
+
+export const SVELTEKIT_HYDRATION_ROUTES = [
+  '/subpath',
+  '/chat-layout',
+  '/dev-ssr-dialog',
+  '/dev-ssr-navigation',
+  '/dev-ssr-tabs',
+] as const satisfies readonly SvelteKitHydrationRoute[];
+
 const SVELTEKIT_DEV_SSR_READINESS_TIMEOUT_MS = 25_000;
 const SVELTEKIT_DEV_SSR_POLL_INTERVAL_MS = 200;
+const DEVELOPMENT_SERVER_TEARDOWN_TIMEOUT_MS = 5_000;
+
+type DevelopmentServerProcess = Pick<Bun.Subprocess, 'exitCode' | 'exited' | 'pid'>;
+type DevelopmentServerSignal = 'SIGTERM' | 'SIGKILL';
+type SignalProcessGroup = (pid: number, signal: DevelopmentServerSignal) => void;
+type IsProcessGroupAlive = (pid: number) => boolean;
+
+function processGroupIsAlive(pid: number): boolean {
+  try {
+    process.kill(-pid, 0);
+    return true;
+  } catch (caught) {
+    if (
+      typeof caught === 'object' &&
+      caught !== null &&
+      'code' in caught &&
+      caught.code === 'ESRCH'
+    ) {
+      return false;
+    }
+    return true;
+  }
+}
+
+async function waitForProcessGroupExit(
+  pid: number,
+  timeoutMs: number,
+  isProcessGroupAlive: IsProcessGroupAlive,
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (isProcessGroupAlive(pid)) {
+    if (Date.now() >= deadline) {
+      throw new Error(`process group ${pid} did not exit within ${timeoutMs}ms`);
+    }
+    await Bun.sleep(Math.min(25, timeoutMs));
+  }
+}
+
+/** Stop the detached Vite process group without letting cleanup hide the readiness result. */
+export async function stopDevelopmentServer(
+  server: DevelopmentServerProcess,
+  timeoutMs = DEVELOPMENT_SERVER_TEARDOWN_TIMEOUT_MS,
+  signalProcessGroup: SignalProcessGroup = (pid, signal) =>
+    signalHookProcessGroup(Math.abs(pid), signal),
+  isProcessGroupAlive: IsProcessGroupAlive = processGroupIsAlive,
+): Promise<void> {
+  if (!isProcessGroupAlive(server.pid)) return;
+
+  const stop = async (signal: DevelopmentServerSignal): Promise<void> => {
+    signalProcessGroup(-server.pid, signal);
+    await promiseWithTimeout(
+      Promise.all([
+        server.exited,
+        waitForProcessGroupExit(server.pid, timeoutMs, isProcessGroupAlive),
+      ]),
+      timeoutMs,
+      `stopping development server process group with ${signal}`,
+    );
+  };
+
+  try {
+    await stop('SIGTERM');
+  } catch (gracefulError) {
+    if (!isProcessGroupAlive(server.pid)) return;
+    try {
+      await stop('SIGKILL');
+    } catch (forceError) {
+      throw new Error(
+        `development server process group ${server.pid} is still running after SIGKILL: ${forceError instanceof Error ? forceError.message : String(forceError)}; graceful stop also failed: ${gracefulError instanceof Error ? gracefulError.message : String(gracefulError)}`,
+        { cause: forceError },
+      );
+    }
+  }
+}
+
+async function developmentServerTeardownError(
+  server: DevelopmentServerProcess,
+): Promise<Error | undefined> {
+  try {
+    await stopDevelopmentServer(server);
+    return undefined;
+  } catch (error) {
+    return error instanceof Error ? error : new Error(String(error));
+  }
+}
 
 function formatHtmlExcerpt(body: string): string {
   return body.replace(/\s+/g, ' ').trim().slice(0, 1_000);
@@ -1282,6 +1384,7 @@ async function assertSvelteKitDevChatHydrationRoute(
     ],
     {
       cwd: fixtureDirectory,
+      detached: true,
       stdout: 'pipe',
       stderr: 'pipe',
       env: {
@@ -1292,6 +1395,7 @@ async function assertSvelteKitDevChatHydrationRoute(
       },
     },
   );
+  const unregisterDevServerProcessGroup = registerHookProcessGroup(devServer.pid);
   const devServerStdout = devServer.stdout
     ? new Response(devServer.stdout).text()
     : Promise.resolve('');
@@ -1314,12 +1418,15 @@ async function assertSvelteKitDevChatHydrationRoute(
       // Same reasoning as the dev-SSR readiness failure below: surface the
       // server's own output, since "we stopped waiting" says nothing about why.
       const waitedMs = Date.now() - chatLayoutStartedAt;
-      devServer.kill();
-      await devServer.exited;
+      const teardownError = await developmentServerTeardownError(devServer);
+      const devServerOutput =
+        teardownError === undefined
+          ? formatServerOutput(await devServerStdout, await devServerStderr)
+          : `: unavailable because teardown failed: ${teardownError.message}`;
       fail(
         `sveltekit-consumer ${label} /chat-layout dev readiness failed: ${message}\n` +
           `(waited ${waitedMs}ms; port ${httpPort})\n` +
-          `dev server output${formatServerOutput(await devServerStdout, await devServerStderr)}`,
+          `dev server output${devServerOutput}`,
       );
     });
 
@@ -1331,18 +1438,29 @@ async function assertSvelteKitDevChatHydrationRoute(
     await assertSvelteKitClientRoutesHydrate(httpPort, `${label} dev`, ['/chat-layout']);
     hydrationAssertionsPassed = true;
   } finally {
-    devServer.kill();
-    await devServer.exited;
-    const devServerOutput = `${await devServerStdout}\n${await devServerStderr}`;
-    const sourceMapWarnings = extractPublishedPackageSourceMapWarnings(devServerOutput);
-    if (sourceMapWarnings.length > 0) {
-      const warningMessage =
-        `sveltekit-consumer ${label} dev hydration emitted source-map warnings for published package artifacts:\n` +
-        sourceMapWarnings.map((warning) => `  ${warning}`).join('\n');
+    const teardownError = await developmentServerTeardownError(devServer);
+    if (teardownError === undefined) unregisterDevServerProcessGroup();
+    if (teardownError !== undefined) {
       if (!hydrationAssertionsPassed) {
-        process.stderr.write(`[validate-consumers] ${warningMessage}\n`);
+        process.stderr.write(
+          `[validate-consumers] sveltekit-consumer ${label} dev hydration teardown also failed: ${teardownError.message}\n`,
+        );
       } else {
-        fail(warningMessage);
+        fail(`sveltekit-consumer ${label} dev hydration teardown failed: ${teardownError.message}`);
+      }
+    }
+    if (devServer.exitCode !== null) {
+      const devServerOutput = `${await devServerStdout}\n${await devServerStderr}`;
+      const sourceMapWarnings = extractPublishedPackageSourceMapWarnings(devServerOutput);
+      if (sourceMapWarnings.length > 0) {
+        const warningMessage =
+          `sveltekit-consumer ${label} dev hydration emitted source-map warnings for published package artifacts:\n` +
+          sourceMapWarnings.map((warning) => `  ${warning}`).join('\n');
+        if (!hydrationAssertionsPassed) {
+          process.stderr.write(`[validate-consumers] ${warningMessage}\n`);
+        } else {
+          fail(warningMessage);
+        }
       }
     }
   }
@@ -1355,6 +1473,7 @@ async function assertSvelteKitDevSsrRoute(fixtureDirectory: string, label: strin
     ['bunx', 'vite', 'dev', '--host', '127.0.0.1', '--port', String(httpPort), '--strictPort'],
     {
       cwd: fixtureDirectory,
+      detached: true,
       stdout: 'pipe',
       stderr: 'pipe',
       env: {
@@ -1364,6 +1483,7 @@ async function assertSvelteKitDevSsrRoute(fixtureDirectory: string, label: strin
       },
     },
   );
+  const unregisterDevServerProcessGroup = registerHookProcessGroup(devServer.pid);
   const devServerStdout = devServer.stdout
     ? new Response(devServer.stdout).text()
     : Promise.resolve('');
@@ -1412,15 +1532,18 @@ async function assertSvelteKitDevSsrRoute(fixtureDirectory: string, label: strin
         const waitedMs = Date.now() - routeStartedAt;
         const spentMs = Date.now() - (readinessDeadline - SVELTEKIT_DEV_SSR_READINESS_TIMEOUT_MS);
         const leftMs = Math.max(0, readinessDeadline - Date.now());
-        devServer.kill();
-        await devServer.exited;
+        const teardownError = await developmentServerTeardownError(devServer);
+        const devServerOutput =
+          teardownError === undefined
+            ? formatServerOutput(await devServerStdout, await devServerStderr)
+            : `: unavailable because teardown failed: ${teardownError.message}`;
         fail(
           `sveltekit-consumer ${label} ${routePath} dev SSR readiness failed: ${message}\n` +
             `(waited ${waitedMs}ms on this route of ${remainingReadinessBudget}ms allowed; ` +
             `${spentMs}ms spent and ${leftMs}ms left of the shared ` +
             `${SVELTEKIT_DEV_SSR_READINESS_TIMEOUT_MS}ms budget; ` +
             `poll ${SVELTEKIT_DEV_SSR_POLL_INTERVAL_MS}ms; port ${httpPort})\n` +
-            `dev server output${formatServerOutput(await devServerStdout, await devServerStderr)}`,
+            `dev server output${devServerOutput}`,
         );
       });
 
@@ -1489,25 +1612,36 @@ async function assertSvelteKitDevSsrRoute(fixtureDirectory: string, label: strin
     // red `main` runs between 2026-07-24 and 2026-08-05 against ~100 passes on
     // unchanged code, including a docs-only commit.
     //
-    // The original all-components /dev-ssr route remains the built-server
-    // hydration fixture — including the ConfirmDialog interaction and focus
-    // restoration — where the transform waterfall cannot exist.
+    // The focused dev-SSR routes also own built-server hydration, including
+    // ConfirmDialog interaction and focus restoration. Keeping the browser
+    // matrix split by feature prevents one broad client graph from stalling.
     // Raising the timeout here would mask the waterfall, not fix it.
     devSsrAssertionsPassed = true;
   } finally {
-    devServer.kill();
-    await devServer.exited;
-    const devServerOutput = `${await devServerStdout}\n${await devServerStderr}`;
-    const sourceMapWarnings = extractPublishedPackageSourceMapWarnings(devServerOutput);
-    if (sourceMapWarnings.length > 0) {
-      const warningMessage =
-        `sveltekit-consumer ${label} dev SSR emitted source-map warnings for published package dist artifacts:\n` +
-        sourceMapWarnings.map((warning) => `  ${warning}`).join('\n');
-      // Preserve the primary SSR failure if one occurred in the try block.
+    const teardownError = await developmentServerTeardownError(devServer);
+    if (teardownError === undefined) unregisterDevServerProcessGroup();
+    if (teardownError !== undefined) {
       if (!devSsrAssertionsPassed) {
-        process.stderr.write(`[validate-consumers] ${warningMessage}\n`);
+        process.stderr.write(
+          `[validate-consumers] sveltekit-consumer ${label} dev SSR teardown also failed: ${teardownError.message}\n`,
+        );
       } else {
-        fail(warningMessage);
+        fail(`sveltekit-consumer ${label} dev SSR teardown failed: ${teardownError.message}`);
+      }
+    }
+    if (devServer.exitCode !== null) {
+      const devServerOutput = `${await devServerStdout}\n${await devServerStderr}`;
+      const sourceMapWarnings = extractPublishedPackageSourceMapWarnings(devServerOutput);
+      if (sourceMapWarnings.length > 0) {
+        const warningMessage =
+          `sveltekit-consumer ${label} dev SSR emitted source-map warnings for published package dist artifacts:\n` +
+          sourceMapWarnings.map((warning) => `  ${warning}`).join('\n');
+        // Preserve the primary SSR failure if one occurred in the try block.
+        if (!devSsrAssertionsPassed) {
+          process.stderr.write(`[validate-consumers] ${warningMessage}\n`);
+        } else {
+          fail(warningMessage);
+        }
       }
     }
   }
@@ -1809,11 +1943,7 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
       // `assertSvelteKitDevSsrRoute` (see the note there). Dependencies are
       // bundled at build time, so there is no transform waterfall and no
       // optimizer-triggered reload to race.
-      await assertSvelteKitClientRoutesHydrate(httpPort, label, [
-        '/subpath',
-        '/chat-layout',
-        '/dev-ssr',
-      ]);
+      await assertSvelteKitClientRoutesHydrate(httpPort, label, SVELTEKIT_HYDRATION_ROUTES);
 
       // Subpath page
       const subpathResponse = await fetchWithTimeout(
@@ -1930,8 +2060,6 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
     restoreManifest();
   }
 }
-
-type SvelteKitHydrationRoute = '/subpath' | '/chat-layout' | '/dev-ssr';
 
 /**
  * `--disable-dev-shm-usage` is Playwright's documented remedy for Chromium
@@ -2182,7 +2310,7 @@ async function stopConsumerFixtureServer(server: Bun.Subprocess): Promise<void> 
 async function runSvelteKitHydrationRoutesOnce(
   httpPort: number,
   label: string,
-  routePaths: SvelteKitHydrationRoute[],
+  routePaths: readonly SvelteKitHydrationRoute[],
 ): Promise<void> {
   const browserHandle = await launchHydrationChromium();
   const { browser, processToken } = browserHandle;
@@ -2276,7 +2404,7 @@ async function runSvelteKitHydrationRoutesOnce(
 async function assertSvelteKitClientRoutesHydrate(
   httpPort: number,
   label: string,
-  routePaths: SvelteKitHydrationRoute[],
+  routePaths: readonly SvelteKitHydrationRoute[],
 ): Promise<void> {
   try {
     await runSvelteKitHydrationRoutesOnce(httpPort, label, routePaths);
@@ -2380,6 +2508,16 @@ async function assertSvelteKitHydrationRouteContent(
   }
 
   await page.locator('[data-dev-ssr-hydrated="true"]').waitFor({ timeout: 5_000 });
+  if (routePath === '/dev-ssr-navigation') {
+    await page.getByText('basicOrderWorkflow').waitFor({ timeout: 5_000 });
+    return;
+  }
+  if (routePath === '/dev-ssr-tabs') {
+    await page.getByText('Workflow editor').waitFor({ timeout: 5_000 });
+    await page.getByText('Direct editor').waitFor({ timeout: 5_000 });
+    return;
+  }
+
   const trigger = page.getByRole('button', { name: 'Reset state' });
   await trigger.click();
   const dialog = page.getByRole('dialog', { name: 'Reset all local state?' });

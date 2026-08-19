@@ -21,8 +21,10 @@ import {
   nodeModulesTopology,
   parsePushRefs,
   prePushPackageScript,
+  registerHookProcessGroup,
   REPO_ROOT,
   runHookCommand,
+  signalHookProcessGroup,
   withGateLock,
   withLocalValidationGateLock,
   type GitRunner,
@@ -329,6 +331,66 @@ describe('runHookCommand', () => {
     } finally {
       if (childPid !== undefined) killProcessGroup(childPid);
       await rm(directory, { force: true, recursive: true });
+    }
+  });
+});
+
+describe('registerHookProcessGroup', () => {
+  it('includes a directly spawned detached process in hook cleanup', async () => {
+    const processGroup = Bun.spawn(['bun', '-e', 'setInterval(() => {}, 1000)'], {
+      detached: true,
+      stderr: 'ignore',
+      stdin: 'ignore',
+      stdout: 'ignore',
+    });
+    registerHookProcessGroup(processGroup.pid);
+
+    try {
+      await cleanupHookProcesses();
+      await waitForProcessExit(processGroup.pid);
+    } finally {
+      killProcessGroup(processGroup.pid);
+      await processGroup.exited;
+    }
+  });
+
+  it('does not clean up a directly spawned process after it is unregistered', async () => {
+    const processGroup = Bun.spawn(['bun', '-e', 'setInterval(() => {}, 1000)'], {
+      detached: true,
+      stderr: 'ignore',
+      stdin: 'ignore',
+      stdout: 'ignore',
+    });
+    const unregisterProcessGroup = registerHookProcessGroup(processGroup.pid);
+    unregisterProcessGroup();
+
+    try {
+      await cleanupHookProcesses();
+      expect(isProcessAlive(processGroup.pid)).toBe(true);
+    } finally {
+      killProcessGroup(processGroup.pid);
+      await processGroup.exited;
+    }
+  });
+});
+
+describe('signalHookProcessGroup', () => {
+  it('falls back to the direct process when the group signal fails', () => {
+    const calls: Array<{ pid: number; signal: string | number }> = [];
+    const kill = spyOn(process, 'kill').mockImplementation((pid, signal) => {
+      calls.push({ pid, signal: signal ?? 0 });
+      if (pid < 0) throw Object.assign(new Error('group unavailable'), { code: 'ESRCH' });
+      return true;
+    });
+
+    try {
+      signalHookProcessGroup(4_242, 'SIGTERM');
+      expect(calls).toEqual([
+        { pid: -4_242, signal: 'SIGTERM' },
+        { pid: 4_242, signal: 'SIGTERM' },
+      ]);
+    } finally {
+      kill.mockRestore();
     }
   });
 });
