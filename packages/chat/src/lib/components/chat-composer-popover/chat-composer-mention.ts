@@ -103,6 +103,7 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
   let gfmAutolinkScanEnd = 0;
   let htmlCommentTerminatorAbsentFrom = value.length + 1;
   let htmlProcessingInstructionTerminatorAbsentFrom = value.length + 1;
+  let htmlCdataTerminatorAbsentFrom = value.length + 1;
   let codeFence: CodeFence | null = null;
   let indentedCode = false;
   let htmlDelimitedBlock: { terminator: string; container: ContainerContext } | null = null;
@@ -267,7 +268,9 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
         continue;
       }
       if (value.startsWith('<![CDATA[', sourceIndex)) {
-        const closingStart = value.indexOf(']]>', sourceIndex + 9);
+        const closingStart =
+          sourceIndex >= htmlCdataTerminatorAbsentFrom ? -1 : value.indexOf(']]>', sourceIndex + 9);
+        if (closingStart === -1) htmlCdataTerminatorAbsentFrom = sourceIndex;
         const isBlock = isAtBlockStart(value, sourceIndex, metadata);
         if (closingStart !== -1 || isBlock) {
           if (isBlock) {
@@ -415,11 +418,8 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
         continue;
       }
 
-      const link = parseMentionLink(
-        value,
-        sourceIndex,
-        metadata.labelBounds.get(sourceIndex) ?? null,
-      );
+      const labelBounds = metadata.labelBounds.get(sourceIndex) ?? null;
+      const link = parseMentionLink(value, sourceIndex, labelBounds);
       if (link !== null) {
         const start = text.length;
         text += link.label;
@@ -429,7 +429,9 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
       }
 
       const ordinaryLinkEnd =
-        value[sourceIndex + 1] === '[' ? null : getOrdinaryLinkEnd(value, sourceIndex);
+        value[sourceIndex + 1] === '[' || labelBounds === null
+          ? null
+          : getOrdinaryLinkEnd(value, sourceIndex, false, labelBounds.end);
       if (ordinaryLinkEnd !== null) {
         text += value.slice(sourceIndex, ordinaryLinkEnd);
         sourceIndex = ordinaryLinkEnd;

@@ -1,6 +1,4 @@
-import { decodeNamedCharacterReference } from 'decode-named-character-reference';
-import { decodeNumericCharacterReference } from 'micromark-util-decode-numeric-character-reference';
-
+import { projectMentionLabel, unescapeMarkdown } from './chat-composer-mention-label.ts';
 import { isLineEnding } from './chat-composer-mention-lines.ts';
 
 const ABSOLUTE_URI_SCHEME = /^([A-Za-z][A-Za-z0-9+.-]*):/u;
@@ -39,113 +37,6 @@ export type ParsedMentionLink = {
 };
 
 type MentionLabelBounds = { end: number; containsNestedLink: boolean };
-
-function projectMentionLabel(value: string): string | null {
-  const escaped = new Uint8Array(value.length);
-  const removed = new Uint8Array(value.length);
-  const openers = new Map<string, number[]>();
-  const codeEnds = new Map<number, number>();
-  const nextCodeRun = new Map<number, number>();
-  let backslashes = 0;
-  for (let index = 0; index < value.length; index += 1) {
-    escaped[index] = backslashes % 2;
-    backslashes = value[index] === '\\' ? backslashes + 1 : 0;
-  }
-
-  for (let index = value.length - 1; index >= 0; ) {
-    if (value[index] !== '`') {
-      index -= 1;
-      continue;
-    }
-    let start = index;
-    while (start > 0 && value[start - 1] === '`') start -= 1;
-    const length = index - start + 1;
-    if (escaped[start] === 0) {
-      const next = nextCodeRun.get(length);
-      if (next !== undefined) codeEnds.set(start, next);
-      nextCodeRun.set(length, start);
-    }
-    index = start - 1;
-  }
-
-  for (let index = 0; index < value.length; ) {
-    const codeEnd = codeEnds.get(index);
-    if (codeEnd !== undefined) {
-      index = codeEnd;
-      while (value[index] === '`') index += 1;
-      continue;
-    }
-    if (escaped[index] === 1 || !/[*_~]/u.test(value[index]!)) {
-      index += 1;
-      continue;
-    }
-    const character = value[index]!;
-    let length = 1;
-    while (value[index + length] === character) length += 1;
-    if (character === '~' && length !== 2) {
-      return null;
-    }
-    const before = value[index - 1] ?? '';
-    const after = value[index + length] ?? '';
-    const beforeWhitespace = before.length === 0 || /\s/u.test(before);
-    const afterWhitespace = after.length === 0 || /\s/u.test(after);
-    const beforePunctuation = /[\p{P}\p{S}]/u.test(before);
-    const afterPunctuation = /[\p{P}\p{S}]/u.test(after);
-    const leftFlanking =
-      !afterWhitespace && (!afterPunctuation || beforeWhitespace || beforePunctuation);
-    const rightFlanking =
-      !beforeWhitespace && (!beforePunctuation || afterWhitespace || afterPunctuation);
-    const canOpen =
-      character === '_' ? leftFlanking && (!rightFlanking || beforePunctuation) : leftFlanking;
-    const canClose =
-      character === '_' ? rightFlanking && (!leftFlanking || afterPunctuation) : rightFlanking;
-    const key = `${character}${length}`;
-    const stack = openers.get(key) ?? [];
-    if (canClose && stack.length > 0) {
-      const opening = stack.pop()!;
-      removed.fill(1, opening, opening + length);
-      removed.fill(1, index, index + length);
-    } else if (canOpen) {
-      stack.push(index);
-      openers.set(key, stack);
-    }
-    index += length;
-  }
-  if ([...openers.values()].some((stack) => stack.length > 0)) return null;
-
-  let projected = '';
-  let plain = '';
-  const flushPlain = () => {
-    const decoded = unescapeMarkdown(plain);
-    if (decoded === null) return false;
-    projected += decoded;
-    plain = '';
-    return true;
-  };
-  for (let index = 0; index < value.length; ) {
-    const codeEnd = codeEnds.get(index);
-    if (codeEnd !== undefined) {
-      if (!flushPlain()) return null;
-      const openingLength = countRepeated(value, index, '`');
-      let code = value.slice(index + openingLength, codeEnd).replace(/\r\n?|\n/gu, ' ');
-      if (code.startsWith(' ') && code.endsWith(' ') && /[^ ]/u.test(code))
-        code = code.slice(1, -1);
-      projected += code;
-      index = codeEnd + openingLength;
-      continue;
-    }
-    if (removed[index] === 0 && escaped[index] === 0 && /[*_~]/u.test(value[index]!)) return null;
-    if (removed[index] === 0) plain += value[index];
-    index += 1;
-  }
-  return flushPlain() ? projected : null;
-}
-
-function countRepeated(value: string, start: number, character: string): number {
-  let length = 0;
-  while (value[start + length] === character) length += 1;
-  return length;
-}
 
 export function parseMentionLink(
   value: string,
@@ -305,22 +196,25 @@ export function getOrdinaryLinkEnd(
   value: string,
   start: number,
   allowNestedLabel = false,
+  knownLabelEnd?: number,
 ): number | null {
-  let labelEnd = start + 1;
+  let labelEnd = knownLabelEnd ?? start + 1;
   let labelDepth = 0;
-  while (labelEnd < value.length) {
-    if (value[labelEnd] === '\\') labelEnd += 2;
-    else if (allowNestedLabel && value[labelEnd] === '!' && value[labelEnd + 1] === '[')
-      return null;
-    else if (value[labelEnd] === '[') {
-      if (!allowNestedLabel) return null;
-      labelDepth += 1;
-      labelEnd += 1;
-    } else if (value[labelEnd] === ']') {
-      if (labelDepth === 0) break;
-      labelDepth -= 1;
-      labelEnd += 1;
-    } else labelEnd += 1;
+  if (knownLabelEnd === undefined) {
+    while (labelEnd < value.length) {
+      if (value[labelEnd] === '\\') labelEnd += 2;
+      else if (allowNestedLabel && value[labelEnd] === '!' && value[labelEnd + 1] === '[')
+        return null;
+      else if (value[labelEnd] === '[') {
+        labelDepth += 1;
+        labelEnd += 1;
+      } else if (value[labelEnd] === ']') {
+        if (labelDepth === 0) break;
+        labelDepth -= 1;
+        if (value[labelEnd + 1] === '(' || value[labelEnd + 1] === '[') return null;
+        labelEnd += 1;
+      } else labelEnd += 1;
+    }
   }
   if (hasMarkdownParagraphBreak(value.slice(start + 1, labelEnd))) return null;
   if (value[labelEnd] !== ']' || value[labelEnd + 1] !== '(') return null;
@@ -431,57 +325,6 @@ export function normalizeReferenceLabel(value: string): string {
     .trim()
     .toLowerCase()
     .toUpperCase();
-}
-
-export function unescapeMarkdown(value: string, escapeWhitespace = false): string | null {
-  let unescaped = '';
-
-  for (let index = 0; index < value.length; index += 1) {
-    if (value[index] !== '\\') {
-      if (value[index] === '&') {
-        const limit = Math.min(value.length, index + 33);
-        let semicolon = index + 1;
-        while (semicolon < limit && value[semicolon] !== ';') semicolon += 1;
-        if (semicolon < limit) {
-          const reference = value.slice(index + 1, semicolon);
-          const hexadecimal = /^#[xX]([0-9A-Fa-f]{1,6})$/u.exec(reference);
-          const decimal = /^#([0-9]{1,7})$/u.exec(reference);
-          const named =
-            hexadecimal === null && decimal === null
-              ? decodeNamedCharacterReference(reference)
-              : false;
-          const decoded =
-            hexadecimal !== null
-              ? decodeNumericCharacterReference(hexadecimal[1]!, 16)
-              : decimal !== null
-                ? decodeNumericCharacterReference(decimal[1]!, 10)
-                : named;
-          if (decoded !== false) {
-            unescaped += decoded;
-            index = semicolon;
-            continue;
-          }
-        }
-      }
-      unescaped += value[index];
-      continue;
-    }
-
-    const escapedCharacter = value[index + 1];
-    if (escapedCharacter === undefined) return null;
-
-    const isPunctuation = /[!"#$%&'()*+,-./:;<=>?@[\]^_`{|}~\\]/u.test(escapedCharacter);
-    if (!isPunctuation && !(escapeWhitespace && /\s/u.test(escapedCharacter))) {
-      unescaped += `\\${escapedCharacter}`;
-      index += 1;
-      continue;
-    }
-
-    unescaped += escapedCharacter;
-    index += 1;
-  }
-
-  return unescaped;
 }
 
 export function isEntityUri(uri: string): boolean {

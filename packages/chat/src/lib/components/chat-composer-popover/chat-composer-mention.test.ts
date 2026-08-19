@@ -345,6 +345,15 @@ describe('chat composer mentions', () => {
       text: unterminatedProcessingInstructions,
       mentions: [],
     });
+    const unterminatedCdata = `x ${'<![CDATA[]x'.repeat(20_000)}`;
+    expect(parseChatComposerMentions(unterminatedCdata)).toEqual({
+      text: unterminatedCdata,
+      mentions: [],
+    });
+    const partialEmphasisMentions = '[***Ada** owner*](person:a) '.repeat(10_000);
+    const parsedPartialEmphasisMentions = parseChatComposerMentions(partialEmphasisMentions);
+    expect(parsedPartialEmphasisMentions.mentions).toHaveLength(10_000);
+    expect(parsedPartialEmphasisMentions.text).toBe('Ada owner '.repeat(10_000));
   });
 
   test('keeps per-character scan metadata bounded', () => {
@@ -1046,6 +1055,22 @@ describe('chat composer mentions', () => {
       text: 'Ada',
       mentions: [{ label: 'Ada', uri: 'person:a', start: 0, end: 3 }],
     });
+    expect(parseChatComposerMentions('[***Ada** owner*](person:a)')).toEqual({
+      text: 'Ada owner',
+      mentions: [{ label: 'Ada owner', uri: 'person:a', start: 0, end: 9 }],
+    });
+    expect(parseChatComposerMentions('[**Ada*](person:a)')).toEqual({
+      text: '*Ada',
+      mentions: [{ label: '*Ada', uri: 'person:a', start: 0, end: 4 }],
+    });
+    expect(parseChatComposerMentions('[***Ada*](person:a)')).toEqual({
+      text: '**Ada',
+      mentions: [{ label: '**Ada', uri: 'person:a', start: 0, end: 5 }],
+    });
+    expect(parseChatComposerMentions('[*Ada**](person:a)')).toEqual({
+      text: 'Ada*',
+      mentions: [{ label: 'Ada*', uri: 'person:a', start: 0, end: 4 }],
+    });
     expect(parseChatComposerMentions('[*Ada*](person:a)')).toEqual({
       text: 'Ada',
       mentions: [{ label: 'Ada', uri: 'person:a', start: 0, end: 3 }],
@@ -1061,6 +1086,25 @@ describe('chat composer mentions', () => {
     expect(parseChatComposerMentions('[a*"Ada"*](person:a)')).toEqual({
       text: '[a*"Ada"*](person:a)',
       mentions: [],
+    });
+    const balancedOrdinaryLink = '[Team [East]](https://x "[Ada](person:a)")';
+    expect(parseChatComposerMentions(balancedOrdinaryLink)).toEqual({
+      text: balancedOrdinaryLink,
+      mentions: [],
+    });
+    const nestedOrdinaryLink = '[foo [bar](person:a)](person:outer)';
+    expect(parseChatComposerMentions(nestedOrdinaryLink)).toEqual({
+      text: nestedOrdinaryLink,
+      mentions: [],
+    });
+    const escapedNestedLabel = '[foo [bar\\]](person:a)](person:outer)';
+    expect(parseChatComposerMentions(escapedNestedLabel)).toEqual({
+      text: escapedNestedLabel,
+      mentions: [],
+    });
+    expect(parseChatComposerMentions('[foo [bar](person:a)')).toEqual({
+      text: '[foo bar',
+      mentions: [{ label: 'bar', uri: 'person:a', start: 5, end: 8 }],
     });
 
     expect(parseChatComposerMentions('[ref]: <url>"[Ada](person:a)"')).toEqual({
