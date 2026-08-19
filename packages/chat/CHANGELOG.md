@@ -1,5 +1,20 @@
 # @lostgradient/chat
 
+## 0.11.1
+
+### Patch Changes
+
+- [#1373](https://github.com/stevekinney/cinder/pull/1373) [`5fbecfc`](https://github.com/stevekinney/cinder/commit/5fbecfc8729d6745b3320532100860944dba8ab5) Thanks [@stevekinney](https://github.com/stevekinney)! - Fix `atBottom` sometimes settling wrong after `scrollToTop()`/`scrollToBottom()` when off-screen `.chat-message` rows use `content-visibility: auto` row virtualization and the animation runs long enough for rows to churn mid-flight (rows scrolled past re-collapse to their `contain-intrinsic-size` estimate, newly-visible rows expand to real height, shifting `scrollHeight` by hundreds of px while the scroll is in progress).
+
+  Two asymmetries let that churn leave `atBottom` wrong at settlement: `scrollToBottom()` never went through `withUserScrollGuard`, so it had no `scrollend`-driven final geometry recompute — only the passive, rAF-batched `scroll` listener, which can lag or coalesce under load and never fire again after the last geometry change (this was ~80% of the observed failures). `scrollToTop()` did go through the guard but never forced layout for the animation's duration, so a `scrollend` arriving while bottom rows were transiently collapsed could read `scrollHeight <= clientHeight` — indistinguishable from a genuinely short transcript — and settle with `atBottom` stuck `true`.
+
+  `scrollToBottom()` now routes through `withUserScrollGuard` (getting the same final recompute `scrollToTop`/`jumpToLatest` already had), and `scrollToTop()` now forces layout for its animation's duration (the same treatment `scrollToBottom`/`jumpToLatest` already had), so both paths hold rows at real height until they settle instead of racing content-visibility's collapse/expand churn.
+
+  Reproduced deterministically in `use-chat-scroll-state.test.ts` by driving the hook's public API against a fake viewport whose `scrollHeight` getter models the churn (collapsed unless `data-cinder-force-visible` is set), rather than relying on a CI-timing-dependent real-browser repro — this is a layout-timing race that a real WebKit run only reproduced in ~20% of runs even under CI CPU pressure (0% locally), which is exactly the kind of flake a synthetic harness driving the actual code path under test can pin deterministically.
+
+- Updated dependencies [[`db45f04`](https://github.com/stevekinney/cinder/commit/db45f04a2a437694474d0b9996a445fcb1fd5027), [`1ad4252`](https://github.com/stevekinney/cinder/commit/1ad42527c9de7d02260f2f7a3659a00121298ae6), [`f5ed9cf`](https://github.com/stevekinney/cinder/commit/f5ed9cf6a6d5862438ee76495499773736e8c954), [`5ce846c`](https://github.com/stevekinney/cinder/commit/5ce846c76d9cc115a9214032c9c8634cfea7c48a), [`4280f1c`](https://github.com/stevekinney/cinder/commit/4280f1cee60d7341b18bf4731db8ef565faa3f36), [`3a3b9b3`](https://github.com/stevekinney/cinder/commit/3a3b9b3291ec24cdd18ea7a184c1d79abb6653b5), [`ef2467f`](https://github.com/stevekinney/cinder/commit/ef2467f9a541d3cfd0dff193d906fbb3b9c28041)]:
+  - @lostgradient/cinder@0.24.7
+
 ## 0.11.0
 
 ### Minor Changes

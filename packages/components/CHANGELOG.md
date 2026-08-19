@@ -1,5 +1,23 @@
 # @lostgradient/cinder
 
+## 0.24.7
+
+### Patch Changes
+
+- [#1357](https://github.com/stevekinney/cinder/pull/1357) [`db45f04`](https://github.com/stevekinney/cinder/commit/db45f04a2a437694474d0b9996a445fcb1fd5027) Thanks [@stevekinney](https://github.com/stevekinney)! - Fix two accessibility bugs in the JSON Schema editor's enum value table: an undo/redo could leave a stale invalid draft attached to a row index that no longer exists (which then resurfaced on a newly added row at that index), and two consecutive identical reorder moves could fail to re-announce to assistive technology because the live region's text didn't change.
+
+- [#1372](https://github.com/stevekinney/cinder/pull/1372) [`1ad4252`](https://github.com/stevekinney/cinder/commit/1ad42527c9de7d02260f2f7a3659a00121298ae6) Thanks [@stevekinney](https://github.com/stevekinney)! - Give array properties in the JSON Schema editor a fully editable `items` schema: expanding an array row reveals the same type selector, enum table, and nested properties table as a top-level property, scoped to `items`. The Type cell now summarizes item type inline at rest (`array of string`, `array of object`, `array of enum`). Also fixes a bug where reordering or renaming a property could silently fail to commit: the property list built its patched schema with `Object.create(null)` to safely handle a literal `__proto__` key, but a null-prototype object isn't structured-cloneable, and the editor's undo-history snapshot uses `structuredClone` — so every reorder and rename since the table rework was throwing inside that clone and being dropped.
+
+- [#1371](https://github.com/stevekinney/cinder/pull/1371) [`f5ed9cf`](https://github.com/stevekinney/cinder/commit/f5ed9cf6a6d5862438ee76495499773736e8c954) Thanks [@stevekinney](https://github.com/stevekinney)! - Add a Description column to the JSON Schema editor's enum table. Standard JSON Schema `enum` has no per-value description slot, so typing a description promotes the enum to `oneOf: [{const, description?}, ...]` — real, valid JSON Schema — and clearing every description demotes it back to a bare `enum`. A `oneOf` that already looks like a real composition (any branch carrying a keyword other than `const`/`description`) is never reinterpreted as an enum.
+
+- [#1369](https://github.com/stevekinney/cinder/pull/1369) [`5ce846c`](https://github.com/stevekinney/cinder/commit/5ce846c76d9cc115a9214032c9c8634cfea7c48a) Thanks [@stevekinney](https://github.com/stevekinney)! - Rework the JSON Schema editor's form view from stacked disclosure rows into a semantic table (Property key / Type / Description / Actions columns), with nested tables for expanded object properties. The required toggle is now a checkbox named for the property key rather than a button whose name changed on every press.
+
+- [#1370](https://github.com/stevekinney/cinder/pull/1370) [`4280f1c`](https://github.com/stevekinney/cinder/commit/4280f1cee60d7341b18bf4731db8ef565faa3f36) Thanks [@stevekinney](https://github.com/stevekinney)! - Add a type selector to the JSON Schema editor's property editor, covering string/number/integer/boolean/enum/object/array plus "Any" and an explicit "Multiple types" option that reveals the existing multi-type checkbox row. Selecting "enum" seeds a default value and expands the enum table without touching `type`; the previously separate "Enum values" checkbox is removed since the type select now covers that transition.
+
+- [#1367](https://github.com/stevekinney/cinder/pull/1367) [`3a3b9b3`](https://github.com/stevekinney/cinder/commit/3a3b9b3291ec24cdd18ea7a184c1d79abb6653b5) Thanks [@stevekinney](https://github.com/stevekinney)! - Complete public reduced-motion fallbacks and token validation safeguards.
+
+- [#1354](https://github.com/stevekinney/cinder/pull/1354) [`ef2467f`](https://github.com/stevekinney/cinder/commit/ef2467f9a541d3cfd0dff193d906fbb3b9c28041) Thanks [@stevekinney](https://github.com/stevekinney)! - Add attribute-addressable reduced motion and strengthen the public token color system.
+
 ## 0.24.6
 
 ### Patch Changes
