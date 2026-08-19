@@ -54,7 +54,11 @@ function tokenPathFromReference(reference: string): string {
     }
     return fragment
       .split('/')
-      .map((segment) => segment.replaceAll('~1', '/').replaceAll('~0', '~'))
+      .map((segment) => {
+        if (/~(?:[^01]|$)/.test(segment))
+          issue(reference, 'JSON Pointer contains invalid tilde escape');
+        return segment.replaceAll('~1', '/').replaceAll('~0', '~');
+      })
       .join('.');
   }
   return issue(reference, 'reference must use curly-brace or JSON Pointer syntax');
@@ -114,7 +118,7 @@ function resolveExtends(
     const extended = resolveExtends(extendedPath, groups, visiting, complete);
     if (group.$type === undefined && extended.$type !== undefined) group.$type = extended.$type;
     for (const [name, value] of Object.entries(extended))
-      if (!name.startsWith('$') && !Object.hasOwn(group, name))
+      if ((!name.startsWith('$') || name === '$root') && !Object.hasOwn(group, name))
         Object.defineProperty(group, name, {
           configurable: true,
           enumerable: true,

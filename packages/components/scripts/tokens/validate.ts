@@ -145,7 +145,21 @@ function validateValue(
         addIssue(issues, path, 'cubicBezier must be four numbers with x coordinates in [0, 1]');
       return;
     case 'strokeStyle':
-      if (typeof value === 'string' && ['solid', 'dashed', 'dotted', 'double'].includes(value))
+      if (
+        typeof value === 'string' &&
+        [
+          'none',
+          'hidden',
+          'dotted',
+          'dashed',
+          'solid',
+          'double',
+          'groove',
+          'ridge',
+          'inset',
+          'outset',
+        ].includes(value)
+      )
         return;
       if (
         !objectValue ||
@@ -167,6 +181,12 @@ function validateValue(
           path,
           issues,
         );
+      if (
+        isObject(objectValue?.['width']) &&
+        typeof objectValue['width']['value'] === 'number' &&
+        objectValue['width']['value'] < 0
+      )
+        addIssue(issues, `${path}.width`, 'border width must be non-negative');
       return;
     case 'transition':
       if (!objectValue)

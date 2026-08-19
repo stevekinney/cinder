@@ -25,12 +25,6 @@ async function main(): Promise<void> {
 
   const documentsByPath = new Map(documents.map(({ path, document }) => [path, document]));
   const referencedPaths = new Set(resolver.sets.flatMap((set) => set.source));
-  const sourceDocuments = resolver.sets.flatMap((set) =>
-    set.source.flatMap((source) => {
-      const document = documentsByPath.get(source);
-      return document ? [document] : [];
-    }),
-  );
   const modifiersByName = new Map(resolver.modifiers.map((modifier) => [modifier.name, modifier]));
   const orderedModifiers = resolver.resolutionOrder.map((name) => modifiersByName.get(name)!);
   for (const modifier of orderedModifiers) {
@@ -43,24 +37,29 @@ async function main(): Promise<void> {
     .filter(({ path }) => !referencedPaths.has(path))
     .map(({ path }) => ({ path, reason: 'token document is not referenced by the resolver' }));
   if (unreferencedDocuments.length > 0) throw new TokenValidationError(unreferencedDocuments);
-  for (const modifierValues of combinations(orderedModifiers)) {
-    const modifierDocuments = orderedModifiers.map((modifier) => {
-      const document = findModifierDocument(documents, modifier, modifierValues[modifier.name]);
-      if (!document)
-        throw new TokenValidationError([
-          {
-            path: `$.modifiers.${modifier.name}`,
-            reason: `no token document exists for ${modifier.name}=${modifierValues[modifier.name]}`,
-          },
-        ]);
-      return document;
-    });
-    const resolved = resolveDocuments([
-      ...sourceDocuments,
-      ...modifierDocuments.map(({ document }) => document),
-    ]);
-    for (const [path, token] of Object.entries(resolved)) validateResolvedToken(token, path);
-  }
+  for (const set of resolver.sets)
+    for (const modifierValues of combinations(orderedModifiers)) {
+      const sourceDocuments = set.source.flatMap((source) => {
+        const document = documentsByPath.get(source);
+        return document ? [document] : [];
+      });
+      const modifierDocuments = orderedModifiers.map((modifier) => {
+        const document = findModifierDocument(documents, modifier, modifierValues[modifier.name]);
+        if (!document)
+          throw new TokenValidationError([
+            {
+              path: `$.modifiers.${modifier.name}`,
+              reason: `no token document exists for ${modifier.name}=${modifierValues[modifier.name]}`,
+            },
+          ]);
+        return document;
+      });
+      const resolved = resolveDocuments([
+        ...sourceDocuments,
+        ...modifierDocuments.map(({ document }) => document),
+      ]);
+      for (const [path, token] of Object.entries(resolved)) validateResolvedToken(token, path);
+    }
 }
 
 function combinations(modifiers: ResolverModifier[]): Array<Record<string, string>> {
