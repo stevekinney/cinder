@@ -51,4 +51,28 @@ describe('token corpus validation', () => {
       ),
     ).toEqual([theme, motion]);
   });
+
+  test('orders combined modifier documents after single-axis documents at the same precedence', () => {
+    const motion = {
+      path: 'z-motion.tokens.json',
+      document: { $extensions: { 'com.lostgradient.cinder': { modifier: { motion: 'reduced' } } } },
+    };
+    const combined = {
+      path: 'a-combined.tokens.json',
+      document: {
+        $extensions: {
+          'com.lostgradient.cinder': { modifier: { theme: 'dark', motion: 'reduced' } },
+        },
+      },
+    };
+    expect(
+      orderModifierDocuments(
+        [combined, motion],
+        [
+          { name: 'theme', values: ['dark'] },
+          { name: 'motion', values: ['reduced'] },
+        ],
+      ),
+    ).toEqual([motion, combined]);
+  });
 });

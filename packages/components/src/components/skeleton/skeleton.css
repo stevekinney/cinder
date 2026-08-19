@@ -35,4 +35,9 @@
       background: var(--cinder-surface-inset);
     }
   }
+
+  :root:is([data-cinder-reduced-motion='true'], [data-reduced-motion='on']) .cinder-skeleton {
+    animation: none;
+    background: var(--cinder-surface-inset);
+  }
 }

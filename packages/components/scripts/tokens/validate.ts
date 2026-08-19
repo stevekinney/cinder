@@ -301,7 +301,8 @@ function validateValue(
     case 'gradient':
       if (!Array.isArray(value) || value.length < 2)
         addIssue(issues, path, 'gradient must contain at least two color-position stops');
-      else
+      else {
+        let previousPosition: number | undefined;
         for (const [index, stop] of value.entries()) {
           if (!isObject(stop)) {
             addIssue(issues, `${path}.${index}`, 'gradient stop must be an object');
@@ -322,7 +323,19 @@ function validateValue(
               `${path}.${index}.position`,
               'gradient position must be within [0, 1]',
             );
+          if (
+            typeof stop['position'] === 'number' &&
+            previousPosition !== undefined &&
+            stop['position'] < previousPosition
+          )
+            addIssue(
+              issues,
+              `${path}.${index}.position`,
+              'gradient positions must be nondecreasing',
+            );
+          if (typeof stop['position'] === 'number') previousPosition = stop['position'];
         }
+      }
       return;
     case 'typography':
       if (!objectValue)

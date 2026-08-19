@@ -128,8 +128,13 @@ export function orderModifierDocuments(
         (name) => modifierPositions.get(name) ?? -1,
       ),
     );
+  const specificity = ({ document }: TokenDocumentEntry): number =>
+    Object.keys(modifierAssignments(document) ?? {}).length;
   return documents.toSorted(
-    (left, right) => position(left) - position(right) || left.path.localeCompare(right.path),
+    (left, right) =>
+      position(left) - position(right) ||
+      specificity(left) - specificity(right) ||
+      left.path.localeCompare(right.path),
   );
 }
 

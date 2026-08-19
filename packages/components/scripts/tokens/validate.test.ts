@@ -302,6 +302,17 @@ describe('DTCG semantic validation', () => {
         },
       }),
     ).toThrow('position must be within');
+    expect(() =>
+      validateTokenDocument({
+        $type: 'gradient',
+        sample: {
+          $value: [
+            { color: '{x}', position: 1 },
+            { color: '{x}', position: 0 },
+          ],
+        },
+      }),
+    ).toThrow('positions must be nondecreasing');
   });
 
   test('rejects negative shadow blur while permitting negative offsets', () => {
