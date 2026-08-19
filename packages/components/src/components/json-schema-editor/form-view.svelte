@@ -6,6 +6,7 @@
     state: EditorState;
     idPrefix: string;
     enumDrafts: Record<string, Record<number, EnumDraft>>;
+    historyRevision?: number;
     onvalidationErrorcount?: ((count: number) => void) | undefined;
     onEnumDraftsChange: (next: Record<string, Record<number, EnumDraft>>) => void;
     onApplyJsonDraft: () => Promise<void>;
@@ -24,6 +25,7 @@
     state,
     idPrefix,
     enumDrafts,
+    historyRevision = 0,
     onvalidationErrorcount,
     onEnumDraftsChange,
     onApplyJsonDraft,
@@ -65,6 +67,7 @@
       readonly={state.readonly || state.jsonDraftIsDirty}
       value={rootSchema}
       {enumDrafts}
+      {historyRevision}
       {onvalidationErrorcount}
       {onEnumDraftsChange}
       onValueChange={(next, options) => state.commitFromForm(next, options)}

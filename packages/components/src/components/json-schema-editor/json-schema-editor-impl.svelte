@@ -112,6 +112,7 @@
 
   let localValidationErrorCount = $state(0);
   let enumDrafts = $state<Record<string, Record<number, EnumDraft>>>({});
+  let enumDraftHistoryRevision = $state(0);
   const editorState = createEditorState(stateOptions);
   const toolbarValidationErrorCount = $derived(view === 'form' ? localValidationErrorCount : 0);
 
@@ -178,12 +179,14 @@
   // Action handlers used by the toolbar.
   function handleUndo() {
     if (editorState.readonly || !editorState.canUndo) return;
+    enumDraftHistoryRevision += 1;
     const label = editorState.undo();
     announcer.announce(label ? `Undid: ${label}` : 'Undid last edit');
   }
 
   function handleRedo() {
     if (editorState.readonly || !editorState.canRedo) return;
+    enumDraftHistoryRevision += 1;
     const label = editorState.redo();
     announcer.announce(label ? `Redid: ${label}` : 'Redid edit');
   }
@@ -262,6 +265,7 @@
         state={editorState}
         idPrefix={`${id}-form`}
         {enumDrafts}
+        historyRevision={enumDraftHistoryRevision}
         onvalidationErrorcount={(count) => (localValidationErrorCount = count)}
         onEnumDraftsChange={(next) => (enumDrafts = next)}
         onApplyJsonDraft={async () => {

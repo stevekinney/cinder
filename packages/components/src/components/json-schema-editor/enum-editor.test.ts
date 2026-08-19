@@ -97,6 +97,23 @@ describe('EnumEditor', () => {
     );
   });
 
+  test('announces enum removals', async () => {
+    let values: unknown[] = [];
+    render(EnumEditor, {
+      idPrefix: 'status-enum',
+      path: '/status/enum',
+      values: ['draft', 'published'],
+      onValuesChange: (next: unknown[]) => {
+        values = next;
+      },
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Remove enum value 2' }));
+
+    expect(values).toEqual(['draft']);
+    expect(screen.getByText('Removed enum value 2. 1 value remains.')).not.toBeNull();
+  });
+
   test('keeps duplicate values local and disables reordering while a draft is invalid', async () => {
     let values: unknown[] = [];
     render(EnumEditor, {

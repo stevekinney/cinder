@@ -10,6 +10,7 @@
     depth?: number;
     readonly?: boolean;
     enumDrafts?: Record<string, Record<number, EnumDraft>>;
+    historyRevision?: number;
     onvalidationErrorcount?: ((count: number) => void) | undefined;
     onEnumDraftsChange?: ((next: Record<string, Record<number, EnumDraft>>) => void) | undefined;
     onValueChange: (properties: Record<string, JsonSchemaValue>, required: string[]) => void;
@@ -36,6 +37,7 @@
     depth = 0,
     readonly = false,
     enumDrafts = {},
+    historyRevision = 0,
     onvalidationErrorcount,
     onEnumDraftsChange,
     onValueChange,
@@ -404,6 +406,7 @@
             depth={depth + 1}
             {readonly}
             {enumDrafts}
+            {historyRevision}
             value={properties[key] ?? {}}
             onvalidationErrorcount={(count) => setChildValidationErrorCount(key, count)}
             {onEnumDraftsChange}

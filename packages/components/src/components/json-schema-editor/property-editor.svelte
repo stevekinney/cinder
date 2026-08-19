@@ -9,6 +9,7 @@
     depth?: number;
     readonly?: boolean;
     enumDrafts?: Record<string, Record<number, EnumDraft>>;
+    historyRevision?: number;
     onvalidationErrorcount?: ((count: number) => void) | undefined;
     onEnumDraftsChange?: ((next: Record<string, Record<number, EnumDraft>>) => void) | undefined;
     onValueChange: (
@@ -54,6 +55,7 @@
     depth = 0,
     readonly = false,
     enumDrafts = {},
+    historyRevision = 0,
     onvalidationErrorcount,
     onEnumDraftsChange,
     onValueChange,
@@ -404,6 +406,7 @@
           path={`${path}/enum`}
           values={objectValue.enum ?? []}
           drafts={enumDrafts[`${path}/enum`] ?? {}}
+          {historyRevision}
           {readonly}
           onvalidationErrorcount={(count) => setChildValidationErrorCount('enum', count)}
           onDraftsChange={(next) => onEnumDraftsChange?.({ ...enumDrafts, [`${path}/enum`]: next })}
@@ -421,6 +424,7 @@
           {readonly}
           {depth}
           {enumDrafts}
+          {historyRevision}
           path={`${path}/properties`}
           properties={objectValue.properties ?? {}}
           required={objectValue.required ?? []}
@@ -441,6 +445,7 @@
           depth={depth + 1}
           {readonly}
           {enumDrafts}
+          {historyRevision}
           value={objectValue.items ?? {}}
           onvalidationErrorcount={(count) => setChildValidationErrorCount('items', count)}
           {onEnumDraftsChange}
@@ -476,6 +481,7 @@
                 depth={depth + 1}
                 {readonly}
                 {enumDrafts}
+                {historyRevision}
                 value={branch}
                 onvalidationErrorcount={(count) =>
                   setChildValidationErrorCount(`${keyword}:${branchKey}`, count)}

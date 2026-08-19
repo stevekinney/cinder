@@ -9,6 +9,7 @@
     path: string;
     values: unknown[];
     drafts?: Record<number, EnumDraft>;
+    historyRevision?: number;
     readonly?: boolean;
     onvalidationErrorcount?: ((count: number) => void) | undefined;
     onDraftsChange?: ((next: Record<number, EnumDraft>) => void) | undefined;
@@ -26,6 +27,7 @@
     path,
     values,
     drafts = {},
+    historyRevision = 0,
     readonly = false,
     onvalidationErrorcount,
     onDraftsChange,
@@ -36,6 +38,7 @@
   let previousDrafts: Record<number, EnumDraft> | null = null;
   let emittedDrafts: Record<number, EnumDraft> | null = null;
   let lastResolvedDuplicateSignature: string | null = null;
+  let previousHistoryRevision = $state(0);
   const activeDrafts = $derived({ ...drafts, ...localDrafts });
   const invalidValueIndexes = $derived(new Set(Object.keys(activeDrafts).map(Number)));
   let actionAnnouncement = $state('');
@@ -44,6 +47,10 @@
   onDestroy(() => onvalidationErrorcount?.(0));
 
   $effect(() => {
+    if (historyRevision !== previousHistoryRevision) {
+      previousHistoryRevision = historyRevision;
+      return;
+    }
     if (drafts !== previousDrafts) {
       if (drafts !== emittedDrafts) localDrafts = {};
       previousDrafts = drafts;
@@ -176,6 +183,8 @@
     onValuesChange(values.filter((_, itemIndex) => itemIndex !== index));
     await tick();
     document.getElementById(`${idPrefix}-remove-${focusIndex}`)?.focus();
+    const remainingCount = values.length - 1;
+    actionAnnouncement = `Removed enum value ${index + 1}. ${remainingCount} ${remainingCount === 1 ? 'value remains' : 'values remain'}.`;
   }
 
   function addValue(): void {
