@@ -36,6 +36,105 @@ describe('EnumEditor', () => {
     );
   });
 
+  test('renders a description input per row, defaulting to empty', () => {
+    render(EnumEditor, {
+      idPrefix: 'status-enum',
+      path: '/status/enum',
+      values: ['draft', 'published'],
+      descriptions: ['Not yet visible', ''],
+      onValuesChange: () => {},
+    });
+
+    expect(
+      screen.getByRole('textbox', { name: 'Enum value 1 description' }),
+    ).toHaveProperty('value', 'Not yet visible');
+    expect(
+      screen.getByRole('textbox', { name: 'Enum value 2 description' }),
+    ).toHaveProperty('value', '');
+  });
+
+  test('editing a description commits both arrays with the value array untouched', async () => {
+    let latestValues: unknown[] = [];
+    let latestDescriptions: string[] = [];
+    render(EnumEditor, {
+      idPrefix: 'status-enum',
+      path: '/status/enum',
+      values: ['draft', 'published'],
+      descriptions: ['', ''],
+      onValuesChange: (values: unknown[], descriptions: string[]) => {
+        latestValues = values;
+        latestDescriptions = descriptions;
+      },
+    });
+
+    await fireEvent.input(screen.getByRole('textbox', { name: 'Enum value 1 description' }), {
+      target: { value: 'Not yet visible' },
+    });
+
+    expect(latestValues).toEqual(['draft', 'published']);
+    expect(latestDescriptions).toEqual(['Not yet visible', '']);
+  });
+
+  test('reordering moves the description alongside its value', async () => {
+    let latestValues: unknown[] = [];
+    let latestDescriptions: string[] = [];
+    render(EnumEditor, {
+      idPrefix: 'status-enum',
+      path: '/status/enum',
+      values: ['draft', 'published'],
+      descriptions: ['Not yet visible', 'Live'],
+      onValuesChange: (values: unknown[], descriptions: string[]) => {
+        latestValues = values;
+        latestDescriptions = descriptions;
+      },
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Move enum value 2 up' }));
+
+    expect(latestValues).toEqual(['published', 'draft']);
+    expect(latestDescriptions).toEqual(['Live', 'Not yet visible']);
+  });
+
+  test('removing a value removes its description at the same index', async () => {
+    let latestValues: unknown[] = [];
+    let latestDescriptions: string[] = [];
+    render(EnumEditor, {
+      idPrefix: 'status-enum',
+      path: '/status/enum',
+      values: ['draft', 'published', 'archived'],
+      descriptions: ['Not yet visible', 'Live', 'Retired'],
+      onValuesChange: (values: unknown[], descriptions: string[]) => {
+        latestValues = values;
+        latestDescriptions = descriptions;
+      },
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Remove enum value 2' }));
+
+    expect(latestValues).toEqual(['draft', 'archived']);
+    expect(latestDescriptions).toEqual(['Not yet visible', 'Retired']);
+  });
+
+  test('adding a value appends an empty description', async () => {
+    let latestValues: unknown[] = [];
+    let latestDescriptions: string[] = [];
+    render(EnumEditor, {
+      idPrefix: 'status-enum',
+      path: '/status/enum',
+      values: ['draft'],
+      descriptions: ['Not yet visible'],
+      onValuesChange: (values: unknown[], descriptions: string[]) => {
+        latestValues = values;
+        latestDescriptions = descriptions;
+      },
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Add enum value' }));
+
+    expect(latestValues).toHaveLength(2);
+    expect(latestDescriptions).toEqual(['Not yet visible', '']);
+  });
+
   test('commits valid JSON values and keeps invalid row text local', async () => {
     let values: unknown[] = [];
     render(EnumEditor, {

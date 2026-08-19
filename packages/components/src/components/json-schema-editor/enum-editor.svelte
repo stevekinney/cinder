@@ -8,12 +8,18 @@
     idPrefix: string;
     path: string;
     values: unknown[];
+    /** Parallel to `values`. `''` for a value with no description. */
+    descriptions?: string[];
     drafts?: Record<number, EnumDraft>;
     historyRevision?: number;
     readonly?: boolean;
     onvalidationErrorcount?: ((count: number) => void) | undefined;
     onDraftsChange?: ((next: Record<number, EnumDraft>) => void) | undefined;
-    onValuesChange: (next: unknown[], options?: { coalesceKey?: string; label?: string }) => void;
+    onValuesChange: (
+      values: unknown[],
+      descriptions: string[],
+      options?: { coalesceKey?: string; label?: string },
+    ) => void;
   };
 </script>
 
@@ -26,6 +32,7 @@
     idPrefix,
     path,
     values,
+    descriptions = [],
     drafts = {},
     historyRevision = 0,
     readonly = false,
@@ -33,6 +40,10 @@
     onDraftsChange,
     onValuesChange,
   }: EnumEditorProps = $props();
+
+  function descriptionAt(index: number): string {
+    return descriptions[index] ?? '';
+  }
 
   let localDrafts = $state<Record<number, EnumDraft>>({});
   let previousDrafts: Record<number, EnumDraft> | null = null;
@@ -109,7 +120,7 @@
     );
     emittedDrafts = nextDrafts;
     onDraftsChange?.(nextDrafts);
-    onValuesChange(nextValues, { label: 'resolve duplicate enum value' });
+    onValuesChange(nextValues, descriptions, { label: 'resolve duplicate enum value' });
   });
 
   function jsonText(value: unknown): string {
@@ -183,19 +194,37 @@
       const next = [...values];
       next[index] = nextValue;
       setDraft(index, undefined);
-      onValuesChange(next, { coalesceKey: `enum:${path}:${index}`, label: 'edit enum value' });
+      onValuesChange(next, descriptions, {
+        coalesceKey: `enum:${path}:${index}`,
+        label: 'edit enum value',
+      });
     } catch {
       setDraft(index, { text, error: 'invalid-json' });
     }
+  }
+
+  function setDescription(index: number, text: string): void {
+    if (readonly) return;
+    const next = [...descriptions];
+    next[index] = text;
+    onValuesChange(values, next, {
+      coalesceKey: `enum-description:${path}:${index}`,
+      label: 'edit enum value description',
+    });
   }
 
   async function moveValue(index: number, direction: -1 | 1): Promise<void> {
     const targetIndex = index + direction;
     if (readonly || invalidValueIndexes.size > 0 || targetIndex < 0 || targetIndex >= values.length)
       return;
-    const next = [...values];
-    [next[index], next[targetIndex]] = [next[targetIndex]!, next[index]!];
-    onValuesChange(next);
+    const nextValues = [...values];
+    [nextValues[index], nextValues[targetIndex]] = [nextValues[targetIndex]!, nextValues[index]!];
+    const nextDescriptions = [...descriptions];
+    [nextDescriptions[index], nextDescriptions[targetIndex]] = [
+      nextDescriptions[targetIndex] ?? '',
+      nextDescriptions[index] ?? '',
+    ];
+    onValuesChange(nextValues, nextDescriptions);
     await tick();
     focusValue(targetIndex);
     // Clear the live region first so two consecutive moves that produce the
@@ -211,7 +240,10 @@
     if (readonly || invalidValueIndexes.size > 0 || values.length === 1) return;
     const focusIndex = Math.min(index, values.length - 2);
     const remainingCount = values.length - 1;
-    onValuesChange(values.filter((_, itemIndex) => itemIndex !== index));
+    onValuesChange(
+      values.filter((_, itemIndex) => itemIndex !== index),
+      descriptions.filter((_, itemIndex) => itemIndex !== index),
+    );
     await tick();
     focusValue(focusIndex);
     actionAnnouncement = `Removed enum value ${index + 1}. ${remainingCount} ${remainingCount === 1 ? 'value remains' : 'values remain'}.`;
@@ -223,7 +255,7 @@
     let nextValue = '';
     let suffix = 1;
     while (hasDuplicateValue(nextValue, -1)) nextValue = `value ${suffix++}`;
-    onValuesChange([...values, nextValue]);
+    onValuesChange([...values, nextValue], [...descriptions, '']);
     await tick();
     focusValue(addedIndex);
     actionAnnouncement = `Added enum value ${addedIndex + 1} of ${addedIndex + 1}.`;
@@ -235,6 +267,7 @@
     <thead>
       <tr>
         <th scope="col">Value</th>
+        <th scope="col">Description</th>
         <th scope="col"><span class="cinder-sr-only">Actions</span></th>
       </tr>
     </thead>
@@ -258,6 +291,16 @@
                 {errorMessage(index)}
               </p>
             {/if}
+          </td>
+          <td>
+            <Input
+              id={`${idPrefix}-description-${index}`}
+              label={`Enum value ${index + 1} description`}
+              value={descriptionAt(index)}
+              disabled={readonly}
+              oninput={(event: Event) =>
+                setDescription(index, (event.target as HTMLInputElement).value)}
+            />
           </td>
           <td class="cinder-jse-enum-editor__actions">
             <Button
