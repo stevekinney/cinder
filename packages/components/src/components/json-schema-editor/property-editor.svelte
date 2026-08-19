@@ -7,6 +7,8 @@
     value: JsonSchemaValue;
     path: string;
     depth?: number;
+    /** The property key this editor renders, when nested under a PropertyList row. Threaded to a nested PropertyList so it can label its table. */
+    propertyKey?: string | undefined;
     readonly?: boolean;
     enumDrafts?: Record<string, Record<number, EnumDraft>>;
     historyRevision?: number;
@@ -53,6 +55,7 @@
     value,
     path,
     depth = 0,
+    propertyKey,
     readonly = false,
     enumDrafts = {},
     historyRevision = 0,
@@ -433,6 +436,7 @@
           {depth}
           {enumDrafts}
           {historyRevision}
+          parentKey={propertyKey}
           path={`${path}/properties`}
           properties={objectValue.properties ?? {}}
           required={objectValue.required ?? []}

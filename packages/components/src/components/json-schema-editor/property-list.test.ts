@@ -90,10 +90,8 @@ describe('PropertyList', () => {
       onValueChange: () => {},
     });
 
-    expect(
-      screen.getByRole('button', { name: 'email: Optional (toggle required)' }),
-    ).not.toBeNull();
-    expect(screen.getByRole('button', { name: 'age: Optional (toggle required)' })).not.toBeNull();
+    expect(screen.getByRole('checkbox', { name: 'email' })).not.toBeNull();
+    expect(screen.getByRole('checkbox', { name: 'age' })).not.toBeNull();
     expect(screen.getByRole('button', { name: 'Move email up' })).not.toBeNull();
     expect(screen.getByRole('button', { name: 'Move email down' })).not.toBeNull();
     expect(screen.getByRole('button', { name: 'Move age up' })).not.toBeNull();
@@ -105,6 +103,44 @@ describe('PropertyList', () => {
         .querySelector('[aria-label="Expand email property"]')
         ?.getAttribute('aria-controls'),
     ).toBeNull();
+  });
+
+  test('the required checkbox adds and removes the key from the required array', async () => {
+    let latestRequired: string[] = [];
+    const { rerender } = render(PropertyList, {
+      idPrefix: 'properties',
+      path: '/properties',
+      properties: {
+        name: { type: 'string' },
+        age: { type: 'integer' },
+      },
+      required: ['name'],
+      onValueChange: (_properties: unknown, required: string[]) => {
+        latestRequired = required;
+      },
+    });
+
+    expect(screen.getByRole('checkbox', { name: 'name' })).toHaveProperty('checked', true);
+    expect(screen.getByRole('checkbox', { name: 'age' })).toHaveProperty('checked', false);
+
+    await fireEvent.click(screen.getByRole('checkbox', { name: 'age' }));
+    expect(latestRequired).toEqual(['name', 'age']);
+
+    await rerender({
+      idPrefix: 'properties',
+      path: '/properties',
+      properties: {
+        name: { type: 'string' },
+        age: { type: 'integer' },
+      },
+      required: latestRequired,
+      onValueChange: (_properties: unknown, required: string[]) => {
+        latestRequired = required;
+      },
+    });
+
+    await fireEvent.click(screen.getByRole('checkbox', { name: 'name' }));
+    expect(latestRequired).toEqual(['age']);
   });
 
   test('reorders properties through the row controls', async () => {
