@@ -197,13 +197,14 @@
 
   async function addValue(): Promise<void> {
     if (readonly) return;
+    const addedIndex = values.length;
     let nextValue = '';
     let suffix = 1;
     while (hasDuplicateValue(nextValue, -1)) nextValue = `value ${suffix++}`;
     onValuesChange([...values, nextValue]);
     await tick();
-    focusValue(values.length);
-    actionAnnouncement = `Added enum value ${values.length + 1} of ${values.length + 1}.`;
+    focusValue(addedIndex);
+    actionAnnouncement = `Added enum value ${addedIndex + 1} of ${addedIndex + 1}.`;
   }
 </script>
 
