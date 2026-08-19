@@ -71,6 +71,7 @@ All property-table controls use their native button, checkbox, and input keyboar
 | Property table | `table` | `Schema properties` (root) or `Properties of <key>` (nested) | — |
 | Enum table | `table` | `Enum values` | — |
 | Disclosure | `button` | `Expand <key> property` / `Collapse <key> property`, suffixed with `, N validation errors` when the row has nested errors | `aria-expanded`; `aria-controls` present only while the detail row is rendered |
+| Type | `combobox` | `<key> type` (visually hidden — a "Type" heading labels the section) | value is `any`, a concrete type, `enum`, or `multiple` |
 | Required | `checkbox` | `<key>` | `checked` |
 | Move up / down | `button` | `Move <key> up` / `Move <key> down` | `disabled` at the ends of the table, in read-only mode, and while a JSON draft is dirty |
 | Delete | `button` | `Delete <key>` | `disabled` in read-only mode and while a JSON draft is dirty |
@@ -81,6 +82,8 @@ All property-table controls use their native button, checkbox, and input keyboar
 Reorder and delete controls repeat identically on every row, so each one carries the property key in its name — without that, a screen-reader control list reads as a column of indistinguishable "Move up" entries.
 
 The required control's accessible name is the bare property key, not `<key>: Required (toggle off)`. Naming it after the next action would make the name change on every toggle, which announces the change twice and breaks a reference a screen-reader user just built by name. It lives in the same visually-hidden `Actions` column as the reorder and delete buttons; a `checkbox` role already announces as "checkbox," so nothing else in the name needs to say "required" for it to be understood in context, and the row-header key told the user which row they're in before they got there.
+
+The Type select covers `any`, `string`, `number`, `integer`, `boolean`, `enum`, `object`, and `array` directly. `type` may legitimately be a JSON array (`["string","null"]`) or bare `null`, neither of which a single-select value can represent; those states surface as a `multiple` option, and selecting it explicitly reveals the pre-existing multi-select checkbox row (the same one this select otherwise replaces) so nothing the checkboxes could already express is lost. Selecting `enum` seeds a default `['']` and reveals the enum table without touching `type`, so `type: 'string'` plus `enum` stays a string enum rather than losing its type. Selecting away from `enum` clears it.
 
 Do not rely on color, icon shape, placeholder text, or a control's column position as the only way to communicate state or available actions.
 
@@ -108,7 +111,7 @@ Reordering commits the new schema order and updates the form, JSON, and diff vie
 - `bun run --filter=@lostgradient/cinder test -- enum-editor.test.ts` verifies the enum table's resting state, JSON-value validation, resulting reorder state, and its move/remove/add announcements and focus targets.
 - `bun run --filter=@lostgradient/cinder test -- json-schema-editor.test.ts` verifies the diff-tab changed-state indicator, the toolbar's role and labels, nested validation-count aggregation, and undo/redo via keyboard shortcut on the editor region.
 - `bun run --filter=@lostgradient/cinder test -- json-schema-editor-state.svelte.test.ts` verifies form and JSON commits, validation hooks, undo/redo history, diff baselines, dirty-draft handling, and `draftOverride` behavior — this module has no DOM dependency and is unaffected by the table structure.
-- `bun run --filter=@cinder/testing test:playwright -- editors-complex-residual.playwright.ts --grep "JSON schema editor"` verifies JSON-to-form and form-to-JSON synchronization in a browser, the toolbar's roving tabindex, and the diff tab's accessible markup.
+- `bun run --filter=@cinder/testing test:playwright -- editors-complex-residual.playwright.ts --grep "JSON schema editor"` verifies JSON-to-form and form-to-JSON synchronization in a browser, the toolbar's roving tabindex, the diff tab's accessible markup, the type selector switching to `enum` and revealing the enum table, and selecting `Multiple types` seeding a starting array and revealing the checkbox row. The type-select interaction is covered here rather than in `property-list.test.ts` — mounting it through a real browser sidesteps a happy-dom keyed-each reconciliation limitation the unit harness hits at this nesting depth.
 
 ### Manual verification only
 
