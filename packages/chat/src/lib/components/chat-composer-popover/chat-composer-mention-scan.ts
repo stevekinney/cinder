@@ -6,6 +6,7 @@ export type ScanMetadata = {
   containerStarts: Map<number, number>;
   containerContexts: Map<number, ContainerContext>;
   codeSpanEnds: Map<number, number>;
+  labelBounds: Map<number, { end: number; containsNestedLink: boolean }>;
   mathEnds: Map<number, number>;
   paragraphLineStarts: Set<number>;
 };
@@ -42,6 +43,7 @@ export function makeScanMetadata(value: string): ScanMetadata {
   const containerStarts = new Map<number, number>();
   const containerContexts = new Map<number, ContainerContext>();
   const codeSpanEnds = new Map<number, number>();
+  const labelBounds = new Map<number, { end: number; containsNestedLink: boolean }>();
   const mathEnds = new Map<number, number>();
   const paragraphBreaks = new Set<number>();
   const paragraphLineStarts = new Set<number>();
@@ -49,9 +51,24 @@ export function makeScanMetadata(value: string): ScanMetadata {
 
   let backslashes = 0;
   let lineStart = 0;
+  let nestedLinkCount = 0;
+  const labelStack: Array<{ start: number; nestedLinkCount: number }> = [];
   for (let index = 0; index < value.length; index += 1) {
     escaped[index] = backslashes % 2;
     lineStarts[index] = lineStart;
+    if (escaped[index] === 0) {
+      if (value[index] === '!' && value[index + 1] === '[') nestedLinkCount += 1;
+      if (value[index] === '[') {
+        labelStack.push({ start: index, nestedLinkCount });
+      } else if (value[index] === ']' && labelStack.length > 0) {
+        const opening = labelStack.pop()!;
+        labelBounds.set(opening.start, {
+          end: index,
+          containsNestedLink: nestedLinkCount > opening.nestedLinkCount,
+        });
+        if (value[index + 1] === '(' || value[index + 1] === '[') nestedLinkCount += 1;
+      }
+    }
     backslashes = value[index] === '\\' ? backslashes + 1 : 0;
     if (value[index] === '\n' || (value[index] === '\r' && value[index + 1] !== '\n')) {
       if (/^\s*$/u.test(value.slice(lineStart, index))) paragraphBreaks.add(index);
@@ -165,7 +182,7 @@ export function makeScanMetadata(value: string): ScanMetadata {
     let start = index;
     while (start > 0 && value[start - 1] === character) start -= 1;
     const length = index - start + 1;
-    if (character === '`') {
+    if (character === '`' && escaped[start] !== 1) {
       const next = nextCodeRun.get(length);
       if (next !== undefined) codeSpanEnds.set(start, next + length);
       nextCodeRun.set(length, start);
@@ -190,6 +207,7 @@ export function makeScanMetadata(value: string): ScanMetadata {
     containerStarts,
     containerContexts,
     codeSpanEnds,
+    labelBounds,
     mathEnds,
     paragraphLineStarts,
   };

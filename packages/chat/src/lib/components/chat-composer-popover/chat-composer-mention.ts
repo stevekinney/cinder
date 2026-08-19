@@ -17,8 +17,8 @@ import {
   getReferenceImageEnd,
   hasMarkdownParagraphBreak,
   isEntityUri,
+  parseMentionLink,
   scanGfmLiteralAutolink,
-  unescapeMarkdown,
 } from './chat-composer-mention-link.ts';
 import {
   collectResolvedReferenceLabels,
@@ -58,12 +58,6 @@ export type ChatComposerMentionParseResult = {
   mentions: ChatComposerMentionRange[];
 };
 
-type ParsedLink = {
-  label: string;
-  uri: string;
-  end: number;
-};
-
 function isAtBlockStart(value: string, index: number, metadata: ScanMetadata): boolean {
   const lineStart = metadata.lineStarts[index] ?? 0;
   const containerStart = metadata.containerStarts.get(lineStart) ?? lineStart;
@@ -72,61 +66,6 @@ function isAtBlockStart(value: string, index: number, metadata: ScanMetadata): b
 
 function getInlineCodeSpanEnd(start: number, metadata: ScanMetadata): number | null {
   return metadata.codeSpanEnds.get(start) ?? null;
-}
-
-function parseLink(value: string, start: number): ParsedLink | null {
-  if (value[start] !== '[') return null;
-
-  let labelEnd = start + 1;
-  while (labelEnd < value.length) {
-    if (value[labelEnd] === '\\') {
-      labelEnd += 2;
-      continue;
-    }
-
-    if (value[labelEnd] === '[') return null;
-    if (value[labelEnd] === ']') break;
-    labelEnd += 1;
-  }
-
-  if (value[labelEnd] !== ']' || value[labelEnd + 1] !== '(') return null;
-
-  const destinationStart = labelEnd + 2;
-  let destinationEnd = destinationStart;
-  let nestedParentheses = 0;
-
-  while (destinationEnd < value.length) {
-    const character = value[destinationEnd]!;
-
-    if (character === '\\') {
-      destinationEnd += 2;
-      continue;
-    }
-
-    if (/\s/u.test(character)) return null;
-    if (character === '(') {
-      nestedParentheses += 1;
-      destinationEnd += 1;
-      continue;
-    }
-    if (character === '[' || character === '<' || character === '>') return null;
-    if (character === ')') {
-      if (nestedParentheses === 0) break;
-      nestedParentheses -= 1;
-    }
-
-    destinationEnd += 1;
-  }
-
-  if (value[destinationEnd] !== ')') return null;
-
-  const rawLabel = value.slice(start + 1, labelEnd);
-  if (hasMarkdownParagraphBreak(rawLabel)) return null;
-  const label = unescapeMarkdown(rawLabel);
-  const uri = unescapeMarkdown(value.slice(destinationStart, destinationEnd));
-  if (label === null || label.length === 0 || uri === null || !isEntityUri(uri)) return null;
-
-  return { label, uri, end: destinationEnd + 1 };
 }
 
 /** Serializes an entity mention as Markdown suitable for a plain textarea. */
@@ -148,7 +87,7 @@ export function serializeChatComposerMention({ label, uri }: ChatComposerMention
 
 /** Deserializes one serialized entity mention, or returns `null` for any other text. */
 export function deserializeChatComposerMention(value: string): ChatComposerMention | null {
-  const link = parseLink(value, 0);
+  const link = parseMentionLink(value, 0);
   if (link === null || link.end !== value.length) return null;
 
   return { label: link.label, uri: link.uri };
@@ -385,11 +324,7 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
             /^\s*(?:<\/?[A-Za-z][A-Za-z0-9-]*(?:\s[^>]*)?>)[ \t]*$/u.test(
               value.slice(containerStart, lineEnd),
             ) && isLineEnding(value[lineEnd]);
-          const canOwnHtmlBlock =
-            isInterruptingHtmlBlockTag(normalizedTag) ||
-            !value.slice(sourceIndex - 2, sourceIndex).includes('/');
           if (
-            canOwnHtmlBlock &&
             startsAtBlockColumn &&
             (isInterruptingHtmlBlockTag(normalizedTag) ||
               (isStandaloneTag && canStartHtmlBlock(value, lineStart, metadata)))
@@ -465,7 +400,11 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
         continue;
       }
 
-      const link = parseLink(value, sourceIndex);
+      const link = parseMentionLink(
+        value,
+        sourceIndex,
+        metadata.labelBounds.get(sourceIndex) ?? null,
+      );
       if (link !== null) {
         const start = text.length;
         text += link.label;

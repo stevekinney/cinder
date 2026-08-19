@@ -169,8 +169,8 @@ describe('chat composer mentions', () => {
     });
 
     expect(parseChatComposerMentions('`[Ada](person:ada)\\`')).toEqual({
-      text: '`[Ada](person:ada)\\`',
-      mentions: [],
+      text: '`Ada\\`',
+      mentions: [{ label: 'Ada', uri: 'person:ada', start: 1, end: 4 }],
     });
 
     expect(parseChatComposerMentions('    [Ada](person:ada)')).toEqual({
@@ -860,6 +860,27 @@ describe('chat composer mentions', () => {
       text: '[Docs](https://x (title\nAda)',
       mentions: [{ label: 'Ada', uri: 'person:a', start: 24, end: 27 }],
     });
+    expect(parseChatComposerMentions('<span />\n[Ada](person:a)')).toEqual({
+      text: '<span />\n[Ada](person:a)',
+      mentions: [],
+    });
+    expect(parseChatComposerMentions('[ref]: /u\\ v "[Ada](person:a)"')).toEqual({
+      text: '[ref]: /u\\ v "Ada"',
+      mentions: [{ label: 'Ada', uri: 'person:a', start: 14, end: 17 }],
+    });
+    const escapedReferenceDestination = '[ref]: /u\\*v "[Ada](person:a)"';
+    expect(parseChatComposerMentions(escapedReferenceDestination)).toEqual({
+      text: escapedReferenceDestination,
+      mentions: [],
+    });
+    expect(parseChatComposerMentions('[Team [East]](person:east)')).toEqual({
+      text: 'Team [East]',
+      mentions: [{ label: 'Team [East]', uri: 'person:east', start: 0, end: 11 }],
+    });
+    expect(parseChatComposerMentions('[Ada](<person:ada>)')).toEqual({
+      text: 'Ada',
+      mentions: [{ label: 'Ada', uri: 'person:ada', start: 0, end: 3 }],
+    });
     expect(parseChatComposerMentions('Heading\n---\n[ref]: /url "[Ada](person:a)"')).toEqual({
       text: 'Heading\n---\n[ref]: /url "[Ada](person:a)"',
       mentions: [],
@@ -926,6 +947,11 @@ describe('chat composer mentions', () => {
       label: 'Ada',
       uri: 'person:a|b',
     });
+    expect(deserializeChatComposerMention('[Team [East]](person:east)')).toEqual({
+      label: 'Team [East]',
+      uri: 'person:east',
+    });
+    expect(deserializeChatComposerMention('[[Ada](person:a)](person:outer)')).toBeNull();
     expect(parseChatComposerMentions('[Docs](https://x\\ y "[Ada](person:a)")')).toEqual({
       text: '[Docs](https://x\\ y "Ada")',
       mentions: [{ label: 'Ada', uri: 'person:a', start: 21, end: 24 }],

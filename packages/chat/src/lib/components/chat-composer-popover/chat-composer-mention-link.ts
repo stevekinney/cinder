@@ -32,6 +32,105 @@ export function hasMarkdownParagraphBreak(value: string): boolean {
   return /(?:\r\n?|\n)[ \t]*(?:\r\n?|\n)/u.test(value);
 }
 
+export type ParsedMentionLink = {
+  label: string;
+  uri: string;
+  end: number;
+};
+
+type MentionLabelBounds = { end: number; containsNestedLink: boolean };
+
+export function parseMentionLink(
+  value: string,
+  start: number,
+  knownLabelBounds?: MentionLabelBounds | null,
+): ParsedMentionLink | null {
+  if (value[start] !== '[') return null;
+
+  if (knownLabelBounds === null || knownLabelBounds?.containsNestedLink) return null;
+  let labelEnd = knownLabelBounds?.end ?? start + 1;
+  if (knownLabelBounds === undefined) {
+    let labelDepth = 0;
+    while (labelEnd < value.length) {
+      if (value[labelEnd] === '\\') {
+        labelEnd += 2;
+        continue;
+      }
+
+      if (value[labelEnd] === '!' && value[labelEnd + 1] === '[') return null;
+      if (value[labelEnd] === '[') {
+        labelDepth += 1;
+        labelEnd += 1;
+        continue;
+      }
+      if (value[labelEnd] === ']') {
+        if (labelDepth === 0) break;
+        labelDepth -= 1;
+        if (value[labelEnd + 1] === '(' || value[labelEnd + 1] === '[') return null;
+      }
+      labelEnd += 1;
+    }
+  }
+
+  if (value[labelEnd] !== ']' || value[labelEnd + 1] !== '(') return null;
+
+  const destinationStart = labelEnd + 2;
+  let destinationEnd = destinationStart;
+  let rawDestinationStart = destinationStart;
+  let rawDestinationEnd = destinationStart;
+  let nestedParentheses = 0;
+
+  if (value[destinationStart] === '<') {
+    rawDestinationStart += 1;
+    destinationEnd += 1;
+    while (destinationEnd < value.length && value[destinationEnd] !== '>') {
+      if (value[destinationEnd] === '\\') {
+        destinationEnd += 2;
+        continue;
+      }
+      if (isLineEnding(value[destinationEnd]) || value[destinationEnd] === '<') return null;
+      destinationEnd += 1;
+    }
+    if (value[destinationEnd] !== '>') return null;
+    rawDestinationEnd = destinationEnd;
+    destinationEnd += 1;
+  } else {
+    while (destinationEnd < value.length) {
+      const character = value[destinationEnd]!;
+
+      if (character === '\\') {
+        destinationEnd += 2;
+        continue;
+      }
+
+      if (/\s/u.test(character)) return null;
+      if (character === '(') {
+        nestedParentheses += 1;
+        destinationEnd += 1;
+        continue;
+      }
+      if (character === '[' || character === '<' || character === '>') return null;
+      if (character === ')') {
+        if (nestedParentheses === 0) break;
+        nestedParentheses -= 1;
+      }
+
+      destinationEnd += 1;
+    }
+    rawDestinationEnd = destinationEnd;
+  }
+
+  if (value[destinationEnd] !== ')') return null;
+
+  const rawLabel = value.slice(start + 1, labelEnd);
+  if (hasMarkdownParagraphBreak(rawLabel)) return null;
+  const label = unescapeMarkdown(rawLabel);
+  const uri = unescapeMarkdown(value.slice(rawDestinationStart, rawDestinationEnd));
+  if (label === null || label.length === 0 || uri === null || !isEntityUri(uri)) return null;
+
+  return { label, uri, end: destinationEnd + 1 };
+}
+
 export function scanGfmLiteralAutolink(
   value: string,
   start: number,

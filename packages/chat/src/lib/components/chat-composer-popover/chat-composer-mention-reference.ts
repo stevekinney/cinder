@@ -74,8 +74,13 @@ export function getReferenceDefinitionEnd(
   } else {
     let parentheses = 0;
     while (cursor < end && !/\s/u.test(value[cursor]!)) {
-      if (value[cursor] === '\\') cursor += 1;
-      else if (value[cursor] === '<' || value[cursor] === '>') return null;
+      if (
+        value[cursor] === '\\' &&
+        /[!"#$%&'()*+,\-./:;<=>?@[\\\]^_`{|}~]/u.test(value[cursor + 1] ?? '')
+      ) {
+        cursor += 2;
+        continue;
+      } else if (value[cursor] === '<' || value[cursor] === '>') return null;
       else if (value[cursor] === '(') parentheses += 1;
       else if (value[cursor] === ')') {
         if (parentheses === 0) break;
