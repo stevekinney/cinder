@@ -228,6 +228,20 @@ describe('scoped theme tokens', () => {
     expect(foundationCss).not.toContain('--shiki-light');
   });
 
+  test('an explicit reduced-motion preference disables component animation and transitions', async () => {
+    const foundationCss = await readFile(FOUNDATION_CSS_PATH, 'utf8');
+    const explicitPreferenceBlock = extractRuleBlock(
+      foundationCss,
+      ":root[data-reduced-motion='on'] *,\n:root[data-reduced-motion='on'],\n:root[data-reduced-motion='on'] *::before,\n:root[data-reduced-motion='on'] *::after",
+    );
+
+    expectDeclarations(explicitPreferenceBlock, {
+      animation: 'none !important',
+      transition: 'none !important',
+      'scroll-behavior': 'auto !important',
+    });
+  });
+
   /**
    * The scoped blocks must AGREE with the `light-dark()` declarations they mirror.
    *
