@@ -26,7 +26,8 @@
 
   /* Respect reduced-motion: remove blur when user prefers reduced motion */
   @media (prefers-reduced-motion: reduce) {
-    :root:not([data-cinder-reduced-motion='false']) .cinder-backdrop {
+    :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off'])
+      .cinder-backdrop {
       backdrop-filter: none;
     }
   }

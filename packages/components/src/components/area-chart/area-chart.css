@@ -169,8 +169,10 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    :root:not([data-cinder-reduced-motion='false']) .cinder-area-chart__area,
-    :root:not([data-cinder-reduced-motion='false']) .cinder-area-chart__line {
+    :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off'])
+      .cinder-area-chart__area,
+    :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off'])
+      .cinder-area-chart__line {
       transition: none;
     }
   }

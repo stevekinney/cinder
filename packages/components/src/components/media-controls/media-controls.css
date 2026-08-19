@@ -87,7 +87,8 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    :root:not([data-cinder-reduced-motion='false']) .cinder-media-controls__svg--loading {
+    :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off'])
+      .cinder-media-controls__svg--loading {
       animation: none;
     }
   }

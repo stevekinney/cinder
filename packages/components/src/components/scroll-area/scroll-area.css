@@ -66,6 +66,18 @@
     }
   }
 
+  @media (hover: hover) and (pointer: fine) {
+    :root:is([data-cinder-reduced-motion='false'], [data-reduced-motion='off'])
+      .cinder-scroll-area[data-cinder-drag-to-scroll] {
+      cursor: grab;
+    }
+
+    :root:is([data-cinder-reduced-motion='false'], [data-reduced-motion='off'])
+      .cinder-scroll-area[data-cinder-dragging] {
+      cursor: grabbing;
+    }
+  }
+
   /* Chromium / Safari scrollbar theming. */
   .cinder-scroll-area::-webkit-scrollbar {
     inline-size: var(--cinder-scrollbar-size);

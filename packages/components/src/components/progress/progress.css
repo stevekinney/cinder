@@ -47,7 +47,9 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    :root:not([data-cinder-reduced-motion='false']) .cinder-progress--bar .cinder-progress__fill {
+    :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off'])
+      .cinder-progress--bar
+      .cinder-progress__fill {
       transition: none;
     }
   }
@@ -72,7 +74,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    :root:not([data-cinder-reduced-motion='false'])
+    :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off'])
       .cinder-progress--bar
       .cinder-progress__fill--indeterminate {
       animation: none;
@@ -132,7 +134,9 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    :root:not([data-cinder-reduced-motion='false']) .cinder-progress--ring .cinder-progress__fill {
+    :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off'])
+      .cinder-progress--ring
+      .cinder-progress__fill {
       transition: none;
     }
   }
@@ -158,7 +162,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    :root:not([data-cinder-reduced-motion='false'])
+    :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off'])
       .cinder-progress--ring
       .cinder-progress__fill--indeterminate {
       animation: none;

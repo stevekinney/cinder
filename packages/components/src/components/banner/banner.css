@@ -33,7 +33,7 @@
     }
   }
 
-  :root[data-cinder-reduced-motion='false'] .cinder-banner {
+  :root:is([data-cinder-reduced-motion='false'], [data-reduced-motion='off']) .cinder-banner {
     transition:
       background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
       border-color var(--cinder-duration-fast) var(--cinder-ease-standard);
@@ -79,7 +79,8 @@
     }
   }
 
-  :root[data-cinder-reduced-motion='false'] .cinder-banner__dismiss {
+  :root:is([data-cinder-reduced-motion='false'], [data-reduced-motion='off'])
+    .cinder-banner__dismiss {
     transition:
       background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
       box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);

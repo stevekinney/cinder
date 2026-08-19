@@ -42,6 +42,7 @@ const COLOR_SPACES = new Set([
 ]);
 const HEX_COLOR_PATTERN = /^#(?:[0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
 const COLOR_MEMBERS = new Set(['colorSpace', 'components', 'alpha', 'hex']);
+const DIMENSION_MEMBERS = new Set(['value', 'unit']);
 
 type JsonObject = Record<string, unknown>;
 type ResolverDocumentShape = {
@@ -122,7 +123,8 @@ function validateValue(
           (typeof objectValue['alpha'] !== 'number' ||
             objectValue['alpha'] < 0 ||
             objectValue['alpha'] > 1) &&
-          objectValue['alpha'] !== 'none') ||
+          objectValue['alpha'] !== 'none' &&
+          !isReference(objectValue['alpha'])) ||
         (objectValue['hex'] !== undefined &&
           (typeof objectValue['hex'] !== 'string' || !HEX_COLOR_PATTERN.test(objectValue['hex'])))
       )
@@ -142,6 +144,10 @@ function validateValue(
         !['px', 'rem'].includes(String(objectValue['unit']))
       )
         addIssue(issues, path, 'dimension must have a numeric value and px or rem unit');
+      else
+        for (const name of Object.keys(objectValue))
+          if (!DIMENSION_MEMBERS.has(name))
+            addIssue(issues, path, `unknown dimension member ${name}`);
       return;
     case 'duration':
       if (
@@ -151,6 +157,10 @@ function validateValue(
         !['ms', 's'].includes(String(objectValue['unit']))
       )
         addIssue(issues, path, 'duration must have a non-negative numeric value and ms or s unit');
+      else
+        for (const name of Object.keys(objectValue))
+          if (!DIMENSION_MEMBERS.has(name))
+            addIssue(issues, path, `unknown duration member ${name}`);
       return;
     case 'fontFamily':
       if (

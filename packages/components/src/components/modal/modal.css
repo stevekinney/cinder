@@ -218,11 +218,13 @@
  * ---------------------------------------- */
 
   @media (prefers-reduced-motion: reduce) {
-    :root:not([data-cinder-reduced-motion='false']) .cinder-modal__panel {
+    :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off'])
+      .cinder-modal__panel {
       transition: none;
     }
 
-    :root:not([data-cinder-reduced-motion='false']) .cinder-modal::backdrop {
+    :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off'])
+      .cinder-modal::backdrop {
       transition: none;
     }
   }

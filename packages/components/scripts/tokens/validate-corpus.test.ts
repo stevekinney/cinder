@@ -1,5 +1,9 @@
 import { describe, expect, test } from 'bun:test';
-import { findModifierDocument, findModifierDocuments } from './validate-corpus.ts';
+import {
+  findModifierDocument,
+  findModifierDocuments,
+  orderModifierDocuments,
+} from './validate-corpus.ts';
 
 describe('token corpus validation', () => {
   test('finds modifier documents through authored metadata instead of file names', () => {
@@ -26,5 +30,25 @@ describe('token corpus validation', () => {
     expect(findModifierDocuments(documents, { theme: 'dark', motion: 'reduced' })).toEqual(
       documents,
     );
+  });
+
+  test('orders selected modifier documents by the resolver axis order', () => {
+    const theme = {
+      path: 'themes/dark.tokens.json',
+      document: { $extensions: { 'com.lostgradient.cinder': { modifier: { theme: 'dark' } } } },
+    };
+    const motion = {
+      path: 'modes/reduced.tokens.json',
+      document: { $extensions: { 'com.lostgradient.cinder': { modifier: { motion: 'reduced' } } } },
+    };
+    expect(
+      orderModifierDocuments(
+        [motion, theme],
+        [
+          { name: 'theme', values: ['dark'] },
+          { name: 'motion', values: ['reduced'] },
+        ],
+      ),
+    ).toEqual([theme, motion]);
   });
 });

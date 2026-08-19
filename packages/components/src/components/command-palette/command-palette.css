@@ -214,7 +214,8 @@
     }
   }
 
-  :root[data-cinder-reduced-motion='false'] .cinder-command-palette {
+  :root:is([data-cinder-reduced-motion='false'], [data-reduced-motion='off'])
+    .cinder-command-palette {
     animation: cinder-command-palette-enter var(--cinder-duration-normal) var(--cinder-ease-spring)
       forwards;
   }
@@ -229,7 +230,8 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    :root:not([data-cinder-reduced-motion='false']) .cinder-command-palette {
+    :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off'])
+      .cinder-command-palette {
       animation: cinder-command-palette-fade var(--cinder-duration-fast) linear forwards;
     }
   }

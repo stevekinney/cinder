@@ -46,7 +46,10 @@ async function main(): Promise<void> {
         const document = documentsByPath.get(source);
         return document ? [document] : [];
       });
-      const modifierDocuments = findModifierDocuments(documents, modifierValues);
+      const modifierDocuments = orderModifierDocuments(
+        findModifierDocuments(documents, modifierValues),
+        orderedModifiers,
+      );
       for (const modifier of orderedModifiers)
         if (
           !modifierDocuments.some(
@@ -112,6 +115,22 @@ export function findModifierDocuments(
       Object.entries(assignments).every(([name, value]) => modifierValues[name] === value)
     );
   });
+}
+
+export function orderModifierDocuments(
+  documents: TokenDocumentEntry[],
+  modifiers: ResolverModifier[],
+): TokenDocumentEntry[] {
+  const modifierPositions = new Map(modifiers.map(({ name }, index) => [name, index]));
+  const position = ({ document }: TokenDocumentEntry): number =>
+    Math.max(
+      ...Object.keys(modifierAssignments(document) ?? {}).map(
+        (name) => modifierPositions.get(name) ?? -1,
+      ),
+    );
+  return documents.toSorted(
+    (left, right) => position(left) - position(right) || left.path.localeCompare(right.path),
+  );
 }
 
 if (import.meta.main) await main();

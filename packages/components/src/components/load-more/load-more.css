@@ -77,7 +77,8 @@
     }
   }
 
-  :root[data-cinder-reduced-motion='false'] .cinder-load-more__spinner {
+  :root:is([data-cinder-reduced-motion='false'], [data-reduced-motion='off'])
+    .cinder-load-more__spinner {
     animation: cinder-load-more-spin var(--cinder-duration-spin) linear infinite;
   }
 

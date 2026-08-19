@@ -54,7 +54,8 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    :root:not([data-cinder-reduced-motion='false']) .cinder-table-of-contents__link {
+    :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off'])
+      .cinder-table-of-contents__link {
       transition: none;
     }
   }

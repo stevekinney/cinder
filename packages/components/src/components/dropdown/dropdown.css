@@ -396,7 +396,8 @@
     }
   }
 
-  :root[data-cinder-reduced-motion='false'] .cinder-dropdown__menu {
+  :root:is([data-cinder-reduced-motion='false'], [data-reduced-motion='off'])
+    .cinder-dropdown__menu {
     animation: cinder-dropdown-enter var(--cinder-duration-fast) var(--cinder-ease-standard)
       forwards;
   }

@@ -268,11 +268,13 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    :root:not([data-cinder-reduced-motion='false']) .cinder-drawer__panel {
+    :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off'])
+      .cinder-drawer__panel {
       transition: none;
     }
 
-    :root:not([data-cinder-reduced-motion='false']) .cinder-drawer::backdrop {
+    :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off'])
+      .cinder-drawer::backdrop {
       transition: none;
     }
   }

@@ -255,6 +255,24 @@ describe('DTCG semantic validation', () => {
         sample: { $value: { colorSpace: 'oklch', components: [0, 0, 0], hex: '#12345' } },
       }),
     ).toThrow('valid optional alpha or hex');
+    expect(() =>
+      validateTokenDocument({
+        $type: 'color',
+        sample: { $value: { colorSpace: 'oklch', components: [0, 0, 0], alpha: '{opacity}' } },
+      }),
+    ).not.toThrow();
+    expect(() =>
+      validateTokenDocument({
+        $type: 'dimension',
+        sample: { $value: { value: 1, unit: 'px', units: 'rem' } },
+      }),
+    ).toThrow('unknown dimension member units');
+    expect(() =>
+      validateTokenDocument({
+        $type: 'duration',
+        sample: { $value: { value: 1, unit: 'ms', units: 's' } },
+      }),
+    ).toThrow('unknown duration member units');
   });
 
   test('rejects negative durations', () => {

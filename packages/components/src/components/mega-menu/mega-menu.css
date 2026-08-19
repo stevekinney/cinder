@@ -70,7 +70,8 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    :root:not([data-cinder-reduced-motion='false']) .cinder-mega-menu__indicator {
+    :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off'])
+      .cinder-mega-menu__indicator {
       transition: none;
     }
   }
@@ -97,9 +98,9 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    :root:not([data-cinder-reduced-motion='false'])
+    :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off'])
       .cinder-mega-menu__content[data-motion='from-start'],
-    :root:not([data-cinder-reduced-motion='false'])
+    :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off'])
       .cinder-mega-menu__content[data-motion='from-end'] {
       animation: none;
     }

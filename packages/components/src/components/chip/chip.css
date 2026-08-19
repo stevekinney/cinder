@@ -287,7 +287,7 @@
  * ---------------------------------------- */
 
   @media (prefers-reduced-motion: reduce) {
-    :root:not([data-cinder-reduced-motion='false']) .cinder-chip {
+    :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off']) .cinder-chip {
       transition: none;
     }
   }

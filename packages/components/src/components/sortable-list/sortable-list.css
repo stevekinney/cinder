@@ -74,12 +74,14 @@
    */
 
   @media (prefers-reduced-motion: reduce) {
-    :root:not([data-cinder-reduced-motion='false']) .cinder-sortable-item--lifted {
+    :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off'])
+      .cinder-sortable-item--lifted {
       transform: none;
       box-shadow: var(--cinder-shadow-lg);
     }
 
-    :root:not([data-cinder-reduced-motion='false']) .cinder-sortable-item--placeholder {
+    :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off'])
+      .cinder-sortable-item--placeholder {
       opacity: 0.6;
     }
   }
@@ -173,7 +175,8 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    :root:not([data-cinder-reduced-motion='false']) .cinder-sortable-drag-preview {
+    :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off'])
+      .cinder-sortable-drag-preview {
       transform: none;
     }
   }

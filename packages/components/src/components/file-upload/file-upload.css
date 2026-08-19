@@ -319,8 +319,10 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    :root:not([data-cinder-reduced-motion='false']) .cinder-file-upload__dropzone,
-    :root:not([data-cinder-reduced-motion='false']) .cinder-file-upload__progress-fill {
+    :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off'])
+      .cinder-file-upload__dropzone,
+    :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off'])
+      .cinder-file-upload__progress-fill {
       transition: none;
     }
   }

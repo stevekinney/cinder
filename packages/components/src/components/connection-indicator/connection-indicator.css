@@ -41,7 +41,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    :root:not([data-cinder-reduced-motion='false'])
+    :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off'])
       .cinder-connection-indicator[data-cinder-status='live']
       .cinder-connection-indicator__dot {
       animation: none;
@@ -80,10 +80,10 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    :root:not([data-cinder-reduced-motion='false'])
+    :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off'])
       .cinder-connection-indicator[data-cinder-status='connecting']
       .cinder-connection-indicator__icon,
-    :root:not([data-cinder-reduced-motion='false'])
+    :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off'])
       .cinder-connection-indicator[data-cinder-status='reconnecting']
       .cinder-connection-indicator__icon {
       animation: none;
