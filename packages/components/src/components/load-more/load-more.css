@@ -77,6 +77,10 @@
     }
   }
 
+  :root[data-cinder-reduced-motion='false'] .cinder-load-more__spinner {
+    animation: cinder-load-more-spin var(--cinder-duration-spin) linear infinite;
+  }
+
   @keyframes cinder-load-more-spin {
     to {
       transform: rotate(360deg);

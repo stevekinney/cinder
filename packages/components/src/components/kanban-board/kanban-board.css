@@ -245,6 +245,14 @@
     }
   }
 
+  :root[data-cinder-reduced-motion='false'] .cinder-kanban-board__card,
+  :root[data-cinder-reduced-motion='false'] .cinder-kanban-board__column {
+    transition:
+      border-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+      box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard),
+      background-color var(--cinder-duration-fast) var(--cinder-ease-standard);
+  }
+
   /* ========================================
    * DRAG PREVIEW OVERLAY (shared with sortable-list)
    * ======================================== */
