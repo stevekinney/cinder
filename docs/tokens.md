@@ -264,34 +264,34 @@ The `*-contrast` tokens are the foreground color for text and icons placed on a 
 
 Foreground / background / border triples for soft tinted surfaces. Use these in Alert, Toast, Callout, and anywhere else you need a status surface with semantically-paired text and border.
 
-| Token                           | Default                                                                                   |
-| ------------------------------- | ----------------------------------------------------------------------------------------- |
-| `--cinder-color-info-bg`        | `light-dark(oklch(94.5% 0.03 230),oklch(28% 0.057 230))`                                  |
-| `--cinder-color-info-fg`        | `light-dark(oklch(40% 0.079 230),oklch(88% 0.071 230))`                                   |
-| `--cinder-color-info-border`    | `light-dark(oklch(80% 0.05 230),oklch(45% 0.08 230))`                                     |
-| `--cinder-color-success-bg`     | `light-dark(oklch(94.5% 0.045 145),oklch(28% 0.07 145))`                                  |
-| `--cinder-color-success-fg`     | `light-dark(oklch(40% 0.127 145), oklch(88% 0.11 145))`                                   |
-| `--cinder-color-success-border` | `light-dark(oklch(80% 0.05 145), oklch(45% 0.09 145))`                                    |
-| `--cinder-color-warning-bg`     | `light-dark(oklch(94.5% 0.042 75),oklch(28% 0.06 75))`                                    |
-| `--cinder-color-warning-fg`     | `light-dark(oklch(40% 0.085 75), oklch(90% 0.08 75))`                                     |
-| `--cinder-color-warning-border` | `light-dark(oklch(80% 0.06 75), oklch(50% 0.1 75))`                                       |
-| `--cinder-color-danger-bg`      | `light-dark(oklch(94.5% 0.026 25),oklch(28% 0.09 25))`                                    |
-| `--cinder-color-danger-fg`      | `light-dark(oklch(42% 0.16 25), oklch(90% 0.05 25))`                                      |
-| `--cinder-color-danger-border`  | `light-dark(oklch(80% 0.06 25), oklch(50% 0.11 25))`                                      |
-| `--cinder-color-neutral-bg`     | `light-dark(oklch(94.5% 0.004 255),oklch(28% 0.04 245))`                                  |
-| `--cinder-color-neutral-fg`     | `var(--cinder-text)`                                                                      |
-| `--cinder-color-neutral-border` | `var(--cinder-border)`                                                                    |
-| `--cinder-color-accent-bg`      | `color-mix(in oklch, var(--cinder-accent), var(--cinder-surface) 88%)`                    |
-| `--cinder-color-accent-fg`      | `var(--cinder-accent-text)`                                                               |
-| `--cinder-color-accent-border`  | `color-mix(in oklch, var(--cinder-accent), transparent 60%)`                              |
-| `--cinder-color-info-muted`     | `oklch(from color-mix(in oklch, var(--cinder-info), var(--cinder-surface) 36%) l c h)`    |
-| `--cinder-color-info-subtle`    | `oklch(from color-mix(in oklch, var(--cinder-info), var(--cinder-text) 36%) l c h)`       |
-| `--cinder-color-success-muted`  | `oklch(from color-mix(in oklch, var(--cinder-success), var(--cinder-surface) 36%) l c h)` |
-| `--cinder-color-success-subtle` | `oklch(from color-mix(in oklch, var(--cinder-success), var(--cinder-text) 36%) l c h)`    |
-| `--cinder-color-warning-muted`  | `oklch(from color-mix(in oklch, var(--cinder-warning), var(--cinder-surface) 36%) l c h)` |
-| `--cinder-color-warning-subtle` | `oklch(from color-mix(in oklch, var(--cinder-warning), var(--cinder-text) 36%) l c h)`    |
-| `--cinder-color-danger-muted`   | `oklch(from color-mix(in oklch, var(--cinder-danger), var(--cinder-surface) 36%) l c h)`  |
-| `--cinder-color-danger-subtle`  | `oklch(from color-mix(in oklch, var(--cinder-danger), var(--cinder-text) 36%) l c h)`     |
+| Token                           | Default                                                                                              |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `--cinder-color-info-bg`        | `light-dark(oklch(94.5% 0.03 230),oklch(28% 0.057 230))`                                             |
+| `--cinder-color-info-fg`        | `light-dark(oklch(40% 0.079 230),oklch(88% 0.071 230))`                                              |
+| `--cinder-color-info-border`    | `light-dark(oklch(80% 0.05 230),oklch(45% 0.08 230))`                                                |
+| `--cinder-color-success-bg`     | `light-dark(oklch(94.5% 0.045 145),oklch(28% 0.07 145))`                                             |
+| `--cinder-color-success-fg`     | `light-dark(oklch(40% 0.127 145), oklch(88% 0.11 145))`                                              |
+| `--cinder-color-success-border` | `light-dark(oklch(80% 0.05 145), oklch(45% 0.09 145))`                                               |
+| `--cinder-color-warning-bg`     | `light-dark(oklch(94.5% 0.042 75),oklch(28% 0.06 75))`                                               |
+| `--cinder-color-warning-fg`     | `light-dark(oklch(40% 0.085 75), oklch(90% 0.08 75))`                                                |
+| `--cinder-color-warning-border` | `light-dark(oklch(80% 0.06 75), oklch(50% 0.1 75))`                                                  |
+| `--cinder-color-danger-bg`      | `light-dark(oklch(94.5% 0.026 25),oklch(28% 0.09 25))`                                               |
+| `--cinder-color-danger-fg`      | `light-dark(oklch(42% 0.16 25), oklch(90% 0.05 25))`                                                 |
+| `--cinder-color-danger-border`  | `light-dark(oklch(80% 0.06 25), oklch(50% 0.11 25))`                                                 |
+| `--cinder-color-neutral-bg`     | `light-dark(oklch(94.5% 0.004 255),oklch(28% 0.04 245))`                                             |
+| `--cinder-color-neutral-fg`     | `var(--cinder-text)`                                                                                 |
+| `--cinder-color-neutral-border` | `var(--cinder-border)`                                                                               |
+| `--cinder-color-accent-bg`      | `color-mix(in oklch, var(--cinder-accent), var(--cinder-surface) 88%)`                               |
+| `--cinder-color-accent-fg`      | `var(--cinder-accent-text)`                                                                          |
+| `--cinder-color-accent-border`  | `color-mix(in oklch, var(--cinder-accent), transparent 60%)`                                         |
+| `--cinder-color-info-muted`     | `oklch(from color-mix(in oklch, var(--cinder-info), var(--cinder-surface) 36%) l min(c, 0.05) h)`    |
+| `--cinder-color-info-subtle`    | `oklch(from color-mix(in oklch, var(--cinder-info), var(--cinder-text) 36%) l min(c, 0.05) h)`       |
+| `--cinder-color-success-muted`  | `oklch(from color-mix(in oklch, var(--cinder-success), var(--cinder-surface) 36%) l min(c, 0.05) h)` |
+| `--cinder-color-success-subtle` | `oklch(from color-mix(in oklch, var(--cinder-success), var(--cinder-text) 36%) l min(c, 0.05) h)`    |
+| `--cinder-color-warning-muted`  | `oklch(from color-mix(in oklch, var(--cinder-warning), var(--cinder-surface) 36%) l min(c, 0.05) h)` |
+| `--cinder-color-warning-subtle` | `oklch(from color-mix(in oklch, var(--cinder-warning), var(--cinder-text) 36%) l min(c, 0.05) h)`    |
+| `--cinder-color-danger-muted`   | `oklch(from color-mix(in oklch, var(--cinder-danger), var(--cinder-surface) 36%) l min(c, 0.05) h)`  |
+| `--cinder-color-danger-subtle`  | `oklch(from color-mix(in oklch, var(--cinder-danger), var(--cinder-text) 36%) l min(c, 0.05) h)`     |
 
 ## Transparency checkerboard
 
