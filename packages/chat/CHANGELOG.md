@@ -1,5 +1,11 @@
 # @lostgradient/chat
 
+## 0.11.0
+
+### Minor Changes
+
+- [#1340](https://github.com/stevekinney/cinder/pull/1340) [`99d8410`](https://github.com/stevekinney/cinder/commit/99d84103674494b19e715375aaf4fab1b5122093) Thanks [@stevekinney](https://github.com/stevekinney)! - Add round-trippable plain-text composer mention serialization helpers.
+
 ## 0.10.1
 
 ### Patch Changes
