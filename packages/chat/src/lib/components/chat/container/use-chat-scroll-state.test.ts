@@ -870,7 +870,7 @@ describe('useChatScrollState — content-visibility churn during scroll-to-top/b
   // the settle logic let that churn leave `atBottom` wrong at the end:
   //
   // 1. `scrollToBottom()` never went through `withUserScrollGuard`, so it had
-  //    no `scrollend`-driven final `recomputeAtBottomAtSettlement` — only the
+  //    no `scrollend`-driven final `recomputeFromViewport` — only the
   //    passive, rAF-batched `scroll` listener, which can lag/coalesce under
   //    load and never fire again after the last geometry change.
   // 2. `scrollToTop()` went through the guard but never forced layout, so a
