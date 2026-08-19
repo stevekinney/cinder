@@ -503,6 +503,41 @@ test.describe('JSON schema editor', () => {
     await expect(editor.getByText('Enter a valid JSON value.')).toBeVisible();
   });
 
+  test('the type selector switches a property to enum and reveals the enum table', async ({
+    page,
+  }) => {
+    const editor = await openFirstEditor(page);
+    await editor.getByRole('button', { name: 'Expand name property' }).click();
+
+    const typeSelect = editor.getByRole('combobox', { name: 'name type' });
+    await expect(typeSelect).toHaveValue('string');
+    await expect(editor.getByRole('table', { name: 'Enum values' })).toHaveCount(0);
+
+    await typeSelect.selectOption('enum');
+
+    await expect(editor.getByRole('table', { name: 'Enum values' })).toBeVisible();
+    await expect(editor.getByRole('textbox', { name: 'Enum value 1' })).toHaveValue('""');
+  });
+
+  test('selecting "Multiple types" seeds a starting array and reveals the checkbox row', async ({
+    page,
+  }) => {
+    const editor = await openFirstEditor(page);
+    await editor.getByRole('button', { name: 'Expand name property' }).click();
+
+    const typeSelect = editor.getByRole('combobox', { name: 'name type' });
+    await expect(editor.getByRole('checkbox', { name: 'string', exact: true })).toHaveCount(0);
+
+    await typeSelect.selectOption('multiple');
+
+    await expect(editor.getByRole('checkbox', { name: 'string', exact: true })).toBeChecked();
+    await expect(editor.getByRole('checkbox', { name: 'null', exact: true })).toBeChecked();
+
+    const jsonTab = editor.getByRole('tab', { name: /JSON/ });
+    await jsonTab.click();
+    await expect(editor.locator('textarea').first()).toHaveValue(/"type":\s*\[\s*"string",\s*"null"\s*\]/);
+  });
+
   test('exactly one enabled toolbar action is in the tab order at rest', async ({ page }) => {
     const editor = await openFirstEditor(page);
     const toolbarRight = editor.locator('.cinder-jse-toolbar__right').first();

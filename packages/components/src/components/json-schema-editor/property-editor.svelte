@@ -1,6 +1,7 @@
 <script lang="ts" module>
   import type { JsonSchemaTypeName, JsonSchemaValue } from './json-schema-editor-types.ts';
   import type { EnumDraft } from './enum-editor.svelte';
+  import type { SelectOption } from '@lostgradient/cinder/select';
 
   export type PropertyEditorProps = {
     idPrefix: string;
@@ -36,6 +37,7 @@
   import Checkbox from '../checkbox/checkbox.svelte';
   import Collapsible from '@lostgradient/cinder/collapsible';
   import Input from '../input/input.svelte';
+  import Select from '@lostgradient/cinder/select';
 
   import { reconcileCompositionBranchKeys } from './composition-branch-keys.ts';
   import {
@@ -240,6 +242,55 @@
     patch({ enum: values }, options ?? { label: 'edit enum values' });
   }
 
+  // ===== Type select =====
+  // A fast-path selector covering the seven options CIN-156 names plus "Any"
+  // and an explicit "Multiple types" escape hatch. `type` may legitimately be
+  // an array (JSON Schema multi-type) or `null`, neither of which fits a
+  // single-select value — those states, and the deliberate opt-in to edit
+  // them, fall back to the existing PRIMITIVE_TYPES checkbox row below.
+  const typeSelectValue = $derived.by<string>(() => {
+    if (hasEnum) return 'enum';
+    if (selectedTypes.length > 1 || selectedTypes.includes('null')) return 'multiple';
+    return isAnyType ? 'any' : selectedTypes[0]!;
+  });
+
+  const showTypeCheckboxes = $derived(typeSelectValue === 'multiple');
+
+  const typeSelectOptions: SelectOption[] = [
+    { value: 'any', label: 'Any' },
+    { value: 'string', label: 'string' },
+    { value: 'number', label: 'number' },
+    { value: 'integer', label: 'integer' },
+    { value: 'boolean', label: 'boolean' },
+    { value: 'enum', label: 'enum' },
+    { value: 'object', label: 'object' },
+    { value: 'array', label: 'array' },
+    { value: 'multiple', label: 'Multiple types' },
+  ];
+
+  function setTypeFromSelect(next: string) {
+    if (readonly || next === typeSelectValue) return;
+    if (next === 'multiple') {
+      // Seed a sensible starting multi-type set from the current single type
+      // (or 'string' from 'any'/'enum') so the checkbox row opens with
+      // something already checked rather than empty.
+      const base = selectedTypes[0] ?? 'string';
+      setTypeFromCheckboxes([base, 'null']);
+      if (hasEnum) setEnum(false);
+      return;
+    }
+    if (next === 'enum') {
+      setEnum(true);
+      return;
+    }
+    if (hasEnum) setEnum(false);
+    if (next === 'any') {
+      setTypeFromCheckboxes([]);
+      return;
+    }
+    setTypeFromCheckboxes([next as JsonSchemaTypeName]);
+  }
+
   // ===== Composition =====
   function patchComposition(
     keyword: 'oneOf' | 'anyOf' | 'allOf' | 'not',
@@ -382,36 +433,40 @@
     <!-- Type section -->
     <div class="cinder-jse-section">
       <h4 class="cinder-jse-section__title">Type</h4>
-      <div class="cinder-jse-type-row">
-        <Checkbox
-          id={`${idPrefix}-type-any`}
-          checked={isAnyType}
-          label="Any"
-          disabled={readonly}
-          onchange={(event: Event) => setAny((event.target as HTMLInputElement).checked)}
-        />
-        {#each PRIMITIVE_TYPES as primitive (primitive)}
+      <Select
+        id={`${idPrefix}-type-select`}
+        label={`${propertyKey ?? 'Value'} type`}
+        labelVisible={false}
+        value={typeSelectValue}
+        options={typeSelectOptions}
+        disabled={readonly}
+        onchange={(event: Event) => setTypeFromSelect((event.target as HTMLSelectElement).value)}
+      />
+      {#if showTypeCheckboxes}
+        <div class="cinder-jse-type-row">
           <Checkbox
-            id={`${idPrefix}-type-${primitive}`}
-            checked={selectedTypes.includes(primitive)}
-            label={primitive}
+            id={`${idPrefix}-type-any`}
+            checked={isAnyType}
+            label="Any"
             disabled={readonly}
-            onchange={(event: Event) =>
-              toggleType(primitive, (event.target as HTMLInputElement).checked)}
+            onchange={(event: Event) => setAny((event.target as HTMLInputElement).checked)}
           />
-        {/each}
-      </div>
+          {#each PRIMITIVE_TYPES as primitive (primitive)}
+            <Checkbox
+              id={`${idPrefix}-type-${primitive}`}
+              checked={selectedTypes.includes(primitive)}
+              label={primitive}
+              disabled={readonly}
+              onchange={(event: Event) =>
+                toggleType(primitive, (event.target as HTMLInputElement).checked)}
+            />
+          {/each}
+        </div>
+      {/if}
     </div>
 
-    <div class="cinder-jse-section">
-      <Checkbox
-        id={`${idPrefix}-enum`}
-        checked={hasEnum}
-        label="Enum values"
-        disabled={readonly}
-        onchange={(event: Event) => setEnum((event.target as HTMLInputElement).checked)}
-      />
-      {#if hasEnum}
+    {#if hasEnum}
+      <div class="cinder-jse-section">
         <EnumEditor
           idPrefix={`${idPrefix}-enum`}
           path={`${path}/enum`}
@@ -423,8 +478,8 @@
           onDraftsChange={(next) => onEnumDraftsChange?.({ ...enumDrafts, [`${path}/enum`]: next })}
           onValuesChange={setEnumValues}
         />
-      {/if}
-    </div>
+      </div>
+    {/if}
 
     <!-- Object constraints (properties + required) — comes early because it's the heaviest. -->
     {#if showObjectConstraints}
