@@ -1,5 +1,12 @@
 # @lostgradient/cinder-mcp
 
+## 0.1.12
+
+### Patch Changes
+
+- Updated dependencies [[`db45f04`](https://github.com/stevekinney/cinder/commit/db45f04a2a437694474d0b9996a445fcb1fd5027), [`1ad4252`](https://github.com/stevekinney/cinder/commit/1ad42527c9de7d02260f2f7a3659a00121298ae6), [`f5ed9cf`](https://github.com/stevekinney/cinder/commit/f5ed9cf6a6d5862438ee76495499773736e8c954), [`5ce846c`](https://github.com/stevekinney/cinder/commit/5ce846c76d9cc115a9214032c9c8634cfea7c48a), [`4280f1c`](https://github.com/stevekinney/cinder/commit/4280f1cee60d7341b18bf4731db8ef565faa3f36), [`3a3b9b3`](https://github.com/stevekinney/cinder/commit/3a3b9b3291ec24cdd18ea7a184c1d79abb6653b5), [`ef2467f`](https://github.com/stevekinney/cinder/commit/ef2467f9a541d3cfd0dff193d906fbb3b9c28041)]:
+  - @lostgradient/cinder@0.24.7
+
 ## 0.1.11
 
 ### Patch Changes
