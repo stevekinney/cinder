@@ -34,6 +34,14 @@ describe('DTCG resolver', () => {
     expect(resolved['copy']?.$value).toBe(2);
   });
 
+  test('decodes percent-encoded JSON Pointer fragments', () => {
+    const resolved = resolveDocument({
+      'a b': { $type: 'number', $value: 2 },
+      copy: { $type: 'number', $value: '#/a%20b' },
+    });
+    expect(resolved['copy']?.$value).toBe(2);
+  });
+
   test('retains inherited types and a group root token', () => {
     const resolved = resolveDocument({
       group: { $type: 'number', $root: { $value: 1 }, child: { $value: 2 } },

@@ -45,12 +45,18 @@ function issue(path: string, reason: string): never {
 
 function tokenPathFromReference(reference: string): string {
   if (/^\{[^{}]+\}$/.test(reference)) return reference.slice(1, -1);
-  if (reference.startsWith('#/'))
-    return reference
-      .slice(2)
+  if (reference.startsWith('#/')) {
+    let fragment: string;
+    try {
+      fragment = decodeURIComponent(reference.slice(2));
+    } catch {
+      return issue(reference, 'JSON Pointer contains invalid percent encoding');
+    }
+    return fragment
       .split('/')
       .map((segment) => segment.replaceAll('~1', '/').replaceAll('~0', '~'))
       .join('.');
+  }
   return issue(reference, 'reference must use curly-brace or JSON Pointer syntax');
 }
 
