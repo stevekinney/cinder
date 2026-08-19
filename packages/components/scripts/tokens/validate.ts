@@ -361,7 +361,10 @@ function validateGroup(
       for (const key of Object.keys(value))
         if (key.startsWith('$') && !TOKEN_METADATA.has(key))
           addIssue(issues, path, `unknown reserved property ${key}`);
-      const type = tokenType(value, groupType, path, issues);
+      const type =
+        groupType === undefined && group['$extends'] !== undefined && value['$type'] === undefined
+          ? undefined
+          : tokenType(value, groupType, path, issues);
       if (type) validateValue(type, value['$value'], path, issues);
       continue;
     }
@@ -387,7 +390,10 @@ function validateGroup(
       for (const key of Object.keys(value))
         if (key.startsWith('$') && !TOKEN_METADATA.has(key))
           addIssue(issues, childPath, `unknown reserved property ${key}`);
-      const type = tokenType(value, groupType, childPath, issues);
+      const type =
+        groupType === undefined && group['$extends'] !== undefined && value['$type'] === undefined
+          ? undefined
+          : tokenType(value, groupType, childPath, issues);
       if (type) validateValue(type, value['$value'], childPath, issues);
       continue;
     }
