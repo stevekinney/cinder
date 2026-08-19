@@ -314,8 +314,13 @@ function tokenType(
   return resolvedType;
 }
 
-function validateMetadata(node: JsonObject, path: string, issues: ValidationIssue[]): void {
-  if (node['$schema'] !== undefined && (path !== '$' || typeof node['$schema'] !== 'string'))
+function validateMetadata(
+  node: JsonObject,
+  path: string,
+  issues: ValidationIssue[],
+  isDocumentRoot = false,
+): void {
+  if (node['$schema'] !== undefined && (!isDocumentRoot || typeof node['$schema'] !== 'string'))
     addIssue(issues, path, '$schema must be a root-level string URI');
   if (node['$description'] !== undefined && typeof node['$description'] !== 'string')
     addIssue(issues, path, '$description must be a string');
@@ -341,8 +346,9 @@ function validateGroup(
   path: string,
   inheritedType: TokenType | undefined,
   issues: ValidationIssue[],
+  isDocumentRoot = false,
 ): void {
-  validateMetadata(group, path, issues);
+  validateMetadata(group, path, issues, isDocumentRoot);
   for (const key of Object.keys(group))
     if (key.startsWith('$') && !GROUP_METADATA.has(key))
       addIssue(issues, path, `unknown reserved property ${key}`);
@@ -404,7 +410,7 @@ function validateGroup(
 export function validateTokenDocument(document: unknown, source = '$'): void {
   const issues: ValidationIssue[] = [];
   if (!isObject(document)) addIssue(issues, source, 'document must be an object');
-  else validateGroup(document, source, undefined, issues);
+  else validateGroup(document, source, undefined, issues, true);
   if (issues.length > 0) throw new TokenValidationError(issues);
 }
 
