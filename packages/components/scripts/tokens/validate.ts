@@ -95,7 +95,9 @@ function validateValue(
           (component) => typeof component === 'number' || component === 'none',
         ) ||
         (objectValue['alpha'] !== undefined &&
-          typeof objectValue['alpha'] !== 'number' &&
+          (typeof objectValue['alpha'] !== 'number' ||
+            objectValue['alpha'] < 0 ||
+            objectValue['alpha'] > 1) &&
           objectValue['alpha'] !== 'none') ||
         (objectValue['hex'] !== undefined && typeof objectValue['hex'] !== 'string')
       )
@@ -288,6 +290,12 @@ function validateValue(
           addIssue(issues, path, 'composite value must include lineHeight');
         else if (typeof objectValue['lineHeight'] !== 'number')
           validateValue('dimension', objectValue['lineHeight'], `${path}.lineHeight`, issues);
+        if (
+          isObject(objectValue['lineHeight']) &&
+          typeof objectValue['lineHeight']['value'] === 'number' &&
+          objectValue['lineHeight']['value'] < 0
+        )
+          addIssue(issues, `${path}.lineHeight`, 'typography lineHeight must be non-negative');
         if (
           isObject(objectValue['fontSize']) &&
           typeof objectValue['fontSize']['value'] === 'number' &&

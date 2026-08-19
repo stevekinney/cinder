@@ -33,7 +33,7 @@ function normalizeSection(comment: string): string | undefined {
   const heading = comment
     .split('\n')
     .map((line) => line.replaceAll(/^[\s*=*-]+|[\s*=*-]+$/g, ''))
-    .find((line) => /^[A-Z][A-Z /&-]+$/.test(line));
+    .find((line) => /^[A-Za-z][A-Za-z /&-]+$/.test(line));
   return heading
     ?.toLowerCase()
     .replaceAll(/[^a-z0-9]+/g, '-')

@@ -188,7 +188,7 @@ function resolveToken(path: string, tokens: ResolvedTokens, resolving: Set<strin
 export function resolveDocuments(documents: TokenDocument[]): Record<string, DesignToken> {
   const tokens: ResolvedTokens = new Map();
   const groups = new Map<string, TokenGroup>();
-  const documentCopies = documents.map((document) => clone(document));
+  const documentCopies = [mergeDocuments(documents)];
   for (const document of documentCopies) collectGroups(document, '', groups);
   for (const groupPath of groups.keys()) resolveExtends(groupPath, groups, new Set(), new Set());
   for (const document of documentCopies) collectTokens(document, '', tokens);
