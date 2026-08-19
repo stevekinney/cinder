@@ -1,3 +1,4 @@
+import { isInterruptingHtmlBlockStart } from './chat-composer-mention-html-tags.ts';
 import { getLineEnd, getLineEndingLength } from './chat-composer-mention-lines.ts';
 
 export type ScanMetadata = {
@@ -9,6 +10,7 @@ export type ScanMetadata = {
   labelBounds: Map<number, { end: number; containsNestedLink: boolean }>;
   mathEnds: Map<number, number>;
   paragraphLineStarts: Set<number>;
+  completedBlockLineStarts: Set<number>;
 };
 
 export type ContainerContext = {
@@ -50,7 +52,9 @@ export function makeScanMetadata(value: string): ScanMetadata {
   const mathEnds = new Map<number, number>();
   const paragraphBreaks = new Set<number>();
   const paragraphLineStarts = new Set<number>();
+  const completedBlockLineStarts = new Set<number>();
   let previousLineWasParagraph = false;
+  let previousQuoteDepth = 0;
 
   let backslashes = 0;
   let lineStart = 0;
@@ -80,6 +84,7 @@ export function makeScanMetadata(value: string): ScanMetadata {
   }
 
   for (let start = 0; start < value.length; ) {
+    const lineEnd = getLineEnd(value, start);
     let cursor = start;
     let quoteDepth = 0;
     let listDepth = 0;
@@ -103,11 +108,14 @@ export function makeScanMetadata(value: string): ScanMetadata {
         continue;
       }
 
+      if (quoteDepth !== previousQuoteDepth) previousLineWasParagraph = false;
+
       const markerStart = cursor;
       let markerWidth = 0;
       if (
         (value[cursor] === '-' || value[cursor] === '*' || value[cursor] === '+') &&
-        /[\t \r\n]/u.test(value[cursor + 1] ?? '\n')
+        /[\t \r\n]/u.test(value[cursor + 1] ?? '\n') &&
+        !(previousLineWasParagraph && /^[ \t]*$/u.test(value.slice(cursor + 1, lineEnd)))
       ) {
         markerWidth = 1;
       } else {
@@ -130,10 +138,11 @@ export function makeScanMetadata(value: string): ScanMetadata {
       cursor = markerStart + markerWidth;
       let followingWhitespace = 0;
       while (/[ \t]/u.test(value[cursor + followingWhitespace] ?? '')) followingWhitespace += 1;
-      cursor += Math.min(4, followingWhitespace);
+      const consumedWhitespace = followingWhitespace > 4 ? 1 : followingWhitespace;
+      cursor += consumedWhitespace;
       maximumIndentation = Math.max(maximumIndentation, followingWhitespace);
       listDepth += 1;
-      listContinuationIndentation += markerWidth + Math.max(1, Math.min(4, followingWhitespace));
+      listContinuationIndentation += markerWidth + Math.max(1, consumedWhitespace);
     }
     if (cursor !== start) containerStarts.set(start, cursor);
     if (quoteDepth > 0 || listDepth > 0 || maximumIndentation > 0) {
@@ -145,23 +154,23 @@ export function makeScanMetadata(value: string): ScanMetadata {
         maximumIndentation,
       });
     }
-    const lineEnd = getLineEnd(value, start);
     const content = value.slice(cursor, lineEnd).trim();
-    previousLineWasParagraph =
-      quoteDepth === 0 &&
-      listDepth === 0 &&
-      content.length > 0 &&
-      !/^(?:#{1,6}(?:[ \t]+|$)|(?:[*_-][ \t]*){3,}$|(?:=+|-+)[ \t]*$|(?:`{3,}|~{3,})|<|\[[^\]^]+\]:)/u.test(
+    const completedBlock =
+      /^(?:#{1,6}(?:[ \t]+|$)|(?:[*_-][ \t]*){3,}$|(?:=+|-+)[ \t]*$|(?:`{3,}|~{3,}))/u.test(
         content,
       );
-    if (
-      content.length > 0 &&
-      !/^(?:#{1,6}(?:[ \t]+|$)|(?:[*_-][ \t]*){3,}$|(?:=+|-+)[ \t]*$|(?:`{3,}|~{3,})|<|\[[^\]^]+\]:)/u.test(
-        content,
-      )
-    ) {
+    if (completedBlock) completedBlockLineStarts.add(start);
+    const startsBlock: boolean =
+      completedBlock ||
+      isInterruptingHtmlBlockStart(content) ||
+      (!previousLineWasParagraph &&
+        /^<\/?[A-Za-z][A-Za-z0-9-]*(?:\s[^>]*)?>[ \t]*$/u.test(content));
+    previousLineWasParagraph =
+      listDepth === 0 && content.length > 0 && !startsBlock && !/^\[[^\]^]+\]:/u.test(content);
+    if (content.length > 0 && !startsBlock && !/^\[[^\]^]+\]:/u.test(content)) {
       paragraphLineStarts.add(start);
     }
+    previousQuoteDepth = quoteDepth;
     if (lineEnd === value.length) break;
     start = lineEnd + getLineEndingLength(value, lineEnd);
   }
@@ -173,6 +182,9 @@ export function makeScanMetadata(value: string): ScanMetadata {
     if (index === lineStarts[index] && !paragraphLineStarts.has(index)) {
       nextCodeRun.clear();
       nextMathClose.delete(1);
+    }
+    if (index === lineStarts[index] && containerContexts.get(index)?.startsListItem) {
+      nextCodeRun.clear();
     }
     if (paragraphBreaks.has(index)) {
       nextCodeRun.clear();
@@ -214,6 +226,7 @@ export function makeScanMetadata(value: string): ScanMetadata {
     labelBounds,
     mathEnds,
     paragraphLineStarts,
+    completedBlockLineStarts,
   };
 }
 
@@ -312,7 +325,11 @@ export function getMathEnd(value: string, start: number, metadata: ScanMetadata)
 
 export function isIndentedCodeStart(value: string, index: number, metadata: ScanMetadata): boolean {
   const lineStart = metadata.lineStarts[index] ?? 0;
-  if (lineStart !== index || !isIndentedCodeLine(value, lineStart)) return false;
+  const containerStart = metadata.containerStarts.get(lineStart) ?? lineStart;
+  const startsListContent =
+    index === containerStart && getContainerContext(lineStart, metadata).startsListItem;
+  if ((lineStart !== index && !startsListContent) || !isIndentedCodeLine(value, index))
+    return false;
   if (lineStart === 0) return true;
 
   const previousLineStart = metadata.lineStarts[lineStart - 1] ?? 0;

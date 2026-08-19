@@ -1,3 +1,7 @@
+import {
+  closesHtmlBlockWithTag,
+  isInterruptingHtmlBlockTag,
+} from './chat-composer-mention-html-tags.ts';
 import { getLineEnd, getLineEndingLength, isLineEnding } from './chat-composer-mention-lines.ts';
 import {
   getContainerContext,
@@ -5,27 +9,20 @@ import {
   type ContainerContext,
   type ScanMetadata,
 } from './chat-composer-mention-scan.ts';
-
-const RAW_TEXT_HTML_TAGS = new Set(['pre', 'script', 'style', 'textarea']);
-const BLOCK_HTML_TAGS = new Set(
-  'address article aside base basefont blockquote body caption center col colgroup dd details dialog dir div dl dt fieldset figcaption figure footer form frame frameset h1 h2 h3 h4 h5 h6 head header hr html iframe legend li link main menu menuitem nav noframes ol optgroup option p param search section summary table tbody td tfoot th thead title tr track ul'.split(
-    ' ',
-  ),
-);
-
-export function closesHtmlBlockWithTag(tag: string): boolean {
-  return RAW_TEXT_HTML_TAGS.has(tag);
-}
-
-export function isInterruptingHtmlBlockTag(tag: string): boolean {
-  return RAW_TEXT_HTML_TAGS.has(tag) || BLOCK_HTML_TAGS.has(tag);
-}
+export {
+  closesHtmlBlockWithTag,
+  isInterruptingHtmlBlockTag,
+} from './chat-composer-mention-html-tags.ts';
 
 export function isValidHtmlComment(value: string, start: number, end: number): boolean {
+  const content = value.slice(start + 4, end - 3);
   return (
     value.startsWith('<!--', start) &&
     value.startsWith('-->', end - 3) &&
-    !value.slice(start + 4, end - 3).includes('--')
+    content[0] !== '>' &&
+    !content.startsWith('->') &&
+    !content.endsWith('-') &&
+    !content.includes('--')
   );
 }
 
@@ -37,6 +34,7 @@ export function canStartHtmlBlock(
   if (lineStart === 0) return true;
 
   const previousLineStart = metadata.lineStarts[lineStart - 1] ?? 0;
+  if (metadata.completedBlockLineStarts.has(previousLineStart)) return true;
   const current = metadata.containerContexts.get(lineStart);
   const previous = metadata.containerContexts.get(previousLineStart);
   if (
@@ -192,27 +190,23 @@ export function getHtmlBlockEndAt(
     return completeBlock(getHtmlDelimitedBlockEnd(value, start, '>', container, metadata));
   }
 
+  const blockTagPrefix = /^<\/?([A-Za-z][A-Za-z0-9-]*)(?=[\s>])/u.exec(value.slice(start));
+  if (blockTagPrefix !== null && isInterruptingHtmlBlockTag(blockTagPrefix[1]!.toLowerCase())) {
+    const normalizedTag = blockTagPrefix[1]!.toLowerCase();
+    return closesHtmlBlockWithTag(normalizedTag)
+      ? completeBlock(getClosingHtmlBlockEnd(value, start, normalizedTag, container, metadata))
+      : completeBlock(getHtmlBlockBlankLineEnd(value, start, container, metadata));
+  }
+
   const tagEnd = getHtmlTagEnd(value, start);
   if (tagEnd === null) return null;
   const tag = /^<\/?([A-Za-z][A-Za-z0-9-]*)(?=\s|\/?>)/u.exec(value.slice(start, tagEnd + 1));
   if (tag === null) return null;
-  const normalizedTag = tag[1]!.toLowerCase();
   const lineEnd = getLineEnd(value, tagEnd + 1);
   const isStandaloneTag =
     /^\s*(?:<\/?[A-Za-z][A-Za-z0-9-]*(?:\s[^>]*)?>)[ \t]*$/u.test(
       value.slice(containerStart, lineEnd),
     ) && isLineEnding(value[lineEnd]);
-  if (
-    !isInterruptingHtmlBlockTag(normalizedTag) &&
-    !(isStandaloneTag && canStartHtmlBlock(value, lineStart, metadata))
-  ) {
-    return null;
-  }
-
-  if (closesHtmlBlockWithTag(normalizedTag)) {
-    return completeBlock(
-      getClosingHtmlBlockEnd(value, tagEnd + 1, normalizedTag, container, metadata),
-    );
-  }
+  if (!(isStandaloneTag && canStartHtmlBlock(value, lineStart, metadata))) return null;
   return completeBlock(getHtmlBlockBlankLineEnd(value, tagEnd + 1, container, metadata));
 }

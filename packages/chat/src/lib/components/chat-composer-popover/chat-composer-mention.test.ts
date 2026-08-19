@@ -340,6 +340,11 @@ describe('chat composer mentions', () => {
     expect(
       parseChatComposerMentions(`[${escapedDelimiterLabel}](person:a)`).mentions[0]?.label,
     ).toBe('*'.repeat(25_000));
+    const unterminatedProcessingInstructions = `x ${'<? '.repeat(20_000)}`;
+    expect(parseChatComposerMentions(unterminatedProcessingInstructions)).toEqual({
+      text: unterminatedProcessingInstructions,
+      mentions: [],
+    });
   });
 
   test('keeps per-character scan metadata bounded', () => {
@@ -1031,6 +1036,11 @@ describe('chat composer mentions', () => {
       text: closingTypeSixBlock,
       mentions: [],
     });
+    const incompleteClosingBlockDefinition = '</div\n[img]: /logo\n\n![logo [Ada](person:a)][img]';
+    expect(parseChatComposerMentions(incompleteClosingBlockDefinition)).toEqual({
+      text: '</div\n[img]: /logo\n\n![logo Ada][img]',
+      mentions: [{ label: 'Ada', uri: 'person:a', start: 27, end: 30 }],
+    });
 
     expect(parseChatComposerMentions('[**Ada**](person:a)')).toEqual({
       text: 'Ada',
@@ -1062,6 +1072,74 @@ describe('chat composer mentions', () => {
     expect(parseChatComposerMentions(siblingListFences)).toEqual({
       text: siblingListFences,
       mentions: [],
+    });
+
+    const interruptedCodeSpan = '`x\n- [Ada](person:a)\nend`';
+    expect(parseChatComposerMentions(interruptedCodeSpan)).toEqual({
+      text: '`x\n- Ada\nend`',
+      mentions: [{ label: 'Ada', uri: 'person:a', start: 5, end: 8 }],
+    });
+
+    expect(parseChatComposerMentions('Intro <!--> [Ada](person:a) -->')).toEqual({
+      text: 'Intro <!--> Ada -->',
+      mentions: [{ label: 'Ada', uri: 'person:a', start: 12, end: 15 }],
+    });
+
+    const escapedAngleDestination = '[Docs](<https://x\\ [Ada](person:a)>)';
+    const escapedAngleProjection = '[Docs](<https://x\\ Ada>)';
+    expect(parseChatComposerMentions(escapedAngleDestination)).toEqual({
+      text: escapedAngleProjection,
+      mentions: [
+        {
+          label: 'Ada',
+          uri: 'person:a',
+          start: escapedAngleProjection.indexOf('Ada'),
+          end: escapedAngleProjection.indexOf('Ada') + 3,
+        },
+      ],
+    });
+
+    const postHeadingHtml = '# heading\n<span>\n[Ada](person:a)';
+    expect(parseChatComposerMentions(postHeadingHtml)).toEqual({
+      text: postHeadingHtml,
+      mentions: [],
+    });
+
+    expect(parseChatComposerMentions('<span> text\n[ref]: /url "[Ada](person:a)"')).toEqual({
+      text: '<span> text\n[ref]: /url "Ada"',
+      mentions: [{ label: 'Ada', uri: 'person:a', start: 25, end: 28 }],
+    });
+
+    const firstLineListIndentedCode = '-     [Ada](person:a)';
+    expect(parseChatComposerMentions(firstLineListIndentedCode)).toEqual({
+      text: firstLineListIndentedCode,
+      mentions: [],
+    });
+
+    const quotedParagraphProjection = '> paragraph\n> 2. [ref]: /url "Ada"';
+    expect(parseChatComposerMentions('> paragraph\n> 2. [ref]: /url "[Ada](person:a)"')).toEqual({
+      text: quotedParagraphProjection,
+      mentions: [
+        {
+          label: 'Ada',
+          uri: 'person:a',
+          start: quotedParagraphProjection.indexOf('Ada'),
+          end: quotedParagraphProjection.indexOf('Ada') + 3,
+        },
+      ],
+    });
+
+    const blankBulletProjection = 'paragraph\n*\n[ref]: /url "Ada"';
+    expect(parseChatComposerMentions('paragraph\n*\n[ref]: /url "[Ada](person:a)"')).toEqual({
+      text: blankBulletProjection,
+      mentions: [
+        {
+          label: 'Ada',
+          uri: 'person:a',
+          start: blankBulletProjection.indexOf('Ada'),
+          end: blankBulletProjection.indexOf('Ada') + 3,
+        },
+      ],
     });
   });
 });

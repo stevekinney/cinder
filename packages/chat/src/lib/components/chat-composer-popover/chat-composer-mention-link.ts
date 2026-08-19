@@ -192,6 +192,7 @@ export function parseMentionLink(
     destinationEnd += 1;
     while (destinationEnd < value.length && value[destinationEnd] !== '>') {
       if (value[destinationEnd] === '\\') {
+        if (/\s/u.test(value[destinationEnd + 1] ?? '')) return null;
         destinationEnd += 2;
         continue;
       }
@@ -329,6 +330,7 @@ export function getOrdinaryLinkEnd(
     cursor += 1;
     while (cursor < value.length && value[cursor] !== '>') {
       if (value[cursor] === '\\') {
+        if (/\s/u.test(value[cursor + 1] ?? '')) return null;
         cursor += 2;
         continue;
       }

@@ -102,6 +102,7 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
   let sourceIndex = 0;
   let gfmAutolinkScanEnd = 0;
   let htmlCommentTerminatorAbsentFrom = value.length + 1;
+  let htmlProcessingInstructionTerminatorAbsentFrom = value.length + 1;
   let codeFence: CodeFence | null = null;
   let indentedCode = false;
   let htmlDelimitedBlock: { terminator: string; container: ContainerContext } | null = null;
@@ -168,7 +169,13 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
     if (metadata.escaped[sourceIndex] === 0 && isIndentedCodeStart(value, sourceIndex, metadata)) {
       indentedCode = true;
     }
-    if (indentedCode && (sourceIndex === 0 || isLineEnding(value[sourceIndex - 1]))) {
+    const currentLineStart = metadata.lineStarts[sourceIndex] ?? 0;
+    if (
+      indentedCode &&
+      (sourceIndex === 0 ||
+        isLineEnding(value[sourceIndex - 1]) ||
+        sourceIndex === metadata.containerStarts.get(currentLineStart))
+    ) {
       const lineEnd = getLineEnd(value, sourceIndex);
       const end = lineEnd + getLineEndingLength(value, lineEnd);
       const line = value.slice(sourceIndex, lineEnd);
@@ -235,7 +242,11 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
           sourceIndex += 2;
           continue;
         }
-        const closingStart = value.indexOf('?>', sourceIndex + 2);
+        const closingStart =
+          sourceIndex >= htmlProcessingInstructionTerminatorAbsentFrom
+            ? -1
+            : value.indexOf('?>', sourceIndex + 2);
+        if (closingStart === -1) htmlProcessingInstructionTerminatorAbsentFrom = sourceIndex;
         if (closingStart !== -1) {
           text += value.slice(sourceIndex, closingStart + 2);
           sourceIndex = closingStart + 2;
