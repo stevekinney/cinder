@@ -6,7 +6,7 @@ import type { JsonSchemaValue } from './json-schema-editor-types.ts';
 
 setupHappyDom();
 
-const { cleanup, fireEvent, render, screen } = await import('@testing-library/svelte');
+const { cleanup, fireEvent, render, screen, within } = await import('@testing-library/svelte');
 const { default: PropertyList } = await import('./property-list.svelte');
 const { EDITABLE_KEYWORDS } = await import('./property-editor.constants.ts');
 const { calculatePropertyValidationErrorCount } = await import('./property-list-validation.ts');
@@ -18,6 +18,71 @@ const { calculatePropertyValidationErrorCount } = await import('./property-list-
 afterEach(() => cleanup());
 
 describe('PropertyList', () => {
+  test('a 3-property schema renders 3 correctly-keyed, typed, and described rows at rest', () => {
+    render(PropertyList, {
+      idPrefix: 'properties',
+      path: '/properties',
+      properties: {
+        name: { type: 'string', description: 'Full name' },
+        age: { type: 'integer', description: 'Years old' },
+        email: { type: 'string', description: 'Contact address' },
+      },
+      required: [],
+      onValueChange: () => {},
+    });
+
+    const table = screen.getByRole('table', { name: 'Schema properties' });
+    const rows = within(table).getAllByRole('row');
+    // Header row + 3 property rows.
+    expect(rows).toHaveLength(4);
+
+    const nameCells = within(rows[1]!).getAllByRole('cell');
+    expect(within(rows[1]!).getByRole('rowheader').textContent).toContain('name');
+    expect(nameCells[0]!.textContent).toContain('string');
+    expect(nameCells[1]!.textContent).toContain('Full name');
+
+    const ageCells = within(rows[2]!).getAllByRole('cell');
+    expect(within(rows[2]!).getByRole('rowheader').textContent).toContain('age');
+    expect(ageCells[0]!.textContent).toContain('integer');
+    expect(ageCells[1]!.textContent).toContain('Years old');
+
+    const emailCells = within(rows[3]!).getAllByRole('cell');
+    expect(within(rows[3]!).getByRole('rowheader').textContent).toContain('email');
+    expect(emailCells[0]!.textContent).toContain('string');
+    expect(emailCells[1]!.textContent).toContain('Contact address');
+  });
+
+  // "expanding an object row reveals a nested properties table" and "a
+  // duplicate rename surfaces a validation alert" are covered in
+  // editors-complex-residual.playwright.ts rather than here — clicking a
+  // disclosure trigger to mount the nested PropertyEditor trips a happy-dom
+  // keyed-each reconciliation limitation the unit harness hits at this
+  // nesting depth (see json-schema-editor.test.ts's note on the same issue).
+
+  test('a validation error renders inline on the affected row only', () => {
+    render(PropertyList, {
+      idPrefix: 'properties',
+      path: '/properties',
+      properties: {
+        status: { type: 'string' },
+        age: { type: 'integer' },
+      },
+      required: [],
+      // A retained invalid enum draft is the mechanism that surfaces a
+      // nested validation error onto a collapsed row without a live
+      // validation round trip — see retainedDraftCount.
+      enumDrafts: { '/properties/status/enum': { 0: { text: '{', error: 'invalid-json' } } },
+      onValueChange: () => {},
+    });
+
+    const statusRow = screen.getByRole('row', { name: /status/ });
+    const ageRow = screen.getByRole('row', { name: /age/ });
+    expect(statusRow.getAttribute('data-cinder-invalid')).toBe('');
+    expect(ageRow.getAttribute('data-cinder-invalid')).toBeNull();
+    expect(statusRow.textContent).toMatch(/1\s+error/);
+    expect(ageRow.textContent).not.toContain('error');
+  });
+
   test('composes Collapsible for required names and avoids schema jargon', async () => {
     const source = await Bun.file(new URL('./property-list.svelte', import.meta.url)).text();
 
@@ -50,6 +115,50 @@ describe('PropertyList', () => {
       /\.cinder-jse-property-row__trigger\[aria-expanded='true'\]\s*>\s*\.cinder-jse-property-row__chevron\s*\{[^}]*transform:\s*rotate\(180deg\)/,
     );
     expect(css).toContain('background: var(--cinder-surface-raised-hover);');
+  });
+
+  test('the Type cell summarises array items inline at rest', () => {
+    render(PropertyList, {
+      idPrefix: 'properties',
+      path: '/properties',
+      properties: {
+        tags: { type: 'array', items: { type: 'string' } },
+        addresses: { type: 'array', items: { type: 'object' } },
+        codes: { type: 'array', items: { enum: ['a', 'b'] } },
+        untyped: { type: 'array' },
+      },
+      required: [],
+      onValueChange: () => {},
+    });
+
+    expect(
+      screen.getByRole('row', { name: /tags/ }).textContent,
+    ).toContain('array of string');
+    expect(
+      screen.getByRole('row', { name: /addresses/ }).textContent,
+    ).toContain('array of object');
+    expect(
+      screen.getByRole('row', { name: /codes/ }).textContent,
+    ).toContain('array of enum');
+    expect(
+      screen.getByRole('row', { name: /^untyped/ }).textContent,
+    ).toContain('array of any');
+  });
+
+  test('a multi-type schema including array does not get an "of <items>" suffix', () => {
+    render(PropertyList, {
+      idPrefix: 'properties',
+      path: '/properties',
+      properties: {
+        nullableList: { type: ['array', 'null'], items: { type: 'string' } },
+      },
+      required: [],
+      onValueChange: () => {},
+    });
+
+    const rowText = screen.getByRole('row', { name: /nullableList/ }).textContent;
+    expect(rowText).toContain('array | null');
+    expect(rowText).not.toContain('of string');
   });
 
   test('can add the first required-only property name', async () => {
@@ -161,6 +270,54 @@ describe('PropertyList', () => {
     await fireEvent.click(screen.getByRole('button', { name: 'Move age up' }));
 
     expect(Object.keys(latestProperties)).toEqual(['age', 'email']);
+  });
+
+  test('the committed reordered object is a real plain object, not a null-prototype one', async () => {
+    // Chrome's structuredClone throws DataCloneError on a null-prototype
+    // object — the undo-history commit uses structuredClone on the schema,
+    // so a commit built via Object.create(null) silently breaks every
+    // reorder in a real browser (bun's structuredClone does not reproduce
+    // this, so this assertion checks prototype shape directly rather than
+    // relying on a throw).
+    let latestProperties: Record<string, JsonSchemaValue> = {};
+    render(PropertyList, {
+      idPrefix: 'properties',
+      path: '/properties',
+      properties: {
+        email: { type: 'string' },
+        age: { type: 'integer' },
+      },
+      required: [],
+      onValueChange: (properties: Record<string, JsonSchemaValue>) => {
+        latestProperties = properties;
+      },
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Move age up' }));
+
+    expect(Object.getPrototypeOf(latestProperties)).toBe(Object.prototype);
+  });
+
+  test('reordering preserves a literal __proto__ property as a real own data property', async () => {
+    const properties = JSON.parse(
+      '{"__proto__":{"type":"string"},"alpha":{"type":"string"},"beta":{"type":"string"}}',
+    ) as Record<string, JsonSchemaValue>;
+    let latestProperties: Record<string, JsonSchemaValue> = {};
+    render(PropertyList, {
+      idPrefix: 'properties',
+      path: '/properties',
+      properties,
+      required: [],
+      onValueChange: (next: Record<string, JsonSchemaValue>) => {
+        latestProperties = next;
+      },
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Move beta up' }));
+
+    expect(Object.getPrototypeOf(latestProperties)).toBe(Object.prototype);
+    expect(Object.prototype.hasOwnProperty.call(latestProperties, '__proto__')).toBe(true);
+    expect(Object.keys(latestProperties)).toEqual(['__proto__', 'beta', 'alpha']);
   });
 
   test('only links a disclosure trigger to its panel while that panel is rendered', async () => {

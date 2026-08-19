@@ -557,6 +557,7 @@
           idPrefix={`${idPrefix}-items`}
           path={`${path}/items`}
           depth={depth + 1}
+          propertyKey="items"
           {readonly}
           {enumDrafts}
           {historyRevision}

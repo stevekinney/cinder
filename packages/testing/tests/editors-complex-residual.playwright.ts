@@ -692,6 +692,37 @@ test.describe('JSON schema editor', () => {
     expect(draft).not.toContain('Not yet visible');
   });
 
+  test('expanding an array row shows an item-type selector; object items render a nested table, scalar items show inline', async ({
+    page,
+  }) => {
+    const editor = await openFirstEditor(page);
+    const jsonTab = editor.getByRole('tab', { name: /JSON/ });
+    await jsonTab.click();
+    await editor
+      .locator('textarea')
+      .first()
+      .fill(
+        '{"type":"object","properties":{"tags":{"type":"array","items":{"type":"string"}},"addresses":{"type":"array","items":{"type":"object","properties":{"street":{"type":"string"}}}}}}',
+      );
+    await editor.getByRole('button', { name: 'Apply' }).click();
+    await editor.getByRole('tab', { name: /^Form/ }).click();
+
+    // Resting state: the outer table summarises item type inline.
+    await expect(editor.getByRole('row', { name: /tags/ })).toContainText('array of string');
+    await expect(editor.getByRole('row', { name: /addresses/ })).toContainText('array of object');
+
+    // Expanding a scalar-item array reveals its own item-type selector,
+    // scoped to the items schema (not the property itself) — hence "items
+    // type", not "tags type".
+    await editor.getByRole('button', { name: 'Expand tags property' }).click();
+    await expect(editor.getByRole('combobox', { name: 'items type' })).toHaveValue('string');
+
+    // Expanding an object-item array reveals a nested item schema table.
+    await editor.getByRole('button', { name: 'Expand addresses property' }).click();
+    await expect(editor.getByRole('table', { name: 'Properties of items' })).toBeVisible();
+    await expect(editor.getByRole('row', { name: /street/ })).toBeVisible();
+  });
+
   test('exactly one enabled toolbar action is in the tab order at rest', async ({ page }) => {
     const editor = await openFirstEditor(page);
     const toolbarRight = editor.locator('.cinder-jse-toolbar__right').first();
@@ -762,5 +793,72 @@ test.describe('JSON schema editor', () => {
       root.contains(document.activeElement),
     );
     expect(focusInsideToolbar).toBe(false);
+  });
+
+  test('expanding an object row reveals a nested properties table', async ({ page }) => {
+    const editor = await openFirstEditor(page);
+    const jsonTab = editor.getByRole('tab', { name: /JSON/ });
+    await jsonTab.click();
+    await editor
+      .locator('textarea')
+      .first()
+      .fill(
+        '{"type":"object","properties":{"address":{"type":"object","properties":{"street":{"type":"string"},"city":{"type":"string"}}}}}',
+      );
+    await editor.getByRole('button', { name: 'Apply' }).click();
+    await editor.getByRole('tab', { name: /^Form/ }).click();
+
+    await expect(editor.getByRole('table')).toHaveCount(1);
+    await editor.getByRole('button', { name: 'Expand address property' }).click();
+
+    const nestedTable = editor.getByRole('table', { name: 'Properties of address' });
+    await expect(nestedTable).toBeVisible();
+    await expect(nestedTable.getByRole('rowheader', { name: /street/ })).toBeVisible();
+    await expect(nestedTable.getByRole('rowheader', { name: /city/ })).toBeVisible();
+  });
+
+  test('a duplicate rename surfaces a validation alert', async ({ page }) => {
+    const editor = await openFirstEditor(page);
+    const jsonTab = editor.getByRole('tab', { name: /JSON/ });
+    await jsonTab.click();
+    await editor
+      .locator('textarea')
+      .first()
+      .fill(
+        '{"type":"object","properties":{"email":{"type":"string"},"age":{"type":"integer"}}}',
+      );
+    await editor.getByRole('button', { name: 'Apply' }).click();
+    await editor.getByRole('tab', { name: /^Form/ }).click();
+
+    await editor.getByRole('button', { name: 'Expand age property' }).click();
+    const nameInput = editor.getByRole('textbox', { name: 'Name', exact: true });
+    await nameInput.fill('email');
+    await nameInput.blur();
+
+    await expect(editor.getByRole('alert')).toContainText('Duplicate property name: email');
+  });
+
+  test('form edits propagate to the JSON view', async ({ page }) => {
+    const editor = await openFirstEditor(page);
+    const jsonTab = editor.getByRole('tab', { name: /JSON/ });
+    await jsonTab.click();
+    await editor
+      .locator('textarea')
+      .first()
+      .fill('{"type":"object","properties":{"age":{"type":"integer"},"email":{"type":"string"}}}');
+    await editor.getByRole('button', { name: 'Apply' }).click();
+    await editor.getByRole('tab', { name: /^Form/ }).click();
+
+    // Reorder in the form...
+    const moveButton = editor.getByRole('button', { name: 'Move email up' });
+    await expect(moveButton).toBeEnabled();
+    await moveButton.click();
+    const table = editor.getByRole('table', { name: 'Schema properties' });
+    await expect(table.getByRole('row').nth(1)).toContainText('email');
+
+    await jsonTab.click();
+    // ...and confirm the JSON view reflects the new key order.
+    const draft = await editor.locator('textarea').first().inputValue();
+    expect(draft.indexOf('"email"')).toBeLessThan(draft.indexOf('"age"'));
   });
 });
