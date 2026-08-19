@@ -22,7 +22,7 @@
     },
     "packages/chat": {
       "name": "@lostgradient/chat",
-      "version": "0.10.0",
+      "version": "0.10.1",
       "dependencies": {
         "conversationalist": "^0.6.1",
         "zod": "4.4.3",
@@ -50,7 +50,7 @@
     },
     "packages/components": {
       "name": "@lostgradient/cinder",
-      "version": "0.24.5",
+      "version": "0.24.6",
       "bin": {
         "cinder": "./dist/cli/index.js",
       },
@@ -178,7 +178,7 @@
     },
     "packages/mcp": {
       "name": "@lostgradient/cinder-mcp",
-      "version": "0.1.10",
+      "version": "0.1.11",
       "bin": {
         "cinder-mcp": "./dist/bin.js",
       },
