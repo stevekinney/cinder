@@ -43,6 +43,7 @@
   import {
     buildEnumPatch,
     detectEnumSource,
+    isEnumLikeOneOf,
     readEnumDescriptions,
     readEnumValues,
   } from './enum-composition.ts';
@@ -263,7 +264,23 @@
     descriptions: string[],
     options: { coalesceKey?: string; label?: string } | undefined = undefined,
   ) {
-    patch(buildEnumPatch(values, descriptions), options ?? { label: 'edit enum values' });
+    const patchValues = buildEnumPatch(values, descriptions);
+    // The enum table can be visible via a bare `enum` even when `oneOf` holds
+    // an unrelated real composition on the same node (detectEnumSource
+    // prefers `enum`; see setEnum's mirror-image guard above). Promoting to a
+    // described enum writes `oneOf`, which would otherwise silently destroy
+    // that real composition. When that's the case, commit the values without
+    // promoting — the description can't be represented without overwriting
+    // data the user didn't ask to change.
+    if (
+      patchValues.oneOf !== undefined &&
+      objectValue.oneOf !== undefined &&
+      !isEnumLikeOneOf(objectValue.oneOf)
+    ) {
+      patch({ enum: values }, options ?? { label: 'edit enum values' });
+      return;
+    }
+    patch(patchValues, options ?? { label: 'edit enum values' });
   }
 
   // ===== Type select =====

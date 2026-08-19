@@ -660,6 +660,38 @@ test.describe('JSON schema editor', () => {
     expect(draft).toContain('"const": "y"');
   });
 
+  test('typing an enum description does not clobber an unrelated real oneOf composition coexisting with a bare enum', async ({
+    page,
+  }) => {
+    const editor = await openFirstEditor(page);
+    const jsonTab = editor.getByRole('tab', { name: /JSON/ });
+    await jsonTab.click();
+    // `enum` is the active representation, but `oneOf` here is a REAL
+    // composition (branches carry `type`), not an enum-shaped one.
+    await editor
+      .locator('textarea')
+      .first()
+      .fill(
+        '{"type":"object","properties":{"status":{"type":"string","enum":["draft","published"],"oneOf":[{"type":"string","pattern":"^[a-z]+$"},{"type":"integer","minimum":1}]}}}',
+      );
+    await editor.getByRole('button', { name: 'Apply' }).click();
+
+    await editor.getByRole('tab', { name: /^Form/ }).click();
+    await editor.getByRole('button', { name: 'Expand status property' }).click();
+    await editor
+      .getByRole('textbox', { name: 'Enum value 1 description' })
+      .fill('Not yet visible');
+
+    await jsonTab.click();
+    const draft = await editor.locator('textarea').first().inputValue();
+    // The real composition survives untouched.
+    expect(draft).toContain('"pattern": "^[a-z]+$"');
+    expect(draft).toContain('"minimum": 1');
+    // The typed description could not be represented without destroying that
+    // composition, so it is not silently written into a corrupted oneOf.
+    expect(draft).not.toContain('Not yet visible');
+  });
+
   test('exactly one enabled toolbar action is in the tab order at rest', async ({ page }) => {
     const editor = await openFirstEditor(page);
     const toolbarRight = editor.locator('.cinder-jse-toolbar__right').first();
