@@ -113,7 +113,13 @@ function resolveExtends(
     const extended = resolveExtends(extendedPath, groups, visiting, complete);
     if (group.$type === undefined && extended.$type !== undefined) group.$type = extended.$type;
     for (const [name, value] of Object.entries(extended))
-      if (!name.startsWith('$') && group[name] === undefined) group[name] = clone(value);
+      if (!name.startsWith('$') && !Object.hasOwn(group, name))
+        Object.defineProperty(group, name, {
+          configurable: true,
+          enumerable: true,
+          value: clone(value),
+          writable: true,
+        });
   }
   for (const [name, value] of Object.entries(group)) {
     if (name.startsWith('$') || !isTokenGroup(value)) continue;

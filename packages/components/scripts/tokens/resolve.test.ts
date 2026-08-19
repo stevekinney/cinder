@@ -115,4 +115,15 @@ describe('DTCG resolver', () => {
       $value: 1,
     });
   });
+
+  test('inherits __proto__ tokens through group extensions', () => {
+    const document = JSON.parse(
+      '{"base":{"$type":"number","__proto__":{"$value":1}},"derived":{"$extends":"{base}"}}',
+    ) as TokenDocument;
+
+    expect(resolveDocument(document)['derived.__proto__']).toMatchObject({
+      $type: 'number',
+      $value: 1,
+    });
+  });
 });
