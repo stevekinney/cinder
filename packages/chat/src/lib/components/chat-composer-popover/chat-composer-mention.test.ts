@@ -336,6 +336,10 @@ describe('chat composer mentions', () => {
       text: entityHeavyLabel,
       mentions: [{ label: entityHeavyLabel, uri: 'person:a', start: 0, end: 25_000 }],
     });
+    const escapedDelimiterLabel = '\\*'.repeat(25_000);
+    expect(
+      parseChatComposerMentions(`[${escapedDelimiterLabel}](person:a)`).mentions[0]?.label,
+    ).toBe('*'.repeat(25_000));
   });
 
   test('keeps per-character scan metadata bounded', () => {
@@ -368,8 +372,13 @@ describe('chat composer mentions', () => {
 
     expect(
       parseChatComposerMentions('- ```\n- [Ada](person:ada)\n- ```\n- [Ada](person:real)').mentions,
-    ).toEqual([{ label: 'Ada', uri: 'person:real', start: 34, end: 37 }]);
-    expect(parseChatComposerMentions('1. ```\n1. [Ada](person:ada)\n1. ```').mentions).toEqual([]);
+    ).toEqual([
+      { label: 'Ada', uri: 'person:ada', start: 8, end: 11 },
+      { label: 'Ada', uri: 'person:real', start: 20, end: 23 },
+    ]);
+    expect(parseChatComposerMentions('1. ```\n1. [Ada](person:ada)\n1. ```').mentions).toEqual([
+      { label: 'Ada', uri: 'person:ada', start: 10, end: 13 },
+    ]);
     expect(
       parseChatComposerMentions('>    ```\n>    [Ada](person:ada)\n>    ```').mentions,
     ).toEqual([]);
@@ -1016,5 +1025,43 @@ describe('chat composer mentions', () => {
     expect(escapedReferenceContainer.mentions).toEqual([
       { label: 'Ada', uri: 'person:a', start: 21, end: 24 },
     ]);
+
+    const closingTypeSixBlock = '</div\n[Ada](person:a)';
+    expect(parseChatComposerMentions(closingTypeSixBlock)).toEqual({
+      text: closingTypeSixBlock,
+      mentions: [],
+    });
+
+    expect(parseChatComposerMentions('[**Ada**](person:a)')).toEqual({
+      text: 'Ada',
+      mentions: [{ label: 'Ada', uri: 'person:a', start: 0, end: 3 }],
+    });
+    expect(parseChatComposerMentions('[*Ada*](person:a)')).toEqual({
+      text: 'Ada',
+      mentions: [{ label: 'Ada', uri: 'person:a', start: 0, end: 3 }],
+    });
+    expect(parseChatComposerMentions('[` Ada `](person:a)')).toEqual({
+      text: 'Ada',
+      mentions: [{ label: 'Ada', uri: 'person:a', start: 0, end: 3 }],
+    });
+    expect(parseChatComposerMentions('[~Ada~](person:a)')).toEqual({
+      text: '[~Ada~](person:a)',
+      mentions: [],
+    });
+    expect(parseChatComposerMentions('[a*"Ada"*](person:a)')).toEqual({
+      text: '[a*"Ada"*](person:a)',
+      mentions: [],
+    });
+
+    expect(parseChatComposerMentions('[ref]: <url>"[Ada](person:a)"')).toEqual({
+      text: '[ref]: <url>"Ada"',
+      mentions: [{ label: 'Ada', uri: 'person:a', start: 13, end: 16 }],
+    });
+
+    const siblingListFences = '- ```\n- ```\n  [Ada](person:a)';
+    expect(parseChatComposerMentions(siblingListFences)).toEqual({
+      text: siblingListFences,
+      mentions: [],
+    });
   });
 });

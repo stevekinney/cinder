@@ -31,7 +31,7 @@ import {
   getOpeningCodeFence,
   hasEscapedPrefix,
   isClosingCodeFence,
-  isContainerActive,
+  isFenceContainerActive,
   isIndentedCodeLine,
   isIndentedCodeStart,
   makeScanMetadata,
@@ -144,10 +144,7 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
     }
     if (codeFence !== null) {
       const lineStart = metadata.lineStarts[sourceIndex] ?? 0;
-      if (
-        sourceIndex === lineStart &&
-        !isContainerActive(codeFence.container, lineStart, metadata)
-      ) {
+      if (sourceIndex === lineStart && !isFenceContainerActive(codeFence, lineStart, metadata)) {
         codeFence = null;
         continue;
       }
@@ -289,7 +286,9 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
         sourceIndex += 1;
         continue;
       }
-      const blockTagPrefix = /^<([A-Za-z][A-Za-z0-9-]*)(?=[\s>])/u.exec(value.slice(sourceIndex));
+      const blockTagPrefix = /^<\/?([A-Za-z][A-Za-z0-9-]*)(?=[\s>])/u.exec(
+        value.slice(sourceIndex),
+      );
       if (
         blockTagPrefix !== null &&
         isInterruptingHtmlBlockTag(blockTagPrefix[1]!.toLowerCase()) &&

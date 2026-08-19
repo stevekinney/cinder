@@ -14,6 +14,7 @@ export type ScanMetadata = {
 export type ContainerContext = {
   quoteDepth: number;
   listDepth: number;
+  startsListItem: boolean;
   listContinuationIndentation: number;
   maximumIndentation: number;
 };
@@ -22,11 +23,13 @@ export type CodeFence = {
   delimiter: '`' | '~';
   minimumLength: number;
   container: ContainerContext;
+  openingLineStart: number;
 };
 
 const EMPTY_CONTAINER_CONTEXT: ContainerContext = {
   quoteDepth: 0,
   listDepth: 0,
+  startsListItem: false,
   listContinuationIndentation: 0,
   maximumIndentation: 0,
 };
@@ -137,6 +140,7 @@ export function makeScanMetadata(value: string): ScanMetadata {
       containerContexts.set(start, {
         quoteDepth,
         listDepth,
+        startsListItem: listDepth > 0,
         listContinuationIndentation,
         maximumIndentation,
       });
@@ -249,8 +253,29 @@ export function getOpeningCodeFence(
   if (delimiter === '`' && information.includes('`')) return null;
 
   return minimumLength >= 3
-    ? { delimiter, minimumLength, container: getContainerContext(lineStart, metadata) }
+    ? {
+        delimiter,
+        minimumLength,
+        container: getContainerContext(lineStart, metadata),
+        openingLineStart: lineStart,
+      }
     : null;
+}
+
+export function isFenceContainerActive(
+  fence: CodeFence,
+  lineStart: number,
+  metadata: ScanMetadata,
+): boolean {
+  const current = getContainerContext(lineStart, metadata);
+  if (
+    lineStart !== fence.openingLineStart &&
+    current.startsListItem &&
+    current.listDepth <= fence.container.listDepth
+  ) {
+    return false;
+  }
+  return isContainerActive(fence.container, lineStart, metadata);
 }
 
 export function isClosingCodeFence(
@@ -261,7 +286,7 @@ export function isClosingCodeFence(
 ): boolean {
   const lineStart = metadata.lineStarts[start] ?? 0;
   if (
-    !isContainerActive(fence.container, lineStart, metadata) ||
+    !isFenceContainerActive(fence, lineStart, metadata) ||
     start !== (metadata.containerStarts.get(lineStart) ?? lineStart)
   ) {
     return false;

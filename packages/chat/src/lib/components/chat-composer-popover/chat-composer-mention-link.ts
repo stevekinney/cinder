@@ -40,6 +40,113 @@ export type ParsedMentionLink = {
 
 type MentionLabelBounds = { end: number; containsNestedLink: boolean };
 
+function projectMentionLabel(value: string): string | null {
+  const escaped = new Uint8Array(value.length);
+  const removed = new Uint8Array(value.length);
+  const openers = new Map<string, number[]>();
+  const codeEnds = new Map<number, number>();
+  const nextCodeRun = new Map<number, number>();
+  let backslashes = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    escaped[index] = backslashes % 2;
+    backslashes = value[index] === '\\' ? backslashes + 1 : 0;
+  }
+
+  for (let index = value.length - 1; index >= 0; ) {
+    if (value[index] !== '`') {
+      index -= 1;
+      continue;
+    }
+    let start = index;
+    while (start > 0 && value[start - 1] === '`') start -= 1;
+    const length = index - start + 1;
+    if (escaped[start] === 0) {
+      const next = nextCodeRun.get(length);
+      if (next !== undefined) codeEnds.set(start, next);
+      nextCodeRun.set(length, start);
+    }
+    index = start - 1;
+  }
+
+  for (let index = 0; index < value.length; ) {
+    const codeEnd = codeEnds.get(index);
+    if (codeEnd !== undefined) {
+      index = codeEnd;
+      while (value[index] === '`') index += 1;
+      continue;
+    }
+    if (escaped[index] === 1 || !/[*_~]/u.test(value[index]!)) {
+      index += 1;
+      continue;
+    }
+    const character = value[index]!;
+    let length = 1;
+    while (value[index + length] === character) length += 1;
+    if (character === '~' && length !== 2) {
+      return null;
+    }
+    const before = value[index - 1] ?? '';
+    const after = value[index + length] ?? '';
+    const beforeWhitespace = before.length === 0 || /\s/u.test(before);
+    const afterWhitespace = after.length === 0 || /\s/u.test(after);
+    const beforePunctuation = /[\p{P}\p{S}]/u.test(before);
+    const afterPunctuation = /[\p{P}\p{S}]/u.test(after);
+    const leftFlanking =
+      !afterWhitespace && (!afterPunctuation || beforeWhitespace || beforePunctuation);
+    const rightFlanking =
+      !beforeWhitespace && (!beforePunctuation || afterWhitespace || afterPunctuation);
+    const canOpen =
+      character === '_' ? leftFlanking && (!rightFlanking || beforePunctuation) : leftFlanking;
+    const canClose =
+      character === '_' ? rightFlanking && (!leftFlanking || afterPunctuation) : rightFlanking;
+    const key = `${character}${length}`;
+    const stack = openers.get(key) ?? [];
+    if (canClose && stack.length > 0) {
+      const opening = stack.pop()!;
+      removed.fill(1, opening, opening + length);
+      removed.fill(1, index, index + length);
+    } else if (canOpen) {
+      stack.push(index);
+      openers.set(key, stack);
+    }
+    index += length;
+  }
+  if ([...openers.values()].some((stack) => stack.length > 0)) return null;
+
+  let projected = '';
+  let plain = '';
+  const flushPlain = () => {
+    const decoded = unescapeMarkdown(plain);
+    if (decoded === null) return false;
+    projected += decoded;
+    plain = '';
+    return true;
+  };
+  for (let index = 0; index < value.length; ) {
+    const codeEnd = codeEnds.get(index);
+    if (codeEnd !== undefined) {
+      if (!flushPlain()) return null;
+      const openingLength = countRepeated(value, index, '`');
+      let code = value.slice(index + openingLength, codeEnd).replace(/\r\n?|\n/gu, ' ');
+      if (code.startsWith(' ') && code.endsWith(' ') && /[^ ]/u.test(code))
+        code = code.slice(1, -1);
+      projected += code;
+      index = codeEnd + openingLength;
+      continue;
+    }
+    if (removed[index] === 0 && escaped[index] === 0 && /[*_~]/u.test(value[index]!)) return null;
+    if (removed[index] === 0) plain += value[index];
+    index += 1;
+  }
+  return flushPlain() ? projected : null;
+}
+
+function countRepeated(value: string, start: number, character: string): number {
+  let length = 0;
+  while (value[start + length] === character) length += 1;
+  return length;
+}
+
 export function parseMentionLink(
   value: string,
   start: number,
@@ -148,7 +255,7 @@ export function parseMentionLink(
 
   const rawLabel = value.slice(start + 1, labelEnd);
   if (hasMarkdownParagraphBreak(rawLabel)) return null;
-  const label = unescapeMarkdown(rawLabel);
+  const label = projectMentionLabel(rawLabel);
   const uri = unescapeMarkdown(value.slice(rawDestinationStart, rawDestinationEnd));
   if (label === null || label.length === 0 || uri === null || !isEntityUri(uri)) return null;
 

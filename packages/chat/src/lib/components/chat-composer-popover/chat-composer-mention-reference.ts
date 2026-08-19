@@ -6,6 +6,7 @@ import {
   getOpeningCodeFence,
   isClosingCodeFence,
   isContainerActive,
+  isFenceContainerActive,
   isIndentedCodeLine,
   isIndentedCodeStart,
   type CodeFence,
@@ -92,8 +93,10 @@ export function getReferenceDefinitionEnd(
     if (parentheses !== 0) return null;
   }
 
+  const destinationEnd = cursor;
   while (value[cursor] === ' ' || value[cursor] === '\t') cursor += 1;
   if (cursor < end && value[cursor] !== '\r') {
+    if (cursor === destinationEnd) return null;
     const opener = value[cursor];
     const closer = opener === '(' ? ')' : opener;
     if (opener !== '"' && opener !== "'" && opener !== '(') return null;
@@ -189,7 +192,7 @@ export function collectResolvedReferenceLabels(value: string, metadata: ScanMeta
     }
     let literalBlockLine = lineStart < htmlBlockEnd;
     if (!literalBlockLine && codeFence !== null) {
-      if (!isContainerActive(codeFence.container, lineStart, metadata)) {
+      if (!isFenceContainerActive(codeFence, lineStart, metadata)) {
         codeFence = null;
       } else {
         if (
