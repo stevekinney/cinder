@@ -240,16 +240,6 @@ const entries = applyComponentFilter(allEntries, filterSlugs);
 /** The synthesised default fixture used when a component has no explicit fixture list. */
 const DEFAULT_FIXTURE = [{ name: 'default' }] as const;
 
-function fixtureRoute(route: string, fixtureName: string, fixtureContentHash?: string): string {
-  if (fixtureName === 'default') return route;
-  if (fixtureContentHash === undefined) {
-    throw new Error(`Visual fixture "${fixtureName}" is missing fixtureContentHash.`);
-  }
-  const params = new URLSearchParams({ fixture: fixtureName });
-  params.set('fixtureContentHash', fixtureContentHash);
-  return `${route}?${params.toString()}`;
-}
-
 test.describe('fixture manifest metadata', () => {
   test('embeds fixture metadata and content hashes without fixture props', () => {
     const input = allEntries.find((entry) => entry.slug === 'input');
@@ -347,18 +337,56 @@ for (const entry of entries) {
             };
             const fixtureContentHash =
               'fixtureContentHash' in fixture ? fixture.fixtureContentHash : undefined;
-            const route = fixtureRoute(entry.route, fixture.name, fixtureContentHash);
+            const currentUrl = new URL(page.url());
+            const route = `${currentUrl.pathname}${currentUrl.search}`;
+
+            const category =
+              'category' in fixture && typeof fixture.category === 'string'
+                ? fixture.category
+                : 'visual-contract';
+            const masks =
+              'mask' in fixture && Array.isArray(fixture.mask) ? fixture.mask : undefined;
+            const interactionSteps =
+              'interact' in fixture && Array.isArray(fixture.interact) ? fixture.interact : [];
+            const hasInteractions = interactionSteps.length > 0;
+            const restingKey = hasInteractions
+              ? { ...key, fixture: `${fixture.name}-resting` }
+              : key;
+
+            // Every fixture has a resting-state capture. Interaction fixtures
+            // use a second key so their resulting state remains pixel-checked.
+            await captureScreenshot(page, restingKey, masks !== undefined ? { masks } : undefined);
+            await writeScreenshotMetadata({
+              key: restingKey,
+              component: entry.name,
+              category: hasInteractions ? 'visual-contract' : category,
+              route,
+              fixtureContentHash,
+              mask: masks,
+            });
 
             // Apply interaction steps (e.g. click trigger, focus input) before
-            // capture so the screenshot shows the post-interaction state.
+            // accessibility assertions. Resting-state capture above remains
+            // independent of the transition's resulting state.
             if (
               'interact' in fixture &&
               Array.isArray(fixture.interact) &&
               fixture.interact.length > 0
             ) {
-              await applyInteractions(page, fixture.interact, {
+              await applyInteractions(page, interactionSteps, {
                 component: entry.slug,
                 fixture: fixture.name,
+              });
+              await expect(page.locator('[data-cinder-position-ready="false"]')).toHaveCount(0);
+              await captureScreenshot(page, key, masks !== undefined ? { masks } : undefined);
+              await writeScreenshotMetadata({
+                key,
+                component: entry.name,
+                category,
+                route,
+                fixtureContentHash,
+                interact: interactionSteps,
+                mask: masks,
               });
             }
 
@@ -371,29 +399,7 @@ for (const entry of entries) {
 
             // Record the screenshot taxonomy so contact sheets can group
             // captures by intent.
-            const category =
-              'category' in fixture && typeof fixture.category === 'string'
-                ? fixture.category
-                : 'visual-contract';
             test.info().annotations.push({ type: 'category', description: category });
-
-            // Pass mask rules from the fixture so toHaveScreenshot can exclude
-            // dynamic regions from the pixel comparison.
-            const masks =
-              'mask' in fixture && Array.isArray(fixture.mask) ? fixture.mask : undefined;
-            await captureScreenshot(page, key, masks !== undefined ? { masks } : undefined);
-            await writeScreenshotMetadata({
-              key,
-              component: entry.name,
-              category,
-              route,
-              fixtureContentHash,
-              interact:
-                'interact' in fixture && Array.isArray(fixture.interact)
-                  ? fixture.interact
-                  : undefined,
-              mask: masks,
-            });
 
             // Accessibility gate: `critical` and `serious` violations fail the
             // sweep; `moderate`/`minor` stay annotation-only (recorded above).
