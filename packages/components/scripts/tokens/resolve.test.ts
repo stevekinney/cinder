@@ -50,6 +50,14 @@ describe('DTCG resolver', () => {
     expect(resolved['group.child']).toMatchObject({ $type: 'number', $value: 2 });
   });
 
+  test('resolves JSON Pointers to group root tokens', () => {
+    const resolved = resolveDocument({
+      group: { $type: 'number', $root: { $value: 1 } },
+      copy: { $type: 'number', $value: '#/group/$root/$value' },
+    });
+    expect(resolved['copy']?.$value).toBe(1);
+  });
+
   test('rejects circular aliases and group extensions', () => {
     expect(() =>
       resolveDocument({

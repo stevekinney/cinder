@@ -148,11 +148,12 @@ function resolveReference(
     if (!token) continue;
     const resolvedToken = resolveToken(candidatePath, tokens, resolving);
     const propertySegments = segments.slice(end);
+    const targetsRootToken = reference.startsWith('#/') && propertySegments[0] === '$root';
     const propertyValue = getByPath(
-      reference.startsWith('#/') && propertySegments[0] === '$value'
+      reference.startsWith('#/') && (propertySegments[0] === '$value' || targetsRootToken)
         ? resolvedToken
         : resolvedToken.$value,
-      propertySegments,
+      targetsRootToken ? propertySegments.slice(1) : propertySegments,
     );
     if (propertyValue === undefined)
       issue(reference, `reference target ${candidatePath} has no requested property`);

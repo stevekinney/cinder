@@ -24,6 +24,23 @@ const TOKEN_TYPES = new Set<string>([
   'gradient',
   'typography',
 ]);
+const COLOR_SPACES = new Set([
+  'srgb',
+  'srgb-linear',
+  'display-p3',
+  'a98-rgb',
+  'prophoto-rgb',
+  'rec2020',
+  'xyz-d50',
+  'xyz-d65',
+  'hsl',
+  'hwb',
+  'lab',
+  'oklab',
+  'lch',
+  'oklch',
+]);
+const HEX_COLOR_PATTERN = /^#[0-9a-f]{3,4}(?:[0-9a-f]{2})?$/i;
 
 type JsonObject = Record<string, unknown>;
 type ResolverDocumentShape = {
@@ -66,7 +83,11 @@ function validateCompositeMembers(
   members: Readonly<Record<string, TokenType>>,
   path: string,
   issues: ValidationIssue[],
+  optionalMembers: ReadonlySet<string> = new Set(),
 ): void {
+  const allowedMembers = new Set([...Object.keys(members), ...optionalMembers]);
+  for (const name of Object.keys(value))
+    if (!allowedMembers.has(name)) addIssue(issues, path, `unknown composite member ${name}`);
   for (const [name, type] of Object.entries(members)) {
     if (!(name in value)) {
       addIssue(issues, path, `composite value must include ${name}`);
@@ -89,6 +110,7 @@ function validateValue(
       if (
         !objectValue ||
         typeof objectValue['colorSpace'] !== 'string' ||
+        !COLOR_SPACES.has(objectValue['colorSpace']) ||
         !Array.isArray(objectValue['components']) ||
         objectValue['components'].length !== 3 ||
         !objectValue['components'].every(
@@ -99,7 +121,8 @@ function validateValue(
             objectValue['alpha'] < 0 ||
             objectValue['alpha'] > 1) &&
           objectValue['alpha'] !== 'none') ||
-        (objectValue['hex'] !== undefined && typeof objectValue['hex'] !== 'string')
+        (objectValue['hex'] !== undefined &&
+          (typeof objectValue['hex'] !== 'string' || !HEX_COLOR_PATTERN.test(objectValue['hex'])))
       )
         addIssue(
           issues,
@@ -166,6 +189,7 @@ function validateValue(
       if (
         !objectValue ||
         !Array.isArray(objectValue['dashArray']) ||
+        objectValue['dashArray'].length === 0 ||
         !['round', 'butt', 'square'].includes(String(objectValue['lineCap']))
       )
         addIssue(issues, path, 'strokeStyle must be a named style or dash array');
@@ -208,7 +232,7 @@ function validateValue(
         );
       return;
     case 'shadow':
-      if (!objectValue && !Array.isArray(value))
+      if ((!objectValue && !Array.isArray(value)) || (Array.isArray(value) && value.length === 0))
         addIssue(issues, path, 'shadow must be a shadow object or array');
       else {
         const shadows = Array.isArray(value) ? value : [objectValue];
@@ -228,6 +252,7 @@ function validateValue(
             },
             Array.isArray(value) ? `${path}.${index}` : path,
             issues,
+            new Set(['inset']),
           );
           const blur = shadow['blur'];
           if (isObject(blur) && typeof blur['value'] === 'number' && blur['value'] < 0)
@@ -285,6 +310,7 @@ function validateValue(
           },
           path,
           issues,
+          new Set(['lineHeight']),
         );
         if (!('lineHeight' in objectValue))
           addIssue(issues, path, 'composite value must include lineHeight');

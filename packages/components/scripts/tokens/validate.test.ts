@@ -185,6 +185,37 @@ describe('DTCG semantic validation', () => {
     ).toThrow('inset must be boolean');
   });
 
+  test('rejects unsupported color and composite value shapes', () => {
+    expect(() =>
+      validateTokenDocument({
+        $type: 'color',
+        sample: { $value: { colorSpace: 'banana', components: [0, 0, 0], hex: 'red' } },
+      }),
+    ).toThrow('color must have');
+    expect(() =>
+      validateTokenDocument({
+        $type: 'strokeStyle',
+        sample: { $value: { dashArray: [], lineCap: 'round' } },
+      }),
+    ).toThrow('strokeStyle must');
+    expect(() => validateTokenDocument({ $type: 'shadow', sample: { $value: [] } })).toThrow(
+      'shadow must',
+    );
+    expect(() =>
+      validateTokenDocument({
+        $type: 'transition',
+        sample: {
+          $value: {
+            duration: '{duration}',
+            delay: '{duration}',
+            timingFunction: '{easing}',
+            timingFuction: '{easing}',
+          },
+        },
+      }),
+    ).toThrow('unknown composite member timingFuction');
+  });
+
   test('rejects negative durations', () => {
     expect(() =>
       validateTokenDocument({ duration: { $type: 'duration', $value: { value: -1, unit: 'ms' } } }),
