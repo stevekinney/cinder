@@ -462,6 +462,28 @@ export default [
     expect(result.entries).toHaveLength(0);
     expect(result.violations.some((v) => /budget/i.test(v))).toBe(true);
   });
+
+  it('rejects a fixture name reserved for an interaction fixture resting state', async () => {
+    const root = makeRoot([
+      {
+        component: 'menu',
+        filename: 'menu-fixtures.ts',
+        content: `
+export default [
+  { name: 'open', props: {}, interact: [{ action: 'click', target: { testId: 'trigger' } }] },
+  { name: 'open-resting', props: {} },
+];
+`,
+      },
+    ]);
+
+    const result = await extractFixtures(root);
+
+    expect(result.entries).toHaveLength(0);
+    expect(result.violations.some((violation) => /derived resting-state/i.test(violation))).toBe(
+      true,
+    );
+  });
 });
 
 // ---------------------------------------------------------------------------

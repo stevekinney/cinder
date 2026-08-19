@@ -198,6 +198,18 @@ export function parseFixtureFile(input: {
       }
     }
 
+    for (const fixture of fixturesResult.data) {
+      if (fixture.interact !== undefined && fixture.interact.length > 0) {
+        const restingName = `${fixture.name}-resting`;
+        const conflictingFixture = seen.get(restingName);
+        if (conflictingFixture !== undefined) {
+          violations.push(
+            `[${input.componentName}] Fixture name '${conflictingFixture}' conflicts with the derived resting-state fixture for '${fixture.name}'`,
+          );
+        }
+      }
+    }
+
     if (fixturesResult.data.length > DEFAULT_FIXTURE_BUDGET) {
       const hasOverride =
         metadataResult.success && metadataResult.data.fixtureBudgetOverride !== undefined;

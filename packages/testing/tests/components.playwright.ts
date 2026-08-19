@@ -240,16 +240,6 @@ const entries = applyComponentFilter(allEntries, filterSlugs);
 /** The synthesised default fixture used when a component has no explicit fixture list. */
 const DEFAULT_FIXTURE = [{ name: 'default' }] as const;
 
-function fixtureRoute(route: string, fixtureName: string, fixtureContentHash?: string): string {
-  if (fixtureName === 'default') return route;
-  if (fixtureContentHash === undefined) {
-    throw new Error(`Visual fixture "${fixtureName}" is missing fixtureContentHash.`);
-  }
-  const params = new URLSearchParams({ fixture: fixtureName });
-  params.set('fixtureContentHash', fixtureContentHash);
-  return `${route}?${params.toString()}`;
-}
-
 test.describe('fixture manifest metadata', () => {
   test('embeds fixture metadata and content hashes without fixture props', () => {
     const input = allEntries.find((entry) => entry.slug === 'input');
@@ -347,7 +337,8 @@ for (const entry of entries) {
             };
             const fixtureContentHash =
               'fixtureContentHash' in fixture ? fixture.fixtureContentHash : undefined;
-            const route = fixtureRoute(entry.route, fixture.name, fixtureContentHash);
+            const currentUrl = new URL(page.url());
+            const route = `${currentUrl.pathname}${currentUrl.search}`;
 
             const category =
               'category' in fixture && typeof fixture.category === 'string'
@@ -368,7 +359,7 @@ for (const entry of entries) {
             await writeScreenshotMetadata({
               key: restingKey,
               component: entry.name,
-              category: 'visual-contract',
+              category: hasInteractions ? 'visual-contract' : category,
               route,
               fixtureContentHash,
               mask: masks,
@@ -386,6 +377,7 @@ for (const entry of entries) {
                 component: entry.slug,
                 fixture: fixture.name,
               });
+              await expect(page.locator('[data-cinder-position-ready="false"]')).toHaveCount(0);
               await captureScreenshot(page, key, masks !== undefined ? { masks } : undefined);
               await writeScreenshotMetadata({
                 key,
