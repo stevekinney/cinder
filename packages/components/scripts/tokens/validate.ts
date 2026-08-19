@@ -47,6 +47,12 @@ function isObject(value: unknown): value is JsonObject {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+function isCubicBezier(value: unknown): value is [number, number, number, number] {
+  return (
+    Array.isArray(value) && value.length === 4 && value.every((entry) => typeof entry === 'number')
+  );
+}
+
 function isReference(value: unknown): value is string {
   return typeof value === 'string' && (/^\{[^{}]+\}$/.test(value) || value.startsWith('#/'));
 }
@@ -130,15 +136,7 @@ function validateValue(
       if (typeof value !== 'number') addIssue(issues, path, `${type} must be numeric`);
       return;
     case 'cubicBezier':
-      if (
-        !Array.isArray(value) ||
-        value.length !== 4 ||
-        !value.every((entry) => typeof entry === 'number') ||
-        value[0] < 0 ||
-        value[0] > 1 ||
-        value[2] < 0 ||
-        value[2] > 1
-      )
+      if (!isCubicBezier(value) || value[0] < 0 || value[0] > 1 || value[2] < 0 || value[2] > 1)
         addIssue(issues, path, 'cubicBezier must be four numbers with x coordinates in [0, 1]');
       return;
     case 'strokeStyle':
