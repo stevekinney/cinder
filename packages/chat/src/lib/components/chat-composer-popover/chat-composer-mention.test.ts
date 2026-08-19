@@ -44,6 +44,10 @@ describe('chat composer mentions', () => {
     const serialized = serializeChatComposerMention(mention);
 
     expect(deserializeChatComposerMention(serialized)).toEqual(mention);
+    const characterReferenceUri = { label: 'Ada', uri: 'person:a&amp;b' };
+    expect(
+      deserializeChatComposerMention(serializeChatComposerMention(characterReferenceUri)),
+    ).toEqual(characterReferenceUri);
   });
 
   test('projects multiple and adjacent mentions into text with UTF-16 ranges', () => {
@@ -316,6 +320,11 @@ describe('chat composer mentions', () => {
     });
     const nestedImages = '![['.repeat(10_000);
     expect(parseChatComposerMentions(nestedImages)).toEqual({ text: nestedImages, mentions: [] });
+    const unterminatedComments = `x ${'<!-- '.repeat(20_000)}`;
+    expect(parseChatComposerMentions(unterminatedComments)).toEqual({
+      text: unterminatedComments,
+      mentions: [],
+    });
   });
 
   test('handles delimiter-heavy input with bounded forward scans', () => {
@@ -881,6 +890,33 @@ describe('chat composer mentions', () => {
       text: 'Ada',
       mentions: [{ label: 'Ada', uri: 'person:ada', start: 0, end: 3 }],
     });
+    expect(parseChatComposerMentions('[Ada](person:a "Engineer")')).toEqual({
+      text: 'Ada',
+      mentions: [{ label: 'Ada', uri: 'person:a', start: 0, end: 3 }],
+    });
+    expect(parseChatComposerMentions('[ref]: /url (bad [Ada](person:a)')).toEqual({
+      text: '[ref]: /url (bad Ada',
+      mentions: [{ label: 'Ada', uri: 'person:a', start: 17, end: 20 }],
+    });
+    const multilineContainerReference = '> [foo\n> bar]: /logo\n> ![logo [Ada](person:a)][foo bar]';
+    expect(parseChatComposerMentions(multilineContainerReference)).toEqual({
+      text: multilineContainerReference,
+      mentions: [],
+    });
+    expect(
+      parseChatComposerMentions('<div>\n[img]: /logo\n</div>\n\n![logo [Ada](person:a)][img]'),
+    ).toEqual({
+      text: '<div>\n[img]: /logo\n</div>\n\n![logo Ada][img]',
+      mentions: [{ label: 'Ada', uri: 'person:a', start: 34, end: 37 }],
+    });
+    expect(
+      parseChatComposerMentions(
+        '<script>\n[img]: /logo\n</script>\n\n![logo [Ada](person:a)][img]',
+      ),
+    ).toEqual({
+      text: '<script>\n[img]: /logo\n</script>\n\n![logo Ada][img]',
+      mentions: [{ label: 'Ada', uri: 'person:a', start: 40, end: 43 }],
+    });
     expect(parseChatComposerMentions('Heading\n---\n[ref]: /url "[Ada](person:a)"')).toEqual({
       text: 'Heading\n---\n[ref]: /url "[Ada](person:a)"',
       mentions: [],
@@ -952,6 +988,7 @@ describe('chat composer mentions', () => {
       uri: 'person:east',
     });
     expect(deserializeChatComposerMention('[[Ada](person:a)](person:outer)')).toBeNull();
+    expect(deserializeChatComposerMention('[Ada](person:a "unterminated)')).toBeNull();
     expect(parseChatComposerMentions('[Docs](https://x\\ y "[Ada](person:a)")')).toEqual({
       text: '[Docs](https://x\\ y "Ada")',
       mentions: [{ label: 'Ada', uri: 'person:a', start: 21, end: 24 }],

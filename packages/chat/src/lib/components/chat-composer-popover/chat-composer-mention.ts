@@ -101,6 +101,7 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
   let text = '';
   let sourceIndex = 0;
   let gfmAutolinkScanEnd = 0;
+  let htmlCommentTerminatorAbsentFrom = value.length + 1;
   let codeFence: CodeFence | null = null;
   let indentedCode = false;
   let htmlDelimitedBlock: { terminator: string; container: ContainerContext } | null = null;
@@ -195,7 +196,11 @@ export function parseChatComposerMentions(value: string): ChatComposerMentionPar
     if (value[sourceIndex] === '<' && !hasEscapedPrefix(sourceIndex, metadata)) {
       if (value.startsWith('<!--', sourceIndex)) {
         const isBlock = isAtBlockStart(value, sourceIndex, metadata);
-        const closingStart = value.indexOf('-->', sourceIndex + 4);
+        const closingStart =
+          sourceIndex >= htmlCommentTerminatorAbsentFrom
+            ? -1
+            : value.indexOf('-->', sourceIndex + 4);
+        if (closingStart === -1) htmlCommentTerminatorAbsentFrom = sourceIndex;
         if (
           closingStart !== -1 &&
           !isBlock &&

@@ -1,5 +1,6 @@
 import { getLineEnd, getLineEndingLength, isLineEnding } from './chat-composer-mention-lines.ts';
 import {
+  getContainerContext,
   isContainerActive,
   type ContainerContext,
   type ScanMetadata,
@@ -164,4 +165,54 @@ export function getClosingHtmlBlockEnd(
     candidate = value.indexOf('</', candidate + 2);
   }
   return boundary < value.length ? boundary : null;
+}
+
+export function getHtmlBlockEndAt(
+  value: string,
+  start: number,
+  metadata: ScanMetadata,
+): number | null {
+  if (value[start] !== '<') return null;
+  const lineStart = metadata.lineStarts[start] ?? 0;
+  const containerStart = metadata.containerStarts.get(lineStart) ?? lineStart;
+  if (!/^ {0,3}$/u.test(value.slice(containerStart, start))) return null;
+  const container = getContainerContext(lineStart, metadata);
+  const completeBlock = (end: number | null) => end ?? value.length;
+
+  if (value.startsWith('<!--', start)) {
+    return completeBlock(getHtmlDelimitedBlockEnd(value, start, '-->', container, metadata));
+  }
+  if (value.startsWith('<?', start)) {
+    return completeBlock(getHtmlDelimitedBlockEnd(value, start, '?>', container, metadata));
+  }
+  if (value.startsWith('<![CDATA[', start)) {
+    return completeBlock(getHtmlDelimitedBlockEnd(value, start, ']]>', container, metadata));
+  }
+  if (/^<![A-Z]/u.test(value.slice(start))) {
+    return completeBlock(getHtmlDelimitedBlockEnd(value, start, '>', container, metadata));
+  }
+
+  const tagEnd = getHtmlTagEnd(value, start);
+  if (tagEnd === null) return null;
+  const tag = /^<\/?([A-Za-z][A-Za-z0-9-]*)(?=\s|\/?>)/u.exec(value.slice(start, tagEnd + 1));
+  if (tag === null) return null;
+  const normalizedTag = tag[1]!.toLowerCase();
+  const lineEnd = getLineEnd(value, tagEnd + 1);
+  const isStandaloneTag =
+    /^\s*(?:<\/?[A-Za-z][A-Za-z0-9-]*(?:\s[^>]*)?>)[ \t]*$/u.test(
+      value.slice(containerStart, lineEnd),
+    ) && isLineEnding(value[lineEnd]);
+  if (
+    !isInterruptingHtmlBlockTag(normalizedTag) &&
+    !(isStandaloneTag && canStartHtmlBlock(value, lineStart, metadata))
+  ) {
+    return null;
+  }
+
+  if (closesHtmlBlockWithTag(normalizedTag)) {
+    return completeBlock(
+      getClosingHtmlBlockEnd(value, tagEnd + 1, normalizedTag, container, metadata),
+    );
+  }
+  return completeBlock(getHtmlBlockBlankLineEnd(value, tagEnd + 1, container, metadata));
 }

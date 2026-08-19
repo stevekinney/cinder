@@ -1,3 +1,4 @@
+import { getHtmlBlockEndAt } from './chat-composer-mention-html.ts';
 import { getLineEnd, getLineEndingLength } from './chat-composer-mention-lines.ts';
 import { normalizeReferenceLabel } from './chat-composer-mention-link.ts';
 import {
@@ -98,6 +99,7 @@ export function getReferenceDefinitionEnd(
     if (opener !== '"' && opener !== "'" && opener !== '(') return null;
     cursor += 1;
     while (value[cursor] !== closer) {
+      if (opener === '(' && value[cursor] === '(') return null;
       if (cursor >= end) {
         if (lineEnd === value.length) return null;
         const nextLineStart = lineEnd + getLineEndingLength(value, lineEnd);
@@ -140,6 +142,7 @@ export function getReferenceDefinitionEnd(
   if (opener !== '"' && opener !== "'" && opener !== '(') return end;
   titleCursor += 1;
   while (titleCursor < titleEnd && value[titleCursor] !== closer) {
+    if (opener === '(' && value[titleCursor] === '(') return end;
     if (value[titleCursor] === '\\') titleCursor += 1;
     titleCursor += 1;
   }
@@ -152,9 +155,29 @@ export function getReferenceDefinitionEnd(
     : end;
 }
 
+function getReferenceLabelSource(
+  value: string,
+  start: number,
+  end: number,
+  metadata: ScanMetadata,
+): string {
+  let label = '';
+  let cursor = start;
+  while (cursor < end) {
+    const lineEnd = Math.min(getLineEnd(value, cursor), end);
+    label += value.slice(cursor, lineEnd);
+    if (lineEnd === end) break;
+    const nextLineStart = lineEnd + getLineEndingLength(value, lineEnd);
+    label += ' ';
+    cursor = metadata.containerStarts.get(nextLineStart) ?? nextLineStart;
+  }
+  return label;
+}
+
 export function collectResolvedReferenceLabels(value: string, metadata: ScanMetadata): Set<string> {
   const labels = new Set<string>();
   let codeFence: CodeFence | null = null;
+  let htmlBlockEnd = 0;
   let indentedCode = false;
   for (let lineStart = 0; lineStart < value.length; ) {
     const lineEnd = getLineEnd(value, lineStart);
@@ -164,8 +187,8 @@ export function collectResolvedReferenceLabels(value: string, metadata: ScanMeta
       candidate += 1;
       indentation += 1;
     }
-    let literalCodeLine = false;
-    if (codeFence !== null) {
+    let literalBlockLine = lineStart < htmlBlockEnd;
+    if (!literalBlockLine && codeFence !== null) {
       if (!isContainerActive(codeFence.container, lineStart, metadata)) {
         codeFence = null;
       } else {
@@ -175,30 +198,37 @@ export function collectResolvedReferenceLabels(value: string, metadata: ScanMeta
         ) {
           codeFence = null;
         }
-        literalCodeLine = true;
+        literalBlockLine = true;
       }
     }
-    if (!literalCodeLine && indentedCode) {
+    if (!literalBlockLine && indentedCode) {
       const line = value.slice(lineStart, lineEnd);
       if (line.trim().length === 0 || !isIndentedCodeLine(value, lineStart)) {
         indentedCode = false;
       } else {
-        literalCodeLine = true;
+        literalBlockLine = true;
       }
     }
-    if (!literalCodeLine && isIndentedCodeStart(value, lineStart, metadata)) {
+    if (!literalBlockLine && isIndentedCodeStart(value, lineStart, metadata)) {
       indentedCode = true;
-      literalCodeLine = true;
+      literalBlockLine = true;
     }
-    if (!literalCodeLine) {
+    if (!literalBlockLine) {
       const openingCodeFence = getOpeningCodeFence(value, candidate, metadata);
       if (openingCodeFence !== null) {
         codeFence = openingCodeFence;
-        literalCodeLine = true;
+        literalBlockLine = true;
+      }
+    }
+    if (!literalBlockLine) {
+      const detectedHtmlBlockEnd = getHtmlBlockEndAt(value, candidate, metadata);
+      if (detectedHtmlBlockEnd !== null) {
+        htmlBlockEnd = detectedHtmlBlockEnd;
+        literalBlockLine = true;
       }
     }
     if (
-      !literalCodeLine &&
+      !literalBlockLine &&
       value[candidate] === '[' &&
       getReferenceDefinitionEnd(value, candidate, metadata) !== null
     ) {
@@ -206,7 +236,9 @@ export function collectResolvedReferenceLabels(value: string, metadata: ScanMeta
       while (labelEnd < value.length && value[labelEnd] !== ']') {
         labelEnd += value[labelEnd] === '\\' ? 2 : 1;
       }
-      labels.add(normalizeReferenceLabel(value.slice(candidate + 1, labelEnd)));
+      labels.add(
+        normalizeReferenceLabel(getReferenceLabelSource(value, candidate + 1, labelEnd, metadata)),
+      );
     }
     if (lineEnd === value.length) break;
     lineStart = lineEnd + getLineEndingLength(value, lineEnd);

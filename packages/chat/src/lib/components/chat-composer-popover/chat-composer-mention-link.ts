@@ -25,7 +25,7 @@ export function escapeMentionLabel(value: string): string {
 }
 
 export function escapeMentionUri(value: string): string {
-  return value.replaceAll('\\', '\\\\').replace(/([()[\]<>|])/gu, '\\$1');
+  return value.replaceAll('\\', '\\\\').replace(/([&()[\]<>|])/gu, '\\$1');
 }
 
 export function hasMarkdownParagraphBreak(value: string): boolean {
@@ -103,7 +103,7 @@ export function parseMentionLink(
         continue;
       }
 
-      if (/\s/u.test(character)) return null;
+      if (/\s/u.test(character)) break;
       if (character === '(') {
         nestedParentheses += 1;
         destinationEnd += 1;
@@ -120,7 +120,31 @@ export function parseMentionLink(
     rawDestinationEnd = destinationEnd;
   }
 
-  if (value[destinationEnd] !== ')') return null;
+  if (nestedParentheses !== 0) return null;
+  let linkEnd = destinationEnd;
+  if (/\s/u.test(value[linkEnd] ?? '')) {
+    const titleWhitespaceStart = linkEnd;
+    while (/\s/u.test(value[linkEnd] ?? '')) linkEnd += 1;
+    if (hasMarkdownParagraphBreak(value.slice(titleWhitespaceStart, linkEnd))) return null;
+    const opener = value[linkEnd];
+    const closer = opener === '(' ? ')' : opener;
+    if (opener !== '"' && opener !== "'" && opener !== '(') return null;
+    linkEnd += 1;
+    const titleStart = linkEnd;
+    while (linkEnd < value.length && value[linkEnd] !== closer) {
+      if (opener === '(' && value[linkEnd] === '(') return null;
+      if (value[linkEnd] === '\\') linkEnd += 1;
+      linkEnd += 1;
+    }
+    if (value[linkEnd] !== closer || hasMarkdownParagraphBreak(value.slice(titleStart, linkEnd))) {
+      return null;
+    }
+    linkEnd += 1;
+    const closingWhitespaceStart = linkEnd;
+    while (/\s/u.test(value[linkEnd] ?? '')) linkEnd += 1;
+    if (hasMarkdownParagraphBreak(value.slice(closingWhitespaceStart, linkEnd))) return null;
+  }
+  if (value[linkEnd] !== ')') return null;
 
   const rawLabel = value.slice(start + 1, labelEnd);
   if (hasMarkdownParagraphBreak(rawLabel)) return null;
@@ -128,7 +152,7 @@ export function parseMentionLink(
   const uri = unescapeMarkdown(value.slice(rawDestinationStart, rawDestinationEnd));
   if (label === null || label.length === 0 || uri === null || !isEntityUri(uri)) return null;
 
-  return { label, uri, end: destinationEnd + 1 };
+  return { label, uri, end: linkEnd + 1 };
 }
 
 export function scanGfmLiteralAutolink(
