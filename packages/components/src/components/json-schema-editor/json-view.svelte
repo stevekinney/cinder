@@ -4,6 +4,7 @@
   export type JsonViewProps = {
     state: EditorState;
     idPrefix: string;
+    onApply?: (() => void) | undefined;
     class?: string;
   };
 </script>
@@ -23,7 +24,11 @@
   // would compile as a legacy store auto-subscription to that variable
   // instead of the rune call. json-schema-toolbar.svelte uses the same
   // alias for the same reason.
-  let { state: editorState, idPrefix, class: className }: JsonViewProps = $props();
+  let { state: editorState, idPrefix, onApply, class: className }: JsonViewProps = $props();
+
+  async function applyDraft(): Promise<void> {
+    if (await editorState.applyJsonDraft()) onApply?.();
+  }
 
   // Parse is synchronous; the meta-schema check is not (validateMetaSchema
   // dynamically imports Ajv), so it's tracked as state updated from an
@@ -83,12 +88,7 @@
     {#if editorState.jsonDraftIsDirty}
       <Badge variant="warning">Draft modified — Apply to commit</Badge>
     {/if}
-    <Button
-      variant="primary"
-      size="sm"
-      disabled={!canApply}
-      onclick={() => void editorState.applyJsonDraft()}
-    >
+    <Button variant="primary" size="sm" disabled={!canApply} onclick={() => void applyDraft()}>
       Apply
     </Button>
     <Button

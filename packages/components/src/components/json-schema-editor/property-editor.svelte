@@ -1,5 +1,6 @@
 <script lang="ts" module>
   import type { JsonSchemaTypeName, JsonSchemaValue } from './json-schema-editor-types.ts';
+  import type { EnumDraft } from './enum-editor.svelte';
 
   export type PropertyEditorProps = {
     idPrefix: string;
@@ -7,7 +8,10 @@
     path: string;
     depth?: number;
     readonly?: boolean;
+    enumDrafts?: Record<string, Record<number, EnumDraft>>;
+    historyRevision?: number;
     onvalidationErrorcount?: ((count: number) => void) | undefined;
+    onEnumDraftsChange?: ((next: Record<string, Record<number, EnumDraft>>) => void) | undefined;
     onValueChange: (
       next: JsonSchemaValue,
       options?: { coalesceKey?: string; label?: string },
@@ -41,6 +45,7 @@
   import type { JsonSchemaObject } from './json-schema-editor-types.ts';
   import PropertyEditor from './property-editor.svelte';
   import PropertyEditorConstraints from './property-editor-constraints.svelte';
+  import EnumEditor from './enum-editor.svelte';
   import PropertyList from './property-list.svelte';
 
   let {
@@ -49,7 +54,10 @@
     path,
     depth = 0,
     readonly = false,
+    enumDrafts = {},
+    historyRevision = 0,
     onvalidationErrorcount,
+    onEnumDraftsChange,
     onValueChange,
     class: className,
   }: PropertyEditorProps = $props();
@@ -79,10 +87,13 @@
   });
 
   const isAnyType = $derived(selectedTypes.length === 0);
+  const hasEnum = $derived(Array.isArray(objectValue.enum));
 
-  const preservedKeys = $derived.by(() => {
-    return Object.keys(objectValue).filter((key) => !EDITABLE_KEYWORDS.has(key));
-  });
+  const preservedKeys = $derived.by(() =>
+    Object.keys(objectValue).filter(
+      (key) => !EDITABLE_KEYWORDS.has(key) || (key === 'enum' && !Array.isArray(objectValue.enum)),
+    ),
+  );
 
   // ===== Mutation helpers =====
   function patch(
@@ -168,8 +179,16 @@
 
   // ===== Children (object/array) =====
   let childValidationCounts = $state<Record<string, number>>({});
+  const retainedDraftCount = $derived(
+    Object.entries(enumDrafts)
+      .filter(([draftPath]) => draftPath === `${path}/enum` || draftPath.startsWith(`${path}/`))
+      .reduce((count, [, drafts]) => count + Object.keys(drafts).length, 0),
+  );
   const validationErrorCount = $derived(
-    Object.values(childValidationCounts).reduce((total, count) => total + count, 0),
+    Math.max(
+      Object.values(childValidationCounts).reduce((total, count) => total + count, 0),
+      retainedDraftCount,
+    ),
   );
 
   $effect(() => {
@@ -198,6 +217,24 @@
 
   function setItems(items: JsonSchemaValue) {
     patch({ items }, { label: 'edit items' });
+  }
+
+  function setEnum(enabled: boolean) {
+    if (!enabled) {
+      const { [`${path}/enum`]: _removedDraft, ...remainingDrafts } = enumDrafts;
+      onEnumDraftsChange?.(remainingDrafts);
+    }
+    patch(
+      { enum: enabled ? (Array.isArray(objectValue.enum) ? objectValue.enum : ['']) : undefined },
+      { label: 'edit enum' },
+    );
+  }
+
+  function setEnumValues(
+    values: unknown[],
+    options: { coalesceKey?: string; label?: string } | undefined = undefined,
+  ) {
+    patch({ enum: values }, options ?? { label: 'edit enum values' });
   }
 
   // ===== Composition =====
@@ -261,6 +298,21 @@
     const nextBranchKeys = [...compositionBranchKeys[keyword]];
     list.splice(branchIndex, 1);
     nextBranchKeys.splice(branchIndex, 1);
+    const branchPrefix = `${path}/${keyword}/`;
+    onEnumDraftsChange?.(
+      Object.fromEntries(
+        Object.entries(enumDrafts).flatMap(([draftPath, draft]) => {
+          if (!draftPath.startsWith(branchPrefix)) return [[draftPath, draft]];
+          const remainder = draftPath.slice(branchPrefix.length);
+          const match = /^(\d+)(\/.*)?$/.exec(remainder);
+          if (!match) return [[draftPath, draft]];
+          const index = Number(match[1]);
+          if (index === branchIndex) return [];
+          const nextIndex = index > branchIndex ? index - 1 : index;
+          return [[`${branchPrefix}${nextIndex}${match[2] ?? ''}`, draft]];
+        }),
+      ),
+    );
     setKeywordKeys(keyword, nextBranchKeys);
     if (removedBranchKey) setChildValidationErrorCount(`${keyword}:${removedBranchKey}`, 0);
     patchComposition(keyword, list.length > 0 ? list : undefined);
@@ -348,6 +400,29 @@
       </div>
     </div>
 
+    <div class="cinder-jse-section">
+      <Checkbox
+        id={`${idPrefix}-enum`}
+        checked={hasEnum}
+        label="Enum values"
+        disabled={readonly}
+        onchange={(event: Event) => setEnum((event.target as HTMLInputElement).checked)}
+      />
+      {#if hasEnum}
+        <EnumEditor
+          idPrefix={`${idPrefix}-enum`}
+          path={`${path}/enum`}
+          values={objectValue.enum ?? []}
+          drafts={enumDrafts[`${path}/enum`] ?? {}}
+          {historyRevision}
+          {readonly}
+          onvalidationErrorcount={(count) => setChildValidationErrorCount('enum', count)}
+          onDraftsChange={(next) => onEnumDraftsChange?.({ ...enumDrafts, [`${path}/enum`]: next })}
+          onValuesChange={setEnumValues}
+        />
+      {/if}
+    </div>
+
     <!-- Object constraints (properties + required) — comes early because it's the heaviest. -->
     {#if showObjectConstraints}
       <div class="cinder-jse-section">
@@ -356,10 +431,13 @@
           {idPrefix}
           {readonly}
           {depth}
+          {enumDrafts}
+          {historyRevision}
           path={`${path}/properties`}
           properties={objectValue.properties ?? {}}
           required={objectValue.required ?? []}
           onvalidationErrorcount={(count) => setChildValidationErrorCount('properties', count)}
+          {onEnumDraftsChange}
           onValueChange={patchProperties}
         />
       </div>
@@ -374,8 +452,11 @@
           path={`${path}/items`}
           depth={depth + 1}
           {readonly}
+          {enumDrafts}
+          {historyRevision}
           value={objectValue.items ?? {}}
           onvalidationErrorcount={(count) => setChildValidationErrorCount('items', count)}
+          {onEnumDraftsChange}
           onValueChange={(next) => setItems(next)}
         />
       </div>
@@ -407,9 +488,12 @@
                 path={`${path}/${keyword}/${branchIndex}`}
                 depth={depth + 1}
                 {readonly}
+                {enumDrafts}
+                {historyRevision}
                 value={branch}
                 onvalidationErrorcount={(count) =>
                   setChildValidationErrorCount(`${keyword}:${branchKey}`, count)}
+                {onEnumDraftsChange}
                 onValueChange={(next) => {
                   const list = [...objectValue[keyword]!];
                   list[branchIndex] = next;

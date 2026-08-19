@@ -468,6 +468,41 @@ test.describe('JSON schema editor', () => {
     expect(label.length).toBeGreaterThan(0);
   });
 
+  test('JSON commits surface editable enum values in the form view', async ({ page }) => {
+    const editor = await openFirstEditor(page);
+    const jsonTab = editor.getByRole('tab', { name: /JSON/ });
+    await jsonTab.click();
+
+    const textarea = editor.locator('textarea').first();
+    await expect(textarea).toBeVisible();
+    await textarea.fill('{"type":"string","enum":["draft","published"]}');
+    await editor.getByRole('button', { name: 'Apply' }).click();
+
+    await editor.getByRole('tab', { name: /^Form/ }).click();
+    const enumTable = editor.getByRole('table', { name: 'Enum values' });
+    await expect(enumTable).toBeVisible();
+    await expect(editor.getByRole('textbox', { name: 'Enum value 1' })).toHaveValue('"draft"');
+    await expect(editor.getByRole('textbox', { name: 'Enum value 2' })).toHaveValue('"published"');
+  });
+
+  test('invalid enum drafts survive switching away from the form view', async ({ page }) => {
+    const editor = await openFirstEditor(page);
+    const jsonTab = editor.getByRole('tab', { name: /JSON/ });
+    await jsonTab.click();
+    await editor.locator('textarea').first().fill('{"type":"string","enum":["draft","published"]}');
+    await editor.getByRole('button', { name: 'Apply' }).click();
+
+    await editor.getByRole('tab', { name: /^Form/ }).click();
+    const enumValue = editor.getByRole('textbox', { name: 'Enum value 2' });
+    await enumValue.fill('{');
+    await expect(editor.getByText('Enter a valid JSON value.')).toBeVisible();
+
+    await jsonTab.click();
+    await editor.getByRole('tab', { name: /^Form/ }).click();
+    await expect(editor.getByRole('textbox', { name: 'Enum value 2' })).toHaveValue('{');
+    await expect(editor.getByText('Enter a valid JSON value.')).toBeVisible();
+  });
+
   test('exactly one enabled toolbar action is in the tab order at rest', async ({ page }) => {
     const editor = await openFirstEditor(page);
     const toolbarRight = editor.locator('.cinder-jse-toolbar__right').first();

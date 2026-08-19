@@ -1,5 +1,6 @@
 <script lang="ts" module>
   import type { JsonSchemaValue } from './json-schema-editor-types.ts';
+  import type { EnumDraft } from './enum-editor.svelte';
 
   export type PropertyListProps = {
     idPrefix: string;
@@ -8,7 +9,10 @@
     path: string;
     depth?: number;
     readonly?: boolean;
+    enumDrafts?: Record<string, Record<number, EnumDraft>>;
+    historyRevision?: number;
     onvalidationErrorcount?: ((count: number) => void) | undefined;
+    onEnumDraftsChange?: ((next: Record<string, Record<number, EnumDraft>>) => void) | undefined;
     onValueChange: (properties: Record<string, JsonSchemaValue>, required: string[]) => void;
   };
 </script>
@@ -32,7 +36,10 @@
     path,
     depth = 0,
     readonly = false,
+    enumDrafts = {},
+    historyRevision = 0,
     onvalidationErrorcount,
+    onEnumDraftsChange,
     onValueChange,
   }: PropertyListProps = $props();
 
@@ -53,6 +60,15 @@
     ),
   );
 
+  function retainedDraftCount(key: string): number {
+    const propertyPrefix = `${path}/${pointerSegment(key)}`;
+    return Object.entries(enumDrafts)
+      .filter(
+        ([draftPath]) => draftPath === propertyPrefix || draftPath.startsWith(`${propertyPrefix}/`),
+      )
+      .reduce((count, [, drafts]) => count + Object.keys(drafts).length, 0);
+  }
+
   $effect(() => {
     onvalidationErrorcount?.(validationErrorCount);
   });
@@ -63,6 +79,24 @@
 
   function getDraftName(key: string): string {
     return draftNames[key] ?? key;
+  }
+
+  function pointerSegment(value: string): string {
+    return value.replaceAll('~', '~0').replaceAll('/', '~1');
+  }
+
+  function rebaseEnumDrafts(oldKey: string, newKey: string): void {
+    const oldPrefix = `${path}/${pointerSegment(oldKey)}`;
+    const newPrefix = `${path}/${pointerSegment(newKey)}`;
+    const next = Object.fromEntries(
+      Object.entries(enumDrafts).map(([draftPath, draft]) => [
+        draftPath === oldPrefix || draftPath.startsWith(`${oldPrefix}/`)
+          ? `${newPrefix}${draftPath.slice(oldPrefix.length)}`
+          : draftPath,
+        draft,
+      ]),
+    );
+    onEnumDraftsChange?.(next);
   }
 
   function uniqueNewKey(): string {
@@ -91,6 +125,7 @@
       return;
     }
     renameError = null;
+    rebaseEnumDrafts(oldKey, draft);
 
     const next: Record<string, JsonSchemaValue> = Object.create(null);
     for (const k of propertyNames) {
@@ -144,6 +179,15 @@
     const nextRequired = required.filter((name) => name !== key);
     delete draftNames[key];
     delete expanded[key];
+    const propertyPrefix = `${path}/${pointerSegment(key)}`;
+    onEnumDraftsChange?.(
+      Object.fromEntries(
+        Object.entries(enumDrafts).filter(
+          ([draftPath]) =>
+            draftPath !== propertyPrefix && !draftPath.startsWith(`${propertyPrefix}/`),
+        ),
+      ),
+    );
     const { [key]: _removedChildCount, ...remainingChildCounts } = childValidationCounts;
     childValidationCounts = remainingChildCounts;
     onValueChange(next, nextRequired);
@@ -262,7 +306,10 @@
   {#each propertyNames as key, index (key)}
     {@const isRequired = required.includes(key)}
     {@const isOpen = expanded[key] === true}
-    {@const childValidationErrorCount = childValidationCounts[key] ?? 0}
+    {@const childValidationErrorCount = Math.max(
+      childValidationCounts[key] ?? 0,
+      retainedDraftCount(key),
+    )}
     {@const panelId = `${idPrefix}-${key}-panel`}
     <!--
       Custom disclosure (not <details>/<summary>) so the action buttons can
@@ -355,11 +402,14 @@
           />
           <PropertyEditor
             idPrefix={`${idPrefix}-${key}-schema`}
-            path={`${path}/${key}`}
+            path={`${path}/${pointerSegment(key)}`}
             depth={depth + 1}
             {readonly}
+            {enumDrafts}
+            {historyRevision}
             value={properties[key] ?? {}}
             onvalidationErrorcount={(count) => setChildValidationErrorCount(key, count)}
+            {onEnumDraftsChange}
             onValueChange={(next) => setPropertySchema(key, next)}
           />
         </div>

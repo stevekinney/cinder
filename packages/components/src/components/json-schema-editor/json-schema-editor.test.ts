@@ -98,6 +98,23 @@ describe('JsonSchemaEditor — Diff tab source contract', () => {
     expect(source).toContain('localValidationErrorCount={toolbarValidationErrorCount}');
   });
 
+  test('json-schema-editor-impl.svelte retains enum drafts through undo and redo', async () => {
+    const source = await Bun.file(
+      new URL('./json-schema-editor-impl.svelte', import.meta.url),
+    ).text();
+
+    const undoHandler = source.slice(
+      source.indexOf('function handleUndo'),
+      source.indexOf('function handleRedo'),
+    );
+    const redoHandler = source.slice(
+      source.indexOf('function handleRedo'),
+      source.indexOf('function handleRevert'),
+    );
+    expect(undoHandler).not.toContain('enumDrafts = {}');
+    expect(redoHandler).not.toContain('enumDrafts = {}');
+  });
+
   test('property-editor.svelte aggregates nested validation counts from every child editor path', async () => {
     const source = await Bun.file(new URL('./property-editor.svelte', import.meta.url)).text();
 
@@ -109,6 +126,14 @@ describe('JsonSchemaEditor — Diff tab source contract', () => {
     expect(source).toContain('setChildValidationErrorCount(`${keyword}:${removedBranchKey}`, 0)');
     expect(source).not.toContain('.toSpliced(');
     expect(source).toContain('onvalidationErrorcount?.(0)');
+  });
+
+  test('property-editor.svelte retains enum draft errors while collapsed', async () => {
+    const source = await Bun.file(new URL('./property-editor.svelte', import.meta.url)).text();
+
+    expect(source).toContain('const retainedDraftCount = $derived');
+    expect(source).toContain('draftPath === `${path}/enum`');
+    expect(source).toContain('Math.max(');
   });
 });
 
