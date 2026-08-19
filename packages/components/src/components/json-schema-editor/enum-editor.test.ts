@@ -192,10 +192,10 @@ describe('EnumEditor', () => {
         0: { text: '3', error: 'duplicate' },
         1: { text: '3', error: 'duplicate' },
       },
-      onDraftsChange: (next) => {
+      onDraftsChange: (next: typeof drafts) => {
         drafts = next;
       },
-      onValuesChange: (next) => {
+      onValuesChange: (next: unknown[]) => {
         values = next;
       },
     });
