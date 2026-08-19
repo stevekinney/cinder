@@ -125,7 +125,9 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .cinder-status-dot[data-cinder-state='connecting'] .cinder-status-dot__indicator {
+    :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off'])
+      .cinder-status-dot[data-cinder-state='connecting']
+      .cinder-status-dot__indicator {
       animation: none;
     }
   }

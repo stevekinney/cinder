@@ -47,6 +47,18 @@
     }
   }
 
+  @media (hover: hover) and (pointer: fine) {
+    :root:is([data-cinder-reduced-motion='false'], [data-reduced-motion='off'])
+      .cinder-carousel__viewport {
+      cursor: grab;
+    }
+
+    :root:is([data-cinder-reduced-motion='false'], [data-reduced-motion='off'])
+      .cinder-carousel__viewport[data-cinder-dragging] {
+      cursor: grabbing;
+    }
+  }
+
   .cinder-carousel__slide {
     flex: 0 0 var(--cinder-carousel-slide-size, 100%);
     min-inline-size: var(--cinder-carousel-slide-size, 100%);
@@ -161,7 +173,8 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .cinder-carousel__viewport {
+    :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off'])
+      .cinder-carousel__viewport {
       scroll-behavior: auto;
     }
   }

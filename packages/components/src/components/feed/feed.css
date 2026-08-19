@@ -181,7 +181,8 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .cinder-feed-log__skeleton {
+    :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off'])
+      .cinder-feed-log__skeleton {
       animation: none;
     }
   }

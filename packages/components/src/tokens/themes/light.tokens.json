@@ -1,0 +1,13 @@
+{
+  "$schema": "https://www.designtokens.org/schemas/2025.10/format.json",
+  "$extensions": { "com.lostgradient.cinder": { "modifier": { "theme": "light" } } },
+  "surface": {
+    "$type": "color",
+    "base": { "$value": { "colorSpace": "oklch", "components": [0.994, 0.002, 255] } },
+    "raised": { "$value": { "colorSpace": "oklch", "components": [1, 0, 255] } }
+  },
+  "border": {
+    "$type": "color",
+    "control": { "$value": { "colorSpace": "oklch", "components": [0.63, 0.006, 255] } }
+  }
+}

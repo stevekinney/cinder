@@ -1,4 +1,82 @@
-import { MediaQuery } from 'svelte/reactivity';
+import { MediaQuery, SvelteMap } from 'svelte/reactivity';
+
+function readRootPreference(
+  root: HTMLElement | undefined,
+): import('./use-reduced-motion.types.ts').ReducedMotionPreference {
+  if (!root) return 'system';
+  const preference = root.dataset['reducedMotion'];
+  return preference === 'on' || preference === 'off' || preference === 'system'
+    ? preference
+    : 'system';
+}
+
+function synchronizeRootPreference(
+  root: HTMLElement | undefined,
+): import('./use-reduced-motion.types.ts').ReducedMotionPreference {
+  const preference = readRootPreference(root);
+  if (!root) return preference;
+  if (preference === 'system') delete root.dataset['cinderReducedMotion'];
+  else root.dataset['cinderReducedMotion'] = String(preference === 'on');
+  return preference;
+}
+
+const applicationRoot = typeof document === 'undefined' ? undefined : document.documentElement;
+const applicationPreferences = new SvelteMap<
+  'current',
+  import('./use-reduced-motion.types.ts').ReducedMotionPreference
+>([['current', 'system']]);
+const ApplicationMutationObserver =
+  applicationRoot?.ownerDocument.defaultView?.MutationObserver ?? globalThis.MutationObserver;
+
+if (applicationRoot && ApplicationMutationObserver) {
+  new ApplicationMutationObserver(() => {
+    applicationPreferences.set('current', synchronizeRootPreference(applicationRoot));
+  }).observe(applicationRoot, {
+    attributes: true,
+    attributeFilter: ['data-reduced-motion'],
+  });
+
+  queueMicrotask(() => {
+    applicationPreferences.set('current', synchronizeRootPreference(applicationRoot));
+  });
+}
+
+function getApplicationPreference(): import('./use-reduced-motion.types.ts').ReducedMotionPreference {
+  return applicationPreferences.get('current') ?? 'system';
+}
+
+/** Resolves an explicit motion preference against the current system preference. */
+export function resolveReducedMotion(
+  preference: import('./use-reduced-motion.types.ts').ReducedMotionPreference,
+  systemPrefersReducedMotion: boolean,
+): boolean {
+  return preference === 'on' || (preference === 'system' && systemPrefersReducedMotion);
+}
+
+/**
+ * Writes the application-level three-state preference onto an element.
+ *
+ * The public `data-reduced-motion` attribute preserves the author's selected
+ * state. The Cinder-namespaced boolean attribute is intentionally present only
+ * for explicit choices: CSS can keep following the media query for `system`,
+ * force reduction for `on`, and let an explicit `off` defeat an OS preference.
+ */
+export function applyReducedMotionPreference(
+  element: HTMLElement,
+  preference: import('./use-reduced-motion.types.ts').ReducedMotionPreference,
+): void {
+  if (element !== element.ownerDocument.documentElement) {
+    throw new Error('applyReducedMotionPreference must target document.documentElement');
+  }
+
+  applicationPreferences.set('current', preference);
+  element.dataset['reducedMotion'] = preference;
+  if (preference === 'system') {
+    delete element.dataset['cinderReducedMotion'];
+    return;
+  }
+  element.dataset['cinderReducedMotion'] = String(preference === 'on');
+}
 
 /**
  * Reactive `prefers-reduced-motion: reduce` watcher backed by Svelte's `MediaQuery`.
@@ -32,7 +110,9 @@ import { MediaQuery } from 'svelte/reactivity';
  * <button type="button" on:click={scrollToEnd}>Scroll to end</button>
  * ```
  */
-export function useReducedMotion(): import('./use-reduced-motion.types.ts').UseReducedMotion {
+export function useReducedMotion(
+  preference?: import('./use-reduced-motion.types.ts').ReducedMotionPreference,
+): import('./use-reduced-motion.types.ts').UseReducedMotion {
   // On the server, `svelte/reactivity` resolves to a stub whose `MediaQuery`
   // never touches `window`. But when the *client* build of `MediaQuery` is
   // loaded in a context without a DOM (e.g. our SSR-contract test harness runs
@@ -41,7 +121,7 @@ export function useReducedMotion(): import('./use-reduced-motion.types.ts').UseR
   // Guard on `matchMedia` so the documented SSR-safe `false` fallback holds
   // regardless of which `MediaQuery` build module resolution selected.
   if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
-    return { current: false };
+    return { current: resolveReducedMotion(preference ?? getApplicationPreference(), false) };
   }
 
   // Pass the parenthesized form explicitly. MediaQuery's constructor regex
@@ -52,7 +132,7 @@ export function useReducedMotion(): import('./use-reduced-motion.types.ts').UseR
 
   return {
     get current() {
-      return query.current;
+      return resolveReducedMotion(preference ?? getApplicationPreference(), query.current);
     },
   };
 }

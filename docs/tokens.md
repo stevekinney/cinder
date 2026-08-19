@@ -185,13 +185,24 @@ Foreground colors keyed to readability against the surface tokens. `--cinder-tex
 
 | Token                                     | Default                                                       |
 | ----------------------------------------- | ------------------------------------------------------------- |
-| `--cinder-border`                         | `light-dark(oklch(83% 0.005 255),oklch(40% 0.05 245))`        |
-| `--cinder-border-muted`                   | `light-dark(oklch(90% 0.004 255),oklch(30% 0.04 245))`        |
-| `--cinder-border-strong`                  | `light-dark(oklch(72% 0.006 255),oklch(45% 0.06 245))`        |
+| `--cinder-border`                         | `light-dark(oklch(63% 0.006 255),oklch(58% 0.05 245))`        |
+| `--cinder-border-faint`                   | `light-dark(oklch(92% 0.003 255),oklch(33% 0.03 245))`        |
+| `--cinder-border-muted`                   | `light-dark(oklch(85% 0.004 255),oklch(38% 0.04 245))`        |
+| `--cinder-border-strong`                  | `light-dark(oklch(60% 0.008 255),oklch(66% 0.06 245))`        |
 | `--cinder-toggle-track-off-resting`       | `light-dark(var(--cinder-border-muted), oklch(45% 0.02 245))` |
 | `--cinder-toggle-track-off-hover-resting` | `light-dark(var(--cinder-border), oklch(52% 0.02 245))`       |
 
 `--cinder-toggle-track-off-resting` and `--cinder-toggle-track-off-hover-resting` are the default fill colors for an unchecked Toggle track. In light mode they alias the existing muted and default border tokens. In dark mode they lift to L≈0.45 (rest) and L≈0.52 (hover) so the track has ≥3:1 shape contrast against the dark surface. The `--cinder-toggle-track-off` consumer override hook still takes priority.
+
+`--cinder-border-faint` is for decorative internal hairlines only. It is intentionally below the 3:1 non-text contrast floor and must not be used to define a control boundary.
+
+## Opacity
+
+| Token                       | Default |
+| --------------------------- | ------- |
+| `--cinder-opacity-disabled` | `0.55`  |
+| `--cinder-opacity-muted`    | `0.72`  |
+| `--cinder-opacity-faint`    | `0.4`   |
 
 ## Accent
 
@@ -236,7 +247,13 @@ Single-value status tokens for solid fills like badges and dot indicators. For s
 | `--cinder-danger`           | `light-dark(oklch(50% 0.202 25),oklch(72% 0.172 25))`  |
 | `--cinder-danger-contrast`  | `light-dark(oklch(100% 0 0), oklch(12% 0.02 25))`      |
 | `--cinder-danger-hover`     | `light-dark(oklch(42% 0.171 25),oklch(64% 0.172 25))`  |
-| `--cinder-danger-active`    | `light-dark(oklch(35% 0.142 25),oklch(57% 0.172 25))`  |
+| `--cinder-danger-active`    | `light-dark(oklch(35% 0.142 25),oklch(60% 0.172 25))`  |
+| `--cinder-info-hover`       | `light-dark(oklch(42% 0.079 230),oklch(70% 0.13 230))` |
+| `--cinder-info-active`      | `light-dark(oklch(35% 0.065 230),oklch(62% 0.12 230))` |
+| `--cinder-success-hover`    | `light-dark(oklch(42% 0.12 145),oklch(70% 0.14 145))`  |
+| `--cinder-success-active`   | `light-dark(oklch(35% 0.1 145),oklch(62% 0.14 145))`   |
+| `--cinder-warning-hover`    | `light-dark(oklch(42% 0.08 75),oklch(74% 0.156 75))`   |
+| `--cinder-warning-active`   | `light-dark(oklch(38% 0.07 75),oklch(66% 0.13 75))`    |
 | `--cinder-success-contrast` | `light-dark(oklch(100% 0 0), oklch(15% 0.03 145))`     |
 | `--cinder-warning-contrast` | `light-dark(oklch(100% 0 0), oklch(20% 0.04 75))`      |
 | `--cinder-info-contrast`    | `light-dark(oklch(100% 0 0),oklch(15% 0.03 230))`      |
@@ -247,20 +264,34 @@ The `*-contrast` tokens are the foreground color for text and icons placed on a 
 
 Foreground / background / border triples for soft tinted surfaces. Use these in Alert, Toast, Callout, and anywhere else you need a status surface with semantically-paired text and border.
 
-| Token                           | Default                                                  |
-| ------------------------------- | -------------------------------------------------------- |
-| `--cinder-color-info-bg`        | `light-dark(oklch(94.5% 0.03 230),oklch(28% 0.057 230))` |
-| `--cinder-color-info-fg`        | `light-dark(oklch(40% 0.079 230),oklch(88% 0.071 230))`  |
-| `--cinder-color-info-border`    | `light-dark(oklch(80% 0.05 230),oklch(45% 0.08 230))`    |
-| `--cinder-color-success-bg`     | `light-dark(oklch(94.5% 0.045 145),oklch(28% 0.07 145))` |
-| `--cinder-color-success-fg`     | `light-dark(oklch(40% 0.13 145), oklch(88% 0.11 145))`   |
-| `--cinder-color-success-border` | `light-dark(oklch(80% 0.05 145), oklch(45% 0.09 145))`   |
-| `--cinder-color-warning-bg`     | `light-dark(oklch(94.5% 0.042 75),oklch(28% 0.08 75))`   |
-| `--cinder-color-warning-fg`     | `light-dark(oklch(40% 0.13 75), oklch(90% 0.12 75))`     |
-| `--cinder-color-warning-border` | `light-dark(oklch(80% 0.06 75), oklch(50% 0.1 75))`      |
-| `--cinder-color-danger-bg`      | `light-dark(oklch(94.5% 0.026 25),oklch(28% 0.09 25))`   |
-| `--cinder-color-danger-fg`      | `light-dark(oklch(42% 0.16 25), oklch(90% 0.12 25))`     |
-| `--cinder-color-danger-border`  | `light-dark(oklch(80% 0.06 25), oklch(50% 0.11 25))`     |
+| Token                           | Default                                                                                              |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `--cinder-color-info-bg`        | `light-dark(oklch(94.5% 0.03 230),oklch(28% 0.057 230))`                                             |
+| `--cinder-color-info-fg`        | `light-dark(oklch(40% 0.079 230),oklch(88% 0.071 230))`                                              |
+| `--cinder-color-info-border`    | `light-dark(oklch(80% 0.05 230),oklch(45% 0.08 230))`                                                |
+| `--cinder-color-success-bg`     | `light-dark(oklch(94.5% 0.045 145),oklch(28% 0.07 145))`                                             |
+| `--cinder-color-success-fg`     | `light-dark(oklch(40% 0.127 145), oklch(88% 0.11 145))`                                              |
+| `--cinder-color-success-border` | `light-dark(oklch(80% 0.05 145), oklch(45% 0.09 145))`                                               |
+| `--cinder-color-warning-bg`     | `light-dark(oklch(94.5% 0.042 75),oklch(28% 0.06 75))`                                               |
+| `--cinder-color-warning-fg`     | `light-dark(oklch(40% 0.085 75), oklch(90% 0.08 75))`                                                |
+| `--cinder-color-warning-border` | `light-dark(oklch(80% 0.06 75), oklch(50% 0.1 75))`                                                  |
+| `--cinder-color-danger-bg`      | `light-dark(oklch(94.5% 0.026 25),oklch(28% 0.09 25))`                                               |
+| `--cinder-color-danger-fg`      | `light-dark(oklch(42% 0.16 25), oklch(90% 0.05 25))`                                                 |
+| `--cinder-color-danger-border`  | `light-dark(oklch(80% 0.06 25), oklch(50% 0.11 25))`                                                 |
+| `--cinder-color-neutral-bg`     | `light-dark(oklch(94.5% 0.004 255),oklch(28% 0.04 245))`                                             |
+| `--cinder-color-neutral-fg`     | `var(--cinder-text)`                                                                                 |
+| `--cinder-color-neutral-border` | `var(--cinder-border)`                                                                               |
+| `--cinder-color-accent-bg`      | `color-mix(in oklch, var(--cinder-accent), var(--cinder-surface) 88%)`                               |
+| `--cinder-color-accent-fg`      | `var(--cinder-accent-text)`                                                                          |
+| `--cinder-color-accent-border`  | `color-mix(in oklch, var(--cinder-accent), transparent 60%)`                                         |
+| `--cinder-color-info-muted`     | `oklch(from color-mix(in oklch, var(--cinder-info), var(--cinder-surface) 36%) l min(c, 0.05) h)`    |
+| `--cinder-color-info-subtle`    | `oklch(from color-mix(in oklch, var(--cinder-info), var(--cinder-text) 36%) l min(c, 0.05) h)`       |
+| `--cinder-color-success-muted`  | `oklch(from color-mix(in oklch, var(--cinder-success), var(--cinder-surface) 36%) l min(c, 0.05) h)` |
+| `--cinder-color-success-subtle` | `oklch(from color-mix(in oklch, var(--cinder-success), var(--cinder-text) 36%) l min(c, 0.05) h)`    |
+| `--cinder-color-warning-muted`  | `oklch(from color-mix(in oklch, var(--cinder-warning), var(--cinder-surface) 36%) l min(c, 0.05) h)` |
+| `--cinder-color-warning-subtle` | `oklch(from color-mix(in oklch, var(--cinder-warning), var(--cinder-text) 36%) l min(c, 0.05) h)`    |
+| `--cinder-color-danger-muted`   | `oklch(from color-mix(in oklch, var(--cinder-danger), var(--cinder-surface) 36%) l min(c, 0.05) h)`  |
+| `--cinder-color-danger-subtle`  | `oklch(from color-mix(in oklch, var(--cinder-danger), var(--cinder-text) 36%) l min(c, 0.05) h)`     |
 
 ## Transparency checkerboard
 

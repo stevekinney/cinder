@@ -33,6 +33,12 @@
     }
   }
 
+  :root:is([data-cinder-reduced-motion='false'], [data-reduced-motion='off']) .cinder-banner {
+    transition:
+      background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+      border-color var(--cinder-duration-fast) var(--cinder-ease-standard);
+  }
+
   /* ----------------------------------------
  * Content area
  * ---------------------------------------- */
@@ -71,6 +77,13 @@
         background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
         box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
     }
+  }
+
+  :root:is([data-cinder-reduced-motion='false'], [data-reduced-motion='off'])
+    .cinder-banner__dismiss {
+    transition:
+      background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+      box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
 
   .cinder-banner__dismiss:focus-visible {
