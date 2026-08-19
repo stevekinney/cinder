@@ -32,12 +32,14 @@ const STAGING_ROOT = join(PACKAGE_ROOT, 'node_modules', '.cache', 'publish-stagi
 // renders. `@lostgradient/markdown` joined this list migrating chat's
 // markdown-preview off cinder's now-deleted `/markdown/rendering` shim (see
 // docs/decisions/package-boundaries.md, Phase 4) — chat imports it directly.
-// `conversationalist` and `zod` are implementation details of Chat's
-// conversation model — Chat owns them as regular dependencies so host apps
-// never install or version-pick them directly.
+// The remaining packages are implementation details of Chat's conversation
+// model and Markdown projection — Chat owns them as regular dependencies so
+// host apps never install or version-pick them directly.
 const REQUIRED_PEERS = new Set(['@lostgradient/cinder', '@lostgradient/markdown', 'svelte']);
 const REQUIRED_DEPENDENCIES: Record<string, string> = {
   conversationalist: '^0.6.1',
+  'decode-named-character-reference': '^1.3.0',
+  'micromark-util-decode-numeric-character-reference': '^2.0.0',
   zod: '4.4.3',
 };
 
@@ -121,9 +123,8 @@ export function assertSourceManifest(manifest: PackageManifest): void {
 /**
  * Keep every runtime import external in generated server bundles, including
  * subpath imports — both host-supplied peers (`@lostgradient/cinder`,
- * `svelte`) and Chat-owned dependencies (`conversationalist`, `zod`). Neither
- * category should be inlined into the published dist; both resolve from
- * `node_modules` at install time.
+ * `svelte`) and Chat-owned dependencies. Neither category should be inlined
+ * into the published dist; both resolve from `node_modules` at install time.
  */
 export function runtimeExternalSpecifiers(
   manifest: Pick<PackageManifest, 'peerDependencies' | 'dependencies'>,
@@ -175,8 +176,8 @@ export function buildPublishedManifest(source: PackageManifest): PackageManifest
     ],
   };
 
-  // `dependencies` is retained: it is how npm/bun install conversationalist
-  // and zod for a host application without that host declaring them itself.
+  // `dependencies` is retained so a host application does not need to
+  // declare Chat's implementation dependencies itself.
   delete published.devDependencies;
   delete published.optionalDependencies;
   delete published.scripts;

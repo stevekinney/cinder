@@ -326,6 +326,11 @@ describe('chat composer mentions', () => {
     const value = `${'`'.repeat(100_000)}\n${'$'.repeat(100_000)}\n${'$5 '.repeat(25_000)}\n${' ~'.repeat(25_000)}\n${'<a'.repeat(25_000)}`;
 
     expect(parseChatComposerMentions(value)).toEqual({ text: value, mentions: [] });
+    const entityHeavyLabel = '&'.repeat(25_000);
+    expect(parseChatComposerMentions(`[${entityHeavyLabel}](person:a)`)).toEqual({
+      text: entityHeavyLabel,
+      mentions: [{ label: entityHeavyLabel, uri: 'person:a', start: 0, end: 25_000 }],
+    });
   });
 
   test('keeps per-character scan metadata bounded', () => {
@@ -785,6 +790,30 @@ describe('chat composer mentions', () => {
     expect(parseChatComposerMentions('[Ada](person:<id>)')).toEqual({
       text: '[Ada](person:<id>)',
       mentions: [],
+    });
+    expect(parseChatComposerMentions('[A&#38;B](person&#58;ab)')).toEqual({
+      text: 'A&B',
+      mentions: [{ label: 'A&B', uri: 'person:ab', start: 0, end: 3 }],
+    });
+    expect(parseChatComposerMentions('[A&#x26;B](person&#x3A;ab)')).toEqual({
+      text: 'A&B',
+      mentions: [{ label: 'A&B', uri: 'person:ab', start: 0, end: 3 }],
+    });
+    expect(parseChatComposerMentions('[A&copy;B](person&colon;ab)')).toEqual({
+      text: 'A©B',
+      mentions: [{ label: 'A©B', uri: 'person:ab', start: 0, end: 3 }],
+    });
+    expect(parseChatComposerMentions('[A&unknown;](person:a)')).toEqual({
+      text: 'A&unknown;',
+      mentions: [{ label: 'A&unknown;', uri: 'person:a', start: 0, end: 10 }],
+    });
+    expect(parseChatComposerMentions('> <div>\n>\n> [Ada](person:a)')).toEqual({
+      text: '> <div>\n>\n> Ada',
+      mentions: [{ label: 'Ada', uri: 'person:a', start: 12, end: 15 }],
+    });
+    expect(parseChatComposerMentions('$x\n# [Ada](person:a)\nend$')).toEqual({
+      text: '$x\n# Ada\nend$',
+      mentions: [{ label: 'Ada', uri: 'person:a', start: 5, end: 8 }],
     });
     expect(parseChatComposerMentions('ftp://example.com/[Ada](person:a)')).toEqual({
       text: 'ftp://example.com/[Ada](person:a)',

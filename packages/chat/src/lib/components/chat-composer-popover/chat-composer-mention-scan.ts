@@ -145,7 +145,10 @@ export function makeScanMetadata(value: string): ScanMetadata {
   const nextMathClose = new Map<number, number>();
   for (let index = value.length - 1; index >= 0; ) {
     const character = value[index];
-    if (index === lineStarts[index] && !paragraphLineStarts.has(index)) nextCodeRun.clear();
+    if (index === lineStarts[index] && !paragraphLineStarts.has(index)) {
+      nextCodeRun.clear();
+      nextMathClose.delete(1);
+    }
     if (paragraphBreaks.has(index)) {
       nextCodeRun.clear();
       nextMathClose.delete(1);

@@ -1,3 +1,6 @@
+import { decodeNamedCharacterReference } from 'decode-named-character-reference';
+import { decodeNumericCharacterReference } from 'micromark-util-decode-numeric-character-reference';
+
 import { isLineEnding } from './chat-composer-mention-lines.ts';
 
 const ABSOLUTE_URI_SCHEME = /^([A-Za-z][A-Za-z0-9+.-]*):/u;
@@ -17,7 +20,6 @@ const NON_ENTITY_URI_SCHEMES = new Set([
   'ws',
   'wss',
 ]);
-
 export function escapeMentionLabel(value: string): string {
   return value.replace(/[!"#$%&'()*+,\-./:;<=>?@[\\\]^_`{|}~]/gu, '\\$&');
 }
@@ -170,6 +172,31 @@ export function unescapeMarkdown(value: string, escapeWhitespace = false): strin
 
   for (let index = 0; index < value.length; index += 1) {
     if (value[index] !== '\\') {
+      if (value[index] === '&') {
+        const limit = Math.min(value.length, index + 33);
+        let semicolon = index + 1;
+        while (semicolon < limit && value[semicolon] !== ';') semicolon += 1;
+        if (semicolon < limit) {
+          const reference = value.slice(index + 1, semicolon);
+          const hexadecimal = /^#[xX]([0-9A-Fa-f]{1,6})$/u.exec(reference);
+          const decimal = /^#([0-9]{1,7})$/u.exec(reference);
+          const named =
+            hexadecimal === null && decimal === null
+              ? decodeNamedCharacterReference(reference)
+              : false;
+          const decoded =
+            hexadecimal !== null
+              ? decodeNumericCharacterReference(hexadecimal[1]!, 16)
+              : decimal !== null
+                ? decodeNumericCharacterReference(decimal[1]!, 10)
+                : named;
+          if (decoded !== false) {
+            unescaped += decoded;
+            index = semicolon;
+            continue;
+          }
+        }
+      }
       unescaped += value[index];
       continue;
     }

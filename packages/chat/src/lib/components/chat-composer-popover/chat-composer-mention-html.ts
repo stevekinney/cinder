@@ -134,7 +134,8 @@ export function getHtmlBlockBlankLineEnd(
   let lineStart = lineEnd + getLineEndingLength(value, lineEnd);
   while (lineStart < boundary) {
     lineEnd = getLineEnd(value, lineStart);
-    if (/^[ \t]*$/u.test(value.slice(lineStart, lineEnd))) {
+    const contentStart = metadata.containerStarts.get(lineStart) ?? lineStart;
+    if (/^[ \t]*$/u.test(value.slice(contentStart, lineEnd))) {
       return lineEnd + getLineEndingLength(value, lineEnd);
     }
     lineStart = lineEnd + getLineEndingLength(value, lineEnd);

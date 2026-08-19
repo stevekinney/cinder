@@ -41,6 +41,8 @@ describe('Chat package ownership boundary', () => {
     expect(() => assertSourceManifest(chatManifest)).not.toThrow();
     expect(chatManifest.dependencies).toEqual({
       conversationalist: '^0.6.1',
+      'decode-named-character-reference': '^1.3.0',
+      'micromark-util-decode-numeric-character-reference': '^2.0.0',
       zod: '4.4.3',
     });
     // The Cinder floor tracks the Cinder minor released alongside Chat —
@@ -86,6 +88,10 @@ describe('Chat package ownership boundary', () => {
       'svelte/*',
       'conversationalist',
       'conversationalist/*',
+      'decode-named-character-reference',
+      'decode-named-character-reference/*',
+      'micromark-util-decode-numeric-character-reference',
+      'micromark-util-decode-numeric-character-reference/*',
       'zod',
       'zod/*',
     ]);
