@@ -166,7 +166,7 @@ function extractReducedMotionBlocks(css: string): string[] {
     }
 
     if (closeIndex !== -1) {
-      blocks.push(css.slice(openBrace + 1, closeIndex));
+      blocks.push(css.slice(openBrace + 1, closeIndex).replaceAll(/\s+/g, ' '));
     }
 
     searchFrom = closeIndex === -1 ? openBrace + 1 : closeIndex + 1;
@@ -220,6 +220,18 @@ describe('Progress CSS reduced-motion audit', () => {
     );
 
     expect(ringRuleBlock).not.toBeUndefined();
+  });
+
+  test('progress.css applies indeterminate fallbacks when reduction is explicitly enabled', async () => {
+    const css = await Bun.file(progressCssPath).text();
+    const normalizedCss = css.replaceAll(/\s+/g, ' ');
+
+    expect(normalizedCss).toContain(
+      ":root:is([data-cinder-reduced-motion='true'], [data-reduced-motion='on']) .cinder-progress--bar .cinder-progress__fill--indeterminate { animation: none; width: 100%; opacity: 0.5; }",
+    );
+    expect(normalizedCss).toContain(
+      ":root:is([data-cinder-reduced-motion='true'], [data-reduced-motion='on']) .cinder-progress--ring .cinder-progress__fill--indeterminate { animation: none; stroke-dasharray: 100.53; stroke-dashoffset: 0; opacity: 0.5; }",
+    );
   });
 });
 

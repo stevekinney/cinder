@@ -84,6 +84,31 @@ function clampRgb([r, g, b]: Rgb): Rgb {
   return [clamp(r), clamp(g), clamp(b)];
 }
 
+function mixOklch(base: OklchColor, target: OklchColor, targetPercent: number): OklchColor {
+  const weight = targetPercent / 100;
+  const baseHue = base.c === 0 ? target.h : base.h;
+  const targetHue = target.c === 0 ? base.h : target.h;
+  let hueDelta = targetHue - baseHue;
+  if (hueDelta > 180) hueDelta -= 360;
+  if (hueDelta < -180) hueDelta += 360;
+  return {
+    l: base.l + (target.l - base.l) * weight,
+    c: base.c + (target.c - base.c) * weight,
+    h: baseHue + hueDelta * weight,
+  };
+}
+
+function deriveStatusTier(base: OklchColor, target: OklchColor): OklchColor {
+  const mixed = mixOklch(base, target, 36);
+  return { ...mixed, c: Math.min(mixed.c, 0.05) };
+}
+
+function compositeOver(foreground: Rgb, background: Rgb, opacity: number): Rgb {
+  return foreground.map(
+    (channel, index) => channel * opacity + background[index]! * (1 - opacity),
+  ) as Rgb;
+}
+
 /** WCAG relative luminance of an OKLCH color (computed on its clamped sRGB output). */
 function wcagLuminance(color: OklchColor): number {
   const [r, g, b] = clampRgb(oklchToLinearSrgb(color.l, color.c, color.h));
@@ -306,8 +331,15 @@ const accentContrast = readOklchToken(css, '--cinder-accent-contrast');
 const accentText = readOklchToken(css, '--cinder-accent-text');
 const info = readOklchToken(css, '--cinder-info');
 const infoContrast = readOklchToken(css, '--cinder-info-contrast');
+const neutralBg = readOklchToken(css, '--cinder-color-neutral-bg');
 const infoBg = readOklchToken(css, '--cinder-color-info-bg');
 const infoFg = readOklchToken(css, '--cinder-color-info-fg');
+const successBg = readOklchToken(css, '--cinder-color-success-bg');
+const successFg = readOklchToken(css, '--cinder-color-success-fg');
+const warningBg = readOklchToken(css, '--cinder-color-warning-bg');
+const warningFg = readOklchToken(css, '--cinder-color-warning-fg');
+const dangerBg = readOklchToken(css, '--cinder-color-danger-bg');
+const dangerFg = readOklchToken(css, '--cinder-color-danger-fg');
 const success = readOklchToken(css, '--cinder-success');
 const warning = readOklchToken(css, '--cinder-warning');
 const danger = readOklchToken(css, '--cinder-danger');
@@ -315,13 +347,31 @@ const successContrast = readOklchToken(css, '--cinder-success-contrast');
 const warningContrast = readOklchToken(css, '--cinder-warning-contrast');
 const dangerContrast = readOklchToken(css, '--cinder-danger-contrast');
 const infoBorder = readOklchToken(css, '--cinder-color-info-border');
+const successBorder = readOklchToken(css, '--cinder-color-success-border');
+const warningBorder = readOklchToken(css, '--cinder-color-warning-border');
+const dangerBorder = readOklchToken(css, '--cinder-color-danger-border');
 // Authored (not relative-derived) so the gamut gate can parse them directly — red (h 25)
 // clamps at low lightness, so these are pinned to their in-gamut chroma maxima.
 const dangerHover = readOklchToken(css, '--cinder-danger-hover');
 const dangerActive = readOklchToken(css, '--cinder-danger-active');
+const infoHover = readOklchToken(css, '--cinder-info-hover');
+const infoActive = readOklchToken(css, '--cinder-info-active');
+const successHover = readOklchToken(css, '--cinder-success-hover');
+const successActive = readOklchToken(css, '--cinder-success-active');
+const warningHover = readOklchToken(css, '--cinder-warning-hover');
+const warningActive = readOklchToken(css, '--cinder-warning-active');
 const bg = readOklchToken(css, '--cinder-bg');
 const surface = readOklchToken(css, '--cinder-surface');
 const surfaceInset = readOklchToken(css, '--cinder-surface-inset');
+const surfaceRaised = readOklchToken(css, '--cinder-surface-raised');
+const text = readOklchToken(css, '--cinder-text');
+const borderFaint = readOklchToken(css, '--cinder-border-faint');
+const borderMuted = readOklchToken(css, '--cinder-border-muted');
+const border = readOklchToken(css, '--cinder-border');
+const borderStrong = readOklchToken(css, '--cinder-border-strong');
+const opacityDisabled = Number(readTokenValue(css, '--cinder-opacity-disabled'));
+const opacityMuted = Number(readTokenValue(css, '--cinder-opacity-muted'));
+const opacityFaint = Number(readTokenValue(css, '--cinder-opacity-faint'));
 
 // The active command-palette item paints --cinder-accent-contrast text on a solid
 // --cinder-accent fill (command-item.css), so that pair is gated here too.
@@ -424,6 +474,17 @@ describe('accent + accent-text contrast (both arms)', () => {
 });
 
 describe('status color contrast', () => {
+  const DECORATIVE_BORDER = 1.4;
+
+  it('keeps the opacity scale bounded and ordered by visual weight', () => {
+    for (const [name, value] of Object.entries({ opacityDisabled, opacityMuted, opacityFaint })) {
+      expect(value, name).toBeGreaterThanOrEqual(0);
+      expect(value, name).toBeLessThanOrEqual(1);
+    }
+    expect(opacityFaint).toBeLessThan(opacityDisabled);
+    expect(opacityDisabled).toBeLessThan(opacityMuted);
+  });
+
   it('info fill carries white label at AA (light arm)', () => {
     const white = { l: 1, c: 0, h: 0 };
     expect(contrastRatio(wcagLuminance(white), wcagLuminance(info.light))).toBeGreaterThanOrEqual(
@@ -431,11 +492,57 @@ describe('status color contrast', () => {
     );
   });
 
-  it('info soft-surface fg clears AA on its soft bg (both arms)', () => {
+  it('every soft status tier provides readable foreground and perceptible border contrast', () => {
+    const statuses: Array<[string, TokenArms, TokenArms, TokenArms]> = [
+      ['neutral', neutralBg, text, border],
+      ['info', infoBg, infoFg, infoBorder],
+      ['success', successBg, successFg, successBorder],
+      ['warning', warningBg, warningFg, warningBorder],
+      ['danger', dangerBg, dangerFg, dangerBorder],
+    ];
+    expect(readTokenValue(css, '--cinder-color-neutral-fg')).toBe('var(--cinder-text)');
+    expect(readTokenValue(css, '--cinder-color-neutral-border')).toBe('var(--cinder-border)');
+    for (const [name, background, foreground, border] of statuses) {
+      for (const arm of ['light', 'dark'] as const) {
+        expect(
+          contrastRatio(wcagLuminance(foreground[arm]), wcagLuminance(background[arm])),
+          `${name} foreground ${arm}`,
+        ).toBeGreaterThanOrEqual(AA_TEXT);
+        expect(
+          contrastRatio(wcagLuminance(border[arm]), wcagLuminance(background[arm])),
+          `${name} border ${arm}`,
+        ).toBeGreaterThanOrEqual(DECORATIVE_BORDER);
+      }
+    }
+  });
+
+  it('accent status triple clears its foreground and border floors in both theme arms', () => {
+    expect(readTokenValue(css, '--cinder-color-accent-bg')).toBe(
+      'color-mix(in oklch, var(--cinder-accent), var(--cinder-surface) 88%)',
+    );
+    expect(readTokenValue(css, '--cinder-color-accent-fg')).toBe('var(--cinder-accent-text)');
+    expect(readTokenValue(css, '--cinder-color-accent-border')).toBe(
+      'color-mix(in oklch, var(--cinder-accent), transparent 60%)',
+    );
     for (const arm of ['light', 'dark'] as const) {
+      const background = mixOklch(accent[arm], surface[arm], 88);
+      const backgroundRgb = oklchToLinearSrgb(background.l, background.c, background.h);
+      const borderRgb = compositeOver(
+        oklchToLinearSrgb(accent[arm].l, accent[arm].c, accent[arm].h),
+        backgroundRgb,
+        0.4,
+      );
       expect(
-        contrastRatio(wcagLuminance(infoFg[arm]), wcagLuminance(infoBg[arm])),
+        contrastRatio(wcagLuminance(accentText[arm]), wcagLuminance(background)),
+        `accent foreground ${arm}`,
       ).toBeGreaterThanOrEqual(AA_TEXT);
+      expect(
+        contrastRatio(
+          0.2126 * borderRgb[0] + 0.7152 * borderRgb[1] + 0.0722 * borderRgb[2],
+          0.2126 * backgroundRgb[0] + 0.7152 * backgroundRgb[1] + 0.0722 * backgroundRgb[2],
+        ),
+        `accent border ${arm}`,
+      ).toBeGreaterThanOrEqual(DECORATIVE_BORDER);
     }
   });
 
@@ -459,6 +566,27 @@ describe('status color contrast', () => {
       }
     }
   });
+
+  it('every solid status interaction state keeps its contrast label at AA', () => {
+    const pairs: Array<[string, TokenArms, TokenArms]> = [
+      ['info hover', infoHover, infoContrast],
+      ['info active', infoActive, infoContrast],
+      ['success hover', successHover, successContrast],
+      ['success active', successActive, successContrast],
+      ['warning hover', warningHover, warningContrast],
+      ['warning active', warningActive, warningContrast],
+      ['danger hover', dangerHover, dangerContrast],
+      ['danger active', dangerActive, dangerContrast],
+    ];
+    for (const [name, fill, label] of pairs) {
+      for (const arm of ['light', 'dark'] as const) {
+        expect(
+          contrastRatio(wcagLuminance(fill[arm]), wcagLuminance(label[arm])),
+          `${name} ${arm}`,
+        ).toBeGreaterThanOrEqual(AA_TEXT);
+      }
+    }
+  });
 });
 
 describe('focus ring contrast (WCAG 1.4.11)', () => {
@@ -473,6 +601,45 @@ describe('focus ring contrast (WCAG 1.4.11)', () => {
       NON_TEXT,
     );
   });
+});
+
+describe('border-on-surface contrast', () => {
+  // Faint borders are decorative hairlines rather than controls, but must stay
+  // distinguishable from the surfaces they divide.
+  const FAINT_BORDER = 1.1;
+  // A muted border is decorative, but still has to remain perceptible. The 1.4:1
+  // floor rejects the formerly invisible 1.07:1 dark raised-surface pairing
+  // without pretending a divider has the same semantic job as a control outline.
+  const DECORATIVE_BORDER = 1.4;
+  const surfaces = { inset: surfaceInset, bg, surface, raised: surfaceRaised } as const;
+
+  for (const arm of ['light', 'dark'] as const) {
+    for (const [surfaceName, surfaceToken] of Object.entries(surfaces)) {
+      it(`${arm}: faint border remains distinguishable on ${surfaceName}`, () => {
+        expect(
+          contrastRatio(wcagLuminance(borderFaint[arm]), wcagLuminance(surfaceToken[arm])),
+        ).toBeGreaterThanOrEqual(FAINT_BORDER);
+      });
+
+      it(`${arm}: muted border is perceptible on ${surfaceName}`, () => {
+        expect(
+          contrastRatio(wcagLuminance(borderMuted[arm]), wcagLuminance(surfaceToken[arm])),
+        ).toBeGreaterThanOrEqual(DECORATIVE_BORDER);
+      });
+
+      it(`${arm}: functional border clears WCAG 1.4.11 on ${surfaceName}`, () => {
+        expect(
+          contrastRatio(wcagLuminance(border[arm]), wcagLuminance(surfaceToken[arm])),
+        ).toBeGreaterThanOrEqual(NON_TEXT);
+      });
+
+      it(`${arm}: strong control border clears WCAG 1.4.11 on ${surfaceName}`, () => {
+        expect(
+          contrastRatio(wcagLuminance(borderStrong[arm]), wcagLuminance(surfaceToken[arm])),
+        ).toBeGreaterThanOrEqual(NON_TEXT);
+      });
+    }
+  }
 });
 
 describe('sRGB gamut integrity (no silent chroma clamping)', () => {
@@ -491,6 +658,12 @@ describe('sRGB gamut integrity (no silent chroma clamping)', () => {
     info,
     infoBg,
     infoFg,
+    successBg,
+    successFg,
+    warningBg,
+    warningFg,
+    dangerBg,
+    dangerFg,
     success,
     warning,
     danger,
@@ -502,10 +675,19 @@ describe('sRGB gamut integrity (no silent chroma clamping)', () => {
     // Soft-surface info border (success/warning/danger borders parse the same way; info
     // is the one this PR re-hued, so it anchors the border family here).
     infoBorder,
+    successBorder,
+    warningBorder,
+    dangerBorder,
     // Authored danger hover/active — pinned to their in-gamut chroma maxima on the light
     // arm because red (h 25) clamps at low lightness; this gate is what enforces that.
     dangerHover,
     dangerActive,
+    infoHover,
+    infoActive,
+    successHover,
+    successActive,
+    warningHover,
+    warningActive,
   };
   for (const [name, token] of Object.entries(namedTokens)) {
     for (const arm of ['light', 'dark'] as const) {
@@ -548,6 +730,38 @@ describe('sRGB gamut integrity (no silent chroma clamping)', () => {
       });
     }
   }
+
+  // The status tiers first mix with their semantic target then reduce chroma to
+  // 0.05. This reproduces the relative-color formula and keeps every resolved
+  // light/dark result inside the sRGB gamut instead of relying on browser mapping.
+  const derivedStatusTiers: Record<string, TokenArms> = {};
+  for (const [name, status] of Object.entries({ info, success, warning, danger })) {
+    derivedStatusTiers[`${name}Muted`] = {
+      light: deriveStatusTier(status.light, surface.light),
+      dark: deriveStatusTier(status.dark, surface.dark),
+    };
+    derivedStatusTiers[`${name}Subtle`] = {
+      light: deriveStatusTier(status.light, text.light),
+      dark: deriveStatusTier(status.dark, text.dark),
+    };
+  }
+  for (const [name, token] of Object.entries(derivedStatusTiers)) {
+    for (const arm of ['light', 'dark'] as const) {
+      it(`${name} ${arm} arm is in sRGB gamut`, () => {
+        expect(isInSrgbGamut(token[arm])).toBe(true);
+      });
+    }
+  }
+
+  it('applies the status-tier chroma clamp in every theme declaration', () => {
+    const declarations = [
+      ...css.matchAll(
+        /--cinder-color-(?:info|success|warning|danger)-(?:muted|subtle):\s*oklch\(\s*from color-mix\(in oklch, var\(--cinder-(?:info|success|warning|danger)\), var\(--cinder-(?:surface|text)\) 36%\) l min\(c, 0\.05\) h\s*\);/g,
+      ),
+    ];
+
+    expect(declarations).toHaveLength(24);
+  });
 
   chartSeries.forEach((series, index) => {
     for (const arm of ['light', 'dark'] as const) {

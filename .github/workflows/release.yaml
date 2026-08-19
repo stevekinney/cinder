@@ -54,6 +54,7 @@ jobs:
   release:
     name: Version or publish
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -119,6 +120,13 @@ jobs:
 
       # Chromium is only needed by validate:consumer — gate it identically so
       # the no-publish path skips the browser download too.
+      - name: Normalize Ubuntu mirror for Playwright dependencies
+        if: github.event_name != 'push' || steps.pending-changesets.outputs.pending == 'false'
+        run: >-
+          sudo sed -i
+          's|http://azure.archive.ubuntu.com/ubuntu/|https://archive.ubuntu.com/ubuntu/|g'
+          /etc/apt/apt-mirrors.txt
+
       - name: Install Chromium for consumer validation
         if: github.event_name != 'push' || steps.pending-changesets.outputs.pending == 'false'
         run: bunx playwright install --with-deps chromium

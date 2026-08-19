@@ -71,8 +71,8 @@ describe('scoped theme tokens', () => {
       '--cinder-surface-hover': 'color-mix(in oklch, var(--cinder-surface), oklch(100% 0 0) 2.5%)',
       '--cinder-text': 'oklch(92% 0.02 245)',
       '--cinder-text-muted': 'oklch(82% 0.02 245)',
-      '--cinder-border': 'oklch(40% 0.05 245)',
-      '--cinder-border-strong': 'oklch(45% 0.06 245)',
+      '--cinder-border': 'oklch(58% 0.05 245)',
+      '--cinder-border-strong': 'oklch(66% 0.06 245)',
       '--cinder-accent': 'oklch(72% 0.14 270)',
       '--cinder-accent-contrast': 'oklch(15% 0.035 245)',
       '--cinder-accent-hover': 'oklch(from var(--cinder-accent) calc(l - 0.08) c h)',
@@ -82,9 +82,9 @@ describe('scoped theme tokens', () => {
       '--cinder-danger': 'oklch(72% 0.172 25)',
       '--cinder-danger-contrast': 'oklch(12% 0.02 25)',
       '--cinder-danger-hover': 'oklch(64% 0.172 25)',
-      '--cinder-danger-active': 'oklch(57% 0.172 25)',
+      '--cinder-danger-active': 'oklch(60% 0.172 25)',
       '--cinder-color-danger-bg': 'oklch(28% 0.09 25)',
-      '--cinder-color-danger-fg': 'oklch(90% 0.12 25)',
+      '--cinder-color-danger-fg': 'oklch(90% 0.05 25)',
       '--cinder-color-danger-border': 'oklch(50% 0.11 25)',
       '--cinder-color-checker-base': 'oklch(28% 0.02 245)',
       '--cinder-color-checker-tile': 'oklch(38% 0.02 245)',
@@ -123,8 +123,8 @@ describe('scoped theme tokens', () => {
         'color-mix(in oklch, var(--cinder-surface), var(--cinder-accent) 6%)',
       '--cinder-text': 'oklch(20% 0.018 245)',
       '--cinder-text-muted': 'oklch(32% 0.014 245)',
-      '--cinder-border': 'oklch(83% 0.005 255)',
-      '--cinder-border-strong': 'oklch(72% 0.006 255)',
+      '--cinder-border': 'oklch(63% 0.006 255)',
+      '--cinder-border-strong': 'oklch(60% 0.008 255)',
       '--cinder-accent': 'oklch(50% 0.22 270)',
       '--cinder-accent-contrast': 'oklch(100% 0 0)',
       '--cinder-accent-hover': 'oklch(from var(--cinder-accent) calc(l - 0.08) c h)',
@@ -226,6 +226,20 @@ describe('scoped theme tokens', () => {
     );
     expect(foundationCss).not.toContain('revert-layer');
     expect(foundationCss).not.toContain('--shiki-light');
+  });
+
+  test('an explicit reduced-motion preference disables component animation and transitions', async () => {
+    const foundationCss = await readFile(FOUNDATION_CSS_PATH, 'utf8');
+    const explicitPreferenceBlock = extractRuleBlock(
+      foundationCss,
+      ":root[data-reduced-motion='on'] *,\n:root[data-reduced-motion='on'],\n:root[data-reduced-motion='on'] *::before,\n:root[data-reduced-motion='on'] *::after",
+    );
+
+    expectDeclarations(explicitPreferenceBlock, {
+      animation: 'none !important',
+      transition: 'none !important',
+      'scroll-behavior': 'auto !important',
+    });
   });
 
   /**

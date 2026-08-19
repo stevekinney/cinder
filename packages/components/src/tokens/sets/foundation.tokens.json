@@ -1,0 +1,48 @@
+{
+  "$schema": "https://www.designtokens.org/schemas/2025.10/format.json",
+  "space": {
+    "$type": "dimension",
+    "one": {
+      "$value": { "value": 0.25, "unit": "rem" },
+      "$description": "Base spacing increment.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-space-1",
+          "public": true,
+          "category": "spacing",
+          "cssRecipe": null
+        }
+      }
+    }
+  },
+  "radius": {
+    "$type": "dimension",
+    "medium": {
+      "$value": { "value": 0.5, "unit": "rem" },
+      "$description": "Default control corner radius.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-radius-md",
+          "public": true,
+          "category": "radius",
+          "cssRecipe": null
+        }
+      }
+    }
+  },
+  "motion": {
+    "$type": "duration",
+    "fast": {
+      "$value": { "value": 120, "unit": "ms" },
+      "$description": "Fast interaction duration before a reduced-motion modifier applies.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-duration-fast",
+          "public": true,
+          "category": "motion",
+          "cssRecipe": null
+        }
+      }
+    }
+  }
+}

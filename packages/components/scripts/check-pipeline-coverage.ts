@@ -205,6 +205,14 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
     layers: ['unit-tests', 'main-green'],
     reason: 'Member of lint:invariants (invoked with `-- --strict`) — same layer set.',
   },
+  'tokens:validate': {
+    layers: ['unit-tests', 'main-green'],
+    reason: 'Member of lint:invariants — validates corpus syntax and cross-token resolution.',
+  },
+  'tokens:inventory': {
+    layers: ['unit-tests', 'main-green'],
+    reason: 'Member of lint:invariants with --check — prevents generated inventory drift.',
+  },
   'check:pipeline-coverage': {
     layers: ['unit-tests', 'main-green'],
     reason: 'This script. Appended to lint:invariants so it runs everywhere the invariants run.',

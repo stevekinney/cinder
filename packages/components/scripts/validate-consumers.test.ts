@@ -10,8 +10,104 @@ import {
   parseHydrationBrowserProcessIds,
   resolveChatFixtureCinderVersion,
   runBoundedHydrationTeardown,
+  stopDevelopmentServer,
+  SVELTEKIT_HYDRATION_ROUTES,
   unreclaimedTeardownFailures,
 } from './validate-consumers.ts';
+
+describe('SvelteKit hydration route matrix', () => {
+  test('uses focused feature routes instead of the monolithic dev SSR fixture', () => {
+    expect(SVELTEKIT_HYDRATION_ROUTES).toEqual([
+      '/chat-layout',
+      '/dev-ssr-dialog',
+      '/dev-ssr-navigation',
+      '/dev-ssr-tabs',
+    ]);
+    expect(SVELTEKIT_HYDRATION_ROUTES).not.toContain('/subpath');
+    expect(SVELTEKIT_HYDRATION_ROUTES).not.toContain('/dev-ssr');
+  });
+});
+
+describe('development server teardown', () => {
+  test('does not signal a process group that is already gone', async () => {
+    let signalCount = 0;
+    await stopDevelopmentServer(
+      { exitCode: 0, exited: Promise.resolve(0), pid: 4_242 },
+      1,
+      () => {
+        signalCount += 1;
+      },
+      () => false,
+    );
+
+    expect(signalCount).toBe(0);
+  });
+
+  test('signals a live process group after its leader already exited', async () => {
+    const signals: NodeJS.Signals[] = [];
+    let processGroupAlive = true;
+
+    await stopDevelopmentServer(
+      { exitCode: 0, exited: Promise.resolve(0), pid: 4_242 },
+      1,
+      (_pid, signal) => {
+        signals.push(signal);
+        processGroupAlive = false;
+      },
+      () => processGroupAlive,
+    );
+
+    expect(signals).toEqual(['SIGTERM']);
+  });
+
+  test('escalates to SIGKILL when graceful termination never settles', async () => {
+    const signals: NodeJS.Signals[] = [];
+    let resolveExit!: (exitCode: number) => void;
+    const exited = new Promise<number>((resolve) => {
+      resolveExit = resolve;
+    });
+    const server = {
+      exitCode: null as number | null,
+      exited,
+      pid: 4_242,
+    };
+    const signalProcessGroup = (pid: number, signal: NodeJS.Signals) => {
+      expect(pid).toBe(-4_242);
+      signals.push(signal);
+      if (signal === 'SIGKILL') {
+        server.exitCode = 137;
+        resolveExit(137);
+      }
+    };
+
+    await stopDevelopmentServer(server, 1, signalProcessGroup, () => server.exitCode === null);
+
+    expect(signals).toEqual(['SIGTERM', 'SIGKILL']);
+    expect(server.exitCode).toBe(137);
+  });
+
+  test('fails after a bounded hard termination when the process group survives', async () => {
+    const signals: NodeJS.Signals[] = [];
+    const server = {
+      exitCode: null,
+      exited: new Promise<number>(() => {}),
+      pid: 4_242,
+    };
+
+    await expect(
+      stopDevelopmentServer(
+        server,
+        1,
+        (_pid, signal) => {
+          signals.push(signal);
+        },
+        () => true,
+      ),
+    ).rejects.toThrow('still running after SIGKILL');
+
+    expect(signals).toEqual(['SIGTERM', 'SIGKILL']);
+  });
+});
 
 describe('hydration teardown', () => {
   test('forces later resources closed when page close never settles', async () => {

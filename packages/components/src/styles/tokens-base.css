@@ -239,8 +239,11 @@
    * where vibrancy comes from in a light theme: saturated accents against white,
    * not tinted greys.
    *
-   * The dark arm is unchanged — it was never the complaint, and it builds up from
-   * near-black where a wide fill-carried ramp is the right model. */
+   * The two hue arms deliberately differ. Light surfaces sit at hue 255, which
+   * keeps their barely-visible cast aligned with the indigo accent without reading
+   * blue-grey at page scale; dark surfaces stay at hue 245, a cooler neutral that
+   * keeps the near-black ramp visually distinct from that accent. Preserve that
+   * warm-light/cool-dark split unless a full surface retune reviews both arms. */
   --cinder-bg: light-dark(oklch(98.4% 0.003 255), oklch(15% 0.035 245));
   --cinder-surface: light-dark(oklch(99.4% 0.002 255), oklch(21% 0.04 245));
   --cinder-surface-raised: light-dark(oklch(100% 0 255), oklch(28% 0.045 245));
@@ -342,16 +345,18 @@
      fill is ΔL 0.132 — a barely-there hairline). Dividers that genuinely want less
      weight should use `--cinder-border-muted`.
 
-     `--cinder-border-strong` deliberately does NOT move. It is the token carrying
-     control outlines answerable to WCAG 1.4.11 (3:1 non-text), and at 0.72 against
-     white it resolves to roughly 2.5:1 — already short of the floor. That gap
-     predates this change and lightening the token would widen it. Fixing it properly
-     means taking control outlines to about L 0.68 and re-checking every control that
-     pairs a border with a fill, which is its own change with its own visual review,
-     not a rider on a surface retune. Left at 0.72, flagged, not quietly made worse. */
-  --cinder-border: light-dark(oklch(83% 0.005 255), oklch(40% 0.05 245));
-  --cinder-border-muted: light-dark(oklch(90% 0.004 255), oklch(30% 0.04 245));
-  --cinder-border-strong: light-dark(oklch(72% 0.006 255), oklch(45% 0.06 245));
+     The contrast gate makes the policy executable. `--cinder-border` and
+     `--cinder-border-strong` are control boundaries and clear WCAG 1.4.11's 3:1
+     floor against every supported surface. `--cinder-border-muted` is decorative,
+     but has a separate 1.4:1 floor so a divider never converges into its backdrop.
+     The dark muted value rises above the raised-surface endpoint for the same reason:
+     0.30 on 0.28 resolved to an invisible 1.07:1 line. */
+  --cinder-border: light-dark(oklch(63% 0.006 255), oklch(58% 0.05 245));
+  /* Decorative-only hairline. Never use this as a control boundary: it is
+     intentionally below the WCAG 1.4.11 3:1 non-text threshold. */
+  --cinder-border-faint: light-dark(oklch(92% 0.003 255), oklch(33% 0.03 245));
+  --cinder-border-muted: light-dark(oklch(85% 0.004 255), oklch(38% 0.04 245));
+  --cinder-border-strong: light-dark(oklch(60% 0.008 255), oklch(66% 0.06 245));
 
   /* Toggle track off-state defaults — encode dark-arm contrast improvement here
      so toggle.css uses only var() references and stays guard-clean.
@@ -360,6 +365,12 @@
      (near-neutral). Hover steps up by 0.07 to be distinguishable from rest. */
   --cinder-toggle-track-off-resting: light-dark(var(--cinder-border-muted), oklch(45% 0.02 245));
   --cinder-toggle-track-off-hover-resting: light-dark(var(--cinder-border), oklch(52% 0.02 245));
+
+  /* Do not add an opacity hover tier: state colors preserve text contrast where
+     whole-element opacity would dim labels against an unknown backdrop. */
+  --cinder-opacity-disabled: 0.55;
+  --cinder-opacity-muted: 0.72;
+  --cinder-opacity-faint: 0.4;
 
   /* Accent - indigo (hue 270). Light arm is a deep indigo at L=0.50 — dark enough
      that WHITE clears WCAG AA on it (6.45:1), so the brand fill carries white labels
@@ -420,7 +431,13 @@
      White labels clear WCAG AA on every state (6.7 / 9.3 / 12.1 : 1). Gated by
      check-token-contrast.test.ts. */
   --cinder-danger-hover: light-dark(oklch(42% 0.171 25), oklch(64% 0.172 25));
-  --cinder-danger-active: light-dark(oklch(35% 0.142 25), oklch(57% 0.172 25));
+  --cinder-danger-active: light-dark(oklch(35% 0.142 25), oklch(60% 0.172 25));
+  --cinder-info-hover: light-dark(oklch(42% 0.079 230), oklch(70% 0.13 230));
+  --cinder-info-active: light-dark(oklch(35% 0.065 230), oklch(62% 0.12 230));
+  --cinder-success-hover: light-dark(oklch(42% 0.12 145), oklch(70% 0.14 145));
+  --cinder-success-active: light-dark(oklch(35% 0.1 145), oklch(62% 0.14 145));
+  --cinder-warning-hover: light-dark(oklch(42% 0.08 75), oklch(74% 0.156 75));
+  --cinder-warning-active: light-dark(oklch(38% 0.07 75), oklch(66% 0.13 75));
 
   /* Status — semantic triples (foreground / background / border) for soft surfaces.
      Use these in components like Alert and Toast where you need a soft tinted surface
@@ -445,17 +462,55 @@
   --cinder-color-info-border: light-dark(oklch(80% 0.05 230), oklch(45% 0.08 230));
 
   --cinder-color-success-bg: light-dark(oklch(94.5% 0.045 145), oklch(28% 0.07 145));
-  --cinder-color-success-fg: light-dark(oklch(40% 0.13 145), oklch(88% 0.11 145));
+  --cinder-color-success-fg: light-dark(oklch(40% 0.127 145), oklch(88% 0.11 145));
   --cinder-color-success-border: light-dark(oklch(80% 0.05 145), oklch(45% 0.09 145));
 
-  --cinder-color-warning-bg: light-dark(oklch(94.5% 0.042 75), oklch(28% 0.08 75));
-  --cinder-color-warning-fg: light-dark(oklch(40% 0.13 75), oklch(90% 0.12 75));
+  --cinder-color-warning-bg: light-dark(oklch(94.5% 0.042 75), oklch(28% 0.06 75));
+  --cinder-color-warning-fg: light-dark(oklch(40% 0.085 75), oklch(90% 0.08 75));
   --cinder-color-warning-border: light-dark(oklch(80% 0.06 75), oklch(50% 0.1 75));
 
   --cinder-color-danger-bg: light-dark(oklch(94.5% 0.026 25), oklch(28% 0.09 25));
-  --cinder-color-danger-fg: light-dark(oklch(42% 0.16 25), oklch(90% 0.12 25));
+  --cinder-color-danger-fg: light-dark(oklch(42% 0.16 25), oklch(90% 0.05 25));
   --cinder-color-danger-border: light-dark(oklch(80% 0.06 25), oklch(50% 0.11 25));
 
+  /* Neutral and accent retain the status-triple shape, so components never
+     need ad hoc surface mixing for default or brand-tinted variants. */
+  --cinder-color-neutral-bg: light-dark(oklch(94.5% 0.004 255), oklch(28% 0.04 245));
+  --cinder-color-neutral-fg: var(--cinder-text);
+  --cinder-color-neutral-border: var(--cinder-border);
+  --cinder-color-accent-bg: color-mix(in oklch, var(--cinder-accent), var(--cinder-surface) 88%);
+  --cinder-color-accent-fg: var(--cinder-accent-text);
+  --cinder-color-accent-border: color-mix(in oklch, var(--cinder-accent), transparent 60%);
+
+  /* Status tiers are derived in one polarity-aware recipe. `muted` moves the
+     solid status color toward the current surface; `subtle` moves it toward
+     current text. Relative color re-emits components so consumers can still
+     apply alpha without freezing a light or dark result. */
+  /* stylelint-disable declaration-property-value-disallowed-list -- these eight canonical token formulas are the intentional, shared status-mixing contract; component CSS must still use the named tiers instead of recreating them. */
+  --cinder-color-info-muted: oklch(
+    from color-mix(in oklch, var(--cinder-info), var(--cinder-surface) 36%) l min(c, 0.05) h
+  );
+  --cinder-color-info-subtle: oklch(
+    from color-mix(in oklch, var(--cinder-info), var(--cinder-text) 36%) l min(c, 0.05) h
+  );
+  --cinder-color-success-muted: oklch(
+    from color-mix(in oklch, var(--cinder-success), var(--cinder-surface) 36%) l min(c, 0.05) h
+  );
+  --cinder-color-success-subtle: oklch(
+    from color-mix(in oklch, var(--cinder-success), var(--cinder-text) 36%) l min(c, 0.05) h
+  );
+  --cinder-color-warning-muted: oklch(
+    from color-mix(in oklch, var(--cinder-warning), var(--cinder-surface) 36%) l min(c, 0.05) h
+  );
+  --cinder-color-warning-subtle: oklch(
+    from color-mix(in oklch, var(--cinder-warning), var(--cinder-text) 36%) l min(c, 0.05) h
+  );
+  --cinder-color-danger-muted: oklch(
+    from color-mix(in oklch, var(--cinder-danger), var(--cinder-surface) 36%) l min(c, 0.05) h
+  );
+  --cinder-color-danger-subtle: oklch(
+    from color-mix(in oklch, var(--cinder-danger), var(--cinder-text) 36%) l min(c, 0.05) h
+  );
   /* Transparency checkerboard tokens shared by color-domain components. Light
      mode preserves the historical white/gray grid; dark mode keeps the pattern
      visible without flashing a white backing inside dark chrome. */
@@ -654,9 +709,10 @@
   --cinder-text-subtle: oklch(72% 0.02 245);
   --cinder-text-disabled: oklch(64% 0.02 245);
   --cinder-fill-disabled: oklch(30% 0.015 245);
-  --cinder-border: oklch(40% 0.05 245);
-  --cinder-border-muted: oklch(30% 0.04 245);
-  --cinder-border-strong: oklch(45% 0.06 245);
+  --cinder-border: oklch(58% 0.05 245);
+  --cinder-border-faint: oklch(33% 0.03 245);
+  --cinder-border-muted: oklch(38% 0.04 245);
+  --cinder-border-strong: oklch(66% 0.06 245);
   --cinder-toggle-track-off-resting: oklch(45% 0.02 245);
   --cinder-toggle-track-off-hover-resting: oklch(52% 0.02 245);
   --cinder-accent: oklch(72% 0.14 270);
@@ -675,19 +731,55 @@
   --cinder-warning-contrast: oklch(20% 0.04 75);
   --cinder-info-contrast: oklch(15% 0.03 230);
   --cinder-danger-hover: oklch(64% 0.172 25);
-  --cinder-danger-active: oklch(57% 0.172 25);
+  --cinder-danger-active: oklch(60% 0.172 25);
+  --cinder-info-hover: oklch(70% 0.13 230);
+  --cinder-info-active: oklch(62% 0.12 230);
+  --cinder-success-hover: oklch(70% 0.14 145);
+  --cinder-success-active: oklch(62% 0.14 145);
+  --cinder-warning-hover: oklch(74% 0.156 75);
+  --cinder-warning-active: oklch(66% 0.13 75);
   --cinder-color-info-bg: oklch(28% 0.057 230);
   --cinder-color-info-fg: oklch(88% 0.071 230);
   --cinder-color-info-border: oklch(45% 0.08 230);
   --cinder-color-success-bg: oklch(28% 0.07 145);
   --cinder-color-success-fg: oklch(88% 0.11 145);
   --cinder-color-success-border: oklch(45% 0.09 145);
-  --cinder-color-warning-bg: oklch(28% 0.08 75);
-  --cinder-color-warning-fg: oklch(90% 0.12 75);
+  --cinder-color-warning-bg: oklch(28% 0.06 75);
+  --cinder-color-warning-fg: oklch(90% 0.08 75);
   --cinder-color-warning-border: oklch(50% 0.1 75);
   --cinder-color-danger-bg: oklch(28% 0.09 25);
-  --cinder-color-danger-fg: oklch(90% 0.12 25);
+  --cinder-color-danger-fg: oklch(90% 0.05 25);
   --cinder-color-danger-border: oklch(50% 0.11 25);
+  --cinder-color-neutral-bg: oklch(28% 0.04 245);
+  --cinder-color-neutral-fg: var(--cinder-text);
+  --cinder-color-neutral-border: var(--cinder-border);
+  --cinder-color-accent-bg: color-mix(in oklch, var(--cinder-accent), var(--cinder-surface) 88%);
+  --cinder-color-accent-fg: var(--cinder-accent-text);
+  --cinder-color-accent-border: color-mix(in oklch, var(--cinder-accent), transparent 60%);
+  --cinder-color-info-muted: oklch(
+    from color-mix(in oklch, var(--cinder-info), var(--cinder-surface) 36%) l min(c, 0.05) h
+  );
+  --cinder-color-info-subtle: oklch(
+    from color-mix(in oklch, var(--cinder-info), var(--cinder-text) 36%) l min(c, 0.05) h
+  );
+  --cinder-color-success-muted: oklch(
+    from color-mix(in oklch, var(--cinder-success), var(--cinder-surface) 36%) l min(c, 0.05) h
+  );
+  --cinder-color-success-subtle: oklch(
+    from color-mix(in oklch, var(--cinder-success), var(--cinder-text) 36%) l min(c, 0.05) h
+  );
+  --cinder-color-warning-muted: oklch(
+    from color-mix(in oklch, var(--cinder-warning), var(--cinder-surface) 36%) l min(c, 0.05) h
+  );
+  --cinder-color-warning-subtle: oklch(
+    from color-mix(in oklch, var(--cinder-warning), var(--cinder-text) 36%) l min(c, 0.05) h
+  );
+  --cinder-color-danger-muted: oklch(
+    from color-mix(in oklch, var(--cinder-danger), var(--cinder-surface) 36%) l min(c, 0.05) h
+  );
+  --cinder-color-danger-subtle: oklch(
+    from color-mix(in oklch, var(--cinder-danger), var(--cinder-text) 36%) l min(c, 0.05) h
+  );
   --cinder-color-checker-base: oklch(28% 0.02 245);
   --cinder-color-checker-tile: oklch(38% 0.02 245);
   --cinder-scrollbar-track: oklch(100% 0 0 / 0.04);
@@ -742,9 +834,10 @@
   --cinder-text-subtle: oklch(42% 0.012 245);
   --cinder-text-disabled: oklch(52% 0.01 245);
   --cinder-fill-disabled: oklch(86% 0.006 255);
-  --cinder-border: oklch(83% 0.005 255);
-  --cinder-border-muted: oklch(90% 0.004 255);
-  --cinder-border-strong: oklch(72% 0.006 255);
+  --cinder-border: oklch(63% 0.006 255);
+  --cinder-border-faint: oklch(92% 0.003 255);
+  --cinder-border-muted: oklch(85% 0.004 255);
+  --cinder-border-strong: oklch(60% 0.008 255);
   --cinder-toggle-track-off-resting: var(--cinder-border-muted);
   --cinder-toggle-track-off-hover-resting: var(--cinder-border);
   --cinder-accent: oklch(50% 0.22 270);
@@ -764,18 +857,55 @@
   --cinder-info-contrast: oklch(100% 0 0);
   --cinder-danger-hover: oklch(42% 0.171 25);
   --cinder-danger-active: oklch(35% 0.142 25);
+  --cinder-info-hover: oklch(42% 0.079 230);
+  --cinder-info-active: oklch(35% 0.065 230);
+  --cinder-success-hover: oklch(42% 0.12 145);
+  --cinder-success-active: oklch(35% 0.1 145);
+  --cinder-warning-hover: oklch(42% 0.08 75);
+  --cinder-warning-active: oklch(38% 0.07 75);
   --cinder-color-info-bg: oklch(94.5% 0.03 230);
   --cinder-color-info-fg: oklch(40% 0.079 230);
   --cinder-color-info-border: oklch(80% 0.05 230);
   --cinder-color-success-bg: oklch(94.5% 0.045 145);
-  --cinder-color-success-fg: oklch(40% 0.13 145);
+  --cinder-color-success-fg: oklch(40% 0.127 145);
   --cinder-color-success-border: oklch(80% 0.05 145);
   --cinder-color-warning-bg: oklch(94.5% 0.042 75);
-  --cinder-color-warning-fg: oklch(40% 0.13 75);
+  --cinder-color-warning-fg: oklch(40% 0.085 75);
   --cinder-color-warning-border: oklch(80% 0.06 75);
   --cinder-color-danger-bg: oklch(94.5% 0.026 25);
   --cinder-color-danger-fg: oklch(42% 0.16 25);
   --cinder-color-danger-border: oklch(80% 0.06 25);
+  --cinder-color-neutral-bg: oklch(94.5% 0.004 255);
+  --cinder-color-neutral-fg: var(--cinder-text);
+  --cinder-color-neutral-border: var(--cinder-border);
+  --cinder-color-accent-bg: color-mix(in oklch, var(--cinder-accent), var(--cinder-surface) 88%);
+  --cinder-color-accent-fg: var(--cinder-accent-text);
+  --cinder-color-accent-border: color-mix(in oklch, var(--cinder-accent), transparent 60%);
+  --cinder-color-info-muted: oklch(
+    from color-mix(in oklch, var(--cinder-info), var(--cinder-surface) 36%) l min(c, 0.05) h
+  );
+  --cinder-color-info-subtle: oklch(
+    from color-mix(in oklch, var(--cinder-info), var(--cinder-text) 36%) l min(c, 0.05) h
+  );
+  --cinder-color-success-muted: oklch(
+    from color-mix(in oklch, var(--cinder-success), var(--cinder-surface) 36%) l min(c, 0.05) h
+  );
+  --cinder-color-success-subtle: oklch(
+    from color-mix(in oklch, var(--cinder-success), var(--cinder-text) 36%) l min(c, 0.05) h
+  );
+  --cinder-color-warning-muted: oklch(
+    from color-mix(in oklch, var(--cinder-warning), var(--cinder-surface) 36%) l min(c, 0.05) h
+  );
+  --cinder-color-warning-subtle: oklch(
+    from color-mix(in oklch, var(--cinder-warning), var(--cinder-text) 36%) l min(c, 0.05) h
+  );
+  --cinder-color-danger-muted: oklch(
+    from color-mix(in oklch, var(--cinder-danger), var(--cinder-surface) 36%) l min(c, 0.05) h
+  );
+  --cinder-color-danger-subtle: oklch(
+    from color-mix(in oklch, var(--cinder-danger), var(--cinder-text) 36%) l min(c, 0.05) h
+  );
+  /* stylelint-enable declaration-property-value-disallowed-list */
   --cinder-color-checker-base: #fff;
   --cinder-color-checker-tile: #ccc;
   --cinder-scrollbar-track: oklch(0% 0 0 / 0.04);
@@ -799,7 +929,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  :root {
+  :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off']) {
     --cinder-duration-instant: 0ms;
     --cinder-duration-fast: 0ms;
     --cinder-duration: 0ms;
@@ -810,4 +940,16 @@
     --cinder-duration-progress-bar-indeterminate: 0ms;
     --cinder-duration-progress-ring-spin: 0ms;
   }
+}
+
+:root[data-reduced-motion='on'] {
+  --cinder-duration-instant: 0ms;
+  --cinder-duration-fast: 0ms;
+  --cinder-duration: 0ms;
+  --cinder-duration-normal: 0ms;
+  --cinder-duration-moderate: 0ms;
+  --cinder-duration-slow: 0ms;
+  --cinder-duration-spin: 0ms;
+  --cinder-duration-progress-bar-indeterminate: 0ms;
+  --cinder-duration-progress-ring-spin: 0ms;
 }

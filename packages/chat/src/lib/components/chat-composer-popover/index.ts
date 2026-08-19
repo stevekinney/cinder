@@ -3,6 +3,14 @@ import ChatComposerPopover from './chat-composer-popover.svelte';
 
 export default ChatComposerPopover;
 export {
+  deserializeChatComposerMention,
+  parseChatComposerMentions,
+  serializeChatComposerMention,
+  type ChatComposerMention,
+  type ChatComposerMentionParseResult,
+  type ChatComposerMentionRange,
+} from './chat-composer-mention.ts';
+export {
   filterFuzzySubsequence,
   fuzzySubsequenceScore,
   type FuzzyFilterItem,

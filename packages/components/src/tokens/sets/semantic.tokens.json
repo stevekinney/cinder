@@ -1,0 +1,48 @@
+{
+  "$schema": "https://www.designtokens.org/schemas/2025.10/format.json",
+  "surface": {
+    "$type": "color",
+    "base": {
+      "$value": { "colorSpace": "oklch", "components": [0.994, 0.002, 255] },
+      "$description": "Default semantic surface. Theme modifiers provide its dark value.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-surface",
+          "public": true,
+          "category": "color",
+          "contrastPairs": ["text.default"],
+          "cssRecipe": null
+        }
+      }
+    },
+    "raised": {
+      "$value": { "colorSpace": "oklch", "components": [1, 0, 255] },
+      "$description": "Elevated semantic surface. Theme modifiers provide its dark value.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-surface-raised",
+          "public": true,
+          "category": "color",
+          "contrastPairs": ["text.default"],
+          "cssRecipe": null
+        }
+      }
+    }
+  },
+  "border": {
+    "$type": "color",
+    "control": {
+      "$value": { "colorSpace": "oklch", "components": [0.63, 0.006, 255] },
+      "$description": "Functional control boundary that clears 3:1 against supported surfaces.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-border",
+          "public": true,
+          "category": "color",
+          "contrastPairs": ["surface.base", "surface.raised"],
+          "cssRecipe": null
+        }
+      }
+    }
+  }
+}

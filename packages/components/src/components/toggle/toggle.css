@@ -170,8 +170,9 @@
  * ---------------------------------------- */
 
   @media (prefers-reduced-motion: reduce) {
-    .cinder-toggle,
-    .cinder-toggle__thumb {
+    :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off']) .cinder-toggle,
+    :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off'])
+      .cinder-toggle__thumb {
       transition: none;
     }
   }

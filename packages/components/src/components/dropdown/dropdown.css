@@ -236,7 +236,7 @@
   .cinder-dropdown-separator {
     height: 1px;
     margin-block: var(--cinder-space-1);
-    background: var(--cinder-border);
+    background: var(--cinder-border-faint);
   }
 
   /* ----------------------------------------
@@ -394,5 +394,11 @@
         translate: 0 0;
       }
     }
+  }
+
+  :root:is([data-cinder-reduced-motion='false'], [data-reduced-motion='off'])
+    .cinder-dropdown__menu {
+    animation: cinder-dropdown-enter var(--cinder-duration-fast) var(--cinder-ease-standard)
+      forwards;
   }
 }

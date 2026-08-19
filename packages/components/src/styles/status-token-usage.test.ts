@@ -20,6 +20,12 @@ const auditedFiles = [
 const forbiddenStatusMixPattern =
   /color-mix\((?:(?!;).|\r|\n)*?var\(\s*--cinder-(info|success|warning|danger)\s*(?:[,)\s])/m;
 
+function declarationValue(source: string, token: string): string {
+  const match = source.match(new RegExp(`${token}:\\s*([^;]+);`));
+  if (!match?.[1]) throw new Error(`Missing ${token} declaration`);
+  return match[1];
+}
+
 describe('status token usage', () => {
   test('audited files do not mix solid status tokens into soft surfaces', async () => {
     const failures: string[] = [];
@@ -39,7 +45,7 @@ describe('status token usage', () => {
     const badgeSource = await readFile(join(COMPONENTS_DIR, 'badge', 'badge.css'), 'utf-8');
     const chipSource = await readFile(join(COMPONENTS_DIR, 'chip', 'chip.css'), 'utf-8');
 
-    for (const status of ['success', 'warning', 'danger', 'info']) {
+    for (const status of ['neutral', 'accent', 'success', 'warning', 'danger', 'info']) {
       expect(badgeSource).toContain(`var(--cinder-color-${status}-bg)`);
       expect(badgeSource).toContain(`var(--cinder-color-${status}-fg)`);
       expect(badgeSource).toContain(`var(--cinder-color-${status}-border)`);
@@ -47,6 +53,20 @@ describe('status token usage', () => {
       expect(chipSource).toContain(`var(--cinder-color-${status}-bg)`);
       expect(chipSource).toContain(`var(--cinder-color-${status}-fg)`);
       expect(chipSource).toContain(`var(--cinder-color-${status}-border)`);
+    }
+  });
+
+  test('derived status tiers retain the polarity-aware relative-color formula', async () => {
+    const tokens = await readFile(join(import.meta.dir, 'tokens-base.css'), 'utf-8');
+    for (const status of ['info', 'success', 'warning', 'danger']) {
+      const muted = declarationValue(tokens, `--cinder-color-${status}-muted`);
+      const subtle = declarationValue(tokens, `--cinder-color-${status}-subtle`);
+      expect(muted).toContain(`var(--cinder-${status})`);
+      expect(muted).toContain('var(--cinder-surface)');
+      expect(muted).toContain('36%');
+      expect(subtle).toContain(`var(--cinder-${status})`);
+      expect(subtle).toContain('var(--cinder-text)');
+      expect(subtle).toContain('36%');
     }
   });
 });

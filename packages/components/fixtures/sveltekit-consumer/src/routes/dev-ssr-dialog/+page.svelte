@@ -3,9 +3,14 @@
   import ConfirmDialog from '@lostgradient/cinder/confirm-dialog';
 
   let confirmDialogOpen = $state(false);
+  let hydrated = $state(false);
+
+  $effect(() => {
+    hydrated = true;
+  });
 </script>
 
-<main>
+<main data-dev-ssr-hydrated={hydrated}>
   <button
     type="button"
     data-dev-ssr-confirm-dialog-trigger

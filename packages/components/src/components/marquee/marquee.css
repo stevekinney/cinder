@@ -122,17 +122,35 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .cinder-marquee__viewport {
+    :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off'])
+      .cinder-marquee__viewport {
       overflow: auto;
     }
 
-    .cinder-marquee__track {
+    :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off'])
+      .cinder-marquee__track {
       animation: none;
       transform: none;
     }
 
-    .cinder-marquee__item[aria-hidden='true'] {
+    :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off'])
+      .cinder-marquee__item[aria-hidden='true'] {
       display: none;
     }
+  }
+
+  :root:is([data-cinder-reduced-motion='true'], [data-reduced-motion='on'])
+    .cinder-marquee__viewport {
+    overflow: auto;
+  }
+
+  :root:is([data-cinder-reduced-motion='true'], [data-reduced-motion='on']) .cinder-marquee__track {
+    animation: none;
+    transform: none;
+  }
+
+  :root:is([data-cinder-reduced-motion='true'], [data-reduced-motion='on'])
+    .cinder-marquee__item[aria-hidden='true'] {
+    display: none;
   }
 }

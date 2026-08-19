@@ -71,6 +71,39 @@ public range API. `insertAtRange()` updates the popover's bound value through
 </ChatComposerPopover>
 ```
 
+## Serializing entity mentions
+
+Keep the composer as a plain textarea by committing a selected item as a Markdown link. `serializeChatComposerMention()` escapes labels and entity URIs, while `parseChatComposerMentions()` restores the submitted text projection and its UTF-16 mention ranges:
+
+```ts
+import {
+  parseChatComposerMentions,
+  serializeChatComposerMention,
+  type ChatComposerPopoverSelection,
+} from '@lostgradient/chat/composer-popover';
+
+type MentionItem = {
+  value: string;
+  label: string;
+};
+
+function commitMention(selection: ChatComposerPopoverSelection<MentionItem>): void {
+  const mention = serializeChatComposerMention({
+    label: selection.item.label,
+    uri: selection.item.value,
+  });
+
+  chat?.insertAtRange(selection.range, mention);
+}
+
+function submitComposer(value: string): void {
+  const { text, mentions } = parseChatComposerMentions(value);
+  sendMessage({ text, mentions });
+}
+```
+
+Only absolute non-web URI schemes such as `person:` and `linear:` become mentions. Ordinary `https:`, `mailto:`, relative, image, and malformed links remain literal textarea text. The helpers are also available from the `@lostgradient/chat` package root.
+
 ## Related
 
 - [`Chat`](../chat/README.md) — full conversation surface and composer.

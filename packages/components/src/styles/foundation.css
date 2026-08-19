@@ -6,14 +6,29 @@
  */
 
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off']),
+  :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off']) *,
+  :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off']) *::before,
+  :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off']) *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+:root[data-reduced-motion='on'] *,
+:root[data-reduced-motion='on'],
+:root[data-reduced-motion='on'] *::before,
+:root[data-reduced-motion='on'] *::after {
+  /* Explicit application opt-in must also reach component fallbacks that
+     otherwise only exist inside the system media query. */
+  animation: none !important;
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
 }
 
 *,
