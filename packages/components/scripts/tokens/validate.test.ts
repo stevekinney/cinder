@@ -303,6 +303,9 @@ describe('DTCG semantic validation', () => {
       validateTokenDocument({ $type: 'fontWeight', sample: { $value: 'semi-bold' } }),
     ).not.toThrow();
     expect(() =>
+      validateTokenDocument({ $type: 'fontWeight', sample: { $value: 'extra-black' } }),
+    ).not.toThrow();
+    expect(() =>
       validateTokenDocument({ $type: 'strokeStyle', sample: { $value: 'banana' } }),
     ).toThrow();
     expect(() => validateTokenDocument({ $type: 'gradient', sample: { $value: [] } })).toThrow();
@@ -396,5 +399,13 @@ describe('DTCG semantic validation', () => {
         resolutionOrder: [],
       }),
     ).toThrow('must list every modifier exactly once');
+    expect(() =>
+      validateResolverDocument({
+        version: '2025.10',
+        sets: [{ name: 'base', source: ['sets/base.tokens.json'] }],
+        modifiers: [{ name: 'theme', values: ['light', 'light'] }],
+        resolutionOrder: ['theme'],
+      }),
+    ).toThrow('modifier values must be unique');
   });
 });

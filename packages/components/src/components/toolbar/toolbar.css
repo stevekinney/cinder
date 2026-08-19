@@ -39,7 +39,7 @@
     content: '';
     inline-size: 100%;
     block-size: 1px;
-    background: var(--cinder-border);
+    background: var(--cinder-border-faint);
   }
 
   .cinder-toolbar__spacer {
