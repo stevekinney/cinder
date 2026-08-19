@@ -95,4 +95,16 @@ describe('DTCG resolver', () => {
       $value: 1,
     });
   });
+
+  test('retains nested __proto__ tokens when a later source merges the group', () => {
+    const base = JSON.parse(
+      '{"group":{"$type":"number","__proto__":{"$value":1},"first":{"$value":1}}}',
+    ) as TokenDocument;
+    const modifier: TokenDocument = { group: { first: { $value: 2 } } };
+
+    expect(resolveDocument(mergeDocuments([base, modifier]))['group.__proto__']).toMatchObject({
+      $type: 'number',
+      $value: 1,
+    });
+  });
 });

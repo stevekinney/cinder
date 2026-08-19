@@ -17,7 +17,19 @@ function isTokenGroup(value: unknown): value is TokenGroup {
 }
 
 function clone<T>(value: T): T {
-  return structuredClone(value);
+  const copy = structuredClone(value);
+  normalizeObjectPrototypes(copy);
+  return copy;
+}
+
+function normalizeObjectPrototypes(value: unknown): void {
+  if (Array.isArray(value)) {
+    for (const entry of value) normalizeObjectPrototypes(entry);
+    return;
+  }
+  if (!isObject(value)) return;
+  Object.setPrototypeOf(value, null);
+  for (const entry of Object.values(value)) normalizeObjectPrototypes(entry);
 }
 
 function withResolvedType(token: DesignToken, inheritedType?: DesignToken['$type']): DesignToken {
