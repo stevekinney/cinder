@@ -169,6 +169,17 @@ jobs:
       # before the release (which waits for this same-SHA main-green run) can
       # publish. NOT continue-on-error: a crash here must go red so the release
       # never publishes on top of a broken hydration path.
+      #
+      # GitHub's Ubuntu runner mirror list prefers azure.archive.ubuntu.com.
+      # When that mirror is unreachable, apt can fetch release metadata from
+      # its fallback but then hang indefinitely on package indexes. Select the
+      # canonical archive explicitly before Playwright invokes apt.
+      - name: Normalize Ubuntu mirror for Playwright dependencies
+        run: >-
+          sudo sed -i
+          's|http://azure.archive.ubuntu.com/ubuntu/|https://archive.ubuntu.com/ubuntu/|g'
+          /etc/apt/apt-mirrors.txt
+
       - name: Install Chromium for hydration smoke
         run: bunx playwright install --with-deps chromium
 
