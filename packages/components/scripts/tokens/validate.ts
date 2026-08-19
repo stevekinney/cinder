@@ -290,6 +290,9 @@ function validateGroup(
         continue;
       }
       validateMetadata(value, path, issues);
+      const nonMetadataChildren = Object.keys(value).filter((key) => !key.startsWith('$'));
+      if (nonMetadataChildren.length > 0)
+        addIssue(issues, path, '$root token cannot contain child groups');
       for (const key of Object.keys(value))
         if (key.startsWith('$') && !TOKEN_METADATA.has(key))
           addIssue(issues, path, `unknown reserved property ${key}`);

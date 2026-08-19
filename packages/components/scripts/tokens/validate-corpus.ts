@@ -24,6 +24,7 @@ async function main(): Promise<void> {
   if (missingSources.length > 0) throw new TokenValidationError(missingSources);
 
   const documentsByPath = new Map(documents.map(({ path, document }) => [path, document]));
+  const referencedPaths = new Set(resolver.sets.flatMap((set) => set.source));
   const sourceDocuments = resolver.sets.flatMap((set) =>
     set.source.flatMap((source) => {
       const document = documentsByPath.get(source);
@@ -32,6 +33,16 @@ async function main(): Promise<void> {
   );
   const modifiersByName = new Map(resolver.modifiers.map((modifier) => [modifier.name, modifier]));
   const orderedModifiers = resolver.resolutionOrder.map((name) => modifiersByName.get(name)!);
+  for (const modifier of orderedModifiers) {
+    for (const value of modifier.values) {
+      const document = findModifierDocument(documents, modifier, value);
+      if (document) referencedPaths.add(document.path);
+    }
+  }
+  const unreferencedDocuments = documents
+    .filter(({ path }) => !referencedPaths.has(path))
+    .map(({ path }) => ({ path, reason: 'token document is not referenced by the resolver' }));
+  if (unreferencedDocuments.length > 0) throw new TokenValidationError(unreferencedDocuments);
   for (const modifierValues of combinations(orderedModifiers)) {
     const modifierDocuments = orderedModifiers.map((modifier) => {
       const document = findModifierDocument(documents, modifier, modifierValues[modifier.name]);
@@ -44,7 +55,10 @@ async function main(): Promise<void> {
         ]);
       return document;
     });
-    const resolved = resolveDocuments([...sourceDocuments, ...modifierDocuments]);
+    const resolved = resolveDocuments([
+      ...sourceDocuments,
+      ...modifierDocuments.map(({ document }) => document),
+    ]);
     for (const [path, token] of Object.entries(resolved)) validateResolvedToken(token, path);
   }
 }
@@ -63,7 +77,7 @@ function findModifierDocument(
   documents: Array<{ path: string; document: TokenDocument }>,
   modifier: ResolverModifier,
   value: string | undefined,
-): TokenDocument | undefined {
+): { path: string; document: TokenDocument } | undefined {
   if (!value) return undefined;
   const directPath = `${modifier.name}-${value}.tokens.json`;
   const themedPath = `${modifier.name}s/${value}.tokens.json`;
@@ -73,7 +87,7 @@ function findModifierDocument(
       path.endsWith(`/${directPath}`) ||
       path === themedPath ||
       path.endsWith(`/${themedPath}`),
-  )?.document;
+  );
 }
 
 await main();

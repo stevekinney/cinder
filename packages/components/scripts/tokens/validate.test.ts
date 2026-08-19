@@ -107,6 +107,11 @@ describe('DTCG semantic validation', () => {
     expect(() => validateTokenDocument({ group: { $extends: 42 } })).toThrow(
       '$extends must be a token reference',
     );
+    expect(() =>
+      validateTokenDocument({
+        group: { $root: { $type: 'number', $value: 1, child: { $type: 'number', $value: 2 } } },
+      }),
+    ).toThrow('$root token cannot contain child groups');
   });
 
   test('validates composite member shapes', () => {
