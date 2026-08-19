@@ -133,10 +133,17 @@
     renameError = null;
     rebaseEnumDrafts(oldKey, draft);
 
-    const next: Record<string, JsonSchemaValue> = Object.create(null);
-    for (const k of propertyNames) {
-      next[k === oldKey ? draft : k] = properties[k]!;
-    }
+    // Object.fromEntries uses CreateDataPropertyOrThrow, which — unlike a plain
+    // assignment loop — defines an own data property even when a key is
+    // literally "__proto__" (it never triggers the Object.prototype.__proto__
+    // accessor). That keeps a schema with a real `__proto__` property key
+    // intact WITHOUT resorting to Object.create(null), whose null-prototype
+    // result is not structured-cloneable — the undo-history snapshot commit
+    // uses structuredClone, which previously threw and silently dropped every
+    // rename.
+    const next: Record<string, JsonSchemaValue> = Object.fromEntries(
+      propertyNames.map((k) => [k === oldKey ? draft : k, properties[k]!]),
+    );
     const nextRequired = required.map((name) => (name === oldKey ? draft : name));
 
     delete draftNames[oldKey];
@@ -227,8 +234,12 @@
 
     const reordered = [...propertyNames];
     [reordered[index], reordered[target]] = [reordered[target]!, reordered[index]!];
-    const next: Record<string, JsonSchemaValue> = Object.create(null);
-    for (const name of reordered) next[name] = properties[name]!;
+    // See the matching comment in commitRename: Object.fromEntries keeps a
+    // literal "__proto__" key intact as a real own property without
+    // producing a null-prototype object structuredClone can't clone.
+    const next: Record<string, JsonSchemaValue> = Object.fromEntries(
+      reordered.map((name) => [name, properties[name]!]),
+    );
     onValueChange(next, required);
     await announceAction(`Moved ${key} property to position ${target + 1} of ${reordered.length}.`);
   }
@@ -238,8 +249,9 @@
     if (target < 0 || target >= propertyNames.length) return false;
     const reordered = [...propertyNames];
     [reordered[index], reordered[target]] = [reordered[target]!, reordered[index]!];
-    const next: Record<string, JsonSchemaValue> = Object.create(null);
-    for (const name of reordered) next[name] = properties[name]!;
+    const next: Record<string, JsonSchemaValue> = Object.fromEntries(
+      reordered.map((name) => [name, properties[name]!]),
+    );
     return Object.keys(next).every((name, nextIndex) => name === reordered[nextIndex]);
   }
 
@@ -266,9 +278,13 @@
   function summariseType(schema: JsonSchemaValue): string {
     if (typeof schema === 'boolean') return schema ? 'true' : 'false';
     const t = schema.type;
-    if (t === undefined) return 'any';
-    if (Array.isArray(t)) return t.join(' | ');
-    return t;
+    if (t === undefined && Array.isArray(schema.enum)) return 'enum';
+    const base = t === undefined ? 'any' : Array.isArray(t) ? t.join(' | ') : t;
+    const isArray = Array.isArray(t) ? t.includes('array') : t === 'array';
+    if (isArray) {
+      return `${base} of ${summariseType(schema.items ?? {})}`;
+    }
+    return base;
   }
 
   // ===== Required-only chip editing =====
