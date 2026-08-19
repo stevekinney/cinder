@@ -1,5 +1,13 @@
 # @lostgradient/cinder
 
+## 0.24.6
+
+### Patch Changes
+
+- [#1345](https://github.com/stevekinney/cinder/pull/1345) [`338a673`](https://github.com/stevekinney/cinder/commit/338a673a546b9322bdce78cf8465debd187c178d) Thanks [@stevekinney](https://github.com/stevekinney)! - Detect CSS duplication for compound child components authored in parent stylesheets.
+
+- [#1344](https://github.com/stevekinney/cinder/pull/1344) [`bdf4af3`](https://github.com/stevekinney/cinder/commit/bdf4af36aa5e434855e2544e7b61a7bb0d2d051b) Thanks [@stevekinney](https://github.com/stevekinney)! - Exclude CSS variables explicitly marked `@runtime-state` from the public override manifest.
+
 ## 0.24.5
 
 ### Patch Changes
