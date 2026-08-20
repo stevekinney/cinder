@@ -979,7 +979,7 @@ async function runStylesConsumerFixture(): Promise<void> {
   });
 
   try {
-    await removeFixtureEntries(fixtureDirectory, ['node_modules', 'dist']);
+    removeFixtureEntries(fixtureDirectory, ['node_modules', 'dist']);
     const installResult = await runHookCommand('bun', ['install', '--no-save'], {
       cwd: fixtureDirectory,
       stdout: 'pipe',
@@ -1106,7 +1106,7 @@ async function runSveltePeerCompatibilityFixture(
   const restoreManifest = injectTarballIntoFixture(fixtureDirectory, { svelteVersion });
 
   try {
-    await removeFixtureEntries(fixtureDirectory, ['node_modules', 'src/generated']);
+    removeFixtureEntries(fixtureDirectory, ['node_modules', 'src/generated']);
     const installResult = await runHookCommand('bun', ['install', '--no-save'], {
       cwd: fixtureDirectory,
       stdout: 'pipe',
@@ -1137,7 +1137,7 @@ async function runTypescriptCompatibilityFixture(
   const restoreManifest = injectTarballIntoFixture(fixtureDirectory, { typescriptVersion });
 
   try {
-    await removeFixtureEntries(fixtureDirectory, ['node_modules', 'src/generated']);
+    removeFixtureEntries(fixtureDirectory, ['node_modules', 'src/generated']);
     const installResult = await runHookCommand('bun', ['install', '--no-save'], {
       cwd: fixtureDirectory,
       stdout: 'pipe',
@@ -1761,7 +1761,7 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
 
   try {
     process.stdout.write(`[validate-consumers] sveltekit-consumer ${label}: cleaning fixture…\n`);
-    await removeFixtureEntries(fixtureDirectory, ['node_modules', '.svelte-kit', 'build']);
+    removeFixtureEntries(fixtureDirectory, ['node_modules', '.svelte-kit', 'build']);
     process.stdout.write(`[validate-consumers] sveltekit-consumer ${label}: cleaned fixture.\n`);
 
     process.stdout.write(`[validate-consumers] sveltekit-consumer ${label}: installing…\n`);
@@ -2868,7 +2868,7 @@ async function runNodeFixture(): Promise<void> {
   const restoreManifest = injectTarballIntoFixture(fixtureDirectory);
 
   try {
-    await removeFixtureEntries(fixtureDirectory, ['node_modules', 'dist']);
+    removeFixtureEntries(fixtureDirectory, ['node_modules', 'dist']);
     const installResult = await runHookCommand('bun', ['install', '--no-save'], {
       cwd: fixtureDirectory,
       stdout: 'pipe',
@@ -3006,7 +3006,7 @@ async function runTypescriptConsumerFixture(): Promise<void> {
   const restoreManifest = injectTarballIntoFixture(fixtureDirectory);
 
   try {
-    await removeFixtureEntries(fixtureDirectory, ['node_modules', 'src/generated']);
+    removeFixtureEntries(fixtureDirectory, ['node_modules', 'src/generated']);
     const installResult = await runHookCommand('bun', ['install', '--no-save'], {
       cwd: fixtureDirectory,
       stdout: 'pipe',
@@ -3048,7 +3048,7 @@ async function runExamplesConsumerFixture(): Promise<void> {
   const restoreManifest = injectTarballIntoFixture(fixtureDirectory);
 
   try {
-    await removeFixtureEntries(fixtureDirectory, [
+    removeFixtureEntries(fixtureDirectory, [
       'node_modules',
       '.svelte-kit',
       'build',
