@@ -127,6 +127,13 @@ jobs:
       - name: Upgrade npm
         run: npm install -g npm@11.5.1
 
+      - name: Record configured Node runtime for publish
+        shell: bash
+        run: |
+          node_path="$(command -v node)"
+          "$node_path" --version
+          echo "CINDER_PUBLISH_NODE=$node_path" >> "$GITHUB_ENV"
+
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
@@ -288,6 +295,8 @@ jobs:
       - name: Publish to npm
         env:
           NPM_CONFIG_PROVENANCE: 'true'
+          # Keep break-glass provenance signing aligned with the trusted path.
+          NODE_OPTIONS: --openssl-legacy-provider
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: bun run --filter=${{ steps.package.outputs.name }} publish:release -- --skip-validation

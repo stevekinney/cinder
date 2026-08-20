@@ -56,6 +56,14 @@ export function nodePublishCommand(nodeExecutable: string, publishArguments: str
   return [nodeExecutable, join(scriptDirectory, 'npm-publish.mjs'), ...publishArguments];
 }
 
+/** Prefer the Node runtime explicitly provisioned by the release workflow. */
+export function resolveNodeExecutable(
+  environment: NodeJS.ProcessEnv,
+  findNode: (command: string) => string | null,
+): string | null {
+  return environment['CINDER_PUBLISH_NODE'] ?? findNode('node');
+}
+
 async function validateConsumerArtifact(packageRootPath: string): Promise<void> {
   const validationResult = await $`bun run validate:consumer`.cwd(packageRootPath).nothrow();
   if (validationResult.exitCode !== 0) {
@@ -162,7 +170,7 @@ async function main(): Promise<void> {
       artifactExists: existsSync,
       validateConsumerArtifact: () => validateConsumerArtifact(packageRoot),
       spawnPublish: (publishArguments) => {
-        const nodeExecutable = Bun.which('node');
+        const nodeExecutable = resolveNodeExecutable(Bun.env, Bun.which);
         if (!nodeExecutable) {
           throw new Error('publish-release requires Node to execute npm publish.');
         }
