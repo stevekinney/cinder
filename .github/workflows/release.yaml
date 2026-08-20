@@ -91,8 +91,12 @@ jobs:
         shell: bash
         run: |
           node_path="$(command -v node)"
+          node_prefix="$(dirname "$(dirname "$node_path")")"
+          npm_cli="$node_prefix/lib/node_modules/npm/bin/npm-cli.js"
           "$node_path" --version
+          test -f "$npm_cli"
           echo "CINDER_PUBLISH_NODE=$node_path" >> "$GITHUB_ENV"
+          echo "CINDER_PUBLISH_NPM_CLI=$npm_cli" >> "$GITHUB_ENV"
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
