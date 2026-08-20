@@ -26,6 +26,7 @@ describe('SvelteKit Chat hydration optimizer preflight', () => {
       cwd: '/fixture',
       stdout: 'pipe',
       stderr: 'pipe',
+      environment: expect.objectContaining({ CINDER_CHAT_DEV_HYDRATION: '1' }),
     });
   });
 

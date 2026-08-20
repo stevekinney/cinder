@@ -1362,6 +1362,12 @@ function formatServerOutput(stdout: string, stderr: string): string {
   return `:\n${formatStreamTail('stdout', stdout)}\n${formatStreamTail('stderr', stderr)}`;
 }
 
+const svelteKitChatHydrationEnvironment = {
+  CINDER_CHAT_DEV_HYDRATION: '1',
+  TZ: 'UTC',
+  LANG: 'en_US.UTF-8',
+};
+
 async function assertSvelteKitDevChatHydrationRoute(
   fixtureDirectory: string,
   label: string,
@@ -1378,9 +1384,7 @@ async function assertSvelteKitDevChatHydrationRoute(
       stderr: 'pipe',
       env: {
         ...Bun.env,
-        CINDER_CHAT_DEV_HYDRATION: '1',
-        TZ: 'UTC',
-        LANG: 'en_US.UTF-8',
+        ...svelteKitChatHydrationEnvironment,
       },
     },
   );
@@ -1463,6 +1467,7 @@ export async function preoptimizeSvelteKitChatHydration(
     cwd: fixtureDirectory,
     stdout: 'pipe',
     stderr: 'pipe',
+    environment: svelteKitChatHydrationEnvironment,
   });
   if (result.exitCode !== 0) {
     fail(
