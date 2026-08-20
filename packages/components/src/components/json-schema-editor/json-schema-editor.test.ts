@@ -719,6 +719,35 @@ describe('JsonSchemaEditor — controlled and uncontrolled schema inputs', () =>
     );
   });
 
+  test('synchronizes a later parent restoration after a returned settlement', async () => {
+    const { container, rerender } = render(JsonSchemaEditorImplementation, {
+      props: {
+        id: 'jse-controlled-returned-restoration',
+        schema: { type: 'string' },
+        view: 'json' as const,
+        onValueChangeRequest: () => ({ type: 'number' }),
+      },
+    });
+    await flushEffects();
+
+    await fireEvent.click(latestJsonButton(container, 'Edit JSON'));
+    await fireEvent.input(latestJsonTextarea(container), {
+      target: { value: '{"type":"number"}' },
+    });
+    await fireEvent.click(latestJsonButton(container, 'Apply'));
+    await flushEffects();
+
+    await rerender({
+      id: 'jse-controlled-returned-restoration',
+      schema: { type: 'string' },
+      view: 'json' as const,
+      onValueChangeRequest: () => ({ type: 'number' }),
+    });
+    await flushEffects();
+
+    expect(container.textContent).toContain('"type": "string"');
+  });
+
   test('restores the latest authority when a second request is pending', async () => {
     const requests: string[] = [];
     const pendingSettlement = new Promise<never>(() => {});

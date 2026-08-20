@@ -150,6 +150,10 @@
       controlledSchemaText(previousAuthority) === controlledSchemaText(input);
 
     controlledSchemaAuthority = controlledSchemaText(input);
+    // A returned settlement can advance the editor beyond the still-stale
+    // schema prop. Keep the prop sentinel at that authority too, so a later
+    // parent restoration to the former value is treated as a real update.
+    lastControlledSchemaText = controlledSchemaAuthority;
     synchroniseControlledSchema(controlledSchemaAuthority);
     discardPendingControlledChange();
 
