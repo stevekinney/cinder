@@ -27,7 +27,7 @@ boundary sits where it does.
 
 `browser-tests.yaml` runs its test lane in `mcr.microsoft.com/playwright:v1.60.0-noble`, matching the pinned `@playwright/test` dependency. Full scope has four deterministic shards and merges their blob reports; filtered scope stays a single lane. The one required `playwright` job rejects an incomplete selected matrix.
 
-Browser lanes prebuild `@cinder/playground`'s workspace graph with Turbo before the server starts. A trusted job can restore the remote cache, while forks and local runs retain the launcher’s self-contained build fallback. The launcher only skips those direct builds when the workflow explicitly marks the exact prebuild complete.
+Browser lanes prebuild `@cinder/playground`'s workspace graph with Turbo before the server starts. A trusted job can restore the remote cache, while forks and local runs retain the launcher’s self-contained build fallback. The launcher only skips those direct builds when the workflow explicitly marks the exact prebuild complete. Visual regression and baseline coverage currently run in report mode on pull requests and merge-queue candidates: their diagnostics are retained without blocking while the rollout soak is evaluated. They are promoted to blocking and then required only in separate, recorded rollout changes.
 
 `main-green.yaml` is the only ordinary post-merge validation graph. Normal pushes may reuse trusted content-addressed Turbo outputs, but runtime smokes remain direct commands. Scheduled and explicitly forced manual audits set `TURBO_FORCE=true`, which re-executes deterministic Turbo tasks and keeps the cache topology honest.
 

@@ -26,4 +26,23 @@ describe('check-prose-component-references', () => {
       }),
     ).toEqual([]);
   });
+
+  test('checks prose in generated manifest metadata and package imports', () => {
+    expect(
+      findProseReferenceFailures({
+        source: JSON.stringify({ purpose: 'Compose `missing-component` with the page.' }),
+        filePath: 'components.json',
+        componentNames,
+        exampleIds: new Set(),
+      }),
+    ).toEqual([{ reference: 'missing-component', filePath: 'components.json' }]);
+    expect(
+      findProseReferenceFailures({
+        source: "import Component from '@lostgradient/cinder/missing-component';",
+        filePath: 'fixture.svelte',
+        componentNames,
+        exampleIds: new Set(),
+      }),
+    ).toEqual([{ reference: 'missing-component', filePath: 'fixture.svelte' }]);
+  });
 });

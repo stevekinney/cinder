@@ -627,7 +627,9 @@ jobs:
     #
     # Gated on scope relevance like `typecheck` and `playwright` above, so a
     # docs-only pull request does not pay to boot the playground. This job is
-    # NOT a required status check, so a failure informs rather than blocks.
+    # Report-mode rollout: the command remains visible in its log, but an
+    # incomplete baseline cannot block a pull request until the recorded soak
+    # period has completed and this job is deliberately promoted.
     if: "!cancelled() && (needs.scope.result != 'success' || needs.scope.outputs.browser_relevant == 'true')"
     needs: scope
     runs-on: ubuntu-latest
@@ -656,6 +658,7 @@ jobs:
         env:
           CINDER_TEST_COMPONENTS: ${{ needs.scope.outputs.component_scope_mode == 'filtered' && needs.scope.outputs.components || '' }}
         run: bun run packages/testing/scripts/baseline-coverage-check.ts
+        continue-on-error: true
 
   update-baselines:
     # Manual-only. Runs inside the canonical Playwright Docker image,
