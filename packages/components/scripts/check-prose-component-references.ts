@@ -49,7 +49,6 @@ export function findProseReferenceFailures(input: {
   )) {
     const reference = match[1];
     const isPlatformIdentifier = reference?.startsWith('aria-') || reference?.startsWith('data-');
-    const isExplicitReference = match[0].includes('`');
     const isExampleReference =
       match[0].toLowerCase().startsWith('its ') && reference?.includes('-');
     const followingText = input.source.slice((match.index ?? 0) + match[0].length);
