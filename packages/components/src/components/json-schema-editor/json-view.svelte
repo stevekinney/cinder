@@ -96,20 +96,24 @@
       : editorState.committedCanonicalText,
   );
   let previouslyEditable = false;
+  let shouldRestoreEditFocus = $state(false);
 
   // A parent schema update can discard a dirty draft while this view is
   // remounted with `jsonEditing` false. In that case the textarea disappears,
   // so transfer focus to the stable edit control after the DOM updates.
-  $effect(() => {
+  $effect.pre(() => {
     const isEditable = editable;
-    const textarea = document.getElementById(`${idPrefix}-textarea`);
     const focusMovedFromTextarea =
-      previouslyEditable && !isEditable && document.activeElement === textarea;
+      previouslyEditable && !isEditable && document.activeElement?.id === `${idPrefix}-textarea`;
     previouslyEditable = isEditable;
 
-    if (focusMovedFromTextarea) {
-      void tick().then(() => document.getElementById(`${idPrefix}-edit-json`)?.focus());
-    }
+    if (focusMovedFromTextarea) shouldRestoreEditFocus = true;
+  });
+
+  $effect(() => {
+    if (!shouldRestoreEditFocus) return;
+    shouldRestoreEditFocus = false;
+    void tick().then(() => document.getElementById(`${idPrefix}-edit-json`)?.focus());
   });
 
   async function discardDraft(): Promise<void> {

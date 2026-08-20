@@ -144,6 +144,10 @@
   function settleControlledChange(input: JsonSchemaValue | string) {
     const pendingChange = pendingControlledChange;
     const accepted = pendingChange !== undefined && schemaMatchesChangeEvent(input, pendingChange);
+    const previousAuthority = controlledSchemaAuthority ?? schema;
+    const unchangedAuthority =
+      previousAuthority !== undefined &&
+      controlledSchemaText(previousAuthority) === controlledSchemaText(input);
 
     controlledSchemaAuthority = input;
     synchroniseControlledSchema(input);
@@ -155,7 +159,7 @@
     }
 
     const normalised = normaliseSchemaInput(input);
-    if (pendingChange !== undefined && normalised.ok) {
+    if (pendingChange !== undefined && !unchangedAuthority && normalised.ok) {
       // Parse canonical text a second time so a mutable replacement supplied by
       // the parent cannot become an observer-owned reference.
       const snapshot = normaliseSchemaInput(normalised.canonicalText);

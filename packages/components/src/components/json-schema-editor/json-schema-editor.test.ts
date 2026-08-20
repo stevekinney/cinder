@@ -602,6 +602,7 @@ describe('JsonSchemaEditor — controlled and uncontrolled schema inputs', () =>
 
   test('settles a controlled rejection that restores the previous schema', async () => {
     const changes: string[] = [];
+    const observedChanges: JsonSchemaEditorChangeEvent[] = [];
     const { container } = render(JsonSchemaEditorImplementation, {
       props: {
         id: 'jse-controlled-rejection',
@@ -611,6 +612,7 @@ describe('JsonSchemaEditor — controlled and uncontrolled schema inputs', () =>
           changes.push(event.jsonString);
           return { type: 'string' };
         },
+        onSchemaChange: (event: JsonSchemaEditorChangeEvent) => observedChanges.push(event),
       },
     });
     await flushEffects();
@@ -625,6 +627,7 @@ describe('JsonSchemaEditor — controlled and uncontrolled schema inputs', () =>
     await flushEffects();
 
     expect(changes).toEqual(['{\n  "type": "number"\n}']);
+    expect(observedChanges).toEqual([]);
     expect(editor.getAllByRole('button', { name: 'Edit JSON' }).at(-1)).toBeDefined();
   });
 
