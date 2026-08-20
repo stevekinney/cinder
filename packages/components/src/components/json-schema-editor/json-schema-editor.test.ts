@@ -809,6 +809,66 @@ describe('JsonSchemaEditor — controlled and uncontrolled schema inputs', () =>
     ]);
   });
 
+  test('notifies observers when a parent settles a request with a transformed schema', async () => {
+    const observedChanges: JsonSchemaEditorChangeEvent[] = [];
+    const { rerender } = render(JsonSchemaEditorImplementation, {
+      props: {
+        id: 'jse-controlled-parent-replacement-observer',
+        schema: { type: 'string' },
+        view: 'json' as const,
+        onValueChangeRequest: () => undefined,
+        onSchemaChange: (event: JsonSchemaEditorChangeEvent) => observedChanges.push(event),
+      },
+    });
+    await flushEffects();
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Edit JSON' }));
+    await fireEvent.input(screen.getByRole('textbox', { name: 'JSON' }), {
+      target: { value: '{"type":"boolean"}' },
+    });
+    await fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
+    await rerender({
+      id: 'jse-controlled-parent-replacement-observer',
+      schema: { type: 'number' },
+      view: 'json' as const,
+      onValueChangeRequest: () => undefined,
+      onSchemaChange: (event: JsonSchemaEditorChangeEvent) => observedChanges.push(event),
+    });
+    await flushEffects();
+
+    expect(observedChanges).toEqual([
+      { schema: { type: 'number' }, jsonString: '{\n  "type": "number"\n}' },
+    ]);
+  });
+
+  test('moves focus to the JSON tab when readonly closes a clean editing session', async () => {
+    const { container, rerender } = render(JsonSchemaEditorImplementation, {
+      props: {
+        id: 'jse-readonly-finish-focus',
+        schema: { type: 'string' },
+        view: 'json' as const,
+      },
+    });
+    await flushEffects();
+
+    await fireEvent.click(latestJsonButton(container, 'Edit JSON'));
+    const textarea = latestJsonTextarea(container);
+    expect(document.activeElement).toBe(textarea);
+
+    await rerender({
+      id: 'jse-readonly-finish-focus',
+      schema: { type: 'string' },
+      view: 'json' as const,
+      readonly: true,
+    });
+    await flushEffects();
+    expect(latestJsonTextarea(container).readOnly).toBe(true);
+    await fireEvent.click(within(container).getByRole('button', { name: 'Done' }));
+    await flushEffects();
+
+    expect(document.activeElement).toBe(within(container).getByRole('tab', { name: 'JSON' }));
+  });
+
   test('rejects an invalid fulfilled settlement so another edit can be requested', async () => {
     const requests: string[] = [];
     const { container } = render(JsonSchemaEditorImplementation, {

@@ -231,7 +231,6 @@
     const nextControlledSchemaText = controlledSchemaText(schema);
     if (nextControlledSchemaText === lastControlledSchemaText) return;
     lastControlledSchemaText = nextControlledSchemaText;
-    controlledSchemaAuthority = schema;
     untrack(() => settleControlledChange(schema));
   });
 
@@ -398,7 +397,13 @@
       />
     </TabPanel>
     <TabPanel value="json">
-      <JsonView state={editorState} idPrefix={`${id}-json`} onApply={() => (enumDrafts = {})} />
+      <JsonView
+        state={editorState}
+        idPrefix={`${id}-json`}
+        editorId={id}
+        {readonly}
+        onApply={() => (enumDrafts = {})}
+      />
     </TabPanel>
     <TabPanel value="diff">
       <DiffView state={editorState} />

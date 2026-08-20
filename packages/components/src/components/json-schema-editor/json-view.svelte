@@ -4,6 +4,8 @@
   export type JsonViewProps = {
     state: EditorState;
     idPrefix: string;
+    editorId: string;
+    readonly: boolean;
     onApply?: (() => void) | undefined;
     class?: string;
   };
@@ -26,9 +28,17 @@
   // would compile as a legacy store auto-subscription to that variable
   // instead of the rune call. json-schema-toolbar.svelte uses the same
   // alias for the same reason.
-  let { state: editorState, idPrefix, onApply, class: className }: JsonViewProps = $props();
+  let {
+    state: editorState,
+    idPrefix,
+    editorId,
+    readonly,
+    onApply,
+    class: className,
+  }: JsonViewProps = $props();
 
   async function applyDraft(): Promise<void> {
+    if (isReadonly) return;
     if (await editorState.applyJsonDraft()) {
       await finishEditing();
       onApply?.();
@@ -78,14 +88,16 @@
     return null;
   });
 
+  // The parent prop is the immediate rendering authority. `editorState`
+  // mirrors it in an effect to protect commits, but combining both avoids a
+  // transient editable control during a parent-driven readonly transition.
+  const isReadonly = $derived(readonly || editorState.readonly);
+
   const canApply = $derived(
-    !editorState.readonly &&
-      editorState.jsonDraftIsDirty &&
-      draftParse.ok &&
-      draftMeta?.valid === true,
+    !isReadonly && editorState.jsonDraftIsDirty && draftParse.ok && draftMeta?.valid === true,
   );
 
-  const canDiscard = $derived(editorState.jsonDraftIsDirty && !editorState.readonly);
+  const canDiscard = $derived(editorState.jsonDraftIsDirty && !isReadonly);
   let jsonEditing = $state(false);
   const editable = $derived(
     jsonEditing || editorState.jsonDraftIsDirty || editorState.committedSchema === null,
@@ -97,6 +109,21 @@
   );
   let previouslyEditable = false;
   let shouldRestoreEditFocus = $state(false);
+
+  function focusEditingExitTarget(): void {
+    if (!isReadonly) {
+      const editButton = document.getElementById(`${idPrefix}-edit-json`);
+      if (editButton instanceof HTMLElement) {
+        editButton.focus();
+        return;
+      }
+    }
+
+    document
+      .getElementById(editorId)
+      ?.querySelector<HTMLButtonElement>('[role="tab"][data-cinder-value="json"]')
+      ?.focus();
+  }
 
   // A parent schema update can discard a dirty draft while this view is
   // remounted with `jsonEditing` false. In that case the textarea disappears,
@@ -113,7 +140,7 @@
   $effect(() => {
     if (!shouldRestoreEditFocus) return;
     shouldRestoreEditFocus = false;
-    void tick().then(() => document.getElementById(`${idPrefix}-edit-json`)?.focus());
+    void tick().then(focusEditingExitTarget);
   });
 
   async function discardDraft(): Promise<void> {
@@ -129,7 +156,7 @@
   async function finishEditing(): Promise<void> {
     jsonEditing = false;
     await tick();
-    document.getElementById(`${idPrefix}-edit-json`)?.focus();
+    focusEditingExitTarget();
   }
 
   async function startEditing(): Promise<void> {
@@ -160,7 +187,7 @@
       {:else if editorState.committedSchema !== null}
         <Button variant="secondary" size="sm" onclick={() => void finishEditing()}>Done</Button>
       {/if}
-    {:else if !editorState.readonly}
+    {:else if !isReadonly}
       <Button
         id={`${idPrefix}-edit-json`}
         variant="secondary"
@@ -177,7 +204,7 @@
       id={`${idPrefix}-textarea`}
       label="JSON"
       value={editorState.jsonDraftText}
-      readonly={editorState.readonly}
+      readonly={isReadonly}
       rows={20}
       class="cinder-jse-json-view__textarea"
       oninput={(event: Event) =>
