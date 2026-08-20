@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
 import { DOCUMENTATION_CINDER_COMPONENTS } from './documentation-styles.ts';
@@ -71,9 +71,9 @@ export function documentationComponentStylesheetUrl(
   componentName: string,
 ): string | null {
   if (componentSource.id === CINDER_COMPONENT_SOURCE.id) {
-    return DOCUMENTATION_CINDER_COMPONENT_SET.has(componentName)
-      ? null
-      : `/components/${componentName}/${componentName}.css`;
+    if (DOCUMENTATION_CINDER_COMPONENT_SET.has(componentName)) return null;
+    const stylesheet = join(componentSource.componentsRoot, componentName, `${componentName}.css`);
+    return existsSync(stylesheet) ? `/components/${componentName}/${componentName}.css` : null;
   }
   return componentSource.componentStylesheetUrl(componentName);
 }

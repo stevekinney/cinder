@@ -48,8 +48,14 @@ describe('documentationComponentStylesheetUrl', () => {
   });
 
   it('loads only the documented Cinder component outside the shared stylesheet', () => {
-    expect(documentationComponentStylesheetUrl(CINDER_COMPONENT_SOURCE, 'dialog')).toBe(
-      '/components/dialog/dialog.css',
+    expect(documentationComponentStylesheetUrl(CINDER_COMPONENT_SOURCE, 'dropdown')).toBe(
+      '/components/dropdown/dropdown.css',
     );
+  });
+
+  it('does not link a headless Cinder component to a nonexistent stylesheet', () => {
+    expect(
+      documentationComponentStylesheetUrl(CINDER_COMPONENT_SOURCE, 'click-away-listener'),
+    ).toBeNull();
   });
 });
