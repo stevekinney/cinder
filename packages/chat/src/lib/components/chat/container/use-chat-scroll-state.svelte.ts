@@ -248,15 +248,21 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
   // re-read its target geometry at settlement so callback ordering cannot
   // replay a stale intersection snapshot.
   let pendingSentinelEntry: IntersectionObserverEntry | null = null;
-  // Cancel function for the in-flight withForcedLayout session, if any. A new
-  // session cancels the previous one's listeners/timer before starting its
-  // own — see withForcedLayout below for why this matters.
-  let activeForcedLayoutCancel: (() => void) | null = null;
+  // Release function for the currently-applied forced-layout attribute, if
+  // any. Ownership of WHEN this fires belongs to the enclosing
+  // `withUserScrollGuard` session (its `settle`/`finishUserScrollGuard`/
+  // `clearUserScrollGuard`/`destroy`), not to `withForcedLayout` itself — see
+  // withForcedLayout below for why a self-restoring `scrollend` listener was
+  // unsafe (CIN-418, second round).
+  let activeForcedLayoutRelease: (() => void) | null = null;
   // Cancel function for the in-flight withUserScrollGuard session, if any. A
-  // new session cancels the previous one's timer before starting its own —
-  // same rationale as activeForcedLayoutCancel: without it, an earlier
-  // overlapping guarded scroll's timer could flip isUserScrolling back to
-  // false while a later guarded scroll's animation is still in progress.
+  // new session cancels the previous one's timer before starting its own:
+  // without it, an earlier overlapping guarded scroll's timer could flip
+  // isUserScrolling back to false while a later guarded scroll's animation is
+  // still in progress. Note this deliberately does NOT release
+  // activeForcedLayoutRelease — a superseding session reuses/re-applies the
+  // same forced-layout window on the same viewport rather than tearing it
+  // down and reapplying it.
   let activeUserScrollGuardCancel: (() => void) | null = null;
   let activeUserScrollViewport: HTMLElement | null = null;
   // Where the in-flight guarded scroll is headed, when its initiator declared
@@ -426,8 +432,9 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
 
   /**
    * Forces every row to lay out at its real height before a programmatic
-   * scroll-to-bottom, then restores the content-visibility optimization once
-   * the scroll settles.
+   * scroll, for the caller's `withUserScrollGuard` session to release once
+   * ITS settlement logic (not this function's own timers) decides the
+   * animation is really done.
    *
    * Off-screen `.chat-message` rows use `content-visibility: auto` with a
    * 180px estimate (`contain-intrinsic-size`) until they're painted. Calling
@@ -435,66 +442,50 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
    * target computed from those estimates; as the animation scrolls estimated
    * rows into view, they resize to their real height, which shifts content
    * under the fixed pixel target mid-flight — visible as a jerk right as the
-   * scroll finishes. Forcing layout up front (`data-cinder-force-visible`)
-   * makes the target accurate from the start.
+   * scroll finishes, and (CIN-418) a `scrollHeight` that can read back below
+   * `clientHeight` right as the guard settles, misread as "short transcript,
+   * already at the bottom". Forcing layout up front
+   * (`data-cinder-force-visible`) makes both the initial target and every
+   * later geometry read accurate.
    *
-   * The `scrollend` listener restores the optimization as soon as the
-   * animation actually finishes. The timeout is a backstop for environments
-   * without `scrollend` support and for a zero-distance scroll (already at
-   * the bottom), where neither `scroll` nor `scrollend` ever fires — but it
-   * re-arms on every `scroll` tick rather than firing once on a fixed clock,
-   * so a scroll animation that legitimately runs longer than the backstop
-   * duration (a long transcript, a slower device) can never have the
-   * optimization restored out from under it mid-flight, which would let
-   * off-screen rows resize again before the scroll settles — the exact jerk
-   * this exists to prevent.
+   * This function used to restore the optimization itself, on its own
+   * `scrollend` listener with a scroll-quiet timeout backstop. That was
+   * CIN-418's actual bug (confirmed against real GitHub Actions WebKit,
+   * where the synthetic fake-viewport unit harness below did not reproduce
+   * it): a *stale* `scrollend` — the tail of an unrelated, still-in-flight
+   * scroll session, e.g. a mount-time auto-scroll-to-bottom still settling
+   * when a `scrollToTop()` call fires immediately after — is exactly the
+   * kind of event this listener could not distinguish from its own
+   * animation's completion, because it had no destination check and no
+   * staleness handling the way `withUserScrollGuard`'s own `scrollend`
+   * listener does. `{ once: true }` meant it fired at most once and then
+   * stayed fired: the attribute would get stripped a few frames into the
+   * REAL animation, un-forced `content-visibility: auto` churn would resume
+   * mid-flight, WebKit would stall the animation part-way under CI CPU
+   * pressure, and the guard's own (correct, destination-aware) settlement
+   * logic would then read final geometry against a still-estimated
+   * `scrollHeight` and land on the wrong `atBottom`. Measured: the attribute
+   * was observed present immediately after a `scrollToTop()` click in only
+   * ~1/6 of real CI runs.
    *
-   * A second call before the first session settles (e.g. a double-click on
-   * jump-to-latest, or auto-scroll firing while a prior scroll is still in
-   * flight) cancels the earlier session's listeners/timer first. Without
-   * this, the OLDER session's own scrollend/backstop could still fire and
-   * strip the attribute while the NEWER scroll animation is still running —
-   * the same jerk this whole mechanism exists to prevent, just reintroduced
-   * by an overlapping call instead of a single long one.
+   * There is now exactly one settlement authority — the enclosing guard —
+   * and exactly one release path per session, so a stale event from a
+   * DIFFERENT session can no longer strip this one's forced-layout window.
+   * A caller that applies this more than once within the same guard session
+   * (e.g. `withUserScrollGuard`'s bottom-grew re-issue) is idempotent: the
+   * attribute is already set, and this just re-forces layout for the new
+   * target.
    */
   function withForcedLayout(viewport: HTMLElement, scroll: () => void): void {
-    activeForcedLayoutCancel?.();
-
     viewport.setAttribute('data-cinder-force-visible', '');
     // Force a synchronous layout so scrollHeight (read inside `scroll`)
     // reflects every row's real height, not the content-visibility estimate.
     void viewport.offsetHeight;
 
-    let settled = false;
-    let backstop: ReturnType<typeof setTimeout>;
-    const backstopDuration = reducedMotion.current ? 50 : 500;
-
-    function cancel() {
-      if (settled) return;
-      settled = true;
-      clearTimeout(backstop);
-      viewport.removeEventListener('scrollend', restore);
-      viewport.removeEventListener('scroll', armBackstop);
-    }
-
-    const restore = () => {
-      if (settled) return;
-      cancel();
-      activeForcedLayoutCancel = null;
+    activeForcedLayoutRelease = () => {
+      activeForcedLayoutRelease = null;
       viewport.removeAttribute('data-cinder-force-visible');
     };
-
-    function armBackstop() {
-      clearTimeout(backstop);
-      backstop = setTimeout(restore, backstopDuration);
-    }
-
-    activeForcedLayoutCancel = cancel;
-    viewport.addEventListener('scrollend', restore, { once: true });
-    viewport.addEventListener('scroll', armBackstop, { passive: true });
-    // Covers the zero-distance case (already at bottom): no scroll/scrollend
-    // event will ever fire, so this is the only thing that restores it.
-    armBackstop();
 
     scroll();
   }
@@ -590,7 +581,14 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
       // listener's next rAF recompute can re-fire the auto-stick effect
       // against a stale `atBottom: true` and yank a just-completed top-scroll
       // back to the bottom (#1236).
+      //
+      // Read geometry BEFORE releasing any forced-layout window this session
+      // applied (CIN-418): releasing first snaps `scrollHeight` back to the
+      // content-visibility estimate for whichever rows have since scrolled
+      // off-screen, reintroducing the exact stale-geometry misread this
+      // settlement exists to avoid.
       recomputeFromViewport(viewport);
+      activeForcedLayoutRelease?.();
       applyPendingSentinelEntry(viewport);
       onSettled?.();
     }
@@ -666,6 +664,11 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
     activeUserScrollViewport = null;
     activeUserScrollGuardDestination = null;
     isUserScrolling = false;
+    // Release any forced-layout window this (now-cleared) session held. A
+    // no-op for the virtualized callers of this method, which never apply
+    // forced layout in the first place; guards this method against leaving
+    // `data-cinder-force-visible` stuck on the non-virtualized path too.
+    activeForcedLayoutRelease?.();
     applyPendingSentinelEntry(viewport);
   }
 
@@ -678,7 +681,10 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
     if (activeUserScrollGuardCancel === null) return false;
     const viewport = activeUserScrollViewport;
     const destination = activeUserScrollGuardDestination;
-    clearUserScrollGuard();
+    // Read/apply the destination BEFORE clearing: `clearUserScrollGuard`
+    // releases this session's forced-layout window (CIN-418), which would
+    // snap `scrollHeight` back to the content-visibility estimate and make a
+    // bottom-directed `destination()` read short.
     if (viewport) {
       // Either way this instant scroll aborts the browser's in-flight
       // smooth-scroll animation; with a declared destination it also lands
@@ -688,6 +694,7 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
         behavior: 'instant',
       });
     }
+    clearUserScrollGuard();
     return true;
   }
 
@@ -768,8 +775,7 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
    * `UseChatScrollStateReturn.destroy` for details.
    */
   function destroy(): void {
-    activeForcedLayoutCancel?.();
-    activeForcedLayoutCancel = null;
+    activeForcedLayoutRelease?.();
     activeUserScrollGuardCancel?.();
     activeUserScrollGuardCancel = null;
     activeUserScrollViewport = null;

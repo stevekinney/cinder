@@ -1,12 +1,21 @@
 /**
  * Tests for use-chat-scroll-state.svelte.ts.
  *
- * Focused on the withForcedLayout backstop timing (private helper, exercised
- * through scrollToBottom): a scroll animation that runs LONGER than the
- * backstop duration must never have data-cinder-force-visible restored out
- * from under it mid-flight — that would re-enable content-visibility:auto on
- * off-screen rows before the scroll settles, reproducing the exact jerk the
- * mechanism exists to prevent.
+ * The `withForcedLayout — release ownership (CIN-418, second round)` describe
+ * block below is focused on WHO releases `data-cinder-force-visible` and
+ * WHEN. Release used to be `withForcedLayout`'s own responsibility, armed on
+ * its own `scrollend` listener with a scroll-quiet timeout backstop — that
+ * listener had no destination check, so a STALE `scrollend` from an
+ * unrelated, still-settling scroll session (e.g. a mount-time auto-scroll
+ * whose tail is still in flight when `scrollToTop()` is called immediately
+ * after) would strip the attribute a few frames into the real animation,
+ * long before it actually finished. Confirmed against real GitHub Actions
+ * WebKit: the attribute was observed present immediately after a
+ * `scrollToTop()` click in only ~1/6 of runs. Release now belongs solely to
+ * the enclosing `withUserScrollGuard` session, which already has correct,
+ * destination-aware staleness handling (#1236) — these tests pin that a
+ * stale scrollend can no longer strip the attribute, and that the genuine
+ * one still does.
  */
 
 /// <reference lib="dom" />
@@ -64,101 +73,148 @@ function createIntersectionObserverEntry(
   };
 }
 
-describe('useChatScrollState — withForcedLayout backstop', () => {
-  test('sets data-cinder-force-visible for the duration of scrollToBottom', () => {
+describe('useChatScrollState — withForcedLayout release ownership (CIN-418, second round)', () => {
+  test('sets data-cinder-force-visible synchronously for a scrollToBottom call', () => {
     const state = useChatScrollState();
     const viewport = createViewport();
     state.scrollToBottom(viewport);
     expect(viewport.hasAttribute('data-cinder-force-visible')).toBe(true);
-    viewport.dispatchEvent(new Event('scrollend'));
     viewport.remove();
   });
 
-  test('a scrollend event removes data-cinder-force-visible immediately', () => {
+  test('a STALE scrollend (not at the guard destination) does not strip the attribute — the CIN-418 race', () => {
+    // Reproduces the mechanism confirmed against real GitHub Actions WebKit:
+    // an unrelated scroll session's tail-end scrollend (e.g. a mount-time
+    // auto-scroll-to-bottom still settling) arrives while THIS session's
+    // forced-layout window is active. Before the fix, withForcedLayout's own
+    // `scrollend` listener had no destination check, so it could not tell
+    // this apart from its own animation completing and stripped the
+    // attribute regardless — measured present in only ~1/6 of real runs.
     const state = useChatScrollState();
-    const viewport = createViewport();
-    state.scrollToBottom(viewport);
+    const viewport = createViewport(); // scrollTop 0, scrollHeight 2000, clientHeight 400
+    (viewport as { scrollTop: number }).scrollTop = 1600;
+
+    state.scrollToTop(viewport); // destination: 0
+    expect(viewport.hasAttribute('data-cinder-force-visible')).toBe(true);
+
+    // Stale scrollend from an unrelated, still-settling session — the
+    // viewport hasn't actually moved toward the top yet.
+    viewport.dispatchEvent(new Event('scrollend'));
+    expect(viewport.hasAttribute('data-cinder-force-visible')).toBe(true);
+    expect(state.isUserScrolling).toBe(true);
+
+    // The real animation reaches the top; its OWN scrollend both settles the
+    // guard and releases the forced-layout window it was holding.
+    (viewport as { scrollTop: number }).scrollTop = 0;
     viewport.dispatchEvent(new Event('scrollend'));
     expect(viewport.hasAttribute('data-cinder-force-visible')).toBe(false);
-    viewport.remove();
+    expect(state.isUserScrolling).toBe(false);
   });
 
-  test('repeated scroll ticks past the backstop duration keep it set (no premature restore mid-animation)', () => {
-    jest.useFakeTimers();
+  test('a genuine scrollend at the destination releases the attribute', () => {
     const state = useChatScrollState();
     const viewport = createViewport();
     state.scrollToBottom(viewport);
-
-    // Simulate an animation still actively progressing well past the 500ms
-    // non-reduced-motion backstop duration: a scroll tick every 90ms for
-    // 630ms. Each tick re-arms the backstop before the current arm can fire,
-    // so it must never restore the optimization while ticks keep arriving.
-    for (let i = 0; i < 7; i++) {
-      jest.advanceTimersByTime(90);
-      viewport.dispatchEvent(new Event('scroll'));
-      expect(viewport.hasAttribute('data-cinder-force-visible')).toBe(true);
-    }
+    (viewport as { scrollTop: number }).scrollTop = 1600; // scrollHeight(2000) - clientHeight(400)
+    viewport.dispatchEvent(new Event('scrollend'));
+    expect(viewport.hasAttribute('data-cinder-force-visible')).toBe(false);
   });
 
-  test('once scroll ticks stop arriving, the backstop eventually restores it', () => {
+  test('the scroll-quiet backstop still releases the attribute when no scrollend ever arrives at the destination', () => {
+    // A cancelled or never-completing animation must not leave the
+    // attribute (and the content-visibility override it forces) stuck
+    // forever. The guard's own scroll-quiet backstop is the fallback here,
+    // same as it already is for isUserScrolling — this is the ONE place
+    // release still happens off a timer, and it's the guard's timer, not a
+    // separate one withForcedLayout arms for itself.
     jest.useFakeTimers();
     const state = useChatScrollState();
-    const viewport = createViewport();
+    const viewport = createViewport(); // scrollTo is a no-op stub — scrollTop never moves
     state.scrollToBottom(viewport);
-    viewport.dispatchEvent(new Event('scroll'));
     expect(viewport.hasAttribute('data-cinder-force-visible')).toBe(true);
 
-    // No further ticks — the backstop (500ms, non-reduced-motion) should fire.
     jest.advanceTimersByTime(499);
     expect(viewport.hasAttribute('data-cinder-force-visible')).toBe(true);
     jest.advanceTimersByTime(1);
     expect(viewport.hasAttribute('data-cinder-force-visible')).toBe(false);
   });
 
-  test('a zero-distance scroll (already at bottom, no scroll/scrollend events) still restores via the backstop', () => {
+  test('an overlapping scrollToTop supersedes a still-forced scrollToBottom session and keeps the attribute set throughout', () => {
+    // The successor session reuses the same forced-layout window rather than
+    // tearing it down and reapplying it — the attribute must never flicker
+    // off between the two calls, only the successor's own settlement
+    // releases it.
     jest.useFakeTimers();
     const state = useChatScrollState();
     const viewport = createViewport();
+
     state.scrollToBottom(viewport);
-    // No events dispatched at all — only the initial backstop arm can save us.
-    jest.advanceTimersByTime(499);
     expect(viewport.hasAttribute('data-cinder-force-visible')).toBe(true);
-    jest.advanceTimersByTime(1);
-    expect(viewport.hasAttribute('data-cinder-force-visible')).toBe(false);
-  });
 
-  test('a second scrollToBottom before the first settles cancels the first session (no premature restore from the stale backstop)', () => {
-    jest.useFakeTimers();
-    // Regression guard: overlapping calls (e.g. a double-click on jump-to-
-    // latest, or auto-scroll firing mid-animation) used to leave the OLDER
-    // session's listeners/backstop live. When the OLDER session's backstop
-    // fired on its own original schedule, it stripped the attribute even
-    // though the NEWER session's own (later) backstop hadn't fired yet.
-    //
-    // No scroll ticks are dispatched here deliberately: re-arming would mask
-    // the bug, since (without the fix) a tick re-arms BOTH sessions'
-    // listeners identically and neither timer ever gets to fire on its own.
-    // This test instead lets each session's timer run to its own deadline
-    // untouched, so only the fix (cancelling the older session outright)
-    // prevents the stale one from firing.
-    const state = useChatScrollState();
-    const viewport = createViewport();
-
-    state.scrollToBottom(viewport); // session A: backstop armed for ~500ms from t=0
     jest.advanceTimersByTime(50);
-    state.scrollToBottom(viewport); // session B: backstop armed for ~500ms from t=50
-
-    // At t≈520ms: session A's original (500ms) deadline has passed, but
-    // session B's (550ms) has not. The attribute must still be present —
-    // proving session A's backstop was actually cancelled, not just racing.
-    jest.advanceTimersByTime(470);
+    state.scrollToTop(viewport); // supersedes the bottom session; still forced
     expect(viewport.hasAttribute('data-cinder-force-visible')).toBe(true);
 
-    // Session B's own backstop eventually fires and restores it.
-    jest.advanceTimersByTime(29);
-    expect(viewport.hasAttribute('data-cinder-force-visible')).toBe(true);
-    jest.advanceTimersByTime(1);
+    (viewport as { scrollTop: number }).scrollTop = 0;
+    viewport.dispatchEvent(new Event('scrollend'));
     expect(viewport.hasAttribute('data-cinder-force-visible')).toBe(false);
+  });
+
+  test('destroy releases an in-flight forced-layout window', () => {
+    const state = useChatScrollState();
+    const viewport = createViewport();
+    state.scrollToBottom(viewport);
+    expect(viewport.hasAttribute('data-cinder-force-visible')).toBe(true);
+    state.destroy();
+    expect(viewport.hasAttribute('data-cinder-force-visible')).toBe(false);
+  });
+
+  test('clearUserScrollGuard releases an in-flight forced-layout window', () => {
+    const state = useChatScrollState();
+    const viewport = createViewport();
+    state.scrollToTop(viewport);
+    expect(viewport.hasAttribute('data-cinder-force-visible')).toBe(true);
+    state.clearUserScrollGuard();
+    expect(viewport.hasAttribute('data-cinder-force-visible')).toBe(false);
+  });
+
+  test('finishUserScrollGuard reads the destination against forced (real) geometry, then releases the attribute', () => {
+    // Regression guard: releasing the forced-layout window BEFORE reading
+    // the declared destination would snap scrollHeight back to the
+    // content-visibility estimate and make a bottom-directed destination()
+    // read short.
+    const state = useChatScrollState();
+    const viewport = document.createElement('div');
+    Object.defineProperty(viewport, 'scrollTop', {
+      value: 0,
+      writable: true,
+      configurable: true,
+    });
+    Object.defineProperty(viewport, 'clientHeight', { value: 400, configurable: true });
+    Object.defineProperty(viewport, 'scrollHeight', {
+      configurable: true,
+      get() {
+        // Only the real (forced) height while the attribute is set — the
+        // content-visibility estimate otherwise.
+        return viewport.hasAttribute('data-cinder-force-visible') ? 2000 : 350;
+      },
+    });
+    const scrollCalls: number[] = [];
+    viewport.scrollTo = ((options?: ScrollToOptions | number) => {
+      const top = typeof options === 'number' ? options : (options?.top ?? 0);
+      scrollCalls.push(top);
+      (viewport as { scrollTop: number }).scrollTop = top;
+    }) as typeof viewport.scrollTo;
+    document.body.appendChild(viewport);
+
+    state.jumpToLatest(viewport);
+    expect(scrollCalls).toEqual([2000]);
+
+    state.finishUserScrollGuard();
+    expect(scrollCalls.at(-1)).toBe(2000);
+    expect(viewport.hasAttribute('data-cinder-force-visible')).toBe(false);
+
+    viewport.remove();
   });
 });
 
