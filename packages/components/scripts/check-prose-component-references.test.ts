@@ -1,15 +1,31 @@
 import { describe, expect, test } from 'bun:test';
 
-import { findProseReferenceFailures } from './check-prose-component-references.ts';
+import {
+  componentDocumentationProse,
+  findProseReferenceFailures,
+  proseSourcePaths,
+} from './check-prose-component-references.ts';
 
-const componentNames = new Set(['container', 'page-header']);
-const publicSubpaths = new Set(['icons', 'styles']);
+const componentNames = new Set(['container', 'experimental/live-component', 'page-header']);
+const publicSubpaths = new Set(['button/schema', 'icons', 'styles']);
 
 describe('check-prose-component-references', () => {
   test('flags a genuinely dangling prose component reference', () => {
     expect(
       findProseReferenceFailures({
         source: 'Use `missing-component` instead.',
+        filePath: 'fixture.md',
+        componentNames,
+        exampleIds: new Set(),
+        publicSubpaths,
+      }),
+    ).toEqual([{ reference: 'missing-component', filePath: 'fixture.md' }]);
+  });
+
+  test('flags an unformatted example reference whose id is not registered', () => {
+    expect(
+      findProseReferenceFailures({
+        source: 'Compose container (see its missing-component example).',
         filePath: 'fixture.md',
         componentNames,
         exampleIds: new Set(),
@@ -28,6 +44,46 @@ describe('check-prose-component-references', () => {
         publicSubpaths,
       }),
     ).toEqual([]);
+  });
+
+  test('does not treat platform API identifiers as component references', () => {
+    expect(
+      findProseReferenceFailures({
+        source: 'Use `aria-label` to provide the button name.',
+        filePath: 'fixture.md',
+        componentNames,
+        exampleIds: new Set(),
+        publicSubpaths,
+      }),
+    ).toEqual([]);
+  });
+
+  test('does not treat another Lost Gradient package export as a Cinder component', () => {
+    expect(
+      findProseReferenceFailures({
+        source: 'Use `DiffViewer` from `@lostgradient/editor` for document review.',
+        filePath: 'fixture.md',
+        componentNames,
+        exampleIds: new Set(),
+        publicSubpaths,
+      }),
+    ).toEqual([]);
+  });
+
+  test('only scans component guidance rather than implementation or API documentation', () => {
+    expect(
+      componentDocumentationProse(
+        'button.svelte',
+        '<script>const label = `aria-label`;</script>\n<script module>/** @avoidWhen Use missing-component instead. */</script>',
+      ),
+    ).toContain('missing-component');
+    expect(
+      componentDocumentationProse(
+        'button.a11y.md',
+        'Use `aria-label` for a name.\n\n## Avoid when\n\n- Use missing-component instead.\n\n## Next',
+      ),
+    ).toContain('missing-component');
+    expect(componentDocumentationProse('button.a11y.md', 'Use `aria-label` for a name.')).toBe('');
   });
 
   test('checks prose in generated manifest metadata and package imports', () => {
@@ -62,5 +118,28 @@ describe('check-prose-component-references', () => {
         publicSubpaths,
       }),
     ).toEqual([]);
+  });
+
+  test('does not let example ids or parent directories validate imports', () => {
+    expect(
+      findProseReferenceFailures({
+        source:
+          "import '@lostgradient/cinder/missing-component'; import '@lostgradient/cinder/experimental/missing-component';",
+        filePath: 'fixture.svelte',
+        componentNames,
+        exampleIds: new Set(['missing-component']),
+        publicSubpaths,
+      }),
+    ).toEqual([
+      { reference: 'missing-component', filePath: 'fixture.svelte' },
+      { reference: 'experimental/missing-component', filePath: 'fixture.svelte' },
+    ]);
+  });
+
+  test('enumerates component prose files and the generated manifest', async () => {
+    const files = await proseSourcePaths();
+    expect(files).toContain('components.json');
+    expect(files.some((filePath) => filePath.endsWith('/button.svelte'))).toBe(true);
+    expect(files.some((filePath) => filePath.endsWith('/button/README.md'))).toBe(true);
   });
 });

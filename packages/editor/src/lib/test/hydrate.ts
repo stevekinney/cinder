@@ -202,9 +202,17 @@ export async function renderThenHydrate<Props extends Record<string, unknown>>(
     console.warn = (...args: unknown[]) => {
       warnings.push(args.map((argument) => String(argument)).join(' '));
     };
+    let hydratedExports: Record<string, unknown> | undefined;
+    let clientRuntime: typeof import('svelte') | undefined;
     try {
-      const { hydrate } = (await import(clientRuntimeUrl)) as typeof import('svelte');
-      hydrate(clientModule.default, { target: container, props });
+      clientRuntime = (await import(clientRuntimeUrl)) as typeof import('svelte');
+      hydratedExports = clientRuntime.hydrate<Props, Record<string, unknown>>(
+        clientModule.default,
+        {
+          target: container,
+          props,
+        },
+      );
     } finally {
       console.warn = originalWarn;
     }
@@ -214,6 +222,9 @@ export async function renderThenHydrate<Props extends Record<string, unknown>>(
       warnings,
       container,
       cleanup: () => {
+        if (hydratedExports && clientRuntime) {
+          void clientRuntime.unmount(hydratedExports, { outro: false });
+        }
         container?.remove();
         removeTemporaryFiles();
       },
