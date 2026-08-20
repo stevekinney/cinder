@@ -453,6 +453,8 @@ describe('JsonSchemaEditor — controlled and uncontrolled schema inputs', () =>
     });
     await flushEffects();
 
-    expect(screen.getByRole('textbox', { name: 'JSON' }).value).toBe('{\n  "type": "boolean"\n}');
+    expect(
+      document.querySelector<HTMLTextAreaElement>('textarea.cinder-jse-json-view__textarea')?.value,
+    ).toBe('{\n  "type": "boolean"\n}');
   });
 });
