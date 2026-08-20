@@ -27,7 +27,7 @@ export function resolveCinderSourceSubpath(specifier: string): string | undefine
   if (!subpath || subpath.includes('/')) return undefined;
   const sourcePath =
     subpath === 'icons'
-      ? join(cinderSourceRoot, 'icons', 'index.ts')
+      ? join(cinderSourceRoot, 'components', 'icons', 'index.ts')
       : join(cinderSourceRoot, 'components', subpath, 'index.ts');
   return existsSync(sourcePath) ? sourcePath : undefined;
 }
@@ -49,10 +49,7 @@ function compilePlugin(generate: 'client' | 'server'): BunPlugin {
         if (!isFileSpecifier(path)) return undefined;
         const baseDirectory = importer ? dirname(importer) : resolveDir;
         const resolvedPath = isAbsolute(path) ? path : resolve(baseDirectory, path);
-        return {
-          path: existsSync(resolvedPath) ? resolvedPath : `${resolvedPath}.ts`,
-          namespace,
-        };
+        return existsSync(resolvedPath) ? { path: resolvedPath, namespace } : undefined;
       });
 
       builder.onLoad({ filter: /\.svelte$/, namespace }, async ({ path }) => {
@@ -83,6 +80,16 @@ function compilePlugin(generate: 'client' | 'server'): BunPlugin {
         });
         return { contents: result.js.code, loader: 'js' };
       });
+
+      builder.onResolve({ filter: /\.js$/ }, ({ path, importer, resolveDir }) => {
+        if (!isFileSpecifier(path)) return undefined;
+        const baseDirectory = importer ? dirname(importer) : resolveDir;
+        const resolvedPath = isAbsolute(path) ? path : resolve(baseDirectory, path);
+        if (existsSync(resolvedPath)) return { path: resolvedPath };
+
+        const typescriptPath = resolvedPath.replace(/\.js$/, '.ts');
+        return existsSync(typescriptPath) ? { path: typescriptPath } : undefined;
+      });
     },
   };
 }
@@ -95,7 +102,14 @@ async function buildComponentCode(
     entrypoints: [sourcePath],
     target: 'bun',
     conditions: generate === 'client' ? ['browser', 'svelte'] : ['svelte'],
-    external: ['svelte', 'svelte/*'],
+    external: [
+      'svelte',
+      'svelte/*',
+      'lucide-svelte',
+      'lucide-svelte/*',
+      '@lostgradient/markdown',
+      '@lostgradient/markdown/*',
+    ],
     plugins: [compilePlugin(generate)],
   });
   if (!build.success) {
