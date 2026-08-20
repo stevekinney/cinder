@@ -265,24 +265,30 @@ jobs:
         run: bun run --filter=@lostgradient/markdown publish:release -- --skip-validation
         env:
           NPM_CONFIG_PROVENANCE: 'true'
+          # npm's provenance signer needs OpenSSL's legacy provider on the
+          # GitHub-hosted Node runtime (ERR_OSSL_NO_DEFAULT_DIGEST).
+          NODE_OPTIONS: --openssl-legacy-provider
 
       - name: Publish validated Cinder package artifact to npm
         if: github.event_name == 'push' && steps.changesets.outputs.hasChangesets == 'false'
         run: bun run --filter=@lostgradient/cinder publish:release -- --skip-validation
         env:
           NPM_CONFIG_PROVENANCE: 'true'
+          NODE_OPTIONS: --openssl-legacy-provider
 
       - name: Publish validated Editor package artifact to npm
         if: github.event_name == 'push' && steps.changesets.outputs.hasChangesets == 'false'
         run: bun run --filter=@lostgradient/editor publish:release -- --skip-validation
         env:
           NPM_CONFIG_PROVENANCE: 'true'
+          NODE_OPTIONS: --openssl-legacy-provider
 
       - name: Publish validated Chat package artifact to npm
         if: github.event_name == 'push' && steps.changesets.outputs.hasChangesets == 'false'
         run: bun run --filter=@lostgradient/chat publish:release -- --skip-validation
         env:
           NPM_CONFIG_PROVENANCE: 'true'
+          NODE_OPTIONS: --openssl-legacy-provider
 
       # cinder-mcp publishes LAST, deliberately out of the peer-DAG order used
       # above. Nothing peers on or depends on it — it is a leaf that consumes
@@ -301,6 +307,7 @@ jobs:
         run: bun run --filter=@lostgradient/cinder-mcp publish:release -- --skip-validation
         env:
           NPM_CONFIG_PROVENANCE: 'true'
+          NODE_OPTIONS: --openssl-legacy-provider
 
       # Diagnostic dry-run: publish the same staged tarball that
       # validate:consumer installs into the fixture apps.

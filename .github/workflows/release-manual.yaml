@@ -295,6 +295,8 @@ jobs:
       - name: Publish to npm
         env:
           NPM_CONFIG_PROVENANCE: 'true'
+          # Keep break-glass provenance signing aligned with the trusted path.
+          NODE_OPTIONS: --openssl-legacy-provider
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: bun run --filter=${{ steps.package.outputs.name }} publish:release -- --skip-validation
