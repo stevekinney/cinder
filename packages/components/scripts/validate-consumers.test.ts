@@ -3,6 +3,7 @@ import { join } from 'node:path';
 
 import { getPackFileName } from './publish-release.ts';
 import { packageTarballPath } from './report-package-weight.ts';
+import type { SvelteKitChatHydrationDevServerOptions } from './validate-consumers.ts';
 import {
   bumpPackageVersion,
   chatPeerValidationTarballPath,
@@ -11,13 +12,14 @@ import {
   preoptimizeSvelteKitChatHydration,
   resolveChatFixtureCinderVersion,
   runBoundedHydrationTeardown,
+  startSvelteKitChatHydrationDevServer,
   stopDevelopmentServer,
   SVELTEKIT_HYDRATION_ROUTES,
   unreclaimedTeardownFailures,
 } from './validate-consumers.ts';
 
 describe('SvelteKit Chat hydration optimizer preflight', () => {
-  test('finishes forced dependency optimization before starting route readiness', async () => {
+  test('forces dependency optimization under the Chat hydration environment', async () => {
     const runCommand = mock(async () => ({ exitCode: 0, stdout: 'optimized', stderr: '' }));
 
     await preoptimizeSvelteKitChatHydration('/fixture', runCommand);
@@ -26,7 +28,11 @@ describe('SvelteKit Chat hydration optimizer preflight', () => {
       cwd: '/fixture',
       stdout: 'pipe',
       stderr: 'pipe',
-      environment: expect.objectContaining({ CINDER_CHAT_DEV_HYDRATION: '1' }),
+      environment: {
+        CINDER_CHAT_DEV_HYDRATION: '1',
+        LANG: 'en_US.UTF-8',
+        TZ: 'UTC',
+      },
     });
   });
 
@@ -38,8 +44,56 @@ describe('SvelteKit Chat hydration optimizer preflight', () => {
     }));
 
     await expect(preoptimizeSvelteKitChatHydration('/fixture', runCommand)).rejects.toThrow(
-      'Vite dependency optimization failed before Chat hydration readiness',
+      'Vite dependency optimization failed before Chat hydration readiness:\noptimizer output\noptimizer failure',
     );
+  });
+
+  test('awaits optimization before starting Vite dev without forced reoptimization', async () => {
+    const events: string[] = [];
+    let finishOptimization!: () => void;
+    const optimizationGate = new Promise<void>((resolve) => {
+      finishOptimization = resolve;
+    });
+    const preoptimize = mock(async () => {
+      events.push('optimize:start');
+      await optimizationGate;
+      events.push('optimize:finish');
+    });
+    const fakeServer = {} as Bun.ReadableSubprocess;
+    const startServer = mock(
+      (_command: string[], _options: SvelteKitChatHydrationDevServerOptions) => {
+        events.push('server:start');
+        return fakeServer;
+      },
+    );
+
+    const serverPromise = startSvelteKitChatHydrationDevServer('/fixture', 4_321, {
+      preoptimize,
+      startServer,
+    });
+    await Promise.resolve();
+
+    expect(events).toEqual(['optimize:start']);
+    expect(startServer).not.toHaveBeenCalled();
+
+    finishOptimization();
+    await expect(serverPromise).resolves.toBe(fakeServer);
+    expect(events).toEqual(['optimize:start', 'optimize:finish', 'server:start']);
+    expect(startServer).toHaveBeenCalledWith(
+      ['bunx', 'vite', 'dev', '--host', '127.0.0.1', '--port', '4321', '--strictPort'],
+      expect.objectContaining({
+        cwd: '/fixture',
+        detached: true,
+        env: expect.objectContaining({
+          CINDER_CHAT_DEV_HYDRATION: '1',
+          LANG: 'en_US.UTF-8',
+          TZ: 'UTC',
+        }),
+        stderr: 'pipe',
+        stdout: 'pipe',
+      }),
+    );
+    expect(startServer.mock.calls[0]?.[0]).not.toContain('--force');
   });
 });
 

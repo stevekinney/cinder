@@ -1368,14 +1368,33 @@ const svelteKitChatHydrationEnvironment = {
   LANG: 'en_US.UTF-8',
 };
 
-async function assertSvelteKitDevChatHydrationRoute(
+export type SvelteKitChatHydrationDevServerOptions = {
+  cwd: string;
+  detached: true;
+  stdout: 'pipe';
+  stderr: 'pipe';
+  env: Record<string, string | undefined>;
+};
+
+type SvelteKitChatHydrationDevServerDependencies = {
+  preoptimize?: (fixtureDirectory: string) => Promise<void>;
+  startServer?: (
+    command: string[],
+    options: SvelteKitChatHydrationDevServerOptions,
+  ) => Bun.ReadableSubprocess;
+};
+
+export async function startSvelteKitChatHydrationDevServer(
   fixtureDirectory: string,
-  label: string,
-): Promise<void> {
-  await preoptimizeSvelteKitChatHydration(fixtureDirectory);
-  const httpPort = await pickEphemeralPort();
-  let hydrationAssertionsPassed = false;
-  const devServer = Bun.spawn(
+  httpPort: number,
+  dependencies: SvelteKitChatHydrationDevServerDependencies = {},
+): Promise<Bun.ReadableSubprocess> {
+  await (dependencies.preoptimize ?? preoptimizeSvelteKitChatHydration)(fixtureDirectory);
+  const startServer =
+    dependencies.startServer ??
+    ((command: string[], options: SvelteKitChatHydrationDevServerOptions) =>
+      Bun.spawn(command, options));
+  return startServer(
     ['bunx', 'vite', 'dev', '--host', '127.0.0.1', '--port', String(httpPort), '--strictPort'],
     {
       cwd: fixtureDirectory,
@@ -1388,6 +1407,15 @@ async function assertSvelteKitDevChatHydrationRoute(
       },
     },
   );
+}
+
+async function assertSvelteKitDevChatHydrationRoute(
+  fixtureDirectory: string,
+  label: string,
+): Promise<void> {
+  const httpPort = await pickEphemeralPort();
+  let hydrationAssertionsPassed = false;
+  const devServer = await startSvelteKitChatHydrationDevServer(fixtureDirectory, httpPort);
   const unregisterDevServerProcessGroup = registerHookProcessGroup(devServer.pid);
   const devServerStdout = devServer.stdout
     ? new Response(devServer.stdout).text()
