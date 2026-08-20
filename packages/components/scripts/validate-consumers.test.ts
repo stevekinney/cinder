@@ -10,6 +10,7 @@ import {
   EXAMPLES_CONSUMER_READINESS_PATH,
   parseHydrationBrowserProcessIds,
   preoptimizeSvelteKitChatHydration,
+  prepareSvelteKitChatHydrationDevServer,
   resolveChatFixtureCinderVersion,
   runBoundedHydrationTeardown,
   startSvelteKitChatHydrationDevServer,
@@ -103,6 +104,28 @@ describe('SvelteKit Chat hydration optimizer preflight', () => {
       }),
     );
     expect(startServer.mock.calls[0]?.[0]).not.toContain('--force');
+  });
+
+  test('does not reserve a port or start Vite when optimization fails', async () => {
+    const optimizerError = new Error('optimizer failed');
+    const preoptimize = mock(async () => {
+      throw optimizerError;
+    });
+    const pickPort = mock(async () => 4_321);
+    const startServer = mock(
+      (_command: string[], _options: SvelteKitChatHydrationDevServerOptions) =>
+        ({}) as Bun.ReadableSubprocess,
+    );
+
+    await expect(
+      prepareSvelteKitChatHydrationDevServer('/fixture', 'latest', {
+        pickPort,
+        preoptimize,
+        startServer,
+      }),
+    ).rejects.toBe(optimizerError);
+    expect(pickPort).not.toHaveBeenCalled();
+    expect(startServer).not.toHaveBeenCalled();
   });
 });
 

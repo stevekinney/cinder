@@ -1383,6 +1383,12 @@ type SvelteKitChatHydrationDevServerDependencies = {
   ) => Bun.ReadableSubprocess;
 };
 
+type SvelteKitChatHydrationPreparationDependencies = SvelteKitChatHydrationDevServerDependencies & {
+  now?: () => number;
+  pickPort?: () => Promise<number>;
+  preoptimize?: (fixtureDirectory: string, signal: AbortSignal) => Promise<void>;
+};
+
 export function startSvelteKitChatHydrationDevServer(
   fixtureDirectory: string,
   httpPort: number,
@@ -1407,15 +1413,25 @@ export function startSvelteKitChatHydrationDevServer(
   );
 }
 
-async function assertSvelteKitDevChatHydrationRoute(
+export async function prepareSvelteKitChatHydrationDevServer(
   fixtureDirectory: string,
   label: string,
-): Promise<void> {
-  const readinessDeadline = Date.now() + SVELTEKIT_DEV_SSR_READINESS_TIMEOUT_MS;
+  dependencies: SvelteKitChatHydrationPreparationDependencies = {},
+): Promise<{
+  devServer: Bun.ReadableSubprocess;
+  httpPort: number;
+  remainingReadinessBudget: number;
+}> {
+  const now = dependencies.now ?? Date.now;
+  const readinessDeadline = now() + SVELTEKIT_DEV_SSR_READINESS_TIMEOUT_MS;
   const optimizationSignal = AbortSignal.timeout(SVELTEKIT_DEV_SSR_READINESS_TIMEOUT_MS);
-  await preoptimizeSvelteKitChatHydration(fixtureDirectory, undefined, optimizationSignal);
+  const preoptimize =
+    dependencies.preoptimize ??
+    ((directory: string, signal: AbortSignal) =>
+      preoptimizeSvelteKitChatHydration(directory, undefined, signal));
+  await preoptimize(fixtureDirectory, optimizationSignal);
 
-  const remainingReadinessBudget = readinessDeadline - Date.now();
+  const remainingReadinessBudget = readinessDeadline - now();
   if (remainingReadinessBudget <= 0) {
     fail(
       `sveltekit-consumer ${label} /chat-layout dependency optimization exhausted its shared ${SVELTEKIT_DEV_SSR_READINESS_TIMEOUT_MS}ms readiness budget`,
@@ -1424,9 +1440,22 @@ async function assertSvelteKitDevChatHydrationRoute(
 
   // Reserve a port only after pre-optimization, so another process cannot
   // claim this short-lived probe reservation while Vite is still working.
-  const httpPort = await pickEphemeralPort();
+  const httpPort = await (dependencies.pickPort ?? pickEphemeralPort)();
+  const devServer = startSvelteKitChatHydrationDevServer(
+    fixtureDirectory,
+    httpPort,
+    dependencies.startServer === undefined ? {} : { startServer: dependencies.startServer },
+  );
+  return { devServer, httpPort, remainingReadinessBudget };
+}
+
+async function assertSvelteKitDevChatHydrationRoute(
+  fixtureDirectory: string,
+  label: string,
+): Promise<void> {
   let hydrationAssertionsPassed = false;
-  const devServer = startSvelteKitChatHydrationDevServer(fixtureDirectory, httpPort);
+  const { devServer, httpPort, remainingReadinessBudget } =
+    await prepareSvelteKitChatHydrationDevServer(fixtureDirectory, label);
   const unregisterDevServerProcessGroup = registerHookProcessGroup(devServer.pid);
   const devServerStdout = devServer.stdout
     ? new Response(devServer.stdout).text()
