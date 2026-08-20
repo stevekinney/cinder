@@ -79,13 +79,12 @@ export function isTestFile(repoRelativePath: string): boolean {
  * written to disk at test time — they never create a component→component edge.
  * Keyed by repo-relative POSIX path.
  *
- * INVARIANT: every entry MUST be under `packages/components/src/test/`, which
- * itself force-fulls when changed (see {@link pathForceFullReason}). This keeps
- * the allow-list strictly test-harness-scoped: it exists only so the GLOBAL
- * unmodellable scan in {@link computeScope} does not force-full on every run for
- * these dormant harness imports — it can NEVER be used to wave through a
- * computed import in real component source (that still force-fulls). The
- * invariant is enforced by a unit test and by {@link assertNoUnmodellableImports}.
+ * INVARIANT: every entry MUST be a package test helper in a `src` test directory.
+ * This keeps the allow-list strictly test-harness-scoped: it exists only so the
+ * GLOBAL unmodellable scan in {@link computeScope} does not force-full on every
+ * run for dormant generated-artifact imports — it can NEVER be used to wave
+ * through a computed import in real component source (that still force-fulls).
+ * The invariant is enforced by a unit test and by {@link assertNoUnmodellableImports}.
  */
 export const UNMODELLABLE_IMPORT_ALLOWLIST: ReadonlySet<string> = new Set([
   'packages/components/src/test/hydrate.ts',
@@ -101,6 +100,10 @@ export const UNMODELLABLE_IMPORT_ALLOWLIST: ReadonlySet<string> = new Set([
   // `window`. The specifier is a runtime string, so it cannot model a static
   // component→component edge — and only test files call it.
   'packages/components/src/test/import-without-dom-globals.ts',
+  // The Editor hydration helper imports the temporary client/server bundles it
+  // produces for each test. Those bundles are generated artifacts rather than
+  // tracked component source, so they cannot add a hidden graph edge.
+  'packages/editor/src/lib/test/hydrate.ts',
 ]);
 
 // ---------------------------------------------------------------------------

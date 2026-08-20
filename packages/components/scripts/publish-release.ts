@@ -51,6 +51,11 @@ function getPublishArguments(tarballPath: string, dryRun: boolean): string[] {
   return dryRun ? ['publish', tarballPath, '--dry-run'] : ['publish', tarballPath];
 }
 
+/** Build the Node-owned command that runs npm publish outside Bun's TLS runtime. */
+export function nodePublishCommand(nodeExecutable: string, publishArguments: string[]): string[] {
+  return [nodeExecutable, join(scriptDirectory, 'npm-publish.mjs'), ...publishArguments];
+}
+
 async function validateConsumerArtifact(packageRootPath: string): Promise<void> {
   const validationResult = await $`bun run validate:consumer`.cwd(packageRootPath).nothrow();
   if (validationResult.exitCode !== 0) {
@@ -156,15 +161,20 @@ async function main(): Promise<void> {
       versionExists: packageVersionExists,
       artifactExists: existsSync,
       validateConsumerArtifact: () => validateConsumerArtifact(packageRoot),
-      spawnPublish: (publishArguments) =>
-        Bun.spawnSync(['npm', ...publishArguments], {
+      spawnPublish: (publishArguments) => {
+        const nodeExecutable = Bun.which('node');
+        if (!nodeExecutable) {
+          throw new Error('publish-release requires Node to execute npm publish.');
+        }
+        return Bun.spawnSync(nodePublishCommand(nodeExecutable, publishArguments), {
           cwd: packageRoot,
           stdio: ['inherit', 'inherit', 'inherit'],
           env: {
             ...Bun.env,
             NPM_CONFIG_PROVENANCE: Bun.env['NPM_CONFIG_PROVENANCE'] ?? 'true',
           },
-        }),
+        });
+      },
       writeOutput: (message) => {
         process.stdout.write(message);
       },

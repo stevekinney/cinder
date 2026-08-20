@@ -50,7 +50,6 @@ const desktop = VIEWPORTS.find((viewport) => viewport.name === 'desktop')!;
 // runtime `$props.id()` value this test would have no way to predict.
 const EDITOR_ID = 'example-mount-scroll-and-sidebar-review-editor';
 const MOUNT_SELECTOR = '#example-mount-scroll-and-sidebar';
-
 async function openExample(componentPage: ComponentPage): Promise<{ page: Page; mount: Locator }> {
   const page = await componentPage.open({
     entry: reviewEditorEntry,
@@ -102,6 +101,9 @@ function anchor(mount: Locator, threadId: string): Locator {
  * instead of the bug.
  */
 async function installPausedClock(page: Page): Promise<void> {
+  // Pause at the current real instant rather than an artificial fixed offset.
+  // The protocol round trip after install can advance an unfrozen fake clock,
+  // so a target derived from a static timestamp could be in the past.
   await page.clock.install();
   await page.clock.pauseAt(new Date());
 }

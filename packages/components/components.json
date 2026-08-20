@@ -2838,7 +2838,7 @@
           "reason": "The dataset is bounded and benefits from discrete jumps — use `Pagination` instead."
         }
       ],
-      "related": ["pagination"],
+      "related": ["pagination", "virtual-list"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
@@ -5478,7 +5478,7 @@
           "reason": "Rendering columns or two-dimensional grids — use data-grid for grid semantics and column virtualization."
         }
       ],
-      "related": ["data-list", "data-table", "data-grid"],
+      "related": ["data-list", "data-table", "data-grid", "load-more"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {

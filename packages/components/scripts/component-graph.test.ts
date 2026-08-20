@@ -631,9 +631,9 @@ describe('no-unmodellable-imports guard (real tree)', () => {
     expect(() => assertNoAmbiguousImports(sourceFiles)).not.toThrow();
   });
 
-  it('every allow-list entry is under src/test/ (cannot wave through component source)', () => {
+  it('every allow-list entry is a test helper (cannot wave through component source)', () => {
     for (const entry of UNMODELLABLE_IMPORT_ALLOWLIST) {
-      expect(entry.startsWith('packages/components/src/test/')).toBe(true);
+      expect(entry).toMatch(/^packages\/[^/]+\/src\/(?:.+\/)?test\//);
     }
   });
 

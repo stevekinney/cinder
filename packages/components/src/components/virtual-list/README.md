@@ -4,6 +4,8 @@ Fixed-height windowing primitive for long append-only lists. VirtualList owns a
 native vertical scroll container and renders only the visible rows plus overscan;
 you own the row markup through the `row` snippet.
 
+Use `VirtualList` to window an already-loaded large collection. Use [`LoadMore`](../load-more/README.md) to fetch another page as the reader reaches the end of a growing result set; the two can be composed when a paginated collection also needs windowed rendering.
+
 Version 1 requires a fixed `itemHeight` in pixels. Variable or measured row
 heights are intentionally out of scope for this primitive.
 

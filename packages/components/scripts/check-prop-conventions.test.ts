@@ -140,6 +140,8 @@ describe('check-prop-conventions type-aware surface pass', () => {
       'export type HiddenHelperProps = Helper & { id?: string };',
     ].join('\n'),
     'banned-name': 'export type BannedNameProps = { hideLabel?: boolean };',
+    'duplicate-concept':
+      'export type DuplicateConceptProps = { onValueChange?: (value: string) => void; onChangeValue?: (value: string) => void };',
     'pointer-forward':
       'export type PointerForwardProps = { onpointerdown?: (event: PointerEvent) => void; onwheel?: (event: WheelEvent) => void };',
     'non-callable':
@@ -329,5 +331,12 @@ describe('check-prop-conventions type-aware surface pass', () => {
   test('flags a banned name resolved through the surface', () => {
     const violations = violationsByFixture.get('banned-name') ?? [];
     expect(violations.some((violation) => violation.message.includes('labelVisible'))).toBe(true);
+  });
+
+  test('flags a novel reordered spelling for an existing prop concept', () => {
+    const violations = violationsByFixture.get('duplicate-concept') ?? [];
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.propName).toBe('onChangeValue');
+    expect(violations[0]?.message).toContain('onValueChange concept');
   });
 });

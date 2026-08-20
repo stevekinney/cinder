@@ -35,4 +35,4 @@ When StatisticGroup accepts snippets or arbitrary children, the caller owns the 
 - Inspect the accessible name, role, and state in browser accessibility tools.
 - Check forced-colors mode when the component adds borders, focus rings, selected state, or status color.
 
-Related components: `stat`.
+Related components: `statistic`.

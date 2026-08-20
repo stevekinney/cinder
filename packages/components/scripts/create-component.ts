@@ -52,6 +52,8 @@ import { existsSync } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 
+import { collectPropConventionViolations } from './check-prop-conventions.ts';
+
 const PACKAGE_ROOT = join(import.meta.dir, '..');
 const PACKAGES_ROOT = join(PACKAGE_ROOT, '..');
 const COMPONENTS_DIR = join(PACKAGE_ROOT, 'src', 'components');
@@ -177,13 +179,28 @@ export function renderTypes(context: CreationContext): string {
 import type { HTMLAttributes } from 'svelte/elements';
 
 /** Props for the ${pascalName} component. */
-export type ${pascalName}Props = HTMLAttributes<HTMLDivElement> & {
+export type ${pascalName}Props = Omit<HTMLAttributes<HTMLDivElement>, 'class'> & {
   /** Custom class merged with \`.cinder-${name}\`. */
   class?: string;
   /** Rendered content. */
   children: Snippet;
 };
 `;
+}
+
+/** Reject a scaffold template change that would immediately violate the public prop vocabulary. */
+export function assertScaffoldPropConventions(context: CreationContext): void {
+  const filePath = `src/components/${context.relativeDirectory}/${context.name}.types.ts`;
+  const violations = collectPropConventionViolations(renderTypes(context), filePath);
+  if (violations.length === 0) return;
+  throw new Error(
+    [
+      'component scaffold violates the public prop vocabulary:',
+      ...violations.map(
+        (violation) => `${violation.filePath}:${violation.line}: ${violation.message}`,
+      ),
+    ].join('\n'),
+  );
 }
 
 /** Render the directory's `index.ts` barrel: default + named export + props type. */
@@ -403,6 +420,7 @@ export interface PlannedFile {
  */
 export function planFiles(context: CreationContext): PlannedFile[] {
   const { name, directory, examplesDirectory } = context;
+  assertScaffoldPropConventions(context);
   return [
     { path: join(directory, `${name}.svelte`), content: renderSvelte(context) },
     { path: join(directory, `${name}.types.ts`), content: renderTypes(context) },

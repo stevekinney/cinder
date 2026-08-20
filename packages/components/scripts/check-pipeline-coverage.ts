@@ -197,6 +197,11 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
     reason:
       'AST guard for public component prop vocabulary. Member of lint:invariants — same layer set.',
   },
+  'check:prose-component-references': {
+    layers: ['unit-tests', 'main-green'],
+    reason:
+      'Member of lint:invariants — validates prose component references while resolving example ids separately.',
+  },
   'check:test-cleanup': {
     layers: ['unit-tests', 'main-green'],
     reason: 'Member of lint:invariants — same layer set.',

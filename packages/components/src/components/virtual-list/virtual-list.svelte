@@ -11,7 +11,7 @@
    * @useWhen You need a reusable primitive that owns native vertical scrolling but leaves row markup to a snippet.
    * @avoidWhen Rows have substantially variable heights that must be measured dynamically — v1 requires a fixed itemHeight.
    * @avoidWhen Rendering columns or two-dimensional grids — use data-grid for grid semantics and column virtualization.
-   * @related data-list, data-table, data-grid
+   * @related data-list, data-table, data-grid, load-more
    */
   export type { VirtualListProps, VirtualListRowContext } from './virtual-list.types.ts';
   export type {

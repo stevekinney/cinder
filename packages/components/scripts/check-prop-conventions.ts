@@ -219,6 +219,25 @@ function isNativePassthroughHandlerType(propType: ts.Type, checker: ts.TypeCheck
 
 const booleanPrefixPattern = /^(show|allow|use|hide|disable|disallow)[A-Z]/;
 
+/**
+ * Words, not their order, identify a public prop concept. `onValueChange`
+ * and `onChangeValue` therefore collide even when neither spelling appears
+ * in the frozen redirect vocabulary. That catches novel duplicate names
+ * without pretending a static checker can infer unrelated English synonyms.
+ */
+export function propConceptKey(propName: string): string | undefined {
+  if (propName === 'class' || propName.startsWith('aria-') || propName.startsWith('data-')) {
+    return undefined;
+  }
+  const words = propName.match(/[A-Z]+(?=[A-Z][a-z]|$)|[A-Z]?[a-z]+|\d+/g);
+  return words && words.length > 1
+    ? words
+        .map((word) => word.toLowerCase())
+        .toSorted()
+        .join('\u0000')
+    : undefined;
+}
+
 // `any`/`unknown` tell the checker nothing, so the name-based ban stands
 // rather than silently lapsing on exactly the surfaces the checker is least
 // able to vouch for.
@@ -397,6 +416,7 @@ export function collectResolvedSurfaceViolations(
   const checker = program.getTypeChecker();
   const violations = new Map<string, PropConventionViolation>();
   const typesFileSet = new Set(typesFiles.map((file) => resolve(file)));
+  const concepts = new Map<string, { propName: string; filePath: string; line: number }>();
 
   const record = (violation: PropConventionViolation) => {
     violations.set(
@@ -422,6 +442,23 @@ export function collectResolvedSurfaceViolations(
           const bannedMessage = bannedNames.get(propName);
           if (bannedMessage) {
             record({ filePath, line, propName, message: bannedMessage });
+          }
+
+          const conceptKey = propConceptKey(propName);
+          if (conceptKey) {
+            const existing = concepts.get(conceptKey);
+            if (existing && existing.propName !== propName) {
+              record({
+                filePath,
+                line,
+                propName,
+                message:
+                  `Duplicates the existing ${existing.propName} concept at ` +
+                  `${existing.filePath}:${existing.line}; use one public name for one concept.`,
+              });
+            } else if (!existing) {
+              concepts.set(conceptKey, { propName, filePath, line });
+            }
           }
 
           if (booleanPrefixPattern.test(propName)) {

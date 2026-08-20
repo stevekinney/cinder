@@ -1,6 +1,6 @@
 # Progress
 
-Visual indicator of task completion as a filled bar or percentage readout.
+Visual indicator of task completion as a filled bar or percentage readout. Use `Progress` for work that advances over time (`role="progressbar"`). Use [`Meter`](../meter/README.md) for a static measurement with known bounds (`role="meter"`).
 
 ## Usage
 
