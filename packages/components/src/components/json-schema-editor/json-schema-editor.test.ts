@@ -453,8 +453,6 @@ describe('JsonSchemaEditor — controlled and uncontrolled schema inputs', () =>
     });
     await flushEffects();
 
-    expect((screen.getByRole('textbox', { name: 'JSON' }) as HTMLTextAreaElement).value).toBe(
-      '{\n  "type": "boolean"\n}',
-    );
+    expect(screen.getByRole('textbox', { name: 'JSON' }).value).toBe('{\n  "type": "boolean"\n}');
   });
 });
