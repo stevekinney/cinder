@@ -131,6 +131,8 @@
   // Edit state
   let isEditing = $state(false);
   let editContent = $state('');
+  let editPointerCapture: { pointerId: number; clientX: number; clientY: number } | undefined;
+  const editPointerDragThreshold = 8;
   const canEdit = $derived(message.role === 'user' && onedit !== undefined && !streaming);
 
   function startEditing() {
@@ -141,7 +143,35 @@
 
   function captureEditPointer(event: PointerEvent) {
     if (!event.isPrimary || event.button !== 0) return;
-    (event.currentTarget as HTMLButtonElement).setPointerCapture(event.pointerId);
+    const button = event.currentTarget as HTMLButtonElement;
+    try {
+      button.setPointerCapture(event.pointerId);
+      editPointerCapture = {
+        pointerId: event.pointerId,
+        clientX: event.clientX,
+        clientY: event.clientY,
+      };
+    } catch {
+      editPointerCapture = undefined;
+    }
+  }
+
+  function releaseEditPointerAfterDrag(event: PointerEvent) {
+    if (!editPointerCapture || event.pointerId !== editPointerCapture.pointerId) return;
+    const horizontalMovement = event.clientX - editPointerCapture.clientX;
+    const verticalMovement = event.clientY - editPointerCapture.clientY;
+    if (Math.hypot(horizontalMovement, verticalMovement) < editPointerDragThreshold) return;
+
+    editPointerCapture = undefined;
+    try {
+      (event.currentTarget as HTMLButtonElement).releasePointerCapture(event.pointerId);
+    } catch {
+      // The browser may already have released capture after pointer cancellation.
+    }
+  }
+
+  function clearEditPointerCapture() {
+    editPointerCapture = undefined;
   }
 
   function cancelEditing() {
@@ -374,6 +404,10 @@
             type="button"
             class="chat-message-action-button chat-message-edit-button"
             onpointerdown={captureEditPointer}
+            onpointermove={releaseEditPointerAfterDrag}
+            onpointerup={clearEditPointerCapture}
+            onpointercancel={clearEditPointerCapture}
+            onlostpointercapture={clearEditPointerCapture}
             onclick={startEditing}
             aria-label="Edit message"
           >

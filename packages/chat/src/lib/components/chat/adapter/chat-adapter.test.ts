@@ -232,12 +232,26 @@ function createDragEvent(type: string, files: File[], types: string[] = ['Files'
 
 function createPointerEvent(
   type: string,
-  { button = 0, isPrimary = true, pointerId = 1 } = {},
+  {
+    button = 0,
+    clientX = 0,
+    clientY = 0,
+    isPrimary = true,
+    pointerId = 1,
+  }: {
+    button?: number;
+    clientX?: number;
+    clientY?: number;
+    isPrimary?: boolean;
+    pointerId?: number;
+  } = {},
 ): PointerEvent {
   return new PointerEvent(type, {
     bubbles: true,
     cancelable: true,
     button,
+    clientX,
+    clientY,
     isPrimary,
     pointerId,
   });
@@ -1079,7 +1093,7 @@ describe('ChatAdapter — command equivalence', () => {
     unmount(instance);
   });
 
-  test('captures the edit button pointer before streaming auto-scroll can move it', () => {
+  test('captures only the primary left-button pointer on the edit action', () => {
     const conversation = conversationFromMessages('adapter-edit-pointer-capture', [
       message('user-1', 'user', 'Original text', 0),
       message('assistant-1', 'assistant', 'Streaming reply', 1),
@@ -1102,6 +1116,67 @@ describe('ChatAdapter — command equivalence', () => {
     editButton.dispatchEvent(createPointerEvent('pointerdown', { pointerId: 7 }));
 
     expect(capturedPointers).toEqual([7]);
+    editButton.click();
+    flushSync();
+    expect(container.querySelectorAll('.chat-message-edit-textarea')).toHaveLength(1);
+
+    unmount(instance);
+  });
+
+  test('releases edit pointer capture after intentional drag movement', () => {
+    const conversation = conversationFromMessages('adapter-edit-pointer-release', [
+      message('user-1', 'user', 'Original text', 0),
+    ]);
+    const { container, instance } = mountChat({
+      id: 'chat-adapter-edit-pointer-release',
+      conversation,
+      adapter: { sendMessage: async () => {}, editMessage: async () => {} },
+    });
+
+    const editButton = container.querySelector<HTMLButtonElement>('.chat-message-edit-button')!;
+    const releasedPointers: number[] = [];
+    Object.defineProperties(editButton, {
+      setPointerCapture: { configurable: true, value: () => {} },
+      releasePointerCapture: {
+        configurable: true,
+        value: (pointerId: number) => releasedPointers.push(pointerId),
+      },
+    });
+
+    editButton.dispatchEvent(
+      createPointerEvent('pointerdown', { clientX: 10, clientY: 10, pointerId: 7 }),
+    );
+    editButton.dispatchEvent(
+      createPointerEvent('pointermove', { clientX: 14, clientY: 14, pointerId: 7 }),
+    );
+    expect(releasedPointers).toEqual([]);
+    editButton.dispatchEvent(
+      createPointerEvent('pointermove', { clientX: 20, clientY: 20, pointerId: 7 }),
+    );
+    expect(releasedPointers).toEqual([7]);
+
+    unmount(instance);
+  });
+
+  test('keeps edit activation available when pointer capture fails', () => {
+    const conversation = conversationFromMessages('adapter-edit-pointer-failure', [
+      message('user-1', 'user', 'Original text', 0),
+    ]);
+    const { container, instance } = mountChat({
+      id: 'chat-adapter-edit-pointer-failure',
+      conversation,
+      adapter: { sendMessage: async () => {}, editMessage: async () => {} },
+    });
+
+    const editButton = container.querySelector<HTMLButtonElement>('.chat-message-edit-button')!;
+    Object.defineProperty(editButton, 'setPointerCapture', {
+      configurable: true,
+      value: () => {
+        throw new DOMException('Pointer is no longer active', 'NotFoundError');
+      },
+    });
+
+    editButton.dispatchEvent(createPointerEvent('pointerdown'));
     editButton.click();
     flushSync();
     expect(container.querySelectorAll('.chat-message-edit-textarea')).toHaveLength(1);
