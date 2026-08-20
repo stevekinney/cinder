@@ -1,0 +1,86 @@
+import { join } from 'node:path';
+
+import { PLAYGROUND_ROOT } from './playground-paths.ts';
+
+/**
+ * Cinder primitives rendered by component-page.svelte itself. Their styles are
+ * bundled once for every documentation route; the documented component's own
+ * stylesheet is added separately only when it is outside this list.
+ */
+export const DOCUMENTATION_CINDER_COMPONENTS = [
+  'accordion',
+  'alert',
+  'badge',
+  'button',
+  'callout',
+  'code-block',
+  'collapsible',
+  'kbd',
+  'status-dot',
+  'table',
+  'toggle',
+  'tooltip',
+] as const;
+
+/** The landing shell renders one Cinder primitive in addition to its own scoped CSS. */
+export const LANDING_CINDER_COMPONENTS = ['button'] as const;
+
+export type PlaygroundStylesheetName = 'documentation' | 'landing';
+
+const componentsByStylesheet: Readonly<Record<PlaygroundStylesheetName, readonly string[]>> = {
+  documentation: DOCUMENTATION_CINDER_COMPONENTS,
+  landing: LANDING_CINDER_COMPONENTS,
+};
+const stylesheetPromiseByName = new Map<PlaygroundStylesheetName, Promise<string>>();
+
+function stylesheetEntry(components: readonly string[]): string {
+  const imports = components
+    .map(
+      (componentName) =>
+        `@import '../../components/src/components/${componentName}/${componentName}.css';`,
+    )
+    .join('\n');
+  return `@import '../../components/src/styles/index.css';
+${imports}
+`;
+}
+
+/** Bundle the documentation CSS graph so each page needs one shared stylesheet. */
+export function buildPlaygroundStylesheet(name: PlaygroundStylesheetName): Promise<string> {
+  const existing = stylesheetPromiseByName.get(name);
+  if (existing !== undefined) return existing;
+
+  const stylesheetPromise = (async () => {
+    // Bun caches a virtual build by its entrypoint path. Keep that path unique
+    // per stylesheet or a landing request can receive the documentation graph.
+    const virtualEntrypoint = join(PLAYGROUND_ROOT, 'src', `.${name}-styles.css`);
+    const result = await Bun.build({
+      entrypoints: [virtualEntrypoint],
+      files: { [virtualEntrypoint]: stylesheetEntry(componentsByStylesheet[name]) },
+      minify: true,
+      target: 'browser',
+    });
+    if (!result.success) {
+      throw new Error(
+        `[playground] documentation stylesheet build failed: ${result.logs.join('\n')}`,
+      );
+    }
+    const stylesheet = result.outputs.find((output) => output.path.endsWith('.css'));
+    if (stylesheet === undefined) {
+      throw new Error('[playground] documentation stylesheet build produced no CSS output');
+    }
+    return await stylesheet.text();
+  })();
+  stylesheetPromiseByName.set(name, stylesheetPromise);
+  return stylesheetPromise;
+}
+
+/** Bundle the shared documentation CSS graph. */
+export function buildDocumentationStylesheet(): Promise<string> {
+  return buildPlaygroundStylesheet('documentation');
+}
+
+/** Bundle the landing CSS graph without unrelated documentation primitives. */
+export function buildLandingStylesheet(): Promise<string> {
+  return buildPlaygroundStylesheet('landing');
+}

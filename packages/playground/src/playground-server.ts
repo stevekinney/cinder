@@ -58,6 +58,7 @@ import {
   ComponentDocumentationError,
   buildComponentDocumentation,
 } from './component-documentation.ts';
+import { documentationComponentStylesheetUrl } from './component-sources.ts';
 import {
   COMPOSE_ONLY_COMPONENTS,
   discoverComponentDefinition,
@@ -122,6 +123,7 @@ import {
 import {
   handleComponentsStyleRoute,
   handlePackageComponentStyleRoute,
+  handlePlaygroundStylesRoute,
   handleStylesRoute,
 } from './static-assets.ts';
 import { stripInlineSourcemaps } from './strip-inline-sourcemaps.ts';
@@ -330,7 +332,9 @@ async function renderComponentPage(
 ): Promise<string> {
   const componentDefinition = await discoverComponentDefinition(componentName);
   const componentStylesheetUrl =
-    componentDefinition?.source.componentStylesheetUrl(componentName) ?? null;
+    componentDefinition === undefined
+      ? null
+      : documentationComponentStylesheetUrl(componentDefinition.source, componentName);
   const componentStylesheetLink =
     componentStylesheetUrl === null
       ? ''
@@ -429,7 +433,7 @@ async function renderComponentPage(
     ${metadataTags}
     ${structuredData}
     <link rel="icon" href="${FAVICON_HREF}" />
-    <link rel="stylesheet" href="/styles/all.css" />${componentStylesheetLink}
+    <link rel="stylesheet" href="/playground-styles/documentation.css" />${componentStylesheetLink}
     ${ssrHead}
     <script>${PRE_PAINT_THEME_SCRIPT}</script>
     <style>
@@ -880,6 +884,11 @@ export const ROUTES: RouteDefinition[] = [
     method: 'GET',
     pattern: /^\/styles\/(.+)$/,
     handler: ({ match }) => handleStylesRoute(match[1]!),
+  },
+  {
+    method: 'GET',
+    pattern: /^\/playground-styles\/(documentation|landing)\.css$/,
+    handler: ({ match }) => handlePlaygroundStylesRoute(match[1]! as 'documentation' | 'landing'),
   },
   {
     method: 'GET',

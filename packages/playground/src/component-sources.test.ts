@@ -9,7 +9,12 @@
 
 import { describe, expect, it } from 'bun:test';
 
-import { EDITOR_COMPONENT_SOURCE, resolveEditorStylesheetUrl } from './component-sources.ts';
+import {
+  CINDER_COMPONENT_SOURCE,
+  EDITOR_COMPONENT_SOURCE,
+  documentationComponentStylesheetUrl,
+  resolveEditorStylesheetUrl,
+} from './component-sources.ts';
 
 describe('EDITOR_COMPONENT_SOURCE.componentStylesheetUrl', () => {
   it('resolves review-editor against the real editor package.json exports map', () => {
@@ -34,5 +39,17 @@ describe('resolveEditorStylesheetUrl', () => {
       '/package-components/editor/diagram-editor/diagram-editor.css',
     );
     expect(resolveEditorStylesheetUrl(fixtureKeys, 'markdown-editor')).toBeNull();
+  });
+});
+
+describe('documentationComponentStylesheetUrl', () => {
+  it('does not add a second stylesheet for documentation primitives', () => {
+    expect(documentationComponentStylesheetUrl(CINDER_COMPONENT_SOURCE, 'button')).toBeNull();
+  });
+
+  it('loads only the documented Cinder component outside the shared stylesheet', () => {
+    expect(documentationComponentStylesheetUrl(CINDER_COMPONENT_SOURCE, 'dialog')).toBe(
+      '/components/dialog/dialog.css',
+    );
   });
 });

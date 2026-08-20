@@ -128,7 +128,7 @@ describe('static export', () => {
       expect(indexHtml).toContain('id="cinder-initial"');
       expect(indexHtml).toContain('readmeHtml');
       expect(indexHtml).toContain('/shell-bundle/shell.js');
-      expect(indexHtml).toContain('/styles/all.css');
+      expect(indexHtml).toContain('/playground-styles/landing.css');
       expect(indexHtml).not.toContain('http-equiv="refresh"');
       expect(rendered.has('/shell-bundle/shell.js')).toBe(true);
       expect(indexHtml).not.toContain('data-canonical-documentation');
@@ -146,6 +146,7 @@ describe('static export', () => {
       await expect(readFile(join(outputDirectory, 'robots.txt'), 'utf8')).resolves.toContain(
         'Sitemap: https://playground.local/sitemap.xml',
       );
+      expect(rendered.has('/playground-styles/landing.css')).toBe(true);
     } finally {
       await rm(outputDirectory, { recursive: true, force: true });
     }

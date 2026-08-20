@@ -25,6 +25,7 @@ const SAMPLE_PATHNAME_BY_ROW_INDEX: readonly string[] = [
   '/events',
   '/styles.css',
   '/styles/foo.css',
+  '/playground-styles/documentation.css',
   '/components/button/button.css',
   '/package-components/chat/chat/chat.css',
   '/bundle/button/primary.js',

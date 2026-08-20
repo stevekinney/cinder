@@ -944,17 +944,19 @@ describe('/page/:name', () => {
     expect(html).not.toContain('data-snapshot-mode');
   });
 
-  it('loads the full CSS aggregator (styles/all.css) so component styles are present', async () => {
-    // The component preview iframe must load `@lostgradient/cinder/styles/all` (tokens +
-    // foundation + ALL per-component CSS) rather than the slim base
-    // (`@lostgradient/cinder/styles` / index.css). After the per-component subpath split,
-    // index.css only contains tokens/foundation/utilities — omitting it here
-    // would leave every component unstyled in the Playwright preview, breaking
-    // visual snapshots, positioning assertions, and accessibility checks.
+  it('loads scoped documentation CSS plus only a non-shared component stylesheet', async () => {
     const response = await handleRequest(req(`/page/${FIXTURE_COMPONENT}`));
     const html = await response.text();
-    expect(html).toContain('href="/styles/all.css"');
+    expect(html).toContain('href="/playground-styles/documentation.css"');
+    expect(html).not.toContain('href="/styles/all.css"');
     expect(html).not.toContain('href="/styles/index.css"');
+  });
+
+  it('serves bundled documentation CSS as one stylesheet with no import waterfall', async () => {
+    const stylesheet = await handleRequest(req('/playground-styles/documentation.css'));
+    expect(stylesheet.status).toBe(200);
+    expect(stylesheet.headers.get('Content-Type')).toBe('text/css');
+    expect(await stylesheet.text()).not.toContain('@import');
   });
 
   it('loads package-owned component CSS for extracted Chat pages', async () => {

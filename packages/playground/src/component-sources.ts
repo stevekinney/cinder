@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
+import { DOCUMENTATION_CINDER_COMPONENTS } from './documentation-styles.ts';
+
 const PLAYGROUND_ROOT = dirname(import.meta.dirname);
 const PACKAGES_ROOT = join(PLAYGROUND_ROOT, '..');
 
@@ -55,6 +57,26 @@ export const CINDER_COMPONENT_SOURCE: ComponentSource = {
   // Cinder's full component cascade is already loaded from /styles/all.css.
   componentStylesheetUrl: () => null,
 };
+
+const DOCUMENTATION_CINDER_COMPONENT_SET = new Set<string>(DOCUMENTATION_CINDER_COMPONENTS);
+
+/**
+ * Return the stylesheet a documentation page needs in addition to the shared
+ * documentation CSS. Cinder primitives rendered by the page itself are
+ * already bundled into that shared asset; every other component retains its
+ * own sidecar and compound-family imports.
+ */
+export function documentationComponentStylesheetUrl(
+  componentSource: ComponentSource,
+  componentName: string,
+): string | null {
+  if (componentSource.id === CINDER_COMPONENT_SOURCE.id) {
+    return DOCUMENTATION_CINDER_COMPONENT_SET.has(componentName)
+      ? null
+      : `/components/${componentName}/${componentName}.css`;
+  }
+  return componentSource.componentStylesheetUrl(componentName);
+}
 
 export const CHAT_COMPONENT_SOURCE: ComponentSource = {
   id: 'chat',
