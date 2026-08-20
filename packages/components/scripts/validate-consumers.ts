@@ -1377,19 +1377,17 @@ export type SvelteKitChatHydrationDevServerOptions = {
 };
 
 type SvelteKitChatHydrationDevServerDependencies = {
-  preoptimize?: (fixtureDirectory: string) => Promise<void>;
   startServer?: (
     command: string[],
     options: SvelteKitChatHydrationDevServerOptions,
   ) => Bun.ReadableSubprocess;
 };
 
-export async function startSvelteKitChatHydrationDevServer(
+export function startSvelteKitChatHydrationDevServer(
   fixtureDirectory: string,
   httpPort: number,
   dependencies: SvelteKitChatHydrationDevServerDependencies = {},
-): Promise<Bun.ReadableSubprocess> {
-  await (dependencies.preoptimize ?? preoptimizeSvelteKitChatHydration)(fixtureDirectory);
+): Bun.ReadableSubprocess {
   const startServer =
     dependencies.startServer ??
     ((command: string[], options: SvelteKitChatHydrationDevServerOptions) =>
@@ -1413,9 +1411,22 @@ async function assertSvelteKitDevChatHydrationRoute(
   fixtureDirectory: string,
   label: string,
 ): Promise<void> {
+  const readinessDeadline = Date.now() + SVELTEKIT_DEV_SSR_READINESS_TIMEOUT_MS;
+  const optimizationSignal = AbortSignal.timeout(SVELTEKIT_DEV_SSR_READINESS_TIMEOUT_MS);
+  await preoptimizeSvelteKitChatHydration(fixtureDirectory, undefined, optimizationSignal);
+
+  const remainingReadinessBudget = readinessDeadline - Date.now();
+  if (remainingReadinessBudget <= 0) {
+    fail(
+      `sveltekit-consumer ${label} /chat-layout dependency optimization exhausted its shared ${SVELTEKIT_DEV_SSR_READINESS_TIMEOUT_MS}ms readiness budget`,
+    );
+  }
+
+  // Reserve a port only after pre-optimization, so another process cannot
+  // claim this short-lived probe reservation while Vite is still working.
   const httpPort = await pickEphemeralPort();
   let hydrationAssertionsPassed = false;
-  const devServer = await startSvelteKitChatHydrationDevServer(fixtureDirectory, httpPort);
+  const devServer = startSvelteKitChatHydrationDevServer(fixtureDirectory, httpPort);
   const unregisterDevServerProcessGroup = registerHookProcessGroup(devServer.pid);
   const devServerStdout = devServer.stdout
     ? new Response(devServer.stdout).text()
@@ -1430,7 +1441,7 @@ async function assertSvelteKitDevChatHydrationRoute(
     const chatLayoutStartedAt = Date.now();
     await waitForReadyHtml({
       url: routeUrl,
-      timeoutMs: SVELTEKIT_DEV_SSR_READINESS_TIMEOUT_MS,
+      timeoutMs: remainingReadinessBudget,
       pollIntervalMs: SVELTEKIT_DEV_SSR_POLL_INTERVAL_MS,
       runningServer: devServer,
       isReady: (html) => html.includes('Empty Chat hydration') && html.includes('No messages yet'),
@@ -1490,17 +1501,29 @@ async function assertSvelteKitDevChatHydrationRoute(
 export async function preoptimizeSvelteKitChatHydration(
   fixtureDirectory: string,
   runCommand: typeof runHookCommand = runHookCommand,
+  signal?: AbortSignal,
 ): Promise<void> {
   const result = await runCommand('bun', ['x', 'vite', 'optimize', '--force'], {
     cwd: fixtureDirectory,
     stdout: 'pipe',
     stderr: 'pipe',
     environment: svelteKitChatHydrationEnvironment,
+    ...(signal === undefined ? {} : { signal }),
   });
-  if (result.exitCode !== 0) {
+  const sourceMapWarnings = extractPublishedPackageSourceMapWarnings(
+    `${result.stdout}\n${result.stderr}`,
+  );
+  if (sourceMapWarnings.length > 0) {
     fail(
-      `Vite dependency optimization failed before Chat hydration readiness:\n${result.stdout}\n${result.stderr}`,
+      `Vite dependency optimization emitted source-map warnings for published package artifacts:\n` +
+        sourceMapWarnings.map((warning) => `  ${warning}`).join('\n'),
     );
+  }
+  if (result.exitCode !== 0) {
+    const failurePrefix = signal?.aborted
+      ? 'Vite dependency optimization exceeded the shared Chat hydration readiness budget'
+      : 'Vite dependency optimization failed before Chat hydration readiness';
+    fail(`${failurePrefix}:\n${result.stdout}\n${result.stderr}`);
   }
 }
 

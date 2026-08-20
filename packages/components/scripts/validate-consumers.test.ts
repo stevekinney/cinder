@@ -48,37 +48,46 @@ describe('SvelteKit Chat hydration optimizer preflight', () => {
     );
   });
 
-  test('awaits optimization before starting Vite dev without forced reoptimization', async () => {
-    const events: string[] = [];
-    let finishOptimization!: () => void;
-    const optimizationGate = new Promise<void>((resolve) => {
-      finishOptimization = resolve;
-    });
-    const preoptimize = mock(async () => {
-      events.push('optimize:start');
-      await optimizationGate;
-      events.push('optimize:finish');
-    });
+  test('reports a shared-readiness-budget abort without starting Vite', async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const runCommand = mock(async () => ({ exitCode: 130, stdout: '', stderr: '' }));
+
+    await expect(
+      preoptimizeSvelteKitChatHydration('/fixture', runCommand, controller.signal),
+    ).rejects.toThrow(
+      'Vite dependency optimization exceeded the shared Chat hydration readiness budget',
+    );
+    expect(runCommand).toHaveBeenCalledWith(
+      'bun',
+      ['x', 'vite', 'optimize', '--force'],
+      expect.objectContaining({ signal: controller.signal }),
+    );
+  });
+
+  test('rejects published-package source-map warnings from successful optimization', async () => {
+    const runCommand = mock(async () => ({
+      exitCode: 0,
+      stdout: 'warning: @lostgradient/cinder/dist/index.js.map points to missing source',
+      stderr: '',
+    }));
+
+    await expect(preoptimizeSvelteKitChatHydration('/fixture', runCommand)).rejects.toThrow(
+      'Vite dependency optimization emitted source-map warnings for published package artifacts',
+    );
+  });
+
+  test('starts Vite dev without forced reoptimization', () => {
     const fakeServer = {} as Bun.ReadableSubprocess;
     const startServer = mock(
       (_command: string[], _options: SvelteKitChatHydrationDevServerOptions) => {
-        events.push('server:start');
         return fakeServer;
       },
     );
 
-    const serverPromise = startSvelteKitChatHydrationDevServer('/fixture', 4_321, {
-      preoptimize,
-      startServer,
-    });
-    await Promise.resolve();
+    const server = startSvelteKitChatHydrationDevServer('/fixture', 4_321, { startServer });
 
-    expect(events).toEqual(['optimize:start']);
-    expect(startServer).not.toHaveBeenCalled();
-
-    finishOptimization();
-    await expect(serverPromise).resolves.toBe(fakeServer);
-    expect(events).toEqual(['optimize:start', 'optimize:finish', 'server:start']);
+    expect(server).toBe(fakeServer);
     expect(startServer).toHaveBeenCalledWith(
       ['bunx', 'vite', 'dev', '--host', '127.0.0.1', '--port', '4321', '--strictPort'],
       expect.objectContaining({
@@ -94,25 +103,6 @@ describe('SvelteKit Chat hydration optimizer preflight', () => {
       }),
     );
     expect(startServer.mock.calls[0]?.[0]).not.toContain('--force');
-  });
-
-  test('does not start Vite dev when optimization fails', async () => {
-    const optimizerError = new Error('optimizer failed');
-    const preoptimize = mock(async () => {
-      throw optimizerError;
-    });
-    const startServer = mock(
-      (_command: string[], _options: SvelteKitChatHydrationDevServerOptions) =>
-        ({}) as Bun.ReadableSubprocess,
-    );
-
-    await expect(
-      startSvelteKitChatHydrationDevServer('/fixture', 4_321, {
-        preoptimize,
-        startServer,
-      }),
-    ).rejects.toBe(optimizerError);
-    expect(startServer).not.toHaveBeenCalled();
   });
 });
 
