@@ -411,6 +411,20 @@ describe('validate-release-workflow changeset guards', () => {
     }
   });
 
+  test('pins the setup-node runtime for both provenance publish paths', () => {
+    const workspaceRoot = resolve(import.meta.dirname, '../../..');
+    for (const workflowName of ['release.yaml', 'release-manual.yaml']) {
+      const workflow = readFileSync(
+        join(workspaceRoot, '.github', 'workflows', workflowName),
+        'utf8',
+      );
+      expect(workflow).toContain('uses: actions/setup-node@v7');
+      expect(workflow).toContain("node-version: '22'");
+      expect(workflow).toContain('name: Record configured Node runtime for publish');
+      expect(workflow).toContain('CINDER_PUBLISH_NODE=$node_path');
+    }
+  });
+
   test('requires the root publish shortcut to use staged package artifacts in order', () => {
     const manifest = (script: string) => ({ scripts: { 'changeset:publish': script } });
     const markdown = 'bun run --filter=@lostgradient/markdown publish:release';

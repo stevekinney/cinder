@@ -3,6 +3,7 @@ import { describe, expect, mock, test } from 'bun:test';
 import {
   getPackFileName,
   nodePublishCommand,
+  resolveNodeExecutable,
   resolvePackageRootArgument,
   resolvePublishAction,
   runPublishRelease,
@@ -56,6 +57,19 @@ describe('publish-release package selection', () => {
       'publish',
       'package.tgz',
     ]);
+  });
+
+  test('prefers the workflow-provisioned Node executable over Bun PATH resolution', () => {
+    expect(
+      resolveNodeExecutable(
+        { CINDER_PUBLISH_NODE: '/opt/node-22/bin/node' },
+        () => '/opt/node-24/bin/node',
+      ),
+    ).toBe('/opt/node-22/bin/node');
+  });
+
+  test('falls back to the Node executable resolved from PATH outside release workflows', () => {
+    expect(resolveNodeExecutable({}, () => '/opt/node/bin/node')).toBe('/opt/node/bin/node');
   });
 });
 
