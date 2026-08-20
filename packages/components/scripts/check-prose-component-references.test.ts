@@ -27,6 +27,30 @@ describe('check-prose-component-references', () => {
     ).toEqual([{ reference: 'missing-component', filePath: 'fixture.md' }]);
   });
 
+  test('flags an unformatted direct component recommendation', () => {
+    expect(
+      findProseReferenceFailures({
+        source: 'Use missing-component to handle this state.',
+        filePath: 'fixture.md',
+        componentNames,
+        exampleIds: new Set(),
+        publicSubpaths,
+      }),
+    ).toEqual([{ reference: 'missing-component', filePath: 'fixture.md' }]);
+  });
+
+  test('does not treat a descriptive hyphenated compound as a component recommendation', () => {
+    expect(
+      findProseReferenceFailures({
+        source: 'Use an image-specific primitive for the media element.',
+        filePath: 'fixture.md',
+        componentNames,
+        exampleIds: new Set(),
+        publicSubpaths,
+      }),
+    ).toEqual([]);
+  });
+
   test('flags an unformatted example reference whose id is not registered', () => {
     expect(
       findProseReferenceFailures({

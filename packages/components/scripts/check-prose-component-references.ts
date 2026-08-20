@@ -55,6 +55,9 @@ export function findProseReferenceFailures(input: {
     const isExampleReference =
       match[0].toLowerCase().startsWith('its ') && reference?.includes('-');
     const followingText = input.source.slice((match.index ?? 0) + match[0].length);
+    const isDirectComponentRecommendation =
+      (reference?.includes('-') || reference?.includes('/')) &&
+      /^\s*(?:to\b|instead\b|[.!?]|$)/i.test(followingText);
     const isExternalPackageReference = /^\s+from\s+\x60?@[^\s\x60]+/.test(followingText);
     if (
       reference &&
@@ -62,6 +65,7 @@ export function findProseReferenceFailures(input: {
       !isExternalPackageReference &&
       (isExampleReference ||
         isBacktickedComponentExport ||
+        isDirectComponentRecommendation ||
         /^\s+instead\b/i.test(followingText) ||
         input.componentNames.has(normalizeComponentReference(reference)))
     )
