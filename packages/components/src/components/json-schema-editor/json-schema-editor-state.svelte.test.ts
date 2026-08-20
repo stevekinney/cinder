@@ -342,7 +342,10 @@ describe('createEditorState — change events', () => {
     });
 
     state.commitFromForm({ type: 'number' });
-    (emitted?.schema as { type: string }).type = 'boolean';
+    if (emitted === undefined || typeof emitted.schema !== 'object' || emitted.schema === null) {
+      throw new Error('Expected an object schema change event.');
+    }
+    emitted.schema.type = 'boolean';
 
     expect(state.committedSchema).toEqual({ type: 'number' });
   });
