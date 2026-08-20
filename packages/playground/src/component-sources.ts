@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 
 import { DOCUMENTATION_CINDER_COMPONENTS } from './documentation-styles.ts';
 import { COMPOUND_COMPONENT_PARENTS } from './shell-app/compound-families.ts';
@@ -61,8 +61,26 @@ export const CINDER_COMPONENT_SOURCE: ComponentSource = {
 
 const DOCUMENTATION_CINDER_COMPONENT_SET = new Set<string>(DOCUMENTATION_CINDER_COMPONENTS);
 const CINDER_COMPONENT_IMPORT = /from\s+['"]@lostgradient\/cinder\/([a-z0-9][a-z0-9-]*)['"]/gu;
-const CINDER_COMPONENT_IMPLEMENTATION_IMPORT =
-  /from\s+['"]\.\.\/([a-z0-9][a-z0-9-]*)\/\1\.svelte['"]/gu;
+const CINDER_ROOT_BARREL_IMPORT = /import\s*\{([^}]+)\}\s*from\s*['"]@lostgradient\/cinder['"]/gu;
+const RELATIVE_SVELTE_IMPORT = /from\s+['"](\.{1,2}\/[^'"]+\.svelte)['"]/gu;
+
+type CinderManifestComponent = { id?: unknown; exportName?: unknown };
+type CinderManifest = { components?: unknown };
+
+function cinderComponentNamesByExport(): ReadonlyMap<string, string> {
+  const manifest = JSON.parse(
+    readFileSync(join(cinderPackageRoot, 'components.json'), 'utf8'),
+  ) as CinderManifest;
+  const names = new Map<string, string>();
+  if (!Array.isArray(manifest.components)) return names;
+  for (const component of manifest.components as CinderManifestComponent[]) {
+    if (typeof component.id !== 'string' || typeof component.exportName !== 'string') continue;
+    names.set(component.exportName, component.id);
+  }
+  return names;
+}
+
+const CINDER_COMPONENT_NAME_BY_EXPORT = cinderComponentNamesByExport();
 
 function stylesheetOwner(componentName: string): string {
   return COMPOUND_COMPONENT_PARENTS[componentName] ?? componentName;
@@ -75,25 +93,45 @@ function cinderComponentStylesheetUrl(componentName: string): string | null {
   return existsSync(stylesheet) ? `/components/${owner}/${owner}.css` : null;
 }
 
-function implementationDependencies(
-  componentName: string,
-  dependencies = new Set<string>(),
-): Set<string> {
-  if (dependencies.has(componentName)) return dependencies;
-  dependencies.add(componentName);
-  const implementationPath = join(
-    cinderPackageRoot,
-    'src',
-    'components',
-    componentName,
-    `${componentName}.svelte`,
-  );
-  if (!existsSync(implementationPath)) return dependencies;
-  const source = readFileSync(implementationPath, 'utf8');
-  for (const match of source.matchAll(CINDER_COMPONENT_IMPLEMENTATION_IMPORT)) {
-    implementationDependencies(match[1]!, dependencies);
+function cinderComponentDependenciesFromSource(source: string, dependencies: Set<string>): void {
+  for (const match of source.matchAll(CINDER_COMPONENT_IMPORT)) {
+    dependencies.add(match[1]!);
   }
-  return dependencies;
+  for (const match of source.matchAll(CINDER_ROOT_BARREL_IMPORT)) {
+    for (const importedName of match[1]!.split(',')) {
+      const exportName = importedName
+        .trim()
+        .replace(/^type\s+/u, '')
+        .split(/\s+as\s+/u)[0];
+      if (exportName === undefined) continue;
+      const componentName = CINDER_COMPONENT_NAME_BY_EXPORT.get(exportName);
+      if (componentName !== undefined) dependencies.add(componentName);
+    }
+  }
+}
+
+function implementationDependencies(
+  implementationPath: string,
+  dependencies: Set<string>,
+  visitedPaths = new Set<string>(),
+): void {
+  const resolvedPath = resolve(implementationPath);
+  const componentsRoot = resolve(cinderPackageRoot, 'src', 'components');
+  if (!resolvedPath.startsWith(`${componentsRoot}/`) || visitedPaths.has(resolvedPath)) return;
+  visitedPaths.add(resolvedPath);
+  const componentName = resolvedPath.slice(componentsRoot.length + 1).split('/')[0];
+  if (componentName !== undefined && componentName !== '') dependencies.add(componentName);
+  if (!existsSync(resolvedPath)) return;
+
+  const source = readFileSync(resolvedPath, 'utf8');
+  cinderComponentDependenciesFromSource(source, dependencies);
+  for (const match of source.matchAll(RELATIVE_SVELTE_IMPORT)) {
+    implementationDependencies(
+      resolve(dirname(resolvedPath), match[1]!),
+      dependencies,
+      visitedPaths,
+    );
+  }
 }
 
 /**
@@ -122,7 +160,7 @@ export function documentationExampleStylesheetUrls(
   componentName: string,
   scenarios: readonly string[],
 ): string[] {
-  const dependencyNames = new Set<string>();
+  const dependencyNames = new Set<string>([componentName]);
   for (const scenario of scenarios) {
     const examplePath = join(
       PLAYGROUND_ROOT,
@@ -132,14 +170,13 @@ export function documentationExampleStylesheetUrls(
       `${scenario}.example.svelte`,
     );
     const source = readFileSync(examplePath, 'utf8');
-    for (const match of source.matchAll(CINDER_COMPONENT_IMPORT)) {
-      dependencyNames.add(match[1]!);
-    }
+    cinderComponentDependenciesFromSource(source, dependencyNames);
   }
 
-  for (const dependencyName of implementationDependencies(componentName)) {
-    dependencyNames.add(dependencyName);
-  }
+  implementationDependencies(
+    join(cinderPackageRoot, 'src', 'components', componentName, `${componentName}.svelte`),
+    dependencyNames,
+  );
 
   return [...dependencyNames]
     .toSorted()

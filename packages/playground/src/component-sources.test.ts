@@ -70,4 +70,13 @@ describe('documentationExampleStylesheetUrls', () => {
       '/components/checkbox-group/checkbox-group.css',
     ]);
   });
+
+  it('collects root-barrel imports and recursively follows local implementation modules', () => {
+    expect(documentationExampleStylesheetUrls('autocomplete', ['inside-form-field'])).toContain(
+      '/components/form-field/form-field.css',
+    );
+    expect(documentationExampleStylesheetUrls('json-schema-editor', [])).toEqual(
+      expect.arrayContaining(['/components/tabs/tabs.css', '/components/textarea/textarea.css']),
+    );
+  });
 });
