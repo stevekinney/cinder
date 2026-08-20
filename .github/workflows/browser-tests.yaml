@@ -654,6 +654,10 @@ jobs:
           fi
           [ "$SCOPE" = success ] || exit 1
           if [ "$RELEVANT" = true ]; then [ "$LANES" = success ] || exit 1; fi
+          # Pull-request and merge-queue runs always select block mode for
+          # visual regression. Keep their aggregate required check fail-closed
+          # so a failed visual job cannot be masked by passing functional lanes.
+          [ "$VISUAL" = success ] || exit 1
 
   baseline-coverage:
     # Runs on every trigger, including pull requests. The check is scoped per
