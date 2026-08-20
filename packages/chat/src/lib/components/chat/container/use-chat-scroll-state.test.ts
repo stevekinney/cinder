@@ -79,6 +79,9 @@ describe('useChatScrollState — withForcedLayout release ownership (CIN-418, se
     const viewport = createViewport();
     state.scrollToBottom(viewport);
     expect(viewport.hasAttribute('data-cinder-force-visible')).toBe(true);
+    // Clean up the in-flight guard explicitly rather than leaving its 500ms
+    // real-timer backstop to fire after this test completes.
+    state.destroy();
     viewport.remove();
   });
 
@@ -158,6 +161,30 @@ describe('useChatScrollState — withForcedLayout release ownership (CIN-418, se
     (viewport as { scrollTop: number }).scrollTop = 0;
     viewport.dispatchEvent(new Event('scrollend'));
     expect(viewport.hasAttribute('data-cinder-force-visible')).toBe(false);
+  });
+
+  test('a forced-layout window on one viewport does not leak when a later call forces a DIFFERENT viewport', () => {
+    // Regression guard (Copilot review, PR #1374): the release closure lives
+    // in a single slot, not one per viewport. Overwriting it unconditionally
+    // for a different viewport would leave the FIRST viewport's attribute
+    // stuck forever, since nothing would remove it once its own closure is
+    // gone. A single hook instance shouldn't normally be driven against two
+    // different viewports, but nothing in the public API prevents it, and
+    // this must not silently leak `data-cinder-force-visible` if it happens.
+    const state = useChatScrollState();
+    const viewportA = createViewport();
+    const viewportB = createViewport();
+
+    state.scrollToBottom(viewportA);
+    expect(viewportA.hasAttribute('data-cinder-force-visible')).toBe(true);
+
+    state.scrollToBottom(viewportB);
+    expect(viewportA.hasAttribute('data-cinder-force-visible')).toBe(false);
+    expect(viewportB.hasAttribute('data-cinder-force-visible')).toBe(true);
+
+    state.destroy();
+    viewportA.remove();
+    viewportB.remove();
   });
 
   test('destroy releases an in-flight forced-layout window', () => {

@@ -249,12 +249,19 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
   // replay a stale intersection snapshot.
   let pendingSentinelEntry: IntersectionObserverEntry | null = null;
   // Release function for the currently-applied forced-layout attribute, if
-  // any. Ownership of WHEN this fires belongs to the enclosing
-  // `withUserScrollGuard` session (its `settle`/`finishUserScrollGuard`/
-  // `clearUserScrollGuard`/`destroy`), not to `withForcedLayout` itself — see
-  // withForcedLayout below for why a self-restoring `scrollend` listener was
-  // unsafe (CIN-418, second round).
+  // any, and the viewport it applies to. Ownership of WHEN release fires
+  // belongs to the enclosing `withUserScrollGuard` session (its
+  // `settle`/`finishUserScrollGuard`/`clearUserScrollGuard`/`destroy`), not
+  // to `withForcedLayout` itself — see withForcedLayout below for why a
+  // self-restoring `scrollend` listener was unsafe (CIN-418, second round).
+  // Tracking the viewport alongside the release matters because this state
+  // is a single slot, not per-viewport: if `withForcedLayout` is ever called
+  // for a DIFFERENT viewport than the one currently holding a forced-layout
+  // window (this hook's public API accepts a viewport per call; nothing
+  // enforces a single instance's calls all target the same element), simply
+  // overwriting the slot would leak the older viewport's attribute forever.
   let activeForcedLayoutRelease: (() => void) | null = null;
+  let activeForcedLayoutViewport: HTMLElement | null = null;
   // Cancel function for the in-flight withUserScrollGuard session, if any. A
   // new session cancels the previous one's timer before starting its own:
   // without it, an earlier overlapping guarded scroll's timer could flip
@@ -477,13 +484,23 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
    * target.
    */
   function withForcedLayout(viewport: HTMLElement, scroll: () => void): void {
+    // A forced-layout window already active for a DIFFERENT viewport would
+    // otherwise have its release closure silently overwritten below, leaking
+    // its `data-cinder-force-visible` attribute with nothing left to remove
+    // it. Release it now, before applying to the new viewport.
+    if (activeForcedLayoutViewport !== null && activeForcedLayoutViewport !== viewport) {
+      activeForcedLayoutRelease?.();
+    }
+
     viewport.setAttribute('data-cinder-force-visible', '');
     // Force a synchronous layout so scrollHeight (read inside `scroll`)
     // reflects every row's real height, not the content-visibility estimate.
     void viewport.offsetHeight;
 
+    activeForcedLayoutViewport = viewport;
     activeForcedLayoutRelease = () => {
       activeForcedLayoutRelease = null;
+      activeForcedLayoutViewport = null;
       viewport.removeAttribute('data-cinder-force-visible');
     };
 
