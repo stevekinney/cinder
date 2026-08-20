@@ -229,6 +229,9 @@ test.describe('authored Playground preview fallbacks', () => {
     ['alert-dialog', 'Open alert dialog'],
     ['backdrop', 'Show dimmed backdrop'],
     ['confirm-dialog', 'Delete item'],
+    ['command-palette', 'Open palette'],
+    ['drawer', 'Open drawer'],
+    ['modal', 'Invite teammate'],
   ] as const) {
     test(`${name} shows its interactive example instead of an inert bare mount`, async ({
       page,
@@ -241,6 +244,25 @@ test.describe('authored Playground preview fallbacks', () => {
     });
   }
 
+  for (const [name, trigger, visibleContent] of [
+    ['alert-dialog', 'Open alert dialog', 'Session requires attention'],
+    [
+      'confirm-dialog',
+      'Delete item',
+      'This permanently removes the item. This action cannot be undone.',
+    ],
+    ['command-palette', 'Open palette', 'New file'],
+    ['drawer', 'Open drawer', 'This is the drawer body. You can put any content here.'],
+    ['modal', 'Invite teammate', 'Full name'],
+  ] as const) {
+    test(`${name} opens its authored overlay content`, async ({ page }) => {
+      await page.goto(`/page/${name}?view=playground`, { waitUntil: 'load' });
+
+      await page.getByRole('button', { name: trigger }).click();
+      await expect(page.getByText(visibleContent, { exact: true })).toBeVisible();
+    });
+  }
+
   test('command-menu shows its anchored interactive example instead of a bare mount', async ({
     page,
   }) => {
@@ -250,6 +272,172 @@ test.describe('authored Playground preview fallbacks', () => {
     await expect(page.getByRole('textbox', { name: 'Notes' })).toBeVisible();
     await expect(page.locator('#playground-live-mount')).toHaveCount(0);
   });
+
+  test('command-menu opens its authored completion list', async ({ page }) => {
+    await page.goto('/page/command-menu?view=playground', { waitUntil: 'load' });
+
+    const notes = page.getByRole('textbox', { name: 'Notes' });
+    await notes.focus();
+    await page.keyboard.press('End');
+    await page.keyboard.type('/');
+    await expect(page.getByRole('listbox', { name: 'Slash commands' })).toBeVisible();
+    await expect(page.getByText('Summary', { exact: true })).toBeVisible();
+  });
+
+  test('backdrop renders a real, dismissible scrim through its authored example', async ({
+    page,
+  }) => {
+    await page.goto('/page/backdrop?view=playground', { waitUntil: 'load' });
+
+    await page.getByRole('button', { name: 'Show dimmed backdrop' }).click();
+    const scrim = page.locator('.cinder-backdrop');
+    await expect(scrim).toBeVisible();
+    await expect(scrim.getByText('Loading… click anywhere to dismiss')).toBeVisible();
+
+    await scrim.click({ position: { x: 8, y: 8 } });
+    await expect(scrim).toBeHidden();
+  });
+});
+
+test.describe('Svelte 5 snippet-contract Playground routes', () => {
+  const routeNames = [
+    'alert',
+    'badge',
+    'banner',
+    'button',
+    'button-group',
+    'callout',
+    'card',
+    'checkbox-group',
+    'container',
+    'copy-button',
+    'floating-action',
+    'form-field',
+    'form-section',
+    'kbd',
+    'keyboard-shortcuts',
+    'link',
+    'marquee',
+    'masonry',
+    'message',
+    'resizable-panels',
+    'scroll-area',
+    'segmented-control',
+    'shortcut-hint',
+    'skip-link',
+    'visually-hidden',
+  ];
+
+  for (const name of routeNames) {
+    test(`${name} reaches a rendered preview without snippet diagnostics`, async ({ page }) => {
+      const diagnostics: string[] = [];
+      page.on('console', (message) => {
+        if (message.type() === 'error' || message.type() === 'warning') {
+          diagnostics.push(message.text());
+        }
+      });
+      page.on('pageerror', (error) => diagnostics.push(error.message));
+
+      await page.goto(`/page/${name}?view=playground`, { waitUntil: 'load' });
+      const stage = page.locator('.dx-playground .dx-stage').first();
+      await expect(stage).toBeVisible();
+      await expect(stage.locator('.cinder-callout[data-cinder-variant="danger"]')).toHaveCount(0);
+      await expect(stage.locator('.example-preview')).toBeVisible();
+      expect(diagnostics, `${name} diagnostics`).toEqual([]);
+    });
+  }
+});
+
+test('marquee keeps its generated live preview', async ({ page }) => {
+  await page.goto('/page/marquee?view=playground', { waitUntil: 'load' });
+
+  await expect(page.getByText('Live preview', { exact: true })).toBeVisible();
+  await expect(page.locator('#playground-live-mount')).toBeVisible();
+  await expect(page.getByLabel('label')).toHaveValue('Announcements');
+  const generatedSnippet = page.locator('.dx-playground__panel .cinder-code-block').first();
+  await expect(generatedSnippet).toContainText('<Marquee label="Announcements">');
+  await expect(generatedSnippet).toContainText('{#snippet children()}');
+  await expect(generatedSnippet).toContainText('aria-hidden="true"');
+
+  // A recipe value seeds a useful initial preview, but clearing its control is
+  // still an explicit reader choice. The live mount and copied source must both
+  // drop the baseline rather than quietly restoring it.
+  await page.getByLabel('label').fill('');
+  await expect(page.locator('#playground-live-mount .cinder-marquee')).not.toHaveAttribute(
+    'aria-label',
+  );
+  await expect(generatedSnippet).not.toContainText('label="Announcements"');
+});
+
+test('authored previews retain the focus-mode control', async ({ page }) => {
+  await page.goto('/page/sidebar?view=playground', { waitUntil: 'load' });
+
+  await expect(page.getByText('Featured example', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Expand' }).click();
+  await expect(page.locator('[data-component-page]')).toHaveClass(/is-focus-mode/);
+});
+
+test('masonry keeps its recipe items as direct component children', async ({ page }) => {
+  await page.goto('/page/masonry?view=playground', { waitUntil: 'load' });
+
+  await expect(page.locator('#playground-live-mount .cinder-masonry > .dx-recipe-box')).toHaveCount(
+    3,
+  );
+  await expect(page.locator('.dx-playground__panel .cinder-code-block').first()).toContainText(
+    'Item 1',
+  );
+});
+
+test('text children stay text when VisuallyHidden changes its rendered element', async ({
+  page,
+}) => {
+  await page.goto('/page/visually-hidden?view=playground', { waitUntil: 'load' });
+
+  await page.getByLabel('as').selectOption('textarea');
+  const preview = page.locator('#playground-live-mount textarea');
+  await expect(preview).toHaveText('VisuallyHidden');
+  await expect(preview.locator('span')).toHaveCount(0);
+});
+
+test.describe('mobile view switching on component pages', () => {
+  for (const name of ['side-navigation', 'sidebar']) {
+    test(`${name} switches views with pointer and keyboard input from 320px through 430px`, async ({
+      page,
+    }) => {
+      for (const width of [320, 375, 390, 430]) {
+        await page.setViewportSize({ width, height: 844 });
+        await page.goto(`/page/${name}`, { waitUntil: 'load' });
+
+        const documentation = page.getByRole('tab', { name: 'Documentation' });
+        const playground = page.getByRole('tab', { name: 'Playground' });
+        await expect(documentation).toHaveAttribute('aria-selected', 'true');
+
+        await playground.click();
+        await expect(playground).toHaveAttribute('aria-selected', 'true');
+        await expect(page).toHaveURL(new RegExp(`/page/${name}\\?view=playground$`));
+        await expect(page.getByRole('tabpanel', { name: 'Playground' })).toBeVisible();
+
+        await documentation.focus();
+        await page.keyboard.press('Enter');
+        await expect(documentation).toHaveAttribute('aria-selected', 'true');
+        await expect(page).toHaveURL(new RegExp(`/page/${name}$`));
+        await expect(page.getByRole('tabpanel', { name: 'Documentation' })).toBeVisible();
+
+        await playground.focus();
+        await page.keyboard.press('Space');
+        await expect(playground).toHaveAttribute('aria-selected', 'true');
+
+        await playground.focus();
+        await page.keyboard.press('ArrowLeft');
+        await expect(documentation).toHaveAttribute('aria-selected', 'true');
+
+        await documentation.focus();
+        await page.keyboard.press('ArrowRight');
+        await expect(playground).toHaveAttribute('aria-selected', 'true');
+        await expect(page.getByRole('tabpanel', { name: 'Playground' })).toBeVisible();
+      }
+    });
+  }
 });
 
 test.describe('narrow documentation layout', () => {

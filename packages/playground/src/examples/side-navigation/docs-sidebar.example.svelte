@@ -9,9 +9,15 @@
 <script lang="ts">
   import { Button } from '@lostgradient/cinder/button';
   import { SideNavigation } from '@lostgradient/cinder/side-navigation';
-  import { Sidebar } from '@lostgradient/cinder/sidebar';
+  import { SIDEBAR_MOBILE_MEDIA_QUERY, Sidebar } from '@lostgradient/cinder/sidebar';
+  import { MediaQuery } from 'svelte/reactivity';
 
-  let collapsed = $state(false);
+  const mobile = new MediaQuery(SIDEBAR_MOBILE_MEDIA_QUERY, false);
+  let collapsed = $state(mobile.current);
+
+  $effect(() => {
+    if (mobile.current) collapsed = true;
+  });
 </script>
 
 <div style="display: flex; flex-direction: column; gap: 1rem;">

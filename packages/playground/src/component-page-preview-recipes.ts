@@ -33,9 +33,15 @@ export type PreviewRecipe = {
   props?: Readonly<Record<string, unknown>>;
   /**
    * Raw HTML mounted as the component's `children`, replacing the synthesized
-   * name-as-text seed.
+   * name-as-text seed. `component-page.svelte` renders it through a compiled
+   * snippet so each element remains a direct child of the live component.
    */
   childrenHtml?: string;
+  /**
+   * Contract-valid Svelte source for the generated copyable snippet's children.
+   * It mirrors `childrenHtml` when the component needs structured content.
+   */
+  snippetChildren?: string;
   /**
    * Raw HTML rendered as a SIBLING of the component inside the stage, before it.
    * Used to give a styling primitive something to be compared against.
@@ -60,7 +66,16 @@ const PLACEHOLDER_BOXES = [1, 2, 3]
   )
   .join('');
 
-const LAYOUT_RECIPE: PreviewRecipe = { childrenHtml: PLACEHOLDER_BOXES };
+const PLACEHOLDER_SNIPPET_CHILDREN = `{#snippet children()}
+  <div class="dx-recipe-box" style="padding: var(--cinder-space-4); border: 1px dashed var(--cinder-border); border-radius: var(--cinder-radius-sm); background: var(--cinder-surface-inset); color: var(--cinder-text-muted); font-family: var(--cinder-font-mono); font-size: var(--cinder-text-xs);">Item 1</div>
+  <div class="dx-recipe-box" style="padding: var(--cinder-space-4); border: 1px dashed var(--cinder-border); border-radius: var(--cinder-radius-sm); background: var(--cinder-surface-inset); color: var(--cinder-text-muted); font-family: var(--cinder-font-mono); font-size: var(--cinder-text-xs);">Item 2</div>
+  <div class="dx-recipe-box" style="padding: var(--cinder-space-4); border: 1px dashed var(--cinder-border); border-radius: var(--cinder-radius-sm); background: var(--cinder-surface-inset); color: var(--cinder-text-muted); font-family: var(--cinder-font-mono); font-size: var(--cinder-text-xs);">Item 3</div>
+{/snippet}`;
+
+const LAYOUT_RECIPE: PreviewRecipe = {
+  childrenHtml: PLACEHOLDER_BOXES,
+  snippetChildren: PLACEHOLDER_SNIPPET_CHILDREN,
+};
 
 export const PREVIEW_RECIPES: Readonly<Record<string, PreviewRecipe>> = {
   'floating-action': { props: { 'aria-label': 'Create item' } },
@@ -77,6 +92,15 @@ export const PREVIEW_RECIPES: Readonly<Record<string, PreviewRecipe>> = {
   'aspect-ratio': {
     childrenHtml:
       '<div style="display:grid;place-items:center;block-size:100%;background:var(--cinder-surface-inset);color:var(--cinder-text-muted);font-family:var(--cinder-font-mono);font-size:var(--cinder-text-xs)">Aspect-ratio content</div>',
+    snippetChildren:
+      '{#snippet children()}\n  <div style="display: grid; place-items: center; block-size: 100%; background: var(--cinder-surface-inset); color: var(--cinder-text-muted); font-family: var(--cinder-font-mono); font-size: var(--cinder-text-xs);">Aspect-ratio content</div>\n{/snippet}',
+  },
+  marquee: {
+    props: { label: 'Announcements' },
+    childrenHtml:
+      '<span style="font-weight:600">New dark theme tokens are live</span><span aria-hidden="true">•</span><span>v0.4.1 now available</span><span aria-hidden="true">•</span><span>Try the updated component decision aid</span>',
+    snippetChildren:
+      '{#snippet children()}\n  <span style="font-weight: 600;">New dark theme tokens are live</span>\n  <span aria-hidden="true">•</span>\n  <span>v0.4.1 now available</span>\n  <span aria-hidden="true">•</span>\n  <span>Try the updated component decision aid</span>\n{/snippet}',
   },
   surface: {
     // A tone is only readable against another tone, and the component itself
@@ -86,6 +110,8 @@ export const PREVIEW_RECIPES: Readonly<Record<string, PreviewRecipe>> = {
       '<div style="padding:var(--cinder-space-4);border-radius:var(--cinder-radius-md);background:var(--cinder-surface);color:var(--cinder-text-muted);font-size:var(--cinder-text-sm)">Reference surface (default tone)</div>',
     childrenHtml:
       '<div style="padding:var(--cinder-space-4);color:var(--cinder-text);font-size:var(--cinder-text-sm)">This Surface, at the selected tone</div>',
+    snippetChildren:
+      '{#snippet children()}\n  <div style="padding: var(--cinder-space-4); color: var(--cinder-text); font-size: var(--cinder-text-sm);">This Surface, at the selected tone</div>\n{/snippet}',
   },
   'focus-trap': { prefersFeaturedExample: true },
   'click-away-listener': { prefersFeaturedExample: true },

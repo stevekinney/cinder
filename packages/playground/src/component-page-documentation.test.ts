@@ -559,7 +559,7 @@ describe('component-page single-scroll layout', () => {
     await tick();
   });
 
-  test('keeps the props panel for components that require authored examples', async () => {
+  test('hides inert props for components that require authored examples', async () => {
     const exampleOnly = baseFixture();
     exampleOnly.component.id = 'autocomplete';
     exampleOnly.component.name = 'Autocomplete';
@@ -605,8 +605,36 @@ describe('component-page single-scroll layout', () => {
     const noteText = play?.querySelector('.dx-play__note')?.textContent ?? '';
     expect(noteText).toContain('documented through its examples');
     expect(noteText).not.toContain('no adjustable props');
-    // The adjustable props it DOES have keep their controls.
-    expect(play?.querySelector('.dx-play__controls')).not.toBeNull();
+    // Their controls would only mutate hidden local state: the featured example
+    // remains authoritative, so the panel does not present inert inputs.
+    expect(play?.querySelector('.dx-play__controls')).toBeNull();
+    expect(screen.queryByRole('group', { name: 'Stage width' })).toBeNull();
+
+    unmount();
+    await tick();
+  });
+
+  test('explains structured composition when an authored example is required', async () => {
+    const exampleOnly = baseFixture();
+    exampleOnly.component.id = 'button-group';
+    exampleOnly.component.name = 'Button group';
+    exampleOnly.component.exportName = 'ButtonGroup';
+    exampleOnly.propsManifest = {
+      name: 'ButtonGroup',
+      kebabName: 'button-group',
+      file: 'button-group.svelte',
+      importPath: '@lostgradient/cinder/button-group',
+      props: [],
+    };
+    installDocumentationDataIsland(exampleOnly);
+
+    const { unmount } = render(ComponentPage);
+    await screen.findByRole('heading', { level: 1, name: 'Button group' });
+
+    await showPlayground();
+    const noteText = document.querySelector('.dx-play__note')?.textContent ?? '';
+    expect(noteText).toMatch(/structured\s+child composition/);
+    expect(noteText).not.toContain('data, callbacks');
 
     unmount();
     await tick();
