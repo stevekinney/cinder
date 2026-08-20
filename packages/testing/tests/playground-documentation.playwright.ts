@@ -373,6 +373,20 @@ test('masonry keeps its recipe items as direct component children', async ({ pag
   await expect(page.locator('#playground-live-mount .cinder-masonry > .dx-recipe-box')).toHaveCount(
     3,
   );
+  await expect(page.locator('.dx-playground__panel .cinder-code-block').first()).toContainText(
+    'Item 1',
+  );
+});
+
+test('text children stay text when VisuallyHidden changes its rendered element', async ({
+  page,
+}) => {
+  await page.goto('/page/visually-hidden?view=playground', { waitUntil: 'load' });
+
+  await page.getByLabel('as').selectOption('textarea');
+  const preview = page.locator('#playground-live-mount textarea');
+  await expect(preview).toHaveText('VisuallyHidden');
+  await expect(preview.locator('span')).toHaveCount(0);
 });
 
 test.describe('mobile view switching on component pages', () => {

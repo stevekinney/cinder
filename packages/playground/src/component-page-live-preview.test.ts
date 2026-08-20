@@ -71,14 +71,13 @@ describe('toMountProps', () => {
     });
   });
 
-  test('converts a children text control into a children snippet', () => {
+  test('uses the page-provided children snippet for a text control', () => {
     const controls: PlaygroundControl[] = [
       { name: 'children', kind: 'text', isChildren: true, value: 'Badge', hasDefault: false },
     ];
-    const props = toMountProps(controls, { children: 'Beta' });
-    // `children` becomes a Svelte snippet (a function), never the raw string.
-    expect(typeof props['children']).toBe('function');
-    expect(props['children']).not.toBe('Beta');
+    const children = createRawSnippet(() => ({ render: () => 'Beta' }));
+    const props = toMountProps(controls, { children: 'Beta' }, [], undefined, children);
+    expect(props['children']).toBe(children);
   });
 
   test('omits children entirely when the text is empty (component default renders)', () => {

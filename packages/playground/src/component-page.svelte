@@ -643,6 +643,14 @@
   const hasGeneratedControls = $derived(
     canGenerateFromProps && playgroundModel.controls.length > 0,
   );
+  const playgroundChildrenText = $derived.by(() => {
+    const childrenControl = playgroundModel.controls.find(
+      (control) => control.kind === 'text' && control.isChildren === true,
+    );
+    return childrenControl === undefined
+      ? ''
+      : String(playgroundValues[childrenControl.name] ?? childrenControl.value);
+  });
 
   /**
    * The reader-facing explanation for a missing generated preview, or `null`
@@ -1147,10 +1155,12 @@
                its hydration pass — a mismatch. The live preview swaps in
                immediately after mount. -->
                 {#if isHydrated && bareComponent !== undefined && !snapshotMode && canGenerateFromProps && (!liveMountFailed || overviewExample === undefined)}
-                  {#snippet recipeChildren()}
+                  {#snippet previewChildren()}
                     {#if previewRecipe?.childrenHtml !== undefined}
                       <!-- eslint-disable-next-line svelte/no-at-html-tags -->
                       {@html previewRecipe.childrenHtml}
+                    {:else if playgroundChildrenText !== ''}
+                      {playgroundChildrenText}
                     {/if}
                   {/snippet}
                   <div class="dx-stage">
@@ -1181,7 +1191,7 @@
                             $state.snapshot(playgroundValues),
                             playgroundModel.seeds,
                             previewRecipe,
-                            recipeChildren,
+                            previewChildren,
                           ),
                         )}
                       ></div>

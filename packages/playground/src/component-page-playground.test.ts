@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import { buildPlaygroundModel, buildSnippet } from './component-page-playground.ts';
+import { previewRecipeFor } from './component-page-preview-recipes.ts';
 import type { ComponentManifest, ObjectShape, PropManifest } from './types.ts';
 
 function manifest(props: PropManifest[]): ComponentManifest {
@@ -702,6 +703,18 @@ describe('buildSnippet', () => {
         '{#snippet children()}Announcement{/snippet}',
       ),
     ).toBe('<Marquee label="Announcements">{#snippet children()}Announcement{/snippet}</Marquee>');
+  });
+
+  test.each([
+    ['masonry', 'Masonry', 'Item 1'],
+    ['aspect-ratio', 'AspectRatio', 'Aspect-ratio content'],
+    ['surface', 'Surface', 'This Surface, at the selected tone'],
+  ])('copies the %s recipe children with its preview', (recipeName, exportName, content) => {
+    const recipe = previewRecipeFor(recipeName);
+    expect(recipe?.snippetChildren).toBeDefined();
+    expect(
+      buildSnippet(exportName, [], {}, [], undefined, recipe?.props, recipe?.snippetChildren),
+    ).toContain(content);
   });
 
   test('renders string attributes and stacks multiple onto separate lines', () => {
