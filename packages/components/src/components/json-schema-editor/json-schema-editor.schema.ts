@@ -49,16 +49,16 @@ const schema = {
       {
         name: 'onSchemaChange',
         reason: 'function-or-snippet',
-        description: 'Observe a committed schema change after the request is sent.',
-      },
-      {
-        name: 'onSchemaChangeRequest',
-        reason: 'function-or-snippet',
-        description: 'Request that the parent replace `schema` with a committed editor value.',
+        description: 'Observe a schema change after the parent accepts the request.',
       },
       {
         name: 'onValidate',
         reason: 'function-or-snippet',
+      },
+      {
+        name: 'onValueChangeRequest',
+        reason: 'function-or-snippet',
+        description: 'Request that the parent replace `schema` with a committed editor value.',
       },
       {
         name: 'original',
@@ -69,7 +69,7 @@ const schema = {
         name: 'schema',
         reason: 'unknown-shape',
         description:
-          'Parent-owned schema. Requires `onSchemaChangeRequest`; do not combine with `defaultSchema`.',
+          'Parent-owned schema. Requires `onValueChangeRequest`; do not combine with `defaultSchema`.',
       },
     ],
   },

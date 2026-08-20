@@ -427,13 +427,16 @@ describe('JsonSchemaEditor — controlled and uncontrolled schema inputs', () =>
 
   test('emits controlled edits and synchronizes later parent schema updates', async () => {
     const changes: string[] = [];
+    const observedChanges: string[] = [];
     const { rerender } = render(JsonSchemaEditorImplementation, {
       props: {
         id: 'jse-controlled',
         schema: { type: 'string' },
         view: 'json' as const,
-        onSchemaChangeRequest: (event: JsonSchemaEditorChangeEvent) =>
+        onValueChangeRequest: (event: JsonSchemaEditorChangeEvent) =>
           changes.push(event.jsonString),
+        onSchemaChange: (event: JsonSchemaEditorChangeEvent) =>
+          observedChanges.push(event.jsonString),
       },
     });
     await flushEffects();
@@ -446,12 +449,15 @@ describe('JsonSchemaEditor — controlled and uncontrolled schema inputs', () =>
     await flushEffects();
 
     expect(changes).toEqual(['{\n  "type": "number"\n}']);
+    expect(observedChanges).toEqual([]);
 
     await rerender({
       id: 'jse-controlled',
       schema: { type: 'boolean' },
       view: 'json' as const,
-      onSchemaChangeRequest: (event: JsonSchemaEditorChangeEvent) => changes.push(event.jsonString),
+      onValueChangeRequest: (event: JsonSchemaEditorChangeEvent) => changes.push(event.jsonString),
+      onSchemaChange: (event: JsonSchemaEditorChangeEvent) =>
+        observedChanges.push(event.jsonString),
     });
     await flushEffects();
 
@@ -460,13 +466,13 @@ describe('JsonSchemaEditor — controlled and uncontrolled schema inputs', () =>
   });
 
   test('preserves a dirty JSON draft when a controlled parent recreates its unchanged schema', async () => {
-    const onSchemaChangeRequest = (_event: JsonSchemaEditorChangeEvent) => undefined;
+    const onValueChangeRequest = (_event: JsonSchemaEditorChangeEvent) => undefined;
     const { rerender } = render(JsonSchemaEditorImplementation, {
       props: {
         id: 'jse-controlled-draft',
         schema: { type: 'string' },
         view: 'json' as const,
-        onSchemaChangeRequest,
+        onValueChangeRequest,
       },
     });
     await flushEffects();
@@ -481,7 +487,7 @@ describe('JsonSchemaEditor — controlled and uncontrolled schema inputs', () =>
       id: 'jse-controlled-draft',
       schema: { type: 'string' },
       view: 'diff' as const,
-      onSchemaChangeRequest,
+      onValueChangeRequest,
     });
     await flushEffects();
 
@@ -489,7 +495,7 @@ describe('JsonSchemaEditor — controlled and uncontrolled schema inputs', () =>
       id: 'jse-controlled-draft',
       schema: { type: 'string' },
       view: 'json' as const,
-      onSchemaChangeRequest,
+      onValueChangeRequest,
     });
     await flushEffects();
 

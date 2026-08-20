@@ -108,7 +108,7 @@ export type JsonSchemaValidationResult = {
 };
 
 export type JsonSchemaEditorChangeEvent = {
-  schema: JsonSchemaValue;
+  schema: JsonSchemaValue | string;
   jsonString: string;
 };
 

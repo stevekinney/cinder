@@ -15,7 +15,7 @@
   import Alert from '../alert/alert.svelte';
   import Badge from '../badge/badge.svelte';
   import Button from '../button/button.svelte';
-  import CodeBlock from '@lostgradient/cinder/code-block';
+  import CodeBlock from '../code-block/index.ts';
   import Textarea from '../textarea/textarea.svelte';
 
   import type { JsonSchemaValidationError } from './json-schema-editor-types.ts';
@@ -30,7 +30,7 @@
 
   async function applyDraft(): Promise<void> {
     if (await editorState.applyJsonDraft()) {
-      jsonEditing = false;
+      await finishEditing();
       onApply?.();
     }
   }
@@ -88,8 +88,7 @@
   const canDiscard = $derived(editorState.jsonDraftIsDirty && !editorState.readonly);
   let jsonEditing = $state(false);
   const editable = $derived(
-    !editorState.readonly &&
-      (jsonEditing || editorState.jsonDraftIsDirty || editorState.committedSchema === null),
+    jsonEditing || editorState.jsonDraftIsDirty || editorState.committedSchema === null,
   );
   const displayedJson = $derived(
     editorState.committedSchema === null
@@ -97,9 +96,15 @@
       : editorState.committedCanonicalText,
   );
 
-  function discardDraft() {
+  async function discardDraft(): Promise<void> {
     editorState.discardJsonDraft();
+    await finishEditing();
+  }
+
+  async function finishEditing(): Promise<void> {
     jsonEditing = false;
+    await tick();
+    document.getElementById(`${idPrefix}-edit-json`)?.focus();
   }
 
   async function startEditing(): Promise<void> {
@@ -119,14 +124,26 @@
         Apply
       </Button>
       {#if editorState.jsonDraftIsDirty}
-        <Button variant="secondary" size="sm" disabled={!canDiscard} onclick={discardDraft}>
+        <Button
+          variant="secondary"
+          size="sm"
+          disabled={!canDiscard}
+          onclick={() => void discardDraft()}
+        >
           Discard
         </Button>
       {:else if editorState.committedSchema !== null}
-        <Button variant="secondary" size="sm" onclick={() => (jsonEditing = false)}>Done</Button>
+        <Button variant="secondary" size="sm" onclick={() => void finishEditing()}>Done</Button>
       {/if}
     {:else if !editorState.readonly}
-      <Button variant="secondary" size="sm" onclick={() => void startEditing()}>Edit JSON</Button>
+      <Button
+        id={`${idPrefix}-edit-json`}
+        variant="secondary"
+        size="sm"
+        onclick={() => void startEditing()}
+      >
+        Edit JSON
+      </Button>
     {/if}
   </div>
 
@@ -135,7 +152,7 @@
       id={`${idPrefix}-textarea`}
       label="JSON"
       value={editorState.jsonDraftText}
-      disabled={editorState.readonly}
+      readonly={editorState.readonly}
       rows={20}
       class="cinder-jse-json-view__textarea"
       oninput={(event: Event) =>

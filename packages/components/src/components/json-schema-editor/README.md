@@ -9,25 +9,25 @@ Multi-view editor for authoring JSON Schema documents with form, raw JSON, and d
   import JsonSchemaEditor from '@lostgradient/cinder/json-schema-editor';
   import type { JsonSchemaValue } from '@lostgradient/cinder/json-schema-editor';
 
-  let schema = $state<JsonSchemaValue>({ type: 'string' });
+  let schema = $state<JsonSchemaValue | string>({ type: 'string' });
 </script>
 
 <JsonSchemaEditor
   id="schema-editor"
   {schema}
-  onSchemaChangeRequest={({ schema: nextSchema }) => (schema = nextSchema)}
+  onValueChangeRequest={({ schema: nextSchema }) => (schema = nextSchema)}
 />
 ```
 
 ## State ownership
 
-Pass `schema` with `onSchemaChangeRequest` when the parent owns the current schema. Every committed edit asks the parent to update its value, and a later `schema` value from the parent becomes authoritative. Use the optional `onSchemaChange` callback to observe committed changes.
+Pass `schema` with `onValueChangeRequest` when the parent owns the current schema. Every committed edit asks the parent to update its value, and a later `schema` value from the parent becomes authoritative. Use the optional `onSchemaChange` callback to observe changes the parent accepts.
 
 ```svelte
 <JsonSchemaEditor
   id="controlled-schema-editor"
   {schema}
-  onSchemaChangeRequest={({ schema: nextSchema }) => (schema = nextSchema)}
+  onValueChangeRequest={({ schema: nextSchema }) => (schema = nextSchema)}
 />
 ```
 
@@ -52,22 +52,22 @@ Pass `defaultSchema` when the editor should own changes after initialization. Om
 
 <!-- generated:props:start -->
 
-| Prop                    | Type                                       | Required | Default | Description                                                                                                                                                            |
-| ----------------------- | ------------------------------------------ | -------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `class`                 | `string`                                   | no       | —       | Additional class merged onto the `.cinder-jse` root element.                                                                                                           |
-| `draftOverride`         | `"2020-12"` \| `"2019-09"` \| `"draft-07"` | no       | —       | Force a draft override regardless of $schema.                                                                                                                          |
-| `id`                    | `string`                                   | yes      | —       | Required for ARIA wiring.                                                                                                                                              |
-| `maxHistory`            | `number`                                   | no       | —       | Maximum history entries (default 100).                                                                                                                                 |
-| `readonly`              | `boolean`                                  | no       | —       | Read-only mode disables all mutations.                                                                                                                                 |
-| `schemaKey`             | `string`                                   | no       | —       | Changing this triggers a full reset (history clears).                                                                                                                  |
-| `view`                  | `"form"` \| `"json"` \| `"diff"`           | no       | —       | Active view: form / json / diff. Bindable.                                                                                                                             |
-| `defaultSchema`         | `(opaque)`                                 | no       | —       | Omit `schema` to use this as the initial value of an uncontrolled editor. Not expressible in JSON Schema; see the component types for the signature.                   |
-| `onRevert`              | `(opaque)`                                 | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                             |
-| `onSchemaChange`        | `(opaque)`                                 | no       | —       | Observe a committed schema change after the request is sent. Not expressible in JSON Schema; see the component types for the signature.                                |
-| `onSchemaChangeRequest` | `(opaque)`                                 | no       | —       | Request that the parent replace `schema` with a committed editor value. Not expressible in JSON Schema; see the component types for the signature.                     |
-| `onValidate`            | `(opaque)`                                 | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                             |
-| `original`              | `(opaque)`                                 | no       | —       | Optional explicit baseline; defaults to the initial schema input. Not expressible in JSON Schema; see the component types for the signature.                           |
-| `schema`                | `(opaque)`                                 | no       | —       | Parent-owned schema. Requires `onSchemaChangeRequest`; do not combine with `defaultSchema`. Not expressible in JSON Schema; see the component types for the signature. |
+| Prop                   | Type                                       | Required | Default | Description                                                                                                                                                           |
+| ---------------------- | ------------------------------------------ | -------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `class`                | `string`                                   | no       | —       | Additional class merged onto the `.cinder-jse` root element.                                                                                                          |
+| `draftOverride`        | `"2020-12"` \| `"2019-09"` \| `"draft-07"` | no       | —       | Force a draft override regardless of $schema.                                                                                                                         |
+| `id`                   | `string`                                   | yes      | —       | Required for ARIA wiring.                                                                                                                                             |
+| `maxHistory`           | `number`                                   | no       | —       | Maximum history entries (default 100).                                                                                                                                |
+| `readonly`             | `boolean`                                  | no       | —       | Read-only mode disables all mutations.                                                                                                                                |
+| `schemaKey`            | `string`                                   | no       | —       | Changing this triggers a full reset (history clears).                                                                                                                 |
+| `view`                 | `"form"` \| `"json"` \| `"diff"`           | no       | —       | Active view: form / json / diff. Bindable.                                                                                                                            |
+| `defaultSchema`        | `(opaque)`                                 | no       | —       | Omit `schema` to use this as the initial value of an uncontrolled editor. Not expressible in JSON Schema; see the component types for the signature.                  |
+| `onRevert`             | `(opaque)`                                 | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                            |
+| `onSchemaChange`       | `(opaque)`                                 | no       | —       | Observe a schema change after the parent accepts the request. Not expressible in JSON Schema; see the component types for the signature.                              |
+| `onValidate`           | `(opaque)`                                 | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                            |
+| `onValueChangeRequest` | `(opaque)`                                 | no       | —       | Request that the parent replace `schema` with a committed editor value. Not expressible in JSON Schema; see the component types for the signature.                    |
+| `original`             | `(opaque)`                                 | no       | —       | Optional explicit baseline; defaults to the initial schema input. Not expressible in JSON Schema; see the component types for the signature.                          |
+| `schema`               | `(opaque)`                                 | no       | —       | Parent-owned schema. Requires `onValueChangeRequest`; do not combine with `defaultSchema`. Not expressible in JSON Schema; see the component types for the signature. |
 
 <!-- generated:props:end -->
 

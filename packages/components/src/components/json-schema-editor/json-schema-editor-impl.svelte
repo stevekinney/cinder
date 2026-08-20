@@ -61,7 +61,7 @@
     maxHistory,
     draftOverride,
     onSchemaChange,
-    onSchemaChangeRequest,
+    onValueChangeRequest,
     onRevert,
     onValidate,
     class: className,
@@ -109,26 +109,61 @@
     enumDrafts = {};
   }
 
+  function controlledSchemaText(input: JsonSchemaValue | string): string {
+    const normalised = normaliseSchemaInput(input);
+    return normalised.ok ? normalised.canonicalText : normalised.rawText;
+  }
+
+  function schemaMatchesChangeEvent(
+    input: JsonSchemaValue | string,
+    event: JsonSchemaEditorChangeEvent,
+  ): boolean {
+    return controlledSchemaText(input) === event.jsonString;
+  }
+
+  let pendingControlledChange: JsonSchemaEditorChangeEvent | undefined;
+
+  function settleControlledChange(input: JsonSchemaValue | string) {
+    const pendingChange = pendingControlledChange;
+    const accepted = pendingChange !== undefined && schemaMatchesChangeEvent(input, pendingChange);
+
+    synchroniseControlledSchema(input);
+    pendingControlledChange = undefined;
+
+    if (accepted) onSchemaChange?.(pendingChange);
+  }
+
   function handleSchemaChange(event: JsonSchemaEditorChangeEvent) {
-    onSchemaChangeRequest?.(event);
-    onSchemaChange?.(event);
-    if (schema === undefined) return;
+    if (schema === undefined) {
+      onSchemaChange?.(event);
+      return;
+    }
+
+    pendingControlledChange = event;
+    onValueChangeRequest?.(event);
 
     // A controlled parent normally assigns its next `schema` synchronously in
     // the callback. If it declines the proposed value, restore its authoritative
-    // input after that callback has had a chance to run.
+    // input after that callback has had a chance to run. The notification fires
+    // only when that authoritative input accepts the requested value.
     queueMicrotask(() => {
-      if (schema !== undefined && !schemaMatchesCommitted(schema)) {
-        synchroniseControlledSchema(schema);
-      }
+      if (schema !== undefined) settleControlledChange(schema);
     });
   }
 
-  let lastControlledSchema = untrack(() => schema);
+  let lastControlledSchemaText = untrack(() =>
+    schema === undefined ? undefined : controlledSchemaText(schema),
+  );
   $effect(() => {
-    if (schema === undefined || schema === lastControlledSchema) return;
-    lastControlledSchema = schema;
-    untrack(() => synchroniseControlledSchema(schema));
+    if (schema === undefined) {
+      lastControlledSchemaText = undefined;
+      return;
+    }
+
+    const nextControlledSchemaText = controlledSchemaText(schema);
+    if (nextControlledSchemaText === lastControlledSchemaText) return;
+    lastControlledSchemaText = nextControlledSchemaText;
+    untrack(() => settleControlledChange(schema));
   });
 
   // Sync `readonly` into the state container whenever the prop changes.

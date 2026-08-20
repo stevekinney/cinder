@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import { createEditorState } from './json-schema-editor-state.svelte.ts';
+import type { JsonSchemaEditorChangeEvent } from './json-schema-editor-types.ts';
 
 function withImmediateTimers<T>(run: () => T): T {
   const originalSetTimeout = globalThis.setTimeout;
@@ -307,6 +308,20 @@ describe('createEditorState — change events', () => {
     state.setJsonDraftText('{"type":"number"}');
 
     expect(calls).toBe(0);
+  });
+
+  test('onSchemaChange emits the original raw text when reverting an initially invalid schema', async () => {
+    const events: JsonSchemaEditorChangeEvent[] = [];
+    const state = createEditorState({
+      schema: '{not-valid',
+      onSchemaChange: (event) => events.push(event),
+    });
+
+    state.setJsonDraftText('{"type":"string"}');
+    await state.applyJsonDraft();
+    state.revert();
+
+    expect(events.at(-1)).toEqual({ schema: '{not-valid', jsonString: '{not-valid' });
   });
 });
 

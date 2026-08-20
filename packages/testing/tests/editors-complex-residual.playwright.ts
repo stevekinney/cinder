@@ -508,6 +508,32 @@ test.describe('JSON schema editor', () => {
     );
   });
 
+  test('JSON edit actions preserve keyboard focus when they return to the code view', async ({
+    page,
+  }) => {
+    const editor = await openFirstEditor(page);
+    await editor.getByRole('tab', { name: /JSON/ }).click();
+
+    const editJson = editor.getByRole('button', { name: 'Edit JSON' });
+    await editJson.click();
+    await expect(editor.getByRole('textbox', { name: 'JSON' })).toBeFocused();
+
+    await editor.getByRole('button', { name: 'Done' }).click();
+    await expect(editJson).toBeFocused();
+
+    await editJson.click();
+    const textarea = editor.getByRole('textbox', { name: 'JSON' });
+    await textarea.fill('{"type":"number"}');
+    await expect(editor.getByRole('button', { name: 'Apply' })).toBeEnabled();
+    await editor.getByRole('button', { name: 'Apply' }).click();
+    await expect(editJson).toBeFocused();
+
+    await editJson.click();
+    await textarea.fill('{"type":"boolean"}');
+    await editor.getByRole('button', { name: 'Discard' }).click();
+    await expect(editJson).toBeFocused();
+  });
+
   test('invalid enum drafts survive switching away from the form view', async ({ page }) => {
     const editor = await openFirstEditor(page);
     const jsonTab = editor.getByRole('tab', { name: /JSON/ });
