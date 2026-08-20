@@ -109,9 +109,14 @@
     discardRejectedCommit = false,
   ) {
     if (schemaMatchesCommitted(input)) return;
-    if (discardRejectedCommit && editorState.discardCurrentCommitWhenPreviousMatches(input)) {
-      enumDrafts = {};
-      return;
+    if (discardRejectedCommit) {
+      const reconciledHistory =
+        editorState.discardCurrentCommitWhenPreviousMatches(input) ||
+        editorState.restoreNextCommitWhenMatches(input);
+      if (reconciledHistory) {
+        enumDrafts = {};
+        return;
+      }
     }
     editorState.synchronise(input);
     enumDrafts = {};
@@ -130,11 +135,11 @@
   }
 
   function isSchemaInput(input: unknown): input is JsonSchemaValue | string {
-    return (
+    const hasSchemaShape =
       typeof input === 'string' ||
       typeof input === 'boolean' ||
-      (typeof input === 'object' && input !== null && !Array.isArray(input))
-    );
+      (typeof input === 'object' && input !== null && !Array.isArray(input));
+    return hasSchemaShape && normaliseSchemaInput(input as JsonSchemaValue | string).ok;
   }
 
   let pendingControlledChange = $state<JsonSchemaEditorChangeEvent | undefined>();

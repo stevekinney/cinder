@@ -219,6 +219,17 @@ describe('createEditorState — undo / redo / revert', () => {
     expect(state.committedSchema).toEqual({ type: 'string' });
   });
 
+  test('restoreNextCommitWhenMatches restores a rejected undo without resetting history', () => {
+    const state = createEditorState({ schema: { type: 'string' } });
+    state.commitFromForm({ type: 'number' });
+    state.undo();
+
+    expect(state.restoreNextCommitWhenMatches({ type: 'number' })).toBe(true);
+    expect(state.committedSchema).toEqual({ type: 'number' });
+    expect(state.canUndo).toBe(true);
+    expect(state.canRedo).toBe(false);
+  });
+
   test('revert restores original schema and clears history', () => {
     const state = createEditorState({ schema: { type: 'string' } });
     state.commitFromForm({ type: 'number' });

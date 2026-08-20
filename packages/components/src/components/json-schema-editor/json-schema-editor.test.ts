@@ -835,6 +835,34 @@ describe('JsonSchemaEditor — controlled and uncontrolled schema inputs', () =>
     );
   });
 
+  test('preserves accepted history when a controlled undo is rejected', async () => {
+    const { container } = render(JsonSchemaEditorImplementation, {
+      props: {
+        id: 'jse-controlled-rejected-undo',
+        schema: { type: 'string' },
+        view: 'json' as const,
+        onValueChangeRequest: () => ({ type: 'number' }),
+      },
+    });
+    await flushEffects();
+
+    await fireEvent.click(latestJsonButton(container, 'Edit JSON'));
+    await fireEvent.input(latestJsonTextarea(container), {
+      target: { value: '{"type":"number"}' },
+    });
+    await fireEvent.click(latestJsonButton(container, 'Apply'));
+    await flushEffects();
+
+    await fireEvent.click(within(container).getByRole('button', { name: 'Undo' }));
+    await flushEffects();
+    await flushEffects();
+
+    expect(container.textContent).toContain('"type": "number"');
+    expect(within(container).getByRole('button', { name: 'Undo' }).hasAttribute('disabled')).toBe(
+      false,
+    );
+  });
+
   test('restores the latest authority when a second request is pending', async () => {
     const requests: string[] = [];
     const pendingSettlement = new Promise<never>(() => {});
@@ -1106,6 +1134,35 @@ describe('JsonSchemaEditor — controlled and uncontrolled schema inputs', () =>
     }
 
     expect(requests).toEqual(['{\n  "type": "number"\n}', '{\n  "type": "boolean"\n}']);
+  });
+
+  test('rejects a non-normalizable fulfilled settlement so another edit can be requested', async () => {
+    const requests: string[] = [];
+    const { container } = render(JsonSchemaEditorImplementation, {
+      props: {
+        id: 'jse-controlled-non-normalizable-settlement',
+        schema: { type: 'string' },
+        view: 'json' as const,
+        onValueChangeRequest: (event: JsonSchemaEditorChangeEvent) => {
+          requests.push(event.jsonString);
+          return { default: undefined };
+        },
+      },
+    });
+    await flushEffects();
+
+    for (const type of ['number', 'boolean']) {
+      await fireEvent.click(latestJsonButton(container, 'Edit JSON'));
+      await fireEvent.input(latestJsonTextarea(container), {
+        target: { value: `{"type":"${type}"}` },
+      });
+      await fireEvent.click(latestJsonButton(container, 'Apply'));
+      await flushEffects();
+      await flushEffects();
+    }
+
+    expect(requests).toEqual(['{\n  "type": "number"\n}', '{\n  "type": "boolean"\n}']);
+    expect(container.textContent).toContain('"type": "string"');
   });
 
   test('does not settle a pending request after unmount', async () => {
