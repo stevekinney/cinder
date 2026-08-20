@@ -343,7 +343,7 @@ async function renderComponentPage(
   // Chat and Editor pages, so its Cinder imports need opt-in sidecars too.
   // The documented package's own stylesheet remains additive.
   const componentStylesheetUrls = [
-    ...documentationExampleStylesheetUrls(componentName, scenarios),
+    ...documentationExampleStylesheetUrls(componentDefinition.source, componentName, scenarios),
     ...(componentStylesheetUrl === null ? [] : [componentStylesheetUrl]),
   ].filter((stylesheetUrl, index, urls) => urls.indexOf(stylesheetUrl) === index);
   const componentStylesheetLinks = componentStylesheetUrls

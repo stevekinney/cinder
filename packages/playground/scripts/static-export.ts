@@ -77,11 +77,21 @@ export function requireProductionBaseUrl(value = Bun.env['PLAYGROUND_BASE_URL'] 
   return url.origin;
 }
 
-/** Refuse filesystem roots before clearing a caller-supplied static output directory. */
+/** Refuse roots and repository source paths before clearing static output. */
 export function assertSafeOutputDirectory(outputDirectory: string): void {
   const resolved = resolve(outputDirectory);
   if (resolved === parse(resolved).root) {
     throw new Error('[static-export] refusing to clear a filesystem root');
+  }
+  const repositoryRoot = resolve(PLAYGROUND_ROOT, '..', '..');
+  const generatedOutputRoot = resolve(OUTPUT_DIRECTORY);
+  const isRepositoryAncestor = repositoryRoot === resolved || repositoryRoot.startsWith(`${resolved}/`);
+  const isUnapprovedRepositoryPath =
+    resolved.startsWith(`${repositoryRoot}/`) &&
+    resolved !== generatedOutputRoot &&
+    !resolved.startsWith(`${generatedOutputRoot}/`);
+  if (isRepositoryAncestor || isUnapprovedRepositoryPath) {
+    throw new Error('[static-export] refusing to clear a protected repository path');
   }
 }
 

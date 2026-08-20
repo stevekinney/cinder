@@ -82,6 +82,8 @@ test('requires a clean absolute HTTPS base URL for the deploy build', () => {
 
 test('refuses a filesystem root as static export output', () => {
   expect(() => assertSafeOutputDirectory('/')).toThrow('filesystem root');
+  expect(() => assertSafeOutputDirectory('.')).toThrow('protected repository path');
+  expect(() => assertSafeOutputDirectory('public/..')).toThrow('protected repository path');
 });
 
 test('rejects sitemap route drift and duplicate URLs', () => {

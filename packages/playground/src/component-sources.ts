@@ -111,22 +111,27 @@ function cinderComponentDependenciesFromSource(source: string, dependencies: Set
 }
 
 function implementationDependencies(
+  componentsRoot: string,
   implementationPath: string,
   dependencies: Set<string>,
   visitedPaths = new Set<string>(),
 ): void {
   const resolvedPath = resolve(implementationPath);
-  const componentsRoot = resolve(cinderPackageRoot, 'src', 'components');
-  if (!resolvedPath.startsWith(`${componentsRoot}/`) || visitedPaths.has(resolvedPath)) return;
+  const resolvedComponentsRoot = resolve(componentsRoot);
+  if (!resolvedPath.startsWith(`${resolvedComponentsRoot}/`) || visitedPaths.has(resolvedPath))
+    return;
   visitedPaths.add(resolvedPath);
-  const componentName = resolvedPath.slice(componentsRoot.length + 1).split('/')[0];
-  if (componentName !== undefined && componentName !== '') dependencies.add(componentName);
+  if (resolvedComponentsRoot === resolve(cinderPackageRoot, 'src', 'components')) {
+    const componentName = resolvedPath.slice(resolvedComponentsRoot.length + 1).split('/')[0];
+    if (componentName !== undefined && componentName !== '') dependencies.add(componentName);
+  }
   if (!existsSync(resolvedPath)) return;
 
   const source = readFileSync(resolvedPath, 'utf8');
   cinderComponentDependenciesFromSource(source, dependencies);
   for (const match of source.matchAll(RELATIVE_SVELTE_IMPORT)) {
     implementationDependencies(
+      resolvedComponentsRoot,
       resolve(dirname(resolvedPath), match[1]!),
       dependencies,
       visitedPaths,
@@ -157,6 +162,7 @@ export function documentationComponentStylesheetUrl(
  * sidecar alone is not enough after removing the global stylesheet.
  */
 export function documentationExampleStylesheetUrls(
+  componentSource: ComponentSource,
   componentName: string,
   scenarios: readonly string[],
 ): string[] {
@@ -174,7 +180,8 @@ export function documentationExampleStylesheetUrls(
   }
 
   implementationDependencies(
-    join(cinderPackageRoot, 'src', 'components', componentName, `${componentName}.svelte`),
+    componentSource.componentsRoot,
+    join(componentSource.componentsRoot, componentName, `${componentName}.svelte`),
     dependencyNames,
   );
 

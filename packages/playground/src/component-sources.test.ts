@@ -64,7 +64,10 @@ describe('documentationComponentStylesheetUrl', () => {
 describe('documentationExampleStylesheetUrls', () => {
   it('adds styles for Cinder components composed by the documented component examples', () => {
     expect(
-      documentationExampleStylesheetUrls('checkbox-group', ['basic', 'disabled-fieldset']),
+      documentationExampleStylesheetUrls(CINDER_COMPONENT_SOURCE, 'checkbox-group', [
+        'basic',
+        'disabled-fieldset',
+      ]),
     ).toEqual([
       '/components/checkbox/checkbox.css',
       '/components/checkbox-group/checkbox-group.css',
@@ -72,11 +75,25 @@ describe('documentationExampleStylesheetUrls', () => {
   });
 
   it('collects root-barrel imports and recursively follows local implementation modules', () => {
-    expect(documentationExampleStylesheetUrls('autocomplete', ['inside-form-field'])).toContain(
-      '/components/form-field/form-field.css',
-    );
-    expect(documentationExampleStylesheetUrls('json-schema-editor', [])).toEqual(
+    expect(
+      documentationExampleStylesheetUrls(CINDER_COMPONENT_SOURCE, 'autocomplete', [
+        'inside-form-field',
+      ]),
+    ).toContain('/components/form-field/form-field.css');
+    expect(
+      documentationExampleStylesheetUrls(CINDER_COMPONENT_SOURCE, 'json-schema-editor', []),
+    ).toEqual(
       expect.arrayContaining(['/components/tabs/tabs.css', '/components/textarea/textarea.css']),
+    );
+  });
+
+  it('collects Cinder styles from extracted-package implementation modules', () => {
+    expect(documentationExampleStylesheetUrls(EDITOR_COMPONENT_SOURCE, 'diff-viewer', [])).toEqual(
+      expect.arrayContaining([
+        '/components/segmented-control/segmented-control.css',
+        '/components/spinner/spinner.css',
+        '/components/surface/surface.css',
+      ]),
     );
   });
 });
