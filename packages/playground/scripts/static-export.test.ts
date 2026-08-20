@@ -5,6 +5,7 @@ import { join } from 'node:path';
 
 import { describe, expect, test } from 'bun:test';
 
+import { fingerprintStaticAssets } from './static-asset-fingerprints.ts';
 import {
   assertDocumentationMetadata,
   assertDocumentationPagesArePreRendered,
@@ -14,6 +15,62 @@ import {
   requireProductionBaseUrl,
   runStaticExport,
 } from './static-export.ts';
+
+test('content-addresses static assets and rewrites HTML, JS, and CSS references', async () => {
+  const outputDirectory = await mkdtemp(join(tmpdir(), 'cinder-static-assets-'));
+  try {
+    await mkdir(join(outputDirectory, 'styles'), { recursive: true });
+    await writeFile(
+      join(outputDirectory, 'index.html'),
+      '<link rel="stylesheet" href="/styles/site.css"><script src="/app.js"></script><img src="/social.png">',
+    );
+    await writeFile(join(outputDirectory, 'app.js'), 'import "/styles/site.css";');
+    await writeFile(join(outputDirectory, 'social.png'), new Uint8Array([137, 80, 78, 71]));
+    await writeFile(join(outputDirectory, 'styles', 'site.css'), "@import './tokens.css';");
+    await writeFile(join(outputDirectory, 'styles', 'tokens.css'), ':root { color: canvas; }');
+
+    const { fingerprintedUrlBySourceUrl } = await fingerprintStaticAssets(outputDirectory);
+    const siteStylesheet = fingerprintedUrlBySourceUrl.get('/styles/site.css')!;
+    const tokensStylesheet = fingerprintedUrlBySourceUrl.get('/styles/tokens.css')!;
+    const script = fingerprintedUrlBySourceUrl.get('/app.js')!;
+    const socialImage = fingerprintedUrlBySourceUrl.get('/social.png')!;
+
+    expect(siteStylesheet).toMatch(/^\/assets\/[a-f0-9]{64}\/styles\/site\.css$/);
+    expect(await Bun.file(join(outputDirectory, 'styles', 'site.css')).exists()).toBe(false);
+    expect(await Bun.file(join(outputDirectory, siteStylesheet.slice(1))).text()).toContain(
+      tokensStylesheet,
+    );
+    const html = await readFile(join(outputDirectory, 'index.html'), 'utf8');
+    expect(html).toContain(siteStylesheet);
+    expect(html).toContain(script);
+    expect(html).toContain(socialImage);
+    expect(await Bun.file(join(outputDirectory, script.slice(1))).text()).toContain(siteStylesheet);
+  } finally {
+    await rm(outputDirectory, { recursive: true, force: true });
+  }
+});
+
+test('changes every immutable asset URL when its static asset set changes', async () => {
+  const firstOutput = await mkdtemp(join(tmpdir(), 'cinder-static-assets-first-'));
+  const secondOutput = await mkdtemp(join(tmpdir(), 'cinder-static-assets-second-'));
+  try {
+    await Promise.all(
+      [firstOutput, secondOutput].map(async (outputDirectory, index) => {
+        await writeFile(join(outputDirectory, 'index.html'), '<script src="/app.js"></script>');
+        await writeFile(join(outputDirectory, 'app.js'), `console.log(${index});`);
+      }),
+    );
+    const first = await fingerprintStaticAssets(firstOutput);
+    const second = await fingerprintStaticAssets(secondOutput);
+
+    expect(first.fingerprintedUrlBySourceUrl.get('/app.js')).not.toBe(
+      second.fingerprintedUrlBySourceUrl.get('/app.js'),
+    );
+  } finally {
+    await rm(firstOutput, { recursive: true, force: true });
+    await rm(secondOutput, { recursive: true, force: true });
+  }
+});
 
 test('requires a clean absolute HTTPS base URL for the deploy build', () => {
   expect(() => requireProductionBaseUrl('')).toThrow('absolute HTTPS URL');
@@ -127,18 +184,21 @@ describe('static export', () => {
       expect(indexHtml).toContain('id="shell-root"');
       expect(indexHtml).toContain('id="cinder-initial"');
       expect(indexHtml).toContain('readmeHtml');
-      expect(indexHtml).toContain('/shell-bundle/shell.js');
-      expect(indexHtml).toContain('/playground-styles/landing.css');
+      expect(indexHtml).toMatch(/\/assets\/[a-f0-9]{64}\/shell-bundle\/shell\.js/);
+      expect(indexHtml).toMatch(/\/assets\/[a-f0-9]{64}\/playground-styles\/landing\.css/);
       expect(indexHtml).not.toContain('http-equiv="refresh"');
-      expect(rendered.has('/shell-bundle/shell.js')).toBe(true);
+      expect([...rendered].some((url) => url.endsWith('/shell-bundle/shell.js'))).toBe(true);
       expect(indexHtml).not.toContain('data-canonical-documentation');
       expect(indexHtml).toContain('<link rel="canonical" href="https://playground.local/" />');
       expect(indexHtml).toContain('<script type="application/ld+json">');
-      expect(rendered.has('/styles/all.css')).toBe(true);
-      expect(rendered.has('/social.png')).toBe(true);
+      expect([...rendered].some((url) => url.endsWith('/social.png'))).toBe(true);
       expect(rendered.has('/sitemap.xml')).toBe(true);
       expect(rendered.has('/robots.txt')).toBe(true);
-      const socialImage = new Uint8Array(await readFile(join(outputDirectory, 'social.png')));
+      const socialImageUrl = [...rendered].find((url) => url.endsWith('/social.png'));
+      if (socialImageUrl === undefined) throw new Error('missing fingerprinted social image');
+      const socialImage = new Uint8Array(
+        await readFile(join(outputDirectory, socialImageUrl.slice(1))),
+      );
       expect([...socialImage.subarray(0, 8)]).toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
       await expect(readFile(join(outputDirectory, 'sitemap.xml'), 'utf8')).resolves.toContain(
         'https://playground.local/page/button',
@@ -146,7 +206,9 @@ describe('static export', () => {
       await expect(readFile(join(outputDirectory, 'robots.txt'), 'utf8')).resolves.toContain(
         'Sitemap: https://playground.local/sitemap.xml',
       );
-      expect(rendered.has('/playground-styles/landing.css')).toBe(true);
+      expect([...rendered].some((url) => url.endsWith('/playground-styles/landing.css'))).toBe(
+        true,
+      );
     } finally {
       await rm(outputDirectory, { recursive: true, force: true });
     }
@@ -161,33 +223,21 @@ describe('static export', () => {
         allComponents: ['chat', 'chat-composer-popover', 'chat-conversation-header'],
       });
       const pageHtml = await readFile(join(outputDirectory, 'page', 'chat', 'index.html'), 'utf8');
-      const chatStyles = await readFile(
-        join(outputDirectory, 'package-components', 'chat', 'chat', 'chat.css'),
-        'utf8',
+      const readFingerprintedAsset = async (suffix: string): Promise<string> => {
+        const url = [...rendered].find((candidate) => candidate.endsWith(suffix));
+        if (url === undefined) throw new Error(`missing fingerprinted ${suffix}`);
+        return readFile(join(outputDirectory, url.slice(1)), 'utf8');
+      };
+      const chatStyles = await readFingerprintedAsset('/package-components/chat/chat/chat.css');
+      const composerStyles = await readFingerprintedAsset(
+        '/package-components/chat/chat-composer-popover/chat-composer-popover.css',
       );
-      const composerStyles = await readFile(
-        join(
-          outputDirectory,
-          'package-components',
-          'chat',
-          'chat-composer-popover',
-          'chat-composer-popover.css',
-        ),
-        'utf8',
-      );
-      const headerStyles = await readFile(
-        join(
-          outputDirectory,
-          'package-components',
-          'chat',
-          'chat-conversation-header',
-          'chat-conversation-header.css',
-        ),
-        'utf8',
+      const headerStyles = await readFingerprintedAsset(
+        '/package-components/chat/chat-conversation-header/chat-conversation-header.css',
       );
 
-      expect(pageHtml).toContain('/page-bundle/chat.js');
-      expect(pageHtml).toContain('/package-components/chat/chat/chat.css');
+      expect(pageHtml).toMatch(/\/assets\/[a-f0-9]{64}\/page-bundle\/chat\.js/);
+      expect(pageHtml).toMatch(/\/assets\/[a-f0-9]{64}\/package-components\/chat\/chat\/chat\.css/);
       expect(pageHtml).toContain('id="cinder-documentation"');
       expect(pageHtml).toContain('\\u003cp');
 
@@ -198,13 +248,23 @@ describe('static export', () => {
       expect(pageHtml).toMatch(/<h1[^>]*>.*Chat.*<\/h1>/s);
       expect(rendered.has('/page/chat?preview=1')).toBe(false);
       expect(chatStyles).toContain('.cinder-chat');
-      expect(composerStyles).toContain("@import '/components/command-menu/command-menu.css';");
-      expect(headerStyles).toContain("@import '/components/dropdown/dropdown.css';");
+      expect(composerStyles).toMatch(
+        /@import '\/assets\/[a-f0-9]{64}\/components\/command-menu\/command-menu\.css';/,
+      );
+      expect(headerStyles).toMatch(
+        /@import '\/assets\/[a-f0-9]{64}\/components\/dropdown\/dropdown\.css';/,
+      );
       expect(rendered.has('/api/manifest/chat')).toBe(true);
       expect(rendered.has('/api/documentation/chat')).toBe(true);
-      expect(rendered.has('/package-components/chat/chat/chat.css')).toBe(true);
-      expect(rendered.has('/components/command-menu/command-menu.css')).toBe(true);
-      expect(rendered.has('/components/dropdown/dropdown.css')).toBe(true);
+      expect(
+        [...rendered].some((url) => url.endsWith('/package-components/chat/chat/chat.css')),
+      ).toBe(true);
+      expect(
+        [...rendered].some((url) => url.endsWith('/components/command-menu/command-menu.css')),
+      ).toBe(true);
+      expect([...rendered].some((url) => url.endsWith('/components/dropdown/dropdown.css'))).toBe(
+        true,
+      );
     } finally {
       await rm(outputDirectory, { recursive: true, force: true });
     }

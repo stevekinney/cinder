@@ -112,7 +112,7 @@ describe('vercel.json', () => {
     expect(await legacy.exists()).toBe(false);
   });
 
-  it('applies the static-site security policy without making stable URLs immutable', async () => {
+  it('applies the static-site security policy and caches only content-addressed URLs forever', async () => {
     const config = await readVercelConfig();
     const headers = config['headers'];
     expect(Array.isArray(headers)).toBe(true);
@@ -121,6 +121,7 @@ describe('vercel.json', () => {
       headers?: Array<{ key?: string; value?: string }>;
     }>;
     const universal = headerRules.find((rule) => rule.source === '/(.*)');
+    const immutableAssets = headerRules.find((rule) => rule.source === '/assets/(.*)');
     const policy = universal?.headers?.find(
       (header) => header.key === 'Content-Security-Policy',
     )?.value;
@@ -139,5 +140,9 @@ describe('vercel.json', () => {
       universal?.headers?.find((header) => header.key === 'Permissions-Policy')?.value,
     ).toContain('camera=()');
     expect(headerRules.find((rule) => rule.source === '/social.png')).toBeUndefined();
+    expect(immutableAssets?.headers).toContainEqual({
+      key: 'Cache-Control',
+      value: 'public, max-age=31536000, immutable',
+    });
   });
 });

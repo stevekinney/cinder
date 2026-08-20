@@ -38,6 +38,7 @@ import {
 } from '../src/discover.ts';
 import { handleRequest } from '../src/playground-server.ts';
 import { COMPOUND_COMPONENT_FAMILIES } from '../src/shell-app/compound-families.ts';
+import { fingerprintStaticAssets } from './static-asset-fingerprints.ts';
 
 const PLAYGROUND_ROOT = join(import.meta.dirname, '..');
 const OUTPUT_DIRECTORY = join(PLAYGROUND_ROOT, 'public');
@@ -323,14 +324,10 @@ export async function runStaticExport(options: StaticExportOptions = {}): Promis
     origin: baseUrl,
   };
 
-  /*
-   * Remove the legacy route tree before exporting. A reused output directory —
-   * `vercel-build` into `public/`, or a repeated local run — would otherwise keep
-   * the previous version's `/c/<name>/index.html` files, leaving a second
-   * documentation surface on disk that the `vercel.json` redirect never gets a
-   * chance to shadow.
-   */
-  await rm(join(outputDirectory, 'c'), { recursive: true, force: true });
+  // `public/` is generated deployment output. Start clean so an earlier export
+  // cannot leave stale routes or stale immutable assets reachable by a new deploy.
+  await rm(outputDirectory, { recursive: true, force: true });
+  await mkdir(outputDirectory, { recursive: true });
 
   const sidebarComponents = options.sidebarComponents ?? (await discoverSidebarComponents());
   const allComponents = options.allComponents ?? (await discoverComponents());
@@ -421,6 +418,12 @@ export async function runStaticExport(options: StaticExportOptions = {}): Promis
   );
   context.rendered.add('/sitemap.xml');
   context.rendered.add('/robots.txt');
+
+  const { fingerprintedUrlBySourceUrl } = await fingerprintStaticAssets(outputDirectory);
+  for (const [sourceUrl, fingerprintedUrl] of fingerprintedUrlBySourceUrl) {
+    context.rendered.delete(sourceUrl);
+    context.rendered.add(fingerprintedUrl);
+  }
 
   assertDocumentationPagesArePreRendered(documentationPages);
 

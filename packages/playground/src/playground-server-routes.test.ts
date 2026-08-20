@@ -42,8 +42,8 @@ const SAMPLE_PATHNAME_BY_ROW_INDEX: readonly string[] = [
 ];
 
 describe('ROUTES table', () => {
-  it('has exactly 19 entries (18 distinct URL patterns; /styles.css and /styles/* share one handler function)', () => {
-    expect(ROUTES).toHaveLength(19);
+  it('has exactly 20 entries (19 distinct URL patterns; /styles.css and /styles/* share one handler function)', () => {
+    expect(ROUTES).toHaveLength(20);
   });
 
   it.each(SAMPLE_PATHNAME_BY_ROW_INDEX.map((pathname, index) => [index, pathname] as const))(
