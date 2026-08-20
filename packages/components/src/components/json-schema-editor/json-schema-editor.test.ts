@@ -428,7 +428,7 @@ describe('JsonSchemaEditor — controlled and uncontrolled schema inputs', () =>
   test('emits controlled edits and synchronizes later parent schema updates', async () => {
     const changes: string[] = [];
     const observedChanges: string[] = [];
-    const { rerender } = render(JsonSchemaEditorImplementation, {
+    const { container, rerender } = render(JsonSchemaEditorImplementation, {
       props: {
         id: 'jse-controlled',
         schema: { type: 'string' },
@@ -440,12 +440,13 @@ describe('JsonSchemaEditor — controlled and uncontrolled schema inputs', () =>
       },
     });
     await flushEffects();
+    const editor = within(container);
 
-    await fireEvent.click(screen.getByRole('button', { name: 'Edit JSON' }));
-    const textarea = screen.getByRole('textbox', { name: 'JSON' });
+    await fireEvent.click(editor.getByRole('button', { name: 'Edit JSON' }));
+    const textarea = editor.getByRole('textbox', { name: 'JSON' });
     await fireEvent.input(textarea, { target: { value: '{"type":"number"}' } });
     await flushEffects();
-    await fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
+    await fireEvent.click(editor.getByRole('button', { name: 'Apply' }));
     await flushEffects();
 
     expect(changes).toEqual(['{\n  "type": "number"\n}']);
@@ -462,6 +463,7 @@ describe('JsonSchemaEditor — controlled and uncontrolled schema inputs', () =>
     await flushEffects();
 
     expect(observedChanges).toEqual(['{\n  "type": "number"\n}']);
+    expect(editor.getAllByRole('button', { name: 'Edit JSON' }).at(-1)).toBeDefined();
 
     await rerender({
       id: 'jse-controlled',

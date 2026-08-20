@@ -21,7 +21,7 @@ Multi-view editor for authoring JSON Schema documents with form, raw JSON, and d
 
 ## State ownership
 
-Pass `schema` with `onValueChangeRequest` when the parent owns the current schema. Every committed edit asks the parent to update its value, and a later `schema` value from the parent becomes authoritative. The parent may validate asynchronously, but must eventually provide the accepted value or a replacement value to settle the request. Use the optional `onSchemaChange` callback to observe changes the parent accepts.
+Pass `schema` with `onValueChangeRequest` when the parent owns the current schema. Every committed edit asks the parent to update its value, and a later `schema` value from the parent becomes authoritative. The parent may validate asynchronously, but must eventually provide the accepted value or a replacement value to settle the request. While a request is pending, a later commit is restored to the authoritative parent schema instead of creating a second request. Use the optional `onSchemaChange` callback to observe changes the parent accepts.
 
 ```svelte
 <JsonSchemaEditor

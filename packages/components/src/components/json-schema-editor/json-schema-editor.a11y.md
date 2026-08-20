@@ -23,12 +23,12 @@ The cost is a long tab sequence on a wide schema. That's mitigated by collapsing
 
 The property table has the accessible name `Schema properties`. A nested table takes the name of its owning property, for example `Properties of address`, so a screen-reader table list distinguishes nested tables from the root and from each other without depending on nesting depth.
 
-| Column | Header | Contents |
-| ------ | ------ | -------- |
-| 1 | `Property key` | `<th scope="row">` holding the disclosure button, whose own text is the property key. |
-| 2 | `Type` | The type summary text (for example `string`, `object`, `array of string`). |
-| 3 | `Description` | The schema's `description`, when present. |
-| 4 | (visually hidden) `Actions` | Required checkbox, move up, move down, and delete. |
+| Column | Header                      | Contents                                                                              |
+| ------ | --------------------------- | ------------------------------------------------------------------------------------- |
+| 1      | `Property key`              | `<th scope="row">` holding the disclosure button, whose own text is the property key. |
+| 2      | `Type`                      | The type summary text (for example `string`, `object`, `array of string`).            |
+| 3      | `Description`               | The schema's `description`, when present.                                             |
+| 4      | (visually hidden) `Actions` | Required checkbox, move up, move down, and delete.                                    |
 
 Every header cell uses `<th scope="col">`, so a screen reader announcing a cell also announces its column ("Type: object"). A row with nested validation errors carries `data-cinder-invalid` and shows a danger badge in the key cell, labelled with the error count and the property key.
 
@@ -40,14 +40,16 @@ An expanded row's detail is a sibling `<tr>` whose single `<td>` spans all four 
 
 Focus is never moved on mount, on SSR, or on any change originating outside the user's own action.
 
-| Action | Where focus goes |
-| ------ | ----------------- |
-| Expand a row | Stays on the disclosure button, which is now `Collapse <key> property` with `aria-expanded="true"`. Focus does not enter the revealed row. |
-| Collapse a row | Stays on the disclosure button. |
-| Move a row up or down | Stays on the pressed control, which travels with the row to its new position. A move that lands the row first or last disables that direction's control; focus does not jump elsewhere. |
-| Delete a row | Moves to the next row's disclosure button; if the deleted row was last, to the previous row's; if the table is now empty, to the `Add property` button. |
-| Add a property | The new row opens expanded, with focus placed in its property-name input. |
-| Rename a property | Stays in the name input. The rename commits on blur. |
+| Action                       | Where focus goes                                                                                                                                                                        |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Expand a row                 | Stays on the disclosure button, which is now `Collapse <key> property` with `aria-expanded="true"`. Focus does not enter the revealed row.                                              |
+| Collapse a row               | Stays on the disclosure button.                                                                                                                                                         |
+| Move a row up or down        | Stays on the pressed control, which travels with the row to its new position. A move that lands the row first or last disables that direction's control; focus does not jump elsewhere. |
+| Delete a row                 | Moves to the next row's disclosure button; if the deleted row was last, to the previous row's; if the table is now empty, to the `Add property` button.                                 |
+| Add a property               | The new row opens expanded, with focus placed in its property-name input.                                                                                                               |
+| Rename a property            | Stays in the name input. The rename commits on blur.                                                                                                                                    |
+| Edit JSON                    | Moves into the JSON textarea after it is rendered.                                                                                                                                      |
+| Done, Apply, or Discard JSON | Returns to the `Edit JSON` button after the editable surface closes.                                                                                                                    |
 
 Whenever a focused element disappears (delete, undo/redo shrinking the table), focus is placed explicitly rather than allowed to fall to `document.body` — a silent drop to `body` would send the next `Tab` back to the top of the page.
 
@@ -59,6 +61,7 @@ All property-table controls use their native button, checkbox, and input keyboar
 
 - `Tab` and `Shift+Tab` move through enabled controls in reading order: disclosure, required, move up, move down, delete — then, if the row is expanded, its detail controls (including any nested table) — then the next row. Disabled controls, and all controls in read-only or dirty-JSON form state, are skipped by native sequential navigation.
 - `Enter` and `Space` activate the disclosure, move, and delete buttons.
+- `Enter` and `Space` activate `Edit JSON`, `Done`, `Apply`, and `Discard`. Opening JSON editing moves focus into the native textarea; closing it returns focus to `Edit JSON`.
 - `Space` toggles the required checkbox. `Enter` does not — that's native checkbox behavior and isn't overridden.
 - `Tab` and `Shift+Tab` also move through the enabled enum value input and its move or remove controls. The first Up and last Down controls are disabled and skipped.
 - Editable property names commit when their input loses focus. Text-entry keys remain native input behavior.
@@ -66,19 +69,20 @@ All property-table controls use their native button, checkbox, and input keyboar
 
 ## Names, roles, and state
 
-| Control | Role | Accessible name | State |
-| ------- | ---- | ---------------- | ----- |
-| Property table | `table` | `Schema properties` (root) or `Properties of <key>` (nested) | — |
-| Enum table | `table` | `Enum values` | — |
-| Disclosure | `button` | `Expand <key> property` / `Collapse <key> property`, suffixed with `, N validation errors` when the row has nested errors | `aria-expanded`; `aria-controls` present only while the detail row is rendered |
-| Type | `combobox` | `<key> type` (visually hidden — a "Type" heading labels the section) | value is `any`, a concrete type, `enum`, or `multiple` |
-| Required | `checkbox` | `<key>` | `checked` |
-| Move up / down | `button` | `Move <key> up` / `Move <key> down` | `disabled` at the ends of the table, in read-only mode, and while a JSON draft is dirty |
-| Delete | `button` | `Delete <key>` | `disabled` in read-only mode and while a JSON draft is dirty |
-| Validation badge | — | `N validation errors in <key>` | — |
-| Enum value input | `textbox` | `Enum value <n>` | `aria-invalid` and `aria-describedby` while the draft is unparseable or duplicate |
-| Enum description input | `textbox` | `Enum value <n> description` | plain text, no validation |
-| Enum move / remove | `button` | `Move enum value <n> up` / `down`, `Remove enum value <n>` | `disabled` at the ends, while any enum draft is invalid, and when one value remains |
+| Control                | Role       | Accessible name                                                                                                           | State                                                                                   |
+| ---------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Property table         | `table`    | `Schema properties` (root) or `Properties of <key>` (nested)                                                              | —                                                                                       |
+| Enum table             | `table`    | `Enum values`                                                                                                             | —                                                                                       |
+| Disclosure             | `button`   | `Expand <key> property` / `Collapse <key> property`, suffixed with `, N validation errors` when the row has nested errors | `aria-expanded`; `aria-controls` present only while the detail row is rendered          |
+| Type                   | `combobox` | `<key> type` (visually hidden — a "Type" heading labels the section)                                                      | value is `any`, a concrete type, `enum`, or `multiple`                                  |
+| Required               | `checkbox` | `<key>`                                                                                                                   | `checked`                                                                               |
+| Move up / down         | `button`   | `Move <key> up` / `Move <key> down`                                                                                       | `disabled` at the ends of the table, in read-only mode, and while a JSON draft is dirty |
+| Delete                 | `button`   | `Delete <key>`                                                                                                            | `disabled` in read-only mode and while a JSON draft is dirty                            |
+| Validation badge       | —          | `N validation errors in <key>`                                                                                            | —                                                                                       |
+| Enum value input       | `textbox`  | `Enum value <n>`                                                                                                          | `aria-invalid` and `aria-describedby` while the draft is unparseable or duplicate       |
+| Enum description input | `textbox`  | `Enum value <n> description`                                                                                              | plain text, no validation                                                               |
+| Enum move / remove     | `button`   | `Move enum value <n> up` / `down`, `Remove enum value <n>`                                                                | `disabled` at the ends, while any enum draft is invalid, and when one value remains     |
+| JSON edit              | `button`   | `Edit JSON` / `Done` / `Apply` / `Discard`                                                                                | A later controlled commit is restored to the parent schema while a request is pending   |
 
 Reorder and delete controls repeat identically on every row, so each one carries the property key in its name — without that, a screen-reader control list reads as a column of indistinguishable "Move up" entries.
 
@@ -116,6 +120,7 @@ Reordering commits the new schema order and updates the form, JSON, and diff vie
 - `bun run --filter=@lostgradient/cinder test -- enum-editor.test.ts` verifies the enum table's resting state, JSON-value validation, resulting reorder state, its move/remove/add announcements and focus targets, and that reordering, removing, and adding a value keep the parallel description array in sync with the value it belongs to.
 - `bun run --filter=@lostgradient/cinder test -- enum-composition.test.ts` verifies the enum-as-`oneOf` predicate and the values/descriptions ↔ `enum`/`oneOf` mapping directly as pure functions — which representation is detected, that a real composition is never misdetected as an enum, and that promoting and demoting produce the exact expected patch.
 - `bun run --filter=@lostgradient/cinder test -- json-schema-editor.test.ts` verifies the diff-tab changed-state indicator, the toolbar's role and labels, nested validation-count aggregation, and undo/redo via keyboard shortcut on the editor region.
+- `bun run --filter=@cinder/testing test:playwright -- editors-complex-residual.playwright.ts --grep "JSON edit actions"` verifies focus enters the textarea from `Edit JSON` and returns to that control after Done, Apply, and Discard in Chromium.
 - `bun run --filter=@lostgradient/cinder test -- json-schema-editor-state.svelte.test.ts` verifies form and JSON commits, validation hooks, undo/redo history, diff baselines, dirty-draft handling, and `draftOverride` behavior — this module has no DOM dependency and is unaffected by the table structure.
 - `bun run --filter=@cinder/testing test:playwright -- editors-complex-residual.playwright.ts --grep "JSON schema editor"` verifies JSON-to-form and form-to-JSON synchronization in a browser (including that a reorder performed in the form actually commits and is reflected in the JSON view), the toolbar's roving tabindex, the diff tab's accessible markup, the type selector switching to `enum` and revealing the enum table, selecting `Multiple types` seeding a starting array and revealing the checkbox row, typing an enum description promoting to `oneOf` and clearing it demoting back to a bare `enum`, that a real `oneOf` composition renders its ordinary branch editors rather than being reinterpreted as an enum, that expanding an array row reveals the `items type` selector with object items rendering a nested table and scalar items showing inline, that expanding an object row reveals its nested properties table, and that a duplicate rename surfaces a validation alert. These interactions that mount a nested `PropertyEditor` (expand, item-type selection, duplicate rename) are covered here rather than in `property-list.test.ts` — mounting them through a real browser sidesteps a happy-dom keyed-each reconciliation limitation the unit harness hits at this nesting depth.
 
@@ -130,3 +135,4 @@ These are not covered by any automated check and should be re-walked when the in
 - Navigate into a nested table with a screen reader and confirm it announces entering a new table named for the owning property, with row/column counts scoped to that nested table rather than the parent's.
 - Confirm a row-level validation alert interrupts, and that several simultaneous row errors don't produce an unusable cascade of assertive announcements.
 - Check forced-colors mode for the table's row borders, the expanded-row background, focus rings, the danger badge, and disabled control state.
+- With a screen reader running, enter JSON editing with `Enter`, then use Done, Apply, and Discard; confirm each focus transfer announces the native target and never drops to the document body.

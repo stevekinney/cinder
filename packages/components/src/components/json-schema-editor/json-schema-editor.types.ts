@@ -52,6 +52,7 @@ type ControlledJsonSchemaEditorProps = {
    * Request that the parent replace `schema` with a committed editor value.
    * The parent may respond asynchronously; it must eventually provide the
    * accepted or replacement schema so the editor can reconcile the request.
+   * A later commit is restored to the parent schema until that response arrives.
    */
   onValueChangeRequest: (event: JsonSchemaEditorChangeEvent) => void;
   /** Observe a schema change after the parent accepts the request. */

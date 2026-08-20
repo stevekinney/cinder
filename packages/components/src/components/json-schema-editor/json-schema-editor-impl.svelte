@@ -121,7 +121,7 @@
     return controlledSchemaText(input) === event.jsonString;
   }
 
-  let pendingControlledChange: JsonSchemaEditorChangeEvent | undefined;
+  let pendingControlledChange = $state<JsonSchemaEditorChangeEvent | undefined>();
 
   function settleControlledChange(input: JsonSchemaValue | string) {
     const pendingChange = pendingControlledChange;
@@ -139,11 +139,17 @@
       return;
     }
 
+    if (pendingControlledChange !== undefined) {
+      synchroniseControlledSchema(schema);
+      return;
+    }
+
     pendingControlledChange = event;
     onValueChangeRequest?.(event);
 
     // The parent can validate a request asynchronously. Keep the optimistic
-    // state and its history until it supplies the authoritative next value.
+    // state and its history until it supplies the authoritative next value;
+    // reject any later local commit so it cannot overwrite that request.
   }
 
   let lastControlledSchemaText = untrack(() =>
@@ -156,19 +162,12 @@
     }
 
     const nextControlledSchemaText = controlledSchemaText(schema);
-    if (
-      nextControlledSchemaText === lastControlledSchemaText &&
-      pendingControlledChange === undefined
-    ) {
-      return;
-    }
+    if (nextControlledSchemaText === lastControlledSchemaText) return;
     lastControlledSchemaText = nextControlledSchemaText;
     untrack(() => settleControlledChange(schema));
   });
 
-  // Sync `readonly` into the state container whenever the prop changes.
-  // `setReadonly` only assigns the flag, so re-applying the construction-seeded
-  // value on the initial effect run is a harmless no-op — no sentinel needed.
+  // Keep the externally controlled readonly prop in sync after mount.
   $effect(() => {
     editorState.setReadonly(readonly);
   });
