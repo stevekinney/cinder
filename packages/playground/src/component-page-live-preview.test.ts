@@ -39,6 +39,7 @@
  * `globalThis` before `@testing-library/svelte` loads.
  */
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { createRawSnippet } from 'svelte';
 
 import { setupHappyDom } from '../../components/src/test/happy-dom.ts';
 import {
@@ -70,14 +71,13 @@ describe('toMountProps', () => {
     });
   });
 
-  test('converts a children text control into a children snippet', () => {
+  test('uses the page-provided children snippet for a text control', () => {
     const controls: PlaygroundControl[] = [
       { name: 'children', kind: 'text', isChildren: true, value: 'Badge', hasDefault: false },
     ];
-    const props = toMountProps(controls, { children: 'Beta' });
-    // `children` becomes a Svelte snippet (a function), never the raw string.
-    expect(typeof props['children']).toBe('function');
-    expect(props['children']).not.toBe('Beta');
+    const children = createRawSnippet(() => ({ render: () => 'Beta' }));
+    const props = toMountProps(controls, { children: 'Beta' }, [], undefined, children);
+    expect(props['children']).toBe(children);
   });
 
   test('omits children entirely when the text is empty (component default renders)', () => {
@@ -96,6 +96,23 @@ describe('toMountProps', () => {
     ['rating', { id: 'playground-rating', label: 'Rating' }],
   ])('supplies an accessible preview baseline for %s', (componentName, expectedProps) => {
     expect(toMountProps([], {}, [], previewRecipeFor(componentName))).toMatchObject(expectedProps);
+  });
+
+  test('supplies Marquee with an accessible label and rendered content', () => {
+    const recipeChildren = createRawSnippet(() => ({ render: () => '<span>Announcement</span>' }));
+    const props = toMountProps([], {}, [], previewRecipeFor('marquee'), recipeChildren);
+
+    expect(props).toMatchObject({ label: 'Announcements' });
+    expect(props['children']).toBe(recipeChildren);
+  });
+
+  test('removes a cleared recipe control from the live mount', () => {
+    const controls: PlaygroundControl[] = [
+      { name: 'label', kind: 'text', value: '', hasDefault: false },
+    ];
+    const props = toMountProps(controls, { label: '' }, [], previewRecipeFor('marquee'));
+
+    expect(props).not.toHaveProperty('label');
   });
 });
 

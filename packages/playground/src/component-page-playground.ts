@@ -176,11 +176,11 @@ export type PlaygroundModel = {
   hasUnsatisfiedRequired: boolean;
   /**
    * True when the component is better represented by its authored examples than
-   * by the generic prop playground. This covers components whose essential
-   * behavior depends on optional callbacks/data sources the analyzer cannot
-   * synthesize into a sensible live demo.
+   * by the generic prop playground.
    */
   requiresExamplePlayground: boolean;
+  /** Why the generic playground defers to an authored example. */
+  examplePlaygroundReason: 'behavior' | 'structured-children' | undefined;
 };
 
 /**
@@ -196,7 +196,7 @@ export type PlaygroundModel = {
  * example that demonstrates the real interaction, which is what the stage shows
  * instead of an empty box.
  */
-const EXAMPLE_ONLY_PLAYGROUND_COMPONENTS = new Set([
+const BEHAVIOR_EXAMPLE_PLAYGROUND_COMPONENTS = new Set([
   'autocomplete',
   'spectrogram',
   // These closed-by-default overlays need state, anchors, or callbacks that a
@@ -215,6 +215,26 @@ const EXAMPLE_ONLY_PLAYGROUND_COMPONENTS = new Set([
   // becomes synthesizable the blanket-the-page failure would come back silently.
   'command-palette',
 ]);
+
+/** Containers whose valid preview needs component-specific child composition. */
+const STRUCTURED_CHILDREN_EXAMPLE_PLAYGROUND_COMPONENTS = new Set([
+  'button-group',
+  'checkbox-group',
+  'form-field',
+  'form-section',
+  'scroll-area',
+  'segmented-control',
+  'side-navigation',
+  'sidebar',
+]);
+
+function examplePlaygroundReasonFor(kebabName: string): PlaygroundModel['examplePlaygroundReason'] {
+  if (BEHAVIOR_EXAMPLE_PLAYGROUND_COMPONENTS.has(kebabName)) return 'behavior';
+  if (STRUCTURED_CHILDREN_EXAMPLE_PLAYGROUND_COMPONENTS.has(kebabName)) {
+    return 'structured-children';
+  }
+  return undefined;
+}
 
 /**
  * True when a prop would make the generated preview invalid by construction: it
@@ -490,13 +510,16 @@ export function buildPlaygroundModel(manifest: ComponentManifest): PlaygroundMod
     }
   }
 
+  const examplePlaygroundReason = examplePlaygroundReasonFor(manifest.kebabName);
+
   return {
     controls,
     seeds,
     skipped,
     unsatisfiedRequired,
     hasUnsatisfiedRequired: unsatisfiedRequired.length > 0,
-    requiresExamplePlayground: EXAMPLE_ONLY_PLAYGROUND_COMPONENTS.has(manifest.kebabName),
+    requiresExamplePlayground: examplePlaygroundReason !== undefined,
+    examplePlaygroundReason,
   };
 }
 
@@ -593,6 +616,7 @@ export function buildSnippet(
   seeds: readonly PlaygroundSeed[] = [],
   importPath?: string,
   baselineProps: Readonly<Record<string, unknown>> = {},
+  baselineChildren?: string,
 ): string {
   // The synthesized `children` control renders as element CONTENT, not an
   // attribute, so it is partitioned out of the attribute list.
@@ -611,12 +635,19 @@ export function buildSnippet(
 
   const attributes = [
     ...Object.entries(baselineProps)
-      .filter(([name]) => {
+      .filter(([name, value]) => {
         const matchingControl = controls.find((control) => control.name === name);
-        return (
-          matchingControl === undefined ||
-          !shouldEmit(matchingControl, values[matchingControl.name] ?? matchingControl.value)
-        );
+        if (matchingControl === undefined) return true;
+        // A recipe baseline is the initial rendered value, not an invisible
+        // fallback. If the reader clears or resets its corresponding control,
+        // omit the recipe prop so copied code and the live mount both receive
+        // the component's native default.
+        const current = values[matchingControl.name] ?? matchingControl.value;
+        // When the control represents the recipe value and it is explicitly
+        // emitted, let the control own the attribute. The baseline only fills a
+        // gap for a matching value that the snippet generator intentionally
+        // omits, preventing duplicate attributes in copied source.
+        return current === value && !shouldEmit(matchingControl, current);
       })
       .flatMap(([name, value]) =>
         typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean'
@@ -642,9 +673,11 @@ export function buildSnippet(
 
   // With children content, emit an open/close pair so the snippet copy-pastes as
   // a real labelled instance; otherwise keep the minimal self-closing form.
+  const elementChildren =
+    childrenText !== '' ? escapeSnippetText(childrenText) : (baselineChildren ?? '');
   const element =
-    childrenText !== ''
-      ? `<${exportName}${attributePart}>${escapeSnippetText(childrenText)}</${exportName}>`
+    elementChildren !== ''
+      ? `<${exportName}${attributePart}>${elementChildren}</${exportName}>`
       : attributes.length > 1
         ? `<${exportName}${attributePart}/>`
         : `<${exportName}${attributePart} />`;

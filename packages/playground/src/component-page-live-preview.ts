@@ -16,7 +16,8 @@
  *     errors by container DOM id, and falls back to a featured-example mount when
  *     the live mount fails.
  */
-import { createRawSnippet, mount, unmount } from 'svelte';
+import type { Snippet } from 'svelte';
+import { mount, unmount } from 'svelte';
 
 import type {
   PlaygroundControl,
@@ -28,28 +29,14 @@ import { toMountErrorDetail, type MountErrorDetail } from './example-error.ts';
 import { CONTEXT_REQUIRED_PARTS } from './shell-app/compound-families.ts';
 
 /**
- * Escape a string for an HTML text-content context: `&` and `<` only. Used for
- * the raw-snippet render string below so user-typed markup is inserted as
- * literal text, never parsed into elements. `>` and `"` are literal in element
- * text content and need no escaping.
- */
-function escapeHtmlText(text: string): string {
-  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;');
-}
-
-/**
  * Translate the flat playground control values into the props object handed to
  * `mount`. Almost every value passes through unchanged; the one transform is the
  * synthesized `children` text control, whose plain string must become a Svelte
  * snippet (components receive `children` as a snippet, never a raw string).
  *
- * The snippet renders the escaped text DIRECTLY as element content — no wrapper
- * element — so the live preview's DOM matches the copyable snippet exactly
- * (`<Badge>text</Badge>`, not `<Badge><span>text</span></Badge>`). A wrapper
- * would change inherited styles, spacing, and selectors versus the code the
- * playground tells the reader to copy. Escaping (not `innerHTML` of raw input)
- * keeps typed angle brackets inert — they render as the literal characters the
- * snippet shows.
+ * The page supplies that compiled snippet, so text is rendered as a text node
+ * rather than through a wrapper element. This keeps valid text-only contexts
+ * such as `textarea` and `option` valid when a component exposes an `as` prop.
  *
  * An empty children string yields no `children` prop at all, so the component
  * falls back to its own default rendering rather than mounting an empty snippet.
@@ -59,6 +46,7 @@ export function toMountProps(
   values: Record<string, PlaygroundValue>,
   seeds: readonly PlaygroundSeed[] = [],
   recipe?: PreviewRecipe,
+  children?: Snippet,
 ): Record<string, unknown> {
   // Recipe props establish a valid baseline for the bare preview. Editable
   // controls still win below, so changing a generated control remains live.
@@ -66,11 +54,12 @@ export function toMountProps(
   // A recipe's children are a repo constant (placeholder boxes for a layout
   // primitive, a padded block for Surface), so they are inserted as MARKUP —
   // that is the point, since the whole failure being fixed is that one text run
-  // shows nothing about a component whose job is arranging elements. Reader
-  // input still goes through `escapeHtmlText` below; these two paths never mix.
+  // shows nothing about a component whose job is arranging elements.
   if (recipe?.childrenHtml !== undefined) {
-    const html = recipe.childrenHtml;
-    props['children'] = createRawSnippet(() => ({ render: () => html }));
+    // Recipes with sibling layout items need a compiled Svelte snippet—not a
+    // `createRawSnippet` wrapper—so direct-child selectors keep reaching the
+    // actual items. The page supplies that compiled snippet at the call site.
+    if (children !== undefined) props['children'] = children;
   }
   // Synthesized structural values (a required `items: Item[]`, say). These are
   // live objects, not strings, so nothing is parsed at mount time.
@@ -83,10 +72,7 @@ export function toMountProps(
       if (recipe?.childrenHtml !== undefined) continue;
       const text = String(value);
       if (text === '') continue;
-      const escaped = escapeHtmlText(text);
-      props['children'] = createRawSnippet(() => ({
-        render: () => escaped,
-      }));
+      if (children !== undefined) props['children'] = children;
       continue;
     }
     // A SYNTHESIZED empty string — a prop with no manifest default, seeded to
@@ -102,7 +88,21 @@ export function toMountProps(
     // the snippet, it painted an error callout over a component that works.
     // A synthesized `0` is dropped for the same reason (and matters for `Image`,
     // where `width={0} height={0}` collapses the element regardless of `src`).
-    if (!control.hasDefault && (value === '' || value === 0)) continue;
+    if (!control.hasDefault && (value === '' || value === 0)) {
+      // Recipes supply a valid starting point for otherwise unlabelled
+      // components. Once a reader clears that value, however, the cleared
+      // control is an intentional override—not permission to keep the recipe
+      // value invisibly mounted. Removing it lets the component receive its
+      // native omitted value, exactly as the generated snippet does.
+      if (
+        recipe?.props !== undefined &&
+        Object.hasOwn(recipe.props, control.name) &&
+        value !== recipe.props[control.name]
+      ) {
+        delete props[control.name];
+      }
+      continue;
+    }
     props[control.name] = value;
   }
   return props;

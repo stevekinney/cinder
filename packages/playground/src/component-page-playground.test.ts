@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import { buildPlaygroundModel, buildSnippet } from './component-page-playground.ts';
+import { previewRecipeFor } from './component-page-preview-recipes.ts';
 import type { ComponentManifest, ObjectShape, PropManifest } from './types.ts';
 
 function manifest(props: PropManifest[]): ComponentManifest {
@@ -361,15 +362,38 @@ describe('buildPlaygroundModel', () => {
   });
 
   test.each([
-    ['Autocomplete', 'autocomplete', '@lostgradient/cinder/autocomplete'],
-    ['Spectrogram', 'spectrogram', '@lostgradient/cinder/spectrogram'],
-    ['Backdrop', 'backdrop', '@lostgradient/cinder/backdrop'],
-    ['Alert dialog', 'alert-dialog', '@lostgradient/cinder/alert-dialog'],
-    ['Confirm dialog', 'confirm-dialog', '@lostgradient/cinder/confirm-dialog'],
-    ['Command menu', 'command-menu', '@lostgradient/cinder/command-menu'],
-  ])(
-    'marks %s as example-only when behavior needs authored examples',
-    (name, kebabName, importPath) => {
+    ['Autocomplete', 'autocomplete', '@lostgradient/cinder/autocomplete', 'behavior'],
+    ['Spectrogram', 'spectrogram', '@lostgradient/cinder/spectrogram', 'behavior'],
+    ['Backdrop', 'backdrop', '@lostgradient/cinder/backdrop', 'behavior'],
+    ['Alert dialog', 'alert-dialog', '@lostgradient/cinder/alert-dialog', 'behavior'],
+    ['Confirm dialog', 'confirm-dialog', '@lostgradient/cinder/confirm-dialog', 'behavior'],
+    ['Command menu', 'command-menu', '@lostgradient/cinder/command-menu', 'behavior'],
+    ['Button group', 'button-group', '@lostgradient/cinder/button-group', 'structured-children'],
+    [
+      'Checkbox group',
+      'checkbox-group',
+      '@lostgradient/cinder/checkbox-group',
+      'structured-children',
+    ],
+    ['Form field', 'form-field', '@lostgradient/cinder/form-field', 'structured-children'],
+    ['Form section', 'form-section', '@lostgradient/cinder/form-section', 'structured-children'],
+    ['Scroll area', 'scroll-area', '@lostgradient/cinder/scroll-area', 'structured-children'],
+    [
+      'Segmented control',
+      'segmented-control',
+      '@lostgradient/cinder/segmented-control',
+      'structured-children',
+    ],
+    [
+      'Side navigation',
+      'side-navigation',
+      '@lostgradient/cinder/side-navigation',
+      'structured-children',
+    ],
+    ['Sidebar', 'sidebar', '@lostgradient/cinder/sidebar', 'structured-children'],
+  ] as const)(
+    'marks %s as example-only when authored examples are required',
+    (name, kebabName, importPath, examplePlaygroundReason) => {
       const model = buildPlaygroundModel({
         name,
         kebabName,
@@ -387,6 +411,7 @@ describe('buildPlaygroundModel', () => {
       });
       expect(model.controls.map((control) => control.name)).toEqual(['value']);
       expect(model.requiresExamplePlayground).toBe(true);
+      expect(model.examplePlaygroundReason).toBe(examplePlaygroundReason);
     },
   );
 
@@ -642,7 +667,7 @@ describe('buildSnippet', () => {
     );
   });
 
-  test('keeps an accessible recipe baseline until its empty control changes it', () => {
+  test('omits a cleared recipe control rather than restoring its baseline', () => {
     const labelControl = buildPlaygroundModel(
       manifest([
         {
@@ -658,12 +683,53 @@ describe('buildSnippet', () => {
       buildSnippet('Progress', labelControl, { ariaLabel: '' }, [], undefined, {
         ariaLabel: 'Loading progress',
       }),
-    ).toBe('<Progress ariaLabel="Loading progress" />');
+    ).toBe('<Progress />');
     expect(
       buildSnippet('Progress', labelControl, { ariaLabel: 'Upload progress' }, [], undefined, {
         ariaLabel: 'Loading progress',
       }),
     ).toBe('<Progress ariaLabel="Upload progress" />');
+  });
+
+  test('keeps recipe children in the generated snippet when no text control exists', () => {
+    expect(
+      buildSnippet(
+        'Marquee',
+        [],
+        {},
+        [],
+        undefined,
+        { label: 'Announcements' },
+        '{#snippet children()}Announcement{/snippet}',
+      ),
+    ).toBe('<Marquee label="Announcements">{#snippet children()}Announcement{/snippet}</Marquee>');
+  });
+
+  test('preserves Marquee separator semantics in the generated snippet', () => {
+    const recipe = previewRecipeFor('marquee');
+    const snippet = buildSnippet(
+      'Marquee',
+      [],
+      {},
+      [],
+      undefined,
+      recipe?.props,
+      recipe?.snippetChildren,
+    );
+
+    expect(snippet.match(/aria-hidden="true"/g)).toHaveLength(2);
+  });
+
+  test.each([
+    ['masonry', 'Masonry', 'Item 1'],
+    ['aspect-ratio', 'AspectRatio', 'Aspect-ratio content'],
+    ['surface', 'Surface', 'This Surface, at the selected tone'],
+  ])('copies the %s recipe children with its preview', (recipeName, exportName, content) => {
+    const recipe = previewRecipeFor(recipeName);
+    expect(recipe?.snippetChildren).toBeDefined();
+    expect(
+      buildSnippet(exportName, [], {}, [], undefined, recipe?.props, recipe?.snippetChildren),
+    ).toContain(content);
   });
 
   test('renders string attributes and stacks multiple onto separate lines', () => {
