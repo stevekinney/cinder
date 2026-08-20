@@ -158,9 +158,9 @@ jobs:
       - name: Build with Vercel
         run: |
           if [ "${{ steps.environment.outputs.vercel }}" = "production" ]; then
-            vercel build --prod --token="$VERCEL_TOKEN"
+            PLAYGROUND_BASE_URL=https://cinder.website vercel build --prod --token="$VERCEL_TOKEN"
           else
-            vercel build --token="$VERCEL_TOKEN"
+            PLAYGROUND_BASE_URL=https://cinder.website vercel build --token="$VERCEL_TOKEN"
           fi
 
       - name: Deploy to Vercel
