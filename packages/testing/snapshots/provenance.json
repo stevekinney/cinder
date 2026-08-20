@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "componentScope": ["mega-menu"],
-  "renderedSourceSha": "c8cfe6c5c56f220d3f2896a1dc65765ae86b48cb",
+  "componentScope": "all",
+  "renderedSourceSha": "5feea50eb3467926264ba84ef02cca1650b5b071",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
   "architecture": "x64",
