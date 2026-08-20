@@ -1,5 +1,11 @@
 # @lostgradient/chat
 
+## 0.11.4
+
+### Patch Changes
+
+- [#1389](https://github.com/stevekinney/cinder/pull/1389) [`4b1e2b3`](https://github.com/stevekinney/cinder/commit/4b1e2b39d219182f527423a2f6c2c27aaf5d1610) Thanks [@stevekinney](https://github.com/stevekinney)! - Keep Edit message pointer activation targeted while concurrent streaming updates move the transcript.
+
 ## 0.11.3
 
 ### Patch Changes
