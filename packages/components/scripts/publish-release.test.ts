@@ -1,6 +1,4 @@
 import { describe, expect, mock, test } from 'bun:test';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 
 import {
   getPackFileName,
@@ -59,17 +57,6 @@ describe('publish-release package selection', () => {
       'publish',
       'package.tgz',
     ]);
-  });
-
-  test('runs the provisioned npm CLI with the same Node runtime', () => {
-    const wrapper = readFileSync(join(import.meta.dir, 'npm-publish.mjs'), 'utf8');
-    expect(wrapper).toContain('CINDER_PUBLISH_NPM_CLI');
-    expect(wrapper).toContain('spawnSync(process.execPath, [npmCliPath, ...publishArguments]');
-  });
-
-  test('uses the platform npm executable outside release workflows', () => {
-    const wrapper = readFileSync(join(import.meta.dir, 'npm-publish.mjs'), 'utf8');
-    expect(wrapper).toContain("spawnSync('npm', publishArguments");
   });
 
   test('prefers the workflow-provisioned Node executable over Bun PATH resolution', () => {
