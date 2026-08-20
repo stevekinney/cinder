@@ -367,6 +367,14 @@ describe('buildPlaygroundModel', () => {
     ['Alert dialog', 'alert-dialog', '@lostgradient/cinder/alert-dialog'],
     ['Confirm dialog', 'confirm-dialog', '@lostgradient/cinder/confirm-dialog'],
     ['Command menu', 'command-menu', '@lostgradient/cinder/command-menu'],
+    ['Button group', 'button-group', '@lostgradient/cinder/button-group'],
+    ['Checkbox group', 'checkbox-group', '@lostgradient/cinder/checkbox-group'],
+    ['Form field', 'form-field', '@lostgradient/cinder/form-field'],
+    ['Form section', 'form-section', '@lostgradient/cinder/form-section'],
+    ['Marquee', 'marquee', '@lostgradient/cinder/marquee'],
+    ['Scroll area', 'scroll-area', '@lostgradient/cinder/scroll-area'],
+    ['Segmented control', 'segmented-control', '@lostgradient/cinder/segmented-control'],
+    ['Sidebar', 'sidebar', '@lostgradient/cinder/sidebar'],
   ])(
     'marks %s as example-only when behavior needs authored examples',
     (name, kebabName, importPath) => {

@@ -43,13 +43,11 @@ function escapeHtmlText(text: string): string {
  * synthesized `children` text control, whose plain string must become a Svelte
  * snippet (components receive `children` as a snippet, never a raw string).
  *
- * The snippet renders the escaped text DIRECTLY as element content — no wrapper
- * element — so the live preview's DOM matches the copyable snippet exactly
- * (`<Badge>text</Badge>`, not `<Badge><span>text</span></Badge>`). A wrapper
- * would change inherited styles, spacing, and selectors versus the code the
- * playground tells the reader to copy. Escaping (not `innerHTML` of raw input)
- * keeps typed angle brackets inert — they render as the literal characters the
- * snippet shows.
+ * Svelte 5 requires `createRawSnippet` to return exactly one element. The text
+ * therefore lives in a `display: contents` span: it satisfies that contract
+ * without creating a layout box around the component's content. Escaping (not
+ * `innerHTML` of raw input) keeps typed angle brackets inert — they render as
+ * the literal characters the snippet shows.
  *
  * An empty children string yields no `children` prop at all, so the component
  * falls back to its own default rendering rather than mounting an empty snippet.
@@ -70,7 +68,13 @@ export function toMountProps(
   // input still goes through `escapeHtmlText` below; these two paths never mix.
   if (recipe?.childrenHtml !== undefined) {
     const html = recipe.childrenHtml;
-    props['children'] = createRawSnippet(() => ({ render: () => html }));
+    // Recipe markup can contain block elements and sibling layout items. A
+    // display-contents div is valid around those nodes and keeps them as the
+    // component's effective layout children while still satisfying Svelte's
+    // one-root raw-snippet contract.
+    props['children'] = createRawSnippet(() => ({
+      render: () => `<div style="display: contents">${html}</div>`,
+    }));
   }
   // Synthesized structural values (a required `items: Item[]`, say). These are
   // live objects, not strings, so nothing is parsed at mount time.
@@ -85,7 +89,7 @@ export function toMountProps(
       if (text === '') continue;
       const escaped = escapeHtmlText(text);
       props['children'] = createRawSnippet(() => ({
-        render: () => escaped,
+        render: () => `<span style="display: contents">${escaped}</span>`,
       }));
       continue;
     }

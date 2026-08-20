@@ -206,6 +206,19 @@ const EXAMPLE_ONLY_PLAYGROUND_COMPONENTS = new Set([
   'backdrop',
   'command-menu',
   'confirm-dialog',
+  // These containers require structured child snippets. Their existing
+  // authored examples show a valid composition without a failed bare mount.
+  'button-group',
+  'checkbox-group',
+  'form-field',
+  'form-section',
+  'marquee',
+  'scroll-area',
+  'segmented-control',
+  // Sidebar needs application-owned navigation content and an explicit mobile
+  // drawer trigger. Its authored example provides both, while a bare mount can
+  // create an empty top-layer drawer at the mobile breakpoint.
+  'sidebar',
   'modal',
   'drawer',
   'popover',

@@ -10,8 +10,11 @@
   import { SideNavigation } from '@lostgradient/cinder/side-navigation';
   import { SideNavigationGroup } from '@lostgradient/cinder/side-navigation-group';
   import { SideNavigationItem } from '@lostgradient/cinder/side-navigation-item';
-  import { Sidebar } from '@lostgradient/cinder/sidebar';
-  let collapsed = $state(false);
+  import { SIDEBAR_MOBILE_MEDIA_QUERY, Sidebar } from '@lostgradient/cinder/sidebar';
+  import { MediaQuery } from 'svelte/reactivity';
+
+  const mobile = new MediaQuery(SIDEBAR_MOBILE_MEDIA_QUERY, false);
+  let collapsed = $state(mobile.current);
 </script>
 
 <div style="display: flex; flex-direction: column; gap: 1rem;">
