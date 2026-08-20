@@ -101,11 +101,12 @@ function anchor(mount: Locator, threadId: string): Locator {
  * instead of the bug.
  */
 async function installPausedClock(page: Page): Promise<void> {
-  // Pause at the current real instant rather than an artificial fixed offset.
-  // The protocol round trip after install can advance an unfrozen fake clock,
-  // so a target derived from a static timestamp could be in the past.
+  // `pauseAt` advances to its target, so account for the protocol round trip
+  // after installation. A current-time target can already be in the past by
+  // the time Chromium receives it; no interaction timer has been scheduled
+  // yet, so this one-second lead cannot affect the assertions below.
   await page.clock.install();
-  await page.clock.pauseAt(new Date());
+  await page.clock.pauseAt(new Date(Date.now() + 1_000));
 }
 
 test.describe('ReviewEditor.scrollToThread (cinder#1316, cinder#1317)', () => {
