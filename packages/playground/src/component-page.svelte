@@ -89,14 +89,13 @@
   type BadgeVariant = 'neutral' | 'success' | 'warning' | 'danger' | 'info' | 'accent';
   type StatusDotStatus = 'online' | 'warning' | 'danger' | 'pending' | 'neutral' | 'accent';
 
-  // The bare component's module namespace, passed in by the page-bundle entry
-  // (`compilePageBundleArtifacts`) which `import * as`-es the component's package
-  // subpath and mounts this page with it. Threaded as a prop rather than read
-  // from a `window` global so the live preview (#405) is wired explicitly to the
-  // bundle that mounted it — no out-of-band global to go stale against the page.
-  // Defaults to `undefined` for the no-prop mount paths (tests, SSR render).
+  // The bare component's module namespace is loaded by the page-bundle entry
+  // only after a reader opens Playground. Keeping the loader as a prop rather
+  // than reading a global makes the deferred live preview explicit and keeps
+  // SSR/tests on the no-loader path.
   type Props = {
     bareComponentModule?: unknown;
+    loadBareComponentModule?: () => Promise<unknown>;
     previewOnly?: boolean;
     /**
      * Request-known page inputs. The server passes these explicitly so the SSR
@@ -137,7 +136,8 @@
   };
 
   let {
-    bareComponentModule,
+    bareComponentModule: bareComponentModuleProp,
+    loadBareComponentModule,
     previewOnly = false,
     componentName: componentNameProp,
     examples: examplesProp,
@@ -150,6 +150,8 @@
     overlays,
     onThemeChange,
   }: Props = $props();
+
+  let bareComponentModule = $state(bareComponentModuleProp);
 
   /** True on `/`, which renders the README through this same chrome. */
   const isLanding = $derived(readmeHtml !== undefined);
@@ -262,6 +264,34 @@
    * the client for anyone following a `?view=playground` link.
    */
   let activeView = $state<ComponentPageView>('documentation');
+
+  // The documentation view is deliberately hydratable without the selected
+  // component's implementation. Import it only when the reader asks for the
+  // interactive Playground; both SSR and the initial client render therefore
+  // keep the same `undefined` module value.
+  $effect(() => {
+    if (
+      !isHydrated ||
+      activeView !== 'playground' ||
+      bareComponentModule !== undefined ||
+      loadBareComponentModule === undefined
+    ) {
+      return;
+    }
+    let cancelled = false;
+    void loadBareComponentModule()
+      .then((module) => {
+        if (!cancelled) bareComponentModule = module;
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          console.error('[cinder playground] failed to load bare component:', error);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  });
 
   /**
    * Arrow/Home/End navigation for the view switcher.

@@ -13,6 +13,7 @@ import {
   assertSafeOutputDirectory,
   assertSitemapMatchesRoutes,
   assetUrlsFromHtml,
+  initialRoutePayload,
   requireProductionBaseUrl,
   runStaticExport,
 } from './static-export.ts';
@@ -206,6 +207,31 @@ test('HTML asset discovery does not carry regex state between calls', () => {
 
   expect(assetUrlsFromHtml(html)).toEqual(['/styles/shell.css']);
   expect(assetUrlsFromHtml(html)).toEqual(['/styles/shell.css']);
+});
+
+test('initial payload includes static imports but excludes reader-triggered dynamic imports', async () => {
+  const outputDirectory = await mkdtemp(join(tmpdir(), 'cinder-initial-payload-'));
+  try {
+    await mkdir(join(outputDirectory, 'assets', 'hash'), { recursive: true });
+    await writeFile(
+      join(outputDirectory, 'index.html'),
+      '<script type="module" src="/assets/hash/app.js"></script>',
+    );
+    await writeFile(
+      join(outputDirectory, 'assets', 'hash', 'app.js'),
+      'import "/assets/hash/shared.js";\nimport("/assets/hash/lazy.js");',
+    );
+    await writeFile(join(outputDirectory, 'assets', 'hash', 'shared.js'), 'export const shared = 1;');
+    await writeFile(join(outputDirectory, 'assets', 'hash', 'lazy.js'), 'export const lazy = 1;');
+
+    const payload = await initialRoutePayload('/', outputDirectory);
+
+    expect(payload.urls).toEqual(['/', '/assets/hash/app.js', '/assets/hash/shared.js']);
+    expect(payload.transferBytes).toBeGreaterThan(0);
+    expect(payload.decodedBytes).toBeGreaterThan(0);
+  } finally {
+    await rm(outputDirectory, { recursive: true, force: true });
+  }
 });
 
 describe('static export', () => {

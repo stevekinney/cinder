@@ -1,58 +1,118 @@
 /**
  * Entry point for the playground shell SPA bundle.
  *
- * Reads the `<script type="application/json" id="cinder-initial">` data island
- * embedded by `render-shell.ts` to get the initial component name and the
- * full sidebar component list, then hydrates the server-rendered Svelte shell
- * in `#shell-root`.
- *
- * The data-island pattern is used instead of a `window.__GLOBAL__` to avoid
- * any risk of `</script>` injection through the embedded payload, even though
- * payload values are filesystem-derived and kebab-case-validated server-side.
+ * Adds the small progressive enhancements the server-rendered landing page
+ * needs. The full Svelte shell is intentionally not hydrated here: its
+ * documentation and editor graph belongs behind reader interaction, not in the
+ * first landing-page transfer.
  */
 
-import { hydrate } from 'svelte';
+import { applyTheme, NAV_FILTER_STORAGE_KEY, readInitialTheme } from '../component-page-theme.ts';
+import {
+  applyColorTokenOverridesToDocument,
+  readSessionColorTokenOverrides,
+} from './color-token-overrides.ts';
 
-import { parseInitialData, type InitialData } from './shell-initial-data.ts';
-import Shell from './shell.svelte';
+applyColorTokenOverridesToDocument(document, readSessionColorTokenOverrides()[readInitialTheme()]);
 
-function readInitialData(): InitialData {
-  const node = document.getElementById('cinder-initial');
-  if (!node)
-    return {
-      component: '',
-      components: [],
-      readmeHtml: '',
-      documentation: null,
-      initialSearch: '',
-    };
-  try {
-    const parsed: unknown = JSON.parse(node.textContent ?? '{}');
-    const initialData = parseInitialData(parsed);
-    if (initialData !== null) return initialData;
-  } catch (error) {
-    console.error('[cinder playground] failed to parse #cinder-initial:', error);
-  }
-  return {
-    component: '',
-    components: [],
-    readmeHtml: '',
-    documentation: null,
-    initialSearch: '',
-  };
+const themeToggle = document.querySelector<HTMLButtonElement>(
+  'button[aria-label^="Preview theme:"]',
+);
+
+function labelForTheme(theme: 'light' | 'dark'): string {
+  return theme === 'dark' ? 'Preview theme: switch to light' : 'Preview theme: switch to dark';
 }
 
-const initial = readInitialData();
-
-const target = document.getElementById('shell-root');
-if (target === null) {
-  throw new Error('[cinder playground] #shell-root target not found');
+if (themeToggle !== null) {
+  themeToggle.addEventListener('click', () => {
+    const nextTheme = readInitialTheme() === 'dark' ? 'light' : 'dark';
+    applyTheme(nextTheme);
+    applyColorTokenOverridesToDocument(document, readSessionColorTokenOverrides()[nextTheme]);
+    themeToggle.setAttribute('aria-label', labelForTheme(nextTheme));
+  });
 }
 
-hydrate(Shell, {
-  target,
-  props: {
-    components: initial.components,
-    readmeHtml: initial.readmeHtml,
+let shellHydration: Promise<void> | undefined;
+
+function hydrateShell(): Promise<void> {
+  shellHydration ??= Promise.all([
+    import('svelte'),
+    import('./shell-initial-data.ts'),
+    import('./shell.svelte'),
+  ]).then(([svelte, initialDataModule, shellModule]) => {
+    const target = document.getElementById('shell-root');
+    if (target === null) throw new Error('[cinder playground] #shell-root target not found');
+
+    const node = document.getElementById('cinder-initial');
+    let rawInitialData: unknown = {};
+    try {
+      rawInitialData = node === null ? {} : JSON.parse(node.textContent ?? '{}');
+    } catch (error) {
+      console.error('[cinder playground] failed to parse #cinder-initial:', error);
+    }
+    let initial = initialDataModule.parseInitialData(rawInitialData);
+    if (initial === null) {
+      initial = {
+        component: '',
+        components: [],
+        readmeHtml: '',
+        documentation: null,
+        initialSearch: '',
+      };
+    }
+    svelte.hydrate(shellModule.default, {
+      target,
+      props: {
+        components: initial.components,
+        readmeHtml: initial.readmeHtml,
+      },
+    });
+  });
+  return shellHydration;
+}
+
+const colorPanelToggle = document.querySelector<HTMLButtonElement>(
+  '[data-testid="color-token-panel-toggle"]',
+);
+
+colorPanelToggle?.addEventListener(
+  'click',
+  (event) => {
+    event.preventDefault();
+    void hydrateShell()
+      .then(() => colorPanelToggle.click())
+      .catch((error) =>
+        console.error('[cinder playground] failed to hydrate landing shell:', error),
+      );
   },
-});
+  { once: true },
+);
+
+const sidebarFilter = document.getElementById('sidebar-filter');
+if (sidebarFilter instanceof HTMLInputElement) {
+  try {
+    sidebarFilter.value = sessionStorage.getItem(NAV_FILTER_STORAGE_KEY) ?? '';
+  } catch {
+    // Private mode or disabled storage: filtering still works for this page.
+  }
+  sidebarFilter.addEventListener(
+    'input',
+    () => {
+      const value = sidebarFilter.value;
+      try {
+        sessionStorage.setItem(NAV_FILTER_STORAGE_KEY, value);
+      } catch {
+        // Private mode or disabled storage: keep the current input value.
+      }
+      void hydrateShell()
+        .then(() => {
+          sidebarFilter.value = value;
+          sidebarFilter.dispatchEvent(new Event('input', { bubbles: true }));
+        })
+        .catch((error) =>
+          console.error('[cinder playground] failed to hydrate landing shell:', error),
+        );
+    },
+    { once: true },
+  );
+}

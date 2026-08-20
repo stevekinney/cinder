@@ -32,10 +32,11 @@ export function relativeImportSpecifier(fromDirectory: string, targetPath: strin
  * publication to the caller (lazy-build wrapper or the atomic watcher
  * rebuild).
  *
- * The bundle includes component-page.svelte plus every scenario, all in one
- * Bun.build invocation so they share a single Svelte runtime in the browser.
- * Scenarios register themselves on `window.__CINDER_SCENARIOS__`, and
- * `component-page.svelte` reads that global on mount.
+ * The bundle includes the documentation page plus dynamic imports for its
+ * scenarios and bare component implementation. Documentation hydrates without
+ * compiling every example or the selected component into the initial transfer;
+ * `component-page.svelte` loads each example only when its preview is attached
+ * and the bare component only after the reader opens Playground.
  */
 export async function compilePageBundleArtifacts(
   componentName: string,
@@ -66,37 +67,30 @@ export async function compilePageBundleArtifacts(
   const entryTempDir = join(PLAYGROUND_TEMP_ROOT, randomUUID());
   const entryTempPath = join(entryTempDir, `${entryBasename}.ts`);
 
-  const scenarioImports = scenarios
+  const scenarioLoaders = scenarios
     .map(
-      (scenario, index) =>
-        `import Scenario_${index} from '../../src/examples/${componentName}/${scenario}.example.svelte';`,
+      (scenario) =>
+        `  ${JSON.stringify(scenario)}: () => import('../../src/examples/${componentName}/${scenario}.example.svelte'),`,
     )
-    .join('\n');
-  const scenarioRegistrations = scenarios
-    .map((scenario, index) => `  ${JSON.stringify(scenario)}: Scenario_${index},`)
     .join('\n');
 
   const entrySource = `import { hydrate, mount } from 'svelte';
 
-import ComponentPage from '../../src/component-page.svelte';
-import * as BareComponentModule from ${JSON.stringify(componentDefinition.importPath)};
-${scenarioImports}
-const scenarios: Record<string, unknown> = {
-${scenarioRegistrations}
+const scenarioLoaders: Record<string, () => Promise<unknown>> = {
+${scenarioLoaders}
 };
 
-(window as unknown as Record<string, unknown>)['__CINDER_SCENARIOS__'] = scenarios;
+(window as unknown as Record<string, unknown>)['__CINDER_SCENARIO_LOADERS__'] = scenarioLoaders;
 const target = document.getElementById('app');
 if (target === null) {
   throw new Error('[cinder playground] #app target not found');
 }
 
-// Pass the bare component's module namespace as a prop so the Playground section
-// can mount the component directly with synthesized prop values (live preview,
-// #405). The page resolves it by \`documentation.component.exportName\`, falling
-// back to the default export — the whole namespace is handed over so both
-// resolve. Threaded as a prop (not a \`window\` global) so the live preview is
-// wired explicitly to the bundle that mounted the page.
+// Keep the bare component implementation behind the Playground tab. The page
+// resolves the imported namespace by \`documentation.component.exportName\`,
+// falling back to the default export. Threading the loader as a prop (rather
+// than a \`window\` global) keeps the deferred live preview explicitly wired to
+// the bundle that mounted the page.
 const previewOnly = new URLSearchParams(window.location.search).get('preview') === '1';
 
 // The server pre-renders the documentation tree into #app for the canonical
@@ -122,30 +116,106 @@ const sidebarComponents = Array.isArray(sidebarRaw)
   : [];
 
 const props = {
-  bareComponentModule: BareComponentModule,
+  loadBareComponentModule: () => import(${JSON.stringify(componentDefinition.importPath)}),
   previewOnly,
   snapshotMode,
   sidebarComponents,
 };
 
-if (shouldHydrate) {
-  hydrate(ComponentPage, { target, props });
-} else {
-  // mount() APPENDS; it does not clear the target. So whenever we are mounting a
-  // tree that differs from whatever the document already contains, we must own
-  // the container explicitly.
-  //
-  // This is load-bearing on the STATIC export, not just in development. The
-  // exporter strips query strings when crawling, so \`/page/<name>?preview=1\`
-  // resolves to the one exported \`/page/<name>/index.html\` — the full
-  // documentation page. The server-side preview gate cannot help there, because
-  // a static host runs no server. Without this clear, the shell's preview iframe
-  // renders the entire documentation page with a small preview stacked on top.
-  //
-  // Clearing is safe in every mount case: snapshot and preview surfaces are
-  // served with an empty \`#app\` anyway, so there is nothing to discard.
-  target.replaceChildren();
-  mount(ComponentPage, { target, props });
+let pageHydration: Promise<void> | undefined;
+let pageHydrated = false;
+
+function hydratePage(): Promise<void> {
+  pageHydration ??= import('../../src/component-page.svelte').then(({ default: ComponentPage }) => {
+    if (shouldHydrate) {
+      hydrate(ComponentPage, { target, props });
+      pageHydrated = true;
+      return;
+    }
+    // mount() APPENDS; it does not clear the target. So whenever we are mounting a
+    // tree that differs from whatever the document already contains, we must own
+    // the container explicitly.
+    //
+    // This is load-bearing on the STATIC export, not just in development. The
+    // exporter strips query strings when crawling, so \`/page/<name>?preview=1\`
+    // resolves to the one exported \`/page/<name>/index.html\` — the full
+    // documentation page. The server-side preview gate cannot help there, because
+    // a static host runs no server. Without this clear, the shell's preview iframe
+    // renders the entire documentation page with a small preview stacked on top.
+    //
+    // Clearing is safe in every mount case: snapshot and preview surfaces are
+    // served with an empty \`#app\` anyway, so there is nothing to discard.
+    target.replaceChildren();
+    mount(ComponentPage, { target, props });
+    pageHydrated = true;
+  });
+  return pageHydration;
+}
+
+function hydrateAfter(event: Event, replay: () => void): void {
+  event.preventDefault();
+  void hydratePage()
+    .then(replay)
+    .catch((error) => console.error('[cinder playground] failed to hydrate page:', error));
+}
+
+function eventElement(event: Event): Element | null {
+  return event.target instanceof Element ? event.target : null;
+}
+
+// The server-rendered documentation remains immediately usable: links and
+// anchors keep their native behavior. The first control interaction upgrades
+// it to the full Svelte page, then replays that interaction against the
+// hydrated component. This covers every expanding/copying/Playground control,
+// rather than letting a new button accidentally become inert on static docs.
+document.addEventListener(
+  'click',
+  (event) => {
+    if (pageHydrated) return;
+    const button = eventElement(event)?.closest('button');
+    if (button === null) return;
+    hydrateAfter(event, () => button.click());
+  },
+  { capture: true },
+);
+
+document.addEventListener(
+  'keydown',
+  (event) => {
+    if (pageHydrated || !['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+    const button = eventElement(event)?.closest('button');
+    if (button === null) return;
+    hydrateAfter(event, () =>
+      button.dispatchEvent(
+        new KeyboardEvent('keydown', { key: event.key, bubbles: true, cancelable: true }),
+      ),
+    );
+  },
+  { capture: true },
+);
+
+document.addEventListener(
+  'input',
+  (event) => {
+    if (pageHydrated) return;
+    const input = eventElement(event);
+    if (!(input instanceof HTMLInputElement || input instanceof HTMLTextAreaElement)) return;
+    const value = input.value;
+    hydrateAfter(event, () => {
+      input.value = value;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+  },
+  { capture: true },
+);
+
+// A shared or bookmarked Playground URL is intentionally interactive from the
+// first paint. Canonical documentation URLs keep their runtime behind explicit
+// reader interaction, leaving the server-rendered document immediately useful.
+if (shouldHydrate && new URLSearchParams(window.location.search).get('view') === 'playground') {
+  void hydratePage().catch((error) =>
+    console.error('[cinder playground] failed to hydrate Playground view:', error),
+  );
 }
 `;
 

@@ -9,16 +9,14 @@
    *
    * It is now a thin wrapper around the SAME component every documentation page
    * renders, in landing mode — so `/` and `/page/<name>` are one layout with
-   * different content. The only thing this adds is the colour-token panel, which
-   * lives here because it pulls ColorPicker/Popover/Input/Button: this is one
-   * bundle, whereas the documentation page compiles once per component (170
-   * bundles), where that graph made each build ~4x slower.
+   * different content. The only thing this adds is the colour-token panel.
+   * Its ColorPicker/Popover/Input graph loads when the reader opens the panel,
+   * rather than making every landing-page visit pay for an advanced editor.
    */
   import { Button } from '@lostgradient/cinder/button';
   import Palette from 'lucide-svelte/icons/palette';
 
   import ComponentPage from '../component-page.svelte';
-  import ColorTokenPanel from './color-token-panel.svelte';
   import { PreviewStore, setPreviewStore } from './preview-store.svelte.ts';
 
   type Props = {
@@ -35,6 +33,8 @@
   const COLOR_PANEL_LABEL = 'Color token panel';
 
   let isColorPanelOpen = $state(false);
+  type ColorTokenPanelModule = typeof import('./color-token-panel.svelte');
+  let colorTokenPanelModule = $state<Promise<ColorTokenPanelModule> | null>(null);
 
   $effect(() => {
     store.applyActiveColorTokenOverridesToDocument(document);
@@ -79,6 +79,15 @@
       document.querySelector<HTMLElement>(`button[aria-label="${COLOR_PANEL_LABEL}"]`)?.focus();
     });
   }
+
+  function toggleColorPanel(): void {
+    if (isColorPanelOpen) {
+      closeColorPanel();
+      return;
+    }
+    colorTokenPanelModule ??= import('./color-token-panel.svelte');
+    isColorPanelOpen = true;
+  }
 </script>
 
 <ComponentPage
@@ -95,7 +104,7 @@
       {...isColorPanelOpen ? { 'aria-controls': 'color-token-panel' } : {}}
       aria-expanded={isColorPanelOpen}
       data-testid="color-token-panel-toggle"
-      onclick={() => (isColorPanelOpen = !isColorPanelOpen)}
+      onclick={toggleColorPanel}
     >
       <Palette size={17} strokeWidth={1.5} aria-hidden="true" />
     </Button>
@@ -103,7 +112,9 @@
 
   {#snippet overlays()}
     {#if isColorPanelOpen}
-      <ColorTokenPanel onClose={closeColorPanel} />
+      {#await colorTokenPanelModule then { default: ColorTokenPanel }}
+        <ColorTokenPanel onClose={closeColorPanel} />
+      {/await}
     {/if}
   {/snippet}
 </ComponentPage>

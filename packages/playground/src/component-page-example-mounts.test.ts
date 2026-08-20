@@ -35,11 +35,15 @@ const {
   resetProbe: () => void;
 };
 
-type CinderWindow = typeof globalThis & { __CINDER_SCENARIOS__?: Record<string, unknown> };
+type CinderWindow = typeof globalThis & {
+  __CINDER_SCENARIOS__?: Record<string, unknown>;
+  __CINDER_SCENARIO_LOADERS__?: Record<string, () => Promise<unknown>>;
+};
 
 afterEach(() => {
   resetProbe();
   delete (window as CinderWindow).__CINDER_SCENARIOS__;
+  delete (window as CinderWindow).__CINDER_SCENARIO_LOADERS__;
   document.body.innerHTML = '';
 });
 
@@ -108,6 +112,33 @@ describe('createExampleMountHelpers().mountScenario', () => {
     flushSync();
     cleanup();
 
+    expect(unmountCount()).toBe(1);
+  });
+
+  it('loads a scenario module only when its preview is attached', async () => {
+    let loadCount = 0;
+    (window as CinderWindow).__CINDER_SCENARIO_LOADERS__ = {
+      lazy: async () => {
+        loadCount += 1;
+        return { default: Probe };
+      },
+    };
+    const mountErrors: Record<string, MountErrorDetail | undefined> = {};
+    const { mountScenario } = createExampleMountHelpers({ mountErrors });
+
+    const element = document.createElement('div');
+    element.id = 'example-mount-lazy';
+    document.body.appendChild(element);
+
+    const cleanup = mountScenario('lazy')(element);
+    await Promise.resolve();
+    flushSync();
+
+    expect(loadCount).toBe(1);
+    expect(mountCount()).toBe(1);
+    expect(mountErrors['example-mount-lazy']).toBeUndefined();
+
+    cleanup();
     expect(unmountCount()).toBe(1);
   });
 });
