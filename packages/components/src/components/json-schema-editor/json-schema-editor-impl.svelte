@@ -61,6 +61,7 @@
     maxHistory,
     draftOverride,
     onSchemaChange,
+    onSchemaChangeRequest,
     onRevert,
     onValidate,
     class: className,
@@ -99,11 +100,7 @@
 
   function schemaMatchesCommitted(input: JsonSchemaValue | string): boolean {
     const normalised = normaliseSchemaInput(input);
-    return (
-      normalised.ok &&
-      !editorState.jsonDraftIsDirty &&
-      normalised.canonicalText === editorState.committedCanonicalText
-    );
+    return normalised.ok && normalised.canonicalText === editorState.committedCanonicalText;
   }
 
   function synchroniseControlledSchema(input: JsonSchemaValue | string) {
@@ -113,6 +110,7 @@
   }
 
   function handleSchemaChange(event: JsonSchemaEditorChangeEvent) {
+    onSchemaChangeRequest?.(event);
     onSchemaChange?.(event);
     if (schema === undefined) return;
 

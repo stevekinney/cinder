@@ -422,6 +422,7 @@ describe('JsonSchemaEditor — controlled and uncontrolled schema inputs', () =>
     await fireEvent.click(screen.getByRole('button', { name: 'Edit JSON' }));
     const textarea = screen.getByRole('textbox', { name: 'JSON' });
     expect((textarea as HTMLTextAreaElement).value).toBe('{\n  "type": "string"\n}');
+    expect(document.activeElement).toBe(textarea);
   });
 
   test('emits controlled edits and synchronizes later parent schema updates', async () => {
@@ -431,7 +432,8 @@ describe('JsonSchemaEditor — controlled and uncontrolled schema inputs', () =>
         id: 'jse-controlled',
         schema: { type: 'string' },
         view: 'json' as const,
-        onSchemaChange: (event: JsonSchemaEditorChangeEvent) => changes.push(event.jsonString),
+        onSchemaChangeRequest: (event: JsonSchemaEditorChangeEvent) =>
+          changes.push(event.jsonString),
       },
     });
     await flushEffects();
@@ -449,12 +451,42 @@ describe('JsonSchemaEditor — controlled and uncontrolled schema inputs', () =>
       id: 'jse-controlled',
       schema: { type: 'boolean' },
       view: 'json' as const,
-      onSchemaChange: (event: JsonSchemaEditorChangeEvent) => changes.push(event.jsonString),
+      onSchemaChangeRequest: (event: JsonSchemaEditorChangeEvent) => changes.push(event.jsonString),
+    });
+    await flushEffects();
+
+    const region = screen.getByRole('region', { name: 'JSON Schema editor' });
+    expect(region.querySelector('.cinder-code-block')?.textContent).toContain('"type": "boolean"');
+  });
+
+  test('preserves a dirty JSON draft when a controlled parent recreates its unchanged schema', async () => {
+    const onSchemaChangeRequest = (_event: JsonSchemaEditorChangeEvent) => undefined;
+    const { rerender } = render(JsonSchemaEditorImplementation, {
+      props: {
+        id: 'jse-controlled-draft',
+        schema: { type: 'string' },
+        view: 'json' as const,
+        onSchemaChangeRequest,
+      },
+    });
+    await flushEffects();
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Edit JSON' }));
+    await fireEvent.input(screen.getByRole('textbox', { name: 'JSON' }), {
+      target: { value: '{"type":"number"}' },
+    });
+    await flushEffects();
+
+    await rerender({
+      id: 'jse-controlled-draft',
+      schema: { type: 'string' },
+      view: 'json' as const,
+      onSchemaChangeRequest,
     });
     await flushEffects();
 
     expect(
       document.querySelector<HTMLTextAreaElement>('textarea.cinder-jse-json-view__textarea')?.value,
-    ).toBe('{\n  "type": "boolean"\n}');
+    ).toBe('{"type":"number"}');
   });
 });

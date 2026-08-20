@@ -36,18 +36,22 @@ type JsonSchemaEditorCommonProps = {
   maxHistory?: number;
   /** Force a draft override regardless of $schema. */
   draftOverride?: JsonSchemaKnownDraft;
+  /** Request that the parent replace `schema` with a committed editor value. */
+  onSchemaChangeRequest?: (event: JsonSchemaEditorChangeEvent) => void;
   onRevert?: (event: JsonSchemaEditorRevertEvent) => void;
   onValidate?: (result: JsonSchemaValidationResult) => void;
   /** Additional class merged onto the `.cinder-jse` root element. */
   class?: string;
 };
 
-/** Parent-owned schema state. Every editor commit is reported to the parent. */
+/** Parent-owned schema state. Every editor commit requests a parent update. */
 type ControlledJsonSchemaEditorProps = {
-  /** Parent-owned schema. Requires `onSchemaChange`; do not combine with `defaultSchema`. */
+  /** Parent-owned schema. Requires `onSchemaChangeRequest`; do not combine with `defaultSchema`. */
   schema: JsonSchemaValue | string;
-  /** Controlled editors must receive committed changes so the parent can update `schema`. */
-  onSchemaChange: (event: JsonSchemaEditorChangeEvent) => void;
+  /** Request that the parent replace `schema` with a committed editor value. */
+  onSchemaChangeRequest: (event: JsonSchemaEditorChangeEvent) => void;
+  /** Observe a committed schema change after the request is sent. */
+  onSchemaChange?: (event: JsonSchemaEditorChangeEvent) => void;
   /** Omit `schema` to use this as the initial value of an uncontrolled editor. */
   defaultSchema?: never;
 };
@@ -58,6 +62,8 @@ type UncontrolledJsonSchemaEditorProps = {
   defaultSchema?: JsonSchemaValue | string;
   /** `defaultSchema` is only an initial value; omit `schema` for local state ownership. */
   schema?: never;
+  /** Controlled editors alone request a parent state update. */
+  onSchemaChangeRequest?: never;
   /** Observe committed changes without taking control of the schema value. */
   onSchemaChange?: (event: JsonSchemaEditorChangeEvent) => void;
 };

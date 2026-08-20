@@ -10,11 +10,12 @@
 </script>
 
 <script lang="ts">
+  import { tick } from 'svelte';
   import { classNames } from '../../utilities/class-names.ts';
   import Alert from '../alert/alert.svelte';
   import Badge from '../badge/badge.svelte';
   import Button from '../button/button.svelte';
-  import CodeBlock from '../code-block/code-block.svelte';
+  import CodeBlock from '@lostgradient/cinder/code-block';
   import Textarea from '../textarea/textarea.svelte';
 
   import type { JsonSchemaValidationError } from './json-schema-editor-types.ts';
@@ -28,7 +29,10 @@
   let { state: editorState, idPrefix, onApply, class: className }: JsonViewProps = $props();
 
   async function applyDraft(): Promise<void> {
-    if (await editorState.applyJsonDraft()) onApply?.();
+    if (await editorState.applyJsonDraft()) {
+      jsonEditing = false;
+      onApply?.();
+    }
   }
 
   // Parse is synchronous; the meta-schema check is not (validateMetaSchema
@@ -96,6 +100,12 @@
     editorState.discardJsonDraft();
     jsonEditing = false;
   }
+
+  async function startEditing(): Promise<void> {
+    jsonEditing = true;
+    await tick();
+    document.getElementById(`${idPrefix}-textarea`)?.focus();
+  }
 </script>
 
 <div class={classNames('cinder-jse-json-view', className)}>
@@ -107,11 +117,15 @@
       <Button variant="primary" size="sm" disabled={!canApply} onclick={() => void applyDraft()}>
         Apply
       </Button>
-      <Button variant="secondary" size="sm" disabled={!canDiscard} onclick={discardDraft}>
-        Discard
-      </Button>
+      {#if editorState.jsonDraftIsDirty}
+        <Button variant="secondary" size="sm" disabled={!canDiscard} onclick={discardDraft}>
+          Discard
+        </Button>
+      {:else if editorState.committedSchema !== null}
+        <Button variant="secondary" size="sm" onclick={() => (jsonEditing = false)}>Done</Button>
+      {/if}
     {:else if !editorState.readonly}
-      <Button variant="secondary" size="sm" onclick={() => (jsonEditing = true)}>Edit JSON</Button>
+      <Button variant="secondary" size="sm" onclick={() => void startEditing()}>Edit JSON</Button>
     {/if}
   </div>
 
