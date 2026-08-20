@@ -422,6 +422,7 @@ describe('validate-release-workflow changeset guards', () => {
       expect(workflow).toContain("node-version: '22'");
       expect(workflow).toContain('name: Record configured Node runtime for publish');
       expect(workflow).toContain('CINDER_PUBLISH_NODE=$node_path');
+      expect(workflow).toContain('NODE_OPTIONS: --openssl-legacy-provider');
     }
   });
 
