@@ -6,7 +6,7 @@
  * playground routes: /page/chat, /page/markdown-editor, /page/review-editor,
  * and /page/json-schema-editor.
  */
-import { expect, test, type Browser, type Page } from '@playwright/test';
+import { expect, test, type Browser, type Locator, type Page } from '@playwright/test';
 
 import { PLAYGROUND_URL } from '../src/helpers/playground-url.ts';
 import { THEME_STORAGE_KEY } from '../src/helpers/theme.ts';
@@ -440,6 +440,26 @@ test.describe('JSON schema editor', () => {
     return editor;
   }
 
+  /** Opens the deliberate JSON editing state and returns its source textarea. */
+  async function openJsonEditor(editor: Locator) {
+    const textarea = editor.locator('textarea').first();
+    if (!(await textarea.isVisible())) {
+      await editor.getByRole('button', { name: 'Edit JSON' }).click();
+    }
+    await expect(textarea).toBeVisible();
+    return textarea;
+  }
+
+  async function fillJson(editor: Locator, value: string) {
+    const textarea = await openJsonEditor(editor);
+    await textarea.fill(value);
+  }
+
+  async function jsonValue(editor: Locator) {
+    const textarea = await openJsonEditor(editor);
+    return textarea.inputValue();
+  }
+
   test('Diff tab shows "Diff" without a raw bullet and carries accessible change markup', async ({
     page,
   }) => {
@@ -473,23 +493,26 @@ test.describe('JSON schema editor', () => {
     const jsonTab = editor.getByRole('tab', { name: /JSON/ });
     await jsonTab.click();
 
-    const textarea = editor.locator('textarea').first();
-    await expect(textarea).toBeVisible();
+    const textarea = await openJsonEditor(editor);
     await textarea.fill('{"type":"string","enum":["draft","published"]}');
     await editor.getByRole('button', { name: 'Apply' }).click();
 
     await editor.getByRole('tab', { name: /^Form/ }).click();
     const enumTable = editor.getByRole('table', { name: 'Enum values' });
     await expect(enumTable).toBeVisible();
-    await expect(editor.getByRole('textbox', { name: 'Enum value 1', exact: true })).toHaveValue('"draft"');
-    await expect(editor.getByRole('textbox', { name: 'Enum value 2', exact: true })).toHaveValue('"published"');
+    await expect(editor.getByRole('textbox', { name: 'Enum value 1', exact: true })).toHaveValue(
+      '"draft"',
+    );
+    await expect(editor.getByRole('textbox', { name: 'Enum value 2', exact: true })).toHaveValue(
+      '"published"',
+    );
   });
 
   test('invalid enum drafts survive switching away from the form view', async ({ page }) => {
     const editor = await openFirstEditor(page);
     const jsonTab = editor.getByRole('tab', { name: /JSON/ });
     await jsonTab.click();
-    await editor.locator('textarea').first().fill('{"type":"string","enum":["draft","published"]}');
+    await fillJson(editor, '{"type":"string","enum":["draft","published"]}');
     await editor.getByRole('button', { name: 'Apply' }).click();
 
     await editor.getByRole('tab', { name: /^Form/ }).click();
@@ -499,7 +522,9 @@ test.describe('JSON schema editor', () => {
 
     await jsonTab.click();
     await editor.getByRole('tab', { name: /^Form/ }).click();
-    await expect(editor.getByRole('textbox', { name: 'Enum value 2', exact: true })).toHaveValue('{');
+    await expect(editor.getByRole('textbox', { name: 'Enum value 2', exact: true })).toHaveValue(
+      '{',
+    );
     await expect(editor.getByText('Enter a valid JSON value.')).toBeVisible();
   });
 
@@ -516,7 +541,9 @@ test.describe('JSON schema editor', () => {
     await typeSelect.selectOption('enum');
 
     await expect(editor.getByRole('table', { name: 'Enum values' })).toBeVisible();
-    await expect(editor.getByRole('textbox', { name: 'Enum value 1', exact: true })).toHaveValue('""');
+    await expect(editor.getByRole('textbox', { name: 'Enum value 1', exact: true })).toHaveValue(
+      '""',
+    );
   });
 
   test('selecting "Multiple types" seeds a starting array and reveals the checkbox row', async ({
@@ -535,7 +562,9 @@ test.describe('JSON schema editor', () => {
 
     const jsonTab = editor.getByRole('tab', { name: /JSON/ });
     await jsonTab.click();
-    await expect(editor.locator('textarea').first()).toHaveValue(/"type":\s*\[\s*"string",\s*"null"\s*\]/);
+    await expect(await openJsonEditor(editor)).toHaveValue(
+      /"type":\s*\[\s*"string",\s*"null"\s*\]/,
+    );
   });
 
   test('selecting "Multiple types" from an enum on an already multi-type schema preserves the existing types', async ({
@@ -544,10 +573,10 @@ test.describe('JSON schema editor', () => {
     const editor = await openFirstEditor(page);
     const jsonTab = editor.getByRole('tab', { name: /JSON/ });
     await jsonTab.click();
-    await editor
-      .locator('textarea')
-      .first()
-      .fill('{"type":"object","properties":{"code":{"type":["string","number"],"enum":["a",1]}}}');
+    await fillJson(
+      editor,
+      '{"type":"object","properties":{"code":{"type":["string","number"],"enum":["a",1]}}}',
+    );
     await editor.getByRole('button', { name: 'Apply' }).click();
 
     await editor.getByRole('tab', { name: /^Form/ }).click();
@@ -565,7 +594,7 @@ test.describe('JSON schema editor', () => {
     await expect(editor.getByRole('table', { name: 'Enum values' })).toHaveCount(0);
 
     await jsonTab.click();
-    await expect(editor.locator('textarea').first()).toHaveValue(
+    await expect(await openJsonEditor(editor)).toHaveValue(
       /"type":\s*\[\s*"string",\s*"number"\s*\]/,
     );
   });
@@ -576,35 +605,31 @@ test.describe('JSON schema editor', () => {
     const editor = await openFirstEditor(page);
     const jsonTab = editor.getByRole('tab', { name: /JSON/ });
     await jsonTab.click();
-    await editor
-      .locator('textarea')
-      .first()
-      .fill('{"type":"object","properties":{"status":{"type":"string","enum":["draft","published"]}}}');
+    await fillJson(
+      editor,
+      '{"type":"object","properties":{"status":{"type":"string","enum":["draft","published"]}}}',
+    );
     await editor.getByRole('button', { name: 'Apply' }).click();
 
     await editor.getByRole('tab', { name: /^Form/ }).click();
     await editor.getByRole('button', { name: 'Expand status property' }).click();
-    await editor
-      .getByRole('textbox', { name: 'Enum value 1 description' })
-      .fill('Not yet visible');
+    await editor.getByRole('textbox', { name: 'Enum value 1 description' }).fill('Not yet visible');
 
     await jsonTab.click();
-    await expect(editor.locator('textarea').first()).toHaveValue(
+    await expect(await openJsonEditor(editor)).toHaveValue(
       /"oneOf":\s*\[\s*\{\s*"const":\s*"draft",\s*"description":\s*"Not yet visible"\s*\},\s*\{\s*"const":\s*"published"\s*\}\s*\]/,
     );
 
     await editor.getByRole('tab', { name: /^Form/ }).click();
     // Switching views remounts the form tree, collapsing the row again.
     await editor.getByRole('button', { name: 'Expand status property' }).click();
-    await editor
-      .getByRole('textbox', { name: 'Enum value 1 description' })
-      .fill('');
+    await editor.getByRole('textbox', { name: 'Enum value 1 description' }).fill('');
 
     await jsonTab.click();
-    await expect(editor.locator('textarea').first()).toHaveValue(
+    await expect(await openJsonEditor(editor)).toHaveValue(
       /"enum":\s*\[\s*"draft",\s*"published"\s*\]/,
     );
-    await expect(editor.locator('textarea').first()).not.toHaveValue(/oneOf/);
+    await expect(await openJsonEditor(editor)).not.toHaveValue(/oneOf/);
   });
 
   test('a real oneOf composition is unaffected by the enum-description promotion', async ({
@@ -613,12 +638,10 @@ test.describe('JSON schema editor', () => {
     const editor = await openFirstEditor(page);
     const jsonTab = editor.getByRole('tab', { name: /JSON/ });
     await jsonTab.click();
-    await editor
-      .locator('textarea')
-      .first()
-      .fill(
-        '{"type":"object","properties":{"identifier":{"oneOf":[{"type":"string","pattern":"^[a-z]+$"},{"type":"integer","minimum":1}]}}}',
-      );
+    await fillJson(
+      editor,
+      '{"type":"object","properties":{"identifier":{"oneOf":[{"type":"string","pattern":"^[a-z]+$"},{"type":"integer","minimum":1}]}}}',
+    );
     await editor.getByRole('button', { name: 'Apply' }).click();
 
     await editor.getByRole('tab', { name: /^Form/ }).click();
@@ -638,12 +661,10 @@ test.describe('JSON schema editor', () => {
     // `enum` is the active representation (detectEnumSource prefers it), but
     // `oneOf` here happens to also satisfy the enum-shaped predicate even
     // though it is not what the enum table is reading from.
-    await editor
-      .locator('textarea')
-      .first()
-      .fill(
-        '{"type":"object","properties":{"status":{"type":"string","enum":["draft","published"],"oneOf":[{"const":"x"},{"const":"y"}]}}}',
-      );
+    await fillJson(
+      editor,
+      '{"type":"object","properties":{"status":{"type":"string","enum":["draft","published"],"oneOf":[{"const":"x"},{"const":"y"}]}}}',
+    );
     await editor.getByRole('button', { name: 'Apply' }).click();
 
     await editor.getByRole('tab', { name: /^Form/ }).click();
@@ -653,7 +674,7 @@ test.describe('JSON schema editor', () => {
     await editor.getByRole('combobox', { name: 'status type' }).selectOption('number');
 
     await jsonTab.click();
-    const draft = await editor.locator('textarea').first().inputValue();
+    const draft = await jsonValue(editor);
     expect(draft).not.toContain('enum');
     expect(draft).toContain('"oneOf"');
     expect(draft).toContain('"const": "x"');
@@ -668,22 +689,18 @@ test.describe('JSON schema editor', () => {
     await jsonTab.click();
     // `enum` is the active representation, but `oneOf` here is a REAL
     // composition (branches carry `type`), not an enum-shaped one.
-    await editor
-      .locator('textarea')
-      .first()
-      .fill(
-        '{"type":"object","properties":{"status":{"type":"string","enum":["draft","published"],"oneOf":[{"type":"string","pattern":"^[a-z]+$"},{"type":"integer","minimum":1}]}}}',
-      );
+    await fillJson(
+      editor,
+      '{"type":"object","properties":{"status":{"type":"string","enum":["draft","published"],"oneOf":[{"type":"string","pattern":"^[a-z]+$"},{"type":"integer","minimum":1}]}}}',
+    );
     await editor.getByRole('button', { name: 'Apply' }).click();
 
     await editor.getByRole('tab', { name: /^Form/ }).click();
     await editor.getByRole('button', { name: 'Expand status property' }).click();
-    await editor
-      .getByRole('textbox', { name: 'Enum value 1 description' })
-      .fill('Not yet visible');
+    await editor.getByRole('textbox', { name: 'Enum value 1 description' }).fill('Not yet visible');
 
     await jsonTab.click();
-    const draft = await editor.locator('textarea').first().inputValue();
+    const draft = await jsonValue(editor);
     // The real composition survives untouched.
     expect(draft).toContain('"pattern": "^[a-z]+$"');
     expect(draft).toContain('"minimum": 1');
@@ -698,12 +715,10 @@ test.describe('JSON schema editor', () => {
     const editor = await openFirstEditor(page);
     const jsonTab = editor.getByRole('tab', { name: /JSON/ });
     await jsonTab.click();
-    await editor
-      .locator('textarea')
-      .first()
-      .fill(
-        '{"type":"object","properties":{"tags":{"type":"array","items":{"type":"string"}},"addresses":{"type":"array","items":{"type":"object","properties":{"street":{"type":"string"}}}}}}',
-      );
+    await fillJson(
+      editor,
+      '{"type":"object","properties":{"tags":{"type":"array","items":{"type":"string"}},"addresses":{"type":"array","items":{"type":"object","properties":{"street":{"type":"string"}}}}}}',
+    );
     await editor.getByRole('button', { name: 'Apply' }).click();
     await editor.getByRole('tab', { name: /^Form/ }).click();
 
@@ -745,12 +760,10 @@ test.describe('JSON schema editor', () => {
     // Revert (and the Copy action stays enabled) — giving us ≥2 roving members.
     const jsonTab = editor.locator('[role="tab"]').filter({ hasText: /JSON/ }).first();
     await jsonTab.click();
-    const textarea = editor.locator('textarea').first();
-    if (await textarea.count()) {
-      await textarea.click();
-      await textarea.press('End');
-      await textarea.type(' ');
-    }
+    const textarea = await openJsonEditor(editor);
+    await textarea.click();
+    await textarea.press('End');
+    await textarea.type(' ');
 
     const enabled = toolbarRight.locator('button:not([disabled])');
     const enabledCount = await enabled.count();
@@ -799,12 +812,10 @@ test.describe('JSON schema editor', () => {
     const editor = await openFirstEditor(page);
     const jsonTab = editor.getByRole('tab', { name: /JSON/ });
     await jsonTab.click();
-    await editor
-      .locator('textarea')
-      .first()
-      .fill(
-        '{"type":"object","properties":{"address":{"type":"object","properties":{"street":{"type":"string"},"city":{"type":"string"}}}}}',
-      );
+    await fillJson(
+      editor,
+      '{"type":"object","properties":{"address":{"type":"object","properties":{"street":{"type":"string"},"city":{"type":"string"}}}}}',
+    );
     await editor.getByRole('button', { name: 'Apply' }).click();
     await editor.getByRole('tab', { name: /^Form/ }).click();
 
@@ -821,12 +832,10 @@ test.describe('JSON schema editor', () => {
     const editor = await openFirstEditor(page);
     const jsonTab = editor.getByRole('tab', { name: /JSON/ });
     await jsonTab.click();
-    await editor
-      .locator('textarea')
-      .first()
-      .fill(
-        '{"type":"object","properties":{"email":{"type":"string"},"age":{"type":"integer"}}}',
-      );
+    await fillJson(
+      editor,
+      '{"type":"object","properties":{"email":{"type":"string"},"age":{"type":"integer"}}}',
+    );
     await editor.getByRole('button', { name: 'Apply' }).click();
     await editor.getByRole('tab', { name: /^Form/ }).click();
 
@@ -842,10 +851,10 @@ test.describe('JSON schema editor', () => {
     const editor = await openFirstEditor(page);
     const jsonTab = editor.getByRole('tab', { name: /JSON/ });
     await jsonTab.click();
-    await editor
-      .locator('textarea')
-      .first()
-      .fill('{"type":"object","properties":{"age":{"type":"integer"},"email":{"type":"string"}}}');
+    await fillJson(
+      editor,
+      '{"type":"object","properties":{"age":{"type":"integer"},"email":{"type":"string"}}}',
+    );
     await editor.getByRole('button', { name: 'Apply' }).click();
     await editor.getByRole('tab', { name: /^Form/ }).click();
 
@@ -858,7 +867,7 @@ test.describe('JSON schema editor', () => {
 
     await jsonTab.click();
     // ...and confirm the JSON view reflects the new key order.
-    const draft = await editor.locator('textarea').first().inputValue();
+    const draft = await jsonValue(editor);
     expect(draft.indexOf('"email"')).toBeLessThan(draft.indexOf('"age"'));
   });
 });
