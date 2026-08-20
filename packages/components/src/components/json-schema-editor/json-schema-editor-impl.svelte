@@ -179,7 +179,7 @@
     }
 
     if (pendingControlledChange !== undefined) {
-      synchroniseControlledSchema(schema);
+      synchroniseControlledSchema(controlledSchemaAuthority ?? schema);
       return;
     }
 

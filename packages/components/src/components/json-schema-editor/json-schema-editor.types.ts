@@ -36,7 +36,7 @@ type JsonSchemaEditorCommonProps = {
   maxHistory?: number;
   /** Force a draft override regardless of $schema. */
   draftOverride?: JsonSchemaKnownDraft;
-  /** Request that the parent replace `schema` with a committed editor value. */
+  /** With `schema`, activates controlled state and requests each committed parent update. */
   onValueChangeRequest?: (event: JsonSchemaEditorChangeEvent) => unknown;
   onRevert?: (event: JsonSchemaEditorRevertEvent) => void;
   onValidate?: (result: JsonSchemaValidationResult) => void;
@@ -46,7 +46,7 @@ type JsonSchemaEditorCommonProps = {
 
 /** Parent-owned schema state. Every editor commit requests a parent update. */
 type ControlledJsonSchemaEditorProps = {
-  /** Parent-owned schema. Requires `onValueChangeRequest`; do not combine with `defaultSchema`. */
+  /** Current schema. With `onValueChangeRequest`, parent-owned; otherwise, a local initial value. */
   schema: JsonSchemaValue | string;
   /**
    * Request that the parent replace `schema` with a committed editor value.
@@ -56,7 +56,7 @@ type ControlledJsonSchemaEditorProps = {
    * A later commit is restored to the parent schema until that response arrives.
    */
   onValueChangeRequest: (event: JsonSchemaEditorChangeEvent) => unknown;
-  /** Observe a schema change after the parent accepts the request. */
+  /** Observe a committed schema change: locally immediately, or after controlled acceptance. */
   onSchemaChange?: (event: JsonSchemaEditorChangeEvent) => void;
   /** Omit `schema` to use this as the initial value of an uncontrolled editor. */
   defaultSchema?: never;

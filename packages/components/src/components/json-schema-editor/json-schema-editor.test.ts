@@ -716,6 +716,71 @@ describe('JsonSchemaEditor — controlled and uncontrolled schema inputs', () =>
     );
   });
 
+  test('restores the latest authority when a second request is pending', async () => {
+    const requests: string[] = [];
+    const pendingSettlement = new Promise<never>(() => {});
+    const { container } = render(JsonSchemaEditorImplementation, {
+      props: {
+        id: 'jse-controlled-pending-authority',
+        schema: { type: 'string' },
+        view: 'json' as const,
+        onValueChangeRequest: (event: JsonSchemaEditorChangeEvent) => {
+          requests.push(event.jsonString);
+          return requests.length === 1 ? { type: 'number' } : pendingSettlement;
+        },
+      },
+    });
+    await flushEffects();
+
+    for (const type of ['number', 'boolean', 'string']) {
+      await fireEvent.click(latestJsonButton(container, 'Edit JSON'));
+      await fireEvent.input(latestJsonTextarea(container), {
+        target: { value: `{"type":"${type}"}` },
+      });
+      await fireEvent.click(latestJsonButton(container, 'Apply'));
+      await flushEffects();
+    }
+
+    expect(requests).toEqual(['{\n  "type": "number"\n}', '{\n  "type": "boolean"\n}']);
+    expect(container.textContent).toContain('"type": "number"');
+  });
+
+  test('moves focus to Edit JSON when controlled sync closes a remounted dirty draft', async () => {
+    const onValueChangeRequest = () => undefined;
+    const { container, rerender } = render(JsonSchemaEditorImplementation, {
+      props: {
+        id: 'jse-controlled-sync-focus',
+        schema: { type: 'string' },
+        view: 'json' as const,
+        onValueChangeRequest,
+      },
+    });
+    await flushEffects();
+
+    await fireEvent.click(latestJsonButton(container, 'Edit JSON'));
+    await fireEvent.input(latestJsonTextarea(container), {
+      target: { value: '{"type":"number"}' },
+    });
+    await fireEvent.click(within(container).getByRole('tab', { name: /Diff/ }));
+    await fireEvent.click(within(container).getByRole('tab', { name: /JSON/ }));
+    await flushEffects();
+
+    const textarea = latestJsonTextarea(container);
+    textarea.focus();
+    await rerender({
+      id: 'jse-controlled-sync-focus',
+      schema: { type: 'boolean' },
+      view: 'json' as const,
+      onValueChangeRequest,
+    });
+    await flushEffects();
+    await flushEffects();
+
+    expect(document.activeElement).toBe(
+      container.querySelector<HTMLButtonElement>('#jse-controlled-sync-focus-json-edit-json'),
+    );
+  });
+
   test('notifies observers with a transformed returned settlement', async () => {
     const observedChanges: JsonSchemaEditorChangeEvent[] = [];
     render(JsonSchemaEditorImplementation, {

@@ -49,7 +49,8 @@ const schema = {
       {
         name: 'onSchemaChange',
         reason: 'function-or-snippet',
-        description: 'Observe a schema change after the parent accepts the request.',
+        description:
+          'Observe a committed schema change: locally immediately, or after controlled acceptance.',
       },
       {
         name: 'onValidate',
@@ -58,7 +59,8 @@ const schema = {
       {
         name: 'onValueChangeRequest',
         reason: 'function-or-snippet',
-        description: 'Request that the parent replace `schema` with a committed editor value.',
+        description:
+          'With `schema`, activates controlled state and requests each committed parent update.',
       },
       {
         name: 'original',
@@ -69,7 +71,7 @@ const schema = {
         name: 'schema',
         reason: 'unknown-shape',
         description:
-          'Parent-owned schema. Requires `onValueChangeRequest`; do not combine with `defaultSchema`.',
+          'Current schema. With `onValueChangeRequest`, parent-owned; otherwise, a local initial value.',
       },
     ],
   },
