@@ -64,11 +64,12 @@ describe('publish-release package selection', () => {
   test('runs the provisioned npm CLI with the same Node runtime', () => {
     const wrapper = readFileSync(join(import.meta.dir, 'npm-publish.mjs'), 'utf8');
     expect(wrapper).toContain('CINDER_PUBLISH_NPM_CLI');
-    expect(wrapper).toContain(
-      "join(dirname(dirname(process.execPath)), 'lib', 'node_modules', 'npm'",
-    );
     expect(wrapper).toContain('spawnSync(process.execPath, [npmCliPath, ...publishArguments]');
-    expect(wrapper).not.toContain("spawnSync('npm', publishArguments");
+  });
+
+  test('uses the platform npm executable outside release workflows', () => {
+    const wrapper = readFileSync(join(import.meta.dir, 'npm-publish.mjs'), 'utf8');
+    expect(wrapper).toContain("spawnSync('npm', publishArguments");
   });
 
   test('prefers the workflow-provisioned Node executable over Bun PATH resolution', () => {
