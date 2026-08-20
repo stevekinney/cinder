@@ -49,6 +49,7 @@ export function findProseReferenceFailures(input: {
   )) {
     const reference = match[1];
     const isPlatformIdentifier = reference?.startsWith('aria-') || reference?.startsWith('data-');
+    const isBacktickedComponentExport = match[0].includes('`') && /^[A-Z]/.test(reference ?? '');
     const isExampleReference =
       match[0].toLowerCase().startsWith('its ') && reference?.includes('-');
     const followingText = input.source.slice((match.index ?? 0) + match[0].length);
@@ -58,6 +59,7 @@ export function findProseReferenceFailures(input: {
       !isPlatformIdentifier &&
       !isExternalPackageReference &&
       (isExampleReference ||
+        isBacktickedComponentExport ||
         /^\s+instead\b/i.test(followingText) ||
         input.componentNames.has(normalizeComponentReference(reference)))
     )

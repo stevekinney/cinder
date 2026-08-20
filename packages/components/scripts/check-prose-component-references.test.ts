@@ -111,6 +111,18 @@ describe('check-prose-component-references', () => {
     ).toEqual([]);
   });
 
+  test('flags direct backticked PascalCase recommendations that do not exist', () => {
+    expect(
+      findProseReferenceFailures({
+        source: 'Use `MissingComponent` to handle this state.',
+        filePath: 'fixture.md',
+        componentNames,
+        exampleIds: new Set(),
+        publicSubpaths,
+      }),
+    ).toEqual([{ reference: 'missing-component', filePath: 'fixture.md' }]);
+  });
+
   test('validates backticked ids on Related components lines', () => {
     expect(
       findProseReferenceFailures({
