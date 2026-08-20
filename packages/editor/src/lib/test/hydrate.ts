@@ -159,6 +159,7 @@ export async function renderThenHydrate<Props extends Record<string, unknown>>(
         "export function mount() { errors.lifecycle_function_unavailable('mount'); }",
         "export function hydrate() { errors.lifecycle_function_unavailable('hydrate'); }",
         "export function unmount() { errors.lifecycle_function_unavailable('unmount'); }",
+        "export function fork() { errors.lifecycle_function_unavailable('fork'); }",
       ].join('\n'),
     );
     const compiledServerCode = await buildComponentCode(sourcePath, 'server');

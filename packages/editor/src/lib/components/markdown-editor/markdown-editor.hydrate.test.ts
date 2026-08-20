@@ -23,6 +23,9 @@ import { renderThenHydrate } from '../../test/hydrate.ts';
 const SVELTE_SOURCE = await Bun.file(
   new URL('./markdown-editor.svelte', import.meta.url).pathname,
 ).text();
+const HYDRATE_HELPER_SOURCE = await Bun.file(
+  new URL('../../test/hydrate.ts', import.meta.url).pathname,
+).text();
 
 describe('MarkdownEditor SSR contract', () => {
   test('renders EditorSkeleton in the {:else} branch of {#if browser}', () => {
@@ -99,4 +102,10 @@ describe('MarkdownEditor hydration status', () => {
     expect(result.container.querySelector('[role="application"]')).not.toBeNull();
     expect(result.warnings).toEqual([]);
   });
+});
+
+test('server runtime shim rejects fork on the server', () => {
+  expect(HYDRATE_HELPER_SOURCE).toContain(
+    `export function fork() { errors.lifecycle_function_unavailable('fork'); }`,
+  );
 });
