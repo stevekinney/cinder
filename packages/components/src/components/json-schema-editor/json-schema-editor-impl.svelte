@@ -122,6 +122,14 @@
     return controlledSchemaText(input) === event.jsonString;
   }
 
+  function isSchemaInput(input: unknown): input is JsonSchemaValue | string {
+    return (
+      typeof input === 'string' ||
+      typeof input === 'boolean' ||
+      (typeof input === 'object' && input !== null && !Array.isArray(input))
+    );
+  }
+
   let pendingControlledChange = $state<JsonSchemaEditorChangeEvent | undefined>();
   let pendingControlledChangeVersion = 0;
 
@@ -137,7 +145,7 @@
   }
 
   function handleSchemaChange(event: JsonSchemaEditorChangeEvent) {
-    if (!controlled) {
+    if (!controlled || schema === undefined) {
       onSchemaChange?.(event);
       return;
     }
@@ -152,11 +160,7 @@
     const settlement = onValueChangeRequest?.(event);
     if (settlement !== undefined) {
       void Promise.resolve(settlement).then((input) => {
-        const isSchemaInput =
-          typeof input === 'string' ||
-          typeof input === 'boolean' ||
-          (typeof input === 'object' && input !== null && !Array.isArray(input));
-        if (isSchemaInput && pendingControlledChangeVersion === changeVersion) {
+        if (isSchemaInput(input) && pendingControlledChangeVersion === changeVersion) {
           settleControlledChange(input);
         }
       });

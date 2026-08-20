@@ -37,9 +37,7 @@ type JsonSchemaEditorCommonProps = {
   /** Force a draft override regardless of $schema. */
   draftOverride?: JsonSchemaKnownDraft;
   /** Request that the parent replace `schema` with a committed editor value. */
-  onValueChangeRequest?: (
-    event: JsonSchemaEditorChangeEvent,
-  ) => JsonSchemaValue | string | undefined | Promise<JsonSchemaValue | string | undefined>;
+  onValueChangeRequest?: (event: JsonSchemaEditorChangeEvent) => unknown;
   onRevert?: (event: JsonSchemaEditorRevertEvent) => void;
   onValidate?: (result: JsonSchemaValidationResult) => void;
   /** Additional class merged onto the `.cinder-jse` root element. */
@@ -57,9 +55,7 @@ type ControlledJsonSchemaEditorProps = {
    * Return that schema, or a promise for it, to settle an unchanged rejection.
    * A later commit is restored to the parent schema until that response arrives.
    */
-  onValueChangeRequest: (
-    event: JsonSchemaEditorChangeEvent,
-  ) => JsonSchemaValue | string | undefined | Promise<JsonSchemaValue | string | undefined>;
+  onValueChangeRequest: (event: JsonSchemaEditorChangeEvent) => unknown;
   /** Observe a schema change after the parent accepts the request. */
   onSchemaChange?: (event: JsonSchemaEditorChangeEvent) => void;
   /** Omit `schema` to use this as the initial value of an uncontrolled editor. */
