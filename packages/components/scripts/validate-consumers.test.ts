@@ -95,6 +95,25 @@ describe('SvelteKit Chat hydration optimizer preflight', () => {
     );
     expect(startServer.mock.calls[0]?.[0]).not.toContain('--force');
   });
+
+  test('does not start Vite dev when optimization fails', async () => {
+    const optimizerError = new Error('optimizer failed');
+    const preoptimize = mock(async () => {
+      throw optimizerError;
+    });
+    const startServer = mock(
+      (_command: string[], _options: SvelteKitChatHydrationDevServerOptions) =>
+        ({}) as Bun.ReadableSubprocess,
+    );
+
+    await expect(
+      startSvelteKitChatHydrationDevServer('/fixture', 4_321, {
+        preoptimize,
+        startServer,
+      }),
+    ).rejects.toBe(optimizerError);
+    expect(startServer).not.toHaveBeenCalled();
+  });
 });
 
 describe('SvelteKit hydration route matrix', () => {
