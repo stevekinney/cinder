@@ -15,7 +15,7 @@
   import Alert from '../alert/alert.svelte';
   import Badge from '../badge/badge.svelte';
   import Button from '../button/button.svelte';
-  import CodeBlock from '../code-block/index.ts';
+  import CodeBlock from '@lostgradient/cinder/code-block';
   import Textarea from '../textarea/textarea.svelte';
 
   import type { JsonSchemaValidationError } from './json-schema-editor-types.ts';

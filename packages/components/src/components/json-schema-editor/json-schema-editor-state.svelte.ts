@@ -324,11 +324,25 @@ export function createEditorState(options: CreateEditorStateOptions) {
     options.onSchemaChange?.({ schema, jsonString: serialise(schema) });
   }
 
+  function loadCommittedSchema(schemaInput: JsonSchemaValue | string) {
+    const schemaResult = normaliseSchemaInput(schemaInput);
+
+    if (schemaResult.ok) {
+      history = createSchemaHistory(schemaResult.schema, options.maxHistory);
+      jsonDraftText = schemaResult.canonicalText;
+    } else {
+      history = null;
+      jsonDraftText = schemaResult.rawText || '';
+    }
+
+    const epoch = beginValidationCycle();
+    void refreshValidation(epoch);
+  }
+
   function loadFrom(
     schemaInput: JsonSchemaValue | string,
     originalInput?: JsonSchemaValue | string,
   ) {
-    const schemaResult = normaliseSchemaInput(schemaInput);
     const baselineInput = originalInput ?? schemaInput;
     const baselineResult = normaliseSchemaInput(baselineInput);
 
@@ -344,16 +358,7 @@ export function createEditorState(options: CreateEditorStateOptions) {
       originalLoadError = baselineResult.error;
     }
 
-    if (schemaResult.ok) {
-      history = createSchemaHistory(schemaResult.schema, options.maxHistory);
-      jsonDraftText = schemaResult.canonicalText;
-    } else {
-      history = null;
-      jsonDraftText = schemaResult.rawText || '';
-    }
-
-    const epoch = beginValidationCycle();
-    void refreshValidation(epoch);
+    loadCommittedSchema(schemaInput);
   }
 
   loadFrom(options.schema, options.original);
@@ -609,6 +614,11 @@ export function createEditorState(options: CreateEditorStateOptions) {
     /** Reload from a new schema/original pair — used by schemaKey-triggered reset. */
     reload(schemaInput: JsonSchemaValue | string, originalInput?: JsonSchemaValue | string) {
       loadFrom(schemaInput, originalInput);
+    },
+
+    /** Replace the controlled value without changing the initial diff baseline. */
+    synchronise(schemaInput: JsonSchemaValue | string) {
+      loadCommittedSchema(schemaInput);
     },
 
     destroy() {

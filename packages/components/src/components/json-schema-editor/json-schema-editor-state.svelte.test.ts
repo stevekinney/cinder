@@ -168,6 +168,19 @@ describe('createEditorState — form commits', () => {
 });
 
 describe('createEditorState — undo / redo / revert', () => {
+  test('synchronise replaces the committed schema without changing the initial baseline', () => {
+    const state = createEditorState({ schema: { type: 'string' } });
+
+    state.synchronise({ type: 'number' });
+
+    expect(state.committedSchema).toEqual({ type: 'number' });
+    expect(state.originalSchema).toEqual({ type: 'string' });
+    expect(state.hasChanges).toBe(true);
+
+    state.revert();
+    expect(state.committedSchema).toEqual({ type: 'string' });
+  });
+
   test('undo / redo move through history', () => {
     const state = createEditorState({ schema: { type: 'string' } });
 

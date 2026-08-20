@@ -105,7 +105,7 @@
 
   function synchroniseControlledSchema(input: JsonSchemaValue | string) {
     if (schemaMatchesCommitted(input)) return;
-    editorState.reload(input, original);
+    editorState.synchronise(input);
     enumDrafts = {};
   }
 
@@ -142,13 +142,8 @@
     pendingControlledChange = event;
     onValueChangeRequest?.(event);
 
-    // A controlled parent normally assigns its next `schema` synchronously in
-    // the callback. If it declines the proposed value, restore its authoritative
-    // input after that callback has had a chance to run. The notification fires
-    // only when that authoritative input accepts the requested value.
-    queueMicrotask(() => {
-      if (schema !== undefined) settleControlledChange(schema);
-    });
+    // The parent can validate a request asynchronously. Keep the optimistic
+    // state and its history until it supplies the authoritative next value.
   }
 
   let lastControlledSchemaText = untrack(() =>
@@ -161,7 +156,12 @@
     }
 
     const nextControlledSchemaText = controlledSchemaText(schema);
-    if (nextControlledSchemaText === lastControlledSchemaText) return;
+    if (
+      nextControlledSchemaText === lastControlledSchemaText &&
+      pendingControlledChange === undefined
+    ) {
+      return;
+    }
     lastControlledSchemaText = nextControlledSchemaText;
     untrack(() => settleControlledChange(schema));
   });

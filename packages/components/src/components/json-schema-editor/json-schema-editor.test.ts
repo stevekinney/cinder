@@ -453,6 +453,18 @@ describe('JsonSchemaEditor — controlled and uncontrolled schema inputs', () =>
 
     await rerender({
       id: 'jse-controlled',
+      schema: { type: 'number' },
+      view: 'json' as const,
+      onValueChangeRequest: (event: JsonSchemaEditorChangeEvent) => changes.push(event.jsonString),
+      onSchemaChange: (event: JsonSchemaEditorChangeEvent) =>
+        observedChanges.push(event.jsonString),
+    });
+    await flushEffects();
+
+    expect(observedChanges).toEqual(['{\n  "type": "number"\n}']);
+
+    await rerender({
+      id: 'jse-controlled',
       schema: { type: 'boolean' },
       view: 'json' as const,
       onValueChangeRequest: (event: JsonSchemaEditorChangeEvent) => changes.push(event.jsonString),

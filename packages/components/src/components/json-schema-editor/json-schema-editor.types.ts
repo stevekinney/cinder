@@ -48,7 +48,11 @@ type JsonSchemaEditorCommonProps = {
 type ControlledJsonSchemaEditorProps = {
   /** Parent-owned schema. Requires `onValueChangeRequest`; do not combine with `defaultSchema`. */
   schema: JsonSchemaValue | string;
-  /** Request that the parent replace `schema` with a committed editor value. */
+  /**
+   * Request that the parent replace `schema` with a committed editor value.
+   * The parent may respond asynchronously; it must eventually provide the
+   * accepted or replacement schema so the editor can reconcile the request.
+   */
   onValueChangeRequest: (event: JsonSchemaEditorChangeEvent) => void;
   /** Observe a schema change after the parent accepts the request. */
   onSchemaChange?: (event: JsonSchemaEditorChangeEvent) => void;
