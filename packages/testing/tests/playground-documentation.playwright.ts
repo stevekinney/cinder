@@ -348,6 +348,13 @@ test.describe('Svelte 5 snippet-contract Playground routes', () => {
   }
 });
 
+test('marquee keeps its generated live preview', async ({ page }) => {
+  await page.goto('/page/marquee?view=playground', { waitUntil: 'load' });
+
+  await expect(page.getByText('Live preview', { exact: true })).toBeVisible();
+  await expect(page.locator('#playground-live-mount')).toBeVisible();
+});
+
 test.describe('mobile view switching on component pages', () => {
   for (const name of ['side-navigation', 'sidebar']) {
     test(`${name} switches views with pointer and keyboard input from 320px through 430px`, async ({

@@ -212,9 +212,11 @@ const EXAMPLE_ONLY_PLAYGROUND_COMPONENTS = new Set([
   'checkbox-group',
   'form-field',
   'form-section',
-  'marquee',
   'scroll-area',
   'segmented-control',
+  // SideNavigation requires list-item children composed from its own Item and
+  // Group components. The authored example supplies that semantic structure.
+  'side-navigation',
   // Sidebar needs application-owned navigation content and an explicit mobile
   // drawer trigger. Its authored example provides both, while a bare mount can
   // create an empty top-layer drawer at the mobile breakpoint.

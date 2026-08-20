@@ -15,6 +15,10 @@
 
   const mobile = new MediaQuery(SIDEBAR_MOBILE_MEDIA_QUERY, false);
   let collapsed = $state(mobile.current);
+
+  $effect(() => {
+    if (mobile.current) collapsed = true;
+  });
 </script>
 
 <div style="display: flex; flex-direction: column; gap: 1rem;">

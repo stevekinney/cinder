@@ -78,6 +78,11 @@ export const PREVIEW_RECIPES: Readonly<Record<string, PreviewRecipe>> = {
     childrenHtml:
       '<div style="display:grid;place-items:center;block-size:100%;background:var(--cinder-surface-inset);color:var(--cinder-text-muted);font-family:var(--cinder-font-mono);font-size:var(--cinder-text-xs)">Aspect-ratio content</div>',
   },
+  marquee: {
+    props: { label: 'Announcements' },
+    childrenHtml:
+      '<span style="font-weight:600">New dark theme tokens are live</span><span aria-hidden="true">•</span><span>v0.4.1 now available</span><span aria-hidden="true">•</span><span>Try the updated component decision aid</span>',
+  },
   surface: {
     // A tone is only readable against another tone, and the component itself
     // supplies no padding — so the recipe supplies both the reference and the

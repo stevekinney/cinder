@@ -97,6 +97,13 @@ describe('toMountProps', () => {
   ])('supplies an accessible preview baseline for %s', (componentName, expectedProps) => {
     expect(toMountProps([], {}, [], previewRecipeFor(componentName))).toMatchObject(expectedProps);
   });
+
+  test('supplies Marquee with an accessible label and rendered content', () => {
+    const props = toMountProps([], {}, [], previewRecipeFor('marquee'));
+
+    expect(props).toMatchObject({ label: 'Announcements' });
+    expect(typeof props['children']).toBe('function');
+  });
 });
 
 const { render } = await import('@testing-library/svelte');
