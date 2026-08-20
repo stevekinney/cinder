@@ -1,5 +1,11 @@
 # @lostgradient/markdown
 
+## 0.3.1
+
+### Patch Changes
+
+- [#1378](https://github.com/stevekinney/cinder/pull/1378) [`c7c0961`](https://github.com/stevekinney/cinder/commit/c7c09610d574bf61c5c7a042d2eeffb1eff6702f) Thanks [@stevekinney](https://github.com/stevekinney)! - Enable npm provenance attestations on the trusted and emergency publish paths.
+
 ## 0.3.0
 
 ### Minor Changes
