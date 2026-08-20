@@ -411,7 +411,7 @@ describe('validate-release-workflow changeset guards', () => {
     }
   });
 
-  test('pins the setup-node runtime for both provenance publish paths', () => {
+  test('pins the Node runtime and enables OpenSSL support for both provenance publish paths', () => {
     const workspaceRoot = resolve(import.meta.dirname, '../../..');
     for (const workflowName of ['release.yaml', 'release-manual.yaml']) {
       const workflow = readFileSync(
