@@ -96,4 +96,15 @@ describe('documentationExampleStylesheetUrls', () => {
       ]),
     );
   });
+
+  it('follows TypeScript barrels to their local Svelte implementations', () => {
+    expect(
+      documentationExampleStylesheetUrls(EDITOR_COMPONENT_SOURCE, 'markdown-editor', []),
+    ).toEqual(
+      expect.arrayContaining([
+        '/components/dropdown/dropdown.css',
+        '/components/toolbar/toolbar.css',
+      ]),
+    );
+  });
 });

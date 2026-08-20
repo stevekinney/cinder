@@ -30,6 +30,7 @@ export const DOCUMENTATION_CINDER_COMPONENTS = [
 /** Cinder primitives rendered by the landing shell and its colour-token panel. */
 export const LANDING_CINDER_COMPONENTS = [
   'button',
+  'code-block',
   'color-picker',
   'color-swatch-picker',
   'copy-button',

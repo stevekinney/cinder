@@ -49,6 +49,7 @@ describe('landing stylesheet', () => {
 
     expect(LANDING_CINDER_COMPONENTS).toEqual([
       'button',
+      'code-block',
       'color-picker',
       'color-swatch-picker',
       'copy-button',
@@ -57,8 +58,8 @@ describe('landing stylesheet', () => {
       'tooltip',
     ]);
     expect(stylesheet).toContain('.cinder-button');
+    expect(stylesheet).toContain('--cinder-code-block');
     expect(stylesheet).toContain('.cinder-color-picker');
-    expect(stylesheet).not.toContain('--cinder-code-block');
     expect(stylesheet).not.toContain('--cinder-table');
   });
 });

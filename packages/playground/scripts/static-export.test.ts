@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -84,6 +84,23 @@ test('refuses a filesystem root as static export output', () => {
   expect(() => assertSafeOutputDirectory('/')).toThrow('filesystem root');
   expect(() => assertSafeOutputDirectory('.')).toThrow('protected repository path');
   expect(() => assertSafeOutputDirectory('public/..')).toThrow('protected repository path');
+  expect(() =>
+    assertSafeOutputDirectory(join(import.meta.dirname, '..', '..', 'components')),
+  ).toThrow('protected repository path');
+});
+
+test('refuses a repository path behind a symlinked ancestor', async () => {
+  const temporaryDirectory = await mkdtemp(join(tmpdir(), 'cinder-static-export-link-'));
+  try {
+    const repositoryLink = join(temporaryDirectory, 'repository-link');
+    await symlink(join(import.meta.dirname, '..', '..', '..'), repositoryLink);
+
+    expect(() => assertSafeOutputDirectory(join(repositoryLink, 'packages', 'components'))).toThrow(
+      'protected repository path',
+    );
+  } finally {
+    await rm(temporaryDirectory, { recursive: true, force: true });
+  }
 });
 
 test('rejects sitemap route drift and duplicate URLs', () => {

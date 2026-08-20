@@ -28,8 +28,18 @@
  * `vercel.json` publishes as the deployment's static root.
  */
 
+import { existsSync, realpathSync } from 'node:fs';
 import { mkdir, rm } from 'node:fs/promises';
-import { dirname, join, parse, resolve } from 'node:path';
+import {
+  basename,
+  dirname,
+  isAbsolute,
+  join,
+  parse,
+  relative as relativePath,
+  resolve,
+  sep,
+} from 'node:path';
 
 import {
   discoverComponents,
@@ -77,22 +87,45 @@ export function requireProductionBaseUrl(value = Bun.env['PLAYGROUND_BASE_URL'] 
   return url.origin;
 }
 
+/** Resolve symlinks in an existing ancestor while retaining missing child segments. */
+function canonicalizeOutputPath(outputDirectory: string): string {
+  let existingAncestor = resolve(outputDirectory);
+  const missingSegments: string[] = [];
+  while (!existsSync(existingAncestor)) {
+    const parent = dirname(existingAncestor);
+    if (parent === existingAncestor) break;
+    missingSegments.unshift(basename(existingAncestor));
+    existingAncestor = parent;
+  }
+  return join(realpathSync(existingAncestor), ...missingSegments);
+}
+
 /** Refuse roots and repository source paths before clearing static output. */
-export function assertSafeOutputDirectory(outputDirectory: string): void {
-  const resolved = resolve(outputDirectory);
+export function assertSafeOutputDirectory(outputDirectory: string): string {
+  const resolved = canonicalizeOutputPath(outputDirectory);
   if (resolved === parse(resolved).root) {
     throw new Error('[static-export] refusing to clear a filesystem root');
   }
-  const repositoryRoot = resolve(PLAYGROUND_ROOT, '..', '..');
-  const generatedOutputRoot = resolve(OUTPUT_DIRECTORY);
-  const isRepositoryAncestor = repositoryRoot === resolved || repositoryRoot.startsWith(`${resolved}/`);
+  const repositoryRoot = canonicalizeOutputPath(join(PLAYGROUND_ROOT, '..', '..'));
+  const generatedOutputRoot = canonicalizeOutputPath(OUTPUT_DIRECTORY);
+  const isSameOrNestedPath = (parent: string, child: string): boolean => {
+    const pathRelativeToParent = relativePath(parent, child);
+    return (
+      pathRelativeToParent === '' ||
+      (!pathRelativeToParent.startsWith(`..${sep}`) &&
+        pathRelativeToParent !== '..' &&
+        !isAbsolute(pathRelativeToParent))
+    );
+  };
+  const isRepositoryAncestor = isSameOrNestedPath(resolved, repositoryRoot);
   const isUnapprovedRepositoryPath =
-    resolved.startsWith(`${repositoryRoot}/`) &&
+    isSameOrNestedPath(repositoryRoot, resolved) &&
     resolved !== generatedOutputRoot &&
-    !resolved.startsWith(`${generatedOutputRoot}/`);
+    !isSameOrNestedPath(generatedOutputRoot, resolved);
   if (isRepositoryAncestor || isUnapprovedRepositoryPath) {
     throw new Error('[static-export] refusing to clear a protected repository path');
   }
+  return resolved;
 }
 
 function sitemapXml(baseUrl: string, routes: readonly string[]): string {
@@ -332,8 +365,7 @@ async function renderCssGraph(entryPath: string, context: StaticExportContext): 
 export async function runStaticExport(options: StaticExportOptions = {}): Promise<Set<string>> {
   const start = Date.now();
   process.stdout.write('[static-export] rendering playground to public/…\n');
-  const outputDirectory = options.outputDirectory ?? OUTPUT_DIRECTORY;
-  assertSafeOutputDirectory(outputDirectory);
+  const outputDirectory = assertSafeOutputDirectory(options.outputDirectory ?? OUTPUT_DIRECTORY);
   // Unit tests invoke the function directly and do not have a deployment
   // origin. The executable build path below always calls requireProductionBaseUrl.
   const baseUrl = options.baseUrl ?? Bun.env['PLAYGROUND_BASE_URL'] ?? 'https://playground.local';

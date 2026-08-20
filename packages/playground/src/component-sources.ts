@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 
 import { DOCUMENTATION_CINDER_COMPONENTS } from './documentation-styles.ts';
 import { COMPOUND_COMPONENT_PARENTS } from './shell-app/compound-families.ts';
@@ -62,7 +62,7 @@ export const CINDER_COMPONENT_SOURCE: ComponentSource = {
 const DOCUMENTATION_CINDER_COMPONENT_SET = new Set<string>(DOCUMENTATION_CINDER_COMPONENTS);
 const CINDER_COMPONENT_IMPORT = /from\s+['"]@lostgradient\/cinder\/([a-z0-9][a-z0-9-]*)['"]/gu;
 const CINDER_ROOT_BARREL_IMPORT = /import\s*\{([^}]+)\}\s*from\s*['"]@lostgradient\/cinder['"]/gu;
-const RELATIVE_SVELTE_IMPORT = /from\s+['"](\.{1,2}\/[^'"]+\.svelte)['"]/gu;
+const RELATIVE_IMPLEMENTATION_IMPORT = /from\s+['"](\.{1,2}\/[^'"]+\.(?:svelte|ts))['"]/gu;
 
 type CinderManifestComponent = { id?: unknown; exportName?: unknown };
 type CinderManifest = { components?: unknown };
@@ -118,18 +118,22 @@ function implementationDependencies(
 ): void {
   const resolvedPath = resolve(implementationPath);
   const resolvedComponentsRoot = resolve(componentsRoot);
-  if (!resolvedPath.startsWith(`${resolvedComponentsRoot}/`) || visitedPaths.has(resolvedPath))
-    return;
+  const pathWithinComponentsRoot = relative(resolvedComponentsRoot, resolvedPath);
+  const isOutsideComponentsRoot =
+    pathWithinComponentsRoot === '..' ||
+    pathWithinComponentsRoot.startsWith(`..${sep}`) ||
+    isAbsolute(pathWithinComponentsRoot);
+  if (isOutsideComponentsRoot || visitedPaths.has(resolvedPath)) return;
   visitedPaths.add(resolvedPath);
   if (resolvedComponentsRoot === resolve(cinderPackageRoot, 'src', 'components')) {
-    const componentName = resolvedPath.slice(resolvedComponentsRoot.length + 1).split('/')[0];
+    const componentName = pathWithinComponentsRoot.split(sep)[0];
     if (componentName !== undefined && componentName !== '') dependencies.add(componentName);
   }
   if (!existsSync(resolvedPath)) return;
 
   const source = readFileSync(resolvedPath, 'utf8');
   cinderComponentDependenciesFromSource(source, dependencies);
-  for (const match of source.matchAll(RELATIVE_SVELTE_IMPORT)) {
+  for (const match of source.matchAll(RELATIVE_IMPLEMENTATION_IMPORT)) {
     implementationDependencies(
       resolvedComponentsRoot,
       resolve(dirname(resolvedPath), match[1]!),
