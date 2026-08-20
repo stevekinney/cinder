@@ -62,26 +62,28 @@ function componentNames(): Set<string> {
   );
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 async function exampleIds(): Promise<Set<string>> {
   const ids = new Set<string>();
   const examples = new Glob('src/components/**/*.examples.json');
   for await (const filePath of examples.scan({ cwd: packageRoot })) {
-    const parsed = (await Bun.file(join(packageRoot, filePath)).json()) as {
-      examples?: Array<{ id?: string }>;
-    };
-    for (const example of parsed.examples ?? []) {
-      if (example.id) ids.add(example.id);
+    const parsed: unknown = await Bun.file(join(packageRoot, filePath)).json();
+    if (!isRecord(parsed) || !Array.isArray(parsed.examples)) continue;
+    for (const example of parsed.examples) {
+      if (isRecord(example) && typeof example.id === 'string') ids.add(example.id);
     }
   }
   return ids;
 }
 
 async function publicSubpaths(): Promise<Set<string>> {
-  const manifest = (await Bun.file(join(packageRoot, 'package.json')).json()) as {
-    exports?: Record<string, unknown>;
-  };
+  const manifest: unknown = await Bun.file(join(packageRoot, 'package.json')).json();
+  if (!isRecord(manifest) || !isRecord(manifest.exports)) return new Set();
   return new Set(
-    Object.keys(manifest.exports ?? {})
+    Object.keys(manifest.exports)
       .filter((subpath) => /^\.\/[a-z][a-z0-9-]+$/.test(subpath))
       .map((subpath) => subpath.slice(2)),
   );
