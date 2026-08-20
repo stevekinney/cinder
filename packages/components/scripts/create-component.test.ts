@@ -22,6 +22,7 @@ import { describe, expect, it } from 'bun:test';
 
 import { hasSubstantiveTest, renderComponentAuthoringChecklist } from './component-conventions.ts';
 import {
+  assertScaffoldPropConventions,
   buildContext,
   createOne,
   planFiles,
@@ -197,6 +198,12 @@ describe('renderTypes', () => {
   it('exports the <Pascal>Props name the schema generator resolves', () => {
     const source = renderTypes(buildContext('my-widget'));
     expect(source).toContain('export type MyWidgetProps =');
+  });
+
+  it('uses the class-omission convention and passes the shared prop-vocabulary guard', () => {
+    const context = buildContext('my-widget');
+    expect(renderTypes(context)).toContain("Omit<HTMLAttributes<HTMLDivElement>, 'class'>");
+    expect(() => assertScaffoldPropConventions(context)).not.toThrow();
   });
 });
 

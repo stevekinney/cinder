@@ -13,6 +13,7 @@ import {
   manualChatBootstrapHasPeerRegistryPreflight,
   manualCinderBootstrapHasMarkdownRegistryPreflight,
   manualMcpBootstrapHasCinderRegistryPreflight,
+  manualReleaseVerifiesDispatchShaMatchesTag,
   parseChangesetPackageNames,
   publicPackagePublishOrderIsValid,
   rootPublishScriptUsesStagedPackers,
@@ -24,6 +25,42 @@ import {
   workflowLevelEnvironmentLines,
   workflowRunScriptsContainActiveLine,
 } from './validate-release-workflow.ts';
+
+describe('manual release provenance guard', () => {
+  const checkedOutTag = {
+    name: 'Checkout tag',
+    with: { ref: 'refs/tags/${{ inputs.tag }}' },
+  };
+  const dispatchShaCheck = {
+    name: 'Verify dispatch ref matches tag',
+    run: [
+      'tag_commit="$(git rev-list -n 1 "refs/tags/$TAG_NAME")"',
+      'if [ "$GITHUB_SHA" != "$tag_commit" ]; then exit 1; fi',
+    ].join('\n'),
+  };
+
+  test('requires each manual release job to bind dispatch provenance to its tag', () => {
+    expect(
+      manualReleaseVerifiesDispatchShaMatchesTag({
+        jobs: {
+          verify: { steps: [checkedOutTag, dispatchShaCheck] },
+          'publish-npm': { steps: [checkedOutTag, dispatchShaCheck] },
+        },
+      }),
+    ).toBe(true);
+  });
+
+  test('rejects a manual publish job that only checks out the tag', () => {
+    expect(
+      manualReleaseVerifiesDispatchShaMatchesTag({
+        jobs: {
+          verify: { steps: [checkedOutTag, dispatchShaCheck] },
+          'publish-npm': { steps: [checkedOutTag] },
+        },
+      }),
+    ).toBe(false);
+  });
+});
 
 /**
  * The four contexts GitHub makes available to a workflow-level `env:` block.

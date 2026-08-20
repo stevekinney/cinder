@@ -2,40 +2,18 @@
  * MarkdownEditor SSR → hydration path test
  *
  * Verifies that the server renders <EditorSkeleton> (the SSR branch) and
- * the client hydrates without a hydration-mismatch warning.
+ * the client hydrates the live editor without a hydration-mismatch warning.
  *
  * MarkdownEditor's SSR contract:
  *   - Server: `{#if browser}` is false → renders <EditorSkeleton>
  *   - Client: `BROWSER` from esm-env resolves to true → hydrates with the
  *     live editor inside the `{#if browser}` branch
  *
- * LIVE-EDITOR HYDRATION STATUS — BLOCKED (tracking note):
- * =========================================================
- * The `renderThenHydrate` helper works by compiling the .svelte source in
- * `generate: 'server'` mode, writing the compiled output to a temp .mjs file,
- * and dynamically importing it. When Bun resolves that .mjs file's imports,
- * `@lostgradient/editor/editor/component-runtime` matches the "node" conditional export
- * (no "bun" condition exists), which points to `./dist/server/…` — a file
- * that does not exist in the development tree.
- *
- * Root cause: `@lostgradient/editor/editor/component-runtime` bundles ProseMirror symbols.
- * ProseMirror touches the DOM at module-evaluation time, so the package.json
- * uses a server-specific "node" export to provide a stub — but the stub's
- * dist is not built in development. The Svelte preload plugin (which maps
- * imports to src/) only applies to the Bun native module loader, not to
- * dynamically imported .mjs files the helper writes to disk.
- *
- * To unblock full live-editor hydration, one of:
- * (a) Add a "bun" condition to `@lostgradient/editor/editor/component-runtime` → src file.
- * (b) Implement a Playwright browser test that exercises real hydration.
- * (c) Build the dist before running these tests.
- *
- * This test verifies the parts that CAN be tested without full hydration:
- * reading the SSR output statically and asserting on the skeleton contract.
- * Those assertions are correct and meaningful for the SSR side of the contract.
  */
 
-import { describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, test } from 'bun:test';
+
+import { renderThenHydrate } from '../../test/hydrate.ts';
 
 // SSR contract verification via source analysis
 // The server render produces EditorSkeleton because `browser` is false.
@@ -45,8 +23,11 @@ import { describe, expect, test } from 'bun:test';
 const SVELTE_SOURCE = await Bun.file(
   new URL('./markdown-editor.svelte', import.meta.url).pathname,
 ).text();
+const HYDRATE_HELPER_SOURCE = await Bun.file(
+  new URL('../../test/hydrate.ts', import.meta.url).pathname,
+).text();
 
-describe('MarkdownEditor SSR contract (source-level verification)', () => {
+describe('MarkdownEditor SSR contract', () => {
   test('renders EditorSkeleton in the {:else} branch of {#if browser}', () => {
     // The component has: {#if browser} ... {:else} <EditorSkeleton .../> {/if}
     // This is the server-rendered path. Verify the structure exists.
@@ -98,12 +79,50 @@ describe('MarkdownEditor SSR contract (source-level verification)', () => {
 });
 
 describe('MarkdownEditor hydration status', () => {
-  // Acceptance criterion from the plan: "Default-mode (wysiwyg) hydrate test passes,
-  // OR live-editor hydration is explicitly marked blocked/unmet with a tracking note."
-  //
-  // Full renderThenHydrate is blocked by `@lostgradient/editor/editor/component-runtime` having no
-  // "bun" conditional export — the "node" export points to a missing dist file.
-  // See file header for the three unblocking options. When unblocked, replace this
-  // todo with a real renderThenHydrate assertion.
-  test.skip('live-editor hydration BLOCKED — cinder/editor/component-runtime missing "bun" conditional export (see file header)', () => {});
+  let cleanup: (() => void) | undefined;
+
+  afterEach(() => {
+    cleanup?.();
+    cleanup = undefined;
+  });
+
+  test('hydrates the default WYSIWYG editor from its server-rendered skeleton', async () => {
+    let resolveReady: (() => void) | undefined;
+    const ready = new Promise<void>((resolve) => {
+      resolveReady = resolve;
+    });
+    const result = await renderThenHydrate(
+      new URL('./markdown-editor.svelte', import.meta.url).pathname,
+      {
+        id: 'hydration-editor',
+        label: 'Hydration editor',
+        showToolbar: false,
+        value: '# Hydration',
+        onready: () => resolveReady?.(),
+      },
+    );
+    cleanup = result.cleanup;
+
+    expect(result.ssrHtml).toContain('editor-skeleton');
+    await ready;
+    expect(result.container.querySelector('[role="application"]')).not.toBeNull();
+    expect(result.container.querySelector('[data-ready="true"]')).not.toBeNull();
+    expect(result.warnings).toEqual([]);
+  });
+});
+
+test('server runtime shim rejects fork on the server', () => {
+  expect(HYDRATE_HELPER_SOURCE).toContain(
+    `export function fork() { errors.lifecycle_function_unavailable('fork'); }`,
+  );
+});
+
+test('imports the server bundle before restoring DOM globals', () => {
+  const serverImportIndex = HYDRATE_HELPER_SOURCE.indexOf(
+    'const serverModule = (await import(pathToFileURL(modulePath).href))',
+  );
+  const restoreDomIndex = HYDRATE_HELPER_SOURCE.indexOf('globalThis.document = originalDocument;');
+
+  expect(serverImportIndex).toBeGreaterThan(-1);
+  expect(restoreDomIndex).toBeGreaterThan(serverImportIndex);
 });

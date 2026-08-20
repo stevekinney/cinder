@@ -55,6 +55,8 @@ Use one name for one concept:
 - `textInputValue`, not `inputValue`
 - `as`, not `component`, for polymorphic rendered elements
 
+The checker also treats reordered camel-case words as the same concept. For example, after `onValueChange` exists, `onChangeValue` is rejected even though it is not a pre-listed alias. This keeps a new spelling from quietly creating a second public name for an established API concept; add a deliberate redirect to the vocabulary only when the words themselves differ.
+
 `as` props should use the narrowed non-void element tag-name union exported from
 `packages/components/src/utilities/html-element-types.ts`.
 

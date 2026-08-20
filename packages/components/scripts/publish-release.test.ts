@@ -2,6 +2,7 @@ import { describe, expect, mock, test } from 'bun:test';
 
 import {
   getPackFileName,
+  nodePublishCommand,
   resolvePackageRootArgument,
   resolvePublishAction,
   runPublishRelease,
@@ -45,6 +46,16 @@ describe('publish-release package selection', () => {
         currentWorkingDirectory: '/workspace',
       }),
     ).toThrow('--package-root requires a path argument');
+  });
+
+  test('routes npm publish through an explicit Node runtime helper', () => {
+    const command = nodePublishCommand('/opt/node/bin/node', ['publish', 'package.tgz']);
+    expect(command).toEqual([
+      '/opt/node/bin/node',
+      expect.stringMatching(/npm-publish\.mjs$/),
+      'publish',
+      'package.tgz',
+    ]);
   });
 });
 

@@ -40,6 +40,17 @@ jobs:
           ref: refs/tags/${{ inputs.tag }}
           persist-credentials: false
 
+      - name: Verify dispatch ref matches tag
+        env:
+          TAG_NAME: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          tag_commit="$(git rev-list -n 1 "refs/tags/$TAG_NAME")"
+          if [ "$GITHUB_SHA" != "$tag_commit" ]; then
+            echo "::error::The workflow dispatch commit ($GITHUB_SHA) must equal tag $TAG_NAME ($tag_commit) for npm provenance."
+            exit 1
+          fi
+
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
@@ -78,6 +89,17 @@ jobs:
         with:
           ref: refs/tags/${{ inputs.tag }}
           persist-credentials: false
+
+      - name: Verify dispatch ref matches tag
+        env:
+          TAG_NAME: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          tag_commit="$(git rev-list -n 1 "refs/tags/$TAG_NAME")"
+          if [ "$GITHUB_SHA" != "$tag_commit" ]; then
+            echo "::error::The workflow dispatch commit ($GITHUB_SHA) must equal tag $TAG_NAME ($tag_commit) for npm provenance."
+            exit 1
+          fi
 
       - name: Setup Node
         uses: actions/setup-node@v7
@@ -257,20 +279,15 @@ jobs:
       # emergency-only alternative for when that path is unavailable. Do NOT
       # use this workflow for routine releases.
       #
-      # Provenance is DISABLED here: `publish:release` runs `npm publish` under
-      # Bun, and npm's provenance signing fails under Bun's BoringSSL with
-      # ERR_OSSL_NO_DEFAULT_DIGEST. Disabled in BOTH the env below AND
-      # package.json#publishConfig.provenance so npm config precedence is
-      # irrelevant — they agree. Re-enable provenance only once it's proven to
-      # sign cleanly under the publish runtime (needs a Node publish path or a
-      # verified Bun/BoringSSL fix).
+      # Provenance is enabled in every public package's publishConfig and here
+      # so an emergency publish carries the same npm attestation as the primary path.
       #
       # Token rotation: NPM_TOKEN should be rotated at least every 90 days per
       # security policy. Use a Granular Access Token scoped only to the public
       # packages this workflow can select — never a full-access automation token.
       - name: Publish to npm
         env:
-          NPM_CONFIG_PROVENANCE: 'false'
+          NPM_CONFIG_PROVENANCE: 'true'
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: bun run --filter=${{ steps.package.outputs.name }} publish:release -- --skip-validation

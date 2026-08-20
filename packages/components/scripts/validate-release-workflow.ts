@@ -354,6 +354,37 @@ export function manualEditorBootstrapHasPeerRegistryPreflight(workflow: unknown)
   });
 }
 
+/**
+ * A workflow-dispatch run retains the SHA of its dispatch ref even after
+ * checkout switches to the requested tag. npm provenance records that
+ * environment SHA, so both manual-release jobs must reject a mismatched tag.
+ */
+export function manualReleaseVerifiesDispatchShaMatchesTag(workflow: unknown): boolean {
+  if (!isObjectRecord(workflow) || !isObjectRecord(workflow['jobs'])) return false;
+
+  for (const jobName of ['verify', 'publish-npm']) {
+    const job = workflow['jobs'][jobName];
+    if (!isObjectRecord(job) || !Array.isArray(job['steps'])) return false;
+    const hasTagCheckout = job['steps'].some(
+      (step) =>
+        isObjectRecord(step) &&
+        step['name'] === 'Checkout tag' &&
+        isObjectRecord(step['with']) &&
+        step['with']['ref'] === 'refs/tags/${{ inputs.tag }}',
+    );
+    const hasDispatchShaCheck = job['steps'].some(
+      (step) =>
+        isObjectRecord(step) &&
+        step['name'] === 'Verify dispatch ref matches tag' &&
+        typeof step['run'] === 'string' &&
+        step['run'].includes('git rev-list -n 1 "refs/tags/$TAG_NAME"') &&
+        step['run'].includes('[ "$GITHUB_SHA" != "$tag_commit" ]'),
+    );
+    if (!hasTagCheckout || !hasDispatchShaCheck) return false;
+  }
+  return true;
+}
+
 export function workflowRunScriptsContainActiveLine(
   workflow: unknown,
   requiredContent: string,
@@ -709,6 +740,13 @@ function runValidation(): void {
     );
   }
   pass('Manual cinder-mcp bootstrap requires its Cinder dependency on npm');
+
+  if (!manualReleaseVerifiesDispatchShaMatchesTag(parsedManualReleaseWorkflow)) {
+    fail(
+      'release-manual.yaml must require the workflow dispatch SHA to equal the selected tag commit before publishing with npm provenance.',
+    );
+  }
+  pass('Manual release provenance is bound to the selected tag commit');
 
   // ── Guard 2: locate the primary publish step ────────────────────────────────
   // The primary publish step is identified by the run: command that calls publish:release.

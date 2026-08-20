@@ -2,6 +2,8 @@
 
 Sentinel-based infinite-scroll trigger with an always-visible button fallback and accessible status states.
 
+Use `LoadMore` to fetch the next page of results as the reader reaches the end of a growing list. Use [`VirtualList`](../virtual-list/README.md) to window rows that are already loaded when rendering every row would be expensive.
+
 `onLoadMore` should be provided in real usage. When omitted, the component falls back to a no-op handler.
 
 ## Usage

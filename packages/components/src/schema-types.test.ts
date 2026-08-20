@@ -19,13 +19,7 @@ import { describe, expect, test } from 'bun:test';
 
 const COMPONENTS_DIR = join(import.meta.dir, 'components');
 
-// `grid-list` is excluded: its row in the `04-schema-hygiene-a` work list is
-// blocked on "Restore type soundness at six component boundaries" landing
-// first (that base-type retype hasn't happened in this repo yet), so a clean
-// merge of this cluster alone still leaves one `class` entry there. Remove
-// this exclusion in the follow-up once that issue lands and grid-list's
-// `class` omit is applied on top of its retyped base.
-const EXCLUDED_COMPONENTS = new Set(['grid-list']);
+const EXCLUDED_COMPONENTS = new Set<string>();
 
 function findSchemaFiles(): string[] {
   const files: string[] = [];
