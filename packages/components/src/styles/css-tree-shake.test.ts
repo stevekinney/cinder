@@ -118,6 +118,21 @@ describe('base stylesheet bundleability', () => {
     }
   });
 
+  test('src/styles/index.css keeps JSON highlight tokens out of the slim base', async () => {
+    const result = await Bun.build({
+      entrypoints: [join(import.meta.dir, 'index.css')],
+      outdir: join(scratchDirectory, 'index-css-json-highlight-out'),
+      minify: false,
+    });
+    expect(result.success).toBe(true);
+    if (!result.success) {
+      throw new Error(`index.css bundling failed:\n${result.logs.map(String).join('\n')}`);
+    }
+    const stylesheet = result.outputs.find((output) => output.path.endsWith('.css'));
+    expect(stylesheet).toBeDefined();
+    expect(await stylesheet!.text()).not.toContain('.cinder-json-token-key');
+  });
+
   test('src/styles/all.css bundles cleanly (cinder/styles/all entry point)', async () => {
     const entry = join(import.meta.dir, 'all.css');
     const result = await Bun.build({

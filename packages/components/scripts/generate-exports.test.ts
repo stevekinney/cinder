@@ -94,6 +94,9 @@ describe('stylesExport', () => {
     expect(stylesExport('./src/styles/utilities.css').types).toBe(
       './src/styles/utilities.css.d.ts',
     );
+    expect(stylesExport('./src/styles/json-highlight.css').types).toBe(
+      './src/styles/json-highlight.css.d.ts',
+    );
   });
 });
 

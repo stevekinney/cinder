@@ -103,6 +103,7 @@ describe('exports drift', () => {
       './styles/tokens',
       './styles/foundation',
       './styles/utilities',
+      './styles/json-highlight',
       './styles/guard',
       './icons',
       './highlighters/shiki',
@@ -130,6 +131,7 @@ describe('exports drift', () => {
     expect(exports['./styles/tokens']).toBeDefined();
     expect(exports['./styles/foundation']).toBeDefined();
     expect(exports['./styles/utilities']).toBeDefined();
+    expect(exports['./styles/json-highlight']).toBeDefined();
     expect(exports['./icons']).toBeDefined();
     expect(exports['./knowledge']).toEqual({
       types: './dist/cli/knowledge.d.ts',

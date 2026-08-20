@@ -252,6 +252,7 @@ const allowedNonComponentExportKeys = new Set([
   './styles/tokens',
   './styles/foundation',
   './styles/utilities',
+  './styles/json-highlight',
   './styles/guard',
   './icons',
   './highlighters/shiki',
