@@ -40,16 +40,16 @@ An expanded row's detail is a sibling `<tr>` whose single `<td>` spans all four 
 
 Focus is never moved on mount, on SSR, or on any change originating outside the user's own action.
 
-| Action                       | Where focus goes                                                                                                                                                                        |
-| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Expand a row                 | Stays on the disclosure button, which is now `Collapse <key> property` with `aria-expanded="true"`. Focus does not enter the revealed row.                                              |
-| Collapse a row               | Stays on the disclosure button.                                                                                                                                                         |
-| Move a row up or down        | Stays on the pressed control, which travels with the row to its new position. A move that lands the row first or last disables that direction's control; focus does not jump elsewhere. |
-| Delete a row                 | Moves to the next row's disclosure button; if the deleted row was last, to the previous row's; if the table is now empty, to the `Add property` button.                                 |
-| Add a property               | The new row opens expanded, with focus placed in its property-name input.                                                                                                               |
-| Rename a property            | Stays in the name input. The rename commits on blur.                                                                                                                                    |
-| Edit JSON                    | Moves into the JSON textarea after it is rendered.                                                                                                                                      |
-| Done, Apply, or Discard JSON | Returns to the `Edit JSON` button after the editable surface closes.                                                                                                                    |
+| Action                       | Where focus goes                                                                                                                                                                                                                                        |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Expand a row                 | Stays on the disclosure button, which is now `Collapse <key> property` with `aria-expanded="true"`. Focus does not enter the revealed row.                                                                                                              |
+| Collapse a row               | Stays on the disclosure button.                                                                                                                                                                                                                         |
+| Move a row up or down        | Stays on the pressed control, which travels with the row to its new position. A move that lands the row first or last disables that direction's control; focus does not jump elsewhere.                                                                 |
+| Delete a row                 | Moves to the next row's disclosure button; if the deleted row was last, to the previous row's; if the table is now empty, to the `Add property` button.                                                                                                 |
+| Add a property               | The new row opens expanded, with focus placed in its property-name input.                                                                                                                                                                               |
+| Rename a property            | Stays in the name input. The rename commits on blur.                                                                                                                                                                                                    |
+| Edit JSON                    | Moves into the JSON textarea after it is rendered.                                                                                                                                                                                                      |
+| Done, Apply, or Discard JSON | Returns to `Edit JSON` after the editable surface closes when that button is available. Discard keeps focus in the textarea when it restores an initially malformed source; Done moves focus to the active JSON tab if readonly mode hides `Edit JSON`. |
 
 Whenever a focused element disappears (delete, undo/redo shrinking the table), focus is placed explicitly rather than allowed to fall to `document.body` — a silent drop to `body` would send the next `Tab` back to the top of the page.
 
@@ -61,7 +61,7 @@ All property-table controls use their native button, checkbox, and input keyboar
 
 - `Tab` and `Shift+Tab` move through enabled controls in reading order: disclosure, required, move up, move down, delete — then, if the row is expanded, its detail controls (including any nested table) — then the next row. Disabled controls, and all controls in read-only or dirty-JSON form state, are skipped by native sequential navigation.
 - `Enter` and `Space` activate the disclosure, move, and delete buttons.
-- `Enter` and `Space` activate `Edit JSON`, `Done`, `Apply`, and `Discard`. Opening JSON editing moves focus into the native textarea; closing it returns focus to `Edit JSON`.
+- `Enter` and `Space` activate `Edit JSON`, `Done`, `Apply`, and `Discard`. Opening JSON editing moves focus into the native textarea. Closing returns focus to `Edit JSON` when available; discarding an initially malformed source keeps focus in the textarea, and finishing after readonly mode hides `Edit JSON` moves focus to the active JSON tab.
 - `Space` toggles the required checkbox. `Enter` does not — that's native checkbox behavior and isn't overridden.
 - `Tab` and `Shift+Tab` also move through the enabled enum value input and its move or remove controls. The first Up and last Down controls are disabled and skipped.
 - Editable property names commit when their input loses focus. Text-entry keys remain native input behavior.
