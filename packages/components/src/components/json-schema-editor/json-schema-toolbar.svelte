@@ -90,6 +90,7 @@
     void editorState.hasDiffChanges;
     void editorState.readonly;
     void editorState.copyValue;
+    void canRevert;
     // Track `rovingIndex` too so a keydown/focusin handler moving the roved
     // button re-applies the DOM tabindex on the next flush.
     const currentRovingIndex = rovingIndex;

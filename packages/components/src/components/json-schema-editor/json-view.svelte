@@ -109,6 +109,7 @@
   );
   let previouslyEditable = false;
   let shouldRestoreEditFocus = $state(false);
+  let shouldFocusTextarea = $state(false);
   let discardWasFocused = $state(false);
 
   function focusEditingExitTarget(): void {
@@ -139,15 +140,27 @@
     const isEditable = editable;
     const focusMovedFromTextarea =
       previouslyEditable && !isEditable && document.activeElement?.id === `${idPrefix}-textarea`;
+    const focusMovedFromCodeBlock =
+      !previouslyEditable &&
+      isEditable &&
+      document.getElementById(`${idPrefix}-code-json`)?.contains(document.activeElement);
     previouslyEditable = isEditable;
 
     if (focusMovedFromTextarea) shouldRestoreEditFocus = true;
+    if (focusMovedFromCodeBlock) shouldFocusTextarea = true;
   });
 
   $effect(() => {
     if (shouldRestoreEditFocus) {
       shouldRestoreEditFocus = false;
       focusEditingExitTarget();
+    }
+  });
+
+  $effect(() => {
+    if (shouldFocusTextarea) {
+      shouldFocusTextarea = false;
+      document.getElementById(`${idPrefix}-textarea`)?.focus();
     }
   });
 
@@ -244,12 +257,14 @@
         editorState.setJsonDraftText((event.target as HTMLTextAreaElement).value)}
     />
   {:else}
-    <CodeBlock
-      code={displayedJson}
-      language="json"
-      languageLabelVisible={false}
-      class="cinder-jse-json-view__code-block"
-    />
+    <div id={`${idPrefix}-code-json`}>
+      <CodeBlock
+        code={displayedJson}
+        language="json"
+        languageLabelVisible={false}
+        class="cinder-jse-json-view__code-block"
+      />
+    </div>
   {/if}
 
   {#if draftErrorMessage}

@@ -205,6 +205,16 @@ describe('createEditorState — undo / redo / revert', () => {
     expect(state.committedSchema).toEqual({ type: 'number' });
   });
 
+  test('keeps controlled form commits separate when they share a coalesce key', () => {
+    const state = createEditorState({ schema: { type: 'string' }, controlled: true });
+
+    state.commitFromForm({ type: 'number' }, { coalesceKey: 'type' });
+    state.commitFromForm({ type: 'boolean' }, { coalesceKey: 'type' });
+
+    state.undo();
+    expect(state.committedSchema).toEqual({ type: 'number' });
+  });
+
   test('discardCurrentCommitWhenPreviousMatches removes only a rejected optimistic commit', () => {
     const state = createEditorState({ schema: { type: 'string' } });
     state.commitFromForm({ type: 'number' });
@@ -252,6 +262,19 @@ describe('createEditorState — undo / redo / revert', () => {
     expect(state.committedSchema).toEqual({ type: 'string' });
     expect(state.canUndo).toBe(false);
     expect(state.canRedo).toBe(false);
+  });
+
+  test('restores controlled revert rejection without clearing earlier history', () => {
+    const state = createEditorState({ schema: { type: 'string' }, controlled: true });
+    state.commitFromForm({ type: 'number' });
+
+    expect(state.beginControlledRevert()).toBe(true);
+    expect(state.committedSchema).toEqual({ type: 'string' });
+    expect(state.restoreControlledRevertWhenCommittedMatches({ type: 'number' })).toBe(true);
+    expect(state.committedSchema).toEqual({ type: 'number' });
+
+    state.undo();
+    expect(state.committedSchema).toEqual({ type: 'string' });
   });
 
   test('revert from invalid initial input clears the draft to original raw', async () => {

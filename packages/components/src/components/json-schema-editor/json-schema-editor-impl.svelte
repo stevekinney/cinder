@@ -70,6 +70,7 @@
   const announcer = useAnnouncer();
 
   const initialSchema = untrack<JsonSchemaValue | string>(() => schema ?? defaultSchema ?? {});
+  const controlled = $derived(schema !== undefined && onValueChangeRequest !== undefined);
 
   // Build state container once. Schema reloads happen via `schemaKey`. Other
   // mutable props (readonly, draftOverride, callback handlers) are kept in
@@ -82,6 +83,7 @@
     const options: Parameters<typeof createEditorState>[0] = {
       schema: initialSchema,
       readonly,
+      controlled,
       onSchemaChange: handleSchemaChange,
       onRevert: (event) => onRevert?.(event),
       onValidate: (result) => onValidate?.(result),
@@ -97,7 +99,6 @@
   let enumDraftHistoryRevision = $state(0);
   const editorState = createEditorState(stateOptions);
   const toolbarValidationErrorCount = $derived(view === 'form' ? localValidationErrorCount : 0);
-  const controlled = $derived(schema !== undefined && onValueChangeRequest !== undefined);
 
   function schemaMatchesCommitted(input: JsonSchemaValue | string): boolean {
     const normalised = normaliseSchemaInput(input);
@@ -114,7 +115,9 @@
         (rejectedAction === 'commit' &&
           editorState.discardCurrentCommitWhenPreviousMatches(input)) ||
         (rejectedAction === 'undo' && editorState.restoreNextCommitWhenMatches(input)) ||
-        (rejectedAction === 'redo' && editorState.restorePreviousCommitWhenMatches(input));
+        (rejectedAction === 'redo' && editorState.restorePreviousCommitWhenMatches(input)) ||
+        (rejectedAction === 'revert' &&
+          editorState.restoreControlledRevertWhenCommittedMatches(input));
       if (reconciledHistory) {
         enumDrafts = {};
         return;
@@ -174,6 +177,7 @@
     discardPendingControlledChange();
 
     if (accepted) {
+      if (pendingChange.action === 'revert') editorState.finaliseControlledRevert();
       onSchemaChange?.(pendingChange);
       if (pendingChange.action === 'revert') announcer.announce('Reverted to original schema');
       return;
@@ -274,6 +278,10 @@
     editorState.setReadonly(readonly);
   });
 
+  $effect(() => {
+    editorState.setControlled(controlled);
+  });
+
   // Sync `draftOverride` into the state container when the *prop* changes.
   // Unlike `setReadonly`, `setDraftOverride` re-runs validation and emits an
   // `onValidate` event, so we must skip the initial effect run (the value was
@@ -353,7 +361,8 @@
   function handleRevert() {
     if (controlled && editorState.originalSchema === null) return;
     enumDrafts = {};
-    editorState.revert();
+    if (controlled) editorState.beginControlledRevert();
+    else editorState.revert();
     if (!controlled) announcer.announce('Reverted to original schema');
   }
 

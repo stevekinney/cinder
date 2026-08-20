@@ -125,11 +125,16 @@ export function createEditorState(options: CreateEditorStateOptions) {
   // readonly and draftOverride are reactive so the component can sync them to
   // current prop values via $effect after mount.
   let readonly = $state(Boolean(options.readonly));
+  let controlled = $state(Boolean(options.controlled));
   let lastChangeAction = $state<'commit' | 'undo' | 'redo' | 'revert' | undefined>();
   let draftOverride = $state<JsonSchemaKnownDraft | undefined>(options.draftOverride);
 
   function setReadonly(next: boolean) {
     readonly = next;
+  }
+
+  function setControlled(next: boolean) {
+    controlled = next;
   }
 
   // ---- Validation status (debounced) ----
@@ -611,7 +616,10 @@ export function createEditorState(options: CreateEditorStateOptions) {
       commitOptions?: { coalesceKey?: string; label?: string },
     ) {
       if (!history || readonly || jsonDraftIsDirty) return;
-      history.commit(next, { label: commitOptions?.label });
+      // Controlled requests can be rejected independently. Keep each request
+      // as a distinct entry so reconciliation can restore the authoritative
+      // value without replacing an earlier optimistic edit.
+      history.commit(next, controlled ? { label: commitOptions?.label } : commitOptions);
       jsonDraftText = serialise(history.current);
       lastChangeAction = 'commit';
       emitChange();
@@ -665,6 +673,41 @@ export function createEditorState(options: CreateEditorStateOptions) {
       }
     },
 
+    /** Optimistically show the original schema without discarding history. */
+    beginControlledRevert(): boolean {
+      if (readonly || originalSchema === null) return false;
+      if (history) history.set(originalSchema);
+      else history = createSchemaHistory(originalSchema, options.maxHistory);
+      jsonDraftText = originalCanonicalText;
+      lastChangeAction = 'revert';
+      emitChange();
+      const epoch = beginValidationCycle();
+      void refreshValidation(epoch);
+      return true;
+    },
+
+    /** Accept a controlled revert after its parent makes the original authoritative. */
+    finaliseControlledRevert() {
+      if (originalSchema === null) return;
+      history = createSchemaHistory(originalSchema, options.maxHistory);
+      jsonDraftText = originalCanonicalText;
+      options.onRevert?.({ restoredFrom: 'original-schema' });
+    },
+
+    /** Restore the committed entry after a parent rejects a controlled revert. */
+    restoreControlledRevertWhenCommittedMatches(schemaInput: JsonSchemaValue | string): boolean {
+      if (!history) return false;
+      const normalised = normaliseSchemaInput(schemaInput);
+      if (!normalised.ok || normalised.canonicalText !== serialise(history.committedEntry.value)) {
+        return false;
+      }
+      history.set(history.committedEntry.value);
+      jsonDraftText = serialise(history.current);
+      const epoch = beginValidationCycle();
+      void refreshValidation(epoch);
+      return true;
+    },
+
     /** Update the active draft override; recomputes validation. */
     setDraftOverride(next: JsonSchemaKnownDraft | undefined) {
       draftOverride = next;
@@ -674,6 +717,9 @@ export function createEditorState(options: CreateEditorStateOptions) {
 
     /** Live-update the readonly flag (used to re-sync the prop after mount). */
     setReadonly,
+
+    /** Live-update whether requests are controlled by a parent. */
+    setControlled,
 
     /** Reload from a new schema/original pair — used by schemaKey-triggered reset. */
     reload(schemaInput: JsonSchemaValue | string, originalInput?: JsonSchemaValue | string) {
