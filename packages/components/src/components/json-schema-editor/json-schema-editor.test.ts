@@ -14,7 +14,7 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
-import type { JsonSchemaEditorChangeEvent } from './json-schema-editor-types.ts';
+import type { JsonSchemaEditorChangeEvent, JsonSchemaValue } from './json-schema-editor-types.ts';
 
 setupHappyDom();
 
@@ -405,6 +405,26 @@ describe('JsonSchemaEditor — controlled and uncontrolled schema inputs', () =>
     return new Promise<void>((resolve) => setTimeout(resolve, 0));
   }
 
+  function latestJsonButton(
+    container: HTMLElement,
+    label: 'Edit JSON' | 'Apply',
+  ): HTMLButtonElement {
+    const button = Array.from(container.querySelectorAll<HTMLButtonElement>('button'))
+      .filter((candidate) => candidate.textContent?.trim() === label)
+      .at(-1);
+    if (button === undefined) throw new Error(`Expected the latest ${label} button.`);
+    return button;
+  }
+
+  function latestJsonTextarea(container: HTMLElement): HTMLTextAreaElement {
+    const textareas = container.querySelectorAll<HTMLTextAreaElement>(
+      '.cinder-jse-json-view__textarea',
+    );
+    const textarea = textareas[textareas.length - 1];
+    if (textarea === undefined) throw new Error('Expected the latest JSON textarea.');
+    return textarea;
+  }
+
   test('uses defaultSchema as an uncontrolled seed and exposes an editable textarea only after Edit JSON', async () => {
     render(JsonSchemaEditorImplementation, {
       props: {
@@ -488,8 +508,9 @@ describe('JsonSchemaEditor — controlled and uncontrolled schema inputs', () =>
         id: 'jse-controlled',
         schema: { type: 'string' },
         view: 'json' as const,
-        onValueChangeRequest: (event: JsonSchemaEditorChangeEvent) =>
-          changes.push(event.jsonString),
+        onValueChangeRequest: (event: JsonSchemaEditorChangeEvent) => {
+          changes.push(event.jsonString);
+        },
         onSchemaChange: (event: JsonSchemaEditorChangeEvent) =>
           observedChanges.push(event.jsonString),
       },
@@ -497,11 +518,13 @@ describe('JsonSchemaEditor — controlled and uncontrolled schema inputs', () =>
     await flushEffects();
     const editor = within(container);
 
-    await fireEvent.click(editor.getByRole('button', { name: 'Edit JSON' }));
+    await fireEvent.click(
+      editor.getAllByRole('button', { name: 'Edit JSON' }).at(-1) as HTMLElement,
+    );
     const textarea = editor.getByRole('textbox', { name: 'JSON' });
     await fireEvent.input(textarea, { target: { value: '{"type":"number"}' } });
     await flushEffects();
-    await fireEvent.click(editor.getByRole('button', { name: 'Apply' }));
+    await fireEvent.click(editor.getAllByRole('button', { name: 'Apply' }).at(-1) as HTMLElement);
     await flushEffects();
 
     expect(changes).toEqual(['{\n  "type": "number"\n}']);
@@ -511,7 +534,9 @@ describe('JsonSchemaEditor — controlled and uncontrolled schema inputs', () =>
       id: 'jse-controlled',
       schema: { type: 'number' },
       view: 'json' as const,
-      onValueChangeRequest: (event: JsonSchemaEditorChangeEvent) => changes.push(event.jsonString),
+      onValueChangeRequest: (event: JsonSchemaEditorChangeEvent) => {
+        changes.push(event.jsonString);
+      },
       onSchemaChange: (event: JsonSchemaEditorChangeEvent) =>
         observedChanges.push(event.jsonString),
     });
@@ -524,7 +549,9 @@ describe('JsonSchemaEditor — controlled and uncontrolled schema inputs', () =>
       id: 'jse-controlled',
       schema: { type: 'boolean' },
       view: 'json' as const,
-      onValueChangeRequest: (event: JsonSchemaEditorChangeEvent) => changes.push(event.jsonString),
+      onValueChangeRequest: (event: JsonSchemaEditorChangeEvent) => {
+        changes.push(event.jsonString);
+      },
       onSchemaChange: (event: JsonSchemaEditorChangeEvent) =>
         observedChanges.push(event.jsonString),
     });
@@ -651,5 +678,124 @@ describe('JsonSchemaEditor — controlled and uncontrolled schema inputs', () =>
     await flushEffects();
 
     expect(changes).toEqual(['{\n  "type": "number"\n}', '{\n  "type": "boolean"\n}']);
+  });
+
+  test('uses a returned settlement as the authority after a later rejection', async () => {
+    const requests: string[] = [];
+    const { container } = render(JsonSchemaEditorImplementation, {
+      props: {
+        id: 'jse-controlled-authority',
+        schema: { type: 'string' },
+        view: 'json' as const,
+        onValueChangeRequest: (event: JsonSchemaEditorChangeEvent) => {
+          requests.push(event.jsonString);
+          return requests.length === 1 ? { type: 'number' } : Promise.reject(new Error('Rejected'));
+        },
+      },
+    });
+    await flushEffects();
+    const editor = within(container);
+
+    await fireEvent.click(editor.getByRole('button', { name: 'Edit JSON' }));
+    await fireEvent.input(editor.getByRole('textbox', { name: 'JSON' }), {
+      target: { value: '{"type":"number"}' },
+    });
+    await fireEvent.click(editor.getByRole('button', { name: 'Apply' }));
+    await flushEffects();
+
+    await fireEvent.click(latestJsonButton(container, 'Edit JSON'));
+    await fireEvent.input(latestJsonTextarea(container), {
+      target: { value: '{"type":"boolean"}' },
+    });
+    await fireEvent.click(latestJsonButton(container, 'Apply'));
+    await flushEffects();
+    await flushEffects();
+
+    expect(editor.getByRole('region', { name: 'JSON Schema editor' }).textContent).toContain(
+      '"type": "number"',
+    );
+  });
+
+  test('notifies observers with a transformed returned settlement', async () => {
+    const observedChanges: JsonSchemaEditorChangeEvent[] = [];
+    render(JsonSchemaEditorImplementation, {
+      props: {
+        id: 'jse-controlled-replacement-observer',
+        schema: { type: 'string' },
+        view: 'json' as const,
+        onValueChangeRequest: () => ({ type: 'number' }),
+        onSchemaChange: (event: JsonSchemaEditorChangeEvent) => observedChanges.push(event),
+      },
+    });
+    await flushEffects();
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Edit JSON' }));
+    await fireEvent.input(screen.getByRole('textbox', { name: 'JSON' }), {
+      target: { value: '{"type":"boolean"}' },
+    });
+    await fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
+    await flushEffects();
+
+    expect(observedChanges).toEqual([
+      { schema: { type: 'number' }, jsonString: '{\n  "type": "number"\n}' },
+    ]);
+  });
+
+  test('rejects an invalid fulfilled settlement so another edit can be requested', async () => {
+    const requests: string[] = [];
+    const { container } = render(JsonSchemaEditorImplementation, {
+      props: {
+        id: 'jse-controlled-invalid-settlement',
+        schema: { type: 'string' },
+        view: 'json' as const,
+        onValueChangeRequest: (event: JsonSchemaEditorChangeEvent) => {
+          requests.push(event.jsonString);
+          return Promise.resolve(undefined);
+        },
+      },
+    });
+    await flushEffects();
+
+    for (const type of ['number', 'boolean']) {
+      await fireEvent.click(latestJsonButton(container, 'Edit JSON'));
+      await fireEvent.input(latestJsonTextarea(container), {
+        target: { value: `{"type":"${type}"}` },
+      });
+      await fireEvent.click(latestJsonButton(container, 'Apply'));
+      await flushEffects();
+      await flushEffects();
+    }
+
+    expect(requests).toEqual(['{\n  "type": "number"\n}', '{\n  "type": "boolean"\n}']);
+  });
+
+  test('does not settle a pending request after unmount', async () => {
+    let resolveSettlement: (value: JsonSchemaValue) => void = () => {};
+    const settlement = new Promise<JsonSchemaValue>((resolve) => {
+      resolveSettlement = resolve;
+    });
+    const observedChanges: JsonSchemaEditorChangeEvent[] = [];
+    const { unmount } = render(JsonSchemaEditorImplementation, {
+      props: {
+        id: 'jse-controlled-unmount',
+        schema: { type: 'string' },
+        view: 'json' as const,
+        onValueChangeRequest: () => settlement,
+        onSchemaChange: (event: JsonSchemaEditorChangeEvent) => observedChanges.push(event),
+      },
+    });
+    await flushEffects();
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Edit JSON' }));
+    await fireEvent.input(screen.getByRole('textbox', { name: 'JSON' }), {
+      target: { value: '{"type":"number"}' },
+    });
+    await fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
+    unmount();
+    resolveSettlement({ type: 'number' });
+    await flushEffects();
+    await flushEffects();
+
+    expect(observedChanges).toEqual([]);
   });
 });

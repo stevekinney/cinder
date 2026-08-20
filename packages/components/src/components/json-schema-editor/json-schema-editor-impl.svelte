@@ -132,6 +132,9 @@
 
   let pendingControlledChange = $state<JsonSchemaEditorChangeEvent | undefined>();
   let pendingControlledChangeVersion = 0;
+  let controlledSchemaAuthority = untrack<JsonSchemaValue | string | undefined>(() =>
+    controlled && schema !== undefined ? schema : undefined,
+  );
 
   function discardPendingControlledChange() {
     pendingControlledChange = undefined;
@@ -142,16 +145,31 @@
     const pendingChange = pendingControlledChange;
     const accepted = pendingChange !== undefined && schemaMatchesChangeEvent(input, pendingChange);
 
+    controlledSchemaAuthority = input;
     synchroniseControlledSchema(input);
     discardPendingControlledChange();
 
-    if (accepted) onSchemaChange?.(pendingChange);
+    if (accepted) {
+      onSchemaChange?.(pendingChange);
+      return;
+    }
+
+    const normalised = normaliseSchemaInput(input);
+    if (pendingChange !== undefined && normalised.ok) {
+      // Parse canonical text a second time so a mutable replacement supplied by
+      // the parent cannot become an observer-owned reference.
+      const snapshot = normaliseSchemaInput(normalised.canonicalText);
+      if (snapshot.ok) {
+        onSchemaChange?.({ schema: snapshot.schema, jsonString: snapshot.canonicalText });
+      }
+    }
   }
 
   function rejectControlledChange(changeVersion: number) {
     if (pendingControlledChangeVersion !== changeVersion) return;
     discardPendingControlledChange();
-    if (schema !== undefined) synchroniseControlledSchema(schema);
+    const authoritativeSchema = controlledSchemaAuthority ?? schema;
+    if (authoritativeSchema !== undefined) synchroniseControlledSchema(authoritativeSchema);
   }
 
   function handleSchemaChange(event: JsonSchemaEditorChangeEvent) {
@@ -177,9 +195,9 @@
     if (settlement !== undefined) {
       void Promise.resolve(settlement)
         .then((input) => {
-          if (isSchemaInput(input) && pendingControlledChangeVersion === changeVersion) {
-            settleControlledChange(input);
-          }
+          if (pendingControlledChangeVersion !== changeVersion) return;
+          if (isSchemaInput(input)) settleControlledChange(input);
+          else rejectControlledChange(changeVersion);
         })
         .catch(() => {
           rejectControlledChange(changeVersion);
@@ -202,12 +220,14 @@
     if (!controlled || schema === undefined) {
       discardPendingControlledChange();
       lastControlledSchemaText = undefined;
+      controlledSchemaAuthority = undefined;
       return;
     }
 
     const nextControlledSchemaText = controlledSchemaText(schema);
     if (nextControlledSchemaText === lastControlledSchemaText) return;
     lastControlledSchemaText = nextControlledSchemaText;
+    controlledSchemaAuthority = schema;
     untrack(() => settleControlledChange(schema));
   });
 
@@ -234,7 +254,10 @@
   // Tear down debounce timers on unmount so stale callbacks don't fire after
   // the parent unmounts the editor.
   $effect(() => {
-    return () => editorState.destroy();
+    return () => {
+      discardPendingControlledChange();
+      editorState.destroy();
+    };
   });
 
   // schemaKey-triggered reset. Track the previous key explicitly so we don't
@@ -250,9 +273,10 @@
       lastSchemaKey = schemaKey;
       untrack(() => {
         discardPendingControlledChange();
+        const reloadSchema = controlled ? (controlledSchemaAuthority ?? schema) : schema;
         lastControlledSchemaText =
-          controlled && schema !== undefined ? controlledSchemaText(schema) : undefined;
-        editorState.reload(schema ?? defaultSchema ?? {}, original);
+          controlled && reloadSchema !== undefined ? controlledSchemaText(reloadSchema) : undefined;
+        editorState.reload(reloadSchema ?? defaultSchema ?? {}, original);
         enumDrafts = {};
       });
       announcer.announce('Schema reloaded');
