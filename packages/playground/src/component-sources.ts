@@ -110,6 +110,52 @@ function cinderComponentDependenciesFromSource(source: string, dependencies: Set
   }
 }
 
+function componentExportName(componentName: string): string {
+  return componentName
+    .split('-')
+    .map((segment) => `${segment[0]?.toUpperCase() ?? ''}${segment.slice(1)}`)
+    .join('');
+}
+
+function escapeRegularExpression(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
+}
+
+function extractedPackageComponentDependenciesFromSource(
+  componentSource: ComponentSource,
+  source: string,
+  dependencies: Set<string>,
+): void {
+  if (componentSource.componentNames === null) return;
+
+  for (const componentName of componentSource.componentNames) {
+    const importPath = componentSource.importPath(componentName);
+    const escapedImportPath = escapeRegularExpression(importPath);
+    const namedImportPattern = new RegExp(
+      `import\\s*\\{([^}]+)\\}\\s*from\\s*['"]${escapedImportPath}['"]`,
+      'gu',
+    );
+
+    for (const match of source.matchAll(namedImportPattern)) {
+      const importedNames = match[1]!.split(',').map(
+        (importedName) =>
+          importedName
+            .trim()
+            .replace(/^type\s+/u, '')
+            .split(/\s+as\s+/u)[0],
+      );
+      if (importedNames.includes(componentExportName(componentName))) {
+        dependencies.add(componentName);
+      }
+    }
+
+    if (importPath !== componentSource.packageName) {
+      const directImportPattern = new RegExp(`from\\s*['"]${escapedImportPath}['"]`, 'u');
+      if (directImportPattern.test(source)) dependencies.add(componentName);
+    }
+  }
+}
+
 function implementationDependencies(
   componentsRoot: string,
   implementationPath: string,
@@ -160,17 +206,18 @@ export function documentationComponentStylesheetUrl(
 }
 
 /**
- * Resolve styles for every Cinder component imported by a documented
- * component's examples. A page can compose an otherwise unrelated primitive
- * (CheckboxGroup's examples render Checkbox, for example), so its own
- * sidecar alone is not enough after removing the global stylesheet.
+ * Resolve styles for every component imported by a documented component's
+ * examples. A page can compose an otherwise unrelated primitive (CheckboxGroup's
+ * examples render Checkbox, for example), so its own sidecar alone is not
+ * enough after removing the global stylesheet.
  */
 export function documentationExampleStylesheetUrls(
   componentSource: ComponentSource,
   componentName: string,
   scenarios: readonly string[],
 ): string[] {
-  const dependencyNames = new Set<string>([componentName]);
+  const cinderDependencyNames = new Set<string>();
+  const packageDependencyNames = new Set<string>([componentName]);
   for (const scenario of scenarios) {
     const examplePath = join(
       PLAYGROUND_ROOT,
@@ -180,20 +227,52 @@ export function documentationExampleStylesheetUrls(
       `${scenario}.example.svelte`,
     );
     const source = readFileSync(examplePath, 'utf8');
-    cinderComponentDependenciesFromSource(source, dependencyNames);
+    cinderComponentDependenciesFromSource(source, cinderDependencyNames);
+    extractedPackageComponentDependenciesFromSource(
+      componentSource,
+      source,
+      packageDependencyNames,
+    );
   }
 
+  if (componentSource.id === CINDER_COMPONENT_SOURCE.id) {
+    cinderDependencyNames.add(componentName);
+  }
   implementationDependencies(
     componentSource.componentsRoot,
     join(componentSource.componentsRoot, componentName, `${componentName}.svelte`),
-    dependencyNames,
+    cinderDependencyNames,
   );
 
-  return [...dependencyNames]
+  // Examples can import a Cinder component whose implementation composes more
+  // primitives. Iterating the growing Set follows that complete graph instead
+  // of stopping at the example's direct import (for example, ConfirmDialog →
+  // Modal on Card's danger-zone examples).
+  const visitedImplementationPaths = new Set<string>();
+  for (const dependencyName of cinderDependencyNames) {
+    implementationDependencies(
+      CINDER_COMPONENT_SOURCE.componentsRoot,
+      join(CINDER_COMPONENT_SOURCE.componentsRoot, dependencyName, `${dependencyName}.svelte`),
+      cinderDependencyNames,
+      visitedImplementationPaths,
+    );
+  }
+
+  const cinderStylesheetUrls = [...cinderDependencyNames]
     .toSorted()
     .map(cinderComponentStylesheetUrl)
-    .filter((stylesheetUrl): stylesheetUrl is string => stylesheetUrl !== null)
-    .filter((stylesheetUrl, index, urls) => urls.indexOf(stylesheetUrl) === index);
+    .filter((stylesheetUrl): stylesheetUrl is string => stylesheetUrl !== null);
+  const packageStylesheetUrls =
+    componentSource.id === CINDER_COMPONENT_SOURCE.id
+      ? []
+      : [...packageDependencyNames]
+          .toSorted()
+          .map(componentSource.componentStylesheetUrl)
+          .filter((stylesheetUrl): stylesheetUrl is string => stylesheetUrl !== null);
+
+  return [...cinderStylesheetUrls, ...packageStylesheetUrls].filter(
+    (stylesheetUrl, index, urls) => urls.indexOf(stylesheetUrl) === index,
+  );
 }
 
 export const CHAT_COMPONENT_SOURCE: ComponentSource = {

@@ -14,6 +14,7 @@ describe('documentation stylesheet', () => {
     expect(stylesheet).toContain('.cinder-button');
     expect(stylesheet).toContain('.cinder-table__body');
     expect(stylesheet).toContain('.cinder-accordion-item');
+    expect(stylesheet).toContain('.cinder-json-token-key');
     expect(stylesheet).not.toContain('@import');
     // Vercel serves static CSS compressed. The cache-disabled transfer budget
     // is measured on those response bytes, not the decoded stylesheet size.

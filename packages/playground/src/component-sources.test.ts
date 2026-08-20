@@ -10,6 +10,7 @@
 import { describe, expect, it } from 'bun:test';
 
 import {
+  CHAT_COMPONENT_SOURCE,
   CINDER_COMPONENT_SOURCE,
   EDITOR_COMPONENT_SOURCE,
   documentationComponentStylesheetUrl,
@@ -71,6 +72,7 @@ describe('documentationExampleStylesheetUrls', () => {
     ).toEqual([
       '/components/checkbox/checkbox.css',
       '/components/checkbox-group/checkbox-group.css',
+      '/components/form-field/form-field.css',
     ]);
   });
 
@@ -106,5 +108,29 @@ describe('documentationExampleStylesheetUrls', () => {
         '/components/toolbar/toolbar.css',
       ]),
     );
+  });
+
+  it('recursively follows Cinder components imported by examples', () => {
+    expect(
+      documentationExampleStylesheetUrls(CINDER_COMPONENT_SOURCE, 'card', ['danger-zone-toggle']),
+    ).toEqual(
+      expect.arrayContaining([
+        '/components/confirm-dialog/confirm-dialog.css',
+        '/components/modal/modal.css',
+      ]),
+    );
+  });
+
+  it('loads extracted-package component sidecars imported by examples, not helper-only imports', () => {
+    expect(
+      documentationExampleStylesheetUrls(CHAT_COMPONENT_SOURCE, 'chat-composer-popover', [
+        'slash-commands',
+      ]),
+    ).toEqual(expect.arrayContaining(['/package-components/chat/chat/chat.css']));
+    expect(
+      documentationExampleStylesheetUrls(CHAT_COMPONENT_SOURCE, 'chat-conversation-header', [
+        'basic',
+      ]),
+    ).not.toContain('/package-components/chat/chat/chat.css');
   });
 });
