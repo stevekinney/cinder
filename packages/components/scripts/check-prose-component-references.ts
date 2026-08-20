@@ -23,8 +23,9 @@ function normalizeComponentReference(reference: string): string {
 /**
  * Finds component names used as prose guidance. Only names that are explicitly
  * introduced as component guidance participate: ordinary English and platform
- * API identifiers are not component references, and example ids are resolved
- * in their own namespace before a failure is reported.
+ * API identifiers are not component references. Example ids are resolved only
+ * when prose explicitly identifies an example, rather than as a substitute for
+ * a component name.
  */
 export function findProseReferenceFailures(input: {
   source: string;
@@ -34,9 +35,10 @@ export function findProseReferenceFailures(input: {
   publicSubpaths: ReadonlySet<string>;
 }): ProseReferenceFailure[] {
   const failures = new Map<string, ProseReferenceFailure>();
-  const addProseReference = (unresolvedReference: string) => {
+  const addProseReference = (unresolvedReference: string, allowExampleId = false) => {
     const reference = normalizeComponentReference(unresolvedReference);
-    if (input.componentNames.has(reference) || input.exampleIds.has(reference)) return;
+    if (input.componentNames.has(reference) || (allowExampleId && input.exampleIds.has(reference)))
+      return;
     failures.set(reference, { reference, filePath: input.filePath });
   };
   const addPackageImport = (reference: string) => {
@@ -63,7 +65,7 @@ export function findProseReferenceFailures(input: {
         /^\s+instead\b/i.test(followingText) ||
         input.componentNames.has(normalizeComponentReference(reference)))
     )
-      addProseReference(reference);
+      addProseReference(reference, isExampleReference);
   }
   for (const relatedLine of input.source.matchAll(/^Related components:\s*(.*)$/gim)) {
     for (const referenceMatch of relatedLine[1]?.matchAll(

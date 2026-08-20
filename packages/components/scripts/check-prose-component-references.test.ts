@@ -123,6 +123,18 @@ describe('check-prose-component-references', () => {
     ).toEqual([{ reference: 'missing-component', filePath: 'fixture.md' }]);
   });
 
+  test('does not let an example id validate a component recommendation', () => {
+    expect(
+      findProseReferenceFailures({
+        source: 'Use `BottomSheet` instead.',
+        filePath: 'fixture.md',
+        componentNames,
+        exampleIds: new Set(['bottom-sheet']),
+        publicSubpaths,
+      }),
+    ).toEqual([{ reference: 'bottom-sheet', filePath: 'fixture.md' }]);
+  });
+
   test('validates backticked ids on Related components lines', () => {
     expect(
       findProseReferenceFailures({
