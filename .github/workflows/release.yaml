@@ -91,7 +91,8 @@ jobs:
         shell: bash
         run: |
           node_path="$(command -v node)"
-          npm_cli="$(npm root -g)/npm/bin/npm-cli.js"
+          node_prefix="$(dirname "$(dirname "$node_path")")"
+          npm_cli="$node_prefix/lib/node_modules/npm/bin/npm-cli.js"
           "$node_path" --version
           test -f "$npm_cli"
           echo "CINDER_PUBLISH_NODE=$node_path" >> "$GITHUB_ENV"
