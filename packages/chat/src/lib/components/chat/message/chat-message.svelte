@@ -170,8 +170,8 @@
     }
   }
 
-  function clearEditPointerCapture() {
-    editPointerCapture = undefined;
+  function clearEditPointerCapture(event: PointerEvent) {
+    if (editPointerCapture?.pointerId === event.pointerId) editPointerCapture = undefined;
   }
 
   function cancelEditing() {

@@ -1146,6 +1146,7 @@ describe('ChatAdapter — command equivalence', () => {
     editButton.dispatchEvent(
       createPointerEvent('pointerdown', { clientX: 10, clientY: 10, pointerId: 7 }),
     );
+    editButton.dispatchEvent(createPointerEvent('pointerup', { isPrimary: false, pointerId: 8 }));
     editButton.dispatchEvent(
       createPointerEvent('pointermove', { clientX: 14, clientY: 14, pointerId: 7 }),
     );
