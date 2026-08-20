@@ -230,6 +230,18 @@ describe('createEditorState — undo / redo / revert', () => {
     expect(state.canRedo).toBe(false);
   });
 
+  test('restorePreviousCommitWhenMatches restores a rejected redo without discarding history', () => {
+    const state = createEditorState({ schema: { type: 'string' } });
+    state.commitFromForm({ type: 'number' });
+    state.undo();
+    state.redo();
+
+    expect(state.restorePreviousCommitWhenMatches({ type: 'string' })).toBe(true);
+    expect(state.committedSchema).toEqual({ type: 'string' });
+    expect(state.canUndo).toBe(false);
+    expect(state.canRedo).toBe(true);
+  });
+
   test('revert restores original schema and clears history', () => {
     const state = createEditorState({ schema: { type: 'string' } });
     state.commitFromForm({ type: 'number' });

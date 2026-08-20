@@ -125,6 +125,7 @@ export function createEditorState(options: CreateEditorStateOptions) {
   // readonly and draftOverride are reactive so the component can sync them to
   // current prop values via $effect after mount.
   let readonly = $state(Boolean(options.readonly));
+  let lastChangeAction = $state<'commit' | 'undo' | 'redo' | 'revert' | undefined>();
   let draftOverride = $state<JsonSchemaKnownDraft | undefined>(options.draftOverride);
 
   function setReadonly(next: boolean) {
@@ -379,6 +380,22 @@ export function createEditorState(options: CreateEditorStateOptions) {
     return true;
   }
 
+  function restorePreviousCommitWhenMatches(schemaInput: JsonSchemaValue | string): boolean {
+    const schemaResult = normaliseSchemaInput(schemaInput);
+    if (!schemaResult.ok || !history?.canUndo) return false;
+
+    history.undo();
+    if (serialise(history.current) !== schemaResult.canonicalText) {
+      history.redo();
+      return false;
+    }
+
+    jsonDraftText = schemaResult.canonicalText;
+    const epoch = beginValidationCycle();
+    void refreshValidation(epoch);
+    return true;
+  }
+
   function loadFrom(
     schemaInput: JsonSchemaValue | string,
     originalInput?: JsonSchemaValue | string,
@@ -503,6 +520,9 @@ export function createEditorState(options: CreateEditorStateOptions) {
     get activeDraft(): JsonSchemaDraft {
       return detectActiveDraft(schemaToValidate());
     },
+    get lastChangeAction() {
+      return lastChangeAction;
+    },
 
     // ---- Writes ----
     setView(next: JsonSchemaEditorView) {
@@ -574,6 +594,7 @@ export function createEditorState(options: CreateEditorStateOptions) {
       }
       jsonDraftText = serialise(history.current);
       metaResult = meta;
+      lastChangeAction = 'commit';
       emitChange();
 
       const compile = await tryCompile(schema, draft);
@@ -590,8 +611,9 @@ export function createEditorState(options: CreateEditorStateOptions) {
       commitOptions?: { coalesceKey?: string; label?: string },
     ) {
       if (!history || readonly || jsonDraftIsDirty) return;
-      history.commit(next, commitOptions);
+      history.commit(next, { label: commitOptions?.label });
       jsonDraftText = serialise(history.current);
+      lastChangeAction = 'commit';
       emitChange();
       const epoch = beginValidationCycle();
       void refreshValidation(epoch);
@@ -602,6 +624,7 @@ export function createEditorState(options: CreateEditorStateOptions) {
       const left = history.undo();
       if (!left) return undefined;
       jsonDraftText = serialise(history.current);
+      lastChangeAction = 'undo';
       emitChange();
       const epoch = beginValidationCycle();
       void refreshValidation(epoch);
@@ -613,6 +636,7 @@ export function createEditorState(options: CreateEditorStateOptions) {
       const moved = history.redo();
       if (!moved) return undefined;
       jsonDraftText = serialise(history.current);
+      lastChangeAction = 'redo';
       emitChange();
       const epoch = beginValidationCycle();
       void refreshValidation(epoch);
@@ -624,6 +648,7 @@ export function createEditorState(options: CreateEditorStateOptions) {
       if (originalSchema !== null) {
         history = createSchemaHistory(originalSchema, options.maxHistory);
         jsonDraftText = originalCanonicalText;
+        lastChangeAction = 'revert';
         emitChange();
         const epoch = beginValidationCycle();
         void refreshValidation(epoch);
@@ -665,6 +690,9 @@ export function createEditorState(options: CreateEditorStateOptions) {
 
     /** Restore a rejected undo when the following committed entry is authoritative. */
     restoreNextCommitWhenMatches,
+
+    /** Restore a rejected redo without discarding the preserved redo entry. */
+    restorePreviousCommitWhenMatches,
 
     destroy() {
       clearTimers();

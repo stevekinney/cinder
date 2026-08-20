@@ -106,13 +106,15 @@
 
   function synchroniseControlledSchema(
     input: JsonSchemaValue | string,
-    discardRejectedCommit = false,
+    rejectedAction?: 'commit' | 'undo' | 'redo' | 'revert',
   ) {
     if (schemaMatchesCommitted(input)) return;
-    if (discardRejectedCommit) {
+    if (rejectedAction !== undefined) {
       const reconciledHistory =
-        editorState.discardCurrentCommitWhenPreviousMatches(input) ||
-        editorState.restoreNextCommitWhenMatches(input);
+        (rejectedAction === 'commit' &&
+          editorState.discardCurrentCommitWhenPreviousMatches(input)) ||
+        (rejectedAction === 'undo' && editorState.restoreNextCommitWhenMatches(input)) ||
+        (rejectedAction === 'redo' && editorState.restorePreviousCommitWhenMatches(input));
       if (reconciledHistory) {
         enumDrafts = {};
         return;
@@ -142,7 +144,10 @@
     return hasSchemaShape && normaliseSchemaInput(input as JsonSchemaValue | string).ok;
   }
 
-  let pendingControlledChange = $state<JsonSchemaEditorChangeEvent | undefined>();
+  type PendingControlledChange = JsonSchemaEditorChangeEvent & {
+    action: 'commit' | 'undo' | 'redo' | 'revert' | undefined;
+  };
+  let pendingControlledChange = $state<PendingControlledChange | undefined>();
   let pendingControlledChangeVersion = 0;
   let controlledSchemaAuthority = untrack<JsonSchemaValue | string | undefined>(() =>
     controlled && schema !== undefined ? controlledSchemaText(schema) : undefined,
@@ -164,12 +169,13 @@
     controlledSchemaAuthority = controlledSchemaText(input);
     synchroniseControlledSchema(
       controlledSchemaAuthority,
-      pendingChange !== undefined && unchangedAuthority,
+      pendingChange !== undefined && unchangedAuthority ? pendingChange.action : undefined,
     );
     discardPendingControlledChange();
 
     if (accepted) {
       onSchemaChange?.(pendingChange);
+      if (pendingChange.action === 'revert') announcer.announce('Reverted to original schema');
       return;
     }
 
@@ -186,9 +192,12 @@
 
   function rejectControlledChange(changeVersion: number) {
     if (pendingControlledChangeVersion !== changeVersion) return;
+    const pendingChange = pendingControlledChange;
     discardPendingControlledChange();
     const authoritativeSchema = controlledSchemaAuthority ?? schema;
-    if (authoritativeSchema !== undefined) synchroniseControlledSchema(authoritativeSchema, true);
+    if (authoritativeSchema !== undefined) {
+      synchroniseControlledSchema(authoritativeSchema, pendingChange?.action);
+    }
   }
 
   function handleSchemaChange(event: JsonSchemaEditorChangeEvent) {
@@ -198,11 +207,14 @@
     }
 
     if (pendingControlledChange !== undefined) {
-      synchroniseControlledSchema(controlledSchemaAuthority ?? schema, true);
+      synchroniseControlledSchema(
+        controlledSchemaAuthority ?? schema,
+        editorState.lastChangeAction,
+      );
       return;
     }
 
-    pendingControlledChange = event;
+    pendingControlledChange = { ...event, action: editorState.lastChangeAction };
     const changeVersion = ++pendingControlledChangeVersion;
     let settlement: unknown;
     try {
@@ -342,7 +354,7 @@
     if (controlled && editorState.originalSchema === null) return;
     enumDrafts = {};
     editorState.revert();
-    announcer.announce('Reverted to original schema');
+    if (!controlled) announcer.announce('Reverted to original schema');
   }
 
   // Editor-level keyboard shortcuts: only fire when focus isn't inside an
