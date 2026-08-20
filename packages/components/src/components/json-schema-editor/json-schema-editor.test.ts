@@ -480,6 +480,14 @@ describe('JsonSchemaEditor — controlled and uncontrolled schema inputs', () =>
     await rerender({
       id: 'jse-controlled-draft',
       schema: { type: 'string' },
+      view: 'diff' as const,
+      onSchemaChangeRequest,
+    });
+    await flushEffects();
+
+    await rerender({
+      id: 'jse-controlled-draft',
+      schema: { type: 'string' },
       view: 'json' as const,
       onSchemaChangeRequest,
     });

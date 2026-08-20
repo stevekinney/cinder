@@ -88,7 +88,8 @@
   const canDiscard = $derived(editorState.jsonDraftIsDirty && !editorState.readonly);
   let jsonEditing = $state(false);
   const editable = $derived(
-    !editorState.readonly && (jsonEditing || editorState.committedSchema === null),
+    !editorState.readonly &&
+      (jsonEditing || editorState.jsonDraftIsDirty || editorState.committedSchema === null),
   );
   const displayedJson = $derived(
     editorState.committedSchema === null
