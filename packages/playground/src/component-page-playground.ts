@@ -199,6 +199,13 @@ export type PlaygroundModel = {
 const EXAMPLE_ONLY_PLAYGROUND_COMPONENTS = new Set([
   'autocomplete',
   'spectrogram',
+  // These closed-by-default overlays need state, anchors, or callbacks that a
+  // bare mount cannot supply. Their authored examples provide the real working
+  // interaction instead of an empty stage.
+  'alert-dialog',
+  'backdrop',
+  'command-menu',
+  'confirm-dialog',
   'modal',
   'drawer',
   'popover',
@@ -253,6 +260,10 @@ function stringDefault(value: unknown): string {
  * diff because `patch` was the literal string "patch".
  */
 const COMPONENT_TEXT_SEEDS: Readonly<Record<string, Readonly<Record<string, string>>>> = {
+  'bar-chart': {
+    // The category key must name a property that actually exists on each datum.
+    categoryKey: 'month',
+  },
   image: {
     // An inline SVG data URI rather than a remote placeholder service: the docs
     // site ships no image assets, and the examples already use this pattern
@@ -288,6 +299,32 @@ const COMPONENT_TEXT_SEEDS: Readonly<Record<string, Readonly<Record<string, stri
  * exactly the sort of thing a reader would screenshot as a bug.
  */
 const COMPONENT_VALUE_SEEDS: Readonly<Record<string, Readonly<Record<string, unknown>>>> = {
+  'bar-chart': {
+    data: [
+      { month: 'January', revenue: 42 },
+      { month: 'February', revenue: 58 },
+      { month: 'March', revenue: 73 },
+    ],
+    series: [{ id: 'revenue', label: 'Revenue', valueKey: 'revenue' }],
+  },
+  'data-table': {
+    columns: [
+      { key: 'name', label: 'Name', rowHeader: true },
+      { key: 'role', label: 'Role' },
+    ],
+    rows: [
+      { id: 'ada', name: 'Ada Lovelace', role: 'Engineer' },
+      { id: 'grace', name: 'Grace Hopper', role: 'Admiral' },
+    ],
+  },
+  'keyboard-shortcuts': {
+    groups: [
+      {
+        label: 'General',
+        shortcuts: [{ action: 'Open command palette', keys: ['Meta', 'K'] }],
+      },
+    ],
+  },
   'shortcut-hint': { keys: ['Meta', 'Shift', 'P'] },
 };
 

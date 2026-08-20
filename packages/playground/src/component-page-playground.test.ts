@@ -188,6 +188,131 @@ describe('buildPlaygroundModel', () => {
     expect(model.skipped).toEqual(['children']);
   });
 
+  test('uses a contract-valid BarChart preview seed instead of disconnected generic values', () => {
+    const model = buildPlaygroundModel({
+      ...manifest([
+        {
+          name: 'data',
+          control: {
+            kind: 'array',
+            rawType: 'BarChartDatum[]',
+            element: { fields: [], degenerate: true },
+          },
+          bindable: false,
+          optional: false,
+        },
+        { name: 'categoryKey', control: { kind: 'text' }, bindable: false, optional: false },
+        {
+          name: 'series',
+          control: {
+            kind: 'array',
+            rawType: 'BarChartSeries[]',
+            element: { fields: [], degenerate: true },
+          },
+          bindable: false,
+          optional: false,
+        },
+      ]),
+      name: 'Bar chart',
+      kebabName: 'bar-chart',
+    });
+
+    expect(model.controls).toContainEqual(
+      expect.objectContaining({ name: 'categoryKey', value: 'month' }),
+    );
+    expect(model.seeds.map(({ name, value }) => ({ name, value }))).toEqual([
+      {
+        name: 'data',
+        value: [
+          { month: 'January', revenue: 42 },
+          { month: 'February', revenue: 58 },
+          { month: 'March', revenue: 73 },
+        ],
+      },
+      {
+        name: 'series',
+        value: [{ id: 'revenue', label: 'Revenue', valueKey: 'revenue' }],
+      },
+    ]);
+  });
+
+  test('uses stable DataTable row identities in its explicit preview seed', () => {
+    const model = buildPlaygroundModel({
+      ...manifest([
+        {
+          name: 'columns',
+          control: {
+            kind: 'array',
+            rawType: 'DataTableColumn[]',
+            element: { fields: [], degenerate: true },
+          },
+          bindable: false,
+          optional: false,
+        },
+        {
+          name: 'rows',
+          control: {
+            kind: 'array',
+            rawType: 'DataTableRow[]',
+            element: { fields: [], degenerate: true },
+          },
+          bindable: false,
+          optional: false,
+        },
+      ]),
+      name: 'Data table',
+      kebabName: 'data-table',
+    });
+
+    expect(model.seeds.map(({ name, value }) => ({ name, value }))).toEqual([
+      {
+        name: 'columns',
+        value: [
+          { key: 'name', label: 'Name', rowHeader: true },
+          { key: 'role', label: 'Role' },
+        ],
+      },
+      {
+        name: 'rows',
+        value: [
+          { id: 'ada', name: 'Ada Lovelace', role: 'Engineer' },
+          { id: 'grace', name: 'Grace Hopper', role: 'Admiral' },
+        ],
+      },
+    ]);
+  });
+
+  test('uses complete shortcut entries in the KeyboardShortcuts preview seed', () => {
+    const model = buildPlaygroundModel({
+      ...manifest([
+        {
+          name: 'groups',
+          control: {
+            kind: 'array',
+            rawType: 'KeyboardShortcutGroup[]',
+            element: { fields: [], degenerate: true },
+          },
+          bindable: false,
+          optional: false,
+        },
+      ]),
+      name: 'Keyboard shortcuts',
+      kebabName: 'keyboard-shortcuts',
+    });
+
+    expect(model.seeds.map(({ name, value }) => ({ name, value }))).toEqual([
+      {
+        name: 'groups',
+        value: [
+          {
+            label: 'General',
+            shortcuts: [{ action: 'Open command palette', keys: ['Meta', 'K'] }],
+          },
+        ],
+      },
+    ]);
+  });
+
   test('a non-children snippet prop stays non-adjustable (skipped)', () => {
     const model = buildPlaygroundModel(
       manifest([{ name: 'header', control: { kind: 'snippet' }, bindable: false, optional: true }]),
@@ -238,6 +363,10 @@ describe('buildPlaygroundModel', () => {
   test.each([
     ['Autocomplete', 'autocomplete', '@lostgradient/cinder/autocomplete'],
     ['Spectrogram', 'spectrogram', '@lostgradient/cinder/spectrogram'],
+    ['Backdrop', 'backdrop', '@lostgradient/cinder/backdrop'],
+    ['Alert dialog', 'alert-dialog', '@lostgradient/cinder/alert-dialog'],
+    ['Confirm dialog', 'confirm-dialog', '@lostgradient/cinder/confirm-dialog'],
+    ['Command menu', 'command-menu', '@lostgradient/cinder/command-menu'],
   ])(
     'marks %s as example-only when behavior needs authored examples',
     (name, kebabName, importPath) => {

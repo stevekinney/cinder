@@ -200,6 +200,58 @@ test.describe('generated Playground accessibility', () => {
   }
 });
 
+test.describe('contract-specific Playground preview seeds', () => {
+  for (const [name, mountedSelector] of [
+    ['bar-chart', '.cinder-bar-chart'],
+    ['data-table', '.cinder-data-table'],
+    ['keyboard-shortcuts', '.cinder-keyboard-shortcuts'],
+  ] as const) {
+    test(`${name} mounts its contract-valid default preview without a console error`, async ({
+      page,
+    }) => {
+      const errors: string[] = [];
+      page.on('console', (message) => {
+        if (message.type() === 'error') errors.push(message.text());
+      });
+      page.on('pageerror', (error) => errors.push(error.message));
+
+      await page.goto(`/page/${name}?view=playground`, { waitUntil: 'load' });
+      const liveMount = page.locator('#playground-live-mount');
+      await expect(liveMount).toBeVisible();
+      await expect(liveMount.locator(mountedSelector)).toBeVisible();
+      expect(errors, `${name} preview errors`).toEqual([]);
+    });
+  }
+});
+
+test.describe('authored Playground preview fallbacks', () => {
+  for (const [name, visibleControl] of [
+    ['alert-dialog', 'Open alert dialog'],
+    ['backdrop', 'Show dimmed backdrop'],
+    ['confirm-dialog', 'Delete item'],
+  ] as const) {
+    test(`${name} shows its interactive example instead of an inert bare mount`, async ({
+      page,
+    }) => {
+      await page.goto(`/page/${name}?view=playground`, { waitUntil: 'load' });
+
+      await expect(page.getByText('Featured example', { exact: true })).toBeVisible();
+      await expect(page.getByRole('button', { name: visibleControl })).toBeVisible();
+      await expect(page.locator('#playground-live-mount')).toHaveCount(0);
+    });
+  }
+
+  test('command-menu shows its anchored interactive example instead of a bare mount', async ({
+    page,
+  }) => {
+    await page.goto('/page/command-menu?view=playground', { waitUntil: 'load' });
+
+    await expect(page.getByText('Featured example', { exact: true })).toBeVisible();
+    await expect(page.getByRole('textbox', { name: 'Notes' })).toBeVisible();
+    await expect(page.locator('#playground-live-mount')).toHaveCount(0);
+  });
+});
+
 test.describe('narrow documentation layout', () => {
   for (const name of [
     'autocomplete',
