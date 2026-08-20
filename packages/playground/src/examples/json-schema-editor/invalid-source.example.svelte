@@ -9,4 +9,4 @@
   const malformed = '{ "type": "not-a-real-type" }';
 </script>
 
-<JsonSchemaEditor id="invalid-jse" schema={malformed} />
+<JsonSchemaEditor id="invalid-jse" defaultSchema={malformed} />

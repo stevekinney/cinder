@@ -38,12 +38,19 @@ const schema = {
   metadata: {
     unsupportedProps: [
       {
+        name: 'defaultSchema',
+        reason: 'unknown-shape',
+        description: 'Omit `schema` to use this as the initial value of an uncontrolled editor.',
+      },
+      {
         name: 'onRevert',
         reason: 'function-or-snippet',
       },
       {
         name: 'onSchemaChange',
         reason: 'function-or-snippet',
+        description:
+          'Controlled editors must receive committed changes so the parent can update `schema`.',
       },
       {
         name: 'onValidate',
@@ -57,8 +64,8 @@ const schema = {
       {
         name: 'schema',
         reason: 'unknown-shape',
-        required: true,
-        description: 'The schema being edited. May be a string (JSON text) or pre-parsed value.',
+        description:
+          'Parent-owned schema. Requires `onSchemaChange`; do not combine with `defaultSchema`.',
       },
     ],
   },

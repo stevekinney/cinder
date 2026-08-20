@@ -344,11 +344,17 @@
     flex-wrap: wrap;
   }
 
+  .cinder-jse-json-view__code-block .cinder-code-block__viewport {
+    min-block-size: 20rem;
+  }
+
   textarea.cinder-jse-json-view__textarea {
     font-family: var(--cinder-font-mono);
     font-size: var(--cinder-text-sm);
     line-height: var(--cinder-leading-normal);
     min-height: 16rem;
+    background: light-dark(var(--cinder-surface-raised), var(--cinder-surface-inset));
+    border-radius: var(--cinder-radius-lg);
     /* Tab characters render as 2 spaces' worth — matches the canonical text we serialise. */
     tab-size: 2;
   }

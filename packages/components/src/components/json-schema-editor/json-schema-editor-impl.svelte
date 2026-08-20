@@ -2,37 +2,13 @@
   import type {
     JsonSchemaEditorChangeEvent,
     JsonSchemaEditorMode,
-    JsonSchemaEditorRevertEvent,
     JsonSchemaEditorView,
     JsonSchemaKnownDraft,
-    JsonSchemaValidationResult,
     JsonSchemaValue,
   } from './json-schema-editor-types.ts';
 
-  export type JsonSchemaEditorProps = {
-    /** Required for ARIA wiring. */
-    id: string;
-    /** The schema being edited. May be a string (JSON text) or pre-parsed value. */
-    schema: JsonSchemaValue | string;
-    /** Optional explicit baseline; defaults to the initial `schema`. */
-    original?: JsonSchemaValue | string;
-    /** Changing this triggers a full reset (history clears). */
-    schemaKey?: string;
-    /** Active view: form / json / diff. Bindable. */
-    view?: JsonSchemaEditorView;
-    /** Read-only mode disables all mutations. */
-    readonly?: boolean;
-    /** Maximum history entries (default 100). */
-    maxHistory?: number;
-    /** Force a draft override regardless of $schema. */
-    draftOverride?: JsonSchemaKnownDraft;
-    onSchemaChange?: (event: JsonSchemaEditorChangeEvent) => void;
-    onRevert?: (event: JsonSchemaEditorRevertEvent) => void;
-    onValidate?: (result: JsonSchemaValidationResult) => void;
-    class?: string;
-  };
-
   export type { JsonSchemaEditorMode, JsonSchemaEditorView };
+  export type { JsonSchemaEditorProps } from './json-schema-editor.types.ts';
 
   /**
    * Mac detection for keyboard-shortcut routing. `navigator.platform` is
@@ -70,11 +46,14 @@
   import FormView from './form-view.svelte';
   import { createEditorState } from './json-schema-editor-state.svelte.ts';
   import JsonSchemaToolbar from './json-schema-toolbar.svelte';
+  import type { JsonSchemaEditorProps } from './json-schema-editor.types.ts';
+  import { normaliseSchemaInput } from './json-schema-validator.ts';
   import JsonView from './json-view.svelte';
 
   let {
     id,
     schema,
+    defaultSchema,
     original,
     schemaKey,
     view = $bindable<JsonSchemaEditorView>('form'),
@@ -89,6 +68,8 @@
 
   const announcer = useAnnouncer();
 
+  const initialSchema = untrack<JsonSchemaValue | string>(() => schema ?? defaultSchema ?? {});
+
   // Build state container once. Schema reloads happen via `schemaKey`. Other
   // mutable props (readonly, draftOverride, callback handlers) are kept in
   // sync after mount via the $effects below — without that, parents passing
@@ -98,9 +79,9 @@
   // applied through the $effects below (readonly/draftOverride) and schemaKey.
   const stateOptions: Parameters<typeof createEditorState>[0] = untrack(() => {
     const options: Parameters<typeof createEditorState>[0] = {
-      schema,
+      schema: initialSchema,
       readonly,
-      onSchemaChange: (event) => onSchemaChange?.(event),
+      onSchemaChange: handleSchemaChange,
       onRevert: (event) => onRevert?.(event),
       onValidate: (result) => onValidate?.(result),
     };
@@ -115,6 +96,42 @@
   let enumDraftHistoryRevision = $state(0);
   const editorState = createEditorState(stateOptions);
   const toolbarValidationErrorCount = $derived(view === 'form' ? localValidationErrorCount : 0);
+
+  function schemaMatchesCommitted(input: JsonSchemaValue | string): boolean {
+    const normalised = normaliseSchemaInput(input);
+    return (
+      normalised.ok &&
+      !editorState.jsonDraftIsDirty &&
+      normalised.canonicalText === editorState.committedCanonicalText
+    );
+  }
+
+  function synchroniseControlledSchema(input: JsonSchemaValue | string) {
+    if (schemaMatchesCommitted(input)) return;
+    editorState.reload(input, original);
+    enumDrafts = {};
+  }
+
+  function handleSchemaChange(event: JsonSchemaEditorChangeEvent) {
+    onSchemaChange?.(event);
+    if (schema === undefined) return;
+
+    // A controlled parent normally assigns its next `schema` synchronously in
+    // the callback. If it declines the proposed value, restore its authoritative
+    // input after that callback has had a chance to run.
+    queueMicrotask(() => {
+      if (schema !== undefined && !schemaMatchesCommitted(schema)) {
+        synchroniseControlledSchema(schema);
+      }
+    });
+  }
+
+  let lastControlledSchema = untrack(() => schema);
+  $effect(() => {
+    if (schema === undefined || schema === lastControlledSchema) return;
+    lastControlledSchema = schema;
+    untrack(() => synchroniseControlledSchema(schema));
+  });
 
   // Sync `readonly` into the state container whenever the prop changes.
   // `setReadonly` only assigns the flag, so re-applying the construction-seeded
@@ -156,7 +173,7 @@
     if (schemaKey !== lastSchemaKey) {
       lastSchemaKey = schemaKey;
       untrack(() => {
-        editorState.reload(schema, original);
+        editorState.reload(schema ?? defaultSchema ?? {}, original);
         enumDrafts = {};
       });
       announcer.announce('Schema reloaded');

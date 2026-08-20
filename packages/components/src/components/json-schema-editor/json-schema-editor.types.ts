@@ -21,12 +21,9 @@ export type {
   JsonSchemaValue,
 } from './json-schema-editor-types.ts';
 
-/** Props for the JsonSchemaEditor component. */
-export type JsonSchemaEditorProps = {
+type JsonSchemaEditorCommonProps = {
   /** Required for ARIA wiring. */
   id: string;
-  /** The schema being edited. May be a string (JSON text) or pre-parsed value. */
-  schema: JsonSchemaValue | string;
   /** Optional explicit baseline; defaults to the initial `schema`. */
   original?: JsonSchemaValue | string;
   /** Changing this triggers a full reset (history clears). */
@@ -39,9 +36,32 @@ export type JsonSchemaEditorProps = {
   maxHistory?: number;
   /** Force a draft override regardless of $schema. */
   draftOverride?: JsonSchemaKnownDraft;
-  onSchemaChange?: (event: JsonSchemaEditorChangeEvent) => void;
   onRevert?: (event: JsonSchemaEditorRevertEvent) => void;
   onValidate?: (result: JsonSchemaValidationResult) => void;
   /** Additional class merged onto the `.cinder-jse` root element. */
   class?: string;
 };
+
+/** Parent-owned schema state. Every editor commit is reported to the parent. */
+type ControlledJsonSchemaEditorProps = {
+  /** Parent-owned schema. Requires `onSchemaChange`; do not combine with `defaultSchema`. */
+  schema: JsonSchemaValue | string;
+  /** Controlled editors must receive committed changes so the parent can update `schema`. */
+  onSchemaChange: (event: JsonSchemaEditorChangeEvent) => void;
+  /** Omit `schema` to use this as the initial value of an uncontrolled editor. */
+  defaultSchema?: never;
+};
+
+/** Component-owned schema state initialized once from `defaultSchema`. */
+type UncontrolledJsonSchemaEditorProps = {
+  /** Initial schema for an uncontrolled editor. Defaults to an empty schema. */
+  defaultSchema?: JsonSchemaValue | string;
+  /** `defaultSchema` is only an initial value; omit `schema` for local state ownership. */
+  schema?: never;
+  /** Observe committed changes without taking control of the schema value. */
+  onSchemaChange?: (event: JsonSchemaEditorChangeEvent) => void;
+};
+
+/** Props for the JsonSchemaEditor component. */
+export type JsonSchemaEditorProps = JsonSchemaEditorCommonProps &
+  (ControlledJsonSchemaEditorProps | UncontrolledJsonSchemaEditorProps);

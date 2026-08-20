@@ -14,6 +14,7 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
+import type { JsonSchemaEditorChangeEvent } from './json-schema-editor-types.ts';
 
 setupHappyDom();
 
@@ -150,7 +151,11 @@ describe('JsonSchemaEditor — Diff tab Badge indicator', () => {
 
   test('renders a Badge in the Diff tab only after a change is committed', async () => {
     render(JsonSchemaEditorImplementation, {
-      props: { id: 'jse-diff-badge', schema: { type: 'string' }, view: 'json' as const },
+      props: {
+        id: 'jse-diff-badge',
+        defaultSchema: { type: 'string' },
+        view: 'json' as const,
+      },
     });
     await flushEffects();
 
@@ -162,6 +167,7 @@ describe('JsonSchemaEditor — Diff tab Badge indicator', () => {
 
     // Commit a real edit through the JSON view (same sequence as the
     // 'Apply disables for an invalid draft...' test below).
+    await fireEvent.click(screen.getByRole('button', { name: 'Edit JSON' }));
     const textarea = screen.getByRole('textbox', { name: 'JSON' });
     await fireEvent.input(textarea, {
       target: { value: JSON.stringify({ type: 'string', title: 'Changed' }) },
@@ -187,7 +193,7 @@ describe('JsonSchemaEditor — Diff tab Badge indicator', () => {
     render(JsonSchemaEditorImplementation, {
       props: {
         id: 'jse-reorder-diff-badge',
-        schema: {
+        defaultSchema: {
           type: 'object',
           properties: { first: { type: 'string' }, second: { type: 'number' } },
         },
@@ -196,6 +202,7 @@ describe('JsonSchemaEditor — Diff tab Badge indicator', () => {
     });
     await flushEffects();
 
+    await fireEvent.click(screen.getByRole('button', { name: 'Edit JSON' }));
     const textarea = screen.getByRole('textbox', { name: 'JSON' });
     await fireEvent.input(textarea, {
       target: {
@@ -248,7 +255,7 @@ describe('JsonSchemaEditor — keyboard shortcuts and landmarks', () => {
     render(JsonSchemaEditorImplementation, {
       props: {
         id: 'jse-shortcuts',
-        schema: { type: 'object', title: 'Original' },
+        defaultSchema: { type: 'object', title: 'Original' },
         view: 'json' as const,
       },
     });
@@ -271,6 +278,7 @@ describe('JsonSchemaEditor — keyboard shortcuts and landmarks', () => {
     expect(undoButton?.hasAttribute('disabled')).toBe(true);
 
     // Commit a real edit through the JSON view so history records a step.
+    await fireEvent.click(screen.getByRole('button', { name: 'Edit JSON' }));
     const textarea = screen.getByRole('textbox', { name: 'JSON' });
     await fireEvent.input(textarea, {
       target: { value: JSON.stringify({ type: 'object', title: 'Changed' }) },
@@ -366,10 +374,15 @@ describe('JsonSchemaEditor — JSON view draft validity', () => {
   // is immediately followed by an invalid one.
   test('Apply disables for an invalid draft typed right after a valid one', async () => {
     render(JsonSchemaEditorImplementation, {
-      props: { id: 'jse-draft-validity', schema: { type: 'string' }, view: 'json' as const },
+      props: {
+        id: 'jse-draft-validity',
+        defaultSchema: { type: 'string' },
+        view: 'json' as const,
+      },
     });
     await flushEffects();
 
+    await fireEvent.click(screen.getByRole('button', { name: 'Edit JSON' }));
     const textarea = screen.getByRole('textbox', { name: 'JSON' });
 
     await fireEvent.input(textarea, { target: { value: '{"type":"number"}' } });
@@ -382,5 +395,66 @@ describe('JsonSchemaEditor — JSON view draft validity', () => {
     await fireEvent.input(textarea, { target: { value: '{"type":"not-a-real-type"}' } });
     await flushEffects();
     expect(applyButton.hasAttribute('disabled')).toBe(true);
+  });
+});
+
+describe('JsonSchemaEditor — controlled and uncontrolled schema inputs', () => {
+  afterEach(() => cleanup());
+
+  function flushEffects(): Promise<void> {
+    return new Promise<void>((resolve) => setTimeout(resolve, 0));
+  }
+
+  test('uses defaultSchema as an uncontrolled seed and exposes an editable textarea only after Edit JSON', async () => {
+    render(JsonSchemaEditorImplementation, {
+      props: {
+        id: 'jse-uncontrolled',
+        defaultSchema: { type: 'string' },
+        view: 'json' as const,
+      },
+    });
+    await flushEffects();
+
+    const region = screen.getByRole('region', { name: 'JSON Schema editor' });
+    expect(region.querySelector('.cinder-code-block')?.textContent).toContain('"type": "string"');
+    expect(screen.queryByRole('textbox', { name: 'JSON' })).toBeNull();
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Edit JSON' }));
+    const textarea = screen.getByRole('textbox', { name: 'JSON' });
+    expect((textarea as HTMLTextAreaElement).value).toBe('{\n  "type": "string"\n}');
+  });
+
+  test('emits controlled edits and synchronizes later parent schema updates', async () => {
+    const changes: string[] = [];
+    const { rerender } = render(JsonSchemaEditorImplementation, {
+      props: {
+        id: 'jse-controlled',
+        schema: { type: 'string' },
+        view: 'json' as const,
+        onSchemaChange: (event: JsonSchemaEditorChangeEvent) => changes.push(event.jsonString),
+      },
+    });
+    await flushEffects();
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Edit JSON' }));
+    const textarea = screen.getByRole('textbox', { name: 'JSON' });
+    await fireEvent.input(textarea, { target: { value: '{"type":"number"}' } });
+    await flushEffects();
+    await fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
+    await flushEffects();
+
+    expect(changes).toEqual(['{\n  "type": "number"\n}']);
+
+    await rerender({
+      id: 'jse-controlled',
+      schema: { type: 'boolean' },
+      view: 'json' as const,
+      onSchemaChange: (event: JsonSchemaEditorChangeEvent) => changes.push(event.jsonString),
+    });
+    await flushEffects();
+
+    expect((screen.getByRole('textbox', { name: 'JSON' }) as HTMLTextAreaElement).value).toBe(
+      '{\n  "type": "boolean"\n}',
+    );
   });
 });

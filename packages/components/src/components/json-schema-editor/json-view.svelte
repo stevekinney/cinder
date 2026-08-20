@@ -14,6 +14,7 @@
   import Alert from '../alert/alert.svelte';
   import Badge from '../badge/badge.svelte';
   import Button from '../button/button.svelte';
+  import CodeBlock from '../code-block/code-block.svelte';
   import Textarea from '../textarea/textarea.svelte';
 
   import type { JsonSchemaValidationError } from './json-schema-editor-types.ts';
@@ -81,36 +82,58 @@
   );
 
   const canDiscard = $derived(editorState.jsonDraftIsDirty && !editorState.readonly);
+  let jsonEditing = $state(false);
+  const editable = $derived(
+    !editorState.readonly && (jsonEditing || editorState.committedSchema === null),
+  );
+  const displayedJson = $derived(
+    editorState.committedSchema === null
+      ? editorState.jsonDraftText
+      : editorState.committedCanonicalText,
+  );
+
+  function discardDraft() {
+    editorState.discardJsonDraft();
+    jsonEditing = false;
+  }
 </script>
 
 <div class={classNames('cinder-jse-json-view', className)}>
   <div class="cinder-jse-json-view__toolbar">
-    {#if editorState.jsonDraftIsDirty}
+    {#if editable && editorState.jsonDraftIsDirty}
       <Badge variant="warning">Draft modified — Apply to commit</Badge>
     {/if}
-    <Button variant="primary" size="sm" disabled={!canApply} onclick={() => void applyDraft()}>
-      Apply
-    </Button>
-    <Button
-      variant="secondary"
-      size="sm"
-      disabled={!canDiscard}
-      onclick={() => editorState.discardJsonDraft()}
-    >
-      Discard
-    </Button>
+    {#if editable}
+      <Button variant="primary" size="sm" disabled={!canApply} onclick={() => void applyDraft()}>
+        Apply
+      </Button>
+      <Button variant="secondary" size="sm" disabled={!canDiscard} onclick={discardDraft}>
+        Discard
+      </Button>
+    {:else if !editorState.readonly}
+      <Button variant="secondary" size="sm" onclick={() => (jsonEditing = true)}>Edit JSON</Button>
+    {/if}
   </div>
 
-  <Textarea
-    id={`${idPrefix}-textarea`}
-    label="JSON"
-    value={editorState.jsonDraftText}
-    disabled={editorState.readonly}
-    rows={20}
-    class="cinder-jse-json-view__textarea"
-    oninput={(event: Event) =>
-      editorState.setJsonDraftText((event.target as HTMLTextAreaElement).value)}
-  />
+  {#if editable}
+    <Textarea
+      id={`${idPrefix}-textarea`}
+      label="JSON"
+      value={editorState.jsonDraftText}
+      disabled={editorState.readonly}
+      rows={20}
+      class="cinder-jse-json-view__textarea"
+      oninput={(event: Event) =>
+        editorState.setJsonDraftText((event.target as HTMLTextAreaElement).value)}
+    />
+  {:else}
+    <CodeBlock
+      code={displayedJson}
+      language="json"
+      languageLabelVisible={false}
+      class="cinder-jse-json-view__code-block"
+    />
+  {/if}
 
   {#if draftErrorMessage}
     <Alert variant="danger">
