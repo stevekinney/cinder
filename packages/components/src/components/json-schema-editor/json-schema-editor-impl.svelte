@@ -191,8 +191,12 @@
     // reject any later local commit so it cannot overwrite that request.
   }
 
+  // Leave the sentinel empty until the editor is actually controlled. A
+  // schema-only editor owns its local state; if a parent later supplies the
+  // request handler, the first controlled effect must reconcile that state to
+  // the parent's schema even when the schema prop itself did not change.
   let lastControlledSchemaText = untrack(() =>
-    schema === undefined ? undefined : controlledSchemaText(schema),
+    controlled && schema !== undefined ? controlledSchemaText(schema) : undefined,
   );
   $effect(() => {
     if (!controlled || schema === undefined) {
@@ -246,7 +250,8 @@
       lastSchemaKey = schemaKey;
       untrack(() => {
         discardPendingControlledChange();
-        lastControlledSchemaText = schema === undefined ? undefined : controlledSchemaText(schema);
+        lastControlledSchemaText =
+          controlled && schema !== undefined ? controlledSchemaText(schema) : undefined;
         editorState.reload(schema ?? defaultSchema ?? {}, original);
         enumDrafts = {};
       });

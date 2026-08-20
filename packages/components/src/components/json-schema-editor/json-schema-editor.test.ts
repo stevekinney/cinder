@@ -446,7 +446,7 @@ describe('JsonSchemaEditor — controlled and uncontrolled schema inputs', () =>
   });
 
   test('treats schema without a request handler as a locally managed seed', async () => {
-    render(JsonSchemaEditorImplementation, {
+    const { rerender } = render(JsonSchemaEditorImplementation, {
       props: {
         id: 'jse-schema-seed',
         schema: { type: 'string' },
@@ -465,6 +465,18 @@ describe('JsonSchemaEditor — controlled and uncontrolled schema inputs', () =>
 
     expect(screen.getByRole('region', { name: 'JSON Schema editor' }).textContent).toContain(
       '"type": "number"',
+    );
+
+    await rerender({
+      id: 'jse-schema-seed',
+      schema: { type: 'string' },
+      view: 'json' as const,
+      onValueChangeRequest: () => undefined,
+    });
+    await flushEffects();
+
+    expect(screen.getByRole('region', { name: 'JSON Schema editor' }).textContent).toContain(
+      '"type": "string"',
     );
   });
 
