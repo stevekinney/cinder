@@ -1,7 +1,7 @@
 /**
  * Table-driven proof that every row of `playground-server.ts`'s `ROUTES`
  * array is actually wired into `matchRoute` — the mechanical evidence that
- * the route table matches the 18-row table `playground-server.ts`'s own
+ * the route table matches the 19-row table `playground-server.ts`'s own
  * module doc comment documents, not just that the existing behavioral route
  * tests still happen to pass.
  *
@@ -19,6 +19,7 @@ function req(pathname: string): Request {
 }
 
 const SAMPLE_PATHNAME_BY_ROW_INDEX: readonly string[] = [
+  '/social.png',
   '/ping',
   '/ready',
   '/events',
@@ -40,8 +41,8 @@ const SAMPLE_PATHNAME_BY_ROW_INDEX: readonly string[] = [
 ];
 
 describe('ROUTES table', () => {
-  it('has exactly 18 entries (17 distinct URL patterns; /styles.css and /styles/* share one handler function)', () => {
-    expect(ROUTES).toHaveLength(18);
+  it('has exactly 19 entries (18 distinct URL patterns; /styles.css and /styles/* share one handler function)', () => {
+    expect(ROUTES).toHaveLength(19);
   });
 
   it.each(SAMPLE_PATHNAME_BY_ROW_INDEX.map((pathname, index) => [index, pathname] as const))(
@@ -55,7 +56,7 @@ describe('ROUTES table', () => {
 
   it('tries patterns in order: /styles.css matches the exact-match row, not the /styles/* wildcard', () => {
     const result = matchRoute(ROUTES, req('/styles.css'));
-    expect(result?.route.pattern).toBe(ROUTES[3]!.pattern); // row 4 (0-indexed: 3)
-    expect(result?.route.pattern).not.toBe(ROUTES[4]!.pattern); // row 5 (0-indexed: 4)
+    expect(result?.route.pattern).toBe(ROUTES[4]!.pattern); // row 5 (0-indexed: 4)
+    expect(result?.route.pattern).not.toBe(ROUTES[5]!.pattern); // row 6 (0-indexed: 5)
   });
 });

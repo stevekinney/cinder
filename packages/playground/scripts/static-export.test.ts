@@ -6,11 +6,54 @@ import { join } from 'node:path';
 import { describe, expect, test } from 'bun:test';
 
 import {
+  assertDocumentationMetadata,
   assertDocumentationPagesArePreRendered,
   assertExactlyOneH1,
+  assertSitemapMatchesRoutes,
   assetUrlsFromHtml,
+  requireProductionBaseUrl,
   runStaticExport,
 } from './static-export.ts';
+
+test('requires a clean absolute HTTPS base URL for the deploy build', () => {
+  expect(() => requireProductionBaseUrl('')).toThrow('absolute HTTPS URL');
+  expect(() => requireProductionBaseUrl('http://cinder.website')).toThrow('absolute HTTPS origin');
+  expect(() => requireProductionBaseUrl('https://cinder.website/docs')).toThrow('without a path');
+  expect(requireProductionBaseUrl('https://cinder.website/')).toBe('https://cinder.website');
+});
+
+test('rejects sitemap route drift and duplicate URLs', () => {
+  const baseUrl = 'https://cinder.website';
+  const routes = ['/', '/page/button'];
+  const valid = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset><url><loc>https://cinder.website/</loc></url><url><loc>https://cinder.website/page/button</loc></url></urlset>`;
+  expect(() => assertSitemapMatchesRoutes(valid, baseUrl, routes)).not.toThrow();
+  expect(() =>
+    assertSitemapMatchesRoutes(valid.replace('/page/button', '/page/card'), baseUrl, routes),
+  ).toThrow('missing');
+});
+
+test('rejects duplicate canonical tags and malformed JSON-LD', () => {
+  const html = [
+    '<link rel="canonical" href="https://cinder.website/page/button" />',
+    '<meta property="og:url" content="https://cinder.website/page/button" />',
+    '<meta property="og:image" content="https://cinder.website/social.png" />',
+    '<meta name="twitter:card" content="summary_large_image" />',
+    '<meta name="twitter:title" content="Button" />',
+    '<meta name="twitter:description" content="Button docs" />',
+    '<script type="application/ld+json">{"@context":"https://schema.org"}</script>',
+  ].join('');
+  expect(() =>
+    assertDocumentationMetadata('button', html, 'https://cinder.website', '/page/button'),
+  ).not.toThrow();
+  expect(() =>
+    assertDocumentationMetadata(
+      'button',
+      `${html}<link rel="canonical" href="https://cinder.website/page/button" />`,
+      'https://cinder.website',
+      '/page/button',
+    ),
+  ).toThrow('one canonical');
+});
 
 test('HTML asset discovery normalizes query-configured routes to one static path', () => {
   expect(assetUrlsFromHtml('<iframe src="/page/button?preview=1"></iframe>')).toEqual([
@@ -89,7 +132,20 @@ describe('static export', () => {
       expect(indexHtml).not.toContain('http-equiv="refresh"');
       expect(rendered.has('/shell-bundle/shell.js')).toBe(true);
       expect(indexHtml).not.toContain('data-canonical-documentation');
+      expect(indexHtml).toContain('<link rel="canonical" href="https://playground.local/" />');
+      expect(indexHtml).toContain('<script type="application/ld+json">');
       expect(rendered.has('/styles/all.css')).toBe(true);
+      expect(rendered.has('/social.png')).toBe(true);
+      expect(rendered.has('/sitemap.xml')).toBe(true);
+      expect(rendered.has('/robots.txt')).toBe(true);
+      const socialImage = new Uint8Array(await readFile(join(outputDirectory, 'social.png')));
+      expect([...socialImage.subarray(0, 8)]).toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
+      await expect(readFile(join(outputDirectory, 'sitemap.xml'), 'utf8')).resolves.toContain(
+        'https://playground.local/page/button',
+      );
+      await expect(readFile(join(outputDirectory, 'robots.txt'), 'utf8')).resolves.toContain(
+        'Sitemap: https://playground.local/sitemap.xml',
+      );
     } finally {
       await rm(outputDirectory, { recursive: true, force: true });
     }

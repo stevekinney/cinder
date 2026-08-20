@@ -11,7 +11,7 @@
 
 import { describe, expect, it } from 'bun:test';
 
-import { depictHighlighter } from './depict-highlighter.ts';
+import { depictHighlighter, depictInlineHighlighter } from './depict-highlighter.ts';
 
 describe('depictHighlighter', () => {
   it('emits depict CSS variables instead of github-light hex colors', async () => {
@@ -41,4 +41,17 @@ describe('depictHighlighter', () => {
     const html = await depictHighlighter('SELECT 1;', 'sql');
     expect(html).not.toContain('shiki-plaintext');
   }, 30_000);
+});
+
+describe('depictInlineHighlighter', () => {
+  it('keeps the depict token markup but removes the block-only pre/code frame', async () => {
+    const html = await depictInlineHighlighter(
+      "import { Button } from '@lostgradient/cinder/button';",
+      'ts',
+    );
+    expect(html).toContain('var(--syntax-keyword)');
+    expect(html).toContain('Button');
+    expect(html).not.toContain('<pre');
+    expect(html).not.toContain('<code');
+  });
 });

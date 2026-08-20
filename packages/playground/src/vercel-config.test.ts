@@ -106,4 +106,35 @@ describe('vercel.json', () => {
     const legacy = Bun.file(join(PLAYGROUND_ROOT, 'src', 'server.ts'));
     expect(await legacy.exists()).toBe(false);
   });
+
+  it('applies the static-site security policy and immutable social-card cache policy', async () => {
+    const config = await readVercelConfig();
+    const headers = config['headers'];
+    expect(Array.isArray(headers)).toBe(true);
+    const headerRules = headers as Array<{
+      source?: string;
+      headers?: Array<{ key?: string; value?: string }>;
+    }>;
+    const universal = headerRules.find((rule) => rule.source === '/(.*)');
+    const social = headerRules.find((rule) => rule.source === '/social.png');
+    const policy = universal?.headers?.find(
+      (header) => header.key === 'Content-Security-Policy',
+    )?.value;
+
+    expect(policy).toContain("default-src 'self'");
+    expect(policy).toContain("object-src 'none'");
+    expect(policy).not.toContain('unsafe-eval');
+    expect(universal?.headers).toContainEqual({ key: 'X-Content-Type-Options', value: 'nosniff' });
+    expect(universal?.headers).toContainEqual({
+      key: 'Referrer-Policy',
+      value: 'strict-origin-when-cross-origin',
+    });
+    expect(
+      universal?.headers?.find((header) => header.key === 'Permissions-Policy')?.value,
+    ).toContain('camera=()');
+    expect(social?.headers).toContainEqual({
+      key: 'Cache-Control',
+      value: 'public, max-age=31536000, immutable',
+    });
+  });
 });

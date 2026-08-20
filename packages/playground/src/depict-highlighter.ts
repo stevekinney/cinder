@@ -46,3 +46,13 @@ export const depictHighlighter: Highlighter = shikiHighlighter({
     depict: async () => ({ default: CSS_VARIABLE_THEME }),
   },
 });
+
+/**
+ * Highlight a single inline code surface with the same Shiki pipeline without
+ * nesting the block highlighter's `<pre><code>` frame inside a text span.
+ */
+export async function depictInlineHighlighter(code: string, language: string): Promise<string> {
+  const html = await depictHighlighter(code, language);
+  const match = /<code>([\s\S]*)<\/code>/.exec(html);
+  return match?.[1] ?? '';
+}

@@ -46,13 +46,65 @@ const ORIGIN = 'https://playground.local';
 type StaticExportContext = {
   outputDirectory: string;
   rendered: Set<string>;
+  origin: string;
 };
 
 export type StaticExportOptions = {
   outputDirectory?: string;
   sidebarComponents?: string[];
   allComponents?: string[];
+  /** Test-only override. Real exports must supply PLAYGROUND_BASE_URL. */
+  baseUrl?: string;
 };
+
+/**
+ * The exported site has no request-time server that can repair a bad canonical
+ * origin, so reject anything except a clean HTTPS origin before writing files.
+ */
+export function requireProductionBaseUrl(value = Bun.env['PLAYGROUND_BASE_URL'] ?? ''): string {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error('[static-export] PLAYGROUND_BASE_URL must be an absolute HTTPS URL');
+  }
+  if (url.protocol !== 'https:' || url.pathname !== '/' || url.search !== '' || url.hash !== '') {
+    throw new Error(
+      '[static-export] PLAYGROUND_BASE_URL must be an absolute HTTPS origin without a path, query, or fragment',
+    );
+  }
+  return url.origin;
+}
+
+function sitemapXml(baseUrl: string, routes: readonly string[]): string {
+  const urls = routes.map((route) => `${baseUrl}${route}`);
+  if (new Set(urls).size !== urls.length) {
+    throw new Error('[static-export] sitemap route inventory contains duplicate URLs');
+  }
+  if (urls.some((url) => !url.startsWith('https://') || new URL(url).search !== '')) {
+    throw new Error('[static-export] sitemap must contain clean absolute HTTPS URLs only');
+  }
+  const entries = urls.map((url) => `  <url><loc>${url}</loc></url>`).join('\n');
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${entries}\n</urlset>\n`;
+}
+
+export function assertSitemapMatchesRoutes(
+  xml: string,
+  baseUrl: string,
+  routes: readonly string[],
+): void {
+  if (!xml.startsWith('<?xml version="1.0" encoding="UTF-8"?>')) {
+    throw new Error('[static-export] sitemap must be UTF-8 XML');
+  }
+  const actual = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]!);
+  const expected = routes.map((route) => `${baseUrl}${route}`);
+  if (actual.length !== expected.length || new Set(actual).size !== actual.length) {
+    throw new Error('[static-export] sitemap route count is missing or duplicated');
+  }
+  for (const url of expected) {
+    if (!actual.includes(url)) throw new Error(`[static-export] sitemap is missing ${url}`);
+  }
+}
 
 /**
  * Map a request pathname to the static file path under `public/`. A path with
@@ -75,8 +127,8 @@ function outputPathFor(pathname: string, isHtml: boolean, outputDirectory: strin
 
 /**
  * Render one route through `handleRequest` and write the body to `public/`.
- * Returns the response body as text so callers can scrape it for further URLs
- * to render (HTML references its bundles/CSS; JS bundles import their chunks).
+ * Returns textual response bodies so callers can scrape HTML references and
+ * JS/CSS imports. Binary assets are copied byte-for-byte and return null.
  * Non-2xx/3xx responses throw — a broken route must fail the build, not ship a
  * 404 page as if it were content.
  */
@@ -85,7 +137,7 @@ async function render(pathname: string, context: StaticExportContext): Promise<s
   if (rendered.has(pathname)) return null;
   rendered.add(pathname);
 
-  const response = await handleRequest(new Request(`${ORIGIN}${pathname}`));
+  const response = await handleRequest(new Request(`${context.origin}${pathname}`));
   // Redirects are materialized as a meta-refresh index.html so the static host
   // has something to serve at that path.
   if (response.status >= 300 && response.status < 400) {
@@ -97,9 +149,21 @@ async function render(pathname: string, context: StaticExportContext): Promise<s
   if (!response.ok) {
     throw new Error(`[static-export] ${pathname} → HTTP ${response.status} (expected 2xx)`);
   }
-  const isHtml = (response.headers.get('Content-Type') ?? '').includes('text/html');
+  const contentType = response.headers.get('Content-Type') ?? '';
+  const isHtml = contentType.includes('text/html');
+  const isText =
+    contentType.startsWith('text/') ||
+    contentType.includes('javascript') ||
+    contentType.includes('json') ||
+    contentType.includes('xml');
+  const outputPath = outputPathFor(pathname, isHtml, outputDirectory);
+  if (!isText) {
+    await mkdir(dirname(outputPath), { recursive: true });
+    await Bun.write(outputPath, await response.arrayBuffer());
+    return null;
+  }
   const body = await response.text();
-  await writeFile(outputPathFor(pathname, isHtml, outputDirectory), body);
+  await writeFile(outputPath, body);
   return body;
 }
 
@@ -250,9 +314,13 @@ export async function runStaticExport(options: StaticExportOptions = {}): Promis
   const start = Date.now();
   process.stdout.write('[static-export] rendering playground to public/…\n');
   const outputDirectory = options.outputDirectory ?? OUTPUT_DIRECTORY;
+  // Unit tests invoke the function directly and do not have a deployment
+  // origin. The executable build path below always calls requireProductionBaseUrl.
+  const baseUrl = options.baseUrl ?? Bun.env['PLAYGROUND_BASE_URL'] ?? 'https://playground.local';
   const context: StaticExportContext = {
     outputDirectory,
     rendered: new Set<string>(),
+    origin: baseUrl,
   };
 
   /*
@@ -286,6 +354,7 @@ export async function runStaticExport(options: StaticExportOptions = {}): Promis
   const rootHtml = await render('/', context);
   if (rootHtml !== null) {
     assertExactlyOneH1('landing page', rootHtml);
+    assertDocumentationMetadata('landing page', rootHtml, baseUrl, '/');
     collect(rootHtml);
   }
   await renderJsBundleGraph('/shell-bundle/shell.js', context);
@@ -302,6 +371,7 @@ export async function runStaticExport(options: StaticExportOptions = {}): Promis
    * by the `/c/<name>` loop, which is gone.
    */
   const documentationRoutes = [...new Set([...allComponents, ...sidebarRoutes])];
+  const canonicalRoutes = ['/', ...documentationRoutes.map((name) => `/page/${name}`)];
 
   // Per-component: documentation page, page-bundle graph, manifest, sources.
   const documentationPages: { name: string; html: string }[] = [];
@@ -310,6 +380,7 @@ export async function runStaticExport(options: StaticExportOptions = {}): Promis
     if (pageHtml !== null) {
       collect(pageHtml);
       documentationPages.push({ name, html: pageHtml });
+      assertDocumentationMetadata(name, pageHtml, baseUrl, `/page/${name}`);
     }
     await renderJsBundleGraph(`/page-bundle/${name}.js`, context);
     await render(`/api/manifest/${name}`, context);
@@ -336,6 +407,21 @@ export async function runStaticExport(options: StaticExportOptions = {}): Promis
     else await render(url, context);
   }
 
+  // Metadata points at this image but it is not an HTML subresource, so the
+  // asset crawler cannot discover it. Materialize it explicitly and fail the
+  // build if a shared social card ever disappears.
+  await render('/social.png', context);
+
+  const sitemap = sitemapXml(baseUrl, canonicalRoutes);
+  assertSitemapMatchesRoutes(sitemap, baseUrl, canonicalRoutes);
+  await writeFile(join(outputDirectory, 'sitemap.xml'), sitemap);
+  await writeFile(
+    join(outputDirectory, 'robots.txt'),
+    `User-agent: *\nAllow: /\nSitemap: ${baseUrl}/sitemap.xml\n`,
+  );
+  context.rendered.add('/sitemap.xml');
+  context.rendered.add('/robots.txt');
+
   assertDocumentationPagesArePreRendered(documentationPages);
 
   const seconds = ((Date.now() - start) / 1000).toFixed(1);
@@ -359,6 +445,48 @@ const EMPTY_MOUNT_ROOT = '<div id="app"></div>';
 export function assertExactlyOneH1(name: string, html: string): void {
   const count = html.match(/<h1\b/gi)?.length ?? 0;
   if (count !== 1) throw new Error(`${name}: expected exactly one h1, found ${count}`);
+}
+
+/** Verify every static document retains one complete route-specific SEO contract. */
+export function assertDocumentationMetadata(
+  name: string,
+  html: string,
+  baseUrl: string,
+  canonicalPath: string,
+): void {
+  const canonical = `${baseUrl}${canonicalPath}`;
+  const required = [
+    `<link rel="canonical" href="${canonical}" />`,
+    `<meta property="og:url" content="${canonical}" />`,
+    `<meta property="og:image" content="${baseUrl}/social.png" />`,
+    '<meta name="twitter:card" content="summary_large_image" />',
+    '<meta name="twitter:title" content="',
+    '<meta name="twitter:description" content="',
+    '<script type="application/ld+json">',
+  ];
+  const missing = required.filter((value) => !html.includes(value));
+  if (missing.length > 0) {
+    throw new Error(`[static-export] ${name}: missing metadata ${missing.join(', ')}`);
+  }
+  const canonicalCount = html.split('<link rel="canonical"').length - 1;
+  if (canonicalCount !== 1) {
+    throw new Error(`[static-export] ${name}: expected one canonical URL, found ${canonicalCount}`);
+  }
+  const jsonLdMatches = [
+    ...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g),
+  ];
+  if (jsonLdMatches.length !== 1) {
+    throw new Error(
+      `[static-export] ${name}: expected one JSON-LD block, found ${jsonLdMatches.length}`,
+    );
+  }
+  try {
+    const parsed: unknown = JSON.parse(jsonLdMatches[0]![1]!);
+    if (typeof parsed !== 'object' || parsed === null) throw new Error('not an object');
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new Error(`[static-export] ${name}: invalid JSON-LD: ${detail}`);
+  }
 }
 
 /**
@@ -409,7 +537,8 @@ export function assertDocumentationPagesArePreRendered(
 
 // Fire-and-forget: surface any failure as a non-zero exit so the build fails.
 if (import.meta.main) {
-  void runStaticExport().catch((error: unknown) => {
+  const baseUrl = requireProductionBaseUrl();
+  void runStaticExport({ baseUrl }).catch((error: unknown) => {
     console.error(error);
     process.exit(1);
   });
