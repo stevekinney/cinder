@@ -559,7 +559,7 @@ describe('component-page single-scroll layout', () => {
     await tick();
   });
 
-  test('keeps the props panel for components that require authored examples', async () => {
+  test('hides inert props for components that require authored examples', async () => {
     const exampleOnly = baseFixture();
     exampleOnly.component.id = 'autocomplete';
     exampleOnly.component.name = 'Autocomplete';
@@ -605,8 +605,10 @@ describe('component-page single-scroll layout', () => {
     const noteText = play?.querySelector('.dx-play__note')?.textContent ?? '';
     expect(noteText).toContain('documented through its examples');
     expect(noteText).not.toContain('no adjustable props');
-    // The adjustable props it DOES have keep their controls.
-    expect(play?.querySelector('.dx-play__controls')).not.toBeNull();
+    // Their controls would only mutate hidden local state: the featured example
+    // remains authoritative, so the panel does not present inert inputs.
+    expect(play?.querySelector('.dx-play__controls')).toBeNull();
+    expect(screen.queryByRole('group', { name: 'Stage width' })).toBeNull();
 
     unmount();
     await tick();

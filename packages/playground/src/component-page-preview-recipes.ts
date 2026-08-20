@@ -33,9 +33,15 @@ export type PreviewRecipe = {
   props?: Readonly<Record<string, unknown>>;
   /**
    * Raw HTML mounted as the component's `children`, replacing the synthesized
-   * name-as-text seed.
+   * name-as-text seed. `component-page.svelte` renders it through a compiled
+   * snippet so each element remains a direct child of the live component.
    */
   childrenHtml?: string;
+  /**
+   * Contract-valid Svelte source for the generated copyable snippet's children.
+   * It mirrors `childrenHtml` when the component needs structured content.
+   */
+  snippetChildren?: string;
   /**
    * Raw HTML rendered as a SIBLING of the component inside the stage, before it.
    * Used to give a styling primitive something to be compared against.
@@ -82,6 +88,8 @@ export const PREVIEW_RECIPES: Readonly<Record<string, PreviewRecipe>> = {
     props: { label: 'Announcements' },
     childrenHtml:
       '<span style="font-weight:600">New dark theme tokens are live</span><span aria-hidden="true">•</span><span>v0.4.1 now available</span><span aria-hidden="true">•</span><span>Try the updated component decision aid</span>',
+    snippetChildren:
+      '{#snippet children()}\n  <span style="font-weight: 600;">New dark theme tokens are live</span>\n  <span>•</span>\n  <span>v0.4.1 now available</span>\n  <span>•</span>\n  <span>Try the updated component decision aid</span>\n{/snippet}',
   },
   surface: {
     // A tone is only readable against another tone, and the component itself

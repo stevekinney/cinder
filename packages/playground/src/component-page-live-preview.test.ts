@@ -39,6 +39,7 @@
  * `globalThis` before `@testing-library/svelte` loads.
  */
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { createRawSnippet } from 'svelte';
 
 import { setupHappyDom } from '../../components/src/test/happy-dom.ts';
 import {
@@ -99,10 +100,11 @@ describe('toMountProps', () => {
   });
 
   test('supplies Marquee with an accessible label and rendered content', () => {
-    const props = toMountProps([], {}, [], previewRecipeFor('marquee'));
+    const recipeChildren = createRawSnippet(() => ({ render: () => '<span>Announcement</span>' }));
+    const props = toMountProps([], {}, [], previewRecipeFor('marquee'), recipeChildren);
 
     expect(props).toMatchObject({ label: 'Announcements' });
-    expect(typeof props['children']).toBe('function');
+    expect(props['children']).toBe(recipeChildren);
   });
 });
 

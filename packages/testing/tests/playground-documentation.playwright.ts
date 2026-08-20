@@ -353,6 +353,17 @@ test('marquee keeps its generated live preview', async ({ page }) => {
 
   await expect(page.getByText('Live preview', { exact: true })).toBeVisible();
   await expect(page.locator('#playground-live-mount')).toBeVisible();
+  const generatedSnippet = page.locator('.dx-playground__panel .cinder-code-block').first();
+  await expect(generatedSnippet).toContainText('<Marquee label="Announcements">');
+  await expect(generatedSnippet).toContainText('{#snippet children()}');
+});
+
+test('masonry keeps its recipe items as direct component children', async ({ page }) => {
+  await page.goto('/page/masonry?view=playground', { waitUntil: 'load' });
+
+  await expect(page.locator('#playground-live-mount .cinder-masonry > .dx-recipe-box')).toHaveCount(
+    3,
+  );
 });
 
 test.describe('mobile view switching on component pages', () => {

@@ -674,6 +674,20 @@ describe('buildSnippet', () => {
     ).toBe('<Progress ariaLabel="Upload progress" />');
   });
 
+  test('keeps recipe children in the generated snippet when no text control exists', () => {
+    expect(
+      buildSnippet(
+        'Marquee',
+        [],
+        {},
+        [],
+        undefined,
+        { label: 'Announcements' },
+        '{#snippet children()}Announcement{/snippet}',
+      ),
+    ).toBe('<Marquee label="Announcements">{#snippet children()}Announcement{/snippet}</Marquee>');
+  });
+
   test('renders string attributes and stacks multiple onto separate lines', () => {
     expect(buildSnippet('Accordion', controls, { multiple: true, size: 'sm' })).toBe(
       '<Accordion\n  multiple\n  size="sm"\n/>',

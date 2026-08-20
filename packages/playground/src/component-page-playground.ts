@@ -608,6 +608,7 @@ export function buildSnippet(
   seeds: readonly PlaygroundSeed[] = [],
   importPath?: string,
   baselineProps: Readonly<Record<string, unknown>> = {},
+  baselineChildren?: string,
 ): string {
   // The synthesized `children` control renders as element CONTENT, not an
   // attribute, so it is partitioned out of the attribute list.
@@ -657,9 +658,11 @@ export function buildSnippet(
 
   // With children content, emit an open/close pair so the snippet copy-pastes as
   // a real labelled instance; otherwise keep the minimal self-closing form.
+  const elementChildren =
+    childrenText !== '' ? escapeSnippetText(childrenText) : (baselineChildren ?? '');
   const element =
-    childrenText !== ''
-      ? `<${exportName}${attributePart}>${escapeSnippetText(childrenText)}</${exportName}>`
+    elementChildren !== ''
+      ? `<${exportName}${attributePart}>${elementChildren}</${exportName}>`
       : attributes.length > 1
         ? `<${exportName}${attributePart}/>`
         : `<${exportName}${attributePart} />`;

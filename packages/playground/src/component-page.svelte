@@ -613,6 +613,7 @@
           playgroundModel.seeds,
           documentation.propsManifest.importPath,
           previewRecipe?.props,
+          previewRecipe?.snippetChildren,
         ),
   );
   /**
@@ -630,6 +631,9 @@
    */
   const canGenerateFromProps = $derived(
     !playgroundModel.hasUnsatisfiedRequired && !playgroundModel.requiresExamplePlayground,
+  );
+  const hasGeneratedControls = $derived(
+    canGenerateFromProps && playgroundModel.controls.length > 0,
   );
 
   /**
@@ -1063,15 +1067,13 @@
                 <!-- Stage controls. Width simulation and focus mode used to live on
                      the shell's top bar and act on an iframe; they now sit with the
                      stage they resize, and work by constraining a plain container. -->
-                {#if playgroundModel.controls.length > 0 || isFocusMode}
+                {#if hasGeneratedControls || isFocusMode}
                   <div
                     class="dx-viewport"
                     role="group"
-                    aria-label={playgroundModel.controls.length > 0
-                      ? 'Stage width'
-                      : 'Preview controls'}
+                    aria-label={hasGeneratedControls ? 'Stage width' : 'Preview controls'}
                   >
-                    {#if playgroundModel.controls.length > 0}
+                    {#if hasGeneratedControls}
                       <div class="dx-viewport__sizes">
                         {#each PREVIEW_WIDTHS as option (option.label)}
                           <button
@@ -1103,8 +1105,8 @@
 
                        Rendered UNCONDITIONALLY. Whether a snippet can be
                        synthesized from the props is a question about the
-                       SNIPPET — it is not a reason to withhold the preview, the
-                       featured example, or the controls. Gating the whole block
+                       SNIPPET — it is not a reason to withhold the preview or
+                       featured example. Gating the whole block
                        on it is what deleted the entire Playground section for
                        ~20 components and told each of them, falsely, that it had
                        no adjustable props. See `canGenerateFromProps`. -->
@@ -1129,6 +1131,12 @@
                its hydration pass — a mismatch. The live preview swaps in
                immediately after mount. -->
                 {#if isHydrated && bareComponent !== undefined && !snapshotMode && canGenerateFromProps && (!liveMountFailed || overviewExample === undefined)}
+                  {#snippet recipeChildren()}
+                    {#if previewRecipe?.childrenHtml !== undefined}
+                      <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+                      {@html previewRecipe.childrenHtml}
+                    {/if}
+                  {/snippet}
                   <div class="dx-stage">
                     <div class="dx-stage__bar">
                       <span class="dx-stage__dot" aria-hidden="true"></span>
@@ -1157,6 +1165,7 @@
                             $state.snapshot(playgroundValues),
                             playgroundModel.seeds,
                             previewRecipe,
+                            recipeChildren,
                           ),
                         )}
                       ></div>
@@ -1190,7 +1199,9 @@
                       ></div>
                     </div>
                     <p class="dx-stage__note">
-                      Shows the featured example. Adjust the controls to update the snippet.
+                      {canGenerateFromProps
+                        ? 'Shows the featured example. Adjust the controls to update the snippet.'
+                        : 'Shows the featured example.'}
                     </p>
                   </div>
                 {:else if !snapshotMode && composesInto !== undefined}
@@ -1277,12 +1288,12 @@
                     {/if}
                   </p>
                 {/if}
-                {#if playgroundModel.skipped.length > 0}
+                {#if canGenerateFromProps && playgroundModel.skipped.length > 0}
                   <p class="dx-play__skipped">
                     Not adjustable here: {playgroundModel.skipped.join(', ')}.
                   </p>
                 {/if}
-                {#if playgroundModel.seeds.length > 0}
+                {#if canGenerateFromProps && playgroundModel.seeds.length > 0}
                   <div class="dx-play__seeds">
                     <div class="dx-play__controls-head">Supplied values</div>
                     {#each playgroundModel.seeds as seed (seed.name)}
@@ -1297,7 +1308,7 @@
                     </p>
                   </div>
                 {/if}
-                {#if playgroundModel.controls.length > 0}
+                {#if hasGeneratedControls}
                   <div class="dx-play__controls">
                     <div class="dx-play__controls-head">
                       <Sliders size={13} strokeWidth={1.5} aria-hidden="true" />

@@ -16,6 +16,7 @@
  *     errors by container DOM id, and falls back to a featured-example mount when
  *     the live mount fails.
  */
+import type { Snippet } from 'svelte';
 import { createRawSnippet, mount, unmount } from 'svelte';
 
 import type {
@@ -57,6 +58,7 @@ export function toMountProps(
   values: Record<string, PlaygroundValue>,
   seeds: readonly PlaygroundSeed[] = [],
   recipe?: PreviewRecipe,
+  recipeChildren?: Snippet,
 ): Record<string, unknown> {
   // Recipe props establish a valid baseline for the bare preview. Editable
   // controls still win below, so changing a generated control remains live.
@@ -67,14 +69,10 @@ export function toMountProps(
   // shows nothing about a component whose job is arranging elements. Reader
   // input still goes through `escapeHtmlText` below; these two paths never mix.
   if (recipe?.childrenHtml !== undefined) {
-    const html = recipe.childrenHtml;
-    // Recipe markup can contain block elements and sibling layout items. A
-    // display-contents div is valid around those nodes and keeps them as the
-    // component's effective layout children while still satisfying Svelte's
-    // one-root raw-snippet contract.
-    props['children'] = createRawSnippet(() => ({
-      render: () => `<div style="display: contents">${html}</div>`,
-    }));
+    // Recipes with sibling layout items need a compiled Svelte snippet—not a
+    // `createRawSnippet` wrapper—so direct-child selectors keep reaching the
+    // actual items. The page supplies that compiled snippet at the call site.
+    if (recipeChildren !== undefined) props['children'] = recipeChildren;
   }
   // Synthesized structural values (a required `items: Item[]`, say). These are
   // live objects, not strings, so nothing is parsed at mount time.
