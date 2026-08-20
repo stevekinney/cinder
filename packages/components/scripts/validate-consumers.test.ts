@@ -1,4 +1,6 @@
 import { describe, expect, mock, test } from 'bun:test';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { getPackFileName } from './publish-release.ts';
@@ -11,6 +13,7 @@ import {
   parseHydrationBrowserProcessIds,
   preoptimizeSvelteKitChatHydration,
   prepareSvelteKitChatHydrationDevServer,
+  removeFixtureEntries,
   resolveChatFixtureCinderVersion,
   runBoundedHydrationTeardown,
   startSvelteKitChatHydrationDevServer,
@@ -18,6 +21,26 @@ import {
   SVELTEKIT_HYDRATION_ROUTES,
   unreclaimedTeardownFailures,
 } from './validate-consumers.ts';
+
+describe('consumer fixture cleanup', () => {
+  test('removes nested requested entries and tolerates a missing entry', () => {
+    const fixtureDirectory = mkdtempSync(join(tmpdir(), 'cinder-consumer-cleanup-'));
+    const nestedDirectory = join(fixtureDirectory, '.svelte-kit', 'output', 'client');
+    mkdirSync(nestedDirectory, { recursive: true });
+    writeFileSync(join(nestedDirectory, 'entry.js'), 'generated');
+    mkdirSync(join(fixtureDirectory, 'build'), { recursive: true });
+
+    try {
+      removeFixtureEntries(fixtureDirectory, ['.svelte-kit', 'build', 'missing']);
+
+      expect(existsSync(join(fixtureDirectory, '.svelte-kit'))).toBe(false);
+      expect(existsSync(join(fixtureDirectory, 'build'))).toBe(false);
+      expect(existsSync(fixtureDirectory)).toBe(true);
+    } finally {
+      rmSync(fixtureDirectory, { recursive: true, force: true });
+    }
+  });
+});
 
 describe('SvelteKit Chat hydration optimizer preflight', () => {
   test('forces dependency optimization under the Chat hydration environment', async () => {

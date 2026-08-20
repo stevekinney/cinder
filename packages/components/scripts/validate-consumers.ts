@@ -4,6 +4,7 @@ import {
   existsSync,
   readFileSync,
   realpathSync,
+  rmSync,
   statSync,
   symlinkSync,
   writeFileSync,
@@ -136,13 +137,12 @@ function fail(message: string): never {
   throw new ValidationError(message);
 }
 
-async function removeFixtureEntries(
-  fixtureDirectory: string,
-  entries: readonly string[],
-): Promise<void> {
-  // Bun 1.3 can throw EFAULT when multiple recursive fs removals run concurrently.
+export function removeFixtureEntries(fixtureDirectory: string, entries: readonly string[]): void {
+  // Bun 1.3 can throw EFAULT from its asynchronous recursive rm implementation,
+  // even when multiple removals are awaited sequentially. This validation CLI
+  // does not need concurrent filesystem work, so keep cleanup synchronous.
   for (const entry of entries) {
-    await rm(join(fixtureDirectory, entry), { recursive: true, force: true });
+    rmSync(join(fixtureDirectory, entry), { recursive: true, force: true });
   }
 }
 
