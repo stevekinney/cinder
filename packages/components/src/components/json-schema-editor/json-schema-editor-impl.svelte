@@ -148,6 +148,12 @@
     if (accepted) onSchemaChange?.(pendingChange);
   }
 
+  function rejectControlledChange(changeVersion: number) {
+    if (pendingControlledChangeVersion !== changeVersion) return;
+    discardPendingControlledChange();
+    if (schema !== undefined) synchroniseControlledSchema(schema);
+  }
+
   function handleSchemaChange(event: JsonSchemaEditorChangeEvent) {
     if (!controlled || schema === undefined) {
       onSchemaChange?.(event);
@@ -161,7 +167,13 @@
 
     pendingControlledChange = event;
     const changeVersion = ++pendingControlledChangeVersion;
-    const settlement = onValueChangeRequest?.(event);
+    let settlement: unknown;
+    try {
+      settlement = onValueChangeRequest?.(event);
+    } catch (error) {
+      rejectControlledChange(changeVersion);
+      throw error;
+    }
     if (settlement !== undefined) {
       void Promise.resolve(settlement)
         .then((input) => {
@@ -170,9 +182,7 @@
           }
         })
         .catch(() => {
-          if (pendingControlledChangeVersion !== changeVersion) return;
-          discardPendingControlledChange();
-          if (schema !== undefined) synchroniseControlledSchema(schema);
+          rejectControlledChange(changeVersion);
         });
     }
 

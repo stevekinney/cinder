@@ -350,7 +350,7 @@ describe('createEditorState — change events', () => {
     expect(state.committedSchema).toEqual({ type: 'number' });
   });
 
-  test('onSchemaChange emits the original raw text when reverting an initially invalid schema', async () => {
+  test('onSchemaChange does not emit a raw text value when reverting an initially invalid schema', async () => {
     const events: JsonSchemaEditorChangeEvent[] = [];
     const state = createEditorState({
       schema: '{not-valid',
@@ -361,7 +361,11 @@ describe('createEditorState — change events', () => {
     await state.applyJsonDraft();
     state.revert();
 
-    expect(events.at(-1)).toEqual({ schema: '{not-valid', jsonString: '{not-valid' });
+    expect(events).toHaveLength(1);
+    expect(events[0]).toEqual({
+      schema: { type: 'string' },
+      jsonString: '{\n  "type": "string"\n}',
+    });
   });
 });
 

@@ -603,7 +603,6 @@ export function createEditorState(options: CreateEditorStateOptions) {
         compileResult = null;
         recomputeStatus();
         emitValidation(buildResult());
-        options.onSchemaChange?.({ schema: originalRawText, jsonString: originalRawText });
         options.onRevert?.({ restoredFrom: 'original-text' });
       }
     },

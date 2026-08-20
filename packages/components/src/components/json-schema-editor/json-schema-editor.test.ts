@@ -425,6 +425,26 @@ describe('JsonSchemaEditor — controlled and uncontrolled schema inputs', () =>
     expect(document.activeElement).toBe(textarea);
   });
 
+  test('keeps the textarea focused after discarding a malformed source draft', async () => {
+    render(JsonSchemaEditorImplementation, {
+      props: {
+        id: 'jse-malformed-discard-focus',
+        schema: '{not-valid',
+        view: 'json' as const,
+      },
+    });
+    await flushEffects();
+
+    const textarea = screen.getAllByRole<HTMLTextAreaElement>('textbox').at(-1);
+    if (textarea === undefined) throw new Error('Expected a JSON textarea for malformed source.');
+    await fireEvent.input(textarea, { target: { value: '{"type":"string"}' } });
+    await flushEffects();
+    await fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
+    await flushEffects();
+
+    expect(document.activeElement).toBe(textarea);
+  });
+
   test('treats schema without a request handler as a locally managed seed', async () => {
     render(JsonSchemaEditorImplementation, {
       props: {

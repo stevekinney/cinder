@@ -98,6 +98,11 @@
 
   async function discardDraft(): Promise<void> {
     editorState.discardJsonDraft();
+    if (editorState.committedSchema === null) {
+      await tick();
+      document.getElementById(`${idPrefix}-textarea`)?.focus();
+      return;
+    }
     await finishEditing();
   }
 
