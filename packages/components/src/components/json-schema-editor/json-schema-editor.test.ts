@@ -517,4 +517,38 @@ describe('JsonSchemaEditor — controlled and uncontrolled schema inputs', () =>
       document.querySelector<HTMLTextAreaElement>('textarea.cinder-jse-json-view__textarea')?.value,
     ).toBe('{"type":"number"}');
   });
+
+  test('settles a controlled rejection that restores the previous schema', async () => {
+    const changes: string[] = [];
+    const { container, rerender } = render(JsonSchemaEditorImplementation, {
+      props: {
+        id: 'jse-controlled-rejection',
+        schema: { type: 'string' },
+        view: 'json' as const,
+        onValueChangeRequest: (event: JsonSchemaEditorChangeEvent) =>
+          changes.push(event.jsonString),
+      },
+    });
+    await flushEffects();
+    const editor = within(container);
+
+    await fireEvent.click(editor.getByRole('button', { name: 'Edit JSON' }));
+    await fireEvent.input(editor.getByRole('textbox', { name: 'JSON' }), {
+      target: { value: '{"type":"number"}' },
+    });
+    await flushEffects();
+    await fireEvent.click(editor.getByRole('button', { name: 'Apply' }));
+    await flushEffects();
+
+    await rerender({
+      id: 'jse-controlled-rejection',
+      schema: { type: 'string' },
+      view: 'json' as const,
+      onValueChangeRequest: (event: JsonSchemaEditorChangeEvent) => changes.push(event.jsonString),
+    });
+    await flushEffects();
+
+    expect(changes).toEqual(['{\n  "type": "number"\n}']);
+    expect(editor.getAllByRole('button', { name: 'Edit JSON' }).at(-1)).toBeDefined();
+  });
 });

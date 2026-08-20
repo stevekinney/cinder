@@ -155,15 +155,19 @@
   let lastControlledSchemaText = untrack(() =>
     schema === undefined ? undefined : controlledSchemaText(schema),
   );
+  let lastControlledSchemaInput = untrack(() => schema);
   $effect(() => {
     if (schema === undefined) {
       lastControlledSchemaText = undefined;
+      lastControlledSchemaInput = undefined;
       return;
     }
 
     const nextControlledSchemaText = controlledSchemaText(schema);
-    if (nextControlledSchemaText === lastControlledSchemaText) return;
+    const schemaInputChanged = schema !== lastControlledSchemaInput;
+    if (nextControlledSchemaText === lastControlledSchemaText && !schemaInputChanged) return;
     lastControlledSchemaText = nextControlledSchemaText;
+    lastControlledSchemaInput = schema;
     untrack(() => settleControlledChange(schema));
   });
 
