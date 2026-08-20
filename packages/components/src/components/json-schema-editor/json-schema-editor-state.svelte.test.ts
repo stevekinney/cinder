@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import { createEditorState } from './json-schema-editor-state.svelte.ts';
-import type { JsonSchemaEditorChangeEvent } from './json-schema-editor-types.ts';
+import type { JsonSchemaEditorChangeEvent, JsonSchemaValue } from './json-schema-editor-types.ts';
 
 function withImmediateTimers<T>(run: () => T): T {
   const originalSetTimeout = globalThis.setTimeout;
@@ -40,6 +40,17 @@ describe('createEditorState — initial load', () => {
 
   test('accepts an object schema directly', () => {
     const state = createEditorState({ schema: { type: 'string' } });
+    expect(state.committedSchema).toEqual({ type: 'string' });
+  });
+
+  test('snapshots an object schema for the revert baseline', () => {
+    const schema: JsonSchemaValue = { type: 'string' };
+    const state = createEditorState({ schema });
+    (schema as { type: string }).type = 'number';
+
+    state.commitFromForm({ type: 'boolean' });
+    state.revert();
+
     expect(state.committedSchema).toEqual({ type: 'string' });
   });
 
@@ -321,6 +332,19 @@ describe('createEditorState — change events', () => {
     state.setJsonDraftText('{"type":"number"}');
 
     expect(calls).toBe(0);
+  });
+
+  test('onSchemaChange emits an independent schema snapshot', () => {
+    let emitted: JsonSchemaEditorChangeEvent | undefined;
+    const state = createEditorState({
+      schema: { type: 'string' },
+      onSchemaChange: (event) => (emitted = event),
+    });
+
+    state.commitFromForm({ type: 'number' });
+    (emitted?.schema as { type: string }).type = 'boolean';
+
+    expect(state.committedSchema).toEqual({ type: 'number' });
   });
 
   test('onSchemaChange emits the original raw text when reverting an initially invalid schema', async () => {

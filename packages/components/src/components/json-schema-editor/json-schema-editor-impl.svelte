@@ -97,6 +97,7 @@
   let enumDraftHistoryRevision = $state(0);
   const editorState = createEditorState(stateOptions);
   const toolbarValidationErrorCount = $derived(view === 'form' ? localValidationErrorCount : 0);
+  const controlled = $derived(schema !== undefined && onValueChangeRequest !== undefined);
 
   function schemaMatchesCommitted(input: JsonSchemaValue | string): boolean {
     const normalised = normaliseSchemaInput(input);
@@ -122,6 +123,7 @@
   }
 
   let pendingControlledChange = $state<JsonSchemaEditorChangeEvent | undefined>();
+  let pendingControlledChangeVersion = 0;
 
   function settleControlledChange(input: JsonSchemaValue | string) {
     const pendingChange = pendingControlledChange;
@@ -129,12 +131,13 @@
 
     synchroniseControlledSchema(input);
     pendingControlledChange = undefined;
+    pendingControlledChangeVersion += 1;
 
     if (accepted) onSchemaChange?.(pendingChange);
   }
 
   function handleSchemaChange(event: JsonSchemaEditorChangeEvent) {
-    if (schema === undefined) {
+    if (!controlled) {
       onSchemaChange?.(event);
       return;
     }
@@ -145,7 +148,19 @@
     }
 
     pendingControlledChange = event;
-    onValueChangeRequest?.(event);
+    const changeVersion = ++pendingControlledChangeVersion;
+    const settlement = onValueChangeRequest?.(event);
+    if (settlement !== undefined) {
+      void Promise.resolve(settlement).then((input) => {
+        const isSchemaInput =
+          typeof input === 'string' ||
+          typeof input === 'boolean' ||
+          (typeof input === 'object' && input !== null && !Array.isArray(input));
+        if (isSchemaInput && pendingControlledChangeVersion === changeVersion) {
+          settleControlledChange(input);
+        }
+      });
+    }
 
     // The parent can validate a request asynchronously. Keep the optimistic
     // state and its history until it supplies the authoritative next value;
@@ -155,19 +170,15 @@
   let lastControlledSchemaText = untrack(() =>
     schema === undefined ? undefined : controlledSchemaText(schema),
   );
-  let lastControlledSchemaInput = untrack(() => schema);
   $effect(() => {
-    if (schema === undefined) {
+    if (!controlled || schema === undefined) {
       lastControlledSchemaText = undefined;
-      lastControlledSchemaInput = undefined;
       return;
     }
 
     const nextControlledSchemaText = controlledSchemaText(schema);
-    const schemaInputChanged = schema !== lastControlledSchemaInput;
-    if (nextControlledSchemaText === lastControlledSchemaText && !schemaInputChanged) return;
+    if (nextControlledSchemaText === lastControlledSchemaText) return;
     lastControlledSchemaText = nextControlledSchemaText;
-    lastControlledSchemaInput = schema;
     untrack(() => settleControlledChange(schema));
   });
 
@@ -209,6 +220,9 @@
     if (schemaKey !== lastSchemaKey) {
       lastSchemaKey = schemaKey;
       untrack(() => {
+        pendingControlledChange = undefined;
+        pendingControlledChangeVersion += 1;
+        lastControlledSchemaText = schema === undefined ? undefined : controlledSchemaText(schema);
         editorState.reload(schema ?? defaultSchema ?? {}, original);
         enumDrafts = {};
       });

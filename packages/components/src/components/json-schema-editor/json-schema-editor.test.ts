@@ -425,6 +425,29 @@ describe('JsonSchemaEditor — controlled and uncontrolled schema inputs', () =>
     expect(document.activeElement).toBe(textarea);
   });
 
+  test('treats schema without a request handler as a locally managed seed', async () => {
+    render(JsonSchemaEditorImplementation, {
+      props: {
+        id: 'jse-schema-seed',
+        schema: { type: 'string' },
+        view: 'json' as const,
+      },
+    });
+    await flushEffects();
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Edit JSON' }));
+    await fireEvent.input(screen.getByRole('textbox', { name: 'JSON' }), {
+      target: { value: '{"type":"number"}' },
+    });
+    await flushEffects();
+    await fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
+    await flushEffects();
+
+    expect(screen.getByRole('region', { name: 'JSON Schema editor' }).textContent).toContain(
+      '"type": "number"',
+    );
+  });
+
   test('emits controlled edits and synchronizes later parent schema updates', async () => {
     const changes: string[] = [];
     const observedChanges: string[] = [];
@@ -520,13 +543,15 @@ describe('JsonSchemaEditor — controlled and uncontrolled schema inputs', () =>
 
   test('settles a controlled rejection that restores the previous schema', async () => {
     const changes: string[] = [];
-    const { container, rerender } = render(JsonSchemaEditorImplementation, {
+    const { container } = render(JsonSchemaEditorImplementation, {
       props: {
         id: 'jse-controlled-rejection',
         schema: { type: 'string' },
         view: 'json' as const,
-        onValueChangeRequest: (event: JsonSchemaEditorChangeEvent) =>
-          changes.push(event.jsonString),
+        onValueChangeRequest: (event: JsonSchemaEditorChangeEvent) => {
+          changes.push(event.jsonString);
+          return { type: 'string' };
+        },
       },
     });
     await flushEffects();
@@ -538,14 +563,6 @@ describe('JsonSchemaEditor — controlled and uncontrolled schema inputs', () =>
     });
     await flushEffects();
     await fireEvent.click(editor.getByRole('button', { name: 'Apply' }));
-    await flushEffects();
-
-    await rerender({
-      id: 'jse-controlled-rejection',
-      schema: { type: 'string' },
-      view: 'json' as const,
-      onValueChangeRequest: (event: JsonSchemaEditorChangeEvent) => changes.push(event.jsonString),
-    });
     await flushEffects();
 
     expect(changes).toEqual(['{\n  "type": "number"\n}']);

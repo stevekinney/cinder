@@ -321,7 +321,8 @@ export function createEditorState(options: CreateEditorStateOptions) {
   function emitChange() {
     const schema = history?.current ?? null;
     if (schema === null) return;
-    options.onSchemaChange?.({ schema, jsonString: serialise(schema) });
+    const jsonString = serialise(schema);
+    options.onSchemaChange?.({ schema: JSON.parse(jsonString) as JsonSchemaValue, jsonString });
   }
 
   function loadCommittedSchema(schemaInput: JsonSchemaValue | string) {
@@ -349,7 +350,7 @@ export function createEditorState(options: CreateEditorStateOptions) {
     if (baselineResult.ok) {
       originalRawText = baselineResult.rawText;
       originalCanonicalText = baselineResult.canonicalText;
-      originalSchema = baselineResult.schema;
+      originalSchema = JSON.parse(baselineResult.canonicalText) as JsonSchemaValue;
       originalLoadError = null;
     } else {
       originalRawText = baselineResult.rawText;
