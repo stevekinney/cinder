@@ -3,6 +3,7 @@ import { describe, expect, test } from 'bun:test';
 import { findProseReferenceFailures } from './check-prose-component-references.ts';
 
 const componentNames = new Set(['container', 'page-header']);
+const publicSubpaths = new Set(['icons', 'styles']);
 
 describe('check-prose-component-references', () => {
   test('flags a genuinely dangling prose component reference', () => {
@@ -12,6 +13,7 @@ describe('check-prose-component-references', () => {
         filePath: 'fixture.md',
         componentNames,
         exampleIds: new Set(),
+        publicSubpaths,
       }),
     ).toEqual([{ reference: 'missing-component', filePath: 'fixture.md' }]);
   });
@@ -23,6 +25,7 @@ describe('check-prose-component-references', () => {
         filePath: 'fixture.md',
         componentNames,
         exampleIds: new Set(['hero-section']),
+        publicSubpaths,
       }),
     ).toEqual([]);
   });
@@ -34,6 +37,7 @@ describe('check-prose-component-references', () => {
         filePath: 'components.json',
         componentNames,
         exampleIds: new Set(),
+        publicSubpaths,
       }),
     ).toEqual([{ reference: 'missing-component', filePath: 'components.json' }]);
     expect(
@@ -42,7 +46,21 @@ describe('check-prose-component-references', () => {
         filePath: 'fixture.svelte',
         componentNames,
         exampleIds: new Set(),
+        publicSubpaths,
       }),
     ).toEqual([{ reference: 'missing-component', filePath: 'fixture.svelte' }]);
+  });
+
+  test('allows public Cinder subpaths that are not component directories', () => {
+    expect(
+      findProseReferenceFailures({
+        source:
+          "import '@lostgradient/cinder/styles'; import { Icon } from '@lostgradient/cinder/icons';",
+        filePath: 'components.json',
+        componentNames,
+        exampleIds: new Set(),
+        publicSubpaths,
+      }),
+    ).toEqual([]);
   });
 });

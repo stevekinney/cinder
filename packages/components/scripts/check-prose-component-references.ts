@@ -21,10 +21,17 @@ export function findProseReferenceFailures(input: {
   filePath: string;
   componentNames: ReadonlySet<string>;
   exampleIds: ReadonlySet<string>;
+  publicSubpaths: ReadonlySet<string>;
 }): ProseReferenceFailure[] {
   const failures = new Map<string, ProseReferenceFailure>();
   const add = (reference: string) => {
-    if (input.componentNames.has(reference) || input.exampleIds.has(reference)) return;
+    if (
+      input.componentNames.has(reference) ||
+      input.exampleIds.has(reference) ||
+      input.publicSubpaths.has(reference)
+    ) {
+      return;
+    }
     failures.set(reference, { reference, filePath: input.filePath });
   };
 
@@ -69,9 +76,21 @@ async function exampleIds(): Promise<Set<string>> {
   return ids;
 }
 
+async function publicSubpaths(): Promise<Set<string>> {
+  const manifest = (await Bun.file(join(packageRoot, 'package.json')).json()) as {
+    exports?: Record<string, unknown>;
+  };
+  return new Set(
+    Object.keys(manifest.exports ?? {})
+      .filter((subpath) => /^\.\/[a-z][a-z0-9-]+$/.test(subpath))
+      .map((subpath) => subpath.slice(2)),
+  );
+}
+
 async function main(): Promise<void> {
   const names = componentNames();
   const examples = await exampleIds();
+  const subpaths = await publicSubpaths();
   const files = new Glob('{src/components/**/*.svelte,src/components/**/*.md,components.json}');
   const failures: ProseReferenceFailure[] = [];
 
@@ -82,6 +101,7 @@ async function main(): Promise<void> {
         filePath: relative(repositoryRoot, join(packageRoot, filePath)),
         componentNames: names,
         exampleIds: examples,
+        publicSubpaths: subpaths,
       }),
     );
   }
