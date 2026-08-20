@@ -131,8 +131,11 @@ jobs:
         shell: bash
         run: |
           node_path="$(command -v node)"
+          npm_cli="$(npm root -g)/npm/bin/npm-cli.js"
           "$node_path" --version
+          test -f "$npm_cli"
           echo "CINDER_PUBLISH_NODE=$node_path" >> "$GITHUB_ENV"
+          echo "CINDER_PUBLISH_NPM_CLI=$npm_cli" >> "$GITHUB_ENV"
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
