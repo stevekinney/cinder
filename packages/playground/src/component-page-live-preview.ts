@@ -88,7 +88,21 @@ export function toMountProps(
     // the snippet, it painted an error callout over a component that works.
     // A synthesized `0` is dropped for the same reason (and matters for `Image`,
     // where `width={0} height={0}` collapses the element regardless of `src`).
-    if (!control.hasDefault && (value === '' || value === 0)) continue;
+    if (!control.hasDefault && (value === '' || value === 0)) {
+      // Recipes supply a valid starting point for otherwise unlabelled
+      // components. Once a reader clears that value, however, the cleared
+      // control is an intentional override—not permission to keep the recipe
+      // value invisibly mounted. Removing it lets the component receive its
+      // native omitted value, exactly as the generated snippet does.
+      if (
+        recipe?.props !== undefined &&
+        Object.hasOwn(recipe.props, control.name) &&
+        value !== recipe.props[control.name]
+      ) {
+        delete props[control.name];
+      }
+      continue;
+    }
     props[control.name] = value;
   }
   return props;

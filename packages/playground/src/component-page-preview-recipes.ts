@@ -100,7 +100,7 @@ export const PREVIEW_RECIPES: Readonly<Record<string, PreviewRecipe>> = {
     childrenHtml:
       '<span style="font-weight:600">New dark theme tokens are live</span><span aria-hidden="true">•</span><span>v0.4.1 now available</span><span aria-hidden="true">•</span><span>Try the updated component decision aid</span>',
     snippetChildren:
-      '{#snippet children()}\n  <span style="font-weight: 600;">New dark theme tokens are live</span>\n  <span>•</span>\n  <span>v0.4.1 now available</span>\n  <span>•</span>\n  <span>Try the updated component decision aid</span>\n{/snippet}',
+      '{#snippet children()}\n  <span style="font-weight: 600;">New dark theme tokens are live</span>\n  <span aria-hidden="true">•</span>\n  <span>v0.4.1 now available</span>\n  <span aria-hidden="true">•</span>\n  <span>Try the updated component decision aid</span>\n{/snippet}',
   },
   surface: {
     // A tone is only readable against another tone, and the component itself

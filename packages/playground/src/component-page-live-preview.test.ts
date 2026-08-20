@@ -105,6 +105,15 @@ describe('toMountProps', () => {
     expect(props).toMatchObject({ label: 'Announcements' });
     expect(props['children']).toBe(recipeChildren);
   });
+
+  test('removes a cleared recipe control from the live mount', () => {
+    const controls: PlaygroundControl[] = [
+      { name: 'label', kind: 'text', value: '', hasDefault: false },
+    ];
+    const props = toMountProps(controls, { label: '' }, [], previewRecipeFor('marquee'));
+
+    expect(props).not.toHaveProperty('label');
+  });
 });
 
 const { render } = await import('@testing-library/svelte');

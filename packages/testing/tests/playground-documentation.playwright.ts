@@ -357,6 +357,16 @@ test('marquee keeps its generated live preview', async ({ page }) => {
   const generatedSnippet = page.locator('.dx-playground__panel .cinder-code-block').first();
   await expect(generatedSnippet).toContainText('<Marquee label="Announcements">');
   await expect(generatedSnippet).toContainText('{#snippet children()}');
+  await expect(generatedSnippet).toContainText('aria-hidden="true"');
+
+  // A recipe value seeds a useful initial preview, but clearing its control is
+  // still an explicit reader choice. The live mount and copied source must both
+  // drop the baseline rather than quietly restoring it.
+  await page.getByLabel('label').fill('');
+  await expect(page.locator('#playground-live-mount .cinder-marquee')).not.toHaveAttribute(
+    'aria-label',
+  );
+  await expect(generatedSnippet).not.toContainText('label="Announcements"');
 });
 
 test('authored previews retain the focus-mode control', async ({ page }) => {

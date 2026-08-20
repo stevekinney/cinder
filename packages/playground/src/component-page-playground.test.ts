@@ -667,7 +667,7 @@ describe('buildSnippet', () => {
     );
   });
 
-  test('keeps an accessible recipe baseline until its empty control changes it', () => {
+  test('omits a cleared recipe control rather than restoring its baseline', () => {
     const labelControl = buildPlaygroundModel(
       manifest([
         {
@@ -683,7 +683,7 @@ describe('buildSnippet', () => {
       buildSnippet('Progress', labelControl, { ariaLabel: '' }, [], undefined, {
         ariaLabel: 'Loading progress',
       }),
-    ).toBe('<Progress ariaLabel="Loading progress" />');
+    ).toBe('<Progress />');
     expect(
       buildSnippet('Progress', labelControl, { ariaLabel: 'Upload progress' }, [], undefined, {
         ariaLabel: 'Loading progress',
@@ -703,6 +703,21 @@ describe('buildSnippet', () => {
         '{#snippet children()}Announcement{/snippet}',
       ),
     ).toBe('<Marquee label="Announcements">{#snippet children()}Announcement{/snippet}</Marquee>');
+  });
+
+  test('preserves Marquee separator semantics in the generated snippet', () => {
+    const recipe = previewRecipeFor('marquee');
+    const snippet = buildSnippet(
+      'Marquee',
+      [],
+      {},
+      [],
+      undefined,
+      recipe?.props,
+      recipe?.snippetChildren,
+    );
+
+    expect(snippet.match(/aria-hidden="true"/g)).toHaveLength(2);
   });
 
   test.each([

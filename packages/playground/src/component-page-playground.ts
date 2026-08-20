@@ -635,12 +635,19 @@ export function buildSnippet(
 
   const attributes = [
     ...Object.entries(baselineProps)
-      .filter(([name]) => {
+      .filter(([name, value]) => {
         const matchingControl = controls.find((control) => control.name === name);
-        return (
-          matchingControl === undefined ||
-          !shouldEmit(matchingControl, values[matchingControl.name] ?? matchingControl.value)
-        );
+        if (matchingControl === undefined) return true;
+        // A recipe baseline is the initial rendered value, not an invisible
+        // fallback. If the reader clears or resets its corresponding control,
+        // omit the recipe prop so copied code and the live mount both receive
+        // the component's native default.
+        const current = values[matchingControl.name] ?? matchingControl.value;
+        // When the control represents the recipe value and it is explicitly
+        // emitted, let the control own the attribute. The baseline only fills a
+        // gap for a matching value that the snippet generator intentionally
+        // omits, preventing duplicate attributes in copied source.
+        return current === value && !shouldEmit(matchingControl, current);
       })
       .flatMap(([name, value]) =>
         typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean'
