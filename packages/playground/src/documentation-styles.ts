@@ -61,7 +61,6 @@ function stylesheetEntry(components: readonly string[]): string {
     .map((componentName) => `@import '@lostgradient/cinder/${componentName}/styles';`)
     .join('\n');
   return `@import '@lostgradient/cinder/styles';
-@import '../../components/src/styles/components/json-highlight.css';
 ${imports}
 `;
 }
