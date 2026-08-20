@@ -69,6 +69,9 @@ describe('Turbo input topology', () => {
     expect(browserWorkflow).toContain('CLASSIFIER_BROWSER_RELEVANT');
     expect(browserWorkflow).toContain('Merge visual-report fragments');
     expect(browserWorkflow).toContain('name: playwright');
+    expect(browserWorkflow).toContain(
+      'if [ "$EVENT_NAME" = pull_request ] || [ "$EVENT_NAME" = merge_group ]; then',
+    );
     expect(browserWorkflow).toContain('[ "$VISUAL" = success ] || exit 1');
     expect(browserWorkflow).toContain('path: packages/testing/blob-report');
     expect(browserWorkflow).toContain(

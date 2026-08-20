@@ -657,7 +657,10 @@ jobs:
           # Pull-request and merge-queue runs always select block mode for
           # visual regression. Keep their aggregate required check fail-closed
           # so a failed visual job cannot be masked by passing functional lanes.
-          [ "$VISUAL" = success ] || exit 1
+          # A manual `mode=off` dispatch intentionally skips the visual job.
+          if [ "$EVENT_NAME" = pull_request ] || [ "$EVENT_NAME" = merge_group ]; then
+            [ "$VISUAL" = success ] || exit 1
+          fi
 
   baseline-coverage:
     # Runs on every trigger, including pull requests. The check is scoped per
@@ -826,6 +829,11 @@ jobs:
           git config user.email "cinder-bot@users.noreply.github.com"
           git fetch origin "$BASE_REF"
           git checkout -f -B "$BRANCH" FETCH_HEAD
+          # The Docker writer creates baseline PNGs as root. `git checkout`
+          # intentionally leaves those untracked paths in place, so replace
+          # the tree before copying the staged snapshot set into this clean,
+          # bot-owned branch checkout.
+          rm -rf packages/testing/snapshots
           mkdir -p packages/testing/snapshots
           cp -R "$SNAPSHOT_STAGING/packages/testing/snapshots/." packages/testing/snapshots/
           git add packages/testing/snapshots
