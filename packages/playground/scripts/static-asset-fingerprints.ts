@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
-import { extname, join, posix, relative } from 'node:path';
+import { dirname, extname, join, posix, relative } from 'node:path';
 
 const IMMUTABLE_EXTENSIONS = new Set([
   '.avif',
@@ -20,6 +20,10 @@ const IMMUTABLE_EXTENSIONS = new Set([
   '.woff2',
 ]);
 const TEXT_EXTENSIONS = new Set(['', '.css', '.html', '.js', '.json', '.mjs', '.txt', '.xml']);
+// Bump this whenever rewriteReferences changes. The final emitted bytes include
+// rewritten URLs, so this version makes a transformation-only change produce a
+// fresh immutable URL even when source assets are unchanged.
+const REWRITE_TRANSFORMATION_VERSION = '1';
 
 export type StaticAssetFingerprintResult = {
   /** Maps an exported mutable path to the content-addressed URL that replaces it. */
@@ -101,6 +105,7 @@ export async function fingerprintStaticAssets(
   const fingerprintedUrlBySourceUrl = new Map<string, string>();
   const bytesBySourceUrl = new Map<string, Uint8Array>();
   const assetSetHash = createHash('sha256');
+  assetSetHash.update(`rewrite-transformation:${REWRITE_TRANSFORMATION_VERSION}\0`);
 
   for (const filePath of files) {
     if (!immutableAsset(filePath)) continue;
@@ -128,7 +133,7 @@ export async function fingerprintStaticAssets(
 
   for (const [sourceUrl, fingerprintedUrl] of fingerprintedUrlBySourceUrl) {
     const outputPath = join(outputDirectory, fingerprintedUrl.slice(1));
-    await mkdir(posix.dirname(outputPath), { recursive: true });
+    await mkdir(dirname(outputPath), { recursive: true });
     await writeFile(outputPath, await readFile(join(outputDirectory, sourceUrl.slice(1))));
   }
 

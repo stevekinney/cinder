@@ -35,6 +35,7 @@ export const LANDING_CINDER_COMPONENTS = [
   'copy-button',
   'input',
   'popover',
+  'tooltip',
 ] as const;
 
 export type PlaygroundStylesheetName = 'documentation' | 'landing';
@@ -44,6 +45,15 @@ const componentsByStylesheet: Readonly<Record<PlaygroundStylesheetName, readonly
   landing: LANDING_CINDER_COMPONENTS,
 };
 const stylesheetPromiseByName = new Map<PlaygroundStylesheetName, Promise<string>>();
+
+function formatBuildLogs(logs: readonly { message: string }[]): string {
+  return logs.map(({ message }) => message).join('\n');
+}
+
+/** Drop cached styles after a source invalidation so live reload serves fresh CSS. */
+export function resetPlaygroundStylesheetBuilds(): void {
+  stylesheetPromiseByName.clear();
+}
 
 function stylesheetEntry(components: readonly string[]): string {
   const imports = components
@@ -71,7 +81,7 @@ export function buildPlaygroundStylesheet(name: PlaygroundStylesheetName): Promi
     });
     if (!result.success) {
       throw new Error(
-        `[playground] documentation stylesheet build failed: ${result.logs.join('\n')}`,
+        `[playground] ${name} stylesheet build failed:\n${formatBuildLogs(result.logs)}`,
       );
     }
     const stylesheet = result.outputs.find((output) => output.path.endsWith('.css'));
@@ -79,7 +89,10 @@ export function buildPlaygroundStylesheet(name: PlaygroundStylesheetName): Promi
       throw new Error('[playground] documentation stylesheet build produced no CSS output');
     }
     return await stylesheet.text();
-  })();
+  })().catch((error: unknown) => {
+    stylesheetPromiseByName.delete(name);
+    throw error;
+  });
   stylesheetPromiseByName.set(name, stylesheetPromise);
   return stylesheetPromise;
 }

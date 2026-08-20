@@ -54,6 +54,7 @@ describe('landing stylesheet', () => {
       'copy-button',
       'input',
       'popover',
+      'tooltip',
     ]);
     expect(stylesheet).toContain('.cinder-button');
     expect(stylesheet).toContain('.cinder-color-picker');

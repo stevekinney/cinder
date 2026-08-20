@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
 import { DOCUMENTATION_CINDER_COMPONENTS } from './documentation-styles.ts';
+import { COMPOUND_COMPONENT_PARENTS } from './shell-app/compound-families.ts';
 
 const PLAYGROUND_ROOT = dirname(import.meta.dirname);
 const PACKAGES_ROOT = join(PLAYGROUND_ROOT, '..');
@@ -60,17 +61,39 @@ export const CINDER_COMPONENT_SOURCE: ComponentSource = {
 
 const DOCUMENTATION_CINDER_COMPONENT_SET = new Set<string>(DOCUMENTATION_CINDER_COMPONENTS);
 const CINDER_COMPONENT_IMPORT = /from\s+['"]@lostgradient\/cinder\/([a-z0-9][a-z0-9-]*)['"]/gu;
+const CINDER_COMPONENT_IMPLEMENTATION_IMPORT =
+  /from\s+['"]\.\.\/([a-z0-9][a-z0-9-]*)\/\1\.svelte['"]/gu;
+
+function stylesheetOwner(componentName: string): string {
+  return COMPOUND_COMPONENT_PARENTS[componentName] ?? componentName;
+}
 
 function cinderComponentStylesheetUrl(componentName: string): string | null {
-  if (DOCUMENTATION_CINDER_COMPONENT_SET.has(componentName)) return null;
-  const stylesheet = join(
+  const owner = stylesheetOwner(componentName);
+  if (DOCUMENTATION_CINDER_COMPONENT_SET.has(owner)) return null;
+  const stylesheet = join(cinderPackageRoot, 'src', 'components', owner, `${owner}.css`);
+  return existsSync(stylesheet) ? `/components/${owner}/${owner}.css` : null;
+}
+
+function implementationDependencies(
+  componentName: string,
+  dependencies = new Set<string>(),
+): Set<string> {
+  if (dependencies.has(componentName)) return dependencies;
+  dependencies.add(componentName);
+  const implementationPath = join(
     cinderPackageRoot,
     'src',
     'components',
     componentName,
-    `${componentName}.css`,
+    `${componentName}.svelte`,
   );
-  return existsSync(stylesheet) ? `/components/${componentName}/${componentName}.css` : null;
+  if (!existsSync(implementationPath)) return dependencies;
+  const source = readFileSync(implementationPath, 'utf8');
+  for (const match of source.matchAll(CINDER_COMPONENT_IMPLEMENTATION_IMPORT)) {
+    implementationDependencies(match[1]!, dependencies);
+  }
+  return dependencies;
 }
 
 /**
@@ -114,15 +137,15 @@ export function documentationExampleStylesheetUrls(
     }
   }
 
-  const componentStylesheet = cinderComponentStylesheetUrl(componentName);
-  return [
-    ...[...dependencyNames]
-      .filter((dependencyName) => dependencyName !== componentName)
-      .toSorted()
-      .map(cinderComponentStylesheetUrl)
-      .filter((stylesheetUrl): stylesheetUrl is string => stylesheetUrl !== null),
-    ...(componentStylesheet === null ? [] : [componentStylesheet]),
-  ];
+  for (const dependencyName of implementationDependencies(componentName)) {
+    dependencyNames.add(dependencyName);
+  }
+
+  return [...dependencyNames]
+    .toSorted()
+    .map(cinderComponentStylesheetUrl)
+    .filter((stylesheetUrl): stylesheetUrl is string => stylesheetUrl !== null)
+    .filter((stylesheetUrl, index, urls) => urls.indexOf(stylesheetUrl) === index);
 }
 
 export const CHAT_COMPONENT_SOURCE: ComponentSource = {

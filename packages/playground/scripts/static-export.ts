@@ -29,7 +29,7 @@
  */
 
 import { mkdir, rm } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { dirname, join, parse, resolve } from 'node:path';
 
 import {
   discoverComponents,
@@ -75,6 +75,14 @@ export function requireProductionBaseUrl(value = Bun.env['PLAYGROUND_BASE_URL'] 
     );
   }
   return url.origin;
+}
+
+/** Refuse filesystem roots before clearing a caller-supplied static output directory. */
+export function assertSafeOutputDirectory(outputDirectory: string): void {
+  const resolved = resolve(outputDirectory);
+  if (resolved === parse(resolved).root) {
+    throw new Error('[static-export] refusing to clear a filesystem root');
+  }
 }
 
 function sitemapXml(baseUrl: string, routes: readonly string[]): string {
@@ -315,6 +323,7 @@ export async function runStaticExport(options: StaticExportOptions = {}): Promis
   const start = Date.now();
   process.stdout.write('[static-export] rendering playground to public/…\n');
   const outputDirectory = options.outputDirectory ?? OUTPUT_DIRECTORY;
+  assertSafeOutputDirectory(outputDirectory);
   // Unit tests invoke the function directly and do not have a deployment
   // origin. The executable build path below always calls requireProductionBaseUrl.
   const baseUrl = options.baseUrl ?? Bun.env['PLAYGROUND_BASE_URL'] ?? 'https://playground.local';

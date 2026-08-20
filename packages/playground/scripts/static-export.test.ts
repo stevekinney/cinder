@@ -10,6 +10,7 @@ import {
   assertDocumentationMetadata,
   assertDocumentationPagesArePreRendered,
   assertExactlyOneH1,
+  assertSafeOutputDirectory,
   assertSitemapMatchesRoutes,
   assetUrlsFromHtml,
   requireProductionBaseUrl,
@@ -77,6 +78,10 @@ test('requires a clean absolute HTTPS base URL for the deploy build', () => {
   expect(() => requireProductionBaseUrl('http://cinder.website')).toThrow('absolute HTTPS origin');
   expect(() => requireProductionBaseUrl('https://cinder.website/docs')).toThrow('without a path');
   expect(requireProductionBaseUrl('https://cinder.website/')).toBe('https://cinder.website');
+});
+
+test('refuses a filesystem root as static export output', () => {
+  expect(() => assertSafeOutputDirectory('/')).toThrow('filesystem root');
 });
 
 test('rejects sitemap route drift and duplicate URLs', () => {

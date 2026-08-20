@@ -59,7 +59,6 @@ import {
   buildComponentDocumentation,
 } from './component-documentation.ts';
 import {
-  CINDER_COMPONENT_SOURCE,
   documentationComponentStylesheetUrl,
   documentationExampleStylesheetUrls,
 } from './component-sources.ts';
@@ -336,16 +335,17 @@ async function renderComponentPage(
 ): Promise<string> {
   const componentDefinition = await discoverComponentDefinition(componentName);
   const scenarios = await discoverExamples(componentName);
-  const componentStylesheetUrls =
-    componentDefinition?.source.id === CINDER_COMPONENT_SOURCE.id
-      ? documentationExampleStylesheetUrls(componentName, scenarios)
-      : (() => {
-          const stylesheetUrl =
-            componentDefinition === undefined
-              ? null
-              : documentationComponentStylesheetUrl(componentDefinition.source, componentName);
-          return stylesheetUrl === null ? [] : [stylesheetUrl];
-        })();
+  const componentStylesheetUrl =
+    componentDefinition === undefined
+      ? null
+      : documentationComponentStylesheetUrl(componentDefinition.source, componentName);
+  // Every example lives in the shared playground tree, including extracted
+  // Chat and Editor pages, so its Cinder imports need opt-in sidecars too.
+  // The documented package's own stylesheet remains additive.
+  const componentStylesheetUrls = [
+    ...documentationExampleStylesheetUrls(componentName, scenarios),
+    ...(componentStylesheetUrl === null ? [] : [componentStylesheetUrl]),
+  ].filter((stylesheetUrl, index, urls) => urls.indexOf(stylesheetUrl) === index);
   const componentStylesheetLinks = componentStylesheetUrls
     .map((stylesheetUrl) => `\n    <link rel="stylesheet" href="${escapeHtml(stylesheetUrl)}" />`)
     .join('');
