@@ -841,6 +841,69 @@ describe('JsonSchemaEditor — controlled and uncontrolled schema inputs', () =>
     ]);
   });
 
+  test('notifies observers when a parent mutates its schema object into a transformed settlement', async () => {
+    const schema: JsonSchemaValue = { type: 'string' };
+    const observedChanges: JsonSchemaEditorChangeEvent[] = [];
+    const { rerender } = render(JsonSchemaEditorImplementation, {
+      props: {
+        id: 'jse-controlled-in-place-replacement-observer',
+        schema,
+        view: 'json' as const,
+        onValueChangeRequest: () => undefined,
+        onSchemaChange: (event: JsonSchemaEditorChangeEvent) => observedChanges.push(event),
+      },
+    });
+    await flushEffects();
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Edit JSON' }));
+    await fireEvent.input(screen.getByRole('textbox', { name: 'JSON' }), {
+      target: { value: '{"type":"boolean"}' },
+    });
+    await fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
+    if (typeof schema === 'object' && schema !== null) schema.type = 'number';
+    await rerender({
+      id: 'jse-controlled-in-place-replacement-observer',
+      schema,
+      view: 'json' as const,
+      onValueChangeRequest: () => undefined,
+      onSchemaChange: (event: JsonSchemaEditorChangeEvent) => observedChanges.push(event),
+    });
+    await flushEffects();
+
+    expect(observedChanges).toEqual([
+      { schema: { type: 'number' }, jsonString: '{\n  "type": "number"\n}' },
+    ]);
+  });
+
+  test('disables malformed-baseline reverts in controlled mode', async () => {
+    const requests: JsonSchemaEditorChangeEvent[] = [];
+    const { container } = render(JsonSchemaEditorImplementation, {
+      props: {
+        id: 'jse-controlled-malformed-revert',
+        schema: { type: 'string' },
+        original: '{not-valid',
+        view: 'json' as const,
+        onValueChangeRequest: (event: JsonSchemaEditorChangeEvent) => {
+          requests.push(event);
+          return { type: 'number' };
+        },
+      },
+    });
+    await flushEffects();
+
+    await fireEvent.click(latestJsonButton(container, 'Edit JSON'));
+    await fireEvent.input(latestJsonTextarea(container), {
+      target: { value: '{"type":"number"}' },
+    });
+    await fireEvent.click(latestJsonButton(container, 'Apply'));
+    await flushEffects();
+
+    expect(within(container).getByRole('button', { name: 'Revert' }).hasAttribute('disabled')).toBe(
+      true,
+    );
+    expect(requests).toHaveLength(1);
+  });
+
   test('moves focus to the JSON tab when readonly closes a clean editing session', async () => {
     const { container, rerender } = render(JsonSchemaEditorImplementation, {
       props: {

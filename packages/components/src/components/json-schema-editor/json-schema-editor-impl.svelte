@@ -133,7 +133,7 @@
   let pendingControlledChange = $state<JsonSchemaEditorChangeEvent | undefined>();
   let pendingControlledChangeVersion = 0;
   let controlledSchemaAuthority = untrack<JsonSchemaValue | string | undefined>(() =>
-    controlled && schema !== undefined ? schema : undefined,
+    controlled && schema !== undefined ? controlledSchemaText(schema) : undefined,
   );
 
   function discardPendingControlledChange() {
@@ -149,8 +149,8 @@
       previousAuthority !== undefined &&
       controlledSchemaText(previousAuthority) === controlledSchemaText(input);
 
-    controlledSchemaAuthority = input;
-    synchroniseControlledSchema(input);
+    controlledSchemaAuthority = controlledSchemaText(input);
+    synchroniseControlledSchema(controlledSchemaAuthority);
     discardPendingControlledChange();
 
     if (accepted) {
@@ -315,6 +315,7 @@
   }
 
   function handleRevert() {
+    if (controlled && editorState.originalSchema === null) return;
     enumDrafts = {};
     editorState.revert();
     announcer.announce('Reverted to original schema');
@@ -364,6 +365,7 @@
   <JsonSchemaToolbar
     state={editorState}
     localValidationErrorCount={toolbarValidationErrorCount}
+    canRevert={!(controlled && editorState.originalSchema === null)}
     onUndo={handleUndo}
     onRedo={handleRedo}
     onRevert={handleRevert}

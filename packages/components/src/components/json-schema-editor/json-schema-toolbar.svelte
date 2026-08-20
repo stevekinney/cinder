@@ -4,6 +4,7 @@
   export type JsonSchemaToolbarProps = {
     state: EditorState;
     localValidationErrorCount?: number;
+    canRevert?: boolean;
     onUndo?: () => void;
     onRedo?: () => void;
     onRevert?: () => void;
@@ -26,6 +27,7 @@
   let {
     state: editorState,
     localValidationErrorCount = 0,
+    canRevert = true,
     onUndo,
     onRedo,
     onRevert,
@@ -204,7 +206,7 @@
       size="sm"
       iconOnly
       label="Revert"
-      disabled={!editorState.hasDiffChanges || editorState.readonly}
+      disabled={!canRevert || !editorState.hasDiffChanges || editorState.readonly}
       onclick={() => onRevert?.()}
     >
       <RotateCcw class="cinder-icon-sm" />
