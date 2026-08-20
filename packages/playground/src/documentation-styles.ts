@@ -35,12 +35,9 @@ const stylesheetPromiseByName = new Map<PlaygroundStylesheetName, Promise<string
 
 function stylesheetEntry(components: readonly string[]): string {
   const imports = components
-    .map(
-      (componentName) =>
-        `@import '../../components/src/components/${componentName}/${componentName}.css';`,
-    )
+    .map((componentName) => `@import '@lostgradient/cinder/${componentName}/styles';`)
     .join('\n');
-  return `@import '../../components/src/styles/index.css';
+  return `@import '@lostgradient/cinder/styles';
 ${imports}
 `;
 }
