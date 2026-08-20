@@ -59,8 +59,8 @@ export function nodePublishCommand(nodeExecutable: string, publishArguments: str
 /** Prefer the Node runtime explicitly provisioned by the release workflow. */
 export function resolveNodeExecutable(
   environment: NodeJS.ProcessEnv,
-  findNode: (command: string) => string | undefined,
-): string | undefined {
+  findNode: (command: string) => string | null,
+): string | null {
   return environment['CINDER_PUBLISH_NODE'] ?? findNode('node');
 }
 
