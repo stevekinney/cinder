@@ -521,13 +521,8 @@ describe('convention #9 — substantive-test gate', () => {
     }
   });
 
-  test('an allow-listed component is exempt even with no test', () => {
-    // Pick any current allow-list entry; the gate must not flag it.
-    const [firstAllowListed] = [...NO_TEST_REQUIRED_ALLOW_LIST];
-    expect(firstAllowListed).toBeDefined();
-    expect(componentFails(firstAllowListed!, '/tmp/does-not-exist-for-allow-listed.test.ts')).toBe(
-      false,
-    );
+  test('the no-test exemption list is empty', () => {
+    expect(NO_TEST_REQUIRED_ALLOW_LIST).toEqual(new Set());
   });
 
   // Regression: a component with a module script but NO instance script must
