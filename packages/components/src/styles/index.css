@@ -40,4 +40,5 @@
 @import './components/_input-frame.css';
 @import './components/_status-surface.css';
 @import './components/_scroll-fade.css';
+@import './components/json-highlight.css';
 @import './utilities.css' layer(cinder.utilities);
