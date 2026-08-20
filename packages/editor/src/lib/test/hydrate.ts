@@ -192,22 +192,23 @@ export async function renderThenHydrate<Props extends Record<string, unknown>>(
     );
     await Bun.write(clientModulePath, clientCode);
 
-    const serverModule = (await import(pathToFileURL(modulePath).href)) as { default: unknown };
-    const clientModule = (await import(pathToFileURL(clientModulePath).href)) as {
-      default: Component<Props>;
-    };
-    const { render } = await import('svelte/server');
     const originalDocument = globalThis.document;
     const originalWindow = globalThis.window;
     globalThis.document = undefined as unknown as Document;
     globalThis.window = undefined as unknown as Window & typeof globalThis;
     let ssrHtml: string;
     try {
+      const serverModule = (await import(pathToFileURL(modulePath).href)) as { default: unknown };
+      const { render } = await import('svelte/server');
       ssrHtml = render(serverModule.default as Component<Props>, { props }).body;
     } finally {
       globalThis.document = originalDocument;
       globalThis.window = originalWindow;
     }
+
+    const clientModule = (await import(pathToFileURL(clientModulePath).href)) as {
+      default: Component<Props>;
+    };
 
     container = document.createElement('div');
     container.innerHTML = ssrHtml;

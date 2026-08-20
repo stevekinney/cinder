@@ -35,4 +35,4 @@ When Message accepts snippets or arbitrary children, the caller owns the semanti
 - Inspect the accessible name, role, and state in browser accessibility tools.
 - Check forced-colors mode when the component adds borders, focus rings, selected state, or status color.
 
-Related components: `chat`, `callout`.
+Related components: `callout`.

@@ -8,6 +8,18 @@ const repositoryRoot = resolve(packageRoot, '..', '..');
 
 export type ProseReferenceFailure = { reference: string; filePath: string };
 
+function normalizeComponentReference(reference: string): string {
+  return reference
+    .split('/')
+    .map((segment) =>
+      segment
+        .replace(/([A-Z]+)([A-Z][a-z])/g, '$1-$2')
+        .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+        .toLowerCase(),
+    )
+    .join('/');
+}
+
 /**
  * Finds component names used as prose guidance. Only names that are explicitly
  * introduced as component guidance participate: ordinary English and platform
@@ -22,14 +34,9 @@ export function findProseReferenceFailures(input: {
   publicSubpaths: ReadonlySet<string>;
 }): ProseReferenceFailure[] {
   const failures = new Map<string, ProseReferenceFailure>();
-  const addProseReference = (reference: string) => {
-    if (
-      input.componentNames.has(reference) ||
-      input.exampleIds.has(reference) ||
-      input.publicSubpaths.has(reference)
-    ) {
-      return;
-    }
+  const addProseReference = (unresolvedReference: string) => {
+    const reference = normalizeComponentReference(unresolvedReference);
+    if (input.componentNames.has(reference) || input.exampleIds.has(reference)) return;
     failures.set(reference, { reference, filePath: input.filePath });
   };
   const addPackageImport = (reference: string) => {
@@ -40,16 +47,13 @@ export function findProseReferenceFailures(input: {
   for (const match of input.source.matchAll(
     /\b(?:use|compose|choose|prefer|replace|switch to|reach for|instead of|rather than|its)\s+(?:an?\s+)?`?([a-z][a-z0-9-]*(?:\/[a-z][a-z0-9-]*)*)`?/gi,
   )) {
-    const reference = match[1]?.toLowerCase();
+    const reference = match[1];
     const isPlatformIdentifier = reference?.startsWith('aria-') || reference?.startsWith('data-');
     const isExplicitReference = match[0].includes('`');
     const isExampleReference =
       match[0].toLowerCase().startsWith('its ') && reference?.includes('-');
-    const followingText = input.source.slice(
-      (match.index ?? 0) + match[0].length,
-      (match.index ?? 0) + match[0].length + 100,
-    );
-    const isExternalPackageReference = /\bfrom\s+\x60?@[^\s\x60]+/.test(followingText);
+    const followingText = input.source.slice((match.index ?? 0) + match[0].length);
+    const isExternalPackageReference = /^\s+from\s+\x60?@[^\s\x60]+/.test(followingText);
     if (
       reference &&
       !isPlatformIdentifier &&
@@ -57,6 +61,14 @@ export function findProseReferenceFailures(input: {
       (isExplicitReference || isExampleReference || input.componentNames.has(reference))
     )
       addProseReference(reference);
+  }
+  for (const relatedLine of input.source.matchAll(/^Related components:\s*(.*)$/gim)) {
+    for (const referenceMatch of relatedLine[1]?.matchAll(
+      /`([A-Za-z][A-Za-z0-9-]*(?:\/[A-Za-z][A-Za-z0-9-]*)*)`/g,
+    ) ?? []) {
+      const reference = referenceMatch[1];
+      if (reference) addProseReference(reference);
+    }
   }
   for (const match of input.source.matchAll(
     /@lostgradient\/cinder\/([a-z][a-z0-9-]*(?:\/[a-z][a-z0-9-]*)*)/g,
@@ -148,7 +160,13 @@ function metadataProse(source: string): string {
 export function componentDocumentationProse(filePath: string, source: string): string {
   if (filePath === 'components.json') return metadataProse(source);
   if (filePath.endsWith('.svelte')) {
-    return source.match(/<script\b[^>]*\bmodule\b[^>]*>\s*(\/\*\*[\s\S]*?\*\/)/)?.[1] ?? '';
+    const moduleScript =
+      source.match(/<script\b(?=[^>]*\bmodule\b)[^>]*>([\s\S]*?)<\/script>/)?.[1] ?? '';
+    return (
+      [...moduleScript.matchAll(/\/\*\*[\s\S]*?\*\//g)].find((comment) =>
+        /@cinder\b/.test(comment[0]),
+      )?.[0] ?? ''
+    );
   }
 
   const sections = [

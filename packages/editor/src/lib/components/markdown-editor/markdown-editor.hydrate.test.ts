@@ -109,3 +109,13 @@ test('server runtime shim rejects fork on the server', () => {
     `export function fork() { errors.lifecycle_function_unavailable('fork'); }`,
   );
 });
+
+test('imports the server bundle before restoring DOM globals', () => {
+  const serverImportIndex = HYDRATE_HELPER_SOURCE.indexOf(
+    'const serverModule = (await import(pathToFileURL(modulePath).href))',
+  );
+  const restoreDomIndex = HYDRATE_HELPER_SOURCE.indexOf('globalThis.document = originalDocument;');
+
+  expect(serverImportIndex).toBeGreaterThan(-1);
+  expect(restoreDomIndex).toBeGreaterThan(serverImportIndex);
+});

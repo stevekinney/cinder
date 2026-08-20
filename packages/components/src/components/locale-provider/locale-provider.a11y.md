@@ -29,4 +29,4 @@ LocaleProvider renders no role, label, or state by itself. Descendant components
 - Verify the descendant still exposes the same role, name, and state.
 - Verify an explicit locale prop on a descendant overrides the provider locale.
 
-Related components: `number-input`, `phone-input`, `stat`.
+Related components: `number-input`, `phone-input`, `statistic`.

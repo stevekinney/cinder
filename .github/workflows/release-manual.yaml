@@ -40,6 +40,17 @@ jobs:
           ref: refs/tags/${{ inputs.tag }}
           persist-credentials: false
 
+      - name: Verify dispatch ref matches tag
+        env:
+          TAG_NAME: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          tag_commit="$(git rev-list -n 1 "refs/tags/$TAG_NAME")"
+          if [ "$GITHUB_SHA" != "$tag_commit" ]; then
+            echo "::error::The workflow dispatch commit ($GITHUB_SHA) must equal tag $TAG_NAME ($tag_commit) for npm provenance."
+            exit 1
+          fi
+
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
@@ -78,6 +89,17 @@ jobs:
         with:
           ref: refs/tags/${{ inputs.tag }}
           persist-credentials: false
+
+      - name: Verify dispatch ref matches tag
+        env:
+          TAG_NAME: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          tag_commit="$(git rev-list -n 1 "refs/tags/$TAG_NAME")"
+          if [ "$GITHUB_SHA" != "$tag_commit" ]; then
+            echo "::error::The workflow dispatch commit ($GITHUB_SHA) must equal tag $TAG_NAME ($tag_commit) for npm provenance."
+            exit 1
+          fi
 
       - name: Setup Node
         uses: actions/setup-node@v7

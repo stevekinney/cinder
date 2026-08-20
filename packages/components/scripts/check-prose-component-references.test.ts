@@ -6,7 +6,12 @@ import {
   proseSourcePaths,
 } from './check-prose-component-references.ts';
 
-const componentNames = new Set(['container', 'experimental/live-component', 'page-header']);
+const componentNames = new Set([
+  'container',
+  'experimental/live-component',
+  'page-header',
+  'virtual-list',
+]);
 const publicSubpaths = new Set(['button/schema', 'icons', 'styles']);
 
 describe('check-prose-component-references', () => {
@@ -70,11 +75,59 @@ describe('check-prose-component-references', () => {
     ).toEqual([]);
   });
 
+  test('does not let a later external package reference exempt a dangling component', () => {
+    expect(
+      findProseReferenceFailures({
+        source: 'Use `missing-component` instead. Use `DiffViewer` from `@lostgradient/editor`.',
+        filePath: 'fixture.md',
+        componentNames,
+        exampleIds: new Set(),
+        publicSubpaths,
+      }),
+    ).toEqual([{ reference: 'missing-component', filePath: 'fixture.md' }]);
+  });
+
+  test('does not accept a non-component public subpath as prose guidance', () => {
+    expect(
+      findProseReferenceFailures({
+        source: 'Use `styles` instead.',
+        filePath: 'fixture.md',
+        componentNames,
+        exampleIds: new Set(),
+        publicSubpaths,
+      }),
+    ).toEqual([{ reference: 'styles', filePath: 'fixture.md' }]);
+  });
+
+  test('normalizes PascalCase prose references to their component ids', () => {
+    expect(
+      findProseReferenceFailures({
+        source: 'Use `VirtualList` instead.',
+        filePath: 'fixture.md',
+        componentNames,
+        exampleIds: new Set(),
+        publicSubpaths,
+      }),
+    ).toEqual([]);
+  });
+
+  test('validates backticked ids on Related components lines', () => {
+    expect(
+      findProseReferenceFailures({
+        source: 'Related components: `container`, `missing-component`.',
+        filePath: 'fixture.a11y.md',
+        componentNames,
+        exampleIds: new Set(),
+        publicSubpaths,
+      }),
+    ).toEqual([{ reference: 'missing-component', filePath: 'fixture.a11y.md' }]);
+  });
+
   test('only scans component guidance rather than implementation or API documentation', () => {
     expect(
       componentDocumentationProse(
         'button.svelte',
-        '<script>const label = `aria-label`;</script>\n<script module>/** @avoidWhen Use missing-component instead. */</script>',
+        '<script>const label = `aria-label`;</script>\n<script module>/** @cinder @avoidWhen Use missing-component instead. */</script>',
       ),
     ).toContain('missing-component');
     expect(
@@ -84,6 +137,15 @@ describe('check-prose-component-references', () => {
       ),
     ).toContain('missing-component');
     expect(componentDocumentationProse('button.a11y.md', 'Use `aria-label` for a name.')).toBe('');
+  });
+
+  test('finds the @cinder JSDoc after preceding module-script statements', () => {
+    expect(
+      componentDocumentationProse(
+        'button.svelte',
+        "<script module>\nimport type { Snippet } from 'svelte';\n/** @cinder @avoidWhen Use `missing-component` instead. */\n</script>",
+      ),
+    ).toContain('missing-component');
   });
 
   test('checks prose in generated manifest metadata and package imports', () => {
