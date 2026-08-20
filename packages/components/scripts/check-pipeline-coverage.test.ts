@@ -63,6 +63,10 @@ describe('Turbo input topology', () => {
       "needs.scope.result == 'success' && needs.scope.outputs.playwright_matrix",
     );
     expect(browserWorkflow).toContain('playwright-visual:');
+    expect(browserWorkflow).toContain('baseline-coverage:');
+    expect(browserWorkflow).toContain(
+      "github.event_name != 'workflow_dispatch' || github.event.inputs.update_baselines != 'true'",
+    );
     expect(browserWorkflow).toContain('test:browser:docker');
     expect(browserWorkflow).not.toMatch(/^\s*push:/m);
     expect(browserWorkflow).toContain('echo "browser_relevant=true" >> "$GITHUB_OUTPUT"');

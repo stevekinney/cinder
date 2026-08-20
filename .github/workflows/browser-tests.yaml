@@ -670,10 +670,12 @@ jobs:
     # without failing the job.
     #
     # Gated on scope relevance like `typecheck` and `playwright` above, so a
-    # docs-only pull request does not pay to boot the playground. This job is
-    # The report-mode soak completed before this promotion. Missing adopted
-    # baselines now block the pull request with the named coverage gap.
-    if: "!cancelled() && (needs.scope.result != 'success' || needs.scope.outputs.browser_relevant == 'true')"
+    # docs-only pull request does not pay to boot the playground. The
+    # report-mode soak completed before this promotion. Missing adopted
+    # baselines now block the pull request with the named coverage gap. A
+    # baseline-authoring dispatch validates the pre-generation checkout, so it
+    # intentionally skips this check and lets update-baselines create the fix.
+    if: "!cancelled() && (github.event_name != 'workflow_dispatch' || github.event.inputs.update_baselines != 'true') && (needs.scope.result != 'success' || needs.scope.outputs.browser_relevant == 'true')"
     needs: scope
     runs-on: ubuntu-latest
     timeout-minutes: 5
