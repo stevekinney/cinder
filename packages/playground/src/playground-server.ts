@@ -58,7 +58,11 @@ import {
   ComponentDocumentationError,
   buildComponentDocumentation,
 } from './component-documentation.ts';
-import { documentationComponentStylesheetUrl } from './component-sources.ts';
+import {
+  CINDER_COMPONENT_SOURCE,
+  documentationComponentStylesheetUrl,
+  documentationExampleStylesheetUrls,
+} from './component-sources.ts';
 import {
   COMPOSE_ONLY_COMPONENTS,
   discoverComponentDefinition,
@@ -331,15 +335,20 @@ async function renderComponentPage(
   baseUrl: string,
 ): Promise<string> {
   const componentDefinition = await discoverComponentDefinition(componentName);
-  const componentStylesheetUrl =
-    componentDefinition === undefined
-      ? null
-      : documentationComponentStylesheetUrl(componentDefinition.source, componentName);
-  const componentStylesheetLink =
-    componentStylesheetUrl === null
-      ? ''
-      : `\n    <link rel="stylesheet" href="${escapeHtml(componentStylesheetUrl)}" />`;
   const scenarios = await discoverExamples(componentName);
+  const componentStylesheetUrls =
+    componentDefinition?.source.id === CINDER_COMPONENT_SOURCE.id
+      ? documentationExampleStylesheetUrls(componentName, scenarios)
+      : (() => {
+          const stylesheetUrl =
+            componentDefinition === undefined
+              ? null
+              : documentationComponentStylesheetUrl(componentDefinition.source, componentName);
+          return stylesheetUrl === null ? [] : [stylesheetUrl];
+        })();
+  const componentStylesheetLinks = componentStylesheetUrls
+    .map((stylesheetUrl) => `\n    <link rel="stylesheet" href="${escapeHtml(stylesheetUrl)}" />`)
+    .join('');
   const examples = await Promise.all(
     scenarios.map(async (scenario) => {
       const filePath = join(
@@ -433,7 +442,7 @@ async function renderComponentPage(
     ${metadataTags}
     ${structuredData}
     <link rel="icon" href="${FAVICON_HREF}" />
-    <link rel="stylesheet" href="/playground-styles/documentation.css" />${componentStylesheetLink}
+    <link rel="stylesheet" href="/playground-styles/documentation.css" />${componentStylesheetLinks}
     ${ssrHead}
     <script>${PRE_PAINT_THEME_SCRIPT}</script>
     <style>

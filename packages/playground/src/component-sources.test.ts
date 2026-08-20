@@ -13,6 +13,7 @@ import {
   CINDER_COMPONENT_SOURCE,
   EDITOR_COMPONENT_SOURCE,
   documentationComponentStylesheetUrl,
+  documentationExampleStylesheetUrls,
   resolveEditorStylesheetUrl,
 } from './component-sources.ts';
 
@@ -57,5 +58,16 @@ describe('documentationComponentStylesheetUrl', () => {
     expect(
       documentationComponentStylesheetUrl(CINDER_COMPONENT_SOURCE, 'click-away-listener'),
     ).toBeNull();
+  });
+});
+
+describe('documentationExampleStylesheetUrls', () => {
+  it('adds styles for Cinder components composed by the documented component examples', () => {
+    expect(
+      documentationExampleStylesheetUrls('checkbox-group', ['basic', 'disabled-fieldset']),
+    ).toEqual([
+      '/components/checkbox/checkbox.css',
+      '/components/checkbox-group/checkbox-group.css',
+    ]);
   });
 });

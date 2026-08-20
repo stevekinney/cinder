@@ -488,7 +488,7 @@ export function assertDocumentationMetadata(
     if (typeof parsed !== 'object' || parsed === null) throw new Error('not an object');
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
-    throw new Error(`[static-export] ${name}: invalid JSON-LD: ${detail}`);
+    throw new Error(`[static-export] ${name}: invalid JSON-LD: ${detail}`, { cause: error });
   }
 }
 

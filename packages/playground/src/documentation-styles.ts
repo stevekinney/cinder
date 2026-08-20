@@ -3,9 +3,9 @@ import { join } from 'node:path';
 import { PLAYGROUND_ROOT } from './playground-paths.ts';
 
 /**
- * Cinder primitives rendered by component-page.svelte itself. Their styles are
- * bundled once for every documentation route; the documented component's own
- * stylesheet is added separately only when it is outside this list.
+ * Cinder primitives rendered by the documentation chrome and its colour-token
+ * panel. Their styles are bundled once for every documentation route; the
+ * documented component and its example dependencies are added separately.
  */
 export const DOCUMENTATION_CINDER_COMPONENTS = [
   'accordion',
@@ -15,15 +15,27 @@ export const DOCUMENTATION_CINDER_COMPONENTS = [
   'callout',
   'code-block',
   'collapsible',
+  'color-picker',
+  'color-swatch-picker',
+  'copy-button',
   'kbd',
+  'input',
+  'popover',
   'status-dot',
   'table',
   'toggle',
   'tooltip',
 ] as const;
 
-/** The landing shell renders one Cinder primitive in addition to its own scoped CSS. */
-export const LANDING_CINDER_COMPONENTS = ['button'] as const;
+/** Cinder primitives rendered by the landing shell and its colour-token panel. */
+export const LANDING_CINDER_COMPONENTS = [
+  'button',
+  'color-picker',
+  'color-swatch-picker',
+  'copy-button',
+  'input',
+  'popover',
+] as const;
 
 export type PlaygroundStylesheetName = 'documentation' | 'landing';
 

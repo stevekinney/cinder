@@ -952,6 +952,14 @@ describe('/page/:name', () => {
     expect(html).not.toContain('href="/styles/index.css"');
   });
 
+  it('loads stylesheet sidecars for Cinder primitives composed by documentation examples', async () => {
+    const response = await handleRequest(req('/page/checkbox-group'));
+    const html = await response.text();
+
+    expect(html).toContain('href="/components/checkbox/checkbox.css"');
+    expect(html).toContain('href="/components/checkbox-group/checkbox-group.css"');
+  });
+
   it('serves bundled documentation CSS as one stylesheet with no import waterfall', async () => {
     const stylesheet = await handleRequest(req('/playground-styles/documentation.css'));
     expect(stylesheet.status).toBe(200);

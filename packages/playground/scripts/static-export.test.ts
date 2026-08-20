@@ -110,6 +110,20 @@ test('rejects duplicate canonical tags and malformed JSON-LD', () => {
       '/page/button',
     ),
   ).toThrow('one canonical');
+
+  let malformedJsonLdError: unknown;
+  try {
+    assertDocumentationMetadata(
+      'button',
+      html.replace('{"@context":"https://schema.org"}', '{'),
+      'https://cinder.website',
+      '/page/button',
+    );
+  } catch (error) {
+    malformedJsonLdError = error;
+  }
+  expect(malformedJsonLdError).toBeInstanceOf(Error);
+  expect((malformedJsonLdError as Error).cause).toBeInstanceOf(SyntaxError);
 });
 
 test('HTML asset discovery normalizes query-configured routes to one static path', () => {

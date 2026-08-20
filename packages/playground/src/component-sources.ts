@@ -59,6 +59,19 @@ export const CINDER_COMPONENT_SOURCE: ComponentSource = {
 };
 
 const DOCUMENTATION_CINDER_COMPONENT_SET = new Set<string>(DOCUMENTATION_CINDER_COMPONENTS);
+const CINDER_COMPONENT_IMPORT = /from\s+['"]@lostgradient\/cinder\/([a-z0-9][a-z0-9-]*)['"]/gu;
+
+function cinderComponentStylesheetUrl(componentName: string): string | null {
+  if (DOCUMENTATION_CINDER_COMPONENT_SET.has(componentName)) return null;
+  const stylesheet = join(
+    cinderPackageRoot,
+    'src',
+    'components',
+    componentName,
+    `${componentName}.css`,
+  );
+  return existsSync(stylesheet) ? `/components/${componentName}/${componentName}.css` : null;
+}
 
 /**
  * Return the stylesheet a documentation page needs in addition to the shared
@@ -71,11 +84,45 @@ export function documentationComponentStylesheetUrl(
   componentName: string,
 ): string | null {
   if (componentSource.id === CINDER_COMPONENT_SOURCE.id) {
-    if (DOCUMENTATION_CINDER_COMPONENT_SET.has(componentName)) return null;
-    const stylesheet = join(componentSource.componentsRoot, componentName, `${componentName}.css`);
-    return existsSync(stylesheet) ? `/components/${componentName}/${componentName}.css` : null;
+    return cinderComponentStylesheetUrl(componentName);
   }
   return componentSource.componentStylesheetUrl(componentName);
+}
+
+/**
+ * Resolve styles for every Cinder component imported by a documented
+ * component's examples. A page can compose an otherwise unrelated primitive
+ * (CheckboxGroup's examples render Checkbox, for example), so its own
+ * sidecar alone is not enough after removing the global stylesheet.
+ */
+export function documentationExampleStylesheetUrls(
+  componentName: string,
+  scenarios: readonly string[],
+): string[] {
+  const dependencyNames = new Set<string>();
+  for (const scenario of scenarios) {
+    const examplePath = join(
+      PLAYGROUND_ROOT,
+      'src',
+      'examples',
+      componentName,
+      `${scenario}.example.svelte`,
+    );
+    const source = readFileSync(examplePath, 'utf8');
+    for (const match of source.matchAll(CINDER_COMPONENT_IMPORT)) {
+      dependencyNames.add(match[1]!);
+    }
+  }
+
+  const componentStylesheet = cinderComponentStylesheetUrl(componentName);
+  return [
+    ...[...dependencyNames]
+      .filter((dependencyName) => dependencyName !== componentName)
+      .toSorted()
+      .map(cinderComponentStylesheetUrl)
+      .filter((stylesheetUrl): stylesheetUrl is string => stylesheetUrl !== null),
+    ...(componentStylesheet === null ? [] : [componentStylesheet]),
+  ];
 }
 
 export const CHAT_COMPONENT_SOURCE: ComponentSource = {

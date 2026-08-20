@@ -29,7 +29,12 @@ describe('documentation stylesheet', () => {
       'callout',
       'code-block',
       'collapsible',
+      'color-picker',
+      'color-swatch-picker',
+      'copy-button',
       'kbd',
+      'input',
+      'popover',
       'status-dot',
       'table',
       'toggle',
@@ -42,8 +47,16 @@ describe('landing stylesheet', () => {
   test('omits documentation-only component families', async () => {
     const stylesheet = await buildLandingStylesheet();
 
-    expect(LANDING_CINDER_COMPONENTS).toEqual(['button']);
+    expect(LANDING_CINDER_COMPONENTS).toEqual([
+      'button',
+      'color-picker',
+      'color-swatch-picker',
+      'copy-button',
+      'input',
+      'popover',
+    ]);
     expect(stylesheet).toContain('.cinder-button');
+    expect(stylesheet).toContain('.cinder-color-picker');
     expect(stylesheet).not.toContain('--cinder-code-block');
     expect(stylesheet).not.toContain('--cinder-table');
   });
