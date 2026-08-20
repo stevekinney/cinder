@@ -1,6 +1,6 @@
 import type { Snippet } from 'svelte';
 import type { HTMLAttributes } from 'svelte/elements';
-export type GridListProps = Omit<HTMLAttributes<HTMLElement>, 'role'> & {
+export type GridListProps = Omit<HTMLAttributes<HTMLElement>, 'class' | 'role'> & {
   /**
    * Minimum width of each grid cell, expressed as a CSS `<length>` value
    * (e.g. `"16rem"`, `"240px"`, `"min(20rem, 100%)"`). Used as the first

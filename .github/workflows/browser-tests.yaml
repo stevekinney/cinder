@@ -519,9 +519,13 @@ jobs:
   # Playwright container above.
   playwright-visual:
     needs: scope
-    if: "!cancelled() && github.event_name == 'workflow_dispatch' && github.event.inputs.mode != 'off'"
+    # Report on every pull request and merge-queue entry before this becomes a
+    # blocking gate. Manual dispatch keeps its explicit mode for diagnostics.
+    if: "!cancelled() && (github.event_name == 'pull_request' || github.event_name == 'merge_group' || (github.event_name == 'workflow_dispatch' && github.event.inputs.mode != 'off'))"
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      CINDER_VISUAL_DIFF: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.mode || 'report' }}
     steps:
       - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2
@@ -532,10 +536,10 @@ jobs:
         env:
           CI: 'true'
           CINDER_TEST_COMPONENTS: ${{ needs.scope.outputs.component_scope_mode == 'filtered' && needs.scope.outputs.components || '' }}
-          CINDER_VISUAL_DIFF: ${{ github.event.inputs.mode }}
+          CINDER_VISUAL_DIFF: ${{ env.CINDER_VISUAL_DIFF }}
         run: bun run --filter=@cinder/testing test:browser:docker
       - name: Merge visual-report fragments
-        if: always() && github.event.inputs.mode == 'report'
+        if: always() && env.CINDER_VISUAL_DIFF == 'report'
         run: |
           set -euo pipefail
           REPORT_DIRECTORY=packages/testing/test-results/visual-report
@@ -547,7 +551,7 @@ jobs:
             | xargs -0 -I {} cat {} \
             | jq -s '.' > packages/testing/test-results/visual-report.json
       - name: Upload visual report
-        if: always() && github.event.inputs.mode == 'report'
+        if: always() && env.CINDER_VISUAL_DIFF == 'report'
         uses: actions/upload-artifact@v7
         with:
           name: visual-report

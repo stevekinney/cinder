@@ -8,7 +8,7 @@
    * @tag paging
    * @useWhen Streaming results into a long list and you want the next page to load as the user approaches the end.
    * @avoidWhen The dataset is bounded and benefits from discrete jumps — use `Pagination` instead.
-   * @related pagination
+   * @related pagination, virtual-list
    */
   export type { LoadMoreProps } from './load-more.types.ts';
 </script>

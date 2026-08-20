@@ -95,9 +95,7 @@ const NO_CLASS_MERGING_ALLOW_LIST = new Set<string>([
  * gate uses (`scripts/component-conventions.ts`), so "has a real test" means the
  * same thing in both places.
  */
-const NO_TEST_REQUIRED_ALLOW_LIST = new Set([
-  'command-item', // TODO: add tests and remove from allow-list
-]);
+const NO_TEST_REQUIRED_ALLOW_LIST = new Set<string>();
 
 /**
  * Discover the public-component .svelte files. After the per-directory migration

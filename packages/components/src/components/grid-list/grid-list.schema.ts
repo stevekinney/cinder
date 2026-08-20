@@ -9,6 +9,10 @@ const schema = {
       description:
         'Minimum width of each grid cell, expressed as a CSS `<length>` value\n(e.g. `"16rem"`, `"240px"`, `"min(20rem, 100%)"`). Used as the first\nargument to `minmax()` inside a `repeat(auto-fill, ...)` track.\nDefault: `"16rem"`. Empty string is treated as unset.',
     },
+    class: {
+      type: 'string',
+      description: 'Extra class names merged with `cinder-grid-list`.',
+    },
   },
   additionalProperties: false,
   metadata: {
@@ -18,11 +22,6 @@ const schema = {
         reason: 'function-or-snippet',
         required: true,
         description: 'Items — typically `GridListItem` instances.',
-      },
-      {
-        name: 'class',
-        reason: 'unknown-shape',
-        description: 'Extra class names merged with `cinder-grid-list`.',
       },
     ],
   },

@@ -238,12 +238,8 @@ jobs:
       # package's Trusted Publisher configured at registry.npmjs.org automatically
       # exchanges the GitHub OIDC token for a publish grant.
       #
-      # Provenance is DISABLED to match package.json#publishConfig.provenance
-      # (false) — `publish:release` runs `npm publish` under Bun, whose BoringSSL
-      # fails provenance signing with ERR_OSSL_NO_DEFAULT_DIGEST. The env and
-      # publishConfig agree at false so npm config precedence can't reintroduce
-      # the failure. Re-enable provenance in BOTH places only once signing is
-      # proven under the publish runtime.
+      # Provenance is enabled in every public package's publishConfig and here
+      # so the npm attestation records the workflow run and source commit.
       #
       # If this path breaks and a token-based emergency publish is required, use
       # .github/workflows/release-manual.yaml instead (see CONTRIBUTING.md).
@@ -261,25 +257,25 @@ jobs:
         if: github.event_name == 'push' && steps.changesets.outputs.hasChangesets == 'false'
         run: bun run --filter=@lostgradient/markdown publish:release -- --skip-validation
         env:
-          NPM_CONFIG_PROVENANCE: 'false'
+          NPM_CONFIG_PROVENANCE: 'true'
 
       - name: Publish validated Cinder package artifact to npm
         if: github.event_name == 'push' && steps.changesets.outputs.hasChangesets == 'false'
         run: bun run --filter=@lostgradient/cinder publish:release -- --skip-validation
         env:
-          NPM_CONFIG_PROVENANCE: 'false'
+          NPM_CONFIG_PROVENANCE: 'true'
 
       - name: Publish validated Editor package artifact to npm
         if: github.event_name == 'push' && steps.changesets.outputs.hasChangesets == 'false'
         run: bun run --filter=@lostgradient/editor publish:release -- --skip-validation
         env:
-          NPM_CONFIG_PROVENANCE: 'false'
+          NPM_CONFIG_PROVENANCE: 'true'
 
       - name: Publish validated Chat package artifact to npm
         if: github.event_name == 'push' && steps.changesets.outputs.hasChangesets == 'false'
         run: bun run --filter=@lostgradient/chat publish:release -- --skip-validation
         env:
-          NPM_CONFIG_PROVENANCE: 'false'
+          NPM_CONFIG_PROVENANCE: 'true'
 
       # cinder-mcp publishes LAST, deliberately out of the peer-DAG order used
       # above. Nothing peers on or depends on it — it is a leaf that consumes
@@ -297,7 +293,7 @@ jobs:
         if: github.event_name == 'push' && steps.changesets.outputs.hasChangesets == 'false'
         run: bun run --filter=@lostgradient/cinder-mcp publish:release -- --skip-validation
         env:
-          NPM_CONFIG_PROVENANCE: 'false'
+          NPM_CONFIG_PROVENANCE: 'true'
 
       # Diagnostic dry-run: publish the same staged tarball that
       # validate:consumer installs into the fixture apps.
