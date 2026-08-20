@@ -73,6 +73,7 @@ describe('Turbo input topology', () => {
       'if [ "$EVENT_NAME" = pull_request ] || [ "$EVENT_NAME" = merge_group ]; then',
     );
     expect(browserWorkflow).toContain('[ "$VISUAL" = success ] || exit 1');
+    expect(browserWorkflow).toContain('sudo rm -rf packages/testing/snapshots');
     expect(browserWorkflow).toContain('path: packages/testing/blob-report');
     expect(browserWorkflow).toContain(
       'bunx playwright merge-reports --reporter html packages/testing/blob-reports',

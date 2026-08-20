@@ -833,7 +833,7 @@ jobs:
           # intentionally leaves those untracked paths in place, so replace
           # the tree before copying the staged snapshot set into this clean,
           # bot-owned branch checkout.
-          rm -rf packages/testing/snapshots
+          sudo rm -rf packages/testing/snapshots
           mkdir -p packages/testing/snapshots
           cp -R "$SNAPSHOT_STAGING/packages/testing/snapshots/." packages/testing/snapshots/
           git add packages/testing/snapshots
