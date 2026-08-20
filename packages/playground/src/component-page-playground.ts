@@ -176,11 +176,11 @@ export type PlaygroundModel = {
   hasUnsatisfiedRequired: boolean;
   /**
    * True when the component is better represented by its authored examples than
-   * by the generic prop playground. This covers components whose essential
-   * behavior depends on optional callbacks/data sources the analyzer cannot
-   * synthesize into a sensible live demo.
+   * by the generic prop playground.
    */
   requiresExamplePlayground: boolean;
+  /** Why the generic playground defers to an authored example. */
+  examplePlaygroundReason: 'behavior' | 'structured-children' | undefined;
 };
 
 /**
@@ -196,7 +196,7 @@ export type PlaygroundModel = {
  * example that demonstrates the real interaction, which is what the stage shows
  * instead of an empty box.
  */
-const EXAMPLE_ONLY_PLAYGROUND_COMPONENTS = new Set([
+const BEHAVIOR_EXAMPLE_PLAYGROUND_COMPONENTS = new Set([
   'autocomplete',
   'spectrogram',
   // These closed-by-default overlays need state, anchors, or callbacks that a
@@ -206,21 +206,6 @@ const EXAMPLE_ONLY_PLAYGROUND_COMPONENTS = new Set([
   'backdrop',
   'command-menu',
   'confirm-dialog',
-  // These containers require structured child snippets. Their existing
-  // authored examples show a valid composition without a failed bare mount.
-  'button-group',
-  'checkbox-group',
-  'form-field',
-  'form-section',
-  'scroll-area',
-  'segmented-control',
-  // SideNavigation requires list-item children composed from its own Item and
-  // Group components. The authored example supplies that semantic structure.
-  'side-navigation',
-  // Sidebar needs application-owned navigation content and an explicit mobile
-  // drawer trigger. Its authored example provides both, while a bare mount can
-  // create an empty top-layer drawer at the mobile breakpoint.
-  'sidebar',
   'modal',
   'drawer',
   'popover',
@@ -230,6 +215,26 @@ const EXAMPLE_ONLY_PLAYGROUND_COMPONENTS = new Set([
   // becomes synthesizable the blanket-the-page failure would come back silently.
   'command-palette',
 ]);
+
+/** Containers whose valid preview needs component-specific child composition. */
+const STRUCTURED_CHILDREN_EXAMPLE_PLAYGROUND_COMPONENTS = new Set([
+  'button-group',
+  'checkbox-group',
+  'form-field',
+  'form-section',
+  'scroll-area',
+  'segmented-control',
+  'side-navigation',
+  'sidebar',
+]);
+
+function examplePlaygroundReasonFor(kebabName: string): PlaygroundModel['examplePlaygroundReason'] {
+  if (BEHAVIOR_EXAMPLE_PLAYGROUND_COMPONENTS.has(kebabName)) return 'behavior';
+  if (STRUCTURED_CHILDREN_EXAMPLE_PLAYGROUND_COMPONENTS.has(kebabName)) {
+    return 'structured-children';
+  }
+  return undefined;
+}
 
 /**
  * True when a prop would make the generated preview invalid by construction: it
@@ -505,13 +510,16 @@ export function buildPlaygroundModel(manifest: ComponentManifest): PlaygroundMod
     }
   }
 
+  const examplePlaygroundReason = examplePlaygroundReasonFor(manifest.kebabName);
+
   return {
     controls,
     seeds,
     skipped,
     unsatisfiedRequired,
     hasUnsatisfiedRequired: unsatisfiedRequired.length > 0,
-    requiresExamplePlayground: EXAMPLE_ONLY_PLAYGROUND_COMPONENTS.has(manifest.kebabName),
+    requiresExamplePlayground: examplePlaygroundReason !== undefined,
+    examplePlaygroundReason,
   };
 }
 

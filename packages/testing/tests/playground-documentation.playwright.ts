@@ -353,9 +353,18 @@ test('marquee keeps its generated live preview', async ({ page }) => {
 
   await expect(page.getByText('Live preview', { exact: true })).toBeVisible();
   await expect(page.locator('#playground-live-mount')).toBeVisible();
+  await expect(page.getByLabel('label')).toHaveValue('Announcements');
   const generatedSnippet = page.locator('.dx-playground__panel .cinder-code-block').first();
   await expect(generatedSnippet).toContainText('<Marquee label="Announcements">');
   await expect(generatedSnippet).toContainText('{#snippet children()}');
+});
+
+test('authored previews retain the focus-mode control', async ({ page }) => {
+  await page.goto('/page/sidebar?view=playground', { waitUntil: 'load' });
+
+  await expect(page.getByText('Featured example', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Expand' }).click();
+  await expect(page.locator('[data-component-page]')).toHaveClass(/is-focus-mode/);
 });
 
 test('masonry keeps its recipe items as direct component children', async ({ page }) => {

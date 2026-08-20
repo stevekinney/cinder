@@ -361,23 +361,38 @@ describe('buildPlaygroundModel', () => {
   });
 
   test.each([
-    ['Autocomplete', 'autocomplete', '@lostgradient/cinder/autocomplete'],
-    ['Spectrogram', 'spectrogram', '@lostgradient/cinder/spectrogram'],
-    ['Backdrop', 'backdrop', '@lostgradient/cinder/backdrop'],
-    ['Alert dialog', 'alert-dialog', '@lostgradient/cinder/alert-dialog'],
-    ['Confirm dialog', 'confirm-dialog', '@lostgradient/cinder/confirm-dialog'],
-    ['Command menu', 'command-menu', '@lostgradient/cinder/command-menu'],
-    ['Button group', 'button-group', '@lostgradient/cinder/button-group'],
-    ['Checkbox group', 'checkbox-group', '@lostgradient/cinder/checkbox-group'],
-    ['Form field', 'form-field', '@lostgradient/cinder/form-field'],
-    ['Form section', 'form-section', '@lostgradient/cinder/form-section'],
-    ['Scroll area', 'scroll-area', '@lostgradient/cinder/scroll-area'],
-    ['Segmented control', 'segmented-control', '@lostgradient/cinder/segmented-control'],
-    ['Side navigation', 'side-navigation', '@lostgradient/cinder/side-navigation'],
-    ['Sidebar', 'sidebar', '@lostgradient/cinder/sidebar'],
-  ])(
-    'marks %s as example-only when behavior needs authored examples',
-    (name, kebabName, importPath) => {
+    ['Autocomplete', 'autocomplete', '@lostgradient/cinder/autocomplete', 'behavior'],
+    ['Spectrogram', 'spectrogram', '@lostgradient/cinder/spectrogram', 'behavior'],
+    ['Backdrop', 'backdrop', '@lostgradient/cinder/backdrop', 'behavior'],
+    ['Alert dialog', 'alert-dialog', '@lostgradient/cinder/alert-dialog', 'behavior'],
+    ['Confirm dialog', 'confirm-dialog', '@lostgradient/cinder/confirm-dialog', 'behavior'],
+    ['Command menu', 'command-menu', '@lostgradient/cinder/command-menu', 'behavior'],
+    ['Button group', 'button-group', '@lostgradient/cinder/button-group', 'structured-children'],
+    [
+      'Checkbox group',
+      'checkbox-group',
+      '@lostgradient/cinder/checkbox-group',
+      'structured-children',
+    ],
+    ['Form field', 'form-field', '@lostgradient/cinder/form-field', 'structured-children'],
+    ['Form section', 'form-section', '@lostgradient/cinder/form-section', 'structured-children'],
+    ['Scroll area', 'scroll-area', '@lostgradient/cinder/scroll-area', 'structured-children'],
+    [
+      'Segmented control',
+      'segmented-control',
+      '@lostgradient/cinder/segmented-control',
+      'structured-children',
+    ],
+    [
+      'Side navigation',
+      'side-navigation',
+      '@lostgradient/cinder/side-navigation',
+      'structured-children',
+    ],
+    ['Sidebar', 'sidebar', '@lostgradient/cinder/sidebar', 'structured-children'],
+  ] as const)(
+    'marks %s as example-only when authored examples are required',
+    (name, kebabName, importPath, examplePlaygroundReason) => {
       const model = buildPlaygroundModel({
         name,
         kebabName,
@@ -395,6 +410,7 @@ describe('buildPlaygroundModel', () => {
       });
       expect(model.controls.map((control) => control.name)).toEqual(['value']);
       expect(model.requiresExamplePlayground).toBe(true);
+      expect(model.examplePlaygroundReason).toBe(examplePlaygroundReason);
     },
   );
 

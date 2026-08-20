@@ -614,6 +614,32 @@ describe('component-page single-scroll layout', () => {
     await tick();
   });
 
+  test('explains structured composition when an authored example is required', async () => {
+    const exampleOnly = baseFixture();
+    exampleOnly.component.id = 'button-group';
+    exampleOnly.component.name = 'Button group';
+    exampleOnly.component.exportName = 'ButtonGroup';
+    exampleOnly.propsManifest = {
+      name: 'ButtonGroup',
+      kebabName: 'button-group',
+      file: 'button-group.svelte',
+      importPath: '@lostgradient/cinder/button-group',
+      props: [],
+    };
+    installDocumentationDataIsland(exampleOnly);
+
+    const { unmount } = render(ComponentPage);
+    await screen.findByRole('heading', { level: 1, name: 'Button group' });
+
+    await showPlayground();
+    const noteText = document.querySelector('.dx-play__note')?.textContent ?? '';
+    expect(noteText).toMatch(/structured\s+child composition/);
+    expect(noteText).not.toContain('data, callbacks');
+
+    unmount();
+    await tick();
+  });
+
   test('withholds only the generated snippet when a required non-children snippet has no default', async () => {
     const required = baseFixture();
     required.propsManifest.props = [

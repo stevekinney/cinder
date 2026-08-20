@@ -580,6 +580,7 @@
           unsatisfiedRequired: [],
           hasUnsatisfiedRequired: false,
           requiresExamplePlayground: false,
+          examplePlaygroundReason: undefined,
         }
       : buildPlaygroundModel(documentation.propsManifest),
   );
@@ -591,14 +592,21 @@
   const previewRecipe = $derived(
     documentation === null ? undefined : previewRecipeFor(documentation.propsManifest.kebabName),
   );
-  // Live control values, keyed by prop name. Seeded from each control's default
-  // the first time the model resolves.
+  // Live control values, keyed by prop name. A preview recipe's concrete props
+  // seed matching controls, so what the reader sees in a control always matches
+  // the rendered baseline; otherwise use the manifest-derived control value.
   const playgroundValues: Record<string, PlaygroundValue> = $state({});
   let playgroundSeeded = false;
   $effect(() => {
     if (playgroundSeeded || playgroundModel.controls.length === 0) return;
     for (const control of playgroundModel.controls) {
-      playgroundValues[control.name] = control.value;
+      const recipeValue = previewRecipe?.props?.[control.name];
+      playgroundValues[control.name] =
+        typeof recipeValue === 'boolean' ||
+        typeof recipeValue === 'number' ||
+        typeof recipeValue === 'string'
+          ? recipeValue
+          : control.value;
     }
     playgroundSeeded = true;
   });
@@ -648,12 +656,17 @@
    *  - `no-props`      — the honest original: there really is nothing to adjust.
    */
   type PlaygroundNote =
-    | { kind: 'example-only' }
+    | { kind: 'example-only'; reason: 'behavior' | 'structured-children' }
     | { kind: 'unsatisfied'; props: string[]; hasFallback: boolean }
     | { kind: 'no-props' };
 
   const playgroundNote = $derived.by<PlaygroundNote | null>(() => {
-    if (playgroundModel.requiresExamplePlayground) return { kind: 'example-only' };
+    if (playgroundModel.requiresExamplePlayground) {
+      return {
+        kind: 'example-only',
+        reason: playgroundModel.examplePlaygroundReason ?? 'behavior',
+      };
+    }
     if (playgroundModel.unsatisfiedRequired.length > 0) {
       return {
         kind: 'unsatisfied',
@@ -679,6 +692,9 @@
   const canMountBare = $derived(
     documentation !== null &&
       canBareMount(documentation.propsManifest.kebabName, documentation.propsManifest.isCompound),
+  );
+  const hasFocusablePreview = $derived(
+    overviewExample !== undefined || (canGenerateFromProps && canMountBare),
   );
 
   const bareComponent = $derived(
@@ -1067,7 +1083,7 @@
                 <!-- Stage controls. Width simulation and focus mode used to live on
                      the shell's top bar and act on an iframe; they now sit with the
                      stage they resize, and work by constraining a plain container. -->
-                {#if hasGeneratedControls || isFocusMode}
+                {#if hasGeneratedControls || hasFocusablePreview || isFocusMode}
                   <div
                     class="dx-viewport"
                     role="group"
@@ -1272,8 +1288,13 @@
                 {#if playgroundNote !== null}
                   <p class="dx-play__note">
                     {#if playgroundNote.kind === 'example-only'}
-                      This component is documented through its examples — its behavior depends on
-                      data and callbacks the playground can't synthesize.
+                      {#if playgroundNote.reason === 'structured-children'}
+                        This component is documented through its examples — it requires structured
+                        child composition the playground can't synthesize.
+                      {:else}
+                        This component is documented through its examples — its behavior depends on
+                        data, callbacks, or an anchored interaction the playground can't synthesize.
+                      {/if}
                     {:else if playgroundNote.kind === 'unsatisfied'}
                       No generated snippet:
                       <code>{playgroundNote.props.join(', ')}</code>
