@@ -73,8 +73,11 @@ one lock:
 
 `main` has required status checks configured via the GitHub branch-protection
 API (not a workflow file): **`unit-tests`**, **`typecheck`**, **`playwright`**,
-and **`Pre-1.0 changeset bump guard`**. No human review is required — agents
-self-merge by design in this repository once their own PR's checks are green.
+**`playwright-visual`**, **`baseline-coverage`**, and **`Pre-1.0 changeset bump guard`**.
+`playwright-visual` runs block-mode screenshot comparisons and `baseline-coverage`
+requires each adopted component's committed baselines to cover its declared fixture
+and viewport combinations. No human review is required — agents self-merge by design
+in this repository once their own PR's checks are green.
 
 `strict` was deliberately `false` for a time, on the reasoning that requiring
 branches to be up to date would reserialize merges and that a stale-base merge
