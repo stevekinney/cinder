@@ -242,8 +242,8 @@ jobs:
                 negate=true
                 candidate="${candidate#!}"
               fi
-              # shellcheck disable=SC2254 # candidate is deliberately a glob pattern.
-              if case "$file" in $candidate) true ;; *) false ;; esac; then
+              # shellcheck disable=SC2053 # candidate is deliberately a glob pattern.
+              if [[ "$file" == $candidate ]]; then
                 if [ "$negate" = true ]; then matched=false; else matched=true; fi
               fi
             done
