@@ -96,9 +96,9 @@ async function exampleIds(): Promise<Set<string>> {
   const examples = new Glob('src/components/**/*.examples.json');
   for await (const filePath of examples.scan({ cwd: packageRoot })) {
     const parsed: unknown = await Bun.file(join(packageRoot, filePath)).json();
-    if (!isRecord(parsed) || !Array.isArray(parsed.examples)) continue;
-    for (const example of parsed.examples) {
-      if (isRecord(example) && typeof example.id === 'string') ids.add(example.id);
+    if (!isRecord(parsed) || !Array.isArray(parsed['examples'])) continue;
+    for (const example of parsed['examples']) {
+      if (isRecord(example) && typeof example['id'] === 'string') ids.add(example['id']);
     }
   }
   return ids;
@@ -106,9 +106,9 @@ async function exampleIds(): Promise<Set<string>> {
 
 async function publicSubpaths(): Promise<Set<string>> {
   const manifest: unknown = await Bun.file(join(packageRoot, 'package.json')).json();
-  if (!isRecord(manifest) || !isRecord(manifest.exports)) return new Set();
+  if (!isRecord(manifest) || !isRecord(manifest['exports'])) return new Set();
   return new Set(
-    Object.keys(manifest.exports)
+    Object.keys(manifest['exports'])
       .filter((subpath) => /^\.\/[a-z][a-z0-9-]*(?:\/[a-z][a-z0-9-]*)*$/.test(subpath))
       .map((subpath) => subpath.slice(2)),
   );
@@ -125,20 +125,20 @@ export async function proseSourcePaths(): Promise<string[]> {
 
 function metadataProse(source: string): string {
   const parsed: unknown = JSON.parse(source);
-  if (!isRecord(parsed) || !Array.isArray(parsed.components)) return '';
+  if (!isRecord(parsed) || !Array.isArray(parsed['components'])) return '';
 
   const prose: string[] = [];
-  for (const component of parsed.components) {
+  for (const component of parsed['components']) {
     if (!isRecord(component)) continue;
-    if (typeof component.purpose === 'string') prose.push(component.purpose);
-    if (Array.isArray(component.useWhen)) {
+    if (typeof component['purpose'] === 'string') prose.push(component['purpose']);
+    if (Array.isArray(component['useWhen'])) {
       prose.push(
-        ...component.useWhen.filter((value): value is string => typeof value === 'string'),
+        ...component['useWhen'].filter((value): value is string => typeof value === 'string'),
       );
     }
-    if (Array.isArray(component.avoidWhen)) {
-      for (const entry of component.avoidWhen) {
-        if (isRecord(entry) && typeof entry.reason === 'string') prose.push(entry.reason);
+    if (Array.isArray(component['avoidWhen'])) {
+      for (const entry of component['avoidWhen']) {
+        if (isRecord(entry) && typeof entry['reason'] === 'string') prose.push(entry['reason']);
       }
     }
   }
