@@ -568,4 +568,56 @@ describe('JsonSchemaEditor — controlled and uncontrolled schema inputs', () =>
     expect(changes).toEqual(['{\n  "type": "number"\n}']);
     expect(editor.getAllByRole('button', { name: 'Edit JSON' }).at(-1)).toBeDefined();
   });
+
+  test('unlocks controlled editing after a settlement promise rejects', async () => {
+    const changes: string[] = [];
+    let rejectSettlement: (reason?: unknown) => void = () => {};
+    const rejectedSettlement = new Promise<never>((_resolve, reject) => {
+      rejectSettlement = reject;
+    });
+    const { container } = render(JsonSchemaEditorImplementation, {
+      props: {
+        id: 'jse-controlled-settlement-rejection',
+        schema: { type: 'string' },
+        view: 'json' as const,
+        onValueChangeRequest: (event: JsonSchemaEditorChangeEvent) => {
+          changes.push(event.jsonString);
+          return rejectedSettlement;
+        },
+      },
+    });
+    await flushEffects();
+    const editor = within(container);
+
+    await fireEvent.click(editor.getByRole('button', { name: 'Edit JSON' }));
+    await fireEvent.input(editor.getByRole('textbox', { name: 'JSON' }), {
+      target: { value: '{"type":"number"}' },
+    });
+    await flushEffects();
+    await fireEvent.click(editor.getByRole('button', { name: 'Apply' }));
+    await flushEffects();
+
+    rejectSettlement(new Error('Server rejected the schema.'));
+    await flushEffects();
+    await flushEffects();
+
+    const editButton = editor.getAllByRole('button', { name: 'Edit JSON' }).at(-1);
+    if (editButton === undefined) throw new Error('Expected JSON editing to be restored.');
+    await fireEvent.click(editButton);
+    const textareas = container.querySelectorAll<HTMLTextAreaElement>(
+      '.cinder-jse-json-view__textarea',
+    );
+    const textarea = textareas[textareas.length - 1];
+    if (textarea === undefined) throw new Error('Expected an active JSON textarea.');
+    await fireEvent.input(textarea, {
+      target: { value: '{"type":"boolean"}' },
+    });
+    await flushEffects();
+    const applyButton = editor.getAllByRole('button', { name: 'Apply' }).at(-1);
+    if (applyButton === undefined) throw new Error('Expected the JSON apply action.');
+    await fireEvent.click(applyButton);
+    await flushEffects();
+
+    expect(changes).toEqual(['{\n  "type": "number"\n}', '{\n  "type": "boolean"\n}']);
+  });
 });

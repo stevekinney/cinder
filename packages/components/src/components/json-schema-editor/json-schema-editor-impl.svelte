@@ -133,13 +133,17 @@
   let pendingControlledChange = $state<JsonSchemaEditorChangeEvent | undefined>();
   let pendingControlledChangeVersion = 0;
 
+  function discardPendingControlledChange() {
+    pendingControlledChange = undefined;
+    pendingControlledChangeVersion += 1;
+  }
+
   function settleControlledChange(input: JsonSchemaValue | string) {
     const pendingChange = pendingControlledChange;
     const accepted = pendingChange !== undefined && schemaMatchesChangeEvent(input, pendingChange);
 
     synchroniseControlledSchema(input);
-    pendingControlledChange = undefined;
-    pendingControlledChangeVersion += 1;
+    discardPendingControlledChange();
 
     if (accepted) onSchemaChange?.(pendingChange);
   }
@@ -159,11 +163,17 @@
     const changeVersion = ++pendingControlledChangeVersion;
     const settlement = onValueChangeRequest?.(event);
     if (settlement !== undefined) {
-      void Promise.resolve(settlement).then((input) => {
-        if (isSchemaInput(input) && pendingControlledChangeVersion === changeVersion) {
-          settleControlledChange(input);
-        }
-      });
+      void Promise.resolve(settlement)
+        .then((input) => {
+          if (isSchemaInput(input) && pendingControlledChangeVersion === changeVersion) {
+            settleControlledChange(input);
+          }
+        })
+        .catch(() => {
+          if (pendingControlledChangeVersion !== changeVersion) return;
+          discardPendingControlledChange();
+          if (schema !== undefined) synchroniseControlledSchema(schema);
+        });
     }
 
     // The parent can validate a request asynchronously. Keep the optimistic
@@ -176,6 +186,7 @@
   );
   $effect(() => {
     if (!controlled || schema === undefined) {
+      discardPendingControlledChange();
       lastControlledSchemaText = undefined;
       return;
     }
@@ -224,8 +235,7 @@
     if (schemaKey !== lastSchemaKey) {
       lastSchemaKey = schemaKey;
       untrack(() => {
-        pendingControlledChange = undefined;
-        pendingControlledChangeVersion += 1;
+        discardPendingControlledChange();
         lastControlledSchemaText = schema === undefined ? undefined : controlledSchemaText(schema);
         editorState.reload(schema ?? defaultSchema ?? {}, original);
         enumDrafts = {};
