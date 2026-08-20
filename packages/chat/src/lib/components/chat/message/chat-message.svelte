@@ -139,6 +139,11 @@
     oneditingchange?.(true);
   }
 
+  function captureEditPointer(event: PointerEvent) {
+    if (!event.isPrimary || event.button !== 0) return;
+    (event.currentTarget as HTMLButtonElement).setPointerCapture(event.pointerId);
+  }
+
   function cancelEditing() {
     isEditing = false;
     editContent = '';
@@ -368,6 +373,7 @@
           <button
             type="button"
             class="chat-message-action-button chat-message-edit-button"
+            onpointerdown={captureEditPointer}
             onclick={startEditing}
             aria-label="Edit message"
           >
