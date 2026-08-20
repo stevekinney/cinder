@@ -42,7 +42,12 @@ describe('vercel.json', () => {
     expect(config['$schema']).toBe('https://openapi.vercel.sh/vercel.json');
     // No meta-framework: we publish a pre-rendered directory.
     expect(config['framework']).toBeNull();
-    expect(config['buildCommand']).toBe('bun run vercel-build');
+    // Vercel's Git integration executes this command directly; it does not
+    // inherit the GitHub Actions workflow environment. Static pages must
+    // therefore receive their canonical production origin here.
+    expect(config['buildCommand']).toBe(
+      'PLAYGROUND_BASE_URL=https://cinder.website bun run vercel-build',
+    );
     // Static export bundles workspace source at build time, so Vercel must not
     // prune devDependencies before running the build.
     expect(config['installCommand']).toContain('NODE_ENV=development bun install');

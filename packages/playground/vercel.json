@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
-  "buildCommand": "bun run vercel-build",
+  "buildCommand": "PLAYGROUND_BASE_URL=https://cinder.website bun run vercel-build",
   "installCommand": "cd ../.. && NODE_ENV=development bun install --frozen-lockfile",
   "outputDirectory": "public",
   "cleanUrls": true,
