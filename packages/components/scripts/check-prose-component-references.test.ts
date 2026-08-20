@@ -39,6 +39,30 @@ describe('check-prose-component-references', () => {
     ).toEqual([{ reference: 'missing-component', filePath: 'fixture.md' }]);
   });
 
+  test('flags every coordinated component recommendation', () => {
+    expect(
+      findProseReferenceFailures({
+        source: 'Use container or missing-component instead.',
+        filePath: 'fixture.md',
+        componentNames,
+        exampleIds: new Set(),
+        publicSubpaths,
+      }),
+    ).toEqual([{ reference: 'missing-component', filePath: 'fixture.md' }]);
+  });
+
+  test('flags a dangling Markdown-linked component recommendation', () => {
+    expect(
+      findProseReferenceFailures({
+        source: 'Use [`MissingComponent`](./missing-component.md) instead.',
+        filePath: 'fixture.md',
+        componentNames,
+        exampleIds: new Set(),
+        publicSubpaths,
+      }),
+    ).toEqual([{ reference: 'missing-component', filePath: 'fixture.md' }]);
+  });
+
   test('does not treat a descriptive hyphenated compound as a component recommendation', () => {
     expect(
       findProseReferenceFailures({
@@ -230,6 +254,15 @@ describe('check-prose-component-references', () => {
         publicSubpaths,
       }),
     ).toEqual([]);
+  });
+
+  test('preserves Cinder imports from fenced Markdown usage examples', () => {
+    expect(
+      componentDocumentationProse(
+        'button/README.md',
+        "Button introduction.\n\n## Usage\n\n```svelte\nimport Button from '@lostgradient/cinder/missing-component';\n```",
+      ),
+    ).toContain('@lostgradient/cinder/missing-component');
   });
 
   test('does not let example ids or parent directories validate imports', () => {
