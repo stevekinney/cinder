@@ -58,7 +58,9 @@ export function findProseReferenceFailures(input: {
       reference &&
       !isPlatformIdentifier &&
       !isExternalPackageReference &&
-      (isExplicitReference || isExampleReference || input.componentNames.has(reference))
+      (isExampleReference ||
+        /^\s+instead\b/i.test(followingText) ||
+        input.componentNames.has(normalizeComponentReference(reference)))
     )
       addProseReference(reference);
   }
@@ -74,7 +76,13 @@ export function findProseReferenceFailures(input: {
     /@lostgradient\/cinder\/([a-z][a-z0-9-]*(?:\/[a-z][a-z0-9-]*)*)/g,
   )) {
     const reference = match[1];
-    if (reference) addPackageImport(reference);
+    const precedingText = input.source.slice(Math.max(0, (match.index ?? 0) - 32), match.index);
+    if (
+      reference &&
+      !/\b(?:no|never|do not)\s*(?:standalone\s+)?(?:import\s+)?[`'"\s]*$/i.test(precedingText)
+    ) {
+      addPackageImport(reference);
+    }
   }
 
   return [...failures.values()];
@@ -169,11 +177,14 @@ export function componentDocumentationProse(filePath: string, source: string): s
     );
   }
 
+  const introduction = source
+    .slice(0, source.search(/(?:^|\n)## /m))
+    .replace(/```[\s\S]*?```/g, '');
   const sections = [
     ...source.matchAll(/(?:^|\n)## (?:Use|Avoid) when[^\n]*\n([\s\S]*?)(?=\n## |\s*$)/gi),
   ].map((match) => match[1] ?? '');
   const related = [...source.matchAll(/^Related components:.*$/gim)].map((match) => match[0]);
-  return [...sections, ...related].join('\n');
+  return [introduction, ...sections, ...related].join('\n');
 }
 
 async function main(): Promise<void> {

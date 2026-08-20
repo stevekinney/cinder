@@ -87,6 +87,10 @@ describe('MarkdownEditor hydration status', () => {
   });
 
   test('hydrates the default WYSIWYG editor from its server-rendered skeleton', async () => {
+    let resolveReady: (() => void) | undefined;
+    const ready = new Promise<void>((resolve) => {
+      resolveReady = resolve;
+    });
     const result = await renderThenHydrate(
       new URL('./markdown-editor.svelte', import.meta.url).pathname,
       {
@@ -94,12 +98,15 @@ describe('MarkdownEditor hydration status', () => {
         label: 'Hydration editor',
         showToolbar: false,
         value: '# Hydration',
+        onready: () => resolveReady?.(),
       },
     );
     cleanup = result.cleanup;
 
     expect(result.ssrHtml).toContain('editor-skeleton');
+    await ready;
     expect(result.container.querySelector('[role="application"]')).not.toBeNull();
+    expect(result.container.querySelector('[data-ready="true"]')).not.toBeNull();
     expect(result.warnings).toEqual([]);
   });
 });

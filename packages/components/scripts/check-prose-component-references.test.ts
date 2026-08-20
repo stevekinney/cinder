@@ -136,7 +136,9 @@ describe('check-prose-component-references', () => {
         'Use `aria-label` for a name.\n\n## Avoid when\n\n- Use missing-component instead.\n\n## Next',
       ),
     ).toContain('missing-component');
-    expect(componentDocumentationProse('button.a11y.md', 'Use `aria-label` for a name.')).toBe('');
+    expect(componentDocumentationProse('button.a11y.md', 'Use `aria-label` for a name.')).toContain(
+      'aria-label',
+    );
   });
 
   test('finds the @cinder JSDoc after preceding module-script statements', () => {
@@ -151,7 +153,7 @@ describe('check-prose-component-references', () => {
   test('checks prose in generated manifest metadata and package imports', () => {
     expect(
       findProseReferenceFailures({
-        source: JSON.stringify({ purpose: 'Compose `missing-component` with the page.' }),
+        source: JSON.stringify({ purpose: 'Compose `missing-component` instead.' }),
         filePath: 'components.json',
         componentNames,
         exampleIds: new Set(),
