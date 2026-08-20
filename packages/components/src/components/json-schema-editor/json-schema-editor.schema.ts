@@ -59,7 +59,7 @@ const schema = {
       {
         name: 'original',
         reason: 'unknown-shape',
-        description: 'Optional explicit baseline; defaults to the initial `schema`.',
+        description: 'Optional explicit baseline; defaults to the initial schema input.',
       },
       {
         name: 'schema',

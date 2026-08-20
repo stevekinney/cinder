@@ -24,7 +24,7 @@ export type {
 type JsonSchemaEditorCommonProps = {
   /** Required for ARIA wiring. */
   id: string;
-  /** Optional explicit baseline; defaults to the initial `schema`. */
+  /** Optional explicit baseline; defaults to the initial schema input. */
   original?: JsonSchemaValue | string;
   /** Changing this triggers a full reset (history clears). */
   schemaKey?: string;

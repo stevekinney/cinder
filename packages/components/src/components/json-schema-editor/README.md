@@ -63,7 +63,7 @@ Pass `defaultSchema` when the editor should own changes after initialization. Om
 | `onRevert`       | `(opaque)`                                 | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                      |
 | `onSchemaChange` | `(opaque)`                                 | no       | —       | Controlled editors must receive committed changes so the parent can update `schema`. Not expressible in JSON Schema; see the component types for the signature. |
 | `onValidate`     | `(opaque)`                                 | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                      |
-| `original`       | `(opaque)`                                 | no       | —       | Optional explicit baseline; defaults to the initial `schema`. Not expressible in JSON Schema; see the component types for the signature.                        |
+| `original`       | `(opaque)`                                 | no       | —       | Optional explicit baseline; defaults to the initial schema input. Not expressible in JSON Schema; see the component types for the signature.                    |
 | `schema`         | `(opaque)`                                 | no       | —       | Parent-owned schema. Requires `onSchemaChange`; do not combine with `defaultSchema`. Not expressible in JSON Schema; see the component types for the signature. |
 
 <!-- generated:props:end -->
