@@ -411,7 +411,7 @@ describe('validate-release-workflow changeset guards', () => {
     }
   });
 
-  test('pins the Node runtime and enables OpenSSL support for both provenance publish paths', () => {
+  test('pins Node, npm, and OpenSSL support for both provenance publish paths', () => {
     const workspaceRoot = resolve(import.meta.dirname, '../../..');
     for (const workflowName of ['release.yaml', 'release-manual.yaml']) {
       const workflow = readFileSync(
@@ -422,6 +422,7 @@ describe('validate-release-workflow changeset guards', () => {
       expect(workflow).toContain("node-version: '22'");
       expect(workflow).toContain('name: Record configured Node runtime for publish');
       expect(workflow).toContain('CINDER_PUBLISH_NODE=$node_path');
+      expect(workflow).toContain('CINDER_PUBLISH_NPM_CLI=$npm_cli');
       expect(workflow).toContain('NODE_OPTIONS: --openssl-legacy-provider');
     }
   });
