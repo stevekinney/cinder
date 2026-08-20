@@ -138,9 +138,11 @@ jobs:
 
           if [ "$EVENT_NAME" != "pull_request" ]; then
             echo "Non-PR event ($EVENT_NAME): running full matrix."
-            echo "component_scope_mode=full" >> "$GITHUB_OUTPUT"
-            echo "components=" >> "$GITHUB_OUTPUT"
-            echo "browser_relevant=true" >> "$GITHUB_OUTPUT"
+            {
+              echo "component_scope_mode=full"
+              echo "components="
+              echo "browser_relevant=true"
+            } >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -240,7 +242,8 @@ jobs:
                 negate=true
                 candidate="${candidate#!}"
               fi
-              if [[ "$file" == $candidate ]]; then
+              # shellcheck disable=SC2254 # candidate is deliberately a glob pattern.
+              if case "$file" in $candidate) true ;; *) false ;; esac; then
                 if [ "$negate" = true ]; then matched=false; else matched=true; fi
               fi
             done
@@ -523,8 +526,8 @@ jobs:
   # Playwright container above.
   playwright-visual:
     needs: scope
-    # Report on every pull request and merge-queue entry before this becomes a
-    # blocking gate. Manual dispatch keeps its explicit mode for diagnostics.
+    # Block pull requests and merge-queue entries after the report-mode soak.
+    # Manual dispatch keeps its explicit mode for diagnostics.
     if: "!cancelled() && (github.event_name == 'pull_request' || github.event_name == 'merge_group' || (github.event_name == 'workflow_dispatch' && github.event.inputs.mode != 'off'))"
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -532,7 +535,7 @@ jobs:
       fail-fast: false
       matrix: ${{ fromJSON(needs.scope.result == 'success' && needs.scope.outputs.playwright_matrix || '{"shard":[1,2,3,4,5,6,7,8]}') }}
     env:
-      CINDER_VISUAL_DIFF: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.mode || 'report' }}
+      CINDER_VISUAL_DIFF: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.mode || 'block' }}
     steps:
       - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2
@@ -661,9 +664,8 @@ jobs:
     #
     # Gated on scope relevance like `typecheck` and `playwright` above, so a
     # docs-only pull request does not pay to boot the playground. This job is
-    # Report-mode rollout: the command remains visible in its log, but an
-    # incomplete baseline cannot block a pull request until the recorded soak
-    # period has completed and this job is deliberately promoted.
+    # The report-mode soak completed before this promotion. Missing adopted
+    # baselines now block the pull request with the named coverage gap.
     if: "!cancelled() && (needs.scope.result != 'success' || needs.scope.outputs.browser_relevant == 'true')"
     needs: scope
     runs-on: ubuntu-latest
@@ -692,7 +694,6 @@ jobs:
         env:
           CINDER_TEST_COMPONENTS: ${{ needs.scope.outputs.component_scope_mode == 'filtered' && needs.scope.outputs.components || '' }}
         run: bun run packages/testing/scripts/baseline-coverage-check.ts
-        continue-on-error: true
 
   update-baselines:
     # Manual-only. Runs inside the canonical Playwright Docker image,
