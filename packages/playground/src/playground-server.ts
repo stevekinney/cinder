@@ -90,6 +90,9 @@ import {
   DEPICT_THEME_VARIABLES,
   FAVICON_HREF,
   PRE_PAINT_THEME_SCRIPT,
+  documentationJsonLd,
+  documentationMetadataTags,
+  documentationPageMetadata,
   escapeHtml,
   jsonForScriptTag,
   renderShell,
@@ -127,6 +130,7 @@ import type { ComponentManifest } from './types.ts';
 export const PORT = resolvePreferredPort();
 let startupReady = true;
 const REPO_ROOT = join(PLAYGROUND_ROOT, '..', '..'); // repo root
+const SOCIAL_IMAGE_FILE = join(PLAYGROUND_ROOT, 'src', 'assets', 'social.png');
 
 /**
  * Startup identity reported by `/ready` so `start-server.ts` can refuse to
@@ -322,6 +326,7 @@ async function renderComponentPage(
   componentName: string,
   snapshotMode: boolean,
   previewOnly: boolean,
+  baseUrl: string,
 ): Promise<string> {
   const componentDefinition = await discoverComponentDefinition(componentName);
   const componentStylesheetUrl =
@@ -359,30 +364,9 @@ async function renderComponentPage(
   const documentationJson = jsonForScriptTag(documentation);
   const htmlAttribute = snapshotModeHtmlAttribute(snapshotMode);
   const styleTag = snapshotModeStyleTag(snapshotMode);
-  const humanName = escapeHtml(humanizeComponentName(componentName));
-  const pageDescription = `Live ${humanName} examples from the cinder Svelte 5 component library.`;
-
-  /*
-   * `/page/<name>` is the canonical documentation URL now — `/c/<name>` 301s
-   * here — so this page, not the retired shell route, has to carry the canonical
-   * link and the Open Graph tags a crawler or a shared link will read.
-   */
-  const baseUrl = (Bun.env['PLAYGROUND_BASE_URL'] ?? '').replace(/\/+$/, '');
-  const canonicalUrl = baseUrl
-    ? escapeHtml(`${baseUrl}/page/${encodeURIComponent(componentName)}`)
-    : '';
-  const canonicalTags = [
-    canonicalUrl ? `<link rel="canonical" href="${canonicalUrl}" />` : '',
-    `<meta property="og:title" content="${humanName} — cinder playground" />`,
-    `<meta property="og:description" content="${pageDescription}" />`,
-    `<meta property="og:type" content="website" />`,
-    `<meta property="og:site_name" content="cinder playground" />`,
-    canonicalUrl ? `<meta property="og:url" content="${canonicalUrl}" />` : '',
-    `<meta name="twitter:card" content="summary_large_image" />`,
-  ]
-    .filter(Boolean)
-    .map((tag) => `\n    ${tag}`)
-    .join('');
+  const metadata = documentationPageMetadata(componentName);
+  const metadataTags = documentationMetadataTags(metadata, baseUrl);
+  const structuredData = documentationJsonLd(metadata, baseUrl);
 
   /*
    * Server-render the documentation tree so the page has real content in the
@@ -441,8 +425,9 @@ async function renderComponentPage(
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>${humanName} — cinder playground</title>
-    <meta name="description" content="${pageDescription}" />${canonicalTags}
+    <title>${escapeHtml(metadata.title)}</title>
+    ${metadataTags}
+    ${structuredData}
     <link rel="icon" href="${FAVICON_HREF}" />
     <link rel="stylesheet" href="/styles/all.css" />${componentStylesheetLink}
     ${ssrHead}
@@ -771,7 +756,12 @@ async function handlePageRoute(url: URL, componentName: string): Promise<Respons
   // stay client-only for the same reason as snapshot mode — see the comment in
   // renderComponentPage.
   const previewOnlyActive = url.searchParams.get('preview') === '1';
-  const html = await renderComponentPage(componentName, snapshotModeActive, previewOnlyActive);
+  const html = await renderComponentPage(
+    componentName,
+    snapshotModeActive,
+    previewOnlyActive,
+    Bun.env['PLAYGROUND_BASE_URL'] ?? url.origin,
+  );
   return new Response(html, { headers: { 'Content-Type': 'text/html' } });
 }
 
@@ -827,12 +817,24 @@ async function handleLandingRoute(url: URL): Promise<Response> {
     readmeHtml,
   });
   const html = renderShell(null, sidebarComponents, {
+    baseUrl: Bun.env['PLAYGROUND_BASE_URL'] ?? url.origin,
     readmeHtml,
     shellBody: renderedShell.body,
     shellHead: renderedShell.head,
     initialSearch: url.search,
   });
   return new Response(html, { headers: { 'Content-Type': 'text/html' } });
+}
+
+async function handleSocialImageRoute(): Promise<Response> {
+  const image = Bun.file(SOCIAL_IMAGE_FILE);
+  if (!(await image.exists())) return notFound('social image not found');
+  return new Response(image, {
+    headers: {
+      'Content-Type': 'image/png',
+      'Cache-Control': IMMUTABLE_CACHE_CONTROL,
+    },
+  });
 }
 
 /**
@@ -842,6 +844,11 @@ async function handleLandingRoute(url: URL): Promise<Response> {
  * wildcard it would otherwise also match (row 5, `/styles/*`).
  */
 export const ROUTES: RouteDefinition[] = [
+  {
+    method: 'GET',
+    pattern: /^\/social\.png$/,
+    handler: () => handleSocialImageRoute(),
+  },
   {
     method: 'GET',
     pattern: /^\/ping$/,

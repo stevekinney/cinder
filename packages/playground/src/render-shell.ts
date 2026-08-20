@@ -20,6 +20,12 @@ import { stripInlineSourcemaps } from './strip-inline-sourcemaps.ts';
 const LINE_SEPARATOR = String.fromCharCode(0x2028);
 const PARAGRAPH_SEPARATOR = String.fromCharCode(0x2029);
 
+export const SITE_NAME = 'Cinder';
+export const SOCIAL_IMAGE_PATH = '/social.png';
+export const SOCIAL_IMAGE_WIDTH = 1200;
+export const SOCIAL_IMAGE_HEIGHT = 630;
+export const SOCIAL_IMAGE_ALT = 'Cinder component library interface illustration';
+
 /**
  * Favicon: the brick (🧱) emoji rendered inline as an SVG data URI. Inlining
  * (rather than pointing at fav.farm or any external/static-asset URL) keeps the
@@ -159,6 +165,140 @@ export function escapeHtml(text: string): string {
     .replace(/'/g, '&#39;');
 }
 
+export type DocumentationPageMetadata = {
+  canonicalPath: string;
+  title: string;
+  description: string;
+  componentName?: string;
+};
+
+/**
+ * The one metadata source for visible document titles, canonical links, social
+ * cards, and structured data. Keeping the canonical path here prevents static
+ * export, the component route, and the landing route from inventing subtly
+ * different URL shapes.
+ */
+export function documentationPageMetadata(componentName: string | null): DocumentationPageMetadata {
+  if (componentName === null) {
+    return {
+      canonicalPath: '/',
+      title: 'Cinder — Svelte 5 component library',
+      description:
+        'Interactive component documentation for Cinder, an accessible and SSR-safe Svelte 5 component library.',
+    };
+  }
+
+  const humanName = humanizeComponentName(componentName);
+  return {
+    canonicalPath: `/page/${encodeURIComponent(componentName)}`,
+    title: `${humanName} — Cinder component documentation`,
+    description: `${humanName} component documentation for Cinder, including live examples and a complete props reference.`,
+    componentName: humanName,
+  };
+}
+
+export function normalizedBaseUrl(baseUrl = Bun.env['PLAYGROUND_BASE_URL'] ?? ''): string {
+  return baseUrl.replace(/\/+$/, '');
+}
+
+export function absoluteDocumentationUrl(baseUrl: string, path: string): string {
+  return `${normalizedBaseUrl(baseUrl)}${path}`;
+}
+
+export function documentationMetadataTags(
+  metadata: DocumentationPageMetadata,
+  baseUrl = Bun.env['PLAYGROUND_BASE_URL'] ?? '',
+): string {
+  const normalized = normalizedBaseUrl(baseUrl);
+  const canonicalUrl = normalized
+    ? absoluteDocumentationUrl(normalized, metadata.canonicalPath)
+    : '';
+  const imageUrl = normalized ? absoluteDocumentationUrl(normalized, SOCIAL_IMAGE_PATH) : '';
+  const title = escapeHtml(metadata.title);
+  const description = escapeHtml(metadata.description);
+
+  return [
+    `<meta name="description" content="${description}" />`,
+    `<meta property="og:title" content="${title}" />`,
+    `<meta property="og:description" content="${description}" />`,
+    `<meta property="og:type" content="website" />`,
+    `<meta property="og:site_name" content="${SITE_NAME}" />`,
+    canonicalUrl ? `<meta property="og:url" content="${escapeHtml(canonicalUrl)}" />` : '',
+    imageUrl ? `<meta property="og:image" content="${escapeHtml(imageUrl)}" />` : '',
+    imageUrl ? '<meta property="og:image:type" content="image/png" />' : '',
+    imageUrl ? `<meta property="og:image:width" content="${SOCIAL_IMAGE_WIDTH}" />` : '',
+    imageUrl ? `<meta property="og:image:height" content="${SOCIAL_IMAGE_HEIGHT}" />` : '',
+    imageUrl ? `<meta property="og:image:alt" content="${SOCIAL_IMAGE_ALT}" />` : '',
+    '<meta name="twitter:card" content="summary_large_image" />',
+    `<meta name="twitter:title" content="${title}" />`,
+    `<meta name="twitter:description" content="${description}" />`,
+    imageUrl ? `<meta name="twitter:image" content="${escapeHtml(imageUrl)}" />` : '',
+    imageUrl ? `<meta name="twitter:image:alt" content="${SOCIAL_IMAGE_ALT}" />` : '',
+    canonicalUrl ? `<link rel="canonical" href="${escapeHtml(canonicalUrl)}" />` : '',
+  ]
+    .filter(Boolean)
+    .join('\n    ');
+}
+
+export function documentationJsonLd(
+  metadata: DocumentationPageMetadata,
+  baseUrl = Bun.env['PLAYGROUND_BASE_URL'] ?? '',
+): string {
+  const normalized = normalizedBaseUrl(baseUrl);
+  if (normalized === '') return '';
+
+  const canonicalUrl = absoluteDocumentationUrl(normalized, metadata.canonicalPath);
+  const imageUrl = absoluteDocumentationUrl(normalized, SOCIAL_IMAGE_PATH);
+  const graph =
+    metadata.componentName === undefined
+      ? [
+          {
+            '@type': 'WebSite',
+            '@id': `${canonicalUrl}#website`,
+            name: SITE_NAME,
+            url: canonicalUrl,
+            description: metadata.description,
+          },
+          {
+            '@type': 'SoftwareApplication',
+            name: SITE_NAME,
+            applicationCategory: 'DeveloperApplication',
+            operatingSystem: 'Web',
+            url: canonicalUrl,
+            description: metadata.description,
+            image: imageUrl,
+          },
+        ]
+      : [
+          {
+            '@type': 'TechArticle',
+            '@id': `${canonicalUrl}#documentation`,
+            headline: metadata.title,
+            description: metadata.description,
+            url: canonicalUrl,
+            mainEntityOfPage: canonicalUrl,
+            image: imageUrl,
+            about: { '@type': 'SoftwareApplication', name: metadata.componentName },
+          },
+          {
+            '@type': 'BreadcrumbList',
+            itemListElement: [
+              { '@type': 'ListItem', position: 1, name: SITE_NAME, item: `${normalized}/` },
+              {
+                '@type': 'ListItem',
+                position: 2,
+                name: metadata.componentName,
+                item: canonicalUrl,
+              },
+            ],
+          },
+        ];
+  return `<script type="application/ld+json">${jsonForScriptTag({
+    '@context': 'https://schema.org',
+    '@graph': graph,
+  })}</script>`;
+}
+
 /**
  * Options for {@link renderShell}.
  */
@@ -208,46 +348,9 @@ export function renderShell(
   components: string[],
   options: RenderShellOptions = {},
 ): string {
-  const baseUrl = (options.baseUrl ?? Bun.env['PLAYGROUND_BASE_URL'] ?? '').replace(/\/+$/, '');
-
-  // Human-friendly label for titles/descriptions (e.g. "Json Schema Editor"
-  // → "JSON Schema Editor"); the raw kebab name still drives routing/URLs.
-  const humanName = activeComponent ? humanizeComponentName(activeComponent) : '';
-
-  const title = activeComponent
-    ? `${escapeHtml(humanName)} — cinder playground`
-    : 'cinder playground — Svelte 5 component library';
-
-  const description = activeComponent
-    ? `${escapeHtml(humanName)} component for cinder: live, interactive examples plus a full props/API reference. Toggle light and dark themes and preview responsive breakpoints.`
-    : 'Interactive component playground for cinder — an accessible, SSR-safe Svelte 5 component library. Browse live examples, props, and themes.';
-
-  // Shell routes: `/c/<component>` for a specific component, `/` for the root.
-  const path = activeComponent ? `/c/${encodeURIComponent(activeComponent)}` : '/';
-  const canonicalUrl = baseUrl ? escapeHtml(`${baseUrl}${path}`) : '';
-  // TODO(bf3680cd): /social.png is a placeholder — shipping the actual social
-  // card image is a separate task.
-  const imageUrl = baseUrl ? escapeHtml(`${baseUrl}/social.png`) : '';
-
-  const meta = [
-    `<meta name="description" content="${description}" />`,
-    `<meta property="og:title" content="${title}" />`,
-    `<meta property="og:description" content="${description}" />`,
-    `<meta property="og:type" content="website" />`,
-    canonicalUrl ? `<meta property="og:url" content="${canonicalUrl}" />` : '',
-    imageUrl ? `<meta property="og:image" content="${imageUrl}" />` : '',
-    `<meta property="og:site_name" content="cinder playground" />`,
-    `<meta name="twitter:card" content="summary_large_image" />`,
-    `<meta name="twitter:title" content="${title}" />`,
-    `<meta name="twitter:description" content="${description}" />`,
-    imageUrl ? `<meta name="twitter:image" content="${imageUrl}" />` : '',
-    canonicalUrl ? `<link rel="canonical" href="${canonicalUrl}" />` : '',
-    // Self-contained data-URI brick (🧱) favicon — see FAVICON_HREF. No
-    // external request and no /favicon.svg route (which would 404).
-    `<link rel="icon" href="${FAVICON_HREF}" />`,
-  ]
-    .filter(Boolean)
-    .join('\n    ');
+  const metadata = documentationPageMetadata(activeComponent);
+  const meta = documentationMetadataTags(metadata, options.baseUrl);
+  const structuredData = documentationJsonLd(metadata, options.baseUrl);
 
   const initialData = {
     component: activeComponent ?? '',
@@ -262,8 +365,10 @@ export function renderShell(
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>${title}</title>
+    <title>${escapeHtml(metadata.title)}</title>
     ${meta}
+    ${structuredData}
+    <link rel="icon" href="${FAVICON_HREF}" />
     ${stripInlineSourcemaps(options.shellHead ?? '')}
     <script>${PRE_PAINT_THEME_SCRIPT}</script>
     <style>

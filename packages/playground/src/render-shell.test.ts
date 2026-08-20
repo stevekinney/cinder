@@ -13,7 +13,13 @@ import { describe, expect, it } from 'bun:test';
 
 import { CSS_VARIABLE_THEME } from '@lostgradient/markdown/rendering/highlighter';
 
-import { jsonForScriptTag, renderShell } from './render-shell.ts';
+import {
+  documentationJsonLd,
+  documentationMetadataTags,
+  documentationPageMetadata,
+  jsonForScriptTag,
+  renderShell,
+} from './render-shell.ts';
 
 describe('jsonForScriptTag', () => {
   it('escapes < and > so a `</script>` substring cannot close the tag', () => {
@@ -164,8 +170,8 @@ describe('renderShell', () => {
 
 describe('renderShell metadata and Open Graph', () => {
   const ROOT_DESCRIPTION =
-    'Interactive component playground for cinder — an accessible, SSR-safe Svelte 5 component library. Browse live examples, props, and themes.';
-  const ROOT_TITLE = 'cinder playground — Svelte 5 component library';
+    'Interactive component documentation for Cinder, an accessible and SSR-safe Svelte 5 component library.';
+  const ROOT_TITLE = 'Cinder — Svelte 5 component library';
 
   describe('root page', () => {
     it('emits the root description and base Open Graph / Twitter tags', () => {
@@ -174,7 +180,7 @@ describe('renderShell metadata and Open Graph', () => {
       expect(html).toContain(`<meta property="og:title" content="${ROOT_TITLE}" />`);
       expect(html).toContain(`<meta property="og:description" content="${ROOT_DESCRIPTION}" />`);
       expect(html).toContain(`<meta property="og:type" content="website" />`);
-      expect(html).toContain(`<meta property="og:site_name" content="cinder playground" />`);
+      expect(html).toContain('<meta property="og:site_name" content="Cinder" />');
       expect(html).toContain(`<meta name="twitter:card" content="summary_large_image" />`);
       expect(html).toContain(`<meta name="twitter:title" content="${ROOT_TITLE}" />`);
       expect(html).toContain(`<meta name="twitter:description" content="${ROOT_DESCRIPTION}" />`);
@@ -203,13 +209,17 @@ describe('renderShell metadata and Open Graph', () => {
         '<meta name="twitter:image" content="https://playground.cinder.dev/social.png" />',
       );
       expect(html).toContain('<link rel="canonical" href="https://playground.cinder.dev/" />');
+      expect(html).toContain('<meta property="og:image:type" content="image/png" />');
+      expect(html).toContain('<meta property="og:image:width" content="1200" />');
+      expect(html).toContain('<meta property="og:image:height" content="630" />');
+      expect(html).toContain('<meta property="og:image:alt"');
     });
   });
 
   describe('per-component page', () => {
     const PER_COMPONENT_DESCRIPTION =
-      'Button component for cinder: live, interactive examples plus a full props/API reference. Toggle light and dark themes and preview responsive breakpoints.';
-    const PER_COMPONENT_TITLE = 'Button — cinder playground';
+      'Button component documentation for Cinder, including live examples and a complete props reference.';
+    const PER_COMPONENT_TITLE = 'Button — Cinder component documentation';
 
     it('emits a per-component description and matching og/twitter title', () => {
       const html = renderShell('button', ['button']);
@@ -237,10 +247,10 @@ describe('renderShell metadata and Open Graph', () => {
         baseUrl: 'https://playground.cinder.dev',
       });
       expect(html).toContain(
-        '<meta property="og:url" content="https://playground.cinder.dev/c/button" />',
+        '<meta property="og:url" content="https://playground.cinder.dev/page/button" />',
       );
       expect(html).toContain(
-        '<link rel="canonical" href="https://playground.cinder.dev/c/button" />',
+        '<link rel="canonical" href="https://playground.cinder.dev/page/button" />',
       );
       expect(html).toContain(
         '<meta property="og:image" content="https://playground.cinder.dev/social.png" />',
@@ -255,9 +265,9 @@ describe('renderShell metadata and Open Graph', () => {
         baseUrl: 'https://playground.cinder.dev/',
       });
       expect(html).toContain(
-        '<meta property="og:url" content="https://playground.cinder.dev/c/button" />',
+        '<meta property="og:url" content="https://playground.cinder.dev/page/button" />',
       );
-      expect(html).not.toContain('cinder.dev//c/button');
+      expect(html).not.toContain('cinder.dev//page/button');
     });
   });
 
@@ -268,5 +278,27 @@ describe('renderShell metadata and Open Graph', () => {
     const html = renderShell('"><script>', ['button']);
     expect(html).not.toContain('"><script>');
     expect(html).toContain('&quot;&gt;&lt;script&gt;');
+  });
+});
+
+describe('documentation structured data', () => {
+  it('keeps the component canonical path, social tags, and JSON-LD on one route definition', () => {
+    const metadata = documentationPageMetadata('button');
+    const tags = documentationMetadataTags(metadata, 'https://cinder.website');
+    const jsonLd = documentationJsonLd(metadata, 'https://cinder.website');
+
+    expect(metadata.canonicalPath).toBe('/page/button');
+    expect(tags).toContain('https://cinder.website/page/button');
+    expect(tags).toContain('https://cinder.website/social.png');
+    expect(jsonLd).toContain('"TechArticle"');
+    expect(jsonLd).toContain('"BreadcrumbList"');
+    expect(jsonLd).toContain('https://cinder.website/page/button');
+  });
+
+  it('emits a website and software application graph for the landing route', () => {
+    const jsonLd = documentationJsonLd(documentationPageMetadata(null), 'https://cinder.website');
+    expect(jsonLd).toContain('"WebSite"');
+    expect(jsonLd).toContain('"SoftwareApplication"');
+    expect(jsonLd).toContain('https://cinder.website/social.png');
   });
 });

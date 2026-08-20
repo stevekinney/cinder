@@ -42,7 +42,12 @@ describe('vercel.json', () => {
     expect(config['$schema']).toBe('https://openapi.vercel.sh/vercel.json');
     // No meta-framework: we publish a pre-rendered directory.
     expect(config['framework']).toBeNull();
-    expect(config['buildCommand']).toBe('bun run vercel-build');
+    // Vercel's Git integration executes this command directly; it does not
+    // inherit the GitHub Actions workflow environment. Static pages must
+    // therefore receive their canonical production origin here.
+    expect(config['buildCommand']).toBe(
+      'PLAYGROUND_BASE_URL=https://cinder.website bun run vercel-build',
+    );
     // Static export bundles workspace source at build time, so Vercel must not
     // prune devDependencies before running the build.
     expect(config['installCommand']).toContain('NODE_ENV=development bun install');
@@ -105,5 +110,34 @@ describe('vercel.json', () => {
     expect(await serverModule.exists()).toBe(true);
     const legacy = Bun.file(join(PLAYGROUND_ROOT, 'src', 'server.ts'));
     expect(await legacy.exists()).toBe(false);
+  });
+
+  it('applies the static-site security policy without making stable URLs immutable', async () => {
+    const config = await readVercelConfig();
+    const headers = config['headers'];
+    expect(Array.isArray(headers)).toBe(true);
+    const headerRules = headers as Array<{
+      source?: string;
+      headers?: Array<{ key?: string; value?: string }>;
+    }>;
+    const universal = headerRules.find((rule) => rule.source === '/(.*)');
+    const policy = universal?.headers?.find(
+      (header) => header.key === 'Content-Security-Policy',
+    )?.value;
+
+    expect(policy).toContain("default-src 'self'");
+    expect(policy).toContain("object-src 'none'");
+    expect(policy).toContain("'wasm-unsafe-eval'");
+    expect(policy).toContain("img-src 'self' data: https:");
+    expect(policy).not.toContain("'unsafe-eval'");
+    expect(universal?.headers).toContainEqual({ key: 'X-Content-Type-Options', value: 'nosniff' });
+    expect(universal?.headers).toContainEqual({
+      key: 'Referrer-Policy',
+      value: 'strict-origin-when-cross-origin',
+    });
+    expect(
+      universal?.headers?.find((header) => header.key === 'Permissions-Policy')?.value,
+    ).toContain('camera=()');
+    expect(headerRules.find((rule) => rule.source === '/social.png')).toBeUndefined();
   });
 });

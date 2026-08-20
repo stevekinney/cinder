@@ -53,7 +53,7 @@
     buildSnippet,
     type PlaygroundValue,
   } from './component-page-playground.ts';
-  import { depictHighlighter } from './depict-highlighter.ts';
+  import { depictHighlighter, depictInlineHighlighter } from './depict-highlighter.ts';
   import { previewRecipeFor } from './component-page-preview-recipes.ts';
   import {
     canBareMount,
@@ -548,6 +548,26 @@
       ? ''
       : `import { ${documentation.component.exportName} } from '${documentation.component.importSpecifier}';`,
   );
+  let highlightedImportStatement = $state('');
+
+  // The hero import is a code surface, not a decorative monospace label. Use
+  // the same depict Shiki pipeline as README fences and CodeBlock so imports
+  // follow the active Cinder theme instead of becoming the last plaintext path.
+  $effect(() => {
+    let cancelled = false;
+    void depictInlineHighlighter(importStatement, 'ts')
+      .then((html) => {
+        if (!cancelled) highlightedImportStatement = html;
+      })
+      .catch(() => {
+        // Keep the copyable plain-text fallback if the optional highlighter
+        // cannot initialize. The code remains visible and correct.
+        if (!cancelled) highlightedImportStatement = '';
+      });
+    return () => {
+      cancelled = true;
+    };
+  });
 
   async function copyImport(): Promise<void> {
     if (typeof navigator === 'undefined' || navigator.clipboard === undefined) return;
@@ -978,7 +998,13 @@
                 <p class="dx-hero__lede">{component.purpose}</p>
                 <div class="dx-hero__meta">
                   <div class="dx-import">
-                    <span class="dx-import__code">{importStatement}</span>
+                    <span class="dx-import__code">
+                      {#if highlightedImportStatement !== ''}
+                        {@html highlightedImportStatement}
+                      {:else}
+                        {importStatement}
+                      {/if}
+                    </span>
                     <Tooltip text={importCopied ? 'Copied' : 'Copy import'}>
                       <button
                         type="button"
