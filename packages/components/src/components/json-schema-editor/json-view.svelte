@@ -109,8 +109,15 @@
   );
   let previouslyEditable = false;
   let shouldRestoreEditFocus = $state(false);
+  let discardWasFocused = $state(false);
 
   function focusEditingExitTarget(): void {
+    const doneButton = document.getElementById(`${idPrefix}-done-json`);
+    if (doneButton instanceof HTMLElement) {
+      doneButton.focus();
+      return;
+    }
+
     if (!isReadonly) {
       const editButton = document.getElementById(`${idPrefix}-edit-json`);
       if (editButton instanceof HTMLElement) {
@@ -138,9 +145,21 @@
   });
 
   $effect(() => {
-    if (!shouldRestoreEditFocus) return;
-    shouldRestoreEditFocus = false;
-    void tick().then(focusEditingExitTarget);
+    if (shouldRestoreEditFocus) {
+      shouldRestoreEditFocus = false;
+      focusEditingExitTarget();
+    }
+  });
+
+  // Controlled synchronization is initiated by the parent in a post-render
+  // effect, after this view's pre-update hook has already run. Keep the
+  // focus intent on Discard itself so a dirty-to-clean replacement can land
+  // on Done rather than leaving focus on a removed element or the document.
+  $effect(() => {
+    if (discardWasFocused && !editorState.jsonDraftIsDirty) {
+      discardWasFocused = false;
+      focusEditingExitTarget();
+    }
   });
 
   async function discardDraft(): Promise<void> {
@@ -177,15 +196,29 @@
       </Button>
       {#if editorState.jsonDraftIsDirty}
         <Button
+          id={`${idPrefix}-discard-json`}
           variant="secondary"
           size="sm"
           disabled={!canDiscard}
+          onfocus={() => {
+            discardWasFocused = true;
+          }}
+          onblur={() => {
+            discardWasFocused = false;
+          }}
           onclick={() => void discardDraft()}
         >
           Discard
         </Button>
       {:else if editorState.committedSchema !== null}
-        <Button variant="secondary" size="sm" onclick={() => void finishEditing()}>Done</Button>
+        <Button
+          id={`${idPrefix}-done-json`}
+          variant="secondary"
+          size="sm"
+          onclick={() => void finishEditing()}
+        >
+          Done
+        </Button>
       {/if}
     {:else if !isReadonly}
       <Button

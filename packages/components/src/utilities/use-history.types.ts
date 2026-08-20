@@ -51,6 +51,8 @@ export type UseHistory<T> = {
   undo(): UseHistoryEntry<T> | null;
   /** Move forward one entry. Returns the entry we moved to, or null at the top. */
   redo(): UseHistoryEntry<T> | null;
+  /** Discard redo entries while keeping the current entry and its undo history. */
+  discardRedo(): void;
   /** Clear history and seed a new baseline. */
   reset(value: T, label?: string): void;
 };

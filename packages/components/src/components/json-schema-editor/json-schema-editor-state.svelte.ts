@@ -346,6 +346,23 @@ export function createEditorState(options: CreateEditorStateOptions) {
     void refreshValidation(epoch);
   }
 
+  function discardCurrentCommitWhenPreviousMatches(schemaInput: JsonSchemaValue | string): boolean {
+    const schemaResult = normaliseSchemaInput(schemaInput);
+    if (!schemaResult.ok || !history?.canUndo) return false;
+
+    history.undo();
+    if (serialise(history.current) !== schemaResult.canonicalText) {
+      history.redo();
+      return false;
+    }
+
+    history.discardRedo();
+    jsonDraftText = schemaResult.canonicalText;
+    const epoch = beginValidationCycle();
+    void refreshValidation(epoch);
+    return true;
+  }
+
   function loadFrom(
     schemaInput: JsonSchemaValue | string,
     originalInput?: JsonSchemaValue | string,
@@ -626,6 +643,9 @@ export function createEditorState(options: CreateEditorStateOptions) {
     synchronise(schemaInput: JsonSchemaValue | string) {
       loadCommittedSchema(schemaInput);
     },
+
+    /** Drop a rejected optimistic commit when the preceding history entry is authoritative. */
+    discardCurrentCommitWhenPreviousMatches,
 
     destroy() {
       clearTimers();

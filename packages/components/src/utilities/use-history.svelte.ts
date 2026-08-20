@@ -182,6 +182,10 @@ export function useHistory<T>(
       return snapshotEntry(moved);
     },
 
+    discardRedo() {
+      if (pointer < stack.length - 1) stack = stack.slice(0, pointer + 1);
+    },
+
     reset(value: T, label?: string) {
       stack = [{ value: clone(value), label, committedAt: Date.now() }];
       pointer = 0;

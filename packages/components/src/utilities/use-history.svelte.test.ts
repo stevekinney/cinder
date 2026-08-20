@@ -88,6 +88,23 @@ describe('useHistory', () => {
     expect(history.size).toBe(3);
   });
 
+  test('discardRedo removes the redo tail while preserving undo history', () => {
+    const history = useHistory({ initial: { count: 0 } });
+    history.commit({ count: 1 });
+    history.commit({ count: 2 });
+    history.undo();
+
+    history.discardRedo();
+
+    expect(history.current).toEqual({ count: 1 });
+    expect(history.size).toBe(2);
+    expect(history.canUndo).toBe(true);
+    expect(history.canRedo).toBe(false);
+
+    history.discardRedo();
+    expect(history.size).toBe(2);
+  });
+
   test('coalesce key collapses rapid commits sharing the same key', () => {
     const history = useHistory({ initial: { text: '' }, coalesceMs: 1_000_000 });
 

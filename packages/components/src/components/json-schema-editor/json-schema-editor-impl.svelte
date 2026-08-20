@@ -104,8 +104,15 @@
     return normalised.ok && normalised.canonicalText === editorState.committedCanonicalText;
   }
 
-  function synchroniseControlledSchema(input: JsonSchemaValue | string) {
+  function synchroniseControlledSchema(
+    input: JsonSchemaValue | string,
+    discardRejectedCommit = false,
+  ) {
     if (schemaMatchesCommitted(input)) return;
+    if (discardRejectedCommit && editorState.discardCurrentCommitWhenPreviousMatches(input)) {
+      enumDrafts = {};
+      return;
+    }
     editorState.synchronise(input);
     enumDrafts = {};
   }
@@ -150,11 +157,10 @@
       controlledSchemaText(previousAuthority) === controlledSchemaText(input);
 
     controlledSchemaAuthority = controlledSchemaText(input);
-    // A returned settlement can advance the editor beyond the still-stale
-    // schema prop. Keep the prop sentinel at that authority too, so a later
-    // parent restoration to the former value is treated as a real update.
-    lastControlledSchemaText = controlledSchemaAuthority;
-    synchroniseControlledSchema(controlledSchemaAuthority);
+    synchroniseControlledSchema(
+      controlledSchemaAuthority,
+      pendingChange !== undefined && unchangedAuthority,
+    );
     discardPendingControlledChange();
 
     if (accepted) {
@@ -177,7 +183,7 @@
     if (pendingControlledChangeVersion !== changeVersion) return;
     discardPendingControlledChange();
     const authoritativeSchema = controlledSchemaAuthority ?? schema;
-    if (authoritativeSchema !== undefined) synchroniseControlledSchema(authoritativeSchema);
+    if (authoritativeSchema !== undefined) synchroniseControlledSchema(authoritativeSchema, true);
   }
 
   function handleSchemaChange(event: JsonSchemaEditorChangeEvent) {
@@ -187,7 +193,7 @@
     }
 
     if (pendingControlledChange !== undefined) {
-      synchroniseControlledSchema(controlledSchemaAuthority ?? schema);
+      synchroniseControlledSchema(controlledSchemaAuthority ?? schema, true);
       return;
     }
 
@@ -221,20 +227,28 @@
   // schema-only editor owns its local state; if a parent later supplies the
   // request handler, the first controlled effect must reconcile that state to
   // the parent's schema even when the schema prop itself did not change.
-  let lastControlledSchemaText = untrack(() =>
+  let lastObservedControlledSchemaText = untrack(() =>
     controlled && schema !== undefined ? controlledSchemaText(schema) : undefined,
   );
+  let lastObservedControlledSchema = untrack(() => schema);
   $effect(() => {
     if (!controlled || schema === undefined) {
       discardPendingControlledChange();
-      lastControlledSchemaText = undefined;
+      lastObservedControlledSchemaText = undefined;
+      lastObservedControlledSchema = undefined;
       controlledSchemaAuthority = undefined;
       return;
     }
 
     const nextControlledSchemaText = controlledSchemaText(schema);
-    if (nextControlledSchemaText === lastControlledSchemaText) return;
-    lastControlledSchemaText = nextControlledSchemaText;
+    if (
+      nextControlledSchemaText === lastObservedControlledSchemaText &&
+      schema === lastObservedControlledSchema
+    ) {
+      return;
+    }
+    lastObservedControlledSchemaText = nextControlledSchemaText;
+    lastObservedControlledSchema = schema;
     untrack(() => settleControlledChange(schema));
   });
 
@@ -281,8 +295,9 @@
       untrack(() => {
         discardPendingControlledChange();
         const reloadSchema = controlled ? (controlledSchemaAuthority ?? schema) : schema;
-        lastControlledSchemaText =
-          controlled && reloadSchema !== undefined ? controlledSchemaText(reloadSchema) : undefined;
+        lastObservedControlledSchemaText =
+          controlled && schema !== undefined ? controlledSchemaText(schema) : undefined;
+        lastObservedControlledSchema = schema;
         editorState.reload(reloadSchema ?? defaultSchema ?? {}, original);
         enumDrafts = {};
       });

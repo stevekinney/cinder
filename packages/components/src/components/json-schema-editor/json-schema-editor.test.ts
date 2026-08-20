@@ -748,6 +748,93 @@ describe('JsonSchemaEditor — controlled and uncontrolled schema inputs', () =>
     expect(container.textContent).toContain('"type": "string"');
   });
 
+  test('settles a second request when the parent rejects it with returned authority', async () => {
+    const requests: string[] = [];
+    const { container, rerender } = render(JsonSchemaEditorImplementation, {
+      props: {
+        id: 'jse-controlled-returned-second-rejection',
+        schema: { type: 'string' },
+        view: 'json' as const,
+        onValueChangeRequest: (event: JsonSchemaEditorChangeEvent) => {
+          requests.push(event.jsonString);
+          return requests.length === 1 ? { type: 'number' } : undefined;
+        },
+      },
+    });
+    await flushEffects();
+
+    await fireEvent.click(latestJsonButton(container, 'Edit JSON'));
+    await fireEvent.input(latestJsonTextarea(container), {
+      target: { value: '{"type":"number"}' },
+    });
+    await fireEvent.click(latestJsonButton(container, 'Apply'));
+    await flushEffects();
+
+    await fireEvent.click(latestJsonButton(container, 'Edit JSON'));
+    await fireEvent.input(latestJsonTextarea(container), {
+      target: { value: '{"type":"boolean"}' },
+    });
+    await fireEvent.click(latestJsonButton(container, 'Apply'));
+    await rerender({
+      id: 'jse-controlled-returned-second-rejection',
+      schema: { type: 'number' },
+      view: 'json' as const,
+      onValueChangeRequest: (event: JsonSchemaEditorChangeEvent) => {
+        requests.push(event.jsonString);
+        return undefined;
+      },
+    });
+    await flushEffects();
+
+    await fireEvent.click(latestJsonButton(container, 'Edit JSON'));
+    await fireEvent.input(latestJsonTextarea(container), {
+      target: { value: '{"type":"string"}' },
+    });
+    await fireEvent.click(latestJsonButton(container, 'Apply'));
+
+    expect(requests).toEqual([
+      '{\n  "type": "number"\n}',
+      '{\n  "type": "boolean"\n}',
+      '{\n  "type": "string"\n}',
+    ]);
+  });
+
+  test('preserves accepted history when returned authority rejects a later proposal', async () => {
+    let requestCount = 0;
+    const { container } = render(JsonSchemaEditorImplementation, {
+      props: {
+        id: 'jse-controlled-rejected-history',
+        schema: { type: 'string' },
+        view: 'json' as const,
+        onValueChangeRequest: () => {
+          requestCount += 1;
+          return { type: 'number' };
+        },
+      },
+    });
+    await flushEffects();
+
+    await fireEvent.click(latestJsonButton(container, 'Edit JSON'));
+    await fireEvent.input(latestJsonTextarea(container), {
+      target: { value: '{"type":"number"}' },
+    });
+    await fireEvent.click(latestJsonButton(container, 'Apply'));
+    await flushEffects();
+
+    await fireEvent.click(latestJsonButton(container, 'Edit JSON'));
+    await fireEvent.input(latestJsonTextarea(container), {
+      target: { value: '{"type":"boolean"}' },
+    });
+    await fireEvent.click(latestJsonButton(container, 'Apply'));
+    await flushEffects();
+
+    expect(requestCount).toBe(2);
+    expect(container.textContent).toContain('"type": "number"');
+    expect(within(container).getByRole('button', { name: 'Undo' }).hasAttribute('disabled')).toBe(
+      false,
+    );
+  });
+
   test('restores the latest authority when a second request is pending', async () => {
     const requests: string[] = [];
     const pendingSettlement = new Promise<never>(() => {});
@@ -811,6 +898,38 @@ describe('JsonSchemaEditor — controlled and uncontrolled schema inputs', () =>
     expect(document.activeElement).toBe(
       container.querySelector<HTMLButtonElement>('#jse-controlled-sync-focus-json-edit-json'),
     );
+  });
+
+  test('moves focus to Done when synchronization replaces a focused Discard action', async () => {
+    const onValueChangeRequest = () => undefined;
+    const { container, rerender } = render(JsonSchemaEditorImplementation, {
+      props: {
+        id: 'jse-controlled-discard-focus',
+        schema: { type: 'string' },
+        view: 'json' as const,
+        onValueChangeRequest,
+      },
+    });
+    await flushEffects();
+
+    await fireEvent.click(latestJsonButton(container, 'Edit JSON'));
+    await fireEvent.input(latestJsonTextarea(container), {
+      target: { value: '{' },
+    });
+    const discard = within(container).getByRole('button', { name: 'Discard' });
+    discard.focus();
+
+    await rerender({
+      id: 'jse-controlled-discard-focus',
+      schema: { type: 'boolean' },
+      view: 'json' as const,
+      onValueChangeRequest,
+    });
+    await flushEffects();
+    await flushEffects();
+
+    expect(container.querySelector('#jse-controlled-discard-focus-json-done-json')).not.toBeNull();
+    expect(document.activeElement?.id).toBe('jse-controlled-discard-focus-json-done-json');
   });
 
   test('notifies observers with a transformed returned settlement', async () => {

@@ -205,6 +205,20 @@ describe('createEditorState — undo / redo / revert', () => {
     expect(state.committedSchema).toEqual({ type: 'number' });
   });
 
+  test('discardCurrentCommitWhenPreviousMatches removes only a rejected optimistic commit', () => {
+    const state = createEditorState({ schema: { type: 'string' } });
+    state.commitFromForm({ type: 'number' });
+    state.commitFromForm({ type: 'boolean' });
+
+    expect(state.discardCurrentCommitWhenPreviousMatches({ type: 'number' })).toBe(true);
+    expect(state.committedSchema).toEqual({ type: 'number' });
+    expect(state.canUndo).toBe(true);
+    expect(state.canRedo).toBe(false);
+
+    state.undo();
+    expect(state.committedSchema).toEqual({ type: 'string' });
+  });
+
   test('revert restores original schema and clears history', () => {
     const state = createEditorState({ schema: { type: 'string' } });
     state.commitFromForm({ type: 'number' });
