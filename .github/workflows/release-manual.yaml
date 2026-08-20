@@ -127,6 +127,13 @@ jobs:
       - name: Upgrade npm
         run: npm install -g npm@11.5.1
 
+      - name: Record configured Node runtime for publish
+        shell: bash
+        run: |
+          node_path="$(command -v node)"
+          "$node_path" --version
+          echo "CINDER_PUBLISH_NODE=$node_path" >> "$GITHUB_ENV"
+
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
