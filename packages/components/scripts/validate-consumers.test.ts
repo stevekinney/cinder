@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, mock, test } from 'bun:test';
 import { join } from 'node:path';
 
 import { getPackFileName } from './publish-release.ts';
@@ -8,12 +8,39 @@ import {
   chatPeerValidationTarballPath,
   EXAMPLES_CONSUMER_READINESS_PATH,
   parseHydrationBrowserProcessIds,
+  preoptimizeSvelteKitChatHydration,
   resolveChatFixtureCinderVersion,
   runBoundedHydrationTeardown,
   stopDevelopmentServer,
   SVELTEKIT_HYDRATION_ROUTES,
   unreclaimedTeardownFailures,
 } from './validate-consumers.ts';
+
+describe('SvelteKit Chat hydration optimizer preflight', () => {
+  test('finishes forced dependency optimization before starting route readiness', async () => {
+    const runCommand = mock(async () => ({ exitCode: 0, stdout: 'optimized', stderr: '' }));
+
+    await preoptimizeSvelteKitChatHydration('/fixture', runCommand);
+
+    expect(runCommand).toHaveBeenCalledWith('bun', ['x', 'vite', 'optimize', '--force'], {
+      cwd: '/fixture',
+      stdout: 'pipe',
+      stderr: 'pipe',
+    });
+  });
+
+  test('stops before route readiness when dependency optimization fails', async () => {
+    const runCommand = mock(async () => ({
+      exitCode: 1,
+      stdout: 'optimizer output',
+      stderr: 'optimizer failure',
+    }));
+
+    await expect(preoptimizeSvelteKitChatHydration('/fixture', runCommand)).rejects.toThrow(
+      'Vite dependency optimization failed before Chat hydration readiness',
+    );
+  });
+});
 
 describe('SvelteKit hydration route matrix', () => {
   test('uses focused feature routes instead of the monolithic dev SSR fixture', () => {

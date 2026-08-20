@@ -1366,20 +1366,11 @@ async function assertSvelteKitDevChatHydrationRoute(
   fixtureDirectory: string,
   label: string,
 ): Promise<void> {
+  await preoptimizeSvelteKitChatHydration(fixtureDirectory);
   const httpPort = await pickEphemeralPort();
   let hydrationAssertionsPassed = false;
   const devServer = Bun.spawn(
-    [
-      'bunx',
-      'vite',
-      'dev',
-      '--force',
-      '--host',
-      '127.0.0.1',
-      '--port',
-      String(httpPort),
-      '--strictPort',
-    ],
+    ['bunx', 'vite', 'dev', '--host', '127.0.0.1', '--port', String(httpPort), '--strictPort'],
     {
       cwd: fixtureDirectory,
       detached: true,
@@ -1461,6 +1452,22 @@ async function assertSvelteKitDevChatHydrationRoute(
         }
       }
     }
+  }
+}
+
+export async function preoptimizeSvelteKitChatHydration(
+  fixtureDirectory: string,
+  runCommand: typeof runHookCommand = runHookCommand,
+): Promise<void> {
+  const result = await runCommand('bun', ['x', 'vite', 'optimize', '--force'], {
+    cwd: fixtureDirectory,
+    stdout: 'pipe',
+    stderr: 'pipe',
+  });
+  if (result.exitCode !== 0) {
+    fail(
+      `Vite dependency optimization failed before Chat hydration readiness:\n${result.stdout}\n${result.stderr}`,
+    );
   }
 }
 
