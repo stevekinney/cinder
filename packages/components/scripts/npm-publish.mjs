@@ -1,14 +1,13 @@
 import { spawnSync } from 'node:child_process';
+import { dirname, join } from 'node:path';
 
 const publishArguments = process.argv.slice(2);
-const npmCliPath = process.env.CINDER_PUBLISH_NPM_CLI;
+const npmCliPath =
+  process.env.CINDER_PUBLISH_NPM_CLI ??
+  join(dirname(dirname(process.execPath)), 'lib', 'node_modules', 'npm', 'bin', 'npm-cli.js');
 
 if (publishArguments[0] !== 'publish') {
   throw new Error('npm-publish only accepts npm publish arguments.');
-}
-
-if (!npmCliPath) {
-  throw new Error('npm-publish requires CINDER_PUBLISH_NPM_CLI from the release workflow.');
 }
 
 process.stdout.write(
