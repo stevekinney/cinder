@@ -75,6 +75,9 @@ describe('Turbo input topology', () => {
     expect(browserWorkflow).toContain('name: playwright-visual shard ${{ matrix.shard }}');
     expect(browserWorkflow).toContain('needs: [scope, playwright-visual-shard]');
     expect(browserWorkflow).toContain(
+      "github.event_name != 'workflow_dispatch' || github.event.inputs.mode != 'off'",
+    );
+    expect(browserWorkflow).toContain(
       "name: ${{ github.event_name == 'workflow_dispatch' && format('playwright ({0})'",
     );
     expect(browserWorkflow).toContain(
