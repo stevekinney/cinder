@@ -1,19 +1,156 @@
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, mock, test } from 'bun:test';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { getPackFileName } from './publish-release.ts';
 import { packageTarballPath } from './report-package-weight.ts';
+import type { SvelteKitChatHydrationDevServerOptions } from './validate-consumers.ts';
 import {
   bumpPackageVersion,
   chatPeerValidationTarballPath,
   EXAMPLES_CONSUMER_READINESS_PATH,
   parseHydrationBrowserProcessIds,
+  preoptimizeSvelteKitChatHydration,
+  prepareSvelteKitChatHydrationDevServer,
+  removeFixtureEntries,
   resolveChatFixtureCinderVersion,
   runBoundedHydrationTeardown,
+  startSvelteKitChatHydrationDevServer,
   stopDevelopmentServer,
   SVELTEKIT_HYDRATION_ROUTES,
   unreclaimedTeardownFailures,
 } from './validate-consumers.ts';
+
+describe('consumer fixture cleanup', () => {
+  test('removes nested requested entries and tolerates a missing entry', () => {
+    const fixtureDirectory = mkdtempSync(join(tmpdir(), 'cinder-consumer-cleanup-'));
+    const nestedDirectory = join(fixtureDirectory, '.svelte-kit', 'output', 'client');
+    mkdirSync(nestedDirectory, { recursive: true });
+    writeFileSync(join(nestedDirectory, 'entry.js'), 'generated');
+    mkdirSync(join(fixtureDirectory, 'build'), { recursive: true });
+
+    try {
+      removeFixtureEntries(fixtureDirectory, ['.svelte-kit', 'build', 'missing']);
+
+      expect(existsSync(join(fixtureDirectory, '.svelte-kit'))).toBe(false);
+      expect(existsSync(join(fixtureDirectory, 'build'))).toBe(false);
+      expect(existsSync(fixtureDirectory)).toBe(true);
+    } finally {
+      rmSync(fixtureDirectory, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('SvelteKit Chat hydration optimizer preflight', () => {
+  test('forces dependency optimization under the Chat hydration environment', async () => {
+    const runCommand = mock(async () => ({ exitCode: 0, stdout: 'optimized', stderr: '' }));
+
+    await preoptimizeSvelteKitChatHydration('/fixture', runCommand);
+
+    expect(runCommand).toHaveBeenCalledWith('bun', ['x', 'vite', 'optimize', '--force'], {
+      cwd: '/fixture',
+      stdout: 'pipe',
+      stderr: 'pipe',
+      environment: {
+        CINDER_CHAT_DEV_HYDRATION: '1',
+        LANG: 'en_US.UTF-8',
+        TZ: 'UTC',
+      },
+    });
+  });
+
+  test('stops before route readiness when dependency optimization fails', async () => {
+    const runCommand = mock(async () => ({
+      exitCode: 1,
+      stdout: 'optimizer output',
+      stderr: 'optimizer failure',
+    }));
+
+    await expect(preoptimizeSvelteKitChatHydration('/fixture', runCommand)).rejects.toThrow(
+      'Vite dependency optimization failed before Chat hydration readiness:\noptimizer output\noptimizer failure',
+    );
+  });
+
+  test('reports a shared-readiness-budget abort without starting Vite', async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const runCommand = mock(async () => ({ exitCode: 130, stdout: '', stderr: '' }));
+
+    await expect(
+      preoptimizeSvelteKitChatHydration('/fixture', runCommand, controller.signal),
+    ).rejects.toThrow(
+      'Vite dependency optimization exceeded the shared Chat hydration readiness budget',
+    );
+    expect(runCommand).toHaveBeenCalledWith(
+      'bun',
+      ['x', 'vite', 'optimize', '--force'],
+      expect.objectContaining({ signal: controller.signal }),
+    );
+  });
+
+  test('rejects published-package source-map warnings from successful optimization', async () => {
+    const runCommand = mock(async () => ({
+      exitCode: 0,
+      stdout: 'warning: @lostgradient/cinder/dist/index.js.map points to missing source',
+      stderr: '',
+    }));
+
+    await expect(preoptimizeSvelteKitChatHydration('/fixture', runCommand)).rejects.toThrow(
+      'Vite dependency optimization emitted source-map warnings for published package artifacts',
+    );
+  });
+
+  test('starts Vite dev without forced reoptimization', () => {
+    const fakeServer = {} as Bun.ReadableSubprocess;
+    const startServer = mock(
+      (_command: string[], _options: SvelteKitChatHydrationDevServerOptions) => {
+        return fakeServer;
+      },
+    );
+
+    const server = startSvelteKitChatHydrationDevServer('/fixture', 4_321, { startServer });
+
+    expect(server).toBe(fakeServer);
+    expect(startServer).toHaveBeenCalledWith(
+      ['bunx', 'vite', 'dev', '--host', '127.0.0.1', '--port', '4321', '--strictPort'],
+      expect.objectContaining({
+        cwd: '/fixture',
+        detached: true,
+        env: expect.objectContaining({
+          CINDER_CHAT_DEV_HYDRATION: '1',
+          LANG: 'en_US.UTF-8',
+          TZ: 'UTC',
+        }),
+        stderr: 'pipe',
+        stdout: 'pipe',
+      }),
+    );
+    expect(startServer.mock.calls[0]?.[0]).not.toContain('--force');
+  });
+
+  test('does not reserve a port or start Vite when optimization fails', async () => {
+    const optimizerError = new Error('optimizer failed');
+    const preoptimize = mock(async () => {
+      throw optimizerError;
+    });
+    const pickPort = mock(async () => 4_321);
+    const startServer = mock(
+      (_command: string[], _options: SvelteKitChatHydrationDevServerOptions) =>
+        ({}) as Bun.ReadableSubprocess,
+    );
+
+    await expect(
+      prepareSvelteKitChatHydrationDevServer('/fixture', 'latest', {
+        pickPort,
+        preoptimize,
+        startServer,
+      }),
+    ).rejects.toBe(optimizerError);
+    expect(pickPort).not.toHaveBeenCalled();
+    expect(startServer).not.toHaveBeenCalled();
+  });
+});
 
 describe('SvelteKit hydration route matrix', () => {
   test('uses focused feature routes instead of the monolithic dev SSR fixture', () => {

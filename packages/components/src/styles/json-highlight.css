@@ -1,0 +1,9 @@
+/*
+ * Opt-in JSON syntax token styles — `cinder/styles/json-highlight`.
+ *
+ * Import after `cinder/styles` when rendering markup produced by
+ * `highlightJson()`. Keeping this separate preserves the slim base stylesheet
+ * for consumers that do not render JSON-highlighted values.
+ */
+
+@import './components/json-highlight.css';

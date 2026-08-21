@@ -55,6 +55,10 @@
       "types": "./src/styles/utilities.css.d.ts",
       "default": "./src/styles/utilities.css"
     },
+    "./styles/json-highlight": {
+      "types": "./src/styles/json-highlight.css.d.ts",
+      "default": "./src/styles/json-highlight.css"
+    },
     "./styles/guard": {
       "types": "./dist/styles/base-guard.d.ts",
       "browser": "./src/styles/base-guard.ts",

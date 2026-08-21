@@ -29,6 +29,11 @@ import { expect, test } from '@playwright/test';
 
 const SPRING_CUBIC_BEZIER = 'cubic-bezier(0.22, 1, 0.36, 1)';
 
+/** Chromium serializes computed timing functions without whitespace or leading zeroes. */
+function canonicalTimingFunction(value: string): string {
+  return value.replaceAll(/\s+/gu, '').replaceAll(/(^|[^0-9])0\.(?=\d)/gu, '$1.');
+}
+
 test.describe('--cinder-ease-spring token', () => {
   test('resolves on the modal element and drives a non-default timing curve', async ({ page }) => {
     await page.goto('/page/modal?tab=examples', { waitUntil: 'load' });
@@ -48,10 +53,11 @@ test.describe('--cinder-ease-spring token', () => {
       (element) => getComputedStyle(element).transitionTimingFunction,
     );
 
-    expect(spring).toBe(SPRING_CUBIC_BEZIER);
+    const canonicalSpring = canonicalTimingFunction(SPRING_CUBIC_BEZIER);
+    expect(canonicalTimingFunction(spring)).toBe(canonicalSpring);
     // When the token is undefined the transition falls back to `ease`. The
     // assertion guards against future regressions where the token is defined
     // but not actually reached by the transition cascade.
-    expect(timingFunction).toContain(SPRING_CUBIC_BEZIER);
+    expect(canonicalTimingFunction(timingFunction)).toContain(canonicalSpring);
   });
 });
