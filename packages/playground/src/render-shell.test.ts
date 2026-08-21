@@ -84,19 +84,15 @@ describe('renderShell', () => {
     expect(html).toContain('id="cinder-initial"');
   });
 
-  it('loads the full CSS aggregator so README prose gets callout + code-block CSS', () => {
-    // Regression: the shell used to load /styles/shell.css, which imports only
-    // the components the shell CHROME uses (button, input, popover, …). The
-    // landing page renders README markdown, whose callouts and fences need
-    // callout.css and code-block.css — neither of which shell.css carries, so
-    // both rendered unstyled. all.css is the same aggregator /page/:name uses.
+  it('loads the landing stylesheet without unrelated documentation CSS', () => {
     const html = renderShell('button', ['button']);
-    expect(html).toContain('href="/styles/all.css"');
+    expect(html).toContain('href="/playground-styles/landing.css"');
+    expect(html).not.toContain('href="/styles/all.css"');
     expect(html).not.toContain('href="/styles/shell.css"');
     expect(html).not.toContain('href="/styles/index.css"');
   });
 
-  it('registers cinder.reset layer before /styles/all.css so component CSS wins', () => {
+  it('registers cinder.reset layer before landing CSS so component CSS wins', () => {
     // Regression: when the universal `* { padding: 0 }` reset was unlayered
     // it beat every cinder.components layered rule, leaving SegmentedControl,
     // NumberInput, Card, Accordion all rendered without padding in the shell.
@@ -106,7 +102,7 @@ describe('renderShell', () => {
     const html = renderShell('button', ['button']);
     const layerDeclaration =
       '@layer cinder.reset, cinder.tokens, cinder.foundation, cinder.components, cinder.utilities';
-    const stylesheetLink = '<link rel="stylesheet" href="/styles/all.css"';
+    const stylesheetLink = '<link rel="stylesheet" href="/playground-styles/landing.css"';
     const layerIndex = html.indexOf(layerDeclaration);
     const linkIndex = html.indexOf(stylesheetLink);
     expect(layerIndex).toBeGreaterThan(-1);

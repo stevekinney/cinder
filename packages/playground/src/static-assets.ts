@@ -1,6 +1,10 @@
 import { join } from 'node:path';
 
 import { CINDER_COMPONENT_SOURCE, componentSourceById } from './component-sources.ts';
+import {
+  buildPlaygroundStylesheet,
+  type PlaygroundStylesheetName,
+} from './documentation-styles.ts';
 import { notFound } from './http-responses.ts';
 import { resolveSafePath } from './traversal-guard.ts';
 
@@ -29,6 +33,15 @@ export async function handleStylesRoute(relative: string): Promise<Response> {
 
   const css = await cssFile.text();
   return new Response(css, { headers: { 'Content-Type': 'text/css' } });
+}
+
+/** GET /playground-styles/:name.css → one bundled, route-scoped stylesheet. */
+export async function handlePlaygroundStylesRoute(
+  name: PlaygroundStylesheetName,
+): Promise<Response> {
+  return new Response(await buildPlaygroundStylesheet(name), {
+    headers: { 'Content-Type': 'text/css' },
+  });
 }
 
 /**

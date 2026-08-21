@@ -36,6 +36,7 @@
  *   ./styles/tokens      → token-layer-only aggregator
  *   ./styles/foundation  → foundation-layer-only aggregator
  *   ./styles/utilities   → utility-layer-only aggregator
+ *   ./styles/json-highlight → JSON token styles for explicit, route-scoped use
  *   ./styles/guard       → dev-only base-loaded guard (warns once when cinder/styles is not imported first)
  *
  * The per-component `/styles` exports ship layer-WRAPPED CSS (every sidecar
@@ -93,6 +94,7 @@ const STYLES_ALL_KEY = './styles/all';
 const STYLES_TOKENS_KEY = './styles/tokens';
 const STYLES_FOUNDATION_KEY = './styles/foundation';
 const STYLES_UTILITIES_KEY = './styles/utilities';
+const STYLES_JSON_HIGHLIGHT_KEY = './styles/json-highlight';
 const STYLES_GUARD_KEY = './styles/guard';
 const ROOT_KEY = '.';
 const PACKAGE_JSON_KEY = './package.json';
@@ -114,6 +116,7 @@ const RESERVED_KEYS = new Set([
   STYLES_TOKENS_KEY,
   STYLES_FOUNDATION_KEY,
   STYLES_UTILITIES_KEY,
+  STYLES_JSON_HIGHLIGHT_KEY,
   STYLES_GUARD_KEY,
   PACKAGE_JSON_KEY,
   ICONS_KEY,
@@ -123,7 +126,7 @@ const RESERVED_KEYS = new Set([
 ]);
 
 /**
- * The five hand-authored `@lostgradient/cinder/styles*` subpaths and their canonical CSS
+ * The six hand-authored `@lostgradient/cinder/styles*` subpaths and their canonical CSS
  * targets. These are reserved (never computed from component discovery) and
  * emitted/checked verbatim. Ordered base-first so the generated exports map
  * lists the base entry point before its variants.
@@ -134,6 +137,7 @@ const RESERVED_STYLES_ENTRIES: ReadonlyArray<readonly [string, string]> = [
   [STYLES_TOKENS_KEY, './src/styles/tokens.css'],
   [STYLES_FOUNDATION_KEY, './src/styles/foundation.css'],
   [STYLES_UTILITIES_KEY, './src/styles/utilities.css'],
+  [STYLES_JSON_HIGHLIGHT_KEY, './src/styles/json-highlight.css'],
 ];
 
 /** Canonical `{ types: <dts>, default: <css> }` entry for a reserved styles subpath. */
