@@ -41,16 +41,22 @@ function hasPendingAction(result: ToolResult): result is ToolResult & { action: 
 }
 
 /**
- * Finds the latest `tool-result` message for each tool-call id—matching
+ * Finds the latest `tool-result` message for each tool-call id, over the
+ * COMPLETE ordered transcript (hidden messages included)—matching
  * {@link pairToolCallsWithResults}'s last-result-wins semantics, so a
- * superseded `action_required` result is never mistaken for the current one.
+ * superseded `action_required` result is never mistaken for the current one,
+ * and a hidden resolving result still supersedes an earlier visible one.
+ * Iteration order follows each call's latest occurrence: `Map#set` does not
+ * reorder an existing key, so an existing entry is deleted before being
+ * re-set.
  */
 function latestToolResultsByCallId(
-  messages: ReadonlyArray<Message>,
+  conversation: ConversationHistory,
 ): Map<string, ToolResultMessage> {
   const latest = new Map<string, ToolResultMessage>();
-  for (const message of messages) {
+  for (const message of getMessages(conversation, { includeHidden: true })) {
     if (isToolResultMessage(message)) {
+      latest.delete(message.toolResult.callId);
       latest.set(message.toolResult.callId, message);
     }
   }
@@ -62,14 +68,18 @@ function latestToolResultsByCallId(
  * `action_required` with an action present—i.e. not yet resolved via
  * `replaceToolResult`. A call whose latest result has since moved to
  * `success`/`error` is excluded, even if an earlier `action_required` result
- * for the same call id exists earlier in the transcript.
+ * for the same call id exists earlier in the transcript, or the resolving
+ * result is itself hidden. By default a hidden latest result is excluded
+ * from the returned list, matching `getMessages`; pass `includeHidden: true`
+ * to include it.
  */
 export function getUnresolvedToolApprovals(
   conversation: ConversationHistory,
   options: { includeHidden?: boolean } = {},
 ): UnresolvedToolApproval[] {
   const approvals: UnresolvedToolApproval[] = [];
-  for (const message of latestToolResultsByCallId(getMessages(conversation, options)).values()) {
+  for (const message of latestToolResultsByCallId(conversation).values()) {
+    if (!options.includeHidden && message.hidden) continue;
     const result = message.toolResult;
     if (hasPendingAction(result)) {
       approvals.push({ message, result });
@@ -81,14 +91,18 @@ export function getUnresolvedToolApprovals(
 /**
  * Finds the current `tool-result` message for a tool-call id—the latest one
  * if the transcript carries more than one, matching
- * {@link pairToolCallsWithResults}'s last-result-wins semantics.
+ * {@link pairToolCallsWithResults}'s last-result-wins semantics. By default a
+ * hidden latest result is treated as not found, matching `getMessages`; pass
+ * `includeHidden: true` to return it.
  */
 export function findToolResultMessage(
   conversation: ConversationHistory,
   toolCallId: string,
   options: { includeHidden?: boolean } = {},
 ): ToolResultMessage | undefined {
-  return latestToolResultsByCallId(getMessages(conversation, options)).get(toolCallId);
+  const message = latestToolResultsByCallId(conversation).get(toolCallId);
+  if (!message || (!options.includeHidden && message.hidden)) return undefined;
+  return message;
 }
 
 /** Pairs tool calls with role-valid tool results from an already-ordered message array. */
