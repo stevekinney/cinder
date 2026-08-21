@@ -53,9 +53,6 @@ async function main(): Promise<void> {
       slug: entry.kebabName,
       route: `/page/${entry.kebabName}`,
       ...(fixtures !== undefined && fixtures.length > 0 ? { fixtures } : {}),
-      ...(fixtureFile?.metadata.includeDefaultFixture === true
-        ? { includeDefaultFixture: true }
-        : {}),
     });
   }
 

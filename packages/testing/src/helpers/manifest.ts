@@ -35,8 +35,6 @@ export type ComponentEntry = {
   route: string;
   /** Explicit fixture list for components with multiple visual states. When absent, a single `'default'` fixture is used. */
   fixtures?: ManifestFixtureEntry[];
-  /** Retain the unparameterized component route alongside explicit fixtures. */
-  includeDefaultFixture?: boolean;
 };
 
 export const THEMES: readonly Theme[] = ['light', 'dark'] as const;

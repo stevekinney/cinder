@@ -3,10 +3,6 @@
  * `chat.examples.json`: published examples remain concise, while the
  * implementation exercises its full interaction matrix in private CI.
  */
-export const visualFixtureMetadata = {
-  includeDefaultFixture: true,
-};
-
 export default [
   {
     name: 'private-harness',

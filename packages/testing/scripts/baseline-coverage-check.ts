@@ -46,7 +46,6 @@ const PENDING_PREVIEW_LIMIT = 25;
 type BaselineManifestEntry = {
   slug: string;
   fixtures?: readonly { name: string; interact?: readonly unknown[] }[];
-  includeDefaultFixture?: boolean;
 };
 
 type MissingBaseline = {
@@ -68,13 +67,6 @@ function capturedFixtureNames(fixture: { name: string; interact?: readonly unkno
   return fixture.interact !== undefined && fixture.interact.length > 0
     ? [`${fixture.name}-resting`, fixture.name]
     : [fixture.name];
-}
-
-function fixturesForEntry(entry: BaselineManifestEntry) {
-  if (entry.fixtures === undefined || entry.fixtures.length === 0) return DEFAULT_FIXTURE;
-  return entry.includeDefaultFixture === true
-    ? [...DEFAULT_FIXTURE, ...entry.fixtures]
-    : entry.fixtures;
 }
 
 /**
@@ -127,7 +119,8 @@ export function findMissingBaselines(entries: readonly BaselineManifestEntry[]):
   const missing: MissingBaseline[] = [];
 
   for (const entry of entries) {
-    const fixtures = fixturesForEntry(entry);
+    const fixtures =
+      entry.fixtures !== undefined && entry.fixtures.length > 0 ? entry.fixtures : DEFAULT_FIXTURE;
 
     for (const theme of THEMES) {
       for (const viewport of VIEWPORTS) {
@@ -225,7 +218,8 @@ export function expectedBaselineCombinations(
   };
 
   for (const entry of entries) {
-    const fixtures = fixturesForEntry(entry);
+    const fixtures =
+      entry.fixtures !== undefined && entry.fixtures.length > 0 ? entry.fixtures : DEFAULT_FIXTURE;
     for (const theme of THEMES) {
       for (const viewport of VIEWPORTS) {
         for (const fixture of fixtures) {
