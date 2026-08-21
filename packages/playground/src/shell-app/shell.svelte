@@ -15,6 +15,7 @@
    */
   import { Button } from '@lostgradient/cinder/button';
   import Palette from 'lucide-svelte/icons/palette';
+  import type { Component } from 'svelte';
 
   import ComponentPage from '../component-page.svelte';
   import { PreviewStore, setPreviewStore } from './preview-store.svelte.ts';
@@ -33,7 +34,9 @@
   const COLOR_PANEL_LABEL = 'Color token panel';
 
   let isColorPanelOpen = $state(false);
-  type ColorTokenPanelModule = typeof import('./color-token-panel.svelte');
+  type ColorTokenPanelModule = {
+    default: Component<{ onClose: () => void }>;
+  };
   let colorTokenPanelModule = $state<Promise<ColorTokenPanelModule> | null>(null);
 
   $effect(() => {
