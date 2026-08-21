@@ -609,7 +609,6 @@ jobs:
         with:
           pattern: visual-report-*
           path: packages/testing/visual-reports
-          merge-multiple: true
       - name: Publish merged visual report
         if: "always() && needs.playwright-visual.result != 'skipped' && (needs.scope.result != 'success' || needs.scope.outputs.component_scope_mode == 'full')"
         run: |

@@ -85,7 +85,10 @@
     featured?: boolean;
   };
   type CinderWindow = Window &
-    typeof globalThis & { __CINDER_EXAMPLES__?: CinderExampleDescriptor[] };
+    typeof globalThis & {
+      __CINDER_EXAMPLES__?: CinderExampleDescriptor[];
+      __CINDER_SNAPSHOT_READY__?: Promise<void>;
+    };
   type BadgeVariant = 'neutral' | 'success' | 'warning' | 'danger' | 'info' | 'accent';
   type StatusDotStatus = 'online' | 'warning' | 'danger' | 'pending' | 'neutral' | 'accent';
 
@@ -197,6 +200,40 @@
   }
 
   const componentName: string = componentNameProp ?? readComponentNameFromLocation();
+
+  // Snapshot consumers need the scenario mounts, not merely the outer page
+  // chrome. Expose the actual completion promise so the browser harness can
+  // await it directly: a rejected dynamic import reaches the test as its
+  // original error instead of becoming a second polling timeout.
+  const snapshotMountKeys = new Set(examples.map(({ scenario }) => `example-mount-${scenario}`));
+  let settleSnapshotMount: (mountKey: string, error?: unknown) => void = () => undefined;
+  if (snapshotMode && typeof window !== 'undefined') {
+    let resolveSnapshotReady: () => void;
+    let rejectSnapshotReady: (reason?: unknown) => void;
+    const snapshotReady = new Promise<void>((resolve, reject) => {
+      resolveSnapshotReady = resolve;
+      rejectSnapshotReady = reject;
+    });
+    // A rejected promise is consumed by the test fixture; observe it here as
+    // well so a loader failure does not surface as an unrelated browser-level
+    // unhandled-rejection warning before that fixture evaluates the promise.
+    void snapshotReady.catch(() => undefined);
+    (window as CinderWindow).__CINDER_SNAPSHOT_READY__ = snapshotReady;
+    if (snapshotMountKeys.size === 0) {
+      resolveSnapshotReady!();
+    } else {
+      const settledMounts = new Set<string>();
+      settleSnapshotMount = (mountKey, error) => {
+        if (error !== undefined) {
+          rejectSnapshotReady!(error);
+          return;
+        }
+        if (!snapshotMountKeys.has(mountKey)) return;
+        settledMounts.add(mountKey);
+        if (settledMounts.size === snapshotMountKeys.size) resolveSnapshotReady!();
+      };
+    }
+  }
 
   // The canonical page owns the preview now, so subscribe directly to the
   // dev-server stream. Snapshot pages deliberately stay quiet: automated
@@ -466,7 +503,10 @@
   // in Examples — and each container gets its own attachment + its own mount, so
   // the two instances stay independent with correct per-node cleanup. See
   // `component-page-example-mounts.ts` for the mount-error keying discipline.
-  const { mountScenario } = createExampleMountHelpers({ mountErrors });
+  const { mountScenario } = createExampleMountHelpers({
+    mountErrors,
+    onScenarioSettled: settleSnapshotMount,
+  });
 
   // Whether the props table currently overflows horizontally. Drives the
   // `is-scrollable` modifier on the scroll container so the `::after` fade

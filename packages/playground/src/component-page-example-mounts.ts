@@ -20,6 +20,7 @@ import {
 
 export type ExampleMountState = {
   mountErrors: Record<string, MountErrorDetail | undefined>;
+  onScenarioSettled?: (mountKey: string, error?: unknown) => void;
 };
 
 type ScenarioLoader = () => Promise<unknown>;
@@ -57,7 +58,7 @@ function scenarioComponentFromModule(module: unknown): unknown {
 export function createExampleMountHelpers(options: ExampleMountState): {
   mountScenario: (scenario: string) => (element: HTMLElement) => () => void;
 } {
-  const { mountErrors } = options;
+  const { mountErrors, onScenarioSettled } = options;
   return {
     mountScenario(scenario: string) {
       return (element: HTMLElement) => {
@@ -80,9 +81,11 @@ export function createExampleMountHelpers(options: ExampleMountState): {
               props: { mountIdPrefix: mountKey },
             });
             mountErrors[mountKey] = undefined;
+            onScenarioSettled?.(mountKey);
           } catch (error) {
             console.error(`[cinder playground] failed to mount example "${scenario}":`, error);
             mountErrors[mountKey] = toMountErrorDetail(error);
+            onScenarioSettled?.(mountKey, error);
           }
         };
 
@@ -95,9 +98,14 @@ export function createExampleMountHelpers(options: ExampleMountState): {
               if (disposed) return;
               console.error(`[cinder playground] failed to load example "${scenario}":`, error);
               mountErrors[mountKey] = toMountErrorDetail(error);
+              onScenarioSettled?.(mountKey, error);
             });
         } else {
+          const error = new Error(
+            `[cinder playground] no registered component for scenario "${scenario}"`,
+          );
           mountComponent(undefined);
+          onScenarioSettled?.(mountKey, error);
         }
 
         return () => {

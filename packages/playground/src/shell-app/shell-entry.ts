@@ -75,6 +75,15 @@ function hydrateShell(): Promise<void> {
   return shellHydration;
 }
 
+// Static SSR always renders the light-state icon to avoid hydration mismatch.
+// A persisted dark theme needs the interactive control immediately so its icon
+// and accessible label match the pre-paint theme before the first click.
+if (themeToggle !== null && readInitialTheme() === 'dark') {
+  void hydrateShell().catch((error) =>
+    console.error('[cinder playground] failed to synchronize landing theme:', error),
+  );
+}
+
 const colorPanelToggle = document.querySelector<HTMLButtonElement>(
   '[data-testid="color-token-panel-toggle"]',
 );

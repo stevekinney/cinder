@@ -141,6 +141,27 @@ describe('createExampleMountHelpers().mountScenario', () => {
     cleanup();
     expect(unmountCount()).toBe(1);
   });
+
+  it('reports the settled mount so snapshot consumers can await lazy scenarios', async () => {
+    (window as CinderWindow).__CINDER_SCENARIO_LOADERS__ = {
+      lazy: async () => ({ default: Probe }),
+    };
+    const settled: Array<{ mountKey: string; error: unknown }> = [];
+    const { mountScenario } = createExampleMountHelpers({
+      mountErrors: {},
+      onScenarioSettled: (mountKey, error) => settled.push({ mountKey, error }),
+    });
+    const element = document.createElement('div');
+    element.id = 'example-mount-lazy';
+    document.body.appendChild(element);
+
+    const cleanup = mountScenario('lazy')(element);
+    await Promise.resolve();
+    flushSync();
+
+    expect(settled).toEqual([{ mountKey: 'example-mount-lazy', error: undefined }]);
+    cleanup();
+  });
 });
 
 describe('fetchExampleSource', () => {
