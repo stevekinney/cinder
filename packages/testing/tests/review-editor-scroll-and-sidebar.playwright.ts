@@ -101,11 +101,13 @@ function anchor(mount: Locator, threadId: string): Locator {
  * instead of the bug.
  */
 async function installPausedClock(page: Page): Promise<void> {
-  // Pause at the current real instant rather than an artificial fixed offset.
-  // The protocol round trip after install can advance an unfrozen fake clock,
-  // so a target derived from a static timestamp could be in the past.
   await page.clock.install();
-  await page.clock.pauseAt(new Date());
+  // Read the installed browser clock rather than Node's wall clock. The latter
+  // can already be behind by the time `pauseAt` reaches the page, which makes
+  // Playwright reject the request as a fast-forward into the past. The small
+  // advance stays below the 350ms timer whose ordering these tests exercise.
+  const currentTime = await page.evaluate(() => Date.now());
+  await page.clock.pauseAt(new Date(currentTime + 100));
 }
 
 test.describe('ReviewEditor.scrollToThread (cinder#1316, cinder#1317)', () => {
