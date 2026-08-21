@@ -281,7 +281,11 @@ jobs:
           MODE: ${{ steps.decide.outputs.component_scope_mode }}
         run: |
           if [ "$MODE" = full ]; then
-            echo 'playwright_matrix={"shard":[1,2,3,4]}' >> "$GITHUB_OUTPUT"
+            # Full coverage takes roughly 21 minutes of browser work per
+            # two-worker shard after the required page-bundle prewarm. Eight
+            # shards preserve every test while keeping each job below its
+            # existing 30-minute cap.
+            echo 'playwright_matrix={"shard":[1,2,3,4,5,6,7,8]}' >> "$GITHUB_OUTPUT"
           else
             echo 'playwright_matrix={"shard":[1]}' >> "$GITHUB_OUTPUT"
           fi
@@ -352,7 +356,7 @@ jobs:
     timeout-minutes: 30
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.scope.result == 'success' && needs.scope.outputs.playwright_matrix || '{"shard":[1,2,3,4]}') }}
+      matrix: ${{ fromJSON(needs.scope.result == 'success' && needs.scope.outputs.playwright_matrix || '{"shard":[1,2,3,4,5,6,7,8]}') }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -406,7 +410,7 @@ jobs:
             echo "Components: $CINDER_TEST_COMPONENTS"
           fi
           if [ "$CINDER_TEST_SCOPE_MODE" = full ]; then
-            bun run test:browser -- --shard=${{ matrix.shard }}/4 --reporter=blob
+            bun run test:browser -- --shard=${{ matrix.shard }}/8 --reporter=blob
           else
             bun run test:browser
           fi

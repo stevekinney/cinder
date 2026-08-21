@@ -58,7 +58,7 @@ describe('Turbo input topology', () => {
     expect(browserWorkflow).toContain(
       `image: mcr.microsoft.com/playwright:v${componentsManifest.devDependencies['@playwright/test']}-noble`,
     );
-    expect(browserWorkflow).toContain('playwright_matrix={"shard":[1,2,3,4]}');
+    expect(browserWorkflow).toContain('playwright_matrix={"shard":[1,2,3,4,5,6,7,8]}');
     expect(browserWorkflow).toContain(
       "needs.scope.result == 'success' && needs.scope.outputs.playwright_matrix",
     );
