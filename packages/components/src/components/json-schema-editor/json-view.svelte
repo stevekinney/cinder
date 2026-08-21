@@ -112,6 +112,7 @@
   let shouldRestoreEditFocus = $state(false);
   let shouldFocusTextarea = $state(false);
   let discardWasFocused = $state(false);
+  let previouslyReadonly = false;
 
   function focusEditingExitTarget(): void {
     const doneButton = document.getElementById(`${idPrefix}-done-json`);
@@ -149,10 +150,18 @@
       previouslyEditable &&
       !isEditable &&
       document.getElementById(`${idPrefix}-actions`)?.contains(document.activeElement);
+    const focusMovedFromDoneToMalformed =
+      isEditable &&
+      editorState.committedSchema === null &&
+      document.activeElement?.id === `${idPrefix}-done-json`;
+    const focusMovedFromEditToReadonly =
+      !previouslyReadonly && isReadonly && document.activeElement?.id === `${idPrefix}-edit-json`;
     previouslyEditable = isEditable;
+    previouslyReadonly = isReadonly;
 
     if (focusMovedFromTextarea || focusMovedFromJsonActions) shouldRestoreEditFocus = true;
-    if (focusMovedFromCodeBlock) shouldFocusTextarea = true;
+    if (focusMovedFromCodeBlock || focusMovedFromDoneToMalformed) shouldFocusTextarea = true;
+    if (focusMovedFromEditToReadonly) shouldRestoreEditFocus = true;
   });
 
   $effect(() => {

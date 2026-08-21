@@ -182,6 +182,8 @@
       editorState.acceptPendingControlledCommit();
       if (pendingChange.action === 'revert') editorState.finaliseControlledRevert();
       onSchemaChange?.(pendingChange);
+      if (pendingChange.action === 'undo') announcer.announce('Undid last edit');
+      if (pendingChange.action === 'redo') announcer.announce('Redid last edit');
       if (pendingChange.action === 'revert') announcer.announce('Reverted to original schema');
       return;
     }
@@ -365,14 +367,14 @@
     if (editorState.readonly || !editorState.canUndo) return;
     enumDraftHistoryRevision += 1;
     const label = editorState.undo();
-    announcer.announce(label ? `Undid: ${label}` : 'Undid last edit');
+    if (!controlled) announcer.announce(label ? `Undid: ${label}` : 'Undid last edit');
   }
 
   function handleRedo() {
     if (editorState.readonly || !editorState.canRedo) return;
     enumDraftHistoryRevision += 1;
     const label = editorState.redo();
-    announcer.announce(label ? `Redid: ${label}` : 'Redid edit');
+    if (!controlled) announcer.announce(label ? `Redid: ${label}` : 'Redid edit');
   }
 
   function handleRevert() {
