@@ -91,6 +91,14 @@
     colorTokenPanelModule ??= import('./color-token-panel.svelte');
     isColorPanelOpen = true;
   }
+
+  function getColorTokenPanelModule(): Promise<ColorTokenPanelModule> {
+    if (colorTokenPanelModule === null) {
+      throw new Error('Color token panel module was requested before loading.');
+    }
+
+    return colorTokenPanelModule;
+  }
 </script>
 
 <ComponentPage
@@ -115,7 +123,8 @@
 
   {#snippet overlays()}
     {#if isColorPanelOpen}
-      {#await colorTokenPanelModule then { default: ColorTokenPanel }}
+      {#await getColorTokenPanelModule() then module}
+        {@const ColorTokenPanel = module.default}
         <ColorTokenPanel onClose={closeColorPanel} />
       {/await}
     {/if}
