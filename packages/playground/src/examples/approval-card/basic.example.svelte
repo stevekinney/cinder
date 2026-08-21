@@ -7,7 +7,7 @@
 <script lang="ts">
   import { ApprovalCard } from '@lostgradient/cinder/approval-card';
 
-  const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+  const expiresAt = '2030-01-01T00:00:00.000Z';
 </script>
 
 <ApprovalCard
