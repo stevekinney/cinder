@@ -300,7 +300,7 @@ export function assetUrlsFromHtml(html: string): string[] {
 /** Static ESM imports are requested during initial evaluation; `import(...)` is not. */
 function staticJavaScriptImportUrls(javascript: string): string[] {
   const urls = new Set<string>();
-  const imports = /(?:^|\n)\s*import\s+(?:[\s\S]*?\s+from\s+)?["'](\/assets\/[^"']+\.js)["'];?/g;
+  const imports = /(?:^|\n)\s*import\s*(?:[\s\S]*?\s+from\s+)?["'](\/assets\/[^"']+\.js)["'];?/g;
   let match: RegExpExecArray | null;
   while ((match = imports.exec(javascript)) !== null) urls.add(match[1]!);
   return [...urls];

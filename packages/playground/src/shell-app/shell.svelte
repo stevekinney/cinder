@@ -83,12 +83,13 @@
     });
   }
 
-  function toggleColorPanel(): void {
+  async function toggleColorPanel(): Promise<void> {
     if (isColorPanelOpen) {
       closeColorPanel();
       return;
     }
     colorTokenPanelModule ??= import('./color-token-panel.svelte');
+    await colorTokenPanelModule;
     isColorPanelOpen = true;
   }
 
@@ -115,7 +116,7 @@
       {...isColorPanelOpen ? { 'aria-controls': 'color-token-panel' } : {}}
       aria-expanded={isColorPanelOpen}
       data-testid="color-token-panel-toggle"
-      onclick={toggleColorPanel}
+      onclick={() => void toggleColorPanel()}
     >
       <Palette size={17} strokeWidth={1.5} aria-hidden="true" />
     </Button>

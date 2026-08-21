@@ -12,6 +12,7 @@ import {
   applyColorTokenOverridesToDocument,
   readSessionColorTokenOverrides,
 } from './color-token-overrides.ts';
+import { persistScrollPosition } from './sidebar-scroll.ts';
 
 applyColorTokenOverridesToDocument(document, readSessionColorTokenOverrides()[readInitialTheme()]);
 
@@ -29,6 +30,9 @@ if (themeToggle !== null) {
     applyTheme(nextTheme);
     applyColorTokenOverridesToDocument(document, readSessionColorTokenOverrides()[nextTheme]);
     themeToggle.setAttribute('aria-label', labelForTheme(nextTheme));
+    void hydrateShell().catch((error) =>
+      console.error('[cinder playground] failed to hydrate landing shell:', error),
+    );
   });
 }
 
@@ -88,31 +92,42 @@ colorPanelToggle?.addEventListener(
   { once: true },
 );
 
+const sidebarNavigation = document.querySelector<HTMLElement>('nav.dx-nav');
+if (sidebarNavigation !== null) persistScrollPosition(sidebarNavigation);
+
 const sidebarFilter = document.getElementById('sidebar-filter');
 if (sidebarFilter instanceof HTMLInputElement) {
+  let latestFilterValue = '';
   try {
-    sidebarFilter.value = sessionStorage.getItem(NAV_FILTER_STORAGE_KEY) ?? '';
+    latestFilterValue = sessionStorage.getItem(NAV_FILTER_STORAGE_KEY) ?? '';
+    sidebarFilter.value = latestFilterValue;
   } catch {
     // Private mode or disabled storage: filtering still works for this page.
   }
-  sidebarFilter.addEventListener(
-    'input',
-    () => {
-      const value = sidebarFilter.value;
-      try {
-        sessionStorage.setItem(NAV_FILTER_STORAGE_KEY, value);
-      } catch {
-        // Private mode or disabled storage: keep the current input value.
-      }
-      void hydrateShell()
-        .then(() => {
-          sidebarFilter.value = value;
-          sidebarFilter.dispatchEvent(new Event('input', { bubbles: true }));
-        })
-        .catch((error) =>
-          console.error('[cinder playground] failed to hydrate landing shell:', error),
-        );
-    },
-    { once: true },
-  );
+  const persistAndHydrateFilter = () => {
+    latestFilterValue = sidebarFilter.value;
+    try {
+      sessionStorage.setItem(NAV_FILTER_STORAGE_KEY, latestFilterValue);
+    } catch {
+      // Private mode or disabled storage: keep the current input value.
+    }
+    void hydrateShell()
+      .then(() => {
+        sidebarFilter.removeEventListener('input', persistAndHydrateFilter);
+        const hydratedFilter = document.getElementById('sidebar-filter');
+        if (!(hydratedFilter instanceof HTMLInputElement)) return;
+        hydratedFilter.value = latestFilterValue;
+        hydratedFilter.dispatchEvent(new Event('input', { bubbles: true }));
+      })
+      .catch((error) =>
+        console.error('[cinder playground] failed to hydrate landing shell:', error),
+      );
+  };
+  sidebarFilter.addEventListener('input', persistAndHydrateFilter);
+
+  if (latestFilterValue !== '') {
+    void hydrateShell().catch((error) =>
+      console.error('[cinder playground] failed to restore landing filter:', error),
+    );
+  }
 }

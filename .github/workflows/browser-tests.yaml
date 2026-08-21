@@ -603,6 +603,21 @@ jobs:
       - name: Merge sharded report
         if: "always() && needs.playwright-lane.result != 'skipped' && (needs.scope.result != 'success' || needs.scope.outputs.component_scope_mode == 'full')"
         run: bunx playwright merge-reports --reporter html packages/testing/blob-reports
+      - name: Merge sharded visual reports
+        if: "always() && needs.playwright-visual.result != 'skipped' && (needs.scope.result != 'success' || needs.scope.outputs.component_scope_mode == 'full')"
+        uses: actions/download-artifact@v8
+        with:
+          pattern: visual-report-*
+          path: packages/testing/visual-reports
+          merge-multiple: true
+      - name: Publish merged visual report
+        if: "always() && needs.playwright-visual.result != 'skipped' && (needs.scope.result != 'success' || needs.scope.outputs.component_scope_mode == 'full')"
+        run: |
+          set -euo pipefail
+          REPORTS=packages/testing/visual-reports
+          if [ -d "$REPORTS" ] && find "$REPORTS" -name '*.json' -print -quit | grep -q .; then
+            find "$REPORTS" -name '*.json' -print0 | xargs -0 jq -s 'add' > packages/testing/visual-report.json
+          fi
       - name: Upload merged report
         if: "always() && needs.playwright-lane.result != 'skipped' && (needs.scope.result != 'success' || needs.scope.outputs.component_scope_mode == 'full')"
         uses: actions/upload-artifact@v7
@@ -611,6 +626,14 @@ jobs:
           path: playwright-report
           retention-days: 14
           if-no-files-found: warn
+      - name: Upload merged visual report
+        if: "always() && needs.playwright-visual.result != 'skipped' && (needs.scope.result != 'success' || needs.scope.outputs.component_scope_mode == 'full')"
+        uses: actions/upload-artifact@v7
+        with:
+          name: visual-report
+          path: packages/testing/visual-report.json
+          retention-days: 14
+          if-no-files-found: ignore
       - name: Require the selected Playwright mode to succeed
         env:
           SCOPE: ${{ needs.scope.result }}

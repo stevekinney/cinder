@@ -74,8 +74,8 @@ export async function compilePageBundleArtifacts(
     )
     .join('\n');
 
-  const entrySource = `import { hydrate, mount } from 'svelte';
-import { NAV_FILTER_STORAGE_KEY } from '../../src/component-page-theme.ts';
+  const entrySource = `import { NAV_FILTER_STORAGE_KEY } from '../../src/component-page-theme.ts';
+import { persistScrollPosition } from '../../src/shell-app/sidebar-scroll.ts';
 
 const scenarioLoaders: Record<string, () => Promise<unknown>> = {
 ${scenarioLoaders}
@@ -86,6 +86,8 @@ const target = document.getElementById('app');
 if (target === null) {
   throw new Error('[cinder playground] #app target not found');
 }
+const sidebarNavigation = document.querySelector<HTMLElement>('nav.dx-nav');
+if (sidebarNavigation !== null) persistScrollPosition(sidebarNavigation);
 
 // Keep the bare component implementation behind the Playground tab. The page
 // resolves the imported namespace by \`documentation.component.exportName\`,
@@ -106,7 +108,7 @@ const previewOnly = new URLSearchParams(window.location.search).get('preview') =
 const snapshotMode = new URLSearchParams(window.location.search).get('snapshot') === '1';
 let hasPersistedNavFilter = false;
 try {
-  hasPersistedNavFilter = sessionStorage.getItem(NAV_FILTER_STORAGE_KEY) !== null;
+  hasPersistedNavFilter = (sessionStorage.getItem(NAV_FILTER_STORAGE_KEY) ?? '').trim() !== '';
 } catch {
   // Private mode or disabled storage: canonical documentation stays static.
 }
@@ -133,9 +135,9 @@ let pageHydration: Promise<void> | undefined;
 let pageHydrated = false;
 
 function hydratePage(): Promise<void> {
-  pageHydration ??= import('../../src/component-page.svelte').then(({ default: ComponentPage }) => {
+  pageHydration ??= Promise.all([import('svelte'), import('../../src/component-page.svelte')]).then(([svelte, { default: ComponentPage }]) => {
     if (shouldHydrate) {
-      hydrate(ComponentPage, { target, props });
+      svelte.hydrate(ComponentPage, { target, props });
       pageHydrated = true;
       return;
     }
@@ -153,7 +155,7 @@ function hydratePage(): Promise<void> {
     // Clearing is safe in every mount case: snapshot and preview surfaces are
     // served with an empty \`#app\` anyway, so there is nothing to discard.
     target.replaceChildren();
-    mount(ComponentPage, { target, props });
+    svelte.mount(ComponentPage, { target, props });
     pageHydrated = true;
   });
   return pageHydration;
@@ -181,6 +183,14 @@ document.addEventListener(
     if (pageHydrated) return;
     const button = eventElement(event)?.closest('button');
     if (button === null) return;
+    if (button.getAttribute('aria-label') === 'Copy import') {
+      const source = button.previousElementSibling?.textContent;
+      if (source !== null && source !== undefined) {
+        void navigator.clipboard?.writeText(source).catch(() => undefined);
+      }
+      hydrateAfter(event, () => undefined);
+      return;
+    }
     hydrateAfter(event, () => button.click());
   },
   { capture: true },
@@ -191,7 +201,7 @@ document.addEventListener(
   (event) => {
     if (pageHydrated || !['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
     const button = eventElement(event)?.closest('button');
-    if (button === null) return;
+    if (button?.getAttribute('role') !== 'tab') return;
     hydrateAfter(event, () =>
       button.dispatchEvent(
         new KeyboardEvent('keydown', { key: event.key, bubbles: true, cancelable: true }),
@@ -200,6 +210,21 @@ document.addEventListener(
   },
   { capture: true },
 );
+
+document.addEventListener(
+  'click',
+  (event) => {
+    if (pageHydrated) return;
+    const anchor = eventElement(event)?.closest('a[href^="#"]');
+    if (anchor === null) return;
+    hydrateAfter(event, () => anchor.click());
+  },
+  { capture: true },
+);
+
+window.addEventListener('scroll', () => {
+  if (!pageHydrated) void hydratePage().catch((error) => console.error('[cinder playground] failed to hydrate page:', error));
+}, { once: true, passive: true });
 
 document.addEventListener(
   'input',
@@ -235,6 +260,7 @@ document.addEventListener(
 if (
   snapshotMode ||
   previewOnly ||
+  !hasServerRenderedContent ||
   hasPersistedNavFilter ||
   (shouldHydrate && new URLSearchParams(window.location.search).get('view') === 'playground')
 ) {

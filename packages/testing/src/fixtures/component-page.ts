@@ -108,6 +108,14 @@ export const test = base.extend<Fixtures>({
         // generous headroom for runAxe + captureScreenshot inside the
         // per-test 90s timeout.
         await page.waitForSelector('#app > *', { state: 'visible', timeout: 20_000 });
+        await page.waitForFunction(
+          () =>
+            [
+              ...document.querySelectorAll<HTMLElement>('.snapshot-examples .example-preview'),
+            ].every((preview) => preview.childElementCount > 0),
+          undefined,
+          { timeout: 20_000 },
+        );
         // Blur any auto-focused element so focus rings don't appear in
         // screenshots. Phase 2 interaction tokens will opt back in to focus
         // on specific elements when the visual contract requires it.
