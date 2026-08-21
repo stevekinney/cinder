@@ -14,6 +14,7 @@ describe('baseline provenance', () => {
   it('creates deterministic provenance for a scoped baseline set', () => {
     const provenance = createBaselineProvenance({
       componentScope: 'button,button',
+      shard: '3/8',
       renderedSourceSha: 'abc123',
       playwrightVersion: '1.60.0',
       osCodename: 'jammy',
@@ -24,6 +25,7 @@ describe('baseline provenance', () => {
     expect(provenance).toEqual({
       schemaVersion: 1,
       componentScope: ['button'],
+      shard: '3/8',
       renderedSourceSha: 'abc123',
       playwrightVersion: '1.60.0',
       osCodename: 'jammy',
@@ -73,6 +75,7 @@ describe('baseline provenance', () => {
       path,
       createBaselineProvenance({
         componentScope: ['button'],
+        shard: '3/8',
         renderedSourceSha: 'abc123',
         playwrightVersion: '1.60.0',
         osCodename: 'jammy',
@@ -83,6 +86,7 @@ describe('baseline provenance', () => {
 
     const raw = readFileSync(path, 'utf8');
     expect(raw).toContain('"componentScope": [');
+    expect(raw).toContain('"shard": "3/8"');
     expect(raw).not.toContain('timestamp');
   });
 });

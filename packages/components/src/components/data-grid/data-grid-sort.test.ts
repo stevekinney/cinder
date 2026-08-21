@@ -305,7 +305,7 @@ describe('DataGrid sort rendering', () => {
     );
     expect(thirdSortedRowCells[0]?.textContent?.trim()).toBe('Grace Hopper');
     expect(thirdSortedRowCells[0]?.getAttribute('data-cinder-active')).toBe('true');
-    expect(thirdSortedRowCells[0]?.getAttribute('aria-selected')).toBe('true');
+    expect(thirdSortedRowCells[0]?.hasAttribute('aria-selected')).toBe(false);
 
     await fireEvent.keyDown(grid!, { key: 'ArrowUp' });
 

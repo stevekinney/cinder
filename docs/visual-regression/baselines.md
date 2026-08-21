@@ -153,10 +153,11 @@ base_ref=main
 baseline_update_target=source_branch
 ```
 
-`baseline_update_target=source_branch` is only allowed for `tasks/*` branches and
-uses a non-force push back to `source_ref`. It fails if the branch moved while
-the workflow was rendering. This mode is for wiring the initial scoped baseline
-set into the same implementation branch.
+`baseline_update_target=source_branch` accepts an explicit non-default source
+branch and uses a non-force push back to `source_ref`. `base_ref` must be the
+repository default branch, `source_ref` can never be that protected branch,
+and the workflow fails if the branch moved while rendering. This mode is for
+wiring the initial scoped baseline set into the same implementation branch.
 
 For normal snapshot-only follow-up updates, keep the default:
 
@@ -165,11 +166,15 @@ baseline_update_target=snapshot_pr
 ```
 
 That mode builds the canonical image from `source_ref`, then copies only
-`packages/testing/snapshots/` onto a bot branch based on `base_ref` before
-opening the follow-up PR. `base_ref` is required for both update targets because
-the workflow dispatch schema and branch-safety checks need an explicit target.
-The resulting PR stays snapshot-only, so PNG churn lands separately from source
-changes.
+`packages/testing/snapshots/` onto a bot branch based on `source_ref` before
+opening the follow-up PR _back into that source branch_. Merge the follow-up
+first, then let the implementation pull request rerun its blocking visual
+check against the committed baselines. This keeps the follow-up snapshot-only
+without comparing new pixels to the pre-change source tree. `base_ref` remains
+required and must name the repository default branch, so the branch-safety
+checks have an explicit protected target. When a dispatch renders a single
+shard, `provenance.json` records that `N/8` partition instead of implying a
+full-matrix baseline update.
 
 After baselines exist, verify block mode with a separate dispatch:
 
@@ -239,10 +244,12 @@ Ubuntu codename, architecture, and Docker image tag. The browser workflow uses
 the same Docker image for `report` and `block`, so a clean CI checkout compares
 against the committed pixels in the same renderer that wrote them.
 
-## Flipping CI to block
+## Blocking enforcement
 
-CI defaults to `CINDER_VISUAL_DIFF=off`. The rollout is `off` → `report` (soak,
-review the job-summary diffs) → `block`. Flipping to `block` is the single-line
-change to the workflow's `CINDER_VISUAL_DIFF` default, and it is only safe once a
-committed baseline set exists for the components in scope — otherwise the
-`blockBaselineGuard` message fires for every uncovered case.
+The rollout completed in three independently verified stages: report-mode soak,
+block-mode mismatch proof, and branch-protection promotion. Pull-request and
+merge-group runs now use `CINDER_VISUAL_DIFF=block`; only manual diagnostics can
+select `off` or `report`, and those runs publish distinct check names that cannot
+satisfy protected pull-request contexts. A new component must commit its scoped
+baselines before the blocking check can pass—otherwise `blockBaselineGuard`
+names the missing case.

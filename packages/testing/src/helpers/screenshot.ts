@@ -76,6 +76,14 @@ const ANIMATION_KILL_CSS = `
   }
 `;
 
+async function waitForStableLayout(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    await new Promise<void>((resolve) => {
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+    });
+  });
+}
+
 // ---------------------------------------------------------------------------
 // toHaveScreenshot options (shared between block and report modes)
 // ---------------------------------------------------------------------------
@@ -328,8 +336,11 @@ export async function captureScreenshot(
   await page.addStyleTag({ content: ANIMATION_KILL_CSS });
   // Use string form to avoid a TypeScript dom-lib dependency; runs in browser context.
   await page.evaluate('document.fonts.ready');
-  // The fixture has already waited for `#app > *` before returning the page;
-  // no re-wait needed here.
+  // The fixture has already waited for `#app > *`, but components using
+  // ResizeObserver (such as virtualized DataGrid) settle their measured layout
+  // on a subsequent animation frame. Two frames let observer-driven writes
+  // commit before the screenshot without introducing an arbitrary timeout.
+  await waitForStableLayout(page);
 
   const mode = resolveVisualDiffMode();
 

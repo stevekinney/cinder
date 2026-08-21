@@ -7,7 +7,7 @@
       "id": "basic",
       "title": "Basic avatar",
       "description": "Image variant alongside an initials fallback.",
-      "code": "<script lang=\"ts\">\n  import { Avatar } from '@lostgradient/cinder/avatar';\n</script>\n\n<div class=\"example-preview-row\">\n  <Avatar src=\"https://i.pravatar.cc/96?img=12\" name=\"Ada Lovelace\" />\n  <Avatar name=\"Ada Lovelace\" />\n  <Avatar name=\"Grace Hopper\" />\n  <Avatar />\n</div>\n"
+      "code": "<script lang=\"ts\">\n  import { Avatar } from '@lostgradient/cinder/avatar';\n\n  const adaPortrait =\n    \"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'%3E%3Crect width='96' height='96' fill='currentColor' opacity='.12'/%3E%3Ccircle cx='48' cy='37' r='19' fill='currentColor' opacity='.45'/%3E%3Cpath d='M20 96c4-22 16-34 28-34s24 12 28 34' fill='currentColor' opacity='.75'/%3E%3Cpath d='M29 35c2-18 36-23 39 1-7-7-28-8-39-1' fill='currentColor'/%3E%3C/svg%3E\";\n</script>\n\n<div class=\"example-preview-row\">\n  <Avatar src={adaPortrait} name=\"Ada Lovelace\" />\n  <Avatar name=\"Ada Lovelace\" />\n  <Avatar name=\"Grace Hopper\" />\n  <Avatar />\n</div>\n"
     },
     {
       "id": "shapes",

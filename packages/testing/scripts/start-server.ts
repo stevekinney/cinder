@@ -425,11 +425,12 @@ export function playgroundBundleDependencyBuildArguments(packageName: string): s
 export function playgroundBundleDependencyBuildProcess(
   childProcess: ChildProcess,
   packageName: string,
+  killProcessGroup = process.platform !== 'win32',
 ): ManagedChildProcess {
   return {
     childProcess,
     name: `${packageName} build`,
-    killProcessGroup: process.platform !== 'win32',
+    killProcessGroup,
   };
 }
 
@@ -537,11 +538,13 @@ async function buildPlaygroundBundleDependencies(
 
     const buildProcess = spawn('bun', playgroundBundleDependencyBuildArguments(packageName), {
       cwd: repoRoot,
-      detached: process.platform !== 'win32',
+      // These finite prebuilds are awaited before the server starts. Detaching
+      // them can leave Bun's child-process exit event unobserved in Docker.
+      detached: false,
       stdio: 'inherit',
       env: process.env,
     });
-    registerChildProcess(playgroundBundleDependencyBuildProcess(buildProcess, packageName));
+    registerChildProcess(playgroundBundleDependencyBuildProcess(buildProcess, packageName, false));
     const buildCode = await waitForExit(buildProcess);
     if (!shouldContinueStartingChildProcesses()) return;
     if (buildCode !== 0) {

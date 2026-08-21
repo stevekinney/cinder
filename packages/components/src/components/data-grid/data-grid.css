@@ -19,7 +19,7 @@
     -webkit-overflow-scrolling: touch;
   }
 
-  .cinder-data-grid[data-cinder-virtualized-columns='true'] {
+  .cinder-data-grid[data-cinder-column-overflow] {
     --_cinder-data-grid-overflow-shadow:
       inset 1rem 0 1rem -1rem color-mix(in srgb, var(--cinder-text) 14%, transparent),
       inset -1rem 0 1rem -1rem color-mix(in srgb, var(--cinder-text) 14%, transparent);

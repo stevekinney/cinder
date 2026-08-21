@@ -134,7 +134,6 @@ export class DataGridSelectionModel {
       return;
     }
 
-    const hadActiveCell = this.activeCell !== undefined;
     const hadAnchorCell = this.anchorCell !== undefined;
     const reconciledActiveCell =
       this.activeCell && clampCellCoordinate(this.activeCell, rowIds, columnKeys);
@@ -143,7 +142,7 @@ export class DataGridSelectionModel {
 
     const nextAnchorCell =
       (this.anchorCell && clampCellCoordinate(this.anchorCell, rowIds, columnKeys)) ??
-      (hadAnchorCell || !hadActiveCell ? nextActiveCell : undefined);
+      (hadAnchorCell ? nextActiveCell : undefined);
     if (!areCellsEqual(this.anchorCell, nextAnchorCell)) this.anchorCell = nextAnchorCell;
 
     const nextToggledCells = this.toggledCells.filter((cell) =>

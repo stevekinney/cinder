@@ -27,7 +27,7 @@ boundary sits where it does.
 
 `browser-tests.yaml` runs its test lane in `mcr.microsoft.com/playwright:v1.60.0-noble`, matching the pinned `@playwright/test` dependency. Full scope has four deterministic shards and merges their blob reports; filtered scope stays a single lane. The one required `playwright` job rejects an incomplete selected matrix.
 
-Browser lanes prebuild `@cinder/playground`'s workspace graph with Turbo before the server starts. A trusted job can restore the remote cache, while forks and local runs retain the launcher’s self-contained build fallback. The launcher only skips those direct builds when the workflow explicitly marks the exact prebuild complete. Visual regression and baseline coverage currently run in report mode on pull requests and merge-queue candidates: their diagnostics are retained without blocking while the rollout soak is evaluated. They are promoted to blocking and then required only in separate, recorded rollout changes.
+Browser lanes prebuild `@cinder/playground`'s workspace graph with Turbo before the server starts. A trusted job can restore the remote cache, while forks and local runs retain the launcher's self-contained build fallback. The launcher only skips those direct builds when the workflow explicitly marks the exact prebuild complete. Visual regression runs in block mode on pull requests and merge-queue candidates, and baseline coverage blocks adopted components with incomplete committed baselines. Manual report and baseline-authoring dispatches receive diagnostic-only check names, so they cannot satisfy the protected pull-request contexts.
 
 `main-green.yaml` is the only ordinary post-merge validation graph. Normal pushes may reuse trusted content-addressed Turbo outputs, but runtime smokes remain direct commands. Scheduled and explicitly forced manual audits set `TURBO_FORCE=true`, which re-executes deterministic Turbo tasks and keeps the cache topology honest.
 
@@ -73,12 +73,14 @@ one lock:
 
 `main` has required status checks configured via the GitHub branch-protection
 API (not a workflow file): **`unit-tests`**, **`typecheck`**, **`playwright`**,
-and **`Pre-1.0 changeset bump guard`**. No human review is required — agents
-self-merge by design in this repository once their own PR's checks are green.
+**`playwright-visual`**, **`baseline-coverage`**, and **`Pre-1.0 changeset bump guard`**.
+`playwright-visual` runs block-mode screenshot comparisons and `baseline-coverage`
+requires each adopted component's committed baselines to cover its declared fixture
+and viewport combinations. No human review is required — agents self-merge by design
+in this repository once their own PR's checks are green.
 
-`strict` was deliberately `false` for a time, on the reasoning that requiring
-branches to be up to date would reserialize merges and that a stale-base merge
-was an acceptable residual risk because `main-green` catches it post-hoc.
+`strict` is `true`: GitHub requires every pull request to be up to date with
+`main` and revalidates its required checks against that merge result.
 
 **That risk materialized on 2026-07-28.** #972 added the
 `cinder/interior-border-weight` stylelint rule; #1011 added CSS violating it.
@@ -91,7 +93,8 @@ Both were green. The chronology:
 | 14:32:42Z  | #1011 merges, still validated against the pre-rule tree           |
 
 Nothing forced a re-run in that 14-minute window, and `main` went red on the
-second merge (fixed by #1047).
+second merge (fixed by #1047). `strict: true` now prevents that stale-base
+merge sequence.
 
 The lesson is that the failing check was never missing. `unit-tests` has always
 run `turbo run lint` and the full `stylelint` sweep unconditionally. It ran
@@ -101,8 +104,8 @@ files its own pull request never touches, so no amount of per-PR file-scoping
 can see the conflict.** Only validating the merged result can.
 
 The intended fix was the **merge queue**, which builds each candidate on top
-of the real `main` and runs the required checks against that. All four
-required checks carry a `merge_group:` trigger for it, and every scoping job
+of the real `main` and runs the required checks against that. All six required
+checks carry a `merge_group:` trigger for it, and every scoping job
 in them fails safe on non-`pull_request` events — a queue run is fully
 unscoped by design.
 
