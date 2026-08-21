@@ -272,6 +272,7 @@
   $effect(() => {
     if (!controlled || schema === undefined) {
       discardPendingControlledChange();
+      editorState.acceptPendingControlledCommit();
       lastObservedControlledSchemaText = undefined;
       lastObservedControlledSchema = undefined;
       controlledSchemaAuthority = undefined;

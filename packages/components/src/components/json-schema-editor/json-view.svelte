@@ -97,7 +97,7 @@
     !isReadonly && editorState.jsonDraftIsDirty && draftParse.ok && draftMeta?.valid === true,
   );
 
-  const canDiscard = $derived(editorState.jsonDraftIsDirty && !isReadonly);
+  const canDiscard = $derived(editorState.jsonDraftIsDirty);
   let jsonEditing = $state(false);
   const editable = $derived(
     jsonEditing || editorState.jsonDraftIsDirty || editorState.committedSchema === null,
