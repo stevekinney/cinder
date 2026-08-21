@@ -586,6 +586,37 @@ describe('JsonSchemaEditor — controlled and uncontrolled schema inputs', () =>
     expect(container.textContent).toContain('"type": "number"');
   });
 
+  test('restores the reloaded controlled authority after a rejected request', async () => {
+    const { container, rerender } = render(JsonSchemaEditorImplementation, {
+      props: {
+        id: 'jse-controlled-schema-key-rejection',
+        schema: { type: 'string' },
+        schemaKey: 'first-document',
+        view: 'json' as const,
+        onValueChangeRequest: () => Promise.reject(new Error('rejected')),
+      },
+    });
+    await flushEffects();
+
+    await rerender({
+      id: 'jse-controlled-schema-key-rejection',
+      schema: { type: 'number' },
+      schemaKey: 'second-document',
+      view: 'json' as const,
+      onValueChangeRequest: () => Promise.reject(new Error('rejected')),
+    });
+    await flushEffects();
+    await fireEvent.click(latestJsonButton(container, 'Edit JSON'));
+    await fireEvent.input(latestJsonTextarea(container), {
+      target: { value: '{"type":"boolean"}' },
+    });
+    await fireEvent.click(latestJsonButton(container, 'Apply'));
+    await flushEffects();
+    await flushEffects();
+
+    expect(container.textContent).toContain('"type": "number"');
+  });
+
   test('preserves a dirty JSON draft when a controlled parent recreates its unchanged schema', async () => {
     const onValueChangeRequest = (_event: JsonSchemaEditorChangeEvent) => undefined;
     const { rerender } = render(JsonSchemaEditorImplementation, {

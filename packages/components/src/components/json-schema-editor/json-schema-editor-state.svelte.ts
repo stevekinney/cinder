@@ -730,6 +730,7 @@ export function createEditorState(options: CreateEditorStateOptions) {
 
     /** Reload from a new schema/original pair — used by schemaKey-triggered reset. */
     reload(schemaInput: JsonSchemaValue | string, originalInput?: JsonSchemaValue | string) {
+      pendingControlledHistory = null;
       loadFrom(schemaInput, originalInput);
     },
 
