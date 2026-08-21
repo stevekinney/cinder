@@ -2,37 +2,13 @@
   import type {
     JsonSchemaEditorChangeEvent,
     JsonSchemaEditorMode,
-    JsonSchemaEditorRevertEvent,
     JsonSchemaEditorView,
     JsonSchemaKnownDraft,
-    JsonSchemaValidationResult,
     JsonSchemaValue,
   } from './json-schema-editor-types.ts';
 
-  export type JsonSchemaEditorProps = {
-    /** Required for ARIA wiring. */
-    id: string;
-    /** The schema being edited. May be a string (JSON text) or pre-parsed value. */
-    schema: JsonSchemaValue | string;
-    /** Optional explicit baseline; defaults to the initial `schema`. */
-    original?: JsonSchemaValue | string;
-    /** Changing this triggers a full reset (history clears). */
-    schemaKey?: string;
-    /** Active view: form / json / diff. Bindable. */
-    view?: JsonSchemaEditorView;
-    /** Read-only mode disables all mutations. */
-    readonly?: boolean;
-    /** Maximum history entries (default 100). */
-    maxHistory?: number;
-    /** Force a draft override regardless of $schema. */
-    draftOverride?: JsonSchemaKnownDraft;
-    onSchemaChange?: (event: JsonSchemaEditorChangeEvent) => void;
-    onRevert?: (event: JsonSchemaEditorRevertEvent) => void;
-    onValidate?: (result: JsonSchemaValidationResult) => void;
-    class?: string;
-  };
-
   export type { JsonSchemaEditorMode, JsonSchemaEditorView };
+  export type { JsonSchemaEditorProps } from './json-schema-editor.types.ts';
 
   /**
    * Mac detection for keyboard-shortcut routing. `navigator.platform` is
@@ -70,11 +46,14 @@
   import FormView from './form-view.svelte';
   import { createEditorState } from './json-schema-editor-state.svelte.ts';
   import JsonSchemaToolbar from './json-schema-toolbar.svelte';
+  import type { JsonSchemaEditorProps } from './json-schema-editor.types.ts';
+  import { normaliseSchemaInput } from './json-schema-validator.ts';
   import JsonView from './json-view.svelte';
 
   let {
     id,
     schema,
+    defaultSchema,
     original,
     schemaKey,
     view = $bindable<JsonSchemaEditorView>('form'),
@@ -82,12 +61,16 @@
     maxHistory,
     draftOverride,
     onSchemaChange,
+    onValueChangeRequest,
     onRevert,
     onValidate,
     class: className,
   }: JsonSchemaEditorProps = $props();
 
   const announcer = useAnnouncer();
+
+  const initialSchema = untrack<JsonSchemaValue | string>(() => schema ?? defaultSchema ?? {});
+  const controlled = $derived(schema !== undefined && onValueChangeRequest !== undefined);
 
   // Build state container once. Schema reloads happen via `schemaKey`. Other
   // mutable props (readonly, draftOverride, callback handlers) are kept in
@@ -98,9 +81,10 @@
   // applied through the $effects below (readonly/draftOverride) and schemaKey.
   const stateOptions: Parameters<typeof createEditorState>[0] = untrack(() => {
     const options: Parameters<typeof createEditorState>[0] = {
-      schema,
+      schema: initialSchema,
       readonly,
-      onSchemaChange: (event) => onSchemaChange?.(event),
+      controlled,
+      onSchemaChange: handleSchemaChange,
       onRevert: (event) => onRevert?.(event),
       onValidate: (result) => onValidate?.(result),
     };
@@ -116,11 +100,204 @@
   const editorState = createEditorState(stateOptions);
   const toolbarValidationErrorCount = $derived(view === 'form' ? localValidationErrorCount : 0);
 
-  // Sync `readonly` into the state container whenever the prop changes.
-  // `setReadonly` only assigns the flag, so re-applying the construction-seeded
-  // value on the initial effect run is a harmless no-op — no sentinel needed.
+  function schemaMatchesCommitted(input: JsonSchemaValue | string): boolean {
+    const normalised = normaliseSchemaInput(input);
+    return normalised.ok && normalised.canonicalText === editorState.committedCanonicalText;
+  }
+
+  function synchroniseControlledSchema(
+    input: JsonSchemaValue | string,
+    rejectedAction?: 'commit' | 'undo' | 'redo' | 'revert',
+  ) {
+    if (schemaMatchesCommitted(input)) return;
+    if (rejectedAction !== undefined) {
+      const reconciledHistory =
+        (rejectedAction === 'commit' &&
+          (editorState.restorePendingControlledHistoryWhenMatches(input) ||
+            editorState.discardCurrentCommitWhenPreviousMatches(input))) ||
+        (rejectedAction === 'undo' && editorState.restoreNextCommitWhenMatches(input)) ||
+        (rejectedAction === 'redo' && editorState.restorePreviousCommitWhenMatches(input)) ||
+        (rejectedAction === 'revert' &&
+          editorState.restoreControlledRevertWhenCommittedMatches(input));
+      if (reconciledHistory) {
+        enumDrafts = {};
+        return;
+      }
+    }
+    editorState.synchronise(input);
+    enumDrafts = {};
+  }
+
+  function controlledSchemaText(input: JsonSchemaValue | string): string {
+    const normalised = normaliseSchemaInput(input);
+    return normalised.ok ? normalised.canonicalText : normalised.rawText;
+  }
+
+  function schemaMatchesChangeEvent(
+    input: JsonSchemaValue | string,
+    event: JsonSchemaEditorChangeEvent,
+  ): boolean {
+    return controlledSchemaText(input) === event.jsonString;
+  }
+
+  function isSchemaInput(input: unknown): input is JsonSchemaValue | string {
+    const hasSchemaShape =
+      typeof input === 'string' ||
+      typeof input === 'boolean' ||
+      (typeof input === 'object' && input !== null && !Array.isArray(input));
+    return hasSchemaShape && normaliseSchemaInput(input as JsonSchemaValue | string).ok;
+  }
+
+  type PendingControlledChange = JsonSchemaEditorChangeEvent & {
+    action: 'commit' | 'undo' | 'redo' | 'revert' | undefined;
+  };
+  let pendingControlledChange = $state<PendingControlledChange | undefined>();
+  let pendingControlledChangeVersion = 0;
+  let lastSchemaKey: string | undefined = untrack(() => schemaKey);
+  let controlledSchemaAuthority = untrack<JsonSchemaValue | string | undefined>(() =>
+    controlled && schema !== undefined ? controlledSchemaText(schema) : undefined,
+  );
+
+  function discardPendingControlledChange() {
+    pendingControlledChange = undefined;
+    pendingControlledChangeVersion += 1;
+  }
+
+  function settleControlledChange(input: JsonSchemaValue | string) {
+    const pendingChange = pendingControlledChange;
+    const accepted = pendingChange !== undefined && schemaMatchesChangeEvent(input, pendingChange);
+    const previousAuthority = controlledSchemaAuthority ?? schema;
+    const unchangedAuthority =
+      previousAuthority !== undefined &&
+      controlledSchemaText(previousAuthority) === controlledSchemaText(input);
+
+    controlledSchemaAuthority = controlledSchemaText(input);
+    synchroniseControlledSchema(
+      controlledSchemaAuthority,
+      pendingChange !== undefined && unchangedAuthority ? pendingChange.action : undefined,
+    );
+    discardPendingControlledChange();
+
+    if (accepted) {
+      editorState.acceptPendingControlledCommit();
+      if (pendingChange.action === 'revert') editorState.finaliseControlledRevert();
+      onSchemaChange?.(pendingChange);
+      if (pendingChange.action === 'undo') announcer.announce('Undid last edit');
+      if (pendingChange.action === 'redo') announcer.announce('Redid last edit');
+      if (pendingChange.action === 'revert') announcer.announce('Reverted to original schema');
+      return;
+    }
+
+    const normalised = normaliseSchemaInput(input);
+    if (pendingChange !== undefined && !unchangedAuthority && normalised.ok) {
+      editorState.replacePendingControlledCommit(input);
+      // Parse canonical text a second time so a mutable replacement supplied by
+      // the parent cannot become an observer-owned reference.
+      const snapshot = normaliseSchemaInput(normalised.canonicalText);
+      if (snapshot.ok) {
+        onSchemaChange?.({ schema: snapshot.schema, jsonString: snapshot.canonicalText });
+      }
+    }
+  }
+
+  function rejectControlledChange(changeVersion: number) {
+    if (pendingControlledChangeVersion !== changeVersion) return;
+    const pendingChange = pendingControlledChange;
+    discardPendingControlledChange();
+    const authoritativeSchema = controlledSchemaAuthority ?? schema;
+    if (authoritativeSchema !== undefined) {
+      synchroniseControlledSchema(authoritativeSchema, pendingChange?.action);
+    }
+  }
+
+  function handleSchemaChange(event: JsonSchemaEditorChangeEvent) {
+    if (!controlled || schema === undefined) {
+      onSchemaChange?.(event);
+      return;
+    }
+
+    // A schemaKey transition owns a full document reset. Let its dedicated
+    // effect cancel any pending request before this effect can settle an old
+    // request against the new document's schema.
+    if (schemaKey !== lastSchemaKey) return;
+
+    if (pendingControlledChange !== undefined) {
+      editorState.restorePendingControlledCommit(pendingControlledChange.jsonString);
+      return;
+    }
+
+    const eventSnapshot = normaliseSchemaInput(event.jsonString);
+    if (!eventSnapshot.ok) return;
+    pendingControlledChange = {
+      schema: eventSnapshot.schema,
+      jsonString: eventSnapshot.canonicalText,
+      action: editorState.lastChangeAction,
+    };
+    const changeVersion = ++pendingControlledChangeVersion;
+    let settlement: unknown;
+    try {
+      settlement = onValueChangeRequest?.({
+        schema: eventSnapshot.schema,
+        jsonString: eventSnapshot.canonicalText,
+      });
+    } catch (error) {
+      rejectControlledChange(changeVersion);
+      throw error;
+    }
+    if (settlement !== undefined) {
+      void Promise.resolve(settlement)
+        .then((input) => {
+          if (pendingControlledChangeVersion !== changeVersion) return;
+          if (isSchemaInput(input)) settleControlledChange(input);
+          else rejectControlledChange(changeVersion);
+        })
+        .catch(() => {
+          rejectControlledChange(changeVersion);
+        });
+    }
+
+    // The parent can validate a request asynchronously. Keep the optimistic
+    // state and its history until it supplies the authoritative next value;
+    // reject any later local commit so it cannot overwrite that request.
+  }
+
+  // Leave the sentinel empty until the editor is actually controlled. A
+  // schema-only editor owns its local state; if a parent later supplies the
+  // request handler, the first controlled effect must reconcile that state to
+  // the parent's schema even when the schema prop itself did not change.
+  let lastObservedControlledSchemaText = untrack(() =>
+    controlled && schema !== undefined ? controlledSchemaText(schema) : undefined,
+  );
+  let lastObservedControlledSchema = untrack(() => schema);
+  $effect(() => {
+    if (!controlled || schema === undefined) {
+      discardPendingControlledChange();
+      editorState.acceptPendingControlledCommit();
+      lastObservedControlledSchemaText = undefined;
+      lastObservedControlledSchema = undefined;
+      controlledSchemaAuthority = undefined;
+      return;
+    }
+
+    const nextControlledSchemaText = controlledSchemaText(schema);
+    if (
+      nextControlledSchemaText === lastObservedControlledSchemaText &&
+      schema === lastObservedControlledSchema
+    ) {
+      return;
+    }
+    lastObservedControlledSchemaText = nextControlledSchemaText;
+    lastObservedControlledSchema = schema;
+    untrack(() => settleControlledChange(schema));
+  });
+
+  // Keep the externally controlled readonly prop in sync after mount.
   $effect(() => {
     editorState.setReadonly(readonly);
+  });
+
+  $effect(() => {
+    editorState.setControlled(controlled);
   });
 
   // Sync `draftOverride` into the state container when the *prop* changes.
@@ -141,7 +318,10 @@
   // Tear down debounce timers on unmount so stale callbacks don't fire after
   // the parent unmounts the editor.
   $effect(() => {
-    return () => editorState.destroy();
+    return () => {
+      discardPendingControlledChange();
+      editorState.destroy();
+    };
   });
 
   // schemaKey-triggered reset. Track the previous key explicitly so we don't
@@ -151,12 +331,17 @@
   // read untracked so a parent live-patching those props (without changing the
   // key) does not silently re-run this effect; when the key *does* change we
   // still read their current values fresh inside the untracked block.
-  let lastSchemaKey: string | undefined = untrack(() => schemaKey);
   $effect(() => {
     if (schemaKey !== lastSchemaKey) {
       lastSchemaKey = schemaKey;
       untrack(() => {
-        editorState.reload(schema, original);
+        discardPendingControlledChange();
+        const reloadSchema = schema;
+        controlledSchemaAuthority = controlled ? schema : undefined;
+        lastObservedControlledSchemaText =
+          controlled && schema !== undefined ? controlledSchemaText(schema) : undefined;
+        lastObservedControlledSchema = schema;
+        editorState.reload(reloadSchema ?? defaultSchema ?? {}, original);
         enumDrafts = {};
       });
       announcer.announce('Schema reloaded');
@@ -181,20 +366,22 @@
     if (editorState.readonly || !editorState.canUndo) return;
     enumDraftHistoryRevision += 1;
     const label = editorState.undo();
-    announcer.announce(label ? `Undid: ${label}` : 'Undid last edit');
+    if (!controlled) announcer.announce(label ? `Undid: ${label}` : 'Undid last edit');
   }
 
   function handleRedo() {
     if (editorState.readonly || !editorState.canRedo) return;
     enumDraftHistoryRevision += 1;
     const label = editorState.redo();
-    announcer.announce(label ? `Redid: ${label}` : 'Redid edit');
+    if (!controlled) announcer.announce(label ? `Redid: ${label}` : 'Redid edit');
   }
 
   function handleRevert() {
+    if (controlled && editorState.originalSchema === null) return;
     enumDrafts = {};
-    editorState.revert();
-    announcer.announce('Reverted to original schema');
+    if (controlled) editorState.beginControlledRevert();
+    else editorState.revert();
+    if (!controlled) announcer.announce('Reverted to original schema');
   }
 
   // Editor-level keyboard shortcuts: only fire when focus isn't inside an
@@ -241,6 +428,7 @@
   <JsonSchemaToolbar
     state={editorState}
     localValidationErrorCount={toolbarValidationErrorCount}
+    canRevert={!(controlled && editorState.originalSchema === null)}
     onUndo={handleUndo}
     onRedo={handleRedo}
     onRevert={handleRevert}
@@ -274,7 +462,13 @@
       />
     </TabPanel>
     <TabPanel value="json">
-      <JsonView state={editorState} idPrefix={`${id}-json`} onApply={() => (enumDrafts = {})} />
+      <JsonView
+        state={editorState}
+        idPrefix={`${id}-json`}
+        editorId={id}
+        {readonly}
+        onApply={() => (enumDrafts = {})}
+      />
     </TabPanel>
     <TabPanel value="diff">
       <DiffView state={editorState} />

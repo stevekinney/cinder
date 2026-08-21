@@ -4,6 +4,7 @@
   export type JsonSchemaToolbarProps = {
     state: EditorState;
     localValidationErrorCount?: number;
+    canRevert?: boolean;
     onUndo?: () => void;
     onRedo?: () => void;
     onRevert?: () => void;
@@ -26,6 +27,7 @@
   let {
     state: editorState,
     localValidationErrorCount = 0,
+    canRevert = true,
     onUndo,
     onRedo,
     onRevert,
@@ -88,6 +90,7 @@
     void editorState.hasDiffChanges;
     void editorState.readonly;
     void editorState.copyValue;
+    void canRevert;
     // Track `rovingIndex` too so a keydown/focusin handler moving the roved
     // button re-applies the DOM tabindex on the next flush.
     const currentRovingIndex = rovingIndex;
@@ -204,7 +207,7 @@
       size="sm"
       iconOnly
       label="Revert"
-      disabled={!editorState.hasDiffChanges || editorState.readonly}
+      disabled={!canRevert || !editorState.hasDiffChanges || editorState.readonly}
       onclick={() => onRevert?.()}
     >
       <RotateCcw class="cinder-icon-sm" />

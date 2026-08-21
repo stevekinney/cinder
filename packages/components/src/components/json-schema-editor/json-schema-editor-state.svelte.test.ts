@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import { createEditorState } from './json-schema-editor-state.svelte.ts';
+import type { JsonSchemaEditorChangeEvent, JsonSchemaValue } from './json-schema-editor-types.ts';
 
 function withImmediateTimers<T>(run: () => T): T {
   const originalSetTimeout = globalThis.setTimeout;
@@ -39,6 +40,17 @@ describe('createEditorState — initial load', () => {
 
   test('accepts an object schema directly', () => {
     const state = createEditorState({ schema: { type: 'string' } });
+    expect(state.committedSchema).toEqual({ type: 'string' });
+  });
+
+  test('snapshots an object schema for the revert baseline', () => {
+    const schema: JsonSchemaValue = { type: 'string' };
+    const state = createEditorState({ schema });
+    (schema as { type: string }).type = 'number';
+
+    state.commitFromForm({ type: 'boolean' });
+    state.revert();
+
     expect(state.committedSchema).toEqual({ type: 'string' });
   });
 
@@ -167,6 +179,19 @@ describe('createEditorState — form commits', () => {
 });
 
 describe('createEditorState — undo / redo / revert', () => {
+  test('synchronise replaces the committed schema without changing the initial baseline', () => {
+    const state = createEditorState({ schema: { type: 'string' } });
+
+    state.synchronise({ type: 'number' });
+
+    expect(state.committedSchema).toEqual({ type: 'number' });
+    expect(state.originalSchema).toEqual({ type: 'string' });
+    expect(state.hasChanges).toBe(true);
+
+    state.revert();
+    expect(state.committedSchema).toEqual({ type: 'string' });
+  });
+
   test('undo / redo move through history', () => {
     const state = createEditorState({ schema: { type: 'string' } });
 
@@ -180,6 +205,53 @@ describe('createEditorState — undo / redo / revert', () => {
     expect(state.committedSchema).toEqual({ type: 'number' });
   });
 
+  test('keeps controlled form commits separate when they share a coalesce key', () => {
+    const state = createEditorState({ schema: { type: 'string' }, controlled: true });
+
+    state.commitFromForm({ type: 'number' }, { coalesceKey: 'type' });
+    state.commitFromForm({ type: 'boolean' }, { coalesceKey: 'type' });
+
+    state.undo();
+    expect(state.committedSchema).toEqual({ type: 'number' });
+  });
+
+  test('discardCurrentCommitWhenPreviousMatches removes only a rejected optimistic commit', () => {
+    const state = createEditorState({ schema: { type: 'string' } });
+    state.commitFromForm({ type: 'number' });
+    state.commitFromForm({ type: 'boolean' });
+
+    expect(state.discardCurrentCommitWhenPreviousMatches({ type: 'number' })).toBe(true);
+    expect(state.committedSchema).toEqual({ type: 'number' });
+    expect(state.canUndo).toBe(true);
+    expect(state.canRedo).toBe(false);
+
+    state.undo();
+    expect(state.committedSchema).toEqual({ type: 'string' });
+  });
+
+  test('restoreNextCommitWhenMatches restores a rejected undo without resetting history', () => {
+    const state = createEditorState({ schema: { type: 'string' } });
+    state.commitFromForm({ type: 'number' });
+    state.undo();
+
+    expect(state.restoreNextCommitWhenMatches({ type: 'number' })).toBe(true);
+    expect(state.committedSchema).toEqual({ type: 'number' });
+    expect(state.canUndo).toBe(true);
+    expect(state.canRedo).toBe(false);
+  });
+
+  test('restorePreviousCommitWhenMatches restores a rejected redo without discarding history', () => {
+    const state = createEditorState({ schema: { type: 'string' } });
+    state.commitFromForm({ type: 'number' });
+    state.undo();
+    state.redo();
+
+    expect(state.restorePreviousCommitWhenMatches({ type: 'string' })).toBe(true);
+    expect(state.committedSchema).toEqual({ type: 'string' });
+    expect(state.canUndo).toBe(false);
+    expect(state.canRedo).toBe(true);
+  });
+
   test('revert restores original schema and clears history', () => {
     const state = createEditorState({ schema: { type: 'string' } });
     state.commitFromForm({ type: 'number' });
@@ -190,6 +262,19 @@ describe('createEditorState — undo / redo / revert', () => {
     expect(state.committedSchema).toEqual({ type: 'string' });
     expect(state.canUndo).toBe(false);
     expect(state.canRedo).toBe(false);
+  });
+
+  test('restores controlled revert rejection without clearing earlier history', () => {
+    const state = createEditorState({ schema: { type: 'string' }, controlled: true });
+    state.commitFromForm({ type: 'number' });
+
+    expect(state.beginControlledRevert()).toBe(true);
+    expect(state.committedSchema).toEqual({ type: 'string' });
+    expect(state.restoreControlledRevertWhenCommittedMatches({ type: 'number' })).toBe(true);
+    expect(state.committedSchema).toEqual({ type: 'number' });
+
+    state.undo();
+    expect(state.committedSchema).toEqual({ type: 'string' });
   });
 
   test('revert from invalid initial input clears the draft to original raw', async () => {
@@ -307,6 +392,40 @@ describe('createEditorState — change events', () => {
     state.setJsonDraftText('{"type":"number"}');
 
     expect(calls).toBe(0);
+  });
+
+  test('onSchemaChange emits an independent schema snapshot', () => {
+    let emitted: JsonSchemaEditorChangeEvent | undefined;
+    const state = createEditorState({
+      schema: { type: 'string' },
+      onSchemaChange: (event) => (emitted = event),
+    });
+
+    state.commitFromForm({ type: 'number' });
+    if (emitted === undefined || typeof emitted.schema !== 'object' || emitted.schema === null) {
+      throw new Error('Expected an object schema change event.');
+    }
+    emitted.schema.type = 'boolean';
+
+    expect(state.committedSchema).toEqual({ type: 'number' });
+  });
+
+  test('onSchemaChange does not emit a raw text value when reverting an initially invalid schema', async () => {
+    const events: JsonSchemaEditorChangeEvent[] = [];
+    const state = createEditorState({
+      schema: '{not-valid',
+      onSchemaChange: (event) => events.push(event),
+    });
+
+    state.setJsonDraftText('{"type":"string"}');
+    await state.applyJsonDraft();
+    state.revert();
+
+    expect(events).toHaveLength(1);
+    expect(events[0]).toEqual({
+      schema: { type: 'string' },
+      jsonString: '{\n  "type": "string"\n}',
+    });
   });
 });
 

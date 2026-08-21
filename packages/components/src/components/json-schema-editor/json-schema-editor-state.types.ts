@@ -12,6 +12,8 @@ export interface CreateEditorStateOptions {
   original?: JsonSchemaValue | string;
   draftOverride?: JsonSchemaKnownDraft;
   readonly?: boolean;
+  /** Controlled editors preserve each requested change as a distinct history entry. */
+  controlled?: boolean;
   maxHistory?: number;
   onSchemaChange?: (event: JsonSchemaEditorChangeEvent) => void;
   onRevert?: (event: JsonSchemaEditorRevertEvent) => void;

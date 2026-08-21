@@ -953,6 +953,7 @@ export type {
   UseHistoryEntry,
   UseHistoryEntryMetadata,
   UseHistoryOptions,
+  UseHistorySnapshot,
 } from './utilities/use-history.types.ts';
 
 export { useIntersection } from './utilities/use-intersection.svelte.ts';

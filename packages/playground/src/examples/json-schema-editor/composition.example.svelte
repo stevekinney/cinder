@@ -20,4 +20,4 @@
   };
 </script>
 
-<JsonSchemaEditor id="composition-jse" {schema} />
+<JsonSchemaEditor id="composition-jse" defaultSchema={schema} />

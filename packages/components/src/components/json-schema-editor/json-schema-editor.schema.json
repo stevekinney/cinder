@@ -36,27 +36,37 @@
   "metadata": {
     "unsupportedProps": [
       {
+        "name": "defaultSchema",
+        "reason": "unknown-shape",
+        "description": "Omit `schema` to use this as the initial value of an uncontrolled editor."
+      },
+      {
         "name": "onRevert",
         "reason": "function-or-snippet"
       },
       {
         "name": "onSchemaChange",
-        "reason": "function-or-snippet"
+        "reason": "function-or-snippet",
+        "description": "Observe a committed schema change: locally immediately, or after controlled acceptance."
       },
       {
         "name": "onValidate",
         "reason": "function-or-snippet"
       },
       {
+        "name": "onValueChangeRequest",
+        "reason": "function-or-snippet",
+        "description": "With `schema`, activates controlled state and requests each committed parent update."
+      },
+      {
         "name": "original",
         "reason": "unknown-shape",
-        "description": "Optional explicit baseline; defaults to the initial `schema`."
+        "description": "Optional explicit baseline; defaults to the initial schema input."
       },
       {
         "name": "schema",
         "reason": "unknown-shape",
-        "required": true,
-        "description": "The schema being edited. May be a string (JSON text) or pre-parsed value."
+        "description": "Current schema. With `onValueChangeRequest`, parent-owned; otherwise, a local initial value."
       }
     ]
   }

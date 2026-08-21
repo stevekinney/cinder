@@ -17,6 +17,17 @@ export type UseHistoryEntry<T> = {
   label?: string | undefined;
 };
 
+export type UseHistorySnapshot<T> = {
+  entries: Array<{
+    value: T;
+    label?: string | undefined;
+    coalesceKey?: string | undefined;
+    committedAt: number;
+  }>;
+  index: number;
+  current: T;
+};
+
 export type UseHistoryOptions<T> = {
   initial: T;
   /** Maximum number of entries retained in the stack. Default: 100. */
@@ -43,6 +54,12 @@ export type UseHistory<T> = {
   readonly canRedo: boolean;
   readonly size: number;
   readonly index: number;
+  /** Clone the complete stack for a transactional optimistic update. */
+  snapshot(): UseHistorySnapshot<T>;
+  /** Restore a snapshot previously returned by snapshot(). */
+  restore(snapshot: UseHistorySnapshot<T>): void;
+  /** Replace the active committed entry while retaining surrounding history. */
+  replaceCurrent(next: T): void;
   /** Replace `current` without touching the committed stack. */
   set(next: T): void;
   /** Push a new entry (subject to coalescing and equality). */
@@ -51,6 +68,8 @@ export type UseHistory<T> = {
   undo(): UseHistoryEntry<T> | null;
   /** Move forward one entry. Returns the entry we moved to, or null at the top. */
   redo(): UseHistoryEntry<T> | null;
+  /** Discard redo entries while keeping the current entry and its undo history. */
+  discardRedo(): void;
   /** Clear history and seed a new baseline. */
   reset(value: T, label?: string): void;
 };

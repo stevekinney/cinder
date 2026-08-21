@@ -14,7 +14,7 @@
  */
 
 import { stableSerialise, useHistory } from '../../utilities/use-history.svelte.ts';
-import type { UseHistory } from '../../utilities/use-history.types.ts';
+import type { UseHistory, UseHistorySnapshot } from '../../utilities/use-history.types.ts';
 
 import type { CreateEditorStateOptions } from './json-schema-editor-state.types.ts';
 import type {
@@ -49,6 +49,12 @@ const COMPILE_DEFER_BYTES = 100_000;
 
 function serialise(value: JsonSchemaValue): string {
   return JSON.stringify(value, null, PRETTY_INDENT);
+}
+
+function snapshotSchema(schema: JsonSchemaValue): JsonSchemaValue {
+  const snapshot = normaliseSchemaInput(serialise(schema));
+  if (!snapshot.ok) throw new Error('Unable to snapshot a committed JSON Schema value.');
+  return snapshot.schema;
 }
 
 function createSchemaHistory(initial: JsonSchemaValue, maxDepth?: number) {
@@ -108,6 +114,7 @@ export function createEditorState(options: CreateEditorStateOptions) {
   // history is wrapped in $state so derived values that read `history?.current`
   // re-evaluate when the history instance is replaced (revert, reload).
   let history = $state<UseHistory<JsonSchemaValue> | null>(null);
+  let pendingControlledHistory = $state<UseHistorySnapshot<JsonSchemaValue> | null>(null);
 
   // ---- Draft (JSON view) ----
   let jsonDraftText = $state('');
@@ -119,10 +126,16 @@ export function createEditorState(options: CreateEditorStateOptions) {
   // readonly and draftOverride are reactive so the component can sync them to
   // current prop values via $effect after mount.
   let readonly = $state(Boolean(options.readonly));
+  let controlled = $state(Boolean(options.controlled));
+  let lastChangeAction = $state<'commit' | 'undo' | 'redo' | 'revert' | undefined>();
   let draftOverride = $state<JsonSchemaKnownDraft | undefined>(options.draftOverride);
 
   function setReadonly(next: boolean) {
     readonly = next;
+  }
+
+  function setControlled(next: boolean) {
+    controlled = next;
   }
 
   // ---- Validation status (debounced) ----
@@ -321,28 +334,12 @@ export function createEditorState(options: CreateEditorStateOptions) {
   function emitChange() {
     const schema = history?.current ?? null;
     if (schema === null) return;
-    options.onSchemaChange?.({ schema, jsonString: serialise(schema) });
+    const jsonString = serialise(schema);
+    options.onSchemaChange?.({ schema: snapshotSchema(schema), jsonString });
   }
 
-  function loadFrom(
-    schemaInput: JsonSchemaValue | string,
-    originalInput?: JsonSchemaValue | string,
-  ) {
+  function loadCommittedSchema(schemaInput: JsonSchemaValue | string) {
     const schemaResult = normaliseSchemaInput(schemaInput);
-    const baselineInput = originalInput ?? schemaInput;
-    const baselineResult = normaliseSchemaInput(baselineInput);
-
-    if (baselineResult.ok) {
-      originalRawText = baselineResult.rawText;
-      originalCanonicalText = baselineResult.canonicalText;
-      originalSchema = baselineResult.schema;
-      originalLoadError = null;
-    } else {
-      originalRawText = baselineResult.rawText;
-      originalCanonicalText = '';
-      originalSchema = null;
-      originalLoadError = baselineResult.error;
-    }
 
     if (schemaResult.ok) {
       history = createSchemaHistory(schemaResult.schema, options.maxHistory);
@@ -354,6 +351,77 @@ export function createEditorState(options: CreateEditorStateOptions) {
 
     const epoch = beginValidationCycle();
     void refreshValidation(epoch);
+  }
+
+  function discardCurrentCommitWhenPreviousMatches(schemaInput: JsonSchemaValue | string): boolean {
+    const schemaResult = normaliseSchemaInput(schemaInput);
+    if (!schemaResult.ok || !history?.canUndo) return false;
+
+    history.undo();
+    if (serialise(history.current) !== schemaResult.canonicalText) {
+      history.redo();
+      return false;
+    }
+
+    history.discardRedo();
+    jsonDraftText = schemaResult.canonicalText;
+    const epoch = beginValidationCycle();
+    void refreshValidation(epoch);
+    return true;
+  }
+
+  function restoreNextCommitWhenMatches(schemaInput: JsonSchemaValue | string): boolean {
+    const schemaResult = normaliseSchemaInput(schemaInput);
+    if (!schemaResult.ok || !history?.canRedo) return false;
+
+    history.redo();
+    if (serialise(history.current) !== schemaResult.canonicalText) {
+      history.undo();
+      return false;
+    }
+
+    jsonDraftText = schemaResult.canonicalText;
+    const epoch = beginValidationCycle();
+    void refreshValidation(epoch);
+    return true;
+  }
+
+  function restorePreviousCommitWhenMatches(schemaInput: JsonSchemaValue | string): boolean {
+    const schemaResult = normaliseSchemaInput(schemaInput);
+    if (!schemaResult.ok || !history?.canUndo) return false;
+
+    history.undo();
+    if (serialise(history.current) !== schemaResult.canonicalText) {
+      history.redo();
+      return false;
+    }
+
+    jsonDraftText = schemaResult.canonicalText;
+    const epoch = beginValidationCycle();
+    void refreshValidation(epoch);
+    return true;
+  }
+
+  function loadFrom(
+    schemaInput: JsonSchemaValue | string,
+    originalInput?: JsonSchemaValue | string,
+  ) {
+    const baselineInput = originalInput ?? schemaInput;
+    const baselineResult = normaliseSchemaInput(baselineInput);
+
+    if (baselineResult.ok) {
+      originalRawText = baselineResult.rawText;
+      originalCanonicalText = baselineResult.canonicalText;
+      originalSchema = snapshotSchema(baselineResult.schema);
+      originalLoadError = null;
+    } else {
+      originalRawText = baselineResult.rawText;
+      originalCanonicalText = '';
+      originalSchema = null;
+      originalLoadError = baselineResult.error;
+    }
+
+    loadCommittedSchema(schemaInput);
   }
 
   loadFrom(options.schema, options.original);
@@ -458,6 +526,9 @@ export function createEditorState(options: CreateEditorStateOptions) {
     get activeDraft(): JsonSchemaDraft {
       return detectActiveDraft(schemaToValidate());
     },
+    get lastChangeAction() {
+      return lastChangeAction;
+    },
 
     // ---- Writes ----
     setView(next: JsonSchemaEditorView) {
@@ -523,12 +594,16 @@ export function createEditorState(options: CreateEditorStateOptions) {
       }
 
       if (history) {
+        if (controlled && pendingControlledHistory === null) {
+          pendingControlledHistory = history.snapshot();
+        }
         history.commit(schema, { label: 'apply JSON' });
       } else {
         history = createSchemaHistory(schema, options.maxHistory);
       }
       jsonDraftText = serialise(history.current);
       metaResult = meta;
+      lastChangeAction = 'commit';
       emitChange();
 
       const compile = await tryCompile(schema, draft);
@@ -545,8 +620,15 @@ export function createEditorState(options: CreateEditorStateOptions) {
       commitOptions?: { coalesceKey?: string; label?: string },
     ) {
       if (!history || readonly || jsonDraftIsDirty) return;
-      history.commit(next, commitOptions);
+      // Controlled requests can be rejected independently. Keep each request
+      // as a distinct entry so reconciliation can restore the authoritative
+      // value without replacing an earlier optimistic edit.
+      if (controlled && pendingControlledHistory === null) {
+        pendingControlledHistory = history.snapshot();
+      }
+      history.commit(next, controlled ? { label: commitOptions?.label } : commitOptions);
       jsonDraftText = serialise(history.current);
+      lastChangeAction = 'commit';
       emitChange();
       const epoch = beginValidationCycle();
       void refreshValidation(epoch);
@@ -557,6 +639,7 @@ export function createEditorState(options: CreateEditorStateOptions) {
       const left = history.undo();
       if (!left) return undefined;
       jsonDraftText = serialise(history.current);
+      lastChangeAction = 'undo';
       emitChange();
       const epoch = beginValidationCycle();
       void refreshValidation(epoch);
@@ -568,6 +651,7 @@ export function createEditorState(options: CreateEditorStateOptions) {
       const moved = history.redo();
       if (!moved) return undefined;
       jsonDraftText = serialise(history.current);
+      lastChangeAction = 'redo';
       emitChange();
       const epoch = beginValidationCycle();
       void refreshValidation(epoch);
@@ -579,6 +663,7 @@ export function createEditorState(options: CreateEditorStateOptions) {
       if (originalSchema !== null) {
         history = createSchemaHistory(originalSchema, options.maxHistory);
         jsonDraftText = originalCanonicalText;
+        lastChangeAction = 'revert';
         emitChange();
         const epoch = beginValidationCycle();
         void refreshValidation(epoch);
@@ -595,6 +680,41 @@ export function createEditorState(options: CreateEditorStateOptions) {
       }
     },
 
+    /** Optimistically show the original schema without discarding history. */
+    beginControlledRevert(): boolean {
+      if (readonly || originalSchema === null) return false;
+      if (history) history.set(originalSchema);
+      else history = createSchemaHistory(originalSchema, options.maxHistory);
+      jsonDraftText = originalCanonicalText;
+      lastChangeAction = 'revert';
+      emitChange();
+      const epoch = beginValidationCycle();
+      void refreshValidation(epoch);
+      return true;
+    },
+
+    /** Accept a controlled revert after its parent makes the original authoritative. */
+    finaliseControlledRevert() {
+      if (originalSchema === null) return;
+      history = createSchemaHistory(originalSchema, options.maxHistory);
+      jsonDraftText = originalCanonicalText;
+      options.onRevert?.({ restoredFrom: 'original-schema' });
+    },
+
+    /** Restore the committed entry after a parent rejects a controlled revert. */
+    restoreControlledRevertWhenCommittedMatches(schemaInput: JsonSchemaValue | string): boolean {
+      if (!history) return false;
+      const normalised = normaliseSchemaInput(schemaInput);
+      if (!normalised.ok || normalised.canonicalText !== serialise(history.committedEntry.value)) {
+        return false;
+      }
+      history.set(history.committedEntry.value);
+      jsonDraftText = serialise(history.current);
+      const epoch = beginValidationCycle();
+      void refreshValidation(epoch);
+      return true;
+    },
+
     /** Update the active draft override; recomputes validation. */
     setDraftOverride(next: JsonSchemaKnownDraft | undefined) {
       draftOverride = next;
@@ -605,9 +725,73 @@ export function createEditorState(options: CreateEditorStateOptions) {
     /** Live-update the readonly flag (used to re-sync the prop after mount). */
     setReadonly,
 
+    /** Live-update whether requests are controlled by a parent. */
+    setControlled,
+
     /** Reload from a new schema/original pair — used by schemaKey-triggered reset. */
     reload(schemaInput: JsonSchemaValue | string, originalInput?: JsonSchemaValue | string) {
+      pendingControlledHistory = null;
       loadFrom(schemaInput, originalInput);
+    },
+
+    /** Replace the controlled value without changing the initial diff baseline. */
+    synchronise(schemaInput: JsonSchemaValue | string) {
+      loadCommittedSchema(schemaInput);
+    },
+
+    /** Drop a rejected optimistic commit when the preceding history entry is authoritative. */
+    discardCurrentCommitWhenPreviousMatches,
+
+    /** Restore a rejected undo when the following committed entry is authoritative. */
+    restoreNextCommitWhenMatches,
+
+    /** Restore a rejected redo without discarding the preserved redo entry. */
+    restorePreviousCommitWhenMatches,
+
+    restorePendingControlledHistoryWhenMatches(schemaInput: JsonSchemaValue | string): boolean {
+      if (!history || pendingControlledHistory === null) return false;
+      const normalised = normaliseSchemaInput(schemaInput);
+      if (
+        !normalised.ok ||
+        serialise(pendingControlledHistory.current) !== normalised.canonicalText
+      ) {
+        return false;
+      }
+      history.restore(pendingControlledHistory);
+      pendingControlledHistory = null;
+      jsonDraftText = serialise(history.current);
+      const epoch = beginValidationCycle();
+      void refreshValidation(epoch);
+      return true;
+    },
+
+    replacePendingControlledCommit(schemaInput: JsonSchemaValue | string): boolean {
+      if (!history || pendingControlledHistory === null) return false;
+      const normalised = normaliseSchemaInput(schemaInput);
+      if (!normalised.ok) return false;
+      history.replaceCurrent(normalised.schema);
+      pendingControlledHistory = null;
+      jsonDraftText = normalised.canonicalText;
+      const epoch = beginValidationCycle();
+      void refreshValidation(epoch);
+      return true;
+    },
+
+    restorePendingControlledCommit(schemaInput: JsonSchemaValue | string): boolean {
+      if (!history || pendingControlledHistory === null) return false;
+      const normalised = normaliseSchemaInput(schemaInput);
+      if (!normalised.ok) return false;
+      history.restore(pendingControlledHistory);
+      history.commit(normalised.schema, { label: 'apply JSON' });
+      pendingControlledHistory = null;
+      jsonDraftText = normalised.canonicalText;
+      const epoch = beginValidationCycle();
+      void refreshValidation(epoch);
+      return true;
+    },
+
+    acceptPendingControlledCommit() {
+      pendingControlledHistory = null;
     },
 
     destroy() {

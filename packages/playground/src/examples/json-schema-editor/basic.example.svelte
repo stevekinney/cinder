@@ -24,4 +24,4 @@
   };
 </script>
 
-<JsonSchemaEditor id={jseId} schema={personSchema} />
+<JsonSchemaEditor id={jseId} defaultSchema={personSchema} />
