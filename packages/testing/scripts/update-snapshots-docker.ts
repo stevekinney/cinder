@@ -1,6 +1,6 @@
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { dirname, resolve as resolvePath } from 'node:path';
+import { dirname, isAbsolute, resolve as resolvePath } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { installSignalCleanupHandlers, terminateChildProcess } from './start-server.ts';
 
@@ -164,7 +164,10 @@ export function gitMetadataMountPaths(repoRoot: string): string[] {
     throw new Error('failed to resolve Git metadata directories for the Docker bind mount');
   }
 
-  return [...new Set([gitDirectory.stdout.trim(), commonDirectory.stdout.trim()])].filter(
+  const metadataPaths = [gitDirectory.stdout.trim(), commonDirectory.stdout.trim()].map((path) =>
+    isAbsolute(path) ? path : resolvePath(repoRoot, path),
+  );
+  return [...new Set(metadataPaths)].filter(
     (path) => path.length > 0 && !isInsideDirectory(path, repoRoot),
   );
 }
