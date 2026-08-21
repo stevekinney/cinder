@@ -622,6 +622,27 @@ ${fixtures}
     expect(result.entries[0]?.metadata.fixtureBudgetOverride).toBeDefined();
     expect(result.entries[0]?.metadata.fixtureBudgetOverride?.approvedBy).toBe('steve');
   });
+
+  it('accepts includeDefaultFixture alongside explicit fixture states', async () => {
+    const root = makeRoot([
+      {
+        component: 'tabs',
+        filename: 'tabs-fixtures.ts',
+        content: `
+export const visualFixtureMetadata = {
+  includeDefaultFixture: true,
+};
+
+export default [{ name: 'open', props: {} }];
+`,
+      },
+    ]);
+
+    const result = await extractFixtures(root);
+
+    expect(result.violations).toHaveLength(0);
+    expect(result.entries[0]?.metadata.includeDefaultFixture).toBe(true);
+  });
 });
 
 // ---------------------------------------------------------------------------

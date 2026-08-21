@@ -306,7 +306,11 @@ for (const entry of entries) {
     // Use the entry's explicit fixture list when provided; otherwise synthesise a
     // single 'default' fixture so every component is exercised at least once.
     const fixtures =
-      entry.fixtures !== undefined && entry.fixtures.length > 0 ? entry.fixtures : DEFAULT_FIXTURE;
+      entry.fixtures !== undefined && entry.fixtures.length > 0
+        ? entry.includeDefaultFixture === true
+          ? [...DEFAULT_FIXTURE, ...entry.fixtures]
+          : entry.fixtures
+        : DEFAULT_FIXTURE;
 
     for (const theme of THEMES) {
       for (const viewport of VIEWPORTS) {

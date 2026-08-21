@@ -135,6 +135,7 @@ export const VisualFixtureSchema = z
 
 export const VisualFixtureMetadataSchema = z
   .object({
+    includeDefaultFixture: z.boolean().optional(),
     fixtureBudgetOverride: z
       .object({
         reason: z.string().min(1),
