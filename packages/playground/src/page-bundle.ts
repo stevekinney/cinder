@@ -74,7 +74,7 @@ export async function compilePageBundleArtifacts(
     )
     .join('\n');
 
-  const entrySource = `import { NAV_FILTER_STORAGE_KEY } from '../../src/component-page-theme.ts';
+  const entrySource = `import { NAV_FILTER_STORAGE_KEY, readInitialTheme } from '../../src/component-page-theme.ts';
 import { persistScrollPosition } from '../../src/shell-app/sidebar-scroll.ts';
 
 const scenarioLoaders: Record<string, () => Promise<unknown>> = {
@@ -262,6 +262,7 @@ if (
   previewOnly ||
   !hasServerRenderedContent ||
   hasPersistedNavFilter ||
+  readInitialTheme() === 'dark' ||
   (shouldHydrate && new URLSearchParams(window.location.search).get('view') === 'playground')
 ) {
   void hydratePage().catch((error) =>

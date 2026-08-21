@@ -37,6 +37,7 @@ if (themeToggle !== null) {
 }
 
 let shellHydration: Promise<void> | undefined;
+let shellHydrated = false;
 
 function hydrateShell(): Promise<void> {
   shellHydration ??= Promise.all([
@@ -71,6 +72,7 @@ function hydrateShell(): Promise<void> {
         readmeHtml: initial.readmeHtml,
       },
     });
+    shellHydrated = true;
   });
   return shellHydration;
 }
@@ -91,6 +93,9 @@ const colorPanelToggle = document.querySelector<HTMLButtonElement>(
 colorPanelToggle?.addEventListener(
   'click',
   (event) => {
+    // Once Svelte has taken over the existing button, its own handler receives
+    // this trusted click. Replaying would immediately toggle the panel closed.
+    if (shellHydrated) return;
     event.preventDefault();
     void hydrateShell()
       .then(() => colorPanelToggle.click())

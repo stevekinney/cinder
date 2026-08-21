@@ -300,7 +300,7 @@ export function assetUrlsFromHtml(html: string): string[] {
 /** Static ESM imports are requested during initial evaluation; `import(...)` is not. */
 function staticJavaScriptImportUrls(javascript: string): string[] {
   const urls = new Set<string>();
-  const imports = /(?:^|\n)\s*import\s*(?:[\s\S]*?\s+from\s+)?["'](\/assets\/[^"']+\.js)["'];?/g;
+  const imports = /(?:^|\n)\s*import\s*(?:[\s\S]*?\s+from\s+)?["'](\/[^"']+\.js)["'];?/g;
   let match: RegExpExecArray | null;
   while ((match = imports.exec(javascript)) !== null) urls.add(match[1]!);
   return [...urls];
@@ -308,8 +308,8 @@ function staticJavaScriptImportUrls(javascript: string): string[] {
 
 function stylesheetAssetUrls(stylesheet: string): string[] {
   const urls = new Set<string>();
-  const imports = /@import\s+(?:url\(\s*)?["']?(\/assets\/[^"'\s)]+)["']?/g;
-  const references = /url\(\s*["']?(\/assets\/[^"'\s)]+)["']?\s*\)/g;
+  const imports = /@import\s+(?:url\(\s*)?["']?(\/[^"'\s)]+)["']?/g;
+  const references = /url\(\s*["']?(\/[^"'\s)]+)["']?\s*\)/g;
   for (const expression of [imports, references]) {
     let match: RegExpExecArray | null;
     while ((match = expression.exec(stylesheet)) !== null) urls.add(match[1]!);
@@ -353,7 +353,7 @@ export async function initialRoutePayload(
           ? staticJavaScriptImportUrls(text)
           : stylesheetAssetUrls(text);
     for (const url of dependencies) {
-      if (!url.startsWith('/assets/')) continue;
+      if (!url.startsWith('/')) continue;
       const extension = url.split('?')[0]!.split('.').pop()?.toLowerCase();
       queue.push({
         url,
