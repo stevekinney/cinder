@@ -1,5 +1,11 @@
 # @lostgradient/chat
 
+## 0.12.0
+
+### Minor Changes
+
+- [#1384](https://github.com/stevekinney/cinder/pull/1384) [`fcce69f`](https://github.com/stevekinney/cinder/commit/fcce69fb37a45c5eb11f32230c25a8fe759953c7) Thanks [@stevekinney](https://github.com/stevekinney)! - Remove the internal Chat interaction and history-prepend stress examples from the published example catalog now that Chatroom exercises their downstream behavior.
+
 ## 0.11.4
 
 ### Patch Changes

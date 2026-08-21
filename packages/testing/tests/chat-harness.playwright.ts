@@ -13,14 +13,40 @@
  * animation durations (JS timers are untouched), which makes the deterministic
  * streaming cadence reliably observable.
  */
+import { resolve } from 'node:path';
+
 import { expect, test, type Browser, type Locator, type Page } from '@playwright/test';
 import { PNG } from 'pngjs';
 
+import {
+  findFixture,
+  loadFixtureFile,
+} from '../../components/scripts/lib/visual-fixtures/loader.ts';
 import { runAxe } from '../src/helpers/axe.ts';
 import { PLAYGROUND_URL } from '../src/helpers/playground-url.ts';
 import { THEME_STORAGE_KEY } from '../src/helpers/theme.ts';
 
-const HARNESS = '#example-mount-interactive-harness';
+const HARNESS = '[data-testid="chat-private-harness"]';
+const privateFixtureFile = await loadFixtureFile(
+  resolve(import.meta.dirname, '../../chat/src/lib/components/chat/chat-fixtures.ts'),
+);
+
+if (privateFixtureFile === null) {
+  throw new Error('Chat private fixture file is missing.');
+}
+
+const privateHarnessFixture = findFixture(privateFixtureFile, 'private-harness');
+const privateHistoryPrependStressFixture = findFixture(
+  privateFixtureFile,
+  'private-history-prepend-stress',
+);
+
+if (privateHarnessFixture === undefined || privateHistoryPrependStressFixture === undefined) {
+  throw new Error('Chat private fixtures are missing.');
+}
+
+const PRIVATE_HARNESS_FIXTURE_HASH = privateFixtureFile.contentHash;
+const PRIVATE_HISTORY_PREPEND_STRESS_FIXTURE_HASH = privateFixtureFile.contentHash;
 
 /** Opens /page/chat and returns a Locator scoped to the harness mount. */
 async function openHarness(
@@ -44,7 +70,10 @@ async function openHarness(
     [THEME_STORAGE_KEY, 'dark'] as const,
   );
   const page = await context.newPage();
-  await page.goto('/page/chat?snapshot=1', { waitUntil: 'load' });
+  await page.goto(
+    `/page/chat?snapshot=1&fixture=private-harness&fixtureContentHash=${PRIVATE_HARNESS_FIXTURE_HASH}`,
+    { waitUntil: 'load' },
+  );
   await page.waitForSelector('#app > *', { state: 'visible', timeout: 20_000 });
   const harness = page.locator(HARNESS);
   await harness.waitFor({ state: 'visible', timeout: 20_000 });
@@ -1012,7 +1041,10 @@ test.describe('chat harness — imperative scroll + focus controls', () => {
     });
     try {
       const page = await context.newPage();
-      await page.goto('/page/chat', { waitUntil: 'load' });
+      await page.goto(
+        `/page/chat?fixture=private-harness&fixtureContentHash=${PRIVATE_HARNESS_FIXTURE_HASH}`,
+        { waitUntil: 'load' },
+      );
       await page.waitForSelector('#app > *', { state: 'visible', timeout: 20_000 });
       const harness = page.locator(HARNESS);
       await harness.waitFor({ state: 'visible', timeout: 20_000 });
@@ -1109,7 +1141,7 @@ test.describe('chat harness — accessibility', () => {
 // walk through every trigger state: idle → loading → idle, and finally
 // idle → unmounted (last page, hasMore: false).
 test.describe('chat harness — history prepend stress (#1237)', () => {
-  const STRESS = '#example-mount-history-prepend-stress';
+  const STRESS = '[data-testid="chat-private-history-prepend-stress"]';
 
   test('adapter prepend never presents an uncompensated anchor to the compositor', async ({
     browser,
@@ -1125,7 +1157,10 @@ test.describe('chat harness — history prepend stress (#1237)', () => {
     const session = await context.newCDPSession(page);
     let screencastStarted = false;
     try {
-      await page.goto('/page/chat?snapshot=1', { waitUntil: 'load' });
+      await page.goto(
+        `/page/chat?snapshot=1&fixture=private-history-prepend-stress&fixtureContentHash=${PRIVATE_HISTORY_PREPEND_STRESS_FIXTURE_HASH}`,
+        { waitUntil: 'load' },
+      );
       const mount = page.locator(STRESS);
       await mount.waitFor({ state: 'visible', timeout: 20_000 });
       await mount.scrollIntoViewIfNeeded();
@@ -1281,7 +1316,10 @@ test.describe('chat harness — history prepend stress (#1237)', () => {
     );
     const page = await context.newPage();
     try {
-      await page.goto('/page/chat?snapshot=1', { waitUntil: 'load' });
+      await page.goto(
+        `/page/chat?snapshot=1&fixture=private-history-prepend-stress&fixtureContentHash=${PRIVATE_HISTORY_PREPEND_STRESS_FIXTURE_HASH}`,
+        { waitUntil: 'load' },
+      );
       await page.waitForSelector('#app > *', { state: 'visible', timeout: 20_000 });
       const mount = page.locator(STRESS);
       await mount.waitFor({ state: 'visible', timeout: 20_000 });

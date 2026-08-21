@@ -470,7 +470,10 @@
   width the chat pane wraps below the controls instead of squeezing into a
   sliver next to a fixed-width column.
 -->
-<div style="display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-start;">
+<div
+  data-testid="chat-private-harness"
+  style="display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-start;"
+>
   <!-- Control panel. tabindex=0 gives the scrollable region keyboard access
        (axe scrollable-region-focusable) in addition to its normal focusable
        descendants (inputs, buttons) — mirrors the Event log pattern below.

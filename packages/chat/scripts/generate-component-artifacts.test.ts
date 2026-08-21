@@ -29,8 +29,6 @@ describe('Chat example artifacts', () => {
           'basic',
           'density-and-variant',
           'full-height-layout',
-          'history-prepend-stress',
-          'interactive-harness',
           'streaming',
           'with-reasoning-and-steps',
           'with-suggestions',
