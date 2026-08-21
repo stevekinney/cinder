@@ -561,6 +561,31 @@ describe('JsonSchemaEditor — controlled and uncontrolled schema inputs', () =>
     expect(region.querySelector('.cinder-code-block')?.textContent).toContain('"type": "boolean"');
   });
 
+  test('reloads the incoming controlled schema when schemaKey changes', async () => {
+    const onValueChangeRequest = () => undefined;
+    const { container, rerender } = render(JsonSchemaEditorImplementation, {
+      props: {
+        id: 'jse-controlled-schema-key',
+        schema: { type: 'string' },
+        schemaKey: 'first-document',
+        view: 'json' as const,
+        onValueChangeRequest,
+      },
+    });
+    await flushEffects();
+
+    await rerender({
+      id: 'jse-controlled-schema-key',
+      schema: { type: 'number' },
+      schemaKey: 'second-document',
+      view: 'json' as const,
+      onValueChangeRequest,
+    });
+    await flushEffects();
+
+    expect(container.textContent).toContain('"type": "number"');
+  });
+
   test('preserves a dirty JSON draft when a controlled parent recreates its unchanged schema', async () => {
     const onValueChangeRequest = (_event: JsonSchemaEditorChangeEvent) => undefined;
     const { rerender } = render(JsonSchemaEditorImplementation, {

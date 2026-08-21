@@ -335,7 +335,7 @@
       lastSchemaKey = schemaKey;
       untrack(() => {
         discardPendingControlledChange();
-        const reloadSchema = controlled ? (controlledSchemaAuthority ?? schema) : schema;
+        const reloadSchema = schema;
         lastObservedControlledSchemaText =
           controlled && schema !== undefined ? controlledSchemaText(schema) : undefined;
         lastObservedControlledSchema = schema;
