@@ -591,7 +591,7 @@ jobs:
   playwright-visual:
     name: ${{ github.event_name == 'workflow_dispatch' && format('playwright-visual ({0})', github.event.inputs.mode) || 'playwright-visual' }}
     needs: [scope, playwright-visual-shard]
-    if: '!cancelled()'
+    if: "!cancelled() && (github.event_name != 'workflow_dispatch' || github.event.inputs.mode != 'off')"
     runs-on: ubuntu-latest
     steps:
       - name: Require visual-regression shards to succeed
