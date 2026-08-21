@@ -119,19 +119,32 @@ export function useHistory<T>(
       return pointer;
     },
 
-    snapshot() {
+    snapshot(): import('./use-history.types.ts').UseHistorySnapshot<T> {
       return {
-        entries: stack.map(snapshotEntry),
+        entries: stack.map((entry) => ({
+          value: clone(entry.value),
+          ...(entry.label === undefined ? {} : { label: entry.label }),
+          ...(entry.coalesceKey === undefined ? {} : { coalesceKey: entry.coalesceKey }),
+          committedAt: entry.committedAt,
+        })),
         index: pointer,
         current: clone(current),
       };
     },
 
     restore(snapshot) {
+      if (
+        snapshot.entries.length === 0 ||
+        snapshot.index < 0 ||
+        snapshot.index >= snapshot.entries.length
+      ) {
+        throw new Error('useHistory: snapshot has no active entry');
+      }
       stack = snapshot.entries.map((entry) => ({
         value: clone(entry.value),
         label: entry.label,
-        committedAt: 0,
+        coalesceKey: entry.coalesceKey,
+        committedAt: entry.committedAt,
       }));
       pointer = snapshot.index;
       current = clone(snapshot.current);

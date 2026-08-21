@@ -18,7 +18,12 @@ export type UseHistoryEntry<T> = {
 };
 
 export type UseHistorySnapshot<T> = {
-  entries: Array<UseHistoryEntry<T>>;
+  entries: Array<{
+    value: T;
+    label?: string | undefined;
+    coalesceKey?: string | undefined;
+    committedAt: number;
+  }>;
   index: number;
   current: T;
 };

@@ -116,14 +116,14 @@
   function focusEditingExitTarget(): void {
     const doneButton = document.getElementById(`${idPrefix}-done-json`);
     if (doneButton instanceof HTMLElement) {
-      doneButton.focus();
+      doneButton.focus({ preventScroll: true });
       return;
     }
 
     if (!isReadonly) {
       const editButton = document.getElementById(`${idPrefix}-edit-json`);
       if (editButton instanceof HTMLElement) {
-        editButton.focus();
+        editButton.focus({ preventScroll: true });
         return;
       }
     }
@@ -131,7 +131,7 @@
     document
       .getElementById(editorId)
       ?.querySelector<HTMLButtonElement>('[role="tab"][data-cinder-value="json"]')
-      ?.focus();
+      ?.focus({ preventScroll: true });
   }
 
   // A parent schema update can discard a dirty draft while this view is
@@ -165,7 +165,7 @@
   $effect(() => {
     if (shouldFocusTextarea) {
       shouldFocusTextarea = false;
-      document.getElementById(`${idPrefix}-textarea`)?.focus();
+      document.getElementById(`${idPrefix}-textarea`)?.focus({ preventScroll: true });
     }
   });
 
@@ -184,7 +184,7 @@
     editorState.discardJsonDraft();
     if (editorState.committedSchema === null) {
       await tick();
-      document.getElementById(`${idPrefix}-textarea`)?.focus();
+      document.getElementById(`${idPrefix}-textarea`)?.focus({ preventScroll: true });
       return;
     }
     await finishEditing();
@@ -199,7 +199,7 @@
   async function startEditing(): Promise<void> {
     jsonEditing = true;
     await tick();
-    document.getElementById(`${idPrefix}-textarea`)?.focus();
+    document.getElementById(`${idPrefix}-textarea`)?.focus({ preventScroll: true });
   }
 </script>
 
