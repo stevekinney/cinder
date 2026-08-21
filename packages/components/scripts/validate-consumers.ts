@@ -4,6 +4,7 @@ import {
   existsSync,
   readFileSync,
   realpathSync,
+  rmSync,
   statSync,
   symlinkSync,
   writeFileSync,
@@ -136,13 +137,12 @@ function fail(message: string): never {
   throw new ValidationError(message);
 }
 
-async function removeFixtureEntries(
-  fixtureDirectory: string,
-  entries: readonly string[],
-): Promise<void> {
-  // Bun 1.3 can throw EFAULT when multiple recursive fs removals run concurrently.
+export function removeFixtureEntries(fixtureDirectory: string, entries: readonly string[]): void {
+  // Bun 1.3 can throw EFAULT from its asynchronous recursive rm implementation,
+  // even when multiple removals are awaited sequentially. This validation CLI
+  // does not need concurrent filesystem work, so keep cleanup synchronous.
   for (const entry of entries) {
-    await rm(join(fixtureDirectory, entry), { recursive: true, force: true });
+    rmSync(join(fixtureDirectory, entry), { recursive: true, force: true });
   }
 }
 
@@ -979,7 +979,7 @@ async function runStylesConsumerFixture(): Promise<void> {
   });
 
   try {
-    await removeFixtureEntries(fixtureDirectory, ['node_modules', 'dist']);
+    removeFixtureEntries(fixtureDirectory, ['node_modules', 'dist']);
     const installResult = await runHookCommand('bun', ['install', '--no-save'], {
       cwd: fixtureDirectory,
       stdout: 'pipe',
@@ -1106,7 +1106,7 @@ async function runSveltePeerCompatibilityFixture(
   const restoreManifest = injectTarballIntoFixture(fixtureDirectory, { svelteVersion });
 
   try {
-    await removeFixtureEntries(fixtureDirectory, ['node_modules', 'src/generated']);
+    removeFixtureEntries(fixtureDirectory, ['node_modules', 'src/generated']);
     const installResult = await runHookCommand('bun', ['install', '--no-save'], {
       cwd: fixtureDirectory,
       stdout: 'pipe',
@@ -1137,7 +1137,7 @@ async function runTypescriptCompatibilityFixture(
   const restoreManifest = injectTarballIntoFixture(fixtureDirectory, { typescriptVersion });
 
   try {
-    await removeFixtureEntries(fixtureDirectory, ['node_modules', 'src/generated']);
+    removeFixtureEntries(fixtureDirectory, ['node_modules', 'src/generated']);
     const installResult = await runHookCommand('bun', ['install', '--no-save'], {
       cwd: fixtureDirectory,
       stdout: 'pipe',
@@ -1362,24 +1362,44 @@ function formatServerOutput(stdout: string, stderr: string): string {
   return `:\n${formatStreamTail('stdout', stdout)}\n${formatStreamTail('stderr', stderr)}`;
 }
 
-async function assertSvelteKitDevChatHydrationRoute(
+const svelteKitChatHydrationEnvironment = {
+  CINDER_CHAT_DEV_HYDRATION: '1',
+  TZ: 'UTC',
+  LANG: 'en_US.UTF-8',
+};
+
+export type SvelteKitChatHydrationDevServerOptions = {
+  cwd: string;
+  detached: true;
+  stdout: 'pipe';
+  stderr: 'pipe';
+  env: Record<string, string | undefined>;
+};
+
+type SvelteKitChatHydrationDevServerDependencies = {
+  startServer?: (
+    command: string[],
+    options: SvelteKitChatHydrationDevServerOptions,
+  ) => Bun.ReadableSubprocess;
+};
+
+type SvelteKitChatHydrationPreparationDependencies = SvelteKitChatHydrationDevServerDependencies & {
+  now?: () => number;
+  pickPort?: () => Promise<number>;
+  preoptimize?: (fixtureDirectory: string, signal: AbortSignal) => Promise<void>;
+};
+
+export function startSvelteKitChatHydrationDevServer(
   fixtureDirectory: string,
-  label: string,
-): Promise<void> {
-  const httpPort = await pickEphemeralPort();
-  let hydrationAssertionsPassed = false;
-  const devServer = Bun.spawn(
-    [
-      'bunx',
-      'vite',
-      'dev',
-      '--force',
-      '--host',
-      '127.0.0.1',
-      '--port',
-      String(httpPort),
-      '--strictPort',
-    ],
+  httpPort: number,
+  dependencies: SvelteKitChatHydrationDevServerDependencies = {},
+): Bun.ReadableSubprocess {
+  const startServer =
+    dependencies.startServer ??
+    ((command: string[], options: SvelteKitChatHydrationDevServerOptions) =>
+      Bun.spawn(command, options));
+  return startServer(
+    ['bunx', 'vite', 'dev', '--host', '127.0.0.1', '--port', String(httpPort), '--strictPort'],
     {
       cwd: fixtureDirectory,
       detached: true,
@@ -1387,12 +1407,55 @@ async function assertSvelteKitDevChatHydrationRoute(
       stderr: 'pipe',
       env: {
         ...Bun.env,
-        CINDER_CHAT_DEV_HYDRATION: '1',
-        TZ: 'UTC',
-        LANG: 'en_US.UTF-8',
+        ...svelteKitChatHydrationEnvironment,
       },
     },
   );
+}
+
+export async function prepareSvelteKitChatHydrationDevServer(
+  fixtureDirectory: string,
+  label: string,
+  dependencies: SvelteKitChatHydrationPreparationDependencies = {},
+): Promise<{
+  devServer: Bun.ReadableSubprocess;
+  httpPort: number;
+  remainingReadinessBudget: number;
+}> {
+  const now = dependencies.now ?? Date.now;
+  const readinessDeadline = now() + SVELTEKIT_DEV_SSR_READINESS_TIMEOUT_MS;
+  const optimizationSignal = AbortSignal.timeout(SVELTEKIT_DEV_SSR_READINESS_TIMEOUT_MS);
+  const preoptimize =
+    dependencies.preoptimize ??
+    ((directory: string, signal: AbortSignal) =>
+      preoptimizeSvelteKitChatHydration(directory, undefined, signal));
+  await preoptimize(fixtureDirectory, optimizationSignal);
+
+  const remainingReadinessBudget = readinessDeadline - now();
+  if (remainingReadinessBudget <= 0) {
+    fail(
+      `sveltekit-consumer ${label} /chat-layout dependency optimization exhausted its shared ${SVELTEKIT_DEV_SSR_READINESS_TIMEOUT_MS}ms readiness budget`,
+    );
+  }
+
+  // Reserve a port only after pre-optimization, so another process cannot
+  // claim this short-lived probe reservation while Vite is still working.
+  const httpPort = await (dependencies.pickPort ?? pickEphemeralPort)();
+  const devServer = startSvelteKitChatHydrationDevServer(
+    fixtureDirectory,
+    httpPort,
+    dependencies.startServer === undefined ? {} : { startServer: dependencies.startServer },
+  );
+  return { devServer, httpPort, remainingReadinessBudget };
+}
+
+async function assertSvelteKitDevChatHydrationRoute(
+  fixtureDirectory: string,
+  label: string,
+): Promise<void> {
+  let hydrationAssertionsPassed = false;
+  const { devServer, httpPort, remainingReadinessBudget } =
+    await prepareSvelteKitChatHydrationDevServer(fixtureDirectory, label);
   const unregisterDevServerProcessGroup = registerHookProcessGroup(devServer.pid);
   const devServerStdout = devServer.stdout
     ? new Response(devServer.stdout).text()
@@ -1407,7 +1470,7 @@ async function assertSvelteKitDevChatHydrationRoute(
     const chatLayoutStartedAt = Date.now();
     await waitForReadyHtml({
       url: routeUrl,
-      timeoutMs: SVELTEKIT_DEV_SSR_READINESS_TIMEOUT_MS,
+      timeoutMs: remainingReadinessBudget,
       pollIntervalMs: SVELTEKIT_DEV_SSR_POLL_INTERVAL_MS,
       runningServer: devServer,
       isReady: (html) => html.includes('Empty Chat hydration') && html.includes('No messages yet'),
@@ -1461,6 +1524,35 @@ async function assertSvelteKitDevChatHydrationRoute(
         }
       }
     }
+  }
+}
+
+export async function preoptimizeSvelteKitChatHydration(
+  fixtureDirectory: string,
+  runCommand: typeof runHookCommand = runHookCommand,
+  signal?: AbortSignal,
+): Promise<void> {
+  const result = await runCommand('bun', ['x', 'vite', 'optimize', '--force'], {
+    cwd: fixtureDirectory,
+    stdout: 'pipe',
+    stderr: 'pipe',
+    environment: svelteKitChatHydrationEnvironment,
+    ...(signal === undefined ? {} : { signal }),
+  });
+  const sourceMapWarnings = extractPublishedPackageSourceMapWarnings(
+    `${result.stdout}\n${result.stderr}`,
+  );
+  if (sourceMapWarnings.length > 0) {
+    fail(
+      `Vite dependency optimization emitted source-map warnings for published package artifacts:\n` +
+        sourceMapWarnings.map((warning) => `  ${warning}`).join('\n'),
+    );
+  }
+  if (result.exitCode !== 0) {
+    const failurePrefix = signal?.aborted
+      ? 'Vite dependency optimization exceeded the shared Chat hydration readiness budget'
+      : 'Vite dependency optimization failed before Chat hydration readiness';
+    fail(`${failurePrefix}:\n${result.stdout}\n${result.stderr}`);
   }
 }
 
@@ -1669,7 +1761,7 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
 
   try {
     process.stdout.write(`[validate-consumers] sveltekit-consumer ${label}: cleaning fixture…\n`);
-    await removeFixtureEntries(fixtureDirectory, ['node_modules', '.svelte-kit', 'build']);
+    removeFixtureEntries(fixtureDirectory, ['node_modules', '.svelte-kit', 'build']);
     process.stdout.write(`[validate-consumers] sveltekit-consumer ${label}: cleaned fixture.\n`);
 
     process.stdout.write(`[validate-consumers] sveltekit-consumer ${label}: installing…\n`);
@@ -2776,7 +2868,7 @@ async function runNodeFixture(): Promise<void> {
   const restoreManifest = injectTarballIntoFixture(fixtureDirectory);
 
   try {
-    await removeFixtureEntries(fixtureDirectory, ['node_modules', 'dist']);
+    removeFixtureEntries(fixtureDirectory, ['node_modules', 'dist']);
     const installResult = await runHookCommand('bun', ['install', '--no-save'], {
       cwd: fixtureDirectory,
       stdout: 'pipe',
@@ -2914,7 +3006,7 @@ async function runTypescriptConsumerFixture(): Promise<void> {
   const restoreManifest = injectTarballIntoFixture(fixtureDirectory);
 
   try {
-    await removeFixtureEntries(fixtureDirectory, ['node_modules', 'src/generated']);
+    removeFixtureEntries(fixtureDirectory, ['node_modules', 'src/generated']);
     const installResult = await runHookCommand('bun', ['install', '--no-save'], {
       cwd: fixtureDirectory,
       stdout: 'pipe',
@@ -2956,7 +3048,7 @@ async function runExamplesConsumerFixture(): Promise<void> {
   const restoreManifest = injectTarballIntoFixture(fixtureDirectory);
 
   try {
-    await removeFixtureEntries(fixtureDirectory, [
+    removeFixtureEntries(fixtureDirectory, [
       'node_modules',
       '.svelte-kit',
       'build',
