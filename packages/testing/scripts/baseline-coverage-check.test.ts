@@ -61,6 +61,7 @@ type FakeEntry = {
   slug: string;
   route: string;
   fixtures?: ManifestFixtureEntry[];
+  includeDefaultFixture?: boolean;
 };
 
 function makeFixture(
@@ -139,6 +140,24 @@ describe('findMissingBaselines — all baselines present', () => {
 
     const missing = findMissingBaselines(entries);
     expect(missing).toHaveLength(0);
+  });
+
+  it('requires the default grid alongside explicit fixtures when requested', () => {
+    const entries = [
+      {
+        ...makeEntry('chat', ['private-harness']),
+        includeDefaultFixture: true,
+      },
+    ];
+
+    for (const theme of ['light', 'dark']) {
+      for (const viewport of ['mobile', 'tablet', 'desktop']) {
+        writeFakeSnapshot('chat', theme, viewport, 'default');
+        writeFakeSnapshot('chat', theme, viewport, 'private-harness');
+      }
+    }
+
+    expect(findMissingBaselines(entries)).toHaveLength(0);
   });
 });
 
