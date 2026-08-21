@@ -528,6 +528,9 @@ jobs:
     if: "!cancelled() && (github.event_name == 'pull_request' || github.event_name == 'merge_group' || (github.event_name == 'workflow_dispatch' && github.event.inputs.mode != 'off'))"
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.scope.result == 'success' && needs.scope.outputs.playwright_matrix || '{"shard":[1,2,3,4,5,6,7,8]}') }}
     env:
       CINDER_VISUAL_DIFF: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.mode || 'report' }}
     steps:
@@ -541,7 +544,12 @@ jobs:
           CI: 'true'
           CINDER_TEST_COMPONENTS: ${{ needs.scope.outputs.component_scope_mode == 'filtered' && needs.scope.outputs.components || '' }}
           CINDER_VISUAL_DIFF: ${{ env.CINDER_VISUAL_DIFF }}
-        run: bun run --filter=@cinder/testing test:browser:docker
+        run: |
+          if [ "${{ needs.scope.outputs.component_scope_mode }}" = filtered ]; then
+            bun run --filter=@cinder/testing test:browser:docker
+          else
+            bun run --filter=@cinder/testing test:browser:docker -- --shard=${{ matrix.shard }}/8
+          fi
       - name: Merge visual-report fragments
         if: always() && env.CINDER_VISUAL_DIFF == 'report'
         run: |
@@ -558,7 +566,7 @@ jobs:
         if: always() && env.CINDER_VISUAL_DIFF == 'report'
         uses: actions/upload-artifact@v7
         with:
-          name: visual-report
+          name: visual-report-${{ matrix.shard }}
           path: packages/testing/test-results/visual-report.json
           retention-days: 14
           if-no-files-found: ignore
@@ -566,7 +574,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-visual-diagnostics
+          name: playwright-visual-diagnostics-${{ matrix.shard }}
           path: |
             packages/testing/playwright-report
             packages/testing/test-results
