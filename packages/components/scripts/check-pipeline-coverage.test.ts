@@ -72,7 +72,11 @@ describe('Turbo input topology', () => {
     expect(browserWorkflow).toContain('echo "browser_relevant=true" >> "$GITHUB_OUTPUT"');
     expect(browserWorkflow).toContain('CLASSIFIER_BROWSER_RELEVANT');
     expect(browserWorkflow).toContain('Merge visual-report fragments');
-    expect(browserWorkflow).toContain('name: playwright');
+    expect(browserWorkflow).toContain('name: playwright-visual shard ${{ matrix.shard }}');
+    expect(browserWorkflow).toContain('needs: [scope, playwright-visual-shard]');
+    expect(browserWorkflow).toContain(
+      "name: ${{ github.event_name == 'workflow_dispatch' && format('playwright ({0})'",
+    );
     expect(browserWorkflow).toContain(
       'if [ "$EVENT_NAME" = pull_request ] || [ "$EVENT_NAME" = merge_group ]; then',
     );

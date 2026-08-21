@@ -4,12 +4,6 @@
     'A pending command approval with sandbox context, arguments, environment names, and editable arguments.';
 </script>
 
-<script lang="ts">
-  import { ApprovalCard } from '@lostgradient/cinder/approval-card';
-
-  const expiresAt = '2030-01-01T00:00:00.000Z';
-</script>
-
 <ApprovalCard
   tool={{ name: 'deploy-cloud', risk: 'medium' }}
   sandbox={{
@@ -30,7 +24,6 @@
   snapshotId="snapshot-01JZ8"
   policyVersion="policy-2026-06"
   idempotencyKey="approval-command-01"
-  {expiresAt}
   state="pending"
   editableArgs={true}
   onResolve={() => undefined}

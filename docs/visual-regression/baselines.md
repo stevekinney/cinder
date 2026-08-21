@@ -165,11 +165,13 @@ baseline_update_target=snapshot_pr
 ```
 
 That mode builds the canonical image from `source_ref`, then copies only
-`packages/testing/snapshots/` onto a bot branch based on `base_ref` before
-opening the follow-up PR. `base_ref` is required for both update targets because
-the workflow dispatch schema and branch-safety checks need an explicit target.
-The resulting PR stays snapshot-only, so PNG churn lands separately from source
-changes.
+`packages/testing/snapshots/` onto a bot branch based on `source_ref` before
+opening the follow-up PR _back into that source branch_. Merge the follow-up
+first, then let the implementation pull request rerun its blocking visual
+check against the committed baselines. This keeps the follow-up snapshot-only
+without comparing new pixels to the pre-change source tree. `base_ref` remains
+required because the workflow dispatch schema and branch-safety checks need an
+explicit target.
 
 After baselines exist, verify block mode with a separate dispatch:
 

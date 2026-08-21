@@ -1,4 +1,4 @@
-import { spawn, type ChildProcess } from 'node:child_process';
+import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve as resolvePath } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -139,7 +139,35 @@ export type DockerRunArgumentsOptions = {
   imageTag: string;
   containerCommand: string;
   environment?: Readonly<Record<string, string | undefined>>;
+  gitMetadataMountPaths?: readonly string[];
 };
+
+function isInsideDirectory(path: string, directory: string): boolean {
+  return path === directory || path.startsWith(`${directory}/`);
+}
+
+/**
+ * A linked worktree's `.git` file can point at metadata outside the bind-mounted
+ * checkout. Mount only those referenced directories at their host paths so Git
+ * can resolve `HEAD` inside Docker without exposing the whole parent checkout.
+ */
+export function gitMetadataMountPaths(repoRoot: string): string[] {
+  const gitDirectory = spawnSync('git', ['rev-parse', '--absolute-git-dir'], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+  });
+  const commonDirectory = spawnSync('git', ['rev-parse', '--git-common-dir'], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+  });
+  if (gitDirectory.status !== 0 || commonDirectory.status !== 0) {
+    throw new Error('failed to resolve Git metadata directories for the Docker bind mount');
+  }
+
+  return [...new Set([gitDirectory.stdout.trim(), commonDirectory.stdout.trim()])].filter(
+    (path) => path.length > 0 && !isInsideDirectory(path, repoRoot),
+  );
+}
 
 export function dockerRunArguments(options: DockerRunArgumentsOptions): string[] {
   const args = ['run', '--rm'];
@@ -147,6 +175,9 @@ export function dockerRunArguments(options: DockerRunArgumentsOptions): string[]
     if (value !== undefined && value.trim().length > 0) {
       args.push('-e', `${name}=${value}`);
     }
+  }
+  for (const path of options.gitMetadataMountPaths ?? []) {
+    args.push('-v', `${path}:${path}:ro`);
   }
   args.push(
     '-v',
@@ -225,6 +256,7 @@ async function main(): Promise<void> {
       repoRoot,
       imageTag,
       containerCommand: updateCommand,
+      gitMetadataMountPaths: gitMetadataMountPaths(repoRoot),
       environment: {
         CINDER_TEST_COMPONENTS: process.env['CINDER_TEST_COMPONENTS'],
         ...hostOwnershipEnvironment(),

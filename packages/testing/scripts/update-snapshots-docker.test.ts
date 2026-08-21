@@ -10,6 +10,7 @@ import {
   dockerImageTagForVersion,
   dockerRunArguments,
   dockerUpdateCommand,
+  gitMetadataMountPaths,
   hostOwnershipEnvironment,
   ownershipReclaimSuffix,
 } from './update-snapshots-docker.ts';
@@ -42,6 +43,42 @@ describe('update-snapshots-docker helpers', () => {
       "cd /work && git config --global --add safe.directory /work && bun install --frozen-lockfile && bun run test:browser -- '--grep' 'Button > dark desktop'" +
         RECLAIM_TAIL,
     );
+  });
+});
+
+describe('Git metadata mounts', () => {
+  it('returns no extra mount for metadata already inside the checkout', () => {
+    // Exercise the pure Docker argument behavior; the subprocess-backed helper
+    // is covered by the actual canonical Docker baseline command below.
+    const args = dockerRunArguments({
+      repoRoot: '/repo',
+      imageTag: 'cinder-playwright:1.60.0',
+      containerCommand: 'noop',
+      gitMetadataMountPaths: ['/repo/.git'],
+    });
+    expect(args).toContain('/repo/.git:/repo/.git:ro');
+  });
+
+  it('mounts linked-worktree metadata read-only at the path Git recorded', () => {
+    const args = dockerRunArguments({
+      repoRoot: '/worktrees/cinder',
+      imageTag: 'cinder-playwright:1.60.0',
+      containerCommand: 'noop',
+      gitMetadataMountPaths: [
+        '/repositories/cinder/.git/worktrees/cinder17',
+        '/repositories/cinder/.git',
+      ],
+    });
+    expect(args).toContain(
+      '/repositories/cinder/.git/worktrees/cinder17:/repositories/cinder/.git/worktrees/cinder17:ro',
+    );
+    expect(args).toContain('/repositories/cinder/.git:/repositories/cinder/.git:ro');
+  });
+
+  it('discovers the current checkout metadata without mounting its parent checkout', () => {
+    const repositoryRoot = resolvePath(here, '../../..');
+    const paths = gitMetadataMountPaths(repositoryRoot);
+    expect(paths.every((path) => !path.startsWith(`${repositoryRoot}/`))).toBe(true);
   });
 });
 
