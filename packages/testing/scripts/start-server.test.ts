@@ -231,6 +231,15 @@ describe('playground readiness cleanup', () => {
 });
 
 describe('child process cleanup', () => {
+  test('uses ordinary foreground child processes for finite dependency builds', () => {
+    expect(
+      playgroundBundleDependencyBuildProcess({} as ChildProcess, '@lostgradient/cinder', false),
+    ).toMatchObject({
+      name: '@lostgradient/cinder build',
+      killProcessGroup: false,
+    });
+  });
+
   test('observes a child that exited before exit listeners were attached', async () => {
     const childProcess = spawn(process.execPath, ['-e', 'process.exit(7)']);
     await once(childProcess, 'exit');

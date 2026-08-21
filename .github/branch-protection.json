@@ -25,6 +25,13 @@
   "branch": "main",
   "requiredStatusChecks": {
     "strict": true,
-    "contexts": ["unit-tests", "typecheck", "playwright", "Pre-1.0 changeset bump guard"]
+    "contexts": [
+      "unit-tests",
+      "typecheck",
+      "playwright",
+      "playwright-visual",
+      "baseline-coverage",
+      "Pre-1.0 changeset bump guard"
+    ]
   }
 }

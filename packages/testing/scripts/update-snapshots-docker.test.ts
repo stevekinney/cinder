@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 import { readFileSync } from 'node:fs';
-import { dirname, resolve as resolvePath } from 'node:path';
+import { dirname, isAbsolute, relative, resolve as resolvePath, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { dockerBrowserEnvironment } from './run-browser-docker.ts';
@@ -10,6 +10,8 @@ import {
   dockerImageTagForVersion,
   dockerRunArguments,
   dockerUpdateCommand,
+  gitMetadataEnvironment,
+  gitMetadataMountPaths,
   hostOwnershipEnvironment,
   ownershipReclaimSuffix,
 } from './update-snapshots-docker.ts';
@@ -24,6 +26,16 @@ const RECLAIM_TAIL =
   ' packages/testing/playwright-report packages/testing/.playwright' +
   ' 2>/dev/null || true' +
   '; exit $status';
+
+function isInsideDirectory(path: string, directory: string): boolean {
+  const pathFromDirectory = relative(directory, path);
+  return (
+    pathFromDirectory.length === 0 ||
+    (!pathFromDirectory.startsWith(`..${sep}`) &&
+      pathFromDirectory !== '..' &&
+      !isAbsolute(pathFromDirectory))
+  );
+}
 
 describe('update-snapshots-docker helpers', () => {
   it('derives the Docker image tag from the pinned Playwright version', () => {
@@ -42,6 +54,65 @@ describe('update-snapshots-docker helpers', () => {
       "cd /work && git config --global --add safe.directory /work && bun install --frozen-lockfile && bun run test:browser -- '--grep' 'Button > dark desktop'" +
         RECLAIM_TAIL,
     );
+  });
+});
+
+describe('Git metadata mounts', () => {
+  it('maps external Git metadata to Linux paths on Windows', () => {
+    const mounts = [
+      {
+        hostPath: 'C:\\repositories\\cinder\\.git\\worktrees\\review',
+        containerPath: '/git-metadata/0',
+      },
+      { hostPath: 'C:\\repositories\\cinder\\.git', containerPath: '/git-metadata/1' },
+    ];
+
+    expect(gitMetadataEnvironment(mounts, 'win32')).toEqual({
+      GIT_DIR: '/git-metadata/0',
+      GIT_COMMON_DIR: '/git-metadata/1',
+    });
+    expect(
+      dockerRunArguments({
+        repoRoot: 'C:\\worktrees\\cinder',
+        imageTag: 'cinder-playwright:1.60.0',
+        containerCommand: 'noop',
+        gitMetadataMounts: mounts,
+      }),
+    ).toContain('C:\\repositories\\cinder\\.git\\worktrees\\review:/git-metadata/0:ro');
+  });
+
+  it('includes metadata mounts supplied by the Docker wrapper', () => {
+    // Exercise the pure Docker argument behavior; the Git-backed helper
+    // is covered by the actual canonical Docker baseline command below.
+    const args = dockerRunArguments({
+      repoRoot: '/repo',
+      imageTag: 'cinder-playwright:1.60.0',
+      containerCommand: 'noop',
+      gitMetadataMountPaths: ['/repo/.git'],
+    });
+    expect(args).toContain('/repo/.git:/repo/.git:ro');
+  });
+
+  it('mounts linked-worktree metadata read-only at the path Git recorded', () => {
+    const args = dockerRunArguments({
+      repoRoot: '/worktrees/cinder',
+      imageTag: 'cinder-playwright:1.60.0',
+      containerCommand: 'noop',
+      gitMetadataMountPaths: [
+        '/repositories/cinder/.git/worktrees/cinder17',
+        '/repositories/cinder/.git',
+      ],
+    });
+    expect(args).toContain(
+      '/repositories/cinder/.git/worktrees/cinder17:/repositories/cinder/.git/worktrees/cinder17:ro',
+    );
+    expect(args).toContain('/repositories/cinder/.git:/repositories/cinder/.git:ro');
+  });
+
+  it('discovers the current checkout metadata without mounting its parent checkout', () => {
+    const repositoryRoot = resolvePath(here, '../../..');
+    const paths = gitMetadataMountPaths(repositoryRoot);
+    expect(paths.every((path) => !isInsideDirectory(path, repositoryRoot))).toBe(true);
   });
 });
 
@@ -123,6 +194,7 @@ describe('update-snapshots-docker helpers (continued)', () => {
         environment: {
           CI: 'true',
           CINDER_TEST_COMPONENTS: 'button',
+          CINDER_TEST_SHARD: '3/8',
           CINDER_VISUAL_DIFF: 'block',
           PLAYWRIGHT_TRACE: 'off',
           PLAYGROUND_URL: '',
@@ -135,6 +207,8 @@ describe('update-snapshots-docker helpers (continued)', () => {
       'CI=true',
       '-e',
       'CINDER_TEST_COMPONENTS=button',
+      '-e',
+      'CINDER_TEST_SHARD=3/8',
       '-e',
       'CINDER_VISUAL_DIFF=block',
       '-e',

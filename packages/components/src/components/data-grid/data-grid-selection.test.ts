@@ -89,6 +89,23 @@ function getDataCell(container: HTMLElement, rowIndex: number, columnIndex: numb
 }
 
 describe('DataGrid selection', () => {
+  test('initializes an active descendant without selecting a cell', () => {
+    const { container } = render(OrderDataGrid, {
+      rows,
+      columns,
+      getRowId: getOrderId,
+      'aria-label': 'Orders',
+    });
+
+    const grid = container.querySelector('[role="grid"]');
+    const firstCell = getDataCell(container, 0, 0);
+
+    expect(grid?.getAttribute('aria-activedescendant')).toBe(firstCell.id);
+    expect(firstCell.getAttribute('data-cinder-active')).toBe('true');
+    expect(container.querySelectorAll('[role="gridcell"][aria-selected="true"]')).toHaveLength(0);
+    expect(firstCell.hasAttribute('data-cinder-anchor')).toBe(false);
+  });
+
   test('clicking a cell sets the active descendant, anchor, and aria-selected state', async () => {
     const { container } = render(OrderDataGrid, {
       rows,
@@ -151,6 +168,25 @@ describe('DataGrid selection', () => {
     expect(getDataCell(container, 2, 2).getAttribute('aria-selected')).toBe('true');
   });
 
+  test('Escape leaves an unselected initial active cell and row selection unchanged', async () => {
+    const onSelectionModelChange = mock();
+    const { container } = render(OrderDataGrid, {
+      rows,
+      columns,
+      getRowId: getOrderId,
+      selectionMode: 'multiple',
+      onSelectionModelChange,
+      'aria-label': 'Orders',
+    });
+
+    const grid = container.querySelector<HTMLElement>('[role="grid"]');
+    await fireEvent.keyDown(grid!, { key: 'Escape' });
+
+    expect(container.querySelectorAll('[role="gridcell"][aria-selected="true"]')).toHaveLength(0);
+    expect(container.querySelectorAll('[role="row"][aria-selected="true"]')).toHaveLength(0);
+    expect(onSelectionModelChange).not.toHaveBeenCalled();
+  });
+
   test('Escape collapses row selection to the active row', async () => {
     const onSelectionModelChange = mock();
     const { container } = render(OrderDataGrid, {
@@ -173,6 +209,24 @@ describe('DataGrid selection', () => {
       container.querySelector('[role="row"][aria-rowindex="4"]')?.getAttribute('aria-selected'),
     ).toBe('true');
     expect(container.querySelectorAll('[role="row"][aria-selected="true"]').length).toBe(1);
+  });
+
+  test('Escape collapses a controlled row selection when no cell range exists', async () => {
+    const onSelectionModelChange = mock();
+    const { container } = render(OrderDataGrid, {
+      rows,
+      columns,
+      getRowId: getOrderId,
+      selectionMode: 'multiple',
+      selectionModel: ['ord-1', 'ord-2'],
+      onSelectionModelChange,
+      'aria-label': 'Orders',
+    });
+
+    const grid = container.querySelector<HTMLElement>('[role="grid"]');
+    await fireEvent.keyDown(grid!, { key: 'Escape' });
+
+    expect(onSelectionModelChange).toHaveBeenLastCalledWith(['ord-1']);
   });
 
   test('Ctrl+A keeps row selection singular in single selection mode', async () => {

@@ -169,7 +169,7 @@ describe('exit codes', () => {
 describe('the checked-in expectation', () => {
   // Guards the file the whole check reads. A typo in a context name here would
   // otherwise make the guard assert something GitHub never reports.
-  it('declares strict and the four required contexts', async () => {
+  it('declares strict and the six required contexts', async () => {
     const onDisk = await readJsonFile<ProtectionExpectation>(EXPECTATION_PATH);
 
     expect(onDisk.branch).toBe('main');
@@ -178,6 +178,8 @@ describe('the checked-in expectation', () => {
       'unit-tests',
       'typecheck',
       'playwright',
+      'playwright-visual',
+      'baseline-coverage',
       'Pre-1.0 changeset bump guard',
     ]);
   });

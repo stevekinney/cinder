@@ -63,12 +63,36 @@ describe('Turbo input topology', () => {
       "needs.scope.result == 'success' && needs.scope.outputs.playwright_matrix",
     );
     expect(browserWorkflow).toContain('playwright-visual:');
+    expect(browserWorkflow).toContain('baseline-coverage:');
+    expect(browserWorkflow).toContain(
+      "github.event_name != 'workflow_dispatch' || github.event.inputs.update_baselines != 'true'",
+    );
     expect(browserWorkflow).toContain('test:browser:docker');
     expect(browserWorkflow).not.toMatch(/^\s*push:/m);
     expect(browserWorkflow).toContain('echo "browser_relevant=true" >> "$GITHUB_OUTPUT"');
     expect(browserWorkflow).toContain('CLASSIFIER_BROWSER_RELEVANT');
     expect(browserWorkflow).toContain('Merge visual-report fragments');
-    expect(browserWorkflow).toContain('name: playwright');
+    expect(browserWorkflow).toContain('name: playwright-visual shard ${{ matrix.shard }}');
+    expect(browserWorkflow).toContain('needs: [scope, playwright-visual-shard]');
+    expect(browserWorkflow).toContain(
+      "github.event_name != 'workflow_dispatch' || github.event.inputs.mode != 'off'",
+    );
+    expect(browserWorkflow).toContain(
+      "name: ${{ github.event_name == 'workflow_dispatch' && format('playwright ({0})'",
+    );
+    expect(browserWorkflow).toContain(
+      'if [ "$EVENT_NAME" = pull_request ] || [ "$EVENT_NAME" = merge_group ]; then',
+    );
+    expect(browserWorkflow).toContain('[ "$VISUAL" = success ] || exit 1');
+    expect(browserWorkflow).toContain('sudo rm -rf packages/testing/snapshots');
+    expect(browserWorkflow).toContain(
+      'source_branch baseline updates require an explicit components scope or validated shard',
+    );
+    expect(browserWorkflow).toContain(
+      'source_branch baseline updates cannot target the base branch',
+    );
+    expect(browserWorkflow).toContain('shard must use the form N/8 where N is 1 through 8');
+    expect(browserWorkflow).toContain('test:browser:update:docker -- --shard="$SHARD"');
     expect(browserWorkflow).toContain('path: packages/testing/blob-report');
     expect(browserWorkflow).toContain(
       'bunx playwright merge-reports --reporter html packages/testing/blob-reports',

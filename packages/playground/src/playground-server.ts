@@ -1080,6 +1080,31 @@ export type PlaygroundServer = {
  */
 const EAGER_PREBUILD_CONCURRENCY = 6;
 
+export function eagerPrebuildComponents(
+  components: readonly string[],
+  rawComponentScope: string | undefined = process.env['CINDER_TEST_COMPONENTS'],
+  knownComponents: readonly string[] = components,
+): string[] {
+  const requested = [
+    ...new Set(
+      (rawComponentScope ?? '')
+        .split(',')
+        .map((value) => value.trim())
+        .filter(Boolean),
+    ),
+  ];
+  if (requested.length === 0) return [...components];
+
+  const knownComponentSet = new Set(knownComponents);
+  const unknownComponents = requested.filter((component) => !knownComponentSet.has(component));
+  if (unknownComponents.length > 0) {
+    throw new Error(
+      `CINDER_TEST_COMPONENTS references unknown playground component slugs: ${unknownComponents.join(', ')}`,
+    );
+  }
+  return components.filter((component) => requested.includes(component));
+}
+
 /**
  * Run `task` once per item with at most `limit` concurrent calls in flight.
  * Returns one `PromiseSettledResult` per item, in input order — same shape
@@ -1132,7 +1157,12 @@ async function eagerPrebuildAll(): Promise<{
     console.error('[playground] shell bundle threw during pre-build:', error);
     return { code: null, usedFallback: true };
   });
-  const components = await discoverSidebarComponents();
+  const sidebarComponents = await discoverSidebarComponents();
+  const components = eagerPrebuildComponents(
+    sidebarComponents,
+    undefined,
+    await discoverComponents(),
+  );
   // Sidebar components are a subset of all components, so each is a valid
   // bundle target. Passing the set avoids N redundant glob scans during the
   // eager pre-build.

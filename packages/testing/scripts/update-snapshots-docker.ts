@@ -1,6 +1,6 @@
-import { spawn, type ChildProcess } from 'node:child_process';
+import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { dirname, resolve as resolvePath } from 'node:path';
+import { dirname, isAbsolute, relative, resolve as resolvePath, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { installSignalCleanupHandlers, terminateChildProcess } from './start-server.ts';
 
@@ -139,7 +139,71 @@ export type DockerRunArgumentsOptions = {
   imageTag: string;
   containerCommand: string;
   environment?: Readonly<Record<string, string | undefined>>;
+  gitMetadataMountPaths?: readonly string[];
+  gitMetadataMounts?: readonly GitMetadataMount[];
 };
+
+export type GitMetadataMount = {
+  hostPath: string;
+  containerPath: string;
+};
+
+function isInsideDirectory(path: string, directory: string): boolean {
+  const pathFromDirectory = relative(directory, path);
+  return (
+    pathFromDirectory.length === 0 ||
+    (!pathFromDirectory.startsWith(`..${sep}`) &&
+      pathFromDirectory !== '..' &&
+      !isAbsolute(pathFromDirectory))
+  );
+}
+
+/**
+ * A linked worktree's `.git` file can point at metadata outside the bind-mounted
+ * checkout. Mount only those referenced directories at their host paths so Git
+ * can resolve `HEAD` inside Docker without exposing the whole parent checkout.
+ */
+export function gitMetadataMountPaths(repoRoot: string): string[] {
+  const gitDirectory = spawnSync('git', ['rev-parse', '--absolute-git-dir'], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+  });
+  const commonDirectory = spawnSync('git', ['rev-parse', '--git-common-dir'], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+  });
+  if (gitDirectory.status !== 0 || commonDirectory.status !== 0) {
+    throw new Error('failed to resolve Git metadata directories for the Docker bind mount');
+  }
+
+  const metadataPaths = [gitDirectory.stdout.trim(), commonDirectory.stdout.trim()].map((path) =>
+    isAbsolute(path) ? path : resolvePath(repoRoot, path),
+  );
+  return [...new Set(metadataPaths)].filter(
+    (path) => path.length > 0 && !isInsideDirectory(path, repoRoot),
+  );
+}
+
+export function gitMetadataMounts(
+  repoRoot: string,
+  platform: NodeJS.Platform = process.platform,
+): GitMetadataMount[] {
+  return gitMetadataMountPaths(repoRoot).map((hostPath, index) => ({
+    hostPath,
+    containerPath: platform === 'win32' ? `/git-metadata/${index}` : hostPath,
+  }));
+}
+
+export function gitMetadataEnvironment(
+  mounts: readonly GitMetadataMount[],
+  platform: NodeJS.Platform = process.platform,
+): Record<string, string | undefined> {
+  if (platform !== 'win32' || mounts.length === 0) return {};
+  return {
+    GIT_DIR: mounts[0]?.containerPath,
+    ...(mounts.length > 1 ? { GIT_COMMON_DIR: mounts[1]?.containerPath } : {}),
+  };
+}
 
 export function dockerRunArguments(options: DockerRunArgumentsOptions): string[] {
   const args = ['run', '--rm'];
@@ -147,6 +211,12 @@ export function dockerRunArguments(options: DockerRunArgumentsOptions): string[]
     if (value !== undefined && value.trim().length > 0) {
       args.push('-e', `${name}=${value}`);
     }
+  }
+  const metadataMounts =
+    options.gitMetadataMounts ??
+    (options.gitMetadataMountPaths ?? []).map((path) => ({ hostPath: path, containerPath: path }));
+  for (const mount of metadataMounts) {
+    args.push('-v', `${mount.hostPath}:${mount.containerPath}:ro`);
   }
   args.push(
     '-v',
@@ -217,6 +287,7 @@ async function main(): Promise<void> {
 
   const extraArgs = process.argv.slice(2);
   const updateCommand = dockerUpdateCommand(extraArgs);
+  const metadataMounts = gitMetadataMounts(repoRoot);
 
   console.log(`Running snapshot update inside ${imageTag}...`);
   const runExit = await run(
@@ -225,8 +296,11 @@ async function main(): Promise<void> {
       repoRoot,
       imageTag,
       containerCommand: updateCommand,
+      gitMetadataMounts: metadataMounts,
       environment: {
         CINDER_TEST_COMPONENTS: process.env['CINDER_TEST_COMPONENTS'],
+        CINDER_TEST_SHARD: process.env['CINDER_TEST_SHARD'],
+        ...gitMetadataEnvironment(metadataMounts),
         ...hostOwnershipEnvironment(),
       },
     }),

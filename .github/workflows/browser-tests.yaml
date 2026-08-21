@@ -50,7 +50,7 @@ on:
         required: false
         type: string
       base_ref:
-        description: 'Branch the snapshot-only PR targets; also required by source_branch for branch-safety checks.'
+        description: 'Repository default branch required for baseline-update safety checks; source_ref is the snapshot-only PR target.'
         required: false
         type: string
       pull_request_number:
@@ -59,6 +59,11 @@ on:
         type: string
       components:
         description: 'Optional comma-separated component slugs for scoped visual-regression runs, e.g. button.'
+        required: false
+        default: ''
+        type: string
+      shard:
+        description: 'Optional Playwright shard (for example 3/8) used when authoring baselines from the exact enforcement partition.'
         required: false
         default: ''
         type: string
@@ -138,9 +143,11 @@ jobs:
 
           if [ "$EVENT_NAME" != "pull_request" ]; then
             echo "Non-PR event ($EVENT_NAME): running full matrix."
-            echo "component_scope_mode=full" >> "$GITHUB_OUTPUT"
-            echo "components=" >> "$GITHUB_OUTPUT"
-            echo "browser_relevant=true" >> "$GITHUB_OUTPUT"
+            {
+              echo "component_scope_mode=full"
+              echo "components="
+              echo "browser_relevant=true"
+            } >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -240,6 +247,7 @@ jobs:
                 negate=true
                 candidate="${candidate#!}"
               fi
+              # shellcheck disable=SC2053 # candidate is deliberately a glob pattern.
               if [[ "$file" == $candidate ]]; then
                 if [ "$negate" = true ]; then matched=false; else matched=true; fi
               fi
@@ -521,10 +529,11 @@ jobs:
   # The visual-diff wrapper owns Docker build/run itself, so it must remain on
   # the host runner. Ordinary full Playwright coverage stays in the pinned
   # Playwright container above.
-  playwright-visual:
+  playwright-visual-shard:
+    name: playwright-visual shard ${{ matrix.shard }}
     needs: scope
-    # Report on every pull request and merge-queue entry before this becomes a
-    # blocking gate. Manual dispatch keeps its explicit mode for diagnostics.
+    # Block pull requests and merge-queue entries after the report-mode soak.
+    # Manual dispatch keeps its explicit mode for diagnostics.
     if: "!cancelled() && (github.event_name == 'pull_request' || github.event_name == 'merge_group' || (github.event_name == 'workflow_dispatch' && github.event.inputs.mode != 'off'))"
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -532,7 +541,7 @@ jobs:
       fail-fast: false
       matrix: ${{ fromJSON(needs.scope.result == 'success' && needs.scope.outputs.playwright_matrix || '{"shard":[1,2,3,4,5,6,7,8]}') }}
     env:
-      CINDER_VISUAL_DIFF: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.mode || 'report' }}
+      CINDER_VISUAL_DIFF: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.mode || 'block' }}
     steps:
       - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2
@@ -582,8 +591,26 @@ jobs:
           retention-days: 14
           if-no-files-found: warn
 
+  # A matrix job produces one check per shard. Keep those names distinct and
+  # expose one non-matrix result for branch protection to require.
+  playwright-visual:
+    name: ${{ github.event_name == 'workflow_dispatch' && format('playwright-visual ({0})', github.event.inputs.mode) || 'playwright-visual' }}
+    needs: [scope, playwright-visual-shard]
+    if: "!cancelled() && (github.event_name != 'workflow_dispatch' || github.event.inputs.mode != 'off')"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require visual-regression shards to succeed
+        env:
+          SCOPE: ${{ needs.scope.result }}
+          VISUAL_SHARDS: ${{ needs.playwright-visual-shard.result }}
+        run: |
+          set -euo pipefail
+          echo "scope=$SCOPE playwright-visual-shard=$VISUAL_SHARDS" | tee -a "$GITHUB_STEP_SUMMARY"
+          [ "$SCOPE" = success ]
+          [ "$VISUAL_SHARDS" = success ]
+
   playwright:
-    name: playwright
+    name: ${{ github.event_name == 'workflow_dispatch' && format('playwright ({0})', github.event.inputs.mode) || 'playwright' }}
     needs: [scope, playwright-lane, playwright-visual]
     if: '!cancelled()'
     runs-on: ubuntu-latest
@@ -604,13 +631,13 @@ jobs:
         if: "always() && needs.playwright-lane.result != 'skipped' && (needs.scope.result != 'success' || needs.scope.outputs.component_scope_mode == 'full')"
         run: bunx playwright merge-reports --reporter html packages/testing/blob-reports
       - name: Merge sharded visual reports
-        if: "always() && needs.playwright-visual.result != 'skipped' && (github.event_name != 'workflow_dispatch' || github.event.inputs.mode == 'report')"
+        if: "always() && needs.playwright-visual.result != 'skipped' && github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'report'"
         uses: actions/download-artifact@v8
         with:
           pattern: visual-report-*
           path: packages/testing/visual-reports
       - name: Publish merged visual report
-        if: "always() && needs.playwright-visual.result != 'skipped' && (github.event_name != 'workflow_dispatch' || github.event.inputs.mode == 'report')"
+        if: "always() && needs.playwright-visual.result != 'skipped' && github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'report'"
         run: |
           set -euo pipefail
           REPORTS=packages/testing/visual-reports
@@ -626,7 +653,7 @@ jobs:
           retention-days: 14
           if-no-files-found: warn
       - name: Upload merged visual report
-        if: "always() && needs.playwright-visual.result != 'skipped' && (github.event_name != 'workflow_dispatch' || github.event.inputs.mode == 'report')"
+        if: "always() && needs.playwright-visual.result != 'skipped' && github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'report'"
         uses: actions/upload-artifact@v7
         with:
           name: visual-report
@@ -651,8 +678,16 @@ jobs:
           fi
           [ "$SCOPE" = success ] || exit 1
           if [ "$RELEVANT" = true ]; then [ "$LANES" = success ] || exit 1; fi
+          # Pull-request and merge-queue runs always select block mode for
+          # visual regression. Keep their aggregate required check fail-closed
+          # so a failed visual job cannot be masked by passing functional lanes.
+          # A manual `mode=off` dispatch intentionally skips the visual job.
+          if [ "$EVENT_NAME" = pull_request ] || [ "$EVENT_NAME" = merge_group ]; then
+            [ "$VISUAL" = success ] || exit 1
+          fi
 
   baseline-coverage:
+    name: ${{ github.event_name == 'workflow_dispatch' && 'baseline-coverage (diagnostic)' || 'baseline-coverage' }}
     # Runs on every trigger, including pull requests. The check is scoped per
     # slug: a component is enforced only once it has adopted baselines, so
     # incremental adoption no longer makes this unconditionally red. Components
@@ -660,11 +695,12 @@ jobs:
     # without failing the job.
     #
     # Gated on scope relevance like `typecheck` and `playwright` above, so a
-    # docs-only pull request does not pay to boot the playground. This job is
-    # Report-mode rollout: the command remains visible in its log, but an
-    # incomplete baseline cannot block a pull request until the recorded soak
-    # period has completed and this job is deliberately promoted.
-    if: "!cancelled() && (needs.scope.result != 'success' || needs.scope.outputs.browser_relevant == 'true')"
+    # docs-only pull request does not pay to boot the playground. The
+    # report-mode soak completed before this promotion. Missing adopted
+    # baselines now block the pull request with the named coverage gap. A
+    # baseline-authoring dispatch validates the pre-generation checkout, so it
+    # intentionally skips this check and lets update-baselines create the fix.
+    if: "!cancelled() && (github.event_name != 'workflow_dispatch' || github.event.inputs.update_baselines != 'true') && (needs.scope.result != 'success' || needs.scope.outputs.browser_relevant == 'true')"
     needs: scope
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -692,7 +728,6 @@ jobs:
         env:
           CINDER_TEST_COMPONENTS: ${{ needs.scope.outputs.component_scope_mode == 'filtered' && needs.scope.outputs.components || '' }}
         run: bun run packages/testing/scripts/baseline-coverage-check.ts
-        continue-on-error: true
 
   update-baselines:
     # Manual-only. Runs inside the canonical Playwright Docker image,
@@ -712,6 +747,7 @@ jobs:
           BASE_REF: ${{ github.event.inputs.base_ref }}
           COMPONENTS: ${{ needs.scope.outputs.components }}
           TARGET: ${{ github.event.inputs.baseline_update_target || 'snapshot_pr' }}
+          SHARD: ${{ github.event.inputs.shard || '' }}
         run: |
           set -euo pipefail
           validate_branch_ref() {
@@ -733,6 +769,10 @@ jobs:
           fi
           validate_branch_ref source_ref "$SOURCE_REF"
           validate_branch_ref base_ref "$BASE_REF"
+          if [ -n "$SHARD" ] && ! [[ "$SHARD" =~ ^[1-8]/8$ ]]; then
+            echo "shard must use the form N/8 where N is 1 through 8; got $SHARD" >&2
+            exit 1
+          fi
           case "$TARGET" in
             snapshot_pr|source_branch) ;;
             *)
@@ -741,17 +781,23 @@ jobs:
               ;;
           esac
           if [ "$TARGET" = "source_branch" ]; then
-            if [ -z "$COMPONENTS" ]; then
-              echo "source_branch baseline updates require an explicit components scope." >&2
+            if [ -z "$COMPONENTS" ] && [ -z "$SHARD" ]; then
+              echo "source_branch baseline updates require an explicit components scope or validated shard." >&2
               exit 1
             fi
-            case "$SOURCE_REF" in
-              tasks/*) ;;
-              *)
-                echo "source_branch baseline updates may only push to tasks/* refs; got $SOURCE_REF" >&2
-                exit 1
-                ;;
-            esac
+            if [ "$SOURCE_REF" = "$BASE_REF" ]; then
+              echo "source_branch baseline updates cannot target the base branch: $SOURCE_REF" >&2
+              exit 1
+            fi
+          fi
+          DEFAULT_BRANCH="${{ github.event.repository.default_branch }}"
+          if [ "$BASE_REF" != "$DEFAULT_BRANCH" ]; then
+            echo "base_ref must be the default branch: $DEFAULT_BRANCH" >&2
+            exit 1
+          fi
+          if [ "$SOURCE_REF" = "$DEFAULT_BRANCH" ]; then
+            echo "source_ref cannot be the protected default branch: $SOURCE_REF" >&2
+            exit 1
           fi
 
       - name: Checkout source ref
@@ -774,8 +820,18 @@ jobs:
 
       - name: Build Docker image and update baselines
         env:
-          CINDER_TEST_COMPONENTS: ${{ needs.scope.outputs.component_scope_mode == 'filtered' && needs.scope.outputs.components || '' }}
-        run: bun run --filter=@cinder/testing test:browser:update:docker
+          # A Playwright shard identifies a partition of the full enforcement
+          # suite. Do not first filter that suite by component, or `N/8` would
+          # identify a different partition than the blocking matrix.
+          CINDER_TEST_COMPONENTS: ${{ github.event.inputs.shard == '' && needs.scope.outputs.component_scope_mode == 'filtered' && needs.scope.outputs.components || '' }}
+          CINDER_TEST_SHARD: ${{ github.event.inputs.shard || '' }}
+          SHARD: ${{ github.event.inputs.shard || '' }}
+        run: |
+          if [ -n "$SHARD" ]; then
+            bun run --filter=@cinder/testing test:browser:update:docker -- --shard="$SHARD"
+          else
+            bun run --filter=@cinder/testing test:browser:update:docker
+          fi
 
       - name: Check for snapshot changes
         id: changes
@@ -819,26 +875,47 @@ jobs:
           cp -R packages/testing/snapshots "$SNAPSHOT_STAGING/packages/testing/snapshots"
           git config user.name "cinder-bot"
           git config user.email "cinder-bot@users.noreply.github.com"
-          git fetch origin "$BASE_REF"
+          # A snapshot-only PR must compare the snapshots with the source
+          # tree that produced them. Targeting base_ref creates a cycle: the
+          # source PR sees new pixels against old baselines, while the
+          # follow-up sees old source against new baselines.
+          git fetch origin "$SOURCE_REF"
+          if [ "$(git rev-parse FETCH_HEAD)" != "${{ steps.source-sha.outputs.sha }}" ]; then
+            echo "source branch moved while baselines were rendered; sync and rerun baseline update" >&2
+            exit 1
+          fi
           git checkout -f -B "$BRANCH" FETCH_HEAD
+          # The Docker writer creates baseline PNGs as root. `git checkout`
+          # intentionally leaves those untracked paths in place, so replace
+          # the tree before copying the staged snapshot set into this clean,
+          # bot-owned branch checkout.
+          sudo rm -rf packages/testing/snapshots
           mkdir -p packages/testing/snapshots
           cp -R "$SNAPSHOT_STAGING/packages/testing/snapshots/." packages/testing/snapshots/
           git add packages/testing/snapshots
           if git diff --cached --quiet; then
-            echo "Snapshot baselines already match ${BASE_REF}; no PR needed."
+            echo "Snapshot baselines already match ${SOURCE_REF}; no PR needed."
             exit 0
           fi
           git commit -m "chore(snapshots): regenerate baselines from ${SOURCE_REF}"
           git push origin "$BRANCH" --force-with-lease
           BODY="Snapshot-only update generated by the update-baselines workflow from \`${SOURCE_REF}\`."
+          BODY="$BODY"$'\n\n'"Merge this follow-up into \`${SOURCE_REF}\` before merging its implementation PR."
           if [ -n "${PR_NUMBER:-}" ]; then
             BODY="$BODY"$'\n\n'"Related: #${PR_NUMBER}"
           fi
-          gh pr create \
-            --base "$BASE_REF" \
-            --head "$BRANCH" \
-            --title "chore(snapshots): regenerate from ${SOURCE_REF}" \
-            --body "$BODY"
+          EXISTING_PR=$(gh pr list --head "$BRANCH" --base "$SOURCE_REF" --state open --json number --jq '.[0].number // empty')
+          if [ -n "$EXISTING_PR" ]; then
+            gh pr edit "$EXISTING_PR" \
+              --title "chore(snapshots): regenerate from ${SOURCE_REF}" \
+              --body "$BODY"
+          else
+            gh pr create \
+              --base "$SOURCE_REF" \
+              --head "$BRANCH" \
+              --title "chore(snapshots): regenerate from ${SOURCE_REF}" \
+              --body "$BODY"
+          fi
 
       - name: Commit snapshots to source branch
         if: steps.changes.outputs.changed == 'true' && github.event.inputs.baseline_update_target == 'source_branch'

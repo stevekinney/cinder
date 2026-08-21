@@ -11,6 +11,7 @@ export type BaselineComponentScope = 'all' | string[];
 export type BaselineProvenance = {
   schemaVersion: typeof BASELINE_PROVENANCE_SCHEMA_VERSION;
   componentScope: BaselineComponentScope;
+  shard?: string;
   renderedSourceSha: string;
   playwrightVersion: string;
   osCodename: string;
@@ -20,6 +21,7 @@ export type BaselineProvenance = {
 
 export type BaselineProvenanceInput = {
   componentScope: BaselineComponentScope | string | undefined;
+  shard?: string;
   renderedSourceSha: string;
   playwrightVersion: string;
   osCodename: string;
@@ -57,6 +59,7 @@ export function createBaselineProvenance(input: BaselineProvenanceInput): Baseli
   return {
     schemaVersion: BASELINE_PROVENANCE_SCHEMA_VERSION,
     componentScope,
+    ...(input.shard === undefined ? {} : { shard: input.shard }),
     renderedSourceSha: input.renderedSourceSha,
     playwrightVersion: input.playwrightVersion,
     osCodename: input.osCodename,

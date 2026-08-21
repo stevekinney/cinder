@@ -107,6 +107,7 @@
   let renderedLiveRegionMessage = $state('');
   let liveRegionAnnouncementSequence = $state(0);
   let measuredGridWidth = $state<number | undefined>();
+  let measuredGridScrollportWidth = $state<number | undefined>();
   let isRightToLeft = $state(false);
 
   const activeSortModel = $derived(
@@ -187,6 +188,7 @@
     const updateGridMeasurement = (): void => {
       const rect = node.getBoundingClientRect();
       measuredGridWidth = rect.width || node.clientWidth || undefined;
+      measuredGridScrollportWidth = node.clientWidth || rect.width || undefined;
       isRightToLeft = getComputedStyle(node).direction === 'rtl';
     };
 
@@ -218,6 +220,11 @@
     shouldVirtualizeColumns
       ? columnModel.leftPinnedWidth + rowVirtualizer.totalWidth + columnModel.rightPinnedWidth
       : undefined,
+  );
+  const shouldShowColumnOverflowShadow = $derived(
+    gridContentWidth !== undefined &&
+      measuredGridScrollportWidth !== undefined &&
+      gridContentWidth > measuredGridScrollportWidth,
   );
   const gridTemplateColumns = $derived.by(() => {
     if (!shouldVirtualizeColumns) {
@@ -678,7 +685,10 @@
   }
 
   function collapseSelectionToActiveCell(): void {
-    selectionState.collapseToActiveCell();
+    const hasCellSelection = selectionState.selectedCellCoordinates.length > 0;
+    const hasRowSelection = resolvedSelectionModel.length > 0;
+    if (!hasCellSelection && !hasRowSelection) return;
+    if (hasCellSelection) selectionState.collapseToActiveCell();
     if (selectionMode === 'none') return;
 
     const row = sortedKeyedRows[activeRowIndex];
@@ -899,6 +909,7 @@
   data-cinder-sticky-header={stickyHeader ? 'true' : undefined}
   data-cinder-virtualized-rows={shouldVirtualizeRows ? 'true' : undefined}
   data-cinder-virtualized-columns={shouldVirtualizeColumns ? 'true' : undefined}
+  data-cinder-column-overflow={shouldShowColumnOverflowShadow ? 'true' : undefined}
   style:--_cinder-data-grid-template-columns={gridTemplateColumns}
   style:--_cinder-data-grid-content-width={gridContentWidth === undefined
     ? undefined

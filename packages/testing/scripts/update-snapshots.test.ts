@@ -2,6 +2,7 @@ import { describe, expect, it } from 'bun:test';
 
 import {
   provenanceComponentScope,
+  provenanceShard,
   snapshotUpdateEnvironment,
   startServerArguments,
 } from './update-snapshots.ts';
@@ -14,7 +15,7 @@ describe('update-snapshots helpers', () => {
       'run',
       '/work/packages/testing/scripts/start-server.ts',
       '--',
-      '--update-snapshots',
+      '--update-snapshots=all',
       '--retries=0',
       '--grep',
       'Button',
@@ -35,5 +36,12 @@ describe('update-snapshots helpers', () => {
     expect(provenanceComponentScope(undefined)).toBe('all');
     expect(provenanceComponentScope('')).toBe('all');
     expect(provenanceComponentScope('button')).toEqual(['button']);
+  });
+
+  it('records an explicit shard only when the update rendered one partition', () => {
+    expect(provenanceShard(undefined)).toBeUndefined();
+    expect(provenanceShard('')).toBeUndefined();
+    expect(provenanceShard('3/8')).toBe('3/8');
+    expect(provenanceShard(' 3/8 ')).toBe('3/8');
   });
 });

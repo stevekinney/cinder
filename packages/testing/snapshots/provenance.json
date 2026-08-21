@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "componentScope": "all",
-  "renderedSourceSha": "760560234ff791b91400d9f8465c32fd120301cc",
+  "componentScope": ["markdown-editor"],
+  "renderedSourceSha": "b6e0bdefc07f881c89a03033e658b437d2c440c7",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
   "architecture": "x64",

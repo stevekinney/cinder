@@ -7,6 +7,8 @@ import {
   dockerBrowserCommand,
   dockerImageTagForVersion,
   dockerRunArguments,
+  gitMetadataEnvironment,
+  gitMetadataMounts,
   hostOwnershipEnvironment,
   readPinnedPlaywrightVersion,
   run,
@@ -78,6 +80,7 @@ async function main(): Promise<void> {
 
   const extraArgs = process.argv.slice(2);
   const browserCommand = dockerBrowserCommand(extraArgs);
+  const metadataMounts = gitMetadataMounts(repoRoot);
 
   console.log(`Running browser suite inside ${imageTag}...`);
   const runExit = await run(
@@ -86,7 +89,11 @@ async function main(): Promise<void> {
       repoRoot,
       imageTag,
       containerCommand: browserCommand,
-      environment: dockerBrowserEnvironment(process.env),
+      gitMetadataMounts: metadataMounts,
+      environment: {
+        ...dockerBrowserEnvironment(process.env),
+        ...gitMetadataEnvironment(metadataMounts),
+      },
     }),
     { cwd: repoRoot, onSpawn: (child) => (activeChild = child) },
   );

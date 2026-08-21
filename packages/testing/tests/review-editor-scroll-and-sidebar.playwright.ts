@@ -87,11 +87,9 @@ function anchor(mount: Locator, threadId: string): Locator {
 }
 
 /**
- * Installs Playwright's fake clock AND pauses it. `install()` alone does not
- * freeze time — per its own docs, "Date.now will progress as the timers
- * fire" until `pauseAt()`/`resume()`/`runFor()`/`fastForward()` is called —
- * so `setTimeout` callbacks scheduled after a bare `install()` still fire on
- * ordinary wall-clock delay. Without the explicit pause here, the 350ms
+ * Installs and pauses Playwright's fake clock. `install()` alone does not
+ * freeze time—per its own docs, "Date.now will progress as the timers
+ * fire". `pauseAt()` is the explicit pause used here; without it, the 350ms
  * timers under test in this file fire during Playwright's own auto-retrying
  * `expect()` polling (which spans real wall-clock time) regardless of
  * `runFor`, making a `runFor(400)` step meaningless for actually gating when

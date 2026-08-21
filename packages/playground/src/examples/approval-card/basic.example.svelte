@@ -6,8 +6,6 @@
 
 <script lang="ts">
   import { ApprovalCard } from '@lostgradient/cinder/approval-card';
-
-  const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
 </script>
 
 <ApprovalCard
@@ -30,7 +28,6 @@
   snapshotId="snapshot-01JZ8"
   policyVersion="policy-2026-06"
   idempotencyKey="approval-command-01"
-  {expiresAt}
   state="pending"
   editableArgs={true}
   onResolve={() => undefined}

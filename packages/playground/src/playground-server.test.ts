@@ -38,6 +38,7 @@ import {
 import {
   PORT,
   createSharedDisposer,
+  eagerPrebuildComponents,
   handleRequest,
   isWarmupStable,
   mergeGeneratedSchemaMetadata,
@@ -61,6 +62,31 @@ import {
   setPreparedShellServerRenderer,
   shellBuildSucceeded,
 } from './ssr-renderer.ts';
+
+describe('eagerPrebuildComponents', () => {
+  const components = ['avatar', 'button', 'image'];
+
+  it('keeps the full prebuild when no visual component scope is supplied', () => {
+    expect(eagerPrebuildComponents(components, undefined)).toEqual(components);
+  });
+
+  it('prebuilds only the requested known component slugs', () => {
+    expect(eagerPrebuildComponents(components, 'image, avatar, image')).toEqual([
+      'avatar',
+      'image',
+    ]);
+  });
+
+  it('rejects a scoped prebuild containing an unknown component', () => {
+    expect(() => eagerPrebuildComponents(components, 'avatar,ghost')).toThrow(
+      /unknown playground component slugs: ghost/,
+    );
+  });
+
+  it('accepts a compose-only component scope without adding it to the sidebar prebuild', () => {
+    expect(eagerPrebuildComponents(components, 'tab', [...components, 'tab'])).toEqual([]);
+  });
+});
 
 const FIXTURE_COMPONENT = 'button';
 const FIXTURE_SCENARIO = 'primary';

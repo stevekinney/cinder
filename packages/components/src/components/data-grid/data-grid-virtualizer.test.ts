@@ -154,9 +154,10 @@ type HydrationSnapshot = {
 async function captureVirtualizedGridHydrationSnapshot(): Promise<HydrationSnapshot> {
   const result = await renderThenHydrate(LogDataGrid, sourcePath, {
     rows: makeRows(100),
-    columns,
+    columns: makeMetricColumns(4),
     getRowId: getLogRowId,
     virtualizeRows: true,
+    virtualizeColumns: true,
     rowHeight: 20,
     'aria-label': 'Logs',
   });
@@ -433,12 +434,13 @@ describe('DataGrid row virtualization', () => {
   test('keeps full ARIA counts through server render and hydration', () => {
     expect(virtualizedGridHydrationSnapshot.ssrHtml).toContain('role="grid"');
     expect(virtualizedGridHydrationSnapshot.ssrHtml).toContain('aria-rowcount="101"');
-    expect(virtualizedGridHydrationSnapshot.ssrHtml).toContain('aria-colcount="2"');
+    expect(virtualizedGridHydrationSnapshot.ssrHtml).toContain('aria-colcount="4"');
+    expect(virtualizedGridHydrationSnapshot.ssrHtml).not.toContain('data-cinder-column-overflow');
     expect(virtualizedGridHydrationSnapshot.ssrHtml).not.toContain('aria-activedescendant');
     expect(virtualizedGridHydrationSnapshot.ssrHtml).not.toContain('role="gridcell"');
 
     expect(virtualizedGridHydrationSnapshot.rowCount).toBe('101');
-    expect(virtualizedGridHydrationSnapshot.columnCount).toBe('2');
+    expect(virtualizedGridHydrationSnapshot.columnCount).toBe('4');
   });
 
   test('renders a horizontal column window while pinned columns stay mounted', async () => {
@@ -460,6 +462,7 @@ describe('DataGrid row virtualization', () => {
 
       expect(grid.getAttribute('aria-colcount')).toBe(String(columnCount));
       expect(grid.getAttribute('data-cinder-virtualized-columns')).toBe('true');
+      expect(grid.getAttribute('data-cinder-column-overflow')).toBe('true');
       expect(gridCells(container).length).toBeLessThan(columnCount);
       expect(container.querySelector('[data-cinder-column-key="metric0"]')).not.toBeNull();
       expect(container.querySelector('[data-cinder-column-key="metric1"]')).not.toBeNull();

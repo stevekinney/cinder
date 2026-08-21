@@ -18,7 +18,7 @@ const packageJsonPath = resolvePath(packageRoot, 'package.json');
 const repoRoot = resolvePath(packageRoot, '../..');
 
 export function startServerArguments(startServerPath: string, extraArgs: string[]): string[] {
-  return ['run', startServerPath, '--', '--update-snapshots', '--retries=0', ...extraArgs];
+  return ['run', startServerPath, '--', '--update-snapshots=all', '--retries=0', ...extraArgs];
 }
 
 export function snapshotUpdateEnvironment(environment: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
@@ -31,6 +31,11 @@ export function provenanceComponentScope(
   return rawComponentScope !== undefined && rawComponentScope.trim().length > 0
     ? normalizeProvenanceComponentScope(rawComponentScope)
     : 'all';
+}
+
+export function provenanceShard(rawShard: string | undefined): string | undefined {
+  const shard = rawShard?.trim();
+  return shard === undefined || shard.length === 0 ? undefined : shard;
 }
 
 export function readRenderedSourceSha(cwd: string): string {
@@ -99,10 +104,12 @@ async function main(): Promise<void> {
   });
 
   if (exitCode === 0) {
+    const shard = provenanceShard(process.env['CINDER_TEST_SHARD']);
     await writeBaselineProvenance(
       resolvePath(packageRoot, 'snapshots', 'provenance.json'),
       createBaselineProvenance({
         componentScope: provenanceComponentScope(process.env['CINDER_TEST_COMPONENTS']),
+        ...(shard === undefined ? {} : { shard }),
         renderedSourceSha,
         playwrightVersion: result.playwrightVersion,
         osCodename: readOsCodename() ?? '<missing /etc/os-release>',
