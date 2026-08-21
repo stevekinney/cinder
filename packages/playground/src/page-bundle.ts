@@ -209,10 +209,16 @@ document.addEventListener(
   { capture: true },
 );
 
-// A shared or bookmarked Playground URL is intentionally interactive from the
-// first paint. Canonical documentation URLs keep their runtime behind explicit
-// reader interaction, leaving the server-rendered document immediately useful.
-if (shouldHydrate && new URLSearchParams(window.location.search).get('view') === 'playground') {
+// Snapshot and preview routes intentionally have an empty server-rendered
+// target, so they must mount immediately. A shared or bookmarked Playground
+// URL is likewise interactive from first paint. Canonical documentation URLs
+// keep their runtime behind explicit reader interaction, leaving the
+// server-rendered document immediately useful.
+if (
+  snapshotMode ||
+  previewOnly ||
+  (shouldHydrate && new URLSearchParams(window.location.search).get('view') === 'playground')
+) {
   void hydratePage().catch((error) =>
     console.error('[cinder playground] failed to hydrate Playground view:', error),
   );
