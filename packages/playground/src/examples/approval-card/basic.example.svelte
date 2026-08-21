@@ -4,6 +4,10 @@
     'A pending command approval with sandbox context, arguments, environment names, and editable arguments.';
 </script>
 
+<script lang="ts">
+  import { ApprovalCard } from '@lostgradient/cinder/approval-card';
+</script>
+
 <ApprovalCard
   tool={{ name: 'deploy-cloud', risk: 'medium' }}
   sandbox={{
