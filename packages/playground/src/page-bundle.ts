@@ -75,6 +75,7 @@ export async function compilePageBundleArtifacts(
     .join('\n');
 
   const entrySource = `import { hydrate, mount } from 'svelte';
+import { NAV_FILTER_STORAGE_KEY } from '../../src/component-page-theme.ts';
 
 const scenarioLoaders: Record<string, () => Promise<unknown>> = {
 ${scenarioLoaders}
@@ -103,6 +104,12 @@ const previewOnly = new URLSearchParams(window.location.search).get('preview') =
 // therefore read from the URL exactly as the server read it, and the same
 // documentation/examples data islands feed both sides.
 const snapshotMode = new URLSearchParams(window.location.search).get('snapshot') === '1';
+let hasPersistedNavFilter = false;
+try {
+  hasPersistedNavFilter = sessionStorage.getItem(NAV_FILTER_STORAGE_KEY) !== null;
+} catch {
+  // Private mode or disabled storage: canonical documentation stays static.
+}
 const hasServerRenderedContent = target.firstElementChild !== null;
 const shouldHydrate = hasServerRenderedContent && !snapshotMode && !previewOnly;
 
@@ -201,9 +208,20 @@ document.addEventListener(
     const input = eventElement(event);
     if (!(input instanceof HTMLInputElement || input instanceof HTMLTextAreaElement)) return;
     const value = input.value;
+    const inputId = input.id;
+    if (inputId === 'sidebar-filter') {
+      try {
+        sessionStorage.setItem(NAV_FILTER_STORAGE_KEY, value);
+      } catch {
+        // Private mode or disabled storage: preserve the current input while
+        // the component hydrates, even though it cannot survive navigation.
+      }
+    }
     hydrateAfter(event, () => {
-      input.value = value;
-      input.dispatchEvent(new Event('input', { bubbles: true }));
+      const hydratedInput = document.getElementById(inputId);
+      if (!(hydratedInput instanceof HTMLInputElement || hydratedInput instanceof HTMLTextAreaElement)) return;
+      hydratedInput.value = value;
+      hydratedInput.dispatchEvent(new Event('input', { bubbles: true }));
     });
   },
   { capture: true },
@@ -217,6 +235,7 @@ document.addEventListener(
 if (
   snapshotMode ||
   previewOnly ||
+  hasPersistedNavFilter ||
   (shouldHydrate && new URLSearchParams(window.location.search).get('view') === 'playground')
 ) {
   void hydratePage().catch((error) =>

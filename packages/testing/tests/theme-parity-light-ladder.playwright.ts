@@ -442,7 +442,7 @@ test.describe('theme-parity — light surface ladder + button vividness floor', 
       const context = await browser.newContext({ colorScheme, reducedMotion: 'reduce' });
       try {
         const page = await context.newPage();
-        await page.goto('/page/button', { waitUntil: 'load' });
+        await page.goto('/page/button?snapshot=1', { waitUntil: 'load' });
 
         const primarySelector = ".cinder-button[data-cinder-variant='primary']";
         // Resolve the pressed fill + label tokens to painted colors via a probe:

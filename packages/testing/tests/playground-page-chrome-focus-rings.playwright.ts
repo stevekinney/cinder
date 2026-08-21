@@ -166,6 +166,10 @@ async function openButtonDocumentationPage(page: Page): Promise<Frame> {
   // page renders every section at once, so its presence means the
   // documentation payload has hydrated.
   await expect(page.getByRole('heading', { level: 1, name: 'Button' })).toBeVisible();
+  // Canonical documentation is progressively hydrated. A reader interaction
+  // upgrades it before this test exercises focusable example chrome.
+  await page.getByRole('button', { name: 'Copy import' }).click();
+  await expect(page.locator('.dx-example').first()).toBeVisible();
   return page.mainFrame();
 }
 
