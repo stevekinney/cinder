@@ -110,9 +110,9 @@ export const test = base.extend<Fixtures>({
         await page.waitForSelector('#app > *', { state: 'visible', timeout: 20_000 });
         await page.waitForFunction(
           () =>
-            [
-              ...document.querySelectorAll<HTMLElement>('.snapshot-examples .example-preview'),
-            ].every((preview) => preview.childElementCount > 0),
+            Array.from(
+              document.querySelectorAll<HTMLElement>('.snapshot-examples .example-preview'),
+            ).every((preview) => preview.childElementCount > 0),
           undefined,
           { timeout: 20_000 },
         );
