@@ -56,7 +56,7 @@ async function computed(page: Page, selector: string, property: string): Promise
 
 test.describe('alternate-theme — documented token overrides reach components', () => {
   test('overriding --cinder-accent reaches a primary Button background', async ({ page }) => {
-    await page.goto('/page/button?tab=examples', { waitUntil: 'load' });
+    await page.goto('/page/button?snapshot=1', { waitUntil: 'load' });
 
     const primarySelector = ".cinder-button[data-cinder-variant='primary']";
     const stock = await computed(page, primarySelector, 'background-color');
@@ -71,7 +71,7 @@ test.describe('alternate-theme — documented token overrides reach components',
   });
 
   test('overriding --cinder-radius-lg reaches a Card border-radius', async ({ page }) => {
-    await page.goto('/page/card?tab=examples', { waitUntil: 'load' });
+    await page.goto('/page/card?snapshot=1', { waitUntil: 'load' });
 
     const cardSelector = '.cinder-card';
     const stock = await computed(page, cardSelector, 'border-top-left-radius');
@@ -88,7 +88,7 @@ test.describe('alternate-theme — documented token overrides reach components',
   // The Surface component's base rule is `background: var(--cinder-surface)`.
   // A hard-coded background on .cinder-surface would leave these values equal.
   test('overriding --cinder-surface reaches a Surface component background', async ({ page }) => {
-    await page.goto('/page/surface?tab=examples', { waitUntil: 'load' });
+    await page.goto('/page/surface?snapshot=1', { waitUntil: 'load' });
 
     const surfaceSelector = '.cinder-surface';
     const stock = await computed(page, surfaceSelector, 'background-color');
@@ -106,7 +106,7 @@ test.describe('alternate-theme — documented token overrides reach components',
   // Input CSS: `border: 1px solid var(--cinder-border)`.
   // A hard-coded border-color on .cinder-input would leave these equal.
   test('overriding --cinder-border reaches an Input border-color', async ({ page }) => {
-    await page.goto('/page/input?tab=examples', { waitUntil: 'load' });
+    await page.goto('/page/input?snapshot=1', { waitUntil: 'load' });
 
     const inputSelector = '.cinder-input';
     const stock = await computed(page, inputSelector, 'border-top-color');
@@ -131,7 +131,7 @@ test.describe('alternate-theme — documented token overrides reach components',
   test('overriding --cinder-danger reaches an Alert danger-variant background', async ({
     page,
   }) => {
-    await page.goto('/page/alert?tab=examples', { waitUntil: 'load' });
+    await page.goto('/page/alert?snapshot=1', { waitUntil: 'load' });
 
     const dangerAlertSelector = ".cinder-alert[data-cinder-variant='danger']";
     const stock = await computed(page, dangerAlertSelector, 'background-color');
@@ -188,7 +188,7 @@ test.describe('alternate-theme — documented token overrides reach components',
   test('overriding --cinder-ring-width reaches a focused Button outline-width', async ({
     page,
   }) => {
-    await page.goto('/page/button?tab=examples', { waitUntil: 'load' });
+    await page.goto('/page/button?snapshot=1', { waitUntil: 'load' });
 
     await focusPrimaryButton(page);
     const stock = await page.evaluate(() => getComputedStyle(document.activeElement!).outlineWidth);
@@ -214,7 +214,7 @@ test.describe('alternate-theme — documented token overrides reach components',
   // Stock value: 1rem (16px). Alternate theme: 2.5rem (40px).
   // A hard-coded padding would not change, leaving these equal.
   test('overriding --cinder-space-4 reaches a Card body padding', async ({ page }) => {
-    await page.goto('/page/card?tab=examples', { waitUntil: 'load' });
+    await page.goto('/page/card?snapshot=1', { waitUntil: 'load' });
 
     const bodySelector = '.cinder-card__body';
     const stock = await computed(page, bodySelector, 'padding-top');
