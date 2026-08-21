@@ -104,10 +104,11 @@ async function installPausedClock(page: Page): Promise<void> {
   await page.clock.install();
   // Read the installed browser clock rather than Node's wall clock. The latter
   // can already be behind by the time `pauseAt` reaches the page, which makes
-  // Playwright reject the request as a fast-forward into the past. The small
-  // advance stays below the 350ms timer whose ordering these tests exercise.
+  // Playwright reject the request as a fast-forward into the past. Give the
+  // protocol a full minute of headroom; the interactions below have not run
+  // yet, so none of the 350ms timers under test have been scheduled.
   const currentTime = await page.evaluate(() => Date.now());
-  await page.clock.pauseAt(new Date(currentTime + 100));
+  await page.clock.pauseAt(new Date(currentTime + 60_000));
 }
 
 test.describe('ReviewEditor.scrollToThread (cinder#1316, cinder#1317)', () => {
