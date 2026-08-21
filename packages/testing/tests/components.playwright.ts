@@ -353,6 +353,15 @@ for (const entry of entries) {
               ? { ...key, fixture: `${fixture.name}-resting` }
               : key;
 
+            // Component mount effects may claim focus after the route reports
+            // ready. A resting capture must not inherit that incidental focus
+            // ring; focused states are captured only by explicit fixtures.
+            await page.evaluate(() => {
+              if (document.activeElement instanceof HTMLElement) {
+                document.activeElement.blur();
+              }
+            });
+
             // Every fixture has a resting-state capture. Interaction fixtures
             // use a second key so their resulting state remains pixel-checked.
             await captureScreenshot(page, restingKey, masks !== undefined ? { masks } : undefined);
