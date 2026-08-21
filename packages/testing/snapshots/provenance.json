@@ -1,7 +1,9 @@
 {
   "schemaVersion": 1,
-  "componentScope": "all",
-  "renderedSourceSha": "760560234ff791b91400d9f8465c32fd120301cc",
+  "componentScope": [
+    "data-grid"
+  ],
+  "renderedSourceSha": "832c64feacf7e29d354ef735440f4562e74abe46",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
   "architecture": "x64",
