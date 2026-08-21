@@ -81,6 +81,7 @@
 </script>
 
 <div
+  data-testid="chat-private-history-prepend-stress"
   style="display: flex; flex-direction: column; gap: 0.5rem; height: 100dvh; max-height: 40rem; border: 1px solid var(--cinder-border-muted);"
 >
   <div style="padding: 0.5rem 1rem; display: flex; gap: 0.75rem; align-items: center;">

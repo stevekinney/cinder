@@ -6,13 +6,31 @@
  * rendered behavior inside a real Chat surface with keyboard Tab navigation:
  * focus must come from the keyboard so Chromium applies :focus-visible.
  */
+import { resolve } from 'node:path';
+
 import { expect, test, type Browser, type Locator, type Page } from '@playwright/test';
 
+import {
+  findFixture,
+  loadFixtureFile,
+} from '../../components/scripts/lib/visual-fixtures/loader.ts';
 import { boxShadowLayerCount, waitForFocusStyleFrame } from '../src/helpers/focus-ring.ts';
 import { PLAYGROUND_URL } from '../src/helpers/playground-url.ts';
 import { THEME_STORAGE_KEY } from '../src/helpers/theme.ts';
 
-const HARNESS = '#example-mount-interactive-harness';
+const HARNESS = '[data-testid="chat-private-harness"]';
+const privateFixtureFile = await loadFixtureFile(
+  resolve(import.meta.dirname, '../../chat/src/lib/components/chat/chat-fixtures.ts'),
+);
+
+if (
+  privateFixtureFile === null ||
+  findFixture(privateFixtureFile, 'private-harness') === undefined
+) {
+  throw new Error('Chat private harness fixture is missing.');
+}
+
+const PRIVATE_HARNESS_FIXTURE_HASH = privateFixtureFile.contentHash;
 
 type ChatHarnessPage = {
   page: Page;
@@ -43,7 +61,10 @@ async function openChatHarness(
   );
 
   const page = await context.newPage();
-  await page.goto('/page/chat?snapshot=1', { waitUntil: 'load' });
+  await page.goto(
+    `/page/chat?snapshot=1&fixture=private-harness&fixtureContentHash=${PRIVATE_HARNESS_FIXTURE_HASH}`,
+    { waitUntil: 'load' },
+  );
   await page.waitForSelector('#app > *', { state: 'visible', timeout: 20_000 });
 
   const harness = page.locator(HARNESS);
