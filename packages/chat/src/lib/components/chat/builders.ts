@@ -29,6 +29,18 @@ export {
 export { rewindBeforeMessage, rewindBeforePosition } from 'conversationalist/context';
 export type { RewindOptions } from 'conversationalist/context';
 
+// Transcript mutation helpers—canonical in-place edits (update, remove,
+// hide/show, replace a tool result) that keep message identity, role, order,
+// and creation time intact. Every helper is a no-op (returns the original
+// history unchanged) when given an unknown message or tool-call identifier.
+export {
+  removeMessage,
+  replaceToolResult,
+  setMessageHidden,
+  updateMessage,
+} from 'conversationalist';
+export type { MessageUpdate } from 'conversationalist';
+
 const DELIVERY_STATUS_METADATA_KEY = '_deliveryStatus';
 
 /** Mark a message as failed so Chat renders its retry affordance. */

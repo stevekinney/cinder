@@ -1,7 +1,17 @@
 import { describe, expect, it } from 'bun:test';
 
-import type { ConversationHistory, Message, ToolResult } from '../conversation-model.ts';
-import { getMessages, pairToolCallsWithResults } from './conversation.ts';
+import type {
+  ConversationHistory,
+  Message,
+  ToolAction,
+  ToolResult,
+} from '../conversation-model.ts';
+import {
+  findToolResultMessage,
+  getMessages,
+  getUnresolvedToolApprovals,
+  pairToolCallsWithResults,
+} from './conversation.ts';
 
 function message(overrides: Partial<Message> & Pick<Message, 'id'>): Message {
   return {
@@ -58,6 +68,240 @@ describe('getMessages', () => {
       'visible',
       'secret',
     ]);
+  });
+});
+
+describe('getUnresolvedToolApprovals', () => {
+  it('finds a tool-result message parked on action_required with an action', () => {
+    const pending: ToolResult & { action: ToolAction } = {
+      callId: 'call-1',
+      outcome: 'action_required',
+      content: null,
+      action: { type: 'approval', message: 'Allow this?' },
+    };
+    const result = message({ id: 'r1', role: 'tool-result', toolResult: pending });
+    const conversation = history([result]);
+
+    const approvals = getUnresolvedToolApprovals(conversation);
+    expect(approvals).toHaveLength(1);
+    expect(approvals[0]?.message.id).toBe('r1');
+    expect(approvals[0]?.result).toBe(pending);
+  });
+
+  it('excludes resolved (success/error) and action-less results', () => {
+    const success: ToolResult = { callId: 'call-1', outcome: 'success', content: null };
+    const errored: ToolResult = { callId: 'call-2', outcome: 'error', content: null };
+    const noAction: ToolResult = { callId: 'call-3', outcome: 'action_required', content: null };
+    const conversation = history([
+      message({ id: 'r1', role: 'tool-result', toolResult: success }),
+      message({ id: 'r2', role: 'tool-result', toolResult: errored }),
+      message({ id: 'r3', role: 'tool-result', toolResult: noAction }),
+    ]);
+
+    expect(getUnresolvedToolApprovals(conversation)).toHaveLength(0);
+  });
+
+  it('excludes hidden approvals by default and includes them with includeHidden', () => {
+    const pending: ToolResult = {
+      callId: 'call-1',
+      outcome: 'action_required',
+      content: null,
+      action: { type: 'approval' },
+    };
+    const conversation = history([
+      message({ id: 'r1', role: 'tool-result', toolResult: pending, hidden: true }),
+    ]);
+
+    expect(getUnresolvedToolApprovals(conversation)).toHaveLength(0);
+    expect(getUnresolvedToolApprovals(conversation, { includeHidden: true })).toHaveLength(1);
+  });
+
+  it('ignores non-tool-result messages carrying an incidental toolResult field', () => {
+    const conversation = history([
+      message({
+        id: 'a',
+        role: 'assistant',
+        toolResult: {
+          callId: 'call-1',
+          outcome: 'action_required',
+          content: null,
+          action: { type: 'approval' },
+        },
+      }),
+    ]);
+
+    expect(getUnresolvedToolApprovals(conversation)).toHaveLength(0);
+  });
+
+  it('excludes a call whose later result resolved a superseded action_required result', () => {
+    const pending: ToolResult = {
+      callId: 'call-1',
+      outcome: 'action_required',
+      content: null,
+      action: { type: 'approval' },
+    };
+    const resolved: ToolResult = { callId: 'call-1', outcome: 'success', content: null };
+    const conversation = history([
+      message({ id: 'r1', role: 'tool-result', toolResult: pending }),
+      message({ id: 'r2', role: 'tool-result', toolResult: resolved }),
+    ]);
+
+    expect(getUnresolvedToolApprovals(conversation)).toHaveLength(0);
+  });
+
+  it('uses the latest action_required result when a call has more than one', () => {
+    const first: ToolResult = {
+      callId: 'call-1',
+      outcome: 'action_required',
+      content: null,
+      action: { type: 'approval', message: 'first' },
+    };
+    const second: ToolResult = {
+      callId: 'call-1',
+      outcome: 'action_required',
+      content: null,
+      action: { type: 'approval', message: 'second' },
+    };
+    const conversation = history([
+      message({ id: 'r1', role: 'tool-result', toolResult: first }),
+      message({ id: 'r2', role: 'tool-result', toolResult: second }),
+    ]);
+
+    const approvals = getUnresolvedToolApprovals(conversation);
+    expect(approvals).toHaveLength(1);
+    expect(approvals[0]?.message.id).toBe('r2');
+    expect(approvals[0]?.result.action.message).toBe('second');
+  });
+
+  it('treats a hidden resolving result as superseding an earlier visible action_required result', () => {
+    const pending: ToolResult = {
+      callId: 'call-1',
+      outcome: 'action_required',
+      content: null,
+      action: { type: 'approval' },
+    };
+    const resolvedHidden: ToolResult = { callId: 'call-1', outcome: 'success', content: null };
+    const conversation = history([
+      message({ id: 'r1', role: 'tool-result', toolResult: pending }),
+      message({ id: 'r2', role: 'tool-result', toolResult: resolvedHidden, hidden: true }),
+    ]);
+
+    // The call is resolved even though the resolving message is hidden — a
+    // visible-but-superseded action_required must not leak through, with or
+    // without includeHidden.
+    expect(getUnresolvedToolApprovals(conversation)).toHaveLength(0);
+    expect(getUnresolvedToolApprovals(conversation, { includeHidden: true })).toHaveLength(0);
+  });
+
+  it('excludes a hidden latest action_required result by default and includes it with includeHidden', () => {
+    const pendingHidden: ToolResult = {
+      callId: 'call-1',
+      outcome: 'action_required',
+      content: null,
+      action: { type: 'approval' },
+    };
+    const conversation = history([
+      message({ id: 'r1', role: 'tool-result', toolResult: pendingHidden, hidden: true }),
+    ]);
+
+    expect(getUnresolvedToolApprovals(conversation)).toHaveLength(0);
+    const withHidden = getUnresolvedToolApprovals(conversation, { includeHidden: true });
+    expect(withHidden).toHaveLength(1);
+    expect(withHidden[0]?.message.id).toBe('r1');
+  });
+
+  it('orders results by each call id’s latest occurrence, not first-seen order', () => {
+    const pendingA: ToolResult = {
+      callId: 'call-a',
+      outcome: 'action_required',
+      content: null,
+      action: { type: 'approval' },
+    };
+    const pendingB: ToolResult = {
+      callId: 'call-b',
+      outcome: 'action_required',
+      content: null,
+      action: { type: 'approval' },
+    };
+    const pendingAAgain: ToolResult = {
+      callId: 'call-a',
+      outcome: 'action_required',
+      content: null,
+      action: { type: 'approval', message: 'second look' },
+    };
+    // call-a's latest occurrence (r3) comes after call-b's only occurrence
+    // (r2), so call-b must be reported first despite call-a appearing first.
+    const conversation = history([
+      message({ id: 'r1', role: 'tool-result', toolResult: pendingA }),
+      message({ id: 'r2', role: 'tool-result', toolResult: pendingB }),
+      message({ id: 'r3', role: 'tool-result', toolResult: pendingAAgain }),
+    ]);
+
+    const approvals = getUnresolvedToolApprovals(conversation);
+    expect(approvals.map((approval) => approval.message.id)).toEqual(['r2', 'r3']);
+  });
+});
+
+describe('findToolResultMessage', () => {
+  it('finds the tool-result message whose result carries the given call id', () => {
+    const result: ToolResult = { callId: 'call-1', outcome: 'success', content: null };
+    const conversation = history([
+      message({
+        id: 'm1',
+        role: 'tool-call',
+        toolCall: { id: 'call-1', name: 'fn', arguments: {} },
+      }),
+      message({ id: 'm2', role: 'tool-result', toolResult: result }),
+    ]);
+
+    const found = findToolResultMessage(conversation, 'call-1');
+    expect(found?.id).toBe('m2');
+  });
+
+  it('returns undefined for an unknown call id (no-op)', () => {
+    const conversation = history([
+      message({
+        id: 'm1',
+        role: 'tool-result',
+        toolResult: { callId: 'call-1', outcome: 'success', content: null },
+      }),
+    ]);
+
+    expect(findToolResultMessage(conversation, 'missing')).toBeUndefined();
+  });
+
+  it('respects includeHidden like getMessages', () => {
+    const result: ToolResult = { callId: 'call-1', outcome: 'success', content: null };
+    const conversation = history([
+      message({ id: 'm1', role: 'tool-result', toolResult: result, hidden: true }),
+    ]);
+
+    expect(findToolResultMessage(conversation, 'call-1')).toBeUndefined();
+    expect(findToolResultMessage(conversation, 'call-1', { includeHidden: true })?.id).toBe('m1');
+  });
+
+  it('returns the latest result when a call has more than one, matching pairToolCallsWithResults', () => {
+    const earlier: ToolResult = { callId: 'call-1', outcome: 'error', content: null };
+    const later: ToolResult = { callId: 'call-1', outcome: 'success', content: null };
+    const conversation = history([
+      message({ id: 'r1', role: 'tool-result', toolResult: earlier }),
+      message({ id: 'r2', role: 'tool-result', toolResult: later }),
+    ]);
+
+    expect(findToolResultMessage(conversation, 'call-1')?.id).toBe('r2');
+  });
+
+  it('treats a hidden latest result as superseding an earlier visible one for dedup, then applies includeHidden', () => {
+    const earlierVisible: ToolResult = { callId: 'call-1', outcome: 'error', content: null };
+    const laterHidden: ToolResult = { callId: 'call-1', outcome: 'success', content: null };
+    const conversation = history([
+      message({ id: 'r1', role: 'tool-result', toolResult: earlierVisible }),
+      message({ id: 'r2', role: 'tool-result', toolResult: laterHidden, hidden: true }),
+    ]);
+
+    // The hidden r2 is authoritative — r1 must never be returned as a stand-in.
+    expect(findToolResultMessage(conversation, 'call-1')).toBeUndefined();
+    expect(findToolResultMessage(conversation, 'call-1', { includeHidden: true })?.id).toBe('r2');
   });
 });
 

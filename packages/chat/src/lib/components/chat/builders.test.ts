@@ -16,8 +16,12 @@ import {
   createConversationHistory,
   markMessageDeliveryFailed,
   prependMessages,
+  removeMessage,
+  replaceToolResult,
   rewindBeforeMessage,
   rewindBeforePosition,
+  setMessageHidden,
+  updateMessage,
 } from './builders.ts';
 
 describe('chat conversation builders', () => {
@@ -205,5 +209,52 @@ describe('chat conversation builders', () => {
     expect(messages.map((message) => message.position)).toEqual(
       Array.from({ length: 12 }, (_, index) => index),
     );
+  });
+
+  test('re-exports the 0.7 transcript mutation helpers', async () => {
+    let conversation = createConversationHistory({ id: 'conversation-mutations' });
+    conversation = appendUserMessage(conversation, 'Original');
+    const messageId = conversation.ids[0]!;
+
+    const updated = updateMessage(conversation, messageId, { content: 'Edited' });
+    expect(updated.messages[messageId]!.content).toBe('Edited');
+    expect(updated.messages[messageId]!.role).toBe('user');
+
+    const hidden = setMessageHidden(updated, messageId, true);
+    expect(hidden.messages[messageId]!.hidden).toBe(true);
+    const visible = setMessageHidden(hidden, messageId, false);
+    expect(visible.messages[messageId]!.hidden).toBe(false);
+
+    let withTool = appendToolCall(visible, { id: 'call-1', name: 'lookup', arguments: {} });
+    withTool = await appendToolResultAsync(withTool, {
+      callId: 'call-1',
+      outcome: 'action_required',
+      content: null,
+      action: { type: 'approval' },
+    });
+    const resolved = replaceToolResult(withTool, 'call-1', {
+      callId: 'call-1',
+      outcome: 'success',
+      content: { approved: true },
+    });
+    const resolvedResult = resolved.ids
+      .map((id) => resolved.messages[id]!)
+      .find((message) => message.role === 'tool-result')!;
+    expect(resolvedResult.toolResult?.outcome).toBe('success');
+
+    const withoutMessage = removeMessage(resolved, messageId);
+    expect(withoutMessage.ids).not.toContain(messageId);
+
+    // Unknown identifiers are no-ops, returning the original history unchanged.
+    expect(updateMessage(conversation, 'missing', { content: 'x' })).toBe(conversation);
+    expect(removeMessage(conversation, 'missing')).toBe(conversation);
+    expect(setMessageHidden(conversation, 'missing', true)).toBe(conversation);
+    expect(
+      replaceToolResult(conversation, 'missing', {
+        callId: 'missing',
+        outcome: 'success',
+        content: null,
+      }),
+    ).toBe(conversation);
   });
 });

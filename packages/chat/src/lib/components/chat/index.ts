@@ -52,10 +52,14 @@ export {
   createConversationHistory,
   markMessageDeliveryFailed,
   prependMessages,
+  removeMessage,
+  replaceToolResult,
   rewindBeforeMessage,
   rewindBeforePosition,
+  setMessageHidden,
+  updateMessage,
 } from './builders.ts';
-export type { RewindOptions } from './builders.ts';
+export type { MessageUpdate, RewindOptions } from './builders.ts';
 
 // Streaming conversation builders — keep the immutable snapshot and Chat's
 // imperative streaming surface in sync through the package's own
@@ -122,14 +126,19 @@ export type {
 // Utilities
 export {
   CINDER_ARTIFACT_METADATA_KEY,
+  findToolResultMessage,
   formatMessageAsMarkdown,
   getMessageRoleLabel,
+  getMessages,
   getMessageText,
+  getUnresolvedToolApprovals,
   messagesToMarkdown,
   pairToolCallsWithResults,
   resolveMessageArtifact,
   type ChatExportOptions,
   type DeliveryStatus,
+  type ToolResultMessage,
+  type UnresolvedToolApproval,
 } from './utilities/index.ts';
 export type { StepInfo } from './utilities/types.ts';
 
