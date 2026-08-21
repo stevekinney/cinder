@@ -1,11 +1,18 @@
 /**
  * Chat data model helpers.
  *
- * Conversation-reading helpers ({@link getMessages}, {@link pairToolCallsWithResults})
- * and content/markdown utilities, all built on the Conversationalist model.
+ * Conversation-reading helpers ({@link getMessages}, {@link pairToolCallsWithResults},
+ * {@link getUnresolvedToolApprovals}, {@link findToolResultMessage}) and
+ * content/markdown utilities, all built on the Conversationalist model.
  */
 
-export { getMessages, pairToolCallsWithResults } from './conversation.ts';
+export {
+  findToolResultMessage,
+  getMessages,
+  getUnresolvedToolApprovals,
+  pairToolCallsWithResults,
+  type UnresolvedToolApproval,
+} from './conversation.ts';
 export {
   type ChatExportOptions,
   type ChatMessagePart,

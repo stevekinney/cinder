@@ -40,7 +40,7 @@ describe('Chat package ownership boundary', () => {
   test('keeps host-supplied runtime singletons peer-only and owns its conversation-model dependencies', () => {
     expect(() => assertSourceManifest(chatManifest)).not.toThrow();
     expect(chatManifest.dependencies).toEqual({
-      conversationalist: '^0.6.1',
+      conversationalist: '^0.7.0',
       'decode-named-character-reference': '^1.3.0',
       'micromark-util-decode-numeric-character-reference': '^2.0.0',
       zod: '4.4.3',

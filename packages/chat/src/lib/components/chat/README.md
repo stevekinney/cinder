@@ -159,6 +159,58 @@ async editMessage({ messageId, content }) {
 `RewindOptions` bag (`preserveToolPairs: false` cuts strictly at the boundary,
 leaving a straddled tool call pending).
 
+### Transcript mutation and query helpers
+
+`@lostgradient/chat` re-exports Conversationalist's canonical transcript
+mutation and query helpers so consumers never hand-walk `conversation.ids` /
+`conversation.messages` or import `conversationalist` directly:
+
+```ts
+import {
+  findToolResultMessage,
+  getMessages,
+  getUnresolvedToolApprovals,
+  removeMessage,
+  replaceToolResult,
+  setMessageHidden,
+  updateMessage,
+} from '@lostgradient/chat';
+
+// Edit a message's content in place, keeping identity, role, order, and
+// creation time intact.
+conversation = updateMessage(conversation, messageId, { content: 'Edited' });
+
+// Hide or reveal a message without removing it.
+conversation = setMessageHidden(conversation, messageId, true);
+
+// Remove a message and renumber the surviving positions.
+conversation = removeMessage(conversation, messageId);
+
+// Swap in the final outcome for a tool call that was parked on
+// `action_required` once the consumer approves or denies it.
+conversation = replaceToolResult(conversation, toolCallId, {
+  callId: toolCallId,
+  outcome: 'success',
+  content: { approved: true },
+});
+```
+
+`updateMessage`, `removeMessage`, `setMessageHidden`, and `replaceToolResult`
+are no-ops—they return the original history unchanged—when given an unknown
+message or tool-call identifier, so callers do not need to guard against a
+stale ID.
+
+`getMessages(conversation, { includeHidden? })` returns the ordered,
+non-hidden messages Chat renders (pass `includeHidden: true` to include hidden
+ones too). `getUnresolvedToolApprovals(conversation)` finds every
+`tool-result` message still parked on `outcome: 'action_required'` with a
+pending `action`—the transcript-level source of truth for "does this
+conversation have an approval waiting," independent of any UI-only
+approved/denied state. `findToolResultMessage(conversation, toolCallId)` locates
+the `tool-result` message for a given tool-call ID, which `replaceToolResult`
+needs. Both query helpers accept the same `{ includeHidden? }` option as
+`getMessages`.
+
 > [!WARNING] `ChatAdapter.subscribe` runs inside Chat's own effect
 > Chat opens `subscribe` from inside its internal mount `$effect`, so a
 > synchronous `$state` write inside `subscribe` can throw
