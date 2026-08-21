@@ -106,7 +106,7 @@ async function fixtureContentHash(
     const hostPath = resolveFixtureHostPath(entry, fixture);
     hostInputs.push({
       path: fixture.host.replaceAll('\\', '/'),
-      contents: await Bun.file(hostPath).text(),
+      contents: await readFile(hostPath, 'utf8'),
     });
   }
 

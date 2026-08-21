@@ -25,3 +25,24 @@ it('loads a static fixture file through the Node filesystem boundary', async () 
   const fixtureFile = await loadFixtureFile(fixturePath);
   expect(fixtureFile?.fixtures[0]?.name).toBe('private-harness');
 });
+
+it('loads and hashes a host fixture through the Node filesystem boundary', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'visual-fixture-loader-test-'));
+  temporaryDirectories.push(directory);
+  const fixtureDirectory = join(directory, 'chat');
+  const fixturePath = join(fixtureDirectory, 'chat-fixtures.ts');
+  mkdirSync(fixtureDirectory);
+  writeFileSync(
+    fixturePath,
+    "export default [{ name: 'private-harness', props: {}, host: './private-harness.fixture.svelte' }];\n",
+    'utf8',
+  );
+  writeFileSync(
+    join(fixtureDirectory, 'private-harness.fixture.svelte'),
+    '<div>Fixture</div>\n',
+    'utf8',
+  );
+
+  const fixtureFile = await loadFixtureFile(fixturePath);
+  expect(fixtureFile?.contentHash).toMatch(/^[a-f0-9]{64}$/);
+});
