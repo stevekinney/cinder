@@ -863,7 +863,7 @@ describe('JsonSchemaEditor — controlled and uncontrolled schema inputs', () =>
     );
   });
 
-  test('restores the latest authority when a second request is pending', async () => {
+  test('preserves the pending controlled commit when a later edit is blocked', async () => {
     const requests: string[] = [];
     const pendingSettlement = new Promise<never>(() => {});
     const { container } = render(JsonSchemaEditorImplementation, {
@@ -889,7 +889,10 @@ describe('JsonSchemaEditor — controlled and uncontrolled schema inputs', () =>
     }
 
     expect(requests).toEqual(['{\n  "type": "number"\n}', '{\n  "type": "boolean"\n}']);
-    expect(container.textContent).toContain('"type": "number"');
+    expect(container.textContent).toContain('"type": "boolean"');
+    expect(within(container).getByRole('button', { name: 'Undo' }).hasAttribute('disabled')).toBe(
+      false,
+    );
   });
 
   test('moves focus to Edit JSON when controlled sync closes a remounted dirty draft', async () => {

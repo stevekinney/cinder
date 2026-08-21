@@ -222,10 +222,7 @@
     if (schemaKey !== lastSchemaKey) return;
 
     if (pendingControlledChange !== undefined) {
-      synchroniseControlledSchema(
-        controlledSchemaAuthority ?? schema,
-        editorState.lastChangeAction,
-      );
+      editorState.restorePendingControlledCommit(pendingControlledChange.jsonString);
       return;
     }
 

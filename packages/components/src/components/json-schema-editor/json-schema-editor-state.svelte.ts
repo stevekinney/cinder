@@ -594,6 +594,9 @@ export function createEditorState(options: CreateEditorStateOptions) {
       }
 
       if (history) {
+        if (controlled && pendingControlledHistory === null) {
+          pendingControlledHistory = history.snapshot();
+        }
         history.commit(schema, { label: 'apply JSON' });
       } else {
         history = createSchemaHistory(schema, options.maxHistory);
@@ -620,7 +623,9 @@ export function createEditorState(options: CreateEditorStateOptions) {
       // Controlled requests can be rejected independently. Keep each request
       // as a distinct entry so reconciliation can restore the authoritative
       // value without replacing an earlier optimistic edit.
-      if (controlled) pendingControlledHistory = history.snapshot();
+      if (controlled && pendingControlledHistory === null) {
+        pendingControlledHistory = history.snapshot();
+      }
       history.commit(next, controlled ? { label: commitOptions?.label } : commitOptions);
       jsonDraftText = serialise(history.current);
       lastChangeAction = 'commit';
@@ -764,6 +769,19 @@ export function createEditorState(options: CreateEditorStateOptions) {
       const normalised = normaliseSchemaInput(schemaInput);
       if (!normalised.ok) return false;
       history.replaceCurrent(normalised.schema);
+      pendingControlledHistory = null;
+      jsonDraftText = normalised.canonicalText;
+      const epoch = beginValidationCycle();
+      void refreshValidation(epoch);
+      return true;
+    },
+
+    restorePendingControlledCommit(schemaInput: JsonSchemaValue | string): boolean {
+      if (!history || pendingControlledHistory === null) return false;
+      const normalised = normaliseSchemaInput(schemaInput);
+      if (!normalised.ok) return false;
+      history.restore(pendingControlledHistory);
+      history.commit(normalised.schema, { label: 'apply JSON' });
       pendingControlledHistory = null;
       jsonDraftText = normalised.canonicalText;
       const epoch = beginValidationCycle();
