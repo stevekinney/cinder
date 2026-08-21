@@ -604,13 +604,13 @@ jobs:
         if: "always() && needs.playwright-lane.result != 'skipped' && (needs.scope.result != 'success' || needs.scope.outputs.component_scope_mode == 'full')"
         run: bunx playwright merge-reports --reporter html packages/testing/blob-reports
       - name: Merge sharded visual reports
-        if: "always() && needs.playwright-visual.result != 'skipped'"
+        if: "always() && needs.playwright-visual.result != 'skipped' && (github.event_name != 'workflow_dispatch' || github.event.inputs.mode == 'report')"
         uses: actions/download-artifact@v8
         with:
           pattern: visual-report-*
           path: packages/testing/visual-reports
       - name: Publish merged visual report
-        if: "always() && needs.playwright-visual.result != 'skipped'"
+        if: "always() && needs.playwright-visual.result != 'skipped' && (github.event_name != 'workflow_dispatch' || github.event.inputs.mode == 'report')"
         run: |
           set -euo pipefail
           REPORTS=packages/testing/visual-reports
@@ -626,7 +626,7 @@ jobs:
           retention-days: 14
           if-no-files-found: warn
       - name: Upload merged visual report
-        if: "always() && needs.playwright-visual.result != 'skipped'"
+        if: "always() && needs.playwright-visual.result != 'skipped' && (github.event_name != 'workflow_dispatch' || github.event.inputs.mode == 'report')"
         uses: actions/upload-artifact@v7
         with:
           name: visual-report

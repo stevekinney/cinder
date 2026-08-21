@@ -88,8 +88,14 @@
       closeColorPanel();
       return;
     }
-    colorTokenPanelModule ??= import('./color-token-panel.svelte');
-    await colorTokenPanelModule;
+    try {
+      colorTokenPanelModule ??= import('./color-token-panel.svelte');
+      await colorTokenPanelModule;
+    } catch (error) {
+      colorTokenPanelModule = null;
+      console.error('[cinder playground] failed to load the color token panel:', error);
+      return;
+    }
     isColorPanelOpen = true;
   }
 

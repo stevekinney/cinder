@@ -184,7 +184,7 @@ document.addEventListener(
     const button = eventElement(event)?.closest('button');
     if (button === null) return;
     if (button.getAttribute('aria-label') === 'Copy import') {
-      const source = button.previousElementSibling?.textContent;
+      const source = button.closest('.dx-import')?.querySelector('.dx-import__code')?.textContent;
       if (source !== null && source !== undefined) {
         void navigator.clipboard?.writeText(source).catch(() => undefined);
       }
