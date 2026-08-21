@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 import {
@@ -34,8 +35,7 @@ export function resolveFixtureFilePath(
 }
 
 export async function loadFixtureFile(sourcePath: string): Promise<LoadedFixtureFile | null> {
-  const file = Bun.file(sourcePath);
-  if (!(await file.exists())) return null;
+  if (!existsSync(sourcePath)) return null;
 
   const result = await loadStaticFixtureFile(sourcePath);
   if (result.kind === 'skipped') return null;
