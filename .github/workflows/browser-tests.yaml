@@ -525,6 +525,7 @@ jobs:
   # the host runner. Ordinary full Playwright coverage stays in the pinned
   # Playwright container above.
   playwright-visual:
+    name: ${{ github.event_name == 'workflow_dispatch' && format('playwright-visual ({0})', github.event.inputs.mode) || 'playwright-visual' }}
     needs: scope
     # Block pull requests and merge-queue entries after the report-mode soak.
     # Manual dispatch keeps its explicit mode for diagnostics.
@@ -586,7 +587,7 @@ jobs:
           if-no-files-found: warn
 
   playwright:
-    name: playwright
+    name: ${{ github.event_name == 'workflow_dispatch' && format('playwright ({0})', github.event.inputs.mode) || 'playwright' }}
     needs: [scope, playwright-lane, playwright-visual]
     if: '!cancelled()'
     runs-on: ubuntu-latest
@@ -663,6 +664,7 @@ jobs:
           fi
 
   baseline-coverage:
+    name: ${{ github.event_name == 'workflow_dispatch' && 'baseline-coverage (diagnostic)' || 'baseline-coverage' }}
     # Runs on every trigger, including pull requests. The check is scoped per
     # slug: a component is enforced only once it has adopted baselines, so
     # incremental adoption no longer makes this unconditionally red. Components
