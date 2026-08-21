@@ -162,6 +162,29 @@ describe('createExampleMountHelpers().mountScenario', () => {
     expect(settled).toEqual([{ mountKey: 'example-mount-lazy', error: undefined }]);
     cleanup();
   });
+
+  it('reports an invalid lazy module as a settled mount failure', async () => {
+    (window as CinderWindow).__CINDER_SCENARIO_LOADERS__ = {
+      invalid: async () => ({ default: 'not a component' }),
+    };
+    const settled: Array<{ mountKey: string; error: unknown }> = [];
+    const mountErrors: Record<string, MountErrorDetail | undefined> = {};
+    const { mountScenario } = createExampleMountHelpers({
+      mountErrors,
+      onScenarioSettled: (mountKey, error) => settled.push({ mountKey, error }),
+    });
+    const element = document.createElement('div');
+    element.id = 'example-mount-invalid';
+    document.body.appendChild(element);
+
+    mountScenario('invalid')(element);
+    await Promise.resolve();
+
+    expect(settled).toHaveLength(1);
+    expect(settled[0]?.mountKey).toBe('example-mount-invalid');
+    expect(settled[0]?.error).toBeInstanceOf(Error);
+    expect(mountErrors['example-mount-invalid']?.message).toContain('no registered component');
+  });
 });
 
 describe('fetchExampleSource', () => {

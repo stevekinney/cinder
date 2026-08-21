@@ -72,7 +72,12 @@ export function createExampleMountHelpers(options: ExampleMountState): {
         const mountComponent = (candidate: unknown) => {
           if (disposed) return;
           if (typeof candidate !== 'function') {
-            console.error(`[cinder playground] no registered component for scenario "${scenario}"`);
+            const error = new Error(
+              `[cinder playground] no registered component for scenario "${scenario}"`,
+            );
+            console.error(error.message);
+            mountErrors[mountKey] = toMountErrorDetail(error);
+            onScenarioSettled?.(mountKey, error);
             return;
           }
           try {
@@ -101,11 +106,7 @@ export function createExampleMountHelpers(options: ExampleMountState): {
               onScenarioSettled?.(mountKey, error);
             });
         } else {
-          const error = new Error(
-            `[cinder playground] no registered component for scenario "${scenario}"`,
-          );
           mountComponent(undefined);
-          onScenarioSettled?.(mountKey, error);
         }
 
         return () => {
