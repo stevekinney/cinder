@@ -14,7 +14,7 @@
  */
 
 import { stableSerialise, useHistory } from '../../utilities/use-history.svelte.ts';
-import type { UseHistory } from '../../utilities/use-history.types.ts';
+import type { UseHistory, UseHistorySnapshot } from '../../utilities/use-history.types.ts';
 
 import type { CreateEditorStateOptions } from './json-schema-editor-state.types.ts';
 import type {
@@ -114,6 +114,7 @@ export function createEditorState(options: CreateEditorStateOptions) {
   // history is wrapped in $state so derived values that read `history?.current`
   // re-evaluate when the history instance is replaced (revert, reload).
   let history = $state<UseHistory<JsonSchemaValue> | null>(null);
+  let pendingControlledHistory = $state<UseHistorySnapshot<JsonSchemaValue> | null>(null);
 
   // ---- Draft (JSON view) ----
   let jsonDraftText = $state('');
@@ -619,6 +620,7 @@ export function createEditorState(options: CreateEditorStateOptions) {
       // Controlled requests can be rejected independently. Keep each request
       // as a distinct entry so reconciliation can restore the authoritative
       // value without replacing an earlier optimistic edit.
+      if (controlled) pendingControlledHistory = history.snapshot();
       history.commit(next, controlled ? { label: commitOptions?.label } : commitOptions);
       jsonDraftText = serialise(history.current);
       lastChangeAction = 'commit';
@@ -739,6 +741,39 @@ export function createEditorState(options: CreateEditorStateOptions) {
 
     /** Restore a rejected redo without discarding the preserved redo entry. */
     restorePreviousCommitWhenMatches,
+
+    restorePendingControlledHistoryWhenMatches(schemaInput: JsonSchemaValue | string): boolean {
+      if (!history || pendingControlledHistory === null) return false;
+      const normalised = normaliseSchemaInput(schemaInput);
+      if (
+        !normalised.ok ||
+        serialise(pendingControlledHistory.current) !== normalised.canonicalText
+      ) {
+        return false;
+      }
+      history.restore(pendingControlledHistory);
+      pendingControlledHistory = null;
+      jsonDraftText = serialise(history.current);
+      const epoch = beginValidationCycle();
+      void refreshValidation(epoch);
+      return true;
+    },
+
+    replacePendingControlledCommit(schemaInput: JsonSchemaValue | string): boolean {
+      if (!history || pendingControlledHistory === null) return false;
+      const normalised = normaliseSchemaInput(schemaInput);
+      if (!normalised.ok) return false;
+      history.replaceCurrent(normalised.schema);
+      pendingControlledHistory = null;
+      jsonDraftText = normalised.canonicalText;
+      const epoch = beginValidationCycle();
+      void refreshValidation(epoch);
+      return true;
+    },
+
+    acceptPendingControlledCommit() {
+      pendingControlledHistory = null;
+    },
 
     destroy() {
       clearTimers();

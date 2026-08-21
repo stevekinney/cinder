@@ -17,6 +17,12 @@ export type UseHistoryEntry<T> = {
   label?: string | undefined;
 };
 
+export type UseHistorySnapshot<T> = {
+  entries: Array<UseHistoryEntry<T>>;
+  index: number;
+  current: T;
+};
+
 export type UseHistoryOptions<T> = {
   initial: T;
   /** Maximum number of entries retained in the stack. Default: 100. */
@@ -43,6 +49,12 @@ export type UseHistory<T> = {
   readonly canRedo: boolean;
   readonly size: number;
   readonly index: number;
+  /** Clone the complete stack for a transactional optimistic update. */
+  snapshot(): UseHistorySnapshot<T>;
+  /** Restore a snapshot previously returned by snapshot(). */
+  restore(snapshot: UseHistorySnapshot<T>): void;
+  /** Replace the active committed entry while retaining surrounding history. */
+  replaceCurrent(next: T): void;
   /** Replace `current` without touching the committed stack. */
   set(next: T): void;
   /** Push a new entry (subject to coalescing and equality). */

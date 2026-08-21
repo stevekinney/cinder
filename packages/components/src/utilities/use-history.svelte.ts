@@ -119,6 +119,35 @@ export function useHistory<T>(
       return pointer;
     },
 
+    snapshot() {
+      return {
+        entries: stack.map(snapshotEntry),
+        index: pointer,
+        current: clone(current),
+      };
+    },
+
+    restore(snapshot) {
+      stack = snapshot.entries.map((entry) => ({
+        value: clone(entry.value),
+        label: entry.label,
+        committedAt: 0,
+      }));
+      pointer = snapshot.index;
+      current = clone(snapshot.current);
+    },
+
+    replaceCurrent(next: T) {
+      const previous = entryAt(pointer);
+      stack[pointer] = {
+        value: clone(next),
+        label: previous.label,
+        coalesceKey: previous.coalesceKey,
+        committedAt: previous.committedAt,
+      };
+      current = clone(next);
+    },
+
     set(next: T) {
       current = next;
     },

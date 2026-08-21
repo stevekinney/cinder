@@ -113,7 +113,8 @@
     if (rejectedAction !== undefined) {
       const reconciledHistory =
         (rejectedAction === 'commit' &&
-          editorState.discardCurrentCommitWhenPreviousMatches(input)) ||
+          (editorState.restorePendingControlledHistoryWhenMatches(input) ||
+            editorState.discardCurrentCommitWhenPreviousMatches(input))) ||
         (rejectedAction === 'undo' && editorState.restoreNextCommitWhenMatches(input)) ||
         (rejectedAction === 'redo' && editorState.restorePreviousCommitWhenMatches(input)) ||
         (rejectedAction === 'revert' &&
@@ -152,6 +153,7 @@
   };
   let pendingControlledChange = $state<PendingControlledChange | undefined>();
   let pendingControlledChangeVersion = 0;
+  let lastSchemaKey: string | undefined = untrack(() => schemaKey);
   let controlledSchemaAuthority = untrack<JsonSchemaValue | string | undefined>(() =>
     controlled && schema !== undefined ? controlledSchemaText(schema) : undefined,
   );
@@ -177,6 +179,7 @@
     discardPendingControlledChange();
 
     if (accepted) {
+      editorState.acceptPendingControlledCommit();
       if (pendingChange.action === 'revert') editorState.finaliseControlledRevert();
       onSchemaChange?.(pendingChange);
       if (pendingChange.action === 'revert') announcer.announce('Reverted to original schema');
@@ -185,6 +188,7 @@
 
     const normalised = normaliseSchemaInput(input);
     if (pendingChange !== undefined && !unchangedAuthority && normalised.ok) {
+      editorState.replacePendingControlledCommit(input);
       // Parse canonical text a second time so a mutable replacement supplied by
       // the parent cannot become an observer-owned reference.
       const snapshot = normaliseSchemaInput(normalised.canonicalText);
@@ -210,6 +214,11 @@
       return;
     }
 
+    // A schemaKey transition owns a full document reset. Let its dedicated
+    // effect cancel any pending request before this effect can settle an old
+    // request against the new document's schema.
+    if (schemaKey !== lastSchemaKey) return;
+
     if (pendingControlledChange !== undefined) {
       synchroniseControlledSchema(
         controlledSchemaAuthority ?? schema,
@@ -218,11 +227,20 @@
       return;
     }
 
-    pendingControlledChange = { ...event, action: editorState.lastChangeAction };
+    const eventSnapshot = normaliseSchemaInput(event.jsonString);
+    if (!eventSnapshot.ok) return;
+    pendingControlledChange = {
+      schema: eventSnapshot.schema,
+      jsonString: eventSnapshot.canonicalText,
+      action: editorState.lastChangeAction,
+    };
     const changeVersion = ++pendingControlledChangeVersion;
     let settlement: unknown;
     try {
-      settlement = onValueChangeRequest?.(event);
+      settlement = onValueChangeRequest?.({
+        schema: eventSnapshot.schema,
+        jsonString: eventSnapshot.canonicalText,
+      });
     } catch (error) {
       rejectControlledChange(changeVersion);
       throw error;
@@ -313,7 +331,6 @@
   // read untracked so a parent live-patching those props (without changing the
   // key) does not silently re-run this effect; when the key *does* change we
   // still read their current values fresh inside the untracked block.
-  let lastSchemaKey: string | undefined = untrack(() => schemaKey);
   $effect(() => {
     if (schemaKey !== lastSchemaKey) {
       lastSchemaKey = schemaKey;

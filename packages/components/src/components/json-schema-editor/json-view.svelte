@@ -107,6 +107,7 @@
       ? editorState.jsonDraftText
       : editorState.committedCanonicalText,
   );
+  const syntaxHighlightingEnabled = $derived(displayedJson.length <= 100_000);
   let previouslyEditable = false;
   let shouldRestoreEditFocus = $state(false);
   let shouldFocusTextarea = $state(false);
@@ -144,9 +145,13 @@
       !previouslyEditable &&
       isEditable &&
       document.getElementById(`${idPrefix}-code-json`)?.contains(document.activeElement);
+    const focusMovedFromJsonActions =
+      previouslyEditable &&
+      !isEditable &&
+      document.getElementById(`${idPrefix}-actions`)?.contains(document.activeElement);
     previouslyEditable = isEditable;
 
-    if (focusMovedFromTextarea) shouldRestoreEditFocus = true;
+    if (focusMovedFromTextarea || focusMovedFromJsonActions) shouldRestoreEditFocus = true;
     if (focusMovedFromCodeBlock) shouldFocusTextarea = true;
   });
 
@@ -199,7 +204,7 @@
 </script>
 
 <div class={classNames('cinder-jse-json-view', className)}>
-  <div class="cinder-jse-json-view__toolbar">
+  <div id={`${idPrefix}-actions`} class="cinder-jse-json-view__toolbar">
     {#if editable && editorState.jsonDraftIsDirty}
       <Badge variant="warning">Draft modified — Apply to commit</Badge>
     {/if}
@@ -261,6 +266,7 @@
       <CodeBlock
         code={displayedJson}
         language="json"
+        highlight={syntaxHighlightingEnabled}
         languageLabelVisible={false}
         class="cinder-jse-json-view__code-block"
       />
