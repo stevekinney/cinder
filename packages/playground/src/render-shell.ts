@@ -374,19 +374,17 @@ export function renderShell(
     <style>
       /* Register cinder.reset as the FIRST layer (least priority) so the universal
          box/margin/padding reset below can never beat component styles. This
-         declaration runs before /styles/all.css so the reset slot is reserved
-         at the bottom of the cascade — all.css then registers the rest of the
+         declaration runs before the route-scoped stylesheet so the reset slot
+         is reserved at the bottom of the cascade — that stylesheet registers the rest of the
          order (cinder.tokens, foundation, components, utilities) and imports the
          Cinder component styles, all of which come later and therefore win over
          the reset. */
       @layer cinder.reset, cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
     </style>
-    <!-- The full cascade aggregator, not the slim /styles/shell.css. shell.css
-         imports only the handful of components the shell chrome itself uses; it
-         carries neither callout.css nor code-block.css, so the landing page's
-         README prose — which renders both — came out unstyled. /page/:name
-         already loads all.css for exactly this reason. -->
-    <link rel="stylesheet" href="/styles/all.css" />
+    <!-- This bundles the base stylesheet and only the primitives rendered by
+         the landing and documentation surfaces. It intentionally excludes the
+         unrelated component-family graph behind /styles/all.css. -->
+    <link rel="stylesheet" href="/playground-styles/landing.css" />
     <style>
       @layer cinder.reset {
         *, *::before, *::after {

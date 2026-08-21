@@ -28,8 +28,18 @@
  * `vercel.json` publishes as the deployment's static root.
  */
 
+import { existsSync, realpathSync } from 'node:fs';
 import { mkdir, rm } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import {
+  basename,
+  dirname,
+  isAbsolute,
+  join,
+  parse,
+  relative as relativePath,
+  resolve,
+  sep,
+} from 'node:path';
 
 import {
   discoverComponents,
@@ -38,6 +48,7 @@ import {
 } from '../src/discover.ts';
 import { handleRequest } from '../src/playground-server.ts';
 import { COMPOUND_COMPONENT_FAMILIES } from '../src/shell-app/compound-families.ts';
+import { fingerprintStaticAssets } from './static-asset-fingerprints.ts';
 
 const PLAYGROUND_ROOT = join(import.meta.dirname, '..');
 const OUTPUT_DIRECTORY = join(PLAYGROUND_ROOT, 'public');
@@ -74,6 +85,47 @@ export function requireProductionBaseUrl(value = Bun.env['PLAYGROUND_BASE_URL'] 
     );
   }
   return url.origin;
+}
+
+/** Resolve symlinks in an existing ancestor while retaining missing child segments. */
+function canonicalizeOutputPath(outputDirectory: string): string {
+  let existingAncestor = resolve(outputDirectory);
+  const missingSegments: string[] = [];
+  while (!existsSync(existingAncestor)) {
+    const parent = dirname(existingAncestor);
+    if (parent === existingAncestor) break;
+    missingSegments.unshift(basename(existingAncestor));
+    existingAncestor = parent;
+  }
+  return join(realpathSync(existingAncestor), ...missingSegments);
+}
+
+/** Refuse roots and repository source paths before clearing static output. */
+export function assertSafeOutputDirectory(outputDirectory: string): string {
+  const resolved = canonicalizeOutputPath(outputDirectory);
+  if (resolved === parse(resolved).root) {
+    throw new Error('[static-export] refusing to clear a filesystem root');
+  }
+  const repositoryRoot = canonicalizeOutputPath(join(PLAYGROUND_ROOT, '..', '..'));
+  const generatedOutputRoot = canonicalizeOutputPath(OUTPUT_DIRECTORY);
+  const isSameOrNestedPath = (parent: string, child: string): boolean => {
+    const pathRelativeToParent = relativePath(parent, child);
+    return (
+      pathRelativeToParent === '' ||
+      (!pathRelativeToParent.startsWith(`..${sep}`) &&
+        pathRelativeToParent !== '..' &&
+        !isAbsolute(pathRelativeToParent))
+    );
+  };
+  const isRepositoryAncestor = isSameOrNestedPath(resolved, repositoryRoot);
+  const isUnapprovedRepositoryPath =
+    isSameOrNestedPath(repositoryRoot, resolved) &&
+    resolved !== generatedOutputRoot &&
+    !isSameOrNestedPath(generatedOutputRoot, resolved);
+  if (isRepositoryAncestor || isUnapprovedRepositoryPath) {
+    throw new Error('[static-export] refusing to clear a protected repository path');
+  }
+  return resolved;
 }
 
 function sitemapXml(baseUrl: string, routes: readonly string[]): string {
@@ -313,7 +365,7 @@ async function renderCssGraph(entryPath: string, context: StaticExportContext): 
 export async function runStaticExport(options: StaticExportOptions = {}): Promise<Set<string>> {
   const start = Date.now();
   process.stdout.write('[static-export] rendering playground to public/…\n');
-  const outputDirectory = options.outputDirectory ?? OUTPUT_DIRECTORY;
+  const outputDirectory = assertSafeOutputDirectory(options.outputDirectory ?? OUTPUT_DIRECTORY);
   // Unit tests invoke the function directly and do not have a deployment
   // origin. The executable build path below always calls requireProductionBaseUrl.
   const baseUrl = options.baseUrl ?? Bun.env['PLAYGROUND_BASE_URL'] ?? 'https://playground.local';
@@ -323,14 +375,10 @@ export async function runStaticExport(options: StaticExportOptions = {}): Promis
     origin: baseUrl,
   };
 
-  /*
-   * Remove the legacy route tree before exporting. A reused output directory —
-   * `vercel-build` into `public/`, or a repeated local run — would otherwise keep
-   * the previous version's `/c/<name>/index.html` files, leaving a second
-   * documentation surface on disk that the `vercel.json` redirect never gets a
-   * chance to shadow.
-   */
-  await rm(join(outputDirectory, 'c'), { recursive: true, force: true });
+  // `public/` is generated deployment output. Start clean so an earlier export
+  // cannot leave stale routes or stale immutable assets reachable by a new deploy.
+  await rm(outputDirectory, { recursive: true, force: true });
+  await mkdir(outputDirectory, { recursive: true });
 
   const sidebarComponents = options.sidebarComponents ?? (await discoverSidebarComponents());
   const allComponents = options.allComponents ?? (await discoverComponents());
@@ -422,6 +470,12 @@ export async function runStaticExport(options: StaticExportOptions = {}): Promis
   context.rendered.add('/sitemap.xml');
   context.rendered.add('/robots.txt');
 
+  const { fingerprintedUrlBySourceUrl } = await fingerprintStaticAssets(outputDirectory);
+  for (const [sourceUrl, fingerprintedUrl] of fingerprintedUrlBySourceUrl) {
+    context.rendered.delete(sourceUrl);
+    context.rendered.add(fingerprintedUrl);
+  }
+
   assertDocumentationPagesArePreRendered(documentationPages);
 
   const seconds = ((Date.now() - start) / 1000).toFixed(1);
@@ -485,7 +539,7 @@ export function assertDocumentationMetadata(
     if (typeof parsed !== 'object' || parsed === null) throw new Error('not an object');
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
-    throw new Error(`[static-export] ${name}: invalid JSON-LD: ${detail}`);
+    throw new Error(`[static-export] ${name}: invalid JSON-LD: ${detail}`, { cause: error });
   }
 }
 

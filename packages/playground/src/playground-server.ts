@@ -59,6 +59,10 @@ import {
   buildComponentDocumentation,
 } from './component-documentation.ts';
 import {
+  documentationComponentStylesheetUrl,
+  documentationExampleStylesheetUrls,
+} from './component-sources.ts';
+import {
   COMPOSE_ONLY_COMPONENTS,
   discoverComponentDefinition,
   discoverComponentDefinitions,
@@ -122,6 +126,7 @@ import {
 import {
   handleComponentsStyleRoute,
   handlePackageComponentStyleRoute,
+  handlePlaygroundStylesRoute,
   handleStylesRoute,
 } from './static-assets.ts';
 import { stripInlineSourcemaps } from './strip-inline-sourcemaps.ts';
@@ -329,13 +334,23 @@ async function renderComponentPage(
   baseUrl: string,
 ): Promise<string> {
   const componentDefinition = await discoverComponentDefinition(componentName);
-  const componentStylesheetUrl =
-    componentDefinition?.source.componentStylesheetUrl(componentName) ?? null;
-  const componentStylesheetLink =
-    componentStylesheetUrl === null
-      ? ''
-      : `\n    <link rel="stylesheet" href="${escapeHtml(componentStylesheetUrl)}" />`;
   const scenarios = await discoverExamples(componentName);
+  const componentStylesheetUrl =
+    componentDefinition === undefined
+      ? null
+      : documentationComponentStylesheetUrl(componentDefinition.source, componentName);
+  // Every example lives in the shared playground tree, including extracted
+  // Chat and Editor pages, so its Cinder imports need opt-in sidecars too.
+  // The documented package's own stylesheet remains additive.
+  const componentStylesheetUrls = [
+    ...(componentDefinition === undefined
+      ? []
+      : documentationExampleStylesheetUrls(componentDefinition.source, componentName, scenarios)),
+    ...(componentStylesheetUrl === null ? [] : [componentStylesheetUrl]),
+  ].filter((stylesheetUrl, index, urls) => urls.indexOf(stylesheetUrl) === index);
+  const componentStylesheetLinks = componentStylesheetUrls
+    .map((stylesheetUrl) => `\n    <link rel="stylesheet" href="${escapeHtml(stylesheetUrl)}" />`)
+    .join('');
   const examples = await Promise.all(
     scenarios.map(async (scenario) => {
       const filePath = join(
@@ -429,7 +444,7 @@ async function renderComponentPage(
     ${metadataTags}
     ${structuredData}
     <link rel="icon" href="${FAVICON_HREF}" />
-    <link rel="stylesheet" href="/styles/all.css" />${componentStylesheetLink}
+    <link rel="stylesheet" href="/playground-styles/documentation.css" />${componentStylesheetLinks}
     ${ssrHead}
     <script>${PRE_PAINT_THEME_SCRIPT}</script>
     <style>
@@ -880,6 +895,11 @@ export const ROUTES: RouteDefinition[] = [
     method: 'GET',
     pattern: /^\/styles\/(.+)$/,
     handler: ({ match }) => handleStylesRoute(match[1]!),
+  },
+  {
+    method: 'GET',
+    pattern: /^\/playground-styles\/(documentation|landing)\.css$/,
+    handler: ({ match }) => handlePlaygroundStylesRoute(match[1]! as 'documentation' | 'landing'),
   },
   {
     method: 'GET',
