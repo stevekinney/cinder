@@ -464,6 +464,30 @@ describe('component-page single-scroll layout', () => {
     await tick();
   });
 
+  test('defers loading the bare component implementation until Playground is selected', async () => {
+    let loadCount = 0;
+    const { unmount } = render(ComponentPage, {
+      props: {
+        loadBareComponentModule: async () => {
+          loadCount += 1;
+          return { Button: ButtonMock };
+        },
+      },
+    });
+    await screen.findByRole('heading', { level: 1, name: 'Button' });
+    await tick();
+
+    expect(loadCount).toBe(0);
+
+    await showPlayground();
+    await Promise.resolve();
+    await tick();
+
+    expect(loadCount).toBe(1);
+    unmount();
+    await tick();
+  });
+
   test('makes the active view linkable through the URL', async () => {
     const { unmount } = render(ComponentPage);
     await screen.findByRole('heading', { level: 1, name: 'Button' });

@@ -472,9 +472,12 @@ describe('/shell-bundle/:filename.js', () => {
     expect(response.status).toBe(200);
     expect(response.headers.get('Content-Type')).toBe('application/javascript');
     const body = await response.text();
-    // Shell bundle must mount the SPA — the mount target ID is part of the
-    // public contract between the bundle and render-shell.ts.
-    expect(body).toContain('shell-root');
+    // The landing page keeps its server-rendered content static. Interactive
+    // shell behavior is loaded with dynamic imports, so color editing and nav
+    // filtering work without putting the documentation/editor graph in the
+    // root route's initial payload.
+    expect(body).toContain('Preview theme:');
+    expect(body).toContain('import("/shell-bundle/');
   }, 30_000);
 
   it('returns 404 for an unknown shell-bundle filename', async () => {

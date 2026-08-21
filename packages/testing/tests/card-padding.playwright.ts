@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test.describe('Card padding', () => {
   test('padding="none" flushes only the body', async ({ page }) => {
-    await page.goto('/page/card?tab=examples', { waitUntil: 'load' });
+    await page.goto('/page/card?snapshot=1', { waitUntil: 'load' });
 
     const body = page.locator(".cinder-card__body[data-cinder-padding='none']").first();
     const card = body.locator('..');
@@ -26,7 +26,7 @@ test.describe('Card padding', () => {
   });
 
   test('the flush-body example has no horizontal overflow', async ({ page }) => {
-    await page.goto('/page/card?tab=examples', { waitUntil: 'load' });
+    await page.goto('/page/card?snapshot=1', { waitUntil: 'load' });
 
     const body = page.locator(".cinder-card__body[data-cinder-padding='none']").first();
     const card = body.locator('..');
@@ -57,7 +57,7 @@ test.describe('Card padding', () => {
   });
 
   test('ApprovalCard keeps a single owned header padding layer', async ({ page }) => {
-    await page.goto('/page/approval-card?tab=examples', { waitUntil: 'load' });
+    await page.goto('/page/approval-card?snapshot=1', { waitUntil: 'load' });
 
     const approvalCard = page.locator('.cinder-approval-card').first();
     const cardHeader = approvalCard.locator('.cinder-card__header');

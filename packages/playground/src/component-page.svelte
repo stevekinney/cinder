@@ -85,18 +85,20 @@
     featured?: boolean;
   };
   type CinderWindow = Window &
-    typeof globalThis & { __CINDER_EXAMPLES__?: CinderExampleDescriptor[] };
+    typeof globalThis & {
+      __CINDER_EXAMPLES__?: CinderExampleDescriptor[];
+      __CINDER_SNAPSHOT_READY__?: Promise<void>;
+    };
   type BadgeVariant = 'neutral' | 'success' | 'warning' | 'danger' | 'info' | 'accent';
   type StatusDotStatus = 'online' | 'warning' | 'danger' | 'pending' | 'neutral' | 'accent';
 
-  // The bare component's module namespace, passed in by the page-bundle entry
-  // (`compilePageBundleArtifacts`) which `import * as`-es the component's package
-  // subpath and mounts this page with it. Threaded as a prop rather than read
-  // from a `window` global so the live preview (#405) is wired explicitly to the
-  // bundle that mounted it — no out-of-band global to go stale against the page.
-  // Defaults to `undefined` for the no-prop mount paths (tests, SSR render).
+  // The bare component's module namespace is loaded by the page-bundle entry
+  // only after a reader opens Playground. Keeping the loader as a prop rather
+  // than reading a global makes the deferred live preview explicit and keeps
+  // SSR/tests on the no-loader path.
   type Props = {
     bareComponentModule?: unknown;
+    loadBareComponentModule?: () => Promise<unknown>;
     previewOnly?: boolean;
     /**
      * Request-known page inputs. The server passes these explicitly so the SSR
@@ -137,7 +139,8 @@
   };
 
   let {
-    bareComponentModule,
+    bareComponentModule: bareComponentModuleProp,
+    loadBareComponentModule,
     previewOnly = false,
     componentName: componentNameProp,
     examples: examplesProp,
@@ -150,6 +153,8 @@
     overlays,
     onThemeChange,
   }: Props = $props();
+
+  let bareComponentModule = $state(bareComponentModuleProp);
 
   /** True on `/`, which renders the README through this same chrome. */
   const isLanding = $derived(readmeHtml !== undefined);
@@ -195,6 +200,40 @@
   }
 
   const componentName: string = componentNameProp ?? readComponentNameFromLocation();
+
+  // Snapshot consumers need the scenario mounts, not merely the outer page
+  // chrome. Expose the actual completion promise so the browser harness can
+  // await it directly: a rejected dynamic import reaches the test as its
+  // original error instead of becoming a second polling timeout.
+  const snapshotMountKeys = new Set(examples.map(({ scenario }) => `example-mount-${scenario}`));
+  let settleSnapshotMount: (mountKey: string, error?: unknown) => void = () => undefined;
+  if (snapshotMode && typeof window !== 'undefined') {
+    let resolveSnapshotReady: () => void;
+    let rejectSnapshotReady: (reason?: unknown) => void;
+    const snapshotReady = new Promise<void>((resolve, reject) => {
+      resolveSnapshotReady = resolve;
+      rejectSnapshotReady = reject;
+    });
+    // A rejected promise is consumed by the test fixture; observe it here as
+    // well so a loader failure does not surface as an unrelated browser-level
+    // unhandled-rejection warning before that fixture evaluates the promise.
+    void snapshotReady.catch(() => undefined);
+    (window as CinderWindow).__CINDER_SNAPSHOT_READY__ = snapshotReady;
+    if (snapshotMountKeys.size === 0) {
+      resolveSnapshotReady!();
+    } else {
+      const settledMounts = new Set<string>();
+      settleSnapshotMount = (mountKey, error) => {
+        if (error !== undefined) {
+          rejectSnapshotReady!(error);
+          return;
+        }
+        if (!snapshotMountKeys.has(mountKey)) return;
+        settledMounts.add(mountKey);
+        if (settledMounts.size === snapshotMountKeys.size) resolveSnapshotReady!();
+      };
+    }
+  }
 
   // The canonical page owns the preview now, so subscribe directly to the
   // dev-server stream. Snapshot pages deliberately stay quiet: automated
@@ -262,6 +301,34 @@
    * the client for anyone following a `?view=playground` link.
    */
   let activeView = $state<ComponentPageView>('documentation');
+
+  // The documentation view is deliberately hydratable without the selected
+  // component's implementation. Import it only when the reader asks for the
+  // interactive Playground; both SSR and the initial client render therefore
+  // keep the same `undefined` module value.
+  $effect(() => {
+    if (
+      !isHydrated ||
+      activeView !== 'playground' ||
+      bareComponentModule !== undefined ||
+      loadBareComponentModule === undefined
+    ) {
+      return;
+    }
+    let cancelled = false;
+    void loadBareComponentModule()
+      .then((module) => {
+        if (!cancelled) bareComponentModule = module;
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          console.error('[cinder playground] failed to load bare component:', error);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  });
 
   /**
    * Arrow/Home/End navigation for the view switcher.
@@ -436,7 +503,10 @@
   // in Examples — and each container gets its own attachment + its own mount, so
   // the two instances stay independent with correct per-node cleanup. See
   // `component-page-example-mounts.ts` for the mount-error keying discipline.
-  const { mountScenario } = createExampleMountHelpers({ mountErrors });
+  const { mountScenario } = createExampleMountHelpers({
+    mountErrors,
+    onScenarioSettled: settleSnapshotMount,
+  });
 
   // Whether the props table currently overflows horizontally. Drives the
   // `is-scrollable` modifier on the scroll container so the `::after` fade

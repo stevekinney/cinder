@@ -29,7 +29,7 @@
  */
 
 import { existsSync, realpathSync } from 'node:fs';
-import { mkdir, rm } from 'node:fs/promises';
+import { mkdir, readFile, rm } from 'node:fs/promises';
 import {
   basename,
   dirname,
@@ -67,6 +67,27 @@ export type StaticExportOptions = {
   /** Test-only override. Real exports must supply PLAYGROUND_BASE_URL. */
   baseUrl?: string;
 };
+
+export type InitialRoutePayload = {
+  transferBytes: number;
+  decodedBytes: number;
+  urls: readonly string[];
+};
+
+type InitialRoutePayloadBudget = {
+  route: string;
+  transferBytes: number;
+  decodedBytes: number;
+};
+
+// These are production budgets for the first navigation. A route's deferred
+// scenario and Playground imports are intentionally excluded: they are not
+// requested until the reader opens an interactive surface.
+const INITIAL_ROUTE_PAYLOAD_BUDGETS: readonly InitialRoutePayloadBudget[] = [
+  { route: '/', transferBytes: 175_000, decodedBytes: 800_000 },
+  { route: '/page/button', transferBytes: 200_000, decodedBytes: 900_000 },
+  { route: '/page/chat', transferBytes: 700_000, decodedBytes: 3_250_000 },
+];
 
 /**
  * The exported site has no request-time server that can repair a bad canonical
@@ -276,6 +297,93 @@ export function assetUrlsFromHtml(html: string): string[] {
   return [...urls];
 }
 
+/** Static ESM imports are requested during initial evaluation; `import(...)` is not. */
+function staticJavaScriptImportUrls(javascript: string): string[] {
+  const urls = new Set<string>();
+  const imports = /(?:^|\n)\s*import\s*(?:[\s\S]*?\s+from\s+)?["'](\/[^"']+\.js)["'];?/g;
+  let match: RegExpExecArray | null;
+  while ((match = imports.exec(javascript)) !== null) urls.add(match[1]!);
+  return [...urls];
+}
+
+function stylesheetAssetUrls(stylesheet: string): string[] {
+  const urls = new Set<string>();
+  const imports = /@import\s+(?:url\(\s*)?["']?(\/[^"'\s)]+)["']?/g;
+  const references = /url\(\s*["']?(\/[^"'\s)]+)["']?\s*\)/g;
+  for (const expression of [imports, references]) {
+    let match: RegExpExecArray | null;
+    while ((match = expression.exec(stylesheet)) !== null) urls.add(match[1]!);
+  }
+  return [...urls];
+}
+
+function exportedHtmlPath(route: string, outputDirectory: string): string {
+  return outputPathFor(route, true, outputDirectory);
+}
+
+/**
+ * Sum the files a production browser requests to render a route before any
+ * reader-triggered dynamic import. Every asset is gzipped independently, which
+ * matches HTTP content encoding rather than pretending one archive compresses
+ * across request boundaries.
+ */
+export async function initialRoutePayload(
+  route: string,
+  outputDirectory: string,
+): Promise<InitialRoutePayload> {
+  const queue = [{ url: route, filePath: exportedHtmlPath(route, outputDirectory), kind: 'html' }];
+  const visited = new Set<string>();
+  let transferBytes = 0;
+  let decodedBytes = 0;
+
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    if (visited.has(current.url)) continue;
+    visited.add(current.url);
+
+    const contents = new Uint8Array(await readFile(current.filePath));
+    transferBytes += Bun.gzipSync(contents).byteLength;
+    decodedBytes += contents.byteLength;
+
+    const text = new TextDecoder().decode(contents);
+    const dependencies =
+      current.kind === 'html'
+        ? assetUrlsFromHtml(text)
+        : current.kind === 'javascript'
+          ? staticJavaScriptImportUrls(text)
+          : stylesheetAssetUrls(text);
+    for (const url of dependencies) {
+      if (!url.startsWith('/')) continue;
+      const extension = url.split('?')[0]!.split('.').pop()?.toLowerCase();
+      queue.push({
+        url,
+        filePath: join(outputDirectory, url.slice(1)),
+        kind: extension === 'js' || extension === 'mjs' ? 'javascript' : 'stylesheet',
+      });
+    }
+  }
+
+  return { transferBytes, decodedBytes, urls: [...visited].toSorted() };
+}
+
+async function assertInitialRoutePayloadBudgets(
+  outputDirectory: string,
+  exportedRoutes: readonly string[],
+): Promise<void> {
+  for (const budget of INITIAL_ROUTE_PAYLOAD_BUDGETS) {
+    if (!exportedRoutes.includes(budget.route)) continue;
+    const payload = await initialRoutePayload(budget.route, outputDirectory);
+    if (payload.transferBytes > budget.transferBytes || payload.decodedBytes > budget.decodedBytes) {
+      throw new Error(
+        `[static-export] ${budget.route} initial payload exceeds budget: ` +
+          `${payload.transferBytes}/${budget.transferBytes} transfer bytes, ` +
+          `${payload.decodedBytes}/${budget.decodedBytes} decoded bytes. ` +
+          `Assets: ${payload.urls.join(', ')}`,
+      );
+    }
+  }
+}
+
 /**
  * Pull the hashed-chunk URLs a built JS bundle imports. Bun emits chunks as
  * `<name>-<hash>.js` siblings under the same `/page-bundle/` or `/shell-bundle/`
@@ -477,6 +585,7 @@ export async function runStaticExport(options: StaticExportOptions = {}): Promis
   }
 
   assertDocumentationPagesArePreRendered(documentationPages);
+  await assertInitialRoutePayloadBudgets(outputDirectory, canonicalRoutes);
 
   const seconds = ((Date.now() - start) / 1000).toFixed(1);
   process.stdout.write(

@@ -17,7 +17,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
 async function loadStyledPage(page: Page): Promise<void> {
-  await page.goto('/page/modal?tab=examples', { waitUntil: 'load' });
+  await page.goto('/page/modal?snapshot=1', { waitUntil: 'load' });
 }
 
 /** Injects a tall fixed-height scroll fixture, replacing any prior fixture. */

@@ -13,6 +13,8 @@
  */
 
 import { createHash } from 'node:crypto';
+import { existsSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
 import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
 
 import ts from 'typescript';
@@ -104,7 +106,7 @@ async function fixtureContentHash(
     const hostPath = resolveFixtureHostPath(entry, fixture);
     hostInputs.push({
       path: fixture.host.replaceAll('\\', '/'),
-      contents: await Bun.file(hostPath).text(),
+      contents: await readFile(hostPath, 'utf8'),
     });
   }
 
@@ -563,7 +565,7 @@ export function resolveFixtureFilePath(slug: string, componentsRoot: string): st
 }
 
 export async function loadFixtureFile(sourcePath: string): Promise<FileParseResult> {
-  const contents = await Bun.file(sourcePath).text();
+  const contents = await readFile(sourcePath, 'utf8');
   const result = parseFixtureFileStatic(sourcePath, contents);
   if (result.kind !== 'entry') return result;
 
@@ -576,7 +578,7 @@ export async function loadFixtureFile(sourcePath: string): Promise<FileParseResu
     if (fixtureRenderMode(fixture) !== 'host') continue;
     if (typeof fixture.host !== 'string') continue;
     const hostPath = resolveFixtureHostPath(result.entry, fixture);
-    if (!(await Bun.file(hostPath).exists())) {
+    if (!existsSync(hostPath)) {
       return {
         kind: 'violations',
         violations: [

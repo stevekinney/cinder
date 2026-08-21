@@ -4,7 +4,7 @@ import { THEMES, VIEWPORTS } from '../src/helpers/manifest.ts';
 const markdownEditorEntry = {
   name: 'MarkdownEditor',
   slug: 'markdown-editor',
-  route: '/page/markdown-editor?tab=examples',
+  route: '/page/markdown-editor?snapshot=1',
 } as const;
 
 const testedViewports = VIEWPORTS.filter(

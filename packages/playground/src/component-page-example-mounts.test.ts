@@ -35,11 +35,15 @@ const {
   resetProbe: () => void;
 };
 
-type CinderWindow = typeof globalThis & { __CINDER_SCENARIOS__?: Record<string, unknown> };
+type CinderWindow = typeof globalThis & {
+  __CINDER_SCENARIOS__?: Record<string, unknown>;
+  __CINDER_SCENARIO_LOADERS__?: Record<string, () => Promise<unknown>>;
+};
 
 afterEach(() => {
   resetProbe();
   delete (window as CinderWindow).__CINDER_SCENARIOS__;
+  delete (window as CinderWindow).__CINDER_SCENARIO_LOADERS__;
   document.body.innerHTML = '';
 });
 
@@ -109,6 +113,77 @@ describe('createExampleMountHelpers().mountScenario', () => {
     cleanup();
 
     expect(unmountCount()).toBe(1);
+  });
+
+  it('loads a scenario module only when its preview is attached', async () => {
+    let loadCount = 0;
+    (window as CinderWindow).__CINDER_SCENARIO_LOADERS__ = {
+      lazy: async () => {
+        loadCount += 1;
+        return { default: Probe };
+      },
+    };
+    const mountErrors: Record<string, MountErrorDetail | undefined> = {};
+    const { mountScenario } = createExampleMountHelpers({ mountErrors });
+
+    const element = document.createElement('div');
+    element.id = 'example-mount-lazy';
+    document.body.appendChild(element);
+
+    const cleanup = mountScenario('lazy')(element);
+    await Promise.resolve();
+    flushSync();
+
+    expect(loadCount).toBe(1);
+    expect(mountCount()).toBe(1);
+    expect(mountErrors['example-mount-lazy']).toBeUndefined();
+
+    cleanup();
+    expect(unmountCount()).toBe(1);
+  });
+
+  it('reports the settled mount so snapshot consumers can await lazy scenarios', async () => {
+    (window as CinderWindow).__CINDER_SCENARIO_LOADERS__ = {
+      lazy: async () => ({ default: Probe }),
+    };
+    const settled: Array<{ mountKey: string; error: unknown }> = [];
+    const { mountScenario } = createExampleMountHelpers({
+      mountErrors: {},
+      onScenarioSettled: (mountKey, error) => settled.push({ mountKey, error }),
+    });
+    const element = document.createElement('div');
+    element.id = 'example-mount-lazy';
+    document.body.appendChild(element);
+
+    const cleanup = mountScenario('lazy')(element);
+    await Promise.resolve();
+    flushSync();
+
+    expect(settled).toEqual([{ mountKey: 'example-mount-lazy', error: undefined }]);
+    cleanup();
+  });
+
+  it('reports an invalid lazy module as a settled mount failure', async () => {
+    (window as CinderWindow).__CINDER_SCENARIO_LOADERS__ = {
+      invalid: async () => ({ default: 'not a component' }),
+    };
+    const settled: Array<{ mountKey: string; error: unknown }> = [];
+    const mountErrors: Record<string, MountErrorDetail | undefined> = {};
+    const { mountScenario } = createExampleMountHelpers({
+      mountErrors,
+      onScenarioSettled: (mountKey, error) => settled.push({ mountKey, error }),
+    });
+    const element = document.createElement('div');
+    element.id = 'example-mount-invalid';
+    document.body.appendChild(element);
+
+    mountScenario('invalid')(element);
+    await Promise.resolve();
+
+    expect(settled).toHaveLength(1);
+    expect(settled[0]?.mountKey).toBe('example-mount-invalid');
+    expect(settled[0]?.error).toBeInstanceOf(Error);
+    expect(mountErrors['example-mount-invalid']?.message).toContain('no registered component');
   });
 });
 

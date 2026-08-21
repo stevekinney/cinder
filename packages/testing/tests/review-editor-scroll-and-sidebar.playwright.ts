@@ -51,6 +51,7 @@ const desktop = VIEWPORTS.find((viewport) => viewport.name === 'desktop')!;
 const EDITOR_ID = 'example-mount-scroll-and-sidebar-review-editor';
 const MOUNT_SELECTOR = '#example-mount-scroll-and-sidebar';
 const CLOCK_INITIAL_TIME = new Date('2024-01-01T00:00:00.000Z');
+const CLOCK_PAUSED_TIME = new Date('2024-01-01T01:00:00.000Z');
 async function openExample(componentPage: ComponentPage): Promise<{ page: Page; mount: Locator }> {
   const page = await componentPage.open({
     entry: reviewEditorEntry,
@@ -102,13 +103,12 @@ function anchor(mount: Locator, threadId: string): Locator {
  * instead of the bug.
  */
 async function installPausedClock(page: Page): Promise<void> {
-  // `install()` defaults to the current system time. Constructing a second
-  // `Date` after it can then be fractionally earlier than Playwright's
-  // initialized clock, which makes `pauseAt()` reject the backward jump.
-  // Start at a deterministic instant and pause one millisecond later so the
-  // operation is always a forward transition.
+  // Playwright lets fake time progress between protocol calls. Pausing only
+  // one millisecond after installation can therefore ask it to move backward.
+  // Use a deliberately later deterministic instant, matching Playwright's
+  // recommended "slightly before the intended test time" setup.
   await page.clock.install({ time: CLOCK_INITIAL_TIME });
-  await page.clock.pauseAt(new Date(CLOCK_INITIAL_TIME.getTime() + 1));
+  await page.clock.pauseAt(CLOCK_PAUSED_TIME);
 }
 
 test.describe('ReviewEditor.scrollToThread (cinder#1316, cinder#1317)', () => {

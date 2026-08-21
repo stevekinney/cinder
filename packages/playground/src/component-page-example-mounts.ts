@@ -20,7 +20,21 @@ import {
 
 export type ExampleMountState = {
   mountErrors: Record<string, MountErrorDetail | undefined>;
+  onScenarioSettled?: (mountKey: string, error?: unknown) => void;
 };
+
+type ScenarioLoader = () => Promise<unknown>;
+type CinderWindow = Window &
+  typeof globalThis & {
+    __CINDER_SCENARIOS__?: Record<string, unknown>;
+    __CINDER_SCENARIO_LOADERS__?: Record<string, ScenarioLoader>;
+  };
+
+function scenarioComponentFromModule(module: unknown): unknown {
+  if (typeof module === 'function') return module;
+  if (module === null || typeof module !== 'object') return undefined;
+  return Reflect.get(module, 'default');
+}
 
 /**
  * Mount each registered scenario into its preview container via an
@@ -44,32 +58,59 @@ export type ExampleMountState = {
 export function createExampleMountHelpers(options: ExampleMountState): {
   mountScenario: (scenario: string) => (element: HTMLElement) => () => void;
 } {
-  const { mountErrors } = options;
+  const { mountErrors, onScenarioSettled } = options;
   return {
     mountScenario(scenario: string) {
       return (element: HTMLElement) => {
         const mountKey = element.id;
-        const registry =
-          ((window as unknown as Record<string, unknown>)['__CINDER_SCENARIOS__'] as
-            | Record<string, unknown>
-            | undefined) ?? {};
+        const registry = (window as CinderWindow).__CINDER_SCENARIOS__ ?? {};
         const Component = registry[scenario];
-        if (typeof Component !== 'function') {
-          console.error(`[cinder playground] no registered component for scenario "${scenario}"`);
-          return () => {};
-        }
+        const loader = (window as CinderWindow).__CINDER_SCENARIO_LOADERS__?.[scenario];
         let app: ReturnType<typeof mount> | undefined;
-        try {
-          app = mount(Component as Parameters<typeof mount>[0], {
-            target: element,
-            props: { mountIdPrefix: mountKey },
-          });
-          mountErrors[mountKey] = undefined;
-        } catch (error) {
-          console.error(`[cinder playground] failed to mount example "${scenario}":`, error);
-          mountErrors[mountKey] = toMountErrorDetail(error);
+        let disposed = false;
+
+        const mountComponent = (candidate: unknown) => {
+          if (disposed) return;
+          if (typeof candidate !== 'function') {
+            const error = new Error(
+              `[cinder playground] no registered component for scenario "${scenario}"`,
+            );
+            console.error(error.message);
+            mountErrors[mountKey] = toMountErrorDetail(error);
+            onScenarioSettled?.(mountKey, error);
+            return;
+          }
+          try {
+            app = mount(candidate as Parameters<typeof mount>[0], {
+              target: element,
+              props: { mountIdPrefix: mountKey },
+            });
+            mountErrors[mountKey] = undefined;
+            onScenarioSettled?.(mountKey);
+          } catch (error) {
+            console.error(`[cinder playground] failed to mount example "${scenario}":`, error);
+            mountErrors[mountKey] = toMountErrorDetail(error);
+            onScenarioSettled?.(mountKey, error);
+          }
+        };
+
+        if (typeof Component === 'function') {
+          mountComponent(Component);
+        } else if (loader !== undefined) {
+          void loader()
+            .then((module) => mountComponent(scenarioComponentFromModule(module)))
+            .catch((error) => {
+              if (disposed) return;
+              console.error(`[cinder playground] failed to load example "${scenario}":`, error);
+              mountErrors[mountKey] = toMountErrorDetail(error);
+              onScenarioSettled?.(mountKey, error);
+            });
+        } else {
+          mountComponent(undefined);
         }
+
         return () => {
+          disposed = true;
           if (app === undefined) return;
           try {
             unmount(app);

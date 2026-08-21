@@ -102,12 +102,12 @@ export const test = base.extend<Fixtures>({
         await page.goto(buildRoute(entry, fixtureName, fixtureContentHash), {
           waitUntil: 'load',
         });
-        // Post-#39 (chunk-[hash].js naming), all components — including the
-        // Milkdown-backed editors (Chat, MarkdownEditor, ReviewEditor) —
-        // mount in single-digit seconds on the CI runner. 20s leaves
-        // generous headroom for runAxe + captureScreenshot inside the
-        // per-test 90s timeout.
         await page.waitForSelector('#app > *', { state: 'visible', timeout: 20_000 });
+        await page.evaluate(async () => {
+          const readiness = (window as Window & { __CINDER_SNAPSHOT_READY__?: Promise<void> })
+            .__CINDER_SNAPSHOT_READY__;
+          if (readiness !== undefined) await readiness;
+        });
         // Blur any auto-focused element so focus rings don't appear in
         // screenshots. Phase 2 interaction tokens will opt back in to focus
         // on specific elements when the visual contract requires it.

@@ -393,7 +393,7 @@ test('text children stay text when VisuallyHidden changes its rendered element',
 }) => {
   await page.goto('/page/visually-hidden?view=playground', { waitUntil: 'load' });
 
-  await page.getByLabel('as').selectOption('textarea');
+  await page.locator('.dx-playground__panel').getByLabel('as').selectOption('textarea');
   const preview = page.locator('#playground-live-mount textarea');
   await expect(preview).toHaveText('VisuallyHidden');
   await expect(preview.locator('span')).toHaveCount(0);
