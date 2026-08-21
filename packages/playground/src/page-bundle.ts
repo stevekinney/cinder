@@ -135,7 +135,9 @@ let pageHydration: Promise<void> | undefined;
 let pageHydrated = false;
 
 function hydratePage(): Promise<void> {
-  pageHydration ??= Promise.all([import('svelte'), import('../../src/component-page.svelte')]).then(([svelte, { default: ComponentPage }]) => {
+  if (pageHydration !== undefined) return pageHydration;
+
+  const hydration = Promise.all([import('svelte'), import('../../src/component-page.svelte')]).then(([svelte, { default: ComponentPage }]) => {
     if (shouldHydrate) {
       svelte.hydrate(ComponentPage, { target, props });
       pageHydrated = true;
@@ -158,7 +160,11 @@ function hydratePage(): Promise<void> {
     svelte.mount(ComponentPage, { target, props });
     pageHydrated = true;
   });
-  return pageHydration;
+  pageHydration = hydration;
+  void hydration.catch(() => {
+    if (pageHydration === hydration) pageHydration = undefined;
+  });
+  return hydration;
 }
 
 function hydrateAfter(event: Event, replay: () => void): void {
