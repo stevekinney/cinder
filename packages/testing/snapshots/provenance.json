@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "componentScope": [
-    "data-grid"
+    "approval-card"
   ],
-  "renderedSourceSha": "832c64feacf7e29d354ef735440f4562e74abe46",
+  "renderedSourceSha": "f53a4e0fd60cd8e39248987108ceb6b799a6ae6f",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
   "architecture": "x64",
