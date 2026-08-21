@@ -132,6 +132,46 @@ describe('getUnresolvedToolApprovals', () => {
 
     expect(getUnresolvedToolApprovals(conversation)).toHaveLength(0);
   });
+
+  it('excludes a call whose later result resolved a superseded action_required result', () => {
+    const pending: ToolResult = {
+      callId: 'call-1',
+      outcome: 'action_required',
+      content: null,
+      action: { type: 'approval' },
+    };
+    const resolved: ToolResult = { callId: 'call-1', outcome: 'success', content: null };
+    const conversation = history([
+      message({ id: 'r1', role: 'tool-result', toolResult: pending }),
+      message({ id: 'r2', role: 'tool-result', toolResult: resolved }),
+    ]);
+
+    expect(getUnresolvedToolApprovals(conversation)).toHaveLength(0);
+  });
+
+  it('uses the latest action_required result when a call has more than one', () => {
+    const first: ToolResult = {
+      callId: 'call-1',
+      outcome: 'action_required',
+      content: null,
+      action: { type: 'approval', message: 'first' },
+    };
+    const second: ToolResult = {
+      callId: 'call-1',
+      outcome: 'action_required',
+      content: null,
+      action: { type: 'approval', message: 'second' },
+    };
+    const conversation = history([
+      message({ id: 'r1', role: 'tool-result', toolResult: first }),
+      message({ id: 'r2', role: 'tool-result', toolResult: second }),
+    ]);
+
+    const approvals = getUnresolvedToolApprovals(conversation);
+    expect(approvals).toHaveLength(1);
+    expect(approvals[0]?.message.id).toBe('r2');
+    expect(approvals[0]?.result.action.message).toBe('second');
+  });
 });
 
 describe('findToolResultMessage', () => {
@@ -170,6 +210,17 @@ describe('findToolResultMessage', () => {
 
     expect(findToolResultMessage(conversation, 'call-1')).toBeUndefined();
     expect(findToolResultMessage(conversation, 'call-1', { includeHidden: true })?.id).toBe('m1');
+  });
+
+  it('returns the latest result when a call has more than one, matching pairToolCallsWithResults', () => {
+    const earlier: ToolResult = { callId: 'call-1', outcome: 'error', content: null };
+    const later: ToolResult = { callId: 'call-1', outcome: 'success', content: null };
+    const conversation = history([
+      message({ id: 'r1', role: 'tool-result', toolResult: earlier }),
+      message({ id: 'r2', role: 'tool-result', toolResult: later }),
+    ]);
+
+    expect(findToolResultMessage(conversation, 'call-1')?.id).toBe('r2');
   });
 });
 

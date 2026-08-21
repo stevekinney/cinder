@@ -23,9 +23,16 @@ export function getMessages(
     .filter((message) => options.includeHidden === true || !message.hidden);
 }
 
+/** A `tool-result` message whose `toolResult` is guaranteed present. */
+export type ToolResultMessage = Message & { role: 'tool-result'; toolResult: ToolResult };
+
+function isToolResultMessage(message: Message): message is ToolResultMessage {
+  return message.role === 'tool-result' && message.toolResult !== undefined;
+}
+
 /** A `tool-result` message parked on `action_required` with a pending action. */
 export type UnresolvedToolApproval = {
-  message: Message;
+  message: ToolResultMessage;
   result: ToolResult & { action: ToolAction };
 };
 
@@ -34,32 +41,54 @@ function hasPendingAction(result: ToolResult): result is ToolResult & { action: 
 }
 
 /**
- * Finds every `tool-result` message still parked on `action_required` with an
- * action present—i.e. not yet resolved via `replaceToolResult`.
+ * Finds the latest `tool-result` message for each tool-call id—matching
+ * {@link pairToolCallsWithResults}'s last-result-wins semantics, so a
+ * superseded `action_required` result is never mistaken for the current one.
+ */
+function latestToolResultsByCallId(
+  messages: ReadonlyArray<Message>,
+): Map<string, ToolResultMessage> {
+  const latest = new Map<string, ToolResultMessage>();
+  for (const message of messages) {
+    if (isToolResultMessage(message)) {
+      latest.set(message.toolResult.callId, message);
+    }
+  }
+  return latest;
+}
+
+/**
+ * Finds every tool call whose latest `tool-result` is still parked on
+ * `action_required` with an action present—i.e. not yet resolved via
+ * `replaceToolResult`. A call whose latest result has since moved to
+ * `success`/`error` is excluded, even if an earlier `action_required` result
+ * for the same call id exists earlier in the transcript.
  */
 export function getUnresolvedToolApprovals(
   conversation: ConversationHistory,
   options: { includeHidden?: boolean } = {},
 ): UnresolvedToolApproval[] {
   const approvals: UnresolvedToolApproval[] = [];
-  for (const message of getMessages(conversation, options)) {
+  for (const message of latestToolResultsByCallId(getMessages(conversation, options)).values()) {
     const result = message.toolResult;
-    if (message.role === 'tool-result' && result && hasPendingAction(result)) {
+    if (hasPendingAction(result)) {
       approvals.push({ message, result });
     }
   }
   return approvals;
 }
 
-/** Finds the `tool-result` message whose result carries the given tool-call id. */
+/**
+ * Finds the current `tool-result` message for a tool-call id—the latest one
+ * if the transcript carries more than one, matching
+ * {@link pairToolCallsWithResults}'s last-result-wins semantics.
+ */
 export function findToolResultMessage(
   conversation: ConversationHistory,
   toolCallId: string,
   options: { includeHidden?: boolean } = {},
-): Message | undefined {
-  return getMessages(conversation, options).find(
-    (message) => message.role === 'tool-result' && message.toolResult?.callId === toolCallId,
-  );
+): ToolResultMessage | undefined {
+  return latestToolResultsByCallId(getMessages(conversation, options)).get(toolCallId);
 }
 
 /** Pairs tool calls with role-valid tool results from an already-ordered message array. */

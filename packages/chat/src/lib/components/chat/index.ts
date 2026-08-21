@@ -137,6 +137,7 @@ export {
   resolveMessageArtifact,
   type ChatExportOptions,
   type DeliveryStatus,
+  type ToolResultMessage,
   type UnresolvedToolApproval,
 } from './utilities/index.ts';
 export type { StepInfo } from './utilities/types.ts';

@@ -11,6 +11,7 @@ export {
   getMessages,
   getUnresolvedToolApprovals,
   pairToolCallsWithResults,
+  type ToolResultMessage,
   type UnresolvedToolApproval,
 } from './conversation.ts';
 export {
