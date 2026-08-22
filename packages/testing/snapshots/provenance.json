@@ -1,9 +1,11 @@
 {
   "schemaVersion": 1,
-  "componentScope": ["data-grid"],
-  "renderedSourceSha": "e8d994f6cbd943cc387d3e75b25bfe99a0cb10ea",
+  "componentScope": [
+    "data-grid"
+  ],
+  "renderedSourceSha": "df2006549cafd74acf2ccf645932ca29e282535e",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
-  "architecture": "arm64",
+  "architecture": "x64",
   "dockerImageTag": "cinder-playwright:1.60.0"
 }
