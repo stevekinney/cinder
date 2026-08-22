@@ -32,4 +32,20 @@ describe('page bundle hydration policy', () => {
     expect(source).toContain('resolveElementLocation(buttonLocation)?.dispatchEvent');
     expect(source).not.toContain('button.dispatchEvent');
   });
+
+  test('re-resolves hash anchors before replaying activation', async () => {
+    const source = await Bun.file(new URL('./page-bundle.ts', import.meta.url)).text();
+
+    expect(source).toContain('const anchorLocation = elementLocation(anchor)');
+    expect(source).toContain('const hydratedAnchor = resolveElementLocation(anchorLocation)');
+    expect(source).not.toContain('hydrateAfter(event, () => anchor.click())');
+  });
+
+  test('preserves checked state and change semantics when replaying form input', async () => {
+    const source = await Bun.file(new URL('./page-bundle.ts', import.meta.url)).text();
+
+    expect(source).toContain("['checkbox', 'radio'].includes(input.type)");
+    expect(source).toContain('hydratedInput.checked = checked');
+    expect(source).toContain("new Event('change', { bubbles: true })");
+  });
 });

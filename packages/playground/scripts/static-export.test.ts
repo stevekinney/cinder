@@ -375,7 +375,7 @@ describe('assertDocumentationPagesArePreRendered', () => {
    * for a 2xx response.
    */
   const goodPage =
-    '<html><body><div id="app"><div data-component-page><h1 id="component-name">Button</h1><div data-readme-code-block><pre class="shiki"><code>const x = 1</code></pre></div><div id="overview-mount-basic" data-overview-preview-rendered><button>Example</button></div></div></div></body></html>';
+    '<html><body><div id="app"><div data-component-page><h1 id="component-name">Button</h1><div data-readme-code-block><div class="cinder-code-block__highlighted"><pre class="shiki"><code>const x = 1</code></pre></div></div><div id="overview-mount-basic" data-overview-preview-rendered><button>Example</button></div></div></div></body></html>';
 
   test('accepts pages that carry server-rendered documentation', () => {
     expect(() =>
@@ -432,6 +432,21 @@ describe('assertDocumentationPagesArePreRendered', () => {
 
     expect(() =>
       assertDocumentationPagesArePreRendered([{ name: 'button', html: unhighlighted }]),
+    ).toThrow(/syntax-highlighted/);
+  });
+
+  test('rejects a page when any README code block is unhighlighted', () => {
+    const secondHighlightedBlock =
+      '<div data-readme-code-block><div class="cinder-code-block__highlighted"><pre class="shiki"><code>const y = 2</code></pre></div></div>';
+    const firstUnhighlighted = goodPage
+      .replace(
+        '<pre class="shiki"><code>const x = 1</code></pre>',
+        '<pre class="cinder-code-block__pre"><code>const x = 1</code></pre>',
+      )
+      .replace('</div></div></body>', `</div>${secondHighlightedBlock}</div></body>`);
+
+    expect(() =>
+      assertDocumentationPagesArePreRendered([{ name: 'button', html: firstUnhighlighted }]),
     ).toThrow(/syntax-highlighted/);
   });
 

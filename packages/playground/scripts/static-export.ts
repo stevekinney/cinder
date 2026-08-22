@@ -692,10 +692,15 @@ export function assertDocumentationPagesArePreRendered(
       failures.push(`${name}: missing ${missing.join(', ')}`);
       continue;
     }
-    if (
-      html.includes('data-readme-code-block') &&
-      !/<[^>]+data-readme-code-block[^>]*>[\s\S]*?<pre class="shiki\b/.test(html)
-    ) {
+    const readmeCodeBlockStarts = [
+      ...html.matchAll(/<[^>]+data-readme-code-block(?:\s|=|>)[^>]*>/g),
+    ].map((match) => match.index);
+    const hasUnhighlightedReadmeCodeBlock = readmeCodeBlockStarts.some((start, index) => {
+      const end = readmeCodeBlockStarts[index + 1] ?? html.length;
+      const block = html.slice(start, end);
+      return !/cinder-code-block__highlighted[^>]*>[\s\S]*?<pre class="shiki\b/.test(block);
+    });
+    if (hasUnhighlightedReadmeCodeBlock) {
       failures.push(`${name}: README code was not syntax-highlighted in the exported HTML`);
       continue;
     }

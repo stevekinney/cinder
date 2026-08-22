@@ -249,7 +249,11 @@ document.addEventListener(
     if (pageHydrated) return;
     const anchor = eventElement(event)?.closest('a[href^="#"]');
     if (anchor === null) return;
-    hydrateAfter(event, () => anchor.click());
+    const anchorLocation = elementLocation(anchor);
+    hydrateAfter(event, () => {
+      const hydratedAnchor = resolveElementLocation(anchorLocation);
+      if (hydratedAnchor instanceof HTMLAnchorElement) hydratedAnchor.click();
+    });
   },
   { capture: true },
 );
@@ -261,7 +265,12 @@ document.addEventListener(
     const input = eventElement(event);
     if (!(input instanceof HTMLInputElement || input instanceof HTMLTextAreaElement)) return;
     const value = input.value;
+    const checked =
+      input instanceof HTMLInputElement && ['checkbox', 'radio'].includes(input.type)
+        ? input.checked
+        : undefined;
     const inputId = input.id;
+    const inputLocation = elementLocation(input);
     if (inputId === 'sidebar-filter') {
       try {
         sessionStorage.setItem(NAV_FILTER_STORAGE_KEY, value);
@@ -271,10 +280,14 @@ document.addEventListener(
       }
     }
     hydrateAfter(event, () => {
-      const hydratedInput = document.getElementById(inputId);
+      const hydratedInput = resolveElementLocation(inputLocation);
       if (!(hydratedInput instanceof HTMLInputElement || hydratedInput instanceof HTMLTextAreaElement)) return;
       hydratedInput.value = value;
+      if (checked !== undefined && hydratedInput instanceof HTMLInputElement) {
+        hydratedInput.checked = checked;
+      }
       hydratedInput.dispatchEvent(new Event('input', { bubbles: true }));
+      if (checked !== undefined) hydratedInput.dispatchEvent(new Event('change', { bubbles: true }));
     });
   },
   { capture: true },
