@@ -13,7 +13,7 @@
 
   async function fetchNext() {
     loading = true;
-    await new Promise((resolve) => setTimeout(resolve, 400));
+    await Promise.resolve();
     const start = items.length;
     items = [...items, ...Array.from({ length: 20 }, (_, index) => `Item ${start + index + 1}`)];
     loading = false;

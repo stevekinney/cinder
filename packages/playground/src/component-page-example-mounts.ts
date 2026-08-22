@@ -9,7 +9,7 @@
  * usable and testable without a Svelte runtime.
  */
 
-import { flushSync, mount, unmount } from 'svelte';
+import { flushSync, mount, tick, unmount } from 'svelte';
 
 import {
   formatErrorForClipboard,
@@ -92,7 +92,11 @@ export function createExampleMountHelpers(options: ExampleMountState): {
           element.replaceChildren();
           app = flushSync(() => mount(componentConstructor, mountOptions));
           mountErrors[mountKey] = undefined;
-          onScenarioSettled?.(mountKey);
+          void tick().then(() => {
+            if (disposed || app === undefined) return;
+            element.setAttribute('data-example-preview-ready', '');
+            onScenarioSettled?.(mountKey);
+          });
         } catch (error) {
           console.error(`[cinder playground] failed to mount example "${scenario}":`, error);
           mountErrors[mountKey] = toMountErrorDetail(error);
@@ -117,6 +121,7 @@ export function createExampleMountHelpers(options: ExampleMountState): {
 
       return () => {
         disposed = true;
+        element.removeAttribute('data-example-preview-ready');
         if (app === undefined) return;
         try {
           unmount(app);

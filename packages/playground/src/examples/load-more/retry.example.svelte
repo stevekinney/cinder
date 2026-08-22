@@ -14,7 +14,7 @@
 
   async function fetchNext() {
     loading = true;
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    await Promise.resolve();
     attempts += 1;
     loading = false;
     if (attempts === 1) {

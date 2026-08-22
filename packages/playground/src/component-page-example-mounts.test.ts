@@ -9,7 +9,7 @@
  */
 
 import { afterEach, describe, expect, it, mock } from 'bun:test';
-import { flushSync } from 'svelte';
+import { flushSync, tick } from 'svelte';
 
 import { setupHappyDom } from '../../components/src/test/happy-dom.ts';
 import {
@@ -213,23 +213,29 @@ describe('createExampleMountHelpers().mountScenario', () => {
       lazy: async () => ({ default: Probe }),
     };
     const settled: Array<{ mountKey: string; error: unknown }> = [];
+    let resolveSettled!: () => void;
+    const didSettle = new Promise<void>((resolve) => {
+      resolveSettled = resolve;
+    });
     const { mountScenario } = createExampleMountHelpers({
       mountErrors: {},
-      onScenarioSettled: (mountKey, error) => settled.push({ mountKey, error }),
+      onScenarioSettled: (mountKey, error) => {
+        settled.push({ mountKey, error });
+        resolveSettled();
+      },
     });
     const element = document.createElement('div');
     element.id = 'example-mount-lazy';
     document.body.appendChild(element);
 
     const cleanup = mountScenario('lazy')(element);
-    await Promise.resolve();
-    flushSync();
+    await didSettle;
 
     expect(settled).toEqual([{ mountKey: 'example-mount-lazy', error: undefined }]);
     cleanup();
   });
 
-  it('flushes the component lifecycle before reporting a scenario as settled', () => {
+  it('flushes the component lifecycle before reporting a scenario as settled', async () => {
     (window as CinderWindow).__CINDER_SCENARIOS__ = { basic: Probe };
     const mountCountsAtSettlement: number[] = [];
     const { mountScenario } = createExampleMountHelpers({
@@ -242,8 +248,12 @@ describe('createExampleMountHelpers().mountScenario', () => {
 
     const cleanup = mountScenario('basic')(element);
 
+    expect(mountCountsAtSettlement).toEqual([]);
+    await tick();
     expect(mountCountsAtSettlement).toEqual([1]);
+    expect(element.getAttribute('data-example-preview-ready')).toBe('');
     cleanup();
+    expect(element.hasAttribute('data-example-preview-ready')).toBeFalse();
   });
 
   it('reports an invalid lazy module as a settled mount failure', async () => {

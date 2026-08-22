@@ -280,7 +280,9 @@ test.describe('authored Playground preview fallbacks', () => {
     test(`${name} opens its authored overlay content`, async ({ page }) => {
       await page.goto(`/page/${name}?view=playground`, { waitUntil: 'load' });
 
-      await page.getByRole('button', { name: trigger }).click();
+      const preview = page.locator('.example-preview[id^="playground-mount-"]');
+      await expect(preview).toHaveAttribute('data-example-preview-ready', '');
+      await preview.getByRole('button', { name: trigger }).click();
       await expect(page.getByText(visibleContent, { exact: true })).toBeVisible();
     });
   }
@@ -299,6 +301,10 @@ test.describe('authored Playground preview fallbacks', () => {
     await page.goto('/page/command-menu?view=playground', { waitUntil: 'load' });
 
     const notes = page.getByRole('textbox', { name: 'Notes' });
+    await expect(page.locator('.example-preview[id^="playground-mount-"]')).toHaveAttribute(
+      'data-example-preview-ready',
+      '',
+    );
     await notes.focus();
     await notes.evaluate((element) => {
       if (!(element instanceof HTMLTextAreaElement)) {
