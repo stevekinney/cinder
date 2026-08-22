@@ -31,6 +31,7 @@ export type ComponentPageServerProps = {
   examples: ComponentPageExample[];
   /** Sidebar navigation entries, rendered inside the page's own tree. */
   sidebarComponents: string[];
+  overviewExampleHtml: string | null;
 };
 
 /** Landing page (`/`) — same chrome, README instead of documentation. */
@@ -80,6 +81,7 @@ export function renderComponentPageBody(props: ComponentPageServerProps): Render
       documentationError: null,
       examples: props.examples,
       sidebarComponents: props.sidebarComponents,
+      overviewExampleHtml: props.overviewExampleHtml,
       snapshotMode: false,
     },
   });

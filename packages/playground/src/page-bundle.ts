@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { rmSync } from 'node:fs';
-import { join, relative as relativePath, sep } from 'node:path';
+import { join } from 'node:path';
 
 import {
   PUBLIC_PATH_BY_FAMILY,
@@ -10,8 +10,8 @@ import {
   pageBuildPromiseByKey,
 } from './build-artifacts-shared.ts';
 import { discoverComponentDefinition, discoverComponents, discoverExamples } from './discover.ts';
-import { getRebuildGeneration } from './file-watcher.ts';
 import { PLAYGROUND_TEMP_ROOT } from './playground-paths.ts';
+import { getRebuildGeneration } from './rebuild-generation.ts';
 
 /**
  * Page-bundle entries: keyed by component name → entry artifact path
@@ -19,11 +19,6 @@ import { PLAYGROUND_TEMP_ROOT } from './playground-paths.ts';
  * with `bundleEntryByKey` since entries get prefix `page-` vs `bundle-`.
  */
 export const pageEntryByName = new Map<string, string>();
-
-export function relativeImportSpecifier(fromDirectory: string, targetPath: string): string {
-  const relative = relativePath(fromDirectory, targetPath).replaceAll(sep, '/');
-  return relative.startsWith('.') ? relative : `./${relative}`;
-}
 
 /**
  * Compile the all-in-one page bundle for a single component without
@@ -74,7 +69,7 @@ export async function compilePageBundleArtifacts(
     )
     .join('\n');
 
-  const entrySource = `import { NAV_FILTER_STORAGE_KEY, readInitialTheme } from '../../src/component-page-theme.ts';
+  const entrySource = `import { NAV_FILTER_STORAGE_KEY } from '../../src/component-page-theme.ts';
 import { persistScrollPosition } from '../../src/shell-app/sidebar-scroll.ts';
 
 const scenarioLoaders: Record<string, () => Promise<unknown>> = {
@@ -106,12 +101,6 @@ const previewOnly = new URLSearchParams(window.location.search).get('preview') =
 // therefore read from the URL exactly as the server read it, and the same
 // documentation/examples data islands feed both sides.
 const snapshotMode = new URLSearchParams(window.location.search).get('snapshot') === '1';
-let hasPersistedNavFilter = false;
-try {
-  hasPersistedNavFilter = (sessionStorage.getItem(NAV_FILTER_STORAGE_KEY) ?? '').trim() !== '';
-} catch {
-  // Private mode or disabled storage: canonical documentation stays static.
-}
 const hasServerRenderedContent = target.firstElementChild !== null;
 const shouldHydrate = hasServerRenderedContent && !snapshotMode && !previewOnly;
 
@@ -123,12 +112,32 @@ const sidebarRaw = (window as unknown as Record<string, unknown>)['__CINDER_SIDE
 const sidebarComponents = Array.isArray(sidebarRaw)
   ? sidebarRaw.filter((entry): entry is string => typeof entry === 'string')
   : [];
+// The server-rendered overview already exists inside #app. Read that fragment
+// before hydration instead of serializing the same HTML into a second script
+// payload solely to pass it back as a matching hydration prop. The surrounding
+// page's {@html} block adds its own hydration markers; remove only those page
+// markers so the prop matches the featured renderer's original fragment.
+const pageHtmlBlockMarker = /^<!--\\[-?\\d+--><!--[a-z0-9]+-->/;
+const svelteHydrationMarker = /<!--(?:\\[(?:!|\\?[\\s\\S]*?|-?\\d+)?|\\]|\\/?\\$)?-->/g;
+const overviewExampleHtml =
+  target
+    .querySelector<HTMLElement>('[data-overview-preview-rendered]')
+    ?.innerHTML.replace(pageHtmlBlockMarker, '')
+    .replace(svelteHydrationMarker, '') ?? null;
+let resolveOverviewPreview: (() => void) | undefined;
+const overviewPreviewReady = overviewExampleHtml !== null && overviewExampleHtml !== ''
+  ? new Promise<void>((resolve) => {
+      resolveOverviewPreview = resolve;
+    })
+  : undefined;
 
 const props = {
   loadBareComponentModule: () => import(${JSON.stringify(componentDefinition.importPath)}),
   previewOnly,
   snapshotMode,
   sidebarComponents,
+  overviewExampleHtml,
+  onOverviewPreviewSettled: () => resolveOverviewPreview?.(),
 };
 
 let pageHydration: Promise<void> | undefined;
@@ -137,9 +146,10 @@ let pageHydrated = false;
 function hydratePage(): Promise<void> {
   if (pageHydration !== undefined) return pageHydration;
 
-  const hydration = Promise.all([import('svelte'), import('../../src/component-page.svelte')]).then(([svelte, { default: ComponentPage }]) => {
+  const hydration = Promise.all([import('svelte'), import('../../src/component-page.svelte')]).then(async ([svelte, { default: ComponentPage }]) => {
     if (shouldHydrate) {
       svelte.hydrate(ComponentPage, { target, props });
+      if (overviewPreviewReady !== undefined) await overviewPreviewReady;
       pageHydrated = true;
       return;
     }
@@ -178,11 +188,32 @@ function eventElement(event: Event): Element | null {
   return event.target instanceof Element ? event.target : null;
 }
 
-// The server-rendered documentation remains immediately usable: links and
-// anchors keep their native behavior. The first control interaction upgrades
-// it to the full Svelte page, then replays that interaction against the
-// hydrated component. This covers every expanding/copying/Playground control,
-// rather than letting a new button accidentally become inert on static docs.
+type ElementLocation = { rootId: string; childIndexes: number[] };
+
+function elementLocation(element: Element): ElementLocation | undefined {
+  const childIndexes: number[] = [];
+  let current: Element | null = element;
+  while (current !== null && current.id === '') {
+    const parent = current.parentElement;
+    if (parent === null) return undefined;
+    childIndexes.unshift(Array.from(parent.children).indexOf(current));
+    current = parent;
+  }
+  return current === null ? undefined : { rootId: current.id, childIndexes };
+}
+
+function resolveElementLocation(location: ElementLocation | undefined): Element | null {
+  if (location === undefined) return null;
+  let current: Element | null = document.getElementById(location.rootId);
+  for (const childIndex of location.childIndexes) {
+    current = current?.children.item(childIndex) ?? null;
+  }
+  return current;
+}
+
+// The server-rendered documentation remains immediately usable while eager
+// hydration loads. If a control interaction wins that race, hydrate first and
+// replay it against the now-live component rather than dropping the input.
 document.addEventListener(
   'click',
   (event) => {
@@ -197,7 +228,11 @@ document.addEventListener(
       hydrateAfter(event, () => undefined);
       return;
     }
-    hydrateAfter(event, () => button.click());
+    const buttonLocation = elementLocation(button);
+    hydrateAfter(event, () => {
+      const hydratedButton = resolveElementLocation(buttonLocation);
+      if (hydratedButton instanceof HTMLButtonElement) hydratedButton.click();
+    });
   },
   { capture: true },
 );
@@ -206,11 +241,27 @@ document.addEventListener(
   'keydown',
   (event) => {
     if (pageHydrated || !['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
-    const button = eventElement(event)?.closest('button');
-    if (button?.getAttribute('role') !== 'tab') return;
+    const eventTarget = eventElement(event);
+    if (eventTarget === null || eventTarget.closest('input, textarea, select') !== null) return;
+    const keyboardTarget = eventTarget.closest(
+      '[role="tab"], [role="grid"], [role="listbox"], [role="menu"], [role="tree"], [role="treegrid"]',
+    );
+    if (keyboardTarget === null || keyboardTarget === undefined) return;
+    const keyboardTargetLocation = elementLocation(keyboardTarget);
+    const keyboardEventInit: KeyboardEventInit = {
+      key: event.key,
+      code: event.code,
+      altKey: event.altKey,
+      ctrlKey: event.ctrlKey,
+      metaKey: event.metaKey,
+      shiftKey: event.shiftKey,
+      repeat: event.repeat,
+      bubbles: true,
+      cancelable: true,
+    };
     hydrateAfter(event, () =>
-      button.dispatchEvent(
-        new KeyboardEvent('keydown', { key: event.key, bubbles: true, cancelable: true }),
+      resolveElementLocation(keyboardTargetLocation)?.dispatchEvent(
+        new KeyboardEvent('keydown', keyboardEventInit),
       ),
     );
   },
@@ -223,23 +274,35 @@ document.addEventListener(
     if (pageHydrated) return;
     const anchor = eventElement(event)?.closest('a[href^="#"]');
     if (anchor === null) return;
-    hydrateAfter(event, () => anchor.click());
+    const anchorLocation = elementLocation(anchor);
+    hydrateAfter(event, () => {
+      const hydratedAnchor = resolveElementLocation(anchorLocation);
+      if (hydratedAnchor instanceof HTMLAnchorElement) hydratedAnchor.click();
+    });
   },
   { capture: true },
 );
-
-window.addEventListener('scroll', () => {
-  if (!pageHydrated) void hydratePage().catch((error) => console.error('[cinder playground] failed to hydrate page:', error));
-}, { once: true, passive: true });
 
 document.addEventListener(
   'input',
   (event) => {
     if (pageHydrated) return;
     const input = eventElement(event);
-    if (!(input instanceof HTMLInputElement || input instanceof HTMLTextAreaElement)) return;
+    if (
+      !(
+        input instanceof HTMLInputElement ||
+        input instanceof HTMLTextAreaElement ||
+        input instanceof HTMLSelectElement
+      )
+    )
+      return;
     const value = input.value;
+    const checked =
+      input instanceof HTMLInputElement && ['checkbox', 'radio'].includes(input.type)
+        ? input.checked
+        : undefined;
     const inputId = input.id;
+    const inputLocation = elementLocation(input);
     if (inputId === 'sidebar-filter') {
       try {
         sessionStorage.setItem(NAV_FILTER_STORAGE_KEY, value);
@@ -249,32 +312,34 @@ document.addEventListener(
       }
     }
     hydrateAfter(event, () => {
-      const hydratedInput = document.getElementById(inputId);
-      if (!(hydratedInput instanceof HTMLInputElement || hydratedInput instanceof HTMLTextAreaElement)) return;
+      const hydratedInput = resolveElementLocation(inputLocation);
+      if (
+        !(
+          hydratedInput instanceof HTMLInputElement ||
+          hydratedInput instanceof HTMLTextAreaElement ||
+          hydratedInput instanceof HTMLSelectElement
+        )
+      )
+        return;
       hydratedInput.value = value;
+      if (checked !== undefined && hydratedInput instanceof HTMLInputElement) {
+        hydratedInput.checked = checked;
+      }
       hydratedInput.dispatchEvent(new Event('input', { bubbles: true }));
+      if (checked !== undefined || hydratedInput instanceof HTMLSelectElement) {
+        hydratedInput.dispatchEvent(new Event('change', { bubbles: true }));
+      }
     });
   },
   { capture: true },
 );
 
-// Snapshot and preview routes intentionally have an empty server-rendered
-// target, so they must mount immediately. A shared or bookmarked Playground
-// URL is likewise interactive from first paint. Canonical documentation URLs
-// keep their runtime behind explicit reader interaction, leaving the
-// server-rendered document immediately useful.
-if (
-  snapshotMode ||
-  previewOnly ||
-  !hasServerRenderedContent ||
-  hasPersistedNavFilter ||
-  readInitialTheme() === 'dark' ||
-  (shouldHydrate && new URLSearchParams(window.location.search).get('view') === 'playground')
-) {
-  void hydratePage().catch((error) =>
-    console.error('[cinder playground] failed to hydrate Playground view:', error),
-  );
-}
+// The exported document is complete before this runs. Hydrate immediately so
+// its controls and server-rendered example become interactive without using an
+// unrelated gesture such as scrolling as a scheduling signal.
+void hydratePage().catch((error) =>
+  console.error('[cinder playground] failed to hydrate page:', error),
+);
 `;
 
   try {

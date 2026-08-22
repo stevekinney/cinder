@@ -71,8 +71,8 @@ import {
   discoverSidebarComponents,
 } from './discover.ts';
 import { readExampleMetadata } from './example-metadata.ts';
+import { renderFeaturedExample } from './featured-example-server-renderer.ts';
 import {
-  getRebuildGeneration,
   hasPendingRebuild,
   invalidateCachesForChange,
   startWatcher,
@@ -90,6 +90,7 @@ import {
 import { buildPageBundle } from './page-bundle.ts';
 import { PLAYGROUND_ROOT } from './playground-paths.ts';
 import { createHttpServerOnAvailablePort, resolvePreferredPort } from './port-scanner.ts';
+import { getRebuildGeneration } from './rebuild-generation.ts';
 import {
   DEPICT_THEME_VARIABLES,
   FAVICON_HREF,
@@ -414,10 +415,27 @@ async function renderComponentPage(
    */
   const sidebarComponents = snapshotMode || previewOnly ? [] : await discoverSidebarComponents();
   const sidebarJson = jsonForScriptTag(sidebarComponents);
+  const overviewExample = examples.find((example) => example.featured === true) ?? examples[0];
 
   let ssrBody = '';
   let ssrHead = '';
+  let overviewExampleHtml: string | null = null;
   if (!snapshotMode && !previewOnly) {
+    let overviewExampleHead = '';
+    try {
+      if (overviewExample !== undefined) {
+        const mountId = `overview-mount-${overviewExample.scenario}`;
+        const renderedExample = await renderFeaturedExample(
+          componentName,
+          overviewExample.scenario,
+          mountId,
+        );
+        overviewExampleHtml = renderedExample.body;
+        overviewExampleHead = renderedExample.head;
+      }
+    } catch (error) {
+      console.error(`[playground] featured example SSR failed for ${componentName}:`, error);
+    }
     try {
       const { renderComponentPageBody } = await loadPageServerRenderer();
       const rendered = renderComponentPageBody({
@@ -425,16 +443,16 @@ async function renderComponentPage(
         documentation,
         examples,
         sidebarComponents,
+        overviewExampleHtml,
       });
       ssrBody = rendered.body;
       // Inline sourcemaps in the SSR'd <style> output are ~80% of its bytes and
       // sit on the critical rendering path. See strip-inline-sourcemaps.ts.
-      ssrHead = stripInlineSourcemaps(rendered.head);
+      ssrHead = stripInlineSourcemaps(`${rendered.head}${overviewExampleHead}`);
     } catch (error) {
       console.error(`[playground] page SSR failed for ${componentName}:`, error);
     }
   }
-
   return `<!DOCTYPE html>
 <html lang="en"${htmlAttribute}>
   <head>

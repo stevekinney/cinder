@@ -224,7 +224,10 @@ test('initial payload includes static imports but excludes reader-triggered dyna
     );
     await writeFile(join(outputDirectory, 'shell-bundle', 'shared.js'), 'export const shared = 1;');
     await writeFile(join(outputDirectory, 'shell-bundle', 'lazy.js'), 'export const lazy = 1;');
-    await writeFile(join(outputDirectory, 'playground-styles', 'landing.css'), ':root { color: canvas; }');
+    await writeFile(
+      join(outputDirectory, 'playground-styles', 'landing.css'),
+      ':root { color: canvas; }',
+    );
 
     const payload = await initialRoutePayload('/', outputDirectory);
 
@@ -372,11 +375,24 @@ describe('assertDocumentationPagesArePreRendered', () => {
    * for a 2xx response.
    */
   const goodPage =
-    '<html><body><div id="app"><div data-component-page><h1>Button</h1></div></div></body></html>';
+    '<html><body><div id="app"><div data-component-page><h1 id="component-name">Button</h1><div data-readme-code-block><div class="cinder-code-block__highlighted"><pre class="shiki"><code>const x = 1</code></pre></div></div><div id="overview-mount-basic" data-overview-preview-rendered><button>Example</button></div></div></div></body></html>';
 
   test('accepts pages that carry server-rendered documentation', () => {
     expect(() =>
       assertDocumentationPagesArePreRendered([{ name: 'button', html: goodPage }]),
+    ).not.toThrow();
+  });
+
+  test('accepts semantic h1 headings inside a server-rendered example', () => {
+    const pageWithExampleHeading = goodPage.replace(
+      '<button>Example</button>',
+      '<section><h1>Example page title</h1></section>',
+    );
+
+    expect(() =>
+      assertDocumentationPagesArePreRendered([
+        { name: 'page-header', html: pageWithExampleHeading },
+      ]),
     ).not.toThrow();
   });
 
@@ -406,6 +422,54 @@ describe('assertDocumentationPagesArePreRendered', () => {
         { name: 'badge', html: '<div id="app"><div data-component-page></div></div>' },
       ]),
     ).toThrow(/<h1/);
+  });
+
+  test('rejects documentation code that was exported without syntax highlighting', () => {
+    const unhighlighted = goodPage.replace(
+      '<pre class="shiki"><code>const x = 1</code></pre>',
+      '<pre class="cinder-code-block__pre"><code>const x = 1</code></pre>',
+    );
+
+    expect(() =>
+      assertDocumentationPagesArePreRendered([{ name: 'button', html: unhighlighted }]),
+    ).toThrow(/syntax-highlighted/);
+  });
+
+  test('rejects a page when any README code block is unhighlighted', () => {
+    const secondHighlightedBlock =
+      '<div data-readme-code-block><div class="cinder-code-block__highlighted"><pre class="shiki"><code>const y = 2</code></pre></div></div>';
+    const firstUnhighlighted = goodPage
+      .replace(
+        '<pre class="shiki"><code>const x = 1</code></pre>',
+        '<pre class="cinder-code-block__pre"><code>const x = 1</code></pre>',
+      )
+      .replace('</div></div></body>', `</div>${secondHighlightedBlock}</div></body>`);
+
+    expect(() =>
+      assertDocumentationPagesArePreRendered([{ name: 'button', html: firstUnhighlighted }]),
+    ).toThrow(/syntax-highlighted/);
+  });
+
+  test('accepts plain-text README blocks that have no syntax grammar', () => {
+    const plainTextPage = goodPage.replace(
+      '<pre class="shiki"><code>const x = 1</code></pre>',
+      '<pre data-language="plaintext"><code>key  value</code></pre>',
+    );
+
+    expect(() =>
+      assertDocumentationPagesArePreRendered([{ name: 'run-step-timeline', html: plainTextPage }]),
+    ).not.toThrow();
+  });
+
+  test('rejects an overview preview whose exported mount is blank', () => {
+    const blankPreview = goodPage.replace(
+      '<div id="overview-mount-basic" data-overview-preview-rendered><button>Example</button></div>',
+      '<div id="overview-mount-basic"></div>',
+    );
+
+    expect(() =>
+      assertDocumentationPagesArePreRendered([{ name: 'button', html: blankPreview }]),
+    ).toThrow(/overview preview/);
   });
 
   test('reports every offender and the total, not just the first', () => {

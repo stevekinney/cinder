@@ -9,7 +9,7 @@
  * usable and testable without a Svelte runtime.
  */
 
-import { mount, unmount } from 'svelte';
+import { flushSync, mount, tick, unmount } from 'svelte';
 
 import {
   formatErrorForClipboard,
@@ -36,6 +36,28 @@ function scenarioComponentFromModule(module: unknown): unknown {
   return Reflect.get(module, 'default');
 }
 
+function descendantLocation(root: Element, descendant: Element): number[] | undefined {
+  const childIndexes: number[] = [];
+  let current: Element | null = descendant;
+  while (current !== root) {
+    if (current === null) return undefined;
+    const parent: Element | null = current.parentElement;
+    if (parent === null || !root.contains(parent)) return undefined;
+    childIndexes.unshift(Array.from(parent.children).indexOf(current));
+    current = parent;
+  }
+  return childIndexes;
+}
+
+function resolveDescendantLocation(root: Element, childIndexes: readonly number[]): Element | null {
+  let current: Element | null = root;
+  for (const childIndex of childIndexes) {
+    if (current === null) return null;
+    current = current.children.item(childIndex);
+  }
+  return current;
+}
+
 /**
  * Mount each registered scenario into its preview container via an
  * attachment. An attachment runs exactly when its element is created and
@@ -57,66 +79,126 @@ function scenarioComponentFromModule(module: unknown): unknown {
  */
 export function createExampleMountHelpers(options: ExampleMountState): {
   mountScenario: (scenario: string) => (element: HTMLElement) => () => void;
+  mountScenarioWhenVisible: (scenario: string) => (element: HTMLElement) => () => void;
 } {
   const { mountErrors, onScenarioSettled } = options;
-  return {
-    mountScenario(scenario: string) {
-      return (element: HTMLElement) => {
-        const mountKey = element.id;
-        const registry = (window as CinderWindow).__CINDER_SCENARIOS__ ?? {};
-        const Component = registry[scenario];
-        const loader = (window as CinderWindow).__CINDER_SCENARIO_LOADERS__?.[scenario];
-        let app: ReturnType<typeof mount> | undefined;
-        let disposed = false;
+  const mountScenario = (scenario: string) => {
+    return (element: HTMLElement) => {
+      const mountKey = element.id;
+      const registry = (window as CinderWindow).__CINDER_SCENARIOS__ ?? {};
+      const registeredComponent = registry[scenario];
+      const loader = (window as CinderWindow).__CINDER_SCENARIO_LOADERS__?.[scenario];
+      let app: ReturnType<typeof mount> | undefined;
+      let disposed = false;
+      let settled = false;
 
-        const mountComponent = (candidate: unknown) => {
-          if (disposed) return;
-          if (typeof candidate !== 'function') {
-            const error = new Error(
-              `[cinder playground] no registered component for scenario "${scenario}"`,
-            );
-            console.error(error.message);
-            mountErrors[mountKey] = toMountErrorDetail(error);
-            onScenarioSettled?.(mountKey, error);
-            return;
-          }
-          try {
-            app = mount(candidate as Parameters<typeof mount>[0], {
-              target: element,
-              props: { mountIdPrefix: mountKey },
-            });
-            mountErrors[mountKey] = undefined;
-            onScenarioSettled?.(mountKey);
-          } catch (error) {
-            console.error(`[cinder playground] failed to mount example "${scenario}":`, error);
-            mountErrors[mountKey] = toMountErrorDetail(error);
-            onScenarioSettled?.(mountKey, error);
-          }
-        };
+      const settle = (error?: unknown) => {
+        if (settled) return;
+        settled = true;
+        onScenarioSettled?.(mountKey, error);
+      };
 
-        if (typeof Component === 'function') {
-          mountComponent(Component);
-        } else if (loader !== undefined) {
-          void loader()
-            .then((module) => mountComponent(scenarioComponentFromModule(module)))
-            .catch((error) => {
-              if (disposed) return;
-              console.error(`[cinder playground] failed to load example "${scenario}":`, error);
-              mountErrors[mountKey] = toMountErrorDetail(error);
-              onScenarioSettled?.(mountKey, error);
-            });
-        } else {
-          mountComponent(undefined);
+      const clearFailedPreview = () => {
+        element.replaceChildren();
+        element.removeAttribute('data-overview-preview-rendered');
+      };
+
+      const mountComponent = (candidate: unknown) => {
+        if (disposed) return;
+        if (typeof candidate !== 'function') {
+          const error = new Error(
+            `[cinder playground] no registered component for scenario "${scenario}"`,
+          );
+          console.error(error.message);
+          clearFailedPreview();
+          mountErrors[mountKey] = toMountErrorDetail(error);
+          settle(error);
+          return;
         }
+        try {
+          const componentConstructor = candidate as Parameters<typeof mount>[0];
+          const mountOptions = { target: element, props: { mountIdPrefix: mountKey } };
+          const activeElement = document.activeElement;
+          const focusedChildIndexes =
+            activeElement instanceof Element && element.contains(activeElement)
+              ? descendantLocation(element, activeElement)
+              : undefined;
+          // The static overview fragment is compiled by the isolated server
+          // renderer, while this constructor comes from the page's client
+          // bundle. Replacing that independently compiled fragment avoids
+          // treating incompatible hydration markers as one component tree.
+          // The replacement and mount happen in one task, so the server paint
+          // remains visible until the interactive tree is ready to take over.
+          element.replaceChildren();
+          app = flushSync(() => mount(componentConstructor, mountOptions));
+          if (focusedChildIndexes !== undefined) {
+            const focusTarget = resolveDescendantLocation(element, focusedChildIndexes);
+            if (focusTarget instanceof HTMLElement) focusTarget.focus({ preventScroll: true });
+          }
+          mountErrors[mountKey] = undefined;
+          void tick().then(() => {
+            if (disposed || app === undefined) return;
+            element.setAttribute('data-example-preview-ready', '');
+            settle();
+          });
+        } catch (error) {
+          console.error(`[cinder playground] failed to mount example "${scenario}":`, error);
+          clearFailedPreview();
+          mountErrors[mountKey] = toMountErrorDetail(error);
+          settle(error);
+        }
+      };
+
+      if (typeof registeredComponent === 'function') {
+        mountComponent(registeredComponent);
+      } else if (loader !== undefined) {
+        void loader()
+          .then((module) => mountComponent(scenarioComponentFromModule(module)))
+          .catch((error) => {
+            if (disposed) return;
+            console.error(`[cinder playground] failed to load example "${scenario}":`, error);
+            clearFailedPreview();
+            mountErrors[mountKey] = toMountErrorDetail(error);
+            settle(error);
+          });
+      } else {
+        mountComponent(undefined);
+      }
+
+      return () => {
+        disposed = true;
+        settle();
+        element.removeAttribute('data-example-preview-ready');
+        if (app === undefined) return;
+        try {
+          unmount(app);
+        } catch {
+          // Best-effort cleanup only.
+        }
+      };
+    };
+  };
+
+  return {
+    mountScenario,
+    mountScenarioWhenVisible(scenario: string) {
+      return (element: HTMLElement) => {
+        if (typeof IntersectionObserver === 'undefined') return mountScenario(scenario)(element);
+
+        let cleanupMount: (() => void) | undefined;
+        const observer = new IntersectionObserver(
+          (entries) => {
+            if (!entries.some((entry) => entry.isIntersecting)) return;
+            observer.disconnect();
+            cleanupMount = mountScenario(scenario)(element);
+          },
+          { rootMargin: '400px 0px' },
+        );
+        observer.observe(element);
 
         return () => {
-          disposed = true;
-          if (app === undefined) return;
-          try {
-            unmount(app);
-          } catch {
-            // Best-effort cleanup only.
-          }
+          observer.disconnect();
+          cleanupMount?.();
         };
       };
     },

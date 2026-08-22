@@ -8,8 +8,8 @@
  * production mount/unmount path, not a copy of it.
  */
 
-import { afterEach, describe, expect, it } from 'bun:test';
-import { flushSync } from 'svelte';
+import { afterEach, describe, expect, it, mock } from 'bun:test';
+import { flushSync, tick } from 'svelte';
 
 import { setupHappyDom } from '../../components/src/test/happy-dom.ts';
 import {
@@ -40,10 +40,26 @@ type CinderWindow = typeof globalThis & {
   __CINDER_SCENARIO_LOADERS__?: Record<string, () => Promise<unknown>>;
 };
 
+const originalIntersectionObserver = globalThis.IntersectionObserver;
+
+class FakeIntersectionObserver {
+  static instances: FakeIntersectionObserver[] = [];
+  readonly callback: IntersectionObserverCallback;
+  readonly disconnect = mock(() => {});
+  readonly observe = mock((_element: Element) => {});
+
+  constructor(callback: IntersectionObserverCallback) {
+    this.callback = callback;
+    FakeIntersectionObserver.instances.push(this);
+  }
+}
+
 afterEach(() => {
   resetProbe();
   delete (window as CinderWindow).__CINDER_SCENARIOS__;
   delete (window as CinderWindow).__CINDER_SCENARIO_LOADERS__;
+  globalThis.IntersectionObserver = originalIntersectionObserver;
+  FakeIntersectionObserver.instances = [];
   document.body.innerHTML = '';
 });
 
@@ -64,6 +80,44 @@ describe('createExampleMountHelpers().mountScenario', () => {
     expect(mountErrors['example-mount-basic']).toBeUndefined();
     expect(element.querySelector('.example-mounts-probe')).not.toBeNull();
 
+    cleanup();
+  });
+
+  it('atomically replaces an independently server-rendered overview fragment', () => {
+    (window as CinderWindow).__CINDER_SCENARIOS__ = { basic: Probe };
+    const { mountScenario } = createExampleMountHelpers({ mountErrors: {} });
+    const element = document.createElement('div');
+    element.id = 'overview-mount-basic';
+    element.setAttribute('data-overview-preview-rendered', '');
+    element.innerHTML = '<p data-server-fragment>Static preview</p>';
+    document.body.appendChild(element);
+
+    const cleanup = mountScenario('basic')(element);
+    flushSync();
+
+    expect(element.querySelector('[data-server-fragment]')).toBeNull();
+    expect(element.querySelector('.example-mounts-probe')).not.toBeNull();
+    cleanup();
+  });
+
+  it('restores focus to the corresponding control after replacing the server fragment', () => {
+    (window as CinderWindow).__CINDER_SCENARIOS__ = { basic: Probe };
+    const { mountScenario } = createExampleMountHelpers({ mountErrors: {} });
+    const element = document.createElement('div');
+    element.id = 'overview-mount-basic';
+    element.innerHTML =
+      '<div class="example-mounts-probe" data-mount-id-prefix="overview-mount-basic"><button type="button">Probe action</button></div>';
+    document.body.appendChild(element);
+    const serverButton = element.querySelector('button');
+    serverButton?.focus();
+    expect(document.activeElement).toBe(serverButton);
+
+    const cleanup = mountScenario('basic')(element);
+    flushSync();
+
+    const hydratedButton = element.querySelector('button');
+    expect(hydratedButton).not.toBe(serverButton);
+    expect(document.activeElement).toBe(hydratedButton);
     cleanup();
   });
 
@@ -142,25 +196,111 @@ describe('createExampleMountHelpers().mountScenario', () => {
     expect(unmountCount()).toBe(1);
   });
 
+  it('defers documentation scenarios until their preview approaches the viewport', async () => {
+    globalThis.IntersectionObserver =
+      FakeIntersectionObserver as unknown as typeof IntersectionObserver;
+    let loadCount = 0;
+    (window as CinderWindow).__CINDER_SCENARIO_LOADERS__ = {
+      lazy: async () => {
+        loadCount += 1;
+        return { default: Probe };
+      },
+    };
+    const { mountScenarioWhenVisible } = createExampleMountHelpers({ mountErrors: {} });
+    const element = document.createElement('div');
+    element.id = 'example-mount-lazy';
+    document.body.appendChild(element);
+
+    const cleanup = mountScenarioWhenVisible('lazy')(element);
+    expect(loadCount).toBe(0);
+
+    const observer = FakeIntersectionObserver.instances[0];
+    observer?.callback(
+      [{ isIntersecting: true, target: element } as unknown as IntersectionObserverEntry],
+      observer as unknown as IntersectionObserver,
+    );
+    await Promise.resolve();
+    flushSync();
+
+    expect(loadCount).toBe(1);
+    expect(mountCount()).toBe(1);
+    expect(observer?.disconnect).toHaveBeenCalled();
+    cleanup();
+    expect(unmountCount()).toBe(1);
+  });
+
   it('reports the settled mount so snapshot consumers can await lazy scenarios', async () => {
     (window as CinderWindow).__CINDER_SCENARIO_LOADERS__ = {
       lazy: async () => ({ default: Probe }),
     };
     const settled: Array<{ mountKey: string; error: unknown }> = [];
+    let resolveSettled!: () => void;
+    const didSettle = new Promise<void>((resolve) => {
+      resolveSettled = resolve;
+    });
     const { mountScenario } = createExampleMountHelpers({
       mountErrors: {},
-      onScenarioSettled: (mountKey, error) => settled.push({ mountKey, error }),
+      onScenarioSettled: (mountKey, error) => {
+        settled.push({ mountKey, error });
+        resolveSettled();
+      },
     });
     const element = document.createElement('div');
     element.id = 'example-mount-lazy';
     document.body.appendChild(element);
 
     const cleanup = mountScenario('lazy')(element);
-    await Promise.resolve();
-    flushSync();
+    await didSettle;
 
     expect(settled).toEqual([{ mountKey: 'example-mount-lazy', error: undefined }]);
     cleanup();
+  });
+
+  it('settles once when a pending lazy mount is disposed before its module loads', async () => {
+    let resolveModule!: (module: unknown) => void;
+    (window as CinderWindow).__CINDER_SCENARIO_LOADERS__ = {
+      lazy: () =>
+        new Promise((resolve) => {
+          resolveModule = resolve;
+        }),
+    };
+    const settled: string[] = [];
+    const { mountScenario } = createExampleMountHelpers({
+      mountErrors: {},
+      onScenarioSettled: (mountKey) => settled.push(mountKey),
+    });
+    const element = document.createElement('div');
+    element.id = 'overview-mount-lazy';
+    document.body.appendChild(element);
+
+    const cleanup = mountScenario('lazy')(element);
+    cleanup();
+    resolveModule({ default: Probe });
+    await Promise.resolve();
+
+    expect(settled).toEqual(['overview-mount-lazy']);
+    expect(mountCount()).toBe(0);
+  });
+
+  it('flushes the component lifecycle before reporting a scenario as settled', async () => {
+    (window as CinderWindow).__CINDER_SCENARIOS__ = { basic: Probe };
+    const mountCountsAtSettlement: number[] = [];
+    const { mountScenario } = createExampleMountHelpers({
+      mountErrors: {},
+      onScenarioSettled: () => mountCountsAtSettlement.push(mountCount()),
+    });
+    const element = document.createElement('div');
+    element.id = 'overview-mount-basic';
+    document.body.appendChild(element);
+
+    const cleanup = mountScenario('basic')(element);
+
+    expect(mountCountsAtSettlement).toEqual([]);
+    await tick();
+    expect(mountCountsAtSettlement).toEqual([1]);
+    expect(element.getAttribute('data-example-preview-ready')).toBe('');
+    cleanup();
+    expect(element.hasAttribute('data-example-preview-ready')).toBeFalse();
   });
 
   it('reports an invalid lazy module as a settled mount failure', async () => {
@@ -184,6 +324,35 @@ describe('createExampleMountHelpers().mountScenario', () => {
     expect(settled[0]?.mountKey).toBe('example-mount-invalid');
     expect(settled[0]?.error).toBeInstanceOf(Error);
     expect(mountErrors['example-mount-invalid']?.message).toContain('no registered component');
+  });
+
+  it('removes an inert server preview when the client scenario fails to load', async () => {
+    (window as CinderWindow).__CINDER_SCENARIO_LOADERS__ = {
+      broken: async () => {
+        throw new Error('chunk unavailable');
+      },
+    };
+    const mountErrors: Record<string, MountErrorDetail | undefined> = {};
+    let resolveSettled!: () => void;
+    const didSettle = new Promise<void>((resolve) => {
+      resolveSettled = resolve;
+    });
+    const { mountScenario } = createExampleMountHelpers({
+      mountErrors,
+      onScenarioSettled: () => resolveSettled(),
+    });
+    const element = document.createElement('div');
+    element.id = 'overview-mount-broken';
+    element.setAttribute('data-overview-preview-rendered', '');
+    element.innerHTML = '<button type="button">Server-only action</button>';
+    document.body.appendChild(element);
+
+    mountScenario('broken')(element);
+    await didSettle;
+
+    expect(element.childElementCount).toBe(0);
+    expect(element.hasAttribute('data-overview-preview-rendered')).toBeFalse();
+    expect(mountErrors['overview-mount-broken']?.message).toContain('chunk unavailable');
   });
 });
 

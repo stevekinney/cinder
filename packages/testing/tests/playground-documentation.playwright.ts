@@ -61,6 +61,28 @@ test.describe('playground component documentation', () => {
     expect(errors).toEqual([]);
   });
 
+  test('renders highlighted usage and the live preview before any scroll', async ({ page }) => {
+    await page.goto('/page/banner', { waitUntil: 'load' });
+
+    const usageCode = page.locator('[data-readme-code-block] pre.shiki');
+    await expect(usageCode).toBeVisible();
+    await expect(usageCode.locator('span[style*="color"]')).not.toHaveCount(0);
+    await expect(page.locator('[data-readme-code-block] [tabindex="0"]')).toHaveCount(1);
+
+    const overviewPreview = page.locator('#overview-mount-basic');
+    await expect(overviewPreview).toHaveAttribute('data-overview-preview-rendered', '');
+    await expect(overviewPreview.getByText('Scheduled maintenance is planned')).toBeVisible();
+    await expect(overviewPreview.getByText('Loading preview…')).toHaveCount(0);
+    expect(await page.evaluate(() => window.scrollY)).toBe(0);
+    await expect(page.locator('#examples .example-preview').last()).toBeEmpty();
+
+    // The server-rendered paint remains until the interactive client tree can
+    // replace it without dropping this early interaction.
+    await overviewPreview.getByRole('button', { name: 'Dismiss banner' }).click();
+    await expect(overviewPreview.getByText('Banner dismissed.')).toBeVisible();
+    await expect(overviewPreview.locator('.cinder-banner')).toHaveCount(0);
+  });
+
   test('restores a persisted theme after hydration without changing the server tree', async ({
     page,
   }) => {
@@ -258,7 +280,9 @@ test.describe('authored Playground preview fallbacks', () => {
     test(`${name} opens its authored overlay content`, async ({ page }) => {
       await page.goto(`/page/${name}?view=playground`, { waitUntil: 'load' });
 
-      await page.getByRole('button', { name: trigger }).click();
+      const preview = page.locator('.example-preview[id^="playground-mount-"]');
+      await expect(preview).toHaveAttribute('data-example-preview-ready', '');
+      await preview.getByRole('button', { name: trigger }).click();
       await expect(page.getByText(visibleContent, { exact: true })).toBeVisible();
     });
   }
@@ -277,9 +301,18 @@ test.describe('authored Playground preview fallbacks', () => {
     await page.goto('/page/command-menu?view=playground', { waitUntil: 'load' });
 
     const notes = page.getByRole('textbox', { name: 'Notes' });
+    await expect(page.locator('.example-preview[id^="playground-mount-"]')).toHaveAttribute(
+      'data-example-preview-ready',
+      '',
+    );
     await notes.focus();
-    await page.keyboard.press('End');
-    await page.keyboard.type('/');
+    await notes.evaluate((element) => {
+      if (!(element instanceof HTMLTextAreaElement)) {
+        throw new Error('The Notes control must remain a textarea.');
+      }
+      element.setSelectionRange(element.value.length, element.value.length);
+    });
+    await notes.pressSequentially('/');
     await expect(page.getByRole('listbox', { name: 'Slash commands' })).toBeVisible();
     await expect(page.getByText('Summary', { exact: true })).toBeVisible();
   });

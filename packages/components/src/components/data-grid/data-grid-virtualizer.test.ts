@@ -303,6 +303,51 @@ describe('DataGrid row virtualization', () => {
     }
   });
 
+  test('enabling column virtualization does not scroll the active row', async () => {
+    const originalResizeObserver = globalThis.ResizeObserver;
+    const originalGetBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+    let measuredGridWidth = 0;
+    TestResizeObserver.instances = [];
+    globalThis.ResizeObserver = TestResizeObserver as unknown as typeof ResizeObserver;
+    HTMLElement.prototype.getBoundingClientRect = function getBoundingClientRect() {
+      if (this.classList.contains('cinder-data-grid')) {
+        return rectWithSize(measuredGridWidth, 240);
+      }
+      if (this.classList.contains('cinder-data-grid__header-row')) {
+        return rectWithHeight(40);
+      }
+      return originalGetBoundingClientRect.call(this);
+    };
+
+    try {
+      const { container } = render(LogDataGrid, {
+        rows: makeMetricRows(1_000, 40),
+        columns: makeMetricColumns(40),
+        getRowId: getLogRowId,
+        virtualizeRows: true,
+        virtualizeColumns: true,
+        rowHeight: 20,
+        'aria-label': 'Metrics',
+      });
+      const grid = container.querySelector<HTMLElement>('[role="grid"]');
+      if (!grid) throw new Error('Expected DataGrid root');
+
+      expect(grid.getAttribute('data-cinder-virtualized-columns')).toBeNull();
+      expect(grid.scrollTop).toBe(0);
+
+      measuredGridWidth = 520;
+      for (const observer of TestResizeObserver.instances) observer.trigger();
+
+      await waitFor(() =>
+        expect(grid.getAttribute('data-cinder-virtualized-columns')).toBe('true'),
+      );
+      expect(grid.scrollTop).toBe(0);
+    } finally {
+      HTMLElement.prototype.getBoundingClientRect = originalGetBoundingClientRect;
+      globalThis.ResizeObserver = originalResizeObserver;
+    }
+  });
+
   test('keyboard navigation scrolls an off-window active row into the rendered window', async () => {
     const rows = makeRows(100);
     const { container } = render(LogDataGrid, {
@@ -367,6 +412,38 @@ describe('DataGrid row virtualization', () => {
     const activeRow = dataRows(container).find((row) => row.textContent?.includes('Message 0'));
 
     expect(activeRow?.getAttribute('aria-rowindex')).toBe('101');
+  });
+
+  test('enabling row virtualization keeps the existing active cell rendered', async () => {
+    const rows = makeRows(100);
+    const view = render(LogDataGrid, {
+      rows,
+      columns,
+      getRowId: getLogRowId,
+      rowHeight: 20,
+      'aria-label': 'Logs',
+    });
+    const { container } = view;
+    const grid = container.querySelector<HTMLElement>('[role="grid"]');
+    const lastRowCell = dataRows(container).at(-1)?.querySelector<HTMLElement>('[role="gridcell"]');
+    if (!grid || !lastRowCell) throw new Error('Expected the last non-virtualized row cell');
+
+    await fireEvent.click(lastRowCell);
+    await view.rerender({
+      rows,
+      columns,
+      getRowId: getLogRowId,
+      virtualizeRows: true,
+      rowHeight: 20,
+      'aria-label': 'Logs',
+    });
+
+    await waitFor(() =>
+      expect(
+        container.querySelector(`#${grid.getAttribute('aria-activedescendant')}`),
+      ).not.toBeNull(),
+    );
+    expect(dataRows(container).some((row) => row.textContent?.includes('Message 99'))).toBe(true);
   });
 
   test('warns and falls back when row virtualization omits fixed rowHeight', () => {

@@ -344,6 +344,9 @@
   let previousActiveCellId: string | undefined;
   let previousActiveVirtualRowIndex: number | undefined;
   let previousActiveVirtualColumnIndex: number | undefined;
+  let previousShouldVirtualizeRows = false;
+  let previousShouldVirtualizeColumns = false;
+  let hasInitializedActiveCell = false;
   let previousSelectionRowIds: readonly string[] | undefined;
   let previousSelectionColumnKeys: readonly string[] | undefined;
   let gridElement: HTMLDivElement | undefined;
@@ -413,43 +416,57 @@
 
   $effect(() => {
     const cellId = activeCellId;
-    const activeVirtualRowIndex = shouldVirtualizeRows ? activeRowIndex : undefined;
-    const activeVirtualColumnIndex = shouldVirtualizeColumns
-      ? getUnpinnedColumnIndex(activeColumnKey)
-      : undefined;
+    const activeVirtualRowIndex = activeRowIndex;
+    const activeVirtualColumnIndex = getUnpinnedColumnIndex(activeColumnKey);
+    const didActiveCellChange = cellId !== previousActiveCellId;
+    const didActiveVirtualRowChange = activeVirtualRowIndex !== previousActiveVirtualRowIndex;
+    const didActiveVirtualColumnChange =
+      activeVirtualColumnIndex !== previousActiveVirtualColumnIndex;
+    const didEnableRowVirtualization = shouldVirtualizeRows && !previousShouldVirtualizeRows;
+    const didEnableColumnVirtualization =
+      shouldVirtualizeColumns && !previousShouldVirtualizeColumns;
     if (
       cellId === undefined ||
-      (cellId === previousActiveCellId &&
-        activeVirtualRowIndex === previousActiveVirtualRowIndex &&
-        activeVirtualColumnIndex === previousActiveVirtualColumnIndex)
+      (!didActiveCellChange &&
+        !didActiveVirtualRowChange &&
+        !didActiveVirtualColumnChange &&
+        !didEnableRowVirtualization &&
+        !didEnableColumnVirtualization)
     ) {
       previousActiveCellId = cellId;
       previousActiveVirtualRowIndex = activeVirtualRowIndex;
       previousActiveVirtualColumnIndex = activeVirtualColumnIndex;
+      previousShouldVirtualizeRows = shouldVirtualizeRows;
+      previousShouldVirtualizeColumns = shouldVirtualizeColumns;
       return;
     }
 
-    if (
-      previousActiveCellId === undefined &&
-      previousActiveVirtualRowIndex === undefined &&
-      previousActiveVirtualColumnIndex === undefined
-    ) {
+    if (!hasInitializedActiveCell) {
+      hasInitializedActiveCell = true;
       previousActiveCellId = cellId;
       previousActiveVirtualRowIndex = activeVirtualRowIndex;
       previousActiveVirtualColumnIndex = activeVirtualColumnIndex;
+      previousShouldVirtualizeRows = shouldVirtualizeRows;
+      previousShouldVirtualizeColumns = shouldVirtualizeColumns;
       return;
     }
 
     previousActiveCellId = cellId;
     previousActiveVirtualRowIndex = activeVirtualRowIndex;
     previousActiveVirtualColumnIndex = activeVirtualColumnIndex;
-    if (shouldVirtualizeRows) {
+    previousShouldVirtualizeRows = shouldVirtualizeRows;
+    previousShouldVirtualizeColumns = shouldVirtualizeColumns;
+    if (shouldVirtualizeRows && (didActiveVirtualRowChange || didEnableRowVirtualization)) {
       rowVirtualizer.scrollToRow(activeRowIndex);
     }
-    if (shouldVirtualizeColumns && activeVirtualColumnIndex !== undefined) {
+    if (
+      shouldVirtualizeColumns &&
+      (didActiveVirtualColumnChange || didEnableColumnVirtualization) &&
+      activeVirtualColumnIndex !== undefined
+    ) {
       rowVirtualizer.scrollToColumn(activeVirtualColumnIndex);
     }
-    void scrollActiveCellIntoView(cellId);
+    if (didActiveCellChange) void scrollActiveCellIntoView(cellId);
   });
 
   $effect(() => {

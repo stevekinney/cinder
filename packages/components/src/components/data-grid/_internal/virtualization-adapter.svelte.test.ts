@@ -216,4 +216,18 @@ describe('DataGridVirtualizationAdapter', () => {
 
     rendered.unmount();
   });
+
+  test('mounting at logical row zero preserves the pristine native scroll position', async () => {
+    const rendered = render(VirtualizerLiveFixture, {
+      props: {
+        initialGridScrollTop: 0,
+        initialGridScrollLeft: 0,
+      },
+    });
+    await tick();
+
+    expect(rendered.getByTestId('grid-scroll').scrollTop).toBe(0);
+
+    rendered.unmount();
+  });
 });

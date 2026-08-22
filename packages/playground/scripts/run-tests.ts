@@ -52,7 +52,11 @@ const SHARED_FLAGS = ['--conditions', 'browser', '--conditions', 'svelte', '--pa
 
 const MOUNT_HEAVY_TEST = 'src/component-page.test.ts';
 
-const BUILD_PIPELINE_MODULE_NAMES = ['playground-server.ts', 'static-export.ts'] as const;
+const BUILD_PIPELINE_MODULE_NAMES = [
+  'featured-example-server-renderer.ts',
+  'playground-server.ts',
+  'static-export.ts',
+] as const;
 
 export type PlaygroundTestFile = {
   path: string;

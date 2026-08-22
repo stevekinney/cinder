@@ -5,8 +5,8 @@ import { pathToFileURL } from 'node:url';
 
 import { sveltePlugin } from '../../components/scripts/svelte-plugin.ts';
 import type { ComponentDocumentationPayload } from './component-documentation-types.ts';
-import { getRebuildGeneration } from './file-watcher.ts';
 import { PLAYGROUND_ROOT, PLAYGROUND_TEMP_ROOT } from './playground-paths.ts';
+import { getRebuildGeneration } from './rebuild-generation.ts';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -61,6 +61,7 @@ type PageServerRenderer = (props: {
   documentation: ComponentDocumentationPayload;
   examples: { scenario: string; title: string; description?: string; featured?: boolean }[];
   sidebarComponents: string[];
+  overviewExampleHtml: string | null;
 }) => RenderedBody;
 type LandingServerRenderer = (props: {
   readmeHtml: string;

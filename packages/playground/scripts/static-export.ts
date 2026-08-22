@@ -373,7 +373,10 @@ async function assertInitialRoutePayloadBudgets(
   for (const budget of INITIAL_ROUTE_PAYLOAD_BUDGETS) {
     if (!exportedRoutes.includes(budget.route)) continue;
     const payload = await initialRoutePayload(budget.route, outputDirectory);
-    if (payload.transferBytes > budget.transferBytes || payload.decodedBytes > budget.decodedBytes) {
+    if (
+      payload.transferBytes > budget.transferBytes ||
+      payload.decodedBytes > budget.decodedBytes
+    ) {
       throw new Error(
         `[static-export] ${budget.route} initial payload exceeds budget: ` +
           `${payload.transferBytes}/${budget.transferBytes} transfer bytes, ` +
@@ -610,6 +613,13 @@ export function assertExactlyOneH1(name: string, html: string): void {
   if (count !== 1) throw new Error(`${name}: expected exactly one h1, found ${count}`);
 }
 
+function assertExactlyOneComponentHeading(name: string, html: string): void {
+  const count = html.match(/<h1\b(?=[^>]*\bid="component-name")[^>]*>/gi)?.length ?? 0;
+  if (count !== 1) {
+    throw new Error(`${name}: expected exactly one #component-name heading, found ${count}`);
+  }
+}
+
 /** Verify every static document retains one complete route-specific SEO contract. */
 export function assertDocumentationMetadata(
   name: string,
@@ -682,8 +692,26 @@ export function assertDocumentationPagesArePreRendered(
       failures.push(`${name}: missing ${missing.join(', ')}`);
       continue;
     }
+    const readmeCodeBlockStarts = [
+      ...html.matchAll(/<[^>]+data-readme-code-block(?:\s|=|>)[^>]*>/g),
+    ].map((match) => match.index);
+    const hasUnhighlightedReadmeCodeBlock = readmeCodeBlockStarts.some((start, index) => {
+      const end = readmeCodeBlockStarts[index + 1] ?? html.length;
+      const block = html.slice(start, end);
+      return !/cinder-code-block__highlighted[^>]*>[\s\S]*?<pre(?: class="shiki\b| data-language="plaintext")/.test(
+        block,
+      );
+    });
+    if (hasUnhighlightedReadmeCodeBlock) {
+      failures.push(`${name}: README code was not syntax-highlighted in the exported HTML`);
+      continue;
+    }
+    if (html.includes('id="overview-mount-') && !html.includes('data-overview-preview-rendered')) {
+      failures.push(`${name}: overview preview was blank in the exported HTML`);
+      continue;
+    }
     try {
-      assertExactlyOneH1(name, html);
+      assertExactlyOneComponentHeading(name, html);
     } catch (error) {
       failures.push(error instanceof Error ? error.message : `${name}: invalid h1 count`);
     }

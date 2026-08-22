@@ -31,7 +31,6 @@ import { isComponentDocumentationPayload } from './component-documentation-refer
 import { COMPOSE_ONLY_COMPONENTS } from './discover.ts';
 import {
   classifyPlaygroundSrcChange,
-  getRebuildGeneration,
   scheduleRebuild,
   waitForPendingRebuild,
 } from './file-watcher.ts';
@@ -48,6 +47,7 @@ import {
   warmupInstabilityReasons,
 } from './playground-server.ts';
 import { configureRequestIdleTimeout } from './port-scanner.ts';
+import { getRebuildGeneration } from './rebuild-generation.ts';
 import { jsonForScriptTag } from './render-shell.ts';
 import { triggerReload } from './sse-broadcast.ts';
 import {
@@ -1050,6 +1050,20 @@ describe('/page/:name', () => {
     expect(html).toContain('window.__CINDER_EXAMPLES__');
     expect(html).toContain('/page-bundle/input.js');
     expect(html).not.toContain('/fixture-bundle/');
+  });
+
+  it('server-renders highlighted README code and the featured overview example', async () => {
+    const response = await handleRequest(req('/page/banner'));
+    expect(response.status).toBe(200);
+    const html = await response.text();
+
+    expect(html).toContain('data-readme-code-block');
+    expect(html).toContain('<pre class="shiki');
+    expect(html).toContain('id="overview-mount-basic"');
+    expect(html).toContain('data-overview-preview-rendered');
+    expect(html).toContain('Scheduled maintenance is planned');
+    expect(html).not.toContain('id="overview-mount-basic"></div>');
+    expect(html).not.toContain('__CINDER_OVERVIEW_EXAMPLE_HTML__');
   });
 
   it('renders a direct JSON fixture route through the fixture bundle family', async () => {

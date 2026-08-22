@@ -36,6 +36,7 @@
   import { persistScrollPosition } from './shell-app/sidebar-scroll.ts';
   import { createEventSource } from './shell-app/event-source.svelte.ts';
   import { splitReadmeHtml } from './split-readme-html.ts';
+  import StaticCodeBlock from './component-page-static-code-block.svelte';
   import type { MountErrorDetail, SourceErrorDetail } from './example-error.ts';
   import { readComponentDocumentationDataIsland } from './component-documentation-reference.ts';
   import type {
@@ -118,6 +119,10 @@
      * bundle. Empty means no sidebar (snapshot and preview surfaces).
      */
     sidebarComponents?: string[];
+    /** Server-rendered featured example HTML for the canonical Overview stage. */
+    overviewExampleHtml?: string | null;
+    /** Notifies the page bundle when the static Overview fragment becomes interactive. */
+    onOverviewPreviewSettled?: (error?: unknown) => void;
     /**
      * Landing mode. When set, the page renders this README in the prose column
      * instead of component documentation — same nav, same top bar, same theme
@@ -148,6 +153,8 @@
     documentation: documentationProp,
     documentationError: documentationErrorProp,
     sidebarComponents = [],
+    overviewExampleHtml = null,
+    onOverviewPreviewSettled,
     readmeHtml,
     toolbarActions,
     overlays,
@@ -503,10 +510,16 @@
   // in Examples — and each container gets its own attachment + its own mount, so
   // the two instances stay independent with correct per-node cleanup. See
   // `component-page-example-mounts.ts` for the mount-error keying discipline.
-  const { mountScenario } = createExampleMountHelpers({
+  const { mountScenario, mountScenarioWhenVisible } = createExampleMountHelpers({
     mountErrors,
-    onScenarioSettled: settleSnapshotMount,
+    onScenarioSettled: (mountKey, error) => {
+      settleSnapshotMount(mountKey, error);
+      if (mountKey === `overview-mount-${overviewExample?.scenario}`) {
+        onOverviewPreviewSettled?.(error);
+      }
+    },
   });
+  const mountDocumentationScenario = snapshotMode ? mountScenario : mountScenarioWhenVisible;
 
   // Whether the props table currently overflows horizontally. Drives the
   // `is-scrollable` modifier on the scroll container so the `::after` fade
@@ -1545,10 +1558,10 @@
                       {:else}
                         {@const block = documentation.readme.codeBlocks[segment.index]}
                         {#if block !== undefined}
-                          <CodeBlock
-                            highlighter={depictHighlighter}
+                          <StaticCodeBlock
                             code={block.value}
                             language={block.language ?? 'plaintext'}
+                            highlightedHtml={segment.fallbackHtml}
                             copyable
                           />
                         {:else}
@@ -1578,8 +1591,21 @@
                         <div
                           class="example-preview"
                           id="overview-mount-{overviewExample.scenario}"
+                          data-overview-preview-rendered={overviewExampleHtml !== null &&
+                          overviewExampleHtml !== ''
+                            ? ''
+                            : undefined}
                           {@attach mountScenario(overviewExample.scenario)}
-                        ></div>
+                        >
+                          {#if overviewExampleHtml !== null && overviewExampleHtml !== ''}
+                            {@html overviewExampleHtml}
+                          {:else}
+                            <div class="preview-loading" role="status">
+                              <StatusDot status="pending" />
+                              <span>Loading preview…</span>
+                            </div>
+                          {/if}
+                        </div>
                       </div>
                     </div>
                   {/if}
@@ -1680,7 +1706,7 @@
                                   <div
                                     class="example-preview"
                                     id="example-mount-{scenario}"
-                                    {@attach mountScenario(scenario)}
+                                    {@attach mountDocumentationScenario(scenario)}
                                   ></div>
                                 </div>
                               </div>
@@ -3173,6 +3199,15 @@
   .example-preview {
     display: block;
     min-height: 2rem;
+  }
+  .preview-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--cinder-space-2);
+    min-height: 7rem;
+    color: var(--cinder-text-muted);
+    font-size: var(--cinder-text-sm);
   }
   /* Frame chat examples so they read as a bounded chat surface — the way a
      consumer would drop the Chat into a card in a real app. Docs-only: the
