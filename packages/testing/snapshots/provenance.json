@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "componentScope": ["markdown-editor"],
-  "renderedSourceSha": "b6e0bdefc07f881c89a03033e658b437d2c440c7",
+  "componentScope": ["data-grid"],
+  "renderedSourceSha": "e8d994f6cbd943cc387d3e75b25bfe99a0cb10ea",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
-  "architecture": "x64",
+  "architecture": "arm64",
   "dockerImageTag": "cinder-playwright:1.60.0"
 }

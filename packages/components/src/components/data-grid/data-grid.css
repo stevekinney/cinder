@@ -50,6 +50,9 @@
   }
 
   .cinder-data-grid__header-row {
+    /* Round the 13px type's 1.5 line-height plus padding and border to a whole
+       pixel so sticky and pinned layers share a stable raster boundary. */
+    min-block-size: 2.3125rem;
     background: var(--cinder-surface-inset);
     box-shadow: var(--_cinder-data-grid-overflow-shadow, none);
   }
@@ -236,6 +239,10 @@
     padding-inline: var(--cinder-space-3);
   }
 
+  .cinder-data-grid[data-cinder-density='compact'] .cinder-data-grid__header-row {
+    min-block-size: 1.8125rem;
+  }
+
   .cinder-data-grid[data-cinder-density='compact']
     .cinder-data-grid__header-cell[data-cinder-sortable] {
     padding: 0;
@@ -250,6 +257,10 @@
   .cinder-data-grid[data-cinder-density='spacious'] .cinder-data-grid__cell {
     padding-block: var(--cinder-space-3);
     padding-inline: var(--cinder-space-4);
+  }
+
+  .cinder-data-grid[data-cinder-density='spacious'] .cinder-data-grid__header-row {
+    min-block-size: 2.8125rem;
   }
 
   .cinder-data-grid[data-cinder-density='spacious']

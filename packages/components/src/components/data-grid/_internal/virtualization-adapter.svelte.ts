@@ -227,6 +227,12 @@ export class DataGridVirtualizationAdapter implements DataGridVirtualWindow {
     const element = instance.scrollElement;
     if (!element) return;
 
+    // TanStack synchronizes logical offset zero when the virtualizer mounts.
+    // A pristine scrollport already shows row zero below the in-flow header;
+    // adding sticky-header padding here would scroll the header unnecessarily
+    // and place the virtual body on a fractional compositing boundary.
+    if (offset === 0 && adjustments === 0 && element.scrollTop === 0) return;
+
     const top = this.#scrollPaddingStart() + offset + adjustments;
     if (typeof element.scrollTo === 'function') {
       element.scrollTo(behavior ? { top, behavior } : { top });
