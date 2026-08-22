@@ -233,8 +233,9 @@ document.addEventListener(
     if (pageHydrated || !['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
     const button = eventElement(event)?.closest('button');
     if (button?.getAttribute('role') !== 'tab') return;
+    const buttonLocation = elementLocation(button);
     hydrateAfter(event, () =>
-      button.dispatchEvent(
+      resolveElementLocation(buttonLocation)?.dispatchEvent(
         new KeyboardEvent('keydown', { key: event.key, bubbles: true, cancelable: true }),
       ),
     );

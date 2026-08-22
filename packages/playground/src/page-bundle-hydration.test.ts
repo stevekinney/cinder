@@ -25,4 +25,11 @@ describe('page bundle hydration policy', () => {
     expect(source).toContain('const hydratedButton = resolveElementLocation(buttonLocation)');
     expect(source).not.toContain('hydrateAfter(event, () => button.click())');
   });
+
+  test('re-resolves an early tab before replaying keyboard navigation', async () => {
+    const source = await Bun.file(new URL('./page-bundle.ts', import.meta.url)).text();
+
+    expect(source).toContain('resolveElementLocation(buttonLocation)?.dispatchEvent');
+    expect(source).not.toContain('button.dispatchEvent');
+  });
 });
