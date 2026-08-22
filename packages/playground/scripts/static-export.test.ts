@@ -450,6 +450,17 @@ describe('assertDocumentationPagesArePreRendered', () => {
     ).toThrow(/syntax-highlighted/);
   });
 
+  test('accepts plain-text README blocks that have no syntax grammar', () => {
+    const plainTextPage = goodPage.replace(
+      '<pre class="shiki"><code>const x = 1</code></pre>',
+      '<pre data-language="plaintext"><code>key  value</code></pre>',
+    );
+
+    expect(() =>
+      assertDocumentationPagesArePreRendered([{ name: 'run-step-timeline', html: plainTextPage }]),
+    ).not.toThrow();
+  });
+
   test('rejects an overview preview whose exported mount is blank', () => {
     const blankPreview = goodPage.replace(
       '<div id="overview-mount-basic" data-overview-preview-rendered><button>Example</button></div>',
