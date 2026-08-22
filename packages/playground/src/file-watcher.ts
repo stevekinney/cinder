@@ -17,6 +17,11 @@ import { fixtureEntryByKey } from './fixture-bundle.ts';
 import { clearManifestCaches } from './manifest-cache.ts';
 import { pageEntryByName } from './page-bundle.ts';
 import { PLAYGROUND_ROOT } from './playground-paths.ts';
+import {
+  getRebuildGeneration,
+  incrementRebuildGeneration,
+  setShellStale,
+} from './rebuild-generation.ts';
 import { bundleEntryByKey } from './scenario-bundle.ts';
 import { resetShellBuildPromise } from './shell-bundle.ts';
 import { triggerReload } from './sse-broadcast.ts';
@@ -57,13 +62,6 @@ export type ChangeScope =
  * moved on while they were mid-build, so a build that started just before an
  * edit can't finish just after the cache clear and republish a stale pointer.
  */
-let rebuildGeneration = 0;
-
-/** Exposed for behavioral tests that verify debounce ordering, and for every module that needs to check for a racing invalidation. */
-export function getRebuildGeneration(): number {
-  return rebuildGeneration;
-}
-
 /** Debounce timer for the watcher. */
 let rebuildDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 let rebuildDebouncePromise: Promise<void> | null = null;
@@ -78,32 +76,6 @@ const pendingExampleNames = new Set<string>();
 /** True while a debounced invalidation is still pending. */
 export function hasPendingRebuild(): boolean {
   return rebuildDebounceTimer !== null;
-}
-
-/**
- * True when the shell bundle's cached entry may be out of date. Set by
- * `invalidateCachesForChange` for `components`/`shell`-scope changes;
- * cleared by `shell-bundle.ts`'s `buildShellBundle` only after a compile
- * that succeeds AND isn't itself racing a newer invalidation.
- *
- * Deliberately NOT the same treatment as `pageEntryByName`/`pageArtifactByPath`
- * (which get cleared outright): the shell is critical infrastructure — losing
- * it blanks the entire playground, not just one component's doc page — so
- * `buildShellBundle` attempts a fresh compile while this is true but falls
- * back to serving the last-good cached shell if that attempt fails, instead
- * of 404ing. This matches the pre-redesign rebuild path's behavior, which
- * only swapped the shell bundle on a successful compile.
- */
-let shellStale = false;
-
-/** Read by `shell-bundle.ts`'s `buildShellBundle`. */
-export function isShellStale(): boolean {
-  return shellStale;
-}
-
-/** Written by both this module (on invalidation) and `shell-bundle.ts` (on a successful rebuild). */
-export function setShellStale(value: boolean): void {
-  shellStale = value;
 }
 
 /**
@@ -145,7 +117,7 @@ export function scheduleRebuild(scope: ChangeScope): void {
 /** Wait for pending invalidation, then return the settled rebuild generation. */
 export async function waitForPendingRebuild(): Promise<number> {
   await rebuildDebouncePromise;
-  return rebuildGeneration;
+  return getRebuildGeneration();
 }
 
 /**
@@ -171,7 +143,7 @@ export function invalidateCachesForChange(scope: ChangeScope): void {
   // and will skip publishing its entry-name pointer once it notices the
   // generation moved on (see `buildPageBundle` et al.), so it can't
   // republish a stale pointer after the clears below.
-  rebuildGeneration += 1;
+  incrementRebuildGeneration();
 
   // Component files may have been added, renamed, or removed — re-scan on
   // next request.

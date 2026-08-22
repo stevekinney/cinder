@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { rmSync } from 'node:fs';
-import { join, relative as relativePath, sep } from 'node:path';
+import { join } from 'node:path';
 
 import {
   PUBLIC_PATH_BY_FAMILY,
@@ -10,8 +10,8 @@ import {
   pageBuildPromiseByKey,
 } from './build-artifacts-shared.ts';
 import { discoverComponentDefinition, discoverComponents, discoverExamples } from './discover.ts';
-import { getRebuildGeneration } from './file-watcher.ts';
 import { PLAYGROUND_TEMP_ROOT } from './playground-paths.ts';
+import { getRebuildGeneration } from './rebuild-generation.ts';
 
 /**
  * Page-bundle entries: keyed by component name → entry artifact path
@@ -19,11 +19,6 @@ import { PLAYGROUND_TEMP_ROOT } from './playground-paths.ts';
  * with `bundleEntryByKey` since entries get prefix `page-` vs `bundle-`.
  */
 export const pageEntryByName = new Map<string, string>();
-
-export function relativeImportSpecifier(fromDirectory: string, targetPath: string): string {
-  const relative = relativePath(fromDirectory, targetPath).replaceAll(sep, '/');
-  return relative.startsWith('.') ? relative : `./${relative}`;
-}
 
 /**
  * Compile the all-in-one page bundle for a single component without
@@ -119,6 +114,12 @@ const sidebarComponents = Array.isArray(sidebarRaw)
   : [];
 const overviewExampleHtmlRaw = (window as unknown as Record<string, unknown>)['__CINDER_OVERVIEW_EXAMPLE_HTML__'];
 const overviewExampleHtml = typeof overviewExampleHtmlRaw === 'string' ? overviewExampleHtmlRaw : null;
+let resolveOverviewPreview: (() => void) | undefined;
+const overviewPreviewReady = overviewExampleHtml !== null && overviewExampleHtml !== ''
+  ? new Promise<void>((resolve) => {
+      resolveOverviewPreview = resolve;
+    })
+  : undefined;
 
 const props = {
   loadBareComponentModule: () => import(${JSON.stringify(componentDefinition.importPath)}),
@@ -126,6 +127,7 @@ const props = {
   snapshotMode,
   sidebarComponents,
   overviewExampleHtml,
+  onOverviewPreviewSettled: () => resolveOverviewPreview?.(),
 };
 
 let pageHydration: Promise<void> | undefined;
@@ -134,9 +136,10 @@ let pageHydrated = false;
 function hydratePage(): Promise<void> {
   if (pageHydration !== undefined) return pageHydration;
 
-  const hydration = Promise.all([import('svelte'), import('../../src/component-page.svelte')]).then(([svelte, { default: ComponentPage }]) => {
+  const hydration = Promise.all([import('svelte'), import('../../src/component-page.svelte')]).then(async ([svelte, { default: ComponentPage }]) => {
     if (shouldHydrate) {
       svelte.hydrate(ComponentPage, { target, props });
+      if (overviewPreviewReady !== undefined) await overviewPreviewReady;
       pageHydrated = true;
       return;
     }

@@ -8,8 +8,8 @@ import {
   collectBuildArtifacts,
   shellArtifactByPath,
 } from './build-artifacts-shared.ts';
-import { getRebuildGeneration, isShellStale, setShellStale } from './file-watcher.ts';
 import { PLAYGROUND_TEMP_ROOT } from './playground-paths.ts';
+import { getRebuildGeneration, isShellStale, setShellStale } from './rebuild-generation.ts';
 
 /**
  * Shell-bundle entries: keyed by logical name → entry artifact path. There's

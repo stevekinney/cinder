@@ -73,7 +73,6 @@ import {
 import { readExampleMetadata } from './example-metadata.ts';
 import { renderFeaturedExample } from './featured-example-server-renderer.ts';
 import {
-  getRebuildGeneration,
   hasPendingRebuild,
   invalidateCachesForChange,
   startWatcher,
@@ -91,6 +90,7 @@ import {
 import { buildPageBundle } from './page-bundle.ts';
 import { PLAYGROUND_ROOT } from './playground-paths.ts';
 import { createHttpServerOnAvailablePort, resolvePreferredPort } from './port-scanner.ts';
+import { getRebuildGeneration } from './rebuild-generation.ts';
 import {
   DEPICT_THEME_VARIABLES,
   FAVICON_HREF,

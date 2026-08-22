@@ -8,5 +8,6 @@ describe('featured example server renderer', () => {
 
     expect(rendered.body).toContain('cinder-banner');
     expect(rendered.body).toContain('Scheduled maintenance is planned');
+    expect(rendered.body).not.toMatch(/<!--(?:\[[^>]*|\]|\$[^>]*)?-->/);
   }, 30_000);
 });

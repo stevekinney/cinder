@@ -67,6 +67,23 @@ describe('createExampleMountHelpers().mountScenario', () => {
     cleanup();
   });
 
+  it('atomically replaces an independently server-rendered overview fragment', () => {
+    (window as CinderWindow).__CINDER_SCENARIOS__ = { basic: Probe };
+    const { mountScenario } = createExampleMountHelpers({ mountErrors: {} });
+    const element = document.createElement('div');
+    element.id = 'overview-mount-basic';
+    element.setAttribute('data-overview-preview-rendered', '');
+    element.innerHTML = '<p data-server-fragment>Static preview</p>';
+    document.body.appendChild(element);
+
+    const cleanup = mountScenario('basic')(element);
+    flushSync();
+
+    expect(element.querySelector('[data-server-fragment]')).toBeNull();
+    expect(element.querySelector('.example-mounts-probe')).not.toBeNull();
+    cleanup();
+  });
+
   it("records a MountErrorDetail under the mounted element's id when the registered scenario throws", () => {
     const Throwing = function ThrowingComponent() {
       throw new Error('boom');

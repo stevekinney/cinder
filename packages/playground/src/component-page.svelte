@@ -121,6 +121,8 @@
     sidebarComponents?: string[];
     /** Server-rendered featured example HTML for the canonical Overview stage. */
     overviewExampleHtml?: string | null;
+    /** Notifies the page bundle when the static Overview fragment becomes interactive. */
+    onOverviewPreviewSettled?: (error?: unknown) => void;
     /**
      * Landing mode. When set, the page renders this README in the prose column
      * instead of component documentation — same nav, same top bar, same theme
@@ -152,6 +154,7 @@
     documentationError: documentationErrorProp,
     sidebarComponents = [],
     overviewExampleHtml = null,
+    onOverviewPreviewSettled,
     readmeHtml,
     toolbarActions,
     overlays,
@@ -509,7 +512,12 @@
   // `component-page-example-mounts.ts` for the mount-error keying discipline.
   const { mountScenario } = createExampleMountHelpers({
     mountErrors,
-    onScenarioSettled: settleSnapshotMount,
+    onScenarioSettled: (mountKey, error) => {
+      settleSnapshotMount(mountKey, error);
+      if (mountKey === `overview-mount-${overviewExample?.scenario}`) {
+        onOverviewPreviewSettled?.(error);
+      }
+    },
   });
 
   // Whether the props table currently overflows horizontally. Drives the

@@ -9,7 +9,7 @@
  * usable and testable without a Svelte runtime.
  */
 
-import { hydrate, mount, unmount } from 'svelte';
+import { mount, unmount } from 'svelte';
 
 import {
   formatErrorForClipboard,
@@ -83,12 +83,14 @@ export function createExampleMountHelpers(options: ExampleMountState): {
           try {
             const componentConstructor = candidate as Parameters<typeof mount>[0];
             const mountOptions = { target: element, props: { mountIdPrefix: mountKey } };
-            if (element.hasAttribute('data-overview-preview-rendered')) {
-              app = hydrate(componentConstructor, mountOptions);
-            } else {
-              element.replaceChildren();
-              app = mount(componentConstructor, mountOptions);
-            }
+            // The static overview fragment is compiled by the isolated server
+            // renderer, while this constructor comes from the page's client
+            // bundle. Replacing that independently compiled fragment avoids
+            // treating incompatible hydration markers as one component tree.
+            // The replacement and mount happen in one task, so the server paint
+            // remains visible until the interactive tree is ready to take over.
+            element.replaceChildren();
+            app = mount(componentConstructor, mountOptions);
             mountErrors[mountKey] = undefined;
             onScenarioSettled?.(mountKey);
           } catch (error) {

@@ -31,7 +31,6 @@ import { isComponentDocumentationPayload } from './component-documentation-refer
 import { COMPOSE_ONLY_COMPONENTS } from './discover.ts';
 import {
   classifyPlaygroundSrcChange,
-  getRebuildGeneration,
   scheduleRebuild,
   waitForPendingRebuild,
 } from './file-watcher.ts';
@@ -48,6 +47,7 @@ import {
   warmupInstabilityReasons,
 } from './playground-server.ts';
 import { configureRequestIdleTimeout } from './port-scanner.ts';
+import { getRebuildGeneration } from './rebuild-generation.ts';
 import { jsonForScriptTag } from './render-shell.ts';
 import { triggerReload } from './sse-broadcast.ts';
 import {

@@ -26,6 +26,7 @@
 </script>
 
 <script lang="ts">
+  import { untrack } from 'svelte';
   import type { ScrollAreaProps } from './scroll-area.types.ts';
   import { overflowFadeEdges } from '../../utilities/attachments.ts';
   import { classNames } from '../../utilities/class-names.ts';
@@ -89,7 +90,7 @@
   // Momentum and rubber-band are exactly the inertial motion
   // `prefers-reduced-motion` is about — see Carousel's identical gating.
   const dragScroll = useDragScroll({
-    axis: direction === 'horizontal' ? 'x' : 'y',
+    axis: untrack(() => (direction === 'horizontal' ? 'x' : 'y')),
     enabled: () =>
       dragToScroll && direction !== 'both' && finePointer.current && !reducedMotion.current,
   });

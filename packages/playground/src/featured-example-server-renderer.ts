@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 
-import { getRebuildGeneration } from './file-watcher.ts';
 import { PLAYGROUND_ROOT } from './playground-paths.ts';
+import { getRebuildGeneration } from './rebuild-generation.ts';
 
 export type RenderedFeaturedExample = {
   body: string;
@@ -9,6 +9,19 @@ export type RenderedFeaturedExample = {
 };
 
 const renderPromises = new Map<string, Promise<RenderedFeaturedExample>>();
+
+const SVELTE_HYDRATION_MARKER = /<!--(?:\[[^>]*|\]|\$[^>]*)?-->/g;
+
+/**
+ * The example is compiled independently from the page that embeds it. Its
+ * hydration markers therefore do not belong to the page's component tree and
+ * can confuse the page-level hydration cursor. Keep the meaningful static HTML
+ * while removing only Svelte's internal comment markers; the client mount
+ * replaces this fragment atomically once its own bundle is ready.
+ */
+function removeHydrationMarkers(html: string): string {
+  return html.replace(SVELTE_HYDRATION_MARKER, '');
+}
 
 function isRenderedFeaturedExample(value: unknown): value is RenderedFeaturedExample {
   return (
@@ -47,7 +60,10 @@ async function renderInFreshProcess(
   if (!isRenderedFeaturedExample(parsed)) {
     throw new Error('[playground] featured example worker returned malformed output');
   }
-  return parsed;
+  return {
+    body: removeHydrationMarkers(parsed.body),
+    head: parsed.head,
+  };
 }
 
 /** Server-render a featured documentation example for the exported first paint. */

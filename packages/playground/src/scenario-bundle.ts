@@ -9,8 +9,8 @@ import {
   scenarioArtifactByPath,
   scenarioBuildPromiseByKey,
 } from './build-artifacts-shared.ts';
-import { getRebuildGeneration } from './file-watcher.ts';
 import { PLAYGROUND_ROOT, PLAYGROUND_TEMP_ROOT } from './playground-paths.ts';
+import { getRebuildGeneration } from './rebuild-generation.ts';
 
 /**
  * Per-scenario bundle entries: keyed by "<name>/<scenario>" → entry

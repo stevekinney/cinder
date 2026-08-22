@@ -13,9 +13,8 @@ import {
   fixtureArtifactByPath,
   fixtureBuildPromiseByKey,
 } from './build-artifacts-shared.ts';
-import { getRebuildGeneration } from './file-watcher.ts';
-import { relativeImportSpecifier } from './page-bundle.ts';
-import { PLAYGROUND_TEMP_ROOT } from './playground-paths.ts';
+import { PLAYGROUND_TEMP_ROOT, relativeImportSpecifier } from './playground-paths.ts';
+import { getRebuildGeneration } from './rebuild-generation.ts';
 
 /** Fixture-bundle entries: keyed by `fixtureEntryKey(...)` → entry artifact path. */
 export const fixtureEntryByKey = new Map<string, string>();

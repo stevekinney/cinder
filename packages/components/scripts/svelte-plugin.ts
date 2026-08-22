@@ -1,5 +1,7 @@
 import { sveltePlugin as createUpstreamSveltePlugin } from '@lostgradient/bun-plugin-svelte';
 import type { BunPlugin } from 'bun';
+import { existsSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
 import { compile, parse } from 'svelte/compiler';
 import ts from 'typescript';
 
@@ -261,10 +263,7 @@ function isPlaygroundPath(path: string): boolean {
  *   identity as a second argument (`preserveServerComponentIdentity`) — a
  *   Cinder-specific SSR fix (see its doc comment) with no equivalent in the
  *   published plugin, which exposes no hook to transform compiled output
- *   before Bun consumes it. A missing-capability report belongs on
- *   `stevekinney/bun-plugin-svelte` (a `transform`/post-compile hook, or
- *   exporting `compileComponent`) — see this migration's PR description for
- *   filing status.
+ *   before Bun consumes it.
  *
  * Neither case needs the CSS-sidecar virtual-module registry the published
  * plugin owns (`emitCss` is only ever true for non-server `'external'` mode,
@@ -277,7 +276,7 @@ function compileWithCinderPolicy(
   generate: GenerationTarget,
   injectCss: boolean,
   dev: boolean,
-): { contents: string; loader: 'js' } {
+): { contents: string; loader: 'js'; resolveDir: string } {
   const css = isPlaygroundPath(path) || injectCss ? 'injected' : 'external';
   const compileResult = compile(source, {
     filename: publishedSvelteCompileFilename(path),
@@ -289,7 +288,7 @@ function compileWithCinderPolicy(
     generate === 'server' && !dev
       ? preserveServerComponentIdentity(compileResult.js.code, path)
       : compileResult.js.code;
-  return { contents, loader: 'js' };
+  return { contents, loader: 'js', resolveDir: dirname(path) };
 }
 
 /**
@@ -339,6 +338,13 @@ export function sveltePlugin(
   return {
     name: `svelte-${options.generate}`,
     setup(builder) {
+      if (options.generate === 'server') {
+        builder.onResolve({ filter: /^\.\.?\/.*\.svelte$/ }, (args) => {
+          const candidate = resolve(args.resolveDir || dirname(args.importer), args.path);
+          return existsSync(candidate) ? { path: candidate } : undefined;
+        });
+      }
+
       // `@lostgradient/bun-plugin-svelte`'s own `.svelte` component compiler
       // must not be registered on `builder` directly: cinder's policy check
       // has to run first and, for two cases (below), replace the compile
