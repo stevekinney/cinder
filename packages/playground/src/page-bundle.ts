@@ -74,7 +74,7 @@ export async function compilePageBundleArtifacts(
     )
     .join('\n');
 
-  const entrySource = `import { NAV_FILTER_STORAGE_KEY, readInitialTheme } from '../../src/component-page-theme.ts';
+  const entrySource = `import { NAV_FILTER_STORAGE_KEY } from '../../src/component-page-theme.ts';
 import { persistScrollPosition } from '../../src/shell-app/sidebar-scroll.ts';
 
 const scenarioLoaders: Record<string, () => Promise<unknown>> = {
@@ -106,12 +106,6 @@ const previewOnly = new URLSearchParams(window.location.search).get('preview') =
 // therefore read from the URL exactly as the server read it, and the same
 // documentation/examples data islands feed both sides.
 const snapshotMode = new URLSearchParams(window.location.search).get('snapshot') === '1';
-let hasPersistedNavFilter = false;
-try {
-  hasPersistedNavFilter = (sessionStorage.getItem(NAV_FILTER_STORAGE_KEY) ?? '').trim() !== '';
-} catch {
-  // Private mode or disabled storage: canonical documentation stays static.
-}
 const hasServerRenderedContent = target.firstElementChild !== null;
 const shouldHydrate = hasServerRenderedContent && !snapshotMode && !previewOnly;
 
@@ -123,12 +117,15 @@ const sidebarRaw = (window as unknown as Record<string, unknown>)['__CINDER_SIDE
 const sidebarComponents = Array.isArray(sidebarRaw)
   ? sidebarRaw.filter((entry): entry is string => typeof entry === 'string')
   : [];
+const overviewExampleHtmlRaw = (window as unknown as Record<string, unknown>)['__CINDER_OVERVIEW_EXAMPLE_HTML__'];
+const overviewExampleHtml = typeof overviewExampleHtmlRaw === 'string' ? overviewExampleHtmlRaw : null;
 
 const props = {
   loadBareComponentModule: () => import(${JSON.stringify(componentDefinition.importPath)}),
   previewOnly,
   snapshotMode,
   sidebarComponents,
+  overviewExampleHtml,
 };
 
 let pageHydration: Promise<void> | undefined;
@@ -178,11 +175,9 @@ function eventElement(event: Event): Element | null {
   return event.target instanceof Element ? event.target : null;
 }
 
-// The server-rendered documentation remains immediately usable: links and
-// anchors keep their native behavior. The first control interaction upgrades
-// it to the full Svelte page, then replays that interaction against the
-// hydrated component. This covers every expanding/copying/Playground control,
-// rather than letting a new button accidentally become inert on static docs.
+// The server-rendered documentation remains immediately usable while eager
+// hydration loads. If a control interaction wins that race, hydrate first and
+// replay it against the now-live component rather than dropping the input.
 document.addEventListener(
   'click',
   (event) => {
@@ -228,10 +223,6 @@ document.addEventListener(
   { capture: true },
 );
 
-window.addEventListener('scroll', () => {
-  if (!pageHydrated) void hydratePage().catch((error) => console.error('[cinder playground] failed to hydrate page:', error));
-}, { once: true, passive: true });
-
 document.addEventListener(
   'input',
   (event) => {
@@ -258,23 +249,12 @@ document.addEventListener(
   { capture: true },
 );
 
-// Snapshot and preview routes intentionally have an empty server-rendered
-// target, so they must mount immediately. A shared or bookmarked Playground
-// URL is likewise interactive from first paint. Canonical documentation URLs
-// keep their runtime behind explicit reader interaction, leaving the
-// server-rendered document immediately useful.
-if (
-  snapshotMode ||
-  previewOnly ||
-  !hasServerRenderedContent ||
-  hasPersistedNavFilter ||
-  readInitialTheme() === 'dark' ||
-  (shouldHydrate && new URLSearchParams(window.location.search).get('view') === 'playground')
-) {
-  void hydratePage().catch((error) =>
-    console.error('[cinder playground] failed to hydrate Playground view:', error),
-  );
-}
+// The exported document is complete before this runs. Hydrate immediately so
+// its controls and server-rendered example become interactive without using an
+// unrelated gesture such as scrolling as a scheduling signal.
+void hydratePage().catch((error) =>
+  console.error('[cinder playground] failed to hydrate page:', error),
+);
 `;
 
   try {

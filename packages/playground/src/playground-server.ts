@@ -71,6 +71,7 @@ import {
   discoverSidebarComponents,
 } from './discover.ts';
 import { readExampleMetadata } from './example-metadata.ts';
+import { renderFeaturedExample } from './featured-example-server-renderer.ts';
 import {
   getRebuildGeneration,
   hasPendingRebuild,
@@ -414,10 +415,27 @@ async function renderComponentPage(
    */
   const sidebarComponents = snapshotMode || previewOnly ? [] : await discoverSidebarComponents();
   const sidebarJson = jsonForScriptTag(sidebarComponents);
+  const overviewExample = examples.find((example) => example.featured === true) ?? examples[0];
 
   let ssrBody = '';
   let ssrHead = '';
+  let overviewExampleHtml: string | null = null;
   if (!snapshotMode && !previewOnly) {
+    let overviewExampleHead = '';
+    try {
+      if (overviewExample !== undefined) {
+        const mountId = `overview-mount-${overviewExample.scenario}`;
+        const renderedExample = await renderFeaturedExample(
+          componentName,
+          overviewExample.scenario,
+          mountId,
+        );
+        overviewExampleHtml = renderedExample.body;
+        overviewExampleHead = renderedExample.head;
+      }
+    } catch (error) {
+      console.error(`[playground] featured example SSR failed for ${componentName}:`, error);
+    }
     try {
       const { renderComponentPageBody } = await loadPageServerRenderer();
       const rendered = renderComponentPageBody({
@@ -425,15 +443,17 @@ async function renderComponentPage(
         documentation,
         examples,
         sidebarComponents,
+        overviewExampleHtml,
       });
       ssrBody = rendered.body;
       // Inline sourcemaps in the SSR'd <style> output are ~80% of its bytes and
       // sit on the critical rendering path. See strip-inline-sourcemaps.ts.
-      ssrHead = stripInlineSourcemaps(rendered.head);
+      ssrHead = stripInlineSourcemaps(`${rendered.head}${overviewExampleHead}`);
     } catch (error) {
       console.error(`[playground] page SSR failed for ${componentName}:`, error);
     }
   }
+  const overviewExampleHtmlJson = jsonForScriptTag(overviewExampleHtml);
 
   return `<!DOCTYPE html>
 <html lang="en"${htmlAttribute}>
@@ -481,6 +501,7 @@ ${DEPICT_THEME_VARIABLES}
     <script type="application/json" id="cinder-documentation">${documentationJson}</script>
     <script>window.__CINDER_EXAMPLES__ = ${examplesJson};</script>
     <script>window.__CINDER_SIDEBAR__ = ${sidebarJson};</script>
+    <script>window.__CINDER_OVERVIEW_EXAMPLE_HTML__ = ${overviewExampleHtmlJson};</script>
     <div id="app">${ssrBody}</div>
     <script type="module" src="/page-bundle/${componentName}.js"></script>
   </body>

@@ -1052,6 +1052,19 @@ describe('/page/:name', () => {
     expect(html).not.toContain('/fixture-bundle/');
   });
 
+  it('server-renders highlighted README code and the featured overview example', async () => {
+    const response = await handleRequest(req('/page/banner'));
+    expect(response.status).toBe(200);
+    const html = await response.text();
+
+    expect(html).toContain('data-readme-code-block');
+    expect(html).toContain('<pre class="shiki');
+    expect(html).toContain('id="overview-mount-basic"');
+    expect(html).toContain('data-overview-preview-rendered');
+    expect(html).toContain('Scheduled maintenance is planned');
+    expect(html).not.toContain('id="overview-mount-basic"></div>');
+  }, 30_000);
+
   it('renders a direct JSON fixture route through the fixture bundle family', async () => {
     const hash = await fixtureContentHash('input');
     const response = await handleRequest(

@@ -36,6 +36,7 @@
   import { persistScrollPosition } from './shell-app/sidebar-scroll.ts';
   import { createEventSource } from './shell-app/event-source.svelte.ts';
   import { splitReadmeHtml } from './split-readme-html.ts';
+  import StaticCodeBlock from './component-page-static-code-block.svelte';
   import type { MountErrorDetail, SourceErrorDetail } from './example-error.ts';
   import { readComponentDocumentationDataIsland } from './component-documentation-reference.ts';
   import type {
@@ -118,6 +119,8 @@
      * bundle. Empty means no sidebar (snapshot and preview surfaces).
      */
     sidebarComponents?: string[];
+    /** Server-rendered featured example HTML for the canonical Overview stage. */
+    overviewExampleHtml?: string | null;
     /**
      * Landing mode. When set, the page renders this README in the prose column
      * instead of component documentation — same nav, same top bar, same theme
@@ -148,6 +151,7 @@
     documentation: documentationProp,
     documentationError: documentationErrorProp,
     sidebarComponents = [],
+    overviewExampleHtml = null,
     readmeHtml,
     toolbarActions,
     overlays,
@@ -1545,10 +1549,10 @@
                       {:else}
                         {@const block = documentation.readme.codeBlocks[segment.index]}
                         {#if block !== undefined}
-                          <CodeBlock
-                            highlighter={depictHighlighter}
+                          <StaticCodeBlock
                             code={block.value}
                             language={block.language ?? 'plaintext'}
+                            highlightedHtml={segment.fallbackHtml}
                             copyable
                           />
                         {:else}
@@ -1578,8 +1582,21 @@
                         <div
                           class="example-preview"
                           id="overview-mount-{overviewExample.scenario}"
+                          data-overview-preview-rendered={overviewExampleHtml !== null &&
+                          overviewExampleHtml !== ''
+                            ? ''
+                            : undefined}
                           {@attach mountScenario(overviewExample.scenario)}
-                        ></div>
+                        >
+                          {#if overviewExampleHtml !== null && overviewExampleHtml !== ''}
+                            {@html overviewExampleHtml}
+                          {:else}
+                            <div class="preview-loading" role="status">
+                              <StatusDot status="pending" />
+                              <span>Loading preview…</span>
+                            </div>
+                          {/if}
+                        </div>
                       </div>
                     </div>
                   {/if}
@@ -3173,6 +3190,15 @@
   .example-preview {
     display: block;
     min-height: 2rem;
+  }
+  .preview-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--cinder-space-2);
+    min-height: 7rem;
+    color: var(--cinder-text-muted);
+    font-size: var(--cinder-text-sm);
   }
   /* Frame chat examples so they read as a bounded chat surface — the way a
      consumer would drop the Chat into a card in a real app. Docs-only: the

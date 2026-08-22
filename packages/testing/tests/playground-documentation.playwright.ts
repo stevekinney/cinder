@@ -61,6 +61,25 @@ test.describe('playground component documentation', () => {
     expect(errors).toEqual([]);
   });
 
+  test('renders highlighted usage and the live preview before any scroll', async ({ page }) => {
+    await page.goto('/page/banner', { waitUntil: 'load' });
+
+    const usageCode = page.locator('[data-readme-code-block] pre.shiki');
+    await expect(usageCode).toBeVisible();
+    await expect(usageCode.locator('span[style*="color"]')).not.toHaveCount(0);
+
+    const overviewPreview = page.locator('#overview-mount-basic');
+    await expect(overviewPreview).toHaveAttribute('data-overview-preview-rendered', '');
+    await expect(overviewPreview.getByText('Scheduled maintenance is planned')).toBeVisible();
+    await expect(overviewPreview.getByText('Loading preview…')).toHaveCount(0);
+    expect(await page.evaluate(() => window.scrollY)).toBe(0);
+
+    // The server-rendered subtree is hydrated, not replaced or duplicated.
+    await overviewPreview.getByRole('button', { name: 'Dismiss banner' }).click();
+    await expect(overviewPreview.getByText('Banner dismissed.')).toBeVisible();
+    await expect(overviewPreview.locator('.cinder-banner')).toHaveCount(0);
+  });
+
   test('restores a persisted theme after hydration without changing the server tree', async ({
     page,
   }) => {

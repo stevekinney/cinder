@@ -9,7 +9,7 @@
  * usable and testable without a Svelte runtime.
  */
 
-import { mount, unmount } from 'svelte';
+import { hydrate, mount, unmount } from 'svelte';
 
 import {
   formatErrorForClipboard,
@@ -64,7 +64,7 @@ export function createExampleMountHelpers(options: ExampleMountState): {
       return (element: HTMLElement) => {
         const mountKey = element.id;
         const registry = (window as CinderWindow).__CINDER_SCENARIOS__ ?? {};
-        const Component = registry[scenario];
+        const registeredComponent = registry[scenario];
         const loader = (window as CinderWindow).__CINDER_SCENARIO_LOADERS__?.[scenario];
         let app: ReturnType<typeof mount> | undefined;
         let disposed = false;
@@ -81,10 +81,14 @@ export function createExampleMountHelpers(options: ExampleMountState): {
             return;
           }
           try {
-            app = mount(candidate as Parameters<typeof mount>[0], {
-              target: element,
-              props: { mountIdPrefix: mountKey },
-            });
+            const componentConstructor = candidate as Parameters<typeof mount>[0];
+            const mountOptions = { target: element, props: { mountIdPrefix: mountKey } };
+            if (element.hasAttribute('data-overview-preview-rendered')) {
+              app = hydrate(componentConstructor, mountOptions);
+            } else {
+              element.replaceChildren();
+              app = mount(componentConstructor, mountOptions);
+            }
             mountErrors[mountKey] = undefined;
             onScenarioSettled?.(mountKey);
           } catch (error) {
@@ -94,8 +98,8 @@ export function createExampleMountHelpers(options: ExampleMountState): {
           }
         };
 
-        if (typeof Component === 'function') {
-          mountComponent(Component);
+        if (typeof registeredComponent === 'function') {
+          mountComponent(registeredComponent);
         } else if (loader !== undefined) {
           void loader()
             .then((module) => mountComponent(scenarioComponentFromModule(module)))

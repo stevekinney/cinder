@@ -15,6 +15,10 @@ describe('playground test process isolation', () => {
     ['src/component-page.test.ts', ''],
     ['src/playground-server.test.ts', "import { handleRequest } from './playground-server.ts';"],
     ['scripts/static-export.test.ts', "import { runStaticExport } from './static-export.ts';"],
+    [
+      'src/featured-example-server-renderer.test.ts',
+      "import { renderFeaturedExample } from './featured-example-server-renderer.ts';",
+    ],
     ['src/direct-build.test.ts', 'await Bun.build(options);'],
     ['src/dynamic-server.test.ts', "const server = await import('./playground-server.ts');"],
     ['src/side-effect-server.test.ts', "import './playground-server.ts';"],

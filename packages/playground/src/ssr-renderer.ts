@@ -61,6 +61,7 @@ type PageServerRenderer = (props: {
   documentation: ComponentDocumentationPayload;
   examples: { scenario: string; title: string; description?: string; featured?: boolean }[];
   sidebarComponents: string[];
+  overviewExampleHtml: string | null;
 }) => RenderedBody;
 type LandingServerRenderer = (props: {
   readmeHtml: string;
