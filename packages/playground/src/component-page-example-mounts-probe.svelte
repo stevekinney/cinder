@@ -36,4 +36,6 @@
   });
 </script>
 
-<div class="example-mounts-probe" data-mount-id-prefix={mountIdPrefix}>probe</div>
+<div class="example-mounts-probe" data-mount-id-prefix={mountIdPrefix}>
+  <button type="button">Probe action</button>
+</div>

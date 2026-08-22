@@ -453,8 +453,6 @@ async function renderComponentPage(
       console.error(`[playground] page SSR failed for ${componentName}:`, error);
     }
   }
-  const overviewExampleHtmlJson = jsonForScriptTag(overviewExampleHtml);
-
   return `<!DOCTYPE html>
 <html lang="en"${htmlAttribute}>
   <head>
@@ -501,7 +499,6 @@ ${DEPICT_THEME_VARIABLES}
     <script type="application/json" id="cinder-documentation">${documentationJson}</script>
     <script>window.__CINDER_EXAMPLES__ = ${examplesJson};</script>
     <script>window.__CINDER_SIDEBAR__ = ${sidebarJson};</script>
-    <script>window.__CINDER_OVERVIEW_EXAMPLE_HTML__ = ${overviewExampleHtmlJson};</script>
     <div id="app">${ssrBody}</div>
     <script type="module" src="/page-bundle/${componentName}.js"></script>
   </body>

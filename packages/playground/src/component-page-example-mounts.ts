@@ -36,6 +36,28 @@ function scenarioComponentFromModule(module: unknown): unknown {
   return Reflect.get(module, 'default');
 }
 
+function descendantLocation(root: Element, descendant: Element): number[] | undefined {
+  const childIndexes: number[] = [];
+  let current: Element | null = descendant;
+  while (current !== root) {
+    if (current === null) return undefined;
+    const parent: Element | null = current.parentElement;
+    if (parent === null || !root.contains(parent)) return undefined;
+    childIndexes.unshift(Array.from(parent.children).indexOf(current));
+    current = parent;
+  }
+  return childIndexes;
+}
+
+function resolveDescendantLocation(root: Element, childIndexes: readonly number[]): Element | null {
+  let current: Element | null = root;
+  for (const childIndex of childIndexes) {
+    if (current === null) return null;
+    current = current.children.item(childIndex);
+  }
+  return current;
+}
+
 /**
  * Mount each registered scenario into its preview container via an
  * attachment. An attachment runs exactly when its element is created and
@@ -90,6 +112,11 @@ export function createExampleMountHelpers(options: ExampleMountState): {
         try {
           const componentConstructor = candidate as Parameters<typeof mount>[0];
           const mountOptions = { target: element, props: { mountIdPrefix: mountKey } };
+          const activeElement = document.activeElement;
+          const focusedChildIndexes =
+            activeElement instanceof Element && element.contains(activeElement)
+              ? descendantLocation(element, activeElement)
+              : undefined;
           // The static overview fragment is compiled by the isolated server
           // renderer, while this constructor comes from the page's client
           // bundle. Replacing that independently compiled fragment avoids
@@ -98,6 +125,10 @@ export function createExampleMountHelpers(options: ExampleMountState): {
           // remains visible until the interactive tree is ready to take over.
           element.replaceChildren();
           app = flushSync(() => mount(componentConstructor, mountOptions));
+          if (focusedChildIndexes !== undefined) {
+            const focusTarget = resolveDescendantLocation(element, focusedChildIndexes);
+            if (focusTarget instanceof HTMLElement) focusTarget.focus({ preventScroll: true });
+          }
           mountErrors[mountKey] = undefined;
           void tick().then(() => {
             if (disposed || app === undefined) return;

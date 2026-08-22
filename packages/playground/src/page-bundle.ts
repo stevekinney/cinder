@@ -112,8 +112,11 @@ const sidebarRaw = (window as unknown as Record<string, unknown>)['__CINDER_SIDE
 const sidebarComponents = Array.isArray(sidebarRaw)
   ? sidebarRaw.filter((entry): entry is string => typeof entry === 'string')
   : [];
-const overviewExampleHtmlRaw = (window as unknown as Record<string, unknown>)['__CINDER_OVERVIEW_EXAMPLE_HTML__'];
-const overviewExampleHtml = typeof overviewExampleHtmlRaw === 'string' ? overviewExampleHtmlRaw : null;
+// The server-rendered overview already exists inside #app. Read that fragment
+// before hydration instead of serializing the same HTML into a second script
+// payload solely to pass it back as a matching hydration prop.
+const overviewExampleHtml =
+  target.querySelector<HTMLElement>('[data-overview-preview-rendered]')?.innerHTML ?? null;
 let resolveOverviewPreview: (() => void) | undefined;
 const overviewPreviewReady = overviewExampleHtml !== null && overviewExampleHtml !== ''
   ? new Promise<void>((resolve) => {
@@ -263,7 +266,14 @@ document.addEventListener(
   (event) => {
     if (pageHydrated) return;
     const input = eventElement(event);
-    if (!(input instanceof HTMLInputElement || input instanceof HTMLTextAreaElement)) return;
+    if (
+      !(
+        input instanceof HTMLInputElement ||
+        input instanceof HTMLTextAreaElement ||
+        input instanceof HTMLSelectElement
+      )
+    )
+      return;
     const value = input.value;
     const checked =
       input instanceof HTMLInputElement && ['checkbox', 'radio'].includes(input.type)
@@ -281,13 +291,22 @@ document.addEventListener(
     }
     hydrateAfter(event, () => {
       const hydratedInput = resolveElementLocation(inputLocation);
-      if (!(hydratedInput instanceof HTMLInputElement || hydratedInput instanceof HTMLTextAreaElement)) return;
+      if (
+        !(
+          hydratedInput instanceof HTMLInputElement ||
+          hydratedInput instanceof HTMLTextAreaElement ||
+          hydratedInput instanceof HTMLSelectElement
+        )
+      )
+        return;
       hydratedInput.value = value;
       if (checked !== undefined && hydratedInput instanceof HTMLInputElement) {
         hydratedInput.checked = checked;
       }
       hydratedInput.dispatchEvent(new Event('input', { bubbles: true }));
-      if (checked !== undefined) hydratedInput.dispatchEvent(new Event('change', { bubbles: true }));
+      if (checked !== undefined || hydratedInput instanceof HTMLSelectElement) {
+        hydratedInput.dispatchEvent(new Event('change', { bubbles: true }));
+      }
     });
   },
   { capture: true },

@@ -1063,6 +1063,7 @@ describe('/page/:name', () => {
     expect(html).toContain('data-overview-preview-rendered');
     expect(html).toContain('Scheduled maintenance is planned');
     expect(html).not.toContain('id="overview-mount-basic"></div>');
+    expect(html).not.toContain('__CINDER_OVERVIEW_EXAMPLE_HTML__');
   });
 
   it('renders a direct JSON fixture route through the fixture bundle family', async () => {

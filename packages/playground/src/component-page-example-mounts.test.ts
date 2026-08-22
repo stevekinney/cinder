@@ -100,6 +100,27 @@ describe('createExampleMountHelpers().mountScenario', () => {
     cleanup();
   });
 
+  it('restores focus to the corresponding control after replacing the server fragment', () => {
+    (window as CinderWindow).__CINDER_SCENARIOS__ = { basic: Probe };
+    const { mountScenario } = createExampleMountHelpers({ mountErrors: {} });
+    const element = document.createElement('div');
+    element.id = 'overview-mount-basic';
+    element.innerHTML =
+      '<div class="example-mounts-probe" data-mount-id-prefix="overview-mount-basic"><button type="button">Probe action</button></div>';
+    document.body.appendChild(element);
+    const serverButton = element.querySelector('button');
+    serverButton?.focus();
+    expect(document.activeElement).toBe(serverButton);
+
+    const cleanup = mountScenario('basic')(element);
+    flushSync();
+
+    const hydratedButton = element.querySelector('button');
+    expect(hydratedButton).not.toBe(serverButton);
+    expect(document.activeElement).toBe(hydratedButton);
+    cleanup();
+  });
+
   it("records a MountErrorDetail under the mounted element's id when the registered scenario throws", () => {
     const Throwing = function ThrowingComponent() {
       throw new Error('boom');
