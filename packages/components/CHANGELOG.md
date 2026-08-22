@@ -1,5 +1,17 @@
 # @lostgradient/cinder
 
+## 0.25.0
+
+### Minor Changes
+
+- [#1377](https://github.com/stevekinney/cinder/pull/1377) [`a002d0b`](https://github.com/stevekinney/cinder/commit/a002d0b504dc926beb9940c47648cff22eb36b13) Thanks [@stevekinney](https://github.com/stevekinney)! - Add controlled and uncontrolled state ownership to JsonSchemaEditor, and render committed JSON with the themed code-block surface.
+
+### Patch Changes
+
+- [#1383](https://github.com/stevekinney/cinder/pull/1383) [`13d1fbc`](https://github.com/stevekinney/cinder/commit/13d1fbc183c7df73ac7405ea599c796ffd11749d) Thanks [@stevekinney](https://github.com/stevekinney)! - Keep the DataGrid's initial active descendant unselected until the user makes a selection.
+
+- [#1407](https://github.com/stevekinney/cinder/pull/1407) [`d1c146b`](https://github.com/stevekinney/cinder/commit/d1c146bc48c5ee9d395fc379f32f71e8bbe9ddf2) Thanks [@stevekinney](https://github.com/stevekinney)! - Keep virtualized DataGrid instances at their initial row and column position during mount, and stabilize sticky header rendering at rest.
+
 ## 0.24.8
 
 ### Patch Changes
