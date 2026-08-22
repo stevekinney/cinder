@@ -35,6 +35,13 @@ describe('page bundle hydration policy', () => {
     expect(source).not.toContain('button.dispatchEvent');
   });
 
+  test('leaves native form-control keyboard behavior to the browser before hydration', async () => {
+    const source = await Bun.file(new URL('./page-bundle.ts', import.meta.url)).text();
+
+    expect(source).toContain("eventTarget.closest('input, textarea, select') !== null");
+    expect(source).not.toContain('[role="treegrid"], input, textarea, select');
+  });
+
   test('re-resolves hash anchors before replaying activation', async () => {
     const source = await Bun.file(new URL('./page-bundle.ts', import.meta.url)).text();
 

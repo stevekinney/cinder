@@ -241,8 +241,10 @@ document.addEventListener(
   'keydown',
   (event) => {
     if (pageHydrated || !['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
-    const keyboardTarget = eventElement(event)?.closest(
-      '[role="tab"], [role="grid"], [role="listbox"], [role="menu"], [role="tree"], [role="treegrid"], input, textarea, select',
+    const eventTarget = eventElement(event);
+    if (eventTarget === null || eventTarget.closest('input, textarea, select') !== null) return;
+    const keyboardTarget = eventTarget.closest(
+      '[role="tab"], [role="grid"], [role="listbox"], [role="menu"], [role="tree"], [role="treegrid"]',
     );
     if (keyboardTarget === null || keyboardTarget === undefined) return;
     const keyboardTargetLocation = elementLocation(keyboardTarget);

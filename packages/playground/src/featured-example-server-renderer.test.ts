@@ -31,7 +31,7 @@ describe('featured example server renderer', () => {
       "relative(dirname(entryPath), examplePath).split(sep).join('/')",
     );
     expect(workerSource).toContain('JSON.stringify(exampleImportSpecifier)');
-    expect(workerSource).not.toContain('JSON.stringify(examplePath)}');
+    expect(workerSource).not.toContain('JSON.stringify(examplePath)');
   });
 
   test('renders the featured scenario with the same mount prefix used by client hydration', async () => {
