@@ -60,9 +60,8 @@ describe('page bundle hydration policy', () => {
   test('reuses the rendered overview instead of embedding a duplicate HTML payload', async () => {
     const source = await Bun.file(new URL('./page-bundle.ts', import.meta.url)).text();
 
-    expect(source).toContain(
-      "target.querySelector<HTMLElement>('[data-overview-preview-rendered]')?.innerHTML",
-    );
+    expect(source).toContain(".querySelector<HTMLElement>('[data-overview-preview-rendered]')");
+    expect(source).toContain(".innerHTML.replace(svelteHydrationMarker, '')");
     expect(source).not.toContain('__CINDER_OVERVIEW_EXAMPLE_HTML__');
   });
 });

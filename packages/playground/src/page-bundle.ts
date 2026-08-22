@@ -114,9 +114,14 @@ const sidebarComponents = Array.isArray(sidebarRaw)
   : [];
 // The server-rendered overview already exists inside #app. Read that fragment
 // before hydration instead of serializing the same HTML into a second script
-// payload solely to pass it back as a matching hydration prop.
+// payload solely to pass it back as a matching hydration prop. The surrounding
+// page's {@html} block adds its own hydration markers; remove only those page
+// markers so the prop matches the featured renderer's original fragment.
+const svelteHydrationMarker = /<!--(?:\\[(?:!|\\?[\\s\\S]*?|-?\\d+)?|\\]|\\/?\\$)?-->/g;
 const overviewExampleHtml =
-  target.querySelector<HTMLElement>('[data-overview-preview-rendered]')?.innerHTML ?? null;
+  target
+    .querySelector<HTMLElement>('[data-overview-preview-rendered]')
+    ?.innerHTML.replace(svelteHydrationMarker, '') ?? null;
 let resolveOverviewPreview: (() => void) | undefined;
 const overviewPreviewReady = overviewExampleHtml !== null && overviewExampleHtml !== ''
   ? new Promise<void>((resolve) => {
