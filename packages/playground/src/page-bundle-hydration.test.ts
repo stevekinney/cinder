@@ -61,7 +61,8 @@ describe('page bundle hydration policy', () => {
     const source = await Bun.file(new URL('./page-bundle.ts', import.meta.url)).text();
 
     expect(source).toContain(".querySelector<HTMLElement>('[data-overview-preview-rendered]')");
-    expect(source).toContain(".innerHTML.replace(svelteHydrationMarker, '')");
+    expect(source).toContain('.innerHTML.replace(pageHtmlBlockMarker');
+    expect(source).toContain(".replace(svelteHydrationMarker, '')");
     expect(source).not.toContain('__CINDER_OVERVIEW_EXAMPLE_HTML__');
   });
 });

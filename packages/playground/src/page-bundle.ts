@@ -117,11 +117,13 @@ const sidebarComponents = Array.isArray(sidebarRaw)
 // payload solely to pass it back as a matching hydration prop. The surrounding
 // page's {@html} block adds its own hydration markers; remove only those page
 // markers so the prop matches the featured renderer's original fragment.
+const pageHtmlBlockMarker = /^<!--\\[-?\\d+--><!--[a-z0-9]+-->/;
 const svelteHydrationMarker = /<!--(?:\\[(?:!|\\?[\\s\\S]*?|-?\\d+)?|\\]|\\/?\\$)?-->/g;
 const overviewExampleHtml =
   target
     .querySelector<HTMLElement>('[data-overview-preview-rendered]')
-    ?.innerHTML.replace(svelteHydrationMarker, '') ?? null;
+    ?.innerHTML.replace(pageHtmlBlockMarker, '')
+    .replace(svelteHydrationMarker, '') ?? null;
 let resolveOverviewPreview: (() => void) | undefined;
 const overviewPreviewReady = overviewExampleHtml !== null && overviewExampleHtml !== ''
   ? new Promise<void>((resolve) => {
