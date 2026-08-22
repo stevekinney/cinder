@@ -12,6 +12,8 @@ const renderPromises = new Map<string, Promise<RenderedFeaturedExample>>();
 let renderPromiseGeneration = -1;
 
 const SVELTE_HYDRATION_MARKER = /<!--(?:\[(?:!|\?[\s\S]*?|-?\d+)?|\]|\/?\$)?-->/g;
+const SELF_CLOSING_HTML_VOID_ELEMENT =
+  /<(area|base|br|col|embed|hr|img|input|link|meta|source|track|wbr)(\s[^<>]*?)?\/>/gi;
 
 /**
  * The example is compiled independently from the page that embeds it. Its
@@ -22,6 +24,11 @@ const SVELTE_HYDRATION_MARKER = /<!--(?:\[(?:!|\?[\s\S]*?|-?\d+)?|\]|\/?\$)?-->/
  */
 export function removeHydrationMarkers(html: string): string {
   return html.replace(SVELTE_HYDRATION_MARKER, '');
+}
+
+/** Match the HTML serialization browsers expose through Element.innerHTML. */
+export function normalizeBrowserSerializedHtml(html: string): string {
+  return html.replace(SELF_CLOSING_HTML_VOID_ELEMENT, '<$1$2>');
 }
 
 function isRenderedFeaturedExample(value: unknown): value is RenderedFeaturedExample {
@@ -62,7 +69,7 @@ async function renderInFreshProcess(
     throw new Error('[playground] featured example worker returned malformed output');
   }
   return {
-    body: removeHydrationMarkers(parsed.body),
+    body: normalizeBrowserSerializedHtml(removeHydrationMarkers(parsed.body)),
     head: parsed.head,
   };
 }
