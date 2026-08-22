@@ -229,6 +229,23 @@ describe('createExampleMountHelpers().mountScenario', () => {
     cleanup();
   });
 
+  it('flushes the component lifecycle before reporting a scenario as settled', () => {
+    (window as CinderWindow).__CINDER_SCENARIOS__ = { basic: Probe };
+    const mountCountsAtSettlement: number[] = [];
+    const { mountScenario } = createExampleMountHelpers({
+      mountErrors: {},
+      onScenarioSettled: () => mountCountsAtSettlement.push(mountCount()),
+    });
+    const element = document.createElement('div');
+    element.id = 'overview-mount-basic';
+    document.body.appendChild(element);
+
+    const cleanup = mountScenario('basic')(element);
+
+    expect(mountCountsAtSettlement).toEqual([1]);
+    cleanup();
+  });
+
   it('reports an invalid lazy module as a settled mount failure', async () => {
     (window as CinderWindow).__CINDER_SCENARIO_LOADERS__ = {
       invalid: async () => ({ default: 'not a component' }),

@@ -9,7 +9,7 @@
  * usable and testable without a Svelte runtime.
  */
 
-import { mount, unmount } from 'svelte';
+import { flushSync, mount, unmount } from 'svelte';
 
 import {
   formatErrorForClipboard,
@@ -90,7 +90,7 @@ export function createExampleMountHelpers(options: ExampleMountState): {
           // The replacement and mount happen in one task, so the server paint
           // remains visible until the interactive tree is ready to take over.
           element.replaceChildren();
-          app = mount(componentConstructor, mountOptions);
+          app = flushSync(() => mount(componentConstructor, mountOptions));
           mountErrors[mountKey] = undefined;
           onScenarioSettled?.(mountKey);
         } catch (error) {

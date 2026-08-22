@@ -188,13 +188,14 @@ async function locateFirstExampleShowCodeTrigger(
     name: 'Show code',
   });
   await expect(showCodeTrigger).toHaveCount(1);
+  await showCodeTrigger.scrollIntoViewIfNeeded();
 
   // The example body renders its component before the disclosure trigger; its
   // last focusable element (the demo's link button) sits immediately before the
   // trigger in the tab order, so a single Tab from it lands on `Show code`.
+  // Scrolling the trigger into view also mounts this below-fold example.
   const precedingNeighbor = firstExample.locator('a.cinder-button').last();
   await expect(precedingNeighbor).toBeVisible();
-  await showCodeTrigger.scrollIntoViewIfNeeded();
 
   return { precedingNeighbor, target: showCodeTrigger };
 }
@@ -213,15 +214,15 @@ async function locatePropsTableScrollRegion(
     propsTableCount,
     '/page/button Props section no longer exposes `.props-table-scroll`; update the stable page-chrome fixture.',
   ).toBe(1);
+  await propsTableScroll.scrollIntoViewIfNeeded();
 
   // The last example's `Show code` disclosure trigger is the final focusable
   // element before the Props scroll region, so one Tab from it lands on the
-  // region.
+  // region. Scrolling the table into view also mounts the nearby example.
   const precedingNeighbor = frame
     .locator('.dx-example .cinder-accordion-item__trigger', { hasText: 'Show code' })
     .last();
   await expect(precedingNeighbor).toBeVisible();
-  await propsTableScroll.scrollIntoViewIfNeeded();
 
   return { precedingNeighbor, target: propsTableScroll };
 }
