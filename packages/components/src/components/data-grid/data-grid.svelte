@@ -344,6 +344,8 @@
   let previousActiveCellId: string | undefined;
   let previousActiveVirtualRowIndex: number | undefined;
   let previousActiveVirtualColumnIndex: number | undefined;
+  let previousShouldVirtualizeRows = false;
+  let previousShouldVirtualizeColumns = false;
   let hasInitializedActiveCell = false;
   let previousSelectionRowIds: readonly string[] | undefined;
   let previousSelectionColumnKeys: readonly string[] | undefined;
@@ -420,13 +422,22 @@
     const didActiveVirtualRowChange = activeVirtualRowIndex !== previousActiveVirtualRowIndex;
     const didActiveVirtualColumnChange =
       activeVirtualColumnIndex !== previousActiveVirtualColumnIndex;
+    const didEnableRowVirtualization = shouldVirtualizeRows && !previousShouldVirtualizeRows;
+    const didEnableColumnVirtualization =
+      shouldVirtualizeColumns && !previousShouldVirtualizeColumns;
     if (
       cellId === undefined ||
-      (!didActiveCellChange && !didActiveVirtualRowChange && !didActiveVirtualColumnChange)
+      (!didActiveCellChange &&
+        !didActiveVirtualRowChange &&
+        !didActiveVirtualColumnChange &&
+        !didEnableRowVirtualization &&
+        !didEnableColumnVirtualization)
     ) {
       previousActiveCellId = cellId;
       previousActiveVirtualRowIndex = activeVirtualRowIndex;
       previousActiveVirtualColumnIndex = activeVirtualColumnIndex;
+      previousShouldVirtualizeRows = shouldVirtualizeRows;
+      previousShouldVirtualizeColumns = shouldVirtualizeColumns;
       return;
     }
 
@@ -435,18 +446,22 @@
       previousActiveCellId = cellId;
       previousActiveVirtualRowIndex = activeVirtualRowIndex;
       previousActiveVirtualColumnIndex = activeVirtualColumnIndex;
+      previousShouldVirtualizeRows = shouldVirtualizeRows;
+      previousShouldVirtualizeColumns = shouldVirtualizeColumns;
       return;
     }
 
     previousActiveCellId = cellId;
     previousActiveVirtualRowIndex = activeVirtualRowIndex;
     previousActiveVirtualColumnIndex = activeVirtualColumnIndex;
-    if (shouldVirtualizeRows && didActiveVirtualRowChange) {
+    previousShouldVirtualizeRows = shouldVirtualizeRows;
+    previousShouldVirtualizeColumns = shouldVirtualizeColumns;
+    if (shouldVirtualizeRows && (didActiveVirtualRowChange || didEnableRowVirtualization)) {
       rowVirtualizer.scrollToRow(activeRowIndex);
     }
     if (
       shouldVirtualizeColumns &&
-      didActiveVirtualColumnChange &&
+      (didActiveVirtualColumnChange || didEnableColumnVirtualization) &&
       activeVirtualColumnIndex !== undefined
     ) {
       rowVirtualizer.scrollToColumn(activeVirtualColumnIndex);

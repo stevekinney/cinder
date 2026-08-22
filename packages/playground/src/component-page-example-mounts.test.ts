@@ -8,7 +8,7 @@
  * production mount/unmount path, not a copy of it.
  */
 
-import { afterEach, describe, expect, it } from 'bun:test';
+import { afterEach, describe, expect, it, mock } from 'bun:test';
 import { flushSync } from 'svelte';
 
 import { setupHappyDom } from '../../components/src/test/happy-dom.ts';
@@ -40,10 +40,26 @@ type CinderWindow = typeof globalThis & {
   __CINDER_SCENARIO_LOADERS__?: Record<string, () => Promise<unknown>>;
 };
 
+const originalIntersectionObserver = globalThis.IntersectionObserver;
+
+class FakeIntersectionObserver {
+  static instances: FakeIntersectionObserver[] = [];
+  readonly callback: IntersectionObserverCallback;
+  readonly disconnect = mock(() => {});
+  readonly observe = mock((_element: Element) => {});
+
+  constructor(callback: IntersectionObserverCallback) {
+    this.callback = callback;
+    FakeIntersectionObserver.instances.push(this);
+  }
+}
+
 afterEach(() => {
   resetProbe();
   delete (window as CinderWindow).__CINDER_SCENARIOS__;
   delete (window as CinderWindow).__CINDER_SCENARIO_LOADERS__;
+  globalThis.IntersectionObserver = originalIntersectionObserver;
+  FakeIntersectionObserver.instances = [];
   document.body.innerHTML = '';
 });
 
@@ -155,6 +171,39 @@ describe('createExampleMountHelpers().mountScenario', () => {
     expect(mountCount()).toBe(1);
     expect(mountErrors['example-mount-lazy']).toBeUndefined();
 
+    cleanup();
+    expect(unmountCount()).toBe(1);
+  });
+
+  it('defers documentation scenarios until their preview approaches the viewport', async () => {
+    globalThis.IntersectionObserver =
+      FakeIntersectionObserver as unknown as typeof IntersectionObserver;
+    let loadCount = 0;
+    (window as CinderWindow).__CINDER_SCENARIO_LOADERS__ = {
+      lazy: async () => {
+        loadCount += 1;
+        return { default: Probe };
+      },
+    };
+    const { mountScenarioWhenVisible } = createExampleMountHelpers({ mountErrors: {} });
+    const element = document.createElement('div');
+    element.id = 'example-mount-lazy';
+    document.body.appendChild(element);
+
+    const cleanup = mountScenarioWhenVisible('lazy')(element);
+    expect(loadCount).toBe(0);
+
+    const observer = FakeIntersectionObserver.instances[0];
+    observer?.callback(
+      [{ isIntersecting: true, target: element } as unknown as IntersectionObserverEntry],
+      observer as unknown as IntersectionObserver,
+    );
+    await Promise.resolve();
+    flushSync();
+
+    expect(loadCount).toBe(1);
+    expect(mountCount()).toBe(1);
+    expect(observer?.disconnect).toHaveBeenCalled();
     cleanup();
     expect(unmountCount()).toBe(1);
   });

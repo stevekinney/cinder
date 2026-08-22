@@ -67,14 +67,17 @@ test.describe('playground component documentation', () => {
     const usageCode = page.locator('[data-readme-code-block] pre.shiki');
     await expect(usageCode).toBeVisible();
     await expect(usageCode.locator('span[style*="color"]')).not.toHaveCount(0);
+    await expect(page.locator('[data-readme-code-block] [tabindex="0"]')).toHaveCount(1);
 
     const overviewPreview = page.locator('#overview-mount-basic');
     await expect(overviewPreview).toHaveAttribute('data-overview-preview-rendered', '');
     await expect(overviewPreview.getByText('Scheduled maintenance is planned')).toBeVisible();
     await expect(overviewPreview.getByText('Loading preview…')).toHaveCount(0);
     expect(await page.evaluate(() => window.scrollY)).toBe(0);
+    await expect(page.locator('#examples .example-preview').last()).toBeEmpty();
 
-    // The server-rendered subtree is hydrated, not replaced or duplicated.
+    // The server-rendered paint remains until the interactive client tree can
+    // replace it without dropping this early interaction.
     await overviewPreview.getByRole('button', { name: 'Dismiss banner' }).click();
     await expect(overviewPreview.getByText('Banner dismissed.')).toBeVisible();
     await expect(overviewPreview.locator('.cinder-banner')).toHaveCount(0);

@@ -414,6 +414,38 @@ describe('DataGrid row virtualization', () => {
     expect(activeRow?.getAttribute('aria-rowindex')).toBe('101');
   });
 
+  test('enabling row virtualization keeps the existing active cell rendered', async () => {
+    const rows = makeRows(100);
+    const view = render(LogDataGrid, {
+      rows,
+      columns,
+      getRowId: getLogRowId,
+      rowHeight: 20,
+      'aria-label': 'Logs',
+    });
+    const { container } = view;
+    const grid = container.querySelector<HTMLElement>('[role="grid"]');
+    const lastRowCell = dataRows(container).at(-1)?.querySelector<HTMLElement>('[role="gridcell"]');
+    if (!grid || !lastRowCell) throw new Error('Expected the last non-virtualized row cell');
+
+    await fireEvent.click(lastRowCell);
+    await view.rerender({
+      rows,
+      columns,
+      getRowId: getLogRowId,
+      virtualizeRows: true,
+      rowHeight: 20,
+      'aria-label': 'Logs',
+    });
+
+    await waitFor(() =>
+      expect(
+        container.querySelector(`#${grid.getAttribute('aria-activedescendant')}`),
+      ).not.toBeNull(),
+    );
+    expect(dataRows(container).some((row) => row.textContent?.includes('Message 99'))).toBe(true);
+  });
+
   test('warns and falls back when row virtualization omits fixed rowHeight', () => {
     const warnings: unknown[] = [];
     const warnSpy = mock((message?: unknown) => {

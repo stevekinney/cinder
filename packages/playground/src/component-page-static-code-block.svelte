@@ -9,6 +9,9 @@
   };
 
   let { code, language, highlightedHtml, copyable = false }: Props = $props();
+  const singleFocusTargetHtml = $derived(
+    highlightedHtml.replace(/(<pre\b[^>]*?)\s+tabindex=(['"])0\2/i, '$1'),
+  );
 </script>
 
 <div class="cinder-code-block" data-readme-code-block>
@@ -34,7 +37,7 @@
   <div class="cinder-code-block__viewport" tabindex="0">
     {#if highlightedHtml !== ''}
       <div class="cinder-code-block__highlighted">
-        {@html highlightedHtml}
+        {@html singleFocusTargetHtml}
       </div>
     {:else}
       <pre class="cinder-code-block__pre"><code class="cinder-code-block__code">{code}</code></pre>

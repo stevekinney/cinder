@@ -510,7 +510,7 @@
   // in Examples — and each container gets its own attachment + its own mount, so
   // the two instances stay independent with correct per-node cleanup. See
   // `component-page-example-mounts.ts` for the mount-error keying discipline.
-  const { mountScenario } = createExampleMountHelpers({
+  const { mountScenario, mountScenarioWhenVisible } = createExampleMountHelpers({
     mountErrors,
     onScenarioSettled: (mountKey, error) => {
       settleSnapshotMount(mountKey, error);
@@ -519,6 +519,7 @@
       }
     },
   });
+  const mountDocumentationScenario = snapshotMode ? mountScenario : mountScenarioWhenVisible;
 
   // Whether the props table currently overflows horizontally. Drives the
   // `is-scrollable` modifier on the scroll container so the `::after` fade
@@ -1705,7 +1706,7 @@
                                   <div
                                     class="example-preview"
                                     id="example-mount-{scenario}"
-                                    {@attach mountScenario(scenario)}
+                                    {@attach mountDocumentationScenario(scenario)}
                                   ></div>
                                 </div>
                               </div>

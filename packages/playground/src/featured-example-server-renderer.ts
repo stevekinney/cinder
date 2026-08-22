@@ -9,6 +9,7 @@ export type RenderedFeaturedExample = {
 };
 
 const renderPromises = new Map<string, Promise<RenderedFeaturedExample>>();
+let renderPromiseGeneration = -1;
 
 const SVELTE_HYDRATION_MARKER = /<!--(?:\[[^>]*|\]|\$[^>]*)?-->/g;
 
@@ -72,7 +73,12 @@ export async function renderFeaturedExample(
   scenario: string,
   mountIdPrefix: string,
 ): Promise<RenderedFeaturedExample> {
-  const cacheKey = `${getRebuildGeneration()}:${componentName}/${scenario}:${mountIdPrefix}`;
+  const rebuildGeneration = getRebuildGeneration();
+  if (renderPromiseGeneration !== rebuildGeneration) {
+    renderPromises.clear();
+    renderPromiseGeneration = rebuildGeneration;
+  }
+  const cacheKey = `${componentName}/${scenario}:${mountIdPrefix}`;
   let renderPromise = renderPromises.get(cacheKey);
   if (renderPromise === undefined) {
     renderPromise = renderInFreshProcess(componentName, scenario, mountIdPrefix);
