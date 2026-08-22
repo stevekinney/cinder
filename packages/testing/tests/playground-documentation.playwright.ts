@@ -300,8 +300,13 @@ test.describe('authored Playground preview fallbacks', () => {
 
     const notes = page.getByRole('textbox', { name: 'Notes' });
     await notes.focus();
-    await page.keyboard.press('End');
-    await page.keyboard.type('/');
+    await notes.evaluate((element) => {
+      if (!(element instanceof HTMLTextAreaElement)) {
+        throw new Error('The Notes control must remain a textarea.');
+      }
+      element.setSelectionRange(element.value.length, element.value.length);
+    });
+    await notes.pressSequentially('/');
     await expect(page.getByRole('listbox', { name: 'Slash commands' })).toBeVisible();
     await expect(page.getByText('Summary', { exact: true })).toBeVisible();
   });
