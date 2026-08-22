@@ -241,12 +241,25 @@ document.addEventListener(
   'keydown',
   (event) => {
     if (pageHydrated || !['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
-    const button = eventElement(event)?.closest('button');
-    if (button?.getAttribute('role') !== 'tab') return;
-    const buttonLocation = elementLocation(button);
+    const keyboardTarget = eventElement(event)?.closest(
+      '[role="tab"], [role="grid"], [role="listbox"], [role="menu"], [role="tree"], [role="treegrid"], input, textarea, select',
+    );
+    if (keyboardTarget === null || keyboardTarget === undefined) return;
+    const keyboardTargetLocation = elementLocation(keyboardTarget);
+    const keyboardEventInit: KeyboardEventInit = {
+      key: event.key,
+      code: event.code,
+      altKey: event.altKey,
+      ctrlKey: event.ctrlKey,
+      metaKey: event.metaKey,
+      shiftKey: event.shiftKey,
+      repeat: event.repeat,
+      bubbles: true,
+      cancelable: true,
+    };
     hydrateAfter(event, () =>
-      resolveElementLocation(buttonLocation)?.dispatchEvent(
-        new KeyboardEvent('keydown', { key: event.key, bubbles: true, cancelable: true }),
+      resolveElementLocation(keyboardTargetLocation)?.dispatchEvent(
+        new KeyboardEvent('keydown', keyboardEventInit),
       ),
     );
   },

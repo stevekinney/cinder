@@ -14,7 +14,9 @@
 
   async function fetchNext() {
     loading = true;
-    await Promise.resolve();
+    await new Promise<void>((resolve) =>
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+    );
     attempts += 1;
     loading = false;
     if (attempts === 1) {

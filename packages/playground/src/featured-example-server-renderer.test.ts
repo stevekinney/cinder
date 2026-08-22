@@ -22,6 +22,18 @@ describe('featured example server renderer', () => {
     ).toBe('<input type="text"><br><img src="preview.png"><svg><path d="M0 0"/></svg>');
   });
 
+  test('emits the generated example import as a normalized relative specifier', async () => {
+    const workerSource = await Bun.file(
+      new URL('./featured-example-server-worker.ts', import.meta.url),
+    ).text();
+
+    expect(workerSource).toContain(
+      "relative(dirname(entryPath), examplePath).split(sep).join('/')",
+    );
+    expect(workerSource).toContain('JSON.stringify(exampleImportSpecifier)');
+    expect(workerSource).not.toContain('JSON.stringify(examplePath)}');
+  });
+
   test('renders the featured scenario with the same mount prefix used by client hydration', async () => {
     const rendered = await renderFeaturedExample('banner', 'basic', 'overview-mount-basic');
 

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { rmSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join, relative, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { sveltePlugin } from '../../components/scripts/svelte-plugin.ts';
@@ -55,8 +55,12 @@ async function main(): Promise<void> {
 
   const temporaryDirectory = join(PLAYGROUND_TEMP_ROOT, randomUUID());
   const entryPath = join(temporaryDirectory, 'featured-example-server-entry.ts');
+  const relativeExamplePath = relative(dirname(entryPath), examplePath).split(sep).join('/');
+  const exampleImportSpecifier = relativeExamplePath.startsWith('.')
+    ? relativeExamplePath
+    : `./${relativeExamplePath}`;
   const entrySource = `import { render } from 'svelte/server';
-import Example from ${JSON.stringify(examplePath)};
+import Example from ${JSON.stringify(exampleImportSpecifier)};
 
 export function renderFeaturedExample(mountIdPrefix: string) {
   const rendered = render(Example, { props: { mountIdPrefix } });

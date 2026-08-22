@@ -26,10 +26,12 @@ describe('page bundle hydration policy', () => {
     expect(source).not.toContain('hydrateAfter(event, () => button.click())');
   });
 
-  test('re-resolves an early tab before replaying keyboard navigation', async () => {
+  test('re-resolves early tabs and composite widgets before replaying keyboard navigation', async () => {
     const source = await Bun.file(new URL('./page-bundle.ts', import.meta.url)).text();
 
-    expect(source).toContain('resolveElementLocation(buttonLocation)?.dispatchEvent');
+    expect(source).toContain('[role="tab"], [role="grid"], [role="listbox"]');
+    expect(source).toContain('const keyboardTargetLocation = elementLocation(keyboardTarget)');
+    expect(source).toContain('resolveElementLocation(keyboardTargetLocation)?.dispatchEvent');
     expect(source).not.toContain('button.dispatchEvent');
   });
 

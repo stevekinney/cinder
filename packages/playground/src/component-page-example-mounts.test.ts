@@ -325,6 +325,35 @@ describe('createExampleMountHelpers().mountScenario', () => {
     expect(settled[0]?.error).toBeInstanceOf(Error);
     expect(mountErrors['example-mount-invalid']?.message).toContain('no registered component');
   });
+
+  it('removes an inert server preview when the client scenario fails to load', async () => {
+    (window as CinderWindow).__CINDER_SCENARIO_LOADERS__ = {
+      broken: async () => {
+        throw new Error('chunk unavailable');
+      },
+    };
+    const mountErrors: Record<string, MountErrorDetail | undefined> = {};
+    let resolveSettled!: () => void;
+    const didSettle = new Promise<void>((resolve) => {
+      resolveSettled = resolve;
+    });
+    const { mountScenario } = createExampleMountHelpers({
+      mountErrors,
+      onScenarioSettled: () => resolveSettled(),
+    });
+    const element = document.createElement('div');
+    element.id = 'overview-mount-broken';
+    element.setAttribute('data-overview-preview-rendered', '');
+    element.innerHTML = '<button type="button">Server-only action</button>';
+    document.body.appendChild(element);
+
+    mountScenario('broken')(element);
+    await didSettle;
+
+    expect(element.childElementCount).toBe(0);
+    expect(element.hasAttribute('data-overview-preview-rendered')).toBeFalse();
+    expect(mountErrors['overview-mount-broken']?.message).toContain('chunk unavailable');
+  });
 });
 
 describe('fetchExampleSource', () => {

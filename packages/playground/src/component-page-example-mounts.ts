@@ -98,6 +98,11 @@ export function createExampleMountHelpers(options: ExampleMountState): {
         onScenarioSettled?.(mountKey, error);
       };
 
+      const clearFailedPreview = () => {
+        element.replaceChildren();
+        element.removeAttribute('data-overview-preview-rendered');
+      };
+
       const mountComponent = (candidate: unknown) => {
         if (disposed) return;
         if (typeof candidate !== 'function') {
@@ -105,6 +110,7 @@ export function createExampleMountHelpers(options: ExampleMountState): {
             `[cinder playground] no registered component for scenario "${scenario}"`,
           );
           console.error(error.message);
+          clearFailedPreview();
           mountErrors[mountKey] = toMountErrorDetail(error);
           settle(error);
           return;
@@ -137,6 +143,7 @@ export function createExampleMountHelpers(options: ExampleMountState): {
           });
         } catch (error) {
           console.error(`[cinder playground] failed to mount example "${scenario}":`, error);
+          clearFailedPreview();
           mountErrors[mountKey] = toMountErrorDetail(error);
           settle(error);
         }
@@ -150,6 +157,7 @@ export function createExampleMountHelpers(options: ExampleMountState): {
           .catch((error) => {
             if (disposed) return;
             console.error(`[cinder playground] failed to load example "${scenario}":`, error);
+            clearFailedPreview();
             mountErrors[mountKey] = toMountErrorDetail(error);
             settle(error);
           });

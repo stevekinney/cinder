@@ -13,7 +13,9 @@
 
   async function fetchNext() {
     loading = true;
-    await Promise.resolve();
+    await new Promise<void>((resolve) =>
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+    );
     const start = items.length;
     items = [...items, ...Array.from({ length: 20 }, (_, index) => `Item ${start + index + 1}`)];
     loading = false;
