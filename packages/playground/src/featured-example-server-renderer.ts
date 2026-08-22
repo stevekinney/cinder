@@ -11,7 +11,7 @@ export type RenderedFeaturedExample = {
 const renderPromises = new Map<string, Promise<RenderedFeaturedExample>>();
 let renderPromiseGeneration = -1;
 
-const SVELTE_HYDRATION_MARKER = /<!--(?:\[[^>]*|\]|\$[^>]*)?-->/g;
+const SVELTE_HYDRATION_MARKER = /<!--(?:\[(?:!|\?[\s\S]*?|-?\d+)?|\]|\/?\$)?-->/g;
 
 /**
  * The example is compiled independently from the page that embeds it. Its
@@ -20,7 +20,7 @@ const SVELTE_HYDRATION_MARKER = /<!--(?:\[[^>]*|\]|\$[^>]*)?-->/g;
  * while removing only Svelte's internal comment markers; the client mount
  * replaces this fragment atomically once its own bundle is ready.
  */
-function removeHydrationMarkers(html: string): string {
+export function removeHydrationMarkers(html: string): string {
   return html.replace(SVELTE_HYDRATION_MARKER, '');
 }
 
@@ -81,9 +81,12 @@ export async function renderFeaturedExample(
   const cacheKey = `${componentName}/${scenario}:${mountIdPrefix}`;
   let renderPromise = renderPromises.get(cacheKey);
   if (renderPromise === undefined) {
-    renderPromise = renderInFreshProcess(componentName, scenario, mountIdPrefix);
-    renderPromises.set(cacheKey, renderPromise);
-    void renderPromise.catch(() => renderPromises.delete(cacheKey));
+    const pendingRender = renderInFreshProcess(componentName, scenario, mountIdPrefix);
+    renderPromise = pendingRender;
+    renderPromises.set(cacheKey, pendingRender);
+    void pendingRender.catch(() => {
+      if (renderPromises.get(cacheKey) === pendingRender) renderPromises.delete(cacheKey);
+    });
   }
   return await renderPromise;
 }

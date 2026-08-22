@@ -68,6 +68,13 @@ export function createExampleMountHelpers(options: ExampleMountState): {
       const loader = (window as CinderWindow).__CINDER_SCENARIO_LOADERS__?.[scenario];
       let app: ReturnType<typeof mount> | undefined;
       let disposed = false;
+      let settled = false;
+
+      const settle = (error?: unknown) => {
+        if (settled) return;
+        settled = true;
+        onScenarioSettled?.(mountKey, error);
+      };
 
       const mountComponent = (candidate: unknown) => {
         if (disposed) return;
@@ -77,7 +84,7 @@ export function createExampleMountHelpers(options: ExampleMountState): {
           );
           console.error(error.message);
           mountErrors[mountKey] = toMountErrorDetail(error);
-          onScenarioSettled?.(mountKey, error);
+          settle(error);
           return;
         }
         try {
@@ -95,12 +102,12 @@ export function createExampleMountHelpers(options: ExampleMountState): {
           void tick().then(() => {
             if (disposed || app === undefined) return;
             element.setAttribute('data-example-preview-ready', '');
-            onScenarioSettled?.(mountKey);
+            settle();
           });
         } catch (error) {
           console.error(`[cinder playground] failed to mount example "${scenario}":`, error);
           mountErrors[mountKey] = toMountErrorDetail(error);
-          onScenarioSettled?.(mountKey, error);
+          settle(error);
         }
       };
 
@@ -113,7 +120,7 @@ export function createExampleMountHelpers(options: ExampleMountState): {
             if (disposed) return;
             console.error(`[cinder playground] failed to load example "${scenario}":`, error);
             mountErrors[mountKey] = toMountErrorDetail(error);
-            onScenarioSettled?.(mountKey, error);
+            settle(error);
           });
       } else {
         mountComponent(undefined);
@@ -121,6 +128,7 @@ export function createExampleMountHelpers(options: ExampleMountState): {
 
       return () => {
         disposed = true;
+        settle();
         element.removeAttribute('data-example-preview-ready');
         if (app === undefined) return;
         try {

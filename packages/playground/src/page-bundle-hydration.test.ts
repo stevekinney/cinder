@@ -17,4 +17,12 @@ describe('page bundle hydration policy', () => {
     expect(waitForPreview).toBeGreaterThan(-1);
     expect(markPageHydrated).toBeGreaterThan(waitForPreview);
   });
+
+  test('re-resolves an early button against the interactive tree before replaying it', async () => {
+    const source = await Bun.file(new URL('./page-bundle.ts', import.meta.url)).text();
+
+    expect(source).toContain('const buttonLocation = elementLocation(button)');
+    expect(source).toContain('const hydratedButton = resolveElementLocation(buttonLocation)');
+    expect(source).not.toContain('hydrateAfter(event, () => button.click())');
+  });
 });

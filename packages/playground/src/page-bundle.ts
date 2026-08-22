@@ -178,6 +178,29 @@ function eventElement(event: Event): Element | null {
   return event.target instanceof Element ? event.target : null;
 }
 
+type ElementLocation = { rootId: string; childIndexes: number[] };
+
+function elementLocation(element: Element): ElementLocation | undefined {
+  const childIndexes: number[] = [];
+  let current: Element | null = element;
+  while (current !== null && current.id === '') {
+    const parent = current.parentElement;
+    if (parent === null) return undefined;
+    childIndexes.unshift(Array.from(parent.children).indexOf(current));
+    current = parent;
+  }
+  return current === null ? undefined : { rootId: current.id, childIndexes };
+}
+
+function resolveElementLocation(location: ElementLocation | undefined): Element | null {
+  if (location === undefined) return null;
+  let current: Element | null = document.getElementById(location.rootId);
+  for (const childIndex of location.childIndexes) {
+    current = current?.children.item(childIndex) ?? null;
+  }
+  return current;
+}
+
 // The server-rendered documentation remains immediately usable while eager
 // hydration loads. If a control interaction wins that race, hydrate first and
 // replay it against the now-live component rather than dropping the input.
@@ -195,7 +218,11 @@ document.addEventListener(
       hydrateAfter(event, () => undefined);
       return;
     }
-    hydrateAfter(event, () => button.click());
+    const buttonLocation = elementLocation(button);
+    hydrateAfter(event, () => {
+      const hydratedButton = resolveElementLocation(buttonLocation);
+      if (hydratedButton instanceof HTMLButtonElement) hydratedButton.click();
+    });
   },
   { capture: true },
 );

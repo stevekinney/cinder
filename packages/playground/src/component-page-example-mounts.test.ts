@@ -235,6 +235,32 @@ describe('createExampleMountHelpers().mountScenario', () => {
     cleanup();
   });
 
+  it('settles once when a pending lazy mount is disposed before its module loads', async () => {
+    let resolveModule!: (module: unknown) => void;
+    (window as CinderWindow).__CINDER_SCENARIO_LOADERS__ = {
+      lazy: () =>
+        new Promise((resolve) => {
+          resolveModule = resolve;
+        }),
+    };
+    const settled: string[] = [];
+    const { mountScenario } = createExampleMountHelpers({
+      mountErrors: {},
+      onScenarioSettled: (mountKey) => settled.push(mountKey),
+    });
+    const element = document.createElement('div');
+    element.id = 'overview-mount-lazy';
+    document.body.appendChild(element);
+
+    const cleanup = mountScenario('lazy')(element);
+    cleanup();
+    resolveModule({ default: Probe });
+    await Promise.resolve();
+
+    expect(settled).toEqual(['overview-mount-lazy']);
+    expect(mountCount()).toBe(0);
+  });
+
   it('flushes the component lifecycle before reporting a scenario as settled', async () => {
     (window as CinderWindow).__CINDER_SCENARIOS__ = { basic: Probe };
     const mountCountsAtSettlement: number[] = [];
