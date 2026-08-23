@@ -16,6 +16,7 @@ import {
   extractExecutableCliThresholdArguments,
   extractMultilineExecutableCliThresholdArguments,
   isCommentOnlyLine,
+  isTestThresholdAssignment,
   sourceLineForAnalysis,
   sourceLinesForAnalysis,
 } from './check-timeout-increase-strings';
@@ -64,32 +65,21 @@ function thresholdIdentity(label: string): string {
 function implicitBaselineFor(
   label: string,
   line = '',
+  filePath = '',
 ): { renderedValue: string; value: number } | undefined {
   const kind = normalizeKind(label);
+  if (
+    label.toLowerCase() === 'timeout-minutes' &&
+    /^\.github\/workflows\/[^/]+\.ya?ml$/u.test(filePath)
+  ) {
+    return { renderedValue: '360 (implicit GitHub Actions job timeout)', value: 360 };
+  }
   if (kind === 'retries') return { renderedValue: '0 (implicit default retries)', value: 0 };
   if (kind === 'slow') return { renderedValue: '1 (implicit normal timeout)', value: 1 };
   if (label.toLowerCase() === 'settimeout' && /\btest\.setTimeout\s*\(/u.test(line)) {
     return { renderedValue: '30_000 (implicit Playwright test timeout)', value: 30_000 };
   }
   return undefined;
-}
-
-function isTestConfigurationRetry(filePath: string, analysis: string, label: string): boolean {
-  if (normalizeKind(label) !== 'retries') return true;
-  return (
-    /\btest\.describe\.configure\s*\(/u.test(analysis) ||
-    /(?:^|\/)(?:jest|playwright|vitest)\.config\.[^/]+$/u.test(filePath)
-  );
-}
-
-function isTestThresholdAssignment(filePath: string, analysis: string, label: string): boolean {
-  if (label.toLowerCase() === 'timeout-minutes') return true;
-  if (!isTestConfigurationRetry(filePath, analysis, label)) return false;
-  return (
-    /(?:^|\/)(?:tests?|testing)(?:\/|$)|\.(?:spec|test)\.[^/]+$/u.test(filePath) ||
-    /(?:^|\/)(?:jest|playwright|vitest)\.config\.[^/]+$/u.test(filePath) ||
-    /\btest\.describe\.configure\s*\(/u.test(analysis)
-  );
 }
 
 function pushCandidate(
@@ -150,23 +140,24 @@ function extractThresholdCandidates(
       lineNumber,
       label,
       match.groups?.['value'],
-      implicitBaselineFor(label, line),
+      implicitBaselineFor(label, line, filePath),
     );
   }
 
   const namedThresholdAssignmentPattern = new RegExp(
-    String.raw`\b(?<label>(?:[A-Z][A-Z0-9_]*(?:TIMEOUT|WAIT|DEADLINE|RETRY|RETRIES)[A-Z0-9_]*)|(?:[a-z][a-z0-9_]*(?:_timeout|_wait|_deadline|_retry|_retries)[a-z0-9_]*)|(?:[A-Za-z_$][\w$]*(?:Timeout|Wait|Deadline|Retry|Retries)[\w$]*)|(?:(?:timeout|wait|deadline|retry|retries)[A-Z_$][\w$]*))\b\s*(?::\s*[^=;\n]+?=\s*|(?::|=)\s*)(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
+    String.raw`\b(?<label>(?:[A-Z][A-Z0-9_]*(?:TIMEOUT|WAIT|DEADLINE|RETRY|RETRIES)[A-Z0-9_]*)|(?:[a-z][a-z0-9_]*(?:_timeout|_wait|_deadline|_retry|_retries)[a-z0-9_]*)|(?:[A-Za-z_$][\w$]*(?:Timeout|Wait|Deadline|Retry|Retries)[\w$]*)|(?:(?:timeout|wait|deadline)[A-Z_$][\w$]*))\b\s*(?::\s*[^=;\n]+?=\s*|(?::|=)\s*)(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
     'gu',
   );
   for (const match of analysisLine.matchAll(namedThresholdAssignmentPattern)) {
     const label = match.groups?.['label'] ?? '';
+    if (!isTestThresholdAssignment(filePath, analysisLine, label)) continue;
     pushCandidate(
       candidates,
       line,
       lineNumber,
       label,
       match.groups?.['value'],
-      implicitBaselineFor(label, line),
+      implicitBaselineFor(label, line, filePath),
     );
   }
 
@@ -182,7 +173,7 @@ function extractThresholdCandidates(
       lineNumber,
       label,
       match.groups?.['value'],
-      implicitBaselineFor(label, line),
+      implicitBaselineFor(label, line, filePath),
     );
   }
 
@@ -193,7 +184,7 @@ function extractThresholdCandidates(
       lineNumber,
       argument.label,
       argument.renderedValue,
-      implicitBaselineFor(argument.label, line),
+      implicitBaselineFor(argument.label, line, filePath),
     );
   }
 
@@ -209,7 +200,7 @@ function extractThresholdCandidates(
       lineNumber,
       label,
       match.groups?.['value'],
-      implicitBaselineFor(label, line),
+      implicitBaselineFor(label, line, filePath),
     );
   }
 
@@ -261,7 +252,7 @@ function extractMultilineCallCandidates(
       source[sourceIndex]?.lineNumber ?? 0,
       label,
       match.groups?.['value'],
-      implicitBaselineFor(label, match[0]),
+      implicitBaselineFor(label, match[0], filePath),
     );
   }
 
@@ -271,14 +262,14 @@ function extractMultilineCallCandidates(
       'giu',
     ),
     new RegExp(
-      String.raw`\b(?<label>(?:[A-Z][A-Z0-9_]*(?:TIMEOUT|WAIT|DEADLINE|RETRY|RETRIES)[A-Z0-9_]*)|(?:[A-Za-z_$][\w$]*(?:Timeout|Wait|Deadline|Retry|Retries)[\w$]*)|(?:(?:timeout|wait|deadline|retry|retries)[A-Z_$][\w$]*))\b\s*(?::|=)\s*\n\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
+      String.raw`\b(?<label>(?:[A-Z][A-Z0-9_]*(?:TIMEOUT|WAIT|DEADLINE|RETRY|RETRIES)[A-Z0-9_]*)|(?:[a-z][a-z0-9_]*(?:_timeout|_wait|_deadline|_retry|_retries)[a-z0-9_]*)|(?:[A-Za-z_$][\w$]*(?:Timeout|Wait|Deadline|Retry|Retries)[\w$]*)|(?:(?:timeout|wait|deadline)[A-Z_$][\w$]*))\b\s*(?::|=)\s*\n\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
       'gu',
     ),
   ];
   for (const assignmentPattern of assignmentPatterns) {
     for (const match of analysis.matchAll(assignmentPattern)) {
       const label = match.groups?.['label'] ?? '';
-      if (!isTestConfigurationRetry(filePath, analysis, label)) continue;
+      if (!isTestThresholdAssignment(filePath, analysis, label)) continue;
       const sourceIndex = analysis.slice(0, match.index).split('\n').length - 1;
       pushCandidate(
         candidates,
@@ -286,7 +277,7 @@ function extractMultilineCallCandidates(
         source[sourceIndex]?.lineNumber ?? 0,
         label,
         match.groups?.['value'],
-        implicitBaselineFor(label, match[0]),
+        implicitBaselineFor(label, match[0], filePath),
       );
     }
   }
@@ -311,7 +302,7 @@ function extractMultilineCallCandidates(
         source[sourceIndex]?.lineNumber ?? 0,
         label,
         retryMatch.groups?.['value'],
-        implicitBaselineFor(label, retryMatch[0]),
+        implicitBaselineFor(label, retryMatch[0], filePath),
       );
     }
   }
@@ -350,7 +341,7 @@ function extractMultilineCallCandidates(
       source[argument.lineIndex]?.lineNumber ?? 0,
       argument.label,
       argument.renderedValue,
-      implicitBaselineFor(argument.label),
+      implicitBaselineFor(argument.label, '', filePath),
     );
   }
 

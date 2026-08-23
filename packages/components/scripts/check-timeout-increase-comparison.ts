@@ -184,6 +184,31 @@ export function collectComparableViolations(
     });
   }
 
+  for (const { candidate: oldCandidate, hunk } of removedEntries) {
+    if (
+      consumedRemoved.has(oldCandidate) ||
+      oldCandidate.label.toLowerCase() !== 'timeout-minutes' ||
+      !/^\.github\/workflows\/[^/]+\.ya?ml$/u.test(hunk.filePath) ||
+      oldCandidate.baselineValue === undefined ||
+      oldCandidate.baselineRenderedValue === undefined ||
+      oldCandidate.baselineValue <= oldCandidate.effectiveValue
+    ) {
+      continue;
+    }
+    violations.push({
+      filePath: hunk.filePath,
+      hunkHeader: hunk.hunkHeader,
+      old: oldCandidate,
+      new: {
+        ...oldCandidate,
+        effectiveValue: oldCandidate.baselineValue,
+        value: oldCandidate.baselineValue,
+        renderedValue: oldCandidate.baselineRenderedValue,
+        line: 'workflow uses the implicit GitHub Actions job timeout',
+      },
+    });
+  }
+
   return violations.sort(
     (left, right) =>
       (candidateOrder.get(left.new) ?? Number.MAX_SAFE_INTEGER) -

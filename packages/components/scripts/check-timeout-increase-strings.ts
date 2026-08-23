@@ -135,6 +135,32 @@ export function sourceLinesForAnalysis(filePath: string, lines: readonly string[
   return [...lines];
 }
 
+export function isTestOrValidationInfrastructure(filePath: string, analysis = ''): boolean {
+  return (
+    /(?:^|\/)(?:scripts|tests?|testing)(?:\/|$)|\.(?:spec|test)\.[^/]+$/u.test(filePath) ||
+    /(?:^|\/)(?:jest|playwright|vitest)\.config\.[^/]+$/u.test(filePath) ||
+    /^\.github\/workflows\/[^/]+\.ya?ml$/u.test(filePath) ||
+    /\btest\.describe\.configure\s*\(/u.test(analysis)
+  );
+}
+
+export function isTestThresholdAssignment(
+  filePath: string,
+  analysis: string,
+  label: string,
+): boolean {
+  const normalizedLabel = label.toLowerCase();
+  if (normalizedLabel === 'timeout-minutes') return true;
+  if (
+    (normalizedLabel.includes('retry') || normalizedLabel.includes('retries')) &&
+    !/\btest\.describe\.configure\s*\(/u.test(analysis) &&
+    !/(?:^|\/)(?:jest|playwright|vitest)\.config\.[^/]+$/u.test(filePath)
+  ) {
+    return false;
+  }
+  return isTestOrValidationInfrastructure(filePath, analysis);
+}
+
 export function sourceLineForAnalysis(filePath: string, line: string): string {
   return sourceLinesForAnalysis(filePath, [line])[0] ?? '';
 }

@@ -452,6 +452,18 @@ describe('check-timeout-increases', () => {
     expect(violations).toHaveLength(1);
   });
 
+  test('checks multiline lower-snake-case threshold identifiers', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/scripts/consumer-readiness.test.ts',
+        ['const test_timeout_ms =', '  5_000;'],
+        ['const test_timeout_ms =', '  10_000;'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+  });
+
   test('checks typed timeout declarations', () => {
     const violations = findTimeoutIncreaseViolations(
       diffFor(
@@ -661,6 +673,36 @@ describe('check-timeout-increases', () => {
     );
 
     expect(violations).toEqual([]);
+  });
+
+  test('ignores named timing and retry fields in production source', () => {
+    const timingViolations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/editor/src/lib/components/diff-viewer/diff-controller.svelte.ts',
+        ['const animationTimeout = 200;'],
+        ['const animationTimeout = 300;'],
+      ),
+    );
+    const retryViolations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/playground/src/examples/json-viewer/basic.example.svelte',
+        ['const retryCount = 0;'],
+        ['const retryCount = 1;'],
+      ),
+    );
+
+    expect(timingViolations).toEqual([]);
+    expect(retryViolations).toEqual([]);
+  });
+
+  test('rejects removing a restrictive workflow timeout', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor('.github/workflows/unit-tests.yaml', ['timeout-minutes: 5'], []),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.old.effectiveValue).toBe(5);
+    expect(violations[0]?.new.effectiveValue).toBe(360);
   });
 
   test('ignores thresholds inside multiline template literals', () => {
