@@ -350,7 +350,9 @@ describe('check-timeout-increases', () => {
       diffFor('packages/components/src/added.test.ts', [], ['test.setTimeout(10_000);']),
     ].join('\n');
 
-    expect(findTimeoutIncreaseViolations(diff)).toEqual([]);
+    const violations = findTimeoutIncreaseViolations(diff);
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.filePath).toBe('packages/components/src/removed.test.ts');
   });
 
   test('preserves named thresholds moved out of deleted files', () => {
@@ -453,7 +455,7 @@ describe('check-timeout-increases', () => {
       diffFor('packages/components/src/deleted.test.ts', ['test.setTimeout(20_000);'], []),
     ].join('\n');
 
-    expect(findTimeoutIncreaseViolations(diff)).toHaveLength(1);
+    expect(findTimeoutIncreaseViolations(diff)).toHaveLength(2);
   });
 
   test('checks lower-camel timeout identifiers', () => {
@@ -539,6 +541,15 @@ describe('check-timeout-increases', () => {
 
     expect(increased).toHaveLength(1);
     expect(reduced).toEqual([]);
+  });
+
+  test('rejects removing a restrictive Playwright test timeout', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor('packages/components/src/button/button.test.ts', ['test.setTimeout(5_000);'], []),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.new.value).toBe(30_000);
   });
 
   test('ignores timeout-shaped rendered prose', () => {
@@ -647,6 +658,26 @@ describe('check-timeout-increases', () => {
     ].join('\n');
 
     expect(findTimeoutIncreaseViolations(diff)).toHaveLength(1);
+  });
+
+  test('compares a newly added multiline Bun timeout argument with the runner default', () => {
+    const diff = [
+      'diff --git a/packages/testing/scripts/run-tests.ts b/packages/testing/scripts/run-tests.ts',
+      '--- a/packages/testing/scripts/run-tests.ts',
+      '+++ b/packages/testing/scripts/run-tests.ts',
+      '@@ -10,1 +10,6 @@',
+      '+const arguments = [',
+      "+  'bun',",
+      "+  'test',",
+      "+  '--timeout',",
+      "+  '10000',",
+      '+];',
+      '',
+    ].join('\n');
+
+    const violations = findTimeoutIncreaseViolations(diff);
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.old.value).toBe(5_000);
   });
 
   test('checks Bun rerun-each retry flags', () => {
@@ -812,6 +843,36 @@ describe('check-timeout-increases', () => {
     );
 
     expect(violations).toHaveLength(1);
+  });
+
+  test('rejects embedded Playwright slow annotations', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/testing/example.test.ts',
+        [],
+        ['if (condition) test.slow();', 'testInfo.slow();'],
+      ),
+    );
+
+    expect(violations).toHaveLength(2);
+  });
+
+  test('checks repository wait-helper timeout arguments', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/scripts/validate-consumers.ts',
+        [
+          'await waitForUrl(url, 10_000, server);',
+          "await fetchWithTimeout(url, 10_000, 'request');",
+        ],
+        [
+          'await waitForUrl(url, 20_000, server);',
+          "await fetchWithTimeout(url, 20_000, 'request');",
+        ],
+      ),
+    );
+
+    expect(violations).toHaveLength(2);
   });
 
   test('checks Bun test timeout arguments in underscore-style test filenames', () => {

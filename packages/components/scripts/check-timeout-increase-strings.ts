@@ -279,13 +279,13 @@ export function extractExecutableCliThresholdArguments(
   return results;
 }
 
-function isInsideArray(lines: readonly string[], lineIndex: number): boolean {
+function findContainingArrayStart(lines: readonly string[], lineIndex: number): number | undefined {
   for (let index = lineIndex - 1; index >= 0; index -= 1) {
     const analysis = stripQuotedText(lines[index] ?? '');
-    if (analysis.includes(']')) return false;
-    if (analysis.includes('[')) return true;
+    if (analysis.includes(']')) return undefined;
+    if (analysis.includes('[')) return index;
   }
-  return false;
+  return undefined;
 }
 
 export function extractMultilineExecutableCliThresholdArguments(
@@ -301,15 +301,22 @@ export function extractMultilineExecutableCliThresholdArguments(
 
   for (const [lineIndex, line] of lines.entries()) {
     const flagMatch = flagPattern.exec(line);
-    if (flagMatch === null || !isInsideArray(lines, lineIndex)) continue;
+    const arrayStartIndex = findContainingArrayStart(lines, lineIndex);
+    if (flagMatch === null || arrayStartIndex === undefined) continue;
     let valueLineIndex = lineIndex + 1;
     while (valueLineIndex < lines.length && (lines[valueLineIndex] ?? '').trim().length === 0) {
       valueLineIndex += 1;
     }
     const valueMatch = valuePattern.exec(lines[valueLineIndex] ?? '');
     if (valueMatch === null) continue;
+    const precedingArguments = lines
+      .slice(arrayStartIndex, lineIndex)
+      .flatMap(extractTopLevelQuotedStrings);
+    const bunTestCommand = precedingArguments.some(
+      (argument, index) => argument === 'bun' && precedingArguments[index + 1] === 'test',
+    );
     results.push({
-      bunTestCommand: false,
+      bunTestCommand,
       label: flagMatch.groups?.['label'] ?? '',
       renderedValue: valueMatch.groups?.['value'] ?? '',
       lineIndex: valueLineIndex,

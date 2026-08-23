@@ -66,7 +66,7 @@ export type BunTestTimeoutArgument = {
 };
 
 export type WaitThresholdArgument = BunTestTimeoutArgument & {
-  label: 'bun.sleep' | 'setTimeout';
+  label: 'bun.sleep' | 'fetchWithTimeout' | 'setTimeout' | 'waitForUrl';
 };
 
 function findCallArgument(
@@ -134,6 +134,8 @@ export function findWaitThresholdArguments(analysis: string): WaitThresholdArgum
       1,
       'setTimeout',
     ),
+    ...findCallArgument(analysis, /\bwaitForUrl\s*\(/gu, 1, 'waitForUrl'),
+    ...findCallArgument(analysis, /\bfetchWithTimeout\s*\(/gu, 1, 'fetchWithTimeout'),
   ];
 }
 

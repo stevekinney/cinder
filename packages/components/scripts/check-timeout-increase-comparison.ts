@@ -232,8 +232,6 @@ export function collectComparableViolations(
   for (const { candidate: oldCandidate, hunk } of removedEntries) {
     if (
       consumedRemoved.has(oldCandidate) ||
-      oldCandidate.label.toLowerCase() !== 'timeout-minutes' ||
-      !/^\.github\/workflows\/[^/]+\.ya?ml$/u.test(hunk.filePath) ||
       oldCandidate.baselineValue === undefined ||
       oldCandidate.baselineRenderedValue === undefined ||
       oldCandidate.baselineValue <= oldCandidate.effectiveValue
@@ -249,7 +247,10 @@ export function collectComparableViolations(
         effectiveValue: oldCandidate.baselineValue,
         value: oldCandidate.baselineValue,
         renderedValue: oldCandidate.baselineRenderedValue,
-        line: 'workflow uses the implicit GitHub Actions job timeout',
+        line:
+          oldCandidate.label.toLowerCase() === 'timeout-minutes'
+            ? 'workflow uses the implicit GitHub Actions job timeout'
+            : 'operation uses the implicit framework timeout',
       },
     });
   }

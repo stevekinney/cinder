@@ -15,6 +15,7 @@ import {
 import {
   extractExecutableCliThresholdArguments,
   extractMultilineExecutableCliThresholdArguments,
+  isTestOrValidationInfrastructure,
   isTestThresholdAssignment,
   sourceLineForAnalysis,
   sourceLinesForAnalysis,
@@ -205,21 +206,25 @@ function extractThresholdCandidates(
     callOccurrenceIndex += 1;
   }
 
-  const slowAnnotationMatch = /^\s*test\.(?<label>slow)\s*\((?<arguments>.*)\)\s*;?\s*$/u.exec(
-    analysisLine,
-  );
-  if (slowAnnotationMatch !== null) {
+  const slowAnnotationPattern = /\b(?:test|testInfo)\.(?<label>slow)\s*\((?<arguments>[^)]*)\)/gu;
+  let slowOccurrenceIndex = 0;
+  for (const slowAnnotationMatch of analysisLine.matchAll(slowAnnotationPattern)) {
     const argumentsText = slowAnnotationMatch.groups?.['arguments']?.trim() ?? '';
-    if (!/^\d[\d_]*(?:\.\d[\d_]*)?(?:\s*,|\s*$)/u.test(argumentsText)) {
-      pushCandidate(
-        candidates,
-        line,
-        lineNumber,
-        slowAnnotationMatch.groups?.['label'] ?? '',
-        /^false(?:\s*,|\s*$)/u.test(argumentsText) ? '1' : '3',
-        { renderedValue: '1 (implicit normal timeout)', value: 1 },
-      );
+    if (
+      new RegExp(String.raw`^${NUMERIC_EXPRESSION_PATTERN}(?:\s*,|\s*$)`, 'u').test(argumentsText)
+    ) {
+      continue;
     }
+    pushCandidate(
+      candidates,
+      line,
+      lineNumber,
+      slowAnnotationMatch.groups?.['label'] ?? '',
+      /^false(?:\s*,|\s*$)/u.test(argumentsText) ? '1' : '3',
+      { renderedValue: '1 (implicit normal timeout)', value: 1 },
+      slowOccurrenceIndex,
+    );
+    slowOccurrenceIndex += 1;
   }
 
   const seen = new Set<string>();
@@ -308,9 +313,7 @@ function extractMultilineCallCandidates(
       );
     }
   }
-  if (
-    /(?:^|\/)(?:tests?|testing)(?:\/|$)|(?:\.(?:spec|test)\.|_(?:spec|test)_)[^/]+$/u.test(filePath)
-  ) {
+  if (isTestOrValidationInfrastructure(filePath, analysis)) {
     for (const waitArgument of findWaitThresholdArguments(analysis)) {
       const sourceIndex = analysis.slice(0, waitArgument.offset).split('\n').length - 1;
       pushCandidate(
@@ -345,7 +348,9 @@ function extractMultilineCallCandidates(
       source[argument.lineIndex]?.lineNumber ?? 0,
       argument.label,
       argument.renderedValue,
-      implicitBaselineFor(argument.label, '', filePath),
+      argument.bunTestCommand
+        ? { renderedValue: '5_000 (implicit Bun test timeout)', value: 5_000 }
+        : implicitBaselineFor(argument.label, '', filePath),
     );
   }
 
