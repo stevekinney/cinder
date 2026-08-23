@@ -43,6 +43,7 @@ const GENERIC_THRESHOLD_LABELS = new Set([
   'retry',
   'rerun-each',
   'setdefaulttimeout',
+  'setdefaultnavigationtimeout',
   'settimeout',
   'slow',
   'test-timeout',
@@ -143,7 +144,7 @@ function extractThresholdCandidates(
   }
 
   const namedThresholdAssignmentPattern = new RegExp(
-    String.raw`\b(?<label>(?:[A-Z][A-Z0-9_]*(?:TIMEOUT|WAIT|DEADLINE|RETRY|RETRIES)[A-Z0-9_]*)|(?:[A-Za-z_$][\w$]*(?:Timeout|Wait|Deadline|Retry|Retries)[\w$]*)|(?:(?:timeout|wait|deadline|retry|retries)[A-Z_$][\w$]*))\b\s*(?::|=)\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
+    String.raw`\b(?<label>(?:[A-Z][A-Z0-9_]*(?:TIMEOUT|WAIT|DEADLINE|RETRY|RETRIES)[A-Z0-9_]*)|(?:[A-Za-z_$][\w$]*(?:Timeout|Wait|Deadline|Retry|Retries)[\w$]*)|(?:(?:timeout|wait|deadline|retry|retries)[A-Z_$][\w$]*))\b\s*(?::\s*[^=;\n]+?=\s*|(?::|=)\s*)(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
     'gu',
   );
   for (const match of analysisLine.matchAll(namedThresholdAssignmentPattern)) {
@@ -186,7 +187,7 @@ function extractThresholdCandidates(
   }
 
   const callPattern = new RegExp(
-    String.raw`\b(?<label>waitForTimeout|setDefaultTimeout|setTimeout|slow)\s*\(\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
+    String.raw`\b(?<label>waitForTimeout|setDefaultNavigationTimeout|setDefaultTimeout|setTimeout|slow)\s*\(\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
     'giu',
   );
   for (const match of analysisLine.matchAll(callPattern)) {
@@ -237,7 +238,7 @@ function extractMultilineCallCandidates(
   ).join('\n');
   const candidates: ThresholdCandidate[] = [];
   const pattern = new RegExp(
-    String.raw`\b(?<label>waitForTimeout|setDefaultTimeout|setTimeout|slow)\s*\(\s*\n\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
+    String.raw`\b(?<label>waitForTimeout|setDefaultNavigationTimeout|setDefaultTimeout|setTimeout|slow)\s*\(\s*\n\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
     'giu',
   );
   for (const match of analysis.matchAll(pattern)) {

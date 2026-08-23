@@ -185,6 +185,27 @@ describe('check-timeout-increases', () => {
     expect(findTimeoutIncreaseViolations(diff)).toHaveLength(1);
   });
 
+  test('checks default navigation timeout calls on one or multiple lines', () => {
+    const singleLine = diffFor(
+      'packages/components/src/button/button.test.ts',
+      ['page.setDefaultNavigationTimeout(5_000);'],
+      ['page.setDefaultNavigationTimeout(10_000);'],
+    );
+    const multiline = [
+      'diff --git a/packages/components/src/dialog/dialog.test.ts b/packages/components/src/dialog/dialog.test.ts',
+      '--- a/packages/components/src/dialog/dialog.test.ts',
+      '+++ b/packages/components/src/dialog/dialog.test.ts',
+      '@@ -10,3 +10,3 @@',
+      ' page.setDefaultNavigationTimeout(',
+      '-  5_000,',
+      '+  10_000,',
+      ' );',
+      '',
+    ].join('\n');
+
+    expect(findTimeoutIncreaseViolations([singleLine, multiline].join('\n'))).toHaveLength(2);
+  });
+
   test('checks multiline configuration assignments', () => {
     const diff = [
       'diff --git a/packages/components/src/button/button.test.ts b/packages/components/src/button/button.test.ts',
@@ -367,6 +388,18 @@ describe('check-timeout-increases', () => {
         'packages/components/src/consumer-readiness.test.ts',
         ['const timeoutMs = 1_000;'],
         ['const timeoutMs = 2_000;'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+  });
+
+  test('checks typed timeout declarations', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/src/consumer-readiness.test.ts',
+        ['const timeoutMs: number = 5_000;'],
+        ['const timeoutMs: number = 10_000;'],
       ),
     );
 
@@ -597,6 +630,18 @@ describe('check-timeout-increases', () => {
     );
 
     expect(violations).toEqual([]);
+  });
+
+  test('does not let apostrophes in comments hide later timeout changes', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/src/button/button.test.ts',
+        ["// don't increase waits", 'test.setTimeout(5_000);'],
+        ["// don't increase waits", 'test.setTimeout(10_000);'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
   });
 
   test('ignores threshold text in trailing shell and YAML hash comments', () => {

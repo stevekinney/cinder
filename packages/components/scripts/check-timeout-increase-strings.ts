@@ -36,6 +36,49 @@ export function stripQuotedText(line: string): string {
   return stripQuotedTextLines([line])[0] ?? '';
 }
 
+function stripJavaScriptCommentsLines(lines: readonly string[]): string[] {
+  let blockComment = false;
+  let quote: Quote | undefined;
+  let escaped = false;
+  return lines.map((line) => {
+    const output = Array.from(line);
+    for (let index = 0; index < output.length; index += 1) {
+      const character = output[index] ?? '';
+      const nextCharacter = output[index + 1] ?? '';
+      if (blockComment) {
+        output[index] = ' ';
+        if (character === '*' && nextCharacter === '/') {
+          output[index + 1] = ' ';
+          blockComment = false;
+          index += 1;
+        }
+        continue;
+      }
+      if (quote !== undefined) {
+        if (escaped) escaped = false;
+        else if (character === '\\') escaped = true;
+        else if (character === quote) quote = undefined;
+        continue;
+      }
+      if (character === '"' || character === "'" || character === '`') {
+        quote = character;
+        continue;
+      }
+      if (character === '/' && nextCharacter === '/') {
+        output.fill(' ', index);
+        break;
+      }
+      if (character === '/' && nextCharacter === '*') {
+        output[index] = ' ';
+        output[index + 1] = ' ';
+        blockComment = true;
+        index += 1;
+      }
+    }
+    return output.join('');
+  });
+}
+
 export function isCommentOnlyLine(line: string): boolean {
   const trimmed = line.trim();
   return (
@@ -80,11 +123,10 @@ function exposeQuotedConfigurationKeys(line: string): string {
 export function sourceLinesForAnalysis(filePath: string, lines: readonly string[]): string[] {
   const extension = extname(filePath);
   if (['.cjs', '.js', '.jsx', '.mjs', '.svelte', '.ts', '.tsx'].includes(extension)) {
-    const strippedLines = stripQuotedTextLines(lines.map(exposeQuotedConfigurationKeys));
+    const uncommentedLines = stripJavaScriptCommentsLines(lines);
+    const strippedLines = stripQuotedTextLines(uncommentedLines.map(exposeQuotedConfigurationKeys));
     return strippedLines.map((line, index) =>
-      extension === '.svelte' && /^\s*</u.test(lines[index] ?? '')
-        ? ''
-        : line.replace(/(?:\/\/|\/\*).*$/u, ''),
+      extension === '.svelte' && /^\s*</u.test(lines[index] ?? '') ? '' : line,
     );
   }
   if (['.bash', '.sh', '.yaml', '.yml', '.zsh'].includes(extension)) {
