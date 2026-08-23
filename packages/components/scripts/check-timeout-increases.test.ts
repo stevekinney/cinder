@@ -517,6 +517,18 @@ describe('check-timeout-increases', () => {
     expect(violations).toHaveLength(1);
   });
 
+  test('checks typed multiline timeout declarations', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/src/consumer-readiness.test.ts',
+        ['const timeoutMs: number =', '  5_000;'],
+        ['const timeoutMs: number =', '  10_000;'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+  });
+
   test('compares new Playwright test timeouts with the runner default', () => {
     const increased = findTimeoutIncreaseViolations(
       diffFor('packages/components/src/button/button.test.ts', [], ['test.setTimeout(60_000);']),
@@ -784,6 +796,30 @@ describe('check-timeout-increases', () => {
         'packages/components/src/button/button.test.ts',
         ["test.each(cases)('case', handler, 5_000);"],
         ["test.each(cases)('case', handler, 10_000);"],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+  });
+
+  test('checks timeout arguments on conditional Bun tests', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/src/button/button.test.ts',
+        ["test.skipIf(condition)('case', handler, 5_000);"],
+        ["test.skipIf(condition)('case', handler, 10_000);"],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+  });
+
+  test('checks Bun test timeout arguments in underscore-style test filenames', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/src/button/button_test_case.ts',
+        ["test('case', handler, 5_000);"],
+        ["test('case', handler, 10_000);"],
       ),
     );
 

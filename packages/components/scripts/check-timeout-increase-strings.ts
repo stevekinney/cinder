@@ -157,7 +157,9 @@ export function sourceLinesForAnalysis(filePath: string, lines: readonly string[
 
 export function isTestOrValidationInfrastructure(filePath: string, analysis = ''): boolean {
   return (
-    /(?:^|\/)(?:scripts|tests?|testing)(?:\/|$)|\.(?:spec|test)\.[^/]+$/u.test(filePath) ||
+    /(?:^|\/)(?:scripts|tests?|testing)(?:\/|$)|(?:\.(?:spec|test)\.|_(?:spec|test)_)[^/]+$/u.test(
+      filePath,
+    ) ||
     /(?:^|\/)(?:jest|playwright|vitest)\.config\.[^/]+$/u.test(filePath) ||
     /^\.github\/workflows\/[^/]+\.ya?ml$/u.test(filePath) ||
     /\btest\.describe\.configure\s*\(/u.test(analysis)

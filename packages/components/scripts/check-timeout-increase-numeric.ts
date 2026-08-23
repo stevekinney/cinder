@@ -140,7 +140,7 @@ export function findWaitThresholdArguments(analysis: string): WaitThresholdArgum
 export function findBunTestTimeoutArguments(analysis: string): BunTestTimeoutArgument[] {
   const argumentsFound: BunTestTimeoutArgument[] = [];
   const callPattern =
-    /\b(?:(?:it|test)\.each\s*\([^()]*(?:\([^()]*\)[^()]*)*\)\s*\(|(?:it|test)(?:\.(?!describe\b|each\b)[A-Za-z_$][\w$]*)*\s*\()/gu;
+    /\b(?:(?:it|test)\.(?:each|runIf|skipIf|todoIf)\s*\([^()]*(?:\([^()]*\)[^()]*)*\)\s*\(|(?:it|test)(?:\.(?!describe\b|each\b)[A-Za-z_$][\w$]*)*\s*\()/gu;
   for (const callMatch of analysis.matchAll(callPattern)) {
     const callStart = callMatch.index ?? 0;
     const openParenthesis = callStart + callMatch[0].lastIndexOf('(');

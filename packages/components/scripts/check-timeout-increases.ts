@@ -192,6 +192,7 @@ function extractThresholdCandidates(
   let callOccurrenceIndex = 0;
   for (const match of analysisLine.matchAll(callPattern)) {
     const label = match.groups?.['label'] ?? '';
+    if (!isTestThresholdAssignment(filePath, analysisLine, label)) continue;
     pushCandidate(
       candidates,
       line,
@@ -245,6 +246,7 @@ function extractMultilineCallCandidates(
   );
   for (const match of analysis.matchAll(pattern)) {
     const label = match.groups?.['label'] ?? '';
+    if (!isTestThresholdAssignment(filePath, analysis, label)) continue;
     const sourceIndex = analysis.slice(0, match.index).split('\n').length - 1;
     pushCandidate(
       candidates,
@@ -258,11 +260,11 @@ function extractMultilineCallCandidates(
 
   const assignmentPatterns = [
     new RegExp(
-      String.raw`\b(?<label>timeout-minutes|testTimeout|timeout|deadline|retries|retry|slow)\b\s*(?::|=)\s*\n\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
+      String.raw`\b(?<label>timeout-minutes|testTimeout|timeout|deadline|retries|retry|slow)\b\s*(?::\s*[^=;\n]+?=\s*|(?::|=)\s*)\n\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
       'giu',
     ),
     new RegExp(
-      String.raw`\b(?<label>${NAMED_THRESHOLD_LABEL_PATTERN})\b\s*(?::|=)\s*\n\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
+      String.raw`\b(?<label>${NAMED_THRESHOLD_LABEL_PATTERN})\b\s*(?::\s*[^=;\n]+?=\s*|(?::|=)\s*)\n\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
       'gu',
     ),
   ];
@@ -306,7 +308,9 @@ function extractMultilineCallCandidates(
       );
     }
   }
-  if (/(?:^|\/)(?:tests?|testing)(?:\/|$)|\.(?:spec|test)\.[^/]+$/u.test(filePath)) {
+  if (
+    /(?:^|\/)(?:tests?|testing)(?:\/|$)|(?:\.(?:spec|test)\.|_(?:spec|test)_)[^/]+$/u.test(filePath)
+  ) {
     for (const waitArgument of findWaitThresholdArguments(analysis)) {
       const sourceIndex = analysis.slice(0, waitArgument.offset).split('\n').length - 1;
       pushCandidate(
@@ -318,7 +322,7 @@ function extractMultilineCallCandidates(
       );
     }
   }
-  if (/(?:^|\/)[^/]+\.(?:spec|test)\.[^/]+$/u.test(filePath)) {
+  if (/(?:^|\/)[^/]+(?:\.(?:spec|test)\.|_(?:spec|test)_)[^/]+$/u.test(filePath)) {
     for (const timeoutArgument of findBunTestTimeoutArguments(analysis)) {
       const sourceIndex = analysis.slice(0, timeoutArgument.offset).split('\n').length - 1;
       pushCandidate(
