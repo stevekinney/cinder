@@ -145,9 +145,9 @@ function extractThresholdCandidates(line: string, lineNumber: number): Threshold
     );
   }
 
-  const implicitSlowPattern = /\b(?<label>slow)\s*\(\s*\)/giu;
-  for (const match of line.matchAll(implicitSlowPattern)) {
-    pushCandidate(candidates, line, lineNumber, match.groups?.['label'] ?? '', '3');
+  const implicitSlowMatch = /^\s*test\.(?<label>slow)\s*\(\s*\)\s*;?\s*$/iu.exec(line);
+  if (implicitSlowMatch !== null) {
+    pushCandidate(candidates, line, lineNumber, implicitSlowMatch.groups?.['label'] ?? '', '3');
   }
 
   const seen = new Set<string>();
@@ -200,7 +200,7 @@ function collectComparableViolations(hunk: DiffHunk): TimeoutIncreaseViolation[]
       }
     }
 
-    if (!identity.includes('slow:test.slow()') && !identity.includes('slow:slow()')) continue;
+    if (!identity.includes('slow:test.slow()')) continue;
     for (const newCandidate of added.slice(removed.length)) {
       violations.push({
         filePath: hunk.filePath,

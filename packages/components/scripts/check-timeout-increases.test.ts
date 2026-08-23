@@ -106,6 +106,16 @@ describe('check-timeout-increases', () => {
     expect(violations[0]?.new.renderedValue).toBe('3');
   });
 
+  test('does not treat mentions of test.slow() inside guard implementation text as calls', () => {
+    const diff = diffFor(
+      'packages/components/scripts/check-timeout-increases.ts',
+      [],
+      ["if (identity.includes('slow:test.slow()')) continue;"],
+    );
+
+    expect(findTimeoutIncreaseViolations(diff)).toEqual([]);
+  });
+
   test('ignores comments, unrelated numeric edits, and lockfile noise', () => {
     const diff = [
       diffFor(
