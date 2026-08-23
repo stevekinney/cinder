@@ -24,7 +24,7 @@ describe('page bundle hydration policy', () => {
     const markControlsHydrated = source.indexOf('markPageControlsHydrated()', hydrateComponent);
     const waitForPreview = source.indexOf('await overviewPreviewReady', hydrateComponent);
 
-    expect(source).toContain("target.setAttribute('data-playground-page-hydrated', '')");
+    expect(source).toContain("target.setAttribute('data-playground-controls-hydrated', '')");
     expect(markControlsHydrated).toBeGreaterThan(hydrateComponent);
     expect(markControlsHydrated).toBeLessThan(waitForPreview);
     expect(source).toContain(

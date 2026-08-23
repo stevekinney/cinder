@@ -23,6 +23,7 @@ export type TimeoutIncreaseViolation = {
 
 export type DiffHunk = {
   filePath: string;
+  oldFilePath: string;
   hunkHeader: string;
   removed: ThresholdCandidate[];
   added: ThresholdCandidate[];

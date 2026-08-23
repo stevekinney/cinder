@@ -144,7 +144,7 @@ test.describe('playground component documentation', () => {
     // Styling variables are part of the generated raw artifacts, collapsed by
     // default. Wait until the client owns the server-rendered controls so the
     // click cannot land between hydration setup and event-handler attachment.
-    await expect(preview.locator('#app')).toHaveAttribute('data-playground-page-hydrated', '');
+    await expect(preview.locator('#app')).toHaveAttribute('data-playground-controls-hydrated', '');
     await preview.getByRole('button', { name: 'Raw artifacts' }).click();
 
     await expect(preview.getByRole('heading', { name: 'Variables' })).toBeVisible();

@@ -146,7 +146,7 @@ let pageControlsHydrated = false;
 
 function markPageControlsHydrated(): void {
   pageControlsHydrated = true;
-  target.setAttribute('data-playground-page-hydrated', '');
+  target.setAttribute('data-playground-controls-hydrated', '');
 }
 
 function hydratePage(): Promise<void> {

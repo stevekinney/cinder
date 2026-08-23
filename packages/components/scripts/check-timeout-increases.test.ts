@@ -722,6 +722,52 @@ describe('check-timeout-increases', () => {
     expect(violations.map((violation) => violation.new.value)).toEqual([10_000, 10_000]);
   });
 
+  test('checks numeric branches in conditional timeout settings', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/testing/playwright.config.ts',
+        ['timeout: process.env.CI ? 5_000 : 1_000,'],
+        ['timeout: process.env.CI ? 10_000 : 1_000,'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.old.value).toBe(5_000);
+    expect(violations[0]?.new.value).toBe(10_000);
+  });
+
+  test('checks polling and delay constants in validation infrastructure', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/scripts/validate-consumers.ts',
+        ['const SVELTEKIT_DEV_SSR_POLL_INTERVAL_MS = 200;', 'const retryDelayMs = 100;'],
+        ['const SVELTEKIT_DEV_SSR_POLL_INTERVAL_MS = 2_000;', 'const retryDelayMs = 500;'],
+      ),
+    );
+
+    expect(violations).toHaveLength(2);
+  });
+
+  test('analyzes removed thresholds using the source path of a rename', () => {
+    const diff = [
+      'diff --git a/packages/components/src/button/button.test.ts b/packages/components/src/button/button.ts',
+      'similarity index 90%',
+      'rename from packages/components/src/button/button.test.ts',
+      'rename to packages/components/src/button/button.ts',
+      '--- a/packages/components/src/button/button.test.ts',
+      '+++ b/packages/components/src/button/button.ts',
+      '@@ -10,1 +10,1 @@',
+      '-setTimeout(resolve, 5_000);',
+      '+setTimeout(resolve, 10_000);',
+      '',
+    ].join('\n');
+
+    const violations = findTimeoutIncreaseViolations(diff);
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.old.value).toBe(5_000);
+    expect(violations[0]?.new.value).toBe(10_000);
+  });
+
   test('compares a new Bun setDefaultTimeout call with the runner default', () => {
     const violations = findTimeoutIncreaseViolations(
       diffFor('packages/components/src/button/button.test.ts', [], ['setDefaultTimeout(10_000);']),

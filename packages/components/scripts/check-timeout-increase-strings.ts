@@ -173,6 +173,7 @@ export function isTestThresholdAssignment(
   if (normalizedLabel === 'timeout-minutes') return true;
   if (
     (normalizedLabel.includes('retry') || normalizedLabel.includes('retries')) &&
+    !/(?:timeout|wait|deadline|poll|interval|delay)/u.test(normalizedLabel) &&
     !/\btest\.describe\.configure\s*\(/u.test(analysis) &&
     !/(?:^|\/)(?:jest|playwright|vitest)\.config\.[^/]+$/u.test(filePath)
   ) {

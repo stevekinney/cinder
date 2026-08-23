@@ -1,12 +1,10 @@
 import {
-  collectComparableViolations,
   formatTimeoutIncreaseViolations,
-  isSupportedFile,
   normalizeThresholdKind,
-  parseHunkStart,
   readDiffInput,
   thresholdIdentity,
 } from './check-timeout-increase-comparison';
+import { findTimeoutIncreaseViolationsInDiff } from './check-timeout-increase-diff';
 import {
   effectiveThresholdValue,
   findBunTestTimeoutArguments,
@@ -21,14 +19,13 @@ import {
   sourceLineForAnalysis,
   sourceLinesForAnalysis,
 } from './check-timeout-increase-strings';
-import type {
-  DiffHunk,
-  ThresholdCandidate,
-  TimeoutIncreaseViolation,
-} from './check-timeout-increase-types';
+import type { ThresholdCandidate, TimeoutIncreaseViolation } from './check-timeout-increase-types';
 
 export type { TimeoutIncreaseViolation } from './check-timeout-increase-types';
 export { formatTimeoutIncreaseViolations };
+
+const BASIC_THRESHOLD_LABEL_PATTERN = String.raw`(?:timeout-minutes|testTimeout|timeout|deadline|retries|retry|slow)`;
+const NAMED_THRESHOLD_LABEL_PATTERN = String.raw`(?:(?:[A-Z][A-Z0-9_]*(?:TIMEOUT|WAIT|DEADLINE|RETRY|RETRIES|POLL|INTERVAL|DELAY)[A-Z0-9_]*)|(?:[a-z][a-z0-9_]*(?:_timeout|_wait|_deadline|_retry|_retries|_poll|_interval|_delay)[a-z0-9_]*)|(?:[A-Za-z_$][\w$]*(?:Timeout|Wait|Deadline|Retry|Retries|Poll|Interval|Delay)[\w$]*)|(?:(?:timeout|wait|deadline|poll|interval|delay)[A-Z_$][\w$]*))`;
 
 function implicitBaselineFor(
   label: string,
@@ -106,8 +103,27 @@ function extractThresholdCandidates(
   if (analysisLine.trim().length === 0) return [];
 
   const candidates: ThresholdCandidate[] = [];
+  const conditionalThresholdAssignmentPattern = new RegExp(
+    String.raw`\b(?<label>${BASIC_THRESHOLD_LABEL_PATTERN}|${NAMED_THRESHOLD_LABEL_PATTERN})\b\s*(?::\s*[^=;\n]+?=\s*|(?::|=)\s*)[^?;\n]+?\?\s*(?<consequent>${NUMERIC_EXPRESSION_PATTERN})\s*:\s*(?<alternate>${NUMERIC_EXPRESSION_PATTERN})`,
+    'gu',
+  );
+  for (const match of analysisLine.matchAll(conditionalThresholdAssignmentPattern)) {
+    const label = match.groups?.['label'] ?? '';
+    if (!isTestThresholdAssignment(filePath, analysisLine, label)) continue;
+    for (const [occurrenceIndex, groupName] of ['consequent', 'alternate'].entries()) {
+      pushCandidate(
+        candidates,
+        line,
+        lineNumber,
+        label,
+        match.groups?.[groupName],
+        implicitBaselineFor(label, line, filePath),
+        occurrenceIndex,
+      );
+    }
+  }
   const thresholdAssignmentPattern = new RegExp(
-    String.raw`\b(?<label>timeout-minutes|testTimeout|timeout|deadline|retries|retry|slow)\b\s*(?::|=)\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
+    String.raw`\b(?<label>${BASIC_THRESHOLD_LABEL_PATTERN})\b\s*(?::|=)\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
     'giu',
   );
   for (const match of analysisLine.matchAll(thresholdAssignmentPattern)) {
@@ -124,7 +140,7 @@ function extractThresholdCandidates(
   }
 
   const namedThresholdAssignmentPattern = new RegExp(
-    String.raw`\b(?<label>(?:[A-Z][A-Z0-9_]*(?:TIMEOUT|WAIT|DEADLINE|RETRY|RETRIES)[A-Z0-9_]*)|(?:[a-z][a-z0-9_]*(?:_timeout|_wait|_deadline|_retry|_retries)[a-z0-9_]*)|(?:[A-Za-z_$][\w$]*(?:Timeout|Wait|Deadline|Retry|Retries)[\w$]*)|(?:(?:timeout|wait|deadline)[A-Z_$][\w$]*))\b\s*(?::\s*[^=;\n]+?=\s*|(?::|=)\s*)(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
+    String.raw`\b(?<label>${NAMED_THRESHOLD_LABEL_PATTERN})\b\s*(?::\s*[^=;\n]+?=\s*|(?::|=)\s*)(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
     'gu',
   );
   for (const match of analysisLine.matchAll(namedThresholdAssignmentPattern)) {
@@ -246,7 +262,7 @@ function extractMultilineCallCandidates(
       'giu',
     ),
     new RegExp(
-      String.raw`\b(?<label>(?:[A-Z][A-Z0-9_]*(?:TIMEOUT|WAIT|DEADLINE|RETRY|RETRIES)[A-Z0-9_]*)|(?:[a-z][a-z0-9_]*(?:_timeout|_wait|_deadline|_retry|_retries)[a-z0-9_]*)|(?:[A-Za-z_$][\w$]*(?:Timeout|Wait|Deadline|Retry|Retries)[\w$]*)|(?:(?:timeout|wait|deadline)[A-Z_$][\w$]*))\b\s*(?::|=)\s*\n\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
+      String.raw`\b(?<label>${NAMED_THRESHOLD_LABEL_PATTERN})\b\s*(?::|=)\s*\n\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
       'gu',
     ),
   ];
@@ -339,121 +355,11 @@ function extractMultilineCallCandidates(
 }
 
 export function findTimeoutIncreaseViolations(diff: string): TimeoutIncreaseViolation[] {
-  const hunks: DiffHunk[] = [];
-  let currentFilePath = '';
-  let oldFilePath = '';
-  let currentHunk: DiffHunk | undefined;
-  let oldLine = 0;
-  let newLine = 0;
-
-  const flushHunk = (): void => {
-    if (currentHunk === undefined) return;
-    const oldAnalysisLines = sourceLinesForAnalysis(
-      currentHunk.filePath,
-      currentHunk.oldSource.map(({ line }) => line),
-    );
-    const newAnalysisLines = sourceLinesForAnalysis(
-      currentHunk.filePath,
-      currentHunk.newSource.map(({ line }) => line),
-    );
-    for (const [index, sourceLine] of currentHunk.oldSource.entries()) {
-      if (!sourceLine.changed) continue;
-      currentHunk.removed.push(
-        ...extractThresholdCandidates(
-          currentHunk.filePath,
-          sourceLine.line,
-          sourceLine.lineNumber,
-          oldAnalysisLines[index],
-        ),
-      );
-    }
-    for (const [index, sourceLine] of currentHunk.newSource.entries()) {
-      if (!sourceLine.changed) continue;
-      currentHunk.added.push(
-        ...extractThresholdCandidates(
-          currentHunk.filePath,
-          sourceLine.line,
-          sourceLine.lineNumber,
-          newAnalysisLines[index],
-        ),
-      );
-    }
-    currentHunk.removed.push(
-      ...extractMultilineCallCandidates(currentHunk.filePath, currentHunk.oldSource),
-    );
-    currentHunk.added.push(
-      ...extractMultilineCallCandidates(currentHunk.filePath, currentHunk.newSource),
-    );
-    hunks.push(currentHunk);
-    currentHunk = undefined;
-  };
-
-  for (const rawLine of diff.split('\n')) {
-    if (rawLine.startsWith('diff --git ')) {
-      flushHunk();
-      currentFilePath = '';
-      oldFilePath = '';
-      continue;
-    }
-
-    if (currentHunk === undefined && rawLine.startsWith('--- ')) {
-      const path = rawLine.slice(4).trim();
-      oldFilePath = path.startsWith('a/') ? path.slice(2) : path;
-      if (oldFilePath === '/dev/null') oldFilePath = '';
-      continue;
-    }
-
-    if (currentHunk === undefined && rawLine.startsWith('+++ ')) {
-      const path = rawLine.slice(4).trim();
-      currentFilePath = path.startsWith('b/') ? path.slice(2) : path;
-      if (currentFilePath === '/dev/null') currentFilePath = oldFilePath;
-      continue;
-    }
-
-    if (rawLine.startsWith('@@ ')) {
-      flushHunk();
-      const starts = parseHunkStart(rawLine);
-      oldLine = starts.oldLine;
-      newLine = starts.newLine;
-      currentHunk = isSupportedFile(currentFilePath)
-        ? {
-            filePath: currentFilePath,
-            hunkHeader: rawLine,
-            removed: [],
-            added: [],
-            oldSource: [],
-            newSource: [],
-          }
-        : undefined;
-      continue;
-    }
-
-    if (currentHunk === undefined) continue;
-    if (rawLine.startsWith('-')) {
-      const content = rawLine.slice(1);
-      currentHunk.oldSource.push({ changed: true, line: content, lineNumber: oldLine });
-      oldLine += 1;
-      continue;
-    }
-
-    if (rawLine.startsWith('+')) {
-      const content = rawLine.slice(1);
-      currentHunk.newSource.push({ changed: true, line: content, lineNumber: newLine });
-      newLine += 1;
-      continue;
-    }
-
-    if (rawLine.startsWith(' ')) {
-      const content = rawLine.slice(1);
-      currentHunk.oldSource.push({ changed: false, line: content, lineNumber: oldLine });
-      currentHunk.newSource.push({ changed: false, line: content, lineNumber: newLine });
-      oldLine += 1;
-      newLine += 1;
-    }
-  }
-
-  flushHunk();
-  return collectComparableViolations(hunks);
+  return findTimeoutIncreaseViolationsInDiff(
+    diff,
+    extractThresholdCandidates,
+    extractMultilineCallCandidates,
+  );
 }
 
 async function main(): Promise<void> {
