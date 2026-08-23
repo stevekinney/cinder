@@ -407,6 +407,32 @@ describe('check-timeout-increases', () => {
     expect(violations[0]?.new.value).toBe(180_000);
   });
 
+  test('rejects non-finite timeout expressions as unbounded', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/testing/playwright.config.ts',
+        [],
+        ['timeout: 5_000 / 0,', 'deadline: 0 - 5_000 / 0,'],
+      ),
+    );
+
+    expect(violations).toHaveLength(2);
+    expect(violations.every((violation) => violation.new.effectiveValue === Infinity)).toBe(true);
+  });
+
+  test('checks callback timers and Bun sleep waits', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/src/tree/tree.test.ts',
+        ['await new Promise((resolve) => setTimeout(resolve, 20));', 'await Bun.sleep(20);'],
+        ['await new Promise((resolve) => setTimeout(resolve, 200));', 'await Bun.sleep(200);'],
+      ),
+    );
+
+    expect(violations).toHaveLength(2);
+    expect(violations.map((violation) => violation.new.renderedValue)).toEqual(['200', '200']);
+  });
+
   test('does not manufacture increases when multiple thresholds decrease', () => {
     const violations = findTimeoutIncreaseViolations(
       diffFor(

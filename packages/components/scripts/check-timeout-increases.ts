@@ -8,7 +8,9 @@ import {
   readDiffInput,
 } from './check-timeout-increase-comparison';
 import {
+  effectiveThresholdValue,
   findBunTestTimeoutArguments,
+  findWaitThresholdArguments,
   NUMERIC_EXPRESSION_PATTERN,
   parseNumericLiteral,
 } from './check-timeout-increase-numeric';
@@ -137,14 +139,6 @@ function isTestConfigurationRetry(filePath: string, analysis: string, label: str
   );
 }
 
-function effectiveThresholdValue(label: string, line: string, value: number): number {
-  if (value !== 0 || normalizeKind(label) !== 'timeout') return value;
-  const normalizedLabel = label.toLowerCase();
-  if (normalizedLabel === 'waitfortimeout') return value;
-  if (normalizedLabel === 'settimeout' && !/\btest\.setTimeout\s*\(/u.test(line)) return value;
-  return Number.POSITIVE_INFINITY;
-}
-
 function pushCandidate(
   candidates: ThresholdCandidate[],
   line: string,
@@ -154,8 +148,9 @@ function pushCandidate(
   baseline?: { renderedValue: string; value: number },
 ): void {
   if (renderedValue === undefined) return;
-  const value = parseNumericLiteral(renderedValue);
-  if (!Number.isFinite(value)) return;
+  const parsedValue = parseNumericLiteral(renderedValue);
+  if (Number.isNaN(parsedValue)) return;
+  const value = Number.isFinite(parsedValue) ? parsedValue : Number.POSITIVE_INFINITY;
   const effectiveValue = effectiveThresholdValue(label, line, value);
   const candidateBaseline =
     baseline ??
@@ -373,7 +368,16 @@ function extractMultilineCallCandidates(
       );
     }
   }
-
+  for (const waitArgument of findWaitThresholdArguments(analysis)) {
+    const sourceIndex = analysis.slice(0, waitArgument.offset).split('\n').length - 1;
+    pushCandidate(
+      candidates,
+      source[sourceIndex]?.line ?? waitArgument.renderedValue,
+      source[sourceIndex]?.lineNumber ?? 0,
+      waitArgument.label,
+      waitArgument.renderedValue,
+    );
+  }
   if (/(?:^|\/)[^/]+\.(?:spec|test)\.[^/]+$/u.test(filePath)) {
     for (const timeoutArgument of findBunTestTimeoutArguments(analysis)) {
       const sourceIndex = analysis.slice(0, timeoutArgument.offset).split('\n').length - 1;
