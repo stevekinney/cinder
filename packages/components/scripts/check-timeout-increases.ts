@@ -72,6 +72,40 @@ function isCommentOnlyLine(line: string): boolean {
   );
 }
 
+function stripQuotedText(line: string): string {
+  let quote: '"' | "'" | '`' | undefined;
+  let escaped = false;
+  return [...line]
+    .map((character) => {
+      if (quote === undefined) {
+        if (character === '"' || character === "'" || character === '`') {
+          quote = character;
+          return ' ';
+        }
+        return character;
+      }
+      if (escaped) {
+        escaped = false;
+        return ' ';
+      }
+      if (character === '\\') {
+        escaped = true;
+        return ' ';
+      }
+      if (character === quote) quote = undefined;
+      return ' ';
+    })
+    .join('');
+}
+
+function sourceLineForAnalysis(filePath: string, line: string): string {
+  const extension = extname(filePath);
+  if (['.cjs', '.js', '.jsx', '.mjs', '.svelte', '.ts', '.tsx'].includes(extension)) {
+    return stripQuotedText(line);
+  }
+  return line;
+}
+
 function parseNumericLiteral(literal: string): number {
   return Number(literal.replaceAll('_', ''));
 }
@@ -122,13 +156,18 @@ function pushCandidate(
   });
 }
 
-function extractThresholdCandidates(line: string, lineNumber: number): ThresholdCandidate[] {
+function extractThresholdCandidates(
+  filePath: string,
+  line: string,
+  lineNumber: number,
+): ThresholdCandidate[] {
   if (isCommentOnlyLine(line)) return [];
+  const analysisLine = sourceLineForAnalysis(filePath, line);
 
   const candidates: ThresholdCandidate[] = [];
   const thresholdAssignmentPattern =
     /\b(?<label>timeout-minutes|testTimeout|timeout|deadline|retries|retry|slow)\b[^\n\d-]{0,80}(?<value>\d[\d_]*(?:\.\d[\d_]*)?)/giu;
-  for (const match of line.matchAll(thresholdAssignmentPattern)) {
+  for (const match of analysisLine.matchAll(thresholdAssignmentPattern)) {
     const label = match.groups?.['label'] ?? '';
     pushCandidate(
       candidates,
@@ -142,7 +181,7 @@ function extractThresholdCandidates(line: string, lineNumber: number): Threshold
 
   const namedThresholdAssignmentPattern =
     /\b(?<label>(?:[A-Z][A-Z0-9_]*(?:TIMEOUT|WAIT|DEADLINE|RETRY|RETRIES)[A-Z0-9_]*)|(?:[A-Za-z_$][\w$]*(?:Timeout|Wait|Deadline|Retry|Retries)[\w$]*))\b[^\n\d-]{0,80}(?<value>\d[\d_]*(?:\.\d[\d_]*)?)/gu;
-  for (const match of line.matchAll(namedThresholdAssignmentPattern)) {
+  for (const match of analysisLine.matchAll(namedThresholdAssignmentPattern)) {
     const label = match.groups?.['label'] ?? '';
     pushCandidate(
       candidates,
@@ -156,7 +195,7 @@ function extractThresholdCandidates(line: string, lineNumber: number): Threshold
 
   const cliPattern =
     /--(?<label>timeout-minutes|timeout|test-timeout|retries|retry|slow)(?:=|\s+)(?<value>\d[\d_]*(?:\.\d[\d_]*)?)/giu;
-  for (const match of line.matchAll(cliPattern)) {
+  for (const match of analysisLine.matchAll(cliPattern)) {
     const label = match.groups?.['label'] ?? '';
     pushCandidate(
       candidates,
@@ -170,7 +209,7 @@ function extractThresholdCandidates(line: string, lineNumber: number): Threshold
 
   const callPattern =
     /\b(?<label>waitForTimeout|setDefaultTimeout|setTimeout|slow)\s*\(\s*(?<value>\d[\d_]*(?:\.\d[\d_]*)?)/giu;
-  for (const match of line.matchAll(callPattern)) {
+  for (const match of analysisLine.matchAll(callPattern)) {
     const label = match.groups?.['label'] ?? '';
     pushCandidate(
       candidates,
@@ -183,7 +222,7 @@ function extractThresholdCandidates(line: string, lineNumber: number): Threshold
   }
 
   const slowAnnotationMatch = /^\s*test\.(?<label>slow)\s*\((?<arguments>.*)\)\s*;?\s*$/u.exec(
-    line,
+    analysisLine,
   );
   if (slowAnnotationMatch !== null) {
     const argumentsText = slowAnnotationMatch.groups?.['arguments']?.trim() ?? '';
@@ -315,14 +354,16 @@ export function findTimeoutIncreaseViolations(diff: string): TimeoutIncreaseViol
 
     if (rawLine.startsWith('-')) {
       const content = rawLine.slice(1);
-      currentHunk.removed.push(...extractThresholdCandidates(content, oldLine));
+      currentHunk.removed.push(
+        ...extractThresholdCandidates(currentHunk.filePath, content, oldLine),
+      );
       oldLine += 1;
       continue;
     }
 
     if (rawLine.startsWith('+')) {
       const content = rawLine.slice(1);
-      currentHunk.added.push(...extractThresholdCandidates(content, newLine));
+      currentHunk.added.push(...extractThresholdCandidates(currentHunk.filePath, content, newLine));
       newLine += 1;
       continue;
     }

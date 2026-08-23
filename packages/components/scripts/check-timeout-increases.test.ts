@@ -155,6 +155,19 @@ describe('check-timeout-increases', () => {
     expect(findTimeoutIncreaseViolations(diff)).toEqual([]);
   });
 
+  test('does not treat threshold examples inside source string literals as executable settings', () => {
+    const diff = diffFor(
+      'packages/components/scripts/check-timeout-increases.test.ts',
+      [],
+      [
+        "const retryExample = 'test.describe.configure({ retries: 2 });';",
+        "const slowExample = 'test.slow(true);';",
+      ],
+    );
+
+    expect(findTimeoutIncreaseViolations(diff)).toEqual([]);
+  });
+
   test('ignores comments, unrelated numeric edits, and lockfile noise', () => {
     const diff = [
       diffFor(
