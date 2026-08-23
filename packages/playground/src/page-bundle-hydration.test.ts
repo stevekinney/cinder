@@ -18,6 +18,20 @@ describe('page bundle hydration policy', () => {
     expect(markPageHydrated).toBeGreaterThan(waitForPreview);
   });
 
+  test('exposes when the documentation page owns interactive controls', async () => {
+    const source = await Bun.file(new URL('./page-bundle.ts', import.meta.url)).text();
+    const hydrateComponent = source.indexOf('svelte.hydrate(ComponentPage');
+    const markControlsHydrated = source.indexOf('markPageControlsHydrated()', hydrateComponent);
+    const waitForPreview = source.indexOf('await overviewPreviewReady', hydrateComponent);
+
+    expect(source).toContain("target.setAttribute('data-playground-page-hydrated', '')");
+    expect(markControlsHydrated).toBeGreaterThan(hydrateComponent);
+    expect(markControlsHydrated).toBeLessThan(waitForPreview);
+    expect(source).toContain(
+      "pageControlsHydrated && element.closest('[data-overview-preview-rendered]') === null",
+    );
+  });
+
   test('re-resolves an early button against the interactive tree before replaying it', async () => {
     const source = await Bun.file(new URL('./page-bundle.ts', import.meta.url)).text();
 

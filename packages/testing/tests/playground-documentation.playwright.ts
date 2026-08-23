@@ -142,7 +142,9 @@ test.describe('playground component documentation', () => {
     const preview = page;
 
     // Styling variables are part of the generated raw artifacts, collapsed by
-    // default. Open the section, then assert the variables artifact rendered.
+    // default. Wait until the client owns the server-rendered controls so the
+    // click cannot land between hydration setup and event-handler attachment.
+    await expect(preview.locator('#app')).toHaveAttribute('data-playground-page-hydrated', '');
     await preview.getByRole('button', { name: 'Raw artifacts' }).click();
 
     await expect(preview.getByRole('heading', { name: 'Variables' })).toBeVisible();
