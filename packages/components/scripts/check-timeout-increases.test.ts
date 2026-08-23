@@ -173,6 +173,46 @@ describe('check-timeout-increases', () => {
     expect(findTimeoutIncreaseViolations(diff)).toHaveLength(1);
   });
 
+  test('checks multiline configuration assignments', () => {
+    const diff = [
+      'diff --git a/packages/components/src/button/button.test.ts b/packages/components/src/button/button.test.ts',
+      '--- a/packages/components/src/button/button.test.ts',
+      '+++ b/packages/components/src/button/button.test.ts',
+      '@@ -10,3 +10,3 @@',
+      ' test.describe.configure({ timeout:',
+      '-  5_000,',
+      '+  10_000,',
+      ' });',
+      '',
+    ].join('\n');
+
+    expect(findTimeoutIncreaseViolations(diff)).toHaveLength(1);
+  });
+
+  test('matches the same setting across whitespace-only formatting edits', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/src/button/button.test.ts',
+        ['test.describe.configure({ timeout:5_000 });'],
+        ['test.describe.configure({ timeout: 10_000 });'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+  });
+
+  test('allows a conditional slow annotation to be disabled', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/src/button/button.test.ts',
+        ['test.slow(true);'],
+        ['test.slow(false);'],
+      ),
+    );
+
+    expect(violations).toEqual([]);
+  });
+
   test('ignores threshold text in trailing source comments', () => {
     const violations = findTimeoutIncreaseViolations(
       diffFor(
@@ -183,6 +223,23 @@ describe('check-timeout-increases', () => {
     );
 
     expect(violations).toEqual([]);
+  });
+
+  test('ignores threshold text in trailing shell and YAML hash comments', () => {
+    const diff = [
+      diffFor(
+        'packages/components/scripts/probe.sh',
+        ['run_test # timeout: 5_000'],
+        ['run_test # timeout: 10_000'],
+      ),
+      diffFor(
+        '.github/workflows/unit-tests.yaml',
+        ['run: run-test # retries: 1'],
+        ['run: run-test # retries: 3'],
+      ),
+    ].join('\n');
+
+    expect(findTimeoutIncreaseViolations(diff)).toEqual([]);
   });
 
   test('does not treat mentions of test.slow() inside guard implementation text as calls', () => {

@@ -100,6 +100,28 @@ function stripQuotedText(line: string): string {
     .join('');
 }
 
+function stripUnquotedHashComment(line: string): string {
+  let quote: '"' | "'" | undefined;
+  let escaped = false;
+  for (let index = 0; index < line.length; index += 1) {
+    const character = line[index];
+    if (quote !== undefined) {
+      if (escaped) escaped = false;
+      else if (character === '\\') escaped = true;
+      else if (character === quote) quote = undefined;
+      continue;
+    }
+    if (character === '"' || character === "'") {
+      quote = character;
+      continue;
+    }
+    if (character === '#' && (index === 0 || /\s/u.test(line[index - 1] ?? ''))) {
+      return line.slice(0, index);
+    }
+  }
+  return line;
+}
+
 function exposeQuotedConfigurationKeys(line: string): string {
   return line.replace(
     /(?<quote>['"])(?<key>[A-Za-z_$][\w$-]*)\k<quote>(?=\s*:)/gu,
@@ -111,6 +133,9 @@ function sourceLineForAnalysis(filePath: string, line: string): string {
   const extension = extname(filePath);
   if (['.cjs', '.js', '.jsx', '.mjs', '.svelte', '.ts', '.tsx'].includes(extension)) {
     return stripQuotedText(exposeQuotedConfigurationKeys(line)).replace(/(?:\/\/|\/\*).*$/u, '');
+  }
+  if (['.bash', '.sh', '.yaml', '.yml', '.zsh'].includes(extension)) {
+    return stripUnquotedHashComment(line);
   }
   return line;
 }
@@ -153,10 +178,7 @@ function pushCandidate(
           baselineValue: baseline.value,
         }),
     kind: normalizeKind(label),
-    identity: `${normalizeKind(label)}:${line
-      .trim()
-      .toLowerCase()
-      .replace(/\d[\d_]*(?:\.\d[\d_]*)?/gu, '<threshold>')}`,
+    identity: `${normalizeKind(label)}:${label.trim().toLowerCase()}`,
     label,
     value,
     renderedValue,
@@ -241,7 +263,7 @@ function extractThresholdCandidates(
         line,
         lineNumber,
         slowAnnotationMatch.groups?.['label'] ?? '',
-        '3',
+        /^false(?:\s*,|\s*$)/u.test(argumentsText) ? '1' : '3',
         { renderedValue: '1 (implicit normal timeout)', value: 1 },
       );
     }
@@ -287,7 +309,33 @@ function extractMultilineCallCandidates(
       implicitBaselineFor(label),
     );
   }
-  return candidates;
+
+  const assignmentPatterns = [
+    /\b(?<label>timeout-minutes|testTimeout|timeout|deadline|retries|retry|slow)\b[^\n\d-]{0,80}\n\s*(?<value>\d[\d_]*(?:\.\d[\d_]*)?)/giu,
+    /\b(?<label>(?:[A-Z][A-Z0-9_]*(?:TIMEOUT|WAIT|DEADLINE|RETRY|RETRIES)[A-Z0-9_]*)|(?:[A-Za-z_$][\w$]*(?:Timeout|Wait|Deadline|Retry|Retries)[\w$]*))\b[^\n\d-]{0,80}\n\s*(?<value>\d[\d_]*(?:\.\d[\d_]*)?)/gu,
+  ];
+  for (const assignmentPattern of assignmentPatterns) {
+    for (const match of analysis.matchAll(assignmentPattern)) {
+      const label = match.groups?.['label'] ?? '';
+      const sourceIndex = analysis.slice(0, match.index).split('\n').length - 1;
+      pushCandidate(
+        candidates,
+        match[0].replaceAll('\n', ' ').replace(/\s+/gu, ' ').trim(),
+        source[sourceIndex]?.lineNumber ?? 0,
+        label,
+        match.groups?.['value'],
+        implicitBaselineFor(label),
+      );
+    }
+  }
+
+  const seen = new Set<string>();
+  return candidates.filter((candidate) => {
+    const key = `${candidate.identity}:${candidate.renderedValue}:${candidate.lineNumber}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function collectComparableViolations(hunk: DiffHunk): TimeoutIncreaseViolation[] {
