@@ -1,67 +1,24 @@
-import { basename, extname } from 'node:path';
+import { extname } from 'node:path';
 
-const POLICY_MESSAGE =
-  'Pull request policy: timeout, retry, wait, and slow() threshold increases hide real slowness or races. Revert the threshold increase and fix the underlying failure in source or test code.';
+import {
+  collectComparableViolations,
+  formatTimeoutIncreaseViolations,
+  isSupportedFile,
+  parseHunkStart,
+  readDiffInput,
+} from './check-timeout-increase-comparison';
+import { extractTopLevelQuotedStrings, stripQuotedText } from './check-timeout-increase-strings';
+import type {
+  DiffHunk,
+  ThresholdCandidate,
+  ThresholdKind,
+  TimeoutIncreaseViolation,
+} from './check-timeout-increase-types';
 
-type ThresholdKind = 'timeout' | 'timeout-minutes' | 'retries' | 'slow';
+export type { TimeoutIncreaseViolation } from './check-timeout-increase-types';
+export { formatTimeoutIncreaseViolations };
 
-type ThresholdCandidate = {
-  baselineRenderedValue?: string;
-  baselineValue?: number;
-  kind: ThresholdKind;
-  identity: string;
-  label: string;
-  effectiveValue: number;
-  value: number;
-  renderedValue: string;
-  lineNumber: number;
-  line: string;
-};
-
-export type TimeoutIncreaseViolation = {
-  filePath: string;
-  hunkHeader: string;
-  old: ThresholdCandidate;
-  new: ThresholdCandidate;
-};
-
-type DiffHunk = {
-  filePath: string;
-  hunkHeader: string;
-  removed: ThresholdCandidate[];
-  added: ThresholdCandidate[];
-  oldSource: Array<{ line: string; lineNumber: number }>;
-  newSource: Array<{ line: string; lineNumber: number }>;
-};
-
-const SUPPORTED_EXTENSIONS = new Set([
-  '.bash',
-  '.cjs',
-  '.js',
-  '.jsx',
-  '.json',
-  '.mjs',
-  '.sh',
-  '.svelte',
-  '.ts',
-  '.tsx',
-  '.yaml',
-  '.yml',
-  '.zsh',
-]);
-
-const LOCKFILE_NAMES = new Set([
-  'bun.lock',
-  'bun.lockb',
-  'package-lock.json',
-  'pnpm-lock.yaml',
-  'yarn.lock',
-]);
-
-function isSupportedFile(filePath: string): boolean {
-  if (LOCKFILE_NAMES.has(basename(filePath))) return false;
-  return SUPPORTED_EXTENSIONS.has(extname(filePath));
-}
+const NUMERIC_EXPRESSION_PATTERN = String.raw`\d[\d_]*(?:\.\d[\d_]*)?(?:\s*[*/+-]\s*\d[\d_]*(?:\.\d[\d_]*)?)*`;
 
 function isCommentOnlyLine(line: string): boolean {
   const trimmed = line.trim();
@@ -73,32 +30,6 @@ function isCommentOnlyLine(line: string): boolean {
     trimmed.startsWith('/*') ||
     trimmed.startsWith('<!--')
   );
-}
-
-function stripQuotedText(line: string): string {
-  let quote: '"' | "'" | '`' | undefined;
-  let escaped = false;
-  return Array.from(line)
-    .map((character) => {
-      if (quote === undefined) {
-        if (character === '"' || character === "'" || character === '`') {
-          quote = character;
-          return ' ';
-        }
-        return character;
-      }
-      if (escaped) {
-        escaped = false;
-        return ' ';
-      }
-      if (character === '\\') {
-        escaped = true;
-        return ' ';
-      }
-      if (character === quote) quote = undefined;
-      return ' ';
-    })
-    .join('');
 }
 
 function stripUnquotedHashComment(line: string): string {
@@ -132,6 +63,7 @@ function exposeQuotedConfigurationKeys(line: string): string {
 
 function sourceLineForAnalysis(filePath: string, line: string): string {
   const extension = extname(filePath);
+  if (extension === '.svelte' && /^\s*</u.test(line)) return '';
   if (['.cjs', '.js', '.jsx', '.mjs', '.svelte', '.ts', '.tsx'].includes(extension)) {
     return stripQuotedText(exposeQuotedConfigurationKeys(line)).replace(/(?:\/\/|\/\*).*$/u, '');
   }
@@ -142,7 +74,29 @@ function sourceLineForAnalysis(filePath: string, line: string): string {
 }
 
 function parseNumericLiteral(literal: string): number {
-  return Number(literal.replaceAll('_', ''));
+  const normalized = literal.replaceAll('_', '').replace(/\s+/gu, '');
+  const tokens = normalized.match(/\d+(?:\.\d+)?|[*/+-]/gu);
+  if (tokens === null || tokens.join('') !== normalized) return Number.NaN;
+  let index = 0;
+  const readTerm = (): number => {
+    let value = Number(tokens[index]);
+    index += 1;
+    while (tokens[index] === '*' || tokens[index] === '/') {
+      const operator = tokens[index];
+      const operand = Number(tokens[index + 1]);
+      index += 2;
+      value = operator === '*' ? value * operand : value / operand;
+    }
+    return value;
+  };
+  let value = readTerm();
+  while (tokens[index] === '+' || tokens[index] === '-') {
+    const operator = tokens[index];
+    index += 1;
+    const operand = readTerm();
+    value = operator === '+' ? value + operand : value - operand;
+  }
+  return index === tokens.length ? value : Number.NaN;
 }
 
 function normalizeKind(label: string): ThresholdKind {
@@ -153,10 +107,16 @@ function normalizeKind(label: string): ThresholdKind {
   return 'timeout';
 }
 
-function implicitBaselineFor(label: string): { renderedValue: string; value: number } | undefined {
+function implicitBaselineFor(
+  label: string,
+  line = '',
+): { renderedValue: string; value: number } | undefined {
   const kind = normalizeKind(label);
   if (kind === 'retries') return { renderedValue: '0 (implicit default retries)', value: 0 };
   if (kind === 'slow') return { renderedValue: '1 (implicit normal timeout)', value: 1 };
+  if (label.toLowerCase() === 'settimeout' && /\btest\.setTimeout\s*\(/u.test(line)) {
+    return { renderedValue: '30_000 (implicit Playwright test timeout)', value: 30_000 };
+  }
   return undefined;
 }
 
@@ -187,17 +147,23 @@ function pushCandidate(
   if (renderedValue === undefined) return;
   const value = parseNumericLiteral(renderedValue);
   if (!Number.isFinite(value)) return;
+  const effectiveValue = effectiveThresholdValue(label, line, value);
+  const candidateBaseline =
+    baseline ??
+    (effectiveValue === Number.POSITIVE_INFINITY
+      ? { renderedValue: 'bounded implicit framework timeout', value: 0 }
+      : undefined);
   candidates.push({
-    ...(baseline === undefined
+    ...(candidateBaseline === undefined
       ? {}
       : {
-          baselineRenderedValue: baseline.renderedValue,
-          baselineValue: baseline.value,
+          baselineRenderedValue: candidateBaseline.renderedValue,
+          baselineValue: candidateBaseline.value,
         }),
     kind: normalizeKind(label),
     identity: normalizeKind(label),
     label,
-    effectiveValue: effectiveThresholdValue(label, line, value),
+    effectiveValue,
     value,
     renderedValue,
     lineNumber,
@@ -214,8 +180,10 @@ function extractThresholdCandidates(
   const analysisLine = sourceLineForAnalysis(filePath, line);
 
   const candidates: ThresholdCandidate[] = [];
-  const thresholdAssignmentPattern =
-    /\b(?<label>timeout-minutes|testTimeout|timeout|deadline|retries|retry|slow)\b[^\n\d-]{0,80}(?<value>\d[\d_]*(?:\.\d[\d_]*)?)/giu;
+  const thresholdAssignmentPattern = new RegExp(
+    String.raw`\b(?<label>timeout-minutes|testTimeout|timeout|deadline|retries|retry|slow)\b\s*(?::|=)\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
+    'giu',
+  );
   for (const match of analysisLine.matchAll(thresholdAssignmentPattern)) {
     const label = match.groups?.['label'] ?? '';
     if (!isTestConfigurationRetry(filePath, analysisLine, label)) continue;
@@ -225,12 +193,14 @@ function extractThresholdCandidates(
       lineNumber,
       label,
       match.groups?.['value'],
-      implicitBaselineFor(label),
+      implicitBaselineFor(label, line),
     );
   }
 
-  const namedThresholdAssignmentPattern =
-    /\b(?<label>(?:[A-Z][A-Z0-9_]*(?:TIMEOUT|WAIT|DEADLINE|RETRY|RETRIES)[A-Z0-9_]*)|(?:[A-Za-z_$][\w$]*(?:Timeout|Wait|Deadline|Retry|Retries)[\w$]*))\b[^\n\d-]{0,80}(?<value>\d[\d_]*(?:\.\d[\d_]*)?)/gu;
+  const namedThresholdAssignmentPattern = new RegExp(
+    String.raw`\b(?<label>(?:[A-Z][A-Z0-9_]*(?:TIMEOUT|WAIT|DEADLINE|RETRY|RETRIES)[A-Z0-9_]*)|(?:[A-Za-z_$][\w$]*(?:Timeout|Wait|Deadline|Retry|Retries)[\w$]*)|(?:(?:timeout|wait|deadline|retry|retries)[A-Z_$][\w$]*))\b\s*(?::|=)\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
+    'gu',
+  );
   for (const match of analysisLine.matchAll(namedThresholdAssignmentPattern)) {
     const label = match.groups?.['label'] ?? '';
     pushCandidate(
@@ -239,12 +209,14 @@ function extractThresholdCandidates(
       lineNumber,
       label,
       match.groups?.['value'],
-      implicitBaselineFor(label),
+      implicitBaselineFor(label, line),
     );
   }
 
-  const cliPattern =
-    /--(?<label>timeout-minutes|timeout|test-timeout|retries|retry|slow)(?:=|\s+)(?<value>\d[\d_]*(?:\.\d[\d_]*)?)/giu;
+  const cliPattern = new RegExp(
+    String.raw`--(?<label>timeout-minutes|timeout|test-timeout|retries|retry|slow)(?:=|\s+)(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
+    'giu',
+  );
   for (const match of analysisLine.matchAll(cliPattern)) {
     const label = match.groups?.['label'] ?? '';
     pushCandidate(
@@ -253,12 +225,33 @@ function extractThresholdCandidates(
       lineNumber,
       label,
       match.groups?.['value'],
-      implicitBaselineFor(label),
+      implicitBaselineFor(label, line),
     );
   }
 
-  const callPattern =
-    /\b(?<label>waitForTimeout|setDefaultTimeout|setTimeout|slow)\s*\(\s*(?<value>\d[\d_]*(?:\.\d[\d_]*)?)/giu;
+  const quotedCliArgumentPattern = new RegExp(
+    String.raw`^--(?<label>timeout-minutes|timeout|test-timeout|retries|retry|slow)=(?<value>${NUMERIC_EXPRESSION_PATTERN})$`,
+    'giu',
+  );
+  for (const argument of extractTopLevelQuotedStrings(line)) {
+    const match = quotedCliArgumentPattern.exec(argument);
+    if (match !== null) {
+      const label = match.groups?.['label'] ?? '';
+      pushCandidate(
+        candidates,
+        line,
+        lineNumber,
+        label,
+        match.groups?.['value'],
+        implicitBaselineFor(label, line),
+      );
+    }
+  }
+
+  const callPattern = new RegExp(
+    String.raw`\b(?<label>waitForTimeout|setDefaultTimeout|setTimeout|slow)\s*\(\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
+    'giu',
+  );
   for (const match of analysisLine.matchAll(callPattern)) {
     const label = match.groups?.['label'] ?? '';
     pushCandidate(
@@ -267,7 +260,7 @@ function extractThresholdCandidates(
       lineNumber,
       label,
       match.groups?.['value'],
-      implicitBaselineFor(label),
+      implicitBaselineFor(label, line),
     );
   }
 
@@ -288,21 +281,6 @@ function extractThresholdCandidates(
     }
   }
 
-  if (/(?:^|\/)[^/]+\.(?:spec|test)\.[^/]+$/u.test(filePath)) {
-    const bunTestTimeoutMatch = /^\s*\},\s*(?<value>\d[\d_]*(?:\.\d[\d_]*)?)\s*\)\s*;?\s*$/u.exec(
-      analysisLine,
-    );
-    if (bunTestTimeoutMatch !== null) {
-      pushCandidate(
-        candidates,
-        line,
-        lineNumber,
-        'bun-test-timeout',
-        bunTestTimeoutMatch.groups?.['value'],
-      );
-    }
-  }
-
   const seen = new Set<string>();
   return candidates.filter((candidate) => {
     const key = `${candidate.identity}:${candidate.renderedValue}:${candidate.lineNumber}`;
@@ -312,25 +290,16 @@ function extractThresholdCandidates(
   });
 }
 
-function parseHunkStart(header: string): { oldLine: number; newLine: number } {
-  const match = /^@@ -(?<oldLine>\d+)(?:,\d+)? \+(?<newLine>\d+)(?:,\d+)? @@/u.exec(header);
-  if (match?.groups === undefined) {
-    return { oldLine: 0, newLine: 0 };
-  }
-  return {
-    oldLine: Number(match.groups['oldLine']),
-    newLine: Number(match.groups['newLine']),
-  };
-}
-
 function extractMultilineCallCandidates(
   filePath: string,
   source: Array<{ line: string; lineNumber: number }>,
 ): ThresholdCandidate[] {
   const analysis = source.map(({ line }) => sourceLineForAnalysis(filePath, line)).join('\n');
   const candidates: ThresholdCandidate[] = [];
-  const pattern =
-    /\b(?<label>waitForTimeout|setDefaultTimeout|setTimeout|slow)\s*\(\s*\n\s*(?<value>\d[\d_]*(?:\.\d[\d_]*)?)/giu;
+  const pattern = new RegExp(
+    String.raw`\b(?<label>waitForTimeout|setDefaultTimeout|setTimeout|slow)\s*\(\s*\n\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
+    'giu',
+  );
   for (const match of analysis.matchAll(pattern)) {
     const label = match.groups?.['label'] ?? '';
     const sourceIndex = analysis.slice(0, match.index).split('\n').length - 1;
@@ -340,13 +309,19 @@ function extractMultilineCallCandidates(
       source[sourceIndex]?.lineNumber ?? 0,
       label,
       match.groups?.['value'],
-      implicitBaselineFor(label),
+      implicitBaselineFor(label, match[0]),
     );
   }
 
   const assignmentPatterns = [
-    /\b(?<label>timeout-minutes|testTimeout|timeout|deadline|retries|retry|slow)\b[^\n\d-]{0,80}\n\s*(?<value>\d[\d_]*(?:\.\d[\d_]*)?)/giu,
-    /\b(?<label>(?:[A-Z][A-Z0-9_]*(?:TIMEOUT|WAIT|DEADLINE|RETRY|RETRIES)[A-Z0-9_]*)|(?:[A-Za-z_$][\w$]*(?:Timeout|Wait|Deadline|Retry|Retries)[\w$]*))\b[^\n\d-]{0,80}\n\s*(?<value>\d[\d_]*(?:\.\d[\d_]*)?)/gu,
+    new RegExp(
+      String.raw`\b(?<label>timeout-minutes|testTimeout|timeout|deadline|retries|retry|slow)\b\s*(?::|=)\s*\n\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
+      'giu',
+    ),
+    new RegExp(
+      String.raw`\b(?<label>(?:[A-Z][A-Z0-9_]*(?:TIMEOUT|WAIT|DEADLINE|RETRY|RETRIES)[A-Z0-9_]*)|(?:[A-Za-z_$][\w$]*(?:Timeout|Wait|Deadline|Retry|Retries)[\w$]*)|(?:(?:timeout|wait|deadline|retry|retries)[A-Z_$][\w$]*))\b\s*(?::|=)\s*\n\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
+      'gu',
+    ),
   ];
   for (const assignmentPattern of assignmentPatterns) {
     for (const match of analysis.matchAll(assignmentPattern)) {
@@ -359,7 +334,28 @@ function extractMultilineCallCandidates(
         source[sourceIndex]?.lineNumber ?? 0,
         label,
         match.groups?.['value'],
-        implicitBaselineFor(label),
+        implicitBaselineFor(label, match[0]),
+      );
+    }
+  }
+
+  if (/(?:^|\/)[^/]+\.(?:spec|test)\.[^/]+$/u.test(filePath)) {
+    const bunTestPattern = new RegExp(
+      String.raw`\b(?:it|test)(?:\.[A-Za-z_$][\w$]*)*\s*\([\s\S]*?\},\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})\s*\)\s*;`,
+      'gu',
+    );
+    for (const match of analysis.matchAll(bunTestPattern)) {
+      const renderedValue = match.groups?.['value'];
+      if (renderedValue === undefined) continue;
+      const valueOffset = match[0].lastIndexOf(renderedValue);
+      const sourceIndex =
+        analysis.slice(0, (match.index ?? 0) + valueOffset).split('\n').length - 1;
+      pushCandidate(
+        candidates,
+        source[sourceIndex]?.line ?? match[0],
+        source[sourceIndex]?.lineNumber ?? 0,
+        'bun-test-timeout',
+        renderedValue,
       );
     }
   }
@@ -371,79 +367,6 @@ function extractMultilineCallCandidates(
     seen.add(key);
     return true;
   });
-}
-
-function collectComparableViolations(hunks: readonly DiffHunk[]): TimeoutIncreaseViolation[] {
-  const violations: TimeoutIncreaseViolation[] = [];
-  const candidateOrder = new Map<ThresholdCandidate, number>();
-  let nextCandidateOrder = 0;
-  for (const hunk of hunks) {
-    for (const candidate of hunk.added) {
-      candidateOrder.set(candidate, nextCandidateOrder);
-      nextCandidateOrder += 1;
-    }
-  }
-  const identities = new Set([
-    ...hunks.flatMap((hunk) => hunk.removed.map((candidate) => candidate.identity)),
-    ...hunks.flatMap((hunk) => hunk.added.map((candidate) => candidate.identity)),
-  ]);
-
-  for (const identity of identities) {
-    const removed = hunks
-      .flatMap((hunk) => hunk.removed.map((candidate) => ({ candidate, hunk })))
-      .filter(({ candidate }) => candidate.identity === identity)
-      .toSorted((left, right) => right.candidate.effectiveValue - left.candidate.effectiveValue);
-    const added = hunks
-      .flatMap((hunk) => hunk.added.map((candidate) => ({ candidate, hunk })))
-      .filter(({ candidate }) => candidate.identity === identity)
-      .toSorted((left, right) => right.candidate.effectiveValue - left.candidate.effectiveValue);
-    const comparableCount = Math.min(removed.length, added.length);
-
-    for (let index = 0; index < comparableCount; index += 1) {
-      const oldEntry = removed[index];
-      const newEntry = added[index];
-      if (oldEntry === undefined || newEntry === undefined) continue;
-      if (newEntry.candidate.effectiveValue > oldEntry.candidate.effectiveValue) {
-        violations.push({
-          filePath: newEntry.hunk.filePath,
-          hunkHeader: newEntry.hunk.hunkHeader,
-          old: oldEntry.candidate,
-          new: newEntry.candidate,
-        });
-      }
-    }
-
-    for (const { candidate: newCandidate, hunk } of added.slice(removed.length)) {
-      if (
-        newCandidate.baselineValue === undefined ||
-        newCandidate.baselineRenderedValue === undefined ||
-        newCandidate.value <= newCandidate.baselineValue
-      ) {
-        continue;
-      }
-      violations.push({
-        filePath: hunk.filePath,
-        hunkHeader: hunk.hunkHeader,
-        old: {
-          ...newCandidate,
-          effectiveValue: newCandidate.baselineValue,
-          value: newCandidate.baselineValue,
-          renderedValue: newCandidate.baselineRenderedValue,
-          line:
-            newCandidate.kind === 'retries'
-              ? 'test runs with the default retry count (no retries setting)'
-              : 'test runs with the normal timeout (no test.slow())',
-        },
-        new: newCandidate,
-      });
-    }
-  }
-
-  return violations.toSorted(
-    (left, right) =>
-      (candidateOrder.get(left.new) ?? Number.MAX_SAFE_INTEGER) -
-      (candidateOrder.get(right.new) ?? Number.MAX_SAFE_INTEGER),
-  );
 }
 
 export function findTimeoutIncreaseViolations(diff: string): TimeoutIncreaseViolation[] {
@@ -524,46 +447,6 @@ export function findTimeoutIncreaseViolations(diff: string): TimeoutIncreaseViol
 
   flushHunk();
   return collectComparableViolations(hunks);
-}
-
-export function formatTimeoutIncreaseViolations(
-  violations: readonly TimeoutIncreaseViolation[],
-): string {
-  if (violations.length === 0) return 'check-timeout-increases — OK\n';
-  const lines = [
-    'check-timeout-increases — timeout/retry threshold increase(s) detected.',
-    POLICY_MESSAGE,
-    '',
-  ];
-  for (const violation of violations) {
-    lines.push(
-      `${violation.filePath} ${violation.hunkHeader}`,
-      `  old line ${violation.old.lineNumber}: ${violation.old.line}`,
-      `  new line ${violation.new.lineNumber}: ${violation.new.line}`,
-      `  ${violation.old.label} ${violation.old.renderedValue} -> ${violation.new.label} ${violation.new.renderedValue}`,
-      '',
-    );
-  }
-  return `${lines.join('\n').trimEnd()}\n`;
-}
-
-async function readDiffInput(): Promise<string> {
-  const standardInput = await Bun.stdin.text();
-  if (standardInput.trim().length > 0) return standardInput;
-
-  const baseRef = Bun.env['BASE_REF'] ?? Bun.env['GITHUB_BASE_REF'];
-  if (baseRef === undefined || baseRef.trim().length === 0) return standardInput;
-
-  const result = Bun.spawnSync(['git', 'diff', '--unified=3', `origin/${baseRef}...HEAD`], {
-    stdout: 'pipe',
-    stderr: 'pipe',
-  });
-  if (result.exitCode !== 0) {
-    throw new Error(
-      `could not read fallback diff against origin/${baseRef}: ${result.stderr.toString().trim()}`,
-    );
-  }
-  return result.stdout.toString();
 }
 
 async function main(): Promise<void> {

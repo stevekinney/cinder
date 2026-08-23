@@ -236,7 +236,11 @@ describe('check-timeout-increases', () => {
 
   test('checks Bun test timeouts supplied as a trailing argument', () => {
     const violations = findTimeoutIncreaseViolations(
-      diffFor('packages/components/src/convention.test.ts', ['}, 30_000);'], ['}, 60_000);']),
+      diffFor(
+        'packages/components/src/convention.test.ts',
+        ["test('old', () => {", '  expect(true).toBe(true);', '}, 30_000);'],
+        ["test('old', () => {", '  expect(true).toBe(true);', '}, 60_000);'],
+      ),
     );
 
     expect(violations).toHaveLength(1);
@@ -252,6 +256,107 @@ describe('check-timeout-increases', () => {
 
     expect(disabled).toHaveLength(1);
     expect(restored).toEqual([]);
+  });
+
+  test('rejects a newly introduced unbounded timeout', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor('packages/testing/playwright.config.ts', [], ['timeout: 0,']),
+    );
+
+    expect(violations).toHaveLength(1);
+  });
+
+  test('does not let an unrelated removal mask a local increase', () => {
+    const diff = [
+      diffFor(
+        'packages/components/src/increased.test.ts',
+        ['test.setTimeout(5_000);'],
+        ['test.setTimeout(10_000);'],
+      ),
+      diffFor('packages/components/src/deleted.test.ts', ['test.setTimeout(20_000);'], []),
+    ].join('\n');
+
+    expect(findTimeoutIncreaseViolations(diff)).toHaveLength(1);
+  });
+
+  test('checks lower-camel timeout identifiers', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/src/consumer-readiness.test.ts',
+        ['const timeoutMs = 1_000;'],
+        ['const timeoutMs = 2_000;'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+  });
+
+  test('compares new Playwright test timeouts with the runner default', () => {
+    const increased = findTimeoutIncreaseViolations(
+      diffFor('packages/components/src/button/button.test.ts', [], ['test.setTimeout(60_000);']),
+    );
+    const reduced = findTimeoutIncreaseViolations(
+      diffFor('packages/components/src/button/button.test.ts', [], ['test.setTimeout(10_000);']),
+    );
+
+    expect(increased).toHaveLength(1);
+    expect(reduced).toEqual([]);
+  });
+
+  test('ignores timeout-shaped rendered prose', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/playground/src/status.svelte',
+        ['<p>Timeout: 5 seconds</p>'],
+        ['<p>Timeout: 10 seconds</p>'],
+      ),
+    );
+
+    expect(violations).toEqual([]);
+  });
+
+  test('checks exact CLI threshold arguments in executable string arrays', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/testing/scripts/update-snapshots.ts',
+        ["const arguments = ['--retries=0'];"],
+        ["const arguments = ['--retries=2'];"],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+  });
+
+  test('ignores nested CLI argument fixtures inside source strings', () => {
+    const diff = diffFor(
+      'packages/components/scripts/check-timeout-increases.test.ts',
+      [],
+      [`    ["const arguments = ['--retries=2'];"],`],
+    );
+
+    expect(findTimeoutIncreaseViolations(diff)).toEqual([]);
+  });
+
+  test('evaluates complete constant numeric timeout expressions', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/src/button/button.test.ts',
+        ['test.setTimeout(60_000 * 2);'],
+        ['test.setTimeout(60_000 * 3);'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.old.value).toBe(120_000);
+    expect(violations[0]?.new.value).toBe(180_000);
+  });
+
+  test('does not confuse unrelated trailing call arguments with Bun test timeouts', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor('packages/components/src/consumer-readiness.test.ts', ['}, 30);'], ['}, 40);']),
+    );
+
+    expect(violations).toEqual([]);
   });
 
   test('allows a conditional slow annotation to be disabled', () => {
