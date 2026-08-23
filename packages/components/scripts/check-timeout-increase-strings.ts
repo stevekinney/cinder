@@ -79,18 +79,6 @@ function stripJavaScriptCommentsLines(lines: readonly string[]): string[] {
   });
 }
 
-export function isCommentOnlyLine(line: string): boolean {
-  const trimmed = line.trim();
-  return (
-    trimmed.length === 0 ||
-    trimmed.startsWith('//') ||
-    trimmed.startsWith('#') ||
-    trimmed.startsWith('*') ||
-    trimmed.startsWith('/*') ||
-    trimmed.startsWith('<!--')
-  );
-}
-
 function stripUnquotedHashComment(line: string): string {
   let quote: '"' | "'" | '`' | undefined;
   let escaped = false;

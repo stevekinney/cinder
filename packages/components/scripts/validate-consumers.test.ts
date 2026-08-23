@@ -256,6 +256,22 @@ describe('SvelteKit hydration route failure diagnostics', () => {
     expect(message).toContain('browser events');
   });
 
+  test('caps diagnostic-capture errors without starving structured categories', () => {
+    const message = formatSvelteKitHydrationRouteFailure({
+      cause: new Error('locator wait timed out'),
+      label: 'fixture',
+      routePath: '/dev-ssr-tabs',
+      snapshot: { ...snapshot, diagnosticCaptureError: 'd'.repeat(10_000) },
+    });
+
+    expect(message.length).toBeLessThanOrEqual(6_000);
+    expect(message).toContain('char(s) omitted');
+    expect(message).toContain('HTTP error responses');
+    expect(message).toContain('request failures');
+    expect(message).toContain('page and console errors');
+    expect(message).toContain('browser events');
+  });
+
   test('classifies browser crashes from the original cause instead of diagnostics', () => {
     const contentFailure = wrapSvelteKitHydrationRouteFailure({
       cause: new Error('locator wait timed out'),

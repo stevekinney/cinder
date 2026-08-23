@@ -440,6 +440,19 @@ describe('check-timeout-increases', () => {
     expect(violations).toHaveLength(1);
   });
 
+  test('classifies retrieve-prefixed timing identifiers as timeouts', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/scripts/consumer-readiness.test.ts',
+        ['const retrieveTimeoutMs = 5_000;'],
+        ['const retrieveTimeoutMs = 10_000;'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.new.kind).toBe('timeout');
+  });
+
   test('checks lower-snake-case threshold identifiers', () => {
     const violations = findTimeoutIncreaseViolations(
       diffFor(
@@ -510,6 +523,26 @@ describe('check-timeout-increases', () => {
     );
 
     expect(violations).toHaveLength(1);
+  });
+
+  test('compares new Bun CLI timeouts with the runner default', () => {
+    const increased = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/package.json',
+        ['"test": "bun test"'],
+        ['"test": "bun test --timeout=10000"'],
+      ),
+    );
+    const reduced = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/package.json',
+        ['"test": "bun test"'],
+        ['"test": "bun test --timeout=4000"'],
+      ),
+    );
+
+    expect(increased).toHaveLength(1);
+    expect(reduced).toEqual([]);
   });
 
   test('checks split CLI threshold arguments in executable string arrays', () => {
@@ -788,6 +821,18 @@ describe('check-timeout-increases', () => {
     ].join('\n');
 
     expect(findTimeoutIncreaseViolations(diff)).toEqual([]);
+  });
+
+  test('checks executable shell case-pattern lines in workflow blocks', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        '.github/workflows/browser-tests.yaml',
+        ['*) bun test --timeout=5000 ;;'],
+        ['*) bun test --timeout=10000 ;;'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
   });
 
   test('does not treat mentions of test.slow() inside guard implementation text as calls', () => {

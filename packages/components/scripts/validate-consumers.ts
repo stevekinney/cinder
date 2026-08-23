@@ -2816,7 +2816,9 @@ export function formatSvelteKitHydrationRouteFailure(
     `hydrationMarker: selector=${snapshot.hydrationMarkerSelector} present=${String(snapshot.hydrationMarkerPresent)} value=${String(snapshot.hydrationMarkerValue)}`,
     ...(snapshot.diagnosticCaptureError === undefined
       ? []
-      : [`diagnosticCaptureError: ${snapshot.diagnosticCaptureError}`]),
+      : [
+          `diagnosticCaptureError: ${truncateDiagnosticText(snapshot.diagnosticCaptureError, HYDRATION_ROUTE_DIAGNOSTIC_CAUSE_CHARS)}`,
+        ]),
     formatDiagnosticList('HTTP error responses', snapshot.nonOkResponses),
     formatDiagnosticList('request failures', snapshot.requestFailures),
     formatDiagnosticList('page and console errors', snapshot.runtimeErrors),

@@ -15,7 +15,6 @@ import {
 import {
   extractExecutableCliThresholdArguments,
   extractMultilineExecutableCliThresholdArguments,
-  isCommentOnlyLine,
   isTestThresholdAssignment,
   sourceLineForAnalysis,
   sourceLinesForAnalysis,
@@ -34,7 +33,13 @@ function normalizeKind(label: string): ThresholdKind {
   const normalized = label.toLowerCase();
   if (normalized === 'timeout-minutes') return 'timeout-minutes';
   if (normalized.includes('slow')) return 'slow';
-  if (normalized.includes('rerun') || normalized.includes('retr')) return 'retries';
+  if (
+    normalized.includes('rerun') ||
+    normalized.includes('retry') ||
+    normalized.includes('retries')
+  ) {
+    return 'retries';
+  }
   return 'timeout';
 }
 
@@ -76,6 +81,9 @@ function implicitBaselineFor(
   }
   if (kind === 'retries') return { renderedValue: '0 (implicit default retries)', value: 0 };
   if (kind === 'slow') return { renderedValue: '1 (implicit normal timeout)', value: 1 };
+  if (kind === 'timeout' && /\bbun\s+test(?:\s|$)/u.test(line)) {
+    return { renderedValue: '5_000 (implicit Bun test timeout)', value: 5_000 };
+  }
   if (label.toLowerCase() === 'settimeout' && /\btest\.setTimeout\s*\(/u.test(line)) {
     return { renderedValue: '30_000 (implicit Playwright test timeout)', value: 30_000 };
   }
@@ -124,7 +132,7 @@ function extractThresholdCandidates(
   lineNumber: number,
   analysisLine = sourceLineForAnalysis(filePath, line),
 ): ThresholdCandidate[] {
-  if (isCommentOnlyLine(line)) return [];
+  if (analysisLine.trim().length === 0) return [];
 
   const candidates: ThresholdCandidate[] = [];
   const thresholdAssignmentPattern = new RegExp(
