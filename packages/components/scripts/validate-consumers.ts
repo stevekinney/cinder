@@ -1214,6 +1214,7 @@ const SVELTEKIT_DEV_SSR_POLL_INTERVAL_MS = 200;
 const DEVELOPMENT_SERVER_TEARDOWN_TIMEOUT_MS = 5_000;
 const HYDRATION_ROUTE_DIAGNOSTIC_MAX_ITEMS = 2;
 const HYDRATION_ROUTE_DIAGNOSTIC_ITEM_CHARS = 600;
+const HYDRATION_ROUTE_DIAGNOSTIC_CAUSE_CHARS = 800;
 const HYDRATION_ROUTE_DIAGNOSTIC_MAX_CHARS = 6_000;
 const HYDRATION_ROUTE_DIAGNOSTIC_CAPTURE_TIMEOUT_MS = 500;
 
@@ -2575,13 +2576,24 @@ async function assertSvelteKitHydrationRoute(
   } catch (error) {
     bodyError = error;
     bodyFailed = true;
-    failureSnapshot = await captureSvelteKitHydrationRouteFailureSnapshot(page, {
-      browserEvents,
-      errors,
-      nonOkResponses,
-      requestFailures,
-      routePath,
-    });
+    try {
+      failureSnapshot = await captureSvelteKitHydrationRouteFailureSnapshot(page, {
+        browserEvents,
+        errors,
+        nonOkResponses,
+        requestFailures,
+        routePath,
+      });
+    } catch (captureError) {
+      failureSnapshot = {
+        ...unknownSvelteKitHydrationRouteFailureSnapshot(routePath),
+        browserEvents: browserEvents.filter((event) => !event.startsWith('requestfailed ')),
+        diagnosticCaptureError: errorMessage(captureError),
+        nonOkResponses: [...nonOkResponses],
+        requestFailures: [...requestFailures],
+        runtimeErrors: [...errors],
+      };
+    }
   }
   // Record, never throw. Throwing here would abandon the context and browser
   // closes that are the only things able to reclaim this page once its own
@@ -2727,13 +2739,15 @@ async function captureSvelteKitHydrationRouteFailureSnapshot(
 ): Promise<SvelteKitHydrationRouteFailureSnapshot> {
   const marker = hydrationMarkerForRoute(options.routePath);
   const snapshot = unknownSvelteKitHydrationRouteFailureSnapshot(options.routePath);
-  snapshot.currentUrl = page.url();
   snapshot.nonOkResponses = [...options.nonOkResponses];
   snapshot.requestFailures = [...options.requestFailures];
   snapshot.runtimeErrors = [...options.errors];
-  snapshot.browserEvents = [...options.browserEvents];
+  snapshot.browserEvents = options.browserEvents.filter(
+    (event) => !event.startsWith('requestfailed '),
+  );
 
   try {
+    snapshot.currentUrl = page.url();
     const documentState = await promiseWithTimeout(
       page.evaluate((markerAttribute) => {
         const markerElement = document.querySelector(`[${markerAttribute}]`);
@@ -2785,7 +2799,7 @@ export function formatSvelteKitHydrationRouteFailure(
   const { snapshot } = input;
   const lines = [
     `sveltekit-consumer ${input.label} ${input.routePath} hydration route failed.`,
-    `cause: ${errorMessage(input.cause)}`,
+    `cause: ${truncateDiagnosticText(errorMessage(input.cause), HYDRATION_ROUTE_DIAGNOSTIC_CAUSE_CHARS)}`,
     `currentUrl: ${snapshot.currentUrl}`,
     `documentReadyState: ${snapshot.documentReadyState}`,
     `hydrationMarker: selector=${snapshot.hydrationMarkerSelector} present=${String(snapshot.hydrationMarkerPresent)} value=${String(snapshot.hydrationMarkerValue)}`,

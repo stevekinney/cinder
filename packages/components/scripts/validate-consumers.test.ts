@@ -238,6 +238,22 @@ describe('SvelteKit hydration route failure diagnostics', () => {
     expect(message).toContain('page and console errors');
     expect(message).toContain('browser events');
   });
+
+  test('caps the cause without starving structured diagnostic categories', () => {
+    const message = formatSvelteKitHydrationRouteFailure({
+      cause: new Error('c'.repeat(10_000)),
+      label: 'fixture',
+      routePath: '/dev-ssr-tabs',
+      snapshot,
+    });
+
+    expect(message.length).toBeLessThanOrEqual(6_000);
+    expect(message).toContain('char(s) omitted');
+    expect(message).toContain('HTTP error responses');
+    expect(message).toContain('request failures');
+    expect(message).toContain('page and console errors');
+    expect(message).toContain('browser events');
+  });
 });
 
 describe('development server teardown', () => {

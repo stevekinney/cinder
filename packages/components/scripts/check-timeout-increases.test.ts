@@ -106,6 +106,45 @@ describe('check-timeout-increases', () => {
     expect(violations[0]?.new.renderedValue).toBe('3');
   });
 
+  test('rejects newly added conditional test.slow() and positive retries', () => {
+    const diff = diffFor(
+      'packages/components/src/button/button.test.ts',
+      [],
+      ['test.slow(process.platform === "darwin");', 'test.describe.configure({ retries: 2 });'],
+    );
+
+    const violations = findTimeoutIncreaseViolations(diff);
+    expect(violations).toHaveLength(2);
+    expect(violations.map((violation) => violation.old.renderedValue)).toEqual([
+      '1 (implicit normal timeout)',
+      '0 (implicit default retries)',
+    ]);
+  });
+
+  test('rejects named timeout constant increases', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/scripts/validate-consumers.ts',
+        ['const HYDRATION_TEARDOWN_TIMEOUT_MS = 5_000;'],
+        ['const HYDRATION_TEARDOWN_TIMEOUT_MS = 10_000;'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+  });
+
+  test('checks timeout flags in package manifests', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/package.json',
+        ['  "test": "bun test --timeout 5000"'],
+        ['  "test": "bun test --timeout 10000"'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+  });
+
   test('does not treat mentions of test.slow() inside guard implementation text as calls', () => {
     const diff = diffFor(
       'packages/components/scripts/check-timeout-increases.ts',

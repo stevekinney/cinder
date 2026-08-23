@@ -6,6 +6,8 @@ const POLICY_MESSAGE =
 type ThresholdKind = 'timeout' | 'timeout-minutes' | 'retries' | 'slow';
 
 type ThresholdCandidate = {
+  baselineRenderedValue?: string;
+  baselineValue?: number;
   kind: ThresholdKind;
   identity: string;
   label: string;
@@ -34,6 +36,7 @@ const SUPPORTED_EXTENSIONS = new Set([
   '.cjs',
   '.js',
   '.jsx',
+  '.json',
   '.mjs',
   '.sh',
   '.svelte',
@@ -81,17 +84,31 @@ function normalizeKind(label: string): ThresholdKind {
   return 'timeout';
 }
 
+function implicitBaselineFor(label: string): { renderedValue: string; value: number } | undefined {
+  const kind = normalizeKind(label);
+  if (kind === 'retries') return { renderedValue: '0 (implicit default retries)', value: 0 };
+  if (kind === 'slow') return { renderedValue: '1 (implicit normal timeout)', value: 1 };
+  return undefined;
+}
+
 function pushCandidate(
   candidates: ThresholdCandidate[],
   line: string,
   lineNumber: number,
   label: string,
   renderedValue: string | undefined,
+  baseline?: { renderedValue: string; value: number },
 ): void {
   if (renderedValue === undefined) return;
   const value = parseNumericLiteral(renderedValue);
   if (!Number.isFinite(value)) return;
   candidates.push({
+    ...(baseline === undefined
+      ? {}
+      : {
+          baselineRenderedValue: baseline.renderedValue,
+          baselineValue: baseline.value,
+        }),
     kind: normalizeKind(label),
     identity: `${normalizeKind(label)}:${line
       .trim()
@@ -112,42 +129,74 @@ function extractThresholdCandidates(line: string, lineNumber: number): Threshold
   const thresholdAssignmentPattern =
     /\b(?<label>timeout-minutes|testTimeout|timeout|deadline|retries|retry|slow)\b[^\n\d-]{0,80}(?<value>\d[\d_]*(?:\.\d[\d_]*)?)/giu;
   for (const match of line.matchAll(thresholdAssignmentPattern)) {
+    const label = match.groups?.['label'] ?? '';
     pushCandidate(
       candidates,
       line,
       lineNumber,
-      match.groups?.['label'] ?? '',
+      label,
       match.groups?.['value'],
+      implicitBaselineFor(label),
+    );
+  }
+
+  const namedThresholdAssignmentPattern =
+    /\b(?<label>(?:[A-Z][A-Z0-9_]*(?:TIMEOUT|WAIT|DEADLINE|RETRY|RETRIES)[A-Z0-9_]*)|(?:[A-Za-z_$][\w$]*(?:Timeout|Wait|Deadline|Retry|Retries)[\w$]*))\b[^\n\d-]{0,80}(?<value>\d[\d_]*(?:\.\d[\d_]*)?)/gu;
+  for (const match of line.matchAll(namedThresholdAssignmentPattern)) {
+    const label = match.groups?.['label'] ?? '';
+    pushCandidate(
+      candidates,
+      line,
+      lineNumber,
+      label,
+      match.groups?.['value'],
+      implicitBaselineFor(label),
     );
   }
 
   const cliPattern =
     /--(?<label>timeout-minutes|timeout|test-timeout|retries|retry|slow)(?:=|\s+)(?<value>\d[\d_]*(?:\.\d[\d_]*)?)/giu;
   for (const match of line.matchAll(cliPattern)) {
+    const label = match.groups?.['label'] ?? '';
     pushCandidate(
       candidates,
       line,
       lineNumber,
-      match.groups?.['label'] ?? '',
+      label,
       match.groups?.['value'],
+      implicitBaselineFor(label),
     );
   }
 
   const callPattern =
     /\b(?<label>waitForTimeout|setDefaultTimeout|setTimeout|slow)\s*\(\s*(?<value>\d[\d_]*(?:\.\d[\d_]*)?)/giu;
   for (const match of line.matchAll(callPattern)) {
+    const label = match.groups?.['label'] ?? '';
     pushCandidate(
       candidates,
       line,
       lineNumber,
-      match.groups?.['label'] ?? '',
+      label,
       match.groups?.['value'],
+      implicitBaselineFor(label),
     );
   }
 
-  const implicitSlowMatch = /^\s*test\.(?<label>slow)\s*\(\s*\)\s*;?\s*$/iu.exec(line);
-  if (implicitSlowMatch !== null) {
-    pushCandidate(candidates, line, lineNumber, implicitSlowMatch.groups?.['label'] ?? '', '3');
+  const slowAnnotationMatch = /^\s*test\.(?<label>slow)\s*\((?<arguments>.*)\)\s*;?\s*$/u.exec(
+    line,
+  );
+  if (slowAnnotationMatch !== null) {
+    const argumentsText = slowAnnotationMatch.groups?.['arguments']?.trim() ?? '';
+    if (!/^\d[\d_]*(?:\.\d[\d_]*)?(?:\s*,|\s*$)/u.test(argumentsText)) {
+      pushCandidate(
+        candidates,
+        line,
+        lineNumber,
+        slowAnnotationMatch.groups?.['label'] ?? '',
+        '3',
+        { renderedValue: '1 (implicit normal timeout)', value: 1 },
+      );
+    }
   }
 
   const seen = new Set<string>();
@@ -200,16 +249,25 @@ function collectComparableViolations(hunk: DiffHunk): TimeoutIncreaseViolation[]
       }
     }
 
-    if (!identity.includes('slow:test.slow()')) continue;
     for (const newCandidate of added.slice(removed.length)) {
+      if (
+        newCandidate.baselineValue === undefined ||
+        newCandidate.baselineRenderedValue === undefined ||
+        newCandidate.value <= newCandidate.baselineValue
+      ) {
+        continue;
+      }
       violations.push({
         filePath: hunk.filePath,
         hunkHeader: hunk.hunkHeader,
         old: {
           ...newCandidate,
-          value: 1,
-          renderedValue: '1 (implicit normal timeout)',
-          line: 'test runs with the normal timeout (no test.slow())',
+          value: newCandidate.baselineValue,
+          renderedValue: newCandidate.baselineRenderedValue,
+          line:
+            newCandidate.kind === 'retries'
+              ? 'test runs with the default retry count (no retries setting)'
+              : 'test runs with the normal timeout (no test.slow())',
         },
         new: newCandidate,
       });
