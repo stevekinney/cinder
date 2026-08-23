@@ -322,7 +322,9 @@ test.describe('authored Playground preview fallbacks', () => {
   }) => {
     await page.goto('/page/backdrop?view=playground', { waitUntil: 'load' });
 
-    await page.getByRole('button', { name: 'Show dimmed backdrop' }).click();
+    const preview = page.locator('.example-preview[id^="playground-mount-"]');
+    await expect(preview).toHaveAttribute('data-example-preview-ready', '');
+    await preview.getByRole('button', { name: 'Show dimmed backdrop' }).click();
     const scrim = page.locator('.cinder-backdrop');
     await expect(scrim).toBeVisible();
     await expect(scrim.getByText('Loading… click anywhere to dismiss')).toBeVisible();
