@@ -5,11 +5,11 @@ import { join } from 'node:path';
 
 import { getPackFileName } from './publish-release.ts';
 import { packageTarballPath } from './report-package-weight.ts';
-import type { SvelteKitChatHydrationDevServerOptions } from './validate-consumers.ts';
 import {
   bumpPackageVersion,
   chatPeerValidationTarballPath,
   EXAMPLES_CONSUMER_READINESS_PATH,
+  formatSvelteKitHydrationRouteFailure,
   parseHydrationBrowserProcessIds,
   preoptimizeSvelteKitChatHydration,
   prepareSvelteKitChatHydrationDevServer,
@@ -20,6 +20,9 @@ import {
   stopDevelopmentServer,
   SVELTEKIT_HYDRATION_ROUTES,
   unreclaimedTeardownFailures,
+  wrapSvelteKitHydrationRouteFailure,
+  type SvelteKitChatHydrationDevServerOptions,
+  type SvelteKitHydrationRouteFailureSnapshot,
 } from './validate-consumers.ts';
 
 describe('consumer fixture cleanup', () => {
@@ -162,6 +165,62 @@ describe('SvelteKit hydration route matrix', () => {
     ]);
     expect(SVELTEKIT_HYDRATION_ROUTES).not.toContain('/subpath');
     expect(SVELTEKIT_HYDRATION_ROUTES).not.toContain('/dev-ssr');
+  });
+});
+
+describe('SvelteKit hydration route failure diagnostics', () => {
+  const snapshot: SvelteKitHydrationRouteFailureSnapshot = {
+    browserEvents: ['browser:connected'],
+    currentUrl: 'http://127.0.0.1:4173/dev-ssr-tabs',
+    documentReadyState: 'interactive',
+    hydrationMarkerPresent: true,
+    hydrationMarkerSelector: '[data-dev-ssr-hydrated]',
+    hydrationMarkerValue: 'false',
+    nonOkResponses: ['500 http://127.0.0.1:4173/api/bootstrap'],
+    requestFailures: [
+      'requestfailed route=/dev-ssr-tabs url=http://127.0.0.1:4173/chunk.js failure=net::ERR_FAILED',
+    ],
+    runtimeErrors: ['hydration_mismatch: expected tab trigger'],
+  };
+
+  test('wraps route failures with route, network, runtime, and DOM state', () => {
+    const cause = new Error('locator wait timed out');
+    const error = wrapSvelteKitHydrationRouteFailure({
+      cause,
+      label: 'fixture',
+      routePath: '/dev-ssr-tabs',
+      snapshot,
+    });
+
+    expect(error.cause).toBe(cause);
+    expect(error.message).toContain('sveltekit-consumer fixture /dev-ssr-tabs');
+    expect(error.message).toContain('currentUrl: http://127.0.0.1:4173/dev-ssr-tabs');
+    expect(error.message).toContain('documentReadyState: interactive');
+    expect(error.message).toContain(
+      'hydrationMarker: selector=[data-dev-ssr-hydrated] present=true value=false',
+    );
+    expect(error.message).toContain('500 http://127.0.0.1:4173/api/bootstrap');
+    expect(error.message).toContain('net::ERR_FAILED');
+    expect(error.message).toContain('hydration_mismatch');
+  });
+
+  test('bounds repeated diagnostic output', () => {
+    const message = formatSvelteKitHydrationRouteFailure({
+      cause: new Error('locator wait timed out'),
+      label: 'fixture',
+      routePath: '/dev-ssr-tabs',
+      snapshot: {
+        ...snapshot,
+        runtimeErrors: Array.from(
+          { length: 20 },
+          (_, index) => `runtime error ${index} ${'x'.repeat(800)}`,
+        ),
+      },
+    });
+
+    expect(message.length).toBeLessThanOrEqual(6_100);
+    expect(message).toContain('item(s) omitted');
+    expect(message).toContain('char(s) omitted');
   });
 });
 

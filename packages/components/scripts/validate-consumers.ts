@@ -1196,7 +1196,7 @@ const SVELTEKIT_DEV_SSR_ROUTES = [
   },
 ] as const;
 
-type SvelteKitHydrationRoute =
+export type SvelteKitHydrationRoute =
   | '/chat-layout'
   | '/dev-ssr-dialog'
   | '/dev-ssr-navigation'
@@ -1212,6 +1212,9 @@ export const SVELTEKIT_HYDRATION_ROUTES = [
 const SVELTEKIT_DEV_SSR_READINESS_TIMEOUT_MS = 25_000;
 const SVELTEKIT_DEV_SSR_POLL_INTERVAL_MS = 200;
 const DEVELOPMENT_SERVER_TEARDOWN_TIMEOUT_MS = 5_000;
+const HYDRATION_ROUTE_DIAGNOSTIC_MAX_ITEMS = 8;
+const HYDRATION_ROUTE_DIAGNOSTIC_ITEM_CHARS = 600;
+const HYDRATION_ROUTE_DIAGNOSTIC_MAX_CHARS = 6_000;
 
 type DevelopmentServerProcess = Pick<Bun.Subprocess, 'exitCode' | 'exited' | 'pid'>;
 type DevelopmentServerSignal = 'SIGTERM' | 'SIGKILL';
@@ -2528,10 +2531,20 @@ async function assertSvelteKitHydrationRoute(
 ): Promise<void> {
   const page = await context.newPage();
   const errors: string[] = [];
+  const nonOkResponses: string[] = [];
+  const requestFailures: string[] = [];
   page.on('crash', () => browserEvents.push(`page:crash route=${routePath}`));
-  page.on('requestfailed', (request) =>
-    browserEvents.push(`requestfailed route=${routePath} url=${request.url()}`),
-  );
+  page.on('requestfailed', (request) => {
+    const failureText = request.failure()?.errorText ?? 'unknown';
+    const event = `requestfailed route=${routePath} url=${request.url()} failure=${failureText}`;
+    requestFailures.push(event);
+    browserEvents.push(event);
+  });
+  page.on('response', (response) => {
+    const status = response.status();
+    if (status >= 200 && status < 400) return;
+    nonOkResponses.push(`${status} ${response.url()}`);
+  });
   page.on('pageerror', (error) => errors.push(error.message));
   page.on('console', (message) => {
     const text = message.text();
@@ -2545,6 +2558,7 @@ async function assertSvelteKitHydrationRoute(
 
   let bodyError: unknown;
   let bodyFailed = false;
+  let failureSnapshot: SvelteKitHydrationRouteFailureSnapshot | undefined;
   try {
     await page.goto(`http://127.0.0.1:${httpPort}${routePath}`, {
       waitUntil: 'domcontentloaded',
@@ -2560,6 +2574,13 @@ async function assertSvelteKitHydrationRoute(
   } catch (error) {
     bodyError = error;
     bodyFailed = true;
+    failureSnapshot = await captureSvelteKitHydrationRouteFailureSnapshot(page, {
+      browserEvents,
+      errors,
+      nonOkResponses,
+      requestFailures,
+      routePath,
+    });
   }
   // Record, never throw. Throwing here would abandon the context and browser
   // closes that are the only things able to reclaim this page once its own
@@ -2576,7 +2597,14 @@ async function assertSvelteKitHydrationRoute(
     ])),
   );
 
-  if (bodyFailed) throw bodyError;
+  if (bodyFailed) {
+    throw wrapSvelteKitHydrationRouteFailure({
+      cause: bodyError,
+      label,
+      routePath,
+      snapshot: failureSnapshot ?? fallbackSvelteKitHydrationRouteFailureSnapshot(routePath),
+    });
+  }
 }
 
 async function assertSvelteKitHydrationRouteContent(
@@ -2622,6 +2650,152 @@ function isHydrationConsoleWarning(message: string): boolean {
     normalizedMessage.includes('hydrate') ||
     normalizedMessage.includes('hydrating')
   );
+}
+
+export type SvelteKitHydrationRouteFailureSnapshot = {
+  currentUrl: string;
+  documentReadyState: string;
+  hydrationMarkerSelector: string;
+  hydrationMarkerPresent: boolean | 'unknown';
+  hydrationMarkerValue: string | null;
+  nonOkResponses: readonly string[];
+  requestFailures: readonly string[];
+  runtimeErrors: readonly string[];
+  browserEvents: readonly string[];
+  diagnosticCaptureError?: string;
+};
+
+type SvelteKitHydrationRouteFailureInput = {
+  cause: unknown;
+  label: string;
+  routePath: SvelteKitHydrationRoute;
+  snapshot: SvelteKitHydrationRouteFailureSnapshot;
+};
+
+function hydrationMarkerForRoute(routePath: SvelteKitHydrationRoute): {
+  attribute: string;
+  selector: string;
+} {
+  if (routePath === '/chat-layout') {
+    return {
+      attribute: 'data-chat-layout-hydrated',
+      selector: '[data-chat-layout-hydrated]',
+    };
+  }
+  return {
+    attribute: 'data-dev-ssr-hydrated',
+    selector: '[data-dev-ssr-hydrated]',
+  };
+}
+
+function unknownSvelteKitHydrationRouteFailureSnapshot(
+  routePath: SvelteKitHydrationRoute,
+): SvelteKitHydrationRouteFailureSnapshot {
+  const marker = hydrationMarkerForRoute(routePath);
+  return {
+    currentUrl: 'unknown',
+    documentReadyState: 'unknown',
+    hydrationMarkerSelector: marker.selector,
+    hydrationMarkerPresent: 'unknown',
+    hydrationMarkerValue: 'unknown',
+    nonOkResponses: [],
+    requestFailures: [],
+    runtimeErrors: [],
+    browserEvents: [],
+  };
+}
+
+function fallbackSvelteKitHydrationRouteFailureSnapshot(
+  routePath: SvelteKitHydrationRoute,
+): SvelteKitHydrationRouteFailureSnapshot {
+  return {
+    ...unknownSvelteKitHydrationRouteFailureSnapshot(routePath),
+    diagnosticCaptureError: 'route diagnostics were not captured before failure handling completed',
+  };
+}
+
+async function captureSvelteKitHydrationRouteFailureSnapshot(
+  page: Page,
+  options: {
+    browserEvents: readonly string[];
+    errors: readonly string[];
+    nonOkResponses: readonly string[];
+    requestFailures: readonly string[];
+    routePath: SvelteKitHydrationRoute;
+  },
+): Promise<SvelteKitHydrationRouteFailureSnapshot> {
+  const marker = hydrationMarkerForRoute(options.routePath);
+  const snapshot = unknownSvelteKitHydrationRouteFailureSnapshot(options.routePath);
+  snapshot.currentUrl = page.url();
+  snapshot.nonOkResponses = [...options.nonOkResponses];
+  snapshot.requestFailures = [...options.requestFailures];
+  snapshot.runtimeErrors = [...options.errors];
+  snapshot.browserEvents = [...options.browserEvents];
+
+  try {
+    const documentState = await page.evaluate((markerAttribute) => {
+      const markerElement = document.querySelector(`[${markerAttribute}]`);
+      return {
+        documentReadyState: document.readyState,
+        hydrationMarkerPresent: markerElement !== null,
+        hydrationMarkerValue: markerElement?.getAttribute(markerAttribute) ?? null,
+      };
+    }, marker.attribute);
+    snapshot.documentReadyState = documentState.documentReadyState;
+    snapshot.hydrationMarkerPresent = documentState.hydrationMarkerPresent;
+    snapshot.hydrationMarkerValue = documentState.hydrationMarkerValue;
+  } catch (error) {
+    snapshot.diagnosticCaptureError = error instanceof Error ? error.message : String(error);
+  }
+
+  return snapshot;
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function truncateDiagnosticText(text: string, limit: number): string {
+  if (text.length <= limit) return text;
+  return `${text.slice(0, limit)}... (${text.length - limit} char(s) omitted)`;
+}
+
+function formatDiagnosticList(label: string, values: readonly string[]): string {
+  if (values.length === 0) return `${label}: none`;
+  const visible = values.slice(0, HYDRATION_ROUTE_DIAGNOSTIC_MAX_ITEMS);
+  const omitted = values.length - visible.length;
+  const rendered = visible
+    .map((value) => `  - ${truncateDiagnosticText(value, HYDRATION_ROUTE_DIAGNOSTIC_ITEM_CHARS)}`)
+    .join('\n');
+  const suffix = omitted > 0 ? `\n  - ... (${omitted} additional item(s) omitted)` : '';
+  return `${label}:\n${rendered}${suffix}`;
+}
+
+export function formatSvelteKitHydrationRouteFailure(
+  input: SvelteKitHydrationRouteFailureInput,
+): string {
+  const { snapshot } = input;
+  const lines = [
+    `sveltekit-consumer ${input.label} ${input.routePath} hydration route failed.`,
+    `cause: ${errorMessage(input.cause)}`,
+    `currentUrl: ${snapshot.currentUrl}`,
+    `documentReadyState: ${snapshot.documentReadyState}`,
+    `hydrationMarker: selector=${snapshot.hydrationMarkerSelector} present=${String(snapshot.hydrationMarkerPresent)} value=${String(snapshot.hydrationMarkerValue)}`,
+    ...(snapshot.diagnosticCaptureError === undefined
+      ? []
+      : [`diagnosticCaptureError: ${snapshot.diagnosticCaptureError}`]),
+    formatDiagnosticList('non-2xx responses', snapshot.nonOkResponses),
+    formatDiagnosticList('request failures', snapshot.requestFailures),
+    formatDiagnosticList('page and console errors', snapshot.runtimeErrors),
+    formatDiagnosticList('browser events', snapshot.browserEvents),
+  ];
+  return truncateDiagnosticText(lines.join('\n'), HYDRATION_ROUTE_DIAGNOSTIC_MAX_CHARS);
+}
+
+export function wrapSvelteKitHydrationRouteFailure(
+  input: SvelteKitHydrationRouteFailureInput,
+): Error {
+  return new Error(formatSvelteKitHydrationRouteFailure(input), { cause: input.cause });
 }
 
 async function promiseWithTimeout<T>(
