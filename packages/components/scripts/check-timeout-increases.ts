@@ -75,7 +75,7 @@ function isCommentOnlyLine(line: string): boolean {
 function stripQuotedText(line: string): string {
   let quote: '"' | "'" | '`' | undefined;
   let escaped = false;
-  return [...line]
+  return Array.from(line)
     .map((character) => {
       if (quote === undefined) {
         if (character === '"' || character === "'" || character === '`') {
