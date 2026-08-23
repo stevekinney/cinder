@@ -9,6 +9,7 @@ export type ThresholdCandidate = {
   effectiveValue: number;
   value: number;
   renderedValue: string;
+  occurrenceIndex?: number;
   lineNumber: number;
   line: string;
 };

@@ -3,6 +3,7 @@ import { basename, extname } from 'node:path';
 import type {
   DiffHunk,
   ThresholdCandidate,
+  ThresholdKind,
   TimeoutIncreaseViolation,
 } from './check-timeout-increase-types';
 
@@ -12,10 +13,12 @@ const POLICY_MESSAGE =
 const SUPPORTED_EXTENSIONS = new Set([
   '.bash',
   '.cjs',
+  '.cts',
   '.js',
   '.jsx',
   '.json',
   '.mjs',
+  '.mts',
   '.sh',
   '.svelte',
   '.ts',
@@ -35,7 +38,48 @@ const LOCKFILE_NAMES = new Set([
 
 type CandidateEntry = { candidate: ThresholdCandidate; hunk: DiffHunk };
 
+const GENERIC_THRESHOLD_LABELS = new Set([
+  'bun-test-timeout',
+  'deadline',
+  'retries',
+  'retry',
+  'rerun-each',
+  'setdefaulttimeout',
+  'setdefaultnavigationtimeout',
+  'settimeout',
+  'slow',
+  'test-timeout',
+  'testtimeout',
+  'timeout',
+  'timeout-minutes',
+  'waitfortimeout',
+]);
+
+export function normalizeThresholdKind(label: string): ThresholdKind {
+  const normalized = label.toLowerCase();
+  if (normalized === 'timeout-minutes') return 'timeout-minutes';
+  if (normalized.includes('slow')) return 'slow';
+  if (
+    normalized.includes('rerun') ||
+    normalized.includes('retry') ||
+    normalized.includes('retries')
+  ) {
+    return 'retries';
+  }
+  return 'timeout';
+}
+
+export function thresholdIdentity(label: string): string {
+  const normalizedLabel = label.toLowerCase();
+  return GENERIC_THRESHOLD_LABELS.has(normalizedLabel)
+    ? normalizeThresholdKind(label)
+    : `${normalizeThresholdKind(label)}:${normalizedLabel}`;
+}
+
 function callsiteFingerprint(candidate: ThresholdCandidate): string {
+  if (candidate.occurrenceIndex !== undefined) {
+    return `${candidate.lineNumber}:${candidate.kind}:${candidate.occurrenceIndex}`;
+  }
   return candidate.line
     .replace(candidate.label, '<threshold-name>')
     .replace(candidate.renderedValue, '<threshold>')

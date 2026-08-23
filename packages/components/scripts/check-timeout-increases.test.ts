@@ -122,6 +122,20 @@ describe('check-timeout-increases', () => {
     expect(violations[0]?.new.line).toContain('first.waitFor');
   });
 
+  test('preserves multiple timeout callsites on one source line', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/src/button/button.test.ts',
+        ['test.setTimeout(5_000); test.setTimeout(10_000);'],
+        ['test.setTimeout(10_000); test.setTimeout(4_000);'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.old.value).toBe(5_000);
+    expect(violations[0]?.new.value).toBe(10_000);
+  });
+
   test('rejects a newly added zero-argument test.slow()', () => {
     const violations = findTimeoutIncreaseViolations(
       diffFor('packages/components/src/button/button.test.ts', [], ['test.slow();']),
@@ -543,6 +557,40 @@ describe('check-timeout-increases', () => {
 
     expect(increased).toHaveLength(1);
     expect(reduced).toEqual([]);
+  });
+
+  test('compares new Bun argv timeouts with the runner default', () => {
+    const increased = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/testing/scripts/run-tests.ts',
+        ["const command = ['bun', 'test'];"],
+        ["const command = ['bun', 'test', '--timeout=10000'];"],
+      ),
+    );
+    const reduced = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/testing/scripts/run-tests.ts',
+        ["const command = ['bun', 'test'];"],
+        ["const command = ['bun', 'test', '--timeout=4000'];"],
+      ),
+    );
+
+    expect(increased).toHaveLength(1);
+    expect(reduced).toEqual([]);
+  });
+
+  test('checks TypeScript module-extension test files', () => {
+    for (const extension of ['mts', 'cts']) {
+      const violations = findTimeoutIncreaseViolations(
+        diffFor(
+          `packages/components/src/example.test.${extension}`,
+          ['test.setTimeout(5_000);'],
+          ['test.setTimeout(10_000);'],
+        ),
+      );
+
+      expect(violations).toHaveLength(1);
+    }
   });
 
   test('checks split CLI threshold arguments in executable string arrays', () => {

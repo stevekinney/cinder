@@ -2,8 +2,10 @@ import {
   collectComparableViolations,
   formatTimeoutIncreaseViolations,
   isSupportedFile,
+  normalizeThresholdKind,
   parseHunkStart,
   readDiffInput,
+  thresholdIdentity,
 } from './check-timeout-increase-comparison';
 import {
   effectiveThresholdValue,
@@ -22,57 +24,18 @@ import {
 import type {
   DiffHunk,
   ThresholdCandidate,
-  ThresholdKind,
   TimeoutIncreaseViolation,
 } from './check-timeout-increase-types';
 
 export type { TimeoutIncreaseViolation } from './check-timeout-increase-types';
 export { formatTimeoutIncreaseViolations };
 
-function normalizeKind(label: string): ThresholdKind {
-  const normalized = label.toLowerCase();
-  if (normalized === 'timeout-minutes') return 'timeout-minutes';
-  if (normalized.includes('slow')) return 'slow';
-  if (
-    normalized.includes('rerun') ||
-    normalized.includes('retry') ||
-    normalized.includes('retries')
-  ) {
-    return 'retries';
-  }
-  return 'timeout';
-}
-
-const GENERIC_THRESHOLD_LABELS = new Set([
-  'bun-test-timeout',
-  'deadline',
-  'retries',
-  'retry',
-  'rerun-each',
-  'setdefaulttimeout',
-  'setdefaultnavigationtimeout',
-  'settimeout',
-  'slow',
-  'test-timeout',
-  'testtimeout',
-  'timeout',
-  'timeout-minutes',
-  'waitfortimeout',
-]);
-
-function thresholdIdentity(label: string): string {
-  const normalizedLabel = label.toLowerCase();
-  return GENERIC_THRESHOLD_LABELS.has(normalizedLabel)
-    ? normalizeKind(label)
-    : `${normalizeKind(label)}:${normalizedLabel}`;
-}
-
 function implicitBaselineFor(
   label: string,
   line = '',
   filePath = '',
 ): { renderedValue: string; value: number } | undefined {
-  const kind = normalizeKind(label);
+  const kind = normalizeThresholdKind(label);
   if (
     label.toLowerCase() === 'timeout-minutes' &&
     /^\.github\/workflows\/[^/]+\.ya?ml$/u.test(filePath)
@@ -97,6 +60,7 @@ function pushCandidate(
   label: string,
   renderedValue: string | undefined,
   baseline?: { renderedValue: string; value: number },
+  occurrenceIndex?: number,
 ): void {
   if (renderedValue === undefined) return;
   const parsedValue = parseNumericLiteral(renderedValue);
@@ -115,12 +79,13 @@ function pushCandidate(
           baselineRenderedValue: candidateBaseline.renderedValue,
           baselineValue: candidateBaseline.value,
         }),
-    kind: normalizeKind(label),
+    kind: normalizeThresholdKind(label),
     identity: thresholdIdentity(label),
     label,
     effectiveValue,
     value,
     renderedValue,
+    ...(occurrenceIndex === undefined ? {} : { occurrenceIndex }),
     lineNumber,
     line: line.trim(),
   });
@@ -192,7 +157,9 @@ function extractThresholdCandidates(
       lineNumber,
       argument.label,
       argument.renderedValue,
-      implicitBaselineFor(argument.label, line, filePath),
+      argument.bunTestCommand
+        ? { renderedValue: '5_000 (implicit Bun test timeout)', value: 5_000 }
+        : implicitBaselineFor(argument.label, line, filePath),
     );
   }
 
@@ -200,6 +167,7 @@ function extractThresholdCandidates(
     String.raw`\b(?<label>waitForTimeout|setDefaultNavigationTimeout|setDefaultTimeout|setTimeout|slow)\s*\(\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
     'giu',
   );
+  let callOccurrenceIndex = 0;
   for (const match of analysisLine.matchAll(callPattern)) {
     const label = match.groups?.['label'] ?? '';
     pushCandidate(
@@ -209,7 +177,9 @@ function extractThresholdCandidates(
       label,
       match.groups?.['value'],
       implicitBaselineFor(label, line, filePath),
+      callOccurrenceIndex,
     );
+    callOccurrenceIndex += 1;
   }
 
   const slowAnnotationMatch = /^\s*test\.(?<label>slow)\s*\((?<arguments>.*)\)\s*;?\s*$/u.exec(

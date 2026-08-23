@@ -110,7 +110,9 @@ function exposeQuotedConfigurationKeys(line: string): string {
 
 export function sourceLinesForAnalysis(filePath: string, lines: readonly string[]): string[] {
   const extension = extname(filePath);
-  if (['.cjs', '.js', '.jsx', '.mjs', '.svelte', '.ts', '.tsx'].includes(extension)) {
+  if (
+    ['.cjs', '.cts', '.js', '.jsx', '.mjs', '.mts', '.svelte', '.ts', '.tsx'].includes(extension)
+  ) {
     const uncommentedLines = stripJavaScriptCommentsLines(lines);
     const strippedLines = stripQuotedTextLines(uncommentedLines.map(exposeQuotedConfigurationKeys));
     return strippedLines.map((line, index) =>
@@ -180,6 +182,7 @@ export function extractTopLevelQuotedStrings(line: string): string[] {
 }
 
 export type ExecutableCliThresholdArgument = {
+  bunTestCommand: boolean;
   label: string;
   renderedValue: string;
 };
@@ -203,6 +206,9 @@ export function extractExecutableCliThresholdArguments(
 ): ExecutableCliThresholdArgument[] {
   const results: ExecutableCliThresholdArgument[] = [];
   const argumentsFound = extractTopLevelQuotedStrings(line);
+  const bunTestCommand = argumentsFound.some(
+    (argument, index) => argument === 'bun' && argumentsFound[index + 1] === 'test',
+  );
   const flagPattern =
     /^--(?<label>timeout-minutes|timeout|test-timeout|retries|retry|rerun-each|slow)$/iu;
   const exactPattern = new RegExp(
@@ -216,6 +222,7 @@ export function extractExecutableCliThresholdArguments(
     const exactMatch = exactPattern.exec(argument);
     if (exactMatch !== null) {
       results.push({
+        bunTestCommand,
         label: exactMatch.groups?.['label'] ?? '',
         renderedValue: exactMatch.groups?.['value'] ?? '',
       });
@@ -230,6 +237,7 @@ export function extractExecutableCliThresholdArguments(
       isExecutableCliArgumentLine(line, splitValue)
     ) {
       results.push({
+        bunTestCommand,
         label: flagMatch.groups?.['label'] ?? '',
         renderedValue: splitValue,
       });
@@ -268,6 +276,7 @@ export function extractMultilineExecutableCliThresholdArguments(
     const valueMatch = valuePattern.exec(lines[valueLineIndex] ?? '');
     if (valueMatch === null) continue;
     results.push({
+      bunTestCommand: false,
       label: flagMatch.groups?.['label'] ?? '',
       renderedValue: valueMatch.groups?.['value'] ?? '',
       lineIndex: valueLineIndex,

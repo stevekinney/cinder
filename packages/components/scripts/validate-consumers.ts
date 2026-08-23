@@ -2257,14 +2257,17 @@ async function launchHydrationChromium(): Promise<HydrationBrowser> {
  * release); a real hydration/content failure throws a different message and is
  * rethrown immediately.
  */
+class SvelteKitHydrationRouteError extends Error {}
+
 export function isBrowserCrashError(error: unknown): boolean {
-  let originalCause = error;
+  let originalCause = error instanceof SvelteKitHydrationRouteError ? error.cause : error;
   const seen = new Set<unknown>();
-  while (
-    originalCause instanceof Error &&
-    originalCause.cause !== undefined &&
-    !seen.has(originalCause)
-  ) {
+  while (originalCause instanceof Error && !seen.has(originalCause)) {
+    if (
+      /has been closed|Target closed|browser has disconnected|crashed/i.test(originalCause.message)
+    ) {
+      return true;
+    }
     seen.add(originalCause);
     originalCause = originalCause.cause;
   }
@@ -2830,7 +2833,9 @@ export function formatSvelteKitHydrationRouteFailure(
 export function wrapSvelteKitHydrationRouteFailure(
   input: SvelteKitHydrationRouteFailureInput,
 ): Error {
-  return new Error(formatSvelteKitHydrationRouteFailure(input), { cause: input.cause });
+  return new SvelteKitHydrationRouteError(formatSvelteKitHydrationRouteFailure(input), {
+    cause: input.cause,
+  });
 }
 
 async function promiseWithTimeout<T>(
