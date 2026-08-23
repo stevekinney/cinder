@@ -239,8 +239,35 @@ describe('check-timeout-increases', () => {
 
   test('matches moved thresholds across diff hunks and files', () => {
     const diff = [
-      diffFor('packages/components/src/old-location.test.ts', ['test.setTimeout(5_000);'], []),
-      diffFor('packages/components/src/new-location.test.ts', [], ['test.setTimeout(10_000);']),
+      diffFor('packages/components/src/old-location.test.ts', ['const ROUTE_TIMEOUT = 5_000;'], []),
+      diffFor(
+        'packages/components/src/new-location.test.ts',
+        [],
+        ['const ROUTE_TIMEOUT = 10_000;'],
+      ),
+    ].join('\n');
+
+    expect(findTimeoutIncreaseViolations(diff)).toHaveLength(1);
+  });
+
+  test('does not pair unrelated generic thresholds across files', () => {
+    const diff = [
+      diffFor('packages/components/src/removed.test.ts', ['test.setTimeout(5_000);'], []),
+      diffFor('packages/components/src/added.test.ts', [], ['test.setTimeout(10_000);']),
+    ].join('\n');
+
+    expect(findTimeoutIncreaseViolations(diff)).toEqual([]);
+  });
+
+  test('preserves named thresholds moved out of deleted files', () => {
+    const diff = [
+      'diff --git a/packages/components/src/old.test.ts b/packages/components/src/old.test.ts',
+      'deleted file mode 100644',
+      '--- a/packages/components/src/old.test.ts',
+      '+++ /dev/null',
+      '@@ -1 +0,0 @@',
+      '-const ROUTE_TIMEOUT = 5_000;',
+      diffFor('packages/components/src/new.test.ts', [], ['const ROUTE_TIMEOUT = 10_000;']),
     ].join('\n');
 
     expect(findTimeoutIncreaseViolations(diff)).toHaveLength(1);
@@ -363,6 +390,19 @@ describe('check-timeout-increases', () => {
     expect(violations).toHaveLength(1);
   });
 
+  test('checks Bun rerun-each retry flags', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'package.json',
+        ['"test": "bun test --rerun-each=2"'],
+        ['"test": "bun test --rerun-each=3"'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.new.kind).toBe('retries');
+  });
+
   test('ignores nested CLI argument fixtures inside source strings', () => {
     const diff = diffFor(
       'packages/components/scripts/check-timeout-increases.test.ts',
@@ -431,6 +471,30 @@ describe('check-timeout-increases', () => {
 
     expect(violations).toHaveLength(2);
     expect(violations.map((violation) => violation.new.renderedValue)).toEqual(['200', '200']);
+  });
+
+  test('ignores callback timers in production source', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/playground/src/examples/toast-region/promise.example.svelte',
+        ['setTimeout(resolve, 20);'],
+        ['setTimeout(resolve, 200);'],
+      ),
+    );
+
+    expect(violations).toEqual([]);
+  });
+
+  test('ignores thresholds inside multiline template literals', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/src/usage.ts',
+        ['const documentation = `', 'timeout: 5_000', '`;'],
+        ['const documentation = `', 'timeout: 10_000', '`;'],
+      ),
+    );
+
+    expect(violations).toEqual([]);
   });
 
   test('does not manufacture increases when multiple thresholds decrease', () => {

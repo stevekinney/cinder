@@ -25,6 +25,6 @@ export type DiffHunk = {
   hunkHeader: string;
   removed: ThresholdCandidate[];
   added: ThresholdCandidate[];
-  oldSource: Array<{ line: string; lineNumber: number }>;
-  newSource: Array<{ line: string; lineNumber: number }>;
+  oldSource: Array<{ changed: boolean; line: string; lineNumber: number }>;
+  newSource: Array<{ changed: boolean; line: string; lineNumber: number }>;
 };

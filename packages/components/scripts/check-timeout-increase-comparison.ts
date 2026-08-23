@@ -35,6 +35,13 @@ const LOCKFILE_NAMES = new Set([
 
 type CandidateEntry = { candidate: ThresholdCandidate; hunk: DiffHunk };
 
+function callsiteFingerprint(candidate: ThresholdCandidate): string {
+  return candidate.line
+    .replace(candidate.renderedValue, '<threshold>')
+    .replace(/\s+/gu, ' ')
+    .trim();
+}
+
 export function isSupportedFile(filePath: string): boolean {
   if (LOCKFILE_NAMES.has(basename(filePath))) return false;
   return SUPPORTED_EXTENSIONS.has(extname(filePath));
@@ -120,16 +127,13 @@ export function collectComparableViolations(
   const pairByKey = (
     removed: CandidateEntry[],
     added: CandidateEntry[],
-    keyFor: (candidate: ThresholdCandidate) => string,
+    keyFor: (entry: CandidateEntry) => string,
   ): void => {
-    const keys = new Set([
-      ...removed.map(({ candidate }) => keyFor(candidate)),
-      ...added.map(({ candidate }) => keyFor(candidate)),
-    ]);
+    const keys = new Set([...removed.map(keyFor), ...added.map(keyFor)]);
     for (const key of keys) {
       pairEntries(
-        removed.filter(({ candidate }) => keyFor(candidate) === key),
-        added.filter(({ candidate }) => keyFor(candidate) === key),
+        removed.filter((entry) => keyFor(entry) === key),
+        added.filter((entry) => keyFor(entry) === key),
       );
     }
   };
@@ -137,9 +141,14 @@ export function collectComparableViolations(
   for (const hunk of hunks) {
     const removed = removedEntries.filter((entry) => entry.hunk === hunk);
     const added = addedEntries.filter((entry) => entry.hunk === hunk);
-    pairByKey(removed, added, (candidate) => candidate.identity);
+    pairByKey(removed, added, ({ candidate }) => candidate.identity);
   }
-  pairByKey(removedEntries, addedEntries, (candidate) => candidate.identity);
+  pairByKey(
+    removedEntries,
+    addedEntries,
+    ({ candidate, hunk }) =>
+      `${candidate.identity}:${callsiteFingerprint(candidate)}:${candidate.identity.includes(':') ? '' : hunk.filePath}`,
+  );
 
   for (const { candidate: newCandidate, hunk } of addedEntries) {
     if (consumedAdded.has(newCandidate)) continue;
