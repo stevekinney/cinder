@@ -11,6 +11,7 @@ type ThresholdCandidate = {
   kind: ThresholdKind;
   identity: string;
   label: string;
+  effectiveValue: number;
   value: number;
   renderedValue: string;
   lineNumber: number;
@@ -159,6 +160,22 @@ function implicitBaselineFor(label: string): { renderedValue: string; value: num
   return undefined;
 }
 
+function isTestConfigurationRetry(filePath: string, analysis: string, label: string): boolean {
+  if (normalizeKind(label) !== 'retries') return true;
+  return (
+    /\btest\.describe\.configure\s*\(/u.test(analysis) ||
+    /(?:^|\/)(?:jest|playwright|vitest)\.config\.[^/]+$/u.test(filePath)
+  );
+}
+
+function effectiveThresholdValue(label: string, line: string, value: number): number {
+  if (value !== 0 || normalizeKind(label) !== 'timeout') return value;
+  const normalizedLabel = label.toLowerCase();
+  if (normalizedLabel === 'waitfortimeout') return value;
+  if (normalizedLabel === 'settimeout' && !/\btest\.setTimeout\s*\(/u.test(line)) return value;
+  return Number.POSITIVE_INFINITY;
+}
+
 function pushCandidate(
   candidates: ThresholdCandidate[],
   line: string,
@@ -178,8 +195,9 @@ function pushCandidate(
           baselineValue: baseline.value,
         }),
     kind: normalizeKind(label),
-    identity: `${normalizeKind(label)}:${label.trim().toLowerCase()}`,
+    identity: normalizeKind(label),
     label,
+    effectiveValue: effectiveThresholdValue(label, line, value),
     value,
     renderedValue,
     lineNumber,
@@ -200,6 +218,7 @@ function extractThresholdCandidates(
     /\b(?<label>timeout-minutes|testTimeout|timeout|deadline|retries|retry|slow)\b[^\n\d-]{0,80}(?<value>\d[\d_]*(?:\.\d[\d_]*)?)/giu;
   for (const match of analysisLine.matchAll(thresholdAssignmentPattern)) {
     const label = match.groups?.['label'] ?? '';
+    if (!isTestConfigurationRetry(filePath, analysisLine, label)) continue;
     pushCandidate(
       candidates,
       line,
@@ -269,6 +288,21 @@ function extractThresholdCandidates(
     }
   }
 
+  if (/(?:^|\/)[^/]+\.(?:spec|test)\.[^/]+$/u.test(filePath)) {
+    const bunTestTimeoutMatch = /^\s*\},\s*(?<value>\d[\d_]*(?:\.\d[\d_]*)?)\s*\)\s*;?\s*$/u.exec(
+      analysisLine,
+    );
+    if (bunTestTimeoutMatch !== null) {
+      pushCandidate(
+        candidates,
+        line,
+        lineNumber,
+        'bun-test-timeout',
+        bunTestTimeoutMatch.groups?.['value'],
+      );
+    }
+  }
+
   const seen = new Set<string>();
   return candidates.filter((candidate) => {
     const key = `${candidate.identity}:${candidate.renderedValue}:${candidate.lineNumber}`;
@@ -317,6 +351,7 @@ function extractMultilineCallCandidates(
   for (const assignmentPattern of assignmentPatterns) {
     for (const match of analysis.matchAll(assignmentPattern)) {
       const label = match.groups?.['label'] ?? '';
+      if (!isTestConfigurationRetry(filePath, analysis, label)) continue;
       const sourceIndex = analysis.slice(0, match.index).split('\n').length - 1;
       pushCandidate(
         candidates,
@@ -338,37 +373,47 @@ function extractMultilineCallCandidates(
   });
 }
 
-function collectComparableViolations(hunk: DiffHunk): TimeoutIncreaseViolation[] {
+function collectComparableViolations(hunks: readonly DiffHunk[]): TimeoutIncreaseViolation[] {
   const violations: TimeoutIncreaseViolation[] = [];
+  const candidateOrder = new Map<ThresholdCandidate, number>();
+  let nextCandidateOrder = 0;
+  for (const hunk of hunks) {
+    for (const candidate of hunk.added) {
+      candidateOrder.set(candidate, nextCandidateOrder);
+      nextCandidateOrder += 1;
+    }
+  }
   const identities = new Set([
-    ...hunk.removed.map((candidate) => candidate.identity),
-    ...hunk.added.map((candidate) => candidate.identity),
+    ...hunks.flatMap((hunk) => hunk.removed.map((candidate) => candidate.identity)),
+    ...hunks.flatMap((hunk) => hunk.added.map((candidate) => candidate.identity)),
   ]);
 
   for (const identity of identities) {
-    const removed = hunk.removed
-      .filter((candidate) => candidate.identity === identity)
-      .toSorted((left, right) => right.value - left.value);
-    const added = hunk.added
-      .filter((candidate) => candidate.identity === identity)
-      .toSorted((left, right) => right.value - left.value);
+    const removed = hunks
+      .flatMap((hunk) => hunk.removed.map((candidate) => ({ candidate, hunk })))
+      .filter(({ candidate }) => candidate.identity === identity)
+      .toSorted((left, right) => right.candidate.effectiveValue - left.candidate.effectiveValue);
+    const added = hunks
+      .flatMap((hunk) => hunk.added.map((candidate) => ({ candidate, hunk })))
+      .filter(({ candidate }) => candidate.identity === identity)
+      .toSorted((left, right) => right.candidate.effectiveValue - left.candidate.effectiveValue);
     const comparableCount = Math.min(removed.length, added.length);
 
     for (let index = 0; index < comparableCount; index += 1) {
-      const oldCandidate = removed[index];
-      const newCandidate = added[index];
-      if (oldCandidate === undefined || newCandidate === undefined) continue;
-      if (newCandidate.value > oldCandidate.value) {
+      const oldEntry = removed[index];
+      const newEntry = added[index];
+      if (oldEntry === undefined || newEntry === undefined) continue;
+      if (newEntry.candidate.effectiveValue > oldEntry.candidate.effectiveValue) {
         violations.push({
-          filePath: hunk.filePath,
-          hunkHeader: hunk.hunkHeader,
-          old: oldCandidate,
-          new: newCandidate,
+          filePath: newEntry.hunk.filePath,
+          hunkHeader: newEntry.hunk.hunkHeader,
+          old: oldEntry.candidate,
+          new: newEntry.candidate,
         });
       }
     }
 
-    for (const newCandidate of added.slice(removed.length)) {
+    for (const { candidate: newCandidate, hunk } of added.slice(removed.length)) {
       if (
         newCandidate.baselineValue === undefined ||
         newCandidate.baselineRenderedValue === undefined ||
@@ -381,6 +426,7 @@ function collectComparableViolations(hunk: DiffHunk): TimeoutIncreaseViolation[]
         hunkHeader: hunk.hunkHeader,
         old: {
           ...newCandidate,
+          effectiveValue: newCandidate.baselineValue,
           value: newCandidate.baselineValue,
           renderedValue: newCandidate.baselineRenderedValue,
           line:
@@ -393,11 +439,15 @@ function collectComparableViolations(hunk: DiffHunk): TimeoutIncreaseViolation[]
     }
   }
 
-  return violations;
+  return violations.toSorted(
+    (left, right) =>
+      (candidateOrder.get(left.new) ?? Number.MAX_SAFE_INTEGER) -
+      (candidateOrder.get(right.new) ?? Number.MAX_SAFE_INTEGER),
+  );
 }
 
 export function findTimeoutIncreaseViolations(diff: string): TimeoutIncreaseViolation[] {
-  const violations: TimeoutIncreaseViolation[] = [];
+  const hunks: DiffHunk[] = [];
   let currentFilePath = '';
   let currentHunk: DiffHunk | undefined;
   let oldLine = 0;
@@ -411,7 +461,7 @@ export function findTimeoutIncreaseViolations(diff: string): TimeoutIncreaseViol
     currentHunk.added.push(
       ...extractMultilineCallCandidates(currentHunk.filePath, currentHunk.newSource),
     );
-    violations.push(...collectComparableViolations(currentHunk));
+    hunks.push(currentHunk);
     currentHunk = undefined;
   };
 
@@ -473,7 +523,7 @@ export function findTimeoutIncreaseViolations(diff: string): TimeoutIncreaseViol
   }
 
   flushHunk();
-  return violations;
+  return collectComparableViolations(hunks);
 }
 
 export function formatTimeoutIncreaseViolations(

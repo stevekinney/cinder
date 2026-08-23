@@ -201,6 +201,59 @@ describe('check-timeout-increases', () => {
     expect(violations).toHaveLength(1);
   });
 
+  test('matches equivalent timeout spellings', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/src/button/button.test.ts',
+        ['test.describe.configure({ testTimeout: 5_000 });'],
+        ['test.describe.configure({ timeout: 10_000 });'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+  });
+
+  test('ignores retry-shaped domain data outside test configuration', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/playground/src/examples/schema-form/json-schema.example.svelte',
+        ["value={{ name: 'Refresh indexes', retries: 2 }}"],
+        ["value={{ name: 'Refresh indexes', retries: 3 }}"],
+      ),
+    );
+
+    expect(violations).toEqual([]);
+  });
+
+  test('matches moved thresholds across diff hunks and files', () => {
+    const diff = [
+      diffFor('packages/components/src/old-location.test.ts', ['test.setTimeout(5_000);'], []),
+      diffFor('packages/components/src/new-location.test.ts', [], ['test.setTimeout(10_000);']),
+    ].join('\n');
+
+    expect(findTimeoutIncreaseViolations(diff)).toHaveLength(1);
+  });
+
+  test('checks Bun test timeouts supplied as a trailing argument', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor('packages/components/src/convention.test.ts', ['}, 30_000);'], ['}, 60_000);']),
+    );
+
+    expect(violations).toHaveLength(1);
+  });
+
+  test('treats a zero Playwright timeout as unbounded', () => {
+    const disabled = findTimeoutIncreaseViolations(
+      diffFor('packages/testing/playwright.config.ts', ['timeout: 90_000,'], ['timeout: 0,']),
+    );
+    const restored = findTimeoutIncreaseViolations(
+      diffFor('packages/testing/playwright.config.ts', ['timeout: 0,'], ['timeout: 90_000,']),
+    );
+
+    expect(disabled).toHaveLength(1);
+    expect(restored).toEqual([]);
+  });
+
   test('allows a conditional slow annotation to be disabled', () => {
     const violations = findTimeoutIncreaseViolations(
       diffFor(
