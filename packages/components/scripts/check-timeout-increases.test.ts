@@ -136,6 +136,20 @@ describe('check-timeout-increases', () => {
     expect(violations[0]?.new.value).toBe(10_000);
   });
 
+  test('preserves equal-valued timeout callsites on one source line', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/src/button/button.test.ts',
+        ['test.setTimeout(5_000); test.setTimeout(5_000);'],
+        ['test.setTimeout(5_000); test.setTimeout(10_000);'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.old.value).toBe(5_000);
+    expect(violations[0]?.new.value).toBe(10_000);
+  });
+
   test('rejects a newly added zero-argument test.slow()', () => {
     const violations = findTimeoutIncreaseViolations(
       diffFor('packages/components/src/button/button.test.ts', [], ['test.slow();']),
@@ -694,6 +708,30 @@ describe('check-timeout-increases', () => {
     expect(violations[0]?.new.value).toBe(50_000);
   });
 
+  test('evaluates non-decimal JavaScript timeout literals', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/src/button/button.test.ts',
+        ['test.setTimeout(0x1388);', 'test.setTimeout(0b1001110001000);'],
+        ['test.setTimeout(0x2710);', 'test.setTimeout(0o23420);'],
+      ),
+    );
+
+    expect(violations).toHaveLength(2);
+    expect(violations.map((violation) => violation.old.value)).toEqual([5_000, 5_000]);
+    expect(violations.map((violation) => violation.new.value)).toEqual([10_000, 10_000]);
+  });
+
+  test('compares a new Bun setDefaultTimeout call with the runner default', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor('packages/components/src/button/button.test.ts', [], ['setDefaultTimeout(10_000);']),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.old.value).toBe(5_000);
+    expect(violations[0]?.new.value).toBe(10_000);
+  });
+
   test('checks timeout arguments on parameterized Bun tests', () => {
     const violations = findTimeoutIncreaseViolations(
       diffFor(
@@ -848,6 +886,18 @@ describe('check-timeout-increases', () => {
         'packages/components/src/button/button.test.ts',
         ["// don't increase waits", 'test.setTimeout(5_000);'],
         ["// don't increase waits", 'test.setTimeout(10_000);'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+  });
+
+  test('does not let apostrophes in regular expressions hide later timeout changes', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/src/button/button.test.ts',
+        ["const contraction = /don't/;", 'test.setTimeout(5_000);'],
+        ["const contraction = /don't/;", 'test.setTimeout(10_000);'],
       ),
     );
 

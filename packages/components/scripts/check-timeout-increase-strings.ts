@@ -42,6 +42,8 @@ function stripJavaScriptCommentsLines(lines: readonly string[]): string[] {
   let escaped = false;
   return lines.map((line) => {
     const output = Array.from(line);
+    let regularExpression = false;
+    let regularExpressionCharacterClass = false;
     for (let index = 0; index < output.length; index += 1) {
       const character = output[index] ?? '';
       const nextCharacter = output[index + 1] ?? '';
@@ -52,6 +54,15 @@ function stripJavaScriptCommentsLines(lines: readonly string[]): string[] {
           blockComment = false;
           index += 1;
         }
+        continue;
+      }
+      if (regularExpression) {
+        output[index] = ' ';
+        if (escaped) escaped = false;
+        else if (character === '\\') escaped = true;
+        else if (character === '[') regularExpressionCharacterClass = true;
+        else if (character === ']') regularExpressionCharacterClass = false;
+        else if (character === '/' && !regularExpressionCharacterClass) regularExpression = false;
         continue;
       }
       if (quote !== undefined) {
@@ -73,10 +84,29 @@ function stripJavaScriptCommentsLines(lines: readonly string[]): string[] {
         output[index + 1] = ' ';
         blockComment = true;
         index += 1;
+        continue;
+      }
+      if (character === '/' && canStartJavaScriptRegularExpression(line, index)) {
+        output[index] = ' ';
+        regularExpression = true;
+        regularExpressionCharacterClass = false;
       }
     }
     return output.join('');
   });
+}
+
+function canStartJavaScriptRegularExpression(line: string, slashIndex: number): boolean {
+  const prefix = line.slice(0, slashIndex).trimEnd();
+  if (prefix.length === 0) return true;
+  if (
+    /(?:^|[^\w$])(?:await|case|delete|do|else|in|instanceof|of|return|throw|typeof|void|yield)$/u.test(
+      prefix,
+    )
+  ) {
+    return true;
+  }
+  return /[([{=,:;!?&|+\-*%^~<>]$/u.test(prefix);
 }
 
 function stripUnquotedHashComment(line: string): string {

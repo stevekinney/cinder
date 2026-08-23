@@ -50,6 +50,12 @@ function implicitBaselineFor(
   if (label.toLowerCase() === 'settimeout' && /\btest\.setTimeout\s*\(/u.test(line)) {
     return { renderedValue: '30_000 (implicit Playwright test timeout)', value: 30_000 };
   }
+  if (
+    label.toLowerCase() === 'setdefaulttimeout' &&
+    /(?<![\w$.])setDefaultTimeout\s*\(/u.test(line)
+  ) {
+    return { renderedValue: '5_000 (implicit Bun test timeout)', value: 5_000 };
+  }
   return undefined;
 }
 
@@ -201,7 +207,7 @@ function extractThresholdCandidates(
 
   const seen = new Set<string>();
   return candidates.filter((candidate) => {
-    const key = `${candidate.identity}:${candidate.renderedValue}:${candidate.lineNumber}`;
+    const key = `${candidate.identity}:${candidate.renderedValue}:${candidate.lineNumber}:${candidate.occurrenceIndex ?? ''}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
