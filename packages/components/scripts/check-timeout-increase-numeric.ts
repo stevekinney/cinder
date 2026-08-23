@@ -1,4 +1,4 @@
-const NUMERIC_LITERAL_PATTERN = String.raw`\d[\d_]*(?:\.\d[\d_]*)?`;
+const NUMERIC_LITERAL_PATTERN = String.raw`\d[\d_]*(?:\.\d[\d_]*)?(?:[eE][+-]?\d[\d_]*)?`;
 const FLAT_NUMERIC_EXPRESSION_PATTERN = String.raw`${NUMERIC_LITERAL_PATTERN}(?:\s*[*/+-]\s*${NUMERIC_LITERAL_PATTERN})*`;
 const NUMERIC_ATOM_PATTERN = String.raw`(?:${NUMERIC_LITERAL_PATTERN}|\(\s*${FLAT_NUMERIC_EXPRESSION_PATTERN}\s*\))`;
 
@@ -6,7 +6,7 @@ export const NUMERIC_EXPRESSION_PATTERN = String.raw`${NUMERIC_ATOM_PATTERN}(?:\
 
 export function parseNumericLiteral(literal: string): number {
   const normalized = literal.replaceAll('_', '').replace(/\s+/gu, '');
-  const tokens = normalized.match(/\d+(?:\.\d+)?|[()*/+-]/gu);
+  const tokens = normalized.match(/\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|[()*/+-]/gu);
   if (tokens === null || tokens.join('') !== normalized) return Number.NaN;
   let index = 0;
 
@@ -135,7 +135,8 @@ export function findWaitThresholdArguments(analysis: string): WaitThresholdArgum
 
 export function findBunTestTimeoutArguments(analysis: string): BunTestTimeoutArgument[] {
   const argumentsFound: BunTestTimeoutArgument[] = [];
-  const callPattern = /\b(?:it|test)(?:\.(?!describe\b)[A-Za-z_$][\w$]*)*\s*\(/gu;
+  const callPattern =
+    /\b(?:(?:it|test)\.each\s*\([^()]*(?:\([^()]*\)[^()]*)*\)\s*\(|(?:it|test)(?:\.(?!describe\b|each\b)[A-Za-z_$][\w$]*)*\s*\()/gu;
   for (const callMatch of analysis.matchAll(callPattern)) {
     const callStart = callMatch.index ?? 0;
     const openParenthesis = callStart + callMatch[0].lastIndexOf('(');

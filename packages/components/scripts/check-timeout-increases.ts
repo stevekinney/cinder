@@ -13,7 +13,7 @@ import {
   parseNumericLiteral,
 } from './check-timeout-increase-numeric';
 import {
-  extractTopLevelQuotedStrings,
+  extractExecutableCliThresholdArguments,
   isCommentOnlyLine,
   sourceLineForAnalysis,
   sourceLinesForAnalysis,
@@ -27,16 +27,6 @@ import type {
 
 export type { TimeoutIncreaseViolation } from './check-timeout-increase-types';
 export { formatTimeoutIncreaseViolations };
-
-function isExecutableCliArgumentLine(line: string, argument: string): boolean {
-  for (const quotedArgument of [`'${argument}'`, `"${argument}"`]) {
-    const argumentIndex = line.indexOf(quotedArgument);
-    if (argumentIndex === -1) continue;
-    const prefix = line.slice(0, argumentIndex).trimEnd();
-    if (prefix.length === 0 || prefix.endsWith('[') || prefix.endsWith(',')) return true;
-  }
-  return false;
-}
 
 function normalizeKind(label: string): ThresholdKind {
   const normalized = label.toLowerCase();
@@ -184,24 +174,15 @@ function extractThresholdCandidates(
     );
   }
 
-  const quotedCliArgumentPattern = new RegExp(
-    String.raw`^--(?<label>timeout-minutes|timeout|test-timeout|retries|retry|rerun-each|slow)=(?<value>${NUMERIC_EXPRESSION_PATTERN})$`,
-    'giu',
-  );
-  for (const argument of extractTopLevelQuotedStrings(line)) {
-    if (!isExecutableCliArgumentLine(line, argument)) continue;
-    const match = quotedCliArgumentPattern.exec(argument);
-    if (match !== null) {
-      const label = match.groups?.['label'] ?? '';
-      pushCandidate(
-        candidates,
-        line,
-        lineNumber,
-        label,
-        match.groups?.['value'],
-        implicitBaselineFor(label, line),
-      );
-    }
+  for (const argument of extractExecutableCliThresholdArguments(line)) {
+    pushCandidate(
+      candidates,
+      line,
+      lineNumber,
+      argument.label,
+      argument.renderedValue,
+      implicitBaselineFor(argument.label, line),
+    );
   }
 
   const callPattern = new RegExp(

@@ -1,5 +1,7 @@
 import { extname } from 'node:path';
 
+import { NUMERIC_EXPRESSION_PATTERN } from './check-timeout-increase-numeric';
+
 type Quote = '"' | "'" | '`';
 
 export function stripQuotedTextLines(lines: readonly string[]): string[] {
@@ -119,4 +121,59 @@ export function extractTopLevelQuotedStrings(line: string): string[] {
     }
   }
   return values;
+}
+
+export type ExecutableCliThresholdArgument = {
+  label: string;
+  renderedValue: string;
+};
+
+function isExecutableCliArgumentLine(line: string, argument: string): boolean {
+  for (const quotedArgument of [`'${argument}'`, `"${argument}"`]) {
+    const argumentIndex = line.indexOf(quotedArgument);
+    if (argumentIndex === -1) continue;
+    const prefix = line.slice(0, argumentIndex).trimEnd();
+    if (prefix.length === 0 || prefix.endsWith('[') || prefix.endsWith(',')) return true;
+  }
+  return false;
+}
+
+export function extractExecutableCliThresholdArguments(
+  line: string,
+): ExecutableCliThresholdArgument[] {
+  const results: ExecutableCliThresholdArgument[] = [];
+  const argumentsFound = extractTopLevelQuotedStrings(line);
+  const flagPattern =
+    /^--(?<label>timeout-minutes|timeout|test-timeout|retries|retry|rerun-each|slow)$/iu;
+  const exactPattern = new RegExp(
+    String.raw`^--(?<label>timeout-minutes|timeout|test-timeout|retries|retry|rerun-each|slow)=(?<value>${NUMERIC_EXPRESSION_PATTERN})$`,
+    'iu',
+  );
+  const numericPattern = new RegExp(String.raw`^${NUMERIC_EXPRESSION_PATTERN}$`, 'u');
+
+  for (const [argumentIndex, argument] of argumentsFound.entries()) {
+    if (!isExecutableCliArgumentLine(line, argument)) continue;
+    const exactMatch = exactPattern.exec(argument);
+    if (exactMatch !== null) {
+      results.push({
+        label: exactMatch.groups?.['label'] ?? '',
+        renderedValue: exactMatch.groups?.['value'] ?? '',
+      });
+    }
+
+    const flagMatch = flagPattern.exec(argument);
+    const splitValue = argumentsFound[argumentIndex + 1];
+    if (
+      flagMatch !== null &&
+      splitValue !== undefined &&
+      numericPattern.test(splitValue) &&
+      isExecutableCliArgumentLine(line, splitValue)
+    ) {
+      results.push({
+        label: flagMatch.groups?.['label'] ?? '',
+        renderedValue: splitValue,
+      });
+    }
+  }
+  return results;
 }

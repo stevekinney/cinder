@@ -133,6 +133,18 @@ describe('check-timeout-increases', () => {
     expect(violations).toHaveLength(1);
   });
 
+  test('rejects renamed timeout constant increases at the same callsite', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/scripts/validate-consumers.ts',
+        ['const OLD_TIMEOUT_MS = 5_000;'],
+        ['const NEW_TIMEOUT_MS = 10_000;'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+  });
+
   test('checks timeout flags in package manifests', () => {
     const violations = findTimeoutIncreaseViolations(
       diffFor(
@@ -213,13 +225,20 @@ describe('check-timeout-increases', () => {
     expect(violations).toHaveLength(1);
   });
 
-  test('keeps distinct named threshold identities separate', () => {
+  test('keeps distinct named threshold identities separate across files', () => {
     const violations = findTimeoutIncreaseViolations(
-      diffFor(
-        'packages/components/scripts/readiness.ts',
-        ['const FIRST_TIMEOUT_MS = 5_000;'],
-        ['const SECOND_TIMEOUT_MS = 10_000;'],
-      ),
+      [
+        diffFor(
+          'packages/components/scripts/first-readiness.ts',
+          ['const FIRST_TIMEOUT_MS = 5_000;'],
+          [],
+        ),
+        diffFor(
+          'packages/components/scripts/second-readiness.ts',
+          [],
+          ['const SECOND_TIMEOUT_MS = 10_000;'],
+        ),
+      ].join('\n'),
     );
 
     expect(violations).toEqual([]);
@@ -390,6 +409,19 @@ describe('check-timeout-increases', () => {
     expect(violations).toHaveLength(1);
   });
 
+  test('checks split CLI threshold arguments in executable string arrays', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/testing/scripts/update-snapshots.ts',
+        ["const arguments = ['--timeout', '5000'];"],
+        ["const arguments = ['--timeout', '10000'];"],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.new.value).toBe(10_000);
+  });
+
   test('checks Bun rerun-each retry flags', () => {
     const violations = findTimeoutIncreaseViolations(
       diffFor(
@@ -445,6 +477,32 @@ describe('check-timeout-increases', () => {
     expect(violations).toHaveLength(1);
     expect(violations[0]?.old.value).toBe(120_000);
     expect(violations[0]?.new.value).toBe(180_000);
+  });
+
+  test('evaluates scientific-notation timeout literals', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/src/button/button.test.ts',
+        ['test.setTimeout(5e3);'],
+        ['test.setTimeout(5e4);'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.old.value).toBe(5_000);
+    expect(violations[0]?.new.value).toBe(50_000);
+  });
+
+  test('checks timeout arguments on parameterized Bun tests', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/src/button/button.test.ts',
+        ["test.each(cases)('case', handler, 5_000);"],
+        ["test.each(cases)('case', handler, 10_000);"],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
   });
 
   test('rejects non-finite timeout expressions as unbounded', () => {

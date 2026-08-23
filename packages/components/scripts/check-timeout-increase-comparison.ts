@@ -37,6 +37,7 @@ type CandidateEntry = { candidate: ThresholdCandidate; hunk: DiffHunk };
 
 function callsiteFingerprint(candidate: ThresholdCandidate): string {
   return candidate.line
+    .replace(candidate.label, '<threshold-name>')
     .replace(candidate.renderedValue, '<threshold>')
     .replace(/\s+/gu, ' ')
     .trim();
@@ -142,6 +143,11 @@ export function collectComparableViolations(
     const removed = removedEntries.filter((entry) => entry.hunk === hunk);
     const added = addedEntries.filter((entry) => entry.hunk === hunk);
     pairByKey(removed, added, ({ candidate }) => candidate.identity);
+    pairByKey(
+      removed,
+      added,
+      ({ candidate }) => `${candidate.kind}:${callsiteFingerprint(candidate)}`,
+    );
   }
   pairByKey(
     removedEntries,
