@@ -142,12 +142,12 @@ export function collectComparableViolations(
   for (const hunk of hunks) {
     const removed = removedEntries.filter((entry) => entry.hunk === hunk);
     const added = addedEntries.filter((entry) => entry.hunk === hunk);
-    pairByKey(removed, added, ({ candidate }) => candidate.identity);
     pairByKey(
       removed,
       added,
       ({ candidate }) => `${candidate.kind}:${callsiteFingerprint(candidate)}`,
     );
+    pairByKey(removed, added, ({ candidate }) => candidate.identity);
   }
   pairByKey(
     removedEntries,

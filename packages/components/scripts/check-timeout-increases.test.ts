@@ -96,6 +96,19 @@ describe('check-timeout-increases', () => {
     expect(findTimeoutIncreaseViolations(insertedBeforeIncrease)).toHaveLength(1);
   });
 
+  test('detects a per-callsite increase when generic threshold values swap', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/src/button/button.test.ts',
+        ['await first.waitFor({ timeout: 5_000 });', 'await second.waitFor({ timeout: 10_000 });'],
+        ['await first.waitFor({ timeout: 10_000 });', 'await second.waitFor({ timeout: 5_000 });'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.new.line).toContain('first.waitFor');
+  });
+
   test('rejects a newly added zero-argument test.slow()', () => {
     const violations = findTimeoutIncreaseViolations(
       diffFor('packages/components/src/button/button.test.ts', [], ['test.slow();']),
