@@ -170,6 +170,10 @@ export type ExecutableCliThresholdArgument = {
   renderedValue: string;
 };
 
+export type MultilineExecutableCliThresholdArgument = ExecutableCliThresholdArgument & {
+  lineIndex: number;
+};
+
 function isExecutableCliArgumentLine(line: string, argument: string): boolean {
   for (const quotedArgument of [`'${argument}'`, `"${argument}"`]) {
     const argumentIndex = line.indexOf(quotedArgument);
@@ -216,6 +220,44 @@ export function extractExecutableCliThresholdArguments(
         renderedValue: splitValue,
       });
     }
+  }
+  return results;
+}
+
+function isInsideArray(lines: readonly string[], lineIndex: number): boolean {
+  for (let index = lineIndex - 1; index >= 0; index -= 1) {
+    const analysis = stripQuotedText(lines[index] ?? '');
+    if (analysis.includes(']')) return false;
+    if (analysis.includes('[')) return true;
+  }
+  return false;
+}
+
+export function extractMultilineExecutableCliThresholdArguments(
+  lines: readonly string[],
+): MultilineExecutableCliThresholdArgument[] {
+  const results: MultilineExecutableCliThresholdArgument[] = [];
+  const flagPattern =
+    /^\s*['"]--(?<label>timeout-minutes|timeout|test-timeout|retries|retry|rerun-each|slow)['"]\s*,?\s*$/iu;
+  const valuePattern = new RegExp(
+    String.raw`^\s*['"](?<value>${NUMERIC_EXPRESSION_PATTERN})['"]\s*,?\s*$`,
+    'u',
+  );
+
+  for (const [lineIndex, line] of lines.entries()) {
+    const flagMatch = flagPattern.exec(line);
+    if (flagMatch === null || !isInsideArray(lines, lineIndex)) continue;
+    let valueLineIndex = lineIndex + 1;
+    while (valueLineIndex < lines.length && (lines[valueLineIndex] ?? '').trim().length === 0) {
+      valueLineIndex += 1;
+    }
+    const valueMatch = valuePattern.exec(lines[valueLineIndex] ?? '');
+    if (valueMatch === null) continue;
+    results.push({
+      label: flagMatch.groups?.['label'] ?? '',
+      renderedValue: valueMatch.groups?.['value'] ?? '',
+      lineIndex: valueLineIndex,
+    });
   }
   return results;
 }

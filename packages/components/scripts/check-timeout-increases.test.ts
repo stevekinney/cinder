@@ -109,6 +109,19 @@ describe('check-timeout-increases', () => {
     expect(violations[0]?.new.line).toContain('first.waitFor');
   });
 
+  test('preserves callsites when an increased threshold takes another old value', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/src/button/button.test.ts',
+        ['await first.waitFor({ timeout: 5_000 });', 'await second.waitFor({ timeout: 10_000 });'],
+        ['await first.waitFor({ timeout: 10_000 });', 'await second.waitFor({ timeout: 4_000 });'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.new.line).toContain('first.waitFor');
+  });
+
   test('rejects a newly added zero-argument test.slow()', () => {
     const violations = findTimeoutIncreaseViolations(
       diffFor('packages/components/src/button/button.test.ts', [], ['test.slow();']),
@@ -350,6 +363,26 @@ describe('check-timeout-increases', () => {
     expect(violations).toHaveLength(1);
   });
 
+  test('compares newly added Bun test timeouts with the runner default', () => {
+    const increased = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/src/button/button.test.ts',
+        [],
+        ["test('case', handler, 10_000);"],
+      ),
+    );
+    const reduced = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/src/button/button.test.ts',
+        [],
+        ["test('case', handler, 4_000);"],
+      ),
+    );
+
+    expect(increased).toHaveLength(1);
+    expect(reduced).toEqual([]);
+  });
+
   test('checks retries inside multiline Playwright configuration', () => {
     const violations = findTimeoutIncreaseViolations(
       diffFor(
@@ -401,6 +434,18 @@ describe('check-timeout-increases', () => {
         'packages/components/src/consumer-readiness.test.ts',
         ['const timeoutMs = 1_000;'],
         ['const timeoutMs = 2_000;'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+  });
+
+  test('checks lower-snake-case threshold identifiers', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/src/consumer-readiness.test.ts',
+        ['const test_timeout_ms = 5_000;'],
+        ['const test_timeout_ms = 10_000;'],
       ),
     );
 
@@ -466,6 +511,23 @@ describe('check-timeout-increases', () => {
 
     expect(violations).toHaveLength(1);
     expect(violations[0]?.new.value).toBe(10_000);
+  });
+
+  test('checks split CLI threshold arguments across executable array lines', () => {
+    const diff = [
+      'diff --git a/packages/testing/scripts/update-snapshots.ts b/packages/testing/scripts/update-snapshots.ts',
+      '--- a/packages/testing/scripts/update-snapshots.ts',
+      '+++ b/packages/testing/scripts/update-snapshots.ts',
+      '@@ -10,4 +10,4 @@',
+      ' const arguments = [',
+      "   '--timeout',",
+      "-  '5000',",
+      "+  '10000',",
+      ' ];',
+      '',
+    ].join('\n');
+
+    expect(findTimeoutIncreaseViolations(diff)).toHaveLength(1);
   });
 
   test('checks Bun rerun-each retry flags', () => {
@@ -583,6 +645,18 @@ describe('check-timeout-increases', () => {
         'packages/playground/src/examples/toast-region/promise.example.svelte',
         ['setTimeout(resolve, 20);'],
         ['setTimeout(resolve, 200);'],
+      ),
+    );
+
+    expect(violations).toEqual([]);
+  });
+
+  test('ignores bare timeout options in production source', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/editor/src/lib/components/diff-viewer/diff-controller.svelte.ts',
+        ['requestIdleCallback(doCompute, { timeout: 2_000 });'],
+        ['requestIdleCallback(doCompute, { timeout: 4_000 });'],
       ),
     );
 

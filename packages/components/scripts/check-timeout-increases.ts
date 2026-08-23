@@ -14,6 +14,7 @@ import {
 } from './check-timeout-increase-numeric';
 import {
   extractExecutableCliThresholdArguments,
+  extractMultilineExecutableCliThresholdArguments,
   isCommentOnlyLine,
   sourceLineForAnalysis,
   sourceLinesForAnalysis,
@@ -81,6 +82,16 @@ function isTestConfigurationRetry(filePath: string, analysis: string, label: str
   );
 }
 
+function isTestThresholdAssignment(filePath: string, analysis: string, label: string): boolean {
+  if (label.toLowerCase() === 'timeout-minutes') return true;
+  if (!isTestConfigurationRetry(filePath, analysis, label)) return false;
+  return (
+    /(?:^|\/)(?:tests?|testing)(?:\/|$)|\.(?:spec|test)\.[^/]+$/u.test(filePath) ||
+    /(?:^|\/)(?:jest|playwright|vitest)\.config\.[^/]+$/u.test(filePath) ||
+    /\btest\.describe\.configure\s*\(/u.test(analysis)
+  );
+}
+
 function pushCandidate(
   candidates: ThresholdCandidate[],
   line: string,
@@ -132,7 +143,7 @@ function extractThresholdCandidates(
   );
   for (const match of analysisLine.matchAll(thresholdAssignmentPattern)) {
     const label = match.groups?.['label'] ?? '';
-    if (!isTestConfigurationRetry(filePath, analysisLine, label)) continue;
+    if (!isTestThresholdAssignment(filePath, analysisLine, label)) continue;
     pushCandidate(
       candidates,
       line,
@@ -144,7 +155,7 @@ function extractThresholdCandidates(
   }
 
   const namedThresholdAssignmentPattern = new RegExp(
-    String.raw`\b(?<label>(?:[A-Z][A-Z0-9_]*(?:TIMEOUT|WAIT|DEADLINE|RETRY|RETRIES)[A-Z0-9_]*)|(?:[A-Za-z_$][\w$]*(?:Timeout|Wait|Deadline|Retry|Retries)[\w$]*)|(?:(?:timeout|wait|deadline|retry|retries)[A-Z_$][\w$]*))\b\s*(?::\s*[^=;\n]+?=\s*|(?::|=)\s*)(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
+    String.raw`\b(?<label>(?:[A-Z][A-Z0-9_]*(?:TIMEOUT|WAIT|DEADLINE|RETRY|RETRIES)[A-Z0-9_]*)|(?:[a-z][a-z0-9_]*(?:_timeout|_wait|_deadline|_retry|_retries)[a-z0-9_]*)|(?:[A-Za-z_$][\w$]*(?:Timeout|Wait|Deadline|Retry|Retries)[\w$]*)|(?:(?:timeout|wait|deadline|retry|retries)[A-Z_$][\w$]*))\b\s*(?::\s*[^=;\n]+?=\s*|(?::|=)\s*)(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
     'gu',
   );
   for (const match of analysisLine.matchAll(namedThresholdAssignmentPattern)) {
@@ -325,8 +336,22 @@ function extractMultilineCallCandidates(
         source[sourceIndex]?.lineNumber ?? 0,
         'bun-test-timeout',
         timeoutArgument.renderedValue,
+        { renderedValue: '5_000 (implicit Bun test timeout)', value: 5_000 },
       );
     }
+  }
+
+  for (const argument of extractMultilineExecutableCliThresholdArguments(
+    source.map(({ line }) => line),
+  )) {
+    pushCandidate(
+      candidates,
+      source[argument.lineIndex]?.line ?? argument.renderedValue,
+      source[argument.lineIndex]?.lineNumber ?? 0,
+      argument.label,
+      argument.renderedValue,
+      implicitBaselineFor(argument.label),
+    );
   }
 
   const seen = new Set<string>();
