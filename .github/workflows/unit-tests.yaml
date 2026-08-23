@@ -46,7 +46,7 @@ jobs:
           if [ "$EVENT_NAME" != "pull_request" ]; then
             printf '%s\n' 'mode=full' 'component_scope_mode=full' 'components=' 'cinder_components=' 'unit_lanes=static,package,playground,components' 'full_scope_reason=non-pull-request event' >> "$GITHUB_OUTPUT"
           else
-            git diff --unified=0 "origin/${BASE_REF}...HEAD" | bun run --filter=@lostgradient/cinder check:timeout-increases
+            git diff --unified=3 "origin/${BASE_REF}...HEAD" | bun run --filter=@lostgradient/cinder check:timeout-increases
             git diff --name-only "origin/${BASE_REF}...HEAD" | bun run packages/testing/scripts/changed-components.ts
           fi
       - id: matrix

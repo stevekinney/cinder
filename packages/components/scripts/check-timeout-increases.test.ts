@@ -145,6 +145,46 @@ describe('check-timeout-increases', () => {
     expect(violations).toHaveLength(1);
   });
 
+  test('checks quoted configuration keys in source files', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/src/button/button.test.ts',
+        ['test.describe.configure({ \'retries\': 1, "timeout": 5_000 });'],
+        ['test.describe.configure({ \'retries\': 2, "timeout": 10_000 });'],
+      ),
+    );
+
+    expect(violations).toHaveLength(2);
+  });
+
+  test('checks timeout calls whose numeric argument is on the next line', () => {
+    const diff = [
+      'diff --git a/packages/components/src/button/button.test.ts b/packages/components/src/button/button.test.ts',
+      '--- a/packages/components/src/button/button.test.ts',
+      '+++ b/packages/components/src/button/button.test.ts',
+      '@@ -10,3 +10,3 @@',
+      ' test.setTimeout(',
+      '-  5_000,',
+      '+  10_000,',
+      ' );',
+      '',
+    ].join('\n');
+
+    expect(findTimeoutIncreaseViolations(diff)).toHaveLength(1);
+  });
+
+  test('ignores threshold text in trailing source comments', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/src/button/button.test.ts',
+        ['runTest(); // timeout: 5_000'],
+        ['runTest(); // timeout: 10_000'],
+      ),
+    );
+
+    expect(violations).toEqual([]);
+  });
+
   test('does not treat mentions of test.slow() inside guard implementation text as calls', () => {
     const diff = diffFor(
       'packages/components/scripts/check-timeout-increases.ts',

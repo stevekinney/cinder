@@ -2257,8 +2257,18 @@ async function launchHydrationChromium(): Promise<HydrationBrowser> {
  * release); a real hydration/content failure throws a different message and is
  * rethrown immediately.
  */
-function isBrowserCrashError(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error);
+export function isBrowserCrashError(error: unknown): boolean {
+  let originalCause = error;
+  const seen = new Set<unknown>();
+  while (
+    originalCause instanceof Error &&
+    originalCause.cause !== undefined &&
+    !seen.has(originalCause)
+  ) {
+    seen.add(originalCause);
+    originalCause = originalCause.cause;
+  }
+  const message = originalCause instanceof Error ? originalCause.message : String(originalCause);
   return /has been closed|Target closed|browser has disconnected|crashed/i.test(message);
 }
 
@@ -2739,12 +2749,6 @@ async function captureSvelteKitHydrationRouteFailureSnapshot(
 ): Promise<SvelteKitHydrationRouteFailureSnapshot> {
   const marker = hydrationMarkerForRoute(options.routePath);
   const snapshot = unknownSvelteKitHydrationRouteFailureSnapshot(options.routePath);
-  snapshot.nonOkResponses = [...options.nonOkResponses];
-  snapshot.requestFailures = [...options.requestFailures];
-  snapshot.runtimeErrors = [...options.errors];
-  snapshot.browserEvents = options.browserEvents.filter(
-    (event) => !event.startsWith('requestfailed '),
-  );
 
   try {
     snapshot.currentUrl = page.url();
@@ -2766,6 +2770,13 @@ async function captureSvelteKitHydrationRouteFailureSnapshot(
   } catch (error) {
     snapshot.diagnosticCaptureError = error instanceof Error ? error.message : String(error);
   }
+
+  snapshot.nonOkResponses = [...options.nonOkResponses];
+  snapshot.requestFailures = [...options.requestFailures];
+  snapshot.runtimeErrors = [...options.errors];
+  snapshot.browserEvents = options.browserEvents.filter(
+    (event) => !event.startsWith('requestfailed '),
+  );
 
   return snapshot;
 }

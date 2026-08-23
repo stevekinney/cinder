@@ -29,6 +29,8 @@ type DiffHunk = {
   hunkHeader: string;
   removed: ThresholdCandidate[];
   added: ThresholdCandidate[];
+  oldSource: Array<{ line: string; lineNumber: number }>;
+  newSource: Array<{ line: string; lineNumber: number }>;
 };
 
 const SUPPORTED_EXTENSIONS = new Set([
@@ -98,10 +100,17 @@ function stripQuotedText(line: string): string {
     .join('');
 }
 
+function exposeQuotedConfigurationKeys(line: string): string {
+  return line.replace(
+    /(?<quote>['"])(?<key>[A-Za-z_$][\w$-]*)\k<quote>(?=\s*:)/gu,
+    (_match, _quote: string, key: string) => key,
+  );
+}
+
 function sourceLineForAnalysis(filePath: string, line: string): string {
   const extension = extname(filePath);
   if (['.cjs', '.js', '.jsx', '.mjs', '.svelte', '.ts', '.tsx'].includes(extension)) {
-    return stripQuotedText(line);
+    return stripQuotedText(exposeQuotedConfigurationKeys(line)).replace(/(?:\/\/|\/\*).*$/u, '');
   }
   return line;
 }
@@ -258,6 +267,29 @@ function parseHunkStart(header: string): { oldLine: number; newLine: number } {
   };
 }
 
+function extractMultilineCallCandidates(
+  filePath: string,
+  source: Array<{ line: string; lineNumber: number }>,
+): ThresholdCandidate[] {
+  const analysis = source.map(({ line }) => sourceLineForAnalysis(filePath, line)).join('\n');
+  const candidates: ThresholdCandidate[] = [];
+  const pattern =
+    /\b(?<label>waitForTimeout|setDefaultTimeout|setTimeout|slow)\s*\(\s*\n\s*(?<value>\d[\d_]*(?:\.\d[\d_]*)?)/giu;
+  for (const match of analysis.matchAll(pattern)) {
+    const label = match.groups?.['label'] ?? '';
+    const sourceIndex = analysis.slice(0, match.index).split('\n').length - 1;
+    pushCandidate(
+      candidates,
+      match[0].replaceAll('\n', ' ').replace(/\s+/gu, ' ').trim(),
+      source[sourceIndex]?.lineNumber ?? 0,
+      label,
+      match.groups?.['value'],
+      implicitBaselineFor(label),
+    );
+  }
+  return candidates;
+}
+
 function collectComparableViolations(hunk: DiffHunk): TimeoutIncreaseViolation[] {
   const violations: TimeoutIncreaseViolation[] = [];
   const identities = new Set([
@@ -325,6 +357,12 @@ export function findTimeoutIncreaseViolations(diff: string): TimeoutIncreaseViol
 
   const flushHunk = (): void => {
     if (currentHunk === undefined) return;
+    currentHunk.removed.push(
+      ...extractMultilineCallCandidates(currentHunk.filePath, currentHunk.oldSource),
+    );
+    currentHunk.added.push(
+      ...extractMultilineCallCandidates(currentHunk.filePath, currentHunk.newSource),
+    );
     violations.push(...collectComparableViolations(currentHunk));
     currentHunk = undefined;
   };
@@ -344,7 +382,14 @@ export function findTimeoutIncreaseViolations(diff: string): TimeoutIncreaseViol
       oldLine = starts.oldLine;
       newLine = starts.newLine;
       currentHunk = isSupportedFile(currentFilePath)
-        ? { filePath: currentFilePath, hunkHeader: rawLine, removed: [], added: [] }
+        ? {
+            filePath: currentFilePath,
+            hunkHeader: rawLine,
+            removed: [],
+            added: [],
+            oldSource: [],
+            newSource: [],
+          }
         : undefined;
       continue;
     }
@@ -354,6 +399,7 @@ export function findTimeoutIncreaseViolations(diff: string): TimeoutIncreaseViol
 
     if (rawLine.startsWith('-')) {
       const content = rawLine.slice(1);
+      currentHunk.oldSource.push({ line: content, lineNumber: oldLine });
       currentHunk.removed.push(
         ...extractThresholdCandidates(currentHunk.filePath, content, oldLine),
       );
@@ -363,12 +409,16 @@ export function findTimeoutIncreaseViolations(diff: string): TimeoutIncreaseViol
 
     if (rawLine.startsWith('+')) {
       const content = rawLine.slice(1);
+      currentHunk.newSource.push({ line: content, lineNumber: newLine });
       currentHunk.added.push(...extractThresholdCandidates(currentHunk.filePath, content, newLine));
       newLine += 1;
       continue;
     }
 
     if (rawLine.startsWith(' ')) {
+      const content = rawLine.slice(1);
+      currentHunk.oldSource.push({ line: content, lineNumber: oldLine });
+      currentHunk.newSource.push({ line: content, lineNumber: newLine });
       oldLine += 1;
       newLine += 1;
     }
@@ -406,7 +456,7 @@ async function readDiffInput(): Promise<string> {
   const baseRef = Bun.env['BASE_REF'] ?? Bun.env['GITHUB_BASE_REF'];
   if (baseRef === undefined || baseRef.trim().length === 0) return standardInput;
 
-  const result = Bun.spawnSync(['git', 'diff', '--unified=0', `origin/${baseRef}...HEAD`], {
+  const result = Bun.spawnSync(['git', 'diff', '--unified=3', `origin/${baseRef}...HEAD`], {
     stdout: 'pipe',
     stderr: 'pipe',
   });

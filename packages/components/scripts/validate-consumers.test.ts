@@ -10,6 +10,7 @@ import {
   chatPeerValidationTarballPath,
   EXAMPLES_CONSUMER_READINESS_PATH,
   formatSvelteKitHydrationRouteFailure,
+  isBrowserCrashError,
   parseHydrationBrowserProcessIds,
   preoptimizeSvelteKitChatHydration,
   prepareSvelteKitChatHydrationDevServer,
@@ -253,6 +254,24 @@ describe('SvelteKit hydration route failure diagnostics', () => {
     expect(message).toContain('request failures');
     expect(message).toContain('page and console errors');
     expect(message).toContain('browser events');
+  });
+
+  test('classifies browser crashes from the original cause instead of diagnostics', () => {
+    const contentFailure = wrapSvelteKitHydrationRouteFailure({
+      cause: new Error('locator wait timed out'),
+      label: 'fixture',
+      routePath: '/dev-ssr-tabs',
+      snapshot: { ...snapshot, runtimeErrors: ['application worker crashed'] },
+    });
+    const browserCrash = wrapSvelteKitHydrationRouteFailure({
+      cause: new Error('Target closed'),
+      label: 'fixture',
+      routePath: '/dev-ssr-tabs',
+      snapshot,
+    });
+
+    expect(isBrowserCrashError(contentFailure)).toBe(false);
+    expect(isBrowserCrashError(browserCrash)).toBe(true);
   });
 });
 
