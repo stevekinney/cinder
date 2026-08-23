@@ -51,10 +51,6 @@ export function parseHunkStart(header: string): { oldLine: number; newLine: numb
   };
 }
 
-function normalizedLabel(candidate: ThresholdCandidate): string {
-  return candidate.label.toLowerCase();
-}
-
 export function collectComparableViolations(
   hunks: readonly DiffHunk[],
 ): TimeoutIncreaseViolation[] {
@@ -92,21 +88,22 @@ export function collectComparableViolations(
       consumedAdded.add(newEntry.candidate);
     }
 
-    for (const newEntry of availableAdded
+    const remainingRemoved = availableRemoved
+      .filter(({ candidate }) => !consumedRemoved.has(candidate))
+      .sort((left, right) => left.candidate.effectiveValue - right.candidate.effectiveValue);
+    const remainingAdded = availableAdded
       .filter(({ candidate }) => !consumedAdded.has(candidate))
-      .toSorted((left, right) => right.candidate.effectiveValue - left.candidate.effectiveValue)) {
-      const oldEntry = availableRemoved
-        .filter(({ candidate }) => !consumedRemoved.has(candidate))
-        .toSorted((left, right) => {
-          const leftIsLower = left.candidate.effectiveValue < newEntry.candidate.effectiveValue;
-          const rightIsLower = right.candidate.effectiveValue < newEntry.candidate.effectiveValue;
-          if (leftIsLower !== rightIsLower) return leftIsLower ? -1 : 1;
-          if (leftIsLower) {
-            return right.candidate.effectiveValue - left.candidate.effectiveValue;
-          }
-          return left.candidate.effectiveValue - right.candidate.effectiveValue;
-        })[0];
-      if (oldEntry === undefined) continue;
+      .sort((left, right) => left.candidate.effectiveValue - right.candidate.effectiveValue);
+    const pairCount = Math.min(remainingRemoved.length, remainingAdded.length);
+    const removedStart =
+      remainingRemoved.length > remainingAdded.length ? 0 : remainingRemoved.length - pairCount;
+    const addedStart =
+      remainingAdded.length > remainingRemoved.length ? remainingAdded.length - pairCount : 0;
+
+    for (let index = 0; index < pairCount; index += 1) {
+      const oldEntry = remainingRemoved[removedStart + index];
+      const newEntry = remainingAdded[addedStart + index];
+      if (oldEntry === undefined || newEntry === undefined) continue;
       consumedRemoved.add(oldEntry.candidate);
       consumedAdded.add(newEntry.candidate);
       if (newEntry.candidate.effectiveValue > oldEntry.candidate.effectiveValue) {
@@ -140,10 +137,8 @@ export function collectComparableViolations(
   for (const hunk of hunks) {
     const removed = removedEntries.filter((entry) => entry.hunk === hunk);
     const added = addedEntries.filter((entry) => entry.hunk === hunk);
-    pairByKey(removed, added, normalizedLabel);
     pairByKey(removed, added, (candidate) => candidate.identity);
   }
-  pairByKey(removedEntries, addedEntries, normalizedLabel);
   pairByKey(removedEntries, addedEntries, (candidate) => candidate.identity);
 
   for (const { candidate: newCandidate, hunk } of addedEntries) {
@@ -174,7 +169,7 @@ export function collectComparableViolations(
     });
   }
 
-  return violations.toSorted(
+  return violations.sort(
     (left, right) =>
       (candidateOrder.get(left.new) ?? Number.MAX_SAFE_INTEGER) -
       (candidateOrder.get(right.new) ?? Number.MAX_SAFE_INTEGER),

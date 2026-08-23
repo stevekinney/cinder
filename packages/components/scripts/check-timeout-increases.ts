@@ -7,6 +7,11 @@ import {
   parseHunkStart,
   readDiffInput,
 } from './check-timeout-increase-comparison';
+import {
+  findBunTestTimeoutArguments,
+  NUMERIC_EXPRESSION_PATTERN,
+  parseNumericLiteral,
+} from './check-timeout-increase-numeric';
 import { extractTopLevelQuotedStrings, stripQuotedText } from './check-timeout-increase-strings';
 import type {
   DiffHunk,
@@ -17,8 +22,6 @@ import type {
 
 export type { TimeoutIncreaseViolation } from './check-timeout-increase-types';
 export { formatTimeoutIncreaseViolations };
-
-const NUMERIC_EXPRESSION_PATTERN = String.raw`\d[\d_]*(?:\.\d[\d_]*)?(?:\s*[*/+-]\s*\d[\d_]*(?:\.\d[\d_]*)?)*`;
 
 function isCommentOnlyLine(line: string): boolean {
   const trimmed = line.trim();
@@ -73,30 +76,14 @@ function sourceLineForAnalysis(filePath: string, line: string): string {
   return line;
 }
 
-function parseNumericLiteral(literal: string): number {
-  const normalized = literal.replaceAll('_', '').replace(/\s+/gu, '');
-  const tokens = normalized.match(/\d+(?:\.\d+)?|[*/+-]/gu);
-  if (tokens === null || tokens.join('') !== normalized) return Number.NaN;
-  let index = 0;
-  const readTerm = (): number => {
-    let value = Number(tokens[index]);
-    index += 1;
-    while (tokens[index] === '*' || tokens[index] === '/') {
-      const operator = tokens[index];
-      const operand = Number(tokens[index + 1]);
-      index += 2;
-      value = operator === '*' ? value * operand : value / operand;
-    }
-    return value;
-  };
-  let value = readTerm();
-  while (tokens[index] === '+' || tokens[index] === '-') {
-    const operator = tokens[index];
-    index += 1;
-    const operand = readTerm();
-    value = operator === '+' ? value + operand : value - operand;
+function isExecutableCliArgumentLine(line: string, argument: string): boolean {
+  for (const quotedArgument of [`'${argument}'`, `"${argument}"`]) {
+    const argumentIndex = line.indexOf(quotedArgument);
+    if (argumentIndex === -1) continue;
+    const prefix = line.slice(0, argumentIndex).trimEnd();
+    if (prefix.length === 0 || prefix.endsWith('[') || prefix.endsWith(',')) return true;
   }
-  return index === tokens.length ? value : Number.NaN;
+  return false;
 }
 
 function normalizeKind(label: string): ThresholdKind {
@@ -105,6 +92,28 @@ function normalizeKind(label: string): ThresholdKind {
   if (normalized.includes('slow')) return 'slow';
   if (normalized.includes('retr')) return 'retries';
   return 'timeout';
+}
+
+const GENERIC_THRESHOLD_LABELS = new Set([
+  'bun-test-timeout',
+  'deadline',
+  'retries',
+  'retry',
+  'setdefaulttimeout',
+  'settimeout',
+  'slow',
+  'test-timeout',
+  'testtimeout',
+  'timeout',
+  'timeout-minutes',
+  'waitfortimeout',
+]);
+
+function thresholdIdentity(label: string): string {
+  const normalizedLabel = label.toLowerCase();
+  return GENERIC_THRESHOLD_LABELS.has(normalizedLabel)
+    ? normalizeKind(label)
+    : `${normalizeKind(label)}:${normalizedLabel}`;
 }
 
 function implicitBaselineFor(
@@ -161,7 +170,7 @@ function pushCandidate(
           baselineValue: candidateBaseline.value,
         }),
     kind: normalizeKind(label),
-    identity: normalizeKind(label),
+    identity: thresholdIdentity(label),
     label,
     effectiveValue,
     value,
@@ -234,6 +243,7 @@ function extractThresholdCandidates(
     'giu',
   );
   for (const argument of extractTopLevelQuotedStrings(line)) {
+    if (!isExecutableCliArgumentLine(line, argument)) continue;
     const match = quotedCliArgumentPattern.exec(argument);
     if (match !== null) {
       const label = match.groups?.['label'] ?? '';
@@ -339,23 +349,40 @@ function extractMultilineCallCandidates(
     }
   }
 
-  if (/(?:^|\/)[^/]+\.(?:spec|test)\.[^/]+$/u.test(filePath)) {
-    const bunTestPattern = new RegExp(
-      String.raw`\b(?:it|test)(?:\.[A-Za-z_$][\w$]*)*\s*\([\s\S]*?\},\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})\s*\)\s*;`,
-      'gu',
-    );
-    for (const match of analysis.matchAll(bunTestPattern)) {
-      const renderedValue = match.groups?.['value'];
-      if (renderedValue === undefined) continue;
-      const valueOffset = match[0].lastIndexOf(renderedValue);
-      const sourceIndex =
-        analysis.slice(0, (match.index ?? 0) + valueOffset).split('\n').length - 1;
+  const retryConfigurationPattern =
+    /\btest\.describe\.configure\s*\(\s*\{(?<body>[\s\S]*?)\}\s*\)/gu;
+  const retryAssignmentPattern = new RegExp(
+    String.raw`\b(?<label>retries|retry)\b\s*:\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
+    'giu',
+  );
+  for (const configurationMatch of analysis.matchAll(retryConfigurationPattern)) {
+    const body = configurationMatch.groups?.['body'] ?? '';
+    for (const retryMatch of body.matchAll(retryAssignmentPattern)) {
+      const label = retryMatch.groups?.['label'] ?? '';
+      const relativeOffset = configurationMatch[0].indexOf(body) + (retryMatch.index ?? 0);
+      if (!configurationMatch[0].slice(0, relativeOffset).includes('\n')) continue;
+      const absoluteOffset = (configurationMatch.index ?? 0) + relativeOffset;
+      const sourceIndex = analysis.slice(0, absoluteOffset).split('\n').length - 1;
       pushCandidate(
         candidates,
-        source[sourceIndex]?.line ?? match[0],
+        source[sourceIndex]?.line ?? retryMatch[0],
+        source[sourceIndex]?.lineNumber ?? 0,
+        label,
+        retryMatch.groups?.['value'],
+        implicitBaselineFor(label, retryMatch[0]),
+      );
+    }
+  }
+
+  if (/(?:^|\/)[^/]+\.(?:spec|test)\.[^/]+$/u.test(filePath)) {
+    for (const timeoutArgument of findBunTestTimeoutArguments(analysis)) {
+      const sourceIndex = analysis.slice(0, timeoutArgument.offset).split('\n').length - 1;
+      pushCandidate(
+        candidates,
+        source[sourceIndex]?.line ?? timeoutArgument.renderedValue,
         source[sourceIndex]?.lineNumber ?? 0,
         'bun-test-timeout',
-        renderedValue,
+        timeoutArgument.renderedValue,
       );
     }
   }

@@ -213,6 +213,18 @@ describe('check-timeout-increases', () => {
     expect(violations).toHaveLength(1);
   });
 
+  test('keeps distinct named threshold identities separate', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/scripts/readiness.ts',
+        ['const FIRST_TIMEOUT_MS = 5_000;'],
+        ['const SECOND_TIMEOUT_MS = 10_000;'],
+      ),
+    );
+
+    expect(violations).toEqual([]);
+  });
+
   test('ignores retry-shaped domain data outside test configuration', () => {
     const violations = findTimeoutIncreaseViolations(
       diffFor(
@@ -240,6 +252,30 @@ describe('check-timeout-increases', () => {
         'packages/components/src/convention.test.ts',
         ["test('old', () => {", '  expect(true).toBe(true);', '}, 30_000);'],
         ["test('old', () => {", '  expect(true).toBe(true);', '}, 60_000);'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+  });
+
+  test('checks Bun test timeouts after function-reference callbacks', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/src/convention.test.ts',
+        ["test('old', handler, 5_000);"],
+        ["test('old', handler, 10_000);"],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+  });
+
+  test('checks retries inside multiline Playwright configuration', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/testing/example.test.ts',
+        ['test.describe.configure({', '  retries: 1,', '});'],
+        ['test.describe.configure({', '  retries: 2,', '});'],
       ),
     );
 
@@ -337,6 +373,12 @@ describe('check-timeout-increases', () => {
     expect(findTimeoutIncreaseViolations(diff)).toEqual([]);
   });
 
+  test('ignores standalone CLI-shaped prose strings', () => {
+    const diff = diffFor('packages/components/src/usage.ts', [], ["const usage = '--retries=2';"]);
+
+    expect(findTimeoutIncreaseViolations(diff)).toEqual([]);
+  });
+
   test('evaluates complete constant numeric timeout expressions', () => {
     const violations = findTimeoutIncreaseViolations(
       diffFor(
@@ -349,6 +391,32 @@ describe('check-timeout-increases', () => {
     expect(violations).toHaveLength(1);
     expect(violations[0]?.old.value).toBe(120_000);
     expect(violations[0]?.new.value).toBe(180_000);
+  });
+
+  test('evaluates parenthesized constant numeric timeout expressions', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/src/button/button.test.ts',
+        ['test.setTimeout(60_000 * (1 + 1));'],
+        ['test.setTimeout(60_000 * (1 + 2));'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.old.value).toBe(120_000);
+    expect(violations[0]?.new.value).toBe(180_000);
+  });
+
+  test('does not manufacture increases when multiple thresholds decrease', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/src/button/button.test.ts',
+        ['test.setTimeout(5_000);', 'test.setTimeout(10_000);'],
+        ['test.setTimeout(4_000);', 'test.setTimeout(9_000);'],
+      ),
+    );
+
+    expect(violations).toEqual([]);
   });
 
   test('does not confuse unrelated trailing call arguments with Bun test timeouts', () => {
