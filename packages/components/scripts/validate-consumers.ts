@@ -1212,9 +1212,10 @@ export const SVELTEKIT_HYDRATION_ROUTES = [
 const SVELTEKIT_DEV_SSR_READINESS_TIMEOUT_MS = 25_000;
 const SVELTEKIT_DEV_SSR_POLL_INTERVAL_MS = 200;
 const DEVELOPMENT_SERVER_TEARDOWN_TIMEOUT_MS = 5_000;
-const HYDRATION_ROUTE_DIAGNOSTIC_MAX_ITEMS = 8;
+const HYDRATION_ROUTE_DIAGNOSTIC_MAX_ITEMS = 2;
 const HYDRATION_ROUTE_DIAGNOSTIC_ITEM_CHARS = 600;
 const HYDRATION_ROUTE_DIAGNOSTIC_MAX_CHARS = 6_000;
+const HYDRATION_ROUTE_DIAGNOSTIC_CAPTURE_TIMEOUT_MS = 500;
 
 type DevelopmentServerProcess = Pick<Bun.Subprocess, 'exitCode' | 'exited' | 'pid'>;
 type DevelopmentServerSignal = 'SIGTERM' | 'SIGKILL';
@@ -2733,14 +2734,18 @@ async function captureSvelteKitHydrationRouteFailureSnapshot(
   snapshot.browserEvents = [...options.browserEvents];
 
   try {
-    const documentState = await page.evaluate((markerAttribute) => {
-      const markerElement = document.querySelector(`[${markerAttribute}]`);
-      return {
-        documentReadyState: document.readyState,
-        hydrationMarkerPresent: markerElement !== null,
-        hydrationMarkerValue: markerElement?.getAttribute(markerAttribute) ?? null,
-      };
-    }, marker.attribute);
+    const documentState = await promiseWithTimeout(
+      page.evaluate((markerAttribute) => {
+        const markerElement = document.querySelector(`[${markerAttribute}]`);
+        return {
+          documentReadyState: document.readyState,
+          hydrationMarkerPresent: markerElement !== null,
+          hydrationMarkerValue: markerElement?.getAttribute(markerAttribute) ?? null,
+        };
+      }, marker.attribute),
+      HYDRATION_ROUTE_DIAGNOSTIC_CAPTURE_TIMEOUT_MS,
+      `hydration diagnostic capture route=${options.routePath}`,
+    );
     snapshot.documentReadyState = documentState.documentReadyState;
     snapshot.hydrationMarkerPresent = documentState.hydrationMarkerPresent;
     snapshot.hydrationMarkerValue = documentState.hydrationMarkerValue;
@@ -2757,7 +2762,10 @@ function errorMessage(error: unknown): string {
 
 function truncateDiagnosticText(text: string, limit: number): string {
   if (text.length <= limit) return text;
-  return `${text.slice(0, limit)}... (${text.length - limit} char(s) omitted)`;
+  const omitted = text.length - limit;
+  const suffix = `... (${omitted} char(s) omitted)`;
+  if (suffix.length >= limit) return suffix.slice(0, limit);
+  return `${text.slice(0, limit - suffix.length)}${suffix}`;
 }
 
 function formatDiagnosticList(label: string, values: readonly string[]): string {
@@ -2784,7 +2792,7 @@ export function formatSvelteKitHydrationRouteFailure(
     ...(snapshot.diagnosticCaptureError === undefined
       ? []
       : [`diagnosticCaptureError: ${snapshot.diagnosticCaptureError}`]),
-    formatDiagnosticList('non-2xx responses', snapshot.nonOkResponses),
+    formatDiagnosticList('HTTP error responses', snapshot.nonOkResponses),
     formatDiagnosticList('request failures', snapshot.requestFailures),
     formatDiagnosticList('page and console errors', snapshot.runtimeErrors),
     formatDiagnosticList('browser events', snapshot.browserEvents),

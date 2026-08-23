@@ -7,6 +7,7 @@ type ThresholdKind = 'timeout' | 'timeout-minutes' | 'retries' | 'slow';
 
 type ThresholdCandidate = {
   kind: ThresholdKind;
+  identity: string;
   label: string;
   value: number;
   renderedValue: string;
@@ -92,6 +93,10 @@ function pushCandidate(
   if (!Number.isFinite(value)) return;
   candidates.push({
     kind: normalizeKind(label),
+    identity: `${normalizeKind(label)}:${line
+      .trim()
+      .toLowerCase()
+      .replace(/\d[\d_]*(?:\.\d[\d_]*)?/gu, '<threshold>')}`,
     label,
     value,
     renderedValue,
@@ -140,9 +145,14 @@ function extractThresholdCandidates(line: string, lineNumber: number): Threshold
     );
   }
 
+  const implicitSlowPattern = /\b(?<label>slow)\s*\(\s*\)/giu;
+  for (const match of line.matchAll(implicitSlowPattern)) {
+    pushCandidate(candidates, line, lineNumber, match.groups?.['label'] ?? '', '3');
+  }
+
   const seen = new Set<string>();
   return candidates.filter((candidate) => {
-    const key = `${candidate.kind}:${candidate.renderedValue}:${candidate.lineNumber}`;
+    const key = `${candidate.identity}:${candidate.renderedValue}:${candidate.lineNumber}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -162,11 +172,18 @@ function parseHunkStart(header: string): { oldLine: number; newLine: number } {
 
 function collectComparableViolations(hunk: DiffHunk): TimeoutIncreaseViolation[] {
   const violations: TimeoutIncreaseViolation[] = [];
-  const kinds: ThresholdKind[] = ['timeout', 'timeout-minutes', 'retries', 'slow'];
+  const identities = new Set([
+    ...hunk.removed.map((candidate) => candidate.identity),
+    ...hunk.added.map((candidate) => candidate.identity),
+  ]);
 
-  for (const kind of kinds) {
-    const removed = hunk.removed.filter((candidate) => candidate.kind === kind);
-    const added = hunk.added.filter((candidate) => candidate.kind === kind);
+  for (const identity of identities) {
+    const removed = hunk.removed
+      .filter((candidate) => candidate.identity === identity)
+      .toSorted((left, right) => right.value - left.value);
+    const added = hunk.added
+      .filter((candidate) => candidate.identity === identity)
+      .toSorted((left, right) => right.value - left.value);
     const comparableCount = Math.min(removed.length, added.length);
 
     for (let index = 0; index < comparableCount; index += 1) {
@@ -181,6 +198,21 @@ function collectComparableViolations(hunk: DiffHunk): TimeoutIncreaseViolation[]
           new: newCandidate,
         });
       }
+    }
+
+    if (!identity.includes('slow:test.slow()') && !identity.includes('slow:slow()')) continue;
+    for (const newCandidate of added.slice(removed.length)) {
+      violations.push({
+        filePath: hunk.filePath,
+        hunkHeader: hunk.hunkHeader,
+        old: {
+          ...newCandidate,
+          value: 1,
+          renderedValue: '1 (implicit normal timeout)',
+          line: 'test runs with the normal timeout (no test.slow())',
+        },
+        new: newCandidate,
+      });
     }
   }
 

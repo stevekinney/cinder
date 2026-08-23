@@ -80,6 +80,32 @@ describe('check-timeout-increases', () => {
     expect(findTimeoutIncreaseViolations(diff)).toEqual([]);
   });
 
+  test('matches settings instead of positions when thresholds are reordered or inserted', () => {
+    const reordered = diffFor(
+      'packages/components/src/button/button.test.ts',
+      ['await first.waitFor({ timeout: 5_000 });', 'await second.waitFor({ timeout: 10_000 });'],
+      ['await second.waitFor({ timeout: 10_000 });', 'await first.waitFor({ timeout: 5_000 });'],
+    );
+    const insertedBeforeIncrease = diffFor(
+      'packages/components/src/dialog/dialog.test.ts',
+      ['await dialog.waitFor({ timeout: 5_000 });'],
+      ['await setup.waitFor({ timeout: 1_000 });', 'await dialog.waitFor({ timeout: 10_000 });'],
+    );
+
+    expect(findTimeoutIncreaseViolations(reordered)).toEqual([]);
+    expect(findTimeoutIncreaseViolations(insertedBeforeIncrease)).toHaveLength(1);
+  });
+
+  test('rejects a newly added zero-argument test.slow()', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor('packages/components/src/button/button.test.ts', [], ['test.slow();']),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.old.renderedValue).toBe('1 (implicit normal timeout)');
+    expect(violations[0]?.new.renderedValue).toBe('3');
+  });
+
   test('ignores comments, unrelated numeric edits, and lockfile noise', () => {
     const diff = [
       diffFor(

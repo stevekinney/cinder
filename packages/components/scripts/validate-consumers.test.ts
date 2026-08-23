@@ -211,16 +211,32 @@ describe('SvelteKit hydration route failure diagnostics', () => {
       routePath: '/dev-ssr-tabs',
       snapshot: {
         ...snapshot,
+        nonOkResponses: Array.from(
+          { length: 20 },
+          (_, index) => `500 http://fixture.test/network-error-${index}-${'n'.repeat(800)}`,
+        ),
+        requestFailures: Array.from(
+          { length: 20 },
+          (_, index) => `request failure ${index} ${'r'.repeat(800)}`,
+        ),
         runtimeErrors: Array.from(
           { length: 20 },
           (_, index) => `runtime error ${index} ${'x'.repeat(800)}`,
         ),
+        browserEvents: Array.from(
+          { length: 20 },
+          (_, index) => `browser event ${index} ${'b'.repeat(800)}`,
+        ),
       },
     });
 
-    expect(message.length).toBeLessThanOrEqual(6_100);
+    expect(message.length).toBeLessThanOrEqual(6_000);
     expect(message).toContain('item(s) omitted');
     expect(message).toContain('char(s) omitted');
+    expect(message).toContain('HTTP error responses');
+    expect(message).toContain('request failures');
+    expect(message).toContain('page and console errors');
+    expect(message).toContain('browser events');
   });
 });
 
