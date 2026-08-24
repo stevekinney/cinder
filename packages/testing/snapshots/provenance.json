@@ -1,10 +1,9 @@
 {
   "schemaVersion": 1,
   "componentScope": [
-    "mega-menu",
-    "schedule-builder"
+    "grid"
   ],
-  "renderedSourceSha": "f6e84a206301c9e43798582b1aa86131ff6c0119",
+  "renderedSourceSha": "10d58e2e348daec541cce2f28ef2df21682bb03f",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
   "architecture": "x64",
