@@ -380,11 +380,28 @@ describe('check-prop-conventions component-name directory scan', () => {
     expect(violation?.shadowedComponent).toBe('statistic');
   });
 
-  test('enumerates real component directory names from the package tree', () => {
-    const names = existingComponentDirectoryNames();
-    expect(names.has('avatar')).toBe(true);
-    expect(names.has('avatar-group')).toBe(true);
-    expect(names.has('statistic-group')).toBe(true);
+  test('enumerates directory names from a given root, including one level into experimental/', () => {
+    // Hermetic: builds its own temporary component tree rather than asserting
+    // on which real components exist, so it never drifts when the real
+    // inventory changes. The adjacent "grandfathers tabs/tab" test below is
+    // what still exercises the real package tree.
+    const root = mkdtempSync(join(import.meta.dir, '..', 'src', 'components', '.tmp-dirscan-'));
+    try {
+      for (const name of ['widget', 'widget-group']) {
+        mkdirSync(join(root, name), { recursive: true });
+      }
+      mkdirSync(join(root, 'experimental', 'gadget'), { recursive: true });
+      writeFileSync(join(root, 'not-a-directory.ts'), '');
+
+      const names = existingComponentDirectoryNames(root);
+      expect(names.has('widget')).toBe(true);
+      expect(names.has('widget-group')).toBe(true);
+      expect(names.has('gadget')).toBe(true);
+      expect(names.has('experimental')).toBe(false);
+      expect(names.has('not-a-directory.ts')).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 
   test('flags a synthetic bare-plural directory pair scanned against each other', () => {

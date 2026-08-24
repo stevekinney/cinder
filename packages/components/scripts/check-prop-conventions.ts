@@ -664,11 +664,10 @@ export function collectComponentNameShadowViolations(
   const violations: ComponentNameShadowViolation[] = [];
   for (const name of existingNames) {
     if (GRANDFATHERED_COMPONENT_NAMES.has(name)) continue;
-    // A name never shadows itself: exclude it from the comparison set before
-    // checking whether its stripped form matches some OTHER existing name.
-    const others = new Set(existingNames);
-    others.delete(name);
-    const violation = checkComponentNameForBarePluralShadow(name, others);
+    // No self-exclusion needed: stripping a trailing `s` always shortens the
+    // name by one character, so `singular` can never equal `name` itself —
+    // `existingNames.has(singular)` can only ever match some OTHER entry.
+    const violation = checkComponentNameForBarePluralShadow(name, existingNames);
     if (violation) violations.push(violation);
   }
   return violations;
@@ -679,16 +678,24 @@ async function main() {
   const componentNameViolations = collectComponentNameShadowViolations();
 
   if (violations.length > 0 || componentNameViolations.length > 0) {
-    console.error(
-      [
-        `check-prop-conventions — prop API vocabulary violations. See ${documentationPath}.`,
-        ...violations.map(
-          (violation) =>
-            `${violation.filePath}:${violation.line}: ${violation.propName}: ${violation.message}`,
-        ),
-        ...componentNameViolations.map((violation) => violation.message),
-      ].join('\n'),
-    );
+    const sections = [
+      ...(violations.length > 0
+        ? [
+            `check-prop-conventions — prop API vocabulary violations. See ${documentationPath}.`,
+            ...violations.map(
+              (violation) =>
+                `${violation.filePath}:${violation.line}: ${violation.propName}: ${violation.message}`,
+            ),
+          ]
+        : []),
+      ...(componentNameViolations.length > 0
+        ? [
+            `check-prop-conventions — component-name violations. See ${documentationPath}.`,
+            ...componentNameViolations.map((violation) => violation.message),
+          ]
+        : []),
+    ];
+    console.error(sections.join('\n'));
     process.exit(1);
   }
 
