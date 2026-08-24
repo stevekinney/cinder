@@ -1256,6 +1256,21 @@ describe('check-timeout-increases', () => {
 
     expect(violations).toHaveLength(1);
     expect(violations[0]?.new.effectiveValue).toBe(Number.POSITIVE_INFINITY);
+    expect(violations[0]?.new.label).toBe('bun-spawn-timeout');
+  });
+
+  test('checks numeric bounds inside dynamic wait expressions', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'scripts/next.ts',
+        ['await Bun.sleep(500 + Math.floor(Math.random() * 500));'],
+        ['await Bun.sleep(500 + Math.floor(Math.random() * 5_000));'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.old.value).toBe(500);
+    expect(violations[0]?.new.value).toBe(5_000);
   });
 
   test('analyzes removed thresholds using the source path of a rename', () => {
@@ -1525,7 +1540,7 @@ describe('check-timeout-increases', () => {
     expect(violations).toEqual([]);
   });
 
-  test('compares new Playwright default timeout calls with the action default', () => {
+  test('treats new Playwright default timeout calls as finite bounds', () => {
     const violations = findTimeoutIncreaseViolations(
       diffFor(
         'packages/testing/tests/example.playwright.ts',
@@ -1534,8 +1549,7 @@ describe('check-timeout-increases', () => {
       ),
     );
 
-    expect(violations).toHaveLength(2);
-    expect(violations.every((violation) => violation.old.value === 30_000)).toBe(true);
+    expect(violations).toEqual([]);
   });
 
   test('compares direct TestInfo timeout calls with the test default', () => {
@@ -2343,6 +2357,20 @@ describe('check-timeout-increases', () => {
 
     expect(increase).toHaveLength(1);
     expect(increase[0]?.old.value).toBe(50);
+    expect(increase[0]?.new.label).toBe('testing-library-wait-interval');
+  });
+
+  test('treats removed Playwright page wait deadlines as unbounded', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/testing/tests/example.playwright.ts',
+        ["await page.waitForSelector('#app', { timeout: 20_000 });"],
+        ["await page.waitForSelector('#app');"],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.new.effectiveValue).toBe(Number.POSITIVE_INFINITY);
   });
 
   test('uses the zero Playwright toPass timeout default', () => {

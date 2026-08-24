@@ -1,5 +1,7 @@
 export type ThresholdKind = 'timeout' | 'timeout-minutes' | 'retries' | 'slow';
 
+export type BunTestTimeoutArgument = { offset: number; renderedValue: string };
+
 export type ThresholdCandidate = {
   baselineRenderedValue?: string;
   baselineValue?: number;

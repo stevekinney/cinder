@@ -2,6 +2,7 @@ import { normalizeThresholdKind } from './check-timeout-increase-comparison';
 import {
   findCallArguments,
   NUMERIC_EXPRESSION_PATTERN,
+  NUMERIC_LITERAL_PATTERN,
   type WaitThresholdArgument,
 } from './check-timeout-increase-numeric';
 
@@ -38,6 +39,29 @@ function resolveNumericOption(
 
 export function findAdditionalWaitThresholdArguments(analysis: string): WaitThresholdArgument[] {
   const argumentsFound: WaitThresholdArgument[] = [];
+  for (const match of analysis.matchAll(/\bBun\.(?<method>sleep(?:Sync)?)\s*\(/gu)) {
+    const callArguments = findCallArguments(
+      analysis.slice(match.index),
+      /^Bun\.sleep(?:Sync)?\s*\(/gu,
+    )[0];
+    const argument = callArguments?.[0];
+    if (
+      argument === undefined ||
+      /\bMath\.(?:min|max)\s*\(/u.test(argument.text) ||
+      new RegExp(String.raw`^${NUMERIC_EXPRESSION_PATTERN}$`, 'u').test(argument.text)
+    )
+      continue;
+    for (const [occurrenceIndex, value] of [
+      ...argument.text.matchAll(new RegExp(NUMERIC_LITERAL_PATTERN, 'gu')),
+    ].entries()) {
+      argumentsFound.push({
+        label: match.groups?.['method'] === 'sleepSync' ? 'bun.sleepSync' : 'bun.sleep',
+        occurrenceIndex,
+        offset: (match.index ?? 0) + argument.offset + (value.index ?? 0),
+        renderedValue: value[0],
+      });
+    }
+  }
   for (const callArguments of findCallArguments(analysis, /\bBun\.spawn(?:Sync)?\s*\(/gu)) {
     for (const argument of callArguments) {
       const timeout = resolveNumericOption(analysis, argument.text, argument.offset, 'timeout');
@@ -45,7 +69,7 @@ export function findAdditionalWaitThresholdArguments(analysis: string): WaitThre
       argumentsFound.push({
         ...timeout,
         baseline: { renderedValue: 'unbounded (implicit Bun spawn timeout)', value: Infinity },
-        label: 'playwright-operation-timeout',
+        label: 'bun-spawn-timeout',
       });
     }
   }
@@ -59,7 +83,7 @@ export function findAdditionalWaitThresholdArguments(analysis: string): WaitThre
       argumentsFound.push({
         ...interval,
         baseline: { renderedValue: '50 (implicit Testing Library waitFor interval)', value: 50 },
-        label: 'playwright-operation-timeout',
+        label: 'testing-library-wait-interval',
       });
     }
   }
@@ -206,7 +230,10 @@ export function implicitBaselineFor(
     ['setdefaulttimeout', 'setdefaultnavigationtimeout'].includes(label.toLowerCase()) &&
     /\.\s*setDefault(?:Navigation)?Timeout\s*\(/u.test(line)
   ) {
-    return { renderedValue: '30_000 (implicit Playwright action timeout)', value: 30_000 };
+    return {
+      renderedValue: 'unbounded (implicit Playwright operation timeout disabled)',
+      value: Number.POSITIVE_INFINITY,
+    };
   }
   if (
     label.toLowerCase() === 'setdefaulttimeout' &&
@@ -228,7 +255,7 @@ export function implicitBaselineForMatch(
   const prefix = `${analysisBeforeLine}\n${analysisLine.slice(0, candidateOffset)}`;
   if (
     normalizeThresholdKind(label) === 'timeout' &&
-    /\.waitFor\s*\([\s\S]*\{[^}]*$/u.test(prefix)
+    /\.(?:waitFor|waitForSelector|waitForLoadState|waitForURL)\s*\([\s\S]*\{[^}]*$/u.test(prefix)
   ) {
     return {
       renderedValue: 'unbounded (implicit Playwright locator wait timeout)',
