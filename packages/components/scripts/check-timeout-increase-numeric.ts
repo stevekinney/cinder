@@ -1,15 +1,15 @@
 const NON_DECIMAL_NUMERIC_LITERAL_PATTERN = String.raw`(?:0[xX][\dA-Fa-f][\dA-Fa-f_]*|0[bB][01][01_]*|0[oO][0-7][0-7_]*)`;
 const DECIMAL_NUMERIC_LITERAL_PATTERN = String.raw`\d[\d_]*(?:\.\d[\d_]*)?(?:[eE][+-]?\d[\d_]*)?`;
 const NUMERIC_LITERAL_PATTERN = String.raw`(?:${NON_DECIMAL_NUMERIC_LITERAL_PATTERN}|${DECIMAL_NUMERIC_LITERAL_PATTERN})`;
-const FLAT_NUMERIC_EXPRESSION_PATTERN = String.raw`${NUMERIC_LITERAL_PATTERN}(?:\s*[*/+-]\s*${NUMERIC_LITERAL_PATTERN})*`;
+const FLAT_NUMERIC_EXPRESSION_PATTERN = String.raw`${NUMERIC_LITERAL_PATTERN}(?:\s*(?:\*\*|[*/+-])\s*${NUMERIC_LITERAL_PATTERN})*`;
 const NUMERIC_ATOM_PATTERN = String.raw`(?:${NUMERIC_LITERAL_PATTERN}|\(\s*${FLAT_NUMERIC_EXPRESSION_PATTERN}\s*\))`;
 
-export const NUMERIC_EXPRESSION_PATTERN = String.raw`${NUMERIC_ATOM_PATTERN}(?:\s*[*/+-]\s*${NUMERIC_ATOM_PATTERN})*`;
+export const NUMERIC_EXPRESSION_PATTERN = String.raw`${NUMERIC_ATOM_PATTERN}(?:\s*(?:\*\*|[*/+-])\s*${NUMERIC_ATOM_PATTERN})*`;
 
 export function parseNumericLiteral(literal: string): number {
   const normalized = literal.replaceAll('_', '').replace(/\s+/gu, '');
   const tokens = normalized.match(
-    /0[xX][\dA-Fa-f]+|0[bB][01]+|0[oO][0-7]+|\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|[()*/+-]/gu,
+    /0[xX][\dA-Fa-f]+|0[bB][01]+|0[oO][0-7]+|\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|\*\*|[()*/+-]/gu,
   );
   if (tokens === null || tokens.join('') !== normalized) return Number.NaN;
   let index = 0;
@@ -27,11 +27,17 @@ export function parseNumericLiteral(literal: string): number {
     return value;
   };
   const readTerm = (): number => {
-    let value = readFactor();
+    const readPower = (): number => {
+      const value = readFactor();
+      if (tokens[index] !== '**') return value;
+      index += 1;
+      return value ** readPower();
+    };
+    let value = readPower();
     while (tokens[index] === '*' || tokens[index] === '/') {
       const operator = tokens[index];
       index += 1;
-      const operand = readFactor();
+      const operand = readPower();
       value = operator === '*' ? value * operand : value / operand;
     }
     return value;

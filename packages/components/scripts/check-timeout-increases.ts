@@ -99,7 +99,7 @@ function extractThresholdCandidates(
     `${analysisBeforeLine}\n${analysisLine}`,
   );
   const conditionalThresholdAssignmentPattern = new RegExp(
-    String.raw`\b(?<label>${BASIC_THRESHOLD_LABEL_PATTERN}|${NAMED_THRESHOLD_LABEL_PATTERN})\b\s*(?::\s*[^=;\n]+?=\s*|(?::|=)\s*)[^?;\n]+?\?\s*(?<consequent>${NUMERIC_EXPRESSION_PATTERN})\s*:\s*(?<alternate>${NUMERIC_EXPRESSION_PATTERN})`,
+    String.raw`\b(?<label>${BASIC_THRESHOLD_LABEL_PATTERN}|${NAMED_THRESHOLD_LABEL_PATTERN})\b\s*(?::\s*[^=;\n]+?=\s*|(?::|=)\s*)[^?;\n]+?\?\s*(?:(?<consequent>${NUMERIC_EXPRESSION_PATTERN})|[^:;\n]+?)\s*:\s*(?:(?<alternate>${NUMERIC_EXPRESSION_PATTERN})|[^;\n]+)`,
     'gu',
   );
   for (const match of analysisLine.matchAll(conditionalThresholdAssignmentPattern)) {
@@ -316,7 +316,7 @@ function extractMultilineCallCandidates(
   }
 
   const conditionalPattern = new RegExp(
-    String.raw`\b(?<label>${BASIC_THRESHOLD_LABEL_PATTERN}|${NAMED_THRESHOLD_LABEL_PATTERN})\b\s*(?::|=)\s*[^;]*?\?\s*(?<consequent>${NUMERIC_EXPRESSION_PATTERN})\s*:\s*(?<alternate>${NUMERIC_EXPRESSION_PATTERN})`,
+    String.raw`\b(?<label>${BASIC_THRESHOLD_LABEL_PATTERN}|${NAMED_THRESHOLD_LABEL_PATTERN})\b\s*(?::|=)\s*[^;]*?\?\s*(?:(?<consequent>${NUMERIC_EXPRESSION_PATTERN})|[^:;]+?)\s*:\s*(?:(?<alternate>${NUMERIC_EXPRESSION_PATTERN})|[^;]+)`,
     'giu',
   );
   for (const match of analysis.matchAll(conditionalPattern)) {

@@ -912,6 +912,20 @@ describe('check-timeout-increases', () => {
     expect(violations[0]?.new.value).toBe(180_000);
   });
 
+  test('evaluates exponentiation in constant numeric timeout expressions', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/scripts/check-startup.ts',
+        ['const STARTUP_TIMEOUT_MS = 2 ** 10;'],
+        ['const STARTUP_TIMEOUT_MS = 2 ** 11;'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.old.value).toBe(1_024);
+    expect(violations[0]?.new.value).toBe(2_048);
+  });
+
   test('evaluates parenthesized constant numeric timeout expressions', () => {
     const violations = findTimeoutIncreaseViolations(
       diffFor(
@@ -1674,6 +1688,18 @@ describe('check-timeout-increases', () => {
     expect(findTimeoutIncreaseViolations(diff)).toHaveLength(2);
   });
 
+  test('checks numeric fallbacks in workflow expressions', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        '.github/workflows/unit-tests.yaml',
+        ['timeout-minutes: ${{ vars.JOB_TIMEOUT || 10 }}'],
+        ['timeout-minutes: ${{ vars.JOB_TIMEOUT || 20 }}'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+  });
+
   test('checks newly added Playwright assertion timeouts against the framework default', () => {
     const violations = findTimeoutIncreaseViolations(
       diffFor(
@@ -1758,6 +1784,18 @@ describe('check-timeout-increases', () => {
     ].join('\n');
 
     expect(findTimeoutIncreaseViolations(diff)).toHaveLength(1);
+  });
+
+  test('checks a numeric threshold branch opposite a dynamic branch', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/scripts/triage-pull-requests.ts',
+        ['const maxAttempts = supplied !== undefined ? parseInt(supplied, 10) : 5;'],
+        ['const maxAttempts = supplied !== undefined ? parseInt(supplied, 10) : 10;'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
   });
 
   test('ignores bare timeout-shaped fixture data', () => {

@@ -258,7 +258,9 @@ export function sourceLineForAnalysis(filePath: string, line: string): string {
 
 export function normalizeWorkflowExpressions(filePath: string, analysis: string): string {
   if (!/^\.github\/workflows\/[^/]+\.ya?ml$/u.test(filePath)) return analysis;
-  return analysis.replace(/\$\{\{\s*(\d[\d_.]*)\s*\}\}/gu, '$1');
+  return analysis
+    .replace(/\$\{\{[^{}\n]*?(?:\|\||\?\?)\s*(?<fallback>\d[\d_.]*)\s*\}\}/gu, '$<fallback>')
+    .replace(/\$\{\{\s*(\d[\d_.]*)\s*\}\}/gu, '$1');
 }
 
 export function shellContinuationContext(analysisBeforeLine: string, line: string): string {
