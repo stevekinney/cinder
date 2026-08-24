@@ -14,6 +14,7 @@ import {
   diagnosticSnapshotFromValues,
   EXAMPLES_CONSUMER_READINESS_PATH,
   formatSvelteKitHydrationRouteFailure,
+  formatSvelteKitHydrationRuntimeErrors,
   isBrowserCrashError,
   observeSvelteKitHydrationMarker,
   parseHydrationBrowserProcessIds,
@@ -341,6 +342,17 @@ describe('SvelteKit hydration route failure diagnostics', () => {
     expect(message).toContain('request failures');
     expect(message).toContain('page and console errors');
     expect(message).toContain('browser events');
+  });
+
+  test('bounds the direct hydration runtime-error message', () => {
+    const message = formatSvelteKitHydrationRuntimeErrors('fixture', '/dev-ssr-tabs', {
+      omitted: 3,
+      values: Array.from({ length: 20 }, (_, index) => `runtime error ${index} ${'x'.repeat(800)}`),
+    });
+
+    expect(message.length).toBeLessThanOrEqual(6_000);
+    expect(message).toContain('char(s) omitted');
+    expect(message).toContain('21 additional collected item(s) omitted');
   });
 
   test('caps the cause without starving structured diagnostic categories', () => {

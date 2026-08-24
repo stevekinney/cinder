@@ -2592,14 +2592,8 @@ async function assertSvelteKitHydrationRoute(
     await assertSvelteKitHydrationRouteContent(page, errors, routePath, domObservation);
 
     if (errors.values.length > 0) {
-      const omittedLine =
-        errors.omitted > 0
-          ? `\n  ... (${errors.omitted} additional collected item(s) omitted)`
-          : '';
       fail(
-        `sveltekit-consumer ${label} ${routePath} emitted client hydration/runtime errors:\n${errors.values
-          .map((error) => `  ${error}`)
-          .join('\n')}${omittedLine}`,
+        formatSvelteKitHydrationRuntimeErrors(label, routePath, boundedDiagnosticSnapshot(errors)),
       );
     }
   } catch (error) {
@@ -2870,6 +2864,22 @@ function truncateDiagnosticText(text: string, limit: number): string {
   const suffix = `... (${omitted} char(s) omitted)`;
   if (suffix.length >= limit) return suffix.slice(0, limit);
   return `${text.slice(0, limit - suffix.length)}${suffix}`;
+}
+
+export function formatSvelteKitHydrationRuntimeErrors(
+  label: string,
+  routePath: string,
+  errors: BoundedDiagnosticSnapshot,
+): string {
+  const visible = errors.values.slice(0, HYDRATION_ROUTE_DIAGNOSTIC_MAX_ITEMS);
+  const omitted =
+    errors.omitted + Math.max(0, errors.values.length - HYDRATION_ROUTE_DIAGNOSTIC_MAX_ITEMS);
+  const omittedLine =
+    omitted > 0 ? `\n  ... (${omitted} additional collected item(s) omitted)` : '';
+  const message = `sveltekit-consumer ${label} ${routePath} emitted client hydration/runtime errors:\n${visible
+    .map((error) => `  ${truncateDiagnosticText(error, HYDRATION_ROUTE_DIAGNOSTIC_ITEM_CHARS)}`)
+    .join('\n')}${omittedLine}`;
+  return truncateDiagnosticText(message, HYDRATION_ROUTE_DIAGNOSTIC_MAX_CHARS);
 }
 
 function formatDiagnosticList(label: string, collection: BoundedDiagnosticSnapshot): string {
