@@ -2260,7 +2260,8 @@ async function launchHydrationChromium(): Promise<HydrationBrowser> {
 class SvelteKitHydrationRouteError extends Error {}
 
 export function isBrowserCrashError(error: unknown): boolean {
-  let originalCause = error instanceof SvelteKitHydrationRouteError ? error.cause : error;
+  let originalCause =
+    error instanceof SvelteKitHydrationRouteError ? (error.cause ?? error) : error;
   const seen = new Set<unknown>();
   while (originalCause instanceof Error && !seen.has(originalCause)) {
     if (

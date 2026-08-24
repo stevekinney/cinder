@@ -464,6 +464,17 @@ describe('SvelteKit hydration route failure diagnostics', () => {
 
     expect(isBrowserCrashError(browserCrash)).toBe(true);
   });
+
+  test('falls back to a wrapped browser crash when the cause is absent', () => {
+    const browserCrash = wrapSvelteKitHydrationRouteFailure({
+      cause: undefined,
+      label: 'Target closed',
+      routePath: '/dev-ssr-tabs',
+      snapshot,
+    });
+
+    expect(isBrowserCrashError(browserCrash)).toBe(true);
+  });
 });
 
 describe('development server teardown', () => {

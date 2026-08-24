@@ -348,7 +348,7 @@ function findMatchingDelimiter(
 function findPlaywrightOperationTimeoutArguments(analysis: string): WaitThresholdArgument[] {
   const argumentsFound: WaitThresholdArgument[] = [];
   const operationPattern =
-    /\b(?:page|locator|frame|elementHandle)\.(?:goto|click|dblclick|fill|press|hover|check|uncheck|selectOption|selectText|setInputFiles|focus|blur|tap|dragTo|dragAndDrop|screenshot)\s*\(/gu;
+    /\.(?:goto|click|dblclick|fill|press|hover|check|uncheck|selectOption|selectText|setInputFiles|focus|blur|tap|dragTo|dragAndDrop|screenshot)\s*\(/gu;
   for (const callArguments of findCallArguments(analysis, operationPattern)) {
     for (const argument of callArguments) {
       const timeoutMatch = new RegExp(

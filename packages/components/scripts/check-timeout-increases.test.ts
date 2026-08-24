@@ -111,6 +111,24 @@ describe('check-timeout-increases', () => {
     expect(violations).toHaveLength(3);
   });
 
+  test('checks aliased and chained Playwright operation timeout options', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/testing/tests/avatar-group-focus-rings.playwright.ts',
+        [
+          'await button.click({ timeout: 5_000 });',
+          "await page.getByRole('button').click({ timeout: 5_000 });",
+        ],
+        [
+          'await button.click({ timeout: 10_000 });',
+          "await page.getByRole('button').click({ timeout: 10_000 });",
+        ],
+      ),
+    );
+
+    expect(violations).toHaveLength(2);
+  });
+
   test('allows a newly added finite Playwright operation timeout', () => {
     const violations = findTimeoutIncreaseViolations(
       diffFor(
