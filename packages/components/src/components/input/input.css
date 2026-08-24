@@ -127,6 +127,24 @@
     tab-size: var(--cinder-type-tab-size);
   }
 
+  /* Duplicated on the field wrapper (not just the control above) for two
+   reasons: (1) when the FormField wrapper isn't rendered at all — no label,
+   description, or error and a FormField-context id — the control above is
+   the only thing on the page, so it must carry these on its own; (2) when
+   the wrapper IS rendered, these same declarations are also what the
+   inherit-lock rule's `font: inherit` below resolves against — without
+   them here, a future overlay <code> would inherit the wrapper's ordinary
+   (non-mono) metrics, not the code ones. font-family/size/line-height/
+   tab-size are all inherited properties, so the control above still gets
+   its own explicit values (this rule wins nothing away from it); this rule
+   exists for the wrapper and its potential <code> overlay descendants. */
+  .cinder-input-field[data-cinder-variant='code'] {
+    font-family: var(--cinder-font-mono);
+    font-size: var(--cinder-text-sm);
+    line-height: var(--cinder-leading-normal);
+    tab-size: var(--cinder-type-tab-size);
+  }
+
   /* Defensive: `<input>` is a void element and can't host a `<code>`
    descendant, so this can't target `.cinder-input` itself. Nothing renders
    a `<code>` inside the field wrapper today, but if a consumer ever

@@ -48,6 +48,18 @@ describe('Input rendering', () => {
     );
   });
 
+  test('code variant also applies the monospace metrics to the field wrapper, not just the control', async () => {
+    // The inherit-lock rule's `font: inherit` resolves against whatever the
+    // wrapper computes — without the metrics duplicated here, a future
+    // overlay <code> would inherit the wrapper's ordinary (sans) font
+    // instead of the code metrics.
+    const css = await Bun.file(new URL('./input.css', import.meta.url)).text();
+
+    expect(css).toMatch(
+      /\.cinder-input-field\[data-cinder-variant='code'\]\s*\{[^}]*font-family:\s*var\(--cinder-font-mono\);[^}]*font-size:\s*var\(--cinder-text-sm\);[^}]*line-height:\s*var\(--cinder-leading-normal\);[^}]*tab-size:\s*var\(--cinder-type-tab-size\);/,
+    );
+  });
+
   test('code variant locks any inner <code> element to the field metrics, excluding addon slots', async () => {
     // <input> is a void element and can never host a <code> descendant, so
     // the inherit-lock rule is scoped to the field wrapper, not .cinder-input.

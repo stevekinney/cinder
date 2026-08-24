@@ -144,6 +144,18 @@ describe('Textarea', () => {
     );
   });
 
+  test('code variant also applies the monospace metrics to the field wrapper, not just the control', async () => {
+    // The inherit-lock rule's `font: inherit` resolves against whatever the
+    // wrapper computes — without the metrics duplicated here, a future
+    // overlay <code> would inherit the wrapper's ordinary (sans) font
+    // instead of the code metrics.
+    const css = await Bun.file(new URL('./textarea.css', import.meta.url)).text();
+
+    expect(css).toMatch(
+      /\.cinder-textarea-field\[data-cinder-variant='code'\]\s*\{[^}]*font-family:\s*var\(--cinder-font-mono\);[^}]*font-size:\s*var\(--cinder-text-sm\);[^}]*line-height:\s*var\(--cinder-leading-normal\);[^}]*tab-size:\s*var\(--cinder-type-tab-size\);/,
+    );
+  });
+
   test('code variant locks any inner <code> element to the field metrics', async () => {
     // Text inside <textarea>...</textarea> is parsed as literal text, not
     // markup, so a real <code> descendant of .cinder-textarea is impossible;
