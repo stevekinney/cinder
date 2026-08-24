@@ -640,9 +640,45 @@ export function checkComponentNameForBarePluralShadow(
   };
 }
 
+/**
+ * Bare-plural component directory names that predate the *Group-vs-plural
+ * convention (docs/component-api-conventions.md § *Group versus plural
+ * component names) and are deliberately NOT renamed. `tabs` collects `Tab`
+ * (via the `Tabs.Trigger` namespace) and is a genuine collection whose bare
+ * plural shipped before the rule existed — grandfathered rather than flagged.
+ * Add a new name here only with an explicit, reviewed exception; the default
+ * for every future component is the shadow check below, with no allowlist.
+ */
+const GRANDFATHERED_COMPONENT_NAMES = new Set<string>(['tabs']);
+
+/**
+ * Scans every existing component directory name against every OTHER existing
+ * directory name, so a newly added bare-plural directory that shadows an
+ * existing singular component fails `check:prop-conventions` (and therefore
+ * `lint:invariants`) immediately — not only when a future new-component
+ * candidate is checked by hand.
+ */
+export function collectComponentNameShadowViolations(
+  existingNames: ReadonlySet<string> = existingComponentDirectoryNames(),
+): ComponentNameShadowViolation[] {
+  const violations: ComponentNameShadowViolation[] = [];
+  for (const name of existingNames) {
+    if (GRANDFATHERED_COMPONENT_NAMES.has(name)) continue;
+    // A name never shadows itself: exclude it from the comparison set before
+    // checking whether its stripped form matches some OTHER existing name.
+    const others = new Set(existingNames);
+    others.delete(name);
+    const violation = checkComponentNameForBarePluralShadow(name, others);
+    if (violation) violations.push(violation);
+  }
+  return violations;
+}
+
 async function main() {
   const violations = await scan();
-  if (violations.length > 0) {
+  const componentNameViolations = collectComponentNameShadowViolations();
+
+  if (violations.length > 0 || componentNameViolations.length > 0) {
     console.error(
       [
         `check-prop-conventions — prop API vocabulary violations. See ${documentationPath}.`,
@@ -650,6 +686,7 @@ async function main() {
           (violation) =>
             `${violation.filePath}:${violation.line}: ${violation.propName}: ${violation.message}`,
         ),
+        ...componentNameViolations.map((violation) => violation.message),
       ].join('\n'),
     );
     process.exit(1);

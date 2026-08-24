@@ -77,24 +77,37 @@ Do not abbreviate public prop or component names. Current banned forms:
 
 A `*Group` component name (`AvatarGroup`, `ButtonGroup`, `CheckboxGroup`,
 `DropdownGroup`, `RadioGroup`, `SideNavigationGroup`, `StatisticGroup`) is a
-curated collection of N instances of its matching singular component
-(`Avatar`, `Button`, `Checkbox`, `Dropdown`, `RadioItem`, `SideNavigation`,
-`Statistic`). What "grouping" means — shared accessible label, fieldset/legend
-semantics, a layout grid, or a collapsible bucket — varies per family and is
-documented in that component's `@purpose` metadata; `*Group` itself only
-promises the collection relationship, not a specific grouping mechanic.
+curated collection of N instances of its matching singular component:
+`AvatarGroup` collects `Avatar`, `ButtonGroup` collects `Button`,
+`CheckboxGroup` collects `Checkbox`, `DropdownGroup` collects `DropdownItem`
+rows, `SideNavigationGroup` collects `SideNavigationItem` entries, `RadioGroup`
+exposes `RadioGroup.Option` (backed by the internal, non-exported `_radio`
+implementation — there is no standalone public `Radio` component, since a lone
+radio outside a group is semantically meaningless), and `StatisticGroup`
+exposes `StatisticGroup.Statistic`. What "grouping" means — shared accessible
+label, fieldset/legend semantics, a layout grid, or a collapsible bucket —
+varies per family and is documented in that component's `@purpose` metadata;
+`*Group` itself only promises the collection relationship, not a specific
+grouping mechanic.
 
 A bare plural component name (no matching singular component composed inside
 it) is permitted only as a domain mass noun — a name for a kind of thing, not
 a container of named instances. It is never legal as a collection name: a new
 component that collects instances of an existing singular component must be
 named `<Singular>Group`, not a bare plural of that singular. `check:prop-conventions`
-enforces this mechanically: it enumerates existing component directory names
-and rejects a candidate new component name that, once stripped of a trailing
-`s`, matches an existing singular component's directory name.
+enforces this mechanically at `lint:invariants` time: it enumerates every
+existing component directory name and scans each one, stripped of a trailing
+`s`, against every other existing directory name, failing the gate the moment
+a bare-plural directory shadows an existing singular component.
 
-No existing component is renamed by this convention; it governs new component
-names going forward. See [`docs/decisions/group-vs-plural-naming.md`](./decisions/group-vs-plural-naming.md)
+`tabs` is the single grandfathered exception: it collects `Tab` (exposed as
+`Tabs.Trigger`) and shipped as a bare plural before this convention existed.
+It is explicitly allow-listed in `check-prop-conventions.ts`'s
+`GRANDFATHERED_COMPONENT_NAMES` rather than renamed or silently exempted by
+the checker. No other existing component name is renamed by this convention,
+and no other existing pair collides with the rule — every other current
+`*-group` name already fits the collection definition. See
+[`docs/decisions/group-vs-plural-naming.md`](./decisions/group-vs-plural-naming.md)
 for the decision record.
 
 ## Icons

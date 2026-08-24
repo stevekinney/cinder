@@ -4,6 +4,7 @@ import { join } from 'node:path';
 
 import {
   checkComponentNameForBarePluralShadow,
+  collectComponentNameShadowViolations,
   collectPropConventionViolations,
   collectResolvedSurfaceViolations,
   createPropsProgram,
@@ -384,5 +385,29 @@ describe('check-prop-conventions component-name directory scan', () => {
     expect(names.has('avatar')).toBe(true);
     expect(names.has('avatar-group')).toBe(true);
     expect(names.has('statistic-group')).toBe(true);
+  });
+
+  test('flags a synthetic bare-plural directory pair scanned against each other', () => {
+    // The regression case CIN-105 requires: a NEWLY ADDED bare-plural
+    // directory that shadows an existing singular must fail the gate, not
+    // just a hand-checked candidate. This drives collectComponentNameShadowViolations
+    // with a synthetic set so it never depends on which real components exist.
+    const violations = collectComponentNameShadowViolations(new Set(['widget', 'widgets']));
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.candidateName).toBe('widgets');
+    expect(violations[0]?.shadowedComponent).toBe('widget');
+  });
+
+  test('passes a synthetic set with no shadowing pair', () => {
+    expect(collectComponentNameShadowViolations(new Set(['widget', 'gadget']))).toEqual([]);
+  });
+
+  test('grandfathers tabs/tab and flags no other pair on the real component tree', () => {
+    // tabs collects Tab (via Tabs.Trigger) and predates the convention; it
+    // must not fail the gate. This runs against the REAL directory tree, so
+    // it also proves no other existing pair collides — if a new component
+    // were ever added that shadowed an existing singular, this test would
+    // fail alongside `bun run check:prop-conventions`.
+    expect(collectComponentNameShadowViolations()).toEqual([]);
   });
 });
