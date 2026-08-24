@@ -175,6 +175,13 @@ export function isTestThresholdAssignment(
 ): boolean {
   const normalizedLabel = label.toLowerCase();
   if (normalizedLabel === 'timeout-minutes') return true;
+  if (normalizedLabel === 'retry' || normalizedLabel === 'retries') {
+    return (
+      /(?:^|\/)(?:jest|playwright|vitest)\.config\.[^/]+$/u.test(filePath) ||
+      /^\.github\/workflows\/[^/]+\.ya?ml$/u.test(filePath) ||
+      /\btest\.describe\.configure\s*\(/u.test(analysis)
+    );
+  }
   return isTestOrValidationInfrastructure(filePath, analysis);
 }
 

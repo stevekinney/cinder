@@ -12,7 +12,7 @@ function playwrightConfigurationDomain(
 ): PlaywrightConfigurationDomain | undefined {
   if (!/(?:^|\/)playwright\.config\.[^/]+$/u.test(filePath)) return undefined;
   const prefix = `${analysisBeforeLine}\n${analysisLine.slice(0, candidateOffset)}`;
-  const propertyObjects = [...prefix.matchAll(/\b(?<name>[A-Za-z_$][\w$]*)\s*:\s*\{/gu)];
+  const propertyObjects = [...prefix.matchAll(/\b(?<name>[A-Za-z_$][\w$]*)\s*:\s*(?:\[\s*)?\{/gu)];
   for (const propertyObject of propertyObjects.toReversed()) {
     if (propertyObject.index === undefined) continue;
     let braceDepth = 0;
@@ -43,6 +43,12 @@ export function implicitBaselineFor(
   }
   if (kind === 'retries') return { renderedValue: '0 (implicit default retries)', value: 0 };
   if (kind === 'slow') return { renderedValue: '1 (implicit normal timeout)', value: 1 };
+  if (
+    label.toLowerCase() === 'testtimeout' &&
+    /(?:^|\/)(?:jest|vitest)\.config\.[^/]+$/u.test(filePath)
+  ) {
+    return { renderedValue: '5_000 (implicit test runner timeout)', value: 5_000 };
+  }
   if (configurationDomain === 'expect') {
     return { renderedValue: '5_000 (implicit Playwright expect timeout)', value: 5_000 };
   }
@@ -58,7 +64,7 @@ export function implicitBaselineFor(
   if (kind === 'timeout' && /\bbun\s+test(?:\s|$)/u.test(line)) {
     return { renderedValue: '5_000 (implicit Bun test timeout)', value: 5_000 };
   }
-  if (label.toLowerCase() === 'settimeout' && /\btest\.setTimeout\s*\(/u.test(line)) {
+  if (label.toLowerCase() === 'settimeout' && /\b(?:test|testInfo)\.setTimeout\s*\(/u.test(line)) {
     return { renderedValue: '30_000 (implicit Playwright test timeout)', value: 30_000 };
   }
   if (

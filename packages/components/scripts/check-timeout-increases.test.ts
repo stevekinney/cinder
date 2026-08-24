@@ -1006,6 +1006,18 @@ describe('check-timeout-increases', () => {
     expect(increase[0]?.old.value).toBe(60_000);
   });
 
+  test('uses the Playwright web server default for array-form configurations', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/testing/playwright.config.ts',
+        [],
+        ['export default { webServer: [{ timeout: 45_000 }] };'],
+      ),
+    );
+
+    expect(violations).toEqual([]);
+  });
+
   test('compares new Playwright default timeout calls with the action default', () => {
     const violations = findTimeoutIncreaseViolations(
       diffFor(
@@ -1017,6 +1029,31 @@ describe('check-timeout-increases', () => {
 
     expect(violations).toHaveLength(2);
     expect(violations.every((violation) => violation.old.value === 30_000)).toBe(true);
+  });
+
+  test('compares direct TestInfo timeout calls with the test default', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor('packages/testing/tests/example.playwright.ts', [], ['testInfo.setTimeout(60_000);']),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.old.value).toBe(30_000);
+  });
+
+  test('compares Jest and Vitest testTimeout settings with runner defaults', () => {
+    const violations = findTimeoutIncreaseViolations(
+      [
+        diffFor('packages/testing/jest.config.ts', [], ['export default { testTimeout: 10_000 };']),
+        diffFor(
+          'packages/testing/vitest.config.ts',
+          [],
+          ['export default { testTimeout: 10_000 };'],
+        ),
+      ].join('\n'),
+    );
+
+    expect(violations).toHaveLength(2);
+    expect(violations.every((violation) => violation.old.value === 5_000)).toBe(true);
   });
 
   test('checks numeric bounds on polling retry loops', () => {
@@ -1079,6 +1116,18 @@ describe('check-timeout-increases', () => {
     );
 
     expect(violations).toHaveLength(1);
+  });
+
+  test('ignores application-data retry fields inside test fixtures', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/src/approval-card/approval-card.test.ts',
+        ['const argsPreview = { dryRun: false, retries: 1 };'],
+        ['const argsPreview = { dryRun: false, retries: 2 };'],
+      ),
+    );
+
+    expect(violations).toEqual([]);
   });
 
   test('ignores unrelated bare slow calls in tests', () => {

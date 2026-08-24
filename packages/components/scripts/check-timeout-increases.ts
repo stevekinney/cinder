@@ -83,13 +83,14 @@ function extractThresholdCandidates(
   if (analysisLine.trim().length === 0) return [];
 
   const candidates: ThresholdCandidate[] = [];
+  const assignmentAnalysis = `${analysisBeforeLine}\n${analysisLine}`;
   const conditionalThresholdAssignmentPattern = new RegExp(
     String.raw`\b(?<label>${BASIC_THRESHOLD_LABEL_PATTERN}|${NAMED_THRESHOLD_LABEL_PATTERN})\b\s*(?::\s*[^=;\n]+?=\s*|(?::|=)\s*)[^?;\n]+?\?\s*(?<consequent>${NUMERIC_EXPRESSION_PATTERN})\s*:\s*(?<alternate>${NUMERIC_EXPRESSION_PATTERN})`,
     'gu',
   );
   for (const match of analysisLine.matchAll(conditionalThresholdAssignmentPattern)) {
     const label = match.groups?.['label'] ?? '';
-    if (!isTestThresholdAssignment(filePath, analysisLine, label)) continue;
+    if (!isTestThresholdAssignment(filePath, assignmentAnalysis, label)) continue;
     for (const [occurrenceIndex, groupName] of ['consequent', 'alternate'].entries()) {
       pushCandidate(
         candidates,
@@ -115,7 +116,7 @@ function extractThresholdCandidates(
   );
   for (const match of analysisLine.matchAll(thresholdAssignmentPattern)) {
     const label = match.groups?.['label'] ?? '';
-    if (!isTestThresholdAssignment(filePath, analysisLine, label)) continue;
+    if (!isTestThresholdAssignment(filePath, assignmentAnalysis, label)) continue;
     pushCandidate(
       candidates,
       line,
@@ -139,7 +140,7 @@ function extractThresholdCandidates(
   );
   for (const match of analysisLine.matchAll(namedThresholdAssignmentPattern)) {
     const label = match.groups?.['label'] ?? '';
-    if (!isTestThresholdAssignment(filePath, analysisLine, label)) continue;
+    if (!isTestThresholdAssignment(filePath, assignmentAnalysis, label)) continue;
     pushCandidate(
       candidates,
       line,
