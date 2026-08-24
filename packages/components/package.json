@@ -3653,6 +3653,10 @@
       "import": "./src/components/pricing-card/pricing-card.examples.json",
       "default": "./src/components/pricing-card/pricing-card.examples.json"
     },
+    "./pricing-card/constraints": {
+      "import": "./src/components/pricing-card/pricing-card.constraints.json",
+      "default": "./src/components/pricing-card/pricing-card.constraints.json"
+    },
     "./progress": {
       "types": "./dist/components/progress/index.d.ts",
       "browser": "./src/components/progress/index.ts",

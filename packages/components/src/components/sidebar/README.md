@@ -2,6 +2,8 @@
 
 Persistent side panel that houses navigation, filters, or supplementary page content.
 
+See the [SideNavigation versus Sidebar decision](https://github.com/stevekinney/cinder/blob/main/docs/decisions/side-navigation-vs-sidebar.md) for the boundary between the responsive shell here and the accessibility-focused nav landmark in SideNavigation.
+
 ## Usage
 
 ```svelte
