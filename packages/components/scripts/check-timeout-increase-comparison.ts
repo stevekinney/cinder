@@ -42,9 +42,11 @@ type CandidateEntry = { candidate: ThresholdCandidate; hunk: DiffHunk };
 const GENERIC_THRESHOLD_LABELS = new Set([
   'bun-test-timeout',
   'attempt',
+  'attempts',
   'deadline',
   'retries',
   'retry',
+  'repeateach',
   'rerun-each',
   'setdefaulttimeout',
   'setdefaultnavigationtimeout',

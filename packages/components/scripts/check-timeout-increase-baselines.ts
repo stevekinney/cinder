@@ -2,7 +2,7 @@ import { normalizeThresholdKind } from './check-timeout-increase-comparison';
 
 export type ThresholdBaseline = { renderedValue: string; value: number };
 
-type PlaywrightConfigurationDomain = 'expect' | 'nested' | 'top-level' | 'webServer';
+type PlaywrightConfigurationDomain = 'expect' | 'nested' | 'project' | 'top-level' | 'webServer';
 
 function playwrightConfigurationDomain(
   filePath: string,
@@ -25,6 +25,7 @@ function playwrightConfigurationDomain(
     if (braceDepth <= 0) continue;
     const name = propertyObject.groups?.['name'];
     if (name === 'expect' || name === 'webServer') return name;
+    if (name === 'projects') return 'project';
     return 'nested';
   }
   return 'top-level';
@@ -46,6 +47,12 @@ export function implicitBaselineFor(
   if (kind === 'timeout' && /(?:^|\/)bunfig\.toml$/u.test(filePath)) {
     return { renderedValue: '5_000 (implicit Bun test timeout)', value: 5_000 };
   }
+  if (
+    label.toLowerCase() === 'repeateach' &&
+    /(?:^|\/)playwright\.config\.[^/]+$/u.test(filePath)
+  ) {
+    return { renderedValue: '1 (implicit Playwright repeatEach)', value: 1 };
+  }
   if (kind === 'retries') return { renderedValue: '0 (implicit default retries)', value: 0 };
   if (kind === 'slow') return { renderedValue: '1 (implicit normal timeout)', value: 1 };
   if (
@@ -61,8 +68,19 @@ export function implicitBaselineFor(
     return { renderedValue: '60_000 (implicit Playwright web server timeout)', value: 60_000 };
   }
   if (
+    label.toLowerCase() === 'globaltimeout' &&
+    /(?:^|\/)playwright\.config\.[^/]+$/u.test(filePath)
+  ) {
+    return {
+      renderedValue: '0 (implicit Playwright global timeout disabled)',
+      value: Number.POSITIVE_INFINITY,
+    };
+  }
+  if (
     kind === 'timeout' &&
-    (configurationDomain === 'top-level' || /\btest\.describe\.configure\s*\(/u.test(line))
+    (configurationDomain === 'top-level' ||
+      configurationDomain === 'project' ||
+      /\btest\.describe\.configure\s*\(/u.test(line))
   ) {
     return { renderedValue: '30_000 (implicit Playwright test timeout)', value: 30_000 };
   }
@@ -95,11 +113,16 @@ export function implicitBaselineForMatch(
   analysisLine: string,
   candidateOffset: number,
 ): ThresholdBaseline | undefined {
+  const prefix = `${analysisBeforeLine}\n${analysisLine.slice(0, candidateOffset)}`;
   if (
     normalizeThresholdKind(label) === 'timeout' &&
-    /\bexpect(?:\.(?:configure|poll))?\s*\(/u.test(
-      `${analysisBeforeLine}\n${analysisLine.slice(0, candidateOffset)}`,
-    )
+    /(?:^|[^\w$.])waitFor\s*\([\s\S]*,\s*\{[^}]*$/u.test(prefix)
+  ) {
+    return { renderedValue: '1_000 (implicit Testing Library waitFor timeout)', value: 1_000 };
+  }
+  if (
+    normalizeThresholdKind(label) === 'timeout' &&
+    /\bexpect(?:\.(?:configure|poll))?\s*\(/u.test(prefix)
   ) {
     return { renderedValue: '5_000 (implicit Playwright expect timeout)', value: 5_000 };
   }

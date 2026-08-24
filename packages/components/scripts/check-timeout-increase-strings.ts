@@ -170,7 +170,7 @@ export function sourceLinesForAnalysis(filePath: string, lines: readonly string[
     });
   }
   if (['.bash', '.sh', '.toml', '.yaml', '.yml', '.zsh'].includes(extension)) {
-    return lines.map(stripUnquotedHashComment);
+    return lines.map((line) => exposeQuotedConfigurationKeys(stripUnquotedHashComment(line)));
   }
   return [...lines];
 }
@@ -195,6 +195,9 @@ export function isTestThresholdAssignment(
 ): boolean {
   const normalizedLabel = label.toLowerCase();
   if (normalizedLabel === 'timeout-minutes') return true;
+  if (normalizedLabel === 'repeateach') {
+    return /(?:^|\/)playwright\.config\.[^/]+$/u.test(filePath);
+  }
   if (normalizedLabel === 'timeout' && /(?:^|\/)bunfig\.toml$/u.test(filePath)) return true;
   if (normalizedLabel === 'retry' || normalizedLabel === 'retries') {
     return (

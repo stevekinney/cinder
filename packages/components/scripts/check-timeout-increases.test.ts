@@ -1580,6 +1580,157 @@ describe('check-timeout-increases', () => {
     expect(findTimeoutIncreaseViolations(diff)).toEqual([]);
   });
 
+  test('distinguishes millisecond and second identifier suffixes', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/scripts/validate-consumers.ts',
+        ['const STREAM_DRAIN_GRACE_MILLISECONDS = 5_000;'],
+        ['const STREAM_DRAIN_GRACE_SECONDS = 10;'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.old.effectiveValue).toBe(5_000);
+    expect(violations[0]?.new.effectiveValue).toBe(10_000);
+  });
+
+  test('checks promiseWithTimeout and synchronous Bun waits', () => {
+    const diff = [
+      diffFor(
+        'packages/components/scripts/validate-consumers.ts',
+        ['await promiseWithTimeout(operation, 15_000, "launch");'],
+        ['await promiseWithTimeout(operation, 30_000, "launch");'],
+      ),
+      diffFor(
+        'packages/components/scripts/next.ts',
+        ['Bun.sleepSync(2_000);'],
+        ['Bun.sleepSync(4_000);'],
+      ),
+    ].join('\n');
+
+    expect(findTimeoutIncreaseViolations(diff)).toHaveLength(2);
+  });
+
+  test('checks attempt-shaped retry thresholds', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/scripts/next.ts',
+        ['function claimNextTask(maxAttempts = 5) {}'],
+        ['function claimNextTask(maxAttempts = 10) {}'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.new.kind).toBe('retries');
+  });
+
+  test('normalizes shell sleep duration suffixes', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        '.github/workflows/unit-tests.yaml',
+        ['      run: sleep 30'],
+        ['      run: sleep 1m'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.old.effectiveValue).toBe(30_000);
+    expect(violations[0]?.new.effectiveValue).toBe(60_000);
+  });
+
+  test('checks quoted workflow threshold keys', () => {
+    const diff = [
+      diffFor(
+        '.github/workflows/unit-tests.yaml',
+        ['    "timeout-minutes": 5'],
+        ['    "timeout-minutes": 10'],
+      ),
+      diffFor(
+        '.github/workflows/browser-tests.yml',
+        ["    'timeout-minutes': 5"],
+        ["    'timeout-minutes': 10"],
+      ),
+    ].join('\n');
+
+    expect(findTimeoutIncreaseViolations(diff)).toHaveLength(2);
+  });
+
+  test('uses the Testing Library waitFor timeout default', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/src/data-grid/data-grid.test.ts',
+        [],
+        ['await waitFor(() => expect(done).toBe(true), { timeout: 2_000 });'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.old.value).toBe(1_000);
+    expect(
+      findTimeoutIncreaseViolations(
+        diffFor(
+          'packages/components/src/data-grid/data-grid.test.ts',
+          [],
+          ['await waitFor(() => expect(done).toBe(true), { timeout: 500 });'],
+        ),
+      ),
+    ).toEqual([]);
+  });
+
+  test('uses project and global Playwright timeout defaults', () => {
+    const projectIncrease = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/testing/playwright.config.ts',
+        [],
+        ['export default { projects: [{ name: "chromium", timeout: 60_000 }] };'],
+      ),
+    );
+    const addedGlobalLimit = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/testing/playwright.config.ts',
+        [],
+        ['export default { globalTimeout: 60_000 };'],
+      ),
+    );
+    const removedGlobalLimit = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/testing/playwright.config.ts',
+        ['export default { globalTimeout: 60_000 };'],
+        [],
+      ),
+    );
+
+    expect(projectIncrease).toHaveLength(1);
+    expect(projectIncrease[0]?.old.value).toBe(30_000);
+    expect(addedGlobalLimit).toEqual([]);
+    expect(removedGlobalLimit).toHaveLength(1);
+  });
+
+  test('uses the Playwright repeatEach default', () => {
+    const increased = findTimeoutIncreaseViolations(
+      diffFor('packages/testing/playwright.config.ts', [], ['export default { repeatEach: 2 };']),
+    );
+    const defaultValue = findTimeoutIncreaseViolations(
+      diffFor('packages/testing/playwright.config.ts', [], ['export default { repeatEach: 1 };']),
+    );
+
+    expect(increased).toHaveLength(1);
+    expect(increased[0]?.old.value).toBe(1);
+    expect(defaultValue).toEqual([]);
+  });
+
+  test('ignores attempt-shaped domain data outside validation infrastructure', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/playground/src/examples/schema-form/json-schema.example.svelte',
+        ["value={{ name: 'Import data', attempts: 2 }}"],
+        ["value={{ name: 'Import data', attempts: 3 }}"],
+      ),
+    );
+
+    expect(violations).toEqual([]);
+  });
+
   test('ignores comments, unrelated numeric edits, and lockfile noise', () => {
     const diff = [
       diffFor(

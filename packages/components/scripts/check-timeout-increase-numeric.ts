@@ -56,7 +56,13 @@ export function effectiveThresholdValue(label: string, line: string, value: numb
   if (label.toLowerCase() !== 'timeout-minutes') {
     if (/(?:hours?|hrs?)$/iu.test(label)) return value * 3_600_000;
     if (/(?:minutes?|mins?)$/iu.test(label)) return value * 60_000;
+    if (/(?:milliseconds?|msecs?|ms)$/iu.test(label)) return value;
     if (/(?:seconds?|secs?)$/iu.test(label)) return value * 1_000;
+  }
+  if (normalizedLabel === 'sleep') {
+    const unit =
+      /\bsleep\s+\d[\d_.]*(?<unit>[smhd])?(?![\w.])/u.exec(line)?.groups?.['unit'] ?? 's';
+    return value * ({ s: 1_000, m: 60_000, h: 3_600_000, d: 86_400_000 }[unit] ?? 1_000);
   }
   if (value !== 0) return value;
   if (/(?:poll|interval|delay)/u.test(normalizedLabel)) return value;
@@ -65,7 +71,9 @@ export function effectiveThresholdValue(label: string, line: string, value: numb
     [
       'abortsignal.timeout',
       'bun.sleep',
+      'bun.sleepsync',
       'fetchwithtimeout',
+      'promisewithtimeout',
       'waitfortimeout',
       'waitforurl',
     ].includes(normalizedLabel)
@@ -84,8 +92,10 @@ export type BunTestTimeoutArgument = {
 export type WaitThresholdArgument = BunTestTimeoutArgument & {
   label:
     | 'bun.sleep'
+    | 'bun.sleepSync'
     | 'expect.poll.intervals'
     | 'fetchWithTimeout'
+    | 'promiseWithTimeout'
     | 'setTimeout'
     | 'waitForTimeout'
     | 'waitForUrl';
@@ -150,6 +160,7 @@ function findCallArgument(
 export function findWaitThresholdArguments(analysis: string): WaitThresholdArgument[] {
   return [
     ...findCallArgument(analysis, /\bBun\.sleep\s*\(/gu, 0, 'bun.sleep'),
+    ...findCallArgument(analysis, /\bBun\.sleepSync\s*\(/gu, 0, 'bun.sleepSync'),
     ...findCallArgument(
       analysis,
       /(?<![\w$.])(?:globalThis\.|window\.)?setTimeout\s*\(/gu,
@@ -158,6 +169,7 @@ export function findWaitThresholdArguments(analysis: string): WaitThresholdArgum
     ),
     ...findCallArgument(analysis, /\bwaitForUrl\s*\(/gu, 1, 'waitForUrl'),
     ...findCallArgument(analysis, /\bfetchWithTimeout\s*\(/gu, 1, 'fetchWithTimeout'),
+    ...findCallArgument(analysis, /\bpromiseWithTimeout\s*\(/gu, 1, 'promiseWithTimeout'),
     ...findPlaywrightExpectPollIntervals(analysis),
   ];
 }
@@ -187,7 +199,7 @@ function findPlaywrightExpectPollIntervals(analysis: string): WaitThresholdArgum
 export function findWaitThresholdBounds(analysis: string): WaitThresholdArgument[] {
   const bounds: WaitThresholdArgument[] = [];
   const callPattern =
-    /\b(?<label>Bun\.sleep|waitForTimeout|waitForUrl|fetchWithTimeout)\s*\([\s\S]*?\bMath\.(?:min|max)\s*\(\s*(?<value>\d[\d_]*(?:\.\d[\d_]*)?)/gu;
+    /\b(?<label>Bun\.sleep(?:Sync)?|waitForTimeout|waitForUrl|fetchWithTimeout|promiseWithTimeout)\s*\([\s\S]*?\bMath\.(?:min|max)\s*\(\s*(?<value>\d[\d_]*(?:\.\d[\d_]*)?)/gu;
   for (const match of analysis.matchAll(callPattern)) {
     const renderedValue = match.groups?.['value'];
     const label = match.groups?.['label'];
@@ -196,7 +208,11 @@ export function findWaitThresholdBounds(analysis: string): WaitThresholdArgument
       case 'Bun.sleep':
         thresholdLabel = 'bun.sleep';
         break;
+      case 'Bun.sleepSync':
+        thresholdLabel = 'bun.sleepSync';
+        break;
       case 'fetchWithTimeout':
+      case 'promiseWithTimeout':
       case 'waitForTimeout':
       case 'waitForUrl':
         thresholdLabel = label;
