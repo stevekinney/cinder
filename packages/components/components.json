@@ -4193,6 +4193,10 @@
         {
           "reason": "Rendering expandable hierarchical non-navigation data.",
           "alternative": "tree"
+        },
+        {
+          "reason": "Needing the shell.",
+          "alternative": "sidebar"
         }
       ],
       "related": [
@@ -4288,6 +4292,10 @@
         },
         {
           "reason": "Rendering navigation entries directly — place side-navigation inside the sidebar column."
+        },
+        {
+          "reason": "Needing only an accessible nav landmark, not a responsive collapsing shell.",
+          "alternative": "side-navigation"
         }
       ],
       "related": ["side-navigation", "drawer"],
