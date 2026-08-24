@@ -653,7 +653,9 @@ const ES_PLURAL_STEM_ENDING = /(?:x|ch|sh|s|z)$/;
  * Candidate singular forms to check, in order: the regular `-es` strip when
  * the remaining stem is one that takes `-es` (`checkboxes` → `checkbox`),
  * then the plain trailing-`s` strip (`avatars` → `avatar`). Returns at most
- * three candidates and never the same string twice.
+ * three candidates and never the same string twice. Order: the `-ies` → `y`
+ * restoration first, then the `-es` strip (x/ch/sh/s/z stems), then the plain
+ * trailing-`s` strip.
  */
 function candidateSingulars(candidateName: string): string[] {
   const candidates: string[] = [];
