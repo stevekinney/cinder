@@ -15,9 +15,19 @@
   let lightboxOpen = $state(false);
   let drawerTriggerRef: HTMLElement | null = $state(null);
 
+  // Inline SVG data URIs — no external network dependency for the browser
+  // suite. Same pattern as `playground/src/examples/image/basic.example.svelte`
+  // and `carousel/basic.example.svelte`: a self-contained `data:image/svg+xml,`
+  // URL-encoded rect, one per image so the two are visually distinguishable.
   const images = [
-    { src: 'https://placehold.co/400x300', alt: 'First image' },
-    { src: 'https://placehold.co/400x300/222/fff', alt: 'Second image' },
+    {
+      src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect width='400' height='300' fill='%234a90d9'/%3E%3C/svg%3E",
+      alt: 'First image',
+    },
+    {
+      src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect width='400' height='300' fill='%23222222'/%3E%3C/svg%3E",
+      alt: 'Second image',
+    },
   ];
 </script>
 
