@@ -182,7 +182,7 @@ function extractThresholdCandidates(
     );
   }
   const cliPattern = new RegExp(
-    String.raw`--(?<label>timeout-minutes|timeout|test-timeout|retries|retry|repeat-each|rerun-each|slow)(?:=|\s+)(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
+    String.raw`--(?<label>timeout-minutes|timeout|test-timeout|testTimeout|retries|retry|repeat-each|rerun-each|slow)(?:=|\s+)(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
     'giu',
   );
   for (const match of analysisLine.matchAll(cliPattern)) {
@@ -403,7 +403,7 @@ function extractMultilineCallCandidates(
       );
     }
   }
-  if (/\.(?:bash|sh|yaml|yml|zsh)$/u.test(filePath)) {
+  if (/\.(?:bash|sh|yaml|yml|zsh)$/u.test(filePath) || /(?:^|\/)\.husky\/[^/]+$/u.test(filePath)) {
     let shellCommandOccurrenceIndex = 0;
     for (const sleepMatch of analysis.matchAll(
       /(?:^|(?:&&|[;&|])\s*|\n\s*|\brun:\s*)(?<command>sleep|timeout)\s+(?:(?:--[\w-]+)\s+)*(?<value>(?:\d[\d_]*(?:\.\d[\d_]*)?|\.\d[\d_]*))(?:[smhd])?(?![\w.])/gu,

@@ -218,6 +218,7 @@ export function isTestOrValidationInfrastructure(filePath: string, analysis = ''
     /(?:^|\/)(?:scripts|tests?|testing)(?:\/|$)|(?:\.(?:spec|test)\.|_(?:spec|test)_)[^/]+$/u.test(
       filePath,
     ) ||
+    /(?:^|\/)\.husky\/[^/]+$/u.test(filePath) ||
     /(?:^|\/)(?:check|validate)-[^/]+\.[^/]+$/u.test(filePath) ||
     /(?:^|\/)(?:jest|playwright|vitest)\.config\.[^/]+$/u.test(filePath) ||
     (extensionIsJson(filePath) && /\bjest\s*:/u.test(analysis)) ||
@@ -342,9 +343,9 @@ export function extractExecutableCliThresholdArguments(
     (argument, index) => argument === 'bun' && argumentsFound[index + 1] === 'test',
   );
   const flagPattern =
-    /^--(?<label>timeout-minutes|timeout|test-timeout|retries|retry|repeat-each|rerun-each|slow)$/iu;
+    /^--(?<label>timeout-minutes|timeout|test-timeout|testTimeout|retries|retry|repeat-each|rerun-each|slow)$/iu;
   const exactPattern = new RegExp(
-    String.raw`^--(?<label>timeout-minutes|timeout|test-timeout|retries|retry|repeat-each|rerun-each|slow)=(?<value>${NUMERIC_EXPRESSION_PATTERN})$`,
+    String.raw`^--(?<label>timeout-minutes|timeout|test-timeout|testTimeout|retries|retry|repeat-each|rerun-each|slow)=(?<value>${NUMERIC_EXPRESSION_PATTERN})$`,
     'iu',
   );
   const numericPattern = new RegExp(String.raw`^${NUMERIC_EXPRESSION_PATTERN}$`, 'u');
@@ -392,7 +393,7 @@ export function extractMultilineExecutableCliThresholdArguments(
 ): MultilineExecutableCliThresholdArgument[] {
   const results: MultilineExecutableCliThresholdArgument[] = [];
   const flagPattern =
-    /^\s*['"]--(?<label>timeout-minutes|timeout|test-timeout|retries|retry|repeat-each|rerun-each|slow)['"]\s*,?\s*$/iu;
+    /^\s*['"]--(?<label>timeout-minutes|timeout|test-timeout|testTimeout|retries|retry|repeat-each|rerun-each|slow)['"]\s*,?\s*$/iu;
   const valuePattern = new RegExp(
     String.raw`^\s*['"](?<value>${NUMERIC_EXPRESSION_PATTERN})['"]\s*,?\s*$`,
     'u',

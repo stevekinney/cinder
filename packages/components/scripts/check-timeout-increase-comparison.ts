@@ -102,7 +102,7 @@ function callsiteFingerprint(candidate: ThresholdCandidate): string {
 
 export function isSupportedFile(filePath: string): boolean {
   if (LOCKFILE_NAMES.has(basename(filePath))) return false;
-  return SUPPORTED_EXTENSIONS.has(extname(filePath));
+  return SUPPORTED_EXTENSIONS.has(extname(filePath)) || /(?:^|\/)\.husky\/[^/]+$/u.test(filePath);
 }
 
 export function parseHunkStart(header: string): { oldLine: number; newLine: number } {

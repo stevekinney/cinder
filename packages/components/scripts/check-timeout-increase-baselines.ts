@@ -67,7 +67,7 @@ export function implicitBaselineFor(
   if (kind === 'slow') return { renderedValue: '1 (implicit normal timeout)', value: 1 };
   if (
     label.toLowerCase() === 'testtimeout' &&
-    /(?:^|\/)(?:jest|vitest)\.config\.[^/]+$/u.test(filePath)
+    (/(?:^|\/)(?:jest|vitest)\.config\.[^/]+$/u.test(filePath) || /\b(?:jest|vitest)\b/u.test(line))
   ) {
     return { renderedValue: '5_000 (implicit test runner timeout)', value: 5_000 };
   }
@@ -126,7 +126,7 @@ export function implicitBaselineForMatch(
   const prefix = `${analysisBeforeLine}\n${analysisLine.slice(0, candidateOffset)}`;
   if (
     normalizeThresholdKind(label) === 'timeout' &&
-    /(?:^|[^\w$.])waitFor\s*\([\s\S]*,\s*\{[^}]*$/u.test(prefix)
+    /(?:^|[^\w$.])waitFor[A-Za-z_$\d]*\s*\([\s\S]*,\s*\{[^}]*$/u.test(prefix)
   ) {
     return { renderedValue: '1_000 (implicit Testing Library waitFor timeout)', value: 1_000 };
   }

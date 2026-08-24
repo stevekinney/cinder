@@ -731,6 +731,18 @@ describe('check-timeout-increases', () => {
     expect(violations).toHaveLength(1);
   });
 
+  test('checks Jest camel-case testTimeout CLI flags', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'package.json',
+        ['"test": "bunx jest --testTimeout=5000"'],
+        ['"test": "bunx jest --testTimeout=10000"'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+  });
+
   test('compares new Bun CLI timeouts with the runner default', () => {
     const increased = findTimeoutIncreaseViolations(
       diffFor(
@@ -2029,6 +2041,19 @@ describe('check-timeout-increases', () => {
     ).toEqual([]);
   });
 
+  test('uses the Testing Library timeout default for waitFor wrappers', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/src/button/button.test.ts',
+        ['await waitForElementToBeRemoved(element);'],
+        ['await waitForElementToBeRemoved(element, { timeout: 2_000 });'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.old.value).toBe(1_000);
+  });
+
   test('uses project and global Playwright timeout defaults', () => {
     const projectIncrease = findTimeoutIncreaseViolations(
       diffFor(
@@ -2157,6 +2182,14 @@ describe('check-timeout-increases', () => {
     expect(violations).toHaveLength(1);
     expect(violations[0]?.old.effectiveValue).toBe(30_000);
     expect(violations[0]?.new.effectiveValue).toBe(60_000);
+  });
+
+  test('checks waits in extensionless validation hooks', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor('.husky/pre-push', ['sleep 1'], ['sleep 10']),
+    );
+
+    expect(violations).toHaveLength(1);
   });
 
   test('checks leading-dot shell sleep durations', () => {
