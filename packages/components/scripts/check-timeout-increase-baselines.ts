@@ -9,9 +9,12 @@ import type { BunTestTimeoutArgument } from './check-timeout-increase-types';
 
 export type ThresholdBaseline = { renderedValue: string; value: number };
 
-export function findBunDefaultTimeoutAliasArguments(analysis: string): BunTestTimeoutArgument[] {
+export function findBunDefaultTimeoutAliasArguments(
+  importSource: string,
+  analysis: string,
+): BunTestTimeoutArgument[] {
   const argumentsFound: BunTestTimeoutArgument[] = [];
-  for (const match of analysis.matchAll(
+  for (const match of importSource.matchAll(
     /\bimport\s*\{(?<imports>[^}]*)\}\s*from\s+['"]bun:test['"]/gu,
   )) {
     for (const aliasMatch of (match.groups?.['imports'] ?? '').matchAll(
@@ -97,6 +100,23 @@ export function findAdditionalWaitThresholdArguments(analysis: string): WaitThre
         ...timeout,
         baseline: { renderedValue: 'unbounded (implicit Bun spawn timeout)', value: Infinity },
         label: 'bun-spawn-timeout',
+      });
+    }
+  }
+  for (const callArguments of findCallArguments(
+    analysis,
+    /(?<![\w$.])(?:spawn|spawnSync|exec|execSync)\s*\(/gu,
+  )) {
+    for (const argument of callArguments) {
+      const timeout = resolveNumericOption(analysis, argument.text, argument.offset, 'timeout');
+      if (timeout === undefined) continue;
+      argumentsFound.push({
+        ...timeout,
+        baseline: {
+          renderedValue: 'unbounded (implicit Node subprocess timeout)',
+          value: Infinity,
+        },
+        label: 'timeout',
       });
     }
   }

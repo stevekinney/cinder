@@ -90,6 +90,12 @@ export function thresholdIdentity(label: string): string {
 }
 
 function callsiteFingerprint(candidate: ThresholdCandidate): string {
+  if (candidate.label === 'playwright-operation-timeout') {
+    return `${candidate.kind}:${candidate.line
+      .replace(candidate.renderedValue, '<threshold>')
+      .replace(/\s+/gu, ' ')
+      .trim()}:${candidate.occurrenceIndex ?? ''}`;
+  }
   if (candidate.occurrenceIndex !== undefined) {
     return `${candidate.kind}:${candidate.label.toLowerCase()}:${candidate.occurrenceIndex}`;
   }

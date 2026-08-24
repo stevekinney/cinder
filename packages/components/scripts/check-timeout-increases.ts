@@ -48,7 +48,7 @@ function isGenericTimeoutContext(filePath: string, analysis: string): boolean {
   return (
     /(?:^|\/)(?:jest|playwright|vitest)\.config\.[^/]+$/u.test(filePath) ||
     /(?:^|\/)bunfig\.toml$/u.test(filePath) ||
-    /\b(?:expect(?:\.(?:configure|poll))?|(?:waitFor|findBy)[A-Za-z_$\d]*|setDefaultTimeout|test\.describe\.configure|spawn(?:Sync)?)\b/u.test(
+    /\b(?:expect(?:\.(?:configure|poll))?|(?:waitFor|findBy)[A-Za-z_$\d]*|setDefaultTimeout|test\.describe\.configure)\b/u.test(
       analysis,
     )
   );
@@ -429,7 +429,7 @@ function extractMultilineCallCandidates(
     for (const timeoutArgument of [
       ...findBunTestTimeoutArguments(analysis),
       ...findBunLifecycleTimeoutArguments(analysis),
-      ...findBunDefaultTimeoutAliasArguments(rawSource),
+      ...findBunDefaultTimeoutAliasArguments(rawSource, analysis),
     ]) {
       const sourceIndex = analysis.slice(0, timeoutArgument.offset).split('\n').length - 1;
       pushCandidate(

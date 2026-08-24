@@ -2590,7 +2590,6 @@ async function assertSvelteKitHydrationRoute(
     await page.goto(`http://127.0.0.1:${httpPort}${routePath}`, {
       waitUntil: 'domcontentloaded',
     });
-    await page.waitForLoadState('load', { timeout: 5_000 });
     await assertSvelteKitHydrationRouteContent(page, errors, routePath, domObservation);
 
     if (errors.values.length > 0) {

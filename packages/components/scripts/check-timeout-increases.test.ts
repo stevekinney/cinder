@@ -129,6 +129,18 @@ describe('check-timeout-increases', () => {
     expect(violations).toHaveLength(2);
   });
 
+  test('preserves Playwright action callsites across reorderings', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/testing/tests/example.playwright.ts',
+        ['await first.click({ timeout: 5_000 });', 'await second.click({ timeout: 10_000 });'],
+        ['await second.click({ timeout: 10_000 });', 'await first.click({ timeout: 5_000 });'],
+      ),
+    );
+
+    expect(violations).toEqual([]);
+  });
+
   test('allows a newly added finite Playwright operation timeout', () => {
     const violations = findTimeoutIncreaseViolations(
       diffFor(
@@ -1257,6 +1269,19 @@ describe('check-timeout-increases', () => {
     expect(violations).toHaveLength(1);
     expect(violations[0]?.new.effectiveValue).toBe(Number.POSITIVE_INFINITY);
     expect(violations[0]?.new.label).toBe('bun-spawn-timeout');
+  });
+
+  test('treats removed Node subprocess timeouts as unbounded', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/scripts/server-css-free.test.ts',
+        ["spawnSync('bun', ['run', 'build'], { timeout: 120_000 });"],
+        ["spawnSync('bun', ['run', 'build']);"],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.new.effectiveValue).toBe(Number.POSITIVE_INFINITY);
   });
 
   test('checks numeric bounds inside dynamic wait expressions', () => {
@@ -2504,6 +2529,24 @@ describe('check-timeout-increases', () => {
     );
 
     expect(violations).toHaveLength(1);
+  });
+
+  test('ignores aliased Bun timeout calls inside source fixtures', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/scripts/check-timeout-increases.test.ts',
+        [
+          `const fixture = "import { setDefaultTimeout as configureTimeout } from 'bun:test';";`,
+          "const call = 'configureTimeout(5_000);';",
+        ],
+        [
+          `const fixture = "import { setDefaultTimeout as configureTimeout } from 'bun:test';";`,
+          "const call = 'configureTimeout(10_000);';",
+        ],
+      ),
+    );
+
+    expect(violations).toEqual([]);
   });
 
   test('does not connect a threshold assignment to a later conditional', () => {

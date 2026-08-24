@@ -115,6 +115,7 @@ export type WaitThresholdArgument = BunTestTimeoutArgument & {
     | 'setTimeout'
     | 'testing-library-wait-interval'
     | 'testing-library-wait-timeout'
+    | 'timeout'
     | 'waitForTimeout'
     | 'waitForUrl'
     | 'slow'
