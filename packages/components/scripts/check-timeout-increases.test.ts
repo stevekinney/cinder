@@ -501,7 +501,7 @@ describe('check-timeout-increases', () => {
     expect(violations).toEqual([]);
   });
 
-  test('matches moved thresholds across diff hunks and files', () => {
+  test('does not infer a threshold move from matching names across files', () => {
     const diff = [
       diffFor('packages/components/src/old-location.test.ts', ['const ROUTE_TIMEOUT = 5_000;'], []),
       diffFor(
@@ -511,7 +511,7 @@ describe('check-timeout-increases', () => {
       ),
     ].join('\n');
 
-    expect(findTimeoutIncreaseViolations(diff)).toHaveLength(1);
+    expect(findTimeoutIncreaseViolations(diff)).toEqual([]);
   });
 
   test('does not pair unrelated generic thresholds across files', () => {
@@ -525,7 +525,7 @@ describe('check-timeout-increases', () => {
     expect(violations[0]?.filePath).toBe('packages/components/src/removed.test.ts');
   });
 
-  test('preserves named thresholds moved out of deleted files', () => {
+  test('does not infer a move from an unrelated deletion and addition', () => {
     const diff = [
       'diff --git a/packages/components/src/old.test.ts b/packages/components/src/old.test.ts',
       'deleted file mode 100644',
@@ -536,7 +536,7 @@ describe('check-timeout-increases', () => {
       diffFor('packages/components/src/new.test.ts', [], ['const ROUTE_TIMEOUT = 10_000;']),
     ].join('\n');
 
-    expect(findTimeoutIncreaseViolations(diff)).toHaveLength(1);
+    expect(findTimeoutIncreaseViolations(diff)).toEqual([]);
   });
 
   test('checks Bun test timeouts supplied as a trailing argument', () => {
@@ -1261,6 +1261,19 @@ describe('check-timeout-increases', () => {
     expect(findTimeoutIncreaseViolations([singleLine, multiline].join('\n'))).toHaveLength(2);
   });
 
+  test('rejects removing an AbortSignal timeout', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/playground/src/validate-playground.ts',
+        ['await fetch(url, { signal: AbortSignal.timeout(5_000) });'],
+        ['await fetch(url);'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.new.value).toBe(Number.POSITIVE_INFINITY);
+  });
+
   test('checks marker-first uppercase threshold identifiers', () => {
     const violations = findTimeoutIncreaseViolations(
       diffFor(
@@ -1477,6 +1490,20 @@ describe('check-timeout-increases', () => {
     expect(violations[0]?.new.value).toBe(90_000);
   });
 
+  test('checks relative Playwright timeout subtraction increases', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/testing/tests/example.playwright.ts',
+        ['testInfo.setTimeout(testInfo.timeout - 10_000);'],
+        ['testInfo.setTimeout(testInfo.timeout - 5_000);'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.old.value).toBe(20_000);
+    expect(violations[0]?.new.value).toBe(25_000);
+  });
+
   test('compares relative Playwright timeouts across operator changes', () => {
     const violations = findTimeoutIncreaseViolations(
       diffFor(
@@ -1536,6 +1563,20 @@ describe('check-timeout-increases', () => {
     expect(reduced).toEqual([]);
     expect(increased).toHaveLength(1);
     expect(increased[0]?.old.value).toBe(100);
+  });
+
+  test('compares appended Playwright poll intervals with the previous tail', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/testing/tests/example.playwright.ts',
+        ['await expect.poll(readiness, { intervals: [100] }).toBe(true);'],
+        ['await expect.poll(readiness, { intervals: [100, 250] }).toBe(true);'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.old.value).toBe(100);
+    expect(violations[0]?.new.value).toBe(250);
   });
 
   test('keeps expect.poll intervals within their own call', () => {
@@ -2060,6 +2101,38 @@ describe('check-timeout-increases', () => {
     expect(violations[0]?.new.effectiveValue).toBe(10_000);
   });
 
+  test('resolves named wait constants at each callsite', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/scripts/next.ts',
+        [
+          '{ const duration = 10; await Bun.sleep(duration); }',
+          '{ const duration = 20; await Bun.sleep(duration); }',
+        ],
+        [
+          '{ const duration = 10; await Bun.sleep(duration); }',
+          '{ const duration = 200; await Bun.sleep(duration); }',
+        ],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.old.value).toBe(20);
+    expect(violations[0]?.new.value).toBe(200);
+  });
+
+  test('checks callback timer interval increases', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/scripts/next.ts',
+        ['setInterval(check, 100);'],
+        ['setInterval(check, 1_000);'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+  });
+
   test('checks attempt-shaped retry thresholds', () => {
     const violations = findTimeoutIncreaseViolations(
       diffFor(
@@ -2234,6 +2307,32 @@ describe('check-timeout-increases', () => {
     ].join('\n');
 
     expect(findTimeoutIncreaseViolations(diff)).toHaveLength(1);
+  });
+
+  test('does not pair unrelated named waits across files', () => {
+    const diff = [
+      diffFor('packages/components/scripts/old.ts', ['const WAIT_MS = 500;'], []),
+      diffFor(
+        'packages/components/scripts/new.ts',
+        [],
+        ['const WAIT_MS = 200;', 'await Bun.sleep(WAIT_MS);'],
+      ),
+    ].join('\n');
+
+    expect(findTimeoutIncreaseViolations(diff)).toHaveLength(1);
+  });
+
+  test('uses the unbounded Playwright actionTimeout default', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'playwright.config.ts',
+        ['export default { timeout: 60_000, actionTimeout: 60_000 };'],
+        ['export default { timeout: 60_000 };'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.new.value).toBe(Number.POSITIVE_INFINITY);
   });
 
   test('checks nullish and logical threshold fallbacks', () => {

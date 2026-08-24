@@ -237,7 +237,7 @@ export function collectComparableViolations(
     removedEntries,
     addedEntries,
     ({ candidate, hunk }) =>
-      `${candidate.identity}:${callsiteFingerprint(candidate)}:${candidate.identity.includes(':') ? '' : hunk.filePath}`,
+      `${hunk.filePath}:${candidate.identity}:${callsiteFingerprint(candidate)}`,
   );
   const renamedGroups = new Map<string, { added: CandidateEntry[]; removed: CandidateEntry[] }>();
   for (const [entries, side] of [
@@ -266,6 +266,28 @@ export function collectComparableViolations(
 
   for (const { candidate: newCandidate, hunk } of addedEntries) {
     if (consumedAdded.has(newCandidate)) continue;
+    if (newCandidate.label === 'expect.poll.intervals') {
+      const previousTail = removedEntries
+        .filter(
+          (entry) =>
+            entry.hunk === hunk &&
+            entry.candidate.label === newCandidate.label &&
+            (entry.candidate.occurrenceIndex ?? -1) < (newCandidate.occurrenceIndex ?? -1),
+        )
+        .sort(
+          (left, right) =>
+            (right.candidate.occurrenceIndex ?? -1) - (left.candidate.occurrenceIndex ?? -1),
+        )[0]?.candidate;
+      if (previousTail !== undefined && newCandidate.effectiveValue > previousTail.effectiveValue) {
+        violations.push({
+          filePath: hunk.filePath,
+          hunkHeader: hunk.hunkHeader,
+          old: previousTail,
+          new: newCandidate,
+        });
+        continue;
+      }
+    }
     if (
       newCandidate.baselineValue === undefined ||
       newCandidate.baselineRenderedValue === undefined ||

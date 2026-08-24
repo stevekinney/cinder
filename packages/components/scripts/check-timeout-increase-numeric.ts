@@ -186,11 +186,13 @@ function findCallArgument(
       if (!/^[A-Za-z_$][\w$]*$/u.test(renderedValue)) continue;
       const declarationPattern = new RegExp(
         String.raw`\b(?:const|let|var)\s+${renderedValue}\b[^=;\n]*=\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
-        'u',
+        'gu',
       );
-      const declaration = declarationPattern.exec(analysis);
+      const declaration = [...analysis.matchAll(declarationPattern)]
+        .filter((match) => (match.index ?? 0) < argument.offset)
+        .at(-1);
       const declaredValue = declaration?.groups?.['value'];
-      if (declaration === null || declaredValue === undefined) continue;
+      if (declaration === undefined || declaredValue === undefined) continue;
       renderedValue = declaredValue;
       offset = declaration.index + declaration[0].lastIndexOf(declaredValue);
     }
@@ -209,7 +211,7 @@ export function findWaitThresholdArguments(analysis: string): WaitThresholdArgum
     ...findCallArgument(analysis, /\bBun\.sleepSync\s*\(/gu, 0, 'bun.sleepSync'),
     ...findCallArgument(
       analysis,
-      /(?<![\w$.])(?:globalThis\.|window\.)?setTimeout\s*\(/gu,
+      /(?<![\w$.])(?:globalThis\.|window\.)?set(?:Timeout|Interval)\s*\(/gu,
       1,
       'setTimeout',
     ),
@@ -479,7 +481,7 @@ export function findPlaywrightRelativeTimeoutExtensions(
 ): BunTestTimeoutArgument[] {
   const extensions: BunTestTimeoutArgument[] = [];
   const pattern = new RegExp(
-    String.raw`\btestInfo\.setTimeout\s*\(\s*testInfo\.timeout\s*(?<operator>[+*])\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
+    String.raw`\btestInfo\.setTimeout\s*\(\s*testInfo\.timeout\s*(?<operator>[+*-])\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
     'gu',
   );
   for (const match of analysis.matchAll(pattern)) {

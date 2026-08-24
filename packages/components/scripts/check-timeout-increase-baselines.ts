@@ -44,6 +44,9 @@ export function implicitBaselineFor(
       value: Number.POSITIVE_INFINITY,
     };
   }
+  if (label.toLowerCase() === 'abortsignal.timeout') {
+    return { renderedValue: 'unbounded (no AbortSignal timeout)', value: Number.POSITIVE_INFINITY };
+  }
   if (label === 'shell.timeout') {
     return { renderedValue: 'unbounded (no GNU timeout command)', value: Number.POSITIVE_INFINITY };
   }
@@ -93,7 +96,16 @@ export function implicitBaselineFor(
     };
   }
   if (
-    kind === 'timeout' &&
+    label.toLowerCase() === 'actiontimeout' &&
+    /(?:^|\/)playwright\.config\.[^/]+$/u.test(filePath)
+  ) {
+    return {
+      renderedValue: 'unbounded (implicit Playwright action timeout disabled)',
+      value: Number.POSITIVE_INFINITY,
+    };
+  }
+  if (
+    label.toLowerCase() === 'timeout' &&
     (configurationDomain === 'top-level' ||
       configurationDomain === 'project' ||
       /\btest\.describe\.configure\s*\(/u.test(line))

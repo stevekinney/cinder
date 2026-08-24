@@ -962,11 +962,9 @@ test.describe('chat harness — scroll, unread, jump', () => {
       const anchor = timeline.getByText('Tell me about alpha.').first();
       await expect(anchor).toBeVisible();
       const readAnchorOffset = () =>
-        timeline.evaluate((timelineElement) => {
-          const anchorElement = Array.from(timelineElement.querySelectorAll<HTMLElement>('*')).find(
-            (element) => element.textContent?.trim() === 'Tell me about alpha.',
-          );
-          if (anchorElement === undefined) throw new Error('Anchor not found');
+        anchor.evaluate((anchorElement) => {
+          const timelineElement = anchorElement.closest<HTMLElement>('.chat-timeline');
+          if (timelineElement === null) throw new Error('Timeline not found');
           return (
             anchorElement.getBoundingClientRect().y - timelineElement.getBoundingClientRect().y
           );
