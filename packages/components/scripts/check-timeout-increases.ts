@@ -201,14 +201,14 @@ function extractThresholdCandidates(
       lineNumber,
       argument.label,
       argument.renderedValue,
-      argument.bunTestCommand
+      argument.bunTestCommand && normalizeThresholdKind(argument.label) === 'timeout'
         ? { renderedValue: '5_000 (implicit Bun test timeout)', value: 5_000 }
         : implicitBaselineFor(argument.label, line, filePath),
     );
   }
 
   const callPattern = new RegExp(
-    String.raw`\b(?<label>AbortSignal\.timeout|waitForTimeout|setDefaultNavigationTimeout|setDefaultTimeout|setTimeout|(?:test|testInfo)\.slow|jest\.retryTimes)\s*\(\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
+    String.raw`\b(?<label>AbortSignal\.timeout|waitForTimeout|setDefaultNavigationTimeout|setDefaultTimeout|setTimeout|(?:test|testInfo)\.slow|jest\.(?:retryTimes|setTimeout))\s*\(\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
     'giu',
   );
   let callOccurrenceIndex = 0;
@@ -223,9 +223,11 @@ function extractThresholdCandidates(
       match.groups?.['value'],
       label.toLowerCase() === 'jest.retrytimes'
         ? { renderedValue: '0 (implicit default retries)', value: 0 }
-        : label.toLowerCase() === 'waitfortimeout'
-          ? { renderedValue: '0 (no explicit wait)', value: 0 }
-          : implicitBaselineFor(label, line, filePath),
+        : label.toLowerCase() === 'jest.settimeout'
+          ? { renderedValue: '5_000 (implicit Jest timeout)', value: 5_000 }
+          : label.toLowerCase() === 'waitfortimeout'
+            ? { renderedValue: '0 (no explicit wait)', value: 0 }
+            : implicitBaselineFor(label, line, filePath),
       callOccurrenceIndex,
     );
     callOccurrenceIndex += 1;
@@ -456,7 +458,7 @@ function extractMultilineCallCandidates(
       source[argument.lineIndex]?.lineNumber ?? 0,
       argument.label,
       argument.renderedValue,
-      argument.bunTestCommand
+      argument.bunTestCommand && normalizeThresholdKind(argument.label) === 'timeout'
         ? { renderedValue: '5_000 (implicit Bun test timeout)', value: 5_000 }
         : implicitBaselineFor(argument.label, '', filePath),
     );

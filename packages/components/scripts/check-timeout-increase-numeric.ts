@@ -82,7 +82,13 @@ export type BunTestTimeoutArgument = {
 };
 
 export type WaitThresholdArgument = BunTestTimeoutArgument & {
-  label: 'bun.sleep' | 'fetchWithTimeout' | 'setTimeout' | 'waitForTimeout' | 'waitForUrl';
+  label:
+    | 'bun.sleep'
+    | 'expect.poll.intervals'
+    | 'fetchWithTimeout'
+    | 'setTimeout'
+    | 'waitForTimeout'
+    | 'waitForUrl';
 };
 
 function findCallArgument(
@@ -152,7 +158,30 @@ export function findWaitThresholdArguments(analysis: string): WaitThresholdArgum
     ),
     ...findCallArgument(analysis, /\bwaitForUrl\s*\(/gu, 1, 'waitForUrl'),
     ...findCallArgument(analysis, /\bfetchWithTimeout\s*\(/gu, 1, 'fetchWithTimeout'),
+    ...findPlaywrightExpectPollIntervals(analysis),
   ];
+}
+
+function findPlaywrightExpectPollIntervals(analysis: string): WaitThresholdArgument[] {
+  const argumentsFound: WaitThresholdArgument[] = [];
+  const pattern = new RegExp(
+    String.raw`\bexpect\.poll\s*\([\s\S]*?\bintervals\s*:\s*\[(?<values>[^\]]*)\]`,
+    'gu',
+  );
+  const valuePattern = new RegExp(NUMERIC_EXPRESSION_PATTERN, 'gu');
+  for (const match of analysis.matchAll(pattern)) {
+    const values = match.groups?.['values'];
+    if (values === undefined) continue;
+    const valuesStart = (match.index ?? 0) + match[0].lastIndexOf(values);
+    for (const valueMatch of values.matchAll(valuePattern)) {
+      argumentsFound.push({
+        label: 'expect.poll.intervals',
+        offset: valuesStart + (valueMatch.index ?? 0),
+        renderedValue: valueMatch[0],
+      });
+    }
+  }
+  return argumentsFound;
 }
 
 export function findWaitThresholdBounds(analysis: string): WaitThresholdArgument[] {

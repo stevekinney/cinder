@@ -169,7 +169,7 @@ export function sourceLinesForAnalysis(filePath: string, lines: readonly string[
       return extension === '.svelte' && /^\s*</u.test(lines[index] ?? '') ? '' : line;
     });
   }
-  if (['.bash', '.sh', '.yaml', '.yml', '.zsh'].includes(extension)) {
+  if (['.bash', '.sh', '.toml', '.yaml', '.yml', '.zsh'].includes(extension)) {
     return lines.map(stripUnquotedHashComment);
   }
   return [...lines];

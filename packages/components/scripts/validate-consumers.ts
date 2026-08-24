@@ -1217,7 +1217,6 @@ const HYDRATION_ROUTE_DIAGNOSTIC_COLLECTION_MAX_ITEMS = 20;
 const HYDRATION_ROUTE_DIAGNOSTIC_ITEM_CHARS = 600;
 const HYDRATION_ROUTE_DIAGNOSTIC_CAUSE_CHARS = 800;
 const HYDRATION_ROUTE_DIAGNOSTIC_MAX_CHARS = 6_000;
-const HYDRATION_ROUTE_DIAGNOSTIC_CAPTURE_TIMEOUT_MS = 500;
 
 type DevelopmentServerProcess = Pick<Bun.Subprocess, 'exitCode' | 'exited' | 'pid'>;
 type DevelopmentServerSignal = 'SIGTERM' | 'SIGKILL';
@@ -2582,33 +2581,37 @@ async function assertSvelteKitHydrationRoute(
     await assertSvelteKitHydrationRouteContent(page, errors, routePath);
 
     if (errors.values.length > 0) {
+      const omittedLine =
+        errors.omitted > 0
+          ? `\n  ... (${errors.omitted} additional collected item(s) omitted)`
+          : '';
       fail(
-        `sveltekit-consumer ${label} ${routePath} emitted client hydration/runtime errors:\n${boundedDiagnosticValues(
-          errors,
-        )
+        `sveltekit-consumer ${label} ${routePath} emitted client hydration/runtime errors:\n${errors.values
           .map((error) => `  ${error}`)
-          .join('\n')}`,
+          .join('\n')}${omittedLine}`,
       );
     }
   } catch (error) {
     bodyError = error;
     bodyFailed = true;
     try {
-      failureSnapshot = await captureSvelteKitHydrationRouteFailureSnapshot(page, {
+      failureSnapshot = captureSvelteKitHydrationRouteFailureSnapshot(page, {
         browserEvents,
-        errors: boundedDiagnosticValues(errors),
-        nonOkResponses: boundedDiagnosticValues(nonOkResponses),
-        requestFailures: boundedDiagnosticValues(requestFailures),
+        errors: boundedDiagnosticSnapshot(errors),
+        nonOkResponses: boundedDiagnosticSnapshot(nonOkResponses),
+        requestFailures: boundedDiagnosticSnapshot(requestFailures),
         routePath,
       });
     } catch (captureError) {
       failureSnapshot = {
         ...unknownSvelteKitHydrationRouteFailureSnapshot(routePath),
-        browserEvents: browserEvents.filter((event) => !event.startsWith('requestfailed ')),
+        browserEvents: diagnosticSnapshotFromValues(
+          browserEvents.filter((event) => !event.startsWith('requestfailed ')),
+        ),
         diagnosticCaptureError: errorMessage(captureError),
-        nonOkResponses: boundedDiagnosticValues(nonOkResponses),
-        requestFailures: boundedDiagnosticValues(requestFailures),
-        runtimeErrors: boundedDiagnosticValues(errors),
+        nonOkResponses: boundedDiagnosticSnapshot(nonOkResponses),
+        requestFailures: boundedDiagnosticSnapshot(requestFailures),
+        runtimeErrors: boundedDiagnosticSnapshot(errors),
       };
     }
   }
@@ -2691,16 +2694,21 @@ export type SvelteKitHydrationRouteFailureSnapshot = {
   hydrationMarkerSelector: string;
   hydrationMarkerPresent: boolean | 'unknown';
   hydrationMarkerValue: string | null;
-  nonOkResponses: readonly string[];
-  requestFailures: readonly string[];
-  runtimeErrors: readonly string[];
-  browserEvents: readonly string[];
+  nonOkResponses: BoundedDiagnosticSnapshot;
+  requestFailures: BoundedDiagnosticSnapshot;
+  runtimeErrors: BoundedDiagnosticSnapshot;
+  browserEvents: BoundedDiagnosticSnapshot;
   diagnosticCaptureError?: string;
 };
 
 export type BoundedDiagnosticCollection = {
   omitted: number;
   values: string[];
+};
+
+export type BoundedDiagnosticSnapshot = {
+  omitted: number;
+  values: readonly string[];
 };
 
 export function createBoundedDiagnosticCollection(): BoundedDiagnosticCollection {
@@ -2718,11 +2726,14 @@ export function recordBoundedDiagnostic(
   collection.omitted += 1;
 }
 
-export function boundedDiagnosticValues(
+export function boundedDiagnosticSnapshot(
   collection: BoundedDiagnosticCollection,
-): readonly string[] {
-  if (collection.omitted === 0) return collection.values;
-  return [...collection.values, `... (${collection.omitted} additional collected item(s) omitted)`];
+): BoundedDiagnosticSnapshot {
+  return { omitted: collection.omitted, values: [...collection.values] };
+}
+
+export function diagnosticSnapshotFromValues(values: readonly string[]): BoundedDiagnosticSnapshot {
+  return { omitted: 0, values };
 }
 
 type SvelteKitHydrationRouteFailureInput = {
@@ -2758,10 +2769,10 @@ function unknownSvelteKitHydrationRouteFailureSnapshot(
     hydrationMarkerSelector: marker.selector,
     hydrationMarkerPresent: 'unknown',
     hydrationMarkerValue: 'unknown',
-    nonOkResponses: [],
-    requestFailures: [],
-    runtimeErrors: [],
-    browserEvents: [],
+    nonOkResponses: diagnosticSnapshotFromValues([]),
+    requestFailures: diagnosticSnapshotFromValues([]),
+    runtimeErrors: diagnosticSnapshotFromValues([]),
+    browserEvents: diagnosticSnapshotFromValues([]),
   };
 }
 
@@ -2774,45 +2785,29 @@ function fallbackSvelteKitHydrationRouteFailureSnapshot(
   };
 }
 
-async function captureSvelteKitHydrationRouteFailureSnapshot(
-  page: Page,
+export function captureSvelteKitHydrationRouteFailureSnapshot(
+  page: Pick<Page, 'url'>,
   options: {
     browserEvents: readonly string[];
-    errors: readonly string[];
-    nonOkResponses: readonly string[];
-    requestFailures: readonly string[];
+    errors: BoundedDiagnosticSnapshot;
+    nonOkResponses: BoundedDiagnosticSnapshot;
+    requestFailures: BoundedDiagnosticSnapshot;
     routePath: SvelteKitHydrationRoute;
   },
-): Promise<SvelteKitHydrationRouteFailureSnapshot> {
-  const marker = hydrationMarkerForRoute(options.routePath);
+): SvelteKitHydrationRouteFailureSnapshot {
   const snapshot = unknownSvelteKitHydrationRouteFailureSnapshot(options.routePath);
 
   try {
     snapshot.currentUrl = page.url();
-    const documentState = await promiseWithTimeout(
-      page.evaluate((markerAttribute) => {
-        const markerElement = document.querySelector(`[${markerAttribute}]`);
-        return {
-          documentReadyState: document.readyState,
-          hydrationMarkerPresent: markerElement !== null,
-          hydrationMarkerValue: markerElement?.getAttribute(markerAttribute) ?? null,
-        };
-      }, marker.attribute),
-      HYDRATION_ROUTE_DIAGNOSTIC_CAPTURE_TIMEOUT_MS,
-      `hydration diagnostic capture route=${options.routePath}`,
-    );
-    snapshot.documentReadyState = documentState.documentReadyState;
-    snapshot.hydrationMarkerPresent = documentState.hydrationMarkerPresent;
-    snapshot.hydrationMarkerValue = documentState.hydrationMarkerValue;
   } catch (error) {
     snapshot.diagnosticCaptureError = error instanceof Error ? error.message : String(error);
   }
 
-  snapshot.nonOkResponses = [...options.nonOkResponses];
-  snapshot.requestFailures = [...options.requestFailures];
-  snapshot.runtimeErrors = [...options.errors];
-  snapshot.browserEvents = options.browserEvents.filter(
-    (event) => !event.startsWith('requestfailed '),
+  snapshot.nonOkResponses = options.nonOkResponses;
+  snapshot.requestFailures = options.requestFailures;
+  snapshot.runtimeErrors = options.errors;
+  snapshot.browserEvents = diagnosticSnapshotFromValues(
+    options.browserEvents.filter((event) => !event.startsWith('requestfailed ')),
   );
 
   return snapshot;
@@ -2830,15 +2825,17 @@ function truncateDiagnosticText(text: string, limit: number): string {
   return `${text.slice(0, limit - suffix.length)}${suffix}`;
 }
 
-function formatDiagnosticList(label: string, values: readonly string[]): string {
-  if (values.length === 0) return `${label}: none`;
-  const visible = values.slice(0, HYDRATION_ROUTE_DIAGNOSTIC_MAX_ITEMS);
-  const omitted = values.length - visible.length;
+function formatDiagnosticList(label: string, collection: BoundedDiagnosticSnapshot): string {
+  if (collection.values.length === 0 && collection.omitted === 0) return `${label}: none`;
+  const visible = collection.values.slice(0, HYDRATION_ROUTE_DIAGNOSTIC_MAX_ITEMS);
+  const omitted =
+    collection.omitted +
+    Math.max(0, collection.values.length - HYDRATION_ROUTE_DIAGNOSTIC_MAX_ITEMS);
   const rendered = visible
     .map((value) => `  - ${truncateDiagnosticText(value, HYDRATION_ROUTE_DIAGNOSTIC_ITEM_CHARS)}`)
     .join('\n');
-  const suffix = omitted > 0 ? `\n  - ... (${omitted} additional item(s) omitted)` : '';
-  return `${label}:\n${rendered}${suffix}`;
+  const suffix = omitted > 0 ? `  - ... (${omitted} additional item(s) omitted)` : '';
+  return `${label}:\n${[rendered, suffix].filter((section) => section.length > 0).join('\n')}`;
 }
 
 export function formatSvelteKitHydrationRouteFailure(

@@ -663,6 +663,20 @@ describe('check-timeout-increases', () => {
     expect(reduced).toEqual([]);
   });
 
+  test('compares new Bun argv rerun-each values with the retry default', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/testing/scripts/run-tests.ts',
+        ["const command = ['bun', 'test'];"],
+        ["const command = ['bun', 'test', '--rerun-each', '10'];"],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.old.value).toBe(0);
+    expect(violations[0]?.new.kind).toBe('retries');
+  });
+
   test('checks TypeScript module-extension test files', () => {
     for (const extension of ['mts', 'cts']) {
       const violations = findTimeoutIncreaseViolations(
@@ -708,7 +722,7 @@ describe('check-timeout-increases', () => {
   });
 
   test('compares a newly added multiline Bun timeout argument with the runner default', () => {
-    const diff = [
+    const increased = [
       'diff --git a/packages/testing/scripts/run-tests.ts b/packages/testing/scripts/run-tests.ts',
       '--- a/packages/testing/scripts/run-tests.ts',
       '+++ b/packages/testing/scripts/run-tests.ts',
@@ -721,10 +735,45 @@ describe('check-timeout-increases', () => {
       '+];',
       '',
     ].join('\n');
+    const reduced = [
+      'diff --git a/packages/testing/scripts/run-tests.ts b/packages/testing/scripts/run-tests.ts',
+      '--- a/packages/testing/scripts/run-tests.ts',
+      '+++ b/packages/testing/scripts/run-tests.ts',
+      '@@ -10,1 +10,6 @@',
+      '+const arguments = [',
+      "+  'bun',",
+      "+  'test',",
+      "+  '--timeout',",
+      "+  '4000',",
+      '+];',
+      '',
+    ].join('\n');
+
+    const violations = findTimeoutIncreaseViolations(increased);
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.old.value).toBe(5_000);
+    expect(findTimeoutIncreaseViolations(reduced)).toEqual([]);
+  });
+
+  test('compares a newly added multiline Bun rerun-each argument with the retry default', () => {
+    const diff = [
+      'diff --git a/packages/testing/scripts/run-tests.ts b/packages/testing/scripts/run-tests.ts',
+      '--- a/packages/testing/scripts/run-tests.ts',
+      '+++ b/packages/testing/scripts/run-tests.ts',
+      '@@ -10,1 +10,6 @@',
+      '+const arguments = [',
+      "+  'bun',",
+      "+  'test',",
+      "+  '--rerun-each',",
+      "+  '10',",
+      '+];',
+      '',
+    ].join('\n');
 
     const violations = findTimeoutIncreaseViolations(diff);
     expect(violations).toHaveLength(1);
-    expect(violations[0]?.old.value).toBe(5_000);
+    expect(violations[0]?.old.value).toBe(0);
+    expect(violations[0]?.new.kind).toBe('retries');
   });
 
   test('checks Bun rerun-each retry flags', () => {
@@ -1129,6 +1178,33 @@ describe('check-timeout-increases', () => {
     expect(violations[0]?.new.value).toBe(10_000);
   });
 
+  test('checks Playwright expect.poll interval increases', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/testing/tests/example.playwright.ts',
+        ['await expect.poll(readiness, { intervals: [100, 250] }).toBe(true);'],
+        ['await expect.poll(readiness, { intervals: [100, 500] }).toBe(true);'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.old.value).toBe(250);
+    expect(violations[0]?.new.value).toBe(500);
+  });
+
+  test('compares new Jest setTimeout calls with the runner default', () => {
+    const increased = findTimeoutIncreaseViolations(
+      diffFor('packages/components/src/button/button.test.ts', [], ['jest.setTimeout(10_000);']),
+    );
+    const reduced = findTimeoutIncreaseViolations(
+      diffFor('packages/components/src/button/button.test.ts', [], ['jest.setTimeout(4_000);']),
+    );
+
+    expect(increased).toHaveLength(1);
+    expect(increased[0]?.old.value).toBe(5_000);
+    expect(reduced).toEqual([]);
+  });
+
   test('normalizes threshold identifier units before comparison', () => {
     const violations = findTimeoutIncreaseViolations(
       diffFor(
@@ -1374,6 +1450,12 @@ describe('check-timeout-increases', () => {
         ['run: run-test # retries: 3'],
       ),
     ].join('\n');
+
+    expect(findTimeoutIncreaseViolations(diff)).toEqual([]);
+  });
+
+  test('ignores threshold text in TOML hash comments', () => {
+    const diff = diffFor('bunfig.toml', ['# timeout = 5_000'], ['# timeout = 10_000']);
 
     expect(findTimeoutIncreaseViolations(diff)).toEqual([]);
   });
