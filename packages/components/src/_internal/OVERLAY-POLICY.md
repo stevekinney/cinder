@@ -142,7 +142,11 @@ Every overlay that animates in must animate out symmetrically and await transiti
 - it has no visible enter motion either (it never animates in), or
 - its content is regenerated fresh on every open in a way that makes preserving exit state meaningless (e.g. a single-frame flash confirmation).
 
-Overlays claiming this exception are listed here with a stated reason. Current exception list: _(empty — CIN-376's migration will surface any legitimate entries)_.
+Svelte-managed transitions are an accepted equivalent mechanism: when an element leaves via a `transition:` directive, Svelte itself awaits the outro before removing it from the DOM, so no `data-cinder-closing`/`waitForTransitionCompletion` plumbing is needed — provided the duration collapses to `0` under `useReducedMotion()` so reduced-motion teardown stays immediate. Backdrop (`transition:fade` with a reduced-motion-collapsed `effectiveDuration`) is the reference example.
+
+Overlays claiming this exception are listed here with a stated reason. Current exception list:
+
+- **Command Menu** — has no enter motion today (`command-menu.css` and the shared `_floating-surface.css` apply no transition or animation to its panel), so destroying on close is symmetric. If CIN-376's migration gives it enter motion, it leaves this list and takes on the full exit lifecycle.
 
 ### Modal vs. non-modal guarantees
 
@@ -155,23 +159,24 @@ Overlays claiming this exception are listed here with a stated reason. Current e
 
 Every overlay-shaped component in the repo today, and where it stands against this contract:
 
-| Component         | Class     | Exit-transition status                                                                      |
-| ----------------- | --------- | ------------------------------------------------------------------------------------------- |
-| Modal             | Modal     | Conforms — `SlidingDialogState`                                                             |
-| Drawer            | Modal     | Conforms — `SlidingDialogState`                                                             |
-| Alert Dialog      | Modal     | Conforms — composes Modal                                                                   |
-| Confirm Dialog    | Modal     | Conforms — composes Modal                                                                   |
-| Command Palette   | Modal     | Deviation — animates in, closes instantly (see below)                                       |
-| HoverCard         | Non-modal | Deviation — hand-rolled duplicate with a reopen defect (see below)                          |
-| Toast             | Non-modal | Deviation — awaits completion but non-canonical attribute (see below)                       |
-| Speed Dial        | Non-modal | Deviation — bespoke exit-await mechanism (see below)                                        |
-| Popover           | Non-modal | No exit transition — migrates under CIN-376                                                 |
-| Selection Popover | Non-modal | No exit transition (animates in via `cinder-selection-popover-in`) — migrates under CIN-376 |
-| Tooltip           | Non-modal | No exit transition — migrates under CIN-376                                                 |
-| Combobox listbox  | Non-modal | Composes Popover — inherits its exit lifecycle; migrates with Popover under CIN-376         |
-| Dropdown/Menu     | Non-modal | No exit transition — migrates under CIN-376                                                 |
-| Context Menu      | Non-modal | No exit transition — migrates under CIN-376                                                 |
-| Command Menu      | Non-modal | No exit transition — migrates under CIN-376                                                 |
+| Component         | Class             | Exit-transition status                                                                            |
+| ----------------- | ----------------- | ------------------------------------------------------------------------------------------------- |
+| Modal             | Modal             | Conforms — `SlidingDialogState`                                                                   |
+| Drawer            | Modal             | Conforms — `SlidingDialogState`                                                                   |
+| Alert Dialog      | Modal             | Conforms — composes Modal                                                                         |
+| Confirm Dialog    | Modal             | Conforms — composes Modal                                                                         |
+| Command Palette   | Modal             | Deviation — animates in, closes instantly (see below)                                             |
+| HoverCard         | Non-modal         | Deviation — hand-rolled duplicate with a reopen defect (see below)                                |
+| Toast             | Non-modal         | Deviation — awaits completion but non-canonical attribute (see below)                             |
+| Speed Dial        | Non-modal         | Deviation — bespoke exit-await mechanism (see below)                                              |
+| Popover           | Non-modal         | No exit transition — migrates under CIN-376                                                       |
+| Selection Popover | Non-modal         | No exit transition (animates in via `cinder-selection-popover-in`) — migrates under CIN-376       |
+| Tooltip           | Non-modal         | No exit transition — migrates under CIN-376                                                       |
+| Combobox listbox  | Non-modal         | Composes Popover — inherits its exit lifecycle; migrates with Popover under CIN-376               |
+| Dropdown/Menu     | Non-modal         | No exit transition — migrates under CIN-376                                                       |
+| Context Menu      | Non-modal         | No exit transition — migrates under CIN-376                                                       |
+| Command Menu      | Non-modal         | Destroy-on-close exception — no enter motion (see exception list); escape-stack gap tracked below |
+| Backdrop          | Primitive (scrim) | Conforms — symmetric via Svelte `transition:fade` outro with reduced-motion-collapsed duration    |
 
 Select is not in this census: `select.svelte` renders a native `<select>` element, so the browser owns its popup UI and there is no Cinder-owned listbox to apply this lifecycle to.
 
@@ -185,6 +190,7 @@ These existing overlays contradict the contract above and are listed here rather
 - **Toast** — awaits `waitForTransitionCompletion` before unmounting a dismissed toast, but never renders `data-cinder-closing`; its exit styles key off the non-canonical `data-cinder-presence="exiting"` attribute instead. Migration follow-up: CIN-425.
 - **Speed Dial** — awaits its actions' exit transitions through a bespoke `waitForSpeedDialExit` mechanism (`speed-dial-exit.ts`) rather than the canonical helper, and never renders `data-cinder-closing`. Migration to the shared anchored-overlay exit helper is inside CIN-376's scope.
 - **Command Palette** — plays a visible enter animation but `closePalette()` calls `dialog.close()` immediately, with no exit lifecycle at all — the exact enter/exit asymmetry this section forbids. It also never acquires the counted body scroll lock it owes as a modal-class overlay. Migration follow-up for both gaps: CIN-426.
+- **Command Menu (escape stack)** — never calls `pushEscapeHandler`; Escape is handled only by a keydown listener on its anchor, so the shared LIFO stack cannot arbitrate ESC between it and overlays below it. This is the one escape-stack gap confirmed by review — the rest of the non-modal family has not been audited for this guarantee. Migration follow-up: CIN-427.
 
 ## Hydration tests
 
