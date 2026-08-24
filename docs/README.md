@@ -25,7 +25,7 @@ This directory holds long-form documentation that does not live inside a compone
 - [Segmented control tablist variant](./decisions/segmented-control-tablist-variant.md): decision record for the tablist-style segmented-control follow-up.
 - [Color value format](./decisions/color-value-format.md): ColorField/ColorPicker gain an additive `format` output prop (hex/rgb/hsl/hwb/oklch); `value` stays a plain string (accepted).
 - [`*Group` vs plural naming](./decisions/group-vs-plural-naming.md): **open** — decide once across the Group-suffixed families.
-- [SideNavigation vs Sidebar](./decisions/side-navigation-vs-sidebar.md): **open** — reconcile or keep distinct.
+- [SideNavigation vs Sidebar](./decisions/side-navigation-vs-sidebar.md): **accepted** — keep both; Sidebar is the responsive shell, SideNavigation the nav semantics.
 
 ## Historical Plans
 
