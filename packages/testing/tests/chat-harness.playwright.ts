@@ -961,29 +961,20 @@ test.describe('chat harness — scroll, unread, jump', () => {
         .toBe('auto');
       const anchor = timeline.getByText('Tell me about alpha.').first();
       await expect(anchor).toBeVisible();
-      await expect
-        .poll(async () => {
-          const [anchorBox, timelineBox] = await Promise.all([
-            anchor.boundingBox(),
-            timeline.boundingBox(),
-          ]);
-          return anchorBox !== null && timelineBox !== null;
-        })
-        .toBe(true);
-      const before = await anchor.boundingBox();
-      const beforeTimeline = await timeline.boundingBox();
-      expect(before).not.toBeNull();
-      expect(beforeTimeline).not.toBeNull();
-      const beforeOffset = (before?.y ?? 0) - (beforeTimeline?.y ?? 0);
+      const readAnchorOffset = () =>
+        anchor.evaluate((element) => {
+          const timelineElement = element.closest('.chat-timeline');
+          if (!(timelineElement instanceof HTMLElement)) throw new Error('Timeline not found');
+          return element.getBoundingClientRect().y - timelineElement.getBoundingClientRect().y;
+        });
+      const beforeOffset = await readAnchorOffset();
 
       await timeline.getByRole('button', { name: /load earlier messages/i }).dispatchEvent('click');
       await expectLoggedEvent(harness, 'onloadhistory');
       await expect(anchor).toBeVisible();
       await expect
         .poll(async () => {
-          const after = await anchor.boundingBox();
-          const afterTimeline = await timeline.boundingBox();
-          return Math.abs((after?.y ?? 0) - (afterTimeline?.y ?? 0) - beforeOffset);
+          return Math.abs((await readAnchorOffset()) - beforeOffset);
         })
         .toBeLessThan(2);
       await expect

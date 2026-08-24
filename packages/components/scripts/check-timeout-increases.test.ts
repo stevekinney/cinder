@@ -1064,6 +1064,30 @@ describe('check-timeout-increases', () => {
     expect(violations).toHaveLength(2);
   });
 
+  test('checks debounce constants in validation infrastructure', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/editor/src/lib/anchor-decorations-orphan-offset.test.ts',
+        ['const DEBOUNCE_MS = 300;'],
+        ['const DEBOUNCE_MS = 600;'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+  });
+
+  test('checks child-process timeout options in test infrastructure', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/scripts/server-css-free.test.ts',
+        ["spawnSync('bun', ['run', 'build'], { timeout: 120_000 });"],
+        ["spawnSync('bun', ['run', 'build'], { timeout: 240_000 });"],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+  });
+
   test('analyzes removed thresholds using the source path of a rename', () => {
     const diff = [
       'diff --git a/packages/components/src/button/button.test.ts b/packages/components/src/button/button.ts',

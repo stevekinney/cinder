@@ -63,7 +63,11 @@ export function normalizeThresholdKind(label: string): ThresholdKind {
   const normalized = label.toLowerCase();
   if (normalized === 'timeout-minutes') return 'timeout-minutes';
   if (normalized.includes('slow')) return 'slow';
-  if (/(?:timeout|wait|deadline|poll|interval|delay|grace|sleep|stable.?reads?)/u.test(normalized))
+  if (
+    /(?:timeout|wait|deadline|poll|interval|delay|debounce|grace|sleep|stable.?reads?)/u.test(
+      normalized,
+    )
+  )
     return 'timeout';
   if (
     normalized.includes('rerun') ||
