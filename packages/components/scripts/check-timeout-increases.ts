@@ -401,7 +401,7 @@ function extractMultilineCallCandidates(
     }
   }
   if (/\.(?:bash|sh|yaml|yml|zsh)$/u.test(filePath)) {
-    let shellWaitOccurrenceIndex = 0;
+    let shellCommandOccurrenceIndex = 0;
     for (const sleepMatch of analysis.matchAll(
       /(?:^|(?:&&|[;&|])\s*|\n\s*|\brun:\s*)(?<command>sleep|timeout)\s+(?:(?:--[\w-]+)\s+)*(?<value>\d[\d_.]*)(?:[smhd])?(?![\w.])/gu,
     )) {
@@ -415,10 +415,10 @@ function extractMultilineCallCandidates(
         sleepMatch.groups?.['command'] === 'timeout' ? 'shell.timeout' : 'sleep',
         renderedValue,
         undefined,
-        shellWaitOccurrenceIndex,
+        shellCommandOccurrenceIndex,
         sleepMatch[0],
       );
-      shellWaitOccurrenceIndex += 1;
+      shellCommandOccurrenceIndex += 1;
     }
   }
   if (/(?:^|\/)[^/]+(?:\.(?:spec|test)\.|_(?:spec|test)_)[^/]+$/u.test(filePath)) {
