@@ -286,6 +286,20 @@ describe('check-timeout-increases', () => {
     expect(violations).toHaveLength(1);
   });
 
+  test('treats slow-prefixed timeout identifiers as timeouts', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/scripts/probe.test.ts',
+        ['const SLOW_TIMEOUT_MS = 5_000;'],
+        ['const SLOW_TIMEOUT_MS = 10_000;'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.old.kind).toBe('timeout');
+    expect(violations[0]?.new.kind).toBe('timeout');
+  });
+
   test('rejects renamed timeout constant increases at the same callsite', () => {
     const violations = findTimeoutIncreaseViolations(
       diffFor(
