@@ -200,7 +200,7 @@
     white-space: nowrap;
   }
 
-  .cinder-file-upload__status[data-status='success'] {
+  .cinder-file-upload__status[data-status='ready'] {
     color: var(--cinder-color-success-fg);
   }
 
