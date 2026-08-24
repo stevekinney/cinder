@@ -116,10 +116,15 @@
     };
   });
 
-  function handleChange(event: Event): void {
-    const target = event.currentTarget as HTMLInputElement;
+  function handleChange(event: Event & { currentTarget: EventTarget & HTMLInputElement }): void {
+    const target = event.currentTarget;
+    const rawChecked = target.checked;
+    // Forward the raw native event before Cinder's veto/commit machinery runs, so
+    // consumers observe the browser's actual value rather than a post-veto value
+    // that may have already been reverted on the DOM.
+    consumerOnchange?.(event);
     const committed = commitValue(
-      target.checked,
+      rawChecked,
       onValueChangeRequest,
       (next) => {
         checked = next;
@@ -128,7 +133,6 @@
     );
     target.checked = committed;
     target.indeterminate = indeterminate && !committed;
-    consumerOnchange?.(event as Parameters<NonNullable<CheckboxProps['onchange']>>[0]);
   }
 </script>
 

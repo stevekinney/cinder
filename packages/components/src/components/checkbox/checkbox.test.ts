@@ -136,6 +136,26 @@ describe('Checkbox', () => {
     expect(input.checked).toBe(false);
   });
 
+  test('onchange is forwarded with the raw pre-veto checked value even when onValueChangeRequest vetoes it', async () => {
+    let forwardedChecked: boolean | undefined;
+    const onchange = mock((event: Event) => {
+      forwardedChecked = (event.currentTarget as HTMLInputElement).checked;
+    });
+    const { container } = render(Checkbox, {
+      id: 'c',
+      checked: false,
+      onValueChangeRequest: () => false,
+      onchange,
+    });
+    const input = container.querySelector('#c') as HTMLInputElement;
+
+    await fireEvent.click(input);
+
+    expect(onchange).toHaveBeenCalledTimes(1);
+    expect(forwardedChecked).toBe(true);
+    expect(input.checked).toBe(false);
+  });
+
   test('onValueChange is called once with the committed value on user toggle', async () => {
     const onValueChange = mock((_next: boolean) => {});
     const { container } = render(Checkbox, {
