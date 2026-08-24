@@ -68,6 +68,7 @@ export function normalizeThresholdKind(label: string): ThresholdKind {
   if (
     normalized.includes('rerun') ||
     normalized.includes('attempt') ||
+    normalized.includes('press') ||
     normalized.includes('retry') ||
     normalized.includes('retries')
   ) {
@@ -233,6 +234,26 @@ export function collectComparableViolations(
     ({ candidate, hunk }) =>
       `${candidate.identity}:${callsiteFingerprint(candidate)}:${candidate.identity.includes(':') ? '' : hunk.filePath}`,
   );
+  const renamedGroups = new Map<string, { added: CandidateEntry[]; removed: CandidateEntry[] }>();
+  for (const [entries, side] of [
+    [removedEntries, 'removed'],
+    [addedEntries, 'added'],
+  ] as const) {
+    for (const entry of entries) {
+      if (!entry.candidate.identity.includes(':')) continue;
+      if (side === 'removed' && consumedRemoved.has(entry.candidate)) continue;
+      if (side === 'added' && consumedAdded.has(entry.candidate)) continue;
+      const key = `${entry.hunk.filePath}:${entry.candidate.kind}`;
+      const group = renamedGroups.get(key) ?? { added: [], removed: [] };
+      group[side].push(entry);
+      renamedGroups.set(key, group);
+    }
+  }
+  for (const group of renamedGroups.values()) {
+    if (group.removed.length === 1 && group.added.length === 1) {
+      pairEntries(group.removed, group.added, true);
+    }
+  }
 
   for (const { candidate: newCandidate, hunk } of addedEntries) {
     if (consumedAdded.has(newCandidate)) continue;

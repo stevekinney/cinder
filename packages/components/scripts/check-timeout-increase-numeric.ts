@@ -59,14 +59,21 @@ export function effectiveThresholdValue(label: string, line: string, value: numb
     if (/(?:milliseconds?|msecs?|ms)$/iu.test(label)) return value;
     if (/(?:seconds?|secs?)$/iu.test(label)) return value * 1_000;
   }
-  if (normalizedLabel === 'sleep') {
+  if (normalizedLabel === 'sleep' || normalizedLabel === 'shell.timeout') {
     const unit =
-      /\bsleep\s+\d[\d_.]*(?<unit>[smhd])?(?![\w.])/u.exec(line)?.groups?.['unit'] ?? 's';
+      /\b(?:sleep|timeout)\s+\d[\d_.]*(?<unit>[smhd])?(?![\w.])/u.exec(line)?.groups?.['unit'] ??
+      's';
     return value * ({ s: 1_000, m: 60_000, h: 3_600_000, d: 86_400_000 }[unit] ?? 1_000);
   }
   if (value !== 0) return value;
   if (/(?:poll|interval|delay)/u.test(normalizedLabel)) return value;
-  if (normalizedLabel.includes('retr') || normalizedLabel.includes('slow')) return value;
+  if (
+    normalizedLabel.includes('press') ||
+    normalizedLabel.includes('retr') ||
+    normalizedLabel.includes('slow')
+  ) {
+    return value;
+  }
   if (
     [
       'abortsignal.timeout',

@@ -1731,6 +1731,60 @@ describe('check-timeout-increases', () => {
     expect(violations).toEqual([]);
   });
 
+  test('checks capped interaction press counts', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/testing/src/helpers/focus-ring.ts',
+        ['async function tabUntilFocused(maxPresses = 50) {}'],
+        ['async function tabUntilFocused(maxPresses = 80) {}'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.new.kind).toBe('retries');
+  });
+
+  test('does not connect a threshold assignment to a later conditional', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/scripts/check-suite.test.ts',
+        ['const TEST_TIMEOUT_MS = 5_000;', 'const columns = compact ? 1 : 2;'],
+        ['const TEST_TIMEOUT_MS = 5_000;', 'const columns = compact ? 1 : 3;'],
+      ),
+    );
+
+    expect(violations).toEqual([]);
+  });
+
+  test('pairs a single renamed threshold across hunks in one file', () => {
+    const diff = [
+      'diff --git a/packages/components/scripts/validate-server.ts b/packages/components/scripts/validate-server.ts',
+      '--- a/packages/components/scripts/validate-server.ts',
+      '+++ b/packages/components/scripts/validate-server.ts',
+      '@@ -10,1 +10,0 @@',
+      '-const STARTUP_TIMEOUT_MS = 5_000;',
+      '@@ -40,0 +40,1 @@',
+      '+const SERVER_WAIT_MS = 10_000;',
+      '',
+    ].join('\n');
+
+    expect(findTimeoutIncreaseViolations(diff)).toHaveLength(1);
+  });
+
+  test('checks shell timeout command durations', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/scripts/probe.sh',
+        ['timeout 30s bun test'],
+        ['timeout 1m bun test'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.old.effectiveValue).toBe(30_000);
+    expect(violations[0]?.new.effectiveValue).toBe(60_000);
+  });
+
   test('ignores comments, unrelated numeric edits, and lockfile noise', () => {
     const diff = [
       diffFor(
