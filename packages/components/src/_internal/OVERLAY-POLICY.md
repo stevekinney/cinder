@@ -1,6 +1,6 @@
 # Cinder Overlay Policy
 
-This document defines the cross-cutting behavior every Cinder overlay component (Modal, Drawer, Alert Dialog, Confirm Dialog, Command Palette, Popover, Selection Popover, Tooltip, HoverCard, the Combobox listbox, MultiSelect, Dropdown, Dropdown Menu, Context Menu, Command Menu, Speed Dial, the NavigationBar mobile panel, Toast) must follow. It exists so each component's own `.a11y.md` doesn't have to re-derive these answers, and so the policy stays consistent as new overlay components are added in later phases.
+This document defines the cross-cutting behavior every Cinder overlay component (Modal, Drawer, Alert Dialog, Confirm Dialog, Command Palette, Popover, Selection Popover, Tooltip, HoverCard, the Combobox and Autocomplete listboxes, MultiSelect, Dropdown, Dropdown Menu, Context Menu, Command Menu, Speed Dial, the NavigationBar mobile panel, Toast) must follow. It exists so each component's own `.a11y.md` doesn't have to re-derive these answers, and so the policy stays consistent as new overlay components are added in later phases.
 
 The runtime helpers backing this policy live in `src/_internal/overlay.ts` and
 `src/_internal/anchored-overlay.svelte.ts`.
@@ -31,7 +31,7 @@ nested Popover, SpeedDial, or NavigationBar surface to be truncated.
 
 ## SSR rule (hard constraint)
 
-Overlays render nothing on the server, regardless of their initial `open` state. The standard idiom in a [Svelte 5](https://svelte.dev/docs/svelte/overview) component:
+This rule governs the overlay _surface_ — the floating panel, listbox, or dialog — not the host component around it. Composite components (Combobox, Autocomplete, MultiSelect, NavigationBar) SSR their normal control or `<nav>` markup; only their popup surface renders nothing on the server, regardless of its initial `open` state. The standard idiom in a [Svelte 5](https://svelte.dev/docs/svelte/overview) component:
 
 ```svelte
 <script>
@@ -126,7 +126,7 @@ Toast sits **above** Modal so confirmation and error toasts reach users even whe
 
 ## Transition lifecycle
 
-This section defines how an overlay _leaves_ the screen. The canonical implementation is `SlidingDialogState` (`src/components/_internal/create-sliding-dialog-state.svelte.ts`), shared today by Modal and Drawer (and by Alert Dialog through its composition of Modal). New overlays and migrations conform to this contract; CIN-376 extends it across the anchored-overlay family.
+This section defines how an overlay _leaves_ the screen. The canonical implementation is `SlidingDialogState` (`src/components/_internal/create-sliding-dialog-state.svelte.ts`), shared today by Modal and Drawer (and by Alert Dialog and Confirm Dialog through their composition of Modal). New overlays and migrations conform to this contract; CIN-376 extends it across the anchored-overlay family.
 
 ### The contract
 
@@ -152,10 +152,10 @@ Overlays claiming this exception are listed here with a stated reason. Current e
 
 ### Modal vs. non-modal guarantees
 
-| Class     | Components                                                                                                                                                                        | Owes                                                                                                                                          |
-| --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| Modal     | Modal, Drawer, Alert Dialog, Confirm Dialog, Command Palette                                                                                                                      | Scroll lock (counted `lockBodyScroll`), focus trap, `aria-modal`, escape-stack registration                                                   |
-| Non-modal | Popover, Selection Popover, Tooltip, HoverCard, Combobox listbox, MultiSelect, Dropdown, Dropdown Menu, Context Menu, Command Menu, Speed Dial, NavigationBar mobile panel, Toast | Escape-stack registration only — no scroll lock, no focus trap, no `aria-modal`, since they don't block interaction with the rest of the page |
+| Class     | Components                                                                                                                                                                                              | Owes                                                                                                                                          |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Modal     | Modal, Drawer, Alert Dialog, Confirm Dialog, Command Palette                                                                                                                                            | Scroll lock (counted `lockBodyScroll`), focus trap, `aria-modal`, escape-stack registration                                                   |
+| Non-modal | Popover, Selection Popover, Tooltip, HoverCard, Combobox listbox, Autocomplete listbox, MultiSelect, Dropdown, Dropdown Menu, Context Menu, Command Menu, Speed Dial, NavigationBar mobile panel, Toast | Escape-stack registration only — no scroll lock, no focus trap, no `aria-modal`, since they don't block interaction with the rest of the page |
 
 ### Census
 
@@ -176,6 +176,7 @@ Every overlay-shaped component in the repo today, and where it stands against th
 | Selection Popover          | Non-modal         | No exit transition (animates in via `cinder-selection-popover-in`) — migrates under CIN-376                            |
 | Tooltip                    | Non-modal         | No exit transition — migrates under CIN-376                                                                            |
 | Combobox listbox           | Non-modal         | Composes Popover — inherits its exit lifecycle; migrates with Popover under CIN-376                                    |
+| Autocomplete listbox       | Non-modal         | Composes Popover — inherits its exit lifecycle; migrates with Popover under CIN-376                                    |
 | Dropdown (legacy)          | Non-modal         | Animates in (`cinder-dropdown-enter`), no exit transition — migrates under CIN-376                                     |
 | Dropdown Menu              | Non-modal         | Destroy-on-close exception — modern `.cinder-dropdown-menu` panel has no enter motion (see exception list)             |
 | Context Menu               | Non-modal         | Destroy-on-close exception — renders the same motionless DropdownMenu panel (see exception list)                       |
@@ -196,11 +197,11 @@ These existing overlays contradict the contract above and are listed here rather
 - **Speed Dial** — awaits its actions' exit transitions through a bespoke `waitForSpeedDialExit` mechanism (`speed-dial-exit.ts`) rather than the canonical helper, and never renders `data-cinder-closing`. Migration to the shared anchored-overlay exit helper is inside CIN-376's scope.
 - **Command Palette** — plays a visible enter animation but `closePalette()` calls `dialog.close()` immediately, with no exit lifecycle at all — the exact enter/exit asymmetry this section forbids. It also never acquires the counted body scroll lock it owes as a modal-class overlay. Migration follow-up for both gaps: CIN-426.
 - **Command Menu (escape stack)** — never calls `pushEscapeHandler`; Escape is handled only by a keydown listener on its anchor, so the shared LIFO stack cannot arbitrate ESC between it and overlays below it. Migration follow-up: CIN-427.
-- **Selection Popover, DropdownMenu, Speed Dial (escape stack)** — the same gap, confirmed by review: each handles Escape only from its own `onkeydown` callback and never registers on the stack. DropdownMenu's fix covers Context Menu, Menu Bar, and the modern Dropdown branch transitively, since they render its panel; Dropdown's legacy `usesLegacySnippetApi` branch renders `.cinder-dropdown__menu` directly and needs its own registration. Migration follow-up for all of these: CIN-428. MultiSelect, NavigationBar, and MegaMenu have not been audited for this guarantee.
+- **Selection Popover, DropdownMenu, Speed Dial (escape stack)** — the same gap, confirmed by review: each handles Escape only from its own `onkeydown` callback and never registers on the stack. DropdownMenu's fix covers Context Menu, Menu Bar, and the modern Dropdown branch transitively, since they render its panel; Dropdown's legacy `usesLegacySnippetApi` branch renders `.cinder-dropdown__menu` directly and needs its own registration. Migration follow-up for all of these: CIN-428. **NavigationBar's mobile panel** shares the gap — its only Escape handling is a bubbling `handleKeyDown`, so a lower overlay's stack handler runs first on the same keystroke; also CIN-428. MultiSelect and MegaMenu have not been audited for this guarantee.
 
 ## Hydration tests
 
-Every overlay component must have hydration tests (using `src/test/hydrate.ts`) that assert:
+Every overlay component whose surface is the component itself must have hydration tests (using `src/test/hydrate.ts`); for composite components the assertions below apply to the popup surface, not the SSR'd host markup. The tests assert:
 
 1. SSR renders empty markup with `open={false}`.
 2. SSR renders empty markup with `open={true}` (no warning in production, dev warning emitted).
