@@ -2413,6 +2413,6 @@ describe('check-timeout-increases', () => {
   });
 
   test('does not read interactive standard input before checking the fallback', async () => {
-    await expect(readDiffInput(true, undefined)).resolves.toBe('');
+    await expect(readDiffInput(true, null)).resolves.toBe('');
   });
 });

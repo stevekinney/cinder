@@ -348,11 +348,15 @@ export function formatTimeoutIncreaseViolations(
 
 export async function readDiffInput(
   standardInputIsTerminal = process.stdin.isTTY,
-  baseRef = Bun.env['BASE_REF'] ?? Bun.env['GITHUB_BASE_REF'],
+  baseRefOverride?: string | null,
 ): Promise<string> {
   const standardInput = standardInputIsTerminal ? '' : await Bun.stdin.text();
   if (standardInput.trim().length > 0) return standardInput;
 
+  const baseRef =
+    baseRefOverride === null
+      ? undefined
+      : (baseRefOverride ?? Bun.env['BASE_REF'] ?? Bun.env['GITHUB_BASE_REF']);
   if (baseRef === undefined || baseRef.trim().length === 0) return standardInput;
 
   const result = Bun.spawnSync(['git', 'diff', '--unified=100000', `origin/${baseRef}...HEAD`], {
