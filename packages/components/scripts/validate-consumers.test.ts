@@ -239,6 +239,11 @@ describe('SvelteKit hydration route failure diagnostics', () => {
 
     const captured = captureSvelteKitHydrationRouteFailureSnapshot(page, {
       browserEvents: ['browser:connected'],
+      domObservation: {
+        documentReadyState: 'complete',
+        hydrationMarkerPresent: true,
+        hydrationMarkerValue: 'true',
+      },
       errors: diagnosticSnapshotFromValues(['runtime error']),
       nonOkResponses: diagnosticSnapshotFromValues(['500 http://fixture.test/api']),
       requestFailures: diagnosticSnapshotFromValues(['request failed']),
@@ -247,9 +252,9 @@ describe('SvelteKit hydration route failure diagnostics', () => {
 
     expect(evaluate).not.toHaveBeenCalled();
     expect(captured.currentUrl).toBe('http://127.0.0.1:4173/dev-ssr-tabs');
-    expect(captured.documentReadyState).toBe('unknown');
-    expect(captured.hydrationMarkerPresent).toBe('unknown');
-    expect(captured.hydrationMarkerValue).toBe('unknown');
+    expect(captured.documentReadyState).toBe('complete');
+    expect(captured.hydrationMarkerPresent).toBe(true);
+    expect(captured.hydrationMarkerValue).toBe('true');
     expect(captured.runtimeErrors.values).toEqual(['runtime error']);
   });
 

@@ -2548,6 +2548,17 @@ async function assertSvelteKitHydrationRoute(
   const errors = createBoundedDiagnosticCollection();
   const nonOkResponses = createBoundedDiagnosticCollection();
   const requestFailures = createBoundedDiagnosticCollection();
+  const domObservation: SvelteKitHydrationRouteDomObservation = {
+    documentReadyState: 'unknown',
+    hydrationMarkerPresent: 'unknown',
+    hydrationMarkerValue: 'unknown',
+  };
+  page.on('domcontentloaded', () => {
+    domObservation.documentReadyState = 'interactive';
+  });
+  page.on('load', () => {
+    domObservation.documentReadyState = 'complete';
+  });
   page.on('crash', () => browserEvents.push(`page:crash route=${routePath}`));
   page.on('requestfailed', (request) => {
     const failureText = request.failure()?.errorText ?? 'unknown';
@@ -2578,7 +2589,7 @@ async function assertSvelteKitHydrationRoute(
       waitUntil: 'domcontentloaded',
     });
     await page.waitForLoadState('load', { timeout: 5_000 });
-    await assertSvelteKitHydrationRouteContent(page, errors, routePath);
+    await assertSvelteKitHydrationRouteContent(page, errors, routePath, domObservation);
 
     if (errors.values.length > 0) {
       const omittedLine =
@@ -2597,6 +2608,7 @@ async function assertSvelteKitHydrationRoute(
     try {
       failureSnapshot = captureSvelteKitHydrationRouteFailureSnapshot(page, {
         browserEvents,
+        domObservation,
         errors: boundedDiagnosticSnapshot(errors),
         nonOkResponses: boundedDiagnosticSnapshot(nonOkResponses),
         requestFailures: boundedDiagnosticSnapshot(requestFailures),
@@ -2644,9 +2656,12 @@ async function assertSvelteKitHydrationRouteContent(
   page: Page,
   errors: BoundedDiagnosticCollection,
   routePath: SvelteKitHydrationRoute,
+  domObservation: SvelteKitHydrationRouteDomObservation,
 ): Promise<void> {
   if (routePath === '/chat-layout') {
     await page.locator('[data-chat-layout-hydrated="true"]').waitFor({ timeout: 5_000 });
+    domObservation.hydrationMarkerPresent = true;
+    domObservation.hydrationMarkerValue = 'true';
     await page.getByRole('heading', { name: 'Empty Chat hydration' }).waitFor({ timeout: 5_000 });
     await page.getByText('No messages yet').waitFor({ timeout: 5_000 });
     await page.getByRole('textbox', { name: 'Message' }).waitFor({ timeout: 5_000 });
@@ -2655,6 +2670,8 @@ async function assertSvelteKitHydrationRouteContent(
   }
 
   await page.locator('[data-dev-ssr-hydrated="true"]').waitFor({ timeout: 5_000 });
+  domObservation.hydrationMarkerPresent = true;
+  domObservation.hydrationMarkerValue = 'true';
   if (routePath === '/dev-ssr-navigation') {
     await page.getByText('basicOrderWorkflow').waitFor({ timeout: 5_000 });
     return;
@@ -2700,6 +2717,11 @@ export type SvelteKitHydrationRouteFailureSnapshot = {
   browserEvents: BoundedDiagnosticSnapshot;
   diagnosticCaptureError?: string;
 };
+
+export type SvelteKitHydrationRouteDomObservation = Pick<
+  SvelteKitHydrationRouteFailureSnapshot,
+  'documentReadyState' | 'hydrationMarkerPresent' | 'hydrationMarkerValue'
+>;
 
 export type BoundedDiagnosticCollection = {
   omitted: number;
@@ -2789,6 +2811,7 @@ export function captureSvelteKitHydrationRouteFailureSnapshot(
   page: Pick<Page, 'url'>,
   options: {
     browserEvents: readonly string[];
+    domObservation: SvelteKitHydrationRouteDomObservation;
     errors: BoundedDiagnosticSnapshot;
     nonOkResponses: BoundedDiagnosticSnapshot;
     requestFailures: BoundedDiagnosticSnapshot;
@@ -2802,6 +2825,10 @@ export function captureSvelteKitHydrationRouteFailureSnapshot(
   } catch (error) {
     snapshot.diagnosticCaptureError = error instanceof Error ? error.message : String(error);
   }
+
+  snapshot.documentReadyState = options.domObservation.documentReadyState;
+  snapshot.hydrationMarkerPresent = options.domObservation.hydrationMarkerPresent;
+  snapshot.hydrationMarkerValue = options.domObservation.hydrationMarkerValue;
 
   snapshot.nonOkResponses = options.nonOkResponses;
   snapshot.requestFailures = options.requestFailures;
