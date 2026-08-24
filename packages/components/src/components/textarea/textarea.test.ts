@@ -380,6 +380,15 @@ describe('resolveMaximumLength', () => {
   });
 });
 
+describe('Textarea — error live region', () => {
+  test('the error live region is mounted before any error is set (CIN-315: FormFieldFrame defaults to errorMountedOnDemand=false)', () => {
+    const { container } = render(Textarea, {
+      props: { id: 'no-error-yet-textarea', value: '', label: 'Notes' },
+    });
+    expect(container.querySelector('.cinder-textarea-error')).not.toBeNull();
+  });
+});
+
 describe('Textarea — required marker', () => {
   test('renders the shared required marker on a standalone Textarea (the reported bug)', () => {
     const { container } = render(Textarea, {

@@ -592,9 +592,9 @@
   </div>
 {/snippet}
 
-<!-- The error node stays mounted (errorAlwaysMounted) so the live region is
-     registered before text is injected; freshly-mounted aria-live nodes are
-     not reliably announced by NVDA/JAWS. -->
+<!-- FormFieldFrame keeps the error node mounted by default so the live region
+     is registered before text is injected; freshly-mounted aria-live nodes
+     are not reliably announced by NVDA/JAWS. -->
 <FormFieldFrame
   {id}
   {label}
@@ -608,6 +608,5 @@
   errorClass="cinder-combobox__error"
   {descriptionId}
   errorId={field.ownErrorId ?? stableLocalErrorId}
-  errorAlwaysMounted
   control={comboboxControl}
 />

@@ -9,7 +9,7 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 // so we register happy-dom's globals first and then dynamic-import testing-library below.
 setupHappyDom();
 
-const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
+const { cleanup, fireEvent, render, waitFor } = await import('@testing-library/svelte');
 const { default: FilterBar } = await import('./filter-bar.svelte');
 
 beforeEach(() => document.body.replaceChildren());
@@ -299,8 +299,11 @@ describe('FilterBar accessibility', () => {
 
   test('always renders a live region for filter-count announcements', () => {
     const { container } = render(FilterBar, {});
-    // The visually-hidden live region is always in the DOM
-    const liveRegion = container.querySelector('[aria-live]');
+    // The visually-hidden live region is always in the DOM. Scoped to
+    // `[role="status"]` (not the broader `[aria-live]`) because the embedded
+    // SearchField's Input also carries `aria-live="polite"` on its
+    // always-mounted error node (CIN-315) and would otherwise collide.
+    const liveRegion = container.querySelector('[role="status"]');
     expect(liveRegion).not.toBeNull();
   });
 
@@ -311,10 +314,16 @@ describe('FilterBar accessibility', () => {
         { key: 'queue', value: 'default', label: 'Queue' },
       ],
     });
-    // The _VisuallyHiddenLiveRegion defers by setTimeout(0); give it a tick
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    const liveRegion = container.querySelector('[aria-live]');
-    expect(liveRegion?.textContent).toContain('2 active filters');
+    // The _VisuallyHiddenLiveRegion defers by setTimeout(0); poll instead of
+    // a fixed delay, since the exact settle time is not a fixed constant.
+    // Scoped to `[role="status"]` (not the broader `[aria-live]`) because
+    // the embedded SearchField's Input also carries `aria-live="polite"` on
+    // its always-mounted error node (CIN-315) and would otherwise collide —
+    // `[aria-live]` matched Input's empty error node first in DOM order.
+    await waitFor(() => {
+      const liveRegion = container.querySelector('[role="status"]');
+      expect(liveRegion?.textContent).toContain('2 active filters');
+    });
   });
 
   test('active controls row has accessible label for screen readers', () => {

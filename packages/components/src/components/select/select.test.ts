@@ -398,6 +398,23 @@ describe('Select chevron indicator', () => {
   });
 });
 
+describe('Select — error live region', () => {
+  test('the error live region is mounted before any error is set (CIN-315: FormFieldFrame defaults to errorMountedOnDemand=false)', () => {
+    const { container } = render(Select, {
+      props: {
+        id: 'no-error-yet-select',
+        value: 'a',
+        label: 'Choose',
+        options: [
+          { value: 'a', label: 'A' },
+          { value: 'b', label: 'B' },
+        ],
+      },
+    });
+    expect(container.querySelector('.cinder-select-field__error')).not.toBeNull();
+  });
+});
+
 describe('Select — required marker', () => {
   test('renders the shared required marker on a standalone Select', () => {
     const { container } = render(Select, {

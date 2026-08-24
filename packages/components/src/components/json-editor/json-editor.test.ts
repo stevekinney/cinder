@@ -16,6 +16,15 @@ afterEach(() => {
 });
 
 describe('JsonEditor', () => {
+  test('the error live region is mounted before any error is set (CIN-315: FormFieldFrame defaults to errorMountedOnDemand=false)', () => {
+    const { container } = render(JsonEditor, {
+      id: 'no-error-yet-json',
+      label: 'Payload',
+      value: '{}',
+    });
+    expect(container.querySelector('.cinder-form-field__error')).not.toBeNull();
+  });
+
   test('documents supported native validation and disabled props in its public schema', () => {
     expect(schema.properties).toHaveProperty('disabled');
     expect(schema.properties).toHaveProperty('required');

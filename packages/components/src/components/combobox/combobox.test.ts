@@ -1174,6 +1174,20 @@ describe('Combobox Escape restores committed label', () => {
 });
 
 describe('Combobox — required', () => {
+  test('the error live region is mounted before any error is set (CIN-315: FormFieldFrame defaults to errorMountedOnDemand=false)', () => {
+    const { container } = renderIntoContainer(Combobox, {
+      props: {
+        id: 'no-error-yet-combobox',
+        label: 'Fruit',
+        options: [
+          { value: 'apple', label: 'Apple' },
+          { value: 'pear', label: 'Pear' },
+        ],
+      },
+    });
+    expect(container.querySelector('.cinder-combobox__error')).not.toBeNull();
+  });
+
   test('required renders the marker and sets aria-required on the input', () => {
     const { container } = renderIntoContainer(Combobox, {
       props: {

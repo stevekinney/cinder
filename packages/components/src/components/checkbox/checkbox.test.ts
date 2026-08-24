@@ -449,6 +449,18 @@ describe('Checkbox — FormField context wiring', () => {
   });
 });
 
+describe('Checkbox — error live region', () => {
+  test('the error live region is mounted before any error is set (CIN-315: FormFieldFrame defaults to errorMountedOnDemand=false)', () => {
+    // Checkbox wraps FormFieldFrame in `{#if renderInlineLabel || description
+    // || error}` (a separate known limitation, not fixed here), so a label
+    // is required for FormFieldFrame to render at all in this test.
+    const { container } = render(Checkbox, {
+      props: { id: 'no-error-yet-checkbox', label: 'Agree' },
+    });
+    expect(container.querySelector('.cinder-form-field__error')).not.toBeNull();
+  });
+});
+
 describe('Checkbox — required marker', () => {
   test('renders the shared required marker on a standalone Checkbox', () => {
     const { container } = render(Checkbox, {

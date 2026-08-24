@@ -217,6 +217,16 @@ describe('Input rendering', () => {
     expect(describedBy).toContain('hidden-label-described-error');
   });
 
+  test('the error live region is mounted before any error is set (CIN-315: FormFieldFrame defaults to errorMountedOnDemand=false)', () => {
+    // Input wraps FormFieldFrame in `{#if label || description || error}` (a
+    // separate known limitation, not fixed here), so a label is required for
+    // FormFieldFrame to render at all in this test.
+    const { container } = render(Input, {
+      props: { id: 'no-error-yet', label: 'Name', value: '' },
+    });
+    expect(container.querySelector('.cinder-form-field__error')).not.toBeNull();
+  });
+
   test('no aria-invalid when error prop is absent', () => {
     const { container } = render(Input, {
       props: { id: 'email', value: '' },

@@ -321,4 +321,9 @@ describe('DatePicker', () => {
     expect(trigger?.querySelector('svg')).not.toBeNull();
     expect(trigger?.getAttribute('aria-label')).toBe('Open date picker');
   });
+
+  test('the error live region is mounted before any error is set (CIN-315: FormFieldFrame defaults to errorMountedOnDemand=false)', () => {
+    const { container } = render(DatePicker, { id: 'dp-no-error', value: '2026-06-29' });
+    expect(container.querySelector('.cinder-date-picker__error')).not.toBeNull();
+  });
 });

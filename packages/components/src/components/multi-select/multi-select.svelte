@@ -562,9 +562,9 @@
   {/if}
 {/snippet}
 
-<!-- The error node stays mounted (errorAlwaysMounted) so the live region is
-     registered before text is injected; freshly-mounted aria-live nodes are
-     not reliably announced by NVDA/JAWS. `message` is passed unconditionally
+<!-- FormFieldFrame keeps the error node mounted by default so the live region
+     is registered before text is injected; freshly-mounted aria-live nodes
+     are not reliably announced by NVDA/JAWS. `message` is passed unconditionally
      (the snippet guards its own content with `{#if warning}`) rather than
      `warning ? warningMessage : undefined` — Svelte 5 does not reliably
      re-toggle a child's `{#if messageProp}` when a snippet-typed prop's
@@ -583,7 +583,6 @@
   errorClass="cinder-multi-select__error"
   descriptionId={field.ownDescriptionId}
   errorId={field.ownErrorId ?? stableLocalErrorId}
-  errorAlwaysMounted
   control={multiSelectControl}
   message={warningMessage}
 />

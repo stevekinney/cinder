@@ -49,4 +49,9 @@ describe('Radio', () => {
     expect(label).not.toBeNull();
     expect(container.querySelector('#r-a')).not.toBeNull();
   });
+
+  test('the error live region is mounted before any error is set (CIN-315: FormFieldFrame defaults to errorMountedOnDemand=false)', () => {
+    const { container } = render(Wrapper, { name: 'choice', value: 'a', options });
+    expect(container.querySelector('.cinder-form-field__error')).not.toBeNull();
+  });
 });

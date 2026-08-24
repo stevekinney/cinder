@@ -763,4 +763,12 @@ describe('TimeField', () => {
 
     expect(container.querySelector('.cinder-time-field__period')).toBeNull();
   });
+
+  test('the error live region is mounted before any error is set (CIN-315: FormFieldFrame defaults to errorMountedOnDemand=false)', () => {
+    const { container } = render(TimeField, {
+      props: { id: 'reminder-no-error', label: 'Reminder time', value: '09:30' },
+    });
+
+    expect(container.querySelector('.cinder-time-field__error')).not.toBeNull();
+  });
 });

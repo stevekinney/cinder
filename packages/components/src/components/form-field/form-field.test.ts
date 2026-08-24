@@ -18,6 +18,13 @@ const emptySnippet = createRawSnippet(() => ({
 }));
 
 describe('FormField rendering', () => {
+  test('the error live region is mounted before any error is set (CIN-315: FormFieldFrame defaults to errorMountedOnDemand=false)', () => {
+    const { container } = render(FormField, {
+      props: { id: 'no-error-yet', label: 'Username', children: emptySnippet },
+    });
+    expect(container.querySelector('.cinder-form-field__error')).not.toBeNull();
+  });
+
   test('renders a <label> with correct for and id attributes', () => {
     const { container } = render(FormField, {
       props: { id: 'username', label: 'Username', children: emptySnippet },

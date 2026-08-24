@@ -32,7 +32,7 @@
     controlDisabled = false,
     controlInvalid = false,
     fullWidth = false,
-    errorAlwaysMounted = false,
+    errorMountedOnDemand = false,
     control,
     before,
     after,
@@ -60,16 +60,18 @@
     controlInvalid?: boolean | undefined;
     fullWidth?: boolean | undefined;
     /**
-     * Keep the error node mounted (as an empty live region) even when `error`
-     * is falsy. `data-cinder-error` always reflects whether `error` is set
-     * (regardless of this flag), so CSS can hide the pre-mounted, errorless
-     * node visually without unmounting it — e.g. `.foo__error:not([data-cinder-error])`.
-     * Some fields (Select, Combobox, MultiSelect) must pre-mount their
-     * `aria-live` error region — a freshly-mounted live region is not
-     * reliably announced by NVDA/JAWS, so the node has to exist before an
-     * error string is ever assigned into it.
+     * Opt out of the default always-mounted error live region, and only
+     * mount the error node once `error` is actually set. `data-cinder-error`
+     * always reflects whether `error` is set (regardless of this flag), so
+     * CSS can hide the pre-mounted, errorless node visually without
+     * unmounting it — e.g. `.foo__error:not([data-cinder-error])`.
+     * The error node is pre-mounted as an empty `aria-live` region by
+     * default because a freshly-mounted live region is not reliably
+     * announced by NVDA/JAWS — the node has to exist before an error string
+     * is ever assigned into it. Only opt into on-demand mounting when a
+     * consumer has a specific reason not to pre-mount.
      */
-    errorAlwaysMounted?: boolean | undefined;
+    errorMountedOnDemand?: boolean | undefined;
     control: Snippet;
     before?: Snippet | undefined;
     after?: Snippet | undefined;
@@ -149,7 +151,7 @@
     </p>
   {/if}
   {#if message}{@render message()}{/if}
-  {#if error || errorAlwaysMounted}
+  {#if error || !errorMountedOnDemand}
     <p
       id={errorId}
       class={classNames('cinder-form-field__error', errorClass)}
