@@ -1,6 +1,8 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
 @import '../collapsible/collapsible.css';
 @import '../code-block/code-block.css';
+@import '../input/input.css';
+@import '../textarea/textarea.css';
 @layer cinder.components {
   /**
  * Layout for the JsonSchemaEditor component.

@@ -1,4 +1,6 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@import '../input/input.css';
+@import '../textarea/textarea.css';
 
 @layer cinder.components {
   .cinder-schema-form {

@@ -12,7 +12,7 @@
    * @avoidWhen Collecting a numeric value with stepping controls — use number-input instead.
    * @related textarea, number-input, search-field, form-field
    */
-  export type { InputProps, InputType } from './input.types.ts';
+  export type { InputProps, InputType, InputVariant } from './input.types.ts';
 </script>
 
 <script lang="ts">
@@ -252,6 +252,7 @@
       required={resolvedRequired}
       disabled={resolvedDisabled}
       class="cinder-input-field"
+      data-cinder-variant={variant}
       fullWidth
       descriptionClass="cinder-input-field__description"
       errorClass="cinder-input-field__error"
@@ -282,6 +283,7 @@
     required={required ?? false}
     disabled={disabled ?? false}
     class="cinder-input-field"
+    data-cinder-variant={variant}
     fullWidth
     descriptionClass="cinder-input-field__description"
     errorClass="cinder-input-field__error"

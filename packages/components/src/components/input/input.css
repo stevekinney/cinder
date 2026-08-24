@@ -127,10 +127,12 @@
     tab-size: var(--cinder-code-tab-size);
   }
 
-  /* Defensive: nothing renders a <code> inside an Input today, but if a
-   consumer ever does, lock it to the input's own metrics rather than
-   letting it re-apply its own font stack. */
-  .cinder-input[data-cinder-variant='code'] :where(code) {
+  /* Defensive: `<input>` is a void element and can't host a `<code>`
+   descendant, so this can't target `.cinder-input` itself. Nothing renders
+   a `<code>` inside the field wrapper today, but if a consumer ever
+   overlays one (e.g. a syntax-highlighted backdrop), lock it to the
+   field's own metrics rather than letting it re-apply its own font stack. */
+  .cinder-input-field[data-cinder-variant='code'] :where(code) {
     all: unset;
     font: inherit;
   }

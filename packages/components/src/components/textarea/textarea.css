@@ -105,10 +105,13 @@
     tab-size: var(--cinder-code-tab-size);
   }
 
-  /* Defensive: nothing renders a <code> inside a Textarea today, but if a
-   consumer ever does, lock it to the textarea's own metrics rather than
-   letting it re-apply its own font stack. */
-  .cinder-textarea[data-cinder-variant='code'] :where(code) {
+  /* Defensive: text written between `<textarea>` tags is parsed as literal
+   text, not markup, so this can't target `.cinder-textarea` itself — a real
+   `<code>` element can never be its descendant. Nothing renders one inside
+   the field wrapper today, but if a consumer ever overlays one (e.g. a
+   syntax-highlighted backdrop), lock it to the field's own metrics rather
+   than letting it re-apply its own font stack. */
+  .cinder-textarea-field[data-cinder-variant='code'] :where(code) {
     all: unset;
     font: inherit;
   }

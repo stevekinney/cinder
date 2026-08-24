@@ -11,7 +11,7 @@
    * @avoidWhen Collecting a single short line of text — use input instead.
    * @related input
    */
-  export type { TextareaProps } from './textarea.types.ts';
+  export type { TextareaProps, TextareaVariant } from './textarea.types.ts';
 </script>
 
 <script lang="ts">
@@ -107,6 +107,7 @@
       required={field.required}
       disabled={field.disabled}
       class="cinder-textarea-field"
+      data-cinder-variant={variant}
       labelClass="cinder-textarea-label"
       descriptionClass="cinder-textarea-description"
       errorClass="cinder-textarea-error"
@@ -127,6 +128,7 @@
     required={field.required}
     disabled={field.disabled}
     class="cinder-textarea-field"
+    data-cinder-variant={variant}
     labelClass="cinder-textarea-label"
     descriptionClass="cinder-textarea-description"
     errorClass="cinder-textarea-error"

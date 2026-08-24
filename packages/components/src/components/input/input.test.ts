@@ -48,12 +48,23 @@ describe('Input rendering', () => {
     );
   });
 
-  test('code variant locks any inner <code> element to the input metrics', async () => {
+  test('code variant locks any inner <code> element to the field metrics', async () => {
+    // <input> is a void element and can never host a <code> descendant, so
+    // the inherit-lock rule is scoped to the field wrapper, not .cinder-input.
     const css = await Bun.file(new URL('./input.css', import.meta.url)).text();
 
     expect(css).toMatch(
-      /\.cinder-input\[data-cinder-variant='code'\]\s*:where\(code\)\s*\{\s*all:\s*unset;\s*font:\s*inherit;\s*\}/,
+      /\.cinder-input-field\[data-cinder-variant='code'\]\s*:where\(code\)\s*\{\s*all:\s*unset;\s*font:\s*inherit;\s*\}/,
     );
+  });
+
+  test('code variant propagates data-cinder-variant onto the field wrapper', () => {
+    const { container } = render(Input, {
+      props: { id: 'pattern', value: '', label: 'Pattern', variant: 'code' },
+    });
+    const field = container.querySelector('.cinder-input-field');
+
+    expect(field?.getAttribute('data-cinder-variant')).toBe('code');
   });
 
   test('standalone FormField presentation is included by the Input sidecar', async () => {

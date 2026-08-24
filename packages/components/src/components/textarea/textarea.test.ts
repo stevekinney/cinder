@@ -144,12 +144,24 @@ describe('Textarea', () => {
     );
   });
 
-  test('code variant locks any inner <code> element to the textarea metrics', async () => {
+  test('code variant locks any inner <code> element to the field metrics', async () => {
+    // Text inside <textarea>...</textarea> is parsed as literal text, not
+    // markup, so a real <code> descendant of .cinder-textarea is impossible;
+    // the inherit-lock rule is scoped to the field wrapper instead.
     const css = await Bun.file(new URL('./textarea.css', import.meta.url)).text();
 
     expect(css).toMatch(
-      /\.cinder-textarea\[data-cinder-variant='code'\]\s*:where\(code\)\s*\{\s*all:\s*unset;\s*font:\s*inherit;\s*\}/,
+      /\.cinder-textarea-field\[data-cinder-variant='code'\]\s*:where\(code\)\s*\{\s*all:\s*unset;\s*font:\s*inherit;\s*\}/,
     );
+  });
+
+  test('code variant propagates data-cinder-variant onto the field wrapper', () => {
+    const { container } = render(Textarea, {
+      props: { id: 'json', label: 'Raw JSON', variant: 'code' },
+    });
+    const field = container.querySelector('.cinder-textarea-field');
+
+    expect(field?.getAttribute('data-cinder-variant')).toBe('code');
   });
 
   test('consumer class name merges with .cinder-textarea', () => {
