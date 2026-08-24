@@ -19,6 +19,7 @@ type ExtractLineCandidates = (
   line: string,
   lineNumber: number,
   analysisLine?: string,
+  analysisBeforeLine?: string,
 ) => ThresholdCandidate[];
 type ExtractMultilineCandidates = (
   filePath: string,
@@ -60,6 +61,7 @@ export function findTimeoutIncreaseViolationsInDiff(
           sourceLine.line,
           sourceLine.lineNumber,
           oldAnalysisLines[index],
+          oldAnalysisLines.slice(0, index).join('\n'),
         ),
       );
     }
@@ -71,6 +73,7 @@ export function findTimeoutIncreaseViolationsInDiff(
           sourceLine.line,
           sourceLine.lineNumber,
           newAnalysisLines[index],
+          newAnalysisLines.slice(0, index).join('\n'),
         ),
       );
     }

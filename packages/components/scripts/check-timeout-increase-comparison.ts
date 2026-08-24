@@ -40,6 +40,7 @@ type CandidateEntry = { candidate: ThresholdCandidate; hunk: DiffHunk };
 
 const GENERIC_THRESHOLD_LABELS = new Set([
   'bun-test-timeout',
+  'attempt',
   'deadline',
   'retries',
   'retry',
@@ -62,6 +63,7 @@ export function normalizeThresholdKind(label: string): ThresholdKind {
   if (/(?:timeout|wait|deadline|poll|interval|delay)/u.test(normalized)) return 'timeout';
   if (
     normalized.includes('rerun') ||
+    normalized.includes('attempt') ||
     normalized.includes('retry') ||
     normalized.includes('retries')
   ) {

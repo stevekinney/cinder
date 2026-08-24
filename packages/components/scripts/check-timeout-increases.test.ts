@@ -964,6 +964,53 @@ describe('check-timeout-increases', () => {
     expect(describeViolations).toHaveLength(1);
   });
 
+  test('uses the Playwright assertion default for expect configuration timeouts', () => {
+    const inlineViolations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/testing/playwright.config.ts',
+        [],
+        ['export default { expect: { timeout: 10_000 } };'],
+      ),
+    );
+    const multilineViolations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/testing/playwright.config.ts',
+        ['  expect: {', '    timeout: 5_000,', '  },'],
+        ['  expect: {', '    timeout: 10_000,', '  },'],
+      ),
+    );
+
+    expect(inlineViolations).toHaveLength(1);
+    expect(inlineViolations[0]?.old.value).toBe(5_000);
+    expect(multilineViolations).toHaveLength(1);
+  });
+
+  test('compares new Playwright default timeout calls with the action default', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/testing/tests/example.playwright.ts',
+        [],
+        ['page.setDefaultTimeout(60_000);', 'page.setDefaultNavigationTimeout(60_000);'],
+      ),
+    );
+
+    expect(violations).toHaveLength(2);
+    expect(violations.every((violation) => violation.old.value === 30_000)).toBe(true);
+  });
+
+  test('checks numeric bounds on polling retry loops', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/scripts/husky/utilities.test.ts',
+        ['for (let attempt = 0; attempt < 50; attempt += 1) {', 'while (retryCount <= 2) {'],
+        ['for (let attempt = 0; attempt < 100; attempt += 1) {', 'while (retryCount <= 4) {'],
+      ),
+    );
+
+    expect(violations).toHaveLength(2);
+    expect(violations.map((violation) => violation.new.value)).toEqual([100, 5]);
+  });
+
   test('checks lower-camel retry thresholds in validation infrastructure', () => {
     const violations = findTimeoutIncreaseViolations(
       diffFor(

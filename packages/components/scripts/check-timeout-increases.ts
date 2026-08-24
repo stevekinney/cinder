@@ -32,6 +32,7 @@ function implicitBaselineFor(
   label: string,
   line = '',
   filePath = '',
+  inPlaywrightExpectConfiguration = false,
 ): { renderedValue: string; value: number } | undefined {
   const kind = normalizeThresholdKind(label);
   if (
@@ -42,6 +43,9 @@ function implicitBaselineFor(
   }
   if (kind === 'retries') return { renderedValue: '0 (implicit default retries)', value: 0 };
   if (kind === 'slow') return { renderedValue: '1 (implicit normal timeout)', value: 1 };
+  if (kind === 'timeout' && inPlaywrightExpectConfiguration) {
+    return { renderedValue: '5_000 (implicit Playwright expect timeout)', value: 5_000 };
+  }
   if (
     kind === 'timeout' &&
     (/(?:^|\/)playwright\.config\.[^/]+$/u.test(filePath) ||
@@ -56,12 +60,58 @@ function implicitBaselineFor(
     return { renderedValue: '30_000 (implicit Playwright test timeout)', value: 30_000 };
   }
   if (
+    ['setdefaulttimeout', 'setdefaultnavigationtimeout'].includes(label.toLowerCase()) &&
+    /\.\s*setDefault(?:Navigation)?Timeout\s*\(/u.test(line)
+  ) {
+    return { renderedValue: '30_000 (implicit Playwright action timeout)', value: 30_000 };
+  }
+  if (
     label.toLowerCase() === 'setdefaulttimeout' &&
     /(?<![\w$.])setDefaultTimeout\s*\(/u.test(line)
   ) {
     return { renderedValue: '5_000 (implicit Bun test timeout)', value: 5_000 };
   }
   return undefined;
+}
+
+function isInsidePlaywrightExpectConfiguration(
+  filePath: string,
+  analysisBeforeLine: string,
+  analysisLine: string,
+  candidateOffset: number,
+): boolean {
+  if (!/(?:^|\/)playwright\.config\.[^/]+$/u.test(filePath)) return false;
+  const prefix = `${analysisBeforeLine}\n${analysisLine.slice(0, candidateOffset)}`;
+  const expectBlocks = [...prefix.matchAll(/\bexpect\s*:\s*\{/gu)];
+  const lastExpectBlock = expectBlocks.at(-1);
+  if (lastExpectBlock?.index === undefined) return false;
+  let braceDepth = 0;
+  for (const character of prefix.slice(lastExpectBlock.index)) {
+    if (character === '{') braceDepth += 1;
+    else if (character === '}') braceDepth -= 1;
+  }
+  return braceDepth > 0;
+}
+
+function implicitBaselineForMatch(
+  label: string,
+  line: string,
+  filePath: string,
+  analysisBeforeLine: string,
+  analysisLine: string,
+  candidateOffset: number,
+): { renderedValue: string; value: number } | undefined {
+  return implicitBaselineFor(
+    label,
+    line,
+    filePath,
+    isInsidePlaywrightExpectConfiguration(
+      filePath,
+      analysisBeforeLine,
+      analysisLine,
+      candidateOffset,
+    ),
+  );
 }
 
 function pushCandidate(
@@ -107,6 +157,7 @@ function extractThresholdCandidates(
   line: string,
   lineNumber: number,
   analysisLine = sourceLineForAnalysis(filePath, line),
+  analysisBeforeLine = '',
 ): ThresholdCandidate[] {
   if (analysisLine.trim().length === 0) return [];
 
@@ -125,7 +176,14 @@ function extractThresholdCandidates(
         lineNumber,
         label,
         match.groups?.[groupName],
-        implicitBaselineFor(label, line, filePath),
+        implicitBaselineForMatch(
+          label,
+          line,
+          filePath,
+          analysisBeforeLine,
+          analysisLine,
+          match.index ?? 0,
+        ),
         occurrenceIndex,
       );
     }
@@ -143,7 +201,14 @@ function extractThresholdCandidates(
       lineNumber,
       label,
       match.groups?.['value'],
-      implicitBaselineFor(label, line, filePath),
+      implicitBaselineForMatch(
+        label,
+        line,
+        filePath,
+        analysisBeforeLine,
+        analysisLine,
+        match.index ?? 0,
+      ),
     );
   }
 
@@ -160,7 +225,14 @@ function extractThresholdCandidates(
       lineNumber,
       label,
       match.groups?.['value'],
-      implicitBaselineFor(label, line, filePath),
+      implicitBaselineForMatch(
+        label,
+        line,
+        filePath,
+        analysisBeforeLine,
+        analysisLine,
+        match.index ?? 0,
+      ),
     );
   }
 
@@ -320,6 +392,25 @@ function extractMultilineCallCandidates(
         implicitBaselineFor(label, retryMatch[0], filePath),
       );
     }
+  }
+  const retryLoopBoundPattern = new RegExp(
+    String.raw`\b(?:for\s*\([^;]*;\s*|while\s*\(\s*)(?<label>[A-Za-z_$][\w$]*)\s*<(?<inclusive>=?)\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
+    'giu',
+  );
+  for (const loopMatch of analysis.matchAll(retryLoopBoundPattern)) {
+    const label = loopMatch.groups?.['label'] ?? '';
+    if (!/(?:attempt|retry|retries)/iu.test(label)) continue;
+    const renderedValue = loopMatch.groups?.['value'];
+    if (renderedValue === undefined) continue;
+    const sourceIndex = analysis.slice(0, loopMatch.index).split('\n').length - 1;
+    pushCandidate(
+      candidates,
+      source[sourceIndex]?.line ?? loopMatch[0],
+      source[sourceIndex]?.lineNumber ?? 0,
+      label,
+      loopMatch.groups?.['inclusive'] === '=' ? `${renderedValue} + 1` : renderedValue,
+      implicitBaselineFor(label, loopMatch[0], filePath),
+    );
   }
   if (isTestOrValidationInfrastructure(filePath, analysis)) {
     for (const waitArgument of findWaitThresholdArguments(analysis)) {
