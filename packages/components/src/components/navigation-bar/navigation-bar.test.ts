@@ -836,6 +836,57 @@ describe('NavigationBar', () => {
     }
   });
 
+  test('keeps the mobile panel portaled through the exit transition (CIN-376)', async () => {
+    // Regression guard: `itemsPortalScope`'s `disabled` flag used to key off
+    // the live `mobileMenuOpen` bindable alone. Inside a transformed (or
+    // otherwise containing-block-forming) ancestor, disabling the portal the
+    // instant close begins moves the panel back inline while
+    // `anchoredItems` keeps writing viewport-relative fixed `top`/`left`
+    // coordinates for the rest of the exit (`exitState.isClosing`) — those
+    // coordinates are then interpreted in the ancestor's coordinate system,
+    // making the panel jump during the exit. The portal must stay attached
+    // to `document.body` for as long as the panel is retained
+    // (`exitState.renderPanel`), not just while `mobileMenuOpen` is live.
+    const originalGetComputedStyle = window.getComputedStyle.bind(window);
+    window.getComputedStyle = ((target: Element) => {
+      if (
+        target instanceof HTMLElement &&
+        target.classList.contains('cinder-navigation-bar__items')
+      ) {
+        return {
+          transitionProperty: 'opacity, transform',
+          transitionDuration: '80ms, 80ms',
+          transitionDelay: '0ms, 0ms',
+        } as CSSStyleDeclaration;
+      }
+      return originalGetComputedStyle(target);
+    }) as typeof window.getComputedStyle;
+
+    try {
+      await withResizeObserver(async () => {
+        const { container } = render(NavigationBar, {
+          items: textSnippet('items'),
+          menuToggle: toggleSnippet(),
+        });
+
+        const nav = await openCollapsedMobileMenu(container);
+        const itemsRegion = getItemsRegion(container);
+        expect(itemsRegion.parentElement?.parentElement).toBe(document.body);
+
+        const toggle = nav.querySelector('#toggle-btn') as HTMLElement;
+        await fireEvent.click(toggle);
+
+        const closingRegion = getItemsRegion(container);
+        expect(closingRegion.hasAttribute('data-cinder-closing')).toBe(true);
+        // Still portaled to `document.body`, not moved back inline under `nav`.
+        expect(closingRegion.parentElement?.parentElement).toBe(document.body);
+        expect(nav.contains(closingRegion)).toBe(false);
+      });
+    } finally {
+      window.getComputedStyle = originalGetComputedStyle;
+    }
+  });
+
   test('an open collapsed menu is portaled outside the navigation stacking context', async () => {
     await withResizeObserver(async () => {
       const { container } = render(NavigationBar, {

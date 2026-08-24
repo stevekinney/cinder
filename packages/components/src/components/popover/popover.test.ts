@@ -1129,6 +1129,73 @@ describe('Popover — floating-ui wiring', () => {
       window.getComputedStyle = originalGetComputedStyle;
     }
   });
+
+  test('a removed trigger while closing keeps the panel inside its resolved top-layer owner (CIN-376)', async () => {
+    // Regression guard: retaining the anchor (`resolvedAnchorElement`) keeps
+    // the panel mounted, but `findNearestOpenTopLayer` can no longer walk up
+    // from a disconnected/removed trigger to find the enclosing modal's
+    // top-layer boundary — without a retained portal-target snapshot, the
+    // portal scope falls through to `document.body`, and the enclosing
+    // modal then paints above the still-exiting Popover.
+    const originalGetComputedStyle = window.getComputedStyle.bind(window);
+    window.getComputedStyle = ((target: Element) => {
+      if (target instanceof HTMLElement && target.classList.contains('cinder-popover')) {
+        return {
+          transitionProperty: 'opacity',
+          transitionDuration: '80ms',
+          transitionDelay: '0ms',
+        } as CSSStyleDeclaration;
+      }
+      return originalGetComputedStyle(target);
+    }) as typeof window.getComputedStyle;
+
+    const dialog = document.createElement('dialog');
+    dialog.setAttribute('open', '');
+    const nativeMatches = dialog.matches.bind(dialog);
+    dialog.matches = (selector: string) => selector === ':modal' || nativeMatches(selector);
+    const triggerButton = document.createElement('button');
+    triggerButton.type = 'button';
+    dialog.append(triggerButton);
+    attachScratch(dialog);
+
+    try {
+      let openValue = true;
+      const { rerender } = render(Popover, {
+        props: {
+          get open() {
+            return openValue;
+          },
+          set open(value: boolean) {
+            openValue = value;
+          },
+          triggerRef: triggerButton,
+          children: textSnippet('dialog content'),
+        },
+      });
+
+      await waitFor(() => {
+        expect(dialog.querySelector('.cinder-popover')).not.toBeNull();
+      });
+      expect(dialog.querySelector('.cinder-popover')?.parentElement?.parentElement).toBe(dialog);
+
+      // Remove the trigger and close in the same update.
+      triggerButton.remove();
+      openValue = false;
+      await rerender({
+        open: false,
+        triggerRef: triggerButton,
+        children: textSnippet('dialog content'),
+      });
+
+      const panel = queryPopoverPanel();
+      expect(panel).not.toBeNull();
+      expect(panel?.getAttribute('data-cinder-closing')).toBe('');
+      // Still scoped inside the dialog — not fallen through to document.body.
+      expect(panel?.parentElement?.parentElement).toBe(dialog);
+    } finally {
+      window.getComputedStyle = originalGetComputedStyle;
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------

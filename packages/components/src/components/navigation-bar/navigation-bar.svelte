@@ -89,7 +89,17 @@
   let itemsRegionElement: HTMLDivElement | null = null;
   let sourceSubtreeUnavailable = $state(false);
   const itemsPortalScope = createPortalAttachment({
-    disabled: () => !isMobileLayout || !mobileMenuOpen || sourceSubtreeUnavailable,
+    // Gated on `mobileMenuOpen || exitState.renderPanel` (not `mobileMenuOpen`
+    // alone), same reasoning as `variant` and the `cinder-_floating-surface`
+    // class below: `mobileMenuOpen` flips false the instant close begins.
+    // Disabling the portal at that exact moment moves the panel back inline
+    // — under whatever transformed/containing-block-forming ancestor the
+    // NavigationBar itself sits in — while `anchoredItems` keeps writing
+    // viewport-relative fixed `top`/`left` coordinates for the rest of the
+    // exit transition (`exitState.isClosing`), which are then interpreted in
+    // the wrong coordinate system and make the panel jump during the exit.
+    disabled: () =>
+      !isMobileLayout || !(mobileMenuOpen || exitState.renderPanel) || sourceSubtreeUnavailable,
     source: () => navigationBarElement,
     target: () => {
       const source = navigationBarElement;
@@ -141,7 +151,10 @@
   });
   const inheritedPortalStyle = createInheritedPortalStyle(
     () => navigationBarElement,
-    () => isMobileLayout && mobileMenuOpen && !sourceSubtreeUnavailable,
+    // Same retention as `itemsPortalScope` above — keep inheriting the
+    // portaled subtree's theme/direction tokens through the exit
+    // transition too, not just while `mobileMenuOpen` is live.
+    () => isMobileLayout && (mobileMenuOpen || exitState.renderPanel) && !sourceSubtreeUnavailable,
   );
 
   $effect(() => {
@@ -695,7 +708,7 @@
     </div>
   {/if}
 
-  {#if isMobileLayout && mobileMenuOpen}
+  {#if isMobileLayout && (mobileMenuOpen || exitState.renderPanel)}
     <div class="cinder-navigation-bar__items-owner" aria-owns={regionId}></div>
   {/if}
 

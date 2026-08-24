@@ -135,9 +135,27 @@
     isDestroyed = true;
   });
 
+  // Snapshot of the last resolved portal target (the nearest open top-layer
+  // boundary, or `document.body`). Retaining the anchor (`resolvedAnchorElement`
+  // above) is not enough on its own: when a controlled Popover inside a modal
+  // or another top-layer owner closes while its trigger is removed,
+  // `findNearestOpenTopLayer` can no longer walk up from a disconnected (or
+  // now-absent) anchor to find that boundary — without this snapshot the
+  // portal scope would fall through to `document.body`, and the enclosing
+  // top-layer surface would then paint above the still-exiting Popover.
+  let lastResolvedPortalTarget: HTMLElement | null = null;
+  $effect(() => {
+    if (!anchorElement) return;
+    try {
+      lastResolvedPortalTarget = findNearestOpenTopLayer(anchorElement) ?? document.body;
+    } catch {
+      lastResolvedPortalTarget = document.body;
+    }
+  });
+
   const portalScopeAttachment = createPortalAttachment({
     target: () => {
-      if (!anchorElement) return document.body;
+      if (!anchorElement) return lastResolvedPortalTarget ?? document.body;
       try {
         return findNearestOpenTopLayer(anchorElement) ?? document.body;
       } catch {
@@ -145,7 +163,7 @@
       }
     },
     inheritAttributes: true,
-    source: () => anchorElement ?? null,
+    source: () => resolvedAnchorElement,
   });
   const panelPortalAttachment = createPortalAttachment({
     disabled: () => !portalScopeElement,
