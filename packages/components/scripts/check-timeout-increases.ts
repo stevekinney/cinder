@@ -44,7 +44,9 @@ function normalizeWorkflowExpressions(filePath: string, analysis: string): strin
 function isGenericTimeoutContext(filePath: string, analysis: string): boolean {
   return (
     /(?:^|\/)(?:jest|playwright|vitest)\.config\.[^/]+$/u.test(filePath) ||
-    /\b(?:expect(?:\.poll)?|waitFor|setDefaultTimeout|test\.describe\.configure)\b/u.test(analysis)
+    /\b(?:expect(?:\.poll)?|waitFor[A-Za-z_$\d]*|setDefaultTimeout|test\.describe\.configure)\b/u.test(
+      analysis,
+    )
   );
 }
 
@@ -134,10 +136,7 @@ function extractThresholdCandidates(
   for (const match of analysisLine.matchAll(thresholdAssignmentPattern)) {
     const label = match.groups?.['label'] ?? '';
     if (!isTestThresholdAssignment(filePath, assignmentAnalysis, label)) continue;
-    if (
-      label.toLowerCase() === 'timeout' &&
-      !isGenericTimeoutContext(filePath, assignmentAnalysis)
-    ) {
+    if (label.toLowerCase() === 'timeout' && !isGenericTimeoutContext(filePath, analysisLine)) {
       continue;
     }
     pushCandidate(
@@ -226,7 +225,9 @@ function extractThresholdCandidates(
       match.groups?.['value'],
       label.toLowerCase() === 'jest.retrytimes'
         ? { renderedValue: '0 (implicit default retries)', value: 0 }
-        : implicitBaselineFor(label, line, filePath),
+        : label.toLowerCase() === 'waitfortimeout'
+          ? { renderedValue: '0 (no explicit wait)', value: 0 }
+          : implicitBaselineFor(label, line, filePath),
       callOccurrenceIndex,
     );
     callOccurrenceIndex += 1;
@@ -399,6 +400,7 @@ function extractMultilineCallCandidates(
         source[sourceIndex]?.lineNumber ?? 0,
         waitArgument.label,
         waitArgument.renderedValue,
+        { renderedValue: '0 (no explicit wait)', value: 0 },
       );
     }
   }

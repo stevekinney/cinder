@@ -56,7 +56,7 @@ describe('check-timeout-increases', () => {
     ]);
   });
 
-  test('allows unchanged values, reductions, and newly introduced bounded operations', () => {
+  test('allows unchanged values and reductions', () => {
     const diff = [
       diffFor(
         'packages/components/src/button/button.test.ts',
@@ -67,7 +67,6 @@ describe('check-timeout-increases', () => {
         [
           'await expect(locator).toBeVisible({ timeout: 5_000 });',
           'test.describe.configure({ retries: 1 });',
-          'await page.waitForTimeout(250);',
         ],
       ),
       diffFor(
@@ -78,6 +77,28 @@ describe('check-timeout-increases', () => {
     ].join('\n');
 
     expect(findTimeoutIncreaseViolations(diff)).toEqual([]);
+  });
+
+  test('rejects newly introduced explicit waits', () => {
+    const diff = diffFor(
+      'packages/components/scripts/check-suite.test.ts',
+      [],
+      ['await Bun.sleep(60_000);', 'await page.waitForTimeout(250);'],
+    );
+
+    expect(findTimeoutIncreaseViolations(diff)).toHaveLength(2);
+  });
+
+  test('checks Playwright operation timeout options', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/testing/tests/avatar-group-focus-rings.playwright.ts',
+        ["await page.waitForSelector('#app', { timeout: 20_000 });"],
+        ["await page.waitForSelector('#app', { timeout: 40_000 });"],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
   });
 
   test('matches settings instead of positions when thresholds are reordered or inserted', () => {

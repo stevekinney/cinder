@@ -2579,7 +2579,7 @@ async function assertSvelteKitHydrationRoute(
       waitUntil: 'domcontentloaded',
     });
     await page.waitForLoadState('load', { timeout: 5_000 });
-    await assertSvelteKitHydrationRouteContent(page, errors.values, routePath);
+    await assertSvelteKitHydrationRouteContent(page, errors, routePath);
 
     if (errors.values.length > 0) {
       fail(
@@ -2639,7 +2639,7 @@ async function assertSvelteKitHydrationRoute(
 
 async function assertSvelteKitHydrationRouteContent(
   page: Page,
-  errors: string[],
+  errors: BoundedDiagnosticCollection,
   routePath: SvelteKitHydrationRoute,
 ): Promise<void> {
   if (routePath === '/chat-layout') {
@@ -2669,7 +2669,10 @@ async function assertSvelteKitHydrationRouteContent(
   await page.getByRole('button', { name: 'Cancel' }).click();
   await dialog.waitFor({ state: 'hidden' });
   if (!(await trigger.evaluate((element) => element === document.activeElement))) {
-    errors.push('ConfirmDialog did not restore focus to its trigger after closing');
+    recordBoundedDiagnostic(
+      errors,
+      'ConfirmDialog did not restore focus to its trigger after closing',
+    );
   }
 }
 

@@ -26,17 +26,14 @@ type ExtractMultilineCandidates = (
   source: Array<SourceLine>,
 ) => ThresholdCandidate[];
 
-function joinedAnalysisWithLineOffsets(lines: readonly string[]): {
-  joined: string;
-  offsets: number[];
-} {
-  const offsets: number[] = [];
-  let offset = 0;
+function boundedAnalysisPrefixes(lines: readonly string[]): string[] {
+  const prefixes: string[] = [];
+  let prefix = '';
   for (const line of lines) {
-    offsets.push(offset);
-    offset += line.length + 1;
+    prefixes.push(prefix);
+    prefix = `${prefix}\n${line}`.slice(-8_192);
   }
-  return { joined: lines.join('\n'), offsets };
+  return prefixes;
 }
 
 export function findTimeoutIncreaseViolationsInDiff(
@@ -66,8 +63,8 @@ export function findTimeoutIncreaseViolationsInDiff(
       analysisFilePath,
       currentHunk.newSource.map(({ line }) => line),
     );
-    const oldAnalysis = joinedAnalysisWithLineOffsets(oldAnalysisLines);
-    const newAnalysis = joinedAnalysisWithLineOffsets(newAnalysisLines);
+    const oldAnalysisPrefixes = boundedAnalysisPrefixes(oldAnalysisLines);
+    const newAnalysisPrefixes = boundedAnalysisPrefixes(newAnalysisLines);
     for (const [index, sourceLine] of currentHunk.oldSource.entries()) {
       if (!sourceLine.changed) continue;
       currentHunk.removed.push(
@@ -76,7 +73,7 @@ export function findTimeoutIncreaseViolationsInDiff(
           sourceLine.line,
           sourceLine.lineNumber,
           oldAnalysisLines[index],
-          oldAnalysis.joined.slice(0, oldAnalysis.offsets[index] ?? 0),
+          oldAnalysisPrefixes[index],
         ),
       );
     }
@@ -88,7 +85,7 @@ export function findTimeoutIncreaseViolationsInDiff(
           sourceLine.line,
           sourceLine.lineNumber,
           newAnalysisLines[index],
-          newAnalysis.joined.slice(0, newAnalysis.offsets[index] ?? 0),
+          newAnalysisPrefixes[index],
         ),
       );
     }
