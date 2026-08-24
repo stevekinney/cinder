@@ -39,22 +39,24 @@ export function findTimeoutIncreaseViolationsInDiff(
 
   const flushHunk = (): void => {
     if (currentHunk === undefined) return;
-    const newAnalysisFilePath = isTestOrValidationInfrastructure(currentHunk.filePath)
+    const analysisFilePath = isTestOrValidationInfrastructure(currentHunk.filePath)
       ? currentHunk.filePath
-      : currentHunk.oldFilePath;
+      : isTestOrValidationInfrastructure(currentHunk.oldFilePath)
+        ? currentHunk.oldFilePath
+        : currentHunk.filePath;
     const oldAnalysisLines = sourceLinesForAnalysis(
-      currentHunk.oldFilePath,
+      analysisFilePath,
       currentHunk.oldSource.map(({ line }) => line),
     );
     const newAnalysisLines = sourceLinesForAnalysis(
-      newAnalysisFilePath,
+      analysisFilePath,
       currentHunk.newSource.map(({ line }) => line),
     );
     for (const [index, sourceLine] of currentHunk.oldSource.entries()) {
       if (!sourceLine.changed) continue;
       currentHunk.removed.push(
         ...extractLineCandidates(
-          currentHunk.oldFilePath,
+          analysisFilePath,
           sourceLine.line,
           sourceLine.lineNumber,
           oldAnalysisLines[index],
@@ -65,7 +67,7 @@ export function findTimeoutIncreaseViolationsInDiff(
       if (!sourceLine.changed) continue;
       currentHunk.added.push(
         ...extractLineCandidates(
-          newAnalysisFilePath,
+          analysisFilePath,
           sourceLine.line,
           sourceLine.lineNumber,
           newAnalysisLines[index],
@@ -73,11 +75,9 @@ export function findTimeoutIncreaseViolationsInDiff(
       );
     }
     currentHunk.removed.push(
-      ...extractMultilineCandidates(currentHunk.oldFilePath, currentHunk.oldSource),
+      ...extractMultilineCandidates(analysisFilePath, currentHunk.oldSource),
     );
-    currentHunk.added.push(
-      ...extractMultilineCandidates(newAnalysisFilePath, currentHunk.newSource),
-    );
+    currentHunk.added.push(...extractMultilineCandidates(analysisFilePath, currentHunk.newSource));
     hunks.push(currentHunk);
     currentHunk = undefined;
   };

@@ -79,7 +79,7 @@ export function thresholdIdentity(label: string): string {
 
 function callsiteFingerprint(candidate: ThresholdCandidate): string {
   if (candidate.occurrenceIndex !== undefined) {
-    return `${candidate.lineNumber}:${candidate.kind}:${candidate.occurrenceIndex}`;
+    return `${candidate.kind}:${candidate.label.toLowerCase()}:${candidate.occurrenceIndex}`;
   }
   return candidate.line
     .replace(candidate.label, '<threshold-name>')
@@ -124,9 +124,33 @@ export function collectComparableViolations(
       nextCandidateOrder += 1;
     }
   }
-  const pairEntries = (removed: CandidateEntry[], added: CandidateEntry[]): void => {
+  const pairEntries = (
+    removed: CandidateEntry[],
+    added: CandidateEntry[],
+    preserveOrder = false,
+  ): void => {
     const availableRemoved = removed.filter(({ candidate }) => !consumedRemoved.has(candidate));
     const availableAdded = added.filter(({ candidate }) => !consumedAdded.has(candidate));
+
+    if (preserveOrder) {
+      const pairCount = Math.min(availableRemoved.length, availableAdded.length);
+      for (let index = 0; index < pairCount; index += 1) {
+        const oldEntry = availableRemoved[index];
+        const newEntry = availableAdded[index];
+        if (oldEntry === undefined || newEntry === undefined) continue;
+        consumedRemoved.add(oldEntry.candidate);
+        consumedAdded.add(newEntry.candidate);
+        if (newEntry.candidate.effectiveValue > oldEntry.candidate.effectiveValue) {
+          violations.push({
+            filePath: newEntry.hunk.filePath,
+            hunkHeader: newEntry.hunk.hunkHeader,
+            old: oldEntry.candidate,
+            new: newEntry.candidate,
+          });
+        }
+      }
+      return;
+    }
 
     for (const newEntry of availableAdded) {
       const unchangedIndex = availableRemoved.findIndex(
@@ -174,12 +198,14 @@ export function collectComparableViolations(
     removed: CandidateEntry[],
     added: CandidateEntry[],
     keyFor: (entry: CandidateEntry) => string,
+    preserveOrder = false,
   ): void => {
     const keys = new Set([...removed.map(keyFor), ...added.map(keyFor)]);
     for (const key of keys) {
       pairEntries(
         removed.filter((entry) => keyFor(entry) === key),
         added.filter((entry) => keyFor(entry) === key),
+        preserveOrder,
       );
     }
   };
@@ -191,6 +217,7 @@ export function collectComparableViolations(
       removed,
       added,
       ({ candidate }) => `${candidate.kind}:${callsiteFingerprint(candidate)}`,
+      true,
     );
     pairByKey(removed, added, ({ candidate }) => candidate.identity);
   }

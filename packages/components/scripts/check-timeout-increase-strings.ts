@@ -160,6 +160,7 @@ export function isTestOrValidationInfrastructure(filePath: string, analysis = ''
     /(?:^|\/)(?:scripts|tests?|testing)(?:\/|$)|(?:\.(?:spec|test)\.|_(?:spec|test)_)[^/]+$/u.test(
       filePath,
     ) ||
+    /(?:^|\/)(?:check|validate)-[^/]+\.[^/]+$/u.test(filePath) ||
     /(?:^|\/)(?:jest|playwright|vitest)\.config\.[^/]+$/u.test(filePath) ||
     /^\.github\/workflows\/[^/]+\.ya?ml$/u.test(filePath) ||
     /\btest\.describe\.configure\s*\(/u.test(analysis)
@@ -175,6 +176,7 @@ export function isTestThresholdAssignment(
   if (normalizedLabel === 'timeout-minutes') return true;
   if (
     (normalizedLabel.includes('retry') || normalizedLabel.includes('retries')) &&
+    label !== label.toUpperCase() &&
     !/(?:timeout|wait|deadline|poll|interval|delay)/u.test(normalizedLabel) &&
     !/\btest\.describe\.configure\s*\(/u.test(analysis) &&
     !/(?:^|\/)(?:jest|playwright|vitest)\.config\.[^/]+$/u.test(filePath)

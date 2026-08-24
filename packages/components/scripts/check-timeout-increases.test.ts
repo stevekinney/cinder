@@ -875,6 +875,79 @@ describe('check-timeout-increases', () => {
     expect(violations).toHaveLength(2);
   });
 
+  test('checks AbortSignal timeout calls on one or multiple lines', () => {
+    const singleLine = diffFor(
+      'packages/playground/src/validate-playground.ts',
+      ['const signal = AbortSignal.timeout(5_000);'],
+      ['const signal = AbortSignal.timeout(10_000);'],
+    );
+    const multiline = diffFor(
+      'packages/playground/src/validate-playground.ts',
+      ['const signal = AbortSignal.timeout(', '  5_000,', ');'],
+      ['const signal = AbortSignal.timeout(', '  10_000,', ');'],
+    );
+
+    expect(findTimeoutIncreaseViolations([singleLine, multiline].join('\n'))).toHaveLength(2);
+  });
+
+  test('checks marker-first uppercase threshold identifiers', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/scripts/validate-consumers.test.ts',
+        ['const TIMEOUT_MS = 5_000;', 'const WAIT_MS = 5_000;', 'const RETRY_COUNT = 1;'],
+        ['const TIMEOUT_MS = 10_000;', 'const WAIT_MS = 10_000;', 'const RETRY_COUNT = 2;'],
+      ),
+    );
+
+    expect(violations).toHaveLength(3);
+  });
+
+  test('keeps timeout callsites stable when lines are inserted', () => {
+    const diff = [
+      'diff --git a/packages/components/src/button/button.test.ts b/packages/components/src/button/button.test.ts',
+      '--- a/packages/components/src/button/button.test.ts',
+      '+++ b/packages/components/src/button/button.test.ts',
+      '@@ -10,2 +10,3 @@',
+      '-test.setTimeout(5_000);',
+      '-test.setTimeout(10_000);',
+      '+// Explain the two test budgets.',
+      '+test.setTimeout(10_000);',
+      '+test.setTimeout(4_000);',
+      '',
+    ].join('\n');
+
+    expect(findTimeoutIncreaseViolations(diff)).toHaveLength(1);
+  });
+
+  test('analyzes both sides of a production-to-test rename as test infrastructure', () => {
+    const diff = [
+      'diff --git a/packages/components/src/example.ts b/packages/components/src/example.test.ts',
+      'similarity index 90%',
+      'rename from packages/components/src/example.ts',
+      'rename to packages/components/src/example.test.ts',
+      '--- a/packages/components/src/example.ts',
+      '+++ b/packages/components/src/example.test.ts',
+      '@@ -1 +1 @@',
+      '-const TEST_TIMEOUT_MS = 5_000;',
+      '+const TEST_TIMEOUT_MS = 10_000;',
+      '',
+    ].join('\n');
+
+    expect(findTimeoutIncreaseViolations(diff)).toHaveLength(1);
+  });
+
+  test('treats zero polling and delay thresholds as finite', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/scripts/validate-consumers.test.ts',
+        ['const POLL_INTERVAL_MS = 0;', 'const RETRY_DELAY_MS = 0;'],
+        ['const POLL_INTERVAL_MS = 200;', 'const RETRY_DELAY_MS = 200;'],
+      ),
+    );
+
+    expect(violations).toHaveLength(2);
+  });
+
   test('checks Bun test timeout arguments in underscore-style test filenames', () => {
     const violations = findTimeoutIncreaseViolations(
       diffFor(

@@ -54,8 +54,19 @@ export function parseNumericLiteral(literal: string): number {
 export function effectiveThresholdValue(label: string, line: string, value: number): number {
   if (value !== 0) return value;
   const normalizedLabel = label.toLowerCase();
+  if (/(?:poll|interval|delay)/u.test(normalizedLabel)) return value;
   if (normalizedLabel.includes('retr') || normalizedLabel.includes('slow')) return value;
-  if (normalizedLabel === 'bun.sleep' || normalizedLabel === 'waitfortimeout') return value;
+  if (
+    [
+      'abortsignal.timeout',
+      'bun.sleep',
+      'fetchwithtimeout',
+      'waitfortimeout',
+      'waitforurl',
+    ].includes(normalizedLabel)
+  ) {
+    return value;
+  }
   if (normalizedLabel === 'settimeout' && !/\btest\.setTimeout\s*\(/u.test(line)) return value;
   return Number.POSITIVE_INFINITY;
 }
