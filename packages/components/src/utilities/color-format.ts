@@ -77,10 +77,6 @@ function roundTo(value: number, digits: number): number {
   return rounded === 0 ? 0 : rounded;
 }
 
-function alphaSuffix(alpha: number): string {
-  return ` / ${roundTo(alpha, 4)}`;
-}
-
 /**
  * Format a canonical RGBA value in the requested CSS Color 4 syntax.
  * `hex` is handled separately by {@link formatHex} for readability, but is
@@ -89,14 +85,23 @@ function alphaSuffix(alpha: number): string {
 export function formatColor(parts: RgbaComponents, format: ColorOutputFormat): string {
   if (format === 'hex') return formatHex(parts);
 
-  const hasAlpha = parts.a < 1;
+  // Canonicalize alpha to the SAME precision (4 decimal places) used in the
+  // emitted suffix BEFORE deciding whether to append it — not the raw
+  // `parts.a`. An alpha like 0.99999 is < 1 raw, but rounds to exactly `1` at
+  // four decimals; deciding on the raw value would emit `/ 1`, which
+  // re-parses as alpha === 1 and drops the suffix on the very next
+  // round-trip — the same byte-rounds-to-opaque canonicalization `formatHex`
+  // does for hex, applied here at the decimal precision non-hex formats use.
+  const canonicalAlpha = roundTo(parts.a, 4);
+  const hasAlpha = canonicalAlpha < 1;
+  const alphaSuffix = hasAlpha ? ` / ${canonicalAlpha}` : '';
   const rgbColor = rgbaToRgbColor(parts);
 
   if (format === 'rgb') {
     const r = Math.round(parts.r);
     const g = Math.round(parts.g);
     const b = Math.round(parts.b);
-    return `rgb(${r} ${g} ${b}${hasAlpha ? alphaSuffix(parts.a) : ''})`;
+    return `rgb(${r} ${g} ${b}${alphaSuffix})`;
   }
 
   if (format === 'hsl') {
@@ -104,7 +109,7 @@ export function formatColor(parts: RgbaComponents, format: ColorOutputFormat): s
     const h = roundTo(hsl.h ?? 0, 2);
     const s = roundTo((hsl.s ?? 0) * 100, 2);
     const l = roundTo((hsl.l ?? 0) * 100, 2);
-    return `hsl(${h} ${s}% ${l}%${hasAlpha ? alphaSuffix(parts.a) : ''})`;
+    return `hsl(${h} ${s}% ${l}%${alphaSuffix})`;
   }
 
   if (format === 'hwb') {
@@ -112,7 +117,7 @@ export function formatColor(parts: RgbaComponents, format: ColorOutputFormat): s
     const h = roundTo(hwb.h ?? 0, 2);
     const w = roundTo((hwb.w ?? 0) * 100, 2);
     const b = roundTo((hwb.b ?? 0) * 100, 2);
-    return `hwb(${h} ${w}% ${b}%${hasAlpha ? alphaSuffix(parts.a) : ''})`;
+    return `hwb(${h} ${w}% ${b}%${alphaSuffix})`;
   }
 
   // oklch
@@ -120,7 +125,7 @@ export function formatColor(parts: RgbaComponents, format: ColorOutputFormat): s
   const l = roundTo((oklch.l ?? 0) * 100, 2);
   const c = roundTo(oklch.c ?? 0, 4);
   const h = roundTo(oklch.h ?? 0, 2);
-  return `oklch(${l}% ${c} ${h}${hasAlpha ? alphaSuffix(parts.a) : ''})`;
+  return `oklch(${l}% ${c} ${h}${alphaSuffix})`;
 }
 
 function rgbColorToRgba(rgb: Rgb, alpha: number): RgbaComponents {

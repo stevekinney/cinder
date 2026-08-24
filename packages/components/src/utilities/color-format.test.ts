@@ -109,6 +109,31 @@ describe('formatColor alpha policy for non-hex formats', () => {
     test(`${format}: includes a slash alpha segment when alpha < 1`, () => {
       expect(formatColor(translucent, format)).toMatch(/\/\s*0\.4/);
     });
+
+    // Review thread (PR #1420, PRRT_kwDOSKrFTs6b3k23): an alpha close enough
+    // to 1 to round to `1` at four decimals (0.99999) still had `hasAlpha`
+    // computed from the RAW alpha, so it appended `/ 1` — which re-parses as
+    // alpha exactly 1 and drops the suffix on the very next round-trip,
+    // breaking documented idempotence. Alpha must be canonicalized to the
+    // same precision BEFORE deciding whether to append the suffix.
+    test(`${format}: canonicalizes an alpha that rounds to 1 at four decimals to plain opaque syntax`, () => {
+      const nearlyOpaque: RgbaComponents = { ...opaque, a: 0.99999 };
+      expect(formatColor(nearlyOpaque, format)).not.toContain('/');
+    });
+
+    test(`${format}: does not canonicalize an alpha that genuinely rounds below 1`, () => {
+      const genuinelyTranslucent: RgbaComponents = { ...opaque, a: 0.9994 };
+      expect(formatColor(genuinelyTranslucent, format)).toMatch(/\/\s*0\.9994/);
+    });
+
+    test(`${format}: the 0.99999 boundary is idempotent across a full round-trip`, () => {
+      const nearlyOpaque: RgbaComponents = { ...opaque, a: 0.99999 };
+      const once = formatColor(nearlyOpaque, format);
+      const parsedOnce = parseCssColor(once);
+      expect(parsedOnce).not.toBeNull();
+      const twice = formatColor(parsedOnce!, format);
+      expect(twice).toBe(once);
+    });
   }
 });
 

@@ -215,19 +215,33 @@
     reconcileFromValue(value);
   });
 
-  // ── alpha runtime changes ───────────────────────────────────────────────
+  // ── alpha / format runtime changes ──────────────────────────────────────
 
-  // Re-derive `committedHex` and `visibleText` from `committedRgba` when the
-  // alpha mode toggles after mount. Never emit `onValueChange` on a config change.
+  // Re-derive `committedHex` from `committedRgba` when `alpha` toggles OR
+  // `format` changes after mount (`emitFor` reads `format` through closure,
+  // so this effect implicitly depends on it too — hence the name covers
+  // both). Never emits `onValueChange` on a config change.
+  //
+  // Preserves an in-progress, uncommitted draft: only overwrite the visible
+  // `<input>` text when it currently matches the OLD committed mirror
+  // (nothing dirty to lose). If the user is mid-edit — `visibleText`
+  // already differs from `committedHex` — leave their draft alone; the new
+  // `format` naturally applies at their next commit (blur/Enter), since
+  // `runCommit` calls `emitFor` with whatever `format` is current at that
+  // point. Reformatting the mirror out from under a dirty draft would
+  // silently discard keystrokes ColorField otherwise keeps local until
+  // commit.
   $effect(() => {
     void alpha;
+    void format;
     if (committedRgba === null) return;
     const nextHex = emitFor(committedRgba);
     if (nextHex === committedHex) return;
+    const hadNoDraft = visibleText === committedHex;
     committedHex = nextHex;
-    visibleText = nextHex;
     lastReconciledValue = nextHex;
     value = nextHex;
+    if (hadNoDraft) visibleText = nextHex;
   });
 
   // ── formats runtime changes — display-only validation ───────────────────

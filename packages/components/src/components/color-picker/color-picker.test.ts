@@ -1269,3 +1269,53 @@ describe('ColorPicker bound-value mount normalization (P1 regression)', () => {
     expect(hidden.value).toMatch(/^rgb\(/);
   });
 });
+
+// Review thread (PR #1420, PRRT_kwDOSKrFTs6b3k2y): the controlled-sync
+// effect used to implicitly depend on `format` (it called `emitValue`,
+// which reads `format`), so on a bare format switch BOTH the controlled-sync
+// effect and the dedicated format effect fired; controlled-sync ran first,
+// updated `internalValue` to the new syntax itself, and the dedicated
+// effect then saw `next === internalValue` and bailed out WITHOUT writing
+// the new syntax back to the bound `value` — the hidden form input updated
+// but a consumer's `bind:value` silently stayed on the old syntax until
+// another user interaction. Decoupled: controlled-sync now only updates
+// HSLA state (never reads `format`); a single dedicated effect (reacting to
+// `hasValue`/HSLA/`format`) is the sole writer of `internalValue`/`value`.
+describe('ColorPicker format switch is not swallowed by controlled-sync (P1 regression)', () => {
+  test('switching `format` alone (bound `value` unchanged) immediately re-syncs both the hidden input and the bound `value`', async () => {
+    const { container, rerender } = render(ColorPicker, {
+      value: '#ff0000',
+      format: 'hex',
+      name: 'p',
+    });
+    const hidden = q<HTMLInputElement>(container, 'input[name="p"]');
+    expect(hidden.value).toBe('#ff0000');
+
+    // Same `value`, only `format` changes — this is exactly the scenario
+    // the controlled-sync effect's `value` dependency would otherwise race.
+    await rerender({ value: '#ff0000', format: 'rgb', name: 'p' });
+    await tick();
+    expect(hidden.value).toBe('rgb(255 0 0)');
+  });
+
+  test('switching `format` back and forth stays in sync every time, with no stale intermediate state', async () => {
+    const { container, rerender } = render(ColorPicker, {
+      value: '#00ff00',
+      format: 'hex',
+      name: 'p',
+    });
+    const hidden = q<HTMLInputElement>(container, 'input[name="p"]');
+
+    await rerender({ value: '#00ff00', format: 'hsl', name: 'p' });
+    await tick();
+    expect(hidden.value).toBe('hsl(120 100% 50%)');
+
+    await rerender({ value: '#00ff00', format: 'oklch', name: 'p' });
+    await tick();
+    expect(hidden.value).toMatch(/^oklch\(/);
+
+    await rerender({ value: '#00ff00', format: 'hex', name: 'p' });
+    await tick();
+    expect(hidden.value).toBe('#00ff00');
+  });
+});

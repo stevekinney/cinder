@@ -85,6 +85,13 @@
   // wrote out to `value`. The controlled-sync effect uses this to skip its own echo.
   let lastEmittedHex = '';
   let isDragging = $state(false);
+  // Whether the HSLA state above represents a real color, decoupled from
+  // whatever `internalValue` string it emits to — this is what lets the
+  // controlled-sync effect (below) update HSLA state WITHOUT reading
+  // `format` at all (it never calls `emitValue`), so it cannot race with the
+  // dedicated internalValue-sync effect on a bare `format` switch. See the
+  // PR #1420 review thread on controlled-sync vs. format-switch racing.
+  let hasValue = $state(false);
 
   function gatedAlpha(a: number): number {
     return alpha ? a : 1;
@@ -101,6 +108,20 @@
     saturation = next.s;
     lightnessValue = next.l;
     alphaValue = next.a;
+    hasValue = true;
+  }
+
+  // Resets HSLA state to the "no color" sentinel. Deliberately does NOT
+  // touch `internalValue`/`lastEmittedHex`/`value` itself — every call site
+  // owns those explicitly (mount-time init writes only `internalValue`; the
+  // controlled-sync and reset effects let the dedicated internalValue-sync
+  // effect below react to `hasValue` flipping to `false`).
+  function clearHsla(): void {
+    hue = 0;
+    saturation = 0;
+    lightnessValue = 0;
+    alphaValue = 1;
+    hasValue = false;
   }
 
   // Sets internal HSLA state for a *user-driven* commit (pointer drag,
@@ -140,46 +161,60 @@
       // var here since this runs outside any reactive context.
       internalValue = emitValue(parsed.h, parsed.s, parsed.l, parsed.a);
     } else {
-      hue = 0;
-      saturation = 0;
-      lightnessValue = 0;
-      alphaValue = 1;
+      clearHsla();
       internalValue = '';
       lastEmittedHex = '';
     }
   }
 
-  // Sync incoming `value` (controlled) to internal HSLA, but skip the echo of our
-  // own writes. We compare against `lastEmittedHex` rather than using a one-shot
-  // suppression flag so a parent that normalizes or rejects the emitted value
-  // (and writes a different one back) is not ignored.
+  // Sync incoming `value` (controlled) to internal HSLA state ONLY — it
+  // deliberately never calls `emitValue` (which reads `format`), so this
+  // effect's reactive dependencies are `value`/`lastEmittedHex` alone, never
+  // `format`. Recomputing `internalValue` and writing back to `value` is
+  // owned entirely by the dedicated internalValue-sync effect below, which
+  // reacts to `hasValue`/hue/saturation/lightnessValue/alphaValue/`format`
+  // explicitly. Splitting these apart is what prevents a bare `format`
+  // switch from racing this effect: previously, this effect *also* computed
+  // `internalValue` (implicitly depending on `format` through `emitValue`),
+  // so on a format change both effects fired, this one ran first and set
+  // `internalValue` to the new syntax, and the dedicated effect then saw
+  // `next === internalValue` and bailed out WITHOUT writing the new syntax
+  // to `value` — the hidden form input updated but a consumer's
+  // `bind:value` silently stayed on the old syntax. We compare against
+  // `lastEmittedHex` rather than using a one-shot suppression flag so a
+  // parent that normalizes or rejects the emitted value (and writes a
+  // different one back) is not ignored.
   $effect(() => {
     if (value === undefined) return;
     if (value !== '' && value === lastEmittedHex) return;
     const parsed = value === '' ? null : parseToHsla(value);
     if (parsed === null) {
-      hue = 0;
-      saturation = 0;
-      lightnessValue = 0;
-      alphaValue = 1;
-      internalValue = '';
-      lastEmittedHex = '';
+      clearHsla();
       return;
     }
     applyHsla(parsed);
-    internalValue = emitValue(parsed.h, parsed.s, parsed.l, alphaValue);
   });
 
-  // Re-normalize internal value's *syntax* when `format` changes so hidden
-  // input / bound value reflect the new emit shape immediately. This does
-  // NOT react to `alpha`: toggling the alpha-slider affordance alone must
-  // not retroactively mutate a stored value (see the CIN-104 ruling note on
-  // `applyHsla` above) — a stale *interactive* translucent alpha only
-  // re-gates to opaque on the next user-driven commit, via
-  // `applyHslaInteractive` below.
+  // Single source of truth for `internalValue` / the bound `value` / the
+  // hidden form-mirror: reacts to `hasValue`, hue, saturation,
+  // lightnessValue, alphaValue, AND `format`. Runs whenever ANY of those
+  // change, regardless of whether the HSLA change came from the controlled-
+  // sync effect above, an interactive commit, or a bare `format` switch —
+  // there is exactly one writer of `internalValue`/`value` now, so there is
+  // nothing left to race. This does NOT react to `alpha`: toggling the
+  // alpha-slider affordance alone must not retroactively mutate a stored
+  // value (see the CIN-104 ruling note on `applyHsla` above) — a stale
+  // *interactive* translucent alpha only re-gates to opaque on the next
+  // user-driven commit, via `applyHslaInteractive` below.
   $effect(() => {
     void format;
-    if (internalValue === '') return;
+    if (!hasValue) {
+      if (internalValue === '') return;
+      internalValue = '';
+      lastEmittedHex = '';
+      if (value !== undefined && value !== '') value = '';
+      return;
+    }
     const next = emitValue(hue, saturation, lightnessValue, alphaValue);
     if (next === internalValue) return;
     internalValue = next;
@@ -459,10 +494,7 @@
     function resetToDefault(): void {
       const parsed = resetTarget === '' ? null : parseToHsla(resetTarget);
       if (parsed === null) {
-        hue = 0;
-        saturation = 0;
-        lightnessValue = 0;
-        alphaValue = 1;
+        clearHsla();
         internalValue = '';
         lastEmittedHex = '';
         if (value !== undefined) value = '';

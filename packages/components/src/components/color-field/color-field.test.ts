@@ -1066,3 +1066,58 @@ describe('ColorField — emit/intake round-trip (P1 regression)', () => {
     expect(onValueChange.mock.calls[0]![0]).toBe(emitted);
   });
 });
+
+// Review thread (PR #1420, PRRT_kwDOSKrFTs6b3k24): changing `format` while
+// the user has an uncommitted draft in progress used to invalidate the
+// alpha/config-sync effect (which reads `format` through `emitFor`), and
+// that effect unconditionally overwrote `visibleText` with the reformatted
+// OLD committed color — silently discarding the user's in-progress
+// keystrokes, even though ColorField otherwise keeps intermediate input
+// local until blur/Enter. The effect now only overwrites `visibleText` when
+// it still matches the prior committed mirror (nothing dirty to lose); a
+// draft in progress is preserved, and the new `format` applies naturally at
+// the user's next commit.
+describe('ColorField — format change preserves an in-progress draft (P1 regression)', () => {
+  test('changing `format` mid-typing does not clobber the uncommitted draft text', async () => {
+    const onValueChange = mock<(value: string) => void>(() => {});
+    const { container, rerender } = render(ColorField, {
+      id: 'color-draft',
+      value: '#3366cc',
+      format: 'hex',
+      onValueChange,
+    });
+    const input = getInput(container, 'color-draft');
+
+    // User starts typing a replacement but hasn't committed it yet.
+    await fireEvent.input(input, { target: { value: '#123456' } });
+    await tick();
+    expect(input.value).toBe('#123456');
+
+    // Format changes mid-draft — must NOT touch the visible draft text.
+    await rerender({ id: 'color-draft', value: '#3366cc', format: 'rgb', onValueChange });
+    await tick();
+    expect(input.value).toBe('#123456');
+    expect(onValueChange).not.toHaveBeenCalled();
+
+    // Committing now applies the NEW format to whatever the user actually typed.
+    await fireEvent.blur(input);
+    await tick();
+    expect(input.value).toBe('rgb(18 52 86)');
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+    expect(onValueChange.mock.calls[0]![0]).toBe('rgb(18 52 86)');
+  });
+
+  test('changing `format` with no draft in progress DOES reformat the resting (committed) display', async () => {
+    const { container, rerender } = render(ColorField, {
+      id: 'color-no-draft',
+      value: '#3366cc',
+      format: 'hex',
+    });
+    const input = getInput(container, 'color-no-draft');
+    expect(input.value).toBe('#3366cc');
+
+    await rerender({ id: 'color-no-draft', value: '#3366cc', format: 'hsl' });
+    await tick();
+    expect(input.value).toBe('hsl(220 60% 50%)');
+  });
+});
