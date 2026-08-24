@@ -92,7 +92,7 @@ export function waitForTransitionCompletion({
     if (completed) return;
     completed = true;
     element.removeEventListener('transitionend', handleTransitionEnd);
-    if (!ignoreCancel) element.removeEventListener('transitioncancel', finish);
+    if (!ignoreCancel) element.removeEventListener('transitioncancel', handleTransitionCancel);
     if (fallbackTimer) {
       clearTimeout(fallbackTimer);
       fallbackTimer = undefined;
@@ -113,6 +113,16 @@ export function waitForTransitionCompletion({
     }
   };
 
+  // A descendant's own canceled transition bubbles `transitioncancel` up to
+  // this listener too (transition events bubble like most others) — without
+  // this guard, a completely unrelated child transition being interrupted
+  // would force-complete the panel's own exit. Same target-identity filter
+  // `handleTransitionEnd` already applies above.
+  const handleTransitionCancel = (event: TransitionEvent) => {
+    if (event.target instanceof Element && event.target !== element) return;
+    finish();
+  };
+
   const totalTransitionTime = reducedMotion ? 0 : getLongestTransitionTime(element);
   const pendingProperties = reducedMotion
     ? new Set<string>()
@@ -127,7 +137,7 @@ export function waitForTransitionCompletion({
   }
 
   element.addEventListener('transitionend', handleTransitionEnd);
-  if (!ignoreCancel) element.addEventListener('transitioncancel', finish);
+  if (!ignoreCancel) element.addEventListener('transitioncancel', handleTransitionCancel);
   fallbackTimer = setTimeout(finish, totalTransitionTime + 50);
 
   return finish;

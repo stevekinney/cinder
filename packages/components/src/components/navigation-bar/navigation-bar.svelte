@@ -81,14 +81,6 @@
   const isCollapsible = $derived(placement === 'top' && menuToggle !== undefined);
   let isMobileLayout = $state(false);
 
-  const variant: NavigationVariant = $derived(
-    placement === 'bottom'
-      ? 'mobile'
-      : isCollapsible && isMobileLayout && mobileMenuOpen
-        ? 'mobile'
-        : 'horizontal',
-  );
-
   // Stores the toggle element for focus return after Escape-close.
   let navigationBarElement: HTMLElement | null = null;
   let toggleElement: HTMLElement | null = null;
@@ -125,6 +117,20 @@
     offset: () => 0,
     widthMode: () => 'match-anchor',
   });
+
+  // Gated on `mobileMenuOpen || exitState.renderPanel` (not `mobileMenuOpen`
+  // alone) for the same reason as the `cinder-_floating-surface` class below:
+  // `mobileMenuOpen` flips false the instant close begins, and resolving
+  // `variant` to 'horizontal' at that exact moment would strip the mobile
+  // item styling out from under the panel while it's still retained and
+  // visibly playing its exit transition.
+  const variant: NavigationVariant = $derived(
+    placement === 'bottom'
+      ? 'mobile'
+      : isCollapsible && isMobileLayout && (mobileMenuOpen || exitState.renderPanel)
+        ? 'mobile'
+        : 'horizontal',
+  );
 
   $effect(() => {
     exitState.sync();

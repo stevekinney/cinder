@@ -1068,6 +1068,67 @@ describe('Popover — floating-ui wiring', () => {
       window.getComputedStyle = originalGetComputedStyle;
     }
   });
+
+  test('a removed trigger while closing does not unmount the panel early (CIN-376)', async () => {
+    // Regression guard: `anchorElement` re-resolves reactively and goes null
+    // the instant the trigger disconnects — a controlled consumer can do
+    // this in the very same update that flips `open` false. Without a
+    // last-anchor snapshot, the template's mount gate (`resolvedAnchorElement`)
+    // would unmount the panel immediately, before its exit transition could
+    // ever play.
+    const originalGetComputedStyle = window.getComputedStyle.bind(window);
+    window.getComputedStyle = ((target: Element) => {
+      if (target instanceof HTMLElement && target.classList.contains('cinder-popover')) {
+        return {
+          transitionProperty: 'opacity',
+          transitionDuration: '80ms',
+          transitionDelay: '0ms',
+        } as CSSStyleDeclaration;
+      }
+      return originalGetComputedStyle(target);
+    }) as typeof window.getComputedStyle;
+
+    const triggerEl = document.createElement('button');
+    attachScratch(triggerEl);
+
+    try {
+      let openValue = true;
+      const { rerender } = render(Popover, {
+        props: {
+          get open() {
+            return openValue;
+          },
+          set open(value: boolean) {
+            openValue = value;
+          },
+          triggerRef: triggerEl,
+          children: textSnippet('content'),
+        },
+      });
+
+      await waitFor(() => {
+        expect(queryPopoverPanel()).not.toBeNull();
+      });
+
+      // Remove the trigger and close in the same update — `anchorElement`
+      // goes null synchronously.
+      triggerEl.remove();
+      openValue = false;
+      await rerender({ open: false, triggerRef: triggerEl, children: textSnippet('content') });
+
+      const panel = queryPopoverPanel();
+      expect(panel).not.toBeNull();
+      expect(panel?.getAttribute('data-cinder-closing')).toBe('');
+
+      const event = new Event('transitionend');
+      Object.defineProperty(event, 'propertyName', { value: 'opacity' });
+      panel?.dispatchEvent(event);
+
+      await waitFor(() => expect(queryPopoverPanel()).toBeNull());
+    } finally {
+      window.getComputedStyle = originalGetComputedStyle;
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------

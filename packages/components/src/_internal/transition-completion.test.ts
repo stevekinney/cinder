@@ -12,8 +12,8 @@ function createTransitionEndEvent(propertyName: string): Event {
   return event;
 }
 
-function createTransitionCancelEvent(propertyName: string): Event {
-  const event = new Event('transitioncancel');
+function createTransitionCancelEvent(propertyName: string, bubbles = false): Event {
+  const event = new Event('transitioncancel', { bubbles });
   Object.defineProperty(event, 'propertyName', { value: propertyName });
   return event;
 }
@@ -134,6 +134,47 @@ describe('waitForTransitionCompletion', () => {
       });
 
       element.dispatchEvent(createTransitionCancelEvent('opacity'));
+      expect(completionCount).toBe(1);
+    } finally {
+      window.getComputedStyle = originalGetComputedStyle;
+    }
+  });
+
+  test('ignores a transitioncancel that bubbles up from a descendant (CIN-376)', () => {
+    // Transition events bubble like most others: a completely unrelated
+    // child transition being interrupted must not force-complete the
+    // panel's own exit — the same target-identity filter `transitionend`
+    // already applies must also guard `transitioncancel`.
+    const element = document.createElement('div');
+    const child = document.createElement('span');
+    element.appendChild(child);
+    document.body.appendChild(element);
+    const originalGetComputedStyle = window.getComputedStyle;
+    window.getComputedStyle = ((target: Element) => {
+      if (target === element) {
+        return {
+          transitionProperty: 'opacity',
+          transitionDuration: '150ms',
+          transitionDelay: '0ms',
+        } as CSSStyleDeclaration;
+      }
+      return originalGetComputedStyle(target);
+    }) as typeof window.getComputedStyle;
+
+    try {
+      let completionCount = 0;
+      waitForTransitionCompletion({
+        element,
+        reducedMotion: false,
+        onComplete: () => {
+          completionCount += 1;
+        },
+      });
+
+      child.dispatchEvent(createTransitionCancelEvent('opacity', true));
+      expect(completionCount).toBe(0);
+
+      element.dispatchEvent(createTransitionEndEvent('opacity'));
       expect(completionCount).toBe(1);
     } finally {
       window.getComputedStyle = originalGetComputedStyle;

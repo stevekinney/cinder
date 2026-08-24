@@ -1698,6 +1698,20 @@ describe('NavigationBar', () => {
     ).toBe('true');
   });
 
+  test('variant resolution is gated on mobileMenuOpen || exitState.renderPanel, not mobileMenuOpen alone (CIN-376)', () => {
+    // Regression guard: `mobileMenuOpen` flips to `false` the instant close
+    // begins, so gating `variant` on it alone would resolve back to
+    // 'horizontal' — stripping mobile item styling — while the panel is
+    // still retained (`exitState.renderPanel`) and visibly playing its exit
+    // transition. `createRawSnippet`'s `setup()` only runs once at mount
+    // (see the test above), so this can't be observed by re-capturing the
+    // snippet context reactively; assert the source condition directly,
+    // mirroring the existing `cinder-_floating-surface` gating test.
+    expect(navigationBarSource).toContain(
+      'isCollapsible && isMobileLayout && (mobileMenuOpen || exitState.renderPanel)',
+    );
+  });
+
   // ── data-collapsible cannot be overridden via rest ───────────────────────
 
   test('consumer data-collapsible rest prop cannot override internal value', () => {

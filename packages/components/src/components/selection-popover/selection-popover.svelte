@@ -119,12 +119,19 @@
   // `positionStyle` (anchored-overlay.svelte.ts resets position when its
   // `anchor()` getter returns null) — the instant the exit transition begins,
   // making the panel jump to its unpositioned fallback spot mid-fade instead
-  // of fading out in place. Falling back to this snapshot while `isClosing`
-  // keeps Floating UI positioning against the selection's last known location
-  // for the remainder of the exit.
+  // of fading out in place.
+  //
+  // Materializes a STATIC rect at snapshot time rather than copying
+  // `virtualAnchor`'s own wrapper object: that object's `getBoundingClientRect`
+  // closure reads `position.x`/`position.y` live, at call time — so simply
+  // reassigning the reference would still read through to `position` after
+  // it goes `null`. Calling `getBoundingClientRect()` once here and closing
+  // over the resulting plain object is what actually freezes the coordinates.
   let lastVirtualAnchor: VirtualElement | null = null;
   $effect(() => {
-    if (virtualAnchor) lastVirtualAnchor = virtualAnchor;
+    if (!virtualAnchor) return;
+    const frozenRect = virtualAnchor.getBoundingClientRect();
+    lastVirtualAnchor = { getBoundingClientRect: () => frozenRect };
   });
 
   const reducedMotion = useReducedMotion();
@@ -142,7 +149,12 @@
 
   const anchoredOverlay = createAnchoredOverlay({
     open: () => isPositionedOpen || exitState.isClosing,
-    anchor: () => virtualAnchor ?? (exitState.isClosing ? lastVirtualAnchor : null),
+    // Deliberately NOT gated on `exitState.isClosing`: `$effect`s (where
+    // `exitState.sync()` runs) fire after a render has already committed, so
+    // on the exact tick `position` nulls and `open` flips false together,
+    // `isClosing` would still read its pre-close value here — falling back
+    // whenever `virtualAnchor` is null is what actually avoids that race.
+    anchor: () => virtualAnchor ?? lastVirtualAnchor,
     panel: () => popoverElement,
     placement: () => 'top' as Placement,
     offset: () => 8,
@@ -332,6 +344,16 @@
   });
 </script>
 
+<!--
+  `aria-hidden`/`inert` are placed AFTER `{...rest}` below deliberately: in
+  Svelte, a later attribute on an element wins over an earlier one, including
+  one supplied via spread — with `{...rest}` last (as it was before), a
+  consumer passing `inert={false}`/`aria-hidden={null}` through rest props
+  would silently defeat the closing-state semantics. These two are
+  component-owned lifecycle state (CIN-376), not something a consumer prop
+  should be able to cancel, so they always win regardless of what `rest`
+  carries.
+-->
 <div
   bind:this={popoverElement}
   {id}
@@ -344,12 +366,12 @@
   style={anchoredOverlay.positionStyle}
   role="toolbar"
   aria-label="Selection actions"
-  aria-hidden={exitState.isClosing ? 'true' : undefined}
-  inert={exitState.isClosing ? true : undefined}
   onkeydown={handleKeydown}
   {@attach portalAttachment}
   {@attach dismissOnOutsidePointerdown}
   {...rest}
+  aria-hidden={exitState.isClosing ? 'true' : undefined}
+  inert={exitState.isClosing ? true : undefined}
 >
   {#if expanded}
     <div bind:this={composerFormElement} class="cinder-selection-popover__form">

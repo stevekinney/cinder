@@ -1811,4 +1811,111 @@ describe('SelectionPopover', () => {
     expect(focusOptions).toEqual({ preventScroll: true });
     trigger.remove();
   });
+
+  test('a consumer-passed inert=false cannot defeat the closing-state inert/aria-hidden (CIN-376)', async () => {
+    // Regression guard: {...rest} used to trail every internal attribute, so
+    // a consumer's own `inert`/`aria-hidden` prop would win over the
+    // component-owned closing semantics. These two are lifecycle state the
+    // component owns, not something a consumer prop should be able to cancel.
+    //
+    // Stub a real (non-zero) transition duration so `waitForTransitionCompletion`
+    // takes its transitionend-listening path instead of resolving on the next
+    // microtask — this is the only way to observe the intermediate
+    // "closing but still mounted" state before `await rerender` itself
+    // yields the microtask queue.
+    const originalGetComputedStyle = window.getComputedStyle.bind(window);
+    window.getComputedStyle = ((target: Element) => {
+      if (target instanceof HTMLElement && target.classList.contains('cinder-selection-popover')) {
+        return {
+          transitionProperty: 'opacity, scale',
+          transitionDuration: '80ms, 80ms',
+          transitionDelay: '0ms, 0ms',
+        } as CSSStyleDeclaration;
+      }
+      return originalGetComputedStyle(target);
+    }) as typeof window.getComputedStyle;
+
+    try {
+      const { rerender } = render(SelectionPopover, {
+        props: {
+          id: 'selection-comment',
+          open: true,
+          position: { x: 120, y: 80 },
+          inert: false,
+          'aria-hidden': 'false',
+        } as never,
+      });
+
+      const toolbar = document.querySelector('.cinder-selection-popover') as HTMLElement;
+      expect(toolbar.hasAttribute('inert')).toBe(false);
+
+      await rerender({
+        open: false,
+        position: null,
+        inert: false,
+        'aria-hidden': 'false',
+      } as never);
+
+      expect(toolbar.hasAttribute('inert')).toBe(true);
+      expect(toolbar.getAttribute('aria-hidden')).toBe('true');
+    } finally {
+      window.getComputedStyle = originalGetComputedStyle;
+    }
+  });
+
+  test('the retained anchor rect stays stable after position clears (CIN-376)', async () => {
+    // Regression guard: the snapshot used to copy `virtualAnchor`'s wrapper
+    // object, whose `getBoundingClientRect` closure reads `position.x`/`.y`
+    // live — so once `position` went `null`, the "frozen" anchor's rect
+    // would actually read through to the now-null `position` instead of
+    // staying at its last real coordinates.
+    const originalGetComputedStyle = window.getComputedStyle.bind(window);
+    window.getComputedStyle = ((target: Element) => {
+      if (target instanceof HTMLElement && target.classList.contains('cinder-selection-popover')) {
+        return {
+          transitionProperty: 'opacity, scale',
+          transitionDuration: '80ms, 80ms',
+          transitionDelay: '0ms, 0ms',
+        } as CSSStyleDeclaration;
+      }
+      return originalGetComputedStyle(target);
+    }) as typeof window.getComputedStyle;
+
+    try {
+      const { rerender } = render(SelectionPopover, {
+        props: {
+          id: 'selection-comment',
+          open: true,
+          position: { x: 120, y: 80, height: 20 },
+        },
+      });
+
+      const toolbar = document.querySelector('.cinder-selection-popover') as HTMLElement;
+      await waitFor(() => {
+        expect(toolbar.getAttribute('data-cinder-position-ready')).toBe('true');
+      });
+      const styleBeforeClose = toolbar.getAttribute('style');
+      expect(styleBeforeClose).toBeTruthy();
+
+      await rerender({ open: false, position: null });
+
+      // Still mid-exit (the stubbed 80ms transition hasn't fired
+      // `transitionend` yet).
+      expect(toolbar.hasAttribute('data-cinder-closing')).toBe(true);
+
+      // `anchoredOverlay` recomputes position asynchronously (a dynamic
+      // `@floating-ui/dom` import + `computePosition` promise chain), so
+      // there's a brief tick where `positionStyle` resets before it
+      // recomputes — poll for it to settle, then assert it converges back
+      // to the SAME rect rather than an unpositioned fallback. This is what
+      // "doesn't jump mid-fade" means in practice: a live read through to
+      // the now-null `position` would instead settle on `left: 0px; top:
+      // 0px;` (or an empty style), never the original coordinates.
+      await waitFor(() => {
+        expect(toolbar.getAttribute('style')).toBe(styleBeforeClose);
+      });
+    } finally {
+      window.getComputedStyle = originalGetComputedStyle;
+    }
+  });
 });

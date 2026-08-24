@@ -98,6 +98,30 @@
     ariaLabelledby ? undefined : role === 'dialog' ? (label ?? 'Popover') : label,
   );
 
+  // Snapshot of the last non-null anchor. A controlled consumer can close by
+  // removing or disabling the trigger in the same update that flips `open`
+  // false (`anchorElement` re-resolves reactively above and goes null the
+  // instant that happens) — without this, the template's mount gate below
+  // would unmount the panel immediately, well before its exit transition
+  // could play, and `anchoredOverlay` would reset `positionStyle` to ''
+  // (anchored-overlay.svelte.ts resets position when its `anchor()` getter
+  // returns null). `resolvedAnchorElement` falls back to this snapshot,
+  // mirroring SelectionPopover's `lastVirtualAnchor`.
+  //
+  // Deliberately NOT gated on `exitState.isClosing`: `$effect`s (which is
+  // where `exitState.sync()` runs) fire after a render has already
+  // committed, so on the exact tick `open` and `anchorElement` both go
+  // false/null together, `isClosing` would still read its PRE-close value
+  // here and the fallback would never engage — the panel would unmount in
+  // that same render, one tick before `exitState` ever gets a chance to
+  // start closing. Falling back whenever `anchorElement` is null (open,
+  // closing, or otherwise) is what actually closes that race.
+  let lastAnchorElement: HTMLElement | null = null;
+  $effect(() => {
+    if (anchorElement) lastAnchorElement = anchorElement;
+  });
+  const resolvedAnchorElement = $derived(anchorElement ?? lastAnchorElement);
+
   // mounted gates the panel render so SSR emits empty markup regardless of
   // open. See _internal/OVERLAY-POLICY.md ("SSR rule").
   let mounted = $state(false);
@@ -151,7 +175,7 @@
     // `open || exitState.isClosing` keeps Floating UI positioning the panel
     // while it fades/slides out.
     open: () => open || exitState.isClosing,
-    anchor: () => anchorElement,
+    anchor: () => resolvedAnchorElement,
     panel: () => panelElement,
     arrow: () => arrowElement,
     placement: () => placement as Placement,
@@ -354,7 +378,7 @@
   </div>
 {/if}
 
-{#if mounted && exitState.renderPanel && anchorElement}
+{#if mounted && exitState.renderPanel && resolvedAnchorElement}
   <div
     bind:this={portalScopeElement}
     {@attach portalScopeAttachment}
