@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
-import { readDiffInput } from './check-timeout-increase-comparison.ts';
+import { fallbackDiffArguments, readDiffInput } from './check-timeout-increase-comparison.ts';
 import { sourceLineForAnalysis } from './check-timeout-increase-strings.ts';
 import {
   findTimeoutIncreaseViolations,
@@ -136,6 +136,36 @@ describe('check-timeout-increases', () => {
     ].join('\n');
 
     expect(findTimeoutIncreaseViolations(diff)).toHaveLength(1);
+  });
+
+  test('checks Playwright waitForFunction polling intervals', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/testing/tests/example.playwright.ts',
+        ['await page.waitForFunction(fn, null, { polling: 100 });'],
+        ['await page.waitForFunction(fn, null, { polling: 1_000 });'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+  });
+
+  test('rejects removing locator wait deadlines', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/scripts/validate-consumers.ts',
+        [
+          'await locator.waitFor({ timeout: 5_000 });',
+          "await page.getByText('ready').waitFor({ timeout: 5_000 });",
+        ],
+        ['await locator.waitFor();', "await page.getByText('ready').waitFor();"],
+      ),
+    );
+
+    expect(violations).toHaveLength(2);
+    expect(
+      violations.every(({ new: candidate }) => candidate.value === Number.POSITIVE_INFINITY),
+    ).toBe(true);
   });
 
   test('checks Bun configuration, promise timer aliases, configured assertions, and stable reads', () => {
@@ -2398,13 +2428,34 @@ describe('check-timeout-increases', () => {
     expect(disabledBound[0]?.new.effectiveValue).toBe(Number.POSITIVE_INFINITY);
   });
 
-  test('checks every duration operand in a shell sleep command', () => {
+  test('treats removing a GNU timeout kill-after bound as unbounded', () => {
     const violations = findTimeoutIncreaseViolations(
-      diffFor('packages/components/scripts/probe.sh', ['sleep 1s 1s'], ['sleep 1s 10s']),
+      diffFor(
+        'packages/components/scripts/probe.sh',
+        ['timeout -k 5s 30s bun test'],
+        ['timeout 30s bun test'],
+      ),
     );
 
     expect(violations).toHaveLength(1);
-    expect(violations[0]?.new.effectiveValue).toBe(10_000);
+    expect(violations[0]?.new.effectiveValue).toBe(Number.POSITIVE_INFINITY);
+  });
+
+  test('compares the summed duration of a shell sleep command', () => {
+    const increased = findTimeoutIncreaseViolations(
+      diffFor('packages/components/scripts/probe.sh', ['sleep 1s 1s'], ['sleep 1s 10s']),
+    );
+    const redistributed = findTimeoutIncreaseViolations(
+      diffFor('packages/components/scripts/probe.sh', ['sleep 1s 10s'], ['sleep 5s 6s']),
+    );
+    const reduced = findTimeoutIncreaseViolations(
+      diffFor('packages/components/scripts/probe.sh', ['sleep 5s 10s'], ['sleep 5s 1s']),
+    );
+
+    expect(increased).toHaveLength(1);
+    expect(increased[0]?.new.effectiveValue).toBe(11_000);
+    expect(redistributed).toEqual([]);
+    expect(reduced).toEqual([]);
   });
 
   test('checks waits in extensionless validation hooks', () => {
@@ -2513,5 +2564,14 @@ describe('check-timeout-increases', () => {
 
   test('does not read interactive standard input before checking the fallback', async () => {
     await expect(readDiffInput(true, null)).resolves.toBe('');
+  });
+
+  test('bounds fallback diff context for large files', () => {
+    expect(fallbackDiffArguments('main')).toEqual([
+      'git',
+      'diff',
+      '--unified=200',
+      'origin/main...HEAD',
+    ]);
   });
 });

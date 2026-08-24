@@ -350,12 +350,18 @@ export function extractShellWaitThresholdArguments(analysis: string): ShellWaitT
     const values = match.groups?.['values'];
     if (values === undefined) return [];
     const valuesOffset = (match.index ?? 0) + match[0].lastIndexOf(values);
-    return [...values.matchAll(new RegExp(duration, 'gu'))].map((valueMatch) => ({
-      label: 'sleep' as const,
-      offset: valuesOffset + (valueMatch.index ?? 0),
-      renderedValue: shellDurationMilliseconds(valueMatch[0]),
-      sourceText: match[0],
-    }));
+    const totalMilliseconds = [...values.matchAll(new RegExp(duration, 'gu'))].reduce(
+      (total, valueMatch) => total + Number(shellDurationMilliseconds(valueMatch[0])),
+      0,
+    );
+    return [
+      {
+        label: 'sleep' as const,
+        offset: valuesOffset,
+        renderedValue: String(totalMilliseconds),
+        sourceText: match[0],
+      },
+    ];
   });
   const timeoutPattern = new RegExp(
     String.raw`${commandPrefix}timeout\s+(?:${timeoutOption})*(?:(?:-k\s+|--kill-after(?:=|\s+))(?<killAfter>${duration})\s+)?(?:${timeoutOption})*(?<value>${duration})(?![\w.])`,

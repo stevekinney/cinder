@@ -1,4 +1,5 @@
 import {
+  findPlaywrightRelativeTimeoutExtensions,
   implicitBaselineFor,
   implicitBaselineForMatch,
   waitThresholdBaselineFor,
@@ -15,7 +16,6 @@ import {
   effectiveThresholdValue,
   findBunLifecycleTimeoutArguments,
   findBunTestTimeoutArguments,
-  findPlaywrightRelativeTimeoutExtensions,
   findPromiseTimerAliasArguments,
   findReferencedPlaywrightTimeoutAssignments,
   findWaitThresholdArguments,

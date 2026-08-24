@@ -381,7 +381,7 @@ export async function readDiffInput(
       : (baseRefOverride ?? Bun.env['BASE_REF'] ?? Bun.env['GITHUB_BASE_REF']);
   if (baseRef === undefined || baseRef.trim().length === 0) return standardInput;
 
-  const result = Bun.spawnSync(['git', 'diff', '--unified=100000', `origin/${baseRef}...HEAD`], {
+  const result = Bun.spawnSync(fallbackDiffArguments(baseRef), {
     stdout: 'pipe',
     stderr: 'pipe',
   });
@@ -391,4 +391,8 @@ export async function readDiffInput(
     );
   }
   return result.stdout.toString();
+}
+
+export function fallbackDiffArguments(baseRef: string): string[] {
+  return ['git', 'diff', '--unified=200', `origin/${baseRef}...HEAD`];
 }

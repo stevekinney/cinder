@@ -1,6 +1,27 @@
 import { normalizeThresholdKind } from './check-timeout-increase-comparison';
+import { NUMERIC_EXPRESSION_PATTERN } from './check-timeout-increase-numeric';
 
 export type ThresholdBaseline = { renderedValue: string; value: number };
+
+export function findPlaywrightRelativeTimeoutExtensions(
+  analysis: string,
+): Array<{ offset: number; renderedValue: string }> {
+  const extensions: Array<{ offset: number; renderedValue: string }> = [];
+  const pattern = new RegExp(
+    String.raw`\btestInfo\.setTimeout\s*\(\s*testInfo\.timeout\s*(?<operator>[+*-])\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
+    'gu',
+  );
+  for (const match of analysis.matchAll(pattern)) {
+    const renderedValue = match.groups?.['value'];
+    const operator = match.groups?.['operator'];
+    if (renderedValue === undefined || operator === undefined) continue;
+    extensions.push({
+      offset: (match.index ?? 0) + match[0].lastIndexOf(renderedValue),
+      renderedValue: `30_000 ${operator} (${renderedValue})`,
+    });
+  }
+  return extensions;
+}
 
 type PlaywrightConfigurationDomain = 'expect' | 'nested' | 'project' | 'top-level' | 'webServer';
 
@@ -47,8 +68,8 @@ export function implicitBaselineFor(
   if (label.toLowerCase() === 'abortsignal.timeout') {
     return { renderedValue: 'unbounded (no AbortSignal timeout)', value: Number.POSITIVE_INFINITY };
   }
-  if (label === 'shell.timeout') {
-    return { renderedValue: 'unbounded (no GNU timeout command)', value: Number.POSITIVE_INFINITY };
+  if (['shell.kill-after', 'shell.timeout'].includes(label)) {
+    return { renderedValue: 'unbounded (no GNU timeout bound)', value: Number.POSITIVE_INFINITY };
   }
   if (label === 'sleep') return { renderedValue: '0 (no explicit wait)', value: 0 };
   if (
@@ -142,6 +163,15 @@ export function implicitBaselineForMatch(
   candidateOffset: number,
 ): ThresholdBaseline | undefined {
   const prefix = `${analysisBeforeLine}\n${analysisLine.slice(0, candidateOffset)}`;
+  if (
+    normalizeThresholdKind(label) === 'timeout' &&
+    /\.waitFor\s*\([\s\S]*\{[^}]*$/u.test(prefix)
+  ) {
+    return {
+      renderedValue: 'unbounded (implicit Playwright locator wait timeout)',
+      value: Number.POSITIVE_INFINITY,
+    };
+  }
   if (
     normalizeThresholdKind(label) === 'timeout' &&
     /(?:^|[^\w$.])waitFor[A-Za-z_$\d]*\s*\([\s\S]*,\s*\{[^}]*$/u.test(prefix)

@@ -226,6 +226,7 @@ export function findWaitThresholdArguments(analysis: string): WaitThresholdArgum
     ),
     ...findPlaywrightExpectPollIntervals(analysis),
     ...findPlaywrightOperationTimeoutArguments(analysis),
+    ...findPlaywrightFunctionPollingArguments(analysis),
     ...findMultilinePlaywrightSlowAnnotations(analysis),
   ];
   const occurrenceIndexes = new Map<string, number>();
@@ -368,6 +369,26 @@ function findPlaywrightOperationTimeoutArguments(analysis: string): WaitThreshol
   return argumentsFound;
 }
 
+function findPlaywrightFunctionPollingArguments(analysis: string): WaitThresholdArgument[] {
+  const argumentsFound: WaitThresholdArgument[] = [];
+  for (const callArguments of findCallArguments(analysis, /\bpage\.waitForFunction\s*\(/gu)) {
+    const options = callArguments[2];
+    if (options === undefined) continue;
+    const pollingMatch = new RegExp(
+      String.raw`\bpolling\s*:\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
+      'u',
+    ).exec(options.text);
+    const renderedValue = pollingMatch?.groups?.['value'];
+    if (pollingMatch === null || renderedValue === undefined) continue;
+    argumentsFound.push({
+      label: 'playwright-operation-timeout',
+      offset: options.offset + pollingMatch.index + pollingMatch[0].lastIndexOf(renderedValue),
+      renderedValue,
+    });
+  }
+  return argumentsFound;
+}
+
 export function findReferencedPlaywrightTimeoutAssignments(
   analysis: string,
 ): WaitThresholdArgument[] {
@@ -474,25 +495,4 @@ export function findBunLifecycleTimeoutArguments(analysis: string): BunTestTimeo
     1,
     'setTimeout',
   ).map(({ offset, renderedValue }) => ({ offset, renderedValue }));
-}
-
-export function findPlaywrightRelativeTimeoutExtensions(
-  analysis: string,
-): BunTestTimeoutArgument[] {
-  const extensions: BunTestTimeoutArgument[] = [];
-  const pattern = new RegExp(
-    String.raw`\btestInfo\.setTimeout\s*\(\s*testInfo\.timeout\s*(?<operator>[+*-])\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
-    'gu',
-  );
-  for (const match of analysis.matchAll(pattern)) {
-    const renderedValue = match.groups?.['value'];
-    const operator = match.groups?.['operator'];
-    if (renderedValue === undefined || operator === undefined) continue;
-    const valueOffset = match[0].lastIndexOf(renderedValue);
-    extensions.push({
-      offset: (match.index ?? 0) + valueOffset,
-      renderedValue: `30_000 ${operator} (${renderedValue})`,
-    });
-  }
-  return extensions;
 }
