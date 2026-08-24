@@ -2019,6 +2019,19 @@ describe('check-timeout-increases', () => {
     expect(findTimeoutIncreaseViolations(diff)).toHaveLength(2);
   });
 
+  test('checks newly added named constants passed to wait calls', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/scripts/next.ts',
+        [],
+        ['const SETTLE_WAIT_MS = 10_000;', 'await Bun.sleep(SETTLE_WAIT_MS);'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.new.effectiveValue).toBe(10_000);
+  });
+
   test('checks attempt-shaped retry thresholds', () => {
     const violations = findTimeoutIncreaseViolations(
       diffFor(

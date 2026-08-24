@@ -179,11 +179,23 @@ function findCallArgument(
   for (const callArguments of findCallArguments(analysis, callPattern)) {
     const argument = callArguments[argumentIndex];
     if (argument === undefined) continue;
-    const renderedValue = argument.text;
-    if (!new RegExp(String.raw`^${NUMERIC_EXPRESSION_PATTERN}$`, 'u').test(renderedValue)) continue;
+    let renderedValue = argument.text;
+    let offset = argument.offset;
+    if (!new RegExp(String.raw`^${NUMERIC_EXPRESSION_PATTERN}$`, 'u').test(renderedValue)) {
+      if (!/^[A-Za-z_$][\w$]*$/u.test(renderedValue)) continue;
+      const declarationPattern = new RegExp(
+        String.raw`\b(?:const|let|var)\s+${renderedValue}\b[^=;\n]*=\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
+        'u',
+      );
+      const declaration = declarationPattern.exec(analysis);
+      const declaredValue = declaration?.groups?.['value'];
+      if (declaration === null || declaredValue === undefined) continue;
+      renderedValue = declaredValue;
+      offset = declaration.index + declaration[0].lastIndexOf(declaredValue);
+    }
     argumentsFound.push({
       label,
-      offset: argument.offset,
+      offset,
       renderedValue,
     });
   }

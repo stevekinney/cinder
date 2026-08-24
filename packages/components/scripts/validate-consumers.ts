@@ -2789,15 +2789,19 @@ export async function observeSvelteKitHydrationMarker(
   timeoutMs = 5_000,
 ): Promise<void> {
   const marker = hydrationMarkerForRoute(routePath);
-  const element = await promiseWithTimeout(
-    page.$(marker.selector),
+  const observation = await promiseWithTimeout(
+    (async () => {
+      const element = await page.$(marker.selector);
+      return {
+        present: element !== null,
+        value: element ? await element.getAttribute(marker.attribute) : null,
+      };
+    })(),
     timeoutMs,
     `hydration marker probe selector=${marker.selector}`,
   );
-  domObservation.hydrationMarkerPresent = element !== null;
-  domObservation.hydrationMarkerValue = element
-    ? await element.getAttribute(marker.attribute)
-    : null;
+  domObservation.hydrationMarkerPresent = observation.present;
+  domObservation.hydrationMarkerValue = observation.value;
 }
 
 function unknownSvelteKitHydrationRouteFailureSnapshot(
