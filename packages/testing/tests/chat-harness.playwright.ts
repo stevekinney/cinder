@@ -961,6 +961,15 @@ test.describe('chat harness — scroll, unread, jump', () => {
         .toBe('auto');
       const anchor = timeline.getByText('Tell me about alpha.').first();
       await expect(anchor).toBeVisible();
+      await expect
+        .poll(async () => {
+          const [anchorBox, timelineBox] = await Promise.all([
+            anchor.boundingBox(),
+            timeline.boundingBox(),
+          ]);
+          return anchorBox !== null && timelineBox !== null;
+        })
+        .toBe(true);
       const before = await anchor.boundingBox();
       const beforeTimeline = await timeline.boundingBox();
       expect(before).not.toBeNull();
