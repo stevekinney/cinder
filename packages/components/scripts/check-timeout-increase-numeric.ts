@@ -107,6 +107,7 @@ export type BunTestTimeoutArgument = {
 };
 
 export type WaitThresholdArgument = BunTestTimeoutArgument & {
+  baseline?: { renderedValue: string; value: number };
   label:
     | 'bun.sleep'
     | 'bun.sleepSync'
@@ -246,8 +247,13 @@ function findPlaywrightExpectPollIntervals(analysis: string): WaitThresholdArgum
     if (intervals?.groups?.['values'] === undefined) continue;
     const values = intervals.groups['values'];
     const valuesStart = options.offset + intervals.index + intervals[0].indexOf(values);
-    for (const valueMatch of values.matchAll(valuePattern)) {
+    for (const [intervalIndex, valueMatch] of [...values.matchAll(valuePattern)].entries()) {
+      const defaultInterval = [100, 250, 500, 1_000][intervalIndex] ?? 1_000;
       argumentsFound.push({
+        baseline: {
+          renderedValue: `${defaultInterval} (implicit Playwright poll interval)`,
+          value: defaultInterval,
+        },
         label: 'expect.poll.intervals',
         offset: valuesStart + (valueMatch.index ?? 0),
         renderedValue: valueMatch[0],

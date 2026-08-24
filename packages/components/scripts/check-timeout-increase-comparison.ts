@@ -67,6 +67,7 @@ export function normalizeThresholdKind(label: string): ThresholdKind {
     return 'timeout';
   if (
     normalized.includes('rerun') ||
+    normalized.includes('repeat') ||
     normalized.includes('attempt') ||
     normalized.includes('press') ||
     normalized.includes('retry') ||

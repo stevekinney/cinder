@@ -47,6 +47,7 @@ export function implicitBaselineFor(
   if (label === 'shell.timeout') {
     return { renderedValue: 'unbounded (no GNU timeout command)', value: Number.POSITIVE_INFINITY };
   }
+  if (label === 'sleep') return { renderedValue: '0 (no explicit wait)', value: 0 };
   if (
     label.toLowerCase() === 'timeout-minutes' &&
     /^\.github\/workflows\/[^/]+\.ya?ml$/u.test(filePath)
@@ -57,8 +58,8 @@ export function implicitBaselineFor(
     return { renderedValue: '5_000 (implicit Bun test timeout)', value: 5_000 };
   }
   if (
-    label.toLowerCase() === 'repeateach' &&
-    /(?:^|\/)playwright\.config\.[^/]+$/u.test(filePath)
+    ['repeat-each', 'repeateach'].includes(label.toLowerCase()) &&
+    (label.includes('-') || /(?:^|\/)playwright\.config\.[^/]+$/u.test(filePath))
   ) {
     return { renderedValue: '1 (implicit Playwright repeatEach)', value: 1 };
   }
@@ -140,5 +141,15 @@ export function implicitBaselineForMatch(
     line,
     filePath,
     playwrightConfigurationDomain(filePath, analysisBeforeLine, analysisLine, candidateOffset),
+  );
+}
+
+export function waitThresholdBaselineFor(
+  label: string,
+  explicitBaseline?: ThresholdBaseline,
+): ThresholdBaseline {
+  return (
+    explicitBaseline ??
+    implicitBaselineFor(label) ?? { renderedValue: '0 (no explicit wait)', value: 0 }
   );
 }

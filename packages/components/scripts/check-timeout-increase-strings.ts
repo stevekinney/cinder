@@ -256,6 +256,22 @@ export function sourceLineForAnalysis(filePath: string, line: string): string {
   return sourceLinesForAnalysis(filePath, [line])[0] ?? '';
 }
 
+export function isExecutableConfigurationCliLine(
+  filePath: string,
+  line: string,
+  analysisBeforeLine: string,
+): boolean {
+  const extension = extname(filePath);
+  if (!['.json', '.yaml', '.yml'].includes(extension)) return true;
+  const executablePattern =
+    /\b(?:bun|bunx|jest|node|npx|npm|playwright|pnpm|vitest|yarn)\b[^\n"']*--[\w-]+/u;
+  if (executablePattern.test(line)) return true;
+  const precedingLine = analysisBeforeLine.split('\n').findLast((entry) => entry.trim().length > 0);
+  return precedingLine !== undefined && /\\\s*$/u.test(precedingLine)
+    ? executablePattern.test(`${precedingLine}\n${line}`.replace('\\\n', ' '))
+    : false;
+}
+
 export function normalizeWorkflowExpressions(filePath: string, analysis: string): string {
   if (!/^\.github\/workflows\/[^/]+\.ya?ml$/u.test(filePath)) return analysis;
   return analysis
@@ -326,9 +342,9 @@ export function extractExecutableCliThresholdArguments(
     (argument, index) => argument === 'bun' && argumentsFound[index + 1] === 'test',
   );
   const flagPattern =
-    /^--(?<label>timeout-minutes|timeout|test-timeout|retries|retry|rerun-each|slow)$/iu;
+    /^--(?<label>timeout-minutes|timeout|test-timeout|retries|retry|repeat-each|rerun-each|slow)$/iu;
   const exactPattern = new RegExp(
-    String.raw`^--(?<label>timeout-minutes|timeout|test-timeout|retries|retry|rerun-each|slow)=(?<value>${NUMERIC_EXPRESSION_PATTERN})$`,
+    String.raw`^--(?<label>timeout-minutes|timeout|test-timeout|retries|retry|repeat-each|rerun-each|slow)=(?<value>${NUMERIC_EXPRESSION_PATTERN})$`,
     'iu',
   );
   const numericPattern = new RegExp(String.raw`^${NUMERIC_EXPRESSION_PATTERN}$`, 'u');
@@ -376,7 +392,7 @@ export function extractMultilineExecutableCliThresholdArguments(
 ): MultilineExecutableCliThresholdArgument[] {
   const results: MultilineExecutableCliThresholdArgument[] = [];
   const flagPattern =
-    /^\s*['"]--(?<label>timeout-minutes|timeout|test-timeout|retries|retry|rerun-each|slow)['"]\s*,?\s*$/iu;
+    /^\s*['"]--(?<label>timeout-minutes|timeout|test-timeout|retries|retry|repeat-each|rerun-each|slow)['"]\s*,?\s*$/iu;
   const valuePattern = new RegExp(
     String.raw`^\s*['"](?<value>${NUMERIC_EXPRESSION_PATTERN})['"]\s*,?\s*$`,
     'u',

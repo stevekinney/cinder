@@ -802,6 +802,28 @@ describe('check-timeout-increases', () => {
     expect(violations[0]?.new.kind).toBe('retries');
   });
 
+  test('checks Playwright repeat-each CLI flags against the implicit single run', () => {
+    const inline = findTimeoutIncreaseViolations(
+      diffFor(
+        'package.json',
+        ['"test": "playwright test --repeat-each=2"'],
+        ['"test": "playwright test --repeat-each=3"'],
+      ),
+    );
+    const argv = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/testing/scripts/run-tests.ts',
+        ["const command = ['playwright', 'test'];"],
+        ["const command = ['playwright', 'test', '--repeat-each', '2'];"],
+      ),
+    );
+
+    expect(inline).toHaveLength(1);
+    expect(inline[0]?.new.kind).toBe('retries');
+    expect(argv).toHaveLength(1);
+    expect(argv[0]?.old.value).toBe(1);
+  });
+
   test('checks TypeScript module-extension test files', () => {
     for (const extension of ['mts', 'cts']) {
       const violations = findTimeoutIncreaseViolations(
@@ -928,6 +950,22 @@ describe('check-timeout-increases', () => {
     const diff = diffFor('packages/components/src/usage.ts', [], ["const usage = '--retries=2';"]);
 
     expect(findTimeoutIncreaseViolations(diff)).toEqual([]);
+  });
+
+  test('ignores CLI-shaped prose in JSON and workflow descriptions', () => {
+    const json = diffFor(
+      'packages/components/examples.json',
+      ['"description": "Example: use --timeout 5"'],
+      ['"description": "Example: use --timeout 10"'],
+    );
+    const workflow = diffFor(
+      '.github/workflows/unit-tests.yaml',
+      ['description: Example: use --timeout 5'],
+      ['description: Example: use --timeout 10'],
+    );
+
+    expect(findTimeoutIncreaseViolations(json)).toEqual([]);
+    expect(findTimeoutIncreaseViolations(workflow)).toEqual([]);
   });
 
   test('evaluates complete constant numeric timeout expressions', () => {
@@ -1371,6 +1409,27 @@ describe('check-timeout-increases', () => {
     expect(violations[0]?.new.value).toBe(500);
   });
 
+  test('uses Playwright poll defaults for newly explicit intervals', () => {
+    const reduced = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/testing/tests/example.playwright.ts',
+        ['await expect.poll(readiness).toBe(true);'],
+        ['await expect.poll(readiness, { intervals: [50] }).toBe(true);'],
+      ),
+    );
+    const increased = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/testing/tests/example.playwright.ts',
+        ['await expect.poll(readiness).toBe(true);'],
+        ['await expect.poll(readiness, { intervals: [150] }).toBe(true);'],
+      ),
+    );
+
+    expect(reduced).toEqual([]);
+    expect(increased).toHaveLength(1);
+    expect(increased[0]?.old.value).toBe(100);
+  });
+
   test('keeps expect.poll intervals within their own call', () => {
     const violations = findTimeoutIncreaseViolations(
       diffFor(
@@ -1718,6 +1777,15 @@ describe('check-timeout-increases', () => {
     ].join('\n');
 
     expect(findTimeoutIncreaseViolations(diff)).toHaveLength(2);
+  });
+
+  test('compares newly added shell sleeps with no explicit wait', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor('.github/workflows/unit-tests.yaml', [], ['      run: sleep 30s']),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.old.value).toBe(0);
   });
 
   test('checks numeric fallbacks in workflow expressions', () => {

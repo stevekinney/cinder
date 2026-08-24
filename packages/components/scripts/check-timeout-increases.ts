@@ -1,6 +1,7 @@
 import {
   implicitBaselineFor,
   implicitBaselineForMatch,
+  waitThresholdBaselineFor,
   type ThresholdBaseline,
 } from './check-timeout-increase-baselines';
 import {
@@ -25,6 +26,7 @@ import {
 import {
   extractExecutableCliThresholdArguments,
   extractMultilineExecutableCliThresholdArguments,
+  isExecutableConfigurationCliLine,
   isTestOrValidationInfrastructure,
   isTestThresholdAssignment,
   normalizeWorkflowExpressions,
@@ -180,10 +182,11 @@ function extractThresholdCandidates(
     );
   }
   const cliPattern = new RegExp(
-    String.raw`--(?<label>timeout-minutes|timeout|test-timeout|retries|retry|rerun-each|slow)(?:=|\s+)(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
+    String.raw`--(?<label>timeout-minutes|timeout|test-timeout|retries|retry|repeat-each|rerun-each|slow)(?:=|\s+)(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
     'giu',
   );
   for (const match of analysisLine.matchAll(cliPattern)) {
+    if (!isExecutableConfigurationCliLine(filePath, line, analysisBeforeLine)) continue;
     const label = match.groups?.['label'] ?? '';
     pushCandidate(
       candidates,
@@ -395,10 +398,7 @@ function extractMultilineCallCandidates(
         source[sourceIndex]?.lineNumber ?? 0,
         waitArgument.label,
         waitArgument.renderedValue,
-        implicitBaselineFor(waitArgument.label) ?? {
-          renderedValue: '0 (no explicit wait)',
-          value: 0,
-        },
+        waitThresholdBaselineFor(waitArgument.label, waitArgument.baseline),
         waitArgument.occurrenceIndex,
       );
     }
