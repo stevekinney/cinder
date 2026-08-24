@@ -784,6 +784,7 @@ describe('TimeField', () => {
         props: { id: 'reminder-no-error-computed', label: 'Reminder time', value: '09:30' },
       });
       const errorRegion = container.querySelector('.cinder-time-field__error');
+      expect(errorRegion).not.toBeNull();
       const computed = getComputedStyle(errorRegion as Element);
       // Sr-only pattern (CIN-315 review follow-up), not visibility:hidden —
       // visibility:hidden removes an element from the accessibility tree

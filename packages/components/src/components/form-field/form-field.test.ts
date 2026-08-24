@@ -37,6 +37,7 @@ describe('FormField rendering', () => {
         props: { id: 'no-error-computed-formfield', label: 'Username', children: emptySnippet },
       });
       const errorRegion = container.querySelector('.cinder-form-field__error');
+      expect(errorRegion).not.toBeNull();
       const computed = getComputedStyle(errorRegion as Element);
       // Sr-only pattern (CIN-315 review follow-up), not visibility:hidden —
       // visibility:hidden removes an element from the accessibility tree

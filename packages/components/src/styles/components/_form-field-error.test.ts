@@ -58,6 +58,8 @@ describe('shared _form-field-error.css', () => {
       // AT tree exactly like this ticket's original bug.
       expect(errorRegion?.getAttribute('aria-hidden')).toBeNull();
 
+      expect(errorRegion).not.toBeNull();
+
       const computed = getComputedStyle(errorRegion as Element);
       expect(computed.display).not.toBe('none');
       expect(computed.visibility).not.toBe('hidden');
@@ -88,6 +90,8 @@ describe('shared _form-field-error.css', () => {
       });
       const errorRegion = container.querySelector('.cinder-form-field__error');
       expect(errorRegion?.getAttribute('data-cinder-error')).toBe('');
+
+      expect(errorRegion).not.toBeNull();
 
       const computed = getComputedStyle(errorRegion as Element);
       expect(computed.position).not.toBe('absolute');

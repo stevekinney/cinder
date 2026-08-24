@@ -400,6 +400,7 @@ describe('Textarea — error live region', () => {
         props: { id: 'no-error-computed-textarea', value: '', label: 'Notes' },
       });
       const errorRegion = container.querySelector('.cinder-textarea-error');
+      expect(errorRegion).not.toBeNull();
       const computed = getComputedStyle(errorRegion as Element);
       // Sr-only pattern (CIN-315 review follow-up), not visibility:hidden —
       // visibility:hidden removes an element from the accessibility tree
