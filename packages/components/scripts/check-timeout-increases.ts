@@ -397,6 +397,7 @@ function extractMultilineCallCandidates(
         waitArgument.label,
         waitArgument.renderedValue,
         { renderedValue: '0 (no explicit wait)', value: 0 },
+        waitArgument.occurrenceIndex,
       );
     }
   }
@@ -466,13 +467,12 @@ function extractMultilineCallCandidates(
 
   const seen = new Set<string>();
   return candidates.filter((candidate) => {
-    const key = `${candidate.identity}:${candidate.renderedValue}:${candidate.lineNumber}`;
+    const key = `${candidate.identity}:${candidate.renderedValue}:${candidate.lineNumber}:${candidate.occurrenceIndex ?? ''}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
   });
 }
-
 export function findTimeoutIncreaseViolations(diff: string): TimeoutIncreaseViolation[] {
   return findTimeoutIncreaseViolationsInDiff(
     diff,

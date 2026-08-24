@@ -259,6 +259,30 @@ describe('check-timeout-increases', () => {
     expect(violations).toHaveLength(1);
   });
 
+  test('checks quoted Jest threshold keys in JSON configuration', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'package.json',
+        ['  "jest": {', '    "testTimeout": 5000', '  }'],
+        ['  "jest": {', '    "testTimeout": 10000', '  }'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+  });
+
+  test('does not expose threshold-shaped text inside JSON strings', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'package.json',
+        ['  "description": "contains \\\"timeout\\\": 5000"'],
+        ['  "description": "contains \\\"timeout\\\": 10000"'],
+      ),
+    );
+
+    expect(violations).toEqual([]);
+  });
+
   test('checks quoted configuration keys in source files', () => {
     const violations = findTimeoutIncreaseViolations(
       diffFor(
@@ -1179,6 +1203,32 @@ describe('check-timeout-increases', () => {
     expect(violations[0]?.new.value).toBe(10_000);
   });
 
+  test('checks relative Playwright timeout multipliers', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/testing/tests/example.playwright.ts',
+        ['testInfo.setTimeout(testInfo.timeout * 2);'],
+        ['testInfo.setTimeout(testInfo.timeout * 3);'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.old.value).toBe(2);
+    expect(violations[0]?.new.value).toBe(3);
+  });
+
+  test('treats testInfo.setTimeout(0) as unbounded', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/testing/tests/example.playwright.ts',
+        ['testInfo.setTimeout(0);'],
+        ['testInfo.setTimeout(5_000);'],
+      ),
+    );
+
+    expect(violations).toEqual([]);
+  });
+
   test('checks Playwright expect.poll interval increases', () => {
     const violations = findTimeoutIncreaseViolations(
       diffFor(
@@ -1191,6 +1241,20 @@ describe('check-timeout-increases', () => {
     expect(violations).toHaveLength(1);
     expect(violations[0]?.old.value).toBe(250);
     expect(violations[0]?.new.value).toBe(500);
+  });
+
+  test('keeps expect.poll intervals within their own call', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/testing/tests/example.playwright.ts',
+        [
+          'await expect.poll(readiness, { intervals: [100, 250] }).toBe(true);\nconst options = { intervals: [500] };',
+        ],
+        ['await expect.poll(readiness, {}).toBe(true);\nconst options = { intervals: [1_000] };'],
+      ),
+    );
+
+    expect(violations).toEqual([]);
   });
 
   test('compares new Jest setTimeout calls with the runner default', () => {
@@ -1302,6 +1366,20 @@ describe('check-timeout-increases', () => {
 
     expect(violations).toHaveLength(2);
     expect(violations.map((violation) => violation.new.renderedValue)).toEqual(['200', '200']);
+  });
+
+  test('preserves same-line wait helper callsite order', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/src/tree/tree.test.ts',
+        ['await Bun.sleep(100); await Bun.sleep(200);'],
+        ['await Bun.sleep(200); await Bun.sleep(100);'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.old.value).toBe(100);
+    expect(violations[0]?.new.value).toBe(200);
   });
 
   test('ignores callback timers in production source', () => {

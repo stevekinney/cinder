@@ -151,10 +151,39 @@ function stripUnquotedHashComment(line: string): string {
 }
 
 function exposeQuotedConfigurationKeys(line: string): string {
-  return line.replace(
-    /(?<quote>['"])(?<key>[A-Za-z_$][\w$-]*)\k<quote>(?=\s*:)/gu,
-    (_match, _quote: string, key: string) => key,
-  );
+  const output = Array.from(line);
+  for (let index = 0; index < output.length; index += 1) {
+    const quote = output[index];
+    if (quote !== '"' && quote !== "'") continue;
+    let escaped = false;
+    let closingIndex = index + 1;
+    for (; closingIndex < output.length; closingIndex += 1) {
+      const character = output[closingIndex] ?? '';
+      if (escaped) {
+        escaped = false;
+      } else if (character === '\\') {
+        escaped = true;
+      } else if (character === quote) {
+        break;
+      }
+    }
+    if (closingIndex >= output.length) break;
+    const key = line.slice(index + 1, closingIndex);
+    if (!/^[A-Za-z_$][\w$-]*$/u.test(key)) {
+      index = closingIndex;
+      continue;
+    }
+    let nextIndex = closingIndex + 1;
+    while (/\s/u.test(output[nextIndex] ?? '')) nextIndex += 1;
+    if (output[nextIndex] !== ':') {
+      index = closingIndex;
+      continue;
+    }
+    output[index] = ' ';
+    output[closingIndex] = ' ';
+    index = closingIndex;
+  }
+  return output.join('');
 }
 
 export function sourceLinesForAnalysis(filePath: string, lines: readonly string[]): string[] {
@@ -172,6 +201,9 @@ export function sourceLinesForAnalysis(filePath: string, lines: readonly string[
   if (['.bash', '.sh', '.toml', '.yaml', '.yml', '.zsh'].includes(extension)) {
     return lines.map((line) => exposeQuotedConfigurationKeys(stripUnquotedHashComment(line)));
   }
+  if (extension === '.json') {
+    return lines.map(exposeQuotedConfigurationKeys);
+  }
   return [...lines];
 }
 
@@ -182,10 +214,15 @@ export function isTestOrValidationInfrastructure(filePath: string, analysis = ''
     ) ||
     /(?:^|\/)(?:check|validate)-[^/]+\.[^/]+$/u.test(filePath) ||
     /(?:^|\/)(?:jest|playwright|vitest)\.config\.[^/]+$/u.test(filePath) ||
+    (extensionIsJson(filePath) && /\bjest\s*:/u.test(analysis)) ||
     /^\.github\/workflows\/[^/]+\.ya?ml$/u.test(filePath) ||
     /(?:^|\/)bunfig\.toml$/u.test(filePath) ||
     /\btest\.describe\.configure\s*\(/u.test(analysis)
   );
+}
+
+function extensionIsJson(filePath: string): boolean {
+  return extname(filePath) === '.json';
 }
 
 export function isTestThresholdAssignment(

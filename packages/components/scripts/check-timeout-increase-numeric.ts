@@ -88,7 +88,9 @@ export function effectiveThresholdValue(label: string, line: string, value: numb
   ) {
     return value;
   }
-  if (normalizedLabel === 'settimeout' && !/\btest\.setTimeout\s*\(/u.test(line)) return value;
+  if (normalizedLabel === 'settimeout' && !/\b(?:test|testInfo)\.setTimeout\s*\(/u.test(line)) {
+    return value;
+  }
   return Number.POSITIVE_INFINITY;
 }
 
@@ -107,24 +109,20 @@ export type WaitThresholdArgument = BunTestTimeoutArgument & {
     | 'setTimeout'
     | 'waitForTimeout'
     | 'waitForUrl';
+  occurrenceIndex?: number;
 };
 
-function findCallArgument(
-  analysis: string,
-  callPattern: RegExp,
-  argumentIndex: number,
-  label: WaitThresholdArgument['label'],
-): WaitThresholdArgument[] {
-  const argumentsFound: WaitThresholdArgument[] = [];
+type CallArgument = { offset: number; text: string };
+
+function findCallArguments(analysis: string, callPattern: RegExp): CallArgument[][] {
+  const calls: CallArgument[][] = [];
   for (const callMatch of analysis.matchAll(callPattern)) {
-    const callStart = callMatch.index ?? 0;
-    const openParenthesis = callStart + callMatch[0].lastIndexOf('(');
+    const openParenthesis = (callMatch.index ?? 0) + callMatch[0].lastIndexOf('(');
     const argumentStarts = [openParenthesis + 1];
     let parenthesisDepth = 1;
     let braceDepth = 0;
     let bracketDepth = 0;
     let closeParenthesis = -1;
-
     for (let index = openParenthesis + 1; index < analysis.length; index += 1) {
       const character = analysis[index];
       if (character === '(') parenthesisDepth += 1;
@@ -147,18 +145,35 @@ function findCallArgument(
         argumentStarts.push(index + 1);
       }
     }
+    if (closeParenthesis === -1) continue;
+    calls.push(
+      argumentStarts.map((start, index) => {
+        const nextStart = argumentStarts[index + 1] ?? closeParenthesis;
+        const end = nextStart === closeParenthesis ? closeParenthesis : nextStart - 1;
+        const text = analysis.slice(start, end);
+        const leadingWhitespace = text.match(/^\s*/u)?.[0].length ?? 0;
+        return { offset: start + leadingWhitespace, text: text.trim() };
+      }),
+    );
+  }
+  return calls;
+}
 
-    if (closeParenthesis === -1 || argumentStarts.length <= argumentIndex) continue;
-    const argumentStart = argumentStarts[argumentIndex] ?? closeParenthesis;
-    const nextArgumentStart = argumentStarts[argumentIndex + 1];
-    const argumentEnd = nextArgumentStart === undefined ? closeParenthesis : nextArgumentStart - 1;
-    const argumentText = analysis.slice(argumentStart, argumentEnd);
-    const leadingWhitespace = argumentText.match(/^\s*/u)?.[0].length ?? 0;
-    const renderedValue = argumentText.trim();
+function findCallArgument(
+  analysis: string,
+  callPattern: RegExp,
+  argumentIndex: number,
+  label: WaitThresholdArgument['label'],
+): WaitThresholdArgument[] {
+  const argumentsFound: WaitThresholdArgument[] = [];
+  for (const callArguments of findCallArguments(analysis, callPattern)) {
+    const argument = callArguments[argumentIndex];
+    if (argument === undefined) continue;
+    const renderedValue = argument.text;
     if (!new RegExp(String.raw`^${NUMERIC_EXPRESSION_PATTERN}$`, 'u').test(renderedValue)) continue;
     argumentsFound.push({
       label,
-      offset: argumentStart + leadingWhitespace,
+      offset: argument.offset,
       renderedValue,
     });
   }
@@ -166,7 +181,7 @@ function findCallArgument(
 }
 
 export function findWaitThresholdArguments(analysis: string): WaitThresholdArgument[] {
-  return [
+  const argumentsFound = [
     ...findCallArgument(analysis, /\bBun\.sleep\s*\(/gu, 0, 'bun.sleep'),
     ...findCallArgument(analysis, /\bBun\.sleepSync\s*\(/gu, 0, 'bun.sleepSync'),
     ...findCallArgument(
@@ -180,19 +195,25 @@ export function findWaitThresholdArguments(analysis: string): WaitThresholdArgum
     ...findCallArgument(analysis, /\bpromiseWithTimeout\s*\(/gu, 1, 'promiseWithTimeout'),
     ...findPlaywrightExpectPollIntervals(analysis),
   ];
+  const occurrenceIndexes = new Map<string, number>();
+  return argumentsFound.map((argument) => {
+    const occurrenceIndex = occurrenceIndexes.get(argument.label) ?? 0;
+    occurrenceIndexes.set(argument.label, occurrenceIndex + 1);
+    return { ...argument, occurrenceIndex };
+  });
 }
 
 function findPlaywrightExpectPollIntervals(analysis: string): WaitThresholdArgument[] {
   const argumentsFound: WaitThresholdArgument[] = [];
-  const pattern = new RegExp(
-    String.raw`\bexpect\.poll\s*\([\s\S]*?\bintervals\s*:\s*\[(?<values>[^\]]*)\]`,
-    'gu',
-  );
+  const pattern = /\bexpect\.poll\s*\(/gu;
   const valuePattern = new RegExp(NUMERIC_EXPRESSION_PATTERN, 'gu');
-  for (const match of analysis.matchAll(pattern)) {
-    const values = match.groups?.['values'];
-    if (values === undefined) continue;
-    const valuesStart = (match.index ?? 0) + match[0].lastIndexOf(values);
+  for (const callArguments of findCallArguments(analysis, pattern)) {
+    const options = callArguments[1];
+    if (options === undefined) continue;
+    const intervals = /\bintervals\s*:\s*\[(?<values>[^\]]*)\]/u.exec(options.text);
+    if (intervals?.groups?.['values'] === undefined) continue;
+    const values = intervals.groups['values'];
+    const valuesStart = options.offset + intervals.index + intervals[0].indexOf(values);
     for (const valueMatch of values.matchAll(valuePattern)) {
       argumentsFound.push({
         label: 'expect.poll.intervals',
@@ -322,7 +343,7 @@ export function findPlaywrightRelativeTimeoutExtensions(
 ): BunTestTimeoutArgument[] {
   const extensions: BunTestTimeoutArgument[] = [];
   const pattern = new RegExp(
-    String.raw`\btestInfo\.setTimeout\s*\(\s*testInfo\.timeout\s*\+\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
+    String.raw`\btestInfo\.setTimeout\s*\(\s*testInfo\.timeout\s*[+*]\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
     'gu',
   );
   for (const match of analysis.matchAll(pattern)) {
