@@ -25,6 +25,12 @@ export const valid: ComponentAttributes[] = [
     children: true,
     describedById: 'session-desc',
   },
+
+  // chrome="none" with aria-label — no title required in the chromeless chrome
+  { chrome: 'none', 'aria-label': 'Image viewer', open: true, children: true },
+
+  // chrome="default" explicit — same title requirement as the omitted-chrome case
+  { chrome: 'default', title: 'Confirm deletion', open: true, children: true },
 ];
 
 /**
@@ -53,5 +59,17 @@ export const invalid: Array<{ attributes: ComponentAttributes; violates: string 
   {
     attributes: { title: 'Session expired', role: 'alertdialog', open: true, children: true },
     violates: 'alertdialog-description',
+  },
+
+  // violates: chromeless-accessible-label — chrome="none" without aria-label
+  {
+    attributes: { chrome: 'none', open: true, children: true },
+    violates: 'chromeless-accessible-label',
+  },
+
+  // violates: chromeless-accessible-label — chrome="none" with empty-string aria-label
+  {
+    attributes: { chrome: 'none', 'aria-label': '', open: true, children: true },
+    violates: 'chromeless-accessible-label',
   },
 ];
