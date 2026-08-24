@@ -43,6 +43,9 @@ export function implicitBaselineFor(
   ) {
     return { renderedValue: '360 (implicit GitHub Actions job timeout)', value: 360 };
   }
+  if (kind === 'timeout' && /(?:^|\/)bunfig\.toml$/u.test(filePath)) {
+    return { renderedValue: '5_000 (implicit Bun test timeout)', value: 5_000 };
+  }
   if (kind === 'retries') return { renderedValue: '0 (implicit default retries)', value: 0 };
   if (kind === 'slow') return { renderedValue: '1 (implicit normal timeout)', value: 1 };
   if (
@@ -94,7 +97,7 @@ export function implicitBaselineForMatch(
 ): ThresholdBaseline | undefined {
   if (
     normalizeThresholdKind(label) === 'timeout' &&
-    /\bexpect(?:\.poll)?\s*\(/u.test(
+    /\bexpect(?:\.(?:configure|poll))?\s*\(/u.test(
       `${analysisBeforeLine}\n${analysisLine.slice(0, candidateOffset)}`,
     )
   ) {

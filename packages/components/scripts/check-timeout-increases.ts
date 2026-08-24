@@ -15,6 +15,7 @@ import {
   findBunLifecycleTimeoutArguments,
   findBunTestTimeoutArguments,
   findPlaywrightRelativeTimeoutExtensions,
+  findPromiseTimerAliasArguments,
   findWaitThresholdArguments,
   findWaitThresholdBounds,
   NUMERIC_EXPRESSION_PATTERN,
@@ -25,6 +26,7 @@ import {
   extractMultilineExecutableCliThresholdArguments,
   isTestOrValidationInfrastructure,
   isTestThresholdAssignment,
+  normalizeWorkflowExpressions,
   sourceLineForAnalysis,
   sourceLinesForAnalysis,
 } from './check-timeout-increase-strings';
@@ -34,17 +36,13 @@ export type { TimeoutIncreaseViolation } from './check-timeout-increase-types';
 export { formatTimeoutIncreaseViolations };
 
 const BASIC_THRESHOLD_LABEL_PATTERN = String.raw`(?:timeout-minutes|testTimeout|timeout|deadline|retries|retry|slow)`;
-const NAMED_THRESHOLD_LABEL_PATTERN = String.raw`(?:(?:(?:TIMEOUT|WAIT|DEADLINE|RETRY|RETRIES|POLL|INTERVAL|DELAY|GRACE)[A-Z0-9_]*|[A-Z][A-Z0-9_]*(?:TIMEOUT|WAIT|DEADLINE|RETRY|RETRIES|POLL|INTERVAL|DELAY|GRACE)[A-Z0-9_]*)|(?:[a-z][a-z0-9_]*(?:_timeout|_wait|_deadline|_retry|_retries|_poll|_interval|_delay|_grace)[a-z0-9_]*)|(?:[A-Za-z_$][\w$]*(?:Timeout|Wait|Deadline|Retry|Retries|Poll|Interval|Delay|Grace)[\w$]*)|(?:(?:timeout|wait|deadline|poll|interval|delay|grace)[A-Z_$][\w$]*))`;
-
-function normalizeWorkflowExpressions(filePath: string, analysis: string): string {
-  if (!/^\.github\/workflows\/[^/]+\.ya?ml$/u.test(filePath)) return analysis;
-  return analysis.replace(/\$\{\{\s*(\d[\d_.]*)\s*\}\}/gu, '$1');
-}
+const NAMED_THRESHOLD_LABEL_PATTERN = String.raw`(?:(?:(?:TIMEOUT|WAIT|DEADLINE|RETRY|RETRIES|POLL|INTERVAL|DELAY|GRACE|STABLE_READS?)[A-Z0-9_]*|[A-Z][A-Z0-9_]*(?:TIMEOUT|WAIT|DEADLINE|RETRY|RETRIES|POLL|INTERVAL|DELAY|GRACE|STABLE_READS?)[A-Z0-9_]*)|(?:[a-z][a-z0-9_]*(?:_timeout|_wait|_deadline|_retry|_retries|_poll|_interval|_delay|_grace|_stable_reads?)[a-z0-9_]*)|(?:[A-Za-z_$][\w$]*(?:Timeout|Wait|Deadline|Retry|Retries|Poll|Interval|Delay|Grace|StableReads?)[\w$]*)|(?:(?:timeout|wait|deadline|poll|interval|delay|grace|stableReads?)[A-Z_$][\w$]*))`;
 
 function isGenericTimeoutContext(filePath: string, analysis: string): boolean {
   return (
     /(?:^|\/)(?:jest|playwright|vitest)\.config\.[^/]+$/u.test(filePath) ||
-    /\b(?:expect(?:\.poll)?|waitFor[A-Za-z_$\d]*|setDefaultTimeout|test\.describe\.configure)\b/u.test(
+    /(?:^|\/)bunfig\.toml$/u.test(filePath) ||
+    /\b(?:expect(?:\.(?:configure|poll))?|waitFor[A-Za-z_$\d]*|setDefaultTimeout|test\.describe\.configure)\b/u.test(
       analysis,
     )
   );
@@ -392,6 +390,7 @@ function extractMultilineCallCandidates(
     for (const waitArgument of [
       ...findWaitThresholdArguments(analysis),
       ...findWaitThresholdBounds(analysis),
+      ...findPromiseTimerAliasArguments(analysis),
     ]) {
       const sourceIndex = analysis.slice(0, waitArgument.offset).split('\n').length - 1;
       pushCandidate(

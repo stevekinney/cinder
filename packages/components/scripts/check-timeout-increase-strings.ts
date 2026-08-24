@@ -183,6 +183,7 @@ export function isTestOrValidationInfrastructure(filePath: string, analysis = ''
     /(?:^|\/)(?:check|validate)-[^/]+\.[^/]+$/u.test(filePath) ||
     /(?:^|\/)(?:jest|playwright|vitest)\.config\.[^/]+$/u.test(filePath) ||
     /^\.github\/workflows\/[^/]+\.ya?ml$/u.test(filePath) ||
+    /(?:^|\/)bunfig\.toml$/u.test(filePath) ||
     /\btest\.describe\.configure\s*\(/u.test(analysis)
   );
 }
@@ -194,6 +195,7 @@ export function isTestThresholdAssignment(
 ): boolean {
   const normalizedLabel = label.toLowerCase();
   if (normalizedLabel === 'timeout-minutes') return true;
+  if (normalizedLabel === 'timeout' && /(?:^|\/)bunfig\.toml$/u.test(filePath)) return true;
   if (normalizedLabel === 'retry' || normalizedLabel === 'retries') {
     return (
       /(?:^|\/)(?:jest|playwright|vitest)\.config\.[^/]+$/u.test(filePath) ||
@@ -206,6 +208,11 @@ export function isTestThresholdAssignment(
 
 export function sourceLineForAnalysis(filePath: string, line: string): string {
   return sourceLinesForAnalysis(filePath, [line])[0] ?? '';
+}
+
+export function normalizeWorkflowExpressions(filePath: string, analysis: string): string {
+  if (!/^\.github\/workflows\/[^/]+\.ya?ml$/u.test(filePath)) return analysis;
+  return analysis.replace(/\$\{\{\s*(\d[\d_.]*)\s*\}\}/gu, '$1');
 }
 
 export function extractTopLevelQuotedStrings(line: string): string[] {

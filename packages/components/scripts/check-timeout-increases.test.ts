@@ -101,6 +101,32 @@ describe('check-timeout-increases', () => {
     expect(violations).toHaveLength(1);
   });
 
+  test('checks Bun configuration, promise timer aliases, configured assertions, and stable reads', () => {
+    const diff = [
+      diffFor('bunfig.toml', ['timeout = 5_000'], ['timeout = 10_000']),
+      diffFor(
+        'packages/testing/scripts/start-server.ts',
+        [
+          "import { setTimeout as delay } from 'node:timers/promises';",
+          'await delay(500);',
+          'const PLAYGROUND_WARM_READINESS_STABLE_READS = 2;',
+        ],
+        [
+          "import { setTimeout as delay } from 'node:timers/promises';",
+          'await delay(1_000);',
+          'const PLAYGROUND_WARM_READINESS_STABLE_READS = 4;',
+        ],
+      ),
+      diffFor(
+        'packages/components/src/button/button.test.ts',
+        [],
+        ['const slowExpect = expect.configure({ timeout: 10_000 });'],
+      ),
+    ].join('\n');
+
+    expect(findTimeoutIncreaseViolations(diff)).toHaveLength(4);
+  });
+
   test('matches settings instead of positions when thresholds are reordered or inserted', () => {
     const reordered = diffFor(
       'packages/components/src/button/button.test.ts',

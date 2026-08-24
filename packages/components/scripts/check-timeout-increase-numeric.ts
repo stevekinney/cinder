@@ -185,6 +185,29 @@ export function findWaitThresholdBounds(analysis: string): WaitThresholdArgument
   return bounds;
 }
 
+export function findPromiseTimerAliasArguments(analysis: string): WaitThresholdArgument[] {
+  const argumentsFound: WaitThresholdArgument[] = [];
+  const aliases = new Set<string>();
+  for (const match of analysis.matchAll(
+    /\bimport\s*\{[^}]*\bsetTimeout\s+as\s+(?<alias>[A-Za-z_$][\w$]*)[^}]*\}\s*from\b/gu,
+  )) {
+    const alias = match.groups?.['alias'];
+    if (alias !== undefined) aliases.add(alias);
+  }
+  for (const alias of aliases) {
+    const escapedAlias = alias.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
+    argumentsFound.push(
+      ...findCallArgument(
+        analysis,
+        new RegExp(String.raw`\b${escapedAlias}\s*\(`, 'gu'),
+        0,
+        'setTimeout',
+      ),
+    );
+  }
+  return argumentsFound;
+}
+
 export function findBunTestTimeoutArguments(analysis: string): BunTestTimeoutArgument[] {
   const argumentsFound: BunTestTimeoutArgument[] = [];
   const callPattern =
