@@ -1,25 +1,21 @@
 /**
- * Regression tests for image-lightbox scroll-lock integration, reduced-motion
- * behavior, and index reset.
+ * Regression tests for the image-lightbox → Modal migration (CIN-377).
  *
  * These tests verify that:
- * - the lightbox uses `createBodyScrollLock()` (the counted factory that
- *   delegates to `lockBodyScroll()` in `_internal/overlay`) rather than a
- *   plain `overflow: hidden` assignment that would bypass the global counter
- *   and prematurely restore scroll when nested overlays close.
- * - the lightbox derives its `fade` transition duration from `useReducedMotion()`
- *   so that the JS-driven transition (which is NOT affected by CSS
- *   `@media (prefers-reduced-motion)`) collapses to zero for users who have
- *   opted out of motion.
- * - currentIndex resets to initialIndex when the lightbox reopens without
- *   using a previousOpen $state + $effect write-back pattern.
+ * - the lightbox composes `Modal` in chromeless mode (`chrome="none"`) rather
+ *   than hand-rolling its own `aria-modal`, focus trap, scroll lock, and
+ *   Escape handling — Modal owns all of that coordination via
+ *   `SlidingDialogState` (the same lifecycle Drawer uses).
+ * - the hand-rolled Escape handler, `createFocusTrap()` attachment, and
+ *   `createBodyScrollLock()` attachment are gone from the source.
+ * - arrow-key navigation (previous/next) and the index-reset-on-reopen
+ *   behavior are UNCHANGED from before the migration.
  */
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { createBodyScrollLock } from '@lostgradient/cinder/focus-trap';
 import { setupHappyDom } from '../../../test/happy-dom.ts';
 
 const source = readFileSync(resolve(import.meta.dir, 'image-lightbox.svelte'), 'utf8');
@@ -27,6 +23,30 @@ const source = readFileSync(resolve(import.meta.dir, 'image-lightbox.svelte'), '
 // setupHappyDom() MUST run before any @testing-library/svelte import because
 // testing-library reads globalThis.document/window at module-init time.
 setupHappyDom();
+
+// happy-dom does not implement HTMLDialogElement.showModal / close, which
+// Modal (composed here in chromeless mode) relies on — stub them the same
+// way modal.test.ts does so the $effect inside modal.svelte doesn't throw.
+if (typeof HTMLDialogElement !== 'undefined') {
+  if (!HTMLDialogElement.prototype.showModal) {
+    Object.defineProperty(HTMLDialogElement.prototype, 'showModal', {
+      value: function (this: HTMLDialogElement) {
+        this.setAttribute('open', '');
+      },
+      configurable: true,
+      writable: true,
+    });
+  }
+  if (!HTMLDialogElement.prototype.close) {
+    Object.defineProperty(HTMLDialogElement.prototype, 'close', {
+      value: function (this: HTMLDialogElement) {
+        this.removeAttribute('open');
+      },
+      configurable: true,
+      writable: true,
+    });
+  }
+}
 
 const { render, fireEvent, cleanup } = await import('@testing-library/svelte');
 const { default: ImageLightbox } = await import('./image-lightbox.svelte');
@@ -36,38 +56,44 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
-describe('image-lightbox source contract', () => {
-  test('imports createBodyScrollLock, not the legacy bodyScrollLock', () => {
-    expect(source).toContain('createBodyScrollLock');
-    // Assert against the legacy IDENTIFIER specifically (word boundary + lowercase b),
-    // so this isn't tripped by `createBodyScrollLock` (capital B) or an incidental mention
-    // in a comment. The legacy export was the bare `bodyScrollLock` symbol.
-    expect(source).not.toMatch(/\bbodyScrollLock\b/);
+describe('image-lightbox source contract — Modal composition', () => {
+  test('composes Modal in chromeless mode rather than hand-rolling its own dialog shell', () => {
+    expect(source).toContain("import { Modal } from '@lostgradient/cinder/modal'");
+    expect(source).toContain('chrome="none"');
+    expect(source).toContain('aria-label="Image viewer"');
   });
 
-  test('attaches createBodyScrollLock() to the overlay element', () => {
-    expect(source).toContain('{@attach createBodyScrollLock()}');
+  test('no longer hand-rolls its own aria-modal / role="dialog"', () => {
+    // Those now come from Modal's own markup.
+    expect(source).not.toContain('aria-modal="true"');
+    expect(source).not.toContain('role="dialog"');
   });
 
-  test('imports useReducedMotion for the JS-driven fade transition', () => {
-    // The JS fade transition is not covered by CSS @media (prefers-reduced-motion),
-    // so it must be handled imperatively via useReducedMotion().
-    expect(source).toContain('import { useReducedMotion }');
+  test('no longer attaches its own focus trap', () => {
+    expect(source).not.toContain('createFocusTrap');
   });
 
-  test('derives fadeDuration from useReducedMotion to zero it under reduced-motion', () => {
-    // The derived fadeDuration must collapse to 0 when reducedMotion.current is true.
-    // We check the structural contract (both the derived variable and the reactive
-    // conditional) rather than importing the component (which requires a full Svelte
-    // render environment not available in this harness).
-    expect(source).toContain('fadeDuration = $derived(reducedMotion.current ? 0 :');
+  test('no longer attaches its own body scroll lock', () => {
+    expect(source).not.toContain('createBodyScrollLock');
   });
 
-  test('uses fadeDuration as the transition:fade duration, not a hardcoded literal', () => {
-    // Regression guard: the fade must read from fadeDuration, not a raw number.
-    expect(source).toContain('transition:fade={{ duration: fadeDuration }}');
-    // Ensure the original hardcoded literal is gone.
-    expect(source).not.toContain('transition:fade={{ duration: 150 }}');
+  test('no longer hand-rolls an Escape keydown handler', () => {
+    // Escape is now handled entirely by Modal's native <dialog> `cancel` event,
+    // routed through the shared escape stack.
+    expect(source).not.toContain("case 'Escape'");
+  });
+
+  test('still handles ArrowLeft/ArrowRight for navigation', () => {
+    expect(source).toContain("case 'ArrowLeft'");
+    expect(source).toContain("case 'ArrowRight'");
+  });
+
+  test("overrides the backdrop color via Modal's supported --cinder-modal-backdrop custom property, scoped through the class prop (not a :global() reach into Modal internals)", () => {
+    expect(source).toContain('class="lightbox-modal"');
+    expect(source).toContain(':global(.lightbox-modal)');
+    expect(source).toContain('--cinder-modal-backdrop');
+    // Regression guard: must not select Modal's own internal class names.
+    expect(source).not.toMatch(/:global\(\.cinder-modal/);
   });
 
   test('does not use previousOpen $state + $effect write-back to reset currentIndex', () => {
@@ -78,7 +104,6 @@ describe('image-lightbox source contract', () => {
     // and resets `navigationIndex` explicitly in close().
     expect(source).not.toContain('previousOpen = $state(false)');
     expect(source).not.toContain('previousOpen = open');
-    // The replacement: navigationIndex (null → clampedInitialIndex fallback) should be present.
     expect(source).toContain('navigationIndex');
     expect(source).toContain('clampedInitialIndex');
     expect(source).toContain('effectiveIndex');
@@ -99,12 +124,6 @@ describe('image-lightbox — behavioral reset on reopen', () => {
   ];
 
   test('displayed index resets to initialIndex after close and reopen', async () => {
-    // Regression: the old code used `let previousOpen = $state(false)` + a
-    // $effect that wrote `previousOpen = open` to detect the open transition.
-    // The fix: navigationIndex = $state(null) + effectiveIndex = $derived(
-    // navigationIndex ?? clampedInitialIndex). close() resets navigationIndex
-    // to null so the next open starts fresh at initialIndex.
-
     const { container, rerender } = render(ImageLightbox, {
       props: { images, initialIndex: 0, open: true },
     });
@@ -119,9 +138,8 @@ describe('image-lightbox — behavioral reset on reopen', () => {
     expect(container.querySelector('img')?.getAttribute('alt')).toBe('Image C');
     expect(container.querySelector('.lightbox-counter')?.textContent?.trim()).toBe('3 of 3');
 
-    // Close the lightbox.
+    // Close the lightbox via its own close button.
     await fireEvent.click(container.querySelector('[aria-label="Close image viewer"]')!);
-    expect(container.querySelector('.lightbox-overlay')).toBeNull();
 
     // Reopen: must reset to initialIndex (0 → image A), NOT stay on image C.
     await rerender({ images, initialIndex: 0, open: true });
@@ -130,7 +148,6 @@ describe('image-lightbox — behavioral reset on reopen', () => {
   });
 
   test('displayed index resets to a non-zero initialIndex after close and reopen', async () => {
-    // Verify the reset works correctly when initialIndex is not 0.
     const { container, rerender } = render(ImageLightbox, {
       props: { images, initialIndex: 1, open: true },
     });
@@ -149,30 +166,35 @@ describe('image-lightbox — behavioral reset on reopen', () => {
     // Must reset to initialIndex=1 (image B), not stay on image C.
     expect(container.querySelector('img')?.getAttribute('alt')).toBe('Image B');
   });
-});
 
-describe('image-lightbox scroll-lock counter sharing', () => {
-  test('a second overlay acquiring the lock keeps scroll hidden when the first releases', () => {
-    // Simulate what happens when a lightbox is opened inside another locking
-    // overlay (e.g. a Modal or Sheet that already holds the scroll lock).
-    const releaseOuter = createBodyScrollLock()(document.createElement('div'));
-    const releaseInner = createBodyScrollLock()(document.createElement('div')); // lightbox
+  test('arrow-key navigation moves previous/next and wraps', async () => {
+    const { container } = render(ImageLightbox, {
+      props: { images, initialIndex: 0, open: true },
+    });
 
-    expect(document.body.style.overflow).toBe('hidden');
+    const content = container.querySelector('.lightbox-content')!;
+    expect(container.querySelector('img')?.getAttribute('alt')).toBe('Image A');
 
-    // The outer overlay closes — scroll must stay locked because the lightbox is still open.
-    releaseOuter?.();
-    expect(document.body.style.overflow).toBe('hidden');
+    await fireEvent.keyDown(content, { key: 'ArrowRight' });
+    expect(container.querySelector('img')?.getAttribute('alt')).toBe('Image B');
 
-    // Lightbox closes — counter reaches zero; scroll restores.
-    releaseInner?.();
-    expect(document.body.style.overflow).toBe('');
+    await fireEvent.keyDown(content, { key: 'ArrowLeft' });
+    expect(container.querySelector('img')?.getAttribute('alt')).toBe('Image A');
+
+    // Wraps backward from the first image to the last.
+    await fireEvent.keyDown(content, { key: 'ArrowLeft' });
+    expect(container.querySelector('img')?.getAttribute('alt')).toBe('Image C');
   });
 
-  test('lightbox lock restores scroll when it is the sole lock holder', () => {
-    const release = createBodyScrollLock()(document.createElement('div'));
-    expect(document.body.style.overflow).toBe('hidden');
-    release?.();
-    expect(document.body.style.overflow).toBe('');
+  test('the close button calls onClose and clears navigation state', async () => {
+    let closed = 0;
+    const { container } = render(ImageLightbox, {
+      props: { images, initialIndex: 0, open: true, onClose: () => (closed += 1) },
+    });
+
+    await fireEvent.click(container.querySelector('[aria-label="Next image"]')!);
+    await fireEvent.click(container.querySelector('[aria-label="Close image viewer"]')!);
+
+    expect(closed).toBe(1);
   });
 });

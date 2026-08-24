@@ -1031,6 +1031,106 @@ describe('Modal', () => {
   });
 });
 
+describe('Modal chromeless mode (chrome="none")', () => {
+  test('suppresses the header/title, applying aria-label as the accessible name instead', () => {
+    const { container } = render(Modal, {
+      props: {
+        open: true,
+        chrome: 'none',
+        'aria-label': 'Image viewer',
+        children: emptySnippet,
+      },
+    });
+    const dialog = container.querySelector('dialog') as HTMLDialogElement;
+    expect(container.querySelector('.cinder-modal__header')).toBeNull();
+    expect(dialog.getAttribute('aria-label')).toBe('Image viewer');
+    expect(dialog.hasAttribute('aria-labelledby')).toBe(false);
+  });
+
+  test('still sets role="dialog" and aria-modal="true" from Modal\'s own markup', () => {
+    const { container } = render(Modal, {
+      props: {
+        open: true,
+        chrome: 'none',
+        'aria-label': 'Image viewer',
+        children: emptySnippet,
+      },
+    });
+    const dialog = container.querySelector('dialog') as HTMLDialogElement;
+    expect(dialog.getAttribute('role')).toBe('dialog');
+    expect(dialog.getAttribute('aria-modal')).toBe('true');
+  });
+
+  test('marks the dialog and panel with data-chrome="none" so CSS can drop border/max-width/padding', () => {
+    const { container } = render(Modal, {
+      props: {
+        open: true,
+        chrome: 'none',
+        'aria-label': 'Image viewer',
+        children: emptySnippet,
+      },
+    });
+    const dialog = container.querySelector('dialog') as HTMLDialogElement;
+    const panel = container.querySelector('.cinder-modal__panel') as HTMLElement;
+    const body = container.querySelector('.cinder-modal__body') as HTMLElement;
+    expect(dialog.getAttribute('data-chrome')).toBe('none');
+    expect(panel.getAttribute('data-chrome')).toBe('none');
+    expect(body.getAttribute('data-chrome')).toBe('none');
+  });
+
+  test('the default chrome renders the header/title and carries no data-chrome attribute', () => {
+    const { container } = render(Modal, {
+      props: {
+        open: true,
+        title: 'Test Modal',
+        children: emptySnippet,
+      },
+    });
+    const dialog = container.querySelector('dialog') as HTMLDialogElement;
+    expect(container.querySelector('.cinder-modal__header')).not.toBeNull();
+    expect(dialog.hasAttribute('data-chrome')).toBe(false);
+    expect(dialog.getAttribute('aria-labelledby')).not.toBeNull();
+  });
+
+  test('modal.css suppresses max-width/border/padding for data-chrome="none" without touching coordination logic', async () => {
+    const css = await Bun.file(new URL('./modal.css', import.meta.url)).text();
+    expect(css).toMatch(/\.cinder-modal\[data-chrome='none'\]\s*\{[^}]*max-width:\s*none;/s);
+    expect(css).toMatch(/\.cinder-modal__panel\[data-chrome='none'\]\s*\{[^}]*border:\s*none;/s);
+    expect(css).toMatch(/\.cinder-modal__body\[data-chrome='none'\]\s*\{[^}]*padding:\s*0;/s);
+  });
+
+  test('exposes --cinder-modal-backdrop as a supported backdrop-color override point', async () => {
+    const css = await Bun.file(new URL('./modal.css', import.meta.url)).text();
+    expect(css).toContain(
+      'background-color: var(--cinder-modal-backdrop, var(--cinder-overlay-backdrop));',
+    );
+  });
+
+  test('coordination (focus trap, scroll lock, escape stack, exit transition) is unchanged in chromeless mode', async () => {
+    let openValue = true;
+    const { container } = render(Modal, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        chrome: 'none',
+        'aria-label': 'Image viewer',
+        children: emptySnippet,
+      },
+    });
+    const dialog = container.querySelector('dialog') as HTMLDialogElement;
+    // Native cancel (Escape) still routes through requestClose()/onDismiss,
+    // exactly like the default chrome.
+    const cancelEvent = new Event('cancel', { cancelable: true });
+    await fireEvent(dialog, cancelEvent);
+    expect(cancelEvent.defaultPrevented).toBe(true);
+    expect(openValue).toBe(false);
+  });
+});
+
 describe('Modal focus containment', () => {
   // The <dialog> element natively traps focus via its showModal() API in real browsers.
   // The modal also uses a `tabWrap` attachment on the panel that intercepts Tab/Shift+Tab

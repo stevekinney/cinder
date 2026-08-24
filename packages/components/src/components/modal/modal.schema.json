@@ -6,10 +6,6 @@
       "type": "boolean",
       "description": "Controls whether the modal is open; bindable for controlled usage."
     },
-    "title": {
-      "type": "string",
-      "description": "Text rendered as the modal's visible heading and used as its accessible label."
-    },
     "dismissOnBackdropClick": {
       "type": "boolean",
       "description": "When true, clicking the backdrop outside the modal panel dismisses it. Default `true`."
@@ -26,6 +22,18 @@
       "type": "string",
       "description": "Additional class names merged with the component's root class."
     },
+    "chrome": {
+      "enum": ["default", "none"],
+      "description": "Chrome mode. `'default'` renders the header, visible title, border,\n`max-width: min(90vw, 32rem)`, and body padding. `'none'` renders a\nchromeless, full-bleed surface — the header, title, border, max-width, and\npadding are all suppressed, but coordination (focus trap, scroll lock,\nescape-stack participation, the exit-transition lifecycle, `role=\"dialog\"`\nand `aria-modal`) is entirely unchanged. Default `'default'`."
+    },
+    "title": {
+      "type": "string",
+      "description": "Text rendered as the modal's visible heading and used as its accessible label."
+    },
+    "aria-label": {
+      "type": "string",
+      "description": "Not used in the default chrome — the visible title supplies the accessible name instead."
+    },
     "role": {
       "enum": ["dialog", "alertdialog"],
       "description": "ARIA role applied to the underlying dialog element. Default `dialog`."
@@ -36,7 +44,7 @@
     }
   },
   "additionalProperties": false,
-  "required": ["open", "title"],
+  "required": ["open"],
   "metadata": {
     "unsupportedProps": [
       {

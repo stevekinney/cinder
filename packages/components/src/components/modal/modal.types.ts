@@ -1,10 +1,8 @@
 import type { Snippet } from 'svelte';
 
-type ModalSharedProps = {
+type ModalBaseProps = {
   /** Controls whether the modal is open; bindable for controlled usage. */
   open: boolean;
-  /** Text rendered as the modal's visible heading and used as its accessible label. */
-  title: string;
   /** When true, clicking the backdrop outside the modal panel dismisses it. Default `true`. */
   dismissOnBackdropClick?: boolean;
   /** When true, pressing Escape dismisses the modal. Default `true`. */
@@ -23,6 +21,33 @@ type ModalSharedProps = {
    */
   onDismiss?: () => void;
 };
+
+type DefaultChromeProps = {
+  /**
+   * Chrome mode. `'default'` renders the header, visible title, border,
+   * `max-width: min(90vw, 32rem)`, and body padding. `'none'` renders a
+   * chromeless, full-bleed surface — the header, title, border, max-width, and
+   * padding are all suppressed, but coordination (focus trap, scroll lock,
+   * escape-stack participation, the exit-transition lifecycle, `role="dialog"`
+   * and `aria-modal`) is entirely unchanged. Default `'default'`.
+   */
+  chrome?: 'default';
+  /** Text rendered as the modal's visible heading and used as its accessible label. */
+  title: string;
+  /** Not used in the default chrome — the visible title supplies the accessible name instead. */
+  'aria-label'?: never;
+};
+
+type ChromelessProps = {
+  /** See `DefaultChromeProps.chrome`. `'none'` renders no header, so `aria-label` must supply the accessible name instead. */
+  chrome: 'none';
+  /** Optional in the chromeless chrome — no header renders, so this is never displayed. */
+  title?: string;
+  /** Required in the chromeless chrome: since no visible title renders, this supplies the dialog's accessible name. */
+  'aria-label': string;
+};
+
+type ModalSharedProps = ModalBaseProps & (DefaultChromeProps | ChromelessProps);
 
 type DialogModalProps = ModalSharedProps & {
   /** ARIA role applied to the underlying dialog element. Default `dialog`. */

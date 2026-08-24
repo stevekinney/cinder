@@ -35,6 +35,8 @@
   let {
     open = $bindable(false),
     title,
+    chrome = 'default',
+    'aria-label': ariaLabel,
     role = 'dialog',
     dismissOnBackdropClick = true,
     dismissOnEscape = true,
@@ -46,6 +48,8 @@
     describedById,
     onDismiss,
   }: ModalProps = $props();
+
+  const isChromeless = $derived(chrome === 'none');
 
   let dialogElement: HTMLDialogElement | undefined = $state();
   let panelElement: HTMLDivElement | undefined = $state();
@@ -148,7 +152,8 @@
     class={classNames('cinder-modal', className)}
     {role}
     aria-modal="true"
-    aria-labelledby={titleId}
+    data-chrome={isChromeless ? 'none' : undefined}
+    {...isChromeless ? { 'aria-label': ariaLabel } : { 'aria-labelledby': titleId }}
     {...describedById ? { 'aria-describedby': describedById } : {}}
     data-cinder-closing={dialogState.isClosing ? '' : undefined}
     onclose={() => dialogState.handleClose()}
@@ -171,6 +176,7 @@
       <div
         bind:this={panelElement}
         class="cinder-modal__panel"
+        data-chrome={isChromeless ? 'none' : undefined}
         data-cinder-closing={dialogState.isClosing ? '' : undefined}
         inert={dialogState.isClosing}
         {@attach createFocusTrap({
@@ -179,13 +185,16 @@
           manageInitialFocus: false,
         })}
       >
-        <div class="cinder-modal__header">
-          <h2 id={titleId} class="cinder-modal__title">{title}</h2>
-        </div>
+        {#if !isChromeless}
+          <div class="cinder-modal__header">
+            <h2 id={titleId} class="cinder-modal__title">{title}</h2>
+          </div>
+        {/if}
 
         <div
           bind:this={bodyElement}
           class="cinder-modal__body cinder-_scroll-fade"
+          data-chrome={isChromeless ? 'none' : undefined}
           tabindex="-1"
           {@attach bodyOverflowFade}
         >

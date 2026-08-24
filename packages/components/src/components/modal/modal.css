@@ -21,9 +21,27 @@
     overflow: visible;
   }
 
-  /* Backdrop — native <dialog>::backdrop is controlled by the UA */
+  /* Chromeless / full-bleed mode (`chrome="none"`): suppresses max-width so the
+   * dialog fills the viewport. The header, border, and body padding are
+   * suppressed further down, scoped to `.cinder-modal__panel[data-chrome='none']`
+   * and `.cinder-modal__body[data-chrome='none']`. All coordination logic
+   * (focus trap, scroll lock, escape stack, exit-transition lifecycle) is
+   * untouched — this block is presentation only. */
+  .cinder-modal[data-chrome='none'] {
+    max-width: none;
+    width: 100%;
+    height: 100%;
+    max-height: 100dvh;
+    inset: 0;
+    margin: 0;
+  }
+
+  /* Backdrop — native <dialog>::backdrop is controlled by the UA.
+   * `--cinder-modal-backdrop` is a supported override point: consumers scope
+   * an override via the `class` prop (e.g. `.lightbox-modal { --cinder-modal-backdrop: … }`)
+   * rather than reaching into this selector with `:global()`. */
   .cinder-modal::backdrop {
-    background-color: var(--cinder-overlay-backdrop);
+    background-color: var(--cinder-modal-backdrop, var(--cinder-overlay-backdrop));
     backdrop-filter: blur(var(--cinder-overlay-blur));
     transition:
       background-color var(--cinder-duration-normal) var(--cinder-ease-standard),
@@ -89,6 +107,17 @@
       opacity: 0;
       translate: 0 -0.5rem;
     }
+  }
+
+  /* Chromeless / full-bleed mode: the panel fills the chromeless dialog
+   * and drops the card chrome (border, radius, surface, shadow) so the
+   * consumer's own content (e.g. an image lightbox) owns the full surface. */
+  .cinder-modal__panel[data-chrome='none'] {
+    height: 100%;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
   }
 
   /* ----------------------------------------
@@ -196,6 +225,11 @@
      no autofocus target. The ring is hidden because focus arrived
      programmatically — pressing Tab forward will move into real content. */
     outline: none;
+  }
+
+  .cinder-modal__body[data-chrome='none'] {
+    padding: 0;
+    background: transparent;
   }
 
   /* ----------------------------------------

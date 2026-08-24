@@ -17,20 +17,10 @@
 </script>
 
 <script lang="ts">
-  import { fade } from 'svelte/transition';
   import { ChevronLeft, ChevronRight, X } from '@lostgradient/cinder/icons';
-  import { createBodyScrollLock, createFocusTrap } from '@lostgradient/cinder/focus-trap';
-  import { useReducedMotion } from '../../../utilities/use-reduced-motion.svelte.ts';
+  import { Modal } from '@lostgradient/cinder/modal';
 
   let { images, initialIndex = 0, open = $bindable(false), onClose }: ImageLightboxProps = $props();
-
-  // Respect prefers-reduced-motion: collapse the fade to an instant show/hide so
-  // the lightbox does not animate for users who have opted out of motion.
-  // CSS @media (prefers-reduced-motion) overrides do not cover JS-driven Svelte
-  // transitions, so we must derive the duration imperatively here.
-  const reducedMotion = useReducedMotion();
-  const LIGHTBOX_FADE_MS = 150;
-  const fadeDuration = $derived(reducedMotion.current ? 0 : LIGHTBOX_FADE_MS);
 
   // clampedInitialIndex is the clamped version of the `initialIndex` prop.
   const clampedInitialIndex = $derived(
@@ -43,11 +33,12 @@
   // Reset semantics WITHOUT a write-back loop: when the lightbox is closed
   // (`open === false`) effectiveIndex ignores navigationIndex entirely, so the
   // displayed index is always clampedInitialIndex while closed — regardless of
-  // how it was closed (the close() button OR a parent setting `bind:open`
-  // false). On the next open, a single guarded $effect clears the stale
-  // navigationIndex so navigation starts fresh from initialIndex. This effect
-  // only writes navigationIndex in response to `open` (two distinct values), so
-  // it is not the read-and-write-back-the-same-bindable pattern #464 removes.
+  // how it was closed (the close() button, Escape via Modal, OR a parent
+  // setting `bind:open` false). On the next open, a single guarded $effect
+  // clears the stale navigationIndex so navigation starts fresh from
+  // initialIndex. This effect only writes navigationIndex in response to
+  // `open` (two distinct values), so it is not the read-and-write-back-the-
+  // same-bindable pattern #464 removes.
   let navigationIndex = $state<number | null>(null);
   const effectiveIndex = $derived(
     open ? (navigationIndex ?? clampedInitialIndex) : clampedInitialIndex,
@@ -62,9 +53,23 @@
   const currentImage = $derived(images[effectiveIndex]);
   const counterText = $derived(`${effectiveIndex + 1} of ${images.length}`);
 
+  // The single path for a lightbox-initiated close (the close button, or a
+  // click on the backdrop area around the image). `open` flips first so a
+  // thrown onClose callback does not leave the lightbox's reactive state open.
   function close() {
     navigationIndex = null;
     open = false;
+    onClose?.();
+  }
+
+  // Modal's own dismiss paths (Escape, and its own backdrop-click handling)
+  // route through `onDismiss` instead of our `close()` — Modal has already
+  // flipped `open` to false by the time this fires, via the coordinated
+  // SlidingDialogState lifecycle (focus trap, scroll lock, escape-stack
+  // participation, exit-transition) that Modal owns entirely. We only need to
+  // mirror close()'s bookkeeping: reset navigation state and forward onClose.
+  function handleModalDismiss() {
+    navigationIndex = null;
     onClose?.();
   }
 
@@ -76,18 +81,24 @@
     navigationIndex = (effectiveIndex + 1) % images.length;
   }
 
-  function handleOverlayClick(event: MouseEvent) {
+  // Clicking the content wrapper directly (not the image or a button) closes
+  // the lightbox, matching a backdrop-click dismissal. Modal's own
+  // dismissOnBackdropClick only fires when the click lands on the <dialog>
+  // element itself, which chrome="none" full-bleed content covers entirely —
+  // this handler is what makes "click outside the image" work.
+  function handleContentClick(event: MouseEvent) {
     if (event.target === event.currentTarget) {
       close();
     }
   }
 
+  // Arrow-key navigation is the one piece of lightbox-specific keyboard
+  // handling Modal does not own. Escape is handled entirely by Modal (native
+  // <dialog> `cancel` event, routed through the shared LIFO escape stack via
+  // `pushEscapeHandler` — see OVERLAY-POLICY.md § Escape priority) — this
+  // component no longer has its own Escape handler.
   function handleKeyDown(event: KeyboardEvent) {
     switch (event.key) {
-      case 'Escape':
-        event.preventDefault();
-        close();
-        break;
       case 'ArrowLeft':
         if (hasMultiple) {
           event.preventDefault();
@@ -104,64 +115,83 @@
   }
 </script>
 
-{#if open && currentImage}
-  <div
-    class="lightbox-overlay"
-    role="dialog"
-    aria-modal="true"
+{#if currentImage}
+  <Modal
+    bind:open
+    chrome="none"
     aria-label="Image viewer"
-    onclick={handleOverlayClick}
-    onkeydown={handleKeyDown}
-    tabindex="-1"
-    transition:fade={{ duration: fadeDuration }}
-    {@attach createBodyScrollLock()}
-    {@attach createFocusTrap()}
+    closeButtonVisible={false}
+    class="lightbox-modal"
+    onDismiss={handleModalDismiss}
   >
-    <button type="button" class="lightbox-close" aria-label="Close image viewer" onclick={close}>
-      <X size={20} />
-    </button>
-
-    {#if hasMultiple}
-      <button
-        type="button"
-        class="lightbox-nav lightbox-nav-previous"
-        aria-label="Previous image"
-        onclick={previous}
-      >
-        <ChevronLeft size={24} />
-      </button>
-    {/if}
-
-    <div class="lightbox-image-container">
-      <img src={currentImage.src} alt={currentImage.alt} class="lightbox-image" decoding="async" />
-    </div>
-
-    {#if hasMultiple}
-      <button
-        type="button"
-        class="lightbox-nav lightbox-nav-next"
-        aria-label="Next image"
-        onclick={next}
-      >
-        <ChevronRight size={24} />
+    <div
+      class="lightbox-content"
+      onclick={handleContentClick}
+      onkeydown={handleKeyDown}
+      role="presentation"
+    >
+      <button type="button" class="lightbox-close" aria-label="Close image viewer" onclick={close}>
+        <X size={20} />
       </button>
 
-      <div class="lightbox-counter" aria-live="polite" aria-atomic="true">
-        {counterText}
+      {#if hasMultiple}
+        <button
+          type="button"
+          class="lightbox-nav lightbox-nav-previous"
+          aria-label="Previous image"
+          onclick={previous}
+        >
+          <ChevronLeft size={24} />
+        </button>
+      {/if}
+
+      <div class="lightbox-image-container">
+        <img
+          src={currentImage.src}
+          alt={currentImage.alt}
+          class="lightbox-image"
+          decoding="async"
+        />
       </div>
-    {/if}
-  </div>
+
+      {#if hasMultiple}
+        <button
+          type="button"
+          class="lightbox-nav lightbox-nav-next"
+          aria-label="Next image"
+          onclick={next}
+        >
+          <ChevronRight size={24} />
+        </button>
+
+        <div class="lightbox-counter" aria-live="polite" aria-atomic="true">
+          {counterText}
+        </div>
+      {/if}
+    </div>
+  </Modal>
 {/if}
 
 <style>
-  .lightbox-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 1000;
-    background: rgba(0, 0, 0, 0.9);
+  /*
+   * `--cinder-modal-backdrop` is Modal's supported override point for the
+   * `::backdrop` color — scoped via the `class` prop Modal already forwards
+   * onto its own <dialog>, not a `:global()` reach into Modal's internal
+   * selectors. `.lightbox-modal` lives on that external dialog element (not
+   * inside this component's own template), so `:global()` is required here
+   * for the selector to match — the override point itself is the public
+   * contract, not an escape into `.cinder-modal__panel` etc.
+   */
+  :global(.lightbox-modal) {
+    --cinder-modal-backdrop: rgba(0, 0, 0, 0.9);
+  }
+
+  .lightbox-content {
     display: flex;
     align-items: center;
     justify-content: center;
+    width: 100%;
+    height: 100%;
   }
 
   .lightbox-image-container {
@@ -269,12 +299,5 @@
     border-radius: var(--cinder-radius-sm);
     pointer-events: none;
     z-index: 1;
-  }
-
-  /* Respect reduced motion preference */
-  @media (prefers-reduced-motion: reduce) {
-    .lightbox-overlay {
-      transition: none;
-    }
   }
 </style>

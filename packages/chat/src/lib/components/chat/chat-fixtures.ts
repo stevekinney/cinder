@@ -14,4 +14,9 @@ export default [
     host: './chat-private-history-prepend-stress.fixture.svelte',
     category: 'interaction-state',
   },
+  {
+    name: 'private-lightbox-nested-overlay',
+    host: './chat-private-lightbox-nested-overlay.fixture.svelte',
+    category: 'interaction-state',
+  },
 ];
