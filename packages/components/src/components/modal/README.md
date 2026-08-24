@@ -41,6 +41,17 @@ When composing `role="alertdialog"` on Modal directly:
 
 If the content fits the plain-text `description` constraint, prefer `AlertDialog` over composing Modal + `role="alertdialog"` manually.
 
+## Chrome modes and the `title` / `aria-label` contract
+
+Modal's default chrome (`chrome="default"`, the default) renders a header with a visible title, a border, `max-width: min(90vw, 32rem)`, and body padding. `chrome="none"` renders a chromeless, full-bleed surface instead — no header, border, max-width, or padding — while every coordination guarantee (focus trap, scroll lock, escape-stack participation, the exit-transition lifecycle, `role="dialog"`/`aria-modal`) is unchanged.
+
+The two chromes have complementary naming requirements, since the dialog must always have an accessible name:
+
+- `chrome="default"` requires `title` — it's rendered as the visible heading _and_ used as the accessible name via `aria-labelledby`.
+- `chrome="none"` requires `aria-label` instead — no header renders, so there's nothing to point `aria-labelledby` at.
+
+This conditional requirement is expressed in the generated JSON Schema below via a modal-specific `allOf` branch (see `generate-component-schema.ts`'s `applyModalSchemaRules`-equivalent block) — the schema's flat `required` list can't show it directly, since a discriminated union doesn't collapse into one unconditional list. A dev-time warning fires if either chrome renders without its required name source.
+
 ## Related components
 
 - [`ConfirmDialog`](../confirm-dialog/README.md) — pre-wired confirm/cancel variant built on Modal. Use for binary decisions.
@@ -107,8 +118,7 @@ If the content fits the plain-text `description` constraint, prefer `AlertDialog
 
 <!-- generated:variables:start -->
 
-This component does not declare any local CSS variables.
-
+- `--cinder-modal-backdrop`
 <!-- generated:variables:end -->
 
 ## Subcomponents

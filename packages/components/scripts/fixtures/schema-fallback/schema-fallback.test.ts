@@ -199,19 +199,41 @@ describe('generate-component-schema — <Name>Props fallback HTML-attribute filt
   test('modal schema requires describedById for alertdialog role', () => {
     const { allOf } = generateSchema('modal', 'modal');
 
-    expect(allOf).toEqual([
-      {
-        if: {
-          properties: {
-            role: { const: 'alertdialog' },
-          },
-          required: ['role'],
+    expect(allOf).toContainEqual({
+      if: {
+        properties: {
+          role: { const: 'alertdialog' },
         },
-        [jsonSchemaThenKeyword]: {
-          required: ['describedById'],
-        },
+        required: ['role'],
       },
-    ]);
+      [jsonSchemaThenKeyword]: {
+        required: ['describedById'],
+      },
+    });
+  });
+
+  test('modal schema requires aria-label for chrome="none" and title otherwise (CIN-377)', () => {
+    const { allOf } = generateSchema('modal', 'modal');
+
+    const chromelessCondition = {
+      properties: {
+        chrome: { const: 'none' },
+      },
+      required: ['chrome'],
+    };
+
+    expect(allOf).toContainEqual({
+      if: chromelessCondition,
+      [jsonSchemaThenKeyword]: {
+        required: ['aria-label'],
+      },
+    });
+    expect(allOf).toContainEqual({
+      if: { not: chromelessCondition },
+      [jsonSchemaThenKeyword]: {
+        required: ['title'],
+      },
+    });
   });
 
   test('grid schema tightens numeric columns to positive integers', () => {

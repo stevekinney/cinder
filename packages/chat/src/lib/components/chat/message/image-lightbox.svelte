@@ -124,11 +124,24 @@
     class="lightbox-modal"
     onDismiss={handleModalDismiss}
   >
+    <!--
+      `autofocus` (plus `tabindex="-1"` so it's programmatically focusable)
+      makes this element Modal's initial-focus target: Modal's own initial-
+      focus policy (`focusDialogBodyUnlessAutofocused`) looks for an
+      `[autofocus]` descendant and focuses it directly via `.focus()`, falling
+      back to the body container only when none exists. Without this, focus
+      would land on Modal's own `.cinder-modal__body` wrapper — the PARENT of
+      this element — and the `onkeydown` handler below (which owns
+      ArrowLeft/ArrowRight navigation) would never see the keystroke until
+      focus moved somewhere inside this subtree.
+    -->
     <div
       class="lightbox-content"
       onclick={handleContentClick}
       onkeydown={handleKeyDown}
       role="presentation"
+      tabindex="-1"
+      autofocus
     >
       <button type="button" class="lightbox-close" aria-label="Close image viewer" onclick={close}>
         <X size={20} />

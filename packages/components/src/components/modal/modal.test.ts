@@ -1101,9 +1101,12 @@ describe('Modal chromeless mode (chrome="none")', () => {
 
   test('exposes --cinder-modal-backdrop as a supported backdrop-color override point', async () => {
     const css = await Bun.file(new URL('./modal.css', import.meta.url)).text();
-    expect(css).toContain(
-      'background-color: var(--cinder-modal-backdrop, var(--cinder-overlay-backdrop));',
+    // Declared on .cinder-modal (so the variables generator collects it),
+    // consumed on ::backdrop (which inherits it from its originating element).
+    expect(css).toMatch(
+      /\.cinder-modal\s*\{[^}]*--cinder-modal-backdrop:\s*var\(--cinder-overlay-backdrop\);/s,
     );
+    expect(css).toContain('background-color: var(--cinder-modal-backdrop);');
   });
 
   test('coordination (focus trap, scroll lock, escape stack, exit transition) is unchanged in chromeless mode', async () => {

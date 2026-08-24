@@ -19,6 +19,14 @@
      * The panel below remains the clipping boundary for ordinary content. */
     max-height: calc(100dvh - var(--cinder-space-8));
     overflow: visible;
+
+    /* Supported override point for the `::backdrop` color (declared here,
+     * not only consumed on `::backdrop`, so the variables generator collects
+     * it into modal.variables.json/README). Consumers scope an override via
+     * the `class` prop — declare `--cinder-modal-backdrop` on that class,
+     * e.g. `rgba(0, 0, 0, 0.9)` for a darker lightbox-style backdrop — rather
+     * than reaching into `.cinder-modal::backdrop` with `:global()`. */
+    --cinder-modal-backdrop: var(--cinder-overlay-backdrop);
   }
 
   /* Chromeless / full-bleed mode (`chrome="none"`): suppresses max-width so the
@@ -36,12 +44,11 @@
     margin: 0;
   }
 
-  /* Backdrop — native <dialog>::backdrop is controlled by the UA.
-   * `--cinder-modal-backdrop` is a supported override point: consumers scope
-   * an override via the `class` prop (e.g. `.lightbox-modal { --cinder-modal-backdrop: … }`)
-   * rather than reaching into this selector with `:global()`. */
+  /* Backdrop — native <dialog>::backdrop is controlled by the UA. `::backdrop`
+   * inherits `--cinder-modal-backdrop` from its originating `.cinder-modal`
+   * (declared above), which is the supported override point. */
   .cinder-modal::backdrop {
-    background-color: var(--cinder-modal-backdrop, var(--cinder-overlay-backdrop));
+    background-color: var(--cinder-modal-backdrop);
     backdrop-filter: blur(var(--cinder-overlay-blur));
     transition:
       background-color var(--cinder-duration-normal) var(--cinder-ease-standard),

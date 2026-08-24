@@ -15,6 +15,7 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { tick } from 'svelte';
 
 import { setupHappyDom } from '../../../test/happy-dom.ts';
 
@@ -86,6 +87,17 @@ describe('image-lightbox source contract — Modal composition', () => {
   test('still handles ArrowLeft/ArrowRight for navigation', () => {
     expect(source).toContain("case 'ArrowLeft'");
     expect(source).toContain("case 'ArrowRight'");
+  });
+
+  test('marks .lightbox-content as the initial-focus target so arrow keys work immediately', () => {
+    // Regression: Modal's own initial-focus policy otherwise lands focus on
+    // its `.cinder-modal__body` wrapper — the PARENT of `.lightbox-content` —
+    // and the keydown handler on `.lightbox-content` (a descendant) would
+    // never see the keystroke until focus moved somewhere inside it.
+    // `autofocus` makes Modal's `focusDialogBodyUnlessAutofocused` policy
+    // focus this element directly instead of falling back to the body.
+    expect(source).toMatch(/class="lightbox-content"[\s\S]*?autofocus/);
+    expect(source).toMatch(/class="lightbox-content"[\s\S]*?tabindex="-1"/);
   });
 
   test("overrides the backdrop color via Modal's supported --cinder-modal-backdrop custom property, scoped through the class prop (not a :global() reach into Modal internals)", () => {
@@ -184,6 +196,31 @@ describe('image-lightbox — behavioral reset on reopen', () => {
     // Wraps backward from the first image to the last.
     await fireEvent.keyDown(content, { key: 'ArrowLeft' });
     expect(container.querySelector('img')?.getAttribute('alt')).toBe('Image C');
+  });
+
+  test('pressing ArrowRight immediately after open (no manual focus) advances the index', async () => {
+    // Regression: without `autofocus` on `.lightbox-content`, Modal's initial
+    // focus lands on its `.cinder-modal__body` wrapper — the PARENT of
+    // `.lightbox-content` — so a keydown dispatched on whatever the browser
+    // actually focused would bubble from the body, past `.lightbox-content`'s
+    // OWN keydown listener never firing (it lives on a child, not an
+    // ancestor of the focused element). This test fires the event on
+    // `document.activeElement` — whatever Modal's initial-focus policy
+    // actually landed on — rather than targeting `.lightbox-content`
+    // directly, so it fails the way the real bug failed if the fix regresses.
+    const { container } = render(ImageLightbox, {
+      props: { images, initialIndex: 0, open: true },
+    });
+
+    // Modal's initial-focus policy is deferred via `tick().then(...)`.
+    await tick();
+    await tick();
+
+    expect(document.activeElement).toBe(container.querySelector('.lightbox-content'));
+    expect(container.querySelector('img')?.getAttribute('alt')).toBe('Image A');
+
+    await fireEvent.keyDown(document.activeElement!, { key: 'ArrowRight' });
+    expect(container.querySelector('img')?.getAttribute('alt')).toBe('Image B');
   });
 
   test('the close button calls onClose and clears navigation state', async () => {

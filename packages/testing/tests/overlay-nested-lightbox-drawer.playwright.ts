@@ -139,8 +139,15 @@ test.describe('nested overlay — image lightbox inside a Drawer', () => {
 
       // Drive the Drawer's own close button rather than Escape, to also
       // cover a non-Escape dismissal path while the lightbox sits above it
-      // on the escape stack.
-      await harness.page().locator('.cinder-drawer__close').click();
+      // on the escape stack. The lightbox's <dialog> is a real top-layer
+      // native modal covering the full viewport, so the Drawer's close
+      // button is genuinely un-clickable by a real pointer while it's open
+      // (Playwright's actionability check would hang waiting for it to
+      // become hit-testable, which it never will). `dispatchEvent` invokes
+      // the button's own click handler directly, bypassing hit-testing —
+      // the same pattern `chat-harness.playwright.ts` uses to drive a
+      // control that sits behind/under something else in the DOM.
+      await harness.page().locator('.cinder-drawer__close').dispatchEvent('click');
       await expect(drawer).toBeHidden();
       // The lightbox (still open, still holding the lock) keeps scroll
       // locked — the Drawer releasing its hold must not zero the counter.
@@ -148,6 +155,8 @@ test.describe('nested overlay — image lightbox inside a Drawer', () => {
       await expect(page.locator('body')).toHaveCSS('overflow', 'hidden');
 
       // Close the lightbox: the counter reaches zero and scroll restores.
+      // This IS a real, reachable click — the lightbox is the top-layer
+      // dialog, so its own controls are genuinely clickable.
       await lightbox.getByRole('button', { name: 'Close image viewer' }).click();
       await expect(lightbox).toBeHidden();
       await expect(page.locator('body')).not.toHaveCSS('overflow', 'hidden');

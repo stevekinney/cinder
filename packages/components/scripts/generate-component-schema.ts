@@ -370,6 +370,18 @@ function applyComponentSchemaRules(componentName: string, schema: ComponentSchem
 
   if (componentName !== 'modal') return;
 
+  // `chrome="none"` (the chromeless full-bleed mode) requires `aria-label`
+  // since no header/title renders; `chrome="default"` (or omitted, the
+  // default) requires `title` instead. Expressed as two complementary
+  // `if`/`then` branches — the same `allOf` mechanism as the `alertdialog`
+  // branch below — rather than leaving it as prose-only documentation.
+  const chromelessCondition = {
+    properties: {
+      chrome: { const: 'none' },
+    },
+    required: ['chrome'],
+  };
+
   schema.allOf = [
     {
       if: {
@@ -381,6 +393,20 @@ function applyComponentSchemaRules(componentName: string, schema: ComponentSchem
       // eslint-disable-next-line unicorn/no-thenable -- `then` is JSON Schema's conditional keyword here, not a Promise `.then`; this object is schema data, never awaited.
       [JSON_SCHEMA_THEN_KEYWORD]: {
         required: ['describedById'],
+      },
+    },
+    {
+      if: chromelessCondition,
+      // eslint-disable-next-line unicorn/no-thenable -- see above.
+      [JSON_SCHEMA_THEN_KEYWORD]: {
+        required: ['aria-label'],
+      },
+    },
+    {
+      if: { not: chromelessCondition },
+      // eslint-disable-next-line unicorn/no-thenable -- see above.
+      [JSON_SCHEMA_THEN_KEYWORD]: {
+        required: ['title'],
       },
     },
   ];

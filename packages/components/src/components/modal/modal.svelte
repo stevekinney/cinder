@@ -111,6 +111,26 @@
     }
   });
 
+  // Runtime nameless guard: the discriminated `chrome` union enforces this at
+  // the type level, but a consumer building props dynamically (spread props,
+  // a CMS-driven config, etc.) can still bypass TypeScript and render a
+  // nameless dialog. Warn in both directions rather than assuming the type
+  // system caught it.
+  $effect(() => {
+    if (!isChromeless && (!title || title.trim() === '')) {
+      devWarn(
+        '[cinder/Modal] rendered with chrome="default" but no non-empty `title`. ' +
+          'The visible heading also supplies the accessible name — without it the dialog has no name for assistive technology.',
+      );
+    }
+    if (isChromeless && (!ariaLabel || ariaLabel.trim() === '')) {
+      devWarn(
+        '[cinder/Modal] rendered with chrome="none" but no non-empty `aria-label`. ' +
+          "The chromeless chrome renders no header, so `aria-label` is the only source of the dialog's accessible name — without it the dialog has no name for assistive technology.",
+      );
+    }
+  });
+
   $effect(() => {
     dialogState.syncOpenState();
   });

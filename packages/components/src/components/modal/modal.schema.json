@@ -80,6 +80,34 @@
       "then": {
         "required": ["describedById"]
       }
+    },
+    {
+      "if": {
+        "properties": {
+          "chrome": {
+            "const": "none"
+          }
+        },
+        "required": ["chrome"]
+      },
+      "then": {
+        "required": ["aria-label"]
+      }
+    },
+    {
+      "if": {
+        "not": {
+          "properties": {
+            "chrome": {
+              "const": "none"
+            }
+          },
+          "required": ["chrome"]
+        }
+      },
+      "then": {
+        "required": ["title"]
+      }
     }
   ]
 }
