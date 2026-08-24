@@ -1,6 +1,6 @@
 /// <reference lib="dom" />
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
-import { createRawSnippet } from 'svelte';
+import { createRawSnippet, tick } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -299,8 +299,11 @@ describe('FilterBar accessibility', () => {
 
   test('always renders a live region for filter-count announcements', () => {
     const { container } = render(FilterBar, {});
-    // The visually-hidden live region is always in the DOM
-    const liveRegion = container.querySelector('[aria-live]');
+    // The visually-hidden live region is always in the DOM. Scoped to
+    // `[role="status"]` (not the broader `[aria-live]`) because the embedded
+    // SearchField's Input also carries `aria-live="polite"` on its
+    // always-mounted error node (CIN-315) and would otherwise collide.
+    const liveRegion = container.querySelector('[role="status"]');
     expect(liveRegion).not.toBeNull();
   });
 
@@ -311,9 +314,21 @@ describe('FilterBar accessibility', () => {
         { key: 'queue', value: 'default', label: 'Queue' },
       ],
     });
-    // The _VisuallyHiddenLiveRegion defers by setTimeout(0); give it a tick
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    const liveRegion = container.querySelector('[aria-live]');
+    // No waitFor / timeout knob (repository policy rejects any widened wait
+    // threshold): await the exact scheduling primitive the announcement
+    // uses instead of polling for it. `_VisuallyHiddenLiveRegion`'s $effect
+    // runs on the next `tick()`, and defers the actual text-set to the next
+    // task via `setTimeout(0)` (see its own doc comment for why: a same-task
+    // blank+set can be seen by some ATs as a single no-op). Awaiting `tick()`
+    // then a real zero-delay `setTimeout` puts this assertion on the far
+    // side of both of those without polling or a configurable deadline.
+    await tick();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    // Scoped to `[role="status"]` (not the broader `[aria-live]`) because
+    // the embedded SearchField's Input also carries `aria-live="polite"` on
+    // its always-mounted error node (CIN-315) and would otherwise collide —
+    // `[aria-live]` matched Input's empty error node first in DOM order.
+    const liveRegion = container.querySelector('[role="status"]');
     expect(liveRegion?.textContent).toContain('2 active filters');
   });
 

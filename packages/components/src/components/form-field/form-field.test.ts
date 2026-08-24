@@ -2,6 +2,7 @@
 import { describe, expect, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
 
+import { injectStrippedStyles } from '../../test/css.ts';
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
@@ -18,6 +19,38 @@ const emptySnippet = createRawSnippet(() => ({
 }));
 
 describe('FormField rendering', () => {
+  test('the error live region is mounted before any error is set (CIN-315: FormFieldFrame defaults to errorMountedOnDemand=false)', () => {
+    const { container } = render(FormField, {
+      props: { id: 'no-error-yet', label: 'Username', children: emptySnippet },
+    });
+    expect(container.querySelector('.cinder-form-field__error')).not.toBeNull();
+  });
+
+  test('the errorless live region has no layout footprint (shared _form-field-error.css, CIN-315 follow-up)', async () => {
+    const formFieldCss = await Bun.file(new URL('./form-field.css', import.meta.url)).text();
+    const sharedErrorCss = await Bun.file(
+      new URL('../../styles/components/_form-field-error.css', import.meta.url),
+    ).text();
+    const removeStyles = injectStrippedStyles(formFieldCss, sharedErrorCss);
+    try {
+      const { container } = render(FormField, {
+        props: { id: 'no-error-computed-formfield', label: 'Username', children: emptySnippet },
+      });
+      const errorRegion = container.querySelector('.cinder-form-field__error');
+      expect(errorRegion).not.toBeNull();
+      const computed = getComputedStyle(errorRegion as Element);
+      // Sr-only pattern (CIN-315 review follow-up), not visibility:hidden —
+      // visibility:hidden removes an element from the accessibility tree
+      // (navigation-bar.a11y.md), which would defeat the announcement fix.
+      expect(computed.position).toBe('absolute');
+      expect(computed.visibility).not.toBe('hidden');
+      expect(computed.display).not.toBe('none');
+      expect(computed.clip).toBe('rect(0, 0, 0, 0)');
+    } finally {
+      removeStyles();
+    }
+  });
+
   test('renders a <label> with correct for and id attributes', () => {
     const { container } = render(FormField, {
       props: { id: 'username', label: 'Username', children: emptySnippet },

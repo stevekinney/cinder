@@ -187,13 +187,7 @@
     margin: 0;
   }
 
-  /* Hide the always-present live region when no error is active. Uses visibility
- * rather than display:none so the aria-live region stays in the accessibility
- * tree and is ready to announce changes. */
-  .cinder-select-field__error:not([data-cinder-error]) {
-    position: absolute;
-    visibility: hidden;
-    height: 0;
-    overflow: hidden;
-  }
+  /* The shared `_form-field-error.css` partial (imported by the required
+     `cinder/styles` base, CIN-315) keeps the always-present live region out
+     of layout when no error is active — no per-component copy needed here. */
 }
