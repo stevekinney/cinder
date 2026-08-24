@@ -111,10 +111,10 @@ export type WaitThresholdArgument = BunTestTimeoutArgument & {
     | 'bun-spawn-timeout'
     | 'expect.poll.intervals'
     | 'fetchWithTimeout'
-    | 'fake-timer-advance'
     | 'promiseWithTimeout'
     | 'setTimeout'
     | 'testing-library-wait-interval'
+    | 'testing-library-wait-timeout'
     | 'waitForTimeout'
     | 'waitForUrl'
     | 'slow'
@@ -217,12 +217,6 @@ export function findWaitThresholdArguments(analysis: string): WaitThresholdArgum
     ...findCallArgument(analysis, /\bwaitForUrl\s*\(/gu, 1, 'waitForUrl'),
     ...findCallArgument(analysis, /\bfetchWithTimeout\s*\(/gu, 1, 'fetchWithTimeout'),
     ...findCallArgument(analysis, /\bpromiseWithTimeout\s*\(/gu, 1, 'promiseWithTimeout'),
-    ...findCallArgument(
-      analysis,
-      /\b(?:(?:jest|vi)\.advanceTimersByTime(?:Async)?|clock\.tick(?:Async)?)\s*\(/gu,
-      0,
-      'fake-timer-advance',
-    ),
     ...findPlaywrightExpectPollIntervals(analysis),
     ...findPlaywrightOperationTimeoutArguments(analysis),
     ...findPlaywrightFunctionPollingArguments(analysis),

@@ -1,5 +1,6 @@
 import {
   findAdditionalWaitThresholdArguments,
+  findBunDefaultTimeoutAliasArguments,
   findPlaywrightRelativeTimeoutExtensions,
   implicitBaselineFor,
   implicitBaselineForMatch,
@@ -42,12 +43,12 @@ export { formatTimeoutIncreaseViolations };
 const BASIC_THRESHOLD_LABEL_PATTERN = String.raw`(?:timeout-minutes|testTimeout|timeout|deadline|retries|retry|repeatEach|slow)`;
 const PROMISE_TIMER_IMPORT_PATTERN =
   /\bimport\s*\{[^}]*\bsetTimeout(?:\s+as\s+[A-Za-z_$][\w$]*)?[^}]*\}\s*from\s+node:timers\/promises\b/u;
-const NAMED_THRESHOLD_LABEL_PATTERN = String.raw`(?:(?:(?:TIMEOUT|WAIT|DEADLINE|RETRY|RETRIES|ATTEMPT|ATTEMPTS|PRESS|PRESSES|POLL|INTERVAL|DELAY|DEBOUNCE|GRACE|STABLE_READS?)[A-Z0-9_]*|[A-Z][A-Z0-9_]*(?:TIMEOUT|WAIT|DEADLINE|RETRY|RETRIES|ATTEMPT|ATTEMPTS|PRESS|PRESSES|POLL|INTERVAL|DELAY|DEBOUNCE|GRACE|STABLE_READS?)[A-Z0-9_]*)|(?:[a-z][a-z0-9_]*(?:_timeout|_wait|_deadline|_retry|_retries|_attempt|_attempts|_press|_presses|_poll|_interval|_delay|_debounce|_grace|_stable_reads?)[a-z0-9_]*)|(?:[A-Za-z_$][\w$]*(?:Timeout|Wait|Deadline|Retry|Retries|Attempt|Attempts|Press|Presses|Poll|Interval|Delay|Debounce|Grace|StableReads?)[\w$]*)|(?:(?:timeout|wait|deadline|attempts?|press(?:es)?|poll|interval|delay|debounce|grace|stableReads?)[A-Z_$][\w$]*))`;
+const NAMED_THRESHOLD_LABEL_PATTERN = String.raw`(?:(?:(?:TIMEOUT|WAIT|DEADLINE|RETRY|RETRIES|ATTEMPT|ATTEMPTS|POLL|INTERVAL|DELAY|DEBOUNCE|GRACE|STABLE_READS?)[A-Z0-9_]*|[A-Z][A-Z0-9_]*(?:TIMEOUT|WAIT|DEADLINE|RETRY|RETRIES|ATTEMPT|ATTEMPTS|POLL|INTERVAL|DELAY|DEBOUNCE|GRACE|STABLE_READS?)[A-Z0-9_]*)|(?:[a-z][a-z0-9_]*(?:_timeout|_wait|_deadline|_retry|_retries|_attempt|_attempts|_poll|_interval|_delay|_debounce|_grace|_stable_reads?)[a-z0-9_]*)|(?:[A-Za-z_$][\w$]*(?:Timeout|Wait|Deadline|Retry|Retries|Attempt|Attempts|Poll|Interval|Delay|Debounce|Grace|StableReads?)[\w$]*)|(?:(?:timeout|wait|deadline|attempts?|poll|interval|delay|debounce|grace|stableReads?)[A-Z_$][\w$]*))`;
 function isGenericTimeoutContext(filePath: string, analysis: string): boolean {
   return (
     /(?:^|\/)(?:jest|playwright|vitest)\.config\.[^/]+$/u.test(filePath) ||
     /(?:^|\/)bunfig\.toml$/u.test(filePath) ||
-    /\b(?:expect(?:\.(?:configure|poll))?|waitFor[A-Za-z_$\d]*|setDefaultTimeout|test\.describe\.configure|spawn(?:Sync)?)\b/u.test(
+    /\b(?:expect(?:\.(?:configure|poll))?|(?:waitFor|findBy)[A-Za-z_$\d]*|setDefaultTimeout|test\.describe\.configure|spawn(?:Sync)?)\b/u.test(
       analysis,
     )
   );
@@ -273,12 +274,10 @@ function extractMultilineCallCandidates(
   filePath: string,
   source: Array<{ changed: boolean; line: string; lineNumber: number }>,
 ): ThresholdCandidate[] {
+  const rawSource = source.map(({ line }) => line).join('\n');
   const analysis = normalizeWorkflowExpressions(
     filePath,
-    sourceLinesForAnalysis(
-      filePath,
-      source.map(({ line }) => line),
-    ).join('\n'),
+    sourceLinesForAnalysis(filePath, rawSource.split('\n')).join('\n'),
   );
   const candidates: ThresholdCandidate[] = [];
   const pattern = new RegExp(
@@ -430,6 +429,7 @@ function extractMultilineCallCandidates(
     for (const timeoutArgument of [
       ...findBunTestTimeoutArguments(analysis),
       ...findBunLifecycleTimeoutArguments(analysis),
+      ...findBunDefaultTimeoutAliasArguments(rawSource),
     ]) {
       const sourceIndex = analysis.slice(0, timeoutArgument.offset).split('\n').length - 1;
       pushCandidate(

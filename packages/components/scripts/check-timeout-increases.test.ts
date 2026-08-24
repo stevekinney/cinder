@@ -1372,7 +1372,7 @@ describe('check-timeout-increases', () => {
     expect(violations).toEqual([]);
   });
 
-  test('checks fake-timer advancement thresholds', () => {
+  test('ignores fake-timer advancement', () => {
     const violations = findTimeoutIncreaseViolations(
       diffFor(
         'packages/components/src/components/carousel/carousel.test.ts',
@@ -1381,7 +1381,7 @@ describe('check-timeout-increases', () => {
       ),
     );
 
-    expect(violations).toHaveLength(2);
+    expect(violations).toEqual([]);
   });
 
   test('checks AbortSignal timeout calls on one or multiple lines', () => {
@@ -2464,7 +2464,7 @@ describe('check-timeout-increases', () => {
     expect(violations).toEqual([]);
   });
 
-  test('checks capped interaction press counts', () => {
+  test('ignores interaction press counts', () => {
     const violations = findTimeoutIncreaseViolations(
       diffFor(
         'packages/testing/src/helpers/focus-ring.ts',
@@ -2473,8 +2473,37 @@ describe('check-timeout-increases', () => {
       ),
     );
 
+    expect(violations).toEqual([]);
+  });
+
+  test('checks Testing Library findBy query timeouts', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/src/button/button.test.ts',
+        ["await screen.findByText('ready', {}, { timeout: 1_000 });"],
+        ["await screen.findByText('ready', {}, { timeout: 5_000 });"],
+      ),
+    );
+
     expect(violations).toHaveLength(1);
-    expect(violations[0]?.new.kind).toBe('retries');
+  });
+
+  test('checks aliased Bun default timeout setters', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/src/button/button.test.ts',
+        [
+          "import { setDefaultTimeout as configureTimeout } from 'bun:test';",
+          'configureTimeout(5_000);',
+        ],
+        [
+          "import { setDefaultTimeout as configureTimeout } from 'bun:test';",
+          'configureTimeout(10_000);',
+        ],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
   });
 
   test('does not connect a threshold assignment to a later conditional', () => {

@@ -5,8 +5,35 @@ import {
   NUMERIC_LITERAL_PATTERN,
   type WaitThresholdArgument,
 } from './check-timeout-increase-numeric';
+import type { BunTestTimeoutArgument } from './check-timeout-increase-types';
 
 export type ThresholdBaseline = { renderedValue: string; value: number };
+
+export function findBunDefaultTimeoutAliasArguments(analysis: string): BunTestTimeoutArgument[] {
+  const argumentsFound: BunTestTimeoutArgument[] = [];
+  for (const match of analysis.matchAll(
+    /\bimport\s*\{(?<imports>[^}]*)\}\s*from\s+['"]bun:test['"]/gu,
+  )) {
+    for (const aliasMatch of (match.groups?.['imports'] ?? '').matchAll(
+      /(?:^|,)\s*setDefaultTimeout\s+as\s+(?<alias>[A-Za-z_$][\w$]*)/gu,
+    )) {
+      const alias = aliasMatch.groups?.['alias'];
+      if (alias === undefined) continue;
+      const escapedAlias = alias.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
+      for (const call of findCallArguments(
+        analysis,
+        new RegExp(String.raw`\b${escapedAlias}\s*\(`, 'gu'),
+      )) {
+        const argument = call[0];
+        if (argument === undefined) continue;
+        if (!new RegExp(String.raw`^${NUMERIC_EXPRESSION_PATTERN}$`, 'u').test(argument.text))
+          continue;
+        argumentsFound.push({ offset: argument.offset, renderedValue: argument.text });
+      }
+    }
+  }
+  return argumentsFound;
+}
 
 function resolveNumericOption(
   analysis: string,
@@ -86,6 +113,20 @@ export function findAdditionalWaitThresholdArguments(analysis: string): WaitThre
         label: 'testing-library-wait-interval',
       });
     }
+  }
+  for (const callArguments of findCallArguments(
+    analysis,
+    /(?<![\w$.])findBy[A-Za-z_$\d]*\s*\(/gu,
+  )) {
+    const options = callArguments[2];
+    if (options === undefined) continue;
+    const timeout = resolveNumericOption(analysis, options.text, options.offset, 'timeout');
+    if (timeout === undefined) continue;
+    argumentsFound.push({
+      ...timeout,
+      baseline: { renderedValue: '1_000 (implicit Testing Library findBy timeout)', value: 1_000 },
+      label: 'testing-library-wait-timeout',
+    });
   }
   return argumentsFound;
 }
