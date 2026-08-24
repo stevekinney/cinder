@@ -250,8 +250,12 @@ export function collectComparableViolations(
     }
   }
   for (const group of renamedGroups.values()) {
-    if (group.removed.length === 1 && group.added.length === 1) {
-      pairEntries(group.removed, group.added, true);
+    // A set of renamed constants has no reliable name correspondence. Only
+    // compare complete groups, pairing equal values first and then the
+    // remaining values in sorted order. This catches an increase without
+    // assigning an unmatched threshold to an unrelated constant.
+    if (group.removed.length === group.added.length) {
+      pairEntries(group.removed, group.added, group.removed.length === 1);
     }
   }
 

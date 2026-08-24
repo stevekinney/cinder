@@ -94,12 +94,20 @@ describe('check-timeout-increases', () => {
     const violations = findTimeoutIncreaseViolations(
       diffFor(
         'packages/testing/tests/avatar-group-focus-rings.playwright.ts',
-        ["await page.waitForSelector('#app', { timeout: 20_000 });"],
-        ["await page.waitForSelector('#app', { timeout: 40_000 });"],
+        [
+          "await page.waitForSelector('#app', { timeout: 20_000 });",
+          "await page.goto('/old', { timeout: 5_000 });",
+          'await locator.click({ timeout: 5_000 });',
+        ],
+        [
+          "await page.waitForSelector('#app', { timeout: 40_000 });",
+          "await page.goto('/old', { timeout: 10_000 });",
+          'await locator.click({ timeout: 10_000 });',
+        ],
       ),
     );
 
-    expect(violations).toHaveLength(1);
+    expect(violations).toHaveLength(3);
   });
 
   test('checks Bun configuration, promise timer aliases, configured assertions, and stable reads', () => {
@@ -245,6 +253,22 @@ describe('check-timeout-increases', () => {
     );
 
     expect(violations).toHaveLength(1);
+  });
+
+  test('detects increases across multiple renamed timeout constants', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/scripts/validate-consumers.ts',
+        ['const FIRST_TIMEOUT_MS = 1_000;', 'const SECOND_TIMEOUT_MS = 2_000;'],
+        ['const ALPHA_WAIT_MS = 2_000;', 'const BETA_WAIT_MS = 2_000;'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.old.value).toBe(1_000);
+    expect(violations[0]?.new.value).toBe(2_000);
+    expect(violations[0]?.old.label).toBe('FIRST_TIMEOUT_MS');
+    expect(violations[0]?.new.label).toBe('ALPHA_WAIT_MS');
   });
 
   test('checks timeout flags in package manifests', () => {
@@ -1634,9 +1658,32 @@ describe('check-timeout-increases', () => {
         ['await Bun.sleep(Math.min(25, timeoutMs));'],
         ['await Bun.sleep(Math.min(250, timeoutMs));'],
       ),
+      diffFor(
+        'packages/components/scripts/validate-consumers.ts',
+        ['await Bun.sleep(Math.min(timeoutMs, 25));'],
+        ['await Bun.sleep(Math.min(timeoutMs, 250));'],
+      ),
     ].join('\n');
 
-    expect(findTimeoutIncreaseViolations(diff)).toHaveLength(3);
+    expect(findTimeoutIncreaseViolations(diff)).toHaveLength(4);
+  });
+
+  test('checks unaliased promise timers without confusing callback timers', () => {
+    const diff = diffFor(
+      'packages/components/scripts/check-suite.test.ts',
+      [
+        "import { setTimeout } from 'node:timers/promises';",
+        'await setTimeout(500);',
+        'globalThis.setTimeout(callback, 500);',
+      ],
+      [
+        "import { setTimeout } from 'node:timers/promises';",
+        'await setTimeout(1_000);',
+        'globalThis.setTimeout(callback, 500);',
+      ],
+    );
+
+    expect(findTimeoutIncreaseViolations(diff)).toHaveLength(1);
   });
 
   test('checks multiline conditional threshold branches', () => {

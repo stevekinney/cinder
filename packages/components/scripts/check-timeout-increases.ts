@@ -396,7 +396,9 @@ function extractMultilineCallCandidates(
         source[sourceIndex]?.lineNumber ?? 0,
         waitArgument.label,
         waitArgument.renderedValue,
-        { renderedValue: '0 (no explicit wait)', value: 0 },
+        waitArgument.label === 'playwright-operation-timeout'
+          ? { renderedValue: '30_000 (implicit Playwright action timeout)', value: 30_000 }
+          : { renderedValue: '0 (no explicit wait)', value: 0 },
         waitArgument.occurrenceIndex,
       );
     }
@@ -480,7 +482,6 @@ export function findTimeoutIncreaseViolations(diff: string): TimeoutIncreaseViol
     extractMultilineCallCandidates,
   );
 }
-
 async function main(): Promise<void> {
   const diff = await readDiffInput();
   const violations = findTimeoutIncreaseViolations(diff);
@@ -491,7 +492,6 @@ async function main(): Promise<void> {
   }
   process.stdout.write(output);
 }
-
 if (import.meta.main) {
   main().catch((error: unknown) => {
     console.error('check-timeout-increases failed:', error);

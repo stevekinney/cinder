@@ -169,6 +169,12 @@ function exposeQuotedConfigurationKeys(line: string): string {
     }
     if (closingIndex >= output.length) break;
     const key = line.slice(index + 1, closingIndex);
+    if (key === 'node:timers/promises' && /\bfrom\s*$/u.test(line.slice(0, index))) {
+      output[index] = ' ';
+      output[closingIndex] = ' ';
+      index = closingIndex;
+      continue;
+    }
     if (!/^[A-Za-z_$][\w$-]*$/u.test(key)) {
       index = closingIndex;
       continue;

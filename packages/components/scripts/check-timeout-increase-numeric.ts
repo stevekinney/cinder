@@ -108,7 +108,8 @@ export type WaitThresholdArgument = BunTestTimeoutArgument & {
     | 'promiseWithTimeout'
     | 'setTimeout'
     | 'waitForTimeout'
-    | 'waitForUrl';
+    | 'waitForUrl'
+    | 'playwright-operation-timeout';
   occurrenceIndex?: number;
 };
 
@@ -194,6 +195,7 @@ export function findWaitThresholdArguments(analysis: string): WaitThresholdArgum
     ...findCallArgument(analysis, /\bfetchWithTimeout\s*\(/gu, 1, 'fetchWithTimeout'),
     ...findCallArgument(analysis, /\bpromiseWithTimeout\s*\(/gu, 1, 'promiseWithTimeout'),
     ...findPlaywrightExpectPollIntervals(analysis),
+    ...findPlaywrightOperationTimeoutArguments(analysis),
   ];
   const occurrenceIndexes = new Map<string, number>();
   return argumentsFound.map((argument) => {
@@ -228,10 +230,10 @@ function findPlaywrightExpectPollIntervals(analysis: string): WaitThresholdArgum
 export function findWaitThresholdBounds(analysis: string): WaitThresholdArgument[] {
   const bounds: WaitThresholdArgument[] = [];
   const callPattern =
-    /\b(?<label>Bun\.sleep(?:Sync)?|waitForTimeout|waitForUrl|fetchWithTimeout|promiseWithTimeout)\s*\([\s\S]*?\bMath\.(?:min|max)\s*\(\s*(?<value>\d[\d_]*(?:\.\d[\d_]*)?)/gu;
-  for (const match of analysis.matchAll(callPattern)) {
-    const renderedValue = match.groups?.['value'];
-    const label = match.groups?.['label'];
+    /\b(?<label>Bun\.sleep(?:Sync)?|waitForTimeout|waitForUrl|fetchWithTimeout|promiseWithTimeout)\s*\(/gu;
+  for (const callMatch of analysis.matchAll(callPattern)) {
+    const label = callMatch.groups?.['label'];
+    if (label === undefined) continue;
     let thresholdLabel: WaitThresholdArgument['label'];
     switch (label) {
       case 'Bun.sleep':
@@ -249,23 +251,77 @@ export function findWaitThresholdBounds(analysis: string): WaitThresholdArgument
       default:
         continue;
     }
-    if (renderedValue === undefined) continue;
-    bounds.push({
-      label: thresholdLabel,
-      offset: (match.index ?? 0) + match[0].lastIndexOf(renderedValue),
-      renderedValue,
-    });
+    const callStart = callMatch.index ?? 0;
+    const openParenthesis = callStart + callMatch[0].lastIndexOf('(');
+    const closeParenthesis = findMatchingDelimiter(analysis, openParenthesis, '(', ')');
+    if (closeParenthesis === -1) continue;
+    const callText = analysis.slice(openParenthesis + 1, closeParenthesis);
+    for (const mathMatch of callText.matchAll(/\bMath\.(?:min|max)\s*\(/gu)) {
+      const mathOpen = (mathMatch.index ?? 0) + mathMatch[0].lastIndexOf('(');
+      const mathClose = findMatchingDelimiter(callText, mathOpen, '(', ')');
+      if (mathClose === -1) continue;
+      const boundsText = callText.slice(mathOpen + 1, mathClose);
+      for (const valueMatch of boundsText.matchAll(new RegExp(NUMERIC_LITERAL_PATTERN, 'gu'))) {
+        bounds.push({
+          label: thresholdLabel,
+          offset: openParenthesis + 1 + mathOpen + 1 + (valueMatch.index ?? 0),
+          renderedValue: valueMatch[0],
+        });
+      }
+    }
   }
   return bounds;
+}
+
+function findMatchingDelimiter(
+  text: string,
+  open: number,
+  opening: string,
+  closing: string,
+): number {
+  let depth = 0;
+  for (let index = open; index < text.length; index += 1) {
+    if (text[index] === opening) depth += 1;
+    else if (text[index] === closing && --depth === 0) return index;
+  }
+  return -1;
+}
+
+function findPlaywrightOperationTimeoutArguments(analysis: string): WaitThresholdArgument[] {
+  const argumentsFound: WaitThresholdArgument[] = [];
+  const operationPattern =
+    /\b(?:page|locator|frame|elementHandle)\.(?:goto|click|dblclick|fill|press|hover|check|uncheck|selectOption|selectText|setInputFiles|focus|blur|tap|dragTo|dragAndDrop|screenshot)\s*\(/gu;
+  for (const callArguments of findCallArguments(analysis, operationPattern)) {
+    for (const argument of callArguments) {
+      const timeoutMatch = new RegExp(
+        String.raw`\btimeout\s*:\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
+        'u',
+      ).exec(argument.text);
+      if (timeoutMatch?.groups?.['value'] === undefined) continue;
+      argumentsFound.push({
+        label: 'playwright-operation-timeout',
+        offset:
+          argument.offset +
+          (timeoutMatch.index ?? 0) +
+          timeoutMatch[0].lastIndexOf(timeoutMatch.groups['value']),
+        renderedValue: timeoutMatch.groups['value'],
+      });
+    }
+  }
+  return argumentsFound;
 }
 
 export function findPromiseTimerAliasArguments(analysis: string): WaitThresholdArgument[] {
   const argumentsFound: WaitThresholdArgument[] = [];
   const aliases = new Set<string>();
   for (const match of analysis.matchAll(
-    /\bimport\s*\{[^}]*\bsetTimeout\s+as\s+(?<alias>[A-Za-z_$][\w$]*)[^}]*\}\s*from\b/gu,
+    /\bimport\s*\{(?<imports>[^}]*)\}\s*from\s+node:timers\/promises\b/gu,
   )) {
-    const alias = match.groups?.['alias'];
+    const imports = match.groups?.['imports'] ?? '';
+    const namedImport =
+      /(?:^|,)\s*setTimeout(?:\s+as\s+(?<alias>[A-Za-z_$][\w$]*))?\s*(?:,|$)/u.exec(imports);
+    if (namedImport === null) continue;
+    const alias = namedImport.groups?.['alias'];
     if (alias !== undefined) aliases.add(alias);
   }
   for (const alias of aliases) {
