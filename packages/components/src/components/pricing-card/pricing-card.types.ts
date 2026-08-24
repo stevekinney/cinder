@@ -1,5 +1,5 @@
 import type { Snippet } from 'svelte';
-import type { HTMLAttributes } from 'svelte/elements';
+import type { HTMLAnchorAttributes, HTMLAttributes } from 'svelte/elements';
 
 /**
  * The CTA renders as a `<button>` when no `href` is given, in which case
@@ -36,9 +36,9 @@ type PricingCardLinkCTA = {
    */
   onPlanSelect?: () => void;
   /** `target` for the CTA anchor. */
-  target?: string;
+  target?: HTMLAnchorAttributes['target'];
   /** `rel` for the CTA anchor. */
-  rel?: string;
+  rel?: HTMLAnchorAttributes['rel'];
 };
 
 /** Props for the PricingCard component. */

@@ -3545,12 +3545,13 @@
         }
       ],
       "related": ["card", "button", "statistic", "statistic-group"],
-      "hasConstraints": false,
+      "hasConstraints": true,
       "hasExamples": true,
       "artifacts": {
         "schema": "@lostgradient/cinder/pricing-card/schema",
         "variables": "@lostgradient/cinder/pricing-card/variables",
-        "examples": "@lostgradient/cinder/pricing-card/examples"
+        "examples": "@lostgradient/cinder/pricing-card/examples",
+        "constraints": "@lostgradient/cinder/pricing-card/constraints"
       }
     },
     {
