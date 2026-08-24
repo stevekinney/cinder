@@ -317,6 +317,27 @@ function applyComponentSchemaRules(componentName: string, schema: ComponentSchem
     return;
   }
 
+  if (componentName === 'grid-item') {
+    for (const spanProp of ['span', 'rowSpan']) {
+      const prop = schema.properties[spanProp];
+      if (prop?.anyOf) {
+        prop.anyOf = prop.anyOf.map((entry) =>
+          entry.type === 'number' ? { ...entry, type: 'integer', minimum: 1 } : entry,
+        );
+      }
+    }
+
+    for (const lineProp of ['columnStart', 'columnEnd', 'rowStart', 'rowEnd']) {
+      const prop = schema.properties[lineProp];
+      if (prop?.anyOf) {
+        prop.anyOf = prop.anyOf.map((entry) =>
+          entry.type === 'number' ? { ...entry, type: 'integer', not: { const: 0 } } : entry,
+        );
+      }
+    }
+    return;
+  }
+
   if (componentName === 'approval-card') {
     applyApprovalCardSchemaRules(schema);
     return;
