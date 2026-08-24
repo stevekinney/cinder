@@ -42,6 +42,13 @@ function implicitBaselineFor(
   }
   if (kind === 'retries') return { renderedValue: '0 (implicit default retries)', value: 0 };
   if (kind === 'slow') return { renderedValue: '1 (implicit normal timeout)', value: 1 };
+  if (
+    kind === 'timeout' &&
+    (/(?:^|\/)playwright\.config\.[^/]+$/u.test(filePath) ||
+      /\btest\.describe\.configure\s*\(/u.test(line))
+  ) {
+    return { renderedValue: '30_000 (implicit Playwright test timeout)', value: 30_000 };
+  }
   if (kind === 'timeout' && /\bbun\s+test(?:\s|$)/u.test(line)) {
     return { renderedValue: '5_000 (implicit Bun test timeout)', value: 5_000 };
   }
@@ -187,7 +194,7 @@ function extractThresholdCandidates(
   }
 
   const callPattern = new RegExp(
-    String.raw`\b(?<label>AbortSignal\.timeout|waitForTimeout|setDefaultNavigationTimeout|setDefaultTimeout|setTimeout|slow)\s*\(\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
+    String.raw`\b(?<label>AbortSignal\.timeout|waitForTimeout|setDefaultNavigationTimeout|setDefaultTimeout|setTimeout|(?:test|testInfo)\.slow)\s*\(\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
     'giu',
   );
   let callOccurrenceIndex = 0;
@@ -246,7 +253,7 @@ function extractMultilineCallCandidates(
   ).join('\n');
   const candidates: ThresholdCandidate[] = [];
   const pattern = new RegExp(
-    String.raw`\b(?<label>AbortSignal\.timeout|waitForTimeout|setDefaultNavigationTimeout|setDefaultTimeout|setTimeout|slow)\s*\(\s*\n\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
+    String.raw`\b(?<label>AbortSignal\.timeout|waitForTimeout|setDefaultNavigationTimeout|setDefaultTimeout|setTimeout|(?:test|testInfo)\.slow)\s*\(\s*\n\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
     'giu',
   );
   for (const match of analysis.matchAll(pattern)) {
@@ -296,6 +303,7 @@ function extractMultilineCallCandidates(
     'giu',
   );
   for (const configurationMatch of analysis.matchAll(retryConfigurationPattern)) {
+    if (isTestOrValidationInfrastructure(filePath)) continue;
     const body = configurationMatch.groups?.['body'] ?? '';
     for (const retryMatch of body.matchAll(retryAssignmentPattern)) {
       const label = retryMatch.groups?.['label'] ?? '';

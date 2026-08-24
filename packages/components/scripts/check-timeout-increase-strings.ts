@@ -145,9 +145,10 @@ export function sourceLinesForAnalysis(filePath: string, lines: readonly string[
   ) {
     const uncommentedLines = stripJavaScriptCommentsLines(lines);
     const strippedLines = stripQuotedTextLines(uncommentedLines.map(exposeQuotedConfigurationKeys));
-    return strippedLines.map((line, index) =>
-      extension === '.svelte' && /^\s*</u.test(lines[index] ?? '') ? '' : line,
-    );
+    return strippedLines.map((line, index) => {
+      if (/^\s*#/u.test(line)) return '';
+      return extension === '.svelte' && /^\s*</u.test(lines[index] ?? '') ? '' : line;
+    });
   }
   if (['.bash', '.sh', '.yaml', '.yml', '.zsh'].includes(extension)) {
     return lines.map(stripUnquotedHashComment);
@@ -174,15 +175,6 @@ export function isTestThresholdAssignment(
 ): boolean {
   const normalizedLabel = label.toLowerCase();
   if (normalizedLabel === 'timeout-minutes') return true;
-  if (
-    (normalizedLabel.includes('retry') || normalizedLabel.includes('retries')) &&
-    label !== label.toUpperCase() &&
-    !/(?:timeout|wait|deadline|poll|interval|delay)/u.test(normalizedLabel) &&
-    !/\btest\.describe\.configure\s*\(/u.test(analysis) &&
-    !/(?:^|\/)(?:jest|playwright|vitest)\.config\.[^/]+$/u.test(filePath)
-  ) {
-    return false;
-  }
   return isTestOrValidationInfrastructure(filePath, analysis);
 }
 

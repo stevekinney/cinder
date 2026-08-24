@@ -948,6 +948,46 @@ describe('check-timeout-increases', () => {
     expect(violations).toHaveLength(2);
   });
 
+  test('compares new Playwright configuration timeouts with the runner default', () => {
+    const configViolations = findTimeoutIncreaseViolations(
+      diffFor('packages/testing/playwright.config.ts', [], ['export default { timeout: 60_000 };']),
+    );
+    const describeViolations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/src/button/button.test.ts',
+        [],
+        ['test.describe.configure({ timeout: 60_000 });'],
+      ),
+    );
+
+    expect(configViolations).toHaveLength(1);
+    expect(describeViolations).toHaveLength(1);
+  });
+
+  test('checks lower-camel retry thresholds in validation infrastructure', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/scripts/validate-consumers.ts',
+        ['const browserRetryCount = 1;'],
+        ['const browserRetryCount = 2;'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+  });
+
+  test('ignores unrelated bare slow calls in tests', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/src/example.test.ts',
+        ['expect(slow(2)).toBe(4);'],
+        ['expect(slow(3)).toBe(6);'],
+      ),
+    );
+
+    expect(violations).toEqual([]);
+  });
+
   test('checks Bun test timeout arguments in underscore-style test filenames', () => {
     const violations = findTimeoutIncreaseViolations(
       diffFor(
