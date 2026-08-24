@@ -86,9 +86,9 @@ export interface PricingCardSchemaProps {
    */
   href?: string;
   /** `target` for the CTA anchor. Only applied when `href` is set. */
-  target?: string;
+  target?: HTMLAnchorAttributes['target'];
   /** `rel` for the CTA anchor. Only applied when `href` is set. */
-  rel?: string;
+  rel?: HTMLAnchorAttributes['rel'];
   /** Optional footnote or caveat beneath the features list; the runtime API also accepts a template-only snippet (e.g. a terms link). */
   caveat?: string;
   /**
