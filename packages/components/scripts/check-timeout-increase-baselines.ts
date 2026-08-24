@@ -13,7 +13,7 @@ function playwrightConfigurationDomain(
   if (!/(?:^|\/)playwright\.config\.[^/]+$/u.test(filePath)) return undefined;
   const prefix = `${analysisBeforeLine}\n${analysisLine.slice(0, candidateOffset)}`;
   const propertyObjects = [...prefix.matchAll(/\b(?<name>[A-Za-z_$][\w$]*)\s*:\s*(?:\[\s*)?\{/gu)];
-  for (const propertyObject of propertyObjects.toReversed()) {
+  for (const propertyObject of propertyObjects.reverse()) {
     if (propertyObject.index === undefined) continue;
     let braceDepth = 0;
     for (const character of prefix.slice(propertyObject.index)) {
