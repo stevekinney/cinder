@@ -65,13 +65,13 @@ export function effectiveThresholdValue(label: string, line: string, value: numb
     if (/(?:milliseconds?|msecs?|ms)$/iu.test(label)) return value;
     if (/(?:seconds?|secs?)$/iu.test(label)) return value * 1_000;
   }
-  if (normalizedLabel === 'shell.timeout' && value === 0) return Number.POSITIVE_INFINITY;
-  if (normalizedLabel === 'sleep' || normalizedLabel === 'shell.timeout') {
-    const unit =
-      /\b(?:sleep|timeout)\s+(?:(?:--[\w-]+)\s+)*(?:\d[\d_]*(?:\.\d[\d_]*)?|\.\d[\d_]*)(?<unit>[smhd])?(?![\w.])/u.exec(
-        line,
-      )?.groups?.['unit'] ?? 's';
-    return value * ({ s: 1_000, m: 60_000, h: 3_600_000, d: 86_400_000 }[unit] ?? 1_000);
+  if (
+    (normalizedLabel === 'shell.timeout' || normalizedLabel === 'shell.kill-after') &&
+    value === 0
+  )
+    return Number.POSITIVE_INFINITY;
+  if (['shell.kill-after', 'shell.timeout', 'sleep'].includes(normalizedLabel)) {
+    return value;
   }
   if (value !== 0) return value;
   if (/(?:poll|interval|delay)/u.test(normalizedLabel)) return value;
@@ -113,6 +113,7 @@ export type WaitThresholdArgument = BunTestTimeoutArgument & {
     | 'bun.sleepSync'
     | 'expect.poll.intervals'
     | 'fetchWithTimeout'
+    | 'fake-timer-advance'
     | 'promiseWithTimeout'
     | 'setTimeout'
     | 'waitForTimeout'
@@ -215,6 +216,12 @@ export function findWaitThresholdArguments(analysis: string): WaitThresholdArgum
     ...findCallArgument(analysis, /\bwaitForUrl\s*\(/gu, 1, 'waitForUrl'),
     ...findCallArgument(analysis, /\bfetchWithTimeout\s*\(/gu, 1, 'fetchWithTimeout'),
     ...findCallArgument(analysis, /\bpromiseWithTimeout\s*\(/gu, 1, 'promiseWithTimeout'),
+    ...findCallArgument(
+      analysis,
+      /\b(?:(?:jest|vi)\.advanceTimersByTime(?:Async)?|clock\.tick(?:Async)?)\s*\(/gu,
+      0,
+      'fake-timer-advance',
+    ),
     ...findPlaywrightExpectPollIntervals(analysis),
     ...findPlaywrightOperationTimeoutArguments(analysis),
     ...findMultilinePlaywrightSlowAnnotations(analysis),

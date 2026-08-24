@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
+import { readDiffInput } from './check-timeout-increase-comparison.ts';
 import { sourceLineForAnalysis } from './check-timeout-increase-strings.ts';
 import {
   findTimeoutIncreaseViolations,
@@ -1218,6 +1219,33 @@ describe('check-timeout-increases', () => {
     expect(violations).toHaveLength(2);
   });
 
+  test('allows finite timeout wrappers to replace unbounded operations', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/scripts/validate-consumers.ts',
+        ['await operation();', 'await fetch(url);'],
+        [
+          "await promiseWithTimeout(operation(), 5_000, 'operation');",
+          "await fetchWithTimeout(url, 5_000, 'request');",
+        ],
+      ),
+    );
+
+    expect(violations).toEqual([]);
+  });
+
+  test('checks fake-timer advancement thresholds', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/src/components/carousel/carousel.test.ts',
+        ['jest.advanceTimersByTime(99);', 'await clock.tickAsync(100);'],
+        ['jest.advanceTimersByTime(999);', 'await clock.tickAsync(1_000);'],
+      ),
+    );
+
+    expect(violations).toHaveLength(2);
+  });
+
   test('checks AbortSignal timeout calls on one or multiple lines', () => {
     const singleLine = diffFor(
       'packages/playground/src/validate-playground.ts',
@@ -2257,6 +2285,29 @@ describe('check-timeout-increases', () => {
     expect(long).toHaveLength(1);
   });
 
+  test('normalizes GNU timeout kill-after units and treats zero as unbounded', () => {
+    const unitIncrease = findTimeoutIncreaseViolations(
+      diffFor('.husky/pre-push', ['timeout -k 5s 30s bun test'], ['timeout -k 1m 30s bun test']),
+    );
+    const disabledBound = findTimeoutIncreaseViolations(
+      diffFor('.husky/pre-push', ['timeout -k 5s 30s bun test'], ['timeout -k 0 30s bun test']),
+    );
+
+    expect(unitIncrease).toHaveLength(1);
+    expect(unitIncrease[0]?.new.effectiveValue).toBe(60_000);
+    expect(disabledBound).toHaveLength(1);
+    expect(disabledBound[0]?.new.effectiveValue).toBe(Number.POSITIVE_INFINITY);
+  });
+
+  test('checks every duration operand in a shell sleep command', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor('packages/components/scripts/probe.sh', ['sleep 1s 1s'], ['sleep 1s 10s']),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.new.effectiveValue).toBe(10_000);
+  });
+
   test('checks waits in extensionless validation hooks', () => {
     const violations = findTimeoutIncreaseViolations(
       diffFor('.husky/pre-push', ['sleep 1'], ['sleep 10']),
@@ -2359,5 +2410,9 @@ describe('check-timeout-increases', () => {
     expect(message).toContain('packages/components/src/button/button.test.ts');
     expect(message).toContain('old line 10: test.setTimeout(5_000);');
     expect(message).toContain('new line 10: test.setTimeout(10_000);');
+  });
+
+  test('does not read interactive standard input before checking the fallback', async () => {
+    await expect(readDiffInput(true, undefined)).resolves.toBe('');
   });
 });

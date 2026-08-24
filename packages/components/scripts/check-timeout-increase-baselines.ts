@@ -154,6 +154,9 @@ export function waitThresholdBaselineFor(
   label: string,
   explicitBaseline?: ThresholdBaseline,
 ): ThresholdBaseline {
+  if (['fetchwithtimeout', 'promisewithtimeout'].includes(label.toLowerCase())) {
+    return { renderedValue: 'unbounded operation', value: Number.POSITIVE_INFINITY };
+  }
   return (
     explicitBaseline ??
     implicitBaselineFor(label) ?? { renderedValue: '0 (no explicit wait)', value: 0 }

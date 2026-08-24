@@ -331,23 +331,45 @@ export type ShellWaitThresholdArgument = {
   sourceText: string;
 };
 
+function shellDurationMilliseconds(duration: string): string {
+  const unit = duration.at(-1);
+  const value = Number(duration.replaceAll('_', '').replace(/[smhd]$/u, ''));
+  const multiplier = { s: 1_000, m: 60_000, h: 3_600_000, d: 86_400_000 }[unit ?? ''] ?? 1_000;
+  return String(value * multiplier);
+}
+
 export function extractShellWaitThresholdArguments(analysis: string): ShellWaitThresholdArgument[] {
   const duration = String.raw`(?:\d[\d_]*(?:\.\d[\d_]*)?|\.\d[\d_]*)(?:[smhd])?`;
   const timeoutOption = String.raw`(?:(?:--foreground|--preserve-status|--verbose)\s+|(?:--signal(?:=|\s+)|-s\s+)\S+\s+)`;
-  const pattern = new RegExp(
-    String.raw`(?:^|(?:&&|[;&|])\s*|\n\s*|\brun:\s*)(?<command>sleep|timeout)\s+(?:${timeoutOption})*(?:(?:-k\s+|--kill-after(?:=|\s+))(?<killAfter>${duration})\s+)?(?:${timeoutOption})*(?<value>${duration})(?![\w.])`,
+  const commandPrefix = String.raw`(?:^|(?:&&|[;&|])\s*|\n\s*|\brun:\s*)`;
+  const sleepPattern = new RegExp(
+    String.raw`${commandPrefix}sleep\s+(?<values>${duration}(?:\s+${duration})*)`,
     'gu',
   );
-  return [...analysis.matchAll(pattern)].flatMap((match) => {
-    const command = match.groups?.['command'];
+  const sleepArguments = [...analysis.matchAll(sleepPattern)].flatMap((match) => {
+    const values = match.groups?.['values'];
+    if (values === undefined) return [];
+    const valuesOffset = (match.index ?? 0) + match[0].lastIndexOf(values);
+    return [...values.matchAll(new RegExp(duration, 'gu'))].map((valueMatch) => ({
+      label: 'sleep' as const,
+      offset: valuesOffset + (valueMatch.index ?? 0),
+      renderedValue: shellDurationMilliseconds(valueMatch[0]),
+      sourceText: match[0],
+    }));
+  });
+  const timeoutPattern = new RegExp(
+    String.raw`${commandPrefix}timeout\s+(?:${timeoutOption})*(?:(?:-k\s+|--kill-after(?:=|\s+))(?<killAfter>${duration})\s+)?(?:${timeoutOption})*(?<value>${duration})(?![\w.])`,
+    'gu',
+  );
+  const timeoutArguments = [...analysis.matchAll(timeoutPattern)].flatMap((match) => {
     const value = match.groups?.['value'];
-    if (command === undefined || value === undefined) return [];
+    if (value === undefined) return [];
     const sourceText = match[0];
     const offset = match.index ?? 0;
     const main: ShellWaitThresholdArgument = {
-      label: command === 'timeout' ? 'shell.timeout' : 'sleep',
+      label: 'shell.timeout' as const,
       offset,
-      renderedValue: value.replace(/[smhd]$/u, ''),
+      renderedValue: shellDurationMilliseconds(value),
       sourceText,
     };
     const killAfter = match.groups?.['killAfter'];
@@ -355,14 +377,15 @@ export function extractShellWaitThresholdArguments(analysis: string): ShellWaitT
       ? [main]
       : [
           {
-            label: 'shell.kill-after',
+            label: 'shell.kill-after' as const,
             offset,
-            renderedValue: killAfter.replace(/[smhd]$/u, ''),
+            renderedValue: shellDurationMilliseconds(killAfter),
             sourceText,
           },
           main,
         ];
   });
+  return [...sleepArguments, ...timeoutArguments].sort((left, right) => left.offset - right.offset);
 }
 
 function isExecutableCliArgumentLine(line: string, argument: string): boolean {
