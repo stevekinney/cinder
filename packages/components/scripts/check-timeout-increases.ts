@@ -16,6 +16,7 @@ import {
   findBunTestTimeoutArguments,
   findPlaywrightRelativeTimeoutExtensions,
   findPromiseTimerAliasArguments,
+  findReferencedPlaywrightTimeoutAssignments,
   findWaitThresholdArguments,
   findWaitThresholdBounds,
   NUMERIC_EXPRESSION_PATTERN,
@@ -27,17 +28,15 @@ import {
   isTestOrValidationInfrastructure,
   isTestThresholdAssignment,
   normalizeWorkflowExpressions,
+  shellContinuationContext,
   sourceLineForAnalysis,
   sourceLinesForAnalysis,
 } from './check-timeout-increase-strings';
 import type { ThresholdCandidate, TimeoutIncreaseViolation } from './check-timeout-increase-types';
-
 export type { TimeoutIncreaseViolation } from './check-timeout-increase-types';
 export { formatTimeoutIncreaseViolations };
-
 const BASIC_THRESHOLD_LABEL_PATTERN = String.raw`(?:timeout-minutes|testTimeout|timeout|deadline|retries|retry|repeatEach|slow)`;
 const NAMED_THRESHOLD_LABEL_PATTERN = String.raw`(?:(?:(?:TIMEOUT|WAIT|DEADLINE|RETRY|RETRIES|ATTEMPT|ATTEMPTS|PRESS|PRESSES|POLL|INTERVAL|DELAY|GRACE|STABLE_READS?)[A-Z0-9_]*|[A-Z][A-Z0-9_]*(?:TIMEOUT|WAIT|DEADLINE|RETRY|RETRIES|ATTEMPT|ATTEMPTS|PRESS|PRESSES|POLL|INTERVAL|DELAY|GRACE|STABLE_READS?)[A-Z0-9_]*)|(?:[a-z][a-z0-9_]*(?:_timeout|_wait|_deadline|_retry|_retries|_attempt|_attempts|_press|_presses|_poll|_interval|_delay|_grace|_stable_reads?)[a-z0-9_]*)|(?:[A-Za-z_$][\w$]*(?:Timeout|Wait|Deadline|Retry|Retries|Attempt|Attempts|Press|Presses|Poll|Interval|Delay|Grace|StableReads?)[\w$]*)|(?:(?:timeout|wait|deadline|attempts?|press(?:es)?|poll|interval|delay|grace|stableReads?)[A-Z_$][\w$]*))`;
-
 function isGenericTimeoutContext(filePath: string, analysis: string): boolean {
   return (
     /(?:^|\/)(?:jest|playwright|vitest)\.config\.[^/]+$/u.test(filePath) ||
@@ -93,7 +92,6 @@ function extractThresholdCandidates(
   analysisBeforeLine = '',
 ): ThresholdCandidate[] {
   if (analysisLine.trim().length === 0) return [];
-
   const candidates: ThresholdCandidate[] = [];
   analysisLine = normalizeWorkflowExpressions(filePath, analysisLine);
   const assignmentAnalysis = normalizeWorkflowExpressions(
@@ -188,7 +186,7 @@ function extractThresholdCandidates(
       lineNumber,
       label,
       match.groups?.['value'],
-      implicitBaselineFor(label, line, filePath),
+      implicitBaselineFor(label, shellContinuationContext(analysisBeforeLine, line), filePath),
     );
   }
 
@@ -388,6 +386,7 @@ function extractMultilineCallCandidates(
       ...findWaitThresholdArguments(analysis),
       ...findWaitThresholdBounds(analysis),
       ...findPromiseTimerAliasArguments(analysis),
+      ...findReferencedPlaywrightTimeoutAssignments(analysis),
     ]) {
       const sourceIndex = analysis.slice(0, waitArgument.offset).split('\n').length - 1;
       pushCandidate(
@@ -396,9 +395,10 @@ function extractMultilineCallCandidates(
         source[sourceIndex]?.lineNumber ?? 0,
         waitArgument.label,
         waitArgument.renderedValue,
-        waitArgument.label === 'playwright-operation-timeout'
-          ? { renderedValue: '30_000 (implicit Playwright action timeout)', value: 30_000 }
-          : { renderedValue: '0 (no explicit wait)', value: 0 },
+        implicitBaselineFor(waitArgument.label) ?? {
+          renderedValue: '0 (no explicit wait)',
+          value: 0,
+        },
         waitArgument.occurrenceIndex,
       );
     }
@@ -417,7 +417,9 @@ function extractMultilineCallCandidates(
         source[sourceIndex]?.lineNumber ?? 0,
         sleepMatch.groups?.['command'] === 'timeout' ? 'shell.timeout' : 'sleep',
         renderedValue,
-        undefined,
+        implicitBaselineFor(
+          sleepMatch.groups?.['command'] === 'timeout' ? 'shell.timeout' : 'sleep',
+        ),
         shellCommandOccurrenceIndex,
         sleepMatch[0],
       );
@@ -451,7 +453,6 @@ function extractMultilineCallCandidates(
       { renderedValue: '0 (no relative timeout extension)', value: 0 },
     );
   }
-
   for (const argument of extractMultilineExecutableCliThresholdArguments(
     source.map(({ line }) => line),
   )) {
@@ -466,7 +467,6 @@ function extractMultilineCallCandidates(
         : implicitBaselineFor(argument.label, '', filePath),
     );
   }
-
   const seen = new Set<string>();
   return candidates.filter((candidate) => {
     const key = `${candidate.identity}:${candidate.renderedValue}:${candidate.lineNumber}:${candidate.occurrenceIndex ?? ''}`;

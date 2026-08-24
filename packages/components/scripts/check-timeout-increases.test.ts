@@ -110,6 +110,33 @@ describe('check-timeout-increases', () => {
     expect(violations).toHaveLength(3);
   });
 
+  test('allows a newly added finite Playwright operation timeout', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/testing/tests/avatar-group-focus-rings.playwright.ts',
+        [],
+        ["await page.goto('/old', { timeout: 60_000 });"],
+      ),
+    );
+
+    expect(violations).toEqual([]);
+  });
+
+  test('checks a bare timeout constant used by a Playwright operation', () => {
+    const diff = [
+      'diff --git a/packages/testing/tests/example.playwright.ts b/packages/testing/tests/example.playwright.ts',
+      '--- a/packages/testing/tests/example.playwright.ts',
+      '+++ b/packages/testing/tests/example.playwright.ts',
+      '@@ -10,2 +10,2 @@',
+      '-const timeout = 5_000;',
+      '+const timeout = 10_000;',
+      " await page.goto('/', { timeout });",
+      '',
+    ].join('\n');
+
+    expect(findTimeoutIncreaseViolations(diff)).toHaveLength(1);
+  });
+
   test('checks Bun configuration, promise timer aliases, configured assertions, and stable reads', () => {
     const diff = [
       diffFor('bunfig.toml', ['timeout = 5_000'], ['timeout = 10_000']),
@@ -690,6 +717,23 @@ describe('check-timeout-increases', () => {
 
     expect(increased).toHaveLength(1);
     expect(reduced).toEqual([]);
+  });
+
+  test('carries Bun command context across shell continuations', () => {
+    const diff = [
+      'diff --git a/.github/workflows/unit-tests.yaml b/.github/workflows/unit-tests.yaml',
+      '--- a/.github/workflows/unit-tests.yaml',
+      '+++ b/.github/workflows/unit-tests.yaml',
+      '@@ -10,2 +10,3 @@',
+      '     bun test \\',
+      '+      --timeout 10_000 \\',
+      '       ./src',
+      '',
+    ].join('\n');
+
+    const violations = findTimeoutIncreaseViolations(diff);
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.old.value).toBe(5_000);
   });
 
   test('compares new Bun argv timeouts with the runner default', () => {
@@ -1963,6 +2007,15 @@ describe('check-timeout-increases', () => {
     );
 
     expect(boundedAfterUnbounded).toEqual([]);
+  });
+
+  test('treats removing a shell timeout command as unbounded', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor('packages/components/scripts/probe.sh', ['timeout 30s bun test'], ['bun test']),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.new.effectiveValue).toBe(Number.POSITIVE_INFINITY);
   });
 
   test('checks shell timeout options before the duration', () => {

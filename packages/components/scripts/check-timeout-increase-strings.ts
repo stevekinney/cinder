@@ -261,6 +261,14 @@ export function normalizeWorkflowExpressions(filePath: string, analysis: string)
   return analysis.replace(/\$\{\{\s*(\d[\d_.]*)\s*\}\}/gu, '$1');
 }
 
+export function shellContinuationContext(analysisBeforeLine: string, line: string): string {
+  const lines = analysisBeforeLine.split('\n');
+  let startIndex = lines.length - 1;
+  if (!lines[startIndex]?.trimEnd().endsWith('\\')) return line;
+  while (startIndex > 0 && lines[startIndex - 1]?.trimEnd().endsWith('\\')) startIndex -= 1;
+  return `${lines.slice(startIndex).join('\n')}\n${line}`;
+}
+
 export function extractTopLevelQuotedStrings(line: string): string[] {
   const values: string[] = [];
   let quote: '"' | "'" | undefined;

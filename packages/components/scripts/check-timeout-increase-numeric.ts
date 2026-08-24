@@ -311,6 +311,31 @@ function findPlaywrightOperationTimeoutArguments(analysis: string): WaitThreshol
   return argumentsFound;
 }
 
+export function findReferencedPlaywrightTimeoutAssignments(
+  analysis: string,
+): WaitThresholdArgument[] {
+  if (
+    !/\b(?:page|locator|frame|elementHandle)\.\w+\s*\([^)]*\{[^}]*\btimeout\s*[,}]/u.test(analysis)
+  ) {
+    return [];
+  }
+  const assignments: WaitThresholdArgument[] = [];
+  const pattern = new RegExp(
+    String.raw`\b(?:const|let|var)\s+timeout\s*=\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
+    'gu',
+  );
+  for (const match of analysis.matchAll(pattern)) {
+    const renderedValue = match.groups?.['value'];
+    if (renderedValue === undefined) continue;
+    assignments.push({
+      label: 'playwright-operation-timeout',
+      offset: (match.index ?? 0) + match[0].lastIndexOf(renderedValue),
+      renderedValue,
+    });
+  }
+  return assignments;
+}
+
 export function findPromiseTimerAliasArguments(analysis: string): WaitThresholdArgument[] {
   const argumentsFound: WaitThresholdArgument[] = [];
   const aliases = new Set<string>();

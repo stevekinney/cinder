@@ -38,6 +38,15 @@ export function implicitBaselineFor(
   configurationDomain?: PlaywrightConfigurationDomain,
 ): ThresholdBaseline | undefined {
   const kind = normalizeThresholdKind(label);
+  if (label === 'playwright-operation-timeout') {
+    return {
+      renderedValue: 'unbounded (implicit Playwright action timeout)',
+      value: Number.POSITIVE_INFINITY,
+    };
+  }
+  if (label === 'shell.timeout') {
+    return { renderedValue: 'unbounded (no GNU timeout command)', value: Number.POSITIVE_INFINITY };
+  }
   if (
     label.toLowerCase() === 'timeout-minutes' &&
     /^\.github\/workflows\/[^/]+\.ya?ml$/u.test(filePath)
