@@ -641,8 +641,9 @@ export type ComponentNameShadowViolation = {
 
 /**
  * A stem ending in x/ch/sh/s/z takes `-es` for its regular plural
- * (`checkbox` → `checkboxes`), rather than a bare trailing `s`. This is the
- * ONE additional regular-plural shape handled beyond the plain trailing-`s`
+ * (`checkbox` → `checkboxes`) or `-ies` for consonant-plus-`y` singulars
+ * (`feed-boundary` → `feed-boundaries`), rather than a bare trailing `s`. These are the
+ * TWO additional regular-plural shapes handled beyond the plain trailing-`s`
  * strip — still no irregular plurals (`child`/`children`, `datum`/`data`,
  * …), which stay out of scope.
  */
@@ -652,13 +653,17 @@ const ES_PLURAL_STEM_ENDING = /(?:x|ch|sh|s|z)$/;
  * Candidate singular forms to check, in order: the regular `-es` strip when
  * the remaining stem is one that takes `-es` (`checkboxes` → `checkbox`),
  * then the plain trailing-`s` strip (`avatars` → `avatar`). Returns at most
- * two candidates and never the same string twice.
+ * three candidates and never the same string twice.
  */
 function candidateSingulars(candidateName: string): string[] {
   const candidates: string[] = [];
+  if (candidateName.endsWith('ies')) {
+    const iesStem = `${candidateName.slice(0, -3)}y`;
+    candidates.push(iesStem);
+  }
   if (candidateName.endsWith('es')) {
     const esStem = candidateName.slice(0, -2);
-    if (ES_PLURAL_STEM_ENDING.test(esStem)) candidates.push(esStem);
+    if (ES_PLURAL_STEM_ENDING.test(esStem) && !candidates.includes(esStem)) candidates.push(esStem);
   }
   if (candidateName.endsWith('s')) {
     const sStem = candidateName.slice(0, -1);
@@ -719,8 +724,9 @@ export function collectComponentNameShadowViolations(
   const violations: ComponentNameShadowViolation[] = [];
   for (const name of existingNames) {
     if (GRANDFATHERED_COMPONENT_NAMES.has(name)) continue;
-    // No self-exclusion needed: stripping a trailing `s` always shortens the
-    // name by one character, so `singular` can never equal `name` itself —
+    // No self-exclusion needed: every derived singular (trailing-`s`, `-es`,
+    // or `-ies`→`y` strip) differs from the original name — the first two are
+    // strictly shorter and the `-ies` form swaps its suffix — so
     // `existingNames.has(singular)` can only ever match some OTHER entry.
     const violation = checkComponentNameForBarePluralShadow(name, existingNames);
     if (violation) violations.push(violation);

@@ -96,8 +96,9 @@ a container of named instances. It is never legal as a collection name: a new
 component that collects instances of an existing singular component must be
 named `<Singular>Group`, not a bare plural of that singular. `check:prop-conventions`
 enforces this mechanically at `lint:invariants` time: it enumerates every
-existing component directory name and scans each one, stripped of a trailing
-`s`, against every other existing directory name, failing the gate the moment
+existing component directory name and scans each one — stripped of a trailing
+`s`, a regular `-es` (for stems ending in x/ch/sh/s/z), or `-ies` (restored to
+the consonant-plus-`y` singular) — against every other existing directory name, failing the gate the moment
 a bare-plural directory shadows an existing singular component.
 
 `tabs` is the single grandfathered exception: it collects `Tab` (exposed as

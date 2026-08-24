@@ -394,6 +394,18 @@ describe('check-prop-conventions component-name directory scan', () => {
     expect(violation?.message).toContain('checkbox-group');
   });
 
+  test('flags a regular -ies plural shadowing a consonant-plus-y singular', () => {
+    const existing = new Set(['feed-boundary', 'avatar']);
+    const violation = checkComponentNameForBarePluralShadow('feed-boundaries', existing);
+    expect(violation).toBeDefined();
+    expect(violation?.shadowedComponent).toBe('feed-boundary');
+  });
+
+  test('does not flag an -ies name whose derived singular does not exist', () => {
+    const existing = new Set(['avatar']);
+    expect(checkComponentNameForBarePluralShadow('galleries', existing)).toBeUndefined();
+  });
+
   test('passes a candidate ending in -es when neither derived singular exists', () => {
     // "gazes" -es-strips to "gaz" (ends in z, a valid -es stem) and plain
     // -s-strips to "gaze"; neither is in the existing-names set, so this
