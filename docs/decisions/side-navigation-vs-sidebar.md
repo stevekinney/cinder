@@ -1,6 +1,6 @@
 # SideNavigation versus Sidebar
 
-**Status:** Accepted (2026-08-24).
+**Status:** Accepted 2026-08-24.
 
 Question: do `SideNavigation` and `Sidebar` reconcile into one component, or
 stay distinct?
@@ -23,5 +23,6 @@ component would force every consumer that only needs the nav landmark to also
 take on responsive-shell behavior, and vice versa.
 
 Both components carry reciprocal `@related`/`@avoidWhen` metadata pointing at
-each other and at this document, so the boundary is discoverable from either
-component's JSDoc.
+each other, and each component's README cites this document, so the boundary is
+discoverable from either component's JSDoc (the alternative) and README (the
+rationale).
