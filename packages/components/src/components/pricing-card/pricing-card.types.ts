@@ -1,6 +1,46 @@
 import type { Snippet } from 'svelte';
 import type { HTMLAttributes } from 'svelte/elements';
 
+/**
+ * The CTA renders as a `<button>` when no `href` is given, in which case
+ * `onPlanSelect` is the only way to activate it and is therefore required.
+ * `target`/`rel` only make sense on an anchor, so they are not offered here.
+ */
+type PricingCardButtonCTA = {
+  href?: undefined;
+  /**
+   * Called when the CTA is activated. Required when `href` is not set — the
+   * button is the only way to activate the CTA. Optional when `href` is set,
+   * but not mutually exclusive with it — pass both to navigate and also run
+   * a side effect such as analytics tracking (mirrors the cinder Button
+   * anchor branch).
+   */
+  onPlanSelect: () => void;
+  target?: never;
+  rel?: never;
+};
+
+/**
+ * When `href` is set, the CTA renders as an anchor (`<a href>`) instead of a
+ * `<button>`. The outer card structure stays a fixed `<div>` — only the inner
+ * CTA element swaps.
+ */
+type PricingCardLinkCTA = {
+  href: string;
+  /**
+   * Called when the CTA is activated. Required when `href` is not set — the
+   * button is the only way to activate the CTA. Optional when `href` is set,
+   * but not mutually exclusive with it — pass both to navigate and also run
+   * a side effect such as analytics tracking (mirrors the cinder Button
+   * anchor branch).
+   */
+  onPlanSelect?: () => void;
+  /** `target` for the CTA anchor. */
+  target?: string;
+  /** `rel` for the CTA anchor. */
+  rel?: string;
+};
+
 /** Props for the PricingCard component. */
 export type PricingCardProps = Omit<HTMLAttributes<HTMLDivElement>, 'onselect'> & {
   /** Plan name displayed as the card heading. */
@@ -11,22 +51,6 @@ export type PricingCardProps = Omit<HTMLAttributes<HTMLDivElement>, 'onselect'> 
   features: string[];
   /** Label for the call-to-action button. */
   callToActionLabel: string;
-  /**
-   * Called when the CTA is activated. Optional when `href` is set, but not
-   * mutually exclusive with it — pass both to navigate and run a side effect
-   * such as analytics tracking (mirrors the cinder Button anchor branch).
-   */
-  onPlanSelect?: () => void;
-  /**
-   * When set, the CTA renders as an anchor (`<a href>`) instead of a
-   * `<button>`. The outer card structure stays a fixed `<div>` — only the
-   * inner CTA element swaps.
-   */
-  href?: string;
-  /** `target` for the CTA anchor. Only applied when `href` is set. */
-  target?: string;
-  /** `rel` for the CTA anchor. Only applied when `href` is set. */
-  rel?: string;
   /**
    * Optional footnote or caveat displayed beneath the features list.
    * Use for legal disclaimers, billing notes, or conditional terms.
@@ -43,7 +67,7 @@ export type PricingCardProps = Omit<HTMLAttributes<HTMLDivElement>, 'onselect'> 
   selected?: boolean;
   /** Merged with the root element's class list. */
   class?: string;
-};
+} & (PricingCardButtonCTA | PricingCardLinkCTA);
 
 /** Cinder-specific props for the PricingCard component, used by the schema generator. */
 export interface PricingCardSchemaProps {

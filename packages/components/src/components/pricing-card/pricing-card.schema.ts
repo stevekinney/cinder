@@ -59,7 +59,7 @@ const schema = {
         name: 'onPlanSelect',
         reason: 'function-or-snippet',
         description:
-          'Called when the CTA is activated. Optional when `href` is set, but not\nmutually exclusive with it — pass both to navigate and run a side effect\nsuch as analytics tracking (mirrors the cinder Button anchor branch).',
+          'Called when the CTA is activated. Required when `href` is not set — the\nbutton is the only way to activate the CTA. Optional when `href` is set,\nbut not mutually exclusive with it — pass both to navigate and also run\na side effect such as analytics tracking (mirrors the cinder Button\nanchor branch).',
       },
     ],
   },
