@@ -127,8 +127,8 @@
         <div class="cinder-file-upload__row-actions">
           {#if entry.status === 'uploading'}
             <span class="cinder-file-upload__status" data-status="uploading">Uploading</span>
-          {:else if entry.status === 'success'}
-            <span class="cinder-file-upload__status" data-status="success">
+          {:else if entry.status === 'ready'}
+            <span class="cinder-file-upload__status" data-status="ready">
               <svg
                 class="cinder-file-upload__status-icon"
                 aria-hidden="true"
