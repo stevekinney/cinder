@@ -425,7 +425,7 @@ export function findPromiseTimerAliasArguments(analysis: string): WaitThresholdA
       /(?:^|,)\s*setTimeout(?:\s+as\s+(?<alias>[A-Za-z_$][\w$]*))?\s*(?:,|$)/u.exec(imports);
     if (namedImport === null) continue;
     const alias = namedImport.groups?.['alias'];
-    if (alias !== undefined) aliases.add(alias);
+    aliases.add(alias ?? 'setTimeout');
   }
   for (const alias of aliases) {
     const escapedAlias = alias.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');

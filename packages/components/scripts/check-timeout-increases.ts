@@ -39,6 +39,8 @@ import type { ThresholdCandidate, TimeoutIncreaseViolation } from './check-timeo
 export type { TimeoutIncreaseViolation } from './check-timeout-increase-types';
 export { formatTimeoutIncreaseViolations };
 const BASIC_THRESHOLD_LABEL_PATTERN = String.raw`(?:timeout-minutes|testTimeout|timeout|deadline|retries|retry|repeatEach|slow)`;
+const PROMISE_TIMER_IMPORT_PATTERN =
+  /\bimport\s*\{[^}]*\bsetTimeout(?:\s+as\s+[A-Za-z_$][\w$]*)?[^}]*\}\s*from\s+node:timers\/promises\b/u;
 const NAMED_THRESHOLD_LABEL_PATTERN = String.raw`(?:(?:(?:TIMEOUT|WAIT|DEADLINE|RETRY|RETRIES|ATTEMPT|ATTEMPTS|PRESS|PRESSES|POLL|INTERVAL|DELAY|DEBOUNCE|GRACE|STABLE_READS?)[A-Z0-9_]*|[A-Z][A-Z0-9_]*(?:TIMEOUT|WAIT|DEADLINE|RETRY|RETRIES|ATTEMPT|ATTEMPTS|PRESS|PRESSES|POLL|INTERVAL|DELAY|DEBOUNCE|GRACE|STABLE_READS?)[A-Z0-9_]*)|(?:[a-z][a-z0-9_]*(?:_timeout|_wait|_deadline|_retry|_retries|_attempt|_attempts|_press|_presses|_poll|_interval|_delay|_debounce|_grace|_stable_reads?)[a-z0-9_]*)|(?:[A-Za-z_$][\w$]*(?:Timeout|Wait|Deadline|Retry|Retries|Attempt|Attempts|Press|Presses|Poll|Interval|Delay|Debounce|Grace|StableReads?)[\w$]*)|(?:(?:timeout|wait|deadline|attempts?|press(?:es)?|poll|interval|delay|debounce|grace|stableReads?)[A-Z_$][\w$]*))`;
 function isGenericTimeoutContext(filePath: string, analysis: string): boolean {
   return (
@@ -218,6 +220,9 @@ function extractThresholdCandidates(
   for (const match of analysisLine.matchAll(callPattern)) {
     const label = match.groups?.['label'] ?? '';
     if (!isTestThresholdAssignment(filePath, analysisLine, label)) continue;
+    const promiseTimer =
+      label.toLowerCase() === 'settimeout' && PROMISE_TIMER_IMPORT_PATTERN.test(analysisBeforeLine);
+    if (promiseTimer) continue;
     pushCandidate(
       candidates,
       line,

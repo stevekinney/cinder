@@ -43,6 +43,7 @@ export function findTimeoutIncreaseViolationsInDiff(
 ): TimeoutIncreaseViolation[] {
   const hunks: DiffHunk[] = [];
   let currentFilePath = '';
+  let currentFileDeleted = false;
   let oldFilePath = '';
   let currentHunk: DiffHunk | undefined;
   let oldLine = 0;
@@ -101,6 +102,7 @@ export function findTimeoutIncreaseViolationsInDiff(
     if (rawLine.startsWith('diff --git ')) {
       flushHunk();
       currentFilePath = '';
+      currentFileDeleted = false;
       oldFilePath = '';
       continue;
     }
@@ -115,7 +117,10 @@ export function findTimeoutIncreaseViolationsInDiff(
     if (currentHunk === undefined && rawLine.startsWith('+++ ')) {
       const path = rawLine.slice(4).trim();
       currentFilePath = path.startsWith('b/') ? path.slice(2) : path;
-      if (currentFilePath === '/dev/null') currentFilePath = oldFilePath;
+      if (currentFilePath === '/dev/null') {
+        currentFileDeleted = true;
+        currentFilePath = oldFilePath;
+      }
       continue;
     }
 
@@ -128,6 +133,7 @@ export function findTimeoutIncreaseViolationsInDiff(
         isSupportedFile(currentFilePath) || isSupportedFile(oldFilePath)
           ? {
               filePath: currentFilePath,
+              fileDeleted: currentFileDeleted,
               oldFilePath: oldFilePath || currentFilePath,
               hunkHeader: rawLine,
               removed: [],

@@ -2652,7 +2652,7 @@ async function assertSvelteKitHydrationRouteContent(
   routePath: SvelteKitHydrationRoute,
   domObservation: SvelteKitHydrationRouteDomObservation,
 ): Promise<void> {
-  await observeSvelteKitHydrationMarker(page, routePath, domObservation);
+  await observeSvelteKitHydrationMarkerBestEffort(page, routePath, domObservation);
   if (routePath === '/chat-layout') {
     await page.locator('[data-chat-layout-hydrated="true"]').waitFor({ timeout: 5_000 });
     domObservation.hydrationMarkerPresent = true;
@@ -2715,7 +2715,10 @@ export type SvelteKitHydrationRouteFailureSnapshot = {
 
 export type SvelteKitHydrationRouteDomObservation = Pick<
   SvelteKitHydrationRouteFailureSnapshot,
-  'documentReadyState' | 'hydrationMarkerPresent' | 'hydrationMarkerValue'
+  | 'diagnosticCaptureError'
+  | 'documentReadyState'
+  | 'hydrationMarkerPresent'
+  | 'hydrationMarkerValue'
 >;
 
 export type BoundedDiagnosticCollection = {
@@ -2804,6 +2807,19 @@ export async function observeSvelteKitHydrationMarker(
   domObservation.hydrationMarkerValue = observation.value;
 }
 
+export async function observeSvelteKitHydrationMarkerBestEffort(
+  page: HydrationMarkerPage,
+  routePath: SvelteKitHydrationRoute,
+  domObservation: SvelteKitHydrationRouteDomObservation,
+  timeoutMs = 5_000,
+): Promise<void> {
+  try {
+    await observeSvelteKitHydrationMarker(page, routePath, domObservation, timeoutMs);
+  } catch (error) {
+    domObservation.diagnosticCaptureError = errorMessage(error);
+  }
+}
+
 function unknownSvelteKitHydrationRouteFailureSnapshot(
   routePath: SvelteKitHydrationRoute,
 ): SvelteKitHydrationRouteFailureSnapshot {
@@ -2852,6 +2868,12 @@ export function captureSvelteKitHydrationRouteFailureSnapshot(
   snapshot.documentReadyState = options.domObservation.documentReadyState;
   snapshot.hydrationMarkerPresent = options.domObservation.hydrationMarkerPresent;
   snapshot.hydrationMarkerValue = options.domObservation.hydrationMarkerValue;
+  if (
+    snapshot.diagnosticCaptureError === undefined &&
+    options.domObservation.diagnosticCaptureError !== undefined
+  ) {
+    snapshot.diagnosticCaptureError = options.domObservation.diagnosticCaptureError;
+  }
 
   snapshot.nonOkResponses = options.nonOkResponses;
   snapshot.requestFailures = options.requestFailures;

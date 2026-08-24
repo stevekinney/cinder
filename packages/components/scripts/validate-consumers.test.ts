@@ -17,6 +17,7 @@ import {
   formatSvelteKitHydrationRuntimeErrors,
   isBrowserCrashError,
   observeSvelteKitHydrationMarker,
+  observeSvelteKitHydrationMarkerBestEffort,
   parseHydrationBrowserProcessIds,
   preoptimizeSvelteKitChatHydration,
   prepareSvelteKitChatHydrationDevServer,
@@ -315,6 +316,23 @@ describe('SvelteKit hydration route failure diagnostics', () => {
     await expect(
       observeSvelteKitHydrationMarker(page, '/dev-ssr-tabs', domObservation, 1),
     ).rejects.toThrow('hydration marker probe selector=[data-dev-ssr-hydrated] timed out');
+  });
+
+  test('records a hydration marker diagnostic failure without replacing the route assertion', async () => {
+    const domObservation: SvelteKitHydrationRouteDomObservation = {
+      documentReadyState: 'interactive',
+      hydrationMarkerPresent: 'unknown',
+      hydrationMarkerValue: 'unknown',
+    };
+    const page = { $: mock(() => new Promise<null>(() => undefined)) };
+
+    await observeSvelteKitHydrationMarkerBestEffort(page, '/dev-ssr-tabs', domObservation, 1);
+
+    expect(domObservation.diagnosticCaptureError).toContain(
+      'hydration marker probe selector=[data-dev-ssr-hydrated] timed out',
+    );
+    expect(domObservation.hydrationMarkerPresent).toBe('unknown');
+    expect(domObservation.hydrationMarkerValue).toBe('unknown');
   });
 
   test('wraps route failures with route, network, runtime, and DOM state', () => {

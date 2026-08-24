@@ -100,6 +100,12 @@ function callsiteFingerprint(candidate: ThresholdCandidate): string {
     .trim();
 }
 
+function namedDeclarationIdentity(candidate: ThresholdCandidate): string | undefined {
+  return /\b(?:const|let|var)\s+(?<name>[A-Za-z_$][\w$]*)\b/u.exec(candidate.line)?.groups?.[
+    'name'
+  ];
+}
+
 export function isSupportedFile(filePath: string): boolean {
   if (LOCKFILE_NAMES.has(basename(filePath))) return false;
   return SUPPORTED_EXTENSIONS.has(extname(filePath)) || /(?:^|\/)\.husky\/[^/]+$/u.test(filePath);
@@ -225,6 +231,17 @@ export function collectComparableViolations(
   for (const hunk of hunks) {
     const removed = removedEntries.filter((entry) => entry.hunk === hunk);
     const added = addedEntries.filter((entry) => entry.hunk === hunk);
+    const removedNamed = removed.filter(
+      ({ candidate }) => namedDeclarationIdentity(candidate) !== undefined,
+    );
+    const addedNamed = added.filter(
+      ({ candidate }) => namedDeclarationIdentity(candidate) !== undefined,
+    );
+    pairByKey(
+      removedNamed,
+      addedNamed,
+      ({ candidate }) => namedDeclarationIdentity(candidate) ?? '',
+    );
     pairByKey(
       removed,
       added,
@@ -317,6 +334,7 @@ export function collectComparableViolations(
   for (const { candidate: oldCandidate, hunk } of removedEntries) {
     if (
       consumedRemoved.has(oldCandidate) ||
+      hunk.fileDeleted ||
       oldCandidate.baselineValue === undefined ||
       oldCandidate.baselineRenderedValue === undefined ||
       oldCandidate.baselineValue <= oldCandidate.effectiveValue
@@ -381,18 +399,23 @@ export async function readDiffInput(
       : (baseRefOverride ?? Bun.env['BASE_REF'] ?? Bun.env['GITHUB_BASE_REF']);
   if (baseRef === undefined || baseRef.trim().length === 0) return standardInput;
 
-  const result = Bun.spawnSync(fallbackDiffArguments(baseRef), {
-    stdout: 'pipe',
-    stderr: 'pipe',
-  });
-  if (result.exitCode !== 0) {
-    throw new Error(
-      `could not read fallback diff against origin/${baseRef}: ${result.stderr.toString().trim()}`,
-    );
+  const outputs: string[] = [];
+  for (const argumentsForDiff of fallbackDiffArguments(baseRef)) {
+    const result = Bun.spawnSync(argumentsForDiff, { stdout: 'pipe', stderr: 'pipe' });
+    if (result.exitCode !== 0) {
+      throw new Error(
+        `could not read fallback diff against origin/${baseRef}: ${result.stderr.toString().trim()}`,
+      );
+    }
+    outputs.push(result.stdout.toString());
   }
-  return result.stdout.toString();
+  return outputs.join('');
 }
 
-export function fallbackDiffArguments(baseRef: string): string[] {
-  return ['git', 'diff', '--unified=200', `origin/${baseRef}...HEAD`];
+export function fallbackDiffArguments(baseRef: string): string[][] {
+  const range = `origin/${baseRef}...HEAD`;
+  return [
+    ['git', 'diff', '--unified=100000', range, '--', '.', ':(exclude)**/*.json'],
+    ['git', 'diff', '--unified=200', range, '--', '**/*.json'],
+  ];
 }

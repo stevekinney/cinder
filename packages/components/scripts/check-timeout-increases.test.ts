@@ -210,6 +210,26 @@ describe('check-timeout-increases', () => {
     expect(findTimeoutIncreaseViolations(insertedBeforeIncrease)).toHaveLength(1);
   });
 
+  test('matches reordered named waits by identity before source order', () => {
+    const reordered = diffFor(
+      'packages/components/scripts/validate-consumers.ts',
+      [
+        'const FIRST_WAIT_MS = 100;',
+        'const SECOND_WAIT_MS = 200;',
+        'await Bun.sleep(FIRST_WAIT_MS);',
+        'await Bun.sleep(SECOND_WAIT_MS);',
+      ],
+      [
+        'const SECOND_WAIT_MS = 200;',
+        'const FIRST_WAIT_MS = 100;',
+        'await Bun.sleep(SECOND_WAIT_MS);',
+        'await Bun.sleep(FIRST_WAIT_MS);',
+      ],
+    );
+
+    expect(findTimeoutIncreaseViolations(reordered)).toEqual([]);
+  });
+
   test('detects a per-callsite increase when generic threshold values swap', () => {
     const violations = findTimeoutIncreaseViolations(
       diffFor(
@@ -564,6 +584,20 @@ describe('check-timeout-increases', () => {
       '@@ -1 +0,0 @@',
       '-const ROUTE_TIMEOUT = 5_000;',
       diffFor('packages/components/src/new.test.ts', [], ['const ROUTE_TIMEOUT = 10_000;']),
+    ].join('\n');
+
+    expect(findTimeoutIncreaseViolations(diff)).toEqual([]);
+  });
+
+  test('does not compare thresholds in a deleted file with implicit defaults', () => {
+    const diff = [
+      'diff --git a/.github/workflows/removed.yml b/.github/workflows/removed.yml',
+      'deleted file mode 100644',
+      '--- a/.github/workflows/removed.yml',
+      '+++ /dev/null',
+      '@@ -1,2 +0,0 @@',
+      '-timeout-minutes: 30',
+      '-const signal = AbortSignal.timeout(5_000);',
     ].join('\n');
 
     expect(findTimeoutIncreaseViolations(diff)).toEqual([]);
@@ -2049,6 +2083,16 @@ describe('check-timeout-increases', () => {
     expect(findTimeoutIncreaseViolations(diff)).toHaveLength(1);
   });
 
+  test('checks a newly added unaliased promise timer against the implicit baseline', () => {
+    const diff = diffFor(
+      'packages/components/scripts/check-suite.test.ts',
+      [],
+      ["import { setTimeout } from 'node:timers/promises';", 'await setTimeout(10_000);'],
+    );
+
+    expect(findTimeoutIncreaseViolations(diff)).toHaveLength(1);
+  });
+
   test('checks multiline conditional threshold branches', () => {
     const diff = [
       'diff --git a/packages/components/scripts/check-suite.test.ts b/packages/components/scripts/check-suite.test.ts',
@@ -2566,12 +2610,10 @@ describe('check-timeout-increases', () => {
     await expect(readDiffInput(true, null)).resolves.toBe('');
   });
 
-  test('bounds fallback diff context for large files', () => {
+  test('preserves full non-JSON context while bounding large JSON files', () => {
     expect(fallbackDiffArguments('main')).toEqual([
-      'git',
-      'diff',
-      '--unified=200',
-      'origin/main...HEAD',
+      ['git', 'diff', '--unified=100000', 'origin/main...HEAD', '--', '.', ':(exclude)**/*.json'],
+      ['git', 'diff', '--unified=200', 'origin/main...HEAD', '--', '**/*.json'],
     ]);
   });
 });
