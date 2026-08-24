@@ -380,23 +380,63 @@ describe('check-prop-conventions component-name directory scan', () => {
     expect(violation?.shadowedComponent).toBe('statistic');
   });
 
+  test('flags a synthetic regular -es plural whose stem ends in x/ch/sh/s/z', () => {
+    // "checkboxes" stripped of a bare trailing `s` is "checkboxe" — not a
+    // real word and not in the existing-names set. The regular -es plural
+    // (stem ends in x) strips "es" instead, landing on "checkbox", which
+    // DOES exist as a real component and must be flagged.
+    const violation = checkComponentNameForBarePluralShadow(
+      'checkboxes',
+      new Set(['checkbox', 'checkbox-group']),
+    );
+    expect(violation).toBeDefined();
+    expect(violation?.shadowedComponent).toBe('checkbox');
+    expect(violation?.message).toContain('checkbox-group');
+  });
+
+  test('passes a candidate ending in -es when neither derived singular exists', () => {
+    // "gazes" -es-strips to "gaz" (ends in z, a valid -es stem) and plain
+    // -s-strips to "gaze"; neither is in the existing-names set, so this
+    // must not produce a false positive just because the name ends in "es".
+    expect(checkComponentNameForBarePluralShadow('gazes', existingNames)).toBeUndefined();
+  });
+
   test('enumerates directory names from a given root, including one level into experimental/', () => {
     // Hermetic: builds its own temporary component tree rather than asserting
     // on which real components exist, so it never drifts when the real
     // inventory changes. The adjacent "grandfathers tabs/tab" test below is
     // what still exercises the real package tree.
+    //
+    // Mirrors discoverComponentDirectories()'s canonical predicate: a
+    // directory only counts once it has BOTH `<name>.svelte` and
+    // `<name>.types.ts` siblings, so a bare directory (`incomplete-widget`,
+    // no files yet) and a support directory (`_internal`, `icons`) must not
+    // produce a false-positive component name.
     const root = mkdtempSync(join(import.meta.dir, '..', 'src', 'components', '.tmp-dirscan-'));
     try {
-      for (const name of ['widget', 'widget-group']) {
-        mkdirSync(join(root, name), { recursive: true });
-      }
-      mkdirSync(join(root, 'experimental', 'gadget'), { recursive: true });
+      const seedComponent = (parent: string, name: string) => {
+        const directory = join(parent, name);
+        mkdirSync(directory, { recursive: true });
+        writeFileSync(join(directory, `${name}.svelte`), '');
+        writeFileSync(join(directory, `${name}.types.ts`), '');
+      };
+
+      seedComponent(root, 'widget');
+      seedComponent(root, 'widget-group');
+      mkdirSync(join(root, 'incomplete-widget'), { recursive: true });
+      writeFileSync(join(root, 'incomplete-widget', 'incomplete-widget.svelte'), '');
+      seedComponent(root, '_internal');
+      seedComponent(join(root, 'icons'), 'widget-icon');
+      seedComponent(join(root, 'experimental'), 'gadget');
       writeFileSync(join(root, 'not-a-directory.ts'), '');
 
       const names = existingComponentDirectoryNames(root);
       expect(names.has('widget')).toBe(true);
       expect(names.has('widget-group')).toBe(true);
       expect(names.has('gadget')).toBe(true);
+      expect(names.has('incomplete-widget')).toBe(false);
+      expect(names.has('_internal')).toBe(false);
+      expect(names.has('widget-icon')).toBe(false);
       expect(names.has('experimental')).toBe(false);
       expect(names.has('not-a-directory.ts')).toBe(false);
     } finally {

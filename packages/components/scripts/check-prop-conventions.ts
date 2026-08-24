@@ -1,5 +1,5 @@
 import { Glob } from 'bun';
-import { readdirSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
@@ -578,31 +578,57 @@ async function scan(): Promise<PropConventionViolation[]> {
 }
 
 // ---------------------------------------------------------------------------
-// Component-name directory scan (docs/component-api-conventions.md § *Group
-// versus plural naming). A curated collection is named `<Singular>Group`;
+// Component-name directory scan (docs/component-api-conventions.md,
+// "*Group versus plural component names"). A curated collection is named
+// `<Singular>Group`;
 // a bare plural is legal only as a domain mass noun that composes no matching
 // singular component. This is a NEW capability, distinct from `bannedNames`
 // above: that map bans PROP names, this scans COMPONENT directory names.
 // ---------------------------------------------------------------------------
 
 /**
+ * Whether a directory is a real, directory-shaped component: mirrors
+ * `discover-component-directories.ts`'s canonical predicate (which
+ * `check-component-inventory.ts` and the artifact/schema/manifest generators
+ * all rely on) rather than inventing a second definition of "is a component".
+ * A directory qualifies only when it contains BOTH `<name>.svelte` and
+ * `<name>.types.ts` — the marker that the per-directory migration is
+ * complete — which keeps support directories (`_radio`, `icons`, an
+ * in-progress scaffold with only some files written) out of the scan so they
+ * cannot produce a false-positive shadow match.
+ */
+function isComponentDirectory(directory: string, name: string): boolean {
+  if (name.startsWith('_')) return false;
+  return (
+    existsSync(join(directory, `${name}.svelte`)) && existsSync(join(directory, `${name}.types.ts`))
+  );
+}
+
+/**
  * Existing component directory names (kebab-case), e.g. `avatar`,
  * `avatar-group`, `statistic`, `statistic-group`. Descends one level into
  * `experimental/` so an experimental singular still shadows a proposed
- * top-level plural. Used to catch a NEW component name that is a bare plural
- * of an existing singular component instead of `<Singular>Group`.
+ * top-level plural. Only directories that pass `isComponentDirectory` count,
+ * matching what `discoverComponentDirectories()` would enumerate. Used to
+ * catch a NEW component name that is a bare plural of an existing singular
+ * component instead of `<Singular>Group`.
  */
 export function existingComponentDirectoryNames(root: string = componentsDirectory): Set<string> {
   const names = new Set<string>();
   for (const entry of readdirSync(root, { withFileTypes: true })) {
     if (!entry.isDirectory() || entry.name.startsWith('.')) continue;
+    if (entry.name === 'icons') continue;
     if (entry.name === 'experimental') {
-      for (const nested of readdirSync(join(root, entry.name), { withFileTypes: true })) {
-        if (nested.isDirectory() && !nested.name.startsWith('.')) names.add(nested.name);
+      const experimentalRoot = join(root, entry.name);
+      for (const nested of readdirSync(experimentalRoot, { withFileTypes: true })) {
+        if (!nested.isDirectory() || nested.name.startsWith('.')) continue;
+        const nestedDirectory = join(experimentalRoot, nested.name);
+        if (isComponentDirectory(nestedDirectory, nested.name)) names.add(nested.name);
       }
       continue;
     }
-    names.add(entry.name);
+    const directory = join(root, entry.name);
+    if (isComponentDirectory(directory, entry.name)) names.add(entry.name);
   }
   return names;
 }
@@ -614,36 +640,65 @@ export type ComponentNameShadowViolation = {
 };
 
 /**
+ * A stem ending in x/ch/sh/s/z takes `-es` for its regular plural
+ * (`checkbox` → `checkboxes`), rather than a bare trailing `s`. This is the
+ * ONE additional regular-plural shape handled beyond the plain trailing-`s`
+ * strip — still no irregular plurals (`child`/`children`, `datum`/`data`,
+ * …), which stay out of scope.
+ */
+const ES_PLURAL_STEM_ENDING = /(?:x|ch|sh|s|z)$/;
+
+/**
+ * Candidate singular forms to check, in order: the regular `-es` strip when
+ * the remaining stem is one that takes `-es` (`checkboxes` → `checkbox`),
+ * then the plain trailing-`s` strip (`avatars` → `avatar`). Returns at most
+ * two candidates and never the same string twice.
+ */
+function candidateSingulars(candidateName: string): string[] {
+  const candidates: string[] = [];
+  if (candidateName.endsWith('es')) {
+    const esStem = candidateName.slice(0, -2);
+    if (ES_PLURAL_STEM_ENDING.test(esStem)) candidates.push(esStem);
+  }
+  if (candidateName.endsWith('s')) {
+    const sStem = candidateName.slice(0, -1);
+    if (!candidates.includes(sStem)) candidates.push(sStem);
+  }
+  return candidates;
+}
+
+/**
  * Checks a candidate NEW component's kebab-case directory name against the
- * existing component directory set. Strips only a trailing `s` — no
- * irregular-plural handling — and rejects the candidate when what remains is
- * itself an existing singular component: that shape is a collection name and
- * must be `<singular>-group` (or whatever grouping contract the family's
- * `@purpose` documents), never a bare plural.
+ * existing component directory set. Strips only a trailing `s`, or `-es`
+ * when the remaining stem takes the regular `-es` plural (x/ch/sh/s/z) — no
+ * irregular-plural handling beyond that — and rejects the candidate when
+ * what remains is itself an existing singular component: that shape is a
+ * collection name and must be `<singular>-group` (or whatever grouping
+ * contract the family's `@purpose` documents), never a bare plural.
  */
 export function checkComponentNameForBarePluralShadow(
   candidateName: string,
   existingNames: ReadonlySet<string>,
 ): ComponentNameShadowViolation | undefined {
-  if (!candidateName.endsWith('s')) return undefined;
-  const singular = candidateName.slice(0, -1);
-  if (!existingNames.has(singular)) return undefined;
-
-  return {
-    candidateName,
-    shadowedComponent: singular,
-    message:
-      `Component name "${candidateName}" is a bare plural of the existing "${singular}" ` +
-      `component. A curated collection of "${singular}" instances must be named ` +
-      `"${singular}-group" (see ${documentationPath} § *Group versus plural naming), ` +
-      'not a bare plural.',
-  };
+  for (const singular of candidateSingulars(candidateName)) {
+    if (!existingNames.has(singular)) continue;
+    return {
+      candidateName,
+      shadowedComponent: singular,
+      message:
+        `Component name "${candidateName}" is a bare plural of the existing "${singular}" ` +
+        `component. A curated collection of "${singular}" instances must be named ` +
+        `"${singular}-group" (see ${documentationPath}, "*Group versus plural component ` +
+        'names"), not a bare plural.',
+    };
+  }
+  return undefined;
 }
 
 /**
  * Bare-plural component directory names that predate the *Group-vs-plural
- * convention (docs/component-api-conventions.md § *Group versus plural
- * component names) and are deliberately NOT renamed. `tabs` collects `Tab`
+ * convention (docs/component-api-conventions.md, "*Group versus plural
+ * component names") and are deliberately NOT renamed. `tabs` collects `Tab`
  * (via the `Tabs.Trigger` namespace) and is a genuine collection whose bare
  * plural shipped before the rule existed — grandfathered rather than flagged.
  * Add a new name here only with an explicit, reviewed exception; the default
