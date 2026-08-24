@@ -143,6 +143,66 @@ describe('PricingCard', () => {
   });
 });
 
+// BASE_PROPS without onPlanSelect, for cases exercising the optional-when-href-is-set path.
+const { onPlanSelect: _unusedOnPlanSelect, ...BASE_PROPS_NO_SELECT } = BASE_PROPS;
+
+describe('PricingCard href CTA', () => {
+  test('renders a plain button when href is not provided', () => {
+    const { container } = render(PricingCard, { props: { ...BASE_PROPS } });
+    const cta = container.querySelector(
+      '.cinder-pricing-card__footer a, .cinder-pricing-card__footer button',
+    );
+    expect(cta?.tagName).toBe('BUTTON');
+  });
+
+  test('renders the CTA as an anchor when href is provided', () => {
+    const { container } = render(PricingCard, {
+      props: { ...BASE_PROPS_NO_SELECT, href: '/signup' },
+    });
+    const anchor = container.querySelector('.cinder-pricing-card__footer a');
+    expect(anchor).not.toBeNull();
+    expect(anchor?.getAttribute('href')).toBe('/signup');
+    expect(anchor?.textContent).toContain('Get started');
+  });
+
+  test('forwards target and rel to the CTA anchor, scoped to the anchor only', () => {
+    const { container } = render(PricingCard, {
+      props: {
+        ...BASE_PROPS_NO_SELECT,
+        href: '/signup',
+        target: '_blank',
+        rel: 'noopener noreferrer',
+      },
+    });
+    const anchor = container.querySelector('.cinder-pricing-card__footer a');
+    expect(anchor?.getAttribute('target')).toBe('_blank');
+    expect(anchor?.getAttribute('rel')).toBe('noopener noreferrer');
+    // Not spread onto the root element.
+    const root = container.querySelector('.cinder-pricing-card');
+    expect(root?.hasAttribute('target')).toBe(false);
+    expect(root?.hasAttribute('rel')).toBe(false);
+  });
+
+  test('onPlanSelect still fires when both href and onPlanSelect are passed', async () => {
+    const onPlanSelect = mock(() => {});
+    const { container } = render(PricingCard, {
+      props: { ...BASE_PROPS, href: '/signup', onPlanSelect },
+    });
+    const anchor = container.querySelector('.cinder-pricing-card__footer a');
+    expect(anchor).not.toBeNull();
+    await fireEvent.click(anchor!);
+    expect(onPlanSelect).toHaveBeenCalledTimes(1);
+  });
+
+  test('does not throw when href is set and onPlanSelect is omitted', () => {
+    expect(() =>
+      render(PricingCard, {
+        props: { ...BASE_PROPS_NO_SELECT, href: '/signup' },
+      }),
+    ).not.toThrow();
+  });
+});
+
 describe('PricingCard each-key behavior', () => {
   test('deduplicates features and emits a devWarn when duplicate values are present', async () => {
     // With $derived.by dedup, the component never passes duplicates to the keyed

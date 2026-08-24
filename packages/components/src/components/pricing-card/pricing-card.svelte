@@ -27,6 +27,9 @@
     features,
     callToActionLabel,
     onPlanSelect,
+    href,
+    target,
+    rel,
     caveat,
     selected = false,
     class: className,
@@ -92,11 +95,28 @@
   </div>
 
   <div class="cinder-pricing-card__footer">
-    <Button
-      label={callToActionLabel}
-      variant={selected ? 'primary' : 'secondary'}
-      fullWidth
-      onclick={onPlanSelect}
-    />
+    <!-- Only the inner CTA element swaps between an anchor and a button — the
+         outer card structure stays a fixed div (see steps.svelte for the same
+         per-item action-swap pattern). onPlanSelect is not mutually exclusive
+         with href: both may be passed, mirroring Button's own anchor branch,
+         which is useful for firing analytics alongside navigation. -->
+    {#if href !== undefined}
+      <Button
+        label={callToActionLabel}
+        variant={selected ? 'primary' : 'secondary'}
+        fullWidth
+        {href}
+        {target}
+        {rel}
+        onclick={onPlanSelect}
+      />
+    {:else}
+      <Button
+        label={callToActionLabel}
+        variant={selected ? 'primary' : 'secondary'}
+        fullWidth
+        onclick={onPlanSelect}
+      />
+    {/if}
   </div>
 </div>

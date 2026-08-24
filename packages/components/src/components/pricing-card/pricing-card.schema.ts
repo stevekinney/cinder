@@ -23,6 +23,19 @@ const schema = {
       type: 'string',
       description: 'Label for the call-to-action button.',
     },
+    href: {
+      type: 'string',
+      description:
+        'When set, the CTA renders as an anchor (`<a href>`) instead of a\n`<button>`. The outer card structure stays a fixed `<div>` — only the\ninner CTA element swaps.',
+    },
+    target: {
+      type: 'string',
+      description: '`target` for the CTA anchor. Only applied when `href` is set.',
+    },
+    rel: {
+      type: 'string',
+      description: '`rel` for the CTA anchor. Only applied when `href` is set.',
+    },
     caveat: {
       type: 'string',
       description:
@@ -45,8 +58,8 @@ const schema = {
       {
         name: 'onPlanSelect',
         reason: 'function-or-snippet',
-        required: true,
-        description: 'Called when the CTA button is clicked.',
+        description:
+          'Called when the CTA is activated. Optional when `href` is set, but not\nmutually exclusive with it — pass both to navigate and run a side effect\nsuch as analytics tracking (mirrors the cinder Button anchor branch).',
       },
     ],
   },
