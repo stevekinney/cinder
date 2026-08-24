@@ -2,6 +2,7 @@
 import { describe, expect, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
 
+import { injectStrippedStyles } from '../../test/css.ts';
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
@@ -48,5 +49,36 @@ describe('Radio', () => {
     const label = container.querySelector('label[for="r-a"]');
     expect(label).not.toBeNull();
     expect(container.querySelector('#r-a')).not.toBeNull();
+  });
+
+  test('the error live region is mounted before any error is set (CIN-315: FormFieldFrame defaults to errorMountedOnDemand=false)', () => {
+    const { container } = render(Wrapper, { name: 'choice', value: 'a', options });
+    expect(container.querySelector('.cinder-form-field__error')).not.toBeNull();
+  });
+
+  test('the errorless live region has no layout footprint (shared _form-field-error.css, CIN-315 follow-up)', async () => {
+    const radioCss = await Bun.file(new URL('./radio.css', import.meta.url)).text();
+    const radioGroupCss = await Bun.file(
+      new URL('../radio-group/radio-group.css', import.meta.url),
+    ).text();
+    const sharedErrorCss = await Bun.file(
+      new URL('../../styles/components/_form-field-error.css', import.meta.url),
+    ).text();
+    const removeStyles = injectStrippedStyles(radioCss, radioGroupCss, sharedErrorCss);
+    try {
+      const { container } = render(Wrapper, { name: 'choice', value: 'a', options });
+      const errorRegion = container.querySelector('.cinder-form-field__error');
+      expect(errorRegion).not.toBeNull();
+      const computed = getComputedStyle(errorRegion as Element);
+      // Sr-only pattern (CIN-315 review follow-up), not visibility:hidden —
+      // visibility:hidden removes an element from the accessibility tree
+      // (navigation-bar.a11y.md), which would defeat the announcement fix.
+      expect(computed.position).toBe('absolute');
+      expect(computed.visibility).not.toBe('hidden');
+      expect(computed.display).not.toBe('none');
+      expect(computed.clip).toBe('rect(0, 0, 0, 0)');
+    } finally {
+      removeStyles();
+    }
   });
 });
