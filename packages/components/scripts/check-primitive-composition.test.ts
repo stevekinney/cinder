@@ -329,7 +329,7 @@ describe('primitive composition guard', () => {
     expect(
       findPrimitiveCompositionViolations(
         '.first { display: grid; grid-template-columns: 1fr; } .second { display: grid; grid-template-columns: 1fr; }',
-        'mosaic-grid/mosaic-grid.css',
+        'grid/grid.css',
       ),
     ).toHaveLength(1);
   });
@@ -359,7 +359,7 @@ describe('primitive composition guard', () => {
     expect(
       findPrimitiveCompositionViolations(
         '.first { display: grid; grid-template-columns: 1fr; } .second { display: grid; grid-template-columns: 1fr; } .third { display: grid; grid-template-columns: 1fr; }',
-        'mosaic-grid/mosaic-grid.css',
+        'grid/grid.css',
       ),
     ).toHaveLength(1);
   });
@@ -368,7 +368,7 @@ describe('primitive composition guard', () => {
     expect(
       findPrimitiveCompositionViolations(
         '.first { display: grid; grid-template-columns: 1fr; } .second, .third { display: grid; grid-template-columns: 1fr; }',
-        'mosaic-grid/mosaic-grid.css',
+        'grid/grid.css',
       ),
     ).toHaveLength(1);
   });

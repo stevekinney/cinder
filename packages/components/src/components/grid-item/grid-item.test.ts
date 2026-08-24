@@ -145,6 +145,42 @@ describe('GridItem', () => {
     expect(root.getAttribute('data-cinder-row-span')).toBe('true');
   });
 
+  test('normalizes invalid numeric rowEnd (0, non-integer) to undefined, leaving rowSpan applied', () => {
+    const zeroCase = render(GridItem, {
+      props: { rowSpan: 2, rowEnd: 0, children: textSnippet('content') },
+    });
+    const zeroRoot = zeroCase.container.querySelector('.cinder-grid-item') as HTMLElement;
+    expect(zeroRoot.style.getPropertyValue('--cinder-grid-item-row-end')).toBe('auto');
+    expect(zeroRoot.style.getPropertyValue('--cinder-grid-item-row-span')).toBe('2');
+    expect(zeroRoot.getAttribute('data-cinder-row-span')).toBe('true');
+    zeroCase.unmount();
+
+    const fractionalCase = render(GridItem, {
+      props: { rowSpan: 2, rowEnd: 1.5, children: textSnippet('content') },
+    });
+    const fractionalRoot = fractionalCase.container.querySelector(
+      '.cinder-grid-item',
+    ) as HTMLElement;
+    expect(fractionalRoot.style.getPropertyValue('--cinder-grid-item-row-end')).toBe('auto');
+    expect(fractionalRoot.style.getPropertyValue('--cinder-grid-item-row-span')).toBe('2');
+    expect(fractionalRoot.getAttribute('data-cinder-row-span')).toBe('true');
+  });
+
+  test('normalizes invalid numeric columnStart/columnEnd/rowStart to undefined', () => {
+    const { container } = render(GridItem, {
+      props: {
+        columnStart: 0,
+        columnEnd: 1.5,
+        rowStart: 0,
+        children: textSnippet('content'),
+      },
+    });
+    const root = container.querySelector('.cinder-grid-item') as HTMLElement;
+    expect(root.style.getPropertyValue('--cinder-grid-item-column-start')).toBe('');
+    expect(root.style.getPropertyValue('--cinder-grid-item-column-end')).toBe('');
+    expect(root.style.getPropertyValue('--cinder-grid-item-row-start')).toBe('');
+  });
+
   test('does not leak an outer rowEnd custom property into a nested Grid.Item that omits it', () => {
     const { container } = render(NestedGridItemFixture, {
       props: { outerRowEnd: 'span 3' },

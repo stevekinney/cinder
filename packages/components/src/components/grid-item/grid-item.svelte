@@ -30,14 +30,28 @@
     ...rest
   }: GridItemProps = $props();
 
+  /**
+   * Normalizes an explicit grid-line placement value (`columnStart`,
+   * `columnEnd`, `rowStart`, `rowEnd`). A numeric grid line of `0` or a
+   * non-integer isn't a valid CSS grid line, matching the `integer, not: {
+   * const: 0 }` constraint these props carry in the generated schema — the
+   * runtime should refuse the same inputs the schema does. An empty string
+   * is likewise treated as "not provided" rather than passed through.
+   */
+  function normalizedLineValue(value: number | string | undefined): string | undefined {
+    if (value === undefined) return undefined;
+    if (typeof value === 'number') {
+      return Number.isInteger(value) && value !== 0 ? String(value) : undefined;
+    }
+    return value !== '' ? value : undefined;
+  }
+
   const columnSpan = $derived(span !== undefined ? String(span) : undefined);
-  const resolvedColumnStart = $derived(columnStart !== undefined ? String(columnStart) : undefined);
-  const resolvedColumnEnd = $derived(columnEnd !== undefined ? String(columnEnd) : undefined);
+  const resolvedColumnStart = $derived(normalizedLineValue(columnStart));
+  const resolvedColumnEnd = $derived(normalizedLineValue(columnEnd));
   const resolvedRowSpan = $derived(rowSpan !== undefined ? String(rowSpan) : undefined);
-  const resolvedRowStart = $derived(rowStart !== undefined ? String(rowStart) : undefined);
-  const resolvedRowEnd = $derived(
-    rowEnd !== undefined && String(rowEnd) !== '' ? String(rowEnd) : undefined,
-  );
+  const resolvedRowStart = $derived(normalizedLineValue(rowStart));
+  const resolvedRowEnd = $derived(normalizedLineValue(rowEnd));
   const shouldApplyColumnSpan = $derived(
     columnSpan !== undefined && resolvedColumnEnd === undefined,
   );
