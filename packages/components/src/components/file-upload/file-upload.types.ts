@@ -12,7 +12,7 @@ export type RejectedFile = {
   message: string;
 };
 
-export type FileUploadStatus = 'pending' | 'uploading' | 'success' | 'error';
+export type FileUploadStatus = 'pending' | 'uploading' | 'ready' | 'error';
 
 export type FileUploadEntry = {
   /** Stable key used for rendering. */
