@@ -1,15 +1,21 @@
 @layer cinder.components {
   /* Hides FormFieldFrame's always-present error live region (CIN-315: the
      region now mounts by default, not only when a consumer opted in) when no
-     error is active. `visibility: hidden` — not `display: none` — keeps the
-     `aria-live` region in the accessibility tree so it stays ready to
-     announce the first time an error is set; a freshly-mounted live region
-     is not reliably announced by NVDA/JAWS. `position: absolute` removes the
-     node from flex, grid, and block layout entirely so an errorless region
+     error is active, using the same screen-reader-only pattern as the shared
+     `.cinder-sr-only` utility (styles/utilities.css) rather than
+     `visibility: hidden`. `visibility: hidden` removes an element from the
+     accessibility tree immediately (see navigation-bar.a11y.md's discussion
+     of the same property), which would silently defeat the very fix CIN-315
+     makes: a live region that isn't in the AT tree cannot announce the
+     error→populated transition either. `position: absolute` takes the node
+     out of flex, grid, and block layout entirely so an errorless region
      never reserves space or consumes a flex/grid `gap` in its parent,
-     regardless of that parent's layout mode. `height: 0` and
-     `overflow: hidden` are defense in depth for a parent that gives the node
-     an explicit static position.
+     regardless of that parent's layout mode; collapsing it to a 1px box with
+     `clip: rect(0, 0, 0, 0)` keeps it visually invisible without touching
+     `visibility` or `display`, so it stays exposed to assistive technology
+     the entire time. When an error is set, `data-cinder-error` is present,
+     this rule no longer matches, and the node returns to its normal static
+     position and size in the flow.
 
      Every FormFieldFrame consumer's error node carries the shared
      `.cinder-form-field__error` base class — form-field-frame.svelte builds
@@ -18,11 +24,19 @@
      own `errorClass` — which is what lets this one shared rule cover every
      consumer. Lifted out of Select/Combobox/MultiSelect's identical
      per-component copies once every FormFieldFrame consumer started
-     rendering this node by default. */
+     rendering this node by default; those copies had the same
+     `visibility: hidden` accessibility-tree flaw this rule fixes, so this
+     change corrects it family-wide, not just for the newly-covered
+     consumers. */
   .cinder-form-field__error:not([data-cinder-error]) {
     position: absolute;
-    visibility: hidden;
-    height: 0;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
     overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 }

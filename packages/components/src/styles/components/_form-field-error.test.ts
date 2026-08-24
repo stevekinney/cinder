@@ -20,17 +20,29 @@ const emptySnippet = createRawSnippet(() => ({
 afterEach(() => cleanup());
 
 describe('shared _form-field-error.css', () => {
-  test('declares the collapsed-when-errorless rule against the base class', () => {
+  test('declares the collapsed-when-errorless rule using the sr-only pattern, not visibility:hidden', () => {
     // CIN-315 review follow-up: this rule used to be duplicated per-component
     // in Select/Combobox/MultiSelect; it now lives here once, imported by the
     // required `cinder/styles` base so every FormFieldFrame consumer inherits
-    // it without a per-component copy.
-    expect(sharedErrorCss).toContain(
+    // it without a per-component copy. It must NOT use `visibility: hidden`
+    // (or `display: none`) — both remove an element from the accessibility
+    // tree immediately (see navigation-bar.a11y.md), which would silently
+    // defeat the fix: a live region that isn't in the AT tree cannot
+    // announce the error→populated transition either.
+    const declarationBlock = sharedErrorCss.slice(
+      sharedErrorCss.indexOf('.cinder-form-field__error:not([data-cinder-error]) {'),
+    );
+    expect(declarationBlock).toContain(
       '.cinder-form-field__error:not([data-cinder-error]) {\n    position: absolute;',
     );
+    expect(declarationBlock).not.toContain('visibility: hidden');
+    expect(declarationBlock).not.toContain('display: none');
+    // Mirrors the shared `.cinder-sr-only` utility's exact technique
+    // (styles/utilities.css): 1px box + clip, not visibility.
+    expect(declarationBlock).toContain('clip: rect(0, 0, 0, 0);');
   });
 
-  test('removes the errorless live region from layout while keeping it in the accessibility tree', () => {
+  test('removes the errorless live region from layout while keeping it exposed to assistive technology', () => {
     const removeStyles = injectStrippedStyles(sharedErrorCss);
     try {
       const { container } = render(FormField, {
@@ -40,20 +52,30 @@ describe('shared _form-field-error.css', () => {
       expect(errorRegion).not.toBeNull();
       expect(errorRegion?.getAttribute('data-cinder-error')).toBeNull();
       expect(errorRegion?.getAttribute('aria-live')).toBe('polite');
+      // Not removed from the accessibility tree: no aria-hidden, and (per
+      // navigation-bar.a11y.md) neither `display: none` nor
+      // `visibility: hidden` — either would pull the live region out of the
+      // AT tree exactly like this ticket's original bug.
+      expect(errorRegion?.getAttribute('aria-hidden')).toBeNull();
 
       const computed = getComputedStyle(errorRegion as Element);
-      // Computed collapse, not a screenshot: out of flow (no reserved space
-      // or flex/grid gap contribution) while still present for AT.
+      expect(computed.display).not.toBe('none');
+      expect(computed.visibility).not.toBe('hidden');
+      // Computed collapse, not a screenshot: out of flow (position:absolute,
+      // no reserved space or flex/grid gap contribution) and visually
+      // clipped to nothing, via the same mechanism as `.cinder-sr-only`.
       expect(computed.position).toBe('absolute');
-      expect(computed.visibility).toBe('hidden');
-      expect(computed.height).toBe('0px');
+      expect(computed.width).toBe('1px');
+      expect(computed.height).toBe('1px');
       expect(computed.overflow).toBe('hidden');
+      expect(computed.clip).toBe('rect(0, 0, 0, 0)');
+      expect(computed.whiteSpace).toBe('nowrap');
     } finally {
       removeStyles();
     }
   });
 
-  test('restores normal flow and visibility once an error is set', () => {
+  test('restores normal flow and full visibility once an error is set', () => {
     const removeStyles = injectStrippedStyles(sharedErrorCss);
     try {
       const { container } = render(FormField, {
@@ -69,7 +91,7 @@ describe('shared _form-field-error.css', () => {
 
       const computed = getComputedStyle(errorRegion as Element);
       expect(computed.position).not.toBe('absolute');
-      expect(computed.visibility).not.toBe('hidden');
+      expect(computed.clip).not.toBe('rect(0, 0, 0, 0)');
     } finally {
       removeStyles();
     }

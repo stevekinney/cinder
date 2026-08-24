@@ -341,8 +341,13 @@ describe('DatePicker', () => {
       });
       const errorRegion = container.querySelector('.cinder-date-picker__error');
       const computed = getComputedStyle(errorRegion as Element);
+      // Sr-only pattern (CIN-315 review follow-up), not visibility:hidden —
+      // visibility:hidden removes an element from the accessibility tree
+      // (navigation-bar.a11y.md), which would defeat the announcement fix.
       expect(computed.position).toBe('absolute');
-      expect(computed.visibility).toBe('hidden');
+      expect(computed.visibility).not.toBe('hidden');
+      expect(computed.display).not.toBe('none');
+      expect(computed.clip).toBe('rect(0, 0, 0, 0)');
     } finally {
       removeStyles();
     }
