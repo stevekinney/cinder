@@ -830,18 +830,18 @@ describe('chart palette distinguishability + secondary CVD lightness cue', () =>
 });
 
 // ---------------------------------------------------------------------------
-// --cinder-code-tab-size: not a color token, so it has no contrast ratio to
+// --cinder-type-tab-size: not a color token, so it has no contrast ratio to
 // check — this block instead covers declaration, value, and usage, mirroring
 // the per-token coverage this file is the checked-in home for.
 // ---------------------------------------------------------------------------
 
-describe('--cinder-code-tab-size (declaration, value, usage)', () => {
+describe('--cinder-type-tab-size (declaration, value, usage)', () => {
   it('is declared in tokens-base.css', () => {
-    expect(() => readTokenValue(css, '--cinder-code-tab-size')).not.toThrow();
+    expect(() => readTokenValue(css, '--cinder-type-tab-size')).not.toThrow();
   });
 
   it('resolves to a positive integer', () => {
-    const value = readTokenValue(css, '--cinder-code-tab-size');
+    const value = readTokenValue(css, '--cinder-type-tab-size');
     expect(value).toMatch(/^\d+$/);
     expect(Number.parseInt(value, 10)).toBeGreaterThan(0);
   });
@@ -857,7 +857,7 @@ describe('--cinder-code-tab-size (declaration, value, usage)', () => {
         join(dirname(fileURLToPath(import.meta.url)), relativePath),
         'utf8',
       );
-      expect(consumerCss).toContain('var(--cinder-code-tab-size)');
+      expect(consumerCss).toContain('var(--cinder-type-tab-size)');
     }
   });
 });

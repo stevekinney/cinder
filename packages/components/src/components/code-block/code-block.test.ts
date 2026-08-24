@@ -107,7 +107,7 @@ describe('CodeBlock — static structure', () => {
 
   test('preserves two-space tab sizing on plain and highlighted code via the shared token', async () => {
     const css = await Bun.file(new URL('./code-block.css', import.meta.url)).text();
-    expect(css).toContain('tab-size: var(--cinder-code-tab-size);');
+    expect(css).toContain('tab-size: var(--cinder-type-tab-size);');
   });
 
   test('public source-excerpt variables control the shared viewport and both render paths', async () => {

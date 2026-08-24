@@ -44,17 +44,19 @@ describe('Input rendering', () => {
     const css = await Bun.file(new URL('./input.css', import.meta.url)).text();
 
     expect(css).toMatch(
-      /\.cinder-input\[data-cinder-variant='code'\]\s*\{[^}]*font-family:\s*var\(--cinder-font-mono\);[^}]*font-size:\s*var\(--cinder-text-sm\);[^}]*line-height:\s*var\(--cinder-leading-normal\);[^}]*tab-size:\s*var\(--cinder-code-tab-size\);/,
+      /\.cinder-input\[data-cinder-variant='code'\]\s*\{[^}]*font-family:\s*var\(--cinder-font-mono\);[^}]*font-size:\s*var\(--cinder-text-sm\);[^}]*line-height:\s*var\(--cinder-leading-normal\);[^}]*tab-size:\s*var\(--cinder-type-tab-size\);/,
     );
   });
 
-  test('code variant locks any inner <code> element to the field metrics', async () => {
+  test('code variant locks any inner <code> element to the field metrics, excluding addon slots', async () => {
     // <input> is a void element and can never host a <code> descendant, so
     // the inherit-lock rule is scoped to the field wrapper, not .cinder-input.
+    // It excludes the leading/trailing addon slots so a consumer's own
+    // addon content (e.g. a <code> badge) keeps its own styling.
     const css = await Bun.file(new URL('./input.css', import.meta.url)).text();
 
     expect(css).toMatch(
-      /\.cinder-input-field\[data-cinder-variant='code'\]\s*:where\(code\)\s*\{\s*all:\s*unset;\s*font:\s*inherit;\s*\}/,
+      /\.cinder-input-field\[data-cinder-variant='code'\]\s*:where\(code\):not\(\s*\.cinder-input-group__leading,\s*\.cinder-input-group__leading \*,\s*\.cinder-input-group__trailing,\s*\.cinder-input-group__trailing \*\s*\)\s*\{\s*all:\s*unset;\s*font:\s*inherit;\s*\}/,
     );
   });
 
@@ -65,6 +67,24 @@ describe('Input rendering', () => {
     const field = container.querySelector('.cinder-input-field');
 
     expect(field?.getAttribute('data-cinder-variant')).toBe('code');
+  });
+
+  test('code variant does not reset a <code> element rendered inside a leading/trailing addon', () => {
+    const { container } = render(Input, {
+      props: {
+        id: 'amount',
+        value: '',
+        label: 'Amount',
+        variant: 'code',
+        leading: createRawSnippet(() => ({
+          render: () => '<span><code class="my-addon-code">USD</code></span>',
+        })),
+      },
+    });
+
+    const addonCode = container.querySelector('.cinder-input-group__leading code');
+    expect(addonCode).not.toBeNull();
+    expect(addonCode?.classList.contains('my-addon-code')).toBe(true);
   });
 
   test('standalone FormField presentation is included by the Input sidecar', async () => {

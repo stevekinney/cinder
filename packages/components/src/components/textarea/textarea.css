@@ -102,7 +102,7 @@
     font-family: var(--cinder-font-mono);
     font-size: var(--cinder-text-sm);
     line-height: var(--cinder-leading-normal);
-    tab-size: var(--cinder-code-tab-size);
+    tab-size: var(--cinder-type-tab-size);
   }
 
   /* Defensive: text written between `<textarea>` tags is parsed as literal

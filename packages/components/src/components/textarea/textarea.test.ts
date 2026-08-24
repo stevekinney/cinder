@@ -140,7 +140,7 @@ describe('Textarea', () => {
     const css = await Bun.file(new URL('./textarea.css', import.meta.url)).text();
 
     expect(css).toMatch(
-      /\.cinder-textarea\[data-cinder-variant='code'\]\s*\{[^}]*font-family:\s*var\(--cinder-font-mono\);[^}]*font-size:\s*var\(--cinder-text-sm\);[^}]*line-height:\s*var\(--cinder-leading-normal\);[^}]*tab-size:\s*var\(--cinder-code-tab-size\);/,
+      /\.cinder-textarea\[data-cinder-variant='code'\]\s*\{[^}]*font-family:\s*var\(--cinder-font-mono\);[^}]*font-size:\s*var\(--cinder-text-sm\);[^}]*line-height:\s*var\(--cinder-leading-normal\);[^}]*tab-size:\s*var\(--cinder-type-tab-size\);/,
     );
   });
 
