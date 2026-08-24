@@ -59,6 +59,22 @@
     }
     return result;
   });
+
+  /**
+   * Compose `rel` for the CTA anchor (mirrors grid-list-item.svelte).
+   * When target matches "_blank" (case-insensitive), merge "noopener" and
+   * "noreferrer" into whatever the consumer supplied, deduplicating tokens —
+   * this closes the reverse-tabnabbing hole a bare target="_blank" leaves
+   * open, without clobbering a consumer-provided rel.
+   */
+  const composedRel = $derived.by(() => {
+    const isBlank = target?.toLowerCase() === '_blank';
+    if (!isBlank) return rel;
+    const tokens = new Set((rel ?? '').split(/\s+/).filter(Boolean));
+    tokens.add('noopener');
+    tokens.add('noreferrer');
+    return [...tokens].join(' ');
+  });
 </script>
 
 <div
@@ -107,7 +123,7 @@
         fullWidth
         {href}
         {target}
-        {rel}
+        rel={composedRel}
         onclick={onPlanSelect}
       />
     {:else}

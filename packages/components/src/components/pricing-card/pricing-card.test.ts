@@ -183,6 +183,40 @@ describe('PricingCard href CTA', () => {
     expect(root?.hasAttribute('rel')).toBe(false);
   });
 
+  test('target="_blank" with no rel auto-composes rel="noopener noreferrer" (reverse-tabnabbing guard)', () => {
+    const { container } = render(PricingCard, {
+      props: { ...BASE_PROPS_NO_SELECT, href: '/signup', target: '_blank' },
+    });
+    const anchor = container.querySelector('.cinder-pricing-card__footer a');
+    const relTokens = (anchor?.getAttribute('rel') ?? '').split(/\s+/);
+    expect(relTokens).toContain('noopener');
+    expect(relTokens).toContain('noreferrer');
+  });
+
+  test('target="_blank" merges into a consumer-supplied rel, deduplicating tokens (mirrors grid-list-item)', () => {
+    const { container } = render(PricingCard, {
+      props: { ...BASE_PROPS_NO_SELECT, href: '/signup', target: '_blank', rel: 'external' },
+    });
+    const anchor = container.querySelector('.cinder-pricing-card__footer a');
+    const relTokens = (anchor?.getAttribute('rel') ?? '').split(/\s+/);
+    expect(relTokens).toContain('external');
+    expect(relTokens).toContain('noopener');
+    expect(relTokens).toContain('noreferrer');
+    // no duplicates
+    expect(new Set(relTokens).size).toBe(relTokens.length);
+  });
+
+  test('non-_blank target does not inject security tokens into rel', () => {
+    const { container } = render(PricingCard, {
+      props: { ...BASE_PROPS_NO_SELECT, href: '/signup', target: '_self', rel: 'external' },
+    });
+    const anchor = container.querySelector('.cinder-pricing-card__footer a');
+    const relTokens = (anchor?.getAttribute('rel') ?? '').split(/\s+/);
+    expect(relTokens).not.toContain('noopener');
+    expect(relTokens).not.toContain('noreferrer');
+    expect(relTokens).toContain('external');
+  });
+
   test('onPlanSelect still fires when both href and onPlanSelect are passed', async () => {
     const onPlanSelect = mock(() => {});
     const { container } = render(PricingCard, {
