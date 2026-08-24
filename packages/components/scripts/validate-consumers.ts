@@ -1213,6 +1213,7 @@ const SVELTEKIT_DEV_SSR_READINESS_TIMEOUT_MS = 25_000;
 const SVELTEKIT_DEV_SSR_POLL_INTERVAL_MS = 200;
 const DEVELOPMENT_SERVER_TEARDOWN_TIMEOUT_MS = 5_000;
 const HYDRATION_ROUTE_DIAGNOSTIC_MAX_ITEMS = 2;
+const HYDRATION_ROUTE_DIAGNOSTIC_COLLECTION_MAX_ITEMS = 20;
 const HYDRATION_ROUTE_DIAGNOSTIC_ITEM_CHARS = 600;
 const HYDRATION_ROUTE_DIAGNOSTIC_CAUSE_CHARS = 800;
 const HYDRATION_ROUTE_DIAGNOSTIC_MAX_CHARS = 6_000;
@@ -2545,29 +2546,28 @@ async function assertSvelteKitHydrationRoute(
   teardownFailures: TeardownStepFailure[],
 ): Promise<void> {
   const page = await context.newPage();
-  const errors: string[] = [];
-  const nonOkResponses: string[] = [];
-  const requestFailures: string[] = [];
+  const errors = createBoundedDiagnosticCollection();
+  const nonOkResponses = createBoundedDiagnosticCollection();
+  const requestFailures = createBoundedDiagnosticCollection();
   page.on('crash', () => browserEvents.push(`page:crash route=${routePath}`));
   page.on('requestfailed', (request) => {
     const failureText = request.failure()?.errorText ?? 'unknown';
     const event = `requestfailed route=${routePath} url=${request.url()} failure=${failureText}`;
-    requestFailures.push(event);
-    browserEvents.push(event);
+    recordBoundedDiagnostic(requestFailures, event);
   });
   page.on('response', (response) => {
     const status = response.status();
     if (status >= 200 && status < 400) return;
-    nonOkResponses.push(`${status} ${response.url()}`);
+    recordBoundedDiagnostic(nonOkResponses, `${status} ${response.url()}`);
   });
-  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('pageerror', (error) => recordBoundedDiagnostic(errors, error.message));
   page.on('console', (message) => {
     const text = message.text();
     if (
       message.type() === 'error' ||
       (message.type() === 'warning' && isHydrationConsoleWarning(text))
     ) {
-      errors.push(text);
+      recordBoundedDiagnostic(errors, text);
     }
   });
 
@@ -2579,11 +2579,15 @@ async function assertSvelteKitHydrationRoute(
       waitUntil: 'domcontentloaded',
     });
     await page.waitForLoadState('load', { timeout: 5_000 });
-    await assertSvelteKitHydrationRouteContent(page, errors, routePath);
+    await assertSvelteKitHydrationRouteContent(page, errors.values, routePath);
 
-    if (errors.length > 0) {
+    if (errors.values.length > 0) {
       fail(
-        `sveltekit-consumer ${label} ${routePath} emitted client hydration/runtime errors:\n${errors.map((error) => `  ${error}`).join('\n')}`,
+        `sveltekit-consumer ${label} ${routePath} emitted client hydration/runtime errors:\n${boundedDiagnosticValues(
+          errors,
+        )
+          .map((error) => `  ${error}`)
+          .join('\n')}`,
       );
     }
   } catch (error) {
@@ -2592,9 +2596,9 @@ async function assertSvelteKitHydrationRoute(
     try {
       failureSnapshot = await captureSvelteKitHydrationRouteFailureSnapshot(page, {
         browserEvents,
-        errors,
-        nonOkResponses,
-        requestFailures,
+        errors: boundedDiagnosticValues(errors),
+        nonOkResponses: boundedDiagnosticValues(nonOkResponses),
+        requestFailures: boundedDiagnosticValues(requestFailures),
         routePath,
       });
     } catch (captureError) {
@@ -2602,9 +2606,9 @@ async function assertSvelteKitHydrationRoute(
         ...unknownSvelteKitHydrationRouteFailureSnapshot(routePath),
         browserEvents: browserEvents.filter((event) => !event.startsWith('requestfailed ')),
         diagnosticCaptureError: errorMessage(captureError),
-        nonOkResponses: [...nonOkResponses],
-        requestFailures: [...requestFailures],
-        runtimeErrors: [...errors],
+        nonOkResponses: boundedDiagnosticValues(nonOkResponses),
+        requestFailures: boundedDiagnosticValues(requestFailures),
+        runtimeErrors: boundedDiagnosticValues(errors),
       };
     }
   }
@@ -2690,6 +2694,33 @@ export type SvelteKitHydrationRouteFailureSnapshot = {
   browserEvents: readonly string[];
   diagnosticCaptureError?: string;
 };
+
+export type BoundedDiagnosticCollection = {
+  omitted: number;
+  values: string[];
+};
+
+export function createBoundedDiagnosticCollection(): BoundedDiagnosticCollection {
+  return { omitted: 0, values: [] };
+}
+
+export function recordBoundedDiagnostic(
+  collection: BoundedDiagnosticCollection,
+  value: string,
+): void {
+  if (collection.values.length < HYDRATION_ROUTE_DIAGNOSTIC_COLLECTION_MAX_ITEMS) {
+    collection.values.push(value);
+    return;
+  }
+  collection.omitted += 1;
+}
+
+export function boundedDiagnosticValues(
+  collection: BoundedDiagnosticCollection,
+): readonly string[] {
+  if (collection.omitted === 0) return collection.values;
+  return [...collection.values, `... (${collection.omitted} additional collected item(s) omitted)`];
+}
 
 type SvelteKitHydrationRouteFailureInput = {
   cause: unknown;

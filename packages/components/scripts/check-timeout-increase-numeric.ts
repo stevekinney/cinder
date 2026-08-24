@@ -82,7 +82,7 @@ export type BunTestTimeoutArgument = {
 };
 
 export type WaitThresholdArgument = BunTestTimeoutArgument & {
-  label: 'bun.sleep' | 'fetchWithTimeout' | 'setTimeout' | 'waitForUrl';
+  label: 'bun.sleep' | 'fetchWithTimeout' | 'setTimeout' | 'waitForTimeout' | 'waitForUrl';
 };
 
 function findCallArgument(
@@ -153,6 +153,34 @@ export function findWaitThresholdArguments(analysis: string): WaitThresholdArgum
     ...findCallArgument(analysis, /\bwaitForUrl\s*\(/gu, 1, 'waitForUrl'),
     ...findCallArgument(analysis, /\bfetchWithTimeout\s*\(/gu, 1, 'fetchWithTimeout'),
   ];
+}
+
+export function findWaitThresholdBounds(analysis: string): WaitThresholdArgument[] {
+  const bounds: WaitThresholdArgument[] = [];
+  const callPattern =
+    /\b(?<label>Bun\.sleep|waitForTimeout|waitForUrl|fetchWithTimeout)\s*\([\s\S]*?\bMath\.(?:min|max)\s*\(\s*(?<value>\d[\d_]*(?:\.\d[\d_]*)?)/gu;
+  for (const match of analysis.matchAll(callPattern)) {
+    const renderedValue = match.groups?.['value'];
+    const label = match.groups?.['label'];
+    let thresholdLabel: WaitThresholdArgument['label'];
+    switch (label) {
+      case 'Bun.sleep':
+      case 'fetchWithTimeout':
+      case 'waitForTimeout':
+      case 'waitForUrl':
+        thresholdLabel = label;
+        break;
+      default:
+        continue;
+    }
+    if (renderedValue === undefined) continue;
+    bounds.push({
+      label: thresholdLabel,
+      offset: (match.index ?? 0) + match[0].lastIndexOf(renderedValue),
+      renderedValue,
+    });
+  }
+  return bounds;
 }
 
 export function findBunTestTimeoutArguments(analysis: string): BunTestTimeoutArgument[] {

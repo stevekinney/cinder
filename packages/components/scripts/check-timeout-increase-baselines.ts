@@ -92,6 +92,14 @@ export function implicitBaselineForMatch(
   analysisLine: string,
   candidateOffset: number,
 ): ThresholdBaseline | undefined {
+  if (
+    normalizeThresholdKind(label) === 'timeout' &&
+    /\bexpect(?:\.poll)?\s*\(/u.test(
+      `${analysisBeforeLine}\n${analysisLine.slice(0, candidateOffset)}`,
+    )
+  ) {
+    return { renderedValue: '5_000 (implicit Playwright expect timeout)', value: 5_000 };
+  }
   return implicitBaselineFor(
     label,
     line,

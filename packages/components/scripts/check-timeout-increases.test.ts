@@ -1366,6 +1366,91 @@ describe('check-timeout-increases', () => {
     expect(findTimeoutIncreaseViolations(diff)).toEqual([]);
   });
 
+  test('checks workflow expressions and executable shell sleeps', () => {
+    const diff = [
+      diffFor(
+        '.github/workflows/unit-tests.yaml',
+        ['    timeout-minutes: ${{ 5 }}', '      run: sleep 30'],
+        ['    timeout-minutes: ${{ 10 }}', '      run: sleep 60'],
+      ),
+    ].join('\n');
+
+    expect(findTimeoutIncreaseViolations(diff)).toHaveLength(2);
+  });
+
+  test('checks newly added Playwright assertion timeouts against the framework default', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/src/button/button.test.ts',
+        [],
+        ['await expect.poll(readiness).toBe(true, { timeout: 10_000 });'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.old.value).toBe(5_000);
+  });
+
+  test('preserves executable threshold expressions inside template literals', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/scripts/validate-command.ts',
+        ['const command = `run ${test.setTimeout(5_000)}`;'],
+        ['const command = `run ${test.setTimeout(10_000)}`;'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+  });
+
+  test('checks Jest retries, grace periods, and numeric wait bounds', () => {
+    const diff = [
+      diffFor(
+        'packages/components/scripts/check-suite.test.ts',
+        ['jest.retryTimes(1);'],
+        ['jest.retryTimes(3);'],
+      ),
+      diffFor(
+        'packages/components/scripts/validate-consumers.ts',
+        ['const CHILD_PROCESS_TERMINATION_GRACE_MS = 1_000;'],
+        ['const CHILD_PROCESS_TERMINATION_GRACE_MS = 2_000;'],
+      ),
+      diffFor(
+        'packages/components/scripts/validate-consumers.ts',
+        ['await Bun.sleep(Math.min(25, timeoutMs));'],
+        ['await Bun.sleep(Math.min(250, timeoutMs));'],
+      ),
+    ].join('\n');
+
+    expect(findTimeoutIncreaseViolations(diff)).toHaveLength(3);
+  });
+
+  test('checks multiline conditional threshold branches', () => {
+    const diff = [
+      'diff --git a/packages/components/scripts/check-suite.test.ts b/packages/components/scripts/check-suite.test.ts',
+      '--- a/packages/components/scripts/check-suite.test.ts',
+      '+++ b/packages/components/scripts/check-suite.test.ts',
+      '@@ -10,4 +10,4 @@',
+      ' const timeout = condition',
+      '-  ? 5_000',
+      '+  ? 10_000',
+      '   : 1_000;',
+      '',
+    ].join('\n');
+
+    expect(findTimeoutIncreaseViolations(diff)).toHaveLength(1);
+  });
+
+  test('ignores bare timeout-shaped fixture data', () => {
+    const diff = diffFor(
+      'packages/components/src/button/button.test.ts',
+      ['const fixture = { timeout: 5 };'],
+      ['const fixture = { timeout: 10 };'],
+    );
+
+    expect(findTimeoutIncreaseViolations(diff)).toEqual([]);
+  });
+
   test('ignores comments, unrelated numeric edits, and lockfile noise', () => {
     const diff = [
       diffFor(

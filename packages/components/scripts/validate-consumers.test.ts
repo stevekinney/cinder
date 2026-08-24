@@ -6,14 +6,17 @@ import { join } from 'node:path';
 import { getPackFileName } from './publish-release.ts';
 import { packageTarballPath } from './report-package-weight.ts';
 import {
+  boundedDiagnosticValues,
   bumpPackageVersion,
   chatPeerValidationTarballPath,
+  createBoundedDiagnosticCollection,
   EXAMPLES_CONSUMER_READINESS_PATH,
   formatSvelteKitHydrationRouteFailure,
   isBrowserCrashError,
   parseHydrationBrowserProcessIds,
   preoptimizeSvelteKitChatHydration,
   prepareSvelteKitChatHydrationDevServer,
+  recordBoundedDiagnostic,
   removeFixtureEntries,
   resolveChatFixtureCinderVersion,
   runBoundedHydrationTeardown,
@@ -183,6 +186,18 @@ describe('SvelteKit hydration route failure diagnostics', () => {
     ],
     runtimeErrors: ['hydration_mismatch: expected tab trigger'],
   };
+
+  test('bounds diagnostic collections while tracking omitted events', () => {
+    const collection = createBoundedDiagnosticCollection();
+    for (let index = 0; index < 25; index += 1) {
+      recordBoundedDiagnostic(collection, `event ${index}`);
+    }
+
+    expect(collection.values).toHaveLength(20);
+    expect(collection.omitted).toBe(5);
+    expect(boundedDiagnosticValues(collection)).toHaveLength(21);
+    expect(boundedDiagnosticValues(collection).at(-1)).toContain('5 additional collected item(s)');
+  });
 
   test('wraps route failures with route, network, runtime, and DOM state', () => {
     const cause = new Error('locator wait timed out');

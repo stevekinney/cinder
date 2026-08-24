@@ -7,29 +7,48 @@ type Quote = '"' | "'" | '`';
 export function stripQuotedTextLines(lines: readonly string[]): string[] {
   let quote: Quote | undefined;
   let escaped = false;
-  return lines.map((line) =>
-    Array.from(line)
-      .map((character) => {
-        if (quote === undefined) {
-          if (character === '"' || character === "'" || character === '`') {
-            quote = character;
-            return ' ';
+  let templateExpressionDepth = 0;
+  return lines.map((line) => {
+    const output = Array.from(line);
+    for (let index = 0; index < output.length; index += 1) {
+      const character = output[index] ?? '';
+      const nextCharacter = output[index + 1] ?? '';
+      if (quote === '`' && character === '$' && nextCharacter === '{' && !escaped) {
+        output[index] = ' ';
+        output[index + 1] = ' ';
+        quote = undefined;
+        templateExpressionDepth = 1;
+        index += 1;
+        continue;
+      }
+      if (quote !== undefined) {
+        output[index] = ' ';
+        if (escaped) escaped = false;
+        else if (character === '\\') escaped = true;
+        else if (character === quote) quote = undefined;
+        continue;
+      }
+      if (templateExpressionDepth > 0) {
+        if (character === '{') templateExpressionDepth += 1;
+        else if (character === '}') {
+          templateExpressionDepth -= 1;
+          if (templateExpressionDepth === 0) {
+            output[index] = ' ';
+            quote = '`';
           }
-          return character;
+        } else if (character === '"' || character === "'") {
+          quote = character;
+          output[index] = ' ';
         }
-        if (escaped) {
-          escaped = false;
-          return ' ';
-        }
-        if (character === '\\') {
-          escaped = true;
-          return ' ';
-        }
-        if (character === quote) quote = undefined;
-        return ' ';
-      })
-      .join(''),
-  );
+        continue;
+      }
+      if (character === '"' || character === "'" || character === '`') {
+        quote = character;
+        output[index] = ' ';
+      }
+    }
+    return output.join('');
+  });
 }
 
 export function stripQuotedText(line: string): string {

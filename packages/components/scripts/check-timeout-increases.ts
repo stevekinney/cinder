@@ -16,6 +16,7 @@ import {
   findBunTestTimeoutArguments,
   findPlaywrightRelativeTimeoutExtensions,
   findWaitThresholdArguments,
+  findWaitThresholdBounds,
   NUMERIC_EXPRESSION_PATTERN,
   parseNumericLiteral,
 } from './check-timeout-increase-numeric';
@@ -33,7 +34,19 @@ export type { TimeoutIncreaseViolation } from './check-timeout-increase-types';
 export { formatTimeoutIncreaseViolations };
 
 const BASIC_THRESHOLD_LABEL_PATTERN = String.raw`(?:timeout-minutes|testTimeout|timeout|deadline|retries|retry|slow)`;
-const NAMED_THRESHOLD_LABEL_PATTERN = String.raw`(?:(?:(?:TIMEOUT|WAIT|DEADLINE|RETRY|RETRIES|POLL|INTERVAL|DELAY)[A-Z0-9_]*|[A-Z][A-Z0-9_]*(?:TIMEOUT|WAIT|DEADLINE|RETRY|RETRIES|POLL|INTERVAL|DELAY)[A-Z0-9_]*)|(?:[a-z][a-z0-9_]*(?:_timeout|_wait|_deadline|_retry|_retries|_poll|_interval|_delay)[a-z0-9_]*)|(?:[A-Za-z_$][\w$]*(?:Timeout|Wait|Deadline|Retry|Retries|Poll|Interval|Delay)[\w$]*)|(?:(?:timeout|wait|deadline|poll|interval|delay)[A-Z_$][\w$]*))`;
+const NAMED_THRESHOLD_LABEL_PATTERN = String.raw`(?:(?:(?:TIMEOUT|WAIT|DEADLINE|RETRY|RETRIES|POLL|INTERVAL|DELAY|GRACE)[A-Z0-9_]*|[A-Z][A-Z0-9_]*(?:TIMEOUT|WAIT|DEADLINE|RETRY|RETRIES|POLL|INTERVAL|DELAY|GRACE)[A-Z0-9_]*)|(?:[a-z][a-z0-9_]*(?:_timeout|_wait|_deadline|_retry|_retries|_poll|_interval|_delay|_grace)[a-z0-9_]*)|(?:[A-Za-z_$][\w$]*(?:Timeout|Wait|Deadline|Retry|Retries|Poll|Interval|Delay|Grace)[\w$]*)|(?:(?:timeout|wait|deadline|poll|interval|delay|grace)[A-Z_$][\w$]*))`;
+
+function normalizeWorkflowExpressions(filePath: string, analysis: string): string {
+  if (!/^\.github\/workflows\/[^/]+\.ya?ml$/u.test(filePath)) return analysis;
+  return analysis.replace(/\$\{\{\s*(\d[\d_.]*)\s*\}\}/gu, '$1');
+}
+
+function isGenericTimeoutContext(filePath: string, analysis: string): boolean {
+  return (
+    /(?:^|\/)(?:jest|playwright|vitest)\.config\.[^/]+$/u.test(filePath) ||
+    /\b(?:expect(?:\.poll)?|waitFor|setDefaultTimeout|test\.describe\.configure)\b/u.test(analysis)
+  );
+}
 
 function pushCandidate(
   candidates: ThresholdCandidate[],
@@ -83,7 +96,11 @@ function extractThresholdCandidates(
   if (analysisLine.trim().length === 0) return [];
 
   const candidates: ThresholdCandidate[] = [];
-  const assignmentAnalysis = `${analysisBeforeLine}\n${analysisLine}`;
+  analysisLine = normalizeWorkflowExpressions(filePath, analysisLine);
+  const assignmentAnalysis = normalizeWorkflowExpressions(
+    filePath,
+    `${analysisBeforeLine}\n${analysisLine}`,
+  );
   const conditionalThresholdAssignmentPattern = new RegExp(
     String.raw`\b(?<label>${BASIC_THRESHOLD_LABEL_PATTERN}|${NAMED_THRESHOLD_LABEL_PATTERN})\b\s*(?::\s*[^=;\n]+?=\s*|(?::|=)\s*)[^?;\n]+?\?\s*(?<consequent>${NUMERIC_EXPRESSION_PATTERN})\s*:\s*(?<alternate>${NUMERIC_EXPRESSION_PATTERN})`,
     'gu',
@@ -117,6 +134,12 @@ function extractThresholdCandidates(
   for (const match of analysisLine.matchAll(thresholdAssignmentPattern)) {
     const label = match.groups?.['label'] ?? '';
     if (!isTestThresholdAssignment(filePath, assignmentAnalysis, label)) continue;
+    if (
+      label.toLowerCase() === 'timeout' &&
+      !isGenericTimeoutContext(filePath, assignmentAnalysis)
+    ) {
+      continue;
+    }
     pushCandidate(
       candidates,
       line,
@@ -188,7 +211,7 @@ function extractThresholdCandidates(
   }
 
   const callPattern = new RegExp(
-    String.raw`\b(?<label>AbortSignal\.timeout|waitForTimeout|setDefaultNavigationTimeout|setDefaultTimeout|setTimeout|(?:test|testInfo)\.slow)\s*\(\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
+    String.raw`\b(?<label>AbortSignal\.timeout|waitForTimeout|setDefaultNavigationTimeout|setDefaultTimeout|setTimeout|(?:test|testInfo)\.slow|jest\.retryTimes)\s*\(\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
     'giu',
   );
   let callOccurrenceIndex = 0;
@@ -201,7 +224,9 @@ function extractThresholdCandidates(
       lineNumber,
       label,
       match.groups?.['value'],
-      implicitBaselineFor(label, line, filePath),
+      label.toLowerCase() === 'jest.retrytimes'
+        ? { renderedValue: '0 (implicit default retries)', value: 0 }
+        : implicitBaselineFor(label, line, filePath),
       callOccurrenceIndex,
     );
     callOccurrenceIndex += 1;
@@ -241,10 +266,13 @@ function extractMultilineCallCandidates(
   filePath: string,
   source: Array<{ changed: boolean; line: string; lineNumber: number }>,
 ): ThresholdCandidate[] {
-  const analysis = sourceLinesForAnalysis(
+  const analysis = normalizeWorkflowExpressions(
     filePath,
-    source.map(({ line }) => line),
-  ).join('\n');
+    sourceLinesForAnalysis(
+      filePath,
+      source.map(({ line }) => line),
+    ).join('\n'),
+  );
   const candidates: ThresholdCandidate[] = [];
   const pattern = new RegExp(
     String.raw`\b(?<label>AbortSignal\.timeout|waitForTimeout|setDefaultNavigationTimeout|setDefaultTimeout|setTimeout|(?:test|testInfo)\.slow)\s*\(\s*\n\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
@@ -278,6 +306,9 @@ function extractMultilineCallCandidates(
     for (const match of analysis.matchAll(assignmentPattern)) {
       const label = match.groups?.['label'] ?? '';
       if (!isTestThresholdAssignment(filePath, analysis, label)) continue;
+      if (label.toLowerCase() === 'timeout' && !isGenericTimeoutContext(filePath, analysis)) {
+        continue;
+      }
       const sourceIndex = analysis.slice(0, match.index).split('\n').length - 1;
       pushCandidate(
         candidates,
@@ -286,6 +317,28 @@ function extractMultilineCallCandidates(
         label,
         match.groups?.['value'],
         implicitBaselineFor(label, match[0], filePath),
+      );
+    }
+  }
+
+  const conditionalPattern = new RegExp(
+    String.raw`\b(?<label>${BASIC_THRESHOLD_LABEL_PATTERN}|${NAMED_THRESHOLD_LABEL_PATTERN})\b\s*(?::|=)\s*[\s\S]*?\?\s*(?<consequent>${NUMERIC_EXPRESSION_PATTERN})\s*:\s*(?<alternate>${NUMERIC_EXPRESSION_PATTERN})`,
+    'giu',
+  );
+  for (const match of analysis.matchAll(conditionalPattern)) {
+    if (!match[0].includes('\n')) continue;
+    const label = match.groups?.['label'] ?? '';
+    if (!isTestThresholdAssignment(filePath, analysis, label)) continue;
+    const sourceIndex = analysis.slice(0, match.index).split('\n').length - 1;
+    for (const [occurrenceIndex, group] of ['consequent', 'alternate'].entries()) {
+      pushCandidate(
+        candidates,
+        source[sourceIndex]?.line ?? match[0],
+        source[sourceIndex]?.lineNumber ?? 0,
+        label,
+        match.groups?.[group],
+        implicitBaselineFor(label, match[0], filePath),
+        occurrenceIndex,
       );
     }
   }
@@ -335,7 +388,10 @@ function extractMultilineCallCandidates(
     );
   }
   if (isTestOrValidationInfrastructure(filePath, analysis)) {
-    for (const waitArgument of findWaitThresholdArguments(analysis)) {
+    for (const waitArgument of [
+      ...findWaitThresholdArguments(analysis),
+      ...findWaitThresholdBounds(analysis),
+    ]) {
       const sourceIndex = analysis.slice(0, waitArgument.offset).split('\n').length - 1;
       pushCandidate(
         candidates,
@@ -343,6 +399,22 @@ function extractMultilineCallCandidates(
         source[sourceIndex]?.lineNumber ?? 0,
         waitArgument.label,
         waitArgument.renderedValue,
+      );
+    }
+  }
+  if (/\.(?:bash|sh|yaml|yml|zsh)$/u.test(filePath)) {
+    for (const sleepMatch of analysis.matchAll(
+      /(?:^|[;&|]\s*|\n\s*|\brun:\s*)sleep\s+(?<value>\d[\d_.]*)/gu,
+    )) {
+      const renderedValue = sleepMatch.groups?.['value'];
+      if (renderedValue === undefined) continue;
+      const sourceIndex = analysis.slice(0, sleepMatch.index).split('\n').length - 1;
+      pushCandidate(
+        candidates,
+        source[sourceIndex]?.line ?? sleepMatch[0],
+        source[sourceIndex]?.lineNumber ?? 0,
+        'sleep',
+        renderedValue,
       );
     }
   }
