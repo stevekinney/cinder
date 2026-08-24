@@ -1,4 +1,9 @@
 import {
+  implicitBaselineFor,
+  implicitBaselineForMatch,
+  type ThresholdBaseline,
+} from './check-timeout-increase-baselines';
+import {
   formatTimeoutIncreaseViolations,
   normalizeThresholdKind,
   readDiffInput,
@@ -7,7 +12,9 @@ import {
 import { findTimeoutIncreaseViolationsInDiff } from './check-timeout-increase-diff';
 import {
   effectiveThresholdValue,
+  findBunLifecycleTimeoutArguments,
   findBunTestTimeoutArguments,
+  findPlaywrightRelativeTimeoutExtensions,
   findWaitThresholdArguments,
   NUMERIC_EXPRESSION_PATTERN,
   parseNumericLiteral,
@@ -28,99 +35,13 @@ export { formatTimeoutIncreaseViolations };
 const BASIC_THRESHOLD_LABEL_PATTERN = String.raw`(?:timeout-minutes|testTimeout|timeout|deadline|retries|retry|slow)`;
 const NAMED_THRESHOLD_LABEL_PATTERN = String.raw`(?:(?:(?:TIMEOUT|WAIT|DEADLINE|RETRY|RETRIES|POLL|INTERVAL|DELAY)[A-Z0-9_]*|[A-Z][A-Z0-9_]*(?:TIMEOUT|WAIT|DEADLINE|RETRY|RETRIES|POLL|INTERVAL|DELAY)[A-Z0-9_]*)|(?:[a-z][a-z0-9_]*(?:_timeout|_wait|_deadline|_retry|_retries|_poll|_interval|_delay)[a-z0-9_]*)|(?:[A-Za-z_$][\w$]*(?:Timeout|Wait|Deadline|Retry|Retries|Poll|Interval|Delay)[\w$]*)|(?:(?:timeout|wait|deadline|poll|interval|delay)[A-Z_$][\w$]*))`;
 
-function implicitBaselineFor(
-  label: string,
-  line = '',
-  filePath = '',
-  inPlaywrightExpectConfiguration = false,
-): { renderedValue: string; value: number } | undefined {
-  const kind = normalizeThresholdKind(label);
-  if (
-    label.toLowerCase() === 'timeout-minutes' &&
-    /^\.github\/workflows\/[^/]+\.ya?ml$/u.test(filePath)
-  ) {
-    return { renderedValue: '360 (implicit GitHub Actions job timeout)', value: 360 };
-  }
-  if (kind === 'retries') return { renderedValue: '0 (implicit default retries)', value: 0 };
-  if (kind === 'slow') return { renderedValue: '1 (implicit normal timeout)', value: 1 };
-  if (kind === 'timeout' && inPlaywrightExpectConfiguration) {
-    return { renderedValue: '5_000 (implicit Playwright expect timeout)', value: 5_000 };
-  }
-  if (
-    kind === 'timeout' &&
-    (/(?:^|\/)playwright\.config\.[^/]+$/u.test(filePath) ||
-      /\btest\.describe\.configure\s*\(/u.test(line))
-  ) {
-    return { renderedValue: '30_000 (implicit Playwright test timeout)', value: 30_000 };
-  }
-  if (kind === 'timeout' && /\bbun\s+test(?:\s|$)/u.test(line)) {
-    return { renderedValue: '5_000 (implicit Bun test timeout)', value: 5_000 };
-  }
-  if (label.toLowerCase() === 'settimeout' && /\btest\.setTimeout\s*\(/u.test(line)) {
-    return { renderedValue: '30_000 (implicit Playwright test timeout)', value: 30_000 };
-  }
-  if (
-    ['setdefaulttimeout', 'setdefaultnavigationtimeout'].includes(label.toLowerCase()) &&
-    /\.\s*setDefault(?:Navigation)?Timeout\s*\(/u.test(line)
-  ) {
-    return { renderedValue: '30_000 (implicit Playwright action timeout)', value: 30_000 };
-  }
-  if (
-    label.toLowerCase() === 'setdefaulttimeout' &&
-    /(?<![\w$.])setDefaultTimeout\s*\(/u.test(line)
-  ) {
-    return { renderedValue: '5_000 (implicit Bun test timeout)', value: 5_000 };
-  }
-  return undefined;
-}
-
-function isInsidePlaywrightExpectConfiguration(
-  filePath: string,
-  analysisBeforeLine: string,
-  analysisLine: string,
-  candidateOffset: number,
-): boolean {
-  if (!/(?:^|\/)playwright\.config\.[^/]+$/u.test(filePath)) return false;
-  const prefix = `${analysisBeforeLine}\n${analysisLine.slice(0, candidateOffset)}`;
-  const expectBlocks = [...prefix.matchAll(/\bexpect\s*:\s*\{/gu)];
-  const lastExpectBlock = expectBlocks.at(-1);
-  if (lastExpectBlock?.index === undefined) return false;
-  let braceDepth = 0;
-  for (const character of prefix.slice(lastExpectBlock.index)) {
-    if (character === '{') braceDepth += 1;
-    else if (character === '}') braceDepth -= 1;
-  }
-  return braceDepth > 0;
-}
-
-function implicitBaselineForMatch(
-  label: string,
-  line: string,
-  filePath: string,
-  analysisBeforeLine: string,
-  analysisLine: string,
-  candidateOffset: number,
-): { renderedValue: string; value: number } | undefined {
-  return implicitBaselineFor(
-    label,
-    line,
-    filePath,
-    isInsidePlaywrightExpectConfiguration(
-      filePath,
-      analysisBeforeLine,
-      analysisLine,
-      candidateOffset,
-    ),
-  );
-}
-
 function pushCandidate(
   candidates: ThresholdCandidate[],
   line: string,
   lineNumber: number,
   label: string,
   renderedValue: string | undefined,
-  baseline?: { renderedValue: string; value: number },
+  baseline?: ThresholdBaseline,
   occurrenceIndex?: number,
 ): void {
   if (renderedValue === undefined) return;
@@ -425,7 +346,10 @@ function extractMultilineCallCandidates(
     }
   }
   if (/(?:^|\/)[^/]+(?:\.(?:spec|test)\.|_(?:spec|test)_)[^/]+$/u.test(filePath)) {
-    for (const timeoutArgument of findBunTestTimeoutArguments(analysis)) {
+    for (const timeoutArgument of [
+      ...findBunTestTimeoutArguments(analysis),
+      ...findBunLifecycleTimeoutArguments(analysis),
+    ]) {
       const sourceIndex = analysis.slice(0, timeoutArgument.offset).split('\n').length - 1;
       pushCandidate(
         candidates,
@@ -436,6 +360,17 @@ function extractMultilineCallCandidates(
         { renderedValue: '5_000 (implicit Bun test timeout)', value: 5_000 },
       );
     }
+  }
+  for (const extension of findPlaywrightRelativeTimeoutExtensions(analysis)) {
+    const sourceIndex = analysis.slice(0, extension.offset).split('\n').length - 1;
+    pushCandidate(
+      candidates,
+      source[sourceIndex]?.line ?? extension.renderedValue,
+      source[sourceIndex]?.lineNumber ?? 0,
+      'setTimeout-extension',
+      extension.renderedValue,
+      { renderedValue: '0 (no relative timeout extension)', value: 0 },
+    );
   }
 
   for (const argument of extractMultilineExecutableCliThresholdArguments(

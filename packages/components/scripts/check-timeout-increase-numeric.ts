@@ -52,8 +52,13 @@ export function parseNumericLiteral(literal: string): number {
 }
 
 export function effectiveThresholdValue(label: string, line: string, value: number): number {
-  if (value !== 0) return value;
   const normalizedLabel = label.toLowerCase();
+  if (label.toLowerCase() !== 'timeout-minutes') {
+    if (/(?:hours?|hrs?)$/iu.test(label)) return value * 3_600_000;
+    if (/(?:minutes?|mins?)$/iu.test(label)) return value * 60_000;
+    if (/(?:seconds?|secs?)$/iu.test(label)) return value * 1_000;
+  }
+  if (value !== 0) return value;
   if (/(?:poll|interval|delay)/u.test(normalizedLabel)) return value;
   if (normalizedLabel.includes('retr') || normalizedLabel.includes('slow')) return value;
   if (
@@ -195,4 +200,30 @@ export function findBunTestTimeoutArguments(analysis: string): BunTestTimeoutArg
     argumentsFound.push({ offset: timeoutStart + leadingWhitespace, renderedValue });
   }
   return argumentsFound;
+}
+
+export function findBunLifecycleTimeoutArguments(analysis: string): BunTestTimeoutArgument[] {
+  return findCallArgument(
+    analysis,
+    /\b(?:afterAll|afterEach|beforeAll|beforeEach)\s*\(/gu,
+    1,
+    'setTimeout',
+  ).map(({ offset, renderedValue }) => ({ offset, renderedValue }));
+}
+
+export function findPlaywrightRelativeTimeoutExtensions(
+  analysis: string,
+): BunTestTimeoutArgument[] {
+  const extensions: BunTestTimeoutArgument[] = [];
+  const pattern = new RegExp(
+    String.raw`\btestInfo\.setTimeout\s*\(\s*testInfo\.timeout\s*\+\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
+    'gu',
+  );
+  for (const match of analysis.matchAll(pattern)) {
+    const renderedValue = match.groups?.['value'];
+    if (renderedValue === undefined) continue;
+    const valueOffset = match[0].lastIndexOf(renderedValue);
+    extensions.push({ offset: (match.index ?? 0) + valueOffset, renderedValue });
+  }
+  return extensions;
 }

@@ -985,6 +985,27 @@ describe('check-timeout-increases', () => {
     expect(multilineViolations).toHaveLength(1);
   });
 
+  test('uses the Playwright web server default for webServer configuration timeouts', () => {
+    const tightening = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/testing/playwright.config.ts',
+        [],
+        ['export default { webServer: { timeout: 45_000 } };'],
+      ),
+    );
+    const increase = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/testing/playwright.config.ts',
+        [],
+        ['export default { webServer: { timeout: 90_000 } };'],
+      ),
+    );
+
+    expect(tightening).toEqual([]);
+    expect(increase).toHaveLength(1);
+    expect(increase[0]?.old.value).toBe(60_000);
+  });
+
   test('compares new Playwright default timeout calls with the action default', () => {
     const violations = findTimeoutIncreaseViolations(
       diffFor(
@@ -1009,6 +1030,43 @@ describe('check-timeout-increases', () => {
 
     expect(violations).toHaveLength(2);
     expect(violations.map((violation) => violation.new.value)).toEqual([100, 5]);
+  });
+
+  test('checks relative Playwright timeout extensions', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/testing/tests/example.playwright.ts',
+        ['testInfo.setTimeout(testInfo.timeout + 5_000);'],
+        ['testInfo.setTimeout(testInfo.timeout + 10_000);'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.new.value).toBe(10_000);
+  });
+
+  test('normalizes threshold identifier units before comparison', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/scripts/example.test.ts',
+        ['const TEST_TIMEOUT_SECONDS = 30;', 'const requestTimeoutSeconds = 30;'],
+        ['const TEST_TIMEOUT_MS = 30_000;', 'const requestTimeoutMs = 30_000;'],
+      ),
+    );
+
+    expect(violations).toEqual([]);
+  });
+
+  test('checks Bun lifecycle hook timeout arguments', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/src/button/button.test.ts',
+        ['beforeAll(setup, 5_000);', 'afterEach(cleanup, 5_000);'],
+        ['beforeAll(setup, 10_000);', 'afterEach(cleanup, 10_000);'],
+      ),
+    );
+
+    expect(violations).toHaveLength(2);
   });
 
   test('checks lower-camel retry thresholds in validation infrastructure', () => {
