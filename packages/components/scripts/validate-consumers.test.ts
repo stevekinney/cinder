@@ -15,6 +15,7 @@ import {
   EXAMPLES_CONSUMER_READINESS_PATH,
   formatSvelteKitHydrationRouteFailure,
   isBrowserCrashError,
+  observeSvelteKitHydrationMarker,
   parseHydrationBrowserProcessIds,
   preoptimizeSvelteKitChatHydration,
   prepareSvelteKitChatHydrationDevServer,
@@ -28,6 +29,7 @@ import {
   unreclaimedTeardownFailures,
   wrapSvelteKitHydrationRouteFailure,
   type SvelteKitChatHydrationDevServerOptions,
+  type SvelteKitHydrationRouteDomObservation,
   type SvelteKitHydrationRouteFailureSnapshot,
 } from './validate-consumers.ts';
 
@@ -256,6 +258,34 @@ describe('SvelteKit hydration route failure diagnostics', () => {
     expect(captured.hydrationMarkerPresent).toBe(true);
     expect(captured.hydrationMarkerValue).toBe('true');
     expect(captured.runtimeErrors.values).toEqual(['runtime error']);
+  });
+
+  test('captures a present false marker before the hydration readiness wait fails', async () => {
+    const domObservation: SvelteKitHydrationRouteDomObservation = {
+      documentReadyState: 'interactive',
+      hydrationMarkerPresent: 'unknown',
+      hydrationMarkerValue: 'unknown',
+    };
+    const marker = {
+      getAttribute: mock(async (attribute: string) => {
+        expect(attribute).toBe('data-dev-ssr-hydrated');
+        return 'false';
+      }),
+    };
+    const page = {
+      $: mock(async (selector: string) => {
+        expect(selector).toBe('[data-dev-ssr-hydrated]');
+        return marker;
+      }),
+    };
+
+    await observeSvelteKitHydrationMarker(page, '/dev-ssr-tabs', domObservation);
+    await expect(Promise.reject(new Error('hydration readiness wait failed'))).rejects.toThrow(
+      'hydration readiness wait failed',
+    );
+
+    expect(domObservation.hydrationMarkerPresent).toBe(true);
+    expect(domObservation.hydrationMarkerValue).toBe('false');
   });
 
   test('wraps route failures with route, network, runtime, and DOM state', () => {

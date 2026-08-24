@@ -47,7 +47,6 @@ function isGenericTimeoutContext(filePath: string, analysis: string): boolean {
     )
   );
 }
-
 function pushCandidate(
   candidates: ThresholdCandidate[],
   line: string,
@@ -56,12 +55,13 @@ function pushCandidate(
   renderedValue: string | undefined,
   baseline?: ThresholdBaseline,
   occurrenceIndex?: number,
+  effectiveLine = line,
 ): void {
   if (renderedValue === undefined) return;
   const parsedValue = parseNumericLiteral(renderedValue);
   if (Number.isNaN(parsedValue)) return;
   const value = Number.isFinite(parsedValue) ? parsedValue : Number.POSITIVE_INFINITY;
-  const effectiveValue = effectiveThresholdValue(label, line, value);
+  const effectiveValue = effectiveThresholdValue(label, effectiveLine, value);
   const candidateBaseline =
     baseline ??
     (effectiveValue === Number.POSITIVE_INFINITY
@@ -85,7 +85,6 @@ function pushCandidate(
     line: line.trim(),
   });
 }
-
 function extractThresholdCandidates(
   filePath: string,
   line: string,
@@ -153,9 +152,8 @@ function extractThresholdCandidates(
       ),
     );
   }
-
   const namedThresholdAssignmentPattern = new RegExp(
-    String.raw`\b(?<label>${NAMED_THRESHOLD_LABEL_PATTERN})\b\s*(?::\s*[^=;\n]+?=\s*|(?::|=)\s*)(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
+    String.raw`\b(?<label>${NAMED_THRESHOLD_LABEL_PATTERN})\b\s*(?::\s*[^=;\n]+?=\s*|(?::|=)\s*)(?:(?<value>${NUMERIC_EXPRESSION_PATTERN})|[^;\n]+?(?:\?\?|\|\|)\s*(?<fallback>${NUMERIC_EXPRESSION_PATTERN}))`,
     'gu',
   );
   for (const match of analysisLine.matchAll(namedThresholdAssignmentPattern)) {
@@ -166,7 +164,7 @@ function extractThresholdCandidates(
       line,
       lineNumber,
       label,
-      match.groups?.['value'],
+      match.groups?.['value'] ?? match.groups?.['fallback'],
       implicitBaselineForMatch(
         label,
         line,
@@ -206,7 +204,6 @@ function extractThresholdCandidates(
         : implicitBaselineFor(argument.label, line, filePath),
     );
   }
-
   const callPattern = new RegExp(
     String.raw`\b(?<label>AbortSignal\.timeout|waitForTimeout|setDefaultNavigationTimeout|setDefaultTimeout|setTimeout|(?:test|testInfo)\.slow|jest\.(?:retryTimes|setTimeout))\s*\(\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
     'giu',
@@ -232,7 +229,6 @@ function extractThresholdCandidates(
     );
     callOccurrenceIndex += 1;
   }
-
   const slowAnnotationPattern = /\b(?:test|testInfo)\.(?<label>slow)\s*\((?<arguments>[^)]*)\)/gu;
   let slowOccurrenceIndex = 0;
   for (const slowAnnotationMatch of analysisLine.matchAll(slowAnnotationPattern)) {
@@ -253,7 +249,6 @@ function extractThresholdCandidates(
     );
     slowOccurrenceIndex += 1;
   }
-
   const seen = new Set<string>();
   return candidates.filter((candidate) => {
     const key = `${candidate.identity}:${candidate.renderedValue}:${candidate.lineNumber}:${candidate.occurrenceIndex ?? ''}`;
@@ -406,8 +401,9 @@ function extractMultilineCallCandidates(
     }
   }
   if (/\.(?:bash|sh|yaml|yml|zsh)$/u.test(filePath)) {
+    let shellWaitOccurrenceIndex = 0;
     for (const sleepMatch of analysis.matchAll(
-      /(?:^|[;&|]\s*|\n\s*|\brun:\s*)(?<command>sleep|timeout)\s+(?<value>\d[\d_.]*)(?:[smhd])?(?![\w.])/gu,
+      /(?:^|(?:&&|[;&|])\s*|\n\s*|\brun:\s*)(?<command>sleep|timeout)\s+(?:(?:--[\w-]+)\s+)*(?<value>\d[\d_.]*)(?:[smhd])?(?![\w.])/gu,
     )) {
       const renderedValue = sleepMatch.groups?.['value'];
       if (renderedValue === undefined) continue;
@@ -418,7 +414,11 @@ function extractMultilineCallCandidates(
         source[sourceIndex]?.lineNumber ?? 0,
         sleepMatch.groups?.['command'] === 'timeout' ? 'shell.timeout' : 'sleep',
         renderedValue,
+        undefined,
+        shellWaitOccurrenceIndex,
+        sleepMatch[0],
       );
+      shellWaitOccurrenceIndex += 1;
     }
   }
   if (/(?:^|\/)[^/]+(?:\.(?:spec|test)\.|_(?:spec|test)_)[^/]+$/u.test(filePath)) {

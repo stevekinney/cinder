@@ -2658,6 +2658,7 @@ async function assertSvelteKitHydrationRouteContent(
   routePath: SvelteKitHydrationRoute,
   domObservation: SvelteKitHydrationRouteDomObservation,
 ): Promise<void> {
+  await observeSvelteKitHydrationMarker(page, routePath, domObservation);
   if (routePath === '/chat-layout') {
     await page.locator('[data-chat-layout-hydrated="true"]').waitFor({ timeout: 5_000 });
     domObservation.hydrationMarkerPresent = true;
@@ -2779,6 +2780,25 @@ function hydrationMarkerForRoute(routePath: SvelteKitHydrationRoute): {
     attribute: 'data-dev-ssr-hydrated',
     selector: '[data-dev-ssr-hydrated]',
   };
+}
+
+type HydrationMarkerPage = {
+  $: (
+    selector: string,
+  ) => Promise<{ getAttribute: (attribute: string) => Promise<string | null> } | null>;
+};
+
+export async function observeSvelteKitHydrationMarker(
+  page: HydrationMarkerPage,
+  routePath: SvelteKitHydrationRoute,
+  domObservation: SvelteKitHydrationRouteDomObservation,
+): Promise<void> {
+  const marker = hydrationMarkerForRoute(routePath);
+  const element = await page.$(marker.selector);
+  domObservation.hydrationMarkerPresent = element !== null;
+  domObservation.hydrationMarkerValue = element
+    ? await element.getAttribute(marker.attribute)
+    : null;
 }
 
 function unknownSvelteKitHydrationRouteFailureSnapshot(

@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
+import { sourceLineForAnalysis } from './check-timeout-increase-strings.ts';
 import {
   findTimeoutIncreaseViolations,
   formatTimeoutIncreaseViolations,
@@ -1454,6 +1455,12 @@ describe('check-timeout-increases', () => {
     expect(findTimeoutIncreaseViolations(diff)).toEqual([]);
   });
 
+  test('keeps YAML analysis after hashes inside JavaScript template literals', () => {
+    const line = 'run: bun test --timeout 10_000 `console.log( # marker)`';
+
+    expect(sourceLineForAnalysis('.github/workflows/unit-tests.yaml', line)).toBe(line);
+  });
+
   test('ignores threshold text in TOML hash comments', () => {
     const diff = diffFor('bunfig.toml', ['# timeout = 5_000'], ['# timeout = 10_000']);
 
@@ -1771,12 +1778,71 @@ describe('check-timeout-increases', () => {
     expect(findTimeoutIncreaseViolations(diff)).toHaveLength(1);
   });
 
+  test('checks nullish and logical threshold fallbacks', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/scripts/validate-consumers.ts',
+        [
+          'const requestTimeoutMs = input.requestTimeoutMs ?? 5_000;',
+          'const retryAttempts = input.retryAttempts || 2;',
+        ],
+        [
+          'const requestTimeoutMs = input.requestTimeoutMs ?? 10_000;',
+          'const retryAttempts = input.retryAttempts || 4;',
+        ],
+      ),
+    );
+
+    expect(violations).toHaveLength(2);
+    expect(violations.map((violation) => violation.new.kind)).toEqual(['timeout', 'retries']);
+  });
+
   test('checks shell timeout command durations', () => {
     const violations = findTimeoutIncreaseViolations(
       diffFor(
         'packages/components/scripts/probe.sh',
         ['timeout 30s bun test'],
         ['timeout 1m bun test'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.old.effectiveValue).toBe(30_000);
+    expect(violations[0]?.new.effectiveValue).toBe(60_000);
+  });
+
+  test('treats shell timeout zero as unbounded', () => {
+    const boundedAfterUnbounded = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/scripts/probe.sh',
+        ['timeout 0 bun test'],
+        ['timeout 30s bun test'],
+      ),
+    );
+
+    expect(boundedAfterUnbounded).toEqual([]);
+  });
+
+  test('checks shell timeout options before the duration', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/scripts/probe.sh',
+        ['timeout --foreground 30s bun test'],
+        ['timeout --foreground 1m bun test'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.old.effectiveValue).toBe(30_000);
+    expect(violations[0]?.new.effectiveValue).toBe(60_000);
+  });
+
+  test('checks each shell wait in a command chain', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/scripts/probe.sh',
+        ['sleep 5s && sleep 30s'],
+        ['sleep 5s && sleep 1m'],
       ),
     );
 

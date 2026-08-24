@@ -139,7 +139,7 @@ function stripUnquotedHashComment(line: string): string {
       else if (character === quote) quote = undefined;
       continue;
     }
-    if (character === '"' || character === "'") {
+    if (character === '"' || character === "'" || character === '`') {
       quote = character;
       continue;
     }
