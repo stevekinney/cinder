@@ -236,7 +236,14 @@
     pointer-events: none;
   }
 
-  .cinder-navigation-bar__items[data-cinder-mobile-panel][data-open='true']
+  /* Keyed off `[data-cinder-visible]` (present whenever `exitState.renderPanel`
+   is true — both the live-open state AND the retained closing state), not
+   `[data-open='true']` — the template emits `data-open='false'` the instant
+   close begins, well before the panel is actually removed. Gating this
+   mobile item styling on the live `data-open` alone made the items lose
+   their mobile treatment and reflow mid-exit, even though the panel itself
+   correctly stayed visible via `data-cinder-visible`/`data-cinder-closing`. */
+  .cinder-navigation-bar__items[data-cinder-mobile-panel][data-cinder-visible]
     .cinder-navigation-item[data-variant='mobile'] {
     display: flex;
     inline-size: 100%;
@@ -247,7 +254,7 @@
     border-radius: var(--cinder-radius-sm);
   }
 
-  .cinder-navigation-bar__items[data-cinder-mobile-panel][data-open='true']
+  .cinder-navigation-bar__items[data-cinder-mobile-panel][data-cinder-visible]
     .cinder-navigation-item[data-variant='mobile'][data-active='true'] {
     border-inline-start-color: var(--cinder-accent);
     background-color: var(--cinder-surface-inset);

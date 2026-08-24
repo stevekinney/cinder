@@ -1,6 +1,7 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
 
+import { stripCinderComponentsLayer } from '../../test/css.ts';
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
@@ -9,6 +10,15 @@ const { cleanup, fireEvent, render, screen, waitFor } = await import('@testing-l
 const { default: SelectionPopover } = await import('./selection-popover.svelte');
 
 afterEach(() => cleanup());
+
+async function readSelectionPopoverCss(): Promise<string> {
+  // Strip the @layer wrapper: happy-dom does not apply layer-nested rules to
+  // getComputedStyle, so string-extraction assertions read the raw source
+  // instead of relying on the cascade.
+  return stripCinderComponentsLayer(
+    await Bun.file(new URL('./selection-popover.css', import.meta.url)).text(),
+  );
+}
 
 describe('SelectionPopover', () => {
   test('renders the collapsed selection action when open', () => {
@@ -1917,5 +1927,41 @@ describe('SelectionPopover', () => {
     } finally {
       window.getComputedStyle = originalGetComputedStyle;
     }
+  });
+
+  test('stays hidden from the tab order until positioning is ready, exempting the closing state (CIN-376)', async () => {
+    // Regression guard: `data-cinder-visible` (driven by
+    // `exitState.renderPanel`) turns on as soon as the panel starts opening —
+    // BEFORE Floating UI has set `data-cinder-position-ready='true'`. Gating
+    // `visibility` on `data-cinder-visible` alone (as an earlier revision of
+    // this migration did) removed the old `visibility: hidden` protection
+    // during that positioning window: the toolbar stayed opacity:0/
+    // pointer-events:none, but its buttons were still keyboard-focusable and
+    // exposed to assistive technology. An initially-open SSR render has the
+    // same invisible-interactive gap for the same reason. `[data-cinder-closing]`
+    // is exempted so the retained exit stays visible even if it happens to
+    // race positioning.
+    const css = await readSelectionPopoverCss();
+    expect(css).toMatch(
+      /\.cinder-selection-popover:not\(\[data-cinder-position-ready='true'\]\):not\(\[data-cinder-closing\]\)\s*\{\s*visibility:\s*hidden;/,
+    );
+
+    // Behavioral half: before Floating UI resolves, `data-cinder-visible` is
+    // already present (renderPanel mirrors `open` immediately) while
+    // `data-cinder-position-ready` is still `'false'` and the panel isn't
+    // closing — exactly the state the CSS rule above must key off instead of
+    // `data-cinder-visible` alone.
+    render(SelectionPopover, {
+      props: {
+        id: 'selection-comment',
+        open: true,
+        position: { x: 120, y: 80 },
+      },
+    });
+
+    const toolbar = document.querySelector('.cinder-selection-popover') as HTMLElement;
+    expect(toolbar.getAttribute('data-cinder-visible')).toBe('');
+    expect(toolbar.getAttribute('data-cinder-position-ready')).toBe('false');
+    expect(toolbar.hasAttribute('data-cinder-closing')).toBe(false);
   });
 });

@@ -187,6 +187,18 @@
     getOpen: () => open,
     getPanelElement: () => panelElement,
     getReducedMotion: () => reducedMotion.current,
+    // Clear both retained snapshots once a closing session genuinely
+    // finishes — otherwise a later reopen without a fresh anchor (e.g. the
+    // consumer never re-supplies a trigger) would resurrect the disconnected
+    // element/target from the PREVIOUS session. The render gate would mount
+    // and position a panel for what is effectively an anchorless open, even
+    // though the open-lifecycle effect below correctly refuses to register
+    // Escape or manage focus for it (it's gated on the live `anchorElement`,
+    // not this fallback).
+    onClosed: () => {
+      lastAnchorElement = null;
+      lastResolvedPortalTarget = null;
+    },
   });
 
   const anchoredOverlay = createAnchoredOverlay({

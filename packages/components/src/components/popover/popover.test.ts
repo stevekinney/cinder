@@ -1196,6 +1196,53 @@ describe('Popover — floating-ui wiring', () => {
       window.getComputedStyle = originalGetComputedStyle;
     }
   });
+
+  test('a reopen after the exit completes with no fresh anchor does not resurrect the stale trigger (CIN-376)', async () => {
+    // Regression guard: `resolvedAnchorElement`'s fallback used to hold onto
+    // `lastAnchorElement` forever. If a controlled consumer removes its
+    // trigger while closing, lets the exit finish, and later sets `open`
+    // back to `true` without supplying a fresh trigger, the fallback would
+    // still resolve to the now-fully-disconnected element from the PREVIOUS
+    // session — mounting and positioning a panel for what is effectively an
+    // anchorless open, even though the open-lifecycle effect (gated on the
+    // live `anchorElement`) correctly refuses to register Escape or manage
+    // focus for it. The snapshot must clear once the exit genuinely
+    // completes (`onClosed`).
+    const triggerButton = document.createElement('button');
+    triggerButton.type = 'button';
+    attachScratch(triggerButton);
+
+    let openValue = true;
+    const { rerender } = render(Popover, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        triggerRef: triggerButton,
+        children: textSnippet('content'),
+      },
+    });
+
+    await waitFor(() => {
+      expect(queryPopoverPanel()).not.toBeNull();
+    });
+
+    // Remove the trigger, close, and let the (reduced-motion-default,
+    // microtask-resolved) exit fully complete.
+    triggerButton.remove();
+    openValue = false;
+    await rerender({ open: false, triggerRef: triggerButton, children: textSnippet('content') });
+    await waitFor(() => expect(queryPopoverPanel()).toBeNull());
+
+    // Reopen without ever supplying a fresh trigger.
+    openValue = true;
+    await rerender({ open: true, triggerRef: triggerButton, children: textSnippet('content') });
+
+    expect(queryPopoverPanel()).toBeNull();
+  });
 });
 
 // ---------------------------------------------------------------------------

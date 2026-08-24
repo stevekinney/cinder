@@ -1,5 +1,4 @@
-import { expect, test } from '../src/fixtures/component-page.ts';
-import { loadManifest, VIEWPORTS } from '../src/helpers/manifest.ts';
+import { expect, test } from '@playwright/test';
 
 /**
  * CIN-376: every anchored overlay migrated onto the shared exit-transition
@@ -8,39 +7,28 @@ import { loadManifest, VIEWPORTS } from '../src/helpers/manifest.ts';
  * `data-cinder-closing` for the duration of its real exit transition, then
  * actually unmount/hide once it finishes — not snap away instantly.
  *
- * These tests force `reducedMotion: 'no-preference'` (the `componentPage`
- * fixture's `themeContextOptions` otherwise forces `reduce` for screenshot
- * determinism — see `src/helpers/theme.ts`) so the real, non-collapsed
- * transition plays out and `data-cinder-closing` is observable mid-flight.
- * The companion reduced-motion project (`overlay-reduced-motion-exit.playwright.ts`)
- * covers the opposite case: immediate unmount when motion IS reduced.
+ * Navigates with `?view=playground` (the documentation page's live-preview
+ * tab), NOT `?snapshot=1` (used by the `componentPage` fixture, and by an
+ * earlier revision of this file): `packages/playground/src/snapshot-mode.ts`
+ * forces every descendant's `transition-duration`/`transition-delay` to
+ * `0s !important`, so a `?snapshot=1` page takes the immediate-completion
+ * path regardless of the browser context's `reducedMotion` setting — these
+ * tests would pass even if the exit-transition lifecycle itself were broken,
+ * since nothing would ever be observably "still closing". `?view=playground`
+ * preserves real, live transitions, and this project's default
+ * `reducedMotion: 'no-preference'` context is what actually lets
+ * `data-cinder-closing` be observed mid-flight rather than resolving on the
+ * next microtask. The companion `chromium-reduced-motion` project
+ * (`overlay-reduced-motion-exit.playwright.ts`) covers the opposite case:
+ * immediate unmount when motion IS reduced — same pages, opposite
+ * `reducedMotion` context setting, genuinely different code paths in both
+ * directions now.
  */
 
-const manifest = loadManifest();
-
-function getDesktopViewport(): (typeof VIEWPORTS)[number] {
-  const viewport = VIEWPORTS.find((candidate) => candidate.name === 'desktop');
-  if (!viewport) throw new Error('Desktop viewport is required for exit-transition tests.');
-  return viewport;
-}
-
-const desktopViewport = getDesktopViewport();
-
-function manifestEntry(slug: string) {
-  const entry = manifest.find((candidate) => candidate.slug === slug);
-  if (!entry) throw new Error(`Missing manifest entry for ${slug}.`);
-  return entry;
-}
-
 test('Popover renders data-cinder-closing during its exit transition, then unmounts', async ({
-  componentPage,
+  page,
 }) => {
-  const page = await componentPage.open({
-    entry: manifestEntry('popover'),
-    theme: 'light',
-    viewport: desktopViewport,
-    contextOptions: { reducedMotion: 'no-preference' },
-  });
+  await page.goto('/page/popover?view=playground', { waitUntil: 'load' });
 
   const trigger = page.getByRole('button', { name: 'Account settings' }).first();
   await trigger.click();
@@ -55,14 +43,9 @@ test('Popover renders data-cinder-closing during its exit transition, then unmou
 });
 
 test('Tooltip renders data-cinder-closing during its exit transition, then hides', async ({
-  componentPage,
+  page,
 }) => {
-  const page = await componentPage.open({
-    entry: manifestEntry('tooltip'),
-    theme: 'light',
-    viewport: desktopViewport,
-    contextOptions: { reducedMotion: 'no-preference' },
-  });
+  await page.goto('/page/tooltip?view=playground', { waitUntil: 'load' });
 
   const trigger = page.getByRole('button', { name: 'Hover me' }).first();
   await trigger.hover();
@@ -78,14 +61,9 @@ test('Tooltip renders data-cinder-closing during its exit transition, then hides
 });
 
 test('HoverCard renders data-cinder-closing during its exit transition, then unmounts, and a reopen mid-close survives (CIN-376 defect fix)', async ({
-  componentPage,
+  page,
 }) => {
-  const page = await componentPage.open({
-    entry: manifestEntry('hover-card'),
-    theme: 'light',
-    viewport: desktopViewport,
-    contextOptions: { reducedMotion: 'no-preference' },
-  });
+  await page.goto('/page/hover-card?view=playground', { waitUntil: 'load' });
 
   const trigger = page.getByRole('button', { name: 'Ada Lovelace' }).first();
   await trigger.hover();
@@ -112,7 +90,7 @@ test('NavigationBar mobile panel plays its exit transition instead of snapping v
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/page/navigation-bar?snapshot=1', { waitUntil: 'load' });
+  await page.goto('/page/navigation-bar?view=playground', { waitUntil: 'load' });
 
   const toggle = page.getByRole('button', { name: 'Open menu' }).first();
   await toggle.click();

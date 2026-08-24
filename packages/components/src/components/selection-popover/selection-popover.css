@@ -20,13 +20,20 @@
       scale var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
 
-  /* Steady-state hidden: removed from the tab order once the exit
-   transition below has genuinely finished (driven by
+  /* Hidden from the tab order/AT whenever the panel isn't ACTUALLY
+   positioned and visible: before Floating UI has set
+   `data-cinder-position-ready='true'` (an open/initial-mount window —
+   `data-cinder-visible` alone turns on as soon as `exitState.renderPanel`
+   does, which is BEFORE positioning resolves, so gating on it alone briefly
+   exposed the un-positioned, opacity:0 toolbar as focusable/AT-visible), and
+   once the exit transition has genuinely finished (driven by
    `createAnchoredOverlayExitState` / `waitForTransitionCompletion`), not the
    instant `open` goes false — see OVERLAY-POLICY.md § "Transition
-   lifecycle". No transition on `visibility` itself; it flips only after
-   opacity/scale have already settled at 0. */
-  .cinder-selection-popover:not([data-cinder-visible]) {
+   lifecycle". `[data-cinder-closing]` is exempted from the position-ready
+   requirement so the retained exit stays visible even if positioning
+   happens to lag behind. No transition on `visibility` itself; it flips
+   only after opacity/scale have already settled at 0. */
+  .cinder-selection-popover:not([data-cinder-position-ready='true']):not([data-cinder-closing]) {
     visibility: hidden;
   }
 
