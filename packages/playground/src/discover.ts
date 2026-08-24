@@ -27,7 +27,7 @@ export type DiscoveredComponent = {
  * standalone usage — they are always rendered inside a parent compound
  * (`Tabs`, `Table`, `Dropdown`, `Accordion`, `Tree`, `Feed`, `GridList`,
  * `Grid`, `SpeedDial`, `StatisticGroup`, `SideNavigation`, `CommandMenu`,
- * `SegmentedControl`, `BentoGrid`, `ChoiceGrid`, `ContextMenu`). They are
+ * `SegmentedControl`, `ChoiceGrid`, `ContextMenu`). They are
  * excluded from the playground sidebar so a single parent entry covers the
  * family, but they remain in `discoverComponents()` so direct `/c/<leaf>`
  * routing still works.

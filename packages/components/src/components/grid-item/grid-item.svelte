@@ -35,13 +35,23 @@
   const resolvedColumnEnd = $derived(columnEnd !== undefined ? String(columnEnd) : undefined);
   const resolvedRowSpan = $derived(rowSpan !== undefined ? String(rowSpan) : undefined);
   const resolvedRowStart = $derived(rowStart !== undefined ? String(rowStart) : undefined);
-  const resolvedRowEnd = $derived(rowEnd !== undefined ? String(rowEnd) : undefined);
+  const resolvedRowEnd = $derived(
+    rowEnd !== undefined && String(rowEnd) !== '' ? String(rowEnd) : undefined,
+  );
   const shouldApplyColumnSpan = $derived(
     columnSpan !== undefined && resolvedColumnEnd === undefined,
   );
   const shouldApplyRowSpan = $derived(
     resolvedRowSpan !== undefined && resolvedRowEnd === undefined,
   );
+  // Custom properties inherit through the DOM, so an outer Grid.Item's
+  // --cinder-grid-item-row-end would otherwise leak into a nested Grid's
+  // items that omit rowEnd (Svelte's style: directive simply skips setting
+  // the property when the bound value is undefined, leaving inheritance to
+  // take over). Always declaring the property locally — explicit `auto`
+  // when rowEnd is unset — means this element's own value never falls
+  // through to an ancestor's.
+  const declaredRowEnd = $derived(resolvedRowEnd ?? 'auto');
 </script>
 
 <svelte:element
@@ -55,7 +65,7 @@
   style:--cinder-grid-item-column-end={resolvedColumnEnd}
   style:--cinder-grid-item-row-span={resolvedRowSpan}
   style:--cinder-grid-item-row-start={resolvedRowStart}
-  style:--cinder-grid-item-row-end={resolvedRowEnd}
+  style:--cinder-grid-item-row-end={declaredRowEnd}
 >
   {@render children?.()}
 </svelte:element>
