@@ -112,6 +112,21 @@
 
   const isPositionedOpen = $derived(open && position != null);
 
+  // Snapshot of the last non-null virtual anchor. A consumer typically clears
+  // `position` to `null` in the same update that flips `open` to `false` (see
+  // selection-popover.examples.json), which would otherwise null out
+  // `virtualAnchor` immediately — and with it, `anchoredOverlay`'s computed
+  // `positionStyle` (anchored-overlay.svelte.ts resets position when its
+  // `anchor()` getter returns null) — the instant the exit transition begins,
+  // making the panel jump to its unpositioned fallback spot mid-fade instead
+  // of fading out in place. Falling back to this snapshot while `isClosing`
+  // keeps Floating UI positioning against the selection's last known location
+  // for the remainder of the exit.
+  let lastVirtualAnchor: VirtualElement | null = null;
+  $effect(() => {
+    if (virtualAnchor) lastVirtualAnchor = virtualAnchor;
+  });
+
   const reducedMotion = useReducedMotion();
   // Shared anchored-overlay exit-transition lifecycle (OVERLAY-POLICY.md §
   // "Transition lifecycle"). This component never unmounts its own element,
@@ -127,7 +142,7 @@
 
   const anchoredOverlay = createAnchoredOverlay({
     open: () => isPositionedOpen || exitState.isClosing,
-    anchor: () => virtualAnchor,
+    anchor: () => virtualAnchor ?? (exitState.isClosing ? lastVirtualAnchor : null),
     panel: () => popoverElement,
     placement: () => 'top' as Placement,
     offset: () => 8,
@@ -324,11 +339,13 @@
   data-cinder-expanded={expanded ? '' : undefined}
   data-cinder-position-ready={anchoredOverlay.positionReady}
   data-cinder-placement={anchoredOverlay.resolvedPlacement}
-  data-cinder-visible={exitState.renderPanel || undefined}
-  data-cinder-closing={exitState.isClosing || undefined}
+  data-cinder-visible={exitState.renderPanel ? '' : undefined}
+  data-cinder-closing={exitState.isClosing ? '' : undefined}
   style={anchoredOverlay.positionStyle}
   role="toolbar"
   aria-label="Selection actions"
+  aria-hidden={exitState.isClosing ? 'true' : undefined}
+  inert={exitState.isClosing ? true : undefined}
   onkeydown={handleKeydown}
   {@attach portalAttachment}
   {@attach dismissOnOutsidePointerdown}

@@ -1018,6 +1018,56 @@ describe('Popover — floating-ui wiring', () => {
     await rerender({ open: false, trigger: triggerSnippet, children: textSnippet('content') });
     expect(autoUpdateTeardown).toHaveBeenCalled();
   });
+
+  test('survives closing with an empty-string data-cinder-closing and stays inert/aria-hidden (CIN-376)', async () => {
+    // Stub a real (non-zero) transition duration for `.cinder-popover` so
+    // `waitForTransitionCompletion` takes its transitionend-listening path
+    // instead of resolving on the next microtask — this is the only way to
+    // observe the intermediate "closing but still mounted" DOM state.
+    const originalGetComputedStyle = window.getComputedStyle.bind(window);
+    window.getComputedStyle = ((target: Element) => {
+      if (target instanceof HTMLElement && target.classList.contains('cinder-popover')) {
+        return {
+          transitionProperty: 'opacity',
+          transitionDuration: '80ms',
+          transitionDelay: '0ms',
+        } as CSSStyleDeclaration;
+      }
+      return originalGetComputedStyle(target);
+    }) as typeof window.getComputedStyle;
+
+    try {
+      const { rerender } = render(Popover, {
+        props: { open: true, trigger: triggerSnippet, children: textSnippet('content') },
+      });
+      await waitFor(() => {
+        expect(queryPopoverPanel()).not.toBeNull();
+      });
+
+      await rerender({ open: false, trigger: triggerSnippet, children: textSnippet('content') });
+
+      const panel = queryPopoverPanel();
+      expect(panel).not.toBeNull();
+      // Regression guard: `isClosing || undefined` serializes Svelte's boolean
+      // `true` as the literal string `data-cinder-closing="true"`, not the
+      // empty-string idiom `[data-cinder-closing]` attribute selectors (and
+      // modal.svelte/drawer.svelte) are written against.
+      expect(panel?.getAttribute('data-cinder-closing')).toBe('');
+      // Regression guard: a closing-but-still-mounted panel must not remain
+      // keyboard/AT-reachable — a focusable child inside a dismissing popover
+      // must not be tabbable while it fades out.
+      expect(panel?.getAttribute('aria-hidden')).toBe('true');
+      expect(panel?.hasAttribute('inert')).toBe(true);
+
+      const event = new Event('transitionend');
+      Object.defineProperty(event, 'propertyName', { value: 'opacity' });
+      panel?.dispatchEvent(event);
+
+      await waitFor(() => expect(queryPopoverPanel()).toBeNull());
+    } finally {
+      window.getComputedStyle = originalGetComputedStyle;
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------

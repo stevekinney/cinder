@@ -314,8 +314,8 @@
       aria-hidden={!isTooltipExposed}
       data-cinder-placement={visible ? anchoredOverlay.resolvedPlacement : placement}
       data-cinder-position-ready={anchoredOverlay.positionReady}
-      data-cinder-visible={exitState.renderPanel || undefined}
-      data-cinder-closing={exitState.isClosing || undefined}
+      data-cinder-visible={exitState.renderPanel ? '' : undefined}
+      data-cinder-closing={exitState.isClosing ? '' : undefined}
       style={anchoredOverlay.positionStyle}
       {@attach tooltipPortalAttachment}
     >
@@ -343,6 +343,8 @@
         aria-hidden={!isTooltipExposed}
         data-cinder-placement={visible ? anchoredOverlay.resolvedPlacement : placement}
         data-cinder-position-ready={anchoredOverlay.positionReady}
+        data-cinder-visible={exitState.renderPanel ? '' : undefined}
+        data-cinder-closing={exitState.isClosing ? '' : undefined}
         style={anchoredOverlay.positionStyle}
         {@attach tooltipPortalAttachment}
       >

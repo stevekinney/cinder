@@ -410,7 +410,7 @@ describe('NavigationBar', () => {
     expect(navigationBarSource).toContain('pendingTabFocus');
     expect(navigationBarSource).toContain('pendingTabFocusTarget');
     expect(navigationBarSource).toContain(
-      "isMobileLayout && mobileMenuOpen ? 'cinder-_floating-surface' : undefined",
+      'isMobileLayout && (mobileMenuOpen || exitState.renderPanel)',
     );
     expect(navigationBarSource).toContain(
       "classNames('cinder-navigation-bar__portal-scope', 'cinder-navigation-bar', className)",
@@ -791,6 +791,49 @@ describe('NavigationBar', () => {
     expect(itemsRegion?.getAttribute('data-open')).toBe('true');
     expect(itemsRegion).not.toBeNull();
     expect(itemsRegion?.hasAttribute('inert')).toBe(false);
+  });
+
+  test('keeps the floating-surface chrome class through the exit transition (CIN-376)', async () => {
+    // Regression guard: gating `cinder-_floating-surface` purely on the live
+    // `mobileMenuOpen` bindable dropped the class (and with it, the surface's
+    // border/radius/shadow) the instant the toggle closed — before the
+    // 200ms exit transition had even started.
+    const originalGetComputedStyle = window.getComputedStyle.bind(window);
+    window.getComputedStyle = ((target: Element) => {
+      if (
+        target instanceof HTMLElement &&
+        target.classList.contains('cinder-navigation-bar__items')
+      ) {
+        return {
+          transitionProperty: 'opacity, transform',
+          transitionDuration: '80ms, 80ms',
+          transitionDelay: '0ms, 0ms',
+        } as CSSStyleDeclaration;
+      }
+      return originalGetComputedStyle(target);
+    }) as typeof window.getComputedStyle;
+
+    try {
+      await withResizeObserver(async () => {
+        const { container } = render(NavigationBar, {
+          items: textSnippet('items'),
+          menuToggle: toggleSnippet(),
+        });
+
+        const nav = await openCollapsedMobileMenu(container);
+        const itemsRegion = getItemsRegion(container);
+        expect(itemsRegion.classList.contains('cinder-_floating-surface')).toBe(true);
+
+        const toggle = nav.querySelector('#toggle-btn') as HTMLElement;
+        await fireEvent.click(toggle);
+
+        const closingRegion = getItemsRegion(container);
+        expect(closingRegion.hasAttribute('data-cinder-closing')).toBe(true);
+        expect(closingRegion.classList.contains('cinder-_floating-surface')).toBe(true);
+      });
+    } finally {
+      window.getComputedStyle = originalGetComputedStyle;
+    }
   });
 
   test('an open collapsed menu is portaled outside the navigation stacking context', async () => {

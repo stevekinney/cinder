@@ -486,6 +486,32 @@ describe('Tooltip', () => {
     expect(tooltip).toBe(portaledTooltip as HTMLElement);
   });
 
+  test('wrapping (non-detached) branch renders data-cinder-visible while shown (CIN-376)', async () => {
+    // Regression guard: `data-cinder-visible`/`data-cinder-closing` were
+    // previously only rendered in the detached `triggerRef` branch below —
+    // the default wrapping branch never added them, so
+    // `.cinder-tooltip:not([data-cinder-visible]) { visibility: hidden; }`
+    // (tooltip.css) matched unconditionally and a normal `<Tooltip>` was
+    // permanently hidden regardless of hover state.
+    const { container } = render(Tooltip, {
+      props: {
+        text: 'Tooltip content',
+        children: triggerSnippet,
+      },
+    });
+    const wrapper = container.querySelector('.cinder-tooltip-wrapper') as HTMLElement;
+    await fireEvent.mouseEnter(wrapper);
+
+    await waitFor(() => {
+      expect(autoUpdateSpy).toHaveBeenCalled();
+    });
+
+    const tooltip = queryTooltip();
+    expect(tooltip).not.toBeNull();
+    expect(tooltip?.getAttribute('data-cinder-visible')).toBe('');
+    expect(tooltip?.hasAttribute('data-cinder-closing')).toBe(false);
+  });
+
   test('disabled tabindex child is ignored and wrapper becomes the anchor fallback', async () => {
     const { container } = render(Tooltip, {
       props: {

@@ -284,7 +284,9 @@
         class="cinder-dropdown__menu"
         role="menu"
         data-cinder-placement={placement}
-        data-cinder-closing={exitState.isClosing || undefined}
+        data-cinder-closing={exitState.isClosing ? '' : undefined}
+        aria-hidden={exitState.isClosing ? 'true' : undefined}
+        inert={exitState.isClosing ? true : undefined}
       >
         {#if children}
           {@render children()}

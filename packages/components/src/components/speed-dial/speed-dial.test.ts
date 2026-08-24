@@ -159,11 +159,17 @@ describe('SpeedDial', () => {
     }
   });
 
-  test('a transitioncancel on any tracked property completes the exit immediately', async () => {
-    // Matches the canonical `waitForTransitionCompletion` contract this
-    // helper now delegates to (OVERLAY-POLICY.md § "Transition lifecycle"):
-    // the first `transitioncancel` on any tracked property ends the exit,
-    // even if other properties are still transitioning.
+  test('exit helper ignores interrupted entrance transition cancellation', async () => {
+    // Speed Dial's per-action waiter passes `ignoreCancel: true` to the
+    // shared `waitForTransitionCompletion` (see speed-dial-exit.ts): an
+    // action can still be mid-ENTER-transition (its own staggered delay not
+    // yet elapsed) when the close begins, and the browser cancels that
+    // in-flight enter transition the instant the style target changes.
+    // Under the canonical (non-`ignoreCancel`) semantics that `transitioncancel`
+    // would be mistaken for "this action's exit already finished" — resolving
+    // prematurely, before the exit transition has even started. This matches
+    // the old bespoke `waitForSpeedDialExit`, which never listened for
+    // `transitioncancel` at all.
     const action = document.createElement('button');
     document.body.append(action);
     const complete = mock(() => {});
@@ -177,6 +183,13 @@ describe('SpeedDial', () => {
       const cancel = waitForSpeedDialExit(action, false, complete);
 
       dispatchTransitionBoundary(action, 'transitioncancel', 'opacity');
+      dispatchTransitionBoundary(action, 'transitioncancel', 'transform');
+      expect(complete).not.toHaveBeenCalled();
+
+      dispatchTransitionBoundary(action, 'transitionend', 'opacity');
+      expect(complete).not.toHaveBeenCalled();
+
+      dispatchTransitionBoundary(action, 'transitionend', 'transform');
       expect(complete).toHaveBeenCalledTimes(1);
 
       cancel();

@@ -454,6 +454,11 @@ describe('HoverCard', () => {
       const closingCard = queryHoverCard();
       expect(closingCard).not.toBeNull();
       expect(closingCard?.hasAttribute('data-cinder-closing')).toBe(true);
+      // Regression guard: `isClosing || undefined` serializes Svelte's boolean
+      // `true` as the literal string `data-cinder-closing="true"`, not the
+      // empty-string idiom `modal.svelte`/`drawer.svelte` use (and that
+      // `[data-cinder-closing]` attribute selectors are written against).
+      expect(closingCard?.getAttribute('data-cinder-closing')).toBe('');
       // The card must still be positioned (not jumped to an unpositioned
       // fallback spot) while it fades out. Positioning re-resolves through an
       // async Floating UI call, so poll rather than asserting synchronously.

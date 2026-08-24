@@ -267,7 +267,7 @@
     role="tooltip"
     data-cinder-placement={anchoredOverlay.resolvedPlacement}
     data-cinder-position-ready={anchoredOverlay.positionReady}
-    data-cinder-closing={exitState.isClosing || undefined}
+    data-cinder-closing={exitState.isClosing ? '' : undefined}
     style={anchoredOverlay.positionStyle}
     onmouseenter={handleCardMouseEnter}
     onmouseleave={handleCardMouseLeave}

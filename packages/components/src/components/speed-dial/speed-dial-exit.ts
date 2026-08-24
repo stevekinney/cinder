@@ -30,6 +30,13 @@ export function waitForSpeedDialExit(
     waitForTransitionCompletion({
       element,
       reducedMotion,
+      // See the `ignoreCancel` doc comment on `waitForTransitionCompletion`:
+      // an action can still be mid-ENTER-transition (staggered delay not yet
+      // elapsed) when the close begins, and the browser cancels that
+      // in-flight enter transition the instant the style target changes —
+      // which, under the default semantics, would be mistaken for "this
+      // action's exit already finished" and resolve prematurely.
+      ignoreCancel: true,
       onComplete: () => {
         pending -= 1;
         if (!cancelled && pending === 0) onComplete();

@@ -704,13 +704,20 @@
       id={regionId}
       class={classNames(
         'cinder-navigation-bar__items',
-        isMobileLayout && mobileMenuOpen ? 'cinder-_floating-surface' : undefined,
+        // Keep the shared floating-surface chrome (border/radius/shadow)
+        // through the exit transition too — gating this purely on the live
+        // `mobileMenuOpen` bindable would strip it the instant close begins,
+        // stripping the surface's border/shadow before the 200ms exit
+        // transition has even started.
+        isMobileLayout && (mobileMenuOpen || exitState.renderPanel)
+          ? 'cinder-_floating-surface'
+          : undefined,
       )}
       data-open={mobileMenuOpen ? 'true' : 'false'}
       data-cinder-mobile-panel={isMobileLayout || undefined}
       data-cinder-position-ready={anchoredItems.positionReady || undefined}
-      data-cinder-visible={exitState.renderPanel || undefined}
-      data-cinder-closing={exitState.isClosing || undefined}
+      data-cinder-visible={exitState.renderPanel ? '' : undefined}
+      data-cinder-closing={exitState.isClosing ? '' : undefined}
       style={anchoredItems.positionStyle}
       inert={isCollapsible && isMobileLayout && !mobileMenuOpen ? true : undefined}
     >

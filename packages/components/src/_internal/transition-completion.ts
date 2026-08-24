@@ -2,6 +2,24 @@ type TransitionCompletionOptions = {
   element: HTMLElement;
   reducedMotion: boolean;
   onComplete: () => void;
+  /**
+   * Skip the `transitioncancel`-completes-immediately behavior documented in
+   * `_internal/OVERLAY-POLICY.md` § "Transition lifecycle". Default `false`
+   * (the canonical, policy-documented semantics every single-panel anchored
+   * overlay relies on: `SlidingDialogState`, `AnchoredOverlayExitState`, ...).
+   *
+   * Speed Dial's per-action fan-out (`speed-dial/speed-dial-exit.ts`) is the
+   * one caller that opts in: each action can still be mid-ENTER-transition
+   * (its own staggered delay not yet elapsed) when the panel starts closing.
+   * The browser cancels that in-flight enter transition the instant the
+   * style target changes, firing `transitioncancel` for it — which, under
+   * the default semantics, this helper would mistake for "the exit already
+   * finished" and resolve prematurely, before the exit transition has even
+   * started. The old bespoke `waitForSpeedDialExit` never listened for
+   * `transitioncancel` at all; this flag restores that exact behavior for
+   * Speed Dial while every other caller keeps the canonical contract.
+   */
+  ignoreCancel?: boolean;
 };
 
 function parseTimeValueList(value: string): number[] {
@@ -65,6 +83,7 @@ export function waitForTransitionCompletion({
   element,
   reducedMotion,
   onComplete,
+  ignoreCancel = false,
 }: TransitionCompletionOptions): () => void {
   let completed = false;
   let fallbackTimer: ReturnType<typeof setTimeout> | undefined;
@@ -73,7 +92,7 @@ export function waitForTransitionCompletion({
     if (completed) return;
     completed = true;
     element.removeEventListener('transitionend', handleTransitionEnd);
-    element.removeEventListener('transitioncancel', finish);
+    if (!ignoreCancel) element.removeEventListener('transitioncancel', finish);
     if (fallbackTimer) {
       clearTimeout(fallbackTimer);
       fallbackTimer = undefined;
@@ -108,7 +127,7 @@ export function waitForTransitionCompletion({
   }
 
   element.addEventListener('transitionend', handleTransitionEnd);
-  element.addEventListener('transitioncancel', finish);
+  if (!ignoreCancel) element.addEventListener('transitioncancel', finish);
   fallbackTimer = setTimeout(finish, totalTransitionTime + 50);
 
   return finish;

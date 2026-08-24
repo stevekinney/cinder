@@ -130,7 +130,11 @@
   });
   const inheritedPortalStyle = createInheritedPortalStyle(
     () => anchorElement,
-    () => mounted && open,
+    // Keep inheriting portal styles through the exit transition too — gating
+    // this purely on the live `open` prop would drop inherited theme tokens
+    // the instant close begins, so a themed-subtree popover would lose its
+    // tokens mid-exit instead of fading out with the correct styling.
+    () => mounted && (open || exitState.isClosing),
   );
 
   const reducedMotion = useReducedMotion();
@@ -366,12 +370,13 @@
     {role}
     aria-label={resolvedAriaLabel}
     aria-labelledby={ariaLabelledby}
-    aria-hidden={anchoredOverlay.positionReady ? undefined : 'true'}
+    aria-hidden={anchoredOverlay.positionReady && !exitState.isClosing ? undefined : 'true'}
+    inert={exitState.isClosing ? true : undefined}
     class={classNames('cinder-_floating-surface', 'cinder-popover', className)}
     data-cinder-portal-owner={`${panelId}-scope`}
     data-cinder-placement={anchoredOverlay.resolvedPlacement}
     data-cinder-position-ready={anchoredOverlay.positionReady}
-    data-cinder-closing={exitState.isClosing || undefined}
+    data-cinder-closing={exitState.isClosing ? '' : undefined}
     style={anchoredOverlay.positionStyle}
     tabindex="-1"
   >
