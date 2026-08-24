@@ -94,7 +94,7 @@ function callsiteFingerprint(candidate: ThresholdCandidate): string {
     return `${candidate.kind}:${candidate.line
       .replace(candidate.renderedValue, '<threshold>')
       .replace(/\s+/gu, ' ')
-      .trim()}:${candidate.occurrenceIndex ?? ''}`;
+      .trim()}`;
   }
   if (candidate.occurrenceIndex !== undefined) {
     return `${candidate.kind}:${candidate.label.toLowerCase()}:${candidate.occurrenceIndex}`;

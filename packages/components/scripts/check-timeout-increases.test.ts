@@ -141,6 +141,21 @@ describe('check-timeout-increases', () => {
     expect(violations).toEqual([]);
   });
 
+  test('preserves unchanged Playwright waits moved across hunks', () => {
+    const diff = [
+      'diff --git a/packages/components/scripts/example.test.ts b/packages/components/scripts/example.test.ts',
+      '--- a/packages/components/scripts/example.test.ts',
+      '+++ b/packages/components/scripts/example.test.ts',
+      '@@ -10,1 +10,0 @@',
+      "-await page.locator('[data-ready]').waitFor({ timeout: 5_000 });",
+      '@@ -30,0 +29,1 @@',
+      "+await page.locator('[data-ready]').waitFor({ timeout: 5_000 });",
+      '',
+    ].join('\n');
+
+    expect(findTimeoutIncreaseViolations(diff)).toEqual([]);
+  });
+
   test('allows a newly added finite Playwright operation timeout', () => {
     const violations = findTimeoutIncreaseViolations(
       diffFor(
