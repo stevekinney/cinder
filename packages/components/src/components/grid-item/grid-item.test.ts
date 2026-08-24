@@ -181,6 +181,48 @@ describe('GridItem', () => {
     expect(root.style.getPropertyValue('--cinder-grid-item-row-start')).toBe('');
   });
 
+  test('normalizes an invalid span (empty string, 0, non-integer) to undefined, falling back to auto-placement', () => {
+    for (const invalidSpan of ['', 0, 1.5] as const) {
+      const { container, unmount } = render(GridItem, {
+        props: { span: invalidSpan, children: textSnippet('content') },
+      });
+      const root = container.querySelector('.cinder-grid-item') as HTMLElement;
+      expect(root.style.getPropertyValue('--cinder-grid-item-column-span')).toBe('');
+      expect(root.hasAttribute('data-cinder-column-span')).toBe(false);
+      unmount();
+    }
+  });
+
+  test('applies a valid span of 2', () => {
+    const { container } = render(GridItem, {
+      props: { span: 2, children: textSnippet('content') },
+    });
+    const root = container.querySelector('.cinder-grid-item') as HTMLElement;
+    expect(root.style.getPropertyValue('--cinder-grid-item-column-span')).toBe('2');
+    expect(root.getAttribute('data-cinder-column-span')).toBe('true');
+  });
+
+  test('normalizes an invalid rowSpan (empty string, 0, non-integer) to undefined', () => {
+    for (const invalidRowSpan of ['', 0, 1.5] as const) {
+      const { container, unmount } = render(GridItem, {
+        props: { rowSpan: invalidRowSpan, children: textSnippet('content') },
+      });
+      const root = container.querySelector('.cinder-grid-item') as HTMLElement;
+      expect(root.style.getPropertyValue('--cinder-grid-item-row-span')).toBe('');
+      expect(root.hasAttribute('data-cinder-row-span')).toBe(false);
+      unmount();
+    }
+  });
+
+  test('applies a valid rowSpan of 2', () => {
+    const { container } = render(GridItem, {
+      props: { rowSpan: 2, children: textSnippet('content') },
+    });
+    const root = container.querySelector('.cinder-grid-item') as HTMLElement;
+    expect(root.style.getPropertyValue('--cinder-grid-item-row-span')).toBe('2');
+    expect(root.getAttribute('data-cinder-row-span')).toBe('true');
+  });
+
   test('does not leak an outer rowEnd custom property into a nested Grid.Item that omits it', () => {
     const { container } = render(NestedGridItemFixture, {
       props: { outerRowEnd: 'span 3' },

@@ -46,10 +46,25 @@
     return value !== '' ? value : undefined;
   }
 
-  const columnSpan = $derived(span !== undefined ? String(span) : undefined);
+  /**
+   * Normalizes a track-span count (`span`, `rowSpan`). The generated schema
+   * promises `integer, minimum: 1`; the runtime should refuse the same
+   * inputs — an empty string, `0`, or a non-integer would otherwise
+   * stringify straight onto the element (e.g. `grid-column-end: span `,
+   * `span 0`, or `span 1.5`), none of which are valid CSS.
+   */
+  function normalizedSpanValue(value: number | string | undefined): string | undefined {
+    if (value === undefined) return undefined;
+    if (typeof value === 'number') {
+      return Number.isInteger(value) && value >= 1 ? String(value) : undefined;
+    }
+    return value !== '' ? value : undefined;
+  }
+
+  const columnSpan = $derived(normalizedSpanValue(span));
   const resolvedColumnStart = $derived(normalizedLineValue(columnStart));
   const resolvedColumnEnd = $derived(normalizedLineValue(columnEnd));
-  const resolvedRowSpan = $derived(rowSpan !== undefined ? String(rowSpan) : undefined);
+  const resolvedRowSpan = $derived(normalizedSpanValue(rowSpan));
   const resolvedRowStart = $derived(normalizedLineValue(rowStart));
   const resolvedRowEnd = $derived(normalizedLineValue(rowEnd));
   const shouldApplyColumnSpan = $derived(
