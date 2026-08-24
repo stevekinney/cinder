@@ -374,17 +374,19 @@ function findPlaywrightFunctionPollingArguments(analysis: string): WaitThreshold
   for (const callArguments of findCallArguments(analysis, /\bpage\.waitForFunction\s*\(/gu)) {
     const options = callArguments[2];
     if (options === undefined) continue;
-    const pollingMatch = new RegExp(
-      String.raw`\bpolling\s*:\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
-      'u',
-    ).exec(options.text);
-    const renderedValue = pollingMatch?.groups?.['value'];
-    if (pollingMatch === null || renderedValue === undefined) continue;
-    argumentsFound.push({
-      label: 'playwright-operation-timeout',
-      offset: options.offset + pollingMatch.index + pollingMatch[0].lastIndexOf(renderedValue),
-      renderedValue,
-    });
+    for (const optionName of ['polling', 'timeout']) {
+      const optionMatch = new RegExp(
+        String.raw`\b${optionName}\s*:\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
+        'u',
+      ).exec(options.text);
+      const renderedValue = optionMatch?.groups?.['value'];
+      if (optionMatch === null || renderedValue === undefined) continue;
+      argumentsFound.push({
+        label: 'playwright-operation-timeout',
+        offset: options.offset + optionMatch.index + optionMatch[0].lastIndexOf(renderedValue),
+        renderedValue,
+      });
+    }
   }
   return argumentsFound;
 }

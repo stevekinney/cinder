@@ -17,6 +17,7 @@ import {
   formatSvelteKitHydrationRuntimeErrors,
   isBrowserCrashError,
   observeSvelteKitHydrationMarker,
+  observeSvelteKitHydrationMarkerAlongside,
   observeSvelteKitHydrationMarkerBestEffort,
   parseHydrationBrowserProcessIds,
   preoptimizeSvelteKitChatHydration,
@@ -335,6 +336,25 @@ describe('SvelteKit hydration route failure diagnostics', () => {
     expect(domObservation.hydrationMarkerValue).toBe('unknown');
   });
 
+  test('shares the hydration readiness window with the diagnostic probe', async () => {
+    const domObservation: SvelteKitHydrationRouteDomObservation = {
+      documentReadyState: 'interactive',
+      hydrationMarkerPresent: 'unknown',
+      hydrationMarkerValue: 'unknown',
+    };
+    const page = { $: mock(() => new Promise<null>(() => undefined)) };
+
+    await expect(
+      observeSvelteKitHydrationMarkerAlongside(
+        page,
+        '/dev-ssr-tabs',
+        domObservation,
+        Promise.reject(new Error('hydration readiness wait failed')),
+        50,
+      ),
+    ).rejects.toThrow('hydration readiness wait failed');
+  });
+
   test('wraps route failures with route, network, runtime, and DOM state', () => {
     const cause = new Error('locator wait timed out');
     const error = wrapSvelteKitHydrationRouteFailure({
@@ -429,6 +449,20 @@ describe('SvelteKit hydration route failure diagnostics', () => {
     expect(message).toContain('char(s) omitted');
     expect(message).toContain('HTTP error responses');
     expect(message).toContain('request failures');
+    expect(message).toContain('page and console errors');
+    expect(message).toContain('browser events');
+  });
+
+  test('caps the current URL without starving structured diagnostic categories', () => {
+    const message = formatSvelteKitHydrationRouteFailure({
+      cause: new Error('locator wait timed out'),
+      label: 'fixture',
+      routePath: '/dev-ssr-tabs',
+      snapshot: { ...snapshot, currentUrl: `https://example.test/?state=${'x'.repeat(10_000)}` },
+    });
+
+    expect(message).toContain('char(s) omitted');
+    expect(message).toContain('documentReadyState');
     expect(message).toContain('page and console errors');
     expect(message).toContain('browser events');
   });

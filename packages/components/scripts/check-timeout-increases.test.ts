@@ -168,6 +168,31 @@ describe('check-timeout-increases', () => {
     expect(violations).toHaveLength(1);
   });
 
+  test('treats removing a Playwright waitForFunction timeout as unbounded', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/testing/tests/example.playwright.ts',
+        ['await page.waitForFunction(fn, null, { timeout: 5_000 });'],
+        ['await page.waitForFunction(fn, null, {});'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.new.effectiveValue).toBe(Number.POSITIVE_INFINITY);
+  });
+
+  test('checks waits in executable fixture modules', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/src/schema-form/schema-form-async.fixture.ts',
+        ['setTimeout(resolve, 0);'],
+        ['setTimeout(resolve, 1_000);'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+  });
+
   test('rejects removing locator wait deadlines', () => {
     const violations = findTimeoutIncreaseViolations(
       diffFor(

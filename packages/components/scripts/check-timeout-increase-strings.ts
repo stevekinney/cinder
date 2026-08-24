@@ -215,7 +215,7 @@ export function sourceLinesForAnalysis(filePath: string, lines: readonly string[
 
 export function isTestOrValidationInfrastructure(filePath: string, analysis = ''): boolean {
   return (
-    /(?:^|\/)(?:scripts|tests?|testing)(?:\/|$)|(?:\.(?:spec|test)\.|_(?:spec|test)_)[^/]+$/u.test(
+    /(?:^|\/)(?:scripts|tests?|testing)(?:\/|$)|(?:\.(?:fixture|spec|test)\.|_(?:fixture|spec|test)_)[^/]+$/u.test(
       filePath,
     ) ||
     /(?:^|\/)\.husky\/[^/]+$/u.test(filePath) ||

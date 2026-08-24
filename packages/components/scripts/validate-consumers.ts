@@ -1216,6 +1216,7 @@ const HYDRATION_ROUTE_DIAGNOSTIC_MAX_ITEMS = 2;
 const HYDRATION_ROUTE_DIAGNOSTIC_COLLECTION_MAX_ITEMS = 20;
 const HYDRATION_ROUTE_DIAGNOSTIC_ITEM_CHARS = 600;
 const HYDRATION_ROUTE_DIAGNOSTIC_CAUSE_CHARS = 800;
+const HYDRATION_ROUTE_DIAGNOSTIC_URL_CHARS = 800;
 const HYDRATION_ROUTE_DIAGNOSTIC_MAX_CHARS = 6_000;
 
 type DevelopmentServerProcess = Pick<Bun.Subprocess, 'exitCode' | 'exited' | 'pid'>;
@@ -2653,9 +2654,13 @@ async function assertSvelteKitHydrationRouteContent(
   routePath: SvelteKitHydrationRoute,
   domObservation: SvelteKitHydrationRouteDomObservation,
 ): Promise<void> {
-  await observeSvelteKitHydrationMarkerBestEffort(page, routePath, domObservation);
   if (routePath === '/chat-layout') {
-    await page.locator('[data-chat-layout-hydrated="true"]').waitFor({ timeout: 5_000 });
+    await observeSvelteKitHydrationMarkerAlongside(
+      page,
+      routePath,
+      domObservation,
+      page.locator('[data-chat-layout-hydrated="true"]').waitFor({ timeout: 5_000 }),
+    );
     domObservation.hydrationMarkerPresent = true;
     domObservation.hydrationMarkerValue = 'true';
     await page.getByRole('heading', { name: 'Empty Chat hydration' }).waitFor({ timeout: 5_000 });
@@ -2665,7 +2670,12 @@ async function assertSvelteKitHydrationRouteContent(
     return;
   }
 
-  await page.locator('[data-dev-ssr-hydrated="true"]').waitFor({ timeout: 5_000 });
+  await observeSvelteKitHydrationMarkerAlongside(
+    page,
+    routePath,
+    domObservation,
+    page.locator('[data-dev-ssr-hydrated="true"]').waitFor({ timeout: 5_000 }),
+  );
   domObservation.hydrationMarkerPresent = true;
   domObservation.hydrationMarkerValue = 'true';
   if (routePath === '/dev-ssr-navigation') {
@@ -2821,6 +2831,19 @@ export async function observeSvelteKitHydrationMarkerBestEffort(
   }
 }
 
+export async function observeSvelteKitHydrationMarkerAlongside(
+  page: HydrationMarkerPage,
+  routePath: SvelteKitHydrationRoute,
+  domObservation: SvelteKitHydrationRouteDomObservation,
+  readiness: Promise<void>,
+  timeoutMs = 5_000,
+): Promise<void> {
+  await Promise.all([
+    observeSvelteKitHydrationMarkerBestEffort(page, routePath, domObservation, timeoutMs),
+    readiness,
+  ]);
+}
+
 function unknownSvelteKitHydrationRouteFailureSnapshot(
   routePath: SvelteKitHydrationRoute,
 ): SvelteKitHydrationRouteFailureSnapshot {
@@ -2934,7 +2957,7 @@ export function formatSvelteKitHydrationRouteFailure(
   const lines = [
     `sveltekit-consumer ${input.label} ${input.routePath} hydration route failed.`,
     `cause: ${truncateDiagnosticText(errorMessage(input.cause), HYDRATION_ROUTE_DIAGNOSTIC_CAUSE_CHARS)}`,
-    `currentUrl: ${snapshot.currentUrl}`,
+    `currentUrl: ${truncateDiagnosticText(snapshot.currentUrl, HYDRATION_ROUTE_DIAGNOSTIC_URL_CHARS)}`,
     `documentReadyState: ${snapshot.documentReadyState}`,
     `hydrationMarker: selector=${snapshot.hydrationMarkerSelector} present=${String(snapshot.hydrationMarkerPresent)} value=${String(snapshot.hydrationMarkerValue)}`,
     ...(snapshot.diagnosticCaptureError === undefined
