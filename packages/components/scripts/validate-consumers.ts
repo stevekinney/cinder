@@ -2786,9 +2786,14 @@ export async function observeSvelteKitHydrationMarker(
   page: HydrationMarkerPage,
   routePath: SvelteKitHydrationRoute,
   domObservation: SvelteKitHydrationRouteDomObservation,
+  timeoutMs = 5_000,
 ): Promise<void> {
   const marker = hydrationMarkerForRoute(routePath);
-  const element = await page.$(marker.selector);
+  const element = await promiseWithTimeout(
+    page.$(marker.selector),
+    timeoutMs,
+    `hydration marker probe selector=${marker.selector}`,
+  );
   domObservation.hydrationMarkerPresent = element !== null;
   domObservation.hydrationMarkerValue = element
     ? await element.getAttribute(marker.attribute)

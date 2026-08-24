@@ -289,6 +289,19 @@ describe('SvelteKit hydration route failure diagnostics', () => {
     expect(domObservation.hydrationMarkerValue).toBe('false');
   });
 
+  test('bounds a hydration marker protocol probe that never settles', async () => {
+    const domObservation: SvelteKitHydrationRouteDomObservation = {
+      documentReadyState: 'interactive',
+      hydrationMarkerPresent: 'unknown',
+      hydrationMarkerValue: 'unknown',
+    };
+    const page = { $: mock(() => new Promise<null>(() => undefined)) };
+
+    await expect(
+      observeSvelteKitHydrationMarker(page, '/dev-ssr-tabs', domObservation, 1),
+    ).rejects.toThrow('hydration marker probe selector=[data-dev-ssr-hydrated] timed out');
+  });
+
   test('wraps route failures with route, network, runtime, and DOM state', () => {
     const cause = new Error('locator wait timed out');
     const error = wrapSvelteKitHydrationRouteFailure({

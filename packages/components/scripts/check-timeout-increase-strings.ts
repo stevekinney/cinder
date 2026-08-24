@@ -265,7 +265,7 @@ export function isExecutableConfigurationCliLine(
   const extension = extname(filePath);
   if (!['.json', '.yaml', '.yml'].includes(extension)) return true;
   const executablePattern =
-    /\b(?:bun|bunx|jest|node|npx|npm|playwright|pnpm|vitest|yarn)\b[^\n"']*--[\w-]+/u;
+    /\b(?:bun|bunx|gh|jest|node|npx|npm|playwright|pnpm|vitest|yarn)\b[^\n"']*(?:--[\w-]+|-i\b)/u;
   if (executablePattern.test(line)) return true;
   const precedingLine = analysisBeforeLine.split('\n').findLast((entry) => entry.trim().length > 0);
   return precedingLine !== undefined && /\\\s*$/u.test(precedingLine)
@@ -324,6 +324,47 @@ export type MultilineExecutableCliThresholdArgument = ExecutableCliThresholdArgu
   lineIndex: number;
 };
 
+export type ShellWaitThresholdArgument = {
+  label: 'shell.kill-after' | 'shell.timeout' | 'sleep';
+  offset: number;
+  renderedValue: string;
+  sourceText: string;
+};
+
+export function extractShellWaitThresholdArguments(analysis: string): ShellWaitThresholdArgument[] {
+  const duration = String.raw`(?:\d[\d_]*(?:\.\d[\d_]*)?|\.\d[\d_]*)(?:[smhd])?`;
+  const timeoutOption = String.raw`(?:(?:--foreground|--preserve-status|--verbose)\s+|(?:--signal(?:=|\s+)|-s\s+)\S+\s+)`;
+  const pattern = new RegExp(
+    String.raw`(?:^|(?:&&|[;&|])\s*|\n\s*|\brun:\s*)(?<command>sleep|timeout)\s+(?:${timeoutOption})*(?:(?:-k\s+|--kill-after(?:=|\s+))(?<killAfter>${duration})\s+)?(?:${timeoutOption})*(?<value>${duration})(?![\w.])`,
+    'gu',
+  );
+  return [...analysis.matchAll(pattern)].flatMap((match) => {
+    const command = match.groups?.['command'];
+    const value = match.groups?.['value'];
+    if (command === undefined || value === undefined) return [];
+    const sourceText = match[0];
+    const offset = match.index ?? 0;
+    const main: ShellWaitThresholdArgument = {
+      label: command === 'timeout' ? 'shell.timeout' : 'sleep',
+      offset,
+      renderedValue: value.replace(/[smhd]$/u, ''),
+      sourceText,
+    };
+    const killAfter = match.groups?.['killAfter'];
+    return killAfter === undefined
+      ? [main]
+      : [
+          {
+            label: 'shell.kill-after',
+            offset,
+            renderedValue: killAfter.replace(/[smhd]$/u, ''),
+            sourceText,
+          },
+          main,
+        ];
+  });
+}
+
 function isExecutableCliArgumentLine(line: string, argument: string): boolean {
   for (const quotedArgument of [`'${argument}'`, `"${argument}"`]) {
     const argumentIndex = line.indexOf(quotedArgument);
@@ -343,9 +384,9 @@ export function extractExecutableCliThresholdArguments(
     (argument, index) => argument === 'bun' && argumentsFound[index + 1] === 'test',
   );
   const flagPattern =
-    /^--(?<label>timeout-minutes|timeout|test-timeout|testTimeout|retries|retry|repeat-each|rerun-each|slow)$/iu;
+    /^(?:--(?<label>timeout-minutes|timeout|test-timeout|testTimeout|retries|retry|repeat-each|rerun-each|slow|interval)|(?<shortLabel>-i))$/iu;
   const exactPattern = new RegExp(
-    String.raw`^--(?<label>timeout-minutes|timeout|test-timeout|testTimeout|retries|retry|repeat-each|rerun-each|slow)=(?<value>${NUMERIC_EXPRESSION_PATTERN})$`,
+    String.raw`^--(?<label>timeout-minutes|timeout|test-timeout|testTimeout|retries|retry|repeat-each|rerun-each|slow|interval)=(?<value>${NUMERIC_EXPRESSION_PATTERN})$`,
     'iu',
   );
   const numericPattern = new RegExp(String.raw`^${NUMERIC_EXPRESSION_PATTERN}$`, 'u');
@@ -371,7 +412,7 @@ export function extractExecutableCliThresholdArguments(
     ) {
       results.push({
         bunTestCommand,
-        label: flagMatch.groups?.['label'] ?? '',
+        label: flagMatch.groups?.['label'] ?? (flagMatch.groups?.['shortLabel'] ? 'interval' : ''),
         renderedValue: splitValue,
       });
     }
@@ -393,7 +434,7 @@ export function extractMultilineExecutableCliThresholdArguments(
 ): MultilineExecutableCliThresholdArgument[] {
   const results: MultilineExecutableCliThresholdArgument[] = [];
   const flagPattern =
-    /^\s*['"]--(?<label>timeout-minutes|timeout|test-timeout|testTimeout|retries|retry|repeat-each|rerun-each|slow)['"]\s*,?\s*$/iu;
+    /^\s*['"](?:--(?<label>timeout-minutes|timeout|test-timeout|testTimeout|retries|retry|repeat-each|rerun-each|slow|interval)|(?<shortLabel>-i))['"]\s*,?\s*$/iu;
   const valuePattern = new RegExp(
     String.raw`^\s*['"](?<value>${NUMERIC_EXPRESSION_PATTERN})['"]\s*,?\s*$`,
     'u',
@@ -417,7 +458,7 @@ export function extractMultilineExecutableCliThresholdArguments(
     );
     results.push({
       bunTestCommand,
-      label: flagMatch.groups?.['label'] ?? '',
+      label: flagMatch.groups?.['label'] ?? (flagMatch.groups?.['shortLabel'] ? 'interval' : ''),
       renderedValue: valueMatch.groups?.['value'] ?? '',
       lineIndex: valueLineIndex,
     });

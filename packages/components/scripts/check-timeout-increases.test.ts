@@ -743,6 +743,26 @@ describe('check-timeout-increases', () => {
     expect(violations).toHaveLength(1);
   });
 
+  test('checks gh run watch interval flags', () => {
+    const long = findTimeoutIncreaseViolations(
+      diffFor(
+        '.github/workflows/release.yaml',
+        ['run: gh run watch 1 --interval 30'],
+        ['run: gh run watch 1 --interval 60'],
+      ),
+    );
+    const short = findTimeoutIncreaseViolations(
+      diffFor(
+        '.github/workflows/release.yaml',
+        ['run: gh run watch 1 -i 30'],
+        ['run: gh run watch 1 -i 60'],
+      ),
+    );
+
+    expect(long).toHaveLength(1);
+    expect(short).toHaveLength(1);
+  });
+
   test('compares new Bun CLI timeouts with the runner default', () => {
     const increased = findTimeoutIncreaseViolations(
       diffFor(
@@ -1363,6 +1383,16 @@ describe('check-timeout-increases', () => {
 
     expect(violations).toHaveLength(2);
     expect(violations.every((violation) => violation.old.value === 5_000)).toBe(true);
+  });
+
+  test('uses Vitest lifecycle timeout defaults', () => {
+    for (const label of ['hookTimeout', 'teardownTimeout']) {
+      const violations = findTimeoutIncreaseViolations(
+        diffFor('vitest.config.ts', [], [`export default { ${label}: 20_000 };`]),
+      );
+      expect(violations).toHaveLength(1);
+      expect(violations[0]?.old.value).toBe(10_000);
+    }
   });
 
   test('checks numeric bounds on polling retry loops', () => {
@@ -2182,6 +2212,22 @@ describe('check-timeout-increases', () => {
     expect(violations).toHaveLength(1);
     expect(violations[0]?.old.effectiveValue).toBe(30_000);
     expect(violations[0]?.new.effectiveValue).toBe(60_000);
+  });
+
+  test('checks GNU timeout kill-after thresholds', () => {
+    const short = findTimeoutIncreaseViolations(
+      diffFor('.husky/pre-push', ['timeout -k 5s 30s bun test'], ['timeout -k 10s 30s bun test']),
+    );
+    const long = findTimeoutIncreaseViolations(
+      diffFor(
+        '.husky/pre-push',
+        ['timeout --kill-after=5s 30s bun test'],
+        ['timeout --kill-after=10s 30s bun test'],
+      ),
+    );
+
+    expect(short).toHaveLength(1);
+    expect(long).toHaveLength(1);
   });
 
   test('checks waits in extensionless validation hooks', () => {

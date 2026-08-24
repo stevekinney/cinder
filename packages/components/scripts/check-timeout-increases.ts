@@ -26,6 +26,7 @@ import {
 import {
   extractExecutableCliThresholdArguments,
   extractMultilineExecutableCliThresholdArguments,
+  extractShellWaitThresholdArguments,
   isExecutableConfigurationCliLine,
   isTestOrValidationInfrastructure,
   isTestThresholdAssignment,
@@ -182,12 +183,12 @@ function extractThresholdCandidates(
     );
   }
   const cliPattern = new RegExp(
-    String.raw`--(?<label>timeout-minutes|timeout|test-timeout|testTimeout|retries|retry|repeat-each|rerun-each|slow)(?:=|\s+)(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
+    String.raw`(?:(?:--(?<label>timeout-minutes|timeout|test-timeout|testTimeout|retries|retry|repeat-each|rerun-each|slow|interval))|(?<shortLabel>-i))(?:=|\s+)(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
     'giu',
   );
   for (const match of analysisLine.matchAll(cliPattern)) {
     if (!isExecutableConfigurationCliLine(filePath, line, analysisBeforeLine)) continue;
-    const label = match.groups?.['label'] ?? '';
+    const label = match.groups?.['label'] ?? (match.groups?.['shortLabel'] ? 'interval' : '');
     pushCandidate(
       candidates,
       line,
@@ -404,26 +405,18 @@ function extractMultilineCallCandidates(
     }
   }
   if (/\.(?:bash|sh|yaml|yml|zsh)$/u.test(filePath) || /(?:^|\/)\.husky\/[^/]+$/u.test(filePath)) {
-    let shellCommandOccurrenceIndex = 0;
-    for (const sleepMatch of analysis.matchAll(
-      /(?:^|(?:&&|[;&|])\s*|\n\s*|\brun:\s*)(?<command>sleep|timeout)\s+(?:(?:--[\w-]+)\s+)*(?<value>(?:\d[\d_]*(?:\.\d[\d_]*)?|\.\d[\d_]*))(?:[smhd])?(?![\w.])/gu,
-    )) {
-      const renderedValue = sleepMatch.groups?.['value'];
-      if (renderedValue === undefined) continue;
-      const sourceIndex = analysis.slice(0, sleepMatch.index).split('\n').length - 1;
+    for (const [occurrenceIndex, wait] of extractShellWaitThresholdArguments(analysis).entries()) {
+      const sourceIndex = analysis.slice(0, wait.offset).split('\n').length - 1;
       pushCandidate(
         candidates,
-        source[sourceIndex]?.line ?? sleepMatch[0],
+        source[sourceIndex]?.line ?? wait.sourceText,
         source[sourceIndex]?.lineNumber ?? 0,
-        sleepMatch.groups?.['command'] === 'timeout' ? 'shell.timeout' : 'sleep',
-        renderedValue,
-        implicitBaselineFor(
-          sleepMatch.groups?.['command'] === 'timeout' ? 'shell.timeout' : 'sleep',
-        ),
-        shellCommandOccurrenceIndex,
-        sleepMatch[0],
+        wait.label,
+        wait.renderedValue,
+        implicitBaselineFor(wait.label),
+        occurrenceIndex,
+        wait.sourceText,
       );
-      shellCommandOccurrenceIndex += 1;
     }
   }
   if (/(?:^|\/)[^/]+(?:\.(?:spec|test)\.|_(?:spec|test)_)[^/]+$/u.test(filePath)) {

@@ -71,6 +71,12 @@ export function implicitBaselineFor(
   ) {
     return { renderedValue: '5_000 (implicit test runner timeout)', value: 5_000 };
   }
+  if (
+    ['hooktimeout', 'teardowntimeout'].includes(label.toLowerCase()) &&
+    /(?:^|\/)vitest\.config\.[^/]+$/u.test(filePath)
+  ) {
+    return { renderedValue: '10_000 (implicit Vitest lifecycle timeout)', value: 10_000 };
+  }
   if (configurationDomain === 'expect') {
     return { renderedValue: '5_000 (implicit Playwright expect timeout)', value: 5_000 };
   }
