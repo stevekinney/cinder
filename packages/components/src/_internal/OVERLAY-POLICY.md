@@ -1,6 +1,6 @@
 # Cinder Overlay Policy
 
-This document defines the cross-cutting behavior every Cinder overlay component (Modal, Drawer, Dropdown, Popover, Tooltip, Toast) must follow. It exists so each component's own `.a11y.md` doesn't have to re-derive these answers, and so the policy stays consistent as new overlay components are added in later phases.
+This document defines the cross-cutting behavior every Cinder overlay component (Modal, Drawer, Alert Dialog, Popover, Tooltip, HoverCard, the Select and Combobox listboxes, Dropdown/Menu, Context Menu, Command Menu, Speed Dial, Toast) must follow. It exists so each component's own `.a11y.md` doesn't have to re-derive these answers, and so the policy stays consistent as new overlay components are added in later phases.
 
 The runtime helpers backing this policy live in `src/_internal/overlay.ts` and
 `src/_internal/anchored-overlay.svelte.ts`.
@@ -124,6 +124,62 @@ Toast sits **above** Modal so confirmation and error toasts reach users even whe
   - **External consumers**: `import { useReducedMotion } from '@lostgradient/cinder';`
   - **Inside `packages/components/src/...`**: import using the appropriate local relative path to `src/utilities/use-reduced-motion.svelte.ts` (the depth depends on the consuming file's location). This matches the package's existing internal-import convention — for example, components reference `./_internal/overlay.ts` or `../_internal/overlay.ts` rather than the package root — and avoids a barrel cycle through `src/index.ts`.
 
+## Transition lifecycle
+
+This section defines how an overlay _leaves_ the screen. The canonical implementation is `SlidingDialogState` (`src/components/_internal/create-sliding-dialog-state.svelte.ts`), shared today by Modal and Drawer (and by Alert Dialog through its composition of Modal). New overlays and migrations conform to this contract; CIN-376 extends it across the anchored-overlay family.
+
+### The contract
+
+- **The component owns triggering the close.** When close begins (the `open` prop flips false, ESC fires, the backdrop is clicked), the component enters a _closing_ state and renders `data-cinder-closing` on its animated element(s) for the full duration of the exit transition. In the canonical helper this is the `isClosing` flag; the component renders it as `data-cinder-closing={dialogState.isClosing ? '' : undefined}` and keys its exit styles off `[data-cinder-closing]` (see `modal.css` / `drawer.css`).
+- **The shared helper owns detecting completion.** `waitForTransitionCompletion` (`src/_internal/transition-completion.ts`) watches the animated element for `transitionend`/`transitioncancel` on every tracked transition property, backed by a computed-duration fallback timer, and signals unmount-readiness via its `onComplete` callback. Only after that callback does the component drop the panel from the DOM (and, for native dialogs, call `dialog.close()`).
+- **Reduced motion must not deadlock teardown.** When `prefers-reduced-motion: reduce` collapses durations to zero (the `--cinder-duration-*` tokens do this), `waitForTransitionCompletion` sees a total transition time of `0` and resolves immediately via `queueMicrotask` — the overlay still unmounts, it just does so without animating. Callers pass the current `useReducedMotion()` value so the helper never waits on a transition that will not fire.
+- **Interrupted closes are generation-guarded.** A reopen during the exit transition must cancel the pending close (the helper returns a cancel function; `SlidingDialogState` guards with a close generation counter) rather than letting a stale completion callback unmount a freshly reopened overlay.
+
+### Awaiting completion vs. destroy-on-close
+
+Every overlay that animates in must animate out symmetrically and await transition completion before unmount — the enter/exit asymmetry of a panel that fades in but snaps out reads as a bug. An overlay may destroy-on-close without an exit transition only when:
+
+- it has no visible enter motion either (it never animates in), or
+- its content is regenerated fresh on every open in a way that makes preserving exit state meaningless (e.g. a single-frame flash confirmation).
+
+Overlays claiming this exception are listed here with a stated reason. Current exception list: _(empty — CIN-376's migration will surface any legitimate entries)_.
+
+### Modal vs. non-modal guarantees
+
+| Class     | Components                                                                                                           | Owes                                                                                                                                          |
+| --------- | -------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Modal     | Modal, Drawer, Alert Dialog                                                                                          | Scroll lock (counted `lockBodyScroll`), focus trap, `aria-modal`, escape-stack registration                                                   |
+| Non-modal | Popover, Tooltip, HoverCard, Select/Combobox listboxes, Dropdown/Menu, Context Menu, Command Menu, Speed Dial, Toast | Escape-stack registration only — no scroll lock, no focus trap, no `aria-modal`, since they don't block interaction with the rest of the page |
+
+### Census
+
+Every overlay-shaped component in the repo today, and where it stands against this contract:
+
+| Component        | Class     | Exit-transition status                                                |
+| ---------------- | --------- | --------------------------------------------------------------------- |
+| Modal            | Modal     | Conforms — `SlidingDialogState`                                       |
+| Drawer           | Modal     | Conforms — `SlidingDialogState`                                       |
+| Alert Dialog     | Modal     | Conforms — composes Modal                                             |
+| HoverCard        | Non-modal | Deviation — hand-rolled duplicate (see below)                         |
+| Toast            | Non-modal | Deviation — awaits completion but non-canonical attribute (see below) |
+| Popover          | Non-modal | No exit transition — migrates under CIN-376                           |
+| Tooltip          | Non-modal | No exit transition — migrates under CIN-376                           |
+| Select listbox   | Non-modal | No exit transition — CIN-376 confirms direct vs. inherited migration  |
+| Combobox listbox | Non-modal | No exit transition — CIN-376 confirms direct vs. inherited migration  |
+| Dropdown/Menu    | Non-modal | No exit transition — migrates under CIN-376                           |
+| Context Menu     | Non-modal | No exit transition — migrates under CIN-376                           |
+| Command Menu     | Non-modal | No exit transition — migrates under CIN-376                           |
+| Speed Dial       | Non-modal | No exit transition — migrates under CIN-376                           |
+
+Components that do not exist in this repo yet (image-lightbox as a components-package component — its Modal migration is CIN-377 — and Sheet) are out of scope for this census. CIN-375's `InlineConfirm` is in-flow rather than overlaid and will conform to this section's reduced-motion and symmetry rules without the overlay guarantees.
+
+### Known deviations
+
+These existing overlays contradict the contract above and are listed here rather than silently diverging:
+
+- **HoverCard** — implements the full lifecycle (renders `data-cinder-closing`, awaits `waitForTransitionCompletion`, generation-guards reopen) but as a hand-rolled duplicate inside `hover-card.svelte` instead of through a shared helper. Migration to the shared anchored-overlay exit helper is inside CIN-376's scope.
+- **Toast** — awaits `waitForTransitionCompletion` before unmounting a dismissed toast, but never renders `data-cinder-closing`; its exit styles key off the non-canonical `data-cinder-presence="exiting"` attribute instead. Migration follow-up: CIN-425.
+
 ## Hydration tests
 
 Every overlay component must have hydration tests (using `src/test/hydrate.ts`) that assert:
@@ -143,4 +199,5 @@ When introducing a new overlay component:
 4. For light-dismiss (anchored overlays), use the shared `createClickOutside` attachment — see "Outside-click" above. Do not hand-roll a `document` listener.
 5. If the overlay is full-viewport, wire `lockBodyScroll` on open and release on close.
 6. On open, capture focus; on close, restore focus.
-7. Reference this document in the component's `.a11y.md`.
+7. If the overlay animates in, implement the exit-transition lifecycle — render `data-cinder-closing` while closing and await `waitForTransitionCompletion` before unmount (see "Transition lifecycle" above).
+8. Reference this document in the component's `.a11y.md`.
