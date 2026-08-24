@@ -57,6 +57,10 @@ Interactive addons (clear button, password-reveal toggle, unit toggle): pass `tr
 
 **Disabled state and interactive addons:** when `disabled={true}` is passed to `Input`, the inner `<input>` becomes disabled and the group paints disabled styling, but interactive controls rendered inside `leading` / `trailing` snippets remain functionally active unless the consumer disables them independently. The component cannot reach into snippet content. Consumers must mirror the input's disabled state on their addon controls (e.g. `<Button disabled={isDisabled}>...</Button>` where `isDisabled` is the same state passed to `Input`).
 
+## Code variant
+
+`variant="code"` is a purely presentational metric change (font-family, font-size, line-height, tab-size via `[data-cinder-variant='code']`) — it does not alter the accessible name, role, value, or any ARIA wiring, so it carries no additional accessibility review. Nearest neighbour: Badge's existing `monospace` boolean prop and `variant` attribute-selector pattern; this reuses the same `data-cinder-variant` convention rather than introducing a new one. Applied to source-like values (regular expressions, URIs, identifiers) across json-schema-editor, schema-form, the schedule-builder cron editor, and the playground's CSS token editor. A defensive `:where(code) { all: unset; font: inherit; }` rule locks any inner `<code>` element to the input's own metrics; no current call site renders one.
+
 ## Autocomplete guidance
 
 ### Sign-in forms (required pattern)

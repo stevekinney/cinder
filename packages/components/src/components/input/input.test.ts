@@ -40,6 +40,22 @@ describe('Input rendering', () => {
     );
   });
 
+  test('code variant applies shared monospace metrics via the token set', async () => {
+    const css = await Bun.file(new URL('./input.css', import.meta.url)).text();
+
+    expect(css).toMatch(
+      /\.cinder-input\[data-cinder-variant='code'\]\s*\{[^}]*font-family:\s*var\(--cinder-font-mono\);[^}]*font-size:\s*var\(--cinder-text-sm\);[^}]*line-height:\s*var\(--cinder-leading-normal\);[^}]*tab-size:\s*var\(--cinder-code-tab-size\);/,
+    );
+  });
+
+  test('code variant locks any inner <code> element to the input metrics', async () => {
+    const css = await Bun.file(new URL('./input.css', import.meta.url)).text();
+
+    expect(css).toMatch(
+      /\.cinder-input\[data-cinder-variant='code'\]\s*:where\(code\)\s*\{\s*all:\s*unset;\s*font:\s*inherit;\s*\}/,
+    );
+  });
+
   test('standalone FormField presentation is included by the Input sidecar', async () => {
     const css = await Bun.file(new URL('./input.css', import.meta.url)).text();
 
@@ -117,6 +133,22 @@ describe('Input rendering', () => {
     expect(
       container.querySelector('.cinder-input-field')?.hasAttribute('data-cinder-full-width'),
     ).toBe(true);
+  });
+
+  test('defaults to variant="default"', () => {
+    const { container } = render(Input, { props: { id: 'name', value: '' } });
+    const input = container.querySelector('#name') as HTMLInputElement;
+
+    expect(input.getAttribute('data-cinder-variant')).toBe('default');
+  });
+
+  test('variant="code" sets data-cinder-variant="code" on the input', () => {
+    const { container } = render(Input, {
+      props: { id: 'pattern', value: '', variant: 'code' },
+    });
+    const input = container.querySelector('#pattern') as HTMLInputElement;
+
+    expect(input.getAttribute('data-cinder-variant')).toBe('code');
   });
 
   test('renders with required id prop', () => {

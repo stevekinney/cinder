@@ -10,6 +10,12 @@
       "code": "<script lang=\"ts\">\n  import { Input } from '@lostgradient/cinder/input';\n\n  let name = $state('');\n</script>\n\n<Input id=\"field\" bind:value={name} label=\"Full name\" placeholder=\"Jane Smith\" />\n{#if name}\n  <p style=\"margin-top: 0.5rem; color: var(--cinder-text-muted);\">Hello, {name}!</p>\n{/if}\n"
     },
     {
+      "id": "code-variant",
+      "title": "Code variant",
+      "description": "variant=\"code\" applies a shared monospace metric set for source-like values such as regular expressions, URIs, or identifiers.",
+      "code": "<script lang=\"ts\">\n  import { Input } from '@lostgradient/cinder/input';\n\n  let pattern = $state('^[a-z0-9-]+$');\n</script>\n\n<Input id=\"field\" bind:value={pattern} label=\"Pattern (regex)\" variant=\"code\" />\n"
+    },
+    {
       "id": "compact-hidden-label",
       "title": "Compact field with hidden label",
       "description": "Keep the accessible name from label while visually hiding it for compact auth/token layouts.",

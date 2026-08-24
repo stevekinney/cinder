@@ -124,6 +124,34 @@ describe('Textarea', () => {
     expect(textarea.hasAttribute('aria-required')).toBe(false);
   });
 
+  test('defaults to variant="default"', () => {
+    const { container } = render(Textarea, { props: { id: 'plain' } });
+    const textarea = container.querySelector('textarea');
+    expect(textarea?.getAttribute('data-cinder-variant')).toBe('default');
+  });
+
+  test('variant="code" sets data-cinder-variant="code" on the textarea', () => {
+    const { container } = render(Textarea, { props: { id: 'json', variant: 'code' } });
+    const textarea = container.querySelector('textarea');
+    expect(textarea?.getAttribute('data-cinder-variant')).toBe('code');
+  });
+
+  test('code variant applies shared monospace metrics via the token set', async () => {
+    const css = await Bun.file(new URL('./textarea.css', import.meta.url)).text();
+
+    expect(css).toMatch(
+      /\.cinder-textarea\[data-cinder-variant='code'\]\s*\{[^}]*font-family:\s*var\(--cinder-font-mono\);[^}]*font-size:\s*var\(--cinder-text-sm\);[^}]*line-height:\s*var\(--cinder-leading-normal\);[^}]*tab-size:\s*var\(--cinder-code-tab-size\);/,
+    );
+  });
+
+  test('code variant locks any inner <code> element to the textarea metrics', async () => {
+    const css = await Bun.file(new URL('./textarea.css', import.meta.url)).text();
+
+    expect(css).toMatch(
+      /\.cinder-textarea\[data-cinder-variant='code'\]\s*:where\(code\)\s*\{\s*all:\s*unset;\s*font:\s*inherit;\s*\}/,
+    );
+  });
+
   test('consumer class name merges with .cinder-textarea', () => {
     const { container } = render(Textarea, { props: { id: 'styled', class: 'my-class' } });
     const classAttr = container.querySelector('textarea')?.getAttribute('class') ?? '';

@@ -136,11 +136,6 @@
     min-width: 0;
   }
 
-  .review-editor-front-matter__field .cinder-textarea {
-    font-family: var(--cinder-font-mono);
-    font-size: var(--cinder-text-sm);
-  }
-
   .review-editor-front-matter__empty {
     margin: 0;
     color: var(--cinder-text-subtle);

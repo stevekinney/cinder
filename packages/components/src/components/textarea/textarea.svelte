@@ -32,6 +32,7 @@
     disabled,
     required,
     class: customClassName,
+    variant = 'default',
     maxlength,
     countVisible = false,
     'aria-describedby': consumerDescribedBy,
@@ -69,6 +70,7 @@
     required={field.required}
     {maxlength}
     class={classNames('cinder-_input-frame', 'cinder-textarea', customClassName)}
+    data-cinder-variant={variant}
     aria-invalid={field.ariaInvalid}
     aria-describedby={field.describedBy}
     bind:value

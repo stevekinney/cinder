@@ -56,6 +56,12 @@ const schema = {
       type: 'string',
       description: 'Error message rendered below the input; also sets `aria-invalid` on the input.',
     },
+    variant: {
+      enum: ['default', 'code'],
+      description:
+        'Visual style. `"code"` applies a shared monospace metric set (font-family, font-size,\nline-height, tab-size) for source-like values such as regular expressions, URIs, or\nidentifiers.',
+      default: 'default',
+    },
     class: {
       type: 'string',
       description: 'Custom class merged with `.cinder-input`.',

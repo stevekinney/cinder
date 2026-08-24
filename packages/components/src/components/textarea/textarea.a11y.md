@@ -77,6 +77,10 @@ The count uses JavaScript string length (UTF-16 code units), matching the browse
 
 **JS height-sync fallback (deferred).** A JavaScript `ResizeObserver` + `scrollHeight` polyfill for Firefox is intentionally deferred. The fallback would mirror `field-sizing: content` by setting `style.height = scrollHeight + 'px'` on input. It is tracked as a separate follow-up because (a) the no-JS baseline is already accessible, and (b) Firefox is expected to ship `field-sizing` support.
 
+## Code variant
+
+`variant="code"` is a purely presentational metric change (font-family, font-size, line-height, tab-size via `[data-cinder-variant='code']`) — it does not alter the accessible name, role, value, or any ARIA wiring, so it carries no additional accessibility review. Nearest neighbour: Badge's existing `monospace` boolean prop and `variant` attribute-selector pattern; this reuses the same `data-cinder-variant` convention rather than introducing a new one. Applied to raw-text values (JSON, YAML, configuration) across json-schema-editor, schema-form, and the review-editor front matter fields. A defensive `:where(code) { all: unset; font: inherit; }` rule locks any inner `<code>` element to the textarea's own metrics; no current call site renders one.
+
 ## WCAG 2.1 Compliance Summary
 
 | Success Criterion                                                                                       | Level | Satisfied by                                                                                                                     |

@@ -37,6 +37,7 @@
     disabled,
     required,
     type = 'text',
+    variant = 'default',
     inputAttachment,
     groupClassName,
     class: className,
@@ -166,6 +167,7 @@
     oninput={handleInput}
     class={classNames('cinder-input', className)}
     data-cinder-full-width
+    data-cinder-variant={variant}
     data-cinder-native-date={rendersNativeDateIcon ? '' : undefined}
     aria-invalid={resolvedAriaInvalid}
     aria-describedby={describedBy}

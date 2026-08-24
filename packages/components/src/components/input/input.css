@@ -117,6 +117,25 @@
   }
 
   /* ----------------------------------------
+ * Code variant
+ * ---------------------------------------- */
+
+  .cinder-input[data-cinder-variant='code'] {
+    font-family: var(--cinder-font-mono);
+    font-size: var(--cinder-text-sm);
+    line-height: var(--cinder-leading-normal);
+    tab-size: var(--cinder-code-tab-size);
+  }
+
+  /* Defensive: nothing renders a <code> inside an Input today, but if a
+   consumer ever does, lock it to the input's own metrics rather than
+   letting it re-apply its own font stack. */
+  .cinder-input[data-cinder-variant='code'] :where(code) {
+    all: unset;
+    font: inherit;
+  }
+
+  /* ----------------------------------------
  * Error / invalid state
  * ---------------------------------------- */
 

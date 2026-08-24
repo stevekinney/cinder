@@ -137,6 +137,11 @@
   --cinder-tracking-normal: 0;
   --cinder-tracking-wide: 0.02em;
 
+  /* Tab width for monospace/code surfaces (`variant="code"` on Input/Textarea,
+     json-schema-editor's JSON view, CodeBlock). Tab characters render as this
+     many spaces' worth. */
+  --cinder-code-tab-size: 2;
+
   --cinder-font-normal: 400;
   --cinder-font-medium: 500;
   --cinder-font-semibold: 600;
