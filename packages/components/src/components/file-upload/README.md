@@ -56,7 +56,7 @@ Resetting an associated native form clears the uncontrolled queue and reports
 an empty list through `onFilesChange`.
 
 Pass the controlled `files` prop to show your uploader's current `pending`,
-`uploading`, `success`, or `error` state. Set `progress` from 0–100 while an
+`uploading`, `ready`, or `error` state. Set `progress` from 0–100 while an
 entry uploads. When you provide `onFileRetry`, failed rows render a retry button and
 return the complete entry to your upload queue handler. The component never
 starts, cancels, or retries a network request by itself.
