@@ -23,7 +23,7 @@
   import { untrack } from 'svelte';
 
   import { classNames } from '../../utilities/class-names.ts';
-  import { formatColor } from '../../utilities/color-format.ts';
+  import { formatColor, formatHex } from '../../utilities/color-format.ts';
   import ColorSwatchPicker from '../color-swatch-picker/color-swatch-picker.svelte';
   import ColorPickerControls from './color-picker-controls.svelte';
   import {
@@ -59,6 +59,14 @@
   function emitValue(h: number, s: number, l: number, a: number): string {
     const { r, g, b } = hslToRgb(h, s, l);
     return formatColor({ r, g, b, a }, format);
+  }
+
+  // Always genuinely hex, regardless of `format` — used for swatch-matching
+  // plumbing (see `normalizeSwatch` below) and the "Copy HEX format" action,
+  // neither of which should follow the configured output `format`.
+  function hexFor(h: number, s: number, l: number, a: number): string {
+    const { r, g, b } = hslToRgb(h, s, l);
+    return formatHex({ r, g, b, a });
   }
 
   const gradientId = `${pickerId}-gradient`;
@@ -112,7 +120,17 @@
   const initialValue = untrack(() => value);
   const resetTarget = initialValue;
 
-  // Initialize from the mount-time bindable value.
+  // Initialize from the mount-time bindable value. Deliberately does NOT
+  // write the normalized string back into the bindable `value` itself — only
+  // `internalValue` (which drives the hidden form-mirror input and every
+  // rendered/derived display string) is normalized at mount. A consumer's
+  // own `bind:value` variable is left exactly as they passed it in (e.g. a
+  // legacy comma-syntax or non-canonical-`format` string) until the first
+  // user-driven commit, at which point `emit()` writes the fully normalized
+  // string back. This is a deliberate "no unsolicited mount-time writes"
+  // choice, matching the CIN-378 ticket's "default makes migration a no-op"
+  // principle — mounting the component must never itself mutate a prop the
+  // consumer owns.
   if (initialValue !== '') {
     const parsed = parseToHsla(initialValue);
     if (parsed) {
@@ -349,14 +367,20 @@
   // ── Swatch composition ──────────────────────────────────────────────────
 
   /**
-   * Canonicalize a swatch string to the same hex format the picker emits, so
-   * value-matching in ColorSwatchPicker works regardless of input syntax
-   * (#0f0 vs #00ff00 vs rgb()). Returns null when the swatch is unparseable.
+   * Canonicalize a swatch string to hex — always hex, regardless of the
+   * configured `format` — so value-matching in ColorSwatchPicker works
+   * regardless of input syntax (#0f0 vs #00ff00 vs rgb()), and so
+   * ColorSwatchPicker's own contrast/alpha helpers (which only understand
+   * legacy comma-syntax hex/rgb/hsl/hwb, not oklch or modern syntax) always
+   * receive something they can parse. Swatch plumbing intentionally stays
+   * in this parseable canonical form; only the publicly emitted `value` /
+   * `onValueChange` / `onValueCommit` payloads follow `format`. Returns
+   * `null` for an unparseable swatch.
    */
   function normalizeSwatch(swatch: string): string | null {
     const parsed = parseToHsla(swatch);
     if (!parsed) return null;
-    return emitValue(parsed.h, parsed.s, parsed.l, gatedAlpha(parsed.a)).toLowerCase();
+    return hexFor(parsed.h, parsed.s, parsed.l, gatedAlpha(parsed.a)).toLowerCase();
   }
 
   /**
@@ -376,12 +400,26 @@
     }),
   );
 
-  const currentHex = $derived(emitValue(hue, saturation, lightnessValue, alphaValue));
+  // Always hex, for value-matching against the (always-hex) swatch colors —
+  // see `normalizeSwatch` above for why swatch plumbing stays hex-only.
+  const currentHexForSwatches = $derived(hexFor(hue, saturation, lightnessValue, alphaValue));
 
+  // The "Copy HEX format" action must genuinely be hex regardless of
+  // `format` (see hexFor above).
+  const hexValue = $derived(
+    internalValue === '' ? '' : hexFor(hue, saturation, lightnessValue, alphaValue),
+  );
+
+  // These copy/preview strings key off the *actual* alphaValue (< 1), not
+  // the `alpha` UI-affordance prop: a retained translucent value (see the
+  // CIN-104 alpha-retention ruling on `applyHsla` above) must render and
+  // copy consistently translucent even while the alpha slider is hidden.
   const formatRgb = $derived.by(() => {
     const { r, g, b } = hslToRgb(hue, saturation, lightnessValue);
     const channels = `${r}, ${g}, ${b}`;
-    return alpha ? `rgba(${channels}, ${roundFormatAlpha(alphaValue)})` : `rgb(${channels})`;
+    return alphaValue < 1
+      ? `rgba(${channels}, ${roundFormatAlpha(alphaValue)})`
+      : `rgb(${channels})`;
   });
   function roundFormatChannel(value: number): number {
     return Math.round(value * 100) / 100;
@@ -390,7 +428,7 @@
     return Math.round(value * 1000) / 1000;
   }
   const formatHsl = $derived(
-    alpha
+    alphaValue < 1
       ? `hsla(${roundFormatChannel(hue)}, ${roundFormatChannel(saturation)}%, ${roundFormatChannel(lightnessValue)}%, ${roundFormatAlpha(alphaValue)})`
       : `hsl(${roundFormatChannel(hue)}, ${roundFormatChannel(saturation)}%, ${roundFormatChannel(lightnessValue)}%)`,
   );
@@ -446,10 +484,12 @@
   // ── Visual derived data ─────────────────────────────────────────────────
 
   const hueColor = $derived(`hsl(${hue}, 100%, 50%)`);
+  // Keys off the actual `alphaValue` (< 1), not the `alpha` prop — see the
+  // note on `formatRgb`/`formatHsl` above.
   const previewColor = $derived(
     internalValue === ''
       ? 'transparent'
-      : alpha
+      : alphaValue < 1
         ? `hsla(${hue}, ${saturation}%, ${lightnessValue}%, ${alphaValue})`
         : `hsl(${hue}, ${saturation}%, ${lightnessValue}%)`,
   );
@@ -489,6 +529,7 @@
     {hueColor}
     {previewColor}
     {internalValue}
+    {hexValue}
     {formatRgb}
     {formatHsl}
     {handlePosition}
@@ -517,7 +558,7 @@
   {#if normalizedSwatchColors.length > 0}
     <ColorSwatchPicker
       colors={normalizedSwatchColors}
-      value={internalValue !== '' ? currentHex.toLowerCase() : ''}
+      value={internalValue !== '' ? currentHexForSwatches.toLowerCase() : ''}
       label="Color swatches"
       size="sm"
       {disabled}

@@ -11,7 +11,11 @@ export type ColorPickerProps = {
    * `hwb()`, or `oklch()` input, in either legacy comma syntax or modern
    * space-separated syntax — including whatever this component's own
    * `format` emits, so an emitted value always parses back; invalid input
-   * is normalized to `''`.
+   * is normalized to `''`. Mounting does NOT normalize this prop itself —
+   * a non-canonical `value` you pass in (short hex, legacy comma syntax, a
+   * syntax mismatched with `format`) is left exactly as you passed it until
+   * the first user-driven commit, which writes the fully normalized string
+   * back. Only the rendered hidden form-mirror input is normalized at mount.
    */
   value?: string;
   /**

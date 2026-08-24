@@ -1,7 +1,13 @@
 import { describe, expect, test } from 'bun:test';
 import { converter, parse } from 'culori';
 
-import { formatColor, formatHex, parseOklch, type RgbaComponents } from './color-format.ts';
+import {
+  formatColor,
+  formatHex,
+  parseCssColor,
+  parseOklch,
+  type RgbaComponents,
+} from './color-format.ts';
 import { parseColor } from './color-luminance.ts';
 
 const FORMATS = ['hex', 'rgb', 'hsl', 'hwb', 'oklch'] as const;
@@ -39,6 +45,55 @@ describe('formatHex', () => {
 
   test('emits #rrggbbaa when alpha < 1, never dropping it', () => {
     expect(formatHex({ r: 255, g: 0, b: 0, a: 0.5 })).toBe('#ff000080');
+  });
+
+  // Review thread #2 (PR #1420): alpha 0.999 rounds to the 0xff byte, which
+  // must canonicalize to plain #rrggbb — otherwise it re-parses as alpha
+  // === 1 and the very next round-trip flips syntax (translucent in, opaque
+  // out, on the SAME logical value).
+  test('rounds a byte-for-byte-opaque alpha (0.999) down to plain #rrggbb', () => {
+    expect(formatHex({ r: 255, g: 0, b: 0, a: 0.999 })).toBe('#ff0000');
+  });
+
+  test('does not canonicalize an alpha that genuinely rounds below 0xff', () => {
+    expect(formatHex({ r: 255, g: 0, b: 0, a: 0.997 })).toBe('#ff0000fe');
+  });
+
+  test('boundary is idempotent: re-parsing the canonicalized hex re-emits the same string', () => {
+    const once = formatHex({ r: 255, g: 0, b: 0, a: 0.999 });
+    const reparsed = parseCssColor(once);
+    expect(reparsed).not.toBeNull();
+    expect(formatHex(reparsed!)).toBe(once);
+  });
+});
+
+describe('parseCssColor syntax allowlist (review thread #5)', () => {
+  // culori's own `parse()` resolves CSS named colors and keywords to mode
+  // 'rgb', which would silently bypass the documented
+  // hex/rgb()/hsl()/hwb()/oklch() function-call allowlist if we only
+  // checked the resulting mode. The pre-change legacy parser (`parseColor`
+  // in color-luminance.ts) never recognized named colors either — it only
+  // matched `#`-prefixed hex and the four function-call prefixes — so
+  // rejecting them here matches prior behavior, not a new restriction.
+  test('rejects CSS named colors', () => {
+    expect(parseCssColor('red')).toBeNull();
+    expect(parseCssColor('rebeccapurple')).toBeNull();
+    expect(parseCssColor('transparent')).toBeNull();
+  });
+
+  test('rejects other culori-parseable but non-allowlisted syntax', () => {
+    expect(parseCssColor('lab(50% 40 59.5)')).toBeNull();
+    expect(parseCssColor('lch(50% 40 59.5)')).toBeNull();
+    expect(parseCssColor('color(srgb 1 0 0)')).toBeNull();
+  });
+
+  test('still accepts every documented function-call syntax', () => {
+    expect(parseCssColor('#ff0000')).not.toBeNull();
+    expect(parseCssColor('rgb(255, 0, 0)')).not.toBeNull();
+    expect(parseCssColor('rgb(255 0 0)')).not.toBeNull();
+    expect(parseCssColor('hsl(0, 100%, 50%)')).not.toBeNull();
+    expect(parseCssColor('hwb(0 0% 0%)')).not.toBeNull();
+    expect(parseCssColor('oklch(62.8% 0.258 29.23)')).not.toBeNull();
   });
 });
 

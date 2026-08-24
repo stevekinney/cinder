@@ -1136,3 +1136,136 @@ describe('ColorPicker emit/remount round-trip (P1 regression)', () => {
     });
   }
 });
+
+// Review thread #3 (PR #1420): the "Copy HEX format" action used to copy
+// whatever `internalValue` held, which is format-dependent — with a non-hex
+// `format` it copied (and displayed) e.g. an oklch() string under a "HEX"
+// label. It's now backed by a dedicated always-hex `hexValue`.
+describe('ColorPicker "Copy HEX format" stays genuinely hex (P1 regression)', () => {
+  test('format="oklch": the HEX copy action and its displayed text are hex, not oklch', () => {
+    const { container } = render(ColorPicker, { value: '#3366cc', format: 'oklch' });
+    const hexButton = q<HTMLButtonElement>(container, '[aria-label="Copy HEX format"]');
+    expect(hexButton.textContent).toContain('#3366cc');
+    expect(hexButton.textContent).not.toContain('oklch');
+
+    const hidden = container.querySelector('input[type="hidden"]') as HTMLInputElement;
+    expect(hidden.value).toMatch(/^oklch\(/);
+  });
+
+  test('the RGB and HSL copy actions remain genuinely rgb/hsl regardless of `format`', () => {
+    const { container } = render(ColorPicker, { value: '#3366cc', format: 'hwb' });
+    const rgbButton = q<HTMLButtonElement>(container, '[aria-label="Copy RGB format"]');
+    const hslButton = q<HTMLButtonElement>(container, '[aria-label="Copy HSL format"]');
+    expect(rgbButton.textContent).toMatch(/^RGB rgb\(/);
+    expect(hslButton.textContent).toMatch(/^HSL hsl\(/);
+  });
+});
+
+// Review thread #4 (PR #1420): converting swatch values to a non-hex,
+// modern-syntax `format` broke ColorSwatchPicker's legacy
+// pickContrastColor()/hasAlpha() parsing (comma-syntax hex/rgb/hsl/hwb
+// only — no oklch, no modern syntax). Swatch plumbing (background color,
+// contrast-indicator color, alpha detection) is now pinned to hex
+// regardless of `format` — only the publicly emitted value follows
+// `format`. This is the smaller-blast-radius fix: it keeps
+// color-swatch-picker.svelte and its shared color-luminance.ts helpers
+// (used by other consumers too) completely untouched.
+describe('ColorPicker swatch plumbing stays hex regardless of `format` (P1 regression)', () => {
+  test('format="oklch": the selected swatch still gets correct contrast-indicator color', () => {
+    const { container } = render(ColorPicker, {
+      value: '#ffffff',
+      format: 'oklch',
+      swatches: ['#000000', '#ffffff'],
+    });
+    const selectedOption = q<HTMLElement>(container, '[role="option"][aria-selected="true"]');
+    const indicator = selectedOption.querySelector<HTMLElement>(
+      '.cinder-color-swatch-picker__indicator',
+    );
+    expect(indicator).not.toBeNull();
+    // White needs BLACK contrast text. If oklch swatch plumbing broke the
+    // legacy parser, pickContrastColor's null-parse fallback always
+    // returns 'white' — indistinguishable from the actual white swatch.
+    expect(indicator!.getAttribute('style')).toContain('color: black');
+  });
+
+  test('format="oklch": alpha-bearing swatches are still detected as translucent', () => {
+    const { container } = render(ColorPicker, {
+      value: '#ff000080',
+      alpha: true,
+      format: 'oklch',
+      swatches: ['#ff000080', '#00ff00'],
+    });
+    const options = container.querySelectorAll<HTMLElement>('[role="option"]');
+    expect(options[0]!.hasAttribute('data-cinder-alpha')).toBe(true);
+    expect(options[1]!.hasAttribute('data-cinder-alpha')).toBe(false);
+  });
+});
+
+// Review thread #6 (PR #1420): a translucent value retained while
+// alpha=false (per the CIN-104 alpha-retention ruling) used to still show
+// an opaque preview and drop alpha from the RGB/HSL copy strings — because
+// those three derived values gated on the `alpha` *prop* instead of the
+// actual `alphaValue`. They now key off `alphaValue < 1`.
+describe('ColorPicker retained translucent value renders/copies consistently (P1 regression)', () => {
+  test('alpha=false with a programmatically-retained translucent value: preview and RGB/HSL copy show alpha', () => {
+    const { container } = render(ColorPicker, { value: '#ff000080', alpha: false });
+
+    const preview = q<HTMLElement>(container, '.cinder-color-picker__preview');
+    expect(preview.getAttribute('style')).toContain('hsla(');
+
+    const rgbButton = q<HTMLButtonElement>(container, '[aria-label="Copy RGB format"]');
+    const hslButton = q<HTMLButtonElement>(container, '[aria-label="Copy HSL format"]');
+    expect(rgbButton.textContent).toMatch(/^RGB rgba\(/);
+    expect(hslButton.textContent).toMatch(/^HSL hsla\(/);
+  });
+
+  test('alpha=false with a genuinely opaque value: preview and RGB/HSL copy stay opaque', () => {
+    const { container } = render(ColorPicker, { value: '#ff0000', alpha: false });
+
+    const preview = q<HTMLElement>(container, '.cinder-color-picker__preview');
+    expect(preview.getAttribute('style')).toContain('hsl(');
+    expect(preview.getAttribute('style')).not.toContain('hsla(');
+
+    const rgbButton = q<HTMLButtonElement>(container, '[aria-label="Copy RGB format"]');
+    const hslButton = q<HTMLButtonElement>(container, '[aria-label="Copy HSL format"]');
+    expect(rgbButton.textContent).toMatch(/^RGB rgb\(/);
+    expect(hslButton.textContent).toMatch(/^HSL hsl\(/);
+  });
+});
+
+// Review thread #7 (PR #1420): with bind:value="#ff0000" and format="rgb",
+// only `internalValue` was normalized at mount — the consumer's own bound
+// `value` kept its original, un-normalized syntax. Resolved per the "no
+// unsolicited mount-time writes" principle: mounting must never itself
+// mutate a prop the consumer owns. The bound `value` is intentionally left
+// exactly as passed until the first user-driven commit, at which point it's
+// fully normalized. Pinned here via `component.$set`, which is the
+// equivalent of the parent re-rendering with whatever its own `value`
+// variable currently holds — since we never write back at mount, an
+// unrelated re-render with the SAME (untouched) value must not normalize it
+// either.
+describe('ColorPicker bound-value mount normalization (P1 regression)', () => {
+  test('mount does not normalize the bound `value`; only the hidden form-mirror is normalized', async () => {
+    const { container, rerender } = render(ColorPicker, {
+      value: '#ff0000',
+      format: 'rgb',
+      name: 'p',
+    });
+
+    // The hidden form-mirror IS normalized to the configured format at mount.
+    const hidden = q<HTMLInputElement>(container, 'input[name="p"]');
+    expect(hidden.value).toBe('rgb(255 0 0)');
+
+    // An unrelated re-render that doesn't touch `value` (the parent's own
+    // variable never changed, since the component never wrote back to it)
+    // must not retroactively normalize it either.
+    await rerender({ value: '#ff0000', format: 'rgb', name: 'p', disabled: false });
+    await tick();
+    expect(hidden.value).toBe('rgb(255 0 0)');
+
+    // The first user-driven commit normalizes going forward.
+    const hueSlider = q<HTMLElement>(container, '[role="slider"][aria-label="Hue"]');
+    await fireEvent.keyDown(hueSlider, { key: 'ArrowRight' });
+    expect(hidden.value).toMatch(/^rgb\(/);
+  });
+});

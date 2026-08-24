@@ -52,7 +52,13 @@ function toHex2(value: number): string {
 /** Format a canonical RGBA value as hex, with the fixed alpha policy above. */
 export function formatHex(parts: RgbaComponents): string {
   const base = `#${toHex2(parts.r)}${toHex2(parts.g)}${toHex2(parts.b)}`;
-  return parts.a < 1 ? base + toHex2(parts.a * 255) : base;
+  if (parts.a >= 1) return base;
+  // An alpha like 0.999 is < 1 but rounds to the 0xff byte — canonicalize to
+  // plain #rrggbb rather than emitting a byte-for-byte-opaque #rrggbbff,
+  // which would otherwise re-parse as alpha === 1 and flip syntax on the
+  // very next round-trip (0.999 in, but exactly 1 out).
+  const alphaByte = toHex2(parts.a * 255);
+  return alphaByte === 'ff' ? base : base + alphaByte;
 }
 
 function rgbaToRgbColor(parts: RgbaComponents): Rgb {
@@ -129,19 +135,49 @@ function rgbColorToRgba(rgb: Rgb, alpha: number): RgbaComponents {
 /** CSS color modes ColorField / ColorPicker accept as *input*. `lab` and every other culori mode (`lch`, `p3`, named colors, …) are rejected. */
 const ACCEPTED_PARSE_MODES = new Set(['rgb', 'hsl', 'hwb', 'oklch']);
 
+// Gate on the *syntax* of the input before ever asking culori to resolve it
+// to a color mode. culori's generic `parse()` also resolves CSS named colors
+// (`red`, `transparent`, `rebeccapurple`, …) and other legacy keywords to
+// mode `'rgb'` — checking `parsed.mode` alone would silently let those past
+// the documented hex/rgb()/hsl()/hwb()/oklch() function-call allowlist. The
+// legacy hand-rolled parser these components used before never recognized
+// named colors either (it only matched `#`-prefixed hex and the four
+// function-call prefixes below), so rejecting them here matches prior
+// behavior rather than inventing a new restriction.
+const HEX_SYNTAX_RE = /^#[0-9a-f]{3,8}$/i;
+const RGB_SYNTAX_RE = /^rgba?\s*\(/i;
+const HSL_SYNTAX_RE = /^hsla?\s*\(/i;
+const HWB_SYNTAX_RE = /^hwb\s*\(/i;
+const OKLCH_SYNTAX_RE = /^oklch\s*\(/i;
+
+function matchesAcceptedSyntax(trimmed: string): boolean {
+  return (
+    HEX_SYNTAX_RE.test(trimmed) ||
+    RGB_SYNTAX_RE.test(trimmed) ||
+    HSL_SYNTAX_RE.test(trimmed) ||
+    HWB_SYNTAX_RE.test(trimmed) ||
+    OKLCH_SYNTAX_RE.test(trimmed)
+  );
+}
+
 /**
  * Parse any accepted CSS color string — `hex`, `rgb()`/`rgba()`,
  * `hsl()`/`hsla()`, `hwb()`, or `oklch()`, in either legacy comma syntax or
  * modern space-separated syntax with slash alpha — into canonical sRGB RGBA.
  * Backed by `culori`'s own CSS color parser, so it round-trips whatever
- * `formatColor` emits in any of the five supported formats. Out-of-sRGB
- * `oklch()` input is gamut-mapped via CSS Color 4 chroma reduction (hue is
- * preserved by construction — the bisection in `culori`'s `toGamut` only
- * reduces chroma). Returns `null` for anything unparseable or outside the
- * accepted modes.
+ * `formatColor` emits in any of the five supported formats. Rejects anything
+ * outside that syntax allowlist — including CSS named colors and keywords —
+ * before ever resolving a color mode (see `matchesAcceptedSyntax`).
+ * Out-of-sRGB `oklch()` input is gamut-mapped via CSS Color 4 chroma
+ * reduction (hue is preserved by construction — the bisection in `culori`'s
+ * `toGamut` only reduces chroma). Returns `null` for anything unparseable,
+ * outside the accepted syntax, or outside the accepted modes.
  */
 export function parseCssColor(input: string): RgbaComponents | null {
-  const parsed = parse(input.trim());
+  const trimmed = input.trim();
+  if (!matchesAcceptedSyntax(trimmed)) return null;
+
+  const parsed = parse(trimmed);
   if (parsed === undefined || !ACCEPTED_PARSE_MODES.has(parsed.mode)) return null;
 
   if (parsed.mode === 'oklch') {

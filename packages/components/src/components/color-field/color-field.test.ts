@@ -1030,4 +1030,39 @@ describe('ColorField — emit/intake round-trip (P1 regression)', () => {
     expect(onValueChange).toHaveBeenCalledTimes(1);
     expect(onValueChange.mock.calls[0]![0]).toBe(emitted);
   });
+
+  // Review thread #1 (PR #1420): with format="oklch" and the DEFAULT
+  // `formats` (which doesn't list 'oklch'), the field emitted oklch() but
+  // its own intake allowlist rejected it — the accepted-input set must
+  // always include the configured output `format`, unioned in.
+  test('format="oklch" with default `formats`: the field always accepts its own output', async () => {
+    // No `formats` prop at all — exercises the actual default (which
+    // doesn't list 'oklch'), not an explicit superset.
+    const seedChange = mock<(value: string) => void>(() => {});
+    const seed = render(ColorField, {
+      id: 'color-df-a',
+      format: 'oklch',
+      onValueChange: seedChange,
+    });
+    await typeAndBlur(getInput(seed.container, 'color-df-a'), '#3366cc');
+    expect(seedChange).toHaveBeenCalledTimes(1);
+    const emitted = seedChange.mock.calls[0]![0];
+    expect(emitted).toMatch(/^oklch\(/);
+    seed.unmount();
+
+    // Paste that oklch() string into a *fresh* field (default `formats`,
+    // no prior committed state, so the canonical-display bypass can't
+    // shortcut the parse) — it must be accepted.
+    const onValueChange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, {
+      id: 'color-df-b',
+      format: 'oklch',
+      onValueChange,
+    });
+    const input = getInput(container, 'color-df-b');
+    await typeAndBlur(input, emitted);
+    expect(input.getAttribute('aria-invalid')).not.toBe('true');
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+    expect(onValueChange.mock.calls[0]![0]).toBe(emitted);
+  });
 });

@@ -4,7 +4,7 @@
   "properties": {
     "value": {
       "type": "string",
-      "description": "Bindable value. Reading the value yields a string in the configured\n`format` (`#rrggbb`/`#rrggbbaa` for the `'hex'` default, or modern\nspace-separated CSS Color 4 syntax with slash alpha for the others).\nSetting the value accepts hex, `rgb()`, `rgba()`, `hsl()`, `hsla()`,\n`hwb()`, or `oklch()` input, in either legacy comma syntax or modern\nspace-separated syntax — including whatever this component's own\n`format` emits, so an emitted value always parses back; invalid input\nis normalized to `''`."
+      "description": "Bindable value. Reading the value yields a string in the configured\n`format` (`#rrggbb`/`#rrggbbaa` for the `'hex'` default, or modern\nspace-separated CSS Color 4 syntax with slash alpha for the others).\nSetting the value accepts hex, `rgb()`, `rgba()`, `hsl()`, `hsla()`,\n`hwb()`, or `oklch()` input, in either legacy comma syntax or modern\nspace-separated syntax — including whatever this component's own\n`format` emits, so an emitted value always parses back; invalid input\nis normalized to `''`. Mounting does NOT normalize this prop itself —\na non-canonical `value` you pass in (short hex, legacy comma syntax, a\nsyntax mismatched with `format`) is left exactly as you passed it until\nthe first user-driven commit, which writes the fully normalized string\nback. Only the rendered hidden form-mirror input is normalized at mount."
     },
     "alpha": {
       "type": "boolean",

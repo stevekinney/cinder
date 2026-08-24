@@ -86,7 +86,14 @@
   const OKLCH_TEXT_RE = /^oklch\s*\([^)]*\)\s*$/i;
   const DEFAULT_FORMATS = ['hex', 'rgb', 'hsl', 'hwb'] as const;
 
-  const acceptedFormats = $derived(formats.length === 0 ? DEFAULT_FORMATS : formats);
+  // The effective accepted-input set always includes the configured output
+  // `format`, unioned in — otherwise a field emitting e.g. oklch() with the
+  // default `formats` (which doesn't list 'oklch') could never parse its own
+  // emitted value back in, breaking the round-trip.
+  const acceptedFormats = $derived.by(() => {
+    const base = formats.length === 0 ? DEFAULT_FORMATS : formats;
+    return base.includes(format) ? base : [...base, format];
+  });
 
   function passesFormatGate(text: string): boolean {
     if (HEX_RE.test(text)) return acceptedFormats.includes('hex');

@@ -16,6 +16,7 @@
     hueColor: string;
     previewColor: string;
     internalValue: string;
+    hexValue: string;
     formatRgb: string;
     formatHsl: string;
     handlePosition: { x: number; y: number };
@@ -55,6 +56,7 @@
     hueColor,
     previewColor,
     internalValue,
+    hexValue,
     formatRgb,
     formatHsl,
     handlePosition,
@@ -169,13 +171,13 @@
   ></div>
   <div class="cinder-color-picker__formats" role="group" aria-label="Copy color formats">
     <CopyButton
-      value={internalValue}
+      value={hexValue}
       label="Copy HEX format"
       copiedLabel="HEX format copied"
       class="cinder-color-picker__format"
       disabled={!internalValue || disabled}
     >
-      <span class="cinder-color-picker__hex-value">{internalValue || '—'}</span><Copy
+      <span class="cinder-color-picker__hex-value">{hexValue || '—'}</span><Copy
         class="cinder-icon-xs"
         aria-hidden="true"
       />
