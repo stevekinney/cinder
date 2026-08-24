@@ -1,11 +1,21 @@
 /**
- * Shared color output formatting for ColorField and ColorPicker.
+ * Shared color parsing and output formatting for ColorField and ColorPicker.
  *
- * Both components parse input into plain sRGB (0-255 channels, alpha 0-1)
- * using `parseColor` from `color-luminance.ts`. This module turns that
- * canonical RGBA representation into a CSS color string in one of five
- * output formats (`hex`, `rgb`, `hsl`, `hwb`, `oklch`) per the CIN-104
- * ruling recorded in `docs/decisions/color-value-format.md`.
+ * Both components parse *every* accepted input format — including the
+ * modern space-separated syntax `formatColor` itself emits — through
+ * `parseCssColor`, which is backed by `culori`'s own CSS color parser rather
+ * than a hand-rolled, legacy-comma-only regex parser. That's what makes
+ * round-tripping an emitted `rgb(...)`/`hsl(...)`/`oklch(...)` string back
+ * into the field or picker actually work: the legacy `parseColor` in
+ * `color-luminance.ts` only understands comma-separated legacy syntax and
+ * has no notion of `oklch()` at all, so it cannot parse the field's own
+ * output once `format` is anything other than `'hex'`.
+ *
+ * `parseCssColor` turns any accepted input string into the canonical RGBA
+ * representation (sRGB channels 0-255, alpha 0-1); `formatColor` turns that
+ * canonical representation into a CSS color string in one of five output
+ * formats (`hex`, `rgb`, `hsl`, `hwb`, `oklch`) per the CIN-104 ruling
+ * recorded in `docs/decisions/color-value-format.md`.
  *
  * Alpha policy:
  *   - hex: `#rrggbbaa` when alpha < 1, plain `#rrggbb` when alpha === 1.
@@ -107,22 +117,50 @@ export function formatColor(parts: RgbaComponents, format: ColorOutputFormat): s
   return `oklch(${l}% ${c} ${h}${hasAlpha ? alphaSuffix(parts.a) : ''})`;
 }
 
-/**
- * Parse a CSS Color 4 `oklch()` string into canonical sRGB RGBA, gamut-mapping
- * out-of-sRGB values via chroma reduction in OKLCH (hue is preserved by
- * construction — the bisection in `culori`'s `toGamut` only reduces chroma).
- * Returns `null` for anything that isn't a well-formed `oklch()` string.
- */
-export function parseOklch(input: string): RgbaComponents | null {
-  const parsed = parse(input.trim());
-  if (parsed === undefined || parsed.mode !== 'oklch') return null;
-
-  const mapped = gamutMapOklchToRgb(parsed);
-  const rgb = toRgbConverter(mapped);
+function rgbColorToRgba(rgb: Rgb, alpha: number): RgbaComponents {
   return {
     r: Math.round(Math.max(0, Math.min(1, rgb.r ?? 0)) * 255),
     g: Math.round(Math.max(0, Math.min(1, rgb.g ?? 0)) * 255),
     b: Math.round(Math.max(0, Math.min(1, rgb.b ?? 0)) * 255),
-    a: parsed.alpha ?? 1,
+    a: alpha,
   };
+}
+
+/** CSS color modes ColorField / ColorPicker accept as *input*. `lab` and every other culori mode (`lch`, `p3`, named colors, …) are rejected. */
+const ACCEPTED_PARSE_MODES = new Set(['rgb', 'hsl', 'hwb', 'oklch']);
+
+/**
+ * Parse any accepted CSS color string — `hex`, `rgb()`/`rgba()`,
+ * `hsl()`/`hsla()`, `hwb()`, or `oklch()`, in either legacy comma syntax or
+ * modern space-separated syntax with slash alpha — into canonical sRGB RGBA.
+ * Backed by `culori`'s own CSS color parser, so it round-trips whatever
+ * `formatColor` emits in any of the five supported formats. Out-of-sRGB
+ * `oklch()` input is gamut-mapped via CSS Color 4 chroma reduction (hue is
+ * preserved by construction — the bisection in `culori`'s `toGamut` only
+ * reduces chroma). Returns `null` for anything unparseable or outside the
+ * accepted modes.
+ */
+export function parseCssColor(input: string): RgbaComponents | null {
+  const parsed = parse(input.trim());
+  if (parsed === undefined || !ACCEPTED_PARSE_MODES.has(parsed.mode)) return null;
+
+  if (parsed.mode === 'oklch') {
+    const mapped = gamutMapOklchToRgb(parsed);
+    const rgb = toRgbConverter(mapped);
+    return rgbColorToRgba(rgb, parsed.alpha ?? 1);
+  }
+
+  const rgb = toRgbConverter(parsed);
+  return rgbColorToRgba(rgb, parsed.alpha ?? 1);
+}
+
+/**
+ * Parse a CSS Color 4 `oklch()` string specifically into canonical sRGB
+ * RGBA. Thin wrapper around {@link parseCssColor} that additionally rejects
+ * any non-oklch input, for call sites that only want to accept `oklch()`.
+ */
+export function parseOklch(input: string): RgbaComponents | null {
+  const trimmed = input.trim();
+  if (!/^oklch\s*\(/i.test(trimmed)) return null;
+  return parseCssColor(trimmed);
 }

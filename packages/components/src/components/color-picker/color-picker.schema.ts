@@ -7,12 +7,12 @@ const schema = {
     value: {
       type: 'string',
       description:
-        "Bindable value. Reading the value yields a string in the configured\n`format` (`#rrggbb`/`#rrggbbaa` for the `'hex'` default, or modern\nspace-separated CSS Color 4 syntax with slash alpha for the others).\nSetting the value accepts hex, `rgb()`, `rgba()`, `hsl()`, `hsla()`, or\n`hwb()` input; invalid input is normalized to `''`.",
+        "Bindable value. Reading the value yields a string in the configured\n`format` (`#rrggbb`/`#rrggbbaa` for the `'hex'` default, or modern\nspace-separated CSS Color 4 syntax with slash alpha for the others).\nSetting the value accepts hex, `rgb()`, `rgba()`, `hsl()`, `hsla()`,\n`hwb()`, or `oklch()` input, in either legacy comma syntax or modern\nspace-separated syntax — including whatever this component's own\n`format` emits, so an emitted value always parses back; invalid input\nis normalized to `''`.",
     },
     alpha: {
       type: 'boolean',
       description:
-        "Show the alpha slider. When `false` (default), a parsed input's alpha\nchannel is forced fully opaque. This gate is uniform across every\n`format` — it is not a hex-only concern. Independently of `alpha`, a\nnon-hex `format`'s alpha-emission syntax (the `/ a` segment) only\nappears when the resulting alpha is actually below 1.",
+        "Show the alpha slider. Default `false`. Per the CIN-104 ruling this is a\nUI-affordance concern, not a value-mutation switch:\n\n- A translucent `value` passed in programmatically (the initial `value`,\n  a later controlled update, or a native form reset) keeps its alpha\n  exactly as parsed, whether or not `alpha` is true — disabling the\n  slider alone never strips it.\n- An *interactively* produced alpha (set by dragging the alpha slider\n  while it was visible) re-gates to fully opaque on the next\n  user-driven commit — any pointer drag, keyboard nudge, or swatch\n  selection — once `alpha` is false and the slider is gone. This is what\n  prevents a hidden, un-editable translucency from persisting forever\n  once the affordance to see or change it is removed.\n\nThis gate is uniform across every `format` — it is not a hex-only\nconcern. Independently of `alpha`, a non-hex `format`'s alpha-emission\nsyntax (the `/ a` segment) only appears when the resulting alpha is\nactually below 1.",
     },
     format: {
       enum: ['hex', 'rgb', 'hsl', 'hwb', 'oklch'],

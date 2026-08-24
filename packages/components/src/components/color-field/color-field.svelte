@@ -3,7 +3,7 @@
    * @cinder
    * @category form
    * @status stable
-   * @purpose Text input that validates and normalizes hex, rgb(), hsl(), and hwb() color strings into a canonical hex value emitted on blur.
+   * @purpose Text input that validates and normalizes hex, rgb(), hsl(), hwb(), and oklch() color strings into a canonical value (hex by default, or another CSS Color 4 format via `format`) emitted on blur.
    * @tag form
    * @tag color
    * @useWhen Accepting an exact color value via keyboard entry, including pasted hex, rgb(), or hsl() strings.
@@ -23,8 +23,7 @@
   import { untrack } from 'svelte';
 
   import { classNames } from '../../utilities/class-names.ts';
-  import { formatColor, parseOklch } from '../../utilities/color-format.ts';
-  import { parseColor } from '../../utilities/color-luminance.ts';
+  import { formatColor, parseCssColor } from '../../utilities/color-format.ts';
   import Input from '../input/input.svelte';
   import Button from '@lostgradient/cinder/button';
   import ColorPicker from '@lostgradient/cinder/color-picker';
@@ -63,12 +62,13 @@
   let lastReconciledValue = '';
   let lastReconciledValueWasInvalid = false;
 
-  // Parse any accepted input format, including `oklch()` (which the shared
-  // `parseColor` legacy parser does not know about — it's handled by the
-  // gamut-aware `parseOklch` in color-format.ts instead).
+  // Parse any accepted input format — hex, rgb()/rgba(), hsl()/hsla(),
+  // hwb(), or oklch() — in either legacy comma syntax or the modern
+  // space-separated syntax `formatColor` itself emits. Backed by culori's
+  // own CSS color parser (see color-format.ts), not a hand-rolled
+  // legacy-comma-only regex parser, so an emitted value always parses back.
   function parseInput(text: string): RgbaParts | null {
-    if (OKLCH_TEXT_RE.test(text)) return parseOklch(text);
-    return parseColor(text);
+    return parseCssColor(text);
   }
 
   // Emit rule: pass through `alpha` only when `alpha === true` AND parsed

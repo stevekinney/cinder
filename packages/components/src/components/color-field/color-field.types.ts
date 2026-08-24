@@ -9,14 +9,18 @@ export type ColorFieldProps = {
   /** Inner `<input>` id. Required (mirrors Input). */
   id: string;
   /**
-   * Bindable value as a hex string. Accepts any color string the configured
-   * `formats` allow when set externally.
+   * Bindable value, committed in the syntax the configured `format` prop
+   * selects (plain hex by default; modern CSS Color 4 syntax for the other
+   * formats — see `format`). Accepts any color string the configured
+   * `formats` allow when set externally, regardless of `format`.
    */
   value?: string;
   /**
    * Accept and emit alpha when the parsed value has partial alpha. When
-   * `false` (default), `#RRGGBBAA` and `rgba()`/`hsla()` inputs are parsed
-   * but alpha is stripped on emit.
+   * `false` (default), alpha-bearing input (`#RRGGBBAA`, `rgba()`,
+   * `hsla()`, or a translucent `oklch()`/`hwb()`) is parsed but alpha is
+   * stripped on emit, uniformly across every `format` — not a hex-only
+   * concern.
    */
   alpha?: boolean;
   /** Accepted *input* formats. Defaults to `['hex', 'rgb', 'hsl', 'hwb']`; rgba/hsla aliases can be restricted independently. Add `'oklch'` to accept `oklch()` input strings. */
@@ -35,8 +39,9 @@ export type ColorFieldProps = {
   /** Render the inner `<input>` as read-only. */
   readonly?: boolean;
   /**
-   * Form field name. When set, the hidden mirror input contributes the current
-   * committed hex value to native form submission.
+   * Form field name. When set, the hidden mirror input contributes the
+   * current committed value — in the configured `format`'s syntax — to
+   * native form submission.
    */
   name?: string;
   /** Placeholder text for the inner `<input>`. */
@@ -59,9 +64,9 @@ export type ColorFieldProps = {
    */
   enterBehavior?: 'commit-then-submit' | 'commit-only';
   /**
-   * Fires on successful blur-time commit when the canonical hex actually
-   * changes. Value callback by repo convention — not forwarded to the inner
-   * native `<input>`.
+   * Fires on successful blur-time commit when the committed value — in the
+   * configured `format`'s syntax — actually changes. Value callback by repo
+   * convention — not forwarded to the inner native `<input>`.
    */
   onValueChange?: (value: string) => void;
 };

@@ -1,4 +1,4 @@
-import { parseColor } from '../../utilities/color-luminance.ts';
+import { parseCssColor } from '../../utilities/color-format.ts';
 
 export type Hsla = { h: number; s: number; l: number; a: number };
 
@@ -71,8 +71,14 @@ export function formatHex(
   return withAlpha ? base + toHex2(alpha * 255) : base;
 }
 
+// Parses hex, rgb()/rgba(), hsl()/hsla(), hwb(), and oklch() — legacy comma
+// syntax or the modern space-separated syntax the picker itself emits — via
+// culori's own CSS color parser (parseCssColor in color-format.ts). Without
+// this, an emitted rgb()/hsl()/oklch() value (any non-hex `format`) couldn't
+// be parsed back in: the previous `parseColor` was legacy-comma-only and had
+// no notion of oklch() at all.
 export function parseToHsla(input: string): Hsla | null {
-  const parsed = parseColor(input);
+  const parsed = parseCssColor(input);
   if (!parsed) return null;
   const { h, s, l } = rgbToHsl(parsed.r, parsed.g, parsed.b);
   return { h: normalizeHue(h), s, l, a: parsed.a };

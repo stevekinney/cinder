@@ -11,12 +11,12 @@ const schema = {
     value: {
       type: 'string',
       description:
-        'Bindable value as a hex string. Accepts any color string the configured\n`formats` allow when set externally.',
+        'Bindable value, committed in the syntax the configured `format` prop\nselects (plain hex by default; modern CSS Color 4 syntax for the other\nformats — see `format`). Accepts any color string the configured\n`formats` allow when set externally, regardless of `format`.',
     },
     alpha: {
       type: 'boolean',
       description:
-        'Accept and emit alpha when the parsed value has partial alpha. When\n`false` (default), `#RRGGBBAA` and `rgba()`/`hsla()` inputs are parsed\nbut alpha is stripped on emit.',
+        'Accept and emit alpha when the parsed value has partial alpha. When\n`false` (default), alpha-bearing input (`#RRGGBBAA`, `rgba()`,\n`hsla()`, or a translucent `oklch()`/`hwb()`) is parsed but alpha is\nstripped on emit, uniformly across every `format` — not a hex-only\nconcern.',
     },
     formats: {
       type: 'array',
@@ -46,7 +46,7 @@ const schema = {
     name: {
       type: 'string',
       description:
-        'Form field name. When set, the hidden mirror input contributes the current\ncommitted hex value to native form submission.',
+        "Form field name. When set, the hidden mirror input contributes the\ncurrent committed value — in the configured `format`'s syntax — to\nnative form submission.",
     },
     placeholder: {
       type: 'string',
@@ -84,7 +84,7 @@ const schema = {
         name: 'onValueChange',
         reason: 'function-or-snippet',
         description:
-          'Fires on successful blur-time commit when the canonical hex actually\nchanges. Value callback by repo convention — not forwarded to the inner\nnative `<input>`.',
+          "Fires on successful blur-time commit when the committed value — in the\nconfigured `format`'s syntax — actually changes. Value callback by repo\nconvention — not forwarded to the inner native `<input>`.",
       },
     ],
   },

@@ -949,3 +949,85 @@ describe('ColorField — default error message reflects formats', () => {
     expect(errorText).not.toContain('hsl');
   });
 });
+
+// P1 regression (PR #1420 review): with format="rgb"/"hsl" the field emits
+// modern space-separated syntax, but intake used to delegate to the legacy
+// comma-only parseColor — so pasting the field's own emitted value back in
+// failed to parse. Intake now goes through culori (parseCssColor in
+// color-format.ts) for every format in `formats`. These tests emit in each
+// format, paste the emitted string back into the field, and assert it
+// parses and re-emits identically.
+describe('ColorField — emit/intake round-trip (P1 regression)', () => {
+  const CASES: Array<{ format: 'hex' | 'rgb' | 'hsl' | 'hwb' | 'oklch'; seed: string }> = [
+    { format: 'hex', seed: '#3366cc' },
+    { format: 'rgb', seed: '#3366cc' },
+    { format: 'hsl', seed: '#3366cc' },
+    { format: 'hwb', seed: '#3366cc' },
+    { format: 'oklch', seed: '#3366cc' },
+  ];
+
+  for (const { format, seed } of CASES) {
+    test(`format="${format}": emit → paste into a fresh field → parses and re-emits identically`, async () => {
+      const onValueChange = mock<(value: string) => void>(() => {});
+      const first = render(ColorField, {
+        id: 'color-a',
+        format,
+        formats: ['hex', 'rgb', 'hsl', 'hwb', 'oklch'],
+        onValueChange,
+      });
+
+      // First commit: seed a hex value, capture what the field emits in `format`.
+      await typeAndBlur(getInput(first.container, 'color-a'), seed);
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      const emitted = onValueChange.mock.calls[0]![0];
+      if (format !== 'hex') expect(emitted).not.toMatch(/^#/);
+      first.unmount();
+
+      // Paste the emitted string into a *fresh* field instance (no prior
+      // committed state, so the canonical-display bypass can't shortcut the
+      // parse) — it must parse (no aria-invalid) and commit right back out
+      // to the exact same string.
+      const onValueChangeSecond = mock<(value: string) => void>(() => {});
+      const second = render(ColorField, {
+        id: 'color-b',
+        format,
+        formats: ['hex', 'rgb', 'hsl', 'hwb', 'oklch'],
+        onValueChange: onValueChangeSecond,
+      });
+      const secondInput = getInput(second.container, 'color-b');
+      await typeAndBlur(secondInput, emitted);
+
+      expect(secondInput.getAttribute('aria-invalid')).not.toBe('true');
+      expect(onValueChangeSecond).toHaveBeenCalledTimes(1);
+      expect(onValueChangeSecond.mock.calls[0]![0]).toBe(emitted);
+      second.unmount();
+    });
+  }
+
+  test('format="rgb": a translucent value round-trips through the alpha slash syntax', async () => {
+    const seedChange = mock<(value: string) => void>(() => {});
+    const seed = render(ColorField, {
+      id: 'color-alpha-a',
+      format: 'rgb',
+      alpha: true,
+      onValueChange: seedChange,
+    });
+    await typeAndBlur(getInput(seed.container, 'color-alpha-a'), '#3366cc80');
+    const emitted = seedChange.mock.calls[0]![0];
+    expect(emitted).toMatch(/\//);
+    seed.unmount();
+
+    const onValueChange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, {
+      id: 'color-alpha-b',
+      format: 'rgb',
+      alpha: true,
+      onValueChange,
+    });
+    const input = getInput(container, 'color-alpha-b');
+    await typeAndBlur(input, emitted);
+    expect(input.getAttribute('aria-invalid')).not.toBe('true');
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+    expect(onValueChange.mock.calls[0]![0]).toBe(emitted);
+  });
+});

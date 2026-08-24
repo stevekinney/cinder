@@ -843,9 +843,48 @@ describe('ColorPicker alpha mode toggle', () => {
 
     await rerender({ value: '#ff000080', alpha: false, name: 'p' });
     await tick();
-    // Alpha UI turned off: the internal alpha value is forced fully opaque,
-    // so the emitted hex drops to plain #rrggbb.
-    expect(hidden.value).toBe('#ff0000');
+    // Per the CIN-104 ruling, `alpha` is UI-affordance-only: it does not
+    // retroactively override a programmatically-passed value's own alpha.
+    // Disabling the slider alone leaves an already-translucent `value`
+    // translucent — see "interactive re-gate" below for the distinct case
+    // where an *interactive* alpha gets healed back to opaque.
+    expect(hidden.value).toMatch(/^#ff0000[0-9a-f]{2}$/);
+  });
+
+  test('a stored interactive alpha re-gates to opaque on the next user-driven emission, not merely on toggle', async () => {
+    let committed = '';
+    const { container, rerender } = render(ColorPicker, {
+      value: '#ff0000',
+      alpha: true,
+      onValueCommit: (color: string) => {
+        committed = color;
+      },
+    });
+
+    // Drag the alpha slider to make the value interactively translucent.
+    const alphaSlider = q<HTMLElement>(container, '[role="slider"][aria-label="Alpha"]');
+    await fireEvent.keyDown(alphaSlider, { key: 'ArrowLeft', shiftKey: true }); // -0.1
+    expect(committed).toMatch(/^#ff0000[0-9a-f]{2}$/);
+    const hidden = q<HTMLInputElement>(container, 'input');
+    expect(hidden.value).toMatch(/^#ff0000[0-9a-f]{2}$/);
+    const afterDrag = hidden.value;
+
+    // Disabling the affordance alone must NOT retroactively strip it. A real
+    // `bind:value` consumer's own variable already reflects the drag, so its
+    // next render passes that same drifted value straight through — this
+    // rerender models that, not a fresh app-authored value.
+    await rerender({ value: afterDrag, alpha: false });
+    await tick();
+    expect(hidden.value).toBe(afterDrag);
+
+    // The *next user-driven emission* (any interactive gesture, e.g. a hue
+    // nudge) re-gates the stale interactive alpha back to fully opaque —
+    // the emitted hex drops the alpha byte, regardless of the small hue
+    // shift the nudge itself introduces.
+    const hueSlider = q<HTMLElement>(container, '[role="slider"][aria-label="Hue"]');
+    await fireEvent.keyDown(hueSlider, { key: 'ArrowRight' });
+    expect(hidden.value).toMatch(/^#[0-9a-f]{6}$/);
+    expect(committed).toMatch(/^#[0-9a-f]{6}$/);
   });
 });
 
@@ -1059,4 +1098,41 @@ describe('ColorPicker format (output)', () => {
     await fireEvent.keyDown(hueSlider, { key: 'ArrowRight' });
     expect(committed).toMatch(/^hsl\(/);
   });
+});
+
+// P1 regression (PR #1420 review): emitValue's rgb/hsl/oklch output couldn't
+// be re-parsed by parseToHsla, which delegated to the legacy comma-only
+// parseColor with no notion of oklch() at all. parseToHsla now goes through
+// culori (parseCssColor in color-format.ts). These tests persist an emitted
+// value in each format, remount the picker with that value, and assert the
+// internal HSLA state reconstructs correctly — surfaced via the hidden
+// input re-emitting the identical string and the hue slider reporting the
+// matching angle.
+describe('ColorPicker emit/remount round-trip (P1 regression)', () => {
+  const CASES: Array<{ format: 'hex' | 'rgb' | 'hsl' | 'hwb' | 'oklch' }> = [
+    { format: 'hex' },
+    { format: 'rgb' },
+    { format: 'hsl' },
+    { format: 'hwb' },
+    { format: 'oklch' },
+  ];
+
+  for (const { format } of CASES) {
+    test(`format="${format}": emitted value survives an unmount/remount round-trip`, () => {
+      const seed = render(ColorPicker, { value: '#3366cc', format, name: 'seed' });
+      const seedHidden = q<HTMLInputElement>(seed.container, 'input[name="seed"]');
+      const emitted = seedHidden.value;
+      if (format !== 'hex') expect(emitted).not.toMatch(/^#/);
+      const seedHue = q(seed.container, '[aria-label="Hue"]').getAttribute('aria-valuenow');
+      seed.unmount();
+
+      const second = render(ColorPicker, { value: emitted, format, name: 'again' });
+      const secondHidden = q<HTMLInputElement>(second.container, 'input[name="again"]');
+      const secondHue = q(second.container, '[aria-label="Hue"]').getAttribute('aria-valuenow');
+
+      expect(secondHidden.value).toBe(emitted);
+      expect(secondHue).toBe(seedHue);
+      second.unmount();
+    });
+  }
 });

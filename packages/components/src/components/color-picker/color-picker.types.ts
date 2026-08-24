@@ -7,16 +7,32 @@ export type ColorPickerProps = {
    * Bindable value. Reading the value yields a string in the configured
    * `format` (`#rrggbb`/`#rrggbbaa` for the `'hex'` default, or modern
    * space-separated CSS Color 4 syntax with slash alpha for the others).
-   * Setting the value accepts hex, `rgb()`, `rgba()`, `hsl()`, `hsla()`, or
-   * `hwb()` input; invalid input is normalized to `''`.
+   * Setting the value accepts hex, `rgb()`, `rgba()`, `hsl()`, `hsla()`,
+   * `hwb()`, or `oklch()` input, in either legacy comma syntax or modern
+   * space-separated syntax — including whatever this component's own
+   * `format` emits, so an emitted value always parses back; invalid input
+   * is normalized to `''`.
    */
   value?: string;
   /**
-   * Show the alpha slider. When `false` (default), a parsed input's alpha
-   * channel is forced fully opaque. This gate is uniform across every
-   * `format` — it is not a hex-only concern. Independently of `alpha`, a
-   * non-hex `format`'s alpha-emission syntax (the `/ a` segment) only
-   * appears when the resulting alpha is actually below 1.
+   * Show the alpha slider. Default `false`. Per the CIN-104 ruling this is a
+   * UI-affordance concern, not a value-mutation switch:
+   *
+   * - A translucent `value` passed in programmatically (the initial `value`,
+   *   a later controlled update, or a native form reset) keeps its alpha
+   *   exactly as parsed, whether or not `alpha` is true — disabling the
+   *   slider alone never strips it.
+   * - An *interactively* produced alpha (set by dragging the alpha slider
+   *   while it was visible) re-gates to fully opaque on the next
+   *   user-driven commit — any pointer drag, keyboard nudge, or swatch
+   *   selection — once `alpha` is false and the slider is gone. This is what
+   *   prevents a hidden, un-editable translucency from persisting forever
+   *   once the affordance to see or change it is removed.
+   *
+   * This gate is uniform across every `format` — it is not a hex-only
+   * concern. Independently of `alpha`, a non-hex `format`'s alpha-emission
+   * syntax (the `/ a` segment) only appears when the resulting alpha is
+   * actually below 1.
    */
   alpha?: boolean;
   /**

@@ -1112,7 +1112,7 @@
       "exportName": "ColorField",
       "category": "form",
       "status": "stable",
-      "purpose": "Text input that validates and normalizes hex, rgb(), hsl(), and hwb() color strings into a canonical hex value emitted on blur.",
+      "purpose": "Text input that validates and normalizes hex, rgb(), hsl(), hwb(), and oklch() color strings into a canonical value (hex by default, or another CSS Color 4 format via `format`) emitted on blur.",
       "tags": ["form", "color"],
       "useWhen": [
         "Accepting an exact color value via keyboard entry, including pasted hex, rgb(), or hsl() strings.",
@@ -1142,7 +1142,7 @@
       "exportName": "ColorPicker",
       "category": "form",
       "status": "stable",
-      "purpose": "Interactive saturation, hue, and alpha control for picking an arbitrary color and emitting a normalized hex value.",
+      "purpose": "Interactive saturation, hue, and alpha control for picking an arbitrary color and emitting a normalized value (hex by default, or another CSS Color 4 format via `format`).",
       "tags": ["form", "color"],
       "useWhen": [
         "Letting users pick any color from the full spectrum with optional alpha.",

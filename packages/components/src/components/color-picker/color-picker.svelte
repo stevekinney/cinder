@@ -3,7 +3,7 @@
    * @cinder
    * @category form
    * @status stable
-   * @purpose Interactive saturation, hue, and alpha control for picking an arbitrary color and emitting a normalized hex value.
+   * @purpose Interactive saturation, hue, and alpha control for picking an arbitrary color and emitting a normalized value (hex by default, or another CSS Color 4 format via `format`).
    * @tag form
    * @tag color
    * @useWhen Letting users pick any color from the full spectrum with optional alpha.
@@ -82,11 +82,29 @@
     return alpha ? a : 1;
   }
 
+  // Sets internal HSLA state verbatim — used for *programmatic* value
+  // arrival (mount-time seed, the controlled `value`-prop sync effect, and
+  // native form reset). Per the CIN-104 ruling, `alpha` (the alpha-slider
+  // UI affordance) does not override a programmatically-passed value's own
+  // alpha — a translucent `value` stays translucent even while the alpha
+  // slider is hidden.
   function applyHsla(next: Hsla): void {
     hue = next.h;
     saturation = next.s;
     lightnessValue = next.l;
-    alphaValue = gatedAlpha(next.a);
+    alphaValue = next.a;
+  }
+
+  // Sets internal HSLA state for a *user-driven* commit (pointer drag,
+  // keyboard, swatch selection) and re-gates alpha to fully opaque when the
+  // alpha affordance is currently disabled. This is what "heals" a
+  // previously-stored translucent value back to opaque: the alpha slider
+  // itself can only ever produce a<1 while `alpha` is true, so any other
+  // interactive gesture (hue, gradient, swatch) re-clamps a stale translucent
+  // alphaValue on its next commit rather than silently carrying it forward
+  // forever once the control is disabled.
+  function applyHslaInteractive(next: Hsla): void {
+    applyHsla({ ...next, a: gatedAlpha(next.a) });
   }
 
   // Snapshot the seed props once. Initialization reads only the mount-time
@@ -99,7 +117,10 @@
     const parsed = parseToHsla(initialValue);
     if (parsed) {
       applyHsla(parsed);
-      internalValue = emitValue(parsed.h, parsed.s, parsed.l, gatedAlpha(parsed.a));
+      // `applyHsla` sets `alphaValue` to `parsed.a` verbatim (programmatic
+      // seed, ungated) — read `parsed.a` directly rather than the `$state`
+      // var here since this runs outside any reactive context.
+      internalValue = emitValue(parsed.h, parsed.s, parsed.l, parsed.a);
     } else {
       hue = 0;
       saturation = 0;
@@ -131,10 +152,14 @@
     internalValue = emitValue(parsed.h, parsed.s, parsed.l, alphaValue);
   });
 
-  // Re-normalize internal value when `alpha` or `format` change after mount
-  // so hidden input / bound value reflect the new emit shape immediately.
+  // Re-normalize internal value's *syntax* when `format` changes so hidden
+  // input / bound value reflect the new emit shape immediately. This does
+  // NOT react to `alpha`: toggling the alpha-slider affordance alone must
+  // not retroactively mutate a stored value (see the CIN-104 ruling note on
+  // `applyHsla` above) — a stale *interactive* translucent alpha only
+  // re-gates to opaque on the next user-driven commit, via
+  // `applyHslaInteractive` below.
   $effect(() => {
-    void alpha;
     void format;
     if (internalValue === '') return;
     const next = emitValue(hue, saturation, lightnessValue, alphaValue);
@@ -155,7 +180,7 @@
   }
 
   function commitFromHsla(next: Hsla, reason: 'input' | 'change'): void {
-    applyHsla(next);
+    applyHslaInteractive(next);
     emit(reason);
   }
 
