@@ -165,6 +165,8 @@ export function findWaitThresholdBounds(analysis: string): WaitThresholdArgument
     let thresholdLabel: WaitThresholdArgument['label'];
     switch (label) {
       case 'Bun.sleep':
+        thresholdLabel = 'bun.sleep';
+        break;
       case 'fetchWithTimeout':
       case 'waitForTimeout':
       case 'waitForUrl':
