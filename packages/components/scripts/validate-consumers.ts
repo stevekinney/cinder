@@ -2838,10 +2838,11 @@ export async function observeSvelteKitHydrationMarkerAlongside(
   readiness: Promise<void>,
   timeoutMs = 5_000,
 ): Promise<void> {
-  await Promise.all([
+  const [, readinessResult] = await Promise.allSettled([
     observeSvelteKitHydrationMarkerBestEffort(page, routePath, domObservation, timeoutMs),
     readiness,
   ]);
+  if (readinessResult?.status === 'rejected') throw readinessResult.reason;
 }
 
 function unknownSvelteKitHydrationRouteFailureSnapshot(

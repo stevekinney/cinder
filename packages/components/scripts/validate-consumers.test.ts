@@ -353,6 +353,7 @@ describe('SvelteKit hydration route failure diagnostics', () => {
         50,
       ),
     ).rejects.toThrow('hydration readiness wait failed');
+    expect(domObservation.diagnosticCaptureError).toContain('hydration marker probe');
   });
 
   test('wraps route failures with route, network, runtime, and DOM state', () => {

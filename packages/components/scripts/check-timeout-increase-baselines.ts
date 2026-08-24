@@ -1,7 +1,70 @@
 import { normalizeThresholdKind } from './check-timeout-increase-comparison';
-import { NUMERIC_EXPRESSION_PATTERN } from './check-timeout-increase-numeric';
+import {
+  findCallArguments,
+  NUMERIC_EXPRESSION_PATTERN,
+  type WaitThresholdArgument,
+} from './check-timeout-increase-numeric';
 
 export type ThresholdBaseline = { renderedValue: string; value: number };
+
+function resolveNumericOption(
+  analysis: string,
+  optionText: string,
+  optionOffset: number,
+  optionName: string,
+): { offset: number; renderedValue: string } | undefined {
+  const match = new RegExp(
+    String.raw`\b${optionName}\s*:\s*(?<value>${NUMERIC_EXPRESSION_PATTERN}|[A-Za-z_$][\w$]*)`,
+    'u',
+  ).exec(optionText);
+  let renderedValue = match?.groups?.['value'];
+  if (match === null || renderedValue === undefined) return undefined;
+  let offset = optionOffset + match.index + match[0].lastIndexOf(renderedValue);
+  if (/^[A-Za-z_$][\w$]*$/u.test(renderedValue)) {
+    const declarationPattern = new RegExp(
+      String.raw`\b(?:const|let|var)\s+${renderedValue}\b[^=;\n]*=\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
+      'gu',
+    );
+    const declaration = [...analysis.matchAll(declarationPattern)]
+      .filter((candidate) => (candidate.index ?? 0) < optionOffset)
+      .at(-1);
+    const declaredValue = declaration?.groups?.['value'];
+    if (declaration === undefined || declaredValue === undefined) return undefined;
+    renderedValue = declaredValue;
+    offset = (declaration.index ?? 0) + declaration[0].lastIndexOf(declaredValue);
+  }
+  return { offset, renderedValue };
+}
+
+export function findAdditionalWaitThresholdArguments(analysis: string): WaitThresholdArgument[] {
+  const argumentsFound: WaitThresholdArgument[] = [];
+  for (const callArguments of findCallArguments(analysis, /\bBun\.spawn(?:Sync)?\s*\(/gu)) {
+    for (const argument of callArguments) {
+      const timeout = resolveNumericOption(analysis, argument.text, argument.offset, 'timeout');
+      if (timeout === undefined) continue;
+      argumentsFound.push({
+        ...timeout,
+        baseline: { renderedValue: 'unbounded (implicit Bun spawn timeout)', value: Infinity },
+        label: 'playwright-operation-timeout',
+      });
+    }
+  }
+  for (const callArguments of findCallArguments(
+    analysis,
+    /(?<![\w$.])waitFor[A-Za-z_$\d]*\s*\(/gu,
+  )) {
+    for (const argument of callArguments) {
+      const interval = resolveNumericOption(analysis, argument.text, argument.offset, 'interval');
+      if (interval === undefined) continue;
+      argumentsFound.push({
+        ...interval,
+        baseline: { renderedValue: '50 (implicit Testing Library waitFor interval)', value: 50 },
+        label: 'playwright-operation-timeout',
+      });
+    }
+  }
+  return argumentsFound;
+}
 
 export function findPlaywrightRelativeTimeoutExtensions(
   analysis: string,
@@ -177,6 +240,12 @@ export function implicitBaselineForMatch(
     /(?:^|[^\w$.])waitFor[A-Za-z_$\d]*\s*\([\s\S]*,\s*\{[^}]*$/u.test(prefix)
   ) {
     return { renderedValue: '1_000 (implicit Testing Library waitFor timeout)', value: 1_000 };
+  }
+  if (
+    normalizeThresholdKind(label) === 'timeout' &&
+    /\bexpect\s*\([^)]*\)\.toPass\s*\([^)]*\{[^}]*$/u.test(prefix)
+  ) {
+    return { renderedValue: '0 (implicit Playwright toPass timeout)', value: 0 };
   }
   if (
     normalizeThresholdKind(label) === 'timeout' &&

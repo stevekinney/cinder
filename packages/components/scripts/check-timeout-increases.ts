@@ -1,4 +1,5 @@
 import {
+  findAdditionalWaitThresholdArguments,
   findPlaywrightRelativeTimeoutExtensions,
   implicitBaselineFor,
   implicitBaselineForMatch,
@@ -393,6 +394,7 @@ function extractMultilineCallCandidates(
   if (isTestOrValidationInfrastructure(filePath, analysis)) {
     for (const waitArgument of [
       ...findWaitThresholdArguments(analysis),
+      ...findAdditionalWaitThresholdArguments(analysis),
       ...findWaitThresholdBounds(analysis),
       ...findPromiseTimerAliasArguments(analysis),
       ...findReferencedPlaywrightTimeoutAssignments(analysis),

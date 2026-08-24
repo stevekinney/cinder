@@ -125,7 +125,7 @@ export type WaitThresholdArgument = BunTestTimeoutArgument & {
 
 type CallArgument = { offset: number; text: string };
 
-function findCallArguments(analysis: string, callPattern: RegExp): CallArgument[][] {
+export function findCallArguments(analysis: string, callPattern: RegExp): CallArgument[][] {
   const calls: CallArgument[][] = [];
   for (const callMatch of analysis.matchAll(callPattern)) {
     const openParenthesis = (callMatch.index ?? 0) + callMatch[0].lastIndexOf('(');

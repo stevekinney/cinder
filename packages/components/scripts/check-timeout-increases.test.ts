@@ -1242,6 +1242,22 @@ describe('check-timeout-increases', () => {
     expect(violations).toHaveLength(1);
   });
 
+  test('treats removed Bun spawn timeouts as unbounded and resolves named values', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/scripts/cinder-downstream-snapshot.ts',
+        [
+          'const CLONE_TIMEOUT_MS = 30_000;',
+          "Bun.spawn(['git', 'clone'], { timeout: CLONE_TIMEOUT_MS });",
+        ],
+        ['const CLONE_TIMEOUT_MS = 30_000;', "Bun.spawn(['git', 'clone'], {});"],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.new.effectiveValue).toBe(Number.POSITIVE_INFINITY);
+  });
+
   test('analyzes removed thresholds using the source path of a rename', () => {
     const diff = [
       'diff --git a/packages/components/src/button/button.test.ts b/packages/components/src/button/button.ts',
@@ -2314,6 +2330,40 @@ describe('check-timeout-increases', () => {
         ),
       ),
     ).toEqual([]);
+  });
+
+  test('uses the Testing Library waitFor interval default', () => {
+    const increase = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/src/data-grid/data-grid.test.ts',
+        ['await waitFor(() => expect(done).toBe(true), { interval: 50 });'],
+        ['await waitFor(() => expect(done).toBe(true), { interval: 500 });'],
+      ),
+    );
+
+    expect(increase).toHaveLength(1);
+    expect(increase[0]?.old.value).toBe(50);
+  });
+
+  test('uses the zero Playwright toPass timeout default', () => {
+    const added = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/testing/tests/example.playwright.ts',
+        ['await expect(callback).toPass();'],
+        ['await expect(callback).toPass({ timeout: 1_000 });'],
+      ),
+    );
+    const removed = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/testing/tests/example.playwright.ts',
+        ['await expect(callback).toPass({ timeout: 1_000 });'],
+        ['await expect(callback).toPass();'],
+      ),
+    );
+
+    expect(added).toHaveLength(1);
+    expect(added[0]?.old.value).toBe(0);
+    expect(removed).toEqual([]);
   });
 
   test('uses the Testing Library timeout default for waitFor wrappers', () => {
