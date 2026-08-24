@@ -47,3 +47,18 @@ export function stripCinderComponentsLayer(css: string): string {
   // restores the original flat indentation without disturbing relative nesting.
   return output.replace(/^ {2}/gm, '');
 }
+
+/**
+ * Inject one or more component CSS sidecars (already stripped of their
+ * `@layer` wrapper via {@link stripCinderComponentsLayer}) into a single
+ * `<style>` element appended to `document.head`, so a test can assert real
+ * `getComputedStyle` values instead of grepping CSS source text. Returns a
+ * cleanup function that removes the injected `<style>` — call it in a
+ * `finally` block or `afterEach` so styles never leak across tests.
+ */
+export function injectStrippedStyles(...cssTexts: string[]): () => void {
+  const style = document.createElement('style');
+  style.textContent = cssTexts.map(stripCinderComponentsLayer).join('\n');
+  document.head.append(style);
+  return () => style.remove();
+}

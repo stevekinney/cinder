@@ -1,6 +1,7 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, mock, spyOn, test } from 'bun:test';
 
+import { injectStrippedStyles } from '../../test/css.ts';
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
@@ -23,6 +24,27 @@ describe('JsonEditor', () => {
       value: '{}',
     });
     expect(container.querySelector('.cinder-form-field__error')).not.toBeNull();
+  });
+
+  test('the errorless live region has no layout footprint (shared _form-field-error.css, CIN-315 follow-up)', async () => {
+    const jsonEditorCss = await Bun.file(new URL('./json-editor.css', import.meta.url)).text();
+    const sharedErrorCss = await Bun.file(
+      new URL('../../styles/components/_form-field-error.css', import.meta.url),
+    ).text();
+    const removeStyles = injectStrippedStyles(jsonEditorCss, sharedErrorCss);
+    try {
+      const { container } = render(JsonEditor, {
+        id: 'no-error-computed-json',
+        label: 'Payload',
+        value: '{}',
+      });
+      const errorRegion = container.querySelector('.cinder-form-field__error');
+      const computed = getComputedStyle(errorRegion as Element);
+      expect(computed.position).toBe('absolute');
+      expect(computed.visibility).toBe('hidden');
+    } finally {
+      removeStyles();
+    }
   });
 
   test('documents supported native validation and disabled props in its public schema', () => {

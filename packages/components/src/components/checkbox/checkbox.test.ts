@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, mock, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
+import { injectStrippedStyles } from '../../test/css.ts';
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
@@ -458,6 +459,26 @@ describe('Checkbox — error live region', () => {
       props: { id: 'no-error-yet-checkbox', label: 'Agree' },
     });
     expect(container.querySelector('.cinder-form-field__error')).not.toBeNull();
+  });
+
+  test('the errorless live region has no layout footprint (shared _form-field-error.css, CIN-315 follow-up)', async () => {
+    const checkboxCss = readFileSync(new URL('./checkbox.css', import.meta.url), 'utf8');
+    const sharedErrorCss = readFileSync(
+      new URL('../../styles/components/_form-field-error.css', import.meta.url),
+      'utf8',
+    );
+    const removeStyles = injectStrippedStyles(checkboxCss, sharedErrorCss);
+    try {
+      const { container } = render(Checkbox, {
+        props: { id: 'no-error-computed-checkbox', label: 'Agree' },
+      });
+      const errorRegion = container.querySelector('.cinder-form-field__error');
+      const computed = getComputedStyle(errorRegion as Element);
+      expect(computed.position).toBe('absolute');
+      expect(computed.visibility).toBe('hidden');
+    } finally {
+      removeStyles();
+    }
   });
 });
 

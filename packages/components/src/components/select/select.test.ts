@@ -296,9 +296,12 @@ describe('Select field-control contract', () => {
     }
   });
 
-  test('inactive error live region is removed from flex layout flow', () => {
-    expect(readSelectStyles()).toContain(
-      '.cinder-select-field__error:not([data-cinder-error]) {\n  position: absolute;',
+  test('does not duplicate the shared collapsed-when-errorless rule locally', () => {
+    // CIN-315 review follow-up: that rule now lives once in the shared
+    // `_form-field-error.css` partial (see its own test), imported by the
+    // required `cinder/styles` base — Select no longer carries its own copy.
+    expect(readSelectStyles()).not.toContain(
+      '.cinder-select-field__error:not([data-cinder-error])',
     );
   });
 });

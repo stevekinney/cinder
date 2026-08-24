@@ -61,15 +61,19 @@
     fullWidth?: boolean | undefined;
     /**
      * Opt out of the default always-mounted error live region, and only
-     * mount the error node once `error` is actually set. `data-cinder-error`
-     * always reflects whether `error` is set (regardless of this flag), so
-     * CSS can hide the pre-mounted, errorless node visually without
-     * unmounting it — e.g. `.foo__error:not([data-cinder-error])`.
-     * The error node is pre-mounted as an empty `aria-live` region by
-     * default because a freshly-mounted live region is not reliably
-     * announced by NVDA/JAWS — the node has to exist before an error string
-     * is ever assigned into it. Only opt into on-demand mounting when a
-     * consumer has a specific reason not to pre-mount.
+     * mount the error node once `error` is actually set — so when this flag
+     * is `true`, there is no errorless node in the DOM to hide, and no
+     * pre-mounted `aria-live` region ready for an announcement.
+     *
+     * In the default (`false`) mode, the node is always present, and
+     * `data-cinder-error` reflects whether `error` is currently set so CSS
+     * can hide the errorless node visually without unmounting it — e.g.
+     * `.foo__error:not([data-cinder-error])` (see the shared
+     * `_form-field-error.css` partial). The node is pre-mounted as an empty
+     * `aria-live` region by default because a freshly-mounted live region is
+     * not reliably announced by NVDA/JAWS — the node has to exist before an
+     * error string is ever assigned into it. Only opt into on-demand
+     * mounting when a consumer has a specific reason not to pre-mount.
      */
     errorMountedOnDemand?: boolean | undefined;
     control: Snippet;

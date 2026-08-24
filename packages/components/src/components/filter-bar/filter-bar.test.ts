@@ -314,16 +314,25 @@ describe('FilterBar accessibility', () => {
         { key: 'queue', value: 'default', label: 'Queue' },
       ],
     });
-    // The _VisuallyHiddenLiveRegion defers by setTimeout(0); poll instead of
-    // a fixed delay, since the exact settle time is not a fixed constant.
-    // Scoped to `[role="status"]` (not the broader `[aria-live]`) because
-    // the embedded SearchField's Input also carries `aria-live="polite"` on
-    // its always-mounted error node (CIN-315) and would otherwise collide —
-    // `[aria-live]` matched Input's empty error node first in DOM order.
-    await waitFor(() => {
-      const liveRegion = container.querySelector('[role="status"]');
-      expect(liveRegion?.textContent).toContain('2 active filters');
-    });
+    // The _VisuallyHiddenLiveRegion defers by setTimeout(0); poll (via
+    // waitFor's MutationObserver, which resolves as soon as the deferred
+    // callback mutates the DOM — not merely on the interval) instead of a
+    // fixed delay, since the exact settle time is not a fixed constant.
+    // `timeout`/`interval` are pinned tight (not the 1,000ms/50ms defaults)
+    // so a stalled announcement still fails about as fast as the original
+    // fixed 10ms tick did, per repository policy against widening wait
+    // thresholds. Scoped to `[role="status"]` (not the broader `[aria-live]`)
+    // because the embedded SearchField's Input also carries
+    // `aria-live="polite"` on its always-mounted error node (CIN-315) and
+    // would otherwise collide — `[aria-live]` matched Input's empty error
+    // node first in DOM order.
+    await waitFor(
+      () => {
+        const liveRegion = container.querySelector('[role="status"]');
+        expect(liveRegion?.textContent).toContain('2 active filters');
+      },
+      { timeout: 50, interval: 5 },
+    );
   });
 
   test('active controls row has accessible label for screen readers', () => {

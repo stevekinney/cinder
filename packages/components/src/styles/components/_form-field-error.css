@@ -1,0 +1,28 @@
+@layer cinder.components {
+  /* Hides FormFieldFrame's always-present error live region (CIN-315: the
+     region now mounts by default, not only when a consumer opted in) when no
+     error is active. `visibility: hidden` — not `display: none` — keeps the
+     `aria-live` region in the accessibility tree so it stays ready to
+     announce the first time an error is set; a freshly-mounted live region
+     is not reliably announced by NVDA/JAWS. `position: absolute` removes the
+     node from flex, grid, and block layout entirely so an errorless region
+     never reserves space or consumes a flex/grid `gap` in its parent,
+     regardless of that parent's layout mode. `height: 0` and
+     `overflow: hidden` are defense in depth for a parent that gives the node
+     an explicit static position.
+
+     Every FormFieldFrame consumer's error node carries the shared
+     `.cinder-form-field__error` base class — form-field-frame.svelte builds
+     its class as `classNames('cinder-form-field__error', errorClass)`, so
+     the base class is always present even when a consumer also assigns its
+     own `errorClass` — which is what lets this one shared rule cover every
+     consumer. Lifted out of Select/Combobox/MultiSelect's identical
+     per-component copies once every FormFieldFrame consumer started
+     rendering this node by default. */
+  .cinder-form-field__error:not([data-cinder-error]) {
+    position: absolute;
+    visibility: hidden;
+    height: 0;
+    overflow: hidden;
+  }
+}

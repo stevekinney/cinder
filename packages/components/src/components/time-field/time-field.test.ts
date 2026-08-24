@@ -1,6 +1,7 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, mock, test } from 'bun:test';
 
+import { injectStrippedStyles } from '../../test/css.ts';
 import { setupHappyDom } from '../../test/happy-dom.ts';
 import type { TimeFieldChange } from './time-field.types.ts';
 
@@ -770,5 +771,24 @@ describe('TimeField', () => {
     });
 
     expect(container.querySelector('.cinder-time-field__error')).not.toBeNull();
+  });
+
+  test('the errorless live region has no layout footprint (shared _form-field-error.css, CIN-315 follow-up)', async () => {
+    const timeFieldCss = await Bun.file(new URL('./time-field.css', import.meta.url)).text();
+    const sharedErrorCss = await Bun.file(
+      new URL('../../styles/components/_form-field-error.css', import.meta.url),
+    ).text();
+    const removeStyles = injectStrippedStyles(timeFieldCss, sharedErrorCss);
+    try {
+      const { container } = render(TimeField, {
+        props: { id: 'reminder-no-error-computed', label: 'Reminder time', value: '09:30' },
+      });
+      const errorRegion = container.querySelector('.cinder-time-field__error');
+      const computed = getComputedStyle(errorRegion as Element);
+      expect(computed.position).toBe('absolute');
+      expect(computed.visibility).toBe('hidden');
+    } finally {
+      removeStyles();
+    }
   });
 });

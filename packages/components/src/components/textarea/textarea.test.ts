@@ -1,6 +1,7 @@
 /// <reference lib="dom" />
 import { describe, expect, test } from 'bun:test';
 
+import { injectStrippedStyles } from '../../test/css.ts';
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 // setupHappyDom() MUST run before any `@testing-library/svelte` import. testing-library
@@ -386,6 +387,25 @@ describe('Textarea — error live region', () => {
       props: { id: 'no-error-yet-textarea', value: '', label: 'Notes' },
     });
     expect(container.querySelector('.cinder-textarea-error')).not.toBeNull();
+  });
+
+  test('the errorless live region has no layout footprint (shared _form-field-error.css, CIN-315 follow-up)', async () => {
+    const textareaCss = await Bun.file(new URL('./textarea.css', import.meta.url)).text();
+    const sharedErrorCss = await Bun.file(
+      new URL('../../styles/components/_form-field-error.css', import.meta.url),
+    ).text();
+    const removeStyles = injectStrippedStyles(textareaCss, sharedErrorCss);
+    try {
+      const { container } = render(Textarea, {
+        props: { id: 'no-error-computed-textarea', value: '', label: 'Notes' },
+      });
+      const errorRegion = container.querySelector('.cinder-textarea-error');
+      const computed = getComputedStyle(errorRegion as Element);
+      expect(computed.position).toBe('absolute');
+      expect(computed.visibility).toBe('hidden');
+    } finally {
+      removeStyles();
+    }
   });
 });
 

@@ -281,12 +281,9 @@
     color: var(--cinder-color-danger-fg);
   }
 
-  .cinder-multi-select__error:not([data-cinder-error]) {
-    position: absolute;
-    visibility: hidden;
-    height: 0;
-    overflow: hidden;
-  }
+  /* The shared `_form-field-error.css` partial (imported by the required
+     `cinder/styles` base, CIN-315) keeps the always-present live region out
+     of layout when no error is active — no per-component copy needed here. */
 
   .cinder-multi-select__validation-proxy {
     position: absolute;

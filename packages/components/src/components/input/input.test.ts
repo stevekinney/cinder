@@ -2,6 +2,7 @@
 import { describe, expect, spyOn, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
 
+import { injectStrippedStyles } from '../../test/css.ts';
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 // setupHappyDom() MUST run before any `@testing-library/svelte` import. testing-library
@@ -225,6 +226,25 @@ describe('Input rendering', () => {
       props: { id: 'no-error-yet', label: 'Name', value: '' },
     });
     expect(container.querySelector('.cinder-form-field__error')).not.toBeNull();
+  });
+
+  test('the errorless live region has no layout footprint (shared _form-field-error.css, CIN-315 follow-up)', async () => {
+    const inputCss = await Bun.file(new URL('./input.css', import.meta.url)).text();
+    const sharedErrorCss = await Bun.file(
+      new URL('../../styles/components/_form-field-error.css', import.meta.url),
+    ).text();
+    const removeStyles = injectStrippedStyles(inputCss, sharedErrorCss);
+    try {
+      const { container } = render(Input, {
+        props: { id: 'no-error-computed', label: 'Name', value: '' },
+      });
+      const errorRegion = container.querySelector('.cinder-form-field__error');
+      const computed = getComputedStyle(errorRegion as Element);
+      expect(computed.position).toBe('absolute');
+      expect(computed.visibility).toBe('hidden');
+    } finally {
+      removeStyles();
+    }
   });
 
   test('no aria-invalid when error prop is absent', () => {

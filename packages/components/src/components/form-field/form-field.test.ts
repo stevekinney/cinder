@@ -2,6 +2,7 @@
 import { describe, expect, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
 
+import { injectStrippedStyles } from '../../test/css.ts';
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
@@ -23,6 +24,25 @@ describe('FormField rendering', () => {
       props: { id: 'no-error-yet', label: 'Username', children: emptySnippet },
     });
     expect(container.querySelector('.cinder-form-field__error')).not.toBeNull();
+  });
+
+  test('the errorless live region has no layout footprint (shared _form-field-error.css, CIN-315 follow-up)', async () => {
+    const formFieldCss = await Bun.file(new URL('./form-field.css', import.meta.url)).text();
+    const sharedErrorCss = await Bun.file(
+      new URL('../../styles/components/_form-field-error.css', import.meta.url),
+    ).text();
+    const removeStyles = injectStrippedStyles(formFieldCss, sharedErrorCss);
+    try {
+      const { container } = render(FormField, {
+        props: { id: 'no-error-computed-formfield', label: 'Username', children: emptySnippet },
+      });
+      const errorRegion = container.querySelector('.cinder-form-field__error');
+      const computed = getComputedStyle(errorRegion as Element);
+      expect(computed.position).toBe('absolute');
+      expect(computed.visibility).toBe('hidden');
+    } finally {
+      removeStyles();
+    }
   });
 
   test('renders a <label> with correct for and id attributes', () => {

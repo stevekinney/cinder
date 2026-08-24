@@ -1,6 +1,7 @@
 /// <reference lib="dom" />
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
+import { injectStrippedStyles } from '../../test/css.ts';
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
@@ -325,5 +326,25 @@ describe('DatePicker', () => {
   test('the error live region is mounted before any error is set (CIN-315: FormFieldFrame defaults to errorMountedOnDemand=false)', () => {
     const { container } = render(DatePicker, { id: 'dp-no-error', value: '2026-06-29' });
     expect(container.querySelector('.cinder-date-picker__error')).not.toBeNull();
+  });
+
+  test('the errorless live region has no layout footprint (shared _form-field-error.css, CIN-315 follow-up)', async () => {
+    const datePickerCss = await Bun.file(new URL('./date-picker.css', import.meta.url)).text();
+    const sharedErrorCss = await Bun.file(
+      new URL('../../styles/components/_form-field-error.css', import.meta.url),
+    ).text();
+    const removeStyles = injectStrippedStyles(datePickerCss, sharedErrorCss);
+    try {
+      const { container } = render(DatePicker, {
+        id: 'dp-no-error-computed',
+        value: '2026-06-29',
+      });
+      const errorRegion = container.querySelector('.cinder-date-picker__error');
+      const computed = getComputedStyle(errorRegion as Element);
+      expect(computed.position).toBe('absolute');
+      expect(computed.visibility).toBe('hidden');
+    } finally {
+      removeStyles();
+    }
   });
 });
