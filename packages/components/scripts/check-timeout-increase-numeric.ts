@@ -1,5 +1,5 @@
 const NON_DECIMAL_NUMERIC_LITERAL_PATTERN = String.raw`(?:0[xX][\dA-Fa-f][\dA-Fa-f_]*|0[bB][01][01_]*|0[oO][0-7][0-7_]*)`;
-const DECIMAL_NUMERIC_LITERAL_PATTERN = String.raw`\d[\d_]*(?:\.\d[\d_]*)?(?:[eE][+-]?\d[\d_]*)?`;
+const DECIMAL_NUMERIC_LITERAL_PATTERN = String.raw`(?:\d[\d_]*(?:\.\d[\d_]*)?|\.\d[\d_]*)(?:[eE][+-]?\d[\d_]*)?`;
 const NUMERIC_LITERAL_PATTERN = String.raw`(?:${NON_DECIMAL_NUMERIC_LITERAL_PATTERN}|${DECIMAL_NUMERIC_LITERAL_PATTERN})`;
 const FLAT_NUMERIC_EXPRESSION_PATTERN = String.raw`${NUMERIC_LITERAL_PATTERN}(?:\s*(?:\*\*|[*/+-])\s*${NUMERIC_LITERAL_PATTERN})*`;
 const NUMERIC_ATOM_PATTERN = String.raw`(?:${NUMERIC_LITERAL_PATTERN}|\(\s*${FLAT_NUMERIC_EXPRESSION_PATTERN}\s*\))`;
@@ -9,7 +9,7 @@ export const NUMERIC_EXPRESSION_PATTERN = String.raw`${NUMERIC_ATOM_PATTERN}(?:\
 export function parseNumericLiteral(literal: string): number {
   const normalized = literal.replaceAll('_', '').replace(/\s+/gu, '');
   const tokens = normalized.match(
-    /0[xX][\dA-Fa-f]+|0[bB][01]+|0[oO][0-7]+|\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|\*\*|[()*/+-]/gu,
+    /0[xX][\dA-Fa-f]+|0[bB][01]+|0[oO][0-7]+|(?:\d+(?:\.\d+)?|\.\d+)(?:[eE][+-]?\d+)?|\*\*|[()*/+-]/gu,
   );
   if (tokens === null || tokens.join('') !== normalized) return Number.NaN;
   let index = 0;
@@ -68,8 +68,9 @@ export function effectiveThresholdValue(label: string, line: string, value: numb
   if (normalizedLabel === 'shell.timeout' && value === 0) return Number.POSITIVE_INFINITY;
   if (normalizedLabel === 'sleep' || normalizedLabel === 'shell.timeout') {
     const unit =
-      /\b(?:sleep|timeout)\s+(?:(?:--[\w-]+)\s+)*(?:\d[\d_.]*)(?<unit>[smhd])?(?![\w.])/u.exec(line)
-        ?.groups?.['unit'] ?? 's';
+      /\b(?:sleep|timeout)\s+(?:(?:--[\w-]+)\s+)*(?:\d[\d_]*(?:\.\d[\d_]*)?|\.\d[\d_]*)(?<unit>[smhd])?(?![\w.])/u.exec(
+        line,
+      )?.groups?.['unit'] ?? 's';
     return value * ({ s: 1_000, m: 60_000, h: 3_600_000, d: 86_400_000 }[unit] ?? 1_000);
   }
   if (value !== 0) return value;
@@ -115,6 +116,7 @@ export type WaitThresholdArgument = BunTestTimeoutArgument & {
     | 'setTimeout'
     | 'waitForTimeout'
     | 'waitForUrl'
+    | 'slow'
     | 'playwright-operation-timeout';
   occurrenceIndex?: number;
 };
@@ -202,6 +204,7 @@ export function findWaitThresholdArguments(analysis: string): WaitThresholdArgum
     ...findCallArgument(analysis, /\bpromiseWithTimeout\s*\(/gu, 1, 'promiseWithTimeout'),
     ...findPlaywrightExpectPollIntervals(analysis),
     ...findPlaywrightOperationTimeoutArguments(analysis),
+    ...findMultilinePlaywrightSlowAnnotations(analysis),
   ];
   const occurrenceIndexes = new Map<string, number>();
   return argumentsFound.map((argument) => {
@@ -209,6 +212,27 @@ export function findWaitThresholdArguments(analysis: string): WaitThresholdArgum
     occurrenceIndexes.set(argument.label, occurrenceIndex + 1);
     return { ...argument, occurrenceIndex };
   });
+}
+
+function findMultilinePlaywrightSlowAnnotations(analysis: string): WaitThresholdArgument[] {
+  const annotations: WaitThresholdArgument[] = [];
+  for (const callArguments of findCallArguments(
+    analysis,
+    /\b(?:test|testInfo)\.slow\s*\(\s*\n/gu,
+  )) {
+    const condition = callArguments[0];
+    if (condition === undefined) continue;
+    const renderedCondition = condition.text.trim();
+    if (new RegExp(String.raw`^${NUMERIC_EXPRESSION_PATTERN}$`, 'u').test(renderedCondition)) {
+      continue;
+    }
+    annotations.push({
+      label: 'slow',
+      offset: condition.offset,
+      renderedValue: /^false$/u.test(renderedCondition) ? '1' : '3',
+    });
+  }
+  return annotations;
 }
 
 function findPlaywrightExpectPollIntervals(analysis: string): WaitThresholdArgument[] {

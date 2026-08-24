@@ -258,6 +258,22 @@ describe('check-timeout-increases', () => {
     ]);
   });
 
+  test('rejects a newly added multiline test.slow annotation', () => {
+    const diff = [
+      'diff --git a/packages/testing/tests/example.playwright.ts b/packages/testing/tests/example.playwright.ts',
+      '--- a/packages/testing/tests/example.playwright.ts',
+      '+++ b/packages/testing/tests/example.playwright.ts',
+      '@@ -10,0 +10,4 @@',
+      '+test.slow(',
+      '+  true,',
+      "+  'long workload',",
+      '+);',
+      '',
+    ].join('\n');
+
+    expect(findTimeoutIncreaseViolations(diff)).toHaveLength(1);
+  });
+
   test('rejects named timeout constant increases', () => {
     const violations = findTimeoutIncreaseViolations(
       diffFor(
@@ -356,6 +372,22 @@ describe('check-timeout-increases', () => {
       '-  5_000,',
       '+  10_000,',
       ' );',
+      '',
+    ].join('\n');
+
+    expect(findTimeoutIncreaseViolations(diff)).toHaveLength(1);
+  });
+
+  test('checks assertion timeout options whose value is on the next line', () => {
+    const diff = [
+      'diff --git a/packages/testing/tests/example.playwright.ts b/packages/testing/tests/example.playwright.ts',
+      '--- a/packages/testing/tests/example.playwright.ts',
+      '+++ b/packages/testing/tests/example.playwright.ts',
+      '@@ -10,3 +10,3 @@',
+      ' await expect(locator).toBeVisible({',
+      '-  timeout: 5_000,',
+      '+  timeout: 10_000,',
+      ' });',
       '',
     ].join('\n');
 
@@ -2033,6 +2065,16 @@ describe('check-timeout-increases', () => {
     expect(violations).toHaveLength(1);
     expect(violations[0]?.old.effectiveValue).toBe(30_000);
     expect(violations[0]?.new.effectiveValue).toBe(60_000);
+  });
+
+  test('checks leading-dot shell sleep durations', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor('packages/components/scripts/probe.sh', ['sleep .5'], ['sleep .9']),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.old.effectiveValue).toBe(500);
+    expect(violations[0]?.new.effectiveValue).toBe(900);
   });
 
   test('treats shell timeout zero as unbounded', () => {

@@ -131,7 +131,13 @@ function extractThresholdCandidates(
   for (const match of analysisLine.matchAll(thresholdAssignmentPattern)) {
     const label = match.groups?.['label'] ?? '';
     if (!isTestThresholdAssignment(filePath, assignmentAnalysis, label)) continue;
-    if (label.toLowerCase() === 'timeout' && !isGenericTimeoutContext(filePath, analysisLine)) {
+    if (
+      label.toLowerCase() === 'timeout' &&
+      !isGenericTimeoutContext(
+        filePath,
+        /^\s*timeout\s*:/iu.test(analysisLine) ? assignmentAnalysis : analysisLine,
+      )
+    ) {
       continue;
     }
     pushCandidate(
@@ -173,7 +179,6 @@ function extractThresholdCandidates(
       ),
     );
   }
-
   const cliPattern = new RegExp(
     String.raw`--(?<label>timeout-minutes|timeout|test-timeout|retries|retry|rerun-each|slow)(?:=|\s+)(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
     'giu',
@@ -189,7 +194,6 @@ function extractThresholdCandidates(
       implicitBaselineFor(label, shellContinuationContext(analysisBeforeLine, line), filePath),
     );
   }
-
   for (const argument of extractExecutableCliThresholdArguments(line)) {
     pushCandidate(
       candidates,
@@ -255,7 +259,6 @@ function extractThresholdCandidates(
     return true;
   });
 }
-
 function extractMultilineCallCandidates(
   filePath: string,
   source: Array<{ changed: boolean; line: string; lineNumber: number }>,
@@ -285,7 +288,6 @@ function extractMultilineCallCandidates(
       implicitBaselineFor(label, match[0], filePath),
     );
   }
-
   const assignmentPatterns = [
     new RegExp(
       String.raw`\b(?<label>timeout-minutes|testTimeout|timeout|deadline|retries|retry|slow)\b\s*(?::\s*[^=;\n]+?=\s*|(?::|=)\s*)\n\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
@@ -314,7 +316,6 @@ function extractMultilineCallCandidates(
       );
     }
   }
-
   const conditionalPattern = new RegExp(
     String.raw`\b(?<label>${BASIC_THRESHOLD_LABEL_PATTERN}|${NAMED_THRESHOLD_LABEL_PATTERN})\b\s*(?::|=)\s*[^;]*?\?\s*(?:(?<consequent>${NUMERIC_EXPRESSION_PATTERN})|[^:;]+?)\s*:\s*(?:(?<alternate>${NUMERIC_EXPRESSION_PATTERN})|[^;]+)`,
     'giu',
@@ -336,7 +337,6 @@ function extractMultilineCallCandidates(
       );
     }
   }
-
   const retryConfigurationPattern =
     /\btest\.describe\.configure\s*\(\s*\{(?<body>[\s\S]*?)\}\s*\)/gu;
   const retryAssignmentPattern = new RegExp(
@@ -406,7 +406,7 @@ function extractMultilineCallCandidates(
   if (/\.(?:bash|sh|yaml|yml|zsh)$/u.test(filePath)) {
     let shellCommandOccurrenceIndex = 0;
     for (const sleepMatch of analysis.matchAll(
-      /(?:^|(?:&&|[;&|])\s*|\n\s*|\brun:\s*)(?<command>sleep|timeout)\s+(?:(?:--[\w-]+)\s+)*(?<value>\d[\d_.]*)(?:[smhd])?(?![\w.])/gu,
+      /(?:^|(?:&&|[;&|])\s*|\n\s*|\brun:\s*)(?<command>sleep|timeout)\s+(?:(?:--[\w-]+)\s+)*(?<value>(?:\d[\d_]*(?:\.\d[\d_]*)?|\.\d[\d_]*))(?:[smhd])?(?![\w.])/gu,
     )) {
       const renderedValue = sleepMatch.groups?.['value'];
       if (renderedValue === undefined) continue;
