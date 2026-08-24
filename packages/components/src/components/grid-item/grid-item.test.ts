@@ -111,6 +111,24 @@ describe('GridItem', () => {
     expect(root.getAttribute('data-cinder-row-span')).toBe('true');
   });
 
+  test('threads explicit rowEnd values', () => {
+    const { container } = render(GridItem, {
+      props: { rowEnd: 'span 4', children: textSnippet('content') },
+    });
+    const root = container.querySelector('.cinder-grid-item') as HTMLElement;
+    expect(root.style.getPropertyValue('--cinder-grid-item-row-end')).toBe('span 4');
+  });
+
+  test('explicit rowEnd wins over rowSpan state', () => {
+    const { container } = render(GridItem, {
+      props: { rowSpan: 2, rowEnd: 5, children: textSnippet('content') },
+    });
+    const root = container.querySelector('.cinder-grid-item') as HTMLElement;
+    expect(root.style.getPropertyValue('--cinder-grid-item-row-span')).toBe('2');
+    expect(root.style.getPropertyValue('--cinder-grid-item-row-end')).toBe('5');
+    expect(root.hasAttribute('data-cinder-row-span')).toBe(false);
+  });
+
   test('flat index import is SSR-safe', async () => {
     const module = await import('./index.ts');
     expect(typeof module.default).toBe('function');

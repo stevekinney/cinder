@@ -23,6 +23,7 @@
     columnEnd,
     rowSpan,
     rowStart,
+    rowEnd,
     as = 'div',
     class: customClassName,
     children,
@@ -34,8 +35,12 @@
   const resolvedColumnEnd = $derived(columnEnd !== undefined ? String(columnEnd) : undefined);
   const resolvedRowSpan = $derived(rowSpan !== undefined ? String(rowSpan) : undefined);
   const resolvedRowStart = $derived(rowStart !== undefined ? String(rowStart) : undefined);
+  const resolvedRowEnd = $derived(rowEnd !== undefined ? String(rowEnd) : undefined);
   const shouldApplyColumnSpan = $derived(
     columnSpan !== undefined && resolvedColumnEnd === undefined,
+  );
+  const shouldApplyRowSpan = $derived(
+    resolvedRowSpan !== undefined && resolvedRowEnd === undefined,
   );
 </script>
 
@@ -44,12 +49,13 @@
   {...rest}
   class={classNames('cinder-grid-item', customClassName)}
   data-cinder-column-span={shouldApplyColumnSpan ? 'true' : undefined}
-  data-cinder-row-span={resolvedRowSpan !== undefined ? 'true' : undefined}
+  data-cinder-row-span={shouldApplyRowSpan ? 'true' : undefined}
   style:--cinder-grid-item-column-span={columnSpan}
   style:--cinder-grid-item-column-start={resolvedColumnStart}
   style:--cinder-grid-item-column-end={resolvedColumnEnd}
   style:--cinder-grid-item-row-span={resolvedRowSpan}
   style:--cinder-grid-item-row-start={resolvedRowStart}
+  style:--cinder-grid-item-row-end={resolvedRowEnd}
 >
   {@render children?.()}
 </svelte:element>

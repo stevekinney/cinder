@@ -57,6 +57,17 @@
       ],
       "description": "Explicit `grid-row-start` value."
     },
+    "rowEnd": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        }
+      ],
+      "description": "Explicit `grid-row-end` value. Takes precedence over `rowSpan` when both are set."
+    },
     "as": {
       "enum": [
         "object",

@@ -16,6 +16,12 @@
       "code": "<script lang=\"ts\">\n  import { Grid } from '@lostgradient/cinder/grid';\n</script>\n\n<Grid columns={12} gap=\"var(--cinder-space-4)\" aria-label=\"Profile form layout\">\n  <Grid.Item span={6}>\n    <div style=\"padding: 1rem; border: 1px solid var(--cinder-border-muted);\">First name</div>\n  </Grid.Item>\n  <Grid.Item span={6}>\n    <div style=\"padding: 1rem; border: 1px solid var(--cinder-border-muted);\">Last name</div>\n  </Grid.Item>\n  <Grid.Item span={12}>\n    <div style=\"padding: 1rem; border: 1px solid var(--cinder-border-muted);\">Email address</div>\n  </Grid.Item>\n</Grid>\n"
     },
     {
+      "id": "bento-mosaic",
+      "title": "Asymmetric bento mosaic",
+      "description": "A deliberate feature-tile mosaic recipe: Grid with narrowCollapseEnabled and Grid.Item span/rowSpan replace the retired BentoGrid/BentoCell components.",
+      "code": "<script lang=\"ts\">\n  import { Card } from '@lostgradient/cinder/card';\n  import { Grid } from '@lostgradient/cinder/grid';\n</script>\n\n<Grid\n  as=\"section\"\n  columns=\"repeat(4, minmax(0, 1fr))\"\n  gap=\"var(--cinder-space-4)\"\n  narrowCollapseEnabled\n  aria-label=\"Product highlights\"\n>\n  <Grid.Item span={2} rowSpan={2}>\n    <Card>Realtime analytics</Card>\n  </Grid.Item>\n  <Grid.Item span={2}>\n    <Card>Workflow automation</Card>\n  </Grid.Item>\n  <Grid.Item rowSpan={2}>\n    <Card>Compliance controls</Card>\n  </Grid.Item>\n  <Grid.Item>\n    <Card>Usage insights</Card>\n  </Grid.Item>\n  <Grid.Item>\n    <Card>Team collaboration</Card>\n  </Grid.Item>\n</Grid>\n"
+    },
+    {
       "id": "feature-grid",
       "title": "Feature grid",
       "description": "A product-features section recipe: Grid with minItemWidth lays out icon + title + description tiles under a section heading.",

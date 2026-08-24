@@ -34,7 +34,6 @@ export type DiscoveredComponent = {
  */
 export const COMPOSE_ONLY_COMPONENTS: ReadonlySet<string> = new Set([
   'accordion-item',
-  'bento-cell',
   'choice-grid-item',
   'command-item',
   'segment',
