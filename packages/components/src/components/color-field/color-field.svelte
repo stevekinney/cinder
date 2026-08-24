@@ -12,13 +12,18 @@
    * @avoidWhen Constraining selection to a fixed brand palette — use color-swatch-picker instead.
    * @related color-picker, color-swatch-picker, input, form-field
    */
-  export type { ColorFieldProps, ColorFieldFormat } from './color-field.types.ts';
+  export type {
+    ColorFieldProps,
+    ColorFieldFormat,
+    ColorFieldOutputFormat,
+  } from './color-field.types.ts';
 </script>
 
 <script lang="ts">
   import { untrack } from 'svelte';
 
   import { classNames } from '../../utilities/class-names.ts';
+  import { formatColor, parseOklch } from '../../utilities/color-format.ts';
   import { parseColor } from '../../utilities/color-luminance.ts';
   import Input from '../input/input.svelte';
   import Button from '@lostgradient/cinder/button';
@@ -33,6 +38,7 @@
     value = $bindable(''),
     alpha = false,
     formats = ['hex', 'rgb', 'hsl', 'hwb'],
+    format = 'hex',
     disabled = false,
     required = false,
     readonly = false,
@@ -57,27 +63,27 @@
   let lastReconciledValue = '';
   let lastReconciledValueWasInvalid = false;
 
-  function toHex2(n: number): string {
-    return Math.max(0, Math.min(255, Math.round(n)))
-      .toString(16)
-      .padStart(2, '0');
+  // Parse any accepted input format, including `oklch()` (which the shared
+  // `parseColor` legacy parser does not know about — it's handled by the
+  // gamut-aware `parseOklch` in color-format.ts instead).
+  function parseInput(text: string): RgbaParts | null {
+    if (OKLCH_TEXT_RE.test(text)) return parseOklch(text);
+    return parseColor(text);
   }
 
-  function normalizeHex(parts: RgbaParts, emitAlpha: boolean): string {
-    const base = `#${toHex2(parts.r)}${toHex2(parts.g)}${toHex2(parts.b)}`;
-    if (emitAlpha) return base + toHex2(parts.a * 255);
-    return base;
-  }
-
-  // Emit rule: emit `#rrggbbaa` only when `alpha === true` AND parsed `a < 1`.
+  // Emit rule: pass through `alpha` only when `alpha === true` AND parsed
+  // `a < 1`; otherwise force fully opaque so config-gated stripping stays
+  // uniform across every output format.
   function emitFor(parts: RgbaParts): string {
-    return normalizeHex(parts, alpha && parts.a < 1);
+    const emitAlpha = alpha && parts.a < 1;
+    return formatColor({ ...parts, a: emitAlpha ? parts.a : 1 }, format);
   }
 
   const HEX_RE = /^#[0-9a-f]{3}([0-9a-f]([0-9a-f]{2})?([0-9a-f]{2})?)?$/i;
   const RGB_RE = /^(rgb|rgba)\s*\([^)]*\)\s*$/i;
   const HSL_RE = /^(hsl|hsla)\s*\([^)]*\)\s*$/i;
   const HWB_RE = /^hwb\s*\([^)]*\)\s*$/i;
+  const OKLCH_TEXT_RE = /^oklch\s*\([^)]*\)\s*$/i;
   const DEFAULT_FORMATS = ['hex', 'rgb', 'hsl', 'hwb'] as const;
 
   const acceptedFormats = $derived(formats.length === 0 ? DEFAULT_FORMATS : formats);
@@ -99,6 +105,7 @@
       );
     }
     if (HWB_RE.test(text)) return acceptedFormats.includes('hwb');
+    if (OKLCH_TEXT_RE.test(text)) return acceptedFormats.includes('oklch');
     return false;
   }
 
@@ -111,6 +118,7 @@
       hsl: 'hsl()',
       hsla: 'hsla()',
       hwb: 'hwb()',
+      oklch: 'oklch()',
     };
     const accepted = acceptedFormats.map((format) => labels[format]);
     if (accepted.length === 1) return `Enter a valid ${accepted[0]} color.`;
@@ -140,7 +148,7 @@
   if (initialValue !== '') {
     const trimmedInitial = initialValue.trim();
     if (trimmedInitial !== '' && passesFormatGate(trimmedInitial)) {
-      const parsed = parseColor(trimmedInitial);
+      const parsed = parseInput(trimmedInitial);
       if (parsed !== null) {
         seedFromParts(parsed);
         lastReconciledValue = initialValue;
@@ -175,7 +183,7 @@
       parseError = defaultErrorMessage();
       lastReconciledValueWasInvalid = true;
     } else {
-      const parsed = parseColor(trimmed);
+      const parsed = parseInput(trimmed);
       if (parsed === null) {
         visibleText = next;
         committedHex = '';
@@ -232,7 +240,7 @@
       // not the wording that was current when the error was first raised.
       parseError = defaultErrorMessage();
     } else {
-      const parsed = parseColor(text);
+      const parsed = parseInput(text);
       parseError = parsed === null ? defaultErrorMessage() : null;
     }
     syncCustomValidity();
@@ -270,7 +278,7 @@
       return { committed: false, emittedHex: null };
     }
 
-    const parsed = parseColor(trimmed);
+    const parsed = parseInput(trimmed);
     if (parsed === null) {
       parseError = defaultErrorMessage();
       return { committed: false, emittedHex: null };
@@ -364,7 +372,7 @@
       syncCustomValidity();
       return;
     }
-    const parsed = parseColor(trimmedDefault);
+    const parsed = parseInput(trimmedDefault);
     if (parsed === null) {
       clearAll();
       lastReconciledValue = '';
@@ -405,7 +413,7 @@
   const swatchColor = $derived(committedHex === '' ? 'transparent' : committedHex);
 
   function handlePickerCommit(next: string, reason: 'pointer' | 'swatch' | 'keyboard'): void {
-    const parsed = parseColor(next);
+    const parsed = parseInput(next);
     if (parsed === null) return;
     const normalized = emitFor(parsed);
     const previousHex = committedHex;

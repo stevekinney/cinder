@@ -11,7 +11,7 @@
    * @avoidWhen Constraining selection to a fixed brand palette — use color-swatch-picker instead.
    * @related color-swatch-picker, input
    */
-  export type { ColorPickerProps } from './color-picker.types.ts';
+  export type { ColorPickerProps, ColorPickerFormat } from './color-picker.types.ts';
 </script>
 
 <script lang="ts">
@@ -23,12 +23,12 @@
   import { untrack } from 'svelte';
 
   import { classNames } from '../../utilities/class-names.ts';
+  import { formatColor } from '../../utilities/color-format.ts';
   import ColorSwatchPicker from '../color-swatch-picker/color-swatch-picker.svelte';
   import ColorPickerControls from './color-picker-controls.svelte';
   import {
     alphaFromKeyboard,
     clamp,
-    formatHex,
     gradientFromKeyboard,
     hslToRgb,
     hueFromKeyboard,
@@ -41,6 +41,7 @@
   let {
     value = $bindable(''),
     alpha = false,
+    format = 'hex',
     name,
     swatches,
     disabled = false,
@@ -49,6 +50,16 @@
     onValueCommit,
     onValueChange,
   }: ColorPickerProps = $props();
+
+  // Convert internal HSLA state to the emitted string in the configured
+  // `format`. `alpha` (UI-affordance only) already gates whether `a` can be
+  // <1 upstream in `applyHsla` — this function does not re-gate it, so the
+  // format's own alpha-emission policy (emit iff a < 1) is the sole authority
+  // once a value reaches here, per the CIN-104 ruling.
+  function emitValue(h: number, s: number, l: number, a: number): string {
+    const { r, g, b } = hslToRgb(h, s, l);
+    return formatColor({ r, g, b, a }, format);
+  }
 
   const gradientId = `${pickerId}-gradient`;
   const hueId = `${pickerId}-hue`;
@@ -67,25 +78,28 @@
   let lastEmittedHex = '';
   let isDragging = $state(false);
 
+  function gatedAlpha(a: number): number {
+    return alpha ? a : 1;
+  }
+
   function applyHsla(next: Hsla): void {
     hue = next.h;
     saturation = next.s;
     lightnessValue = next.l;
-    alphaValue = alpha ? next.a : 1;
+    alphaValue = gatedAlpha(next.a);
   }
 
   // Snapshot the seed props once. Initialization reads only the mount-time
   // values; the controlled-sync effect (below) handles later `value` changes.
   const initialValue = untrack(() => value);
   const resetTarget = initialValue;
-  const initialAlpha = untrack(() => alpha);
 
   // Initialize from the mount-time bindable value.
   if (initialValue !== '') {
     const parsed = parseToHsla(initialValue);
     if (parsed) {
       applyHsla(parsed);
-      internalValue = formatHex(parsed.h, parsed.s, parsed.l, parsed.a, initialAlpha);
+      internalValue = emitValue(parsed.h, parsed.s, parsed.l, gatedAlpha(parsed.a));
     } else {
       hue = 0;
       saturation = 0;
@@ -114,29 +128,30 @@
       return;
     }
     applyHsla(parsed);
-    internalValue = formatHex(parsed.h, parsed.s, parsed.l, parsed.a, alpha);
+    internalValue = emitValue(parsed.h, parsed.s, parsed.l, alphaValue);
   });
 
-  // Re-normalize internal value when the `alpha` mode toggles after mount so
-  // hidden input / bound value reflect the new emit format immediately.
+  // Re-normalize internal value when `alpha` or `format` change after mount
+  // so hidden input / bound value reflect the new emit shape immediately.
   $effect(() => {
     void alpha;
+    void format;
     if (internalValue === '') return;
-    const hex = formatHex(hue, saturation, lightnessValue, alphaValue, alpha);
-    if (hex === internalValue) return;
-    internalValue = hex;
-    lastEmittedHex = hex;
-    if (value !== undefined && value !== hex) value = hex;
+    const next = emitValue(hue, saturation, lightnessValue, alphaValue);
+    if (next === internalValue) return;
+    internalValue = next;
+    lastEmittedHex = next;
+    if (value !== undefined && value !== next) value = next;
   });
 
   function emit(reason: 'input' | 'change'): void {
-    const hex = formatHex(hue, saturation, lightnessValue, alphaValue, alpha);
-    internalValue = hex;
-    lastEmittedHex = hex;
-    if (value !== undefined) value = hex;
+    const next = emitValue(hue, saturation, lightnessValue, alphaValue);
+    internalValue = next;
+    lastEmittedHex = next;
+    if (value !== undefined) value = next;
     // Every value mutation fires `onValueChange`; `onValueCommit` additionally fires on commit.
-    onValueChange?.(hex);
-    if (reason === 'change') onValueCommit?.(hex, 'keyboard');
+    onValueChange?.(next);
+    if (reason === 'change') onValueCommit?.(next, 'keyboard');
   }
 
   function commitFromHsla(next: Hsla, reason: 'input' | 'change'): void {
@@ -145,11 +160,11 @@
   }
 
   function commitCurrentValueChange(reason: 'pointer' | 'swatch' = 'pointer'): void {
-    const hex = formatHex(hue, saturation, lightnessValue, alphaValue, alpha);
-    internalValue = hex;
-    lastEmittedHex = hex;
-    if (value !== undefined) value = hex;
-    onValueCommit?.(hex, reason);
+    const next = emitValue(hue, saturation, lightnessValue, alphaValue);
+    internalValue = next;
+    lastEmittedHex = next;
+    if (value !== undefined) value = next;
+    onValueCommit?.(next, reason);
   }
 
   // ── Gradient handling ──────────────────────────────────────────────────
@@ -316,7 +331,7 @@
   function normalizeSwatch(swatch: string): string | null {
     const parsed = parseToHsla(swatch);
     if (!parsed) return null;
-    return formatHex(parsed.h, parsed.s, parsed.l, parsed.a, alpha).toLowerCase();
+    return emitValue(parsed.h, parsed.s, parsed.l, gatedAlpha(parsed.a)).toLowerCase();
   }
 
   /**
@@ -336,7 +351,7 @@
     }),
   );
 
-  const currentHex = $derived(formatHex(hue, saturation, lightnessValue, alphaValue, alpha));
+  const currentHex = $derived(emitValue(hue, saturation, lightnessValue, alphaValue));
 
   const formatRgb = $derived.by(() => {
     const { r, g, b } = hslToRgb(hue, saturation, lightnessValue);
@@ -361,7 +376,7 @@
     const parsed = parseToHsla(selectedColor);
     if (!parsed) return;
     commitFromHsla(parsed, 'input');
-    const hex = formatHex(parsed.h, parsed.s, parsed.l, parsed.a, alpha);
+    const hex = emitValue(parsed.h, parsed.s, parsed.l, gatedAlpha(parsed.a));
     onValueCommit?.(hex, 'swatch');
   }
 
@@ -391,7 +406,7 @@
         return;
       }
       applyHsla(parsed);
-      const hex = formatHex(parsed.h, parsed.s, parsed.l, parsed.a, alpha);
+      const hex = emitValue(parsed.h, parsed.s, parsed.l, alphaValue);
       internalValue = hex;
       lastEmittedHex = hex;
       if (value !== undefined) value = hex;

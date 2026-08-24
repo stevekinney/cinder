@@ -4,11 +4,15 @@
   "properties": {
     "value": {
       "type": "string",
-      "description": "Bindable value. Reading the value yields a hex string (`#rrggbb`, or\n`#rrggbbaa` when `alpha` is true). Setting the value accepts hex, `rgb()`,\n`rgba()`, `hsl()`, or `hsla()` input; invalid input is normalized to `''`."
+      "description": "Bindable value. Reading the value yields a string in the configured\n`format` (`#rrggbb`/`#rrggbbaa` for the `'hex'` default, or modern\nspace-separated CSS Color 4 syntax with slash alpha for the others).\nSetting the value accepts hex, `rgb()`, `rgba()`, `hsl()`, `hsla()`, or\n`hwb()` input; invalid input is normalized to `''`."
     },
     "alpha": {
       "type": "boolean",
-      "description": "Enable the alpha slider and emit `#rrggbbaa`. Default `false`."
+      "description": "Show the alpha slider. When `false` (default), a parsed input's alpha\nchannel is forced fully opaque. This gate is uniform across every\n`format` — it is not a hex-only concern. Independently of `alpha`, a\nnon-hex `format`'s alpha-emission syntax (the `/ a` segment) only\nappears when the resulting alpha is actually below 1."
+    },
+    "format": {
+      "enum": ["hex", "rgb", "hsl", "hwb", "oklch"],
+      "description": "Output color format for the committed/emitted value. Default `'hex'`.\nPurely additive — existing consumers relying on the hex default are\nunaffected. `value` stays a plain string regardless of format."
     },
     "name": {
       "type": "string",

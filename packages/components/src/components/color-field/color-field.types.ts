@@ -1,5 +1,8 @@
-/** Accepted *input* color string formats. Output is always hex. */
-export type ColorFieldFormat = 'hex' | 'rgb' | 'rgba' | 'hsl' | 'hsla' | 'hwb';
+/** Accepted *input* color string formats. */
+export type ColorFieldFormat = 'hex' | 'rgb' | 'rgba' | 'hsl' | 'hsla' | 'hwb' | 'oklch';
+
+/** Output color format for the emitted/committed value. `lab` is deliberately excluded. */
+export type ColorFieldOutputFormat = 'hex' | 'rgb' | 'hsl' | 'hwb' | 'oklch';
 
 /** Props for ColorField. */
 export type ColorFieldProps = {
@@ -16,8 +19,15 @@ export type ColorFieldProps = {
    * but alpha is stripped on emit.
    */
   alpha?: boolean;
-  /** Accepted *input* formats. Defaults to `['hex', 'rgb', 'hsl', 'hwb']`; rgba/hsla aliases can be restricted independently. Output is always hex. */
+  /** Accepted *input* formats. Defaults to `['hex', 'rgb', 'hsl', 'hwb']`; rgba/hsla aliases can be restricted independently. Add `'oklch'` to accept `oklch()` input strings. */
   formats?: readonly ColorFieldFormat[];
+  /**
+   * Output color format for the committed/emitted value. Default `'hex'`.
+   * Purely additive — existing consumers relying on the hex default are
+   * unaffected. `value` stays a plain string regardless of format. `lab` is
+   * deliberately excluded.
+   */
+  format?: ColorFieldOutputFormat;
   /** Disable the input. */
   disabled?: boolean;
   /** Mark the input as required for form submission and a11y. */

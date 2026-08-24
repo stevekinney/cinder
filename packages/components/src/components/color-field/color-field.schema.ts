@@ -21,10 +21,15 @@ const schema = {
     formats: {
       type: 'array',
       items: {
-        enum: ['hex', 'rgb', 'rgba', 'hsl', 'hsla', 'hwb'],
+        enum: ['hex', 'rgb', 'rgba', 'hsl', 'hsla', 'hwb', 'oklch'],
       },
       description:
-        "Accepted *input* formats. Defaults to `['hex', 'rgb', 'hsl', 'hwb']`; rgba/hsla aliases can be restricted independently. Output is always hex.",
+        "Accepted *input* formats. Defaults to `['hex', 'rgb', 'hsl', 'hwb']`; rgba/hsla aliases can be restricted independently. Add `'oklch'` to accept `oklch()` input strings.",
+    },
+    format: {
+      enum: ['hex', 'rgb', 'hsl', 'hwb', 'oklch'],
+      description:
+        "Output color format for the committed/emitted value. Default `'hex'`.\nPurely additive — existing consumers relying on the hex default are\nunaffected. `value` stays a plain string regardless of format. `lab` is\ndeliberately excluded.",
     },
     disabled: {
       type: 'boolean',

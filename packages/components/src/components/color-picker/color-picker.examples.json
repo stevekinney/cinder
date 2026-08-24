@@ -20,6 +20,12 @@
       "title": "Color picker without swatches",
       "description": "Omitting the swatches prop renders only the gradient, sliders, and footer row — useful when a freeform pick without preset guidance is needed.",
       "code": "<script lang=\"ts\">\n  import { ColorPicker } from '@lostgradient/cinder/color-picker';\n</script>\n\n<ColorPicker value=\"#6366f1\" label=\"Custom color\" />\n"
+    },
+    {
+      "id": "output-format",
+      "title": "Output format",
+      "description": "The format prop controls the emitted string syntax (hex, rgb, hsl, hwb, or oklch) for the bindable value.",
+      "code": "<script lang=\"ts\">\n  import { ColorPicker } from '@lostgradient/cinder/color-picker';\n  import type { ColorPickerFormat } from '@lostgradient/cinder/color-picker';\n\n  const formats: ColorPickerFormat[] = ['hex', 'rgb', 'hsl', 'hwb', 'oklch'];\n  let selectedFormat = $state<ColorPickerFormat>('oklch');\n  let current = $state('');\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 0.75rem; max-width: 20rem;\">\n  <label for=\"picker-format\" style=\"font-size: 0.875rem; font-weight: 500;\"> Output format </label>\n  <select id=\"picker-format\" bind:value={selectedFormat}>\n    {#each formats as formatOption (formatOption)}\n      <option value={formatOption}>{formatOption}</option>\n    {/each}\n  </select>\n\n  <ColorPicker\n    value=\"#22c55e\"\n    label=\"Accent color\"\n    format={selectedFormat}\n    onValueChange={(color) => {\n      current = color;\n    }}\n  />\n  {#if current}\n    <p style=\"font-size: 0.75rem; color: var(--cinder-text-muted);\">Current: {current}</p>\n  {/if}\n</div>\n"
     }
   ]
 }

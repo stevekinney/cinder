@@ -815,7 +815,10 @@ describe('ColorPicker pointer interaction', () => {
 });
 
 describe('ColorPicker alpha mode toggle', () => {
-  test('toggling alpha=false → alpha=true re-emits 8-char hex', async () => {
+  // Per the CIN-104 alpha policy, hex only ever carries an alpha suffix when
+  // the color's actual alpha is < 1 — toggling the `alpha` *UI affordance* on
+  // does not itself invent an alpha suffix for an already-opaque value.
+  test('toggling alpha=false → alpha=true keeps a fully-opaque value as plain #rrggbb', async () => {
     const { container, rerender } = render(ColorPicker, {
       value: '#ff0000',
       alpha: false,
@@ -826,7 +829,23 @@ describe('ColorPicker alpha mode toggle', () => {
 
     await rerender({ value: '#ff0000', alpha: true, name: 'p' });
     await tick();
+    expect(hidden.value).toBe('#ff0000');
+  });
+
+  test('toggling alpha=false → alpha=true re-emits 8-char hex for a translucent value', async () => {
+    const { container, rerender } = render(ColorPicker, {
+      value: '#ff000080',
+      alpha: true,
+      name: 'p',
+    });
+    const hidden = q<HTMLInputElement>(container, 'input[name="p"]');
     expect(hidden.value).toMatch(/^#ff0000[0-9a-f]{2}$/);
+
+    await rerender({ value: '#ff000080', alpha: false, name: 'p' });
+    await tick();
+    // Alpha UI turned off: the internal alpha value is forced fully opaque,
+    // so the emitted hex drops to plain #rrggbb.
+    expect(hidden.value).toBe('#ff0000');
   });
 });
 
@@ -982,5 +1001,62 @@ describe('ColorPicker composition: ColorSwatchPicker integration', () => {
     await fireEvent.keyDown(listbox, { key: 'ArrowRight' });
     await fireEvent.keyDown(listbox, { key: 'Enter' });
     expect(captured).toBe('#22c55e');
+  });
+});
+
+describe('ColorPicker format (output)', () => {
+  test('default format is hex, so existing consumers are unaffected', async () => {
+    const { container } = render(ColorPicker, { value: '#ff0000', name: 'p' });
+    const hidden = q<HTMLInputElement>(container, 'input[name="p"]');
+    expect(hidden.value).toBe('#ff0000');
+  });
+
+  test('format="rgb" emits modern rgb() syntax', async () => {
+    const { container } = render(ColorPicker, { value: '#ff0000', format: 'rgb', name: 'p' });
+    const hidden = q<HTMLInputElement>(container, 'input[name="p"]');
+    expect(hidden.value).toBe('rgb(255 0 0)');
+  });
+
+  test('format="hsl" emits modern hsl() syntax', async () => {
+    const { container } = render(ColorPicker, { value: '#0000ff', format: 'hsl', name: 'p' });
+    const hidden = q<HTMLInputElement>(container, 'input[name="p"]');
+    expect(hidden.value).toBe('hsl(240 100% 50%)');
+  });
+
+  test('format="hwb" emits modern hwb() syntax', async () => {
+    const { container } = render(ColorPicker, { value: '#00ff00', format: 'hwb', name: 'p' });
+    const hidden = q<HTMLInputElement>(container, 'input[name="p"]');
+    expect(hidden.value).toBe('hwb(120 0% 0%)');
+  });
+
+  test('format="oklch" emits modern oklch() syntax', async () => {
+    const { container } = render(ColorPicker, { value: '#ffffff', format: 'oklch', name: 'p' });
+    const hidden = q<HTMLInputElement>(container, 'input[name="p"]');
+    expect(hidden.value).toMatch(/^oklch\(/);
+  });
+
+  test('non-hex format with alpha uses slash alpha syntax when alpha < 1', async () => {
+    const { container } = render(ColorPicker, {
+      value: '#ff000080',
+      alpha: true,
+      format: 'rgb',
+      name: 'p',
+    });
+    const hidden = q<HTMLInputElement>(container, 'input[name="p"]');
+    expect(hidden.value).toMatch(/^rgb\(255 0 0 \/ 0\.50\d*\)$/);
+  });
+
+  test('onValueCommit fires the configured format on a keyboard commit', async () => {
+    let committed = '';
+    const { container } = render(ColorPicker, {
+      value: '#ff0000',
+      format: 'hsl',
+      onValueCommit: (color: string) => {
+        committed = color;
+      },
+    });
+    const hueSlider = q<HTMLElement>(container, '[role="slider"][aria-label="Hue"]');
+    await fireEvent.keyDown(hueSlider, { key: 'ArrowRight' });
+    expect(committed).toMatch(/^hsl\(/);
   });
 });

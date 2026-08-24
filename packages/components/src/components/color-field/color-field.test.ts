@@ -252,6 +252,90 @@ describe('ColorField — formats gate', () => {
 
     expect(onValueChange.mock.calls[0]?.[0]).toBe('#33b333');
   });
+
+  test('formats=[oklch] accepts an oklch() input string', async () => {
+    const onValueChange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, {
+      id: 'color',
+      formats: ['oklch'],
+      onValueChange,
+    });
+    await typeAndBlur(getInput(container), 'oklch(0% 0 0)');
+    expect(onValueChange.mock.calls[0]?.[0]).toBe('#000000');
+  });
+});
+
+describe('ColorField — format (output)', () => {
+  test('default format is hex, so existing consumers are unaffected', async () => {
+    const onValueChange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, { id: 'color', onValueChange });
+    await typeAndBlur(getInput(container), '#ff0000');
+    expect(onValueChange.mock.calls[0]?.[0]).toBe('#ff0000');
+  });
+
+  test('format="rgb" emits modern rgb() syntax', async () => {
+    const onValueChange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, { id: 'color', format: 'rgb', onValueChange });
+    await typeAndBlur(getInput(container), '#ff0000');
+    expect(onValueChange.mock.calls[0]?.[0]).toBe('rgb(255 0 0)');
+  });
+
+  test('format="hsl" emits modern hsl() syntax', async () => {
+    const onValueChange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, { id: 'color', format: 'hsl', onValueChange });
+    await typeAndBlur(getInput(container), '#0000ff');
+    expect(onValueChange.mock.calls[0]?.[0]).toBe('hsl(240 100% 50%)');
+  });
+
+  test('format="hwb" emits modern hwb() syntax', async () => {
+    const onValueChange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, { id: 'color', format: 'hwb', onValueChange });
+    await typeAndBlur(getInput(container), '#00ff00');
+    expect(onValueChange.mock.calls[0]?.[0]).toBe('hwb(120 0% 0%)');
+  });
+
+  test('format="oklch" emits modern oklch() syntax', async () => {
+    const onValueChange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, { id: 'color', format: 'oklch', onValueChange });
+    await typeAndBlur(getInput(container), '#ffffff');
+    expect(onValueChange.mock.calls[0]?.[0]).toMatch(/^oklch\(/);
+  });
+
+  test('non-hex format with alpha uses slash alpha syntax, alpha=true and a<1', async () => {
+    const onValueChange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, {
+      id: 'color',
+      format: 'rgb',
+      alpha: true,
+      onValueChange,
+    });
+    await typeAndBlur(getInput(container), '#ff000080');
+    expect(onValueChange.mock.calls[0]?.[0]).toBe('rgb(255 0 0 / 0.502)');
+  });
+
+  test('alpha=false strips alpha even for non-hex formats', async () => {
+    const onValueChange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, {
+      id: 'color',
+      format: 'rgb',
+      alpha: false,
+      onValueChange,
+    });
+    await typeAndBlur(getInput(container), '#ff000080');
+    expect(onValueChange.mock.calls[0]?.[0]).toBe('rgb(255 0 0)');
+  });
+
+  test('formats (input) and format (output) are independent: oklch input, hex output', async () => {
+    const onValueChange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, {
+      id: 'color',
+      formats: ['oklch'],
+      format: 'hex',
+      onValueChange,
+    });
+    await typeAndBlur(getInput(container), 'oklch(100% 0 0)');
+    expect(onValueChange.mock.calls[0]?.[0]).toBe('#ffffff');
+  });
 });
 
 describe('ColorField — no commit during typing', () => {
