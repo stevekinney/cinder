@@ -72,7 +72,7 @@ export function implicitBaselineFor(
     /(?:^|\/)playwright\.config\.[^/]+$/u.test(filePath)
   ) {
     return {
-      renderedValue: '0 (implicit Playwright global timeout disabled)',
+      renderedValue: 'unbounded (implicit Playwright global timeout disabled)',
       value: Number.POSITIVE_INFINITY,
     };
   }

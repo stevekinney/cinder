@@ -1850,6 +1850,9 @@ describe('check-timeout-increases', () => {
     expect(projectIncrease[0]?.old.value).toBe(30_000);
     expect(addedGlobalLimit).toEqual([]);
     expect(removedGlobalLimit).toHaveLength(1);
+    expect(removedGlobalLimit[0]?.new.renderedValue).toBe(
+      'unbounded (implicit Playwright global timeout disabled)',
+    );
   });
 
   test('uses the Playwright repeatEach default', () => {
