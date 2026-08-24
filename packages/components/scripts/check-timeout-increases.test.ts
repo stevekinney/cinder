@@ -1224,7 +1224,7 @@ describe('check-timeout-increases', () => {
     );
 
     expect(violations).toHaveLength(1);
-    expect(violations[0]?.new.value).toBe(10_000);
+    expect(violations[0]?.new.value).toBe(40_000);
   });
 
   test('checks relative Playwright timeout multipliers', () => {
@@ -1237,8 +1237,22 @@ describe('check-timeout-increases', () => {
     );
 
     expect(violations).toHaveLength(1);
-    expect(violations[0]?.old.value).toBe(2);
-    expect(violations[0]?.new.value).toBe(3);
+    expect(violations[0]?.old.value).toBe(60_000);
+    expect(violations[0]?.new.value).toBe(90_000);
+  });
+
+  test('compares relative Playwright timeouts across operator changes', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/testing/tests/example.playwright.ts',
+        ['testInfo.setTimeout(testInfo.timeout + 1_000);'],
+        ['testInfo.setTimeout(testInfo.timeout * 2);'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.old.value).toBe(31_000);
+    expect(violations[0]?.new.value).toBe(60_000);
   });
 
   test('treats testInfo.setTimeout(0) as unbounded', () => {

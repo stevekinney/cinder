@@ -399,14 +399,18 @@ export function findPlaywrightRelativeTimeoutExtensions(
 ): BunTestTimeoutArgument[] {
   const extensions: BunTestTimeoutArgument[] = [];
   const pattern = new RegExp(
-    String.raw`\btestInfo\.setTimeout\s*\(\s*testInfo\.timeout\s*[+*]\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
+    String.raw`\btestInfo\.setTimeout\s*\(\s*testInfo\.timeout\s*(?<operator>[+*])\s*(?<value>${NUMERIC_EXPRESSION_PATTERN})`,
     'gu',
   );
   for (const match of analysis.matchAll(pattern)) {
     const renderedValue = match.groups?.['value'];
-    if (renderedValue === undefined) continue;
+    const operator = match.groups?.['operator'];
+    if (renderedValue === undefined || operator === undefined) continue;
     const valueOffset = match[0].lastIndexOf(renderedValue);
-    extensions.push({ offset: (match.index ?? 0) + valueOffset, renderedValue });
+    extensions.push({
+      offset: (match.index ?? 0) + valueOffset,
+      renderedValue: `30_000 ${operator} (${renderedValue})`,
+    });
   }
   return extensions;
 }
