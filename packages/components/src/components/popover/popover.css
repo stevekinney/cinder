@@ -35,6 +35,15 @@
     opacity: 0;
   }
 
+  /* Exit transition (OVERLAY-POLICY.md § "Transition lifecycle"): the
+   component keeps the panel mounted for the duration of this transition
+   instead of removing it the instant `open` goes false. Declared after the
+   position-ready rule above so it wins at equal specificity. */
+  .cinder-popover[data-cinder-closing] {
+    opacity: 0;
+    pointer-events: none;
+  }
+
   .cinder-popover__trigger {
     display: contents;
   }

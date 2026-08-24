@@ -27,10 +27,13 @@
   import type { Placement } from '@floating-ui/dom';
   import type { NavigationBarProps, NavigationVariant } from './navigation-bar.types.ts';
   import type { SequentialFocusTarget } from '../../utilities/focus.ts';
+  import { onDestroy } from 'svelte';
   import { BROWSER as browser } from 'esm-env';
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
+  import { createAnchoredOverlayExitState } from '../../_internal/anchored-overlay-exit.svelte.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { getSequentialFocusTargets, getTabIndexValue } from '../../utilities/focus.ts';
+  import { useReducedMotion } from '../../utilities/use-reduced-motion.svelte.ts';
   import { createPortalAttachment } from '../portal/index.ts';
   import {
     closestAcrossShadow,
@@ -102,13 +105,33 @@
       return findNearestOpenTopLayer(source);
     },
   });
+  const mobilePanelOpen = $derived(isMobileLayout && mobileMenuOpen && !sourceSubtreeUnavailable);
+  const reducedMotion = useReducedMotion();
+  // Shared anchored-overlay exit-transition lifecycle (OVERLAY-POLICY.md §
+  // "Transition lifecycle"). The panel never unmounts, so `renderPanel`/
+  // `isClosing` drive `data-cinder-visible`/`data-cinder-closing` instead of
+  // an `{#if}` gate — this replaces the previous `[data-open='false']`
+  // instant `visibility: hidden`, which hid the exit transition entirely.
+  const exitState = createAnchoredOverlayExitState({
+    getOpen: () => mobilePanelOpen,
+    getPanelElement: () => itemsRegionElement,
+    getReducedMotion: () => reducedMotion.current,
+  });
   const anchoredItems = createAnchoredOverlay({
-    open: () => isMobileLayout && mobileMenuOpen && !sourceSubtreeUnavailable,
+    open: () => mobilePanelOpen || exitState.isClosing,
     anchor: () => navigationBarElement,
     panel: () => itemsRegionElement,
     placement: () => 'bottom-start' as Placement,
     offset: () => 0,
     widthMode: () => 'match-anchor',
+  });
+
+  $effect(() => {
+    exitState.sync();
+  });
+
+  onDestroy(() => {
+    exitState.destroy();
   });
   const inheritedPortalStyle = createInheritedPortalStyle(
     () => navigationBarElement,
@@ -686,6 +709,8 @@
       data-open={mobileMenuOpen ? 'true' : 'false'}
       data-cinder-mobile-panel={isMobileLayout || undefined}
       data-cinder-position-ready={anchoredItems.positionReady || undefined}
+      data-cinder-visible={exitState.renderPanel || undefined}
+      data-cinder-closing={exitState.isClosing || undefined}
       style={anchoredItems.positionStyle}
       inert={isCollapsible && isMobileLayout && !mobileMenuOpen ? true : undefined}
     >

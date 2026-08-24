@@ -50,6 +50,10 @@ function getTrackedTransitionProperties(element: HTMLElement): Set<string> | nul
     const duration = durations[index] ?? durations.at(-1) ?? 0;
     const delay = delays[index] ?? delays.at(-1) ?? 0;
     if (duration + delay <= 0) continue;
+    // `transition-property: none` means no property actually transitions,
+    // whatever duration/delay a shorthand happens to leave behind — skip it
+    // rather than waiting on a `transitionend` that can never fire.
+    if (property === 'none') continue;
     if (property === 'all') return null;
     trackedProperties.add(property);
   }
@@ -95,7 +99,10 @@ export function waitForTransitionCompletion({
     ? new Set<string>()
     : getTrackedTransitionProperties(element);
 
-  if (totalTransitionTime <= 0) {
+  // No duration at all, or every named property resolved to `none` (see
+  // getTrackedTransitionProperties above) — nothing will ever transition, so
+  // don't wait on a `transitionend` that can never fire.
+  if (totalTransitionTime <= 0 || pendingProperties?.size === 0) {
     queueMicrotask(finish);
     return finish;
   }

@@ -21,11 +21,13 @@
 <script lang="ts">
   import type { Placement, VirtualElement } from '@floating-ui/dom';
   import type { SelectionPopoverProps } from './selection-popover.types.ts';
-  import { tick } from 'svelte';
+  import { onDestroy, tick } from 'svelte';
 
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
+  import { createAnchoredOverlayExitState } from '../../_internal/anchored-overlay-exit.svelte.ts';
   import { createClickOutside } from '../../utilities/attachments.ts';
   import { classNames } from '../../utilities/class-names.ts';
+  import { useReducedMotion } from '../../utilities/use-reduced-motion.svelte.ts';
   import { createPortalAttachment } from '../portal/index.ts';
   import { createVirtualKeyboardDismissal } from './virtual-keyboard-dismissal.svelte.ts';
 
@@ -110,8 +112,21 @@
 
   const isPositionedOpen = $derived(open && position != null);
 
+  const reducedMotion = useReducedMotion();
+  // Shared anchored-overlay exit-transition lifecycle (OVERLAY-POLICY.md §
+  // "Transition lifecycle"). This component never unmounts its own element,
+  // so `renderPanel`/`isClosing` drive `data-cinder-visible`/
+  // `data-cinder-closing` rather than an `{#if}` gate — but the same
+  // await-completion + generation-guard contract applies before the popover
+  // is removed from the tab order.
+  const exitState = createAnchoredOverlayExitState({
+    getOpen: () => isPositionedOpen,
+    getPanelElement: () => popoverElement,
+    getReducedMotion: () => reducedMotion.current,
+  });
+
   const anchoredOverlay = createAnchoredOverlay({
-    open: () => isPositionedOpen,
+    open: () => isPositionedOpen || exitState.isClosing,
     anchor: () => virtualAnchor,
     panel: () => popoverElement,
     placement: () => 'top' as Placement,
@@ -123,6 +138,14 @@
   const portalAttachment = createPortalAttachment({
     target: () => document.body,
     inheritAttributes: true,
+  });
+
+  $effect(() => {
+    exitState.sync();
+  });
+
+  onDestroy(() => {
+    exitState.destroy();
   });
 
   const canSubmit = $derived(commentBody.trim().length > 0);
@@ -301,6 +324,8 @@
   data-cinder-expanded={expanded ? '' : undefined}
   data-cinder-position-ready={anchoredOverlay.positionReady}
   data-cinder-placement={anchoredOverlay.resolvedPlacement}
+  data-cinder-visible={exitState.renderPanel || undefined}
+  data-cinder-closing={exitState.isClosing || undefined}
   style={anchoredOverlay.positionStyle}
   role="toolbar"
   aria-label="Selection actions"

@@ -123,7 +123,7 @@ describe('SpeedDial', () => {
     });
 
     try {
-      const cancel = waitForSpeedDialExit(action, complete);
+      const cancel = waitForSpeedDialExit(action, false, complete);
 
       dispatchTransitionBoundary(action, 'transitionend', 'opacity');
       expect(complete).not.toHaveBeenCalled();
@@ -148,7 +148,7 @@ describe('SpeedDial', () => {
     });
 
     try {
-      const cancel = waitForSpeedDialExit(action, complete);
+      const cancel = waitForSpeedDialExit(action, false, complete);
 
       await flushQueuedFocus();
       expect(complete).toHaveBeenCalledTimes(1);
@@ -159,7 +159,11 @@ describe('SpeedDial', () => {
     }
   });
 
-  test('exit helper ignores interrupted entrance transition cancellation', async () => {
+  test('a transitioncancel on any tracked property completes the exit immediately', async () => {
+    // Matches the canonical `waitForTransitionCompletion` contract this
+    // helper now delegates to (OVERLAY-POLICY.md § "Transition lifecycle"):
+    // the first `transitioncancel` on any tracked property ends the exit,
+    // even if other properties are still transitioning.
     const action = document.createElement('button');
     document.body.append(action);
     const complete = mock(() => {});
@@ -170,16 +174,9 @@ describe('SpeedDial', () => {
     });
 
     try {
-      const cancel = waitForSpeedDialExit(action, complete);
+      const cancel = waitForSpeedDialExit(action, false, complete);
 
       dispatchTransitionBoundary(action, 'transitioncancel', 'opacity');
-      dispatchTransitionBoundary(action, 'transitioncancel', 'transform');
-      expect(complete).not.toHaveBeenCalled();
-
-      dispatchTransitionBoundary(action, 'transitionend', 'opacity');
-      expect(complete).not.toHaveBeenCalled();
-
-      dispatchTransitionBoundary(action, 'transitionend', 'transform');
       expect(complete).toHaveBeenCalledTimes(1);
 
       cancel();
@@ -188,7 +185,14 @@ describe('SpeedDial', () => {
     }
   });
 
-  test('exit helper repeats shorter transition time lists from the beginning', async () => {
+  test('exit helper only tracks properties whose resolved duration+delay is positive', async () => {
+    // The shared `transition-completion.ts` this now delegates to resolves a
+    // shorter duration/delay list against a longer property list by repeating
+    // its LAST value (not CSS's full modulo cycling) — with
+    // `transitionDuration: '150ms, 0ms'` the third property (`width`) also
+    // resolves to 0ms and is therefore not tracked, unlike `transform`
+    // ending up not tracked either. Only `opacity` (150ms) is tracked, so a
+    // single `transitionend` for it completes the exit.
     const action = document.createElement('button');
     document.body.append(action);
     const complete = mock(() => {});
@@ -199,12 +203,9 @@ describe('SpeedDial', () => {
     });
 
     try {
-      const cancel = waitForSpeedDialExit(action, complete);
+      const cancel = waitForSpeedDialExit(action, false, complete);
 
       dispatchTransitionBoundary(action, 'transitionend', 'opacity');
-      expect(complete).not.toHaveBeenCalled();
-
-      dispatchTransitionBoundary(action, 'transitionend', 'width');
       expect(complete).toHaveBeenCalledTimes(1);
 
       cancel();
@@ -213,11 +214,10 @@ describe('SpeedDial', () => {
     }
   });
 
-  test('exit helper ignores bubbled transition events from non-element children', async () => {
+  test('exit helper ignores events targeting an unrelated element', async () => {
     const action = document.createElement('button');
-    const text = document.createTextNode('Create');
-    action.append(text);
-    document.body.append(action);
+    const other = document.createElement('span');
+    document.body.append(action, other);
     const complete = mock(() => {});
     const getComputedStyleSpy = mockComputedTransitionStyle((element) => element === action, {
       transitionDelay: '0ms, 0ms',
@@ -226,9 +226,9 @@ describe('SpeedDial', () => {
     });
 
     try {
-      const cancel = waitForSpeedDialExit(action, complete);
+      const cancel = waitForSpeedDialExit(action, false, complete);
 
-      dispatchTransitionBoundaryFrom(text, 'transitionend', 'opacity');
+      dispatchTransitionBoundary(other, 'transitionend', 'opacity');
       dispatchTransitionBoundary(action, 'transitionend', 'transform');
       expect(complete).not.toHaveBeenCalled();
 
@@ -252,7 +252,7 @@ describe('SpeedDial', () => {
     });
 
     try {
-      const cancel = waitForSpeedDialExit(action, complete);
+      const cancel = waitForSpeedDialExit(action, false, complete);
       cancel();
 
       dispatchTransitionBoundary(action, 'transitionend', 'opacity');
@@ -279,7 +279,7 @@ describe('SpeedDial', () => {
     );
 
     try {
-      const cancel = waitForSpeedDialExit([first, second], complete);
+      const cancel = waitForSpeedDialExit([first, second], false, complete);
       dispatchTransitionBoundary(first, 'transitionend', 'opacity');
       expect(complete).not.toHaveBeenCalled();
 

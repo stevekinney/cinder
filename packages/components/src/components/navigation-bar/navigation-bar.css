@@ -200,16 +200,14 @@
       opacity 200ms ease;
   }
 
-  /* Closed: remove from focus/AT trees immediately via visibility. */
+  /* Closed steady-state: instant, no transition to play. */
   .cinder-navigation-bar__items[data-cinder-mobile-panel][data-open='false'] {
-    visibility: hidden;
     transform: translateY(-0.5rem);
     opacity: 0;
     pointer-events: none;
   }
 
   .cinder-navigation-bar__items[data-cinder-mobile-panel][data-open='true'] {
-    visibility: visible;
     transform: none;
     opacity: 1;
   }
@@ -218,6 +216,24 @@
       [data-cinder-position-ready]
     ) {
     visibility: hidden;
+  }
+
+  /* Removed from focus/AT trees only once the exit transition below has
+   genuinely finished (driven by `createAnchoredOverlayExitState` /
+   `waitForTransitionCompletion`), not the instant `data-open` flips to
+   `false` — see OVERLAY-POLICY.md § "Transition lifecycle". Previously this
+   panel used an unconditional `visibility: hidden` on `[data-open='false']`,
+   which made the exit transition invisible; CIN-376 fixes that. */
+  .cinder-navigation-bar__items[data-cinder-mobile-panel]:not([data-cinder-visible]) {
+    visibility: hidden;
+  }
+
+  /* Exit transition: mirrors the closed state above so the panel slides/fades
+   back out instead of snapping away. */
+  .cinder-navigation-bar__items[data-cinder-mobile-panel][data-cinder-closing] {
+    transform: translateY(-0.5rem);
+    opacity: 0;
+    pointer-events: none;
   }
 
   .cinder-navigation-bar__items[data-cinder-mobile-panel][data-open='true']

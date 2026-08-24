@@ -126,7 +126,7 @@ Toast sits **above** Modal so confirmation and error toasts reach users even whe
 
 ## Transition lifecycle
 
-This section defines how an overlay _leaves_ the screen. The canonical implementation is `SlidingDialogState` (`src/components/_internal/create-sliding-dialog-state.svelte.ts`), shared today by Modal and Drawer (and by Alert Dialog and Confirm Dialog through their composition of Modal). New overlays and migrations conform to this contract; CIN-376 extends it across the anchored-overlay family.
+This section defines how an overlay _leaves_ the screen. The canonical implementation for modal-class overlays is `SlidingDialogState` (`src/components/_internal/create-sliding-dialog-state.svelte.ts`), shared today by Modal and Drawer (and by Alert Dialog and Confirm Dialog through their composition of Modal). CIN-376 extended the same contract across the anchored-overlay (non-modal) family through a sibling helper, `AnchoredOverlayExitState` (`src/_internal/anchored-overlay-exit.svelte.ts`), used by Popover, Selection Popover, Tooltip, HoverCard, and NavigationBar's mobile panel. Speed Dial conforms to the same contract through a thinner wrapper, `waitForSpeedDialExit` (`speed-dial/speed-dial-exit.ts`), which fans the shared single-element `waitForTransitionCompletion` primitive out across its several independently-transitioning action elements rather than using `AnchoredOverlayExitState` directly (there is no single panel element for it to await). New overlays and migrations conform to this contract.
 
 ### The contract
 
@@ -146,9 +146,9 @@ Svelte-managed transitions are an accepted equivalent mechanism: when an element
 
 Overlays claiming this exception are listed here with a stated reason. Current exception list:
 
-- **Command Menu** — has no enter motion today (`command-menu.css` and the shared `_floating-surface.css` apply no transition or animation to its panel), so destroying on close is symmetric. If CIN-376's migration gives it enter motion, it leaves this list and takes on the full exit lifecycle.
-- **Dropdown Menu and Context Menu (compound panels)** — the modern `.cinder-dropdown-menu` panel has no enter transition or animation (only the legacy `.cinder-dropdown__menu` plays `cinder-dropdown-enter`), and Context Menu renders that same panel, so destroying on close is symmetric for both. Same CIN-376 caveat as Command Menu.
-- **MultiSelect** — a direct anchored-overlay consumer whose `{#if open}` panel has no enter motion (its transitions are on inner controls, not the panel). Same CIN-376 caveat as Command Menu.
+- **Command Menu** — has no enter motion today (`command-menu.css` and the shared `_floating-surface.css` apply no transition or animation to its panel), so destroying on close is symmetric. CIN-376 evaluated adding symmetric enter/exit motion here and chose to keep the exception instead — see MIGRATION-NOTES in the CIN-376 pull request for the reasoning.
+- **Dropdown Menu and Context Menu (compound panels)** — the modern `.cinder-dropdown-menu` panel has no enter transition or animation (only the legacy `.cinder-dropdown__menu` plays `cinder-dropdown-enter`), and Context Menu renders that same panel, so destroying on close is symmetric for both. Same CIN-376 disposition as Command Menu.
+- **MultiSelect** — a direct anchored-overlay consumer whose `{#if open}` panel has no enter motion (its transitions are on inner controls, not the panel). Same CIN-376 disposition as Command Menu.
 
 ### Modal vs. non-modal guarantees
 
@@ -161,28 +161,28 @@ Overlays claiming this exception are listed here with a stated reason. Current e
 
 Every overlay-shaped component in the repo today, and where it stands against this contract:
 
-| Component                  | Class             | Exit-transition status                                                                                                 |
-| -------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Modal                      | Modal             | Conforms — `SlidingDialogState`                                                                                        |
-| Drawer                     | Modal             | Conforms — `SlidingDialogState`                                                                                        |
-| Alert Dialog               | Modal             | Conforms — composes Modal                                                                                              |
-| Confirm Dialog             | Modal             | Conforms — composes Modal                                                                                              |
-| Command Palette            | Modal             | Deviation — animates in, closes instantly (see below)                                                                  |
-| HoverCard                  | Non-modal         | Deviation — hand-rolled duplicate with a reopen defect (see below)                                                     |
-| Toast                      | Non-modal         | Deviation — awaits completion but non-canonical attribute (see below)                                                  |
-| Speed Dial                 | Non-modal         | Deviation — bespoke exit-await mechanism (see below)                                                                   |
-| NavigationBar mobile panel | Non-modal         | Deviation — animates in, but `visibility: hidden` on close makes its exit transition invisible; migrates under CIN-376 |
-| Popover                    | Non-modal         | No exit transition — migrates under CIN-376                                                                            |
-| Selection Popover          | Non-modal         | No exit transition (animates in via `cinder-selection-popover-in`) — migrates under CIN-376                            |
-| Tooltip                    | Non-modal         | No exit transition — migrates under CIN-376                                                                            |
-| Combobox listbox           | Non-modal         | Composes Popover — inherits its exit lifecycle; migrates with Popover under CIN-376                                    |
-| Autocomplete listbox       | Non-modal         | Composes Popover — inherits its exit lifecycle; migrates with Popover under CIN-376                                    |
-| Dropdown (legacy)          | Non-modal         | Animates in (`cinder-dropdown-enter`), no exit transition — migrates under CIN-376                                     |
-| Dropdown Menu              | Non-modal         | Destroy-on-close exception — modern `.cinder-dropdown-menu` panel has no enter motion (see exception list)             |
-| Context Menu               | Non-modal         | Destroy-on-close exception — renders the same motionless DropdownMenu panel (see exception list)                       |
-| MultiSelect                | Non-modal         | Destroy-on-close exception — direct anchored-overlay consumer, panel has no enter motion (see exception list)          |
-| Command Menu               | Non-modal         | Destroy-on-close exception — no enter motion (see exception list); escape-stack gap tracked below                      |
-| Backdrop                   | Primitive (scrim) | Conforms — symmetric via Svelte `transition:fade` outro with reduced-motion-collapsed duration                         |
+| Component                  | Class             | Exit-transition status                                                                                                                                                       |
+| -------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Modal                      | Modal             | Conforms — `SlidingDialogState`                                                                                                                                              |
+| Drawer                     | Modal             | Conforms — `SlidingDialogState`                                                                                                                                              |
+| Alert Dialog               | Modal             | Conforms — composes Modal                                                                                                                                                    |
+| Confirm Dialog             | Modal             | Conforms — composes Modal                                                                                                                                                    |
+| Command Palette            | Modal             | Deviation — animates in, closes instantly (see below)                                                                                                                        |
+| HoverCard                  | Non-modal         | Conforms — `AnchoredOverlayExitState` (reopen defect fixed by this migration)                                                                                                |
+| Toast                      | Non-modal         | Deviation — awaits completion but non-canonical attribute (see below)                                                                                                        |
+| Speed Dial                 | Non-modal         | Conforms — `waitForSpeedDialExit` now delegates per-action waits to the shared `waitForTransitionCompletion`                                                                 |
+| NavigationBar mobile panel | Non-modal         | Conforms — `AnchoredOverlayExitState` (previous `visibility: hidden` snap fixed by this migration)                                                                           |
+| Popover                    | Non-modal         | Conforms — `AnchoredOverlayExitState`                                                                                                                                        |
+| Selection Popover          | Non-modal         | Conforms — `AnchoredOverlayExitState`                                                                                                                                        |
+| Tooltip                    | Non-modal         | Conforms — `AnchoredOverlayExitState`                                                                                                                                        |
+| Combobox listbox           | Non-modal         | Composes Popover — inherits its exit lifecycle                                                                                                                               |
+| Autocomplete listbox       | Non-modal         | Composes Popover — inherits its exit lifecycle                                                                                                                               |
+| Dropdown (legacy)          | Non-modal         | Animates in (`cinder-dropdown-enter`), no exit transition — not migrated by CIN-376 (see MIGRATION-NOTES); tracked as a follow-up                                            |
+| Dropdown Menu              | Non-modal         | Destroy-on-close exception — modern `.cinder-dropdown-menu` panel has no enter motion; CIN-376 evaluated adding symmetric motion and kept the exception (see exception list) |
+| Context Menu               | Non-modal         | Destroy-on-close exception — renders the same motionless DropdownMenu panel; same CIN-376 disposition                                                                        |
+| MultiSelect                | Non-modal         | Destroy-on-close exception — direct anchored-overlay consumer, panel has no enter motion; same CIN-376 disposition                                                           |
+| Command Menu               | Non-modal         | Destroy-on-close exception — no enter motion; same CIN-376 disposition; escape-stack gap tracked below                                                                       |
+| Backdrop                   | Primitive (scrim) | Conforms — symmetric via Svelte `transition:fade` outro with reduced-motion-collapsed duration                                                                               |
 
 Composite surfaces that render one of the census's base overlays inherit that base's status rather than getting their own row: ColorField's picker and DatePicker's calendar render Popover, the chart tooltip path (`_internal/chart-tooltip.svelte`, used by AreaChart/BarChart/LineChart) renders Popover, and MenuBar renders the DropdownMenu panel. Whatever exit lifecycle and escape-stack status the base overlay has (including its CIN-376/CIN-428 migrations) flows through to these consumers automatically.
 
@@ -194,9 +194,7 @@ Components that do not exist in this repo yet (image-lightbox as a components-pa
 
 These existing overlays contradict the contract above and are listed here rather than silently diverging:
 
-- **HoverCard** — renders `data-cinder-closing` and awaits `waitForTransitionCompletion`, but as a hand-rolled duplicate inside `hover-card.svelte` instead of through a shared helper, and without the generation guard: its reopen path sets `renderCard = true` and then invokes the helper's returned force-finish, whose completion callback immediately sets `renderCard = false` — a reopen during the exit transition can unmount the freshly reopened card. Migration to the shared anchored-overlay exit helper (which fixes the reopen defect) is inside CIN-376's scope.
 - **Toast** — awaits `waitForTransitionCompletion` before unmounting a dismissed toast, but never renders `data-cinder-closing`; its exit styles key off the non-canonical `data-cinder-presence="exiting"` attribute instead. Migration follow-up: CIN-425.
-- **Speed Dial** — awaits its actions' exit transitions through a bespoke `waitForSpeedDialExit` mechanism (`speed-dial-exit.ts`) rather than the canonical helper, and never renders `data-cinder-closing`. Migration to the shared anchored-overlay exit helper is inside CIN-376's scope.
 - **Command Palette** — plays a visible enter animation but `closePalette()` calls `dialog.close()` immediately, with no exit lifecycle at all — the exact enter/exit asymmetry this section forbids. It also never acquires the counted body scroll lock it owes as a modal-class overlay, and it violates the SSR rule: its dialog renders under `{#if mounted || open}`, so `open={true}` during SSR emits the dialog markup instead of an empty overlay surface. Migration follow-up for all three gaps: CIN-426.
 - **Command Menu (escape stack)** — never calls `pushEscapeHandler`; Escape is handled only by a keydown listener on its anchor, so the shared LIFO stack cannot arbitrate ESC between it and overlays below it. Migration follow-up: CIN-427.
 - **Selection Popover, DropdownMenu, Speed Dial (escape stack)** — the same gap, confirmed by review: each handles Escape only from its own `onkeydown` callback and never registers on the stack. DropdownMenu's fix covers Context Menu, Menu Bar, and the modern Dropdown branch transitively, since they render its panel; Dropdown's legacy `usesLegacySnippetApi` branch renders `.cinder-dropdown__menu` directly and needs its own registration. Migration follow-up for all of these: CIN-428. **NavigationBar's mobile panel** shares the gap — its only Escape handling is a bubbling `handleKeyDown`, so a lower overlay's stack handler runs first on the same keystroke; also CIN-428. **MultiSelect** shares it too — Escape routes through `commandList.handleKeydown` on its filter/listbox, never `pushEscapeHandler`; also CIN-428. MegaMenu has not been audited for this guarantee.

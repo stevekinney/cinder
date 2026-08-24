@@ -21,8 +21,10 @@
   import type { Attachment } from 'svelte/attachments';
   import type { Placement } from '@floating-ui/dom';
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
+  import { createAnchoredOverlayExitState } from '../../_internal/anchored-overlay-exit.svelte.ts';
   import { pushEscapeHandler } from '../../_internal/overlay.ts';
   import { classNames } from '../../utilities/class-names.ts';
+  import { useReducedMotion } from '../../utilities/use-reduced-motion.svelte.ts';
   import { createPortalAttachment } from '../portal/index.ts';
 
   let {
@@ -244,14 +246,26 @@
      * gating on it would deadlock a tooltip that can never be positioned
      * because it was never portaled.
      */
-    disabled: () => !visible,
+    disabled: () => !exitState.renderPanel,
     target: () => document.body,
     source: () => anchorElement ?? wrapperElement ?? null,
     inheritAttributes: true,
   });
 
+  const reducedMotion = useReducedMotion();
+  // Shared anchored-overlay exit-transition lifecycle (OVERLAY-POLICY.md §
+  // "Transition lifecycle"). The tooltip element never unmounts, so
+  // `renderPanel`/`isClosing` drive `data-cinder-visible`/`data-cinder-closing`
+  // rather than an `{#if}` gate — but the a11y-visible fade-out still awaits
+  // the real transition instead of snapping away via `visibility`.
+  const exitState = createAnchoredOverlayExitState({
+    getOpen: () => visible,
+    getPanelElement: () => tooltipElement,
+    getReducedMotion: () => reducedMotion.current,
+  });
+
   const anchoredOverlay = createAnchoredOverlay({
-    open: () => visible,
+    open: () => visible || exitState.isClosing,
     anchor: () => anchorElement,
     panel: () => tooltipElement,
     placement: () => placement as Placement,
@@ -261,6 +275,13 @@
   const isTooltipExposed = $derived(visible && anchoredOverlay.positionReady);
 
   onDestroy(clearPendingShow);
+  onDestroy(() => {
+    exitState.destroy();
+  });
+
+  $effect(() => {
+    exitState.sync();
+  });
 
   $effect(() => {
     if (!visible) return;
@@ -293,6 +314,8 @@
       aria-hidden={!isTooltipExposed}
       data-cinder-placement={visible ? anchoredOverlay.resolvedPlacement : placement}
       data-cinder-position-ready={anchoredOverlay.positionReady}
+      data-cinder-visible={exitState.renderPanel || undefined}
+      data-cinder-closing={exitState.isClosing || undefined}
       style={anchoredOverlay.positionStyle}
       {@attach tooltipPortalAttachment}
     >

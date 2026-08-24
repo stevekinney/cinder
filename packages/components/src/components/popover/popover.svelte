@@ -26,11 +26,13 @@
   import { onDestroy, untrack } from 'svelte';
   import type { Placement } from '@floating-ui/dom';
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
+  import { createAnchoredOverlayExitState } from '../../_internal/anchored-overlay-exit.svelte.ts';
   import { captureFocus, pushEscapeHandler } from '../../_internal/overlay.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { restoreFocusTo } from '../../utilities/focus.ts';
   import { createClickOutside } from '../../utilities/attachments.ts';
+  import { useReducedMotion } from '../../utilities/use-reduced-motion.svelte.ts';
   import { createPortalAttachment } from '../portal/index.ts';
   import {
     createInheritedPortalStyle,
@@ -131,8 +133,20 @@
     () => mounted && open,
   );
 
+  const reducedMotion = useReducedMotion();
+  // Shared anchored-overlay exit-transition lifecycle (OVERLAY-POLICY.md §
+  // "Transition lifecycle"): keeps the panel mounted for the duration of its
+  // exit transition and generation-guards a reopen mid-close.
+  const exitState = createAnchoredOverlayExitState({
+    getOpen: () => open,
+    getPanelElement: () => panelElement,
+    getReducedMotion: () => reducedMotion.current,
+  });
+
   const anchoredOverlay = createAnchoredOverlay({
-    open: () => open,
+    // `open || exitState.isClosing` keeps Floating UI positioning the panel
+    // while it fades/slides out.
+    open: () => open || exitState.isClosing,
     anchor: () => anchorElement,
     panel: () => panelElement,
     arrow: () => arrowElement,
@@ -144,6 +158,14 @@
 
   $effect(() => {
     mounted = true;
+  });
+
+  $effect(() => {
+    exitState.sync();
+  });
+
+  onDestroy(() => {
+    exitState.destroy();
   });
 
   const dismissOnOutsideMousedown = $derived(
@@ -328,7 +350,7 @@
   </div>
 {/if}
 
-{#if mounted && open && anchorElement}
+{#if mounted && exitState.renderPanel && anchorElement}
   <div
     bind:this={portalScopeElement}
     {@attach portalScopeAttachment}
@@ -349,6 +371,7 @@
     data-cinder-portal-owner={`${panelId}-scope`}
     data-cinder-placement={anchoredOverlay.resolvedPlacement}
     data-cinder-position-ready={anchoredOverlay.positionReady}
+    data-cinder-closing={exitState.isClosing || undefined}
     style={anchoredOverlay.positionStyle}
     tabindex="-1"
   >

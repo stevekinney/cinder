@@ -21,8 +21,8 @@
   import { devWarn } from '../../utilities/dev-warn.ts';
   import type { Placement } from '@floating-ui/dom';
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
+  import { createAnchoredOverlayExitState } from '../../_internal/anchored-overlay-exit.svelte.ts';
   import { pushEscapeHandler } from '../../_internal/overlay.ts';
-  import { waitForTransitionCompletion } from '../../_internal/transition-completion.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { useReducedMotion } from '../../utilities/use-reduced-motion.svelte.ts';
   import { createPortalAttachment } from '../portal/index.ts';
@@ -59,24 +59,18 @@
   let suppressTriggerOpenUntilLeave = false;
   let openTimer: ReturnType<typeof setTimeout> | undefined;
   let closeTimer: ReturnType<typeof setTimeout> | undefined;
-  // Keeps the card mounted for the duration of its exit transition instead of
-  // destroying it the instant `open` flips false — a Svelte `{#if}` gate on
-  // `open` alone unmounts the node before any CSS transition can play, which
-  // is why the card previously animated in but vanished instantly on close.
-  //
-  // `renderCard` (not `open`) is the template mount gate, and it is
-  // deliberately NEVER derived from `open` directly: `$effect`s run after a
-  // reactive flush has already re-rendered the template, so an effect that
-  // reacted to `open` going false by flipping a gate synchronously would
-  // always be one render too late — the node would already be gone by the
-  // time the effect ran. Mirroring Drawer's `SlidingDialogState`,
-  // `renderCard` is set eagerly on open and only cleared later, from the
-  // `waitForTransitionCompletion` completion callback — never in the same
-  // flush that flipped `open`.
-  let renderCard = $state(false);
-  let closing = $state(false);
-  let cancelPendingClose: (() => void) | null = null;
   const reducedMotion = useReducedMotion();
+  // Shared anchored-overlay exit-transition lifecycle (OVERLAY-POLICY.md §
+  // "Transition lifecycle"). Keeps the card mounted (`renderCard`) for the
+  // duration of its exit transition instead of destroying it the instant
+  // `open` flips false, and generation-guards a reopen mid-close so a stale
+  // completion callback can't unmount the freshly reopened card — this is
+  // the defect the hand-rolled version used to have.
+  const exitState = createAnchoredOverlayExitState({
+    getOpen: () => open,
+    getPanelElement: () => cardElement,
+    getReducedMotion: () => reducedMotion.current,
+  });
 
   const anchorElement = $derived<HTMLElement | null>(
     triggerRef && triggerRef.isConnected ? triggerRef : triggerWrapper,
@@ -94,12 +88,13 @@
   });
 
   const anchoredOverlay = createAnchoredOverlay({
-    // `open || closing` keeps Floating UI positioning the card while it is
-    // fading out — resetting to `open` alone would clear `positionStyle`
-    // (see anchored-overlay.svelte.ts) the instant `open` goes false, so the
-    // still-visible, still-mounted card would jump to its unpositioned
-    // fallback spot mid-transition instead of fading out in place.
-    open: () => open || closing,
+    // `open || exitState.isClosing` keeps Floating UI positioning the card
+    // while it is fading out — resetting to `open` alone would clear
+    // `positionStyle` (see anchored-overlay.svelte.ts) the instant `open`
+    // goes false, so the still-visible, still-mounted card would jump to its
+    // unpositioned fallback spot mid-transition instead of fading out in
+    // place.
+    open: () => open || exitState.isClosing,
     anchor: () => anchorElement,
     panel: () => cardElement,
     arrow: () => arrowElement,
@@ -214,44 +209,18 @@
 
   onDestroy(clearTimers);
   onDestroy(() => {
-    cancelPendingClose?.();
-    cancelPendingClose = null;
+    exitState.destroy();
   });
 
   $effect(() => {
     mounted = true;
   });
 
-  // Drives `renderCard`/`closing`: when `open` goes true, mount immediately.
-  // When `open` goes false, mirror Drawer's `data-cinder-closing`
-  // pattern — mark `closing` and keep `renderCard` true until the CSS
-  // opacity/transform transition genuinely finishes, then unmount.
+  // Drives the shared exit-transition lifecycle: mounts immediately on open,
+  // and on close keeps the card mounted (`exitState.renderPanel`) until the
+  // exit transition genuinely finishes. See anchored-overlay-exit.svelte.ts.
   $effect(() => {
-    if (open) {
-      renderCard = true;
-      closing = false;
-      cancelPendingClose?.();
-      cancelPendingClose = null;
-      return;
-    }
-    if (!renderCard) return;
-    if (!mounted || !cardElement) {
-      renderCard = false;
-      closing = false;
-      return;
-    }
-    const element = cardElement;
-    closing = true;
-    cancelPendingClose?.();
-    cancelPendingClose = waitForTransitionCompletion({
-      element,
-      reducedMotion: reducedMotion.current,
-      onComplete: () => {
-        renderCard = false;
-        closing = false;
-        cancelPendingClose = null;
-      },
-    });
+    exitState.sync();
   });
 
   $effect(() => {
@@ -290,7 +259,7 @@
   <span id={descriptionId} class="cinder-sr-only">{description}</span>
 {/if}
 
-{#if mounted && renderCard && anchorElement}
+{#if mounted && exitState.renderPanel && anchorElement}
   <div
     bind:this={cardElement}
     id={cardId}
@@ -298,7 +267,7 @@
     role="tooltip"
     data-cinder-placement={anchoredOverlay.resolvedPlacement}
     data-cinder-position-ready={anchoredOverlay.positionReady}
-    data-cinder-closing={closing || undefined}
+    data-cinder-closing={exitState.isClosing || undefined}
     style={anchoredOverlay.positionStyle}
     onmouseenter={handleCardMouseEnter}
     onmouseleave={handleCardMouseLeave}
