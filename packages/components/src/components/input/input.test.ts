@@ -48,27 +48,32 @@ describe('Input rendering', () => {
     );
   });
 
-  test('code variant also applies the monospace metrics to the field wrapper, not just the control', async () => {
-    // The inherit-lock rule's `font: inherit` resolves against whatever the
-    // wrapper computes — without the metrics duplicated here, a future
-    // overlay <code> would inherit the wrapper's ordinary (sans) font
-    // instead of the code metrics.
+  test('code variant does NOT apply monospace metrics to the field wrapper itself — only the control and the lock rule below get them', async () => {
+    // The field wrapper hosts the label, description, error, and any
+    // addons — none of those should go mono. Only .cinder-input (the
+    // control) and the inherit-lock rule (for a hypothetical <code>
+    // overlay) carry the metric values; the bare wrapper selector must not.
     const css = await Bun.file(new URL('./input.css', import.meta.url)).text();
 
-    expect(css).toMatch(
-      /\.cinder-input-field\[data-cinder-variant='code'\]\s*\{[^}]*font-family:\s*var\(--cinder-font-mono\);[^}]*font-size:\s*var\(--cinder-text-sm\);[^}]*line-height:\s*var\(--cinder-leading-normal\);[^}]*tab-size:\s*var\(--cinder-type-tab-size\);/,
+    expect(css).not.toMatch(
+      /\.cinder-input-field\[data-cinder-variant='code'\]\s*\{[^}]*font-family:/,
     );
   });
 
-  test('code variant locks any inner <code> element to the field metrics, excluding addon slots', async () => {
+  test('code variant locks any inner <code> element to the SAME explicit metrics as the control, excluding addon slots', async () => {
     // <input> is a void element and can never host a <code> descendant, so
     // the inherit-lock rule is scoped to the field wrapper, not .cinder-input.
-    // It excludes the leading/trailing addon slots so a consumer's own
-    // addon content (e.g. a <code> badge) keeps its own styling.
+    // It declares the same explicit font-family/size/line-height/tab-size
+    // as the control (not `font: inherit`) so a future overlay <code>
+    // matches the control without the wrapper itself needing to carry any
+    // metric declarations — the wrapper's label/description/error/addons
+    // stay in their ordinary font. It excludes the leading/trailing addon
+    // slots so a consumer's own addon content (e.g. a <code> badge) keeps
+    // its own styling.
     const css = await Bun.file(new URL('./input.css', import.meta.url)).text();
 
     expect(css).toMatch(
-      /\.cinder-input-field\[data-cinder-variant='code'\]\s*:where\(code\):not\(\s*\.cinder-input-group__leading,\s*\.cinder-input-group__leading \*,\s*\.cinder-input-group__trailing,\s*\.cinder-input-group__trailing \*\s*\)\s*\{\s*all:\s*unset;\s*font:\s*inherit;\s*\}/,
+      /\.cinder-input-field\[data-cinder-variant='code'\]\s*:where\(code\):not\(\s*\.cinder-input-group__leading,\s*\.cinder-input-group__leading \*,\s*\.cinder-input-group__trailing,\s*\.cinder-input-group__trailing \*\s*\)\s*\{\s*all:\s*unset;[^}]*font-family:\s*var\(--cinder-font-mono\);[^}]*font-size:\s*var\(--cinder-text-sm\);[^}]*line-height:\s*var\(--cinder-leading-normal\);[^}]*tab-size:\s*var\(--cinder-type-tab-size\);\s*\}/,
     );
   });
 

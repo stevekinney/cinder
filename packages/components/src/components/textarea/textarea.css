@@ -105,34 +105,22 @@
     tab-size: var(--cinder-type-tab-size);
   }
 
-  /* Duplicated on the field wrapper (not just the control above) for two
-   reasons: (1) when the FormField wrapper isn't rendered at all — no
-   label, description, error, or count and a FormField-context id — the
-   control above is the only thing on the page, so it must carry these on
-   its own; (2) when the wrapper IS rendered, these same declarations are
-   also what the inherit-lock rule's `font: inherit` below resolves
-   against — without them here, a future overlay <code> would inherit the
-   wrapper's ordinary (non-mono) metrics, not the code ones.
-   font-family/size/line-height/tab-size are all inherited properties, so
-   the control above still gets its own explicit values (this rule wins
-   nothing away from it); this rule exists for the wrapper and its
-   potential <code> overlay descendants. */
-  .cinder-textarea-field[data-cinder-variant='code'] {
-    font-family: var(--cinder-font-mono);
-    font-size: var(--cinder-text-sm);
-    line-height: var(--cinder-leading-normal);
-    tab-size: var(--cinder-type-tab-size);
-  }
-
   /* Defensive: text written between `<textarea>` tags is parsed as literal
    text, not markup, so this can't target `.cinder-textarea` itself — a real
    `<code>` element can never be its descendant. Nothing renders one inside
    the field wrapper today, but if a consumer ever overlays one (e.g. a
-   syntax-highlighted backdrop), lock it to the field's own metrics rather
-   than letting it re-apply its own font stack. */
+   syntax-highlighted backdrop), match it to the control's own metrics
+   directly (not `font: inherit`) — the wrapper itself carries no metric
+   declarations, so inheriting from it would give an overlay <code> the
+   wrapper's ordinary (sans) font. Declaring the same explicit values the
+   control uses keeps the wrapper's label, description, error, and counter
+   in their normal font; only a <code> overlay matches the control. */
   .cinder-textarea-field[data-cinder-variant='code'] :where(code) {
     all: unset;
-    font: inherit;
+    font-family: var(--cinder-font-mono);
+    font-size: var(--cinder-text-sm);
+    line-height: var(--cinder-leading-normal);
+    tab-size: var(--cinder-type-tab-size);
   }
 
   /* ----------------------------------------
