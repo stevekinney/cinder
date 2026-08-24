@@ -3,9 +3,11 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import {
+  checkComponentNameForBarePluralShadow,
   collectPropConventionViolations,
   collectResolvedSurfaceViolations,
   createPropsProgram,
+  existingComponentDirectoryNames,
 } from './check-prop-conventions';
 
 describe('check-prop-conventions', () => {
@@ -338,5 +340,49 @@ describe('check-prop-conventions type-aware surface pass', () => {
     expect(violations).toHaveLength(1);
     expect(violations[0]?.propName).toBe('onChangeValue');
     expect(violations[0]?.message).toContain('onValueChange concept');
+  });
+});
+
+describe('check-prop-conventions component-name directory scan', () => {
+  // Synthetic set so this test never depends on which real components exist —
+  // it locks in the shadowing RULE, not today's component inventory.
+  const existingNames = new Set(['avatar', 'avatar-group', 'statistic', 'statistic-group']);
+
+  test('flags a synthetic bare-plural candidate that shadows an existing singular component', () => {
+    const violation = checkComponentNameForBarePluralShadow('widgets', new Set(['widget']));
+    expect(violation).toBeDefined();
+    expect(violation?.candidateName).toBe('widgets');
+    expect(violation?.shadowedComponent).toBe('widget');
+    expect(violation?.message).toContain('widget-group');
+  });
+
+  test('flags a bare plural of a real family member (avatar)', () => {
+    const violation = checkComponentNameForBarePluralShadow('avatars', existingNames);
+    expect(violation).toBeDefined();
+    expect(violation?.shadowedComponent).toBe('avatar');
+  });
+
+  test('passes a candidate name that does not shadow any existing singular', () => {
+    expect(checkComponentNameForBarePluralShadow('tooltips', existingNames)).toBeUndefined();
+  });
+
+  test('passes a non-plural candidate name', () => {
+    expect(checkComponentNameForBarePluralShadow('avatar-status', existingNames)).toBeUndefined();
+  });
+
+  test('does not attempt irregular-plural handling', () => {
+    // "statistics" stripped of a trailing `s` only is "statistic" — which DOES
+    // exist and is correctly flagged. An irregular plural like "children" has
+    // no trailing `s` at all, so it is never even considered here; that is a
+    // deliberate scope limit, not a bug this check is responsible for.
+    const violation = checkComponentNameForBarePluralShadow('statistics', existingNames);
+    expect(violation?.shadowedComponent).toBe('statistic');
+  });
+
+  test('enumerates real component directory names from the package tree', () => {
+    const names = existingComponentDirectoryNames();
+    expect(names.has('avatar')).toBe(true);
+    expect(names.has('avatar-group')).toBe(true);
+    expect(names.has('statistic-group')).toBe(true);
   });
 });

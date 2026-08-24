@@ -1,5 +1,6 @@
 import { Glob } from 'bun';
-import { dirname, relative, resolve } from 'node:path';
+import { readdirSync } from 'node:fs';
+import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
 
@@ -7,6 +8,7 @@ const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolve(scriptDirectory, '..');
 const repositoryRoot = resolve(packageRoot, '..', '..');
 const documentationPath = 'docs/component-api-conventions.md';
+const componentsDirectory = resolve(packageRoot, 'src', 'components');
 
 export const bannedNames = new Map<string, string>([
   ['defaultValue', 'Use bindable `value` plus a private reset target.'],
@@ -573,6 +575,69 @@ async function scan(): Promise<PropConventionViolation[]> {
         ? -1
         : 1,
   );
+}
+
+// ---------------------------------------------------------------------------
+// Component-name directory scan (docs/component-api-conventions.md § *Group
+// versus plural naming). A curated collection is named `<Singular>Group`;
+// a bare plural is legal only as a domain mass noun that composes no matching
+// singular component. This is a NEW capability, distinct from `bannedNames`
+// above: that map bans PROP names, this scans COMPONENT directory names.
+// ---------------------------------------------------------------------------
+
+/**
+ * Existing component directory names (kebab-case), e.g. `avatar`,
+ * `avatar-group`, `statistic`, `statistic-group`. Descends one level into
+ * `experimental/` so an experimental singular still shadows a proposed
+ * top-level plural. Used to catch a NEW component name that is a bare plural
+ * of an existing singular component instead of `<Singular>Group`.
+ */
+export function existingComponentDirectoryNames(root: string = componentsDirectory): Set<string> {
+  const names = new Set<string>();
+  for (const entry of readdirSync(root, { withFileTypes: true })) {
+    if (!entry.isDirectory() || entry.name.startsWith('.')) continue;
+    if (entry.name === 'experimental') {
+      for (const nested of readdirSync(join(root, entry.name), { withFileTypes: true })) {
+        if (nested.isDirectory() && !nested.name.startsWith('.')) names.add(nested.name);
+      }
+      continue;
+    }
+    names.add(entry.name);
+  }
+  return names;
+}
+
+export type ComponentNameShadowViolation = {
+  candidateName: string;
+  shadowedComponent: string;
+  message: string;
+};
+
+/**
+ * Checks a candidate NEW component's kebab-case directory name against the
+ * existing component directory set. Strips only a trailing `s` — no
+ * irregular-plural handling — and rejects the candidate when what remains is
+ * itself an existing singular component: that shape is a collection name and
+ * must be `<singular>-group` (or whatever grouping contract the family's
+ * `@purpose` documents), never a bare plural.
+ */
+export function checkComponentNameForBarePluralShadow(
+  candidateName: string,
+  existingNames: ReadonlySet<string>,
+): ComponentNameShadowViolation | undefined {
+  if (!candidateName.endsWith('s')) return undefined;
+  const singular = candidateName.slice(0, -1);
+  if (!existingNames.has(singular)) return undefined;
+
+  return {
+    candidateName,
+    shadowedComponent: singular,
+    message:
+      `Component name "${candidateName}" is a bare plural of the existing "${singular}" ` +
+      `component. A curated collection of "${singular}" instances must be named ` +
+      `"${singular}-group" (see ${documentationPath} § *Group versus plural naming), ` +
+      'not a bare plural.',
+  };
 }
 
 async function main() {

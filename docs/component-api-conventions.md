@@ -69,8 +69,33 @@ Do not abbreviate public prop or component names. Current banned forms:
 - `lockScroll` → `scrollLocked`
 - `CtaSection` → `CallToActionSection`
 - `FloatingActionButton` → `FloatingAction`
-- `Stat` / `StatGroup` / `StatsSection` → `Statistic` / `StatisticGroup` /
-  `StatisticsSection`
+- `Stat` / `StatGroup` → `Statistic` / `StatisticGroup` (no `StatisticsSection`
+  component exists in the tree; the family's collection is the compound
+  `StatisticGroup` parent, not a separate `*Section` component)
+
+## `*Group` versus plural component names
+
+A `*Group` component name (`AvatarGroup`, `ButtonGroup`, `CheckboxGroup`,
+`DropdownGroup`, `RadioGroup`, `SideNavigationGroup`, `StatisticGroup`) is a
+curated collection of N instances of its matching singular component
+(`Avatar`, `Button`, `Checkbox`, `Dropdown`, `RadioItem`, `SideNavigation`,
+`Statistic`). What "grouping" means — shared accessible label, fieldset/legend
+semantics, a layout grid, or a collapsible bucket — varies per family and is
+documented in that component's `@purpose` metadata; `*Group` itself only
+promises the collection relationship, not a specific grouping mechanic.
+
+A bare plural component name (no matching singular component composed inside
+it) is permitted only as a domain mass noun — a name for a kind of thing, not
+a container of named instances. It is never legal as a collection name: a new
+component that collects instances of an existing singular component must be
+named `<Singular>Group`, not a bare plural of that singular. `check:prop-conventions`
+enforces this mechanically: it enumerates existing component directory names
+and rejects a candidate new component name that, once stripped of a trailing
+`s`, matches an existing singular component's directory name.
+
+No existing component is renamed by this convention; it governs new component
+names going forward. See [`docs/decisions/group-vs-plural-naming.md`](./decisions/group-vs-plural-naming.md)
+for the decision record.
 
 ## Icons
 
