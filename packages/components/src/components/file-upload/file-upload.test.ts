@@ -452,7 +452,7 @@ describe('FileUpload validation and events', () => {
         id: 'upload',
         multiple: true,
         maxFiles: 1,
-        files: [{ id: 'existing', file: existingFile, status: 'success' }],
+        files: [{ id: 'existing', file: existingFile, status: 'ready' }],
         onReject,
       },
     });
@@ -543,7 +543,7 @@ describe('FileUpload validation and events', () => {
       props: {
         id: 'upload',
         multiple: true,
-        files: [{ id: 'existing', file: existingFile, status: 'success' }],
+        files: [{ id: 'existing', file: existingFile, status: 'ready' }],
         onFilesChange,
       },
     });
@@ -560,7 +560,7 @@ describe('FileUpload validation and events', () => {
   test('a declined controlled proposal is not retained when control is released', async () => {
     const existingFile = createFile('existing.txt', 'text/plain', 10);
     const selectedFile = createFile('selected.txt', 'text/plain', 10);
-    const entry = { id: 'existing', file: existingFile, status: 'success' as const };
+    const entry = { id: 'existing', file: existingFile, status: 'ready' as const };
     const result = render(FileUploadFormFixture, {
       props: { controlledFiles: [entry], onFilesChange: () => {} },
     });
@@ -612,8 +612,8 @@ describe('FileUpload validation and events', () => {
   test('picker focus return restores the latest controlled queue', async () => {
     const firstFile = createFile('first.txt', 'text/plain', 10);
     const secondFile = createFile('second.txt', 'text/plain', 10);
-    const firstEntry = { id: 'first', file: firstFile, status: 'success' as const };
-    const secondEntry = { id: 'second', file: secondFile, status: 'success' as const };
+    const firstEntry = { id: 'first', file: firstFile, status: 'ready' as const };
+    const secondEntry = { id: 'second', file: secondFile, status: 'ready' as const };
     const result = render(FileUpload, {
       props: { id: 'upload', multiple: true, files: [firstEntry] },
     });
@@ -635,8 +635,8 @@ describe('FileUpload validation and events', () => {
       props: {
         id: 'upload',
         files: [
-          { id: 'first', file: firstFile, status: 'success' },
-          { id: 'second', file: secondFile, status: 'success' },
+          { id: 'first', file: firstFile, status: 'ready' },
+          { id: 'second', file: secondFile, status: 'ready' },
         ],
       },
     });
@@ -654,7 +654,7 @@ describe('FileUpload validation and events', () => {
     const files = [firstFile, secondFile, thirdFile].map((file, index) => ({
       id: String(index),
       file,
-      status: 'success' as const,
+      status: 'ready' as const,
     }));
     const { container, rerender } = render(FileUpload, {
       props: { id: 'upload', multiple: true, maxFiles: 3, files },
@@ -676,7 +676,7 @@ describe('FileUpload validation and events', () => {
       props: {
         id: 'upload',
         accept: 'image/*',
-        files: [{ id: 'existing', file: existingFile, status: 'success' }],
+        files: [{ id: 'existing', file: existingFile, status: 'ready' }],
         onReject,
       },
     });
@@ -992,8 +992,8 @@ describe('FileUpload validation and events', () => {
         id: 'upload',
         multiple: true,
         files: [
-          { id: 'first', file: firstFile, status: 'success' },
-          { id: 'second', file: secondFile, status: 'success' },
+          { id: 'first', file: firstFile, status: 'ready' },
+          { id: 'second', file: secondFile, status: 'ready' },
         ],
         onFilesChange,
       },
@@ -1019,8 +1019,8 @@ describe('FileUpload validation and events', () => {
         id: 'upload',
         multiple: true,
         files: [
-          { id: 'first', file: firstFile, status: 'success' },
-          { id: 'second', file: secondFile, status: 'success' },
+          { id: 'first', file: firstFile, status: 'ready' },
+          { id: 'second', file: secondFile, status: 'ready' },
         ],
         onFilesChange,
       },
@@ -1041,12 +1041,12 @@ describe('FileUpload validation and events', () => {
     const firstEntry = {
       id: 'first',
       file: createFile('first.txt', 'text/plain', 10),
-      status: 'success' as const,
+      status: 'ready' as const,
     };
     const secondEntry = {
       id: 'second',
       file: createFile('second.txt', 'text/plain', 10),
-      status: 'success' as const,
+      status: 'ready' as const,
     };
     let rerender: ReturnType<typeof render>['rerender'];
     const onFilesChange = mock(() => {
@@ -1077,7 +1077,7 @@ describe('FileUpload validation and events', () => {
     const entry = {
       id: 'only',
       file: createFile('only.txt', 'text/plain', 10),
-      status: 'success' as const,
+      status: 'ready' as const,
     };
     let rerender: ReturnType<typeof render>['rerender'];
     const onFilesChange = mock(() => {
@@ -1103,7 +1103,7 @@ describe('FileUpload validation and events', () => {
 
   test('an adopted controlled removal announces after the row is removed', async () => {
     const file = createFile('report.txt', 'text/plain', 10);
-    const entry = { id: 'report', file, status: 'success' as const };
+    const entry = { id: 'report', file, status: 'ready' as const };
     let rerender: ReturnType<typeof render>['rerender'];
     const onFilesChange = mock(() => {
       void rerender({ id: 'upload', files: [], onFilesChange });
@@ -1166,7 +1166,7 @@ describe('FileUpload validation and events', () => {
 
   test('form reset restores the synchronized native files for a controlled queue', async () => {
     const file = createFile('report.txt', 'text/plain', 10);
-    const entry = { id: 'report', file, status: 'success' as const };
+    const entry = { id: 'report', file, status: 'ready' as const };
     const form = document.createElement('form');
     form.id = 'controlled-upload-form';
     document.body.append(form);
@@ -1187,8 +1187,8 @@ describe('FileUpload validation and events', () => {
   test('form reset restores the latest controlled queue after a same-task prop update', async () => {
     const firstFile = createFile('first.txt', 'text/plain', 10);
     const secondFile = createFile('second.txt', 'text/plain', 10);
-    const firstEntry = { id: 'first', file: firstFile, status: 'success' as const };
-    const secondEntry = { id: 'second', file: secondFile, status: 'success' as const };
+    const firstEntry = { id: 'first', file: firstFile, status: 'ready' as const };
+    const secondEntry = { id: 'second', file: secondFile, status: 'ready' as const };
     const { container } = render(FileUploadFormFixture, {
       props: { controlledFiles: [firstEntry], nextControlledFiles: [secondEntry] },
     });
@@ -1477,12 +1477,12 @@ describe('FileUpload file list rendering', () => {
 
   test('renders a file-type icon for known and unknown MIME types', () => {
     const files = [
-      { id: 'image', file: createFile('photo.png', 'image/png', 100), status: 'success' as const },
-      { id: 'sheet', file: createFile('report.csv', 'text/csv', 100), status: 'success' as const },
+      { id: 'image', file: createFile('photo.png', 'image/png', 100), status: 'ready' as const },
+      { id: 'sheet', file: createFile('report.csv', 'text/csv', 100), status: 'ready' as const },
       {
         id: 'unknown',
         file: createFile('archive.zip', 'application/zip', 100),
-        status: 'success' as const,
+        status: 'ready' as const,
       },
     ];
     const { container } = render(FileUpload, { props: { id: 'upload', files } });
