@@ -1,9 +1,10 @@
 {
   "schemaVersion": 1,
   "componentScope": [
-    "data-grid"
+    "input",
+    "textarea"
   ],
-  "renderedSourceSha": "df2006549cafd74acf2ccf645932ca29e282535e",
+  "renderedSourceSha": "b029003c3fda750951a908e6c59cdb6bc7b92650",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
   "architecture": "x64",
