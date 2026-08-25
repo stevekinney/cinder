@@ -379,6 +379,33 @@
   // open session and the whole exit-transition window. Only
   // `handleExitComplete` (below) clears it, once the exit has genuinely
   // finished.
+
+  // Re-clamps `navigationIndex` when a non-empty shrink orphans the
+  // current session index (PR #1422 review) — e.g. viewing image 3 of
+  // [A, B, C], then the parent shrinks `images` down to [A, B].
+  // `clampedInitialIndex` already reactively re-derives from
+  // `images.length` for a session the user never navigated in, but
+  // `navigationIndex` (set once by `previous()`/`next()`, held as a plain
+  // snapshot number) does not — it stays pinned at the now out-of-range
+  // value. `effectiveIndex` keeps resolving to it, `currentImage` goes
+  // `undefined` (out of bounds), and the mirror effect just below
+  // (correctly) leaves `sessionImage` frozen at the STALE image that used
+  // to live at that index — while `counterText` (below) recomputes against
+  // the NEW, smaller `images.length`, producing a mismatched "3 of 2".
+  // This is deliberately distinct from the EMPTY-list case (handled in the
+  // main open-watching effect above), which intentionally freezes
+  // `sessionImage` entirely — there is nothing left to clamp TO. A
+  // non-empty shrink instead re-clamps to what is still genuinely visible,
+  // exactly as a live `previous()`/`next()` navigation would; the mirror
+  // effect below then picks up the resulting valid `currentImage`
+  // automatically, since it depends on it.
+  $effect(() => {
+    if (!open || images.length === 0) return;
+    if (navigationIndex !== null && navigationIndex > images.length - 1) {
+      navigationIndex = images.length - 1;
+    }
+  });
+
   $effect(() => {
     // Gated on `open` (PR #1422 review): without this, a parent swapping
     // `images` to a DIFFERENT non-empty list WHILE the lightbox is closing

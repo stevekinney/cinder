@@ -298,6 +298,81 @@ describe('createSlidingDialogState', () => {
     expect(dialogState.renderPanel).toBe(true);
   });
 
+  test('a genuine native close after a survived stale-event still performs full cleanup and fires onClosed (PR #1422 review)', async () => {
+    // Regression: the STALE-event branch above returned early WITHOUT
+    // clearing `#pendingNativeCloseGeneration` — it stayed pinned at the
+    // now-superseded generation forever. The very next native `close`
+    // event (e.g. a genuine, later `<form method="dialog">` submission)
+    // would then ALSO fail the `#pendingNativeCloseGeneration !==
+    // this.#closeGeneration` check (nothing else ever bumps
+    // `#closeGeneration` again on its own) and be ignored outright: `open`
+    // would stay `true`, scroll-lock/escape/focus cleanup would never run,
+    // and `onClosed` would never fire for a dialog the user just genuinely
+    // closed. Fixed by consuming (clearing) the marker on the stale-event
+    // path too, so the next native close falls through to the normal path.
+    let open = true;
+    let closedCount = 0;
+    const dialogElement = createDialogElement();
+    const dialogState = createSlidingDialogState({
+      getOpen: () => open,
+      setOpen: (next) => {
+        open = next;
+      },
+      getDialogElement: () => dialogElement,
+      getPanelElement: () => undefined,
+      getReducedMotion: () => true,
+      getTriggerRef: () => null,
+      onClosed: () => {
+        closedCount += 1;
+        if (closedCount === 1) {
+          // First close's `onExitComplete`: synchronously reopens, exactly
+          // as the "survives a STALE queued native close event" test above.
+          open = true;
+          dialogState.syncOpenState();
+        }
+      },
+    });
+
+    dialogState.syncOpenState();
+    expect(dialogElement.open).toBe(true);
+
+    // First close cycle, then the synchronous reopen from inside
+    // `onClosed` (see above) — identical setup to the previous test.
+    open = false;
+    dialogState.syncOpenState();
+    expect(dialogElement.open).toBe(false);
+    await tick();
+    expect(closedCount).toBe(1);
+    expect(open).toBe(true);
+    expect(dialogElement.open).toBe(true);
+
+    // The STALE queued native close event for the FIRST (superseded)
+    // close() call lands now, exactly as the previous test models — and is
+    // correctly ignored, but must consume `#pendingNativeCloseGeneration`
+    // rather than leaving it pinned.
+    dialogState.handleClose();
+    expect(open).toBe(true);
+    expect(dialogElement.open).toBe(true);
+    expect(closedCount).toBe(1);
+
+    // NOW a genuine SECOND close happens — e.g. a real `<form
+    // method="dialog">` submission this time. Model it exactly like the
+    // dedicated native-form test below: the browser closes the dialog
+    // directly, then the wired `close`-event handler runs.
+    open = false;
+    dialogElement.close();
+    dialogState.handleClose();
+
+    // Full cleanup must have run — the close must NOT have been ignored as
+    // stale a second time — and `onClosed` must fire again once the tick
+    // resolves.
+    expect(dialogElement.open).toBe(false);
+    expect(dialogState.renderPanel).toBe(false);
+    expect(open).toBe(false);
+    await tick();
+    expect(closedCount).toBe(2);
+  });
+
   test('a native <form method="dialog"> submission fires onClosed exactly once even though it bypasses beginClosing()/#finishClosing() (PR #1422 review, NATIVE-FORM-POLICY.md)', async () => {
     // Regression: NATIVE-FORM-POLICY.md documents `<form method="dialog">`
     // inside Modal as a supported simple accept/cancel composition. A form

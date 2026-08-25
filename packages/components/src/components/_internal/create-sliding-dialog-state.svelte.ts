@@ -152,6 +152,19 @@ export class SlidingDialogState {
       this.#pendingNativeCloseGeneration !== null &&
       this.#pendingNativeCloseGeneration !== this.#closeGeneration
     ) {
+      // Consume the marker even though this event is being ignored (PR
+      // #1422 review): leaving it set to the now-superseded generation
+      // would make the NEXT native `close` event — e.g. a genuine, later
+      // `<form method="dialog">` submission — look stale too (it would
+      // still fail the `!== this.#closeGeneration` check above, since
+      // nothing ever bumps `#closeGeneration` again on its own). That next
+      // close would then be ignored outright: `open` would stay `true`,
+      // none of the scroll-lock/escape/focus cleanup below would run, and
+      // `onClosed` would never fire for a dialog the user just genuinely
+      // closed. Clearing it here lets that next `close` event fall through
+      // to the normal path below, where `#pendingNativeCloseGeneration ===
+      // null` correctly routes it into the native-close-bypass branch.
+      this.#pendingNativeCloseGeneration = null;
       return;
     }
     // Captured BEFORE clearing `#pendingNativeCloseGeneration` below: `null`

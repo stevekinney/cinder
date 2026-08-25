@@ -738,6 +738,48 @@ describe('image-lightbox — lazy Modal mount (CIN-377 review)', () => {
     expect(container.querySelector('img')?.getAttribute('alt')).toBe('Image A');
   });
 
+  test('shrinking a non-empty images list while it orphans the current session index re-clamps instead of showing a stale image with a mismatched counter (PR #1422 review)', async () => {
+    // Regression: viewing image 3 of [A, B, C] (`navigationIndex` set to 2
+    // by a live `next()` navigation), then the parent shrinks `images` down
+    // to [A, B] while the lightbox stays open. `clampedInitialIndex` alone
+    // reactively re-derives from `images.length`, but `navigationIndex` —
+    // the plain snapshot set by navigation — does not; it stayed pinned at
+    // 2, `currentImage` (`images[2]`) went `undefined`, the mirror effect
+    // correctly left `sessionImage` frozen at the stale "Image C", and
+    // `counterText` recomputed against the NEW `images.length` — producing
+    // a mismatched "3 of 2" with an image that is not even in the list
+    // anymore.
+    const threeImages = [
+      { src: '/a.jpg', alt: 'Image A' },
+      { src: '/b.jpg', alt: 'Image B' },
+      { src: '/c.jpg', alt: 'Image C' },
+    ];
+    const twoImages = [threeImages[0]!, threeImages[1]!];
+
+    const { container, rerender } = render(ImageLightbox, {
+      props: { images: threeImages, initialIndex: 0, open: true },
+    });
+    await tick();
+    expect(container.querySelector('img')?.getAttribute('alt')).toBe('Image A');
+
+    // Navigate to the last image (index 2, "Image C").
+    await fireEvent.click(container.querySelector('[aria-label="Next image"]')!);
+    await fireEvent.click(container.querySelector('[aria-label="Next image"]')!);
+    expect(container.querySelector('img')?.getAttribute('alt')).toBe('Image C');
+    expect(container.querySelector('.lightbox-counter')?.textContent?.trim()).toBe('3 of 3');
+
+    // The parent shrinks `images` to two items WHILE still open — a
+    // non-empty shrink that orphans the current (now out-of-range) index.
+    await rerender({ images: twoImages, initialIndex: 0, open: true });
+    await tick();
+
+    // Must re-clamp to the last item still genuinely present ("Image B"),
+    // with a counter that matches the CURRENT list — never a stale image
+    // absent from `images`, and never a "3 of 2" mismatch.
+    expect(container.querySelector('img')?.getAttribute('alt')).toBe('Image B');
+    expect(container.querySelector('.lightbox-counter')?.textContent?.trim()).toBe('2 of 2');
+  });
+
   test('closing, clearing images, then reopening before the exit transition finishes does not show a stale image absent from images (PR #1422 review)', async () => {
     // Regression: close → parent clears `images` → `open` flips back to
     // `true`, all before the prior close's exit transition genuinely
