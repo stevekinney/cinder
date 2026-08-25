@@ -72,4 +72,35 @@ export const invalid: Array<{ attributes: ComponentAttributes; violates: string 
     attributes: { chrome: 'none', 'aria-label': '', open: true, children: true },
     violates: 'chromeless-accessible-label',
   },
+
+  // violates: default-chrome-rejects-aria-label — chrome omitted (implicit default) WITH aria-label supplied
+  {
+    attributes: {
+      title: 'Confirm deletion',
+      'aria-label': 'Different name',
+      open: true,
+      children: true,
+    },
+    violates: 'default-chrome-rejects-aria-label',
+  },
+
+  // violates: default-chrome-rejects-aria-label — chrome="default" explicit WITH aria-label supplied
+  {
+    attributes: {
+      chrome: 'default',
+      title: 'Confirm deletion',
+      'aria-label': 'Different name',
+      open: true,
+      children: true,
+    },
+    violates: 'default-chrome-rejects-aria-label',
+  },
+
+  // violates: default-chrome-rejects-aria-label — even an EMPTY-STRING aria-label counts as
+  // "supplied" (exists:true checks key presence, matching the JSON Schema `required` semantics
+  // this rule mirrors — a key present with any value, including '', is still forbidden).
+  {
+    attributes: { title: 'Confirm deletion', 'aria-label': '', open: true, children: true },
+    violates: 'default-chrome-rejects-aria-label',
+  },
 ];

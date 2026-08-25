@@ -1,7 +1,7 @@
 {
   "$schema": "../../schemas/constraints.schema.json",
   "component": "modal",
-  "summary": "Modal requires a non-empty accessible-name source appropriate to its chrome: chrome=\"default\" (the default, whether omitted or explicit) requires a non-empty title, rendered as an <h2> and referenced by aria-labelledby; chrome=\"none\" (the chromeless full-bleed mode) renders no header, so it requires a non-empty aria-label instead. When describedById is provided it must reference a real id — never pass an empty string.",
+  "summary": "Modal requires a non-empty accessible-name source appropriate to its chrome: chrome=\"default\" (the default, whether omitted or explicit) requires a non-empty title, rendered as an <h2> and referenced by aria-labelledby, and rejects aria-label entirely (it is discarded, never exposed to assistive technology); chrome=\"none\" (the chromeless full-bleed mode) renders no header, so it requires a non-empty aria-label instead. When describedById is provided it must reference a real id — never pass an empty string.",
   "rules": [
     {
       "id": "accessible-title",
@@ -48,6 +48,22 @@
         {
           "prop": "aria-label",
           "nonEmpty": true
+        }
+      ]
+    },
+    {
+      "id": "default-chrome-rejects-aria-label",
+      "severity": "error",
+      "description": "aria-label is only meaningful with chrome=\"none\" — the default chrome (omitted or explicit \"default\") renders a visible title and names the dialog via aria-labelledby, discarding aria-label entirely. Supplying aria-label without chrome=\"none\" requests an accessible name that is never exposed to assistive technology.",
+      "kind": "requires",
+      "when": {
+        "prop": "aria-label",
+        "exists": true
+      },
+      "of": [
+        {
+          "prop": "chrome",
+          "equals": "none"
         }
       ]
     },
@@ -116,6 +132,11 @@
         "title": "Chromeless modal with empty-string aria-label",
         "code": "<Modal chrome=\"none\" aria-label=\"\" bind:open={isOpen}><img src={src} alt={alt} /></Modal>",
         "violates": "chromeless-accessible-label"
+      },
+      {
+        "title": "Default-chrome modal with a supplied aria-label (discarded, never exposed)",
+        "code": "<Modal title=\"Confirm deletion\" aria-label=\"Different name\" bind:open={isOpen}><p>Are you sure?</p></Modal>",
+        "violates": "default-chrome-rejects-aria-label"
       }
     ]
   }

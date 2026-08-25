@@ -3,7 +3,7 @@ import { defineConstraints } from '../../_internal/constraints.ts';
 export default defineConstraints({
   component: 'modal',
   summary:
-    'Modal requires a non-empty accessible-name source appropriate to its chrome: chrome="default" (the default, whether omitted or explicit) requires a non-empty title, rendered as an <h2> and referenced by aria-labelledby; chrome="none" (the chromeless full-bleed mode) renders no header, so it requires a non-empty aria-label instead. When describedById is provided it must reference a real id — never pass an empty string.',
+    'Modal requires a non-empty accessible-name source appropriate to its chrome: chrome="default" (the default, whether omitted or explicit) requires a non-empty title, rendered as an <h2> and referenced by aria-labelledby, and rejects aria-label entirely (it is discarded, never exposed to assistive technology); chrome="none" (the chromeless full-bleed mode) renders no header, so it requires a non-empty aria-label instead. When describedById is provided it must reference a real id — never pass an empty string.',
   rules: [
     {
       id: 'accessible-title',
@@ -29,6 +29,22 @@ export default defineConstraints({
       kind: 'requires',
       when: { prop: 'chrome', equals: 'none' },
       of: [{ prop: 'aria-label', nonEmpty: true }],
+    },
+    {
+      id: 'default-chrome-rejects-aria-label',
+      severity: 'error',
+      description:
+        'aria-label is only meaningful with chrome="none" — the default chrome (omitted or explicit "default") renders a visible title and names the dialog via aria-labelledby, discarding aria-label entirely. Supplying aria-label without chrome="none" requests an accessible name that is never exposed to assistive technology.',
+      // Mirrors chromeless-accessible-label's `requires` + `when` shape, but
+      // guarded on the OPPOSITE prop: there is no "not equals" predicate to
+      // gate this rule directly on "chrome is NOT none" (chrome may be
+      // omitted or explicitly "default" — both must reject aria-label).
+      // Guarding on `aria-label` existing instead and requiring
+      // chrome="none" is logically equivalent (aria-label present implies
+      // chrome="none") and sidesteps the missing negation entirely.
+      kind: 'requires',
+      when: { prop: 'aria-label', exists: true },
+      of: [{ prop: 'chrome', equals: 'none' }],
     },
     {
       id: 'described-by-non-empty',
@@ -97,6 +113,11 @@ export default defineConstraints({
         title: 'Chromeless modal with empty-string aria-label',
         code: '<Modal chrome="none" aria-label="" bind:open={isOpen}><img src={src} alt={alt} /></Modal>',
         violates: 'chromeless-accessible-label',
+      },
+      {
+        title: 'Default-chrome modal with a supplied aria-label (discarded, never exposed)',
+        code: '<Modal title="Confirm deletion" aria-label="Different name" bind:open={isOpen}><p>Are you sure?</p></Modal>',
+        violates: 'default-chrome-rejects-aria-label',
       },
     ],
   },
