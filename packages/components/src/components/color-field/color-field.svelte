@@ -268,7 +268,7 @@
     if (hadNoDraft) visibleText = nextHex;
   });
 
-  // ── formats/format runtime changes — reconcile newly-admitted values ────
+  // ── formats/format/errorMessage runtime changes — reconcile + refresh ───
 
   // A `formats`/`format` change can widen the effective accepted-input gate
   // (recall `acceptedFormats` always unions in the configured `format` — see
@@ -304,14 +304,22 @@
   $effect(() => {
     void formats;
     void format;
+    // `errorMessage` is tracked here too (alongside `formats`/`format`, and
+    // still never `visibleText`): when the field is already invalid and a
+    // parent changes `errorMessage` — including removing a custom message
+    // to fall back to the generated one — the displayed live-region error
+    // and the native custom-validity message must refresh immediately, not
+    // wait for the next validation or formats/format change.
+    void errorMessage;
     untrack(() => {
       if (parseError === null) return;
       const text = visibleText.trim();
       if (text === '') {
         parseError = null;
       } else if (!passesFormatGate(text)) {
-        // Refresh the message so its wording reflects the new `formats` set,
-        // not the wording that was current when the error was first raised.
+        // Refresh the message so its wording reflects the new `formats` set
+        // (or the new `errorMessage`), not the wording current when the
+        // error was first raised.
         parseError = defaultErrorMessage();
       } else {
         const parsed = parseInput(text);

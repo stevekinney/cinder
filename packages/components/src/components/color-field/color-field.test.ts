@@ -189,6 +189,43 @@ describe('ColorField — invalid input', () => {
       'Pick a color from the palette.',
     );
   });
+
+  // Review thread (PR #1420, PRRT_kwDOSKrFTs6b7zRP): while the field is
+  // already invalid, changing `errorMessage` used to leave the displayed
+  // live-region error (and the native custom-validity message) stale —
+  // the reconciliation effect tracked only `formats`/`format`, not
+  // `errorMessage`, so it didn't rerun until another validation or
+  // formats/format change. `errorMessage` is now tracked explicitly too
+  // (without tracking the draft text itself).
+  test('changing errorMessage while already invalid refreshes the displayed error immediately', async () => {
+    const { container, rerender } = render(ColorField, {
+      id: 'color',
+      errorMessage: 'Pick a color from the palette.',
+    });
+    const input = getInput(container);
+    await typeAndBlur(input, 'nope');
+    expect(container.querySelector('.cinder-input-field__error')?.textContent).toContain(
+      'Pick a color from the palette.',
+    );
+
+    // Parent swaps in a different custom message while still invalid.
+    await rerender({ id: 'color', errorMessage: 'Try a hex code like #336699.' });
+    await tick();
+    expect(container.querySelector('.cinder-input-field__error')?.textContent).toContain(
+      'Try a hex code like #336699.',
+    );
+    expect(container.querySelector('.cinder-input-field__error')?.textContent).not.toContain(
+      'Pick a color from the palette.',
+    );
+
+    // Parent removes the custom message entirely — falls back to the
+    // generated default.
+    await rerender({ id: 'color', errorMessage: undefined });
+    await tick();
+    const errorText = container.querySelector('.cinder-input-field__error')?.textContent ?? '';
+    expect(errorText).not.toContain('Try a hex code like #336699.');
+    expect(errorText).toContain('hex');
+  });
 });
 
 describe('ColorField — alpha behavior', () => {
