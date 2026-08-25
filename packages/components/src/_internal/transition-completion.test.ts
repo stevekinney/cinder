@@ -58,6 +58,52 @@ describe('waitForTransitionCompletion', () => {
     }
   });
 
+  test('the fallback timer counts every transitionProperty slot, not just max(durations, delays) (CIN-376)', async () => {
+    // Five properties (`all, opacity, transform, width, color`), only three
+    // durations/delays (`100ms, 0ms` / `0ms, 300ms, 0ms`). The fifth slot
+    // (index 4) cyclically resolves to `durations[4 % 2] + delays[4 % 3] =
+    // 100ms + 300ms = 400ms` — the real longest boundary. A fallback that
+    // only iterates `max(durations.length, delays.length)` (3 slots) would
+    // stop at index 2 and miss it, scheduling completion after 350ms
+    // instead of the correct ~450ms. `all` makes
+    // `getTrackedTransitionProperties` return `null`, so with
+    // `ignoreUnknownPropertyEvents: true` (Speed Dial's case) completion can
+    // ONLY come from this fallback timer — no individual event ever fires it.
+    const element = document.createElement('div');
+    document.body.appendChild(element);
+    const originalGetComputedStyle = window.getComputedStyle;
+    window.getComputedStyle = ((target: Element) => {
+      if (target === element) {
+        return {
+          transitionProperty: 'all, opacity, transform, width, color',
+          transitionDuration: '100ms, 0ms',
+          transitionDelay: '0ms, 300ms, 0ms',
+        } as CSSStyleDeclaration;
+      }
+      return originalGetComputedStyle(target);
+    }) as typeof window.getComputedStyle;
+
+    try {
+      let completionCount = 0;
+      waitForTransitionCompletion({
+        element,
+        reducedMotion: false,
+        ignoreUnknownPropertyEvents: true,
+        onComplete: () => {
+          completionCount += 1;
+        },
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 360));
+      expect(completionCount).toBe(0);
+
+      await new Promise((resolve) => setTimeout(resolve, 120));
+      expect(completionCount).toBe(1);
+    } finally {
+      window.getComputedStyle = originalGetComputedStyle;
+    }
+  });
+
   test('repeats a shorter duration/delay list CYCLICALLY, per the CSS spec (CIN-376)', () => {
     // Three properties, only two durations (`100ms, 0ms`) — CSS repeats the
     // shorter list from the beginning: the third property (index 2)

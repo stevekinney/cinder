@@ -159,6 +159,38 @@ describe('SpeedDial', () => {
     }
   });
 
+  test('exit helper counts every transitionProperty slot in the "all" fallback, not just max(durations, delays) (CIN-376)', async () => {
+    // Five properties (`all, opacity, transform, width, color`), only three
+    // durations/delays. The fifth slot (index 4) cyclically resolves to
+    // `durations[4 % 2] + delays[4 % 3] = 100ms + 300ms = 400ms` — the real
+    // longest boundary. Because `all` is present, `ignoreUnknownPropertyEvents`
+    // means completion can ONLY come from the computed-longest-duration
+    // fallback timer; a fallback that stopped at `max(durations.length,
+    // delays.length)` (3 slots) would miss this fifth slot and schedule
+    // completion ~100ms too early, removing the retained actions surface
+    // before the color transition ends.
+    const action = document.createElement('button');
+    document.body.append(action);
+    const complete = mock(() => {});
+    const getComputedStyleSpy = mockComputedTransitionStyle((element) => element === action, {
+      transitionDelay: '0ms, 300ms, 0ms',
+      transitionDuration: '100ms, 0ms',
+      transitionProperty: 'all, opacity, transform, width, color',
+    });
+
+    try {
+      waitForSpeedDialExit(action, false, complete);
+
+      await new Promise((resolve) => setTimeout(resolve, 360));
+      expect(complete).not.toHaveBeenCalled();
+
+      await new Promise((resolve) => setTimeout(resolve, 120));
+      expect(complete).toHaveBeenCalledTimes(1);
+    } finally {
+      getComputedStyleSpy.mockRestore();
+    }
+  });
+
   test('exit helper ignores individual events for a consumer transition list containing "all" and waits for the computed longest duration (CIN-376)', async () => {
     // Regression guard: a consumer's own CSS on an action can legitimately
     // include `all` alongside a named property — e.g.

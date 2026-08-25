@@ -70,7 +70,18 @@ function getLongestTransitionTime(element: HTMLElement): number {
   const style = window.getComputedStyle(element);
   const durations = parseTimeValueList(style.transitionDuration);
   const delays = parseTimeValueList(style.transitionDelay);
-  const count = Math.max(durations.length, delays.length);
+  // Must also count `transitionProperty`'s own slots: a caller passing
+  // `ignoreUnknownPropertyEvents` (Speed Dial) relies on this fallback
+  // EXCLUSIVELY whenever any slot resolves to `all` — a longer property list
+  // than duration/delay list (e.g. `all, opacity, transform, width, color`
+  // with only 3 durations/delays) still cyclically resolves each of its OWN
+  // slots to a real duration+delay, and this loop must iterate that many
+  // times to see the longest one, not stop at `max(durations, delays)`.
+  const propertyCount = style.transitionProperty
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean).length;
+  const count = Math.max(durations.length, delays.length, propertyCount);
 
   let longest = 0;
 

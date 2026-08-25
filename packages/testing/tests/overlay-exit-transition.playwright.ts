@@ -8,73 +8,53 @@ import { expect, test } from '@playwright/test';
  * actually unmount/hide once it finishes — not snap away instantly.
  *
  * Navigates to the plain documentation page (`/page/<slug>`, no `?snapshot=1`
- * and no `?view=playground`) and scopes every locator to
- * `#overview-mount-basic` — the "Overview" section's live preview
- * (`packages/playground/src/component-page.svelte`), which mounts the
- * component's real, first/"basic" example (`overviewExample =
- * explicitlyFeatured[0] ?? examples[0]`) as a single, fully-hydrated,
- * interactive instance:
+ * and no `?view=playground`) and scopes every locator to the "Overview"
+ * section's live preview (`packages/playground/src/component-page.svelte`),
+ * which mounts the component's real, first/"basic" example as a single,
+ * fully-hydrated, interactive instance — `?snapshot=1` forces every
+ * transition duration to `0s !important`
+ * (`packages/playground/src/snapshot-mode.ts`), and `?view=playground` can
+ * bare-mount a component with synthesized (sometimes empty) props instead of
+ * its real example. See git history on this file for the by-surface analysis
+ * that ruled both out.
  *
- * - `?snapshot=1` (used by an earlier revision of this file, and by the
- *   `componentPage` fixture) is explicitly what SUPPRESSES this preview
- *   (`overviewExample` is `undefined` in snapshot mode) — it also forces
- *   every descendant's transition duration/delay to `0s !important`
- *   (`packages/playground/src/snapshot-mode.ts`), which would make these
- *   tests pass even if the exit-transition lifecycle itself were broken.
- * - `?view=playground` (the documentation page's separate "Playground" tab,
- *   used by an earlier revision of this file) mounts the component BARE with
- *   SYNTHESIZED props instead of the real example markup whenever the
- *   component's own manifest allows it (`canBareMount`) — which silently
- *   produces a real interactive instance for some components (Popover,
- *   HoverCard: their `trigger` snippet prop isn't named `children`, so it's
- *   an unsatisfiable REQUIRED prop and the mount falls back to the real
- *   example) but NOT for Tooltip, whose `children` is OPTIONAL: an
- *   unsatisfiable optional snippet prop doesn't block the bare mount, so it
- *   mounts with no children at all — an empty, zero-size
- *   `.cinder-tooltip-wrapper` with nothing to hover, which is exactly what
- *   produced CI's `hover: Test timeout of 90000ms exceeded` failure.
- *   NavigationBar's snippet props (`items`, etc.) ARE all required, so it
- *   DOES fall back to the real example under `?view=playground` — but the
- *   Playground tab's preview stage defaults to a wide fixed width
- *   independent of the outer browser viewport, so its collapsed-mobile
- *   breakpoint never engaged, producing CI's `click: Test timeout` on the
- *   hidden (`display: none` below the breakpoint) menu toggle.
+ * Ground-truth corrections from CI artifacts (run 32797694277, job
+ * 97652452204 — downloaded via `gh run download` and read from the
+ * per-test `error-context.md` page snapshots, not re-theorized):
  *
- * The Overview preview sidesteps both problems: it's always the real example
- * (never bare-mount-synthesized), and it isn't gated behind a fixed stage
- * width — it flows with the actual page/viewport width like ordinary content.
- *
- * Two further, CI-confirmed corrections (run 32795764067, job 97646670185):
- *
- * - Tooltip: `page.locator('.cinder-tooltip').first()` collided with the
- *   documentation page's OWN chrome — every code block on the page has a
- *   "Copy" button wired through this same Tooltip component, whose panel
- *   ("Copy import") sorts earlier in the DOM than the Overview example's.
- *   `.first()` silently asserted against that unrelated, permanently-closed
- *   tooltip instead. Filtered on the actual example text instead of position.
- * - NavigationBar: the Overview section's live preview flows inside the
- *   documentation page's own responsive layout (sidebar nav, content
- *   column), which doesn't collapse to the same width as the outer browser
- *   viewport — CI's `click: Test timeout` on `getByRole('button', {name:
- *   'Open menu'})` confirms the toggle never became visible even at a
- *   390px viewport. Switched to `?snapshot=1` + `#example-mount-basic` (the
- *   dedicated, isolated, full-width single-example testing surface used
- *   elsewhere in this suite, e.g. `floating-surface-containment.playwright.ts`)
- *   instead, which is unaffected by the documentation page's own layout.
- *   Trade-off: snapshot mode forces every transition duration to `0s`
- *   (`packages/playground/src/snapshot-mode.ts`), so this specific test can
- *   no longer prove the exit plays over a REAL, non-zero duration the way
- *   the other three in this file do — it still proves the panel stays
- *   mounted/portaled/visible through `data-cinder-closing` before
- *   unmounting, which is the part snapshot mode doesn't defeat.
+ * - Tooltip: the documentation page's "Examples" section mounts the SAME
+ *   "basic" example a second time (`#example-mount-basic`, labelled "Basic
+ *   tooltip preview"), alongside the Overview preview (labelled "Overview
+ *   preview") — both render the identical tooltip text, so a `.filter({
+ *   hasText })` locator resolved to 2 elements (a strict-mode violation).
+ *   Scoped to the Overview region specifically via `getByLabel('Overview
+ *   preview')` (`.dx-stage__canvas`'s `aria-label`, which the panel is
+ *   associated with through `aria-owns` even though it portals to
+ *   `document.body`) instead of filtering by text alone.
+ * - NavigationBar: the mobile panel toggle's accessible name changes from
+ *   "Open menu" to "Close menu" once expanded (see
+ *   navigation-bar.examples.json's `aria-label={mobileMenuOpen ? 'Close
+ *   menu' : 'Open menu'}`). A Playwright locator is live and re-queries on
+ *   every action, so capturing it once with `getByRole('button', { name:
+ *   'Open menu' })` and calling `.click()` on it TWICE — the second time to
+ *   close — re-searches for a now-nonexistent "Open menu" button and hangs
+ *   forever. The CI page snapshot showed the panel already open
+ *   (`button "Close menu" [expanded]`) at the moment of the timeout,
+ *   confirming the first click had already succeeded and the SECOND one was
+ *   what hung — not a width/collapse problem (the prior theory in this
+ *   file's history). Captured via a label-independent class selector
+ *   instead.
  */
 
 test('Popover renders data-cinder-closing during its exit transition, then unmounts', async ({
   page,
 }) => {
   await page.goto('/page/popover', { waitUntil: 'load' });
-  const overview = page.locator('#overview-mount-basic');
-  await expect(overview).toHaveAttribute('data-overview-preview-rendered', '');
+  const overview = page.getByRole('region', { name: 'Overview preview' });
+  await expect(page.locator('#overview-mount-basic')).toHaveAttribute(
+    'data-overview-preview-rendered',
+    '',
+  );
 
   const trigger = overview.getByRole('button', { name: 'Account settings' }).first();
   await trigger.click();
@@ -92,17 +72,20 @@ test('Tooltip renders data-cinder-closing during its exit transition, then hides
   page,
 }) => {
   await page.goto('/page/tooltip', { waitUntil: 'load' });
-  const overview = page.locator('#overview-mount-basic');
-  await expect(overview).toHaveAttribute('data-overview-preview-rendered', '');
+  const overview = page.getByRole('region', { name: 'Overview preview' });
+  await expect(page.locator('#overview-mount-basic')).toHaveAttribute(
+    'data-overview-preview-rendered',
+    '',
+  );
 
   const trigger = overview.getByRole('button', { name: 'Hover me' }).first();
   await trigger.hover();
 
-  // Filtered on the example's actual text, not `.first()`: the documentation
-  // page's own "Copy" code-block buttons are wired through this same
-  // Tooltip component, and their (permanently-closed) panel sorts earlier
-  // in the DOM.
-  const tip = page.locator('.cinder-tooltip', { hasText: 'This is a helpful explanation.' });
+  // Scoped to the Overview region (via its accessible label, since the panel
+  // portals to `document.body` and isn't a DOM descendant): the
+  // "Examples" section further down the same page mounts this identical
+  // "basic" example a second time, and a plain text filter matches both.
+  const tip = overview.getByText('This is a helpful explanation.');
   await expect(tip).toHaveAttribute('data-cinder-position-ready', 'true');
 
   // Move away to trigger the hide/close path.
@@ -116,8 +99,11 @@ test('HoverCard renders data-cinder-closing during its exit transition, then unm
   page,
 }) => {
   await page.goto('/page/hover-card', { waitUntil: 'load' });
-  const overview = page.locator('#overview-mount-basic');
-  await expect(overview).toHaveAttribute('data-overview-preview-rendered', '');
+  const overview = page.getByRole('region', { name: 'Overview preview' });
+  await expect(page.locator('#overview-mount-basic')).toHaveAttribute(
+    'data-overview-preview-rendered',
+    '',
+  );
 
   const trigger = overview.getByRole('button', { name: 'Ada Lovelace' }).first();
   await trigger.hover();
@@ -144,9 +130,20 @@ test('NavigationBar mobile panel plays its exit transition instead of snapping v
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/page/navigation-bar?snapshot=1', { waitUntil: 'load' });
-  const example = page.locator('#example-mount-basic');
-  const toggle = example.getByRole('button', { name: 'Open menu' }).first();
+  await page.goto('/page/navigation-bar', { waitUntil: 'load' });
+  const overview = page.getByRole('region', { name: 'Overview preview' });
+  await expect(page.locator('#overview-mount-basic')).toHaveAttribute(
+    'data-overview-preview-rendered',
+    '',
+  );
+
+  // NOT `getByRole('button', { name: 'Open menu' })`: the toggle's
+  // accessible name flips to "Close menu" once expanded, and a Playwright
+  // locator re-queries live on every action — capturing it by that name and
+  // clicking it twice hangs forever on the second click, waiting for a
+  // button that no longer exists. This class-based locator stays valid
+  // through both states.
+  const toggle = overview.locator('.cinder-navigation-bar__menu-toggle button').first();
   await toggle.click();
 
   const panel = page

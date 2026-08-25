@@ -11,34 +11,38 @@ import { expect, test } from '@playwright/test';
  * zero-duration tokens would never fire. See `_internal/OVERLAY-POLICY.md` §
  * "Transition lifecycle".
  *
- * Popover/Tooltip/HoverCard navigate to the plain documentation page (no
- * `?snapshot=1`, no `?view=playground`) and scope locators to
- * `#overview-mount-basic` — see the companion
- * `overlay-exit-transition.playwright.ts` for the full reasoning
- * (`?snapshot=1`/`?view=playground` each defeat this project's purpose or a
- * specific component's real content in different ways). Tooltip is further
- * filtered on its example text: the documentation page's own "Copy"
- * code-block buttons are wired through this same Tooltip component, and
- * `.first()` previously asserted against that unrelated tooltip instead (CI
- * run 32795764067, job 97646670185).
+ * Popover/Tooltip/HoverCard/NavigationBar navigate to the plain
+ * documentation page (no `?snapshot=1`, no `?view=playground`) and scope
+ * locators the same way `overlay-exit-transition.playwright.ts` does — see
+ * that file's header comment for the CI-artifact-grounded reasoning (the
+ * Tooltip "Examples" section double-mount, and the NavigationBar toggle's
+ * changing accessible name).
  *
- * NavigationBar and Speed Dial instead use `?snapshot=1` +
- * `#example-mount-basic` (the dedicated, isolated, full-width single-example
- * testing surface used elsewhere in this suite): the Overview preview flows
- * inside the documentation page's own responsive layout, which never
- * collapsed to NavigationBar's mobile breakpoint even at a 390px viewport
- * (CI's `click: Test timeout` on the hidden toggle), and Speed Dial's
- * actions never appeared there either. Snapshot mode's forced `0s`
- * transition duration is harmless for both HERE — this project already
- * expects immediate completion under reduced motion, so there's nothing
- * these two tests lose by additionally being isolated from the
- * documentation page's own layout and chrome.
+ * Non-polling assertion (review thread on this file): `expect(locator).X()`
+ * is a WEB-FIRST assertion that retries for several seconds — if reduced-
+ * motion detection regressed and the ordinary ~120ms transition ran
+ * instead, a polling assertion would still pass once that transition
+ * finished, never actually proving "immediate". Each test instead runs a
+ * single `page.evaluate` that awaits exactly one microtask (matching
+ * `queueMicrotask(finish)`'s own resolution timing) and then reads the DOM
+ * directly — a plain boolean assertion on the result, not a locator, so
+ * there is no retry window for a slow transition to sneak through.
+ *
+ * Speed Dial's assertion checks for the element's absence, not
+ * `not.toHaveAttribute(...)`: the retained actions surface fully unmounts
+ * (portal disabled) once `waitForSpeedDialExit` completes, so by the time
+ * any assertion runs the element may already be gone — `not.toHaveAttribute`
+ * requires the element to exist and therefore errors instead of passing in
+ * that case.
  */
 
 test('Popover unmounts immediately under reduced motion', async ({ page }) => {
   await page.goto('/page/popover', { waitUntil: 'load' });
-  const overview = page.locator('#overview-mount-basic');
-  await expect(overview).toHaveAttribute('data-overview-preview-rendered', '');
+  const overview = page.getByRole('region', { name: 'Overview preview' });
+  await expect(page.locator('#overview-mount-basic')).toHaveAttribute(
+    'data-overview-preview-rendered',
+    '',
+  );
 
   const trigger = overview.getByRole('button', { name: 'Account settings' }).first();
   await trigger.click();
@@ -48,29 +52,45 @@ test('Popover unmounts immediately under reduced motion', async ({ page }) => {
 
   await trigger.click();
 
-  await expect(panel).toHaveCount(0);
+  const stillPresent = await page.evaluate(async () => {
+    await Promise.resolve();
+    return document.querySelector('.cinder-popover') !== null;
+  });
+  expect(stillPresent).toBe(false);
 });
 
 test('Tooltip hides immediately under reduced motion', async ({ page }) => {
   await page.goto('/page/tooltip', { waitUntil: 'load' });
-  const overview = page.locator('#overview-mount-basic');
-  await expect(overview).toHaveAttribute('data-overview-preview-rendered', '');
+  const overview = page.getByRole('region', { name: 'Overview preview' });
+  await expect(page.locator('#overview-mount-basic')).toHaveAttribute(
+    'data-overview-preview-rendered',
+    '',
+  );
 
   const trigger = overview.getByRole('button', { name: 'Hover me' }).first();
   await trigger.hover();
 
-  const tip = page.locator('.cinder-tooltip', { hasText: 'This is a helpful explanation.' });
+  const tip = overview.getByText('This is a helpful explanation.');
   await expect(tip).toHaveAttribute('data-cinder-position-ready', 'true');
 
   await page.mouse.move(0, 0);
 
-  await expect(tip).toBeHidden();
+  const stillVisible = await page.evaluate(async () => {
+    await Promise.resolve();
+    const el = document.querySelector('.cinder-tooltip');
+    if (!el) return false;
+    return window.getComputedStyle(el).visibility !== 'hidden';
+  });
+  expect(stillVisible).toBe(false);
 });
 
 test('HoverCard unmounts immediately under reduced motion', async ({ page }) => {
   await page.goto('/page/hover-card', { waitUntil: 'load' });
-  const overview = page.locator('#overview-mount-basic');
-  await expect(overview).toHaveAttribute('data-overview-preview-rendered', '');
+  const overview = page.getByRole('region', { name: 'Overview preview' });
+  await expect(page.locator('#overview-mount-basic')).toHaveAttribute(
+    'data-overview-preview-rendered',
+    '',
+  );
 
   const trigger = overview.getByRole('button', { name: 'Ada Lovelace' }).first();
   await trigger.hover();
@@ -80,14 +100,23 @@ test('HoverCard unmounts immediately under reduced motion', async ({ page }) => 
 
   await page.mouse.move(0, 0);
 
-  await expect(card).toHaveCount(0);
+  const stillPresent = await page.evaluate(async () => {
+    await Promise.resolve();
+    return document.querySelector('.cinder-hover-card') !== null;
+  });
+  expect(stillPresent).toBe(false);
 });
 
 test('NavigationBar mobile panel hides immediately under reduced motion', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/page/navigation-bar?snapshot=1', { waitUntil: 'load' });
-  const example = page.locator('#example-mount-basic');
-  const toggle = example.getByRole('button', { name: 'Open menu' }).first();
+  await page.goto('/page/navigation-bar', { waitUntil: 'load' });
+  const overview = page.getByRole('region', { name: 'Overview preview' });
+  await expect(page.locator('#overview-mount-basic')).toHaveAttribute(
+    'data-overview-preview-rendered',
+    '',
+  );
+
+  const toggle = overview.locator('.cinder-navigation-bar__menu-toggle button').first();
   await toggle.click();
 
   const panel = page
@@ -97,7 +126,13 @@ test('NavigationBar mobile panel hides immediately under reduced motion', async 
 
   await toggle.click();
 
-  await expect(panel).toBeHidden();
+  const stillVisible = await page.evaluate(async () => {
+    await Promise.resolve();
+    const el = document.querySelector('.cinder-navigation-bar__items[data-cinder-mobile-panel]');
+    if (!el) return false;
+    return window.getComputedStyle(el).visibility !== 'hidden';
+  });
+  expect(stillVisible).toBe(false);
 });
 
 test('SpeedDial actions become inert immediately under reduced motion', async ({ page }) => {
@@ -113,10 +148,17 @@ test('SpeedDial actions become inert immediately under reduced motion', async ({
 
   await toggle.click();
 
-  await expect(actions).not.toHaveAttribute('data-cinder-open', '');
-  // Reduced motion collapses the per-action stagger to zero, so
-  // `waitForSpeedDialExit`'s fanned-out `waitForTransitionCompletion` calls
-  // resolve on the next microtask and the shared floating-surface chrome
-  // (see `speed-dial.css`) resets without waiting for a real transition.
-  await expect(actions).toHaveCSS('pointer-events', 'none');
+  // The retained actions surface fully unmounts (portal disabled) once
+  // `waitForSpeedDialExit` completes under reduced motion — assert its
+  // eventual absence, not a "not this attribute" check that requires the
+  // element to still exist.
+  const stillPresent = await page.evaluate(async () => {
+    await Promise.resolve();
+    return (
+      document.querySelector(
+        'body > .cinder-speed-dial__portal-scope > .cinder-speed-dial__actions',
+      ) !== null
+    );
+  });
+  expect(stillPresent).toBe(false);
 });
