@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { afterEach, describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { createRawSnippet, tick } from 'svelte';
 
@@ -1131,6 +1131,96 @@ describe('Modal chromeless mode (chrome="none")', () => {
     await fireEvent(dialog, cancelEvent);
     expect(cancelEvent.defaultPrevented).toBe(true);
     expect(openValue).toBe(false);
+  });
+});
+
+describe('Modal nameless-dialog dev warning', () => {
+  let originalWarn: typeof console.warn;
+  let warnings: string[];
+
+  beforeEach(() => {
+    originalWarn = console.warn;
+    warnings = [];
+    console.warn = (...args: unknown[]) => {
+      warnings.push(args.join(' '));
+    };
+  });
+
+  afterEach(() => {
+    console.warn = originalWarn;
+  });
+
+  test('warns when chrome="default" renders with an empty title', () => {
+    render(Modal, {
+      props: { open: true, title: '', children: emptySnippet },
+    });
+    expect(
+      warnings.some((w) => w.includes('[cinder/Modal]') && w.includes('chrome="default"')),
+    ).toBe(true);
+  });
+
+  test('does not warn when chrome="default" has a non-empty title', () => {
+    render(Modal, {
+      props: { open: true, title: 'Confirm deletion', children: emptySnippet },
+    });
+    expect(warnings.some((w) => w.includes('chrome="default"'))).toBe(false);
+  });
+
+  test('warns when chrome="none" renders with an empty aria-label', () => {
+    render(Modal, {
+      props: { open: true, chrome: 'none', 'aria-label': '', children: emptySnippet },
+    });
+    expect(warnings.some((w) => w.includes('[cinder/Modal]') && w.includes('chrome="none"'))).toBe(
+      true,
+    );
+  });
+
+  test('does not warn when chrome="none" has a non-empty aria-label', () => {
+    render(Modal, {
+      props: {
+        open: true,
+        chrome: 'none',
+        'aria-label': 'Image viewer',
+        children: emptySnippet,
+      },
+    });
+    expect(warnings.some((w) => w.includes('chrome="none"'))).toBe(false);
+  });
+
+  test('a non-string truthy title (a JS consumer bypassing TypeScript) warns instead of throwing', () => {
+    // Regression: the guard used to call `.trim()` after only a truthiness
+    // check, so a non-string truthy value would throw inside the $effect —
+    // turning a dev-only warning into a hard crash.
+    expect(() => {
+      render(Modal, {
+        // eslint-disable-next-line no-unsafe-type-assertion -- simulating a JS consumer bypassing the `title: string` type at runtime.
+        props: {
+          open: true,
+          title: { not: 'a string' } as unknown as string,
+          children: emptySnippet,
+        },
+      });
+    }).not.toThrow();
+    expect(
+      warnings.some((w) => w.includes('[cinder/Modal]') && w.includes('chrome="default"')),
+    ).toBe(true);
+  });
+
+  test('a non-string truthy aria-label in the chromeless chrome warns instead of throwing', () => {
+    expect(() => {
+      render(Modal, {
+        props: {
+          open: true,
+          chrome: 'none',
+          // eslint-disable-next-line no-unsafe-type-assertion -- simulating a JS consumer bypassing the `aria-label: string` type at runtime.
+          'aria-label': { not: 'a string' } as unknown as string,
+          children: emptySnippet,
+        },
+      });
+    }).not.toThrow();
+    expect(warnings.some((w) => w.includes('[cinder/Modal]') && w.includes('chrome="none"'))).toBe(
+      true,
+    );
   });
 });
 

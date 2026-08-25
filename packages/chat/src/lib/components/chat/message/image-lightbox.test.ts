@@ -273,15 +273,24 @@ describe('image-lightbox — behavioral reset on reopen', () => {
     expect(container.querySelector('img')?.getAttribute('alt')).toBe('Image B');
   });
 
-  test('the close button calls onClose and clears navigation state', async () => {
+  test('the close button calls onClose, and navigation state clears on the next fresh open', async () => {
     let closed = 0;
-    const { container } = render(ImageLightbox, {
+    const { container, rerender } = render(ImageLightbox, {
       props: { images, initialIndex: 0, open: true, onClose: () => (closed += 1) },
     });
 
     await fireEvent.click(container.querySelector('[aria-label="Next image"]')!);
-    await fireEvent.click(container.querySelector('[aria-label="Close image viewer"]')!);
+    expect(container.querySelector('img')?.getAttribute('alt')).toBe('Image B');
 
+    await fireEvent.click(container.querySelector('[aria-label="Close image viewer"]')!);
     expect(closed).toBe(1);
+
+    // Navigation state is not cleared by close() itself (see the
+    // exit-transition-preservation tests above) — it clears exactly once, on
+    // the NEXT fresh open. Reopening here (a fresh `open: true`) is that
+    // transition, so the displayed image must be back to initialIndex.
+    await rerender({ images, initialIndex: 0, open: true });
+    await tick();
+    expect(container.querySelector('img')?.getAttribute('alt')).toBe('Image A');
   });
 });

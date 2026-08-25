@@ -154,11 +154,24 @@
       ArrowLeft/ArrowRight navigation) would never see the keystroke until
       focus moved somewhere inside this subtree.
     -->
+    <!--
+      No ARIA role fits this element semantically: it is the dialog's own
+      content surface (Modal already supplies the dialog role on its own
+      ancestor <dialog> element), not a widget — but it legitimately needs
+      both a click
+      handler (backdrop-style dismiss when clicking outside the image) and a
+      keydown handler (ArrowLeft/ArrowRight navigation) while being a real
+      keyboard-focus target (autofocus + tabindex="-1", see the comment
+      above). role="presentation"/"none" would be actively wrong (a focus
+      target cannot be presentational), and every other ARIA role either
+      claims interactive semantics this element doesn't have or reintroduces
+      the "non-interactive element with event listeners" warning instead.
+    -->
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div
       class="lightbox-content"
       onclick={handleContentClick}
       onkeydown={handleKeyDown}
-      role="presentation"
       tabindex="-1"
       autofocus
     >

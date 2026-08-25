@@ -30,6 +30,20 @@
     focusDialogBodyUnlessAutofocused,
   } from '../_internal/create-sliding-dialog-state.svelte.ts';
 
+  /**
+   * `typeof value === 'string'` first, THEN `.trim()` — a bare truthiness
+   * check alone would let a non-string truthy value (e.g. an object slipping
+   * through from dynamic/CMS-driven config that bypasses TypeScript) reach
+   * `.trim()`, which does not exist on it, throwing inside the nameless-guard
+   * $effect below and turning a dev-only warning into a hard crash. Accepts
+   * `unknown` rather than `string | undefined` specifically because the
+   * runtime value this guards against is exactly the case TypeScript's own
+   * `string | undefined` type would already rule out.
+   */
+  function isNonEmptyString(value: unknown): value is string {
+    return typeof value === 'string' && value.trim() !== '';
+  }
+
   const titleId = $props.id();
 
   let {
@@ -116,14 +130,20 @@
   // a CMS-driven config, etc.) can still bypass TypeScript and render a
   // nameless dialog. Warn in both directions rather than assuming the type
   // system caught it.
+  //
+  // `isNonEmptyString` guards with `typeof value === 'string'` BEFORE
+  // calling `.trim()` — a non-string truthy value (e.g. a stray object from
+  // dynamic config bypassing TS) has no `.trim()` method and would otherwise
+  // throw inside this $effect, turning a dev-only warning into a hard crash.
+  // Any non-string value is treated as not a valid name.
   $effect(() => {
-    if (!isChromeless && (!title || title.trim() === '')) {
+    if (!isChromeless && !isNonEmptyString(title)) {
       devWarn(
         '[cinder/Modal] rendered with chrome="default" but no non-empty `title`. ' +
           'The visible heading also supplies the accessible name — without it the dialog has no name for assistive technology.',
       );
     }
-    if (isChromeless && (!ariaLabel || ariaLabel.trim() === '')) {
+    if (isChromeless && !isNonEmptyString(ariaLabel)) {
       devWarn(
         '[cinder/Modal] rendered with chrome="none" but no non-empty `aria-label`. ' +
           "The chromeless chrome renders no header, so `aria-label` is the only source of the dialog's accessible name — without it the dialog has no name for assistive technology.",
