@@ -933,6 +933,41 @@ describe('ColorPicker swatch normalization', () => {
     expect(options[0]!.getAttribute('aria-selected')).toBe('false');
     expect(options[1]!.getAttribute('aria-selected')).toBe('false');
   });
+
+  // Review thread (PR #1420, PRRT_kwDOSKrFTs6b6r7-): with alpha={false},
+  // clicking a translucent swatch commits it as opaque (handleSwatchChange
+  // correctly gates alpha to 1 since alpha is disabled) — but normalizeSwatch
+  // used to match that SAME swatch verbatim (still translucent), so
+  // immediately after commit the swatch the user just picked showed
+  // aria-selected="false". Swatch matching now gates to match whichever
+  // alpha policy actually produced the current value: once alphaValue
+  // itself is opaque (the state any interactive commit leaves it in when
+  // alpha is disabled), a translucent swatch's own alpha is gated to match.
+  test('alpha=false: clicking a translucent swatch commits opaque AND keeps that same swatch selected', async () => {
+    let committed = '';
+    const { container } = render(ColorPicker, {
+      value: '#00ff00',
+      alpha: false,
+      swatches: ['#ff000080', '#00ff00'],
+      onValueCommit: (color: string) => {
+        committed = color;
+      },
+    });
+
+    const options = container.querySelectorAll<HTMLElement>('[role="option"]');
+    await fireEvent.click(options[0]!);
+
+    // Committed as opaque (alpha disabled).
+    expect(committed).toBe('#ff0000');
+
+    // The clicked swatch — even though its OWN listed color is translucent
+    // — must still show as selected: it's literally the swatch the user
+    // just chose, and the committed value is its gated (opaque) projection.
+    const optionsAfter = container.querySelectorAll<HTMLElement>('[role="option"]');
+    expect(optionsAfter[0]!.getAttribute('aria-selected')).toBe('true');
+    expect(optionsAfter[0]!.hasAttribute('data-cinder-selected')).toBe(true);
+    expect(optionsAfter[1]!.getAttribute('aria-selected')).toBe('false');
+  });
 });
 
 describe('ColorPicker disabled', () => {
@@ -1345,6 +1380,72 @@ describe('ColorPicker fractional alpha in the 0.9995–1 band (P1 regression)', 
     expect(preview.hasAttribute('data-cinder-alpha')).toBe(false);
     expect(preview.getAttribute('style')).toContain('hsl(');
     expect(preview.getAttribute('style')).not.toContain('hsla(');
+  });
+});
+
+// Review thread (PR #1420, PRRT_kwDOSKrFTs6b6r73): with the default
+// format="hex", formatHex quantizes alpha to a BYTE (0.9996 * 255 rounds to
+// 255 -> byte-opaque, emits plain #rrggbb with no alpha at all), but every
+// other alpha-dependent surface (preview, checkerboard, RGB/HSL copy
+// strings) was still deciding "is this opaque?" via the fixed 4-decimal
+// `isCanonicallyOpaque` boundary, under which 0.9996 is still translucent.
+// So with format="hex" the bound/hidden value and HEX copy action reported
+// an opaque color while the RGB/HSL copy actions, preview, and checkerboard
+// still reported translucent for the exact same 0.9996 alpha. Every
+// alpha-dependent surface now asks `isOpaqueForFormat(alphaValue, format)`,
+// which quantizes to a byte specifically when format is 'hex'.
+describe('ColorPicker format="hex" alpha quantization agrees everywhere (P1 regression)', () => {
+  test('0.9996 alpha with format="hex": byte-quantizes to opaque everywhere, not just the emitted value', () => {
+    const { container } = render(ColorPicker, {
+      value: 'rgba(255, 0, 0, 0.9996)',
+      alpha: true,
+      format: 'hex',
+    });
+
+    // The emitted (hex) value is byte-opaque: no alpha suffix at all.
+    const hidden = container.querySelector('input[type="hidden"]') as HTMLInputElement;
+    expect(hidden.value).toBe('#ff0000');
+
+    // Every other surface must agree it's opaque too.
+    const preview = q<HTMLElement>(container, '.cinder-color-picker__preview');
+    expect(preview.hasAttribute('data-cinder-alpha')).toBe(false);
+    expect(preview.getAttribute('style')).toContain('hsl(');
+    expect(preview.getAttribute('style')).not.toContain('hsla(');
+
+    const rgbButton = q<HTMLButtonElement>(container, '[aria-label="Copy RGB format"]');
+    const hslButton = q<HTMLButtonElement>(container, '[aria-label="Copy HSL format"]');
+    expect(rgbButton.textContent).toBe('RGB rgb(255, 0, 0)');
+    expect(hslButton.textContent).toBe('HSL hsl(0, 100%, 50%)');
+  });
+
+  test('the SAME 0.9996 alpha with format="rgb" (no byte quantization) stays translucent everywhere', () => {
+    const { container } = render(ColorPicker, {
+      value: 'rgba(255, 0, 0, 0.9996)',
+      alpha: true,
+      format: 'rgb',
+    });
+
+    const hidden = container.querySelector('input[type="hidden"]') as HTMLInputElement;
+    expect(hidden.value).toBe('rgb(255 0 0 / 0.9996)');
+
+    const preview = q<HTMLElement>(container, '.cinder-color-picker__preview');
+    expect(preview.hasAttribute('data-cinder-alpha')).toBe(true);
+    expect(preview.getAttribute('style')).toContain('hsla(');
+  });
+
+  test('an alpha that stays translucent even at byte precision (e.g. 0.9) is translucent everywhere with format="hex"', () => {
+    const { container } = render(ColorPicker, {
+      value: 'rgba(255, 0, 0, 0.9)',
+      alpha: true,
+      format: 'hex',
+    });
+
+    const hidden = container.querySelector('input[type="hidden"]') as HTMLInputElement;
+    expect(hidden.value).toMatch(/^#ff0000[0-9a-f]{2}$/);
+
+    const preview = q<HTMLElement>(container, '.cinder-color-picker__preview');
+    expect(preview.hasAttribute('data-cinder-alpha')).toBe(true);
+    expect(preview.getAttribute('style')).toContain('hsla(');
   });
 });
 

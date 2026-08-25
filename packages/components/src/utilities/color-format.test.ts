@@ -6,6 +6,7 @@ import {
   formatColor,
   formatHex,
   isCanonicallyOpaque,
+  isOpaqueForFormat,
   parseCssColor,
   parseOklch,
   type RgbaComponents,
@@ -91,6 +92,39 @@ describe('canonicalAlpha / isCanonicallyOpaque (the shared 0.9995–1 boundary)'
       const seed: RgbaComponents = { r: 10, g: 20, b: 30, a };
       const emittedHasSlash = formatColor(seed, 'rgb').includes('/');
       expect(emittedHasSlash).toBe(!isCanonicallyOpaque(a));
+    }
+  });
+});
+
+// Review thread (PR #1420, PRRT_kwDOSKrFTs6b6r73): `format="hex"` quantizes
+// alpha to a BYTE (formatHex), not the 4-decimal `canonicalAlpha`/
+// `isCanonicallyOpaque` boundary every other format uses. 0.9996 is a case
+// where the two boundaries disagree: still translucent at 4 decimals, but
+// byte-opaque (0.9996 * 255 rounds to 255). `isOpaqueForFormat` must match
+// whichever boundary the CONFIGURED format actually uses, and every
+// alpha-dependent surface (preview, checkerboard, copy strings) must ask
+// this function with the current `format` rather than a fixed boundary.
+describe('isOpaqueForFormat (format-dependent opacity boundary)', () => {
+  test('0.9996 is opaque for format="hex" (byte quantization) but not for format="rgb" (4-decimal)', () => {
+    expect(isOpaqueForFormat(0.9996, 'hex')).toBe(true);
+    expect(isOpaqueForFormat(0.9996, 'rgb')).toBe(false);
+  });
+
+  test('matches formatHex’s own alpha-suffix decision across the byte boundary', () => {
+    for (const a of [0.99, 0.994, 0.995, 0.9959, 0.996, 0.9996, 0.9999, 1]) {
+      const seed: RgbaComponents = { r: 10, g: 20, b: 30, a };
+      const emittedHasAlphaByte = formatHex(seed).length > 7; // '#rrggbb' is 7 chars
+      expect(emittedHasAlphaByte).toBe(!isOpaqueForFormat(a, 'hex'));
+    }
+  });
+
+  test('non-hex formats fall back to the 4-decimal canonicalAlpha boundary, matching formatColor', () => {
+    for (const format of ['rgb', 'hsl', 'hwb', 'oklch'] as const) {
+      for (const a of [0.9994, 0.9996, 0.99999, 1]) {
+        const seed: RgbaComponents = { r: 10, g: 20, b: 30, a };
+        const emittedHasSlash = formatColor(seed, format).includes('/');
+        expect(emittedHasSlash).toBe(!isOpaqueForFormat(a, format));
+      }
     }
   });
 });

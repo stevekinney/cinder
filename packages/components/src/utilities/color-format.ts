@@ -143,6 +143,28 @@ export function isCanonicallyOpaque(alpha: number): boolean {
 }
 
 /**
+ * Whether `alpha` counts as opaque under the CONFIGURED format's own
+ * quantization — not always the 4-decimal `canonicalAlpha` boundary.
+ * `formatHex` quantizes alpha to a single byte (0-255): an alpha like
+ * `0.9996` is < 1 raw AND < 1 at 4-decimal precision, yet
+ * `Math.round(0.9996 * 255) === 255`, so `formatHex` emits the byte-opaque
+ * `#rrggbb` (no alpha suffix at all) for it. If every OTHER alpha-dependent
+ * surface (preview, checkerboard, RGB/HSL copy strings) instead asked
+ * `isCanonicallyOpaque` (4-decimal), they'd disagree with the format="hex"
+ * emitted value and show it as still translucent. Every caller that must
+ * agree with the actual emitted `value` — not just the emitted string
+ * itself — needs to ask THIS function with the currently configured
+ * `format`, not a single fixed boundary.
+ */
+export function isOpaqueForFormat(alpha: number, format: ColorOutputFormat): boolean {
+  if (format === 'hex') {
+    const byte = Math.max(0, Math.min(255, Math.round(alpha * 255)));
+    return byte >= 255;
+  }
+  return isCanonicallyOpaque(alpha);
+}
+
+/**
  * Format a canonical RGBA value in the requested CSS Color 4 syntax.
  * `hex` is handled separately by {@link formatHex} for readability, but is
  * accepted here too so callers can dispatch on `format` uniformly.

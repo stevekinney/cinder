@@ -244,13 +244,28 @@
     if (hadNoDraft) visibleText = nextHex;
   });
 
-  // ── formats runtime changes — display-only validation ───────────────────
+  // ── formats/format runtime changes — reconcile newly-admitted values ────
 
-  // A `formats` change only affects the input-time gate. It must never mutate
-  // committed state. If there's a current parse error, re-run the gate on the
-  // visible text and clear the error when the value now passes. `passesFormatGate`
-  // and `defaultErrorMessage` both read `acceptedFormats` through closure, so the
-  // effect re-runs on `formats` changes without an explicit dependency pin.
+  // A `formats`/`format` change can widen the effective accepted-input gate
+  // (recall `acceptedFormats` always unions in the configured `format` — see
+  // above), which can turn a previously-rejected `visibleText` into a valid
+  // one. If there's a current parse error, re-run the gate on the visible
+  // text. `passesFormatGate` and `defaultErrorMessage` both read
+  // `acceptedFormats` through closure, so this effect re-runs on
+  // `formats`/`format` changes without an explicit dependency pin.
+  //
+  // When the text now passes AND parses, this RECONCILES the committed
+  // state (swatch, hidden form mirror, `committedHex`) via `seedFromParts` —
+  // it does not merely clear the error. Merely clearing `parseError` would
+  // leave the field looking valid while `committedRgba`/`committedHex`
+  // stayed at their prior (never-committed) empty state: e.g. a controlled
+  // `oklch(...)` value with `formats={['hex']}` and `format="hex"` starts
+  // rejected (oklch isn't accepted and isn't the configured format yet); if
+  // format later switches to `"oklch"`, `acceptedFormats` now admits that
+  // same value, but the value was never seeded on mount because it was
+  // rejected then — this effect must seed it now, not just silence the
+  // error. `onValueChange` is never fired here, matching the alpha-effect's
+  // "never fire onValueChange on a config change" precedent below.
   $effect(() => {
     if (parseError === null) return;
     const text = visibleText.trim();
@@ -262,7 +277,14 @@
       parseError = defaultErrorMessage();
     } else {
       const parsed = parseInput(text);
-      parseError = parsed === null ? defaultErrorMessage() : null;
+      if (parsed === null) {
+        parseError = defaultErrorMessage();
+      } else {
+        seedFromParts(parsed);
+        parseError = null;
+        lastReconciledValue = committedHex;
+        value = committedHex;
+      }
     }
     syncCustomValidity();
   });

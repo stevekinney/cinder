@@ -1121,3 +1121,53 @@ describe('ColorField — format change preserves an in-progress draft (P1 regres
     expect(input.value).toBe('hsl(220 60% 50%)');
   });
 });
+
+// Review thread (PR #1420, PRRT_kwDOSKrFTs6b6r77): a controlled value
+// initially rejected by `formats` can become implicitly accepted once
+// `format` changes (recall `acceptedFormats` always unions in the
+// configured `format`). The "formats runtime change" effect used to only
+// clear `parseError` in that case, leaving `committedRgba`/`committedHex`
+// at their prior (never-seeded) empty state — the field looked valid, but
+// its swatch and hidden form mirror stayed empty until the user typed
+// something and committed again. The effect now reconciles (seeds) the
+// committed state via `seedFromParts` whenever the gate widens.
+describe('ColorField — format switch admits a previously-rejected value (P1 regression)', () => {
+  test('an oklch value rejected under formats=["hex"] + format="hex" is reconciled once format switches to "oklch"', async () => {
+    const oklchRed = 'oklch(62.8% 0.2577 29.23)';
+    const { container, rerender } = render(ColorField, {
+      id: 'color-widen',
+      name: 'widen',
+      value: oklchRed,
+      formats: ['hex'],
+      format: 'hex',
+    });
+    const input = getInput(container, 'color-widen');
+
+    // Initially rejected: 'oklch' is neither in `formats` nor the configured
+    // (hex) `format`.
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    let hidden = q<HTMLInputElement>(container, 'input[type="hidden"][name="widen"]');
+    expect(hidden.value).toBe('');
+    let swatch = q(container, '.cinder-color-field__swatch');
+    expect(swatch.hasAttribute('data-cinder-empty')).toBe(true);
+
+    // Switching `format` to "oklch" widens the effective accepted-input set
+    // to admit this exact value — the field must reconcile, not just clear
+    // the error.
+    await rerender({
+      id: 'color-widen',
+      name: 'widen',
+      value: oklchRed,
+      formats: ['hex'],
+      format: 'oklch',
+    });
+    await tick();
+
+    expect(input.getAttribute('aria-invalid')).not.toBe('true');
+    hidden = q<HTMLInputElement>(container, 'input[type="hidden"][name="widen"]');
+    expect(hidden.value).toMatch(/^oklch\(/);
+    expect(input.value).toMatch(/^oklch\(/);
+    swatch = q(container, '.cinder-color-field__swatch');
+    expect(swatch.hasAttribute('data-cinder-empty')).toBe(false);
+  });
+});

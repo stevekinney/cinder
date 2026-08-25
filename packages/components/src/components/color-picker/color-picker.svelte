@@ -27,7 +27,7 @@
     canonicalAlpha,
     formatColor,
     formatHex,
-    isCanonicallyOpaque,
+    isOpaqueForFormat,
   } from '../../utilities/color-format.ts';
   import ColorSwatchPicker from '../color-swatch-picker/color-swatch-picker.svelte';
   import ColorPickerControls from './color-picker-controls.svelte';
@@ -417,22 +417,32 @@
    * `onValueChange` / `onValueCommit` payloads follow `format`. Returns
    * `null` for an unparseable swatch.
    *
-   * Uses the swatch's alpha VERBATIM (not `gatedAlpha`) so this matches
-   * `currentHexForSwatches` below, which is also computed from the raw,
-   * possibly-retained `alphaValue` — not gated by the `alpha` affordance.
-   * Without this, a programmatically-retained translucent `value` (e.g.
-   * `alpha={false}` + `value="#ff000080"`, per the CIN-104 alpha-retention
-   * ruling) would never match an identically-translucent `swatches` entry:
-   * this function would gate it to `#ff0000` while `currentHexForSwatches`
-   * stayed at `#ff000080`, so `ColorSwatchPicker`'s exact-string equality
-   * check would never mark the matching option `aria-selected`. Gating by
-   * `alpha` still happens — correctly — at the moment a swatch is actually
-   * *committed* interactively (`handleSwatchChange` below), not here.
+   * The swatch's alpha is matched using whichever policy is CURRENTLY in
+   * effect for the committed value — not always verbatim, and not always
+   * `gatedAlpha`, because those two prior single-policy attempts each broke
+   * a different scenario:
+   *
+   * - `alpha === true`: always verbatim. `gatedAlpha` is a no-op here
+   *   anyway (see its definition above).
+   * - `alpha === false` AND the current `alphaValue` is itself translucent
+   *   (`< 1`): this can ONLY be a programmatically-RETAINED value (every
+   *   interactive commit path forces `alphaValue` to `1` when `alpha` is
+   *   false — see `applyHslaInteractive`) — verbatim, so an identical
+   *   translucent `swatches` entry still matches that retained value (the
+   *   CIN-104 alpha-retention ruling) without matching an opaque one.
+   * - `alpha === false` AND the current `alphaValue` is `1` (the ordinary
+   *   case, and what any interactive commit produces): gate the swatch's
+   *   alpha to `1` too. Otherwise, clicking a translucent swatch — which
+   *   `handleSwatchChange` correctly commits as opaque, since alpha is
+   *   disabled — would leave that same swatch's normalized color still
+   *   translucent, permanently mismatching the now-opaque committed value
+   *   and rendering the swatch the user just chose as unselected.
    */
   function normalizeSwatch(swatch: string): string | null {
     const parsed = parseToHsla(swatch);
     if (!parsed) return null;
-    return hexFor(parsed.h, parsed.s, parsed.l, parsed.a).toLowerCase();
+    const matchAlpha = alpha || alphaValue < 1 ? parsed.a : 1;
+    return hexFor(parsed.h, parsed.s, parsed.l, matchAlpha).toLowerCase();
   }
 
   /**
@@ -467,20 +477,25 @@
   // CIN-104 alpha-retention ruling on `applyHsla` above) must render and
   // copy consistently translucent even while the alpha slider is hidden.
   //
-  // Both the opacity GATE and the rounding PRECISION here must match
-  // `formatColor`'s exactly (`isCanonicallyOpaque`/`canonicalAlpha`, both at
-  // 4 decimals) — not a raw `alphaValue < 1` check or a differently-rounded
-  // display value. An alpha like 0.9996 canonicalizes to itself (still
-  // translucent) under `formatColor`'s 4-decimal precision, so the
-  // configured non-hex `format` correctly emits `/ 0.9996`; the old
-  // 3-decimal `roundFormatAlpha` (`Math.round(value * 1000) / 1000`) rounded
-  // that SAME 0.9996 up to exactly `1`, so these copy strings displayed
-  // `rgba(r, g, b, 1)` — an opaque-looking payload for a value the emitted
-  // `value` still correctly reported as translucent.
+  // The opacity GATE must agree with whatever the emitted `value` ACTUALLY
+  // shows — which depends on the configured `format`'s own quantization, not
+  // a single fixed boundary. `format="hex"` quantizes alpha to a byte (an
+  // alpha like 0.9996 rounds to the 0xff byte and emits plain #rrggbb, no
+  // alpha at all), while every other format uses `formatColor`'s 4-decimal
+  // `canonicalAlpha`/`isCanonicallyOpaque` boundary (where that SAME 0.9996
+  // is still < 1 and stays translucent). Gating these copy/preview strings
+  // on a fixed 4-decimal check regardless of `format` made the hex-format
+  // hidden value and HEX copy action report opaque while the RGB/HSL copy
+  // actions, preview, and checkerboard still reported translucent for the
+  // exact same color — `isOpaqueForFormat` is the single source of truth
+  // both decisions must agree on. The rounding PRECISION for the displayed
+  // fractional alpha (when translucent) still always uses `canonicalAlpha`
+  // (4 decimals) regardless of format — only the opaque/translucent
+  // decision itself is format-dependent.
   const formatRgb = $derived.by(() => {
     const { r, g, b } = hslToRgb(hue, saturation, lightnessValue);
     const channels = `${r}, ${g}, ${b}`;
-    return isCanonicallyOpaque(alphaValue)
+    return isOpaqueForFormat(alphaValue, format)
       ? `rgb(${channels})`
       : `rgba(${channels}, ${canonicalAlpha(alphaValue)})`;
   });
@@ -488,7 +503,7 @@
     return Math.round(value * 100) / 100;
   }
   const formatHsl = $derived(
-    isCanonicallyOpaque(alphaValue)
+    isOpaqueForFormat(alphaValue, format)
       ? `hsl(${roundFormatChannel(hue)}, ${roundFormatChannel(saturation)}%, ${roundFormatChannel(lightnessValue)}%)`
       : `hsla(${roundFormatChannel(hue)}, ${roundFormatChannel(saturation)}%, ${roundFormatChannel(lightnessValue)}%, ${canonicalAlpha(alphaValue)})`,
   );
@@ -541,16 +556,17 @@
   // ── Visual derived data ─────────────────────────────────────────────────
 
   const hueColor = $derived(`hsl(${hue}, 100%, 50%)`);
-  // Keys off `isCanonicallyOpaque(alphaValue)`, not the `alpha` prop and not
-  // a raw `alphaValue < 1` check — see the note on `formatRgb`/`formatHsl`
-  // above. Must agree with the emitted `value`/copy strings on the SAME
-  // 0.9995–1 canonicalization boundary, or the preview (and the checkerboard
-  // gate in color-picker-controls.svelte, which reads this same alphaValue)
-  // would show translucent for a value everything else reports as opaque.
+  // Keys off `isOpaqueForFormat(alphaValue, format)`, not the `alpha` prop
+  // and not a fixed boundary — see the note on `formatRgb`/`formatHsl`
+  // above. Must agree with the emitted `value`/copy strings on the SAME,
+  // format-dependent opacity boundary, or the preview (and the checkerboard
+  // gate in color-picker-controls.svelte, which reads this same
+  // `isOpaqueForFormat` decision) would disagree with what the emitted
+  // value/copy strings report for the exact same color.
   const previewColor = $derived(
     internalValue === ''
       ? 'transparent'
-      : isCanonicallyOpaque(alphaValue)
+      : isOpaqueForFormat(alphaValue, format)
         ? `hsl(${hue}, ${saturation}%, ${lightnessValue}%)`
         : `hsla(${hue}, ${saturation}%, ${lightnessValue}%, ${canonicalAlpha(alphaValue)})`,
   );
@@ -583,6 +599,7 @@
     {previewId}
     {disabled}
     {alpha}
+    {format}
     {hue}
     {saturation}
     {lightnessValue}
