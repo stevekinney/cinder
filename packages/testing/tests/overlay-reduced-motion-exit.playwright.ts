@@ -70,7 +70,14 @@ test('Tooltip hides immediately under reduced motion', async ({ page }) => {
   const trigger = overview.getByRole('button', { name: 'Hover me' }).first();
   await trigger.hover();
 
-  const tip = overview.getByText('This is a helpful explanation.');
+  // Resolved via the trigger's OWN `aria-describedby`, not text/region
+  // scoping — see `overlay-exit-transition.playwright.ts`'s companion test
+  // for why (the "Examples" section mounts an identical second tooltip with
+  // the same text, and CI run 32799420793 showed region+text scoping still
+  // resolving to that wrong, permanently-closed instance).
+  const describedBy = await trigger.getAttribute('aria-describedby');
+  if (!describedBy) throw new Error('Tooltip trigger has no aria-describedby.');
+  const tip = page.locator(`#${describedBy}`);
   await expect(tip).toHaveAttribute('data-cinder-position-ready', 'true');
 
   await page.mouse.move(0, 0);
@@ -99,6 +106,17 @@ test('HoverCard unmounts immediately under reduced motion', async ({ page }) => 
   await expect(card).toHaveAttribute('data-cinder-position-ready', 'true');
 
   await page.mouse.move(0, 0);
+
+  // HoverCard debounces its close behind a REAL `closeDelay` (150ms by
+  // default) `setTimeout` — a legitimate hover-intent guard, not part of the
+  // exit-TRANSITION lifecycle under test. That real timer has to elapse
+  // before `setOpen(false)` (and with it, the exit machinery) even starts,
+  // so polling for `data-cinder-closing` to appear is correct here — it's
+  // only the step AFTER that (does the exit transition itself finish
+  // immediately under reduced motion) that must be checked without
+  // polling, or a regressed ~120ms non-reduced transition would also pass
+  // within the poll's window.
+  await expect(card).toHaveAttribute('data-cinder-closing', '');
 
   const stillPresent = await page.evaluate(async () => {
     await Promise.resolve();

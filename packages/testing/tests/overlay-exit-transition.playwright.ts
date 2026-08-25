@@ -81,11 +81,16 @@ test('Tooltip renders data-cinder-closing during its exit transition, then hides
   const trigger = overview.getByRole('button', { name: 'Hover me' }).first();
   await trigger.hover();
 
-  // Scoped to the Overview region (via its accessible label, since the panel
-  // portals to `document.body` and isn't a DOM descendant): the
-  // "Examples" section further down the same page mounts this identical
-  // "basic" example a second time, and a plain text filter matches both.
-  const tip = overview.getByText('This is a helpful explanation.');
+  // Resolved via the trigger's OWN `aria-describedby` (tooltip.svelte wires
+  // it to the panel's `id`), not text/region scoping: the "Examples" section
+  // further down the same page mounts this identical "basic" example a
+  // second time, with its own tooltip carrying the same text — region- or
+  // text-based scoping isn't reliably disambiguating (CI run 32799420793
+  // still resolved to the WRONG, permanently-closed tooltip this way). An
+  // id derived straight from the hovered trigger can't be ambiguous.
+  const describedBy = await trigger.getAttribute('aria-describedby');
+  if (!describedBy) throw new Error('Tooltip trigger has no aria-describedby.');
+  const tip = page.locator(`#${describedBy}`);
   await expect(tip).toHaveAttribute('data-cinder-position-ready', 'true');
 
   // Move away to trigger the hide/close path.
