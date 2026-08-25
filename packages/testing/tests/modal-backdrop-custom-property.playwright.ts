@@ -37,12 +37,21 @@
  *   3. `::backdrop`-level override — this MUST work in every engine, since
  *      the property is declared directly on the exact pseudo-element being
  *      queried; no inheritance involved at all.
- *   4. `:root`-scoped override — ordinary DOM inheritance from `:root` down
- *      to `.cinder-modal` (a real element) always works reliably; whether
- *      that value further reaches `::backdrop` is the same
- *      engine-dependent question as scenario 2. Either way, the value must
- *      not be "invalid"/garbage — this proves the self-reference removal
- *      didn't just move the cycle bug to a different scenario.
+ *   4. `:root`-scoped override — this does NOT reach `.cinder-modal` via
+ *      ordinary inheritance the way it might look: BASE_CSS's own
+ *      `.cinder-modal { --cinder-modal-backdrop: var(--cinder-overlay-backdrop); }`
+ *      redeclares the property directly on `.cinder-modal`, and a
+ *      redeclaration on a more specific rule always wins the cascade over
+ *      an inherited value, regardless of inheritance — so `.cinder-modal`'s
+ *      own computed `--cinder-modal-backdrop` is always the plain default,
+ *      never the `:root` override. What this scenario actually tests is
+ *      whether `::backdrop` — which is not a DOM descendant of
+ *      `.cinder-modal` in the normal inheritance sense — picks up the
+ *      `:root` value DIRECTLY, bypassing `.cinder-modal`'s redeclaration
+ *      entirely. That's the same engine-dependent question as scenario 2,
+ *      just approached from `:root` instead of the class. Either way, the
+ *      value must not be "invalid"/garbage — this proves the self-reference
+ *      removal didn't just move the cycle bug to a different scenario.
  */
 import { expect, test } from '@playwright/test';
 
@@ -137,9 +146,14 @@ test.describe('Modal --cinder-modal-backdrop custom-property cascade (no cycle)'
   });
 
   test(':root-scoped override does not throw or produce an invalid value', async ({ page }) => {
-    // Same engine-dependent caveat as the class-level case above — the
-    // regression this guards against is the cycle, not a specific
-    // inheritance outcome.
+    // BASE_CSS's `.cinder-modal` rule redeclares `--cinder-modal-backdrop`
+    // itself, which always wins the cascade over this `:root` value at
+    // `.cinder-modal` — so this scenario isn't really "does :root cascade
+    // down to .cinder-modal" (it doesn't, by construction). It's "does
+    // `::backdrop` pick up the `:root` value directly", the same
+    // engine-dependent inheritance question as the class-level case above,
+    // just sourced from `:root` instead. The regression this guards against
+    // is the cycle, not a specific inheritance outcome.
     await page.setContent(buildHtml('', `--cinder-modal-backdrop: ${ROOT_OVERRIDE_COLOR}`));
     const color = await backdropBackgroundColor(page);
     expect(color).not.toBe('rgba(0, 0, 0, 0)');

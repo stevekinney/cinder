@@ -1770,6 +1770,28 @@ describe('Modal chromeless mode (chrome="none")', () => {
       /\.cinder-modal__footer\[data-cinder-chrome='none'\]\s*\{[^}]*border-block-start:\s*none;/s,
     );
   });
+
+  test('modal.css provides a fallback scrim for the SSR pre-hydration window, scoped to chromeless + the SSR open attribute only', async () => {
+    // Regression: `<dialog open>` (the SSR-emitted `open` attribute — see
+    // modal.svelte's `!browser && open` spread) is not a real top-layer
+    // modal until the client's one-time upgrade effect promotes it via
+    // `showModal()`. `::backdrop` is a `showModal()`-only construct, so it
+    // does not exist during that window — a chromeless consumer relying
+    // entirely on `::backdrop` for its scrim would show controls directly
+    // over the page with no dimming until hydration completes.
+    const css = await Bun.file(new URL('./modal.css', import.meta.url)).text();
+
+    // Selector matches ONLY chromeless + the SSR-only `open` attribute +
+    // "not actually shown via showModal() yet" — never a real, hydrated
+    // modal (which would be `:modal`) and never default chrome (whose
+    // dialog box is not the full-bleed surface, and whose panel already
+    // carries its own opaque background — painting a fallback there would
+    // just tint a small box around the panel, not dim the page).
+    expect(css).toContain("[data-cinder-chrome='none'][open]:not(:modal)");
+    expect(css).toMatch(
+      /\[data-cinder-chrome='none'\]\[open\]:not\(:modal\)\s*\{[^}]*background-color:\s*var\(--cinder-modal-backdrop,\s*var\(--cinder-overlay-backdrop\)\);/s,
+    );
+  });
 });
 
 describe('Modal nameless-dialog dev warning', () => {

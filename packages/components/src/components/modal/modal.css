@@ -115,6 +115,30 @@
     }
   }
 
+  /* SSR pre-hydration fallback scrim. `<dialog open>` (the SSR-emitted
+   * `open` attribute — see modal.svelte's `!browser && open` spread) is not
+   * a real top-layer modal until the client's one-time upgrade effect
+   * promotes it via `showModal()`; `::backdrop` is a `showModal()`-only
+   * construct, so it does not exist at all during this pre-hydration
+   * window. A chromeless consumer whose scrim relies entirely on
+   * `::backdrop` would show its content directly over the page with no
+   * dimming until hydration completes. Paint the same backdrop color
+   * directly on the dialog element itself for this window ONLY —
+   * `:not(:modal)` stops matching the instant `showModal()` promotes it (or
+   * the client's upgrade effect strips the `open` attribute first,
+   * whichever the engine settles), so this never coexists with the real
+   * `::backdrop` painted above.
+   *
+   * Scoped to chromeless mode only: default chrome's dialog box is NOT the
+   * full-bleed surface — it's `margin: auto`, capped at
+   * `min(90vw, 32rem)` — so painting a backdrop color there would just tint
+   * a small box around the panel rather than dim the page, and the panel
+   * already carries its own opaque surface color, so there is no
+   * readability problem to solve there in the first place. */
+  .cinder-modal[data-cinder-chrome='none'][open]:not(:modal) {
+    background-color: var(--cinder-modal-backdrop, var(--cinder-overlay-backdrop));
+  }
+
   /* ----------------------------------------
  * Panel (the visible card inside the dialog)
  * ---------------------------------------- */

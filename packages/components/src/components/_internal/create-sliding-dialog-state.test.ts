@@ -97,4 +97,71 @@ describe('createSlidingDialogState', () => {
     await tick();
     expect(closedCount).toBe(1);
   });
+
+  test('does not fire onClosed when reopened during the deferred window between #finishClosing and its tick()-deferred callback', async () => {
+    // Regression (PR #1422 review, round 18): `#finishClosing()` resets
+    // `isClosing` to false and calls `dialogElement.close()` SYNCHRONOUSLY,
+    // but defers its `onClosed` forwarding call past a `tick()`. If `open`
+    // flips back to true during that deferred window — after `isClosing` is
+    // already false and the dialog is already closed, but before the tick's
+    // flush lands — `syncOpenState()`'s old generation-bump logic (gated on
+    // `isClosing` alone) never ran, so the stale deferred callback would
+    // still fire `onClosed`, signaling "exit complete" for a Modal that is
+    // actually freshly open again.
+    let open = false;
+    let closedCount = 0;
+    let onOpenCount = 0;
+    const dialogElement = createDialogElement();
+    const dialogState = createSlidingDialogState({
+      getOpen: () => open,
+      setOpen: (next) => {
+        open = next;
+      },
+      getDialogElement: () => dialogElement,
+      // No panel element — `beginClosing()` finishes synchronously via
+      // `#finishClosing()` instead of going through a real transition,
+      // matching the "calls onClosed once per close cycle" test above and
+      // letting this test control the exact reopen timing deterministically.
+      getPanelElement: () => undefined,
+      getReducedMotion: () => true,
+      getTriggerRef: () => null,
+      onOpen: () => {
+        onOpenCount += 1;
+      },
+      onClosed: () => {
+        closedCount += 1;
+      },
+    });
+
+    open = true;
+    dialogState.syncOpenState();
+    expect(dialogElement.open).toBe(true);
+    expect(onOpenCount).toBe(1);
+
+    // Close: `beginClosing()` has no panel element, so `#finishClosing()`
+    // runs synchronously right here — `isClosing` is reset to false and the
+    // native dialog is closed before this call returns, but `onClosed` is
+    // only scheduled (deferred past a `tick()` that hasn't resolved yet).
+    open = false;
+    dialogState.syncOpenState();
+    expect(dialogState.isClosing).toBe(false);
+    expect(dialogElement.open).toBe(false);
+    expect(closedCount).toBe(0);
+
+    // Reopen DURING the deferred window, before the tick() above resolves.
+    open = true;
+    dialogState.syncOpenState();
+    expect(dialogElement.open).toBe(true);
+    expect(dialogState.renderPanel).toBe(true);
+    expect(onOpenCount).toBe(2);
+
+    // Let the original close cycle's deferred callback settle.
+    await tick();
+
+    // The stale onClosed must NOT have fired — the dialog is genuinely open
+    // again, not exited.
+    expect(closedCount).toBe(0);
+    expect(dialogElement.open).toBe(true);
+    expect(dialogState.renderPanel).toBe(true);
+  });
 });

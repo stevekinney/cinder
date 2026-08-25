@@ -57,8 +57,25 @@ export class SlidingDialogState {
     if (!dialogElement) return;
 
     if (this.#options.getOpen()) {
-      if (this.isClosing) {
+      // A fresh open observed while EITHER a close was still mid-transition
+      // (`isClosing`) OR the native dialog had already fully closed
+      // (`!dialogElement.open`) must invalidate any close cycle in flight.
+      // The second case matters even when `isClosing` is already false:
+      // `#finishClosing()` resets `isClosing` and closes the native dialog
+      // SYNCHRONOUSLY, but defers its `onClosed` forwarding call past a
+      // `tick()`. If `open` flips back to true during that deferred window
+      // (before the tick's flush lands), this branch runs with `isClosing`
+      // already false — bumping the generation only in the `isClosing`
+      // branch below would miss it entirely, and the stale deferred
+      // callback would still fire `onClosed` even though the dialog is
+      // freshly open again. Bumping here, keyed on the dialog element's own
+      // closed state rather than `isClosing` alone, covers both cases.
+      const wasClosingOrClosed = this.isClosing || !dialogElement.open;
+      if (wasClosingOrClosed) {
         this.#closeGeneration += 1;
+      }
+
+      if (this.isClosing) {
         this.#cancelPendingClose?.();
         this.#cancelPendingClose = null;
         this.isClosing = false;
@@ -192,7 +209,16 @@ export class SlidingDialogState {
     // promise, so there is no value to return.
     // oxlint-disable-next-line promise/always-return
     void tick().then(() => {
-      if (closedGeneration !== this.#closeGeneration) {
+      // Generation check first (cheap, and covers the common case). Also
+      // re-verify the modal is actually STILL closed right now — belt and
+      // suspenders alongside the generation bump on the reopen path above,
+      // in case some future reopen path forwards to `setOpen`/`renderPanel`
+      // without going through `syncOpenState()`'s generation bump.
+      if (
+        closedGeneration !== this.#closeGeneration ||
+        this.#options.getOpen() ||
+        this.renderPanel
+      ) {
         return;
       }
       try {

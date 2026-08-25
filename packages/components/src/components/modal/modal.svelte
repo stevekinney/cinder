@@ -124,13 +124,19 @@
   // modal is actually visible in the served HTML instead of `display:none`
   // per UA default styles until the client calls `showModal()`. A plain
   // attribute-open dialog is not a real top-layer modal, though — no
-  // backdrop, no focus trap, no scroll lock, no escape-stack entry. Strip
-  // the attribute (not `.close()` — that would fire the native `close`
-  // event and route through `dialogState.handleClose()` as if a user had
-  // dismissed it) so `dialogElement.open` reads false again; the
-  // `syncOpenState()` effect below then takes its normal `!dialogElement.open`
-  // branch and promotes it to a genuine `showModal()` dialog with all the
-  // associated side effects. Runs once per mount, before `syncOpenState()`.
+  // `::backdrop` (that's a `showModal()`-only construct), no focus trap, no
+  // scroll lock, no escape-stack entry. modal.css's
+  // `.cinder-modal[data-cinder-chrome='none'][open]:not(:modal)` rule covers
+  // the missing-`::backdrop` gap for chromeless consumers by painting the
+  // same backdrop color directly on the dialog element for exactly this
+  // window; stripping the attribute here is what makes that CSS selector
+  // stop matching. Strip the attribute (not `.close()` — that would fire
+  // the native `close` event and route through `dialogState.handleClose()`
+  // as if a user had dismissed it) so `dialogElement.open` reads false
+  // again; the `syncOpenState()` effect below then takes its normal
+  // `!dialogElement.open` branch and promotes it to a genuine
+  // `showModal()` dialog with all the associated side effects. Runs once
+  // per mount, before `syncOpenState()`.
   $effect(() => {
     if (!browser) return;
     if (dialogElement?.hasAttribute('open')) {

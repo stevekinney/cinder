@@ -74,6 +74,25 @@ describe('ImageLightbox SSR contract', () => {
     expect(dialogOpenTag).toMatch(/[\s]open(=["'][^"']*["'])?[\s/>]/);
   });
 
+  test('an initially-open lightbox server-renders BOTH the `open` attribute and data-cinder-chrome="none" together, so modal.css\'s SSR fallback scrim selector actually matches', async () => {
+    // ImageLightbox always renders Modal with chrome="none" (see
+    // image-lightbox.svelte). modal.css's
+    // `.cinder-modal[data-cinder-chrome='none'][open]:not(:modal)` fallback
+    // scrim rule (CIN-377 review, round 18) depends on both attributes
+    // being present on the SAME server-rendered `<dialog>` tag — a
+    // regression that dropped either one silently would leave a chromeless,
+    // pre-hydration lightbox with no dimming behind its content.
+    const html = await renderToServerHtml(sourcePath, {
+      images,
+      initialIndex: 0,
+      open: true,
+    });
+
+    const dialogOpenTag = extractDialogOpenTag(html);
+    expect(dialogOpenTag).toMatch(/[\s]open(=["'][^"']*["'])?[\s/>]/);
+    expect(dialogOpenTag).toContain('data-cinder-chrome="none"');
+  });
+
   test('an initially-open lightbox honors a non-zero initialIndex on the server', async () => {
     const html = await renderToServerHtml(sourcePath, {
       images,
