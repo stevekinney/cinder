@@ -11,33 +11,28 @@ import { expect, test } from '@playwright/test';
  * zero-duration tokens would never fire. See `_internal/OVERLAY-POLICY.md` §
  * "Transition lifecycle".
  *
- * Navigates with `?view=playground` (the documentation page's live-preview
- * tab — see `packages/playground/src/component-page-live-preview.ts`), NOT
- * `?snapshot=1`: `packages/playground/src/snapshot-mode.ts` forces every
- * descendant's `transition-duration`/`transition-delay` to `0s !important`
- * regardless of the browser context's `reducedMotion` preference, so a
- * `?snapshot=1` page takes the immediate-completion path unconditionally —
- * these tests would still pass even if reduced-motion detection were
- * entirely broken. `?view=playground` preserves real, live transitions, so
- * this project's `reducedMotion: 'reduce'` context setting is the only thing
- * collapsing them to instant, and the reduced-motion detection under test
- * (`useReducedMotion()` feeding `getReducedMotion()`) is what's actually
- * exercised. The companion `overlay-exit-transition.playwright.ts` (default
- * `chromium` project, `reducedMotion: 'no-preference'`) is the other half of
- * the pair — same pages, opposite motion preference, genuinely different
- * code paths in both directions now.
- *
- * Uses plain `page.goto` (not the `componentPage` fixture) since the
- * fixture's own `themeContextOptions` would otherwise force `reduce`
- * regardless of the project, and always navigates with `?snapshot=1` — here
- * the project setting IS the thing under test, and snapshot mode is exactly
- * what defeats it.
+ * Navigates to the plain documentation page (`/page/<slug>`, no
+ * `?snapshot=1`, no `?view=playground`) and scopes locators to
+ * `#overview-mount-basic` — see the companion
+ * `overlay-exit-transition.playwright.ts` (default `chromium` project) for
+ * the full reasoning: `?snapshot=1` forces every transition to `0s
+ * !important` regardless of the actual `reducedMotion` context (which is
+ * exactly what these tests need to be sensitive to), and `?view=playground`
+ * either bare-mounts some components with no real content (Tooltip) or
+ * behind a stage width that never engages the collapsed-mobile breakpoint
+ * (NavigationBar) or a compound-children shape the generic prop synthesizer
+ * can't produce (Speed Dial's actions). The Overview preview is always the
+ * real example, hydrated and interactive, flowing with the actual page
+ * width — same pages as the default-motion project, opposite `reducedMotion`
+ * context, genuinely different code paths in both directions now.
  */
 
 test('Popover unmounts immediately under reduced motion', async ({ page }) => {
-  await page.goto('/page/popover?view=playground', { waitUntil: 'load' });
+  await page.goto('/page/popover', { waitUntil: 'load' });
+  const overview = page.locator('#overview-mount-basic');
+  await expect(overview).toHaveAttribute('data-overview-preview-rendered', '');
 
-  const trigger = page.getByRole('button', { name: 'Account settings' }).first();
+  const trigger = overview.getByRole('button', { name: 'Account settings' }).first();
   await trigger.click();
 
   const panel = page.locator('.cinder-popover').first();
@@ -49,9 +44,11 @@ test('Popover unmounts immediately under reduced motion', async ({ page }) => {
 });
 
 test('Tooltip hides immediately under reduced motion', async ({ page }) => {
-  await page.goto('/page/tooltip?view=playground', { waitUntil: 'load' });
+  await page.goto('/page/tooltip', { waitUntil: 'load' });
+  const overview = page.locator('#overview-mount-basic');
+  await expect(overview).toHaveAttribute('data-overview-preview-rendered', '');
 
-  const trigger = page.getByRole('button', { name: 'Hover me' }).first();
+  const trigger = overview.getByRole('button', { name: 'Hover me' }).first();
   await trigger.hover();
 
   const tip = page.locator('.cinder-tooltip').first();
@@ -63,9 +60,11 @@ test('Tooltip hides immediately under reduced motion', async ({ page }) => {
 });
 
 test('HoverCard unmounts immediately under reduced motion', async ({ page }) => {
-  await page.goto('/page/hover-card?view=playground', { waitUntil: 'load' });
+  await page.goto('/page/hover-card', { waitUntil: 'load' });
+  const overview = page.locator('#overview-mount-basic');
+  await expect(overview).toHaveAttribute('data-overview-preview-rendered', '');
 
-  const trigger = page.getByRole('button', { name: 'Ada Lovelace' }).first();
+  const trigger = overview.getByRole('button', { name: 'Ada Lovelace' }).first();
   await trigger.hover();
 
   const card = page.locator('.cinder-hover-card').first();
@@ -78,9 +77,11 @@ test('HoverCard unmounts immediately under reduced motion', async ({ page }) => 
 
 test('NavigationBar mobile panel hides immediately under reduced motion', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/page/navigation-bar?view=playground', { waitUntil: 'load' });
+  await page.goto('/page/navigation-bar', { waitUntil: 'load' });
+  const overview = page.locator('#overview-mount-basic');
+  await expect(overview).toHaveAttribute('data-overview-preview-rendered', '');
 
-  const toggle = page.getByRole('button', { name: 'Open menu' }).first();
+  const toggle = overview.getByRole('button', { name: 'Open menu' }).first();
   await toggle.click();
 
   const panel = page
@@ -94,9 +95,11 @@ test('NavigationBar mobile panel hides immediately under reduced motion', async 
 });
 
 test('SpeedDial actions become inert immediately under reduced motion', async ({ page }) => {
-  await page.goto('/page/speed-dial?view=playground', { waitUntil: 'load' });
+  await page.goto('/page/speed-dial', { waitUntil: 'load' });
+  const overview = page.locator('#overview-mount-basic');
+  await expect(overview).toHaveAttribute('data-overview-preview-rendered', '');
 
-  const toggle = page.getByRole('button', { name: 'Quick actions' }).first();
+  const toggle = overview.getByRole('button', { name: 'Quick actions' }).first();
   await toggle.click();
 
   const actions = page

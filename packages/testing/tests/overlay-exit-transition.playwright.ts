@@ -7,30 +7,52 @@ import { expect, test } from '@playwright/test';
  * `data-cinder-closing` for the duration of its real exit transition, then
  * actually unmount/hide once it finishes — not snap away instantly.
  *
- * Navigates with `?view=playground` (the documentation page's live-preview
- * tab), NOT `?snapshot=1` (used by the `componentPage` fixture, and by an
- * earlier revision of this file): `packages/playground/src/snapshot-mode.ts`
- * forces every descendant's `transition-duration`/`transition-delay` to
- * `0s !important`, so a `?snapshot=1` page takes the immediate-completion
- * path regardless of the browser context's `reducedMotion` setting — these
- * tests would pass even if the exit-transition lifecycle itself were broken,
- * since nothing would ever be observably "still closing". `?view=playground`
- * preserves real, live transitions, and this project's default
- * `reducedMotion: 'no-preference'` context is what actually lets
- * `data-cinder-closing` be observed mid-flight rather than resolving on the
- * next microtask. The companion `chromium-reduced-motion` project
- * (`overlay-reduced-motion-exit.playwright.ts`) covers the opposite case:
- * immediate unmount when motion IS reduced — same pages, opposite
- * `reducedMotion` context setting, genuinely different code paths in both
- * directions now.
+ * Navigates to the plain documentation page (`/page/<slug>`, no `?snapshot=1`
+ * and no `?view=playground`) and scopes every locator to
+ * `#overview-mount-basic` — the "Overview" section's live preview
+ * (`packages/playground/src/component-page.svelte`), which mounts the
+ * component's real, first/"basic" example (`overviewExample =
+ * explicitlyFeatured[0] ?? examples[0]`) as a single, fully-hydrated,
+ * interactive instance:
+ *
+ * - `?snapshot=1` (used by an earlier revision of this file, and by the
+ *   `componentPage` fixture) is explicitly what SUPPRESSES this preview
+ *   (`overviewExample` is `undefined` in snapshot mode) — it also forces
+ *   every descendant's transition duration/delay to `0s !important`
+ *   (`packages/playground/src/snapshot-mode.ts`), which would make these
+ *   tests pass even if the exit-transition lifecycle itself were broken.
+ * - `?view=playground` (the documentation page's separate "Playground" tab,
+ *   used by an earlier revision of this file) mounts the component BARE with
+ *   SYNTHESIZED props instead of the real example markup whenever the
+ *   component's own manifest allows it (`canBareMount`) — which silently
+ *   produces a real interactive instance for some components (Popover,
+ *   HoverCard: their `trigger` snippet prop isn't named `children`, so it's
+ *   an unsatisfiable REQUIRED prop and the mount falls back to the real
+ *   example) but NOT for Tooltip, whose `children` is OPTIONAL: an
+ *   unsatisfiable optional snippet prop doesn't block the bare mount, so it
+ *   mounts with no children at all — an empty, zero-size
+ *   `.cinder-tooltip-wrapper` with nothing to hover, which is exactly what
+ *   produced CI's `hover: Test timeout of 90000ms exceeded` failure.
+ *   NavigationBar's snippet props (`items`, etc.) ARE all required, so it
+ *   DOES fall back to the real example under `?view=playground` — but the
+ *   Playground tab's preview stage defaults to a wide fixed width
+ *   independent of the outer browser viewport, so its collapsed-mobile
+ *   breakpoint never engaged, producing CI's `click: Test timeout` on the
+ *   hidden (`display: none` below the breakpoint) menu toggle.
+ *
+ * The Overview preview sidesteps both problems: it's always the real example
+ * (never bare-mount-synthesized), and it isn't gated behind a fixed stage
+ * width — it flows with the actual page/viewport width like ordinary content.
  */
 
 test('Popover renders data-cinder-closing during its exit transition, then unmounts', async ({
   page,
 }) => {
-  await page.goto('/page/popover?view=playground', { waitUntil: 'load' });
+  await page.goto('/page/popover', { waitUntil: 'load' });
+  const overview = page.locator('#overview-mount-basic');
+  await expect(overview).toHaveAttribute('data-overview-preview-rendered', '');
 
-  const trigger = page.getByRole('button', { name: 'Account settings' }).first();
+  const trigger = overview.getByRole('button', { name: 'Account settings' }).first();
   await trigger.click();
 
   const panel = page.locator('.cinder-popover').first();
@@ -45,9 +67,11 @@ test('Popover renders data-cinder-closing during its exit transition, then unmou
 test('Tooltip renders data-cinder-closing during its exit transition, then hides', async ({
   page,
 }) => {
-  await page.goto('/page/tooltip?view=playground', { waitUntil: 'load' });
+  await page.goto('/page/tooltip', { waitUntil: 'load' });
+  const overview = page.locator('#overview-mount-basic');
+  await expect(overview).toHaveAttribute('data-overview-preview-rendered', '');
 
-  const trigger = page.getByRole('button', { name: 'Hover me' }).first();
+  const trigger = overview.getByRole('button', { name: 'Hover me' }).first();
   await trigger.hover();
 
   const tip = page.locator('.cinder-tooltip').first();
@@ -63,9 +87,11 @@ test('Tooltip renders data-cinder-closing during its exit transition, then hides
 test('HoverCard renders data-cinder-closing during its exit transition, then unmounts, and a reopen mid-close survives (CIN-376 defect fix)', async ({
   page,
 }) => {
-  await page.goto('/page/hover-card?view=playground', { waitUntil: 'load' });
+  await page.goto('/page/hover-card', { waitUntil: 'load' });
+  const overview = page.locator('#overview-mount-basic');
+  await expect(overview).toHaveAttribute('data-overview-preview-rendered', '');
 
-  const trigger = page.getByRole('button', { name: 'Ada Lovelace' }).first();
+  const trigger = overview.getByRole('button', { name: 'Ada Lovelace' }).first();
   await trigger.hover();
 
   const card = page.locator('.cinder-hover-card').first();
@@ -90,9 +116,11 @@ test('NavigationBar mobile panel plays its exit transition instead of snapping v
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/page/navigation-bar?view=playground', { waitUntil: 'load' });
+  await page.goto('/page/navigation-bar', { waitUntil: 'load' });
+  const overview = page.locator('#overview-mount-basic');
+  await expect(overview).toHaveAttribute('data-overview-preview-rendered', '');
 
-  const toggle = page.getByRole('button', { name: 'Open menu' }).first();
+  const toggle = overview.getByRole('button', { name: 'Open menu' }).first();
   await toggle.click();
 
   const panel = page

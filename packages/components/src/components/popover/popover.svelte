@@ -118,7 +118,27 @@
   // closing, or otherwise) is what actually closes that race.
   let lastAnchorElement: HTMLElement | null = null;
   $effect(() => {
-    if (anchorElement) lastAnchorElement = anchorElement;
+    if (anchorElement) {
+      lastAnchorElement = anchorElement;
+      return;
+    }
+    // The anchor went null while there's no active (open or closing) session
+    // to retain it for — e.g. the trigger disconnects while the Popover is
+    // already fully closed. Without this, a stale snapshot from a PREVIOUS
+    // session would sit around indefinitely, and a later controlled
+    // `open = true` with no fresh anchor would resolve to it — mounting and
+    // positioning a panel for what is effectively an anchorless open, even
+    // though the open-lifecycle effect (gated on the live `anchorElement`)
+    // correctly sees it as null and skips Escape/focus wiring. `onClosed`
+    // alone doesn't cover this: it only runs at the end of a close SESSION,
+    // and no session starts when the anchor disappears while already
+    // closed. Gated on `exitState.renderPanel` rather than `open` directly
+    // for the same effect-ordering reason as `resolvedAnchorElement`'s
+    // consumers below — it reads the CURRENT (not one-tick-stale) retention
+    // need.
+    if (!exitState.renderPanel) {
+      lastAnchorElement = null;
+    }
   });
   const resolvedAnchorElement = $derived(anchorElement ?? lastAnchorElement);
 
@@ -145,7 +165,14 @@
   // top-layer surface would then paint above the still-exiting Popover.
   let lastResolvedPortalTarget: HTMLElement | null = null;
   $effect(() => {
-    if (!anchorElement) return;
+    if (!anchorElement) {
+      // Same staleness guard as `lastAnchorElement` above: only clear when
+      // there's no active session to retain it for, so a genuine close
+      // transition (where `renderPanel` is still true) doesn't wipe the
+      // snapshot the exit transition needs.
+      if (!exitState.renderPanel) lastResolvedPortalTarget = null;
+      return;
+    }
     try {
       lastResolvedPortalTarget = findNearestOpenTopLayer(anchorElement) ?? document.body;
     } catch {
@@ -210,9 +237,30 @@
   });
 
   const anchoredOverlay = createAnchoredOverlay({
-    // `open || exitState.isClosing` keeps Floating UI positioning the panel
-    // while it fades/slides out.
-    open: () => open || exitState.isClosing,
+    // Gated on `exitState.renderPanel`, not `exitState.isClosing`: `$effect`s
+    // (where `exitState.sync()` runs, and where `isClosing` actually flips
+    // true) fire after a render has already committed. On every ordinary
+    // close, `open` becomes `false` in THIS render, one tick before
+    // `exitState.sync()` ever runs — so `isClosing` still reads its
+    // pre-close (false) value here, and `createAnchoredOverlay` would
+    // briefly take its closed path, hitting the
+    // `[data-cinder-position-ready='false']` CSS rule and disappearing for
+    // a tick before the async Floating UI recomputation restores it,
+    // interrupting the fade. `renderPanel` doesn't have this lag: it's a
+    // plain `$state` that's already `true` from the prior render and isn't
+    // reset until the completion callback actually fires. Matches the fix
+    // SelectionPopover already applies for the same effect-ordering race.
+    //
+    // A narrower residual gap remains, same as SelectionPopover's: `anchor()`
+    // reads `resolvedAnchorElement`, which depends on `anchorElement` — a
+    // `$derived` that explicitly tracks the `open` prop (to re-resolve a
+    // disabled-then-focusable snippet trigger on every open transition).
+    // `open` changing is itself a tracked-dependency change, so this effect
+    // still reruns and briefly tears down/rebuilds its position tracking
+    // even when `open()`/`anchor()`'s OVERALL results stay valid throughout
+    // — fully closing that would require decoupling `anchorElement` from
+    // `open` entirely, out of scope here.
+    open: () => open || exitState.renderPanel,
     anchor: () => resolvedAnchorElement,
     panel: () => panelElement,
     arrow: () => arrowElement,
