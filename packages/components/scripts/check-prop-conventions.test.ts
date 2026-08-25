@@ -372,11 +372,15 @@ describe('check-prop-conventions component-name directory scan', () => {
     expect(checkComponentNameForBarePluralShadow('avatar-status', existingNames)).toBeUndefined();
   });
 
-  test('does not attempt irregular-plural handling', () => {
+  test('does not attempt GENERAL irregular-plural handling (only the explicitly seeded suffixes)', () => {
     // "statistics" stripped of a trailing `s` only is "statistic" — which DOES
-    // exist and is correctly flagged. An irregular plural like "children" has
-    // no trailing `s` at all, so it is never even considered here; that is a
-    // deliberate scope limit, not a bug this check is responsible for.
+    // exist and is correctly flagged. A general irregular plural like
+    // "children" (for "child") has no trailing `s`, `-es`, or `-ies` shape,
+    // and no entry in IRREGULAR_PLURAL_SUFFIXES, so it is never considered
+    // here; that is a deliberate scope limit (general English irregular
+    // plurals stay out of scope), not a bug this check is responsible for.
+    // The seeded exception is `-ices` -> `-ix` (see the permission-matrix
+    // tests above), not a general irregular-plural table.
     const violation = checkComponentNameForBarePluralShadow('statistics', existingNames);
     expect(violation?.shadowedComponent).toBe('statistic');
   });
@@ -589,10 +593,49 @@ describe('check-prop-conventions component-name directory scan', () => {
   test('grandfathers tabs/tab and flags no other pair on the real component tree, including real namespace-only singulars', () => {
     // tabs collects Tab (via Tabs.Trigger) and predates the convention; it
     // must not fail the gate. This runs against the REAL directory tree (and
-    // the real namespace-only singulars, e.g. `_radio`'s `radio`), so it also
-    // proves no other existing pair collides — if a new component were ever
-    // added that shadowed an existing (or namespace-only) singular, this test
-    // would fail alongside `bun run check:prop-conventions`.
+    // the real namespace-only singulars, e.g. `_radio`'s `radio`) using the
+    // default frozen snapshot, so every current name is grandfathered by
+    // construction — this proves `check:prop-conventions` passes today, not
+    // that the underlying collision logic is collision-free (the next test
+    // covers that).
     expect(collectComponentNameShadowViolations()).toEqual([]);
+  });
+
+  test('no real candidate/namespace pair collides even with frozen-snapshot grandfathering disabled (aside from the tabs exception)', () => {
+    // Bypasses FROZEN_EXISTING_COMPONENT_NAMES entirely (passes an empty
+    // frozen set) so this still exercises the raw shadow-detection logic
+    // against the real directory tree, preserving the original collision
+    // audit that the frozen snapshot would otherwise make trivially pass.
+    // Only `tabs` (via GRANDFATHERED_COMPONENT_NAMES) is exempted.
+    const violations = collectComponentNameShadowViolations(
+      existingComponentDirectoryNames(),
+      namespaceOnlySingularNames(),
+      new Set(),
+    );
+    expect(violations).toEqual([]);
+  });
+
+  test('grandfathers a pre-existing mass-noun plural when its singular is added later (breadcrumbs then breadcrumb)', () => {
+    // Simulates the real regression: "breadcrumbs" is a legitimate mass-noun
+    // component that predates this check (frozen at introduction time). A
+    // later, unrelated change adds a new "breadcrumb" singular. Without the
+    // frozen-snapshot allowance, "breadcrumbs" would retroactively shadow
+    // "breadcrumb" and fail the gate for an addition that has nothing to do
+    // with it.
+    const frozen = new Set(['breadcrumbs']);
+    const candidates = new Set(['breadcrumbs', 'breadcrumb']);
+    const violations = collectComponentNameShadowViolations(candidates, new Set(), frozen);
+    expect(violations).toEqual([]);
+  });
+
+  test('still flags a genuinely new bare-plural candidate that is not in the frozen snapshot', () => {
+    // "widget" predates the snapshot; "widgets" does not (it is the new
+    // candidate being introduced), so it must still be rejected.
+    const frozen = new Set(['widget']);
+    const candidates = new Set(['widget', 'widgets']);
+    const violations = collectComponentNameShadowViolations(candidates, new Set(), frozen);
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.candidateName).toBe('widgets');
+    expect(violations[0]?.shadowedComponent).toBe('widget');
   });
 });

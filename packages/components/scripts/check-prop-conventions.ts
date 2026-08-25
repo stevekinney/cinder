@@ -713,8 +713,9 @@ const IRREGULAR_PLURAL_SUFFIXES = new Map<string, string>([
  * restoration first (`feed-boundaries` → `feed-boundary`), then the `-es`
  * strip on an x/ch/sh/s/z stem (`checkboxes` → `checkbox`) plus its
  * doubled-final-consonant variant (`quizzes` → `quizz` → `quiz`), then the
- * plain trailing-`s` strip (`avatars` → `avatar`). Returns each candidate at
- * most once.
+ * plain trailing-`s` strip (`avatars` → `avatar`), and finally the explicit
+ * `IRREGULAR_PLURAL_SUFFIXES` rewrites (`permission-matrices` →
+ * `permission-matrix`). Returns each candidate at most once.
  */
 function candidateSingulars(candidateName: string): string[] {
   const candidates: string[] = [];
@@ -812,6 +813,213 @@ export function checkComponentNameForBarePluralShadow(
 const GRANDFATHERED_COMPONENT_NAMES = new Set<string>(['tabs']);
 
 /**
+ * Snapshot of every component/namespace-only singular name that existed at
+ * the moment this shadow check shipped (PR #1416). Generated ONCE via
+ * `existingComponentDirectoryNames()` ∪ `namespaceOnlySingularNames()` and
+ * frozen here as a literal list — it must NEVER be regenerated
+ * automatically. Regenerating it on every run would defeat its purpose:
+ * legitimate mass-noun plurals already in the tree (`breadcrumbs`, `steps`,
+ * `keyboard-shortcuts`, …) do not compose a matching singular TODAY, but
+ * nothing stops a later, unrelated change from adding one (`breadcrumb`).
+ * Without this snapshot, that later addition would retroactively fail
+ * `check:prop-conventions` for the pre-existing plural, forcing an unrelated
+ * rename the naming convention explicitly says should never happen.
+ *
+ * Enforcement in `collectComponentNameShadowViolations()` applies only to a
+ * candidate name that is NOT in this snapshot — i.e. a genuinely new
+ * component directory introduced after the snapshot was captured. A name
+ * that predates the snapshot is never re-flagged, no matter what singular
+ * appears alongside it later.
+ */
+const FROZEN_EXISTING_COMPONENT_NAMES: ReadonlySet<string> = new Set([
+  'access-gate',
+  'accordion',
+  'accordion-item',
+  'action-row',
+  'alert',
+  'alert-dialog',
+  'approval-card',
+  'area-chart',
+  'aspect-ratio',
+  'autocomplete',
+  'avatar',
+  'avatar-group',
+  'backdrop',
+  'badge',
+  'banner',
+  'bar-chart',
+  'bento-cell',
+  'bento-grid',
+  'breadcrumbs',
+  'button',
+  'button-group',
+  'calendar',
+  'callout',
+  'capability-gate',
+  'card',
+  'carousel',
+  'checkbox',
+  'checkbox-group',
+  'chip',
+  'choice-grid',
+  'choice-grid-item',
+  'click-away-listener',
+  'code-block',
+  'collapsible',
+  'color-field',
+  'color-picker',
+  'color-swatch-picker',
+  'combobox',
+  'command-item',
+  'command-menu',
+  'command-palette',
+  'confirm-dialog',
+  'connection-indicator',
+  'container',
+  'context-menu',
+  'context-menu-trigger',
+  'copy-button',
+  'data-grid',
+  'data-list',
+  'data-table',
+  'date-picker',
+  'date-range-field',
+  'description-list',
+  'diff-statistics',
+  'divider',
+  'drawer',
+  'dropdown',
+  'dropdown-group',
+  'dropdown-item',
+  'dropdown-label',
+  'dropdown-menu',
+  'dropdown-separator',
+  'dropdown-trigger',
+  'empty-state',
+  'feed',
+  'feed-boundary',
+  'feed-event',
+  'file-upload',
+  'filter-bar',
+  'floating-action',
+  'focus-trap',
+  'footer',
+  'form-field',
+  'form-section',
+  'grid',
+  'grid-item',
+  'grid-list',
+  'grid-list-item',
+  'hover-card',
+  'image',
+  'inline-loading',
+  'input',
+  'invocation-rule-builder',
+  'json-editor',
+  'json-schema-editor',
+  'json-viewer',
+  'kanban-board',
+  'kbd',
+  'keyboard-shortcuts',
+  'label',
+  'line-chart',
+  'link',
+  'load-more',
+  'locale-provider',
+  'marquee',
+  'masonry',
+  'matrix-chart',
+  'media-controls',
+  'mega-menu',
+  'menu-bar',
+  'message',
+  'meter',
+  'modal',
+  'multi-select',
+  'navigation-bar',
+  'navigation-item',
+  'number-input',
+  'page-header',
+  'pagination',
+  'payload-inspector',
+  'permission-matrix',
+  'phone-input',
+  'pin-input',
+  'popover',
+  'portal',
+  'pricing-card',
+  'progress',
+  'qr-code',
+  'radio',
+  'radio-group',
+  'rating',
+  'resizable-panels',
+  'run-step-timeline',
+  'schedule-builder',
+  'schema-form',
+  'scroll-area',
+  'search-field',
+  'secret-value-field',
+  'section-heading',
+  'segment',
+  'segmented-control',
+  'select',
+  'selectable-row',
+  'selection-popover',
+  'share-card',
+  'shortcut-hint',
+  'side-navigation',
+  'side-navigation-group',
+  'side-navigation-item',
+  'sidebar',
+  'skeleton',
+  'skip-link',
+  'slider',
+  'sortable-list',
+  'source-diff-viewer',
+  'sparkbar',
+  'spectrogram',
+  'spectrum-chart',
+  'speed-dial',
+  'speed-dial-action',
+  'spinner',
+  'stacked-list-item',
+  'statistic',
+  'statistic-group',
+  'status-dot',
+  'steps',
+  'surface',
+  'tab',
+  'tab-list',
+  'tab-panel',
+  'table',
+  'table-body',
+  'table-cell',
+  'table-header',
+  'table-header-cell',
+  'table-of-contents',
+  'table-row',
+  'tabs',
+  'tag-input',
+  'textarea',
+  'time-field',
+  'timeline',
+  'timeline-item',
+  'toast-region',
+  'toggle',
+  'toolbar',
+  'tooltip',
+  'transfer-list',
+  'tree',
+  'tree-expand-all',
+  'tree-item',
+  'tree-select-all',
+  'virtual-list',
+  'visually-hidden',
+  'waveform',
+]);
+
+/**
  * Scans every existing component directory name (the CANDIDATES) against a
  * membership set built from those same directory names PLUS
  * `namespaceOnlySingularNames()` — so a newly added bare-plural directory
@@ -823,15 +1031,22 @@ const GRANDFATHERED_COMPONENT_NAMES = new Set<string>(['tabs']);
  * component proposal — but they DO belong in the membership set, so e.g. a
  * new `radios` directory still shadows `radio` even though there is no
  * public `radio` directory to discover.
+ *
+ * A candidate already present in `FROZEN_EXISTING_COMPONENT_NAMES` is never
+ * flagged, regardless of what singular exists alongside it — that grandfathers
+ * every pre-existing mass-noun plural (see that constant's doc) so adding a
+ * new singular later never forces an unrelated rename of an older plural.
  */
 export function collectComponentNameShadowViolations(
   candidateNames: ReadonlySet<string> = existingComponentDirectoryNames(),
   namespaceOnlyNames: ReadonlySet<string> = namespaceOnlySingularNames(),
+  frozenNames: ReadonlySet<string> = FROZEN_EXISTING_COMPONENT_NAMES,
 ): ComponentNameShadowViolation[] {
   const membershipNames = new Set<string>([...candidateNames, ...namespaceOnlyNames]);
   const violations: ComponentNameShadowViolation[] = [];
   for (const name of candidateNames) {
     if (GRANDFATHERED_COMPONENT_NAMES.has(name)) continue;
+    if (frozenNames.has(name)) continue;
     // No self-exclusion needed: every derived singular (trailing-`s`, `-es`,
     // or `-ies`→`y` strip) differs from the original name — the first two are
     // strictly shorter and the `-ies` form swaps its suffix — so
