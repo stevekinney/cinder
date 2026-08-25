@@ -315,8 +315,9 @@
       // this the one-time, non-reactive snapshot read it was always meant to
       // be, matching the `hasOpenedOnce`/`sessionImage` seeds' own use of
       // `untrack()` for the identical reason.
-      if (untrack(() => images[effectiveIndex])) {
-        sessionImage = untrack(() => images[effectiveIndex]);
+      const snapshotImage = untrack(() => images[effectiveIndex]);
+      if (snapshotImage) {
+        sessionImage = snapshotImage;
       }
     } else {
       resetAppliedForCurrentSession = false;
