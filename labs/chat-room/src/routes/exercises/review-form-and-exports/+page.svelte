@@ -117,7 +117,13 @@ The first release includes a dashboard, export actions, and inline review.
 		return {
 			keys: entries.map(([key]) => key),
 			values: Object.fromEntries(
-				entries.map(([key, entry]) => [key, typeof entry === 'string' ? entry : entry.name])
+				entries.map(([key, entry]) => {
+					// TypeScript 5.9's lib.dom types FormData entries as plain strings, so
+					// narrow through an explicit union rather than typeof to keep the File
+					// branch checkable under both that lib and newer ones that include File.
+					const value = entry as string | File;
+					return [key, typeof value === 'string' ? value : value.name];
+				})
 			)
 		};
 	}
