@@ -137,7 +137,11 @@
 	);
 
 	type FixtureName =
-		'identical' | 'two-hunk' | 'all-changed' | 'front-matter-only' | 'added-and-removed';
+		| 'identical'
+		| 'two-hunk'
+		| 'all-changed'
+		| 'front-matter-only'
+		| 'added-and-removed';
 
 	const A_FIXTURES: Record<FixtureName, string> = {
 		identical: A_ORIGINAL,
