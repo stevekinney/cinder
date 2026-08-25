@@ -118,6 +118,7 @@ export type WaitThresholdArgument = BunTestTimeoutArgument & {
     | 'timeout'
     | 'waitForTimeout'
     | 'waitForUrl'
+    | 'waitForPing'
     | 'slow'
     | 'playwright-operation-timeout';
   occurrenceIndex?: number;
@@ -216,6 +217,7 @@ export function findWaitThresholdArguments(analysis: string): WaitThresholdArgum
       'setTimeout',
     ),
     ...findCallArgument(analysis, /\bwaitForUrl\s*\(/gu, 1, 'waitForUrl'),
+    ...findCallArgument(analysis, /\bwaitForPing\s*\(/gu, 1, 'waitForPing'),
     ...findCallArgument(analysis, /\bfetchWithTimeout\s*\(/gu, 1, 'fetchWithTimeout'),
     ...findCallArgument(analysis, /\bpromiseWithTimeout\s*\(/gu, 1, 'promiseWithTimeout'),
     ...findPlaywrightExpectPollIntervals(analysis),

@@ -96,6 +96,14 @@ function callsiteFingerprint(candidate: ThresholdCandidate): string {
       .replace(/\s+/gu, ' ')
       .trim()}`;
   }
+  if (candidate.kind === 'timeout' && /\bwaitFor\b/u.test(candidate.label)) {
+    return candidate.line
+      .replace(/^\s*await\s+/u, '')
+      .replace(candidate.renderedValue, '<threshold>')
+      .replace(/[),;]+\s*$/u, '')
+      .replace(/\s+/gu, ' ')
+      .trim();
+  }
   if (candidate.occurrenceIndex !== undefined) {
     return `${candidate.kind}:${candidate.label.toLowerCase()}:${candidate.occurrenceIndex}`;
   }
@@ -269,6 +277,7 @@ export function collectComparableViolations(
   ] as const) {
     for (const entry of entries) {
       if (!entry.candidate.identity.includes(':')) continue;
+      if (namedDeclarationIdentity(entry.candidate) === undefined) continue;
       if (side === 'removed' && consumedRemoved.has(entry.candidate)) continue;
       if (side === 'added' && consumedAdded.has(entry.candidate)) continue;
       const key = `${entry.hunk.filePath}:${entry.candidate.kind}`;

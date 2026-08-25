@@ -136,7 +136,7 @@ export function findAdditionalWaitThresholdArguments(analysis: string): WaitThre
   }
   for (const callArguments of findCallArguments(
     analysis,
-    /(?<![\w$.])findBy[A-Za-z_$\d]*\s*\(/gu,
+    /(?:\bfindBy[A-Za-z_$\d]*|\b[A-Za-z_$][\w$]*\.[ \t]*findBy[A-Za-z_$\d]*)\s*\(/gu,
   )) {
     const options = callArguments[2];
     if (options === undefined) continue;

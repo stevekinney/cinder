@@ -138,6 +138,9 @@ function extractThresholdCandidates(
   for (const match of analysisLine.matchAll(thresholdAssignmentPattern)) {
     const label = match.groups?.['label'] ?? '';
     if (!isTestThresholdAssignment(filePath, assignmentAnalysis, label)) continue;
+    if (label.toLowerCase() === 'timeout' && /\bfindBy[A-Za-z_$\d]*\s*\(/u.test(analysisLine)) {
+      continue;
+    }
     if (
       label.toLowerCase() === 'timeout' &&
       !isGenericTimeoutContext(

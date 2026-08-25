@@ -81,6 +81,20 @@ describe('check-timeout-increases', () => {
     expect(findTimeoutIncreaseViolations(diff)).toEqual([]);
   });
 
+  test('allows an unchanged wait when structural wrapping changes the callsite', () => {
+    const diff = diffFor(
+      'packages/components/scripts/validate-consumers.ts',
+      ["await page.locator('[data-ready]').waitFor({ timeout: 5_000 });"],
+      [
+        'await observeMarkerAlongside(',
+        "  page.locator('[data-ready]').waitFor({ timeout: 5_000 }),",
+        ');',
+      ],
+    );
+
+    expect(findTimeoutIncreaseViolations(diff)).toEqual([]);
+  });
+
   test('rejects newly introduced explicit waits', () => {
     const diff = diffFor(
       'packages/components/scripts/check-suite.test.ts',
@@ -447,6 +461,33 @@ describe('check-timeout-increases', () => {
     expect(violations[0]?.new.value).toBe(2_000);
     expect(violations[0]?.old.label).toBe('FIRST_TIMEOUT_MS');
     expect(violations[0]?.new.label).toBe('ALPHA_WAIT_MS');
+  });
+
+  test('does not reconcile unrelated declarations and wait calls as renamed groups', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/scripts/validate-consumers.ts',
+        ['const LEGACY_TIMEOUT_MS = 10_000;'],
+        ['await Bun.sleep(5_000);'],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.new.label).toBe('bun.sleep');
+  });
+
+  test('checks qualified Testing Library findBy timeout removals', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/src/button/button.test.ts',
+        ["await screen.findByText('ready', {}, { timeout: 500 });"],
+        ["await screen.findByText('ready');"],
+      ),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.old.value).toBe(500);
+    expect(violations[0]?.new.value).toBe(1_000);
   });
 
   test('checks timeout flags in package manifests', () => {
@@ -1386,15 +1427,17 @@ describe('check-timeout-increases', () => {
         [
           'await waitForUrl(url, 10_000, server);',
           "await fetchWithTimeout(url, 10_000, 'request');",
+          'await waitForPing(baseUrl, 10_000);',
         ],
         [
           'await waitForUrl(url, 20_000, server);',
           "await fetchWithTimeout(url, 20_000, 'request');",
+          'await waitForPing(baseUrl, 20_000);',
         ],
       ),
     );
 
-    expect(violations).toHaveLength(2);
+    expect(violations).toHaveLength(3);
   });
 
   test('allows finite timeout wrappers to replace unbounded operations', () => {
