@@ -43,16 +43,34 @@ export class SlidingDialogState {
   #releaseEscape: (() => void) | null = null;
   #cancelPendingClose: (() => void) | null = null;
   #disposed = false;
-  // The `#closeGeneration` active at the moment we last called the native
-  // `dialogElement.close()` — see `#finishClosing()`. The native `close`
-  // EVENT is dispatched via a QUEUED TASK, not synchronously (the WHATWG
-  // spec's "close the dialog" steps queue a task to fire it), so it can
-  // still be pending when other, faster (microtask-scheduled) work runs
-  // first — specifically, a consumer's `onExitComplete` synchronously
-  // reopening the modal. `handleClose()` compares this against the CURRENT
-  // `#closeGeneration` to detect exactly that: a queued event left over from
-  // a close cycle a reopen has already superseded.
-  #pendingNativeCloseGeneration: number | null = null;
+  // A FIFO queue of the `#closeGeneration` values active at each moment we
+  // called the native `dialogElement.close()` — see `#finishClosing()`. The
+  // native `close` EVENT is dispatched via a QUEUED TASK, not synchronously
+  // (the WHATWG spec's "close the dialog" steps queue a task to fire it), so
+  // it can still be pending when other, faster (microtask-scheduled) work
+  // runs first — specifically, a consumer's `onExitComplete` synchronously
+  // reopening the modal (which can itself close again before the FIRST
+  // queued event ever fires). `handleClose()` shifts the OLDEST entry off
+  // this queue and compares it against the CURRENT `#closeGeneration` to
+  // detect a queued event left over from a close cycle a reopen has already
+  // superseded.
+  //
+  // A plain nullable scalar (this field's original shape) is NOT enough
+  // under rapid close→reopen→close cycling (PR #1422 review): the browser
+  // queues native `close` events in the same order their `.close()` calls
+  // were made, but a scalar only remembers the LATEST call. A second
+  // `.close()` (from the second cycle) would overwrite the first cycle's
+  // recorded generation before that first cycle's queued event ever fires —
+  // that stale first event would then wrongly compare EQUAL to whatever the
+  // second cycle's generation happens to be (a false match), get treated as
+  // non-stale, and consume the marker; the SECOND cycle's own (genuinely
+  // current) event would then arrive to find the marker already cleared,
+  // get misclassified as an external native-close bypass, and fire
+  // `#reportClosedOnce()` a SECOND time for a cycle `#finishClosing()`
+  // already reported once. A FIFO queue keeps each call's generation
+  // associated with its own eventually-arriving event, however many cycles
+  // overlap.
+  #pendingNativeCloseGenerations: number[] = [];
 
   constructor(options: SlidingDialogStateOptions) {
     this.#options = options;
@@ -139,37 +157,36 @@ export class SlidingDialogState {
   }
 
   handleClose(): void {
+    // Shift the OLDEST pending generation off the FIFO queue (PR #1422
+    // review). Queued native `close` events fire in the same order their
+    // `.close()` calls were made (the WHATWG "close the dialog" steps queue
+    // a task per call, and tasks run FIFO), so the front of the queue is
+    // always the entry THIS event corresponds to — regardless of how many
+    // close()/reopen cycles have overlapped since. `undefined` means the
+    // queue was empty: this `close` event was never expected from OUR OWN
+    // `dialogElement.close()` call inside `#finishClosing()` at all — see
+    // the native-close-bypass branch below for that case.
+    const expectedGeneration = this.#pendingNativeCloseGenerations.shift();
+
     // Ignore a STALE native `close` event: its queued task can still be
     // pending after a synchronous reopen (from `onExitComplete`, fired from
     // our own tick()-deferred continuation, which runs as a microtask well
     // before this event's task gets a turn) has already moved
     // `#closeGeneration` past the generation active when we called
     // `.close()`. Processing it now would call `setOpen(false)`, undoing
-    // that fresh reopen out from under the consumer. By the time a genuinely
-    // current event arrives, the generation still matches — see
-    // `#pendingNativeCloseGeneration`'s own comment for the full race.
-    if (
-      this.#pendingNativeCloseGeneration !== null &&
-      this.#pendingNativeCloseGeneration !== this.#closeGeneration
-    ) {
-      // Consume the marker even though this event is being ignored (PR
-      // #1422 review): leaving it set to the now-superseded generation
-      // would make the NEXT native `close` event — e.g. a genuine, later
-      // `<form method="dialog">` submission — look stale too (it would
-      // still fail the `!== this.#closeGeneration` check above, since
-      // nothing ever bumps `#closeGeneration` again on its own). That next
-      // close would then be ignored outright: `open` would stay `true`,
-      // none of the scroll-lock/escape/focus cleanup below would run, and
-      // `onClosed` would never fire for a dialog the user just genuinely
-      // closed. Clearing it here lets that next `close` event fall through
-      // to the normal path below, where `#pendingNativeCloseGeneration ===
-      // null` correctly routes it into the native-close-bypass branch.
-      this.#pendingNativeCloseGeneration = null;
+    // that fresh reopen out from under the consumer. By the time a
+    // genuinely current event arrives, the generation still matches.
+    if (expectedGeneration !== undefined && expectedGeneration !== this.#closeGeneration) {
+      // The entry for THIS stale event was already consumed by the `shift()`
+      // above — unlike the single-scalar version this replaced, there is
+      // nothing further to clear here, and any OTHER still-pending entries
+      // in the queue (from other in-flight close cycles) are left
+      // untouched, so their own eventually-arriving events still resolve
+      // against their own correct generation.
       return;
     }
-    // Captured BEFORE clearing `#pendingNativeCloseGeneration` below: `null`
-    // here means this `close` event was never expected from OUR OWN
-    // `dialogElement.close()` call inside `#finishClosing()` — i.e. the
+    // `undefined` here means this `close` event was never expected from OUR
+    // OWN `dialogElement.close()` call inside `#finishClosing()` — i.e. the
     // native dialog closed by some other means entirely, bypassing
     // `requestClose()`/`beginClosing()` outright. The supported case (PR
     // #1422 review, NATIVE-FORM-POLICY.md) is a `<form method="dialog">`
@@ -183,8 +200,7 @@ export class SlidingDialogState {
     // other place that reports exit-completion — never runs either, and a
     // consumer's `onExitComplete`/mount-gate release would otherwise never
     // fire for this supported native-form composition.
-    const isNativeCloseBypassingOurOwnFlow = this.#pendingNativeCloseGeneration === null;
-    this.#pendingNativeCloseGeneration = null;
+    const isNativeCloseBypassingOurOwnFlow = expectedGeneration === undefined;
     this.#releaseScrollLock?.();
     this.#releaseScrollLock = null;
     this.#releaseEscape?.();
@@ -201,11 +217,11 @@ export class SlidingDialogState {
       // uses, so a fast reopen before the deferred `tick()` resolves still
       // correctly suppresses the stale callback. When the close instead
       // came from OUR OWN `requestClose()`/`beginClosing()`/`close()` flow,
-      // `#pendingNativeCloseGeneration` was non-null here (set by
-      // `#finishClosing()` right before calling `dialogElement.close()`),
-      // so this branch is skipped — `#finishClosing()` already scheduled
-      // its own report before this event ever arrived, and firing again
-      // here would double-report the same close.
+      // `expectedGeneration` was defined here (pushed by `#finishClosing()`
+      // right before calling `dialogElement.close()`), so this branch is
+      // skipped — `#finishClosing()` already scheduled its own report
+      // before this event ever arrived, and firing again here would
+      // double-report the same close.
       this.isClosing = false;
       this.renderPanel = false;
       this.#reportClosedOnce(this.#closeGeneration);
@@ -277,15 +293,18 @@ export class SlidingDialogState {
     // cleanup is unconditionally complete before the consumer callback ever
     // runs, so a throw there cannot block it.
     //
-    // That queued-task timing is exactly what `#pendingNativeCloseGeneration`
+    // That queued-task timing is exactly what `#pendingNativeCloseGenerations`
     // guards against: if the consumer's `onExitComplete` (below, deferred
     // only past a microtask `tick()`) synchronously reopens the modal before
     // this event's task gets a turn, `handleClose()` must recognize the
     // eventually-arriving event as stale and ignore it, rather than calling
-    // `setOpen(false)` and undoing the fresh reopen.
+    // `setOpen(false)` and undoing the fresh reopen. Pushed (not assigned)
+    // so an overlapping SECOND close cycle's own entry doesn't clobber this
+    // one — each queued native event is matched to its own call in FIFO
+    // order by `handleClose()`'s `shift()`.
     const dialogElement = this.#options.getDialogElement();
     if (dialogElement?.open) {
-      this.#pendingNativeCloseGeneration = generation;
+      this.#pendingNativeCloseGenerations.push(generation);
       dialogElement.close();
     }
     this.#reportClosedOnce(generation);

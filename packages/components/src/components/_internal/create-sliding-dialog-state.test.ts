@@ -373,6 +373,95 @@ describe('createSlidingDialogState', () => {
     expect(closedCount).toBe(2);
   });
 
+  test('two rapid close→reopen→close cycles each report onClosed exactly once, not twice (PR #1422 review)', async () => {
+    // Regression: a single nullable scalar (`#pendingNativeCloseGeneration`,
+    // this class's original shape) can only remember the LATEST `.close()`
+    // call's generation — under reduced motion / zero-duration exits,
+    // close→reopen→close can cycle fast enough that a SECOND `.close()`
+    // call happens before the FIRST cycle's queued native `close` event
+    // ever fires. That second call's generation overwrote the first's in
+    // the scalar. When the first (stale) event then arrived, it wrongly
+    // compared EQUAL to the CURRENT generation (which by then reflected the
+    // second cycle) — a false match — got treated as non-stale, and
+    // consumed the marker. The second cycle's own (genuinely current) event
+    // then arrived to find the marker already cleared, got misclassified
+    // as an external native-close bypass, and fired `#reportClosedOnce()` a
+    // SECOND time for a cycle `#finishClosing()` had already reported once.
+    // A FIFO queue keeps each `.close()` call's generation matched to its
+    // own eventually-arriving event, however many cycles overlap.
+    let open = true;
+    let closedCount = 0;
+    const dialogElement = createDialogElement();
+    const dialogState = createSlidingDialogState({
+      getOpen: () => open,
+      setOpen: (next) => {
+        open = next;
+      },
+      getDialogElement: () => dialogElement,
+      // No panel element — `beginClosing()` finishes synchronously via
+      // `#finishClosing()` on every cycle, letting this test control the
+      // exact close→reopen→close timing deterministically, independent of
+      // `onClosed` itself (unlike the "survived stale-event" test above,
+      // this scenario does not depend on a reopen happening FROM inside
+      // `onClosed` — it can just as well be driven by ordinary application
+      // code closing, reopening, and closing again in quick succession,
+      // all before either cycle's queued native event has a turn).
+      getPanelElement: () => undefined,
+      getReducedMotion: () => true,
+      getTriggerRef: () => null,
+      onClosed: () => {
+        closedCount += 1;
+      },
+    });
+
+    dialogState.syncOpenState();
+    expect(dialogElement.open).toBe(true);
+
+    // Cycle 1: close. `#finishClosing()` runs synchronously here — the
+    // native dialog is closed (its `.close()` call queues event 1) before
+    // this call returns, but `onClosed` is only SCHEDULED, deferred past a
+    // `tick()` that has not resolved yet.
+    open = false;
+    dialogState.syncOpenState();
+    expect(dialogElement.open).toBe(false);
+    expect(closedCount).toBe(0);
+
+    // Reopen, still before event 1 has fired — ordinary application code
+    // flipping `open` back to `true`, not a callback-driven reopen.
+    open = true;
+    dialogState.syncOpenState();
+    expect(dialogElement.open).toBe(true);
+
+    // Cycle 2: close again, still before event 1 has fired. `.close()` is
+    // called a SECOND time here, queuing event 2 — this is exactly the
+    // "second close() call before the first cycle's queued event arrives"
+    // race this fix targets.
+    open = false;
+    dialogState.syncOpenState();
+    expect(dialogElement.open).toBe(false);
+    expect(closedCount).toBe(0);
+
+    // NOW both queued native `close` events land, in the FIFO order the
+    // browser actually queues them: event 1 (stale, from the superseded
+    // first cycle) arrives first, then event 2 (genuinely current, from
+    // the second cycle).
+    dialogState.handleClose(); // event 1 — must be recognized as stale and ignored.
+    expect(open).toBe(false);
+    expect(closedCount).toBe(0);
+
+    dialogState.handleClose(); // event 2 — genuinely current for cycle 2.
+    expect(open).toBe(false);
+    expect(dialogState.renderPanel).toBe(false);
+
+    // Only cycle 2's own deferred `#finishClosing()` report may fire, and
+    // exactly once — never twice from event 2 also being misclassified as
+    // an external native-close bypass.
+    await tick();
+    expect(closedCount).toBe(1);
+    await tick();
+    expect(closedCount).toBe(1);
+  });
+
   test('a native <form method="dialog"> submission fires onClosed exactly once even though it bypasses beginClosing()/#finishClosing() (PR #1422 review, NATIVE-FORM-POLICY.md)', async () => {
     // Regression: NATIVE-FORM-POLICY.md documents `<form method="dialog">`
     // inside Modal as a supported simple accept/cancel composition. A form

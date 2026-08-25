@@ -780,6 +780,65 @@ describe('image-lightbox — lazy Modal mount (CIN-377 review)', () => {
     expect(container.querySelector('.lightbox-counter')?.textContent?.trim()).toBe('2 of 2');
   });
 
+  test('shrinking a non-empty images list DURING the exit transition does not mismatch the frozen counter with the shrinking live count (PR #1422 review)', async () => {
+    // Regression: `counterText`/`hasMultiple` previously derived straight
+    // from the LIVE `images.length`, even while closing. Closing while
+    // viewing image 3 of [A, B, C] freezes the DISPLAYED image
+    // (`sessionImage`/`frozenIndex`) for the whole exit-transition window —
+    // but if the parent then shrinks `images` to two items WHILE that fade
+    // is still in progress (before `handleExitComplete` ever runs), the
+    // counter recomputed against the new, smaller `images.length` and
+    // reintroduced the exact "3 of 2" mismatch the previous round's fix
+    // eliminated for the still-open case: the frozen image staying on
+    // screen while the counter underneath it changed out from under it,
+    // mid-fade.
+    const threeImages = [
+      { src: '/a.jpg', alt: 'Image A' },
+      { src: '/b.jpg', alt: 'Image B' },
+      { src: '/c.jpg', alt: 'Image C' },
+    ];
+    const twoImages = [threeImages[0]!, threeImages[1]!];
+
+    const { container, rerender } = render(ImageLightbox, {
+      props: { images: threeImages, initialIndex: 0, open: true },
+    });
+    await tick();
+
+    // Navigate to the last image (index 2, "Image C").
+    await fireEvent.click(container.querySelector('[aria-label="Next image"]')!);
+    await fireEvent.click(container.querySelector('[aria-label="Next image"]')!);
+    expect(container.querySelector('img')?.getAttribute('alt')).toBe('Image C');
+    expect(container.querySelector('.lightbox-counter')?.textContent?.trim()).toBe('3 of 3');
+
+    // Close, then the parent shrinks `images` to two items WHILE the exit
+    // transition is still in progress — issued back-to-back, WITHOUT
+    // awaiting either, mirroring this file's established technique (see the
+    // "swap images mid-exit" test above) for proving something did NOT
+    // happen as a direct synchronous side effect: this test harness's
+    // reduced-motion/zero-duration transition path can resolve an ENTIRE
+    // close-to-unmount cycle within a single awaited `rerender()` call, so
+    // asserting mid-fade requires checking BEFORE any microtask from either
+    // call has had a chance to run.
+    const closePromise = rerender({ images: threeImages, initialIndex: 0, open: false });
+    const shrinkPromise = rerender({ images: twoImages, initialIndex: 0, open: false });
+
+    // Still mid-fade: both the displayed image AND the counter must stay
+    // frozen at their pre-close values — "Image C" and "3 of 3" — never the
+    // mismatched "3 of 2" the live count would otherwise produce.
+    expect(container.querySelector('img')?.getAttribute('alt')).toBe('Image C');
+    expect(container.querySelector('.lightbox-counter')?.textContent?.trim()).toBe('3 of 3');
+
+    await closePromise;
+    await shrinkPromise;
+
+    // Drain the rest of the exit transition — the Modal fully unmounts once
+    // it genuinely finishes, same as the other lazy-mount tests above.
+    await tick();
+    await tick();
+    await tick();
+    expect(container.querySelector('dialog')).toBeNull();
+  });
+
   test('closing, clearing images, then reopening before the exit transition finishes does not show a stale image absent from images (PR #1422 review)', async () => {
     // Regression: close → parent clears `images` → `open` flips back to
     // `true`, all before the prior close's exit transition genuinely

@@ -68,6 +68,28 @@
   // resetAppliedForCurrentSession below.
   let frozenIndex = $state<number | null>(null);
   const effectiveIndex = $derived(frozenIndex ?? navigationIndex ?? clampedInitialIndex);
+  // frozenImageCount is `frozenIndex`'s counterpart for `images.length`
+  // (PR #1422 review): `counterText`/`hasMultiple` (below) previously
+  // derived straight from the LIVE `images.length`, even while closing —
+  // so a parent shrinking `images` during the exit fade (after
+  // `sessionImage`/`frozenIndex` had already frozen the DISPLAYED image)
+  // could still reintroduce a "3 of 2"-style mismatch: the frozen image
+  // staying put while the counter kept recomputing against the shrinking
+  // live count. Frozen for the WHOLE closing/exit-transition window,
+  // reset to `null` on a fresh open (below, alongside `frozenIndex`) and
+  // again in `handleExitComplete`, in lockstep with `sessionImage`/
+  // `hasOpenedOnce` — grouped with the rest of that session-teardown
+  // state even though `frozenIndex` itself is (for unrelated historical
+  // reasons) only ever reset on the fresh-open side of that pair.
+  let frozenImageCount = $state<number | null>(null);
+  // The stable count to render from: while open, `frozenImageCount` is
+  // `null` (reset on every fresh open), so this falls through to the LIVE
+  // `images.length` — preserving the "re-clamp while genuinely open"
+  // behavior from the prior round's fix. Once closing begins, it holds the
+  // frozen snapshot instead, immune to further live shrinks/grows until the
+  // exit genuinely completes. Mirrors `effectiveIndex`'s own
+  // frozen-value-or-live-fallback shape immediately above.
+  const displayImageCount = $derived(frozenImageCount ?? images.length);
   // lastLiveIndex continuously mirrors the live effectiveIndex WHILE open —
   // this is the fallback freeze's actual source of truth (see the effect
   // below), not a re-read of navigationIndex/clampedInitialIndex at close
@@ -86,6 +108,11 @@
   // any effect at all; this is specifically the fallback for a parent-driven
   // `open = false` that bypasses those functions entirely.)
   let lastLiveIndex = $state(0);
+  // `lastLiveIndex`'s counterpart for `images.length` — continuously
+  // mirrors the live count WHILE open, so the fallback freeze below (for a
+  // parent-driven `open = false` that bypasses close()/handleModalDismiss())
+  // has a value to capture into `frozenImageCount` from.
+  let lastLiveImageCount = $state(0);
   let resetAppliedForCurrentSession = false;
   // Plain (non-reactive) bookkeeping, same idiom as
   // `resetAppliedForCurrentSession` above: tracks whether THIS effect's own
@@ -245,6 +272,7 @@
       }
       genuineOpenObserved = true;
       lastLiveIndex = navigationIndex ?? clampedInitialIndex;
+      lastLiveImageCount = images.length;
       if (images.length > 0) {
         if (!hasOpenedOnce) {
           mountGeneration += 1;
@@ -252,6 +280,7 @@
         hasOpenedOnce = true;
       }
       frozenIndex = null;
+      frozenImageCount = null;
       if (!resetAppliedForCurrentSession) {
         navigationIndex = null;
         resetAppliedForCurrentSession = true;
@@ -299,6 +328,9 @@
       // recomputation — see the comment on `lastLiveIndex` above for why.
       if (frozenIndex === null) {
         frozenIndex = lastLiveIndex;
+      }
+      if (frozenImageCount === null) {
+        frozenImageCount = lastLiveImageCount;
       }
       // Cancelled initial open (PR #1422 review): `hasOpenedOnce` can be
       // `true` (Modal mounted — seeded from `open` for an already-open-on-
@@ -355,9 +387,17 @@
     }
   });
 
-  const hasMultiple = $derived(images.length > 1);
+  // Both derive from `displayImageCount`, NOT the live `images.length`
+  // directly (PR #1422 review): while genuinely open, `displayImageCount`
+  // already falls through to the live count (see its own declaration
+  // above), so this changes nothing about the "re-clamp while open"
+  // behavior from the prior round's fix — but while CLOSING, it stays
+  // pinned to the frozen snapshot instead of following a parent's shrink
+  // mid-fade, keeping the counter consistent with the (also frozen)
+  // displayed image for the whole exit-transition window.
+  const hasMultiple = $derived(displayImageCount > 1);
   const currentImage = $derived(images[effectiveIndex]);
-  const counterText = $derived(`${effectiveIndex + 1} of ${images.length}`);
+  const counterText = $derived(`${effectiveIndex + 1} of ${displayImageCount}`);
 
   // Keeps `sessionImage` (declared above, alongside `hasOpenedOnce`) in sync
   // with `currentImage` for LIVE changes during an open session — arrow-key
@@ -439,6 +479,9 @@
     if (frozenIndex === null) {
       frozenIndex = effectiveIndex;
     }
+    if (frozenImageCount === null) {
+      frozenImageCount = images.length;
+    }
     onClose?.();
   }
 
@@ -453,6 +496,9 @@
   function handleModalDismiss() {
     if (frozenIndex === null) {
       frozenIndex = effectiveIndex;
+    }
+    if (frozenImageCount === null) {
+      frozenImageCount = images.length;
     }
     onClose?.();
   }
@@ -487,8 +533,11 @@
         // Cleared in lockstep with `hasOpenedOnce`, not before: `sessionImage`
         // must keep the exit-transition's frozen image visible for the ENTIRE
         // window Modal keeps this component's children mounted, which lasts
-        // until exactly this point.
+        // until exactly this point. `frozenImageCount` (its `counterText`/
+        // `hasMultiple` counterpart) is cleared the same way, for the same
+        // reason.
         sessionImage = null;
+        frozenImageCount = null;
       }
     });
   }
