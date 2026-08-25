@@ -30,11 +30,27 @@
     focusDialogBodyUnlessAutofocused,
   } from '../_internal/create-sliding-dialog-state.svelte.ts';
 
+  /**
+   * `typeof value === 'string'` first, THEN `.trim()` — a bare truthiness
+   * check alone would let a non-string truthy value (e.g. an object slipping
+   * through from dynamic/CMS-driven config that bypasses TypeScript) reach
+   * `.trim()`, which does not exist on it, throwing inside the nameless-guard
+   * $effect below and turning a dev-only warning into a hard crash. Accepts
+   * `unknown` rather than `string | undefined` specifically because the
+   * runtime value this guards against is exactly the case TypeScript's own
+   * `string | undefined` type would already rule out.
+   */
+  function isNonEmptyString(value: unknown): value is string {
+    return typeof value === 'string' && value.trim() !== '';
+  }
+
   const titleId = $props.id();
 
   let {
     open = $bindable(false),
     title,
+    chrome = 'default',
+    'aria-label': ariaLabel,
     role = 'dialog',
     dismissOnBackdropClick = true,
     dismissOnEscape = true,
@@ -45,15 +61,31 @@
     triggerRef = null,
     describedById,
     onDismiss,
+    onExitComplete,
   }: ModalProps = $props();
+
+  const isChromeless = $derived(chrome === 'none');
 
   let dialogElement: HTMLDialogElement | undefined = $state();
   let panelElement: HTMLDivElement | undefined = $state();
   let bodyElement: HTMLDivElement | undefined = $state();
-  // `mounted` is false during SSR and becomes true after the first client-side effect.
-  // The dialog renders only when mounted (client) or when open (SSR with open=true).
-  // This keeps the <dialog> absent from SSR HTML when closed, while letting the client
-  // keep the element mounted so dialogElement.close() fires correctly.
+  // `mounted` is false during SSR and becomes true after the first client-side
+  // effect. The dialog renders ONLY once mounted — never merely because
+  // `open` is true — per OVERLAY-POLICY.md's SSR rule (hard constraint): the
+  // overlay surface must render nothing on the server regardless of its
+  // initial `open` state, matching Drawer's `{#if dialogState.hydrated}` and
+  // Popover's `{#if mounted && ...}` gates. This keeps the <dialog> entirely
+  // absent from SSR HTML whether the modal starts open or closed. The
+  // trade-off (documented in the policy) is a one-frame render delay on the
+  // client when an overlay starts open, in exchange for a single, predictable
+  // hydration model with no `open={true}` server/client mismatch. An earlier
+  // revision of this file briefly emitted the `open` HTML attribute directly
+  // during SSR to avoid that one-frame delay for a deep-linked initially-open
+  // modal — reverted (PR #1422 review): a plain attribute-open `<dialog>` is
+  // not a real top-layer modal (no `::backdrop`, no focus trap, no scroll
+  // lock, no inertness of the rest of the page), which is worse than the
+  // policy's accepted one-frame delay, and it broke the single predictable
+  // hydration model the policy exists to guarantee.
   let mounted = $state(false);
 
   const reducedMotion = useReducedMotion();
@@ -86,6 +118,12 @@
         getDialogElement: () => dialogElement,
         getBodyElement: () => bodyElement,
       }),
+    // Fires once the exit transition genuinely finishes and the panel
+    // actually unmounts (not merely when `open` flips false) — see
+    // `onExitComplete` on ModalProps. `SlidingDialogState` already skips
+    // this callback on a reopen-during-close (the panel never actually
+    // unmounts in that case), so no extra guard is needed here.
+    onClosed: () => onExitComplete?.(),
   });
 
   $effect(() => {
@@ -107,6 +145,32 @@
     }
   });
 
+  // Runtime nameless guard: the discriminated `chrome` union enforces this at
+  // the type level, but a consumer building props dynamically (spread props,
+  // a CMS-driven config, etc.) can still bypass TypeScript and render a
+  // nameless dialog. Warn in both directions rather than assuming the type
+  // system caught it.
+  //
+  // `isNonEmptyString` guards with `typeof value === 'string'` BEFORE
+  // calling `.trim()` — a non-string truthy value (e.g. a stray object from
+  // dynamic config bypassing TS) has no `.trim()` method and would otherwise
+  // throw inside this $effect, turning a dev-only warning into a hard crash.
+  // Any non-string value is treated as not a valid name.
+  $effect(() => {
+    if (!isChromeless && !isNonEmptyString(title)) {
+      devWarn(
+        '[cinder/Modal] rendered with chrome="default" but no non-empty `title`. ' +
+          'The visible heading also supplies the accessible name — without it the dialog has no name for assistive technology.',
+      );
+    }
+    if (isChromeless && !isNonEmptyString(ariaLabel)) {
+      devWarn(
+        '[cinder/Modal] rendered with chrome="none" but no non-empty `aria-label`. ' +
+          "The chromeless chrome renders no header, so `aria-label` is the only source of the dialog's accessible name — without it the dialog has no name for assistive technology.",
+      );
+    }
+  });
+
   $effect(() => {
     dialogState.syncOpenState();
   });
@@ -122,10 +186,51 @@
 
   onDestroy(() => {
     dialogState.destroy();
+    // Defensive: a native <dialog> shown via showModal() is promoted to the
+    // browser's top layer, outside ordinary document flow. When a consumer
+    // composes Modal behind its own conditional mount (e.g. clearing a
+    // mount flag from `onExitComplete`, the same pattern Popover/
+    // SelectionPopover support), the surrounding block's teardown can leave
+    // this element attached even after this component instance is
+    // destroyed — the top-layer promotion means it is not a normal
+    // document-flow child removal. Explicitly detach it so no closed
+    // <dialog> is ever left behind in the DOM.
+    dialogElement?.remove();
   });
 
   function handleBackdropClick(event: MouseEvent) {
-    if (dismissOnBackdropClick && event.target === dialogElement) {
+    if (!dismissOnBackdropClick) return;
+    if (event.target === dialogElement) {
+      dismiss();
+      return;
+    }
+    if (!isChromeless) return;
+    // Chromeless mode (chrome="none") fills the dialog's entire content box
+    // with the panel/body — `dialogElement` itself has no visible padding
+    // or gap left to click, so `event.target === dialogElement` can never
+    // be true there. The panel and body ARE the backdrop-equivalent
+    // surface for this chrome: a click that lands directly on either
+    // (rather than on real content the consumer rendered inside them)
+    // dismisses, the same way a default-chrome backdrop click does.
+    if (event.target === panelElement || event.target === bodyElement) {
+      dismiss();
+      return;
+    }
+    // The canonical chromeless composition is a consumer-rendered root
+    // child that fills the body (width/height 100%) — the panel/body check
+    // above never fires there, since every empty-surface click's target is
+    // that child, not the body. `data-cinder-modal-backdrop` is a
+    // consumer-supplied marker (same idiom as OVERLAY-POLICY.md's
+    // `data-cinder-initial-focus`): place it on your own full-bleed scrim
+    // wrapper and a click landing DIRECTLY on that element (not on a
+    // deeper descendant — real content still doesn't dismiss) is treated as
+    // a backdrop click. This works regardless of how deeply the consumer's
+    // content is nested, independent of the panel/body checks above.
+    const targetElement = event.target;
+    if (
+      targetElement instanceof Element &&
+      targetElement.hasAttribute('data-cinder-modal-backdrop')
+    ) {
       dismiss();
     }
   }
@@ -142,14 +247,28 @@
   }
 </script>
 
-{#if mounted || open}
+{#if mounted}
+  <!--
+    `aria-describedby` below is gated on `isNonEmptyString(describedById)`,
+    not a bare truthiness check (PR #1422 review): a plain empty string is
+    already falsy and excluded either way, but a WHITESPACE-ONLY
+    `describedById` (e.g. "   ") is truthy in JS — a bare `describedById ?
+    ... : {}` would emit `aria-describedby="   "`, referencing an id that
+    cannot exist, even though the `described-by-non-empty` constraint
+    (`nonEmpty`, which also trims) already rejects that same value, and
+    the generated schema now carries a matching `minLength`/`pattern:
+    '\S'` restriction on this prop. Reusing the same guard the
+    title/aria-label nameless-effect below already relies on keeps
+    runtime, constraints, and schema in agreement.
+  -->
   <dialog
     bind:this={dialogElement}
     class={classNames('cinder-modal', className)}
     {role}
     aria-modal="true"
-    aria-labelledby={titleId}
-    {...describedById ? { 'aria-describedby': describedById } : {}}
+    data-cinder-chrome={isChromeless ? 'none' : undefined}
+    {...isChromeless ? { 'aria-label': ariaLabel } : { 'aria-labelledby': titleId }}
+    {...isNonEmptyString(describedById) ? { 'aria-describedby': describedById } : {}}
     data-cinder-closing={dialogState.isClosing ? '' : undefined}
     onclose={() => dialogState.handleClose()}
     onclick={handleBackdropClick}
@@ -171,6 +290,7 @@
       <div
         bind:this={panelElement}
         class="cinder-modal__panel"
+        data-cinder-chrome={isChromeless ? 'none' : undefined}
         data-cinder-closing={dialogState.isClosing ? '' : undefined}
         inert={dialogState.isClosing}
         {@attach createFocusTrap({
@@ -179,13 +299,16 @@
           manageInitialFocus: false,
         })}
       >
-        <div class="cinder-modal__header">
-          <h2 id={titleId} class="cinder-modal__title">{title}</h2>
-        </div>
+        {#if !isChromeless}
+          <div class="cinder-modal__header">
+            <h2 id={titleId} class="cinder-modal__title">{title}</h2>
+          </div>
+        {/if}
 
         <div
           bind:this={bodyElement}
           class="cinder-modal__body cinder-_scroll-fade"
+          data-cinder-chrome={isChromeless ? 'none' : undefined}
           tabindex="-1"
           {@attach bodyOverflowFade}
         >
@@ -193,7 +316,7 @@
         </div>
 
         {#if footer}
-          <div class="cinder-modal__footer">
+          <div class="cinder-modal__footer" data-cinder-chrome={isChromeless ? 'none' : undefined}>
             {@render footer()}
           </div>
         {/if}

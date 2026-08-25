@@ -19,11 +19,80 @@
      * The panel below remains the clipping boundary for ordinary content. */
     max-height: calc(100dvh - var(--cinder-space-8));
     overflow: visible;
+
+    /* Supported override point for the `::backdrop` color. This declaration
+     * exists ONLY so the variables generator collects
+     * `--cinder-modal-backdrop` into modal.variables.json/README — it is a
+     * plain reference to a DIFFERENT variable (`--cinder-overlay-backdrop`),
+     * never to itself. A self-referencing form
+     * (`--cinder-modal-backdrop: var(--cinder-modal-backdrop, fallback)`)
+     * is a CSS custom-property dependency CYCLE per spec: cycle detection
+     * happens before fallback substitution, so the fallback argument does
+     * NOT rescue it — the property computes to its guaranteed-invalid
+     * value, breaking the backdrop for every Modal with no override at all.
+     * (An earlier revision of this file made exactly that mistake; see the
+     * `::backdrop` rule below for where the real fallback logic lives now.)
+     *
+     * This declaration does not, by itself, reach `::backdrop`'s computed
+     * value — `::backdrop` does not reliably inherit custom properties from
+     * its originating element across engines — so it neither helps nor
+     * defeats a consumer override; it exists purely for the generator. A
+     * consumer override must target BOTH the `class` selector AND that same
+     * class's `::backdrop` pseudo-element directly — declare
+     * `--cinder-modal-backdrop` on `.my-modal` AND separately on
+     * `.my-modal::backdrop` (see `ImageLightbox`'s
+     * `:global(.lightbox-modal)` / `:global(.lightbox-modal::backdrop)`
+     * pair for the real pattern) — rather than reaching into
+     * `.cinder-modal::backdrop` with `:global()`. */
+    --cinder-modal-backdrop: var(--cinder-overlay-backdrop);
   }
 
-  /* Backdrop — native <dialog>::backdrop is controlled by the UA */
+  /* Chromeless / full-bleed mode (`chrome="none"`): suppresses max-width so the
+   * dialog fills the viewport. The header, border, and body padding are
+   * suppressed further down, scoped to `.cinder-modal__panel[data-cinder-chrome='none']`
+   * and `.cinder-modal__body[data-cinder-chrome='none']`. All coordination logic
+   * (focus trap, scroll lock, escape stack, exit-transition lifecycle) is
+   * untouched — this block is presentation only. */
+  .cinder-modal[data-cinder-chrome='none'] {
+    max-width: none;
+    width: 100%;
+    height: 100%;
+    max-height: 100dvh;
+    inset: 0;
+    margin: 0;
+  }
+
+  /* Backdrop — native <dialog>::backdrop is controlled by the UA.
+   * `::backdrop` does NOT reliably inherit custom properties from its
+   * originating element across engines (some engines inherit from the
+   * dialog, some effectively from the initial containing block/`:root`,
+   * some not at all).
+   *
+   * The fallback lives on the CONSUMING property (`background-color`
+   * below), NOT on a redeclaration of `--cinder-modal-backdrop` itself.
+   * `--cinder-modal-backdrop: var(--cinder-modal-backdrop, fallback)` looks
+   * like a reasonable "use the inherited value, or fall back" pattern, but
+   * it is a CSS custom-property dependency CYCLE — a property referencing
+   * itself, even guarded by a fallback — which the spec resolves by making
+   * the property invalid at computed-value time (cycle detection happens
+   * BEFORE fallback substitution). That breaks the backdrop for every Modal
+   * with no override at all, which is strictly worse than the reliability
+   * problem this rule exists to solve.
+   *
+   * Declaring NOTHING here for `--cinder-modal-backdrop` and only consuming
+   * it via `var(--cinder-modal-backdrop, var(--cinder-overlay-backdrop))`
+   * is what's actually correct: whatever value the property resolves to for
+   * `::backdrop`'s own scope (inherited from `:root`/an ancestor in
+   * whichever engines route inheritance that way, or from a same-selector
+   * `::backdrop` override, or simply unset) is used as-is, falling back to
+   * `--cinder-overlay-backdrop` only when the property is truly unset/
+   * invalid here. A consumer override must still target `::backdrop`
+   * directly for cross-engine reliability — see `ImageLightbox`'s
+   * `:global(.lightbox-modal::backdrop)` rule for the pattern; a
+   * class-scoped override on the element alone is not reliably visible
+   * here. */
   .cinder-modal::backdrop {
-    background-color: var(--cinder-overlay-backdrop);
+    background-color: var(--cinder-modal-backdrop, var(--cinder-overlay-backdrop));
     backdrop-filter: blur(var(--cinder-overlay-blur));
     transition:
       background-color var(--cinder-duration-normal) var(--cinder-ease-standard),
@@ -89,6 +158,17 @@
       opacity: 0;
       translate: 0 -0.5rem;
     }
+  }
+
+  /* Chromeless / full-bleed mode: the panel fills the chromeless dialog
+   * and drops the card chrome (border, radius, surface, shadow) so the
+   * consumer's own content (e.g. an image lightbox) owns the full surface. */
+  .cinder-modal__panel[data-cinder-chrome='none'] {
+    height: 100%;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
   }
 
   /* ----------------------------------------
@@ -198,6 +278,40 @@
     outline: none;
   }
 
+  .cinder-modal__body[data-cinder-chrome='none'] {
+    padding: 0;
+    background: transparent;
+    /* The base rule's `scrollbar-gutter: stable` reserves an inline-end
+     * gutter on platforms with classic (non-overlay) scrollbars, EVEN WHEN
+     * the body does not overflow. That reserved band is invisible in the
+     * default chrome (it's inside the padded card), but on a full-bleed
+     * chromeless surface it visibly shifts a consumer's centered content
+     * (e.g. an image lightbox's photo) away from true viewport center.
+     * Chromeless content owns the whole surface, so let it span the
+     * reserved area — a chromeless body's own child controls whether IT
+     * needs gutter stability for its own scrolling. */
+    scrollbar-gutter: auto;
+  }
+
+  /* The shared `.cinder-_scroll-fade` recipe (see `_scroll-fade.css`) fades
+   * with an OPAQUE overlay painted in `--_cinder-scroll-fade-color`
+   * (`--cinder-surface` here) by design — masking a container that paints
+   * its own background would make the fade light up instead of fading out
+   * over a brighter parent surface (see that file's design-rule #1). A
+   * chromeless body is transparent/full-bleed on purpose (an image
+   * lightbox's photo, for instance) with no surface color of its own to
+   * fade INTO, so that same opaque band is simply wrong here — it would
+   * paint a solid `--cinder-surface` stripe across arbitrary full-bleed
+   * content. `content: none` fully suppresses the generated `::after` box
+   * (rather than merely zeroing `opacity`, which a running
+   * `animation-timeline: scroll()` keyframe would still override — see this
+   * file's own forced-colors comments for why `opacity` alone can't win
+   * against that animation), so no fade box exists at all in the chromeless
+   * chrome. */
+  .cinder-modal__body[data-cinder-chrome='none']::after {
+    content: none;
+  }
+
   /* ----------------------------------------
  * Footer
  * ---------------------------------------- */
@@ -211,6 +325,19 @@
     border-block-start: 1px solid var(--cinder-border-muted);
     background: var(--cinder-surface);
     flex-shrink: 0;
+  }
+
+  /* Chromeless mode fills the dialog's entire content box with the panel/
+   * body/footer as one full-bleed surface — the base rule's card-style
+   * background, top border, and padding would paint a visible seam between
+   * the footer and a consumer's own full-bleed content, breaking the
+   * "genuinely full-bleed" contract chrome="none" promises. Reset all three,
+   * matching the identical pattern already applied to
+   * `.cinder-modal__body[data-cinder-chrome='none']` above. */
+  .cinder-modal__footer[data-cinder-chrome='none'] {
+    padding: 0;
+    background: transparent;
+    border-block-start: none;
   }
 
   /* ----------------------------------------

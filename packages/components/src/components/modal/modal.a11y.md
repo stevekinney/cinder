@@ -11,8 +11,17 @@ Modal is the generic shell. For specialised contracts see:
 
 - The native `<dialog>` element carries an implicit `role="dialog"`.
 - `aria-modal="true"` is set explicitly so screen readers that do not natively understand `<dialog>` know to restrict their virtual browse to the modal's content.
-- `aria-labelledby` points to the `<h2>` title element, giving the dialog an accessible name announced when the dialog opens.
+- **Accessible name — depends on `chrome`** (see "Chrome modes and accessible naming" below): in the default chrome, `aria-labelledby` points to the `<h2>` title element; in the chromeless chrome (`chrome="none"`), the `aria-label` prop supplies the name directly and no `aria-labelledby` is rendered.
 - **`describedById` prop**: When provided, the value is applied as `aria-describedby` on the underlying `<dialog>`. Pass the `id` of a short, plain-text description element (typically a `<p>` in the modal body). This causes supporting screen readers to announce the description immediately after the dialog role and title. When omitted, no `aria-describedby` attribute is emitted — never pass an empty string. For long or richly structured body content, do not use `describedById`; screen readers announce the entire referenced text as one continuous run.
+
+## Chrome modes and accessible naming
+
+Modal's `chrome` prop has two accessible-naming branches, since the dialog must always have an accessible name and the two chromes supply it differently:
+
+- **`chrome="default"`** (the default, whether omitted or explicit): renders the header with a visible `<h2>` title, and `aria-labelledby` on the `<dialog>` points to that title's `id`. `title` is required in this chrome.
+- **`chrome="none"`** (chromeless, full-bleed): renders no header, so there is no title element for `aria-labelledby` to reference. `aria-label` is required in this chrome instead, and is applied directly to the `<dialog>` as its accessible name. `title` is optional and unused for naming purposes when supplied.
+
+A dev-time `devWarn` fires if either chrome renders without its required name source (non-empty `title` for the default chrome, non-empty `aria-label` for the chromeless chrome), and the same conditional requirement is encoded in the generated JSON Schema's `allOf` and in the `modal.constraints.ts` sidecar (`accessible-title` / `chromeless-accessible-label` rules) — see `README.md` § "Chrome modes and the `title` / `aria-label` contract" for the full authoring contract.
 
 ## `role="alertdialog"` escape hatch
 
@@ -55,10 +64,11 @@ State flips to `open = false` **before** the callback is invoked. A thrown callb
 
 ## Backdrop
 
-- Clicking the backdrop (`event.target === dialogElement`) calls `dismiss()`, which closes the dialog and fires `onDismiss`. This relies on the CSS background applied to `<dialog>` rather than `::backdrop`, so the click target is always the `<dialog>` element itself, not a separate pseudo-element.
+- Clicking the backdrop (`event.target === dialogElement`) calls `dismiss()`, which closes the dialog and fires `onDismiss`. The dimming color itself is painted on `::backdrop` (`.cinder-modal::backdrop`), while `.cinder-modal` stays `background: transparent` — but clicks outside the panel are still dispatched to the `<dialog>` element itself (browsers do not deliver click events to `::backdrop`), so `event.target === dialogElement` is the reliable check regardless of which element paints the dimming color.
+- **Chromeless (`chrome="none"`)**: the panel and body fill the dialog's entire content box, so `event.target === dialogElement` is never true there. A click landing directly on the panel or body element itself (not on real content the consumer rendered inside them) is treated as backdrop-equivalent and dismisses the same way. When the consumer's own root child fills the body (the canonical chromeless composition — see `chromeless.example.svelte`), neither of those checks fires either, since every empty-surface click's target is that child. Mark your own full-bleed scrim wrapper with the `data-cinder-modal-backdrop` attribute (the same idiom as `data-cinder-initial-focus` in `OVERLAY-POLICY.md`) so a click landing directly on it also dismisses — this works regardless of nesting depth, and a click on a deeper descendant (real content) still does not dismiss.
 
 ## Screen Reader Announcements
 
-- Opening a `<dialog>` with `showModal()` causes supporting screen readers ([NVDA](https://www.nvaccess.org/)+Firefox, [JAWS](https://www.freedomscientific.com/products/software/jaws/)+Chrome, [VoiceOver](https://www.apple.com/accessibility/vision/)+Safari) to announce the dialog role and its accessible name (from `aria-labelledby`) immediately.
+- Opening a `<dialog>` with `showModal()` causes supporting screen readers ([NVDA](https://www.nvaccess.org/)+Firefox, [JAWS](https://www.freedomscientific.com/products/software/jaws/)+Chrome, [VoiceOver](https://www.apple.com/accessibility/vision/)+Safari) to announce the dialog role and its accessible name immediately — from `aria-labelledby`/the title in the default chrome, or directly from `aria-label` in the chromeless chrome (`chrome="none"`; see "Chrome modes and accessible naming" above).
 - When `describedById` is set, the referenced description text is announced immediately after the accessible name.
 - The close button carries `aria-label="Close dialog"` so it reads as "Close dialog, button" rather than the SVG icon content. Clicking the close-X fires `onDismiss`.

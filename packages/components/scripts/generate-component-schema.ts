@@ -61,6 +61,15 @@ export interface PropertySchema {
   not?: PropertySchema;
   minimum?: number;
   minItems?: number;
+  // Added for Modal's `describedById` restriction (PR #1422 review): the
+  // `title`/`aria-label` conditional restrictions elsewhere in this file
+  // already emit these two through the loosely-typed `allOf`/`then` escape
+  // hatch (`Record<string, unknown>`, see `ComponentSchemaOutput.allOf`
+  // below) — `describedById`'s restriction is unconditional, though, so it
+  // lives directly on the BASE property object, which needs these two
+  // fields typed here to accept it.
+  minLength?: number;
+  pattern?: string;
   description?: string;
   default?: unknown;
 }
@@ -370,6 +379,37 @@ function applyComponentSchemaRules(componentName: string, schema: ComponentSchem
 
   if (componentName !== 'modal') return;
 
+  // `describedById` is optional (never `required` unconditionally), but
+  // WHEN provided it must reference a real id — the constraints sidecar's
+  // `described-by-non-empty` rule already rejects an empty OR
+  // whitespace-only value (`nonEmpty`, which trims) — see
+  // modal.constraints.ts. `type: 'string'` alone lets a schema-driven
+  // consumer (CLI/MCP) pass `describedById: '   '` right past validation,
+  // even though modal.svelte's own runtime guard rejects it too (see that
+  // file's `isNonEmptyString` comment). `minLength: 1` + `pattern: '\S'`
+  // mirror the `title`/`aria-label` restrictions immediately below —
+  // `minLength` alone still lets whitespace-only through, `pattern: '\S'`
+  // requires at least one non-whitespace character, matching
+  // `isNonEmptyString` (trims before checking) and the constraints
+  // sidecar's `nonEmpty` predicate exactly.
+  const describedByIdProperty = schema.properties['describedById'];
+  if (describedByIdProperty) {
+    describedByIdProperty.minLength = 1;
+    describedByIdProperty.pattern = '\\S';
+  }
+
+  // `chrome="none"` (the chromeless full-bleed mode) requires `aria-label`
+  // since no header/title renders; `chrome="default"` (or omitted, the
+  // default) requires `title` instead. Expressed as two complementary
+  // `if`/`then` branches — the same `allOf` mechanism as the `alertdialog`
+  // branch below — rather than leaving it as prose-only documentation.
+  const chromelessCondition = {
+    properties: {
+      chrome: { const: 'none' },
+    },
+    required: ['chrome'],
+  };
+
   schema.allOf = [
     {
       if: {
@@ -381,6 +421,56 @@ function applyComponentSchemaRules(componentName: string, schema: ComponentSchem
       // eslint-disable-next-line unicorn/no-thenable -- `then` is JSON Schema's conditional keyword here, not a Promise `.then`; this object is schema data, never awaited.
       [JSON_SCHEMA_THEN_KEYWORD]: {
         required: ['describedById'],
+      },
+    },
+    {
+      if: chromelessCondition,
+      // eslint-disable-next-line unicorn/no-thenable -- see above.
+      [JSON_SCHEMA_THEN_KEYWORD]: {
+        required: ['aria-label'],
+        // `required` alone only checks key presence — `{ chrome: 'none',
+        // 'aria-label': '' }` would otherwise validate even though the
+        // constraints sidecar (`chromeless-accessible-label`) rejects the
+        // empty string and Modal's own runtime nameless guard flags it as
+        // an unnamed dialog. `minLength: 1` alone still isn't enough —
+        // `{ chrome: 'none', 'aria-label': '   ' }` satisfies minLength but
+        // is still not a real name. `pattern: '\\S'` requires at least one
+        // non-whitespace character, matching the runtime guard's
+        // `isNonEmptyString` (which trims before checking) and the
+        // constraints sidecar's `nonEmpty` predicate.
+        properties: {
+          'aria-label': { minLength: 1, pattern: '\\S' },
+        },
+      },
+    },
+    {
+      if: { not: chromelessCondition },
+      // eslint-disable-next-line unicorn/no-thenable -- see above.
+      [JSON_SCHEMA_THEN_KEYWORD]: {
+        required: ['title'],
+        // The default chrome's `title` renders the visible <h2> and
+        // supplies the accessible name via `aria-labelledby` — `aria-label`
+        // is typed `never` for this branch (ModalProps' discriminated
+        // union) and modal.svelte discards it entirely in favor of
+        // `aria-labelledby`. Forbidding it here closes the gap where
+        // schema-driven configuration (CLI/MCP consumers) could otherwise
+        // request an accessible name that is never exposed to assistive
+        // technology.
+        not: {
+          required: ['aria-label'],
+        },
+        // Same reasoning as the chromeless branch's aria-label restriction
+        // above: `required` alone only checks key presence — `{ title: '' }`
+        // or `{ title: '   ' }` would otherwise validate even though the
+        // constraints sidecar (`accessible-title`) and Modal's own runtime
+        // nameless guard both reject an empty/whitespace-only title.
+        // `minLength: 1` + `pattern: '\\S'` mirror the chromeless branch's
+        // aria-label restriction exactly, matching `isNonEmptyString`
+        // (trims before checking) and the constraints sidecar's `nonEmpty`
+        // predicate (also trims).
+        properties: {
+          title: { minLength: 1, pattern: '\\S' },
+        },
       },
     },
   ];
