@@ -89,7 +89,20 @@
     // Re-resolve the snippet anchor on each open transition. A trigger can be
     // disabled while its owner initializes and become focusable before the
     // user opens the popover without replacing the wrapper element.
-    open;
+    //
+    // Read through `open || exitState.renderPanel`, NOT the raw `open` prop:
+    // reading `open` directly makes THIS derived (and therefore
+    // `createAnchoredOverlay`'s `anchor()`, which depends on it via
+    // `resolvedAnchorElement`) invalidate on every ordinary close the instant
+    // `open` flips false — tearing down and rebriefly rebuilding position
+    // tracking even though the resolved anchor element itself hasn't
+    // actually changed. Gating on the render-panel-inclusive union instead
+    // means this only recomputes when a session genuinely starts (open
+    // transitions true) or fully ends (`renderPanel` clears once the exit
+    // transition completes) — not on the ordinary-close tick in between,
+    // which is exactly when `createAnchoredOverlay`'s effect must stay
+    // stable for the retained panel's positioning to hold through the fade.
+    open || exitState.renderPanel;
     return triggerRef && triggerRef.isConnected
       ? triggerRef
       : (findFirstFocusable(triggerWrapper) ?? null);
@@ -118,6 +131,19 @@
   // closing, or otherwise) is what actually closes that race.
   let lastAnchorElement: HTMLElement | null = null;
   $effect(() => {
+    // Read `open` explicitly so this effect re-runs on every new open
+    // session, not only when `anchorElement`'s VALUE actually changes.
+    // `$derived` only notifies downstream consumers when its recomputed
+    // value fails an equality check — reopening with the SAME still-
+    // connected trigger recomputes `anchorElement` to the identical element,
+    // so without this read the effect would never re-fire and
+    // `lastAnchorElement` would stay at whatever `onClosed` cleared it to
+    // (null) from the PREVIOUS session, until the trigger's identity
+    // happened to change. That left a real gap: if that same trigger was
+    // later removed mid-close on a SUBSEQUENT session, `resolvedAnchorElement`
+    // would have no fallback to fall back to and the panel would unmount
+    // without playing its exit.
+    open;
     if (anchorElement) {
       lastAnchorElement = anchorElement;
       return;
@@ -165,6 +191,12 @@
   // top-layer surface would then paint above the still-exiting Popover.
   let lastResolvedPortalTarget: HTMLElement | null = null;
   $effect(() => {
+    // Same re-arming reason as `lastAnchorElement`'s effect above: read
+    // `open` explicitly so a reopen with the SAME anchor (whose value
+    // wouldn't otherwise change and so wouldn't re-notify this effect)
+    // still refreshes the snapshot instead of leaving it at whatever a
+    // PRIOR `onClosed` cleared it to.
+    open;
     if (!anchorElement) {
       // Same staleness guard as `lastAnchorElement` above: only clear when
       // there's no active session to retain it for, so a genuine close
@@ -255,15 +287,11 @@
     // reset until the completion callback actually fires. Matches the fix
     // SelectionPopover already applies for the same effect-ordering race.
     //
-    // A narrower residual gap remains, same as SelectionPopover's: `anchor()`
-    // reads `resolvedAnchorElement`, which depends on `anchorElement` — a
-    // `$derived` that explicitly tracks the `open` prop (to re-resolve a
-    // disabled-then-focusable snippet trigger on every open transition).
-    // `open` changing is itself a tracked-dependency change, so this effect
-    // still reruns and briefly tears down/rebuilds its position tracking
-    // even when `open()`/`anchor()`'s OVERALL results stay valid throughout
-    // — fully closing that would require decoupling `anchorElement` from
-    // `open` entirely, out of scope here.
+    // `anchor()` reads `resolvedAnchorElement`, which depends on
+    // `anchorElement` above — that derived now reads `open` only through the
+    // same `open || exitState.renderPanel` union (not the raw prop), so an
+    // ordinary close no longer invalidates this effect on its own; it only
+    // recomputes when a session genuinely starts or fully ends.
     open: () => open || exitState.renderPanel,
     anchor: () => resolvedAnchorElement,
     panel: () => panelElement,

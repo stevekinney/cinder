@@ -27,10 +27,14 @@ import { expect, test } from '@playwright/test';
  *   tooltip preview"), alongside the Overview preview (labelled "Overview
  *   preview") — both render the identical tooltip text, so a `.filter({
  *   hasText })` locator resolved to 2 elements (a strict-mode violation).
- *   Scoped to the Overview region specifically via `getByLabel('Overview
- *   preview')` (`.dx-stage__canvas`'s `aria-label`, which the panel is
- *   associated with through `aria-owns` even though it portals to
- *   `document.body`) instead of filtering by text alone.
+ *   Region-scoping doesn't fix this either: once open, the tooltip panel is
+ *   portaled to `document.body` via `tooltipPortalAttachment`, so it is no
+ *   longer a DOM descendant of either region's container at all — there is
+ *   no `aria-owns` (or any other) wiring tying the portaled panel back to
+ *   the region it logically belongs to. The only reliable id is the one
+ *   read off the hovered trigger's own `aria-describedby` attribute
+ *   (`tooltip.svelte` sets it to the panel's `id`), located page-globally
+ *   with `page.locator(`#${describedBy}`)` — see the Tooltip test below.
  * - NavigationBar: the mobile panel toggle's accessible name changes from
  *   "Open menu" to "Close menu" once expanded (see
  *   navigation-bar.examples.json's `aria-label={mobileMenuOpen ? 'Close

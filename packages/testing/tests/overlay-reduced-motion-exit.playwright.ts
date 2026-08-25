@@ -154,9 +154,19 @@ test('NavigationBar mobile panel hides immediately under reduced motion', async 
 });
 
 test('SpeedDial actions become inert immediately under reduced motion', async ({ page }) => {
-  await page.goto('/page/speed-dial?snapshot=1', { waitUntil: 'load' });
-  const example = page.locator('#example-mount-basic');
-  const toggle = example.getByRole('button', { name: 'Quick actions' }).first();
+  // NOT `?snapshot=1`: snapshot mode forces every transition duration/delay
+  // to `0s !important`, which would make a genuinely broken
+  // `useReducedMotion()` detection indistinguishable from correct behavior —
+  // same reasoning as the other tests in this file. Uses the plain
+  // documentation page's Overview preview instead, like Popover/Tooltip/
+  // HoverCard/NavigationBar above.
+  await page.goto('/page/speed-dial', { waitUntil: 'load' });
+  const overview = page.getByRole('region', { name: 'Overview preview' });
+  await expect(page.locator('#overview-mount-basic')).toHaveAttribute(
+    'data-overview-preview-rendered',
+    '',
+  );
+  const toggle = overview.getByRole('button', { name: 'Quick actions' }).first();
   await toggle.click();
 
   const actions = page

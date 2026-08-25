@@ -39,8 +39,31 @@
   /**
    * Anchor-by-reference mode: the consumer owns the trigger's placement, so the
    * Tooltip renders only its panel. See {@link TooltipProps.triggerRef}.
+   *
+   * Retained through a closing session, not read directly off `triggerRef`:
+   * a consumer can clear `triggerRef` (e.g. unmount the referenced element)
+   * in the same update that starts a close. Reading `triggerRef != null`
+   * directly would flip `isDetached` to `false` mid-fade, switching the
+   * template from the detached branch to the wrapping branch — discarding
+   * the retained panel and its exit transition entirely, even though
+   * `exitState.renderPanel` correctly says a session is still closing.
+   * Mirrors Popover's `lastAnchorElement` retention pattern.
    */
-  const isDetached = $derived(triggerRef != null);
+  let lastIsDetached = $state(false);
+  $effect(() => {
+    if (triggerRef != null) {
+      lastIsDetached = true;
+      return;
+    }
+    // Only clear once there's no active (open or closing) session to retain
+    // it for — same effect-ordering reason as Popover's snapshots: gating on
+    // `exitState.renderPanel` here (not `visible`/`exitState.isClosing`)
+    // reads the CURRENT retention need rather than a one-tick-stale value.
+    if (!exitState.renderPanel) {
+      lastIsDetached = false;
+    }
+  });
+  const isDetached = $derived(triggerRef != null || lastIsDetached);
 
   /*
    * OVERLAY-POLICY.md's SSR rule is a HARD CONSTRAINT: overlays render nothing
@@ -203,7 +226,13 @@
       trigger.removeEventListener('mouseleave', handleMouseLeave);
       trigger.removeEventListener('focusin', handleFocusIn);
       trigger.removeEventListener('focusout', handleFocusOut);
-      if (anchorElement === trigger) anchorElement = null;
+      // Don't null the anchor while a session is still closing: `anchor()`
+      // below reads `anchorElement` directly, and `createAnchoredOverlay`
+      // clears its position when `anchor()` returns null — nulling this the
+      // instant `triggerRef` is cleared (same tick a close can start) would
+      // strand the retained (detached-mode-retained, see `lastIsDetached`
+      // above) panel with no positioning through its own exit transition.
+      if (anchorElement === trigger && !exitState.renderPanel) anchorElement = null;
     };
   });
 
