@@ -41,6 +41,70 @@ describe('Input rendering', () => {
     );
   });
 
+  test('code variant applies shared monospace metrics via the token set', async () => {
+    const css = await Bun.file(new URL('./input.css', import.meta.url)).text();
+
+    expect(css).toMatch(
+      /\.cinder-input\[data-cinder-variant='code'\]\s*\{[^}]*font-family:\s*var\(--cinder-font-mono\);[^}]*font-size:\s*var\(--cinder-text-sm\);[^}]*line-height:\s*var\(--cinder-leading-normal\);[^}]*tab-size:\s*var\(--cinder-type-tab-size\);/,
+    );
+  });
+
+  test('code variant does NOT apply monospace metrics to the field wrapper itself — only the control and the lock rule below get them', async () => {
+    // The field wrapper hosts the label, description, error, and any
+    // addons — none of those should go mono. Only .cinder-input (the
+    // control) and the inherit-lock rule (for a hypothetical <code>
+    // overlay) carry the metric values; the bare wrapper selector must not.
+    const css = await Bun.file(new URL('./input.css', import.meta.url)).text();
+
+    expect(css).not.toMatch(
+      /\.cinder-input-field\[data-cinder-variant='code'\]\s*\{[^}]*font-family:/,
+    );
+  });
+
+  test('code variant locks any inner <code> element to the SAME explicit metrics as the control, excluding addon slots', async () => {
+    // <input> is a void element and can never host a <code> descendant, so
+    // the inherit-lock rule is scoped to the field wrapper, not .cinder-input.
+    // It declares the same explicit font-family/size/line-height/tab-size
+    // as the control (not `font: inherit`) so a future overlay <code>
+    // matches the control without the wrapper itself needing to carry any
+    // metric declarations — the wrapper's label/description/error/addons
+    // stay in their ordinary font. It excludes the leading/trailing addon
+    // slots so a consumer's own addon content (e.g. a <code> badge) keeps
+    // its own styling.
+    const css = await Bun.file(new URL('./input.css', import.meta.url)).text();
+
+    expect(css).toMatch(
+      /\.cinder-input-field\[data-cinder-variant='code'\]\s*:where\(code\):not\(\s*\.cinder-input-group__leading,\s*\.cinder-input-group__leading \*,\s*\.cinder-input-group__trailing,\s*\.cinder-input-group__trailing \*\s*\)\s*\{\s*all:\s*unset;[^}]*font-family:\s*var\(--cinder-font-mono\);[^}]*font-size:\s*var\(--cinder-text-sm\);[^}]*line-height:\s*var\(--cinder-leading-normal\);[^}]*tab-size:\s*var\(--cinder-type-tab-size\);\s*\}/,
+    );
+  });
+
+  test('code variant propagates data-cinder-variant onto the field wrapper', () => {
+    const { container } = render(Input, {
+      props: { id: 'pattern', value: '', label: 'Pattern', variant: 'code' },
+    });
+    const field = container.querySelector('.cinder-input-field');
+
+    expect(field?.getAttribute('data-cinder-variant')).toBe('code');
+  });
+
+  test('code variant does not reset a <code> element rendered inside a leading/trailing addon', () => {
+    const { container } = render(Input, {
+      props: {
+        id: 'amount',
+        value: '',
+        label: 'Amount',
+        variant: 'code',
+        leading: createRawSnippet(() => ({
+          render: () => '<span><code class="my-addon-code">USD</code></span>',
+        })),
+      },
+    });
+
+    const addonCode = container.querySelector('.cinder-input-group__leading code');
+    expect(addonCode).not.toBeNull();
+    expect(addonCode?.classList.contains('my-addon-code')).toBe(true);
+  });
+
   test('standalone FormField presentation is included by the Input sidecar', async () => {
     const css = await Bun.file(new URL('./input.css', import.meta.url)).text();
 
@@ -118,6 +182,22 @@ describe('Input rendering', () => {
     expect(
       container.querySelector('.cinder-input-field')?.hasAttribute('data-cinder-full-width'),
     ).toBe(true);
+  });
+
+  test('defaults to variant="default"', () => {
+    const { container } = render(Input, { props: { id: 'name', value: '' } });
+    const input = container.querySelector('#name') as HTMLInputElement;
+
+    expect(input.getAttribute('data-cinder-variant')).toBe('default');
+  });
+
+  test('variant="code" sets data-cinder-variant="code" on the input', () => {
+    const { container } = render(Input, {
+      props: { id: 'pattern', value: '', variant: 'code' },
+    });
+    const input = container.querySelector('#pattern') as HTMLInputElement;
+
+    expect(input.getAttribute('data-cinder-variant')).toBe('code');
   });
 
   test('renders with required id prop', () => {

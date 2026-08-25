@@ -13,6 +13,9 @@ export type InputType =
   | 'date'
   | 'number';
 
+/** Visual style of the input. `"code"` applies the shared monospace metric set (font-family, font-size, line-height, tab-size) used for source-like values such as regular expressions, URIs, and identifiers. */
+export type InputVariant = 'default' | 'code';
+
 type InputAddonProps = (
   | { leading?: never; leadingInteractive?: never; trailing?: never; trailingInteractive?: never }
   | {
@@ -70,6 +73,13 @@ export type InputProps = Omit<HTMLInputAttributes, 'class'> &
     required?: boolean;
     /** Input type controlling the browser's built-in validation and keyboard. Default `"text"`. */
     type?: InputType;
+    /**
+     * Visual style. `"code"` applies a shared monospace metric set (font-family, font-size,
+     * line-height, tab-size) for source-like values such as regular expressions, URIs, or
+     * identifiers.
+     * @default "default"
+     */
+    variant?: InputVariant;
     /** Attachment for native input access and lifecycle-scoped listeners. */
     inputAttachment?: Attachment<HTMLInputElement>;
     /** Custom class merged with `.cinder-input`. */

@@ -125,6 +125,64 @@ describe('Textarea', () => {
     expect(textarea.hasAttribute('aria-required')).toBe(false);
   });
 
+  test('defaults to variant="default"', () => {
+    const { container } = render(Textarea, { props: { id: 'plain' } });
+    const textarea = container.querySelector('textarea');
+    expect(textarea?.getAttribute('data-cinder-variant')).toBe('default');
+  });
+
+  test('variant="code" sets data-cinder-variant="code" on the textarea', () => {
+    const { container } = render(Textarea, { props: { id: 'json', variant: 'code' } });
+    const textarea = container.querySelector('textarea');
+    expect(textarea?.getAttribute('data-cinder-variant')).toBe('code');
+  });
+
+  test('code variant applies shared monospace metrics via the token set', async () => {
+    const css = await Bun.file(new URL('./textarea.css', import.meta.url)).text();
+
+    expect(css).toMatch(
+      /\.cinder-textarea\[data-cinder-variant='code'\]\s*\{[^}]*font-family:\s*var\(--cinder-font-mono\);[^}]*font-size:\s*var\(--cinder-text-sm\);[^}]*line-height:\s*var\(--cinder-leading-normal\);[^}]*tab-size:\s*var\(--cinder-type-tab-size\);/,
+    );
+  });
+
+  test('code variant does NOT apply monospace metrics to the field wrapper itself — only the control and the lock rule below get them', async () => {
+    // The field wrapper hosts the label, description, error, and
+    // character counter — none of those should go mono. Only
+    // .cinder-textarea (the control) and the inherit-lock rule (for a
+    // hypothetical <code> overlay) carry the metric values; the bare
+    // wrapper selector must not.
+    const css = await Bun.file(new URL('./textarea.css', import.meta.url)).text();
+
+    expect(css).not.toMatch(
+      /\.cinder-textarea-field\[data-cinder-variant='code'\]\s*\{[^}]*font-family:/,
+    );
+  });
+
+  test('code variant locks any inner <code> element to the SAME explicit metrics as the control', async () => {
+    // Text inside <textarea>...</textarea> is parsed as literal text, not
+    // markup, so a real <code> descendant of .cinder-textarea is impossible;
+    // the inherit-lock rule is scoped to the field wrapper instead. It
+    // declares the same explicit font-family/size/line-height/tab-size as
+    // the control (not `font: inherit`) so a future overlay <code> matches
+    // the control without the wrapper itself needing to carry any metric
+    // declarations — the wrapper's label/description/error/counter stay in
+    // their ordinary font.
+    const css = await Bun.file(new URL('./textarea.css', import.meta.url)).text();
+
+    expect(css).toMatch(
+      /\.cinder-textarea-field\[data-cinder-variant='code'\]\s*:where\(code\)\s*\{\s*all:\s*unset;[^}]*font-family:\s*var\(--cinder-font-mono\);[^}]*font-size:\s*var\(--cinder-text-sm\);[^}]*line-height:\s*var\(--cinder-leading-normal\);[^}]*tab-size:\s*var\(--cinder-type-tab-size\);\s*\}/,
+    );
+  });
+
+  test('code variant propagates data-cinder-variant onto the field wrapper', () => {
+    const { container } = render(Textarea, {
+      props: { id: 'json', label: 'Raw JSON', variant: 'code' },
+    });
+    const field = container.querySelector('.cinder-textarea-field');
+
+    expect(field?.getAttribute('data-cinder-variant')).toBe('code');
+  });
+
   test('consumer class name merges with .cinder-textarea', () => {
     const { container } = render(Textarea, { props: { id: 'styled', class: 'my-class' } });
     const classAttr = container.querySelector('textarea')?.getAttribute('class') ?? '';
