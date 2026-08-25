@@ -169,7 +169,19 @@
   });
 
   function handleBackdropClick(event: MouseEvent) {
-    if (dismissOnBackdropClick && event.target === dialogElement) {
+    if (!dismissOnBackdropClick) return;
+    if (event.target === dialogElement) {
+      dismiss();
+      return;
+    }
+    // Chromeless mode (chrome="none") fills the dialog's entire content box
+    // with the panel/body — `dialogElement` itself has no visible padding
+    // or gap left to click, so `event.target === dialogElement` can never
+    // be true there. The panel and body ARE the backdrop-equivalent
+    // surface for this chrome: a click that lands directly on either
+    // (rather than on real content the consumer rendered inside them)
+    // dismisses, the same way a default-chrome backdrop click does.
+    if (isChromeless && (event.target === panelElement || event.target === bodyElement)) {
       dismiss();
     }
   }
@@ -192,7 +204,7 @@
     class={classNames('cinder-modal', className)}
     {role}
     aria-modal="true"
-    data-chrome={isChromeless ? 'none' : undefined}
+    data-cinder-chrome={isChromeless ? 'none' : undefined}
     {...isChromeless ? { 'aria-label': ariaLabel } : { 'aria-labelledby': titleId }}
     {...describedById ? { 'aria-describedby': describedById } : {}}
     data-cinder-closing={dialogState.isClosing ? '' : undefined}
@@ -216,7 +228,7 @@
       <div
         bind:this={panelElement}
         class="cinder-modal__panel"
-        data-chrome={isChromeless ? 'none' : undefined}
+        data-cinder-chrome={isChromeless ? 'none' : undefined}
         data-cinder-closing={dialogState.isClosing ? '' : undefined}
         inert={dialogState.isClosing}
         {@attach createFocusTrap({
@@ -234,7 +246,7 @@
         <div
           bind:this={bodyElement}
           class="cinder-modal__body cinder-_scroll-fade"
-          data-chrome={isChromeless ? 'none' : undefined}
+          data-cinder-chrome={isChromeless ? 'none' : undefined}
           tabindex="-1"
           {@attach bodyOverflowFade}
         >

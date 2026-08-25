@@ -49,11 +49,11 @@
 
   /* Chromeless / full-bleed mode (`chrome="none"`): suppresses max-width so the
    * dialog fills the viewport. The header, border, and body padding are
-   * suppressed further down, scoped to `.cinder-modal__panel[data-chrome='none']`
-   * and `.cinder-modal__body[data-chrome='none']`. All coordination logic
+   * suppressed further down, scoped to `.cinder-modal__panel[data-cinder-chrome='none']`
+   * and `.cinder-modal__body[data-cinder-chrome='none']`. All coordination logic
    * (focus trap, scroll lock, escape stack, exit-transition lifecycle) is
    * untouched — this block is presentation only. */
-  .cinder-modal[data-chrome='none'] {
+  .cinder-modal[data-cinder-chrome='none'] {
     max-width: none;
     width: 100%;
     height: 100%;
@@ -163,7 +163,7 @@
   /* Chromeless / full-bleed mode: the panel fills the chromeless dialog
    * and drops the card chrome (border, radius, surface, shadow) so the
    * consumer's own content (e.g. an image lightbox) owns the full surface. */
-  .cinder-modal__panel[data-chrome='none'] {
+  .cinder-modal__panel[data-cinder-chrome='none'] {
     height: 100%;
     background: transparent;
     border: none;
@@ -278,7 +278,7 @@
     outline: none;
   }
 
-  .cinder-modal__body[data-chrome='none'] {
+  .cinder-modal__body[data-cinder-chrome='none'] {
     padding: 0;
     background: transparent;
   }
@@ -298,7 +298,7 @@
    * file's own forced-colors comments for why `opacity` alone can't win
    * against that animation), so no fade box exists at all in the chromeless
    * chrome. */
-  .cinder-modal__body[data-chrome='none']::after {
+  .cinder-modal__body[data-cinder-chrome='none']::after {
     content: none;
   }
 

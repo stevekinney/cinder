@@ -146,9 +146,36 @@ describe('image-lightbox source contract — Modal composition', () => {
     // below are the guard for this harness; a Playwright test would be
     // needed to observe the DOM directly mid-fade.
     expect(source).toContain(
-      'const effectiveIndex = $derived(navigationIndex ?? clampedInitialIndex);',
+      'const effectiveIndex = $derived(frozenIndex ?? navigationIndex ?? clampedInitialIndex);',
     );
     expect(source).not.toContain('open ? (navigationIndex ?? clampedInitialIndex)');
+  });
+
+  test('freezes the session index before onClose can race it (CIN-377 review)', () => {
+    // Regression: a controlled-component onClose callback commonly resets
+    // its selected index (e.g. `initialIndex`) synchronously, in the SAME
+    // tick as the close — even in the no-navigation case, where
+    // effectiveIndex would otherwise keep tracking `clampedInitialIndex`
+    // reactively. frozenIndex must be captured BEFORE onClose runs in both
+    // dismissal paths, not just via the deferred effect (which would lose
+    // the race against onClose's own synchronous mutation).
+    const closeBody = source.slice(
+      source.indexOf('function close()'),
+      source.indexOf('function handleModalDismiss()'),
+    );
+    expect(closeBody.indexOf('frozenIndex = effectiveIndex')).toBeGreaterThan(-1);
+    expect(closeBody.indexOf('frozenIndex = effectiveIndex')).toBeLessThan(
+      closeBody.indexOf('onClose?.()'),
+    );
+
+    const dismissBody = source.slice(
+      source.indexOf('function handleModalDismiss()'),
+      source.indexOf('function previous()'),
+    );
+    expect(dismissBody.indexOf('frozenIndex = effectiveIndex')).toBeGreaterThan(-1);
+    expect(dismissBody.indexOf('frozenIndex = effectiveIndex')).toBeLessThan(
+      dismissBody.indexOf('onClose?.()'),
+    );
   });
 
   test('close() and handleModalDismiss() do not reset navigationIndex synchronously', () => {
@@ -302,6 +329,33 @@ describe('image-lightbox — behavioral reset on reopen', () => {
     await rerender({ images, initialIndex: 0, open: true });
     await tick();
     expect(container.querySelector('img')?.getAttribute('alt')).toBe('Image A');
+  });
+
+  test('a prop change while closed (simulating an onClose reset) does not leak in until the next fresh open', async () => {
+    // Regression (CIN-377 review): frozenIndex must release exactly once,
+    // on the NEXT fresh open — not stick forever, and not leak an
+    // intervening prop mutation while still closed. No arrow navigation
+    // happens here (the specific no-navigation case the review flagged):
+    // the lightbox shows initialIndex=0 (Image A), closes, `initialIndex`
+    // changes to 2 WHILE CLOSED (simulating a controlled-component onClose
+    // cleanup), and only the next fresh open should pick up the new value.
+    const { container, rerender } = render(ImageLightbox, {
+      props: { images, initialIndex: 0, open: true },
+    });
+    expect(container.querySelector('img')?.getAttribute('alt')).toBe('Image A');
+
+    await fireEvent.click(container.querySelector('[aria-label="Close image viewer"]')!);
+    await tick();
+
+    await rerender({ images, initialIndex: 2, open: false });
+    await tick();
+
+    // Reopening picks up the FRESH initialIndex (2 → Image C) — proving the
+    // freeze correctly released on this open rather than sticking with
+    // whatever was frozen at close time.
+    await rerender({ images, initialIndex: 2, open: true });
+    await tick();
+    expect(container.querySelector('img')?.getAttribute('alt')).toBe('Image C');
   });
 });
 

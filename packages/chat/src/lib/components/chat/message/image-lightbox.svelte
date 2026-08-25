@@ -51,7 +51,22 @@
   // the read-and-write-back-the-same-bindable pattern #464 removes (that
   // pattern re-wrote a $state the SAME effect also read).
   let navigationIndex = $state<number | null>(null);
-  const effectiveIndex = $derived(navigationIndex ?? clampedInitialIndex);
+  // frozenIndex freezes the resolved session index (whatever effectiveIndex
+  // was showing) for the WHOLE closing/exit-transition window — including
+  // the no-navigation case, where effectiveIndex would otherwise keep
+  // tracking `clampedInitialIndex` reactively. This matters because a
+  // consumer's `onClose` callback is a common place to reset a
+  // controlled-component's selected index — that mutation happens
+  // synchronously, in the SAME tick as the close, before Modal's exit
+  // transition has even started to play. Without freezing, the still-fading
+  // lightbox would immediately swap to whatever image the just-reset
+  // `initialIndex` now points at. `frozenIndex` is captured synchronously
+  // inside close()/handleModalDismiss() BEFORE onClose runs (see below), not
+  // only via the effect's fallback path, so it beats that race. Reset to
+  // null (unfrozen) exactly once per fresh open, same effect as
+  // resetAppliedForCurrentSession below.
+  let frozenIndex = $state<number | null>(null);
+  const effectiveIndex = $derived(frozenIndex ?? navigationIndex ?? clampedInitialIndex);
   let resetAppliedForCurrentSession = false;
   // Lazy mount: `hasOpenedOnce` starts false so an ImageLightbox instance
   // that is never opened (the common case — MessageAttachments renders one
@@ -65,12 +80,20 @@
   $effect(() => {
     if (open) {
       hasOpenedOnce = true;
+      frozenIndex = null;
       if (!resetAppliedForCurrentSession) {
         navigationIndex = null;
         resetAppliedForCurrentSession = true;
       }
     } else {
       resetAppliedForCurrentSession = false;
+      // Fallback freeze for a parent-driven `open = false` that doesn't go
+      // through close()/handleModalDismiss() at all (no onClose fires for
+      // that path, so there's no synchronous capture point to race) — this
+      // is a no-op if already frozen synchronously below.
+      if (frozenIndex === null) {
+        frozenIndex = navigationIndex ?? clampedInitialIndex;
+      }
     }
   });
 
@@ -81,13 +104,19 @@
   // The single path for a lightbox-initiated close (the close button, or a
   // click on the backdrop area around the image). `open` flips first so a
   // thrown onClose callback does not leave the lightbox's reactive state open.
-  // Deliberately does NOT reset navigationIndex here — Modal keeps this
-  // component's children mounted through its exit transition, and resetting
-  // now would visibly snap the displayed image back to clampedInitialIndex
-  // mid-fade. The reset happens exactly once, on the NEXT fresh open (see the
-  // effect above).
+  // Freezes the resolved index BEFORE calling onClose — a controlled-
+  // component consumer commonly resets its selected index from onClose,
+  // synchronously, in this same tick, which would otherwise leak into
+  // effectiveIndex mid-fade. Deliberately does NOT reset navigationIndex —
+  // Modal keeps this component's children mounted through its exit
+  // transition, and resetting now would visibly snap the displayed image
+  // back to clampedInitialIndex mid-fade. The reset happens exactly once, on
+  // the NEXT fresh open (see the effect above).
   function close() {
     open = false;
+    if (frozenIndex === null) {
+      frozenIndex = effectiveIndex;
+    }
     onClose?.();
   }
 
@@ -95,10 +124,14 @@
   // route through `onDismiss` instead of our `close()` — Modal has already
   // flipped `open` to false by the time this fires, via the coordinated
   // SlidingDialogState lifecycle (focus trap, scroll lock, escape-stack
-  // participation, exit-transition) that Modal owns entirely. Same as
-  // close(): no navigationIndex reset here either, for the same
+  // participation, exit-transition) that Modal owns entirely. Same
+  // synchronous freeze-before-onClose as close(), for the same race-with-
+  // onClose reason — and no navigationIndex reset here either, for the same
   // preserve-through-the-exit reason.
   function handleModalDismiss() {
+    if (frozenIndex === null) {
+      frozenIndex = effectiveIndex;
+    }
     onClose?.();
   }
 

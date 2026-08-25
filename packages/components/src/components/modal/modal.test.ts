@@ -1061,7 +1061,7 @@ describe('Modal chromeless mode (chrome="none")', () => {
     expect(dialog.getAttribute('aria-modal')).toBe('true');
   });
 
-  test('marks the dialog and panel with data-chrome="none" so CSS can drop border/max-width/padding', () => {
+  test('marks the dialog and panel with data-cinder-chrome="none" so CSS can drop border/max-width/padding', () => {
     const { container } = render(Modal, {
       props: {
         open: true,
@@ -1073,12 +1073,12 @@ describe('Modal chromeless mode (chrome="none")', () => {
     const dialog = container.querySelector('dialog') as HTMLDialogElement;
     const panel = container.querySelector('.cinder-modal__panel') as HTMLElement;
     const body = container.querySelector('.cinder-modal__body') as HTMLElement;
-    expect(dialog.getAttribute('data-chrome')).toBe('none');
-    expect(panel.getAttribute('data-chrome')).toBe('none');
-    expect(body.getAttribute('data-chrome')).toBe('none');
+    expect(dialog.getAttribute('data-cinder-chrome')).toBe('none');
+    expect(panel.getAttribute('data-cinder-chrome')).toBe('none');
+    expect(body.getAttribute('data-cinder-chrome')).toBe('none');
   });
 
-  test('the default chrome renders the header/title and carries no data-chrome attribute', () => {
+  test('the default chrome renders the header/title and carries no data-cinder-chrome attribute', () => {
     const { container } = render(Modal, {
       props: {
         open: true,
@@ -1088,18 +1088,22 @@ describe('Modal chromeless mode (chrome="none")', () => {
     });
     const dialog = container.querySelector('dialog') as HTMLDialogElement;
     expect(container.querySelector('.cinder-modal__header')).not.toBeNull();
-    expect(dialog.hasAttribute('data-chrome')).toBe(false);
+    expect(dialog.hasAttribute('data-cinder-chrome')).toBe(false);
     expect(dialog.getAttribute('aria-labelledby')).not.toBeNull();
   });
 
-  test('modal.css suppresses max-width/border/padding for data-chrome="none" without touching coordination logic', async () => {
+  test('modal.css suppresses max-width/border/padding for data-cinder-chrome="none" without touching coordination logic', async () => {
     const css = await Bun.file(new URL('./modal.css', import.meta.url)).text();
-    expect(css).toMatch(/\.cinder-modal\[data-chrome='none'\]\s*\{[^}]*max-width:\s*none;/s);
-    expect(css).toMatch(/\.cinder-modal__panel\[data-chrome='none'\]\s*\{[^}]*border:\s*none;/s);
-    expect(css).toMatch(/\.cinder-modal__body\[data-chrome='none'\]\s*\{[^}]*padding:\s*0;/s);
+    expect(css).toMatch(/\.cinder-modal\[data-cinder-chrome='none'\]\s*\{[^}]*max-width:\s*none;/s);
+    expect(css).toMatch(
+      /\.cinder-modal__panel\[data-cinder-chrome='none'\]\s*\{[^}]*border:\s*none;/s,
+    );
+    expect(css).toMatch(
+      /\.cinder-modal__body\[data-cinder-chrome='none'\]\s*\{[^}]*padding:\s*0;/s,
+    );
   });
 
-  test('modal.css disables the shared scroll-fade\'s opaque edge overlay for data-chrome="none"', async () => {
+  test('modal.css disables the shared scroll-fade\'s opaque edge overlay for data-cinder-chrome="none"', async () => {
     // The shared `.cinder-_scroll-fade` recipe fades with an OPAQUE overlay
     // painted in `--_cinder-scroll-fade-color` (--cinder-surface here) by
     // design (see _scroll-fade.css's design rules). A chromeless body is
@@ -1111,7 +1115,7 @@ describe('Modal chromeless mode (chrome="none")', () => {
     // keyframe overrides plain `opacity` regardless of source order.
     const css = await Bun.file(new URL('./modal.css', import.meta.url)).text();
     expect(css).toMatch(
-      /\.cinder-modal__body\[data-chrome='none'\]::after\s*\{[^}]*content:\s*none;/s,
+      /\.cinder-modal__body\[data-cinder-chrome='none'\]::after\s*\{[^}]*content:\s*none;/s,
     );
   });
 
@@ -1185,6 +1189,122 @@ describe('Modal chromeless mode (chrome="none")', () => {
     await fireEvent(dialog, cancelEvent);
     expect(cancelEvent.defaultPrevented).toBe(true);
     expect(openValue).toBe(false);
+  });
+
+  test('clicking the panel background dismisses (backdrop-equivalent) since the panel fills the whole dialog', async () => {
+    // Regression: chrome="none" makes the panel/body fill the dialog's
+    // entire content box (width/height 100%, inset 0), so a real click can
+    // never land directly on `dialogElement` — event.target === dialogElement
+    // is unreachable there. The panel/body ARE the backdrop-equivalent
+    // surface for this chrome.
+    let openValue = true;
+    const { container } = render(Modal, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        chrome: 'none',
+        'aria-label': 'Image viewer',
+        children: emptySnippet,
+      },
+    });
+    const panel = container.querySelector('.cinder-modal__panel') as HTMLElement;
+    await fireEvent.click(panel);
+    expect(openValue).toBe(false);
+  });
+
+  test('clicking the body background dismisses (backdrop-equivalent)', async () => {
+    let openValue = true;
+    const { container } = render(Modal, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        chrome: 'none',
+        'aria-label': 'Image viewer',
+        children: emptySnippet,
+      },
+    });
+    const body = container.querySelector('.cinder-modal__body') as HTMLElement;
+    await fireEvent.click(body);
+    expect(openValue).toBe(false);
+  });
+
+  test('dismissOnBackdropClick=false keeps chromeless panel/body clicks from closing', async () => {
+    let openValue = true;
+    const { container } = render(Modal, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        chrome: 'none',
+        'aria-label': 'Image viewer',
+        dismissOnBackdropClick: false,
+        children: emptySnippet,
+      },
+    });
+    const panel = container.querySelector('.cinder-modal__panel') as HTMLElement;
+    await fireEvent.click(panel);
+    expect(openValue).toBe(true);
+  });
+
+  test('a click on real content INSIDE the chromeless body does not dismiss (event.target is the content, not the body/panel)', async () => {
+    const contentSnippet = createRawSnippet(() => ({
+      render: () => `<button type="button" id="real-content">Real content</button>`,
+      setup: () => {},
+    }));
+    let openValue = true;
+    const { container } = render(Modal, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        chrome: 'none',
+        'aria-label': 'Image viewer',
+        children: contentSnippet,
+      },
+    });
+    const content = container.querySelector('#real-content') as HTMLElement;
+    await fireEvent.click(content);
+    expect(openValue).toBe(true);
+  });
+
+  test('default chrome is unaffected: clicking the panel/body does NOT dismiss (only event.target === dialogElement does)', async () => {
+    // Regression guard: the chromeless-only fallback (panel/body as
+    // backdrop-equivalent) must not leak into the default chrome, where
+    // clicking the panel/body is a normal part of the visible card, not a
+    // backdrop click.
+    let openValue = true;
+    const { container } = render(Modal, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        title: 'Test Modal',
+        children: emptySnippet,
+      },
+    });
+    const panel = container.querySelector('.cinder-modal__panel') as HTMLElement;
+    const body = container.querySelector('.cinder-modal__body') as HTMLElement;
+    await fireEvent.click(panel);
+    expect(openValue).toBe(true);
+    await fireEvent.click(body);
+    expect(openValue).toBe(true);
   });
 });
 
