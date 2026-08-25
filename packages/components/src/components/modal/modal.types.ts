@@ -20,6 +20,24 @@ type ModalBaseProps = {
    * Callbacks are not awaited and thrown callbacks do not block close.
    */
   onDismiss?: () => void;
+  /**
+   * Fired once the exit transition genuinely finishes and the panel actually
+   * unmounts — not when `open` first flips false. Modal keeps its children
+   * mounted for the whole exit-transition window (via `SlidingDialogState`),
+   * so a CONSUMER that composes Modal and wraps it in its own `{#if}` keyed
+   * directly on the same condition that flips `open` false would destroy the
+   * whole component instance before this exit ever gets a chance to play.
+   * Use this callback to decouple that wrapping condition from the live open
+   * state: keep the composing consumer's own mount gate true until this
+   * fires, then clear it. Fires immediately (no animation) when
+   * `prefers-reduced-motion: reduce` collapses the transition duration to
+   * zero. Does NOT fire if `open` flips back to true before the exit
+   * transition completes (a reopen-during-close) — the panel never actually
+   * unmounts in that case, so the composing consumer's mount gate must stay
+   * on. Same pattern as `PopoverProps`/`SelectionPopoverProps`'
+   * `onExitComplete` (CIN-376).
+   */
+  onExitComplete?: () => void;
 };
 
 type DefaultChromeProps = {

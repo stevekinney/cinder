@@ -61,6 +61,7 @@
     triggerRef = null,
     describedById,
     onDismiss,
+    onExitComplete,
   }: ModalProps = $props();
 
   const isChromeless = $derived(chrome === 'none');
@@ -104,6 +105,12 @@
         getDialogElement: () => dialogElement,
         getBodyElement: () => bodyElement,
       }),
+    // Fires once the exit transition genuinely finishes and the panel
+    // actually unmounts (not merely when `open` flips false) — see
+    // `onExitComplete` on ModalProps. `SlidingDialogState` already skips
+    // this callback on a reopen-during-close (the panel never actually
+    // unmounts in that case), so no extra guard is needed here.
+    onClosed: () => onExitComplete?.(),
   });
 
   $effect(() => {
@@ -166,6 +173,16 @@
 
   onDestroy(() => {
     dialogState.destroy();
+    // Defensive: a native <dialog> shown via showModal() is promoted to the
+    // browser's top layer, outside ordinary document flow. When a consumer
+    // composes Modal behind its own conditional mount (e.g. clearing a
+    // mount flag from `onExitComplete`, the same pattern Popover/
+    // SelectionPopover support), the surrounding block's teardown can leave
+    // this element attached even after this component instance is
+    // destroyed — the top-layer promotion means it is not a normal
+    // document-flow child removal. Explicitly detach it so no closed
+    // <dialog> is ever left behind in the DOM.
+    dialogElement?.remove();
   });
 
   function handleBackdropClick(event: MouseEvent) {

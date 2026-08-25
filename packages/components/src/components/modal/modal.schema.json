@@ -62,6 +62,11 @@
         "description": "Fired on user-initiated dismissal. Includes: Escape key (native dialog 'cancel' event),\nbackdrop click, and the close-X button. EXCLUDES: parent-driven open = false.\nCallbacks are not awaited and thrown callbacks do not block close."
       },
       {
+        "name": "onExitComplete",
+        "reason": "function-or-snippet",
+        "description": "Fired once the exit transition genuinely finishes and the panel actually\nunmounts — not when `open` first flips false. Modal keeps its children\nmounted for the whole exit-transition window (via `SlidingDialogState`),\nso a CONSUMER that composes Modal and wraps it in its own `{#if}` keyed\ndirectly on the same condition that flips `open` false would destroy the\nwhole component instance before this exit ever gets a chance to play.\nUse this callback to decouple that wrapping condition from the live open\nstate: keep the composing consumer's own mount gate true until this\nfires, then clear it. Fires immediately (no animation) when\n`prefers-reduced-motion: reduce` collapses the transition duration to\nzero. Does NOT fire if `open` flips back to true before the exit\ntransition completes (a reopen-during-close) — the panel never actually\nunmounts in that case, so the composing consumer's mount gate must stay\non. Same pattern as `PopoverProps`/`SelectionPopoverProps`'\n`onExitComplete` (CIN-376)."
+      },
+      {
         "name": "triggerRef",
         "reason": "unknown-shape"
       }

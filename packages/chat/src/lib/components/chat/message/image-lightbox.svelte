@@ -17,6 +17,7 @@
 </script>
 
 <script lang="ts">
+  import { tick } from 'svelte';
   import { ChevronLeft, ChevronRight, X } from '@lostgradient/cinder/icons';
   import { Modal } from '@lostgradient/cinder/modal';
 
@@ -89,15 +90,35 @@
   // Lazy mount: `hasOpenedOnce` starts false so an ImageLightbox instance
   // that is never opened (the common case — MessageAttachments renders one
   // per message unconditionally) never mounts Modal at all: no closed
-  // <dialog>, no reduced-motion observer, no SlidingDialogState effects. It
-  // flips true (permanently) on the FIRST open and stays true afterward so
-  // subsequent closes still get their exit transition — Modal's children
-  // must stay mounted through `data-cinder-closing` for the fade to play,
-  // which requires the template guard below to not depend on `open` alone.
+  // <dialog>, no reduced-motion observer, no SlidingDialogState effects.
+  // Flips true on open (so Modal's children stay mounted through
+  // `data-cinder-closing` for the exit fade to play — the template guard
+  // below must not depend on `open` alone) and clears back to false once
+  // Modal's exit transition genuinely finishes, via `onExitComplete`
+  // (`handleExitComplete`, below) — NOT permanently true after the first
+  // open. Without that release, every lightbox ever opened would keep a
+  // closed <dialog>, SlidingDialogState's effects, and a useReducedMotion
+  // MediaQuery subscription alive for the rest of the chat's lifetime, one
+  // per message in a long thread (CIN-377 review).
   let hasOpenedOnce = $state(false);
+  // Forces the `{#key mountGeneration}` block around <Modal> (below) to
+  // fully destroy and recreate on every genuine remount cycle. `{#if}`
+  // alone was not reliable here: when `hasOpenedOnce` flips false (exit
+  // complete) and then true again (a fresh open shortly after) across two
+  // separate reactive commits, plain boolean-toggle diffing could leave a
+  // stale, already-`onDestroy`'d Modal instance's <dialog> element behind
+  // in the DOM instead of removing it before inserting the new instance —
+  // `{#key}` guarantees full teardown-then-recreate instead of relying on
+  // that diffing. Incremented only on the false→true (fresh mount)
+  // transition, never on a reopen-during-close (hasOpenedOnce never
+  // actually went false in that case).
+  let mountGeneration = $state(0);
   $effect(() => {
     if (open) {
       lastLiveIndex = navigationIndex ?? clampedInitialIndex;
+      if (!hasOpenedOnce) {
+        mountGeneration += 1;
+      }
       hasOpenedOnce = true;
       frozenIndex = null;
       if (!resetAppliedForCurrentSession) {
@@ -156,6 +177,37 @@
     onClose?.();
   }
 
+  // Releases the lazy-mount flag once Modal's exit transition genuinely
+  // finishes — not when `open` first flips false. Without this,
+  // `hasOpenedOnce` stayed permanently true after the FIRST open, so every
+  // lightbox instance that had ever been opened kept a closed <dialog>,
+  // SlidingDialogState's effects, and a useReducedMotion MediaQuery
+  // subscription alive for the rest of the chat's lifetime — one per
+  // message, in a long thread. Modal's `onExitComplete` (mirroring the
+  // Popover/SelectionPopover pattern from CIN-376) fires exactly once the
+  // panel has actually unmounted, covering both the real-transition and the
+  // reduced-motion-collapses-to-zero paths, and does NOT fire at all if
+  // `open` flips back to true before the exit finishes (a reopen mid-close)
+  // — so a reopen during the exit transition simply never reaches this
+  // handler, and hasOpenedOnce/the mount stay intact through it.
+  function handleExitComplete() {
+    // Deferred via tick(): this callback fires from deep inside Modal's own
+    // effect chain (SlidingDialogState's transition-completion callback),
+    // i.e. from WITHIN the very component instance the write below tears
+    // down (clearing hasOpenedOnce flips the {#if} that mounts <Modal>).
+    // Writing it synchronously here raced a near-simultaneous reopen in
+    // testing: Svelte's block reconciliation could observe the "remove" and
+    // a subsequent "add" (from the reopen) within overlapping effect
+    // passes and momentarily render BOTH the outgoing and incoming <Modal>
+    // instances. Deferring the write to a fresh tick lets Modal's own
+    // teardown fully settle first.
+    void tick().then(() => {
+      if (!open) {
+        hasOpenedOnce = false;
+      }
+    });
+  }
+
   function previous() {
     navigationIndex = (effectiveIndex - 1 + images.length) % images.length;
   }
@@ -198,16 +250,18 @@
   }
 </script>
 
-{#if (open || hasOpenedOnce) && currentImage}
-  <Modal
-    bind:open
-    chrome="none"
-    aria-label="Image viewer"
-    closeButtonVisible={false}
-    class="lightbox-modal"
-    onDismiss={handleModalDismiss}
-  >
-    <!--
+{#key mountGeneration}
+  {#if hasOpenedOnce && currentImage}
+    <Modal
+      bind:open
+      chrome="none"
+      aria-label="Image viewer"
+      closeButtonVisible={false}
+      class="lightbox-modal"
+      onDismiss={handleModalDismiss}
+      onExitComplete={handleExitComplete}
+    >
+      <!--
       `autofocus` (plus `tabindex="-1"` so it's programmatically focusable)
       makes this element Modal's initial-focus target: Modal's own initial-
       focus policy (`focusDialogBodyUnlessAutofocused`) looks for an
@@ -218,7 +272,7 @@
       ArrowLeft/ArrowRight navigation) would never see the keystroke until
       focus moved somewhere inside this subtree.
     -->
-    <!--
+      <!--
       No ARIA role fits this element semantically: it is the dialog's own
       content surface (Modal already supplies the dialog role on its own
       ancestor <dialog> element), not a widget — but it legitimately needs
@@ -231,55 +285,61 @@
       claims interactive semantics this element doesn't have or reintroduces
       the "non-interactive element with event listeners" warning instead.
     -->
-    <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div
-      class="lightbox-content"
-      onclick={handleContentClick}
-      onkeydown={handleKeyDown}
-      tabindex="-1"
-      autofocus
-    >
-      <button type="button" class="lightbox-close" aria-label="Close image viewer" onclick={close}>
-        <X size={20} />
-      </button>
-
-      {#if hasMultiple}
+      <!-- svelte-ignore a11y_no_static_element_interactions -->
+      <div
+        class="lightbox-content"
+        onclick={handleContentClick}
+        onkeydown={handleKeyDown}
+        tabindex="-1"
+        autofocus
+      >
         <button
           type="button"
-          class="lightbox-nav lightbox-nav-previous"
-          aria-label="Previous image"
-          onclick={previous}
+          class="lightbox-close"
+          aria-label="Close image viewer"
+          onclick={close}
         >
-          <ChevronLeft size={24} />
-        </button>
-      {/if}
-
-      <div class="lightbox-image-container">
-        <img
-          src={currentImage.src}
-          alt={currentImage.alt}
-          class="lightbox-image"
-          decoding="async"
-        />
-      </div>
-
-      {#if hasMultiple}
-        <button
-          type="button"
-          class="lightbox-nav lightbox-nav-next"
-          aria-label="Next image"
-          onclick={next}
-        >
-          <ChevronRight size={24} />
+          <X size={20} />
         </button>
 
-        <div class="lightbox-counter" aria-live="polite" aria-atomic="true">
-          {counterText}
+        {#if hasMultiple}
+          <button
+            type="button"
+            class="lightbox-nav lightbox-nav-previous"
+            aria-label="Previous image"
+            onclick={previous}
+          >
+            <ChevronLeft size={24} />
+          </button>
+        {/if}
+
+        <div class="lightbox-image-container">
+          <img
+            src={currentImage.src}
+            alt={currentImage.alt}
+            class="lightbox-image"
+            decoding="async"
+          />
         </div>
-      {/if}
-    </div>
-  </Modal>
-{/if}
+
+        {#if hasMultiple}
+          <button
+            type="button"
+            class="lightbox-nav lightbox-nav-next"
+            aria-label="Next image"
+            onclick={next}
+          >
+            <ChevronRight size={24} />
+          </button>
+
+          <div class="lightbox-counter" aria-live="polite" aria-atomic="true">
+            {counterText}
+          </div>
+        {/if}
+      </div>
+    </Modal>
+  {/if}
+{/key}
 
 <style>
   /*

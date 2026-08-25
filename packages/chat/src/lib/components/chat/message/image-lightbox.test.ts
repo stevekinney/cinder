@@ -216,14 +216,44 @@ describe('image-lightbox source contract — Modal composition', () => {
     expect(dismissBody).not.toContain('navigationIndex = null');
   });
 
-  test('the Modal render guard requires open OR hasOpenedOnce, not currentImage alone', () => {
+  test('the Modal render guard requires hasOpenedOnce, not currentImage alone', () => {
     // Regression: once currentImage stopped depending on `open`, guarding
     // Modal's render on `currentImage` alone mounted a closed Modal for
     // every never-opened lightbox instance. `hasOpenedOnce` restores lazy
-    // mounting: false until the first open, permanently true afterward so
-    // exit transitions on later closes still work.
+    // mounting: false until the first open, clearing again once Modal's
+    // exit transition genuinely finishes (via onExitComplete) rather than
+    // staying permanently true forever after the first open.
     expect(source).toContain('let hasOpenedOnce = $state(false);');
-    expect(source).toContain('{#if (open || hasOpenedOnce) && currentImage}');
+    expect(source).toContain('{#if hasOpenedOnce && currentImage}');
+  });
+
+  test('mountGeneration forces a full destroy-then-recreate of the Modal instance via {#key}', () => {
+    // Regression: hasOpenedOnce flipping false (exit complete) then true
+    // again (a fresh open) across two separate reactive commits could leave
+    // a stale, already-destroyed Modal instance's <dialog> attached
+    // alongside the freshly-mounted one — plain `{#if}` boolean-toggle
+    // diffing was not reliable here. `{#key mountGeneration}` forces Svelte
+    // to fully tear down the previous instance before creating the new one.
+    expect(source).toContain('let mountGeneration = $state(0);');
+    expect(source).toContain('{#key mountGeneration}');
+    expect(source).toContain('mountGeneration += 1;');
+  });
+
+  test("handleExitComplete only clears hasOpenedOnce when still closed, deferred past Modal's own teardown", () => {
+    // Regression: this fires from deep inside Modal's own effect chain
+    // (SlidingDialogState's transition-completion callback) — i.e. from
+    // WITHIN the very component instance the write tears down. Deferring
+    // via tick() lets Modal's own teardown settle first; the `if (!open)`
+    // guard means a reopen that races the deferred write leaves
+    // hasOpenedOnce (and the mount) untouched.
+    expect(source).toContain('function handleExitComplete()');
+    const handlerBody = source.slice(
+      source.indexOf('function handleExitComplete()'),
+      source.indexOf('function previous()'),
+    );
+    expect(handlerBody).toContain('tick()');
+    expect(handlerBody).toContain('if (!open)');
+    expect(handlerBody).toContain('hasOpenedOnce = false;');
   });
 });
 
@@ -447,7 +477,38 @@ describe('image-lightbox — lazy Modal mount (CIN-377 review)', () => {
     expect(container.querySelector('img')?.getAttribute('alt')).toBe('Image A');
   });
 
-  test('once opened, the dialog stays mounted through a subsequent close (for the exit transition)', async () => {
+  test('once opened, the dialog does not tear down synchronously the instant open flips false', async () => {
+    // In this harness, Modal's exit-transition completion (queueMicrotask,
+    // since happy-dom collapses the CSS transition duration to zero) plus
+    // this component's own tick()-deferred onExitComplete handler both
+    // resolve within a SINGLE `await tick()` — so a full unmount is
+    // observable that fast here (see the "fully unmounts" test below). What
+    // this test guards is the synchronous instant: rendering must not tear
+    // the whole Modal down as a direct, synchronous side effect of the
+    // `open` prop write itself, before Svelte even gets a chance to flush —
+    // i.e. the guard is not `{#if open && currentImage}`.
+    const { container, rerender } = render(ImageLightbox, {
+      props: { images, initialIndex: 0, open: true },
+    });
+    await tick();
+    expect(container.querySelector('dialog')).not.toBeNull();
+
+    const rerenderPromise = rerender({ images, initialIndex: 0, open: false });
+    // Deliberately no `await` yet — checked synchronously, in the same
+    // microtask as the call, before any flush has had a chance to run.
+    expect(container.querySelector('dialog')).not.toBeNull();
+    await rerenderPromise;
+  });
+
+  test('the Modal fully unmounts once the exit transition completes, releasing hasOpenedOnce (CIN-377 review)', async () => {
+    // Regression: hasOpenedOnce previously stayed permanently true after the
+    // FIRST open, so a lightbox that had ever been opened kept a closed
+    // <dialog> (plus SlidingDialogState's effects and a useReducedMotion
+    // MediaQuery subscription) mounted for the rest of the chat's lifetime —
+    // one per message, in a long thread with many image messages. Wiring
+    // Modal's onExitComplete to clear hasOpenedOnce means the Modal actually
+    // unmounts once its exit transition genuinely finishes, not merely once
+    // `open` goes false.
     const { container, rerender } = render(ImageLightbox, {
       props: { images, initialIndex: 0, open: true },
     });
@@ -455,10 +516,64 @@ describe('image-lightbox — lazy Modal mount (CIN-377 review)', () => {
     expect(container.querySelector('dialog')).not.toBeNull();
 
     await rerender({ images, initialIndex: 0, open: false });
+    // Drain enough microtask turns for Modal's own exit-transition
+    // completion (waitForTransitionCompletion's reduced/zero-duration path
+    // resolves via queueMicrotask, then onClosed/onExitComplete fire) to
+    // actually land — a single tick() only proves the panel SURVIVED the
+    // instant `open` went false (the test above), not that it eventually
+    // unmounts.
     await tick();
-    // Still mounted immediately after close — Modal owns unmount timing via
-    // its own exit-transition lifecycle; this component's guard must not
-    // tear the whole Modal down the instant `open` goes false.
+    await tick();
+    await tick();
+
+    expect(container.querySelector('dialog')).toBeNull();
+  });
+
+  test('reopening during the exit transition remounts cleanly with the fresh content, not a stale/broken state', async () => {
+    const { container, rerender } = render(ImageLightbox, {
+      props: { images, initialIndex: 0, open: true },
+    });
+    await tick();
+    expect(container.querySelector('img')?.getAttribute('alt')).toBe('Image A');
+
+    // Close, then reopen with different props BEFORE draining any further
+    // ticks — this is the "reopen during the exit transition" case
+    // `onExitComplete`'s reopen-guard (`SlidingDialogState` skips the
+    // callback when `getOpen()` is true again) exists to support: Modal
+    // must never leave the lightbox unmounted or stuck.
+    await rerender({ images, initialIndex: 1, open: false });
+    await rerender({ images, initialIndex: 1, open: true });
+    await tick();
+
     expect(container.querySelector('dialog')).not.toBeNull();
+    expect(container.querySelector('img')?.getAttribute('alt')).toBe('Image B');
+  });
+
+  test('a close-then-reopen cycle never leaves a stale closed <dialog> behind alongside the fresh one', async () => {
+    // Regression: the outer mount gate that clears on exit-complete (so a
+    // never-reopened lightbox eventually fully unmounts) destroys the old
+    // Modal instance and creates a fresh one on the next open. A prior
+    // version of this fix left the OLD (already-destroyed, already-closed)
+    // Modal instance's <dialog> element attached to the DOM alongside the
+    // new instance's — two real, distinct dialog elements, both attached,
+    // with `container.querySelector('img')` nondeterministically resolving
+    // to whichever happened to be first in document order. Modal's own
+    // onDestroy now defensively detaches its <dialog> (native <dialog>
+    // elements are promoted to the browser's top layer, outside ordinary
+    // document-flow child removal, which is why relying on ordinary block
+    // teardown alone was not sufficient here).
+    const { container, rerender } = render(ImageLightbox, {
+      props: { images, initialIndex: 0, open: true },
+    });
+    await tick();
+
+    await fireEvent.click(container.querySelector('[aria-label="Close image viewer"]')!);
+    await tick();
+
+    await rerender({ images, initialIndex: 0, open: true });
+    await tick();
+
+    expect(container.querySelectorAll('dialog').length).toBe(1);
+    expect(container.querySelectorAll('img').length).toBe(1);
   });
 });

@@ -23,7 +23,7 @@ export type ConstraintSeverity = 'error' | 'warning' | 'info';
  *
  * - `{prop, equals}` — strict equality against the named attribute value.
  * - `{prop, exists}` — attribute key is present (any value, including null/false/'').
- * - `{prop, nonEmpty}` — attribute key exists and its value is not undefined, null, '',
+ * - `{prop, nonEmpty}` — attribute key exists and its value is not undefined, null, false, '',
  *   whitespace-only, or an empty array.
  * - `{snippet}` — presence check for a named snippet; treated identically to
  *   `{prop, nonEmpty}` against the snippet name.
@@ -130,7 +130,7 @@ export function defineConstraints(document: ConstraintsDocument): ConstraintsDoc
  * Predicate semantics:
  * - `{prop, equals}` — `attributes[prop] === equals`. Missing key → undefined → not equal.
  * - `{prop, exists}` — key is present in the map (including null, false, '').
- * - `{prop, nonEmpty}` — key exists AND value is not undefined, null, '', whitespace-only, or [].
+ * - `{prop, nonEmpty}` — key exists AND value is not undefined, null, false, '', whitespace-only, or [].
  * - `{snippet}` — non-empty presence check against the snippet name key.
  * - `{allOf}` — all child predicates match.
  * - `{anyOf}` — at least one child predicate matches.
