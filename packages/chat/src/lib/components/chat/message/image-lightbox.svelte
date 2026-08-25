@@ -87,6 +87,14 @@
   // `open = false` that bypasses those functions entirely.)
   let lastLiveIndex = $state(0);
   let resetAppliedForCurrentSession = false;
+  // Plain (non-reactive) bookkeeping, same idiom as
+  // `resetAppliedForCurrentSession` above: tracks whether THIS effect's own
+  // `if (open)` branch (below) has actually executed since the last close —
+  // i.e. whether OUR reactivity ever observed a genuine `open === true`
+  // moment for the current session, as distinct from `hasOpenedOnce` merely
+  // being seeded/set `true`. See the "cancelled initial open" handling in
+  // the effect's `else` branch below for why this distinction matters.
+  let genuineOpenObserved = false;
   // Lazy mount: `hasOpenedOnce` starts false so an ImageLightbox instance
   // that is never opened (the common case — MessageAttachments renders one
   // per message unconditionally) never mounts Modal at all: no closed
@@ -179,6 +187,7 @@
   let mountGeneration = $state(0);
   $effect(() => {
     if (open) {
+      genuineOpenObserved = true;
       lastLiveIndex = navigationIndex ?? clampedInitialIndex;
       // Gate on `images.length > 0` (equivalently: a Modal will genuinely
       // mount), not on `open` alone. `open` flipping true with an EMPTY
@@ -226,8 +235,23 @@
       // `effectiveIndex` reflects the fresh session's index, guarantees a
       // resync on every genuine open regardless of whether the resulting
       // value happens to be referentially identical to the old one.
-      if (images[effectiveIndex]) {
-        sessionImage = images[effectiveIndex];
+      //
+      // Wrapped in `untrack()`: this is a plain array-index read, but
+      // `effectiveIndex` transitively depends on `frozenIndex` — which THIS
+      // SAME branch just wrote to `null` a few lines up. Reading it
+      // reactively here (i.e. without `untrack`) makes `effectiveIndex` a
+      // dependency of this effect for the first time, and writing a
+      // dependency then reading it in the same pass reschedules the effect
+      // to run again (an otherwise-harmless extra pass elsewhere in this
+      // file — see the `else` branch's `frozenIndex` comment). Combined with
+      // the separate `currentImage`-mirroring effect below (also reading
+      // values derived from `frozenIndex`), that extra pass stopped settling
+      // and looped indefinitely instead of converging. `untrack()` makes
+      // this the one-time, non-reactive snapshot read it was always meant to
+      // be, matching the `hasOpenedOnce`/`sessionImage` seeds' own use of
+      // `untrack()` for the identical reason.
+      if (untrack(() => images[effectiveIndex])) {
+        sessionImage = untrack(() => images[effectiveIndex]);
       }
     } else {
       resetAppliedForCurrentSession = false;
@@ -239,6 +263,58 @@
       // recomputation — see the comment on `lastLiveIndex` above for why.
       if (frozenIndex === null) {
         frozenIndex = lastLiveIndex;
+      }
+      // Cancelled initial open (PR #1422 review): `hasOpenedOnce` can be
+      // `true` (Modal mounted — seeded from `open` for an already-open-on-
+      // construction instance, see that seed's own comment) while this
+      // effect's `if (open)` branch above never actually got to run with
+      // `open === true` — i.e. a consumer flips `open` back to `false`
+      // before Modal's OWN `syncOpenState()` effect ever calls
+      // `showModal()`. Modal's dialog therefore never genuinely opens:
+      // `syncOpenState()`'s own "already closed" branch only sets
+      // `renderPanel = false` — it never calls `beginClosing()` (that
+      // requires `dialogElement.open` to already be `true`), so
+      // `#finishClosing()` never runs and `onExitComplete` NEVER fires.
+      // Waiting for `handleExitComplete` to release the gate here would
+      // wait forever — a closed `<dialog>` + `SlidingDialogState` +
+      // `useReducedMotion` subscription would persist indefinitely, the
+      // same leak shape as the empty-images and mid-session-clear bugs
+      // fixed above, just triggered by a cancelled FIRST open instead.
+      //
+      // Fixed HERE (in the lightbox), not in `SlidingDialogState`: the
+      // obvious alternative — making `syncOpenState()`'s "already closed"
+      // branch fire `onClosed` too — would fire `onExitComplete` on every
+      // ordinary Modal/Drawer/Popover mount that starts closed and is never
+      // opened at all (the overwhelmingly common case for every overlay in
+      // this codebase), directly contradicting the documented "fires once
+      // the exit transition genuinely finishes" contract for a modal that
+      // never had an exit in the first place, and risking a real regression
+      // across every other `SlidingDialogState` consumer and their test
+      // suites. `genuineOpenObserved` (a plain flag set only inside this
+      // effect's own `if (open)` branch, distinct from `hasOpenedOnce`
+      // merely being seeded/set) is the precise, LOCAL signal that this
+      // specific session's Modal never got a chance to open — clear the
+      // gate directly instead of waiting for a callback that will never
+      // come.
+      //
+      // Deliberately NEVER reset back to `false` here (or anywhere in this
+      // branch): this effect can rerun MULTIPLE times for the same logical
+      // "now closed" state — e.g. the `frozenIndex === null` write just
+      // above is itself a read-then-write of a value this effect reads,
+      // which reschedules one extra, otherwise-idempotent pass. Resetting
+      // `genuineOpenObserved` on the first such pass made a perfectly
+      // NORMAL close (which correctly skipped the clear on that first pass)
+      // wrongly clear `hasOpenedOnce` on the harmless second pass, since by
+      // then the flag had already been reset out from under the check.
+      // Leaving it `true` forever once observed is safe: every session
+      // AFTER the very first one sets `hasOpenedOnce` and
+      // `genuineOpenObserved` together, atomically, in the same `if (open)`
+      // execution (`open` flipping true always re-runs this effect) — so
+      // the two can only diverge in exactly the one case this exists to
+      // catch, the cancelled-before-any-`if`-branch-run initial seed.
+      if (hasOpenedOnce && !genuineOpenObserved) {
+        hasOpenedOnce = false;
+        sessionImage = null;
       }
     }
   });
@@ -268,7 +344,18 @@
   // `handleExitComplete` (below) clears it, once the exit has genuinely
   // finished.
   $effect(() => {
-    if (currentImage) {
+    // Gated on `open` (PR #1422 review): without this, a parent swapping
+    // `images` to a DIFFERENT non-empty list WHILE the lightbox is closing
+    // (mid exit-transition, `open` already `false` but the Modal still
+    // mounted for the fade) re-resolved `currentImage` against the new list
+    // — the still-fading lightbox visibly swapped to the next session's
+    // image instead of staying frozen on the one the user was actually
+    // looking at when they closed it. Once `open` goes false, this effect
+    // must stop syncing entirely — `sessionImage` stays frozen from close
+    // until `handleExitComplete` (below) explicitly clears it once the exit
+    // has genuinely finished, matching the "images cleared mid-session"
+    // freeze this same mechanism already provides.
+    if (open && currentImage) {
       sessionImage = currentImage;
     }
   });

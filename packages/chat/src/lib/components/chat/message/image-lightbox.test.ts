@@ -737,4 +737,139 @@ describe('image-lightbox — lazy Modal mount (CIN-377 review)', () => {
     expect(dialog?.hasAttribute('open')).toBe(true);
     expect(container.querySelector('img')?.getAttribute('alt')).toBe('Image A');
   });
+
+  test('swapping to a DIFFERENT non-empty images list mid-exit does not visibly swap the fading lightbox to the next session (PR #1422 review)', async () => {
+    // Regression: the `currentImage`-mirroring effect (the one that keeps
+    // `sessionImage` in sync during LIVE navigation) previously had no
+    // dependency on `open` at all — so if a parent swapped `images` to a
+    // different non-empty list WHILE the lightbox was still exiting (`open`
+    // already `false`, Modal still mounted for the fade), the mirror
+    // re-resolved `currentImage` against the NEW list and the still-fading
+    // lightbox visibly swapped to whatever image now sat at the same index
+    // in the new array — a jarring swap mid-exit, not the frozen image the
+    // user was actually looking at when they closed it.
+    const otherImages = [
+      { src: '/c.jpg', alt: 'Image C' },
+      { src: '/d.jpg', alt: 'Image D' },
+    ];
+
+    const { container, rerender } = render(ImageLightbox, {
+      props: { images, initialIndex: 0, open: true },
+    });
+    await tick();
+    expect(container.querySelector('img')?.getAttribute('alt')).toBe('Image A');
+
+    // Close, then swap to a DIFFERENT non-empty list — both issued
+    // back-to-back WITHOUT awaiting either promise first (same technique as
+    // the "does not tear down synchronously" test above): this harness's
+    // reduced-motion/zero-duration transition path resolves via a queued
+    // microtask, and awaiting even one of these calls risks letting that
+    // microtask run to completion — at which point the exit has ALREADY
+    // genuinely finished and `sessionImage` was cleared via the NORMAL
+    // `handleExitComplete` path, which would make this assertion pass for
+    // the wrong reason (nothing left to swap into, rather than the swap
+    // having been correctly ignored). Checking before any microtask has run
+    // proves the `currentImage`-mirroring effect — gated on `open`, already
+    // `false` for both updates — never had the chance to (and must not)
+    // pick up the new list, regardless of exit-transition progress.
+    const closePromise = rerender({ images, initialIndex: 0, open: false });
+    const swapPromise = rerender({ images: otherImages, initialIndex: 0, open: false });
+
+    // The frozen image must NOT have swapped to the new list's content.
+    expect(container.querySelector('img')?.getAttribute('alt')).toBe('Image A');
+    expect(container.querySelector('img')?.getAttribute('src')).toBe('/a.jpg');
+
+    await closePromise;
+    await swapPromise;
+
+    // Drain the rest of the exit transition — the Modal fully unmounts once
+    // it genuinely finishes, same as the other lazy-mount tests above.
+    await tick();
+    await tick();
+    expect(container.querySelector('dialog')).toBeNull();
+  });
+
+  test('an initially-open lightbox driven closed before it ever genuinely opens does not leak a permanently-closed Modal (PR #1422 review)', async () => {
+    // Regression: an instance constructed with `open: true` seeds
+    // `hasOpenedOnce = true` (see that seed's own comment) so an
+    // already-open-on-first-render instance is correct from the start. If a
+    // consumer flips `open` back to `false` before Modal's OWN
+    // `syncOpenState()` effect ever calls `showModal()`, Modal's dialog
+    // never genuinely opens — `syncOpenState()`'s "already closed" branch
+    // only sets `renderPanel = false`; it never calls `beginClosing()`
+    // (which requires the native dialog to already be open), so
+    // `#finishClosing()` never runs and `onExitComplete` NEVER fires. With
+    // no callback to clear it, `hasOpenedOnce` would stick at `true`
+    // forever — the same leak shape as the empty-images and
+    // mid-session-clear bugs, triggered by a cancelled FIRST open instead.
+    //
+    // HONEST LIMITATION: this test does NOT reproduce the exact race that
+    // motivates the fix. `@testing-library/svelte`'s `render()`/`rerender()`
+    // both call `flushSync()` internally, so this component's own `$effect`
+    // (and, transitively, Modal's `syncOpenState()` effect) has already run
+    // at least once with `open === true` by the time `render()` returns —
+    // `genuineOpenObserved` is already `true` before the subsequent
+    // `rerender({ open: false })` ever executes, so the "cancelled before
+    // any genuine open" branch this test exercises is not actually the one
+    // the fix guards. Confirmed empirically (temporarily disabling the
+    // `hasOpenedOnce && !genuineOpenObserved` guard): this test still passes
+    // with the guard removed. A raw `mount()` probe (bypassing
+    // testing-library, mutating `open` via a getter/setter prop before the
+    // first `flushSync()`) *did* reach the guard with `genuineOpenObserved
+    // === false` and confirmed the guard clears `hasOpenedOnce` correctly on
+    // that very first effect pass — but also surfaced an unrelated
+    // scheduling quirk specific to a bare `mount()` root (outside any parent
+    // component's effect tree): the resulting `{#if hasOpenedOnce &&
+    // sessionImage}` re-render did not converge even after repeated
+    // `flushSync()`/`tick()` calls, unlike every other state transition in
+    // this file. That quirk makes bare `mount()` an unreliable vehicle for
+    // asserting DOM outcomes here, so it is not used as the regression
+    // vehicle either. What FOLLOWS is the closest achievable proxy through
+    // the public component API: a fast, ordinary cancel-before-open cycle,
+    // asserting the Modal cleanly releases and a later open still works.
+    // This guards against a plain regression in the ordinary path; the
+    // guard clause itself is additionally locked in place below via a
+    // source-contract assertion, since the exact interleaving it exists for
+    // cannot be deterministically triggered through this synchronous test
+    // harness.
+    const { container, rerender } = render(ImageLightbox, {
+      props: { images, initialIndex: 0, open: true },
+    });
+
+    await rerender({ images, initialIndex: 0, open: false });
+    await tick();
+    await tick();
+    await tick();
+
+    // The gate must have cleared — proven by the fact that the Modal never
+    // gets stuck mounted-but-closed: a later close-to-open cycle still
+    // mounts a genuinely fresh, genuinely open Modal, not a permanently
+    // dead one.
+    expect(container.querySelector('dialog')).toBeNull();
+
+    await rerender({ images, initialIndex: 0, open: true });
+    await tick();
+    const dialog = container.querySelector('dialog');
+    expect(dialog).not.toBeNull();
+    expect(dialog?.hasAttribute('open')).toBe(true);
+    expect(container.querySelector('img')?.getAttribute('alt')).toBe('Image A');
+  });
+
+  test('source contract: the cancelled-initial-open guard clears hasOpenedOnce via a local genuineOpenObserved flag, not via SlidingDialogState (PR #1422 review)', () => {
+    // Locks in the fix at the source level, since the exact race it guards
+    // against (seeded `hasOpenedOnce = true`, cancelled before this
+    // component's own effect — and Modal's `syncOpenState()` — ever
+    // observes a genuine `open === true` pass) cannot be deterministically
+    // triggered through `@testing-library/svelte`'s synchronous
+    // `render()`/`rerender()` API (see the honest limitation noted in the
+    // behavioral test directly above). This at least ensures the guard
+    // clause cannot be silently deleted or reworded away without a test
+    // failure calling it out.
+    expect(source).toContain('let genuineOpenObserved = false;');
+    expect(source).toContain('genuineOpenObserved = true;');
+    expect(source).toContain('if (hasOpenedOnce && !genuineOpenObserved) {');
+    expect(source).toMatch(
+      /if \(hasOpenedOnce && !genuineOpenObserved\) \{\s*hasOpenedOnce = false;\s*sessionImage = null;/,
+    );
+  });
 });
