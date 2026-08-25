@@ -297,4 +297,106 @@ describe('createSlidingDialogState', () => {
     expect(dialogElement.open).toBe(true);
     expect(dialogState.renderPanel).toBe(true);
   });
+
+  test('a native <form method="dialog"> submission fires onClosed exactly once even though it bypasses beginClosing()/#finishClosing() (PR #1422 review, NATIVE-FORM-POLICY.md)', async () => {
+    // Regression: NATIVE-FORM-POLICY.md documents `<form method="dialog">`
+    // inside Modal as a supported simple accept/cancel composition. A form
+    // submission with that method makes the BROWSER close the native
+    // dialog directly — its own "close the dialog" steps flip
+    // `dialogElement.open` to `false` SYNCHRONOUSLY and queue the `close`
+    // event, entirely bypassing `requestClose()`/`beginClosing()`. Before
+    // the fix, `syncOpenState()`'s subsequent reconciliation (from
+    // `handleClose()`'s own `setOpen(false)`) found `dialogElement.open`
+    // already `false` and only cleared `renderPanel` — `beginClosing()`
+    // never ran, so `#finishClosing()` (the only other place that reported
+    // exit-completion) never ran either, and `onClosed` never fired for
+    // this composition at all.
+    let open = true;
+    let closedCount = 0;
+    const dialogElement = createDialogElement();
+    const dialogState = createSlidingDialogState({
+      getOpen: () => open,
+      setOpen: (next) => {
+        open = next;
+      },
+      getDialogElement: () => dialogElement,
+      getPanelElement: () => undefined,
+      getReducedMotion: () => true,
+      getTriggerRef: () => null,
+      onClosed: () => {
+        closedCount += 1;
+      },
+    });
+
+    dialogState.syncOpenState();
+    expect(dialogElement.open).toBe(true);
+
+    // Model the browser's own "close the dialog" steps for a
+    // `<form method="dialog">` submission: the native dialog closes
+    // directly (never via `requestClose()`), then the wired `close`-event
+    // handler runs — exactly what Modal's `onclose={() =>
+    // dialogState.handleClose()}` invokes for a real such event.
+    dialogElement.close();
+    dialogState.handleClose();
+
+    expect(dialogState.renderPanel).toBe(false);
+    expect(open).toBe(false);
+    // `onClosed` is deferred past a `tick()`, same as the normal
+    // exit-transition path, so the panel-gone/render-flush guarantee holds
+    // for this path too.
+    expect(closedCount).toBe(0);
+    await tick();
+    expect(closedCount).toBe(1);
+
+    // No further ticks re-fire it.
+    await tick();
+    expect(closedCount).toBe(1);
+  });
+
+  test('the normal exit-transition close path still fires onClosed exactly once when the native close event ALSO arrives afterward', async () => {
+    // Guards the other half of the fix: `handleClose()`'s new
+    // native-close-bypass branch must NOT double-report a close that
+    // already went through `beginClosing()` → `#finishClosing()`. Modal
+    // wires `onclose={() => dialogState.handleClose()}` unconditionally —
+    // every native `close` event reaches `handleClose()`, including the one
+    // `#finishClosing()` itself triggers by calling `dialogElement.close()`.
+    let open = true;
+    let closedCount = 0;
+    const dialogElement = createDialogElement();
+    const dialogState = createSlidingDialogState({
+      getOpen: () => open,
+      setOpen: (next) => {
+        open = next;
+      },
+      getDialogElement: () => dialogElement,
+      // No panel element — `beginClosing()` finishes synchronously via
+      // `#finishClosing()`, so `dialogElement.close()` (and the
+      // `#pendingNativeCloseGeneration` tag) has already happened by the
+      // time this test calls `handleClose()` itself, below.
+      getPanelElement: () => undefined,
+      getReducedMotion: () => true,
+      getTriggerRef: () => null,
+      onClosed: () => {
+        closedCount += 1;
+      },
+    });
+
+    dialogState.syncOpenState();
+    expect(dialogElement.open).toBe(true);
+
+    open = false;
+    dialogState.syncOpenState();
+    expect(dialogElement.open).toBe(false);
+
+    // The native `close` event fires for this same close — modeled by
+    // calling `handleClose()` directly, same as every other test in this
+    // file simulates the queued native event landing.
+    dialogState.handleClose();
+
+    await tick();
+    expect(closedCount).toBe(1);
+
+    await tick();
+    expect(closedCount).toBe(1);
+  });
 });

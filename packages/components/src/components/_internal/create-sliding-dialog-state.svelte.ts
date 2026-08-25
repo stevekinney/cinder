@@ -154,6 +154,23 @@ export class SlidingDialogState {
     ) {
       return;
     }
+    // Captured BEFORE clearing `#pendingNativeCloseGeneration` below: `null`
+    // here means this `close` event was never expected from OUR OWN
+    // `dialogElement.close()` call inside `#finishClosing()` — i.e. the
+    // native dialog closed by some other means entirely, bypassing
+    // `requestClose()`/`beginClosing()` outright. The supported case (PR
+    // #1422 review, NATIVE-FORM-POLICY.md) is a `<form method="dialog">`
+    // submission: the browser's form-submission "close the dialog" steps
+    // flip `dialogElement.open` to `false` and queue this `close` event
+    // SYNCHRONOUSLY as part of handling the submit — before anything in
+    // this class ever calls `requestClose()`. When `syncOpenState()` next
+    // reconciles (from the `setOpen(false)` below), it finds
+    // `dialogElement.open` already `false` and only clears `renderPanel`;
+    // it never calls `beginClosing()`, so `#finishClosing()` — the only
+    // other place that reports exit-completion — never runs either, and a
+    // consumer's `onExitComplete`/mount-gate release would otherwise never
+    // fire for this supported native-form composition.
+    const isNativeCloseBypassingOurOwnFlow = this.#pendingNativeCloseGeneration === null;
     this.#pendingNativeCloseGeneration = null;
     this.#releaseScrollLock?.();
     this.#releaseScrollLock = null;
@@ -161,6 +178,25 @@ export class SlidingDialogState {
     this.#releaseEscape = null;
     this.#options.setOpen(false);
     this.#returnFocus();
+
+    if (isNativeCloseBypassingOurOwnFlow) {
+      // There is no exit transition to wait for — the native dialog is
+      // already closed by the time this event fires — so report
+      // exit-completion directly instead of going through
+      // `beginClosing()`'s transition wait. Reuses the SAME
+      // generation-and-disposal-guarded deferred report `#finishClosing()`
+      // uses, so a fast reopen before the deferred `tick()` resolves still
+      // correctly suppresses the stale callback. When the close instead
+      // came from OUR OWN `requestClose()`/`beginClosing()`/`close()` flow,
+      // `#pendingNativeCloseGeneration` was non-null here (set by
+      // `#finishClosing()` right before calling `dialogElement.close()`),
+      // so this branch is skipped — `#finishClosing()` already scheduled
+      // its own report before this event ever arrived, and firing again
+      // here would double-report the same close.
+      this.isClosing = false;
+      this.renderPanel = false;
+      this.#reportClosedOnce(this.#closeGeneration);
+    }
   }
 
   requestClose(): void {
@@ -239,17 +275,25 @@ export class SlidingDialogState {
       this.#pendingNativeCloseGeneration = generation;
       dialogElement.close();
     }
-    // `onClosed` (Modal's `onExitComplete` forwarding) is documented as
-    // firing "once the exit transition genuinely finishes and the panel
-    // actually unmounts" — but `renderPanel = false` above only *schedules*
-    // that unmount; Svelte hasn't reconciled the `{#if renderPanel}` block
-    // yet in this synchronous stack, so a consumer callback invoked right
-    // here would still find `.cinder-modal__panel` in the DOM. Defer past
-    // `tick()` so the render flush has actually happened first. `close()`
-    // stays unconditional and undeferred immediately above — the
-    // cleanup-ordering guarantee from the prior fix is unaffected by this.
-    // Re-check the generation after the flush: if a reopen happened during
-    // the deferred window, this closure is stale and must not fire.
+    this.#reportClosedOnce(generation);
+  }
+
+  // Shared by `#finishClosing()` (the normal exit-transition path) and
+  // `handleClose()`'s native-close-bypass branch (a `<form method="dialog">`
+  // submission, which closes the native dialog with no exit transition to
+  // wait for at all — see that branch's own comment). `onClosed` (Modal's
+  // `onExitComplete` forwarding) is documented as firing "once the exit
+  // transition genuinely finishes and the panel actually unmounts" — but by
+  // the time either caller reaches this method, `renderPanel = false` has
+  // only *scheduled* that unmount; Svelte hasn't reconciled the `{#if
+  // renderPanel}` block yet in this synchronous stack, so a consumer
+  // callback invoked right here would still find `.cinder-modal__panel` in
+  // the DOM. Defer past `tick()` so the render flush has actually happened
+  // first, and re-check the generation (plus disposal and current `open`
+  // state) after the flush: if a reopen happened during the deferred
+  // window, or the component was destroyed, this call is stale and must not
+  // fire `onClosed`.
+  #reportClosedOnce(generation: number): void {
     const closedGeneration = generation;
     // Side-effect-only continuation — nothing downstream chains off this
     // promise, so there is no value to return.
@@ -257,9 +301,9 @@ export class SlidingDialogState {
     void tick().then(() => {
       // Generation check first (cheap, and covers the common case). Also
       // re-verify the modal is actually STILL closed right now — belt and
-      // suspenders alongside the generation bump on the reopen path above,
-      // in case some future reopen path forwards to `setOpen`/`renderPanel`
-      // without going through `syncOpenState()`'s generation bump.
+      // suspenders alongside the generation bump on the reopen path in
+      // `syncOpenState()`, in case some future reopen path forwards to
+      // `setOpen`/`renderPanel` without going through that generation bump.
       if (
         this.#disposed ||
         closedGeneration !== this.#closeGeneration ||

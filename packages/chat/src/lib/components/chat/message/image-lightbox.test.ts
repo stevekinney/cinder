@@ -738,6 +738,55 @@ describe('image-lightbox — lazy Modal mount (CIN-377 review)', () => {
     expect(container.querySelector('img')?.getAttribute('alt')).toBe('Image A');
   });
 
+  test('closing, clearing images, then reopening before the exit transition finishes does not show a stale image absent from images (PR #1422 review)', async () => {
+    // Regression: close → parent clears `images` → `open` flips back to
+    // `true`, all before the prior close's exit transition genuinely
+    // finishes. The `if (open)` branch's fresh-open handling previously only
+    // skipped setting `hasOpenedOnce` for an empty `images` array — it never
+    // touched `sessionImage`, so the PREVIOUS (truthy) snapshot from before
+    // the close survived untouched. Reopening also cancels Modal's own close
+    // cycle (a fresh `open === true` sync invalidates the in-flight
+    // `beginClosing()`/`#finishClosing()` cycle — see
+    // `create-sliding-dialog-state.svelte.ts`'s own `syncOpenState()`
+    // comments), so no `onExitComplete` was ever coming to clear the stale
+    // snapshot either — the lightbox stayed open indefinitely showing an
+    // image that was not even in `images` anymore.
+    const { container, rerender } = render(ImageLightbox, {
+      props: { images, initialIndex: 0, open: true },
+    });
+    await tick();
+    expect(container.querySelector('dialog')).not.toBeNull();
+    expect(container.querySelector('img')?.getAttribute('alt')).toBe('Image A');
+
+    // Close.
+    await rerender({ images, initialIndex: 0, open: false });
+
+    // Parent clears `images` and reopens before the exit transition (or even
+    // a single tick) has a chance to finish — issued back-to-back, without
+    // awaiting either, mirroring this file's established technique for
+    // proving something did NOT happen as a direct synchronous side effect
+    // of a state transition (see the "swap images mid-exit" test above).
+    const clearPromise = rerender({ images: [], initialIndex: 0, open: false });
+    const reopenPromise = rerender({ images: [], initialIndex: 0, open: true });
+    await clearPromise;
+    await reopenPromise;
+    await tick();
+
+    // The empty-images reopen is not renderable — no stale image (present or
+    // absent from the current empty `images`) may still be showing.
+    expect(container.querySelector('img')).toBeNull();
+
+    // The gate must not be left leaking a permanently-stuck Modal, either:
+    // restoring `images` while still open must resync to a genuinely fresh,
+    // correct image — not a zombie stuck on the pre-clear snapshot.
+    await rerender({ images, initialIndex: 0, open: true });
+    await tick();
+    const dialog = container.querySelector('dialog');
+    expect(dialog).not.toBeNull();
+    expect(dialog?.hasAttribute('open')).toBe(true);
+    expect(container.querySelector('img')?.getAttribute('alt')).toBe('Image A');
+  });
+
   test('swapping to a DIFFERENT non-empty images list mid-exit does not visibly swap the fading lightbox to the next session (PR #1422 review)', async () => {
     // Regression: the `currentImage`-mirroring effect (the one that keeps
     // `sessionImage` in sync during LIVE navigation) previously had no

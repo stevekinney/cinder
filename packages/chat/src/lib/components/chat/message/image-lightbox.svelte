@@ -187,29 +187,64 @@
   let mountGeneration = $state(0);
   $effect(() => {
     if (open) {
+      const isFreshOpen = !resetAppliedForCurrentSession;
+      // `isFreshOpen` is true only on the very FIRST run of this effect
+      // since the last close — i.e. the genuine false→true open-transition
+      // edge — because it reads `resetAppliedForCurrentSession` BEFORE that
+      // flag gets set `true` for this session, a few lines below. On any
+      // LATER rerun of this same branch while still open (e.g. `images`
+      // changing while the session stays open the whole time),
+      // `resetAppliedForCurrentSession` is already `true`, so
+      // `isFreshOpen` is `false`.
+      //
+      // This distinction matters for an EMPTY `images` array (PR #1422
+      // review, two rounds): on a FRESH open, empty `images` is not
+      // renderable at all — `currentImage`/`effectiveIndex` have nothing to
+      // resolve to — so it is treated as if this effect's own branch never
+      // genuinely ran, covering two leak shapes:
+      //   1. `open` flips true with an EMPTY `images` array on the very
+      //      first open — `onExitComplete` (the only other place that
+      //      clears `hasOpenedOnce`) never fires because no Modal ever
+      //      mounts, so a LATER update supplying non-empty `images` while
+      //      `open` was already false by then would mount an
+      //      already-CLOSED Modal that persists indefinitely.
+      //   2. Closing, then having the parent clear `images` and flip
+      //      `open` back to `true` before the exit transition finishes: the
+      //      previous (truthy) `sessionImage` would otherwise survive
+      //      untouched (nothing here resyncs it for an empty array), and
+      //      reopening cancels Modal's own close cycle — so
+      //      `onExitComplete` never fires either — leaving the lightbox
+      //      stuck showing a stale image that isn't even in `images`
+      //      anymore.
+      // A LATER, non-fresh rerun with empty `images` (the session was
+      // already genuinely open with real images, and a parent clears them
+      // WHILE STILL OPEN) is deliberately NOT covered by this branch — that
+      // is the "clearing images mid-session… does not destroy the Modal
+      // outright" behavior fixed in a prior round: `sessionImage` must stay
+      // frozen at its last real value so the exit transition can still play
+      // once the session actually closes, not be cleared out here.
+      if (isFreshOpen && images.length === 0) {
+        // Not renderable: clear the stale/previous snapshot so the
+        // template's `{#if hasOpenedOnce && sessionImage}` guard hides the
+        // Modal regardless of whatever `hasOpenedOnce` currently is.
+        // Deliberately does NOT set `genuineOpenObserved` here — this
+        // `open === true` moment never produced anything to show, so it
+        // must not count as a "genuine open" for the cancelled-open guard
+        // in the top-level `else` branch below. That keeps that guard free
+        // to release `hasOpenedOnce` (if a still-in-progress prior close
+        // had left it `true`) the next time `open` goes false, instead of
+        // leaking a Modal stuck on stale content with no exit transition
+        // ever coming to release it. An early `return` here (rather than an
+        // `if`/`else` split of the rest of this branch) is deliberate: it
+        // keeps this effect's single top-level `if`-then-`else` shape (open
+        // vs. closed) intact for the other else-branch-scoped checks
+        // elsewhere in this file that locate that branch by its own source
+        // text.
+        sessionImage = null;
+        return;
+      }
       genuineOpenObserved = true;
       lastLiveIndex = navigationIndex ?? clampedInitialIndex;
-      // Gate on `images.length > 0` (equivalently: a Modal will genuinely
-      // mount), not on `open` alone. `open` flipping true with an EMPTY
-      // `images` array used to set `hasOpenedOnce = true` here even though
-      // the template's own mount condition (`{#if hasOpenedOnce &&
-      // currentImage}`) never actually mounts a Modal in that case
-      // (`currentImage` is `undefined` when `images` is empty) — so
-      // `onExitComplete` (the only other place that clears
-      // `hasOpenedOnce`) never fires, and the flag stayed stuck at `true`
-      // indefinitely. A LATER update supplying non-empty `images` while
-      // `open` was already false by then (the lightbox's own open/close
-      // cycle having come and gone with no Modal ever mounting) would flip
-      // the template condition true and mount a Modal that was already
-      // CLOSED from the moment it appeared — a closed `<dialog>` +
-      // `SlidingDialogState` + `useReducedMotion` subscription that then
-      // persists indefinitely, since a Modal that never actually opens has
-      // no exit transition to fire `onExitComplete` and release it either.
-      // Reading `images.length` here (this effect did not previously read
-      // `images` at all) also means the effect now correctly reruns and
-      // sets `hasOpenedOnce` the moment `images` transitions from empty to
-      // non-empty while still open, so a real Modal mounts as soon as
-      // there's something to show.
       if (images.length > 0) {
         if (!hasOpenedOnce) {
           mountGeneration += 1;
@@ -230,11 +265,12 @@
       // reference as before the close — Svelte's fine-grained reactivity
       // does not consider that a change, so the mirroring effect would never
       // rerun, leaving `sessionImage` stuck at the `null` `handleExitComplete`
-      // cleared it to. Reading `images[...]` directly here, AFTER
-      // `frozenIndex`/`navigationIndex` were just reset above so
-      // `effectiveIndex` reflects the fresh session's index, guarantees a
-      // resync on every genuine open regardless of whether the resulting
-      // value happens to be referentially identical to the old one.
+      // cleared it to (or at the empty-images early-return's `null`).
+      // Reading `images[...]` directly here, AFTER `frozenIndex`/
+      // `navigationIndex` were just reset above so `effectiveIndex` reflects
+      // the fresh session's index, guarantees a resync on every genuine
+      // open regardless of whether the resulting value happens to be
+      // referentially identical to the old one.
       //
       // Wrapped in `untrack()`: this is a plain array-index read, but
       // `effectiveIndex` transitively depends on `frozenIndex` — which THIS
