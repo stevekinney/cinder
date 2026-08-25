@@ -350,6 +350,7 @@ export function collectComparableViolations(
     if (
       consumedRemoved.has(oldCandidate) ||
       hunk.fileDeleted ||
+      /\.waitForLoadState\s*\(/u.test(oldCandidate.line) ||
       oldCandidate.baselineValue === undefined ||
       oldCandidate.baselineRenderedValue === undefined ||
       oldCandidate.baselineValue <= oldCandidate.effectiveValue

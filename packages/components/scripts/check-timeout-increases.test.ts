@@ -2456,6 +2456,18 @@ describe('check-timeout-increases', () => {
     expect(violations[0]?.new.effectiveValue).toBe(Number.POSITIVE_INFINITY);
   });
 
+  test('allows removing the full-load prerequisite after DOMContentLoaded', () => {
+    const violations = findTimeoutIncreaseViolations(
+      diffFor(
+        'packages/components/scripts/validate-consumers.ts',
+        ["await page.waitForLoadState('load', { timeout: 5_000 });"],
+        [],
+      ),
+    );
+
+    expect(violations).toEqual([]);
+  });
+
   test('uses the zero Playwright toPass timeout default', () => {
     const added = findTimeoutIncreaseViolations(
       diffFor(
