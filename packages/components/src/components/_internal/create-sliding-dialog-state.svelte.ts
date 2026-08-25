@@ -4,6 +4,23 @@ import { captureFocus, lockBodyScroll, pushEscapeHandler } from '../../_internal
 import { waitForTransitionCompletion } from '../../_internal/transition-completion.ts';
 import { restoreFocusTo } from '../../utilities/focus.ts';
 
+// `onClosed` now fires from inside a `tick().then()` continuation (see
+// `#finishClosing` below), not synchronously from a DOM event listener. A
+// throw there would otherwise become an unhandled promise rejection instead
+// of the "reported, not propagated to any caller" behavior a throw from an
+// event listener gets for free — the same hazard `anchored-overlay.svelte.ts`
+// already solved for its own async setup path. Mirrors that helper.
+function reportUnhandledExitCompleteError(error: unknown): void {
+  if (typeof globalThis.reportError === 'function') {
+    globalThis.reportError(error);
+    return;
+  }
+
+  setTimeout(() => {
+    throw error;
+  }, 0);
+}
+
 export type SlidingDialogStateOptions = {
   getOpen: () => boolean;
   setOpen: (open: boolean) => void;
@@ -159,7 +176,37 @@ export class SlidingDialogState {
     if (dialogElement?.open) {
       dialogElement.close();
     }
-    this.#options.onClosed?.();
+    // `onClosed` (Modal's `onExitComplete` forwarding) is documented as
+    // firing "once the exit transition genuinely finishes and the panel
+    // actually unmounts" — but `renderPanel = false` above only *schedules*
+    // that unmount; Svelte hasn't reconciled the `{#if renderPanel}` block
+    // yet in this synchronous stack, so a consumer callback invoked right
+    // here would still find `.cinder-modal__panel` in the DOM. Defer past
+    // `tick()` so the render flush has actually happened first. `close()`
+    // stays unconditional and undeferred immediately above — the
+    // cleanup-ordering guarantee from the prior fix is unaffected by this.
+    // Re-check the generation after the flush: if a reopen happened during
+    // the deferred window, this closure is stale and must not fire.
+    const closedGeneration = generation;
+    // Side-effect-only continuation — nothing downstream chains off this
+    // promise, so there is no value to return.
+    // oxlint-disable-next-line promise/always-return
+    void tick().then(() => {
+      if (closedGeneration !== this.#closeGeneration) {
+        return;
+      }
+      try {
+        this.#options.onClosed?.();
+      } catch (error) {
+        // All Modal-owned cleanup (close(), scroll lock, escape-stack
+        // release) already ran above, unconditionally, before this deferred
+        // call — a throw here cannot leave any of that undone. Report it
+        // the same way a throw from a real event listener would be
+        // (visible for debugging, not propagated to any caller) rather than
+        // letting it surface as an unhandled promise rejection.
+        reportUnhandledExitCompleteError(error);
+      }
+    });
   }
 
   #acquireScrollLock(): void {

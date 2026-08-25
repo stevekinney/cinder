@@ -327,6 +327,19 @@
     flex-shrink: 0;
   }
 
+  /* Chromeless mode fills the dialog's entire content box with the panel/
+   * body/footer as one full-bleed surface — the base rule's card-style
+   * background, top border, and padding would paint a visible seam between
+   * the footer and a consumer's own full-bleed content, breaking the
+   * "genuinely full-bleed" contract chrome="none" promises. Reset all three,
+   * matching the identical pattern already applied to
+   * `.cinder-modal__body[data-cinder-chrome='none']` above. */
+  .cinder-modal__footer[data-cinder-chrome='none'] {
+    padding: 0;
+    background: transparent;
+    border-block-start: none;
+  }
+
   /* ----------------------------------------
  * Reduced motion
  * ---------------------------------------- */

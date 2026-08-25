@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 import { describe, expect, test } from 'bun:test';
+import { tick } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -56,7 +57,7 @@ describe('createSlidingDialogState', () => {
     expect(closedCount).toBe(0);
   });
 
-  test('calls onClosed once per close cycle, not while already closed', () => {
+  test('calls onClosed once per close cycle, not while already closed', async () => {
     let open = false;
     let closedCount = 0;
     const dialogElement = createDialogElement();
@@ -83,10 +84,17 @@ describe('createSlidingDialogState', () => {
 
     open = false;
     dialogState.syncOpenState();
-    expect(closedCount).toBe(1);
+    // `close()` still runs unconditionally, synchronously, right here —
+    // only the `onClosed` forwarding call is deferred past a `tick()` so it
+    // fires after Svelte would have reconciled the `{#if renderPanel}`
+    // block, not before.
     expect(dialogElement.open).toBe(false);
+    expect(closedCount).toBe(0);
+    await tick();
+    expect(closedCount).toBe(1);
 
     dialogState.syncOpenState();
+    await tick();
     expect(closedCount).toBe(1);
   });
 });

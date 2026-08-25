@@ -20,6 +20,7 @@
 <script lang="ts">
   import type { ModalProps } from './modal.types.ts';
   import { onDestroy } from 'svelte';
+  import { BROWSER as browser } from 'esm-env';
   import { devWarn } from '../../utilities/dev-warn.ts';
   import { overflowFade } from '../../utilities/attachments.ts';
   import { classNames } from '../../utilities/class-names.ts';
@@ -115,6 +116,26 @@
 
   $effect(() => {
     mounted = true;
+  });
+
+  // One-time SSR-to-client upgrade. When the modal starts open, the server
+  // render emits the `open` HTML attribute directly on <dialog> (see the
+  // `!browser` spread on the element below) so a deep-linked initially-open
+  // modal is actually visible in the served HTML instead of `display:none`
+  // per UA default styles until the client calls `showModal()`. A plain
+  // attribute-open dialog is not a real top-layer modal, though — no
+  // backdrop, no focus trap, no scroll lock, no escape-stack entry. Strip
+  // the attribute (not `.close()` — that would fire the native `close`
+  // event and route through `dialogState.handleClose()` as if a user had
+  // dismissed it) so `dialogElement.open` reads false again; the
+  // `syncOpenState()` effect below then takes its normal `!dialogElement.open`
+  // branch and promotes it to a genuine `showModal()` dialog with all the
+  // associated side effects. Runs once per mount, before `syncOpenState()`.
+  $effect(() => {
+    if (!browser) return;
+    if (dialogElement?.hasAttribute('open')) {
+      dialogElement.removeAttribute('open');
+    }
   });
 
   $effect(() => {
@@ -244,6 +265,7 @@
     {...isChromeless ? { 'aria-label': ariaLabel } : { 'aria-labelledby': titleId }}
     {...describedById ? { 'aria-describedby': describedById } : {}}
     data-cinder-closing={dialogState.isClosing ? '' : undefined}
+    {...!browser && open ? { open: true } : {}}
     onclose={() => dialogState.handleClose()}
     onclick={handleBackdropClick}
     oncancel={handleNativeCancel}
@@ -290,7 +312,7 @@
         </div>
 
         {#if footer}
-          <div class="cinder-modal__footer">
+          <div class="cinder-modal__footer" data-cinder-chrome={isChromeless ? 'none' : undefined}>
             {@render footer()}
           </div>
         {/if}

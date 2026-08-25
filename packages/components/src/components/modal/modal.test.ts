@@ -402,13 +402,16 @@ describe('Modal', () => {
     //
     // Uses the same real-(non-collapsed)-transition stub as the
     // "keeps the panel mounted..." test above, and drives completion via an
-    // explicit `dispatchEvent('transitionend')` rather than letting the
-    // reduced-motion queued-microtask path resolve on its own — a throw
-    // from a listener invoked via `dispatchEvent` propagates synchronously
-    // out of that call (matching this harness's behavior), which is what
-    // makes the throw observable/catchable here at all; a throw from a
-    // bare `queueMicrotask` continuation is not something a `try`/`catch`
-    // around the triggering action can intercept.
+    // explicit `dispatchEvent('transitionend')`. `onExitComplete` now fires
+    // from a `tick().then()` continuation past the render flush (see the
+    // "fires after the render flush" test above), so the throw is no longer
+    // synchronously observable at all — `#finishClosing` catches it and
+    // reports it via `globalThis.reportError` rather than letting it
+    // surface as an unhandled promise rejection. What this test actually
+    // proves is the ORDERING: `dialogElement.close()` (and the scroll-lock/
+    // escape-stack release its native `close` event triggers) still runs
+    // unconditionally, before the (now-deferred, now-caught) throwing
+    // callback ever runs.
     const originalGetComputedStyle = window.getComputedStyle.bind(window);
     window.getComputedStyle = ((target: Element) => {
       if (target instanceof HTMLElement && target.classList.contains('cinder-modal__panel')) {
@@ -420,6 +423,18 @@ describe('Modal', () => {
       }
       return originalGetComputedStyle(target);
     }) as typeof window.getComputedStyle;
+
+    // `#finishClosing` now reports a throwing `onExitComplete` via
+    // `globalThis.reportError` (see create-sliding-dialog-state.svelte.ts) —
+    // the async equivalent of a DOM event listener's "reported, not
+    // propagated to any caller" throw semantics. Stub it so this
+    // intentional test exception doesn't surface as a real uncaught error
+    // to the test runner, while still proving it WAS reported exactly once.
+    const originalReportError = globalThis.reportError;
+    const reportedErrors: unknown[] = [];
+    globalThis.reportError = (error: unknown) => {
+      reportedErrors.push(error);
+    };
 
     try {
       let openValue = true;
@@ -445,16 +460,6 @@ describe('Modal', () => {
       await fireEvent.click(closeButton);
 
       const panel = container.querySelector('.cinder-modal__panel');
-      // `dispatchEvent` follows the DOM spec here (matching real browsers):
-      // an exception thrown inside a listener is reported, not propagated
-      // to the caller — so this does NOT throw, even though
-      // `onExitComplete` (invoked from deep inside this dispatch, via
-      // `waitForTransitionCompletion`'s `finish()` → `#finishClosing`) does.
-      // What this test actually proves is the ORDERING inside
-      // `#finishClosing`: the assertions below only pass if
-      // `dialogElement.close()` (and the scroll-lock/escape-stack release
-      // its native `close` event triggers) ran BEFORE the throwing
-      // callback — which is exactly the fix.
       for (const propertyName of ['opacity', 'translate']) {
         const event = new Event('transitionend');
         Object.defineProperty(event, 'propertyName', { value: propertyName });
@@ -462,11 +467,18 @@ describe('Modal', () => {
       }
 
       // The native dialog is genuinely closed and body scroll is restored —
-      // despite the consumer callback throwing.
-      expect(dialog.hasAttribute('open')).toBe(false);
+      // despite the consumer callback throwing — because `close()` runs
+      // unconditionally before the deferred, now-caught callback.
+      await waitFor(() => {
+        expect(dialog.hasAttribute('open')).toBe(false);
+      });
       expect(document.body.style.overflow).toBe('');
+      await waitFor(() => {
+        expect(reportedErrors).toHaveLength(1);
+      });
     } finally {
       window.getComputedStyle = originalGetComputedStyle;
+      globalThis.reportError = originalReportError;
     }
   });
 
@@ -515,6 +527,66 @@ describe('Modal', () => {
       // internally on reopen.
       expect(container.querySelector('.cinder-modal__panel')).not.toBeNull();
       expect(exitCompleteCount).toBe(0);
+    } finally {
+      window.getComputedStyle = originalGetComputedStyle;
+    }
+  });
+
+  test('onExitComplete fires after the render flush — the panel is already gone from the DOM at the moment the callback runs, not merely by the time a later assertion checks', async () => {
+    // Regression: `#finishClosing()` used to call `onClosed?.()` (which
+    // forwards to `onExitComplete`) synchronously in the same stack as
+    // `renderPanel = false` — before Svelte reconciled the `{#if renderPanel}`
+    // block and actually removed `.cinder-modal__panel` from the DOM. A
+    // consumer's callback would still find the panel present, contradicting
+    // the documented "fires once ... the panel actually unmounts" contract.
+    // Assert the DOM state INSIDE the callback itself, not via a later
+    // `waitFor` (which would pass even with the old synchronous-and-wrong
+    // ordering, since it merely polls until eventually true).
+    const originalGetComputedStyle = window.getComputedStyle.bind(window);
+    window.getComputedStyle = ((target: Element) => {
+      if (target instanceof HTMLElement && target.classList.contains('cinder-modal__panel')) {
+        return {
+          transitionProperty: 'opacity, translate',
+          transitionDuration: '80ms, 80ms',
+          transitionDelay: '0ms, 0ms',
+        } as CSSStyleDeclaration;
+      }
+      return originalGetComputedStyle(target);
+    }) as typeof window.getComputedStyle;
+
+    try {
+      let openValue = true;
+      let panelPresentWhenCallbackFired: boolean | undefined;
+      const { container } = render(Modal, {
+        props: {
+          get open() {
+            return openValue;
+          },
+          set open(value: boolean) {
+            openValue = value;
+          },
+          title: 'Test Modal',
+          children: emptySnippet,
+          onExitComplete: () => {
+            panelPresentWhenCallbackFired =
+              container.querySelector('.cinder-modal__panel') !== null;
+          },
+        },
+      });
+
+      const closeButton = container.querySelector('.cinder-modal__close') as HTMLButtonElement;
+      await fireEvent.click(closeButton);
+
+      const panel = container.querySelector('.cinder-modal__panel');
+      for (const propertyName of ['opacity', 'translate']) {
+        const event = new Event('transitionend');
+        Object.defineProperty(event, 'propertyName', { value: propertyName });
+        panel?.dispatchEvent(event);
+      }
+
+      await waitFor(() => {
+        expect(panelPresentWhenCallbackFired).toBe(false);
+      });
     } finally {
       window.getComputedStyle = originalGetComputedStyle;
     }
@@ -1666,6 +1738,36 @@ describe('Modal chromeless mode (chrome="none")', () => {
     const css = await Bun.file(new URL('./modal.css', import.meta.url)).text();
     expect(css).toMatch(
       /\.cinder-modal__body\[data-cinder-chrome='none'\]\s*\{[^}]*scrollbar-gutter:\s*auto;/s,
+    );
+  });
+
+  test('marks the footer with data-cinder-chrome="none" and modal.css resets its background/border/padding', async () => {
+    // Regression: chromeless mode fills the dialog's entire content box with
+    // the panel/body/footer as one full-bleed surface, but the footer kept
+    // painting its own card-style background, top border, and padding —
+    // breaking the "genuinely full-bleed" contract when a consumer uses
+    // chrome="none" together with a footer snippet.
+    const { container } = render(Modal, {
+      props: {
+        open: true,
+        chrome: 'none',
+        'aria-label': 'Image viewer',
+        children: emptySnippet,
+        footer: textSnippet('Footer content'),
+      },
+    });
+    const footer = container.querySelector('.cinder-modal__footer');
+    expect(footer?.getAttribute('data-cinder-chrome')).toBe('none');
+
+    const css = await Bun.file(new URL('./modal.css', import.meta.url)).text();
+    expect(css).toMatch(
+      /\.cinder-modal__footer\[data-cinder-chrome='none'\]\s*\{[^}]*padding:\s*0;/s,
+    );
+    expect(css).toMatch(
+      /\.cinder-modal__footer\[data-cinder-chrome='none'\]\s*\{[^}]*background:\s*transparent;/s,
+    );
+    expect(css).toMatch(
+      /\.cinder-modal__footer\[data-cinder-chrome='none'\]\s*\{[^}]*border-block-start:\s*none;/s,
     );
   });
 });

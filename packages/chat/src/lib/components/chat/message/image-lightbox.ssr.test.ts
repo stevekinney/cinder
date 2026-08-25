@@ -31,6 +31,20 @@ const images = [
   { src: '/b.jpg', alt: 'Image B' },
 ];
 
+/**
+ * Extracts the `<dialog ...>` open tag so attribute assertions can be made
+ * against exactly that tag's attribute list, rather than a bare
+ * `toContain('open')` — which would false-positive on unrelated substrings
+ * (`aria-modal`, class names, etc.) appearing anywhere else in the markup.
+ */
+function extractDialogOpenTag(html: string): string {
+  const match = html.match(/<dialog\b[^>]*>/);
+  if (!match) {
+    throw new Error('Expected the rendered HTML to contain a <dialog> tag.');
+  }
+  return match[0];
+}
+
 describe('ImageLightbox SSR contract', () => {
   test('an initially-open lightbox (open={true}) server-renders the dialog and current image', async () => {
     const html = await renderToServerHtml(sourcePath, {
@@ -44,6 +58,20 @@ describe('ImageLightbox SSR contract', () => {
     expect(html).toContain('aria-modal="true"');
     expect(html).toContain('src="/a.jpg"');
     expect(html).toContain('alt="Image A"');
+  });
+
+  test('an initially-open lightbox server-renders the dialog with the `open` attribute, so it is actually visible (not display:none) before hydration', async () => {
+    const html = await renderToServerHtml(sourcePath, {
+      images,
+      initialIndex: 0,
+      open: true,
+    });
+
+    const dialogOpenTag = extractDialogOpenTag(html);
+    // Matches a bare `open` attribute (no value) or `open="..."` as its own
+    // token, bounded by whitespace/tag-end on both sides — not merely "open"
+    // as a substring of some other attribute or value.
+    expect(dialogOpenTag).toMatch(/[\s]open(=["'][^"']*["'])?[\s/>]/);
   });
 
   test('an initially-open lightbox honors a non-zero initialIndex on the server', async () => {
