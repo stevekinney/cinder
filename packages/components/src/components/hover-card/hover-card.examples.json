@@ -16,6 +16,12 @@
       "code": "<script lang=\"ts\">\n  import { Button } from '@lostgradient/cinder/button';\n  import { HoverCard } from '@lostgradient/cinder';\n</script>\n\n<HoverCard openDelay={100} closeDelay={300}>\n  {#snippet trigger()}\n    <Button variant=\"ghost\">CIN-42</Button>\n  {/snippet}\n\n  <strong>CIN-42</strong>\n  <p>Investigate overlay stacking behavior in nested surfaces.</p>\n</HoverCard>\n"
     },
     {
+      "id": "instant-close",
+      "title": "Instant close",
+      "description": "A zero close delay hides the card the instant the pointer leaves, useful for driving deterministic close-path tests without a debounce to race.",
+      "code": "<script lang=\"ts\">\n  import { Button } from '@lostgradient/cinder/button';\n  import { HoverCard } from '@lostgradient/cinder';\n</script>\n\n<HoverCard closeDelay={0}>\n  {#snippet trigger()}\n    <Button variant=\"ghost\">CIN-7</Button>\n  {/snippet}\n\n  <strong>CIN-7</strong>\n  <p>Confirm the export job finishes before closing this tab.</p>\n</HoverCard>\n"
+    },
+    {
       "id": "instant-reopen",
       "title": "Instant reopen",
       "description": "A zero open delay reopens the card immediately on re-entry, useful for adjacent triggers meant to feel like one continuous surface.",

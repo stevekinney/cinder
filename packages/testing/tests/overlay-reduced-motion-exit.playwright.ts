@@ -119,16 +119,33 @@ test('Tooltip hides immediately under reduced motion', async ({ page }) => {
 
 test('HoverCard unmounts immediately under reduced motion', async ({ page }) => {
   await page.goto('/page/hover-card', { waitUntil: 'load' });
-  const overview = page.getByRole('region', { name: 'Overview preview' });
   await expect(page.locator('#overview-mount-basic')).toHaveAttribute(
     'data-overview-preview-rendered',
     '',
   );
 
-  const trigger = overview.getByRole('button', { name: 'Ada Lovelace' }).first();
+  // Uses the "instant-close" example (`closeDelay={0}`,
+  // packages/playground/src/examples/hover-card/instant-close.example.svelte),
+  // NOT the Overview preview's basic example: the basic example's default
+  // `closeDelay` (150ms) is a REAL debounce timer that has to elapse before
+  // `setOpen(false)` even runs, unrelated to the exit-TRANSITION lifecycle
+  // this test targets. A fixed `page.waitForTimeout(...)` bridging that real
+  // delay is a hard-coded timing wait, which this repository's working
+  // agreements treat as forbidden regardless of how carefully justified
+  // (see AGENTS.md's "no fixed timeouts" guidance) — and a value tuned to
+  // the CURRENT 150ms/120ms figures would silently rot the moment either
+  // changes. `closeDelay={0}` removes the real debounce entirely, so no
+  // wait of any kind is needed: the same non-polling
+  // capture-a-handle-then-`evaluate` pattern Popover uses above works here
+  // too, once there's no artificial delay left to race.
+  const trigger = page
+    .locator('#example-mount-instant-close')
+    .getByRole('button', { name: 'CIN-7' })
+    .first();
+  await trigger.scrollIntoViewIfNeeded();
   await trigger.hover();
 
-  const card = page.locator('.cinder-hover-card').first();
+  const card = page.locator('.cinder-hover-card').filter({ hasText: 'CIN-7' });
   await expect(card).toHaveAttribute('data-cinder-position-ready', 'true');
 
   // Capture an `ElementHandle` BEFORE closing, not just the `Locator` — same
@@ -138,22 +155,6 @@ test('HoverCard unmounts immediately under reduced motion', async ({ page }) => 
   if (!cardHandle) throw new Error('HoverCard element handle not found.');
 
   await page.mouse.move(0, 0);
-
-  // HoverCard debounces its close behind a REAL `closeDelay` (150ms by
-  // default) `setTimeout` — a legitimate hover-intent guard, not part of the
-  // exit-TRANSITION lifecycle under test — before `setOpen(false)` even
-  // runs. Deliberately NOT polling for `data-cinder-closing` to appear first
-  // (as this test previously did): under reduced motion,
-  // `waitForTransitionCompletion` resolves via `queueMicrotask`, so the
-  // closing state exists for at most a single microtask before the card
-  // unmounts entirely — a web-first `toHaveAttribute` poll cannot reliably
-  // observe a state that ephemeral and would normally time out even when
-  // reduced motion is working correctly. Instead, wait past the real delay
-  // with a fixed timeout (200ms — comfortably past the 150ms debounce, but
-  // short enough that a regressed ~120ms non-reduced exit transition
-  // wouldn't also complete within it: 150 + 120 = 270ms), then check the END
-  // state without polling.
-  await page.waitForTimeout(200);
 
   const stillPresent = await cardHandle.evaluate(async (el) => {
     await Promise.resolve();
@@ -179,18 +180,20 @@ test('NavigationBar mobile panel hides immediately under reduced motion', async 
     .first();
   await expect(panel).toBeVisible();
 
+  // Capture an `ElementHandle` BEFORE the second click, not just the
+  // `Locator`: the very click we're about to make flips `data-open` to
+  // `"false"` on this same element, which is part of `panel`'s OWN
+  // selector — so calling `panel.evaluate(...)` afterward would re-resolve
+  // that selector, find no match (since `[data-open="true"]` no longer
+  // matches anything), and time out instead of inspecting the panel that
+  // was actually toggled. `ElementHandle#evaluate` operates on the specific
+  // captured node regardless of which attributes on it change afterward.
+  const panelHandle = await panel.elementHandle();
+  if (!panelHandle) throw new Error('NavigationBar mobile panel element handle not found.');
+
   await toggle.click();
 
-  // Inspect the SAME `panel` handle already resolved above, not a fresh
-  // global query: both the Overview and Examples sections mount the basic
-  // NavigationBar, so opening the Overview instance portals its panel later
-  // in `body` while another closed mobile panel (Examples', never opened)
-  // remains earlier in document order — a global `document.querySelector`
-  // can resolve to that already-hidden sibling and report "hidden"
-  // regardless of whether the panel that was actually toggled finished
-  // immediately. `Locator#evaluate` passes the exact handle `panel` already
-  // identified.
-  const stillVisible = await panel.evaluate(async (el) => {
+  const stillVisible = await panelHandle.evaluate(async (el) => {
     await Promise.resolve();
     return window.getComputedStyle(el).visibility !== 'hidden';
   });

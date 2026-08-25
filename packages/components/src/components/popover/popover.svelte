@@ -148,21 +148,26 @@
       lastAnchorElement = anchorElement;
       return;
     }
-    // The anchor went null while there's no active (open or closing) session
-    // to retain it for — e.g. the trigger disconnects while the Popover is
-    // already fully closed. Without this, a stale snapshot from a PREVIOUS
-    // session would sit around indefinitely, and a later controlled
-    // `open = true` with no fresh anchor would resolve to it — mounting and
-    // positioning a panel for what is effectively an anchorless open, even
-    // though the open-lifecycle effect (gated on the live `anchorElement`)
-    // correctly sees it as null and skips Escape/focus wiring. `onClosed`
-    // alone doesn't cover this: it only runs at the end of a close SESSION,
-    // and no session starts when the anchor disappears while already
-    // closed. Gated on `exitState.renderPanel` rather than `open` directly
-    // for the same effect-ordering reason as `resolvedAnchorElement`'s
-    // consumers below — it reads the CURRENT (not one-tick-stale) retention
-    // need.
-    if (!exitState.renderPanel) {
+    // The anchor went null. Retain the snapshot ONLY for an actual CLOSING
+    // session — drop it in every other case:
+    //
+    // - `open` is currently true: the trigger disconnected while the
+    //   Popover is ostensibly still open (no close was ever requested), not
+    //   mid-exit. Retaining here would freeze `resolvedAnchorElement` on a
+    //   disconnected element indefinitely — positioning would keep
+    //   computing against a stale, no-longer-attached rect instead of
+    //   reflecting that there's genuinely no anchor anymore. Drop it
+    //   immediately.
+    // - `open` is false AND `exitState.renderPanel` is already false: no
+    //   session at all (the trigger disconnected while already fully
+    //   closed) — nothing to retain for.
+    //
+    // Only `!open && exitState.renderPanel` (a close has been requested and
+    // the exit transition is still in flight) keeps the snapshot alive.
+    // `exitState.renderPanel` rather than `exitState.isClosing` for the same
+    // effect-ordering reason as `resolvedAnchorElement`'s consumers below —
+    // it reads the CURRENT (not one-tick-stale) retention need.
+    if (open || !exitState.renderPanel) {
       lastAnchorElement = null;
     }
   });
@@ -198,11 +203,12 @@
     // PRIOR `onClosed` cleared it to.
     open;
     if (!anchorElement) {
-      // Same staleness guard as `lastAnchorElement` above: only clear when
-      // there's no active session to retain it for, so a genuine close
-      // transition (where `renderPanel` is still true) doesn't wipe the
-      // snapshot the exit transition needs.
-      if (!exitState.renderPanel) lastResolvedPortalTarget = null;
+      // Same guard as `lastAnchorElement` above: retain ONLY for an actual
+      // closing session (`!open && exitState.renderPanel`) — if `open` is
+      // still true, the trigger vanished outside any close request, so drop
+      // the snapshot immediately rather than freezing the portal target on
+      // a boundary resolved from a now-disconnected anchor.
+      if (open || !exitState.renderPanel) lastResolvedPortalTarget = null;
       return;
     }
     try {

@@ -226,6 +226,19 @@
       trigger.removeEventListener('mouseleave', handleMouseLeave);
       trigger.removeEventListener('focusin', handleFocusIn);
       trigger.removeEventListener('focusout', handleFocusOut);
+      // If the trigger ref was CLEARED (not merely swapped to a different
+      // element — checked against the live `triggerRef`, not the captured
+      // `trigger`) while the tooltip is genuinely visible, force it to
+      // start closing now. `lastIsDetached`/`exitState.renderPanel`
+      // retention above exists ONLY to keep the panel positioned/mounted
+      // through the resulting exit transition — without this, a triggerRef
+      // cleared while `visible` was still true left the tooltip visibly
+      // portaled against a removed trigger with no event source left to
+      // ever dismiss it (no mouseleave/focusout can fire on an element
+      // that's gone).
+      if (triggerRef == null && visible) {
+        hide();
+      }
       // Don't null the anchor while a session is still closing: `anchor()`
       // below reads `anchorElement` directly, and `createAnchoredOverlay`
       // clears its position when `anchor()` returns null — nulling this the
