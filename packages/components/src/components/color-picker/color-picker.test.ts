@@ -139,9 +139,14 @@ describe('ColorPicker structure', () => {
     await fireEvent.click(copyButtons[2]!);
     await tick();
 
+    // 4-decimal precision (matching formatColor's own canonicalization —
+    // see the "Preserve fractional alpha in copy payloads" PR #1420 review
+    // thread) round-trips this 8-bit alpha more precisely than the old
+    // 3-decimal rounding did (0.004 would have rounded to a value that, at
+    // 255 alpha steps, is indistinguishable from 2/255).
     expect(writeText.mock.calls.map(([value]) => value)).toEqual([
-      'rgba(0, 0, 0, 0.004)',
-      'hsla(0, 0%, 0%, 0.004)',
+      'rgba(0, 0, 0, 0.0039)',
+      'hsla(0, 0%, 0%, 0.0039)',
     ]);
   });
 
@@ -1285,6 +1290,61 @@ describe('ColorPicker retained translucent value renders/copies consistently (P1
     const { container } = render(ColorPicker, { value: '#ff0000', alpha: true });
     const preview = q<HTMLElement>(container, '.cinder-color-picker__preview');
     expect(preview.hasAttribute('data-cinder-alpha')).toBe(false);
+  });
+});
+
+// Review thread (PR #1420): "Preserve fractional alpha in copy payloads".
+// An alpha in the 0.9995–1 band is < 1 raw but canonicalizes to exactly `1`
+// at the 4-decimal precision `formatColor` uses for its `/ a` suffix. The
+// emitted (configured-format) `value` already canonicalized correctly, but
+// the copy-panel's `formatRgb`/`formatHsl` used a raw `alphaValue < 1` gate
+// plus a DIFFERENT (3-decimal) rounding — so a value like 0.9996 emitted
+// `/ 0.9996` in the configured format while the RGB/HSL copy strings showed
+// `rgba(r, g, b, 1)`, an opaque-looking payload for a value everything else
+// still reported as translucent. The copy strings and the emitted value now
+// share the same `canonicalAlpha`/`isCanonicallyOpaque` boundary.
+describe('ColorPicker fractional alpha in the 0.9995–1 band (P1 regression)', () => {
+  test('0.9996 alpha: emitted value and RGB/HSL copy strings agree it is still translucent, at the same precision', () => {
+    const { container } = render(ColorPicker, {
+      value: 'rgba(255, 0, 0, 0.9996)',
+      alpha: true,
+      format: 'rgb',
+    });
+
+    // The emitted (configured-format) value treats 0.9996 as translucent.
+    const hidden = container.querySelector('input[type="hidden"]') as HTMLInputElement;
+    expect(hidden.value).toBe('rgb(255 0 0 / 0.9996)');
+
+    const rgbButton = q<HTMLButtonElement>(container, '[aria-label="Copy RGB format"]');
+    const hslButton = q<HTMLButtonElement>(container, '[aria-label="Copy HSL format"]');
+    expect(rgbButton.textContent).toBe('RGB rgba(255, 0, 0, 0.9996)');
+    expect(hslButton.textContent).toBe('HSL hsla(0, 100%, 50%, 0.9996)');
+
+    // Checkerboard and preview must also agree it's translucent.
+    const preview = q<HTMLElement>(container, '.cinder-color-picker__preview');
+    expect(preview.hasAttribute('data-cinder-alpha')).toBe(true);
+    expect(preview.getAttribute('style')).toContain('hsla(');
+  });
+
+  test('0.99999 alpha: everything agrees it canonicalizes to fully opaque', () => {
+    const { container } = render(ColorPicker, {
+      value: 'rgba(255, 0, 0, 0.99999)',
+      alpha: true,
+      format: 'rgb',
+    });
+
+    const hidden = container.querySelector('input[type="hidden"]') as HTMLInputElement;
+    expect(hidden.value).toBe('rgb(255 0 0)');
+
+    const rgbButton = q<HTMLButtonElement>(container, '[aria-label="Copy RGB format"]');
+    const hslButton = q<HTMLButtonElement>(container, '[aria-label="Copy HSL format"]');
+    expect(rgbButton.textContent).toBe('RGB rgb(255, 0, 0)');
+    expect(hslButton.textContent).toBe('HSL hsl(0, 100%, 50%)');
+
+    const preview = q<HTMLElement>(container, '.cinder-color-picker__preview');
+    expect(preview.hasAttribute('data-cinder-alpha')).toBe(false);
+    expect(preview.getAttribute('style')).toContain('hsl(');
+    expect(preview.getAttribute('style')).not.toContain('hsla(');
   });
 });
 

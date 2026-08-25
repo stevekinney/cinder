@@ -2,8 +2,10 @@ import { describe, expect, test } from 'bun:test';
 import { converter, parse } from 'culori';
 
 import {
+  canonicalAlpha,
   formatColor,
   formatHex,
+  isCanonicallyOpaque,
   parseCssColor,
   parseOklch,
   type RgbaComponents,
@@ -64,6 +66,32 @@ describe('formatHex', () => {
     const reparsed = parseCssColor(once);
     expect(reparsed).not.toBeNull();
     expect(formatHex(reparsed!)).toBe(once);
+  });
+});
+
+// Review thread (PR #1420): "Preserve fractional alpha in copy payloads".
+// canonicalAlpha/isCanonicallyOpaque are the single shared boundary every
+// caller (formatColor's own suffix decision, and ColorPicker's copy-panel
+// strings) must use — a caller that rounds to a different precision or
+// gates on the raw alpha can disagree with formatColor about whether the
+// SAME value is translucent.
+describe('canonicalAlpha / isCanonicallyOpaque (the shared 0.9995–1 boundary)', () => {
+  test('0.9996 canonicalizes to itself and is NOT opaque', () => {
+    expect(canonicalAlpha(0.9996)).toBe(0.9996);
+    expect(isCanonicallyOpaque(0.9996)).toBe(false);
+  });
+
+  test('0.99999 canonicalizes to 1 and IS opaque', () => {
+    expect(canonicalAlpha(0.99999)).toBe(1);
+    expect(isCanonicallyOpaque(0.99999)).toBe(true);
+  });
+
+  test('a sweep across the 0.9995–1 band matches formatColor’s own opacity decision', () => {
+    for (const a of [0.9994, 0.9995, 0.9996, 0.9997, 0.9998, 0.9999, 0.99994, 0.99996, 1]) {
+      const seed: RgbaComponents = { r: 10, g: 20, b: 30, a };
+      const emittedHasSlash = formatColor(seed, 'rgb').includes('/');
+      expect(emittedHasSlash).toBe(!isCanonicallyOpaque(a));
+    }
   });
 });
 

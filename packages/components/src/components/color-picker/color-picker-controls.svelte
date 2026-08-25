@@ -2,6 +2,8 @@
   import Copy from 'lucide-svelte/icons/copy';
   import CopyButton from '@lostgradient/cinder/copy-button';
 
+  import { isCanonicallyOpaque } from '../../utilities/color-format.ts';
+
   type ColorPickerControlsProps = {
     gradientId: string;
     hueId: string;
@@ -175,7 +177,7 @@
     id={previewId}
     role="img"
     class="cinder-color-picker__preview"
-    data-cinder-alpha={alphaValue < 1 ? '' : undefined}
+    data-cinder-alpha={isCanonicallyOpaque(alphaValue) ? undefined : ''}
     aria-label={internalValue ? `Selected color: ${internalValue}` : 'Selected color: none'}
     style="--cinder-color-picker-preview: {previewColor};"
   ></div>

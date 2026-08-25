@@ -23,7 +23,12 @@
   import { untrack } from 'svelte';
 
   import { classNames } from '../../utilities/class-names.ts';
-  import { formatColor, formatHex } from '../../utilities/color-format.ts';
+  import {
+    canonicalAlpha,
+    formatColor,
+    formatHex,
+    isCanonicallyOpaque,
+  } from '../../utilities/color-format.ts';
   import ColorSwatchPicker from '../color-swatch-picker/color-swatch-picker.svelte';
   import ColorPickerControls from './color-picker-controls.svelte';
   import {
@@ -457,27 +462,35 @@
     internalValue === '' ? '' : hexFor(hue, saturation, lightnessValue, alphaValue),
   );
 
-  // These copy/preview strings key off the *actual* alphaValue (< 1), not
-  // the `alpha` UI-affordance prop: a retained translucent value (see the
+  // These copy/preview strings key off the *actual* alphaValue, not the
+  // `alpha` UI-affordance prop: a retained translucent value (see the
   // CIN-104 alpha-retention ruling on `applyHsla` above) must render and
   // copy consistently translucent even while the alpha slider is hidden.
+  //
+  // Both the opacity GATE and the rounding PRECISION here must match
+  // `formatColor`'s exactly (`isCanonicallyOpaque`/`canonicalAlpha`, both at
+  // 4 decimals) — not a raw `alphaValue < 1` check or a differently-rounded
+  // display value. An alpha like 0.9996 canonicalizes to itself (still
+  // translucent) under `formatColor`'s 4-decimal precision, so the
+  // configured non-hex `format` correctly emits `/ 0.9996`; the old
+  // 3-decimal `roundFormatAlpha` (`Math.round(value * 1000) / 1000`) rounded
+  // that SAME 0.9996 up to exactly `1`, so these copy strings displayed
+  // `rgba(r, g, b, 1)` — an opaque-looking payload for a value the emitted
+  // `value` still correctly reported as translucent.
   const formatRgb = $derived.by(() => {
     const { r, g, b } = hslToRgb(hue, saturation, lightnessValue);
     const channels = `${r}, ${g}, ${b}`;
-    return alphaValue < 1
-      ? `rgba(${channels}, ${roundFormatAlpha(alphaValue)})`
-      : `rgb(${channels})`;
+    return isCanonicallyOpaque(alphaValue)
+      ? `rgb(${channels})`
+      : `rgba(${channels}, ${canonicalAlpha(alphaValue)})`;
   });
   function roundFormatChannel(value: number): number {
     return Math.round(value * 100) / 100;
   }
-  function roundFormatAlpha(value: number): number {
-    return Math.round(value * 1000) / 1000;
-  }
   const formatHsl = $derived(
-    alphaValue < 1
-      ? `hsla(${roundFormatChannel(hue)}, ${roundFormatChannel(saturation)}%, ${roundFormatChannel(lightnessValue)}%, ${roundFormatAlpha(alphaValue)})`
-      : `hsl(${roundFormatChannel(hue)}, ${roundFormatChannel(saturation)}%, ${roundFormatChannel(lightnessValue)}%)`,
+    isCanonicallyOpaque(alphaValue)
+      ? `hsl(${roundFormatChannel(hue)}, ${roundFormatChannel(saturation)}%, ${roundFormatChannel(lightnessValue)}%)`
+      : `hsla(${roundFormatChannel(hue)}, ${roundFormatChannel(saturation)}%, ${roundFormatChannel(lightnessValue)}%, ${canonicalAlpha(alphaValue)})`,
   );
   function handleSwatchChange(
     selectedColor: Parameters<NonNullable<ColorSwatchPickerProps['onValueChange']>>[0],
@@ -528,14 +541,18 @@
   // ── Visual derived data ─────────────────────────────────────────────────
 
   const hueColor = $derived(`hsl(${hue}, 100%, 50%)`);
-  // Keys off the actual `alphaValue` (< 1), not the `alpha` prop — see the
-  // note on `formatRgb`/`formatHsl` above.
+  // Keys off `isCanonicallyOpaque(alphaValue)`, not the `alpha` prop and not
+  // a raw `alphaValue < 1` check — see the note on `formatRgb`/`formatHsl`
+  // above. Must agree with the emitted `value`/copy strings on the SAME
+  // 0.9995–1 canonicalization boundary, or the preview (and the checkerboard
+  // gate in color-picker-controls.svelte, which reads this same alphaValue)
+  // would show translucent for a value everything else reports as opaque.
   const previewColor = $derived(
     internalValue === ''
       ? 'transparent'
-      : alphaValue < 1
-        ? `hsla(${hue}, ${saturation}%, ${lightnessValue}%, ${alphaValue})`
-        : `hsl(${hue}, ${saturation}%, ${lightnessValue}%)`,
+      : isCanonicallyOpaque(alphaValue)
+        ? `hsl(${hue}, ${saturation}%, ${lightnessValue}%)`
+        : `hsla(${hue}, ${saturation}%, ${lightnessValue}%, ${canonicalAlpha(alphaValue)})`,
   );
 
   // HSV position of the gradient handle (x = HSV saturation, y = HSV value).

@@ -96,6 +96,28 @@ function roundTo(value: number, digits: number): number {
 }
 
 /**
+ * Canonicalize alpha to the same 4-decimal precision `formatColor` uses for
+ * its `/ a` suffix, BEFORE deciding whether a color counts as opaque. An
+ * alpha like 0.9996 is < 1 raw, but anything in the ~0.9995–1 band that
+ * rounds to exactly `1` at four decimals must be treated as opaque
+ * everywhere a color is displayed or copied — not just in the emitted
+ * `value`. Any caller that independently decides "is this alpha opaque?"
+ * (copy-panel strings, previews, …) must canonicalize through this exact
+ * function rather than rounding to a different precision or gating on the
+ * raw value — a mismatched boundary or precision here is what let the
+ * ColorPicker copy panel show `rgba(r, g, b, 1)` for a value the emitted
+ * `value` still correctly reported as `/ 0.9996`.
+ */
+export function canonicalAlpha(alpha: number): number {
+  return roundTo(alpha, 4);
+}
+
+/** Whether `alpha`, canonicalized to `canonicalAlpha`'s precision, counts as opaque. */
+export function isCanonicallyOpaque(alpha: number): boolean {
+  return canonicalAlpha(alpha) >= 1;
+}
+
+/**
  * Format a canonical RGBA value in the requested CSS Color 4 syntax.
  * `hex` is handled separately by {@link formatHex} for readability, but is
  * accepted here too so callers can dispatch on `format` uniformly.
@@ -103,16 +125,18 @@ function roundTo(value: number, digits: number): number {
 export function formatColor(parts: RgbaComponents, format: ColorOutputFormat): string {
   if (format === 'hex') return formatHex(parts);
 
-  // Canonicalize alpha to the SAME precision (4 decimal places) used in the
-  // emitted suffix BEFORE deciding whether to append it — not the raw
-  // `parts.a`. An alpha like 0.99999 is < 1 raw, but rounds to exactly `1` at
-  // four decimals; deciding on the raw value would emit `/ 1`, which
-  // re-parses as alpha === 1 and drops the suffix on the very next
-  // round-trip — the same byte-rounds-to-opaque canonicalization `formatHex`
-  // does for hex, applied here at the decimal precision non-hex formats use.
-  const canonicalAlpha = roundTo(parts.a, 4);
-  const hasAlpha = canonicalAlpha < 1;
-  const alphaSuffix = hasAlpha ? ` / ${canonicalAlpha}` : '';
+  // Canonicalize alpha BEFORE deciding whether to append the suffix — not
+  // the raw `parts.a`. An alpha like 0.99999 is < 1 raw, but rounds to
+  // exactly `1` at four decimals; deciding on the raw value would emit
+  // `/ 1`, which re-parses as alpha === 1 and drops the suffix on the very
+  // next round-trip — the same byte-rounds-to-opaque canonicalization
+  // `formatHex` does for hex, applied here at the decimal precision non-hex
+  // formats use. Every other caller that independently renders or copies
+  // this alpha (e.g. ColorPicker's legacy-syntax copy panel) must go
+  // through this same `canonicalAlpha`/`isCanonicallyOpaque` pair, not a
+  // differently-rounded or differently-gated one.
+  const hasAlpha = !isCanonicallyOpaque(parts.a);
+  const alphaSuffix = hasAlpha ? ` / ${canonicalAlpha(parts.a)}` : '';
   const rgbColor = rgbaToRgbColor(parts);
 
   if (format === 'rgb') {
