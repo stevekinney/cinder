@@ -1,6 +1,7 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, mock, spyOn, test } from 'bun:test';
 
+import { injectStrippedStyles } from '../../test/css.ts';
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
@@ -16,6 +17,42 @@ afterEach(() => {
 });
 
 describe('JsonEditor', () => {
+  test('the error live region is mounted before any error is set (CIN-315: FormFieldFrame defaults to errorMountedOnDemand=false)', () => {
+    const { container } = render(JsonEditor, {
+      id: 'no-error-yet-json',
+      label: 'Payload',
+      value: '{}',
+    });
+    expect(container.querySelector('.cinder-form-field__error')).not.toBeNull();
+  });
+
+  test('the errorless live region has no layout footprint (shared _form-field-error.css, CIN-315 follow-up)', async () => {
+    const jsonEditorCss = await Bun.file(new URL('./json-editor.css', import.meta.url)).text();
+    const sharedErrorCss = await Bun.file(
+      new URL('../../styles/components/_form-field-error.css', import.meta.url),
+    ).text();
+    const removeStyles = injectStrippedStyles(jsonEditorCss, sharedErrorCss);
+    try {
+      const { container } = render(JsonEditor, {
+        id: 'no-error-computed-json',
+        label: 'Payload',
+        value: '{}',
+      });
+      const errorRegion = container.querySelector('.cinder-form-field__error');
+      expect(errorRegion).not.toBeNull();
+      const computed = getComputedStyle(errorRegion as Element);
+      // Sr-only pattern (CIN-315 review follow-up), not visibility:hidden —
+      // visibility:hidden removes an element from the accessibility tree
+      // (navigation-bar.a11y.md), which would defeat the announcement fix.
+      expect(computed.position).toBe('absolute');
+      expect(computed.visibility).not.toBe('hidden');
+      expect(computed.display).not.toBe('none');
+      expect(computed.clip).toBe('rect(0, 0, 0, 0)');
+    } finally {
+      removeStyles();
+    }
+  });
+
   test('documents supported native validation and disabled props in its public schema', () => {
     expect(schema.properties).toHaveProperty('disabled');
     expect(schema.properties).toHaveProperty('required');

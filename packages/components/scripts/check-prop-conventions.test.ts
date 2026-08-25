@@ -3,9 +3,13 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import {
+  checkComponentNameForBarePluralShadow,
+  collectComponentNameShadowViolations,
   collectPropConventionViolations,
   collectResolvedSurfaceViolations,
   createPropsProgram,
+  existingComponentDirectoryNames,
+  namespaceOnlySingularNames,
 } from './check-prop-conventions';
 
 describe('check-prop-conventions', () => {
@@ -338,5 +342,300 @@ describe('check-prop-conventions type-aware surface pass', () => {
     expect(violations).toHaveLength(1);
     expect(violations[0]?.propName).toBe('onChangeValue');
     expect(violations[0]?.message).toContain('onValueChange concept');
+  });
+});
+
+describe('check-prop-conventions component-name directory scan', () => {
+  // Synthetic set so this test never depends on which real components exist —
+  // it locks in the shadowing RULE, not today's component inventory.
+  const existingNames = new Set(['avatar', 'avatar-group', 'statistic', 'statistic-group']);
+
+  test('flags a synthetic bare-plural candidate that shadows an existing singular component', () => {
+    const violation = checkComponentNameForBarePluralShadow('widgets', new Set(['widget']));
+    expect(violation).toBeDefined();
+    expect(violation?.candidateName).toBe('widgets');
+    expect(violation?.shadowedComponent).toBe('widget');
+    expect(violation?.message).toContain('widget-group');
+  });
+
+  test('flags a bare plural of a real family member (avatar)', () => {
+    const violation = checkComponentNameForBarePluralShadow('avatars', existingNames);
+    expect(violation).toBeDefined();
+    expect(violation?.shadowedComponent).toBe('avatar');
+  });
+
+  test('passes a candidate name that does not shadow any existing singular', () => {
+    expect(checkComponentNameForBarePluralShadow('tooltips', existingNames)).toBeUndefined();
+  });
+
+  test('passes a non-plural candidate name', () => {
+    expect(checkComponentNameForBarePluralShadow('avatar-status', existingNames)).toBeUndefined();
+  });
+
+  test('does not attempt GENERAL irregular-plural handling (only the explicitly seeded suffixes)', () => {
+    // "statistics" stripped of a trailing `s` only is "statistic" — which DOES
+    // exist and is correctly flagged. A general irregular plural like
+    // "children" (for "child") has no trailing `s`, `-es`, or `-ies` shape,
+    // and no entry in IRREGULAR_PLURAL_SUFFIXES, so it is never considered
+    // here; that is a deliberate scope limit (general English irregular
+    // plurals stay out of scope), not a bug this check is responsible for.
+    // The seeded exception is `-ices` -> `-ix` (see the permission-matrix
+    // tests above), not a general irregular-plural table.
+    const violation = checkComponentNameForBarePluralShadow('statistics', existingNames);
+    expect(violation?.shadowedComponent).toBe('statistic');
+  });
+
+  test('flags a synthetic regular -es plural whose stem ends in x/ch/sh/s/z', () => {
+    // "checkboxes" stripped of a bare trailing `s` is "checkboxe" — not a
+    // real word and not in the existing-names set. The regular -es plural
+    // (stem ends in x) strips "es" instead, landing on "checkbox", which
+    // DOES exist as a real component and must be flagged.
+    const violation = checkComponentNameForBarePluralShadow(
+      'checkboxes',
+      new Set(['checkbox', 'checkbox-group']),
+    );
+    expect(violation).toBeDefined();
+    expect(violation?.shadowedComponent).toBe('checkbox');
+    expect(violation?.message).toContain('checkbox-group');
+  });
+
+  test('flags a regular -ies plural shadowing a consonant-plus-y singular', () => {
+    const existing = new Set(['feed-boundary', 'avatar']);
+    const violation = checkComponentNameForBarePluralShadow('feed-boundaries', existing);
+    expect(violation).toBeDefined();
+    expect(violation?.shadowedComponent).toBe('feed-boundary');
+  });
+
+  test('does not flag an -ies name whose derived singular does not exist', () => {
+    const existing = new Set(['avatar']);
+    expect(checkComponentNameForBarePluralShadow('galleries', existing)).toBeUndefined();
+  });
+
+  test('passes a candidate ending in -es when neither derived singular exists', () => {
+    // "gazes" -es-strips to "gaz" (ends in z, a valid -es stem) and plain
+    // -s-strips to "gaze"; neither is in the existing-names set, so this
+    // must not produce a false positive just because the name ends in "es".
+    expect(checkComponentNameForBarePluralShadow('gazes', existingNames)).toBeUndefined();
+  });
+
+  test('flags a synthetic doubled-consonant -es plural (quiz -> quizzes)', () => {
+    // "quizzes" -es-strips to "quizz", which is not a real component — the
+    // regular -es plural of a z-ending singular doubles the z before adding
+    // "es" ("quiz" -> "quizzes", not "quizes"), so the de-doubled "quiz" must
+    // also be tried and land on the real singular.
+    const violation = checkComponentNameForBarePluralShadow(
+      'quizzes',
+      new Set(['quiz', 'quiz-group']),
+    );
+    expect(violation).toBeDefined();
+    expect(violation?.shadowedComponent).toBe('quiz');
+    expect(violation?.message).toContain('quiz-group');
+  });
+
+  test('does not flag a doubled-consonant -es candidate whose de-doubled stem does not exist', () => {
+    // "buzzes" -es-strips to "buzz" (already a real word on its own, not
+    // doubled-away) and de-doubles to "buz" — neither is in the set, so this
+    // must not produce a false positive.
+    expect(checkComponentNameForBarePluralShadow('buzzes', existingNames)).toBeUndefined();
+  });
+
+  test('flags the real irregular plural permission-matrix -> permission-matrices', () => {
+    // Neither the -es branch ("permission-matric", stem ends in "c", not a
+    // recognized -es stem) nor the plain trailing-s branch
+    // ("permission-matrice") derives the real singular. The explicit
+    // IRREGULAR_PLURAL_SUFFIXES rewrite (-ices -> -ix) is what catches it.
+    const violation = checkComponentNameForBarePluralShadow(
+      'permission-matrices',
+      new Set(['permission-matrix']),
+    );
+    expect(violation).toBeDefined();
+    expect(violation?.shadowedComponent).toBe('permission-matrix');
+    expect(violation?.message).toContain('permission-matrix-group');
+  });
+
+  test('does not flag an -ices candidate whose de-irregularized stem does not exist', () => {
+    expect(checkComponentNameForBarePluralShadow('service-indices', existingNames)).toBeUndefined();
+  });
+
+  test('recommends the real family group instead of a nonexistent <singular>-group (dropdown-item)', () => {
+    // dropdown-item's real collection is DropdownGroup, not a
+    // "dropdown-item-group" that does not exist.
+    const violation = checkComponentNameForBarePluralShadow(
+      'dropdown-items',
+      new Set(['dropdown-item', 'dropdown-group']),
+    );
+    expect(violation).toBeDefined();
+    expect(violation?.message).toContain('dropdown-group');
+    expect(violation?.message).not.toContain('dropdown-item-group');
+  });
+
+  test('recommends the real family group instead of a nonexistent <singular>-group (side-navigation-item)', () => {
+    const violation = checkComponentNameForBarePluralShadow(
+      'side-navigation-items',
+      new Set(['side-navigation-item', 'side-navigation-group']),
+    );
+    expect(violation).toBeDefined();
+    expect(violation?.message).toContain('side-navigation-group');
+    expect(violation?.message).not.toContain('side-navigation-item-group');
+  });
+
+  test('falls back to the default <singular>-group pattern when no override is documented', () => {
+    const violation = checkComponentNameForBarePluralShadow('widgets', new Set(['widget']));
+    expect(violation?.message).toContain('widget-group');
+  });
+
+  test('enumerates directory names from a given root, including one level into experimental/', () => {
+    // Hermetic: builds its own temporary component tree rather than asserting
+    // on which real components exist, so it never drifts when the real
+    // inventory changes. The adjacent "grandfathers tabs/tab" test below is
+    // what still exercises the real package tree.
+    //
+    // Mirrors discoverComponentDirectories()'s canonical predicate: a
+    // directory only counts once it has BOTH `<name>.svelte` and
+    // `<name>.types.ts` siblings, so a bare directory (`incomplete-widget`,
+    // no files yet) and a support directory (`_internal`, `icons`) must not
+    // produce a false-positive component name.
+    const root = mkdtempSync(join(import.meta.dir, '..', 'src', 'components', '.tmp-dirscan-'));
+    try {
+      const seedComponent = (parent: string, name: string) => {
+        const directory = join(parent, name);
+        mkdirSync(directory, { recursive: true });
+        writeFileSync(join(directory, `${name}.svelte`), '');
+        writeFileSync(join(directory, `${name}.types.ts`), '');
+      };
+
+      seedComponent(root, 'widget');
+      seedComponent(root, 'widget-group');
+      mkdirSync(join(root, 'incomplete-widget'), { recursive: true });
+      writeFileSync(join(root, 'incomplete-widget', 'incomplete-widget.svelte'), '');
+      seedComponent(root, '_internal');
+      seedComponent(join(root, 'icons'), 'widget-icon');
+      seedComponent(join(root, 'experimental'), 'gadget');
+      writeFileSync(join(root, 'not-a-directory.ts'), '');
+
+      const names = existingComponentDirectoryNames(root);
+      expect(names.has('widget')).toBe(true);
+      expect(names.has('widget-group')).toBe(true);
+      expect(names.has('gadget')).toBe(true);
+      expect(names.has('incomplete-widget')).toBe(false);
+      expect(names.has('_internal')).toBe(false);
+      expect(names.has('widget-icon')).toBe(false);
+      expect(names.has('experimental')).toBe(false);
+      expect(names.has('not-a-directory.ts')).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test('flags a synthetic bare-plural directory pair scanned against each other', () => {
+    // The regression case CIN-105 requires: a NEWLY ADDED bare-plural
+    // directory that shadows an existing singular must fail the gate, not
+    // just a hand-checked candidate. This drives collectComponentNameShadowViolations
+    // with a synthetic set (and an explicit empty namespace-only set, so this
+    // stays fully hermetic) so it never depends on which real components exist.
+    const violations = collectComponentNameShadowViolations(
+      new Set(['widget', 'widgets']),
+      new Set(),
+    );
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.candidateName).toBe('widgets');
+    expect(violations[0]?.shadowedComponent).toBe('widget');
+  });
+
+  test('passes a synthetic set with no shadowing pair', () => {
+    expect(collectComponentNameShadowViolations(new Set(['widget', 'gadget']), new Set())).toEqual(
+      [],
+    );
+  });
+
+  test('derives namespace-only singular names from underscore-prefixed directories with matching svelte/types files', () => {
+    // Hermetic: builds its own temporary tree rather than asserting on which
+    // real internal directories exist.
+    const root = mkdtempSync(join(import.meta.dir, '..', 'src', 'components', '.tmp-namespace-'));
+    try {
+      const seed = (dirName: string, fileBaseName: string, extensions: readonly string[]) => {
+        const directory = join(root, dirName);
+        mkdirSync(directory, { recursive: true });
+        for (const extension of extensions)
+          writeFileSync(join(directory, `${fileBaseName}${extension}`), '');
+      };
+
+      seed('_widget', 'widget', ['.svelte', '.types.ts']);
+      // Missing .types.ts: an in-progress internal scaffold must not count.
+      seed('_partial', 'partial', ['.svelte']);
+      // Not underscore-prefixed: irrelevant to this scan.
+      seed('widget-group', 'widget-group', ['.svelte', '.types.ts']);
+
+      const names = namespaceOnlySingularNames(root);
+      expect(names.has('widget')).toBe(true);
+      expect(names.has('partial')).toBe(false);
+      expect(names.has('widget-group')).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test('a synthetic namespace-only singular is included in the shadow membership set but never scanned as a candidate', () => {
+    // "widget" here stands in for a real case like `_radio`'s `radio`
+    // (exposed as RadioGroup.Option): it is not a public directory, so
+    // existingComponentDirectoryNames() would never discover it, and it is
+    // never itself iterated as a CANDIDATE — but a new "widgets" directory
+    // must still be rejected as a bare plural shadowing it.
+    const violations = collectComponentNameShadowViolations(
+      new Set(['widgets']),
+      new Set(['widget']),
+    );
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.candidateName).toBe('widgets');
+    expect(violations[0]?.shadowedComponent).toBe('widget');
+  });
+
+  test('grandfathers tabs/tab and flags no other pair on the real component tree, including real namespace-only singulars', () => {
+    // tabs collects Tab (via Tabs.Trigger) and predates the convention; it
+    // must not fail the gate. This runs against the REAL directory tree (and
+    // the real namespace-only singulars, e.g. `_radio`'s `radio`) using the
+    // default frozen snapshot, so every current name is grandfathered by
+    // construction — this proves `check:prop-conventions` passes today, not
+    // that the underlying collision logic is collision-free (the next test
+    // covers that).
+    expect(collectComponentNameShadowViolations()).toEqual([]);
+  });
+
+  test('no real candidate/namespace pair collides even with frozen-snapshot grandfathering disabled (aside from the tabs exception)', () => {
+    // Bypasses FROZEN_EXISTING_COMPONENT_NAMES entirely (passes an empty
+    // frozen set) so this still exercises the raw shadow-detection logic
+    // against the real directory tree, preserving the original collision
+    // audit that the frozen snapshot would otherwise make trivially pass.
+    // Only `tabs` (via GRANDFATHERED_COMPONENT_NAMES) is exempted.
+    const violations = collectComponentNameShadowViolations(
+      existingComponentDirectoryNames(),
+      namespaceOnlySingularNames(),
+      new Set(),
+    );
+    expect(violations).toEqual([]);
+  });
+
+  test('grandfathers a pre-existing mass-noun plural when its singular is added later (breadcrumbs then breadcrumb)', () => {
+    // Simulates the real regression: "breadcrumbs" is a legitimate mass-noun
+    // component that predates this check (frozen at introduction time). A
+    // later, unrelated change adds a new "breadcrumb" singular. Without the
+    // frozen-snapshot allowance, "breadcrumbs" would retroactively shadow
+    // "breadcrumb" and fail the gate for an addition that has nothing to do
+    // with it.
+    const frozen = new Set(['breadcrumbs']);
+    const candidates = new Set(['breadcrumbs', 'breadcrumb']);
+    const violations = collectComponentNameShadowViolations(candidates, new Set(), frozen);
+    expect(violations).toEqual([]);
+  });
+
+  test('still flags a genuinely new bare-plural candidate that is not in the frozen snapshot', () => {
+    // "widget" predates the snapshot; "widgets" does not (it is the new
+    // candidate being introduced), so it must still be rejected.
+    const frozen = new Set(['widget']);
+    const candidates = new Set(['widget', 'widgets']);
+    const violations = collectComponentNameShadowViolations(candidates, new Set(), frozen);
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.candidateName).toBe('widgets');
+    expect(violations[0]?.shadowedComponent).toBe('widget');
   });
 });

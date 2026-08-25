@@ -1,6 +1,6 @@
 # SideNavigation versus Sidebar
 
-**Status:** Open (raised 2026-08-05).
+**Status:** Accepted 2026-08-24.
 
 Question: do `SideNavigation` and `Sidebar` reconcile into one component, or
 stay distinct?
@@ -12,10 +12,17 @@ while `side-navigation` is a "vertical navigation column that hosts grouped
 side-navigation-item entries". The overlap is real at the naming level even
 though the responsibilities differ.
 
-Open: whether two public entries survive the behavior-first admission bar
-(`docs/decisions/component-admission-bar.md`), and if they do, whether the
-names can stop implying they are the same thing.
+Ruling: keep both components. Neither is renamed or removed. `Sidebar` is
+behavior — a responsive shell that composes `Drawer` and swaps to a mobile
+drawer below a configurable breakpoint. `SideNavigation` is accessibility
+semantics — a `<nav>` landmark with a required accessible label that can be
+used inside any container, including inside a `Sidebar`, a page body, or a
+custom shell. They compose (`SideNavigation` is the typical child of
+`Sidebar`'s navigation slot) rather than compete, so collapsing them into one
+component would force every consumer that only needs the nav landmark to also
+take on responsive-shell behavior, and vice versa.
 
-Closing this requires a boundary decision recorded here (choose-one-or-keep-
-both plus naming), and `@related`/`@avoidWhen` metadata on both components
-pointing at it.
+Both components carry reciprocal `@related`/`@avoidWhen` metadata pointing at
+each other, and each component's README cites this document, so the boundary is
+discoverable from either component's JSDoc (the alternative) and README (the
+rationale).

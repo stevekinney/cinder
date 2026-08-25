@@ -11,7 +11,7 @@
    * @avoidWhen Collecting a single short line of text — use input instead.
    * @related input
    */
-  export type { TextareaProps } from './textarea.types.ts';
+  export type { TextareaProps, TextareaVariant } from './textarea.types.ts';
 </script>
 
 <script lang="ts">
@@ -32,6 +32,7 @@
     disabled,
     required,
     class: customClassName,
+    variant = 'default',
     maxlength,
     countVisible = false,
     'aria-describedby': consumerDescribedBy,
@@ -69,6 +70,7 @@
     required={field.required}
     {maxlength}
     class={classNames('cinder-_input-frame', 'cinder-textarea', customClassName)}
+    data-cinder-variant={variant}
     aria-invalid={field.ariaInvalid}
     aria-describedby={field.describedBy}
     bind:value
@@ -105,6 +107,7 @@
       required={field.required}
       disabled={field.disabled}
       class="cinder-textarea-field"
+      data-cinder-variant={variant}
       labelClass="cinder-textarea-label"
       descriptionClass="cinder-textarea-description"
       errorClass="cinder-textarea-error"
@@ -125,6 +128,7 @@
     required={field.required}
     disabled={field.disabled}
     class="cinder-textarea-field"
+    data-cinder-variant={variant}
     labelClass="cinder-textarea-label"
     descriptionClass="cinder-textarea-description"
     errorClass="cinder-textarea-error"

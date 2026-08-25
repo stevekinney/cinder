@@ -69,8 +69,59 @@ Do not abbreviate public prop or component names. Current banned forms:
 - `lockScroll` → `scrollLocked`
 - `CtaSection` → `CallToActionSection`
 - `FloatingActionButton` → `FloatingAction`
-- `Stat` / `StatGroup` / `StatsSection` → `Statistic` / `StatisticGroup` /
-  `StatisticsSection`
+- `Stat` / `StatGroup` → `Statistic` / `StatisticGroup` (no `StatisticsSection`
+  component exists in the tree; the family's collection is the compound
+  `StatisticGroup` parent, not a separate `*Section` component)
+
+## `*Group` versus plural component names
+
+A `*Group` component name (`AvatarGroup`, `ButtonGroup`, `CheckboxGroup`,
+`DropdownGroup`, `RadioGroup`, `SideNavigationGroup`, `StatisticGroup`) is a
+curated collection of N instances of its matching singular component:
+`AvatarGroup` collects `Avatar`, `ButtonGroup` collects `Button`,
+`CheckboxGroup` collects `Checkbox`, `DropdownGroup` collects `DropdownItem`
+rows, `SideNavigationGroup` collects `SideNavigationItem` entries, `RadioGroup`
+exposes `RadioGroup.Option` (backed by the internal, non-exported `_radio`
+implementation — there is no standalone public `Radio` component, since a lone
+radio outside a group is semantically meaningless), and `StatisticGroup`
+exposes `StatisticGroup.Statistic`. What "grouping" means — shared accessible
+label, fieldset/legend semantics, a layout grid, or a collapsible bucket —
+varies per family and is documented in that component's `@purpose` metadata;
+`*Group` itself only promises the collection relationship, not a specific
+grouping mechanic.
+
+A bare plural component name (no matching singular component composed inside
+it) is permitted only as a domain mass noun — a name for a kind of thing, not
+a container of named instances. It is never legal as a collection name: a new
+component that collects instances of an existing singular component must be
+named `<Singular>Group`, not a bare plural of that singular. `check:prop-conventions`
+enforces this mechanically at `lint:invariants` time for newly introduced
+directories: names present in its frozen inventory snapshot are grandfathered,
+and it scans each new component directory name — stripped of a trailing
+`s`, a regular `-es` (for stems ending in x/ch/sh/s/z, including that rule's
+doubled-final-consonant form, e.g. `quiz` → `quizzes`), `-ies` (restored to
+the consonant-plus-`y` singular), or one of a short, inventory-seeded list of
+irregular-plural rewrites (e.g. `permission-matrix` → `permission-matrices`)
+— against a membership set built from every other existing directory name
+PLUS namespace-only singulars: names that exist only as an internal,
+non-directory-shaped implementation exposed through a compound namespace
+member, such as `_radio`'s `radio.svelte` backing `RadioGroup.Option` (there
+is no public `radio` directory). A new `radios` directory would therefore
+still fail the gate even though no public `radio` directory exists to
+discover. The check fails the moment any bare-plural directory shadows a
+singular in that membership set, and its message recommends the family's
+actual `*Group` collection — which is not always `<singular>-group`
+verbatim (`DropdownGroup` collects `DropdownItem` rows, for instance).
+
+`tabs` is the single grandfathered exception: it collects `Tab` (exposed as
+`Tabs.Trigger`) and shipped as a bare plural before this convention existed.
+It is explicitly allow-listed in `check-prop-conventions.ts`'s
+`GRANDFATHERED_COMPONENT_NAMES` rather than renamed or silently exempted by
+the checker. No other existing component name is renamed by this convention,
+and no other existing pair collides with the rule — every other current
+`*-group` name already fits the collection definition. See
+[`docs/decisions/group-vs-plural-naming.md`](./decisions/group-vs-plural-naming.md)
+for the decision record.
 
 ## Icons
 

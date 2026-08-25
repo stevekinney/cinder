@@ -20,6 +20,12 @@
       "title": "With caveat",
       "description": "A pricing card with a consumer-supplied caveat beneath the feature list, useful for legal disclaimers or billing notes.",
       "code": "<script lang=\"ts\">\n  import { PricingCard } from '@lostgradient/cinder/pricing-card';\n</script>\n\n<div style=\"max-inline-size: 22rem;\">\n  <PricingCard\n    name=\"Growth\"\n    price=\"$29/mo\"\n    features={['Unlimited projects', '50 GB storage', 'Email & chat support', 'Advanced analytics']}\n    caveat=\"Billed annually. Monthly billing available at $35/mo.\"\n    callToActionLabel=\"Start free trial\"\n    onPlanSelect={() => {}}\n  />\n</div>\n"
+    },
+    {
+      "id": "with-href",
+      "title": "Linking to checkout",
+      "description": "When the CTA should navigate rather than run in-page logic, pass href (and optionally target/rel) and the CTA renders as an anchor. onPlanSelect is still called if provided, useful for analytics.",
+      "code": "<script lang=\"ts\">\n  import { PricingCard } from '@lostgradient/cinder/pricing-card';\n</script>\n\n<div style=\"max-inline-size: 22rem;\">\n  <PricingCard\n    name=\"Pro\"\n    price=\"$29/mo\"\n    features={['Unlimited projects', '50 GB storage', 'Priority support']}\n    callToActionLabel=\"Continue to checkout\"\n    href=\"/checkout?plan=pro\"\n    target=\"_blank\"\n    rel=\"noopener noreferrer\"\n    onPlanSelect={() => {\n      // e.g. track an analytics event before navigation\n    }}\n  />\n</div>\n"
     }
   ]
 }

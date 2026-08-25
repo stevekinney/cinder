@@ -266,6 +266,7 @@
       value={editorState.jsonDraftText}
       readonly={isReadonly}
       rows={20}
+      variant="code"
       class="cinder-jse-json-view__textarea"
       oninput={(event: Event) =>
         editorState.setJsonDraftText((event.target as HTMLTextAreaElement).value)}

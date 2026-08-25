@@ -2,6 +2,7 @@
 import { describe, expect, spyOn, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
 
+import { injectStrippedStyles } from '../../test/css.ts';
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 // setupHappyDom() MUST run before any `@testing-library/svelte` import. testing-library
@@ -38,6 +39,70 @@ describe('Input rendering', () => {
     expect(css).toMatch(
       /\.cinder-input-group__leading,[\s\S]*?padding-inline-end:\s*var\(--cinder-space-1\);/,
     );
+  });
+
+  test('code variant applies shared monospace metrics via the token set', async () => {
+    const css = await Bun.file(new URL('./input.css', import.meta.url)).text();
+
+    expect(css).toMatch(
+      /\.cinder-input\[data-cinder-variant='code'\]\s*\{[^}]*font-family:\s*var\(--cinder-font-mono\);[^}]*font-size:\s*var\(--cinder-text-sm\);[^}]*line-height:\s*var\(--cinder-leading-normal\);[^}]*tab-size:\s*var\(--cinder-type-tab-size\);/,
+    );
+  });
+
+  test('code variant does NOT apply monospace metrics to the field wrapper itself — only the control and the lock rule below get them', async () => {
+    // The field wrapper hosts the label, description, error, and any
+    // addons — none of those should go mono. Only .cinder-input (the
+    // control) and the inherit-lock rule (for a hypothetical <code>
+    // overlay) carry the metric values; the bare wrapper selector must not.
+    const css = await Bun.file(new URL('./input.css', import.meta.url)).text();
+
+    expect(css).not.toMatch(
+      /\.cinder-input-field\[data-cinder-variant='code'\]\s*\{[^}]*font-family:/,
+    );
+  });
+
+  test('code variant locks any inner <code> element to the SAME explicit metrics as the control, excluding addon slots', async () => {
+    // <input> is a void element and can never host a <code> descendant, so
+    // the inherit-lock rule is scoped to the field wrapper, not .cinder-input.
+    // It declares the same explicit font-family/size/line-height/tab-size
+    // as the control (not `font: inherit`) so a future overlay <code>
+    // matches the control without the wrapper itself needing to carry any
+    // metric declarations — the wrapper's label/description/error/addons
+    // stay in their ordinary font. It excludes the leading/trailing addon
+    // slots so a consumer's own addon content (e.g. a <code> badge) keeps
+    // its own styling.
+    const css = await Bun.file(new URL('./input.css', import.meta.url)).text();
+
+    expect(css).toMatch(
+      /\.cinder-input-field\[data-cinder-variant='code'\]\s*:where\(code\):not\(\s*\.cinder-input-group__leading,\s*\.cinder-input-group__leading \*,\s*\.cinder-input-group__trailing,\s*\.cinder-input-group__trailing \*\s*\)\s*\{\s*all:\s*unset;[^}]*font-family:\s*var\(--cinder-font-mono\);[^}]*font-size:\s*var\(--cinder-text-sm\);[^}]*line-height:\s*var\(--cinder-leading-normal\);[^}]*tab-size:\s*var\(--cinder-type-tab-size\);\s*\}/,
+    );
+  });
+
+  test('code variant propagates data-cinder-variant onto the field wrapper', () => {
+    const { container } = render(Input, {
+      props: { id: 'pattern', value: '', label: 'Pattern', variant: 'code' },
+    });
+    const field = container.querySelector('.cinder-input-field');
+
+    expect(field?.getAttribute('data-cinder-variant')).toBe('code');
+  });
+
+  test('code variant does not reset a <code> element rendered inside a leading/trailing addon', () => {
+    const { container } = render(Input, {
+      props: {
+        id: 'amount',
+        value: '',
+        label: 'Amount',
+        variant: 'code',
+        leading: createRawSnippet(() => ({
+          render: () => '<span><code class="my-addon-code">USD</code></span>',
+        })),
+      },
+    });
+
+    const addonCode = container.querySelector('.cinder-input-group__leading code');
+    expect(addonCode).not.toBeNull();
+    expect(addonCode?.classList.contains('my-addon-code')).toBe(true);
   });
 
   test('standalone FormField presentation is included by the Input sidecar', async () => {
@@ -117,6 +182,22 @@ describe('Input rendering', () => {
     expect(
       container.querySelector('.cinder-input-field')?.hasAttribute('data-cinder-full-width'),
     ).toBe(true);
+  });
+
+  test('defaults to variant="default"', () => {
+    const { container } = render(Input, { props: { id: 'name', value: '' } });
+    const input = container.querySelector('#name') as HTMLInputElement;
+
+    expect(input.getAttribute('data-cinder-variant')).toBe('default');
+  });
+
+  test('variant="code" sets data-cinder-variant="code" on the input', () => {
+    const { container } = render(Input, {
+      props: { id: 'pattern', value: '', variant: 'code' },
+    });
+    const input = container.querySelector('#pattern') as HTMLInputElement;
+
+    expect(input.getAttribute('data-cinder-variant')).toBe('code');
   });
 
   test('renders with required id prop', () => {
@@ -215,6 +296,41 @@ describe('Input rendering', () => {
     const describedBy = input?.getAttribute('aria-describedby') ?? '';
     expect(describedBy).toContain('hidden-label-described-description');
     expect(describedBy).toContain('hidden-label-described-error');
+  });
+
+  test('the error live region is mounted before any error is set (CIN-315: FormFieldFrame defaults to errorMountedOnDemand=false)', () => {
+    // Input wraps FormFieldFrame in `{#if label || description || error}` (a
+    // separate known limitation, not fixed here), so a label is required for
+    // FormFieldFrame to render at all in this test.
+    const { container } = render(Input, {
+      props: { id: 'no-error-yet', label: 'Name', value: '' },
+    });
+    expect(container.querySelector('.cinder-form-field__error')).not.toBeNull();
+  });
+
+  test('the errorless live region has no layout footprint (shared _form-field-error.css, CIN-315 follow-up)', async () => {
+    const inputCss = await Bun.file(new URL('./input.css', import.meta.url)).text();
+    const sharedErrorCss = await Bun.file(
+      new URL('../../styles/components/_form-field-error.css', import.meta.url),
+    ).text();
+    const removeStyles = injectStrippedStyles(inputCss, sharedErrorCss);
+    try {
+      const { container } = render(Input, {
+        props: { id: 'no-error-computed', label: 'Name', value: '' },
+      });
+      const errorRegion = container.querySelector('.cinder-form-field__error');
+      expect(errorRegion).not.toBeNull();
+      const computed = getComputedStyle(errorRegion as Element);
+      // Sr-only pattern (CIN-315 review follow-up), not visibility:hidden —
+      // visibility:hidden removes an element from the accessibility tree
+      // (navigation-bar.a11y.md), which would defeat the announcement fix.
+      expect(computed.position).toBe('absolute');
+      expect(computed.visibility).not.toBe('hidden');
+      expect(computed.display).not.toBe('none');
+      expect(computed.clip).toBe('rect(0, 0, 0, 0)');
+    } finally {
+      removeStyles();
+    }
   });
 
   test('no aria-invalid when error prop is absent', () => {
