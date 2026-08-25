@@ -13,9 +13,11 @@ surface. A tagged-object `value` was rejected: it would break the bindable
 `value` contract and every existing form-mirror round-trip that assumes a
 plain string.
 
-`format` is output-only and independent of ColorField's pre-existing
-`formats` (plural) prop, which continues to gate the _input_ syntaxes the
-field will parse. `formats` gained `'oklch'` as an accepted input value so a
+`format` governs the emitted syntax, while ColorField's pre-existing
+`formats` (plural) prop gates the _input_ syntaxes the field will parse —
+with one deliberate coupling: the configured `format`'s own literal syntax is
+always implicitly accepted on input as well (see below), so `format` also
+widens intake. `formats` gained `'oklch'` as an accepted input value so a
 consumer can opt into accepting `oklch()` strings without changing what the
 field emits.
 
