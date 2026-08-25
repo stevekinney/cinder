@@ -96,7 +96,7 @@ function callsiteFingerprint(candidate: ThresholdCandidate): string {
       .replace(/\s+/gu, ' ')
       .trim()}`;
   }
-  if (candidate.kind === 'timeout' && /\bwaitFor\b/u.test(candidate.label)) {
+  if (candidate.kind === 'timeout' && /\bwaitFor[A-Za-z_$\d]*\s*\(/u.test(candidate.line)) {
     return candidate.line
       .replace(/^\s*await\s+/u, '')
       .replace(candidate.renderedValue, '<threshold>')
