@@ -1306,6 +1306,126 @@ describe('Modal chromeless mode (chrome="none")', () => {
     await fireEvent.click(body);
     expect(openValue).toBe(true);
   });
+
+  test('data-cinder-modal-backdrop on a consumer full-bleed child dismisses, independent of the panel/body checks', async () => {
+    // Regression: the canonical chromeless composition (see
+    // chromeless.example.svelte) renders a root child that fills the body
+    // (width/height 100%) — every empty-surface click's target is THAT
+    // child, never the body/panel, so the panel/body fallback above never
+    // fires. A consumer opts a full-bleed scrim wrapper into
+    // backdrop-equivalent dismissal by marking it with
+    // `data-cinder-modal-backdrop`.
+    const scrimSnippet = createRawSnippet(() => ({
+      render: () =>
+        `<div data-cinder-modal-backdrop style="width: 100%; height: 100%;"><button type="button" id="real-content">Real content</button></div>`,
+      setup: () => {},
+    }));
+    let openValue = true;
+    const { container } = render(Modal, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        chrome: 'none',
+        'aria-label': 'Image viewer',
+        children: scrimSnippet,
+      },
+    });
+    const scrim = container.querySelector('[data-cinder-modal-backdrop]') as HTMLElement;
+    await fireEvent.click(scrim);
+    expect(openValue).toBe(false);
+  });
+
+  test('a click on a descendant of the data-cinder-modal-backdrop element does not dismiss', async () => {
+    const scrimSnippet = createRawSnippet(() => ({
+      render: () =>
+        `<div data-cinder-modal-backdrop style="width: 100%; height: 100%;"><button type="button" id="real-content">Real content</button></div>`,
+      setup: () => {},
+    }));
+    let openValue = true;
+    const { container } = render(Modal, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        chrome: 'none',
+        'aria-label': 'Image viewer',
+        children: scrimSnippet,
+      },
+    });
+    const content = container.querySelector('#real-content') as HTMLElement;
+    await fireEvent.click(content);
+    expect(openValue).toBe(true);
+  });
+
+  test('dismissOnBackdropClick=false suppresses data-cinder-modal-backdrop dismissal too', async () => {
+    const scrimSnippet = createRawSnippet(() => ({
+      render: () => `<div data-cinder-modal-backdrop style="width: 100%; height: 100%;"></div>`,
+      setup: () => {},
+    }));
+    let openValue = true;
+    const { container } = render(Modal, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        chrome: 'none',
+        'aria-label': 'Image viewer',
+        dismissOnBackdropClick: false,
+        children: scrimSnippet,
+      },
+    });
+    const scrim = container.querySelector('[data-cinder-modal-backdrop]') as HTMLElement;
+    await fireEvent.click(scrim);
+    expect(openValue).toBe(true);
+  });
+
+  test('data-cinder-modal-backdrop has no effect in the default chrome', async () => {
+    // Regression guard: this marker is a chromeless-only escape hatch. A
+    // consumer accidentally leaving it on content rendered in the default
+    // chrome must not get surprise backdrop-equivalent dismissal there.
+    const scrimSnippet = createRawSnippet(() => ({
+      render: () => `<div data-cinder-modal-backdrop style="width: 100%; height: 100%;"></div>`,
+      setup: () => {},
+    }));
+    let openValue = true;
+    const { container } = render(Modal, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        title: 'Test Modal',
+        children: scrimSnippet,
+      },
+    });
+    const scrim = container.querySelector('[data-cinder-modal-backdrop]') as HTMLElement;
+    await fireEvent.click(scrim);
+    expect(openValue).toBe(true);
+  });
+
+  test('modal.css clears the reserved scrollbar gutter for the chromeless body', async () => {
+    // Regression: the base body rule's `scrollbar-gutter: stable` reserves
+    // an inline-end band on classic-scrollbar platforms even when the body
+    // does not overflow. On a full-bleed chromeless surface that band
+    // visibly shifts centered content (e.g. an image lightbox's photo) away
+    // from true viewport center.
+    const css = await Bun.file(new URL('./modal.css', import.meta.url)).text();
+    expect(css).toMatch(
+      /\.cinder-modal__body\[data-cinder-chrome='none'\]\s*\{[^}]*scrollbar-gutter:\s*auto;/s,
+    );
+  });
 });
 
 describe('Modal nameless-dialog dev warning', () => {

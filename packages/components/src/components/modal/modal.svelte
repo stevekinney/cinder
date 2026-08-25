@@ -174,6 +174,7 @@
       dismiss();
       return;
     }
+    if (!isChromeless) return;
     // Chromeless mode (chrome="none") fills the dialog's entire content box
     // with the panel/body — `dialogElement` itself has no visible padding
     // or gap left to click, so `event.target === dialogElement` can never
@@ -181,7 +182,25 @@
     // surface for this chrome: a click that lands directly on either
     // (rather than on real content the consumer rendered inside them)
     // dismisses, the same way a default-chrome backdrop click does.
-    if (isChromeless && (event.target === panelElement || event.target === bodyElement)) {
+    if (event.target === panelElement || event.target === bodyElement) {
+      dismiss();
+      return;
+    }
+    // The canonical chromeless composition is a consumer-rendered root
+    // child that fills the body (width/height 100%) — the panel/body check
+    // above never fires there, since every empty-surface click's target is
+    // that child, not the body. `data-cinder-modal-backdrop` is a
+    // consumer-supplied marker (same idiom as OVERLAY-POLICY.md's
+    // `data-cinder-initial-focus`): place it on your own full-bleed scrim
+    // wrapper and a click landing DIRECTLY on that element (not on a
+    // deeper descendant — real content still doesn't dismiss) is treated as
+    // a backdrop click. This works regardless of how deeply the consumer's
+    // content is nested, independent of the panel/body checks above.
+    const targetElement = event.target;
+    if (
+      targetElement instanceof Element &&
+      targetElement.hasAttribute('data-cinder-modal-backdrop')
+    ) {
       dismiss();
     }
   }

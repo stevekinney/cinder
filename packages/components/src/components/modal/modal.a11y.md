@@ -65,6 +65,7 @@ State flips to `open = false` **before** the callback is invoked. A thrown callb
 ## Backdrop
 
 - Clicking the backdrop (`event.target === dialogElement`) calls `dismiss()`, which closes the dialog and fires `onDismiss`. This relies on the CSS background applied to `<dialog>` rather than `::backdrop`, so the click target is always the `<dialog>` element itself, not a separate pseudo-element.
+- **Chromeless (`chrome="none"`)**: the panel and body fill the dialog's entire content box, so `event.target === dialogElement` is never true there. A click landing directly on the panel or body element itself (not on real content the consumer rendered inside them) is treated as backdrop-equivalent and dismisses the same way. When the consumer's own root child fills the body (the canonical chromeless composition — see `chromeless.example.svelte`), neither of those checks fires either, since every empty-surface click's target is that child. Mark your own full-bleed scrim wrapper with the `data-cinder-modal-backdrop` attribute (the same idiom as `data-cinder-initial-focus` in `OVERLAY-POLICY.md`) so a click landing directly on it also dismisses — this works regardless of nesting depth, and a click on a deeper descendant (real content) still does not dismiss.
 
 ## Screen Reader Announcements
 

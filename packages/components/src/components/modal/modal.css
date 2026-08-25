@@ -281,6 +281,16 @@
   .cinder-modal__body[data-cinder-chrome='none'] {
     padding: 0;
     background: transparent;
+    /* The base rule's `scrollbar-gutter: stable` reserves an inline-end
+     * gutter on platforms with classic (non-overlay) scrollbars, EVEN WHEN
+     * the body does not overflow. That reserved band is invisible in the
+     * default chrome (it's inside the padded card), but on a full-bleed
+     * chromeless surface it visibly shifts a consumer's centered content
+     * (e.g. an image lightbox's photo) away from true viewport center.
+     * Chromeless content owns the whole surface, so let it span the
+     * reserved area — a chromeless body's own child controls whether IT
+     * needs gutter stability for its own scrolling. */
+    scrollbar-gutter: auto;
   }
 
   /* The shared `.cinder-_scroll-fade` recipe (see `_scroll-fade.css`) fades
