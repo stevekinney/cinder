@@ -87,7 +87,6 @@ export const PREVIEW_RECIPES: Readonly<Record<string, PreviewRecipe>> = {
   container: LAYOUT_RECIPE,
   grid: LAYOUT_RECIPE,
   'grid-item': LAYOUT_RECIPE,
-  'bento-cell': LAYOUT_RECIPE,
   masonry: LAYOUT_RECIPE,
   'aspect-ratio': {
     childrenHtml:

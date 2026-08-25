@@ -61,8 +61,8 @@ describe('declarationMultiset', () => {
       .cinder-grid { display: grid; gap: 1rem; }
       .cinder-grid-item { grid-column-start: auto; grid-column-end: span 1; grid-row-start: auto; padding: 1rem; margin: 0; border: 0; background: transparent; min-width: 0; min-height: 0; position: relative; outline: 0; box-sizing: border-box; }
     `);
-    const bentoCell = parse(`
-      .cinder-bento-cell { grid-column-start: auto; grid-column-end: span 1; grid-row-start: auto; padding: 1rem; margin: 0; border: 0; background: transparent; min-width: 0; min-height: 0; position: relative; outline: 0; box-sizing: border-box; }
+    const tileCell = parse(`
+      .cinder-tile-cell { grid-column-start: auto; grid-column-end: span 1; grid-row-start: auto; padding: 1rem; margin: 0; border: 0; background: transparent; min-width: 0; min-height: 0; position: relative; outline: 0; box-sizing: border-box; }
     `);
     const gridItem = {
       name: 'grid-item',
@@ -70,9 +70,9 @@ describe('declarationMultiset', () => {
       familyRoot: 'grid',
     };
     const duplicate = {
-      name: 'bento-cell',
-      multiset: declarationMultisetForComponent(bentoCell, 'bento-cell'),
-      familyRoot: 'bento-cell',
+      name: 'tile-cell',
+      multiset: declarationMultisetForComponent(tileCell, 'tile-cell'),
+      familyRoot: 'tile-cell',
     };
 
     expect(multisetSize(gridItem.multiset)).toBeGreaterThanOrEqual(MINIMUM_DECLARATIONS);
