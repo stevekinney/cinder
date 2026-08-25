@@ -43,19 +43,17 @@ export class SlidingDialogState {
   #releaseEscape: (() => void) | null = null;
   #cancelPendingClose: (() => void) | null = null;
   #disposed = false;
-  // Hard, per-generation idempotence guard for `#reportClosedOnce()` (PR
-  // #1422 review, round 4 — "per-generation idempotence audit"): the
-  // deferred generation check inside that method already prevents a STALE
-  // generation's report from firing, but does NOT by itself prevent TWO
-  // separate `#reportClosedOnce()` calls for the SAME generation from both
-  // surviving to fire `onClosed` twice, if some future bug (or a mixed
-  // internal/external race this round's own fix didn't anticipate) manages
-  // to schedule both. Tracks the highest generation `onClosed` has actually
-  // fired for; `#reportClosedOnce()` consults and updates it as the final
-  // gate immediately before invoking the consumer callback, so `onClosed`
-  // can genuinely never fire twice for one close cycle, regardless of how
-  // many call sites or code paths ever reach this method for it.
-  #lastReportedGeneration: number | null = null;
+  // Hard, per-generation idempotence guard for `#completeCloseOnce()` (PR
+  // #1422 review, round 4 — "per-generation idempotence audit" — widened in
+  // round 6 to cover CLEANUP too, not just the `onClosed` report; see that
+  // method's own comment for why). Tracks the highest generation this class
+  // has actually completed (cleanup AND report) for; `#completeCloseOnce()`
+  // consults and updates it as the FIRST thing it does, before touching
+  // scroll-lock/escape/focus state at all, so a close cycle can genuinely
+  // never be completed twice, regardless of how many call sites or code
+  // paths — or how many distinct, possibly misattributed events — ever
+  // resolve to the same generation for it.
+  #lastCompletedGeneration: number | null = null;
   // A FIFO queue of the `#closeGeneration` values active at each moment we
   // called the native `dialogElement.close()` — see `#finishClosing()`. The
   // native `close` EVENT is dispatched via a QUEUED TASK, not synchronously
@@ -79,7 +77,7 @@ export class SlidingDialogState {
   // non-stale, and consume the marker; the SECOND cycle's own (genuinely
   // current) event would then arrive to find the marker already cleared,
   // get misclassified as an external native-close bypass, and fire
-  // `#reportClosedOnce()` a SECOND time for a cycle `#finishClosing()`
+  // `#completeCloseOnce()` a SECOND time for a cycle `#finishClosing()`
   // already reported once. A FIFO queue keeps each call's generation
   // associated with its own eventually-arriving event, however many cycles
   // overlap.
@@ -92,7 +90,7 @@ export class SlidingDialogState {
   // `close()`); no matching entry means the native dialog closed by some
   // OTHER means entirely (an external close — see `handleClose()`'s own
   // comment). Either way, `handleClose()` — not `#finishClosing()` — is now
-  // the single place that ever calls `#reportClosedOnce()`: see that
+  // the single place that ever calls `#completeCloseOnce()`: see that
   // method's comment for why.
   #pendingNativeCloseGenerations: number[] = [];
 
@@ -187,9 +185,10 @@ export class SlidingDialogState {
   // rounds).
   //
   // Round 1 of this review found a cross-overlay sequencing bug:
-  // `#finishClosing()` used to call `#reportClosedOnce()` itself, BEFORE the
-  // queued native `close` event ever reached this method — so a consumer's
-  // `onClosed`/`onExitComplete` could run, and open a FOLLOW-UP overlay,
+  // `#finishClosing()` used to call `#completeCloseOnce()`'s predecessor
+  // itself, BEFORE the queued native `close` event ever reached this
+  // method — so a consumer's `onClosed`/`onExitComplete` could run, and
+  // open a FOLLOW-UP overlay,
   // while THIS Modal still owned the scroll lock and escape-stack
   // registration below (both released here, not there). That follow-up
   // overlay's own focus placement could then get stolen back by THIS
@@ -217,6 +216,27 @@ export class SlidingDialogState {
   // for an EARLIER external close (whose event this now is) gets a turn.
   // Fixed by validating an unmatched event against the dialog's own current
   // open state below, not merely against the absence of a queue entry.
+  //
+  // Round 6 found that even the queue-plus-generation-match design above
+  // cannot always attribute provenance PERFECTLY: an external close has no
+  // entry of its own, so its `shift()` call still consumes whatever
+  // happens to be at the FRONT of the queue — a LATER internal cycle's
+  // entry, if that cycle's own push landed before this (late-arriving)
+  // external event got a turn. If that later cycle's generation happens to
+  // still be the CURRENT `#closeGeneration` at that moment, this event's
+  // own generation check passes — it looks perfectly legitimate, so
+  // cleanup runs. When that later cycle's OWN real event then arrives, it
+  // resolves against the SAME (still-current) generation and would run
+  // cleanup a SECOND time — `#returnFocus()` re-focusing `triggerRef` and
+  // stealing focus from whatever a follow-up overlay (opened from the
+  // first, spurious completion's `onClosed`) has already placed. Perfectly
+  // preventing the misattribution itself is not possible from the event
+  // alone (external closes enqueue nothing to check against) — instead,
+  // `#completeCloseOnce()` below makes completing the SAME generation
+  // twice a hard no-op, cleanup included, not just the `onClosed` report:
+  // whichever event (correct or misattributed) reaches it FIRST for a
+  // given generation completes it; every other event that ever resolves
+  // to that same generation, for any reason, does nothing at all.
   handleClose(): void {
     // Shift the OLDEST pending generation off the FIFO queue. Queued native
     // `close` events fire in the same order their `.close()` calls were
@@ -290,13 +310,6 @@ export class SlidingDialogState {
       }
     }
 
-    this.#releaseScrollLock?.();
-    this.#releaseScrollLock = null;
-    this.#releaseEscape?.();
-    this.#releaseEscape = null;
-    this.#options.setOpen(false);
-    this.#returnFocus();
-
     if (expectedGeneration === undefined) {
       // External close (see this method's own top comment). If a
       // PARENT-DRIVEN close had already begun an in-flight exit transition
@@ -310,9 +323,7 @@ export class SlidingDialogState {
       // `generation !== this.#closeGeneration` guard would NOT catch this,
       // since nothing here has bumped `#closeGeneration` yet; it would find
       // `dialogElement.open` already `false` (THIS external close set it)
-      // and fall into `#finishClosing()`'s defensive "already closed"
-      // fallback — reporting exit-completion a SECOND time for a cycle this
-      // very call is about to report once already.
+      // and fall into `#finishClosing()`'s "already closed" branch.
       //
       // Neutralized the same way `syncOpenState()`'s own reopen path
       // already neutralizes an in-flight close: bump `#closeGeneration`
@@ -328,21 +339,17 @@ export class SlidingDialogState {
         this.#cancelPendingClose?.();
         this.#cancelPendingClose = null;
       }
-      // `isClosing`/`renderPanel` need setting here regardless — an
-      // external close with NO in-flight transition (`isClosing` already
-      // `false`) never ran `#finishClosing()` for this cycle at all, so
-      // nothing else would set them.
-      this.isClosing = false;
-      this.renderPanel = false;
-      this.#reportClosedOnce(this.#closeGeneration);
-    } else {
-      // Internal close: `#finishClosing()` already set `isClosing`/
-      // `renderPanel` for this generation (synchronously, before calling
-      // `.close()`) and already pushed this exact entry onto the queue —
-      // report now, using THAT captured generation, now that this method's
-      // OWN cleanup and focus restoration (above) have genuinely completed.
-      this.#reportClosedOnce(expectedGeneration);
     }
+    // Resolve the FINAL generation this event completes: an internal
+    // event's own matched (and just-verified-current) `expectedGeneration`,
+    // or — for an external event, which has none of its own — whatever
+    // `#closeGeneration` reads as RIGHT NOW (reflecting the bump directly
+    // above, if one just happened). `#completeCloseOnce()` is the single
+    // place that performs cleanup and schedules the report, hard-guarded
+    // per generation — see that method's own comment and this method's top
+    // comment (round 6) for why cleanup itself, not merely the report,
+    // needs that guard.
+    this.#completeCloseOnce(expectedGeneration ?? this.#closeGeneration);
   }
 
   requestClose(): void {
@@ -395,25 +402,25 @@ export class SlidingDialogState {
       return;
     }
     this.renderPanel = false;
-    // `dialogElement.close()` is called here, synchronously — but
-    // `#reportClosedOnce()` is deliberately NOT called from here anymore
-    // (PR #1422 review, round 2 of this file's review): it used to be,
-    // which meant a consumer's `onClosed`/`onExitComplete` callback could
-    // run — and open a follow-up overlay — while the scroll lock and
-    // escape-stack hold below were STILL held (those only release inside
-    // `handleClose()`, once the native `close` EVENT itself arrives). A
-    // later `handleClose()` call would then restore focus AFTER that
-    // follow-up overlay had already placed its own, stealing it back.
-    // `handleClose()` is now the sole trigger for reporting exit-completion
-    // — see its own top comment — so all this method does is push this
-    // generation onto the FIFO queue (the provenance tag `handleClose()`
-    // matches its eventual native event against) and call `.close()`
-    // itself. `close()` SYNCHRONOUSLY flips `dialogElement.open` to
-    // `false` and removes it from the top layer, but the native `close`
-    // EVENT (which Modal wires to `handleClose()`) is dispatched via a
-    // QUEUED TASK per the WHATWG spec's "close the dialog" steps, arriving
-    // strictly later. Pushed (not assigned) so an overlapping SECOND close
-    // cycle's own entry doesn't clobber this one.
+    // `dialogElement.close()` is called here, synchronously — but cleanup
+    // and reporting are deliberately NOT done from here anymore (PR #1422
+    // review, round 2 of this file's review): a consumer's `onClosed`/
+    // `onExitComplete` callback used to be able to run — and open a
+    // follow-up overlay — while the scroll lock and escape-stack hold below
+    // were STILL held (those only release inside `handleClose()`, once the
+    // native `close` EVENT itself arrives). A later `handleClose()` call
+    // would then restore focus AFTER that follow-up overlay had already
+    // placed its own, stealing it back. `handleClose()` is now the sole
+    // trigger for `#completeCloseOnce()` (cleanup + reporting, see that
+    // method's own comment) — see `handleClose()`'s own top comment — so
+    // all this method does is push this generation onto the FIFO queue
+    // (the provenance tag `handleClose()` matches its eventual native event
+    // against) and call `.close()` itself. `close()` SYNCHRONOUSLY flips
+    // `dialogElement.open` to `false` and removes it from the top layer,
+    // but the native `close` EVENT (which Modal wires to `handleClose()`)
+    // is dispatched via a QUEUED TASK per the WHATWG spec's "close the
+    // dialog" steps, arriving strictly later. Pushed (not assigned) so an
+    // overlapping SECOND close cycle's own entry doesn't clobber this one.
     const dialogElement = this.#options.getDialogElement();
     if (dialogElement?.open) {
       this.#pendingNativeCloseGenerations.push(generation);
@@ -424,47 +431,88 @@ export class SlidingDialogState {
     // runs — typically an EXTERNAL close (a `<form method="dialog">`
     // submission, or anything else calling `dialogElement.close()` outside
     // this class's API) raced this in-flight `#finishClosing()` call and
-    // won. `#reportClosedOnce()` is deliberately NOT called directly here
+    // won. `#completeCloseOnce()` is deliberately NOT called directly here
     // (PR #1422 review, round 5 — reporting order): a REAL browser
     // dispatches the native `close` EVENT for whatever closed the dialog as
     // a QUEUED TASK, strictly after this synchronous call returns — that
     // event is still coming, and `handleClose()` is the unified choke point
-    // for reporting (round 3). Reporting from here instead would race
-    // AHEAD of that event's own scroll-lock/escape release and focus
-    // restoration — exactly the ordering hazard round 3's fix eliminated
-    // for the internal path, reintroduced here for the external one. (An
-    // earlier version of this method DID report directly in this branch;
-    // its own regression test called `handleClose()` synchronously right
-    // after the close, which masked the real task-queue delay and hid this
-    // race — see this file's test suite for the corrected, queued-task
-    // model.) `dialogElement` existing here is what guarantees that event
-    // is genuinely coming, so nothing further needs to happen — leave it
-    // to arrive and let `handleClose()` report.
+    // (round 3). Completing from here instead would race AHEAD of that
+    // event's own scroll-lock/escape release and focus restoration —
+    // exactly the ordering hazard round 3's fix eliminated for the internal
+    // path, reintroduced here for the external one. (An earlier version of
+    // this method DID complete directly in this branch; its own regression
+    // test called `handleClose()` synchronously right after the close,
+    // which masked the real task-queue delay and hid this race — see this
+    // file's test suite for the corrected, queued-task model.)
+    // `dialogElement` existing here is what guarantees that event is
+    // genuinely coming, so nothing further needs to happen — leave it to
+    // arrive and let `handleClose()` complete the cycle. Even if that
+    // event turns out to be misattributed to a DIFFERENT cycle by the time
+    // it arrives (round 6), `#completeCloseOnce()`'s own per-generation
+    // guard makes that safe regardless.
     if (dialogElement) return;
     // No dialog element AT ALL: the one case where no native `close` event
     // can ever come, because there is no element left to dispatch one from
-    // (a report-directly fallback is still correct here, not merely
-    // defensive — this is the ONLY branch where `handleClose()` could never
-    // be reached for this cycle regardless of provenance).
-    this.#reportClosedOnce(generation);
+    // — complete directly rather than leaving the consumer's `onClosed`/
+    // mount-gate release, and this class's own scroll-lock/escape/focus
+    // state, stuck forever waiting for an event that will never arrive.
+    this.#completeCloseOnce(generation);
   }
 
-  // Called from `handleClose()` for both close provenances (internal and
-  // external — see that method's own top comment), and, as a defensive
-  // fallback only, directly from `#finishClosing()` when the native dialog
-  // was somehow ALREADY closed with no `close` event ever coming. `onClosed`
-  // (Modal's `onExitComplete` forwarding) is documented as firing "once the
-  // exit transition genuinely finishes and the panel actually unmounts" —
-  // but by the time any caller reaches this method, `renderPanel = false`
-  // has only *scheduled* that unmount; Svelte hasn't reconciled the `{#if
-  // renderPanel}` block yet in this synchronous stack, so a consumer
-  // callback invoked right here would still find `.cinder-modal__panel` in
-  // the DOM. Defer past `tick()` so the render flush has actually happened
-  // first, and re-check the generation (plus disposal and current `open`
-  // state) after the flush: if a reopen happened during the deferred
-  // window, or the component was destroyed, this call is stale and must not
-  // fire `onClosed`.
-  #reportClosedOnce(generation: number): void {
+  // The SINGLE place that ever performs close-cycle CLEANUP (scroll-lock
+  // and escape-stack release, `setOpen(false)`, focus restoration,
+  // `isClosing`/`renderPanel` reset) and schedules the `onClosed` report —
+  // called from `handleClose()` for both close provenances (internal and
+  // external — see that method's own top comment), and, as a fallback
+  // only, directly from `#finishClosing()` when the native dialog was
+  // somehow ALREADY closed with no `close` event ever coming.
+  //
+  // Hard-guarded per generation via `#lastCompletedGeneration` (PR #1422
+  // review, round 6): an earlier version of this class guarded only the
+  // deferred `onClosed` report this way, leaving CLEANUP itself
+  // unprotected. Round 6 found that an external close event, having no
+  // queue entry of its own, can still consume (via `handleClose()`'s
+  // `shift()`) a LATER internal cycle's entry if that cycle's own push
+  // landed before this external event's (possibly late-arriving) turn —
+  // if that later cycle's generation happens to still be CURRENT at that
+  // moment, the misattributed event's own generation check passes, and it
+  // looked like a perfectly legitimate close. When that later cycle's OWN
+  // real event then arrives, it resolves to the SAME generation and would
+  // run cleanup a SECOND time — `#returnFocus()` re-focusing `triggerRef`
+  // and stealing focus from a follow-up overlay that the first (spurious)
+  // completion's `onClosed` had already opened. Perfectly attributing
+  // provenance from the event alone is not possible here (external closes
+  // enqueue nothing to check against) — so instead, completing the SAME
+  // generation twice is made a hard no-op: whichever event (correct or
+  // misattributed) reaches this method FIRST for a given generation
+  // completes it; every other call that ever resolves to that same
+  // generation, for any reason, does nothing at all — cleanup included.
+  //
+  // `onClosed` (Modal's `onExitComplete` forwarding) is documented as
+  // firing "once the exit transition genuinely finishes and the panel
+  // actually unmounts" — but by the time any caller reaches this method,
+  // `renderPanel = false` (set below) has only *scheduled* that unmount;
+  // Svelte hasn't reconciled the `{#if renderPanel}` block yet in this
+  // synchronous stack, so a consumer callback invoked right here would
+  // still find `.cinder-modal__panel` in the DOM. Defer the report past
+  // `tick()` so the render flush has actually happened first, and re-check
+  // the generation (plus disposal and current `open` state) after the
+  // flush: if a reopen happened during the deferred window, or the
+  // component was destroyed, this call is stale and must not fire
+  // `onClosed`.
+  #completeCloseOnce(generation: number): void {
+    if (this.#lastCompletedGeneration === generation) return;
+    this.#lastCompletedGeneration = generation;
+
+    this.#releaseScrollLock?.();
+    this.#releaseScrollLock = null;
+    this.#releaseEscape?.();
+    this.#releaseEscape = null;
+    this.#options.setOpen(false);
+    this.#returnFocus();
+    this.isClosing = false;
+    this.renderPanel = false;
+
     const closedGeneration = generation;
     // Side-effect-only continuation — nothing downstream chains off this
     // promise, so there is no value to return.
@@ -479,12 +527,10 @@ export class SlidingDialogState {
         this.#disposed ||
         closedGeneration !== this.#closeGeneration ||
         this.#options.getOpen() ||
-        this.renderPanel ||
-        this.#lastReportedGeneration === closedGeneration
+        this.renderPanel
       ) {
         return;
       }
-      this.#lastReportedGeneration = closedGeneration;
       try {
         this.#options.onClosed?.();
       } catch (error) {

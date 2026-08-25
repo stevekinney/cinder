@@ -327,6 +327,95 @@ describe('createSlidingDialogState', () => {
     expect(document.activeElement).toBe(followUpOverlayFocusTarget);
   });
 
+  test('a second event resolving to an ALREADY-COMPLETED generation is a complete no-op — focus is not re-stolen from a follow-up overlay (PR #1422 review, round 6)', async () => {
+    // Regression: perfectly attributing provenance from a `close` event
+    // alone is not possible — an external close has no queue entry of its
+    // own, so `handleClose()`'s `shift()` can still consume whatever
+    // happens to be at the FRONT of the queue, even an entry that belongs
+    // to a completely different close than the one that actually produced
+    // THIS event (e.g. a stale/duplicate event delivered late, arriving
+    // AFTER an internal close has already pushed its own entry but BEFORE
+    // that internal close's own real native event fires). If the
+    // misattributed event's generation still happens to equal the CURRENT
+    // `#closeGeneration` (nothing else has changed it), it passes
+    // validation and looks like a perfectly legitimate close — cleanup
+    // runs, `onClosed` fires, and a consumer opens a follow-up overlay
+    // from inside it. When the GENUINE event for that same generation
+    // later arrives too, it resolves to the SAME generation — and, before
+    // this fix, would run `#returnFocus()` a SECOND time, stealing focus
+    // back from that follow-up overlay. `#completeCloseOnce()`'s
+    // per-generation guard makes completing the same generation twice a
+    // hard no-op — cleanup included, not merely the `onClosed` report —
+    // regardless of how the second event came to resolve to it.
+    document.body.replaceChildren();
+    const triggerButton = document.createElement('button');
+    triggerButton.textContent = 'Open';
+    document.body.appendChild(triggerButton);
+    const followUpOverlayFocusTarget = document.createElement('button');
+    followUpOverlayFocusTarget.textContent = 'Follow-up overlay content';
+    document.body.appendChild(followUpOverlayFocusTarget);
+
+    let open = true;
+    let closedCount = 0;
+    const dialogElement = createDialogElement();
+    const dialogState = createSlidingDialogState({
+      getOpen: () => open,
+      setOpen: (next) => {
+        open = next;
+      },
+      getDialogElement: () => dialogElement,
+      // No panel element — `beginClosing()` finishes synchronously via
+      // `#finishClosing()`, letting this test control the exact timing
+      // deterministically.
+      getPanelElement: () => undefined,
+      getReducedMotion: () => true,
+      getTriggerRef: () => triggerButton,
+      onClosed: () => {
+        closedCount += 1;
+        // Simulate a follow-up overlay opening from inside this callback
+        // and placing ITS OWN focus — same as the cross-overlay test above.
+        followUpOverlayFocusTarget.focus();
+      },
+    });
+
+    dialogState.syncOpenState();
+    expect(dialogElement.open).toBe(true);
+
+    // Internal close: `#finishClosing()` runs synchronously here — pushes
+    // this cycle's generation onto the queue and closes the native dialog
+    // — but its OWN real native `close` event has not been simulated yet.
+    open = false;
+    dialogState.syncOpenState();
+    expect(dialogElement.open).toBe(false);
+    expect(closedCount).toBe(0);
+
+    // A MISATTRIBUTED event arrives first — modeling a stale/duplicate
+    // event delivered out of band, consuming this cycle's queue entry
+    // even though it isn't genuinely that entry's own native event. Since
+    // nothing has changed `#closeGeneration` since the close began, this
+    // still passes validation as if it were legitimate.
+    dialogState.handleClose();
+    await tick();
+    expect(closedCount).toBe(1);
+    // The follow-up overlay's focus placement from inside `onClosed` above
+    // must be in place now.
+    expect(document.activeElement).toBe(followUpOverlayFocusTarget);
+
+    // NOW the GENUINE native close event for this same cycle finally
+    // arrives too (the queue is empty, so it resolves via the external
+    // path, to the same still-current generation). Before this fix, this
+    // would run cleanup — including `#returnFocus()` — a second time.
+    dialogState.handleClose();
+
+    // A complete no-op: no second report, and — the actual bug this test
+    // targets — focus must NOT have been stolen back from the follow-up
+    // overlay onto `triggerButton`.
+    expect(document.activeElement).toBe(followUpOverlayFocusTarget);
+    await tick();
+    expect(closedCount).toBe(1);
+    expect(document.activeElement).toBe(followUpOverlayFocusTarget);
+  });
+
   test('external close then reopen then internal reduced-motion close each report onClosed exactly once, per completed cycle (PR #1422 review, provenance-aware event matching)', async () => {
     // Regression: FIFO queue position ALONE cannot always attribute
     // provenance correctly across a MIXED external/internal sequence — an
