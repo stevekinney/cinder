@@ -229,9 +229,13 @@ describe('generate-component-schema — <Name>Props fallback HTML-attribute filt
         // `required` alone only checks key presence — { chrome: 'none',
         // 'aria-label': '' } would otherwise validate even though the
         // constraints sidecar and Modal's own runtime guard both reject an
-        // empty aria-label as a nameless dialog.
+        // empty aria-label as a nameless dialog. `minLength: 1` alone still
+        // accepts a whitespace-only string like '   ' — `pattern: '\\S'`
+        // requires at least one non-whitespace character, matching the
+        // runtime guard (which trims before checking) and the constraints
+        // sidecar's `nonEmpty` predicate (which also trims).
         properties: {
-          'aria-label': { minLength: 1 },
+          'aria-label': { minLength: 1, pattern: '\\S' },
         },
       },
     });

@@ -73,6 +73,15 @@ export const invalid: Array<{ attributes: ComponentAttributes; violates: string 
     violates: 'chromeless-accessible-label',
   },
 
+  // violates: chromeless-accessible-label — chrome="none" with a whitespace-only aria-label.
+  // `nonEmpty` trims before checking (matching modal.svelte's runtime
+  // `isNonEmptyString` guard and the generated schema's `pattern: '\\S'`
+  // restriction), so "   " is rejected the same way "" is.
+  {
+    attributes: { chrome: 'none', 'aria-label': '   ', open: true, children: true },
+    violates: 'chromeless-accessible-label',
+  },
+
   // violates: default-chrome-rejects-aria-label — chrome omitted (implicit default) WITH aria-label supplied
   {
     attributes: {

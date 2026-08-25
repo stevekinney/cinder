@@ -129,9 +129,25 @@ test.describe('nested overlay — image lightbox inside a Drawer', () => {
     }
   });
 
-  test("scroll stays locked after the Drawer's own close path while the lightbox is still open (drawer-then-lightbox order)", async ({
+  test('closing the Drawer tears down the nested lightbox too, and scroll lock fully releases (drawer-then-lightbox joint teardown)', async ({
     browser,
   }) => {
+    // The lightbox is a genuine DOM DESCENDANT of the Drawer's content now
+    // (not a portaled sibling) — Drawer's own SlidingDialogState clears
+    // `renderPanel` once its exit transition finishes, which unmounts its
+    // whole children snippet, including the nested ImageLightbox/Modal
+    // instance. There is no "close the Drawer while the lightbox survives
+    // independently" case for genuine nesting: closing the ancestor tears
+    // down the descendant with it. This replaces a prior version of this
+    // test that asserted the lightbox stayed open and holding the scroll
+    // lock after the Drawer closed — that assertion was only true because
+    // the fixture used to render the lightbox as a SIBLING after
+    // `</Drawer>`, not as a real descendant; once the fixture was fixed to
+    // nest it properly (per CIN-377 review), that assertion became
+    // structurally impossible to satisfy and the test went red on CI. The
+    // honest contract for real nesting is joint teardown: both overlays
+    // disappear together and the counted scroll lock (which each held one
+    // count of) fully releases.
     const { page, harness, dispose } = await openHarness(browser);
     try {
       const { drawer, lightbox } = await openDrawerThenLightbox(harness);
@@ -148,17 +164,14 @@ test.describe('nested overlay — image lightbox inside a Drawer', () => {
       // the same pattern `chat-harness.playwright.ts` uses to drive a
       // control that sits behind/under something else in the DOM.
       await harness.page().locator('.cinder-drawer__close').dispatchEvent('click');
-      await expect(drawer).toBeHidden();
-      // The lightbox (still open, still holding the lock) keeps scroll
-      // locked — the Drawer releasing its hold must not zero the counter.
-      await expect(lightbox).toBeVisible();
-      await expect(page.locator('body')).toHaveCSS('overflow', 'hidden');
 
-      // Close the lightbox: the counter reaches zero and scroll restores.
-      // This IS a real, reachable click — the lightbox is the top-layer
-      // dialog, so its own controls are genuinely clickable.
-      await lightbox.getByRole('button', { name: 'Close image viewer' }).click();
+      // Both the Drawer AND the nested lightbox disappear — the lightbox
+      // does not survive its ancestor's teardown.
+      await expect(drawer).toBeHidden();
       await expect(lightbox).toBeHidden();
+
+      // Both overlays' scroll-lock holds release together with the joint
+      // teardown — the counter reaches zero and scroll fully restores.
       await expect(page.locator('body')).not.toHaveCSS('overflow', 'hidden');
     } finally {
       await dispose();

@@ -404,10 +404,14 @@ function applyComponentSchemaRules(componentName: string, schema: ComponentSchem
         // 'aria-label': '' }` would otherwise validate even though the
         // constraints sidecar (`chromeless-accessible-label`) rejects the
         // empty string and Modal's own runtime nameless guard flags it as
-        // an unnamed dialog. `minLength: 1` closes that gap for
-        // schema-driven consumers.
+        // an unnamed dialog. `minLength: 1` alone still isn't enough —
+        // `{ chrome: 'none', 'aria-label': '   ' }` satisfies minLength but
+        // is still not a real name. `pattern: '\\S'` requires at least one
+        // non-whitespace character, matching the runtime guard's
+        // `isNonEmptyString` (which trims before checking) and the
+        // constraints sidecar's `nonEmpty` predicate.
         properties: {
-          'aria-label': { minLength: 1 },
+          'aria-label': { minLength: 1, pattern: '\\S' },
         },
       },
     },

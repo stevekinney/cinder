@@ -84,6 +84,13 @@ describe('evaluatePredicate — nonEmpty', () => {
     expect(evaluatePredicate({ prop: 'label', nonEmpty: true }, { label: '' })).toBe(false);
   });
 
+  it('returns false for a whitespace-only string', () => {
+    // Consistent with the runtime `isNonEmptyString` guards components
+    // author (which trim before checking) and the generated JSON Schema's
+    // `pattern: '\\S'` restriction for the same accessible-name fields.
+    expect(evaluatePredicate({ prop: 'label', nonEmpty: true }, { label: '   ' })).toBe(false);
+  });
+
   it('returns false for null', () => {
     expect(evaluatePredicate({ prop: 'label', nonEmpty: true }, { label: null })).toBe(false);
   });

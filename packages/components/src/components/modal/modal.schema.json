@@ -94,7 +94,8 @@
         "required": ["aria-label"],
         "properties": {
           "aria-label": {
-            "minLength": 1
+            "minLength": 1,
+            "pattern": "\\S"
           }
         }
       }
