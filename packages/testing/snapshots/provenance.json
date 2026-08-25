@@ -1,7 +1,8 @@
 {
   "schemaVersion": 1,
-  "componentScope": ["input", "textarea"],
-  "renderedSourceSha": "b029003c3fda750951a908e6c59cdb6bc7b92650",
+  "componentScope": "all",
+  "shard": "4/8",
+  "renderedSourceSha": "8143f4ce54aae1a2c455f86d7fdd2e613c6a898c",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
   "architecture": "x64",
