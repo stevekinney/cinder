@@ -14,6 +14,8 @@ export type GridItemProps = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
   rowSpan?: number | string;
   /** Explicit `grid-row-start` value. */
   rowStart?: number | string;
+  /** Explicit `grid-row-end` value. Takes precedence over `rowSpan` when both are set. */
+  rowEnd?: number | string;
   /** Rendered HTML tag. */
   as?: NonMetadataHTMLElementTagName;
   /** Custom class merged with `.cinder-grid-item`. */

@@ -189,7 +189,6 @@ const SIDEBAR_BASELINE = [
   'badge',
   'banner',
   'bar-chart',
-  'bento-grid',
   'breadcrumbs',
   'button',
   'button-group',

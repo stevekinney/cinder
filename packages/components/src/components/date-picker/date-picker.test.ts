@@ -1,6 +1,7 @@
 /// <reference lib="dom" />
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
+import { injectStrippedStyles } from '../../test/css.ts';
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
@@ -320,5 +321,36 @@ describe('DatePicker', () => {
     expect(trigger?.textContent?.trim()).toBe('');
     expect(trigger?.querySelector('svg')).not.toBeNull();
     expect(trigger?.getAttribute('aria-label')).toBe('Open date picker');
+  });
+
+  test('the error live region is mounted before any error is set (CIN-315: FormFieldFrame defaults to errorMountedOnDemand=false)', () => {
+    const { container } = render(DatePicker, { id: 'dp-no-error', value: '2026-06-29' });
+    expect(container.querySelector('.cinder-date-picker__error')).not.toBeNull();
+  });
+
+  test('the errorless live region has no layout footprint (shared _form-field-error.css, CIN-315 follow-up)', async () => {
+    const datePickerCss = await Bun.file(new URL('./date-picker.css', import.meta.url)).text();
+    const sharedErrorCss = await Bun.file(
+      new URL('../../styles/components/_form-field-error.css', import.meta.url),
+    ).text();
+    const removeStyles = injectStrippedStyles(datePickerCss, sharedErrorCss);
+    try {
+      const { container } = render(DatePicker, {
+        id: 'dp-no-error-computed',
+        value: '2026-06-29',
+      });
+      const errorRegion = container.querySelector('.cinder-date-picker__error');
+      expect(errorRegion).not.toBeNull();
+      const computed = getComputedStyle(errorRegion as Element);
+      // Sr-only pattern (CIN-315 review follow-up), not visibility:hidden —
+      // visibility:hidden removes an element from the accessibility tree
+      // (navigation-bar.a11y.md), which would defeat the announcement fix.
+      expect(computed.position).toBe('absolute');
+      expect(computed.visibility).not.toBe('hidden');
+      expect(computed.display).not.toBe('none');
+      expect(computed.clip).toBe('rect(0, 0, 0, 0)');
+    } finally {
+      removeStyles();
+    }
   });
 });

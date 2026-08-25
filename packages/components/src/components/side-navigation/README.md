@@ -2,6 +2,8 @@
 
 Vertical navigation panel for secondary or hierarchical app destinations.
 
+See the [SideNavigation versus Sidebar decision](https://github.com/stevekinney/cinder/blob/main/docs/decisions/side-navigation-vs-sidebar.md) for the boundary between the accessibility-focused nav landmark here and the responsive shell in Sidebar.
+
 ## Usage
 
 `SideNavigation` is a compound component. Import the parent and compose

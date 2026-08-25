@@ -12,6 +12,7 @@
    * @avoidWhen Rendering a single flat horizontal nav row. | navigation-bar
    * @avoidWhen Showing an in-page heading outline. | table-of-contents
    * @avoidWhen Rendering expandable hierarchical non-navigation data. | tree
+   * @avoidWhen Needing the shell. | sidebar
    * @related side-navigation-item, side-navigation-group, navigation-bar, table-of-contents, tree, sidebar
    */
   export type { SideNavigationProps } from './side-navigation.types.ts';

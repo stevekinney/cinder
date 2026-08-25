@@ -24,8 +24,8 @@ This directory holds long-form documentation that does not live inside a compone
 - [Data grid buy-vs-build](./decisions/data-grid-buy-vs-build.md): evaluation record for data-grid dependency choices.
 - [Segmented control tablist variant](./decisions/segmented-control-tablist-variant.md): decision record for the tablist-style segmented-control follow-up.
 - [Color value format](./decisions/color-value-format.md): **open** — ColorField/ColorPicker hex-only output vs format-tagged values.
-- [`*Group` vs plural naming](./decisions/group-vs-plural-naming.md): **open** — decide once across the Group-suffixed families.
-- [SideNavigation vs Sidebar](./decisions/side-navigation-vs-sidebar.md): **open** — reconcile or keep distinct.
+- [`*Group` vs plural naming](./decisions/group-vs-plural-naming.md): **accepted** — `*Group` names a curated collection of its singular component; bare plurals are domain mass nouns only.
+- [SideNavigation vs Sidebar](./decisions/side-navigation-vs-sidebar.md): **accepted** — keep both; Sidebar is the responsive shell, SideNavigation the nav semantics.
 
 ## Historical Plans
 

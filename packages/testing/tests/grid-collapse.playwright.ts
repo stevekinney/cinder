@@ -35,7 +35,7 @@ async function distinctLeftEdgeCount(page: Page, itemsSelector: string): Promise
   return new Set(await itemLeftOffsets(page, itemsSelector)).size;
 }
 
-test.describe('Grid / BentoGrid container-breakpoint collapse (#1186 row 10)', () => {
+test.describe('Grid / bento mosaic recipe container-breakpoint collapse (#1186 row 10)', () => {
   test('Grid resets to a single column only once its own width crosses 48rem', async ({
     componentPage,
   }) => {
@@ -74,19 +74,19 @@ test.describe('Grid / BentoGrid container-breakpoint collapse (#1186 row 10)', (
     await expect.poll(() => distinctLeftEdgeCount(page, itemsSelector)).toBe(1);
   });
 
-  test('BentoGrid (composed on Grid) collapses its cells at the same container breakpoint', async ({
+  test('bento mosaic recipe (Grid + Grid.Item) collapses its cells at the same container breakpoint', async ({
     componentPage,
   }) => {
-    const exampleRoot = '#example-mount-basic';
-    const cellsSelector = `${exampleRoot} .cinder-bento-cell`;
+    const exampleRoot = '#example-mount-bento-mosaic';
+    const cellsSelector = `${exampleRoot} .cinder-grid-item`;
 
     const page = await componentPage.open({
-      entry: getEntry('bento-grid'),
+      entry: getEntry('grid'),
       theme: lightTheme,
       viewport: desktopViewport,
     });
 
-    const grid = page.locator(`${exampleRoot} .cinder-bento-grid`);
+    const grid = page.locator(`${exampleRoot} .cinder-grid`);
     await expect(grid).toBeVisible();
     await expect(grid).toHaveAttribute('data-cinder-collapse', '');
 

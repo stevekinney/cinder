@@ -27,6 +27,9 @@
     features,
     callToActionLabel,
     onPlanSelect,
+    href,
+    target,
+    rel,
     caveat,
     selected = false,
     class: className,
@@ -55,6 +58,22 @@
       );
     }
     return result;
+  });
+
+  /**
+   * Compose `rel` for the CTA anchor (mirrors grid-list-item.svelte).
+   * When target matches "_blank" (case-insensitive), merge "noopener" and
+   * "noreferrer" into whatever the consumer supplied, deduplicating tokens —
+   * this closes the reverse-tabnabbing hole a bare target="_blank" leaves
+   * open, without clobbering a consumer-provided rel.
+   */
+  const composedRel = $derived.by(() => {
+    const isBlank = target?.toLowerCase() === '_blank';
+    if (!isBlank) return rel;
+    const tokens = new Set((rel ?? '').split(/\s+/).filter(Boolean));
+    tokens.add('noopener');
+    tokens.add('noreferrer');
+    return [...tokens].join(' ');
   });
 </script>
 
@@ -92,11 +111,28 @@
   </div>
 
   <div class="cinder-pricing-card__footer">
-    <Button
-      label={callToActionLabel}
-      variant={selected ? 'primary' : 'secondary'}
-      fullWidth
-      onclick={onPlanSelect}
-    />
+    <!-- Only the inner CTA element swaps between an anchor and a button — the
+         outer card structure stays a fixed div (see steps.svelte for the same
+         per-item action-swap pattern). onPlanSelect is not mutually exclusive
+         with href: both may be passed, mirroring Button's own anchor branch,
+         which is useful for firing analytics alongside navigation. -->
+    {#if href !== undefined}
+      <Button
+        label={callToActionLabel}
+        variant={selected ? 'primary' : 'secondary'}
+        fullWidth
+        {href}
+        {target}
+        rel={composedRel}
+        onclick={onPlanSelect}
+      />
+    {:else}
+      <Button
+        label={callToActionLabel}
+        variant={selected ? 'primary' : 'secondary'}
+        fullWidth
+        onclick={onPlanSelect}
+      />
+    {/if}
   </div>
 </div>

@@ -42,6 +42,12 @@ const schema = {
       type: 'string',
       description: 'Extra class names merged with `.cinder-textarea`.',
     },
+    variant: {
+      enum: ['default', 'code'],
+      description:
+        'Visual style. `"code"` applies a shared monospace metric set (font-family, font-size,\nline-height, tab-size) for source-like values such as raw JSON, YAML, or configuration text.',
+      default: 'default',
+    },
     countVisible: {
       type: 'boolean',
       description:

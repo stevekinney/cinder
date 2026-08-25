@@ -89,6 +89,7 @@
         label="Pattern (regex)"
         value={value.pattern ?? ''}
         disabled={readonly}
+        variant="code"
         oninput={(event: Event) =>
           onPatch(
             { pattern: (event.target as HTMLInputElement).value || undefined },

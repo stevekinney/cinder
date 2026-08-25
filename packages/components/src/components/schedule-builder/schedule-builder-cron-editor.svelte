@@ -98,6 +98,7 @@
           label={field.name}
           description={field.hint}
           value={cronFields[index] ?? '*'}
+          variant="code"
           oninput={(event) => onRawChange(index, (event.currentTarget as HTMLInputElement).value)}
           error={validateCronField(cronFields[index] ?? '*', index) ?? ''}
         />

@@ -641,6 +641,7 @@
           label="$ref URI"
           value={objectValue.$ref}
           disabled={readonly}
+          variant="code"
           oninput={(event: Event) =>
             patch(
               { $ref: (event.target as HTMLInputElement).value || undefined },
