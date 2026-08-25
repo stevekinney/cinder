@@ -131,7 +131,17 @@
     // already retain the panel, it would visibly jump/reflow until Floating
     // UI asynchronously repositions it again. `renderPanel` doesn't have
     // this lag.
-    open: () => mobilePanelOpen || exitState.renderPanel,
+    //
+    // `open()` is `exitState.renderPanel` ALONE, not `mobilePanelOpen ||
+    // exitState.renderPanel`: this callback runs inside
+    // `createAnchoredOverlay`'s own positioning `$effect`, so reading the
+    // raw `mobilePanelOpen` prop here — even behind an `||` whose overall
+    // result doesn't change — still subscribes that effect to
+    // `mobilePanelOpen` as a fine-grained dependency, causing it to briefly
+    // tear down/rebuild on every ordinary close. `renderPanel` alone is
+    // stable throughout the open session — see Popover's `anchoredOverlay`
+    // for the fuller explanation of this same fix (CIN-376 round 12).
+    open: () => exitState.renderPanel,
     anchor: () => navigationBarElement,
     panel: () => itemsRegionElement,
     placement: () => 'bottom-start' as Placement,

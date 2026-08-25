@@ -292,7 +292,20 @@
     // same `open || exitState.renderPanel` union (not the raw prop), so an
     // ordinary close no longer invalidates this effect on its own; it only
     // recomputes when a session genuinely starts or fully ends.
-    open: () => open || exitState.renderPanel,
+    //
+    // `open()` itself is `exitState.renderPanel` ALONE, not `open ||
+    // exitState.renderPanel`: this callback runs directly inside
+    // `createAnchoredOverlay`'s own positioning `$effect`
+    // (`anchored-overlay.svelte.ts`), so reading the raw `open` prop here —
+    // even behind an `||` whose overall result doesn't change — still
+    // subscribes THAT effect to `open` as a fine-grained dependency (Svelte
+    // tracks every signal a `$effect` reads during its run, not just whether
+    // the callback's return value changed). `renderPanel` is already `true`
+    // throughout an entire open session (`sync()` sets it eagerly, before
+    // `isClosing` ever flips) and only changes value at genuine session
+    // boundaries, so it alone is both sufficient and stable — no direct
+    // `open` read, no spurious effect invalidation on ordinary closes.
+    open: () => exitState.renderPanel,
     anchor: () => resolvedAnchorElement,
     panel: () => panelElement,
     arrow: () => arrowElement,

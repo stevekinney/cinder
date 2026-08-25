@@ -123,16 +123,37 @@ test('HoverCard renders data-cinder-closing during its exit transition, then unm
   await page.mouse.move(0, 0);
   await expect(card).toHaveAttribute('data-cinder-closing', '');
 
-  // Reopen while the exit transition is still in flight. Before CIN-376,
-  // HoverCard's hand-rolled version of this pattern force-finished the
-  // pending close AFTER re-arming `renderCard = true`, so the stale
-  // completion callback immediately unmounted the freshly reopened card.
-  // The shared `AnchoredOverlayExitState` generation-guards this.
-  await trigger.hover();
+  // The reopen-mid-close defect itself (below) is NOT exercised with this
+  // basic example: its default `openDelay` (300ms) is longer than the exit
+  // transition itself (`--cinder-duration-fast`, 120ms). Waiting for
+  // `data-cinder-closing` to appear (confirming the real `closeDelay`,
+  // 150ms, has already elapsed and the exit has genuinely started) and THEN
+  // re-hovering would only schedule a reopen for 300ms later — well after
+  // the 120ms exit has already finished on its own, so any assertions here
+  // would pass even with a completely broken generation guard, since
+  // they'd just be observing a brand-new, independently-opened card (fresh
+  // review evidence). Use the "instant-reopen" example instead
+  // (`openDelay={0}`, `closeDelay={200}`) for that check: once the exit is
+  // confirmed in flight, a reopen resolves in ~0ms, landing comfortably
+  // inside the transition's 120ms window instead of racing it.
+  const instantReopenTrigger = page
+    .locator('#example-mount-instant-reopen')
+    .getByRole('button', { name: 'CIN-99' })
+    .first();
+  await instantReopenTrigger.scrollIntoViewIfNeeded();
+  await instantReopenTrigger.hover();
 
-  await expect(card).toHaveCount(1);
-  await expect(card).toBeVisible();
-  await expect(card).not.toHaveAttribute('data-cinder-closing', '');
+  const instantReopenCard = page.locator('.cinder-hover-card').filter({ hasText: 'CIN-99' });
+  await expect(instantReopenCard).toHaveAttribute('data-cinder-position-ready', 'true');
+
+  await page.mouse.move(0, 0);
+  await expect(instantReopenCard).toHaveAttribute('data-cinder-closing', '');
+
+  await instantReopenTrigger.hover();
+
+  await expect(instantReopenCard).toHaveCount(1);
+  await expect(instantReopenCard).toBeVisible();
+  await expect(instantReopenCard).not.toHaveAttribute('data-cinder-closing', '');
 });
 
 test('NavigationBar mobile panel plays its exit transition instead of snapping via visibility (CIN-376 fix)', async ({

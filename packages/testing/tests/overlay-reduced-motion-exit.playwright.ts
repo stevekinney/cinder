@@ -23,15 +23,20 @@ import { expect, test } from '@playwright/test';
  * motion detection regressed and the ordinary ~120ms transition ran
  * instead, a polling assertion would still pass once that transition
  * finished, never actually proving "immediate". Each test instead runs a
- * single `evaluate` (via the SAME locator/handle already resolved earlier in
- * the test, not a fresh `page.evaluate` global query — see the per-test
- * comments below) that awaits exactly one microtask (matching
+ * single `evaluate` that awaits exactly one microtask (matching
  * `queueMicrotask(finish)`'s own resolution timing) and then reads the DOM
  * directly — a plain boolean assertion on the result, not a locator, so
- * there is no retry window for a slow transition to sneak through, and no
- * risk of resolving to a different, already-hidden instance the documentation
- * page also happens to mount (e.g. the Tooltip/NavigationBar "Examples"
- * section duplicate mounts, fresh review evidence found this happening).
+ * there is no retry window for a slow transition to sneak through. Popover
+ * and HoverCard capture an `ElementHandle` (not just a `Locator`) BEFORE
+ * closing and evaluate THAT afterward — a live `Locator#evaluate` re-resolves
+ * its selector at call time and would wait for a new match instead of
+ * reading the former node once it's gone, timing out precisely when
+ * teardown succeeds. Tooltip and NavigationBar instead derive their locator
+ * from the specific instance the test interacted with (the trigger's own
+ * `aria-describedby`, the toggled panel) — no risk of resolving to a
+ * different, already-hidden instance the documentation page also happens to
+ * mount (e.g. the "Examples" section duplicate mounts, fresh review evidence
+ * found this happening either way).
  *
  * Speed Dial's assertion checks for the element's absence, not
  * `not.toHaveAttribute(...)`: the retained actions surface fully unmounts
@@ -55,13 +60,20 @@ test('Popover unmounts immediately under reduced motion', async ({ page }) => {
   const panel = page.locator('.cinder-popover').first();
   await expect(panel).toHaveAttribute('data-cinder-position-ready', 'true');
 
+  // Capture an `ElementHandle` BEFORE closing, not just the `Locator`:
+  // `Locator#evaluate` re-resolves its selector at call time, so once the
+  // correctly-reduced-motion close has already unmounted the panel, calling
+  // `panel.evaluate(...)` after the fact would wait (and time out) for a
+  // NEW matching element to appear instead of reading the former node's
+  // `isConnected` value — making the test fail precisely when teardown
+  // succeeds. `ElementHandle#evaluate` operates on the specific captured
+  // node regardless of whether it's still attached.
+  const panelHandle = await panel.elementHandle();
+  if (!panelHandle) throw new Error('Popover panel element handle not found.');
+
   await trigger.click();
 
-  // Check whether the SAME `panel` handle already resolved above is still
-  // connected, not a fresh global query — same wrong-instance risk as
-  // Tooltip/NavigationBar if the documentation page ever mounts a second
-  // Popover example.
-  const stillPresent = await panel.evaluate(async (el) => {
+  const stillPresent = await panelHandle.evaluate(async (el) => {
     await Promise.resolve();
     return el.isConnected;
   });
@@ -119,24 +131,31 @@ test('HoverCard unmounts immediately under reduced motion', async ({ page }) => 
   const card = page.locator('.cinder-hover-card').first();
   await expect(card).toHaveAttribute('data-cinder-position-ready', 'true');
 
+  // Capture an `ElementHandle` BEFORE closing, not just the `Locator` — same
+  // reason as the Popover test above: `Locator#evaluate` re-resolves at call
+  // time, so it can't observe a node that has already been unmounted.
+  const cardHandle = await card.elementHandle();
+  if (!cardHandle) throw new Error('HoverCard element handle not found.');
+
   await page.mouse.move(0, 0);
 
   // HoverCard debounces its close behind a REAL `closeDelay` (150ms by
   // default) `setTimeout` — a legitimate hover-intent guard, not part of the
-  // exit-TRANSITION lifecycle under test. That real timer has to elapse
-  // before `setOpen(false)` (and with it, the exit machinery) even starts,
-  // so polling for `data-cinder-closing` to appear is correct here — it's
-  // only the step AFTER that (does the exit transition itself finish
-  // immediately under reduced motion) that must be checked without
-  // polling, or a regressed ~120ms non-reduced transition would also pass
-  // within the poll's window.
-  await expect(card).toHaveAttribute('data-cinder-closing', '');
+  // exit-TRANSITION lifecycle under test — before `setOpen(false)` even
+  // runs. Deliberately NOT polling for `data-cinder-closing` to appear first
+  // (as this test previously did): under reduced motion,
+  // `waitForTransitionCompletion` resolves via `queueMicrotask`, so the
+  // closing state exists for at most a single microtask before the card
+  // unmounts entirely — a web-first `toHaveAttribute` poll cannot reliably
+  // observe a state that ephemeral and would normally time out even when
+  // reduced motion is working correctly. Instead, wait past the real delay
+  // with a fixed timeout (200ms — comfortably past the 150ms debounce, but
+  // short enough that a regressed ~120ms non-reduced exit transition
+  // wouldn't also complete within it: 150 + 120 = 270ms), then check the END
+  // state without polling.
+  await page.waitForTimeout(200);
 
-  // Check whether the SAME element `card` already resolved above is still
-  // connected to the DOM, not a fresh global query for `.cinder-hover-card`
-  // — same wrong-instance risk as Tooltip/NavigationBar if the
-  // documentation page ever mounts a second HoverCard example.
-  const stillPresent = await card.evaluate(async (el) => {
+  const stillPresent = await cardHandle.evaluate(async (el) => {
     await Promise.resolve();
     return el.isConnected;
   });

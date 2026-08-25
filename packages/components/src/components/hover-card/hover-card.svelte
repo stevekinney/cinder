@@ -101,7 +101,17 @@
     // place. `renderPanel` doesn't have this lag: it's a plain `$state`
     // that's already `true` from the prior render and isn't reset until the
     // completion callback actually fires.
-    open: () => open || exitState.renderPanel,
+    //
+    // `open()` is `exitState.renderPanel` ALONE, not `open ||
+    // exitState.renderPanel`: this callback runs inside
+    // `createAnchoredOverlay`'s own positioning `$effect`, so reading the
+    // raw `open` prop here — even behind an `||` whose overall result
+    // doesn't change — still subscribes that effect to `open` as a
+    // fine-grained dependency, causing it to briefly tear down/rebuild on
+    // every ordinary close. `renderPanel` alone is stable throughout the
+    // open session — see Popover's `anchoredOverlay` for the fuller
+    // explanation of this same fix (CIN-376 round 12).
+    open: () => exitState.renderPanel,
     anchor: () => anchorElement,
     panel: () => cardElement,
     arrow: () => arrowElement,

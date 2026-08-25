@@ -304,7 +304,19 @@
     // for a tick before the async Floating UI recomputation restores them —
     // the retained (`data-cinder-visible`) tooltip would start its fade from
     // an unpositioned fixed location. `renderPanel` doesn't have this lag.
-    open: () => visible || exitState.renderPanel,
+    //
+    // `open()` is `exitState.renderPanel` ALONE, not `visible ||
+    // exitState.renderPanel`: this callback runs inside
+    // `createAnchoredOverlay`'s own positioning `$effect`, so reading the
+    // raw `visible` prop here — even behind an `||` whose overall result
+    // doesn't change — still subscribes that effect to `visible` as a
+    // fine-grained dependency (Svelte tracks every signal an effect reads
+    // during its run, not just whether the return value changed), causing
+    // it to briefly tear down/rebuild on every ordinary close. `renderPanel`
+    // is already `true` throughout the whole open session and only changes
+    // at genuine session boundaries — see Popover's `anchoredOverlay` for
+    // the fuller explanation of this same fix (CIN-376 round 12).
+    open: () => exitState.renderPanel,
     anchor: () => anchorElement,
     panel: () => tooltipElement,
     placement: () => placement as Placement,

@@ -68,6 +68,10 @@ function getRepeatedValue<T>(values: readonly T[], index: number, fallback: T): 
 
 function getLongestTransitionTime(element: HTMLElement): number {
   const style = window.getComputedStyle(element);
+  const properties = style.transitionProperty
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean);
   const durations = parseTimeValueList(style.transitionDuration);
   const delays = parseTimeValueList(style.transitionDelay);
   // Must also count `transitionProperty`'s own slots: a caller passing
@@ -77,15 +81,22 @@ function getLongestTransitionTime(element: HTMLElement): number {
   // with only 3 durations/delays) still cyclically resolves each of its OWN
   // slots to a real duration+delay, and this loop must iterate that many
   // times to see the longest one, not stop at `max(durations, delays)`.
-  const propertyCount = style.transitionProperty
-    .split(',')
-    .map((part) => part.trim())
-    .filter(Boolean).length;
-  const count = Math.max(durations.length, delays.length, propertyCount);
+  const count = Math.max(durations.length, delays.length, properties.length);
 
   let longest = 0;
 
   for (let index = 0; index < count; index += 1) {
+    // `transition-property: none` (or a slot that cyclically resolves to
+    // `none`) can never produce a transition, however long its paired
+    // duration happens to be — e.g. `all, none` with durations `100ms, 10s`
+    // would otherwise let this fallback wait out the unreachable 10s
+    // instead of the real ~100ms boundary. Speed Dial's per-action fan-out
+    // (the one caller relying on this fallback exclusively, via
+    // `ignoreUnknownPropertyEvents`) is exactly where consumer CSS can shape
+    // like this. Mirrors the same exclusion `getTrackedTransitionProperties`
+    // below already applies.
+    const property = getRepeatedValue(properties, index, 'all');
+    if (property === 'none') continue;
     const duration = getRepeatedValue(durations, index, 0);
     const delay = getRepeatedValue(delays, index, 0);
     longest = Math.max(longest, duration + delay);

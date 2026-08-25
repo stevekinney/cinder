@@ -104,6 +104,51 @@ describe('waitForTransitionCompletion', () => {
     }
   });
 
+  test('excludes `none` transition-property slots from the fallback duration (CIN-376 round 12)', async () => {
+    // `transition-property: all, none` with durations `100ms, 10s`: the
+    // `none` slot can never produce a transition, however long its paired
+    // duration happens to be. Without excluding it, this fallback would wait
+    // out the unreachable 10s instead of the real ~100ms boundary — e.g. a
+    // Speed Dial action closing behind consumer CSS shaped exactly like
+    // this would stay retained and portaled for ~10s instead of ~100ms.
+    // `all` makes `getTrackedTransitionProperties` return `null`, so with
+    // `ignoreUnknownPropertyEvents: true` completion can ONLY come from this
+    // fallback timer.
+    const element = document.createElement('div');
+    document.body.appendChild(element);
+    const originalGetComputedStyle = window.getComputedStyle;
+    window.getComputedStyle = ((target: Element) => {
+      if (target === element) {
+        return {
+          transitionProperty: 'all, none',
+          transitionDuration: '100ms, 10s',
+          transitionDelay: '0ms, 0ms',
+        } as CSSStyleDeclaration;
+      }
+      return originalGetComputedStyle(target);
+    }) as typeof window.getComputedStyle;
+
+    try {
+      let completionCount = 0;
+      waitForTransitionCompletion({
+        element,
+        reducedMotion: false,
+        ignoreUnknownPropertyEvents: true,
+        onComplete: () => {
+          completionCount += 1;
+        },
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(completionCount).toBe(0);
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(completionCount).toBe(1);
+    } finally {
+      window.getComputedStyle = originalGetComputedStyle;
+    }
+  });
+
   test('repeats a shorter duration/delay list CYCLICALLY, per the CSS spec (CIN-376)', () => {
     // Three properties, only two durations (`100ms, 0ms`) — CSS repeats the
     // shorter list from the beginning: the third property (index 2)

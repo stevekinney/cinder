@@ -155,18 +155,21 @@
     // already `true` from the prior render and isn't reset until the
     // completion callback actually fires, so reading it here in the same
     // tick correctly keeps positioning active.
-    open: () => isPositionedOpen || exitState.renderPanel,
+    // `open()` is `exitState.renderPanel` ALONE, not `isPositionedOpen ||
+    // exitState.renderPanel`: this callback runs inside
+    // `createAnchoredOverlay`'s own positioning `$effect`, so reading
+    // `isPositionedOpen` here — a `$derived` that recomputes whenever
+    // `position` changes — still subscribes that effect to it as a
+    // fine-grained dependency, even when the overall `||` result doesn't
+    // change, causing it to briefly tear down/rebuild on every ordinary
+    // close. `renderPanel` alone is stable throughout the open session —
+    // see Popover's `anchoredOverlay` for the fuller explanation of this
+    // same fix (CIN-376 round 12).
+    open: () => exitState.renderPanel,
     // `virtualAnchor` itself now returns the SAME object reference across a
     // close (see its own definition above) — no separate `?? lastVirtualAnchor`
     // fallback needed here, and no reference change at the exact moment
-    // `position` goes null. A narrower gap remains regardless: `open()`
-    // above also reads `isPositionedOpen`, a `$derived` that DOES recompute
-    // when `position` changes, so `anchored-overlay.svelte.ts`'s positioning
-    // effect still reruns once (tearing down/rebuilding) even though its
-    // overall `open()`/`anchor()` results stay valid throughout — fully
-    // closing that would require decoupling the effect's dependency
-    // tracking from `isPositionedOpen`'s own recomputation, out of scope
-    // here.
+    // `position` goes null.
     anchor: () => virtualAnchor,
     panel: () => popoverElement,
     placement: () => 'top' as Placement,
